@@ -7,12 +7,13 @@ use std::fmt::Debug;
 
 use derive_where::derive_where;
 use itertools::Itertools as _;
+use serde_with::serde_as;
 
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::method::{Lookup, Method};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::{serialize, Color, ColorError, ReferencedTypes, TryFromWith, TryIntoWith as _};
+use crate::backup::{serialize, Color, ColorError, ReferencedTypes, TryIntoWith};
 use crate::proto::backup as proto;
 
 #[derive(serde::Serialize)]
@@ -33,11 +34,12 @@ pub enum Wallpaper<M: Method> {
     Photo(M::BoxedValue<FilePointer>),
 }
 
+#[serde_as]
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct WallpaperPreset {
     /// Guaranteed to not be [`proto::chat_style::WallpaperPreset::UNKNOWN_WALLPAPER_PRESET`].
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     enum_value: proto::chat_style::WallpaperPreset,
 }
 
@@ -65,12 +67,13 @@ impl SerializeOrder for BubbleGradientColor {
     }
 }
 
+#[serde_as]
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct BubbleColorPreset {
     /// Guaranteed to not be [`proto::chat_style::BubbleColorPreset::UNKNOWN_BUBBLE_COLOR_PRESET`].
     #[allow(unused)]
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     enum_value: proto::chat_style::BubbleColorPreset,
 }
 
@@ -206,41 +209,37 @@ impl<M: Method + ReferencedTypes> ChatStyle<M> {
     }
 }
 
-impl<C: ReportUnusualTimestamp + ?Sized, M: Method> TryFromWith<proto::chat_style::Wallpaper, C>
-    for Wallpaper<M>
+impl<C: ReportUnusualTimestamp + ?Sized, M: Method> TryIntoWith<Wallpaper<M>, C>
+    for proto::chat_style::Wallpaper
 {
     type Error = ChatStyleError;
 
-    fn try_from_with(
-        value: proto::chat_style::Wallpaper,
-        context: &C,
-    ) -> Result<Self, Self::Error> {
-        Ok(match value {
-            proto::chat_style::Wallpaper::WallpaperPreset(preset) => Self::Preset(
+    fn try_into_with(self, context: &C) -> Result<Wallpaper<M>, Self::Error> {
+        Ok(match self {
+            proto::chat_style::Wallpaper::WallpaperPreset(preset) => Wallpaper::Preset(
                 WallpaperPreset::new(preset.enum_value_or_default())
                     .ok_or(ChatStyleError::UnknownPresetWallpaper)?,
             ),
-            proto::chat_style::Wallpaper::WallpaperPhoto(photo) => Self::Photo(M::boxed_value(
-                photo
-                    .try_into_with(context)
-                    .map_err(ChatStyleError::WallpaperPhoto)?,
-            )),
+            proto::chat_style::Wallpaper::WallpaperPhoto(photo) => {
+                Wallpaper::Photo(M::boxed_value(
+                    photo
+                        .try_into_with(context)
+                        .map_err(ChatStyleError::WallpaperPhoto)?,
+                ))
+            }
         })
     }
 }
 
 impl<C: Lookup<CustomColorId, CustomColor>, CustomColor: Clone>
-    TryFromWith<proto::chat_style::BubbleColor, C> for BubbleColor<CustomColor>
+    TryIntoWith<BubbleColor<CustomColor>, C> for proto::chat_style::BubbleColor
 {
     type Error = ChatStyleError;
 
-    fn try_from_with(
-        value: proto::chat_style::BubbleColor,
-        context: &C,
-    ) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<BubbleColor<CustomColor>, Self::Error> {
         use proto::chat_style::BubbleColor as BubbleColorProto;
-        Ok(match value {
-            BubbleColorProto::BubbleColorPreset(preset) => Self::Preset(
+        Ok(match self {
+            BubbleColorProto::BubbleColorPreset(preset) => BubbleColor::Preset(
                 BubbleColorPreset::new(preset.enum_value_or_default())
                     .ok_or(ChatStyleError::UnknownPresetBubbleColor)?,
             ),
@@ -249,11 +248,11 @@ impl<C: Lookup<CustomColorId, CustomColor>, CustomColor: Clone>
                 let Some(color) = context.lookup(&color_id) else {
                     return Err(ChatStyleError::UnknownCustomColorId(id));
                 };
-                Self::Custom(color.clone())
+                BubbleColor::Custom(color.clone())
             }
             BubbleColorProto::AutoBubbleColor(proto::chat_style::AutomaticBubbleColor {
                 special_fields: _,
-            }) => Self::Auto,
+            }) => BubbleColor::Auto,
         })
     }
 }
@@ -580,7 +579,7 @@ mod test {
     #[test_case(|x| x.set_wallpaperPhoto(proto::FilePointer::test_data()) => Ok(()); "wallpaper photo")]
     #[test_case(
         |x| x.set_wallpaperPhoto(proto::FilePointer::default()) =>
-        Err(ChatStyleError::WallpaperPhoto(FilePointerError::NoLocator));
+        Err(ChatStyleError::WallpaperPhoto(FilePointerError::NoLocatorInfo));
         "invalid wallpaper photo"
     )]
     #[test_case(

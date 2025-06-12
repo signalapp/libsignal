@@ -44,8 +44,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
         signal_crypto::aes_256_cbc_encrypt(plaintext, message_keys.cipher_key(), message_keys.iv())
             .map_err(|_| {
                 log::error!(
-                    "outgoing sender key state corrupt for distribution ID {}",
-                    distribution_id,
+                    "outgoing sender key state corrupt for distribution ID {distribution_id}",
                 );
                 SignalProtocolError::InvalidSenderKeySession { distribution_id }
             })?;
@@ -88,9 +87,7 @@ fn get_sender_key(
             return Ok(smk);
         } else {
             log::info!(
-                "SenderKey distribution {} Duplicate message for iteration: {}",
-                distribution_id,
-                iteration
+                "SenderKey distribution {distribution_id} Duplicate message for iteration: {iteration}"
             );
             return Err(SignalProtocolError::DuplicatedMessage(
                 current_iteration,
@@ -176,15 +173,12 @@ pub async fn group_decrypt(
         Ok(plaintext) => plaintext,
         Err(signal_crypto::DecryptionError::BadKeyOrIv) => {
             log::error!(
-                "incoming sender key state corrupt for {}, distribution ID {}, chain ID {}",
-                sender,
-                distribution_id,
-                chain_id,
+                "incoming sender key state corrupt for {sender}, distribution ID {distribution_id}, chain ID {chain_id}",
             );
             return Err(SignalProtocolError::InvalidSenderKeySession { distribution_id });
         }
         Err(signal_crypto::DecryptionError::BadCiphertext(msg)) => {
-            log::error!("sender key decryption failed: {}", msg);
+            log::error!("sender key decryption failed: {msg}");
             return Err(SignalProtocolError::InvalidMessage(
                 CiphertextMessageType::SenderKey,
                 "decryption failed",
@@ -245,15 +239,13 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
         Some(record) => record,
         None => {
             // libsignal-protocol-java uses 31-bit integers for sender key chain IDs
-            let chain_id = (csprng.gen::<u32>()) >> 1;
+            let chain_id = (csprng.random::<u32>()) >> 1;
             log::info!(
-                "Creating SenderKey for distribution {} with chain ID {}",
-                distribution_id,
-                chain_id
+                "Creating SenderKey for distribution {distribution_id} with chain ID {chain_id}"
             );
 
             let iteration = 0;
-            let sender_key: [u8; 32] = csprng.gen();
+            let sender_key: [u8; 32] = csprng.random();
             let signing_key = KeyPair::generate(csprng);
             let mut record = SenderKeyRecord::new_empty();
             record.add_sender_key_state(

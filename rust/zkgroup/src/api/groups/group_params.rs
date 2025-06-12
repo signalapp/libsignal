@@ -14,6 +14,7 @@ use crate::common::errors::*;
 use crate::common::serialization::ReservedByte;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
+use crate::crypto::uid_encryption;
 use crate::{api, crypto};
 
 #[derive(Copy, Clone, Serialize, Deserialize, Default)]
@@ -29,6 +30,12 @@ pub struct GroupSecretParams {
     blob_key: AesKeyBytes,
     pub(crate) uid_enc_key_pair: crypto::uid_encryption::KeyPair,
     pub(crate) profile_key_enc_key_pair: crypto::profile_key_encryption::KeyPair,
+}
+
+impl AsRef<uid_encryption::KeyPair> for GroupSecretParams {
+    fn as_ref(&self) -> &uid_encryption::KeyPair {
+        &self.uid_enc_key_pair
+    }
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]

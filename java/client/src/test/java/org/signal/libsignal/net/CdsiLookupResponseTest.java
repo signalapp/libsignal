@@ -17,6 +17,7 @@ import org.junit.Test;
 import org.signal.libsignal.attest.AttestationDataException;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.internal.NativeTesting;
+import org.signal.libsignal.internal.TokioAsyncContext;
 import org.signal.libsignal.protocol.ServiceId;
 
 public class CdsiLookupResponseTest {

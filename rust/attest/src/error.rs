@@ -74,7 +74,7 @@ impl<D> std::fmt::Display for ContextError<D> {
             let mut ctx_iter = self.context.iter().rev();
             write!(f, "{}", ctx_iter.next().expect("checked for empty above"))?;
             for ctx in ctx_iter {
-                write!(f, " -> {}", ctx)?;
+                write!(f, " -> {ctx}")?;
             }
             write!(f, ") {}", self.message)?;
             Ok(())

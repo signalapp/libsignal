@@ -13,7 +13,7 @@ use libsignal_message_backup::key::MessageBackupKey;
 use libsignal_message_backup::proto::backup as proto;
 use protobuf::Message as _;
 use rand::rngs::OsRng;
-use rand::RngCore as _;
+use rand::{RngCore as _, TryRngCore as _};
 
 /// Generates a compressed, encrypted, MAC'd backup with the given settings.
 ///
@@ -26,7 +26,7 @@ pub fn generate_backup(
 ) -> Vec<u8> {
     let iv = {
         let mut iv = [0; 16];
-        OsRng.fill_bytes(&mut iv);
+        OsRng.unwrap_err().fill_bytes(&mut iv);
         iv
     };
 

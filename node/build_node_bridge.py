@@ -16,6 +16,11 @@ import sys
 
 from typing import List, Optional
 
+sys.path.append(os.path.join(
+    os.path.dirname(os.path.abspath(os.path.dirname(__file__))),
+    'bin'))
+import build_helpers  # noqa: E402 (we need to modify sys.path before this import)
+
 
 def check_for_debug_level_logs(src_path: str) -> None:
     with open(src_path, 'rb') as f:
@@ -102,6 +107,10 @@ def main(args: Optional[List[str]] = None) -> int:
 
     out_dir = options.out_dir.strip('"') or os.path.join('build', configuration_name)
 
+    # Fetch all dependencies first, so we can check information about them in constructing our
+    # command lines.
+    subprocess.check_call(['cargo', 'fetch'])
+
     features = []
     allow_debug_level_logs = False
     if 'npm_config_libsignal_debug_level_logs' in os.environ:
@@ -129,6 +138,9 @@ def main(args: Optional[List[str]] = None) -> int:
     cargo_env['CARGO_PROFILE_RELEASE_LTO'] = 'thin'
     # Enable ARMv8 cryptography acceleration when available
     cargo_env['RUSTFLAGS'] += ' --cfg aes_armv8'
+    # Strip absolute paths
+    for path in build_helpers.rust_paths_to_remap():
+        cargo_env['RUSTFLAGS'] += f' --remap-path-prefix {path}='
 
     # If set (below), will post-process the build library using this instead of just `cp`-ing it.
     objcopy = None

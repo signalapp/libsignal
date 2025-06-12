@@ -4,16 +4,20 @@
 //
 
 import type { ReadonlyDeep } from 'type-fest';
+
 import * as Native from '../../Native';
 import { LibSignalError, RateLimitedError } from '../Errors';
-import { newNativeHandle, type Net, type TokioAsyncContext } from '../net';
+import { type Net, type TokioAsyncContext } from '../net';
+import { PublicKey } from '../EcKeys';
+import { Aci, Pni, ServiceIdKind } from '../Address';
+import { SignedKyberPublicPreKey, SignedPublicPreKey } from '..';
+import { newNativeHandle } from '../internal';
 
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
 
 type RegistrationOptions = {
   tokioAsyncContext: TokioAsyncContext;
   connectionManager: ConnectionManager;
-  connectionTimeoutMillis?: number;
 };
 
 export type RegistrationSessionState = {
@@ -24,6 +28,17 @@ export type RegistrationSessionState = {
   nextVerificationAttemptSecs?: number;
   requestedInformation: Set<'pushChallenge' | 'captcha'>;
 };
+
+type CreateSessionArgs = Readonly<{
+  e164: string;
+}>;
+
+type ResumeSessionArgs = Readonly<{
+  sessionId: string;
+  e164: string;
+}>;
+
+export type Svr2CredentialResult = 'match' | 'no-match' | 'invalid';
 
 /**
  * A client for the Signal registration service.
@@ -74,11 +89,12 @@ export class RegistrationService {
    */
   public static async resumeSession(
     options: ReadonlyDeep<RegistrationOptions>,
-    { sessionId }: { sessionId: string }
+    { sessionId, e164 }: ResumeSessionArgs
   ): Promise<RegistrationService> {
     const session = await Native.RegistrationService_ResumeSession(
       options.tokioAsyncContext,
       sessionId,
+      e164,
       options.connectionManager
     );
     return new RegistrationService(session, options.tokioAsyncContext);
@@ -100,7 +116,7 @@ export class RegistrationService {
    */
   public static async createSession(
     options: ReadonlyDeep<RegistrationOptions>,
-    { e164 }: { e164: string }
+    { e164 }: CreateSessionArgs
   ): Promise<RegistrationService> {
     const session = await Native.RegistrationService_CreateSession(
       options.tokioAsyncContext,
@@ -124,15 +140,18 @@ export class RegistrationService {
   public async requestVerification({
     transport,
     client,
+    languages = [],
   }: {
     transport: 'sms' | 'voice';
     client: string;
+    languages: string[];
   }): Promise<void> {
     await Native.RegistrationService_RequestVerificationCode(
       this.tokioAsyncContext,
       this,
       transport,
-      client
+      client,
+      languages
     );
   }
 
@@ -143,6 +162,66 @@ export class RegistrationService {
       code
     );
     return this.sessionState.verified;
+  }
+
+  public async checkSvr2Credentials(
+    svr2Tokens: Array<string>
+  ): Promise<Map<string, Svr2CredentialResult>> {
+    return Native.RegistrationService_CheckSvr2Credentials(
+      this.tokioAsyncContext,
+      this,
+      svr2Tokens
+    );
+  }
+
+  public async registerAccount(inputs: {
+    accountPassword: string;
+    skipDeviceTransfer: boolean;
+    accountAttributes: AccountAttributes;
+    aciPublicKey: PublicKey;
+    pniPublicKey: PublicKey;
+    aciSignedPreKey: SignedPublicPreKey;
+    pniSignedPreKey: SignedPublicPreKey;
+    aciPqLastResortPreKey: SignedKyberPublicPreKey;
+    pniPqLastResortPreKey: SignedKyberPublicPreKey;
+  }): Promise<RegisterAccountResponse> {
+    const request = new RegisterAccountRequest(inputs);
+    return new RegisterAccountResponse(
+      await Native.RegistrationService_RegisterAccount(
+        this.tokioAsyncContext,
+        this,
+        request,
+        inputs.accountAttributes
+      )
+    );
+  }
+
+  public static async reregisterAccount(
+    options: ReadonlyDeep<RegistrationOptions>,
+    inputs: {
+      e164: string;
+      accountPassword: string;
+      skipDeviceTransfer: boolean;
+      accountAttributes: AccountAttributes;
+      aciPublicKey: PublicKey;
+      pniPublicKey: PublicKey;
+      aciSignedPreKey: SignedPublicPreKey;
+      pniSignedPreKey: SignedPublicPreKey;
+      aciPqLastResortPreKey: SignedKyberPublicPreKey;
+      pniPqLastResortPreKey: SignedKyberPublicPreKey;
+    }
+  ): Promise<RegisterAccountResponse> {
+    const { tokioAsyncContext, connectionManager } = options;
+    const request = new RegisterAccountRequest(inputs);
+    return new RegisterAccountResponse(
+      await Native.RegistrationService_ReregisterAccount(
+        tokioAsyncContext,
+        connectionManager,
+        inputs.e164,
+        request,
+        inputs.accountAttributes
+      )
+    );
   }
 
   /**
@@ -170,5 +249,199 @@ export class RegistrationService {
         Native.RegistrationSession_GetRequestedInformation(session)
       ),
     };
+  }
+
+  /**
+   * Create a registration client that sends requests to the returned fake chat.
+   *
+   * Calling code will need to retrieve the first fake remote from the fake chat
+   * server and respond in order for the returned Promise to resolve.
+   *
+   * Internal, only public for testing
+   */
+  static fakeCreateSession(
+    tokio: TokioAsyncContext,
+    { e164 }: CreateSessionArgs
+  ): [Promise<RegistrationService>, Native.Wrapper<Native.FakeChatServer>] {
+    const server = newNativeHandle(Native.TESTING_FakeChatServer_Create());
+    const registration = async () => {
+      const handle = await Native.TESTING_FakeRegistrationSession_CreateSession(
+        tokio,
+        { number: e164 },
+        server
+      );
+      return new RegistrationService(handle, tokio);
+    };
+
+    return [registration(), server];
+  }
+}
+
+function toBridgedPublicPreKey(
+  key: SignedPublicPreKey | SignedKyberPublicPreKey
+): Native.SignedPublicPreKey {
+  return {
+    keyId: key.id(),
+    signature: key.signature(),
+    publicKey: key.publicKey().serialize(),
+  };
+}
+
+export class AccountAttributes {
+  readonly _nativeHandle: Native.RegistrationAccountAttributes;
+
+  public constructor({
+    recoveryPassword,
+    aciRegistrationId,
+    pniRegistrationId,
+    registrationLock,
+    unidentifiedAccessKey,
+    unrestrictedUnidentifiedAccess,
+    capabilities,
+    discoverableByPhoneNumber,
+  }: {
+    recoveryPassword: Uint8Array;
+    aciRegistrationId: number;
+    pniRegistrationId: number;
+    registrationLock: string | null;
+    unidentifiedAccessKey: Uint8Array;
+    unrestrictedUnidentifiedAccess: boolean;
+    capabilities: Set<string>;
+    discoverableByPhoneNumber: boolean;
+  }) {
+    const capabilitiesArray = Array.from(capabilities);
+
+    this._nativeHandle = Native.RegistrationAccountAttributes_Create(
+      Buffer.from(recoveryPassword),
+      aciRegistrationId,
+      pniRegistrationId,
+      registrationLock,
+      Buffer.from(unidentifiedAccessKey),
+      unrestrictedUnidentifiedAccess,
+      capabilitiesArray,
+      discoverableByPhoneNumber
+    );
+  }
+}
+
+export class RegisterAccountResponse {
+  public constructor(readonly _nativeHandle: Native.RegisterAccountResponse) {}
+
+  public get aci(): Aci {
+    return new Aci(
+      Native.RegisterAccountResponse_GetIdentity(this, ServiceIdKind.Aci)
+    );
+  }
+
+  public get pni(): Pni {
+    return new Pni(
+      Native.RegisterAccountResponse_GetIdentity(this, ServiceIdKind.Pni)
+    );
+  }
+
+  public get number(): string {
+    return Native.RegisterAccountResponse_GetNumber(this);
+  }
+
+  public get usernameHash(): Buffer | null {
+    return Native.RegisterAccountResponse_GetUsernameHash(this);
+  }
+  public get usernameLinkHandle(): Buffer | null {
+    return Native.RegisterAccountResponse_GetUsernameLinkHandle(this);
+  }
+
+  public get backupEntitlement(): {
+    backupLevel: bigint;
+    expirationSeconds: bigint;
+  } | null {
+    const backupLevel =
+      Native.RegisterAccountResponse_GetEntitlementBackupLevel(this);
+    const expirationSeconds =
+      Native.RegisterAccountResponse_GetEntitlementBackupExpirationSeconds(
+        this
+      );
+    if (backupLevel == null || expirationSeconds == null) return null;
+
+    return {
+      backupLevel,
+      expirationSeconds,
+    };
+  }
+
+  public get entitlementBadges(): Array<{
+    id: string;
+    expirationSeconds: number;
+    visible: boolean;
+  }> {
+    return Native.RegisterAccountResponse_GetEntitlementBadges(this);
+  }
+
+  public get reregistration(): boolean {
+    return Native.RegisterAccountResponse_GetReregistration(this);
+  }
+  public get storageCapable(): boolean {
+    return Native.RegisterAccountResponse_GetStorageCapable(this);
+  }
+}
+
+class RegisterAccountRequest {
+  _nativeHandle: Native.RegisterAccountRequest;
+
+  public constructor(inputs: {
+    accountPassword: string;
+    skipDeviceTransfer: boolean;
+    aciPublicKey: PublicKey;
+    pniPublicKey: PublicKey;
+    aciSignedPreKey: SignedPublicPreKey;
+    pniSignedPreKey: SignedPublicPreKey;
+    aciPqLastResortPreKey: SignedKyberPublicPreKey;
+    pniPqLastResortPreKey: SignedKyberPublicPreKey;
+  }) {
+    const {
+      accountPassword,
+      skipDeviceTransfer,
+      aciPublicKey,
+      pniPublicKey,
+      aciSignedPreKey,
+      pniSignedPreKey,
+      aciPqLastResortPreKey,
+      pniPqLastResortPreKey,
+    } = inputs;
+    this._nativeHandle = Native.RegisterAccountRequest_Create();
+    Native.RegisterAccountRequest_SetAccountPassword(this, accountPassword);
+    if (skipDeviceTransfer) {
+      Native.RegisterAccountRequest_SetSkipDeviceTransfer(this);
+    }
+    Native.RegisterAccountRequest_SetIdentityPublicKey(
+      this,
+      ServiceIdKind.Aci,
+      aciPublicKey
+    );
+    Native.RegisterAccountRequest_SetIdentityPublicKey(
+      this,
+      ServiceIdKind.Pni,
+      pniPublicKey
+    );
+
+    Native.RegisterAccountRequest_SetIdentitySignedPreKey(
+      this,
+      ServiceIdKind.Aci,
+      toBridgedPublicPreKey(aciSignedPreKey)
+    );
+    Native.RegisterAccountRequest_SetIdentitySignedPreKey(
+      this,
+      ServiceIdKind.Pni,
+      toBridgedPublicPreKey(pniSignedPreKey)
+    );
+    Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
+      this,
+      ServiceIdKind.Aci,
+      toBridgedPublicPreKey(aciPqLastResortPreKey)
+    );
+    Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
+      this,
+      ServiceIdKind.Pni,
+      toBridgedPublicPreKey(pniPqLastResortPreKey)
+    );
   }
 }

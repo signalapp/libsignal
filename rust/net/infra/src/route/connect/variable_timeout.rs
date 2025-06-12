@@ -12,7 +12,6 @@ use derive_where::derive_where;
 use tokio::time::Duration;
 
 use crate::errors::TlsHandshakeTimeout;
-use crate::route::connect::composed::Captures;
 use crate::route::Connector;
 
 /// A [`Connector`] that applies a variable timeout based on inner connection time
@@ -54,7 +53,7 @@ impl<O, I, E> VariableTlsTimeoutConnector<O, I, E> {
         inner_route: IR,
         outer_route: OR,
         log_tag: Arc<str>,
-    ) -> impl Future<Output = Result<O::Connection, E>> + Send + Captures<&'_ ()>
+    ) -> impl Future<Output = Result<O::Connection, E>> + Send + use<'_, IR, OR, S, O, I, E>
     where
         O: Connector<OR, I::Connection, Error: Into<E>> + Sync,
         I: Connector<IR, S, Error: Into<E>> + Sync,

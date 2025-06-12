@@ -18,7 +18,7 @@ fn main() {
         .decode(old_secret_base64.trim_end())
         .unwrap();
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut randomness = [0u8; RANDOMNESS_LEN];
     rng.fill(&mut randomness);
 

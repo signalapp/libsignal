@@ -69,7 +69,7 @@ extension UnauthenticatedChatConnection {
                     ))
             }
             let chat = UnauthenticatedChatConnection(
-                fakeHandle: NonNull(chatHandle)!, tokioAsyncContext: tokioAsyncContext
+                fakeHandle: NonNull(chatHandle)!, tokioAsyncContext: tokioAsyncContext, environment: .staging
             )
 
             listenerBridge.setConnection(chatConnection: chat)
@@ -177,6 +177,15 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
         return (httpRequest, requestId)
     }
 
+    func sendResponse(requestId: UInt64, _ response: ChatResponse) throws {
+        let fakeResponse = FakeChatResponse(requestId: requestId, response)
+        try self.withNativeHandle { nativeHandle in
+            try fakeResponse.withNativeHandle { response in
+                try checkError(signal_testing_fake_chat_remote_end_send_server_response(nativeHandle.const(), response.const()))
+            }
+        }
+    }
+
     func injectServerResponse(base64: String) {
         self.injectServerResponse(Data(base64Encoded: base64)!)
     }
@@ -204,6 +213,61 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
         _ handle: NonNull<SignalMutPointerFakeChatRemoteEnd>
     ) -> SignalFfiErrorRef? {
         signal_fake_chat_remote_end_destroy(handle.pointer)
+    }
+}
+
+internal class FakeChatServer: NativeHandleOwner<SignalMutPointerFakeChatServer>, @unchecked Sendable {
+    internal let asyncContext: TokioAsyncContext
+    internal init(asyncContext: TokioAsyncContext) {
+        self.asyncContext = asyncContext
+
+        var pointer = SignalMutPointerFakeChatServer()
+        failOnError(signal_testing_fake_chat_server_create(&pointer))
+        super.init(owned: NonNull(pointer)!)
+    }
+
+    internal required init(owned: NonNull<SignalMutPointerFakeChatServer>) {
+        fatalError("cannot be invoked directly")
+    }
+
+    override class func destroyNativeHandle(_ nativeHandle: NonNull<SignalMutPointerFakeChatServer>) -> SignalFfiErrorRef? {
+        signal_fake_chat_server_destroy(nativeHandle.pointer)
+    }
+
+    internal func getNextRemote() async throws -> FakeChatRemote {
+        let remote = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
+            self.withNativeHandle { nativeHandle in
+                signal_testing_fake_chat_server_get_next_remote(promise, asyncContext.const(), nativeHandle.const())
+            }
+        }
+        return FakeChatRemote(handle: NonNull(remote)!, tokioAsyncContext: self.asyncContext)
+    }
+}
+
+internal class FakeChatResponse: NativeHandleOwner<SignalMutPointerFakeChatResponse> {
+    internal init(requestId: UInt64, _ response: ChatResponse) {
+        let nativeHandle = failOnError {
+            try response.message.withCString { message in
+                try response.headers.map { (key: String, value: String) in
+                    "\(key): \(value)"
+                }.withUnsafeBorrowedBytestringArray { headers in
+                    try response.body.withUnsafeBorrowedBuffer { body in
+                        var nativeHandle = SignalMutPointerFakeChatResponse()
+                        try checkError(signal_testing_fake_chat_response_create(&nativeHandle, requestId, response.status, message, headers, SignalOptionalBorrowedSliceOfc_uchar(present: true, value: body)))
+                        return nativeHandle
+                    }
+                }
+            }
+        }
+        super.init(owned: NonNull(nativeHandle)!)
+    }
+
+    internal required init(owned: NonNull<SignalMutPointerFakeChatResponse>) {
+        fatalError("cannot be invoked directly")
+    }
+
+    override class func destroyNativeHandle(_ nativeHandle: NonNull<SignalMutPointerFakeChatResponse>) -> SignalFfiErrorRef? {
+        signal_fake_chat_response_destroy(nativeHandle.pointer)
     }
 }
 
@@ -319,8 +383,56 @@ extension SignalConstPointerFakeChatSentRequest: SignalConstPointer {
     }
 }
 
+extension SignalMutPointerFakeChatServer: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerFakeChatServer
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerFakeChatServer: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+
+extension SignalMutPointerFakeChatResponse: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerFakeChatResponse
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerFakeChatResponse: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+
 extension SignalCPromiseMutPointerFakeChatSentRequest: PromiseStruct {
     typealias Result = SignalMutPointerFakeChatSentRequest
+}
+
+extension SignalCPromiseMutPointerFakeChatRemoteEnd: PromiseStruct {
+    typealias Result = SignalMutPointerFakeChatRemoteEnd
 }
 
 #endif

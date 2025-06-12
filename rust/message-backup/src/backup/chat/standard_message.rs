@@ -15,7 +15,7 @@ use crate::backup::method::LookupPair;
 use crate::backup::recipient::MinimalRecipientData;
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::{likely_empty, TryFromWith, TryIntoWith as _};
+use crate::backup::{likely_empty, TryIntoWith};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StandardMessage`].
@@ -33,11 +33,11 @@ pub struct StandardMessage<Recipient> {
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
-    TryFromWith<proto::StandardMessage, C> for StandardMessage<R>
+    TryIntoWith<StandardMessage<R>, C> for proto::StandardMessage
 {
     type Error = ChatItemError;
 
-    fn try_from_with(item: proto::StandardMessage, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<StandardMessage<R>, Self::Error> {
         let proto::StandardMessage {
             text,
             quote,
@@ -46,7 +46,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             linkPreview,
             longText,
             special_fields: _,
-        } = item;
+        } = self;
 
         let reactions = reactions.try_into_with(context)?;
 
@@ -70,18 +70,18 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
         };
 
         let link_previews = likely_empty(linkPreview, |iter| {
-            iter.map(|preview| LinkPreview::try_from_with(preview, context))
+            iter.map(|preview| preview.try_into_with(context))
                 .collect::<Result<_, _>>()
         })?;
 
         let long_text = longText
             .into_option()
-            .map(|file| FilePointer::try_from_with(file, context))
+            .map(|file| file.try_into_with(context))
             .transpose()
             .map_err(ChatItemError::LongText)?;
 
         let attachments: Vec<MessageAttachment> = likely_empty(attachments, |iter| {
-            iter.map(|attachment| MessageAttachment::try_from_with(attachment, context))
+            iter.map(|attachment| attachment.try_into_with(context))
                 .collect::<Result<_, _>>()
         })?;
 
@@ -94,7 +94,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             }
         }
 
-        Ok(Self {
+        Ok(StandardMessage {
             text,
             quote: quote.map(Box::new),
             attachments,

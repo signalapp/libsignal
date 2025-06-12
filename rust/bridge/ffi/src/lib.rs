@@ -6,21 +6,21 @@
 #![allow(clippy::missing_safety_doc)]
 #![warn(clippy::unwrap_used)]
 
-use std::ffi::{c_char, c_uchar, c_uint, CString};
+use std::ffi::{c_char, c_uchar, CString};
 use std::panic::AssertUnwindSafe;
 
-use futures_util::FutureExt;
 use libsignal_bridge::ffi::*;
 #[cfg(feature = "libsignal-bridge-testing")]
 #[allow(unused_imports)]
 use libsignal_bridge_testing::*;
+use libsignal_core::try_scoped;
 use libsignal_protocol::*;
 
 pub mod logging;
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_print_ptr(p: *const std::ffi::c_void) {
-    println!("In rust that's {:?}", p);
+    println!("In rust that's {p:?}");
 }
 
 #[no_mangle]
@@ -52,6 +52,21 @@ pub unsafe extern "C" fn signal_free_list_of_strings(buffer: OwnedBufferOf<CStri
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn signal_free_list_of_register_response_badges(
+    buffer: OwnedBufferOf<FfiRegisterResponseBadge>,
+) {
+    for badge in buffer.into_box() {
+        let FfiRegisterResponseBadge {
+            id,
+            visible,
+            expiration_secs,
+        } = badge;
+        signal_free_string(id);
+        let _: (bool, f64) = (visible, expiration_secs);
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn signal_free_lookup_response_entry_list(
     buffer: OwnedBufferOf<crate::FfiCdsiLookupResponseEntry>,
 ) {
@@ -68,10 +83,10 @@ pub unsafe extern "C" fn signal_error_get_message(
     err: *const SignalFfiError,
     out: *mut *const c_char,
 ) -> *mut SignalFfiError {
-    let result = (|| {
+    let result = try_scoped(|| {
         let err = err.as_ref().ok_or(NullPointerError)?;
         write_result_to(out, err.to_string())
-    })();
+    });
 
     match result {
         Ok(()) => std::ptr::null_mut(),
@@ -88,7 +103,7 @@ pub unsafe extern "C" fn signal_error_get_address(
     run_ffi_safe(|| {
         let err = err.as_ref().ok_or(NullPointerError)?;
         let value = err.provide_address().map_err(|_| {
-            SignalProtocolError::InvalidArgument(format!("cannot get address from error ({})", err))
+            SignalProtocolError::InvalidArgument(format!("cannot get address from error ({err})"))
         })?;
         write_result_to(out, value)
     })
@@ -103,7 +118,7 @@ pub unsafe extern "C" fn signal_error_get_uuid(
     run_ffi_safe(|| {
         let err = err.as_ref().ok_or(NullPointerError)?;
         let value = err.provide_uuid().map_err(|_| {
-            SignalProtocolError::InvalidArgument(format!("cannot get UUID from error ({})", err))
+            SignalProtocolError::InvalidArgument(format!("cannot get UUID from error ({err})"))
         })?;
         write_result_to(out, value.into_bytes())
     })
@@ -127,8 +142,7 @@ pub unsafe extern "C" fn signal_error_get_retry_after_seconds(
         let err = err.as_ref().ok_or(NullPointerError)?;
         let value = err.provide_retry_after_seconds().map_err(|_| {
             SignalProtocolError::InvalidArgument(format!(
-                "cannot get retry_after_seconds from error ({})",
-                err
+                "cannot get retry_after_seconds from error ({err})"
             ))
         })?;
         write_result_to(out, value)
@@ -145,8 +159,7 @@ pub unsafe extern "C" fn signal_error_get_tries_remaining(
         let err = err.as_ref().ok_or(NullPointerError)?;
         let value = err.provide_tries_remaining().map_err(|_| {
             SignalProtocolError::InvalidArgument(format!(
-                "cannot get tries_remaining from error ({})",
-                err
+                "cannot get tries_remaining from error ({err})"
             ))
         })?;
         write_result_to(out, value)
@@ -165,12 +178,66 @@ pub unsafe extern "C" fn signal_error_get_unknown_fields(
             .provide_unknown_fields()
             .map_err(|_| {
                 SignalProtocolError::InvalidArgument(format!(
-                    "cannot get unknown_fields from error ({})",
-                    err
+                    "cannot get unknown_fields from error ({err})"
                 ))
             })?
             .into_boxed_slice();
         write_result_to(out, value)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_error_get_registration_error_not_deliverable(
+    err: *const SignalFfiError,
+    out_reason: *mut *const c_char,
+    out_permanent: *mut bool,
+) -> *mut SignalFfiError {
+    let err = AssertUnwindSafe(err);
+    run_ffi_safe(|| {
+        let err = err.as_ref().ok_or(NullPointerError)?;
+
+        let libsignal_net::registration::VerificationCodeNotDeliverable {
+            reason,
+            permanent_failure,
+        } = err
+            .provide_registration_code_not_deliverable()
+            .map_err(|_| {
+                SignalProtocolError::InvalidArgument(format!(
+                    "cannot get registration error from error ({err})"
+                ))
+            })?;
+        write_result_to(out_reason, reason.as_str())?;
+        write_result_to(out_permanent, *permanent_failure)?;
+        Ok(())
+    })
+}
+#[no_mangle]
+pub unsafe extern "C" fn signal_error_get_registration_lock(
+    err: *const SignalFfiError,
+    out_time_remaining_seconds: *mut u64,
+    out_svr2_username: *mut *const c_char,
+    out_svr2_password: *mut *const c_char,
+) -> *mut SignalFfiError {
+    let err = AssertUnwindSafe(err);
+    run_ffi_safe(|| {
+        let err = err.as_ref().ok_or(NullPointerError)?;
+
+        let libsignal_net::registration::RegistrationLock {
+            time_remaining,
+            svr2_credentials:
+                libsignal_net::auth::Auth {
+                    username: svr2_username,
+                    password: svr2_password,
+                },
+        } = err.provide_registration_lock().map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!(
+                "cannot get registration error from error ({err})"
+            ))
+        })?;
+        write_result_to(out_time_remaining_seconds, time_remaining.as_secs())?;
+        write_result_to(out_svr2_username, svr2_username.as_str())?;
+        write_result_to(out_svr2_password, svr2_password.as_str())?;
+        Ok(())
     })
 }
 
@@ -197,63 +264,32 @@ pub unsafe extern "C" fn signal_identitykeypair_deserialize(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
-    out: *mut OwnedBufferOf<c_uchar>,
-    sender_e164: *mut *const c_char,
-    sender_uuid: *mut *const c_char,
-    sender_device_id: *mut u32,
-    ctext: BorrowedSliceOf<c_uchar>,
-    trust_root: ConstPointer<PublicKey>,
-    timestamp: u64,
-    local_e164: *const c_char,
-    local_uuid: *const c_char,
-    local_device_id: c_uint,
-    session_store: ConstPointer<FfiSessionStoreStruct>,
-    identity_store: ConstPointer<FfiIdentityKeyStoreStruct>,
-    prekey_store: ConstPointer<FfiPreKeyStoreStruct>,
-    signed_prekey_store: ConstPointer<FfiSignedPreKeyStoreStruct>,
+pub unsafe extern "C" fn signal_hex_encode(
+    output: *mut c_char,
+    output_len: usize,
+    input: *const u8,
+    input_len: usize,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
-        let mut kyber_pre_key_store = InMemKyberPreKeyStore::new();
-        let ctext = ctext.as_slice()?;
-        let trust_root = native_handle_cast::<PublicKey>(trust_root.into_inner())?;
-        let mut identity_store = identity_store
-            .into_inner()
-            .as_ref()
-            .ok_or(NullPointerError)?;
-        let mut session_store = session_store
-            .into_inner()
-            .as_ref()
-            .ok_or(NullPointerError)?;
-        let mut prekey_store = prekey_store.into_inner().as_ref().ok_or(NullPointerError)?;
-        let signed_prekey_store = signed_prekey_store
-            .into_inner()
-            .as_ref()
-            .ok_or(NullPointerError)?;
-
-        let local_e164 = Option::convert_from(local_e164)?;
-        let local_uuid = Option::convert_from(local_uuid)?.ok_or(NullPointerError)?;
-
-        let decrypted = sealed_sender_decrypt(
-            ctext,
-            trust_root,
-            Timestamp::from_epoch_millis(timestamp),
-            local_e164,
-            local_uuid,
-            local_device_id.into(),
-            &mut identity_store,
-            &mut session_store,
-            &mut prekey_store,
-            &signed_prekey_store,
-            &mut kyber_pre_key_store,
-        )
-        .now_or_never()
-        .expect("synchronous")?;
-
-        write_result_to(sender_e164, decrypted.sender_e164)?;
-        write_result_to(sender_uuid, decrypted.sender_uuid)?;
-        write_result_to(sender_device_id, u32::from(decrypted.device_id))?;
-        write_result_to(out, decrypted.message)?;
+        if input_len == 0 {
+            return Ok(());
+        }
+        if input_len > output_len / 2 {
+            // We check this early because an output buffer of {NULL, 0} is *valid*, just too small
+            // for anything but a zero-length input, while std::slice::from_raw_parts_mut requires a
+            // non-null base pointer.
+            return Err(SignalProtocolError::InvalidArgument(
+                "output buffer too small".to_string(),
+            )
+            .into());
+        }
+        if input.is_null() || output.is_null() {
+            return Err(NullPointerError.into());
+        }
+        let output = std::slice::from_raw_parts_mut(output, output_len);
+        let output = zerocopy::IntoBytes::as_mut_bytes(output);
+        let input = std::slice::from_raw_parts(input, input_len);
+        hex::encode_to_slice(input, output).expect("checked above");
         Ok(())
     })
 }

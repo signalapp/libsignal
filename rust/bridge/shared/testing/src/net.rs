@@ -19,6 +19,7 @@ use uuid::Uuid;
 use crate::*;
 
 pub mod chat;
+pub mod keytrans;
 pub mod registration;
 
 #[bridge_io(TokioAsyncContext)]
@@ -47,11 +48,6 @@ async fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
         ],
         debug_permits_used: DEBUG_PERMITS_USED,
     }
-}
-
-#[bridge_io(TokioAsyncContext)]
-async fn TESTING_OnlyCompletesByCancellation() {
-    std::future::pending::<()>().await
 }
 
 macro_rules! make_error_testing_enum {
@@ -162,7 +158,7 @@ fn TESTING_ConnectionManager_newLocalOverride(
     };
 
     let env = net_env::localhost_test_env_with_ports(ports, rootCertificateDer);
-    ConnectionManager::new_from_static_environment(env, userAgent.as_str())
+    ConnectionManager::new_from_static_environment(env, userAgent.as_str(), Default::default())
 }
 
 #[bridge_fn]

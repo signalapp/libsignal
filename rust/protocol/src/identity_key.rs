@@ -188,12 +188,13 @@ impl From<IdentityKeyPair> for KeyPair {
 #[cfg(test)]
 mod tests {
     use rand::rngs::OsRng;
+    use rand::TryRngCore as _;
 
     use super::*;
 
     #[test]
     fn test_identity_key_from() {
-        let key_pair = KeyPair::generate(&mut OsRng);
+        let key_pair = KeyPair::generate(&mut OsRng.unwrap_err());
         let key_pair_public_serialized = key_pair.public_key.serialize();
         let identity_key = IdentityKey::from(key_pair.public_key);
         assert_eq!(key_pair_public_serialized, identity_key.serialize());
@@ -201,7 +202,7 @@ mod tests {
 
     #[test]
     fn test_serialize_identity_key_pair() -> Result<()> {
-        let identity_key_pair = IdentityKeyPair::generate(&mut OsRng);
+        let identity_key_pair = IdentityKeyPair::generate(&mut OsRng.unwrap_err());
         let serialized = identity_key_pair.serialize();
         let deserialized_identity_key_pair = IdentityKeyPair::try_from(&serialized[..])?;
         assert_eq!(
@@ -222,10 +223,11 @@ mod tests {
 
     #[test]
     fn test_alternate_identity_signing() -> Result<()> {
-        let primary = IdentityKeyPair::generate(&mut OsRng);
-        let secondary = IdentityKeyPair::generate(&mut OsRng);
+        let mut rng = OsRng.unwrap_err();
+        let primary = IdentityKeyPair::generate(&mut rng);
+        let secondary = IdentityKeyPair::generate(&mut rng);
 
-        let signature = secondary.sign_alternate_identity(primary.identity_key(), &mut OsRng)?;
+        let signature = secondary.sign_alternate_identity(primary.identity_key(), &mut rng)?;
         assert!(secondary
             .identity_key()
             .verify_alternate_identity(primary.identity_key(), &signature)?);
@@ -235,13 +237,13 @@ mod tests {
             .verify_alternate_identity(secondary.identity_key(), &signature)?);
 
         let another_signature =
-            secondary.sign_alternate_identity(primary.identity_key(), &mut OsRng)?;
+            secondary.sign_alternate_identity(primary.identity_key(), &mut rng)?;
         assert_ne!(signature, another_signature);
         assert!(secondary
             .identity_key()
             .verify_alternate_identity(primary.identity_key(), &another_signature)?);
 
-        let unrelated = IdentityKeyPair::generate(&mut OsRng);
+        let unrelated = IdentityKeyPair::generate(&mut rng);
         assert!(!secondary
             .identity_key()
             .verify_alternate_identity(unrelated.identity_key(), &signature)?);

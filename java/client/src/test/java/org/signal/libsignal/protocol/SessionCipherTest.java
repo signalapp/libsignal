@@ -245,7 +245,7 @@ public class SessionCipherTest extends TestCase {
     ECKeyPair bobPreKey = Curve.generateKeyPair();
 
     SessionRecord aliceSessionRecord =
-        SessionRecord.initializeAliceSession(
+        SessionRecordTest.initializeAliceSession(
             aliceIdentityKey,
             aliceBaseKey,
             bobIdentityKey.getPublicKey(),
@@ -253,7 +253,7 @@ public class SessionCipherTest extends TestCase {
             bobEphemeralKey.getPublicKey());
 
     SessionRecord bobSessionRecord =
-        SessionRecord.initializeBobSession(
+        SessionRecordTest.initializeBobSession(
             bobIdentityKey,
             bobBaseKey,
             bobEphemeralKey,

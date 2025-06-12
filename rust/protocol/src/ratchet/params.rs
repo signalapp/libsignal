@@ -5,6 +5,22 @@
 
 use crate::{kem, IdentityKey, IdentityKeyPair, KeyPair, PublicKey};
 
+#[derive(Clone, Copy)]
+pub enum UsePQRatchet {
+    No,
+    Yes,
+}
+
+impl From<bool> for UsePQRatchet {
+    fn from(value: bool) -> Self {
+        if value {
+            UsePQRatchet::Yes
+        } else {
+            UsePQRatchet::No
+        }
+    }
+}
+
 pub struct AliceSignalProtocolParameters {
     our_identity_key_pair: IdentityKeyPair,
     our_base_key_pair: KeyPair,
@@ -14,6 +30,8 @@ pub struct AliceSignalProtocolParameters {
     their_one_time_pre_key: Option<PublicKey>,
     their_ratchet_key: PublicKey,
     their_kyber_pre_key: Option<kem::PublicKey>,
+
+    use_pq_ratchet: UsePQRatchet,
 }
 
 impl AliceSignalProtocolParameters {
@@ -23,6 +41,7 @@ impl AliceSignalProtocolParameters {
         their_identity_key: IdentityKey,
         their_signed_pre_key: PublicKey,
         their_ratchet_key: PublicKey,
+        use_pq_ratchet: UsePQRatchet,
     ) -> Self {
         Self {
             our_identity_key_pair,
@@ -32,6 +51,7 @@ impl AliceSignalProtocolParameters {
             their_one_time_pre_key: None,
             their_ratchet_key,
             their_kyber_pre_key: None,
+            use_pq_ratchet,
         }
     }
 
@@ -87,6 +107,11 @@ impl AliceSignalProtocolParameters {
     pub fn their_ratchet_key(&self) -> &PublicKey {
         &self.their_ratchet_key
     }
+
+    #[inline]
+    pub fn use_pq_ratchet(&self) -> UsePQRatchet {
+        self.use_pq_ratchet
+    }
 }
 
 pub struct BobSignalProtocolParameters<'a> {
@@ -100,9 +125,12 @@ pub struct BobSignalProtocolParameters<'a> {
     their_identity_key: IdentityKey,
     their_base_key: PublicKey,
     their_kyber_ciphertext: Option<&'a kem::SerializedCiphertext>,
+
+    use_pq_ratchet: UsePQRatchet,
 }
 
 impl<'a> BobSignalProtocolParameters<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         our_identity_key_pair: IdentityKeyPair,
         our_signed_pre_key_pair: KeyPair,
@@ -112,6 +140,7 @@ impl<'a> BobSignalProtocolParameters<'a> {
         their_identity_key: IdentityKey,
         their_base_key: PublicKey,
         their_kyber_ciphertext: Option<&'a kem::SerializedCiphertext>,
+        use_pq_ratchet: UsePQRatchet,
     ) -> Self {
         Self {
             our_identity_key_pair,
@@ -122,6 +151,7 @@ impl<'a> BobSignalProtocolParameters<'a> {
             their_identity_key,
             their_base_key,
             their_kyber_ciphertext,
+            use_pq_ratchet,
         }
     }
 
@@ -163,5 +193,10 @@ impl<'a> BobSignalProtocolParameters<'a> {
     #[inline]
     pub fn their_kyber_ciphertext(&self) -> Option<&kem::SerializedCiphertext> {
         self.their_kyber_ciphertext
+    }
+
+    #[inline]
+    pub fn use_pq_ratchet(&self) -> UsePQRatchet {
+        self.use_pq_ratchet
     }
 }

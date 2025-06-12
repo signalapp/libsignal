@@ -9,12 +9,13 @@ use std::time::SystemTime;
 use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
+use rand::TryRngCore as _;
 use support::*;
 use uuid::Uuid;
 
 #[test]
 fn test_server_cert() -> Result<(), SignalProtocolError> {
-    let mut rng = OsRng;
+    let mut rng = OsRng.unwrap_err();
     let trust_root = KeyPair::generate(&mut rng);
     let server_key = KeyPair::generate(&mut rng);
 
@@ -45,7 +46,7 @@ fn test_server_cert() -> Result<(), SignalProtocolError> {
                 | SignalProtocolError::BadKeyLength(_, _) => {}
 
                 unexpected_err => {
-                    panic!("unexpected error {:?}", unexpected_err)
+                    panic!("unexpected error {unexpected_err:?}")
                 }
             },
         }
@@ -56,7 +57,7 @@ fn test_server_cert() -> Result<(), SignalProtocolError> {
 
 #[test]
 fn test_revoked_server_cert() -> Result<(), SignalProtocolError> {
-    let mut rng = OsRng;
+    let mut rng = OsRng.unwrap_err();
     let trust_root = KeyPair::generate(&mut rng);
     let server_key = KeyPair::generate(&mut rng);
 
@@ -80,7 +81,7 @@ fn test_revoked_server_cert() -> Result<(), SignalProtocolError> {
 
 #[test]
 fn test_sender_cert() -> Result<(), SignalProtocolError> {
-    let mut rng = OsRng;
+    let mut rng = OsRng.unwrap_err();
     let trust_root = KeyPair::generate(&mut rng);
     let server_key = KeyPair::generate(&mut rng);
     let key = KeyPair::generate(&mut rng);
@@ -123,7 +124,7 @@ fn test_sender_cert() -> Result<(), SignalProtocolError> {
                 | SignalProtocolError::BadKeyType(_) => {}
 
                 unexpected_err => {
-                    panic!("unexpected error {:?}", unexpected_err)
+                    panic!("unexpected error {unexpected_err:?}")
                 }
             },
         }
@@ -135,7 +136,7 @@ fn test_sender_cert() -> Result<(), SignalProtocolError> {
 #[test]
 fn test_sealed_sender() -> Result<(), SignalProtocolError> {
     async {
-        let mut rng = OsRng;
+        let mut rng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -162,6 +163,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut rng,
+            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -208,6 +210,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut bob_store.pre_key_store,
             &bob_store.signed_pre_key_store,
             &mut bob_store.kyber_pre_key_store,
+            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -241,13 +244,14 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut bob_store.pre_key_store,
             &bob_store.signed_pre_key_store,
             &mut bob_store.kyber_pre_key_store,
+            UsePQRatchet::Yes,
         )
         .await;
 
         match bob_ptext {
             Err(SignalProtocolError::InvalidSealedSenderMessage(_)) => { /* ok */ }
             Err(err) => {
-                panic!("Unexpected error {}", err)
+                panic!("Unexpected error {err}")
             }
             Ok(_) => {
                 panic!("Shouldn't have decrypted")
@@ -281,13 +285,14 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut bob_store.pre_key_store,
             &bob_store.signed_pre_key_store,
             &mut bob_store.kyber_pre_key_store,
+            UsePQRatchet::Yes,
         )
         .await;
 
         match bob_ptext {
             Err(SignalProtocolError::InvalidSealedSenderMessage(_)) => { /* ok */ }
             Err(err) => {
-                panic!("Unexpected error {}", err)
+                panic!("Unexpected error {err}")
             }
             Ok(_) => {
                 panic!("Shouldn't have decrypted")
@@ -303,7 +308,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
 #[test]
 fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
     async {
-        let mut rng = OsRng;
+        let mut rng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -333,6 +338,7 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut rng,
+            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -419,7 +425,7 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
 #[test]
 fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
     async {
-        let mut rng = OsRng;
+        let mut rng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -446,6 +452,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut rng,
+            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -475,6 +482,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             SystemTime::now(),
+            &mut rng,
         )
         .await?;
 
@@ -515,6 +523,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut bob_store.pre_key_store,
             &bob_store.signed_pre_key_store,
             &mut bob_store.kyber_pre_key_store,
+            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -542,6 +551,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             SystemTime::now(),
+            &mut rng,
         )
         .await?;
 
@@ -580,13 +590,14 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut bob_store.pre_key_store,
             &bob_store.signed_pre_key_store,
             &mut bob_store.kyber_pre_key_store,
+            UsePQRatchet::Yes,
         )
         .await;
 
         match bob_ptext {
             Err(SignalProtocolError::InvalidSealedSenderMessage(_)) => { /* ok */ }
             Err(err) => {
-                panic!("Unexpected error {}", err)
+                panic!("Unexpected error {err}")
             }
             Ok(_) => {
                 panic!("Shouldn't have decrypted")
@@ -601,6 +612,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             SystemTime::now(),
+            &mut rng,
         )
         .await?;
 
@@ -641,13 +653,14 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut bob_store.pre_key_store,
             &bob_store.signed_pre_key_store,
             &mut bob_store.kyber_pre_key_store,
+            UsePQRatchet::Yes,
         )
         .await;
 
         match bob_ptext {
             Err(SignalProtocolError::InvalidSealedSenderMessage(_)) => { /* ok */ }
             Err(err) => {
-                panic!("Unexpected error {}", err)
+                panic!("Unexpected error {err}")
             }
             Ok(_) => {
                 panic!("Shouldn't have decrypted")
@@ -664,7 +677,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
 fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
 ) -> Result<(), SignalProtocolError> {
     async {
-        let mut rng = OsRng;
+        let mut rng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -690,6 +703,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut rng,
+            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -719,6 +733,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             SystemTime::now(),
+            &mut rng,
         )
         .await?;
 
@@ -753,8 +768,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
                 let description = e.to_string();
                 assert!(
                     description.contains(&bob_uuid_address.to_string()),
-                    "should mention recipient in message \"{}\"",
-                    description
+                    "should mention recipient in message \"{description}\""
                 );
             }
         }
@@ -769,7 +783,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
 fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
 ) -> Result<(), SignalProtocolError> {
     async {
-        let mut rng = OsRng;
+        let mut rng = OsRng.unwrap_err();
 
         let alice_device_id = 23;
         let bob_device_id = 42;
@@ -796,6 +810,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut rng,
+            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -825,6 +840,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             SystemTime::now(),
+            &mut rng,
         )
         .await?;
 
@@ -853,7 +869,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
             Err(SignalProtocolError::InvalidRegistrationId(address, _id)) => {
                 assert_eq!(address, bob_uuid_address);
             }
-            Err(e) => panic!("wrong error: {}", e),
+            Err(e) => panic!("wrong error: {e}"),
         }
 
         Ok(())
@@ -865,7 +881,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
 #[test]
 fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
     async {
-        let mut rng = OsRng;
+        let mut rng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -892,6 +908,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &alice_pre_key_bundle,
             SystemTime::now(),
             &mut rng,
+            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -903,6 +920,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut bob_store.session_store,
             &mut bob_store.identity_store,
             SystemTime::now(),
+            &mut rng,
         )
         .await?;
 
@@ -915,6 +933,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &alice_store.signed_pre_key_store,
             &mut alice_store.kyber_pre_key_store,
             &mut rng,
+            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -926,6 +945,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut bob_store.session_store,
             &mut bob_store.identity_store,
             SystemTime::now(),
+            &mut rng,
         )
         .await?;
 
@@ -1011,7 +1031,7 @@ fn parse_empty_multi_recipient_sealed_sender() {
 #[test]
 fn test_sealed_sender_multi_recipient_redundant_empty_devices() -> Result<(), SignalProtocolError> {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -1035,6 +1055,7 @@ fn test_sealed_sender_multi_recipient_redundant_empty_devices() -> Result<(), Si
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut csprng,
+            UsePQRatchet::Yes,
         )
         .await?;
 

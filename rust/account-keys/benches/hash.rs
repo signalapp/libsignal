@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use const_str::hex;
 use criterion::{criterion_group, criterion_main, Criterion};
-use hex_literal::hex;
 
 pub fn hash(c: &mut Criterion) {
     // let mut group = c.benchmark_group("pin_hash");

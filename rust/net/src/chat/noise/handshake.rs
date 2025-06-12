@@ -104,7 +104,7 @@ impl<S> Handshaker<S> {
             ciphertext: initial_message.into_boxed_slice(),
         });
 
-        log::debug!("created {:?} handshaker", pattern_kind);
+        log::debug!("created {pattern_kind:?} handshaker");
         Ok(Self {
             inner: Some(HandshakerInner {
                 transport,
@@ -237,7 +237,7 @@ impl<S: Transport + Unpin> Future for Handshaker<S> {
                     })?;
                 let mut payload = vec![0; payload_len];
                 let read_count = handshake.read_message(&message, &mut payload)?;
-                log::trace!("{ptr:x?} decrypted into {}-byte plaintext", read_count);
+                log::trace!("{ptr:x?} decrypted into {read_count}-byte plaintext");
 
                 if read_count != payload.len() {
                     return Poll::Ready(Err(IoError::other(format!(

@@ -96,18 +96,18 @@ impl std::hash::Hash for WebSocketRouteFragment {
     }
 }
 
-#[allow(deprecated)]
 fn ws_config_eq(lhs: &WebSocketConfig, rhs: &WebSocketConfig) -> bool {
     let WebSocketConfig {
-        max_send_queue,
+        read_buffer_size,
         write_buffer_size,
         max_write_buffer_size,
         max_message_size,
         max_frame_size,
         accept_unmasked_frames,
+        .. // We would rather not have this, but the struct is marked #[non_exhaustive]
     } = lhs;
 
-    max_send_queue == &rhs.max_send_queue
+    read_buffer_size == &rhs.read_buffer_size
         && write_buffer_size == &rhs.write_buffer_size
         && max_write_buffer_size == &rhs.max_write_buffer_size
         && max_message_size == &rhs.max_message_size
@@ -115,18 +115,18 @@ fn ws_config_eq(lhs: &WebSocketConfig, rhs: &WebSocketConfig) -> bool {
         && accept_unmasked_frames == &rhs.accept_unmasked_frames
 }
 
-#[allow(deprecated)]
 fn ws_config_hash(ws: &WebSocketConfig, state: &mut impl std::hash::Hasher) {
     let WebSocketConfig {
-        max_send_queue,
+        read_buffer_size,
         write_buffer_size,
         max_write_buffer_size,
         max_message_size,
         max_frame_size,
         accept_unmasked_frames,
+        .. // We would rather not have this, but the struct is marked #[non_exhaustive]
     } = ws;
 
-    max_send_queue.hash(state);
+    read_buffer_size.hash(state);
     write_buffer_size.hash(state);
     max_write_buffer_size.hash(state);
     max_message_size.hash(state);

@@ -6,7 +6,7 @@
 //! SGX report body, ported from Open Enclave headers in v0.17.7.
 
 use bitflags::bitflags;
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
+use zerocopy::{FromBytes, Immutable, IntoBytes};
 
 use crate::endian::*;
 
@@ -19,7 +19,7 @@ const SGX_HASH_SIZE: usize = 32;
 
 pub type MREnclave = [u8; SGX_HASH_SIZE];
 
-#[derive(Debug, FromBytes, FromZeroes, AsBytes)]
+#[derive(Debug, FromBytes, IntoBytes, Immutable)]
 #[repr(C)]
 // sgx_report_body_t
 pub(crate) struct SgxReportBody {

@@ -26,8 +26,7 @@ pub fn run(action: &str) {
     }
     assert!(
         library_path.is_file(),
-        "at least one of these should exist (in {:?})",
-        library_path
+        "at least one of these should exist (in {library_path:?})"
     );
 
     // Give the built library a .node extension by copying it to temp_dir.
@@ -53,8 +52,7 @@ pub fn run(action: &str) {
         .expect("failed to run `npm run test`");
     if !status.success() {
         eprintln!(
-            "\ncd {:?} && SIGNAL_NEON_FUTURES_TEST_LIB={:?} npm run {}\n",
-            test_cases, node_library_path, action
+            "\ncd {test_cases:?} && SIGNAL_NEON_FUTURES_TEST_LIB={node_library_path:?} npm run {action}\n"
         );
         panic!("Node tests failed");
     }

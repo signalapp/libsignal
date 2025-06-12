@@ -15,9 +15,8 @@ workspace = true
 
 [dependencies]
 curve25519-dalek = { workspace = true, features = ["digest"] }
-derive_more = { workspace = true, features = ["from", "into"] }
+derive_more = { workspace = true, features = ["from", "into", "try_from"] }
 displaydoc = { workspace = true }
-num_enum = { workspace = true }
 rand = { workspace = true }
 sha2 = { workspace = true }
 subtle = { workspace = true }
@@ -26,8 +25,13 @@ x25519-dalek = { workspace = true, features = ["static_secrets"] }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
+boring = { workspace = true }
+boring-sys = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+const-str = { workspace = true }
 criterion = { workspace = true }
-hex-literal = { workspace = true }
+foreign-types = { workspace = true }
+hex = { workspace = true }
 proptest = { workspace = true }
 
 [[bench]]

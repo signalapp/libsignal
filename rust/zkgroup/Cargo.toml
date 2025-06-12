@@ -8,7 +8,7 @@ name = "zkgroup"
 version = "0.9.0"
 authors.workspace = true
 license.workspace = true
-rust-version = "1.80"
+rust-version = "1.81"
 edition = "2021"
 description = "A zero-knowledge group library"
 
@@ -27,13 +27,12 @@ curve25519-dalek-signal = { workspace = true, features = ["serde"] }
 
 aes-gcm-siv = { workspace = true }
 bincode = { workspace = true }
+const-str = { workspace = true }
 derive-where = { workspace = true }
-derive_more = { workspace = true, features = ["from"] }
+derive_more = { workspace = true, features = ["from", "try_from"] }
 displaydoc = { workspace = true }
 hex = { workspace = true }
-hex-literal = { workspace = true }
 hkdf = { workspace = true }
-num_enum = { workspace = true }
 partial-default = { workspace = true, features = ["derive"] }
 rand = { workspace = true }
 rayon = { workspace = true }

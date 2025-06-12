@@ -7,12 +7,11 @@ package org.signal.libsignal.net;
 
 import static org.junit.Assert.*;
 
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.Test;
 import org.signal.libsignal.internal.NativeTesting;
-import org.signal.libsignal.keytrans.SearchResult;
-import org.signal.libsignal.keytrans.TestStore;
+import org.signal.libsignal.keytrans.KeyTransparencyException;
+import org.signal.libsignal.keytrans.VerificationFailedException;
 import org.signal.libsignal.protocol.IdentityKey;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.ServiceId;
@@ -41,14 +40,19 @@ public class KeyTransparencyTest {
   }
 
   @Test
-  public void canBridgeSearchResult() throws Exception {
-    SearchResult result = new SearchResult(NativeTesting.TESTING_ChatSearchResult());
-    assertEquals(TEST_ACI_IDENTITY_KEY, result.getAciIdentityKey());
-    assertEquals(Optional.of(TEST_ACI), result.getAciForE164());
-    assertEquals(Optional.of(TEST_ACI), result.getAciForUsernameHash());
-    TestStore store = new TestStore();
-    store.applyUpdates(TEST_ACI, result);
+  public void canBridgeFatalError() {
+    assertThrows(
+        VerificationFailedException.class, NativeTesting::TESTING_KeyTransFatalVerificationFailure);
+  }
 
-    assertTrue(store.getAccountData(TEST_ACI).isPresent());
+  @Test
+  public void canBridgeNonFatalError() {
+    assertThrows(
+        KeyTransparencyException.class, NativeTesting::TESTING_KeyTransNonFatalVerificationFailure);
+  }
+
+  @Test
+  public void canBridgeChatSendError() {
+    assertThrows(ChatServiceException.class, NativeTesting::TESTING_KeyTransChatSendError);
   }
 }

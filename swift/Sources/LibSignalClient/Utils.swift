@@ -25,7 +25,7 @@ internal func invokeFnReturningOptionalString(fn: (UnsafeMutablePointer<UnsafePo
     return result
 }
 
-private func invokeFnReturningSomeBytestringArray<Element>(fn: (UnsafeMutablePointer<SignalBytestringArray>?) -> SignalFfiErrorRef?, transform: (UnsafeBufferPointer<UInt8>) -> Element) throws -> [Element] {
+internal func invokeFnReturningSomeBytestringArray<Element>(fn: (UnsafeMutablePointer<SignalBytestringArray>?) -> SignalFfiErrorRef?, transform: (UnsafeBufferPointer<UInt8>) -> Element) throws -> [Element] {
     var array = SignalFfi.SignalBytestringArray()
     try checkError(fn(&array))
 
@@ -60,6 +60,18 @@ internal func invokeFnReturningArray(fn: (UnsafeMutablePointer<SignalOwnedBuffer
     let result = Array(UnsafeBufferPointer(start: output.base, count: output.length))
     signal_free_buffer(output.base, output.length)
     return result
+}
+
+internal func invokeFnReturningOptionalArray(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> [UInt8]? {
+    var output = SignalOwnedBuffer()
+    try checkError(fn(&output))
+    defer { signal_free_buffer(output.base, output.length) }
+
+    return if output.base == nil {
+        nil
+    } else {
+        Array(UnsafeBufferPointer(start: output.base, count: output.length))
+    }
 }
 
 internal func invokeFnReturningData(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> Data {
@@ -113,6 +125,16 @@ internal func invokeFnReturningUuid(fn: (UnsafeMutablePointer<uuid_t>?) -> Signa
     return UUID(uuid: output)
 }
 
+internal func invokeFnReturningOptionalUuid(fn: (UnsafeMutablePointer<SignalOptionalUuid>?) -> SignalFfiErrorRef?) throws -> UUID? {
+    var output: SignalOptionalUuid = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    try checkError(fn(&output))
+    let (isPresent, u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12, u13, u14, u15) = output
+    if isPresent == 0 {
+        return nil
+    }
+    return UUID(uuid: (u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12, u13, u14, u15))
+}
+
 internal func invokeFnReturningServiceId<Id: ServiceId>(fn: (UnsafeMutablePointer<ServiceIdStorage>?) -> SignalFfiErrorRef?) throws -> Id {
     var output: ServiceIdStorage = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     try checkError(fn(&output))
@@ -151,6 +173,45 @@ extension ContiguousBytes {
     }
 }
 
+internal func withUnsafeOptionalBorrowedSlice<
+    T: ContiguousBytes,
+    R
+>(
+    of this: T?,
+    _ body: (SignalOptionalBorrowedSliceOfc_uchar) throws -> R
+) rethrows -> R {
+    switch this {
+    case .none:
+        let empty = SignalOptionalBorrowedSliceOfc_uchar()
+        return try body(empty)
+    case .some(let wrapped):
+        return try wrapped.withUnsafeBorrowedBuffer { buffer in
+            let slice = SignalOptionalBorrowedSliceOfc_uchar(present: true, value: buffer)
+            return try body(slice)
+        }
+    }
+}
+
+extension Sequence where Self.Element == String {
+    func withUnsafeBorrowedBytestringArray<Result>(_ body: (SignalBorrowedBytestringArray) throws -> Result) rethrows -> Result {
+        let lengths = self.map { $0.utf8.count }
+        var concatenated: [UInt8] = Array()
+        concatenated.reserveCapacity(lengths.reduce(0) { $0 + $1 })
+        for s in self {
+            concatenated.append(contentsOf: s.utf8)
+        }
+
+        return try concatenated.withUnsafeBufferPointer { bytes in
+            try lengths.withUnsafeBufferPointer { lengths in
+                try body(SignalBorrowedBytestringArray(
+                    bytes: SignalBorrowedBuffer(base: bytes.baseAddress, length: bytes.count),
+                    lengths: SignalBorrowedSliceOfusize(base: lengths.baseAddress, length: lengths.count)
+                ))
+            }
+        }
+    }
+}
+
 extension SignalBorrowedBuffer {
     internal init(_ buffer: UnsafeRawBufferPointer) {
         self.init(base: buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), length: buffer.count)
@@ -160,6 +221,18 @@ extension SignalBorrowedBuffer {
 extension SignalBorrowedMutableBuffer {
     internal init(_ buffer: UnsafeMutableRawBufferPointer) {
         self.init(base: buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), length: buffer.count)
+    }
+}
+
+extension Data {
+    internal init(consuming buffer: SignalOwnedBuffer) {
+        if let base = buffer.base {
+            self.init(bytesNoCopy: base, count: buffer.length, deallocator: .custom { base, length in
+                signal_free_buffer(base, length)
+            })
+        } else {
+            self.init()
+        }
     }
 }
 
@@ -224,5 +297,79 @@ extension Optional where Wrapped: StringProtocol {
             return try body(nil)
         }
         return try wrapped.withCString(body)
+    }
+}
+
+extension Array where Element == UInt8 {
+    /// Converts these bytes to (lowercase) hexadecimal.
+    public func toHex() -> String {
+        var hex = [UInt8](repeating: 0, count: self.count * 2)
+        hex.withUnsafeMutableBytes { hex in
+            failOnError(
+                signal_hex_encode(
+                    hex.baseAddress?.assumingMemoryBound(to: CChar.self),
+                    hex.count,
+                    self,
+                    self.count
+                )
+            )
+        }
+        return String(decoding: hex, as: Unicode.UTF8.self)
+    }
+}
+
+extension Data {
+    /// Converts these bytes to (lowercase) hexadecimal.
+    public func toHex() -> String {
+        var hex = [UInt8](repeating: 0, count: self.count * 2)
+        hex.withUnsafeMutableBytes { hex in
+            self.withUnsafeBytes { input in
+                failOnError(
+                    signal_hex_encode(
+                        hex.baseAddress?.assumingMemoryBound(to: CChar.self),
+                        hex.count,
+                        input.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                        input.count
+                    )
+                )
+            }
+        }
+        return String(decoding: hex, as: Unicode.UTF8.self)
+    }
+}
+
+extension [String: String] {
+    internal func withBridgedStringMap<Result>(_ callback: (SignalMutPointerBridgedStringMap) throws -> Result) rethrows -> Result {
+        var map = SignalMutPointerBridgedStringMap()
+        failOnError(signal_bridged_string_map_new(&map, UInt32(clamping: self.count)))
+        defer { signal_bridged_string_map_destroy(map) }
+
+        for (key, value) in self {
+            failOnError(signal_bridged_string_map_insert(map, key, value))
+        }
+
+        return try callback(map)
+    }
+}
+
+extension SignalMutPointerBridgedStringMap: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerBridgedStringMap
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerBridgedStringMap: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }

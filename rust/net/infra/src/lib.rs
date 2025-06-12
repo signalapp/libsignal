@@ -8,33 +8,24 @@ use std::num::NonZeroU16;
 use std::str::FromStr;
 use std::string::ToString;
 use std::sync::Arc;
-use std::time::Duration;
 
 use ::http::uri::PathAndQuery;
 use ::http::Uri;
-use async_trait::async_trait;
 use http::{HeaderMap, HeaderName, HeaderValue};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::certs::RootCertificates;
-use crate::connection_manager::{
-    MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
-};
-use crate::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
+use crate::errors::{LogSafeDisplay, RetryLater};
 use crate::host::Host;
 use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
-use crate::utils::ObservableEvent;
-use crate::ws::WebSocketConfig;
 
 pub mod certs;
-pub mod connection_manager;
 pub mod dns;
 pub mod errors;
 pub mod host;
 pub mod http_client;
 pub mod noise;
 pub mod route;
-pub mod service;
 pub mod tcp_ssl;
 pub mod timeouts;
 pub mod utils;
@@ -83,6 +74,13 @@ pub enum EnableDomainFronting {
     AllDomains,
 }
 
+/// Whether to enforce minimum TLS version requirements.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum EnforceMinimumTls {
+    Yes,
+    No,
+}
+
 /// A collection of commonly used decorators for HTTP requests.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HttpRequestDecorator {
@@ -109,19 +107,31 @@ impl HttpRequestDecoratorSeq {
     }
 }
 
+/// The fully general version of [`AsStaticHttpHeader`], where the name of the header may depend on the
+/// value.
 pub trait AsHttpHeader {
+    fn as_header(&self) -> (HeaderName, HeaderValue);
+}
+
+/// A common form for values that are passed in HTTP headers.
+///
+/// If the header name depends on the value, implement [`AsHttpHeader`] instead.
+pub trait AsStaticHttpHeader: AsHttpHeader {
     const HEADER_NAME: HeaderName;
 
     fn header_value(&self) -> HeaderValue;
+}
 
+impl<T: AsStaticHttpHeader> AsHttpHeader for T {
     fn as_header(&self) -> (HeaderName, HeaderValue) {
         (Self::HEADER_NAME, self.header_value())
     }
 }
 
-impl<T: AsHttpHeader> From<T> for HttpRequestDecorator {
-    fn from(value: T) -> Self {
-        HttpRequestDecorator::header(T::HEADER_NAME, value.header_value())
+impl<T: AsHttpHeader> From<&'_ T> for HttpRequestDecorator {
+    fn from(value: &'_ T) -> Self {
+        let (name, value) = value.as_header();
+        HttpRequestDecorator::header(name, value)
     }
 }
 
@@ -300,34 +310,9 @@ impl HttpRequestDecorator {
     }
 }
 
-#[derive(Debug)]
-pub struct StreamAndInfo<T>(pub T, pub ServiceConnectionInfo);
-
-impl<T> StreamAndInfo<T> {
-    fn map_stream<U>(self, f: impl FnOnce(T) -> U) -> StreamAndInfo<U> {
-        StreamAndInfo(f(self.0), self.1)
-    }
-}
-
 pub trait AsyncDuplexStream: AsyncRead + AsyncWrite + Unpin + Send {}
 
 impl<S: AsyncRead + AsyncWrite + Unpin + Send> AsyncDuplexStream for S {}
-
-/// Establishes TCP/TLS connections to remote destinations.
-///
-/// Given a destination in the form of [`TransportConnectionParams`],
-/// establishes a TLS handshake with the remote target, possibly through one or
-/// more intermediary proxies.
-#[async_trait]
-pub trait TransportConnector: Clone + Send + Sync {
-    type Stream: AsyncDuplexStream + 'static;
-
-    async fn connect(
-        &self,
-        connection_params: &TransportConnectionParams,
-        alpn: Alpn,
-    ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError>;
-}
 
 /// A single ALPN list entry.
 ///
@@ -347,48 +332,13 @@ impl AsRef<[u8]> for Alpn {
     }
 }
 
-pub struct EndpointConnection<C> {
-    pub manager: C,
-    pub config: WebSocketConfig,
-}
-
-impl EndpointConnection<MultiRouteConnectionManager> {
-    pub fn new_multi(
-        connection_params: impl IntoIterator<Item = ConnectionParams>,
-        one_route_connect_timeout: Duration,
-        config: WebSocketConfig,
-        network_changed_event: &ObservableEvent,
-    ) -> Self {
-        Self {
-            manager: MultiRouteConnectionManager::new(
-                connection_params
-                    .into_iter()
-                    .map(|params| {
-                        SingleRouteThrottlingConnectionManager::new(
-                            params,
-                            one_route_connect_timeout,
-                            network_changed_event,
-                        )
-                    })
-                    .collect(),
-            ),
-            config,
-        }
+pub const RECOMMENDED_WS2_CONFIG: ws2::Config = {
+    ws2::Config {
+        local_idle_timeout: WS_KEEP_ALIVE_INTERVAL,
+        remote_idle_ping_timeout: WS_KEEP_ALIVE_INTERVAL,
+        remote_idle_disconnect_timeout: WS_MAX_IDLE_INTERVAL,
     }
-}
-
-pub fn make_ws_config(
-    websocket_endpoint: PathAndQuery,
-    connect_timeout: Duration,
-) -> WebSocketConfig {
-    WebSocketConfig {
-        ws_config: tungstenite::protocol::WebSocketConfig::default(),
-        endpoint: websocket_endpoint,
-        max_connection_time: connect_timeout,
-        keep_alive_interval: WS_KEEP_ALIVE_INTERVAL,
-        max_idle_time: WS_MAX_IDLE_INTERVAL,
-    }
-}
+};
 
 /// Extracts and parses the `Retry-After` header.
 ///
@@ -408,29 +358,19 @@ pub fn extract_retry_later(headers: &http::header::HeaderMap) -> Option<RetryLat
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutil {
     use std::fmt::Debug;
-    use std::io;
     use std::io::Error as IoError;
     use std::pin::Pin;
-    use std::sync::Arc;
+    use std::sync::LazyLock;
     use std::task::{Context, Poll};
     use std::time::Duration;
 
-    use async_trait::async_trait;
-    use derive_where::derive_where;
     use displaydoc::Display;
     use futures_util::stream::FusedStream;
     use futures_util::{Sink, SinkExt as _, Stream};
-    use tokio::io::DuplexStream;
     use tokio_util::sync::PollSender;
-    use warp::{Filter, Reply};
 
-    use crate::connection_manager::{ConnectionManager, ErrorClass, ErrorClassifier};
-    use crate::errors::{LogSafeDisplay, TransportConnectError};
-    use crate::service::{CancellationToken, ServiceConnector, ServiceInitializer, ServiceState};
-    use crate::{
-        Alpn, DnsSource, RouteType, ServiceConnectionInfo, StreamAndInfo,
-        TransportConnectionParams, TransportConnector,
-    };
+    use crate::errors::LogSafeDisplay;
+    use crate::utils::NetworkChangeEvent;
 
     #[derive(Debug, Display)]
     pub enum TestError {
@@ -440,133 +380,24 @@ pub mod testutil {
         Unexpected(&'static str),
     }
 
-    impl ErrorClassifier for TestError {
-        fn classify(&self) -> ErrorClass {
-            ErrorClass::Intermittent
-        }
-    }
-
     impl LogSafeDisplay for TestError {}
 
     // This could be Copy, but we don't want to rely on *all* errors being Copy, or only test
     // that case.
-    #[cfg(test)]
-    #[derive(Debug, Clone)]
-    pub(crate) struct ClassifiableTestError(pub ErrorClass);
-
-    #[cfg(test)]
-    impl ErrorClassifier for ClassifiableTestError {
-        fn classify(&self) -> ErrorClass {
-            self.0
-        }
-    }
-
-    #[cfg(test)]
-    impl std::fmt::Display for ClassifiableTestError {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{:?}", self.0)
-        }
-    }
-
-    #[cfg(test)]
-    impl LogSafeDisplay for ClassifiableTestError {}
 
     // the choice of the constant value is dictated by a vague notion of being
     // "not too many, but also not just once or twice"
-    #[cfg(test)]
-    pub(crate) const FEW_ATTEMPTS: u16 = 3;
-
-    #[cfg(test)]
-    pub(crate) const MANY_ATTEMPTS: u16 = 1000;
 
     pub const TIMEOUT_DURATION: Duration = Duration::from_millis(1000);
-
-    #[cfg(test)]
-    pub(crate) const NORMAL_CONNECTION_TIME: Duration = Duration::from_millis(200);
-
-    #[cfg(test)]
-    pub(crate) const LONG_CONNECTION_TIME: Duration = Duration::from_secs(10);
 
     // we need to advance time in tests by some value not to run into the scenario
     // of attempts starting at the same time, but also by not too much so that we
     // don't step over the cool down time
-    #[cfg(test)]
-    pub(crate) const TIME_ADVANCE_VALUE: Duration = Duration::from_millis(5);
 
-    #[derive(Clone)]
-    pub struct InMemoryWarpConnector<F> {
-        filter: F,
-    }
-
-    impl<F> InMemoryWarpConnector<F> {
-        pub fn new(filter: F) -> Self {
-            Self { filter }
-        }
-    }
-
-    #[async_trait]
-    impl<F> TransportConnector for InMemoryWarpConnector<F>
-    where
-        F: Filter<Extract: Reply> + Clone + Send + Sync + 'static,
-    {
-        type Stream = DuplexStream;
-
-        async fn connect(
-            &self,
-            connection_params: &TransportConnectionParams,
-            _alpn: Alpn,
-        ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
-            let (client, server) = tokio::io::duplex(1024);
-            let routes = self.filter.clone();
-            tokio::spawn(async {
-                let one_element_iter =
-                    futures_util::stream::iter(vec![Ok::<DuplexStream, io::Error>(server)]);
-                warp::serve(routes).run_incoming(one_element_iter).await;
-            });
-            Ok(StreamAndInfo(
-                client,
-                ServiceConnectionInfo {
-                    route_type: RouteType::Test,
-                    dns_source: DnsSource::Test,
-                    address: connection_params.tcp_host.clone(),
-                },
-            ))
-        }
-    }
-
-    #[derive_where(Clone)]
-    pub struct NoReconnectService<C: ServiceConnector> {
-        pub inner: Arc<ServiceState<C::Service, C::ConnectError>>,
-    }
-
-    impl<C> NoReconnectService<C>
-    where
-        C: ServiceConnector<
-                Service: Clone + Send + Sync + 'static,
-                Channel: Send + Sync,
-                ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
-            > + Send
-            + Sync
-            + 'static,
-    {
-        pub async fn start<M>(service_connector: C, connection_manager: M) -> Self
-        where
-            M: ConnectionManager + 'static,
-        {
-            let status = ServiceInitializer::new(service_connector, connection_manager)
-                .connect()
-                .await;
-            Self {
-                inner: Arc::new(status),
-            }
-        }
-
-        pub fn service_status(&self) -> Option<&CancellationToken> {
-            match &*self.inner {
-                ServiceState::Active(_, service_cancellation) => Some(service_cancellation),
-                _ => None,
-            }
-        }
+    pub fn no_network_change_events() -> NetworkChangeEvent {
+        static SENDER_THAT_NEVER_SENDS: LazyLock<tokio::sync::watch::Sender<()>> =
+            LazyLock::new(Default::default);
+        SENDER_THAT_NEVER_SENDS.subscribe()
     }
 
     /// Trivial [`Sink`] and [`Stream`] implementation over a pair of buffered channels.
@@ -693,7 +524,7 @@ pub(crate) mod test {
             let builder = Request::get(input);
             let builder = HttpRequestDecorator::PathPrefix("/chat").decorate_request(builder);
             let (parts, _) = builder.body(()).unwrap().into_parts();
-            assert_eq!(expected_path, parts.uri.path(), "for input [{}]", input)
+            assert_eq!(expected_path, parts.uri.path(), "for input [{input}]")
         }
     }
 

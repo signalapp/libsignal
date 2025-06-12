@@ -18,6 +18,9 @@ pub trait LibSignalProtocolStore {
 mod current;
 pub use current::LibSignalProtocolCurrent;
 
+mod v70;
+pub use v70::LibSignalProtocolV70;
+
 mod v21;
 pub use v21::LibSignalProtocolV21;
 

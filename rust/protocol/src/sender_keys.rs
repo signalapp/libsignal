@@ -304,8 +304,7 @@ impl SenderKeyRecord {
 
         if self.remove_states_with_chain_id(chain_id) > 0 {
             log::warn!(
-                "Removed a matching chain_id ({}) found with a different public key",
-                chain_id
+                "Removed a matching chain_id ({chain_id}) found with a different public key"
             );
         }
 
@@ -368,12 +367,13 @@ impl SenderKeyRecord {
 mod sender_key_record_add_sender_key_state_tests {
     use itertools::Itertools;
     use rand::rngs::OsRng;
+    use rand::TryRngCore as _;
 
     use super::*;
     use crate::KeyPair;
 
     fn random_public_key() -> PublicKey {
-        KeyPair::generate(&mut OsRng).public_key
+        KeyPair::generate(&mut OsRng.unwrap_err()).public_key
     }
 
     fn chain_key(i: u128) -> Vec<u8> {

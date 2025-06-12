@@ -29,15 +29,16 @@ zkgroup = { workspace = true }
 aes-gcm-siv = { workspace = true }
 async-trait = { workspace = true }
 atomic-take = { workspace = true }
+bytes = { workspace = true }
 derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["deref", "from", "into"] }
 displaydoc = { workspace = true }
 futures-util = { workspace = true }
 hmac = { workspace = true }
 http = { workspace = true }
+itertools = { workspace = true }
 log = { workspace = true }
 mediasan-common = { workspace = true }
-num_enum = { workspace = true }
 once_cell = { workspace = true }
 partial-default = { workspace = true }
 paste = { workspace = true }
@@ -68,6 +69,9 @@ tokio = { workspace = true, features = ["test-util", "time", "macros"] }
 [features]
 ffi = []
 jni = ["dep:jni", "zerocopy"]
+jni-type-tagging = []
+jni-invoke-annotated = []
+extra-jni-checks = ["jni-type-tagging", "jni-invoke-annotated"]
 node = ["neon", "linkme", "signal-neon-futures"]
 
 [target.'cfg(not(any(windows, target_arch = "x86")))'.dependencies]

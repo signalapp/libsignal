@@ -5,15 +5,16 @@
 
 use std::collections::HashMap;
 
-use hex_literal::hex;
-use rand::Rng;
+use const_str::hex;
+use rand::{Rng, TryRngCore as _};
 use serde::Deserialize;
 
-#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct WycheproofTest {
     #[serde(rename = "tcId")]
+    #[expect(dead_code)]
     tc_id: usize,
+    #[expect(dead_code)]
     comment: String,
     key: String,
     #[serde(rename = "iv")]
@@ -24,10 +25,10 @@ struct WycheproofTest {
     ct: String,
     tag: String,
     result: String,
+    #[expect(dead_code)]
     flags: Vec<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct WycheproofTestGroup {
     #[serde(rename = "ivSize")]
@@ -37,27 +38,32 @@ struct WycheproofTestGroup {
     #[serde(rename = "tagSize")]
     tag_size: usize,
     #[serde(rename = "type")]
+    #[expect(dead_code)]
     typ: String,
     tests: Vec<WycheproofTest>,
 }
 
-#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct WycheproofTestSet {
     algorithm: String,
     #[serde(rename = "generatorVersion")]
+    #[expect(dead_code)]
     generator_version: String,
     #[serde(rename = "numberOfTests")]
+    #[expect(dead_code)]
     number_of_tests: usize,
+    #[expect(dead_code)]
     header: Vec<String>,
+    #[expect(dead_code)]
     notes: HashMap<String, String>,
+    #[expect(dead_code)]
     schema: String,
     #[serde(rename = "testGroups")]
     test_groups: Vec<WycheproofTestGroup>,
 }
 
 fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
 
     let key = hex::decode(kat.key).expect("valid hex");
     let aad = hex::decode(kat.aad).expect("valid hex");
@@ -69,7 +75,7 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
     let valid = match kat.result.as_ref() {
         "valid" => true,
         "invalid" => false,
-        wut => panic!("unknown result field {}", wut),
+        wut => panic!("unknown result field {wut}"),
     };
 
     let mut gcm_enc = signal_crypto::Aes256GcmEncryption::new(&key, &nonce, &aad)?;
@@ -89,7 +95,7 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
         assert_eq!(hex::encode(&buf), hex::encode(&pt));
 
         for i in 2..32 {
-            println!("Test {}", i);
+            println!("Test {i}");
             // Do it again but with split inputs:
             let mut gcm_enc = signal_crypto::Aes256GcmEncryption::new(&key, &nonce, &aad)?;
             let mut gcm_dec = signal_crypto::Aes256GcmDecryption::new(&key, &nonce, &aad)?;
@@ -101,7 +107,7 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
             while processed != buf.len() {
                 let remaining = buf.len() - processed;
                 let this_time = if remaining > 1 {
-                    rng.gen_range(1..remaining)
+                    rng.random_range(1..remaining)
                 } else {
                     remaining
                 };

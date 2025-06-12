@@ -10,6 +10,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use atomic_take::AtomicTake;
+use bytes::Bytes;
 use futures_util::FutureExt as _;
 use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
@@ -17,7 +18,7 @@ use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
-use libsignal_net::chat::ws2::ListenerEvent;
+use libsignal_net::chat::ws::ListenerEvent;
 use libsignal_net::chat::{
     self, ChatConnection, ConnectError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo, Request,
     Response as ChatResponse, SendError,
@@ -28,7 +29,7 @@ use libsignal_net::infra::route::{
     UnresolvedHttpsServiceRoute,
 };
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
-use libsignal_net::infra::EnableDomainFronting;
+use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls};
 use libsignal_protocol::Timestamp;
 use static_assertions::assert_impl_all;
 
@@ -78,7 +79,6 @@ assert_impl_all!(MaybeChatConnection: Send, Sync);
 impl UnauthenticatedChatConnection {
     pub async fn connect(connection_manager: &ConnectionManager) -> Result<Self, ConnectError> {
         let inner = establish_chat_connection("unauthenticated", connection_manager, None).await?;
-        log::info!("connected unauthenticated chat");
         Ok(Self {
             inner: MaybeChatConnection::WaitingForListener(
                 tokio::runtime::Handle::current(),
@@ -114,17 +114,23 @@ impl AuthenticatedChatConnection {
     }
 
     pub async fn preconnect(connection_manager: &ConnectionManager) -> Result<(), ConnectError> {
-        let enable_domain_fronting = connection_manager
-            .endpoints
-            .lock()
-            .expect("not poisoned")
-            .enable_fronting;
-        let route_provider = make_route_provider(connection_manager, enable_domain_fronting)?
-            .map_routes(|r| r.inner);
+        let (enable_domain_fronting, enforce_minimum_tls) = {
+            let endpoints_guard = connection_manager.endpoints.lock().expect("not poisoned");
+            (
+                endpoints_guard.enable_fronting,
+                endpoints_guard.enforce_minimum_tls,
+            )
+        };
+        let route_provider = make_route_provider(
+            connection_manager,
+            enable_domain_fronting,
+            enforce_minimum_tls,
+        )?
+        .map_routes(|r| r.inner);
         let connection_resources = ConnectionResources {
             connect_state: &connection_manager.connect,
             dns_resolver: &connection_manager.dns_resolver,
-            network_change_event: &connection_manager.network_change_event,
+            network_change_event: &connection_manager.network_change_event_tx.subscribe(),
             confirmation_header_name: None,
         };
 
@@ -283,15 +289,16 @@ async fn establish_chat_connection(
         connect,
         user_agent,
         endpoints,
-        network_change_event,
+        network_change_event_tx,
         ..
     } = connection_manager;
 
-    let (ws_config, enable_domain_fronting) = {
+    let (ws_config, enable_domain_fronting, enforce_minimum_tls) = {
         let endpoints_guard = endpoints.lock().expect("not poisoned");
         (
-            endpoints_guard.chat.config.ws2_config(),
+            endpoints_guard.chat_ws2_config,
             endpoints_guard.enable_fronting,
+            endpoints_guard.enforce_minimum_tls,
         )
     };
 
@@ -305,12 +312,16 @@ async fn establish_chat_connection(
     let connection_resources = ConnectionResources {
         connect_state: connect,
         dns_resolver,
-        network_change_event,
+        network_change_event: &network_change_event_tx.subscribe(),
         confirmation_header_name: chat_connect
             .confirmation_header_name
             .map(HeaderName::from_static),
     };
-    let route_provider = make_route_provider(connection_manager, enable_domain_fronting)?;
+    let route_provider = make_route_provider(
+        connection_manager,
+        enable_domain_fronting,
+        enforce_minimum_tls,
+    )?;
 
     log::info!("connecting {auth_type} chat");
 
@@ -318,7 +329,7 @@ async fn establish_chat_connection(
         connection_resources,
         route_provider,
         user_agent,
-        libsignal_net::chat::ws2::Config {
+        libsignal_net::chat::ws::Config {
             local_idle_timeout,
             remote_idle_timeout: remote_idle_disconnect_timeout,
             initial_request_id: 0,
@@ -336,6 +347,7 @@ async fn establish_chat_connection(
 fn make_route_provider(
     connection_manager: &ConnectionManager,
     enable_domain_fronting: EnableDomainFronting,
+    enforce_minimum_tls: EnforceMinimumTls,
 ) -> Result<impl RouteProvider<Route = UnresolvedHttpsServiceRoute>, ConnectError> {
     let ConnectionManager {
         env,
@@ -351,7 +363,7 @@ fn make_route_provider(
     let chat_connect = &env.chat_domain_config.connect;
 
     Ok(DirectOrProxyProvider::maybe_proxied(
-        chat_connect.route_provider(enable_domain_fronting),
+        chat_connect.route_provider_with_options(enable_domain_fronting, enforce_minimum_tls),
         proxy_config,
     ))
 }
@@ -359,7 +371,7 @@ fn make_route_provider(
 pub struct HttpRequest {
     pub method: http::Method,
     pub path: PathAndQuery,
-    pub body: Option<Box<[u8]>>,
+    pub body: Option<Bytes>,
     pub headers: std::sync::Mutex<HeaderMap>,
 }
 
@@ -396,7 +408,7 @@ impl HttpRequest {
         path: String,
         body_as_slice: Option<&[u8]>,
     ) -> Result<Self, InvalidUri> {
-        let body = body_as_slice.map(|slice| slice.to_vec().into_boxed_slice());
+        let body = body_as_slice.map(Bytes::copy_from_slice);
         let method = method.0;
         let path = path.try_into()?;
         Ok(HttpRequest {
@@ -419,7 +431,7 @@ impl HttpRequest {
 pub trait ChatListener: Send {
     fn received_incoming_message(
         &mut self,
-        envelope: Vec<u8>,
+        envelope: Bytes,
         timestamp: Timestamp,
         ack: ServerMessageAck,
     );
@@ -451,7 +463,7 @@ impl dyn ChatListener {
         }
     }
 
-    fn into_event_listener(mut self: Box<Self>) -> Box<dyn FnMut(chat::ws2::ListenerEvent) + Send> {
+    fn into_event_listener(mut self: Box<Self>) -> Box<dyn FnMut(chat::ws::ListenerEvent) + Send> {
         Box::new(move |event| {
             let event: chat::server_requests::ServerEvent = match event.try_into() {
                 Ok(event) => event,

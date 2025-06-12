@@ -18,6 +18,10 @@ pub enum SendError {
     RequestTimedOut,
     /// connection is already closed
     Disconnected,
+    /// the server explicitly disconnected us because we connected elsewhere with the same credentials
+    ConnectedElsewhere,
+    /// the server explicitly disconnected us for some reason other than that we connected elsewhere
+    ConnectionInvalidated,
     /// websocket error: {0}
     WebSocket(#[from] WebSocketServiceError),
     /// failed to decode data received from the server

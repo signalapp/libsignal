@@ -615,6 +615,18 @@ fn CallLinkSecretParams_DecryptUserId(
 }
 
 #[bridge_fn]
+fn CallLinkSecretParams_EncryptUserId(
+    params_bytes: &[u8],
+    user_id: Aci,
+) -> Serialized<UuidCiphertext> {
+    let params = zkgroup::deserialize::<CallLinkSecretParams>(params_bytes)
+        .expect("should have been parsed previously");
+
+    let ciphertext = params.encrypt_uid(user_id);
+    ciphertext.into()
+}
+
+#[bridge_fn]
 fn CallLinkPublicParams_CheckValidContents(
     params_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -1193,7 +1205,20 @@ fn GroupSendEndorsement_ToToken(
 ) -> Vec<u8> {
     let endorsement = zkgroup::deserialize::<GroupSendEndorsement>(endorsement)
         .expect("should have been parsed previously");
-    zkgroup::serialize(&endorsement.to_token(&group_params))
+    zkgroup::serialize(&endorsement.to_token(group_params.into_inner()))
+}
+
+#[bridge_fn]
+fn GroupSendEndorsement_CallLinkParams_ToToken(
+    endorsement: &[u8],
+    call_link_secret_params_serialized: &[u8],
+) -> Vec<u8> {
+    let call_link_params =
+        zkgroup::deserialize::<CallLinkSecretParams>(call_link_secret_params_serialized)
+            .expect("valid serialization");
+    let endorsement = zkgroup::deserialize::<GroupSendEndorsement>(endorsement)
+        .expect("should have been parsed previously");
+    zkgroup::serialize(&endorsement.to_token(call_link_params))
 }
 
 #[bridge_fn]

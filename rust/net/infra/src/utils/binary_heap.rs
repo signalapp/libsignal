@@ -126,6 +126,20 @@ impl<K: Ord + Eq, V> Extend<(K, V)> for MinKeyValueQueue<K, V> {
     }
 }
 
+impl<K: Ord + Eq, V> MinKeyValueQueue<K, V> {
+    /// Iterates over all kv-pairs in the queue in arbitrary order, allowing the caller to modify
+    /// the key for each, then re-heapifies in O(N) time.
+    ///
+    /// If the callback panics, all items in the queue are dropped.
+    pub fn recalculate_keys(&mut self, mut callback: impl FnMut(&mut K, &V)) {
+        let mut storage = std::mem::take(&mut (self.0).0).into_vec();
+        for kv_pair in &mut storage {
+            callback(&mut kv_pair.0.key, &kv_pair.0.value);
+        }
+        (self.0).0 = storage.into();
+    }
+}
+
 /// Key-value pair that implements [`Ord`] and [`Eq`] by comparing only keys.
 #[derive(Copy, Clone, Debug)]
 struct KeyValue<K, V> {

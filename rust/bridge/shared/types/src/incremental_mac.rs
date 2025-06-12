@@ -23,7 +23,7 @@ bridge_as_handle!(ValidatingMac, mut = true);
 impl Drop for IncrementalMac {
     fn drop(&mut self) {
         if self.0.is_some() {
-            log::warn!("{}", UNEXPECTED_DROP_MESSAGE);
+            log::warn!("{UNEXPECTED_DROP_MESSAGE}");
         }
     }
 }

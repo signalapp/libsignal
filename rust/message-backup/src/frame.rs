@@ -184,7 +184,7 @@ impl std::fmt::Display for HmacMismatchError {
         hex::encode_to_slice(self.found, &mut found).expect("correct length");
         let found = std::str::from_utf8(&found).expect("hex is UTF-8");
 
-        write!(f, "expected {}, found {}", expected, found)
+        write!(f, "expected {expected}, found {found}")
     }
 }
 
@@ -228,10 +228,10 @@ mod test {
     use array_concat::concat_arrays;
     use assert_matches::assert_matches;
     use async_compression::futures::write::GzipEncoder;
+    use const_str::hex;
     use futures::executor::block_on;
     use futures::io::{Cursor, ErrorKind};
     use futures::AsyncWriteExt;
-    use hex_literal::hex;
     use test_case::test_case;
 
     use super::*;

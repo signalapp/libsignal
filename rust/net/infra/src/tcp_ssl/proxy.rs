@@ -18,7 +18,6 @@ use crate::{Connection, IpType};
 
 pub mod https;
 pub mod socks;
-pub mod tls;
 
 mod stream;
 pub use stream::ProxyStream;
@@ -48,14 +47,14 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
                 } = proxy;
 
                 let tcp = LoggingConnector::new(
-                    super::StatelessDirect,
+                    super::StatelessTcp,
                     LONG_TCP_HANDSHAKE_THRESHOLD,
                     "Proxy-TCP",
                 )
                 .connect(inner, log_tag.clone())
                 .await?;
                 LoggingConnector::new(
-                    super::StatelessDirect,
+                    super::StatelessTls,
                     LONG_TLS_HANDSHAKE_THRESHOLD,
                     "Proxy-TLS",
                 )
@@ -65,7 +64,7 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
             }
             ConnectionProxyRoute::Tcp { proxy } => {
                 let connector = LoggingConnector::new(
-                    super::StatelessDirect,
+                    super::StatelessTcp,
                     LONG_TCP_HANDSHAKE_THRESHOLD,
                     "Proxy-TCP",
                 );
@@ -128,6 +127,7 @@ pub(crate) mod testutil {
     use boring_signal::ssl::{SslAcceptor, SslMethod};
     use boring_signal::x509::X509;
     use futures_util::{pin_mut, Stream, StreamExt as _};
+    use libsignal_core::try_scoped;
     use rcgen::CertifiedKey;
     use tls_parser::{ClientHello, TlsExtension, TlsMessage, TlsMessageHandshake, TlsPlaintext};
     use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, BufStream};
@@ -212,9 +212,7 @@ pub(crate) mod testutil {
 
     impl TlsServer {
         pub(super) fn new(server: TcpServer, certificate: &CertifiedKey) -> Self {
-            // TODO(https://github.com/rust-lang/rust/issues/31436): use a `try`
-            // block instead of immediately-invoked closure.
-            let ssl_acceptor = (|| {
+            let ssl_acceptor = try_scoped(|| {
                 let mut builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls_server())?;
                 builder.set_certificate(X509::from_der(certificate.cert.der())?.as_ref())?;
                 builder.set_private_key(
@@ -222,7 +220,7 @@ pub(crate) mod testutil {
                 )?;
                 // If the cert can be loaded, build the thing.
                 builder.check_private_key().map(|()| builder.build())
-            })()
+            })
             .expect("can configure acceptor");
 
             Self {
@@ -249,14 +247,14 @@ pub(crate) mod testutil {
     ) -> (SocketAddr, impl Future<Output = ()>) {
         let tcp_server = TcpServer::bind_localhost();
         let listen_addr = tcp_server.listen_addr;
-        let tcp_server = TlsServer::new(tcp_server, &PROXY_CERTIFICATE);
+        let tls_server = TlsServer::new(tcp_server, &PROXY_CERTIFICATE);
 
-        let accepts = futures_util::stream::unfold(tcp_server, move |tcp_server| async move {
-            let (ssl_stream, _remote_addr) = tcp_server.accept().await;
+        let accepts = futures_util::stream::unfold(tls_server, move |tls_server| async move {
+            let (ssl_stream, _remote_addr) = tls_server.accept().await;
 
             let (sni_names, ssl_stream) = parse_sni_from_stream(ssl_stream).await;
             assert_eq!(sni_names, &[upstream_sni]);
-            Some((ssl_stream, tcp_server))
+            Some((ssl_stream, tls_server))
         });
         let proxy = ProxyServer {
             incoming_connections_stream: accepts,
@@ -267,7 +265,7 @@ pub(crate) mod testutil {
         (listen_addr, proxy)
     }
 
-    /// Starts a TCP server that proxies TLS connections to an upstream server.
+    /// Starts a TCP server that proxies connections to an upstream server.
     ///
     /// Proxies TCP connections to `upstream_addr`.
     pub(super) fn localhost_tcp_proxy(
@@ -340,5 +338,120 @@ pub(crate) mod testutil {
             .collect();
 
         (names, stream)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::borrow::Cow;
+
+    use crate::certs::RootCertificates;
+    use crate::host::Host;
+    use crate::route::{
+        ConnectionProxyRoute, Connector as _, ConnectorExt as _, TcpRoute, TlsRoute,
+        TlsRouteFragment,
+    };
+    use crate::tcp_ssl::proxy::testutil::{
+        localhost_tcp_proxy, localhost_tls_proxy, PROXY_CERTIFICATE, PROXY_HOSTNAME,
+    };
+    use crate::tcp_ssl::testutil::{
+        localhost_https_server, make_http_request_response_over, SERVER_CERTIFICATE,
+        SERVER_HOSTNAME,
+    };
+    use crate::tcp_ssl::StatelessTls;
+    use crate::Alpn;
+
+    #[tokio::test]
+    async fn connect_through_proxy() {
+        let (addr, server) = localhost_https_server();
+        let _server_handle = tokio::spawn(server);
+
+        let (proxy_addr, proxy) = localhost_tls_proxy(SERVER_HOSTNAME, addr);
+        let _proxy_handle = tokio::spawn(proxy);
+
+        // Ensure that the proxy is doing the right thing
+        let route = ConnectionProxyRoute::Tls {
+            proxy: TlsRoute {
+                fragment: TlsRouteFragment {
+                    root_certs: RootCertificates::FromDer(Cow::Borrowed(
+                        PROXY_CERTIFICATE.cert.der(),
+                    )),
+                    sni: Host::Domain(PROXY_HOSTNAME.into()),
+                    alpn: None,
+                    min_protocol_version: None,
+                },
+                inner: TcpRoute {
+                    address: proxy_addr.ip(),
+                    port: proxy_addr.port().try_into().unwrap(),
+                },
+            },
+        };
+
+        let stream = super::StatelessProxied
+            .connect(route, "tls proxy test".into())
+            .await
+            .expect("can connect");
+
+        // The server speaks HTTPS so we need to establish a TLS stream over our
+        // proxied stream.
+        let stream = StatelessTls
+            .connect_over(
+                stream,
+                TlsRouteFragment {
+                    root_certs: RootCertificates::FromDer(Cow::Borrowed(
+                        SERVER_CERTIFICATE.cert.der(),
+                    )),
+                    sni: Host::Domain(SERVER_HOSTNAME.into()),
+                    alpn: Some(Alpn::Http1_1),
+                    min_protocol_version: None,
+                },
+                "tcp proxy test".into(),
+            )
+            .await
+            .expect("can connect");
+
+        make_http_request_response_over(stream).await;
+    }
+
+    #[tokio::test]
+    async fn connect_through_unencrypted_proxy() {
+        let (addr, server) = localhost_https_server();
+        let _server_handle = tokio::spawn(server);
+
+        let (proxy_addr, proxy) = localhost_tcp_proxy(addr);
+        let _proxy_handle = tokio::spawn(proxy);
+
+        // Ensure that the proxy is doing the right thing
+        let route = ConnectionProxyRoute::Tcp {
+            proxy: TcpRoute {
+                address: proxy_addr.ip(),
+                port: proxy_addr.port().try_into().unwrap(),
+            },
+        };
+
+        let stream = super::StatelessProxied
+            .connect(route, "tcp proxy test".into())
+            .await
+            .expect("can connect");
+
+        // The server speaks HTTPS so we need to establish a TLS stream over our
+        // proxied stream.
+        let stream = StatelessTls
+            .connect_over(
+                stream,
+                TlsRouteFragment {
+                    root_certs: RootCertificates::FromDer(Cow::Borrowed(
+                        SERVER_CERTIFICATE.cert.der(),
+                    )),
+                    sni: Host::Domain(SERVER_HOSTNAME.into()),
+                    alpn: Some(Alpn::Http1_1),
+                    min_protocol_version: None,
+                },
+                "tcp proxy test".into(),
+            )
+            .await
+            .expect("can connect");
+
+        make_http_request_response_over(stream).await;
     }
 }

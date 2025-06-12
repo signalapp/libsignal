@@ -203,10 +203,7 @@ impl AsyncSkip for AsyncInput<'_> {
             AsyncInputState::Idle => self.stream.skip(amount),
             AsyncInputState::Skipping(skip_future) => skip_future,
             AsyncInputState::Reading { .. } => {
-                return Poll::Ready(Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "cannot skip while reading",
-                )))
+                return Poll::Ready(Err(io::Error::other("cannot skip while reading")))
             }
         };
         match skip_future.poll_unpin(cx) {

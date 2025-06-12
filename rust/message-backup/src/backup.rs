@@ -12,6 +12,7 @@ use derive_where::derive_where;
 use intmap::IntMap;
 use libsignal_account_keys::BACKUP_KEY_LEN;
 use libsignal_core::{Aci, Pni};
+use serde_with::serde_as;
 
 pub(crate) use crate::backup::account_data::{AccountData, AccountDataError};
 use crate::backup::call::{AdHocCall, CallError};
@@ -24,7 +25,7 @@ use crate::backup::method::{Lookup, LookupPair, Method};
 pub use crate::backup::method::{Store, ValidateOnly};
 use crate::backup::notification_profile::{NotificationProfile, NotificationProfileError};
 use crate::backup::recipient::{FullRecipientData, MinimalRecipientData, RecipientError};
-use crate::backup::serialize::{backup_key_as_hex, SerializeOrder, UnorderedList};
+use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::sticker::{PackId as StickerPackId, StickerPack, StickerPackError};
 use crate::backup::time::{
     ReportUnusualTimestamp, Timestamp, TimestampError, TimestampIssue, UnusualTimestampTracker,
@@ -115,6 +116,7 @@ struct ChatsData<M: Method + ReferencedTypes> {
     pub chat_items_count: usize,
 }
 
+#[serde_as]
 #[derive(Debug, serde::Serialize)]
 pub struct BackupMeta {
     /// The version of the backup format being parsed.
@@ -125,7 +127,7 @@ pub struct BackupMeta {
     #[serde(skip)]
     pub backup_time: Timestamp,
     /// The key used to encrypt and upload media associated with this backup.
-    #[serde(serialize_with = "backup_key_as_hex")]
+    #[serde_as(as = "serialize::BackupKeyHex")]
     pub media_root_backup_key: libsignal_account_keys::BackupKey,
     /// The app version that made the backup.
     ///
@@ -144,12 +146,13 @@ pub struct BackupMeta {
     Clone,
     Debug,
     PartialEq,
-    num_enum::TryFromPrimitive,
+    derive_more::TryFrom,
     strum::EnumString,
     strum::Display,
     strum::IntoStaticStr,
     serde::Serialize,
 )]
+#[try_from(repr)]
 pub enum Purpose {
     /// Intended for immediate transfer from one device to another.
     #[strum(
@@ -457,24 +460,10 @@ pub struct CallFrameError {
     error: CallError,
 }
 
-/// Like [`TryFrom`] but with an extra context argument.
-///
-/// Implements fallible conversions from `T` into `Self` with an additional
-/// "context" argument.
-trait TryFromWith<T, C: ?Sized>: Sized {
-    type Error;
-
-    /// Uses additional context to convert `item` into an instance of `Self`.
-    ///
-    /// If the lookup fails, an instance of `Self::Error` is returned.
-    fn try_from_with(item: T, context: &C) -> Result<Self, Self::Error>;
-}
-
 /// Like [`TryInto`] but with an extra context argument.
 ///
-/// This trait is blanket-implemented for types that implement [`TryFromWith`].
-/// Its only purpose is to offer the more convenient `x.try_into_with(c)` as
-/// opposed to `Y::try_from_with(x, c)`.
+/// Implements fallible conversions from `Self` into `T` with an additional
+/// "context" argument.
 trait TryIntoWith<T, C: ?Sized>: Sized {
     type Error;
 
@@ -482,13 +471,6 @@ trait TryIntoWith<T, C: ?Sized>: Sized {
     ///
     /// If the lookup fails, an instance of `Self::Error` is returned.
     fn try_into_with(self, context: &C) -> Result<T, Self::Error>;
-}
-
-impl<A, B: TryFromWith<A, C>, C: ?Sized> TryIntoWith<B, C> for A {
-    type Error = B::Error;
-    fn try_into_with(self, context: &C) -> Result<B, Self::Error> {
-        B::try_from_with(self, context)
-    }
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -694,8 +676,7 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
             return Err(err_with_id(RecipientError::InvalidId));
         }
 
-        let recipient =
-            recipient::Destination::try_from_with(recipient, self).map_err(err_with_id)?;
+        let recipient = recipient.try_into_with(self).map_err(err_with_id)?;
 
         match self.recipients.entry(id) {
             intmap::Entry::Occupied(_) => Err(err_with_id(RecipientError::DuplicateRecipient)),

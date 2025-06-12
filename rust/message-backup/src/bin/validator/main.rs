@@ -168,7 +168,7 @@ mod test {
             print: false,
             purpose: Purpose::RemoteBackup,
             key_args: KeyArgs {
-                derive_key: DeriveKey { account_entropy: None, master_key: None, aci: None },
+                derive_key: DeriveKey { account_entropy: None, aci: None },
                 key_parts: KeyParts { hmac_key: None, aes_key: None }
             },
         }) => file);
@@ -201,39 +201,6 @@ mod test {
             derive_key,
             DeriveKey {
                 account_entropy: Some(std::str::from_utf8(&[b'a'; 64]).expect("ascii").to_owned()),
-                master_key: None,
-                aci: Some(Aci::from_uuid_bytes([0x55; 16]))
-            }
-        );
-    }
-
-    #[test]
-    fn cli_parse_derive_keys_legacy() {
-        const INPUT: &[&str] = &[
-            EXECUTABLE_NAME,
-            "filename",
-            "--master-key",
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            "--aci",
-            "55555555-5555-5555-5555-555555555555",
-        ];
-
-        let (file, derive_key) = assert_matches!(Cli::try_parse_from(INPUT), Ok(Cli {
-            file,
-            verbose: 0,
-            print: false,
-            purpose: Purpose::RemoteBackup,
-            key_args: KeyArgs {
-                derive_key,
-                key_parts: KeyParts { hmac_key: None, aes_key: None }
-            },
-        }) => (file, derive_key));
-        assert_eq!(file.filename(), "filename");
-        assert_eq!(
-            derive_key,
-            DeriveKey {
-                account_entropy: None,
-                master_key: Some([0xaa; 32]),
                 aci: Some(Aci::from_uuid_bytes([0x55; 16]))
             }
         );
@@ -256,7 +223,7 @@ mod test {
             print: false,
             purpose: Purpose::RemoteBackup,
             key_args: KeyArgs {
-                derive_key: DeriveKey { account_entropy: None, master_key: None, aci: None},
+                derive_key: DeriveKey { account_entropy: None, aci: None},
                 key_parts,
             }
         }) => (file, key_parts));

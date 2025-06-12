@@ -9,17 +9,15 @@ use std::time::Duration;
 
 use ::http::uri::PathAndQuery;
 use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
-use libsignal_net_infra::connection_manager::MultiRouteConnectionManager;
+use bytes::Bytes;
 use libsignal_net_infra::route::{
     Connector, HttpsTlsRoute, RouteProvider, RouteProviderExt, ThrottlingConnector, TransportRoute,
     UnresolvedHttpsServiceRoute, UnresolvedWebsocketServiceRoute, UsePreconnect, WebSocketRoute,
     WebSocketRouteFragment,
 };
-use libsignal_net_infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
-use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws::StreamWithResponseHeaders;
 use libsignal_net_infra::{
-    make_ws_config, AsHttpHeader, Connection, EndpointConnection, IpType, TransportInfo,
+    AsHttpHeader as _, AsStaticHttpHeader, Connection, IpType, TransportInfo,
 };
 use tokio_tungstenite::WebSocketStream;
 
@@ -27,7 +25,7 @@ use crate::auth::Auth;
 use crate::connect_state::{
     ConnectionResources, DefaultTransportConnector, RouteInfo, WebSocketTransportConnectorFactory,
 };
-use crate::env::{add_user_agent_header, ConnectionConfig, UserAgent};
+use crate::env::UserAgent;
 use crate::proto;
 
 mod error;
@@ -37,7 +35,6 @@ pub mod fake;
 pub mod noise;
 pub mod server_requests;
 pub mod ws;
-pub mod ws2;
 
 pub type MessageProto = proto::chat_websocket::WebSocketMessage;
 pub type RequestProto = proto::chat_websocket::WebSocketRequestMessage;
@@ -60,7 +57,7 @@ pub struct DebugInfo {
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Request {
     pub method: ::http::Method,
-    pub body: Option<Box<[u8]>>,
+    pub body: Option<Bytes>,
     pub headers: HeaderMap,
     pub path: PathAndQuery,
 }
@@ -70,7 +67,7 @@ pub struct Request {
 pub struct Response {
     pub status: StatusCode,
     pub message: Option<String>,
-    pub body: Option<Box<[u8]>>,
+    pub body: Option<Bytes>,
     pub headers: HeaderMap,
 }
 
@@ -81,29 +78,34 @@ impl TryFrom<ResponseProto> for Response {
     type Error = ResponseProtoInvalidError;
 
     fn try_from(response_proto: ResponseProto) -> Result<Self, Self::Error> {
-        let status = response_proto
-            .status()
+        let ResponseProto {
+            id: _,
+            status,
+            message,
+            headers,
+            body,
+        } = response_proto;
+        let status = status
+            .unwrap_or_default()
             .try_into()
             .map_err(|_| ResponseProtoInvalidError)
             .and_then(|status_code| {
                 StatusCode::from_u16(status_code).map_err(|_| ResponseProtoInvalidError)
             })?;
-        let message = response_proto.message;
-        let body = response_proto.body.map(|v| v.into_boxed_slice());
-        let headers = response_proto.headers.into_iter().try_fold(
-            HeaderMap::new(),
-            |mut headers, header_string| {
-                let (name, value) = header_string
-                    .split_once(':')
-                    .ok_or(ResponseProtoInvalidError)?;
-                let header_name =
-                    HeaderName::try_from(name).map_err(|_| ResponseProtoInvalidError)?;
-                let header_value =
-                    HeaderValue::from_str(value.trim()).map_err(|_| ResponseProtoInvalidError)?;
-                headers.append(header_name, header_value);
-                Ok(headers)
-            },
-        )?;
+        let headers =
+            headers
+                .into_iter()
+                .try_fold(HeaderMap::new(), |mut headers, header_string| {
+                    let (name, value) = header_string
+                        .split_once(':')
+                        .ok_or(ResponseProtoInvalidError)?;
+                    let header_name =
+                        HeaderName::try_from(name).map_err(|_| ResponseProtoInvalidError)?;
+                    let header_value = HeaderValue::from_str(value.trim())
+                        .map_err(|_| ResponseProtoInvalidError)?;
+                    headers.append(header_name, header_value);
+                    Ok(headers)
+                })?;
         Ok(Response {
             status,
             message,
@@ -122,34 +124,12 @@ impl From<ResponseProtoInvalidError> for SendError {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, derive_more::From)]
 pub struct ReceiveStories(bool);
 
-impl AsHttpHeader for ReceiveStories {
+impl AsStaticHttpHeader for ReceiveStories {
     const HEADER_NAME: HeaderName = HeaderName::from_static(RECEIVE_STORIES_HEADER_NAME);
 
     fn header_value(&self) -> HeaderValue {
         HeaderValue::from_static(if self.0 { "true" } else { "false" })
     }
-}
-
-pub fn endpoint_connection(
-    connection_config: &ConnectionConfig,
-    user_agent: &UserAgent,
-    include_fallback: bool,
-    network_change_event: &ObservableEvent,
-) -> EndpointConnection<MultiRouteConnectionManager> {
-    let chat_endpoint = PathAndQuery::from_static(crate::env::constants::WEB_SOCKET_PATH);
-    let chat_connection_params = if include_fallback {
-        connection_config.connection_params_with_fallback()
-    } else {
-        vec![connection_config.direct_connection_params()]
-    };
-    let chat_connection_params = add_user_agent_header(chat_connection_params, user_agent);
-    let chat_ws_config = make_ws_config(chat_endpoint, ONE_ROUTE_CONNECTION_TIMEOUT);
-    EndpointConnection::new_multi(
-        chat_connection_params,
-        ONE_ROUTE_CONNECTION_TIMEOUT,
-        chat_ws_config,
-        network_change_event,
-    )
 }
 
 /// Information about an established connection.
@@ -160,7 +140,7 @@ pub struct ConnectionInfo {
 }
 
 pub struct ChatConnection {
-    inner: self::ws2::Chat,
+    inner: self::ws::Chat,
     connection_info: ConnectionInfo,
 }
 
@@ -174,7 +154,7 @@ type ChatTransportConnection =
 pub struct PendingChatConnection<T = ChatTransportConnection> {
     connection: WebSocketStream<T>,
     connect_response_headers: http::HeaderMap,
-    ws_config: ws2::Config,
+    ws_config: ws::Config,
     route_info: RouteInfo,
     log_tag: Arc<str>,
 }
@@ -192,7 +172,7 @@ impl ChatConnection {
         connection_resources: ConnectionResources<'_, TC>,
         http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
         user_agent: &UserAgent,
-        ws_config: self::ws2::Config,
+        ws_config: self::ws::Config,
         auth: Option<AuthenticatedChatHeaders>,
         log_tag: &str,
     ) -> Result<PendingChatConnection, ConnectError>
@@ -218,7 +198,7 @@ impl ChatConnection {
         connection_resources: ConnectionResources<'_, TC>,
         http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
         user_agent: &UserAgent,
-        ws_config: self::ws2::Config,
+        ws_config: self::ws::Config,
         auth: Option<AuthenticatedChatHeaders>,
         log_tag: &str,
     ) -> Result<PendingChatConnection<TC::Connection>, ConnectError>
@@ -286,7 +266,7 @@ impl ChatConnection {
     pub fn finish_connect(
         tokio_runtime: tokio::runtime::Handle,
         pending: PendingChatConnection,
-        listener: ws2::EventListener,
+        listener: ws::EventListener,
     ) -> Self {
         let PendingChatConnection {
             connection,
@@ -300,7 +280,7 @@ impl ChatConnection {
                 route_info,
                 transport_info: connection.transport_info(),
             },
-            inner: ws2::Chat::new(
+            inner: ws::Chat::new(
                 tokio_runtime,
                 connection,
                 connect_response_headers,
@@ -365,10 +345,11 @@ pub mod test_support {
     use std::time::Duration;
 
     use libsignal_net_infra::dns::DnsResolver;
+    use libsignal_net_infra::testutil::no_network_change_events;
     use libsignal_net_infra::EnableDomainFronting;
 
     use super::*;
-    use crate::chat::{ws2, ChatConnection};
+    use crate::chat::{ws, ChatConnection};
     use crate::connect_state::{
         ConnectState, DefaultConnectorFactory, PreconnectingFactory, SUGGESTED_CONNECT_CONFIG,
     };
@@ -380,8 +361,10 @@ pub mod test_support {
         enable_domain_fronting: EnableDomainFronting,
         filter_routes: impl Fn(&UnresolvedHttpsServiceRoute) -> bool,
     ) -> Result<ChatConnection, ConnectError> {
-        let network_change_event = ObservableEvent::new();
-        let dns_resolver = DnsResolver::new_with_static_fallback(env.static_fallback());
+        let dns_resolver = DnsResolver::new_with_static_fallback(
+            env.static_fallback(),
+            &no_network_change_events(),
+        );
 
         let route_provider = DirectOrProxyProvider::maybe_proxied(
             env.chat_domain_config
@@ -397,7 +380,7 @@ pub mod test_support {
         );
         let user_agent = UserAgent::with_libsignal_version("test_simple_chat_connection");
 
-        let ws_config = ws2::Config {
+        let ws_config = ws::Config {
             initial_request_id: 0,
             local_idle_timeout: Duration::from_secs(60),
             remote_idle_timeout: Duration::from_secs(60),
@@ -406,7 +389,7 @@ pub mod test_support {
         let connection_resources = ConnectionResources {
             connect_state: &connect,
             dns_resolver: &dns_resolver,
-            network_change_event: &network_change_event,
+            network_change_event: &no_network_change_events(),
             confirmation_header_name: env
                 .chat_domain_config
                 .connect
@@ -425,7 +408,7 @@ pub mod test_support {
         .await?;
 
         // Just a no-op listener.
-        let listener: ws2::EventListener = Box::new(|_event| {});
+        let listener: ws::EventListener = Box::new(|_event| {});
 
         let tokio_runtime = tokio::runtime::Handle::try_current().expect("can get tokio runtime");
         let chat_connection = ChatConnection::finish_connect(tokio_runtime, pending, listener);
@@ -452,6 +435,7 @@ pub(crate) mod test {
         DirectOrProxyRoute, HttpRouteFragment, HttpsTlsRoute, PreconnectingFactory, TcpRoute,
         TlsRoute, TlsRouteFragment, UnresolvedHost, DEFAULT_HTTPS_PORT,
     };
+    use libsignal_net_infra::testutil::no_network_change_events;
     use libsignal_net_infra::ws::WebSocketConnectError;
     use libsignal_net_infra::Alpn;
     use test_case::test_case;
@@ -468,7 +452,7 @@ pub(crate) mod test {
         let proto = ResponseProto {
             status: Some(expected_status.into()),
             headers: vec![format!("HOST: {}", expected_host_value)],
-            body: Some(expected_body.to_vec()),
+            body: Some(Bytes::from_static(expected_body)),
             message: None,
             id: None,
         };
@@ -570,7 +554,7 @@ pub(crate) mod test {
         let proto = ResponseProto {
             status,
             headers,
-            body,
+            body: body.map(Bytes::from),
             message: None,
             id: None,
         };
@@ -655,7 +639,7 @@ pub(crate) mod test {
                 CHAT_DOMAIN,
                 LookupResult::localhost(),
             )])),
-            network_change_event: &ObservableEvent::new(),
+            network_change_event: &no_network_change_events(),
             confirmation_header_name: Some(HeaderName::from_static(CONFIRMATION_HEADER)),
         };
 
@@ -672,6 +656,7 @@ pub(crate) mod test {
                         root_certs: RootCertificates::Native,
                         sni: Host::Domain(CHAT_DOMAIN.into()),
                         alpn: Some(Alpn::Http1_1),
+                        min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_3),
                     },
                     inner: DirectOrProxyRoute::Direct(TcpRoute {
                         address: UnresolvedHost(CHAT_DOMAIN.into()),
@@ -680,7 +665,7 @@ pub(crate) mod test {
                 },
             }],
             &UserAgent::with_libsignal_version("test"),
-            ws2::Config {
+            ws::Config {
                 // We shouldn't get to timing out anyway.
                 local_idle_timeout: Duration::ZERO,
                 remote_idle_timeout: Duration::ZERO,
@@ -733,6 +718,7 @@ pub(crate) mod test {
                     root_certs: RootCertificates::Native,
                     sni: Host::Domain(CHAT_DOMAIN.into()),
                     alpn: Some(Alpn::Http1_1),
+                    min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_3),
                 },
                 inner: DirectOrProxyRoute::Direct(TcpRoute {
                     address: UnresolvedHost(CHAT_DOMAIN.into()),
@@ -741,7 +727,7 @@ pub(crate) mod test {
             },
         }];
 
-        let network_change_event = ObservableEvent::new();
+        let network_change_event = no_network_change_events();
         let make_connection_resources = || ConnectionResources {
             connect_state: &connect_state,
             dns_resolver: &dns_resolver,
@@ -776,7 +762,7 @@ pub(crate) mod test {
             make_connection_resources(),
             routes.clone(),
             &UserAgent::with_libsignal_version("test"),
-            ws2::Config {
+            ws::Config {
                 // We shouldn't get to timing out anyway.
                 local_idle_timeout: Duration::ZERO,
                 remote_idle_timeout: Duration::ZERO,
@@ -796,7 +782,7 @@ pub(crate) mod test {
             make_connection_resources(),
             routes.clone(),
             &UserAgent::with_libsignal_version("test"),
-            ws2::Config {
+            ws::Config {
                 // We shouldn't get to timing out anyway.
                 local_idle_timeout: Duration::ZERO,
                 remote_idle_timeout: Duration::ZERO,

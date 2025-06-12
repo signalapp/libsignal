@@ -34,7 +34,7 @@ fn increment_async(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         channel.send(move |mut cx| {
             let new_value = match value_or_error {
                 Ok(value) => cx.number(value + 1.0).upcast::<JsValue>(),
-                Err(ref message) => cx.string(format!("error: {}", message)).upcast::<JsValue>(),
+                Err(ref message) => cx.string(format!("error: {message}")).upcast::<JsValue>(),
             };
             let undefined = cx.undefined();
             completion_callback

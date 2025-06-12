@@ -6,29 +6,37 @@ use std::hint::black_box;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use libsignal_protocol::kem::{KeyPair, KeyType};
+use rand::rngs::OsRng;
+use rand::TryRngCore as _;
 
 fn bench_kem(c: &mut Criterion) {
     for key_type in [KeyType::Kyber768, KeyType::Kyber1024] {
+        let mut rng = OsRng.unwrap_err();
+
         c.bench_function(format!("{key_type:?}_generate").as_str(), |b| {
             b.iter(|| {
-                black_box(KeyPair::generate(KeyType::Kyber768));
+                black_box(KeyPair::generate(key_type, &mut rng));
             });
         });
-        let key_pairs: Vec<_> = std::iter::from_fn(|| Some(KeyPair::generate(key_type)))
+        let key_pairs: Vec<_> = std::iter::from_fn(|| Some(KeyPair::generate(key_type, &mut rng)))
             .take(10)
             .collect();
         c.bench_function(format!("{key_type:?}_encapsulate").as_str(), |b| {
             let mut public_keys = key_pairs.iter().map(|kp| &kp.public_key).cycle();
             b.iter(|| {
-                black_box(public_keys.next().unwrap().encapsulate());
+                black_box(public_keys.next().unwrap().encapsulate(&mut rng))
+                    .expect("encapsulation works");
             });
         });
         c.bench_function(format!("{key_type:?}_decapsulate").as_str(), |b| {
             let mut ct_sk_pairs = key_pairs
                 .iter()
-                .map(|kp| {
+                .map(move |kp| {
                     let sk = &kp.secret_key;
-                    let (_ss, ct) = kp.public_key.encapsulate();
+                    let (_ss, ct) = kp
+                        .public_key
+                        .encapsulate(&mut rng)
+                        .expect("encapsulation works");
                     (ct, sk)
                 })
                 .cycle();

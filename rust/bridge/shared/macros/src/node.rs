@@ -227,13 +227,13 @@ fn generate_ts_signature_comment(
     ts_args.extend(
         sig.inputs
             .iter()
-            .map(|arg| arg.to_token_stream().to_string()),
+            .map(|arg| arg.to_token_stream().to_string().replace('\n', " ")),
     );
 
     let result_type_format = match (sig.asyncness, bridging_kind) {
-        (Some(_), BridgingKind::Io { .. }) => |ty| format!("CancellablePromise<{}>", ty),
-        (Some(_), _) => |ty| format!("Promise<{}>", ty),
-        (None, _) => |ty| format!("{}", ty),
+        (Some(_), BridgingKind::Io { .. }) => |ty| format!("CancellablePromise<{ty}>"),
+        (Some(_), _) => |ty| format!("Promise<{ty}>"),
+        (None, _) => |ty| format!("{ty}"),
     };
     let result_type_str = result_type_format(result_type(&sig.output));
 

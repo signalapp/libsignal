@@ -2,13 +2,21 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use jni::objects::{GlobalRef, JClass, JObject, JValue};
+use jni::objects::{GlobalRef, JClass, JMethodID, JObject, JValue};
 use jni::JNIEnv;
+use libsignal_core::try_scoped;
 use once_cell::sync::OnceCell;
 
 use crate::jni::{BridgeLayerError, HandleJniError};
 
-static CACHED_CLASS_LOADER: OnceCell<GlobalRef> = OnceCell::new();
+static CACHED_CLASS_LOADER: OnceCell<CachedLoader> = OnceCell::new();
+
+struct CachedLoader {
+    /// A `java.lang.ClassLoader`.
+    class_loader: GlobalRef,
+    /// JNI reference to `ClassLoader.loadClass`.
+    load_class_method: JMethodID,
+}
 
 /// Saves the class loader from the provided `java.lang.Class` instance.
 ///
@@ -22,13 +30,26 @@ pub fn save_class_loader(
     native_class: &JClass<'_>,
 ) -> Result<(), BridgeLayerError> {
     let _saved = CACHED_CLASS_LOADER.get_or_try_init(|| {
-        super::call_method_checked(
+        let loader = super::call_method_checked(
             env,
             native_class,
             "getClassLoader",
             jni_args!(() -> java.lang.ClassLoader),
-        )
-        .and_then(|class_loader| env.new_global_ref(class_loader).expect_no_exceptions())
+        )?;
+
+        try_scoped(|| {
+            let load_class_method = env.get_method_id(
+                jni_class_name!(java.lang.ClassLoader),
+                "loadClass",
+                jni_signature!((java.lang.String) -> java.lang.Class),
+            )?;
+            let class_loader = env.new_global_ref(loader)?;
+            Ok(CachedLoader {
+                class_loader,
+                load_class_method,
+            })
+        })
+        .expect_no_exceptions()
     })?;
     Ok(())
 }
@@ -52,20 +73,35 @@ impl std::fmt::Display for ClassName<'_> {
 pub fn find_class<'output>(
     env: &mut JNIEnv<'output>,
     class_name: ClassName<'_>,
-) -> Result<JClass<'output>, BridgeLayerError> {
+) -> jni::errors::Result<JClass<'output>> {
     let Some(class_loader) = CACHED_CLASS_LOADER.get() else {
         let jni_name = jni_name_from_binary_name(class_name);
-        return real_jni_find_class(env, &jni_name).check_exceptions(env, "FindClass");
+        return real_jni_find_class(env, &jni_name);
     };
 
     let ClassName(name) = class_name;
-    let binary_name = env.new_string(name).check_exceptions(env, "FindClass")?;
-    let class = super::call_method_checked(
-        env,
+    let binary_name = env.new_string(name)?;
+
+    let CachedLoader {
         class_loader,
-        "loadClass",
-        jni_args!((binary_name => java.lang.String) -> java.lang.Class),
-    )?;
+        load_class_method,
+    } = class_loader;
+
+    // SAFETY: the method was looked up for the loader and the arguments and
+    // return type passed in here match the signature it was looked up with.
+    let class = unsafe {
+        // There isn't a helper for this (yet), but even if there were we
+        // probably wouldn't want to use it. Doing so would lead to recursion in
+        // some builds where the helper would call back into this function.
+        #[allow(clippy::disallowed_methods)]
+        env.call_method_unchecked(
+            class_loader,
+            load_class_method,
+            jni::signature::ReturnType::Object,
+            &[JValue::from(&binary_name).as_jni()],
+        )
+    }?
+    .l()?;
 
     Ok(class.into())
 }
@@ -77,7 +113,7 @@ pub fn find_class<'output>(
 /// [`find_class`] function in this module should be used instead. However,
 /// since the real thing is needed to implement that helper, this function
 /// exists to provide a narrowly-scoped `#[allow]`ed exception to the rule.
-#[allow(clippy::disallowed_methods)]
+#[expect(clippy::disallowed_methods)]
 fn real_jni_find_class<'output>(
     env: &mut JNIEnv<'output>,
     name: &str,

@@ -34,4 +34,13 @@ export default class CallLinkSecretParams extends ByteArray {
       Native.CallLinkSecretParams_DecryptUserId(this.contents, userId.contents)
     );
   }
+
+  encryptUserId(userId: Aci): UuidCiphertext {
+    return new UuidCiphertext(
+      Native.CallLinkSecretParams_EncryptUserId(
+        this.contents,
+        userId.getServiceIdFixedWidthBinary()
+      )
+    );
+  }
 }

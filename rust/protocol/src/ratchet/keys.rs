@@ -19,10 +19,17 @@ impl MessageKeyGenerator {
     pub(crate) fn new_from_seed(seed: &[u8], counter: u32) -> Self {
         Self::Seed((seed.to_vec(), counter))
     }
-    pub(crate) fn generate_keys(self) -> MessageKeys {
+    pub(crate) fn generate_keys(self, pqr_key: spqr::MessageKey) -> MessageKeys {
         match self {
-            Self::Seed((seed, counter)) => MessageKeys::derive_keys(&seed, counter),
-            Self::Keys(k) => k,
+            Self::Seed((seed, counter)) => {
+                MessageKeys::derive_keys(&seed, pqr_key.as_deref(), counter)
+            }
+            Self::Keys(k) => {
+                // PQR keys should only be set for newer sessions, and in
+                // newer sessions there should be only seed-based generators.
+                assert!(pqr_key.is_none());
+                k
+            }
         }
     }
     pub(crate) fn into_pb(self) -> session_structure::chain::MessageKey {
@@ -80,9 +87,13 @@ pub(crate) struct MessageKeys {
 }
 
 impl MessageKeys {
-    pub(crate) fn derive_keys(input_key_material: &[u8], counter: u32) -> Self {
+    pub(crate) fn derive_keys(
+        input_key_material: &[u8],
+        optional_salt: Option<&[u8]>,
+        counter: u32,
+    ) -> Self {
         let mut okm = [0; 80];
-        hkdf::Hkdf::<sha2::Sha256>::new(None, input_key_material)
+        hkdf::Hkdf::<sha2::Sha256>::new(optional_salt, input_key_material)
             .expand(b"WhisperMessageKeys", &mut okm)
             .expect("valid output length");
 
@@ -232,19 +243,22 @@ mod tests {
         assert_eq!(&seed, chain_key.key());
         assert_eq!(
             &message_key,
-            chain_key.message_keys().generate_keys().cipher_key()
+            chain_key.message_keys().generate_keys(None).cipher_key()
         );
-        assert_eq!(&mac_key, chain_key.message_keys().generate_keys().mac_key());
+        assert_eq!(
+            &mac_key,
+            chain_key.message_keys().generate_keys(None).mac_key()
+        );
         assert_eq!(&next_chain_key, chain_key.next_chain_key().key());
         assert_eq!(0, chain_key.index());
-        assert_eq!(0, chain_key.message_keys().generate_keys().counter());
+        assert_eq!(0, chain_key.message_keys().generate_keys(None).counter());
         assert_eq!(1, chain_key.next_chain_key().index());
         assert_eq!(
             1,
             chain_key
                 .next_chain_key()
                 .message_keys()
-                .generate_keys()
+                .generate_keys(None)
                 .counter()
         );
         Ok(())

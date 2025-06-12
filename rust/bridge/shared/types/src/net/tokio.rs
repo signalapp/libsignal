@@ -22,7 +22,7 @@ pub struct TokioAsyncContext {
 
 impl TokioAsyncContext {
     // This is an expensive operation, so we don't want to just use Default.
-    #[allow(clippy::new_without_default)]
+    #[expect(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             rt: tokio::runtime::Builder::new_multi_thread()
@@ -158,7 +158,10 @@ impl TokioAsyncContext {
         let handle = self.rt.handle().clone();
         let task_map_weak = Arc::downgrade(&self.tasks);
 
-        #[allow(clippy::let_underscore_future)]
+        #[expect(
+            clippy::let_underscore_future,
+            reason = "the tasks are never .join()ed"
+        )]
         let _: tokio::task::JoinHandle<()> = self.rt.spawn(async move {
             let report_fn = future.await;
             let _: tokio::task::JoinHandle<()> = handle.spawn_blocking(report_fn);

@@ -1,4 +1,0 @@
-# Allow longer test files
-file_length:
-  warning: 1000
-  error: 1000

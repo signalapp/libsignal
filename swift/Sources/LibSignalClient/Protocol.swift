@@ -53,7 +53,8 @@ public func signalDecryptPreKey(
     preKeyStore: PreKeyStore,
     signedPreKeyStore: SignedPreKeyStore,
     kyberPreKeyStore: KyberPreKeyStore,
-    context: StoreContext
+    context: StoreContext,
+    usePqRatchet: Bool
 ) throws -> [UInt8] {
     return try withNativeHandles(message, address) { messageHandle, addressHandle in
         try withSessionStore(sessionStore, context) { ffiSessionStore in
@@ -62,7 +63,7 @@ public func signalDecryptPreKey(
                     try withSignedPreKeyStore(signedPreKeyStore, context) { ffiSignedPreKeyStore in
                         try withKyberPreKeyStore(kyberPreKeyStore, context) { ffiKyberPreKeyStore in
                             try invokeFnReturningArray {
-                                signal_decrypt_pre_key_message($0, messageHandle.const(), addressHandle.const(), ffiSessionStore, ffiIdentityStore, ffiPreKeyStore, ffiSignedPreKeyStore, ffiKyberPreKeyStore)
+                                signal_decrypt_pre_key_message($0, messageHandle.const(), addressHandle.const(), ffiSessionStore, ffiIdentityStore, ffiPreKeyStore, ffiSignedPreKeyStore, ffiKyberPreKeyStore, usePqRatchet)
                             }
                         }
                     }
@@ -78,12 +79,13 @@ public func processPreKeyBundle(
     sessionStore: SessionStore,
     identityStore: IdentityKeyStore,
     now: Date = Date(),
-    context: StoreContext
+    context: StoreContext,
+    usePqRatchet: Bool
 ) throws {
     return try withNativeHandles(bundle, address) { bundleHandle, addressHandle in
         try withSessionStore(sessionStore, context) { ffiSessionStore in
             try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
-                try checkError(signal_process_prekey_bundle(bundleHandle.const(), addressHandle.const(), ffiSessionStore, ffiIdentityStore, UInt64(now.timeIntervalSince1970 * 1000)))
+                try checkError(signal_process_prekey_bundle(bundleHandle.const(), addressHandle.const(), ffiSessionStore, ffiIdentityStore, UInt64(now.timeIntervalSince1970 * 1000), usePqRatchet))
             }
         }
     }

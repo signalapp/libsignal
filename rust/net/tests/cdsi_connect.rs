@@ -6,20 +6,28 @@
 use std::time::Duration;
 
 use base64::prelude::{Engine as _, BASE64_STANDARD};
+use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::CdsiConnection;
-use libsignal_net::enclave::EnclaveEndpointConnection;
+use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
 use libsignal_net::env::STAGING;
 use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::tcp_ssl::DirectConnector;
-use libsignal_net::infra::utils::ObservableEvent;
-use rand_core::{OsRng, RngCore};
+use libsignal_net::infra::testutil::no_network_change_events;
+use libsignal_net_infra::route::DirectOrProxyProvider;
+use libsignal_net_infra::EnableDomainFronting;
+use rand_core::{OsRng, RngCore, TryRngCore as _};
+
+const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
+    local_idle_timeout: Duration::from_secs(10),
+    remote_idle_ping_timeout: Duration::from_secs(10),
+    remote_idle_disconnect_timeout: Duration::from_secs(30),
+};
 
 #[tokio::test]
 async fn can_connect_to_cdsi_staging() {
     init_logger();
 
-    let mut rng = OsRng;
+    let mut rng = OsRng.unwrap_err();
 
     let uid = {
         let mut bytes = [0u8; 16];
@@ -34,15 +42,36 @@ async fn can_connect_to_cdsi_staging() {
         return;
     };
 
-    let network_changed = ObservableEvent::default();
-    let endpoint_connection =
-        EnclaveEndpointConnection::new(&STAGING.cdsi, Duration::from_secs(10), &network_changed);
     let auth = Auth::from_uid_and_secret(uid, secret);
+    let network_changed = no_network_change_events();
+    let resolver = DnsResolver::new(&network_changed);
+    let cdsi_env = STAGING.cdsi;
 
-    let transport = DirectConnector::new(DnsResolver::new());
-    CdsiConnection::connect(&endpoint_connection, transport, auth)
-        .await
-        .expect("can connect to cdsi");
+    let confirmation_header_name = cdsi_env
+        .domain_config
+        .connect
+        .confirmation_header_name
+        .map(HeaderName::from_static);
+    let connect_state = ConnectState::new(SUGGESTED_CONNECT_CONFIG);
+    let connection_resources = ConnectionResources {
+        connect_state: &connect_state,
+        dns_resolver: &resolver,
+        network_change_event: &network_changed,
+        confirmation_header_name,
+    };
+
+    CdsiConnection::connect_with(
+        connection_resources,
+        DirectOrProxyProvider::maybe_proxied(
+            cdsi_env.enclave_websocket_provider(EnableDomainFronting::No),
+            None,
+        ),
+        WS2_CONFIG,
+        &cdsi_env.params,
+        auth,
+    )
+    .await
+    .expect("can connect to cdsi");
 }
 
 fn parse_auth_secret<const N: usize>(b64: &str) -> [u8; N] {

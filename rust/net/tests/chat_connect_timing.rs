@@ -16,7 +16,8 @@ use libsignal_net_infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest};
 use libsignal_net_infra::dns::lookup_result::LookupResult;
 use libsignal_net_infra::dns::{self, DnsResolver};
 use libsignal_net_infra::host::Host;
-use libsignal_net_infra::timeouts::MIN_TLS_HANDSHAKE_TIMEOUT;
+use libsignal_net_infra::route::PER_CONNECTION_WAIT_DURATION;
+use libsignal_net_infra::timeouts::{MIN_TLS_HANDSHAKE_TIMEOUT, TCP_CONNECTION_TIMEOUT};
 use libsignal_net_infra::utils::timed;
 use test_case::test_case;
 use tokio::time::{Duration, Instant};
@@ -32,15 +33,32 @@ use crate::fake_transport::{
     TransportConnectEventStage,
 };
 
-#[test_case(Duration::from_secs(60))]
 #[test_log::test(tokio::test(start_paused = true))]
-async fn all_routes_connect_hangs_forever(expected_duration: Duration) {
+async fn all_routes_connect_hangs_forever() {
+    // Connection attempt timing in libsignal-net:
+    //
+    // Routes are attempted with staggered start times to avoid overwhelming the network.
+    // Each new connection attempt is delayed based on the number of in-flight connections
+    // using the formula: delay = PER_CONNECTION_WAIT_DURATION * connections_in_progress
+    //
+    // For the staging configuration with 3 routes:
+    // - Route 1: Starts at t=0ms (no delay, no connections in progress)
+    // - Route 2: Starts at t=500ms (delayed by 500ms × 1 connection in progress)
+    // - Route 3: Starts at t=1500ms (starts 1000ms after Route 2, due to 500ms × 2 connections in progress)
+    //
+    // With DelayForever behavior, all TCP connections hang until TCP_CONNECTION_TIMEOUT (15s).
+    // The final route (Route 3) times out at: 1500ms + 15000ms = 16500ms
+    const EXPECTED_DURATION: Duration = PER_CONNECTION_WAIT_DURATION
+        .checked_mul(3)
+        .unwrap()
+        .checked_add(TCP_CONNECTION_TIMEOUT)
+        .unwrap();
     let (deps, _incoming_streams) = FakeDeps::new(&STAGING.chat_domain_config);
 
     let (elapsed, outcome) = timed(deps.connect_chat().map_ok(|_| ())).await;
 
-    assert_eq!(elapsed, expected_duration);
-    assert_matches!(outcome, Err(chat::ConnectError::Timeout));
+    assert_eq!(elapsed, EXPECTED_DURATION);
+    assert_matches!(outcome, Err(chat::ConnectError::AllAttemptsFailed));
 }
 
 #[test_case(Duration::from_millis(500))]
@@ -150,12 +168,8 @@ async fn runs_one_tls_handshake_at_a_time() {
 
     // This is set to be less than MIN_TLS_HANDSHAKE_TIMEOUT, so that we don't have to otherwise
     // take the timeout into account.
-    // TODO: Replace this with checked_sub() and then Option::unwrap() once we have MSRV >= 1.83
-    const TLS_HANDSHAKE_DELAY: Duration = Duration::from_millis(2999);
-    assert_eq!(
-        TLS_HANDSHAKE_DELAY,
-        MIN_TLS_HANDSHAKE_TIMEOUT - Duration::from_millis(1)
-    );
+    const TLS_HANDSHAKE_DELAY: Duration =
+        MIN_TLS_HANDSHAKE_TIMEOUT.saturating_sub(Duration::from_millis(1));
     tokio::spawn(connect_websockets_on_incoming(incoming_streams));
     deps.transport_connector.set_behaviors(
         allow_all_routes(&domain_config, deps.static_ip_map()).map(|(target, behavior)| {
@@ -344,15 +358,39 @@ async fn custom_dns_failure(lookup: impl DnsLookup + 'static, expected_duration:
     assert_matches!(outcome, Err(chat::ConnectError::AllAttemptsFailed));
 }
 
-#[test_case(false, Duration::from_secs(60))]
-#[test_case(true, Duration::from_secs(3))]
+#[test_case(false)]
+#[test_case(true)]
 #[test_log::test(tokio::test(start_paused = true))]
-async fn slow_dns(should_accept_connection: bool, expected_duration: Duration) {
+async fn slow_dns(should_accept_connection: bool) {
+    // DNS resolution timing:
+    // - DNS resolution takes 3 seconds before any routes are available
+    // - After DNS completes, routes are attempted with staggered start times
+    //
+    // For the staging configuration with 3 routes:
+    // - Route 1: Starts at t=3000ms (DNS resolution time)
+    // - Route 2: Starts at t=3500ms (3000ms + 500ms × 1 connection in progress)
+    // - Route 3: Starts at t=4500ms (3000ms + 1000ms, due to 500ms × 2 connections in progress)
+    //
+    // When should_accept_connection is true, the first route succeeds immediately, so
+    //   the total duration is DNS_RESOLUTION_TIME.
+    // When false, all TCP connections hang until TCP_CONNECTION_TIMEOUT (15s), so the total duration is
+    //   the Route 3 start delay + TCP_CONNECTION_TIMEOUT.
+    const DNS_RESOLUTION_TIME: Duration = Duration::from_secs(3);
+    const EXPECTED_DURATION: Duration = DNS_RESOLUTION_TIME
+        .checked_add(PER_CONNECTION_WAIT_DURATION.checked_mul(3).unwrap())
+        .unwrap()
+        .checked_add(TCP_CONNECTION_TIMEOUT)
+        .unwrap();
+    let expected_duration = if should_accept_connection {
+        DNS_RESOLUTION_TIME
+    } else {
+        EXPECTED_DURATION
+    };
     let chat_domain_config = STAGING.chat_domain_config;
     let (mut deps, incoming_streams) = FakeDeps::new(&chat_domain_config);
     deps.dns_resolver = DnsResolver::new_custom(vec![(
         Box::new(DnsLookupThatRunsSlowly(
-            Duration::from_secs(3),
+            DNS_RESOLUTION_TIME,
             deps.static_ip_map().clone(),
         )),
         DNS_STRATEGY_TIMEOUT,
@@ -370,6 +408,6 @@ async fn slow_dns(should_accept_connection: bool, expected_duration: Duration) {
     if should_accept_connection {
         outcome.expect("accepted")
     } else {
-        assert_matches!(outcome, Err(chat::ConnectError::Timeout));
+        assert_matches!(outcome, Err(chat::ConnectError::AllAttemptsFailed));
     }
 }

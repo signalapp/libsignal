@@ -31,14 +31,6 @@ pub struct ComposedConnector<Outer, Inner, Error> {
     _error: PhantomData<Error>,
 }
 
-/// Implementation of [The `Captures` trick] trait.
-///
-/// The `Captures` trick: https://rust-lang.github.io/rfcs/3498-lifetime-capture-rules-2024.html#the-captures-trick
-// TODO: when MSRV >= 1.82 use precise capturing instead. See
-// https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html#migrating-away-from-the-captures-trick
-pub trait Captures<U> {}
-impl<T: ?Sized, U> Captures<U> for T {}
-
 impl<O, I, E> ComposedConnector<O, I, E> {
     pub fn new(outer: O, inner: I) -> Self {
         Self {
@@ -59,7 +51,7 @@ impl<O, I, E> ComposedConnector<O, I, E> {
         inner_route: IR,
         outer_route: OR,
         log_tag: Arc<str>,
-    ) -> impl Future<Output = Result<O::Connection, E>> + Send + Captures<&'_ ()>
+    ) -> impl Future<Output = Result<O::Connection, E>> + Send + use<'_, IR, OR, S, I, O, E>
     where
         O: Connector<OR, I::Connection, Error: Into<E>> + Sync,
         I: Connector<IR, S, Error: Into<E>> + Sync,

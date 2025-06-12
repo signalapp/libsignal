@@ -25,13 +25,15 @@ signal-media = ["libsignal-bridge/signal-media"]
 [dependencies]
 libsignal-bridge = { workspace = true, features = ["ffi"] }
 libsignal-bridge-testing = { workspace = true, features = ["ffi"], optional = true }
+libsignal-core = { workspace = true }
 libsignal-net = { workspace = true }
 libsignal-protocol = { workspace = true }
 signal-media = { workspace = true }
 
-futures-util = { workspace = true }
+hex = { workspace = true }
 log = { workspace = true }
 log-panics = { workspace = true, features = ["with-backtrace"] }
+zerocopy = { workspace = true }
 
 [target.aarch64-apple-ios.dependencies]
 cpufeatures = "0.2.1" # Make sure iOS gets optimized crypto.

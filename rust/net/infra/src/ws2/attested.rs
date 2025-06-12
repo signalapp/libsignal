@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::borrow::Cow;
 use std::sync::Arc;
 
 use attest::client_connection::ClientConnection;
@@ -195,7 +194,7 @@ impl WsClient {
         Ok(())
     }
 
-    async fn read(&mut self) -> Result<NextOrClose<Vec<u8>>, ReceiveError> {
+    async fn read(&mut self) -> Result<NextOrClose<bytes::Bytes>, ReceiveError> {
         let recv = self
             .incoming_rx
             .recv()
@@ -251,7 +250,7 @@ async fn spawned_task_body(
     config: crate::ws2::Config,
     log_tag: Arc<str>,
 ) -> Result<(), TaskExitError> {
-    let mut connection = crate::ws2::Connection::new(
+    let connection = crate::ws2::Connection::new(
         stream,
         ReceiverStream::new(outgoing_rx),
         config,
@@ -316,7 +315,7 @@ async fn spawned_task_body(
                         if incoming_tx
                             .send(Ok(NextOrClose::Close(Some(CloseFrame {
                                 code,
-                                reason: Cow::Owned(reason),
+                                reason: reason.into(),
                             }))))
                             .await
                             .is_err()
@@ -483,12 +482,11 @@ impl From<SendError> for AttestedConnectionError {
 
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutil {
-    use std::fmt::Debug;
 
+    use futures_util::{SinkExt as _, StreamExt as _};
     use tokio_tungstenite::WebSocketStream;
 
     use super::*;
-    use crate::ws::testutil::websocket_test_client;
     use crate::AsyncDuplexStream;
 
     pub const FAKE_ATTESTATION: &[u8] =
@@ -500,7 +498,7 @@ pub mod testutil {
     #[derive(Default)]
     pub struct AttestedServerOutput {
         pub message: Option<Vec<u8>>,
-        pub close_after: Option<Option<CloseFrame<'static>>>,
+        pub close_after: Option<Option<CloseFrame>>,
     }
 
     impl AttestedServerOutput {
@@ -511,7 +509,7 @@ pub mod testutil {
             }
         }
 
-        pub fn close(frame: Option<CloseFrame<'static>>) -> Self {
+        pub fn close(frame: Option<CloseFrame>) -> Self {
             Self {
                 close_after: Some(frame),
                 ..Default::default()
@@ -519,20 +517,8 @@ pub mod testutil {
         }
     }
 
-    impl<T: Debug> NextOrClose<T> {
-        pub(crate) fn unwrap_next(self) -> T
-        where
-            T: Debug,
-        {
-            match self {
-                Self::Next(t) => t,
-                s @ Self::Close(_) => panic!("unwrap called on {s:?}"),
-            }
-        }
-    }
-
     impl TextOrBinary {
-        pub fn try_into_binary(self) -> Result<Vec<u8>, AttestedConnectionError> {
+        pub fn try_into_binary(self) -> Result<bytes::Bytes, AttestedConnectionError> {
             match self {
                 TextOrBinary::Text(_) => Err(AttestedConnectionError::Protocol(
                     AttestedProtocolError::TextFrame,
@@ -550,11 +536,10 @@ pub mod testutil {
     /// callback returns an [`AttestedServerOutput`] with `close_after:
     /// Some(_)`, the connection is terminated and this future resolves.
     pub async fn run_attested_server(
-        websocket: WebSocketStream<impl AsyncDuplexStream>,
+        mut websocket: WebSocketStream<impl AsyncDuplexStream>,
         private_key: impl AsRef<[u8]>,
         mut on_message: impl FnMut(NextOrClose<Vec<u8>>) -> AttestedServerOutput,
     ) {
-        let mut websocket = websocket_test_client(websocket);
         // Start the server with a known private key (K of NK).
         let mut server_hs =
             snow::Builder::new(attest::client_connection::NOISE_PATTERN.parse().unwrap())
@@ -569,13 +554,7 @@ pub mod testutil {
             .unwrap();
 
         // Wait for the handshake from the client.
-        let incoming = websocket
-            .receive()
-            .await
-            .unwrap()
-            .unwrap_next()
-            .try_into_binary()
-            .unwrap();
+        let incoming = websocket.next().await.unwrap().unwrap().into_data();
         assert_eq!(server_hs.read_message(&incoming, &mut []).unwrap(), 0);
 
         let mut message = vec![0u8; 48];
@@ -593,15 +572,15 @@ pub mod testutil {
             transport: server_hs.into_transport_mode().unwrap(),
         };
 
-        while let Ok(incoming) = websocket.receive().await {
+        while let Some(Ok(incoming)) = websocket.next().await {
             let received = match incoming {
-                NextOrClose::Close(close) => NextOrClose::Close(close),
-                NextOrClose::Next(incoming) => {
-                    let incoming = incoming.try_into_binary().unwrap();
+                tungstenite::Message::Close(close) => NextOrClose::Close(close),
+                tungstenite::Message::Binary(incoming) => {
                     let payload = server_connection.recv(&incoming).unwrap();
 
                     NextOrClose::Next(payload)
                 }
+                _ => panic!("unexpected payload type"),
             };
 
             let AttestedServerOutput {
@@ -624,6 +603,7 @@ pub mod testutil {
 
 #[cfg(test)]
 mod test {
+    use std::fmt::Debug;
     use std::time::Duration;
 
     use assert_matches::assert_matches;
@@ -637,6 +617,18 @@ mod test {
     use crate::AsyncDuplexStream;
 
     const ECHO_BYTES: &[u8] = b"two nibbles to a byte";
+
+    impl<T: Debug> NextOrClose<T> {
+        pub(crate) fn unwrap_next(self) -> T
+        where
+            T: Debug,
+        {
+            match self {
+                Self::Next(t) => t,
+                s @ Self::Close(_) => panic!("unwrap called on {s:?}"),
+            }
+        }
+    }
 
     /// Runs a fake SGX server that sets up a session and then echos back
     /// incoming messages.

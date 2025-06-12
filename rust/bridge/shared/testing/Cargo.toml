@@ -24,14 +24,17 @@ libsignal-message-backup = { workspace = true, features = ["json"] }
 libsignal-net = { workspace = true }
 libsignal-protocol = { workspace = true }
 
-const-str = { workspace = true, features = ["std"] }
+bytes = { workspace = true }
+const-str = { workspace = true }
 futures-util = { workspace = true }
-hex-literal = { workspace = true }
+hex = { workspace = true }
 http = { workspace = true }
 nonzero_ext = { workspace = true }
 paste = { workspace = true }
 prost = { workspace = true }
+rand = { workspace = true }
 scopeguard = { workspace = true }
+serde_json = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 tokio = { workspace = true }
 uuid = { workspace = true }

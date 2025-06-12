@@ -1,0 +1,23 @@
+#
+# Copyright 2025 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "libsignal-cli-utils"
+version = "0.1.0"
+authors.workspace = true
+license.workspace = true
+edition = "2021"
+rust-version = "1.80"
+
+[lints]
+workspace = true
+
+[dependencies]
+libsignal-core = { workspace = true }
+
+clap-stdin = { workspace = true }
+displaydoc = { workspace = true }
+hex = { workspace = true }
+thiserror = { workspace = true }

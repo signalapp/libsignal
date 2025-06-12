@@ -6,7 +6,7 @@
 use criterion::measurement::Measurement;
 use criterion::{criterion_group, criterion_main, BenchmarkGroup, Criterion};
 use rand::rngs::OsRng;
-use rand::RngCore;
+use rand::{RngCore, TryRngCore as _};
 
 #[inline]
 fn bench_poksho_api<S: poksho::ShoApi, M: Measurement>(group: &mut BenchmarkGroup<M>) {
@@ -15,7 +15,7 @@ fn bench_poksho_api<S: poksho::ShoApi, M: Measurement>(group: &mut BenchmarkGrou
     let mut sho = S::new(b"Signal_label_name_20240221");
 
     let mut data = [0; 256];
-    OsRng.fill_bytes(&mut data);
+    OsRng.unwrap_err().fill_bytes(&mut data);
 
     group.bench_function("absorb_and_ratchet", |b| {
         b.iter(|| sho.absorb_and_ratchet(&data[..63]))

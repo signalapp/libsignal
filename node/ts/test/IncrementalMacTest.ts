@@ -7,8 +7,6 @@ import { assert, use } from 'chai';
 import { randomBytes } from 'crypto';
 import * as chaiAsPromised from 'chai-as-promised';
 import {
-  DigestingWritable,
-  ValidatingWritable,
   ValidatingPassThrough,
   everyNthByte,
   inferChunkSize,
@@ -49,19 +47,6 @@ describe('Incremental MAC', () => {
     });
   });
 
-  describe('DigestingWritable', () => {
-    const CHUNK_SIZE = everyNthByte(32);
-
-    it('produces the digest', async () => {
-      const digesting = new DigestingWritable(TEST_KEY, CHUNK_SIZE);
-      await stream.promises.pipeline(testInputStream(), digesting);
-      assert.equal(
-        TEST_DIGEST.toString('hex'),
-        digesting.getFinalDigest().toString('hex')
-      );
-    });
-  });
-
   describe('DigestingPassThrough', () => {
     const CHUNK_SIZE = everyNthByte(32);
 
@@ -70,28 +55,19 @@ describe('Incremental MAC', () => {
         TEST_KEY,
         CHUNK_SIZE
       );
-      const digestingWritable = new DigestingWritable(TEST_KEY, CHUNK_SIZE);
-      await stream.promises.pipeline(
-        testInputStream(),
-        digestingPassThrough,
-        digestingWritable
-      );
+      await stream.promises.pipeline(testInputStream(), digestingPassThrough);
       assert.equal(
         TEST_DIGEST.toString('hex'),
         digestingPassThrough.getFinalDigest().toString('hex')
       );
-      assert.equal(
-        TEST_DIGEST.toString('hex'),
-        digestingWritable.getFinalDigest().toString('hex')
-      );
     });
   });
 
-  describe('ValidatingWritable', () => {
+  describe('ValidatingPassThrough', () => {
     const CHUNK_SIZE = everyNthByte(32);
 
     it('successful validation', async () => {
-      const validating = new ValidatingWritable(
+      const validating = new ValidatingPassThrough(
         TEST_KEY,
         CHUNK_SIZE,
         TEST_DIGEST
@@ -101,7 +77,7 @@ describe('Incremental MAC', () => {
     });
 
     it('corrupted input', async () => {
-      const validating = new ValidatingWritable(
+      const validating = new ValidatingPassThrough(
         TEST_KEY,
         CHUNK_SIZE,
         TEST_DIGEST
@@ -115,7 +91,7 @@ describe('Incremental MAC', () => {
     });
 
     it('corrupted input in finalize', async () => {
-      const validating = new ValidatingWritable(
+      const validating = new ValidatingPassThrough(
         TEST_KEY,
         CHUNK_SIZE,
         TEST_DIGEST
@@ -131,7 +107,7 @@ describe('Incremental MAC', () => {
     it('corrupted digest', async () => {
       const badDigest = Buffer.from(TEST_DIGEST);
       badDigest[42] ^= 0xff;
-      const validating = new ValidatingWritable(
+      const validating = new ValidatingPassThrough(
         TEST_KEY,
         CHUNK_SIZE,
         badDigest
@@ -141,22 +117,6 @@ describe('Incremental MAC', () => {
         validating
       );
       await assert.isRejected(promise, LibSignalErrorBase);
-    });
-
-    it('keeps track of validated size', () => {
-      const validating = new ValidatingWritable(
-        TEST_KEY,
-        CHUNK_SIZE,
-        TEST_DIGEST
-      );
-      validating.write(Buffer.from(TEST_INPUT[0]));
-      assert.equal(0, validating.validatedSize());
-      validating.write(Buffer.from(TEST_INPUT[1]));
-      assert.equal(32, validating.validatedSize());
-      validating.write(Buffer.from(TEST_INPUT[2]));
-      assert.equal(32, validating.validatedSize());
-      validating.end();
-      assert.equal(50, validating.validatedSize());
     });
   });
   describe('ValidatingPassThrough', () => {
@@ -177,7 +137,7 @@ describe('Incremental MAC', () => {
       const key = randomBytes(32);
 
       const chunkSize = inferChunkSize(source.byteLength);
-      const writable = new DigestingWritable(key, chunkSize);
+      const writable = new DigestingPassThrough(key, chunkSize);
       await stream.promises.pipeline(stream.Readable.from(source), writable);
 
       const digest = writable.getFinalDigest();
@@ -201,7 +161,7 @@ describe('Incremental MAC', () => {
       const key = randomBytes(32);
 
       const chunkSize = inferChunkSize(source.byteLength);
-      const writable = new DigestingWritable(key, chunkSize);
+      const writable = new DigestingPassThrough(key, chunkSize);
       await stream.promises.pipeline(stream.Readable.from(source), writable);
 
       const digest = writable.getFinalDigest();

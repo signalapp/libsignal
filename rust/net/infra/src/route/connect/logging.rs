@@ -6,6 +6,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::errors::LogSafeDisplay;
 use crate::route::Connector;
 
 /// A [`Connector`] that logs when a connection attempt exceeds a predefined timeout threshold.
@@ -38,7 +39,7 @@ impl<I> LoggingConnector<I> {
 
 impl<I, R, Inner> Connector<R, Inner> for LoggingConnector<I>
 where
-    I: Connector<R, Inner, Connection: Send, Error: Send> + Sync,
+    I: Connector<R, Inner, Connection: Send, Error: Send + LogSafeDisplay> + Sync,
     R: Send,
     Inner: Send,
 {
@@ -83,16 +84,17 @@ where
                     log::debug!("[{log_tag}] {label} succeeded after {elapsed:.3?}");
                 }
             }
-            Err(_) => {
-                // Unfortunately we can't require LogSafeDisplay on the error without limiting
-                // LoggingConnector too much. Maybe some day Rust will stabilize specialization and
-                // we can make it conditional...
+            Err(e) => {
                 if elapsed > threshold {
                     log::warn!(
-                        "[{log_tag}] {label} failed after {elapsed:.3?} (exceeded threshold of {threshold:?})",
+                        "[{log_tag}] {label} failed after {elapsed:.3?} (exceeded threshold of {threshold:?}): {}",
+                        e as &dyn LogSafeDisplay
                     );
                 } else {
-                    log::info!("[{log_tag}] {label} failed after {elapsed:.3?}");
+                    log::info!(
+                        "[{log_tag}] {label} failed after {elapsed:.3?}: {}",
+                        e as &dyn LogSafeDisplay
+                    );
                 }
             }
         }

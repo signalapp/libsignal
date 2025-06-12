@@ -11,13 +11,14 @@ use futures_util::TryFutureExt as _;
 
 use super::Connector;
 use crate::route::ResolvedRoute;
+use crate::utils::NetworkChangeEvent;
 
 /// A [`Connector`] that listens for network changes and aborts sooner if one happens *and* a
 /// preferred route change is subsequently detected.
 pub struct InterfaceMonitor<Inner, F = DefaultGetCurrentInterface> {
     inner: Inner,
     get_current_interface: F,
-    network_change_event: tokio::sync::watch::Receiver<()>,
+    network_change_event: NetworkChangeEvent,
     network_change_poll_interval: Duration,
     post_change_grace_period: Duration,
 }
@@ -58,7 +59,7 @@ pub trait GetCurrentInterface {
 impl<Inner> InterfaceMonitor<Inner> {
     pub fn new(
         inner: Inner,
-        network_change_event: tokio::sync::watch::Receiver<()>,
+        network_change_event: NetworkChangeEvent,
         network_change_poll_interval: Duration,
         post_change_grace_period: Duration,
     ) -> Self {
@@ -90,7 +91,7 @@ where
     ) -> Result<Self::Connection, Self::Error> {
         // We need our own Receiver so that multiple connections can be going at once.
         let mut network_change_event = self.network_change_event.clone();
-        network_change_event.mark_changed();
+        network_change_event.mark_unchanged();
 
         let target_ip = *route.immediate_target();
         let initial_interface = self
@@ -202,15 +203,7 @@ mod test {
     const ROUTE_CHANGE_INTERVAL: Duration = Duration::from_secs(10);
     const POST_CHANGE_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
     /// A smaller divisor of [`ROUTE_CHANGE_INTERVAL`].
-    ///
-    /// The code works fine if it's not a divisor, but the tests are less clear, because instead of
-    /// something interesting happening at `ROUTE_CHANGE_INTERVAL` it happens at "the first multiple
-    /// of `NETWORK_CHANGE_INTERVAL` greater than `ROUTE_CHANGE_INTERVAL`".
-    ///
-    /// This isn't defined in terms of `ROUTE_CHANGE_INTERVAL` because Duration doesn't expose const
-    /// division operations that don't use Option, and const Option unwrapping only became stable in
-    /// Rust 1.83.
-    const NETWORK_CHANGE_INTERVAL: Duration = Duration::from_secs(2);
+    const NETWORK_CHANGE_INTERVAL: Duration = ROUTE_CHANGE_INTERVAL.checked_div(5).unwrap();
 
     /// Connects over `inner` with either a network change or a poll-timeout every
     /// [`NETWORK_CHANGE_INTERVAL`] and an actual route change happening at
@@ -234,7 +227,7 @@ mod test {
         let connector = InterfaceMonitor {
             inner,
             get_current_interface: |_target| async move {
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(clippy::cast_possible_truncation)]
                 {
                     start.elapsed().div_duration_f32(ROUTE_CHANGE_INTERVAL) as u8
                 }

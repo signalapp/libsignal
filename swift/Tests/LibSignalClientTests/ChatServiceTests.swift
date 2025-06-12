@@ -111,6 +111,12 @@ final class ChatServiceTests: TestCaseBase {
         do {
             try failWithError("RequestTimedOut")
         } catch SignalError.requestTimeoutError(_) {}
+        do {
+            try failWithError("ConnectionInvalidated")
+        } catch SignalError.connectionInvalidated(_) {}
+        do {
+            try failWithError("ConnectedElsewhere")
+        } catch SignalError.connectedElsewhere(_) {}
 
         do {
             try failWithError("RequestHasInvalidHeader")

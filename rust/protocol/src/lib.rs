@@ -60,7 +60,7 @@ pub use protocol::{
 };
 pub use ratchet::{
     initialize_alice_session_record, initialize_bob_session_record, AliceSignalProtocolParameters,
-    BobSignalProtocolParameters,
+    BobSignalProtocolParameters, UsePQRatchet,
 };
 pub use sealed_sender::{
     sealed_sender_decrypt, sealed_sender_decrypt_to_usmc, sealed_sender_encrypt,
@@ -78,8 +78,9 @@ pub use state::{
     PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord,
 };
 pub use storage::{
-    Direction, IdentityKeyStore, InMemIdentityKeyStore, InMemKyberPreKeyStore, InMemPreKeyStore,
-    InMemSenderKeyStore, InMemSessionStore, InMemSignalProtocolStore, InMemSignedPreKeyStore,
-    KyberPreKeyStore, PreKeyStore, ProtocolStore, SenderKeyStore, SessionStore, SignedPreKeyStore,
+    Direction, IdentityChange, IdentityKeyStore, InMemIdentityKeyStore, InMemKyberPreKeyStore,
+    InMemPreKeyStore, InMemSenderKeyStore, InMemSessionStore, InMemSignalProtocolStore,
+    InMemSignedPreKeyStore, KyberPreKeyStore, PreKeyStore, ProtocolStore, SenderKeyStore,
+    SessionStore, SignedPreKeyStore,
 };
 pub use timestamp::Timestamp;

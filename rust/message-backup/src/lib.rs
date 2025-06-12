@@ -366,7 +366,7 @@ pub fn padded_length(content_length: u32) -> u32 {
     const BASE: f64 = 1.05;
     let exp = f64::log(content_length.into(), BASE).ceil();
 
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(clippy::cast_possible_truncation)]
     {
         u32::max(541, BASE.powf(exp).floor() as u32)
     }

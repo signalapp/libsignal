@@ -74,8 +74,7 @@ impl CredentialPrivateKey {
     pub(crate) fn credential_core(&self, M: &[RistrettoPoint], sho: &mut dyn ShoApi) -> Credential {
         assert!(
             M.len() <= NUM_SUPPORTED_ATTRS,
-            "more than {} attributes not supported",
-            NUM_SUPPORTED_ATTRS
+            "more than {NUM_SUPPORTED_ATTRS} attributes not supported"
         );
         let t = sho.get_scalar();
         let U = sho.get_point();
@@ -234,7 +233,7 @@ impl SystemParams {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
+    use const_str::hex;
 
     use super::*;
 
@@ -246,7 +245,7 @@ mod tests {
     fn test_system() {
         let params = SystemParams::generate();
         let serialized = bincode::serialize(&params).expect("can serialize");
-        println!("PARAMS = {:#x?}", serialized);
+        println!("PARAMS = {serialized:#x?}");
         assert!(serialized == SystemParams::SYSTEM_HARDCODED);
     }
 

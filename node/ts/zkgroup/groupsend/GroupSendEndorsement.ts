@@ -15,6 +15,7 @@ import type {
   default as GroupSendEndorsementsResponse,
   ReceivedEndorsements,
 } from './GroupSendEndorsementsResponse';
+import CallLinkSecretParams from '../calllinks/CallLinkSecretParams';
 
 /**
  * An endorsement for a user or set of users in a group.
@@ -83,10 +84,20 @@ export default class GroupSendEndorsement extends ByteArray {
    *
    * @see {@link GroupSendToken}
    */
-  toToken(groupParams: GroupSecretParams): GroupSendToken {
-    return new GroupSendToken(
-      Native.GroupSendEndorsement_ToToken(this.contents, groupParams.contents)
-    );
+  toToken(params: GroupSecretParams | CallLinkSecretParams): GroupSendToken {
+    if (params instanceof GroupSecretParams) {
+      return new GroupSendToken(
+        Native.GroupSendEndorsement_ToToken(this.contents, params.contents)
+      );
+    } else if (params instanceof CallLinkSecretParams) {
+      return new GroupSendToken(
+        Native.GroupSendEndorsement_CallLinkParams_ToToken(
+          this.contents,
+          params.contents
+        )
+      );
+    }
+    throw new Error('Unsupported token type');
   }
 
   /**
@@ -98,9 +109,9 @@ export default class GroupSendEndorsement extends ByteArray {
    * Equivalent to {@link #toToken} followed by {@link GroupSendToken#toFullToken}.
    */
   toFullToken(
-    groupParams: GroupSecretParams,
+    params: GroupSecretParams | CallLinkSecretParams,
     expiration: Date
   ): GroupSendFullToken {
-    return this.toToken(groupParams).toFullToken(expiration);
+    return this.toToken(params).toFullToken(expiration);
   }
 }

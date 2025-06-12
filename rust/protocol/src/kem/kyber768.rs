@@ -3,48 +3,50 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use pqcrypto_kyber::ffi::{
-    PQCLEAN_KYBER768_CLEAN_CRYPTO_BYTES, PQCLEAN_KYBER768_CLEAN_CRYPTO_CIPHERTEXTBYTES,
-    PQCLEAN_KYBER768_CLEAN_CRYPTO_PUBLICKEYBYTES, PQCLEAN_KYBER768_CLEAN_CRYPTO_SECRETKEYBYTES,
-};
-use pqcrypto_traits::kem::{Ciphertext, PublicKey, SecretKey, SharedSecret};
+use libcrux_ml_kem::mlkem768::{MlKem768Ciphertext, MlKem768PrivateKey, MlKem768PublicKey};
+use libcrux_ml_kem::{kyber768, MlKemCiphertext, SHARED_SECRET_SIZE};
+use rand::{CryptoRng, Rng as _};
 
-use super::{KeyMaterial, Public, Secret};
-use crate::Result;
+use super::{
+    BadKEMKeyLength, ConstantLength as _, DecapsulateError, KeyMaterial, KeyType, Public, Secret,
+};
 
 pub(crate) struct Parameters;
 
 impl super::Parameters for Parameters {
-    const PUBLIC_KEY_LENGTH: usize = PQCLEAN_KYBER768_CLEAN_CRYPTO_PUBLICKEYBYTES;
-    const SECRET_KEY_LENGTH: usize = PQCLEAN_KYBER768_CLEAN_CRYPTO_SECRETKEYBYTES;
-    const CIPHERTEXT_LENGTH: usize = PQCLEAN_KYBER768_CLEAN_CRYPTO_CIPHERTEXTBYTES;
-    const SHARED_SECRET_LENGTH: usize = PQCLEAN_KYBER768_CLEAN_CRYPTO_BYTES;
+    const KEY_TYPE: KeyType = KeyType::Kyber768;
+    const PUBLIC_KEY_LENGTH: usize = MlKem768PublicKey::LENGTH;
+    const SECRET_KEY_LENGTH: usize = MlKem768PrivateKey::LENGTH;
+    const CIPHERTEXT_LENGTH: usize = MlKem768Ciphertext::LENGTH;
+    const SHARED_SECRET_LENGTH: usize = SHARED_SECRET_SIZE;
 
-    fn generate() -> (KeyMaterial<Public>, KeyMaterial<Secret>) {
-        let (pk, sk) = pqcrypto_kyber::kyber768::keypair();
-        (
-            KeyMaterial::new(pk.as_bytes().into()),
-            KeyMaterial::new(sk.as_bytes().into()),
-        )
+    fn generate<R: CryptoRng + ?Sized>(
+        csprng: &mut R,
+    ) -> (KeyMaterial<Public>, KeyMaterial<Secret>) {
+        let (sk, pk) = kyber768::generate_key_pair(csprng.random()).into_parts();
+        (KeyMaterial::from(pk), KeyMaterial::from(sk))
     }
 
-    fn encapsulate(pub_key: &KeyMaterial<Public>) -> (super::SharedSecret, super::RawCiphertext) {
-        let kyber_pk = pqcrypto_kyber::kyber768::PublicKey::from_bytes(pub_key)
-            .expect("valid kyber768 public key bytes");
-        let (kyber_ss, kyber_ct) = pqcrypto_kyber::kyber768::encapsulate(&kyber_pk);
-        (kyber_ss.as_bytes().into(), kyber_ct.as_bytes().into())
+    fn encapsulate<R: CryptoRng + ?Sized>(
+        pub_key: &KeyMaterial<Public>,
+        csprng: &mut R,
+    ) -> Result<(super::SharedSecret, super::RawCiphertext), BadKEMKeyLength> {
+        let kyber_pk =
+            MlKem768PublicKey::try_from(pub_key.as_ref()).map_err(|_| BadKEMKeyLength)?;
+        let (kyber_ct, kyber_ss) = kyber768::encapsulate(&kyber_pk, csprng.random());
+        Ok((kyber_ss.as_ref().into(), kyber_ct.as_ref().into()))
     }
 
     fn decapsulate(
         secret_key: &KeyMaterial<Secret>,
         ciphertext: &[u8],
-    ) -> Result<super::SharedSecret> {
-        let kyber_sk = pqcrypto_kyber::kyber768::SecretKey::from_bytes(secret_key)
-            .expect("valid kyber768 secret key bytes");
-        let kyber_ct = pqcrypto_kyber::kyber768::Ciphertext::from_bytes(ciphertext)
-            .expect("valid kyber768 ciphertext");
-        let kyber_ss = pqcrypto_kyber::kyber768::decapsulate(&kyber_ct, &kyber_sk);
+    ) -> Result<Box<[u8]>, DecapsulateError> {
+        let kyber_sk = MlKem768PrivateKey::try_from(secret_key.as_ref())
+            .map_err(|_| DecapsulateError::BadKeyLength)?;
+        let kyber_ct =
+            MlKemCiphertext::try_from(ciphertext).map_err(|_| DecapsulateError::BadCiphertext)?;
+        let kyber_ss = kyber768::decapsulate(&kyber_sk, &kyber_ct);
 
-        Ok(kyber_ss.as_bytes().into())
+        Ok(kyber_ss.as_ref().into())
     }
 }

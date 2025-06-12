@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::collections::HashMap;
 use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -11,28 +12,28 @@ use libsignal_net::connect_state::{
     ConnectState, DefaultConnectorFactory, PreconnectingFactory, SUGGESTED_CONNECT_CONFIG,
     SUGGESTED_TLS_PRECONNECT_LIFETIME,
 };
-use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind};
-use libsignal_net::env::{add_user_agent_header, Env, UserAgent};
-use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
+use libsignal_net::env::{Env, UserAgent};
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::route::ConnectionProxyConfig;
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
-use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
-use libsignal_net::infra::utils::ObservableEvent;
-use libsignal_net::infra::{EnableDomainFronting, EndpointConnection};
+use libsignal_net::infra::{EnableDomainFronting, RECOMMENDED_WS2_CONFIG};
 
+use self::remote_config::{RemoteConfig, RemoteConfigKeys};
 use crate::*;
 
 pub mod cdsi;
 pub mod chat;
 pub mod registration;
-pub mod tokio;
 
+pub use libsignal_net::infra::EnforceMinimumTls;
+
+pub mod remote_config;
+pub mod tokio;
 pub use tokio::TokioAsyncContext;
 
-#[derive(num_enum::TryFromPrimitive)]
 #[repr(u8)]
-#[derive(Clone, Copy, strum::Display)]
+#[derive(Clone, Copy, strum::Display, derive_more::TryFrom)]
+#[try_from(repr)]
 pub enum Environment {
     Staging = 0,
     Prod = 1,
@@ -48,17 +49,17 @@ impl Environment {
 }
 
 struct EndpointConnections {
-    chat: EndpointConnection<MultiRouteConnectionManager>,
-    cdsi: EnclaveEndpointConnection<Cdsi, MultiRouteConnectionManager>,
+    chat_ws2_config: libsignal_net::infra::ws2::Config,
+    cdsi_ws2_config: libsignal_net::infra::ws2::Config,
     enable_fronting: EnableDomainFronting,
+    enforce_minimum_tls: EnforceMinimumTls,
 }
 
 impl EndpointConnections {
     fn new(
         env: &Env<'static>,
-        user_agent: &UserAgent,
         use_fallbacks: bool,
-        network_change_event: &ObservableEvent,
+        enforce_minimum_tls: EnforceMinimumTls,
     ) -> Self {
         log::info!(
             "Creating endpoint connections (fallbacks {}) for {} and others",
@@ -68,46 +69,16 @@ impl EndpointConnections {
             // testing. (Or the person running this isn't Signal.)
             env.chat_domain_config.connect.hostname
         );
-        let chat = libsignal_net::chat::endpoint_connection(
-            &env.chat_domain_config.connect,
-            user_agent,
-            use_fallbacks,
-            network_change_event,
-        );
-        let cdsi =
-            Self::endpoint_connection(&env.cdsi, user_agent, use_fallbacks, network_change_event);
         Self {
-            chat,
-            cdsi,
+            chat_ws2_config: RECOMMENDED_WS2_CONFIG,
+            cdsi_ws2_config: RECOMMENDED_WS2_CONFIG,
             enable_fronting: if use_fallbacks {
                 EnableDomainFronting::OneDomainPerProxy
             } else {
                 EnableDomainFronting::No
             },
+            enforce_minimum_tls,
         }
-    }
-
-    fn endpoint_connection<E: EnclaveKind>(
-        endpoint: &EnclaveEndpoint<'static, E>,
-        user_agent: &UserAgent,
-        include_fallback: bool,
-        network_change_event: &ObservableEvent,
-    ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
-        let params = if include_fallback {
-            endpoint
-                .domain_config
-                .connect
-                .connection_params_with_fallback()
-        } else {
-            vec![endpoint.domain_config.connect.direct_connection_params()]
-        };
-        let params = add_user_agent_header(params, user_agent);
-        EnclaveEndpointConnection::new_multi(
-            endpoint,
-            params,
-            ONE_ROUTE_CONNECTION_TIMEOUT,
-            network_change_event,
-        )
     }
 }
 
@@ -115,37 +86,54 @@ pub struct ConnectionManager {
     env: Env<'static>,
     user_agent: UserAgent,
     dns_resolver: DnsResolver,
+    remote_config: std::sync::Mutex<RemoteConfig>,
     connect: std::sync::Mutex<ConnectState<PreconnectingFactory>>,
     // We could split this up to a separate mutex on each kind of connection,
     // but we don't hold it for very long anyway (just enough to clone the Arc).
     endpoints: std::sync::Mutex<Arc<EndpointConnections>>,
     transport_connector: std::sync::Mutex<TcpSslConnector>,
     most_recent_network_change: std::sync::Mutex<Instant>,
-    network_change_event: ObservableEvent,
+    network_change_event_tx: ::tokio::sync::watch::Sender<()>,
 }
 
 impl RefUnwindSafe for ConnectionManager {}
 
 impl ConnectionManager {
-    pub fn new(environment: Environment, user_agent: &str) -> Self {
+    pub fn new(
+        environment: Environment,
+        user_agent: &str,
+        remote_config: HashMap<String, String>,
+    ) -> Self {
         log::info!("Initializing connection manager for {}...", &environment);
-        Self::new_from_static_environment(environment.env(), user_agent)
+        Self::new_from_static_environment(environment.env(), user_agent, remote_config)
     }
 
-    pub fn new_from_static_environment(env: Env<'static>, user_agent: &str) -> Self {
-        let network_change_event = ObservableEvent::new();
+    pub fn new_from_static_environment(
+        env: Env<'static>,
+        user_agent: &str,
+        remote_config: HashMap<String, String>,
+    ) -> Self {
+        let (network_change_event_tx, network_change_event_rx) = ::tokio::sync::watch::channel(());
         let user_agent = UserAgent::with_libsignal_version(user_agent);
 
-        let dns_resolver = DnsResolver::new_with_static_fallback(env.static_fallback());
+        let dns_resolver =
+            DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event_rx);
         let transport_connector =
             std::sync::Mutex::new(TcpSslConnector::new_direct(dns_resolver.clone()));
+        let remote_config = RemoteConfig::new(remote_config);
+        let enforce_minimum_tls = if remote_config.is_enabled(RemoteConfigKeys::EnforceMinimumTls) {
+            EnforceMinimumTls::Yes
+        } else {
+            EnforceMinimumTls::No
+        };
         let endpoints = std::sync::Mutex::new(
-            EndpointConnections::new(&env, &user_agent, false, &network_change_event).into(),
+            EndpointConnections::new(&env, false, enforce_minimum_tls).into(),
         );
         Self {
             env,
             endpoints,
             user_agent,
+            remote_config: remote_config.into(),
             connect: ConnectState::new_with_transport_connector(
                 SUGGESTED_CONNECT_CONFIG,
                 PreconnectingFactory::new(
@@ -156,7 +144,7 @@ impl ConnectionManager {
             dns_resolver,
             transport_connector,
             most_recent_network_change: Instant::now().into(),
-            network_change_event,
+            network_change_event_tx,
         }
     }
 
@@ -195,13 +183,22 @@ impl ConnectionManager {
     /// This is not itself a network change event; existing working connections are expected to
     /// continue to work, and existing failing connections will continue to fail.
     pub fn set_censorship_circumvention_enabled(&self, enabled: bool) {
-        let new_endpoints = EndpointConnections::new(
-            &self.env,
-            &self.user_agent,
-            enabled,
-            &self.network_change_event,
-        );
+        let enforce_minimum_tls = if self
+            .remote_config
+            .lock()
+            .expect("not poisoned")
+            .is_enabled(RemoteConfigKeys::EnforceMinimumTls)
+        {
+            EnforceMinimumTls::Yes
+        } else {
+            EnforceMinimumTls::No
+        };
+        let new_endpoints = EndpointConnections::new(&self.env, enabled, enforce_minimum_tls);
         *self.endpoints.lock().expect("not poisoned") = Arc::new(new_endpoints);
+    }
+
+    pub fn set_remote_config(&self, remote_config: HashMap<String, String>) {
+        *self.remote_config.lock().expect("not poisoned") = RemoteConfig::new(remote_config);
     }
 
     const NETWORK_CHANGE_DEBOUNCE: Duration = Duration::from_secs(1);
@@ -221,7 +218,7 @@ impl ConnectionManager {
             *most_recent_change_guard = now;
         }
         log::info!("ConnectionManager: on_network_change");
-        self.network_change_event.fire();
+        self.network_change_event_tx.send_replace(());
         self.dns_resolver.on_network_change(now.into());
         self.connect
             .lock()
@@ -246,14 +243,15 @@ mod test {
     #[test_case(Environment::Staging; "staging")]
     #[test_case(Environment::Prod; "prod")]
     fn can_create_connection_manager(env: Environment) {
-        let _ = ConnectionManager::new(env, "test-user-agent");
+        let _ = ConnectionManager::new(env, "test-user-agent", Default::default());
     }
 
     // Normally we would write this test in the app languages, but it depends on timeouts.
     // Using a paused tokio runtime auto-advances time when there's no other work to be done.
     #[tokio::test(start_paused = true)]
     async fn cannot_connect_through_invalid_proxy() {
-        let cm = ConnectionManager::new(Environment::Staging, "test-user-agent");
+        let cm =
+            ConnectionManager::new(Environment::Staging, "test-user-agent", Default::default());
         cm.set_invalid_proxy();
         let err = UnauthenticatedChatConnection::connect(&cm)
             .await
@@ -264,38 +262,37 @@ mod test {
 
     #[test]
     fn network_change_event_debounced() {
-        let cm = ConnectionManager::new(Environment::Staging, "test-user-agent");
+        let cm =
+            ConnectionManager::new(Environment::Staging, "test-user-agent", Default::default());
 
-        let fire_count = Arc::new(std::sync::atomic::AtomicU8::new(0));
-        let _subscription = {
-            let fire_count = fire_count.clone();
-            cm.network_change_event.subscribe(Box::new(move || {
-                _ = fire_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            }))
-        };
+        let mut fired = cm.network_change_event_tx.subscribe();
+        assert_matches!(fired.has_changed(), Ok(false));
 
         // The creation of the ConnectionManager sets the initial debounce timestamp,
         // so let's say our first even happens well after that.
         let start = Instant::now() + ConnectionManager::NETWORK_CHANGE_DEBOUNCE * 10;
         cm.on_network_change(start);
-        assert_eq!(1, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(true));
+        fired.mark_unchanged();
 
         cm.on_network_change(start);
-        assert_eq!(1, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(false));
 
         cm.on_network_change(start + ConnectionManager::NETWORK_CHANGE_DEBOUNCE / 2);
-        assert_eq!(1, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(false));
 
         cm.on_network_change(start + ConnectionManager::NETWORK_CHANGE_DEBOUNCE);
-        assert_eq!(2, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(true));
+        fired.mark_unchanged();
 
         cm.on_network_change(start);
-        assert_eq!(2, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(false));
 
         cm.on_network_change(start + ConnectionManager::NETWORK_CHANGE_DEBOUNCE * 3 / 2);
-        assert_eq!(2, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(false));
 
         cm.on_network_change(start + ConnectionManager::NETWORK_CHANGE_DEBOUNCE * 4);
-        assert_eq!(3, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(true));
+        fired.mark_unchanged();
     }
 }

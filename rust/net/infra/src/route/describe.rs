@@ -122,7 +122,7 @@ impl std::fmt::Display for UnresolvedRouteDescription {
             domain.as_deref().map_domain(log_safe_domain)
         )?;
         if let Some(front) = front {
-            write!(f, " fronted by {}", front)
+            write!(f, " fronted by {front}")
         } else {
             f.write_str(" (direct)")
         }?;

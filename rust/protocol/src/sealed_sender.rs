@@ -13,12 +13,12 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use prost::Message;
 use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
-use rand::{CryptoRng, Rng};
+use rand::{CryptoRng, Rng, TryRngCore as _};
 use subtle::ConstantTimeEq;
-use zerocopy::{FromBytes, FromZeroes};
+use zerocopy::{FromBytes, Immutable, KnownLayout};
 
 use crate::{
-    crypto, message_encrypt, proto, session_cipher, Aci, CiphertextMessageType, DeviceId,
+    crypto, message_encrypt, proto, ratchet, session_cipher, Aci, CiphertextMessageType, DeviceId,
     Direction, IdentityKey, IdentityKeyPair, IdentityKeyStore, KeyPair, KyberPreKeyStore,
     PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, Result, ServiceId,
     ServiceIdFixedWidthBinaryBytes, SessionRecord, SessionStore, SignalMessage,
@@ -541,10 +541,7 @@ impl<'a> UnidentifiedSenderMessage<'a> {
             SignalProtocolError::InvalidSealedSenderMessage("Message was empty".to_owned())
         })?;
         let version = version_byte >> 4;
-        log::debug!(
-            "deserializing UnidentifiedSenderMessage with version {}",
-            version
-        );
+        log::debug!("deserializing UnidentifiedSenderMessage with version {version}");
 
         match version {
             0 | SEALED_SENDER_V1_MAJOR_VERSION => {
@@ -572,22 +569,22 @@ impl<'a> UnidentifiedSenderMessage<'a> {
             }
             SEALED_SENDER_V2_MAJOR_VERSION => {
                 /// Uses a flat representation: C || AT || E.pub || ciphertext
+                #[derive(FromBytes, Immutable, KnownLayout)]
                 #[repr(C, packed)]
-                #[derive(FromBytes, FromZeroes)]
                 struct PrefixRepr {
                     encrypted_message_key: [u8; sealed_sender_v2::MESSAGE_KEY_LEN],
                     encrypted_authentication_tag: [u8; sealed_sender_v2::AUTH_TAG_LEN],
                     ephemeral_public: [u8; sealed_sender_v2::PUBLIC_KEY_LEN],
                 }
                 let (prefix, encrypted_message) =
-                    zerocopy::Ref::<_, PrefixRepr>::new_from_prefix(remaining)
-                        .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+                    zerocopy::Ref::<_, PrefixRepr>::from_prefix(remaining)
+                        .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
                 let PrefixRepr {
                     encrypted_message_key,
                     encrypted_authentication_tag,
                     ephemeral_public,
-                } = prefix.into_ref();
+                } = zerocopy::Ref::into_ref(prefix);
 
                 Ok(Self::V2 {
                     ephemeral_public: PublicKey::from_djb_public_key_bytes(
@@ -709,11 +706,11 @@ mod sealed_sender_v1 {
     #[test]
     fn test_agreement_and_authentication() -> Result<()> {
         // The sender and recipient each have a long-term identity key pair.
-        let sender_identity = IdentityKeyPair::generate(&mut rand::thread_rng());
-        let recipient_identity = IdentityKeyPair::generate(&mut rand::thread_rng());
+        let sender_identity = IdentityKeyPair::generate(&mut rand::rng());
+        let recipient_identity = IdentityKeyPair::generate(&mut rand::rng());
 
         // Generate an ephemeral key pair.
-        let sender_ephemeral = KeyPair::generate(&mut rand::thread_rng());
+        let sender_ephemeral = KeyPair::generate(&mut rand::rng());
         let ephemeral_public = sender_ephemeral.public_key;
         // Generate ephemeral cipher, chain, and MAC keys.
         let sender_eph_keys = EphemeralKeys::calculate(
@@ -797,7 +794,8 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
     now: SystemTime,
     rng: &mut R,
 ) -> Result<Vec<u8>> {
-    let message = message_encrypt(ptext, destination, session_store, identity_store, now).await?;
+    let message =
+        message_encrypt(ptext, destination, session_store, identity_store, now, rng).await?;
     let usmc = UnidentifiedSenderMessageContent::new(
         message.message_type(),
         sender_cert.clone(),
@@ -1040,11 +1038,11 @@ mod sealed_sender_v2 {
     #[test]
     fn test_agreement_and_authentication() -> Result<()> {
         // The sender and recipient each have a long-term identity key pair.
-        let sender_identity = IdentityKeyPair::generate(&mut rand::thread_rng());
-        let recipient_identity = IdentityKeyPair::generate(&mut rand::thread_rng());
+        let sender_identity = IdentityKeyPair::generate(&mut rand::rng());
+        let recipient_identity = IdentityKeyPair::generate(&mut rand::rng());
 
         // Generate random bytes used for our multi-recipient encoding scheme.
-        let m: [u8; MESSAGE_KEY_LEN] = rand::thread_rng().gen();
+        let m: [u8; MESSAGE_KEY_LEN] = rand::rng().random();
         // Derive an ephemeral key pair from those random bytes.
         let ephemeral_keys = DerivedKeys::new(&m);
         let e = ephemeral_keys.derive_e();
@@ -1291,7 +1289,7 @@ where
     let excluded_recipients = excluded_recipients.into_iter();
     let our_identity = identity_store.get_identity_key_pair().await?;
 
-    let m: [u8; sealed_sender_v2::MESSAGE_KEY_LEN] = rng.gen();
+    let m: [u8; sealed_sender_v2::MESSAGE_KEY_LEN] = rng.random();
     let keys = sealed_sender_v2::DerivedKeys::new(&m);
     let e = keys.derive_e();
     let e_pub = &e.public_key;
@@ -1336,7 +1334,7 @@ where
                     .get_identity(destination)
                     .await?
                     .ok_or_else(|| {
-                        log::error!("missing identity key for {}", destination);
+                        log::error!("missing identity key for {destination}");
                         // Returned as a SessionNotFound error because (a) we don't have an identity
                         // error that includes the address, and (b) re-establishing the session should
                         // re-fetch the identity.
@@ -1547,13 +1545,11 @@ impl<'a> SealedSenderV2SentMessage<'a> {
         }
 
         fn advance<'a, const N: usize>(buf: &mut &'a [u8]) -> Result<&'a [u8; N]> {
-            if N > buf.len() {
-                return Err(SignalProtocolError::InvalidProtobufEncoding);
-            }
-            // TODO: Replace with split_array_ref or split_first_chunk when stabilized.
-            let (prefix, remaining) = buf.split_at(N);
+            let (prefix, remaining) = buf
+                .split_first_chunk()
+                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
             *buf = remaining;
-            Ok(prefix.try_into().expect("checked length"))
+            Ok(prefix)
         }
         fn decode_varint(buf: &mut &[u8]) -> Result<u32> {
             let result: usize = prost::decode_length_delimiter(*buf)
@@ -1768,7 +1764,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
                     unreachable!("just derived these keys; they should be valid");
                 }
                 Err(crypto::DecryptionError::BadCiphertext(msg)) => {
-                    log::error!("failed to decrypt sealed sender v1 message key: {}", msg);
+                    log::error!("failed to decrypt sealed sender v1 message key: {msg}");
                     return Err(SignalProtocolError::InvalidSealedSenderMessage(
                         "failed to decrypt sealed sender v1 message key".to_owned(),
                     ));
@@ -1794,10 +1790,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
                     unreachable!("just derived these keys; they should be valid");
                 }
                 Err(crypto::DecryptionError::BadCiphertext(msg)) => {
-                    log::error!(
-                        "failed to decrypt sealed sender v1 message contents: {}",
-                        msg
-                    );
+                    log::error!("failed to decrypt sealed sender v1 message contents: {msg}");
                     return Err(SignalProtocolError::InvalidSealedSenderMessage(
                         "failed to decrypt sealed sender v1 message contents".to_owned(),
                     ));
@@ -1845,8 +1838,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
                 )
                 .map_err(|err| {
                     SignalProtocolError::InvalidSealedSenderMessage(format!(
-                        "failed to decrypt inner message: {}",
-                        err
+                        "failed to decrypt inner message: {err}"
                     ))
                 })?;
 
@@ -1903,7 +1895,7 @@ impl SealedSenderDecryptionResult {
 /// the embedded [`SenderCertificate`]. The sender certificate (signed by the [`ServerCertificate`])
 /// is then validated against the `trust_root` baked into the client to ensure that the sender's
 /// identity was not forged.
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub async fn sealed_sender_decrypt(
     ciphertext: &[u8],
     trust_root: &PublicKey,
@@ -1916,6 +1908,7 @@ pub async fn sealed_sender_decrypt(
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &dyn SignedPreKeyStore,
     kyber_pre_key_store: &mut dyn KyberPreKeyStore,
+    use_pq_ratchet: ratchet::UsePQRatchet,
 ) -> Result<SealedSenderDecryptionResult> {
     let usmc = sealed_sender_decrypt_to_usmc(ciphertext, identity_store).await?;
 
@@ -1936,7 +1929,7 @@ pub async fn sealed_sender_decrypt(
         return Err(SignalProtocolError::SealedSenderSelfSend);
     }
 
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
 
     let remote_address = ProtocolAddress::new(
         usmc.sender()?.sender_uuid()?.to_string(),
@@ -1966,6 +1959,7 @@ pub async fn sealed_sender_decrypt(
                 signed_pre_key_store,
                 kyber_pre_key_store,
                 &mut rng,
+                use_pq_ratchet,
             )
             .await?
         }

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use const_str::hex;
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
-use hex_literal::hex;
 use sha2::Sha256;
 use zkgroup::{Timestamp, SECONDS_PER_DAY};
 

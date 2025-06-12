@@ -6,7 +6,7 @@
 name = "libsignal-message-backup"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.80"
+rust-version = "1.83"
 authors.workspace = true
 license.workspace = true
 
@@ -56,7 +56,7 @@ cbc = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 clap-stdin = { workspace = true }
 derive-where = { workspace = true }
-derive_more = { workspace = true, features = ["from", "into_iterator"] }
+derive_more = { workspace = true, features = ["from", "into_iterator", "try_from"] }
 displaydoc = { workspace = true }
 env_logger = { workspace = true }
 futures = { workspace = true }
@@ -68,12 +68,12 @@ itertools = { workspace = true }
 log = { workspace = true }
 macro_rules_attribute = { workspace = true }
 mediasan-common = { workspace = true }
-num_enum = { workspace = true }
 protobuf = { workspace = true }
 protobuf-json-mapping = { workspace = true, optional = true }
 rand = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive", "rc"] }
 serde_json = { workspace = true, optional = true, features = ["preserve_order"] }
+serde_with = { workspace = true, features = ["hex"] }
 sha2 = { workspace = true }
 static_assertions = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
@@ -85,14 +85,15 @@ visibility = { workspace = true }
 [dev-dependencies]
 libsignal-message-backup = { path = "./", features = ["json", "scramble", "test-util"] }
 
+libsignal-cli-utils = { workspace = true }
 signal-crypto = { workspace = true }
 
 array-concat = { workspace = true, features = ["const_panic"] }
 assert_cmd = { workspace = true }
+const-str = { workspace = true }
 criterion = { workspace = true }
 dir-test = { workspace = true }
 futures = { workspace = true, features = ["executor"] }
-hex-literal = { workspace = true }
 json5 = { workspace = true }
 nonzero_ext = { workspace = true }
 once_cell = { workspace = true }

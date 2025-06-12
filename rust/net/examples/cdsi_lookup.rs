@@ -11,11 +11,9 @@ use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{CdsiConnection, LookupError, LookupRequest, LookupResponse};
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
-use libsignal_net::enclave::EnclaveEndpointConnection;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net_infra::route::DirectOrProxyProvider;
-use libsignal_net_infra::tcp_ssl::DirectConnector;
-use libsignal_net_infra::utils::ObservableEvent;
+use libsignal_net_infra::testutil::no_network_change_events;
 use libsignal_net_infra::EnableDomainFronting;
 use tokio::io::AsyncBufReadExt as _;
 
@@ -34,14 +32,21 @@ async fn cdsi_lookup(
     remaining_response.collect().await
 }
 
+#[derive(Copy, Clone, Debug, strum::EnumString, strum::Display)]
+#[strum(serialize_all = "lowercase")]
+enum Environment {
+    Staging,
+    Prod,
+}
+
 #[derive(clap::Parser)]
 struct CliArgs {
-    #[arg(long, default_value_t = false)]
-    use_routes: bool,
-    #[arg(long, default_value_t = std::env::var("USERNAME").unwrap())]
+    #[arg(long, env = "USERNAME")]
     username: String,
-    #[arg(long, default_value_t = std::env::var("PASSWORD").unwrap())]
+    #[arg(long, env = "PASSWORD")]
     password: String,
+    #[arg(long, default_value_t = Environment::Prod)]
+    environment: Environment,
 }
 
 const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
@@ -55,9 +60,9 @@ async fn main() {
     env_logger::init();
 
     let CliArgs {
-        use_routes,
         username,
         password,
+        environment,
     } = CliArgs::parse();
 
     let auth = Auth { username, password };
@@ -75,11 +80,13 @@ async fn main() {
         ..Default::default()
     };
 
-    let cdsi_env = libsignal_net::env::PROD.cdsi;
-    let network_change_event = ObservableEvent::default();
-    let resolver = DnsResolver::new();
+    let cdsi_env = match environment {
+        Environment::Prod => libsignal_net::env::PROD.cdsi,
+        Environment::Staging => libsignal_net::env::STAGING.cdsi,
+    };
+    let resolver = DnsResolver::new(&no_network_change_events());
 
-    let connected = if use_routes {
+    let connected = {
         let confirmation_header_name = cdsi_env
             .domain_config
             .connect
@@ -89,14 +96,14 @@ async fn main() {
         let connection_resources = ConnectionResources {
             connect_state: &connect_state,
             dns_resolver: &resolver,
-            network_change_event: &network_change_event,
+            network_change_event: &no_network_change_events(),
             confirmation_header_name,
         };
 
         CdsiConnection::connect_with(
             connection_resources,
             DirectOrProxyProvider::maybe_proxied(
-                cdsi_env.route_provider(EnableDomainFronting::No),
+                cdsi_env.enclave_websocket_provider(EnableDomainFronting::No),
                 None,
             ),
             WS2_CONFIG,
@@ -104,14 +111,6 @@ async fn main() {
             auth,
         )
         .await
-    } else {
-        let endpoint_connection = EnclaveEndpointConnection::new(
-            &cdsi_env,
-            Duration::from_secs(10),
-            &network_change_event,
-        );
-        let transport_connection = DirectConnector::new(resolver);
-        CdsiConnection::connect(&endpoint_connection, transport_connection, auth).await
     }
     .unwrap();
 
@@ -119,5 +118,5 @@ async fn main() {
         .await
         .unwrap();
 
-    println!("{:?}", cdsi_response);
+    println!("{cdsi_response:?}");
 }

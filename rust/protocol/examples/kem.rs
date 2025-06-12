@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use libsignal_protocol::kem::*;
+use rand::TryRngCore as _;
 
 #[derive(clap::Parser)]
 struct Cli {
@@ -67,6 +68,7 @@ fn main() {
         .init();
 
     let cli = Cli::parse();
+    let mut rng = rand::rngs::OsRng.unwrap_err();
 
     match cli.command {
         Command::Generate {
@@ -74,7 +76,7 @@ fn main() {
             secret_path,
             public_path,
         } => {
-            let key_pair = KeyPair::generate(key_ty.into());
+            let key_pair = KeyPair::generate(key_ty.into(), &mut rng);
             std::fs::write(secret_path, key_pair.secret_key.serialize())
                 .expect("can write to file");
             std::fs::write(public_path, key_pair.public_key.serialize())
@@ -83,7 +85,7 @@ fn main() {
         Command::Encapsulate { public_path } => {
             let key_bytes = std::fs::read(public_path).expect("can read file");
             let key = PublicKey::deserialize(&key_bytes).expect("valid public key");
-            let (ss, ciphertext) = key.encapsulate();
+            let (ss, ciphertext) = key.encapsulate(&mut rng).expect("can encapsulate");
             log::info!("encapsulating shared secret {}", hex::encode(&ss));
             std::io::stdout()
                 .write_all(&ciphertext)

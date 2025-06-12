@@ -20,10 +20,11 @@ use std::time::SystemTime;
 
 pub use ed25519_dalek::VerifyingKey;
 pub use proto::{
-    ChatMonitorResponse, CondensedTreeSearchResponse,
-    DistinguishedResponse as ChatDistinguishedResponse, FullTreeHead, MonitorKey, MonitorProof,
-    MonitorRequest, MonitorResponse, SearchResponse as ChatSearchResponse, StoredAccountData,
-    StoredMonitoringData, StoredTreeHead, TreeHead, UpdateRequest, UpdateResponse,
+    AuditorTreeHead as SingleSignatureTreeHead, ChatMonitorResponse, CondensedTreeSearchResponse,
+    DistinguishedResponse as ChatDistinguishedResponse, FullAuditorTreeHead, FullTreeHead,
+    MonitorKey, MonitorProof, MonitorRequest, MonitorResponse,
+    SearchResponse as ChatSearchResponse, Signature, StoredAccountData, StoredMonitoringData,
+    StoredTreeHead, TreeHead, UpdateRequest, UpdateResponse,
 };
 pub use verify::Error;
 use verify::{verify_distinguished, verify_monitor, verify_search};
@@ -192,11 +193,9 @@ impl KeyTransparency {
         let unverified_value = response.condensed.value.as_ref().map(|v| v.value.clone());
         let state_update =
             verify_search(&self.config, request, response, context, force_monitor, now)?;
+        let verified_value = unverified_value.ok_or(Error::RequiredFieldMissing("update value"))?;
         Ok(VerifiedSearchResult {
-            // the value has now been verified
-            value: unverified_value.ok_or(Error::VerificationFailed(
-                "unverified_value is not set".to_string(),
-            ))?,
+            value: verified_value,
             state_update,
         })
     }
@@ -340,5 +339,52 @@ impl From<AccountData> for StoredAccountData {
             username_hash: username_hash.map(StoredMonitoringData::from),
             last_tree_head: Some(last_tree_head.into()),
         }
+    }
+}
+
+impl TreeHead {
+    /// Takes a tree head with multiple signatures and turns it into a more
+    /// conventional single-signature tree head struct which happens to be the
+    /// AuditorTreeHead a.k.a. SingleSignatureTreeHead.
+    /// The selection of the correct signature is based on the auditor public key
+    /// available from the config.
+    ///
+    /// Not all key transparency deployment modes have an auditor key, and it is
+    /// possible that the source tree head will not contain the matching one. In
+    /// both cases the function will return `None`, deciding whether to treat it an
+    /// error or not is left to the caller.
+    pub fn to_single_signature_tree_head(
+        &self,
+        config: &PublicConfig,
+    ) -> Option<SingleSignatureTreeHead> {
+        let TreeHead {
+            tree_size,
+            timestamp,
+            signatures,
+        } = self;
+        config
+            .mode
+            .get_associated_key()
+            .and_then(|auditor_key| {
+                signatures.iter().find(|sig| {
+                    sig.auditor_public_key.as_slice() == auditor_key.as_bytes().as_slice()
+                })
+            })
+            .map(|signature| SingleSignatureTreeHead {
+                tree_size: *tree_size,
+                timestamp: *timestamp,
+                signature: signature.signature.clone(),
+            })
+    }
+}
+
+impl FullTreeHead {
+    pub fn select_auditor_tree_head(
+        &self,
+        public_key: &VerifyingKey,
+    ) -> Option<&FullAuditorTreeHead> {
+        self.full_auditor_tree_heads
+            .iter()
+            .find(|full_head| full_head.public_key.as_slice() == public_key.as_bytes().as_slice())
     }
 }

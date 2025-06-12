@@ -48,18 +48,11 @@ const CREDENTIAL_LABEL: &[u8] = b"20231003_Signal_BackupAuthCredential";
 // bridge representation.
 
 #[derive(
-    Copy,
-    Clone,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    PartialDefault,
-    Debug,
-    num_enum::TryFromPrimitive,
+    Copy, Clone, Serialize, Deserialize, PartialEq, Eq, PartialDefault, Debug, derive_more::TryFrom,
 )]
 #[serde(into = "u64", try_from = "u64")]
 #[repr(u8)]
+#[try_from(repr)]
 pub enum BackupLevel {
     #[partial_default]
     Free = 200,
@@ -85,18 +78,11 @@ impl TryFrom<u64> for BackupLevel {
 }
 
 #[derive(
-    Copy,
-    Clone,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    PartialDefault,
-    Debug,
-    num_enum::TryFromPrimitive,
+    Copy, Clone, Serialize, Deserialize, PartialEq, Eq, PartialDefault, Debug, derive_more::TryFrom,
 )]
 #[serde(into = "u64", try_from = "u64")]
 #[repr(u8)]
+#[try_from(repr)]
 pub enum BackupCredentialType {
     #[partial_default]
     Messages = 1,

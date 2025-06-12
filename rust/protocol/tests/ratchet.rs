@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use hex_literal::hex;
+use const_str::hex;
 use libsignal_protocol::*;
 
 mod support;
+use rand::TryRngCore as _;
 use support::*;
 
 #[test]
@@ -61,6 +62,7 @@ fn test_ratcheting_session_as_bob() -> Result<(), SignalProtocolError> {
         IdentityKey::decode(&alice_identity_public)?,
         alice_base_public_key,
         None,
+        UsePQRatchet::Yes,
     );
 
     let bob_record = initialize_bob_session_record(&bob_parameters)?;
@@ -135,9 +137,10 @@ fn test_ratcheting_session_as_alice() -> Result<(), SignalProtocolError> {
         IdentityKey::decode(&bob_identity_public)?,
         bob_signed_prekey_public,
         bob_ephemeral_public,
+        UsePQRatchet::Yes,
     );
 
-    let mut csprng = rand::rngs::OsRng;
+    let mut csprng = rand::rngs::OsRng.unwrap_err();
     let alice_record = initialize_alice_session_record(&alice_parameters, &mut csprng)?;
 
     assert_eq!(
@@ -171,7 +174,7 @@ fn test_ratcheting_session_as_alice() -> Result<(), SignalProtocolError> {
 
 #[test]
 fn test_alice_and_bob_agree_on_chain_keys_with_kyber() -> Result<(), SignalProtocolError> {
-    let mut csprng = rand::rngs::OsRng;
+    let mut csprng = rand::rngs::OsRng.unwrap_err();
 
     let alice_identity_key_pair = IdentityKeyPair::generate(&mut csprng);
     let alice_base_key_pair = KeyPair::generate(&mut csprng);
@@ -180,7 +183,7 @@ fn test_alice_and_bob_agree_on_chain_keys_with_kyber() -> Result<(), SignalProto
     let bob_identity_key_pair = IdentityKeyPair::generate(&mut csprng);
     let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
 
-    let bob_kyber_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024);
+    let bob_kyber_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024, &mut csprng);
 
     let alice_parameters = AliceSignalProtocolParameters::new(
         alice_identity_key_pair,
@@ -188,6 +191,7 @@ fn test_alice_and_bob_agree_on_chain_keys_with_kyber() -> Result<(), SignalProto
         *bob_identity_key_pair.identity_key(),
         bob_signed_pre_key_pair.public_key,
         bob_ephemeral_key_pair.public_key,
+        UsePQRatchet::Yes,
     )
     .with_their_kyber_pre_key(&bob_kyber_pre_key_pair.public_key);
 
@@ -214,6 +218,7 @@ fn test_alice_and_bob_agree_on_chain_keys_with_kyber() -> Result<(), SignalProto
         *alice_identity_key_pair.identity_key(),
         alice_base_key_pair.public_key,
         Some(&kyber_ciphertext),
+        UsePQRatchet::Yes,
     );
     let bob_record = initialize_bob_session_record(&bob_parameters)?;
 

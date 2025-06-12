@@ -68,11 +68,6 @@ public func sanitizeWebp(input: SignalInputStream) throws {
     }
 }
 
-@available(*, deprecated, message: "Prefer the version without a length; it is now ignored")
-public func sanitizeWebp(input: SignalInputStream, length ignored: UInt64) throws {
-    try sanitizeWebp(input: input)
-}
-
 public class SanitizedMetadata: ClonableHandleOwner<OpaquePointer?> {
     override internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
         return signal_sanitized_metadata_clone(&newHandle, currentHandle)

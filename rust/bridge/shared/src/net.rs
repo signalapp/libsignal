@@ -93,8 +93,13 @@ bridge_handle_fns!(ConnectionManager, clone = false);
 fn ConnectionManager_new(
     environment: AsType<Environment, u8>,
     user_agent: String,
+    remote_config: &mut BridgedStringMap,
 ) -> ConnectionManager {
-    ConnectionManager::new(environment.into_inner(), user_agent.as_str())
+    ConnectionManager::new(
+        environment.into_inner(),
+        user_agent.as_str(),
+        remote_config.take(),
+    )
 }
 
 #[bridge_fn]
@@ -126,6 +131,14 @@ fn ConnectionManager_set_censorship_circumvention_enabled(
     enabled: bool,
 ) {
     connection_manager.set_censorship_circumvention_enabled(enabled)
+}
+
+#[bridge_fn]
+fn ConnectionManager_set_remote_config(
+    connection_manager: &ConnectionManager,
+    remote_config: &mut BridgedStringMap,
+) {
+    connection_manager.set_remote_config(remote_config.take());
 }
 
 #[bridge_fn]

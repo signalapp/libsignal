@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, Ipv6Addr};
 use std::str::FromStr as _;
 use std::sync::{Arc, Mutex};
@@ -27,6 +27,7 @@ use crate::route::{
 };
 use crate::timeouts::{DNS_SYSTEM_LOOKUP_TIMEOUT, DOH_FALLBACK_LOOKUP_TIMEOUT};
 use crate::utils::oneshot_broadcast::{self, Receiver};
+use crate::utils::NetworkChangeEvent;
 use crate::{utils, Alpn};
 
 pub mod custom_resolver;
@@ -41,6 +42,16 @@ pub mod lookup_result;
 
 pub type DnsError = Error;
 pub type Result<T> = std::result::Result<T, Error>;
+
+fn has_dns64_prefix(addr: &Ipv6Addr) -> bool {
+    /// From "RFC 6052: IPv6 Addressing of IPv4/IPv6 Translators", Section 2.1:  Well-Known Prefix
+    const DNS64_WELL_KNOWN_PREFIX: [u8; 12] = {
+        let octs = const_str::ip_addr!(v6, "64:ff9b::").octets();
+        *octs.first_chunk().unwrap()
+    };
+
+    addr.octets().starts_with(&DNS64_WELL_KNOWN_PREFIX)
+}
 
 struct DnsResolverState {
     /// Controls if lookup results will contain IPv6 entries.
@@ -70,6 +81,7 @@ impl Default for DnsResolverState {
 pub struct DnsResolver {
     lookup_options: Arc<[LookupOption]>,
     state: Arc<Mutex<DnsResolverState>>,
+    known_good_results: Arc<HashMap<&'static str, HashSet<IpAddr>>>,
 }
 
 /// A single DNS resolution strategy that can be tried.
@@ -81,6 +93,7 @@ struct LookupOption {
 }
 
 pub fn build_custom_resolver_cloudflare_doh(
+    network_change_event: &NetworkChangeEvent,
 ) -> CustomDnsResolver<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>, DohTransportConnectorFactory> {
     let (v4, v6) = CLOUDFLARE_IPS;
     let targets = [IpAddr::V6(v6), IpAddr::V4(v4)].map(|ip_addr| {
@@ -96,6 +109,7 @@ pub fn build_custom_resolver_cloudflare_doh(
                     sni: host,
                     root_certs: RootCertificates::Native,
                     alpn: Some(Alpn::Http2),
+                    min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_2),
                 },
                 inner: TcpRoute {
                     address: ip_addr,
@@ -104,7 +118,11 @@ pub fn build_custom_resolver_cloudflare_doh(
             },
         }
     });
-    CustomDnsResolver::new(targets.into(), DohTransportConnectorFactory)
+    CustomDnsResolver::new(
+        targets.into(),
+        DohTransportConnectorFactory,
+        network_change_event,
+    )
 }
 
 impl DnsResolver {
@@ -121,11 +139,12 @@ impl DnsResolver {
         DnsResolver {
             lookup_options,
             state: Default::default(),
+            known_good_results: Arc::new(HashMap::new()),
         }
     }
 
-    pub fn new() -> Self {
-        Self::new_with_static_fallback(HashMap::new())
+    pub fn new(network_change_event: &NetworkChangeEvent) -> Self {
+        Self::new_with_static_fallback(HashMap::new(), network_change_event)
     }
 
     /// Creates a DNS resolver that will only use a provided static map
@@ -138,13 +157,24 @@ impl DnsResolver {
                 timeout_after: Duration::from_millis(1),
             }]),
             state: Default::default(),
+            known_good_results: Arc::new(HashMap::new()),
         }
     }
 
     /// Creates a DNS resolver with a default resolution strategy
     /// to be used for most of the external use cases
-    pub fn new_with_static_fallback(static_map: HashMap<&'static str, LookupResult>) -> Self {
-        let cloudflare_doh = Box::new(build_custom_resolver_cloudflare_doh());
+    pub fn new_with_static_fallback(
+        static_map: HashMap<&'static str, LookupResult>,
+        network_change_event: &NetworkChangeEvent,
+    ) -> Self {
+        let cloudflare_doh = Box::new(build_custom_resolver_cloudflare_doh(network_change_event));
+
+        let known_good_results = Arc::new(
+            static_map
+                .iter()
+                .map(|(host, result)| (*host, HashSet::from_iter(result)))
+                .collect(),
+        );
 
         let lookup_options = [
             LookupOption {
@@ -164,6 +194,7 @@ impl DnsResolver {
         DnsResolver {
             lookup_options: lookup_options.into(),
             state: Default::default(),
+            known_good_results,
         }
     }
 
@@ -192,11 +223,7 @@ impl DnsResolver {
                 std::net::IpAddr::V4(ip) => (vec![ip], vec![]),
                 std::net::IpAddr::V6(ip) => (vec![], vec![ip]),
             };
-            return Ok(LookupResult {
-                source: super::DnsSource::Static,
-                ipv4,
-                ipv6,
-            });
+            return Ok(LookupResult { ipv4, ipv6 });
         }
         match self.start_or_join_lookup(hostname).val().await {
             Ok(r) => r,
@@ -230,6 +257,7 @@ impl DnsResolver {
         let Self {
             lookup_options,
             state,
+            known_good_results,
         } = self.clone();
         tokio::spawn(async move {
             let request = DnsLookupRequest {
@@ -254,16 +282,40 @@ impl DnsResolver {
                     }),
                 });
 
+            let log_safe_hostname = log_safe_domain(&hostname);
+
+            if let Ok(lookup) = &result {
+                if let Some(expected) = known_good_results.get(hostname.as_str()) {
+                    let mut unexpected =
+                        lookup.iter().filter(|ip| !expected.contains(ip)).peekable();
+
+                    if unexpected.peek().is_some() {
+                        let dns64_suffix = if unexpected
+                            .any(|ip| matches!(ip, IpAddr::V6(v6) if has_dns64_prefix(&v6)))
+                        {
+                            " with DNS64 prefix"
+                        } else {
+                            ""
+                        };
+
+                        log::warn!(
+                            "DNS resolution for domain [{log_safe_hostname}] returned unexpected result {dns64_suffix}",
+                        );
+                    }
+                }
+
+                if lookup.ipv6.iter().any(has_dns64_prefix) {
+                    log::info!("Detected DNS64 in use for domain [{log_safe_hostname}]",);
+                }
+            }
+
             state
                 .lock()
                 .expect("not poisoned")
                 .in_flight_lookups
                 .remove(&hostname);
             if result_sender.send(result).is_err() {
-                log::debug!(
-                    "No DNS result listeners left for domain [{}]",
-                    log_safe_domain(&hostname)
-                );
+                log::debug!("No DNS result listeners left for domain [{log_safe_hostname}]",);
             }
         });
     }
@@ -282,14 +334,14 @@ impl LookupOption {
         match &result {
             Ok(_) => {
                 log::debug!(
-                    "Resolved domain [{}] after {:?}",
+                    "Resolved domain [{}] after {:.3?}",
                     log_safe_domain,
                     started_at.elapsed(),
                 );
             }
             Err(error) => {
                 log::warn!(
-                    "Failed to resolve domain [{}] after {:?}: {}",
+                    "Failed to resolve domain [{}] after {:.3?}: {}",
                     log_safe_domain,
                     started_at.elapsed(),
                     error,
@@ -316,7 +368,6 @@ mod test {
     use crate::dns::dns_lookup::DnsLookupRequest;
     use crate::dns::{DnsLookup, DnsResolver, Error, LookupResult, StaticDnsMap};
     use crate::utils::{sleep_and_catch_up, timed};
-    use crate::DnsSource;
 
     const IPV4: Ipv4Addr = ip_addr!(v4, "192.0.2.1");
     const IPV6: Ipv6Addr = ip_addr!(v6, "3fff::1");
@@ -332,19 +383,19 @@ mod test {
 
     impl From<Ipv4Addr> for LookupResult {
         fn from(value: Ipv4Addr) -> Self {
-            LookupResult::new(DnsSource::Test, vec![value], vec![])
+            LookupResult::new(vec![value], vec![])
         }
     }
 
     impl From<Ipv6Addr> for LookupResult {
         fn from(value: Ipv6Addr) -> Self {
-            LookupResult::new(DnsSource::Test, vec![], vec![value])
+            LookupResult::new(vec![], vec![value])
         }
     }
 
     impl From<(Ipv4Addr, Ipv6Addr)> for LookupResult {
         fn from(value: (Ipv4Addr, Ipv6Addr)) -> Self {
-            LookupResult::new(DnsSource::Test, vec![value.0], vec![value.1])
+            LookupResult::new(vec![value.0], vec![value.1])
         }
     }
 

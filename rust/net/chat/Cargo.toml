@@ -1,0 +1,43 @@
+[package]
+name = "libsignal-net-chat"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+authors.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+libsignal-net = { path = ".." }
+
+libsignal-core = { workspace = true }
+libsignal-keytrans = { workspace = true }
+libsignal-protocol = { workspace = true }
+zkgroup = { workspace = true }
+
+async-trait = { workspace = true }
+base64 = { workspace = true }
+derive_more = { workspace = true }
+displaydoc = { workspace = true }
+hex = { workspace = true }
+http = { workspace = true }
+log = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde_with = { workspace = true, features = ["base64"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+libsignal-cli-utils = { workspace = true }
+libsignal-net = { path = "..", features = ["test-util"] }
+usernames = { workspace = true }
+
+anyhow = { workspace = true }
+bytes = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+env_logger = { workspace = true }
+rand = { workspace = true }
+test-case = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread"] }

@@ -90,7 +90,7 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
 # Swift
 
-- We support back to **iOS 13** (at the time of this writing), so newer APIs may not be available. This will be checked on build, so you can't get it wrong.
+- We support back to **iOS 15** (at the time of this writing), so newer APIs may not be available. This will be checked on build, so you can't get it wrong.
 
 - **Write API docs** using [DocC syntax][] (a Markdown dialect), unless an API is trivial (or not app-team-facing). Even for internal methods, though, if you do write a comment, make it a doc comment (like for Rust code), because it shows up in IDEs.
 

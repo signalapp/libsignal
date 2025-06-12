@@ -9,11 +9,13 @@ import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.Map;
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.FilterExceptions;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.internal.NativeTesting;
+import org.signal.libsignal.internal.TokioAsyncContext;
 import org.signal.libsignal.net.internal.BridgeChatListener;
 
 /**
@@ -244,5 +246,8 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
       byte[] body,
       int timeoutMillis) {}
 
-  public record Response(int status, String message, Map<String, String> headers, byte[] body) {}
+  public record Response(int status, String message, Map<String, String> headers, byte[] body) {
+    @CalledFromNative
+    public Response {}
+  }
 }

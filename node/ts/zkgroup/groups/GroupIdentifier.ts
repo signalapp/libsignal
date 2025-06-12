@@ -12,4 +12,9 @@ export default class GroupIdentifier extends ByteArray {
   constructor(contents: Buffer) {
     super(contents, GroupIdentifier.checkLength(GroupIdentifier.SIZE));
   }
+
+  /** Returns the group ID as a base64 string (with padding). */
+  toString(): string {
+    return this.contents.toString('base64');
+  }
 }

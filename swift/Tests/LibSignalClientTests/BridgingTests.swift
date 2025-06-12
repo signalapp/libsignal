@@ -209,6 +209,39 @@ final class BridgingTests: XCTestCase {
         }
         XCTAssertEqual(result, [])
     }
+
+    func testBridgedStringMap() throws {
+        let empty = try [:].withBridgedStringMap { map in
+            try invokeFnReturningString {
+                signal_testing_bridged_string_map_dump_to_json($0, map.const())
+            }
+        }
+        XCTAssertEqual(empty, "{}")
+
+        let dumped = try ["b": "bbb", "a": "aaa", "c": "ccc"].withBridgedStringMap { map in
+            try invokeFnReturningString {
+                signal_testing_bridged_string_map_dump_to_json($0, map.const())
+            }
+        }
+        XCTAssertEqual(dumped, """
+            {
+              "a": "aaa",
+              "b": "bbb",
+              "c": "ccc"
+            }
+            """)
+    }
+
+    func testReturnOptionalUuid() throws {
+        let shouldBeNil = try invokeFnReturningOptionalUuid {
+            signal_testing_convert_optional_uuid($0, false)
+        }
+        XCTAssertEqual(nil, shouldBeNil)
+        let shouldBePresent = try invokeFnReturningOptionalUuid {
+            signal_testing_convert_optional_uuid($0, true)
+        }
+        XCTAssertEqual(UUID(uuidString: "abababab-1212-8989-baba-565656565656"), shouldBePresent)
+    }
 }
 
 #endif

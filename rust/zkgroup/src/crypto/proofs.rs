@@ -470,7 +470,7 @@ impl ExpiringProfileKeyCredentialPresentationProof {
         st
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         uid_enc_key_pair: uid_encryption::KeyPair,
         profile_key_enc_key_pair: profile_key_encryption::KeyPair,

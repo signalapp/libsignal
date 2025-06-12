@@ -10,20 +10,35 @@ message PrefixProof {
   uint32 counter = 2;
 }
 
-// TreeHead contains the operator's signature on the most recent version of the
-// log.
-message TreeHead {
+// AuditorTreeHead contains an auditor's signature on its most recent view of the log.
+message AuditorTreeHead {
   uint64 tree_size = 1;
   int64 timestamp = 2;
   bytes signature = 3;
 }
 
-// AuditorTreeHead is provided to end-users when third-party auditing is used,
+// TreeHead contains the key transparency service operator's signature on the most recent version of the
+// log.
+message TreeHead {
+  uint64 tree_size = 1;
+  int64 timestamp = 2;
+  // The key transparency service operator provides one Signature object per auditor.
+  repeated Signature signatures = 3;
+}
+
+// The signature incorporates the auditor public key so the service provides one signature per auditor.
+message Signature {
+  bytes auditor_public_key = 1;
+  bytes signature = 2;
+}
+
+// FullAuditorTreeHead is provided to end-users when third-party auditing is used,
 // as evidence that the log is behaving honestly.
-message AuditorTreeHead {
-  TreeHead tree_head = 1;
+message FullAuditorTreeHead {
+  AuditorTreeHead tree_head = 1;
   optional bytes root_value = 2;
   repeated bytes consistency = 3;
+  bytes public_key = 4;
 }
 
 // FullTreeHead wraps a basic TreeHead with additional information that may be
@@ -32,7 +47,7 @@ message FullTreeHead {
   TreeHead tree_head = 1;
   repeated bytes last = 2;
   repeated bytes distinguished = 3;
-  optional AuditorTreeHead auditor_tree_head = 4;
+  repeated FullAuditorTreeHead full_auditor_tree_heads = 4;
 }
 
 // ProofStep is the output of one step of a binary search through the log.

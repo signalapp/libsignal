@@ -142,8 +142,7 @@ impl TryFrom<&[u8]> for SgxEndorsements {
 
         if version != OE_ENDORSEMENTS_V1 {
             return Err(Error::new(format!(
-                "unsupported SGX endorsement version {}",
-                version
+                "unsupported SGX endorsement version {version}"
             )));
         }
 
@@ -240,14 +239,14 @@ fn der_crl_for_field(
 ) -> Result<RevocationList> {
     let data = data_for_field(field, offsets, data);
 
-    RevocationList::from_der_data(data).with_context(|| format!("{:?}", field))
+    RevocationList::from_der_data(data).with_context(|| format!("{field:?}"))
 }
 
 fn string_for_field(field: SgxEndorsementField, offsets: &[usize], data: &[u8]) -> Result<String> {
     let mut bytes = data_for_field(field, offsets, data);
     util::strip_trailing_null_byte(&mut bytes);
 
-    String::from_utf8(Vec::from(bytes)).map_err(|e| Error::from(e).context(format!("{:?}", field)))
+    String::from_utf8(Vec::from(bytes)).map_err(|e| Error::from(e).context(format!("{field:?}")))
 }
 
 fn data_for_field<'a>(field: SgxEndorsementField, offsets: &[usize], data: &'a [u8]) -> &'a [u8] {
@@ -259,7 +258,7 @@ fn data_for_field<'a>(field: SgxEndorsementField, offsets: &[usize], data: &'a [
     &data[offsets[index]..offsets[index + 1]]
 }
 
-#[derive(Debug, zerocopy::FromBytes, zerocopy::FromZeroes)]
+#[derive(Debug, zerocopy::FromBytes)]
 #[repr(C)]
 pub(crate) struct EndorsementsHeader {
     // include/openenclave/bits/attestation.h
@@ -282,7 +281,7 @@ static_assertions::const_assert_eq!(16, std::mem::size_of::<EndorsementsHeader>(
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
+    use const_str::hex;
     use zerocopy::FromBytes;
 
     use super::*;
@@ -311,7 +310,7 @@ mod tests {
                 .try_into()
                 .unwrap();
 
-        let header = EndorsementsHeader::read_from(&data).expect("failed to parse header");
+        let header = EndorsementsHeader::read_from_bytes(&data).expect("failed to parse header");
 
         assert_eq!(1, header.version.get());
         assert_eq!(2, header.enclave_type.get()) // oe_enclave_type_t (include/openenclave/bits/types.h)

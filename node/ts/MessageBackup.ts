@@ -67,14 +67,6 @@ export class MessageBackupKey {
   readonly _nativeHandle: Native.MessageBackupKey;
 
   /**
-   * Create a backup bundle key from the given master key and ACI.
-   *
-   * `masterKeyBytes` should contain exactly 32 bytes.
-   *
-   * @deprecated Use AccountEntropyPool instead.
-   */
-  public constructor(masterKeyBytes: Buffer, aci: Aci);
-  /**
    * Create a backup bundle key from an account entropy pool and ACI.
    *
    * ...or from a backup key and ID, used when reading from a local backup, which may have been
@@ -84,27 +76,16 @@ export class MessageBackupKey {
    * The account entropy pool must be **validated**; passing an arbitrary string here is considered
    * a programmer error. Similarly, passing a backup key or ID of the wrong length is also an error.
    */
-  public constructor(input: MessageBackupKeyInput);
-
-  public constructor(
-    inputOrMasterKeyBytes: Buffer | MessageBackupKeyInput,
-    maybeAci?: Aci
-  ) {
-    if (inputOrMasterKeyBytes instanceof Buffer) {
-      if (maybeAci === undefined) throw new Error('missing ACI parameter');
-      this._nativeHandle = Native.MessageBackupKey_FromMasterKey(
-        inputOrMasterKeyBytes,
-        maybeAci.getServiceIdFixedWidthBinary()
-      );
-    } else if ('accountEntropy' in inputOrMasterKeyBytes) {
-      const { accountEntropy, aci } = inputOrMasterKeyBytes;
+  public constructor(input: MessageBackupKeyInput) {
+    if ('accountEntropy' in input) {
+      const { accountEntropy, aci } = input;
       this._nativeHandle = Native.MessageBackupKey_FromAccountEntropyPool(
         accountEntropy,
         aci.getServiceIdFixedWidthBinary()
       );
     } else {
-      const { backupId } = inputOrMasterKeyBytes;
-      let { backupKey } = inputOrMasterKeyBytes;
+      const { backupId } = input;
+      let { backupKey } = input;
       if (backupKey instanceof BackupKey) {
         backupKey = backupKey.contents;
       }

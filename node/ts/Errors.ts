@@ -50,10 +50,15 @@ export enum ErrorCode {
   ChatServiceInactive,
   AppExpired,
   DeviceDelinked,
+  ConnectionInvalidated,
+  ConnectedElsewhere,
 
   BackupValidation,
 
   Cancelled,
+
+  KeyTransparencyError,
+  KeyTransparencyVerificationFailed,
 }
 
 export class LibSignalErrorBase extends Error {
@@ -252,6 +257,14 @@ export type DeviceDelinkedError = LibSignalErrorBase & {
   code: ErrorCode.DeviceDelinked;
 };
 
+export type ConnectionInvalidatedError = LibSignalErrorBase & {
+  code: ErrorCode.ConnectionInvalidated;
+};
+
+export type ConnectedElsewhereError = LibSignalErrorBase & {
+  code: ErrorCode.ConnectedElsewhere;
+};
+
 export type SvrDataMissingError = LibSignalErrorBase & {
   code: ErrorCode.SvrDataMissing;
 };
@@ -272,6 +285,14 @@ export type BackupValidationError = LibSignalErrorCommon & {
 
 export type CancellationError = LibSignalErrorCommon & {
   code: ErrorCode.Cancelled;
+};
+
+export type KeyTransparencyError = LibSignalErrorCommon & {
+  code: ErrorCode.KeyTransparencyError;
+};
+
+export type KeyTransparencyVerificationFailed = LibSignalErrorCommon & {
+  code: ErrorCode.KeyTransparencyVerificationFailed;
 };
 
 export type LibSignalError =
@@ -309,6 +330,10 @@ export type LibSignalError =
   | ChatServiceInactive
   | AppExpiredError
   | DeviceDelinkedError
+  | ConnectionInvalidatedError
+  | ConnectedElsewhereError
   | RateLimitedError
   | BackupValidationError
-  | CancellationError;
+  | CancellationError
+  | KeyTransparencyError
+  | KeyTransparencyVerificationFailed;

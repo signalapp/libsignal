@@ -279,10 +279,10 @@ mod test {
         max_response_size: usize,
         log_tag: &Arc<str>,
     ) -> Result<AggregatingHttp2Client, HttpError> {
-        let outcome_record_snapshot = outcome_record.read().await.clone();
+        let mut outcome_record_snapshot = outcome_record.read().await.clone();
         let tls_connector = crate::route::ComposedConnector::new(
-            crate::tcp_ssl::StatelessDirect,
-            ThrottlingConnector::new(crate::tcp_ssl::StatelessDirect, 1),
+            ThrottlingConnector::new(crate::tcp_ssl::StatelessTls, 1),
+            crate::tcp_ssl::StatelessTcp,
         );
         let connector = Http2Connector {
             inner: tls_connector,
@@ -290,7 +290,7 @@ mod test {
         };
         let (result, updates) = crate::route::connect_resolved(
             targets.into_iter().collect(),
-            &outcome_record_snapshot,
+            &mut outcome_record_snapshot,
             connector,
             (),
             log_tag.clone(),
@@ -347,6 +347,7 @@ mod test {
                             SERVER_CERTIFICATE.cert.der(),
                         )),
                         alpn: None,
+                        min_protocol_version: None,
                     },
                     inner: TcpRoute {
                         address: Ipv6Addr::LOCALHOST.into(),
@@ -423,6 +424,7 @@ mod test {
                             SERVER_CERTIFICATE.cert.der(),
                         )),
                         alpn: None,
+                        min_protocol_version: None,
                     },
                     inner: TcpRoute {
                         address: Ipv6Addr::LOCALHOST.into(),

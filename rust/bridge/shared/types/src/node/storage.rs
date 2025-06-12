@@ -494,7 +494,7 @@ impl NodeIdentityKeyStore {
                 // We could do it manually, but really registration IDs have more constraints than
                 // just fitting in a u32. For now, we'll ignore those issues; a valid implementation
                 // should not have problems here anyway.
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(clippy::cast_possible_truncation)]
                 Ok(b) => Ok(b.value(cx) as u32),
                 Err(_) => Err("unexpected result from _getLocalRegistrationId".into()),
             },
@@ -539,7 +539,7 @@ impl NodeIdentityKeyStore {
         &self,
         name: ProtocolAddress,
         key: PublicKey,
-    ) -> Result<bool, String> {
+    ) -> Result<IdentityChange, String> {
         let store_object_shared = self.store_object.clone();
         JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
@@ -551,9 +551,13 @@ impl NodeIdentityKeyStore {
             Ok(result)
         })
         .then(|cx, result| match result {
-            Ok(value) => match value.downcast::<JsBoolean, _>(cx) {
-                Ok(b) => Ok(b.value(cx)),
+            Ok(value) => match value.downcast::<JsNumber, _>(cx) {
                 Err(_) => Err("unexpected result from _saveIdentity".into()),
+                Ok(n) => {
+                    let n: isize = u8::convert_from(cx, n).map_err(|e| e.to_string())?.into();
+                    n.try_into()
+                        .map_err(|_| format!("{n} invalid for IdentityChange"))
+                }
             },
             Err(error) => Err(error
                 .to_string(cx)
@@ -639,7 +643,7 @@ impl IdentityKeyStore for NodeIdentityKeyStore {
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
-    ) -> Result<bool, SignalProtocolError> {
+    ) -> Result<IdentityChange, SignalProtocolError> {
         self.do_save_identity(address.clone(), *identity.public_key())
             .await
             .map_err(|s| js_error_to_rust("saveIdentity", s))

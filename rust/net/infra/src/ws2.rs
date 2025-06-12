@@ -22,6 +22,7 @@ use crate::ws::{TextOrBinary, WebSocketServiceError, WebSocketStreamLike};
 pub mod attested;
 
 /// Configuration values for managing the connected websocket.
+#[derive(Clone, Copy)]
 pub struct Config {
     /// How long to wait after the last outgoing message before sending a
     /// [`Message::Ping`].
@@ -331,9 +332,17 @@ where
                 )))
             }
             Event::ConnectionIdle => {
+                if last_sent_to_server > last_heard_from_server {
+                    // Differentiate between local-idle and remote-idle pings by checking if we have a
+                    // ping or request sent since our last response.
+                    log::warn!(
+                        "[{log_tag}] server hasn't responded in {:.3?}; sending a ping",
+                        last_heard_from_server.elapsed()
+                    );
+                }
                 *ping_count = ping_count.wrapping_add(1);
                 match stream
-                    .send(Message::Ping(vec![*ping_count]))
+                    .send(Message::Ping(vec![*ping_count].into()))
                     .await
                     .map_err(|e| TungsteniteSendError::from(TungsteniteError::from(e)))
                 {
@@ -403,7 +412,7 @@ where
                             Some(CloseFrame { code, reason }) => {
                                 Outcome::Finished(Err(NextEventError::AbnormalServerClose {
                                     code,
-                                    reason: reason.into_owned(),
+                                    reason: reason.as_str().to_owned(),
                                 }))
                             }
                         }
@@ -665,7 +674,7 @@ mod test {
         const SENT_MESSAGE: &str = "client-sent message";
         const SENT_META: u32 = 123456;
 
-        let sent_message = TextOrBinary::Text(SENT_MESSAGE.to_string());
+        let sent_message = TextOrBinary::Text(SENT_MESSAGE.into());
         outgoing_tx
             .send((sent_message.clone(), SENT_META))
             .await
@@ -701,10 +710,10 @@ mod test {
         ws_server
             .send_all(
                 &mut futures_util::stream::iter([
-                    Message::Text("first message".to_string()),
-                    Message::Binary(b"second message".into()),
-                    Message::Ping(vec![1, 2, 3]),
-                    Message::Pong(vec![1, 2, 3]),
+                    Message::Text("first message".into()),
+                    Message::Binary(b"second message"[..].into()),
+                    Message::Ping(vec![1, 2, 3].into()),
+                    Message::Pong(vec![1, 2, 3].into()),
                     Message::Close(None),
                 ])
                 .map(Ok),
@@ -717,7 +726,7 @@ mod test {
             Outcome::Continue(MessageEvent::ReceivedMessage(TextOrBinary::Text(text))) if text == "first message");
         assert_matches!(
             connection.as_mut().handle_next_event().await,
-            Outcome::Continue(MessageEvent::ReceivedMessage(TextOrBinary::Binary(bin))) if bin == b"second message");
+            Outcome::Continue(MessageEvent::ReceivedMessage(TextOrBinary::Binary(bin))) if &bin[..] == b"second message");
         assert_matches!(
             connection.as_mut().handle_next_event().await,
             Outcome::Continue(MessageEvent::ReceivedPingPong)
@@ -991,7 +1000,7 @@ mod test {
             async {
                 tokio::time::sleep(REMOTE_IDLE_TIMEOUT / 2).await;
                 ws_server
-                    .send(Message::Text("from server".to_string()))
+                    .send(Message::Text("from server".into()))
                     .await
                     .expect("can send from server");
             },
@@ -1003,7 +1012,7 @@ mod test {
         tokio::time::advance(REMOTE_IDLE_TIMEOUT / 2).await;
         // The client sends a message, but that doesn't reset the remote timeout.
         outgoing_tx
-            .send((TextOrBinary::Text("from the client".to_string()), ()))
+            .send((TextOrBinary::Text("from the client".into()), ()))
             .await
             .expect("can send to connection");
         let result = connection

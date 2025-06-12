@@ -8,10 +8,29 @@ package org.signal.libsignal.internal;
 import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import org.junit.After;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 
 public class BridgingTest {
+  long ioRuntime = 0;
+
+  @Before
+  public void initIoRuntime() {
+    ioRuntime = NativeTesting.TESTING_NonSuspendingBackgroundThreadRuntime_New();
+  }
+
+  @After
+  public void destroyIoRuntime() {
+    NativeTesting.TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(ioRuntime);
+    ioRuntime = 0;
+  }
+
   @Test
   public void testErrorOnBorrow() throws Exception {
     assertThrows(
@@ -20,14 +39,15 @@ public class BridgingTest {
         IllegalArgumentException.class, () -> NativeTesting.TESTING_ErrorOnBorrowAsync(null));
     assertThrows(
         IllegalArgumentException.class,
-        () -> NativeTesting.TESTING_ErrorOnBorrowIo(-1, null).get());
+        () -> NativeTesting.TESTING_ErrorOnBorrowIo(ioRuntime, null).get());
   }
 
   @Test
   public void testPanicOnBorrow() throws Exception {
     assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicOnBorrowSync(null));
     assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicOnBorrowAsync(null));
-    assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicOnBorrowIo(-1, null).get());
+    assertThrows(
+        AssertionError.class, () -> NativeTesting.TESTING_PanicOnBorrowIo(ioRuntime, null).get());
   }
 
   @Test
@@ -37,7 +57,7 @@ public class BridgingTest {
     ExecutionException e =
         assertThrows(
             ExecutionException.class,
-            () -> NativeTesting.TESTING_PanicOnLoadIo(-1, null, null).get());
+            () -> NativeTesting.TESTING_PanicOnLoadIo(ioRuntime, null, null).get());
     assertTrue(e.getCause().toString(), e.getCause() instanceof AssertionError);
   }
 
@@ -47,7 +67,8 @@ public class BridgingTest {
     assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicInBodyAsync(null));
     ExecutionException e =
         assertThrows(
-            ExecutionException.class, () -> NativeTesting.TESTING_PanicInBodyIo(-1, null).get());
+            ExecutionException.class,
+            () -> NativeTesting.TESTING_PanicInBodyIo(ioRuntime, null).get());
     assertTrue(e.getCause().toString(), e.getCause() instanceof AssertionError);
   }
 
@@ -59,7 +80,8 @@ public class BridgingTest {
         IllegalArgumentException.class, () -> NativeTesting.TESTING_ErrorOnReturnAsync(null));
     ExecutionException e =
         assertThrows(
-            ExecutionException.class, () -> NativeTesting.TESTING_ErrorOnReturnIo(-1, null).get());
+            ExecutionException.class,
+            () -> NativeTesting.TESTING_ErrorOnReturnIo(ioRuntime, null).get());
     assertTrue(e.getCause().toString(), e.getCause() instanceof IllegalArgumentException);
   }
 
@@ -69,8 +91,15 @@ public class BridgingTest {
     assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicOnReturnAsync(null));
     ExecutionException e =
         assertThrows(
-            ExecutionException.class, () -> NativeTesting.TESTING_PanicOnReturnIo(-1, null).get());
+            ExecutionException.class,
+            () -> NativeTesting.TESTING_PanicOnReturnIo(ioRuntime, null).get());
     assertTrue(e.getCause().toString(), e.getCause() instanceof AssertionError);
+  }
+
+  @Test
+  public void testTakeStringArrayAsArg() {
+    assertEquals(
+        NativeTesting.TESTING_JoinStringArray(new String[] {"a", "b", "c"}, " - "), "a - b - c");
   }
 
   @Test
@@ -135,6 +164,54 @@ public class BridgingTest {
     // Signed integers we can handle directly.
     for (var value : new int[] {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
       assertEquals(value, NativeTesting.TESTING_RoundTripI32(value));
+    }
+  }
+
+  @Test
+  public void testOptionalUuid() {
+    final var present = NativeTesting.TESTING_ConvertOptionalUuid(true);
+    assertEquals(present, UUID.fromString("abababab-1212-8989-baba-565656565656"));
+
+    final var absent = NativeTesting.TESTING_ConvertOptionalUuid(false);
+    assertNull(absent);
+  }
+
+  @Test
+  public void testBridgedStringMap() {
+    final var empty = new BridgedStringMap(Collections.emptyMap()).dump();
+    assertEquals(empty, "{}");
+
+    final var map = new HashMap<String, String>();
+    map.put("b", "bbb");
+    map.put("a", "aaa");
+    map.put("c", "ccc");
+    final var dumped = new BridgedStringMap(map).dump();
+    assertEquals(
+        dumped, """
+      {
+        "a": "aaa",
+        "b": "bbb",
+        "c": "ccc"
+      }""");
+  }
+
+  @Test
+  public void testTypeTagging() throws Exception {
+    long handle = NativeTesting.TESTING_FutureProducesPointerType(ioRuntime, 5).get();
+    try {
+      // This 48 comes from TYPE_TAG_POINTER_OFFSET in Rust.
+      // It would be more principled to expose that through a method,
+      // but since this is just a test it's okay to hardcode it just once.
+      Assume.assumeTrue("type tagging should be enabled", ((handle >> 48) & 0xFF) != 0);
+      NativeTesting.TESTING_OtherTestingHandleType_getValue(handle);
+      fail("should have panicked");
+    } catch (AssertionError e) {
+      // The "fail" is also an AssertionError, so we have to check the message.
+      assertEquals(
+          e.getMessage(),
+          "bad parameter type libsignal_bridge_testing::convert::OtherTestingHandleType");
+    } finally {
+      NativeTesting.TestingHandleType_Destroy(handle);
     }
   }
 }

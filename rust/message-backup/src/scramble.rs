@@ -49,7 +49,7 @@ impl Scrambler {
 
     fn replace_e164(&mut self, field: &mut u64) {
         // Start with numbers in the range +1-555-555-01xx, generate further plausible numbers after that.
-        #[allow(clippy::inconsistent_digit_grouping)]
+        #[expect(clippy::inconsistent_digit_grouping)]
         const E164_START: u64 = 1_555_555_0100;
 
         let original = *field;
@@ -292,6 +292,7 @@ impl Visit<Scrambler> for proto::account_data::AccountSettings {
             phoneNumberSharingMode: _,
             defaultChatStyle,
             customChatColors,
+            optimizeOnDeviceStorage: _,
             special_fields: _,
         } = self;
 
@@ -340,6 +341,7 @@ impl Visit<Scrambler> for proto::FilePointer {
             caption,
             blurHash,
             locator,
+            locatorInfo,
             special_fields: _,
         } = self;
 
@@ -350,13 +352,22 @@ impl Visit<Scrambler> for proto::FilePointer {
         blurHash.randomize(&mut visitor.rng);
 
         if let Some(loc) = locator {
-            use proto::file_pointer::Locator;
-            match loc {
-                Locator::BackupLocator(loc) => loc.accept(visitor),
-                Locator::AttachmentLocator(loc) => loc.accept(visitor),
-                Locator::LocalLocator(loc) => loc.accept(visitor),
-                Locator::InvalidAttachmentLocator(loc) => loc.accept(visitor),
-            }
+            loc.accept(visitor);
+        }
+        if let Some(loc) = locatorInfo.as_mut() {
+            loc.accept(visitor);
+        }
+    }
+}
+
+impl Visit<Scrambler> for proto::file_pointer::Locator {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        use proto::file_pointer::Locator;
+        match self {
+            Locator::BackupLocator(loc) => loc.accept(visitor),
+            Locator::AttachmentLocator(loc) => loc.accept(visitor),
+            Locator::LocalLocator(loc) => loc.accept(visitor),
+            Locator::InvalidAttachmentLocator(loc) => loc.accept(visitor),
         }
     }
 }
@@ -425,6 +436,42 @@ impl Visit<Scrambler> for proto::file_pointer::LocalLocator {
             mediaName.push_str("_thumbnail");
         }
         transitCdnKey.randomize(&mut visitor.rng);
+    }
+}
+
+impl Visit<Scrambler> for proto::file_pointer::LocatorInfo {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            key,
+            integrityCheck,
+            size: _,
+            transitCdnKey,
+            transitCdnNumber: _,
+            transitTierUploadTimestamp: _,
+            mediaTierCdnNumber: _,
+            localKey,
+            legacyDigest,
+            legacyMediaName,
+            special_fields: _,
+        } = self;
+
+        localKey.randomize(&mut visitor.rng);
+        key.randomize(&mut visitor.rng);
+
+        // Randomize the integrity check while preserving the type
+        if let Some(check) = integrityCheck {
+            use proto::file_pointer::locator_info::IntegrityCheck;
+            match check {
+                IntegrityCheck::EncryptedDigest(digest) => digest.randomize(&mut visitor.rng),
+                IntegrityCheck::PlaintextHash(hash) => hash.randomize(&mut visitor.rng),
+            }
+        }
+
+        transitCdnKey.randomize(&mut visitor.rng);
+
+        // We can remove this after all clients have removed support for the old fields.
+        legacyDigest.randomize(&mut visitor.rng);
+        legacyMediaName.randomize(&mut visitor.rng);
     }
 }
 
@@ -2074,10 +2121,12 @@ impl Visit<Scrambler> for proto::NotificationProfile {
             scheduleStartTime: _,
             scheduleEndTime: _,
             scheduleDaysEnabled: _,
+            id,
             special_fields: _,
         } = self;
 
-        name.randomize(&mut visitor.rng)
+        name.randomize(&mut visitor.rng);
+        id.randomize(&mut visitor.rng)
     }
 }
 
@@ -2092,9 +2141,11 @@ impl Visit<Scrambler> for proto::ChatFolder {
             folderType: _,
             includedRecipientIds: _,
             excludedRecipientIds: _,
+            id,
             special_fields: _,
         } = self;
 
-        name.randomize(&mut visitor.rng)
+        name.randomize(&mut visitor.rng);
+        id.randomize(&mut visitor.rng);
     }
 }

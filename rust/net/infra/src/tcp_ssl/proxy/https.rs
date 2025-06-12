@@ -28,7 +28,7 @@ use crate::route::{
     HttpsProxyRoute, ProxyTarget,
 };
 use crate::ws::error::HttpFormatError;
-use crate::{AsHttpHeader, AsyncDuplexStream, Connection, TransportInfo};
+use crate::{AsHttpHeader as _, AsStaticHttpHeader, AsyncDuplexStream, Connection, TransportInfo};
 
 pub(crate) const LONG_FULL_CONNECT_THRESHOLD: Duration = super::LONG_TCP_HANDSHAKE_THRESHOLD
     .saturating_add(super::LONG_TLS_HANDSHAKE_THRESHOLD)
@@ -47,12 +47,9 @@ pub struct HttpProxyStream {
 
 assert_impl_all!(HttpProxyStream: AsyncDuplexStream);
 
-type StatelessTcpConnector = super::super::StatelessDirect;
-type StatelessTlsConnector = ComposedConnector<
-    super::super::StatelessDirect,
-    super::super::StatelessDirect,
-    TransportConnectError,
->;
+type StatelessTcpConnector = super::super::StatelessTcp;
+type StatelessTlsConnector =
+    ComposedConnector<super::super::StatelessTls, StatelessTcpConnector, TransportConnectError>;
 
 impl Connector<HttpsProxyRoute<IpAddr>, ()> for super::StatelessProxied {
     type Connection = HttpProxyStream;
@@ -131,7 +128,7 @@ impl Display for ConnectError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ConnectError::Transport(transport_connect_error) => {
-                write!(f, "transport: {}", transport_connect_error)
+                write!(f, "transport: {transport_connect_error}")
             }
             ConnectError::HttpConnectionFailed(err) => {
                 write!(f, "HTTP connection failed: {}", LogSafeHyperError(err))
@@ -153,7 +150,7 @@ impl Display for ConnectError {
                 )
             }
             ConnectError::InvalidUri(error) => {
-                write!(f, "URI was invalid: {}", error)
+                write!(f, "URI was invalid: {error}")
             }
         }
     }
@@ -227,7 +224,7 @@ fn make_connect_request(
         .map_err(ConnectError::InvalidRequest)
 }
 
-impl AsHttpHeader for HttpProxyAuth {
+impl AsStaticHttpHeader for HttpProxyAuth {
     const HEADER_NAME: http::HeaderName = http::header::PROXY_AUTHORIZATION;
 
     fn header_value(&self) -> http::HeaderValue {
@@ -342,7 +339,7 @@ mod test {
                     return Ok(res);
                 };
 
-                let expected_auth = expected_auth.as_ref().map(|h| h.as_header().1);
+                let expected_auth = expected_auth.as_ref().map(|h| h.header_value());
                 let auth = req.headers().get(HttpProxyAuth::HEADER_NAME);
                 if auth != expected_auth.as_ref() {
                     log::error!("auth header mismatch; expected {expected_auth:?}, got {auth:?}");
@@ -366,7 +363,7 @@ mod test {
                             )
                             .await;
                         }
-                        Err(e) => eprintln!("upgrade error: {}", e),
+                        Err(e) => eprintln!("upgrade error: {e}"),
                     }
                 });
                 upgrades_tx.send(upgraded).expect("not hung up on");

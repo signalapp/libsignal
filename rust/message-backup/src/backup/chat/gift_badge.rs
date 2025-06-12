@@ -9,7 +9,7 @@ use zkgroup::ZkGroupDeserializationFailure;
 use crate::proto::backup as proto;
 
 #[derive(serde::Serialize)]
-#[allow(clippy::large_enum_variant)] // The container is a BoxedValue already.
+#[expect(clippy::large_enum_variant)] // The container is a BoxedValue already.
 pub enum GiftBadge {
     Valid {
         receipt_credential_presentation: ReceiptCredentialPresentation,

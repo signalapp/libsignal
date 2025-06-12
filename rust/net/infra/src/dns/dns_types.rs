@@ -19,7 +19,7 @@ pub struct Expiring<T> {
 /// and [RFC3596](https://datatracker.ietf.org/doc/html/rfc3596#section-2.1)
 #[repr(u16)]
 #[derive(Clone, Copy)]
-#[allow(clippy::upper_case_acronyms)]
+#[expect(clippy::upper_case_acronyms)]
 pub enum ResourceType {
     /// An IPv4 host address type
     ///

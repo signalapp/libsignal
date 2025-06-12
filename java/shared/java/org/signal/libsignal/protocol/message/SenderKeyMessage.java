@@ -8,6 +8,7 @@ package org.signal.libsignal.protocol.message;
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
 import java.util.UUID;
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidMessageException;
@@ -23,6 +24,7 @@ public class SenderKeyMessage extends NativeHandleGuard.SimpleOwner
     Native.SenderKeyMessage_Destroy(nativeHandle);
   }
 
+  @CalledFromNative
   public SenderKeyMessage(long nativeHandle) {
     super(nativeHandle);
   }

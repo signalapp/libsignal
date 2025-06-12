@@ -26,9 +26,9 @@ subtle = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+const-str = { workspace = true }
 criterion = { workspace = true }
 hex = { workspace = true }
-hex-literal = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

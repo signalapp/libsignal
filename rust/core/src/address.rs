@@ -12,13 +12,20 @@ use std::fmt;
 use uuid::Uuid;
 
 /// Known types of [ServiceId].
-#[derive(Clone, Copy, Hash, PartialEq, Eq, num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, derive_more::TryFrom)]
+#[try_from(repr)]
 #[repr(u8)]
 pub enum ServiceIdKind {
     /// An [Aci].
     Aci,
     /// A [Pni].
     Pni,
+}
+
+impl From<ServiceIdKind> for u8 {
+    fn from(value: ServiceIdKind) -> Self {
+        value as u8
+    }
 }
 
 impl fmt::Display for ServiceIdKind {
@@ -333,8 +340,8 @@ mod service_id_tests {
     use std::borrow::Borrow;
 
     use proptest::prelude::*;
+    use rand::rng;
     use rand::seq::SliceRandom;
-    use rand::thread_rng;
 
     use super::*;
 
@@ -488,7 +495,7 @@ mod service_id_tests {
         let aci = Aci::from(uuid);
         assert_eq!(
             "<ACI:8c78cd2a-16ff-427d-83dc-1a5e36ce713d>",
-            format!("{:?}", aci)
+            format!("{aci:?}")
         );
         assert_eq!(
             "<ACI:8c78cd2a-16ff-427d-83dc-1a5e36ce713d>",
@@ -497,7 +504,7 @@ mod service_id_tests {
         let pni = Pni::from(uuid);
         assert_eq!(
             "<PNI:8c78cd2a-16ff-427d-83dc-1a5e36ce713d>",
-            format!("{:?}", pni)
+            format!("{pni:?}")
         );
         assert_eq!(
             "<PNI:8c78cd2a-16ff-427d-83dc-1a5e36ce713d>",
@@ -543,7 +550,7 @@ mod service_id_tests {
             ServiceId::parse_from_service_id_string("00000000-0000-0000-0000-000000000001")
                 .expect("can decode");
         assert_eq!(
-            &hex_literal::hex!("00000000 0000 0000 0000 000000000001"),
+            &const_str::hex!("00000000 0000 0000 0000 000000000001"),
             service_id.raw_uuid().as_bytes(),
         );
         assert_eq!(ServiceIdKind::Aci, service_id.kind());
@@ -620,7 +627,7 @@ mod service_id_tests {
             Pni::from_uuid(test_uuid).into(),
         ];
         let original = ids;
-        ids.shuffle(&mut thread_rng());
+        ids.shuffle(&mut rng());
         ids.sort();
         assert_eq!(original, ids);
     }

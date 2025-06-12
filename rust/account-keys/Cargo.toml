@@ -23,7 +23,7 @@ displaydoc = { workspace = true }
 hkdf = { workspace = true }
 partial-default = { workspace = true, features = ["derive"] }
 rand = { workspace = true }
-rand_core = { workspace = true, features = ["getrandom"] }
+rand_core = { workspace = true, features = ["os_rng"] }
 serde = { workspace = true, optional = true, features = ["derive"] }
 sha2 = { workspace = true }
 static_assertions = { workspace = true }
@@ -31,11 +31,10 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
+const-str = { workspace = true }
 criterion = { workspace = true }
-hex-literal = { workspace = true }
 hmac = { workspace = true, features = ["reset"] }
 proptest = { workspace = true }
-
 
 [[bench]]
 name = "hash"

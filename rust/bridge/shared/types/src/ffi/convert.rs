@@ -8,7 +8,9 @@ use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::ops::Deref;
 
+use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
+use libsignal_net::registration::PushTokenType;
 use libsignal_protocol::*;
 use paste::paste;
 use uuid::Uuid;
@@ -16,6 +18,10 @@ use uuid::Uuid;
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::net::chat::ChatListener;
+use crate::net::registration::{
+    ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushTokenType,
+    RegistrationSessionRequestedInformation,
+};
 use crate::support::{extend_lifetime, AsType, FixedLengthBincodeSerializable, Serialized};
 
 /// Converts arguments from their FFI form to their Rust form.
@@ -259,6 +265,19 @@ impl ResultTypeInfo for uuid::Uuid {
     }
 }
 
+impl ResultTypeInfo for Option<uuid::Uuid> {
+    type ResultType = [u8; 17];
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let mut bytes = [0; 17];
+        if let Some(uuid) = self {
+            let (present, out) = bytes.split_first_mut().expect("not empty");
+            *present = true.into();
+            out.copy_from_slice(uuid.as_bytes());
+        }
+        Ok(bytes)
+    }
+}
+
 impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
     type ArgType = *const libsignal_protocol::ServiceIdFixedWidthBinaryBytes;
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -310,13 +329,26 @@ impl SimpleArgTypeInfo for libsignal_protocol::Pni {
     }
 }
 
+fn parse_e164(s: &str) -> SignalFfiResult<libsignal_core::E164> {
+    let parsed = s.parse().map_err(|_: ParseIntError| {
+        SignalProtocolError::InvalidArgument(format!("{s} is not an e164"))
+    })?;
+    Ok(parsed)
+}
+
 impl SimpleArgTypeInfo for libsignal_core::E164 {
     type ArgType = <String as SimpleArgTypeInfo>::ArgType;
     fn convert_from(e164: Self::ArgType) -> SignalFfiResult<Self> {
         let e164 = String::convert_from(e164)?;
-        let parsed = e164.parse().map_err(|_: ParseIntError| {
-            SignalProtocolError::InvalidArgument(format!("{e164} is not an e164"))
-        })?;
+        parse_e164(&e164)
+    }
+}
+
+impl SimpleArgTypeInfo for Option<libsignal_core::E164> {
+    type ArgType = <Option<String> as SimpleArgTypeInfo>::ArgType;
+    fn convert_from(e164: Self::ArgType) -> SignalFfiResult<Self> {
+        let e164 = Option::<String>::convert_from(e164)?;
+        let parsed = e164.as_deref().map(parse_e164).transpose()?;
         Ok(parsed)
     }
 }
@@ -349,10 +381,47 @@ impl<const LEN: usize> SimpleArgTypeInfo for &'_ [u8; LEN] {
     }
 }
 
+impl<const LEN: usize> SimpleArgTypeInfo for Option<&'_ [u8; LEN]> {
+    type ArgType = *const [u8; LEN];
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn convert_from(arg: Self::ArgType) -> SignalFfiResult<Self> {
+        Ok(unsafe { arg.as_ref() })
+    }
+}
+
 impl<const LEN: usize> ResultTypeInfo for [u8; LEN] {
     type ResultType = [u8; LEN];
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(self)
+    }
+}
+
+impl SimpleArgTypeInfo for Box<[String]> {
+    type ArgType = BorrowedBytestringArray;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let BorrowedBytestringArray { bytes, lengths } = foreign;
+        let (mut bytes, lengths) = unsafe { (bytes.as_slice()?, lengths.as_slice()?) };
+
+        let mut out = Vec::with_capacity(lengths.len());
+        for length in lengths {
+            let string;
+            (string, bytes) = bytes.split_at(*length);
+            let string = std::str::from_utf8(string)
+                .map_err(|_| SignalProtocolError::InvalidArgument("invalid UTF-8".to_string()))?;
+            out.push(string.to_owned())
+        }
+
+        Ok(out.into_boxed_slice())
+    }
+}
+
+impl SimpleArgTypeInfo for Option<Box<[u8]>> {
+    type ArgType = OptionalBorrowedSliceOf<c_uchar>;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let OptionalBorrowedSliceOf { present, value } = foreign;
+        let slice = present.then(|| unsafe { value.as_slice() }).transpose()?;
+        Ok(slice.map(Box::from))
     }
 }
 
@@ -433,6 +502,74 @@ impl<'a> ArgTypeInfo<'a> for Option<Box<dyn ChatListener>> {
     }
 }
 
+impl SimpleArgTypeInfo for Box<dyn ConnectChatBridge> {
+    type ArgType = ConstPointer<FfiConnectChatBridgeStruct>;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let foreign = unsafe { foreign.into_inner().as_ref() }.ok_or(NullPointerError)?;
+        Ok(Box::new(FfiConnectChatBridge::new(foreign)?))
+    }
+}
+
+impl SimpleArgTypeInfo for RegistrationPushTokenType {
+    type ArgType = *const std::ffi::c_void;
+    fn convert_from(_foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        // FFI is only used from Apple platforms.
+        Ok(Self::Apn)
+    }
+}
+
+impl SimpleArgTypeInfo for RegistrationCreateSessionRequest {
+    type ArgType = FfiRegistrationCreateSessionRequest;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let FfiRegistrationCreateSessionRequest {
+            number,
+            push_token,
+            mcc,
+            mnc,
+        } = foreign;
+        let push_token: Option<String> = SimpleArgTypeInfo::convert_from(push_token)?;
+
+        // The FFI bindings are only used for Swift, which is used on Apple platforms.
+        let push_token_type = push_token.is_some().then_some(PushTokenType::Apn);
+        Ok(Self {
+            number: String::convert_from(number)?,
+            push_token,
+            push_token_type,
+            mcc: SimpleArgTypeInfo::convert_from(mcc)?,
+            mnc: SimpleArgTypeInfo::convert_from(mnc)?,
+        })
+    }
+}
+
+impl SimpleArgTypeInfo for crate::net::registration::SignedPublicPreKey {
+    type ArgType = FfiSignedPublicPreKey;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let FfiSignedPublicPreKey {
+            key_id,
+            public_key_type,
+            public_key,
+            signature,
+        } = foreign;
+        let public_key = match &public_key_type {
+            FfiPublicKeyType::ECC => <&PublicKey>::convert_from(ConstPointer {
+                raw: public_key.cast(),
+            })?
+            .serialize(),
+            FfiPublicKeyType::Kyber => <&kem::PublicKey>::convert_from(ConstPointer {
+                raw: public_key.cast(),
+            })?
+            .serialize(),
+        };
+        let signature = unsafe { signature.as_slice()? }.into();
+        Ok(Self {
+            key_id,
+            public_key,
+            signature,
+        })
+    }
+}
+
 impl<T: ResultTypeInfo, E> ResultTypeInfo for Result<T, E>
 where
     E: FfiError,
@@ -509,11 +646,37 @@ impl ResultTypeInfo for &[u8] {
     }
 }
 
+impl ResultTypeInfo for Option<&[u8]> {
+    type ResultType = OwnedBufferOf<std::ffi::c_uchar>;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(self
+            .map(|slice| {
+                let owned = OwnedBufferOf::from(Box::from(slice));
+                // A boxed slice always has a non-null base pointer, even when
+                // the length is zero.
+                debug_assert_ne!(owned.base, std::ptr::null_mut());
+                owned
+            })
+            .unwrap_or(OwnedBufferOf {
+                base: std::ptr::null_mut(),
+                length: 0,
+            }))
+    }
+}
+
 /// `u32::MAX` (`UINT_MAX`, `~0u`) is used to represent `None` here.
 impl ResultTypeInfo for Option<u32> {
     type ResultType = u32;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(self.unwrap_or(u32::MAX))
+    }
+}
+
+/// [`u64::MAX`] (`~0u`) is used to represent `None` here.
+impl ResultTypeInfo for Option<u64> {
+    type ResultType = u64;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(self.unwrap_or(u64::MAX))
     }
 }
 
@@ -542,6 +705,46 @@ impl ResultTypeInfo for crate::zkgroup::Timestamp {
     type ResultType = u64;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(self.epoch_seconds())
+    }
+}
+
+impl ResultTypeInfo for Box<[RegistrationSessionRequestedInformation]> {
+    type ResultType = <Vec<u8> as ResultTypeInfo>::ResultType;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        static_assertions::assert_eq_size!(RegistrationSessionRequestedInformation, u8);
+        static_assertions::assert_eq_align!(RegistrationSessionRequestedInformation, u8);
+        // Trivially droppable, like u8.
+        static_assertions::assert_impl_all!(RegistrationSessionRequestedInformation: Copy);
+        let b: Box<[u8]> = unsafe { std::mem::transmute(self) };
+        Ok(b.into())
+    }
+}
+
+impl ResultTypeInfo for Box<[libsignal_net::registration::RegisterResponseBadge]> {
+    type ResultType = OwnedBufferOf<FfiRegisterResponseBadge>;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let converted = IntoIterator::into_iter(self)
+            .map(ResultTypeInfo::convert_into)
+            .try_collect();
+        Ok(Box::into(converted?))
+    }
+}
+
+impl ResultTypeInfo for libsignal_net::registration::RegisterResponseBadge {
+    type ResultType = FfiRegisterResponseBadge;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let Self {
+            id,
+            visible,
+            expiration,
+        } = self;
+        Ok(FfiRegisterResponseBadge {
+            id: id.convert_into()?,
+            visible,
+            expiration_secs: expiration.as_secs_f64(),
+        })
     }
 }
 
@@ -743,6 +946,24 @@ impl ResultTypeInfo for libsignal_net::chat::Response {
     }
 }
 
+impl ResultTypeInfo for libsignal_net::registration::CheckSvr2CredentialsResponse {
+    type ResultType = FfiCheckSvr2CredentialsResponse;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let Self { matches } = self;
+        let entries = matches
+            .into_iter()
+            .map(|(key, value)| {
+                let mut bytes = key.into_bytes();
+                bytes.push(value as u8);
+                bytes
+            })
+            .collect_vec();
+        Ok(FfiCheckSvr2CredentialsResponse {
+            entries: entries.into_boxed_slice().convert_into()?,
+        })
+    }
+}
+
 /// Defines an `extern "C"` function for cloning the given type.
 #[macro_export]
 macro_rules! ffi_bridge_handle_clone {
@@ -853,20 +1074,29 @@ macro_rules! ffi_arg_type {
     (Aci) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Pni) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (E164) => (*const std::ffi::c_char);
+    (Option<E164>) => (*const std::ffi::c_char);
     (AccountEntropyPool) => (*const std::ffi::c_char);
+    (RegistrationCreateSessionRequest) => (ffi::FfiRegistrationCreateSessionRequest);
+    (RegistrationPushTokenType) => (*const std::ffi::c_void);
+    (SignedPublicPreKey) => (ffi::FfiSignedPublicPreKey);
     (&[u8; $len:expr]) => (*const [u8; $len]);
+    (Option<&[u8; $len:expr]>) => (*const [u8; $len]);
     (&[& $typ:ty]) => (ffi::BorrowedSliceOf<ffi::ConstPointer< $typ >>);
     (&mut dyn $typ:ty) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
     (Option<&dyn $typ:ty>) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
     (& $typ:ty) => (ffi::ConstPointer< $typ >);
     (&mut $typ:ty) => (ffi::MutPointer< $typ >);
     (Option<& $typ:ty>) => (ffi::ConstPointer< $typ >);
+    (Box<[String]>) => (ffi::BorrowedBytestringArray);
     (Box<[u8]>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
     (Box<dyn $typ:ty >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
     (Option<Box<dyn $typ:ty> >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
+    (Option<Box<[u8]> >) => (ffi::OptionalBorrowedSliceOf<std::ffi::c_uchar>);
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
     (AsType<$typ:ident, $bridged:ident>) => (ffi_arg_type!($bridged));
+
+    (TestingFutureCancellationGuard) => (ffi_arg_type!(&TestingFutureCancellationCounter));
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
@@ -898,25 +1128,31 @@ macro_rules! ffi_result_type {
     (u32) => (u32);
     (Option<u32>) => (u32);
     (u64) => (u64);
+    (Option<u64>) => (u64);
     (bool) => (bool);
     (&str) => (*const std::ffi::c_char);
     (String) => (*const std::ffi::c_char);
     (Option<String>) => (*const std::ffi::c_char);
     (Option<&str>) => (*const std::ffi::c_char);
-    (Option<$typ:ty>) => ($crate::ffi::MutPointer<$typ>);
     (Timestamp) => (u64);
     (Uuid) => ([u8; 16]);
+    (Option<Uuid>) => (ffi::OptionalUuid);
     (ServiceId) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Aci) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Pni) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     ([u8; $len:expr]) => ([u8; $len]);
     (&[u8]) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
+    (Option<&[u8]>) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
     (Vec<u8>) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
     (Box<[String]>) => (ffi::StringArray);
     (Box<[Vec<u8>]>) => (ffi::BytestringArray);
+    (Box<[RegistrationSessionRequestedInformation]>) => (ffi_result_type!(Vec<u8>));
+    (Option<$typ:ty>) => ($crate::ffi::MutPointer<$typ>);
 
     (LookupResponse) => (ffi::FfiCdsiLookupResponse);
     (ChatResponse) => (ffi::FfiChatResponse);
+    (CheckSvr2CredentialsResponse) => (ffi::FfiCheckSvr2CredentialsResponse);
+    (Box<[RegisterResponseBadge]>) => (ffi::OwnedBufferOf<ffi::FfiRegisterResponseBadge>);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
@@ -925,4 +1161,33 @@ macro_rules! ffi_result_type {
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
 
     ( $typ:ty ) => ($crate::ffi::MutPointer<$typ>);
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn optional_buffer_convert() {
+        {
+            let owned_buffer = <Option<&[u8]>>::convert_into(Some(b"abcdef")).expect("can convert");
+            assert_ne!(owned_buffer.base, std::ptr::null_mut());
+            assert_eq!(owned_buffer.length, 6);
+            let _ = unsafe { owned_buffer.into_box() };
+        }
+
+        {
+            let owned_buffer = <Option<&[u8]>>::convert_into(Some(&[])).expect("can convert");
+            assert_ne!(owned_buffer.base, std::ptr::null_mut());
+            assert_eq!(owned_buffer.length, 0);
+            let _ = unsafe { owned_buffer.into_box() };
+        }
+
+        {
+            let owned_buffer = <Option<&[u8]>>::convert_into(None).expect("can convert");
+            assert_eq!(owned_buffer.base, std::ptr::null_mut());
+            assert_eq!(owned_buffer.length, 0);
+            let _ = unsafe { owned_buffer.into_box() };
+        }
+    }
 }

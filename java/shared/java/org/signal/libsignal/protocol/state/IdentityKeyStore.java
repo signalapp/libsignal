@@ -24,6 +24,12 @@ public interface IdentityKeyStore {
     RECEIVING
   }
 
+  // This must be kept in sync with the Rust enum of the same name.
+  public enum IdentityChange {
+    NEW_OR_UNCHANGED,
+    REPLACED_EXISTING
+  }
+
   /**
    * Get the local client's identity key pair.
    *
@@ -50,7 +56,7 @@ public interface IdentityKeyStore {
    * @param identityKey The remote client's identity key.
    * @return True if the identity key replaces a previous identity, false if not
    */
-  public boolean saveIdentity(SignalProtocolAddress address, IdentityKey identityKey);
+  public IdentityChange saveIdentity(SignalProtocolAddress address, IdentityKey identityKey);
 
   /**
    * Verify a remote client's identity key.

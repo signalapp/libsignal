@@ -3,11 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-// Silence clippy's complains about private fields used to prevent construction
-// and recommends `#[non_exhaustive]`. The annotation only applies outside this
-// crate, but we want intra-crate privacy.
-#![allow(clippy::manual_non_exhaustive)]
-
 use std::fmt::Debug;
 
 use derive_where::derive_where;
@@ -24,9 +19,7 @@ use crate::backup::sticker::MessageStickerError;
 use crate::backup::time::{
     Duration, ReportUnusualTimestamp, Timestamp, TimestampError, TimestampOrForever,
 };
-use crate::backup::{
-    likely_empty, BackupMeta, CallError, ReferencedTypes, TryFromWith, TryIntoWith as _,
-};
+use crate::backup::{likely_empty, BackupMeta, CallError, ReferencedTypes, TryIntoWith};
 use crate::proto::backup as proto;
 
 mod contact_message;
@@ -377,7 +370,7 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
     DirectStoryReply(DirectStoryReplyMessage<M::RecipientReference>),
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 const CHAT_ITEM_MESSAGE_SIZE_LIMIT: usize = 200;
 static_assertions::const_assert!(
     std::mem::size_of::<StandardMessage<RecipientId>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
@@ -468,11 +461,11 @@ impl<
             + Lookup<PinOrder, M::RecipientReference>
             + Lookup<CustomColorId, M::CustomColorReference>
             + ReportUnusualTimestamp,
-    > TryFromWith<proto::Chat, C> for ChatData<M>
+    > TryIntoWith<ChatData<M>, C> for proto::Chat
 {
     type Error = ChatError;
 
-    fn try_from_with(value: proto::Chat, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<ChatData<M>, Self::Error> {
         let proto::Chat {
             id: _,
             recipientId,
@@ -485,7 +478,7 @@ impl<
             dontNotifyForMentionsIfMuted,
             style,
             special_fields: _,
-        } = value;
+        } = self;
 
         let recipient_id = RecipientId(recipientId);
         let Some((recipient_data, recipient)) = context.lookup_pair(&recipient_id) else {
@@ -517,7 +510,7 @@ impl<
         }
         let expiration_timer_version = expireTimerVersion;
 
-        Ok(Self {
+        Ok(ChatData {
             recipient: recipient.clone(),
             cached_recipient_info,
             expiration_timer,
@@ -538,11 +531,11 @@ impl<
             + AsRef<BackupMeta>
             + ReportUnusualTimestamp,
         M: Method + ReferencedTypes,
-    > TryFromWith<proto::ChatItem, C> for ChatItemData<M>
+    > TryIntoWith<ChatItemData<M>, C> for proto::ChatItem
 {
     type Error = ChatItemError;
 
-    fn try_from_with(value: proto::ChatItem, context: &C) -> Result<Self, ChatItemError> {
+    fn try_into_with(self, context: &C) -> Result<ChatItemData<M>, ChatItemError> {
         let proto::ChatItem {
             chatId: _,
             authorId,
@@ -554,7 +547,7 @@ impl<
             dateSent,
             sms,
             special_fields: _,
-        } = value;
+        } = self;
 
         let direction = directionalDetails
             .ok_or(ChatItemError::NoDirection)?
@@ -765,7 +758,7 @@ impl<
             }
         }
 
-        Ok(Self {
+        Ok(ChatItemData {
             author: author.clone(),
             cached_author_kind,
             message,
@@ -853,16 +846,13 @@ impl<M: Method + ReferencedTypes> ChatItemData<M> {
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
-    TryFromWith<proto::chat_item::DirectionalDetails, C> for Direction<R>
+    TryIntoWith<Direction<R>, C> for proto::chat_item::DirectionalDetails
 {
     type Error = ChatItemError;
 
-    fn try_from_with(
-        item: proto::chat_item::DirectionalDetails,
-        context: &C,
-    ) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<Direction<R>, Self::Error> {
         use proto::chat_item::*;
-        match item {
+        match self {
             DirectionalDetails::Incoming(IncomingMessageDetails {
                 special_fields: _,
                 dateReceived,
@@ -880,7 +870,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
                     "DirectionalDetails.dateReceived",
                     context,
                 )?;
-                Ok(Self::Incoming {
+                Ok(Direction::Incoming {
                     received,
                     sent,
                     read,
@@ -890,7 +880,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             DirectionalDetails::Outgoing(OutgoingMessageDetails {
                 sendStatus,
                 special_fields: _,
-            }) => Ok(Self::Outgoing(
+            }) => Ok(Direction::Outgoing(
                 sendStatus
                     .into_iter()
                     .map(|s| s.try_into_with(context))
@@ -898,22 +888,22 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             )),
             DirectionalDetails::Directionless(DirectionlessMessageDetails {
                 special_fields: _,
-            }) => Ok(Self::Directionless),
+            }) => Ok(Direction::Directionless),
         }
     }
 }
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
-    TryFromWith<proto::SendStatus, C> for OutgoingSend<R>
+    TryIntoWith<OutgoingSend<R>, C> for proto::SendStatus
 {
     type Error = OutgoingSendError;
 
-    fn try_from_with(item: proto::SendStatus, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<OutgoingSend<R>, Self::Error> {
         let proto::SendStatus {
             recipientId,
             timestamp,
             deliveryStatus,
             special_fields: _,
-        } = item;
+        } = self;
 
         let recipient_id = RecipientId(recipientId);
         let Some((recipient_data, recipient)) = context.lookup_pair(&recipient_id) else {
@@ -987,7 +977,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
         let last_status_update = Timestamp::from_millis(timestamp, "SendStatus.timestamp", context)
             .map_err(|e| OutgoingSendError::InvalidTimestamp(recipient_id, e))?;
 
-        Ok(Self {
+        Ok(OutgoingSend {
             recipient,
             status,
             last_status_update,
@@ -1000,14 +990,14 @@ impl<
             + AsRef<BackupMeta>
             + ReportUnusualTimestamp,
         M: Method + ReferencedTypes,
-    > TryFromWith<proto::chat_item::Item, C> for ChatItemMessage<M>
+    > TryIntoWith<ChatItemMessage<M>, C> for proto::chat_item::Item
 {
     type Error = ChatItemError;
 
-    fn try_from_with(value: proto::chat_item::Item, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<ChatItemMessage<M>, Self::Error> {
         use proto::chat_item::Item;
 
-        Ok(match value {
+        Ok(match self {
             Item::StandardMessage(message) => {
                 let is_voice_message = matches!(message.attachments.as_slice(),
                 [single_attachment] if
@@ -1400,8 +1390,9 @@ mod test {
         );
         item.expiresInMs = Some(until_expiration_ms);
 
-        let result = ChatItemData::<Store>::try_from_with(item, &TestContext(meta))
-            .map(|_| ())
+        let result = item
+            .try_into_with(&TestContext(meta))
+            .map(|_: ChatItemData<Store>| ())
             .map_err(|e| assert_matches!(e, ChatItemError::InvalidExpiration(e) => e).to_string());
         assert_eq!(result, expected.map_err(ToString::to_string));
     }
@@ -1440,13 +1431,14 @@ mod test {
             first_app_version: "".into(),
         };
 
-        let result = ChatItemData::<Store>::try_from_with(item, &TestContext(meta))
-            .map(|_| ())
+        let result = item
+            .try_into_with(&TestContext(meta))
+            .map(|_: ChatItemData<Store>| ())
             .map_err(|e| match e {
                 ChatItemError::InvalidExpiration(InvalidExpiration::TooShort(err)) => {
                     err.to_string()
                 }
-                _ => panic!("Unexpected error: {:?}", e),
+                _ => panic!("Unexpected error: {e:?}"),
             });
 
         assert_eq!(result, expected.map_err(ToString::to_string));
@@ -1459,7 +1451,7 @@ mod test {
         item.expiresInMs = None;
 
         assert_matches!(
-            ChatItemData::<Store>::try_from_with(item, &TestContext::default()),
+            TryIntoWith::<ChatItemData::<Store>, _>::try_into_with(item, &TestContext::default()),
             Err(ChatItemError::ExpirationMismatch)
         );
     }
@@ -1472,7 +1464,10 @@ mod test {
 
         // This one is okay, it's an expiring message that hasn't been viewed yet.
         assert_matches!(
-            ChatItemData::<Store>::try_from_with(item.clone(), &TestContext::default()),
+            TryIntoWith::<ChatItemData::<Store>, _>::try_into_with(
+                item.clone(),
+                &TestContext::default()
+            ),
             Ok(_)
         );
 
@@ -1484,7 +1479,10 @@ mod test {
         );
         incoming.read = true;
         assert_matches!(
-            ChatItemData::<Store>::try_from_with(item.clone(), &TestContext::default()),
+            TryIntoWith::<ChatItemData::<Store>, _>::try_into_with(
+                item.clone(),
+                &TestContext::default()
+            ),
             Err(ChatItemError::ExpirationNotStarted)
         );
 
@@ -1493,7 +1491,10 @@ mod test {
         item.directionalDetails =
             Some(proto::chat_item::OutgoingMessageDetails::test_data().into());
         assert_matches!(
-            ChatItemData::<Store>::try_from_with(item.clone(), &TestContext::default()),
+            TryIntoWith::<ChatItemData::<Store>, _>::try_into_with(
+                item.clone(),
+                &TestContext::default()
+            ),
             Ok(_)
         );
 
@@ -1509,7 +1510,7 @@ mod test {
         );
         outgoing.sendStatus[0].set_sent(proto::send_status::Sent::default());
         assert_matches!(
-            ChatItemData::<Store>::try_from_with(item, &TestContext::default()),
+            TryIntoWith::<ChatItemData::<Store>, _>::try_into_with(item, &TestContext::default()),
             Err(ChatItemError::ExpirationNotStarted)
         );
     }

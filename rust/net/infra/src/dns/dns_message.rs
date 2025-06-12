@@ -165,16 +165,12 @@ pub fn parse_response<T>(
         let data = reader.read_to_vec(data_length as usize)?;
         let expected_type = expected_type as u16;
         if data_type != expected_type {
-            log::debug!(
-                "expected resource records of type {} but have {}",
-                expected_type,
-                data_type
-            );
+            log::debug!("expected resource records of type {expected_type} but have {data_type}");
             continue;
         }
         match parser(data.as_slice()) {
             Ok(data) => results.push(data),
-            Err(error) => log::warn!("error parsing DNS response: {}", error),
+            Err(error) => log::warn!("error parsing DNS response: {error}"),
         }
 
         min_ttl = min(min_ttl, data_ttl);
@@ -315,7 +311,7 @@ mod test {
         let query1 = create_request_with_id(REQUEST_ID, VALID_DOMAIN, ResourceType::A)
             .expect("valid request");
 
-        let with_dot = format!("{}.", VALID_DOMAIN);
+        let with_dot = format!("{VALID_DOMAIN}.");
         let query2 =
             create_request_with_id(REQUEST_ID, &with_dot, ResourceType::A).expect("valid request");
 
@@ -326,7 +322,7 @@ mod test {
     fn invalid_name_too_long() {
         // 127 labels produces a domain name of length 254,
         // which, with a '.' suffix, is exactly the maximum allowed name length
-        let mut long_name = iter::repeat('a').take(127).join(".");
+        let mut long_name = iter::repeat_n('a', 127).join(".");
         assert_matches!(
             create_request_with_id(REQUEST_ID, &long_name, ResourceType::A),
             Ok(_)
@@ -351,15 +347,15 @@ mod test {
 
     #[test]
     fn invalid_name_label_too_long() {
-        let mut long_label = iter::repeat('a').take(MAX_DNS_LABEL_LEN).join("");
-        let name = format!("{}.signal.org", long_label);
+        let mut long_label = iter::repeat_n('a', MAX_DNS_LABEL_LEN).join("");
+        let name = format!("{long_label}.signal.org");
         assert_matches!(
             create_request_with_id(REQUEST_ID, &name, ResourceType::A),
             Ok(_)
         );
 
         long_label.push('a');
-        let name = format!("{}.signal.org", long_label);
+        let name = format!("{long_label}.signal.org");
         assert_matches!(
             create_request_with_id(REQUEST_ID, &name, ResourceType::A),
             Err(Error::ProtocolErrorLabelTooLong)

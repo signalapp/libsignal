@@ -12,7 +12,7 @@ use libsignal_core::Aci;
 use libsignal_net_infra::noise::{NoiseStream, Transport};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use uuid::Uuid;
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
+use zerocopy::{FromBytes, Immutable, IntoBytes};
 
 use super::handshake::{HandshakeAuth, Handshaker, EPHEMERAL_KEY_LEN, STATIC_KEY_LEN};
 use super::waker::SharedWakers;
@@ -128,8 +128,8 @@ impl<S: Transport + Unpin> AsyncRead for EncryptedStream<S> {
     }
 }
 
+#[derive(Debug, PartialEq, FromBytes, IntoBytes, Immutable)]
 #[repr(C)]
-#[derive(Debug, PartialEq, AsBytes, FromZeroes, FromBytes)]
 struct InitialPayloadAuth {
     uuid_high: zerocopy::big_endian::U64,
     uuid_low: zerocopy::big_endian::U64,
@@ -263,7 +263,7 @@ fn start_handshake<S>(
     Handshaker::new(
         transport.take().expect("always Some in Nascent state"),
         pattern,
-        initial_payload.as_ref().map(AsBytes::as_bytes),
+        initial_payload.as_ref().map(IntoBytes::as_bytes),
     )
     .map_err(SendError::Noise)
 }
@@ -274,9 +274,8 @@ mod test {
 
     use assert_matches::assert_matches;
     use bytes::Bytes;
-    use const_str::concat;
+    use const_str::{concat, hex};
     use futures_util::{pin_mut, SinkExt, StreamExt};
-    use hex_literal::hex;
     use libsignal_net_infra::noise::testutil::echo_forever;
     use libsignal_net_infra::testutil::TestStream;
     use libsignal_net_infra::utils::testutil::TestWaker;
@@ -294,7 +293,7 @@ mod test {
             let mut payload = [0; 128];
             let read_count = server_state.read_message(&first, &mut payload).unwrap();
             assert_eq!(read_count, std::mem::size_of::<InitialPayloadAuth>());
-            InitialPayloadAuth::read_from_prefix(&payload).unwrap()
+            InitialPayloadAuth::read_from_prefix(&payload).unwrap().0
         };
 
         {
@@ -549,9 +548,8 @@ mod test {
         assert!(read_waker.was_woken());
     }
 
-    #[test]
+    #[test_log::test]
     fn half_close_during_handshake() {
-        env_logger::init();
         let (a, mut b) = TestStream::new_pair(10);
 
         let server_builder = snow::Builder::new(

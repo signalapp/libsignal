@@ -19,9 +19,6 @@ import {
   ChatServiceListener,
   Environment,
   Net,
-  newNativeHandle,
-  RegistrationService,
-  RegistrationSessionState,
   SIGNAL_TLS_PROXY_SCHEME,
   TokioAsyncContext,
   UnauthenticatedChatConnection,
@@ -32,6 +29,7 @@ import {
 } from '../../Native';
 import { CompletablePromise } from './util';
 import { fail } from 'assert';
+import { newNativeHandle } from '../internal';
 
 use(chaiAsPromised);
 use(sinonChai);
@@ -89,6 +87,8 @@ describe('chat service api', () => {
       ['RequestTimedOut', ErrorCode.IoError],
 
       ['RequestHasInvalidHeader', ErrorCode.IoError],
+      ['ConnectionInvalidated', ErrorCode.ConnectionInvalidated],
+      ['ConnectedElsewhere', ErrorCode.ConnectedElsewhere],
     ];
     cases.forEach((testCase) => {
       const [name, expectation] = testCase;
@@ -637,30 +637,6 @@ describe('chat service api', () => {
     });
   });
 
-  class InternalRequest implements Native.Wrapper<Native.HttpRequest> {
-    constructor(readonly _nativeHandle: Native.HttpRequest) {}
-    public get verb(): string {
-      return Native.TESTING_ChatRequestGetMethod(this);
-    }
-
-    public get path(): string {
-      return Native.TESTING_ChatRequestGetPath(this);
-    }
-
-    public get headers(): Map<string, string> {
-      const names = Native.TESTING_ChatRequestGetHeaderNames(this);
-      return new Map(
-        names.map((name) => {
-          return [name, Native.TESTING_ChatRequestGetHeaderValue(this, name)];
-        })
-      );
-    }
-
-    public get body(): Buffer {
-      return Native.TESTING_ChatRequestGetBody(this);
-    }
-  }
-
   describe('fake chat connection', () => {
     type FakeConnectFn = (
       tokio: TokioAsyncContext
@@ -709,21 +685,15 @@ describe('chat service api', () => {
             );
           assert(requestFromServerWithId !== null);
           const requestFromServer = new InternalRequest(
-            Native.TESTING_FakeChatSentRequest_TakeHttpRequest({
-              _nativeHandle: requestFromServerWithId,
-            })
+            requestFromServerWithId
           );
-          const requestId = Native.TESTING_FakeChatSentRequest_RequestId({
-            _nativeHandle: requestFromServerWithId,
-          });
-
           expect(requestFromServer.verb).to.eq(request.verb);
           expect(requestFromServer.path).to.eq(request.path);
           expect(requestFromServer.body).to.deep.eq(request.body);
           expect(requestFromServer.headers).to.deep.eq(
             new Map([['purpose', 'test request']])
           );
-          expect(requestId).to.eq(0n);
+          expect(requestFromServer.requestId).to.eq(0n);
 
           // 1: 0
           // 2: 201
@@ -879,20 +849,35 @@ describe('cdsi lookup', () => {
   });
 });
 
-describe('registration client', () => {
-  describe('registration session conversion', () => {
-    const expectedSession: RegistrationSessionState = {
-      allowedToRequestCode: true,
-      verified: true,
-      nextCallSecs: 123,
-      nextSmsSecs: 456,
-      nextVerificationAttemptSecs: 789,
-      requestedInformation: new Set(['pushChallenge']),
-    };
+export class InternalRequest implements Native.Wrapper<Native.HttpRequest> {
+  readonly _nativeHandle: Native.HttpRequest;
+  readonly requestId: bigint;
 
-    const convertedSession = RegistrationService._convertNativeSessionState(
-      newNativeHandle(Native.TESTING_RegistrationSessionInfoConvert())
+  constructor(fakeRequest: Native.FakeChatSentRequest) {
+    const wrapper = newNativeHandle(fakeRequest);
+    this._nativeHandle =
+      Native.TESTING_FakeChatSentRequest_TakeHttpRequest(wrapper);
+    this.requestId = Native.TESTING_FakeChatSentRequest_RequestId(wrapper);
+  }
+
+  public get verb(): string {
+    return Native.TESTING_ChatRequestGetMethod(this);
+  }
+
+  public get path(): string {
+    return Native.TESTING_ChatRequestGetPath(this);
+  }
+
+  public get headers(): Map<string, string> {
+    const names = Native.TESTING_ChatRequestGetHeaderNames(this);
+    return new Map(
+      names.map((name) => {
+        return [name, Native.TESTING_ChatRequestGetHeaderValue(this, name)];
+      })
     );
-    expect(convertedSession).to.deep.equal(expectedSession);
-  });
-});
+  }
+
+  public get body(): Buffer {
+    return Native.TESTING_ChatRequestGetBody(this);
+  }
+}

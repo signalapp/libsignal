@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use rand::distributions::{Alphanumeric, DistString as _};
+use rand::distr::{Alphanumeric, SampleString as _};
 use rand::Rng;
 
 /// Replaces the contents with something random that is the same length.
@@ -51,13 +51,13 @@ impl<T: Randomize> Randomize for Vec<T> {
 
 impl Randomize for u64 {
     fn randomize(&mut self, rng: &mut impl Rng) {
-        *self = rng.gen();
+        *self = rng.random();
     }
 }
 
 /// Generates a random but valid v4 UUID.
 pub fn random_uuid(rng: &mut impl Rng) -> Vec<u8> {
-    uuid::Builder::from_random_bytes(rng.gen())
+    uuid::Builder::from_random_bytes(rng.random())
         .into_uuid()
         .into_bytes()
         .to_vec()

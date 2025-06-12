@@ -23,11 +23,12 @@
 //! Basic usage:
 //! ```
 //! # use libsignal_protocol::kem::*;
+//! let mut rng = rand::rng();
 //! // Generate a Kyber1024 key pair
-//! let kp = KeyPair::generate(KeyType::Kyber1024);
+//! let kp = KeyPair::generate(KeyType::Kyber1024, &mut rng);
 //!
 //! // The sender computes the shared secret and the ciphertext to send
-//! let (ss_for_sender, ct) = kp.public_key.encapsulate();
+//! let (ss_for_sender, ct) = kp.public_key.encapsulate(&mut rng).expect("encapsulation succeeds");
 //!
 //! // Once the recipient receives the ciphertext, they use it with the
 //! // secret key to construct the (same) shared secret.
@@ -38,8 +39,9 @@
 //! Serialization:
 //! ```
 //! # use libsignal_protocol::kem::*;
+//! let mut rng = rand::rng();
 //! // Generate a Kyber1024 key pair
-//! let kp = KeyPair::generate(KeyType::Kyber1024);
+//! let kp = KeyPair::generate(KeyType::Kyber1024, &mut rng);
 //!
 //! let pk_for_wire = kp.public_key.serialize();
 //! // serialized form has an extra byte to encode the protocol
@@ -60,6 +62,7 @@ use std::marker::PhantomData;
 
 use derive_where::derive_where;
 use displaydoc::Display;
+use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
 
 use crate::{Result, SignalProtocolError};
@@ -83,13 +86,22 @@ pub type SerializedCiphertext = Box<[u8]>;
 /// }
 /// ```
 trait Parameters {
+    const KEY_TYPE: KeyType;
     const PUBLIC_KEY_LENGTH: usize;
     const SECRET_KEY_LENGTH: usize;
     const CIPHERTEXT_LENGTH: usize;
     const SHARED_SECRET_LENGTH: usize;
-    fn generate() -> (KeyMaterial<Public>, KeyMaterial<Secret>);
-    fn encapsulate(pub_key: &KeyMaterial<Public>) -> (SharedSecret, RawCiphertext);
-    fn decapsulate(secret_key: &KeyMaterial<Secret>, ciphertext: &[u8]) -> Result<SharedSecret>;
+    fn generate<R: CryptoRng + ?Sized>(
+        csprng: &mut R,
+    ) -> (KeyMaterial<Public>, KeyMaterial<Secret>);
+    fn encapsulate<R: CryptoRng + ?Sized>(
+        pub_key: &KeyMaterial<Public>,
+        csprng: &mut R,
+    ) -> std::result::Result<(SharedSecret, RawCiphertext), BadKEMKeyLength>;
+    fn decapsulate(
+        secret_key: &KeyMaterial<Secret>,
+        ciphertext: &[u8],
+    ) -> std::result::Result<SharedSecret, DecapsulateError>;
 }
 
 /// Acts as a bridge between the static [Parameters] trait and the dynamic [KeyType] enum.
@@ -97,10 +109,14 @@ trait DynParameters {
     fn public_key_length(&self) -> usize;
     fn secret_key_length(&self) -> usize;
     fn ciphertext_length(&self) -> usize;
-    #[allow(dead_code)]
+    #[cfg_attr(not(test), expect(dead_code))]
     fn shared_secret_length(&self) -> usize;
-    fn generate(&self) -> (KeyMaterial<Public>, KeyMaterial<Secret>);
-    fn encapsulate(&self, pub_key: &KeyMaterial<Public>) -> (SharedSecret, RawCiphertext);
+    fn generate(&self, rng: &mut dyn CryptoRng) -> (KeyMaterial<Public>, KeyMaterial<Secret>);
+    fn encapsulate(
+        &self,
+        pub_key: &KeyMaterial<Public>,
+        csprng: &mut dyn CryptoRng,
+    ) -> Result<(SharedSecret, RawCiphertext)>;
     fn decapsulate(
         &self,
         secret_key: &KeyMaterial<Secret>,
@@ -125,12 +141,18 @@ impl<T: Parameters> DynParameters for T {
         Self::SHARED_SECRET_LENGTH
     }
 
-    fn generate(&self) -> (KeyMaterial<Public>, KeyMaterial<Secret>) {
-        Self::generate()
+    fn generate(&self, csprng: &mut dyn CryptoRng) -> (KeyMaterial<Public>, KeyMaterial<Secret>) {
+        Self::generate(csprng)
     }
 
-    fn encapsulate(&self, pub_key: &KeyMaterial<Public>) -> (SharedSecret, RawCiphertext) {
-        Self::encapsulate(pub_key)
+    fn encapsulate(
+        &self,
+        pub_key: &KeyMaterial<Public>,
+        csprng: &mut dyn CryptoRng,
+    ) -> Result<(Box<[u8]>, Box<[u8]>)> {
+        Self::encapsulate(pub_key, csprng).map_err(|BadKEMKeyLength| {
+            SignalProtocolError::BadKEMKeyLength(T::KEY_TYPE, pub_key.len())
+        })
     }
 
     fn decapsulate(
@@ -138,8 +160,39 @@ impl<T: Parameters> DynParameters for T {
         secret_key: &KeyMaterial<Secret>,
         ciphertext: &[u8],
     ) -> Result<SharedSecret> {
-        Self::decapsulate(secret_key, ciphertext)
+        Self::decapsulate(secret_key, ciphertext).map_err(|e| match e {
+            DecapsulateError::BadKeyLength => {
+                SignalProtocolError::BadKEMKeyLength(T::KEY_TYPE, secret_key.len())
+            }
+            DecapsulateError::BadCiphertext => {
+                SignalProtocolError::BadKEMCiphertextLength(T::KEY_TYPE, ciphertext.len())
+            }
+        })
     }
+}
+
+/// Helper trait for extracting the size of [`libcrux_ml_kem`]'s generic types.
+trait ConstantLength {
+    const LENGTH: usize;
+}
+
+impl<const N: usize> ConstantLength for libcrux_ml_kem::MlKemPrivateKey<N> {
+    const LENGTH: usize = N;
+}
+impl<const N: usize> ConstantLength for libcrux_ml_kem::MlKemPublicKey<N> {
+    const LENGTH: usize = N;
+}
+impl<const N: usize> ConstantLength for libcrux_ml_kem::MlKemCiphertext<N> {
+    const LENGTH: usize = N;
+}
+
+/// Error returned from [`Parameters::encapsulate`].
+struct BadKEMKeyLength;
+
+/// Error returned from [`Parameters::decapsulate`].
+enum DecapsulateError {
+    BadKeyLength,
+    BadCiphertext,
 }
 
 /// Designates a supported KEM protocol
@@ -232,6 +285,18 @@ impl<T: KeyKind> KeyMaterial<T> {
     }
 }
 
+impl<const SIZE: usize> From<libcrux_ml_kem::MlKemPublicKey<SIZE>> for KeyMaterial<Public> {
+    fn from(value: libcrux_ml_kem::MlKemPublicKey<SIZE>) -> Self {
+        KeyMaterial::new(value.as_ref().into())
+    }
+}
+
+impl<const SIZE: usize> From<libcrux_ml_kem::MlKemPrivateKey<SIZE>> for KeyMaterial<Secret> {
+    fn from(value: libcrux_ml_kem::MlKemPrivateKey<SIZE>) -> Self {
+        KeyMaterial::new(value.as_ref().into())
+    }
+}
+
 #[derive_where(Clone)]
 pub struct Key<T: KeyKind> {
     key_type: KeyType,
@@ -272,16 +337,22 @@ impl Key<Public> {
     /// Create a `SharedSecret` and a `Ciphertext`. The `Ciphertext` can be safely sent to the
     /// holder of the corresponding `SecretKey` who can then use it to `decapsulate` the same
     /// `SharedSecret`.
-    pub fn encapsulate(&self) -> (SharedSecret, SerializedCiphertext) {
-        let (ss, ct) = self.key_type.parameters().encapsulate(&self.key_data);
-        (
+    pub fn encapsulate<R: CryptoRng>(
+        &self,
+        csprng: &mut R,
+    ) -> Result<(SharedSecret, SerializedCiphertext)> {
+        let (ss, ct) = self
+            .key_type
+            .parameters()
+            .encapsulate(&self.key_data, csprng)?;
+        Ok((
             ss,
             Ciphertext {
                 key_type: self.key_type,
                 data: &ct,
             }
             .serialize(),
-        )
+        ))
     }
 }
 
@@ -354,10 +425,9 @@ pub struct KeyPair {
 }
 
 impl KeyPair {
-    /// Creates a public-secret key pair for a specified KEM protocol. Uses system randomness
-    /// [implemented by PQClean](https://github.com/PQClean/PQClean/blob/c1b19a865de329e87e9b3e9152362fcb709da8ab/common/randombytes.c#L335).
-    pub fn generate(key_type: KeyType) -> Self {
-        let (pk, sk) = key_type.parameters().generate();
+    /// Creates a public-secret key pair for a specified KEM protocol.
+    pub fn generate<R: Rng + CryptoRng>(key_type: KeyType, csprng: &mut R) -> Self {
+        let (pk, sk) = key_type.parameters().generate(csprng);
         Self {
             secret_key: SecretKey {
                 key_type,
@@ -434,6 +504,8 @@ impl<'a> Ciphertext<'a> {
 
 #[cfg(test)]
 mod tests {
+    use rand::{Rng as _, TryRngCore as _};
+
     use super::*;
 
     #[test]
@@ -461,10 +533,11 @@ mod tests {
 
     #[test]
     fn test_raw_kem() {
-        use pqcrypto_kyber::kyber1024::{decapsulate, encapsulate, keypair};
-        let (pk, sk) = keypair();
-        let (ss1, ct) = encapsulate(&pk);
-        let ss2 = decapsulate(&ct, &sk);
+        use libcrux_ml_kem::kyber1024::{decapsulate, encapsulate, generate_key_pair};
+        let mut rng = rand::rngs::OsRng.unwrap_err();
+        let (sk, pk) = generate_key_pair(rng.random()).into_parts();
+        let (ct, ss1) = encapsulate(&pk, rng.random());
+        let ss2 = decapsulate(&sk, &ct);
         assert!(ss1 == ss2);
     }
 
@@ -473,6 +546,7 @@ mod tests {
         // test data for kyber1024
         let pk_bytes = include_bytes!("kem/test-data/pk.dat");
         let sk_bytes = include_bytes!("kem/test-data/sk.dat");
+        let mut rng = rand::rngs::OsRng.unwrap_err();
 
         let mut serialized_pk = Vec::with_capacity(1 + kyber1024::Parameters::PUBLIC_KEY_LENGTH);
         serialized_pk.push(KeyType::Kyber1024.value());
@@ -487,7 +561,7 @@ mod tests {
             SecretKey::deserialize(serialized_sk.as_slice()).expect("deserialize secretkey");
 
         assert_eq!(pubkey.key_type, KeyType::Kyber1024);
-        let (ss_for_sender, ct) = pubkey.encapsulate();
+        let (ss_for_sender, ct) = pubkey.encapsulate(&mut rng).expect("encapsulation works");
         let ss_for_recipient = secretkey.decapsulate(&ct).expect("decapsulation works");
 
         assert_eq!(ss_for_sender, ss_for_recipient);
@@ -499,12 +573,13 @@ mod tests {
         // test data for kyber1024
         let pk_bytes = include_bytes!("kem/test-data/mlkem-pk.dat");
         let sk_bytes = include_bytes!("kem/test-data/mlkem-sk.dat");
+        let mut rng = rand::rngs::OsRng.unwrap_err();
 
         let pubkey = PublicKey::deserialize(pk_bytes).expect("deserialize pubkey");
         let secretkey = SecretKey::deserialize(sk_bytes).expect("deserialize secretkey");
 
         assert_eq!(pubkey.key_type, KeyType::MLKEM1024);
-        let (ss_for_sender, ct) = pubkey.encapsulate();
+        let (ss_for_sender, ct) = pubkey.encapsulate(&mut rng).expect("encapsulation works");
         let ss_for_recipient = secretkey.decapsulate(&ct).expect("decapsulation works");
 
         assert_eq!(ss_for_sender, ss_for_recipient);
@@ -512,7 +587,8 @@ mod tests {
 
     #[test]
     fn test_kyber1024_keypair() {
-        let kp = KeyPair::generate(KeyType::Kyber1024);
+        let mut rng = rand::rngs::OsRng.unwrap_err();
+        let kp = KeyPair::generate(KeyType::Kyber1024, &mut rng);
         assert_eq!(
             kyber1024::Parameters::SECRET_KEY_LENGTH + 1,
             kp.secret_key.serialize().len()
@@ -521,7 +597,10 @@ mod tests {
             kyber1024::Parameters::PUBLIC_KEY_LENGTH + 1,
             kp.public_key.serialize().len()
         );
-        let (ss_for_sender, ct) = kp.public_key.encapsulate();
+        let (ss_for_sender, ct) = kp
+            .public_key
+            .encapsulate(&mut rng)
+            .expect("encapsulation works");
         assert_eq!(kyber1024::Parameters::CIPHERTEXT_LENGTH + 1, ct.len());
         assert_eq!(
             kyber1024::Parameters::SHARED_SECRET_LENGTH,
@@ -533,7 +612,8 @@ mod tests {
 
     #[test]
     fn test_kyber768_keypair() {
-        let kp = KeyPair::generate(KeyType::Kyber768);
+        let mut rng = rand::rngs::OsRng.unwrap_err();
+        let kp = KeyPair::generate(KeyType::Kyber768, &mut rng);
         assert_eq!(
             kyber768::Parameters::SECRET_KEY_LENGTH + 1,
             kp.secret_key.serialize().len()
@@ -542,7 +622,10 @@ mod tests {
             kyber768::Parameters::PUBLIC_KEY_LENGTH + 1,
             kp.public_key.serialize().len()
         );
-        let (ss_for_sender, ct) = kp.public_key.encapsulate();
+        let (ss_for_sender, ct) = kp
+            .public_key
+            .encapsulate(&mut rng)
+            .expect("encapsulation works");
         assert_eq!(kyber768::Parameters::CIPHERTEXT_LENGTH + 1, ct.len());
         assert_eq!(
             kyber768::Parameters::SHARED_SECRET_LENGTH,
@@ -555,7 +638,8 @@ mod tests {
     #[cfg(feature = "mlkem1024")]
     #[test]
     fn test_mlkem1024_keypair() {
-        let kp = KeyPair::generate(KeyType::MLKEM1024);
+        let mut rng = rand::rngs::OsRng.unwrap_err();
+        let kp = KeyPair::generate(KeyType::MLKEM1024, &mut rng);
         assert_eq!(
             mlkem1024::Parameters::SECRET_KEY_LENGTH + 1,
             kp.secret_key.serialize().len()
@@ -564,7 +648,10 @@ mod tests {
             mlkem1024::Parameters::PUBLIC_KEY_LENGTH + 1,
             kp.public_key.serialize().len()
         );
-        let (ss_for_sender, ct) = kp.public_key.encapsulate();
+        let (ss_for_sender, ct) = kp
+            .public_key
+            .encapsulate(&mut rng)
+            .expect("encapsulation works");
         assert_eq!(mlkem1024::Parameters::CIPHERTEXT_LENGTH + 1, ct.len());
         assert_eq!(
             mlkem1024::Parameters::SHARED_SECRET_LENGTH,

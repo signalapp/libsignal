@@ -7,6 +7,7 @@ use std::result::Result;
 use std::time::{Duration, SystemTime};
 
 use prost::Message;
+use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
 
 use crate::proto::storage::{session_structure, RecordStructure, SessionStructure};
@@ -102,6 +103,7 @@ impl SessionState {
         their_identity: &IdentityKey,
         root_key: &RootKey,
         alice_base_key: &PublicKey,
+        pq_ratchet_state: spqr::SerializedState,
     ) -> Self {
         Self {
             session: SessionStructure {
@@ -117,6 +119,7 @@ impl SessionState {
                 remote_registration_id: 0,
                 local_registration_id: 0,
                 alice_base_key: alice_base_key.serialize().into_vec(),
+                pq_ratchet_state,
             },
         }
     }
@@ -451,11 +454,10 @@ impl SessionState {
         self.session.pending_pre_key = Some(pending);
     }
 
-    #[allow(clippy::boxed_local)]
     pub(crate) fn set_kyber_ciphertext(&mut self, ciphertext: kem::SerializedCiphertext) {
         let pending = session_structure::PendingKyberPreKey {
             pre_key_id: u32::MAX, // has to be set to the actual value separately
-            ciphertext: ciphertext.to_vec(),
+            ciphertext: ciphertext.into_vec(),
         };
         self.session.pending_kyber_pre_key = Some(pending);
     }
@@ -505,6 +507,7 @@ impl SessionState {
             remote_registration_id: _remote_registration_id,
             local_registration_id: _local_registration_id,
             alice_base_key: _alice_base_key,
+            pq_ratchet_state: _pq_ratchet_state,
         } = &self.session;
         // ####### IMPORTANT #######
         // Don't forget to clean up new pending fields.
@@ -534,6 +537,28 @@ impl SessionState {
             .pending_kyber_pre_key
             .as_ref()
             .map(|pending| &pending.ciphertext)
+    }
+
+    pub(crate) fn pq_ratchet_recv(
+        &mut self,
+        msg: &spqr::SerializedMessage,
+    ) -> Result<spqr::MessageKey, spqr::Error> {
+        let spqr::Recv { state, key } = spqr::recv(&self.session.pq_ratchet_state, msg)?;
+        self.session.pq_ratchet_state = state;
+        Ok(key)
+    }
+
+    pub(crate) fn pq_ratchet_send<R: Rng + CryptoRng>(
+        &mut self,
+        csprng: &mut R,
+    ) -> Result<(spqr::SerializedMessage, spqr::MessageKey), spqr::Error> {
+        let spqr::Send { state, key, msg } = spqr::send(&self.session.pq_ratchet_state, csprng)?;
+        self.session.pq_ratchet_state = state;
+        Ok((msg, key))
+    }
+
+    pub(crate) fn pq_ratchet_state(&self) -> &spqr::SerializedState {
+        &self.session.pq_ratchet_state
     }
 }
 
@@ -586,8 +611,14 @@ impl SessionRecord {
         })
     }
 
-    pub(crate) fn has_session_state(
-        &self,
+    /// If there's a session with a matching version and `alice_base_key`, ensures that it is the
+    /// current session, promoting if necessary.
+    ///
+    /// Returns `Ok(true)` if such a session was found, `Ok(false)` if not, and
+    /// `Err(InvalidSessionError)` if an invalid session was found during the search (whether
+    /// current or not).
+    pub(crate) fn promote_matching_session(
+        &mut self,
         version: u32,
         alice_base_key: &[u8],
     ) -> Result<bool, InvalidSessionError> {
@@ -601,13 +632,20 @@ impl SessionRecord {
             }
         }
 
-        for previous in self.previous_session_states() {
+        let mut session_to_promote = None;
+        for (i, previous) in self.previous_session_states().enumerate() {
             let previous = previous?;
             if previous.session_version()? == version
                 && alice_base_key.ct_eq(previous.alice_base_key()).into()
             {
-                return Ok(true);
+                session_to_promote = Some((i, previous));
+                break;
             }
+        }
+
+        if let Some((i, state)) = session_to_promote {
+            self.promote_old_session(i, state);
+            return Ok(true);
         }
 
         Ok(false)
@@ -679,6 +717,10 @@ impl SessionRecord {
             previous_sessions: self.previous_sessions.clone(),
         };
         Ok(record.encode_to_vec())
+    }
+
+    pub fn current_pq_state(&self) -> Option<&spqr::SerializedState> {
+        self.current_session.as_ref().map(|s| s.pq_ratchet_state())
     }
 
     pub fn remote_registration_id(&self) -> Result<u32, SignalProtocolError> {

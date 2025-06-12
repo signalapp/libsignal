@@ -12,8 +12,8 @@ use crate::backup::method::LookupPair;
 use crate::backup::recipient::MinimalRecipientData;
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::{TryFromWith, TryIntoWith as _};
-use crate::proto::backup as proto;
+use crate::backup::TryIntoWith;
+use crate::proto::backup::{self as proto};
 
 /// Validated version of a view-once message [`proto::ViewOnceMessage`].
 #[derive(Debug, serde::Serialize)]
@@ -35,25 +35,25 @@ pub enum ViewOnceMessageError {
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
-    TryFromWith<proto::ViewOnceMessage, C> for ViewOnceMessage<R>
+    TryIntoWith<ViewOnceMessage<R>, C> for proto::ViewOnceMessage
 {
     type Error = ViewOnceMessageError;
 
-    fn try_from_with(item: proto::ViewOnceMessage, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<ViewOnceMessage<R>, Self::Error> {
         let proto::ViewOnceMessage {
             attachment,
             reactions,
             special_fields: _,
-        } = item;
+        } = self;
 
         let attachment = attachment
             .into_option()
-            .map(|attachment| MessageAttachment::try_from_with(attachment, context))
+            .map(|attachment| attachment.try_into_with(context))
             .transpose()?;
 
         let reactions = reactions.try_into_with(context)?;
 
-        Ok(Self {
+        Ok(ViewOnceMessage {
             attachment: attachment.map(Box::new),
             reactions,
             _limit_construction_to_module: (),

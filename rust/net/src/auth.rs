@@ -2,21 +2,24 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+use std::ops::Deref;
 use std::time::SystemTime;
 
 use hmac::{Hmac, Mac};
 use libsignal_net_infra::utils::basic_authorization;
-use libsignal_net_infra::AsHttpHeader;
+use libsignal_net_infra::AsStaticHttpHeader;
 use sha2::Sha256;
 
-/// username and password as returned by the chat server's /auth endpoints.
+/// Generic username/password combination.
+///
+/// When returned by the chat server's /auth endpoints,
 /// - username is a "hex(uid)"
 /// - password is a "timestamp:hex(otp(uid, timestamp, secret))"
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize)]
 #[cfg_attr(any(test, feature = "test-util"), derive(Default))]
-pub struct Auth {
-    pub username: String,
-    pub password: String,
+pub struct Auth<S = String> {
+    pub username: S,
+    pub password: S,
 }
 
 impl Auth {
@@ -41,11 +44,11 @@ impl Auth {
         let digest = mac.finalize().into_bytes();
         let mut khex = hex::encode(digest);
         khex.truncate(Self::OTP_LEN);
-        format!("{}:{}", ts, khex)
+        format!("{ts}:{khex}")
     }
 }
 
-impl AsHttpHeader for Auth {
+impl<S: Deref<Target = str>> AsStaticHttpHeader for Auth<S> {
     const HEADER_NAME: http::HeaderName = http::header::AUTHORIZATION;
     fn header_value(&self) -> http::HeaderValue {
         let Self { username, password } = self;

@@ -7,6 +7,7 @@ package org.signal.libsignal.protocol.groups.state;
 
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidMessageException;
@@ -23,6 +24,7 @@ public class SenderKeyRecord extends NativeHandleGuard.SimpleOwner {
     Native.SenderKeyRecord_Destroy(nativeHandle);
   }
 
+  @CalledFromNative
   public SenderKeyRecord(long nativeHandle) {
     super(nativeHandle);
   }

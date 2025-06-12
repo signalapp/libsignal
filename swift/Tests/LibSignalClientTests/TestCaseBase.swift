@@ -32,4 +32,11 @@ class TestCaseBase: XCTestCase {
     override class func setUp() {
         precondition(self.loggingInitialized)
     }
+
+    internal func nonHermeticTest() throws {
+        let varName = "LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS"
+        if ProcessInfo.processInfo.environment[varName] == nil {
+            throw XCTSkip("requires \(varName)")
+        }
+    }
 }

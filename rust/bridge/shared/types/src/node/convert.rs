@@ -259,12 +259,12 @@ pub(super) const MAX_SAFE_JS_INTEGER: f64 = 9007199254740991.0;
 /// [`Number.MAX_SAFE_INTEGER`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
 impl SimpleArgTypeInfo for crate::protocol::Timestamp {
     type ArgType = JsNumber;
-    #[allow(clippy::cast_possible_truncation)]
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let value = foreign.value(cx);
         if !can_convert_js_number_to_int(value, 0.0..=MAX_SAFE_JS_INTEGER) {
-            return cx.throw_range_error(format!("cannot convert {} to Timestamp (u64)", value));
+            return cx.throw_range_error(format!("cannot convert {value} to Timestamp (u64)"));
         }
+        #[expect(clippy::cast_possible_truncation)]
         Ok(Self::from_epoch_millis(value as u64))
     }
 }
@@ -274,12 +274,12 @@ impl SimpleArgTypeInfo for crate::protocol::Timestamp {
 /// [`Number.MAX_SAFE_INTEGER`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
 impl SimpleArgTypeInfo for crate::zkgroup::Timestamp {
     type ArgType = JsNumber;
-    #[allow(clippy::cast_possible_truncation)]
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let value = foreign.value(cx);
         if !can_convert_js_number_to_int(value, 0.0..=MAX_SAFE_JS_INTEGER) {
-            return cx.throw_range_error(format!("cannot convert {} to Timestamp (u64)", value));
+            return cx.throw_range_error(format!("cannot convert {value} to Timestamp (u64)"));
         }
+        #[expect(clippy::cast_possible_truncation)]
         Ok(Self::from_epoch_seconds(value as u64))
     }
 }
@@ -375,6 +375,20 @@ impl SimpleArgTypeInfo for Box<[u8]> {
     }
 }
 
+impl SimpleArgTypeInfo for Box<[String]> {
+    type ArgType = JsArray;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let count = foreign.len(cx);
+        (0..count)
+            .map(|i| {
+                let next = foreign.get(cx, i)?;
+                String::convert_from(cx, next)
+            })
+            .collect()
+    }
+}
+
 impl SimpleArgTypeInfo for libsignal_net::registration::PushTokenType {
     type ArgType = JsString;
 
@@ -409,6 +423,25 @@ impl SimpleArgTypeInfo for libsignal_net::registration::CreateSession {
             push_token_type,
             mcc,
             mnc,
+        })
+    }
+}
+
+impl SimpleArgTypeInfo for libsignal_net::registration::SignedPreKeyBody<Box<[u8]>> {
+    type ArgType = JsObject;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let key_id = foreign.get(cx, "keyId")?;
+        let key_id = u32::convert_from(cx, key_id)?;
+
+        let public_key: Handle<'_, JsBuffer> = foreign.get(cx, "publicKey")?;
+        let public_key_bytes = public_key.as_slice(cx).into();
+
+        let signature: Handle<'_, JsBuffer> = foreign.get(cx, "signature")?;
+        let signature = signature.as_slice(cx).into();
+        Ok(Self {
+            key_id,
+            public_key: public_key_bytes,
+            signature,
         })
     }
 }
@@ -1105,14 +1138,73 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
 impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RequestedInformation {
     type ResultType = JsString;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        Ok(cx.string(self.as_ref()))
+        Ok(cx.string(match self {
+            Self::PushChallenge => "pushChallenge",
+            Self::Captcha => "captcha",
+        }))
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for Vec<libsignal_net::registration::RequestedInformation> {
+impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net::registration::RequestedInformation]> {
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net::registration::RegisterResponseBadge]> {
+    type ResultType = JsArray;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        make_array(cx, self)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RegisterResponseBadge {
+    type ResultType = JsObject;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let Self {
+            id,
+            visible,
+            expiration,
+        } = self;
+        let obj = cx.empty_object();
+
+        let id = cx.string(id);
+        obj.set(cx, "id", id)?;
+
+        let visible = cx.boolean(visible);
+        obj.set(cx, "visible", visible)?;
+
+        let expiration_seconds = cx.number(expiration.as_secs_f64());
+        obj.set(cx, "expirationSeconds", expiration_seconds)?;
+
+        Ok(obj)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::CheckSvr2CredentialsResponse {
+    type ResultType = JsObject;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let Self { matches } = self;
+        let map_constructor: Handle<'_, JsFunction> =
+            cx.global("Map").expect("Map constructor exists");
+        let num_elements = matches.len();
+
+        // Construct a JS Map by calling its constructor with an array of [K, V] arrays.
+        let entries = JsArray::new(cx, num_elements);
+        for ((token, outcome), i) in matches.into_iter().zip(0..) {
+            let (key, value) = {
+                let outcome: &str = outcome.as_ref();
+                (cx.string(token), cx.string(outcome))
+            };
+            let entry = JsArray::new(cx, 2);
+            entry.set(cx, 0, key)?;
+            entry.set(cx, 1, value)?;
+            entries.set(cx, i, entry)?;
+        }
+        let entries = entries.as_value(cx);
+
+        map_constructor.construct(cx, [entries])
     }
 }
 
@@ -1121,7 +1213,6 @@ macro_rules! full_range_integer {
         #[doc = "Converts all valid integer values for the type."]
         impl SimpleArgTypeInfo for $typ {
             type ArgType = JsNumber;
-            #[allow(clippy::cast_possible_truncation)]
             fn convert_from(
                 cx: &mut FunctionContext,
                 foreign: Handle<Self::ArgType>,
@@ -1134,6 +1225,7 @@ macro_rules! full_range_integer {
                         stringify!($typ),
                     ));
                 }
+                #[allow(clippy::cast_possible_truncation)]
                 Ok(value as $typ)
             }
         }
@@ -1316,20 +1408,9 @@ impl<'a, Borrowed: Deref<Target: BridgeHandle> + 'a> BorrowedJsBoxedBridgeHandle
     ) -> NeonResult<Self> {
         let js_boxed_bridge_handle: Handle<'a, DefaultJsBox<JsBoxContentsFor<Borrowed::Target>>> =
             wrapper.get(cx, NATIVE_HANDLE_PROPERTY)?;
-        let js_box_contents: &JsBoxContentsFor<Borrowed::Target> = &js_boxed_bridge_handle;
-        // FIXME: Workaround for https://github.com/neon-bindings/neon/issues/678
-        // The lifetime of the boxed contents is necessarily longer than the lifetime of any handles
-        // referring to it, i.e. longer than 'a. However, Deref'ing a Handle can only give us a
-        // reference whose lifetime matches a *particular* handle. Therefore, we unsafely (in the
-        // compiler sense) extend the lifetime to be the lifetime of the context, as given by the
-        // Handle. (We also know the object can't move because the compiler can't know how many JS
-        // references there are referring to the JsBox, any of which another thread could
-        // be dereferencing.)
-        let js_box_contents_with_extended_lifetime: &'a JsBoxContentsFor<Borrowed::Target> =
-            unsafe { extend_lifetime(js_box_contents) };
         Ok(Self {
             _owned: js_boxed_bridge_handle,
-            borrowed: borrow(js_box_contents_with_extended_lifetime),
+            borrowed: borrow(js_boxed_bridge_handle.as_inner()),
         })
     }
 }

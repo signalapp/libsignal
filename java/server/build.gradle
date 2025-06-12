@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
+    id 'org.jetbrains.kotlin.jvm'
 }
 
 sourceCompatibility = 17
@@ -18,6 +19,13 @@ sourceSets {
             // Include libsignal sources shared between the client and server
             srcDir '../shared/java'
         }
+        kotlin {
+            srcDir 'src/main/java'
+            srcDir 'src/main/kotlin'
+            // Include libsignal sources shared between the client and server
+            srcDir '../shared/java'
+            srcDir '../shared/kotlin'
+        }
         resources {
             srcDir '../shared/resources'
         }
@@ -25,6 +33,12 @@ sourceSets {
     test {
         java {
             srcDir '../shared/test/java'
+        }
+        kotlin {
+            srcDir 'src/test/java'
+            srcDir 'src/test/kotlin'
+            srcDir '../shared/test/java'
+            srcDir '../shared/test/kotlin'
         }
     }
 }

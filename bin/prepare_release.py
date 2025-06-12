@@ -214,11 +214,14 @@ def prepare_release(*, skip_main_check: bool = False, skip_tests_pass_check: boo
             "git", "commit", "-am", f"Reset for version {new_release_version}"
         ])
 
+    upstream = os.environ.get("LIBSIGNAL_UPSTREAM_REMOTE") or "<remote>"
+    origin = os.environ.get("LIBSIGNAL_ORIGIN_REMOTE") or "<working-remote>"
+
     print("\nRelease process complete!")
     print("Next steps:")
     print("1) Verify the GitHub Actions runs above passed.")
     print("2) If they passed, push to the proper remote(s), e.g.:")
-    print(f"     git push <remote> HEAD~1:main {head_release_version} && git push <working-remote> HEAD:main {head_release_version}")
+    print(f"     git push {upstream} HEAD~1:main {head_release_version} && git push {origin} HEAD:main {head_release_version}")
     print("3) To review the reset commit, you can run:")
     print("     git show")
 

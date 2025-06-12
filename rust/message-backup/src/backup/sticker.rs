@@ -3,17 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-// Silence clippy's complains about private fields used to prevent construction
-// and recommends `#[non_exhaustive]`. The annotation only applies outside this
-// crate, but we want intra-crate privacy.
-#![allow(clippy::manual_non_exhaustive)]
-
 use derive_where::derive_where;
 
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::method::Method;
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::{TryFromWith, TryIntoWith};
+use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StickerPack`].
@@ -98,10 +93,10 @@ impl<M: Method> TryFrom<proto::StickerPack> for StickerPack<M> {
     }
 }
 
-impl<C: ReportUnusualTimestamp> TryFromWith<proto::Sticker, C> for MessageSticker {
+impl<C: ReportUnusualTimestamp> TryIntoWith<MessageSticker, C> for proto::Sticker {
     type Error = MessageStickerError;
 
-    fn try_from_with(item: proto::Sticker, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<MessageSticker, Self::Error> {
         let proto::Sticker {
             packId,
             packKey,
@@ -109,7 +104,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Sticker, C> for MessageSticke
             emoji,
             data,
             special_fields: _,
-        } = item;
+        } = self;
 
         let pack_id = packId
             .as_slice()
@@ -125,7 +120,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Sticker, C> for MessageSticke
             .ok_or(MessageStickerError::MissingDataPointer)?
             .try_into_with(context)?;
 
-        Ok(Self {
+        Ok(MessageSticker {
             pack_id,
             pack_key,
             sticker_id: stickerId,
@@ -216,7 +211,7 @@ mod test {
     #[test_case(|x| x.data = None.into() => Err(MessageStickerError::MissingDataPointer); "no data")]
     #[test_case(
         |x| x.data = Some(proto::FilePointer::default()).into() =>
-        Err(MessageStickerError::DataPointer(FilePointerError::NoLocator));
+        Err(MessageStickerError::DataPointer(FilePointerError::NoLocatorInfo));
         "invalid data"
     )]
     fn message_sticker(mutator: fn(&mut proto::Sticker)) -> Result<(), MessageStickerError> {

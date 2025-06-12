@@ -509,26 +509,9 @@ class PublicAPITests: TestCaseBase {
             XCTAssertEqual(bundle.signedPreKeyPublic, signedPreKey)
             XCTAssertEqual(bundle.signedPreKeySignature, signedPreKeySignature)
             XCTAssertEqual(bundle.identityKey, identityKeyPair.identityKey)
-        }
-
-        do {
-            let bundle = try! PreKeyBundle(registrationId: registrationId, deviceId: deviceId, signedPrekeyId: signedPreKeyId, signedPrekey: signedPreKey, signedPrekeySignature: signedPreKeySignature, identity: identityKeyPair.identityKey)
-            checkConsistentFields(bundle)
-            XCTAssertNil(bundle.preKeyId)
-            XCTAssertNil(bundle.preKeyPublic)
-            XCTAssertNil(bundle.kyberPreKeyId)
-            XCTAssertNil(bundle.kyberPreKeyPublic)
-            XCTAssertNil(bundle.kyberPreKeySignature)
-        }
-
-        do {
-            let bundle = try! PreKeyBundle(registrationId: registrationId, deviceId: deviceId, prekeyId: preKeyId, prekey: preKey, signedPrekeyId: signedPreKeyId, signedPrekey: signedPreKey, signedPrekeySignature: signedPreKeySignature, identity: identityKeyPair.identityKey)
-            checkConsistentFields(bundle)
-            XCTAssertEqual(bundle.preKeyId, preKeyId)
-            XCTAssertEqual(bundle.preKeyPublic, preKey)
-            XCTAssertNil(bundle.kyberPreKeyId)
-            XCTAssertNil(bundle.kyberPreKeyPublic)
-            XCTAssertNil(bundle.kyberPreKeySignature)
+            XCTAssertEqual(bundle.kyberPreKeyId, kyberPreKeyId)
+            XCTAssertEqual(bundle.kyberPreKeyPublic, kyberPreKey)
+            XCTAssertEqual(bundle.kyberPreKeySignature, kyberPreKeySignature)
         }
 
         do {
@@ -536,9 +519,6 @@ class PublicAPITests: TestCaseBase {
             checkConsistentFields(bundle)
             XCTAssertNil(bundle.preKeyId)
             XCTAssertNil(bundle.preKeyPublic)
-            XCTAssertEqual(bundle.kyberPreKeyId, kyberPreKeyId)
-            XCTAssertEqual(bundle.kyberPreKeyPublic, kyberPreKey)
-            XCTAssertEqual(bundle.kyberPreKeySignature, kyberPreKeySignature)
         }
 
         do {
@@ -546,9 +526,6 @@ class PublicAPITests: TestCaseBase {
             checkConsistentFields(bundle)
             XCTAssertEqual(bundle.preKeyId, preKeyId)
             XCTAssertEqual(bundle.preKeyPublic, preKey)
-            XCTAssertEqual(bundle.kyberPreKeyId, kyberPreKeyId)
-            XCTAssertEqual(bundle.kyberPreKeyPublic, kyberPreKey)
-            XCTAssertEqual(bundle.kyberPreKeySignature, kyberPreKeySignature)
         }
     }
 }

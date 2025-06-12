@@ -22,7 +22,7 @@ pub use builder::JsFutureBuilder;
 /// The possible states of a [JsFuture].
 enum JsFutureState<T> {
     /// The future is waiting to be settled.
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     Pending {
         transform: Box<
             dyn for<'a> FnOnce(&mut FunctionContext<'a>, JsPromiseResult<'a>) -> T + 'static + Send,

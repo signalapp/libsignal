@@ -22,9 +22,15 @@ use crate::dns::dns_lookup::DnsLookupRequest;
 use crate::dns::dns_types::Expiring;
 use crate::dns::dns_utils::log_safe_domain;
 use crate::dns::lookup_result::LookupResult;
-use crate::route::{ConnectionOutcomeParams, ConnectionOutcomes, ConnectorFactory, ResolvedRoute};
-use crate::timeouts::{DNS_CALL_BACKGROUND_TIMEOUT, DNS_RESOLUTION_DELAY};
+use crate::route::{
+    ConnectionOutcomeParams, ConnectionOutcomes, ConnectorFactory, InterfaceMonitor, ResolvedRoute,
+};
+use crate::timeouts::{
+    DNS_CALL_BACKGROUND_TIMEOUT, DNS_RESOLUTION_DELAY, NETWORK_INTERFACE_POLL_INTERVAL,
+    POST_ROUTE_CHANGE_CONNECTION_TIMEOUT,
+};
 use crate::utils::future::results_within_interval;
+use crate::utils::NetworkChangeEvent;
 use crate::{dns, DnsSource};
 
 pub type DnsIpv4Result = Expiring<Vec<Ipv4Addr>>;
@@ -94,16 +100,21 @@ const DNS_CONNECTION_COOLDOWN_CONFIG: ConnectionOutcomeParams = ConnectionOutcom
 pub struct CustomDnsResolver<R, T> {
     connector_factory: T,
     routes: Vec<R>,
+    network_change_event: NetworkChangeEvent,
     attempts_record: Arc<tokio::sync::RwLock<ConnectionOutcomes<R>>>,
     cache: Arc<std::sync::Mutex<SharedCacheWithGenerations<String, Expiring<LookupResult>>>>,
 }
 
 impl<R, T> CustomDnsResolver<R, T>
 where
-    T: ConnectorFactory<R, Connection: DnsTransport + 'static>,
+    T: ConnectorFactory<R, Connector: Sync, Connection: DnsTransport + 'static>,
     R: ResolvedRoute + Clone + Hash + Eq + Send + Sync,
 {
-    pub fn new(routes: Vec<R>, connector_factory: T) -> Self {
+    pub fn new(
+        routes: Vec<R>,
+        connector_factory: T,
+        network_change_event: &NetworkChangeEvent,
+    ) -> Self {
         let cache = Arc::new(std::sync::Mutex::new(SharedCacheWithGenerations::default()));
         let attempts_record = Arc::new(tokio::sync::RwLock::new(ConnectionOutcomes::new(
             DNS_CONNECTION_COOLDOWN_CONFIG,
@@ -112,6 +123,7 @@ where
         Self {
             connector_factory,
             routes,
+            network_change_event: network_change_event.clone(),
             attempts_record,
             cache,
         }
@@ -154,7 +166,12 @@ where
     }
 
     async fn lookup(&self, request: DnsLookupRequest) -> dns::Result<LookupResult> {
-        let connector = self.connector_factory.make();
+        let connector = InterfaceMonitor::new(
+            self.connector_factory.make(),
+            self.network_change_event.clone(),
+            NETWORK_INTERFACE_POLL_INTERVAL,
+            POST_ROUTE_CHANGE_CONNECTION_TIMEOUT,
+        );
         let routes = self
             .routes
             .iter()
@@ -162,10 +179,10 @@ where
             .cloned()
             .collect();
 
-        let attempts_record_snapshot = self.attempts_record.read().await.clone();
+        let mut attempts_record_snapshot = self.attempts_record.read().await.clone();
         let (result, updates) = crate::route::connect_resolved(
             routes,
-            &attempts_record_snapshot,
+            &mut attempts_record_snapshot,
             connector,
             (),
             "dns".into(),
@@ -191,7 +208,7 @@ where
         .await;
         let ipv4s = maybe_ipv4.map_or(vec![], |r| r.data);
         let ipv6s = maybe_ipv6.map_or(vec![], |r| r.data);
-        match LookupResult::new(T::Connection::SOURCE, ipv4s, ipv6s) {
+        match LookupResult::new(ipv4s, ipv6s) {
             lookup_result if !lookup_result.is_empty() => Ok(lookup_result),
             _ => Err(Error::LookupFailed),
         }
@@ -265,7 +282,7 @@ async fn do_lookup_task_body<T: DnsTransport>(
     let started_at = Instant::now();
     let timeout_at = started_at + DNS_CALL_BACKGROUND_TIMEOUT;
 
-    let mut stream = match transport.send_queries(request.clone()).await {
+    let stream = match transport.send_queries(request.clone()).await {
         Ok(stream) => stream,
         Err(err) => {
             log::error!(
@@ -349,7 +366,7 @@ async fn do_lookup_task_body<T: DnsTransport>(
     let v4 = maybe_ipv4_res.map_or(vec![], |e| e.data);
     let v6 = maybe_ipv6_res.map_or(vec![], |e| e.data);
     let expiring_entry = Expiring {
-        data: LookupResult::new(DnsSource::Cache, v4, v6),
+        data: LookupResult::new(v4, v6),
         // Clamp cached TTLs.
         expiration: min(expiration, started_at + MAX_CACHE_TTL),
     };
@@ -364,13 +381,17 @@ pub(crate) mod test {
     use std::net::IpAddr;
     use std::pin::pin;
     use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::Mutex;
 
     use assert_matches::assert_matches;
     use const_str::ip_addr;
     use futures_util::stream::FuturesUnordered;
+    use test_case::test_case;
 
     use super::*;
+    use crate::route::testutils::ConnectFn;
     use crate::route::Connector;
+    use crate::testutil::no_network_change_events;
     use crate::utils::{sleep_and_catch_up, sleep_until_and_catch_up};
 
     // Remove this when Rust figures out how to make arbitrary Div impls const.
@@ -430,14 +451,16 @@ pub(crate) mod test {
             Output = dns::Result<impl Stream<Item = dns::Result<DnsQueryResult>> + Send + 'static>,
         > + Send {
             panic!("not implemented");
-            #[allow(unreachable_code)] // needed for the compiler to infer the return type
+            #[expect(
+                unreachable_code,
+                reason = "needed for the compiler to infer the return type"
+            )]
             std::future::ready(Ok(futures_util::stream::empty()))
         }
     }
 
     pub(crate) type OneshotDnsQueryResultSender = oneshot::Sender<dns::Result<DnsQueryResult>>;
-    pub(crate) type SenderHandlerFn<T> =
-        Box<dyn Fn(DnsLookupRequest, u32, T) + Send + Sync + 'static>;
+    pub(crate) type SenderHandlerFn<T> = dyn Fn(DnsLookupRequest, u32, T) + Send + Sync + 'static;
 
     #[derive(Clone)]
     pub(crate) struct TestDnsTransportWithResponses<const RESPONSES: usize> {
@@ -484,6 +507,7 @@ pub(crate) mod test {
                     sender_handler: Arc::new(Box::new(sender_handler)),
                     queries_count: Default::default(),
                 }),
+                &no_network_change_events(),
             )
         }
 
@@ -506,6 +530,7 @@ pub(crate) mod test {
             let resolver = CustomDnsResolver::new(
                 vec![DNS_SERVER_IP],
                 MakeConnectorByCloning(transport.clone()),
+                &no_network_change_events(),
             );
             (transport, resolver)
         }
@@ -796,6 +821,7 @@ pub(crate) mod test {
             MakeConnectorByCloning(TestDnsTransportFailingToConnect(Error::Io(
                 std::io::ErrorKind::BrokenPipe,
             ))),
+            &no_network_change_events(),
         );
         let result = resolver.resolve(test_request()).await;
         assert_matches!(result, Err(Error::TransportFailure));
@@ -808,6 +834,93 @@ pub(crate) mod test {
         });
         let result = resolver.resolve(test_request()).await;
         assert_matches!(result, Err(Error::LookupFailed));
+    }
+
+    #[test_case(false)]
+    #[test_case(true)]
+    #[tokio::test(start_paused = true)]
+    async fn respects_ipv6_filter_for_dns_server_itself(ipv6_enabled: bool) {
+        let ips = [ip_addr!("3fff::100"), DNS_SERVER_IP];
+        let routes_tried = Arc::new(Mutex::new(HashSet::new()));
+        let resolver = CustomDnsResolver::new(
+            ips.to_vec(),
+            ConnectFn(|_over, route: IpAddr, _log_tag| {
+                routes_tried.lock().expect("not poisoned").insert(route);
+                std::future::ready(Err::<TestDnsTransportFailingToConnect, _>(Error::Io(
+                    std::io::ErrorKind::BrokenPipe,
+                )))
+            }),
+            &no_network_change_events(),
+        );
+        let result = resolver
+            .resolve(DnsLookupRequest {
+                ipv6_enabled,
+                ..test_request()
+            })
+            .await;
+        assert_matches!(result, Err(Error::TransportFailure));
+        assert_eq!(
+            *routes_tried.lock().expect("not poisoned"),
+            HashSet::from_iter(if ipv6_enabled {
+                ips.iter().copied()
+            } else {
+                [DNS_SERVER_IP].iter().copied()
+            })
+        );
+    }
+
+    #[test_log::test(tokio::test(start_paused = true))]
+    async fn outcomes_recorded() {
+        let attempts_by_ip = Arc::new(Mutex::new(HashMap::<IpAddr, u32>::new()));
+        let ips = [ip_addr!("3fff::100"), DNS_SERVER_IP];
+        let resolver = CustomDnsResolver::new(
+            ips.to_vec(),
+            ConnectFn(|_over, route: IpAddr, _log_tag| {
+                *attempts_by_ip
+                    .lock()
+                    .expect("no panic")
+                    .entry(route)
+                    .or_default() += 1;
+                let result = if route.is_ipv4() {
+                    Ok(TestDnsTransportWithTwoResponses {
+                        queries_count: Default::default(),
+                        sender_handler: Arc::new(|_, _, txs| {
+                            let [tx_1, tx_2] = txs;
+                            tx_1.send(ok_query_result_ipv4(NORMAL_TTL, IP_V4_LIST_1))
+                                .unwrap();
+                            tx_2.send(ok_query_result_ipv6(NORMAL_TTL, IP_V6_LIST_1))
+                                .unwrap();
+                        }),
+                    })
+                } else {
+                    Err(Error::Io(std::io::ErrorKind::BrokenPipe))
+                };
+                std::future::ready(result)
+            }),
+            &no_network_change_events(),
+        );
+        let result = resolver.resolve(test_request()).await;
+        assert_lookup_result_content_equal(&result.unwrap(), IP_V4_LIST_1, IP_V6_LIST_1);
+        // We should have tried both routes, with the good one being second.
+        assert_eq!(
+            *attempts_by_ip.lock().expect("not poisoned"),
+            HashMap::from_iter([(ips[0], 1), (ips[1], 1)])
+        );
+
+        // Try a second time (with a different hostname, so we don't hit the cache!)
+        let result = resolver
+            .resolve(DnsLookupRequest {
+                hostname: "chat.staging.signal.org".into(),
+                ..test_request()
+            })
+            .await;
+        assert_lookup_result_content_equal(&result.unwrap(), IP_V4_LIST_1, IP_V6_LIST_1);
+        // Even though the bad transport route was listed first, we should have tried the good
+        // transport route first on our second attempt.
+        assert_eq!(
+            *attempts_by_ip.lock().expect("not poisoned"),
+            HashMap::from_iter([(ips[0], 1), (ips[1], 2)])
+        );
     }
 
     #[tokio::test]

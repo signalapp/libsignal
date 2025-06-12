@@ -226,13 +226,17 @@ public class UnauthenticatedChatConnection: NativeHandleOwner<
     SignalMutPointerUnauthenticatedChatConnection
 >, ChatConnection, @unchecked Sendable {
     internal let tokioAsyncContext: TokioAsyncContext
+    internal let environment: Net.Environment
 
     /// Initiates establishing of the underlying unauthenticated connection to
     /// the Chat Service. Once the connection is established, the returned
     /// object can be used to send and receive messages after
     /// ``UnauthenticatedChatConnection/start(listener:)`` is called.
-    internal init(tokioAsyncContext: TokioAsyncContext, connectionManager: ConnectionManager)
-    async throws {
+    internal init(
+        tokioAsyncContext: TokioAsyncContext,
+        connectionManager: ConnectionManager,
+        environment: Net.Environment
+    ) async throws {
         let nativeHandle = try await tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
             connectionManager.withNativeHandle { connectionManager in
                 signal_unauthenticated_chat_connection_connect(
@@ -241,11 +245,17 @@ public class UnauthenticatedChatConnection: NativeHandleOwner<
             }
         }
         self.tokioAsyncContext = tokioAsyncContext
+        self.environment = environment
         super.init(owned: NonNull(nativeHandle)!)
     }
 
-    internal init(fakeHandle handle: NonNull<SignalMutPointerUnauthenticatedChatConnection>, tokioAsyncContext: TokioAsyncContext) {
+    internal init(
+        fakeHandle handle: NonNull<SignalMutPointerUnauthenticatedChatConnection>,
+        tokioAsyncContext: TokioAsyncContext,
+        environment: Net.Environment
+    ) {
         self.tokioAsyncContext = tokioAsyncContext
+        self.environment = environment
         super.init(owned: handle)
     }
 
@@ -343,5 +353,15 @@ extension SignalMutPointerUnauthenticatedChatConnection: SignalMutPointer {
 extension SignalConstPointerUnauthenticatedChatConnection: SignalConstPointer {
     public func toOpaque() -> OpaquePointer? {
         self.raw
+    }
+}
+
+extension UnauthenticatedChatConnection {
+    public var keyTransparencyClient: KeyTransparency.Client {
+        return KeyTransparency.Client(
+            chatConnection: self,
+            asyncContext: self.tokioAsyncContext,
+            environment: self.environment
+        )
     }
 }

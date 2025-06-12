@@ -35,29 +35,6 @@ public class PreKeyBundle extends NativeHandleGuard.SimpleOwner {
       int signedPreKeyId,
       ECPublicKey signedPreKeyPublic,
       byte[] signedPreKeySignature,
-      IdentityKey identityKey) {
-    this(
-        registrationId,
-        deviceId,
-        preKeyId,
-        preKeyPublic,
-        signedPreKeyId,
-        signedPreKeyPublic,
-        signedPreKeySignature,
-        identityKey,
-        NULL_PRE_KEY_ID,
-        null,
-        null);
-  }
-
-  public PreKeyBundle(
-      int registrationId,
-      int deviceId,
-      int preKeyId,
-      ECPublicKey preKeyPublic,
-      int signedPreKeyId,
-      ECPublicKey signedPreKeyPublic,
-      byte[] signedPreKeySignature,
       IdentityKey identityKey,
       int kyberPreKeyId,
       KEMPublicKey kyberPreKeyPublic,
@@ -93,7 +70,6 @@ public class PreKeyBundle extends NativeHandleGuard.SimpleOwner {
         NativeHandleGuard signedPreKeyPublicGuard = new NativeHandleGuard(signedPreKeyPublic);
         NativeHandleGuard identityKeyGuard = new NativeHandleGuard(identityKey.getPublicKey());
         NativeHandleGuard kyberPreKeyPublicGuard = new NativeHandleGuard(kyberPreKeyPublic); ) {
-      byte[] kyberSignature = kyberPreKeySignature == null ? new byte[] {} : kyberPreKeySignature;
       return filterExceptions(
           () ->
               Native.PreKeyBundle_New(
@@ -107,7 +83,7 @@ public class PreKeyBundle extends NativeHandleGuard.SimpleOwner {
                   identityKeyGuard.nativeHandle(),
                   kyberPreKeyId,
                   kyberPreKeyPublicGuard.nativeHandle(),
-                  kyberSignature));
+                  kyberPreKeySignature));
     }
   }
 
@@ -175,7 +151,7 @@ public class PreKeyBundle extends NativeHandleGuard.SimpleOwner {
   }
 
   /**
-   * @return the unique key ID for the Kyber prekey or -1 if the bundle has none.
+   * @return the unique key ID for the Kyber prekey.
    */
   public int getKyberPreKeyId() {
     return filterExceptions(() -> guardedMapChecked(Native::PreKeyBundle_GetKyberPreKeyId));
@@ -185,23 +161,14 @@ public class PreKeyBundle extends NativeHandleGuard.SimpleOwner {
    * @return the public key for this Kyber prekey.
    */
   public KEMPublicKey getKyberPreKey() {
-    long handle =
-        filterExceptions(() -> guardedMapChecked(Native::PreKeyBundle_GetKyberPreKeyPublic));
-    if (handle != 0) {
-      return new KEMPublicKey(handle);
-    }
-    return null;
+    return new KEMPublicKey(
+        filterExceptions(() -> guardedMapChecked(Native::PreKeyBundle_GetKyberPreKeyPublic)));
   }
 
   /**
    * @return the signature over the kyber prekey.
    */
   public byte[] getKyberPreKeySignature() {
-    byte[] signature =
-        filterExceptions(() -> guardedMapChecked(Native::PreKeyBundle_GetKyberPreKeySignature));
-    if (signature.length == 0) {
-      return null;
-    }
-    return signature;
+    return filterExceptions(() -> guardedMapChecked(Native::PreKeyBundle_GetKyberPreKeySignature));
   }
 }

@@ -8,9 +8,11 @@ use std::future::Future;
 use futures_util::{AsyncReadExt as _, FutureExt};
 use io::{AsyncInput, InputStream};
 use libsignal_bridge_macros::*;
+use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::support::*;
 use libsignal_bridge_types::*;
 use libsignal_protocol::SignalProtocolError;
+use uuid::Uuid;
 
 use crate::types::*;
 
@@ -57,7 +59,7 @@ where
     }
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn TESTING_NonSuspendingBackgroundThreadRuntime_New() -> NonSuspendingBackgroundThreadRuntime {
     NonSuspendingBackgroundThreadRuntime
 }
@@ -70,6 +72,35 @@ async fn TESTING_FutureSuccess(input: u8) -> i32 {
 #[bridge_io(NonSuspendingBackgroundThreadRuntime)]
 async fn TESTING_FutureFailure(_input: u8) -> Result<i32, SignalProtocolError> {
     Err(SignalProtocolError::InvalidArgument("failure".to_string()))
+}
+
+bridge_handle_fns!(TestingFutureCancellationCounter, clone = false);
+
+#[bridge_fn]
+fn TESTING_FutureCancellationCounter_Create(initial_value: u8) -> TestingFutureCancellationCounter {
+    TestingFutureCancellationCounter(tokio::sync::Semaphore::new(initial_value.into()).into())
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn TESTING_FutureCancellationCounter_WaitForCount(
+    count: &TestingFutureCancellationCounter,
+    target: u8,
+) {
+    let _permits = count
+        .0
+        .acquire_many(target.into())
+        .await
+        .expect("not closed");
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn TESTING_FutureIncrementOnCancel(_guard: TestingFutureCancellationGuard) {
+    std::future::pending().await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn TESTING_TokioAsyncFuture(input: u8) -> i32 {
+    i32::from(input) * 3
 }
 
 #[derive(Clone)]
@@ -196,11 +227,12 @@ struct CustomErrorType;
 #[cfg(feature = "jni")]
 impl From<CustomErrorType> for crate::jni::SignalJniError {
     fn from(CustomErrorType: CustomErrorType) -> Self {
-        Self::TestingError {
+        crate::jni::TestingError {
             exception_class: crate::jni::ClassName(
                 "org.signal.libsignal.internal.TestingException",
             ),
         }
+        .into()
     }
 }
 
@@ -215,6 +247,12 @@ fn TESTING_ReturnStringArray() -> Box<[String]> {
         .map(String::from)
         .into_iter()
         .collect()
+}
+
+#[allow(clippy::boxed_local)] // &[String] isn't supported for bridging (yet).
+#[bridge_fn(ffi = false)]
+fn TESTING_JoinStringArray(array: Box<[String]>, join_with: String) -> String {
+    array.join(&join_with)
 }
 
 #[bridge_fn]
@@ -246,6 +284,11 @@ fn TESTING_RoundTripI32(input: i32) -> i32 {
 #[bridge_fn(ffi = false)]
 fn TESTING_RoundTripU64(input: u64) -> u64 {
     input
+}
+
+#[bridge_fn]
+fn TESTING_ConvertOptionalUuid(present: bool) -> Option<Uuid> {
+    present.then_some(uuid::uuid!("abababab-1212-8989-baba-565656565656"))
 }
 
 #[bridge_fn]

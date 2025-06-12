@@ -7,8 +7,8 @@ use std::num::NonZeroU16;
 
 use attest::svr2::RaftConfig;
 use const_str::ip_addr;
-use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SgxPreQuantum};
-use libsignal_net::env::{ConnectionConfig, DomainConfig, Env};
+use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, Svr2};
+use libsignal_net::env::{ConnectionConfig, DomainConfig, Env, KeyTransConfig};
 use libsignal_net::infra::certs::RootCertificates;
 
 const ENCLAVE_ID_MOCK_SERVER: &[u8] = b"0.20240911.184407";
@@ -25,6 +25,7 @@ fn localhost_test_domain_config_with_port_and_cert(
             hostname: "localhost",
             port,
             cert: RootCertificates::FromDer(std::borrow::Cow::Owned(root_certificate_der.to_vec())),
+            min_tls_version: None,
             confirmation_header_name: None,
             proxy: None,
         },
@@ -49,9 +50,15 @@ const DUMMY_CDSI_ENDPOINT_PARAMS: EndpointParams<'static, Cdsi> = EndpointParams
     raft_config: (),
 };
 
-const DUMMY_SVR2_ENDPOINT_PARAMS: EndpointParams<'static, SgxPreQuantum> = EndpointParams {
+const DUMMY_SVR2_ENDPOINT_PARAMS: EndpointParams<'static, Svr2> = EndpointParams {
     mr_enclave: MrEnclave::new(ENCLAVE_ID_MOCK_SERVER),
     raft_config: DUMMY_RAFT_CONFIG,
+};
+
+const DUMMY_KEYTRANS_CONFIG: KeyTransConfig = KeyTransConfig {
+    signing_key_material: &[0; 32],
+    vrf_key_material: &[0; 32],
+    auditor_key_material: &[0; 32],
 };
 
 pub(crate) fn localhost_test_env_with_ports(
@@ -77,6 +84,6 @@ pub(crate) fn localhost_test_env_with_ports(
             ),
             params: DUMMY_SVR2_ENDPOINT_PARAMS,
         },
-        keytrans_config: None,
+        keytrans_config: DUMMY_KEYTRANS_CONFIG,
     }
 }

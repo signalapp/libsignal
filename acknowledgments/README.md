@@ -17,7 +17,6 @@ Then:
 Apart from the projects in this very repo, there are a few other crates that unavoidably have "synthesized" licenses based on their Cargo manifests:
 
 - cesu8: Very old crate whose repository contains a license file for the Rust project itself, rather than the crate.
-- half: Not actually synthesized! Their license file just matches the synthesized text perfectly. A bug in cargo-about, presumably.
 - pqcrypto-\*: Uploaded without a license file, though a license is listed in the Cargo.toml for each crate. The Kyber implementations we use are released as [Public Domain][kyber], so no acknowledgment is necessary.
 
 [cargo-about]: https://embarkstudios.github.io/cargo-about/

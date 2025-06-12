@@ -19,11 +19,11 @@ use http::uri::PathAndQuery;
 use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
-use libsignal_net::enclave::{EnclaveKind, EndpointParams, MrEnclave, NewHandshake, SgxPreQuantum};
+use libsignal_net::enclave::{EnclaveKind, EndpointParams, MrEnclave, NewHandshake, Svr2};
 use libsignal_net::svr::SvrConnection;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::DirectOrProxyProvider;
-use libsignal_net_infra::utils::ObservableEvent;
+use libsignal_net_infra::testutil::no_network_change_events;
 use libsignal_net_infra::EnableDomainFronting;
 
 const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
@@ -95,8 +95,7 @@ async fn main() {
         libsignal_net::env::STAGING.svr2
     };
 
-    let network_changed_event = ObservableEvent::default();
-    let resolver = DnsResolver::new();
+    let resolver = DnsResolver::new(&no_network_change_events());
 
     let confirmation_header_name = env
         .domain_config
@@ -107,15 +106,18 @@ async fn main() {
     let connection_resources = ConnectionResources {
         connect_state: &connect_state,
         dns_resolver: &resolver,
-        network_change_event: &network_changed_event,
+        network_change_event: &no_network_change_events(),
         confirmation_header_name,
     };
 
-    let params: EndpointParams<'_, LoggingNewHandshake<SgxPreQuantum>> = cast_params(&env.params);
+    let params: EndpointParams<'_, LoggingNewHandshake<Svr2>> = cast_params(&env.params);
 
     let _connection = SvrConnection::connect(
         connection_resources,
-        DirectOrProxyProvider::maybe_proxied(env.route_provider(EnableDomainFronting::No), None),
+        DirectOrProxyProvider::maybe_proxied(
+            env.enclave_websocket_provider(EnableDomainFronting::No),
+            None,
+        ),
         WS2_CONFIG,
         &params,
         auth,

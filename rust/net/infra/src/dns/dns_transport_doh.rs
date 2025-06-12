@@ -22,9 +22,10 @@ use crate::dns::dns_types::ResourceType;
 use crate::errors::{LogSafeDisplay, TransportConnectError};
 use crate::http_client::{AggregatingHttp2Client, Http2Connector};
 use crate::route::{
-    ComposedConnector, Connector, ConnectorExt, ConnectorFactory, HttpsTlsRoute, TcpRoute,
-    ThrottlingConnector, TlsRoute,
+    Connector, ConnectorExt, ConnectorFactory, HttpsTlsRoute, TcpRoute, ThrottlingConnector,
+    TlsRoute, VariableTlsTimeoutConnector,
 };
+use crate::timeouts::MIN_TLS_HANDSHAKE_TIMEOUT;
 use crate::{dns, DnsSource};
 
 pub(crate) const CLOUDFLARE_IPS: (Ipv4Addr, Ipv6Addr) = (
@@ -45,9 +46,9 @@ impl ConnectorFactory<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>> for DohTranspor
 }
 
 pub struct DohTransportConnector {
-    transport_connector: ComposedConnector<
-        crate::tcp_ssl::StatelessDirect,
-        ThrottlingConnector<crate::tcp_ssl::StatelessDirect>,
+    transport_connector: VariableTlsTimeoutConnector<
+        ThrottlingConnector<crate::tcp_ssl::StatelessTls>,
+        crate::tcp_ssl::StatelessTcp,
         TransportConnectError,
     >,
 }
@@ -55,9 +56,10 @@ pub struct DohTransportConnector {
 impl Default for DohTransportConnector {
     fn default() -> Self {
         Self {
-            transport_connector: ComposedConnector::new(
-                crate::tcp_ssl::StatelessDirect,
-                ThrottlingConnector::new(crate::tcp_ssl::StatelessDirect, 1),
+            transport_connector: VariableTlsTimeoutConnector::new(
+                ThrottlingConnector::new(crate::tcp_ssl::StatelessTls, 1),
+                crate::tcp_ssl::StatelessTcp,
+                MIN_TLS_HANDSHAKE_TIMEOUT,
             ),
         }
     }
@@ -104,22 +106,21 @@ impl DnsTransport for DohTransport {
         self,
         request: DnsLookupRequest,
     ) -> dns::Result<impl Stream<Item = dns::Result<DnsQueryResult>> + Send + 'static> {
-        let arc = Arc::new(self);
-        let futures = match request.ipv6_enabled {
-            true => vec![
-                arc.clone()
-                    .send_request(request.clone(), ResourceType::AAAA),
-                arc.clone().send_request(request.clone(), ResourceType::A),
-            ],
-            false => vec![arc.clone().send_request(request.clone(), ResourceType::A)],
-        };
+        let futures = request
+            .ipv6_enabled
+            .then(|| {
+                self.clone()
+                    .send_request(request.clone(), ResourceType::AAAA)
+            })
+            .into_iter()
+            .chain([self.send_request(request, ResourceType::A)]);
         Ok(FuturesUnordered::from_iter(futures))
     }
 }
 
 impl DohTransport {
     async fn send_request(
-        self: Arc<Self>,
+        self,
         request: DnsLookupRequest,
         resource_type: ResourceType,
     ) -> dns::Result<DnsQueryResult> {

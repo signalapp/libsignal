@@ -10,6 +10,7 @@ Benchmark.main([
     groupSendEndorsementsSuite,
     privateKeyOperationsSuite,
     publicKeyOperationsSuite,
+    hexSuite,
 ])
 
 /// Attempts to prevent the value of `x` from being discarded by the optimizer.

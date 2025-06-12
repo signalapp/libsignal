@@ -100,7 +100,7 @@ fn scrambler_smoke_test() {
     if write_expected_output() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/res/canonical-backup.scrambled.expected.json");
-        eprintln!("writing expected contents to {:?}", path);
+        eprintln!("writing expected contents to {path:?}");
         std::fs::write(path, canonical_repr).expect("failed to overwrite expected contents");
         return;
     }
@@ -151,7 +151,7 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
         .stdout;
 
     if write_expected_output() {
-        eprintln!("writing expected encrypted contents to {:?}", path);
+        eprintln!("writing expected encrypted contents to {path:?}");
         std::fs::write(path, expected_contents).expect("failed to overwrite expected contents");
         return;
     }
@@ -232,7 +232,7 @@ fn invalid_jsonproto(input: Fixture<PathBuf>) {
     let text = result.expect_err("unexpectedly valid").to_string();
 
     if write_expected_output() {
-        eprintln!("writing expected value to {:?}", expected_path);
+        eprintln!("writing expected value to {expected_path:?}");
         std::fs::write(expected_path, text).expect("failed to overwrite expected contents");
         return;
     }

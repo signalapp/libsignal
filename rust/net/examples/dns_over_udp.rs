@@ -54,22 +54,19 @@ async fn main() {
     .await
     .0
     .expect("connected to the DNS server");
-    log::info!(
-        "successfully connected to the DNS server at {:?}",
-        ns_address
-    );
+    log::info!("successfully connected to the DNS server at {ns_address:?}");
 
     let request = DnsLookupRequest {
         hostname: Arc::from(args.domain.as_str()),
         ipv6_enabled: !args.no_ipv6,
     };
-    log::info!("sending DNS request: {:?}", request);
-    let mut stream = udp_transport.send_queries(request).await.unwrap();
+    log::info!("sending DNS request: {request:?}");
+    let stream = udp_transport.send_queries(request).await.unwrap();
     let mut stream = std::pin::pin!(stream);
 
     let next_response = stream.next().await;
-    log::info!("received first response from DNS: [{:?}]", next_response);
+    log::info!("received first response from DNS: [{next_response:?}]");
 
     let next_response = stream.next().await;
-    log::info!("received second response from DNS: [{:?}]", next_response);
+    log::info!("received second response from DNS: [{next_response:?}]");
 }

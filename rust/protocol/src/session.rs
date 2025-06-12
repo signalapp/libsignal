@@ -10,15 +10,26 @@ use rand::{CryptoRng, Rng};
 use crate::ratchet::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
 use crate::state::GenericSignedPreKey;
 use crate::{
-    kem, ratchet, Direction, IdentityKeyStore, KeyPair, KyberPreKeyId, KyberPreKeyStore,
-    PreKeyBundle, PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress, Result,
-    SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyStore,
+    kem, ratchet, Direction, IdentityKey, IdentityKeyStore, KeyPair, KyberPreKeyId,
+    KyberPreKeyStore, PreKeyBundle, PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress,
+    Result, SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyStore,
 };
 
 #[derive(Default)]
 pub struct PreKeysUsed {
     pub pre_key_id: Option<PreKeyId>,
     pub kyber_pre_key_id: Option<KyberPreKeyId>,
+}
+
+/// Expected [`IdentityKeyStore`] change when [`process_prekey`] succeeds.
+///
+/// This represents a deferred action. Assuming later operations succeed, the
+/// caller of `process_prekey` should apply this to the `IdentityKeyStore` that
+/// was provided.
+#[must_use]
+pub struct IdentityToSave<'a> {
+    pub remote_address: &'a ProtocolAddress,
+    pub their_identity_key: &'a IdentityKey,
 }
 
 /*
@@ -30,15 +41,16 @@ its reference to the various data stores, instead the functions are
 free standing.
  */
 
-pub async fn process_prekey(
-    message: &PreKeySignalMessage,
-    remote_address: &ProtocolAddress,
+pub async fn process_prekey<'a>(
+    message: &'a PreKeySignalMessage,
+    remote_address: &'a ProtocolAddress,
     session_record: &mut SessionRecord,
-    identity_store: &mut dyn IdentityKeyStore,
+    identity_store: &dyn IdentityKeyStore,
     pre_key_store: &dyn PreKeyStore,
     signed_prekey_store: &dyn SignedPreKeyStore,
     kyber_prekey_store: &dyn KyberPreKeyStore,
-) -> Result<PreKeysUsed> {
+    use_pq_ratchet: ratchet::UsePQRatchet,
+) -> Result<(PreKeysUsed, IdentityToSave<'a>)> {
     let their_identity_key = message.identity_key();
 
     if !identity_store
@@ -58,14 +70,16 @@ pub async fn process_prekey(
         kyber_prekey_store,
         pre_key_store,
         identity_store,
+        use_pq_ratchet,
     )
     .await?;
 
-    identity_store
-        .save_identity(remote_address, their_identity_key)
-        .await?;
+    let identity_to_save = IdentityToSave {
+        remote_address,
+        their_identity_key,
+    };
 
-    Ok(pre_keys_used)
+    Ok((pre_keys_used, identity_to_save))
 }
 
 async fn process_prekey_impl(
@@ -76,12 +90,13 @@ async fn process_prekey_impl(
     kyber_prekey_store: &dyn KyberPreKeyStore,
     pre_key_store: &dyn PreKeyStore,
     identity_store: &dyn IdentityKeyStore,
+    use_pq_ratchet: ratchet::UsePQRatchet,
 ) -> Result<PreKeysUsed> {
-    if session_record.has_session_state(
+    if session_record.promote_matching_session(
         message.message_version() as u32,
         &message.base_key().serialize(),
     )? {
-        // We've already setup a session for this message, letting bundled message fall through
+        // We've already set up a session for this message, we can exit early.
         return Ok(Default::default());
     }
 
@@ -104,13 +119,10 @@ async fn process_prekey_impl(
     }
 
     let our_one_time_pre_key_pair = if let Some(pre_key_id) = message.pre_key_id() {
-        log::info!("processing PreKey message from {}", remote_address);
+        log::info!("processing PreKey message from {remote_address}");
         Some(pre_key_store.get_pre_key(pre_key_id).await?.key_pair()?)
     } else {
-        log::warn!(
-            "processing PreKey message from {} which had no one-time prekey",
-            remote_address
-        );
+        log::warn!("processing PreKey message from {remote_address} which had no one-time prekey");
         None
     };
 
@@ -123,6 +135,7 @@ async fn process_prekey_impl(
         *message.identity_key(),
         *message.base_key(),
         message.kyber_ciphertext(),
+        use_pq_ratchet,
     );
 
     let mut new_session = ratchet::initialize_bob_session(&parameters)?;
@@ -146,6 +159,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
     bundle: &PreKeyBundle,
     now: SystemTime,
     mut csprng: &mut R,
+    use_pq_ratchet: ratchet::UsePQRatchet,
 ) -> Result<()> {
     let their_identity_key = bundle.identity_key()?;
 
@@ -194,6 +208,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
         *their_identity_key,
         their_signed_prekey,
         their_signed_prekey,
+        use_pq_ratchet,
     );
     if let Some(key) = bundle.pre_key_public()? {
         parameters.set_their_one_time_pre_key(key);

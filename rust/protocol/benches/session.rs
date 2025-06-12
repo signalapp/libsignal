@@ -9,6 +9,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
+use rand::TryRngCore as _;
 
 #[path = "../tests/support/mod.rs"]
 mod support;
@@ -38,16 +39,26 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     c.bench_function("session decrypt first message", |b| {
         b.iter(|| {
             let mut bob_store = bob_store.clone();
-            support::decrypt(&mut bob_store, &alice_address, &message_to_decrypt)
-                .now_or_never()
-                .expect("sync")
-                .expect("success");
+            support::decrypt(
+                &mut bob_store,
+                &alice_address,
+                &message_to_decrypt,
+                UsePQRatchet::No,
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
         })
     });
 
-    let _ = support::decrypt(&mut bob_store, &alice_address, &message_to_decrypt)
-        .now_or_never()
-        .expect("sync")?;
+    let _ = support::decrypt(
+        &mut bob_store,
+        &alice_address,
+        &message_to_decrypt,
+        UsePQRatchet::No,
+    )
+    .now_or_never()
+    .expect("sync")?;
     let message_to_decrypt = support::encrypt(&mut alice_store, &bob_address, "a short message")
         .now_or_never()
         .expect("sync")?;
@@ -63,10 +74,15 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     c.bench_function("session decrypt", |b| {
         b.iter(|| {
             let mut bob_store = bob_store.clone();
-            support::decrypt(&mut bob_store, &alice_address, &message_to_decrypt)
-                .now_or_never()
-                .expect("sync")
-                .expect("success");
+            support::decrypt(
+                &mut bob_store,
+                &alice_address,
+                &message_to_decrypt,
+                UsePQRatchet::No,
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
         })
     });
 
@@ -83,7 +99,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         .expect("sync")?;
 
     // ...then initialize a new session...
-    let bob_signed_pre_key_pair = KeyPair::generate(&mut OsRng);
+    let bob_signed_pre_key_pair = KeyPair::generate(&mut OsRng.unwrap_err());
 
     let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
     let bob_signed_pre_key_signature = bob_store
@@ -91,7 +107,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         .now_or_never()
         .expect("sync")?
         .private_key()
-        .calculate_signature(&bob_signed_pre_key_public, &mut OsRng)?;
+        .calculate_signature(&bob_signed_pre_key_public, &mut OsRng.unwrap_err())?;
 
     let signed_pre_key_id = 22;
 
@@ -136,7 +152,8 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         &mut alice_store.identity_store,
         &bob_pre_key_bundle,
         SystemTime::now(),
-        &mut OsRng,
+        &mut OsRng.unwrap_err(),
+        UsePQRatchet::No,
     )
     .now_or_never()
     .expect("sync")?;
@@ -147,9 +164,14 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     let message_to_decrypt = support::encrypt(&mut alice_store, &bob_address, "a short message")
         .now_or_never()
         .expect("sync")?;
-    let _ = support::decrypt(&mut bob_store, &alice_address, &message_to_decrypt)
-        .now_or_never()
-        .expect("sync")?;
+    let _ = support::decrypt(
+        &mut bob_store,
+        &alice_address,
+        &message_to_decrypt,
+        UsePQRatchet::No,
+    )
+    .now_or_never()
+    .expect("sync")?;
     // ...and prepare another message to benchmark decrypting.
     let message_to_decrypt = support::encrypt(&mut alice_store, &bob_address, "a short message")
         .now_or_never()
@@ -158,10 +180,15 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     c.bench_function("session decrypt with archived state", |b| {
         b.iter(|| {
             let mut bob_store = bob_store.clone();
-            support::decrypt(&mut bob_store, &alice_address, &message_to_decrypt)
-                .now_or_never()
-                .expect("sync")
-                .expect("success");
+            support::decrypt(
+                &mut bob_store,
+                &alice_address,
+                &message_to_decrypt,
+                UsePQRatchet::No,
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
         })
     });
 
@@ -171,10 +198,15 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     c.bench_function("session decrypt using previous state", |b| {
         b.iter(|| {
             let mut bob_store = bob_store.clone();
-            support::decrypt(&mut bob_store, &alice_address, &original_message_to_decrypt)
-                .now_or_never()
-                .expect("sync")
-                .expect("success");
+            support::decrypt(
+                &mut bob_store,
+                &alice_address,
+                &original_message_to_decrypt,
+                UsePQRatchet::No,
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
         })
     });
 
@@ -205,7 +237,7 @@ pub fn session_encrypt_decrypt_result(c: &mut Criterion) -> Result<(), SignalPro
                 .now_or_never()
                 .expect("sync")
                 .expect("success");
-            let _ptext = support::decrypt(&mut bob_store, &alice_address, &ctext)
+            let _ptext = support::decrypt(&mut bob_store, &alice_address, &ctext, UsePQRatchet::No)
                 .now_or_never()
                 .expect("sync")
                 .expect("success");
@@ -218,7 +250,7 @@ pub fn session_encrypt_decrypt_result(c: &mut Criterion) -> Result<(), SignalPro
                 .now_or_never()
                 .expect("sync")
                 .expect("success");
-            let _ptext = support::decrypt(&mut bob_store, &alice_address, &ctext)
+            let _ptext = support::decrypt(&mut bob_store, &alice_address, &ctext, UsePQRatchet::No)
                 .now_or_never()
                 .expect("sync")
                 .expect("success");
@@ -227,7 +259,7 @@ pub fn session_encrypt_decrypt_result(c: &mut Criterion) -> Result<(), SignalPro
                 .now_or_never()
                 .expect("sync")
                 .expect("success");
-            let _ptext = support::decrypt(&mut alice_store, &bob_address, &ctext)
+            let _ptext = support::decrypt(&mut alice_store, &bob_address, &ctext, UsePQRatchet::No)
                 .now_or_never()
                 .expect("sync")
                 .expect("success");

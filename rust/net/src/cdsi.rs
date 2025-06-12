@@ -5,11 +5,10 @@
 
 use std::default::Default;
 
-use futures_util::TryFutureExt as _;
 use http::StatusCode;
 use libsignal_core::{Aci, Pni, E164};
-use libsignal_net_infra::connection_manager::ConnectionManager;
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
+use libsignal_net_infra::extract_retry_later;
 use libsignal_net_infra::route::{
     RouteProvider, ThrottlingConnector, UnresolvedWebsocketServiceRoute,
 };
@@ -17,7 +16,6 @@ use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServi
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
-use libsignal_net_infra::{extract_retry_later, TransportConnector};
 use prost::Message as _;
 use thiserror::Error;
 use tungstenite::protocol::frame::coding::CloseCode;
@@ -26,7 +24,7 @@ use uuid::Uuid;
 
 use crate::auth::Auth;
 use crate::connect_state::{ConnectionResources, WebSocketTransportConnectorFactory};
-use crate::enclave::{Cdsi, EnclaveEndpointConnection, EndpointParams};
+use crate::enclave::{Cdsi, EndpointParams};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 use crate::ws::WebSocketServiceConnectError;
 
@@ -315,8 +313,8 @@ impl From<prost::DecodeError> for LookupError {
 }
 
 #[derive(serde::Deserialize)]
-#[cfg_attr(test, derive(serde::Serialize))]
 struct RateLimitExceededResponse {
+    #[serde(rename = "retry_after")]
     retry_after_seconds: u32,
 }
 
@@ -324,28 +322,6 @@ struct RateLimitExceededResponse {
 pub struct ClientResponseCollector(CdsiConnection);
 
 impl CdsiConnection {
-    /// Connect to remote host and verify remote attestation.
-    pub async fn connect<C, T>(
-        endpoint: &EnclaveEndpointConnection<Cdsi, C>,
-        transport_connector: T,
-        auth: Auth,
-    ) -> Result<Self, LookupError>
-    where
-        C: ConnectionManager,
-        T: TransportConnector,
-    {
-        log::info!("connecting to CDSI endpoint");
-        let (connection, _info) = endpoint
-            .connect(auth, transport_connector, "cdsi".into())
-            .inspect_err(|e| {
-                log::warn!("CDSI connection failed: {e}");
-            })
-            .await?;
-
-        log::info!("successfully established attested connection to CDSI endpoint");
-        Ok(Self(connection))
-    }
-
     pub async fn connect_with(
         connection_resources: ConnectionResources<'_, impl WebSocketTransportConnectorFactory>,
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
@@ -476,7 +452,8 @@ impl From<&LookupRequest> for LookupRequestDebugInfo {
 
 /// Numeric code set by the server on the websocket close frame.
 #[repr(u16)]
-#[derive(Copy, Clone, num_enum::TryFromPrimitive, strum::IntoStaticStr)]
+#[derive(Copy, Clone, derive_more::TryFrom, strum::IntoStaticStr)]
+#[try_from(repr)]
 enum CdsiCloseCode {
     InvalidArgument = 4003,
     RateLimitExceeded = 4008,
@@ -489,8 +466,8 @@ enum CdsiCloseCode {
 ///
 /// Returns `Some(err)` if there is a relevant `LookupError` value for the
 /// provided close frame. Otherwise returns `None`.
-fn err_for_close(close: Option<CloseFrame<'_>>) -> LookupError {
-    fn unexpected_close(close: Option<CloseFrame<'_>>) -> LookupError {
+fn err_for_close(close: Option<CloseFrame>) -> LookupError {
+    fn unexpected_close(close: Option<CloseFrame>) -> LookupError {
         LookupError::EnclaveProtocol(AttestedProtocolError::UnexpectedClose(close.into()))
     }
 
@@ -506,7 +483,7 @@ fn err_for_close(close: Option<CloseFrame<'_>>) -> LookupError {
 
     match code {
         CdsiCloseCode::InvalidArgument => LookupError::InvalidArgument {
-            server_reason: reason.clone().into_owned(),
+            server_reason: reason.as_str().to_owned(),
         },
         CdsiCloseCode::InvalidToken => LookupError::InvalidToken,
         CdsiCloseCode::RateLimitExceeded => {
@@ -531,19 +508,26 @@ fn err_for_close(close: Option<CloseFrame<'_>>) -> LookupError {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
     use std::num::NonZeroU64;
     use std::time::Duration;
 
     use assert_matches::assert_matches;
-    use hex_literal::hex;
+    use const_str::hex;
     use itertools::Itertools as _;
-    use libsignal_net_infra::testutil::InMemoryWarpConnector;
-    use libsignal_net_infra::utils::ObservableEvent;
+    use libsignal_net_infra::dns::DnsResolver;
+    use libsignal_net_infra::route::testutils::ConnectFn;
+    use libsignal_net_infra::route::DirectOrProxyProvider;
+    use libsignal_net_infra::testutil::no_network_change_events;
     use libsignal_net_infra::ws::testutil::fake_websocket;
     use libsignal_net_infra::ws2::attested::testutil::{
         run_attested_server, AttestedServerOutput, FAKE_ATTESTATION,
     };
+    use libsignal_net_infra::{
+        AsStaticHttpHeader as _, EnableDomainFronting, RECOMMENDED_WS2_CONFIG,
+    };
     use nonzero_ext::nonzero;
+    use tokio_stream::wrappers::UnboundedReceiverStream;
     use tungstenite::protocol::frame::coding::CloseCode;
     use tungstenite::protocol::CloseFrame;
     use uuid::Uuid;
@@ -551,6 +535,7 @@ mod test {
 
     use super::*;
     use crate::auth::Auth;
+    use crate::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
 
     #[test]
     fn parse_lookup_response_entries() {
@@ -564,8 +549,7 @@ mod test {
         // Generate a sequence of triples by repeating the above data a few times.
         const NUM_REPEATS: usize = 4;
         let e164_pni_aci_triples =
-            std::iter::repeat([e164_bytes.as_slice(), &PNI_BYTES, &ACI_BYTES])
-                .take(NUM_REPEATS)
+            std::iter::repeat_n([e164_bytes.as_slice(), &PNI_BYTES, &ACI_BYTES], NUM_REPEATS)
                 .flatten()
                 .flatten()
                 .cloned()
@@ -603,13 +587,13 @@ mod test {
 
         assert_eq!(
             serialized.as_slice(),
-            &hex!(
-                "000000043136e799"
-                "000000043136e79a"
-                "000000043136e79b"
-                "000000043136e79c"
-                "000000043136e79d"
-            )
+            &hex!([
+                "000000043136e799",
+                "000000043136e79a",
+                "000000043136e79b",
+                "000000043136e79c",
+                "000000043136e79d",
+            ])
         );
     }
 
@@ -623,13 +607,13 @@ mod test {
 
         assert_eq!(
             serialized.as_slice(),
-            &hex!(
-                "8181818181818181818181818181818101010101010101010101010101010101"
-                "8282828282828282828282828282828202020202020202020202020202020202"
-                "8383838383838383838383838383838303030303030303030303030303030303"
-                "8484848484848484848484848484848404040404040404040404040404040404"
-                "8585858585858585858585858585858505050505050505050505050505050505"
-            )
+            &hex!([
+                "8181818181818181818181818181818101010101010101010101010101010101",
+                "8282828282828282828282828282828202020202020202020202020202020202",
+                "8383838383838383838383838383838303030303030303030303030303030303",
+                "8484848484848484848484848484848404040404040404040404040404040404",
+                "8585858585858585858585858585858505050505050505050505050505050505",
+            ])
         );
     }
 
@@ -708,7 +692,7 @@ mod test {
         fn into_handler_with_close_from(
             mut self,
             state_before_close: &'static FakeServerState,
-            close_frame: CloseFrame<'static>,
+            close_frame: CloseFrame,
         ) -> impl FnMut(NextOrClose<Vec<u8>>) -> AttestedServerOutput {
             move |frame| {
                 if &self == state_before_close {
@@ -882,8 +866,6 @@ mod test {
         assert_eq!(response.records.len(), LARGE_NUMBER_OF_ENTRIES as usize);
     }
 
-    const RETRY_AFTER_SECS: u32 = 12345;
-
     #[tokio::test]
     async fn websocket_close_with_rate_limit_exceeded_after_initial_request() {
         let (server, client) = fake_websocket().await;
@@ -892,11 +874,7 @@ mod test {
             &FakeServerState::AwaitingLookupRequest,
             CloseFrame {
                 code: CloseCode::Bad(4008),
-                reason: serde_json::to_string_pretty(&RateLimitExceededResponse {
-                    retry_after_seconds: RETRY_AFTER_SECS,
-                })
-                .expect("can JSON-encode")
-                .into(),
+                reason: r#"{"retry_after": 12345}"#.into(),
             },
         );
 
@@ -930,7 +908,7 @@ mod test {
         assert_matches!(
             response,
             Err(LookupError::RateLimited(RetryLater {
-                retry_after_seconds: RETRY_AFTER_SECS
+                retry_after_seconds: 12345
             }))
         );
     }
@@ -943,11 +921,7 @@ mod test {
             &FakeServerState::AwaitingTokenAck,
             CloseFrame {
                 code: CloseCode::Bad(4008),
-                reason: serde_json::to_string_pretty(&RateLimitExceededResponse {
-                    retry_after_seconds: RETRY_AFTER_SECS,
-                })
-                .expect("can JSON-encode")
-                .into(),
+                reason: r#"{"retry_after": 513}"#.into(),
             },
         );
 
@@ -984,33 +958,66 @@ mod test {
         assert_matches!(
             response,
             Err(LookupError::RateLimited(RetryLater {
-                retry_after_seconds: RETRY_AFTER_SECS
+                retry_after_seconds: 513
             }))
         )
     }
 
-    #[tokio::test]
+    #[test_log::test(tokio::test)]
     async fn websocket_rejected_with_http_429_too_many_requests() {
         let h2_server = warp::get().then(|| async move {
-            warp::reply::with_status(
-                warp::reply::with_header("(ignored body)", "Retry-After", "100"),
-                warp::http::StatusCode::TOO_MANY_REQUESTS,
-            )
+            let reply = warp::reply();
+            let reply = warp::reply::with_header(reply, RetryLater::HEADER_NAME.as_str(), "100");
+            warp::reply::with_status(reply, warp::http::StatusCode::TOO_MANY_REQUESTS)
         });
-        let connector = InMemoryWarpConnector::new(h2_server);
+
+        let (tx_connections, incoming_connections) = tokio::sync::mpsc::unbounded_channel();
+        tokio::spawn(
+            warp::serve(h2_server)
+                .serve_incoming(UnboundedReceiverStream::new(incoming_connections)),
+        );
+
+        let connector = ConnectFn(|(), _route, _log_tag| {
+            let (local, remote) = tokio::io::duplex(1024);
+            tx_connections
+                .send(Ok::<_, TransportConnectError>(local))
+                .unwrap();
+            std::future::ready(Ok::<_, TransportConnectError>(remote))
+        });
 
         let env = crate::env::PROD;
-        let endpoint_connection = EnclaveEndpointConnection::new(
-            &env.cdsi,
-            Duration::from_secs(10),
-            &ObservableEvent::default(),
-        );
+        let ws2_config = RECOMMENDED_WS2_CONFIG;
         let auth = Auth {
             username: "username".to_string(),
             password: "password".to_string(),
         };
 
-        let result = CdsiConnection::connect(&endpoint_connection, connector, auth).await;
+        let connect_state =
+            ConnectState::new_with_transport_connector(SUGGESTED_CONNECT_CONFIG, connector);
+        let network_change_event = no_network_change_events();
+
+        // If we don't mock out the DNS, this test will fail on machines without internet access.
+        let static_map = HashMap::from([env.cdsi.domain_config.static_fallback()]);
+        let dns_resolver = DnsResolver::new_from_static_map(static_map);
+
+        let result = CdsiConnection::connect_with(
+            ConnectionResources {
+                connect_state: &connect_state,
+                dns_resolver: &dns_resolver,
+                network_change_event: &network_change_event,
+                confirmation_header_name: None,
+            },
+            DirectOrProxyProvider::maybe_proxied(
+                env.cdsi
+                    .enclave_websocket_provider(EnableDomainFronting::No),
+                None,
+            ),
+            ws2_config,
+            &env.cdsi.params,
+            auth,
+        )
+        .await;
+
         assert_matches!(
             result,
             Err(LookupError::RateLimited(RetryLater {

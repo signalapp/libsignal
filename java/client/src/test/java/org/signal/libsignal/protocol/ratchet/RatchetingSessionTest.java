@@ -10,6 +10,7 @@ import junit.framework.TestCase;
 import org.signal.libsignal.protocol.IdentityKey;
 import org.signal.libsignal.protocol.IdentityKeyPair;
 import org.signal.libsignal.protocol.InvalidKeyException;
+import org.signal.libsignal.protocol.SessionRecordTest;
 import org.signal.libsignal.protocol.ecc.Curve;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPrivateKey;
@@ -149,7 +150,7 @@ public class RatchetingSessionTest extends TestCase {
     IdentityKey aliceIdentityPublicKey = new IdentityKey(aliceIdentityPublic, 0);
 
     SessionRecord session =
-        SessionRecord.initializeBobSession(
+        SessionRecordTest.initializeBobSession(
             bobIdentityKey,
             bobSignedPreKey,
             bobEphemeralKey,
@@ -158,7 +159,7 @@ public class RatchetingSessionTest extends TestCase {
 
     assertTrue(session.getLocalIdentityKey().equals(bobIdentityKey.getPublicKey()));
     assertTrue(session.getRemoteIdentityKey().equals(aliceIdentityPublicKey));
-    assertTrue(Arrays.equals(session.getSenderChainKeyValue(), senderChain));
+    assertTrue(Arrays.equals(SessionRecordTest.getSenderChainKeyValue(session), senderChain));
   }
 
   public void testRatchetingSessionAsAlice() throws InvalidKeyException {
@@ -286,12 +287,14 @@ public class RatchetingSessionTest extends TestCase {
         new IdentityKeyPair(aliceIdentityPublicKey, aliceIdentityPrivateKey);
 
     SessionRecord session =
-        SessionRecord.initializeAliceSession(
+        SessionRecordTest.initializeAliceSession(
             aliceIdentityKey, aliceBaseKey, bobIdentityKey, bobSignedPreKey, bobEphemeralPublicKey);
 
     assertTrue(session.getLocalIdentityKey().equals(aliceIdentityKey.getPublicKey()));
     assertTrue(session.getRemoteIdentityKey().equals(bobIdentityKey));
     assertTrue(
-        Arrays.equals(session.getReceiverChainKeyValue(bobEphemeralPublicKey), receiverChain));
+        Arrays.equals(
+            SessionRecordTest.getReceiverChainKeyValue(session, bobEphemeralPublicKey),
+            receiverChain));
   }
 }

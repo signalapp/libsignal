@@ -87,18 +87,18 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
-    ) -> Result<bool, SignalProtocolError> {
+    ) -> Result<IdentityChange, SignalProtocolError> {
         let result = (self.save_identity)(self.ctx, address.into(), identity.public_key().into());
 
-        match result {
-            0 => Ok(false),
-            1 => Ok(true),
-            r => Err(SignalProtocolError::for_application_callback(
-                "save_identity",
-            )(
-                CallbackError::check(r).expect_err("verified non-zero")
-            )),
-        }
+        result
+            .try_into()
+            .ok()
+            .and_then(|r: isize| IdentityChange::try_from(r).ok())
+            .ok_or_else(|| {
+                SignalProtocolError::for_application_callback("save_identity")(
+                    CallbackError::check(result).expect_err("verified non-zero"),
+                )
+            })
     }
 
     async fn is_trusted_identity(

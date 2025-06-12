@@ -7,6 +7,7 @@ use std::fmt::Debug;
 use std::panic::UnwindSafe;
 use std::sync::Arc;
 
+use bytes::Bytes;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use libsignal_net::chat::server_requests::DisconnectCause;
@@ -37,7 +38,7 @@ struct Roots {
 impl ChatListener for NodeChatListener {
     fn received_incoming_message(
         &mut self,
-        envelope: Vec<u8>,
+        envelope: Bytes,
         timestamp: Timestamp,
         ack: ServerMessageAck,
     ) {
@@ -161,14 +162,6 @@ pub struct NodeConnectChat {
     tokio_runtime: tokio::runtime::Handle,
     factory: NodeConnectChatFactory,
 }
-
-// This type is safe to transfer across an unwind boundary. The runtime handle
-// type is unwind-safe since it's part of  a tokio Runtime, which is itself
-// unwind-safe.
-//
-// TODO(https://github.com/tokio-rs/tokio/pull/7230): remove this manual impl in
-// favor of the compiler's auto-generated one.
-impl UnwindSafe for NodeConnectChat {}
 
 impl Debug for NodeConnectChatFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

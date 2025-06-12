@@ -11,6 +11,11 @@ public enum Direction: Sendable {
     case receiving
 }
 
+public enum IdentityChange: Sendable {
+    case newOrUnchanged
+    case replacedExisting
+}
+
 /// A marker protocol, which must be downcast to use in any particular store.
 ///
 /// Essentially `Any`, but still able to catch typos when calling something that uses stores.
@@ -19,7 +24,7 @@ public protocol StoreContext {}
 public protocol IdentityKeyStore: AnyObject {
     func identityKeyPair(context: StoreContext) throws -> IdentityKeyPair
     func localRegistrationId(context: StoreContext) throws -> UInt32
-    func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: StoreContext) throws -> Bool
+    func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: StoreContext) throws -> IdentityChange
     func isTrustedIdentity(_ identity: IdentityKey, for address: ProtocolAddress, direction: Direction, context: StoreContext) throws -> Bool
     func identity(for address: ProtocolAddress, context: StoreContext) throws -> IdentityKey?
 }

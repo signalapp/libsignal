@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::common::errors::*;
 use crate::common::serialization::ReservedByte;
 use crate::common::sho::*;
+use crate::crypto::uid_encryption;
 use crate::{api, crypto};
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
@@ -16,6 +17,12 @@ pub struct CallLinkSecretParams {
     reserved: ReservedByte,
     pub(crate) uid_enc_key_pair:
         zkcredential::attributes::KeyPair<crypto::uid_encryption::UidEncryptionDomain>,
+}
+
+impl AsRef<uid_encryption::KeyPair> for CallLinkSecretParams {
+    fn as_ref(&self) -> &uid_encryption::KeyPair {
+        &self.uid_enc_key_pair
+    }
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]

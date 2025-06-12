@@ -9,6 +9,7 @@ version = "0.1.0"
 authors.workspace = true
 license.workspace = true
 edition = "2021"
+rust-version = "1.83"
 
 [lints]
 workspace = true
@@ -24,45 +25,41 @@ assert_matches = { workspace = true }
 async-trait = { workspace = true }
 ctr = { workspace = true, features = ["zeroize"] }
 derive-where = { workspace = true }
-derive_more = { workspace = true, features = ["deref", "from", "into"] }
+derive_more = { workspace = true, features = ["deref", "from", "into", "try_from"] }
 displaydoc = { workspace = true }
 hex = { workspace = true }
 hkdf = { workspace = true }
 hmac = { workspace = true }
 indexmap = { workspace = true }
 itertools = { workspace = true }
+libcrux-ml-kem = { workspace = true, features = ["kyber", "mlkem1024"] }
 log = { workspace = true }
-num_enum = { workspace = true }
-pqcrypto-kyber = { workspace = true, features = ["std"] }
-pqcrypto-traits = { workspace = true }
 prost = { workspace = true }
 rand = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 sha2 = { workspace = true }
+spqr = { workspace = true }
 subtle = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
 zerocopy = { workspace = true, features = ["derive"] }
 
-# WARNING: pqcrypto-kyber 0.8 and 0.7 don't actually coexist, they both depend on the same C symbols.
-# We keep this here for if/when that gets cleared up.
-pqcrypto-ml-kem = { workspace = true, features = ["std"], optional = true }
-
 [features]
-kyber768 = []
+kyber768 = ["libcrux-ml-kem/kyber", "libcrux-ml-kem/mlkem768"]
 # ML-KEM matches the NIST standard version of Kyber. It may still change
 # incompatibly until the final version of the standard is published and
 # libsignal will update to match.
-mlkem1024 = ["pqcrypto-ml-kem"]
+mlkem1024 = []
 
 [dev-dependencies]
 clap = { workspace = true, features = ["derive"] }
+const-str = { workspace = true }
 criterion = { workspace = true }
 env_logger = { workspace = true }
 futures-util = { workspace = true }
-hex-literal = { workspace = true }
 proptest = { workspace = true }
+rand_core = { workspace = true }
 
 [build-dependencies]
 prost-build = { workspace = true }

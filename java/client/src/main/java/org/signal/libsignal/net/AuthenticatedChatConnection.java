@@ -8,6 +8,7 @@ package org.signal.libsignal.net;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeTesting;
+import org.signal.libsignal.internal.TokioAsyncContext;
 import org.signal.libsignal.net.internal.BridgeChatListener;
 import org.signal.libsignal.protocol.util.Pair;
 
@@ -45,6 +46,7 @@ public class AuthenticatedChatConnection extends ChatConnection {
                             username,
                             password,
                             receiveStories)
+                        .makeCancelable(tokioAsyncContext)
                         .thenApply(
                             nativeHandle ->
                                 new AuthenticatedChatConnection(

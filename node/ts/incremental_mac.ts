@@ -21,10 +21,7 @@ export function inferChunkSize(dataSize: number): ChunkSizeChoice {
   return { kind: 'chunksOf', dataSize: dataSize };
 }
 
-/**
- * @deprecated Use the DigestingPassThrough instead
- */
-export class DigestingWritable extends stream.Writable {
+class DigestingWritable extends stream.Writable {
   _nativeHandle: Native.IncrementalMac;
 
   _digests: Buffer[] = [];
@@ -109,10 +106,7 @@ export class DigestingPassThrough extends stream.Transform {
   }
 }
 
-/**
- * @deprecated Use the ValidatingPassThrough instead
- */
-export class ValidatingWritable extends stream.Writable {
+class ValidatingWritable extends stream.Writable {
   _nativeHandle: Native.ValidatingMac;
 
   _validatedBytes = 0;

@@ -113,6 +113,13 @@ pub struct BytestringArray {
     bytes: OwnedBufferOf<std::ffi::c_uchar>,
     lengths: OwnedBufferOf<usize>,
 }
+
+#[repr(C)]
+pub struct BorrowedBytestringArray {
+    bytes: BorrowedSliceOf<std::ffi::c_uchar>,
+    lengths: BorrowedSliceOf<usize>,
+}
+
 pub type StringArray = BytestringArray;
 
 impl BytestringArray {
@@ -147,6 +154,14 @@ impl<S: AsRef<[u8]>> FromIterator<S> for BytestringArray {
 }
 
 #[repr(C)]
+pub struct OptionalBorrowedSliceOf<T> {
+    pub present: bool,
+    pub value: BorrowedSliceOf<T>,
+}
+
+pub type OptionalUuid = [u8; 17];
+
+#[repr(C)]
 #[derive(Debug)]
 /// cbindgen:field-names=[e164, rawAciUuid, rawPniUuid]
 pub struct FfiCdsiLookupResponseEntry {
@@ -161,6 +176,13 @@ pub struct FfiCdsiLookupResponseEntry {
 pub struct FfiCdsiLookupResponse {
     entries: OwnedBufferOf<FfiCdsiLookupResponseEntry>,
     debug_permits_used: i32,
+}
+
+#[repr(C)]
+pub struct FfiCheckSvr2CredentialsResponse {
+    /// Bridged as a string of bytes, but each entry is a UTF-8 `String` key
+    /// concatenated with a byte for the value.
+    entries: BytestringArray,
 }
 
 /// A type alias to be used with [`OwnedBufferOf`], so that `OwnedBufferOf<c_char>` and
@@ -189,6 +211,38 @@ pub struct FfiChatServiceDebugInfo {
 pub struct FfiResponseAndDebugInfo {
     response: FfiChatResponse,
     debug_info: FfiChatServiceDebugInfo,
+}
+
+#[repr(C)]
+pub struct FfiRegistrationCreateSessionRequest {
+    number: *const std::ffi::c_char,
+    push_token: *const std::ffi::c_char,
+    mcc: *const std::ffi::c_char,
+    mnc: *const std::ffi::c_char,
+}
+
+#[repr(C)]
+pub struct FfiRegisterResponseBadge {
+    /// The badge ID.
+    pub id: *const std::ffi::c_char,
+    /// Whether the badge is currently configured to be visible.
+    pub visible: bool,
+    /// When the badge expires.
+    pub expiration_secs: f64,
+}
+
+#[repr(C)]
+pub struct FfiSignedPublicPreKey {
+    pub key_id: u32,
+    pub public_key_type: FfiPublicKeyType,
+    pub public_key: *const std::ffi::c_void,
+    pub signature: BorrowedSliceOf<std::ffi::c_uchar>,
+}
+
+#[repr(u8)]
+pub enum FfiPublicKeyType {
+    ECC,
+    Kyber,
 }
 
 #[cfg_attr(doc, visibility::make(pub))]

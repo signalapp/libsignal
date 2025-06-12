@@ -15,7 +15,7 @@ env_logger = "0.11.4"
 futures-util = "0.3.7"
 libfuzzer-sys = "0.4"
 log = "0.4"
-rand = "0.8"
+rand = "0.9"
 
 
 # Prevent this from interfering with workspaces

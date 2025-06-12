@@ -11,74 +11,6 @@ public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
         return signal_pre_key_bundle_destroy(handle.pointer)
     }
 
-    // with a prekey
-    public convenience init<Bytes: ContiguousBytes>(
-        registrationId: UInt32,
-        deviceId: UInt32,
-        prekeyId: UInt32,
-        prekey: PublicKey,
-        signedPrekeyId: UInt32,
-        signedPrekey: PublicKey,
-        signedPrekeySignature: Bytes,
-        identity identityKey: IdentityKey
-    ) throws {
-        var result = SignalMutPointerPreKeyBundle()
-        try withNativeHandles(prekey, signedPrekey, identityKey.publicKey) { prekeyHandle, signedPrekeyHandle, identityKeyHandle in
-            try signedPrekeySignature.withUnsafeBorrowedBuffer { signedSignatureBuffer in
-                try [].withUnsafeBorrowedBuffer { kyberSignatureBuffer in
-                    try checkError(signal_pre_key_bundle_new(
-                        &result,
-                        registrationId,
-                        deviceId,
-                        prekeyId,
-                        prekeyHandle.const(),
-                        signedPrekeyId,
-                        signedPrekeyHandle.const(),
-                        signedSignatureBuffer,
-                        identityKeyHandle.const(),
-                        ~0,
-                        SignalConstPointerKyberPublicKey(),
-                        kyberSignatureBuffer
-                    ))
-                }
-            }
-        }
-        self.init(owned: NonNull(result)!)
-    }
-
-    // without a prekey
-    public convenience init<Bytes: ContiguousBytes>(
-        registrationId: UInt32,
-        deviceId: UInt32,
-        signedPrekeyId: UInt32,
-        signedPrekey: PublicKey,
-        signedPrekeySignature: Bytes,
-        identity identityKey: IdentityKey
-    ) throws {
-        var result = SignalMutPointerPreKeyBundle()
-        try withNativeHandles(signedPrekey, identityKey.publicKey) { signedPrekeyHandle, identityKeyHandle in
-            try signedPrekeySignature.withUnsafeBorrowedBuffer { signedSignatureBuffer in
-                try [].withUnsafeBorrowedBuffer { kyberSignatureBuffer in
-                    try checkError(signal_pre_key_bundle_new(
-                        &result,
-                        registrationId,
-                        deviceId,
-                        ~0,
-                        SignalConstPointerPublicKey(),
-                        signedPrekeyId,
-                        signedPrekeyHandle.const(),
-                        signedSignatureBuffer,
-                        identityKeyHandle.const(),
-                        ~0,
-                        SignalConstPointerKyberPublicKey(),
-                        kyberSignatureBuffer
-                    ))
-                }
-            }
-        }
-        self.init(owned: NonNull(result)!)
-    }
-
     // with a prekey and KEM key
     public convenience init<
         ECBytes: ContiguousBytes,
@@ -241,36 +173,34 @@ public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
         }
     }
 
-    public var kyberPreKeyId: UInt32? {
-        let prekey_id = withNativeHandle { nativeHandle in
+    public var kyberPreKeyId: UInt32 {
+        return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningInteger {
                     signal_pre_key_bundle_get_kyber_pre_key_id($0, nativeHandle.const())
                 }
             }
         }
-        return prekey_id == ~0 ? nil : prekey_id
     }
 
-    public var kyberPreKeyPublic: KEMPublicKey? {
+    public var kyberPreKeyPublic: KEMPublicKey {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningOptionalNativeHandle {
+                try invokeFnReturningNativeHandle {
                     signal_pre_key_bundle_get_kyber_pre_key_public($0, nativeHandle.const())
                 }
             }
         }
     }
 
-    public var kyberPreKeySignature: [UInt8]? {
-        let result: [UInt8] = withNativeHandle { nativeHandle in
+    public var kyberPreKeySignature: [UInt8] {
+        return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
                     signal_pre_key_bundle_get_kyber_pre_key_signature($0, nativeHandle.const())
                 }
             }
         }
-        return result.isEmpty ? nil : result
     }
 }
 

@@ -3,11 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-// Silence clippy's complains about private fields used to prevent construction
-// and recommends `#[non_exhaustive]`. The annotation only applies outside this
-// crate, but we want intra-crate privacy.
-#![allow(clippy::manual_non_exhaustive)]
-
 use intmap::IntMap;
 use itertools::Itertools;
 
@@ -15,7 +10,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
-use crate::backup::TryFromWith;
+use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::ChatFolder`].
@@ -33,6 +28,7 @@ pub enum ChatFolder<Recipient> {
         included_recipients: UnorderedList<Recipient>,
         #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
         excluded_recipients: UnorderedList<Recipient>,
+        id: Vec<u8>,
         // While this isn't *enforced* for an enum variant, hopefully it's still a good hint.
         _limit_construction_to_module: (),
     },
@@ -59,6 +55,10 @@ pub enum ChatFolderError {
     AllFolderMustNotExcludeChats,
     /// missing name for non-ALL folder
     MissingName,
+    /// missing id for folder
+    MissingId,
+    /// id is invalid (not 16 bytes)
+    InvalidId,
     /// included member {0:?} is unknown
     IncludedMemberUnknown(RecipientId),
     /// included member {0:?} appears multiple times
@@ -86,6 +86,7 @@ impl<R> ChatFolder<R> {
             folderType,
             includedRecipientIds,
             excludedRecipientIds,
+            id,
             special_fields: _,
         } = item;
 
@@ -116,22 +117,28 @@ impl<R> ChatFolder<R> {
         if !excludedRecipientIds.is_empty() {
             return Err(ChatFolderError::AllFolderMustNotExcludeChats);
         }
+        if id.is_empty() {
+            return Err(ChatFolderError::MissingId);
+        }
+        if id.len() != 16 {
+            return Err(ChatFolderError::InvalidId);
+        }
 
         Ok(Self::All)
     }
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>>
-    TryFromWith<proto::ChatFolder, C> for ChatFolder<R>
+impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>> TryIntoWith<ChatFolder<R>, C>
+    for proto::ChatFolder
 {
     type Error = ChatFolderError;
-    fn try_from_with(item: proto::ChatFolder, context: &C) -> Result<Self, Self::Error> {
-        match item.folderType.enum_value_or_default() {
+    fn try_into_with(self, context: &C) -> Result<ChatFolder<R>, Self::Error> {
+        match self.folderType.enum_value_or_default() {
             proto::chat_folder::FolderType::UNKNOWN => {
-                return Err(ChatFolderError::UnknownType(item.folderType.value()));
+                return Err(ChatFolderError::UnknownType(self.folderType.value()));
             }
             proto::chat_folder::FolderType::ALL => {
-                return Self::validate_all_chat_folder(item);
+                return ChatFolder::<R>::validate_all_chat_folder(self);
             }
             proto::chat_folder::FolderType::CUSTOM => {}
         }
@@ -145,8 +152,9 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>>
             folderType: _,
             includedRecipientIds,
             excludedRecipientIds,
+            id,
             special_fields: _,
-        } = item;
+        } = self;
 
         if name.is_empty() {
             return Err(ChatFolderError::MissingName);
@@ -165,12 +173,11 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>>
                     .ok_or(ChatFolderError::IncludedMemberUnknown(id))?;
                 let kind = data.as_ref();
                 match kind {
-                    DestinationKind::Contact | DestinationKind::Self_ | DestinationKind::Group => {
-                        Ok(recipient.clone())
-                    }
-                    DestinationKind::ReleaseNotes
-                    | DestinationKind::DistributionList
-                    | DestinationKind::CallLink => {
+                    DestinationKind::Contact
+                    | DestinationKind::Self_
+                    | DestinationKind::Group
+                    | DestinationKind::ReleaseNotes => Ok(recipient.clone()),
+                    DestinationKind::DistributionList | DestinationKind::CallLink => {
                         Err(ChatFolderError::IncludedMemberWrongKind(id, *kind))
                     }
                 }
@@ -193,19 +200,25 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>>
                     .ok_or(ChatFolderError::ExcludedMemberUnknown(id))?;
                 let kind = data.as_ref();
                 match kind {
-                    DestinationKind::Contact | DestinationKind::Self_ | DestinationKind::Group => {
-                        Ok(recipient.clone())
-                    }
-                    DestinationKind::ReleaseNotes
-                    | DestinationKind::DistributionList
-                    | DestinationKind::CallLink => {
+                    DestinationKind::Contact
+                    | DestinationKind::Self_
+                    | DestinationKind::Group
+                    | DestinationKind::ReleaseNotes => Ok(recipient.clone()),
+                    DestinationKind::DistributionList | DestinationKind::CallLink => {
                         Err(ChatFolderError::ExcludedMemberWrongKind(id, *kind))
                     }
                 }
             })
             .try_collect()?;
 
-        Ok(Self::Custom {
+        if id.is_empty() {
+            return Err(ChatFolderError::MissingId);
+        }
+        if id.len() != 16 {
+            return Err(ChatFolderError::InvalidId);
+        }
+
+        Ok(ChatFolder::Custom {
             name,
             show_only_unread: showOnlyUnread,
             show_muted_chats: showMutedChats,
@@ -213,6 +226,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>>
             include_all_group_chats: includeAllGroupChats,
             included_recipients,
             excluded_recipients,
+            id,
             _limit_construction_to_module: (),
         })
     }
@@ -226,9 +240,11 @@ mod test {
     use super::*;
     use crate::backup::recipient::FullRecipientData;
     use crate::backup::testutil::TestContext;
-    use crate::backup::TryIntoWith as _;
 
     impl proto::ChatFolder {
+        const TEST_FOLDER_ID: [u8; 16] = [0xa1; 16];
+        const ALL_FOLDER_ID: [u8; 16] = [0xa2; 16];
+
         pub(crate) fn test_data() -> Self {
             Self {
                 name: "Test".into(),
@@ -239,6 +255,7 @@ mod test {
                 folderType: proto::chat_folder::FolderType::CUSTOM.into(),
                 includedRecipientIds: vec![],
                 excludedRecipientIds: vec![TestContext::CONTACT_ID.0],
+                id: Self::TEST_FOLDER_ID.to_vec(),
                 ..Default::default()
             }
         }
@@ -253,6 +270,7 @@ mod test {
                 folderType: proto::chat_folder::FolderType::ALL.into(),
                 includedRecipientIds: vec![],
                 excludedRecipientIds: vec![],
+                id: Self::ALL_FOLDER_ID.to_vec(),
                 ..Default::default()
             }
         }
@@ -270,6 +288,7 @@ mod test {
                 include_all_group_chats: true,
                 included_recipients: vec![].into(),
                 excluded_recipients: vec![TestContext::contact_recipient().clone()].into(),
+                id: vec![0xa1; 16],
                 _limit_construction_to_module: (),
             })
         )
@@ -295,6 +314,10 @@ mod test {
     #[test_case(|x| x.includedRecipientIds.push(TestContext::CALL_LINK_ID.0) => Err(ChatFolderError::IncludedMemberWrongKind(TestContext::CALL_LINK_ID, DestinationKind::CallLink)); "including call links is not okay")]
     #[test_case(|x| x.includedRecipientIds.push(TestContext::CONTACT_ID.0) => Err(ChatFolderError::MemberIsBothIncludedAndExcluded(TestContext::CONTACT_ID)); "member in both lists")]
     #[test_case(|x| x.includedRecipientIds.push(TestContext::GROUP_ID.0) => Ok(()); "include a group even though all groups are included by default")]
+    #[test_case(|x| x.includedRecipientIds.push(TestContext::RELEASE_NOTES_ID.0) => Ok(()); "including release notes")]
+    #[test_case(|x| x.excludedRecipientIds.push(TestContext::RELEASE_NOTES_ID.0) => Ok(()); "excluding release notes")]
+    #[test_case(|x| x.id = vec![] => Err(ChatFolderError::MissingId); "must have an id")]
+    #[test_case(|x| x.id = vec![0xa1; 15] => Err(ChatFolderError::InvalidId); "id must be 16 bytes")]
     fn folder(mutator: fn(&mut proto::ChatFolder)) -> Result<(), ChatFolderError> {
         let mut folder = proto::ChatFolder::test_data();
         mutator(&mut folder);
@@ -319,6 +342,8 @@ mod test {
     #[test_case(|x| x.includeAllGroupChats = false => Err(ChatFolderError::AllFolderMustIncludeGroupChats); "must show group chats")]
     #[test_case(|x| x.includedRecipientIds = vec![9999] => Err(ChatFolderError::AllFolderMustNotHaveSpecificIncludes); "must not have includes")]
     #[test_case(|x| x.excludedRecipientIds = vec![9999] => Err(ChatFolderError::AllFolderMustNotExcludeChats); "must not have excludes")]
+    #[test_case(|x| x.id = vec![] => Err(ChatFolderError::MissingId); "must have an id")]
+    #[test_case(|x| x.id = vec![0xa1; 15] => Err(ChatFolderError::InvalidId); "id must be 16 bytes")]
     fn all_folder(mutator: fn(&mut proto::ChatFolder)) -> Result<(), ChatFolderError> {
         let mut folder = proto::ChatFolder::all_folder_data();
         mutator(&mut folder);

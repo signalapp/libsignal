@@ -6,6 +6,7 @@
 use criterion::{criterion_group, criterion_main, Criterion, SamplingMode};
 use futures_util::FutureExt;
 use libsignal_protocol::*;
+use rand::TryRngCore as _;
 use uuid::Uuid;
 
 #[path = "../tests/support/mod.rs"]
@@ -17,7 +18,7 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     group.sample_size(10); //minimum allowed...
     group.warm_up_time(core::time::Duration::from_millis(100));
 
-    let mut csprng = rand::rngs::OsRng;
+    let mut csprng = rand::rngs::OsRng.unwrap_err();
 
     let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1.into());
     let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
@@ -53,7 +54,7 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
                 &mut alice_store,
                 &sender_address,
                 distribution_id,
-                format!("nefarious plotting {}", i).as_bytes(),
+                format!("nefarious plotting {i}").as_bytes(),
                 &mut csprng,
             )
             .now_or_never()
@@ -70,7 +71,7 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         .now_or_never()
         .expect("sync")?;
 
-        group.bench_function(format!("ratchet {}", ratchets), |b| {
+        group.bench_function(format!("ratchet {ratchets}"), |b| {
             b.iter(|| {
                 let mut bob_store = bob_store.clone();
                 group_decrypt(

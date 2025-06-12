@@ -408,20 +408,25 @@ pub fn verify_consistency_proof(
 
 #[cfg(test)]
 mod test {
-    use hex_literal::hex;
+    use const_str::hex;
 
     use super::*;
 
     #[test]
-    #[allow(clippy::cast_possible_truncation)]
     fn test_evaluate_batch_proof() {
         let mut values = [[0u8; 32]; 6];
         let mut proof = [[0u8; 32]; 7];
         for (i, value) in values.iter_mut().enumerate() {
-            value[0] = i as u8;
+            #[expect(clippy::cast_possible_truncation)]
+            {
+                value[0] = i as u8;
+            }
         }
         for (i, elem) in proof.iter_mut().enumerate() {
-            elem[0] = (6 + i) as u8;
+            #[expect(clippy::cast_possible_truncation)]
+            {
+                elem[0] = (6 + i) as u8;
+            }
         }
 
         let got = evaluate_batch_proof(&[0, 1, 2, 4, 8, 16], 18, &values, &proof).unwrap();

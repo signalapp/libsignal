@@ -53,7 +53,10 @@ impl ProfileKeyStruct {
 }
 
 impl ConditionallySelectable for ProfileKeyStruct {
-    #[allow(clippy::needless_range_loop)]
+    #[expect(
+        clippy::needless_range_loop,
+        reason = "an explicit loop makes it more clear that this runs in constant time"
+    )]
     fn conditional_select(
         a: &ProfileKeyStruct,
         b: &ProfileKeyStruct,

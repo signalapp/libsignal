@@ -44,11 +44,12 @@ open class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPre
         return self.registrationId
     }
 
-    open func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: StoreContext) throws -> Bool {
-        if self.publicKeys.updateValue(identity, forKey: address) == nil {
-            return false // newly created
+    open func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: StoreContext) throws -> IdentityChange {
+        let oldIdentity = self.publicKeys.updateValue(identity, forKey: address)
+        if oldIdentity == nil || oldIdentity == identity {
+            return .newOrUnchanged
         } else {
-            return true
+            return .replacedExisting
         }
     }
 

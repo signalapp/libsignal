@@ -19,6 +19,7 @@ pub type SignatureBytes = [u8; SIGNATURE_LEN];
 pub type NotarySignatureBytes = [u8; SIGNATURE_LEN];
 pub type GroupIdentifierBytes = [u8; GROUP_IDENTIFIER_LEN];
 pub type ProfileKeyVersionBytes = [u8; PROFILE_KEY_VERSION_LEN];
+// TODO: Use ascii::Char when stable (the "encoding" is hex)
 pub type ProfileKeyVersionEncodedBytes = [u8; PROFILE_KEY_VERSION_ENCODED_LEN];
 
 // A random UUID that the receipt issuing server will blind authorize to redeem a given receipt
@@ -92,7 +93,18 @@ impl From<Timestamp> for std::time::SystemTime {
     }
 }
 
-impl rand::distributions::Distribution<Timestamp> for rand::distributions::Standard {
+impl From<std::time::SystemTime> for Timestamp {
+    fn from(timestamp: std::time::SystemTime) -> Self {
+        Self::from_epoch_seconds(
+            timestamp
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+        )
+    }
+}
+
+impl rand::distr::Distribution<Timestamp> for rand::distr::StandardUniform {
     fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> Timestamp {
         Timestamp(Self::sample(self, rng))
     }

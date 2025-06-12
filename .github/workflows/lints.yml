@@ -23,3 +23,6 @@ jobs:
     - run: shellcheck **/*.sh bin/verify_duplicate_crates bin/adb-run-test
     - run: python3 -m flake8 .
     - run: python3 -m mypy . --python-version 3.9 --strict
+      env:
+        # Some scripts modify sys.path to fetch from ./bin
+        MYPYPATH: ./bin

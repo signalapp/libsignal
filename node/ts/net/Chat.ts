@@ -7,7 +7,9 @@ import * as Native from '../../Native';
 import { LibSignalError } from '../Errors';
 import { ServerMessageAck, Wrapper } from '../../Native';
 import { Buffer } from 'node:buffer';
-import { TokioAsyncContext, newNativeHandle } from '../net';
+import { TokioAsyncContext, Environment } from '../net';
+import * as KT from './KeyTransparency';
+import { newNativeHandle } from '../internal';
 
 const DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS = 5000;
 
@@ -19,7 +21,7 @@ export type ChatRequest = Readonly<{
   timeoutMillis?: number;
 }>;
 
-type ConnectionManager = Wrapper<Native.ConnectionManager>;
+type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
 
 export class ChatServerMessageAck {
   constructor(readonly _nativeHandle: Native.ServerMessageAck) {}
@@ -135,6 +137,7 @@ export class UnauthenticatedChatConnection implements ChatConnection {
     asyncContext: TokioAsyncContext,
     connectionManager: ConnectionManager,
     listener: ConnectionEventsListener,
+    env?: Environment,
     options?: { abortSignal?: AbortSignal }
   ): Promise<UnauthenticatedChatConnection> {
     const nativeChatListener = makeNativeChatListener(asyncContext, listener);
@@ -156,7 +159,8 @@ export class UnauthenticatedChatConnection implements ChatConnection {
     return new UnauthenticatedChatConnection(
       asyncContext,
       connection,
-      nativeChatListener
+      nativeChatListener,
+      env
     );
   }
 
@@ -197,7 +201,8 @@ export class UnauthenticatedChatConnection implements ChatConnection {
     private readonly chatService: Wrapper<Native.UnauthenticatedChatConnection>,
     // Unused except to keep the listener alive since the Rust code only holds a
     // weak reference to the same object.
-    private readonly chatListener: Native.ChatListener
+    private readonly chatListener: Native.ChatListener,
+    private readonly env?: Environment
   ) {}
 
   fetch(
@@ -226,6 +231,13 @@ export class UnauthenticatedChatConnection implements ChatConnection {
     return new ConnectionInfoImpl(
       Native.UnauthenticatedChatConnection_info(this.chatService)
     );
+  }
+
+  keyTransparencyClient(): KT.Client {
+    if (this.env == null) {
+      throw new Error('KeyTransparency is not supported on local test server');
+    }
+    return new KT.ClientImpl(this.asyncContext, this.chatService, this.env);
   }
 }
 

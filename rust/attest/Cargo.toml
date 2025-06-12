@@ -8,7 +8,7 @@ name = "attest"
 version = "0.1.0"
 authors.workspace = true
 license.workspace = true
-rust-version = "1.80"
+rust-version = "1.81"
 edition = "2021"
 
 [lints]
@@ -21,14 +21,15 @@ blake2 = { workspace = true }
 boring-signal = { workspace = true }
 chacha20poly1305 = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
+const-str = { workspace = true }
 displaydoc = { workspace = true }
 hex = { workspace = true, features = ["serde"] }
-hex-literal = { workspace = true }
 libc = { workspace = true }
 libcrux-ml-kem = { workspace = true, features = ["mlkem1024"] }
 log = { workspace = true }
 prost = { workspace = true }
 rand_core = { workspace = true }
+rand_core_06 = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["raw_value"] }
 sha2 = { workspace = true }

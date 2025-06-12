@@ -35,14 +35,14 @@ public class InMemoryIdentityKeyStore implements IdentityKeyStore {
   }
 
   @Override
-  public boolean saveIdentity(SignalProtocolAddress address, IdentityKey identityKey) {
+  public IdentityChange saveIdentity(SignalProtocolAddress address, IdentityKey identityKey) {
     IdentityKey existing = trustedKeys.get(address);
+    trustedKeys.put(address, identityKey);
 
-    if (!identityKey.equals(existing)) {
-      trustedKeys.put(address, identityKey);
-      return true;
+    if (existing == null || identityKey.equals(existing)) {
+      return IdentityChange.NEW_OR_UNCHANGED;
     } else {
-      return false;
+      return IdentityChange.REPLACED_EXISTING;
     }
   }
 

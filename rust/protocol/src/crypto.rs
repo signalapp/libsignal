@@ -81,7 +81,7 @@ pub(crate) fn aes256_ctr_hmacsha256_decrypt(
 
 #[cfg(test)]
 mod test {
-    use hex_literal::hex;
+    use const_str::hex;
 
     use super::*;
 

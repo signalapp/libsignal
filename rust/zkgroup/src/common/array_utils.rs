@@ -116,7 +116,7 @@ mod tests {
     fn test_permute_scramble_and_unscramble() {
         for _ in 0..100 {
             let mut elements = [0u32; 512];
-            rand::thread_rng().fill(&mut elements);
+            rand::rng().fill(&mut elements);
 
             let mut elements_with_indexes: Vec<_> = elements.into_iter().zip(0..).collect();
             elements_with_indexes.sort_unstable();

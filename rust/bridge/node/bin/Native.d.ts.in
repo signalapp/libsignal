@@ -57,10 +57,16 @@ type SealedSenderMultiRecipientMessage = {
   offsetOfSharedData: number;
 };
 
+enum IdentityChange {
+  // This must be kept in sync with the Rust enum of the same name.
+  NewOrUnchanged = 0,
+  ReplacedExisting = 1,
+}
+
 type IdentityKeyStore = {
   _getIdentityKey(): Promise<PrivateKey>;
   _getLocalRegistrationId(): Promise<number>;
-  _saveIdentity(name: ProtocolAddress, key: PublicKey): Promise<boolean>;
+  _saveIdentity(name: ProtocolAddress, key: PublicKey): Promise<IdentityChange>;
   _isTrustedIdentity(
     name: ProtocolAddress,
     key: PublicKey,
@@ -130,7 +136,34 @@ type ChatListener = {
   ): void;
 };
 
-type RequestedInformation = 'pushChallenge' | 'captcha';
+type RegistrationSessionRequestedInformation = 'pushChallenge' | 'captcha';
+
+type RegistrationPushTokenType = 'apn' | 'fcm';
+
+type RegistrationCreateSessionRequest = {
+  number: string;
+  push_token?: string;
+  push_token_type?: RegistrationPushTokenType;
+  mcc?: string;
+  mnc?: string;
+};
+
+type RegisterResponseBadge = {
+  id: string;
+  visible: boolean;
+  expirationSeconds: number;
+};
+
+type CheckSvr2CredentialsResponse = Map<
+  string,
+  'match' | 'no-match' | 'invalid'
+>;
+
+type SignedPublicPreKey = {
+  keyId: number;
+  publicKey: Buffer;
+  signature: Buffer;
+};
 
 type Wrapper<T> = Readonly<{
   _nativeHandle: T;

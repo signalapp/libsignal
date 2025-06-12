@@ -58,7 +58,7 @@ pub fn Pin_VerifyLocalHash(encoded_hash: String, pin: &[u8]) -> Result<bool> {
 
 #[bridge_fn]
 pub fn AccountEntropyPool_Generate() -> String {
-    AccountEntropyPool::generate(&mut rand::thread_rng()).to_string()
+    AccountEntropyPool::generate(&mut rand::rng()).to_string()
 }
 
 #[bridge_fn]

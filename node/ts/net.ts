@@ -15,6 +15,7 @@ import {
   ChatServiceListener,
 } from './net/Chat';
 import { RegistrationService } from './net/Registration';
+import { BridgedStringMap, newNativeHandle } from './internal';
 export * from './net/CDSI';
 export * from './net/Chat';
 export * from './net/Registration';
@@ -39,12 +40,6 @@ export type ChatRequest = Readonly<{
 }>;
 
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
-
-export function newNativeHandle<T>(handle: T): Native.Wrapper<T> {
-  return {
-    _nativeHandle: handle,
-  };
-}
 
 /** Low-level async runtime control, mostly just exported for testing. */
 export class TokioAsyncContext {
@@ -79,6 +74,7 @@ export type NetConstructorOptions = Readonly<
       localTestServer?: false;
       env: Environment;
       userAgent: string;
+      remoteConfig?: Map<string, string>;
     }
   | {
       localTestServer: true;
@@ -107,7 +103,7 @@ export class Net {
   /** Exposed only for testing. */
   readonly _connectionManager: ConnectionManager;
 
-  constructor(options: NetConstructorOptions) {
+  constructor(private readonly options: NetConstructorOptions) {
     this.asyncContext = new TokioAsyncContext(Native.TokioAsyncContext_new());
 
     if (options.localTestServer) {
@@ -122,7 +118,13 @@ export class Net {
       );
     } else {
       this._connectionManager = newNativeHandle(
-        Native.ConnectionManager_new(options.env, options.userAgent)
+        Native.ConnectionManager_new(
+          options.env,
+          options.userAgent,
+          new BridgedStringMap(
+            options.remoteConfig || new Map<string, string>()
+          )
+        )
       );
     }
   }
@@ -162,10 +164,12 @@ export class Net {
     listener: ConnectionEventsListener,
     options?: { abortSignal?: AbortSignal }
   ): Promise<UnauthenticatedChatConnection> {
+    const env = this.options.localTestServer ? undefined : this.options.env;
     return UnauthenticatedChatConnection.connect(
       this.asyncContext,
       this._connectionManager,
       listener,
+      env,
       options
     );
   }
@@ -193,33 +197,29 @@ export class Net {
 
   public async resumeRegistrationSession({
     sessionId,
-    connectionTimeoutMillis,
+    e164,
   }: {
     sessionId: string;
-    connectionTimeoutMillis?: number;
+    e164: string;
   }): Promise<RegistrationService> {
     return RegistrationService.resumeSession(
       {
         connectionManager: this._connectionManager,
         tokioAsyncContext: this.asyncContext,
-        connectionTimeoutMillis: connectionTimeoutMillis,
       },
-      { sessionId }
+      { sessionId, e164 }
     );
   }
 
   public async createRegistrationSession({
     e164,
-    connectionTimeoutMillis,
   }: {
     e164: string;
-    connectionTimeoutMillis?: number;
   }): Promise<RegistrationService> {
     return RegistrationService.createSession(
       {
         connectionManager: this._connectionManager,
         tokioAsyncContext: this.asyncContext,
-        connectionTimeoutMillis: connectionTimeoutMillis,
       },
       { e164 }
     );
@@ -395,6 +395,31 @@ export class Net {
    */
   clearProxy(): void {
     Native.ConnectionManager_clear_proxy(this._connectionManager);
+  }
+
+  /**
+   * Updates libsignal's remote configuration settings.
+   *
+   * The provided configuration map must conform to the following requirements:
+   * - Each key represents an enabled configuration and directly indicates that the setting is enabled.
+   * - Keys must have had the platform-specific prefix (e.g., `"desktop.libsignal."`) removed.
+   * - Entries explicitly disabled by the server must not appear in the map.
+   * - Values originally set to `null` by the server must be represented as empty strings.
+   * - Values should otherwise maintain the same format as they are returned by the server.
+   *
+   * These constraints ensure configurations passed to libsignal precisely reflect enabled
+   * server-provided settings without ambiguity.
+   *
+   * Only new connections made *after* this call will use the new remote config settings.
+   * Existing connections are not affected.
+   *
+   * @param remoteConfig A map containing preprocessed libsignal configuration keys and their associated values.
+   */
+  setRemoteConfig(remoteConfig: Map<string, string>): void {
+    Native.ConnectionManager_set_remote_config(
+      this._connectionManager,
+      new BridgedStringMap(remoteConfig)
+    );
   }
 
   /**

@@ -12,12 +12,14 @@ edition = "2021"
 env_logger = "0.11.4"
 futures-util = "0.3.7"
 log = "0.4"
-rand = "0.8"
+rand = "0.9"
 rand_v7 = { package = "rand", version = "0.7" }
+rand_v8 = { package = "rand", version = "0.8" }
 
 libsignal-protocol-current = { path = "..", package = "libsignal-protocol" }
 libsignal-protocol-v12 = { git = "https://github.com/signalapp/libsignal", tag = "v0.12.3", package = "libsignal-protocol" }
 libsignal-protocol-v21 = { git = "https://github.com/signalapp/libsignal", tag = "v0.21.1", package = "libsignal-protocol" }
+libsignal-protocol-v70 = { git = "https://github.com/signalapp/libsignal", tag = "v0.70.0", package = "libsignal-protocol" }
 
 # Prevent this crate from being included in the top-level workspace
 [workspace]

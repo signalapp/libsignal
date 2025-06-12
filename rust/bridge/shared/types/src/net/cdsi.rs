@@ -54,30 +54,6 @@ pub struct CdsiLookup {
 }
 
 impl CdsiLookup {
-    pub async fn new(
-        connection_manager: &ConnectionManager,
-        auth: Auth,
-        request: cdsi::LookupRequest,
-    ) -> Result<Self, cdsi::LookupError> {
-        let transport_connector = connection_manager
-            .transport_connector
-            .lock()
-            .expect("not poisoned")
-            .clone();
-        let endpoints = connection_manager
-            .endpoints
-            .lock()
-            .expect("not poisoned")
-            .clone();
-        let connected = CdsiConnection::connect(&endpoints.cdsi, transport_connector, auth).await?;
-        let (token, remaining_response) = connected.send_request(request).await?;
-
-        Ok(CdsiLookup {
-            token,
-            remaining: std::sync::Mutex::new(Some(remaining_response)),
-        })
-    }
-
     pub async fn new_routes(
         connection_manager: &ConnectionManager,
         auth: Auth,
@@ -90,7 +66,7 @@ impl CdsiLookup {
             user_agent,
             transport_connector,
             endpoints,
-            network_change_event,
+            network_change_event_tx,
             ..
         } = connection_manager;
 
@@ -103,18 +79,21 @@ impl CdsiLookup {
                     )
                 })?;
 
-        let (ws_config, enable_domain_fronting) = {
+        let (ws_config, enable_domain_fronting, enforce_minimum_tls) = {
             let guard = endpoints.lock().expect("not poisoned");
-            (guard.cdsi.ws2_config(), guard.enable_fronting)
+            (
+                guard.cdsi_ws2_config,
+                guard.enable_fronting,
+                guard.enforce_minimum_tls,
+            )
         };
         let env_cdsi = &env.cdsi;
-        let route_provider =
-            env_cdsi
-                .route_provider(enable_domain_fronting)
-                .map_routes(|mut route| {
-                    route.fragment.headers.extend([user_agent.as_header()]);
-                    route
-                });
+        let cdsi_route_provider = env_cdsi
+            .enclave_websocket_provider_with_options(enable_domain_fronting, enforce_minimum_tls);
+        let route_provider = cdsi_route_provider.map_routes(|mut route| {
+            route.fragment.headers.extend([user_agent.as_header()]);
+            route
+        });
         let confirmation_header_name = env_cdsi
             .domain_config
             .connect
@@ -123,7 +102,7 @@ impl CdsiLookup {
         let connection_resources = ConnectionResources {
             connect_state: connect,
             dns_resolver,
-            network_change_event,
+            network_change_event: &network_change_event_tx.subscribe(),
             confirmation_header_name,
         };
 

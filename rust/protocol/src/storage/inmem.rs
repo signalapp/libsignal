@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::storage::traits;
+use crate::storage::traits::{self, IdentityChange};
 use crate::{
     IdentityKey, IdentityKeyPair, KyberPreKeyId, KyberPreKeyRecord, PreKeyId, PreKeyRecord,
     ProtocolAddress, Result, SenderKeyRecord, SessionRecord, SignalProtocolError, SignedPreKeyId,
@@ -61,18 +61,16 @@ impl traits::IdentityKeyStore for InMemIdentityKeyStore {
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
-    ) -> Result<bool> {
+    ) -> Result<IdentityChange> {
         match self.known_keys.get(address) {
             None => {
                 self.known_keys.insert(address.clone(), *identity);
-                Ok(false) // new key
+                Ok(IdentityChange::NewOrUnchanged)
             }
-            Some(k) if k == identity => {
-                Ok(false) // same key
-            }
+            Some(k) if k == identity => Ok(IdentityChange::NewOrUnchanged),
             Some(_k) => {
                 self.known_keys.insert(address.clone(), *identity);
-                Ok(true) // overwrite
+                Ok(IdentityChange::ReplacedExisting)
             }
         }
     }
@@ -411,7 +409,7 @@ impl traits::IdentityKeyStore for InMemSignalProtocolStore {
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
-    ) -> Result<bool> {
+    ) -> Result<IdentityChange> {
         self.identity_store.save_identity(address, identity).await
     }
 

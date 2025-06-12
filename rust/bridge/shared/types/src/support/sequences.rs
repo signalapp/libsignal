@@ -3,9 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
+
 use libsignal_protocol::{ServiceId, ServiceIdFixedWidthBinaryBytes};
 use rayon::iter::ParallelIterator as _;
 use rayon::slice::ParallelSlice as _;
+
+use crate::*;
 
 /// Lazily parses ServiceIds from a buffer of concatenated Service-Id-FixedWidthBinary.
 ///
@@ -65,3 +70,36 @@ impl<'a> rayon::iter::IntoParallelIterator for ServiceIdSequence<'a> {
             .map(Self::parse_single_chunk)
     }
 }
+
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
+pub struct BridgedStringMap(HashMap<String, String>);
+
+impl BridgedStringMap {
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(HashMap::with_capacity(capacity))
+    }
+
+    pub fn take(&mut self) -> HashMap<String, String> {
+        std::mem::take(&mut self.0)
+    }
+}
+
+impl Deref for BridgedStringMap {
+    type Target = HashMap<String, String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl DerefMut for BridgedStringMap {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+impl From<BridgedStringMap> for HashMap<String, String> {
+    fn from(value: BridgedStringMap) -> Self {
+        value.0
+    }
+}
+
+bridge_as_handle!(BridgedStringMap, mut = true);

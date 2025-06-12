@@ -41,20 +41,6 @@ public class CdsiLookupRequest {
     this.token = token.orElse(null);
   }
 
-  /**
-   * @deprecated The requireAcis field is no longer read by the server. Use the overload that
-   *     doesn't take it as an argument.
-   */
-  @Deprecated
-  public CdsiLookupRequest(
-      Set<String> previousE164s,
-      Set<String> newE164s,
-      Map<ServiceId, ProfileKey> serviceIds,
-      boolean requireAcis,
-      Optional<byte[]> token) {
-    this(previousE164s, newE164s, serviceIds, token);
-  }
-
   NativeRequest makeNative() {
     return new NativeRequest(
         this.previousE164s, this.newE164s, this.removedE164s, this.serviceIds, this.token);

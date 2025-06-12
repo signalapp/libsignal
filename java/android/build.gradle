@@ -1,7 +1,8 @@
 import groovy.json.JsonSlurper
 
 plugins {
-    id 'com.android.library' version '8.7.3'
+    id 'com.android.library'
+    id 'kotlin-android'
     id 'maven-publish'
     id 'signing'
 }
@@ -18,7 +19,7 @@ android {
     namespace 'org.signal.libsignal'
 
     compileSdk 34
-    ndkVersion '27.0.12077973'
+    ndkVersion '28.0.13004108'
 
     defaultConfig {
         minSdkVersion 21
@@ -42,6 +43,10 @@ android {
                 // Also run all the Android-agnostic tests by default.
                 srcDir '../client/src/test/java'
                 srcDir '../shared/test/java'
+            }
+            kotlin {
+                srcDir '../client/src/test/kotlin'
+                srcDir '../shared/test/kotlin'
             }
             resources {
                 srcDir '../client/src/test/resources'
@@ -110,8 +115,12 @@ File findRustlsPlatformVerifierClasses() {
 dependencies {
     implementation files(findRustlsPlatformVerifierClasses())
 
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
     androidTestImplementation "androidx.test:runner:1.4.0"
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'com.googlecode.json-simple:json-simple:1.1'
+    androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
+    androidTestImplementation 'org.jetbrains.kotlin:kotlin-test:2.1.0'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.6'
     api project(':client')
 }
@@ -131,9 +140,11 @@ task makeJniLibraries(type:Exec) {
 
     def archs = archsFromProperty('androidArchs') ?: ['android']
     def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
+    def jniTypeTaggingFlag = project.hasProperty('jniTypeTagging') ? ['--jni-type-tagging'] : []
+    def jniCheckAnnotationsFlag = project.hasProperty('jniCheckAnnotations') ? ['--jni-check-annotations'] : []
     def debugFlag = project.hasProperty('debugRust') ? ['--debug'] : []
     // Explicitly specify 'bash' for Windows compatibility.
-    commandLine 'bash', '../build_jni.sh', *debugLevelLogsFlag, *debugFlag, *archs
+    commandLine 'bash', '../build_jni.sh', *debugLevelLogsFlag, *jniTypeTaggingFlag, *jniCheckAnnotationsFlag, *debugFlag, *archs
     environment 'ANDROID_NDK_HOME', android.ndkDirectory
 }
 

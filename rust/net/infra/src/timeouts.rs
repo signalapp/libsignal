@@ -59,6 +59,9 @@ pub const MULTI_ROUTE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(180);
 /// before it starts.
 pub const TCP_CONNECTION_ATTEMPT_DELAY: Duration = Duration::from_millis(200);
 
+/// Timeout for a TCP connection attempt to a single IP address.
+pub const TCP_CONNECTION_TIMEOUT: Duration = Duration::from_secs(15);
+
 /// Minimum timeout duration for TLS handshake. May be greater depending on length of
 /// the TCP handshake.
 pub const MIN_TLS_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(3);

@@ -7,10 +7,10 @@
 
 use std::sync::LazyLock;
 
+use const_str::hex;
 use curve25519_dalek_signal::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
 use curve25519_dalek_signal::scalar::Scalar;
-use hex_literal::hex;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
@@ -290,8 +290,7 @@ impl<S: AttrScalars> KeyPair<S> {
         assert!(S::NUM_ATTRS >= 1, "at least one attribute required");
         assert!(
             S::NUM_ATTRS <= NUM_SUPPORTED_ATTRS,
-            "more than {} attributes not supported",
-            NUM_SUPPORTED_ATTRS
+            "more than {NUM_SUPPORTED_ATTRS} attributes not supported"
         );
         assert!(
             S::NUM_ATTRS <= S::Storage::LEN,

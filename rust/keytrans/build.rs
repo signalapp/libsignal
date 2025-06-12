@@ -14,6 +14,6 @@ fn main() {
         .compile_protos(&protos, &["src/proto"])
         .expect("Protobufs in src are valid");
     for proto in &protos {
-        println!("cargo:rerun-if-changed={}", proto);
+        println!("cargo:rerun-if-changed={proto}");
     }
 }

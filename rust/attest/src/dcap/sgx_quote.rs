@@ -16,7 +16,7 @@ use boring_signal::error::ErrorStack;
 use boring_signal::nid::Nid;
 use boring_signal::pkey::Public;
 use sha2::Digest;
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
+use zerocopy::{FromBytes, Immutable, IntoBytes};
 
 use crate::cert_chain::CertChain;
 use crate::dcap::ecdsa::{ecdsa_signature_from_bytes, EcdsaSigned};
@@ -86,7 +86,7 @@ const QUOTE_V3: u16 = 3;
 
 // https://github.com/openenclave/openenclave/tree/v0.17.7
 // sgx_quote.h
-#[derive(Debug, FromBytes, FromZeroes, AsBytes)]
+#[derive(Debug, FromBytes, IntoBytes, Immutable)]
 #[repr(C)]
 pub(crate) struct SgxQuoteBody {
     //    /* (0) */
@@ -138,8 +138,7 @@ impl TryFrom<[u8; std::mem::size_of::<SgxQuoteBody>()]> for SgxQuoteBody {
     type Error = super::Error;
 
     fn try_from(bytes: [u8; std::mem::size_of::<SgxQuoteBody>()]) -> super::Result<Self> {
-        let quote_body =
-            <Self as zerocopy::FromBytes>::read_from(&bytes).expect("size was already checked");
+        let quote_body = Self::read_from_bytes(&bytes).expect("size was already checked");
         if quote_body.version.get() != QUOTE_V3 {
             return Err(Error::new(format!(
                 "unsupported SGX quote version: {}",
@@ -310,7 +309,7 @@ impl Expireable for SgxQuoteSupport<'_> {
     }
 }
 
-#[derive(Debug, zerocopy::FromBytes, zerocopy::FromZeroes)]
+#[derive(Debug, zerocopy::FromBytes)]
 #[repr(C)]
 struct SgxEcdsaSignatureHeader {
     signature: [u8; 64],
@@ -495,7 +494,7 @@ mod tests {
     fn deserialize_unsupported_key_type() {
         let mut support = quote_support_bytes();
         let auth_data_size = {
-            let header = SgxEcdsaSignatureHeader::read_from_prefix(&support).unwrap();
+            let (header, _rest) = SgxEcdsaSignatureHeader::read_from_prefix(&support).unwrap();
             header.auth_data_size.get() as usize
         };
 
