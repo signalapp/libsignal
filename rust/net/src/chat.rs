@@ -54,12 +54,12 @@ pub struct DebugInfo {
 }
 
 #[derive(Clone, Debug)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(test, feature = "test-util"), derive(PartialEq))]
 pub struct Request {
     pub method: ::http::Method,
-    pub body: Option<Bytes>,
-    pub headers: HeaderMap,
     pub path: PathAndQuery,
+    pub headers: HeaderMap,
+    pub body: Option<Bytes>,
 }
 
 #[derive(Clone, Debug)]
@@ -67,8 +67,8 @@ pub struct Request {
 pub struct Response {
     pub status: StatusCode,
     pub message: Option<String>,
-    pub body: Option<Bytes>,
     pub headers: HeaderMap,
+    pub body: Option<Bytes>,
 }
 
 #[derive(Debug)]

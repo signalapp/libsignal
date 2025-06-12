@@ -4,39 +4,34 @@
 //
 
 use std::convert::Infallible;
-use std::time::Duration;
 
 use async_trait::async_trait;
 use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use base64::Engine;
 use libsignal_core::Aci;
-use libsignal_net::chat::{ChatConnection, Request};
+use libsignal_net::chat::Request;
 
-use super::{ResponseError, TryIntoResponse};
+use super::{ResponseError, TryIntoResponse, WsConnection};
 use crate::api::{RequestError, Unauth};
 
 #[async_trait]
-impl crate::api::usernames::UnauthenticatedChatApi for Unauth<ChatConnection> {
+impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi for Unauth<T> {
     async fn look_up_username_hash(
         &self,
         hash: &[u8],
     ) -> Result<Option<Aci>, RequestError<Infallible>> {
         let response = self
-            .send(
-                Request {
-                    method: http::Method::GET,
-                    path: format!(
-                        "/v1/accounts/username_hash/{}",
-                        BASE64_URL_SAFE_NO_PAD.encode(hash),
-                    )
-                    .parse()
-                    .expect("valid"),
-                    headers: http::HeaderMap::new(),
-                    body: None,
-                },
-                // TODO: Figure out timeouts for libsignal-net-chat APIs.
-                Duration::MAX,
-            )
+            .send(Request {
+                method: http::Method::GET,
+                path: format!(
+                    "/v1/accounts/username_hash/{}",
+                    BASE64_URL_SAFE_NO_PAD.encode(hash),
+                )
+                .parse()
+                .expect("valid"),
+                headers: http::HeaderMap::new(),
+                body: None,
+            })
             .await?;
 
         #[derive(serde::Deserialize)]
@@ -68,5 +63,44 @@ impl crate::api::usernames::UnauthenticatedChatApi for Unauth<ChatConnection> {
         })?;
 
         Ok(Some(aci))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use futures_util::FutureExt as _;
+    use libsignal_net::chat;
+    use test_case::test_case;
+
+    use super::*;
+    use crate::api::usernames::UnauthenticatedChatApi;
+    use crate::ws::testutil::{empty, json, RequestValidator};
+
+    const ACI_UUID: &str = "9d0652a3-dcc3-4d11-975f-74d61598733f";
+
+    #[test_case(json(
+        200, format!(r#"{{"uuid":"{ACI_UUID}"}}"#)
+    ) => matches Ok(Some(aci)) if aci.service_id_string() == ACI_UUID)]
+    #[test_case(json(
+        200, r#"{"uuid":"garbage"}"#
+    ) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(empty(404) => matches Ok(None))]
+    #[test_case(empty(500) => matches Err(RequestError::ServerSideError))]
+    fn test(response: chat::Response) -> Result<Option<Aci>, RequestError<Infallible>> {
+        let validator = RequestValidator {
+            expected: Request {
+                method: http::Method::GET,
+                path: http::uri::PathAndQuery::from_static("/v1/accounts/username_hash/AP___w"),
+                headers: http::HeaderMap::new(),
+                body: None,
+            },
+            response,
+        };
+        // Not realistic, but includes bits that encode differently in base64 vs base64url.
+        let hash = &[0x00, 0xff, 0xff, 0xff];
+        Unauth(validator)
+            .look_up_username_hash(hash)
+            .now_or_never()
+            .expect("sync")
     }
 }

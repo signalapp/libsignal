@@ -176,6 +176,7 @@ rand_core_06 = { version = "0.6", package = "rand_core" }
 rangemap = "1.5.1"
 rayon = "1.8.0"
 rcgen = "0.13.0"
+regex = "1.11"
 rustls = { version = "0.23.4", default-features = false }
 rustls-platform-verifier = "0.5.0"
 scopeguard = "1.0"
