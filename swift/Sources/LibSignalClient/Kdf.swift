@@ -11,8 +11,8 @@ public func hkdf(
     inputKeyMaterial: some ContiguousBytes,
     salt: some ContiguousBytes,
     info: some ContiguousBytes
-) throws -> [UInt8] {
-    var output = Array(repeating: UInt8(0x00), count: outputLength)
+) throws -> Data {
+    var output = Data(count: outputLength)
 
     try output.withUnsafeMutableBytes { outputBuffer in
         try inputKeyMaterial.withUnsafeBorrowedBuffer { inputBuffer in

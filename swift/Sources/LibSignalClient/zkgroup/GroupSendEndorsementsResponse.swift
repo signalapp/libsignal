@@ -13,7 +13,7 @@ import SignalFfi
 /// ``GroupSendEndorsement`` for a full description of the endorsement flow from the client's
 /// perspective.
 public class GroupSendEndorsementsResponse: ByteArray, @unchecked Sendable {
-    public required init(contents: [UInt8]) throws {
+    public required init(contents: Data) throws {
         try super.init(contents, checkValid: signal_group_send_endorsements_response_check_valid_contents)
     }
 

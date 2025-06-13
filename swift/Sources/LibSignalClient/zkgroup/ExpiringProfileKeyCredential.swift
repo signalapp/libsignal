@@ -7,7 +7,7 @@ import Foundation
 import SignalFfi
 
 public class ExpiringProfileKeyCredential: ByteArray, @unchecked Sendable {
-    public required init(contents: [UInt8]) throws {
+    public required init(contents: Data) throws {
         try super.init(contents, checkValid: signal_expiring_profile_key_credential_check_valid_contents)
     }
 

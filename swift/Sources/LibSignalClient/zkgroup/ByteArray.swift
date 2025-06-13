@@ -7,27 +7,27 @@ import Foundation
 import SignalFfi
 
 public class ByteArray {
-    private let contents: [UInt8]
+    private let contents: Data
 
-    init(_ newContents: [UInt8], checkValid: (SignalBorrowedBuffer) -> SignalFfiErrorRef?) throws {
+    init(_ newContents: Data, checkValid: (SignalBorrowedBuffer) -> SignalFfiErrorRef?) throws {
         self.contents = newContents
         try self.withUnsafeBorrowedBuffer { buffer in
             try checkError(checkValid(buffer))
         }
     }
 
-    init(newContents: [UInt8], expectedLength: Int, unrecoverable: Bool = false) throws {
+    init(newContents: Data, expectedLength: Int, unrecoverable: Bool = false) throws {
         if newContents.count != expectedLength {
             throw SignalError.invalidType("\(type(of: self)) uses \(expectedLength) bytes, but tried to deserialize from an array of \(newContents.count) bytes")
         }
         self.contents = newContents
     }
 
-    required init(contents: [UInt8]) throws {
+    required init(contents: Data) throws {
         fatalError("must be overridden by subclasses to specify how to validate the contents")
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return self.contents
     }
 

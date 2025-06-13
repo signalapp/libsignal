@@ -10,7 +10,7 @@ import XCTest
 class IncrementalMacTests: TestCaseBase {
     private let TEST_KEY = Data(base64Encoded: "qDSBRX7+zGmtE0LiHZwCl/cd679ckwS0wbLkM8Gnj5g=")!
     private let TEST_INPUT = ["this is a test", " input to the incremental ", "mac stream"].map { Data($0.utf8) }
-    private let TEST_DIGEST = Array(Data(base64Encoded: "hIkvcGAOVJ+3KHlmep2WonPxRLaY/571p2BipWBhqQmIT22fQpGKnkdu1RjErI9xS9M/BFFSrgSYd/09Gw2yWg==")!)
+    private let TEST_DIGEST = Data(base64Encoded: "hIkvcGAOVJ+3KHlmep2WonPxRLaY/571p2BipWBhqQmIT22fQpGKnkdu1RjErI9xS9M/BFFSrgSYd/09Gw2yWg==")!
     private let CHUNK_SIZE = SizeChoice.bytes(32)
 
     func testIncrementalDigestCreation() throws {

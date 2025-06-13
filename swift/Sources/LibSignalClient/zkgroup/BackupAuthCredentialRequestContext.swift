@@ -7,14 +7,14 @@ import Foundation
 import SignalFfi
 
 public class BackupAuthCredentialRequestContext: ByteArray, @unchecked Sendable {
-    public required init(contents: [UInt8]) throws {
+    public required init(contents: Data) throws {
         try super.init(contents, checkValid: signal_backup_auth_credential_request_context_check_valid_contents)
     }
 
     public static func create<BackupKey: ContiguousBytes>(backupKey: BackupKey, aci: UUID) -> Self {
         return failOnError {
             try backupKey.withUnsafeBytes { backupKeyBytes in
-                try ByteArray(newContents: Array(backupKeyBytes), expectedLength: 32).withUnsafePointerToSerialized { backupKeyTuple in
+                try ByteArray(newContents: Data(backupKeyBytes), expectedLength: 32).withUnsafePointerToSerialized { backupKeyTuple in
                     try withUnsafePointer(to: aci.uuid) { uuid in
                         try invokeFnReturningVariableLengthSerialized {
                             signal_backup_auth_credential_request_context_new($0, backupKeyTuple, uuid)

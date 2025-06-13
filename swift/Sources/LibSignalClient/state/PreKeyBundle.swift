@@ -163,10 +163,10 @@ public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
         }
     }
 
-    public var signedPreKeySignature: [UInt8] {
+    public var signedPreKeySignature: Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_pre_key_bundle_get_signed_pre_key_signature($0, nativeHandle.const())
                 }
             }
@@ -193,10 +193,10 @@ public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
         }
     }
 
-    public var kyberPreKeySignature: [UInt8] {
+    public var kyberPreKeySignature: Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_pre_key_bundle_get_kyber_pre_key_signature($0, nativeHandle.const())
                 }
             }

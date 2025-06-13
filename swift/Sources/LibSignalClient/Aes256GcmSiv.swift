@@ -24,12 +24,12 @@ public class Aes256GcmSiv: NativeHandleOwner<SignalMutPointerAes256GcmSiv> {
         _ message: some ContiguousBytes,
         nonce: some ContiguousBytes,
         associatedData: some ContiguousBytes
-    ) throws -> [UInt8] {
+    ) throws -> Data {
         try withNativeHandle { nativeHandle in
             try message.withUnsafeBorrowedBuffer { messageBuffer in
                 try nonce.withUnsafeBorrowedBuffer { nonceBuffer in
                     try associatedData.withUnsafeBorrowedBuffer { adBuffer in
-                        try invokeFnReturningArray {
+                        try invokeFnReturningData {
                             signal_aes256_gcm_siv_encrypt(
                                 $0,
                                 nativeHandle.const(),
@@ -48,12 +48,12 @@ public class Aes256GcmSiv: NativeHandleOwner<SignalMutPointerAes256GcmSiv> {
         _ message: some ContiguousBytes,
         nonce: some ContiguousBytes,
         associatedData: some ContiguousBytes
-    ) throws -> [UInt8] {
+    ) throws -> Data {
         try withNativeHandle { nativeHandle in
             try message.withUnsafeBorrowedBuffer { messageBuffer in
                 try nonce.withUnsafeBorrowedBuffer { nonceBuffer in
                     try associatedData.withUnsafeBorrowedBuffer { adBuffer in
-                        try invokeFnReturningArray {
+                        try invokeFnReturningData {
                             signal_aes256_gcm_siv_decrypt(
                                 $0,
                                 nativeHandle.const(),

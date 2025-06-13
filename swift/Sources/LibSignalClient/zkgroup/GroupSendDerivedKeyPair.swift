@@ -16,7 +16,7 @@ import SignalFfi
 /// - SeeAlso: ``GroupSendEndorsementsResponse/issue(groupMembers:keyPair:)``,
 ///   ``GroupSendFullToken/verify(userIds:now:keyPair:)``
 public class GroupSendDerivedKeyPair: ByteArray, @unchecked Sendable {
-    public required init(contents: [UInt8]) throws {
+    public required init(contents: Data) throws {
         try super.init(contents, checkValid: signal_group_send_derived_key_pair_check_valid_contents)
     }
 

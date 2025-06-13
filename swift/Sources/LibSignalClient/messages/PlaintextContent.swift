@@ -27,20 +27,20 @@ public class PlaintextContent: NativeHandleOwner<SignalMutPointerPlaintextConten
         self.init(owned: NonNull(result)!)
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_plaintext_content_serialize($0, nativeHandle.const())
                 }
             }
         }
     }
 
-    public var body: [UInt8] {
+    public var body: Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_plaintext_content_get_body($0, nativeHandle.const())
                 }
             }
@@ -100,10 +100,10 @@ public class DecryptionErrorMessage: NativeHandleOwner<SignalMutPointerDecryptio
         }
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_decryption_error_message_serialize($0, nativeHandle.const())
                 }
             }

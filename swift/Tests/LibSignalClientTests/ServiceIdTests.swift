@@ -11,10 +11,10 @@ import LibSignalClient
 class ServiceIdTests: TestCaseBase {
     static let TEST_UUID_STRING = "e36fdce7-36da-4c6f-a21b-9afe2b754650"
     static let TEST_UUID = UUID(uuidString: TEST_UUID_STRING)!
-    static let TEST_UUID_BYTES: [UInt8] = [
+    static let TEST_UUID_BYTES = Data([
         0xE3, 0x6F, 0xDC, 0xE7, 0x36, 0xDA, 0x4C, 0x6F,
         0xA2, 0x1B, 0x9A, 0xFE, 0x2B, 0x75, 0x46, 0x50,
-    ]
+    ])
 
     func testAciProperties() throws {
         let aci = Aci(fromUUID: Self.TEST_UUID)

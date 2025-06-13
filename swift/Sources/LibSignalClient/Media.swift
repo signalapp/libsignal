@@ -81,7 +81,7 @@ public class SanitizedMetadata: ClonableHandleOwner<OpaquePointer?> {
     public var metadata: Data? {
         let metadata = withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningDataNoCopy {
+                try invokeFnReturningData {
                     signal_sanitized_metadata_get_metadata($0, nativeHandle)
                 }
             }

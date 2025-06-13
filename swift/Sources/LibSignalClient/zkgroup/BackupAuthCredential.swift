@@ -7,7 +7,7 @@ import Foundation
 import SignalFfi
 
 public class BackupAuthCredential: ByteArray, @unchecked Sendable {
-    public required init(contents: [UInt8]) throws {
+    public required init(contents: Data) throws {
         try super.init(contents, checkValid: signal_backup_auth_credential_check_valid_contents)
     }
 
@@ -31,7 +31,7 @@ public class BackupAuthCredential: ByteArray, @unchecked Sendable {
         }
     }
 
-    public var backupID: [UInt8] {
+    public var backupID: Data {
         return failOnError {
             try withUnsafeBorrowedBuffer { contents in
                 try invokeFnReturningFixedLengthArray {

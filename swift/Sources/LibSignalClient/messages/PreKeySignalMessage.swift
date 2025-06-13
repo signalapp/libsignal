@@ -19,9 +19,9 @@ public class PreKeySignalMessage: NativeHandleOwner<SignalMutPointerPreKeySignal
         self.init(owned: NonNull(result)!)
     }
 
-    public func serialize() throws -> [UInt8] {
+    public func serialize() throws -> Data {
         return try withNativeHandle { nativeHandle in
-            try invokeFnReturningArray {
+            try invokeFnReturningData {
                 signal_pre_key_signal_message_serialize($0, nativeHandle.const())
             }
         }

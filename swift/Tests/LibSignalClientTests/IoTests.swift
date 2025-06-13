@@ -11,10 +11,10 @@ class IoTests: TestCaseBase {
 // These testing endpoints aren't generated in device builds, to save on code size.
 #if !os(iOS) || targetEnvironment(simulator)
     func testReadIntoEmptyBuffer() throws {
-        let input = [UInt8]("ABCDEFGHIJKLMNOPQRSTUVWXYZ".utf8)
+        let input = Data("ABCDEFGHIJKLMNOPQRSTUVWXYZ".utf8)
         let inputStream = SignalInputStreamAdapter(input)
         let output = try withInputStream(inputStream) { input in
-            try invokeFnReturningArray { output in
+            try invokeFnReturningData { output in
                 SignalFfi.signal_testing_input_stream_read_into_zero_length_slice(output, input)
             }
         }

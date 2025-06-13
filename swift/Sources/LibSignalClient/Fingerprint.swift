@@ -11,7 +11,7 @@ public struct DisplayableFingerprint: Sendable {
 }
 
 public struct ScannableFingerprint: Sendable {
-    public let encoding: [UInt8]
+    public let encoding: Data
 
     /// Returns `true` if this fingerprint matches the fingerprint encoding `other`, `false` if not.
     ///
@@ -74,7 +74,7 @@ public struct NumericFingerprintGenerator: Sendable {
         }
         let displayable = DisplayableFingerprint(formatted: fprintStr)
 
-        let scannableBits = try invokeFnReturningArray {
+        let scannableBits = try invokeFnReturningData {
             signal_fingerprint_scannable_encoding($0, obj.const())
         }
         let scannable = ScannableFingerprint(encoding: scannableBits)

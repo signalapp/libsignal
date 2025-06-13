@@ -197,7 +197,7 @@ final class BridgingTests: XCTestCase {
                 }
             }
         }
-        XCTAssertEqual(result, [[1, 2, 3, 1, 2, 3], [], [4, 5, 6, 4, 5, 6]])
+        XCTAssertEqual(result, [[1, 2, 3, 1, 2, 3], [], [4, 5, 6, 4, 5, 6]].map { Data($0) })
     }
 
     func testBytestringArrayEmpty() throws {

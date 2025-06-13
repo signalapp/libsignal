@@ -98,18 +98,18 @@ public class ServiceId: @unchecked Sendable {
         }
     }
 
-    public var serviceIdBinary: [UInt8] {
+    public var serviceIdBinary: Data {
         return failOnError {
             try withUnsafePointer(to: self.storage) { ptr in
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_service_id_service_id_binary($0, ptr)
                 }
             }
         }
     }
 
-    public var serviceIdFixedWidthBinary: [UInt8] {
-        return withUnsafeBytes(of: self.storage) { Array($0) }
+    public var serviceIdFixedWidthBinary: Data {
+        return withUnsafeBytes(of: self.storage) { Data($0) }
     }
 
     private func downcast<SpecificId: ServiceId>(to subclass: SpecificId.Type) throws -> SpecificId {
@@ -156,8 +156,8 @@ public class ServiceId: @unchecked Sendable {
         return try callback(&self.storage)
     }
 
-    internal static func concatenatedFixedWidthBinary(_ serviceIds: some Collection<ServiceId>) -> [UInt8] {
-        var result = Array(repeating: 0 as UInt8, count: serviceIds.count * MemoryLayout<ServiceIdStorage>.size)
+    internal static func concatenatedFixedWidthBinary(_ serviceIds: some Collection<ServiceId>) -> Data {
+        var result = Data(count: serviceIds.count * MemoryLayout<ServiceIdStorage>.size)
         var offset = 0
         for next in serviceIds {
             withUnsafeBytes(of: next.storage) {

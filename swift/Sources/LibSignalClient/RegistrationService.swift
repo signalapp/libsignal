@@ -480,7 +480,7 @@ public class RegistrationSessionState: NativeHandleOwner<SignalMutPointerRegistr
 
     public var requestedInformation: Set<RequestedInformation> {
         return failOnError {
-            let items = try invokeFnReturningArray { out in
+            let items = try invokeFnReturningData { out in
                 self.withNativeHandle {
                     signal_registration_session_get_requested_information(out, $0.const())
                 }
@@ -534,7 +534,7 @@ public class RegisterAccountResponse: NativeHandleOwner<SignalMutPointerRegister
         }
     }
 
-    public var usernameHash: [UInt8]? {
+    public var usernameHash: Data? {
         return failOnError {
             try self.withNativeHandle { native in
                 try invokeFnReturningOptionalArray {

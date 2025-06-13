@@ -47,10 +47,10 @@ public class SignedPreKeyRecord: ClonableHandleOwner<SignalMutPointerSignedPreKe
         self.init(owned: NonNull(result)!)
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_signed_pre_key_record_serialize($0, nativeHandle.const())
                 }
             }
@@ -93,10 +93,10 @@ public class SignedPreKeyRecord: ClonableHandleOwner<SignalMutPointerSignedPreKe
         }
     }
 
-    public var signature: [UInt8] {
+    public var signature: Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_signed_pre_key_record_get_signature($0, nativeHandle.const())
                 }
             }

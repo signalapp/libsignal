@@ -39,30 +39,30 @@ public class ServerCertificate: NativeHandleOwner<SignalMutPointerServerCertific
         }
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_server_certificate_get_serialized($0, nativeHandle.const())
                 }
             }
         }
     }
 
-    public var certificateBytes: [UInt8] {
+    public var certificateBytes: Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_server_certificate_get_certificate($0, nativeHandle.const())
                 }
             }
         }
     }
 
-    public var signatureBytes: [UInt8] {
+    public var signatureBytes: Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_server_certificate_get_signature($0, nativeHandle.const())
                 }
             }
@@ -154,30 +154,30 @@ public class SenderCertificate: NativeHandleOwner<SignalMutPointerSenderCertific
         }
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_sender_certificate_get_serialized($0, nativeHandle.const())
                 }
             }
         }
     }
 
-    public var certificateBytes: [UInt8] {
+    public var certificateBytes: Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_sender_certificate_get_certificate($0, nativeHandle.const())
                 }
             }
         }
     }
 
-    public var signatureBytes: [UInt8] {
+    public var signatureBytes: Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_sender_certificate_get_signature($0, nativeHandle.const())
                 }
             }

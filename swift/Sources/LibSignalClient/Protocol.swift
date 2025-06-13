@@ -33,11 +33,11 @@ public func signalDecrypt(
     sessionStore: SessionStore,
     identityStore: IdentityKeyStore,
     context: StoreContext
-) throws -> [UInt8] {
+) throws -> Data {
     return try withNativeHandles(message, address) { messageHandle, addressHandle in
         try withSessionStore(sessionStore, context) { ffiSessionStore in
             try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_decrypt_message($0, messageHandle.const(), addressHandle.const(), ffiSessionStore, ffiIdentityStore)
                 }
             }
@@ -55,14 +55,14 @@ public func signalDecryptPreKey(
     kyberPreKeyStore: KyberPreKeyStore,
     context: StoreContext,
     usePqRatchet: Bool
-) throws -> [UInt8] {
+) throws -> Data {
     return try withNativeHandles(message, address) { messageHandle, addressHandle in
         try withSessionStore(sessionStore, context) { ffiSessionStore in
             try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
                 try withPreKeyStore(preKeyStore, context) { ffiPreKeyStore in
                     try withSignedPreKeyStore(signedPreKeyStore, context) { ffiSignedPreKeyStore in
                         try withKyberPreKeyStore(kyberPreKeyStore, context) { ffiKyberPreKeyStore in
-                            try invokeFnReturningArray {
+                            try invokeFnReturningData {
                                 signal_decrypt_pre_key_message($0, messageHandle.const(), addressHandle.const(), ffiSessionStore, ffiIdentityStore, ffiPreKeyStore, ffiSignedPreKeyStore, ffiKyberPreKeyStore, usePqRatchet)
                             }
                         }
@@ -116,11 +116,11 @@ public func groupDecrypt<Bytes: ContiguousBytes>(
     from sender: ProtocolAddress,
     store: SenderKeyStore,
     context: StoreContext
-) throws -> [UInt8] {
+) throws -> Data {
     return try sender.withNativeHandle { senderHandle in
         try message.withUnsafeBorrowedBuffer { messageBuffer in
             try withSenderKeyStore(store, context) { ffiStore in
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_group_decrypt_message($0, senderHandle.const(), messageBuffer, ffiStore)
                 }
             }

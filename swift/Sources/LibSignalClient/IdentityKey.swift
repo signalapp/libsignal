@@ -17,7 +17,7 @@ public struct IdentityKey: Equatable, Sendable {
         self.publicKey = try PublicKey(bytes)
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return self.publicKey.serialize()
     }
 
@@ -58,10 +58,10 @@ public struct IdentityKeyPair: Sendable {
         self.privateKey = privateKey
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return withNativeHandles(self.publicKey, self.privateKey) { publicKey, privateKey in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_identitykeypair_serialize($0, publicKey.const(), privateKey.const())
                 }
             }
@@ -72,10 +72,10 @@ public struct IdentityKeyPair: Sendable {
         return IdentityKey(publicKey: self.publicKey)
     }
 
-    public func signAlternateIdentity(_ other: IdentityKey) -> [UInt8] {
+    public func signAlternateIdentity(_ other: IdentityKey) -> Data {
         return withNativeHandles(self.publicKey, self.privateKey, other.publicKey) { publicKey, privateKey, other in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_identitykeypair_sign_alternate_identity($0, publicKey.const(), privateKey.const(), other.const())
                 }
             }

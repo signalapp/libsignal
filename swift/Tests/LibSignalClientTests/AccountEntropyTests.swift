@@ -61,7 +61,7 @@ class AccountEntropyTests: TestCaseBase {
         let mediaKey = try! backupKey.deriveMediaEncryptionKey(mediaId)
         XCTAssertEqual(32 + 32, mediaKey.count)
 
-        XCTAssertThrowsError(try backupKey.deriveMediaEncryptionKey([0])) { error in
+        XCTAssertThrowsError(try backupKey.deriveMediaEncryptionKey(Data([0]))) { error in
             switch error {
             case SignalError.invalidType(_): break
             default: XCTFail("unexpected error: \(error)")

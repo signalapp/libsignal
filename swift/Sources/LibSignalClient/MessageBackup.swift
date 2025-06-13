@@ -29,7 +29,7 @@ public class MessageBackupKey: NativeHandleOwner<SignalMutPointerMessageBackupKe
     ///
     /// This uses AccountEntropyPool-based key derivation rules;
     /// it cannot be used to read a backup created from a master key.
-    public convenience init(backupKey: BackupKey, backupId: [UInt8]) throws {
+    public convenience init(backupKey: BackupKey, backupId: Data) throws {
         let backupId = try ByteArray(newContents: backupId, expectedLength: 16)
         let handle = try backupKey.withUnsafePointerToSerialized { backupKey in
             try backupId.withUnsafePointerToSerialized { backupId in
@@ -50,7 +50,7 @@ public class MessageBackupKey: NativeHandleOwner<SignalMutPointerMessageBackupKe
     }
 
     /// An HMAC key used to sign a backup file.
-    public var hmacKey: [UInt8] {
+    public var hmacKey: Data {
         failOnError {
             try withNativeHandle { keyHandle in
                 try invokeFnReturningFixedLengthArray {
@@ -61,7 +61,7 @@ public class MessageBackupKey: NativeHandleOwner<SignalMutPointerMessageBackupKe
     }
 
     /// An AES-256-CBC key used to encrypt a backup file.
-    public var aesKey: [UInt8] {
+    public var aesKey: Data {
         failOnError {
             try withNativeHandle { keyHandle in
                 try invokeFnReturningFixedLengthArray {

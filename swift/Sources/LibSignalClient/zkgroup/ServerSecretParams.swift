@@ -19,7 +19,7 @@ public class ServerSecretParams: NativeHandleOwner<SignalMutPointerServerSecretP
         }
     }
 
-    public convenience init(contents: [UInt8]) throws {
+    public convenience init(contents: Data) throws {
         var handle = SignalMutPointerServerSecretParams()
         try contents.withUnsafeBorrowedBuffer {
             try checkError(signal_server_secret_params_deserialize(&handle, $0))
@@ -31,10 +31,10 @@ public class ServerSecretParams: NativeHandleOwner<SignalMutPointerServerSecretP
         super.init(owned: owned)
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return failOnError {
             try withNativeHandle { handle in
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_server_secret_params_serialize($0, handle.const())
                 }
             }
@@ -49,11 +49,11 @@ public class ServerSecretParams: NativeHandleOwner<SignalMutPointerServerSecretP
         }
     }
 
-    public func sign(message: [UInt8]) throws -> NotarySignature {
+    public func sign(message: Data) throws -> NotarySignature {
         return try self.sign(randomness: Randomness.generate(), message: message)
     }
 
-    public func sign(randomness: Randomness, message: [UInt8]) throws -> NotarySignature {
+    public func sign(randomness: Randomness, message: Data) throws -> NotarySignature {
         return try withNativeHandle { contents in
             try randomness.withUnsafePointerToBytes { randomness in
                 try message.withUnsafeBorrowedBuffer { message in

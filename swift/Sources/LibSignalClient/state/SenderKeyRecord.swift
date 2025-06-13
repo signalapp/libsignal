@@ -24,10 +24,10 @@ public class SenderKeyRecord: ClonableHandleOwner<SignalMutPointerSenderKeyRecor
         self.init(owned: NonNull(handle)!)
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_sender_key_record_serialize($0, nativeHandle.const())
                 }
             }

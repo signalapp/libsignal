@@ -27,7 +27,7 @@ public class GroupSecretParams: ByteArray, @unchecked Sendable {
         }
     }
 
-    public required init(contents: [UInt8]) throws {
+    public required init(contents: Data) throws {
         try super.init(contents, checkValid: signal_group_secret_params_check_valid_contents)
     }
 

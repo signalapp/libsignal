@@ -24,20 +24,20 @@ public class PublicKey: ClonableHandleOwner<SignalMutPointerPublicKey>, @uncheck
         return signal_publickey_clone(&newHandle, currentHandle)
     }
 
-    public var keyBytes: [UInt8] {
+    public var keyBytes: Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_publickey_get_public_key_bytes($0, nativeHandle.const())
                 }
             }
         }
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_publickey_serialize($0, nativeHandle.const())
                 }
             }

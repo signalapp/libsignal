@@ -24,10 +24,10 @@ public class SessionRecord: ClonableHandleOwner<SignalMutPointerSessionRecord> {
         self.init(owned: NonNull(handle)!)
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return self.withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_session_record_serialize($0, nativeHandle.const())
                 }
             }

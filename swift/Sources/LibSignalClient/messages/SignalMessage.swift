@@ -29,20 +29,20 @@ public class SignalMessage: NativeHandleOwner<SignalMutPointerSignalMessage> {
         }
     }
 
-    public var body: [UInt8] {
+    public var body: Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_message_get_body($0, nativeHandle.const())
                 }
             }
         }
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_message_get_serialized($0, nativeHandle.const())
                 }
             }

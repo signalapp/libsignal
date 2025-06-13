@@ -32,21 +32,21 @@ public class PrivateKey: ClonableHandleOwner<SignalMutPointerPrivateKey>, @unche
         return signal_privatekey_destroy(handle.pointer)
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_privatekey_serialize($0, nativeHandle.const())
                 }
             }
         }
     }
 
-    public func generateSignature<Bytes: ContiguousBytes>(message: Bytes) -> [UInt8] {
+    public func generateSignature<Bytes: ContiguousBytes>(message: Bytes) -> Data {
         return withNativeHandle { nativeHandle in
             message.withUnsafeBorrowedBuffer { messageBuffer in
                 failOnError {
-                    try invokeFnReturningArray {
+                    try invokeFnReturningData {
                         signal_privatekey_sign($0, nativeHandle.const(), messageBuffer)
                     }
                 }
@@ -54,10 +54,10 @@ public class PrivateKey: ClonableHandleOwner<SignalMutPointerPrivateKey>, @unche
         }
     }
 
-    public func keyAgreement(with other: PublicKey) -> [UInt8] {
+    public func keyAgreement(with other: PublicKey) -> Data {
         return withNativeHandles(self, other) { nativeHandle, otherHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_privatekey_agree($0, nativeHandle.const(), otherHandle.const())
                 }
             }

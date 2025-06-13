@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import Foundation
 import SignalFfi
 
 public class CiphertextMessage: NativeHandleOwner<SignalMutPointerCiphertextMessage> {
@@ -45,10 +46,10 @@ public class CiphertextMessage: NativeHandleOwner<SignalMutPointerCiphertextMess
         self.init(owned: NonNull(result)!)
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_ciphertext_message_serialize($0, nativeHandle.const())
                 }
             }

@@ -7,7 +7,7 @@ import Foundation
 import SignalFfi
 
 public class BackupAuthCredentialRequest: ByteArray, @unchecked Sendable {
-    public required init(contents: [UInt8]) throws {
+    public required init(contents: Data) throws {
         try super.init(contents, checkValid: signal_backup_auth_credential_request_check_valid_contents)
     }
 

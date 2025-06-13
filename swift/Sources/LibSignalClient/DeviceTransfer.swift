@@ -13,11 +13,11 @@ public enum KeyFormat: UInt8, CaseIterable, Sendable {
 }
 
 public struct DeviceTransferKey: Sendable {
-    public let privateKey: [UInt8]
+    public let privateKey: Data
 
     public static func generate(formattedAs keyFormat: KeyFormat = .pkcs8) -> Self {
         let privateKey = failOnError {
-            try invokeFnReturningArray {
+            try invokeFnReturningData {
                 signal_device_transfer_generate_private_key_with_format($0, keyFormat.rawValue)
             }
         }
@@ -25,14 +25,14 @@ public struct DeviceTransferKey: Sendable {
         return Self(privateKey: privateKey)
     }
 
-    public func privateKeyMaterial() -> [UInt8] {
+    public func privateKeyMaterial() -> Data {
         return self.privateKey
     }
 
-    public func generateCertificate(_ name: String, _ daysTilExpire: Int) -> [UInt8] {
+    public func generateCertificate(_ name: String, _ daysTilExpire: Int) -> Data {
         return self.privateKey.withUnsafeBorrowedBuffer { privateKeyBuffer in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_device_transfer_generate_certificate(
                         $0,
                         privateKeyBuffer,

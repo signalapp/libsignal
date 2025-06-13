@@ -39,10 +39,10 @@ public class KyberPreKeyRecord: ClonableHandleOwner<SignalMutPointerKyberPreKeyR
         self.init(owned: NonNull(result)!)
     }
 
-    public func serialize() -> [UInt8] {
+    public func serialize() -> Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_kyber_pre_key_record_serialize($0, nativeHandle.const())
                 }
             }
@@ -93,10 +93,10 @@ public class KyberPreKeyRecord: ClonableHandleOwner<SignalMutPointerKyberPreKeyR
         }
     }
 
-    public var signature: [UInt8] {
+    public var signature: Data {
         return withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningArray {
+                try invokeFnReturningData {
                     signal_kyber_pre_key_record_get_signature($0, nativeHandle.const())
                 }
             }
