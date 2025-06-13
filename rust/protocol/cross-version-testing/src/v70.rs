@@ -83,7 +83,6 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
                 .expect("synchronous")
                 .expect("can fetch identity key")
                 .identity_key()
-                .clone()
                 .into_current(),
         )
         .expect("can create pre-key bundles");
@@ -211,7 +210,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
                 &mut self.0.session_store,
                 &mut self.0.identity_store,
                 &mut self.0.pre_key_store,
-                &mut self.0.signed_pre_key_store,
+                &self.0.signed_pre_key_store,
                 &mut self.0.kyber_pre_key_store,
                 &mut thread_rng(),
             )

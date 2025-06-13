@@ -177,7 +177,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
                 &mut self.0.session_store,
                 &mut self.0.identity_store,
                 &mut self.0.pre_key_store,
-                &mut self.0.signed_pre_key_store,
+                &self.0.signed_pre_key_store,
                 &mut self.0.kyber_pre_key_store,
                 &mut rng(),
                 UsePQRatchet::Yes,
