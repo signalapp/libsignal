@@ -215,17 +215,14 @@ pub struct PrivateKey {
 
 impl PrivateKey {
     pub fn deserialize(value: &[u8]) -> Result<Self, CurveError> {
-        if value.len() != curve25519::PRIVATE_KEY_LENGTH {
-            Err(CurveError::BadKeyLength(KeyType::Djb, value.len()))
-        } else {
-            let mut key = [0u8; curve25519::PRIVATE_KEY_LENGTH];
-            key.copy_from_slice(&value[..curve25519::PRIVATE_KEY_LENGTH]);
-            // Clamping is not necessary but is kept for backward compatibility
-            key = scalar::clamp_integer(key);
-            Ok(Self {
-                key: PrivateKeyData::DjbPrivateKey(key),
-            })
-        }
+        let mut key: [u8; curve25519::PRIVATE_KEY_LENGTH] = value
+            .try_into()
+            .map_err(|_| CurveError::BadKeyLength(KeyType::Djb, value.len()))?;
+        // Clamping is not necessary but is kept for backward compatibility
+        key = scalar::clamp_integer(key);
+        Ok(Self {
+            key: PrivateKeyData::DjbPrivateKey(key),
+        })
     }
 
     pub fn serialize(&self) -> Vec<u8> {

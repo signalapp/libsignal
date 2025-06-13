@@ -12,13 +12,17 @@ import org.signal.libsignal.protocol.SerializablePublicKey
 import java.util.Arrays
 
 public class KEMPublicKey : NativeHandleGuard.SimpleOwner, SerializablePublicKey {
-
+  @Deprecated("use the constructor that takes an offset and length")
   @Throws(InvalidKeyException::class)
   public constructor(serialized: ByteArray, offset: Int) :
-    super(Native.KyberPublicKey_DeserializeWithOffset(serialized, offset))
+    this(serialized, offset, length = serialized.size - offset)
 
   @Throws(InvalidKeyException::class)
-  public constructor(serialized: ByteArray) : this(serialized, 0)
+  public constructor(serialized: ByteArray, offset: Int, length: Int) :
+    super(Native.KyberPublicKey_DeserializeWithOffsetLength(serialized, offset, length))
+
+  @Throws(InvalidKeyException::class)
+  public constructor(serialized: ByteArray) : this(serialized, 0, serialized.size)
 
   public constructor(nativeHandle: Long) : super(NativeHandleGuard.SimpleOwner.throwIfNull(nativeHandle))
 

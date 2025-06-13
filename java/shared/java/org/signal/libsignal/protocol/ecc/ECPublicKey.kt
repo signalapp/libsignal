@@ -12,11 +12,19 @@ import org.signal.libsignal.protocol.SerializablePublicKey
 import java.util.Arrays
 
 public final class ECPublicKey : NativeHandleGuard.SimpleOwner, Comparable<ECPublicKey>, SerializablePublicKey {
+  @Deprecated("use the constructor that takes an offset and length")
   @Throws(InvalidKeyException::class)
-  public constructor(serialized: ByteArray, offset: Int) : this(Native.ECPublicKey_Deserialize(serialized, offset))
+  public constructor(serialized: ByteArray, offset: Int) : this(serialized, offset, length = serialized.size - offset)
 
   @Throws(InvalidKeyException::class)
-  public constructor(serialized: ByteArray) : this(Native.ECPublicKey_Deserialize(serialized, 0))
+  public constructor(serialized: ByteArray) : this(serialized, 0, serialized.size)
+
+  @Throws(InvalidKeyException::class)
+  public constructor(
+    serialized: ByteArray,
+    offset: Int,
+    length: Int,
+  ) : this(Native.ECPublicKey_Deserialize(serialized, offset, length))
 
   public companion object {
     public const val KEY_SIZE: Int = 33
@@ -30,7 +38,7 @@ public final class ECPublicKey : NativeHandleGuard.SimpleOwner, Comparable<ECPub
       val withType = ByteArray(KEY_SIZE)
       withType[0] = 0x05
       key.copyInto(withType, destinationOffset = 1)
-      return ECPublicKey(Native.ECPublicKey_Deserialize(withType, 0))
+      return ECPublicKey(withType)
     }
   }
 

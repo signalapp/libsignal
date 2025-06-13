@@ -128,11 +128,12 @@ fn PublicKey_Deserialize(data: &[u8]) -> Result<PublicKey> {
     Ok(PublicKey::deserialize(data)?)
 }
 
-// Alternate implementation to deserialize from an offset.
+// Alternate implementation to deserialize from an offset and length.
 #[bridge_fn(ffi = false, node = false)]
-fn ECPublicKey_Deserialize(data: &[u8], offset: u32) -> Result<PublicKey> {
+fn ECPublicKey_Deserialize(data: &[u8], offset: u32, length: u32) -> Result<PublicKey> {
     let offset = offset as usize;
-    Ok(PublicKey::deserialize(&data[offset..])?)
+    let length = length as usize;
+    Ok(PublicKey::deserialize(&data[offset..][..length])?)
 }
 
 bridge_get!(
@@ -220,9 +221,14 @@ fn KyberPublicKey_Deserialize(data: &[u8]) -> Result<KyberPublicKey> {
 }
 
 #[bridge_fn(ffi = false, node = false)]
-fn KyberPublicKey_DeserializeWithOffset(data: &[u8], offset: u32) -> Result<KyberPublicKey> {
+fn KyberPublicKey_DeserializeWithOffsetLength(
+    data: &[u8],
+    offset: u32,
+    length: u32,
+) -> Result<KyberPublicKey> {
     let offset = offset as usize;
-    KyberPublicKey::deserialize(&data[offset..])
+    let length = length as usize;
+    KyberPublicKey::deserialize(&data[offset..][..length])
 }
 
 bridge_get!(

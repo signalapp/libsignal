@@ -303,7 +303,7 @@ public final class Native {
   public static native byte[] ECPrivateKey_Sign(long key, byte[] message) throws Exception;
 
   public static native int ECPublicKey_Compare(long key1, long key2);
-  public static native long ECPublicKey_Deserialize(byte[] data, int offset) throws Exception;
+  public static native long ECPublicKey_Deserialize(byte[] data, int offset, int length) throws Exception;
   public static native void ECPublicKey_Destroy(long handle);
   public static native boolean ECPublicKey_Equals(long lhs, long rhs);
   public static native byte[] ECPublicKey_GetPublicKeyBytes(long obj) throws Exception;
@@ -414,7 +414,7 @@ public final class Native {
   public static native long KyberPreKeyRecord_GetTimestamp(long obj) throws Exception;
   public static native long KyberPreKeyRecord_New(int id, long timestamp, long keyPair, byte[] signature);
 
-  public static native long KyberPublicKey_DeserializeWithOffset(byte[] data, int offset) throws Exception;
+  public static native long KyberPublicKey_DeserializeWithOffsetLength(byte[] data, int offset, int length) throws Exception;
   public static native void KyberPublicKey_Destroy(long handle);
   public static native boolean KyberPublicKey_Equals(long lhs, long rhs);
   public static native byte[] KyberPublicKey_Serialize(long obj) throws Exception;
