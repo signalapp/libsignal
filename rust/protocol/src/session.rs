@@ -7,12 +7,13 @@ use std::time::SystemTime;
 
 use rand::{CryptoRng, Rng};
 
+use crate::protocol::CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION;
 use crate::ratchet::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
 use crate::state::GenericSignedPreKey;
 use crate::{
-    kem, ratchet, Direction, IdentityKey, IdentityKeyStore, KeyPair, KyberPreKeyId,
-    KyberPreKeyStore, PreKeyBundle, PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress,
-    Result, SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyStore,
+    kem, ratchet, CiphertextMessageType, Direction, IdentityKey, IdentityKeyStore, KeyPair,
+    KyberPreKeyId, KyberPreKeyStore, PreKeyBundle, PreKeyId, PreKeySignalMessage, PreKeyStore,
+    ProtocolAddress, Result, SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyStore,
 };
 
 #[derive(Default)]
@@ -98,6 +99,18 @@ async fn process_prekey_impl(
     )? {
         // We've already set up a session for this message, we can exit early.
         return Ok(Default::default());
+    }
+
+    // Check this *after* looking for an existing session; since we have already performed XDH for
+    // such a session, enforcing PQXDH *now* would be silly.
+    if message.message_version() == CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION {
+        // Specifically return InvalidMessage here rather than LegacyCiphertextVersion; the Signal
+        // Android app treats LegacyCiphertextVersion as a structural issue rather than a retryable
+        // one, and won't cause the sender and receiver to move over to a PQXDH session.
+        return Err(SignalProtocolError::InvalidMessage(
+            CiphertextMessageType::PreKey,
+            "X3DH no longer supported",
+        ));
     }
 
     let our_signed_pre_key_pair = signed_prekey_store

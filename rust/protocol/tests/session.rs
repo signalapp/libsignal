@@ -31,16 +31,6 @@ fn test_basic_prekey() -> TestResult {
         |builder| {
             builder.add_pre_key(IdChoice::Next);
             builder.add_signed_pre_key(IdChoice::Next);
-        },
-        PRE_KYBER_MESSAGE_VERSION,
-        UsePQRatchet::Yes,
-        UsePQRatchet::Yes,
-    )?;
-
-    run(
-        |builder| {
-            builder.add_pre_key(IdChoice::Next);
-            builder.add_signed_pre_key(IdChoice::Next);
             builder.add_kyber_pre_key(IdChoice::Next);
         },
         KYBER_AWARE_MESSAGE_VERSION,
@@ -353,12 +343,6 @@ fn test_chain_jump_over_limit_with_self() -> TestResult {
     let mut store_builder_one = TestStoreBuilder::new();
     let mut store_builder_two = TestStoreBuilder::from_store(&store_builder_one.store)
         .with_pre_key(31337.into())
-        .with_signed_pre_key(22.into());
-    run(&mut store_builder_one, &mut store_builder_two)?;
-
-    let mut store_builder_one = TestStoreBuilder::new();
-    let mut store_builder_two = TestStoreBuilder::from_store(&store_builder_one.store)
-        .with_pre_key(31337.into())
         .with_signed_pre_key(22.into())
         .with_kyber_pre_key(8000.into());
     run(&mut store_builder_one, &mut store_builder_two)?;
@@ -486,16 +470,6 @@ fn test_bad_signed_pre_key_signature() -> TestResult {
 
 #[test]
 fn test_repeat_bundle_message() -> TestResult {
-    let mut alice_store_builder = TestStoreBuilder::new();
-    let mut bob_store_builder = TestStoreBuilder::new()
-        .with_pre_key(3133.into())
-        .with_signed_pre_key(22.into());
-    run(
-        &mut alice_store_builder,
-        &mut bob_store_builder,
-        PRE_KYBER_MESSAGE_VERSION,
-    )?;
-
     let mut alice_store_builder = TestStoreBuilder::new();
     let mut bob_store_builder = TestStoreBuilder::new()
         .with_pre_key(3133.into())
@@ -630,16 +604,6 @@ fn test_bad_message_bundle() -> TestResult {
     let mut alice_store_builder = TestStoreBuilder::new();
     let mut bob_store_builder = TestStoreBuilder::new()
         .with_pre_key(3133.into())
-        .with_signed_pre_key(22.into());
-    run(
-        &mut alice_store_builder,
-        &mut bob_store_builder,
-        PRE_KYBER_MESSAGE_VERSION,
-    )?;
-
-    let mut alice_store_builder = TestStoreBuilder::new();
-    let mut bob_store_builder = TestStoreBuilder::new()
-        .with_pre_key(3133.into())
         .with_signed_pre_key(22.into())
         .with_kyber_pre_key(8000.into());
     run(
@@ -746,14 +710,6 @@ fn test_bad_message_bundle() -> TestResult {
 
 #[test]
 fn test_optional_one_time_prekey() -> TestResult {
-    let mut alice_store_builder = TestStoreBuilder::new();
-    let mut bob_store_builder = TestStoreBuilder::new().with_signed_pre_key(22.into());
-    run(
-        &mut alice_store_builder,
-        &mut bob_store_builder,
-        PRE_KYBER_MESSAGE_VERSION,
-    )?;
-
     let mut alice_store_builder = TestStoreBuilder::new();
     let mut bob_store_builder = TestStoreBuilder::new()
         .with_signed_pre_key(22.into())
@@ -927,20 +883,6 @@ fn test_message_key_limits() -> TestResult {
 
 #[test]
 fn test_basic_simultaneous_initiate() -> TestResult {
-    let mut alice_store_builder = TestStoreBuilder::new()
-        .with_pre_key(IdChoice::Random)
-        .with_signed_pre_key(IdChoice::Random);
-    let mut bob_store_builder = TestStoreBuilder::new()
-        .with_pre_key(IdChoice::Random)
-        .with_signed_pre_key(IdChoice::Random);
-    run(
-        &mut alice_store_builder,
-        &mut bob_store_builder,
-        PRE_KYBER_MESSAGE_VERSION,
-        UsePQRatchet::Yes,
-        UsePQRatchet::Yes,
-    )?;
-
     let mut alice_store_builder = TestStoreBuilder::new()
         .with_pre_key(IdChoice::Random)
         .with_signed_pre_key(IdChoice::Random)
@@ -1167,18 +1109,6 @@ fn test_basic_simultaneous_initiate() -> TestResult {
 fn test_simultaneous_initiate_with_lossage() -> TestResult {
     let mut alice_store_builder = TestStoreBuilder::new()
         .with_pre_key(IdChoice::Random)
-        .with_signed_pre_key(IdChoice::Random);
-    let mut bob_store_builder = TestStoreBuilder::new()
-        .with_pre_key(IdChoice::Random)
-        .with_signed_pre_key(IdChoice::Random);
-    run(
-        &mut alice_store_builder,
-        &mut bob_store_builder,
-        PRE_KYBER_MESSAGE_VERSION,
-    )?;
-
-    let mut alice_store_builder = TestStoreBuilder::new()
-        .with_pre_key(IdChoice::Random)
         .with_signed_pre_key(IdChoice::Random)
         .with_kyber_pre_key(IdChoice::Random);
     let mut bob_store_builder = TestStoreBuilder::new()
@@ -1328,18 +1258,6 @@ fn test_simultaneous_initiate_with_lossage() -> TestResult {
 
 #[test]
 fn test_simultaneous_initiate_lost_message() -> TestResult {
-    let mut alice_store_builder = TestStoreBuilder::new()
-        .with_pre_key(IdChoice::Random)
-        .with_signed_pre_key(IdChoice::Random);
-    let mut bob_store_builder = TestStoreBuilder::new()
-        .with_pre_key(IdChoice::Random)
-        .with_signed_pre_key(IdChoice::Random);
-    run(
-        &mut alice_store_builder,
-        &mut bob_store_builder,
-        PRE_KYBER_MESSAGE_VERSION,
-    )?;
-
     let mut alice_store_builder = TestStoreBuilder::new()
         .with_pre_key(IdChoice::Random)
         .with_signed_pre_key(IdChoice::Random)
@@ -1498,18 +1416,6 @@ fn test_simultaneous_initiate_lost_message() -> TestResult {
 
 #[test]
 fn test_simultaneous_initiate_repeated_messages() -> TestResult {
-    let mut alice_store_builder = TestStoreBuilder::new()
-        .with_pre_key(IdChoice::Random)
-        .with_signed_pre_key(IdChoice::Random);
-    let mut bob_store_builder = TestStoreBuilder::new()
-        .with_pre_key(IdChoice::Random)
-        .with_signed_pre_key(IdChoice::Random);
-    run(
-        &mut alice_store_builder,
-        &mut bob_store_builder,
-        PRE_KYBER_MESSAGE_VERSION,
-    )?;
-
     let mut alice_store_builder = TestStoreBuilder::new()
         .with_pre_key(IdChoice::Random)
         .with_signed_pre_key(IdChoice::Random)
@@ -1772,14 +1678,6 @@ fn test_simultaneous_initiate_repeated_messages() -> TestResult {
 
 #[test]
 fn test_simultaneous_initiate_lost_message_repeated_messages() -> TestResult {
-    run(
-        |builder| {
-            builder.add_pre_key(IdChoice::Next);
-            builder.add_signed_pre_key(IdChoice::Next);
-        },
-        PRE_KYBER_MESSAGE_VERSION,
-    )?;
-
     run(
         |builder| {
             builder.add_pre_key(IdChoice::Next);
@@ -2876,14 +2774,6 @@ fn test_signedprekey_not_saved() -> TestResult {
         |builder| {
             builder.add_pre_key(IdChoice::Next);
             builder.add_signed_pre_key(IdChoice::Next);
-        },
-        PRE_KYBER_MESSAGE_VERSION,
-    )?;
-
-    run(
-        |builder| {
-            builder.add_pre_key(IdChoice::Next);
-            builder.add_signed_pre_key(IdChoice::Next);
             builder.add_kyber_pre_key(IdChoice::Next);
         },
         KYBER_AWARE_MESSAGE_VERSION,
@@ -3459,4 +3349,81 @@ fn test_pqr_state_and_message_contents_nonempty_if_enabled() -> TestResult {
     }
     .now_or_never()
     .unwrap()
+}
+
+#[test]
+fn x3dh_prekey_rejected_as_invalid_message_specifically() {
+    async {
+        let mut csprng = OsRng.unwrap_err();
+
+        let alice_device_id = DeviceId::new(1).unwrap();
+        let bob_device_id = DeviceId::new(1).unwrap();
+
+        let alice_address = ProtocolAddress::new("+14151111111".to_owned(), alice_device_id);
+        let bob_address = ProtocolAddress::new("+14151111112".to_owned(), bob_device_id);
+
+        let mut bob_store_builder = TestStoreBuilder::new();
+        bob_store_builder.add_pre_key(IdChoice::Next);
+        bob_store_builder.add_signed_pre_key(IdChoice::Next);
+        bob_store_builder.add_kyber_pre_key(IdChoice::Next);
+
+        let bob_pre_key_bundle = bob_store_builder.make_bundle_with_latest_keys(bob_device_id);
+
+        let mut alice_store = TestStoreBuilder::new().store;
+        process_prekey_bundle(
+            &bob_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &bob_pre_key_bundle,
+            SystemTime::now(),
+            &mut csprng,
+            UsePQRatchet::No,
+        )
+        .await
+        .expect("valid");
+
+        let pre_key_message = support::encrypt(&mut alice_store, &bob_address, "bad")
+            .await
+            .expect("valid");
+
+        let mut bob_one_off_store = bob_store_builder.store.clone();
+        _ = support::decrypt(
+            &mut bob_one_off_store,
+            &alice_address,
+            &pre_key_message,
+            UsePQRatchet::Yes,
+        )
+        .await
+        .expect("unmodified message is fine");
+
+        let original =
+            assert_matches!(pre_key_message, CiphertextMessage::PreKeySignalMessage(m) => m);
+        let modified_message = PreKeySignalMessage::new(
+            PRE_KYBER_MESSAGE_VERSION.try_into().expect("fits in u8"),
+            original.registration_id(),
+            original.pre_key_id(),
+            original.signed_pre_key_id(),
+            None,
+            *original.base_key(),
+            *original.identity_key(),
+            original.message().clone(),
+        )
+        .expect("valid, though it won't decrypt successfully");
+
+        let err = support::decrypt(
+            &mut bob_store_builder.store,
+            &alice_address,
+            &CiphertextMessage::PreKeySignalMessage(modified_message.clone()),
+            UsePQRatchet::Yes,
+        )
+        .await
+        .expect_err("we changed the version, it should be rejected early");
+        assert_matches!(
+            err,
+            SignalProtocolError::InvalidMessage(CiphertextMessageType::PreKey, msg)
+            if msg.contains("X3DH")
+        );
+    }
+    .now_or_never()
+    .expect("sync");
 }

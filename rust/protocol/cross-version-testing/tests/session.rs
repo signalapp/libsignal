@@ -56,8 +56,6 @@ fn test_basic_prekey() {
         &[
             || Box::new(LibSignalProtocolCurrent::new()),
             || Box::new(LibSignalProtocolV70::new()),
-            || Box::new(LibSignalProtocolV21::new()),
-            || Box::new(LibSignalProtocolV12::new()),
         ],
     );
 
