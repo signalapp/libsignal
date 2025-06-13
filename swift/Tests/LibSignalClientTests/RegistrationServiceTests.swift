@@ -337,7 +337,7 @@ class RegistrationServiceFakeChatTests {
                 aciSignedPreKey: aciKeys.signedPreKey,
                 pniSignedPreKey: pniKeys.signedPreKey,
                 aciPqLastResortPreKey: aciKeys.pqLastResortPreKey,
-                pniPqLastResortPreKey: pniKeys.pqLastResortPreKey,
+                pniPqLastResortPreKey: pniKeys.pqLastResortPreKey
             )
 
         let (secondRequest, secondRequestId) = try await fakeRemote.getNextIncomingRequest()

@@ -535,7 +535,7 @@ class ZKGroupTests {
                 serverParams: serverPublicParams
             )
             #expect(
-                receivedEndorsements.endorsements.map { $0.serialize() } == repeatReceivedEndorsements.endorsements.map { $0.serialize() },
+                receivedEndorsements.endorsements.map { $0.serialize() } == repeatReceivedEndorsements.endorsements.map { $0.serialize() }
             )
             #expect(receivedEndorsements.combinedEndorsement.serialize() == repeatReceivedEndorsements.combinedEndorsement.serialize())
 
