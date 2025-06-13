@@ -1333,6 +1333,7 @@ mod test_support {
                 simple_chat_connection(
                     &env::STAGING,
                     EnableDomainFronting::OneDomainPerProxy,
+                    None,
                     |route| matches!(route.inner.inner, DirectOrProxyRoute::Direct(_)),
                 )
             },

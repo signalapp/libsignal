@@ -53,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let chat_connection = Unauth(
-        simple_chat_connection(&env, EnableDomainFronting::AllDomains, |_route| true).await?,
+        simple_chat_connection(&env, EnableDomainFronting::AllDomains, None, |_route| true).await?,
     );
 
     let zkparams: zkgroup::ServerPublicParams =
