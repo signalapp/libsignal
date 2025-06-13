@@ -64,6 +64,10 @@ android {
     }
 }
 
+kotlin {
+    explicitApi()
+}
+
 String collectTestEnvironment() {
     def result = []
     System.getenv().each { k, v ->

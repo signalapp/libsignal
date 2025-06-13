@@ -6,7 +6,7 @@
 package org.signal.libsignal.protocol.ecc
 
 public data class ECKeyPair(val publicKey: ECPublicKey, val privateKey: ECPrivateKey) {
-  companion object {
+  public companion object {
     @JvmStatic
     public fun generate(): ECKeyPair {
       var privateKey = ECPrivateKey.generate()

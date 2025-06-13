@@ -18,8 +18,8 @@ public final class ECPublicKey : NativeHandleGuard.SimpleOwner, Comparable<ECPub
   @Throws(InvalidKeyException::class)
   public constructor(serialized: ByteArray) : this(Native.ECPublicKey_Deserialize(serialized, 0))
 
-  companion object {
-    public const val KEY_SIZE = 33
+  public companion object {
+    public const val KEY_SIZE: Int = 33
 
     @JvmStatic
     @Throws(InvalidKeyException::class)

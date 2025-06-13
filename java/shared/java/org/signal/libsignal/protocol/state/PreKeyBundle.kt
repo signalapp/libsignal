@@ -45,7 +45,7 @@ public class PreKeyBundle(
     ),
   ) {
 
-  companion object {
+  public companion object {
     // -1 is treated as Option<u32>::None by the bridging layer
     public const val NULL_PRE_KEY_ID: Int = -1
   }
@@ -63,7 +63,7 @@ public class PreKeyBundle(
   /**
    * @return the unique pre key ID or -1 if the bundle has none.
    */
-  public val preKeyId
+  public val preKeyId: Int
     get() = guardedMapChecked(Native::PreKeyBundle_GetPreKeyId)
 
   public val preKey: ECPublicKey?

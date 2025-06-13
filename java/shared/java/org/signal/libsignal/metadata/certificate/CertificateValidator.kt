@@ -31,7 +31,7 @@ public data class CertificateValidator(public val trustRoot: ECPublicKey) {
 
   // VisibleForTesting
   @Throws(InvalidCertificateException::class)
-  fun validate(certificate: ServerCertificate) {
+  public fun validate(certificate: ServerCertificate) {
     if (!trustRoot.verifySignature(certificate.certificate, certificate.signature)) {
       throw InvalidCertificateException("Signature failed")
     }

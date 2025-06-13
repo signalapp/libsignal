@@ -22,9 +22,9 @@ import kotlin.annotation.Target
  */
 @MustBeDocumented
 @Target(AnnotationTarget.CONSTRUCTOR, AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.TYPE)
-annotation class CalledFromNative {
-  class Enforcement {
-    companion object {
+public annotation class CalledFromNative {
+  public class Enforcement {
+    public companion object {
       /**
        * Checks that the constructor for the given class that takes the given
        * arguments is annotated to avoid being stripped.
@@ -33,7 +33,7 @@ annotation class CalledFromNative {
        */
       @JvmStatic
       @Throws(AssertionError::class)
-      fun checkConstructor(constructor: Constructor<*>) {
+      public fun checkConstructor(constructor: Constructor<*>) {
         val stringifiedArgs: String by lazy { constructor.parameterTypes.joinToString(", ") { it?.name ?: "null" } }
 
         var declaringClass = constructor.declaringClass
@@ -71,7 +71,7 @@ annotation class CalledFromNative {
        */
       @JvmStatic
       @Throws(AssertionError::class)
-      fun checkCalledMethod(method: Method) {
+      public fun checkCalledMethod(method: Method) {
         var declaringClass = method.declaringClass
         val stringifiedArgs: String by lazy { method.parameterTypes.joinToString(", ") { it?.name ?: "null" } }
         // Now that we've found the method to call, make sure it's going to be
@@ -110,7 +110,7 @@ annotation class CalledFromNative {
        */
       @JvmStatic
       @Throws(AssertionError::class)
-      fun checkCalledStaticMethod(method: Method) {
+      public fun checkCalledStaticMethod(method: Method) {
         val stringifiedArgs: String by lazy { method.parameterTypes.joinToString(", ") { it?.name ?: "null" } }
 
         var declaringClass = method.declaringClass
@@ -137,7 +137,7 @@ annotation class CalledFromNative {
         throw AssertionError("Static method ${declaringClass.name}.${method.name}($stringifiedArgs) is not annotated")
       }
 
-      fun findMethodOnImplementedInterfaces(
+      private fun findMethodOnImplementedInterfaces(
         klass: Class<*>,
         methodName: String,
         argumentTypes: Array<Class<*>>,

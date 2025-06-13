@@ -19,7 +19,7 @@ import kotlin.coroutines.resumeWithException
  * @throws Exception if the CompletableFuture completed exceptionally
  * @throws CancellationException if the coroutine was cancelled
  */
-suspend fun <T> CompletableFuture<T>.await(): T = suspendCancellableCoroutine { c ->
+public suspend fun <T> CompletableFuture<T>.await(): T = suspendCancellableCoroutine { c ->
   // From https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-cancellable-continuation/
   val future = this
   future.whenComplete { result, throwable ->

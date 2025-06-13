@@ -6,9 +6,9 @@ package org.signal.libsignal.protocol.incrementalmac
 
 import org.signal.libsignal.internal.Native
 
-abstract class ChunkSizeChoice {
-  abstract val sizeInBytes: Int
-  companion object {
+public abstract class ChunkSizeChoice {
+  public abstract val sizeInBytes: Int
+  public companion object {
     @JvmStatic
     public fun everyNthByte(n: Int): ChunkSizeChoice {
       return EveryN(n)

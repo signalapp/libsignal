@@ -5,6 +5,6 @@
 
 package org.signal.libsignal.protocol.kem
 
-enum class KEMKeyType(val type: Int) {
+public enum class KEMKeyType(public val type: Int) {
   KYBER_1024(8),
 }

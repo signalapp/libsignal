@@ -11,7 +11,7 @@ import org.signal.libsignal.internal.NativeHandleGuard
 public class KEMKeyPair(nativeHandle: Long) : NativeHandleGuard.SimpleOwner(
   NativeHandleGuard.SimpleOwner.throwIfNull(nativeHandle),
 ) {
-  companion object {
+  public companion object {
     @JvmStatic
     public fun generate(reserved: KEMKeyType): KEMKeyPair {
       return when (reserved) {

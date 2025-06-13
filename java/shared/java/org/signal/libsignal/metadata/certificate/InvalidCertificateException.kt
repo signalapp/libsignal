@@ -5,8 +5,8 @@
 
 package org.signal.libsignal.metadata.certificate
 
-class InvalidCertificateException : Exception {
-  constructor(s: String) : super(s)
+public class InvalidCertificateException : Exception {
+  public constructor(s: String) : super(s)
 
-  constructor(e: Exception) : super(e)
+  public constructor(e: Exception) : super(e)
 }

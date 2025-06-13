@@ -10,7 +10,7 @@ import org.signal.libsignal.internal.NativeHandleGuard
 import org.signal.libsignal.protocol.InvalidKeyException
 
 public class ECPrivateKey : NativeHandleGuard.SimpleOwner {
-  companion object {
+  public companion object {
     @JvmStatic
     public fun generate(): ECPrivateKey {
       return ECPrivateKey(Native.ECPrivateKey_Generate())
