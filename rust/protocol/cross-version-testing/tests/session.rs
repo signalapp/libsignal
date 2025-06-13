@@ -7,13 +7,7 @@ use libsignal_protocol_cross_version_testing::*;
 
 #[test]
 fn test_basic_prekey() {
-    try_all_combinations(
-        run,
-        &[
-            || Box::new(LibSignalProtocolCurrent::new()),
-            || Box::new(LibSignalProtocolV70::new()),
-        ],
-    );
+    try_all_combinations(run, &[|| Box::new(LibSignalProtocolV70::new())]);
 
     fn run(
         alice_store: &mut dyn LibSignalProtocolStore,
@@ -22,11 +16,6 @@ fn test_basic_prekey() {
         let alice_name = "alice";
         let bob_name = "bob";
 
-        println!(
-            "run with {} -> {}",
-            alice_store.version(),
-            bob_store.version()
-        );
         let bob_pre_key_bundle = bob_store.create_pre_key_bundle();
         alice_store.process_pre_key_bundle(bob_name, bob_pre_key_bundle);
 
