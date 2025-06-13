@@ -133,6 +133,23 @@ pub unsafe extern "C" fn signal_error_get_type(err: *const SignalFfiError) -> u3
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn signal_error_get_invalid_protocol_address(
+    err: *const SignalFfiError,
+    name_out: *mut *const c_char,
+    device_id_out: *mut u32,
+) -> *mut SignalFfiError {
+    let err = AssertUnwindSafe(err);
+    run_ffi_safe(|| {
+        let err = err.as_ref().ok_or(NullPointerError)?;
+        let (name, device_id) = err.provide_invalid_address().map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!("cannot get address from error ({err})"))
+        })?;
+        write_result_to(name_out, name)?;
+        write_result_to(device_id_out, device_id)
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn signal_error_get_retry_after_seconds(
     err: *const SignalFfiError,
     out: *mut u32,

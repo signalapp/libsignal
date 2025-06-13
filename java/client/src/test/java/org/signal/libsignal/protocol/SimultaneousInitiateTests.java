@@ -8,6 +8,7 @@ package org.signal.libsignal.protocol;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.protocol.SessionRecordTest.getAliceBaseKey;
 
 import java.util.Arrays;
@@ -26,9 +27,9 @@ import org.signal.libsignal.protocol.state.SignalProtocolStore;
 public class SimultaneousInitiateTests {
 
   private static final SignalProtocolAddress BOB_ADDRESS =
-      new SignalProtocolAddress("+14151231234", 1);
+      filterExceptions(() -> new SignalProtocolAddress("+14151231234", 1));
   private static final SignalProtocolAddress ALICE_ADDRESS =
-      new SignalProtocolAddress("+14159998888", 1);
+      filterExceptions(() -> new SignalProtocolAddress("+14159998888", 1));
 
   private final BundleFactory bundleFactory;
   private int expectedVersion;

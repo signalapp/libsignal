@@ -209,6 +209,24 @@ impl SignalNodeError for SignalProtocolError {
                     make_extra_props,
                 )
             }
+            SignalProtocolError::InvalidProtocolAddress { name, device_id } => {
+                let make_extra_props = |cx: &mut C| {
+                    let props = cx.empty_object();
+                    let name = cx.string(name);
+                    props.set(cx, "name", name)?;
+                    let device_id = cx.number(device_id);
+                    props.set(cx, "deviceId", device_id)?;
+                    Ok(props.upcast())
+                };
+                new_js_error(
+                    cx,
+                    module,
+                    Some("InvalidProtocolAddress"),
+                    &message,
+                    operation_name,
+                    make_extra_props,
+                )
+            }
             SignalProtocolError::InvalidSessionStructure(..) => new_js_error(
                 cx,
                 module,

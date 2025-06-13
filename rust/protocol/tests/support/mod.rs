@@ -88,14 +88,14 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
         .private_key()
         .calculate_signature(&kyber_pre_key_public, &mut csprng)?;
 
-    let device_id: u32 = csprng.random();
+    let device_id = DeviceId::new(csprng.random_range(1..=127)).unwrap();
     let pre_key_id: u32 = csprng.random();
     let signed_pre_key_id: u32 = csprng.random();
     let kyber_pre_key_id: u32 = csprng.random();
 
     let pre_key_bundle = PreKeyBundle::new(
         store.get_local_registration_id().await?,
-        device_id.into(),
+        device_id,
         Some((pre_key_id.into(), pre_key_pair.public_key)),
         signed_pre_key_id.into(),
         signed_pre_key_pair.public_key,

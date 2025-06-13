@@ -10,6 +10,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.protocol.SessionRecordTest.getAliceBaseKey;
 
 import java.time.Instant;
@@ -40,9 +41,9 @@ import org.signal.libsignal.protocol.util.Pair;
 @RunWith(Enclosed.class)
 public class SessionBuilderTest {
   private static final SignalProtocolAddress ALICE_ADDRESS =
-      new SignalProtocolAddress("+14151111111", 1);
+      filterExceptions(() -> new SignalProtocolAddress("+14151111111", 1));
   private static final SignalProtocolAddress BOB_ADDRESS =
-      new SignalProtocolAddress("+14152222222", 1);
+      filterExceptions(() -> new SignalProtocolAddress("+14152222222", 1));
 
   @RunWith(Parameterized.class)
   public static class Versioned {

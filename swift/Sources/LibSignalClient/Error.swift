@@ -29,6 +29,7 @@ public enum SignalError: Error {
     case sessionNotFound(String)
     case invalidSession(String)
     case invalidRegistrationId(address: ProtocolAddress, message: String)
+    case invalidProtocolAddress(name: String, deviceId: UInt32, message: String)
     case invalidSenderKeySession(distributionId: UUID, message: String)
     case duplicatedMessage(String)
     case verificationFailed(String)
@@ -147,6 +148,12 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
             signal_error_get_address(error, $0)
         }
         throw SignalError.invalidRegistrationId(address: address, message: errStr)
+    case SignalErrorCodeInvalidProtocolAddress:
+        var deviceId: UInt32 = 0
+        let name = try invokeFnReturningString {
+            signal_error_get_invalid_protocol_address(error, $0, &deviceId)
+        }
+        throw SignalError.invalidProtocolAddress(name: name, deviceId: deviceId, message: errStr)
     case SignalErrorCodeInvalidSenderKeySession:
         let distributionId = try invokeFnReturningUuid {
             signal_error_get_uuid(error, $0)

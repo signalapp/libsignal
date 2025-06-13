@@ -6,6 +6,12 @@
 import SignalFfi
 
 public class ProtocolAddress: ClonableHandleOwner<SignalMutPointerProtocolAddress>, @unchecked Sendable {
+    /// Creates an address in the Signal protocol.
+    /// - Parameters:
+    ///   - name: the identifier for the recipient, usually a ``ServiceId``.
+    ///   - deviceId: the identifier for the device; must be in the range 1-127 inclusive
+    ///
+    /// - Throws: ``SignalError#invalidProtocolAddress(name:deviceId:message:)`` if the address is not valid.
     public convenience init(name: String, deviceId: UInt32) throws {
         var handle = SignalMutPointerProtocolAddress()
         try checkError(signal_address_new(
@@ -17,6 +23,11 @@ public class ProtocolAddress: ClonableHandleOwner<SignalMutPointerProtocolAddres
     }
 
     /// Creates a ProtocolAddress using the **uppercase** string representation of a service ID, for backward compatibility.
+    /// - Parameters:
+    ///   - serviceId: the identifier for the recipient
+    ///   - deviceId: the identifier for the device; must be in the range 1-127 inclusive
+    ///
+    /// - Throws: ``SignalError#invalidProtocolAddress(name:deviceId:message:)`` if the address is not valid.
     public convenience init(_ serviceId: ServiceId, deviceId: UInt32) {
         do {
             try self.init(name: serviceId.serviceIdUppercaseString, deviceId: deviceId)

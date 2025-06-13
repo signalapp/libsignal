@@ -16,7 +16,7 @@ use(chaiAsPromised);
 util.initLogger();
 
 describe('ProtocolAddress', () => {
-  it('can hold arbitrary data', () => {
+  it('can hold arbitrary name', () => {
     const addr = SignalClient.ProtocolAddress.new('name', 42);
     assert.deepEqual(addr.name(), 'name');
     assert.deepEqual(addr.deviceId(), 42);
@@ -31,6 +31,13 @@ describe('ProtocolAddress', () => {
     assert.notEqual(aciAddr.toString(), pniAddr.toString());
     assert.isTrue(aciAddr.serviceId()?.isEqual(aci));
     assert.isTrue(pniAddr.serviceId()?.isEqual(pni));
+  });
+
+  it('rejects out-of-range device IDs', () => {
+    assert.throws(
+      () => SignalClient.ProtocolAddress.new('name', 128),
+      'invalid: name.128'
+    );
   });
 });
 

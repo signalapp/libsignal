@@ -10,6 +10,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -33,7 +34,7 @@ import org.signal.libsignal.protocol.message.SenderKeyDistributionMessage;
 public class GroupCipherTest {
 
   private static final SignalProtocolAddress SENDER_ADDRESS =
-      new SignalProtocolAddress("+14150001111", 1);
+      filterExceptions(() -> new SignalProtocolAddress("+14150001111", 1));
   private static final UUID DISTRIBUTION_ID =
       UUID.fromString("d1d1d1d1-7000-11eb-b32a-33b8a8a487a6");
 
@@ -277,7 +278,7 @@ public class GroupCipherTest {
   }
 
   @Test
-  public void testEncryptNoSession() {
+  public void testEncryptNoSession() throws Exception {
     InMemorySenderKeyStore aliceStore = new InMemorySenderKeyStore();
     GroupCipher aliceGroupCipher =
         new GroupCipher(aliceStore, new SignalProtocolAddress("+10002223333", 1));

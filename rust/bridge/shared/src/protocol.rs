@@ -9,6 +9,7 @@ use futures_util::FutureExt;
 use libsignal_bridge_macros::*;
 #[cfg(feature = "jni")]
 use libsignal_bridge_types::jni;
+use libsignal_core::InvalidDeviceId;
 use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
 use rand::TryRngCore as _;
@@ -112,8 +113,14 @@ fn ServiceId_ParseFromServiceIdString(input: String) -> Result<ServiceId> {
 }
 
 #[bridge_fn(ffi = "address_new")]
-fn ProtocolAddress_New(name: String, device_id: u32) -> ProtocolAddress {
-    ProtocolAddress::new(name, device_id.into())
+fn ProtocolAddress_New(name: String, device_id: u32) -> Result<ProtocolAddress> {
+    let device_id = device_id.try_into().map_err(|InvalidDeviceId| {
+        SignalProtocolError::InvalidProtocolAddress {
+            name: name.clone(),
+            device_id,
+        }
+    })?;
+    Ok(ProtocolAddress::new(name, device_id))
 }
 
 #[bridge_fn(ffi = "publickey_deserialize", jni = false)]
@@ -606,9 +613,13 @@ fn PreKeyBundle_New(
         }
     };
 
+    let device_id = device_id
+        .try_into()
+        .map_err(|e: InvalidDeviceId| SignalProtocolError::InvalidArgument(e.to_string()))?;
+
     Ok(PreKeyBundle::new(
         registration_id,
-        device_id.into(),
+        device_id,
         prekey,
         signed_prekey_id.into(),
         *signed_prekey,
@@ -777,11 +788,14 @@ fn SenderCertificate_New(
 ) -> Result<SenderCertificate> {
     let mut rng = rand::rngs::OsRng.unwrap_err();
 
+    let sender_device_id = DeviceId::try_from(sender_device_id)
+        .map_err(|e| SignalProtocolError::InvalidArgument(e.to_string()))?;
+
     SenderCertificate::new(
         sender_uuid,
         sender_e164,
         *sender_key,
-        sender_device_id.into(),
+        sender_device_id,
         expiration,
         signer_cert.clone(),
         signer_key,
@@ -1197,13 +1211,17 @@ async fn SealedSender_DecryptMessage(
     kyber_prekey_store: &mut dyn KyberPreKeyStore,
     use_pq_ratchet: bool,
 ) -> Result<SealedSenderDecryptionResult> {
+    let local_device_id = local_device_id
+        .try_into()
+        .map_err(|e: InvalidDeviceId| SignalProtocolError::InvalidArgument(e.to_string()))?;
+
     sealed_sender_decrypt(
         message,
         trust_root,
         timestamp,
         local_e164,
         local_uuid,
-        local_device_id.into(),
+        local_device_id,
         identity_store,
         session_store,
         prekey_store,

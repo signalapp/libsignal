@@ -48,9 +48,6 @@ const REVOKED_SERVER_CERTIFICATE_KEY_IDS: &[u32] = &[0xDEADC357];
 // TODO: move this into a RegistrationId strong type.
 const VALID_REGISTRATION_ID_MASK: u16 = 0x3FFF;
 
-// TODO: validate this as part of constructing DeviceId.
-const MAX_VALID_DEVICE_ID: u32 = 127;
-
 impl ServerCertificate {
     pub fn deserialize(data: &[u8]) -> Result<Self> {
         let pb = proto::sealed_sender::ServerCertificate::decode(data)
@@ -185,8 +182,8 @@ impl SenderCertificate {
 
         let sender_device_id: DeviceId = certificate_data
             .sender_device
-            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
-            .into();
+            .and_then(|v| DeviceId::try_from(v).ok())
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let expiration = certificate_data
             .expires
             .map(Timestamp::from_epoch_millis)
@@ -1398,14 +1395,8 @@ where
                 their_registration_id |= 0x8000;
             }
 
-            let device_id: u32 = destination.device_id().into();
-            if device_id == 0 || device_id > MAX_VALID_DEVICE_ID {
-                return Err(SignalProtocolError::InvalidState(
-                    "sealed_sender_multi_recipient_encrypt",
-                    format!("destination {destination} has invalid device ID"),
-                ));
-            }
-            serialized.push(device_id.try_into().expect("just checked range"));
+            let device_id = destination.device_id();
+            serialized.push(device_id.into());
             serialized.extend_from_slice(&their_registration_id.to_be_bytes());
         }
 
@@ -1586,20 +1577,19 @@ impl<'a> SealedSenderV2SentMessage<'a> {
             };
             let mut devices = Vec::new();
             loop {
-                let device_id: u32 = advance::<1>(&mut remaining)?[0].into();
+                let device_id = advance::<1>(&mut remaining)?[0];
                 if device_id == 0 {
                     if !devices.is_empty() {
                         return Err(SignalProtocolError::InvalidProtobufEncoding);
                     }
                     break;
                 }
-                if device_id > MAX_VALID_DEVICE_ID {
-                    return Err(SignalProtocolError::InvalidProtobufEncoding);
-                }
+                let device_id = DeviceId::new(device_id)
+                    .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
                 let registration_id_and_has_more =
                     u16::from_be_bytes(*advance::<2>(&mut remaining)?);
                 devices.push((
-                    device_id.into(),
+                    device_id,
                     registration_id_and_has_more & VALID_REGISTRATION_ID_MASK,
                 ));
                 let has_more = (registration_id_and_has_more & 0x8000) != 0;

@@ -77,7 +77,7 @@ impl Participant {
 
         let their_pre_key_bundle = PreKeyBundle::new(
             them.store.get_local_registration_id().await.unwrap(),
-            1.into(), // device id
+            DeviceId::new(1).unwrap(),
             pre_key_info,
             signed_pre_key_id,
             their_signed_pre_key_pair.public_key,
@@ -193,7 +193,7 @@ fuzz_target!(|data: (u64, &[u8])| {
 
         let mut alice = Participant {
             name: "alice",
-            address: ProtocolAddress::new("+14151111111".to_owned(), 1.into()),
+            address: ProtocolAddress::new("+14151111111".to_owned(), DeviceId::new(1).unwrap()),
             store: InMemSignalProtocolStore::new(
                 IdentityKeyPair::generate(&mut csprng),
                 csprng.random(),
@@ -205,7 +205,7 @@ fuzz_target!(|data: (u64, &[u8])| {
         };
         let mut bob = Participant {
             name: "bob",
-            address: ProtocolAddress::new("+14151111112".to_owned(), 1.into()),
+            address: ProtocolAddress::new("+14151111112".to_owned(), DeviceId::new(1).unwrap()),
             store: InMemSignalProtocolStore::new(
                 IdentityKeyPair::generate(&mut csprng),
                 csprng.random(),

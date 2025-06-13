@@ -2471,6 +2471,7 @@ dependencies = [
  "rand 0.9.0",
  "sha2",
  "subtle",
+ "thiserror 2.0.12",
  "uuid",
  "x25519-dalek",
 ]

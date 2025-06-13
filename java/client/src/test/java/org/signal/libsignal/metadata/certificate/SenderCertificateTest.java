@@ -24,7 +24,7 @@ public class SenderCertificateTest extends TestCase {
             trustRoot,
             UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"),
             "+14151111111",
-            31337,
+            1,
             key.getPublicKey(),
             31337);
 
@@ -39,7 +39,7 @@ public class SenderCertificateTest extends TestCase {
             trustRoot,
             UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"),
             "+14151111111",
-            31338,
+            2,
             key.getPublicKey(),
             31337);
     try {
@@ -58,7 +58,7 @@ public class SenderCertificateTest extends TestCase {
             trustRoot,
             UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"),
             "+14151111111",
-            31338,
+            3,
             key.getPublicKey(),
             31337);
 
@@ -81,7 +81,7 @@ public class SenderCertificateTest extends TestCase {
     ECKeyPair key = ECKeyPair.generate();
     UUID uuid = UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f");
     SenderCertificate senderCertificate =
-        createCertificateFor(trustRoot, uuid, null, 31338, key.getPublicKey(), 31337);
+        createCertificateFor(trustRoot, uuid, null, 4, key.getPublicKey(), 31337);
     assertEquals(Optional.empty(), senderCertificate.getSenderE164());
     assertEquals(uuid, senderCertificate.getSenderAci().getRawUUID());
   }

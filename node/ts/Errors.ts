@@ -13,6 +13,7 @@ export enum ErrorCode {
   SealedSenderSelfSend,
   UntrustedIdentity,
   InvalidRegistrationId,
+  InvalidProtocolAddress,
   VerificationFailed,
   InvalidSession,
   InvalidSenderKeySession,
@@ -152,6 +153,12 @@ export type UntrustedIdentityError = LibSignalErrorCommon & {
 export type InvalidRegistrationIdError = LibSignalErrorCommon & {
   code: ErrorCode.InvalidRegistrationId;
   addr: ProtocolAddress;
+};
+
+export type InvalidProtocolAddress = LibSignalErrorCommon & {
+  code: ErrorCode.InvalidProtocolAddress;
+  name: string;
+  deviceId: number;
 };
 
 export type VerificationFailedError = LibSignalErrorCommon & {
@@ -301,6 +308,7 @@ export type LibSignalError =
   | SealedSenderSelfSendError
   | UntrustedIdentityError
   | InvalidRegistrationIdError
+  | InvalidProtocolAddress
   | VerificationFailedError
   | InvalidSessionError
   | InvalidSenderKeySessionError

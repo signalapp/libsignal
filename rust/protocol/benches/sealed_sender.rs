@@ -19,10 +19,14 @@ mod support;
 pub fn v1(c: &mut Criterion) {
     let mut rng = OsRng.unwrap_err();
 
-    let alice_address =
-        ProtocolAddress::new("9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(), 1.into());
-    let bob_address =
-        ProtocolAddress::new("796abedb-ca4e-4f18-8803-1fde5b921f9f".to_owned(), 1.into());
+    let alice_address = ProtocolAddress::new(
+        "9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(),
+        DeviceId::new(1).unwrap(),
+    );
+    let bob_address = ProtocolAddress::new(
+        "796abedb-ca4e-4f18-8803-1fde5b921f9f".to_owned(),
+        DeviceId::new(1).unwrap(),
+    );
 
     let mut alice_store = support::test_in_memory_protocol_store().expect("brand new store");
     let mut bob_store = support::test_in_memory_protocol_store().expect("brand new store");
@@ -113,10 +117,14 @@ pub fn v1(c: &mut Criterion) {
 pub fn v2(c: &mut Criterion) {
     let mut rng = OsRng.unwrap_err();
 
-    let alice_address =
-        ProtocolAddress::new("9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(), 1.into());
-    let bob_address =
-        ProtocolAddress::new("796abedb-ca4e-4f18-8803-1fde5b921f9f".to_owned(), 1.into());
+    let alice_address = ProtocolAddress::new(
+        "9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(),
+        DeviceId::new(1).unwrap(),
+    );
+    let bob_address = ProtocolAddress::new(
+        "796abedb-ca4e-4f18-8803-1fde5b921f9f".to_owned(),
+        DeviceId::new(1).unwrap(),
+    );
 
     let mut alice_store = support::test_in_memory_protocol_store().expect("brand new store");
     let mut bob_store = support::test_in_memory_protocol_store().expect("brand new store");
@@ -215,8 +223,10 @@ pub fn v2(c: &mut Criterion) {
     // Fill out additional recipients.
     let mut recipients = vec![bob_address.clone()];
     while recipients.len() < 1000 {
-        let next_address =
-            ProtocolAddress::new(Uuid::from_bytes(rng.random()).to_string(), 1.into());
+        let next_address = ProtocolAddress::new(
+            Uuid::from_bytes(rng.random()).to_string(),
+            DeviceId::new(1).unwrap(),
+        );
 
         let mut next_store = support::test_in_memory_protocol_store().expect("brand new store");
 

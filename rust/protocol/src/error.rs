@@ -64,6 +64,8 @@ pub enum SignalProtocolError {
     /// missing sender key state for distribution ID {distribution_id}
     NoSenderKeyState { distribution_id: Uuid },
 
+    /// protocol address is invalid: {name}.{device_id}
+    InvalidProtocolAddress { name: String, device_id: u32 },
     /// session with {0} not found
     SessionNotFound(crate::ProtocolAddress),
     /// invalid session: {0}

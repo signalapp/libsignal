@@ -183,6 +183,10 @@ export class ProtocolAddress {
     return new ProtocolAddress(handle);
   }
 
+  /**
+   * @param name the identifer for the recipient, usually a `ServiceId`
+   * @param deviceId the identifier for the device; must be in the range 1-127 inclusive
+   */
   static new(name: string | ServiceId, deviceId: number): ProtocolAddress {
     if (typeof name !== 'string') {
       name = name.getServiceIdString();

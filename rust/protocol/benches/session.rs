@@ -17,8 +17,8 @@ mod support;
 pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolError> {
     let (alice_session_record, bob_session_record) = support::initialize_sessions_v3()?;
 
-    let alice_address = ProtocolAddress::new("+14159999999".to_owned(), 1.into());
-    let bob_address = ProtocolAddress::new("+14158888888".to_owned(), 1.into());
+    let alice_address = ProtocolAddress::new("+14159999999".to_owned(), DeviceId::new(1).unwrap());
+    let bob_address = ProtocolAddress::new("+14158888888".to_owned(), DeviceId::new(1).unwrap());
 
     let mut alice_store = support::test_in_memory_protocol_store()?;
     let mut bob_store = support::test_in_memory_protocol_store()?;
@@ -116,9 +116,9 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
             .get_local_registration_id()
             .now_or_never()
             .expect("sync")?,
-        1.into(),                 // device id
-        None,                     // pre key
-        signed_pre_key_id.into(), // signed pre key id
+        DeviceId::new(1).unwrap(), // device id
+        None,                      // pre key
+        signed_pre_key_id.into(),  // signed pre key id
         bob_signed_pre_key_pair.public_key,
         bob_signed_pre_key_signature.to_vec(),
         *bob_store
@@ -216,8 +216,8 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
 pub fn session_encrypt_decrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolError> {
     let (alice_session_record, bob_session_record) = support::initialize_sessions_v3()?;
 
-    let alice_address = ProtocolAddress::new("+14159999999".to_owned(), 1.into());
-    let bob_address = ProtocolAddress::new("+14158888888".to_owned(), 1.into());
+    let alice_address = ProtocolAddress::new("+14159999999".to_owned(), DeviceId::new(1).unwrap());
+    let bob_address = ProtocolAddress::new("+14158888888".to_owned(), DeviceId::new(1).unwrap());
 
     let mut alice_store = support::test_in_memory_protocol_store()?;
     let mut bob_store = support::test_in_memory_protocol_store()?;

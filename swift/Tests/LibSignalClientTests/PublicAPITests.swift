@@ -130,6 +130,16 @@ class PublicAPITests: TestCaseBase {
         XCTAssertEqual(addr.deviceId, 5)
     }
 
+    func testAddressInvalidDeviceId() throws {
+        do {
+            _ = try ProtocolAddress(name: "addr1", deviceId: 128)
+            XCTFail("should have thrown")
+        } catch SignalError.invalidProtocolAddress(let name, let deviceId, message: _) {
+            XCTAssertEqual(deviceId, 128)
+            XCTAssertEqual(name, "addr1")
+        }
+    }
+
     func testAddressRoundTripServiceId() {
         let uuid = UUID()
         let aci = Aci(fromUUID: uuid)

@@ -20,6 +20,7 @@ displaydoc = { workspace = true }
 rand = { workspace = true }
 sha2 = { workspace = true }
 subtle = { workspace = true }
+thiserror = { workspace = true }
 uuid = { workspace = true }
 x25519-dalek = { workspace = true, features = ["static_secrets"] }
 

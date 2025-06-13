@@ -527,7 +527,7 @@ public final class Native {
   public static native void ProtocolAddress_Destroy(long handle);
   public static native int ProtocolAddress_DeviceId(long obj);
   public static native String ProtocolAddress_Name(long obj);
-  public static native long ProtocolAddress_New(String name, int deviceId);
+  public static native long ProtocolAddress_New(String name, int deviceId) throws Exception;
 
   public static native void ReceiptCredentialPresentation_CheckValidContents(byte[] buffer) throws Exception;
   public static native long ReceiptCredentialPresentation_GetReceiptExpirationTime(byte[] presentation);

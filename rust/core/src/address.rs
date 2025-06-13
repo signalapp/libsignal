@@ -8,6 +8,7 @@
 //! Types for identifying an individual Signal client instance.
 
 use std::fmt;
+use std::num::NonZeroU8;
 
 use uuid::Uuid;
 
@@ -673,10 +674,80 @@ mod service_id_tests {
 /// represents some user.
 ///
 /// Used in [ProtocolAddress].
-#[derive(
-    Copy, Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord, derive_more::From, derive_more::Into,
-)]
-pub struct DeviceId(u32);
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
+pub struct DeviceId(NonZeroU8);
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, thiserror::Error)]
+#[error("device ID is out of range")]
+/// Error for trying to construct a [`DeviceId`] with an invalid value.
+pub struct InvalidDeviceId;
+
+impl DeviceId {
+    /// Creates a new `DeviceId` if the value is in range.
+    ///
+    /// If the value is not in the range `1..=127`, an `InvalidDeviceId` error is
+    /// returned instead.
+    #[inline]
+    pub const fn new(id: u8) -> Result<Self, InvalidDeviceId> {
+        let Some(id) = NonZeroU8::new(id) else {
+            return Err(InvalidDeviceId);
+        };
+        Self::new_nonzero(id)
+    }
+
+    /// Creates a new `DeviceId` if the value is in range.
+    ///
+    /// If the value is not in the range `1..=127`, an `InvalidDeviceId` error is
+    /// returned instead.
+    pub const fn new_nonzero(id: NonZeroU8) -> Result<Self, InvalidDeviceId> {
+        if id.get() <= MAX_VALID_DEVICE_ID {
+            Ok(Self(id))
+        } else {
+            Err(InvalidDeviceId)
+        }
+    }
+}
+
+const MAX_VALID_DEVICE_ID: u8 = 127;
+
+impl From<DeviceId> for u32 {
+    fn from(value: DeviceId) -> Self {
+        value.0.get().into()
+    }
+}
+
+impl From<DeviceId> for u8 {
+    fn from(value: DeviceId) -> Self {
+        value.0.get()
+    }
+}
+
+impl From<DeviceId> for NonZeroU8 {
+    fn from(value: DeviceId) -> Self {
+        value.0
+    }
+}
+
+impl TryFrom<u8> for DeviceId {
+    type Error = InvalidDeviceId;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl TryFrom<i32> for DeviceId {
+    type Error = InvalidDeviceId;
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        Self::new(value.try_into().map_err(|_| InvalidDeviceId)?)
+    }
+}
+
+impl TryFrom<u32> for DeviceId {
+    type Error = InvalidDeviceId;
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        Self::new(value.try_into().map_err(|_| InvalidDeviceId)?)
+    }
+}
 
 impl fmt::Display for DeviceId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -705,7 +776,7 @@ impl ProtocolAddress {
     /// // This is a unique id for some user, typically a UUID.
     /// let user_id: String = "04899A85-4C9E-44CC-8428-A02AB69335F1".to_string();
     /// // Each client instance representing that user has a unique device id.
-    /// let device_id: DeviceId = 2_u32.into();
+    /// let device_id: DeviceId = 2_u32.try_into().unwrap();
     /// let address = ProtocolAddress::new(user_id.clone(), device_id);
     ///
     /// assert!(address.name() == &user_id);
