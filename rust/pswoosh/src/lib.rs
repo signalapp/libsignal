@@ -1,6 +1,7 @@
 pub mod arithmetic;
 pub mod sys_a;
 pub mod util;
+pub mod keys;
 
 use std::arch::asm;
 
@@ -20,6 +21,7 @@ pub const NOISE_BYTES: usize = (N * D * 2) / 8;
 const RATE: usize = 136;
 
 pub type Matrix = [PolyVec; N];
+
 
 pub fn matrix_init() -> Matrix {
     [polyvec_init(); N]

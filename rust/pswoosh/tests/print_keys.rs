@@ -23,7 +23,7 @@ mod tests {
         println!("Successfully generated shared secret!");
         println!("Shared secret: {:?}", ss1);
         println!("Shared secret 2: {:?}", ss2);
-            
+        
     }
 
     #[test]
