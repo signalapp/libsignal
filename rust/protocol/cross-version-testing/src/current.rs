@@ -10,7 +10,7 @@ use libsignal_protocol_current::*;
 use rand::{rng, Rng};
 
 fn address(id: &str) -> ProtocolAddress {
-    ProtocolAddress::new(id.into(), 1.into())
+    ProtocolAddress::new(id.into(), DeviceId::new(1).unwrap())
 }
 
 pub struct LibSignalProtocolCurrent(InMemSignalProtocolStore);
@@ -58,7 +58,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
             .calculate_signature(&signed_pq_pre_key_public, &mut csprng)
             .expect("can sign");
 
-        let device_id: u32 = csprng.random();
+        let device_id: DeviceId = csprng.random();
         let pre_key_id: u32 = csprng.random();
         let signed_pre_key_id: u32 = csprng.random();
         let kyber_pre_key_id: u32 = csprng.random();
@@ -69,7 +69,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
                 .now_or_never()
                 .expect("synchronous")
                 .expect("can fetch registration id"),
-            device_id.into(),
+            device_id,
             Some((pre_key_id.into(), pre_key_pair.public_key)),
             signed_pre_key_id.into(),
             signed_pre_key_pair.public_key,

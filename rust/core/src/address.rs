@@ -755,6 +755,12 @@ impl fmt::Display for DeviceId {
     }
 }
 
+impl rand::distr::Distribution<DeviceId> for rand::distr::StandardUniform {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> DeviceId {
+        DeviceId(NonZeroU8::new(rng.random_range(1..=MAX_VALID_DEVICE_ID)).unwrap())
+    }
+}
+
 /// Represents a unique Signal client instance as `(<user ID>, <device ID>)` pair.
 #[derive(Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub struct ProtocolAddress {

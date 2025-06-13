@@ -58,7 +58,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
             .calculate_signature(&signed_pq_pre_key_public, &mut csprng)
             .expect("can sign");
 
-        let device_id: u32 = csprng.gen();
+        let device_id: u32 = csprng.gen_range(1..=127);
         let pre_key_id: u32 = csprng.gen();
         let signed_pre_key_id: u32 = csprng.gen();
         let kyber_pre_key_id: u32 = csprng.gen();
@@ -69,7 +69,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
                 .now_or_never()
                 .expect("synchronous")
                 .expect("can fetch registration id"),
-            device_id.into(),
+            device_id.try_into().unwrap(),
             Some((pre_key_id.into(), pre_key_pair.public_key.into_current())),
             signed_pre_key_id.into(),
             signed_pre_key_pair.public_key.into_current(),
@@ -264,7 +264,7 @@ macro_rules! impl_convert_version {
                 u32::from(current).into()
             }
             fn into_current(self) -> Self::Current {
-                u32::from(self).into()
+                u32::from(self).try_into().expect("valid range")
             }
         }
     };
