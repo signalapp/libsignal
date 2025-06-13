@@ -2829,6 +2829,7 @@ dependencies = [
  "proptest",
  "prost",
  "prost-build",
+ "pswoosh",
  "rand 0.9.0",
  "rand_core 0.9.3",
  "rayon",

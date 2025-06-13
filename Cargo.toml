@@ -70,6 +70,7 @@ signal-media = { path = "rust/media" }
 usernames = { path = "rust/usernames" }
 zkcredential = { path = "rust/zkcredential" }
 zkgroup = { path = "rust/zkgroup" }
+pswoosh = { path = "rust/pswoosh" }
 
 libsignal-bridge = { path = "rust/bridge/shared" }
 libsignal-bridge-macros = { path = "rust/bridge/shared/macros" }
