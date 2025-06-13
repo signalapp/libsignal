@@ -74,6 +74,9 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
             signed_pre_key_id.into(),
             signed_pre_key_pair.public_key.into_current(),
             signed_pre_key_signature.to_vec(),
+            kyber_pre_key_id.into(),
+            signed_pq_pre_key_pair.public_key.clone().into_current(),
+            signed_pq_pre_key_signature.to_vec(),
             self.0
                 .get_identity_key_pair()
                 .now_or_never()
@@ -83,12 +86,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
                 .clone()
                 .into_current(),
         )
-        .expect("can create pre-key bundles")
-        .with_kyber_pre_key(
-            kyber_pre_key_id.into(),
-            signed_pq_pre_key_pair.public_key.clone().into_current(),
-            signed_pq_pre_key_signature.to_vec(),
-        );
+        .expect("can create pre-key bundles");
 
         self.0
             .save_pre_key(
@@ -134,7 +132,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
 
     fn process_pre_key_bundle(&mut self, remote: &str, pre_key_bundle: super::PreKeyBundle) {
         let pre_key_bundle = (|| {
-            let mut bundle = PreKeyBundle::new(
+            let bundle = PreKeyBundle::new(
                 pre_key_bundle.registration_id()?,
                 ConvertVersion::from_current(pre_key_bundle.device_id()?),
                 pre_key_bundle
@@ -145,24 +143,17 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
                             .pre_key_public()?
                             .map(ConvertVersion::from_current),
                     ),
-                u32::from(pre_key_bundle.signed_pre_key_id()?).into(),
+                ConvertVersion::from_current(pre_key_bundle.signed_pre_key_id()?),
                 ConvertVersion::from_current(pre_key_bundle.signed_pre_key_public()?),
                 pre_key_bundle.signed_pre_key_signature()?.to_vec(),
                 ConvertVersion::from_current(pre_key_bundle.identity_key()?.to_owned()),
             )
-            .expect("can produce bundle");
-            let kyber_keys = pre_key_bundle
-                .kyber_pre_key_id()?
-                .zip(pre_key_bundle.kyber_pre_key_public()?)
-                .zip(pre_key_bundle.kyber_pre_key_signature()?);
-
-            if let Some(((id, key), signature)) = kyber_keys {
-                bundle = bundle.with_kyber_pre_key(
-                    ConvertVersion::from_current(id),
-                    ConvertVersion::from_current(key.clone()),
-                    signature.to_vec(),
-                );
-            }
+            .expect("can produce bundle")
+            .with_kyber_pre_key(
+                ConvertVersion::from_current(pre_key_bundle.kyber_pre_key_id()?),
+                ConvertVersion::from_current(pre_key_bundle.kyber_pre_key_public()?.clone()),
+                pre_key_bundle.kyber_pre_key_signature()?.to_vec(),
+            );
 
             Ok::<_, libsignal_protocol_current::SignalProtocolError>(bundle)
         })()
@@ -288,6 +279,10 @@ impl_convert_version!(
 );
 impl_convert_version!(DeviceId, libsignal_protocol_current::DeviceId as u32);
 impl_convert_version!(PreKeyId, libsignal_protocol_current::PreKeyId as u32);
+impl_convert_version!(
+    SignedPreKeyId,
+    libsignal_protocol_current::SignedPreKeyId as u32
+);
 impl_convert_version!(
     KyberPreKeyId,
     libsignal_protocol_current::KyberPreKeyId as u32

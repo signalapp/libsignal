@@ -40,12 +40,12 @@ public class SessionCipherTest extends TestCase {
           NoSuchAlgorithmException,
           NoSessionException,
           UntrustedIdentityException {
-    PairOfSessions sessions = initializeSessionsV3();
+    PairOfSessions sessions = initializeSessionsV4();
     runInteraction(sessions.aliceSession, sessions.bobSession);
   }
 
   public void testMessageKeyLimits() throws Exception {
-    PairOfSessions sessions = initializeSessionsV3();
+    PairOfSessions sessions = initializeSessionsV4();
 
     SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
@@ -77,7 +77,7 @@ public class SessionCipherTest extends TestCase {
   }
 
   public void testDecryptAfterReset() throws Exception {
-    PairOfSessions sessions = initializeSessionsV3();
+    PairOfSessions sessions = initializeSessionsV4();
 
     SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
@@ -110,7 +110,7 @@ public class SessionCipherTest extends TestCase {
   }
 
   public void testDecryptAfterDelete() throws Exception {
-    PairOfSessions sessions = initializeSessionsV3();
+    PairOfSessions sessions = initializeSessionsV4();
 
     SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
@@ -223,42 +223,11 @@ public class SessionCipherTest extends TestCase {
     }
   }
 
-  private PairOfSessions initializeSessionsV3() throws InvalidKeyException {
-    ECKeyPair aliceIdentityKeyPair = ECKeyPair.generate();
-    IdentityKeyPair aliceIdentityKey =
-        new IdentityKeyPair(
-            new IdentityKey(aliceIdentityKeyPair.getPublicKey()),
-            aliceIdentityKeyPair.getPrivateKey());
-    ECKeyPair aliceBaseKey = ECKeyPair.generate();
-    ECKeyPair aliceEphemeralKey = ECKeyPair.generate();
-
-    ECKeyPair alicePreKey = aliceBaseKey;
-
-    ECKeyPair bobIdentityKeyPair = ECKeyPair.generate();
-    IdentityKeyPair bobIdentityKey =
-        new IdentityKeyPair(
-            new IdentityKey(bobIdentityKeyPair.getPublicKey()), bobIdentityKeyPair.getPrivateKey());
-    ECKeyPair bobBaseKey = ECKeyPair.generate();
-    ECKeyPair bobEphemeralKey = bobBaseKey;
-
-    ECKeyPair bobPreKey = ECKeyPair.generate();
-
-    SessionRecord aliceSessionRecord =
-        SessionRecordTest.initializeAliceSession(
-            aliceIdentityKey,
-            aliceBaseKey,
-            bobIdentityKey.getPublicKey(),
-            bobBaseKey.getPublicKey(),
-            bobEphemeralKey.getPublicKey());
-
-    SessionRecord bobSessionRecord =
-        SessionRecordTest.initializeBobSession(
-            bobIdentityKey,
-            bobBaseKey,
-            bobEphemeralKey,
-            aliceIdentityKey.getPublicKey(),
-            aliceBaseKey.getPublicKey());
-
+  private PairOfSessions initializeSessionsV4() throws InvalidKeyException {
+    var builder = new SessionBuilderTest.Versioned(new PQXDHBundleFactory(), 4);
+    var stores = builder.initializeSessions();
+    SessionRecord aliceSessionRecord = stores.first().loadSession(SessionBuilderTest.BOB_ADDRESS);
+    SessionRecord bobSessionRecord = stores.second().loadSession(SessionBuilderTest.ALICE_ADDRESS);
     return new PairOfSessions(aliceSessionRecord, bobSessionRecord);
   }
 }

@@ -389,9 +389,9 @@ export function PlaintextContent_GetBody(obj: Wrapper<PlaintextContent>): Uint8A
 export function PlaintextContent_Serialize(obj: Wrapper<PlaintextContent>): Uint8Array;
 export function PreKeyBundle_GetDeviceId(obj: Wrapper<PreKeyBundle>): number;
 export function PreKeyBundle_GetIdentityKey(p: Wrapper<PreKeyBundle>): PublicKey;
-export function PreKeyBundle_GetKyberPreKeyId(bundle: Wrapper<PreKeyBundle>): number;
+export function PreKeyBundle_GetKyberPreKeyId(obj: Wrapper<PreKeyBundle>): number;
 export function PreKeyBundle_GetKyberPreKeyPublic(bundle: Wrapper<PreKeyBundle>): KyberPublicKey;
-export function PreKeyBundle_GetKyberPreKeySignature(bundle: Wrapper<PreKeyBundle>): Uint8Array;
+export function PreKeyBundle_GetKyberPreKeySignature(obj: Wrapper<PreKeyBundle>): Uint8Array;
 export function PreKeyBundle_GetPreKeyId(obj: Wrapper<PreKeyBundle>): number | null;
 export function PreKeyBundle_GetPreKeyPublic(obj: Wrapper<PreKeyBundle>): PublicKey | null;
 export function PreKeyBundle_GetRegistrationId(obj: Wrapper<PreKeyBundle>): number;

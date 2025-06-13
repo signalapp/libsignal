@@ -272,12 +272,6 @@ fn test_chain_jump_over_limit() -> TestResult {
     let mut alice_store_builder = TestStoreBuilder::new();
     let mut bob_store_builder = TestStoreBuilder::new()
         .with_pre_key(31337.into())
-        .with_signed_pre_key(22.into());
-    run(&mut alice_store_builder, &mut bob_store_builder)?;
-
-    let mut alice_store_builder = TestStoreBuilder::new();
-    let mut bob_store_builder = TestStoreBuilder::new()
-        .with_pre_key(31337.into())
         .with_signed_pre_key(22.into())
         .with_kyber_pre_key(8000.into());
 
@@ -416,7 +410,8 @@ fn test_bad_signed_pre_key_signature() -> TestResult {
         let mut alice_store = TestStoreBuilder::new().store;
         let bob_store_builder = TestStoreBuilder::new()
             .with_pre_key(31337.into())
-            .with_signed_pre_key(22.into());
+            .with_signed_pre_key(22.into())
+            .with_kyber_pre_key(8000.into());
 
         let good_bundle = bob_store_builder.make_bundle_with_latest_keys(DeviceId::new(1).unwrap());
 
@@ -434,7 +429,7 @@ fn test_bad_signed_pre_key_signature() -> TestResult {
 
             let bad_bundle = good_bundle
                 .clone()
-                .modify(|content| content.ec_pre_key_signature = Some(bad_signature))
+                .modify(|content| content.signed_pre_key_signature = Some(bad_signature))
                 .expect("can recreate the bundle");
 
             assert!(process_prekey_bundle(
@@ -790,9 +785,6 @@ fn test_optional_one_time_prekey() -> TestResult {
 
 #[test]
 fn test_basic_session() -> TestResult {
-    let (alice_session, bob_session) = initialize_sessions_v3()?;
-    run_session_interaction(alice_session, bob_session)?;
-
     let (alice_session, bob_session) = initialize_sessions_v4()?;
     run_session_interaction(alice_session, bob_session)?;
     Ok(())
@@ -800,7 +792,6 @@ fn test_basic_session() -> TestResult {
 
 #[test]
 fn test_message_key_limits() -> TestResult {
-    run(initialize_sessions_v3()?)?;
     run(initialize_sessions_v4()?)?;
 
     fn run(sessions: (SessionRecord, SessionRecord)) -> TestResult {

@@ -623,20 +623,18 @@ fn PreKeyBundle_New(
         .try_into()
         .map_err(|e: InvalidDeviceId| SignalProtocolError::InvalidArgument(e.to_string()))?;
 
-    Ok(PreKeyBundle::new(
+    PreKeyBundle::new(
         registration_id,
         device_id,
         prekey,
         signed_prekey_id.into(),
         *signed_prekey,
         signed_prekey_signature.to_vec(),
-        identity_key,
-    )?
-    .with_kyber_pre_key(
         kyber_prekey_id.into(),
         kyber_prekey.clone(),
         kyber_prekey_signature.to_vec(),
-    ))
+        identity_key,
+    )
 }
 
 #[bridge_fn]
@@ -645,34 +643,18 @@ fn PreKeyBundle_GetIdentityKey(p: &PreKeyBundle) -> Result<PublicKey> {
 }
 
 bridge_get!(PreKeyBundle::signed_pre_key_signature -> &[u8]);
+bridge_get!(PreKeyBundle::kyber_pre_key_signature -> &[u8]);
 bridge_get!(PreKeyBundle::registration_id -> u32);
 bridge_get!(PreKeyBundle::device_id -> u32);
 bridge_get!(PreKeyBundle::signed_pre_key_id -> u32);
+bridge_get!(PreKeyBundle::kyber_pre_key_id -> u32);
 bridge_get!(PreKeyBundle::pre_key_id -> Option<u32>);
 bridge_get!(PreKeyBundle::pre_key_public -> Option<PublicKey>);
 bridge_get!(PreKeyBundle::signed_pre_key_public -> PublicKey);
 
 #[bridge_fn]
-fn PreKeyBundle_GetKyberPreKeyId(bundle: &PreKeyBundle) -> Result<u32> {
-    Ok(bundle
-        .kyber_pre_key_id()?
-        .expect("all bridged PreKeyBundles have a Kyber key")
-        .into())
-}
-
-#[bridge_fn]
 fn PreKeyBundle_GetKyberPreKeyPublic(bundle: &PreKeyBundle) -> Result<KyberPublicKey> {
-    Ok(bundle
-        .kyber_pre_key_public()?
-        .expect("all bridged PreKeyBundles have a Kyber key")
-        .clone())
-}
-
-#[bridge_fn]
-fn PreKeyBundle_GetKyberPreKeySignature(bundle: &PreKeyBundle) -> Result<&[u8]> {
-    Ok(bundle
-        .kyber_pre_key_signature()?
-        .expect("all bridged PreKeyBundles have a Kyber key"))
+    Ok(bundle.kyber_pre_key_public()?.clone())
 }
 
 bridge_deserialize!(SignedPreKeyRecord::deserialize);

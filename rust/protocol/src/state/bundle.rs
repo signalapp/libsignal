@@ -51,9 +51,9 @@ pub struct PreKeyBundleContent {
     pub device_id: Option<DeviceId>,
     pub pre_key_id: Option<PreKeyId>,
     pub pre_key_public: Option<PublicKey>,
-    pub ec_pre_key_id: Option<SignedPreKeyId>,
-    pub ec_pre_key_public: Option<PublicKey>,
-    pub ec_pre_key_signature: Option<Vec<u8>>,
+    pub signed_pre_key_id: Option<SignedPreKeyId>,
+    pub signed_pre_key_public: Option<PublicKey>,
+    pub signed_pre_key_signature: Option<Vec<u8>>,
     pub identity_key: Option<IdentityKey>,
     pub kyber_pre_key_id: Option<KyberPreKeyId>,
     pub kyber_pre_key_public: Option<kem::PublicKey>,
@@ -67,19 +67,13 @@ impl From<PreKeyBundle> for PreKeyBundleContent {
             device_id: Some(bundle.device_id),
             pre_key_id: bundle.pre_key_id,
             pre_key_public: bundle.pre_key_public,
-            ec_pre_key_id: Some(bundle.ec_signed_pre_key.id),
-            ec_pre_key_public: Some(bundle.ec_signed_pre_key.public_key),
-            ec_pre_key_signature: Some(bundle.ec_signed_pre_key.signature),
+            signed_pre_key_id: Some(bundle.ec_signed_pre_key.id),
+            signed_pre_key_public: Some(bundle.ec_signed_pre_key.public_key),
+            signed_pre_key_signature: Some(bundle.ec_signed_pre_key.signature),
             identity_key: Some(bundle.identity_key),
-            kyber_pre_key_id: bundle.kyber_pre_key.as_ref().map(|kyber| kyber.id),
-            kyber_pre_key_public: bundle
-                .kyber_pre_key
-                .as_ref()
-                .map(|kyber| kyber.public_key.clone()),
-            kyber_pre_key_signature: bundle
-                .kyber_pre_key
-                .as_ref()
-                .map(|kyber| kyber.signature.clone()),
+            kyber_pre_key_id: Some(bundle.kyber_pre_key.id),
+            kyber_pre_key_public: Some(bundle.kyber_pre_key.public_key),
+            kyber_pre_key_signature: Some(bundle.kyber_pre_key.signature),
         }
     }
 }
@@ -88,7 +82,7 @@ impl TryFrom<PreKeyBundleContent> for PreKeyBundle {
     type Error = SignalProtocolError;
 
     fn try_from(content: PreKeyBundleContent) -> Result<Self> {
-        let mut bundle = PreKeyBundle::new(
+        PreKeyBundle::new(
             content.registration_id.ok_or_else(|| {
                 SignalProtocolError::InvalidArgument("registration_id is required".to_string())
             })?,
@@ -98,36 +92,34 @@ impl TryFrom<PreKeyBundleContent> for PreKeyBundle {
             content
                 .pre_key_id
                 .and_then(|id| content.pre_key_public.map(|public| (id, public))),
-            content.ec_pre_key_id.ok_or_else(|| {
+            content.signed_pre_key_id.ok_or_else(|| {
                 SignalProtocolError::InvalidArgument("signed_pre_key_id is required".to_string())
             })?,
-            content.ec_pre_key_public.ok_or_else(|| {
+            content.signed_pre_key_public.ok_or_else(|| {
                 SignalProtocolError::InvalidArgument(
                     "signed_pre_key_public is required".to_string(),
                 )
             })?,
-            content.ec_pre_key_signature.ok_or_else(|| {
+            content.signed_pre_key_signature.ok_or_else(|| {
                 SignalProtocolError::InvalidArgument(
                     "signed_pre_key_signature is required".to_string(),
+                )
+            })?,
+            content.kyber_pre_key_id.ok_or_else(|| {
+                SignalProtocolError::InvalidArgument("kyber_pre_key_id is required".to_string())
+            })?,
+            content.kyber_pre_key_public.ok_or_else(|| {
+                SignalProtocolError::InvalidArgument("kyber_pre_key_public is required".to_string())
+            })?,
+            content.kyber_pre_key_signature.ok_or_else(|| {
+                SignalProtocolError::InvalidArgument(
+                    "kyber_pre_key_signature is required".to_string(),
                 )
             })?,
             content.identity_key.ok_or_else(|| {
                 SignalProtocolError::InvalidArgument("identity_key is required".to_string())
             })?,
-        )?;
-
-        fn zip3<T, U, V>(x: Option<T>, y: Option<U>, z: Option<V>) -> Option<(T, U, V)> {
-            x.zip(y).zip(z).map(|((x, y), z)| (x, y, z))
-        }
-
-        if let Some((kyber_id, kyber_public, kyber_sig)) = zip3(
-            content.kyber_pre_key_id,
-            content.kyber_pre_key_public,
-            content.kyber_pre_key_signature,
-        ) {
-            bundle = bundle.with_kyber_pre_key(kyber_id, kyber_public, kyber_sig);
-        }
-        Ok(bundle)
+        )
     }
 }
 
@@ -139,12 +131,11 @@ pub struct PreKeyBundle {
     pre_key_public: Option<PublicKey>,
     ec_signed_pre_key: SignedPreKey,
     identity_key: IdentityKey,
-    // Optional to support older clients
-    // TODO: remove optionality once the transition is over
-    kyber_pre_key: Option<KyberPreKey>,
+    kyber_pre_key: KyberPreKey,
 }
 
 impl PreKeyBundle {
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         registration_id: u32,
         device_id: DeviceId,
@@ -152,6 +143,9 @@ impl PreKeyBundle {
         signed_pre_key_id: SignedPreKeyId,
         signed_pre_key_public: PublicKey,
         signed_pre_key_signature: Vec<u8>,
+        kyber_pre_key_id: KyberPreKeyId,
+        kyber_pre_key_public: kem::PublicKey,
+        kyber_pre_key_signature: Vec<u8>,
         identity_key: IdentityKey,
     ) -> Result<Self> {
         let (pre_key_id, pre_key_public) = match pre_key {
@@ -165,6 +159,12 @@ impl PreKeyBundle {
             signed_pre_key_signature,
         );
 
+        let kyber_pre_key = KyberPreKey::new(
+            kyber_pre_key_id,
+            kyber_pre_key_public,
+            kyber_pre_key_signature,
+        );
+
         Ok(Self {
             registration_id,
             device_id,
@@ -172,18 +172,8 @@ impl PreKeyBundle {
             pre_key_public,
             ec_signed_pre_key,
             identity_key,
-            kyber_pre_key: None,
+            kyber_pre_key,
         })
-    }
-
-    pub fn with_kyber_pre_key(
-        mut self,
-        pre_key_id: KyberPreKeyId,
-        public_key: kem::PublicKey,
-        signature: Vec<u8>,
-    ) -> Self {
-        self.kyber_pre_key = Some(KyberPreKey::new(pre_key_id, public_key, signature));
-        self
     }
 
     pub fn registration_id(&self) -> Result<u32> {
@@ -218,26 +208,16 @@ impl PreKeyBundle {
         Ok(&self.identity_key)
     }
 
-    pub fn has_kyber_pre_key(&self) -> bool {
-        self.kyber_pre_key.is_some()
+    pub fn kyber_pre_key_id(&self) -> Result<KyberPreKeyId> {
+        Ok(self.kyber_pre_key.id)
     }
 
-    pub fn kyber_pre_key_id(&self) -> Result<Option<KyberPreKeyId>> {
-        Ok(self.kyber_pre_key.as_ref().map(|pre_key| pre_key.id))
+    pub fn kyber_pre_key_public(&self) -> Result<&kem::PublicKey> {
+        Ok(&self.kyber_pre_key.public_key)
     }
 
-    pub fn kyber_pre_key_public(&self) -> Result<Option<&kem::PublicKey>> {
-        Ok(self
-            .kyber_pre_key
-            .as_ref()
-            .map(|pre_key| &pre_key.public_key))
-    }
-
-    pub fn kyber_pre_key_signature(&self) -> Result<Option<&[u8]>> {
-        Ok(self
-            .kyber_pre_key
-            .as_ref()
-            .map(|pre_key| pre_key.signature.as_ref()))
+    pub fn kyber_pre_key_signature(&self) -> Result<&[u8]> {
+        Ok(&self.kyber_pre_key.signature)
     }
 
     pub fn modify<F>(self, modify: F) -> Result<Self>

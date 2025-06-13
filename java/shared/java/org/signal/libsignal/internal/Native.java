@@ -474,9 +474,9 @@ public final class Native {
   public static native void PreKeyBundle_Destroy(long handle);
   public static native int PreKeyBundle_GetDeviceId(long obj) throws Exception;
   public static native long PreKeyBundle_GetIdentityKey(long p) throws Exception;
-  public static native int PreKeyBundle_GetKyberPreKeyId(long bundle) throws Exception;
+  public static native int PreKeyBundle_GetKyberPreKeyId(long obj) throws Exception;
   public static native long PreKeyBundle_GetKyberPreKeyPublic(long bundle) throws Exception;
-  public static native byte[] PreKeyBundle_GetKyberPreKeySignature(long bundle) throws Exception;
+  public static native byte[] PreKeyBundle_GetKyberPreKeySignature(long obj) throws Exception;
   public static native int PreKeyBundle_GetPreKeyId(long obj) throws Exception;
   public static native long PreKeyBundle_GetPreKeyPublic(long obj) throws Exception;
   public static native int PreKeyBundle_GetRegistrationId(long obj) throws Exception;

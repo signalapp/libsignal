@@ -10,27 +10,17 @@ use rand::{CryptoRng, Rng};
 
 pub(crate) use self::keys::{ChainKey, MessageKeyGenerator, RootKey};
 pub use self::params::{AliceSignalProtocolParameters, BobSignalProtocolParameters, UsePQRatchet};
-use crate::protocol::{CIPHERTEXT_MESSAGE_CURRENT_VERSION, CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION};
+use crate::protocol::CIPHERTEXT_MESSAGE_CURRENT_VERSION;
 use crate::state::SessionState;
 use crate::{consts, KeyPair, Result, SessionRecord, SignalProtocolError};
 
 type InitialPQRKey = [u8; 32];
 
-fn derive_keys(has_kyber: bool, secret_input: &[u8]) -> (RootKey, ChainKey, InitialPQRKey) {
-    let label = if has_kyber {
-        b"WhisperText_X25519_SHA-256_CRYSTALS-KYBER-1024".as_slice()
-    } else {
-        b"WhisperText".as_slice()
-    };
-    derive_keys_with_label(label, secret_input)
-}
-
-fn message_version(has_kyber: bool) -> u8 {
-    if has_kyber {
-        CIPHERTEXT_MESSAGE_CURRENT_VERSION
-    } else {
-        CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION
-    }
+fn derive_keys(secret_input: &[u8]) -> (RootKey, ChainKey, InitialPQRKey) {
+    derive_keys_with_label(
+        b"WhisperText_X25519_SHA-256_CRYSTALS-KYBER-1024",
+        secret_input,
+    )
 }
 
 fn derive_keys_with_label(label: &[u8], secret_input: &[u8]) -> (RootKey, ChainKey, InitialPQRKey) {
@@ -67,9 +57,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
 ) -> Result<SessionState> {
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
-    let sending_ratchet_key = KeyPair::generate(&mut csprng);
-
-    let mut secrets = Vec::with_capacity(32 * 5);
+    let mut secrets = Vec::with_capacity(32 * 6);
 
     secrets.extend_from_slice(&[0xFFu8; 32]); // "discontinuity bytes"
 
@@ -95,18 +83,15 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
     }
 
-    let kyber_ciphertext = parameters
-        .their_kyber_pre_key()
-        .map(|kyber_public| {
-            let (ss, ct) = kyber_public.encapsulate(&mut csprng)?;
-            secrets.extend_from_slice(ss.as_ref());
-            Ok::<_, SignalProtocolError>(ct)
-        })
-        .transpose()?;
-    let has_kyber = parameters.their_kyber_pre_key().is_some();
+    let kyber_ciphertext = {
+        let (ss, ct) = parameters.their_kyber_pre_key().encapsulate(&mut csprng)?;
+        secrets.extend_from_slice(ss.as_ref());
+        ct
+    };
 
-    let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
+    let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
 
+    let sending_ratchet_key = KeyPair::generate(&mut csprng);
     let (sending_chain_root_key, sending_chain_chain_key) = root_key.create_chain(
         parameters.their_ratchet_key(),
         &sending_ratchet_key.private_key,
@@ -136,7 +121,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     };
 
     let mut session = SessionState::new(
-        message_version(has_kyber),
+        CIPHERTEXT_MESSAGE_CURRENT_VERSION,
         local_identity,
         parameters.their_identity_key(),
         &sending_chain_root_key,
@@ -146,9 +131,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     .with_receiver_chain(parameters.their_ratchet_key(), &chain_key)
     .with_sender_chain(&sending_ratchet_key, &sending_chain_chain_key);
 
-    if let Some(kyber_ciphertext) = kyber_ciphertext {
-        session.set_kyber_ciphertext(kyber_ciphertext);
-    }
+    session.set_kyber_ciphertext(kyber_ciphertext);
 
     Ok(session)
 }
@@ -158,7 +141,7 @@ pub(crate) fn initialize_bob_session(
 ) -> Result<SessionState> {
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
-    let mut secrets = Vec::with_capacity(32 * 5);
+    let mut secrets = Vec::with_capacity(32 * 6);
 
     secrets.extend_from_slice(&[0xFFu8; 32]); // "discontinuity bytes"
 
@@ -191,22 +174,14 @@ pub(crate) fn initialize_bob_session(
         );
     }
 
-    match (
-        parameters.our_kyber_pre_key_pair(),
-        parameters.their_kyber_ciphertext(),
-    ) {
-        (Some(key_pair), Some(ciphertext)) => {
-            let ss = key_pair.secret_key.decapsulate(ciphertext)?;
-            secrets.extend_from_slice(ss.as_ref());
-        }
-        (None, None) => (), // Alice does not support kyber prekeys
-        _ => {
-            panic!("Either both or none of the kyber key pair and ciphertext can be provided")
-        }
-    }
-    let has_kyber = parameters.our_kyber_pre_key_pair().is_some();
+    secrets.extend_from_slice(
+        &parameters
+            .our_kyber_pre_key_pair()
+            .secret_key
+            .decapsulate(parameters.their_kyber_ciphertext())?,
+    );
 
-    let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
+    let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
 
     let self_session = local_identity == parameters.their_identity_key();
     let pqr_state = match parameters.use_pq_ratchet() {
@@ -231,7 +206,7 @@ pub(crate) fn initialize_bob_session(
         UsePQRatchet::No => spqr::SerializedState::new(), // empty
     };
     let session = SessionState::new(
-        message_version(has_kyber),
+        CIPHERTEXT_MESSAGE_CURRENT_VERSION,
         local_identity,
         parameters.their_identity_key(),
         &root_key,

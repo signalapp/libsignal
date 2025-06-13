@@ -133,17 +133,15 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         signed_pre_key_id.into(),  // signed pre key id
         bob_signed_pre_key_pair.public_key,
         bob_signed_pre_key_signature.to_vec(),
+        kyber_pre_key_id.into(),
+        kyber_pre_key_pair.public_key.clone(),
+        kyber_pre_key_signature.to_vec(),
         *bob_store
             .get_identity_key_pair()
             .now_or_never()
             .expect("sync")?
             .identity_key(),
-    )?
-    .with_kyber_pre_key(
-        kyber_pre_key_id.into(),
-        kyber_pre_key_pair.public_key.clone(),
-        kyber_pre_key_signature.to_vec(),
-    );
+    )?;
 
     bob_store
         .save_signed_pre_key(

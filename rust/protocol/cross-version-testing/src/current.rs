@@ -74,6 +74,9 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
             signed_pre_key_id.into(),
             signed_pre_key_pair.public_key,
             signed_pre_key_signature.to_vec(),
+            kyber_pre_key_id.into(),
+            signed_pq_pre_key_pair.public_key.clone(),
+            signed_pq_pre_key_signature.to_vec(),
             *self
                 .0
                 .get_identity_key_pair()
@@ -82,12 +85,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
                 .expect("can fetch identity key")
                 .identity_key(),
         )
-        .expect("can create pre-key bundles")
-        .with_kyber_pre_key(
-            kyber_pre_key_id.into(),
-            signed_pq_pre_key_pair.public_key.clone(),
-            signed_pq_pre_key_signature.to_vec(),
-        );
+        .expect("can create pre-key bundles");
 
         self.0
             .save_pre_key(

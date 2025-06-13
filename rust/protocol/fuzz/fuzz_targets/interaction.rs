@@ -75,6 +75,33 @@ impl Participant {
             None
         };
 
+        let their_kyber_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024, rng);
+        let their_kyber_pre_key_public = their_kyber_pre_key_pair.public_key.serialize();
+        let their_kyber_pre_key_signature = them
+            .store
+            .get_identity_key_pair()
+            .await
+            .unwrap()
+            .private_key()
+            .calculate_signature(&their_kyber_pre_key_public, rng)
+            .unwrap();
+
+        them.pre_key_count += 1;
+        let kyber_pre_key_id: KyberPreKeyId = them.pre_key_count.into();
+
+        them.store
+            .save_kyber_pre_key(
+                kyber_pre_key_id,
+                &KyberPreKeyRecord::new(
+                    kyber_pre_key_id,
+                    libsignal_protocol::Timestamp::from_epoch_millis(42),
+                    &their_kyber_pre_key_pair,
+                    &their_kyber_pre_key_signature,
+                ),
+            )
+            .await
+            .unwrap();
+
         let their_pre_key_bundle = PreKeyBundle::new(
             them.store.get_local_registration_id().await.unwrap(),
             DeviceId::new(1).unwrap(),
@@ -82,6 +109,9 @@ impl Participant {
             signed_pre_key_id,
             their_signed_pre_key_pair.public_key,
             their_signed_pre_key_signature.into_vec(),
+            kyber_pre_key_id,
+            their_kyber_pre_key_pair.public_key,
+            their_kyber_pre_key_signature.into_vec(),
             *them
                 .store
                 .get_identity_key_pair()

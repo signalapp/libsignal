@@ -36,6 +36,9 @@ pub(crate) struct UnacknowledgedPreKeyMessageItems<'a> {
     pre_key_id: Option<PreKeyId>,
     signed_pre_key_id: SignedPreKeyId,
     base_key: PublicKey,
+    // Although we require PQXDH for all new sessions now,
+    // we may in theory have an existing X3DH unacknowledged session,
+    // so we leave these optional for now.
     kyber_pre_key_id: Option<KyberPreKeyId>,
     kyber_ciphertext: Option<&'a [u8]>,
     timestamp: SystemTime,

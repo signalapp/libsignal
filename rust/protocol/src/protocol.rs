@@ -271,6 +271,8 @@ pub struct PreKeySignalMessage {
     registration_id: u32,
     pre_key_id: Option<PreKeyId>,
     signed_pre_key_id: SignedPreKeyId,
+    // While we reject messages without Kyber payloads, we still for now allow constructing the
+    // struct without one so that we can provide a better error message when we try to process it.
     kyber_payload: Option<KyberPayload>,
     base_key: PublicKey,
     identity_key: IdentityKey,
