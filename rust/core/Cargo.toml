@@ -17,6 +17,7 @@ workspace = true
 curve25519-dalek = { workspace = true, features = ["digest"] }
 derive_more = { workspace = true, features = ["from", "into", "try_from"] }
 displaydoc = { workspace = true }
+log = { workspace = true }
 rand = { workspace = true }
 sha2 = { workspace = true }
 subtle = { workspace = true }

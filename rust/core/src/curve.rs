@@ -71,20 +71,23 @@ impl PublicKey {
     }
 
     pub fn deserialize(value: &[u8]) -> Result<Self, CurveError> {
-        if value.is_empty() {
-            return Err(CurveError::NoKeyTypeIdentifier);
-        }
-        let key_type = KeyType::try_from(value[0])?;
+        let (key_type, value) = value.split_first().ok_or(CurveError::NoKeyTypeIdentifier)?;
+        let key_type = KeyType::try_from(*key_type)?;
         match key_type {
             KeyType::Djb => {
-                // We allow trailing data after the public key (why?)
-                if value.len() < curve25519::PUBLIC_KEY_LENGTH + 1 {
-                    return Err(CurveError::BadKeyLength(KeyType::Djb, value.len()));
+                let (key, tail): (&[u8; curve25519::PUBLIC_KEY_LENGTH], _) = value
+                    .split_first_chunk()
+                    .ok_or(CurveError::BadKeyLength(KeyType::Djb, value.len() + 1))?;
+                // We currently allow trailing data after the public key.
+                // TODO: once this is known to not be seen in practice, make this a hard error.
+                if !tail.is_empty() {
+                    log::warn!(
+                        "ECPublicKey deserialized with {} trailing bytes",
+                        tail.len()
+                    );
                 }
-                let mut key = [0u8; curve25519::PUBLIC_KEY_LENGTH];
-                key.copy_from_slice(&value[1..][..curve25519::PUBLIC_KEY_LENGTH]);
                 Ok(PublicKey {
-                    key: PublicKeyData::DjbPublicKey(key),
+                    key: PublicKeyData::DjbPublicKey(*key),
                 })
             }
         }
@@ -400,9 +403,8 @@ mod tests {
         );
         let empty: [u8; 0] = [];
 
-        let just_right = PublicKey::try_from(&serialized_public[..]);
+        let just_right = PublicKey::try_from(&serialized_public[..])?;
 
-        assert!(just_right.is_ok());
         assert!(PublicKey::try_from(&serialized_public[1..]).is_err());
         assert!(PublicKey::try_from(&empty[..]).is_err());
 
@@ -416,7 +418,7 @@ mod tests {
         let extra_space_decode = PublicKey::try_from(&extra_space[..]);
         assert!(extra_space_decode.is_ok());
 
-        assert_eq!(&serialized_public[..], &just_right?.serialize()[..]);
+        assert_eq!(&serialized_public[..], &just_right.serialize()[..]);
         assert_eq!(&serialized_public[..], &extra_space_decode?.serialize()[..]);
         Ok(())
     }
