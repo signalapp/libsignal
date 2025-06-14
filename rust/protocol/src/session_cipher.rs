@@ -5,10 +5,11 @@
 
 use std::time::SystemTime;
 
+use pswoosh::keys::{PublicSwooshKey, SwooshKeyPair};
 use rand::{CryptoRng, Rng};
 
 use crate::consts::{MAX_FORWARD_JUMPS, MAX_UNACKNOWLEDGED_SESSION_AGE};
-use crate::ratchet::{ChainKey, MessageKeyGenerator, UsePQRatchet};
+use crate::ratchet::{ChainKey, MessageKeyGenerator, RootKey, UsePQRatchet};
 use crate::state::{InvalidSessionError, SessionState};
 use crate::{
     session, CiphertextMessage, CiphertextMessageType, Direction, IdentityKeyStore, KeyPair,
@@ -722,6 +723,74 @@ fn get_or_create_chain_key<R: Rng + CryptoRng>(
     };
     state.set_previous_counter(previous_index);
     state.set_sender_chain(&our_new_ephemeral, &sender_chain.1);
+
+    Ok(receiver_chain.1)
+}
+
+fn get_or_create_chain_key_swoosh<R: Rng + CryptoRng>(
+    state: &mut SessionState,
+    their_swoosh_ephemeral: &PublicSwooshKey,
+    remote_address: &ProtocolAddress,
+    csprng: &mut R,
+) -> Result<ChainKey> {
+    if let Some(chain) = state.get_receiver_swoosh_chain_key(their_swoosh_ephemeral)? {
+        log::debug!("{remote_address} has existing receiver swoosh chain.");
+        return Ok(chain);
+    }
+
+    log::info!("{remote_address} creating new swoosh chains.");
+
+    let root_key = state.root_key()?;
+    let our_swoosh_ephemeral = state.sender_swoosh_private_key()?
+        .ok_or_else(|| SignalProtocolError::InvalidState(
+            "get_or_create_chain_key_swoosh",
+            "No sender swoosh private key available".into(),
+        ))?;
+    let our_swoosh_public = state.sender_swoosh_key()?
+        .ok_or_else(|| SignalProtocolError::InvalidState(
+            "get_or_create_chain_key_swoosh",
+            "No sender swoosh public key available".into(),
+        ))?;
+
+    // Determine role based on identity keys for deterministic role assignment
+    let our_identity = state.local_identity_key().map_err(|e| {
+        SignalProtocolError::InvalidState("get_or_create_chain_key_swoosh", format!("Cannot get local identity: {}", e).into())
+    })?;
+    let their_identity = state.remote_identity_key().map_err(|e| {
+        SignalProtocolError::InvalidState("get_or_create_chain_key_swoosh", format!("Cannot get remote identity: {}", e).into())
+    })?.ok_or_else(|| {
+        SignalProtocolError::InvalidState("get_or_create_chain_key_swoosh", "No remote identity available".into())
+    })?;
+    let is_alice = RootKey::determine_swoosh_role(&our_identity, &their_identity);
+
+    let receiver_chain = root_key.create_chain_swoosh(
+        their_swoosh_ephemeral,
+        &our_swoosh_public,
+        &our_swoosh_ephemeral,
+        is_alice
+    )?;
+
+    let our_new_swoosh_ephemeral = SwooshKeyPair::generate(&pswoosh::sys_a::A, !is_alice);
+    let sender_chain = receiver_chain
+        .0
+        .create_chain_swoosh(
+            their_swoosh_ephemeral,
+            our_new_swoosh_ephemeral.public_key(),
+            our_new_swoosh_ephemeral.private_key(),
+            is_alice
+        )?;
+
+    state.set_root_key(&sender_chain.0);
+    state.add_receiver_swoosh_chain(their_swoosh_ephemeral, &receiver_chain.1);
+
+    let current_index = state.get_sender_chain_key()?.index();
+    let previous_index = if current_index > 0 {
+        current_index - 1
+    } else {
+        0
+    };
+    state.set_previous_counter(previous_index);
+    state.set_sender_swoosh_chain(&our_new_swoosh_ephemeral, &sender_chain.1);
 
     Ok(receiver_chain.1)
 }

@@ -200,18 +200,18 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
     let has_kyber = parameters.their_kyber_pre_key().is_some();
 
     let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
-        /*
-    let (sending_chain_root_key, sending_chain_chain_key) = root_key.create_chain(
-        parameters.their_ratchet_key(),
-        &sending_ratchet_key.private_key,
-    )?;
-*/
+
     let swoosh_sending_key = SwooshKeyPair::generate(&A, true);
+    // Use deterministic role assignment: Alice has lexicographically smaller identity key
+    let is_alice = RootKey::determine_swoosh_role(
+        parameters.our_identity_key_pair().identity_key(),
+        parameters.their_identity_key()
+    );
     let (sending_chain_root_key, sending_chain_chain_key) = root_key.create_chain_swoosh(
         parameters.their_swoosh_ratchet_key().unwrap(),
         &swoosh_sending_key.public_key(),
         &swoosh_sending_key.private_key(),
-        true // is_alice = true
+        is_alice
     )?;
 
     let self_session = local_identity == parameters.their_identity_key();

@@ -272,6 +272,43 @@ impl SessionState {
         }
     }
 
+    pub(crate) fn get_receiver_swoosh_chain(
+        &self,
+        sender: &PublicSwooshKey,
+    ) -> Result<Option<(session_structure::Chain, usize)>, InvalidSessionError> {
+        for (idx, chain) in self.session.receiver_chains.iter().enumerate() {
+            // Check if this chain has a SWOOSH key
+            if !chain.sender_swoosh_key.is_empty() {
+                let chain_swoosh_key = PublicSwooshKey::deserialize(&chain.sender_swoosh_key)
+                    .map_err(|_| InvalidSessionError("invalid receiver chain swoosh key"))?;
+
+                if &chain_swoosh_key == sender {
+                    return Ok(Some((chain.clone(), idx)));
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub(crate) fn get_receiver_swoosh_chain_key(
+        &self,
+        sender: &PublicSwooshKey,
+    ) -> Result<Option<ChainKey>, InvalidSessionError> {
+        match self.get_receiver_swoosh_chain(sender)? {
+            None => Ok(None),
+            Some((chain, _)) => match chain.chain_key {
+                None => Err(InvalidSessionError("missing receiver swoosh chain key")),
+                Some(c) => {
+                    let chain_key_bytes = c.key[..]
+                        .try_into()
+                        .map_err(|_| InvalidSessionError("invalid receiver swoosh chain key"))?;
+                    Ok(Some(ChainKey::new(chain_key_bytes, c.index)))
+                }
+            },
+        }
+    }
+
     pub(crate) fn add_receiver_chain(&mut self, sender: &PublicKey, chain_key: &ChainKey) {
         let chain_key = session_structure::chain::ChainKey {
             index: chain_key.index(),

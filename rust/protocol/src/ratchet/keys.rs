@@ -9,7 +9,7 @@ use arrayref::array_ref;
 use pswoosh::keys::{PrivateSwooshKey, PublicSwooshKey};
 
 use crate::proto::storage::session_structure;
-use crate::{crypto, PrivateKey, PublicKey, Result};
+use crate::{crypto, IdentityKey, PrivateKey, PublicKey, Result};
 
 pub(crate) enum MessageKeyGenerator {
     Keys(MessageKeys),
@@ -212,9 +212,10 @@ impl RootKey {
         their_ratchet_key: &PublicSwooshKey,
         our_public_key: &PublicSwooshKey,
         our_ratchet_key: &PrivateSwooshKey,
-        is_alice: bool
+        is_alice: bool,
     ) -> Result<(RootKey, ChainKey)> {
-        let shared_secret = our_ratchet_key.derive_shared_secret(their_ratchet_key, our_public_key, is_alice)?;
+        let shared_secret = our_ratchet_key
+            .derive_shared_secret(their_ratchet_key, our_public_key, is_alice)?;
         let mut derived_secret_bytes = [0; 64];
         hkdf::Hkdf::<sha2::Sha256>::new(Some(&self.key), &shared_secret)
             .expand(b"WhisperRatchet", &mut derived_secret_bytes)
@@ -230,7 +231,17 @@ impl RootKey {
             },
         ))
     }
-    
+
+    /// Determine Alice/Bob role based on identity keys for SWOOSH
+    /// This provides a deterministic way to assign roles that both parties will agree on
+    pub(crate) fn determine_swoosh_role(
+        our_identity: &IdentityKey,
+        their_identity: &IdentityKey,
+    ) -> bool {
+        // Use lexicographic comparison of identity key bytes
+        // The party with the lexicographically smaller identity key is Alice
+        our_identity.serialize() < their_identity.serialize()
+    }
 }
 
 impl fmt::Display for RootKey {
