@@ -205,15 +205,16 @@ impl RootKey {
             },
         ))
     }
-/*
+
     // SWOOSH implementation of key derivation
     pub(crate) fn create_chain_swoosh(
         self,
         their_ratchet_key: &PublicSwooshKey,
+        our_public_key: &PublicSwooshKey,
         our_ratchet_key: &PrivateSwooshKey,
         is_alice: bool
     ) -> Result<(RootKey, ChainKey)> {
-        let shared_secret = our_ratchet_key.derive_shared_secret(their_ratchet_key, is_alice)?;
+        let shared_secret = our_ratchet_key.derive_shared_secret(their_ratchet_key, our_public_key, is_alice)?;
         let mut derived_secret_bytes = [0; 64];
         hkdf::Hkdf::<sha2::Sha256>::new(Some(&self.key), &shared_secret)
             .expand(b"WhisperRatchet", &mut derived_secret_bytes)
@@ -229,7 +230,7 @@ impl RootKey {
             },
         ))
     }
-    */
+    
 }
 
 impl fmt::Display for RootKey {

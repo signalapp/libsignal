@@ -7,6 +7,7 @@ use std::panic::UnwindSafe;
 
 use displaydoc::Display;
 use libsignal_core::curve::{CurveError, KeyType};
+use pswoosh::keys::SwooshError;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -119,6 +120,21 @@ impl From<CurveError> for SignalProtocolError {
             CurveError::NoKeyTypeIdentifier => Self::NoKeyTypeIdentifier,
             CurveError::BadKeyType(raw) => Self::BadKeyType(raw),
             CurveError::BadKeyLength(key_type, len) => Self::BadKeyLength(key_type, len),
+        }
+    }
+}
+
+impl From<SwooshError> for SignalProtocolError {
+    fn from(e: SwooshError) -> Self {
+        match e {
+            SwooshError::NoKeyTypeIdentifier => Self::NoKeyTypeIdentifier,
+            SwooshError::BadKeyType(raw) => Self::BadKeyType(raw),
+            SwooshError::BadKeyLength(key_type, len) => {
+                // Convert SwooshKeyType to KeyType, or use a generic error
+                Self::InvalidArgument(format!("Bad key length {} for swoosh key type {:?}", len, key_type))
+            },
+            SwooshError::KeyGenerationFailed => Self::InvalidState("swoosh key generation", "key generation failed".to_string()),
+            SwooshError::KeyDerivationFailed => Self::InvalidState("swoosh key derivation", "key derivation failed".to_string()),
         }
     }
 }
