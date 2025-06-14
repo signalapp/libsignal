@@ -55,8 +55,8 @@ public class PrivateKey: ClonableHandleOwner<SignalMutPointerPrivateKey>, @unche
     }
 
     public func keyAgreement(with other: PublicKey) -> Data {
-        return withNativeHandles(self, other) { nativeHandle, otherHandle in
-            failOnError {
+        return failOnError {
+            try withAllBorrowed(self, other) { nativeHandle, otherHandle in
                 try invokeFnReturningData {
                     signal_privatekey_agree($0, nativeHandle.const(), otherHandle.const())
                 }

@@ -119,8 +119,8 @@ extension SignalConstPointerKyberPublicKey: SignalConstPointer {
 
 extension KEMPublicKey: Equatable {
     public static func == (lhs: KEMPublicKey, rhs: KEMPublicKey) -> Bool {
-        return withNativeHandles(lhs, rhs) { lHandle, rHandle in
-            failOnError {
+        return failOnError {
+            try withAllBorrowed(lhs, rhs) { lHandle, rHandle in
                 try invokeFnReturningBool {
                     signal_kyber_public_key_equals($0, lHandle.const(), rHandle.const())
                 }

@@ -109,32 +109,28 @@ public enum KeyTransparency {
             let distinguished = try await self.updateDistinguished(store)
 
             let bytes = try await self.asyncContext.invokeAsyncFunction { promise, tokioContext in
-                self.chatConnection.withNativeHandle { chatHandle in
-                    aciInfo.aci.withPointerToFixedWidthBinary { aciBytes in
-                        aciInfo.identityKey.publicKey.withNativeHandle { identityKeyHandle in
-                            withUnsafeOptionalBorrowedSlice(of: uak) { uakBytes in
-                                withUnsafeOptionalBorrowedSlice(of: usernameHash) { hashBytes in
-                                    withUnsafeOptionalBorrowedSlice(of: accountData) { accDataBytes in
-                                        distinguished.withUnsafeBorrowedBuffer { distinguishedBytes in
-                                            signal_key_transparency_search(
-                                                promise,
-                                                tokioContext.const(),
-                                                self.environment.rawValue,
-                                                chatHandle.const(),
-                                                aciBytes,
-                                                identityKeyHandle.const(),
-                                                e164,
-                                                uakBytes,
-                                                hashBytes,
-                                                accDataBytes,
-                                                distinguishedBytes
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                try! withAllBorrowed(
+                    self.chatConnection,
+                    aciInfo.aci,
+                    aciInfo.identityKey.publicKey,
+                    uak,
+                    usernameHash,
+                    accountData,
+                    distinguished
+                ) { chatHandle, aciBytes, identityKeyHandle, uakBytes, hashBytes, accDataBytes, distinguishedBytes in
+                    signal_key_transparency_search(
+                        promise,
+                        tokioContext.const(),
+                        self.environment.rawValue,
+                        chatHandle.const(),
+                        aciBytes,
+                        identityKeyHandle.const(),
+                        e164,
+                        uakBytes,
+                        hashBytes,
+                        accDataBytes,
+                        distinguishedBytes
+                    )
                 }
             }
             await store.setAccountData(Data(consuming: bytes), for: aciInfo.aci)
@@ -175,32 +171,28 @@ public enum KeyTransparency {
             let distinguished = try await self.updateDistinguished(store)
 
             let bytes = try await self.asyncContext.invokeAsyncFunction { promise, tokioContext in
-                self.chatConnection.withNativeHandle { chatHandle in
-                    aciInfo.aci.withPointerToFixedWidthBinary { aciBytes in
-                        aciInfo.identityKey.publicKey.withNativeHandle { identityKeyHandle in
-                            withUnsafeOptionalBorrowedSlice(of: uak) { uakBytes in
-                                withUnsafeOptionalBorrowedSlice(of: usernameHash) { hashBytes in
-                                    withUnsafeOptionalBorrowedSlice(of: accountData) { accDataBytes in
-                                        distinguished.withUnsafeBorrowedBuffer { distinguishedBytes in
-                                            signal_key_transparency_monitor(
-                                                promise,
-                                                tokioContext.const(),
-                                                self.environment.rawValue,
-                                                chatHandle.const(),
-                                                aciBytes,
-                                                identityKeyHandle.const(),
-                                                e164,
-                                                uakBytes,
-                                                hashBytes,
-                                                accDataBytes,
-                                                distinguishedBytes
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                try! withAllBorrowed(
+                    self.chatConnection,
+                    aciInfo.aci,
+                    aciInfo.identityKey.publicKey,
+                    uak,
+                    usernameHash,
+                    accountData,
+                    distinguished
+                ) { chatHandle, aciBytes, identityKeyHandle, uakBytes, hashBytes, accDataBytes, distinguishedBytes in
+                    signal_key_transparency_monitor(
+                        promise,
+                        tokioContext.const(),
+                        self.environment.rawValue,
+                        chatHandle.const(),
+                        aciBytes,
+                        identityKeyHandle.const(),
+                        e164,
+                        uakBytes,
+                        hashBytes,
+                        accDataBytes,
+                        distinguishedBytes
+                    )
                 }
             }
             await store.setAccountData(Data(consuming: bytes), for: aciInfo.aci)
@@ -217,16 +209,14 @@ public enum KeyTransparency {
             _ distinguished: Data? = nil
         ) async throws -> Data {
             let bytes = try await self.asyncContext.invokeAsyncFunction { promise, tokioContext in
-                withUnsafeOptionalBorrowedSlice(of: distinguished) { distinguishedBytes in
-                    self.chatConnection.withNativeHandle { chatHandle in
-                        signal_key_transparency_distinguished(
-                            promise,
-                            tokioContext.const(),
-                            self.environment.rawValue,
-                            chatHandle.const(),
-                            distinguishedBytes
-                        )
-                    }
+                try! withAllBorrowed(self.chatConnection, distinguished) { chatHandle, distinguishedBytes in
+                    signal_key_transparency_distinguished(
+                        promise,
+                        tokioContext.const(),
+                        self.environment.rawValue,
+                        chatHandle.const(),
+                        distinguishedBytes
+                    )
                 }
             }
             return Data(consuming: bytes)

@@ -12,10 +12,8 @@ public class BackupAuthCredentialPresentation: ByteArray, @unchecked Sendable {
     }
 
     public func verify(now: Date = Date(), serverParams: GenericServerSecretParams) throws {
-        try withUnsafeBorrowedBuffer { contents in
-            try serverParams.withUnsafeBorrowedBuffer { serverParams in
-                try checkError(signal_backup_auth_credential_presentation_verify(contents, UInt64(now.timeIntervalSince1970), serverParams))
-            }
+        try withAllBorrowed(self, serverParams) { contents, serverParams in
+            try checkError(signal_backup_auth_credential_presentation_verify(contents, UInt64(now.timeIntervalSince1970), serverParams))
         }
     }
 }

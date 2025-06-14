@@ -19,26 +19,18 @@ public class CallLinkAuthCredentialResponse: ByteArray, @unchecked Sendable {
 
     public static func issueCredential(userId: Aci, redemptionTime: Date, params: GenericServerSecretParams, randomness: Randomness) -> CallLinkAuthCredentialResponse {
         return failOnError {
-            try userId.withPointerToFixedWidthBinary { userId in
-                try params.withUnsafeBorrowedBuffer { params in
-                    try randomness.withUnsafePointerToBytes { randomness in
-                        try invokeFnReturningVariableLengthSerialized {
-                            signal_call_link_auth_credential_response_issue_deterministic($0, userId, UInt64(redemptionTime.timeIntervalSince1970), params, randomness)
-                        }
-                    }
+            try withAllBorrowed(userId, params, randomness) { userId, params, randomness in
+                try invokeFnReturningVariableLengthSerialized {
+                    signal_call_link_auth_credential_response_issue_deterministic($0, userId, UInt64(redemptionTime.timeIntervalSince1970), params, randomness)
                 }
             }
         }
     }
 
     public func receive(userId: Aci, redemptionTime: Date, params: GenericServerPublicParams) throws -> CallLinkAuthCredential {
-        return try withUnsafeBorrowedBuffer { contents in
-            try userId.withPointerToFixedWidthBinary { userId in
-                try params.withUnsafeBorrowedBuffer { params in
-                    try invokeFnReturningVariableLengthSerialized {
-                        signal_call_link_auth_credential_response_receive($0, contents, userId, UInt64(redemptionTime.timeIntervalSince1970), params)
-                    }
-                }
+        return try withAllBorrowed(self, userId, params) { contents, userId, params in
+            try invokeFnReturningVariableLengthSerialized {
+                signal_call_link_auth_credential_response_receive($0, contents, userId, UInt64(redemptionTime.timeIntervalSince1970), params)
             }
         }
     }

@@ -19,13 +19,9 @@ public class BackupAuthCredential: ByteArray, @unchecked Sendable {
 
     public func present(serverParams: GenericServerPublicParams, randomness: Randomness) -> BackupAuthCredentialPresentation {
         return failOnError {
-            try withUnsafeBorrowedBuffer { contents in
-                try serverParams.withUnsafeBorrowedBuffer { serverParams in
-                    try randomness.withUnsafePointerToBytes { randomness in
-                        try invokeFnReturningVariableLengthSerialized {
-                            signal_backup_auth_credential_present_deterministic($0, contents, serverParams, randomness)
-                        }
-                    }
+            try withAllBorrowed(self, serverParams, randomness) { contents, serverParams, randomness in
+                try invokeFnReturningVariableLengthSerialized {
+                    signal_backup_auth_credential_present_deterministic($0, contents, serverParams, randomness)
                 }
             }
         }

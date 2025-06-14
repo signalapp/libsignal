@@ -29,25 +29,28 @@ public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
         kyberPrekeySignature: KEMBytes
     ) throws {
         var result = SignalMutPointerPreKeyBundle()
-        try withNativeHandles(prekey, signedPrekey, identityKey.publicKey, kyberPrekey) { prekeyHandle, signedPrekeyHandle, identityKeyHandle, kyberKeyHandle in
-            try signedPrekeySignature.withUnsafeBorrowedBuffer { ecSignatureBuffer in
-                try kyberPrekeySignature.withUnsafeBorrowedBuffer { kyberSignatureBuffer in
-                    try checkError(signal_pre_key_bundle_new(
-                        &result,
-                        registrationId,
-                        deviceId,
-                        prekeyId,
-                        prekeyHandle.const(),
-                        signedPrekeyId,
-                        signedPrekeyHandle.const(),
-                        ecSignatureBuffer,
-                        identityKeyHandle.const(),
-                        kyberPrekeyId,
-                        kyberKeyHandle.const(),
-                        kyberSignatureBuffer
-                    ))
-                }
-            }
+        try withAllBorrowed(
+            prekey,
+            signedPrekey,
+            identityKey.publicKey,
+            kyberPrekey,
+            .bytes(signedPrekeySignature),
+            .bytes(kyberPrekeySignature)
+        ) { prekeyHandle, signedPrekeyHandle, identityKeyHandle, kyberKeyHandle, ecSignatureBuffer, kyberSignatureBuffer in
+            try checkError(signal_pre_key_bundle_new(
+                &result,
+                registrationId,
+                deviceId,
+                prekeyId,
+                prekeyHandle.const(),
+                signedPrekeyId,
+                signedPrekeyHandle.const(),
+                ecSignatureBuffer,
+                identityKeyHandle.const(),
+                kyberPrekeyId,
+                kyberKeyHandle.const(),
+                kyberSignatureBuffer
+            ))
         }
         self.init(owned: NonNull(result)!)
     }
@@ -68,25 +71,27 @@ public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
         kyberPrekeySignature: KEMBytes
     ) throws {
         var result = SignalMutPointerPreKeyBundle()
-        try withNativeHandles(signedPrekey, identityKey.publicKey, kyberPrekey) { signedPrekeyHandle, identityKeyHandle, kyberKeyHandle in
-            try signedPrekeySignature.withUnsafeBorrowedBuffer { ecSignatureBuffer in
-                try kyberPrekeySignature.withUnsafeBorrowedBuffer { kyberSignatureBuffer in
-                    try checkError(signal_pre_key_bundle_new(
-                        &result,
-                        registrationId,
-                        deviceId,
-                        ~0,
-                        SignalConstPointerPublicKey(),
-                        signedPrekeyId,
-                        signedPrekeyHandle.const(),
-                        ecSignatureBuffer,
-                        identityKeyHandle.const(),
-                        kyberPrekeyId,
-                        kyberKeyHandle.const(),
-                        kyberSignatureBuffer
-                    ))
-                }
-            }
+        try withAllBorrowed(
+            signedPrekey,
+            identityKey.publicKey,
+            kyberPrekey,
+            .bytes(signedPrekeySignature),
+            .bytes(kyberPrekeySignature)
+        ) { signedPrekeyHandle, identityKeyHandle, kyberKeyHandle, ecSignatureBuffer, kyberSignatureBuffer in
+            try checkError(signal_pre_key_bundle_new(
+                &result,
+                registrationId,
+                deviceId,
+                ~0,
+                SignalConstPointerPublicKey(),
+                signedPrekeyId,
+                signedPrekeyHandle.const(),
+                ecSignatureBuffer,
+                identityKeyHandle.const(),
+                kyberPrekeyId,
+                kyberKeyHandle.const(),
+                kyberSignatureBuffer
+            ))
         }
         self.init(owned: NonNull(result)!)
     }

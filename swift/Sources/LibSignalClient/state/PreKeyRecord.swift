@@ -30,7 +30,7 @@ public class PreKeyRecord: ClonableHandleOwner<SignalMutPointerPreKeyRecord> {
         privateKey: PrivateKey
     ) throws {
         var handle = SignalMutPointerPreKeyRecord()
-        try withNativeHandles(publicKey, privateKey) { publicKeyHandle, privateKeyHandle in
+        try withAllBorrowed(publicKey, privateKey) { publicKeyHandle, privateKeyHandle in
             try checkError(signal_pre_key_record_new(&handle, id, publicKeyHandle.const(), privateKeyHandle.const()))
         }
         self.init(owned: NonNull(handle)!)

@@ -63,7 +63,7 @@ public class ByteArray {
     /// Passes a pointer/length pair for the serialized contents to `callback`.
     ///
     /// Used for types that don't have a fixed-length representation.
-    func withUnsafeBorrowedBuffer<Result>(_ callback: (SignalBorrowedBuffer) throws -> Result) throws -> Result {
+    func withUnsafeBorrowedBuffer<Result>(_ callback: (SignalBorrowedBuffer) throws -> Result) rethrows -> Result {
         return try self.contents.withUnsafeBorrowedBuffer(callback)
     }
 }

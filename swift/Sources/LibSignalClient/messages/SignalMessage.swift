@@ -74,18 +74,21 @@ public class SignalMessage: NativeHandleOwner<SignalMutPointerSignalMessage> {
         receiver: PublicKey,
         macKey: Bytes
     ) throws -> Bool {
-        return try withNativeHandles(self, sender, receiver) { messageHandle, senderHandle, receiverHandle in
-            try macKey.withUnsafeBorrowedBuffer {
-                var result = false
-                try checkError(signal_message_verify_mac(
-                    &result,
-                    messageHandle.const(),
-                    senderHandle.const(),
-                    receiverHandle.const(),
-                    $0
-                ))
-                return result
-            }
+        return try withAllBorrowed(
+            self,
+            sender,
+            receiver,
+            .bytes(macKey)
+        ) { messageHandle, senderHandle, receiverHandle, macKey in
+            var result = false
+            try checkError(signal_message_verify_mac(
+                &result,
+                messageHandle.const(),
+                senderHandle.const(),
+                receiverHandle.const(),
+                macKey
+            ))
+            return result
         }
     }
 }

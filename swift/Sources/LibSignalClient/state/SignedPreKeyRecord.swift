@@ -32,17 +32,15 @@ public class SignedPreKeyRecord: ClonableHandleOwner<SignalMutPointerSignedPreKe
     ) throws {
         let publicKey = privateKey.publicKey
         var result = SignalMutPointerSignedPreKeyRecord()
-        try withNativeHandles(publicKey, privateKey) { publicKeyHandle, privateKeyHandle in
-            try signature.withUnsafeBorrowedBuffer {
-                try checkError(signal_signed_pre_key_record_new(
-                    &result,
-                    id,
-                    timestamp,
-                    publicKeyHandle.const(),
-                    privateKeyHandle.const(),
-                    $0
-                ))
-            }
+        try withAllBorrowed(publicKey, privateKey, .bytes(signature)) { publicKeyHandle, privateKeyHandle, signature in
+            try checkError(signal_signed_pre_key_record_new(
+                &result,
+                id,
+                timestamp,
+                publicKeyHandle.const(),
+                privateKeyHandle.const(),
+                signature
+            ))
         }
         self.init(owned: NonNull(result)!)
     }

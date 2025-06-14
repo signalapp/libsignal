@@ -71,7 +71,7 @@ public class SenderKeyMessage: NativeHandleOwner<SignalMutPointerSenderKeyMessag
 
     public func verifySignature(against key: PublicKey) throws -> Bool {
         var result = false
-        try withNativeHandles(self, key) { messageHandle, keyHandle in
+        try withAllBorrowed(self, key) { messageHandle, keyHandle in
             try checkError(signal_sender_key_message_verify_signature(&result, messageHandle.const(), keyHandle.const()))
         }
         return result

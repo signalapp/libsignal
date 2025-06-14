@@ -104,46 +104,11 @@ public class NativeHandleOwner<PointerType: SignalMutPointer> {
 
     /// Provides access to the wrapped Rust object pointer while keeping the wrapper alive.
     ///
-    /// See also the free functions `withNativeHandles(…)`,
-    /// which make it convenient to access the native handles of multiple objects.
+    /// See also the free function ``withAllBorrowed(_:in:)``,
+    /// which makes it convenient to access the native handles of multiple objects.
     internal func withNativeHandle<R>(_ callback: (PointerType) throws -> R) rethrows -> R {
         return try withExtendedLifetime(self) {
             try callback(PointerType(untyped: self.unsafeNativeHandle))
-        }
-    }
-}
-
-@available(*, unavailable, message: "use the method form instead")
-internal func withNativeHandle<PointerType, Result>(_: NativeHandleOwner<PointerType>, _: (OpaquePointer?) throws -> Result) rethrows -> Result {
-    fatalError()
-}
-
-internal func withNativeHandles<PointerA, PointerB, Result>(_ a: NativeHandleOwner<PointerA>, _ b: NativeHandleOwner<PointerB>, _ callback: (PointerA, PointerB) throws -> Result) rethrows -> Result {
-    return try a.withNativeHandle { aHandle in
-        try b.withNativeHandle { bHandle in
-            try callback(aHandle, bHandle)
-        }
-    }
-}
-
-internal func withNativeHandles<PointerA, PointerB, PointerC, Result>(_ a: NativeHandleOwner<PointerA>, _ b: NativeHandleOwner<PointerB>, _ c: NativeHandleOwner<PointerC>, _ callback: (PointerA, PointerB, PointerC) throws -> Result) rethrows -> Result {
-    return try a.withNativeHandle { aHandle in
-        try b.withNativeHandle { bHandle in
-            try c.withNativeHandle { cHandle in
-                try callback(aHandle, bHandle, cHandle)
-            }
-        }
-    }
-}
-
-internal func withNativeHandles<PointerA, PointerB, PointerC, PointerD, Result>(_ a: NativeHandleOwner<PointerA>, _ b: NativeHandleOwner<PointerB>, _ c: NativeHandleOwner<PointerC>, _ d: NativeHandleOwner<PointerD>, _ callback: (PointerA, PointerB, PointerC, PointerD) throws -> Result) rethrows -> Result {
-    return try a.withNativeHandle { aHandle in
-        try b.withNativeHandle { bHandle in
-            try c.withNativeHandle { cHandle in
-                try d.withNativeHandle { dHandle in
-                    try callback(aHandle, bHandle, cHandle, dHandle)
-                }
-            }
         }
     }
 }

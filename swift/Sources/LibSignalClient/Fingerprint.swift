@@ -53,20 +53,21 @@ public struct NumericFingerprintGenerator: Sendable {
         remoteKey: PublicKey
     ) throws -> Fingerprint {
         var obj = SignalMutPointerFingerprint()
-        try withNativeHandles(localKey, remoteKey) { localKeyHandle, remoteKeyHandle in
-            try localIdentifier.withUnsafeBorrowedBuffer { localBuffer in
-                try remoteIdentifier.withUnsafeBorrowedBuffer { remoteBuffer in
-                    try checkError(signal_fingerprint_new(
-                        &obj,
-                        UInt32(self.iterations),
-                        UInt32(version),
-                        localBuffer,
-                        localKeyHandle.const(),
-                        remoteBuffer,
-                        remoteKeyHandle.const()
-                    ))
-                }
-            }
+        try withAllBorrowed(
+            localKey,
+            remoteKey,
+            .bytes(localIdentifier),
+            .bytes(remoteIdentifier)
+        ) { localKeyHandle, remoteKeyHandle, localBuffer, remoteBuffer in
+            try checkError(signal_fingerprint_new(
+                &obj,
+                UInt32(self.iterations),
+                UInt32(version),
+                localBuffer,
+                localKeyHandle.const(),
+                remoteBuffer,
+                remoteKeyHandle.const()
+            ))
         }
 
         let fprintStr = try invokeFnReturningString {
