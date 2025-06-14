@@ -6,6 +6,7 @@
 use std::fmt;
 
 use arrayref::array_ref;
+use pswoosh::keys::{PrivateSwooshKey, PublicSwooshKey};
 
 use crate::proto::storage::session_structure;
 use crate::{crypto, PrivateKey, PublicKey, Result};
@@ -204,6 +205,31 @@ impl RootKey {
             },
         ))
     }
+/*
+    // SWOOSH implementation of key derivation
+    pub(crate) fn create_chain_swoosh(
+        self,
+        their_ratchet_key: &PublicSwooshKey,
+        our_ratchet_key: &PrivateSwooshKey,
+        is_alice: bool
+    ) -> Result<(RootKey, ChainKey)> {
+        let shared_secret = our_ratchet_key.derive_shared_secret(their_ratchet_key, is_alice)?;
+        let mut derived_secret_bytes = [0; 64];
+        hkdf::Hkdf::<sha2::Sha256>::new(Some(&self.key), &shared_secret)
+            .expand(b"WhisperRatchet", &mut derived_secret_bytes)
+            .expect("valid output length");
+
+        Ok((
+            RootKey {
+                key: *array_ref![derived_secret_bytes, 0, 32],
+            },
+            ChainKey {
+                key: *array_ref![derived_secret_bytes, 32, 32],
+                index: 0,
+            },
+        ))
+    }
+    */
 }
 
 impl fmt::Display for RootKey {
