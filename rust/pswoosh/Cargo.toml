@@ -6,6 +6,10 @@ edition = "2021"
 [dependencies]
 getrandom = "0.2.7"
 sha3 = "0.10.6"
+subtle = "2.5"
+rand = "0.8"
+derive_more = { version = "0.99", features = ["from"] }
+displaydoc = "0.2"
 
 [build-dependencies]
 cc = "1.0.78"

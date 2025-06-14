@@ -3909,8 +3909,12 @@ version = "0.1.0"
 dependencies = [
  "cc",
  "criterion",
+ "derive_more 0.99.19",
+ "displaydoc",
  "getrandom 0.2.15",
+ "rand 0.8.5",
  "sha3",
+ "subtle",
 ]
 
 [[package]]
