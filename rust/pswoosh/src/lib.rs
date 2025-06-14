@@ -1,7 +1,6 @@
 pub mod arithmetic;
 pub mod sys_a;
 pub mod util;
-pub mod keys;
 
 use std::arch::asm;
 
