@@ -5,7 +5,9 @@
 
 #![allow(clippy::new_without_default)]
 
-pub use libsignal_protocol_current::{CiphertextMessageType, PreKeyBundle};
+pub use libsignal_protocol_current::{
+    CiphertextMessageType, PreKeyBundle, UnidentifiedSenderMessageContent,
+};
 
 pub trait LibSignalProtocolStore {
     fn version(&self) -> &'static str;
@@ -13,6 +15,18 @@ pub trait LibSignalProtocolStore {
     fn process_pre_key_bundle(&mut self, remote: &str, pre_key_bundle: PreKeyBundle);
     fn encrypt(&mut self, remote: &str, msg: &[u8]) -> (Vec<u8>, CiphertextMessageType);
     fn decrypt(&mut self, remote: &str, msg: &[u8], msg_type: CiphertextMessageType) -> Vec<u8>;
+
+    fn encrypt_sealed_sender_v1(
+        &self,
+        remote: &str,
+        msg: &UnidentifiedSenderMessageContent,
+    ) -> Vec<u8>;
+    fn encrypt_sealed_sender_v2(
+        &self,
+        remote: &str,
+        msg: &UnidentifiedSenderMessageContent,
+    ) -> Vec<u8>;
+    fn decrypt_sealed_sender(&self, msg: &[u8]) -> UnidentifiedSenderMessageContent;
 }
 
 mod current;

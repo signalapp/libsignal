@@ -220,6 +220,66 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
             _ => panic!("unexpected 1:1 message type"),
         }
     }
+
+    fn encrypt_sealed_sender_v1(
+        &self,
+        remote: &str,
+        msg: &libsignal_protocol_current::UnidentifiedSenderMessageContent,
+    ) -> Vec<u8> {
+        // We don't use ConvertVersion for this because we're passed a reference and USMC doesn't
+        // implement Clone.
+        let msg = UnidentifiedSenderMessageContent::deserialize(
+            msg.serialized().expect("can re-serialize"),
+        )
+        .expect("compatible serialization");
+        sealed_sender_encrypt_from_usmc(&address(remote), &msg, &self.0, &mut thread_rng())
+            .now_or_never()
+            .expect("synchronous")
+            .expect("can encrypt messages")
+    }
+
+    fn encrypt_sealed_sender_v2(
+        &self,
+        remote: &str,
+        msg: &libsignal_protocol_current::UnidentifiedSenderMessageContent,
+    ) -> Vec<u8> {
+        let msg = UnidentifiedSenderMessageContent::deserialize(
+            msg.serialized().expect("can re-serialize"),
+        )
+        .expect("compatible serialization");
+        let session = self
+            .0
+            .load_session(&address(remote))
+            .now_or_never()
+            .expect("synchronous")
+            .expect("can fetch sessions")
+            .expect("session established");
+        sealed_sender_multi_recipient_encrypt(
+            &[&address(remote)],
+            &[&session],
+            [],
+            &msg,
+            &self.0,
+            &mut thread_rng(),
+        )
+        .now_or_never()
+        .expect("synchronous")
+        .expect("can encrypt messages")
+    }
+
+    fn decrypt_sealed_sender(
+        &self,
+        msg: &[u8],
+    ) -> libsignal_protocol_current::UnidentifiedSenderMessageContent {
+        let decrypted = sealed_sender_decrypt_to_usmc(msg, &self.0)
+            .now_or_never()
+            .expect("synchronous")
+            .expect("can decrypt messages");
+        libsignal_protocol_current::UnidentifiedSenderMessageContent::deserialize(
+            decrypted.serialized().expect("can re-serialize"),
+        )
+        .expect("compatible serialization")
+    }
 }
 
 trait ConvertVersion {
