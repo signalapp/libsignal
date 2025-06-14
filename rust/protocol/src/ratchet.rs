@@ -6,6 +6,8 @@
 mod keys;
 mod params;
 
+use pswoosh::keys::SwooshKeyPair;
+use pswoosh::sys_a::A;
 use rand::{CryptoRng, Rng};
 
 pub(crate) use self::keys::{ChainKey, MessageKeyGenerator, RootKey};
@@ -106,10 +108,110 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     let has_kyber = parameters.their_kyber_pre_key().is_some();
 
     let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
-
+        
     let (sending_chain_root_key, sending_chain_chain_key) = root_key.create_chain(
         parameters.their_ratchet_key(),
         &sending_ratchet_key.private_key,
+    )?;
+
+    let self_session = local_identity == parameters.their_identity_key();
+    let pqr_state = match parameters.use_pq_ratchet() {
+        UsePQRatchet::Yes => spqr::initial_state(spqr::Params {
+            auth_key: &pqr_key,
+            version: spqr::Version::V1,
+            direction: spqr::Direction::A2B,
+            // Set min_version to V0 (allow fallback to no PQR at all) while
+            // there are clients that don't speak PQR.  Once all clients speak
+            // PQR, we can up this to V1 to require that all subsequent sessions
+            // use at least V1.
+            min_version: spqr::Version::V0,
+            chain_params: spqr_chain_params(self_session),
+        })
+        .map_err(|e| {
+            // Since this is an error associated with the initial creation of the state,
+            // it must be a problem with the arguments provided.
+            SignalProtocolError::InvalidArgument(format!(
+                "post-quantum ratchet: error creating initial A2B state: {e}"
+            ))
+        })?,
+        UsePQRatchet::No => spqr::SerializedState::new(), // empty
+    };
+
+    let mut session = SessionState::new(
+        message_version(has_kyber),
+        local_identity,
+        parameters.their_identity_key(),
+        &sending_chain_root_key,
+        &parameters.our_base_key_pair().public_key,
+        pqr_state,
+    )
+    .with_receiver_chain(parameters.their_ratchet_key(), &chain_key)
+    .with_sender_chain(&sending_ratchet_key, &sending_chain_chain_key);
+
+    if let Some(kyber_ciphertext) = kyber_ciphertext {
+        session.set_kyber_ciphertext(kyber_ciphertext);
+    }
+
+    Ok(session)
+}
+
+pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
+    parameters: &AliceSignalProtocolParameters,
+    mut csprng: &mut R,
+) -> Result<SessionState> {
+    let local_identity = parameters.our_identity_key_pair().identity_key();
+
+    let sending_ratchet_key = KeyPair::generate(&mut csprng);
+
+    let mut secrets = Vec::with_capacity(32 * 5);
+
+    secrets.extend_from_slice(&[0xFFu8; 32]); // "discontinuity bytes"
+
+    let our_base_private_key = parameters.our_base_key_pair().private_key;
+
+    secrets.extend_from_slice(
+        &parameters
+            .our_identity_key_pair()
+            .private_key()
+            .calculate_agreement(parameters.their_signed_pre_key())?,
+    );
+
+    secrets.extend_from_slice(
+        &our_base_private_key.calculate_agreement(parameters.their_identity_key().public_key())?,
+    );
+
+    secrets.extend_from_slice(
+        &our_base_private_key.calculate_agreement(parameters.their_signed_pre_key())?,
+    );
+
+    if let Some(their_one_time_prekey) = parameters.their_one_time_pre_key() {
+        secrets
+            .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
+    }
+
+    let kyber_ciphertext = parameters
+        .their_kyber_pre_key()
+        .map(|kyber_public| {
+            let (ss, ct) = kyber_public.encapsulate(&mut csprng)?;
+            secrets.extend_from_slice(ss.as_ref());
+            Ok::<_, SignalProtocolError>(ct)
+        })
+        .transpose()?;
+    let has_kyber = parameters.their_kyber_pre_key().is_some();
+
+    let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
+        /*
+    let (sending_chain_root_key, sending_chain_chain_key) = root_key.create_chain(
+        parameters.their_ratchet_key(),
+        &sending_ratchet_key.private_key,
+    )?;
+*/
+    let swoosh_sending_key = SwooshKeyPair::generate(&A, true);
+    let (sending_chain_root_key, sending_chain_chain_key) = root_key.create_chain_swoosh(
+        parameters.their_swoosh_ratchet_key().unwrap(),
+        &swoosh_sending_key.public_key(),
+        &swoosh_sending_key.private_key(),
+        true // is_alice = true
     )?;
 
     let self_session = local_identity == parameters.their_identity_key();

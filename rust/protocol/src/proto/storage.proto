@@ -12,6 +12,10 @@ message SessionStructure {
     bytes sender_ratchet_key         = 1;
     bytes sender_ratchet_key_private = 2;
 
+    // Add Swoosh keys
+    bytes sender_swoosh_key          = 16;
+    bytes sender_swoosh_key_private  = 17;
+
     message ChainKey {
       uint32 index = 1;
       bytes  key   = 2;
@@ -65,6 +69,9 @@ message SessionStructure {
   bytes          alice_base_key            = 13;
   bytes          pq_ratchet_state          = 15;
   // Next index: 16
+
+  // Add role tracking
+  bool is_alice = 18;
 }
 
 message RecordStructure {

@@ -4,6 +4,7 @@
 //
 
 use crate::{kem, IdentityKey, IdentityKeyPair, KeyPair, PublicKey};
+use pswoosh::keys::{PrivateSwooshKey, PublicSwooshKey, SwooshKeyPair};
 
 #[derive(Clone, Copy)]
 pub enum UsePQRatchet {
@@ -31,6 +32,10 @@ pub struct AliceSignalProtocolParameters {
     their_ratchet_key: PublicKey,
     their_kyber_pre_key: Option<kem::PublicKey>,
 
+    // Swoosh quantum-resistant keys
+    our_swoosh_key_pair: Option<SwooshKeyPair>,
+    their_swoosh_ratchet_key: Option<PublicSwooshKey>,
+
     use_pq_ratchet: UsePQRatchet,
 }
 
@@ -51,6 +56,8 @@ impl AliceSignalProtocolParameters {
             their_one_time_pre_key: None,
             their_ratchet_key,
             their_kyber_pre_key: None,
+            our_swoosh_key_pair: None,
+            their_swoosh_ratchet_key: None,
             use_pq_ratchet,
         }
     }
@@ -70,6 +77,24 @@ impl AliceSignalProtocolParameters {
 
     pub fn with_their_kyber_pre_key(mut self, kyber_public: &kem::PublicKey) -> Self {
         self.set_their_kyber_pre_key(kyber_public);
+        self
+    }
+
+    pub fn set_our_swoosh_key_pair(&mut self, key_pair: SwooshKeyPair) {
+        self.our_swoosh_key_pair = Some(key_pair);
+    }
+
+    pub fn with_our_swoosh_key_pair(mut self, key_pair: SwooshKeyPair) -> Self {
+        self.set_our_swoosh_key_pair(key_pair);
+        self
+    }
+
+    pub fn set_their_swoosh_ratchet_key(&mut self, public_key: PublicSwooshKey) {
+        self.their_swoosh_ratchet_key = Some(public_key);
+    }
+
+    pub fn with_their_swoosh_ratchet_key(mut self, public_key: PublicSwooshKey) -> Self {
+        self.set_their_swoosh_ratchet_key(public_key);
         self
     }
 
@@ -111,6 +136,16 @@ impl AliceSignalProtocolParameters {
     #[inline]
     pub fn use_pq_ratchet(&self) -> UsePQRatchet {
         self.use_pq_ratchet
+    }
+
+    #[inline]
+    pub fn our_swoosh_key_pair(&self) -> Option<&SwooshKeyPair> {
+        self.our_swoosh_key_pair.as_ref()
+    }
+
+    #[inline]
+    pub fn their_swoosh_ratchet_key(&self) -> Option<&PublicSwooshKey> {
+        self.their_swoosh_ratchet_key.as_ref()
     }
 }
 

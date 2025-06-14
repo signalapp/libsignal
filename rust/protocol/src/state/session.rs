@@ -7,6 +7,7 @@ use std::result::Result;
 use std::time::{Duration, SystemTime};
 
 use prost::Message;
+use pswoosh::keys::{PrivateSwooshKey, PublicSwooshKey, SwooshKeyPair};
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
 
@@ -120,6 +121,7 @@ impl SessionState {
                 local_registration_id: 0,
                 alice_base_key: alice_base_key.serialize().into_vec(),
                 pq_ratchet_state,
+                is_alice: false, // Default value, will be set appropriately by calling code
             },
         }
     }
@@ -279,6 +281,8 @@ impl SessionState {
         let chain = session_structure::Chain {
             sender_ratchet_key: sender.serialize().to_vec(),
             sender_ratchet_key_private: vec![],
+            sender_swoosh_key: vec![],
+            sender_swoosh_key_private: vec![],
             chain_key: Some(chain_key),
             message_keys: vec![],
         };
@@ -310,6 +314,8 @@ impl SessionState {
         let new_chain = session_structure::Chain {
             sender_ratchet_key: sender.public_key.serialize().to_vec(),
             sender_ratchet_key_private: sender.private_key.serialize().to_vec(),
+            sender_swoosh_key: vec![],
+            sender_swoosh_key_private: vec![],
             chain_key: Some(chain_key),
             message_keys: vec![],
         };
@@ -357,6 +363,8 @@ impl SessionState {
             None => session_structure::Chain {
                 sender_ratchet_key: vec![],
                 sender_ratchet_key_private: vec![],
+                sender_swoosh_key: vec![],
+                sender_swoosh_key_private: vec![],
                 chain_key: Some(chain_key),
                 message_keys: vec![],
             },
@@ -508,6 +516,7 @@ impl SessionState {
             local_registration_id: _local_registration_id,
             alice_base_key: _alice_base_key,
             pq_ratchet_state: _pq_ratchet_state,
+            is_alice: _is_alice,
         } = &self.session;
         // ####### IMPORTANT #######
         // Don't forget to clean up new pending fields.
@@ -559,6 +568,84 @@ impl SessionState {
 
     pub(crate) fn pq_ratchet_state(&self) -> &spqr::SerializedState {
         &self.session.pq_ratchet_state
+    }
+
+    pub(crate) fn set_is_alice(&mut self, is_alice: bool) {
+        self.session.is_alice = is_alice;
+    }
+
+    pub(crate) fn is_alice(&self) -> bool {
+        self.session.is_alice
+    }
+
+    pub(crate) fn sender_swoosh_key(&self) -> Result<Option<PublicSwooshKey>, InvalidSessionError> {
+        match &self.session.sender_chain {
+            None => Ok(None),
+            Some(ref c) if c.sender_swoosh_key.is_empty() => Ok(None),
+            Some(ref c) => {
+                PublicSwooshKey::deserialize(&c.sender_swoosh_key)
+                    .map(Some)
+                    .map_err(|_| InvalidSessionError("invalid sender chain swoosh key"))
+            }
+        }
+    }
+
+    pub(crate) fn sender_swoosh_private_key(&self) -> Result<Option<PrivateSwooshKey>, InvalidSessionError> {
+        match &self.session.sender_chain {
+            None => Ok(None),
+            Some(ref c) if c.sender_swoosh_key_private.is_empty() => Ok(None),
+            Some(ref c) => {
+                PrivateSwooshKey::deserialize(&c.sender_swoosh_key_private)
+                    .map(Some)
+                    .map_err(|_| InvalidSessionError("invalid sender chain private swoosh key"))
+            }
+        }
+    }
+
+    pub(crate) fn set_sender_swoosh_chain(&mut self, sender: &SwooshKeyPair, next_chain_key: &ChainKey) {
+        let chain_key = session_structure::chain::ChainKey {
+            index: next_chain_key.index(),
+            key: next_chain_key.key().to_vec(),
+        };
+
+        let new_chain = session_structure::Chain {
+            sender_ratchet_key: vec![], // Empty for Swoosh-only chains
+            sender_ratchet_key_private: vec![],
+            sender_swoosh_key: sender.public_key().serialize().to_vec(),
+            sender_swoosh_key_private: sender.private_key().serialize().to_vec(),
+            chain_key: Some(chain_key),
+            message_keys: vec![],
+        };
+
+        self.session.sender_chain = Some(new_chain);
+    }
+
+    pub(crate) fn add_receiver_swoosh_chain(&mut self, sender: &PublicSwooshKey, chain_key: &ChainKey) {
+        let chain_key = session_structure::chain::ChainKey {
+            index: chain_key.index(),
+            key: chain_key.key().to_vec(),
+        };
+
+        let chain = session_structure::Chain {
+            sender_ratchet_key: vec![], // Empty for Swoosh-only chains
+            sender_ratchet_key_private: vec![],
+            sender_swoosh_key: sender.serialize().to_vec(),
+            sender_swoosh_key_private: vec![], // Receiver doesn't have private key
+            chain_key: Some(chain_key),
+            message_keys: vec![],
+        };
+
+        self.session.receiver_chains.push(chain);
+
+        if self.session.receiver_chains.len() > consts::MAX_RECEIVER_CHAINS {
+            log::info!(
+                "Trimming excessive receiver_chain for session with base key {}, chain count: {}",
+                self.sender_ratchet_key_for_logging()
+                    .unwrap_or_else(|e| format!("<error: {}>", e.0)),
+                self.session.receiver_chains.len()
+            );
+            self.session.receiver_chains.remove(0);
+        }
     }
 }
 
