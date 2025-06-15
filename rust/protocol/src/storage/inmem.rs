@@ -26,6 +26,7 @@ pub struct InMemIdentityKeyStore {
     key_pair: IdentityKeyPair,
     registration_id: u32,
     known_keys: HashMap<ProtocolAddress, IdentityKey>,
+    is_alice: bool,
 }
 
 impl InMemIdentityKeyStore {
@@ -33,11 +34,12 @@ impl InMemIdentityKeyStore {
     ///
     /// `key_pair` corresponds to [traits::IdentityKeyStore::get_identity_key_pair], and
     /// `registration_id` corresponds to [traits::IdentityKeyStore::get_local_registration_id].
-    pub fn new(key_pair: IdentityKeyPair, registration_id: u32) -> Self {
+    pub fn new(key_pair: IdentityKeyPair, registration_id: u32, is_alice:bool) -> Self {
         Self {
             key_pair,
             registration_id,
             known_keys: HashMap::new(),
+            is_alice,
         }
     }
 
@@ -368,13 +370,13 @@ pub struct InMemSignalProtocolStore {
 impl InMemSignalProtocolStore {
     /// Create an object with the minimal implementation of [traits::ProtocolStore], representing
     /// the given identity `key_pair` along with the separate randomly chosen `registration_id`.
-    pub fn new(key_pair: IdentityKeyPair, registration_id: u32) -> Result<Self> {
+    pub fn new(key_pair: IdentityKeyPair, registration_id: u32, is_alice: bool) -> Result<Self> {
         Ok(Self {
             session_store: InMemSessionStore::new(),
             pre_key_store: InMemPreKeyStore::new(),
             signed_pre_key_store: InMemSignedPreKeyStore::new(),
             kyber_pre_key_store: InMemKyberPreKeyStore::new(),
-            identity_store: InMemIdentityKeyStore::new(key_pair, registration_id),
+            identity_store: InMemIdentityKeyStore::new(key_pair, registration_id, is_alice),
             sender_key_store: InMemSenderKeyStore::new(),
         })
     }

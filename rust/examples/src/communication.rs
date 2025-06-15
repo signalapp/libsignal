@@ -20,8 +20,8 @@ async fn main() -> Result<(), SignalProtocolError> {
     println!("Bob Identity Public Key: {:?}", hex::encode(bob_identity.identity_key().serialize()));
     
     // Create in-memory stores for both parties
-    let mut alice_store = InMemSignalProtocolStore::new(alice_identity, csprng.next_u32())?;
-    let mut bob_store = InMemSignalProtocolStore::new(bob_identity, csprng.next_u32())?;
+    let mut alice_store = InMemSignalProtocolStore::new(alice_identity, csprng.next_u32(), true)?;
+    let mut bob_store = InMemSignalProtocolStore::new(bob_identity, csprng.next_u32(), false)?;
     
     // Generate Bob's signed pre-key
     let bob_signed_prekey_pair = KeyPair::generate(&mut csprng);

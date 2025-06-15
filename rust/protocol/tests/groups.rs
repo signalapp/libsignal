@@ -377,6 +377,7 @@ fn group_sealed_sender_multiple_devices() -> Result<(), SignalProtocolError> {
         carol2_store.identity_store = InMemIdentityKeyStore::new(
             carol_store.get_identity_key_pair().await?,
             carol2_store.get_local_registration_id().await?,
+            true
         );
 
         let alice_pubkey = *alice_store.get_identity_key_pair().await?.public_key();
@@ -615,6 +616,7 @@ fn group_sealed_sender_multiple_devices_and_excluded_recipients() -> Result<(), 
         carol2_store.identity_store = InMemIdentityKeyStore::new(
             carol_store.get_identity_key_pair().await?,
             carol2_store.get_local_registration_id().await?,
+            true
         );
 
         let alice_pubkey = *alice_store.get_identity_key_pair().await?.public_key();

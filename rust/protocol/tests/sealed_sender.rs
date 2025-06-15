@@ -797,7 +797,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
 
         let mut alice_store = support::test_in_memory_protocol_store()?;
         let mut bob_store =
-            InMemSignalProtocolStore::new(IdentityKeyPair::generate(&mut rng), 0x4000)?;
+            InMemSignalProtocolStore::new(IdentityKeyPair::generate(&mut rng), 0x4000, false)?;
 
         let alice_pubkey = *alice_store.get_identity_key_pair().await?.public_key();
 

@@ -25,7 +25,7 @@ pub fn test_in_memory_protocol_store() -> Result<InMemSignalProtocolStore, Signa
     // Valid registration IDs fit in 14 bits.
     let registration_id: u8 = csprng.random();
 
-    InMemSignalProtocolStore::new(identity_key, registration_id as u32)
+    InMemSignalProtocolStore::new(identity_key, registration_id as u32, true)
 }
 
 pub async fn encrypt(
@@ -265,7 +265,7 @@ impl TestStoreBuilder {
         // Valid registration IDs fit in 14 bits.
         let registration_id: u8 = rng.random();
 
-        let store = InMemSignalProtocolStore::new(identity_key, registration_id as u32)
+        let store = InMemSignalProtocolStore::new(identity_key, registration_id as u32, true)
             .expect("can create store");
         Self {
             rng,
