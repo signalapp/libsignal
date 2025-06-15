@@ -59,7 +59,7 @@ async fn main() -> Result<(), SignalProtocolError> {
     println!("\n=== BOB'S KYBER PRE-KEY (Post-Quantum) ===");
     println!("Kyber Pre-Key ID: {:?}", bob_kyber_prekey_id);
     println!("Kyber Public Key Length: {} bytes", bob_kyber_keypair.public_key.serialize().len());
-    println!("Kyber Public Key: {:?}", hex::encode(bob_kyber_keypair.public_key.serialize()));
+    //println!("Kyber Public Key: {:?}", hex::encode(bob_kyber_keypair.public_key.serialize()));
     println!("Kyber Pre-Key Signature: {:?}", hex::encode(&bob_kyber_prekey_signature));
     
     // Store Bob's pre-keys
@@ -125,7 +125,7 @@ async fn main() -> Result<(), SignalProtocolError> {
     println!("Alice sent: {}", alice_message);
     println!("Ciphertext type: {:?}", alice_ciphertext.message_type());
     println!("Ciphertext length: {} bytes", alice_ciphertext.serialize().len());
-    println!("Encrypted message: {:?}", hex::encode(alice_ciphertext.serialize()));
+    //println!("Encrypted message: {:?}", hex::encode(alice_ciphertext.serialize()));
     
     // Bob decrypts Alice's message - correct usage
     let bob_plaintext = match &alice_ciphertext {

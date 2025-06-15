@@ -97,6 +97,10 @@ impl traits::IdentityKeyStore for InMemIdentityKeyStore {
             Some(k) => Ok(Some(k.to_owned())),
         }
     }
+
+    async fn is_alice(&self) -> Result<bool> {
+        Ok(self.is_alice)
+    }
 }
 
 /// Reference implementation of [traits::PreKeyStore].
@@ -428,6 +432,10 @@ impl traits::IdentityKeyStore for InMemSignalProtocolStore {
 
     async fn get_identity(&self, address: &ProtocolAddress) -> Result<Option<IdentityKey>> {
         self.identity_store.get_identity(address).await
+    }
+
+    async fn is_alice(&self) -> Result<bool> {
+        self.identity_store.is_alice().await
     }
 }
 

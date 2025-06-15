@@ -659,6 +659,13 @@ impl IdentityKeyStore for NodeIdentityKeyStore {
             .await
             .map_err(|s| js_error_to_rust("isTrustedIdentity", s))
     }
+
+    async fn is_alice(&self) -> Result<bool, SignalProtocolError> {
+        // Node.js bridge: Default to false (Bob's role) since this information
+        // is not exposed through the JavaScript interface. Applications that need
+        // Alice/Bob role distinction should use the native Rust interface.
+        Ok(false)
+    }
 }
 
 pub struct NodeSenderKeyStore {

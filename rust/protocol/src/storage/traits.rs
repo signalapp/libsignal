@@ -79,6 +79,11 @@ pub trait IdentityKeyStore {
 
     /// Return the public identity for the given `address`, if known.
     async fn get_identity(&self, address: &ProtocolAddress) -> Result<Option<IdentityKey>>;
+
+    /// Return whether this identity store represents Alice in the protocol exchange.
+    ///
+    /// This is used to determine the role in post-quantum ratchet operations.
+    async fn is_alice(&self) -> Result<bool>;
 }
 
 /// Interface for storing pre-keys downloaded from a server.

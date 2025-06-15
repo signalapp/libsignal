@@ -243,6 +243,13 @@ impl IdentityKeyStore for JniIdentityKeyStore<'_> {
     ) -> Result<Option<IdentityKey>, SignalProtocolError> {
         Ok(self.do_get_identity(address)?)
     }
+
+    async fn is_alice(&self) -> Result<bool, SignalProtocolError> {
+        // Node.js bridge: Default to false (Bob's role) since this information
+        // is not exposed through the JavaScript interface. Applications that need
+        // Alice/Bob role distinction should use the native Rust interface.
+        Ok(false)
+    }
 }
 
 pub struct JniPreKeyStore<'a> {

@@ -149,6 +149,13 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
 
         Ok(Some(IdentityKey::new(*pk)))
     }
+
+    async fn is_alice(&self) -> Result<bool, SignalProtocolError> {
+        // FFI bridge: Default to false (Bob's role) since this information
+        // is not exposed through the C interface. Applications that need
+        // Alice/Bob role distinction should use the native Rust interface.
+        Ok(false)
+    }
 }
 
 type LoadPreKey =
