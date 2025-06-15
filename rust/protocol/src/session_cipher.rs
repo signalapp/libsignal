@@ -699,10 +699,12 @@ fn get_or_create_chain_key<R: Rng + CryptoRng>(
 ) -> Result<ChainKey> {
     if let Some(chain) = state.get_receiver_chain_key(their_ephemeral)? {
         log::debug!("{remote_address} has existing receiver chain.");
+        println!("**Found existing chain for {remote_address}");
         return Ok(chain);
     }
 
     log::info!("{remote_address} creating new chains.");
+    println!("**Creating new chains");
 
     let root_key = state.root_key()?;
     let our_ephemeral = state.sender_ratchet_private_key()?;

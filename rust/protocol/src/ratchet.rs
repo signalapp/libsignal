@@ -67,6 +67,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     parameters: &AliceSignalProtocolParameters,
     mut csprng: &mut R,
 ) -> Result<SessionState> {
+    println!("**Alice session initialized");
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
     let sending_ratchet_key = KeyPair::generate(&mut csprng);
@@ -258,6 +259,7 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
 pub(crate) fn initialize_bob_session(
     parameters: &BobSignalProtocolParameters,
 ) -> Result<SessionState> {
+    println!("**Bob session initialized");
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
     let mut secrets = Vec::with_capacity(32 * 5);

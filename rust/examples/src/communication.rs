@@ -97,6 +97,7 @@ async fn main() -> Result<(), SignalProtocolError> {
     println!("Registration ID: {:?}", bob_store.get_local_registration_id().await?);
     
     // Alice processes Bob's pre-key bundle to establish session
+    // Alice session is initialized and initial double ratchet keys established
     process_prekey_bundle(
         &bob_address,
         &mut alice_store.session_store,

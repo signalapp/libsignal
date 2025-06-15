@@ -189,6 +189,7 @@ impl RootKey {
         their_ratchet_key: &PublicKey,
         our_ratchet_key: &PrivateKey,
     ) -> Result<(RootKey, ChainKey)> {
+        println!("**Create chain function called");
         let shared_secret = our_ratchet_key.calculate_agreement(their_ratchet_key)?;
         let mut derived_secret_bytes = [0; 64];
         hkdf::Hkdf::<sha2::Sha256>::new(Some(&self.key), &shared_secret)
