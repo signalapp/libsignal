@@ -7,27 +7,11 @@ use std::fmt::Display;
 use std::time::Duration;
 
 use http::{HeaderName, HeaderValue};
-use tokio::time::Instant;
 use tokio_boring_signal::HandshakeError;
 
 use crate::{certs, AsStaticHttpHeader};
 
 pub trait LogSafeDisplay: Display {}
-
-/// Classification of connection errors by fatality.
-#[cfg_attr(any(test, feature = "test-util"), derive(Clone, Copy))]
-#[derive(Debug)]
-pub enum ErrorClass {
-    /// Non-fatal, somewhat counterintuitively unreachable server is a non-fatal error at this level
-    /// as other connection parameters can still result in a successful connection.
-    Intermittent,
-    /// Fatal errors with a known retry-after value. For situations when we can reach the server,
-    /// but it replies with a 429-Too Many Requests _and_ a recommended delay before any retries.
-    RetryAt(Instant),
-    /// Server can be reached at a lower level of net stack (TCP), but responds with an error while
-    /// establishing connection at a higher level (HTTP, WebSocket, etc.)
-    Fatal,
-}
 
 /// Vacuous implementation since you can't actually [`Display::fmt`] a
 /// [`std::convert::Infallible`].
