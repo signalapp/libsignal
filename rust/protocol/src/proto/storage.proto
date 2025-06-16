@@ -13,7 +13,7 @@ message SessionStructure {
     bytes sender_ratchet_key_private = 2;
 
     // Add Swoosh keys
-    bytes sender_swoosh_key          = 16;
+    bytes sender_swoosh_key_public   = 16;
     bytes sender_swoosh_key_private  = 17;
 
     message ChainKey {

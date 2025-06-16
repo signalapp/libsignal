@@ -2342,6 +2342,7 @@ dependencies = [
  "nonzero_ext",
  "paste",
  "prost",
+ "pswoosh",
  "rand 0.9.0",
  "scopeguard",
  "sha2",

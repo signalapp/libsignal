@@ -5,6 +5,7 @@
 
 use hmac::{Hmac, Mac};
 use prost::Message;
+use pswoosh::keys::PublicSwooshKey;
 use rand::{CryptoRng, Rng};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
@@ -62,6 +63,7 @@ impl CiphertextMessage {
 pub struct SignalMessage {
     message_version: u8,
     sender_ratchet_key: PublicKey,
+    sender_ratchet_swoosh_key: PublicSwooshKey,
     counter: u32,
     #[cfg_attr(not(test), expect(dead_code))]
     previous_counter: u32,
@@ -78,6 +80,7 @@ impl SignalMessage {
         message_version: u8,
         mac_key: &[u8],
         sender_ratchet_key: PublicKey,
+        sender_ratchet_swoosh_key: PublicSwooshKey,
         counter: u32,
         previous_counter: u32,
         ciphertext: &[u8],
@@ -87,6 +90,7 @@ impl SignalMessage {
     ) -> Result<Self> {
         let message = proto::wire::SignalMessage {
             ratchet_key: Some(sender_ratchet_key.serialize().into_vec()),
+            ratchet_swoosh_key: Some(sender_ratchet_swoosh_key.serialize().into_vec()),
             counter: Some(counter),
             previous_counter: Some(previous_counter),
             ciphertext: Some(Vec::<u8>::from(ciphertext)),
@@ -112,6 +116,7 @@ impl SignalMessage {
         Ok(Self {
             message_version,
             sender_ratchet_key,
+            sender_ratchet_swoosh_key,
             counter,
             previous_counter,
             ciphertext: ciphertext.into(),
@@ -128,6 +133,10 @@ impl SignalMessage {
     #[inline]
     pub fn sender_ratchet_key(&self) -> &PublicKey {
         &self.sender_ratchet_key
+    }
+    #[inline]
+    pub fn sender_ratchet_swoosh_key(&self) -> &PublicSwooshKey {
+        &self.sender_ratchet_swoosh_key
     }
 
     #[inline]
@@ -229,6 +238,11 @@ impl TryFrom<&[u8]> for SignalMessage {
             .ratchet_key
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let sender_ratchet_key = PublicKey::deserialize(&sender_ratchet_key)?;
+        let sender_ratchet_swoosh_key = proto_structure
+            .ratchet_swoosh_key
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let sender_ratchet_swoosh_key =
+            PublicSwooshKey::deserialize(&sender_ratchet_swoosh_key)?;
         let counter = proto_structure
             .counter
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
@@ -241,6 +255,7 @@ impl TryFrom<&[u8]> for SignalMessage {
         Ok(SignalMessage {
             message_version,
             sender_ratchet_key,
+            sender_ratchet_swoosh_key,
             counter,
             previous_counter,
             ciphertext,
@@ -801,6 +816,7 @@ impl TryFrom<&[u8]> for PlaintextContent {
 #[derive(Debug, Clone)]
 pub struct DecryptionErrorMessage {
     ratchet_key: Option<PublicKey>,
+    ratchet_swoosh_key: Option<PublicSwooshKey>,
     timestamp: Timestamp,
     device_id: u32,
     serialized: Box<[u8]>,
@@ -830,15 +846,34 @@ impl DecryptionErrorMessage {
             }
         };
 
+        let ratchet_swoosh_key = match original_type {
+            CiphertextMessageType::Whisper => {
+                Some(*SignalMessage::try_from(original_bytes)?.sender_ratchet_swoosh_key())
+            }
+            CiphertextMessageType::PreKey => Some(
+                *PreKeySignalMessage::try_from(original_bytes)?
+                    .message()
+                    .sender_ratchet_swoosh_key(),
+            ),
+            CiphertextMessageType::SenderKey => None,
+            CiphertextMessageType::Plaintext => {
+                return Err(SignalProtocolError::InvalidArgument(
+                    "cannot create a DecryptionErrorMessage for plaintext content; it is not encrypted".to_string()
+                ));
+            }
+        };
+
         let proto_message = proto::service::DecryptionErrorMessage {
             timestamp: Some(original_timestamp.epoch_millis()),
             ratchet_key: ratchet_key.map(|k| k.serialize().into()),
+            ratchet_swoosh_key: ratchet_swoosh_key.map(|k| k.serialize().into()),
             device_id: Some(original_sender_device_id),
         };
         let serialized = proto_message.encode_to_vec();
 
         Ok(Self {
             ratchet_key,
+            ratchet_swoosh_key,
             timestamp: original_timestamp,
             device_id: original_sender_device_id,
             serialized: serialized.into_boxed_slice(),
@@ -853,6 +888,11 @@ impl DecryptionErrorMessage {
     #[inline]
     pub fn ratchet_key(&self) -> Option<&PublicKey> {
         self.ratchet_key.as_ref()
+    }
+
+    #[inline]
+    pub fn ratchet_swoosh_key(&self) -> Option<&PublicSwooshKey> {
+        self.ratchet_swoosh_key.as_ref()
     }
 
     #[inline]
@@ -880,10 +920,15 @@ impl TryFrom<&[u8]> for DecryptionErrorMessage {
             .ratchet_key
             .map(|k| PublicKey::deserialize(&k))
             .transpose()?;
+        let ratchet_swoosh_key = proto_structure
+            .ratchet_swoosh_key
+            .map(|k| PublicSwooshKey::deserialize(&k))
+            .transpose()?;
         let device_id = proto_structure.device_id.unwrap_or_default();
         Ok(Self {
             timestamp,
             ratchet_key,
+            ratchet_swoosh_key,
             device_id,
             serialized: Box::from(value),
         })
@@ -912,6 +957,8 @@ pub fn extract_decryption_error_message_from_serialized_content(
 
 #[cfg(test)]
 mod tests {
+    use pswoosh::keys::SwooshKeyPair;
+    use pswoosh::sys_a::A;
     use rand::rngs::OsRng;
     use rand::{CryptoRng, Rng, TryRngCore as _};
 
@@ -931,6 +978,7 @@ mod tests {
         let ciphertext = ciphertext;
 
         let sender_ratchet_key_pair = KeyPair::generate(csprng);
+        let sender_ratchet_swoosh_key_pair = SwooshKeyPair::generate(true);
         let sender_identity_key_pair = KeyPair::generate(csprng);
         let receiver_identity_key_pair = KeyPair::generate(csprng);
 
@@ -938,6 +986,7 @@ mod tests {
             4,
             &mac_key,
             sender_ratchet_key_pair.public_key,
+            sender_ratchet_swoosh_key_pair.public_key,
             42,
             41,
             &ciphertext,

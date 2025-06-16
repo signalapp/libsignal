@@ -7,7 +7,6 @@ mod keys;
 mod params;
 
 use pswoosh::keys::SwooshKeyPair;
-use pswoosh::sys_a::A;
 use rand::{CryptoRng, Rng};
 
 pub(crate) use self::keys::{ChainKey, MessageKeyGenerator, RootKey};
@@ -202,7 +201,7 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
 
     let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
 
-    let swoosh_sending_key = SwooshKeyPair::generate(&A, true);
+    let swoosh_sending_key = SwooshKeyPair::generate(true);
     // Use deterministic role assignment: Alice has lexicographically smaller identity key
     let is_alice = RootKey::determine_swoosh_role(
         parameters.our_identity_key_pair().identity_key(),

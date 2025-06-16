@@ -21,4 +21,5 @@ message DecryptionErrorMessage {
     optional bytes ratchet_key = 1;  // set to the public ratchet key from the SignalMessage if a 1-1 payload fails to decrypt
     optional uint64 timestamp = 2;
     optional uint32 device_id = 3;
+    optional bytes ratchet_swoosh_key = 4;  // set to the public ratchet swoosh key from the SignalMessage
 }

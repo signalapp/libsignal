@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 use std::fmt;
 use subtle::ConstantTimeEq;
 
-use crate::{PUBLICKEY_BYTES, SECRETKEY_BYTES, SYMBYTES, Matrix, pswoosh_keygen, pswoosh_skey_deriv};
+use crate::{pswoosh_keygen, pswoosh_skey_deriv, sys_a::{A, AT}, Matrix, PUBLICKEY_BYTES, SECRETKEY_BYTES, SYMBYTES};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SwooshKeyType {
@@ -264,8 +264,15 @@ pub struct SwooshKeyPair {
 }
 
 impl SwooshKeyPair {
-    pub fn generate(matrix: &Matrix, f: bool) -> Self {
-        let (private_key_bytes, public_key_bytes) = pswoosh_keygen(matrix, f);
+    pub fn generate(f: bool) -> Self {
+
+        let (private_key_bytes, public_key_bytes);
+        if f{
+            (private_key_bytes, public_key_bytes) = pswoosh_keygen(&A, f);
+        } else{
+            (private_key_bytes, public_key_bytes) = pswoosh_keygen(&AT, f);
+        }
+        
         
         let public_key = PublicSwooshKey::from(PublicSwooshKeyData::PswooshPublicKey(public_key_bytes));
         let private_key = PrivateSwooshKey::from(PrivateSwooshKeyData::PswooshPrivateKey(private_key_bytes));
@@ -322,13 +329,12 @@ impl TryFrom<PrivateSwooshKey> for SwooshKeyPair {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sys_a::{A, AT};
 
     #[test]
     fn test_key_generation() -> Result<(), SwooshError> {
         // Test key generation with both matrix orientations
-        let key_pair1 = SwooshKeyPair::generate(&A, true);
-        let key_pair2 = SwooshKeyPair::generate(&AT, false);
+        let key_pair1 = SwooshKeyPair::generate(true);
+        let key_pair2 = SwooshKeyPair::generate(false);
         
         // Verify key types
         assert_eq!(key_pair1.public_key.key_type(), SwooshKeyType::Pswoosh);
@@ -347,7 +353,7 @@ mod tests {
 
     #[test]
     fn test_serialization_deserialization() -> Result<(), SwooshError> {
-        let key_pair = SwooshKeyPair::generate(&A, true);
+        let key_pair = SwooshKeyPair::generate(true);
         
         // Test public key serialization/deserialization
         let serialized_public = key_pair.public_key.serialize();
@@ -401,7 +407,7 @@ mod tests {
 
     #[test]
     fn test_deserialization_with_trailing_data() -> Result<(), SwooshError> {
-        let key_pair = SwooshKeyPair::generate(&A, true);
+        let key_pair = SwooshKeyPair::generate(true);
         let mut serialized = key_pair.public_key.serialize().to_vec();
         
         // Add trailing data
@@ -416,8 +422,8 @@ mod tests {
 
     #[test]
     fn test_key_equality() -> Result<(), SwooshError> {
-        let key_pair1 = SwooshKeyPair::generate(&A, true);
-        let key_pair2 = SwooshKeyPair::generate(&A, true);
+        let key_pair1 = SwooshKeyPair::generate(true);
+        let key_pair2 = SwooshKeyPair::generate(true);
         
         // Different keys should not be equal
         assert_ne!(key_pair1.public_key, key_pair2.public_key);
@@ -435,8 +441,8 @@ mod tests {
 
     #[test]
     fn test_key_ordering() -> Result<(), SwooshError> {
-        let key1 = SwooshKeyPair::generate(&A, true).public_key;
-        let key2 = SwooshKeyPair::generate(&A, true).public_key;
+        let key1 = SwooshKeyPair::generate(true).public_key;
+        let key2 = SwooshKeyPair::generate(true).public_key;
         
         // Keys should have consistent ordering
         let ord1 = key1.cmp(&key2);
@@ -457,8 +463,8 @@ mod tests {
     #[test]
     fn test_shared_secret_derivation() -> Result<(), SwooshError> {
         // Generate two key pairs
-        let key_pair1 = SwooshKeyPair::generate(&A, true);
-        let key_pair2 = SwooshKeyPair::generate(&AT, false);
+        let key_pair1 = SwooshKeyPair::generate(true);
+        let key_pair2 = SwooshKeyPair::generate(false);
         
         // Derive shared secrets
         let shared_secret1 = key_pair1.derive_shared_secret(&key_pair2.public_key, true)?;
@@ -473,7 +479,7 @@ mod tests {
 
     #[test]
     fn test_from_bytes_constructors() -> Result<(), SwooshError> {
-        let key_pair = SwooshKeyPair::generate(&A, true);
+        let key_pair = SwooshKeyPair::generate(true);
         
         // Test from_pswoosh_public_key_bytes
         let pub_key_from_bytes = PublicSwooshKey::from_pswoosh_public_key_bytes(
@@ -494,7 +500,7 @@ mod tests {
 
     #[test]
     fn test_try_from_implementations() -> Result<(), SwooshError> {
-        let key_pair = SwooshKeyPair::generate(&A, true);
+        let key_pair = SwooshKeyPair::generate(true);
         
         // Test TryFrom for PublicSwooshKey
         let serialized_pub = key_pair.public_key.serialize();
@@ -538,7 +544,7 @@ mod tests {
 
     #[test]
     fn test_debug_implementations() -> Result<(), SwooshError> {
-        let key_pair = SwooshKeyPair::generate(&A, true);
+        let key_pair = SwooshKeyPair::generate(true);
         
         // Test that Debug is implemented and produces reasonable output
         let debug_str = format!("{:?}", key_pair.public_key);

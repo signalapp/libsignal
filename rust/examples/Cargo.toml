@@ -12,3 +12,19 @@ tokio = { version = "1.0", features = ["full"] }
 [[bin]]
 name = "communication"
 path = "src/communication.rs"
+
+[[bin]]
+name = "communication_debug"
+path = "src/communication_debug.rs"
+
+[[bin]]
+name = "stack_overflow_test"
+path = "src/stack_overflow_test.rs"
+
+[[bin]]
+name = "traditional_ratchet_test"
+path = "src/traditional_ratchet_test.rs"
+
+[[bin]]
+name = "key_test"
+path = "src/key_test.rs"

@@ -1,3 +1,5 @@
+mod communication_debug;
+
 use libsignal_protocol::*;
 use rand::{rng, RngCore};
 use std::time::SystemTime;
@@ -6,7 +8,7 @@ use std::time::SystemTime;
 async fn main() -> Result<(), SignalProtocolError> {
     // Initialize random number generator
     let mut csprng = rng();
-    
+    println!("=== SIGNAL PROTOCOL COMMUNICATION EXAMPLE ===");
     // Create addresses for Alice and Bob
     let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
     let bob_address = ProtocolAddress::new("+14151112222".to_owned(), 1.into());

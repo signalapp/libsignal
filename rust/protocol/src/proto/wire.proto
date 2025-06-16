@@ -13,6 +13,7 @@ message SignalMessage {
   optional uint32 previous_counter = 3;
   optional bytes  ciphertext       = 4;
   optional bytes  pq_ratchet       = 5;
+  optional bytes ratchet_swoosh_key= 6;
 }
 
 message PreKeySignalMessage {

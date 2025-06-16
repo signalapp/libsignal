@@ -11,6 +11,7 @@ use libsignal_bridge_macros::*;
 use libsignal_bridge_types::jni;
 use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
+use pswoosh::keys::{PublicSwooshKey};
 use rand::TryRngCore as _;
 use static_assertions::const_assert_eq;
 use uuid::Uuid;
@@ -359,6 +360,7 @@ fn SignalMessage_New(
     message_version: u8,
     mac_key: &[u8],
     sender_ratchet_key: &PublicKey,
+    sender_ratchet_swoosh_key: &PublicSwooshKey,
     counter: u32,
     previous_counter: u32,
     ciphertext: &[u8],
@@ -370,6 +372,7 @@ fn SignalMessage_New(
         message_version,
         mac_key,
         *sender_ratchet_key,
+        *sender_ratchet_swoosh_key,
         counter,
         previous_counter,
         ciphertext,

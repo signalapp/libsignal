@@ -9,7 +9,7 @@ use pswoosh::keys::{PublicSwooshKey, SwooshKeyPair};
 use rand::{CryptoRng, Rng};
 
 use crate::consts::{MAX_FORWARD_JUMPS, MAX_UNACKNOWLEDGED_SESSION_AGE};
-use crate::ratchet::{ChainKey, MessageKeyGenerator, RootKey, UsePQRatchet};
+use crate::ratchet::{ChainKey, MessageKeyGenerator, UsePQRatchet};
 use crate::state::{InvalidSessionError, SessionState};
 use crate::{
     session, CiphertextMessage, CiphertextMessageType, Direction, IdentityKeyStore, KeyPair,
@@ -32,9 +32,9 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
     let session_state = session_record
         .session_state_mut()
         .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
-
+    
     let chain_key = session_state.get_sender_chain_key()?;
-
+    
     let (pqr_msg, pqr_key) = session_state.pq_ratchet_send(csprng).map_err(|e| {
         // Since we're sending, this must be an error with the state.
         SignalProtocolError::InvalidState(
@@ -45,6 +45,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
     let message_keys = chain_key.message_keys().generate_keys(pqr_key);
 
     let sender_ephemeral = session_state.sender_ratchet_key()?;
+    let sender_swoosh_ephemeral = session_state.sender_ratchet_swoosh_public_key()?;
     let previous_counter = session_state.previous_counter();
     let session_version = session_state
         .session_version()?
@@ -58,7 +59,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
             format!("no remote identity key for {remote_address}"),
         )
     })?;
-
+    println!("Encrypting message for {}", remote_address);
     let ctext =
         signal_crypto::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())
             .map_err(|_| {
@@ -94,6 +95,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
             session_version,
             message_keys.mac_key(),
             sender_ephemeral,
+            sender_swoosh_ephemeral,
             chain_key.index(),
             previous_counter,
             &ctext,
@@ -122,6 +124,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
             session_version,
             message_keys.mac_key(),
             sender_ephemeral,
+            sender_swoosh_ephemeral,
             chain_key.index(),
             previous_counter,
             &ctext,
@@ -157,6 +160,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
         .store_session(remote_address, &session_record)
         .await?;
     Ok(message)
+    
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -249,6 +253,7 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         &mut session_record,
         ciphertext.message(),
         CiphertextMessageType::PreKey,
+        identity_store.is_alice().await?,
         csprng,
     )?;
 
@@ -293,6 +298,7 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
         &mut session_record,
         ciphertext,
         CiphertextMessageType::Whisper,
+        identity_store.is_alice().await?,
         csprng,
     )?;
 
@@ -425,6 +431,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
     record: &mut SessionRecord,
     ciphertext: &SignalMessage,
     original_message_type: CiphertextMessageType,
+    is_alice: bool,
     csprng: &mut R,
 ) -> Result<Vec<u8>> {
     debug_assert!(matches!(
@@ -618,9 +625,108 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     }
 
     let their_ephemeral = ciphertext.sender_ratchet_key();
+    let their_swoosh_ephemeral = ciphertext.sender_ratchet_swoosh_key();
     let counter = ciphertext.counter();
     let chain_key = get_or_create_chain_key(state, their_ephemeral, remote_address, csprng)?;
     let message_key_gen = get_or_create_message_key(
+        state,
+        their_ephemeral,
+        remote_address,
+        original_message_type,
+        &chain_key,
+        counter,
+    )?;
+    let pqr_key = state
+        .pq_ratchet_recv(ciphertext.pq_ratchet())
+        .map_err(|e| match e {
+            spqr::Error::StateDecode => SignalProtocolError::InvalidState(
+                "decrypt_message_with_state",
+                format!("post-quantum ratchet error: {e}"),
+            ),
+            _ => {
+                log::info!("post-quantum ratchet error in decrypt_message_with_state: {e}");
+                SignalProtocolError::InvalidMessage(
+                    original_message_type,
+                    "post-quantum ratchet error",
+                )
+            }
+        })?;
+    let message_keys = message_key_gen.generate_keys(pqr_key);
+
+    let their_identity_key =
+        state
+            .remote_identity_key()?
+            .ok_or(SignalProtocolError::InvalidSessionStructure(
+                "cannot decrypt without remote identity key",
+            ))?;
+
+    let mac_valid = ciphertext.verify_mac(
+        &their_identity_key,
+        &state.local_identity_key()?,
+        message_keys.mac_key(),
+    )?;
+
+    if !mac_valid {
+        return Err(SignalProtocolError::InvalidMessage(
+            original_message_type,
+            "MAC verification failed",
+        ));
+    }
+
+    let ptext = match signal_crypto::aes_256_cbc_decrypt(
+        ciphertext.body(),
+        message_keys.cipher_key(),
+        message_keys.iv(),
+    ) {
+        Ok(ptext) => ptext,
+        Err(signal_crypto::DecryptionError::BadKeyOrIv) => {
+            log::warn!("{current_or_previous} session state corrupt for {remote_address}",);
+            return Err(SignalProtocolError::InvalidSessionStructure(
+                "invalid receiver chain message keys",
+            ));
+        }
+        Err(signal_crypto::DecryptionError::BadCiphertext(msg)) => {
+            log::warn!("failed to decrypt 1:1 message: {msg}");
+            return Err(SignalProtocolError::InvalidMessage(
+                original_message_type,
+                "failed to decrypt",
+            ));
+        }
+    };
+
+    state.clear_unacknowledged_pre_key_message();
+
+    Ok(ptext)
+}
+
+fn decrypt_message_with_state_swoosh<R: Rng + CryptoRng>(
+    current_or_previous: CurrentOrPrevious,
+    state: &mut SessionState,
+    ciphertext: &SignalMessage,
+    original_message_type: CiphertextMessageType,
+    remote_address: &ProtocolAddress,
+    is_alice: bool,
+    csprng: &mut R,
+) -> Result<Vec<u8>> {
+    // Check for a completely empty or invalid session state before we do anything else.
+    let _ = state.root_key().map_err(|_| {
+        SignalProtocolError::InvalidMessage(
+            original_message_type,
+            "No session available to decrypt",
+        )
+    })?;
+
+    let ciphertext_version = ciphertext.message_version() as u32;
+    if ciphertext_version != state.session_version()? {
+        return Err(SignalProtocolError::UnrecognizedMessageVersion(
+            ciphertext_version,
+        ));
+    }
+
+    let their_ephemeral = ciphertext.sender_ratchet_swoosh_key();
+    let counter = ciphertext.counter();
+    let chain_key = get_or_create_chain_swoosh_key(state, their_ephemeral, remote_address, is_alice)?;
+    let message_key_gen = get_or_create_message_swoosh_key(
         state,
         their_ephemeral,
         remote_address,
@@ -729,61 +835,32 @@ fn get_or_create_chain_key<R: Rng + CryptoRng>(
     Ok(receiver_chain.1)
 }
 
-fn get_or_create_chain_key_swoosh<R: Rng + CryptoRng>(
+fn get_or_create_chain_swoosh_key(
     state: &mut SessionState,
-    their_swoosh_ephemeral: &PublicSwooshKey,
+    their_ephemeral: &PublicSwooshKey,
     remote_address: &ProtocolAddress,
-    csprng: &mut R,
+    is_alice: bool,
 ) -> Result<ChainKey> {
-    if let Some(chain) = state.get_receiver_swoosh_chain_key(their_swoosh_ephemeral)? {
-        log::debug!("{remote_address} has existing receiver swoosh chain.");
+    if let Some(chain) = state.get_receiver_swoosh_chain_key(their_ephemeral)? {
+        log::debug!("{remote_address} has existing receiver chain.");
+        println!("**Found existing chain for {remote_address}");
         return Ok(chain);
     }
 
-    log::info!("{remote_address} creating new swoosh chains.");
+    log::info!("{remote_address} creating new chains.");
+    println!("**Creating new Swoosh chains");
 
     let root_key = state.root_key()?;
-    let our_swoosh_ephemeral = state.sender_swoosh_private_key()?
-        .ok_or_else(|| SignalProtocolError::InvalidState(
-            "get_or_create_chain_key_swoosh",
-            "No sender swoosh private key available".into(),
-        ))?;
-    let our_swoosh_public = state.sender_swoosh_key()?
-        .ok_or_else(|| SignalProtocolError::InvalidState(
-            "get_or_create_chain_key_swoosh",
-            "No sender swoosh public key available".into(),
-        ))?;
-
-    // Determine role based on identity keys for deterministic role assignment
-    let our_identity = state.local_identity_key().map_err(|e| {
-        SignalProtocolError::InvalidState("get_or_create_chain_key_swoosh", format!("Cannot get local identity: {}", e).into())
-    })?;
-    let their_identity = state.remote_identity_key().map_err(|e| {
-        SignalProtocolError::InvalidState("get_or_create_chain_key_swoosh", format!("Cannot get remote identity: {}", e).into())
-    })?.ok_or_else(|| {
-        SignalProtocolError::InvalidState("get_or_create_chain_key_swoosh", "No remote identity available".into())
-    })?;
-    let is_alice = RootKey::determine_swoosh_role(&our_identity, &their_identity);
-
-    let receiver_chain = root_key.create_chain_swoosh(
-        their_swoosh_ephemeral,
-        &our_swoosh_public,
-        &our_swoosh_ephemeral,
-        is_alice
-    )?;
-
-    let our_new_swoosh_ephemeral = SwooshKeyPair::generate(&pswoosh::sys_a::A, !is_alice);
+    let our_ephemeral = state.sender_ratchet_swoosh_private_key();
+    let our_public_key = state.sender_ratchet_swoosh_public_key()?;
+    let receiver_chain = root_key.create_chain_swoosh(their_ephemeral, &our_public_key, &our_ephemeral.unwrap(), is_alice)?;
+    let our_new_ephemeral = SwooshKeyPair::generate(is_alice);
     let sender_chain = receiver_chain
         .0
-        .create_chain_swoosh(
-            their_swoosh_ephemeral,
-            our_new_swoosh_ephemeral.public_key(),
-            our_new_swoosh_ephemeral.private_key(),
-            is_alice
-        )?;
+        .create_chain_swoosh(their_ephemeral, &our_new_ephemeral.public_key(), &our_new_ephemeral.private_key(), is_alice)?;
 
     state.set_root_key(&sender_chain.0);
-    state.add_receiver_swoosh_chain(their_swoosh_ephemeral, &receiver_chain.1);
+    state.add_receiver_swoosh_chain(their_ephemeral, &receiver_chain.1);
 
     let current_index = state.get_sender_chain_key()?.index();
     let previous_index = if current_index > 0 {
@@ -792,7 +869,7 @@ fn get_or_create_chain_key_swoosh<R: Rng + CryptoRng>(
         0
     };
     state.set_previous_counter(previous_index);
-    state.set_sender_swoosh_chain(&our_new_swoosh_ephemeral, &sender_chain.1);
+    state.set_sender_swoosh_chain(&our_new_ephemeral, &sender_chain.1);
 
     Ok(receiver_chain.1)
 }
@@ -846,5 +923,57 @@ fn get_or_create_message_key(
     }
 
     state.set_receiver_chain_key(their_ephemeral, &chain_key.next_chain_key())?;
+    Ok(chain_key.message_keys())
+}
+
+fn get_or_create_message_swoosh_key(
+    state: &mut SessionState,
+    their_ephemeral: &PublicSwooshKey,
+    remote_address: &ProtocolAddress,
+    original_message_type: CiphertextMessageType,
+    chain_key: &ChainKey,
+    counter: u32,
+) -> Result<MessageKeyGenerator> {
+    let chain_index = chain_key.index();
+
+    if chain_index > counter {
+        return match state.get_message_swoosh_keys(their_ephemeral, counter)? {
+            Some(keys) => Ok(keys),
+            None => {
+                log::info!("{remote_address} Duplicate message for counter: {counter}");
+                Err(SignalProtocolError::DuplicatedMessage(chain_index, counter))
+            }
+        };
+    }
+
+    assert!(chain_index <= counter);
+
+    let jump = (counter - chain_index) as usize;
+
+    if jump > MAX_FORWARD_JUMPS {
+        if state.session_with_self()? {
+            log::info!(
+                "{remote_address} Jumping ahead {jump} messages (index: {chain_index}, counter: {counter})"
+            );
+        } else {
+            log::error!(
+                "{remote_address} Exceeded future message limit: {MAX_FORWARD_JUMPS}, index: {chain_index}, counter: {counter})"
+            );
+            return Err(SignalProtocolError::InvalidMessage(
+                original_message_type,
+                "message from too far into the future",
+            ));
+        }
+    }
+
+    let mut chain_key = chain_key.clone();
+
+    while chain_key.index() < counter {
+        let message_keys = chain_key.message_keys();
+        state.set_message_swoosh_keys(their_ephemeral, message_keys)?;
+        chain_key = chain_key.next_chain_key();
+    }
+
+    state.set_receiver_chain_swoosh_key(their_ephemeral, &chain_key.next_chain_key())?;
     Ok(chain_key.message_keys())
 }
