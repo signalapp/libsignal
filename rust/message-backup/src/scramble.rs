@@ -293,6 +293,7 @@ impl Visit<Scrambler> for proto::account_data::AccountSettings {
             defaultChatStyle,
             customChatColors,
             optimizeOnDeviceStorage: _,
+            backupTier: _,
             special_fields: _,
         } = self;
 

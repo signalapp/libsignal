@@ -88,6 +88,8 @@ message AccountData {
     ChatStyle defaultChatStyle = 18;
     repeated ChatStyle.CustomChatColor customChatColors = 19;
     bool optimizeOnDeviceStorage = 20;
+    // See zkgroup for integer particular values. Unset if backups are not enabled.
+    optional uint64 backupTier = 21;
   }
 
   message SubscriberData {
@@ -766,8 +768,8 @@ message FilePointer {
       bytes encryptedDigest = 11;
     }
 
-    // Must be non-zero if transitCdnKey or plaintextHash are set/nonempty.
-    // Otherwise must be zero.
+    // NB: This is the plaintext size, and empty content attachments are legal, so this
+    // may be zero even if transitCdnKey or mediaName are set/nonempty.
     uint32 size = 3;
 
     // Either both transit cdn key and number are set or neither should be set.

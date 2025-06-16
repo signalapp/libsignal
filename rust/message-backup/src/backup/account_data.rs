@@ -11,6 +11,7 @@ use serde_with::{serde_as, DisplayFromStr};
 use usernames::constants::USERNAME_LINK_ENTROPY_SIZE;
 use usernames::{Username, UsernameError};
 use uuid::Uuid;
+use zkgroup::api::backups::BackupLevel;
 use zkgroup::ProfileKeyBytes;
 
 use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError, CustomColorMap};
@@ -102,6 +103,7 @@ pub enum IapSubscriptionId {
     M::Value<Vec<String>>: PartialEq,
     M::Value<Option<ChatStyle<M>>>: PartialEq,
     M::CustomColorData: PartialEq,
+    M::Value<Option<BackupLevel>>: PartialEq,
 ))]
 pub struct AccountSettings<M: Method + ReferencedTypes> {
     pub phone_number_sharing: M::Value<PhoneSharing>,
@@ -124,6 +126,7 @@ pub struct AccountSettings<M: Method + ReferencedTypes> {
     pub default_chat_style: M::Value<Option<ChatStyle<M>>>,
     pub custom_chat_colors: CustomColorMap<M>,
     pub optimize_on_device_storage: M::Value<bool>,
+    pub backup_level: M::Value<Option<BackupLevel>>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize)]
@@ -157,6 +160,12 @@ pub enum AccountDataError {
     DonationSubscription(SubscriptionError),
     /// backups subscription: {0}
     BackupSubscription(SubscriptionError),
+    /// unknown backup tier value: {0}
+    UnknownBackupTier(u64),
+    /// backup subscription is present with free tier
+    BackupSubscriptionWithFreeTier,
+    /// optimize on device storage is enabled without paid tier
+    OptimizeStorageWithoutPaidTier,
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -202,10 +211,16 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             Some(username) => Some((username, usernameLink.into_option()).try_into()?),
         };
 
-        let account_settings = accountSettings
+        let account_settings_proto = accountSettings
             .into_option()
-            .ok_or(AccountDataError::MissingSettings)?
-            .try_into_with(context)?;
+            .ok_or(AccountDataError::MissingSettings)?;
+
+        let backup_tier = account_settings_proto.backupTier;
+        if backup_tier == Some(BackupLevel::Free as u64) && backupsSubscriberData.is_some() {
+            return Err(AccountDataError::BackupSubscriptionWithFreeTier);
+        }
+
+        let account_settings = account_settings_proto.try_into_with(context)?;
 
         let donation_subscription = donationSubscriberData
             .into_option()
@@ -360,6 +375,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             defaultChatStyle,
             customChatColors,
             optimizeOnDeviceStorage,
+            backupTier,
             special_fields: _,
         } = self;
 
@@ -382,6 +398,17 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
         let universal_expire_timer = NonZeroU32::new(universalExpireTimerSeconds)
             .map(|seconds| Duration::from_millis(1000 * u64::from(seconds.get())));
 
+        let backup_level = match backupTier {
+            Some(x) if x == BackupLevel::Free as u64 => Some(BackupLevel::Free),
+            Some(x) if x == BackupLevel::Paid as u64 => Some(BackupLevel::Paid),
+            Some(unknown) => return Err(AccountDataError::UnknownBackupTier(unknown)),
+            None => None,
+        };
+
+        if optimizeOnDeviceStorage && backup_level != Some(BackupLevel::Paid) {
+            return Err(AccountDataError::OptimizeStorageWithoutPaidTier);
+        }
+
         Ok(AccountSettings {
             phone_number_sharing: M::value(phone_number_sharing),
             default_chat_style: M::value(default_chat_style),
@@ -403,6 +430,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             preferred_reaction_emoji: M::value(preferredReactionEmoji),
             universal_expire_timer: M::value(universal_expire_timer),
             optimize_on_device_storage: M::value(optimizeOnDeviceStorage),
+            backup_level: M::value(backup_level),
         })
     }
 }
@@ -460,7 +488,8 @@ mod test {
                     special_fields: Default::default(),
                 })
                 .into(),
-                optimizeOnDeviceStorage: true,
+                optimizeOnDeviceStorage: false,
+                backupTier: Some(BackupLevel::Paid.into()),
                 ..Default::default()
             }
         }
@@ -537,7 +566,8 @@ mod test {
                     universal_expire_timer: None,
                     preferred_reaction_emoji: vec![],
                     custom_chat_colors: CustomColorMap::from_proto_test_data(),
-                    optimize_on_device_storage: true,
+                    optimize_on_device_storage: false,
+                    backup_level: Some(BackupLevel::Paid),
                 },
                 avatar_url_path: "".to_string(),
                 backup_subscription: Some(IapSubscriberData {
@@ -600,6 +630,67 @@ mod test {
         |x| x.accountSettings.as_mut().unwrap().customChatColors.clear() =>
         Err(AccountDataError::ChatStyle(ChatStyleError::UnknownCustomColorId(FAKE_CUSTOM_COLOR_ID.0)));
         "account_data_default_style_invalid_custom_color"
+    )]
+    #[test_case(
+        |x| x.accountSettings.as_mut().unwrap().backupTier = Some(999) =>
+        Err(AccountDataError::UnknownBackupTier(999));
+        "unknown_backup_tier"
+    )]
+    #[test_case(
+        |x| {
+            x.accountSettings.as_mut().unwrap().backupTier = None;
+            x.backupsSubscriberData = None.into();
+        } =>
+        Ok(());
+        "no_backup_tier_no_subscription"
+    )]
+    #[test_case(
+        |x| {
+            x.accountSettings.as_mut().unwrap().backupTier = Some(BackupLevel::Free.into());
+        } =>
+        Err(AccountDataError::BackupSubscriptionWithFreeTier);
+        "backup_subscription_with_free_tier"
+    )]
+    #[test_case(
+        |x| {
+            x.accountSettings.as_mut().unwrap().backupTier = None;
+        } =>
+        Ok(());
+        "backup_subscription_with_disabled_tier"
+    )]
+    #[test_case(
+        |x| {
+            x.accountSettings.as_mut().unwrap().optimizeOnDeviceStorage = true;
+            x.accountSettings.as_mut().unwrap().backupTier = Some(BackupLevel::Free.into());
+            x.backupsSubscriberData = None.into();
+        } =>
+        Err(AccountDataError::OptimizeStorageWithoutPaidTier);
+        "optimize_storage_with_free_tier"
+    )]
+    #[test_case(
+        |x| {
+            x.accountSettings.as_mut().unwrap().optimizeOnDeviceStorage = true;
+            x.accountSettings.as_mut().unwrap().backupTier = None;
+            x.backupsSubscriberData = None.into();
+        } =>
+        Err(AccountDataError::OptimizeStorageWithoutPaidTier);
+        "optimize_storage_with_disabled_tier"
+    )]
+    #[test_case(
+        |x| {
+            x.accountSettings.as_mut().unwrap().optimizeOnDeviceStorage = true;
+            x.accountSettings.as_mut().unwrap().backupTier = Some(BackupLevel::Paid.into());
+        } =>
+        Ok(());
+        "optimize_storage_with_paid_tier"
+    )]
+    #[test_case(
+        |x| {
+            x.accountSettings.as_mut().unwrap().backupTier = Some(BackupLevel::Free.into());
+            x.backupsSubscriberData = None.into();
+        } =>
+        Ok(());
+        "optimize_storage_false_with_free_tier"
     )]
     fn with(modifier: fn(&mut proto::AccountData)) -> Result<(), AccountDataError> {
         let mut data = proto::AccountData::test_data();

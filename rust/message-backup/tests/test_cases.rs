@@ -74,6 +74,15 @@ fn serialized_account_settings_is_valid() {
         .expect("valid backup");
     let canonical_repr =
         libsignal_message_backup::backup::serialize::Backup::from(result).to_string_pretty();
+
+    if write_expected_output() {
+        let path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/res/canonical-backup.expected.json");
+        eprintln!("writing expected contents to {path:?}");
+        std::fs::write(path, &canonical_repr).expect("failed to overwrite expected contents");
+        return;
+    }
+
     pretty_assertions::assert_str_eq!(expected_canonical_str, canonical_repr)
 }
 

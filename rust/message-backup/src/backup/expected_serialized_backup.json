@@ -53,7 +53,8 @@
           }
         }
       },
-      "optimize_on_device_storage": true
+      "optimize_on_device_storage": false,
+      "backup_level": 201
     },
     "avatar_url_path": "",
     "donation_subscription": null,

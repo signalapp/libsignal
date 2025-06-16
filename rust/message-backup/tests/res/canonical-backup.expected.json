@@ -39,7 +39,8 @@
       ],
       "default_chat_style": null,
       "custom_chat_colors": {},
-      "optimize_on_device_storage": false
+      "optimize_on_device_storage": false,
+      "backup_level": null
     },
     "avatar_url_path": "",
     "donation_subscription": {
