@@ -18,7 +18,7 @@ extension SignalCPromiseMutPointerOtherTestingHandleType: LibSignalClient.Promis
     public typealias Result = SignalMutPointerOtherTestingHandleType
 }
 
-extension SignalMutPointerTestingHandleType: SignalMutPointer {
+extension SignalFfi.SignalMutPointerTestingHandleType: LibSignalClient.SignalMutPointer {
     public typealias ConstPointer = SignalConstPointerTestingHandleType
 
     public init(untyped: OpaquePointer?) {
@@ -34,13 +34,13 @@ extension SignalMutPointerTestingHandleType: SignalMutPointer {
     }
 }
 
-extension SignalConstPointerTestingHandleType: SignalConstPointer {
+extension SignalFfi.SignalConstPointerTestingHandleType: LibSignalClient.SignalConstPointer {
     public func toOpaque() -> OpaquePointer? {
         self.raw
     }
 }
 
-extension SignalMutPointerOtherTestingHandleType: SignalMutPointer {
+extension SignalFfi.SignalMutPointerOtherTestingHandleType: LibSignalClient.SignalMutPointer {
     public typealias ConstPointer = SignalConstPointerOtherTestingHandleType
 
     public init(untyped: OpaquePointer?) {
@@ -56,13 +56,13 @@ extension SignalMutPointerOtherTestingHandleType: SignalMutPointer {
     }
 }
 
-extension SignalConstPointerOtherTestingHandleType: SignalConstPointer {
+extension SignalFfi.SignalConstPointerOtherTestingHandleType: LibSignalClient.SignalConstPointer {
     public func toOpaque() -> OpaquePointer? {
         self.raw
     }
 }
 
-extension SignalMutPointerTestingFutureCancellationCounter: SignalMutPointer {
+extension SignalFfi.SignalMutPointerTestingFutureCancellationCounter: LibSignalClient.SignalMutPointer {
     public typealias ConstPointer = SignalConstPointerTestingFutureCancellationCounter
 
     public init(untyped: OpaquePointer?) {
@@ -78,7 +78,7 @@ extension SignalMutPointerTestingFutureCancellationCounter: SignalMutPointer {
     }
 }
 
-extension SignalConstPointerTestingFutureCancellationCounter: SignalConstPointer {
+extension SignalFfi.SignalConstPointerTestingFutureCancellationCounter: LibSignalClient.SignalConstPointer {
     public func toOpaque() -> OpaquePointer? {
         self.raw
     }
