@@ -533,7 +533,7 @@ impl MessageOnlyExceptionJniError for signal_media::sanitize::webp::ParseErrorRe
 mod registration {
     use libsignal_core::try_scoped;
     use libsignal_net::auth::Auth;
-    use libsignal_net::registration::{
+    use libsignal_net_chat::api::registration::{
         CheckSvr2CredentialsError, CreateSessionError, InvalidSessionId, RegisterAccountError,
         RegistrationLock, RequestError, RequestVerificationCodeError, ResumeSessionError,
         SubmitVerificationError, UpdateSessionError, VerificationCodeNotDeliverable,

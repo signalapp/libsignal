@@ -6,19 +6,14 @@
 use std::future::Future;
 use std::panic::UnwindSafe;
 
+use libsignal_net::chat::{Request as ChatRequest, Response as ChatResponse};
 use static_assertions::assert_impl_all;
 
-mod error;
-pub use error::*;
-
-mod request;
-pub use request::*;
+use crate::api::registration::*;
+use crate::ws::registration::*;
 
 mod service;
 pub use service::*;
-
-mod session_id;
-pub use session_id::*;
 
 /// A client for the Signal registration API endpoints.
 ///
@@ -223,7 +218,7 @@ impl<'c> RegistrationService<'c> {
             session: _,
         } = self;
 
-        let request = crate::chat::Request::register_account(
+        let request = ChatRequest::register_account(
             number,
             Some(session_id),
             message_notification,
@@ -257,7 +252,7 @@ impl<'c> RegistrationService<'c> {
         // Delegate to a non-templated function to reduce code size cost.
         async fn submit_request_impl(
             this: &mut RegistrationService<'_>,
-            request: crate::chat::Request,
+            request: ChatRequest,
             request_type: &'static str,
         ) -> Result<(), RequestError<SessionRequestError>> {
             let RegistrationService {
@@ -301,7 +296,7 @@ pub async fn reregister_account(
     keys: ForServiceIds<AccountKeys<'_>>,
     account_password: &str,
 ) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
-    let request = crate::chat::Request::register_account(
+    let request = ChatRequest::register_account(
         number,
         None,
         message_notification,
@@ -330,11 +325,11 @@ mod testutil {
 
     use futures_util::future::BoxFuture;
     use futures_util::FutureExt as _;
+    use libsignal_net::chat::fake::FakeChatRemote;
+    use libsignal_net::chat::ws::ListenerEvent;
+    use libsignal_net::chat::{ChatConnection, ConnectError as ChatConnectError};
     use tokio::sync::{mpsc, oneshot};
 
-    use crate::chat::fake::FakeChatRemote;
-    use crate::chat::ws::ListenerEvent;
-    use crate::chat::{ChatConnection, ConnectError as ChatConnectError};
     use crate::registration::ConnectChat;
 
     /// Fake [`ConnectChat`] impl that writes the remote end to a channel.
@@ -349,7 +344,7 @@ mod testutil {
             Self(Some(value))
         }
 
-        pub(super) fn into_listener(mut self) -> crate::chat::ws::EventListener
+        pub(super) fn into_listener(mut self) -> libsignal_net::chat::ws::EventListener
         where
             T: Send + 'static,
         {
@@ -414,12 +409,12 @@ mod test {
     use bytes::Bytes;
     use futures_util::future::BoxFuture;
     use futures_util::FutureExt as _;
+    use libsignal_net::chat::fake::FakeChatRemote;
+    use libsignal_net::chat::{ChatConnection, ConnectError};
+    use libsignal_net::proto::chat_websocket::WebSocketRequestMessage;
     use tokio::sync::mpsc;
 
     use super::*;
-    use crate::chat::fake::FakeChatRemote;
-    use crate::chat::{ChatConnection, ConnectError};
-    use crate::proto::chat_websocket::WebSocketRequestMessage;
 
     struct ConnectOnlyOnce<C>(std::sync::Mutex<Option<C>>);
 

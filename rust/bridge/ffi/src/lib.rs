@@ -213,7 +213,7 @@ pub unsafe extern "C" fn signal_error_get_registration_error_not_deliverable(
     run_ffi_safe(|| {
         let err = err.as_ref().ok_or(NullPointerError)?;
 
-        let libsignal_net::registration::VerificationCodeNotDeliverable {
+        let libsignal_net_chat::api::registration::VerificationCodeNotDeliverable {
             reason,
             permanent_failure,
         } = err
@@ -239,7 +239,7 @@ pub unsafe extern "C" fn signal_error_get_registration_lock(
     run_ffi_safe(|| {
         let err = err.as_ref().ok_or(NullPointerError)?;
 
-        let libsignal_net::registration::RegistrationLock {
+        let libsignal_net_chat::api::registration::RegistrationLock {
             time_remaining,
             svr2_credentials:
                 libsignal_net::auth::Auth {

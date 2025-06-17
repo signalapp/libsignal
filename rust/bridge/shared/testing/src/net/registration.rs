@@ -18,14 +18,8 @@ use libsignal_net::auth::Auth;
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::ChatConnection;
 use libsignal_net::infra::errors::RetryLater;
-use libsignal_net::registration::{
-    CheckSvr2CredentialsError, CheckSvr2CredentialsResponse, ConnectChat, CreateSessionError,
-    RegisterAccountError, RegisterAccountResponse, RegisterResponseBackup, RegisterResponseBadge,
-    RegisterResponseEntitlements, RegistrationLock, RegistrationSession, RequestError,
-    RequestVerificationCodeError, RequestedInformation, ResumeSessionError,
-    SubmitVerificationError, Svr2CredentialsResult, UpdateSessionError,
-    VerificationCodeNotDeliverable,
-};
+use libsignal_net_chat::api::registration::*;
+use libsignal_net_chat::registration::*;
 use uuid::uuid;
 
 use super::make_error_testing_enum;

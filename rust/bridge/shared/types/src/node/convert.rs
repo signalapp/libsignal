@@ -389,7 +389,7 @@ impl SimpleArgTypeInfo for Box<[String]> {
     }
 }
 
-impl SimpleArgTypeInfo for libsignal_net::registration::PushTokenType {
+impl SimpleArgTypeInfo for libsignal_net_chat::api::registration::PushTokenType {
     type ArgType = JsString;
 
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
@@ -399,7 +399,7 @@ impl SimpleArgTypeInfo for libsignal_net::registration::PushTokenType {
     }
 }
 
-impl SimpleArgTypeInfo for libsignal_net::registration::CreateSession {
+impl SimpleArgTypeInfo for libsignal_net_chat::api::registration::CreateSession {
     type ArgType = JsObject;
 
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
@@ -427,7 +427,7 @@ impl SimpleArgTypeInfo for libsignal_net::registration::CreateSession {
     }
 }
 
-impl SimpleArgTypeInfo for libsignal_net::registration::SignedPreKeyBody<Box<[u8]>> {
+impl SimpleArgTypeInfo for libsignal_net_chat::api::registration::SignedPreKeyBody<Box<[u8]>> {
     type ArgType = JsObject;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let key_id = foreign.get(cx, "keyId")?;
@@ -1125,7 +1125,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RequestedInformation {
+impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::registration::RequestedInformation {
     type ResultType = JsString;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         Ok(cx.string(match self {
@@ -1135,21 +1135,23 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RequestedInformatio
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net::registration::RequestedInformation]> {
+impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net_chat::api::registration::RequestedInformation]> {
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self)
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net::registration::RegisterResponseBadge]> {
+impl<'a> ResultTypeInfo<'a>
+    for Box<[libsignal_net_chat::api::registration::RegisterResponseBadge]>
+{
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self)
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RegisterResponseBadge {
+impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::registration::RegisterResponseBadge {
     type ResultType = JsObject;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         let Self {
@@ -1172,7 +1174,9 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RegisterResponseBad
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::CheckSvr2CredentialsResponse {
+impl<'a> ResultTypeInfo<'a>
+    for libsignal_net_chat::api::registration::CheckSvr2CredentialsResponse
+{
     type ResultType = JsObject;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         let Self { matches } = self;

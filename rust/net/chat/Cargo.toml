@@ -10,36 +10,49 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-libsignal-net = { path = ".." }
-
 libsignal-core = { workspace = true }
 libsignal-keytrans = { workspace = true }
+libsignal-net = { workspace = true }
 libsignal-protocol = { workspace = true }
 zkgroup = { workspace = true }
 
 async-trait = { workspace = true }
 base64 = { workspace = true }
+bytes = { workspace = true }
+const-str = { workspace = true }
 derive_more = { workspace = true }
 displaydoc = { workspace = true }
+either = { workspace = true }
+futures-util = { workspace = true }
 hex = { workspace = true }
 http = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_with = { workspace = true, features = ["base64"] }
+static_assertions = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt", "time", "macros"] }
+tokio-stream = { workspace = true }
+uuid = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 libsignal-cli-utils = { workspace = true }
-libsignal-net = { path = "..", features = ["test-util"] }
+libsignal-net = { workspace = true, features = ["test-util"] }
 usernames = { workspace = true }
 
 anyhow = { workspace = true }
+assert_matches = { workspace = true }
 bytes = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 env_logger = { workspace = true }
 futures-util = { workspace = true }
+itertools = { workspace = true }
+pretty_assertions = { workspace = true }
 rand = { workspace = true }
+rand_chacha = { workspace = true }
 regex = { workspace = true }
 test-case = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread"] }
+test-log = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "test-util"] }

@@ -11,7 +11,7 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt as _;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::{ChatConnection, ConnectError};
-use libsignal_net::registration::ConnectChat;
+use libsignal_net_chat::registration::ConnectChat;
 
 use super::*;
 use crate::net::chat::{ChatListener, ServerMessageAck};

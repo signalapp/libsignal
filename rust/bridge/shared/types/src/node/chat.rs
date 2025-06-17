@@ -194,7 +194,7 @@ impl crate::net::registration::ConnectChatBridge for NodeConnectChatFactory {
     fn create_chat_connector(
         self: Box<Self>,
         runtime: tokio::runtime::Handle,
-    ) -> Box<dyn libsignal_net::registration::ConnectChat + Send + Sync + UnwindSafe> {
+    ) -> Box<dyn libsignal_net_chat::registration::ConnectChat + Send + Sync + UnwindSafe> {
         Box::new(NodeConnectChat {
             tokio_runtime: runtime,
             factory: *self,
@@ -229,7 +229,7 @@ impl Drop for NodeConnectChatFactory {
     }
 }
 
-impl libsignal_net::registration::ConnectChat for NodeConnectChat {
+impl libsignal_net_chat::registration::ConnectChat for NodeConnectChat {
     fn connect_chat(
         &self,
         on_disconnect: tokio::sync::oneshot::Sender<std::convert::Infallible>,

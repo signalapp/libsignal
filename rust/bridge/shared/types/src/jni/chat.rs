@@ -174,7 +174,7 @@ impl crate::net::registration::ConnectChatBridge for JniConnectChatBridge {
     fn create_chat_connector(
         self: Box<Self>,
         runtime: tokio::runtime::Handle,
-    ) -> Box<dyn libsignal_net::registration::ConnectChat + Send + Sync + UnwindSafe> {
+    ) -> Box<dyn libsignal_net_chat::registration::ConnectChat + Send + Sync + UnwindSafe> {
         Box::new(JniConnectChat {
             tokio_runtime: runtime,
             bridge: *self,
@@ -182,7 +182,7 @@ impl crate::net::registration::ConnectChatBridge for JniConnectChatBridge {
     }
 }
 
-impl libsignal_net::registration::ConnectChat for JniConnectChat {
+impl libsignal_net_chat::registration::ConnectChat for JniConnectChat {
     fn connect_chat(
         &self,
         on_disconnect: tokio::sync::oneshot::Sender<std::convert::Infallible>,

@@ -12,13 +12,7 @@ use libsignal_bridge_types::net::registration::{
 };
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::*;
-use libsignal_net::registration::{
-    AccountKeys, CheckSvr2CredentialsError, CheckSvr2CredentialsResponse, CreateSessionError,
-    ForServiceIds, NewMessageNotification, RegisterAccountError, RegisterAccountResponse,
-    RegisterResponseBadge, RegistrationSession, RequestError, RequestVerificationCodeError,
-    ResumeSessionError, SessionId, SubmitVerificationError, UpdateSessionError,
-    VerificationTransport,
-};
+use libsignal_net_chat::api::registration::*;
 use libsignal_protocol::*;
 use uuid::Uuid;
 
@@ -196,7 +190,7 @@ async fn RegistrationService_ReregisterAccount(
         .take()
         .expect("not taken");
 
-    libsignal_net::registration::reregister_account(
+    libsignal_net_chat::registration::reregister_account(
         &number,
         connect_chat.create_chat_connector(tokio::runtime::Handle::current()),
         message_notification.as_deref(),
@@ -288,7 +282,7 @@ fn RegisterAccountRequest_SetSkipDeviceTransfer(register_account: &RegisterAccou
         .expect("not poisoned")
         .as_mut()
         .expect("not taken")
-        .device_transfer = Some(libsignal_net::registration::SkipDeviceTransfer);
+        .device_transfer = Some(SkipDeviceTransfer);
 }
 
 #[bridge_fn]

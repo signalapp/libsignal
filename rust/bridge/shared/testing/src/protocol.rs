@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_net::registration::SignedPreKeyBody;
+use libsignal_net_chat::api::registration::SignedPreKeyBody;
 use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
 

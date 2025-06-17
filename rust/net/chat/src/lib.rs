@@ -4,4 +4,5 @@
 //
 
 pub mod api;
+pub mod registration;
 pub mod ws;

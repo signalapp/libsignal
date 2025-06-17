@@ -12,7 +12,7 @@ use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::keytrans::Error;
-use libsignal_net::registration::{RegistrationLock, VerificationCodeNotDeliverable};
+use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -628,10 +628,10 @@ impl FfiError for libsignal_net::keytrans::Error {
 
 mod registration {
     use libsignal_net::infra::errors::LogSafeDisplay;
-    use libsignal_net::registration::{
-        CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationLock,
-        RequestError, RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError,
-        UpdateSessionError, VerificationCodeNotDeliverable,
+    use libsignal_net_chat::api::registration::{
+        CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RequestError,
+        RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError,
+        UpdateSessionError,
     };
 
     use super::*;

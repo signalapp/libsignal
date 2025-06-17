@@ -10,7 +10,7 @@ use std::ops::Deref;
 
 use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
-use libsignal_net::registration::PushTokenType;
+use libsignal_net_chat::api::registration::PushTokenType;
 use libsignal_protocol::*;
 use paste::paste;
 use uuid::Uuid;
@@ -720,7 +720,7 @@ impl ResultTypeInfo for Box<[RegistrationSessionRequestedInformation]> {
     }
 }
 
-impl ResultTypeInfo for Box<[libsignal_net::registration::RegisterResponseBadge]> {
+impl ResultTypeInfo for Box<[libsignal_net_chat::api::registration::RegisterResponseBadge]> {
     type ResultType = OwnedBufferOf<FfiRegisterResponseBadge>;
 
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -731,7 +731,7 @@ impl ResultTypeInfo for Box<[libsignal_net::registration::RegisterResponseBadge]
     }
 }
 
-impl ResultTypeInfo for libsignal_net::registration::RegisterResponseBadge {
+impl ResultTypeInfo for libsignal_net_chat::api::registration::RegisterResponseBadge {
     type ResultType = FfiRegisterResponseBadge;
 
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -946,7 +946,7 @@ impl ResultTypeInfo for libsignal_net::chat::Response {
     }
 }
 
-impl ResultTypeInfo for libsignal_net::registration::CheckSvr2CredentialsResponse {
+impl ResultTypeInfo for libsignal_net_chat::api::registration::CheckSvr2CredentialsResponse {
     type ResultType = FfiCheckSvr2CredentialsResponse;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         let Self { matches } = self;

@@ -8,12 +8,13 @@ use std::future::Future;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 
 use futures_util::TryFutureExt as _;
-use libsignal_net::registration::{
-    self as net_registration, ConnectChat, CreateSession, CreateSessionError, ForServiceIds,
-    NewMessageNotification, ProvidedAccountAttributes, PushTokenType, RegisterAccountResponse,
-    RegistrationSession, RequestError, RequestedInformation, ResumeSessionError, SessionId,
-    SignedPreKeyBody, SkipDeviceTransfer, UnidentifiedAccessKey,
+use libsignal_net_chat::api::registration::{
+    CreateSession, CreateSessionError, ForServiceIds, NewMessageNotification,
+    ProvidedAccountAttributes, PushTokenType, RegisterAccountResponse, RegistrationSession,
+    RequestError, RequestedInformation, ResumeSessionError, SessionId, SignedPreKeyBody,
+    SkipDeviceTransfer, UnidentifiedAccessKey,
 };
+use libsignal_net_chat::registration::{self as net_registration, ConnectChat};
 use libsignal_protocol::PublicKey;
 
 use crate::*;
@@ -91,7 +92,7 @@ impl RegistrationService {
     pub fn create_session(
         connect_bridge: Box<dyn ConnectChatBridge>,
         tokio_runtime: tokio::runtime::Handle,
-        create_session: net_registration::CreateSession,
+        create_session: CreateSession,
     ) -> impl Future<Output = Result<Self, RequestError<CreateSessionError>>> + Send {
         net_registration::RegistrationService::create_session(
             create_session,

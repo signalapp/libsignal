@@ -9,6 +9,7 @@
 use libsignal_net::infra::errors::LogSafeDisplay;
 
 pub mod profiles;
+pub mod registration;
 pub mod usernames;
 
 /// Marker wrapper for unauthenticated connections.
@@ -57,8 +58,8 @@ impl<E> LogSafeDisplay for RequestError<E> where E: LogSafeDisplay {}
 /// retry after completing a rate limit challenge {options:?}
 pub struct RateLimitChallenge {
     pub token: String,
-    // TODO: Move this type into libsignal-net-chat.
-    pub options: Vec<libsignal_net::registration::RequestedInformation>,
+    // TODO: use a type that's not registration-specific.
+    pub options: Vec<crate::api::registration::RequestedInformation>,
 }
 impl LogSafeDisplay for RateLimitChallenge {}
 

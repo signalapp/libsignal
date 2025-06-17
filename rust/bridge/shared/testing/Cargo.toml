@@ -22,6 +22,7 @@ libsignal-core = { workspace = true }
 libsignal-keytrans = { workspace = true }
 libsignal-message-backup = { workspace = true, features = ["json"] }
 libsignal-net = { workspace = true }
+libsignal-net-chat = { workspace = true }
 libsignal-protocol = { workspace = true }
 
 bytes = { workspace = true }

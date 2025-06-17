@@ -11,16 +11,15 @@ use std::panic::UnwindSafe;
 use either::Either;
 use futures_util::future::BoxFuture;
 use futures_util::{FutureExt as _, Stream, StreamExt as _};
-use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_net::chat::{
+    ChatConnection, ConnectError as ChatConnectError, SendError as ChatSendError,
+};
+use libsignal_net::infra::errors::{LogSafeDisplay, RetryLater};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::{Duration, Instant};
 use tokio_stream::wrappers::ReceiverStream;
 
-use crate::chat::{
-    ChatConnection, ConnectError as ChatConnectError, Request as ChatRequest,
-    Response as ChatResponse, SendError as ChatSendError,
-};
-use crate::registration::{RequestError, SessionRequestError};
+use crate::registration::{ChatRequest, ChatResponse, RequestError, SessionRequestError};
 
 /// Internal connection implementation for the registration client.
 ///
@@ -148,8 +147,8 @@ where
     }
 }
 
-const CHAT_CONNECT_DELAY_PARAMS: libsignal_net_infra::route::ConnectionOutcomeParams =
-    crate::infra::route::ConnectionOutcomeParams {
+const CHAT_CONNECT_DELAY_PARAMS: libsignal_net::infra::route::ConnectionOutcomeParams =
+    libsignal_net::infra::route::ConnectionOutcomeParams {
         age_cutoff: Duration::from_secs(60),
         cooldown_growth_factor: 1.5,
         count_growth_factor: 10.0,
@@ -418,7 +417,8 @@ mod test {
 
     use super::*;
     use crate::registration::testutil::{ConnectChatFn, DropOnDisconnect, FakeChatConnect};
-    use crate::registration::{RegistrationResponse, RegistrationSession};
+    use crate::registration::RegistrationSession;
+    use crate::ws::registration::*;
 
     /// A value to use when we don't care about the contents of the request.
     static SOME_REQUEST: LazyLock<ChatRequest> = LazyLock::new(|| ChatRequest {

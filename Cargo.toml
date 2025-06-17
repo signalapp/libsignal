@@ -60,6 +60,7 @@ libsignal-core = { path = "rust/core" }
 libsignal-keytrans = { path = "rust/keytrans" }
 libsignal-message-backup = { path = "rust/message-backup" }
 libsignal-net = { path = "rust/net" }
+libsignal-net-chat = { path = "rust/net/chat" }
 libsignal-protocol = { path = "rust/protocol" }
 poksho = { path = "rust/poksho" }
 signal-crypto = { path = "rust/crypto" }

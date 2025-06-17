@@ -575,7 +575,7 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
 
 mod registration {
     use libsignal_net::infra::errors::RetryLater;
-    use libsignal_net::registration::{
+    use libsignal_net_chat::api::registration::{
         CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationLock,
         RequestError, RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError,
         UpdateSessionError, VerificationCodeNotDeliverable,

@@ -7,6 +7,8 @@
 //! websocket, as implemented in [`libsignal_net::chat`].
 
 mod profiles;
+// TODO make this not pub(crate)
+pub(crate) mod registration;
 mod usernames;
 
 use std::future::Future;
@@ -146,8 +148,8 @@ impl ResponseError {
                             #[derive(serde::Deserialize)]
                             struct ChallengeBody {
                                 token: String,
-                                // TODO: Move this type into libsignal-net-chat.
-                                options: Vec<libsignal_net::registration::RequestedInformation>,
+                                // TODO: Make this type general instead of registration-specific.
+                                options: Vec<crate::api::registration::RequestedInformation>,
                             }
 
                             if let Ok(ChallengeBody { token, options }) =
@@ -342,11 +344,11 @@ mod testutil {
 mod test {
     use libsignal_net::infra::errors::RetryLater;
     use libsignal_net::infra::AsStaticHttpHeader as _;
-    use libsignal_net::registration::RequestedInformation;
     use test_case::test_case;
 
     use super::testutil::*;
     use super::*;
+    use crate::api::registration::RequestedInformation;
 
     #[test_case(empty(200) => matches Ok(Empty))]
     #[test_case(empty(204) => matches Ok(Empty))]

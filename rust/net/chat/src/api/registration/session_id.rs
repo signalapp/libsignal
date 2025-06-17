@@ -6,7 +6,7 @@
 use std::fmt::Display;
 use std::str::FromStr;
 
-use libsignal_net_infra::errors::LogSafeDisplay;
+use libsignal_net::infra::errors::LogSafeDisplay;
 
 /// A session ID received from the server.
 ///

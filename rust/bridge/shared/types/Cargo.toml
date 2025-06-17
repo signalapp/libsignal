@@ -20,6 +20,7 @@ libsignal-account-keys = { workspace = true }
 libsignal-core = { workspace = true }
 libsignal-message-backup = { workspace = true }
 libsignal-net = { workspace = true }
+libsignal-net-chat = { workspace = true }
 libsignal-protocol = { workspace = true }
 signal-crypto = { workspace = true }
 signal-media = { workspace = true, optional = true }

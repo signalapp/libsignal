@@ -1,284 +1,57 @@
-use std::collections::{HashMap, HashSet};
-use std::str::FromStr;
-use std::time::Duration;
-
 use bytes::Bytes;
 use http::uri::PathAndQuery;
 use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
-use libsignal_core::{Aci, Pni, ServiceIdKind};
-use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
-use libsignal_net_infra::{extract_retry_later, AsHttpHeader as _, AsStaticHttpHeader};
-use libsignal_protocol::{GenericSignedPreKey, PublicKey};
-use serde_with::{
-    serde_as, skip_serializing_none, DurationMilliSeconds, DurationSeconds, FromInto,
-};
-use uuid::Uuid;
+use libsignal_net::auth::Auth;
+use libsignal_net::chat::{Request as ChatRequest, Response as ChatResponse};
+use libsignal_net::infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_net::infra::{extract_retry_later, AsHttpHeader as _, AsStaticHttpHeader};
+use libsignal_protocol::PublicKey;
+use serde_with::{serde_as, skip_serializing_none, FromInto};
 
-use crate::auth::Auth;
-use crate::registration::SessionId;
-
-pub type UnidentifiedAccessKey = [u8; zkgroup::ACCESS_KEY_LEN];
-
-pub(super) const CONTENT_TYPE_JSON: (HeaderName, HeaderValue) = (
-    http::header::CONTENT_TYPE,
-    HeaderValue::from_static("application/json"),
-);
-
-#[derive(Clone, Debug, Default, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateSession {
-    pub number: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub push_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub push_token_type: Option<PushTokenType>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mcc: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mnc: Option<String>,
-}
+use crate::api::registration::*;
+use crate::ws::registration::CONTENT_TYPE_JSON;
 
 #[derive(Clone, Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetSession {}
 
-#[serde_as]
-#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize)]
-#[cfg_attr(test, derive(serde::Serialize))]
-#[serde(rename_all = "camelCase", default)]
-pub struct RegistrationSession {
-    pub allowed_to_request_code: bool,
-    pub verified: bool,
-    #[serde_as(as = "Option<DurationSeconds>")]
-    pub next_sms: Option<Duration>,
-    #[serde_as(as = "Option<DurationSeconds>")]
-    pub next_call: Option<Duration>,
-    #[serde_as(as = "Option<DurationSeconds>")]
-    pub next_verification_attempt: Option<Duration>,
-    pub requested_information: HashSet<RequestedInformation>,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(serde::Serialize))]
-#[repr(u8)]
-pub enum RequestedInformation {
-    PushChallenge,
-    Captcha,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Serialize, strum::EnumString)]
-#[strum(serialize_all = "camelCase")]
-#[serde(rename_all = "camelCase")]
-pub enum PushTokenType {
-    Apn,
-    Fcm,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Serialize, strum::EnumString)]
-#[strum(serialize_all = "camelCase")]
-#[serde(rename_all = "camelCase")]
-pub enum VerificationTransport {
-    Sms,
-    Voice,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-pub struct VerificationCodeNotDeliverable {
-    // This could be a stronger type but we don't need it to be in libsignal and
-    // the additional flexibility could be useful if the server adds more
-    // "reason" values.
-    pub reason: String,
-    pub permanent_failure: bool,
-}
-
-#[serde_as]
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, derive_more::Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct RegistrationLock {
-    #[serde_as(as = "DurationMilliSeconds")]
-    pub time_remaining: Duration,
-    #[debug("_")]
-    pub svr2_credentials: Auth,
-}
-
-/// The subset of account attributes that don't need any additional validation.
-#[serde_as]
-#[skip_serializing_none]
-#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
-#[serde(rename_all = "camelCase", default)]
-pub struct ProvidedAccountAttributes<'a> {
-    #[serde_as(as = "Base64Padded")]
-    pub recovery_password: &'a [u8],
-    /// Generated ID associated with a user's ACI.
-    pub registration_id: u16,
-    /// Generated ID associated with a user's PNI.
-    pub pni_registration_id: u16,
-    /// Protobuf-encoded device name.
-    #[serde_as(as = "Option<Base64Padded>")]
-    pub name: Option<&'a [u8]>,
-    pub registration_lock: Option<&'a str>,
-    /// Generated from the user's profile key.
-    pub unidentified_access_key: &'a UnidentifiedAccessKey,
-    /// Whether the user allows sealed sender messages to come from arbitrary senders.
-    pub unrestricted_unidentified_access: bool,
-    #[serde_as(as = "MappedToTrue")]
-    pub capabilities: HashSet<&'a str>,
-    pub discoverable_by_phone_number: bool,
-}
-
-#[serde_as]
-#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RegisterAccountResponse {
-    /// The account identifier for this account.
-    #[serde_as(as = "FromInto<Uuid>")]
-    #[serde(rename = "uuid")]
-    pub aci: Aci,
-    /// The phone number associated with this account.
-    pub number: String,
-    /// The account identifier for this account's phone-number identity.
-    #[serde_as(as = "FromInto<Uuid>")]
-    pub pni: Pni,
-    /// A hash of this account's username, if set.
-    #[serde_as(as = "Option<Base64Padded>")]
-    pub username_hash: Option<Box<[u8]>>,
-    /// The account's username link handle, if set.
-    pub username_link_handle: Option<Uuid>,
-    /// Whether any of this account's devices support storage.
-    #[serde(default)]
-    pub storage_capable: bool,
-    /// Entitlements for this account and their current expirations.
-    #[serde(default)]
-    pub entitlements: RegisterResponseEntitlements,
-    /// If true, there was an existing account registered for this number.
-    #[serde(default)]
-    pub reregistration: bool,
-}
-
-#[serde_as]
-#[derive(Clone, Debug, Default, Eq, PartialEq, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RegisterResponseEntitlements {
-    /// Active badges.
-    pub badges: Box<[RegisterResponseBadge]>,
-    /// If present, the backup level set.
-    pub backup: Option<RegisterResponseBackup>,
-}
-
-#[serde_as]
-#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RegisterResponseBadge {
-    /// The badge ID.
-    pub id: String,
-    /// Whether the badge is currently configured to be visible.
-    pub visible: bool,
-    /// When the badge expires.
-    #[serde_as(as = "DurationSeconds")]
-    #[serde(rename = "expirationSeconds")]
-    pub expiration: Duration,
-}
-
-#[serde_as]
-#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RegisterResponseBackup {
-    /// The backup level of the account.
-    pub backup_level: u64,
-    /// When the backup entitlement expires.
-    #[serde_as(as = "DurationSeconds")]
-    #[serde(rename = "expirationSeconds")]
-    pub expiration: Duration,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize)]
-pub struct CheckSvr2CredentialsResponse {
-    pub matches: HashMap<String, Svr2CredentialsResult>,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, serde::Deserialize, strum::AsRefStr)]
-#[strum(serialize_all = "kebab-case")]
-#[serde(rename_all = "kebab-case")]
-#[repr(u8)]
-pub enum Svr2CredentialsResult {
-    Match,
-    NoMatch,
-    Invalid,
-}
-
-#[serde_as]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, serde::Serialize, strum::EnumTryAs)]
-#[serde(rename_all = "camelCase")]
-pub enum SessionValidation<'a> {
-    SessionId(&'a SessionId),
-    RecoveryPassword(#[serde_as(as = "Base64Padded")] &'a [u8]),
-}
-
-/// Pair of values where one is for an ACI and the other a PNI.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Default)]
-pub struct ForServiceIds<T> {
-    pub aci: T,
-    pub pni: T,
-}
-
-/// Keys associated with a single service ID for an account.
-pub struct AccountKeys<'a> {
-    pub identity_key: &'a PublicKey,
-    pub signed_pre_key: SignedPreKeyBody<&'a [u8]>,
-    pub pq_last_resort_pre_key: SignedPreKeyBody<&'a [u8]>,
-}
-
-/// How a device wants to be notified of messages when offline.
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-pub enum NewMessageNotification<S> {
-    /// Use the provided APN ID to receive push notifications.
-    Apn(S),
-    /// Use the provided GCM/FCM ID to receive push notifications.
-    Gcm(S),
-    /// The device will poll on its own.
-    #[default]
-    WillFetchMessages,
-}
-
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Eq, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct UpdateRegistrationSession<'a> {
-    pub(super) captcha: Option<&'a str>,
-    pub(super) push_token: Option<&'a str>,
+pub(crate) struct UpdateRegistrationSession<'a> {
+    pub(crate) captcha: Option<&'a str>,
+    pub(crate) push_token: Option<&'a str>,
     pub(crate) push_token_type: Option<PushTokenType>,
     pub(crate) push_challenge: Option<&'a str>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub(super) struct LanguageList<'a>(pub(super) &'a HeaderValue);
+pub(crate) struct LanguageList<'a>(pub(crate) &'a HeaderValue);
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct RequestVerificationCode<'a> {
-    pub(super) transport: VerificationTransport,
-    pub(super) client: &'a str,
+pub(crate) struct RequestVerificationCode<'a> {
+    pub(crate) transport: VerificationTransport,
+    pub(crate) client: &'a str,
     #[serde(skip)]
-    pub(super) language_list: Option<LanguageList<'a>>,
+    pub(crate) language_list: Option<LanguageList<'a>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct SubmitVerificationCode<'a> {
-    pub(super) code: &'a str,
+pub(crate) struct SubmitVerificationCode<'a> {
+    pub(crate) code: &'a str,
 }
 
-pub(super) struct RegistrationRequest<'s, R> {
-    pub(super) session_id: &'s SessionId,
-    pub(super) request: R,
+pub(crate) struct RegistrationRequest<'s, R> {
+    pub(crate) session_id: &'s SessionId,
+    pub(crate) request: R,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
-pub(super) struct CheckSvr2CredentialsRequest<'s> {
-    pub(super) number: &'s str,
-    pub(super) tokens: &'s [String],
+pub(crate) struct CheckSvr2CredentialsRequest<'s> {
+    pub(crate) number: &'s str,
+    pub(crate) tokens: &'s [String],
 }
 
 #[serde_as]
@@ -291,12 +64,20 @@ struct AccountAttributes<'a> {
     account_attributes: ProvidedAccountAttributes<'a>,
 }
 
+#[serde_as]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, serde::Serialize, strum::EnumTryAs)]
+#[serde(rename_all = "camelCase")]
+enum SessionValidation<'a> {
+    SessionId(&'a SessionId),
+    RecoveryPassword(#[serde_as(as = "Base64Padded")] &'a [u8]),
+}
+
 /// Errors that arise from a response to a received request.
 ///
 /// This doesn't include timeouts, since the request was known to be received
 /// and the server sent a response.
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
-pub(super) enum ResponseError {
+pub(crate) enum ResponseError {
     /// {0}
     RetryLater(RetryLater),
     /// the request did not pass server validation
@@ -317,16 +98,6 @@ pub(super) enum ResponseError {
     UnexpectedData,
 }
 impl LogSafeDisplay for ResponseError {}
-
-#[derive(Debug, Default, PartialEq, serde::Deserialize)]
-#[cfg_attr(test, derive(serde::Serialize))]
-#[serde(rename_all = "camelCase")]
-pub(super) struct RegistrationResponse {
-    #[serde(rename = "id")]
-    pub(super) session_id: String,
-    #[serde(flatten)]
-    pub(super) session: RegistrationSession,
-}
 
 impl VerificationCodeNotDeliverable {
     pub(crate) fn from_response(
@@ -354,6 +125,16 @@ impl RegistrationLock {
     }
 }
 
+#[derive(Debug, Default, PartialEq, serde::Deserialize)]
+#[cfg_attr(test, derive(serde::Serialize))]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RegistrationResponse {
+    #[serde(rename = "id")]
+    pub(crate) session_id: String,
+    #[serde(flatten)]
+    pub(crate) session: RegistrationSession,
+}
+
 impl AsStaticHttpHeader for LanguageList<'_> {
     const HEADER_NAME: HeaderName = http::header::ACCEPT_LANGUAGE;
 
@@ -363,7 +144,7 @@ impl AsStaticHttpHeader for LanguageList<'_> {
 }
 
 /// A value that can be sent to the server as part of a REST request.
-pub(super) trait Request {
+pub(crate) trait Request {
     /// The HTTP [`Method`] to send the request with
     const METHOD: Method;
 
@@ -451,7 +232,7 @@ impl Request for SubmitVerificationCode<'_> {
     }
 }
 
-impl From<CheckSvr2CredentialsRequest<'_>> for crate::chat::Request {
+impl From<CheckSvr2CredentialsRequest<'_>> for ChatRequest {
     fn from(value: CheckSvr2CredentialsRequest<'_>) -> Self {
         Self {
             method: Method::POST,
@@ -462,51 +243,20 @@ impl From<CheckSvr2CredentialsRequest<'_>> for crate::chat::Request {
     }
 }
 
-impl<T> ForServiceIds<T> {
-    pub fn get_mut(&mut self, kind: ServiceIdKind) -> &mut T {
-        match kind {
-            ServiceIdKind::Aci => &mut self.aci,
-            ServiceIdKind::Pni => &mut self.pni,
-        }
-    }
-
-    pub fn get(&self, kind: ServiceIdKind) -> &T {
-        match kind {
-            ServiceIdKind::Aci => &self.aci,
-            ServiceIdKind::Pni => &self.pni,
-        }
-    }
-
-    pub fn generate(mut f: impl FnMut(libsignal_core::ServiceIdKind) -> T) -> Self {
-        ForServiceIds {
-            aci: f(libsignal_core::ServiceIdKind::Aci),
-            pni: f(libsignal_core::ServiceIdKind::Pni),
-        }
-    }
+pub(crate) trait RegisterChatRequest {
+    fn register_account(
+        number: &str,
+        session_id: Option<&SessionId>,
+        message_notification: NewMessageNotification<&str>,
+        account_attributes: ProvidedAccountAttributes<'_>,
+        device_transfer: Option<SkipDeviceTransfer>,
+        keys: ForServiceIds<AccountKeys<'_>>,
+        account_password: &str,
+    ) -> Self;
 }
 
-impl<S> NewMessageNotification<S> {
-    pub fn as_deref(&self) -> NewMessageNotification<&S::Target>
-    where
-        S: std::ops::Deref,
-    {
-        match self {
-            Self::Apn(apn) => NewMessageNotification::Apn(apn),
-            Self::Gcm(gcm) => NewMessageNotification::Gcm(gcm),
-            Self::WillFetchMessages => NewMessageNotification::WillFetchMessages,
-        }
-    }
-}
-
-/// Marker type to indicate that device transfer is being intentionally skipped.
-///
-/// This is usually used as `Option<SkipDeviceTransfer>` in place of a boolean
-/// value.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct SkipDeviceTransfer;
-
-impl crate::chat::Request {
-    pub(super) fn register_account(
+impl RegisterChatRequest for ChatRequest {
+    fn register_account(
         number: &str,
         session_id: Option<&SessionId>,
         message_notification: NewMessageNotification<&str>,
@@ -591,9 +341,16 @@ impl crate::chat::Request {
     }
 }
 
-impl crate::chat::Response {
+pub(crate) trait RegistrationChatResponse {
     /// Interpret `self` as a registration request response.
-    pub(super) fn try_into_response<R>(self) -> Result<R, ResponseError>
+    fn try_into_response<R>(self) -> Result<R, ResponseError>
+    where
+        R: for<'a> serde::Deserialize<'a>;
+}
+
+impl RegistrationChatResponse for ChatResponse {
+    /// Interpret `self` as a registration request response.
+    fn try_into_response<R>(self) -> Result<R, ResponseError>
     where
         R: for<'a> serde::Deserialize<'a>,
     {
@@ -649,7 +406,7 @@ impl std::fmt::Debug for DebugAsStrOrBytes<'_> {
 
 const VERIFICATION_SESSION_PATH_PREFIX: &str = "/v1/verification/session";
 
-impl From<CreateSession> for crate::chat::Request {
+impl From<CreateSession> for ChatRequest {
     fn from(value: CreateSession) -> Self {
         let body = serde_json::to_vec(&value).expect("no maps").into();
         Self {
@@ -661,7 +418,7 @@ impl From<CreateSession> for crate::chat::Request {
     }
 }
 
-impl<'s, R: Request> From<RegistrationRequest<'s, R>> for crate::chat::Request {
+impl<'s, R: Request> From<RegistrationRequest<'s, R>> for ChatRequest {
     fn from(value: RegistrationRequest<'s, R>) -> Self {
         let RegistrationRequest {
             session_id,
@@ -698,91 +455,13 @@ impl From<&PublicKey> for PublicKeyBytes {
     }
 }
 
-#[serde_as]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, serde::Serialize)]
-#[serde(rename_all = "camelCase", bound = "B: AsRef<[u8]>")]
-pub struct SignedPreKeyBody<B> {
-    pub key_id: u32,
-    #[serde_as(as = "Base64Padded")]
-    pub public_key: B,
-    #[serde_as(as = "Base64Padded")]
-    pub signature: B,
-}
-
-impl<'a, T: GenericSignedPreKey> From<&'a T> for SignedPreKeyBody<&'a [u8]> {
-    fn from(record: &'a T) -> Self {
-        let storage = record.get_storage();
-        Self {
-            key_id: storage.id,
-            public_key: &storage.public_key,
-            signature: &storage.signature,
-        }
-    }
-}
-
-impl<T> SignedPreKeyBody<T> {
-    pub fn to_owned(&self) -> SignedPreKeyBody<T::Owned>
-    where
-        T: ToOwned,
-    {
-        let Self {
-            key_id,
-            public_key,
-            signature,
-        } = self;
-        SignedPreKeyBody {
-            key_id: *key_id,
-            public_key: public_key.to_owned(),
-            signature: signature.to_owned(),
-        }
-    }
-
-    pub fn as_deref(&self) -> SignedPreKeyBody<&T::Target>
-    where
-        T: std::ops::Deref,
-    {
-        let Self {
-            key_id,
-            public_key,
-            signature,
-        } = self;
-        SignedPreKeyBody {
-            key_id: *key_id,
-            public_key,
-            signature,
-        }
-    }
-}
-
-struct MappedToTrue;
-
-impl<T> serde_with::SerializeAs<HashSet<T>> for MappedToTrue
-where
-    T: serde::Serialize,
-{
-    fn serialize_as<S>(source: &HashSet<T>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.collect_map(source.iter().map(|name| (name, true)))
-    }
-}
-
-impl TryFrom<String> for VerificationTransport {
-    type Error = <Self as FromStr>::Err;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        FromStr::from_str(&value)
-    }
-}
-
 #[cfg(test)]
 impl RegistrationResponse {
-    pub(super) fn into_websocket_response(
+    pub(crate) fn into_websocket_response(
         self,
         ws_request_id: u64,
-    ) -> crate::proto::chat_websocket::WebSocketResponseMessage {
-        crate::proto::chat_websocket::WebSocketResponseMessage {
+    ) -> libsignal_net::proto::chat_websocket::WebSocketResponseMessage {
+        libsignal_net::proto::chat_websocket::WebSocketResponseMessage {
             id: Some(ws_request_id),
             status: Some(http::StatusCode::OK.as_u16().into()),
             message: Some("OK".to_string()),
@@ -794,17 +473,19 @@ impl RegistrationResponse {
 
 #[cfg(test)]
 mod test {
+    use std::collections::{HashMap, HashSet};
     use std::str::FromStr as _;
     use std::sync::LazyLock;
+    use std::time::Duration;
 
     use base64::Engine;
-    use libsignal_protocol::{KeyPair, KyberPreKeyRecord};
+    use libsignal_core::{Aci, Pni};
+    use libsignal_protocol::{GenericSignedPreKey as _, KeyPair, KyberPreKeyRecord};
     use rand::SeedableRng as _;
     use serde_json::json;
     use uuid::uuid;
 
     use super::*;
-    use crate::chat::{Request as ChatRequest, Response as ChatResponse};
 
     #[test]
     fn registration_get_session_request_as_chat_request() {
@@ -939,7 +620,7 @@ mod test {
             tokens: &["user:pass1", "user:pass2", "user:pass3"].map(ToOwned::to_owned),
         };
         // Don't bother duplicating the impl by checking other fields
-        let crate::chat::Request { body, .. } = request.into();
+        let ChatRequest { body, .. } = request.into();
         assert_eq!(
             body.as_deref(),
             Some(
@@ -1060,7 +741,7 @@ mod test {
     /// up producing the JSON we expect.
     #[test]
     fn register_account_request() {
-        let request = crate::chat::Request::register_account(
+        let request = ChatRequest::register_account(
             "+18005550101",
             Some(&"abc".parse().unwrap()),
             NewMessageNotification::Apn("appleId"),
@@ -1077,7 +758,7 @@ mod test {
             base64::prelude::BASE64_STANDARD.encode(b"+18005550101:encoded account password")
         );
 
-        let crate::chat::Request {
+        let ChatRequest {
             method,
             body,
             headers,
@@ -1158,7 +839,7 @@ mod test {
 
     #[test]
     fn register_account_request_fetches_messages_no_push_tokens() {
-        let request = crate::chat::Request::register_account(
+        let request = ChatRequest::register_account(
             "+18005550101",
             Some(&"abc".parse().unwrap()),
             NewMessageNotification::WillFetchMessages,
