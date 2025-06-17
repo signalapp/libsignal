@@ -166,7 +166,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ matrix.arch }}-21-linux
+          key: avd-${{ matrix.arch }}-${{ ANDROID_API_LEVEL }}-linux
 
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -177,7 +177,7 @@ jobs:
           ndk: ${{ env.ANDROID_NDK_VERSION }}
           force-avd-creation: false
           disk-size: 1024M
-          emulator-options: -no-window -noaudio -no-boot-anim
+          emulator-options: -no-window -noaudio -no-boot-anim -no-metrics
           script: echo "Generated AVD snapshot for caching."
 
       - name: Run tests
@@ -188,7 +188,7 @@ jobs:
           ndk: ${{ env.ANDROID_NDK_VERSION }}
           disk-size: 1024M
           force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim
+          emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim -no-metrics
           script: ./gradlew android:connectedCheck android:packaging-test:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries
           working-directory: java
 
