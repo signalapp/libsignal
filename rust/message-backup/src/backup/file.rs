@@ -76,6 +76,8 @@ pub enum LocatorError {
     UnexpectedMediaTierCdnNumber,
     /// key is present but neither transitCdnKey nor plaintextHash are set
     UnexpectedKey,
+    /// encryptedDigest requires transitCdnKey, transitCdnNumber, and key
+    EncryptedDigestMissingTransitInfo,
     /// {0}
     InvalidTimestamp(#[from] TimestampError),
 }
@@ -115,10 +117,17 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryIntoWith<LocatorInfo, C>
             special_fields: _,
         } = self;
 
+        let transit =
+            (transitCdnKey, transitCdnNumber, transitTierUploadTimestamp).try_into_with(context)?;
+
         let integrity_check = match integrityCheck {
             Some(proto::file_pointer::locator_info::IntegrityCheck::EncryptedDigest(digest)) => {
                 if digest.is_empty() {
                     return Err(LocatorError::MissingIntegrityCheck);
+                }
+
+                if transit.is_none() || key.is_empty() {
+                    return Err(LocatorError::EncryptedDigestMissingTransitInfo);
                 }
 
                 IntegrityCheck::EncryptedDigest { digest }
@@ -134,9 +143,6 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryIntoWith<LocatorInfo, C>
             }
             None => return Err(LocatorError::MissingIntegrityCheck),
         };
-
-        let transit =
-            (transitCdnKey, transitCdnNumber, transitTierUploadTimestamp).try_into_with(context)?;
 
         let has_content =
             transit.is_some() || matches!(integrity_check, IntegrityCheck::PlaintextHash { .. });
@@ -480,13 +486,27 @@ mod test {
         x.transitCdnKey = None;
         x.transitCdnNumber = None;
         x.transitTierUploadTimestamp = None;
-    } => Err(LocatorError::UnexpectedKey); "no transit CDN info or plaintextHash, but key is present")]
+    } => Err(LocatorError::EncryptedDigestMissingTransitInfo); "no transit CDN info or plaintextHash, but key is present")]
     #[test_case(|x| {
         x.key = vec![];
         x.transitCdnKey = None;
         x.transitCdnNumber = None;
         x.transitTierUploadTimestamp = None;
-    } => Ok(()); "digest-only, no key")]
+    } => Err(LocatorError::EncryptedDigestMissingTransitInfo); "digest-only, no key")]
+    #[test_case(|x| {
+        x.transitCdnKey = None;
+        x.transitCdnNumber = None;
+        x.transitTierUploadTimestamp = None;
+    } => Err(LocatorError::EncryptedDigestMissingTransitInfo); "encryptedDigest without transit info should fail")]
+    #[test_case(|x| {
+        x.key = vec![];
+    } => Err(LocatorError::EncryptedDigestMissingTransitInfo); "encryptedDigest without key should fail")]
+    #[test_case(|x| {
+        x.transitCdnKey = None;
+    } => Err(LocatorError::TransitCdnMismatch); "encryptedDigest without transitCdnKey should fail")]
+    #[test_case(|x| {
+        x.transitCdnNumber = None;
+    } => Err(LocatorError::TransitCdnMismatch); "encryptedDigest without transitCdnNumber should fail")]
     fn locator_info_with_digest(
         modifier: impl FnOnce(&mut proto::file_pointer::LocatorInfo),
     ) -> Result<(), LocatorError> {
