@@ -18,7 +18,7 @@ use libsignal_net::chat;
 use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net::infra::{extract_retry_later, AsHttpHeader};
 
-use crate::api::{RequestError, UserBasedAuthorization};
+use crate::api::{RateLimitChallenge, RequestError, UserBasedAuthorization};
 
 const ACCESS_KEY_HEADER_NAME: http::HeaderName =
     http::HeaderName::from_static("unidentified-access-key");
@@ -153,7 +153,10 @@ impl ResponseError {
                             if let Ok(ChallengeBody { token, options }) =
                                 parse_json_from_body(&response)
                             {
-                                return RequestError::Challenge { token, options };
+                                return RequestError::Challenge(RateLimitChallenge {
+                                    token,
+                                    options,
+                                });
                             }
                         }
                         if status.as_u16() == 422 {
@@ -358,7 +361,7 @@ mod test {
     #[test_case(json(428, "{}") => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
     #[test_case(json(
         428, r#"{"token": "zzz", "options": ["captcha"]}"#
-    ) => matches Err(RequestError::Challenge { token, options }) if token == "zzz" && options == vec![RequestedInformation::Captcha])]
+    ) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options })) if token == "zzz" && options == vec![RequestedInformation::Captcha])]
     #[test_case(empty(422) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("server validation"))]
     #[test_case(empty(419) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("419"))]
     fn try_parse_empty(

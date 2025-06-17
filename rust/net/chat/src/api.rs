@@ -36,12 +36,8 @@ pub enum RequestError<E> {
     ConnectionInvalidated,
     /// {0}
     RetryLater(#[from] libsignal_net::infra::errors::RetryLater),
-    /// retry after completing a rate limit challenge {options:?}
-    Challenge {
-        token: String,
-        // TODO: Move this type into libsignal-net-chat.
-        options: Vec<libsignal_net::registration::RequestedInformation>,
-    },
+    /// {0}
+    Challenge(#[from] RateLimitChallenge),
     /// transport error: {log_safe}
     Transport { log_safe: String },
     /// server-side error, retryable with backoff
@@ -56,6 +52,15 @@ pub enum RequestError<E> {
     Other(E),
 }
 impl<E> LogSafeDisplay for RequestError<E> where E: LogSafeDisplay {}
+
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+/// retry after completing a rate limit challenge {options:?}
+pub struct RateLimitChallenge {
+    pub token: String,
+    // TODO: Move this type into libsignal-net-chat.
+    pub options: Vec<libsignal_net::registration::RequestedInformation>,
+}
+impl LogSafeDisplay for RateLimitChallenge {}
 
 /// A convenience trait covering all Chat APIs.
 ///
