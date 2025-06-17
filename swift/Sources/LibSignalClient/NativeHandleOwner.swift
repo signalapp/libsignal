@@ -152,7 +152,7 @@ public class ClonableHandleOwner<PointerType: SignalMutPointer>: NativeHandleOwn
         handle = nil
     }
 
-    internal class func cloneNativeHandle(_ newHandle: inout PointerType, currentHandle: PointerType.ConstPointer) -> SignalFfiErrorRef? {
+    internal class func cloneNativeHandle(_: inout PointerType, currentHandle: PointerType.ConstPointer) -> SignalFfiErrorRef? {
         fatalError("must be implemented by subclasses")
     }
 }

@@ -42,7 +42,7 @@ public protocol ChatConnectionListener: ConnectionEventsListener<AuthenticatedCh
 
 extension ChatConnectionListener {
     public func chatConnectionDidReceiveQueueEmpty(_: AuthenticatedChatConnection) {}
-    public func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveAlerts alerts: [String]) {}
+    public func chatConnection(_: AuthenticatedChatConnection, didReceiveAlerts alerts: [String]) {}
 }
 
 private protocol ChatListenerConnection {

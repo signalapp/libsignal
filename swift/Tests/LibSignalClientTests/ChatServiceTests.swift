@@ -210,7 +210,7 @@ final class ChatConnectionTests: TestCaseBase {
                 self.connectionInterrupted = connectionInterrupted
             }
 
-            func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () throws -> Void) {
+            func chatConnection(_: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () throws -> Void) {
                 // This assumes a little-endian platform.
                 XCTAssertEqual(envelope, withUnsafeBytes(of: serverDeliveryTimestamp) { Data($0) })
                 switch serverDeliveryTimestamp {
@@ -227,7 +227,7 @@ final class ChatConnectionTests: TestCaseBase {
                 self.queueEmpty.fulfill()
             }
 
-            func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveAlerts alerts: [String]) {
+            func chatConnection(_: AuthenticatedChatConnection, didReceiveAlerts alerts: [String]) {
                 XCTAssertEqual(alerts, ["UPPERcase", "lowercase"])
                 self.alertsReceived.fulfill()
             }
@@ -289,7 +289,7 @@ final class ChatConnectionTests: TestCaseBase {
 
     func testAuthenticatedSending() async throws {
         class NoOpListener: ChatConnectionListener {
-            func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () throws -> Void) {}
+            func chatConnection(_: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () throws -> Void) {}
 
             func connectionWasInterrupted(_: AuthenticatedChatConnection, error: Error?) {}
         }
@@ -369,7 +369,7 @@ final class ChatConnectionTests: TestCaseBase {
                 expectation.fulfill()
             }
 
-            func connectionWasInterrupted(_ service: UnauthenticatedChatConnection, error: Error?) {}
+            func connectionWasInterrupted(_: UnauthenticatedChatConnection, error: Error?) {}
         }
 
         let net = Net(env: .staging, userAgent: Self.userAgent)
