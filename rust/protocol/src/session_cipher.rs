@@ -42,16 +42,19 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
             format!("post-quantum ratchet send error: {e}"),
         )
     })?;
+    
     let message_keys = chain_key.message_keys().generate_keys(pqr_key);
-
+    
     let sender_ephemeral = session_state.sender_ratchet_key()?;
+    // sender_ratchet_swoosh_public_key throws InvalidSessionStructure("invalid sender chain private ratchet key")
     let sender_swoosh_ephemeral = session_state.sender_ratchet_swoosh_public_key()?;
+    
     let previous_counter = session_state.previous_counter();
     let session_version = session_state
         .session_version()?
         .try_into()
         .map_err(|_| SignalProtocolError::InvalidSessionStructure("version does not fit in u8"))?;
-
+    
     let local_identity_key = session_state.local_identity_key()?;
     let their_identity_key = session_state.remote_identity_key()?.ok_or_else(|| {
         SignalProtocolError::InvalidState(
@@ -59,7 +62,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
             format!("no remote identity key for {remote_address}"),
         )
     })?;
-    println!("Encrypting message for {}", remote_address);
+    
     let ctext =
         signal_crypto::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())
             .map_err(|_| {

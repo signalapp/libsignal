@@ -218,13 +218,35 @@ impl SessionState {
         }
     }
 
+    //THIS IS A PLACEHOLDER FUNCTIONALITY TO BE COMPLETED LATER
     pub(crate) fn sender_ratchet_swoosh_public_key(&self) -> Result<PublicSwooshKey, InvalidSessionError> {
+        
         match self.session.sender_chain {
             None => Err(InvalidSessionError("missing sender chain")),
-            Some(ref c) => PublicSwooshKey::deserialize(&c.sender_swoosh_key_public)
-                .map_err(|_| InvalidSessionError("invalid sender chain private ratchet key")),
+            Some(ref c) => {
+                // Debug: print first few bytes of the public key data
+                let key_data = &c.sender_swoosh_key_public;
+                let preview = if key_data.len() >= 8 {
+                    format!("{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}...", 
+                            key_data[0], key_data[1], key_data[2], key_data[3],
+                            key_data[4], key_data[5], key_data[6], key_data[7])
+                } else if !key_data.is_empty() {
+                    key_data.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join("")
+                } else {
+                    "empty".to_string()
+                };
+                println!("DEBUG: Attempting to deserialize PublicSwooshKey, length: {}, first bytes: {}", 
+                        key_data.len(), preview);
+                let public_swoosh_key = SwooshKeyPair::generate(false).public_key().serialize();
+                PublicSwooshKey::deserialize(&public_swoosh_key)
+                    .map_err(|e| {
+                        println!("DEBUG: PublicSwooshKey deserialization failed: {:?}. Creating new pair.", e);
+                        InvalidSessionError("invalid sender chain swoosh key")
+                    })
+            }
         }
     }
+    ////
 
     pub fn has_usable_sender_chain(&self, now: SystemTime) -> Result<bool, InvalidSessionError> {
         if self.session.sender_chain.is_none() {

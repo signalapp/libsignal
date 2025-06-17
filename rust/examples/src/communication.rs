@@ -4,8 +4,23 @@ use libsignal_protocol::*;
 use rand::{rng, RngCore};
 use std::time::SystemTime;
 
-#[tokio::main]
-async fn main() -> Result<(), SignalProtocolError> {
+fn main() -> Result<(), SignalProtocolError> {
+    use std::thread;
+    
+    // Create a thread with larger stack to run the async main
+    let handle = thread::Builder::new()
+        .stack_size(32 * 1024 * 1024) // 32MB stack
+        .spawn(|| {
+            tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(async_main())
+        })
+        .unwrap();
+    
+    handle.join().unwrap()
+}
+
+async fn async_main() -> Result<(), SignalProtocolError> {
     // Initialize random number generator
     let mut csprng = rng();
     println!("=== SIGNAL PROTOCOL COMMUNICATION EXAMPLE ===");
