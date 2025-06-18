@@ -14,6 +14,10 @@ name = "communication"
 path = "src/communication.rs"
 
 [[bin]]
+name = "communication_no_pq"
+path = "src/communication_no_pq.rs"
+
+[[bin]]
 name = "communication_debug"
 path = "src/communication_debug.rs"
 

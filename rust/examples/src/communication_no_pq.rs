@@ -1,4 +1,3 @@
-
 use libsignal_protocol::*;
 use rand::{rng, RngCore};
 use std::time::SystemTime;
@@ -22,7 +21,7 @@ fn main() -> Result<(), SignalProtocolError> {
 async fn async_main() -> Result<(), SignalProtocolError> {
     // Initialize random number generator
     let mut csprng = rng();
-    println!("=== SIGNAL PROTOCOL COMMUNICATION EXAMPLE ===");
+    println!("=== SIGNAL PROTOCOL COMMUNICATION EXAMPLE (WITHOUT POST-QUANTUM) ===");
     // Create addresses for Alice and Bob
     let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
     let bob_address = ProtocolAddress::new("+14151112222".to_owned(), 1.into());
@@ -58,29 +57,8 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Signed Pre-Key Public: {:?}", hex::encode(bob_signed_prekey_pair.public_key.serialize()));
     println!("Signed Pre-Key Signature: {:?}", hex::encode(&bob_signed_prekey_signature));
     
-    // Generate Bob's Kyber pre-key (required for PQ ratchet)
-    let bob_kyber_keypair = kem::KeyPair::generate(kem::KeyType::Kyber1024, &mut csprng);
-    let bob_kyber_prekey_id = KyberPreKeyId::from(1u32);
-    let bob_kyber_prekey_signature = bob_identity
-        .private_key()
-        .calculate_signature(&bob_kyber_keypair.public_key.serialize(), &mut csprng)?;
-    
-    let bob_kyber_prekey = KyberPreKeyRecord::new(
-        bob_kyber_prekey_id,
-        Timestamp::from_epoch_millis(0),
-        &bob_kyber_keypair,
-        &bob_kyber_prekey_signature,
-    );
-    
-    println!("\n=== BOB'S KYBER PRE-KEY (Post-Quantum) ===");
-    println!("Kyber Pre-Key ID: {:?}", bob_kyber_prekey_id);
-    println!("Kyber Public Key Length: {} bytes", bob_kyber_keypair.public_key.serialize().len());
-    //println!("Kyber Public Key: {:?}", hex::encode(bob_kyber_keypair.public_key.serialize()));
-    println!("Kyber Pre-Key Signature: {:?}", hex::encode(&bob_kyber_prekey_signature));
-    
-    // Store Bob's pre-keys
+    // Store Bob's signed pre-key
     bob_store.save_signed_pre_key(bob_signed_prekey_id, &bob_signed_prekey).await?;
-    bob_store.save_kyber_pre_key(bob_kyber_prekey_id, &bob_kyber_prekey).await?;
     
     // Optional: Generate one-time pre-key for Bob
     let bob_prekey_pair = KeyPair::generate(&mut csprng);
@@ -93,7 +71,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     
     bob_store.save_pre_key(bob_prekey_id, &bob_prekey).await?;
     
-    // Create pre-key bundle for Bob with Kyber key
+    // Create pre-key bundle for Bob WITHOUT Kyber key
     let bob_prekey_bundle = PreKeyBundle::new(
         bob_store.get_local_registration_id().await?,
         1.into(), // device_id
@@ -102,17 +80,12 @@ async fn async_main() -> Result<(), SignalProtocolError> {
         bob_signed_prekey.public_key()?,
         bob_signed_prekey.signature().unwrap(),
         *bob_identity.identity_key(),
-    )?
-    .with_kyber_pre_key(
-        bob_kyber_prekey_id,
-        bob_kyber_prekey.public_key().unwrap(),
-        bob_kyber_prekey.signature().unwrap(),
-    );
+    )?;
     
-    println!("\n=== PRE-KEY BUNDLE CREATED ===");
+    println!("\n=== PRE-KEY BUNDLE CREATED (WITHOUT KYBER) ===");
     println!("Registration ID: {:?}", bob_store.get_local_registration_id().await?);
     
-    // Alice processes Bob's pre-key bundle to establish session
+    // Alice processes Bob's pre-key bundle to establish session WITHOUT PQ ratchet
     // Alice session is initialized and initial double ratchet keys established
     process_prekey_bundle(
         &bob_address,
@@ -121,10 +94,10 @@ async fn async_main() -> Result<(), SignalProtocolError> {
         &bob_prekey_bundle,
         SystemTime::UNIX_EPOCH,
         &mut csprng,
-        UsePQRatchet::Yes,
+        UsePQRatchet::No,
     ).await?;
     
-    println!("\n=== SESSION ESTABLISHED ===");
+    println!("\n=== SESSION ESTABLISHED (NO POST-QUANTUM) ===");
     
     // Alice encrypts a message to Bob
     let alice_message = "Hello Bob! This is Alice.";
@@ -156,7 +129,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
                 &mut bob_store.signed_pre_key_store,
                 &mut bob_store.kyber_pre_key_store,
                 &mut csprng,
-                UsePQRatchet::Yes,
+                UsePQRatchet::No,
             ).await?
         },
         CiphertextMessage::SignalMessage(signal_msg) => {
@@ -190,7 +163,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Bob sent: {}", bob_reply);
     println!("Reply ciphertext type: {:?}", bob_ciphertext.message_type());
     println!("Reply ciphertext length: {} bytes", bob_ciphertext.serialize().len());
-    println!("Encrypted reply: {:?}", hex::encode(bob_ciphertext.serialize()));
+    //println!("Encrypted reply: {:?}", hex::encode(bob_ciphertext.serialize()));
     
     // Alice decrypts Bob's reply (should be SignalMessage after first exchange)
     let alice_received = match &bob_ciphertext {
@@ -211,7 +184,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Alice received: {}", alice_decrypted_reply);
     
     // Continue the conversation - Alice sends another message (Turn 3)
-    let alice_second_message = "Thanks Bob! How's the post-quantum cryptography working for you?";
+    let alice_second_message = "Thanks Bob! How's the classic cryptography working for you?";
     let alice_second_ciphertext = message_encrypt(
         alice_second_message.as_bytes(),
         &bob_address,
@@ -225,7 +198,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Alice sent: {}", alice_second_message);
     println!("Ciphertext type: {:?}", alice_second_ciphertext.message_type());
     println!("Ciphertext length: {} bytes", alice_second_ciphertext.serialize().len());
-    println!("Encrypted message: {:?}", hex::encode(alice_second_ciphertext.serialize()));
+    //println!("Encrypted message: {:?}", hex::encode(alice_second_ciphertext.serialize()));
     
     // Bob decrypts Alice's second message
     let bob_second_plaintext = match &alice_second_ciphertext {
@@ -246,7 +219,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Bob received: {}", bob_decrypted_second);
     
     // Bob sends another reply (Turn 4)
-    let bob_second_reply = "It's amazing! The Kyber1024 integration provides excellent quantum resistance.";
+    let bob_second_reply = "It's reliable! The ECDH X25519 provides excellent forward secrecy without quantum overhead.";
     let bob_second_ciphertext = message_encrypt(
         bob_second_reply.as_bytes(),
         &alice_address,
@@ -260,7 +233,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Bob sent: {}", bob_second_reply);
     println!("Reply ciphertext type: {:?}", bob_second_ciphertext.message_type());
     println!("Reply ciphertext length: {} bytes", bob_second_ciphertext.serialize().len());
-    println!("Encrypted reply: {:?}", hex::encode(bob_second_ciphertext.serialize()));
+    //println!("Encrypted reply: {:?}", hex::encode(bob_second_ciphertext.serialize()));
     
     // Alice decrypts Bob's second reply
     let alice_second_received = match &bob_second_ciphertext {
@@ -284,6 +257,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Communication established successfully!");
     println!("Total double ratchet turns: 4");
     println!("Messages exchanged: 4 (2 from Alice, 2 from Bob)");
+    println!("Using classic cryptography (no post-quantum)");
     
     Ok(())
 }
