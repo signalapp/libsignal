@@ -59,6 +59,9 @@ pub enum SignalProtocolError {
     /// invalid Kyber prekey identifier
     InvalidKyberPreKeyId,
 
+    /// invalid swoosh prekey identifier
+    InvalidSwooshPreKeyId,
+
     /// invalid MAC key length <{0}>
     InvalidMacKeyLength(usize),
 

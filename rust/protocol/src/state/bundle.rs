@@ -6,7 +6,7 @@
 use std::clone::Clone;
 
 use crate::state::{PreKeyId, SignedPreKeyId};
-use crate::{kem, DeviceId, IdentityKey, KyberPreKeyId, PublicKey, Result, SignalProtocolError};
+use crate::{kem, DeviceId, IdentityKey, KyberPreKeyId, PublicKey, Result, SignalProtocolError, SwooshPreKeyId};
 
 #[derive(Clone)]
 struct SignedPreKey {
@@ -42,6 +42,23 @@ impl KyberPreKey {
     }
 }
 
+#[derive(Clone)]
+struct SwooshPreKey {
+    id: SwooshPreKeyId,
+    public_key: pswoosh::keys::PublicSwooshKey,
+    signature: Vec<u8>,
+}
+
+impl SwooshPreKey {
+    fn new(id: SwooshPreKeyId, public_key: pswoosh::keys::PublicSwooshKey, signature: Vec<u8>) -> Self {
+        Self {
+            id,
+            public_key,
+            signature,
+        }
+    }
+}
+
 // Represents the raw contents of the pre-key bundle without any notion of required/optional
 // fields.
 // Can be used as a "builder" for PreKeyBundle, in which case all the validation will happen in
@@ -58,6 +75,9 @@ pub struct PreKeyBundleContent {
     pub kyber_pre_key_id: Option<KyberPreKeyId>,
     pub kyber_pre_key_public: Option<kem::PublicKey>,
     pub kyber_pre_key_signature: Option<Vec<u8>>,
+    pub swoosh_pre_key_id: Option<SwooshPreKeyId>,
+    pub swoosh_pre_key_public: Option<pswoosh::keys::PublicSwooshKey>,
+    pub swoosh_pre_key_signature: Option<Vec<u8>>,
 }
 
 impl From<PreKeyBundle> for PreKeyBundleContent {
@@ -80,6 +100,15 @@ impl From<PreKeyBundle> for PreKeyBundleContent {
                 .kyber_pre_key
                 .as_ref()
                 .map(|kyber| kyber.signature.clone()),
+            swoosh_pre_key_id: bundle.swoosh_pre_key.as_ref().map(|swoosh| swoosh.id),
+            swoosh_pre_key_public: bundle
+                .swoosh_pre_key
+                .as_ref()
+                .map(|swoosh| swoosh.public_key.clone()),
+            swoosh_pre_key_signature: bundle
+                .swoosh_pre_key
+                .as_ref()
+                .map(|swoosh| swoosh.signature.clone()),
         }
     }
 }
@@ -142,6 +171,7 @@ pub struct PreKeyBundle {
     // Optional to support older clients
     // TODO: remove optionality once the transition is over
     kyber_pre_key: Option<KyberPreKey>,
+    swoosh_pre_key: Option<SwooshPreKey>,
 }
 
 impl PreKeyBundle {
@@ -173,6 +203,7 @@ impl PreKeyBundle {
             ec_signed_pre_key,
             identity_key,
             kyber_pre_key: None,
+            swoosh_pre_key: None,
         })
     }
 
@@ -183,6 +214,16 @@ impl PreKeyBundle {
         signature: Vec<u8>,
     ) -> Self {
         self.kyber_pre_key = Some(KyberPreKey::new(pre_key_id, public_key, signature));
+        self
+    }
+
+    pub fn with_swoosh_pre_key(
+        mut self,
+        pre_key_id: SwooshPreKeyId,
+        public_key: pswoosh::keys::PublicSwooshKey,
+        signature: Vec<u8>,
+    ) -> Self {
+        self.swoosh_pre_key = Some(SwooshPreKey::new(pre_key_id, public_key, signature));
         self
     }
 

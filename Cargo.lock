@@ -2850,6 +2850,7 @@ version = "0.1.0"
 dependencies = [
  "hex",
  "libsignal-protocol",
+ "pswoosh",
  "rand 0.9.0",
  "tokio",
 ]

@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 use std::fmt;
 use subtle::ConstantTimeEq;
 
-use crate::{pswoosh_keygen, pswoosh_skey_deriv, sys_a::{A, AT}, Matrix, PUBLICKEY_BYTES, SECRETKEY_BYTES, SYMBYTES};
+use crate::{pswoosh_keygen, pswoosh_skey_deriv, sys_a::{A, AT}, PUBLICKEY_BYTES, SECRETKEY_BYTES, SYMBYTES};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SwooshKeyType {

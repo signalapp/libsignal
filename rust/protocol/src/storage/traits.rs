@@ -14,7 +14,7 @@ use crate::state::{
     KyberPreKeyId, KyberPreKeyRecord, PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId,
     SignedPreKeyRecord,
 };
-use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress};
+use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress, SwooshPreKeyId, SwooshPreKeyRecord};
 
 // TODO: consider moving this enum into utils.rs?
 /// Each Signal message can be considered to have exactly two participants, a sender and receiver.
@@ -134,6 +134,23 @@ pub trait KyberPreKeyStore {
     /// Mark the entry for `kyber_prekey_id` as "used".
     /// This would mean different things for one-time and last-resort Kyber keys.
     async fn mark_kyber_pre_key_used(&mut self, kyber_prekey_id: KyberPreKeyId) -> Result<()>;
+}
+
+#[async_trait(?Send)]
+pub trait SwooshPreKeyStore {
+    /// Look up the signed kyber pre-key corresponding to `kyber_prekey_id`.
+    async fn get_swoosh_pre_key(&self, swoosh_prekey_id: SwooshPreKeyId) -> Result<SwooshPreKeyRecord>;
+
+    /// Set the entry for `kyber_prekey_id` to the value of `record`.
+    async fn save_swoosh_pre_key(
+        &mut self,
+        swoosh_prekey_id: SwooshPreKeyId,
+        record: &SwooshPreKeyRecord,
+    ) -> Result<()>;
+
+    /// Mark the entry for `swoosh_prekey_id` as "used".
+    /// This would mean different things for one-time and last-resort Swoosh keys.
+    async fn mark_swoosh_pre_key_used(&mut self, swoosh_prekey_id: SwooshPreKeyId) -> Result<()>;
 }
 
 /// Interface for a Signal client instance to store a session associated with another particular

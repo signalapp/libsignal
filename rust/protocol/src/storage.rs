@@ -12,9 +12,9 @@ mod traits;
 
 pub use inmem::{
     InMemIdentityKeyStore, InMemKyberPreKeyStore, InMemPreKeyStore, InMemSenderKeyStore,
-    InMemSessionStore, InMemSignalProtocolStore, InMemSignedPreKeyStore,
+    InMemSessionStore, InMemSignalProtocolStore, InMemSignedPreKeyStore, InMemSwooshPreKeyStore,
 };
 pub use traits::{
     Direction, IdentityChange, IdentityKeyStore, KyberPreKeyStore, PreKeyStore, ProtocolStore,
-    SenderKeyStore, SessionStore, SignedPreKeyStore,
+    SenderKeyStore, SessionStore, SignedPreKeyStore, SwooshPreKeyStore,
 };
