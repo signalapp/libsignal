@@ -75,12 +75,51 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("\n=== BOB'S SWOOSH PRE-KEY (Post-Quantum) ===");
     println!("Swoosh Pre-Key ID: {:?}", bob_swoosh_prekey_id);
     println!("Swoosh Public Key Length: {} bytes", bob_swoosh_key_pair.public_key.serialize().len());
-    //println!("Swoosh Public Key: {:?}", hex::encode(bob_swoosh_key_pair.public_key.serialize()));
+    println!("First 8 bytes of Swoosh Pre-Key: {:?}", hex::encode(&bob_swoosh_key_pair.public_key.serialize()[..8]));
     println!("Swoosh Pre-Key Signature: {:?}", hex::encode(&bob_swoosh_prekey_signature));
 
     // Store Bob's pre-keys
     bob_store.save_signed_pre_key(bob_signed_prekey_id, &bob_signed_prekey).await?;
     bob_store.save_swoosh_pre_key(bob_swoosh_prekey_id, &bob_swoosh_prekey).await?;
+    
+    // Retrieve the same information from bob_store
+    println!("\n=== RETRIEVING SWOOSH PRE-KEY FROM STORE ===");
+    if let Ok(stored_swoosh_prekey) = bob_store.get_swoosh_pre_key(bob_swoosh_prekey_id).await {
+        let stored_public_key = stored_swoosh_prekey.public_key()?;
+        println!("Retrieved Swoosh Pre-Key ID: {:?}", bob_swoosh_prekey_id);
+        println!("Retrieved Swoosh Public Key Length: {} bytes", stored_public_key.serialize().len());
+        println!("First 8 bytes of Retrieved Swoosh Pre-Key: {:?}", hex::encode(&stored_public_key.serialize()[..8]));
+        if let Ok(signature) = stored_swoosh_prekey.signature() {
+            println!("Retrieved Swoosh Pre-Key Signature: {:?}", hex::encode(&signature));
+        }
+        
+        // Check if private key is also stored
+        println!("\n=== CHECKING FOR PRIVATE KEY IN STORE ===");
+        // Let's compare with the original key pair
+        println!("Original private key length: {} bytes", bob_swoosh_key_pair.private_key.serialize().len());
+        println!("First 8 bytes of Original Private Key: {:?}", hex::encode(&bob_swoosh_key_pair.private_key.serialize()[..8]));
+        
+        // Check if the stored record contains the private key
+        if let Ok(stored_private_key) = stored_swoosh_prekey.secret_key() {
+            println!("✓ Swoosh Private Key IS stored in the record");
+            println!("Stored private key length: {} bytes", stored_private_key.serialize().len());
+            println!("First 8 bytes of Stored Private Key: {:?}", hex::encode(&stored_private_key.serialize()[..8]));
+            
+            // Verify they match
+            let original_bytes = bob_swoosh_key_pair.private_key.serialize();
+            let stored_bytes = stored_private_key.serialize();
+            if original_bytes == stored_bytes {
+                println!("✓ Stored private key matches original private key");
+            } else {
+                println!("✗ Stored private key differs from original private key");
+            }
+        } else {
+            println!("✗ Failed to retrieve private key from stored record");
+        }
+    } else {
+        println!("Failed to retrieve Swoosh pre-key from store");
+    }
+    ///////////////////////
     
     // Optional: Generate one-time pre-key for Bob
     let bob_prekey_pair = KeyPair::generate(&mut csprng);
@@ -92,6 +131,8 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("One-Time Pre-Key Public: {:?}", hex::encode(bob_prekey_pair.public_key.serialize()));
     
     bob_store.save_pre_key(bob_prekey_id, &bob_prekey).await?;
+
+
     
     // Create pre-key bundle for Bob with swoosh pre-key
     let bob_prekey_bundle = PreKeyBundle::new(
