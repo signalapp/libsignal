@@ -11,7 +11,11 @@ use boring_signal::x509::store::X509StoreBuilder;
 use boring_signal::x509::X509;
 use rustls::client::danger::ServerCertVerifier;
 
+use crate::dns::dns_utils::log_safe_domain;
+use crate::errors::LogSafeDisplay;
 use crate::host::Host;
+
+mod error;
 
 #[derive(thiserror::Error, Debug, displaydoc::Display)]
 pub enum Error {
@@ -130,9 +134,10 @@ fn set_up_platform_verifier(
                 // - internal_error: An internal error unrelated to the peer or the correctness of
                 //   the protocol (such as a memory allocation failure) makes it impossible to
                 //   continue.
-                log::debug!(
-                    "TLS certificate for {} failed verification: {e}",
-                    host_as_server_name.to_str()
+                log::info!(
+                    "TLS certificate for {} failed verification: {}",
+                    log_safe_domain(&host_as_server_name.to_str()),
+                    (&error::LogSafeTlsError(&e) as &dyn LogSafeDisplay)
                 );
                 SslVerifyError::Invalid(match e {
                     rustls::Error::InvalidCertificate(e) => match e {
