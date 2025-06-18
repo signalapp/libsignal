@@ -170,7 +170,8 @@ jobs:
       run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
 
     - name: Test run benches
-      run: cargo +${{ matrix.toolchain }} test --workspace --benches --all-features --verbose --no-fail-fast
+      # Run with a match-all regex to select all the benchmarks, which (confusingly) causes other tests to be skipped.
+      run: cargo +${{ matrix.toolchain }} test --workspace --benches --all-features --verbose --no-fail-fast '.*'
 
     - name: Build bins and examples
       run: cargo +${{ matrix.toolchain }} build --workspace  --bins --examples --all-features --verbose --keep-going

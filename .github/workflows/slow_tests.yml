@@ -340,7 +340,7 @@ jobs:
       # We run this for the non-hermetic tests; it's otherwise the same as regular CI.
       - name: Run pod lint
         run: pod lib lint --verbose --platforms=ios
-  
+
       # Make sure we can build for device, just for completeness.
       - name: Set up testing workspace
         run: pod install
@@ -383,7 +383,8 @@ jobs:
         ./bin/run_with_network_isolation.sh "${TEST_CMD}"
 
     - name: Test run benches
-      run: cargo +stable test --workspace --benches --all-features --no-fail-fast --verbose
+      # Run with a match-all regex to select all the benchmarks, which (confusingly) causes other tests to be skipped.
+      run: cargo +stable test --workspace --benches --all-features --no-fail-fast --verbose '.*'
 
     - name: Build bins and examples
       run: cargo +stable build --workspace  --bins --examples --all-features --verbose --keep-going
