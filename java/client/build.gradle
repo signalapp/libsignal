@@ -70,7 +70,6 @@ test {
 
 java {
     withSourcesJar()
-    withJavadocJar()
 }
 
 kotlin {
@@ -82,6 +81,18 @@ sourcesJar {
     exclude '*.dll'
     exclude '*.dylib'
     exclude '*.so'
+}
+
+task dokkaHtmlJar(type: Jar) {
+    dependsOn(dokkaHtml)
+    from(dokkaHtml)
+    archiveClassifier.set("dokka")
+}
+
+task dokkaJavadocJar(type: Jar) {
+    dependsOn(dokkaJavadoc)
+    from(dokkaJavadoc)
+    archiveClassifier.set("javadoc")
 }
 
 tasks.named('jar') {
@@ -101,6 +112,8 @@ publishing {
         mavenJava(MavenPublication) {
             artifactId = archivesBaseName
             from components.java
+            artifact dokkaHtmlJar
+            artifact dokkaJavadocJar
 
             pom {
                 name = archivesBaseName

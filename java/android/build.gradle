@@ -68,6 +68,18 @@ kotlin {
     explicitApi()
 }
 
+task dokkaHtmlJar(type: Jar) {
+    dependsOn(dokkaHtml)
+    from(dokkaHtml)
+    archiveClassifier.set("dokka")
+}
+
+task dokkaJavadocJar(type: Jar) {
+    dependsOn(dokkaJavadoc)
+    from(dokkaJavadoc)
+    archiveClassifier.set("javadoc")
+}
+
 String collectTestEnvironment() {
     def result = []
     System.getenv().each { k, v ->
@@ -167,6 +179,8 @@ afterEvaluate {
             mavenJava(MavenPublication) {
                 artifactId = archivesBaseName
                 from components.release
+                artifact dokkaHtmlJar
+                artifact dokkaJavadocJar
 
                 pom {
                     name = archivesBaseName

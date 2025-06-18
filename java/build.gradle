@@ -7,6 +7,7 @@ plugins {
     id "com.diffplug.spotless" version "6.20.0"
     id "io.github.gradle-nexus.publish-plugin" version "2.0.0"
     id "org.jetbrains.kotlin.jvm" version "2.1.0"
+    id "org.jetbrains.dokka" version "2.0.0"
 
     // These plugins need to be loaded together, so we must declare them up front.
     id 'com.android.library' version "8.9.0" apply false
@@ -44,6 +45,7 @@ subprojects {
     }
 
     apply plugin: "com.diffplug.spotless"
+    apply plugin: "org.jetbrains.dokka"
     spotless {
         kotlin {
             target('**/*.kt')
