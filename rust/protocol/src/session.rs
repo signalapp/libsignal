@@ -12,7 +12,7 @@ use crate::state::GenericSignedPreKey;
 use crate::{
     kem, ratchet, Direction, IdentityKey, IdentityKeyStore, KeyPair, KyberPreKeyId,
     KyberPreKeyStore, PreKeyBundle, PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress,
-    Result, SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyStore,
+    Result, SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyStore, SwooshPreKeyStore,
 };
 
 #[derive(Default)]
@@ -49,6 +49,7 @@ pub async fn process_prekey<'a>(
     pre_key_store: &dyn PreKeyStore,
     signed_prekey_store: &dyn SignedPreKeyStore,
     kyber_prekey_store: &dyn KyberPreKeyStore,
+    swoosh_prekey_store: &dyn SwooshPreKeyStore,
     use_pq_ratchet: ratchet::UsePQRatchet,
 ) -> Result<(PreKeysUsed, IdentityToSave<'a>)> {
     let their_identity_key = message.identity_key();
@@ -68,6 +69,7 @@ pub async fn process_prekey<'a>(
         session_record,
         signed_prekey_store,
         kyber_prekey_store,
+        swoosh_prekey_store,
         pre_key_store,
         identity_store,
         use_pq_ratchet,
@@ -88,6 +90,7 @@ async fn process_prekey_impl(
     session_record: &mut SessionRecord,
     signed_prekey_store: &dyn SignedPreKeyStore,
     kyber_prekey_store: &dyn KyberPreKeyStore,
+    swoosh_prekey_store: &dyn SwooshPreKeyStore,
     pre_key_store: &dyn PreKeyStore,
     identity_store: &dyn IdentityKeyStore,
     use_pq_ratchet: ratchet::UsePQRatchet,
@@ -116,6 +119,18 @@ async fn process_prekey_impl(
         );
     } else {
         our_kyber_pre_key_pair = None;
+    }
+
+    let our_swoosh_pre_key_pair: Option<pswoosh::keys::SwooshKeyPair>;
+    if let Some(swoosh_pre_key_id) = message.swoosh_pre_key_id() {
+        our_swoosh_pre_key_pair = Some(
+            swoosh_prekey_store
+                .get_swoosh_pre_key(swoosh_pre_key_id)
+                .await?
+                .key_pair()?,
+        );
+    } else {
+        our_swoosh_pre_key_pair = None;
     }
 
     let our_one_time_pre_key_pair = if let Some(pre_key_id) = message.pre_key_id() {

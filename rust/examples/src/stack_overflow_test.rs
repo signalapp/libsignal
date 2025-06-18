@@ -146,6 +146,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
                 &mut bob_store.pre_key_store,
                 &mut bob_store.signed_pre_key_store,
                 &mut bob_store.kyber_pre_key_store,
+                &mut bob_store.swoosh_pre_key_store,
                 &mut csprng,
                 UsePQRatchet::No, // Use traditional ratchet to avoid PQ-related stack overflow
             ).await?

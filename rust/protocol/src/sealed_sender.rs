@@ -18,11 +18,7 @@ use subtle::ConstantTimeEq;
 use zerocopy::{FromBytes, Immutable, KnownLayout};
 
 use crate::{
-    crypto, message_encrypt, proto, ratchet, session_cipher, Aci, CiphertextMessageType, DeviceId,
-    Direction, IdentityKey, IdentityKeyPair, IdentityKeyStore, KeyPair, KyberPreKeyStore,
-    PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, Result, ServiceId,
-    ServiceIdFixedWidthBinaryBytes, SessionRecord, SessionStore, SignalMessage,
-    SignalProtocolError, SignedPreKeyStore, Timestamp,
+    crypto, message_encrypt, proto, ratchet, session_cipher, Aci, CiphertextMessageType, DeviceId, Direction, IdentityKey, IdentityKeyPair, IdentityKeyStore, KeyPair, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, Result, ServiceId, ServiceIdFixedWidthBinaryBytes, SessionRecord, SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore, SwooshPreKeyStore, Timestamp
 };
 
 #[derive(Debug, Clone)]
@@ -1908,6 +1904,7 @@ pub async fn sealed_sender_decrypt(
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &dyn SignedPreKeyStore,
     kyber_pre_key_store: &mut dyn KyberPreKeyStore,
+    swoosh_pre_key_store: &mut dyn SwooshPreKeyStore,
     use_pq_ratchet: ratchet::UsePQRatchet,
 ) -> Result<SealedSenderDecryptionResult> {
     let usmc = sealed_sender_decrypt_to_usmc(ciphertext, identity_store).await?;
@@ -1958,6 +1955,7 @@ pub async fn sealed_sender_decrypt(
                 pre_key_store,
                 signed_pre_key_store,
                 kyber_pre_key_store,
+                swoosh_pre_key_store,
                 &mut rng,
                 use_pq_ratchet,
             )

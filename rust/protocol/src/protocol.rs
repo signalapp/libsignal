@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
 use crate::{
-    kem, proto, IdentityKey, PrivateKey, PublicKey, Result, SignalProtocolError, Timestamp,
+    kem, proto, IdentityKey, PrivateKey, PublicKey, Result, SignalProtocolError, SwooshPreKeyId, Timestamp
 };
 
 pub(crate) const CIPHERTEXT_MESSAGE_CURRENT_VERSION: u8 = 4;
@@ -287,6 +287,7 @@ pub struct PreKeySignalMessage {
     pre_key_id: Option<PreKeyId>,
     signed_pre_key_id: SignedPreKeyId,
     kyber_payload: Option<KyberPayload>,
+    swoosh_signed_pre_key_id: Option<SwooshPreKeyId>,
     base_key: PublicKey,
     identity_key: IdentityKey,
     message: SignalMessage,
@@ -300,6 +301,7 @@ impl PreKeySignalMessage {
         pre_key_id: Option<PreKeyId>,
         signed_pre_key_id: SignedPreKeyId,
         kyber_payload: Option<KyberPayload>,
+        swoosh_signed_pre_key_id: Option<SwooshPreKeyId>,
         base_key: PublicKey,
         identity_key: IdentityKey,
         message: SignalMessage,
@@ -308,6 +310,7 @@ impl PreKeySignalMessage {
             registration_id: Some(registration_id),
             pre_key_id: pre_key_id.map(|id| id.into()),
             signed_pre_key_id: Some(signed_pre_key_id.into()),
+            swoosh_signed_pre_key_id: swoosh_signed_pre_key_id.map(|id| id.into()),
             kyber_pre_key_id: kyber_payload.as_ref().map(|kyber| kyber.pre_key_id.into()),
             kyber_ciphertext: kyber_payload
                 .as_ref()
@@ -327,6 +330,7 @@ impl PreKeySignalMessage {
             pre_key_id,
             signed_pre_key_id,
             kyber_payload,
+            swoosh_signed_pre_key_id,
             base_key,
             identity_key,
             message,
@@ -357,6 +361,11 @@ impl PreKeySignalMessage {
     #[inline]
     pub fn kyber_pre_key_id(&self) -> Option<KyberPreKeyId> {
         self.kyber_payload.as_ref().map(|kyber| kyber.pre_key_id)
+    }
+
+    #[inline]
+    pub fn swoosh_pre_key_id(&self) -> Option<SwooshPreKeyId> {
+        self.swoosh_signed_pre_key_id
     }
 
     #[inline]
@@ -426,6 +435,8 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
         let signed_pre_key_id = proto_structure
             .signed_pre_key_id
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let swoosh_signed_pre_key_id = proto_structure
+            .swoosh_signed_pre_key_id;
 
         let base_key = PublicKey::deserialize(base_key.as_ref())?;
 
@@ -455,6 +466,7 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
             pre_key_id: proto_structure.pre_key_id.map(|id| id.into()),
             signed_pre_key_id: signed_pre_key_id.into(),
             kyber_payload,
+            swoosh_signed_pre_key_id: swoosh_signed_pre_key_id.map(|id| id.into()),
             base_key,
             identity_key: IdentityKey::try_from(identity_key.as_ref())?,
             message: SignalMessage::try_from(message.as_ref())?,
@@ -1027,6 +1039,7 @@ mod tests {
             None,
             97.into(),
             None, // TODO: add kyber prekeys
+            None, // TODO: add swoosh prekeys
             base_key_pair.public_key,
             identity_key_pair.public_key.into(),
             message,
@@ -1138,6 +1151,7 @@ mod tests {
             None,
             97.into(),
             None, // TODO: add kyber prekeys
+            None, // TODO: add swoosh prekeys
             base_key_pair.public_key,
             identity_key_pair.public_key.into(),
             message,

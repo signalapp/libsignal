@@ -60,6 +60,7 @@ pub async fn decrypt(
         &mut store.pre_key_store,
         &store.signed_pre_key_store,
         &mut store.kyber_pre_key_store,
+        &mut store.swoosh_pre_key_store,
         &mut csprng,
         use_pq_ratchet,
     )

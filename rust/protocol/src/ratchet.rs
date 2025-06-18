@@ -161,7 +161,20 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
 ) -> Result<SessionState> {
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
-    let sending_ratchet_key = KeyPair::generate(&mut csprng);
+    // Ensure we have the required Swoosh parameters
+    let their_swoosh_pre_key = parameters.their_swoosh_pre_key()
+        .ok_or_else(|| SignalProtocolError::InvalidArgument("Missing their_swoosh_pre_key for Swoosh session".to_string()))?;
+    
+    let their_swoosh_ratchet_key = parameters.their_swoosh_ratchet_key()
+        .ok_or_else(|| SignalProtocolError::InvalidArgument("Missing their_swoosh_ratchet_key for Swoosh session".to_string()))?;
+
+    // Determine Alice/Bob role deterministically
+    let is_alice = RootKey::determine_swoosh_role(
+        parameters.our_identity_key_pair().identity_key(),
+        parameters.their_identity_key()
+    );
+
+    let sending_ratchet_key = SwooshKeyPair::generate(is_alice);
 
     let mut secrets = Vec::with_capacity(32 * 5);
 
@@ -201,14 +214,20 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
 
     let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
 
-    let swoosh_sending_key = SwooshKeyPair::generate(true);
-    // Use deterministic role assignment: Alice has lexicographically smaller identity key
-    let is_alice = RootKey::determine_swoosh_role(
-        parameters.our_identity_key_pair().identity_key(),
-        parameters.their_identity_key()
-    );
+    // For Swoosh key derivation, we need to include the Swoosh shared secret
+    // Generate our ephemeral Swoosh key
+    let our_swoosh_ephemeral = SwooshKeyPair::generate(is_alice);
+    
+    // Derive shared secret using Swoosh keys
+    let swoosh_shared_secret = our_swoosh_ephemeral.derive_shared_secret(their_swoosh_pre_key, is_alice)?;
+    secrets.extend_from_slice(&swoosh_shared_secret);
+
+    let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
+
+    // Generate sender ratchet key for Swoosh chain
+    let swoosh_sending_key = SwooshKeyPair::generate(is_alice);
     let (sending_chain_root_key, sending_chain_chain_key) = root_key.create_chain_swoosh(
-        parameters.their_swoosh_ratchet_key().unwrap(),
+        their_swoosh_ratchet_key,
         &swoosh_sending_key.public_key(),
         &swoosh_sending_key.private_key(),
         is_alice
@@ -245,8 +264,8 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
         &parameters.our_base_key_pair().public_key,
         pqr_state,
     )
-    .with_receiver_chain(parameters.their_ratchet_key(), &chain_key)
-    .with_sender_chain(&sending_ratchet_key, &sending_chain_chain_key);
+    .with_receiver_swoosh_chain(their_swoosh_ratchet_key, &chain_key)
+    .with_sender_swoosh_chain(&swoosh_sending_key, &sending_chain_chain_key);
 
     if let Some(kyber_ciphertext) = kyber_ciphertext {
         session.set_kyber_ciphertext(kyber_ciphertext);
@@ -256,6 +275,97 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
 }
 
 pub(crate) fn initialize_bob_session(
+    parameters: &BobSignalProtocolParameters,
+) -> Result<SessionState> {
+    println!("**Bob session initialized");
+    let local_identity = parameters.our_identity_key_pair().identity_key();
+
+    let mut secrets = Vec::with_capacity(32 * 5);
+
+    secrets.extend_from_slice(&[0xFFu8; 32]); // "discontinuity bytes"
+
+    secrets.extend_from_slice(
+        &parameters
+            .our_signed_pre_key_pair()
+            .private_key
+            .calculate_agreement(parameters.their_identity_key().public_key())?,
+    );
+
+    secrets.extend_from_slice(
+        &parameters
+            .our_identity_key_pair()
+            .private_key()
+            .calculate_agreement(parameters.their_base_key())?,
+    );
+
+    secrets.extend_from_slice(
+        &parameters
+            .our_signed_pre_key_pair()
+            .private_key
+            .calculate_agreement(parameters.their_base_key())?,
+    );
+
+    if let Some(our_one_time_pre_key_pair) = parameters.our_one_time_pre_key_pair() {
+        secrets.extend_from_slice(
+            &our_one_time_pre_key_pair
+                .private_key
+                .calculate_agreement(parameters.their_base_key())?,
+        );
+    }
+
+    match (
+        parameters.our_kyber_pre_key_pair(),
+        parameters.their_kyber_ciphertext(),
+    ) {
+        (Some(key_pair), Some(ciphertext)) => {
+            let ss = key_pair.secret_key.decapsulate(ciphertext)?;
+            secrets.extend_from_slice(ss.as_ref());
+        }
+        (None, None) => (), // Alice does not support kyber prekeys
+        _ => {
+            panic!("Either both or none of the kyber key pair and ciphertext can be provided")
+        }
+    }
+    let has_kyber = parameters.our_kyber_pre_key_pair().is_some();
+
+    let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
+
+    let self_session = local_identity == parameters.their_identity_key();
+    let pqr_state = match parameters.use_pq_ratchet() {
+        UsePQRatchet::Yes => spqr::initial_state(spqr::Params {
+            auth_key: &pqr_key,
+            version: spqr::Version::V1,
+            direction: spqr::Direction::B2A,
+            // Set min_version to V0 (allow fallback to no PQR at all) while
+            // there are clients that don't speak PQR.  Once all clients speak
+            // PQR, we can up this to V1 to require that all subsequent sessions
+            // use at least V1.
+            min_version: spqr::Version::V0,
+            chain_params: spqr_chain_params(self_session),
+        })
+        .map_err(|e| {
+            // Since this is an error associated with the initial creation of the state,
+            // it must be a problem with the arguments provided.
+            SignalProtocolError::InvalidArgument(format!(
+                "post-quantum ratchet: error creating initial B2A state: {e}"
+            ))
+        })?,
+        UsePQRatchet::No => spqr::SerializedState::new(), // empty
+    };
+    let session = SessionState::new(
+        message_version(has_kyber),
+        local_identity,
+        parameters.their_identity_key(),
+        &root_key,
+        parameters.their_base_key(),
+        pqr_state,
+    )
+    .with_sender_chain(parameters.our_ratchet_key_pair(), &chain_key);
+
+    Ok(session)
+}
+
+pub(crate) fn initialize_bob_session_pswoosh(
     parameters: &BobSignalProtocolParameters,
 ) -> Result<SessionState> {
     println!("**Bob session initialized");

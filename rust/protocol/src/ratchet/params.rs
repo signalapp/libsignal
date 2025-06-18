@@ -153,6 +153,11 @@ impl AliceSignalProtocolParameters {
     pub fn their_swoosh_ratchet_key(&self) -> Option<&PublicSwooshKey> {
         self.their_swoosh_ratchet_key.as_ref()
     }
+
+    #[inline]
+    pub fn their_swoosh_pre_key(&self) -> Option<&PublicSwooshKey> {
+        self.their_swoosh_pre_key.as_ref()
+    }
 }
 
 pub struct BobSignalProtocolParameters<'a> {
@@ -165,6 +170,11 @@ pub struct BobSignalProtocolParameters<'a> {
 
     their_identity_key: IdentityKey,
     their_base_key: PublicKey,
+    their_swoosh_pre_key: Option<PublicSwooshKey>,
+
+    // Swoosh quantum-resistant keys
+    our_swoosh_key_pair: Option<SwooshKeyPair>,
+    their_swoosh_ratchet_key: Option<PublicSwooshKey>,
     their_kyber_ciphertext: Option<&'a kem::SerializedCiphertext>,
 
     use_pq_ratchet: UsePQRatchet,
@@ -191,6 +201,9 @@ impl<'a> BobSignalProtocolParameters<'a> {
             our_kyber_pre_key_pair,
             their_identity_key,
             their_base_key,
+            our_swoosh_key_pair: None,
+            their_swoosh_ratchet_key: None,
+            their_swoosh_pre_key: None,
             their_kyber_ciphertext,
             use_pq_ratchet,
         }

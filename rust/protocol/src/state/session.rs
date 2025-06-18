@@ -380,6 +380,11 @@ impl SessionState {
         self
     }
 
+    pub(crate) fn with_receiver_swoosh_chain(mut self, sender: &PublicSwooshKey, chain_key: &ChainKey) -> Self {
+        self.add_receiver_swoosh_chain(sender, chain_key);
+        self
+    }
+
     pub(crate) fn set_sender_chain(&mut self, sender: &KeyPair, next_chain_key: &ChainKey) {
         let chain_key = session_structure::chain::ChainKey {
             index: next_chain_key.index(),
@@ -400,6 +405,11 @@ impl SessionState {
 
     pub(crate) fn with_sender_chain(mut self, sender: &KeyPair, next_chain_key: &ChainKey) -> Self {
         self.set_sender_chain(sender, next_chain_key);
+        self
+    }
+
+    pub(crate) fn with_sender_swoosh_chain(mut self, sender: &SwooshKeyPair, next_chain_key: &ChainKey) -> Self {
+        self.set_sender_swoosh_chain(sender, next_chain_key);
         self
     }
 

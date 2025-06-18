@@ -14,7 +14,7 @@ use crate::state::{InvalidSessionError, SessionState};
 use crate::{
     session, CiphertextMessage, CiphertextMessageType, Direction, IdentityKeyStore, KeyPair,
     KyberPayload, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, ProtocolAddress, PublicKey,
-    Result, SessionRecord, SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore,
+    Result, SessionRecord, SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore, SwooshPreKeyStore,
 };
 
 pub async fn message_encrypt<R: Rng + CryptoRng>(
@@ -118,6 +118,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
             items.pre_key_id(),
             items.signed_pre_key_id(),
             kyber_payload,
+            None, // swoosh_signed_pre_key_id - not implemented yet
             *items.base_key(),
             local_identity_key,
             message,
@@ -175,6 +176,7 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &dyn SignedPreKeyStore,
     kyber_pre_key_store: &mut dyn KyberPreKeyStore,
+    swoosh_pre_key_store: &dyn SwooshPreKeyStore,
     csprng: &mut R,
     use_pq_ratchet: UsePQRatchet,
 ) -> Result<Vec<u8>> {
@@ -191,6 +193,7 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
                 pre_key_store,
                 signed_pre_key_store,
                 kyber_pre_key_store,
+                swoosh_pre_key_store,
                 csprng,
                 use_pq_ratchet,
             )
@@ -212,6 +215,7 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &dyn SignedPreKeyStore,
     kyber_pre_key_store: &mut dyn KyberPreKeyStore,
+    swoosh_pre_key_store: &dyn SwooshPreKeyStore,
     csprng: &mut R,
     use_pq_ratchet: UsePQRatchet,
 ) -> Result<Vec<u8>> {
@@ -229,6 +233,7 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         pre_key_store,
         signed_pre_key_store,
         kyber_pre_key_store,
+        swoosh_pre_key_store,
         use_pq_ratchet,
     )
     .await;

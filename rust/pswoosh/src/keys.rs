@@ -9,6 +9,7 @@ use subtle::ConstantTimeEq;
 
 use crate::{pswoosh_keygen, pswoosh_skey_deriv, sys_a::{A, AT}, PUBLICKEY_BYTES, SECRETKEY_BYTES, SYMBYTES};
 
+pub type SerializedCiphertext = Box<[u8]>;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SwooshKeyType {
     Pswoosh,
