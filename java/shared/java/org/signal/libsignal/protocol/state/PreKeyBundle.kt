@@ -91,7 +91,7 @@ public class PreKeyBundle(
     get() = guardedMapChecked(Native::PreKeyBundle_GetSignedPreKeySignature)
 
   /**
-   * @return the {@link org.signal.libsignal.protocol.IdentityKey} of this PreKeys owner.
+   * @return the [IdentityKey] of this PreKey's owner.
    */
   public val identityKey: IdentityKey
     get() = IdentityKey(

@@ -40,9 +40,9 @@ public class SenderCertificate : NativeHandleGuard.SimpleOwner {
     get() = this.senderUuid
 
   /**
-   * Returns an ACI if the sender is a valid UUID, {@code null} otherwise.
+   * Returns an ACI if the sender is a valid UUID, `null` otherwise.
    *
-   * <p>In a future release SenderCertificate will <em>only</em> support ACIs.
+   * In a future release SenderCertificate will *only* support ACIs.
    */
   public val senderAci: ServiceId.Aci?
     get() {

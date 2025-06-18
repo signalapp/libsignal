@@ -15,7 +15,7 @@ import kotlin.annotation.Target
 /**
  * Declares that a class or field is accessed via JNI.
  *
- * <p>This should be used to annotate classes, methods, and fields that are accessed by Rust code
+ * This should be used to annotate classes, methods, and fields that are accessed by Rust code
  * via JNI. Methods and fields with this annotation will not be renamed or stripped during dead code
  * analysis. Classes with this annotation will not be stripped (though their methods may be renamed
  * or stripped unless annotated).

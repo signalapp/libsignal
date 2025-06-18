@@ -22,7 +22,7 @@ public class ServerCertificate : NativeHandleGuard.SimpleOwner {
   @Throws(InvalidCertificateException::class)
   public constructor(serialized: ByteArray) : super(createNativeFrom(serialized))
 
-  /** Use {@code trustRoot} to generate and sign a new server certificate containing {@code key}. */
+  /** Use `trustRoot` to generate and sign a new server certificate containing `key`. */
   public constructor(trustRoot: ECPrivateKey, keyId: Int, key: ECPublicKey) :
     super(
       key.guardedMap {
@@ -51,7 +51,7 @@ public class ServerCertificate : NativeHandleGuard.SimpleOwner {
   /**
    * Issue a sender certificate.
    *
-   * <p>{@code signingKey} must be the private key that corresponds to {@link #key}, or the
+   * `signingKey` must be the private key that corresponds to [key], or the
    * resulting certificate won't have a valid signature.
    */
   public fun issue(
@@ -84,7 +84,7 @@ public class ServerCertificate : NativeHandleGuard.SimpleOwner {
   /**
    * Issue a sender certificate.
    *
-   * <p>{@code signingKey} must be the private key that corresponds to {@link #key}, or the
+   * `signingKey` must be the private key that corresponds to [key], or the
    * resulting certificate won't have a valid signature.
    */
   public fun issue(
