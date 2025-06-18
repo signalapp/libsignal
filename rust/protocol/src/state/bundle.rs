@@ -281,6 +281,28 @@ impl PreKeyBundle {
             .map(|pre_key| pre_key.signature.as_ref()))
     }
 
+    pub fn has_swoosh_pre_key(&self) -> bool {
+        self.swoosh_pre_key.is_some()
+    }
+
+    pub fn swoosh_pre_key_id(&self) -> Result<Option<SwooshPreKeyId>> {
+        Ok(self.swoosh_pre_key.as_ref().map(|pre_key| pre_key.id))
+    }
+
+    pub fn swoosh_pre_key_public(&self) -> Result<Option<&pswoosh::keys::PublicSwooshKey>> {
+        Ok(self
+            .swoosh_pre_key
+            .as_ref()
+            .map(|pre_key| &pre_key.public_key))
+    }
+
+    pub fn swoosh_pre_key_signature(&self) -> Result<Option<&[u8]>> {
+        Ok(self
+            .swoosh_pre_key
+            .as_ref()
+            .map(|pre_key| pre_key.signature.as_ref()))
+    }
+
     pub fn modify<F>(self, modify: F) -> Result<Self>
     where
         F: FnOnce(&mut PreKeyBundleContent),

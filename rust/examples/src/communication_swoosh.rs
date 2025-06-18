@@ -93,7 +93,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     
     bob_store.save_pre_key(bob_prekey_id, &bob_prekey).await?;
     
-    // Create pre-key bundle for Bob WITHOUT Kyber key
+    // Create pre-key bundle for Bob with swoosh pre-key
     let bob_prekey_bundle = PreKeyBundle::new(
         bob_store.get_local_registration_id().await?,
         1.into(), // device_id

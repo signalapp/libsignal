@@ -31,6 +31,7 @@ pub struct AliceSignalProtocolParameters {
     their_one_time_pre_key: Option<PublicKey>,
     their_ratchet_key: PublicKey,
     their_kyber_pre_key: Option<kem::PublicKey>,
+    their_swoosh_pre_key: Option<PublicSwooshKey>,
 
     // Swoosh quantum-resistant keys
     our_swoosh_key_pair: Option<SwooshKeyPair>,
@@ -56,6 +57,7 @@ impl AliceSignalProtocolParameters {
             their_one_time_pre_key: None,
             their_ratchet_key,
             their_kyber_pre_key: None,
+            their_swoosh_pre_key: None,
             our_swoosh_key_pair: None,
             their_swoosh_ratchet_key: None,
             use_pq_ratchet,
@@ -73,6 +75,10 @@ impl AliceSignalProtocolParameters {
 
     pub fn set_their_kyber_pre_key(&mut self, kyber_public: &kem::PublicKey) {
         self.their_kyber_pre_key = Some(kyber_public.clone());
+    }
+
+    pub fn set_their_swoosh_pre_key(&mut self, swoosh_public: &pswoosh::keys::PublicSwooshKey) {
+        self.their_swoosh_pre_key = Some(swoosh_public.clone());
     }
 
     pub fn with_their_kyber_pre_key(mut self, kyber_public: &kem::PublicKey) -> Self {
