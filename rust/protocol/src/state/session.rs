@@ -13,7 +13,7 @@ use subtle::ConstantTimeEq;
 
 use crate::proto::storage::{session_structure, RecordStructure, SessionStructure};
 use crate::ratchet::{ChainKey, MessageKeyGenerator, RootKey};
-use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
+use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId, SwooshPreKeyId};
 use crate::{consts, kem, IdentityKey, KeyPair, PrivateKey, PublicKey, SignalProtocolError};
 
 /// A distinct error type to keep from accidentally propagating deserialization errors.
@@ -39,6 +39,7 @@ pub(crate) struct UnacknowledgedPreKeyMessageItems<'a> {
     base_key: PublicKey,
     kyber_pre_key_id: Option<KyberPreKeyId>,
     kyber_ciphertext: Option<&'a [u8]>,
+    swoosh_pre_key_id: Option<SwooshPreKeyId>,
     timestamp: SystemTime,
 }
 
@@ -48,6 +49,7 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
         signed_pre_key_id: SignedPreKeyId,
         base_key: PublicKey,
         pending_kyber_pre_key: Option<&'a session_structure::PendingKyberPreKey>,
+        swoosh_pre_key_id: Option<SwooshPreKeyId>,
         timestamp: SystemTime,
     ) -> Self {
         let (kyber_pre_key_id, kyber_ciphertext) = pending_kyber_pre_key
@@ -59,6 +61,7 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
             base_key,
             kyber_pre_key_id,
             kyber_ciphertext,
+            swoosh_pre_key_id,
             timestamp,
         }
     }
@@ -81,6 +84,10 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
 
     pub(crate) fn kyber_ciphertext(&self) -> Option<&'a [u8]> {
         self.kyber_ciphertext
+    }
+
+    pub(crate) fn swoosh_pre_key_id(&self) -> Option<SwooshPreKeyId> {
+        self.swoosh_pre_key_id
     }
 
     pub(crate) fn timestamp(&self) -> SystemTime {
@@ -117,6 +124,7 @@ impl SessionState {
                 receiver_chains: vec![],
                 pending_pre_key: None,
                 pending_kyber_pre_key: None,
+                pending_swoosh_pre_key: None,
                 remote_registration_id: 0,
                 local_registration_id: 0,
                 alice_base_key: alice_base_key.serialize().into_vec(),
@@ -412,11 +420,18 @@ impl SessionState {
             key: next_chain_key.key().to_vec(),
         };
 
+        // Preserve existing Swoosh keys if they exist
+        let (existing_swoosh_public, existing_swoosh_private) = if let Some(ref current_chain) = self.session.sender_chain {
+            (current_chain.sender_swoosh_key_public.clone(), current_chain.sender_swoosh_key_private.clone())
+        } else {
+            (vec![], vec![])
+        };
+
         let new_chain = session_structure::Chain {
             sender_ratchet_key: sender.public_key.serialize().to_vec(),
             sender_ratchet_key_private: sender.private_key.serialize().to_vec(),
-            sender_swoosh_key_public: vec![],
-            sender_swoosh_key_private: vec![],
+            sender_swoosh_key_public: existing_swoosh_public,
+            sender_swoosh_key_private: existing_swoosh_private,
             chain_key: Some(chain_key),
             message_keys: vec![],
         };
@@ -440,16 +455,25 @@ impl SessionState {
             key: next_chain_key.key().to_vec(),
         };
 
+        let swoosh_public_serialized = swoosh_sender.public_key().serialize().to_vec();
+        let swoosh_private_serialized = swoosh_sender.private_key().serialize().to_vec();
+        
+        println!("DEBUG: Storing Swoosh key in sender chain - public length: {}, private length: {}", 
+                swoosh_public_serialized.len(), swoosh_private_serialized.len());
+        println!("DEBUG: First 8 bytes of Swoosh public key: {:02x?}", 
+                &swoosh_public_serialized[..8.min(swoosh_public_serialized.len())]);
+
         let new_chain = session_structure::Chain {
             sender_ratchet_key: regular_sender.public_key.serialize().to_vec(),
             sender_ratchet_key_private: regular_sender.private_key.serialize().to_vec(),
-            sender_swoosh_key_public: swoosh_sender.public_key().serialize().to_vec(),
-            sender_swoosh_key_private: swoosh_sender.private_key().serialize().to_vec(),
+            sender_swoosh_key_public: swoosh_public_serialized,
+            sender_swoosh_key_private: swoosh_private_serialized,
             chain_key: Some(chain_key),
             message_keys: vec![],
         };
 
         self.session.sender_chain = Some(new_chain);
+        println!("DEBUG: Sender chain set successfully");
     }
 
     pub(crate) fn with_sender_hybrid_chain(mut self, regular_sender: &KeyPair, swoosh_sender: &SwooshKeyPair, next_chain_key: &ChainKey) -> Self {
@@ -676,6 +700,15 @@ impl SessionState {
         pending.pre_key_id = signed_kyber_pre_key_id.into();
     }
 
+    pub(crate) fn set_unacknowledged_swoosh_pre_key_id(
+        &mut self,
+        swoosh_pre_key_id: SwooshPreKeyId,
+    ) {
+        self.session.pending_swoosh_pre_key = Some(session_structure::PendingSwooshPreKey {
+            pre_key_id: swoosh_pre_key_id.into(),
+        });
+    }
+
     pub(crate) fn unacknowledged_pre_key_message_items(
         &self,
     ) -> Result<Option<UnacknowledgedPreKeyMessageItems>, InvalidSessionError> {
@@ -686,6 +719,7 @@ impl SessionState {
                 PublicKey::deserialize(&pending_pre_key.base_key)
                     .map_err(|_| InvalidSessionError("invalid pending PreKey message base key"))?,
                 self.session.pending_kyber_pre_key.as_ref(),
+                self.session.pending_swoosh_pre_key.as_ref().map(|p| p.pre_key_id.into()),
                 SystemTime::UNIX_EPOCH + Duration::from_secs(pending_pre_key.timestamp),
             )))
         } else {
@@ -706,6 +740,7 @@ impl SessionState {
             receiver_chains: _receiver_chains,
             pending_pre_key: _pending_pre_key,
             pending_kyber_pre_key: _pending_kyber_pre_key,
+            pending_swoosh_pre_key: _pending_swoosh_pre_key,
             remote_registration_id: _remote_registration_id,
             local_registration_id: _local_registration_id,
             alice_base_key: _alice_base_key,
@@ -717,6 +752,7 @@ impl SessionState {
         // ####### IMPORTANT #######
         self.session.pending_pre_key = None;
         self.session.pending_kyber_pre_key = None;
+        self.session.pending_swoosh_pre_key = None;
     }
 
     pub(crate) fn set_remote_registration_id(&mut self, registration_id: u32) {
@@ -802,9 +838,16 @@ impl SessionState {
             key: next_chain_key.key().to_vec(),
         };
 
+        // Preserve existing regular ECDH keys if they exist
+        let (existing_ratchet_public, existing_ratchet_private) = if let Some(ref current_chain) = self.session.sender_chain {
+            (current_chain.sender_ratchet_key.clone(), current_chain.sender_ratchet_key_private.clone())
+        } else {
+            (vec![], vec![])
+        };
+
         let new_chain = session_structure::Chain {
-            sender_ratchet_key: vec![], // Empty for Swoosh-only chains
-            sender_ratchet_key_private: vec![],
+            sender_ratchet_key: existing_ratchet_public,
+            sender_ratchet_key_private: existing_ratchet_private,
             sender_swoosh_key_public: sender.public_key().serialize().to_vec(),
             sender_swoosh_key_private: sender.private_key().serialize().to_vec(),
             chain_key: Some(chain_key),

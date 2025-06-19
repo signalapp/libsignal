@@ -155,11 +155,19 @@ async fn process_prekey_impl(
     );
 
     // Add Swoosh key information if available
+    println!("DEBUG: Bob checking for Swoosh keys - our_swoosh_pre_key_pair: {}", 
+             our_swoosh_pre_key_pair.is_some());
     if let Some(swoosh_key_pair) = our_swoosh_pre_key_pair {
+        println!("DEBUG: Bob has Swoosh pre-key, setting up Swoosh parameters");
         parameters.set_our_swoosh_key_pair(swoosh_key_pair);
         // Get Alice's Swoosh ratchet key from the embedded SignalMessage
         let their_swoosh_ratchet_key = *message.message().sender_ratchet_swoosh_key();
+        println!("DEBUG: Bob received Alice's Swoosh ratchet key, length: {}, first 8 bytes: {:02x?}", 
+                their_swoosh_ratchet_key.serialize().len(),
+                &their_swoosh_ratchet_key.serialize()[..8.min(their_swoosh_ratchet_key.serialize().len())]);
         parameters.set_their_swoosh_ratchet_key(their_swoosh_ratchet_key);
+    } else {
+        println!("DEBUG: Bob does not have Swoosh pre-key, using regular decryption");
     }
 
     let mut new_session = if our_swoosh_pre_key_pair.is_some() {
@@ -392,6 +400,10 @@ pub async fn process_swoosh_prekey_bundle<R: Rng + CryptoRng>(
 
     if let Some(kyber_pre_key_id) = bundle.kyber_pre_key_id()? {
         session.set_unacknowledged_kyber_pre_key_id(kyber_pre_key_id);
+    }
+
+    if let Some(swoosh_pre_key_id) = bundle.swoosh_pre_key_id()? {
+        session.set_unacknowledged_swoosh_pre_key_id(swoosh_pre_key_id);
     }
 
     session.set_local_registration_id(identity_store.get_local_registration_id().await?);

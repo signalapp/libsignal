@@ -118,7 +118,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
             items.pre_key_id(),
             items.signed_pre_key_id(),
             kyber_payload,
-            None, // swoosh_signed_pre_key_id - not implemented yet
+            items.swoosh_pre_key_id(), // Include the Swoosh pre-key ID
             *items.base_key(),
             local_identity_key,
             message,
@@ -636,31 +636,45 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     let their_swoosh_ephemeral = ciphertext.sender_ratchet_swoosh_key();
     let counter = ciphertext.counter();
     
+    println!("DEBUG: Decrypting message - regular key length: {}, swoosh key length: {}", 
+             their_ephemeral.serialize().len(), 
+             their_swoosh_ephemeral.serialize().len());
+    
     // Check if we should use Swoosh (post-quantum) decryption
-    let (chain_key, message_key_gen) = if let Some(swoosh_ephemeral) = their_swoosh_ephemeral {
-        // Use Swoosh decryption path
-        let chain_key = get_or_create_chain_swoosh_key(state, swoosh_ephemeral, remote_address, false)?; // TODO: get is_alice properly
-        let message_key_gen = get_or_create_message_swoosh_key(
-            state,
-            swoosh_ephemeral,
-            remote_address,
-            original_message_type,
-            &chain_key,
-            counter,
-        )?;
-        (chain_key, message_key_gen)
-    } else {
-        // Use regular ECDH decryption path
-        let chain_key = get_or_create_chain_key(state, their_ephemeral, remote_address, csprng)?;
-        let message_key_gen = get_or_create_message_key(
-            state,
-            their_ephemeral,
-            remote_address,
-            original_message_type,
-            &chain_key,
-            counter,
-        )?;
-        (chain_key, message_key_gen)
+    // Determine if this is a Swoosh message by checking if the message contains valid Swoosh keys
+    let (chain_key, message_key_gen) = {
+        // Check if the message has Swoosh keys (non-empty and not just zeros)
+        let swoosh_key_bytes = their_swoosh_ephemeral.serialize();
+        let has_valid_swoosh_key = swoosh_key_bytes.len() > 32 && !swoosh_key_bytes.iter().all(|&b| b == 0);
+        
+        println!("DEBUG: Has valid Swoosh key in message: {}", has_valid_swoosh_key);
+        
+        if has_valid_swoosh_key {
+            // Use Swoosh decryption path
+            let is_alice = state.is_alice();
+            let chain_key = get_or_create_chain_swoosh_key(state, their_swoosh_ephemeral, remote_address, is_alice)?;
+            let message_key_gen = get_or_create_message_swoosh_key(
+                state,
+                their_swoosh_ephemeral,
+                remote_address,
+                original_message_type,
+                &chain_key,
+                counter,
+            )?;
+            (chain_key, message_key_gen)
+        } else {
+            // Use regular ECDH decryption path
+            let chain_key = get_or_create_chain_key(state, their_ephemeral, remote_address, csprng)?;
+            let message_key_gen = get_or_create_message_key(
+                state,
+                their_ephemeral,
+                remote_address,
+                original_message_type,
+                &chain_key,
+                counter,
+            )?;
+            (chain_key, message_key_gen)
+        }
     };
     let pqr_key = state
         .pq_ratchet_recv(ciphertext.pq_ratchet())
@@ -867,19 +881,76 @@ fn get_or_create_chain_swoosh_key(
     remote_address: &ProtocolAddress,
     is_alice: bool,
 ) -> Result<ChainKey> {
+    // First check if we already have an existing receiver chain for this specific key
     if let Some(chain) = state.get_receiver_swoosh_chain_key(their_ephemeral)? {
         log::debug!("{remote_address} has existing receiver chain.");
         println!("**Found existing chain for {remote_address}");
         return Ok(chain);
     }
 
+    // Check if we already have established Swoosh session state (sender chain with Swoosh keys)
+    // If so, we should use the existing chains rather than recreating everything
+    if let Ok(existing_public_key) = state.sender_ratchet_swoosh_public_key() {
+        println!("DEBUG: Found existing Swoosh session state with public key length: {}", existing_public_key.serialize().len());
+        // We have existing Swoosh state, but no receiver chain for this specific ephemeral key
+        // This means we need to advance the ratchet, not create everything from scratch
+        
+        log::info!("{remote_address} creating new chains.");
+        println!("**Creating new Swoosh chains");
+
+        let root_key = state.root_key()?;
+        let our_ephemeral = state.sender_ratchet_swoosh_private_key()?;
+        let our_public_key = state.sender_ratchet_swoosh_public_key()?;
+        let receiver_chain = root_key.create_chain_swoosh(their_ephemeral, &our_public_key, &our_ephemeral, is_alice)?;
+        let our_new_ephemeral = SwooshKeyPair::generate(is_alice);
+        let sender_chain = receiver_chain
+            .0
+            .create_chain_swoosh(their_ephemeral, &our_new_ephemeral.public_key(), &our_new_ephemeral.private_key(), is_alice)?;
+
+        state.set_root_key(&sender_chain.0);
+        state.add_receiver_swoosh_chain(their_ephemeral, &receiver_chain.1);
+
+        let current_index = state.get_sender_chain_key()?.index();
+        let previous_index = if current_index > 0 {
+            current_index - 1
+        } else {
+            0
+        };
+        state.set_previous_counter(previous_index);
+        state.set_sender_swoosh_chain(&our_new_ephemeral, &sender_chain.1);
+
+        return Ok(receiver_chain.1);
+    }
+
     log::info!("{remote_address} creating new chains.");
     println!("**Creating new Swoosh chains");
 
     let root_key = state.root_key()?;
-    let our_ephemeral = state.sender_ratchet_swoosh_private_key();
-    let our_public_key = state.sender_ratchet_swoosh_public_key()?;
-    let receiver_chain = root_key.create_chain_swoosh(their_ephemeral, &our_public_key, &our_ephemeral.unwrap(), is_alice)?;
+    
+    // Handle the case where we don't have existing Swoosh keys (first time initialization)
+    let (our_public_key, our_ephemeral) = match (
+        state.sender_ratchet_swoosh_public_key(),
+        state.sender_ratchet_swoosh_private_key()
+    ) {
+        (Ok(public_key), Ok(private_key)) => {
+            println!("DEBUG: Using existing Swoosh keys");
+            (public_key, private_key)
+        },
+        _ => {
+            println!("DEBUG: No existing Swoosh keys, generating new ones");
+            let new_ephemeral = SwooshKeyPair::generate(is_alice);
+            let public_key = new_ephemeral.public_key().clone();
+            let private_key = new_ephemeral.private_key().clone();
+            
+            // Store the new Swoosh keys in the sender chain
+            let dummy_chain_key = ChainKey::new([0u8; 32], 0);
+            state.set_sender_hybrid_chain(&KeyPair::generate(&mut rand::rng()), &new_ephemeral, &dummy_chain_key);
+            
+            (public_key, private_key)
+        }
+    };
+    
+    let receiver_chain = root_key.create_chain_swoosh(their_ephemeral, &our_public_key, &our_ephemeral, is_alice)?;
     let our_new_ephemeral = SwooshKeyPair::generate(is_alice);
     let sender_chain = receiver_chain
         .0
