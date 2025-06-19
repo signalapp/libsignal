@@ -92,6 +92,10 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
         &our_base_private_key.calculate_agreement(parameters.their_signed_pre_key())?,
     );
 
+    // Print first 8 bytes of normal Diffie-Hellman keys  
+    println!("their_signed_pre_key first 8 bytes: {:02x?}", &parameters.their_signed_pre_key().public_key_bytes()[..8]);
+    println!("their_ratchet_key first 8 bytes: {:02x?}", &parameters.their_ratchet_key().public_key_bytes()[..8]);
+
     if let Some(their_one_time_prekey) = parameters.their_one_time_pre_key() {
         secrets
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
@@ -159,6 +163,7 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
     parameters: &AliceSignalProtocolParameters,
     mut csprng: &mut R,
 ) -> Result<SessionState> {
+    let is_alice = true; // Always true for Alice's session initialization
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
     // Ensure we have the required Swoosh parameters
@@ -168,11 +173,9 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
     let their_swoosh_ratchet_key = parameters.their_swoosh_ratchet_key()
         .ok_or_else(|| SignalProtocolError::InvalidArgument("Missing their_swoosh_ratchet_key for Swoosh session".to_string()))?;
 
-    // Determine Alice/Bob role deterministically
-    let is_alice = RootKey::determine_swoosh_role(
-        parameters.our_identity_key_pair().identity_key(),
-        parameters.their_identity_key()
-    );
+    // Print first 8 bytes of Swoosh keys
+    println!("*their_swoosh_pre_key first 8 bytes: {:02x?}", &their_swoosh_pre_key.public_key_bytes()[..8]);
+    println!("their_swoosh_ratchet_key first 8 bytes: {:02x?}", &their_swoosh_ratchet_key.public_key_bytes()[..8]);
 
     let sending_ratchet_key = SwooshKeyPair::generate(is_alice);
 
@@ -181,6 +184,9 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
     secrets.extend_from_slice(&[0xFFu8; 32]); // "discontinuity bytes"
 
     let our_base_private_key = parameters.our_base_key_pair().private_key;
+    let our_base_swoosh_private_key = parameters.our_base_swoosh_key_pair()
+        .map(|pair| pair.private_key)
+        .unwrap();
 
     secrets.extend_from_slice(
         &parameters

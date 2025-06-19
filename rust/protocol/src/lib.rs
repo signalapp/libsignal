@@ -69,7 +69,7 @@ pub use sealed_sender::{
     SenderCertificate, ServerCertificate, UnidentifiedSenderMessageContent,
 };
 pub use sender_keys::SenderKeyRecord;
-pub use session::{process_prekey, process_prekey_bundle};
+pub use session::{process_prekey, process_prekey_bundle, process_swoosh_prekey_bundle};
 pub use session_cipher::{
     message_decrypt, message_decrypt_prekey, message_decrypt_signal, message_encrypt,
 };

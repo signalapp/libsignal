@@ -4,7 +4,7 @@
 //
 
 use crate::{kem, IdentityKey, IdentityKeyPair, KeyPair, PublicKey};
-use pswoosh::keys::{PrivateSwooshKey, PublicSwooshKey, SwooshKeyPair};
+use pswoosh::keys::{PublicSwooshKey, SwooshKeyPair};
 
 #[derive(Clone, Copy)]
 pub enum UsePQRatchet {
@@ -117,6 +117,11 @@ impl AliceSignalProtocolParameters {
     #[inline]
     pub fn our_base_key_pair(&self) -> &KeyPair {
         &self.our_base_key_pair
+    }
+
+    #[inline]
+    pub fn our_base_swoosh_key_pair(&self) -> Option<&SwooshKeyPair> {
+        self.our_base_swoosh_key_pair.as_ref()
     }
 
     #[inline]
