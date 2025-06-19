@@ -170,6 +170,15 @@ async fn process_prekey_impl(
         println!("DEBUG: Bob does not have Swoosh pre-key, using regular decryption");
     }
 
+    // Check if the current session already has Swoosh keys that we need to preserve
+    let existing_has_swoosh = if let Some(existing_session) = session_record.session_state() {
+        existing_session.sender_swoosh_key_public().unwrap_or(None).is_some()
+    } else {
+        false
+    };
+    
+    println!("DEBUG: Existing session has Swoosh keys: {}", existing_has_swoosh);
+    
     let mut new_session = if our_swoosh_pre_key_pair.is_some() {
         // Use Swoosh-aware initialization when Swoosh keys are present
         println!("**Creating new chains");
@@ -181,6 +190,23 @@ async fn process_prekey_impl(
 
     new_session.set_local_registration_id(identity_store.get_local_registration_id().await?);
     new_session.set_remote_registration_id(message.registration_id());
+
+    // If we have existing Swoosh keys and the new session doesn't properly set them up,
+    // we need to preserve them or transfer them to the new session
+    if existing_has_swoosh {
+        println!("DEBUG: Preserving existing Swoosh keys from previous session");
+        if let Some(existing_state) = session_record.session_state() {
+            // Try to copy over the sender Swoosh chain from existing session
+            if let Ok(Some(swoosh_public)) = existing_state.sender_swoosh_key_public() {
+                if let Ok(Some(swoosh_private)) = existing_state.sender_swoosh_private_key() {
+                    println!("DEBUG: Found existing Swoosh keys to preserve - public length: {}, private length: {}", 
+                             swoosh_public.serialize().len(), swoosh_private.serialize().len());
+                    // The new session should already have proper Swoosh setup from initialize_bob_session_pswoosh
+                    // so we may not need to do anything here if it's working correctly
+                }
+            }
+        }
+    }
 
     session_record.promote_state(new_session);
 

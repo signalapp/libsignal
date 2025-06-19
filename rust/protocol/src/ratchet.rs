@@ -445,37 +445,87 @@ pub(crate) fn initialize_bob_session_pswoosh(
 
     let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
 
-    let self_session = local_identity == parameters.their_identity_key();
-    let pqr_state = match parameters.use_pq_ratchet() {
-        UsePQRatchet::Yes => spqr::initial_state(spqr::Params {
-            auth_key: &pqr_key,
-            version: spqr::Version::V1,
-            direction: spqr::Direction::B2A,
-            // Set min_version to V0 (allow fallback to no PQR at all) while
-            // there are clients that don't speak PQR.  Once all clients speak
-            // PQR, we can up this to V1 to require that all subsequent sessions
-            // use at least V1.
-            min_version: spqr::Version::V0,
-            chain_params: spqr_chain_params(self_session),
-        })
-        .map_err(|e| {
-            // Since this is an error associated with the initial creation of the state,
-            // it must be a problem with the arguments provided.
-            SignalProtocolError::InvalidArgument(format!(
-                "post-quantum ratchet: error creating initial B2A state: {e}"
-            ))
-        })?,
-        UsePQRatchet::No => spqr::SerializedState::new(), // empty
+    // Check if Bob has Swoosh keys for sender chain setup
+    let session = if let (Some(our_swoosh_key_pair), Some(their_swoosh_ratchet_key)) = 
+        (parameters.our_swoosh_key_pair(), parameters.their_swoosh_ratchet_key()) {
+        
+        println!("**Creating new chains");
+        
+        // Create both regular and Swoosh chains like Alice does
+        let sending_ratchet_key = parameters.our_ratchet_key_pair();
+        
+        // First create regular ratchet chain  
+        let (sending_chain_root_key, sending_chain_chain_key) = root_key.create_chain(
+            parameters.their_base_key(),
+            &sending_ratchet_key.private_key,
+        )?;
+        
+        // Then create Swoosh chain with updated root key
+        let is_alice = false; // Bob is not Alice
+        let (sending_swoosh_root_key, sending_swoosh_chain_key) = sending_chain_root_key.create_chain_swoosh(
+            their_swoosh_ratchet_key,
+            &our_swoosh_key_pair.public_key,
+            &our_swoosh_key_pair.private_key,
+            is_alice,
+        )?;
+
+        let self_session = local_identity == parameters.their_identity_key();
+        let pqr_state = match parameters.use_pq_ratchet() {
+            UsePQRatchet::Yes => spqr::initial_state(spqr::Params {
+                auth_key: &pqr_key,
+                version: spqr::Version::V1,
+                direction: spqr::Direction::B2A,
+                min_version: spqr::Version::V0,
+                chain_params: spqr_chain_params(self_session),
+            })
+            .map_err(|e| {
+                SignalProtocolError::InvalidArgument(format!(
+                    "post-quantum ratchet: error creating initial B2A state: {e}"
+                ))
+            })?,
+            UsePQRatchet::No => spqr::SerializedState::new(), // empty
+        };
+
+        // Use hybrid chain setup like Alice
+        SessionState::new(
+            message_version(has_kyber),
+            local_identity,
+            parameters.their_identity_key(),
+            &sending_swoosh_root_key,
+            parameters.their_base_key(),
+            pqr_state,
+        )
+        .with_receiver_chain(parameters.their_base_key(), &chain_key)
+        .with_sender_hybrid_chain(sending_ratchet_key, our_swoosh_key_pair, &sending_swoosh_chain_key)
+    } else {
+        // Standard initialization without Swoosh
+        let self_session = local_identity == parameters.their_identity_key();
+        let pqr_state = match parameters.use_pq_ratchet() {
+            UsePQRatchet::Yes => spqr::initial_state(spqr::Params {
+                auth_key: &pqr_key,
+                version: spqr::Version::V1,
+                direction: spqr::Direction::B2A,
+                min_version: spqr::Version::V0,
+                chain_params: spqr_chain_params(self_session),
+            })
+            .map_err(|e| {
+                SignalProtocolError::InvalidArgument(format!(
+                    "post-quantum ratchet: error creating initial B2A state: {e}"
+                ))
+            })?,
+            UsePQRatchet::No => spqr::SerializedState::new(), // empty
+        };
+        
+        SessionState::new(
+            message_version(has_kyber),
+            local_identity,
+            parameters.their_identity_key(),
+            &root_key,
+            parameters.their_base_key(),
+            pqr_state,
+        )
+        .with_sender_chain(parameters.our_ratchet_key_pair(), &chain_key)
     };
-    let session = SessionState::new(
-        message_version(has_kyber),
-        local_identity,
-        parameters.their_identity_key(),
-        &root_key,
-        parameters.their_base_key(),
-        pqr_state,
-    )
-    .with_sender_chain(parameters.our_ratchet_key_pair(), &chain_key);
 
     Ok(session)
 }

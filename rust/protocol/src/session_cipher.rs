@@ -467,6 +467,15 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
 
     if let Some(current_state) = record.session_state() {
         let mut current_state = current_state.clone();
+        
+        // Debug: Check what session state Bob has after PreKey processing
+        println!("DEBUG: Bob's session state after PreKey processing:");
+        if let Ok(public_key) = current_state.sender_ratchet_swoosh_public_key() {
+            println!("  - Has Swoosh public key, length: {}", public_key.serialize().len());
+        } else {
+            println!("  - No Swoosh public key found");
+        }
+        
         let result = decrypt_message_with_state(
             CurrentOrPrevious::Current,
             &mut current_state,
