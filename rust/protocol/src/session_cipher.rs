@@ -635,15 +635,33 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     let their_ephemeral = ciphertext.sender_ratchet_key();
     let their_swoosh_ephemeral = ciphertext.sender_ratchet_swoosh_key();
     let counter = ciphertext.counter();
-    let chain_key = get_or_create_chain_key(state, their_ephemeral, remote_address, csprng)?;
-    let message_key_gen = get_or_create_message_key(
-        state,
-        their_ephemeral,
-        remote_address,
-        original_message_type,
-        &chain_key,
-        counter,
-    )?;
+    
+    // Check if we should use Swoosh (post-quantum) decryption
+    let (chain_key, message_key_gen) = if let Some(swoosh_ephemeral) = their_swoosh_ephemeral {
+        // Use Swoosh decryption path
+        let chain_key = get_or_create_chain_swoosh_key(state, swoosh_ephemeral, remote_address, false)?; // TODO: get is_alice properly
+        let message_key_gen = get_or_create_message_swoosh_key(
+            state,
+            swoosh_ephemeral,
+            remote_address,
+            original_message_type,
+            &chain_key,
+            counter,
+        )?;
+        (chain_key, message_key_gen)
+    } else {
+        // Use regular ECDH decryption path
+        let chain_key = get_or_create_chain_key(state, their_ephemeral, remote_address, csprng)?;
+        let message_key_gen = get_or_create_message_key(
+            state,
+            their_ephemeral,
+            remote_address,
+            original_message_type,
+            &chain_key,
+            counter,
+        )?;
+        (chain_key, message_key_gen)
+    };
     let pqr_key = state
         .pq_ratchet_recv(ciphertext.pq_ratchet())
         .map_err(|e| match e {

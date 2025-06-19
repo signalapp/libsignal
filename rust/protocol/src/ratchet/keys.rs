@@ -215,6 +215,7 @@ impl RootKey {
         our_ratchet_key: &PrivateSwooshKey,
         is_alice: bool,
     ) -> Result<(RootKey, ChainKey)> {
+        println!("**Create Swoosh chain function called");
         let shared_secret = our_ratchet_key
             .derive_shared_secret(their_ratchet_key, our_public_key, is_alice)?;
         let mut derived_secret_bytes = [0; 64];

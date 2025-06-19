@@ -219,6 +219,33 @@ impl<'a> BobSignalProtocolParameters<'a> {
         }
     }
 
+    pub fn set_our_swoosh_key_pair(&mut self, key_pair: SwooshKeyPair) {
+        self.our_swoosh_key_pair = Some(key_pair);
+    }
+
+    pub fn with_our_swoosh_key_pair(mut self, key_pair: SwooshKeyPair) -> Self {
+        self.set_our_swoosh_key_pair(key_pair);
+        self
+    }
+
+    pub fn set_their_swoosh_pre_key(&mut self, public_key: PublicSwooshKey) {
+        self.their_swoosh_pre_key = Some(public_key);
+    }
+
+    pub fn with_their_swoosh_pre_key(mut self, public_key: PublicSwooshKey) -> Self {
+        self.set_their_swoosh_pre_key(public_key);
+        self
+    }
+
+    pub fn set_their_swoosh_ratchet_key(&mut self, public_key: PublicSwooshKey) {
+        self.their_swoosh_ratchet_key = Some(public_key);
+    }
+
+    pub fn with_their_swoosh_ratchet_key(mut self, public_key: PublicSwooshKey) -> Self {
+        self.set_their_swoosh_ratchet_key(public_key);
+        self
+    }
+
     #[inline]
     pub fn our_identity_key_pair(&self) -> &IdentityKeyPair {
         &self.our_identity_key_pair
@@ -262,5 +289,20 @@ impl<'a> BobSignalProtocolParameters<'a> {
     #[inline]
     pub fn use_pq_ratchet(&self) -> UsePQRatchet {
         self.use_pq_ratchet
+    }
+
+    #[inline]
+    pub fn our_swoosh_key_pair(&self) -> Option<&SwooshKeyPair> {
+        self.our_swoosh_key_pair.as_ref()
+    }
+
+    #[inline]
+    pub fn their_swoosh_pre_key(&self) -> Option<&PublicSwooshKey> {
+        self.their_swoosh_pre_key.as_ref()
+    }
+
+    #[inline]
+    pub fn their_swoosh_ratchet_key(&self) -> Option<&PublicSwooshKey> {
+        self.their_swoosh_ratchet_key.as_ref()
     }
 }

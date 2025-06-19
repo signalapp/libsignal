@@ -163,31 +163,20 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
     parameters: &AliceSignalProtocolParameters,
     mut csprng: &mut R,
 ) -> Result<SessionState> {
+    println!("**Alice session initialized (PSWOOSH)");
     let is_alice = true; // Always true for Alice's session initialization
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
-    // Ensure we have the required Swoosh parameters
-    let their_swoosh_pre_key = parameters.their_swoosh_pre_key()
-        .ok_or_else(|| SignalProtocolError::InvalidArgument("Missing their_swoosh_pre_key for Swoosh session".to_string()))?;
-    
-    let their_swoosh_ratchet_key = parameters.their_swoosh_ratchet_key()
-        .ok_or_else(|| SignalProtocolError::InvalidArgument("Missing their_swoosh_ratchet_key for Swoosh session".to_string()))?;
+    // Use SwooshKeyPair for ratchet keys
+    let sending_swoosh_ratchet_key = SwooshKeyPair::generate(is_alice);
 
-    // Print first 8 bytes of Swoosh keys
-    println!("*their_swoosh_pre_key first 8 bytes: {:02x?}", &their_swoosh_pre_key.public_key_bytes()[..8]);
-    println!("their_swoosh_ratchet_key first 8 bytes: {:02x?}", &their_swoosh_ratchet_key.public_key_bytes()[..8]);
-
-    let sending_ratchet_key = SwooshKeyPair::generate(is_alice);
-
-    let mut secrets = Vec::with_capacity(32 * 5);
+    let mut secrets = Vec::with_capacity(32 * 6); // Extra capacity for PSWOOSH secret
 
     secrets.extend_from_slice(&[0xFFu8; 32]); // "discontinuity bytes"
 
     let our_base_private_key = parameters.our_base_key_pair().private_key;
-    let our_base_swoosh_private_key = parameters.our_base_swoosh_key_pair()
-        .map(|pair| pair.private_key)
-        .unwrap();
 
+    // Standard X3DH key agreements (same as original)
     secrets.extend_from_slice(
         &parameters
             .our_identity_key_pair()
@@ -203,9 +192,25 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
         &our_base_private_key.calculate_agreement(parameters.their_signed_pre_key())?,
     );
 
+    // Print first 8 bytes of standard keys (same as original)
+    println!("their_signed_pre_key first 8 bytes: {:02x?}", &parameters.their_signed_pre_key().public_key_bytes()[..8]);
+    println!("their_ratchet_key first 8 bytes: {:02x?}", &parameters.their_ratchet_key().public_key_bytes()[..8]);
+
     if let Some(their_one_time_prekey) = parameters.their_one_time_pre_key() {
         secrets
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
+    }
+
+    // Add PSWOOSH shared secret derivation
+    if let (Some(our_base_swoosh_key_pair), Some(their_swoosh_pre_key)) = 
+        (parameters.our_base_swoosh_key_pair(), parameters.their_swoosh_pre_key()) {
+        
+        println!("*their_swoosh_pre_key first 8 bytes: {:02x?}", &their_swoosh_pre_key.public_key_bytes()[..8]);
+        
+        // Derive PSWOOSH shared secret and add it to the key material
+        let swoosh_shared_secret = our_base_swoosh_key_pair.derive_shared_secret(their_swoosh_pre_key, is_alice)?;
+        secrets.extend_from_slice(&swoosh_shared_secret);
+        println!("PSWOOSH shared secret derived and added to key material");
     }
 
     let kyber_ciphertext = parameters
@@ -219,24 +224,22 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
     let has_kyber = parameters.their_kyber_pre_key().is_some();
 
     let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
-
-    // For Swoosh key derivation, we need to include the Swoosh shared secret
-    // Generate our ephemeral Swoosh key
-    let our_swoosh_ephemeral = SwooshKeyPair::generate(is_alice);
     
-    // Derive shared secret using Swoosh keys
-    let swoosh_shared_secret = our_swoosh_ephemeral.derive_shared_secret(their_swoosh_pre_key, is_alice)?;
-    secrets.extend_from_slice(&swoosh_shared_secret);
-
-    let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
-
-    // Generate sender ratchet key for Swoosh chain
-    let swoosh_sending_key = SwooshKeyPair::generate(is_alice);
-    let (sending_chain_root_key, sending_chain_chain_key) = root_key.create_chain_swoosh(
-        their_swoosh_ratchet_key,
-        &swoosh_sending_key.public_key(),
-        &swoosh_sending_key.private_key(),
-        is_alice
+    // Create both regular ratchet chain AND Swoosh chain for hybrid approach
+    let sending_ratchet_key = KeyPair::generate(&mut csprng);
+    
+    // First create regular ratchet chain
+    let (sending_chain_root_key, sending_chain_chain_key) = root_key.create_chain(
+        parameters.their_ratchet_key(),
+        &sending_ratchet_key.private_key,
+    )?;
+        
+    // Then use the updated root key to create Swoosh chain
+    let (sending_swoosh_root_key, sending_swoosh_chain_key) = sending_chain_root_key.create_chain_swoosh(
+        parameters.their_swoosh_ratchet_key().unwrap(),
+        &sending_swoosh_ratchet_key.public_key,
+        &sending_swoosh_ratchet_key.private_key,
+        is_alice,
     )?;
 
     let self_session = local_identity == parameters.their_identity_key();
@@ -262,16 +265,17 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
         UsePQRatchet::No => spqr::SerializedState::new(), // empty
     };
 
+    // Use hybrid session state to create chains with both regular and Swoosh keys
     let mut session = SessionState::new(
         message_version(has_kyber),
         local_identity,
         parameters.their_identity_key(),
-        &sending_chain_root_key,
+        &sending_swoosh_root_key,
         &parameters.our_base_key_pair().public_key,
         pqr_state,
     )
-    .with_receiver_swoosh_chain(their_swoosh_ratchet_key, &chain_key)
-    .with_sender_swoosh_chain(&swoosh_sending_key, &sending_chain_chain_key);
+    .with_receiver_chain(parameters.their_ratchet_key(), &chain_key)
+    .with_sender_hybrid_chain(&sending_ratchet_key, &sending_swoosh_ratchet_key, &sending_swoosh_chain_key);
 
     if let Some(kyber_ciphertext) = kyber_ciphertext {
         session.set_kyber_ciphertext(kyber_ciphertext);
@@ -408,6 +412,20 @@ pub(crate) fn initialize_bob_session_pswoosh(
                 .private_key
                 .calculate_agreement(parameters.their_base_key())?,
         );
+    }
+
+    // Add PSWOOSH shared secret derivation for Bob
+    if let (Some(our_swoosh_key_pair), Some(their_swoosh_ratchet_key)) = 
+        (parameters.our_swoosh_key_pair(), parameters.their_swoosh_ratchet_key()) {
+        
+        println!("**Bob deriving Swoosh shared secret");
+        println!("*their_swoosh_ratchet_key first 8 bytes: {:02x?}", &their_swoosh_ratchet_key.public_key_bytes()[..8]);
+        
+        let is_alice = false; // Bob is not Alice
+        // Bob derives shared secret using his pre-key pair and Alice's ratchet key
+        let swoosh_shared_secret = our_swoosh_key_pair.derive_shared_secret(their_swoosh_ratchet_key, is_alice)?;
+        secrets.extend_from_slice(&swoosh_shared_secret);
+        println!("PSWOOSH shared secret derived and added to key material (Bob)");
     }
 
     match (

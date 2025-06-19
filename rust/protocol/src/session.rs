@@ -142,7 +142,7 @@ async fn process_prekey_impl(
         None
     };
 
-    let parameters = BobSignalProtocolParameters::new(
+    let mut parameters = BobSignalProtocolParameters::new(
         identity_store.get_identity_key_pair().await?,
         our_signed_pre_key_pair, // signed pre key
         our_one_time_pre_key_pair,
@@ -154,7 +154,22 @@ async fn process_prekey_impl(
         use_pq_ratchet,
     );
 
-    let mut new_session = ratchet::initialize_bob_session(&parameters)?;
+    // Add Swoosh key information if available
+    if let Some(swoosh_key_pair) = our_swoosh_pre_key_pair {
+        parameters.set_our_swoosh_key_pair(swoosh_key_pair);
+        // Get Alice's Swoosh ratchet key from the embedded SignalMessage
+        let their_swoosh_ratchet_key = *message.message().sender_ratchet_swoosh_key();
+        parameters.set_their_swoosh_ratchet_key(their_swoosh_ratchet_key);
+    }
+
+    let mut new_session = if our_swoosh_pre_key_pair.is_some() {
+        // Use Swoosh-aware initialization when Swoosh keys are present
+        println!("**Creating new chains");
+        ratchet::initialize_bob_session_pswoosh(&parameters)?
+    } else {
+        // Use standard initialization for non-Swoosh sessions
+        ratchet::initialize_bob_session(&parameters)?
+    };
 
     new_session.set_local_registration_id(identity_store.get_local_registration_id().await?);
     new_session.set_remote_registration_id(message.registration_id());

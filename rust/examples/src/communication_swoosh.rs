@@ -1,4 +1,5 @@
 use libsignal_protocol::*;
+use libsignal_protocol::process_swoosh_prekey_bundle;
 use pswoosh::keys::SwooshKeyPair;
 use rand::{rng, RngCore};
 use std::time::SystemTime;
@@ -8,7 +9,7 @@ fn main() -> Result<(), SignalProtocolError> {
     
     // Create a thread with larger stack to run the async main
     let handle = thread::Builder::new()
-        .stack_size(32 * 1024 * 1024) // 32MB stack
+        .stack_size(100 * 1024 * 1024) // 32MB stack
         .spawn(|| {
             tokio::runtime::Runtime::new()
                 .unwrap()
@@ -22,7 +23,7 @@ fn main() -> Result<(), SignalProtocolError> {
 async fn async_main() -> Result<(), SignalProtocolError> {
     // Initialize random number generator
     let mut csprng = rng();
-    println!("=== SIGNAL PROTOCOL COMMUNICATION EXAMPLE (WITHOUT POST-QUANTUM) ===");
+    println!("=== SIGNAL PROTOCOL COMMUNICATION EXAMPLE (WITH SWOOSH POST-QUANTUM) ===");
     // Create addresses for Alice and Bob
     let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
     let bob_address = ProtocolAddress::new("+14151112222".to_owned(), 1.into());
@@ -150,12 +151,12 @@ async fn async_main() -> Result<(), SignalProtocolError> {
         bob_swoosh_prekey.signature().unwrap()
     );
 
-    println!("\n=== PRE-KEY BUNDLE CREATED (WITHOUT KYBER) ===");
+    println!("\n=== PRE-KEY BUNDLE CREATED (WITH SWOOSH) ===");
     println!("Registration ID: {:?}", bob_store.get_local_registration_id().await?);
     
-    // Alice processes Bob's pre-key bundle to establish session WITHOUT PQ ratchet
-    // Alice session is initialized and initial double ratchet keys established
-    process_prekey_bundle(
+    // Alice processes Bob's pre-key bundle to establish session WITH Swoosh 
+    // Alice session is initialized and initial Swoosh ratchet keys established
+    process_swoosh_prekey_bundle(
         &bob_address,
         &mut alice_store.session_store,
         &mut alice_store.identity_store,
@@ -165,7 +166,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
         UsePQRatchet::No,
     ).await?;
     
-    println!("\n=== SESSION ESTABLISHED (NO POST-QUANTUM) ===");
+    println!("\n=== SESSION ESTABLISHED (WITH SWOOSH POST-QUANTUM) ===");
     
     // Alice encrypts a message to Bob
     let alice_message = "Hello Bob! This is Alice.";
@@ -198,7 +199,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
                 &mut bob_store.kyber_pre_key_store,
                 &mut bob_store.swoosh_pre_key_store,
                 &mut csprng,
-                UsePQRatchet::No,
+                UsePQRatchet::Yes,
             ).await?
         },
         CiphertextMessage::SignalMessage(signal_msg) => {
@@ -253,7 +254,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Alice received: {}", alice_decrypted_reply);
     
     // Continue the conversation - Alice sends another message (Turn 3)
-    let alice_second_message = "Thanks Bob! How's the classic cryptography working for you?";
+    let alice_second_message = "Thanks Bob! How's the Swoosh post-quantum cryptography working for you?";
     let alice_second_ciphertext = message_encrypt(
         alice_second_message.as_bytes(),
         &bob_address,
@@ -326,7 +327,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Communication established successfully!");
     println!("Total double ratchet turns: 4");
     println!("Messages exchanged: 4 (2 from Alice, 2 from Bob)");
-    println!("Using classic cryptography (no post-quantum)");
+    println!("Using Swoosh post-quantum cryptography");
     
     Ok(())
 }

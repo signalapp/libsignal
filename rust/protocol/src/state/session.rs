@@ -220,7 +220,7 @@ impl SessionState {
 
     //THIS IS A PLACEHOLDER FUNCTIONALITY TO BE COMPLETED LATER
     pub(crate) fn sender_ratchet_swoosh_public_key(&self) -> Result<PublicSwooshKey, InvalidSessionError> {
-        
+        /*
         match self.session.sender_chain {
             None => Err(InvalidSessionError("missing sender chain")),
             Some(ref c) => {
@@ -245,8 +245,29 @@ impl SessionState {
                     })
             }
         }
+        */
+        match self.session.sender_chain {
+            None => Err(InvalidSessionError("missing sender chain")),
+            Some(ref c) => {
+                // Debug: print first few bytes of the public key data
+                let key_data = &c.sender_swoosh_key_public;
+                let preview = if key_data.len() >= 8 {
+                    format!("{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}...", 
+                            key_data[0], key_data[1], key_data[2], key_data[3],
+                            key_data[4], key_data[5], key_data[6], key_data[7])
+                } else if !key_data.is_empty() {
+                    key_data.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join("")
+                } else {
+                    "empty".to_string()
+                };
+                println!("DEBUG: Attempting to deserialize PublicSwooshKey, length: {}, first bytes: {}", 
+                        key_data.len(), preview);
+                PublicSwooshKey::deserialize(&c.sender_swoosh_key_public)
+                .map_err(|_| InvalidSessionError("invalid sender chain swoosh key"))
+            }
+        }   
+        
     }
-    ////
 
     pub fn has_usable_sender_chain(&self, now: SystemTime) -> Result<bool, InvalidSessionError> {
         if self.session.sender_chain.is_none() {
@@ -410,6 +431,29 @@ impl SessionState {
 
     pub(crate) fn with_sender_swoosh_chain(mut self, sender: &SwooshKeyPair, next_chain_key: &ChainKey) -> Self {
         self.set_sender_swoosh_chain(sender, next_chain_key);
+        self
+    }
+
+    pub(crate) fn set_sender_hybrid_chain(&mut self, regular_sender: &KeyPair, swoosh_sender: &SwooshKeyPair, next_chain_key: &ChainKey) {
+        let chain_key = session_structure::chain::ChainKey {
+            index: next_chain_key.index(),
+            key: next_chain_key.key().to_vec(),
+        };
+
+        let new_chain = session_structure::Chain {
+            sender_ratchet_key: regular_sender.public_key.serialize().to_vec(),
+            sender_ratchet_key_private: regular_sender.private_key.serialize().to_vec(),
+            sender_swoosh_key_public: swoosh_sender.public_key().serialize().to_vec(),
+            sender_swoosh_key_private: swoosh_sender.private_key().serialize().to_vec(),
+            chain_key: Some(chain_key),
+            message_keys: vec![],
+        };
+
+        self.session.sender_chain = Some(new_chain);
+    }
+
+    pub(crate) fn with_sender_hybrid_chain(mut self, regular_sender: &KeyPair, swoosh_sender: &SwooshKeyPair, next_chain_key: &ChainKey) -> Self {
+        self.set_sender_hybrid_chain(regular_sender, swoosh_sender, next_chain_key);
         self
     }
 
