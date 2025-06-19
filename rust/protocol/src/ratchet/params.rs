@@ -25,6 +25,7 @@ impl From<bool> for UsePQRatchet {
 pub struct AliceSignalProtocolParameters {
     our_identity_key_pair: IdentityKeyPair,
     our_base_key_pair: KeyPair,
+    our_base_swoosh_key_pair: Option<SwooshKeyPair>,
 
     their_identity_key: IdentityKey,
     their_signed_pre_key: PublicKey,
@@ -44,22 +45,26 @@ impl AliceSignalProtocolParameters {
     pub fn new(
         our_identity_key_pair: IdentityKeyPair,
         our_base_key_pair: KeyPair,
+        our_base_swoosh_key_pair: Option<SwooshKeyPair>,
         their_identity_key: IdentityKey,
         their_signed_pre_key: PublicKey,
         their_ratchet_key: PublicKey,
+        their_swoosh_pre_key: Option<PublicSwooshKey>,
+        their_swoosh_ratchet_key: Option<PublicSwooshKey>,
         use_pq_ratchet: UsePQRatchet,
     ) -> Self {
         Self {
             our_identity_key_pair,
             our_base_key_pair,
+            our_base_swoosh_key_pair,
             their_identity_key,
             their_signed_pre_key,
             their_one_time_pre_key: None,
             their_ratchet_key,
             their_kyber_pre_key: None,
-            their_swoosh_pre_key: None,
+            their_swoosh_pre_key,
             our_swoosh_key_pair: None,
-            their_swoosh_ratchet_key: None,
+            their_swoosh_ratchet_key,
             use_pq_ratchet,
         }
     }

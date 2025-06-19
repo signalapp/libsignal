@@ -157,9 +157,12 @@ pub fn initialize_sessions_v3() -> Result<(SessionRecord, SessionRecord), Signal
     let alice_params = AliceSignalProtocolParameters::new(
         alice_identity,
         alice_base_key,
+        None, // our swoosh key pair is not used here
         *bob_identity.identity_key(),
         bob_base_key.public_key,
         bob_ephemeral_key.public_key,
+        None, // no swoosh pre key
+        None, // no swoosh ratchet key
         UsePQRatchet::No,
     );
 
@@ -197,9 +200,12 @@ pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), Signal
     let alice_params = AliceSignalProtocolParameters::new(
         alice_identity,
         alice_base_key,
+        None, // our swoosh key pair is not used here
         *bob_identity.identity_key(),
         bob_base_key.public_key,
         bob_ephemeral_key.public_key,
+        None, // no swoosh pre key
+        None, // no swoosh ratchet key
         UsePQRatchet::No,
     )
     .with_their_kyber_pre_key(&bob_kyber_key.public_key);

@@ -134,9 +134,12 @@ fn test_ratcheting_session_as_alice() -> Result<(), SignalProtocolError> {
     let alice_parameters = AliceSignalProtocolParameters::new(
         alice_identity_key_pair,
         alice_base_key,
+        None, // our swoosh key pair is not used here
         IdentityKey::decode(&bob_identity_public)?,
         bob_signed_prekey_public,
         bob_ephemeral_public,
+        None, // no swoosh pre key
+        None, // no swoosh ratchet key
         UsePQRatchet::Yes,
     );
 
@@ -188,9 +191,12 @@ fn test_alice_and_bob_agree_on_chain_keys_with_kyber() -> Result<(), SignalProto
     let alice_parameters = AliceSignalProtocolParameters::new(
         alice_identity_key_pair,
         alice_base_key_pair,
+        None, // our swoosh key pair is not used here
         *bob_identity_key_pair.identity_key(),
         bob_signed_pre_key_pair.public_key,
         bob_ephemeral_key_pair.public_key,
+        None, // no swoosh pre key
+        None, // no swoosh ratchet key
         UsePQRatchet::Yes,
     )
     .with_their_kyber_pre_key(&bob_kyber_pre_key_pair.public_key);

@@ -5,6 +5,7 @@
 
 use std::time::SystemTime;
 
+use pswoosh::keys::SwooshKeyPair;
 use rand::{CryptoRng, Rng};
 
 use crate::ratchet::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
@@ -220,9 +221,12 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
     let mut parameters = AliceSignalProtocolParameters::new(
         our_identity_key_pair,
         our_base_key_pair,
+        None, // our swoosh key pair is not used here
         *their_identity_key,
         their_signed_prekey,
         their_signed_prekey,
+        None, // their swoosh pre key is not used here
+        None, // their swoosh ratchet key is not used here
         use_pq_ratchet,
     );
     if let Some(key) = bundle.pre_key_public()? {
@@ -234,6 +238,129 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
     }
 
     let mut session = ratchet::initialize_alice_session(&parameters, csprng)?;
+
+    log::info!(
+        "set_unacknowledged_pre_key_message for: {} with preKeyId: {}",
+        remote_address,
+        their_one_time_prekey_id.map_or_else(|| "<none>".to_string(), |id| id.to_string())
+    );
+
+    session.set_unacknowledged_pre_key_message(
+        their_one_time_prekey_id,
+        bundle.signed_pre_key_id()?,
+        &our_base_key_pair.public_key,
+        now,
+    );
+
+    if let Some(kyber_pre_key_id) = bundle.kyber_pre_key_id()? {
+        session.set_unacknowledged_kyber_pre_key_id(kyber_pre_key_id);
+    }
+
+    session.set_local_registration_id(identity_store.get_local_registration_id().await?);
+    session.set_remote_registration_id(bundle.registration_id()?);
+
+    identity_store
+        .save_identity(remote_address, their_identity_key)
+        .await?;
+
+    session_record.promote_state(session);
+
+    session_store
+        .store_session(remote_address, &session_record)
+        .await?;
+
+    Ok(())
+}
+
+pub async fn process_swoosh_prekey_bundle<R: Rng + CryptoRng>(
+    remote_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_store: &mut dyn IdentityKeyStore,
+    bundle: &PreKeyBundle,
+    now: SystemTime,
+    mut csprng: &mut R,
+    use_pq_ratchet: ratchet::UsePQRatchet,
+) -> Result<()> {
+    let their_identity_key = bundle.identity_key()?;
+
+    if !identity_store
+        .is_trusted_identity(remote_address, their_identity_key, Direction::Sending)
+        .await?
+    {
+        return Err(SignalProtocolError::UntrustedIdentity(
+            remote_address.clone(),
+        ));
+    }
+
+    if !their_identity_key.public_key().verify_signature(
+        &bundle.signed_pre_key_public()?.serialize(),
+        bundle.signed_pre_key_signature()?,
+    ) {
+        return Err(SignalProtocolError::SignatureValidationFailed);
+    }
+
+    if let Some(kyber_public) = bundle.kyber_pre_key_public()? {
+        if !their_identity_key.public_key().verify_signature(
+            kyber_public.serialize().as_ref(),
+            bundle
+                .kyber_pre_key_signature()?
+                .expect("signature must be present"),
+        ) {
+            return Err(SignalProtocolError::SignatureValidationFailed);
+        }
+    }
+
+    if let Some(swoosh_public) = bundle.swoosh_pre_key_public()? {
+        if !their_identity_key.public_key().verify_signature(
+            swoosh_public.serialize().as_ref(),
+            bundle
+                .swoosh_pre_key_signature()?
+                .expect("signature must be present"),
+        ) {
+            return Err(SignalProtocolError::SignatureValidationFailed);
+        }
+    }
+
+    let mut session_record = session_store
+        .load_session(remote_address)
+        .await?
+        .unwrap_or_else(SessionRecord::new_fresh);
+
+    let our_base_swoosh_key_pair = Some(SwooshKeyPair::generate(identity_store.is_alice().await?));
+    let their_swoosh_prekey = bundle.swoosh_pre_key_public()?;
+    
+    // These are temporary placeholders as we don't use the base Diffie key pair in Swoosh
+    let our_base_key_pair = KeyPair::generate(&mut csprng);
+    let their_signed_prekey = bundle.signed_pre_key_public()?;
+    //
+    let their_one_time_prekey_id = bundle.pre_key_id()?;
+
+    let our_identity_key_pair = identity_store.get_identity_key_pair().await?;
+
+    let mut parameters = AliceSignalProtocolParameters::new(
+        our_identity_key_pair,
+        our_base_key_pair, // our base Diffie key pair is not used here (replaced by Swoosh)
+        our_base_swoosh_key_pair,
+        *their_identity_key,
+        their_signed_prekey, // Placeholder
+        their_signed_prekey, // Placeholder
+        their_swoosh_prekey.map(|k| *k),
+        their_swoosh_prekey.map(|k| *k),
+        use_pq_ratchet,
+    );
+    if let Some(key) = bundle.pre_key_public()? {
+        parameters.set_their_one_time_pre_key(key);
+    }
+
+    if let Some(key) = bundle.kyber_pre_key_public()? {
+        parameters.set_their_kyber_pre_key(key);
+    }
+
+    if let Some(swoosh_key) = bundle.swoosh_pre_key_public()? {
+        parameters.set_their_swoosh_ratchet_key(*swoosh_key);
+    }
+
+    let mut session = ratchet::initialize_alice_session_pswoosh(&parameters, csprng)?;
 
     log::info!(
         "set_unacknowledged_pre_key_message for: {} with preKeyId: {}",

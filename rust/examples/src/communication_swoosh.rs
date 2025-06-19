@@ -58,7 +58,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Signed Pre-Key Public: {:?}", hex::encode(bob_signed_prekey_pair.public_key.serialize()));
     println!("Signed Pre-Key Signature: {:?}", hex::encode(&bob_signed_prekey_signature));
 
-    // Generate Bob's Kyber pre-key (required for PQ ratchet)
+    // Generate Bob's Swoosh pre-key (required for PQ ratchet)
     let bob_swoosh_key_pair = SwooshKeyPair::generate(false);
     let bob_swoosh_prekey_id = SwooshPreKeyId::from(1u32);
     let bob_swoosh_prekey_signature = bob_identity
