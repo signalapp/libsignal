@@ -115,56 +115,6 @@ impl<S> Handshaker<S> {
     }
 }
 
-impl<S: Transport + Unpin> Handshaker<S> {
-    pub fn poll_flush(&mut self, cx: &mut std::task::Context<'_>) -> Poll<Result<(), IoError>> {
-        let HandshakerInner {
-            transport,
-            state,
-            handshake: _,
-        } = match &mut self.inner {
-            Some(inner) => inner,
-            None => return Poll::Ready(Ok(())),
-        };
-
-        match state {
-            State::SendRequest(send) => {
-                let () = ready!(send.poll_send_and_flush(cx, transport))?;
-                *state = State::ReadResponse;
-                self.poll_flush(cx)
-            }
-            State::ReadResponse => transport.poll_flush_unpin(cx),
-        }
-    }
-
-    pub(crate) fn poll_shutdown(
-        &mut self,
-        cx: &mut std::task::Context<'_>,
-    ) -> Poll<Result<(), IoError>> {
-        let HandshakerInner {
-            transport,
-            state,
-            handshake: _,
-        } = match &mut self.inner {
-            Some(inner) => inner,
-            None => return Poll::Ready(Ok(())),
-        };
-
-        match state {
-            State::SendRequest(send_request) => {
-                let () = ready!(send_request.poll_send_and_flush(cx, transport))?;
-                let () = ready!(transport.poll_close_unpin(cx)?);
-                *state = State::ReadResponse;
-                Poll::Ready(Ok(()))
-            }
-            State::ReadResponse => {
-                // The resonse hasn't been received yet but we can still close
-                // the sending end.
-                transport.poll_close_unpin(cx)
-            }
-        }
-    }
-}
-
 impl SendRequest {
     fn poll_send_and_flush<S: Transport + Unpin>(
         &mut self,
@@ -202,7 +152,7 @@ impl SendRequest {
 }
 
 impl<S: Transport + Unpin> Future for Handshaker<S> {
-    type Output = Result<NoiseStream<S>, SendError>;
+    type Output = Result<(NoiseStream<S>, Box<[u8]>), SendError>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         let ptr = &*self as *const Self;
@@ -252,10 +202,9 @@ impl<S: Transport + Unpin> Future for Handshaker<S> {
                     handshake,
                 } = self.inner.take().expect("just checked above");
                 let handshake_hash = handshake.get_handshake_hash().to_vec();
-                Poll::Ready(Ok(NoiseStream::new(
-                    transport,
-                    handshake.into_transport_mode()?,
-                    handshake_hash,
+                Poll::Ready(Ok((
+                    NoiseStream::new(transport, handshake.into_transport_mode()?, handshake_hash),
+                    payload.into_boxed_slice(),
                 )))
             }
         }
@@ -268,16 +217,15 @@ mod test {
     use std::task::Context;
 
     use assert_matches::assert_matches;
+    use bytes::Bytes;
     use futures_util::FutureExt;
     use libsignal_net_infra::testutil::TestStream;
     use libsignal_net_infra::utils::testutil::TestWaker;
-    use test_case::test_case;
 
     use super::*;
 
-    #[test_case(false; "flush")]
-    #[test_case(true; "shutdown")]
-    fn send_starts_after(shutdown: bool) {
+    #[test]
+    fn successful_nk_handshake() {
         const EXTRA_PAYLOAD: &[u8] = b"extra payload";
 
         let (a, mut b) = TestStream::new_pair(3);
@@ -304,17 +252,10 @@ mod test {
         .unwrap();
 
         let waker = Arc::new(TestWaker::default());
-        if shutdown {
-            assert_matches!(
-                handshake.poll_shutdown(&mut Context::from_waker(&waker.as_waker())),
-                Poll::Ready(Ok(()))
-            );
-        } else {
-            assert_matches!(
-                handshake.poll_flush(&mut Context::from_waker(&waker.as_waker())),
-                Poll::Ready(Ok(()))
-            );
-        }
+        assert_matches!(
+            handshake.poll_unpin(&mut Context::from_waker(&waker.as_waker())),
+            Poll::Pending
+        );
 
         let server_recv = b
             .next()
@@ -328,6 +269,23 @@ mod test {
             .unwrap();
         assert_eq!(&server_buffer[..len], EXTRA_PAYLOAD);
 
-        assert_eq!(b.rx_is_closed(), shutdown);
+        const OTHER_PAYLOAD: &[u8] = b"other payload";
+
+        let mut server_buffer = [0; 64];
+        let written = server_state
+            .write_message(OTHER_PAYLOAD, &mut server_buffer)
+            .unwrap();
+        b.send(Bytes::copy_from_slice(&server_buffer[..written]))
+            .now_or_never()
+            .unwrap()
+            .unwrap();
+
+        assert!(waker.was_woken());
+
+        let (_stream, payload): (NoiseStream<_>, _) = handshake
+            .now_or_never()
+            .expect("handshake finished")
+            .expect("success");
+        assert_eq!(&*payload, OTHER_PAYLOAD);
     }
 }

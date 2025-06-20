@@ -401,6 +401,7 @@ pub mod testutil {
     }
 
     /// Trivial [`Sink`] and [`Stream`] implementation over a pair of buffered channels.
+    #[derive(Debug)]
     pub struct TestStream<T, E> {
         rx: tokio::sync::mpsc::Receiver<Result<T, E>>,
         tx: PollSender<Result<T, E>>,

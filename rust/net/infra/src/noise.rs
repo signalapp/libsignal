@@ -21,6 +21,7 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 /// [`snow::TransportState`] instance to encrypt and decrypt.
 ///
 /// [Noise]: https://noiseprotocol.org/noise.html
+#[cfg_attr(feature = "test-util", derive(Debug))]
 pub struct NoiseStream<S> {
     inner: S,
     transport: ClientConnection,
