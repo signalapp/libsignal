@@ -43,6 +43,7 @@ export enum ErrorCode {
   InvalidUsernameLinkEncryptedData,
 
   RateLimitedError,
+  RateLimitChallengeError,
 
   SvrDataMissing,
   SvrRequestFailed,
@@ -252,6 +253,12 @@ export type RateLimitedError = LibSignalErrorBase & {
   readonly retryAfterSecs: number;
 };
 
+export type RateLimitChallengeError = LibSignalErrorBase & {
+  code: ErrorCode.RateLimitChallengeError;
+  readonly token: string;
+  readonly options: Set<'pushChallenge' | 'captcha'>;
+};
+
 export type ChatServiceInactive = LibSignalErrorBase & {
   code: ErrorCode.ChatServiceInactive;
 };
@@ -341,6 +348,7 @@ export type LibSignalError =
   | ConnectionInvalidatedError
   | ConnectedElsewhereError
   | RateLimitedError
+  | RateLimitChallengeError
   | BackupValidationError
   | CancellationError
   | KeyTransparencyError

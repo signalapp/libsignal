@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::convert::Infallible;
 use std::future::Future;
 use std::panic::UnwindSafe;
 
@@ -11,9 +12,12 @@ use static_assertions::assert_impl_all;
 
 use crate::api::registration::*;
 use crate::ws::registration::*;
+use crate::ws::{ResponseError, TryIntoResponse as _};
 
 mod service;
 pub use service::*;
+
+pub type RequestError<T> = crate::api::RequestError<T, Infallible>;
 
 /// A client for the Signal registration API endpoints.
 ///
@@ -116,7 +120,6 @@ impl<'c> RegistrationService<'c> {
             ..Default::default()
         })
         .await
-        .map_err(Into::into)
     }
 
     pub async fn request_push_challenge(
@@ -130,7 +133,6 @@ impl<'c> RegistrationService<'c> {
             ..Default::default()
         })
         .await
-        .map_err(Into::into)
     }
 
     pub async fn request_verification_code(
@@ -142,18 +144,17 @@ impl<'c> RegistrationService<'c> {
         let language_list = (!languages.is_empty())
             .then(|| languages.join(", ").parse())
             .transpose()
-            .map_err(|_| {
-                RequestError::<RequestVerificationCodeError>::Unknown(
-                    "invalid language list".to_owned(),
-                )
-            })?;
+            .map_err(
+                |_| RequestError::<RequestVerificationCodeError>::Unexpected {
+                    log_safe: "invalid language list".to_owned(),
+                },
+            )?;
         self.submit_request(RequestVerificationCode {
             transport,
             client,
             language_list: language_list.as_ref().map(LanguageList),
         })
         .await
-        .map_err(Into::into)
     }
 
     pub async fn submit_push_challenge(
@@ -165,16 +166,13 @@ impl<'c> RegistrationService<'c> {
             ..Default::default()
         })
         .await
-        .map_err(Into::into)
     }
 
     pub async fn submit_verification_code(
         &mut self,
         code: &str,
     ) -> Result<(), RequestError<SubmitVerificationError>> {
-        self.submit_request(SubmitVerificationCode { code })
-            .await
-            .map_err(Into::into)
+        self.submit_request(SubmitVerificationCode { code }).await
     }
 
     pub async fn check_svr2_credentials(
@@ -198,9 +196,7 @@ impl<'c> RegistrationService<'c> {
 
         log::info!("unauthenticated SVR2 credentials check succeeded");
 
-        response
-            .try_into_response()
-            .map_err(|e| RequestError::<SessionRequestError>::from(e).into())
+        response.try_into_response().map_err(Into::into)
     }
 
     pub async fn register_account(
@@ -232,9 +228,7 @@ impl<'c> RegistrationService<'c> {
         let response = connection.submit_chat_request(request).await?;
         log::info!("register account succeeded");
 
-        response
-            .try_into_response()
-            .map_err(|e| RequestError::<SessionRequestError>::from(e).into())
+        response.try_into_response().map_err(Into::into)
     }
 
     /// Sends a request for an established session.
@@ -242,27 +236,32 @@ impl<'c> RegistrationService<'c> {
     /// On success, the state of the session as reported by the server is saved
     /// (and accessible via [`Self::session_state`]). This method will retry
     /// internally if transient errors are encountered.
-    fn submit_request<R: Request>(
+    fn submit_request<R: Request, E>(
         &mut self,
         request: R,
         // Write this as `impl Future` so we can include the `Send` bound, which
         // lets us surface errors earlier.
-    ) -> impl Future<Output = Result<(), RequestError<SessionRequestError>>> + Send + use<'_, 'c, R>
+    ) -> impl Future<Output = Result<(), RequestError<E>>> + Send + use<'_, 'c, R, E>
+    where
+        RequestError<E>: From<ResponseError>,
     {
-        // Delegate to a non-templated function to reduce code size cost.
-        async fn submit_request_impl(
-            this: &mut RegistrationService<'_>,
-            request: ChatRequest,
-            request_type: &'static str,
-        ) -> Result<(), RequestError<SessionRequestError>> {
+        let request = RegistrationRequest {
+            request,
+            session_id: &self.session_id,
+        }
+        .into();
+
+        let request_type = std::any::type_name::<R>();
+
+        async move {
             let RegistrationService {
                 connection,
                 session,
                 session_id,
                 number: _,
-            } = this;
-            log::info!("sending {request_type} on registration session {session_id}");
+            } = self;
 
+            log::info!("sending {request_type} on registration session {session_id}");
             let response = connection.submit_chat_request(request).await?;
 
             log::info!("{request_type} succeeded");
@@ -270,20 +269,9 @@ impl<'c> RegistrationService<'c> {
                 session_id: _,
                 session: response_session,
             } = response.try_into_response()?;
-
             *session = response_session;
             Ok(())
         }
-
-        submit_request_impl(
-            self,
-            RegistrationRequest {
-                request,
-                session_id: &self.session_id,
-            }
-            .into(),
-            std::any::type_name::<R>(),
-        )
     }
 }
 
@@ -312,9 +300,7 @@ pub async fn reregister_account(
         RegistrationConnection::connect_and_send(connect_chat, request).await?;
 
     log::info!("reregister account request succeded");
-    response
-        .try_into_response()
-        .map_err(|e| RequestError::<SessionRequestError>::from(e).into())
+    response.try_into_response().map_err(Into::into)
 }
 
 #[cfg(test)]

@@ -26,6 +26,7 @@ use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSen
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::ws::WebSocketServiceError;
 use libsignal_net::keytrans::Error as KeyTransNetError;
+use libsignal_net_chat::api::RateLimitChallenge;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -535,9 +536,10 @@ mod registration {
     use libsignal_net::auth::Auth;
     use libsignal_net_chat::api::registration::{
         CheckSvr2CredentialsError, CreateSessionError, InvalidSessionId, RegisterAccountError,
-        RegistrationLock, RequestError, RequestVerificationCodeError, ResumeSessionError,
+        RegistrationLock, RequestVerificationCodeError, ResumeSessionError,
         SubmitVerificationError, UpdateSessionError, VerificationCodeNotDeliverable,
     };
+    use libsignal_net_chat::registration::RequestError;
 
     use super::*;
 
@@ -547,13 +549,17 @@ mod registration {
             env: &mut JNIEnv<'a>,
         ) -> Result<JThrowable<'a>, BridgeLayerError> {
             let message = match self {
-                RequestError::RequestWasNotValid => "the request did not pass server validation",
-
                 RequestError::Other(inner) => return inner.to_throwable(env),
                 RequestError::Timeout => {
                     return libsignal_net::chat::SendError::RequestTimedOut.to_throwable(env)
                 }
-                RequestError::Unknown(message) => message,
+                RequestError::RetryLater(retry_later) => return retry_later.to_throwable(env),
+                RequestError::Unexpected { log_safe } => log_safe,
+                RequestError::Challenge(rate_limit_challenge) => {
+                    return rate_limit_challenge.to_throwable(env)
+                }
+                RequestError::ServerSideError => &self.to_string(),
+                RequestError::Disconnected(d) => match *d {},
             };
             make_single_message_throwable(
                 env,
@@ -597,7 +603,6 @@ mod registration {
         ) -> Result<JThrowable<'a>, BridgeLayerError> {
             match self {
                 CreateSessionError::InvalidSessionId => InvalidSessionId.to_throwable(env),
-                CreateSessionError::RetryLater(retry_later) => retry_later.to_throwable(env),
             }
         }
     }
@@ -620,7 +625,6 @@ mod registration {
             env: &mut JNIEnv<'a>,
         ) -> Result<JThrowable<'a>, BridgeLayerError> {
             match self {
-                UpdateSessionError::RetryLater(retry_later) => retry_later.to_throwable(env),
                 UpdateSessionError::Rejected => make_single_message_throwable(
                     env,
                     &self.to_string(),
@@ -670,9 +674,6 @@ mod registration {
                     )
                     .map(Into::into)
                 }
-                RequestVerificationCodeError::RetryLater(retry_later) => {
-                    retry_later.to_throwable(env)
-                }
             }
         }
     }
@@ -690,7 +691,6 @@ mod registration {
                 SubmitVerificationError::NotReadyForVerification => {
                     not_ready_for_verification(env, &self.to_string())
                 }
-                SubmitVerificationError::RetryLater(retry_later) => retry_later.to_throwable(env),
             }
         }
     }
@@ -711,9 +711,6 @@ mod registration {
             env: &mut JNIEnv<'a>,
         ) -> Result<JThrowable<'a>, BridgeLayerError> {
             let class_name = match self {
-                RegisterAccountError::RetryLater(retry_later) => {
-                    return retry_later.to_throwable(env)
-                }
                 RegisterAccountError::RegistrationLock(registration_lock) => {
                     let class_name =
                         ClassName("org.signal.libsignal.net.RegistrationLockException");
@@ -871,6 +868,25 @@ impl JniError for RetryLater {
             env,
             ClassName("org.signal.libsignal.net.RetryLaterException"),
             jni_args!(((*retry_after_seconds).into() => long) -> void),
+        )
+        .map(Into::into)
+    }
+}
+
+impl JniError for RateLimitChallenge {
+    fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
+        let Self { token, options } = self;
+        let (message, token) =
+            try_scoped(|| Ok((env.new_string(self.to_string())?, env.new_string(token)?)))
+                .check_exceptions(env, "RateLimitChallenge")?;
+        let options = options.as_slice().convert_into(env)?;
+        new_instance(
+            env,
+            ClassName("org.signal.libsignal.net.RateLimitChallengeException"),
+            jni_args!((
+                message => java.lang.String,
+                token => java.lang.String,
+                options => [org.signal.libsignal.net.RegistrationSessionState::RequestedInformation]) -> void),
         )
         .map(Into::into)
     }

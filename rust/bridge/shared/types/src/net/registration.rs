@@ -11,10 +11,10 @@ use futures_util::TryFutureExt as _;
 use libsignal_net_chat::api::registration::{
     CreateSession, CreateSessionError, ForServiceIds, NewMessageNotification,
     ProvidedAccountAttributes, PushTokenType, RegisterAccountResponse, RegistrationSession,
-    RequestError, RequestedInformation, ResumeSessionError, SessionId, SignedPreKeyBody,
-    SkipDeviceTransfer, UnidentifiedAccessKey,
+    RequestedInformation, ResumeSessionError, SessionId, SignedPreKeyBody, SkipDeviceTransfer,
+    UnidentifiedAccessKey,
 };
-use libsignal_net_chat::registration::{self as net_registration, ConnectChat};
+use libsignal_net_chat::registration::{self as net_registration, ConnectChat, RequestError};
 use libsignal_protocol::PublicKey;
 
 use crate::*;

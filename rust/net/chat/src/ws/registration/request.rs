@@ -1,10 +1,9 @@
 use bytes::Bytes;
 use http::uri::PathAndQuery;
-use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
+use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use libsignal_net::auth::Auth;
-use libsignal_net::chat::{Request as ChatRequest, Response as ChatResponse};
-use libsignal_net::infra::errors::{LogSafeDisplay, RetryLater};
-use libsignal_net::infra::{extract_retry_later, AsHttpHeader as _, AsStaticHttpHeader};
+use libsignal_net::chat::Request as ChatRequest;
+use libsignal_net::infra::{AsHttpHeader as _, AsStaticHttpHeader};
 use libsignal_protocol::PublicKey;
 use serde_with::{serde_as, skip_serializing_none, FromInto};
 
@@ -71,33 +70,6 @@ enum SessionValidation<'a> {
     SessionId(&'a SessionId),
     RecoveryPassword(#[serde_as(as = "Base64Padded")] &'a [u8]),
 }
-
-/// Errors that arise from a response to a received request.
-///
-/// This doesn't include timeouts, since the request was known to be received
-/// and the server sent a response.
-#[derive(Debug, thiserror::Error, displaydoc::Display)]
-pub(crate) enum ResponseError {
-    /// {0}
-    RetryLater(RetryLater),
-    /// the request did not pass server validation
-    InvalidRequest,
-    /// unexpected content-type {0:?}
-    UnexpectedContentType(Option<HeaderValue>),
-    /// unexpected response status {status}
-    UnrecognizedStatus {
-        status: StatusCode,
-        response_headers: HeaderMap,
-        response_body: Option<Bytes>,
-    },
-    /// response had no body
-    MissingBody,
-    /// response body was not valid JSON
-    InvalidJson,
-    /// response body didn't match the schema
-    UnexpectedData,
-}
-impl LogSafeDisplay for ResponseError {}
 
 impl VerificationCodeNotDeliverable {
     pub(crate) fn from_response(
@@ -341,69 +313,6 @@ impl RegisterChatRequest for ChatRequest {
     }
 }
 
-pub(crate) trait RegistrationChatResponse {
-    /// Interpret `self` as a registration request response.
-    fn try_into_response<R>(self) -> Result<R, ResponseError>
-    where
-        R: for<'a> serde::Deserialize<'a>;
-}
-
-impl RegistrationChatResponse for ChatResponse {
-    /// Interpret `self` as a registration request response.
-    fn try_into_response<R>(self) -> Result<R, ResponseError>
-    where
-        R: for<'a> serde::Deserialize<'a>,
-    {
-        let Self {
-            status,
-            message: _,
-            body,
-            headers,
-        } = self;
-        if !status.is_success() {
-            if status.as_u16() == 429 {
-                if let Some(retry_later) = extract_retry_later(&headers) {
-                    return Err(ResponseError::RetryLater(retry_later));
-                }
-            }
-            if status.as_u16() == 422 {
-                return Err(ResponseError::InvalidRequest);
-            }
-            log::debug!(
-                "got unsuccessful response with {status}: {:?}",
-                DebugAsStrOrBytes(body.as_deref().unwrap_or_default())
-            );
-            return Err(ResponseError::UnrecognizedStatus {
-                status,
-                response_headers: headers,
-                response_body: body,
-            });
-        }
-        let content_type = headers.get(http::header::CONTENT_TYPE);
-        if content_type != Some(&HeaderValue::from_static("application/json")) {
-            return Err(ResponseError::UnexpectedContentType(content_type.cloned()));
-        }
-
-        let body = body.ok_or(ResponseError::MissingBody)?;
-        serde_json::from_slice(&body).map_err(|e| match e.classify() {
-            serde_json::error::Category::Data => ResponseError::UnexpectedData,
-            serde_json::error::Category::Syntax
-            | serde_json::error::Category::Io
-            | serde_json::error::Category::Eof => ResponseError::InvalidJson,
-        })
-    }
-}
-
-struct DebugAsStrOrBytes<'b>(&'b [u8]);
-impl std::fmt::Debug for DebugAsStrOrBytes<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match std::str::from_utf8(self.0) {
-            Ok(s) => s.fmt(f),
-            Err(_) => hex::encode(self.0).fmt(f),
-        }
-    }
-}
-
 const VERIFICATION_SESSION_PATH_PREFIX: &str = "/v1/verification/session";
 
 impl From<CreateSession> for ChatRequest {
@@ -479,13 +388,16 @@ mod test {
     use std::time::Duration;
 
     use base64::Engine;
+    use http::StatusCode;
     use libsignal_core::{Aci, Pni};
+    use libsignal_net::chat::Response as ChatResponse;
     use libsignal_protocol::{GenericSignedPreKey as _, KeyPair, KyberPreKeyRecord};
     use rand::SeedableRng as _;
     use serde_json::json;
     use uuid::uuid;
 
     use super::*;
+    use crate::ws::TryIntoResponse as _;
 
     #[test]
     fn registration_get_session_request_as_chat_request() {

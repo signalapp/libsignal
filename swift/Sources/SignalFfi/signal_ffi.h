@@ -230,6 +230,7 @@ typedef enum {
   SignalErrorCodeConnectionFailed = 148,
   SignalErrorCodeChatServiceInactive = 149,
   SignalErrorCodeRequestTimedOut = 150,
+  SignalErrorCodeRateLimitChallenge = 151,
   SignalErrorCodeSvrDataMissing = 160,
   SignalErrorCodeSvrRestoreFailed = 161,
   SignalErrorCodeSvrRotationMachineTooManySteps = 162,
@@ -239,7 +240,6 @@ typedef enum {
   SignalErrorCodeConnectedElsewhere = 173,
   SignalErrorCodeBackupValidation = 180,
   SignalErrorCodeRegistrationInvalidSessionId = 190,
-  SignalErrorCodeRegistrationRequestNotValid = 191,
   SignalErrorCodeRegistrationUnknown = 192,
   SignalErrorCodeRegistrationSessionNotFound = 193,
   SignalErrorCodeRegistrationNotReadyForVerification = 194,
@@ -1593,6 +1593,8 @@ SignalFfiError *signal_error_get_address(const SignalFfiError *err, SignalMutPoi
 SignalFfiError *signal_error_get_invalid_protocol_address(const SignalFfiError *err, const char **name_out, uint32_t *device_id_out);
 
 SignalFfiError *signal_error_get_message(const SignalFfiError *err, const char **out);
+
+SignalFfiError *signal_error_get_rate_limit_challenge(const SignalFfiError *err, const char **out_token, SignalOwnedBuffer *out_options);
 
 SignalFfiError *signal_error_get_registration_error_not_deliverable(const SignalFfiError *err, const char **out_reason, bool *out_permanent);
 

@@ -12,10 +12,6 @@ public enum RegistrationError: Error {
     /// Thrown when attempting to make a request, or when a response is received with a structurally
     /// invalid validation session ID.
     case invalidSessionId(String)
-    /// A sent request was not structurally valid.
-    ///
-    /// This indicates a mismatch between the server and client JSON schema or a bug in the registration service client.
-    case requestNotValid(String)
     /// The session is already verified or not in a state to request a code because requested information
     /// hasn't been provided yet.
     ///
@@ -485,16 +481,20 @@ public class RegistrationSessionState: NativeHandleOwner<SignalMutPointerRegistr
                     signal_registration_session_get_requested_information(out, $0.const())
                 }
             }
-            return Set(try items.map {
-                return switch UInt32($0) {
-                case SignalRequestedInformationCaptcha.rawValue:
-                    RequestedInformation.captcha
-                case SignalRequestedInformationPushChallenge.rawValue:
-                    RequestedInformation.pushChallenge
-                default:
-                    throw SignalError.internalError("unknown requested information")
-                }
-            })
+            return Set(try items.map { try RequestedInformation(fromNative: $0) })
+        }
+    }
+}
+
+extension RequestedInformation {
+    internal init(fromNative value: UInt8) throws {
+        self = switch UInt32(value) {
+        case SignalRequestedInformationCaptcha.rawValue:
+            RequestedInformation.captcha
+        case SignalRequestedInformationPushChallenge.rawValue:
+            RequestedInformation.pushChallenge
+        default:
+            throw SignalError.internalError("unknown requested information")
         }
     }
 }
@@ -639,7 +639,7 @@ public enum Svr2CredentialsResult {
     case invalid
 }
 
-public enum RequestedInformation: Hashable {
+public enum RequestedInformation: Hashable, Sendable {
     case captcha
     case pushChallenge
 }

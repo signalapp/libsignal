@@ -19,7 +19,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::time::{Duration, Instant};
 use tokio_stream::wrappers::ReceiverStream;
 
-use crate::registration::{ChatRequest, ChatResponse, RequestError, SessionRequestError};
+use crate::registration::{ChatRequest, ChatResponse, RequestError};
 
 /// Internal connection implementation for the registration client.
 ///
@@ -53,10 +53,10 @@ impl<'c> RegistrationConnection<'c> {
     /// Attempts to connect to the chat service and send a request.
     ///
     /// This method will retry internally if transient errors are encountered.
-    pub(super) async fn connect_and_send(
+    pub(super) async fn connect_and_send<E>(
         connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
         request: ChatRequest,
-    ) -> Result<(Self, ChatResponse), RequestError<SessionRequestError>> {
+    ) -> Result<(Self, ChatResponse), RequestError<E>> {
         let (response, sender) = send_request(request, &*connect_chat, None).await?;
 
         Ok((
@@ -71,10 +71,10 @@ impl<'c> RegistrationConnection<'c> {
     /// Sends a request on an established connection.
     ///
     /// This method will retry internally if transient errors are encountered.
-    pub(super) async fn submit_chat_request(
+    pub(super) async fn submit_chat_request<E>(
         &mut self,
         request: ChatRequest,
-    ) -> Result<ChatResponse, RequestError<SessionRequestError>> {
+    ) -> Result<ChatResponse, RequestError<E>> {
         let Self {
             sender,
             connect_chat,
@@ -117,18 +117,24 @@ where
                 continue;
             }
             Err(SendRequestError::RequestTimedOut) => Err(RequestError::Timeout),
-            Err(SendRequestError::Unknown(message)) => Err(RequestError::Unknown(message)),
+            Err(SendRequestError::Unknown { log_safe }) => {
+                Err(RequestError::Unexpected { log_safe })
+            }
         };
         return result;
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, displaydoc::Display)]
 enum FatalConnectError {
+    /// invalid chat client configuration
     InvalidConfiguration,
+    /// {0}
     RetryLater(RetryLater),
+    /// unexpected error: {0}
     Unexpected(&'static str),
 }
+impl LogSafeDisplay for FatalConnectError {}
 
 impl<E> From<FatalConnectError> for RequestError<E>
 where
@@ -136,12 +142,11 @@ where
 {
     fn from(value: FatalConnectError) -> Self {
         match value {
-            FatalConnectError::InvalidConfiguration => {
-                Self::Unknown("invalid chat client configuration".into())
-            }
             FatalConnectError::RetryLater(retry_later) => Self::from(retry_later),
-            FatalConnectError::Unexpected(message) => {
-                Self::Unknown(format!("unexpected error: {message}"))
+            FatalConnectError::InvalidConfiguration | FatalConnectError::Unexpected(_) => {
+                Self::Unexpected {
+                    log_safe: (&value as &dyn LogSafeDisplay).to_string(),
+                }
             }
         }
     }
@@ -228,7 +233,7 @@ async fn spawn_connected_chat(
 #[derive(Debug, derive_more::From)]
 enum SendRequestError {
     ConnectionLost,
-    Unknown(String),
+    Unknown { log_safe: String },
     RequestTimedOut,
 }
 
@@ -261,20 +266,22 @@ async fn send_request_to_connected_chat(
             ChatSendError::RequestTimedOut => SendRequestError::RequestTimedOut,
             ChatSendError::Disconnected => SendRequestError::ConnectionLost,
             ChatSendError::ConnectionInvalidated | ChatSendError::ConnectedElsewhere => {
-                SendRequestError::Unknown(
-                    "registration connection unexpectedly closed by server".into(),
-                )
+                SendRequestError::Unknown {
+                    log_safe: "registration connection unexpectedly closed by server".into(),
+                }
             }
-            ChatSendError::WebSocket(error) => SendRequestError::Unknown(format!(
-                "websocket error: {}",
-                <dyn LogSafeDisplay>::to_string(&error)
-            )),
-            ChatSendError::IncomingDataInvalid => {
-                SendRequestError::Unknown("received invalid response".into())
-            }
-            ChatSendError::RequestHasInvalidHeader => {
-                SendRequestError::Unknown("request had invalid header".into())
-            }
+            ChatSendError::WebSocket(error) => SendRequestError::Unknown {
+                log_safe: format!(
+                    "websocket error: {}",
+                    <dyn LogSafeDisplay>::to_string(&error)
+                ),
+            },
+            ChatSendError::IncomingDataInvalid => SendRequestError::Unknown {
+                log_safe: "received invalid response".into(),
+            },
+            ChatSendError::RequestHasInvalidHeader => SendRequestError::Unknown {
+                log_safe: "request had invalid header".into(),
+            },
         }
     })?;
 

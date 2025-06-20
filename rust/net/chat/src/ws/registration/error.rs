@@ -3,191 +3,139 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_net::infra::errors::LogSafeDisplay;
+use libsignal_net::chat::Response as ChatResponse;
 
 pub use crate::api::registration::*;
 use crate::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
-use crate::ws::registration::ResponseError;
+use crate::api::RequestError;
+use crate::ws::ResponseError;
 
-impl From<ResponseError> for RequestError<ResumeSessionError> {
+impl<D> From<ResponseError> for RequestError<UpdateSessionError, D> {
     fn from(value: ResponseError) -> Self {
-        RequestError::<SessionRequestError>::from(value).into()
-    }
-}
-
-impl From<ResponseError> for RequestError<CreateSessionError> {
-    fn from(value: ResponseError) -> Self {
-        RequestError::<SessionRequestError>::from(value).into()
-    }
-}
-
-impl From<ResponseError> for RequestError<SessionRequestError> {
-    fn from(value: ResponseError) -> Self {
-        match value {
-            ResponseError::InvalidRequest => Self::RequestWasNotValid,
-            ResponseError::RetryLater(retry) => Self::Other(retry.into()),
-            error @ (ResponseError::UnexpectedContentType(_)
-            | ResponseError::MissingBody
-            | ResponseError::InvalidJson
-            | ResponseError::UnexpectedData) => {
-                RequestError::Unknown((&error as &dyn LogSafeDisplay).to_string())
+        value.into_request_error("UpdateSession", |value| {
+            let ChatResponse { status, .. } = value;
+            match status.as_u16() {
+                403 => Some(UpdateSessionError::Rejected),
+                _ => None,
             }
-            ResponseError::UnrecognizedStatus {
-                status,
-                response_headers,
-                response_body,
-            } => Self::Other(SessionRequestError::UnrecognizedStatus {
-                status,
-                response_headers,
-                response_body,
-            }),
-        }
+        })
     }
 }
 
-impl From<SessionRequestError> for RequestError<CreateSessionError> {
-    fn from(value: SessionRequestError) -> Self {
-        match value {
-            SessionRequestError::RetryLater(retry_later) => RequestError::Other(retry_later.into()),
-            SessionRequestError::UnrecognizedStatus { status, .. } => {
-                log::error!("got unexpected HTTP status {status} when creating a session");
-                RequestError::Unknown(format!("unexpected HTTP status {status}"))
-            }
-        }
+impl<D> From<ResponseError> for RequestError<CreateSessionError, D> {
+    fn from(value: ResponseError) -> Self {
+        value.into_request_error("CreateSession", |_| None)
     }
 }
 
-impl From<SessionRequestError> for RequestError<ResumeSessionError> {
-    fn from(value: SessionRequestError) -> Self {
-        match value {
-            SessionRequestError::RetryLater(retry_later) => retry_later.into(),
-            SessionRequestError::UnrecognizedStatus { status, .. } => match status.as_u16() {
-                404 => RequestError::Other(ResumeSessionError::SessionNotFound),
-                400 => RequestError::Other(ResumeSessionError::InvalidSessionId),
-                code => {
-                    log::error!("got unexpected HTTP status {status} when reading a session");
-                    RequestError::Unknown(format!("unexpected HTTP status {code}"))
+impl<D> From<ResponseError> for RequestError<ResumeSessionError, D> {
+    fn from(value: ResponseError) -> Self {
+        value.into_request_error("ResumeSession", |value| {
+            let ChatResponse { status, .. } = value;
+            Some(match status.as_u16() {
+                404 => ResumeSessionError::SessionNotFound,
+                400 => ResumeSessionError::InvalidSessionId,
+                _ => {
+                    return None;
                 }
-            },
-        }
+            })
+        })
     }
 }
 
-impl From<SessionRequestError> for RequestError<UpdateSessionError> {
-    fn from(value: SessionRequestError) -> Self {
-        match value {
-            SessionRequestError::RetryLater(retry_later) => RequestError::Other(retry_later.into()),
-            SessionRequestError::UnrecognizedStatus { status, .. } => match status.as_u16() {
-                403 => RequestError::Other(UpdateSessionError::Rejected),
-                code => {
-                    log::error!("got unexpected HTTP response status updating the session: {code}");
-                    RequestError::Unknown(format!("unexpected HTTP status {code}"))
-                }
-            },
-        }
-    }
-}
-
-impl From<SessionRequestError> for RequestError<RequestVerificationCodeError> {
-    fn from(value: SessionRequestError) -> Self {
-        RequestError::Other(match value {
-            SessionRequestError::RetryLater(retry_later) => retry_later.into(),
-            SessionRequestError::UnrecognizedStatus {
+impl<D> From<ResponseError> for RequestError<RequestVerificationCodeError, D> {
+    fn from(value: ResponseError) -> Self {
+        value.into_request_error("RequestVerificationCode", |value| {
+            let ChatResponse {
                 status,
-                response_headers,
-                response_body,
-            } => match status.as_u16() {
+                body,
+                headers,
+                ..
+            } = value;
+            Some(match status.as_u16() {
                 400 => RequestVerificationCodeError::InvalidSessionId,
                 404 => RequestVerificationCodeError::SessionNotFound,
                 409 => RequestVerificationCodeError::NotReadyForVerification,
                 418 => RequestVerificationCodeError::SendFailed,
                 440 => {
-                    let Some(not_deliverable) = response_body.as_deref().and_then(|body| {
-                        VerificationCodeNotDeliverable::from_response(&response_headers, body)
-                    }) else {
-                        return RequestError::Unknown("unexpected 440 response format".to_owned());
-                    };
+                    let not_deliverable = body.as_deref().and_then(|body| {
+                        VerificationCodeNotDeliverable::from_response(headers, body)
+                    })?;
                     RequestVerificationCodeError::CodeNotDeliverable(not_deliverable)
                 }
-                _ => return RequestError::Unknown(format!("unexpected HTTP status {status}")),
-            },
+                _ => {
+                    return None;
+                }
+            })
         })
     }
 }
 
-impl From<SessionRequestError> for RequestError<SubmitVerificationError> {
-    fn from(value: SessionRequestError) -> Self {
-        RequestError::Other(match value {
-            SessionRequestError::RetryLater(retry_later) => retry_later.into(),
-            SessionRequestError::UnrecognizedStatus { status, .. } => match status.as_u16() {
+impl<D> From<ResponseError> for RequestError<SubmitVerificationError, D> {
+    fn from(value: ResponseError) -> Self {
+        value.into_request_error("SubmitVerification", |value| {
+            let ChatResponse { status, .. } = value;
+            Some(match status.as_u16() {
                 400 => SubmitVerificationError::InvalidSessionId,
                 404 => SubmitVerificationError::SessionNotFound,
                 409 => SubmitVerificationError::NotReadyForVerification,
-                _ => return RequestError::Unknown(format!("unexpected HTTP status {status}")),
-            },
+                _ => return None,
+            })
         })
     }
 }
 
-impl From<SessionRequestError> for RequestError<CheckSvr2CredentialsError> {
-    fn from(value: SessionRequestError) -> Self {
-        match value {
-            SessionRequestError::RetryLater(retry_later) => {
-                RequestError::Unknown(format!("unexpected {retry_later}"))
+impl<D> From<ResponseError> for RequestError<CheckSvr2CredentialsError, D> {
+    fn from(value: ResponseError) -> Self {
+        value.into_request_error("CheckSvr2credentials", |value| {
+            let ChatResponse { status, .. } = value;
+            match status.as_u16() {
+                422 => Some(CheckSvr2CredentialsError::CredentialsCouldNotBeParsed),
+                _ => None,
             }
-            SessionRequestError::UnrecognizedStatus { status, .. } => match status.as_u16() {
-                400 => RequestError::RequestWasNotValid,
-                422 => RequestError::Other(CheckSvr2CredentialsError::CredentialsCouldNotBeParsed),
-                _ => RequestError::Unknown(format!("unexpected status {status}")),
-            },
-        }
+        })
     }
 }
 
-impl From<SessionRequestError> for RequestError<RegisterAccountError> {
-    fn from(value: SessionRequestError) -> Self {
-        RequestError::Other(match value {
-            SessionRequestError::RetryLater(retry_later) => retry_later.into(),
-            SessionRequestError::UnrecognizedStatus {
+impl<D> From<ResponseError> for RequestError<RegisterAccountError, D> {
+    fn from(value: ResponseError) -> Self {
+        value.into_request_error("RegisterAccount", |value| {
+            let ChatResponse {
+                headers,
                 status,
-                response_headers,
-                response_body,
-            } => match status.as_u16() {
+                body,
+                ..
+            } = value;
+            Some(match status.as_u16() {
                 403 => RegisterAccountError::RegistrationRecoveryVerificationFailed,
                 409 => RegisterAccountError::DeviceTransferIsPossibleButNotSkipped,
                 423 => {
-                    let Some(registration_lock) = response_body
+                    let registration_lock = body
                         .as_deref()
-                        .and_then(|body| RegistrationLock::from_response(&response_headers, body))
-                    else {
-                        return RequestError::Unknown("unexpected 423 response format".to_owned());
-                    };
+                        .and_then(|body| RegistrationLock::from_response(headers, body))?;
                     RegisterAccountError::RegistrationLock(registration_lock)
                 }
-                _ => return RequestError::Unknown(format!("unexpected HTTP status {status}")),
-            },
+                _ => return None,
+            })
         })
     }
 }
 
 #[cfg(test)]
 mod test {
+    use std::convert::Infallible;
     use std::fmt::Debug;
 
     use http::{HeaderMap, StatusCode};
     use itertools::Itertools;
     use libsignal_net::infra::errors::RetryLater;
+    use libsignal_net::infra::AsHttpHeader;
     use strum::{IntoDiscriminant, IntoEnumIterator};
     use test_case::test_case;
 
     use super::*;
+    use crate::api::RateLimitChallenge;
     use crate::ws::registration::CONTENT_TYPE_JSON;
-
-    impl From<RetryLater> for RequestError<RetryLater> {
-        fn from(value: RetryLater) -> Self {
-            Self::Other(value)
-        }
-    }
 
     trait AsStatus {
         fn as_status(&self) -> Option<u16>;
@@ -205,33 +153,48 @@ mod test {
         fn sorted_statuses() -> Vec<u16> {
             <T::Discriminant as IntoEnumIterator>::iter()
                 .map(RequestError::Other)
-                .chain([RequestError::RequestWasNotValid])
-                .filter_map(|t| RequestError::<T::Discriminant>::as_status(&t))
+                .chain([RequestError::RetryLater(RetryLater {
+                    retry_after_seconds: 30,
+                })])
+                .filter_map(|t| RequestError::<T::Discriminant, Infallible>::as_status(&t))
                 .sorted()
                 .collect()
         }
     }
 
-    impl<E: AsStatus> AsStatus for RequestError<E> {
+    impl<E: AsStatus> AsStatus for RequestError<E, Infallible> {
         fn as_status(&self) -> Option<u16> {
             match self {
                 RequestError::Timeout => None,
-                RequestError::RequestWasNotValid => Some(422),
-                RequestError::Unknown(_) => None,
                 RequestError::Other(inner) => inner.as_status(),
+                RequestError::RetryLater(retry_later) => retry_later.as_status(),
+                RequestError::Challenge(challenge) => challenge.as_status(),
+                RequestError::ServerSideError | RequestError::Unexpected { log_safe: _ } => None,
+                RequestError::Disconnected(d) => match *d {},
             }
+        }
+    }
+
+    impl AsStatus for RetryLater {
+        fn as_status(&self) -> Option<u16> {
+            Some(429)
+        }
+    }
+
+    impl AsStatus for RateLimitChallenge {
+        fn as_status(&self) -> Option<u16> {
+            Some(428)
         }
     }
 
     impl AsStatus for CreateSessionErrorDiscriminants {
         fn as_status(&self) -> Option<u16> {
-            Some(match self {
+            match self {
                 Self::InvalidSessionId => {
                     // Arises from parsing the returned data, not an HTTP status code.
-                    return None;
+                    None
                 }
-                Self::RetryLater => 429,
-            })
+            }
         }
     }
 
@@ -248,7 +211,6 @@ mod test {
         fn as_status(&self) -> Option<u16> {
             Some(match self {
                 Self::Rejected => 403,
-                Self::RetryLater => 429,
             })
         }
     }
@@ -261,7 +223,6 @@ mod test {
                 Self::NotReadyForVerification => 409,
                 Self::SendFailed => 418, // 🫖
                 Self::CodeNotDeliverable => 440,
-                Self::RetryLater => 429,
             })
         }
     }
@@ -272,7 +233,6 @@ mod test {
                 Self::InvalidSessionId => 400,
                 Self::SessionNotFound => 404,
                 Self::NotReadyForVerification => 409,
-                Self::RetryLater => 429,
             })
         }
     }
@@ -291,7 +251,6 @@ mod test {
                 Self::DeviceTransferIsPossibleButNotSkipped => 409,
                 Self::RegistrationRecoveryVerificationFailed => 403,
                 Self::RegistrationLock => 423,
-                Self::RetryLater => 429,
             })
         }
     }
@@ -301,20 +260,20 @@ mod test {
         // This is just a re-hashing of the non-test logic but in a more easily
         // analyzable and auditable form.
 
-        assert_eq!(CreateSessionError::sorted_statuses(), vec![422, 429]);
-        assert_eq!(ResumeSessionError::sorted_statuses(), vec![400, 404, 422,]);
-        assert_eq!(UpdateSessionError::sorted_statuses(), vec![403, 422, 429]);
+        assert_eq!(CreateSessionError::sorted_statuses(), vec![429]);
+        assert_eq!(ResumeSessionError::sorted_statuses(), vec![400, 404, 429]);
+        assert_eq!(UpdateSessionError::sorted_statuses(), vec![403, 429]);
         assert_eq!(
             RequestVerificationCodeError::sorted_statuses(),
-            vec![400, 404, 409, 418, 422, 429, 440]
+            vec![400, 404, 409, 418, 429, 440]
         );
         assert_eq!(
             SubmitVerificationError::sorted_statuses(),
-            vec![400, 404, 409, 422, 429]
+            vec![400, 404, 409, 429]
         );
         assert_eq!(
             RegisterAccountError::sorted_statuses(),
-            vec![403, 409, 422, 423, 429]
+            vec![403, 409, 423, 429]
         );
     }
 
@@ -322,7 +281,6 @@ mod test {
         let mut response_headers = HeaderMap::new();
         let mut response_body = None;
         match status {
-            422 => return ResponseError::InvalidRequest,
             423 => {
                 response_headers.append(CONTENT_TYPE_JSON.0, CONTENT_TYPE_JSON.1);
                 response_body = Some(
@@ -337,11 +295,10 @@ mod test {
                     .into(),
                 )
             }
-            429 => {
-                return ResponseError::RetryLater(RetryLater {
-                    retry_after_seconds: 30,
-                })
+            429 => response_headers.extend([RetryLater {
+                retry_after_seconds: 30,
             }
+            .as_header()]),
             440 => {
                 response_headers.append(CONTENT_TYPE_JSON.0, CONTENT_TYPE_JSON.1);
                 response_body = Some(
@@ -355,30 +312,40 @@ mod test {
             }
             _ => {}
         }
+        let status = StatusCode::from_u16(status).unwrap();
         ResponseError::UnrecognizedStatus {
-            status: StatusCode::from_u16(status).unwrap(),
-            response_headers,
-            response_body,
+            status,
+            response: ChatResponse {
+                status,
+                message: None,
+                headers: response_headers,
+                body: response_body,
+            },
         }
     }
 
     fn round_trip_all_variants<T>()
     where
         T: CollectSortedStatuses + IntoDiscriminant<Discriminant: AsStatus> + Debug,
-        RequestError<SessionRequestError>: Into<RequestError<T>>,
+        RequestError<T, Infallible>: From<ResponseError>,
     {
         for status in T::sorted_statuses() {
             let error = error_for_status(status);
             println!("status = {status}, error = {error:?}");
-            let request_error = RequestError::<SessionRequestError>::from(error);
-            let inner = match request_error.into() {
-                RequestError::RequestWasNotValid => continue,
-                RequestError::Other(inner) => inner,
-                e @ (RequestError::Timeout | RequestError::Unknown(_)) => {
+            let request_error = RequestError::<T, Infallible>::from(error);
+            println!("request error: {request_error:?}");
+            let error_status = match request_error {
+                RequestError::Other(inner) => inner.discriminant().as_status(),
+                RequestError::RetryLater(retry) => retry.as_status(),
+                e @ (RequestError::Timeout
+                | RequestError::ServerSideError
+                | RequestError::Challenge { .. }
+                | RequestError::Unexpected { .. }) => {
                     unreachable!("unexpected {e:?}")
                 }
+                RequestError::Disconnected(d) => match d {},
             };
-            assert_eq!(inner.discriminant().as_status(), Some(status));
+            assert_eq!(error_status, Some(status));
         }
     }
 
@@ -394,7 +361,7 @@ mod test {
     #[test_case(e::<RegisterAccountError>)]
     fn error_type_from_status<T>(_type_hint: fn(T))
     where
-        RequestError<SessionRequestError>: Into<RequestError<T>>,
+        RequestError<T, Infallible>: From<ResponseError>,
         T: CollectSortedStatuses + IntoDiscriminant<Discriminant: AsStatus> + Debug,
     {
         round_trip_all_variants::<T>();

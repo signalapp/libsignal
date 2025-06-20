@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.net;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.*;
 
 import java.time.Duration;
@@ -108,6 +110,9 @@ public class RegistrationServiceTest {
     assertIsRetryAfterError(NativeTesting::TESTING_RegistrationService_CreateSessionErrorConvert);
     assertIsTimeoutError(NativeTesting::TESTING_RegistrationService_CreateSessionErrorConvert);
     assertIsUnknownError(NativeTesting::TESTING_RegistrationService_CreateSessionErrorConvert);
+    assertIsServerSideError(NativeTesting::TESTING_RegistrationService_CreateSessionErrorConvert);
+    assertIsPushChallengeError(
+        NativeTesting::TESTING_RegistrationService_CreateSessionErrorConvert);
   }
 
   @Test
@@ -122,6 +127,9 @@ public class RegistrationServiceTest {
         NativeTesting::TESTING_RegistrationService_ResumeSessionErrorConvert);
     assertIsTimeoutError(NativeTesting::TESTING_RegistrationService_ResumeSessionErrorConvert);
     assertIsUnknownError(NativeTesting::TESTING_RegistrationService_ResumeSessionErrorConvert);
+    assertIsServerSideError(NativeTesting::TESTING_RegistrationService_ResumeSessionErrorConvert);
+    assertIsPushChallengeError(
+        NativeTesting::TESTING_RegistrationService_ResumeSessionErrorConvert);
   }
 
   @Test
@@ -133,6 +141,7 @@ public class RegistrationServiceTest {
     assertIsRetryAfterError(NativeTesting::TESTING_RegistrationService_UpdateSessionErrorConvert);
     assertIsTimeoutError(NativeTesting::TESTING_RegistrationService_UpdateSessionErrorConvert);
     assertIsUnknownError(NativeTesting::TESTING_RegistrationService_UpdateSessionErrorConvert);
+    assertIsServerSideError(NativeTesting::TESTING_RegistrationService_UpdateSessionErrorConvert);
   }
 
   @Test
@@ -168,6 +177,8 @@ public class RegistrationServiceTest {
         NativeTesting::TESTING_RegistrationService_RequestVerificationCodeErrorConvert);
     assertIsUnknownError(
         NativeTesting::TESTING_RegistrationService_RequestVerificationCodeErrorConvert);
+    assertIsServerSideError(
+        NativeTesting::TESTING_RegistrationService_RequestVerificationCodeErrorConvert);
   }
 
   @Test
@@ -188,6 +199,8 @@ public class RegistrationServiceTest {
         NativeTesting::TESTING_RegistrationService_SubmitVerificationErrorConvert);
     assertIsTimeoutError(NativeTesting::TESTING_RegistrationService_SubmitVerificationErrorConvert);
     assertIsUnknownError(NativeTesting::TESTING_RegistrationService_SubmitVerificationErrorConvert);
+    assertIsServerSideError(
+        NativeTesting::TESTING_RegistrationService_SubmitVerificationErrorConvert);
   }
 
   @Test
@@ -199,6 +212,8 @@ public class RegistrationServiceTest {
     assertIsTimeoutError(
         NativeTesting::TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert);
     assertIsUnknownError(
+        NativeTesting::TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert);
+    assertIsServerSideError(
         NativeTesting::TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert);
   }
 
@@ -219,6 +234,7 @@ public class RegistrationServiceTest {
     assertIsRetryAfterError(NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
     assertIsTimeoutError(NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
     assertIsUnknownError(NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
+    assertIsServerSideError(NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
   }
 
   private static <E extends Throwable> E assertRegistrationSessionErrorIs(
@@ -242,6 +258,22 @@ public class RegistrationServiceTest {
     RegistrationException e =
         assertRegistrationSessionErrorIs("Unknown", RegistrationException.class, throwError);
     assertEquals(e.getMessage(), "some message");
+  }
+
+  private static void assertIsServerSideError(ThrowingConsumer<String> throwError) {
+    RegistrationException e =
+        assertRegistrationSessionErrorIs(
+            "ServerSideError", RegistrationException.class, throwError);
+    assertThat(e.getMessage(), containsString("server-side error"));
+  }
+
+  private static void assertIsPushChallengeError(ThrowingConsumer<String> throwError) {
+    RateLimitChallengeException e =
+        assertRegistrationSessionErrorIs(
+            "PushChallenge", RateLimitChallengeException.class, throwError);
+    assertEquals(e.getToken(), "token");
+    assertEquals(
+        e.getOptions(), EnumSet.of(RegistrationSessionState.RequestedInformation.PUSH_CHALLENGE));
   }
 
   @Test

@@ -1561,15 +1561,25 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::registration::Requested
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net_chat::api::registration::RequestedInformation]> {
+impl<'a> ResultTypeInfo<'a>
+    for &'_ [libsignal_net_chat::api::registration::RequestedInformation]
+{
     type ResultType = JObjectArray<'a>;
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         make_object_array(
             env,
             jni_class_name!(org.signal.libsignal.net.RegistrationSessionState::RequestedInformation),
-            self,
+            self.iter().copied(),
         )
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net_chat::api::registration::RequestedInformation]> {
+    type ResultType = JObjectArray<'a>;
+
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        (&*self).convert_into(env)
     }
 }
 

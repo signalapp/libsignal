@@ -713,10 +713,18 @@ impl ResultTypeInfo for Box<[RegistrationSessionRequestedInformation]> {
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         static_assertions::assert_eq_size!(RegistrationSessionRequestedInformation, u8);
         static_assertions::assert_eq_align!(RegistrationSessionRequestedInformation, u8);
-        // Trivially droppable, like u8.
-        static_assertions::assert_impl_all!(RegistrationSessionRequestedInformation: Copy);
-        let b: Box<[u8]> = unsafe { std::mem::transmute(self) };
-        Ok(b.into())
+        // The compiler can optimize this iterated conversion away to nothing.
+        Ok(IntoIterator::into_iter(self)
+            .map(|r| r as u8)
+            .collect::<Box<_>>()
+            .into())
+    }
+}
+
+impl ResultTypeInfo for &[RegistrationSessionRequestedInformation] {
+    type ResultType = <Vec<u8> as ResultTypeInfo>::ResultType;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Box::<[_]>::from(self).convert_into()
     }
 }
 

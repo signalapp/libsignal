@@ -16,11 +16,12 @@ use std::time::Duration;
 
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine as _;
+use http::StatusCode;
 use libsignal_net::chat;
 use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net::infra::{extract_retry_later, AsHttpHeader};
 
-use crate::api::{RateLimitChallenge, RequestError, UserBasedAuthorization};
+use crate::api::{DisconnectedError, RateLimitChallenge, RequestError, UserBasedAuthorization};
 
 const ACCESS_KEY_HEADER_NAME: http::HeaderName =
     http::HeaderName::from_static("unidentified-access-key");
@@ -66,17 +67,17 @@ impl WsConnection for chat::ChatConnection {
 impl<E> From<chat::SendError> for RequestError<E> {
     fn from(value: chat::SendError) -> Self {
         match value {
-            chat::SendError::RequestTimedOut | chat::SendError::Disconnected => {
-                RequestError::Timeout
-            }
-            chat::SendError::ConnectedElsewhere => RequestError::ConnectedElsewhere,
-            chat::SendError::ConnectionInvalidated => RequestError::ConnectionInvalidated,
+            chat::SendError::RequestTimedOut => return RequestError::Timeout,
+            chat::SendError::Disconnected => DisconnectedError::Closed,
+            chat::SendError::ConnectedElsewhere => DisconnectedError::ConnectedElsewhere,
+            chat::SendError::ConnectionInvalidated => DisconnectedError::ConnectionInvalidated,
             e @ (chat::SendError::WebSocket(_)
             | chat::SendError::IncomingDataInvalid
-            | chat::SendError::RequestHasInvalidHeader) => RequestError::Transport {
+            | chat::SendError::RequestHasInvalidHeader) => DisconnectedError::Transport {
                 log_safe: (&e as &dyn LogSafeDisplay).to_string(),
             },
         }
+        .into()
     }
 }
 
@@ -86,7 +87,7 @@ pub(super) enum ResponseError {
     /// unexpected response status {status}
     UnrecognizedStatus {
         /// Pulled out for easier matching and displaying.
-        status: http::StatusCode,
+        status: StatusCode,
         response: chat::Response,
     },
     /// unexpected content-type {0:?}
@@ -106,11 +107,11 @@ impl ResponseError {
     ///
     /// If `map_unrecognized` returns `None`, some basic checks will be done for request-independent
     /// response codes (like 429 Too Many Requests).
-    fn into_request_error<E>(
+    pub(crate) fn into_request_error<E, D>(
         self,
         operation: &'static str,
         map_unrecognized: impl FnOnce(&chat::Response) -> Option<E>,
-    ) -> RequestError<E> {
+    ) -> RequestError<E, D> {
         match self {
             e @ (ResponseError::UnexpectedContentType(_)
             | ResponseError::MissingBody
@@ -182,7 +183,7 @@ impl ResponseError {
 /// Defined this way (instead of with `Self` as the typed response) so that `try_into_response`
 /// becomes available on `chat::Response` with a useful Jump to Definition (as opposed to the usual
 /// From/Into idiom).
-trait TryIntoResponse<R>: Sized {
+pub(super) trait TryIntoResponse<R>: Sized {
     #[allow(clippy::result_large_err)] // ResponseError itself contains a chat::Response.
     fn try_into_response(self) -> Result<R, ResponseError>;
 }

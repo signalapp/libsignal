@@ -119,6 +119,21 @@ describe('Registration types', () => {
       },
     ];
     const timeoutCase: [string, ErrorCode] = ['Timeout', ErrorCode.IoError];
+    const serverSideErrorCase: [string, object] = [
+      'ServerSideError',
+      {
+        code: ErrorCode.Generic,
+        message: 'server-side error, retryable with backoff',
+      },
+    ];
+    const rateLimitChallengeCase: [string, object] = [
+      'PushChallenge',
+      {
+        code: ErrorCode.RateLimitChallengeError,
+        token: 'token',
+        options: new Set(['pushChallenge']),
+      },
+    ];
     const cases: Array<{
       operationName: string;
       convertFn: (_: string) => void;
@@ -132,6 +147,8 @@ describe('Registration types', () => {
           retryLaterCase,
           unknownCase,
           timeoutCase,
+          serverSideErrorCase,
+          rateLimitChallengeCase,
         ],
       },
       {
@@ -142,6 +159,8 @@ describe('Registration types', () => {
           ['SessionNotFound', ErrorCode.Generic],
           unknownCase,
           timeoutCase,
+          serverSideErrorCase,
+          rateLimitChallengeCase,
         ],
       },
       {
@@ -152,6 +171,7 @@ describe('Registration types', () => {
           retryLaterCase,
           unknownCase,
           timeoutCase,
+          serverSideErrorCase,
         ],
       },
       {
@@ -167,6 +187,7 @@ describe('Registration types', () => {
           retryLaterCase,
           unknownCase,
           timeoutCase,
+          serverSideErrorCase,
         ],
       },
       {
@@ -180,6 +201,7 @@ describe('Registration types', () => {
           retryLaterCase,
           unknownCase,
           timeoutCase,
+          serverSideErrorCase,
         ],
       },
       {
@@ -190,6 +212,7 @@ describe('Registration types', () => {
           ['CredentialsCouldNotBeParsed', ErrorCode.Generic],
           unknownCase,
           timeoutCase,
+          serverSideErrorCase,
         ],
       },
       {
@@ -203,6 +226,7 @@ describe('Registration types', () => {
           retryLaterCase,
           unknownCase,
           timeoutCase,
+          serverSideErrorCase,
         ],
       },
     ];
@@ -212,7 +236,7 @@ describe('Registration types', () => {
         testCases.forEach(([name, expectation]) => {
           expect(convertFn.bind(Native, name))
             .throws(LibSignalErrorBase)
-            .to.include(
+            .to.deep.include(
               expectation instanceof Object
                 ? expectation
                 : { code: expectation }

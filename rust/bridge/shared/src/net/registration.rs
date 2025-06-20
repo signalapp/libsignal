@@ -13,6 +13,7 @@ use libsignal_bridge_types::net::registration::{
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::*;
 use libsignal_net_chat::api::registration::*;
+use libsignal_net_chat::registration::RequestError;
 use libsignal_protocol::*;
 use uuid::Uuid;
 

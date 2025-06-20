@@ -259,6 +259,28 @@ pub unsafe extern "C" fn signal_error_get_registration_lock(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn signal_error_get_rate_limit_challenge(
+    err: *const SignalFfiError,
+    out_token: *mut *const c_char,
+    out_options: *mut OwnedBufferOf<c_uchar>,
+) -> *mut SignalFfiError {
+    let err = AssertUnwindSafe(err);
+    run_ffi_safe(|| {
+        let err = err.as_ref().ok_or(NullPointerError)?;
+
+        let libsignal_net_chat::api::RateLimitChallenge { token, options } =
+            err.provide_rate_limit_challenge().map_err(|_| {
+                SignalProtocolError::InvalidArgument(format!(
+                    "cannot get rate limit challenge error from error ({err})"
+                ))
+            })?;
+        write_result_to(out_token, token.as_str())?;
+        write_result_to(out_options, options.as_slice())?;
+        Ok(())
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn signal_error_free(err: *mut SignalFfiError) {
     if !err.is_null() {
         let _boxed_err = Box::from_raw(err);

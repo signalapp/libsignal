@@ -58,6 +58,7 @@ public enum SignalError: Error {
     case networkProtocolError(String)
     case cdsiInvalidToken(String)
     case rateLimitedError(retryAfter: TimeInterval, message: String)
+    case rateLimitChallengeError(token: String, options: Set<RequestedInformation>, message: String)
     case svrDataMissing(String)
     case svrRestoreFailed(triesRemaining: UInt32, message: String)
     case svrRotationMachineTooManySteps(String)
@@ -216,6 +217,18 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
             signal_error_get_retry_after_seconds(error, $0)
         }
         throw SignalError.rateLimitedError(retryAfter: TimeInterval(retryAfterSeconds), message: errStr)
+    case SignalErrorCodeRateLimitChallenge:
+        var tokenOut: UnsafePointer<Int8>?
+        let options = try invokeFnReturningData {
+            signal_error_get_rate_limit_challenge(error, &tokenOut, $0)
+        }
+        let token = String(cString: tokenOut!)
+        signal_free_string(tokenOut)
+        throw SignalError.rateLimitChallengeError(
+            token: token,
+            options: Set(try options.map { try RequestedInformation(fromNative: $0) }),
+            message: errStr
+        )
     case SignalErrorCodeSvrDataMissing:
         throw SignalError.svrDataMissing(errStr)
     case SignalErrorCodeSvrRestoreFailed:
@@ -248,8 +261,6 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw RegistrationError.unknown(errStr)
     case SignalErrorCodeRegistrationInvalidSessionId:
         throw RegistrationError.invalidSessionId(errStr)
-    case SignalErrorCodeRegistrationRequestNotValid:
-        throw RegistrationError.requestNotValid(errStr)
     case SignalErrorCodeRegistrationSessionNotFound:
         throw RegistrationError.sessionNotFound(errStr)
     case SignalErrorCodeRegistrationNotReadyForVerification:

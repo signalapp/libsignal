@@ -5,24 +5,12 @@
 
 use bytes::Bytes;
 use http::{HeaderMap, StatusCode};
-use libsignal_net::infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_net::infra::errors::LogSafeDisplay;
 
 use crate::api::registration::{
     InvalidSessionId, RegistrationLock, VerificationCodeNotDeliverable,
 };
-
-#[derive(Debug, thiserror::Error, displaydoc::Display, strum::EnumString)]
-pub enum RequestError<E> {
-    /// the request timed out
-    Timeout,
-    /// the request did not pass server validation
-    RequestWasNotValid,
-    /// unknown error: {0}
-    Unknown(String),
-    /// {0}
-    #[strum(disabled)]
-    Other(E),
-}
+use crate::api::RequestError;
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(strum::EnumDiscriminants))]
@@ -30,8 +18,6 @@ pub enum RequestError<E> {
 pub enum CreateSessionError {
     /// invalid session ID value
     InvalidSessionId,
-    /// {0}
-    RetryLater(#[from] RetryLater),
 }
 impl LogSafeDisplay for CreateSessionError {}
 
@@ -54,8 +40,6 @@ impl LogSafeDisplay for ResumeSessionError {}
 /// variants.
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum SessionRequestError {
-    /// {0}
-    RetryLater(#[from] RetryLater),
     /// unknown HTTP response status: {status}
     UnrecognizedStatus {
         status: StatusCode,
@@ -70,8 +54,6 @@ pub enum SessionRequestError {
 pub enum UpdateSessionError {
     /// the information provided was rejected
     Rejected,
-    /// {0}
-    RetryLater(#[from] RetryLater),
 }
 impl LogSafeDisplay for UpdateSessionError {}
 
@@ -89,8 +71,6 @@ pub enum RequestVerificationCodeError {
     SendFailed,
     /// the code could not be delivered
     CodeNotDeliverable(VerificationCodeNotDeliverable),
-    /// {0}
-    RetryLater(#[from] RetryLater),
 }
 impl LogSafeDisplay for RequestVerificationCodeError {}
 
@@ -104,8 +84,6 @@ pub enum SubmitVerificationError {
     SessionNotFound,
     /// the session is already verified or no code was requested
     NotReadyForVerification,
-    /// {0}
-    RetryLater(#[from] RetryLater),
 }
 impl LogSafeDisplay for SubmitVerificationError {}
 
@@ -124,8 +102,6 @@ impl LogSafeDisplay for CheckSvr2CredentialsError {}
 pub enum RegisterAccountError {
     /// a device transfer is possible and was not explicitly skipped.
     DeviceTransferIsPossibleButNotSkipped,
-    /// {0}
-    RetryLater(#[from] RetryLater),
     /// registration recovery password verification failed
     RegistrationRecoveryVerificationFailed,
     /// registration lock is enabled
@@ -133,51 +109,34 @@ pub enum RegisterAccountError {
 }
 impl LogSafeDisplay for RegisterAccountError {}
 
-/// Convert [`RequestError<SessionRequestError>`] into a typed version.
-///
-/// This boilerplate implementation delegates conversion to the specific
-/// `From<SessionRequestError>` impls for `Self` to produce a `RequestError<E>`.
-impl<E> From<RequestError<SessionRequestError>> for RequestError<E>
-where
-    SessionRequestError: Into<Self>,
-{
-    fn from(value: RequestError<SessionRequestError>) -> Self {
-        match value {
-            RequestError::Other(e) => e.into(),
-            RequestError::Timeout => RequestError::Timeout,
-            RequestError::RequestWasNotValid => RequestError::RequestWasNotValid,
-            RequestError::Unknown(message) => RequestError::Unknown(message),
-        }
-    }
-}
-
-impl From<InvalidSessionId> for RequestError<CreateSessionError> {
+impl<D> From<InvalidSessionId> for RequestError<CreateSessionError, D> {
     fn from(InvalidSessionId: InvalidSessionId) -> Self {
         Self::Other(CreateSessionError::InvalidSessionId)
     }
 }
 
-impl From<InvalidSessionId> for RequestError<ResumeSessionError> {
+impl<D> From<InvalidSessionId> for RequestError<ResumeSessionError, D> {
     fn from(InvalidSessionId: InvalidSessionId) -> Self {
         Self::Other(ResumeSessionError::InvalidSessionId)
     }
 }
 
-impl From<RetryLater> for RequestError<ResumeSessionError> {
-    fn from(value: RetryLater) -> Self {
-        // The server doesn't return this code for GET requests.
-        Self::Unknown(value.to_string())
+impl<D> From<InvalidSessionId> for RequestError<UpdateSessionError, D> {
+    fn from(InvalidSessionId: InvalidSessionId) -> Self {
+        Self::Unexpected {
+            log_safe: "invalid session ID in update session response".to_owned(),
+        }
     }
 }
 
-impl From<RetryLater> for RequestError<CreateSessionError> {
-    fn from(value: RetryLater) -> Self {
-        Self::Other(CreateSessionError::RetryLater(value))
+impl<D> From<InvalidSessionId> for RequestError<RequestVerificationCodeError, D> {
+    fn from(InvalidSessionId: InvalidSessionId) -> Self {
+        Self::Other(RequestVerificationCodeError::InvalidSessionId)
     }
 }
 
-impl From<RetryLater> for RequestError<SessionRequestError> {
-    fn from(value: RetryLater) -> Self {
-        Self::Other(value.into())
+impl<D> From<InvalidSessionId> for RequestError<SubmitVerificationError, D> {
+    fn from(InvalidSessionId: InvalidSessionId) -> Self {
+        Self::Other(SubmitVerificationError::InvalidSessionId)
     }
 }

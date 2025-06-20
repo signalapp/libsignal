@@ -28,19 +28,15 @@ pub enum UserBasedAuthorization {
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[ignore_extra_doc_attributes]
-pub enum RequestError<E> {
+pub enum RequestError<E, D = DisconnectedError> {
     /// the request timed out
     Timeout,
-    /// the server explicitly disconnected us because we connected elsewhere with the same credentials
-    ConnectedElsewhere,
-    /// the server explicitly disconnected us for some reason other than that we connected elsewhere
-    ConnectionInvalidated,
+    /// {0}
+    Disconnected(D),
     /// {0}
     RetryLater(#[from] libsignal_net::infra::errors::RetryLater),
     /// {0}
     Challenge(#[from] RateLimitChallenge),
-    /// transport error: {log_safe}
-    Transport { log_safe: String },
     /// server-side error, retryable with backoff
     ServerSideError,
     /// {log_safe}
@@ -52,7 +48,31 @@ pub enum RequestError<E> {
     /// {0}
     Other(E),
 }
-impl<E> LogSafeDisplay for RequestError<E> where E: LogSafeDisplay {}
+impl<E, D> LogSafeDisplay for RequestError<E, D>
+where
+    E: LogSafeDisplay,
+    D: LogSafeDisplay,
+{
+}
+
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+#[ignore_extra_doc_attributes]
+pub enum DisconnectedError {
+    /// the server explicitly disconnected us because we connected elsewhere with the same credentials
+    ConnectedElsewhere,
+    /// the server explicitly disconnected us for some reason other than that we connected elsewhere
+    ConnectionInvalidated,
+    /// transport error: {log_safe}
+    Transport { log_safe: String },
+    /// the connection was closed
+    Closed,
+}
+
+impl<E> From<DisconnectedError> for RequestError<E> {
+    fn from(value: DisconnectedError) -> Self {
+        Self::Disconnected(value)
+    }
+}
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 /// retry after completing a rate limit challenge {options:?}

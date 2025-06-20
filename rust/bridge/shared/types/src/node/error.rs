@@ -518,6 +518,36 @@ impl SignalNodeError for libsignal_net::infra::errors::RetryLater {
     }
 }
 
+impl SignalNodeError for libsignal_net_chat::api::RateLimitChallenge {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        cx: &mut C,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> Handle<'a, JsError> {
+        let message = self.to_string();
+        let Self { token, options } = self;
+        let properties = move |cx: &mut C| {
+            let token = cx.string(token);
+            let options = options.into_boxed_slice().convert_into(cx)?.upcast();
+            let set_constructor: Handle<'_, JsFunction> = cx.global("Set")?;
+            let options = set_constructor.construct(cx, [options])?;
+            let props = cx.empty_object();
+            props.set(cx, "token", token)?;
+            props.set(cx, "options", options)?;
+            Ok(props.upcast())
+        };
+        new_js_error(
+            cx,
+            module,
+            Some("RateLimitChallengeError"),
+            &message,
+            operation_name,
+            properties,
+        )
+    }
+}
+
 impl SignalNodeError for http::uri::InvalidUri {
     fn into_throwable<'a, C: Context<'a>>(
         self,
@@ -574,12 +604,12 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
 }
 
 mod registration {
-    use libsignal_net::infra::errors::RetryLater;
     use libsignal_net_chat::api::registration::{
         CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationLock,
-        RequestError, RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError,
+        RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError,
         UpdateSessionError, VerificationCodeNotDeliverable,
     };
+    use libsignal_net_chat::registration::RequestError;
 
     use super::*;
 
@@ -591,7 +621,6 @@ mod registration {
             operation_name: &str,
         ) -> Handle<'a, JsError> {
             let inner = match self {
-                RequestError::RequestWasNotValid => BridgedErrorVariant::RequestInvalid,
                 RequestError::Other(inner) => inner.into(),
                 RequestError::Timeout => {
                     return libsignal_net::chat::SendError::RequestTimedOut.into_throwable(
@@ -600,16 +629,23 @@ mod registration {
                         operation_name,
                     )
                 }
-                RequestError::Unknown(message) => {
+                e @ (RequestError::Unexpected { log_safe: _ } | RequestError::ServerSideError) => {
                     return new_js_error(
                         cx,
                         module,
                         None,
-                        &message,
+                        &e.to_string(),
                         operation_name,
                         no_extra_properties,
                     )
                 }
+                RequestError::RetryLater(retry_later) => {
+                    return retry_later.into_throwable(cx, module, operation_name)
+                }
+                RequestError::Challenge(challenge) => {
+                    return challenge.into_throwable(cx, module, operation_name)
+                }
+                RequestError::Disconnected(d) => match d {},
             };
             SignalNodeError::into_throwable(inner, cx, module, operation_name)
         }
@@ -619,7 +655,6 @@ mod registration {
         SessionNotFound,
         InvalidSessionId,
         RequestInvalid,
-        RetryLater(RetryLater),
         RequestRejected,
         NotReadyForVerification,
         VerificationSendFailed,
@@ -637,9 +672,6 @@ mod registration {
             operation_name: &str,
         ) -> Handle<'a, JsError> {
             let message = match self {
-                BridgedErrorVariant::RetryLater(retry_later) => {
-                    return retry_later.into_throwable(cx, module, operation_name)
-                }
                 BridgedErrorVariant::SessionNotFound => {
                     "no verification session found for the session ID"
                 }
@@ -680,7 +712,6 @@ mod registration {
         fn from(value: CreateSessionError) -> Self {
             match value {
                 CreateSessionError::InvalidSessionId => Self::InvalidSessionId,
-                CreateSessionError::RetryLater(retry_later) => Self::RetryLater(retry_later),
             }
         }
     }
@@ -698,7 +729,6 @@ mod registration {
         fn from(value: UpdateSessionError) -> Self {
             match value {
                 UpdateSessionError::Rejected => Self::RequestRejected,
-                UpdateSessionError::RetryLater(retry_later) => Self::RetryLater(retry_later),
             }
         }
     }
@@ -715,9 +745,6 @@ mod registration {
                 RequestVerificationCodeError::CodeNotDeliverable(not_deliverable) => {
                     Self::VerificationNotDeliverable(not_deliverable)
                 }
-                RequestVerificationCodeError::RetryLater(retry_later) => {
-                    Self::RetryLater(retry_later)
-                }
             }
         }
     }
@@ -728,7 +755,6 @@ mod registration {
                 SubmitVerificationError::InvalidSessionId => Self::InvalidSessionId,
                 SubmitVerificationError::SessionNotFound => Self::SessionNotFound,
                 SubmitVerificationError::NotReadyForVerification => Self::NotReadyForVerification,
-                SubmitVerificationError::RetryLater(retry_later) => Self::RetryLater(retry_later),
             }
         }
     }
@@ -753,7 +779,6 @@ mod registration {
                 RegisterAccountError::RegistrationLock(registration_lock) => {
                     Self::RegistrationLock(registration_lock)
                 }
-                RegisterAccountError::RetryLater(retry_later) => Self::RetryLater(retry_later),
             }
         }
     }
