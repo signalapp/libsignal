@@ -202,13 +202,14 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
     }
 
     // Add PSWOOSH shared secret derivation
-    if let (Some(our_base_swoosh_key_pair), Some(their_swoosh_pre_key)) = 
+    if let (Some(_our_base_swoosh_key_pair), Some(their_swoosh_pre_key)) = 
         (parameters.our_base_swoosh_key_pair(), parameters.their_swoosh_pre_key()) {
         
         println!("*their_swoosh_pre_key first 8 bytes: {:02x?}", &their_swoosh_pre_key.public_key_bytes()[..8]);
         
-        // Derive PSWOOSH shared secret and add it to the key material
-        let swoosh_shared_secret = our_base_swoosh_key_pair.derive_shared_secret(their_swoosh_pre_key, is_alice)?;
+        // Use the ratchet key for shared secret derivation (not the base key)
+        // This ensures consistency with what Bob will receive
+        let swoosh_shared_secret = sending_swoosh_ratchet_key.derive_shared_secret(their_swoosh_pre_key, is_alice)?;
         secrets.extend_from_slice(&swoosh_shared_secret);
         println!("PSWOOSH shared secret derived and added to key material");
     }
@@ -495,7 +496,7 @@ pub(crate) fn initialize_bob_session_pswoosh(
             parameters.their_base_key(),
             pqr_state,
         )
-        .with_receiver_chain(parameters.their_base_key(), &chain_key)
+        .with_receiver_swoosh_chain(their_swoosh_ratchet_key, &chain_key)
         .with_sender_hybrid_chain(sending_ratchet_key, our_swoosh_key_pair, &sending_swoosh_chain_key)
     } else {
         // Standard initialization without Swoosh

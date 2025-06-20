@@ -661,7 +661,9 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
         if has_valid_swoosh_key {
             // Use Swoosh decryption path
             let is_alice = state.is_alice();
-            let chain_key = get_or_create_chain_swoosh_key(state, their_swoosh_ephemeral, remote_address, is_alice)?;
+            // For receiver chain, use the sender's alice identity (inverse of our identity)
+            let sender_is_alice = !is_alice;
+            let chain_key = get_or_create_chain_swoosh_key(state, their_swoosh_ephemeral, remote_address, sender_is_alice)?;
             let message_key_gen = get_or_create_message_swoosh_key(
                 state,
                 their_swoosh_ephemeral,
@@ -774,7 +776,9 @@ fn decrypt_message_with_state_swoosh<R: Rng + CryptoRng>(
 
     let their_ephemeral = ciphertext.sender_ratchet_swoosh_key();
     let counter = ciphertext.counter();
-    let chain_key = get_or_create_chain_swoosh_key(state, their_ephemeral, remote_address, is_alice)?;
+    // For receiver chain, use the sender's alice identity (inverse of our identity)  
+    let sender_is_alice = !is_alice;
+    let chain_key = get_or_create_chain_swoosh_key(state, their_ephemeral, remote_address, sender_is_alice)?;
     let message_key_gen = get_or_create_message_swoosh_key(
         state,
         their_ephemeral,

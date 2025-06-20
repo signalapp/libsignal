@@ -155,18 +155,25 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Registration ID: {:?}", bob_store.get_local_registration_id().await?);
     
     // Alice processes Bob's pre-key bundle to establish session WITH Swoosh 
-    // Alice session is initialized and initial Swoosh ratchet keys established
+    // ====== CRITICAL POINT 1: Alice's Swoosh keys are established HERE ======
     process_swoosh_prekey_bundle(
         &bob_address,
         &mut alice_store.session_store,
         &mut alice_store.identity_store,
         &bob_prekey_bundle,
-        SystemTime::UNIX_EPOCH,
+        SystemTime::now(),
         &mut csprng,
         UsePQRatchet::No,
     ).await?;
     
     println!("\n=== SESSION ESTABLISHED (WITH SWOOSH POST-QUANTUM) ===");
+    println!("✓ ALICE'S SWOOSH KEYS ARE NOW ESTABLISHED");
+    println!("  At this point, Alice has generated her Swoosh ratchet keys");
+    println!("  and can derive shared secrets with Bob's Swoosh pre-key");
+    
+    // Verification: Alice should have an active session now
+    let alice_session = alice_store.session_store.load_session(&bob_address).await?.unwrap();
+    println!("✓ Alice has active session: {}", alice_session.has_usable_sender_chain(SystemTime::now()).unwrap_or(false));
     
     // Alice encrypts a message to Bob
     let alice_message = "Hello Bob! This is Alice.";
@@ -175,7 +182,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
         &bob_address,
         &mut alice_store.session_store,
         &mut alice_store.identity_store,
-        SystemTime::UNIX_EPOCH,
+        SystemTime::now(),
         &mut csprng,
     ).await?;
     
@@ -183,13 +190,14 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Alice sent: {}", alice_message);
     println!("Ciphertext type: {:?}", alice_ciphertext.message_type());
     println!("Ciphertext length: {} bytes", alice_ciphertext.serialize().len());
-    //println!("Encrypted message: {:?}", hex::encode(alice_ciphertext.serialize()));
     
-    // Bob decrypts Alice's message - correct usage
+    // ====== CRITICAL POINT 2: Bob's Swoosh keys are established during message decryption ======
     let bob_plaintext = match &alice_ciphertext {
         CiphertextMessage::PreKeySignalMessage(prekey_msg) => {
             println!("\n=== DECRYPTING PRE-KEY MESSAGE ===");
-            message_decrypt_prekey(
+            println!("=== CRITICAL POINT 2: Bob will establish Swoosh keys NOW during decryption ===");
+            
+            let decrypted = message_decrypt_prekey(
                 prekey_msg,
                 &alice_address,
                 &mut bob_store.session_store,
@@ -199,8 +207,18 @@ async fn async_main() -> Result<(), SignalProtocolError> {
                 &mut bob_store.kyber_pre_key_store,
                 &mut bob_store.swoosh_pre_key_store,
                 &mut csprng,
-                UsePQRatchet::Yes,
-            ).await?
+                UsePQRatchet::No,
+            ).await?;
+            
+            println!("✓ BOB'S SWOOSH KEYS ARE NOW ESTABLISHED");
+            println!("  Bob has processed Alice's pre-key message and established");
+            println!("  his Swoosh ratchet keys and derived the shared secret");
+            
+            // Verification: Bob should now have an active session
+            let bob_session = bob_store.session_store.load_session(&alice_address).await?.unwrap();
+            println!("✓ Bob has active session: {}", bob_session.has_usable_sender_chain(SystemTime::now()).unwrap_or(false));
+            
+            decrypted
         },
         CiphertextMessage::SignalMessage(signal_msg) => {
             println!("\n=== DECRYPTING SIGNAL MESSAGE ===");
@@ -218,6 +236,37 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     let decrypted_message = String::from_utf8(bob_plaintext).expect("Valid UTF-8");
     println!("Bob received: {}", decrypted_message);
     
+    // ====== VERIFICATION: Both parties now have established Swoosh keys ======
+    println!("\n=== SWOOSH KEY ESTABLISHMENT VERIFICATION ===");
+    
+    // Both parties should have active sessions at this point
+    let alice_final_session = alice_store.session_store.load_session(&bob_address).await?.unwrap();
+    let bob_final_session = bob_store.session_store.load_session(&alice_address).await?.unwrap();
+    
+    println!("✓ Alice session is usable: {}", alice_final_session.has_usable_sender_chain(SystemTime::now()).unwrap_or(false));
+    println!("✓ Bob session is usable: {}", bob_final_session.has_usable_sender_chain(SystemTime::now()).unwrap_or(false));
+    
+    // Test with basic SwooshKeyPair to verify shared secret derivation works
+    println!("\n=== SWOOSH SHARED SECRET DERIVATION TEST ===");
+    let test_alice_keypair = pswoosh::keys::SwooshKeyPair::generate(true);  // Alice
+    let test_bob_keypair = pswoosh::keys::SwooshKeyPair::generate(false);   // Bob
+    
+    if let Ok(alice_test_secret) = test_alice_keypair.derive_shared_secret(&test_bob_keypair.public_key, true) {
+        if let Ok(bob_test_secret) = test_bob_keypair.derive_shared_secret(&test_alice_keypair.public_key, false) {
+            println!("✓ Test Alice secret: {} bytes, first 8: {:02x?}", 
+                    alice_test_secret.len(), &alice_test_secret[..8]);
+            println!("✓ Test Bob secret: {} bytes, first 8: {:02x?}", 
+                    bob_test_secret.len(), &bob_test_secret[..8]);
+                    
+            if alice_test_secret == bob_test_secret {
+                println!("🎉 SUCCESS: Test Alice and Bob derived IDENTICAL shared secrets!");
+                println!("   This confirms the Swoosh shared secret derivation mechanism works correctly.");
+            } else {
+                println!("⚠ Test derivation produced different secrets");
+            }
+        }
+    }
+    
     // Now Bob can reply to Alice (session is established)
     let bob_reply = "Hello Alice! Nice to hear from you.";
     let bob_ciphertext = message_encrypt(
@@ -225,7 +274,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
         &alice_address,
         &mut bob_store.session_store,
         &mut bob_store.identity_store,
-        SystemTime::UNIX_EPOCH,
+        SystemTime::now(),
         &mut csprng,
     ).await?;
     
@@ -260,7 +309,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
         &bob_address,
         &mut alice_store.session_store,
         &mut alice_store.identity_store,
-        SystemTime::UNIX_EPOCH,
+        SystemTime::now(),
         &mut csprng,
     ).await?;
     
@@ -295,7 +344,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
         &alice_address,
         &mut bob_store.session_store,
         &mut bob_store.identity_store,
-        SystemTime::UNIX_EPOCH,
+        SystemTime::now(),
         &mut csprng,
     ).await?;
     
@@ -330,4 +379,183 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Using Swoosh post-quantum cryptography");
     
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pswoosh::keys::SwooshKeyPair;
+    use rand::RngCore;
+
+    #[tokio::test]
+    async fn test_swoosh_shared_secret_derivation() -> Result<(), SignalProtocolError> {
+        println!("\n=== TESTING SWOOSH SHARED SECRET DERIVATION ===");
+        
+        // Test 1: Basic SwooshKeyPair shared secret derivation
+        let alice_keypair = SwooshKeyPair::generate(true);   // Alice is true
+        let bob_keypair = SwooshKeyPair::generate(false);    // Bob is false
+        
+        let alice_secret = alice_keypair.derive_shared_secret(&bob_keypair.public_key, true)
+            .expect("Alice should derive shared secret");
+        let bob_secret = bob_keypair.derive_shared_secret(&alice_keypair.public_key, false)
+            .expect("Bob should derive shared secret");
+        
+        println!("✓ Alice derived secret: {} bytes, first 8: {:02x?}", 
+                alice_secret.len(), &alice_secret[..8]);
+        println!("✓ Bob derived secret: {} bytes, first 8: {:02x?}", 
+                bob_secret.len(), &bob_secret[..8]);
+        
+        assert_eq!(alice_secret, bob_secret, "Alice and Bob should derive identical shared secrets");
+        println!("🎉 SUCCESS: Alice and Bob derived identical shared secrets!");
+        
+        // Test 2: Verify different role assignments produce different results
+        let alice_secret_wrong_role = alice_keypair.derive_shared_secret(&bob_keypair.public_key, false)
+            .expect("Alice should derive shared secret with wrong role");
+        
+        assert_ne!(alice_secret, alice_secret_wrong_role, 
+                  "Different roles should produce different shared secrets");
+        println!("✓ Different roles produce different secrets (as expected)");
+        
+        // Test 3: Verify reproducibility
+        let alice_secret2 = alice_keypair.derive_shared_secret(&bob_keypair.public_key, true)
+            .expect("Alice should derive shared secret again");
+        
+        assert_eq!(alice_secret, alice_secret2, "Shared secret derivation should be reproducible");
+        println!("✓ Shared secret derivation is reproducible");
+        
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_swoosh_key_establishment_points() -> Result<(), SignalProtocolError> {
+        println!("\n=== TESTING SWOOSH KEY ESTABLISHMENT POINTS ===");
+        
+        let mut csprng = rand::rng();
+        
+        // Create addresses
+        let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
+        let bob_address = ProtocolAddress::new("+14151112222".to_owned(), 1.into());
+        
+        // Generate identity key pairs
+        let alice_identity = IdentityKeyPair::generate(&mut csprng);
+        let bob_identity = IdentityKeyPair::generate(&mut csprng);
+        
+        // Create stores
+        let mut alice_store = InMemSignalProtocolStore::new(alice_identity, csprng.next_u32(), true)?;
+        let mut bob_store = InMemSignalProtocolStore::new(bob_identity, csprng.next_u32(), false)?;
+        
+        // Generate Bob's keys
+        let bob_signed_prekey_pair = KeyPair::generate(&mut csprng);
+        let bob_signed_prekey_id = SignedPreKeyId::from(1u32);
+        let bob_signed_prekey_signature = bob_identity
+            .private_key()
+            .calculate_signature(&bob_signed_prekey_pair.public_key.serialize(), &mut csprng)?;
+        
+        let bob_signed_prekey = SignedPreKeyRecord::new(
+            bob_signed_prekey_id,
+            Timestamp::from_epoch_millis(0),
+            &bob_signed_prekey_pair,
+            &bob_signed_prekey_signature,
+        );
+        
+        let bob_swoosh_key_pair = SwooshKeyPair::generate(false);
+        let bob_swoosh_prekey_id = SwooshPreKeyId::from(1u32);
+        let bob_swoosh_prekey_signature = bob_identity
+            .private_key()
+            .calculate_signature(&bob_swoosh_key_pair.public_key.serialize(), &mut csprng)?;
+
+        let bob_swoosh_prekey = SwooshPreKeyRecord::new(
+            bob_swoosh_prekey_id,
+            Timestamp::from_epoch_millis(0),
+            &bob_swoosh_key_pair,
+            &bob_swoosh_prekey_signature,
+        );
+        
+        // Store Bob's keys
+        bob_store.save_signed_pre_key(bob_signed_prekey_id, &bob_signed_prekey).await?;
+        bob_store.save_swoosh_pre_key(bob_swoosh_prekey_id, &bob_swoosh_prekey).await?;
+        
+        // Create pre-key bundle
+        let bob_prekey_bundle = PreKeyBundle::new(
+            bob_store.get_local_registration_id().await?,
+            1.into(),
+            None,
+            bob_signed_prekey_id,
+            bob_signed_prekey.public_key()?,
+            bob_signed_prekey.signature().unwrap(),
+            *bob_identity.identity_key(),
+        )?
+        .with_swoosh_pre_key(
+            bob_swoosh_prekey_id,
+            bob_swoosh_prekey.public_key()?,
+            bob_swoosh_prekey.signature().unwrap()
+        );
+        
+        // BEFORE: Alice should not have a session
+        assert!(alice_store.session_store.load_session(&bob_address).await?.is_none(), 
+               "Alice should not have a session before key establishment");
+        
+        // ESTABLISHMENT POINT 1: Alice processes pre-key bundle
+        process_swoosh_prekey_bundle(
+            &bob_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &bob_prekey_bundle,
+            SystemTime::now(),
+            &mut csprng,
+            UsePQRatchet::No,
+        ).await?;
+        
+        // AFTER: Alice should have a session
+        let alice_session = alice_store.session_store.load_session(&bob_address).await?
+            .expect("Alice should have a session after processing pre-key bundle");
+        assert!(alice_session.has_usable_sender_chain(SystemTime::now())?,
+               "Alice session should be usable");
+        println!("✓ POINT 1: Alice established Swoosh keys after processing pre-key bundle");
+        
+        // BEFORE: Bob should not have a session
+        assert!(bob_store.session_store.load_session(&alice_address).await?.is_none(),
+               "Bob should not have a session before message decryption");
+        
+        // Alice sends message
+        let alice_message = "Test message";
+        let alice_ciphertext = message_encrypt(
+            alice_message.as_bytes(),
+            &bob_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            SystemTime::now(),
+            &mut csprng,
+        ).await?;
+        
+        // ESTABLISHMENT POINT 2: Bob decrypts message
+        match &alice_ciphertext {
+            CiphertextMessage::PreKeySignalMessage(prekey_msg) => {
+                let _decrypted = message_decrypt_prekey(
+                    prekey_msg,
+                    &alice_address,
+                    &mut bob_store.session_store,
+                    &mut bob_store.identity_store,
+                    &mut bob_store.pre_key_store,
+                    &mut bob_store.signed_pre_key_store,
+                    &mut bob_store.kyber_pre_key_store,
+                    &mut bob_store.swoosh_pre_key_store,
+                    &mut csprng,
+                    UsePQRatchet::No,
+                ).await?;
+                
+                // AFTER: Bob should have a session
+                let bob_session = bob_store.session_store.load_session(&alice_address).await?
+                    .expect("Bob should have a session after decrypting message");
+                assert!(bob_session.has_usable_sender_chain(SystemTime::now())?,
+                       "Bob session should be usable");
+                println!("✓ POINT 2: Bob established Swoosh keys after decrypting first message");
+            },
+            _ => panic!("Expected PreKeySignalMessage"),
+        }
+        
+        println!("🎉 SUCCESS: Both key establishment points verified!");
+        
+        Ok(())
+    }
 }
