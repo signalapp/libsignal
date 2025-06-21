@@ -21,7 +21,7 @@ import kotlin.annotation.Target
  * or stripped unless annotated).
  */
 @MustBeDocumented
-@Target(AnnotationTarget.CONSTRUCTOR, AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.TYPE)
+@Target(AnnotationTarget.CONSTRUCTOR, AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 public annotation class CalledFromNative {
   public class Enforcement {
     public companion object {
