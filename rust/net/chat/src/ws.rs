@@ -20,8 +20,11 @@ use http::StatusCode;
 use libsignal_net::chat;
 use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net::infra::{extract_retry_later, AsHttpHeader};
+use serde_with::serde_as;
 
-use crate::api::{DisconnectedError, RateLimitChallenge, RequestError, UserBasedAuthorization};
+use crate::api::{
+    ChallengeOption, DisconnectedError, RateLimitChallenge, RequestError, UserBasedAuthorization,
+};
 
 const ACCESS_KEY_HEADER_NAME: http::HeaderName =
     http::HeaderName::from_static("unidentified-access-key");
@@ -146,11 +149,12 @@ impl ResponseError {
                             }
                         }
                         if status.as_u16() == 428 {
+                            #[serde_as]
                             #[derive(serde::Deserialize)]
                             struct ChallengeBody {
                                 token: String,
-                                // TODO: Make this type general instead of registration-specific.
-                                options: Vec<crate::api::registration::RequestedInformation>,
+                                #[serde_as(as = "Vec<serde_with::DisplayFromStr>")]
+                                options: Vec<ChallengeOption>,
                             }
 
                             if let Ok(ChallengeBody { token, options }) =
@@ -349,7 +353,7 @@ mod test {
 
     use super::testutil::*;
     use super::*;
-    use crate::api::registration::RequestedInformation;
+    use crate::api::ChallengeOption;
 
     #[test_case(empty(200) => matches Ok(Empty))]
     #[test_case(empty(204) => matches Ok(Empty))]
@@ -364,7 +368,7 @@ mod test {
     #[test_case(json(428, "{}") => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
     #[test_case(json(
         428, r#"{"token": "zzz", "options": ["captcha"]}"#
-    ) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options })) if token == "zzz" && options == vec![RequestedInformation::Captcha])]
+    ) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
     #[test_case(empty(422) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("server validation"))]
     #[test_case(empty(419) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("419"))]
     fn try_parse_empty(

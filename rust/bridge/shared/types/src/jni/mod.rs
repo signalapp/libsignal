@@ -886,7 +886,7 @@ impl JniError for RateLimitChallenge {
             jni_args!((
                 message => java.lang.String,
                 token => java.lang.String,
-                options => [org.signal.libsignal.net.RegistrationSessionState::RequestedInformation]) -> void),
+                options => [org.signal.libsignal.net.ChallengeOption]) -> void),
         )
         .map(Into::into)
     }

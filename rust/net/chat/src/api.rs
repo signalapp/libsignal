@@ -78,10 +78,19 @@ impl<E> From<DisconnectedError> for RequestError<E> {
 /// retry after completing a rate limit challenge {options:?}
 pub struct RateLimitChallenge {
     pub token: String,
-    // TODO: use a type that's not registration-specific.
-    pub options: Vec<crate::api::registration::RequestedInformation>,
+    pub options: Vec<ChallengeOption>,
 }
 impl LogSafeDisplay for RateLimitChallenge {}
+
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, strum::Display, strum::EnumString, strum::EnumIter,
+)]
+#[repr(u8)]
+#[strum(serialize_all = "camelCase")]
+pub enum ChallengeOption {
+    PushChallenge,
+    Captcha,
+}
 
 /// A convenience trait covering all Chat APIs.
 ///

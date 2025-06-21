@@ -136,7 +136,7 @@ type ChatListener = {
   ): void;
 };
 
-type RegistrationSessionRequestedInformation = 'pushChallenge' | 'captcha';
+type ChallengeOption = 'pushChallenge' | 'captcha';
 
 type RegistrationPushTokenType = 'apn' | 'fcm';
 
@@ -482,7 +482,7 @@ export function RegistrationSession_GetAllowedToRequestCode(session: Wrapper<Reg
 export function RegistrationSession_GetNextCallSeconds(session: Wrapper<RegistrationSession>): number | null;
 export function RegistrationSession_GetNextSmsSeconds(session: Wrapper<RegistrationSession>): number | null;
 export function RegistrationSession_GetNextVerificationAttemptSeconds(session: Wrapper<RegistrationSession>): number | null;
-export function RegistrationSession_GetRequestedInformation(session: Wrapper<RegistrationSession>): RegistrationSessionRequestedInformation[];
+export function RegistrationSession_GetRequestedInformation(session: Wrapper<RegistrationSession>): ChallengeOption[];
 export function RegistrationSession_GetVerified(session: Wrapper<RegistrationSession>): boolean;
 export function SanitizedMetadata_GetDataLen(sanitized: Wrapper<SanitizedMetadata>): bigint;
 export function SanitizedMetadata_GetDataOffset(sanitized: Wrapper<SanitizedMetadata>): bigint;

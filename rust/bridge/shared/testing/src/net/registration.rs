@@ -18,7 +18,7 @@ use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::ChatConnection;
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net_chat::api::registration::*;
-use libsignal_net_chat::api::RateLimitChallenge;
+use libsignal_net_chat::api::{ChallengeOption, RateLimitChallenge};
 use libsignal_net_chat::registration::*;
 use uuid::uuid;
 
@@ -34,7 +34,7 @@ pub fn TESTING_RegistrationSessionInfoConvert() -> RegistrationSession {
         next_call: Some(Duration::from_secs(123)),
         next_sms: Some(Duration::from_secs(456)),
         next_verification_attempt: Some(Duration::from_secs(789)),
-        requested_information: HashSet::from([RequestedInformation::PushChallenge]),
+        requested_information: HashSet::from([ChallengeOption::PushChallenge]),
     }
 }
 
@@ -196,7 +196,7 @@ impl<TestE: for<'a> TryFrom<&'a str, Error = strum::ParseError>> TryFrom<String>
             "RetryAfter42Seconds" => RequestError::RetryLater(RETRY_AFTER_42_SECONDS),
             "PushChallenge" => RequestError::Challenge(RateLimitChallenge {
                 token: "token".to_owned(),
-                options: vec![RequestedInformation::PushChallenge],
+                options: vec![ChallengeOption::PushChallenge],
             }),
             "ServerSideError" => RequestError::ServerSideError,
             _ => TestE::try_from(&value)

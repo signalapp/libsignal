@@ -6,7 +6,6 @@
 package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CalledFromNative
-import org.signal.libsignal.net.RegistrationSessionState.RequestedInformation
 import java.util.EnumSet
 
 /**
@@ -17,10 +16,10 @@ import java.util.EnumSet
  */
 public class RateLimitChallengeException : ChatServiceException {
   public val token: String
-  public val options: Set<RequestedInformation>
+  public val options: Set<ChallengeOption>
 
   @CalledFromNative
-  private constructor(message: String, token: String, options: Array<RequestedInformation>) : super(message) {
+  private constructor(message: String, token: String, options: Array<ChallengeOption>) : super(message) {
     this.token = token
     this.options = EnumSet.copyOf(options.asList())
   }

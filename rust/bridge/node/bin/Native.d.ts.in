@@ -136,7 +136,7 @@ type ChatListener = {
   ): void;
 };
 
-type RegistrationSessionRequestedInformation = 'pushChallenge' | 'captcha';
+type ChallengeOption = 'pushChallenge' | 'captcha';
 
 type RegistrationPushTokenType = 'apn' | 'fcm';
 

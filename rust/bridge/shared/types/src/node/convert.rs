@@ -1125,7 +1125,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::registration::RequestedInformation {
+impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::ChallengeOption {
     type ResultType = JsString;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         Ok(cx.string(match self {
@@ -1135,7 +1135,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::registration::Requested
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net_chat::api::registration::RequestedInformation]> {
+impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net_chat::api::ChallengeOption]> {
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self)

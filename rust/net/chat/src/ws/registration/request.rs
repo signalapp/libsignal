@@ -397,6 +397,7 @@ mod test {
     use uuid::uuid;
 
     use super::*;
+    use crate::api::ChallengeOption;
     use crate::ws::TryIntoResponse as _;
 
     #[test]
@@ -517,8 +518,8 @@ mod test {
                     next_call: None,
                     next_verification_attempt: None,
                     requested_information: HashSet::from([
-                        RequestedInformation::Captcha,
-                        RequestedInformation::PushChallenge
+                        ChallengeOption::Captcha,
+                        ChallengeOption::PushChallenge
                     ]),
                 }
             }

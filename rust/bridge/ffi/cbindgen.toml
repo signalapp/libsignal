@@ -23,14 +23,14 @@ prefix_with_name = true
 
 [export]
 include = [
-    "SignalErrorCode",
+    "ChallengeOption",
     "FfiDirection",
     "FfiCiphertextMessageType",
     "FfiContentHint",
-    "RandomnessBytes",
     "IdentityChange",
+    "RandomnessBytes",
+    "SignalErrorCode",
     "Svr2CredentialsResult",
-    "RequestedInformation",
     "UnidentifiedAccessKey",
 ]
 exclude = ["TAG_SIZE", "NONCE_SIZE", "VERSION"]

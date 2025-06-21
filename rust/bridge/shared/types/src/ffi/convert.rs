@@ -11,6 +11,7 @@ use std::ops::Deref;
 use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net_chat::api::registration::PushTokenType;
+use libsignal_net_chat::api::ChallengeOption;
 use libsignal_protocol::*;
 use paste::paste;
 use uuid::Uuid;
@@ -20,7 +21,6 @@ use crate::io::{InputStream, SyncInputStream};
 use crate::net::chat::ChatListener;
 use crate::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushTokenType,
-    RegistrationSessionRequestedInformation,
 };
 use crate::support::{extend_lifetime, AsType, FixedLengthBincodeSerializable, Serialized};
 
@@ -708,11 +708,11 @@ impl ResultTypeInfo for crate::zkgroup::Timestamp {
     }
 }
 
-impl ResultTypeInfo for Box<[RegistrationSessionRequestedInformation]> {
+impl ResultTypeInfo for Box<[ChallengeOption]> {
     type ResultType = <Vec<u8> as ResultTypeInfo>::ResultType;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        static_assertions::assert_eq_size!(RegistrationSessionRequestedInformation, u8);
-        static_assertions::assert_eq_align!(RegistrationSessionRequestedInformation, u8);
+        static_assertions::assert_eq_size!(ChallengeOption, u8);
+        static_assertions::assert_eq_align!(ChallengeOption, u8);
         // The compiler can optimize this iterated conversion away to nothing.
         Ok(IntoIterator::into_iter(self)
             .map(|r| r as u8)
@@ -721,7 +721,7 @@ impl ResultTypeInfo for Box<[RegistrationSessionRequestedInformation]> {
     }
 }
 
-impl ResultTypeInfo for &[RegistrationSessionRequestedInformation] {
+impl ResultTypeInfo for &[ChallengeOption] {
     type ResultType = <Vec<u8> as ResultTypeInfo>::ResultType;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Box::<[_]>::from(self).convert_into()
@@ -1154,7 +1154,7 @@ macro_rules! ffi_result_type {
     (Vec<u8>) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
     (Box<[String]>) => (ffi::StringArray);
     (Box<[Vec<u8>]>) => (ffi::BytestringArray);
-    (Box<[RegistrationSessionRequestedInformation]>) => (ffi_result_type!(Vec<u8>));
+    (Box<[ChallengeOption]>) => (ffi_result_type!(Vec<u8>));
     (Option<$typ:ty>) => ($crate::ffi::MutPointer<$typ>);
 
     (LookupResponse) => (ffi::FfiCdsiLookupResponse);

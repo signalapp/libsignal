@@ -20,6 +20,8 @@ pub use error::*;
 mod session_id;
 pub use session_id::{InvalidSessionId, SessionId};
 
+use crate::api::ChallengeOption;
+
 pub type UnidentifiedAccessKey = [u8; zkgroup::ACCESS_KEY_LEN];
 
 #[derive(Clone, Debug, Default, serde::Serialize)]
@@ -49,16 +51,8 @@ pub struct RegistrationSession {
     pub next_call: Option<Duration>,
     #[serde_as(as = "Option<DurationSeconds>")]
     pub next_verification_attempt: Option<Duration>,
-    pub requested_information: HashSet<RequestedInformation>,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, strum::EnumIter)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(serde::Serialize))]
-#[repr(u8)]
-pub enum RequestedInformation {
-    PushChallenge,
-    Captcha,
+    #[serde_as(as = "HashSet<serde_with::DisplayFromStr>")]
+    pub requested_information: HashSet<ChallengeOption>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Serialize, strum::EnumString)]

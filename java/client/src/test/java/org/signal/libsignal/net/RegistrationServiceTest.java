@@ -48,9 +48,7 @@ public class RegistrationServiceTest {
     assertEquals(info.getNextCall(), Duration.ofSeconds(123));
     assertEquals(info.getNextSms(), Duration.ofSeconds(456));
     assertEquals(info.getNextVerificationAttempt(), Duration.ofSeconds(789));
-    assertEquals(
-        info.getRequestedInformation(),
-        EnumSet.of(RegistrationSessionState.RequestedInformation.PUSH_CHALLENGE));
+    assertEquals(info.getRequestedInformation(), EnumSet.of(ChallengeOption.PUSH_CHALLENGE));
   }
 
   @Test
@@ -272,8 +270,7 @@ public class RegistrationServiceTest {
         assertRegistrationSessionErrorIs(
             "PushChallenge", RateLimitChallengeException.class, throwError);
     assertEquals(e.getToken(), "token");
-    assertEquals(
-        e.getOptions(), EnumSet.of(RegistrationSessionState.RequestedInformation.PUSH_CHALLENGE));
+    assertEquals(e.getOptions(), EnumSet.of(ChallengeOption.PUSH_CHALLENGE));
   }
 
   @Test
@@ -315,9 +312,7 @@ public class RegistrationServiceTest {
     assertEquals(sessionState.getVerified(), false);
     assertEquals(
         sessionState.getRequestedInformation(),
-        Set.of(
-            RegistrationSessionState.RequestedInformation.PUSH_CHALLENGE,
-            RegistrationSessionState.RequestedInformation.CAPTCHA));
+        Set.of(ChallengeOption.PUSH_CHALLENGE, ChallengeOption.CAPTCHA));
 
     var requestVerification =
         session.requestVerificationCode(

@@ -13,6 +13,7 @@ use libsignal_bridge_types::net::registration::{
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::*;
 use libsignal_net_chat::api::registration::*;
+use libsignal_net_chat::api::ChallengeOption;
 use libsignal_net_chat::registration::RequestError;
 use libsignal_protocol::*;
 use uuid::Uuid;
@@ -266,7 +267,7 @@ fn RegistrationSession_GetNextVerificationAttemptSeconds(
 #[bridge_fn]
 fn RegistrationSession_GetRequestedInformation(
     session: &RegistrationSession,
-) -> Box<[RegistrationSessionRequestedInformation]> {
+) -> Box<[ChallengeOption]> {
     session.requested_information.iter().copied().collect()
 }
 
@@ -348,8 +349,6 @@ fn RegisterAccountRequest_SetIdentityPublicKey(
     let account = guard.as_mut().expect("not taken");
     *account.identity_keys.get_mut(identity_type.into_inner()) = Some(*identity_key);
 }
-
-pub use libsignal_bridge_types::net::registration::RegistrationSessionRequestedInformation;
 
 #[bridge_fn]
 fn RegisterAccountRequest_SetIdentitySignedPreKey(

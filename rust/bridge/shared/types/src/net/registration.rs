@@ -11,8 +11,7 @@ use futures_util::TryFutureExt as _;
 use libsignal_net_chat::api::registration::{
     CreateSession, CreateSessionError, ForServiceIds, NewMessageNotification,
     ProvidedAccountAttributes, PushTokenType, RegisterAccountResponse, RegistrationSession,
-    RequestedInformation, ResumeSessionError, SessionId, SignedPreKeyBody, SkipDeviceTransfer,
-    UnidentifiedAccessKey,
+    ResumeSessionError, SessionId, SignedPreKeyBody, SkipDeviceTransfer, UnidentifiedAccessKey,
 };
 use libsignal_net_chat::registration::{self as net_registration, ConnectChat, RequestError};
 use libsignal_protocol::PublicKey;
@@ -62,7 +61,6 @@ pub struct AccountAttributes {
 pub type RegistrationCreateSessionRequest = CreateSession;
 pub type RegistrationPushTokenType = PushTokenType;
 pub type RegistrationAccountAttributes = AccountAttributes;
-pub type RegistrationSessionRequestedInformation = RequestedInformation;
 
 // Alias the type exposed across the bridge since the macros don't support
 // templates well.

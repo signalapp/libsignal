@@ -123,6 +123,12 @@ SPDX-License-Identifier: AGPL-3.0-only
  */
 #define SignalFourCC_ENCODED_LEN 4
 
+enum SignalChallengeOption {
+  SignalChallengeOptionPushChallenge,
+  SignalChallengeOptionCaptcha,
+};
+typedef uint8_t SignalChallengeOption;
+
 typedef enum {
   SignalCiphertextMessageTypeWhisper = 2,
   SignalCiphertextMessageTypePreKey = 3,
@@ -168,12 +174,6 @@ typedef enum {
   SignalLogLevelDebug,
   SignalLogLevelTrace,
 } SignalLogLevel;
-
-enum SignalRequestedInformation {
-  SignalRequestedInformationPushChallenge,
-  SignalRequestedInformationCaptcha,
-};
-typedef uint8_t SignalRequestedInformation;
 
 typedef enum {
   SignalErrorCodeUnknownError = 1,

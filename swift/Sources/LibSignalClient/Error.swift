@@ -58,7 +58,7 @@ public enum SignalError: Error {
     case networkProtocolError(String)
     case cdsiInvalidToken(String)
     case rateLimitedError(retryAfter: TimeInterval, message: String)
-    case rateLimitChallengeError(token: String, options: Set<RequestedInformation>, message: String)
+    case rateLimitChallengeError(token: String, options: Set<ChallengeOption>, message: String)
     case svrDataMissing(String)
     case svrRestoreFailed(triesRemaining: UInt32, message: String)
     case svrRotationMachineTooManySteps(String)
@@ -226,7 +226,7 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         signal_free_string(tokenOut)
         throw SignalError.rateLimitChallengeError(
             token: token,
-            options: Set(try options.map { try RequestedInformation(fromNative: $0) }),
+            options: Set(try options.map { try ChallengeOption(fromNative: $0) }),
             message: errStr
         )
     case SignalErrorCodeSvrDataMissing:

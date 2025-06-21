@@ -474,25 +474,25 @@ public class RegistrationSessionState: NativeHandleOwner<SignalMutPointerRegistr
         }
     }
 
-    public var requestedInformation: Set<RequestedInformation> {
+    public var requestedInformation: Set<ChallengeOption> {
         return failOnError {
             let items = try invokeFnReturningData { out in
                 self.withNativeHandle {
                     signal_registration_session_get_requested_information(out, $0.const())
                 }
             }
-            return Set(try items.map { try RequestedInformation(fromNative: $0) })
+            return Set(try items.map { try ChallengeOption(fromNative: $0) })
         }
     }
 }
 
-extension RequestedInformation {
+extension ChallengeOption {
     internal init(fromNative value: UInt8) throws {
         self = switch UInt32(value) {
-        case SignalRequestedInformationCaptcha.rawValue:
-            RequestedInformation.captcha
-        case SignalRequestedInformationPushChallenge.rawValue:
-            RequestedInformation.pushChallenge
+        case SignalChallengeOptionCaptcha.rawValue:
+            .captcha
+        case SignalChallengeOptionPushChallenge.rawValue:
+            .pushChallenge
         default:
             throw SignalError.internalError("unknown requested information")
         }
@@ -639,7 +639,7 @@ public enum Svr2CredentialsResult {
     case invalid
 }
 
-public enum RequestedInformation: Hashable, Sendable {
+public enum ChallengeOption: Hashable, Sendable {
     case captcha
     case pushChallenge
 }
