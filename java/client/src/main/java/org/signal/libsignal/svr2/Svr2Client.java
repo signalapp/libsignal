@@ -16,9 +16,7 @@ import org.signal.libsignal.sgxsession.SgxClient;
 /**
  * Svr2Client provides bindings to interact with Signal's v2 Secure Value Recovery service.
  *
- * <p>
- *
- * <p>{@inheritDoc}
+ * <p>See the {@link SgxClient} docs for more information.
  */
 public class Svr2Client extends SgxClient {
   public Svr2Client(byte[] mrenclave, byte[] attestationMsg, Instant currentInstant)

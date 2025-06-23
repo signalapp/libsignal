@@ -21,7 +21,7 @@ public class SignalProtocolAddress extends NativeHandleGuard.SimpleOwner {
   }
 
   /**
-   * @param name the identifier for the recipient
+   * @param serviceId the identifier for the recipient
    * @param deviceId the identifier for the device; must be in the range 1-127 inclusive
    */
   public SignalProtocolAddress(ServiceId serviceId, int deviceId) {

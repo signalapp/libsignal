@@ -16,7 +16,7 @@ import org.signal.libsignal.sgxsession.SgxClient;
 /**
  * Cds2Client provides bindings to interact with Signal's v2 Contact Discovery Service.
  *
- * <p>{@inheritDoc}
+ * <p>See the {@link SgxClient} docs for more information.
  *
  * <p>A future update to Cds2Client will implement additional parts of the contact discovery
  * protocol.
