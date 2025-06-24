@@ -1075,69 +1075,17 @@ fn get_or_create_chain_swoosh_key(
         return Ok(chain);
     }
 
-    // Check if we already have established Swoosh session state (sender chain with Swoosh keys)
-    // If so, we should use the existing chains rather than recreating everything
-    if let Ok(existing_public_key) = state.sender_ratchet_swoosh_public_key() {
-        println!("DEBUG: Found existing Swoosh session state with public key length: {}", existing_public_key.serialize().len());
-        // We have existing Swoosh state, but no receiver chain for this specific ephemeral key
-        // This means we need to advance the ratchet, not create everything from scratch
-        
-        log::info!("{remote_address} creating new chains.");
-        println!("**Creating new Swoosh chains");
-
-        let root_key = state.root_key()?;
-        let our_ephemeral = state.sender_ratchet_swoosh_private_key()?;
-        let our_public_key = state.sender_ratchet_swoosh_public_key()?;
-        let receiver_chain = root_key.create_chain_swoosh(their_ephemeral, &our_public_key, &our_ephemeral, is_alice)?;
-        let our_new_ephemeral = SwooshKeyPair::generate(is_alice);
-        let sender_chain = receiver_chain
-            .0
-            .create_chain_swoosh(their_ephemeral, &our_new_ephemeral.public_key(), &our_new_ephemeral.private_key(), is_alice)?;
-
-        state.set_root_key(&sender_chain.0);
-        state.add_receiver_swoosh_chain(their_ephemeral, &receiver_chain.1);
-
-        let current_index = state.get_sender_chain_key()?.index();
-        let previous_index = if current_index > 0 {
-            current_index - 1
-        } else {
-            0
-        };
-        state.set_previous_counter(previous_index);
-        state.set_sender_swoosh_chain(&our_new_ephemeral, &sender_chain.1);
-
-        return Ok(receiver_chain.1);
-    }
-
     log::info!("{remote_address} creating new chains.");
-    println!("**Creating new Swoosh chains");
 
     let root_key = state.root_key()?;
+    let our_ephemeral = state.sender_ratchet_swoosh_private_key()?;
+    let our_ephemeral_public = state.sender_ratchet_swoosh_public_key()?;
+    let receiver_chain = root_key.create_chain_swoosh(their_ephemeral, &our_ephemeral_public, &our_ephemeral, is_alice)?;
     
-    // Handle the case where we don't have existing Swoosh keys (first time initialization)
-    let (our_public_key, our_ephemeral) = match (
-        state.sender_ratchet_swoosh_public_key(),
-        state.sender_ratchet_swoosh_private_key()
-    ) {
-        (Ok(public_key), Ok(private_key)) => {
-            println!("DEBUG: Using existing Swoosh keys");
-            (public_key, private_key)
-        },
-        _ => {
-            println!("DEBUG: No existing Swoosh keys, generating new ones");
-            let new_ephemeral = SwooshKeyPair::generate(is_alice);
-            let public_key = new_ephemeral.public_key().clone();
-            let private_key = new_ephemeral.private_key().clone();
-            
-            // Store the new Swoosh keys in the sender chain
-            let dummy_chain_key = ChainKey::new([0u8; 32], 0);
-            state.set_sender_hybrid_chain(&KeyPair::generate(&mut rand::rng()), &new_ephemeral, &dummy_chain_key);
-            
-            (public_key, private_key)
-        }
-    };
+    // Debug: Print the first 8 bytes of receiver_chain root key before it gets moved
+    println!("🔑 Bob root key first 8 bytes: {:02x?}", &receiver_chain.0.key()[..8]);
+    println!("🔑 Bob chain key first 8 bytes: {:02x?}", &receiver_chain.1.key()[..8]);
     
-    let receiver_chain = root_key.create_chain_swoosh(their_ephemeral, &our_public_key, &our_ephemeral, is_alice)?;
     let our_new_ephemeral = SwooshKeyPair::generate(is_alice);
     let sender_chain = receiver_chain
         .0
@@ -1154,6 +1102,9 @@ fn get_or_create_chain_swoosh_key(
     };
     state.set_previous_counter(previous_index);
     state.set_sender_swoosh_chain(&our_new_ephemeral, &sender_chain.1);
+
+    // Debug: Print the first 8 bytes of sender_chain.1
+    println!("🔑 Bob chain key first 8 bytes: {:02x?}", &sender_chain.1.key()[..8]);
 
     Ok(receiver_chain.1)
 }
