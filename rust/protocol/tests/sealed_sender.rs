@@ -1020,7 +1020,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             extract_decryption_error_message_from_serialized_content(bob_plaintext.body())
                 .expect("present");
 
-        assert_eq!(bob_error_message.ratchet_key(), Some(original_ratchet_key));
+        assert_eq!(bob_error_message.ratchet_key(), original_ratchet_key);
         assert_eq!(bob_error_message.timestamp(), ORIGINAL_TIMESTAMP);
         assert_eq!(bob_error_message.device_id(), 5);
 

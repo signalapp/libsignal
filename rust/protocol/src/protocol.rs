@@ -62,7 +62,7 @@ impl CiphertextMessage {
 #[derive(Debug, Clone)]
 pub struct SignalMessage {
     message_version: u8,
-    sender_ratchet_key: PublicKey,
+    sender_ratchet_key: Option<PublicKey>,
     sender_ratchet_swoosh_key: PublicSwooshKey,
     counter: u32,
     #[cfg_attr(not(test), expect(dead_code))]
@@ -79,7 +79,7 @@ impl SignalMessage {
     pub fn new(
         message_version: u8,
         mac_key: &[u8],
-        sender_ratchet_key: PublicKey,
+        sender_ratchet_key: Option<PublicKey>,
         sender_ratchet_swoosh_key: PublicSwooshKey,
         counter: u32,
         previous_counter: u32,
@@ -89,7 +89,7 @@ impl SignalMessage {
         pq_ratchet: &[u8],
     ) -> Result<Self> {
         let message = proto::wire::SignalMessage {
-            ratchet_key: Some(sender_ratchet_key.serialize().into_vec()),
+            ratchet_key: sender_ratchet_key.map(|k| k.serialize().into_vec()),
             ratchet_swoosh_key: Some(sender_ratchet_swoosh_key.serialize().into_vec()),
             counter: Some(counter),
             previous_counter: Some(previous_counter),
@@ -131,8 +131,8 @@ impl SignalMessage {
     }
 
     #[inline]
-    pub fn sender_ratchet_key(&self) -> &PublicKey {
-        &self.sender_ratchet_key
+    pub fn sender_ratchet_key(&self) -> Option<&PublicKey> {
+        self.sender_ratchet_key.as_ref()
     }
     #[inline]
     pub fn sender_ratchet_swoosh_key(&self) -> &PublicSwooshKey {
@@ -254,7 +254,7 @@ impl TryFrom<&[u8]> for SignalMessage {
 
         Ok(SignalMessage {
             message_version,
-            sender_ratchet_key,
+            sender_ratchet_key: Some(sender_ratchet_key),
             sender_ratchet_swoosh_key,
             counter,
             previous_counter,
@@ -843,12 +843,13 @@ impl DecryptionErrorMessage {
     ) -> Result<Self> {
         let ratchet_key = match original_type {
             CiphertextMessageType::Whisper => {
-                Some(*SignalMessage::try_from(original_bytes)?.sender_ratchet_key())
+                Some(*SignalMessage::try_from(original_bytes)?.sender_ratchet_key().unwrap())
             }
             CiphertextMessageType::PreKey => Some(
                 *PreKeySignalMessage::try_from(original_bytes)?
                     .message()
-                    .sender_ratchet_key(),
+                    .sender_ratchet_key()
+                    .unwrap(),
             ),
             CiphertextMessageType::SenderKey => None,
             CiphertextMessageType::Plaintext => {
@@ -997,7 +998,7 @@ mod tests {
         SignalMessage::new(
             4,
             &mac_key,
-            sender_ratchet_key_pair.public_key,
+            Some(sender_ratchet_key_pair.public_key),
             sender_ratchet_swoosh_key_pair.public_key,
             42,
             41,
@@ -1139,7 +1140,7 @@ mod tests {
             let error_message = DecryptionErrorMessage::try_from(error_message.serialized())?;
             assert_eq!(
                 error_message.ratchet_key(),
-                Some(message.sender_ratchet_key())
+                message.sender_ratchet_key()
             );
             assert_eq!(error_message.timestamp(), timestamp);
             assert_eq!(error_message.device_id(), device_id);
@@ -1167,7 +1168,7 @@ mod tests {
             let error_message = DecryptionErrorMessage::try_from(error_message.serialized())?;
             assert_eq!(
                 error_message.ratchet_key(),
-                Some(pre_key_signal_message.message().sender_ratchet_key())
+                pre_key_signal_message.message().sender_ratchet_key()
             );
             assert_eq!(error_message.timestamp(), timestamp);
             assert_eq!(error_message.device_id(), device_id);

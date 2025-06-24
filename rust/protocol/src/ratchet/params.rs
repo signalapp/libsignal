@@ -183,7 +183,7 @@ pub struct BobSignalProtocolParameters<'a> {
     their_swoosh_pre_key: Option<PublicSwooshKey>,
 
     // Swoosh quantum-resistant keys
-    our_swoosh_key_pair: Option<SwooshKeyPair>,
+    our_ratchet_swoosh_key_pair: Option<SwooshKeyPair>,
     their_swoosh_ratchet_key: Option<PublicSwooshKey>,
     their_kyber_ciphertext: Option<&'a kem::SerializedCiphertext>,
 
@@ -197,6 +197,7 @@ impl<'a> BobSignalProtocolParameters<'a> {
         our_signed_pre_key_pair: KeyPair,
         our_one_time_pre_key_pair: Option<KeyPair>,
         our_ratchet_key_pair: KeyPair,
+        our_ratchet_swoosh_key_pair: Option<SwooshKeyPair>,
         our_kyber_pre_key_pair: Option<kem::KeyPair>,
         their_identity_key: IdentityKey,
         their_base_key: PublicKey,
@@ -211,7 +212,7 @@ impl<'a> BobSignalProtocolParameters<'a> {
             our_kyber_pre_key_pair,
             their_identity_key,
             their_base_key,
-            our_swoosh_key_pair: None,
+            our_ratchet_swoosh_key_pair,
             their_swoosh_ratchet_key: None,
             their_swoosh_pre_key: None,
             their_kyber_ciphertext,
@@ -220,7 +221,7 @@ impl<'a> BobSignalProtocolParameters<'a> {
     }
 
     pub fn set_our_swoosh_key_pair(&mut self, key_pair: SwooshKeyPair) {
-        self.our_swoosh_key_pair = Some(key_pair);
+        self.our_ratchet_swoosh_key_pair = Some(key_pair);
     }
 
     pub fn with_our_swoosh_key_pair(mut self, key_pair: SwooshKeyPair) -> Self {
@@ -267,6 +268,11 @@ impl<'a> BobSignalProtocolParameters<'a> {
     }
 
     #[inline]
+    pub fn our_ratchet_swoosh_key_pair(&self) -> Option<&SwooshKeyPair> {
+        self.our_ratchet_swoosh_key_pair.as_ref()
+    }
+
+    #[inline]
     pub fn our_kyber_pre_key_pair(&self) -> &Option<kem::KeyPair> {
         &self.our_kyber_pre_key_pair
     }
@@ -293,7 +299,7 @@ impl<'a> BobSignalProtocolParameters<'a> {
 
     #[inline]
     pub fn our_swoosh_key_pair(&self) -> Option<&SwooshKeyPair> {
-        self.our_swoosh_key_pair.as_ref()
+        self.our_ratchet_swoosh_key_pair.as_ref()
     }
 
     #[inline]

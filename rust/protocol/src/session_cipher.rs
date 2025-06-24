@@ -103,7 +103,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
         let message = SignalMessage::new(
             session_version,
             message_keys.mac_key(),
-            sender_ephemeral,
+            Some(sender_ephemeral),
             sender_swoosh_ephemeral,
             chain_key.index(),
             previous_counter,
@@ -133,7 +133,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
         CiphertextMessage::SignalMessage(SignalMessage::new(
             session_version,
             message_keys.mac_key(),
-            sender_ephemeral,
+            Some(sender_ephemeral),
             sender_swoosh_ephemeral,
             chain_key.index(),
             previous_counter,
@@ -190,6 +190,7 @@ pub async fn message_encrypt_swoosh<R: Rng + CryptoRng>(
         .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
     
     let chain_key = session_state.get_sender_chain_key()?;
+    println!("🔑 Encryption chain key first 8 bytes: {:02x?}", &chain_key.key()[..8]);
     
     let (pqr_msg, pqr_key) = session_state.pq_ratchet_send(csprng).map_err(|e| {
         // Since we're sending, this must be an error with the state.
@@ -200,8 +201,8 @@ pub async fn message_encrypt_swoosh<R: Rng + CryptoRng>(
     })?;
     
     let message_keys = chain_key.message_keys().generate_keys(pqr_key);
+    //let sender_ephemeral = session_state.sender_ratchet_key()?;
     
-    let sender_ephemeral = session_state.sender_ratchet_key()?;
     // sender_ratchet_swoosh_public_key throws InvalidSessionStructure("invalid sender chain private ratchet key")
     let sender_swoosh_ephemeral = session_state.sender_ratchet_swoosh_public_key()?;
     
@@ -259,7 +260,7 @@ pub async fn message_encrypt_swoosh<R: Rng + CryptoRng>(
         let message = SignalMessage::new(
             session_version,
             message_keys.mac_key(),
-            sender_ephemeral,
+            None,
             sender_swoosh_ephemeral,
             chain_key.index(),
             previous_counter,
@@ -289,7 +290,7 @@ pub async fn message_encrypt_swoosh<R: Rng + CryptoRng>(
         CiphertextMessage::SignalMessage(SignalMessage::new(
             session_version,
             message_keys.mac_key(),
-            sender_ephemeral,
+            None,
             sender_swoosh_ephemeral,
             chain_key.index(),
             previous_counter,
@@ -567,7 +568,7 @@ fn create_decryption_failure_log(
     lines.push(format!(
         "Message from {} failed to decrypt; sender ratchet public key {} message counter {}",
         remote_address,
-        hex::encode(ciphertext.sender_ratchet_key().public_key_bytes()),
+        hex::encode(ciphertext.sender_ratchet_key().unwrap().public_key_bytes()),
         ciphertext.counter()
     ));
 
@@ -614,7 +615,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             "Failed to decrypt {:?} message with ratchet key: {} and counter: {}. \
              Session loaded for {}. Local session has base key: {} and counter: {}. {}",
             original_message_type,
-            hex::encode(ciphertext.sender_ratchet_key().public_key_bytes()),
+            hex::encode(ciphertext.sender_ratchet_key().unwrap().public_key_bytes()),
             ciphertext.counter(),
             remote_address,
             state
@@ -809,7 +810,7 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     let counter = ciphertext.counter();
     
     println!("DEBUG: Decrypting message - regular key length: {}, swoosh key length: {}", 
-             their_ephemeral.serialize().len(), 
+             their_ephemeral.unwrap().serialize().len(), 
              their_swoosh_ephemeral.serialize().len());
     
     // Check if we should use Swoosh (post-quantum) decryption
@@ -838,10 +839,10 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
             (chain_key, message_key_gen)
         } else {
             // Use regular ECDH decryption path
-            let chain_key = get_or_create_chain_key(state, their_ephemeral, remote_address, csprng)?;
+            let chain_key = get_or_create_chain_key(state, their_ephemeral.unwrap(), remote_address, csprng)?;
             let message_key_gen = get_or_create_message_key(
                 state,
-                their_ephemeral,
+                their_ephemeral.unwrap(),
                 remote_address,
                 original_message_type,
                 &chain_key,
