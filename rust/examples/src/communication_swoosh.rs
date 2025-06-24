@@ -177,7 +177,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     
     // Alice encrypts a message to Bob
     let alice_message = "Hello Bob! This is Alice.";
-    let alice_ciphertext = message_encrypt(
+    let alice_ciphertext = message_encrypt_swoosh(
         alice_message.as_bytes(),
         &bob_address,
         &mut alice_store.session_store,

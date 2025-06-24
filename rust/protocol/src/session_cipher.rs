@@ -173,6 +173,162 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
     
 }
 
+pub async fn message_encrypt_swoosh<R: Rng + CryptoRng>(
+    ptext: &[u8],
+    remote_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_store: &mut dyn IdentityKeyStore,
+    now: SystemTime,
+    csprng: &mut R,
+) -> Result<CiphertextMessage> {
+    let mut session_record = session_store
+        .load_session(remote_address)
+        .await?
+        .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
+    let session_state = session_record
+        .session_state_mut()
+        .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
+    
+    let chain_key = session_state.get_sender_chain_key()?;
+    
+    let (pqr_msg, pqr_key) = session_state.pq_ratchet_send(csprng).map_err(|e| {
+        // Since we're sending, this must be an error with the state.
+        SignalProtocolError::InvalidState(
+            "message_encrypt",
+            format!("post-quantum ratchet send error: {e}"),
+        )
+    })?;
+    
+    let message_keys = chain_key.message_keys().generate_keys(pqr_key);
+    
+    let sender_ephemeral = session_state.sender_ratchet_key()?;
+    // sender_ratchet_swoosh_public_key throws InvalidSessionStructure("invalid sender chain private ratchet key")
+    let sender_swoosh_ephemeral = session_state.sender_ratchet_swoosh_public_key()?;
+    
+    let previous_counter = session_state.previous_counter();
+    let session_version = session_state
+        .session_version()?
+        .try_into()
+        .map_err(|_| SignalProtocolError::InvalidSessionStructure("version does not fit in u8"))?;
+    
+    let local_identity_key = session_state.local_identity_key()?;
+    let their_identity_key = session_state.remote_identity_key()?.ok_or_else(|| {
+        SignalProtocolError::InvalidState(
+            "message_encrypt",
+            format!("no remote identity key for {remote_address}"),
+        )
+    })?;
+    
+    // Print the encryption key being used for this message
+    println!("🔑 MESSAGE ENCRYPTION KEY (for {}): length={} bytes, first 8 bytes: {:02x?}", 
+             remote_address, 
+             message_keys.cipher_key().len(), 
+             &message_keys.cipher_key()[..8]);
+    
+    let ctext =
+        signal_crypto::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())
+            .map_err(|_| {
+                log::error!("session state corrupt for {remote_address}");
+                SignalProtocolError::InvalidSessionStructure("invalid sender chain message keys")
+            })?;
+
+    let message = if let Some(items) = session_state.unacknowledged_pre_key_message_items()? {
+        let timestamp_as_unix_time = items
+            .timestamp()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        if items.timestamp() + MAX_UNACKNOWLEDGED_SESSION_AGE < now {
+            log::warn!(
+                "stale unacknowledged session for {remote_address} (created at {timestamp_as_unix_time})"
+            );
+            return Err(SignalProtocolError::SessionNotFound(remote_address.clone()));
+        }
+
+        let local_registration_id = session_state.local_registration_id();
+
+        log::info!(
+            "Building PreKeyWhisperMessage for: {} with preKeyId: {} (session created at {})",
+            remote_address,
+            items
+                .pre_key_id()
+                .map_or_else(|| "<none>".to_string(), |id| id.to_string()),
+            timestamp_as_unix_time,
+        );
+
+        let message = SignalMessage::new(
+            session_version,
+            message_keys.mac_key(),
+            sender_ephemeral,
+            sender_swoosh_ephemeral,
+            chain_key.index(),
+            previous_counter,
+            &ctext,
+            &local_identity_key,
+            &their_identity_key,
+            &pqr_msg,
+        )?;
+
+        let kyber_payload = items
+            .kyber_pre_key_id()
+            .zip(items.kyber_ciphertext())
+            .map(|(id, ciphertext)| KyberPayload::new(id, ciphertext.into()));
+
+        CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::new(
+            session_version,
+            local_registration_id,
+            items.pre_key_id(),
+            items.signed_pre_key_id(),
+            kyber_payload,
+            items.swoosh_pre_key_id(), // Include the Swoosh pre-key ID
+            *items.base_key(),
+            local_identity_key,
+            message,
+        )?)
+    } else {
+        CiphertextMessage::SignalMessage(SignalMessage::new(
+            session_version,
+            message_keys.mac_key(),
+            sender_ephemeral,
+            sender_swoosh_ephemeral,
+            chain_key.index(),
+            previous_counter,
+            &ctext,
+            &local_identity_key,
+            &their_identity_key,
+            &pqr_msg,
+        )?)
+    };
+
+    session_state.set_sender_chain_key(&chain_key.next_chain_key());
+
+    // XXX why is this check after everything else?!!
+    if !identity_store
+        .is_trusted_identity(remote_address, &their_identity_key, Direction::Sending)
+        .await?
+    {
+        log::warn!(
+            "Identity key {} is not trusted for remote address {}",
+            hex::encode(their_identity_key.public_key().public_key_bytes()),
+            remote_address,
+        );
+        return Err(SignalProtocolError::UntrustedIdentity(
+            remote_address.clone(),
+        ));
+    }
+
+    // XXX this could be combined with the above call to the identity store (in a new API)
+    identity_store
+        .save_identity(remote_address, &their_identity_key)
+        .await?;
+
+    session_store
+        .store_session(remote_address, &session_record)
+        .await?;
+    Ok(message)
+    
+}
+
 #[allow(clippy::too_many_arguments)]
 pub async fn message_decrypt<R: Rng + CryptoRng>(
     ciphertext: &CiphertextMessage,
