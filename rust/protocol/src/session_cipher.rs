@@ -63,6 +63,12 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
         )
     })?;
     
+    // Print the encryption key being used for this message
+    println!("🔑 MESSAGE ENCRYPTION KEY (for {}): length={} bytes, first 8 bytes: {:02x?}", 
+             remote_address, 
+             message_keys.cipher_key().len(), 
+             &message_keys.cipher_key()[..8]);
+    
     let ctext =
         signal_crypto::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())
             .map_err(|_| {
@@ -476,12 +482,13 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             println!("  - No Swoosh public key found");
         }
         
-        let result = decrypt_message_with_state(
+        let result = decrypt_message_with_state_swoosh(
             CurrentOrPrevious::Current,
             &mut current_state,
             ciphertext,
             original_message_type,
             remote_address,
+            is_alice,
             csprng,
         );
 
@@ -703,6 +710,11 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
             }
         })?;
     let message_keys = message_key_gen.generate_keys(pqr_key);
+    
+    // Print Bob's decryption key (regular/non-Swoosh path)
+    println!("🔑 BOB DECRYPTION KEY (regular) - length: {}, first 8 bytes: {:02x?}", 
+             message_keys.cipher_key().len(),
+             &message_keys.cipher_key()[..8.min(message_keys.cipher_key().len())]);
 
     let their_identity_key =
         state
@@ -803,6 +815,11 @@ fn decrypt_message_with_state_swoosh<R: Rng + CryptoRng>(
             }
         })?;
     let message_keys = message_key_gen.generate_keys(pqr_key);
+    
+    // Print Bob's decryption key (the key used to decrypt Alice's first message)
+    println!("🔑 BOB DECRYPTION KEY - length: {}, first 8 bytes: {:02x?}", 
+             message_keys.cipher_key().len(),
+             &message_keys.cipher_key()[..8.min(message_keys.cipher_key().len())]);
 
     let their_identity_key =
         state

@@ -218,6 +218,8 @@ impl RootKey {
         println!("**Create Swoosh chain function called");
         let shared_secret = our_ratchet_key
             .derive_shared_secret(their_ratchet_key, our_public_key, is_alice)?;
+        println!("🔑 CHAIN SHARED SECRET: length={} bytes, first 8 bytes: {:02x?}", 
+                shared_secret.len(), &shared_secret[..8]);
         let mut derived_secret_bytes = [0; 64];
         hkdf::Hkdf::<sha2::Sha256>::new(Some(&self.key), &shared_secret)
             .expand(b"WhisperRatchet", &mut derived_secret_bytes)

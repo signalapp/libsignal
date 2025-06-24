@@ -195,12 +195,12 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
     // Print first 8 bytes of standard keys (same as original)
     println!("their_signed_pre_key first 8 bytes: {:02x?}", &parameters.their_signed_pre_key().public_key_bytes()[..8]);
     println!("their_ratchet_key first 8 bytes: {:02x?}", &parameters.their_ratchet_key().public_key_bytes()[..8]);
-
+/*
     if let Some(their_one_time_prekey) = parameters.their_one_time_pre_key() {
         secrets
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
     }
-
+*/
     // Add PSWOOSH shared secret derivation
     if let (Some(_our_base_swoosh_key_pair), Some(their_swoosh_pre_key)) = 
         (parameters.our_base_swoosh_key_pair(), parameters.their_swoosh_pre_key()) {
@@ -210,6 +210,8 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
         // Use the ratchet key for shared secret derivation (not the base key)
         // This ensures consistency with what Bob will receive
         let swoosh_shared_secret = sending_swoosh_ratchet_key.derive_shared_secret(their_swoosh_pre_key, is_alice)?;
+        println!("🔑 ALICE'S SHARED SECRET: length={} bytes, first 8 bytes: {:02x?}", 
+                swoosh_shared_secret.len(), &swoosh_shared_secret[..8]);
         secrets.extend_from_slice(&swoosh_shared_secret);
         println!("PSWOOSH shared secret derived and added to key material");
     }
@@ -407,14 +409,6 @@ pub(crate) fn initialize_bob_session_pswoosh(
             .calculate_agreement(parameters.their_base_key())?,
     );
 
-    if let Some(our_one_time_pre_key_pair) = parameters.our_one_time_pre_key_pair() {
-        secrets.extend_from_slice(
-            &our_one_time_pre_key_pair
-                .private_key
-                .calculate_agreement(parameters.their_base_key())?,
-        );
-    }
-
     // Add PSWOOSH shared secret derivation for Bob
     if let (Some(our_swoosh_key_pair), Some(their_swoosh_ratchet_key)) = 
         (parameters.our_swoosh_key_pair(), parameters.their_swoosh_ratchet_key()) {
@@ -425,6 +419,8 @@ pub(crate) fn initialize_bob_session_pswoosh(
         let is_alice = false; // Bob is not Alice
         // Bob derives shared secret using his pre-key pair and Alice's ratchet key
         let swoosh_shared_secret = our_swoosh_key_pair.derive_shared_secret(their_swoosh_ratchet_key, is_alice)?;
+        println!("🔑 BOB'S SHARED SECRET: length={} bytes, first 8 bytes: {:02x?}", 
+                swoosh_shared_secret.len(), &swoosh_shared_secret[..8]);
         secrets.extend_from_slice(&swoosh_shared_secret);
         println!("PSWOOSH shared secret derived and added to key material (Bob)");
     }
