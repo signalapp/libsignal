@@ -102,6 +102,7 @@ impl<'a, T> From<JavaCompletableFuture<'a, T>> for JObject<'a> {
     }
 }
 
+#[cold]
 fn convert_to_exception<'a, 'env, F>(env: &'a mut JNIEnv<'env>, error: SignalJniError, consume: F)
 where
     F: 'a + FnOnce(&'a mut JNIEnv<'env>, Result<JThrowable<'a>, BridgeLayerError>, SignalJniError),
@@ -896,6 +897,7 @@ impl JniError for RateLimitChallenge {
 ///
 /// Exceptions thrown in callbacks will be rethrown; all other errors will be mapped to an
 /// appropriate Java exception class and thrown.
+#[cold]
 fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
     convert_to_exception(env, error, |env, throwable, error| match throwable {
         Err(failure) => log::error!("failed to create exception for {error}: {failure}"),

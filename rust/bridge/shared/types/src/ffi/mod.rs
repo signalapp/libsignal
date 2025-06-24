@@ -308,11 +308,9 @@ pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::Unwi
         Err(r) => Err(UnexpectedPanic(r).into()),
     };
 
-    // When ThinBox is stabilized, we can return that instead of double-boxing.
-    // (Unfortunately, Box<dyn MyTrait> is two pointers wide and not FFI-safe.)
     match result {
         Ok(()) => std::ptr::null_mut(),
-        Err(e) => Box::into_raw(Box::new(e)),
+        Err(e) => e.into_raw_box_for_ffi(),
     }
 }
 

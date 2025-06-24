@@ -186,6 +186,11 @@ impl SignalFfiError {
     pub fn downcast_ref<T: FfiError>(&self) -> Option<&T> {
         (*self.0).upcast_as_any().downcast_ref()
     }
+
+    #[cold]
+    pub fn into_raw_box_for_ffi(self) -> *mut Self {
+        Box::into_raw(Box::new(self))
+    }
 }
 
 /// SignalFfiError is a typed wrapper around a Box, and as such it's reasonable for it to have the

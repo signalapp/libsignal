@@ -95,7 +95,7 @@ impl<T: ResultTypeInfo + std::panic::UnwindSafe> ResultReporter for FutureResult
                 std::mem::forget(value);
             }
             Err(err) => (promise.complete)(
-                Box::into_raw(Box::new(err)),
+                err.into_raw_box_for_ffi(),
                 std::ptr::null(),
                 promise.context,
             ),
