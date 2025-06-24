@@ -161,10 +161,12 @@ impl<S: Transport + Unpin> Future for Handshaker<S> {
                     message.len()
                 );
 
-                let frame_type = S::FrameType::from_auth(*auth_kind);
-                if frame_type != rx_frame_type {
+                // The auth frame type is only used for initiating the
+                // handshake. The response to that is a data frame.
+                let expected_frame_type = S::FrameType::DATA;
+                if expected_frame_type != rx_frame_type {
                     return Poll::Ready(Err(IoError::other(format!(
-                        "protocol error; expected {frame_type}, got {rx_frame_type} block"
+                        "protocol error; expected {expected_frame_type}, got {rx_frame_type} block"
                     ))
                     .into()));
                 }
@@ -288,7 +290,7 @@ mod test {
             .write_message(OTHER_PAYLOAD, &mut server_buffer)
             .unwrap();
         b.send((
-            FrameType::Auth(HandshakeAuthKind::NK),
+            FrameType::Data,
             Bytes::copy_from_slice(&server_buffer[..written]),
         ))
         .now_or_never()
@@ -358,7 +360,7 @@ mod test {
         assert!(
             handshake_err
                 .to_string()
-                .contains("expected NK auth, got IK auth"),
+                .contains("expected data, got IK auth"),
             "message: {handshake_err}"
         );
     }

@@ -311,10 +311,7 @@ mod test {
             .encode_to_vec();
             let written = server_state.write_message(&payload, &mut message).unwrap();
             transport
-                .send((
-                    HandshakeAuthKind::IK.into(),
-                    Bytes::copy_from_slice(&message[..written]),
-                ))
+                .send((FrameType::Data, Bytes::copy_from_slice(&message[..written])))
                 .await
                 .unwrap();
         }
@@ -348,10 +345,7 @@ mod test {
                 )
                 .unwrap();
             transport
-                .send((
-                    HandshakeAuthKind::NK.into(),
-                    Bytes::copy_from_slice(&message[..written]),
-                ))
+                .send((FrameType::Data, Bytes::copy_from_slice(&message[..written])))
                 .await
                 .unwrap();
         }
