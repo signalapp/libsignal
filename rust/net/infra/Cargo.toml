@@ -25,7 +25,7 @@ boring-signal = { workspace = true }
 bytes = { workspace = true }
 const-str = { workspace = true }
 derive-where = { workspace = true }
-derive_more = { workspace = true, features = ["from", "into", "into_iterator"] }
+derive_more = { workspace = true, features = ["display", "from", "into", "into_iterator"] }
 displaydoc = { workspace = true }
 either = { workspace = true }
 futures-util = { workspace = true }
