@@ -227,7 +227,8 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
     let has_kyber = parameters.their_kyber_pre_key().is_some();
 
     let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
-        
+    println!("🔑 Alice root_key first 8 bytes: {:02x?}", &root_key.key()[..8]);
+
     // Then use the updated root key to create Swoosh chain
     let (sending_swoosh_root_key, sending_swoosh_chain_key) = root_key.create_chain_swoosh(
         parameters.their_swoosh_ratchet_key().unwrap(),
@@ -400,6 +401,14 @@ pub(crate) fn initialize_bob_session_pswoosh(
             .calculate_agreement(parameters.their_base_key())?,
     );
 
+    if let Some(our_one_time_pre_key_pair) = parameters.our_one_time_pre_key_pair() {
+        secrets.extend_from_slice(
+            &our_one_time_pre_key_pair
+                .private_key
+                .calculate_agreement(parameters.their_base_key())?,
+        );
+    }
+/*
     // Add PSWOOSH shared secret derivation for Bob
     if let (Some(our_swoosh_key_pair), Some(their_swoosh_ratchet_key)) = 
         (parameters.our_swoosh_key_pair(), parameters.their_swoosh_ratchet_key()) {
@@ -415,7 +424,7 @@ pub(crate) fn initialize_bob_session_pswoosh(
         secrets.extend_from_slice(&swoosh_shared_secret);
         println!("PSWOOSH shared secret derived and added to key material (Bob)");
     }
-
+*/
     match (
         parameters.our_kyber_pre_key_pair(),
         parameters.their_kyber_ciphertext(),
@@ -432,6 +441,7 @@ pub(crate) fn initialize_bob_session_pswoosh(
     let has_kyber = parameters.our_kyber_pre_key_pair().is_some();
 
     let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
+    println!("🔑 Bob root_key first 8 bytes: {:02x?}", &root_key.key()[..8]);
 
     // Check if Bob has Swoosh keys for sender chain setup
     let session = if let (Some(our_swoosh_key_pair), Some(their_swoosh_ratchet_key)) = 
