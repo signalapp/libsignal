@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 use std::collections::{HashMap, HashSet};
+use std::future::Future;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -23,6 +24,78 @@ pub use session_id::{InvalidSessionId, SessionId};
 use crate::api::ChallengeOption;
 
 pub type UnidentifiedAccessKey = [u8; zkgroup::ACCESS_KEY_LEN];
+
+pub(crate) trait RegistrationChatApi {
+    type Error<E>;
+    fn create_session(
+        &self,
+        create_session: &CreateSession,
+    ) -> impl Future<Output = Result<RegistrationResponse, Self::Error<CreateSessionError>>> + Send;
+
+    fn get_session(
+        &self,
+        session_id: &SessionId,
+    ) -> impl Future<Output = Result<RegistrationResponse, Self::Error<ResumeSessionError>>> + Send;
+
+    fn submit_captcha(
+        &self,
+        session_id: &SessionId,
+        captcha_value: &str,
+    ) -> impl Future<Output = Result<RegistrationResponse, Self::Error<UpdateSessionError>>> + Send;
+
+    fn request_push_challenge(
+        &self,
+        session_id: &SessionId,
+        push_token: &str,
+        push_token_type: PushTokenType,
+    ) -> impl Future<Output = Result<RegistrationResponse, Self::Error<UpdateSessionError>>> + Send;
+
+    fn request_verification_code(
+        &self,
+        session_id: &SessionId,
+        transport: VerificationTransport,
+        client: &str,
+        languages: &[String],
+    ) -> impl Future<Output = Result<RegistrationResponse, Self::Error<RequestVerificationCodeError>>>
+           + Send;
+
+    fn submit_push_challenge(
+        &self,
+        session_id: &SessionId,
+        push_challenge: &str,
+    ) -> impl Future<Output = Result<RegistrationResponse, Self::Error<UpdateSessionError>>> + Send;
+
+    fn submit_verification_code(
+        &self,
+        session_id: &SessionId,
+        code: &str,
+    ) -> impl Future<Output = Result<RegistrationResponse, Self::Error<SubmitVerificationError>>> + Send;
+
+    fn check_svr2_credentials(
+        &self,
+        number: &str,
+        svr_tokens: &[String],
+    ) -> impl Future<
+        Output = Result<CheckSvr2CredentialsResponse, Self::Error<CheckSvr2CredentialsError>>,
+    > + Send;
+
+    fn register_account(
+        &self,
+        number: &str,
+        session_id: Option<&SessionId>,
+        message_notification: NewMessageNotification<&str>,
+        account_attributes: ProvidedAccountAttributes<'_>,
+        device_transfer: Option<SkipDeviceTransfer>,
+        keys: ForServiceIds<AccountKeys<'_>>,
+        account_password: &str,
+    ) -> impl Future<Output = Result<RegisterAccountResponse, Self::Error<RegisterAccountError>>> + Send;
+}
+
+#[derive(Debug, PartialEq)]
+pub(crate) struct RegistrationResponse {
+    pub(crate) session_id: SessionId,
+    pub(crate) session: RegistrationSession,
+}
 
 #[derive(Clone, Debug, Default, serde::Serialize)]
 #[serde(rename_all = "camelCase")]

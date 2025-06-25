@@ -13,7 +13,7 @@ use libsignal_net_chat::api::registration::{
     ProvidedAccountAttributes, PushTokenType, RegisterAccountResponse, RegistrationSession,
     ResumeSessionError, SessionId, SignedPreKeyBody, SkipDeviceTransfer, UnidentifiedAccessKey,
 };
-use libsignal_net_chat::registration::{self as net_registration, ConnectChat, RequestError};
+use libsignal_net_chat::registration::{self as net_registration, ConnectUnauthChat, RequestError};
 use libsignal_protocol::PublicKey;
 
 use crate::*;
@@ -83,7 +83,7 @@ pub trait ConnectChatBridge: Send + UnwindSafe {
     fn create_chat_connector(
         self: Box<Self>,
         runtime: tokio::runtime::Handle,
-    ) -> Box<dyn ConnectChat + Send + Sync + UnwindSafe>;
+    ) -> Box<dyn ConnectUnauthChat + Send + Sync + UnwindSafe>;
 }
 
 impl RegistrationService {

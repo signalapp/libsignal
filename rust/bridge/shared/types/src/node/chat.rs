@@ -12,6 +12,7 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::{ChatConnection, ConnectError};
+use libsignal_net_chat::api::Unauth;
 use libsignal_protocol::Timestamp;
 use neon::context::FunctionContext;
 use neon::event::Channel;
@@ -194,7 +195,8 @@ impl crate::net::registration::ConnectChatBridge for NodeConnectChatFactory {
     fn create_chat_connector(
         self: Box<Self>,
         runtime: tokio::runtime::Handle,
-    ) -> Box<dyn libsignal_net_chat::registration::ConnectChat + Send + Sync + UnwindSafe> {
+    ) -> Box<dyn libsignal_net_chat::registration::ConnectUnauthChat + Send + Sync + UnwindSafe>
+    {
         Box::new(NodeConnectChat {
             tokio_runtime: runtime,
             factory: *self,
@@ -229,11 +231,11 @@ impl Drop for NodeConnectChatFactory {
     }
 }
 
-impl libsignal_net_chat::registration::ConnectChat for NodeConnectChat {
+impl libsignal_net_chat::registration::ConnectUnauthChat for NodeConnectChat {
     fn connect_chat(
         &self,
         on_disconnect: tokio::sync::oneshot::Sender<std::convert::Infallible>,
-    ) -> BoxFuture<'_, Result<ChatConnection, ConnectError>> {
+    ) -> BoxFuture<'_, Result<Unauth<ChatConnection>, ConnectError>> {
         let Self {
             factory:
                 NodeConnectChatFactory {

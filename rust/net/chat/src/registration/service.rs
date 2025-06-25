@@ -19,7 +19,9 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::time::{Duration, Instant};
 use tokio_stream::wrappers::ReceiverStream;
 
+use crate::api::{Registration, Unauth};
 use crate::registration::{ChatRequest, ChatResponse, RequestError};
+use crate::ws::registration::SendError;
 
 /// Internal connection implementation for the registration client.
 ///
@@ -30,15 +32,33 @@ use crate::registration::{ChatRequest, ChatResponse, RequestError};
 #[derive(derive_more::Debug)]
 pub(super) struct RegistrationConnection<'c> {
     #[debug("_")]
-    connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
-    sender: tokio::sync::mpsc::Sender<IncomingRequest>,
+    connect_chat: Box<dyn ConnectUnauthChat + Send + Sync + UnwindSafe + 'c>,
+    sender: std::sync::Mutex<tokio::sync::mpsc::Sender<IncomingRequest>>,
 }
 
-/// Describes how to make a [`ChatConnection`].
+#[derive(Debug)]
+pub(super) enum ErrorResponse {
+    Connect(FatalConnectError),
+    Unexpected { log_safe: String },
+    Timeout,
+}
+
+impl crate::ws::registration::WsClient for &RegistrationConnection<'_> {
+    type SendError = ErrorResponse;
+
+    fn send(
+        &self,
+        request: ChatRequest,
+    ) -> impl Future<Output = Result<ChatResponse, Self::SendError>> {
+        self.submit_chat_request(request)
+    }
+}
+
+/// Describes how to make an unauthenticated [`ChatConnection`].
 ///
 /// This trait is a workaround for lack of AsyncFnMut. Once our MSRV >= 1.85 we
 /// can replace this with an `AsyncFnMut` bound.
-pub trait ConnectChat: Send {
+pub trait ConnectUnauthChat: Send {
     /// Starts an attempt to connect to the Chat server.
     ///
     /// The provided [`oneshot::Sender`] should be dropped if the connection can't
@@ -46,43 +66,41 @@ pub trait ConnectChat: Send {
     fn connect_chat(
         &self,
         on_disconnect: oneshot::Sender<Infallible>,
-    ) -> BoxFuture<'_, Result<ChatConnection, ChatConnectError>>;
+    ) -> BoxFuture<'_, Result<Unauth<ChatConnection>, ChatConnectError>>;
 }
 
 impl<'c> RegistrationConnection<'c> {
     /// Attempts to connect to the chat service and send a request.
     ///
     /// This method will retry internally if transient errors are encountered.
-    pub(super) async fn connect_and_send<E>(
-        connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
-        request: ChatRequest,
-    ) -> Result<(Self, ChatResponse), RequestError<E>> {
-        let (response, sender) = send_request(request, &*connect_chat, None).await?;
+    pub(super) async fn connect<E>(
+        connect_chat: Box<dyn ConnectUnauthChat + Send + Sync + UnwindSafe + 'c>,
+    ) -> Result<Self, RequestError<E>> {
+        let (sender, _join_handle) = spawn_connected_chat(&*connect_chat).await?;
 
-        Ok((
-            Self {
-                connect_chat,
-                sender,
-            },
-            response,
-        ))
+        Ok(Self {
+            connect_chat,
+            sender: sender.into(),
+        })
     }
 
     /// Sends a request on an established connection.
     ///
     /// This method will retry internally if transient errors are encountered.
-    pub(super) async fn submit_chat_request<E>(
-        &mut self,
+    async fn submit_chat_request(
+        &self,
         request: ChatRequest,
-    ) -> Result<ChatResponse, RequestError<E>> {
+    ) -> Result<ChatResponse, ErrorResponse> {
         let Self {
             sender,
             connect_chat,
         } = self;
 
+        let sender = sender.lock().unwrap().clone();
+
         let (response, request_sender) =
-            send_request(request, &**connect_chat, Some(sender)).await?;
-        *sender = request_sender;
+            send_request(request, &**connect_chat, Some(&sender)).await?;
+        *self.sender.lock().unwrap() = request_sender;
 
         Ok(response)
     }
@@ -92,21 +110,18 @@ impl<'c> RegistrationConnection<'c> {
 ///
 /// Uses the provided sender if there is one, otherwise establishes a new
 /// connection to the service. Non-fatal connect errors are retried.
-async fn send_request<E>(
+async fn send_request(
     request: ChatRequest,
-    connect_chat: &(dyn ConnectChat + Sync),
+    connect_chat: &(dyn ConnectUnauthChat + Sync),
     mut sender: Option<&mpsc::Sender<IncomingRequest>>,
-) -> Result<(ChatResponse, mpsc::Sender<IncomingRequest>), RequestError<E>>
-where
-    RequestError<E>: From<FatalConnectError>,
-{
+) -> Result<(ChatResponse, mpsc::Sender<IncomingRequest>), ErrorResponse> {
     loop {
         let sender = match sender.take() {
             Some(sender) => sender.clone(),
             None => {
                 let (sender, _join_handle) = spawn_connected_chat(connect_chat)
                     .await
-                    .map_err(RequestError::from)?;
+                    .map_err(ErrorResponse::Connect)?;
                 sender
             }
         };
@@ -116,9 +131,9 @@ where
                 log::info!("the connection to the chat server was lost, will retry");
                 continue;
             }
-            Err(SendRequestError::RequestTimedOut) => Err(RequestError::Timeout),
+            Err(SendRequestError::RequestTimedOut) => Err(ErrorResponse::Timeout),
             Err(SendRequestError::Unknown { log_safe }) => {
-                Err(RequestError::Unexpected { log_safe })
+                Err(ErrorResponse::Unexpected { log_safe })
             }
         };
         return result;
@@ -126,7 +141,7 @@ where
 }
 
 #[derive(Debug, displaydoc::Display)]
-enum FatalConnectError {
+pub(super) enum FatalConnectError {
     /// invalid chat client configuration
     InvalidConfiguration,
     /// {0}
@@ -136,10 +151,7 @@ enum FatalConnectError {
 }
 impl LogSafeDisplay for FatalConnectError {}
 
-impl<E> From<FatalConnectError> for RequestError<E>
-where
-    Self: From<RetryLater>,
-{
+impl<E, D> From<FatalConnectError> for crate::api::RequestError<E, D> {
     fn from(value: FatalConnectError) -> Self {
         match value {
             FatalConnectError::RetryLater(retry_later) => Self::from(retry_later),
@@ -148,6 +160,16 @@ where
                     log_safe: (&value as &dyn LogSafeDisplay).to_string(),
                 }
             }
+        }
+    }
+}
+impl SendError for ErrorResponse {
+    type DisconnectError = Infallible;
+    fn into_request_error<E>(self) -> RequestError<E> {
+        match self {
+            ErrorResponse::Connect(fatal_connect_error) => fatal_connect_error.into(),
+            ErrorResponse::Unexpected { log_safe } => RequestError::Unexpected { log_safe },
+            ErrorResponse::Timeout => RequestError::Timeout,
         }
     }
 }
@@ -165,7 +187,7 @@ const CHAT_CONNECT_DELAY_PARAMS: libsignal_net::infra::route::ConnectionOutcomeP
 ///
 /// Returns a channel for sending requests to it.
 async fn spawn_connected_chat(
-    connect_chat: &(impl ConnectChat + ?Sized),
+    connect_chat: &(impl ConnectUnauthChat + ?Sized),
 ) -> Result<(mpsc::Sender<IncomingRequest>, tokio::task::JoinHandle<()>), FatalConnectError> {
     let mut failure_count = 0;
     let mut last_failure_at = None;
@@ -174,7 +196,7 @@ async fn spawn_connected_chat(
         let (on_disconnect_tx, on_disconnect_rx) = oneshot::channel();
 
         let chat = match connect_chat.connect_chat(on_disconnect_tx).await {
-            Ok(chat) => chat,
+            Ok(Unauth(chat)) => Registration(chat),
             Err(err) => {
                 log::warn!(
                     "registration chat connect failed: {}",
@@ -298,7 +320,7 @@ async fn send_request_to_connected_chat(
 /// the `on_disconnect` future resolves, the stream of incoming requests will be
 /// dropped. Callers can use that to determine whether the task is still active.
 async fn spawned_task_body(
-    chat: ChatConnection,
+    chat: Registration<ChatConnection>,
     incoming_requests: impl Stream<Item = IncomingRequest> + Send,
     on_disconnect: impl Future<Output = ()>,
 ) {
@@ -424,8 +446,6 @@ mod test {
 
     use super::*;
     use crate::registration::testutil::{ConnectChatFn, DropOnDisconnect, FakeChatConnect};
-    use crate::registration::RegistrationSession;
-    use crate::ws::registration::*;
 
     /// A value to use when we don't care about the contents of the request.
     static SOME_REQUEST: LazyLock<ChatRequest> = LazyLock::new(|| ChatRequest {
@@ -527,13 +547,13 @@ mod test {
                     [],
                 );
                 fake_chat_tx.send(fake_remote).unwrap();
-                Ok(fake_chat)
+                Ok(Unauth(fake_chat))
             } else {
                 Err(TRANSIENT_FAILURE)
             })
         });
 
-        let send_request = send_request::<RetryLater>(SOME_REQUEST.clone(), &connect_chat, None);
+        let send_request = send_request(SOME_REQUEST.clone(), &connect_chat, None);
         let mut send_request = std::pin::pin!(send_request);
 
         // Get the remote end for the connected fake chat. We need to poll both
@@ -550,11 +570,11 @@ mod test {
             .expect("still connected")
             .expect("request received");
 
-        let response = RegistrationResponse {
-            session_id: "abcdef".to_string(),
-            session: RegistrationSession::default(),
-        }
-        .into_websocket_response(request.id.unwrap());
+        let response = libsignal_net::chat::ResponseProto {
+            id: request.id,
+            status: Some(200),
+            ..Default::default()
+        };
         fake_remote
             .send_response(response)
             .expect("still connected");
@@ -575,7 +595,7 @@ mod test {
             remote: fake_chat_remote_tx,
         };
 
-        let send_request = send_request::<RetryLater>(SOME_REQUEST.clone(), &fake_connect, None);
+        let send_request = send_request(SOME_REQUEST.clone(), &fake_connect, None);
         let mut send_request = std::pin::pin!(send_request);
 
         // Get the remote end for the connected fake chat. We need to poll both
@@ -595,7 +615,7 @@ mod test {
         // If we wait long enough the request will time out.
         let result = send_request.await;
 
-        assert_matches!(result, Err(RequestError::Timeout));
+        assert_matches!(result, Err(ErrorResponse::Timeout));
     }
 
     #[tokio::test(start_paused = true)]
@@ -648,9 +668,11 @@ mod test {
 
         // Send some response to the first request.
         fake_chat_remote
-            .send_response(
-                RegistrationResponse::default().into_websocket_response(request.id.unwrap()),
-            )
+            .send_response(libsignal_net::chat::ResponseProto {
+                id: request.id,
+                status: Some(200),
+                ..Default::default()
+            })
             .expect("still connected");
         let _response = first_send_fut.await;
 

@@ -11,7 +11,8 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt as _;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::{ChatConnection, ConnectError};
-use libsignal_net_chat::registration::ConnectChat;
+use libsignal_net_chat::api::Unauth;
+use libsignal_net_chat::registration::ConnectUnauthChat;
 
 use super::*;
 use crate::net::chat::{ChatListener, ServerMessageAck};
@@ -198,11 +199,11 @@ struct FfiConnectChat {
     runtime: tokio::runtime::Handle,
 }
 
-impl ConnectChat for FfiConnectChat {
+impl ConnectUnauthChat for FfiConnectChat {
     fn connect_chat(
         &self,
         on_disconnect: tokio::sync::oneshot::Sender<std::convert::Infallible>,
-    ) -> BoxFuture<'_, Result<ChatConnection, ConnectError>> {
+    ) -> BoxFuture<'_, Result<Unauth<ChatConnection>, ConnectError>> {
         let Self {
             bridge:
                 FfiConnectChatBridge {
@@ -229,7 +230,7 @@ impl ConnectChatBridge for FfiConnectChatBridge {
     fn create_chat_connector(
         self: Box<Self>,
         runtime: tokio::runtime::Handle,
-    ) -> Box<dyn ConnectChat + Send + Sync + UnwindSafe> {
+    ) -> Box<dyn ConnectUnauthChat + Send + Sync + UnwindSafe> {
         Box::new(FfiConnectChat {
             bridge: *self,
             runtime,

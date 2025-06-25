@@ -7,50 +7,54 @@ use libsignal_net::infra::{AsHttpHeader as _, AsStaticHttpHeader};
 use libsignal_protocol::PublicKey;
 use serde_with::{serde_as, skip_serializing_none, FromInto};
 
-use crate::api::registration::*;
+use crate::api::registration::{
+    AccountKeys, CreateSession, ForServiceIds, InvalidSessionId, NewMessageNotification,
+    ProvidedAccountAttributes, PushTokenType, RegistrationLock, RegistrationSession, SessionId,
+    SignedPreKeyBody, SkipDeviceTransfer, VerificationCodeNotDeliverable, VerificationTransport,
+};
 use crate::ws::registration::CONTENT_TYPE_JSON;
 
 #[derive(Clone, Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GetSession {}
+pub(super) struct GetSession {}
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Eq, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct UpdateRegistrationSession<'a> {
-    pub(crate) captcha: Option<&'a str>,
-    pub(crate) push_token: Option<&'a str>,
-    pub(crate) push_token_type: Option<PushTokenType>,
-    pub(crate) push_challenge: Option<&'a str>,
+pub(super) struct UpdateRegistrationSession<'a> {
+    pub(super) captcha: Option<&'a str>,
+    pub(super) push_token: Option<&'a str>,
+    pub(super) push_token_type: Option<PushTokenType>,
+    pub(super) push_challenge: Option<&'a str>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub(crate) struct LanguageList<'a>(pub(crate) &'a HeaderValue);
+pub(super) struct LanguageList<'a>(pub(crate) &'a HeaderValue);
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct RequestVerificationCode<'a> {
-    pub(crate) transport: VerificationTransport,
-    pub(crate) client: &'a str,
+pub(super) struct RequestVerificationCode<'a> {
+    pub(super) transport: VerificationTransport,
+    pub(super) client: &'a str,
     #[serde(skip)]
-    pub(crate) language_list: Option<LanguageList<'a>>,
+    pub(super) language_list: Option<LanguageList<'a>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct SubmitVerificationCode<'a> {
-    pub(crate) code: &'a str,
+pub(super) struct SubmitVerificationCode<'a> {
+    pub(super) code: &'a str,
 }
 
-pub(crate) struct RegistrationRequest<'s, R> {
-    pub(crate) session_id: &'s SessionId,
-    pub(crate) request: R,
+pub(super) struct RegistrationRequest<'s, R> {
+    pub(super) session_id: &'s SessionId,
+    pub(super) request: R,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
-pub(crate) struct CheckSvr2CredentialsRequest<'s> {
-    pub(crate) number: &'s str,
-    pub(crate) tokens: &'s [String],
+pub(super) struct CheckSvr2CredentialsRequest<'s> {
+    pub(super) number: &'s str,
+    pub(super) tokens: &'s [String],
 }
 
 #[serde_as]
@@ -72,7 +76,7 @@ enum SessionValidation<'a> {
 }
 
 impl VerificationCodeNotDeliverable {
-    pub(crate) fn from_response(
+    pub(super) fn from_response(
         response_headers: &HeaderMap,
         response_body: &[u8],
     ) -> Option<Self> {
@@ -85,7 +89,7 @@ impl VerificationCodeNotDeliverable {
 }
 
 impl RegistrationLock {
-    pub(crate) fn from_response(
+    pub(super) fn from_response(
         response_headers: &HeaderMap,
         response_body: &[u8],
     ) -> Option<Self> {
@@ -98,13 +102,27 @@ impl RegistrationLock {
 }
 
 #[derive(Debug, Default, PartialEq, serde::Deserialize)]
-#[cfg_attr(test, derive(serde::Serialize))]
+#[cfg_attr(test, derive(serde::Serialize), visibility::make(pub(crate)))]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct RegistrationResponse {
+pub(super) struct RegistrationResponse {
     #[serde(rename = "id")]
     pub(crate) session_id: String,
     #[serde(flatten)]
     pub(crate) session: RegistrationSession,
+}
+
+impl TryFrom<RegistrationResponse> for crate::api::registration::RegistrationResponse {
+    type Error = InvalidSessionId;
+    fn try_from(value: RegistrationResponse) -> Result<Self, Self::Error> {
+        let RegistrationResponse {
+            session_id,
+            session,
+        } = value;
+        Ok(Self {
+            session,
+            session_id: SessionId::new(session_id)?,
+        })
+    }
 }
 
 impl AsStaticHttpHeader for LanguageList<'_> {
@@ -116,7 +134,7 @@ impl AsStaticHttpHeader for LanguageList<'_> {
 }
 
 /// A value that can be sent to the server as part of a REST request.
-pub(crate) trait Request {
+pub(super) trait Request {
     /// The HTTP [`Method`] to send the request with
     const METHOD: Method;
 
@@ -215,7 +233,7 @@ impl From<CheckSvr2CredentialsRequest<'_>> for ChatRequest {
     }
 }
 
-pub(crate) trait RegisterChatRequest {
+pub(super) trait RegisterChatRequest {
     fn register_account(
         number: &str,
         session_id: Option<&SessionId>,
@@ -315,8 +333,8 @@ impl RegisterChatRequest for ChatRequest {
 
 const VERIFICATION_SESSION_PATH_PREFIX: &str = "/v1/verification/session";
 
-impl From<CreateSession> for ChatRequest {
-    fn from(value: CreateSession) -> Self {
+impl From<&CreateSession> for ChatRequest {
+    fn from(value: &CreateSession) -> Self {
         let body = serde_json::to_vec(&value).expect("no maps").into();
         Self {
             method: Method::POST,
@@ -397,6 +415,10 @@ mod test {
     use uuid::uuid;
 
     use super::*;
+    use crate::api::registration::{
+        CheckSvr2CredentialsResponse, RegisterAccountResponse, RegisterResponseBackup,
+        RegisterResponseBadge, RegisterResponseEntitlements, Svr2CredentialsResult,
+    };
     use crate::api::ChallengeOption;
     use crate::ws::TryIntoResponse as _;
 

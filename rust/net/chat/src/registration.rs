@@ -4,15 +4,13 @@
 //
 
 use std::convert::Infallible;
-use std::future::Future;
 use std::panic::UnwindSafe;
 
 use libsignal_net::chat::{Request as ChatRequest, Response as ChatResponse};
 use static_assertions::assert_impl_all;
 
 use crate::api::registration::*;
-use crate::ws::registration::*;
-use crate::ws::{ResponseError, TryIntoResponse as _};
+use crate::api::Registration;
 
 mod service;
 pub use service::*;
@@ -42,20 +40,19 @@ impl<'c> RegistrationService<'c> {
     /// transient errors are encountered.
     pub async fn create_session(
         create_session: CreateSession,
-        connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
+        connect_chat: Box<dyn ConnectUnauthChat + Send + Sync + UnwindSafe + 'c>,
     ) -> Result<Self, RequestError<CreateSessionError>> {
         log::info!("starting new registration session");
-        let number = create_session.number.clone();
-
-        let (connection, response) =
-            RegistrationConnection::connect_and_send(connect_chat, create_session.into()).await?;
-
+        let connection = RegistrationConnection::connect(connect_chat).await?;
+        let response = Registration(&connection)
+            .create_session(&create_session)
+            .await?;
         let RegistrationResponse {
             session_id,
             session,
-        } = response.try_into_response()?;
+        } = response;
+        let number = create_session.number;
 
-        let session_id = session_id.parse()?;
         log::info!("started registration session with session ID {session_id}");
 
         Ok(Self {
@@ -74,23 +71,16 @@ impl<'c> RegistrationService<'c> {
     pub async fn resume_session(
         session_id: SessionId,
         number: String,
-        connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
+        connect_chat: Box<dyn ConnectUnauthChat + Send + Sync + UnwindSafe + 'c>,
     ) -> Result<Self, RequestError<ResumeSessionError>> {
         log::info!("trying to resume existing registration session with session ID {session_id}");
-        let (connection, response) = RegistrationConnection::connect_and_send(
-            connect_chat,
-            RegistrationRequest {
-                session_id: &session_id,
-                request: GetSession {},
-            }
-            .into(),
-        )
-        .await?;
+        let connection = RegistrationConnection::connect(connect_chat).await?;
+        let response = Registration(&connection).get_session(&session_id).await?;
 
         let RegistrationResponse {
             session_id: _,
             session,
-        } = response.try_into_response()?;
+        } = response;
         log::info!("successfully resumed registration session");
 
         Ok(Self {
@@ -115,11 +105,24 @@ impl<'c> RegistrationService<'c> {
         &mut self,
         captcha_value: &str,
     ) -> Result<(), RequestError<UpdateSessionError>> {
-        self.submit_request(UpdateRegistrationSession {
-            captcha: Some(captcha_value),
-            ..Default::default()
-        })
-        .await
+        let Self {
+            session_id,
+            connection,
+            session,
+            number: _,
+        } = self;
+        log::info!("sending submit captcha on registration session {session_id}");
+
+        let RegistrationResponse {
+            session_id: _,
+            session: response_session,
+        } = Registration(&*connection)
+            .submit_captcha(session_id, captcha_value)
+            .await?;
+
+        log::info!("submit captcha succeeded");
+        *session = response_session;
+        Ok(())
     }
 
     pub async fn request_push_challenge(
@@ -127,12 +130,24 @@ impl<'c> RegistrationService<'c> {
         push_token: &str,
         push_token_type: PushTokenType,
     ) -> Result<(), RequestError<UpdateSessionError>> {
-        self.submit_request(UpdateRegistrationSession {
-            push_token: Some(push_token),
-            push_token_type: Some(push_token_type),
-            ..Default::default()
-        })
-        .await
+        let Self {
+            session_id,
+            connection,
+            session,
+            number: _,
+        } = self;
+        log::info!("sending request push challenge on registration session {session_id}");
+
+        let RegistrationResponse {
+            session_id: _,
+            session: response_session,
+        } = Registration(&*connection)
+            .request_push_challenge(session_id, push_token, push_token_type)
+            .await?;
+
+        log::info!("request push challenge succeeded");
+        *session = response_session;
+        Ok(())
     }
 
     pub async fn request_verification_code(
@@ -141,38 +156,72 @@ impl<'c> RegistrationService<'c> {
         client: &str,
         languages: &[String],
     ) -> Result<(), RequestError<RequestVerificationCodeError>> {
-        let language_list = (!languages.is_empty())
-            .then(|| languages.join(", ").parse())
-            .transpose()
-            .map_err(
-                |_| RequestError::<RequestVerificationCodeError>::Unexpected {
-                    log_safe: "invalid language list".to_owned(),
-                },
-            )?;
-        self.submit_request(RequestVerificationCode {
-            transport,
-            client,
-            language_list: language_list.as_ref().map(LanguageList),
-        })
-        .await
+        let Self {
+            session_id,
+            connection,
+            session,
+            number: _,
+        } = self;
+        log::info!("sending request verification code on registration session {session_id}");
+
+        let RegistrationResponse {
+            session_id: _,
+            session: response_session,
+        } = Registration(&*connection)
+            .request_verification_code(session_id, transport, client, languages)
+            .await?;
+
+        log::info!("request verification code succeeded");
+        *session = response_session;
+        Ok(())
     }
 
     pub async fn submit_push_challenge(
         &mut self,
         push_challenge: &str,
     ) -> Result<(), RequestError<UpdateSessionError>> {
-        self.submit_request(UpdateRegistrationSession {
-            push_challenge: Some(push_challenge),
-            ..Default::default()
-        })
-        .await
+        let Self {
+            session_id,
+            connection,
+            session,
+            number: _,
+        } = self;
+        log::info!("sending submit push challenge on registration session {session_id}");
+
+        let RegistrationResponse {
+            session_id: _,
+            session: response_session,
+        } = Registration(&*connection)
+            .submit_push_challenge(session_id, push_challenge)
+            .await?;
+
+        log::info!("submit push challenge succeeded");
+        *session = response_session;
+        Ok(())
     }
 
     pub async fn submit_verification_code(
         &mut self,
         code: &str,
     ) -> Result<(), RequestError<SubmitVerificationError>> {
-        self.submit_request(SubmitVerificationCode { code }).await
+        let Self {
+            session_id,
+            connection,
+            session,
+            number: _,
+        } = self;
+        log::info!("sending submit verification code on registration session {session_id}");
+
+        let RegistrationResponse {
+            session_id: _,
+            session: response_session,
+        } = Registration(&*connection)
+            .submit_verification_code(session_id, code)
+            .await?;
+
+        log::info!("submit verification code succeeded");
+        *session = response_session;
+        Ok(())
     }
 
     pub async fn check_svr2_credentials(
@@ -184,19 +233,13 @@ impl<'c> RegistrationService<'c> {
         } = self;
         log::info!("sending unauthenticated check SVR2 credentials request");
 
-        let response = connection
-            .submit_chat_request(
-                CheckSvr2CredentialsRequest {
-                    number,
-                    tokens: svr_tokens,
-                }
-                .into(),
-            )
+        let response = Registration(&*connection)
+            .check_svr2_credentials(number, svr_tokens)
             .await?;
 
         log::info!("unauthenticated SVR2 credentials check succeeded");
 
-        response.try_into_response().map_err(Into::into)
+        Ok(response)
     }
 
     pub async fn register_account(
@@ -214,93 +257,51 @@ impl<'c> RegistrationService<'c> {
             session: _,
         } = self;
 
-        let request = ChatRequest::register_account(
-            number,
-            Some(session_id),
-            message_notification,
-            account_attributes,
-            device_transfer,
-            keys,
-            account_password,
-        );
-
         log::info!("sending register account request");
-        let response = connection.submit_chat_request(request).await?;
+
+        let response = Registration(&*connection)
+            .register_account(
+                number,
+                Some(session_id),
+                message_notification,
+                account_attributes,
+                device_transfer,
+                keys,
+                account_password,
+            )
+            .await?;
         log::info!("register account succeeded");
 
-        response.try_into_response().map_err(Into::into)
-    }
-
-    /// Sends a request for an established session.
-    ///
-    /// On success, the state of the session as reported by the server is saved
-    /// (and accessible via [`Self::session_state`]). This method will retry
-    /// internally if transient errors are encountered.
-    fn submit_request<R: Request, E>(
-        &mut self,
-        request: R,
-        // Write this as `impl Future` so we can include the `Send` bound, which
-        // lets us surface errors earlier.
-    ) -> impl Future<Output = Result<(), RequestError<E>>> + Send + use<'_, 'c, R, E>
-    where
-        RequestError<E>: From<ResponseError>,
-    {
-        let request = RegistrationRequest {
-            request,
-            session_id: &self.session_id,
-        }
-        .into();
-
-        let request_type = std::any::type_name::<R>();
-
-        async move {
-            let RegistrationService {
-                connection,
-                session,
-                session_id,
-                number: _,
-            } = self;
-
-            log::info!("sending {request_type} on registration session {session_id}");
-            let response = connection.submit_chat_request(request).await?;
-
-            log::info!("{request_type} succeeded");
-            let RegistrationResponse {
-                session_id: _,
-                session: response_session,
-            } = response.try_into_response()?;
-            *session = response_session;
-            Ok(())
-        }
+        Ok(response)
     }
 }
 
 pub async fn reregister_account(
     number: &str,
-    connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + '_>,
+    connect_chat: Box<dyn ConnectUnauthChat + Send + Sync + UnwindSafe + '_>,
     message_notification: NewMessageNotification<&str>,
     account_attributes: ProvidedAccountAttributes<'_>,
     device_transfer: Option<SkipDeviceTransfer>,
     keys: ForServiceIds<AccountKeys<'_>>,
     account_password: &str,
 ) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
-    let request = ChatRequest::register_account(
-        number,
-        None,
-        message_notification,
-        account_attributes,
-        device_transfer,
-        keys,
-        account_password,
-    );
-
     log::info!("sending regregister account request");
 
-    let (_connection, response) =
-        RegistrationConnection::connect_and_send(connect_chat, request).await?;
+    let connection = RegistrationConnection::connect(connect_chat).await?;
+    let response = Registration(&connection)
+        .register_account(
+            number,
+            None,
+            message_notification,
+            account_attributes,
+            device_transfer,
+            keys,
+            account_password,
+        )
+        .await?;
 
     log::info!("reregister account request succeded");
-    response.try_into_response().map_err(Into::into)
+    Ok(response)
 }
 
 #[cfg(test)]
@@ -316,7 +317,8 @@ mod testutil {
     use libsignal_net::chat::{ChatConnection, ConnectError as ChatConnectError};
     use tokio::sync::{mpsc, oneshot};
 
-    use crate::registration::ConnectChat;
+    use crate::api::Unauth;
+    use crate::registration::ConnectUnauthChat;
 
     /// Fake [`ConnectChat`] impl that writes the remote end to a channel.
     pub(super) struct FakeChatConnect {
@@ -346,11 +348,11 @@ mod testutil {
         }
     }
 
-    impl ConnectChat for FakeChatConnect {
+    impl ConnectUnauthChat for FakeChatConnect {
         fn connect_chat(
             &self,
             on_disconnect: oneshot::Sender<Infallible>,
-        ) -> BoxFuture<'_, Result<ChatConnection, ChatConnectError>> {
+        ) -> BoxFuture<'_, Result<Unauth<ChatConnection>, ChatConnectError>> {
             let (fake_chat, fake_remote) = ChatConnection::new_fake(
                 tokio::runtime::Handle::current(),
                 DropOnDisconnect::new(on_disconnect).into_listener(),
@@ -358,7 +360,7 @@ mod testutil {
             );
             async {
                 let _ignore_failure = self.remote.send(fake_remote);
-                Ok(fake_chat)
+                Ok(Unauth(fake_chat))
             }
             .boxed()
         }
@@ -373,15 +375,15 @@ mod testutil {
         }
     }
 
-    impl<'a, F, Fut> ConnectChat for ConnectChatFn<'a, F>
+    impl<'a, F, Fut> ConnectUnauthChat for ConnectChatFn<'a, F>
     where
         F: Fn(oneshot::Sender<Infallible>) -> Fut + Send,
-        Fut: Future<Output = Result<ChatConnection, ChatConnectError>> + Send + 'a,
+        Fut: Future<Output = Result<Unauth<ChatConnection>, ChatConnectError>> + Send + 'a,
     {
         fn connect_chat(
             &self,
             on_disconnect: oneshot::Sender<Infallible>,
-        ) -> BoxFuture<'_, Result<ChatConnection, ChatConnectError>> {
+        ) -> BoxFuture<'_, Result<Unauth<ChatConnection>, ChatConnectError>> {
             self.0(on_disconnect).boxed()
         }
     }
@@ -401,14 +403,16 @@ mod test {
     use tokio::sync::mpsc;
 
     use super::*;
+    use crate::api::Unauth;
+    use crate::ws::registration::RegistrationResponse;
 
     struct ConnectOnlyOnce<C>(std::sync::Mutex<Option<C>>);
 
-    impl<C: ConnectChat> ConnectChat for ConnectOnlyOnce<C> {
+    impl<C: ConnectUnauthChat> ConnectUnauthChat for ConnectOnlyOnce<C> {
         fn connect_chat(
             &self,
             on_disconnect: tokio::sync::oneshot::Sender<std::convert::Infallible>,
-        ) -> BoxFuture<'_, Result<ChatConnection, ConnectError>> {
+        ) -> BoxFuture<'_, Result<Unauth<ChatConnection>, ConnectError>> {
             let inner = self
                 .0
                 .lock()

@@ -36,6 +36,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
 tokio-stream = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
+visibility = { workspace = true }
 
 [dev-dependencies]
 libsignal-cli-utils = { workspace = true }

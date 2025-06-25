@@ -30,6 +30,7 @@ use libsignal_net::infra::route::{
 };
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls};
+use libsignal_net_chat::api::Unauth;
 use libsignal_protocol::Timestamp;
 use static_assertions::assert_impl_all;
 
@@ -214,7 +215,7 @@ pub(crate) async fn connect_registration_chat(
     tokio_runtime: &tokio::runtime::Handle,
     connection_manager: &ConnectionManager,
     drop_on_disconnect: tokio::sync::oneshot::Sender<Infallible>,
-) -> Result<ChatConnection, ConnectError> {
+) -> Result<Unauth<ChatConnection>, ConnectError> {
     let pending = establish_chat_connection("registration", connection_manager, None).await?;
 
     let mut on_disconnect = Some(drop_on_disconnect);
@@ -223,11 +224,11 @@ pub(crate) async fn connect_registration_chat(
         ListenerEvent::ReceivedAlerts(_) | ListenerEvent::ReceivedMessage(_, _) => (),
     };
 
-    Ok(ChatConnection::finish_connect(
+    Ok(Unauth(ChatConnection::finish_connect(
         tokio_runtime.clone(),
         pending,
         Box::new(listener),
-    ))
+    )))
 }
 
 fn init_listener(connection: &mut MaybeChatConnection, listener: Box<dyn ChatListener>) {

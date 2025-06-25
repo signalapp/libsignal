@@ -5,8 +5,11 @@
 
 use libsignal_net::chat::Response as ChatResponse;
 
-pub use crate::api::registration::*;
-use crate::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
+use crate::api::registration::{
+    CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationLock,
+    RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError, UpdateSessionError,
+    VerificationCodeNotDeliverable,
+};
 use crate::api::RequestError;
 use crate::ws::ResponseError;
 
@@ -134,6 +137,12 @@ mod test {
     use test_case::test_case;
 
     use super::*;
+    use crate::api::registration::{
+        CheckSvr2CredentialsErrorDiscriminants, CreateSessionErrorDiscriminants,
+        RegisterAccountErrorDiscriminants, RequestVerificationCodeErrorDiscriminants,
+        ResumeSessionErrorDiscriminants, SubmitVerificationErrorDiscriminants,
+        UpdateSessionErrorDiscriminants,
+    };
     use crate::api::RateLimitChallenge;
     use crate::ws::registration::CONTENT_TYPE_JSON;
 

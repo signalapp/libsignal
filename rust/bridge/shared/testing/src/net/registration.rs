@@ -18,7 +18,7 @@ use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::ChatConnection;
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net_chat::api::registration::*;
-use libsignal_net_chat::api::{ChallengeOption, RateLimitChallenge};
+use libsignal_net_chat::api::{ChallengeOption, RateLimitChallenge, Unauth};
 use libsignal_net_chat::registration::*;
 use uuid::uuid;
 
@@ -65,16 +65,16 @@ impl ConnectChatBridge for ConnectFakeChatBridge {
     fn create_chat_connector(
         self: Box<Self>,
         runtime: tokio::runtime::Handle,
-    ) -> Box<dyn ConnectChat + Send + Sync + std::panic::UnwindSafe> {
+    ) -> Box<dyn ConnectUnauthChat + Send + Sync + std::panic::UnwindSafe> {
         let Self(tx) = *self;
         Box::new(ConnectFakeChat(runtime, tx))
     }
 }
-impl ConnectChat for ConnectFakeChat {
+impl ConnectUnauthChat for ConnectFakeChat {
     fn connect_chat(
         &self,
         on_disconnect: tokio::sync::oneshot::Sender<std::convert::Infallible>,
-    ) -> BoxFuture<'_, Result<ChatConnection, libsignal_net::chat::ConnectError>> {
+    ) -> BoxFuture<'_, Result<Unauth<ChatConnection>, libsignal_net::chat::ConnectError>> {
         let mut on_disconnect = Some(on_disconnect);
         let listener = move |event| match event {
             libsignal_net::chat::ws::ListenerEvent::Finished(_) => drop(on_disconnect.take()),
@@ -88,7 +88,7 @@ impl ConnectChat for ConnectFakeChat {
             self.1
                 .send(remote)
                 .map_err(|_| libsignal_net::chat::ConnectError::AllAttemptsFailed)
-                .map(|()| chat),
+                .map(|()| Unauth(chat)),
         )
         .boxed()
     }

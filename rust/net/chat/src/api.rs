@@ -6,6 +6,8 @@
 //! The `api` module and its submodules define the abstraction over anything that "behaves like
 //! chat-server".
 
+use std::convert::Infallible;
+
 use libsignal_net::infra::errors::LogSafeDisplay;
 
 pub mod profiles;
@@ -15,6 +17,10 @@ pub mod usernames;
 /// Marker wrapper for unauthenticated connections.
 #[derive(derive_more::Deref)]
 pub struct Unauth<T>(pub T);
+
+/// Marker wrapper for registration connections.
+#[derive(derive_more::Deref)]
+pub struct Registration<T>(pub T);
 
 /// Authorization for requests on unauthenticated connections involving other users.
 ///
@@ -53,6 +59,12 @@ where
     E: LogSafeDisplay,
     D: LogSafeDisplay,
 {
+}
+
+impl<E, D> From<Infallible> for RequestError<E, D> {
+    fn from(value: Infallible) -> Self {
+        match value {}
+    }
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
