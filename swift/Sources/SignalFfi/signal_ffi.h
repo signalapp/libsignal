@@ -1594,6 +1594,8 @@ SignalFfiError *signal_error_get_invalid_protocol_address(const SignalFfiError *
 
 SignalFfiError *signal_error_get_message(const SignalFfiError *err, const char **out);
 
+SignalFfiError *signal_error_get_our_fingerprint_version(const SignalFfiError *err, uint32_t *out);
+
 SignalFfiError *signal_error_get_rate_limit_challenge(const SignalFfiError *err, const char **out_token, SignalOwnedBuffer *out_options);
 
 SignalFfiError *signal_error_get_registration_error_not_deliverable(const SignalFfiError *err, const char **out_reason, bool *out_permanent);
@@ -1601,6 +1603,8 @@ SignalFfiError *signal_error_get_registration_error_not_deliverable(const Signal
 SignalFfiError *signal_error_get_registration_lock(const SignalFfiError *err, uint64_t *out_time_remaining_seconds, const char **out_svr2_username, const char **out_svr2_password);
 
 SignalFfiError *signal_error_get_retry_after_seconds(const SignalFfiError *err, uint32_t *out);
+
+SignalFfiError *signal_error_get_their_fingerprint_version(const SignalFfiError *err, uint32_t *out);
 
 SignalFfiError *signal_error_get_tries_remaining(const SignalFfiError *err, uint32_t *out);
 

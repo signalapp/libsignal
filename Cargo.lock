@@ -2494,6 +2494,7 @@ dependencies = [
  "libsignal-protocol",
  "log",
  "log-panics",
+ "paste",
  "signal-media",
  "zerocopy",
 ]

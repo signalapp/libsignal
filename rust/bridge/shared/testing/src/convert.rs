@@ -328,3 +328,13 @@ async fn TESTING_InputStreamReadIntoZeroLengthSlice(
 
     first.into_iter().chain(remainder).collect()
 }
+
+#[bridge_fn(jni = false, node = false)]
+fn TESTING_FingerprintVersionMismatchError(
+    theirs: u32,
+    ours: u32,
+) -> Result<(), SignalProtocolError> {
+    Err(SignalProtocolError::FingerprintVersionMismatch(
+        theirs, ours,
+    ))
+}

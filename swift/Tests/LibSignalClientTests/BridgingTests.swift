@@ -253,6 +253,18 @@ final class BridgingTests: XCTestCase {
         }
         XCTAssertEqual(UUID(uuidString: "abababab-1212-8989-baba-565656565656"), shouldBePresent)
     }
+
+    func testFingerprintVersionMismatchError() throws {
+        let theirs = UInt32(11)
+        let ours = UInt32(22)
+        do {
+            try checkError(signal_testing_fingerprint_version_mismatch_error(theirs, ours))
+            XCTFail("should have thrown")
+        } catch SignalError.fingerprintVersionMismatch(let actualTheirs, let actualOurs) {
+            XCTAssertEqual(theirs, actualTheirs)
+            XCTAssertEqual(ours, actualOurs)
+        }
+    }
 }
 
 #endif

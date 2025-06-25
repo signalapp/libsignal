@@ -15,6 +15,7 @@ use libsignal_bridge::ffi::*;
 use libsignal_bridge_testing::*;
 use libsignal_core::try_scoped;
 use libsignal_protocol::*;
+use paste::paste;
 
 pub mod logging;
 
@@ -150,40 +151,6 @@ pub unsafe extern "C" fn signal_error_get_invalid_protocol_address(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn signal_error_get_retry_after_seconds(
-    err: *const SignalFfiError,
-    out: *mut u32,
-) -> *mut SignalFfiError {
-    let err = AssertUnwindSafe(err);
-    run_ffi_safe(|| {
-        let err = err.as_ref().ok_or(NullPointerError)?;
-        let value = err.provide_retry_after_seconds().map_err(|_| {
-            SignalProtocolError::InvalidArgument(format!(
-                "cannot get retry_after_seconds from error ({err})"
-            ))
-        })?;
-        write_result_to(out, value)
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_error_get_tries_remaining(
-    err: *const SignalFfiError,
-    out: *mut u32,
-) -> *mut SignalFfiError {
-    let err = AssertUnwindSafe(err);
-    run_ffi_safe(|| {
-        let err = err.as_ref().ok_or(NullPointerError)?;
-        let value = err.provide_tries_remaining().map_err(|_| {
-            SignalProtocolError::InvalidArgument(format!(
-                "cannot get tries_remaining from error ({err})"
-            ))
-        })?;
-        write_result_to(out, value)
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn signal_error_get_unknown_fields(
     err: *const SignalFfiError,
     out: *mut StringArray,
@@ -257,6 +224,57 @@ pub unsafe extern "C" fn signal_error_get_registration_lock(
         Ok(())
     })
 }
+
+macro_rules! get_named_u32_from_err_impl {
+    ($name:ident) => {
+        paste! {
+            #[no_mangle]
+            pub unsafe extern "C" fn [< signal_error_get_ $name >](
+                err: *const SignalFfiError,
+                out: *mut u32,
+            ) -> *mut SignalFfiError {
+                let err = AssertUnwindSafe(err);
+                run_ffi_safe(|| {
+                    let err = err.as_ref().ok_or(NullPointerError)?;
+                    let value = err.[< provide_ $name >]().map_err(|_| {
+                        SignalProtocolError::InvalidArgument(format!(
+                            "cannot get $name from error ({err})"
+                        ))
+                    })?;
+                    write_result_to(out, value)
+                })
+            }
+        }
+    };
+    // Similar to the above, only adds an extra .map(...) step to extract the final u32
+    ($name:ident, $field:ident, $c_name:ident) => {
+        paste! {
+            #[no_mangle]
+            pub unsafe extern "C" fn [< signal_error_get_ $c_name >](
+                err: *const SignalFfiError,
+                out: *mut u32,
+            ) -> *mut SignalFfiError {
+                let err = AssertUnwindSafe(err);
+                run_ffi_safe(|| {
+                    let err = err.as_ref().ok_or(NullPointerError)?;
+                    let value = err.[< provide_ $name >]()
+                        .map(|x| x.$field)
+                        .map_err(|_| {
+                            SignalProtocolError::InvalidArgument(format!(
+                                "cannot get $name from error ({err})"
+                        ))}
+                    )?;
+                    write_result_to(out, value)
+                })
+            }
+        }
+    };
+}
+
+get_named_u32_from_err_impl!(fingerprint_versions, ours, our_fingerprint_version);
+get_named_u32_from_err_impl!(fingerprint_versions, theirs, their_fingerprint_version);
+get_named_u32_from_err_impl!(retry_after_seconds);
+get_named_u32_from_err_impl!(tries_remaining);
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_error_get_rate_limit_challenge(

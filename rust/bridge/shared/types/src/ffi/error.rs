@@ -138,6 +138,11 @@ impl<T: std::any::Any> UpcastAsAny for T {
 /// Error returned when asking for an attribute of an error that doesn't support that attribute.
 pub struct WrongErrorKind;
 
+pub struct FingerprintVersions {
+    pub theirs: u32,
+    pub ours: u32,
+}
+
 pub trait FfiError: UpcastAsAny + fmt::Debug + Send + 'static {
     fn describe(&self) -> String;
     fn code(&self) -> SignalErrorCode;
@@ -169,6 +174,9 @@ pub trait FfiError: UpcastAsAny + fmt::Debug + Send + 'static {
         Err(WrongErrorKind)
     }
     fn provide_rate_limit_challenge(&self) -> Result<&RateLimitChallenge, WrongErrorKind> {
+        Err(WrongErrorKind)
+    }
+    fn provide_fingerprint_versions(&self) -> Result<FingerprintVersions, WrongErrorKind> {
         Err(WrongErrorKind)
     }
 }
@@ -303,6 +311,16 @@ impl FfiError for SignalProtocolError {
     fn provide_invalid_address(&self) -> Result<(&str, u32), WrongErrorKind> {
         match self {
             Self::InvalidProtocolAddress { name, device_id } => Ok((name, *device_id)),
+            _ => Err(WrongErrorKind),
+        }
+    }
+
+    fn provide_fingerprint_versions(&self) -> Result<FingerprintVersions, WrongErrorKind> {
+        match self {
+            Self::FingerprintVersionMismatch(theirs, ours) => Ok(FingerprintVersions {
+                theirs: *theirs,
+                ours: *ours,
+            }),
             _ => Err(WrongErrorKind),
         }
     }

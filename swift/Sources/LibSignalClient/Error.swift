@@ -21,7 +21,7 @@ public enum SignalError: Error {
     case invalidKey(String)
     case invalidSignature(String)
     case invalidAttestationData(String)
-    case fingerprintVersionMismatch(String)
+    case fingerprintVersionMismatch(theirs: UInt32, ours: UInt32)
     case fingerprintParsingError(String)
     case sealedSenderSelfSend(String)
     case untrustedIdentity(String)
@@ -135,7 +135,13 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
     case SignalErrorCodeInvalidAttestationData:
         throw SignalError.invalidAttestationData(errStr)
     case SignalErrorCodeFingerprintVersionMismatch:
-        throw SignalError.fingerprintVersionMismatch(errStr)
+        let theirs = try invokeFnReturningInteger {
+            signal_error_get_their_fingerprint_version(error, $0)
+        }
+        let ours = try invokeFnReturningInteger {
+            signal_error_get_our_fingerprint_version(error, $0)
+        }
+        throw SignalError.fingerprintVersionMismatch(theirs: theirs, ours: ours)
     case SignalErrorCodeUntrustedIdentity:
         throw SignalError.untrustedIdentity(errStr)
     case SignalErrorCodeInvalidKeyIdentifier:
