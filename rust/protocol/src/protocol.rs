@@ -887,14 +887,14 @@ impl DecryptionErrorMessage {
 
         let ratchet_swoosh_key = match original_type {
             CiphertextMessageType::Whisper => {
-                Some(*SignalMessage::try_from(original_bytes)?.sender_ratchet_swoosh_key().unwrap())
+                SignalMessage::try_from(original_bytes)?.sender_ratchet_swoosh_key().copied()
             }
-            CiphertextMessageType::PreKey => Some(
-                *PreKeySignalMessage::try_from(original_bytes)?
+            CiphertextMessageType::PreKey => {
+                PreKeySignalMessage::try_from(original_bytes)?
                     .message()
                     .sender_ratchet_swoosh_key()
-                    .unwrap(),
-            ),
+                    .copied()
+            },
             CiphertextMessageType::SenderKey => None,
             CiphertextMessageType::Plaintext => {
                 return Err(SignalProtocolError::InvalidArgument(
