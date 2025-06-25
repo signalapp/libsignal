@@ -48,9 +48,11 @@ impl crate::ws::registration::WsClient for &RegistrationConnection<'_> {
 
     fn send(
         &self,
+        log_tag: &'static str,
+        log_safe_path: &str,
         request: ChatRequest,
     ) -> impl Future<Output = Result<ChatResponse, Self::SendError>> {
-        self.submit_chat_request(request)
+        self.submit_chat_request(log_tag, log_safe_path, request)
     }
 }
 
@@ -89,6 +91,8 @@ impl<'c> RegistrationConnection<'c> {
     /// This method will retry internally if transient errors are encountered.
     async fn submit_chat_request(
         &self,
+        _log_tag: &'static str,
+        _log_safe_path: &str,
         request: ChatRequest,
     ) -> Result<ChatResponse, ErrorResponse> {
         let Self {

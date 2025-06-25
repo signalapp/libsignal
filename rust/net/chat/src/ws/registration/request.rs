@@ -51,6 +51,12 @@ pub(super) struct RegistrationRequest<'s, R> {
     pub(super) request: R,
 }
 
+impl<R: Request> RegistrationRequest<'_, R> {
+    pub(super) fn log_safe_path(&self) -> String {
+        R::log_safe_path(self.session_id)
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
 pub(super) struct CheckSvr2CredentialsRequest<'s> {
     pub(super) number: &'s str,
@@ -141,6 +147,8 @@ pub(super) trait Request {
     /// The HTTP path to use when sending the request.
     fn request_path(session_id: &SessionId) -> PathAndQuery;
 
+    fn log_safe_path(session_id: &SessionId) -> String;
+
     fn headers<'s>(&'s self) -> impl Iterator<Item = (HeaderName, HeaderValue)> + 's
     where
         Self: 's,
@@ -162,6 +170,9 @@ impl Request for GetSession {
         .parse()
         .unwrap()
     }
+    fn log_safe_path(session_id: &SessionId) -> String {
+        format!("{VERIFICATION_SESSION_PATH_PREFIX}/{session_id}")
+    }
     fn to_json_body(&self) -> Option<Box<[u8]>> {
         None
     }
@@ -171,6 +182,9 @@ impl Request for UpdateRegistrationSession<'_> {
     const METHOD: Method = Method::PATCH;
     fn request_path(session_id: &SessionId) -> PathAndQuery {
         GetSession::request_path(session_id)
+    }
+    fn log_safe_path(session_id: &SessionId) -> String {
+        GetSession::log_safe_path(session_id)
     }
     fn to_json_body(&self) -> Option<Box<[u8]>> {
         Some(
@@ -185,6 +199,9 @@ impl Request for RequestVerificationCode<'_> {
     const METHOD: Method = Method::POST;
     fn request_path(session_id: &SessionId) -> PathAndQuery {
         SubmitVerificationCode::request_path(session_id)
+    }
+    fn log_safe_path(session_id: &SessionId) -> String {
+        SubmitVerificationCode::log_safe_path(session_id)
     }
 
     fn headers<'s>(&'s self) -> impl Iterator<Item = (HeaderName, HeaderValue)> + 's
@@ -212,6 +229,9 @@ impl Request for SubmitVerificationCode<'_> {
         )
         .parse()
         .unwrap()
+    }
+    fn log_safe_path(session_id: &SessionId) -> String {
+        format!("{VERIFICATION_SESSION_PATH_PREFIX}/{session_id}/code")
     }
     fn to_json_body(&self) -> Option<Box<[u8]>> {
         Some(

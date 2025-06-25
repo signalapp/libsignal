@@ -35,6 +35,8 @@ pub(crate) trait WsClient {
 
     fn send(
         &self,
+        log_tag: &'static str,
+        log_safe_path: &str,
         request: ChatRequest,
     ) -> impl Future<Output = Result<ChatResponse, Self::SendError>> + Send;
 }
@@ -55,9 +57,11 @@ impl<W: WsConnection> WsClient for W {
 
     fn send(
         &self,
+        log_tag: &'static str,
+        log_safe_path: &str,
         request: ChatRequest,
     ) -> impl Future<Output = Result<ChatResponse, Self::SendError>> + Send {
-        WsConnection::send(self, request)
+        WsConnection::send(self, log_tag, log_safe_path, request)
     }
 }
 
@@ -80,7 +84,19 @@ where
         &self,
         create_session: &CreateSession,
     ) -> Result<RegistrationOutput, Self::Error<CreateSessionError>> {
-        submit_request(&self.0, create_session).await
+        // We can't use submit_request because we don't have a session ID yet,
+        // but we do the same basic thing.
+        let request = ChatRequest::from(create_session);
+        // This request's path is always static, so it's safe to log.
+        let response = self
+            .0
+            .send("reg", &request.path.to_string(), request)
+            .await
+            .map_err(SendError::into_request_error)?;
+        let response: crate::ws::registration::request::RegistrationResponse =
+            response.try_into_response()?;
+
+        response.try_into().map_err(Into::into)
     }
 
     async fn get_session(
@@ -200,13 +216,14 @@ where
         number: &str,
         svr_tokens: &[String],
     ) -> Result<CheckSvr2CredentialsResponse, Self::Error<CheckSvr2CredentialsError>> {
-        let request = CheckSvr2CredentialsRequest {
+        let request = ChatRequest::from(CheckSvr2CredentialsRequest {
             number,
             tokens: svr_tokens,
-        };
+        });
+        // This request's path is always static, so it's safe to log.
         let response = self
             .0
-            .send(request.into())
+            .send("reg", &request.path.to_string(), request)
             .await
             .map_err(SendError::into_request_error)?;
         response.try_into_response().map_err(Into::into)
@@ -232,9 +249,10 @@ where
             account_password,
         );
 
+        // This request's path is always static, so it's safe to log.
         let response = self
             .0
-            .send(request)
+            .send("reg", &request.path.to_string(), request)
             .await
             .map_err(SendError::into_request_error)?;
 
@@ -249,16 +267,16 @@ where
 /// internally if transient errors are encountered.
 async fn submit_request<R, E, C>(
     connection: &C,
-    request: R,
+    request: RegistrationRequest<'_, R>,
 ) -> Result<RegistrationOutput, RequestError<E, <C::SendError as SendError>::DisconnectError>>
 where
-    R: Into<ChatRequest> + Send,
+    R: Request + Send,
     RequestError<E, <C::SendError as SendError>::DisconnectError>:
         From<InvalidSessionId> + From<ResponseError>,
     C: WsClient<SendError: SendError> + Sync,
 {
     let response = connection
-        .send(request.into())
+        .send("reg", &request.log_safe_path(), request.into())
         .await
         .map_err(SendError::into_request_error)?;
     let response: crate::ws::registration::request::RegistrationResponse =
