@@ -198,7 +198,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut rng,
         )
         .await?;
-        println!("Sealed sender encrypt");
+        
         let bob_ptext = sealed_sender_decrypt(
             &alice_ctext,
             &trust_root.public_key,
@@ -215,7 +215,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             UsePQRatchet::Yes,
         )
         .await?;
-
+        println!("Sealed sender decrypt");
         assert_eq!(bob_ptext.message, alice_ptext);
         assert_eq!(bob_ptext.sender_uuid, alice_uuid);
         assert_eq!(bob_ptext.sender_e164, Some(alice_e164));

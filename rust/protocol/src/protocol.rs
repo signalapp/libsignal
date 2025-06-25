@@ -229,20 +229,20 @@ impl TryFrom<&[u8]> for SignalMessage {
                 message_version,
             ));
         }
-
+        
         let proto_structure =
             proto::wire::SignalMessage::decode(&value[1..value.len() - SignalMessage::MAC_LENGTH])
                 .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
-
         let sender_ratchet_key = proto_structure
             .ratchet_key
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let sender_ratchet_key = PublicKey::deserialize(&sender_ratchet_key)?;
-        let sender_ratchet_swoosh_key = proto_structure
-            .ratchet_swoosh_key
-            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
-        let sender_ratchet_swoosh_key =
-            Some(PublicSwooshKey::deserialize(&sender_ratchet_swoosh_key)?);
+        
+        let sender_ratchet_swoosh_key = match proto_structure.ratchet_swoosh_key{
+            Some(key) => PublicSwooshKey::deserialize(&key).ok(),
+            None => None,
+        };
+        println!("Signal message protobuf");
         let counter = proto_structure
             .counter
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
@@ -251,7 +251,7 @@ impl TryFrom<&[u8]> for SignalMessage {
             .ciphertext
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
             .into_boxed_slice();
-
+        
         Ok(SignalMessage {
             message_version,
             sender_ratchet_key: Some(sender_ratchet_key),
@@ -419,10 +419,10 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
                 message_version,
             ));
         }
-
+        
         let proto_structure = proto::wire::PreKeySignalMessage::decode(&value[1..])
             .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
-
+        
         let base_key = proto_structure
             .base_key
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
@@ -435,10 +435,26 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
         let signed_pre_key_id = proto_structure
             .signed_pre_key_id
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
-        let swoosh_signed_pre_key_id = proto_structure
-            .swoosh_signed_pre_key_id;
+        
+        let swoosh_signed_pre_key_id = match proto_structure.swoosh_signed_pre_key_id {
+            Some(id) => Some(id.into()),
+            None if message_version <= CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION => None,
+            None => {
+                None
+            }
+        };
+        
+        //print all variables for debugging
+        println!("message_version: {:?}, registration_id: {:?}, pre_key_id: {:?}, signed_pre_key_id:, swoosh_signed_pre_key_id: {:?}, base_key: {:?}, identity_key: {:?}",  
+            base_key, 
+            identity_key, 
+            message, 
+            signed_pre_key_id, 
+            base_key, 
+            identity_key);
 
         let base_key = PublicKey::deserialize(base_key.as_ref())?;
+        println!("base_key: {:?}", base_key);
 
         let kyber_payload = match (
             proto_structure.kyber_pre_key_id,
@@ -459,17 +475,27 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
                 ));
             }
         };
-
+        println!("Before return");
+        
+        println!("About to deserialize identity_key");
+        let identity_key_deserialized = IdentityKey::try_from(identity_key.as_ref())?;
+        println!("Successfully deserialized identity_key: {:?}", identity_key_deserialized);
+        
+        println!("About to deserialize SignalMessage");
+        let signal_message_deserialized = SignalMessage::try_from(message.as_ref())?;
+        println!("Successfully deserialized SignalMessage");
+        
+        println!("About to construct PreKeySignalMessage");
         Ok(PreKeySignalMessage {
             message_version,
             registration_id: proto_structure.registration_id.unwrap_or(0),
             pre_key_id: proto_structure.pre_key_id.map(|id| id.into()),
             signed_pre_key_id: signed_pre_key_id.into(),
             kyber_payload,
-            swoosh_signed_pre_key_id: swoosh_signed_pre_key_id.map(|id| id.into()),
+            swoosh_signed_pre_key_id,
             base_key,
-            identity_key: IdentityKey::try_from(identity_key.as_ref())?,
-            message: SignalMessage::try_from(message.as_ref())?,
+            identity_key: identity_key_deserialized,
+            message: signal_message_deserialized,
             serialized: Box::from(value),
         })
     }
