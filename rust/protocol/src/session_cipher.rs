@@ -201,10 +201,9 @@ pub async fn message_encrypt_swoosh<R: Rng + CryptoRng>(
     })?;
     
     let message_keys = chain_key.message_keys().generate_keys(pqr_key);
-    //let sender_ephemeral = session_state.sender_ratchet_key()?;
     
-    // sender_ratchet_swoosh_public_key throws InvalidSessionStructure("invalid sender chain private ratchet key")
     let sender_swoosh_ephemeral = session_state.sender_ratchet_swoosh_public_key()?;
+    println!("🔑 Swoosh ephemeral key first 8 bytes: {:02x?}", &sender_swoosh_ephemeral.public_key_bytes()[..8]);
     
     let previous_counter = session_state.previous_counter();
     let session_version = session_state
@@ -946,8 +945,7 @@ fn decrypt_message_with_state_swoosh<R: Rng + CryptoRng>(
     let their_ephemeral = ciphertext.sender_ratchet_swoosh_key();
     let counter = ciphertext.counter();
     // For receiver chain, use the sender's alice identity (inverse of our identity)  
-    let sender_is_alice = !is_alice;
-    let chain_key = get_or_create_chain_swoosh_key(state, their_ephemeral, remote_address, sender_is_alice)?;
+    let chain_key = get_or_create_chain_swoosh_key(state, their_ephemeral, remote_address, is_alice)?;
     let message_key_gen = get_or_create_message_swoosh_key(
         state,
         their_ephemeral,
@@ -972,9 +970,9 @@ fn decrypt_message_with_state_swoosh<R: Rng + CryptoRng>(
             }
         })?;
     let message_keys = message_key_gen.generate_keys(pqr_key);
-    
-    // Print Bob's decryption key (the key used to decrypt Alice's first message)
-    println!("🔑 BOB DECRYPTION KEY - length: {}, first 8 bytes: {:02x?}", 
+
+    // Print Decryption Key - length and first 8 bytes
+    println!("🔑 DECRYPTION KEY - length: {}, first 8 bytes: {:02x?}", 
              message_keys.cipher_key().len(),
              &message_keys.cipher_key()[..8.min(message_keys.cipher_key().len())]);
 
@@ -1080,11 +1078,11 @@ fn get_or_create_chain_swoosh_key(
     let root_key = state.root_key()?;
     let our_ephemeral = state.sender_ratchet_swoosh_private_key()?;
     let our_ephemeral_public = state.sender_ratchet_swoosh_public_key()?;
-    let receiver_chain = root_key.create_chain_swoosh(their_ephemeral, &our_ephemeral_public, &our_ephemeral, false)?;
+    let receiver_chain = root_key.create_chain_swoosh(their_ephemeral, &our_ephemeral_public, &our_ephemeral, is_alice)?;
     
     // Debug: Print the first 8 bytes of receiver_chain root key before it gets moved
-    println!("🔑 Bob receiver swoosh root key first 8 bytes: {:02x?}", &receiver_chain.0.key()[..8]);
-    println!("🔑 Bob receiver swoosh chain key first 8 bytes: {:02x?}", &receiver_chain.1.key()[..8]);
+    println!("🔑 Receiver swoosh root key first 8 bytes: {:02x?}", &receiver_chain.0.key()[..8]);
+    println!("🔑 Receiver swoosh chain key first 8 bytes: {:02x?}", &receiver_chain.1.key()[..8]);
 
     let our_new_ephemeral = SwooshKeyPair::generate(is_alice);
     let sender_chain = receiver_chain
@@ -1104,7 +1102,7 @@ fn get_or_create_chain_swoosh_key(
     state.set_sender_swoosh_chain(&our_new_ephemeral, &sender_chain.1);
 
     // Debug: Print the first 8 bytes of sender_chain.1
-    println!("🔑 Bob chain key first 8 bytes: {:02x?}", &sender_chain.1.key()[..8]);
+    println!("🔑 Sender chain key first 8 bytes: {:02x?}", &sender_chain.1.key()[..8]);
 
     Ok(receiver_chain.1)
 }
