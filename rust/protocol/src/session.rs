@@ -109,11 +109,6 @@ async fn process_prekey_impl(
         .await?
         .key_pair()?;
 
-    let our_signed_swoosh_pre_key_pair = swoosh_prekey_store
-        .get_swoosh_pre_key(message.swoosh_pre_key_id().unwrap())
-        .await?
-        .key_pair()?;
-
     // Because async closures are unstable
     let our_kyber_pre_key_pair: Option<kem::KeyPair>;
     if let Some(kyber_pre_key_id) = message.kyber_pre_key_id() {

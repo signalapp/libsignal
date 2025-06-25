@@ -188,7 +188,7 @@ pub async fn message_encrypt_swoosh<R: Rng + CryptoRng>(
         .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
     
     let chain_key = session_state.get_sender_chain_key()?;
-    println!("🔑 Encryption chain key first 8 bytes: {:02x?}", &chain_key.key()[..8]);
+    println!("🔑 Encryption SWOOSH chain key first 8 bytes: {:02x?}", &chain_key.key()[..8]);
     
     let (pqr_msg, pqr_key) = session_state.pq_ratchet_send(csprng).map_err(|e| {
         // Since we're sending, this must be an error with the state.
@@ -416,14 +416,29 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         }
     };
 
-    let ptext = decrypt_message_with_record(
-        remote_address,
-        &mut session_record,
-        ciphertext.message(),
-        CiphertextMessageType::PreKey,
-        identity_store.is_alice().await?,
-        csprng,
-    )?;
+    let swoosh_key = ciphertext.swoosh_pre_key_id();
+
+    let ptext = match swoosh_key {
+        Some(_) => {
+            decrypt_message_with_record_swoosh(
+                remote_address,
+                &mut session_record,
+                ciphertext.message(),
+                CiphertextMessageType::PreKey,
+                identity_store.is_alice().await?,
+                csprng,
+            )?
+        }
+        None => {
+            decrypt_message_with_record(
+                remote_address,
+                &mut session_record,
+                ciphertext.message(),
+                CiphertextMessageType::PreKey,
+                csprng,
+            )?
+        }
+    };
 
     identity_store
         .save_identity(
@@ -461,14 +476,31 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
         .await?
         .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
 
-    let ptext = decrypt_message_with_record(
-        remote_address,
-        &mut session_record,
-        ciphertext,
-        CiphertextMessageType::Whisper,
-        identity_store.is_alice().await?,
-        csprng,
-    )?;
+    let swoosh_key = ciphertext.sender_ratchet_swoosh_key();
+
+    let ptext = match swoosh_key {
+        Some(_) => {
+            decrypt_message_with_record_swoosh(
+                remote_address,
+                &mut session_record,
+                ciphertext,
+                CiphertextMessageType::Whisper,
+                identity_store.is_alice().await?,
+                csprng,
+            )?
+        }
+        None => {
+            decrypt_message_with_record(
+                remote_address,
+                &mut session_record,
+                ciphertext,
+                CiphertextMessageType::Whisper,
+                csprng,
+            )?
+        }
+    };
+
+    
 
     // Why are we performing this check after decryption instead of before?
     let their_identity_key = session_record
@@ -599,6 +631,165 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
     record: &mut SessionRecord,
     ciphertext: &SignalMessage,
     original_message_type: CiphertextMessageType,
+    csprng: &mut R,
+) -> Result<Vec<u8>> {
+    debug_assert!(matches!(
+        original_message_type,
+        CiphertextMessageType::Whisper | CiphertextMessageType::PreKey
+    ));
+    let log_decryption_failure = |state: &SessionState, error: &SignalProtocolError| {
+        // A warning rather than an error because we try multiple sessions.
+        log::warn!(
+            "Failed to decrypt {:?} message with ratchet key: {} and counter: {}. \
+             Session loaded for {}. Local session has base key: {} and counter: {}. {}",
+            original_message_type,
+            hex::encode(ciphertext.sender_ratchet_key().unwrap().public_key_bytes()),
+            ciphertext.counter(),
+            remote_address,
+            state
+                .sender_ratchet_key_for_logging()
+                .unwrap_or_else(|e| format!("<error: {e}>")),
+            state.previous_counter(),
+            error
+        );
+    };
+
+    let mut errs = vec![];
+
+    if let Some(current_state) = record.session_state() {
+        let mut current_state = current_state.clone();
+        let result = decrypt_message_with_state(
+            CurrentOrPrevious::Current,
+            &mut current_state,
+            ciphertext,
+            original_message_type,
+            remote_address,
+            csprng,
+        );
+
+        match result {
+            Ok(ptext) => {
+                log::info!(
+                    "decrypted {:?} message from {} with current session state (base key {})",
+                    original_message_type,
+                    remote_address,
+                    current_state
+                        .sender_ratchet_key_for_logging()
+                        .expect("successful decrypt always has a valid base key"),
+                );
+                record.set_session_state(current_state); // update the state
+                return Ok(ptext);
+            }
+            Err(SignalProtocolError::DuplicatedMessage(_, _)) => {
+                return result;
+            }
+            Err(e) => {
+                log_decryption_failure(&current_state, &e);
+                errs.push(e);
+                match original_message_type {
+                    CiphertextMessageType::PreKey => {
+                        // A PreKey message creates a session and then decrypts a Whisper message
+                        // using that session. No need to check older sessions.
+                        log::error!(
+                            "{}",
+                            create_decryption_failure_log(
+                                remote_address,
+                                &errs,
+                                record,
+                                ciphertext
+                            )?
+                        );
+                        // Note that we don't propagate `e` here; we always return InvalidMessage,
+                        // as we would for a Whisper message that tried several sessions.
+                        return Err(SignalProtocolError::InvalidMessage(
+                            original_message_type,
+                            "decryption failed",
+                        ));
+                    }
+                    CiphertextMessageType::Whisper => {}
+                    CiphertextMessageType::SenderKey | CiphertextMessageType::Plaintext => {
+                        unreachable!("should not be using Double Ratchet for these")
+                    }
+                }
+            }
+        }
+    }
+
+    // Try some old sessions:
+    let mut updated_session = None;
+
+    for (idx, previous) in record.previous_session_states().enumerate() {
+        let mut previous = previous?;
+
+        let result = decrypt_message_with_state(
+            CurrentOrPrevious::Previous,
+            &mut previous,
+            ciphertext,
+            original_message_type,
+            remote_address,
+            csprng,
+        );
+
+        match result {
+            Ok(ptext) => {
+                log::info!(
+                    "decrypted {:?} message from {} with PREVIOUS session state (base key {})",
+                    original_message_type,
+                    remote_address,
+                    previous
+                        .sender_ratchet_key_for_logging()
+                        .expect("successful decrypt always has a valid base key"),
+                );
+                updated_session = Some((ptext, idx, previous));
+                break;
+            }
+            Err(SignalProtocolError::DuplicatedMessage(_, _)) => {
+                return result;
+            }
+            Err(e) => {
+                log_decryption_failure(&previous, &e);
+                errs.push(e);
+            }
+        }
+    }
+
+    if let Some((ptext, idx, updated_session)) = updated_session {
+        record.promote_old_session(idx, updated_session);
+        Ok(ptext)
+    } else {
+        let previous_state_count = || record.previous_session_states().len();
+
+        if let Some(current_state) = record.session_state() {
+            log::error!(
+                "No valid session for recipient: {}, current session base key {}, number of previous states: {}",
+                remote_address,
+                current_state.sender_ratchet_key_for_logging()
+                .unwrap_or_else(|e| format!("<error: {e}>")),
+                previous_state_count(),
+            );
+        } else {
+            log::error!(
+                "No valid session for recipient: {}, (no current session state), number of previous states: {}",
+                remote_address,
+                previous_state_count(),
+            );
+        }
+        log::error!(
+            "{}",
+            create_decryption_failure_log(remote_address, &errs, record, ciphertext)?
+        );
+        Err(SignalProtocolError::InvalidMessage(
+            original_message_type,
+            "decryption failed",
+        ))
+    }
+}
+
+fn decrypt_message_with_record_swoosh<R: Rng + CryptoRng>(
+    remote_address: &ProtocolAddress,
+    record: &mut SessionRecord,
+    ciphertext: &SignalMessage,
+    original_message_type: CiphertextMessageType,
     is_alice: bool,
     csprng: &mut R,
 ) -> Result<Vec<u8>> {
@@ -700,12 +891,13 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
     for (idx, previous) in record.previous_session_states().enumerate() {
         let mut previous = previous?;
 
-        let result = decrypt_message_with_state(
+        let result = decrypt_message_with_state_swoosh(
             CurrentOrPrevious::Previous,
             &mut previous,
             ciphertext,
             original_message_type,
             remote_address,
+            is_alice,
             csprng,
         );
 

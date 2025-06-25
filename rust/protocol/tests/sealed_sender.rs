@@ -187,7 +187,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
         )?;
         
         let alice_ptext = vec![1, 2, 3, 23, 99];
-        println!("Sealed sender encrypt");
+        
         let alice_ctext = sealed_sender_encrypt(
             &bob_uuid_address,
             &sender_cert,
@@ -198,7 +198,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut rng,
         )
         .await?;
-        
+        println!("Sealed sender encrypt");
         let bob_ptext = sealed_sender_decrypt(
             &alice_ctext,
             &trust_root.public_key,
@@ -918,7 +918,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             UsePQRatchet::Yes,
         )
         .await?;
-
+        
         // Send one message to establish a session.
 
         let bob_first_message = message_encrypt(
@@ -930,7 +930,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut rng,
         )
         .await?;
-
+        println!("Sealed test");
         message_decrypt(
             &bob_first_message,
             &bob_uuid_address,
