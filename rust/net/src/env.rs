@@ -21,8 +21,8 @@ use libsignal_net_infra::route::{
     HttpsProvider, TlsRouteProvider,
 };
 use libsignal_net_infra::{
-    AsStaticHttpHeader, ConnectionParams, EnableDomainFronting, EnforceMinimumTls,
-    HttpRequestDecorator, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
+    AsStaticHttpHeader, ConnectionParams, EnableDomainFronting, EnforceMinimumTls, RouteType,
+    TransportConnectionParams,
 };
 use nonzero_ext::nonzero;
 use rand::seq::SliceRandom;
@@ -299,7 +299,7 @@ impl ConnectionConfig {
                     certs: self.cert.clone(),
                 },
                 http_host: hostname,
-                http_request_decorator: HttpRequestDecoratorSeq::default(),
+                path_prefix: None,
                 connection_confirmation_header: None,
             }
         };
@@ -427,16 +427,6 @@ impl AsStaticHttpHeader for UserAgent {
     }
 }
 
-pub fn add_user_agent_header(
-    mut connection_params_list: Vec<ConnectionParams>,
-    agent: &UserAgent,
-) -> Vec<ConnectionParams> {
-    connection_params_list.iter_mut().for_each(|cp| {
-        cp.http_request_decorator.add(agent.into());
-    });
-    connection_params_list
-}
-
 #[derive(Clone)]
 pub struct ProxyConfig {
     route_type: RouteType,
@@ -477,7 +467,7 @@ impl ProxyConfig {
                     certs: certs.clone(),
                 },
                 http_host: Arc::clone(&http_host),
-                http_request_decorator: HttpRequestDecorator::PathPrefix(proxy_path).into(),
+                path_prefix: Some(proxy_path),
                 connection_confirmation_header: confirmation_header_name
                     .map(http::HeaderName::from_static),
             }

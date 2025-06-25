@@ -80,11 +80,6 @@ impl TryFrom<&TcpSslConnector> for Option<ConnectionProxyConfig> {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct DirectConnector {
-    pub dns_resolver: DnsResolver,
-}
-
 /// Stateless [`Connector`] for [`TcpRoute`]s.
 #[derive(Debug, Default)]
 pub struct StatelessTcp;

@@ -5,13 +5,9 @@
 
 use std::net::IpAddr;
 use std::num::NonZeroU16;
-use std::str::FromStr;
-use std::string::ToString;
 use std::sync::Arc;
 
-use ::http::uri::PathAndQuery;
-use ::http::Uri;
-use http::{HeaderMap, HeaderName, HeaderValue};
+use http::{HeaderName, HeaderValue};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::certs::RootCertificates;
@@ -81,32 +77,6 @@ pub enum EnforceMinimumTls {
     No,
 }
 
-/// A collection of commonly used decorators for HTTP requests.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum HttpRequestDecorator {
-    /// Adds a collection of headers to the request
-    Headers(http::header::HeaderMap),
-    /// Prefixes the path portion of the request with the given string.
-    PathPrefix(&'static str),
-    /// Applies generic decoration logic.
-    Generic(fn(http::request::Builder) -> http::request::Builder),
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct HttpRequestDecoratorSeq(Vec<HttpRequestDecorator>);
-
-impl From<HttpRequestDecorator> for HttpRequestDecoratorSeq {
-    fn from(value: HttpRequestDecorator) -> Self {
-        Self(vec![value])
-    }
-}
-
-impl HttpRequestDecoratorSeq {
-    pub fn add(&mut self, decorator: HttpRequestDecorator) {
-        self.0.push(decorator)
-    }
-}
-
 /// The fully general version of [`AsStaticHttpHeader`], where the name of the header may depend on the
 /// value.
 pub trait AsHttpHeader {
@@ -128,13 +98,6 @@ impl<T: AsStaticHttpHeader> AsHttpHeader for T {
     }
 }
 
-impl<T: AsHttpHeader> From<&'_ T> for HttpRequestDecorator {
-    fn from(value: &'_ T) -> Self {
-        let (name, value) = value.as_header();
-        HttpRequestDecorator::header(name, value)
-    }
-}
-
 /// Contains all information required to establish an HTTP connection to a remote endpoint.
 ///
 /// For WebSocket connections, `http_request_decorator` will only be applied to the initial
@@ -145,8 +108,8 @@ pub struct ConnectionParams {
     pub route_type: RouteType,
     /// Host name used in the HTTP headers.
     pub http_host: Arc<str>,
-    /// Applied to all HTTP requests.
-    pub http_request_decorator: HttpRequestDecoratorSeq,
+    /// Prefix prepended to the path of all HTTP requests.
+    pub path_prefix: Option<&'static str>,
     /// If present, differentiates HTTP responses that actually come from the remote endpoint from
     /// those produced by an intermediate server.
     pub connection_confirmation_header: Option<HeaderName>,
@@ -155,12 +118,6 @@ pub struct ConnectionParams {
 }
 
 impl ConnectionParams {
-    pub fn with_decorator(mut self, decorator: HttpRequestDecorator) -> Self {
-        let HttpRequestDecoratorSeq(decorators) = &mut self.http_request_decorator;
-        decorators.push(decorator);
-        self
-    }
-
     pub fn with_confirmation_header(mut self, header: HeaderName) -> Self {
         self.connection_confirmation_header = Some(header);
         self
@@ -265,48 +222,6 @@ impl ServiceConnectionInfo {
             "route={};dns_source={};ip_type={}",
             self.route_type, self.dns_source, ip_type
         )
-    }
-}
-
-impl HttpRequestDecoratorSeq {
-    pub fn decorate_request(
-        &self,
-        request_builder: http::request::Builder,
-    ) -> http::request::Builder {
-        self.0
-            .iter()
-            .fold(request_builder, |rb, dec| dec.decorate_request(rb))
-    }
-}
-
-impl HttpRequestDecorator {
-    /// Convenience constructor for [`HttpRequestDecorator::Headers`] with a map
-    /// with one entry.
-    pub fn header(name: HeaderName, value: HeaderValue) -> Self {
-        Self::Headers(HeaderMap::from_iter([(name, value)]))
-    }
-
-    fn decorate_request(&self, request_builder: http::request::Builder) -> http::request::Builder {
-        match self {
-            Self::Generic(decorator) => decorator(request_builder),
-            Self::Headers(header_map) => header_map
-                .into_iter()
-                .fold(request_builder, |builder, (name, value)| {
-                    builder.header(name, value)
-                }),
-            Self::PathPrefix(prefix) => {
-                let uri = request_builder.uri_ref().expect("request has URI set");
-                let mut parts = (*uri).clone().into_parts();
-                let decorated_pq = match parts.path_and_query {
-                    Some(pq) => format!("{}{}", prefix, pq.as_str()),
-                    None => prefix.to_string(),
-                };
-                parts.path_and_query = Some(
-                    PathAndQuery::from_str(decorated_pq.as_str()).expect("valid path and query"),
-                );
-                request_builder.uri(Uri::from_parts(parts).expect("valid uri"))
-            }
-        }
     }
 }
 
@@ -484,11 +399,9 @@ pub mod testutil {
 #[cfg(test)]
 pub(crate) mod test {
     use const_str::ip_addr;
-    use http::Request;
 
     use crate::host::Host;
-    use crate::utils::basic_authorization;
-    use crate::{DnsSource, HttpRequestDecorator, RouteType, ServiceConnectionInfo};
+    use crate::{DnsSource, RouteType, ServiceConnectionInfo};
 
     #[test]
     fn connection_info_description() {
@@ -511,37 +424,5 @@ pub(crate) mod test {
             .description(),
             "route=test;dns_source=systemlookup;ip_type=V4"
         )
-    }
-
-    #[test]
-    fn test_path_prefix_decorator() {
-        let cases = vec![
-            ("https://chat.signal.org/", "/chat/"),
-            ("https://chat.signal.org/v1", "/chat/v1"),
-            ("https://chat.signal.org/v1?a=b", "/chat/v1"),
-            ("https://chat.signal.org/v1/endpoint", "/chat/v1/endpoint"),
-        ];
-        for (input, expected_path) in cases.into_iter() {
-            let builder = Request::get(input);
-            let builder = HttpRequestDecorator::PathPrefix("/chat").decorate_request(builder);
-            let (parts, _) = builder.body(()).unwrap().into_parts();
-            assert_eq!(expected_path, parts.uri.path(), "for input [{input}]")
-        }
-    }
-
-    #[test]
-    fn test_header_auth_decorator() {
-        let expected = "Basic dXNybm06cHNzd2Q=";
-        let builder = Request::get("https://chat.signal.org/");
-        let builder = HttpRequestDecorator::header(
-            http::header::AUTHORIZATION,
-            basic_authorization("usrnm", "psswd"),
-        )
-        .decorate_request(builder);
-        let (parts, _) = builder.body(()).unwrap().into_parts();
-        assert_eq!(
-            expected,
-            parts.headers.get(http::header::AUTHORIZATION).unwrap()
-        );
     }
 }
