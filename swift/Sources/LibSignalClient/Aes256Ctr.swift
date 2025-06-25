@@ -17,8 +17,12 @@ public class Aes256Ctr32: NativeHandleOwner<SignalMutPointerAes256Ctr32> {
         let handle = try key.withUnsafeBorrowedBuffer { keyBuffer in
             try nonce.withUnsafeBytes { nonceBytes in
                 guard nonceBytes.count == Self.nonceLength else {
-                    throw SignalError.invalidArgument("nonce must be \(Self.nonceLength) bytes (got \(nonceBytes.count))")
+                    throw SignalError.invalidArgument(
+                        "nonce must be \(Self.nonceLength) bytes (got \(nonceBytes.count))"
+                    )
                 }
+                // swift-format-ignore
+                // (vertical alignment is clearer)
                 let initialCounter =
                     (UInt32(nonceBytes[12]) << 24) |
                     (UInt32(nonceBytes[13]) << 16) |
@@ -27,31 +31,37 @@ public class Aes256Ctr32: NativeHandleOwner<SignalMutPointerAes256Ctr32> {
                 var nonceBufferWithoutCounter = SignalBorrowedBuffer(nonceBytes)
                 nonceBufferWithoutCounter.length -= 4
                 var result = SignalMutPointerAes256Ctr32()
-                try checkError(signal_aes256_ctr32_new(
-                    &result,
-                    keyBuffer,
-                    nonceBufferWithoutCounter,
-                    initialCounter
-                ))
+                try checkError(
+                    signal_aes256_ctr32_new(
+                        &result,
+                        keyBuffer,
+                        nonceBufferWithoutCounter,
+                        initialCounter
+                    )
+                )
                 return result
             }
         }
         self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerAes256Ctr32>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerAes256Ctr32>
+    ) -> SignalFfiErrorRef? {
         return signal_aes256_ctr32_destroy(handle.pointer)
     }
 
     public func process(_ message: inout Data) throws {
         try withNativeHandle { nativeHandle in
             try message.withUnsafeMutableBytes { messageBytes in
-                try checkError(signal_aes256_ctr32_process(
-                    nativeHandle,
-                    SignalBorrowedMutableBuffer(messageBytes),
-                    0,
-                    UInt32(messageBytes.count)
-                ))
+                try checkError(
+                    signal_aes256_ctr32_process(
+                        nativeHandle,
+                        SignalBorrowedMutableBuffer(messageBytes),
+                        0,
+                        UInt32(messageBytes.count)
+                    )
+                )
             }
         }
     }

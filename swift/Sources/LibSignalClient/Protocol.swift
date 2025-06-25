@@ -18,7 +18,14 @@ public func signalEncrypt<Bytes: ContiguousBytes>(
         try withSessionStore(sessionStore, context) { ffiSessionStore in
             try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
                 try invokeFnReturningNativeHandle {
-                    signal_encrypt_message($0, messageBuffer, addressHandle.const(), ffiSessionStore, ffiIdentityStore, UInt64(now.timeIntervalSince1970 * 1000))
+                    signal_encrypt_message(
+                        $0,
+                        messageBuffer,
+                        addressHandle.const(),
+                        ffiSessionStore,
+                        ffiIdentityStore,
+                        UInt64(now.timeIntervalSince1970 * 1000)
+                    )
                 }
             }
         }
@@ -36,7 +43,13 @@ public func signalDecrypt(
         try withSessionStore(sessionStore, context) { ffiSessionStore in
             try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
                 try invokeFnReturningData {
-                    signal_decrypt_message($0, messageHandle.const(), addressHandle.const(), ffiSessionStore, ffiIdentityStore)
+                    signal_decrypt_message(
+                        $0,
+                        messageHandle.const(),
+                        addressHandle.const(),
+                        ffiSessionStore,
+                        ffiIdentityStore
+                    )
                 }
             }
         }
@@ -61,7 +74,17 @@ public func signalDecryptPreKey(
                     try withSignedPreKeyStore(signedPreKeyStore, context) { ffiSignedPreKeyStore in
                         try withKyberPreKeyStore(kyberPreKeyStore, context) { ffiKyberPreKeyStore in
                             try invokeFnReturningData {
-                                signal_decrypt_pre_key_message($0, messageHandle.const(), addressHandle.const(), ffiSessionStore, ffiIdentityStore, ffiPreKeyStore, ffiSignedPreKeyStore, ffiKyberPreKeyStore, usePqRatchet)
+                                signal_decrypt_pre_key_message(
+                                    $0,
+                                    messageHandle.const(),
+                                    addressHandle.const(),
+                                    ffiSessionStore,
+                                    ffiIdentityStore,
+                                    ffiPreKeyStore,
+                                    ffiSignedPreKeyStore,
+                                    ffiKyberPreKeyStore,
+                                    usePqRatchet
+                                )
                             }
                         }
                     }
@@ -83,7 +106,16 @@ public func processPreKeyBundle(
     return try withAllBorrowed(bundle, address) { bundleHandle, addressHandle in
         try withSessionStore(sessionStore, context) { ffiSessionStore in
             try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
-                try checkError(signal_process_prekey_bundle(bundleHandle.const(), addressHandle.const(), ffiSessionStore, ffiIdentityStore, UInt64(now.timeIntervalSince1970 * 1000), usePqRatchet))
+                try checkError(
+                    signal_process_prekey_bundle(
+                        bundleHandle.const(),
+                        addressHandle.const(),
+                        ffiSessionStore,
+                        ffiIdentityStore,
+                        UInt64(now.timeIntervalSince1970 * 1000),
+                        usePqRatchet
+                    )
+                )
             }
         }
     }
@@ -128,11 +160,13 @@ public func processSenderKeyDistributionMessage(
 ) throws {
     return try withAllBorrowed(sender, message) { senderHandle, messageHandle in
         try withSenderKeyStore(store, context) {
-            try checkError(signal_process_sender_key_distribution_message(
-                senderHandle.const(),
-                messageHandle.const(),
-                $0
-            ))
+            try checkError(
+                signal_process_sender_key_distribution_message(
+                    senderHandle.const(),
+                    messageHandle.const(),
+                    $0
+                )
+            )
         }
     }
 }

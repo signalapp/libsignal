@@ -60,5 +60,6 @@ func readResource(forName name: String) -> Data {
         contentsOf: URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .appendingPathComponent("Resources")
-            .appendingPathComponent(name))
+            .appendingPathComponent(name)
+    )
 }

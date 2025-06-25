@@ -15,7 +15,9 @@ let groupSendEndorsementsSuite = BenchmarkSuite(name: "GroupSendEndorsements") {
     let groupParams = try! GroupSecretParams.generate()
     let now = UInt64(Date().timeIntervalSince1970)
     let startOfDay = now - now % SECONDS_PER_DAY
-    let expiration = Date(timeIntervalSince1970: TimeInterval(startOfDay)).addingTimeInterval(TimeInterval(2 * SECONDS_PER_DAY))
+    let expiration = Date(timeIntervalSince1970: TimeInterval(startOfDay)).addingTimeInterval(
+        TimeInterval(2 * SECONDS_PER_DAY)
+    )
 
     for groupSize in [10, 100, 1000] {
         let members = (0..<groupSize).map { _ in Aci(fromUUID: UUID()) }
@@ -26,13 +28,31 @@ let groupSendEndorsementsSuite = BenchmarkSuite(name: "GroupSendEndorsements") {
         let response = GroupSendEndorsementsResponse.issue(groupMembers: encryptedMembers, keyPair: keyPair)
 
         suite.benchmark("receiveWithServiceIds/\(groupSize)") {
-            blackHole(try! response.receive(groupMembers: members, localUser: members[0], groupParams: groupParams, serverParams: serverPublicParams))
+            blackHole(
+                try! response.receive(
+                    groupMembers: members,
+                    localUser: members[0],
+                    groupParams: groupParams,
+                    serverParams: serverPublicParams
+                )
+            )
         }
         suite.benchmark("receiveWithCiphertexts/\(groupSize)") {
-            blackHole(try! response.receive(groupMembers: encryptedMembers, localUser: encryptedMembers[0], serverParams: serverPublicParams))
+            blackHole(
+                try! response.receive(
+                    groupMembers: encryptedMembers,
+                    localUser: encryptedMembers[0],
+                    serverParams: serverPublicParams
+                )
+            )
         }
 
-        let endorsements = try! response.receive(groupMembers: members, localUser: members[0], groupParams: groupParams, serverParams: serverPublicParams)
+        let endorsements = try! response.receive(
+            groupMembers: members,
+            localUser: members[0],
+            groupParams: groupParams,
+            serverParams: serverPublicParams
+        )
 
         suite.benchmark("toToken/\(groupSize)") {
             blackHole(endorsements.endorsements.map { $0.toToken(groupParams: groupParams) })

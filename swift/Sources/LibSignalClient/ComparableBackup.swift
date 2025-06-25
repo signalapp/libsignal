@@ -73,7 +73,9 @@ public class ComparableBackup: NativeHandleOwner<SignalMutPointerComparableBacku
         }
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerComparableBackup>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerComparableBackup>
+    ) -> SignalFfiErrorRef? {
         signal_comparable_backup_destroy(handle.pointer)
     }
 }

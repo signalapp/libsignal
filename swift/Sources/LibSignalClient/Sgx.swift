@@ -25,7 +25,9 @@ import SignalFfi
 /// which decrypts and verifies it, passing the plaintext back to the client for processing.
 ///
 public class SgxClient: NativeHandleOwner<SignalMutPointerSgxClientState> {
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerSgxClientState>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerSgxClientState>
+    ) -> SignalFfiErrorRef? {
         return signal_sgx_client_state_destroy(handle.pointer)
     }
 

@@ -16,7 +16,7 @@ let package = Package(
         .macOS(.v10_15), .iOS(.v13),
     ],
     products: [
-        .executable(name: "Benchmarks", targets: ["Benchmarks"]),
+        .executable(name: "Benchmarks", targets: ["Benchmarks"])
     ],
     dependencies: [
         .package(url: "https://github.com/google/swift-benchmark", from: "0.1.0"),
@@ -27,12 +27,12 @@ let package = Package(
             name: "Benchmarks",
             dependencies: [
                 .product(name: "Benchmark", package: "swift-benchmark"),
-                .product(name: "LibSignalClient", package: "swift" /* the folder name, sigh */ ),
+                .product(name: "LibSignalClient", package: "swift" /* the folder name, sigh */),
             ],
             linkerSettings: [
                 .unsafeFlags(["-L\(rustReleaseBuildDir)"], .when(configuration: .release)),
                 .unsafeFlags(["-L\(rustDebugBuildDir)"], .when(configuration: .debug)),
             ]
-        ),
+        )
     ]
 )

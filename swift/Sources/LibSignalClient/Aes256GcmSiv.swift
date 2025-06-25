@@ -16,7 +16,9 @@ public class Aes256GcmSiv: NativeHandleOwner<SignalMutPointerAes256GcmSiv> {
         self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerAes256GcmSiv>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerAes256GcmSiv>
+    ) -> SignalFfiErrorRef? {
         return signal_aes256_gcm_siv_destroy(handle.pointer)
     }
 

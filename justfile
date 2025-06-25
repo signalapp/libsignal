@@ -29,7 +29,7 @@ format-jni:
     (cd java && ./gradlew spotlessApply)
 
 format-ffi:
-    (cd swift && swiftformat --swiftversion 5 .)
+    (cd swift && swift format --in-place --parallel --recursive .)
 
 format-node:
     (cd node && npm run format)
@@ -47,7 +47,7 @@ format-all: format-jni format-ffi format-node
 check-format-all:
     cargo fmt --all -- --check
     taplo fmt --check
-    (cd swift && swiftformat --swiftversion 5 . --lint)
+    @echo 'warning: `swift format` does not have a check mode'
     (cd node && npm run format-check)
     (cd java && ./gradlew spotlessCheck)
 

@@ -4,9 +4,8 @@
 //
 
 import Foundation
-import XCTest
-
 import LibSignalClient
+import XCTest
 
 class ServiceIdTests: TestCaseBase {
     static let TEST_UUID_STRING = "e36fdce7-36da-4c6f-a21b-9afe2b754650"
@@ -42,15 +41,21 @@ class ServiceIdTests: TestCaseBase {
 
     // swiftlint:disable force_cast
     func testParseFromString() throws {
-        _ = try! ServiceId.parseFrom(
-            serviceIdString: Self.TEST_UUID_STRING) as! Aci
+        _ =
+            try! ServiceId.parseFrom(
+                serviceIdString: Self.TEST_UUID_STRING
+            ) as! Aci
         let _: Aci = try! Aci.parseFrom(
-            serviceIdString: Self.TEST_UUID_STRING)
+            serviceIdString: Self.TEST_UUID_STRING
+        )
 
-        _ = try! ServiceId.parseFrom(
-            serviceIdString: "PNI:" + Self.TEST_UUID_STRING) as! Pni
+        _ =
+            try! ServiceId.parseFrom(
+                serviceIdString: "PNI:" + Self.TEST_UUID_STRING
+            ) as! Pni
         let _: Pni = try! Pni.parseFrom(
-            serviceIdString: "PNI:" + Self.TEST_UUID_STRING)
+            serviceIdString: "PNI:" + Self.TEST_UUID_STRING
+        )
 
         do {
             _ = try ServiceId.parseFrom(serviceIdString: "ACI:" + Self.TEST_UUID_STRING)
@@ -63,15 +68,21 @@ class ServiceIdTests: TestCaseBase {
     }
 
     func testParseFromBinary() throws {
-        _ = try! ServiceId.parseFrom(
-            serviceIdBinary: Aci(fromUUID: UUID()).serviceIdBinary) as! Aci
+        _ =
+            try! ServiceId.parseFrom(
+                serviceIdBinary: Aci(fromUUID: UUID()).serviceIdBinary
+            ) as! Aci
         let _: Aci = try! Aci.parseFrom(
-            serviceIdBinary: Aci(fromUUID: UUID()).serviceIdBinary)
+            serviceIdBinary: Aci(fromUUID: UUID()).serviceIdBinary
+        )
 
-        _ = try! ServiceId.parseFrom(
-            serviceIdBinary: Pni(fromUUID: UUID()).serviceIdBinary) as! Pni
+        _ =
+            try! ServiceId.parseFrom(
+                serviceIdBinary: Pni(fromUUID: UUID()).serviceIdBinary
+            ) as! Pni
         let _: Pni = try! Pni.parseFrom(
-            serviceIdBinary: Pni(fromUUID: UUID()).serviceIdBinary)
+            serviceIdBinary: Pni(fromUUID: UUID()).serviceIdBinary
+        )
 
         do {
             _ = try ServiceId.parseFrom(serviceIdBinary: [0] + Self.TEST_UUID_BYTES)

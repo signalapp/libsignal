@@ -22,7 +22,12 @@ public protocol ChatConnectionListener: ConnectionEventsListener<AuthenticatedCh
     ///
     /// If `sendAck` is not called, the server will leave this message in the message queue and
     /// attempt to deliver it again in the future.
-    func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: @escaping () throws -> Void)
+    func chatConnection(
+        _ chat: AuthenticatedChatConnection,
+        didReceiveIncomingMessage envelope: Data,
+        serverDeliveryTimestamp: UInt64,
+        sendAck: @escaping () throws -> Void
+    )
 
     /// Called when the server indicates that there are no further messages in the message queue.
     ///
@@ -53,7 +58,9 @@ extension AuthenticatedChatConnection: ChatListenerConnection {}
 
 internal class ChatListenerBridge {
     private class AckHandleOwner: NativeHandleOwner<SignalMutPointerServerMessageAck> {
-        override class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerServerMessageAck>) -> SignalFfiErrorRef? {
+        override class func destroyNativeHandle(
+            _ handle: NonNull<SignalMutPointerServerMessageAck>
+        ) -> SignalFfiErrorRef? {
             signal_server_message_ack_destroy(handle.pointer)
         }
     }
@@ -100,7 +107,8 @@ internal class ChatListenerBridge {
 
             let envelopeData = Data(bytes: envelope.base, count: envelope.length)
             bridge.chatListener.chatConnection(
-                chatConnection, didReceiveIncomingMessage: envelopeData,
+                chatConnection,
+                didReceiveIncomingMessage: envelopeData,
                 serverDeliveryTimestamp: timestamp
             ) { _ = ackHandleOwner.withNativeHandle { ackHandle in signal_server_message_ack_send(ackHandle.const()) } }
         }
@@ -195,16 +203,31 @@ internal class UnauthConnectionEventsListenerBridge {
     func makeListenerStruct() -> SignalFfiChatListenerStruct {
         let receivedIncomingMessage: SignalReceivedIncomingMessage = { _, _, _, _ in
             // Not used in the unauth chat listener
-            LoggerBridge.shared?.logger.log(level: .error, file: #fileID, line: #line, message: "unauth socket received an incoming request")
+            LoggerBridge.shared?.logger.log(
+                level: .error,
+                file: #fileID,
+                line: #line,
+                message: "unauth socket received an incoming request"
+            )
         }
         let receivedQueueEmpty: SignalReceivedQueueEmpty = { _ in
             // Not used in the unauth chat listener
-            LoggerBridge.shared?.logger.log(level: .error, file: #fileID, line: #line, message: "unauth socket received a \"queue empty\" notification")
+            LoggerBridge.shared?.logger.log(
+                level: .error,
+                file: #fileID,
+                line: #line,
+                message: "unauth socket received a \"queue empty\" notification"
+            )
         }
         let receivedAlerts: SignalReceivedAlerts = { _, alerts in
             // Not used in the unauth chat listener
             if alerts.lengths.length != 0 {
-                LoggerBridge.shared?.logger.log(level: .error, file: #fileID, line: #line, message: "unauth socket received \(alerts.lengths.length) alerts")
+                LoggerBridge.shared?.logger.log(
+                    level: .error,
+                    file: #fileID,
+                    line: #line,
+                    message: "unauth socket received \(alerts.lengths.length) alerts"
+                )
             }
         }
         let connectionInterrupted: SignalConnectionInterrupted = { rawCtx, maybeError in

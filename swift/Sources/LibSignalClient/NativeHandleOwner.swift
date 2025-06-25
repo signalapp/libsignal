@@ -152,7 +152,10 @@ public class ClonableHandleOwner<PointerType: SignalMutPointer>: NativeHandleOwn
         handle = nil
     }
 
-    internal class func cloneNativeHandle(_: inout PointerType, currentHandle: PointerType.ConstPointer) -> SignalFfiErrorRef? {
+    internal class func cloneNativeHandle(
+        _: inout PointerType,
+        currentHandle: PointerType.ConstPointer
+    ) -> SignalFfiErrorRef? {
         fatalError("must be implemented by subclasses")
     }
 }
@@ -173,7 +176,9 @@ internal func cloneOrForgetAsNeeded<Owner: ClonableHandleOwner<PointerType>, Poi
 ///
 /// As an optimization, steals the handle if `handleOwner` has no other references.
 /// Checking this requires using `inout`; the reference itself won't be modified.
-internal func cloneOrTakeHandle<Owner: ClonableHandleOwner<PointerType>, PointerType>(from handleOwner: inout Owner) throws -> PointerType {
+internal func cloneOrTakeHandle<Owner: ClonableHandleOwner<PointerType>, PointerType>(
+    from handleOwner: inout Owner
+) throws -> PointerType {
     if isKnownUniquelyReferenced(&handleOwner) {
         return handleOwner.takeNativeHandle()
     }

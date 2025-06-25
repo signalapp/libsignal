@@ -14,11 +14,13 @@ public class ProtocolAddress: ClonableHandleOwner<SignalMutPointerProtocolAddres
     /// - Throws: ``SignalError#invalidProtocolAddress(name:deviceId:message:)`` if the address is not valid.
     public convenience init(name: String, deviceId: UInt32) throws {
         var handle = SignalMutPointerProtocolAddress()
-        try checkError(signal_address_new(
-            &handle,
-            name,
-            deviceId
-        ))
+        try checkError(
+            signal_address_new(
+                &handle,
+                name,
+                deviceId
+            )
+        )
         self.init(owned: NonNull(handle)!)
     }
 
@@ -38,11 +40,16 @@ public class ProtocolAddress: ClonableHandleOwner<SignalMutPointerProtocolAddres
         }
     }
 
-    override internal class func cloneNativeHandle(_ newHandle: inout SignalMutPointerProtocolAddress, currentHandle: SignalConstPointerProtocolAddress) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(
+        _ newHandle: inout SignalMutPointerProtocolAddress,
+        currentHandle: SignalConstPointerProtocolAddress
+    ) -> SignalFfiErrorRef? {
         return signal_address_clone(&newHandle, currentHandle)
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerProtocolAddress>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerProtocolAddress>
+    ) -> SignalFfiErrorRef? {
         return signal_address_destroy(handle.pointer)
     }
 

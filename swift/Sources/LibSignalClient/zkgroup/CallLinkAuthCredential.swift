@@ -11,13 +11,30 @@ public class CallLinkAuthCredential: ByteArray, @unchecked Sendable {
         try super.init(contents, checkValid: signal_call_link_auth_credential_check_valid_contents)
     }
 
-    public func present(userId: Aci, redemptionTime: Date, serverParams: GenericServerPublicParams, callLinkParams: CallLinkSecretParams) -> CallLinkAuthCredentialPresentation {
+    public func present(
+        userId: Aci,
+        redemptionTime: Date,
+        serverParams: GenericServerPublicParams,
+        callLinkParams: CallLinkSecretParams
+    ) -> CallLinkAuthCredentialPresentation {
         return failOnError {
-            self.present(userId: userId, redemptionTime: redemptionTime, serverParams: serverParams, callLinkParams: callLinkParams, randomness: try .generate())
+            self.present(
+                userId: userId,
+                redemptionTime: redemptionTime,
+                serverParams: serverParams,
+                callLinkParams: callLinkParams,
+                randomness: try .generate()
+            )
         }
     }
 
-    public func present(userId: Aci, redemptionTime: Date, serverParams: GenericServerPublicParams, callLinkParams: CallLinkSecretParams, randomness: Randomness) -> CallLinkAuthCredentialPresentation {
+    public func present(
+        userId: Aci,
+        redemptionTime: Date,
+        serverParams: GenericServerPublicParams,
+        callLinkParams: CallLinkSecretParams,
+        randomness: Randomness
+    ) -> CallLinkAuthCredentialPresentation {
         return failOnError {
             try withAllBorrowed(
                 self,
@@ -27,7 +44,15 @@ public class CallLinkAuthCredential: ByteArray, @unchecked Sendable {
                 randomness
             ) { contents, userId, serverParams, callLinkParams, randomness in
                 try invokeFnReturningVariableLengthSerialized {
-                    signal_call_link_auth_credential_present_deterministic($0, contents, userId, UInt64(redemptionTime.timeIntervalSince1970), serverParams, callLinkParams, randomness)
+                    signal_call_link_auth_credential_present_deterministic(
+                        $0,
+                        contents,
+                        userId,
+                        UInt64(redemptionTime.timeIntervalSince1970),
+                        serverParams,
+                        callLinkParams,
+                        randomness
+                    )
                 }
             }
         }

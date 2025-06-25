@@ -7,11 +7,16 @@ import Foundation
 import SignalFfi
 
 public class SenderKeyRecord: ClonableHandleOwner<SignalMutPointerSenderKeyRecord> {
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerSenderKeyRecord>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerSenderKeyRecord>
+    ) -> SignalFfiErrorRef? {
         return signal_sender_key_record_destroy(handle.pointer)
     }
 
-    override internal class func cloneNativeHandle(_ newHandle: inout SignalMutPointerSenderKeyRecord, currentHandle: SignalConstPointerSenderKeyRecord) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(
+        _ newHandle: inout SignalMutPointerSenderKeyRecord,
+        currentHandle: SignalConstPointerSenderKeyRecord
+    ) -> SignalFfiErrorRef? {
         return signal_sender_key_record_clone(&newHandle, currentHandle)
     }
 

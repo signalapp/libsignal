@@ -4,15 +4,16 @@
 //
 
 import Foundation
-@testable import LibSignalClient
 import SignalFfi
 import XCTest
 
+@testable import LibSignalClient
+
 extension ConnectionManager {
     func assertIsUsingProxyIs(_ value: Int32) {
-// The testing native function used to implement this isn't available on device
-// builds to save on code size. If it's present use it, otherwise this is a no-op.
-#if !os(iOS) || targetEnvironment(simulator)
+        // The testing native function used to implement this isn't available on device
+        // builds to save on code size. If it's present use it, otherwise this is a no-op.
+        #if !os(iOS) || targetEnvironment(simulator)
         let isUsingProxy =
             withNativeHandle { handle in
                 failOnError {
@@ -22,15 +23,15 @@ extension ConnectionManager {
                 }
             }
         XCTAssertEqual(isUsingProxy, value)
-#endif
+        #endif
     }
 }
 
 final class ChatServiceTests: TestCaseBase {
     private static let userAgent = "test"
 
-// These testing endpoints aren't generated in device builds, to save on code size.
-#if !os(iOS) || targetEnvironment(simulator)
+    // These testing endpoints aren't generated in device builds, to save on code size.
+    #if !os(iOS) || targetEnvironment(simulator)
 
     private static let expectedStatus: UInt16 = 200
     private static let expectedMessage = "OK"
@@ -127,27 +128,45 @@ final class ChatServiceTests: TestCaseBase {
         let expectedMethod = "GET"
         let expectedPathAndQuery = "/test"
 
-        let request = ChatConnection.Request(method: expectedMethod, pathAndQuery: expectedPathAndQuery, headers: Self.expectedHeaders, body: Self.expectedContent, timeout: 5)
+        let request = ChatConnection.Request(
+            method: expectedMethod,
+            pathAndQuery: expectedPathAndQuery,
+            headers: Self.expectedHeaders,
+            body: Self.expectedContent,
+            timeout: 5
+        )
         let internalRequest = try ChatConnection.Request.InternalRequest(request)
         try internalRequest.withNativeHandle { internalRequest in
-            XCTAssertEqual(expectedMethod, try invokeFnReturningString {
-                signal_testing_chat_request_get_method($0, internalRequest.const())
-            })
-            XCTAssertEqual(expectedPathAndQuery, try invokeFnReturningString {
-                signal_testing_chat_request_get_path($0, internalRequest.const())
-            })
-            XCTAssertEqual(Self.expectedContent, try invokeFnReturningData {
-                signal_testing_chat_request_get_body($0, internalRequest.const())
-            })
+            XCTAssertEqual(
+                expectedMethod,
+                try invokeFnReturningString {
+                    signal_testing_chat_request_get_method($0, internalRequest.const())
+                }
+            )
+            XCTAssertEqual(
+                expectedPathAndQuery,
+                try invokeFnReturningString {
+                    signal_testing_chat_request_get_path($0, internalRequest.const())
+                }
+            )
+            XCTAssertEqual(
+                Self.expectedContent,
+                try invokeFnReturningData {
+                    signal_testing_chat_request_get_body($0, internalRequest.const())
+                }
+            )
             for (k, v) in Self.expectedHeaders {
-                XCTAssertEqual(v, try invokeFnReturningString {
-                    signal_testing_chat_request_get_header_value($0, internalRequest.const(), k)
-                })
+                XCTAssertEqual(
+                    v,
+                    try invokeFnReturningString {
+                        signal_testing_chat_request_get_header_value($0, internalRequest.const(), k)
+                    }
+                )
             }
         }
     }
 
-#endif
+    #endif
 
     func testInvalidProxyRejected() {
         let net = Net(env: .production, userAgent: Self.userAgent)
@@ -182,8 +201,8 @@ final class ChatServiceTests: TestCaseBase {
 final class ChatConnectionTests: TestCaseBase {
     private static let userAgent = "test"
 
-// These testing endpoints aren't generated in device builds, to save on code size.
-#if !os(iOS) || targetEnvironment(simulator)
+    // These testing endpoints aren't generated in device builds, to save on code size.
+    #if !os(iOS) || targetEnvironment(simulator)
     func testListenerCallbacks() async throws {
         class Listener: ChatConnectionListener {
             let queueEmpty: XCTestExpectation
@@ -193,7 +212,10 @@ final class ChatConnectionTests: TestCaseBase {
             let connectionInterrupted: XCTestExpectation
 
             var expectations: [XCTestExpectation] {
-                [self.alertsReceived, self.firstMessageReceived, self.secondMessageReceived, self.queueEmpty, self.connectionInterrupted]
+                [
+                    self.alertsReceived, self.firstMessageReceived, self.secondMessageReceived, self.queueEmpty,
+                    self.connectionInterrupted,
+                ]
             }
 
             init(
@@ -210,7 +232,12 @@ final class ChatConnectionTests: TestCaseBase {
                 self.connectionInterrupted = connectionInterrupted
             }
 
-            func chatConnection(_: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () throws -> Void) {
+            func chatConnection(
+                _: AuthenticatedChatConnection,
+                didReceiveIncomingMessage envelope: Data,
+                serverDeliveryTimestamp: UInt64,
+                sendAck: () throws -> Void
+            ) {
                 // This assumes a little-endian platform.
                 XCTAssertEqual(envelope, withUnsafeBytes(of: serverDeliveryTimestamp) { Data($0) })
                 switch serverDeliveryTimestamp {
@@ -263,13 +290,17 @@ final class ChatConnectionTests: TestCaseBase {
         // 3: {1000i64}
         // 5: {"x-signal-timestamp:1000"}
         // 4: 1
-        fakeRemote.injectServerRequest(base64: "CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoI6AMAAAAAAAAqF3gtc2lnbmFsLXRpbWVzdGFtcDoxMDAwIAE=")
+        fakeRemote.injectServerRequest(
+            base64: "CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoI6AMAAAAAAAAqF3gtc2lnbmFsLXRpbWVzdGFtcDoxMDAwIAE="
+        )
         // 1: {"PUT"}
         // 2: {"/api/v1/message"}
         // 3: {2000i64}
         // 5: {"x-signal-timestamp:2000"}
         // 4: 2
-        fakeRemote.injectServerRequest(base64: "CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoI0AcAAAAAAAAqF3gtc2lnbmFsLXRpbWVzdGFtcDoyMDAwIAI=")
+        fakeRemote.injectServerRequest(
+            base64: "CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoI0AcAAAAAAAAqF3gtc2lnbmFsLXRpbWVzdGFtcDoyMDAwIAI="
+        )
 
         // Sending an invalid message should not affect the listener at all, nor should it stop future requests.
         // 1: {"PUT"}
@@ -289,15 +320,29 @@ final class ChatConnectionTests: TestCaseBase {
 
     func testAuthenticatedSending() async throws {
         class NoOpListener: ChatConnectionListener {
-            func chatConnection(_: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () throws -> Void) {}
+            func chatConnection(
+                _: AuthenticatedChatConnection,
+                didReceiveIncomingMessage envelope: Data,
+                serverDeliveryTimestamp: UInt64,
+                sendAck: () throws -> Void
+            ) {}
 
             func connectionWasInterrupted(_: AuthenticatedChatConnection, error: Error?) {}
         }
         let tokioAsyncContext = TokioAsyncContext()
-        let (chat, fakeRemote) = AuthenticatedChatConnection.fakeConnect(tokioAsyncContext: tokioAsyncContext, listener: NoOpListener())
+        let (chat, fakeRemote) = AuthenticatedChatConnection.fakeConnect(
+            tokioAsyncContext: tokioAsyncContext,
+            listener: NoOpListener()
+        )
         defer { withExtendedLifetime(chat) {} }
 
-        let request = ChatRequest(method: "PUT", pathAndQuery: "/some/path", headers: ["purpose": "test request"], body: Data([1, 1, 2, 3]), timeout: TimeInterval(5))
+        let request = ChatRequest(
+            method: "PUT",
+            pathAndQuery: "/some/path",
+            headers: ["purpose": "test request"],
+            body: Data([1, 1, 2, 3]),
+            timeout: TimeInterval(5)
+        )
         async let responseFuture = chat.send(request)
 
         let (requestFromServer, id) = try await fakeRemote.getNextIncomingRequest()
@@ -326,10 +371,19 @@ final class ChatConnectionTests: TestCaseBase {
             func connectionWasInterrupted(_: UnauthenticatedChatConnection, error: Error?) {}
         }
         let tokioAsyncContext = TokioAsyncContext()
-        let (chat, fakeRemote) = UnauthenticatedChatConnection.fakeConnect(tokioAsyncContext: tokioAsyncContext, listener: NoOpListener())
+        let (chat, fakeRemote) = UnauthenticatedChatConnection.fakeConnect(
+            tokioAsyncContext: tokioAsyncContext,
+            listener: NoOpListener()
+        )
         defer { withExtendedLifetime(chat) {} }
 
-        let request = ChatRequest(method: "PUT", pathAndQuery: "/some/path", headers: ["purpose": "test request"], body: Data([1, 1, 2, 3]), timeout: TimeInterval(5))
+        let request = ChatRequest(
+            method: "PUT",
+            pathAndQuery: "/some/path",
+            headers: ["purpose": "test request"],
+            body: Data([1, 1, 2, 3]),
+            timeout: TimeInterval(5)
+        )
         async let responseFuture = chat.send(request)
 
         let (requestFromServer, id) = try await fakeRemote.getNextIncomingRequest()
@@ -352,7 +406,7 @@ final class ChatConnectionTests: TestCaseBase {
         XCTAssertEqual(responseFromServer.headers, ["purpose": "test response"])
         XCTAssertEqual(responseFromServer.body, Data([5]))
     }
-#endif
+    #endif
 
     func testListenerCleanup() async throws {
         // Use the presence of the environment setting to know whether we should make network requests in our tests.

@@ -84,7 +84,9 @@ extension SignalFfi.SignalConstPointerTestingFutureCancellationCounter: LibSigna
     }
 }
 
-private final class CancelCounter: NativeHandleOwner<SignalMutPointerTestingFutureCancellationCounter>, @unchecked Sendable {
+private final class CancelCounter: NativeHandleOwner<SignalMutPointerTestingFutureCancellationCounter>, @unchecked
+    Sendable
+{
     public convenience init(initialValue: UInt8 = 0) {
         var out = SignalMutPointerTestingFutureCancellationCounter()
         failOnError {
@@ -96,12 +98,19 @@ private final class CancelCounter: NativeHandleOwner<SignalMutPointerTestingFutu
     public func waitForCount(asyncContext: TokioAsyncContext, target: UInt8) async throws {
         let _: Bool = try await asyncContext.invokeAsyncFunction { promise, asyncContext in
             self.withNativeHandle {
-                signal_testing_future_cancellation_counter_wait_for_count(promise, asyncContext.const(), $0.const(), target)
+                signal_testing_future_cancellation_counter_wait_for_count(
+                    promise,
+                    asyncContext.const(),
+                    $0.const(),
+                    target
+                )
             }
         }
     }
 
-    override static func destroyNativeHandle(_ nativeHandle: NonNull<SignalMutPointerTestingFutureCancellationCounter>) -> SignalFfiErrorRef? {
+    override static func destroyNativeHandle(
+        _ nativeHandle: NonNull<SignalMutPointerTestingFutureCancellationCounter>
+    ) -> SignalFfiErrorRef? {
         signal_testing_future_cancellation_counter_destroy(nativeHandle.pointer)
     }
 }
@@ -109,7 +118,11 @@ private final class CancelCounter: NativeHandleOwner<SignalMutPointerTestingFutu
 final class AsyncTests: TestCaseBase {
     func testSuccess() async throws {
         let result: Int32 = try await invokeAsyncFunction {
-            signal_testing_future_success($0, SignalConstPointerNonSuspendingBackgroundThreadRuntime(raw: OpaquePointer(bitPattern: -1)), 21)
+            signal_testing_future_success(
+                $0,
+                SignalConstPointerNonSuspendingBackgroundThreadRuntime(raw: OpaquePointer(bitPattern: -1)),
+                21
+            )
         }
         XCTAssertEqual(42, result)
     }
@@ -117,7 +130,11 @@ final class AsyncTests: TestCaseBase {
     func testFailure() async throws {
         do {
             let _: Int32 = try await invokeAsyncFunction {
-                signal_testing_future_failure($0, SignalConstPointerNonSuspendingBackgroundThreadRuntime(raw: OpaquePointer(bitPattern: -1)), 21)
+                signal_testing_future_failure(
+                    $0,
+                    SignalConstPointerNonSuspendingBackgroundThreadRuntime(raw: OpaquePointer(bitPattern: -1)),
+                    21
+                )
             }
             XCTFail("should have failed")
         } catch SignalError.invalidArgument(_) {
@@ -129,27 +146,37 @@ final class AsyncTests: TestCaseBase {
         do {
             let value = UInt8(44)
             let handle = try await invokeAsyncFunction {
-                signal_testing_future_produces_pointer_type($0, SignalConstPointerNonSuspendingBackgroundThreadRuntime(raw: OpaquePointer(bitPattern: -1)), value)
+                signal_testing_future_produces_pointer_type(
+                    $0,
+                    SignalConstPointerNonSuspendingBackgroundThreadRuntime(raw: OpaquePointer(bitPattern: -1)),
+                    value
+                )
             }
             defer { signal_testing_handle_type_destroy(handle) }
             XCTAssertEqual(
                 try invokeFnReturningInteger { result in
                     signal_testing_testing_handle_type_get_value(result, handle.const())
-                }, value
+                },
+                value
             )
         }
 
         do {
             let value = "into the future"
             let otherHandle = try await invokeAsyncFunction {
-                signal_testing_future_produces_other_pointer_type($0, SignalConstPointerNonSuspendingBackgroundThreadRuntime(raw: OpaquePointer(bitPattern: -1)), value)
+                signal_testing_future_produces_other_pointer_type(
+                    $0,
+                    SignalConstPointerNonSuspendingBackgroundThreadRuntime(raw: OpaquePointer(bitPattern: -1)),
+                    value
+                )
             }
             defer { signal_other_testing_handle_type_destroy(otherHandle) }
 
             XCTAssertEqual(
                 try invokeFnReturningString { result in
                     signal_testing_other_testing_handle_type_get_value(result, otherHandle.const())
-                }, value
+                },
+                value
             )
         }
     }

@@ -16,14 +16,17 @@ class InMemorySignalProtocolStoreTests: TestCaseBase {
 
         let firstIdentity = IdentityKeyPair.generate().identityKey
         XCTAssert(
-            try store.isTrustedIdentity(firstIdentity, for: address, direction: .sending, context: context))
+            try store.isTrustedIdentity(firstIdentity, for: address, direction: .sending, context: context)
+        )
 
         XCTAssertEqual(
-            try store.saveIdentity(firstIdentity, for: address, context: context), .newOrUnchanged
+            try store.saveIdentity(firstIdentity, for: address, context: context),
+            .newOrUnchanged
         )
         // Idempotent
         XCTAssertEqual(
-            try store.saveIdentity(firstIdentity, for: address, context: context), .newOrUnchanged
+            try store.saveIdentity(firstIdentity, for: address, context: context),
+            .newOrUnchanged
         )
         XCTAssert(try store.isTrustedIdentity(firstIdentity, for: address, direction: .sending, context: context))
         XCTAssertEqual(try store.identity(for: address, context: context), firstIdentity)
@@ -31,7 +34,8 @@ class InMemorySignalProtocolStoreTests: TestCaseBase {
         let secondIdentity = IdentityKeyPair.generate().identityKey
 
         XCTAssertFalse(
-            try store.isTrustedIdentity(secondIdentity, for: address, direction: .sending, context: context))
+            try store.isTrustedIdentity(secondIdentity, for: address, direction: .sending, context: context)
+        )
         XCTAssertEqual(
             try store.saveIdentity(secondIdentity, for: address, context: context),
             .replacedExisting
@@ -43,7 +47,8 @@ class InMemorySignalProtocolStoreTests: TestCaseBase {
         )
 
         XCTAssert(
-            try store.isTrustedIdentity(secondIdentity, for: address, direction: .sending, context: context))
+            try store.isTrustedIdentity(secondIdentity, for: address, direction: .sending, context: context)
+        )
         XCTAssertEqual(try store.identity(for: address, context: context), secondIdentity)
     }
 }

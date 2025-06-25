@@ -10,7 +10,8 @@ class TestCaseBase: XCTestCase {
     // Use a static stored property for one-time initialization.
     static let loggingInitialized: Bool = {
         struct LogToNSLog: LibsignalLogger {
-            func log(level: LibsignalLogLevel, file: UnsafePointer<CChar>?, line: UInt32, message: UnsafePointer<CChar>) {
+            func log(level: LibsignalLogLevel, file: UnsafePointer<CChar>?, line: UInt32, message: UnsafePointer<CChar>)
+            {
                 let abbreviation: String
                 switch level {
                 case .error: abbreviation = "E"

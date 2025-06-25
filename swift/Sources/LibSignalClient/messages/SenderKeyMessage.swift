@@ -7,7 +7,9 @@ import Foundation
 import SignalFfi
 
 public class SenderKeyMessage: NativeHandleOwner<SignalMutPointerSenderKeyMessage> {
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerSenderKeyMessage>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerSenderKeyMessage>
+    ) -> SignalFfiErrorRef? {
         return signal_sender_key_message_destroy(handle.pointer)
     }
 
@@ -72,7 +74,9 @@ public class SenderKeyMessage: NativeHandleOwner<SignalMutPointerSenderKeyMessag
     public func verifySignature(against key: PublicKey) throws -> Bool {
         var result = false
         try withAllBorrowed(self, key) { messageHandle, keyHandle in
-            try checkError(signal_sender_key_message_verify_signature(&result, messageHandle.const(), keyHandle.const()))
+            try checkError(
+                signal_sender_key_message_verify_signature(&result, messageHandle.const(), keyHandle.const())
+            )
         }
         return result
     }

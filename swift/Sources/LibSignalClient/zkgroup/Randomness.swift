@@ -13,14 +13,18 @@ public struct Randomness: Sendable {
     }
 
     static func generate() throws -> Randomness {
-        var bytes: SignalRandomnessBytes = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        var bytes: SignalRandomnessBytes = (
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        )
         try withUnsafeMutableBytes(of: &bytes) {
             try fillRandom($0)
         }
         return Randomness(bytes)
     }
 
-    func withUnsafePointerToBytes<Result>(_ callback: (UnsafePointer<SignalRandomnessBytes>) throws -> Result) rethrows -> Result {
+    func withUnsafePointerToBytes<Result>(
+        _ callback: (UnsafePointer<SignalRandomnessBytes>) throws -> Result
+    ) rethrows -> Result {
         try withUnsafePointer(to: self.bytes, callback)
     }
 }

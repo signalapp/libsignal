@@ -11,12 +11,15 @@ import SignalFfi
 
 extension AuthenticatedChatConnection {
     internal static func fakeConnect(
-        tokioAsyncContext: TokioAsyncContext, listener: any ChatConnectionListener,
+        tokioAsyncContext: TokioAsyncContext,
+        listener: any ChatConnectionListener,
         alerts: [String] = []
     ) -> (AuthenticatedChatConnection, FakeChatRemote) {
         let (fakeChatConnection, listenerBridge) = failOnError {
             try FakeChatConnection.create(
-                tokioAsyncContext: tokioAsyncContext, listener: listener, alerts: alerts
+                tokioAsyncContext: tokioAsyncContext,
+                listener: listener,
+                alerts: alerts
             )
         }
 
@@ -25,11 +28,14 @@ extension AuthenticatedChatConnection {
             try fakeChatConnection.withNativeHandle {
                 try checkError(
                     signal_testing_fake_chat_connection_take_authenticated_chat(
-                        &chatHandle, $0.const()
-                    ))
+                        &chatHandle,
+                        $0.const()
+                    )
+                )
             }
             let chat = AuthenticatedChatConnection(
-                fakeHandle: NonNull(chatHandle)!, tokioAsyncContext: tokioAsyncContext
+                fakeHandle: NonNull(chatHandle)!,
+                tokioAsyncContext: tokioAsyncContext
             )
 
             listenerBridge.setConnection(chatConnection: chat)
@@ -37,12 +43,15 @@ extension AuthenticatedChatConnection {
             try fakeChatConnection.withNativeHandle {
                 try checkError(
                     signal_testing_fake_chat_connection_take_remote(
-                        &fakeRemoteHandle, $0.const()
-                    ))
+                        &fakeRemoteHandle,
+                        $0.const()
+                    )
+                )
             }
 
             let fakeRemote = FakeChatRemote(
-                handle: NonNull(fakeRemoteHandle)!, tokioAsyncContext: tokioAsyncContext
+                handle: NonNull(fakeRemoteHandle)!,
+                tokioAsyncContext: tokioAsyncContext
             )
             return (chat, fakeRemote)
         }
@@ -56,7 +65,9 @@ extension UnauthenticatedChatConnection {
     ) -> (UnauthenticatedChatConnection, FakeChatRemote) {
         let (fakeChatConnection, listenerBridge) = failOnError {
             try FakeChatConnection.create(
-                tokioAsyncContext: tokioAsyncContext, listener: listener, alerts: []
+                tokioAsyncContext: tokioAsyncContext,
+                listener: listener,
+                alerts: []
             )
         }
 
@@ -65,11 +76,15 @@ extension UnauthenticatedChatConnection {
             try fakeChatConnection.withNativeHandle {
                 try checkError(
                     signal_testing_fake_chat_connection_take_authenticated_chat(
-                        &chatHandle, $0.const()
-                    ))
+                        &chatHandle,
+                        $0.const()
+                    )
+                )
             }
             let chat = UnauthenticatedChatConnection(
-                fakeHandle: NonNull(chatHandle)!, tokioAsyncContext: tokioAsyncContext, environment: .staging
+                fakeHandle: NonNull(chatHandle)!,
+                tokioAsyncContext: tokioAsyncContext,
+                environment: .staging
             )
 
             listenerBridge.setConnection(chatConnection: chat)
@@ -77,12 +92,15 @@ extension UnauthenticatedChatConnection {
             try fakeChatConnection.withNativeHandle {
                 try checkError(
                     signal_testing_fake_chat_connection_take_remote(
-                        &fakeRemoteHandle, $0.const()
-                    ))
+                        &fakeRemoteHandle,
+                        $0.const()
+                    )
+                )
             }
 
             let fakeRemote = FakeChatRemote(
-                handle: NonNull(fakeRemoteHandle)!, tokioAsyncContext: tokioAsyncContext
+                handle: NonNull(fakeRemoteHandle)!,
+                tokioAsyncContext: tokioAsyncContext
             )
             return (chat, fakeRemote)
         }
@@ -118,7 +136,9 @@ private class SetChatLaterListenerBridge: ChatListenerBridge {
 }
 
 private class SetChatLaterUnauthListenerBridge: UnauthConnectionEventsListenerBridge {
-    override init(chatConnectionEventsListenerForTesting chatListener: any ConnectionEventsListener<UnauthenticatedChatConnection>) {
+    override init(
+        chatConnectionEventsListenerForTesting chatListener: any ConnectionEventsListener<UnauthenticatedChatConnection>
+    ) {
         super.init(chatConnectionEventsListenerForTesting: chatListener)
     }
 
@@ -135,7 +155,8 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
     }
 
     init(
-        handle: NonNull<SignalMutPointerFakeChatRemoteEnd>, tokioAsyncContext: TokioAsyncContext
+        handle: NonNull<SignalMutPointerFakeChatRemoteEnd>,
+        tokioAsyncContext: TokioAsyncContext
     ) {
         self.tokioAsyncContext = tokioAsyncContext
         super.init(owned: handle)
@@ -150,8 +171,10 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
             requestBytes.withUnsafeBorrowedBuffer { requestBytes in
                 failOnError(
                     signal_testing_fake_chat_remote_end_send_raw_server_request(
-                        handle.const(), requestBytes
-                    ))
+                        handle.const(),
+                        requestBytes
+                    )
+                )
             }
         }
     }
@@ -160,7 +183,9 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
         let request = try await self.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
             withNativeHandle { handle in
                 signal_testing_fake_chat_remote_end_receive_incoming_request(
-                    promise, asyncContext.const(), handle.const()
+                    promise,
+                    asyncContext.const(),
+                    handle.const()
                 )
             }
         }
@@ -181,7 +206,9 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
         let fakeResponse = FakeChatResponse(requestId: requestId, response)
         try self.withNativeHandle { nativeHandle in
             try fakeResponse.withNativeHandle { response in
-                try checkError(signal_testing_fake_chat_remote_end_send_server_response(nativeHandle.const(), response.const()))
+                try checkError(
+                    signal_testing_fake_chat_remote_end_send_server_response(nativeHandle.const(), response.const())
+                )
             }
         }
     }
@@ -195,8 +222,10 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
             responseBytes.withUnsafeBorrowedBuffer { responseBytes in
                 failOnError(
                     signal_testing_fake_chat_remote_end_send_raw_server_response(
-                        handle.const(), responseBytes
-                    ))
+                        handle.const(),
+                        responseBytes
+                    )
+                )
             }
         }
     }
@@ -205,7 +234,9 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
         withNativeHandle { handle in
             failOnError(
                 signal_testing_fake_chat_remote_end_inject_connection_interrupted(
-                    handle.const()))
+                    handle.const()
+                )
+            )
         }
     }
 
@@ -230,7 +261,9 @@ internal class FakeChatServer: NativeHandleOwner<SignalMutPointerFakeChatServer>
         fatalError("cannot be invoked directly")
     }
 
-    override class func destroyNativeHandle(_ nativeHandle: NonNull<SignalMutPointerFakeChatServer>) -> SignalFfiErrorRef? {
+    override class func destroyNativeHandle(
+        _ nativeHandle: NonNull<SignalMutPointerFakeChatServer>
+    ) -> SignalFfiErrorRef? {
         signal_fake_chat_server_destroy(nativeHandle.pointer)
     }
 
@@ -253,7 +286,16 @@ internal class FakeChatResponse: NativeHandleOwner<SignalMutPointerFakeChatRespo
                 }.withUnsafeBorrowedBytestringArray { headers in
                     try response.body.withUnsafeBorrowedBuffer { body in
                         var nativeHandle = SignalMutPointerFakeChatResponse()
-                        try checkError(signal_testing_fake_chat_response_create(&nativeHandle, requestId, response.status, message, headers, SignalOptionalBorrowedSliceOfc_uchar(present: true, value: body)))
+                        try checkError(
+                            signal_testing_fake_chat_response_create(
+                                &nativeHandle,
+                                requestId,
+                                response.status,
+                                message,
+                                headers,
+                                SignalOptionalBorrowedSliceOfc_uchar(present: true, value: body)
+                            )
+                        )
                         return nativeHandle
                     }
                 }
@@ -266,35 +308,45 @@ internal class FakeChatResponse: NativeHandleOwner<SignalMutPointerFakeChatRespo
         fatalError("cannot be invoked directly")
     }
 
-    override class func destroyNativeHandle(_ nativeHandle: NonNull<SignalMutPointerFakeChatResponse>) -> SignalFfiErrorRef? {
+    override class func destroyNativeHandle(
+        _ nativeHandle: NonNull<SignalMutPointerFakeChatResponse>
+    ) -> SignalFfiErrorRef? {
         signal_fake_chat_response_destroy(nativeHandle.pointer)
     }
 }
 
 private class FakeChatConnection: NativeHandleOwner<SignalMutPointerFakeChatConnection> {
     static func create(
-        tokioAsyncContext: TokioAsyncContext, listener: any ChatConnectionListener,
+        tokioAsyncContext: TokioAsyncContext,
+        listener: any ChatConnectionListener,
         alerts: [String]
     ) throws -> (FakeChatConnection, SetChatLaterListenerBridge) {
         let listenerBridge = SetChatLaterListenerBridge(
-            chatConnectionListenerForTesting: listener)
+            chatConnectionListenerForTesting: listener
+        )
         var listenerStruct = listenerBridge.makeListenerStruct()
         let chat = try FakeChatConnection.internalCreate(tokioAsyncContext, &listenerStruct, alerts)
         return (chat, listenerBridge)
     }
 
     static func create(
-        tokioAsyncContext: TokioAsyncContext, listener: any ConnectionEventsListener<UnauthenticatedChatConnection>,
+        tokioAsyncContext: TokioAsyncContext,
+        listener: any ConnectionEventsListener<UnauthenticatedChatConnection>,
         alerts: [String]
     ) throws -> (FakeChatConnection, SetChatLaterUnauthListenerBridge) {
         let listenerBridge = SetChatLaterUnauthListenerBridge(
-            chatConnectionEventsListenerForTesting: listener)
+            chatConnectionEventsListenerForTesting: listener
+        )
         var listenerStruct = listenerBridge.makeListenerStruct()
         let chat = try FakeChatConnection.internalCreate(tokioAsyncContext, &listenerStruct, alerts)
         return (chat, listenerBridge)
     }
 
-    private static func internalCreate(_ tokioAsyncContext: TokioAsyncContext, _ listenerStruct: inout SignalFfiChatListenerStruct, _ alerts: [String]) throws -> FakeChatConnection {
+    private static func internalCreate(
+        _ tokioAsyncContext: TokioAsyncContext,
+        _ listenerStruct: inout SignalFfiChatListenerStruct,
+        _ alerts: [String]
+    ) throws -> FakeChatConnection {
         let connection: FakeChatConnection = try withUnsafePointer(to: &listenerStruct) { listener in
             try tokioAsyncContext.withNativeHandle { asyncContext in
                 try invokeFnReturningNativeHandle {

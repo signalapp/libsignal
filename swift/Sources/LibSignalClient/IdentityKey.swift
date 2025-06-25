@@ -24,7 +24,14 @@ public struct IdentityKey: Equatable, Sendable {
     public func verifyAlternateIdentity<Bytes: ContiguousBytes>(_ other: IdentityKey, signature: Bytes) throws -> Bool {
         var result = false
         try withAllBorrowed(publicKey, other.publicKey, .bytes(signature)) { selfHandle, otherHandle, signatureBuffer in
-            try checkError(signal_identitykey_verify_alternate_identity(&result, selfHandle.const(), otherHandle.const(), signatureBuffer))
+            try checkError(
+                signal_identitykey_verify_alternate_identity(
+                    &result,
+                    selfHandle.const(),
+                    otherHandle.const(),
+                    signatureBuffer
+                )
+            )
         }
         return result
     }
@@ -74,7 +81,12 @@ public struct IdentityKeyPair: Sendable {
         return failOnError {
             try withAllBorrowed(self.publicKey, self.privateKey, other.publicKey) { publicKey, privateKey, other in
                 try invokeFnReturningData {
-                    signal_identitykeypair_sign_alternate_identity($0, publicKey.const(), privateKey.const(), other.const())
+                    signal_identitykeypair_sign_alternate_identity(
+                        $0,
+                        publicKey.const(),
+                        privateKey.const(),
+                        other.const()
+                    )
                 }
             }
         }

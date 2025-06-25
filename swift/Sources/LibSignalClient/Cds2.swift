@@ -19,12 +19,14 @@ public class Cds2Client: SgxClient {
         let handle = try attestationMessage.withUnsafeBorrowedBuffer { attestationMessageBuffer in
             try mrenclave.withUnsafeBorrowedBuffer { mrenclaveBuffer in
                 var result = SignalMutPointerSgxClientState()
-                try checkError(signal_cds2_client_state_new(
-                    &result,
-                    mrenclaveBuffer,
-                    attestationMessageBuffer,
-                    UInt64(currentDate.timeIntervalSince1970 * 1000)
-                ))
+                try checkError(
+                    signal_cds2_client_state_new(
+                        &result,
+                        mrenclaveBuffer,
+                        attestationMessageBuffer,
+                        UInt64(currentDate.timeIntervalSince1970 * 1000)
+                    )
+                )
                 return result
             }
         }

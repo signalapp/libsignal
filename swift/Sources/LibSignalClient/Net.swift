@@ -46,8 +46,20 @@ public class Net {
     ///
     /// - Throws: if the scheme is unsupported or if the provided parameters are invalid for that scheme
     ///   (e.g. Signal TLS proxies don't support authentication)
-    public func setProxy(scheme: String, host: String, port: UInt16? = nil, username: String? = nil, password: String? = nil) throws {
-        try self.connectionManager.setProxy(scheme: scheme, host: host, port: port, username: username, password: password)
+    public func setProxy(
+        scheme: String,
+        host: String,
+        port: UInt16? = nil,
+        username: String? = nil,
+        password: String? = nil
+    ) throws {
+        try self.connectionManager.setProxy(
+            scheme: scheme,
+            host: host,
+            port: port,
+            username: username,
+            password: password
+        )
     }
 
     /// Sets the Signal TLS proxy host to be used for all new connections (until overridden).
@@ -64,13 +76,20 @@ public class Net {
         // Support <username>@<host> syntax to allow UNENCRYPTED_FOR_TESTING as a marker user.
         // This is not a stable feature of the API and may go away in the future;
         // the Rust layer will reject any other users anyway. But it's convenient for us.
-        let (username, host): (String?, String) = if let atSign = host.firstIndex(of: "@") {
-            (String(host[..<atSign]), String(host[atSign...].dropFirst()))
-        } else {
-            (nil, host)
-        }
+        let (username, host): (String?, String) =
+            if let atSign = host.firstIndex(of: "@") {
+                (String(host[..<atSign]), String(host[atSign...].dropFirst()))
+            } else {
+                (nil, host)
+            }
 
-        try self.connectionManager.setProxy(scheme: Net.signalTlsProxyScheme, host: host, port: port, username: username, password: nil)
+        try self.connectionManager.setProxy(
+            scheme: Net.signalTlsProxyScheme,
+            host: host,
+            port: port,
+            username: username,
+            password: nil
+        )
     }
 
     /// Refuses to make any new connections until a new proxy configuration is set or
@@ -139,7 +158,12 @@ public class Net {
         acisAndAccessKeys: [AciAndAccessKey],
         token: Data?
     ) async throws -> CdsiLookup {
-        let request = try CdsiLookupRequest(e164s: e164s, prevE164s: prevE164s, acisAndAccessKeys: acisAndAccessKeys, token: token)
+        let request = try CdsiLookupRequest(
+            e164s: e164s,
+            prevE164s: prevE164s,
+            acisAndAccessKeys: acisAndAccessKeys,
+            token: token
+        )
         return try await self.cdsiLookup(auth: auth, request: request)
     }
 
@@ -191,7 +215,14 @@ public class Net {
         let handle = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
             self.connectionManager.withNativeHandle { connectionManager in
                 request.withNativeHandle { request in
-                    signal_cdsi_lookup_new(promise, asyncContext.const(), connectionManager.const(), auth.username, auth.password, request.const())
+                    signal_cdsi_lookup_new(
+                        promise,
+                        asyncContext.const(),
+                        connectionManager.const(),
+                        auth.username,
+                        auth.password,
+                        request.const()
+                    )
                 }
             }
         }
@@ -240,8 +271,18 @@ public class Net {
     ///
     /// - Returns:
     ///   An object representing the established, but not yet active, connection.
-    public func connectAuthenticatedChat(username: String, password: String, receiveStories: Bool) async throws -> AuthenticatedChatConnection {
-        return try await AuthenticatedChatConnection(tokioAsyncContext: self.asyncContext, connectionManager: self.connectionManager, username: username, password: password, receiveStories: receiveStories)
+    public func connectAuthenticatedChat(
+        username: String,
+        password: String,
+        receiveStories: Bool
+    ) async throws -> AuthenticatedChatConnection {
+        return try await AuthenticatedChatConnection(
+            tokioAsyncContext: self.asyncContext,
+            connectionManager: self.connectionManager,
+            username: username,
+            password: password,
+            receiveStories: receiveStories
+        )
     }
 
     /// Asynchronously establishes an unauthenticated connection to the remote
@@ -265,7 +306,7 @@ public class Net {
         return try await UnauthenticatedChatConnection(
             tokioAsyncContext: self.asyncContext,
             connectionManager:
-            self.connectionManager,
+                self.connectionManager,
             environment: self.environment
         )
     }
@@ -299,7 +340,9 @@ extension Auth {
 
 internal class ConnectionManager: NativeHandleOwner<SignalMutPointerConnectionManager> {
     private class ProxyConfig: NativeHandleOwner<SignalMutPointerConnectionProxyConfig> {
-        override class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerConnectionProxyConfig>) -> SignalFfiErrorRef? {
+        override class func destroyNativeHandle(
+            _ handle: NonNull<SignalMutPointerConnectionProxyConfig>
+        ) -> SignalFfiErrorRef? {
             signal_connection_proxy_config_destroy(handle.pointer)
         }
     }
@@ -363,7 +406,9 @@ internal class ConnectionManager: NativeHandleOwner<SignalMutPointerConnectionMa
         }
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerConnectionManager>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerConnectionManager>
+    ) -> SignalFfiErrorRef? {
         signal_connection_manager_destroy(handle.pointer)
     }
 }

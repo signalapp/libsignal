@@ -7,7 +7,9 @@ import Foundation
 import SignalFfi
 
 public class SenderKeyDistributionMessage: NativeHandleOwner<SignalMutPointerSenderKeyDistributionMessage> {
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerSenderKeyDistributionMessage>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerSenderKeyDistributionMessage>
+    ) -> SignalFfiErrorRef? {
         return signal_sender_key_distribution_message_destroy(handle.pointer)
     }
 
@@ -21,12 +23,14 @@ public class SenderKeyDistributionMessage: NativeHandleOwner<SignalMutPointerSen
         try sender.withNativeHandle { senderHandle in
             try withUnsafePointer(to: distributionId.uuid) { distributionId in
                 try withSenderKeyStore(store, context) {
-                    try checkError(signal_sender_key_distribution_message_create(
-                        &result,
-                        senderHandle.const(),
-                        distributionId,
-                        $0
-                    ))
+                    try checkError(
+                        signal_sender_key_distribution_message_create(
+                            &result,
+                            senderHandle.const(),
+                            distributionId,
+                            $0
+                        )
+                    )
                 }
             }
         }

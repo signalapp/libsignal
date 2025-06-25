@@ -4,9 +4,10 @@
 //
 
 import Foundation
-@testable import LibSignalClient
 import SignalFfi
 import Testing
+
+@testable import LibSignalClient
 
 // These tests depend on test-only functions that aren't available on device builds to save on code size.
 #if !os(iOS) || targetEnvironment(simulator)
@@ -51,14 +52,19 @@ class RegistrationServiceConversionTests {
         #expect(response.usernameHash == Data("username-hash".utf8))
         #expect(response.usernameLinkHandle == UUID(uuidString: "55555555-5555-5555-5555-555555555555"))
         #expect(response.storageCapable == true)
-        #expect(response.entitlements.0 == [
-            BadgeEntitlement(id: "first", visible: true, expiration: 123_456),
-            BadgeEntitlement(id: "second", visible: false, expiration: 555),
-        ])
+        #expect(
+            response.entitlements.0 == [
+                BadgeEntitlement(id: "first", visible: true, expiration: 123_456),
+                BadgeEntitlement(id: "second", visible: false, expiration: 555),
+            ]
+        )
         #expect(response.entitlements.1 == BackupEntitlement(expiration: 888_888, level: 123))
         #expect(response.reregistration == true)
     }
 
+    // swift-format-ignore
+    // The long lines are one-per-test-case; it's clearer to see the form like this.
+    // They'd get shorter if Swift added a `matches!` equivalent.
     @Test
     func errorConversion() {
         let retryLaterCase = ("RetryAfter42Seconds", { (e: Error) in if case SignalError.rateLimitedError(retryAfter: 42, message: "retry after 42s") = e { true } else { false }})
@@ -178,8 +184,9 @@ class RegistrationServiceConversionTests {
         ]
 
         #expect(
-            try invokeFnReturningCheckSvr2CredentialsResponse(fn: signal_testing_registration_service_check_svr2_credentials_response_convert) ==
-                expectedEntries
+            try invokeFnReturningCheckSvr2CredentialsResponse(
+                fn: signal_testing_registration_service_check_svr2_credentials_response_convert
+            ) == expectedEntries
         )
     }
 
@@ -190,7 +197,9 @@ class RegistrationServiceConversionTests {
 
         try key.withNativeHandle { key in
             try signedPublicPreKey.withNativeStruct { signedPublicPreKey in
-                try checkError(signal_testing_signed_public_pre_key_check_bridges_correctly(key.const(), signedPublicPreKey))
+                try checkError(
+                    signal_testing_signed_public_pre_key_check_bridges_correctly(key.const(), signedPublicPreKey)
+                )
             }
         }
     }
@@ -204,7 +213,8 @@ class RegistrationServiceFakeChatTests {
         async let startCreateSessionRequest =
             RegistrationService.fakeCreateSession(
                 fakeChatServer: server,
-                e164: "+18005550123", pushToken: "myPushToken"
+                e164: "+18005550123",
+                pushToken: "myPushToken"
             )
 
         let fakeRemote = try await server.getNextRemote()
@@ -219,14 +229,16 @@ class RegistrationServiceFakeChatTests {
                 status: 200,
                 message: "OK",
                 headers: ["content-type": "application/json"],
-                body: Data("""
+                body: Data(
+                    """
                     {
                         "allowedToRequestCode": true,
                         "verified": false,
                         "requestedInformation": ["pushChallenge", "captcha"],
                         "id": "fake-session-A"
                     }
-                    """.utf8)
+                    """.utf8
+                )
             )
         )
 
@@ -236,11 +248,10 @@ class RegistrationServiceFakeChatTests {
         let sessionState = session.sessionState
         #expect(sessionState.verified == false)
         #expect(
-            sessionState.requestedInformation ==
-                [
-                    .pushChallenge,
-                    .captcha,
-                ]
+            sessionState.requestedInformation == [
+                .pushChallenge,
+                .captcha,
+            ]
         )
 
         async let requestVerification: () = session.requestVerificationCode(
@@ -254,14 +265,15 @@ class RegistrationServiceFakeChatTests {
         #expect(secondRequest.method == "POST")
         #expect(secondRequest.pathAndQuery == "/v1/verification/session/fake-session-A/code")
         #expect(
-            secondRequest.body ==
-                Data("""
+            secondRequest.body
+                == Data(
+                    """
                     {"transport":"voice","client":"libsignal test"}
-                    """.utf8)
+                    """.utf8
+                )
         )
         #expect(
-            secondRequest.headers ==
-                ["content-type": "application/json", "accept-language": "fr-CA"]
+            secondRequest.headers == ["content-type": "application/json", "accept-language": "fr-CA"]
         )
 
         try fakeRemote.sendResponse(
@@ -270,7 +282,8 @@ class RegistrationServiceFakeChatTests {
                 status: 200,
                 message: "OK",
                 headers: ["content-type": "application/json"],
-                body: Data("""
+                body: Data(
+                    """
                     {
                         "allowedToRequestCode": true,
                         "verified": false,
@@ -278,7 +291,8 @@ class RegistrationServiceFakeChatTests {
                         "id": "fake-session-A"
                     }
                     """
-                    .utf8)
+                    .utf8
+                )
             )
         )
 
@@ -293,7 +307,8 @@ class RegistrationServiceFakeChatTests {
         async let startCreateSessionRequest =
             RegistrationService.fakeCreateSession(
                 fakeChatServer: server,
-                e164: "+18005550123", pushToken: "myPushToken"
+                e164: "+18005550123",
+                pushToken: "myPushToken"
             )
 
         let fakeRemote = try await server.getNextRemote()
@@ -317,7 +332,8 @@ class RegistrationServiceFakeChatTests {
                         "id": "fake-session-A"
                     }
                     """
-                    .utf8)
+                    .utf8
+                )
             )
         )
 
@@ -338,7 +354,7 @@ class RegistrationServiceFakeChatTests {
                     registrationLock: "registration lock",
                     unidentifiedAccessKey: unidentifiedAccessKey,
                     unrestrictedUnidentifiedAccess:
-                    true,
+                        true,
                     capabilities: ["capable"],
                     discoverableByPhoneNumber: true
                 ),
@@ -360,8 +376,7 @@ class RegistrationServiceFakeChatTests {
             [
                 "content-type": "application/json",
                 "authorization": "Basic " + Data("+18005550123:account password".utf8).base64EncodedString(),
-            ] ==
-                secondRequest.headers
+            ] == secondRequest.headers
         )
 
         let secondRequestBodyJson = try JSONSerialization.jsonObject(with: secondRequest.body)
@@ -388,8 +403,12 @@ class RegistrationServiceFakeChatTests {
             #expect(accountAttributes["fetchesMessages"] as? Bool == false)
         }
 
-        #expect(Data(aciKeys.publicKey.serialize()).base64EncodedString() == secondRequestJson["aciIdentityKey"] as? String)
-        #expect(Data(pniKeys.publicKey.serialize()).base64EncodedString() == secondRequestJson["pniIdentityKey"] as? String)
+        #expect(
+            Data(aciKeys.publicKey.serialize()).base64EncodedString() == secondRequestJson["aciIdentityKey"] as? String
+        )
+        #expect(
+            Data(pniKeys.publicKey.serialize()).base64EncodedString() == secondRequestJson["pniIdentityKey"] as? String
+        )
 
         // We don't need to check all the keys, just one of each kind is enough.
         do {
@@ -398,14 +417,20 @@ class RegistrationServiceFakeChatTests {
             }
             #expect(aciSignedPreKey["signature"] as? String == Data("EC signature".utf8).base64EncodedString())
             #expect(aciSignedPreKey["keyId"] as? Double == 1)
-            #expect(aciSignedPreKey["publicKey"] as? String == Data(aciKeys.signedPreKey.publicKey.serialize()).base64EncodedString())
+            #expect(
+                aciSignedPreKey["publicKey"] as? String
+                    == Data(aciKeys.signedPreKey.publicKey.serialize()).base64EncodedString()
+            )
 
             guard let aciPqLastResortPreKey = secondRequestJson["aciPqLastResortPreKey"] as? [String: Any] else {
                 fatalError("aciSignedPreKey was \(String(describing: secondRequestJson["aciPqLastResortPreKey"]))")
             }
             #expect(aciPqLastResortPreKey["signature"] as? String == Data("KEM signature".utf8).base64EncodedString())
             #expect(aciPqLastResortPreKey["keyId"] as? Double == 2)
-            #expect(aciPqLastResortPreKey["publicKey"] as? String == Data(aciKeys.pqLastResortPreKey.publicKey.serialize()).base64EncodedString())
+            #expect(
+                aciPqLastResortPreKey["publicKey"] as? String
+                    == Data(aciKeys.pqLastResortPreKey.publicKey.serialize()).base64EncodedString()
+            )
         }
 
         try fakeRemote.sendResponse(
@@ -414,7 +439,8 @@ class RegistrationServiceFakeChatTests {
                 status: 200,
                 message: "OK",
                 headers: ["content-type": "application/json"],
-                body: Data("""
+                body: Data(
+                    """
                     {
                         "uuid": "aabbaabb-5555-6666-8888-111111111111",
                         "pni": "ddeeddee-5555-6666-8888-111111111111",
@@ -437,7 +463,8 @@ class RegistrationServiceFakeChatTests {
                         }
                     }
                     """
-                    .utf8)
+                    .utf8
+                )
             )
         )
 
@@ -458,13 +485,16 @@ class RegistrationServiceFakeChatTests {
             return RegisterAccountKeys(
                 publicKey: PrivateKey.generate().publicKey,
                 signedPreKey: SignedPublicPreKey(
-                    keyId: 1, publicKey: PrivateKey.generate().publicKey, signature: Data("EC signature".utf8)
+                    keyId: 1,
+                    publicKey: PrivateKey.generate().publicKey,
+                    signature: Data("EC signature".utf8)
                 ),
                 pqLastResortPreKey: SignedPublicPreKey(
                     keyId: 2,
                     publicKey: KEMKeyPair.generate().publicKey,
                     signature: Data(
-                        "KEM signature".utf8)
+                        "KEM signature".utf8
+                    )
                 )
             )
         }
@@ -479,13 +509,24 @@ extension RegistrationService {
         mcc: String? = nil,
         mnc: String? = nil
     ) async throws -> RegistrationService {
-        let registrationService: SignalMutPointerRegistrationService = try await fakeChatServer.asyncContext.invokeAsyncFunction { promise, asyncContext in
-            SignalFfiRegistrationCreateSessionRequest.withNativeStruct(e164: e164, pushToken: pushToken, mcc: mcc, mnc: mnc) { request in
-                fakeChatServer.withNativeHandle { fakeChatServer in
-                    signal_testing_fake_registration_session_create_session(promise, asyncContext.const(), request, fakeChatServer.const())
+        let registrationService: SignalMutPointerRegistrationService = try await fakeChatServer.asyncContext
+            .invokeAsyncFunction { promise, asyncContext in
+                SignalFfiRegistrationCreateSessionRequest.withNativeStruct(
+                    e164: e164,
+                    pushToken: pushToken,
+                    mcc: mcc,
+                    mnc: mnc
+                ) { request in
+                    fakeChatServer.withNativeHandle { fakeChatServer in
+                        signal_testing_fake_registration_session_create_session(
+                            promise,
+                            asyncContext.const(),
+                            request,
+                            fakeChatServer.const()
+                        )
+                    }
                 }
             }
-        }
         return RegistrationService(owned: NonNull(registrationService)!, asyncContext: fakeChatServer.asyncContext)
     }
 }

@@ -7,11 +7,16 @@ import Foundation
 import SignalFfi
 
 public class PreKeyRecord: ClonableHandleOwner<SignalMutPointerPreKeyRecord> {
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerPreKeyRecord>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerPreKeyRecord>
+    ) -> SignalFfiErrorRef? {
         return signal_pre_key_record_destroy(handle.pointer)
     }
 
-    override internal class func cloneNativeHandle(_ newHandle: inout SignalMutPointerPreKeyRecord, currentHandle: SignalConstPointerPreKeyRecord) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(
+        _ newHandle: inout SignalMutPointerPreKeyRecord,
+        currentHandle: SignalConstPointerPreKeyRecord
+    ) -> SignalFfiErrorRef? {
         return signal_pre_key_record_clone(&newHandle, currentHandle)
     }
 

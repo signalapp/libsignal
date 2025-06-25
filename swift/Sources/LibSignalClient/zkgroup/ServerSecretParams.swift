@@ -65,7 +65,9 @@ public class ServerSecretParams: NativeHandleOwner<SignalMutPointerServerSecretP
         }
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerServerSecretParams>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerServerSecretParams>
+    ) -> SignalFfiErrorRef? {
         signal_server_secret_params_destroy(handle.pointer)
     }
 }

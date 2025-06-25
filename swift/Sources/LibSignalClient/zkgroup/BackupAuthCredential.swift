@@ -17,7 +17,10 @@ public class BackupAuthCredential: ByteArray, @unchecked Sendable {
         }
     }
 
-    public func present(serverParams: GenericServerPublicParams, randomness: Randomness) -> BackupAuthCredentialPresentation {
+    public func present(
+        serverParams: GenericServerPublicParams,
+        randomness: Randomness
+    ) -> BackupAuthCredentialPresentation {
         return failOnError {
             try withAllBorrowed(self, serverParams, randomness) { contents, serverParams, randomness in
                 try invokeFnReturningVariableLengthSerialized {

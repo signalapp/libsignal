@@ -13,17 +13,34 @@ public class ClientZkProfileOperations {
         self.serverPublicParams = serverPublicParams
     }
 
-    public func createProfileKeyCredentialRequestContext(userId: Aci, profileKey: ProfileKey) throws -> ProfileKeyCredentialRequestContext {
-        return try self.createProfileKeyCredentialRequestContext(randomness: Randomness.generate(), userId: userId, profileKey: profileKey)
+    public func createProfileKeyCredentialRequestContext(
+        userId: Aci,
+        profileKey: ProfileKey
+    ) throws -> ProfileKeyCredentialRequestContext {
+        return try self.createProfileKeyCredentialRequestContext(
+            randomness: Randomness.generate(),
+            userId: userId,
+            profileKey: profileKey
+        )
     }
 
-    public func createProfileKeyCredentialRequestContext(randomness: Randomness, userId: Aci, profileKey: ProfileKey) throws -> ProfileKeyCredentialRequestContext {
+    public func createProfileKeyCredentialRequestContext(
+        randomness: Randomness,
+        userId: Aci,
+        profileKey: ProfileKey
+    ) throws -> ProfileKeyCredentialRequestContext {
         return try self.serverPublicParams.withNativeHandle { serverPublicParams in
             try randomness.withUnsafePointerToBytes { randomness in
                 try userId.withPointerToFixedWidthBinary { userId in
                     try profileKey.withUnsafePointerToSerialized { profileKey in
                         try invokeFnReturningSerialized {
-                            signal_server_public_params_create_profile_key_credential_request_context_deterministic($0, serverPublicParams.const(), randomness, userId, profileKey)
+                            signal_server_public_params_create_profile_key_credential_request_context_deterministic(
+                                $0,
+                                serverPublicParams.const(),
+                                randomness,
+                                userId,
+                                profileKey
+                            )
                         }
                     }
                 }
@@ -40,24 +57,47 @@ public class ClientZkProfileOperations {
             try profileKeyCredentialRequestContext.withUnsafePointerToSerialized { requestContext in
                 try profileKeyCredentialResponse.withUnsafePointerToSerialized { response in
                     try invokeFnReturningSerialized {
-                        signal_server_public_params_receive_expiring_profile_key_credential($0, serverPublicParams.const(), requestContext, response, UInt64(now.timeIntervalSince1970))
+                        signal_server_public_params_receive_expiring_profile_key_credential(
+                            $0,
+                            serverPublicParams.const(),
+                            requestContext,
+                            response,
+                            UInt64(now.timeIntervalSince1970)
+                        )
                     }
                 }
             }
         }
     }
 
-    public func createProfileKeyCredentialPresentation(groupSecretParams: GroupSecretParams, profileKeyCredential: ExpiringProfileKeyCredential) throws -> ProfileKeyCredentialPresentation {
-        return try self.createProfileKeyCredentialPresentation(randomness: Randomness.generate(), groupSecretParams: groupSecretParams, profileKeyCredential: profileKeyCredential)
+    public func createProfileKeyCredentialPresentation(
+        groupSecretParams: GroupSecretParams,
+        profileKeyCredential: ExpiringProfileKeyCredential
+    ) throws -> ProfileKeyCredentialPresentation {
+        return try self.createProfileKeyCredentialPresentation(
+            randomness: Randomness.generate(),
+            groupSecretParams: groupSecretParams,
+            profileKeyCredential: profileKeyCredential
+        )
     }
 
-    public func createProfileKeyCredentialPresentation(randomness: Randomness, groupSecretParams: GroupSecretParams, profileKeyCredential: ExpiringProfileKeyCredential) throws -> ProfileKeyCredentialPresentation {
+    public func createProfileKeyCredentialPresentation(
+        randomness: Randomness,
+        groupSecretParams: GroupSecretParams,
+        profileKeyCredential: ExpiringProfileKeyCredential
+    ) throws -> ProfileKeyCredentialPresentation {
         return try self.serverPublicParams.withNativeHandle { serverPublicParams in
             try randomness.withUnsafePointerToBytes { randomness in
                 try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
                     try profileKeyCredential.withUnsafePointerToSerialized { profileKeyCredential in
                         try invokeFnReturningVariableLengthSerialized {
-                            signal_server_public_params_create_expiring_profile_key_credential_presentation_deterministic($0, serverPublicParams.const(), randomness, groupSecretParams, profileKeyCredential)
+                            signal_server_public_params_create_expiring_profile_key_credential_presentation_deterministic(
+                                $0,
+                                serverPublicParams.const(),
+                                randomness,
+                                groupSecretParams,
+                                profileKeyCredential
+                            )
                         }
                     }
                 }

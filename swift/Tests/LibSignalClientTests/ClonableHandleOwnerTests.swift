@@ -3,8 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-@testable import LibSignalClient
 import XCTest
+
+@testable import LibSignalClient
 
 private struct FakeHandle {
     // We're using the tuple to guarantee in-memory layout for this test.
@@ -14,7 +15,10 @@ private struct FakeHandle {
 }
 
 private class MockClonableHandleOwner: ClonableHandleOwner<OpaquePointer?> {
-    override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+    override class func cloneNativeHandle(
+        _ newHandle: inout OpaquePointer?,
+        currentHandle: OpaquePointer?
+    ) -> SignalFfiErrorRef? {
         XCTAssertFalse(UnsafePointer<Bool>(currentHandle!).pointee)
         newHandle = OpaquePointer(UnsafePointer<Bool>(currentHandle!) + 1)
         return nil

@@ -7,7 +7,9 @@ import Foundation
 import SignalFfi
 
 public class PreKeySignalMessage: NativeHandleOwner<SignalMutPointerPreKeySignalMessage> {
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerPreKeySignalMessage>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerPreKeySignalMessage>
+    ) -> SignalFfiErrorRef? {
         return signal_pre_key_signal_message_destroy(handle.pointer)
     }
 

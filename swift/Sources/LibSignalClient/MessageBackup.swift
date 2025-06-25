@@ -34,7 +34,9 @@ public class MessageBackupKey: NativeHandleOwner<SignalMutPointerMessageBackupKe
         let handle = try backupKey.withUnsafePointerToSerialized { backupKey in
             try backupId.withUnsafePointerToSerialized { backupId in
                 var outputHandle = SignalMutPointerMessageBackupKey()
-                try checkError(signal_message_backup_key_from_backup_key_and_backup_id(&outputHandle, backupKey, backupId))
+                try checkError(
+                    signal_message_backup_key_from_backup_key_and_backup_id(&outputHandle, backupKey, backupId)
+                )
                 return outputHandle
             }
         }
@@ -45,7 +47,9 @@ public class MessageBackupKey: NativeHandleOwner<SignalMutPointerMessageBackupKe
         super.init(owned: handle)
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerMessageBackupKey>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerMessageBackupKey>
+    ) -> SignalFfiErrorRef? {
         signal_message_backup_key_destroy(handle.pointer)
     }
 
@@ -96,7 +100,8 @@ extension SignalConstPointerMessageBackupKey: SignalConstPointer {
 
 public enum MessageBackupPurpose: UInt8, Sendable {
     // This needs to be kept in sync with the Rust version of the enum.
-    case deviceTransfer = 0, remoteBackup = 1
+    case deviceTransfer = 0
+    case remoteBackup = 1
 }
 
 /// Validates a message backup file.
@@ -115,13 +120,23 @@ public enum MessageBackupPurpose: UInt8, Sendable {
 ///
 /// - SeeAlso: ``OnlineBackupValidator``
 public func validateMessageBackup(
-    key: MessageBackupKey, purpose: MessageBackupPurpose, length: UInt64, makeStream: () throws -> SignalInputStream
+    key: MessageBackupKey,
+    purpose: MessageBackupPurpose,
+    length: UInt64,
+    makeStream: () throws -> SignalInputStream
 ) throws -> MessageBackupUnknownFields {
     let outcome: ValidationOutcome = try withInputStream(try makeStream()) { firstInput in
         try withInputStream(try makeStream()) { secondInput in
             try key.withNativeHandle { key in
                 try invokeFnReturningNativeHandle {
-                    signal_message_backup_validator_validate($0, key.const(), firstInput, secondInput, length, purpose.rawValue)
+                    signal_message_backup_validator_validate(
+                        $0,
+                        key.const(),
+                        firstInput,
+                        secondInput,
+                        length,
+                        purpose.rawValue
+                    )
                 }
             }
         }
@@ -170,7 +185,9 @@ public class OnlineBackupValidator: NativeHandleOwner<SignalMutPointerOnlineBack
         super.init(owned: handle)
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerOnlineBackupValidator>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerOnlineBackupValidator>
+    ) -> SignalFfiErrorRef? {
         signal_online_backup_validator_destroy(handle.pointer)
     }
 
@@ -248,7 +265,9 @@ private class ValidationOutcome: NativeHandleOwner<SignalMutPointerMessageBackup
         }
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerMessageBackupValidationOutcome>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerMessageBackupValidationOutcome>
+    ) -> SignalFfiErrorRef? {
         signal_message_backup_validation_outcome_destroy(handle.pointer)
     }
 }

@@ -3,8 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-@testable import LibSignalClient
 import XCTest
+
+@testable import LibSignalClient
 
 class BadStore: InMemorySignalProtocolStore {
     enum Error: Swift.Error {

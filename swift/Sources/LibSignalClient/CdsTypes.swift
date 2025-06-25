@@ -68,7 +68,9 @@ public class CdsiLookupRequest: NativeHandleOwner<SignalMutPointerLookupRequest>
         }
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerLookupRequest>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerLookupRequest>
+    ) -> SignalFfiErrorRef? {
         signal_lookup_request_destroy(handle.pointer)
     }
 }
@@ -100,7 +102,9 @@ extension SignalConstPointerLookupRequest: SignalConstPointer {
 /// Returned by ``Net/cdsiLookup(auth:request:)`` when a request is successfully initiated.
 public class CdsiLookup {
     class NativeCdsiLookup: NativeHandleOwner<SignalMutPointerCdsiLookup> {
-        override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerCdsiLookup>) -> SignalFfiErrorRef? {
+        override internal class func destroyNativeHandle(
+            _ handle: NonNull<SignalMutPointerCdsiLookup>
+        ) -> SignalFfiErrorRef? {
             signal_cdsi_lookup_destroy(handle.pointer)
         }
     }
@@ -139,13 +143,18 @@ public class CdsiLookup {
     ///   `SignalError.networkError` for a network-level connectivity issue,
     ///   `SignalError.networkProtocolError` for a CDSI or attested connection protocol issue.
     public func complete() async throws -> CdsiLookupResponse {
-        let response: SignalFfiCdsiLookupResponse = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
+        let response: SignalFfiCdsiLookupResponse = try await self.asyncContext.invokeAsyncFunction {
+            promise,
+            asyncContext in
             self.native.withNativeHandle { handle in
                 signal_cdsi_lookup_complete(promise, asyncContext.const(), handle.const())
             }
         }
 
-        return CdsiLookupResponse(entries: LookupResponseEntryList(owned: response.entries), debugPermitsUsed: response.debug_permits_used)
+        return CdsiLookupResponse(
+            entries: LookupResponseEntryList(owned: response.entries),
+            debugPermitsUsed: response.debug_permits_used
+        )
     }
 }
 
@@ -194,7 +203,9 @@ public class LookupResponseEntryList: Collection {
     }
 
     deinit {
-        signal_free_lookup_response_entry_list(SignalOwnedBufferOfFfiCdsiLookupResponseEntry(base: self.owned.baseAddress, length: self.owned.count))
+        signal_free_lookup_response_entry_list(
+            SignalOwnedBufferOfFfiCdsiLookupResponseEntry(base: self.owned.baseAddress, length: self.owned.count)
+        )
     }
 
     public typealias Index = UnsafeMutableBufferPointer<CdsiLookupResponseEntry>.Index

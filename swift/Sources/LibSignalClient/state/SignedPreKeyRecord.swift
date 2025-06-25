@@ -7,11 +7,16 @@ import Foundation
 import SignalFfi
 
 public class SignedPreKeyRecord: ClonableHandleOwner<SignalMutPointerSignedPreKeyRecord> {
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerSignedPreKeyRecord>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerSignedPreKeyRecord>
+    ) -> SignalFfiErrorRef? {
         return signal_signed_pre_key_record_destroy(handle.pointer)
     }
 
-    override internal class func cloneNativeHandle(_ newHandle: inout SignalMutPointerSignedPreKeyRecord, currentHandle: SignalConstPointerSignedPreKeyRecord) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(
+        _ newHandle: inout SignalMutPointerSignedPreKeyRecord,
+        currentHandle: SignalConstPointerSignedPreKeyRecord
+    ) -> SignalFfiErrorRef? {
         return signal_signed_pre_key_record_clone(&newHandle, currentHandle)
     }
 
@@ -33,14 +38,16 @@ public class SignedPreKeyRecord: ClonableHandleOwner<SignalMutPointerSignedPreKe
         let publicKey = privateKey.publicKey
         var result = SignalMutPointerSignedPreKeyRecord()
         try withAllBorrowed(publicKey, privateKey, .bytes(signature)) { publicKeyHandle, privateKeyHandle, signature in
-            try checkError(signal_signed_pre_key_record_new(
-                &result,
-                id,
-                timestamp,
-                publicKeyHandle.const(),
-                privateKeyHandle.const(),
-                signature
-            ))
+            try checkError(
+                signal_signed_pre_key_record_new(
+                    &result,
+                    id,
+                    timestamp,
+                    publicKeyHandle.const(),
+                    privateKeyHandle.const(),
+                    signature
+                )
+            )
         }
         self.init(owned: NonNull(result)!)
     }

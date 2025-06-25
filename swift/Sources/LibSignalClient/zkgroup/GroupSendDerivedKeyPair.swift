@@ -28,7 +28,11 @@ public class GroupSendDerivedKeyPair: ByteArray, @unchecked Sendable {
         return failOnError {
             try params.withNativeHandle { params in
                 try invokeFnReturningVariableLengthSerialized {
-                    signal_group_send_derived_key_pair_for_expiration($0, UInt64(expiration.timeIntervalSince1970), params.const())
+                    signal_group_send_derived_key_pair_for_expiration(
+                        $0,
+                        UInt64(expiration.timeIntervalSince1970),
+                        params.const()
+                    )
                 }
             }
         }

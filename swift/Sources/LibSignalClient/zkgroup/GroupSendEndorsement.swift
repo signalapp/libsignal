@@ -72,7 +72,10 @@ public class GroupSendEndorsement: ByteArray, @unchecked Sendable {
             return slices.withUnsafeBufferPointer { slices in
                 failOnError {
                     try invokeFnReturningVariableLengthSerialized {
-                        signal_group_send_endorsement_combine($0, SignalBorrowedSliceOfBuffers(base: slices.baseAddress, length: slices.count))
+                        signal_group_send_endorsement_combine(
+                            $0,
+                            SignalBorrowedSliceOfBuffers(base: slices.baseAddress, length: slices.count)
+                        )
                     }
                 }
             }

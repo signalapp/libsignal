@@ -69,7 +69,10 @@ public func sanitizeWebp(input: SignalInputStream) throws {
 }
 
 public class SanitizedMetadata: ClonableHandleOwner<OpaquePointer?> {
-    override internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(
+        _ newHandle: inout OpaquePointer?,
+        currentHandle: OpaquePointer?
+    ) -> SignalFfiErrorRef? {
         return signal_sanitized_metadata_clone(&newHandle, currentHandle)
     }
 

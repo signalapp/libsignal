@@ -92,12 +92,14 @@ public class Aes256GcmEncryption: NativeHandleOwner<SignalMutPointerAes256GcmEnc
             try nonce.withUnsafeBorrowedBuffer { nonceBuffer in
                 try associatedData.withUnsafeBorrowedBuffer { adBuffer in
                     var result = SignalMutPointerAes256GcmEncryption()
-                    try checkError(signal_aes256_gcm_encryption_new(
-                        &result,
-                        keyBuffer,
-                        nonceBuffer,
-                        adBuffer
-                    ))
+                    try checkError(
+                        signal_aes256_gcm_encryption_new(
+                            &result,
+                            keyBuffer,
+                            nonceBuffer,
+                            adBuffer
+                        )
+                    )
                     return result
                 }
             }
@@ -105,19 +107,23 @@ public class Aes256GcmEncryption: NativeHandleOwner<SignalMutPointerAes256GcmEnc
         self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerAes256GcmEncryption>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerAes256GcmEncryption>
+    ) -> SignalFfiErrorRef? {
         return signal_aes256_gcm_encryption_destroy(handle.pointer)
     }
 
     public func encrypt(_ message: inout Data) throws {
         try withNativeHandle { nativeHandle in
             try message.withUnsafeMutableBytes { messageBytes in
-                try checkError(signal_aes256_gcm_encryption_update(
-                    nativeHandle,
-                    SignalBorrowedMutableBuffer(messageBytes),
-                    0,
-                    UInt32(messageBytes.count)
-                ))
+                try checkError(
+                    signal_aes256_gcm_encryption_update(
+                        nativeHandle,
+                        SignalBorrowedMutableBuffer(messageBytes),
+                        0,
+                        UInt32(messageBytes.count)
+                    )
+                )
             }
         }
     }
@@ -158,12 +164,14 @@ public class Aes256GcmDecryption: NativeHandleOwner<SignalMutPointerAes256GcmDec
             try nonce.withUnsafeBorrowedBuffer { nonceBuffer in
                 try associatedData.withUnsafeBorrowedBuffer { adBuffer in
                     var result = SignalMutPointerAes256GcmDecryption()
-                    try checkError(signal_aes256_gcm_decryption_new(
-                        &result,
-                        keyBuffer,
-                        nonceBuffer,
-                        adBuffer
-                    ))
+                    try checkError(
+                        signal_aes256_gcm_decryption_new(
+                            &result,
+                            keyBuffer,
+                            nonceBuffer,
+                            adBuffer
+                        )
+                    )
                     return result
                 }
             }
@@ -171,19 +179,23 @@ public class Aes256GcmDecryption: NativeHandleOwner<SignalMutPointerAes256GcmDec
         self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerAes256GcmDecryption>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerAes256GcmDecryption>
+    ) -> SignalFfiErrorRef? {
         return signal_aes256_gcm_decryption_destroy(handle.pointer)
     }
 
     public func decrypt(_ message: inout Data) throws {
         try withNativeHandle { nativeHandle in
             try message.withUnsafeMutableBytes { messageBytes in
-                try checkError(signal_aes256_gcm_decryption_update(
-                    nativeHandle,
-                    SignalBorrowedMutableBuffer(messageBytes),
-                    0,
-                    UInt32(messageBytes.count)
-                ))
+                try checkError(
+                    signal_aes256_gcm_decryption_update(
+                        nativeHandle,
+                        SignalBorrowedMutableBuffer(messageBytes),
+                        0,
+                        UInt32(messageBytes.count)
+                    )
+                )
             }
         }
     }
@@ -192,11 +204,13 @@ public class Aes256GcmDecryption: NativeHandleOwner<SignalMutPointerAes256GcmDec
         return try withNativeHandle { nativeHandle in
             try tag.withUnsafeBorrowedBuffer { tagBuffer in
                 var result = false
-                try checkError(signal_aes256_gcm_decryption_verify_tag(
-                    &result,
-                    nativeHandle,
-                    tagBuffer
-                ))
+                try checkError(
+                    signal_aes256_gcm_decryption_verify_tag(
+                        &result,
+                        nativeHandle,
+                        tagBuffer
+                    )
+                )
                 return result
             }
         }

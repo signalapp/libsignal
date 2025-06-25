@@ -50,7 +50,12 @@ public class ClientZkGroupCipher {
             try profileKeyCiphertext.withUnsafePointerToSerialized { profileKeyCiphertext in
                 try userId.withPointerToFixedWidthBinary { userId in
                     try invokeFnReturningSerialized {
-                        signal_group_secret_params_decrypt_profile_key($0, groupSecretParams, profileKeyCiphertext, userId)
+                        signal_group_secret_params_decrypt_profile_key(
+                            $0,
+                            groupSecretParams,
+                            profileKeyCiphertext,
+                            userId
+                        )
                     }
                 }
             }
@@ -66,7 +71,13 @@ public class ClientZkGroupCipher {
             try randomness.withUnsafePointerToBytes { randomness in
                 try plaintext.withUnsafeBorrowedBuffer { plaintext in
                     try invokeFnReturningData {
-                        signal_group_secret_params_encrypt_blob_with_padding_deterministic($0, groupSecretParams, randomness, plaintext, 0)
+                        signal_group_secret_params_encrypt_blob_with_padding_deterministic(
+                            $0,
+                            groupSecretParams,
+                            randomness,
+                            plaintext,
+                            0
+                        )
                     }
                 }
             }

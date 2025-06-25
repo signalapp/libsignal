@@ -3,13 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-@testable import LibSignalClient
-@testable import SignalFfi
 import XCTest
 
+@testable import LibSignalClient
+@testable import SignalFfi
+
 class IoTests: TestCaseBase {
-// These testing endpoints aren't generated in device builds, to save on code size.
-#if !os(iOS) || targetEnvironment(simulator)
+    // These testing endpoints aren't generated in device builds, to save on code size.
+    #if !os(iOS) || targetEnvironment(simulator)
     func testReadIntoEmptyBuffer() throws {
         let input = Data("ABCDEFGHIJKLMNOPQRSTUVWXYZ".utf8)
         let inputStream = SignalInputStreamAdapter(input)
@@ -20,5 +21,5 @@ class IoTests: TestCaseBase {
         }
         XCTAssertEqual(input, output)
     }
-#endif
+    #endif
 }

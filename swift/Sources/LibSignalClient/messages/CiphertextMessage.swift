@@ -34,7 +34,9 @@ public class CiphertextMessage: NativeHandleOwner<SignalMutPointerCiphertextMess
         }
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerCiphertextMessage>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerCiphertextMessage>
+    ) -> SignalFfiErrorRef? {
         return signal_ciphertext_message_destroy(handle.pointer)
     }
 

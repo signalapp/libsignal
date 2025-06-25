@@ -120,7 +120,9 @@ private class Completer<Promise: PromiseStruct>: CompleterBase {
     /// You must ensure that either the callback is called, or the result is passed to
     /// ``cleanUpUncompletedPromiseStruct(_:)``.
     func makePromiseStruct() -> Promise {
-        typealias RawPromiseCallback = @convention(c) (_ error: SignalFfiErrorRef?, _ value: sending UnsafeRawPointer?, _ context: UnsafeRawPointer?) -> Void
+        typealias RawPromiseCallback = @convention(c) (
+            _ error: SignalFfiErrorRef?, _ value: sending UnsafeRawPointer?, _ context: UnsafeRawPointer?
+        ) -> Void
         let completeOpaque: RawPromiseCallback = { error, value, context in
             let completer: CompleterBase = Unmanaged.fromOpaque(context!).takeRetainedValue()
             completer.completeUnsafe(error, value)
@@ -134,8 +136,14 @@ private class Completer<Promise: PromiseStruct>: CompleterBase {
         // we know that Rust is already enforcing that the `bridge_fn` result is allowed to hop threads (Send),
         // and that it won't use or escape the C representation of that result besides passing it to the callback.
         // So first we build a promise struct---it doesn't matter which one---by reinterpreting the callback...
-        typealias RawPointerPromiseCallback = @convention(c) (_ error: SignalFfiErrorRef?, _ value: UnsafePointer<UnsafeRawPointer?>?, _ context: UnsafeRawPointer?) -> Void
-        let rawPromiseStruct = SignalCPromiseRawPointer(complete: unsafeBitCast(completeOpaque, to: RawPointerPromiseCallback.self), context: Unmanaged.passRetained(self).toOpaque(), cancellation_id: 0)
+        typealias RawPointerPromiseCallback = @convention(c) (
+            _ error: SignalFfiErrorRef?, _ value: UnsafePointer<UnsafeRawPointer?>?, _ context: UnsafeRawPointer?
+        ) -> Void
+        let rawPromiseStruct = SignalCPromiseRawPointer(
+            complete: unsafeBitCast(completeOpaque, to: RawPointerPromiseCallback.self),
+            context: Unmanaged.passRetained(self).toOpaque(),
+            cancellation_id: 0
+        )
 
         // ...And then we reinterpret the entire struct, because all promise structs *also* have the same layout.
         // (Which we at least check a little bit here.)

@@ -22,7 +22,8 @@ public protocol ChatConnection: AnyObject {
 }
 
 public class ConnectionInfo: NativeHandleOwner<SignalMutPointerChatConnectionInfo>, CustomStringConvertible {
-    override class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerChatConnectionInfo>) -> SignalFfiErrorRef? {
+    override class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerChatConnectionInfo>) -> SignalFfiErrorRef?
+    {
         // ChatConnectionInfo is an alias for ConnectionInfo, but Swift doesn't know that.
         return signal_connection_info_destroy(SignalMutPointerConnectionInfo(raw: handle.opaque))
     }
@@ -95,21 +96,29 @@ extension ChatConnection {
 /// Before an obtained instance can be used, it must be started by calling ``AuthenticatedChatConnection/start(listener:)``.
 public class AuthenticatedChatConnection: NativeHandleOwner<
     SignalMutPointerAuthenticatedChatConnection
->, ChatConnection, @unchecked Sendable {
+>, ChatConnection, @unchecked Sendable
+{
     internal let tokioAsyncContext: TokioAsyncContext
 
     /// Initiates establishing of the underlying unauthenticated connection to the Chat Service. Once
     /// the connection is established, the returned object can be used to send and receive messages
     /// after ``AuthenticatedChatConnection/start(listener:)`` is called.
     internal init(
-        tokioAsyncContext: TokioAsyncContext, connectionManager: ConnectionManager,
-        username: String, password: String, receiveStories: Bool
+        tokioAsyncContext: TokioAsyncContext,
+        connectionManager: ConnectionManager,
+        username: String,
+        password: String,
+        receiveStories: Bool
     ) async throws {
         let nativeHandle = try await tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
             connectionManager.withNativeHandle { connectionManager in
                 signal_authenticated_chat_connection_connect(
-                    promise, tokioAsyncContext.const(), connectionManager.const(), username,
-                    password, receiveStories
+                    promise,
+                    tokioAsyncContext.const(),
+                    connectionManager.const(),
+                    username,
+                    password,
+                    receiveStories
                 )
             }
         }
@@ -127,7 +136,10 @@ public class AuthenticatedChatConnection: NativeHandleOwner<
         fatalError("should not be called directly for a ChatConnection")
     }
 
-    internal init(fakeHandle handle: NonNull<SignalMutPointerAuthenticatedChatConnection>, tokioAsyncContext: TokioAsyncContext) {
+    internal init(
+        fakeHandle handle: NonNull<SignalMutPointerAuthenticatedChatConnection>,
+        tokioAsyncContext: TokioAsyncContext
+    ) {
         self.tokioAsyncContext = tokioAsyncContext
         super.init(owned: handle)
     }
@@ -144,8 +156,10 @@ public class AuthenticatedChatConnection: NativeHandleOwner<
             withUnsafePointer(to: &listenerStruct) {
                 failOnError(
                     signal_authenticated_chat_connection_init_listener(
-                        chatConnection.const(), SignalConstPointerFfiChatListenerStruct(raw: $0)
-                    ))
+                        chatConnection.const(),
+                        SignalConstPointerFfiChatListenerStruct(raw: $0)
+                    )
+                )
             }
         }
     }
@@ -157,7 +171,9 @@ public class AuthenticatedChatConnection: NativeHandleOwner<
         _ = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
             withNativeHandle { chatConnection in
                 signal_authenticated_chat_connection_disconnect(
-                    promise, tokioAsyncContext.const(), chatConnection.const()
+                    promise,
+                    tokioAsyncContext.const(),
+                    chatConnection.const()
                 )
             }
         }
@@ -175,8 +191,11 @@ public class AuthenticatedChatConnection: NativeHandleOwner<
                 withNativeHandle { chatService in
                     internalRequest.withNativeHandle { request in
                         signal_authenticated_chat_connection_send(
-                            promise, tokioAsyncContext.const(), chatService.const(),
-                            request.const(), timeoutMillis
+                            promise,
+                            tokioAsyncContext.const(),
+                            chatService.const(),
+                            request.const(),
+                            timeoutMillis
                         )
                     }
                 }
@@ -224,7 +243,8 @@ extension SignalConstPointerAuthenticatedChatConnection: SignalConstPointer {
 /// Before an obtained instance can be used, it must be started by calling ``UnauthenticatedChatConnection/start(listener:)``.
 public class UnauthenticatedChatConnection: NativeHandleOwner<
     SignalMutPointerUnauthenticatedChatConnection
->, ChatConnection, @unchecked Sendable {
+>, ChatConnection, @unchecked Sendable
+{
     internal let tokioAsyncContext: TokioAsyncContext
     internal let environment: Net.Environment
 
@@ -240,7 +260,9 @@ public class UnauthenticatedChatConnection: NativeHandleOwner<
         let nativeHandle = try await tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
             connectionManager.withNativeHandle { connectionManager in
                 signal_unauthenticated_chat_connection_connect(
-                    promise, tokioAsyncContext.const(), connectionManager.const()
+                    promise,
+                    tokioAsyncContext.const(),
+                    connectionManager.const()
                 )
             }
         }
@@ -277,13 +299,16 @@ public class UnauthenticatedChatConnection: NativeHandleOwner<
     public func start(listener: any ConnectionEventsListener<UnauthenticatedChatConnection>) {
         withNativeHandle { chatConnection in
             var listenerStruct = UnauthConnectionEventsListenerBridge(
-                chatConnection: self, listener: listener
+                chatConnection: self,
+                listener: listener
             ).makeListenerStruct()
             withUnsafePointer(to: &listenerStruct) {
                 failOnError(
                     signal_unauthenticated_chat_connection_init_listener(
-                        chatConnection.const(), SignalConstPointerFfiChatListenerStruct(raw: $0)
-                    ))
+                        chatConnection.const(),
+                        SignalConstPointerFfiChatListenerStruct(raw: $0)
+                    )
+                )
             }
         }
     }
@@ -295,7 +320,9 @@ public class UnauthenticatedChatConnection: NativeHandleOwner<
         _ = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
             withNativeHandle { chatConnection in
                 signal_unauthenticated_chat_connection_disconnect(
-                    promise, tokioAsyncContext.const(), chatConnection.const()
+                    promise,
+                    tokioAsyncContext.const(),
+                    chatConnection.const()
                 )
             }
         }
@@ -313,8 +340,11 @@ public class UnauthenticatedChatConnection: NativeHandleOwner<
                 withNativeHandle { chatService in
                     internalRequest.withNativeHandle { request in
                         signal_unauthenticated_chat_connection_send(
-                            promise, tokioAsyncContext.const(), chatService.const(),
-                            request.const(), timeoutMillis
+                            promise,
+                            tokioAsyncContext.const(),
+                            chatService.const(),
+                            request.const(),
+                            timeoutMillis
                         )
                     }
                 }

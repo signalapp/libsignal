@@ -7,11 +7,16 @@ import Foundation
 import SignalFfi
 
 public class SessionRecord: ClonableHandleOwner<SignalMutPointerSessionRecord> {
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerSessionRecord>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerSessionRecord>
+    ) -> SignalFfiErrorRef? {
         return signal_session_record_destroy(handle.pointer)
     }
 
-    override internal class func cloneNativeHandle(_ newHandle: inout SignalMutPointerSessionRecord, currentHandle: SignalConstPointerSessionRecord) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(
+        _ newHandle: inout SignalMutPointerSessionRecord,
+        currentHandle: SignalConstPointerSessionRecord
+    ) -> SignalFfiErrorRef? {
         return signal_session_record_clone(&newHandle, currentHandle)
     }
 
@@ -41,7 +46,13 @@ public class SessionRecord: ClonableHandleOwner<SignalMutPointerSessionRecord> {
     public func hasCurrentState(now: Date) -> Bool {
         var result = false
         self.withNativeHandle { nativeHandle in
-            failOnError(signal_session_record_has_usable_sender_chain(&result, nativeHandle.const(), UInt64(now.timeIntervalSince1970 * 1000)))
+            failOnError(
+                signal_session_record_has_usable_sender_chain(
+                    &result,
+                    nativeHandle.const(),
+                    UInt64(now.timeIntervalSince1970 * 1000)
+                )
+            )
         }
         return result
     }
@@ -63,7 +74,9 @@ public class SessionRecord: ClonableHandleOwner<SignalMutPointerSessionRecord> {
     public func currentRatchetKeyMatches(_ key: PublicKey) throws -> Bool {
         var result = false
         try withAllBorrowed(self, key) { sessionHandle, keyHandle in
-            try checkError(signal_session_record_current_ratchet_key_matches(&result, sessionHandle.const(), keyHandle.const()))
+            try checkError(
+                signal_session_record_current_ratchet_key_matches(&result, sessionHandle.const(), keyHandle.const())
+            )
         }
         return result
     }

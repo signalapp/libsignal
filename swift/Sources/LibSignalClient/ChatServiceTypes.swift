@@ -18,7 +18,13 @@ public struct ChatRequest: Equatable, Sendable {
     public var body: Data?
     public var timeout: TimeInterval
 
-    public init(method: String, pathAndQuery: String, headers: [String: String] = [:], body: Data? = nil, timeout: TimeInterval) {
+    public init(
+        method: String,
+        pathAndQuery: String,
+        headers: [String: String] = [:],
+        body: Data? = nil,
+        timeout: TimeInterval
+    ) {
         self.method = method
         self.pathAndQuery = pathAndQuery
         self.headers = headers
@@ -44,7 +50,9 @@ public struct ChatRequest: Equatable, Sendable {
             var handle = SignalMutPointerHttpRequest(untyped: nil)
             if let body = request.body {
                 try body.withUnsafeBorrowedBuffer { body in
-                    try checkError(signal_http_request_new_with_body(&handle, request.method, request.pathAndQuery, body))
+                    try checkError(
+                        signal_http_request_new_with_body(&handle, request.method, request.pathAndQuery, body)
+                    )
                 }
             } else {
                 try checkError(signal_http_request_new_without_body(&handle, request.method, request.pathAndQuery))
@@ -61,8 +69,8 @@ public struct ChatRequest: Equatable, Sendable {
             return signal_http_request_destroy(handle.pointer)
         }
 
-// These testing endpoints aren't generated in device builds, to save on code size.
-#if !os(iOS) || targetEnvironment(simulator)
+        // These testing endpoints aren't generated in device builds, to save on code size.
+        #if !os(iOS) || targetEnvironment(simulator)
         internal var method: String {
             failOnError {
                 try withNativeHandle { request in
@@ -109,7 +117,7 @@ public struct ChatRequest: Equatable, Sendable {
                 }
             }
         }
-#endif
+        #endif
     }
 }
 
@@ -154,28 +162,40 @@ public struct ChatResponse: Equatable, Sendable {
 
         self.status = rawResponse.status
         self.message = String(cString: rawResponse.message)
-        self.headers = Dictionary(uniqueKeysWithValues: rawResponse.rawHeadersAsBuffer.lazy.map { (rawHeader: UnsafePointer<CChar>?) -> (String, String) in
-            guard let rawHeader else {
-                fatalError("null in headers list")
+        self.headers = Dictionary(
+            uniqueKeysWithValues: rawResponse.rawHeadersAsBuffer.lazy.map {
+                (rawHeader: UnsafePointer<CChar>?) -> (String, String) in
+                guard let rawHeader else {
+                    fatalError("null in headers list")
+                }
+                let asciiColon = Int32(Character(":").asciiValue!)
+                guard let colonPtr = strchr(rawHeader, asciiColon) else {
+                    fatalError("header returned without colon")
+                }
+                let nameCount = UnsafePointer(colonPtr) - rawHeader
+                guard
+                    let name = UnsafeBufferPointer(start: rawHeader, count: nameCount).withMemoryRebound(
+                        to: UInt8.self,
+                        {
+                            String(bytes: $0, encoding: .utf8)
+                        }
+                    )
+                else {
+                    fatalError("non-UTF-8 header name not rejected by Rust")
+                }
+                let value = String(cString: colonPtr + 1)
+                return (name, value)
             }
-            let asciiColon = Int32(Character(":").asciiValue!)
-            guard let colonPtr = strchr(rawHeader, asciiColon) else {
-                fatalError("header returned without colon")
-            }
-            let nameCount = UnsafePointer(colonPtr) - rawHeader
-            guard let name = UnsafeBufferPointer(start: rawHeader, count: nameCount).withMemoryRebound(to: UInt8.self, {
-                String(bytes: $0, encoding: .utf8)
-            }) else {
-                fatalError("non-UTF-8 header name not rejected by Rust")
-            }
-            let value = String(cString: colonPtr + 1)
-            return (name, value)
-        })
+        )
 
         // Avoid copying the body when possible!
-        self.body = Data(bytesNoCopy: rawResponse.body.base, count: rawResponse.body.length, deallocator: .custom { base, length in
-            signal_free_buffer(base, length)
-        })
+        self.body = Data(
+            bytesNoCopy: rawResponse.body.base,
+            count: rawResponse.body.length,
+            deallocator: .custom { base, length in
+                signal_free_buffer(base, length)
+            }
+        )
         // Clear it out so it doesn't get freed eagerly.
         rawResponse.body = .init()
 

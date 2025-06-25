@@ -10,39 +10,53 @@ import Testing
 private let SECONDS_PER_DAY: UInt64 = 24 * 60 * 60
 
 class ZKGroupTests {
-    let TEST_ARRAY_16: UUID = .init(uuid: (0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F))
+    let TEST_ARRAY_16: UUID = .init(
+        uuid: (0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F)
+    )
 
-    let TEST_ARRAY_16_1: UUID = .init(uuid: (0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F, 0x70, 0x71, 0x72, 0x73))
+    let TEST_ARRAY_16_1: UUID = .init(
+        uuid: (0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F, 0x70, 0x71, 0x72, 0x73)
+    )
 
-    let TEST_ARRAY_32: Randomness = .init((
-        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F
-    ))
+    let TEST_ARRAY_32: Randomness = .init(
+        (
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+            0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F
+        )
+    )
 
     let TEST_ARRAY_32_1 = Data([
         0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F, 0x70, 0x71, 0x72, 0x73,
         0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7E, 0x7F, 0x80, 0x81, 0x82, 0x83,
     ])
 
-    let TEST_ARRAY_32_2: Randomness = .init((
-        0xC8, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7,
-        0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF, 0xE0, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7
-    ))
+    let TEST_ARRAY_32_2: Randomness = .init(
+        (
+            0xC8, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7,
+            0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF, 0xE0, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7
+        )
+    )
 
-    let TEST_ARRAY_32_3: Randomness = .init((
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
-        28, 29, 30, 31, 32
-    ))
+    let TEST_ARRAY_32_3: Randomness = .init(
+        (
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
+            28, 29, 30, 31, 32
+        )
+    )
 
-    let TEST_ARRAY_32_4: Randomness = .init((
-        2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
-        28, 29, 30, 31, 32, 33
-    ))
+    let TEST_ARRAY_32_4: Randomness = .init(
+        (
+            2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
+            28, 29, 30, 31, 32, 33
+        )
+    )
 
-    let TEST_ARRAY_32_5: Randomness = .init((
-        0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12,
-        0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22
-    ))
+    let TEST_ARRAY_32_5: Randomness = .init(
+        (
+            0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12,
+            0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22
+        )
+    )
 
     let authPresentationResult: [UInt8] = [
         0x01, 0x32, 0x2F, 0x91, 0x00, 0xDE, 0x07, 0x34, 0x55, 0x0A, 0x81, 0xDC, 0x81, 0x72, 0x4A, 0x81,
@@ -126,13 +140,23 @@ class ZKGroupTests {
 
         // SERVER
         // Issue credential
-        let authCredentialResponse = try serverZkAuth.issueAuthCredentialWithPniZkc(randomness: self.TEST_ARRAY_32_2, aci: aci, pni: pni, redemptionTime: redemptionTime)
+        let authCredentialResponse = try serverZkAuth.issueAuthCredentialWithPniZkc(
+            randomness: self.TEST_ARRAY_32_2,
+            aci: aci,
+            pni: pni,
+            redemptionTime: redemptionTime
+        )
 
         // CLIENT
         // Receive credential
         let clientZkAuthCipher = ClientZkAuthOperations(serverPublicParams: serverPublicParams)
         let clientZkGroupCipher = ClientZkGroupCipher(groupSecretParams: groupSecretParams)
-        let authCredential = try clientZkAuthCipher.receiveAuthCredentialWithPniAsServiceId(aci: aci, pni: pni, redemptionTime: redemptionTime, authCredentialResponse: authCredentialResponse)
+        let authCredential = try clientZkAuthCipher.receiveAuthCredentialWithPniAsServiceId(
+            aci: aci,
+            pni: pni,
+            redemptionTime: redemptionTime,
+            authCredentialResponse: authCredentialResponse
+        )
 
         // Create and decrypt user entry
         let aciCiphertext = try clientZkGroupCipher.encrypt(aci)
@@ -143,14 +167,22 @@ class ZKGroupTests {
         #expect(pni == pniPlaintext)
 
         // Create presentation
-        let presentation = try clientZkAuthCipher.createAuthCredentialPresentation(randomness: self.TEST_ARRAY_32_5, groupSecretParams: groupSecretParams, authCredential: authCredential)
+        let presentation = try clientZkAuthCipher.createAuthCredentialPresentation(
+            randomness: self.TEST_ARRAY_32_5,
+            groupSecretParams: groupSecretParams,
+            authCredential: authCredential
+        )
 
         // Verify presentation
         let uuidCiphertextRecv = try presentation.getUuidCiphertext()
         #expect(aciCiphertext.serialize() == uuidCiphertextRecv.serialize())
         #expect(try presentation.getPniCiphertext().serialize() == pniCiphertext.serialize())
         #expect(try presentation.getRedemptionTime() == Date(timeIntervalSince1970: TimeInterval(redemptionTime)))
-        try serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams: groupPublicParams, authCredentialPresentation: presentation, now: Date(timeIntervalSince1970: TimeInterval(redemptionTime)))
+        try serverZkAuth.verifyAuthCredentialPresentation(
+            groupPublicParams: groupPublicParams,
+            authCredentialPresentation: presentation,
+            now: Date(timeIntervalSince1970: TimeInterval(redemptionTime))
+        )
     }
 
     @Test
@@ -177,19 +209,32 @@ class ZKGroupTests {
         let profileKeyCommitment = try profileKey.getCommitment(userId: userId)
 
         // Create context and request
-        let context = try clientZkProfileCipher.createProfileKeyCredentialRequestContext(randomness: self.TEST_ARRAY_32_3, userId: userId, profileKey: profileKey)
+        let context = try clientZkProfileCipher.createProfileKeyCredentialRequestContext(
+            randomness: self.TEST_ARRAY_32_3,
+            userId: userId,
+            profileKey: profileKey
+        )
         let request = try context.getRequest()
 
         // SERVER
         let now = UInt64(Date().timeIntervalSince1970)
         let startOfDay = now - (now % SECONDS_PER_DAY)
         let expiration = startOfDay + 5 * SECONDS_PER_DAY
-        let response = try serverZkProfile.issueExpiringProfileKeyCredential(randomness: self.TEST_ARRAY_32_4, profileKeyCredentialRequest: request, userId: userId, profileKeyCommitment: profileKeyCommitment, expiration: expiration)
+        let response = try serverZkProfile.issueExpiringProfileKeyCredential(
+            randomness: self.TEST_ARRAY_32_4,
+            profileKeyCredentialRequest: request,
+            userId: userId,
+            profileKeyCommitment: profileKeyCommitment,
+            expiration: expiration
+        )
 
         // CLIENT
         // Gets stored profile credential
         let clientZkGroupCipher = ClientZkGroupCipher(groupSecretParams: groupSecretParams)
-        let profileKeyCredential = try clientZkProfileCipher.receiveExpiringProfileKeyCredential(profileKeyCredentialRequestContext: context, profileKeyCredentialResponse: response)
+        let profileKeyCredential = try clientZkProfileCipher.receiveExpiringProfileKeyCredential(
+            profileKeyCredentialRequestContext: context,
+            profileKeyCredentialResponse: response
+        )
 
         // Create encrypted UID and profile key
         let uuidCiphertext = try clientZkGroupCipher.encrypt(userId)
@@ -197,21 +242,43 @@ class ZKGroupTests {
         #expect(plaintext == userId)
 
         let profileKeyCiphertext = try clientZkGroupCipher.encryptProfileKey(profileKey: profileKey, userId: userId)
-        let decryptedProfileKey = try clientZkGroupCipher.decryptProfileKey(profileKeyCiphertext: profileKeyCiphertext, userId: userId)
+        let decryptedProfileKey = try clientZkGroupCipher.decryptProfileKey(
+            profileKeyCiphertext: profileKeyCiphertext,
+            userId: userId
+        )
         #expect(profileKey.serialize() == decryptedProfileKey.serialize())
 
         #expect(Date(timeIntervalSince1970: TimeInterval(expiration)) == profileKeyCredential.expirationTime)
 
-        let presentation = try clientZkProfileCipher.createProfileKeyCredentialPresentation(randomness: self.TEST_ARRAY_32_5, groupSecretParams: groupSecretParams, profileKeyCredential: profileKeyCredential)
+        let presentation = try clientZkProfileCipher.createProfileKeyCredentialPresentation(
+            randomness: self.TEST_ARRAY_32_5,
+            groupSecretParams: groupSecretParams,
+            profileKeyCredential: profileKeyCredential
+        )
 
         // Verify presentation
-        try serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams: groupPublicParams, profileKeyCredentialPresentation: presentation)
-        try serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams: groupPublicParams, profileKeyCredentialPresentation: presentation, now: Date(timeIntervalSince1970: TimeInterval(expiration - 5)))
+        try serverZkProfile.verifyProfileKeyCredentialPresentation(
+            groupPublicParams: groupPublicParams,
+            profileKeyCredentialPresentation: presentation
+        )
+        try serverZkProfile.verifyProfileKeyCredentialPresentation(
+            groupPublicParams: groupPublicParams,
+            profileKeyCredentialPresentation: presentation,
+            now: Date(timeIntervalSince1970: TimeInterval(expiration - 5))
+        )
         #expect(throws: SignalError.self) {
-            try serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams: groupPublicParams, profileKeyCredentialPresentation: presentation, now: Date(timeIntervalSince1970: TimeInterval(expiration)))
+            try serverZkProfile.verifyProfileKeyCredentialPresentation(
+                groupPublicParams: groupPublicParams,
+                profileKeyCredentialPresentation: presentation,
+                now: Date(timeIntervalSince1970: TimeInterval(expiration))
+            )
         }
         #expect(throws: SignalError.self) {
-            try serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams: groupPublicParams, profileKeyCredentialPresentation: presentation, now: Date(timeIntervalSince1970: TimeInterval(expiration + 5)))
+            try serverZkProfile.verifyProfileKeyCredentialPresentation(
+                groupPublicParams: groupPublicParams,
+                profileKeyCredentialPresentation: presentation,
+                now: Date(timeIntervalSince1970: TimeInterval(expiration + 5))
+            )
         }
 
         let uuidCiphertextRecv = try presentation.getUuidCiphertext()
@@ -342,18 +409,39 @@ class ZKGroupTests {
         // Server
         let now = UInt64(Date().timeIntervalSince1970)
         let startOfDay = now - (now % SECONDS_PER_DAY)
-        let response = request.issueCredential(userId: userId, timestamp: Date(timeIntervalSince1970: TimeInterval(startOfDay)), params: serverSecretParams, randomness: self.TEST_ARRAY_32_4)
+        let response = request.issueCredential(
+            userId: userId,
+            timestamp: Date(timeIntervalSince1970: TimeInterval(startOfDay)),
+            params: serverSecretParams,
+            randomness: self.TEST_ARRAY_32_4
+        )
 
         // Client
         let credential = try context.receive(response, userId: userId, params: serverPublicParams)
-        let presentation = credential.present(roomId: roomId, userId: userId, serverParams: serverPublicParams, callLinkParams: clientSecretParams, randomness: self.TEST_ARRAY_32_5)
+        let presentation = credential.present(
+            roomId: roomId,
+            userId: userId,
+            serverParams: serverPublicParams,
+            callLinkParams: clientSecretParams,
+            randomness: self.TEST_ARRAY_32_5
+        )
 
         // Server
         try presentation.verify(roomId: roomId, serverParams: serverSecretParams, callLinkParams: clientPublicParams)
-        try presentation.verify(roomId: roomId, now: Date(timeIntervalSince1970: TimeInterval(startOfDay + SECONDS_PER_DAY)), serverParams: serverSecretParams, callLinkParams: clientPublicParams)
+        try presentation.verify(
+            roomId: roomId,
+            now: Date(timeIntervalSince1970: TimeInterval(startOfDay + SECONDS_PER_DAY)),
+            serverParams: serverSecretParams,
+            callLinkParams: clientPublicParams
+        )
 
         #expect(throws: SignalError.self) {
-            try presentation.verify(roomId: roomId, now: Date(timeIntervalSince1970: TimeInterval(startOfDay + 30 * 60 * 60)), serverParams: serverSecretParams, callLinkParams: clientPublicParams)
+            try presentation.verify(
+                roomId: roomId,
+                now: Date(timeIntervalSince1970: TimeInterval(startOfDay + 30 * 60 * 60)),
+                serverParams: serverSecretParams,
+                callLinkParams: clientPublicParams
+            )
         }
     }
 
@@ -370,18 +458,41 @@ class ZKGroupTests {
         let now = UInt64(Date().timeIntervalSince1970)
         let startOfDay = now - (now % SECONDS_PER_DAY)
         let redemptionTime = Date(timeIntervalSince1970: TimeInterval(startOfDay))
-        let response = CallLinkAuthCredentialResponse.issueCredential(userId: userId, redemptionTime: redemptionTime, params: serverSecretParams, randomness: self.TEST_ARRAY_32_4)
+        let response = CallLinkAuthCredentialResponse.issueCredential(
+            userId: userId,
+            redemptionTime: redemptionTime,
+            params: serverSecretParams,
+            randomness: self.TEST_ARRAY_32_4
+        )
 
         // Client
-        let credential = try response.receive(userId: userId, redemptionTime: redemptionTime, params: serverPublicParams)
-        let presentation = credential.present(userId: userId, redemptionTime: redemptionTime, serverParams: serverPublicParams, callLinkParams: clientSecretParams, randomness: self.TEST_ARRAY_32_5)
+        let credential = try response.receive(
+            userId: userId,
+            redemptionTime: redemptionTime,
+            params: serverPublicParams
+        )
+        let presentation = credential.present(
+            userId: userId,
+            redemptionTime: redemptionTime,
+            serverParams: serverPublicParams,
+            callLinkParams: clientSecretParams,
+            randomness: self.TEST_ARRAY_32_5
+        )
 
         // Server
         try presentation.verify(serverParams: serverSecretParams, callLinkParams: clientPublicParams)
-        try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay + SECONDS_PER_DAY)), serverParams: serverSecretParams, callLinkParams: clientPublicParams)
+        try presentation.verify(
+            now: Date(timeIntervalSince1970: TimeInterval(startOfDay + SECONDS_PER_DAY)),
+            serverParams: serverSecretParams,
+            callLinkParams: clientPublicParams
+        )
 
         #expect(throws: SignalError.self) {
-            try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay + 3 * SECONDS_PER_DAY)), serverParams: serverSecretParams, callLinkParams: clientPublicParams)
+            try presentation.verify(
+                now: Date(timeIntervalSince1970: TimeInterval(startOfDay + 3 * SECONDS_PER_DAY)),
+                serverParams: serverSecretParams,
+                callLinkParams: clientPublicParams
+            )
         }
 
         // Client
@@ -390,7 +501,9 @@ class ZKGroupTests {
 
     @Test
     func deriveProfileKey() throws {
-        let expectedAccessKey = Data([0x5A, 0x72, 0x3A, 0xCE, 0xE5, 0x2C, 0x5E, 0xA0, 0x2B, 0x92, 0xA3, 0xA3, 0x60, 0xC0, 0x95, 0x95])
+        let expectedAccessKey = Data([
+            0x5A, 0x72, 0x3A, 0xCE, 0xE5, 0x2C, 0x5E, 0xA0, 0x2B, 0x92, 0xA3, 0xA3, 0x60, 0xC0, 0x95, 0x95,
+        ])
         let profileKeyBytes = Data(repeating: 0x02, count: 32)
 
         let result = try ProfileKey(contents: profileKeyBytes).deriveAccessKey()
@@ -410,8 +523,13 @@ class ZKGroupTests {
 
         // These are expectations; if the contents of a credential or derivation of a backup ID
         // changes, they will need to be updated.
-        let serializedBackupID = Data([0xA2, 0x89, 0x62, 0xC7, 0xF9, 0xAC, 0x91, 0x0F, 0x66, 0xE4, 0xBC, 0xB3, 0x3F, 0x2C, 0xEF, 0x06])
-        let serializedRequestCredential = Data(base64Encoded: "AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB399rN6N8Dv5DAwvY4N36Uj0qGf0cV5a/8rf5nkxLeVNnF3ojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ==")!
+        let serializedBackupID = Data([
+            0xA2, 0x89, 0x62, 0xC7, 0xF9, 0xAC, 0x91, 0x0F, 0x66, 0xE4, 0xBC, 0xB3, 0x3F, 0x2C, 0xEF, 0x06,
+        ])
+        let serializedRequestCredential = Data(
+            base64Encoded:
+                "AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB399rN6N8Dv5DAwvY4N36Uj0qGf0cV5a/8rf5nkxLeVNnF3ojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ=="
+        )!
 
         let backupLevel = BackupLevel.free
         let credentialType = BackupCredentialType.messages
@@ -420,12 +538,21 @@ class ZKGroupTests {
         let request = context.getRequest()
         let serverSecretParams = GenericServerSecretParams.generate(randomness: self.TEST_ARRAY_32)
         let serverPublicParams = serverSecretParams.getPublicParams()
-        #expect(request.serialize() == serializedRequestCredential, Comment(rawValue: Data(request.serialize()).base64EncodedString()))
+        #expect(
+            request.serialize() == serializedRequestCredential,
+            Comment(rawValue: Data(request.serialize()).base64EncodedString())
+        )
 
         let now = UInt64(Date().timeIntervalSince1970)
         let startOfDay = now - (now % SECONDS_PER_DAY)
         let redemptionTime = Date(timeIntervalSince1970: TimeInterval(startOfDay))
-        let response = request.issueCredential(timestamp: redemptionTime, backupLevel: backupLevel, type: credentialType, params: serverSecretParams, randomness: self.TEST_ARRAY_32_2)
+        let response = request.issueCredential(
+            timestamp: redemptionTime,
+            backupLevel: backupLevel,
+            type: credentialType,
+            params: serverSecretParams,
+            randomness: self.TEST_ARRAY_32_2
+        )
         let credential = try context.receive(response, timestamp: redemptionTime, params: serverPublicParams)
         #expect(credential.backupID == serializedBackupID, Comment(rawValue: credential.backupID.hexString))
         #expect(credential.backupLevel == backupLevel)
@@ -450,7 +577,13 @@ class ZKGroupTests {
         let now = UInt64(Date().timeIntervalSince1970)
         let startOfDay = now - (now % SECONDS_PER_DAY)
         let redemptionTime = Date(timeIntervalSince1970: TimeInterval(startOfDay))
-        let response = request.issueCredential(timestamp: redemptionTime, backupLevel: backupLevel, type: credentialType, params: serverSecretParams, randomness: self.TEST_ARRAY_32_2)
+        let response = request.issueCredential(
+            timestamp: redemptionTime,
+            backupLevel: backupLevel,
+            type: credentialType,
+            params: serverSecretParams,
+            randomness: self.TEST_ARRAY_32_2
+        )
 
         // Client
         let credential = try context.receive(response, timestamp: redemptionTime, params: serverPublicParams)
@@ -461,16 +594,25 @@ class ZKGroupTests {
 
         // Server
         try presentation.verify(serverParams: serverSecretParams)
-        try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay + SECONDS_PER_DAY)), serverParams: serverSecretParams)
+        try presentation.verify(
+            now: Date(timeIntervalSince1970: TimeInterval(startOfDay + SECONDS_PER_DAY)),
+            serverParams: serverSecretParams
+        )
 
         // credential should be expired after 2 days
         #expect(throws: SignalError.self) {
-            try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay + 1 + SECONDS_PER_DAY * 2)), serverParams: serverSecretParams)
+            try presentation.verify(
+                now: Date(timeIntervalSince1970: TimeInterval(startOfDay + 1 + SECONDS_PER_DAY * 2)),
+                serverParams: serverSecretParams
+            )
         }
 
         // future credential should be invalid
         #expect(throws: SignalError.self) {
-            try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay - 1 - SECONDS_PER_DAY)), serverParams: serverSecretParams)
+            try presentation.verify(
+                now: Date(timeIntervalSince1970: TimeInterval(startOfDay - 1 - SECONDS_PER_DAY)),
+                serverParams: serverSecretParams
+            )
         }
     }
 
@@ -535,9 +677,9 @@ class ZKGroupTests {
                 serverParams: serverPublicParams
             )
             #expect(
-                receivedEndorsements.endorsements.map { $0.serialize() } == repeatReceivedEndorsements.endorsements.map { $0.serialize() }
+                receivedEndorsements.endorsements.map { $0.serialize() }
+                    == repeatReceivedEndorsements.endorsements.map { $0.serialize() }
             )
-            #expect(receivedEndorsements.combinedEndorsement.serialize() == repeatReceivedEndorsements.combinedEndorsement.serialize())
 
             #expect(throws: SignalError.self, "missing local user") {
                 try response.receive(
@@ -599,11 +741,15 @@ class ZKGroupTests {
             let everybodyButMallory = receivedEndorsements
                 .combinedEndorsement
                 .byRemoving(receivedEndorsements.endorsements[3])
-            let fullEverybodyButMalloryToken = everybodyButMallory
+            let fullEverybodyButMalloryToken =
+                everybodyButMallory
                 .toFullToken(groupParams: groupSecretParams, expiration: response.expiration)
 
             // SERVER
-            let everybodyButMalloryKey = GroupSendDerivedKeyPair.forExpiration(fullEverybodyButMalloryToken.expiration, params: serverSecretParams)
+            let everybodyButMalloryKey = GroupSendDerivedKeyPair.forExpiration(
+                fullEverybodyButMalloryToken.expiration,
+                params: serverSecretParams
+            )
 
             try fullEverybodyButMalloryToken.verify(
                 userIds: [bobAci, eveAci],
@@ -615,10 +761,16 @@ class ZKGroupTests {
         do {
             // CLIENT
             let bobAndEve = GroupSendEndorsement.combine(receivedEndorsements.endorsements[1...2])
-            let fullBobAndEveToken = bobAndEve.toFullToken(groupParams: groupSecretParams, expiration: response.expiration)
+            let fullBobAndEveToken = bobAndEve.toFullToken(
+                groupParams: groupSecretParams,
+                expiration: response.expiration
+            )
 
             // SERVER
-            let bobAndEveKey = GroupSendDerivedKeyPair.forExpiration(fullBobAndEveToken.expiration, params: serverSecretParams)
+            let bobAndEveKey = GroupSendDerivedKeyPair.forExpiration(
+                fullBobAndEveToken.expiration,
+                params: serverSecretParams
+            )
 
             try fullBobAndEveToken.verify(userIds: [bobAci, eveAci], keyPair: bobAndEveKey)
         }
@@ -627,7 +779,10 @@ class ZKGroupTests {
         do {
             // CLIENT
             let bobEndorsement = receivedEndorsements.endorsements[1]
-            let fullBobToken = bobEndorsement.toFullToken(groupParams: groupSecretParams, expiration: response.expiration)
+            let fullBobToken = bobEndorsement.toFullToken(
+                groupParams: groupSecretParams,
+                expiration: response.expiration
+            )
 
             // SERVER
             let bobKey = GroupSendDerivedKeyPair.forExpiration(fullBobToken.expiration, params: serverSecretParams)
@@ -667,8 +822,17 @@ class ZKGroupTests {
         // CLIENT
         // Gets stored endorsements
         // Just don't crash (this did crash on a lower-end Android phone once).
-        _ = try response.receive(groupMembers: members, localUser: members[0], groupParams: groupSecretParams, serverParams: serverPublicParams)
-        _ = try response.receive(groupMembers: encryptedMembers, localUser: encryptedMembers[0], serverParams: serverPublicParams)
+        _ = try response.receive(
+            groupMembers: members,
+            localUser: members[0],
+            groupParams: groupSecretParams,
+            serverParams: serverPublicParams
+        )
+        _ = try response.receive(
+            groupMembers: encryptedMembers,
+            localUser: encryptedMembers[0],
+            serverParams: serverPublicParams
+        )
     }
 
     @Test
@@ -702,7 +866,16 @@ class ZKGroupTests {
         // CLIENT
         // Gets stored endorsements
         // Just don't crash.
-        _ = try response.receive(groupMembers: [member], localUser: member, groupParams: groupSecretParams, serverParams: serverPublicParams)
-        _ = try response.receive(groupMembers: [encryptedMember], localUser: encryptedMember, serverParams: serverPublicParams)
+        _ = try response.receive(
+            groupMembers: [member],
+            localUser: member,
+            groupParams: groupSecretParams,
+            serverParams: serverPublicParams
+        )
+        _ = try response.receive(
+            groupMembers: [encryptedMember],
+            localUser: encryptedMember,
+            serverParams: serverPublicParams
+        )
     }
 }

@@ -1,0 +1,9 @@
+{
+    "version": 1,
+    "lineLength": 120,
+    "indentation": { "spaces": 4 },
+    "indentConditionalCompilationBlocks": false,
+    "lineBreakBeforeEachArgument": true,
+    "lineBreakBetweenDeclarationAttributes": true,
+    "prioritizeKeepingFunctionOutputTogether": true
+}

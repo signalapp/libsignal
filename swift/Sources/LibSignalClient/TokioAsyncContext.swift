@@ -13,7 +13,9 @@ internal class TokioAsyncContext: NativeHandleOwner<SignalMutPointerTokioAsyncCo
         self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerTokioAsyncContext>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerTokioAsyncContext>
+    ) -> SignalFfiErrorRef? {
         signal_tokio_async_context_destroy(handle.pointer)
     }
 
@@ -88,7 +90,12 @@ internal class TokioAsyncContext: NativeHandleOwner<SignalMutPointerTokioAsyncCo
                     try checkError(signal_tokio_async_context_cancel($0.const(), id))
                 }
             } catch {
-                LoggerBridge.shared?.logger.log(level: .warn, file: #fileID, line: #line, message: "failed to cancel libsignal task \(id): \(error)")
+                LoggerBridge.shared?.logger.log(
+                    level: .warn,
+                    file: #fileID,
+                    line: #line,
+                    message: "failed to cancel libsignal task \(id): \(error)"
+                )
             }
         }
     }
@@ -106,17 +113,23 @@ internal class TokioAsyncContext: NativeHandleOwner<SignalMutPointerTokioAsyncCo
         _ body: (UnsafeMutablePointer<Promise>, SignalMutPointerTokioAsyncContext) -> SignalFfiErrorRef?
     ) async throws -> Promise.Result {
         let cancellationHelper = CancellationHandoffHelper(context: self)
-        return try await withTaskCancellationHandler(operation: {
-            try await LibSignalClient.invokeAsyncFunction({ promise in
-                withNativeHandle { handle in
-                    body(promise, handle)
-                }
-            }, saveCancellationId: {
-                cancellationHelper.setCancellationId($0)
-            })
-        }, onCancel: {
-            cancellationHelper.cancel()
-        })
+        return try await withTaskCancellationHandler(
+            operation: {
+                try await LibSignalClient.invokeAsyncFunction(
+                    { promise in
+                        withNativeHandle { handle in
+                            body(promise, handle)
+                        }
+                    },
+                    saveCancellationId: {
+                        cancellationHelper.setCancellationId($0)
+                    }
+                )
+            },
+            onCancel: {
+                cancellationHelper.cancel()
+            }
+        )
     }
 }
 

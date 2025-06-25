@@ -4,9 +4,10 @@
 //
 
 import Foundation
-@testable import LibSignalClient
 import SignalFfi
 import XCTest
+
+@testable import LibSignalClient
 
 class TestStore: KeyTransparency.Store {
     var distinguishedTreeHeads: [Data] = []
@@ -58,11 +59,15 @@ final class KeyTransparencyTests: TestCaseBase {
 
     private var testAccount = TestAccount(
         aci: Aci(fromUUID: UUID(uuidString: "90c979fd-eab4-4a08-b6da-69dedeab9b29")!),
-        identityKey: try! IdentityKey(bytes: [UInt8](fromHexString: "05111f9464c1822c6a2405acf1c5a4366679dc3349fc8eb015c8d7260e3f771177")!),
+        identityKey: try! IdentityKey(
+            bytes: [UInt8](fromHexString: "05111f9464c1822c6a2405acf1c5a4366679dc3349fc8eb015c8d7260e3f771177")!
+        ),
         e164: "+18005550100",
         unidentifiedAccessKey: Data(fromHexString: "c6f7c258c24d69538ea553b4a943c8d9")!,
-        usernameHash: Data(fromHexString:
-            "d237a4b83b463ca7da58d4a16bf6a3ba104506eb412b235eb603ea10f467c655")!
+        usernameHash: Data(
+            fromHexString:
+                "d237a4b83b463ca7da58d4a16bf6a3ba104506eb412b235eb603ea10f467c655"
+        )!
     )
 
     private class NoOpListener: ConnectionEventsListener {
@@ -123,8 +128,8 @@ final class KeyTransparencyTests: TestCaseBase {
         XCTAssertEqual(2, store.accountData[self.testAccount.aci]!.count)
     }
 
-// These testing endpoints aren't generated in device builds, to save on code size.
-#if !os(iOS) || targetEnvironment(simulator)
+    // These testing endpoints aren't generated in device builds, to save on code size.
+    #if !os(iOS) || targetEnvironment(simulator)
     func testNonFatalErrorBridging() throws {
         do {
             try checkError(signal_testing_key_trans_non_fatal_verification_failure())
@@ -154,5 +159,5 @@ final class KeyTransparencyTests: TestCaseBase {
             XCTFail("unexpected exception thrown: \(error)")
         }
     }
-#endif
+    #endif
 }

@@ -7,7 +7,9 @@ import Foundation
 import SignalFfi
 
 public class SignalMessage: NativeHandleOwner<SignalMutPointerSignalMessage> {
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerSignalMessage>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerSignalMessage>
+    ) -> SignalFfiErrorRef? {
         return signal_message_destroy(handle.pointer)
     }
 
@@ -81,13 +83,15 @@ public class SignalMessage: NativeHandleOwner<SignalMutPointerSignalMessage> {
             .bytes(macKey)
         ) { messageHandle, senderHandle, receiverHandle, macKey in
             var result = false
-            try checkError(signal_message_verify_mac(
-                &result,
-                messageHandle.const(),
-                senderHandle.const(),
-                receiverHandle.const(),
-                macKey
-            ))
+            try checkError(
+                signal_message_verify_mac(
+                    &result,
+                    messageHandle.const(),
+                    senderHandle.const(),
+                    receiverHandle.const(),
+                    macKey
+                )
+            )
             return result
         }
     }

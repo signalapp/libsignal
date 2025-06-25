@@ -1,4 +1,5 @@
 disabled_rules:
+- closure_parameter_position  # swift-format takes precedence here
 - cyclomatic_complexity
 - empty_enum_arguments
 - force_try
@@ -6,6 +7,7 @@ disabled_rules:
 - function_parameter_count
 - identifier_name
 - line_length
+- opening_brace  # swift-format takes precedence here
 - redundant_optional_initialization
 - trailing_comma
 - type_body_length
@@ -28,3 +30,4 @@ nesting:
   type_level: 2
 excluded:
   - .build/**
+  - Benchmarks/.build/**

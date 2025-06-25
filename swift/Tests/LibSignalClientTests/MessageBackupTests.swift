@@ -71,9 +71,16 @@ class MessageBackupTests: TestCaseBase {
 
     func testInputThrowsAfter() {
         let bytes = readResource(forName: "new_account.binproto.encrypted")
-        let makeStream = { ThrowsAfterInputStream(inner: SignalInputStreamAdapter(bytes), readBeforeThrow: UInt64(bytes.count) - 1) }
+        let makeStream = {
+            ThrowsAfterInputStream(inner: SignalInputStreamAdapter(bytes), readBeforeThrow: UInt64(bytes.count) - 1)
+        }
         XCTAssertThrowsError(
-            try validateMessageBackup(key: MessageBackupKey.testKey(), purpose: .remoteBackup, length: UInt64(bytes.count), makeStream: makeStream)
+            try validateMessageBackup(
+                key: MessageBackupKey.testKey(),
+                purpose: .remoteBackup,
+                length: UInt64(bytes.count),
+                makeStream: makeStream
+            )
         ) { error in
             if error is TestIoError {} else { XCTFail("\(error)") }
         }
@@ -90,7 +97,9 @@ class MessageBackupTests: TestCaseBase {
     // 1: 1
     // 2: 1731715200000
     // 3: {`00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff`}
-    private let VALID_BACKUP_INFO: Data = .init(base64Encoded: "CAEQgOiTkrMyGiAAESIzRFVmd4iZqrvM3e7/ABEiM0RVZneImaq7zN3u/w==")!
+    private let VALID_BACKUP_INFO: Data = .init(
+        base64Encoded: "CAEQgOiTkrMyGiAAESIzRFVmd4iZqrvM3e7/ABEiM0RVZneImaq7zN3u/w=="
+    )!
 
     func testOnlineValidatorInvalidFrame() throws {
         let backup = try OnlineBackupValidator(backupInfo: VALID_BACKUP_INFO, purpose: .remoteBackup)
@@ -106,13 +115,19 @@ class MessageBackupTests: TestCaseBase {
         XCTAssertFalse(AccountEntropyPool.isValid("invalid key"))
         XCTAssertTrue(
             AccountEntropyPool.isValid(
-                "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqr"))
+                "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqr"
+            )
+        )
     }
 
-#if !os(iOS) || targetEnvironment(simulator)
+    #if !os(iOS) || targetEnvironment(simulator)
     func testComparableBackup() throws {
         let bytes = readResource(forName: "canonical-backup.binproto")
-        let backup = try ComparableBackup(purpose: .remoteBackup, length: UInt64(bytes.count), stream: SignalInputStreamAdapter(bytes))
+        let backup = try ComparableBackup(
+            purpose: .remoteBackup,
+            length: UInt64(bytes.count),
+            stream: SignalInputStreamAdapter(bytes)
+        )
         let comparableString = backup.comparableString()
 
         let expected = String(data: readResource(forName: "canonical-backup.expected.json"), encoding: .utf8)!
@@ -147,10 +162,15 @@ class MessageBackupTests: TestCaseBase {
 
         try backup.finalize()
     }
-#endif
+    #endif
 
     static func validateBackup(bytes: some Collection<UInt8>) throws -> MessageBackupUnknownFields {
-        try validateMessageBackup(key: MessageBackupKey.testKey(), purpose: .remoteBackup, length: UInt64(bytes.count), makeStream: { SignalInputStreamAdapter(bytes) })
+        try validateMessageBackup(
+            key: MessageBackupKey.testKey(),
+            purpose: .remoteBackup,
+            length: UInt64(bytes.count),
+            makeStream: { SignalInputStreamAdapter(bytes) }
+        )
     }
 }
 

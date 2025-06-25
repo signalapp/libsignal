@@ -294,7 +294,11 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
             return err
         }
 
-        throw RegistrationError.registrationLock(timeRemaining: TimeInterval(timeRemaining), svr2Username: svr2Username, svr2Password: svr2Password)
+        throw RegistrationError.registrationLock(
+            timeRemaining: TimeInterval(timeRemaining),
+            svr2Username: svr2Username,
+            svr2Password: svr2Password
+        )
     case SignalErrorCodeKeyTransparencyError:
         throw SignalError.keyTransparencyError(errStr)
     case SignalErrorCodeKeyTransparencyVerificationFailed:
@@ -308,7 +312,8 @@ internal func failOnError(_ error: SignalFfiErrorRef?) {
     failOnError { try checkError(error) }
 }
 
-internal func failOnError<Result>(_ fn: () throws -> Result, file: StaticString = #file, line: UInt32 = #line) -> Result {
+internal func failOnError<Result>(_ fn: () throws -> Result, file: StaticString = #file, line: UInt32 = #line) -> Result
+{
     do {
         return try fn()
     } catch {

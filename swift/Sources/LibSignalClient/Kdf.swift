@@ -18,12 +18,14 @@ public func hkdf(
         try inputKeyMaterial.withUnsafeBorrowedBuffer { inputBuffer in
             try salt.withUnsafeBorrowedBuffer { saltBuffer in
                 try info.withUnsafeBorrowedBuffer { infoBuffer in
-                    try checkError(signal_hkdf_derive(
-                        .init(outputBuffer),
-                        inputBuffer,
-                        infoBuffer,
-                        saltBuffer
-                    ))
+                    try checkError(
+                        signal_hkdf_derive(
+                            .init(outputBuffer),
+                            inputBuffer,
+                            infoBuffer,
+                            saltBuffer
+                        )
+                    )
                 }
             }
         }

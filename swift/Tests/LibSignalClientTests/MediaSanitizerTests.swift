@@ -11,14 +11,16 @@ import XCTest
 class Mp4SanitizerTests: TestCaseBase {
     func testEmptyMp4() {
         let input: [UInt8] = []
-        XCTAssertThrowsError(try sanitizeMp4(input: SignalInputStreamAdapter(input), len: UInt64(input.count))) { error in
+        XCTAssertThrowsError(try sanitizeMp4(input: SignalInputStreamAdapter(input), len: UInt64(input.count))) {
+            error in
             if case SignalError.invalidMediaInput = error {} else { XCTFail("\(error)") }
         }
     }
 
     func testTruncatedMp4() {
         let input: [UInt8] = [0, 0, 0, 0]
-        XCTAssertThrowsError(try sanitizeMp4(input: SignalInputStreamAdapter(input), len: UInt64(input.count))) { error in
+        XCTAssertThrowsError(try sanitizeMp4(input: SignalInputStreamAdapter(input), len: UInt64(input.count))) {
+            error in
             if case SignalError.invalidMediaInput = error {} else { XCTFail("\(error)") }
         }
     }
@@ -28,7 +30,12 @@ class Mp4SanitizerTests: TestCaseBase {
         let input = metadata + mdat()
 
         let sanitized = try sanitizeMp4(input: SignalInputStreamAdapter(input), len: UInt64(input.count))
-        assertSanitizedMetadataEqual(sanitized, dataOffset: metadata.count, dataLen: input.count - metadata.count, metadata: nil)
+        assertSanitizedMetadataEqual(
+            sanitized,
+            dataOffset: metadata.count,
+            dataLen: input.count - metadata.count,
+            metadata: nil
+        )
     }
 
     func testMinimalMp4() throws {
@@ -36,7 +43,12 @@ class Mp4SanitizerTests: TestCaseBase {
         let input = ftyp() + mdat() + moov()
 
         let sanitized = try sanitizeMp4(input: SignalInputStreamAdapter(input), len: UInt64(input.count))
-        assertSanitizedMetadataEqual(sanitized, dataOffset: ftyp().count, dataLen: input.count - metadata.count, metadata: metadata)
+        assertSanitizedMetadataEqual(
+            sanitized,
+            dataOffset: ftyp().count,
+            dataLen: input.count - metadata.count,
+            metadata: metadata
+        )
     }
 
     func testMp4IoError() throws {
@@ -75,66 +87,71 @@ class WebpSanitizerTests: TestCaseBase {
 
 private func ftyp() -> [UInt8] {
     var ftyp: [UInt8] = []
-    ftyp.append(contentsOf: [0, 0, 0, 20]) // box size
-    ftyp.append(contentsOf: "ftyp".utf8) // box type
-    ftyp.append(contentsOf: "isom".utf8) // major_brand
-    ftyp.append(contentsOf: [0, 0, 0, 0]) // minor_version
-    ftyp.append(contentsOf: "isom".utf8) // compatible_brands
+    ftyp.append(contentsOf: [0, 0, 0, 20])  // box size
+    ftyp.append(contentsOf: "ftyp".utf8)  // box type
+    ftyp.append(contentsOf: "isom".utf8)  // major_brand
+    ftyp.append(contentsOf: [0, 0, 0, 0])  // minor_version
+    ftyp.append(contentsOf: "isom".utf8)  // compatible_brands
     return ftyp
 }
 
 private func moov() -> [UInt8] {
     var moov: [UInt8] = []
     // moov box header
-    moov.append(contentsOf: [0, 0, 0, 56]) // box size
-    moov.append(contentsOf: "moov".utf8) // box type
+    moov.append(contentsOf: [0, 0, 0, 56])  // box size
+    moov.append(contentsOf: "moov".utf8)  // box type
 
     // trak box (inside moov box)
-    moov.append(contentsOf: [0, 0, 0, 48]) // box size
-    moov.append(contentsOf: "trak".utf8) // box type
+    moov.append(contentsOf: [0, 0, 0, 48])  // box size
+    moov.append(contentsOf: "trak".utf8)  // box type
 
     // mdia box (inside trak box)
-    moov.append(contentsOf: [0, 0, 0, 40]) // box size
-    moov.append(contentsOf: "mdia".utf8) // box type
+    moov.append(contentsOf: [0, 0, 0, 40])  // box size
+    moov.append(contentsOf: "mdia".utf8)  // box type
 
     // minf box (inside mdia box)
-    moov.append(contentsOf: [0, 0, 0, 32]) // box size
-    moov.append(contentsOf: "minf".utf8) // box type
+    moov.append(contentsOf: [0, 0, 0, 32])  // box size
+    moov.append(contentsOf: "minf".utf8)  // box type
 
     // stbl box (inside minf box)
-    moov.append(contentsOf: [0, 0, 0, 24]) // box size
-    moov.append(contentsOf: "stbl".utf8) // box type
+    moov.append(contentsOf: [0, 0, 0, 24])  // box size
+    moov.append(contentsOf: "stbl".utf8)  // box type
 
     // stco box (inside stbl box)
-    moov.append(contentsOf: [0, 0, 0, 16]) // box size
-    moov.append(contentsOf: "stco".utf8) // box type
-    moov.append(contentsOf: [0, 0, 0, 0]) // box version & flags
-    moov.append(contentsOf: [0, 0, 0, 0]) // entry count
+    moov.append(contentsOf: [0, 0, 0, 16])  // box size
+    moov.append(contentsOf: "stco".utf8)  // box type
+    moov.append(contentsOf: [0, 0, 0, 0])  // box version & flags
+    moov.append(contentsOf: [0, 0, 0, 0])  // entry count
 
     return moov
 }
 
 private func mdat() -> [UInt8] {
     var mdat: [UInt8] = []
-    mdat.append(contentsOf: [0, 0, 0, 8]) // box size
-    mdat.append(contentsOf: "mdat".utf8) // box type
+    mdat.append(contentsOf: [0, 0, 0, 8])  // box size
+    mdat.append(contentsOf: "mdat".utf8)  // box type
     return mdat
 }
 
 private func webp() -> [UInt8] {
     var webp: [UInt8] = []
-    webp.append(contentsOf: "RIFF") // chunk type
-    webp.append(contentsOf: [20, 0, 0, 0]) // chunk size
-    webp.append(contentsOf: "WEBP") // webp header
+    webp.append(contentsOf: "RIFF")  // chunk type
+    webp.append(contentsOf: [20, 0, 0, 0])  // chunk size
+    webp.append(contentsOf: "WEBP")  // webp header
 
-    webp.append(contentsOf: "VP8L") // chunk type
-    webp.append(contentsOf: [8, 0, 0, 0]) // chunk size
-    webp.append(contentsOf: [0x2F, 0, 0, 0, 0, 0x88, 0x88, 8]) // VP8L data
+    webp.append(contentsOf: "VP8L")  // chunk type
+    webp.append(contentsOf: [8, 0, 0, 0])  // chunk size
+    webp.append(contentsOf: [0x2F, 0, 0, 0, 0, 0x88, 0x88, 8])  // VP8L data
 
     return webp
 }
 
-private func assertSanitizedMetadataEqual(_ sanitized: SanitizedMetadata, dataOffset: Int, dataLen: Int, metadata: (any Sequence<UInt8>)?) {
+private func assertSanitizedMetadataEqual(
+    _ sanitized: SanitizedMetadata,
+    dataOffset: Int,
+    dataLen: Int,
+    metadata: (any Sequence<UInt8>)?
+) {
     if let metadata = metadata {
         XCTAssertNotNil(sanitized.metadata)
         XCTAssert(sanitized.metadata!.elementsEqual(metadata))

@@ -38,7 +38,9 @@ public class IncrementalMacContext: NativeHandleOwner<SignalMutPointerIncrementa
         self.chunkSizeInBytes = chunkSize
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerIncrementalMac>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerIncrementalMac>
+    ) -> SignalFfiErrorRef? {
         return signal_incremental_mac_destroy(handle.pointer)
     }
 
@@ -97,7 +99,9 @@ public class ValidatingMacContext: NativeHandleOwner<SignalMutPointerValidatingM
         self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerValidatingMac>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerValidatingMac>
+    ) -> SignalFfiErrorRef? {
         return signal_validating_mac_destroy(handle.pointer)
     }
 

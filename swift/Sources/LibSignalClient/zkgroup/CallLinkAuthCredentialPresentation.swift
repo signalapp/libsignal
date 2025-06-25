@@ -11,9 +11,20 @@ public class CallLinkAuthCredentialPresentation: ByteArray, @unchecked Sendable 
         try super.init(contents, checkValid: signal_call_link_auth_credential_presentation_check_valid_contents)
     }
 
-    public func verify(now: Date = Date(), serverParams: GenericServerSecretParams, callLinkParams: CallLinkPublicParams) throws {
+    public func verify(
+        now: Date = Date(),
+        serverParams: GenericServerSecretParams,
+        callLinkParams: CallLinkPublicParams
+    ) throws {
         try withAllBorrowed(self, serverParams, callLinkParams) { contents, serverParams, callLinkParams in
-            try checkError(signal_call_link_auth_credential_presentation_verify(contents, UInt64(now.timeIntervalSince1970), serverParams, callLinkParams))
+            try checkError(
+                signal_call_link_auth_credential_presentation_verify(
+                    contents,
+                    UInt64(now.timeIntervalSince1970),
+                    serverParams,
+                    callLinkParams
+                )
+            )
         }
     }
 

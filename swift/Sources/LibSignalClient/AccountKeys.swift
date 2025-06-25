@@ -36,7 +36,8 @@ public func hashLocalPin<Bytes: ContiguousBytes>(_ pin: Bytes) throws -> String 
 /// - parameter encodedHash: An encoded string of the hash, as returned by `localHash`
 /// - returns: true if the pin matches the hash, false otherwise
 ///
-public func verifyLocalPin<Bytes: ContiguousBytes>(_ pin: Bytes, againstEncodedHash encodedHash: String) throws -> Bool {
+public func verifyLocalPin<Bytes: ContiguousBytes>(_ pin: Bytes, againstEncodedHash encodedHash: String) throws -> Bool
+{
     try encodedHash.withCString { hashPtr in
         try pin.withUnsafeBorrowedBuffer { buffer in
             try invokeFnReturningBool {
@@ -104,11 +105,15 @@ public class PinHash: NativeHandleOwner<SignalMutPointerPinHash>, @unchecked Sen
     /// - parameter normalizedPin: A normalized, UTF-8 encoded byte representation of the pin to verify
     /// - parameter salt: A 32 byte salt
     /// - returns: A `PinHash`
-    public convenience init<PinBytes: ContiguousBytes, SaltBytes: ContiguousBytes>(normalizedPin: PinBytes, salt: SaltBytes) throws {
+    public convenience init<PinBytes: ContiguousBytes, SaltBytes: ContiguousBytes>(
+        normalizedPin: PinBytes,
+        salt: SaltBytes
+    ) throws {
         var result = SignalMutPointerPinHash()
         try normalizedPin.withUnsafeBorrowedBuffer { pinBytes in
             try salt.withUnsafeBytes { saltBytes in
-                try ByteArray(newContents: Data(saltBytes), expectedLength: 32).withUnsafePointerToSerialized { saltTuple in
+                try ByteArray(newContents: Data(saltBytes), expectedLength: 32).withUnsafePointerToSerialized {
+                    saltTuple in
                     try checkError(signal_pin_hash_from_salt(&result, pinBytes, saltTuple))
                 }
             }
@@ -124,12 +129,18 @@ public class PinHash: NativeHandleOwner<SignalMutPointerPinHash>, @unchecked Sen
     /// - parameter username: The Basic Auth username used to authenticate with SVR2
     /// - parameter mrenclave: The mrenclave where the hashed pin will be stored
     /// - returns: A `PinHash`
-    public convenience init<PinBytes: ContiguousBytes, MrenclaveBytes: ContiguousBytes>(normalizedPin: PinBytes, username: String, mrenclave: MrenclaveBytes) throws {
+    public convenience init<PinBytes: ContiguousBytes, MrenclaveBytes: ContiguousBytes>(
+        normalizedPin: PinBytes,
+        username: String,
+        mrenclave: MrenclaveBytes
+    ) throws {
         var result = SignalMutPointerPinHash()
         try normalizedPin.withUnsafeBorrowedBuffer { pinBytes in
             try mrenclave.withUnsafeBorrowedBuffer { mrenclaveBytes in
                 try username.withCString { userBytes in
-                    try checkError(signal_pin_hash_from_username_mrenclave(&result, pinBytes, userBytes, mrenclaveBytes))
+                    try checkError(
+                        signal_pin_hash_from_username_mrenclave(&result, pinBytes, userBytes, mrenclaveBytes)
+                    )
                 }
             }
         }

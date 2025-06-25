@@ -16,11 +16,15 @@ public class PublicKey: ClonableHandleOwner<SignalMutPointerPublicKey>, @uncheck
         self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerPublicKey>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerPublicKey>) -> SignalFfiErrorRef?
+    {
         return signal_publickey_destroy(handle.pointer)
     }
 
-    override internal class func cloneNativeHandle(_ newHandle: inout SignalMutPointerPublicKey, currentHandle: SignalConstPointerPublicKey) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(
+        _ newHandle: inout SignalMutPointerPublicKey,
+        currentHandle: SignalConstPointerPublicKey
+    ) -> SignalFfiErrorRef? {
         return signal_publickey_clone(&newHandle, currentHandle)
     }
 

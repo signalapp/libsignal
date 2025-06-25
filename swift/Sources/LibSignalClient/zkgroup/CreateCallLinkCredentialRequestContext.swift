@@ -39,13 +39,23 @@ public class CreateCallLinkCredentialRequestContext: ByteArray, @unchecked Senda
         }
     }
 
-    public func receive(_ response: CreateCallLinkCredentialResponse, userId: Aci, params: GenericServerPublicParams) throws -> CreateCallLinkCredential {
+    public func receive(
+        _ response: CreateCallLinkCredentialResponse,
+        userId: Aci,
+        params: GenericServerPublicParams
+    ) throws -> CreateCallLinkCredential {
         return try withUnsafeBorrowedBuffer { contents in
             try response.withUnsafeBorrowedBuffer { response in
                 try userId.withPointerToFixedWidthBinary { userId in
                     try params.withUnsafeBorrowedBuffer { params in
                         try invokeFnReturningVariableLengthSerialized {
-                            signal_create_call_link_credential_request_context_receive_response($0, contents, response, userId, params)
+                            signal_create_call_link_credential_request_context_receive_response(
+                                $0,
+                                contents,
+                                response,
+                                userId,
+                                params
+                            )
                         }
                     }
                 }

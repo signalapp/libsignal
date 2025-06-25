@@ -53,7 +53,8 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner<SignalMutPointe
                         &result,
                         messageBuffer,
                         ffiIdentityStore
-                    ))
+                    )
+                )
             }
         }
         self.init(owned: NonNull(result)!)
@@ -74,7 +75,8 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner<SignalMutPointe
                     senderHandle.const(),
                     contentHint.rawValue,
                     groupIdBuffer
-                ))
+                )
+            )
         }
         self.init(owned: NonNull(result)!)
     }
@@ -96,12 +98,15 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner<SignalMutPointe
                     senderHandle.const(),
                     contentHint.rawValue,
                     groupIdBuffer
-                ))
+                )
+            )
         }
         self.init(owned: NonNull(result)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerUnidentifiedSenderMessageContent>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerUnidentifiedSenderMessageContent>
+    ) -> SignalFfiErrorRef? {
         return signal_unidentified_sender_message_content_destroy(handle.pointer)
     }
 

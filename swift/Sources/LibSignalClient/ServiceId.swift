@@ -9,6 +9,8 @@ import SignalFfi
 internal typealias ServiceIdStorage = SignalServiceIdFixedWidthBinaryBytes
 
 internal func == (_ lhs: ServiceIdStorage, _ rhs: ServiceIdStorage) -> Bool {
+    // swift-format-ignore
+    // (vertical alignment is clearer)
     return lhs.0 == rhs.0 &&
         lhs.1 == rhs.1 &&
         lhs.2 == rhs.2 &&
@@ -152,7 +154,9 @@ public class ServiceId: @unchecked Sendable {
         return try result.downcast(to: Self.self)
     }
 
-    internal func withPointerToFixedWidthBinary<R>(_ callback: (UnsafePointer<ServiceIdStorage>) throws -> R) rethrows -> R {
+    internal func withPointerToFixedWidthBinary<R>(
+        _ callback: (UnsafePointer<ServiceIdStorage>) throws -> R
+    ) rethrows -> R {
         return try callback(&self.storage)
     }
 

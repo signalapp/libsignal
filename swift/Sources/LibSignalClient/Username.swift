@@ -33,11 +33,18 @@ public struct Username: Sendable {
         try self.init(username)
     }
 
-    public init(nickname: String, discriminator: String, withValidLengthWithin lengthRange: ClosedRange<UInt32>) throws {
+    public init(nickname: String, discriminator: String, withValidLengthWithin lengthRange: ClosedRange<UInt32>) throws
+    {
         self.hash = try nickname.withCString { nickname in
             try discriminator.withCString { discriminator in
                 try invokeFnReturningFixedLengthArray {
-                    signal_username_hash_from_parts($0, nickname, discriminator, lengthRange.lowerBound, lengthRange.upperBound)
+                    signal_username_hash_from_parts(
+                        $0,
+                        nickname,
+                        discriminator,
+                        lengthRange.lowerBound,
+                        lengthRange.upperBound
+                    )
                 }
             }
         }

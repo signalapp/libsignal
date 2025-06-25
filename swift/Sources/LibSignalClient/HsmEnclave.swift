@@ -54,11 +54,13 @@ public class HsmEnclaveClient: NativeHandleOwner<SignalMutPointerHsmEnclaveClien
         let handle = try publicKey.withUnsafeBorrowedBuffer { publicKeyBuffer in
             try codeHashBytes.withUnsafeBorrowedBuffer { codeHashBuffer in
                 var result = SignalMutPointerHsmEnclaveClient()
-                try checkError(signal_hsm_enclave_client_new(
-                    &result,
-                    publicKeyBuffer,
-                    codeHashBuffer
-                ))
+                try checkError(
+                    signal_hsm_enclave_client_new(
+                        &result,
+                        publicKeyBuffer,
+                        codeHashBuffer
+                    )
+                )
                 return result
             }
         }
@@ -66,7 +68,9 @@ public class HsmEnclaveClient: NativeHandleOwner<SignalMutPointerHsmEnclaveClien
         self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerHsmEnclaveClient>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerHsmEnclaveClient>
+    ) -> SignalFfiErrorRef? {
         return signal_hsm_enclave_client_destroy(handle.pointer)
     }
 

@@ -30,14 +30,18 @@ final class NetTests {
         #expect(output.debug_permits_used == 123)
 
         let entryList = LookupResponseEntryList(owned: output.entries)
-        let expected = [SignalFfiCdsiLookupResponseEntry(
-            e164: 18_005_551_011,
-            aci, pni
-        ), SignalFfiCdsiLookupResponseEntry(
-            e164: 18_005_551_012,
-            nil,
-            pni
-        )]
+        let expected = [
+            SignalFfiCdsiLookupResponseEntry(
+                e164: 18_005_551_011,
+                aci,
+                pni
+            ),
+            SignalFfiCdsiLookupResponseEntry(
+                e164: 18_005_551_012,
+                nil,
+                pni
+            ),
+        ]
 
         #expect(expected == Array(entryList))
     }
@@ -51,7 +55,10 @@ final class NetTests {
         do {
             try failWithError("Protocol")
         } catch SignalError.networkProtocolError(let message) {
-            #expect(message == "Protocol error: protocol error after establishing a connection: failed to decode frame as protobuf")
+            #expect(
+                message
+                    == "Protocol error: protocol error after establishing a connection: failed to decode frame as protobuf"
+            )
         }
         do {
             try failWithError("CdsiProtocol")

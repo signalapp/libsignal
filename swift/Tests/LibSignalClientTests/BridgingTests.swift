@@ -188,10 +188,15 @@ final class BridgingTests: XCTestCase {
         let result = try first.withUnsafeBytes { first in
             try empty.withUnsafeBytes { empty in
                 try second.withUnsafeBytes { second in
-                    let slices = [SignalBorrowedBuffer(first), SignalBorrowedBuffer(empty), SignalBorrowedBuffer(second)]
+                    let slices = [
+                        SignalBorrowedBuffer(first), SignalBorrowedBuffer(empty), SignalBorrowedBuffer(second),
+                    ]
                     return try slices.withUnsafeBufferPointer { slices in
                         try invokeFnReturningBytestringArray {
-                            signal_testing_process_bytestring_array($0, SignalBorrowedSliceOfBuffers(base: slices.baseAddress, length: slices.count))
+                            signal_testing_process_bytestring_array(
+                                $0,
+                                SignalBorrowedSliceOfBuffers(base: slices.baseAddress, length: slices.count)
+                            )
                         }
                     }
                 }
@@ -204,7 +209,10 @@ final class BridgingTests: XCTestCase {
         let slices: [SignalBorrowedBuffer] = []
         let result = try slices.withUnsafeBufferPointer { slices in
             try invokeFnReturningBytestringArray {
-                signal_testing_process_bytestring_array($0, SignalBorrowedSliceOfBuffers(base: slices.baseAddress, length: slices.count))
+                signal_testing_process_bytestring_array(
+                    $0,
+                    SignalBorrowedSliceOfBuffers(base: slices.baseAddress, length: slices.count)
+                )
             }
         }
         XCTAssertEqual(result, [])
@@ -223,13 +231,16 @@ final class BridgingTests: XCTestCase {
                 signal_testing_bridged_string_map_dump_to_json($0, map.const())
             }
         }
-        XCTAssertEqual(dumped, """
+        XCTAssertEqual(
+            dumped,
+            """
             {
               "a": "aaa",
               "b": "bbb",
               "c": "ccc"
             }
-            """)
+            """
+        )
     }
 
     func testReturnOptionalUuid() throws {

@@ -24,8 +24,17 @@ public protocol StoreContext {}
 public protocol IdentityKeyStore: AnyObject {
     func identityKeyPair(context: StoreContext) throws -> IdentityKeyPair
     func localRegistrationId(context: StoreContext) throws -> UInt32
-    func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: StoreContext) throws -> IdentityChange
-    func isTrustedIdentity(_ identity: IdentityKey, for address: ProtocolAddress, direction: Direction, context: StoreContext) throws -> Bool
+    func saveIdentity(
+        _ identity: IdentityKey,
+        for address: ProtocolAddress,
+        context: StoreContext
+    ) throws -> IdentityChange
+    func isTrustedIdentity(
+        _ identity: IdentityKey,
+        for address: ProtocolAddress,
+        direction: Direction,
+        context: StoreContext
+    ) throws -> Bool
     func identity(for address: ProtocolAddress, context: StoreContext) throws -> IdentityKey?
 }
 
@@ -53,6 +62,15 @@ public protocol SessionStore: AnyObject {
 }
 
 public protocol SenderKeyStore: AnyObject {
-    func storeSenderKey(from sender: ProtocolAddress, distributionId: UUID, record: SenderKeyRecord, context: StoreContext) throws
-    func loadSenderKey(from sender: ProtocolAddress, distributionId: UUID, context: StoreContext) throws -> SenderKeyRecord?
+    func storeSenderKey(
+        from sender: ProtocolAddress,
+        distributionId: UUID,
+        record: SenderKeyRecord,
+        context: StoreContext
+    ) throws
+    func loadSenderKey(
+        from sender: ProtocolAddress,
+        distributionId: UUID,
+        context: StoreContext
+    ) throws -> SenderKeyRecord?
 }

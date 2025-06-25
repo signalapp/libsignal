@@ -38,7 +38,9 @@ public class ServerPublicParams: NativeHandleOwner<SignalMutPointerServerPublicP
         try withNativeHandle { contents in
             try message.withUnsafeBorrowedBuffer { message in
                 try notarySignature.withUnsafePointerToSerialized { notarySignature in
-                    try checkError(signal_server_public_params_verify_signature(contents.const(), message, notarySignature))
+                    try checkError(
+                        signal_server_public_params_verify_signature(contents.const(), message, notarySignature)
+                    )
                 }
             }
         }
@@ -54,7 +56,9 @@ public class ServerPublicParams: NativeHandleOwner<SignalMutPointerServerPublicP
         }
     }
 
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerServerPublicParams>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerServerPublicParams>
+    ) -> SignalFfiErrorRef? {
         signal_server_public_params_destroy(handle.pointer)
     }
 }

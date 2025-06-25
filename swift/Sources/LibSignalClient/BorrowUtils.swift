@@ -193,7 +193,8 @@ internal struct FixedLengthWrapper<FixedLengthRepr>: BorrowForFfi {
 }
 
 extension BorrowForFfi {
-    static func fixed<FixedLengthRepr>(_ serialized: ByteArray) -> Self where Self == FixedLengthWrapper<FixedLengthRepr> {
+    static func fixed<FixedLengthRepr>(_ serialized: ByteArray) -> Self
+    where Self == FixedLengthWrapper<FixedLengthRepr> {
         .init(inner: serialized)
     }
 }
@@ -229,7 +230,8 @@ internal struct ElementsWrapper<FfiType: FfiBorrowedSlice>: BorrowForFfi {
 }
 
 extension BorrowForFfi {
-    static func slice<FfiType: FfiBorrowedSlice>(_ input: [FfiType.Element]) -> Self where Self == ElementsWrapper<FfiType> {
+    static func slice<FfiType: FfiBorrowedSlice>(_ input: [FfiType.Element]) -> Self
+    where Self == ElementsWrapper<FfiType> {
         .init(inner: input)
     }
 }

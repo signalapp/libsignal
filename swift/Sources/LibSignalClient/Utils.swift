@@ -10,11 +10,19 @@ import SignalFfi
 import Security
 #endif
 
-internal func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?) throws -> String {
+internal func invokeFnReturningString(
+    fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?
+) throws
+    -> String
+{
     try invokeFnReturningOptionalString(fn: fn)!
 }
 
-internal func invokeFnReturningOptionalString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?) throws -> String? {
+internal func invokeFnReturningOptionalString(
+    fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?
+)
+    throws -> String?
+{
     var output: UnsafePointer<Int8>?
     try checkError(fn(&output))
     if output == nil {
@@ -25,7 +33,10 @@ internal func invokeFnReturningOptionalString(fn: (UnsafeMutablePointer<UnsafePo
     return result
 }
 
-internal func invokeFnReturningSomeBytestringArray<Element>(fn: (UnsafeMutablePointer<SignalBytestringArray>?) -> SignalFfiErrorRef?, transform: (UnsafeBufferPointer<UInt8>) -> Element) throws -> [Element] {
+internal func invokeFnReturningSomeBytestringArray<Element>(
+    fn: (UnsafeMutablePointer<SignalBytestringArray>?) -> SignalFfiErrorRef?,
+    transform: (UnsafeBufferPointer<UInt8>) -> Element
+) throws -> [Element] {
     var array = SignalFfi.SignalBytestringArray()
     try checkError(fn(&array))
 
@@ -42,41 +53,64 @@ internal func invokeFnReturningSomeBytestringArray<Element>(fn: (UnsafeMutablePo
     return result
 }
 
-internal func invokeFnReturningStringArray(fn: (UnsafeMutablePointer<SignalStringArray>?) -> SignalFfiErrorRef?) throws -> [String] {
+internal func invokeFnReturningStringArray(
+    fn: (UnsafeMutablePointer<SignalStringArray>?) -> SignalFfiErrorRef?
+) throws
+    -> [String]
+{
     return try invokeFnReturningSomeBytestringArray(fn: fn) {
         String(decoding: $0, as: Unicode.UTF8.self)
     }
 }
 
-internal func invokeFnReturningBytestringArray(fn: (UnsafeMutablePointer<SignalBytestringArray>?) -> SignalFfiErrorRef?) throws -> [Data] {
+internal func invokeFnReturningBytestringArray(
+    fn: (UnsafeMutablePointer<SignalBytestringArray>?) -> SignalFfiErrorRef?
+)
+    throws -> [Data]
+{
     return try invokeFnReturningSomeBytestringArray(fn: fn) {
         Data($0)
     }
 }
 
-internal func invokeFnReturningOptionalArray(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> Data? {
+internal func invokeFnReturningOptionalArray(
+    fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?
+)
+    throws -> Data?
+{
     var output = SignalOwnedBuffer()
     try checkError(fn(&output))
 
     return if output.base == nil {
         nil
     } else {
-        Data(bytesNoCopy: output.base, count: output.length, deallocator: .custom { base, length in
-            signal_free_buffer(base, length)
-        })
+        Data(
+            bytesNoCopy: output.base,
+            count: output.length,
+            deallocator: .custom { base, length in
+                signal_free_buffer(base, length)
+            }
+        )
     }
 }
 
-internal func invokeFnReturningData(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> Data {
+internal func invokeFnReturningData(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> Data
+{
     var output = SignalOwnedBuffer()
     try checkError(fn(&output))
     guard let base = output.base else { return Data() }
-    return Data(bytesNoCopy: base, count: output.length, deallocator: .custom { base, length in
-        signal_free_buffer(base, length)
-    })
+    return Data(
+        bytesNoCopy: base,
+        count: output.length,
+        deallocator: .custom { base, length in
+            signal_free_buffer(base, length)
+        }
+    )
 }
 
-internal func invokeFnReturningFixedLengthArray<ResultAsTuple>(fn: (UnsafeMutablePointer<ResultAsTuple>) -> SignalFfiErrorRef?) throws -> Data {
+internal func invokeFnReturningFixedLengthArray<ResultAsTuple>(
+    fn: (UnsafeMutablePointer<ResultAsTuple>) -> SignalFfiErrorRef?
+) throws -> Data {
     precondition(MemoryLayout<ResultAsTuple>.alignment == 1, "not a fixed-sized array (tuple) of UInt8")
     var output = Data(count: MemoryLayout<ResultAsTuple>.size)
     try output.withUnsafeMutableBytes { buffer in
@@ -86,17 +120,23 @@ internal func invokeFnReturningFixedLengthArray<ResultAsTuple>(fn: (UnsafeMutabl
     return output
 }
 
-internal func invokeFnReturningSerialized<Result: ByteArray, SerializedResult>(fn: (UnsafeMutablePointer<SerializedResult>) -> SignalFfiErrorRef?) throws -> Result {
+internal func invokeFnReturningSerialized<Result: ByteArray, SerializedResult>(
+    fn: (UnsafeMutablePointer<SerializedResult>) -> SignalFfiErrorRef?
+) throws -> Result {
     let output = try invokeFnReturningFixedLengthArray(fn: fn)
     return try Result(contents: output)
 }
 
-internal func invokeFnReturningVariableLengthSerialized<Result: ByteArray>(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> Result {
+internal func invokeFnReturningVariableLengthSerialized<Result: ByteArray>(
+    fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?
+) throws -> Result {
     let output = try invokeFnReturningData(fn: fn)
     return try Result(contents: output)
 }
 
-internal func invokeFnReturningOptionalVariableLengthSerialized<Result: ByteArray>(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> Result? {
+internal func invokeFnReturningOptionalVariableLengthSerialized<Result: ByteArray>(
+    fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?
+) throws -> Result? {
     let output = try invokeFnReturningData(fn: fn)
     if output.isEmpty {
         return nil
@@ -110,7 +150,9 @@ internal func invokeFnReturningUuid(fn: (UnsafeMutablePointer<uuid_t>?) -> Signa
     return UUID(uuid: output)
 }
 
-internal func invokeFnReturningOptionalUuid(fn: (UnsafeMutablePointer<SignalOptionalUuid>?) -> SignalFfiErrorRef?) throws -> UUID? {
+internal func invokeFnReturningOptionalUuid(
+    fn: (UnsafeMutablePointer<SignalOptionalUuid>?) -> SignalFfiErrorRef?
+) throws -> UUID? {
     var output: SignalOptionalUuid = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     try checkError(fn(&output))
     let (isPresent, u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12, u13, u14, u15) = output
@@ -120,13 +162,17 @@ internal func invokeFnReturningOptionalUuid(fn: (UnsafeMutablePointer<SignalOpti
     return UUID(uuid: (u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12, u13, u14, u15))
 }
 
-internal func invokeFnReturningServiceId<Id: ServiceId>(fn: (UnsafeMutablePointer<ServiceIdStorage>?) -> SignalFfiErrorRef?) throws -> Id {
+internal func invokeFnReturningServiceId<Id: ServiceId>(
+    fn: (UnsafeMutablePointer<ServiceIdStorage>?) -> SignalFfiErrorRef?
+) throws -> Id {
     var output: ServiceIdStorage = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     try checkError(fn(&output))
     return try Id.parseFrom(fixedWidthBinary: output)
 }
 
-internal func invokeFnReturningInteger<Result: FixedWidthInteger>(fn: (UnsafeMutablePointer<Result>?) -> SignalFfiErrorRef?) throws -> Result {
+internal func invokeFnReturningInteger<Result: FixedWidthInteger>(
+    fn: (UnsafeMutablePointer<Result>?) -> SignalFfiErrorRef?
+) throws -> Result {
     var output: Result = 0
     try checkError(fn(&output))
     return output
@@ -138,13 +184,17 @@ internal func invokeFnReturningBool(fn: (UnsafeMutablePointer<Bool>?) -> SignalF
     return output
 }
 
-internal func invokeFnReturningNativeHandle<Owner: NativeHandleOwner<PointerType>, PointerType>(fn: (UnsafeMutablePointer<PointerType>?) -> SignalFfiErrorRef?) throws -> Owner {
+internal func invokeFnReturningNativeHandle<Owner: NativeHandleOwner<PointerType>, PointerType>(
+    fn: (UnsafeMutablePointer<PointerType>?) -> SignalFfiErrorRef?
+) throws -> Owner {
     var handle = PointerType(untyped: nil)
     try checkError(fn(&handle))
     return Owner(owned: NonNull(handle)!)
 }
 
-internal func invokeFnReturningOptionalNativeHandle<Owner: NativeHandleOwner<PointerType>, PointerType>(fn: (UnsafeMutablePointer<PointerType>?) -> SignalFfiErrorRef?) throws -> Owner? {
+internal func invokeFnReturningOptionalNativeHandle<Owner: NativeHandleOwner<PointerType>, PointerType>(
+    fn: (UnsafeMutablePointer<PointerType>?) -> SignalFfiErrorRef?
+) throws -> Owner? {
     var handle = PointerType(untyped: nil)
     try checkError(fn(&handle))
     return NonNull<PointerType>(handle).map { Owner(owned: $0) }
@@ -178,7 +228,9 @@ internal func withUnsafeOptionalBorrowedSlice<
 }
 
 extension Sequence where Self.Element == String {
-    func withUnsafeBorrowedBytestringArray<Result>(_ body: (SignalBorrowedBytestringArray) throws -> Result) rethrows -> Result {
+    func withUnsafeBorrowedBytestringArray<Result>(
+        _ body: (SignalBorrowedBytestringArray) throws -> Result
+    ) rethrows -> Result {
         let lengths = self.map { $0.utf8.count }
         var concatenated = Data(capacity: lengths.reduce(0) { $0 + $1 })
         for s in self {
@@ -187,10 +239,12 @@ extension Sequence where Self.Element == String {
 
         return try concatenated.withUnsafeBorrowedBuffer { bytes in
             try lengths.withUnsafeBufferPointer { lengths in
-                try body(SignalBorrowedBytestringArray(
-                    bytes: bytes,
-                    lengths: SignalBorrowedSliceOfusize(base: lengths.baseAddress, length: lengths.count)
-                ))
+                try body(
+                    SignalBorrowedBytestringArray(
+                        bytes: bytes,
+                        lengths: SignalBorrowedSliceOfusize(base: lengths.baseAddress, length: lengths.count)
+                    )
+                )
             }
         }
     }
@@ -211,9 +265,13 @@ extension SignalBorrowedMutableBuffer {
 extension Data {
     internal init(consuming buffer: SignalOwnedBuffer) {
         if let base = buffer.base {
-            self.init(bytesNoCopy: base, count: buffer.length, deallocator: .custom { base, length in
-                signal_free_buffer(base, length)
-            })
+            self.init(
+                bytesNoCopy: base,
+                count: buffer.length,
+                deallocator: .custom { base, length in
+                    signal_free_buffer(base, length)
+                }
+            )
         } else {
             self.init()
         }
@@ -227,16 +285,16 @@ internal func fillRandom(_ buffer: UnsafeMutableRawBufferPointer) throws {
         return
     }
 
-#if canImport(Security)
+    #if canImport(Security)
     let result = SecRandomCopyBytes(kSecRandomDefault, buffer.count, baseAddress)
     guard result == errSecSuccess else {
         throw SignalError.internalError("SecRandomCopyBytes failed (error code \(result))")
     }
-#else
+    #else
     for i in buffer.indices {
         buffer[i] = UInt8.random(in: .min ... .max)
     }
-#endif
+    #endif
 }
 
 /// Wraps a store while providing a place to hang on to any user-thrown errors.
@@ -258,7 +316,10 @@ internal struct ErrorHandlingContext<Store> {
     }
 }
 
-internal func rethrowCallbackErrors<Store, Result>(_ store: Store, _ body: (UnsafeMutablePointer<ErrorHandlingContext<Store>>) throws -> Result) rethrows -> Result {
+internal func rethrowCallbackErrors<Store, Result>(
+    _ store: Store,
+    _ body: (UnsafeMutablePointer<ErrorHandlingContext<Store>>) throws -> Result
+) rethrows -> Result {
     var context = ErrorHandlingContext(store)
     do {
         return try withUnsafeMutablePointer(to: &context) {
@@ -323,7 +384,9 @@ extension Data {
 }
 
 extension [String: String] {
-    internal func withBridgedStringMap<Result>(_ callback: (SignalMutPointerBridgedStringMap) throws -> Result) rethrows -> Result {
+    internal func withBridgedStringMap<Result>(
+        _ callback: (SignalMutPointerBridgedStringMap) throws -> Result
+    ) rethrows -> Result {
         var map = SignalMutPointerBridgedStringMap()
         failOnError(signal_bridged_string_map_new(&map, UInt32(clamping: self.count)))
         defer { signal_bridged_string_map_destroy(map) }

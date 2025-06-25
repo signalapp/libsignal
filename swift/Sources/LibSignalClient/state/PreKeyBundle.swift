@@ -7,7 +7,9 @@ import Foundation
 import SignalFfi
 
 public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
-    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerPreKeyBundle>) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerPreKeyBundle>
+    ) -> SignalFfiErrorRef? {
         return signal_pre_key_bundle_destroy(handle.pointer)
     }
 
@@ -36,21 +38,29 @@ public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
             kyberPrekey,
             .bytes(signedPrekeySignature),
             .bytes(kyberPrekeySignature)
-        ) { prekeyHandle, signedPrekeyHandle, identityKeyHandle, kyberKeyHandle, ecSignatureBuffer, kyberSignatureBuffer in
-            try checkError(signal_pre_key_bundle_new(
-                &result,
-                registrationId,
-                deviceId,
-                prekeyId,
-                prekeyHandle.const(),
-                signedPrekeyId,
-                signedPrekeyHandle.const(),
-                ecSignatureBuffer,
-                identityKeyHandle.const(),
-                kyberPrekeyId,
-                kyberKeyHandle.const(),
-                kyberSignatureBuffer
-            ))
+        ) {
+            prekeyHandle,
+            signedPrekeyHandle,
+            identityKeyHandle,
+            kyberKeyHandle,
+            ecSignatureBuffer,
+            kyberSignatureBuffer in
+            try checkError(
+                signal_pre_key_bundle_new(
+                    &result,
+                    registrationId,
+                    deviceId,
+                    prekeyId,
+                    prekeyHandle.const(),
+                    signedPrekeyId,
+                    signedPrekeyHandle.const(),
+                    ecSignatureBuffer,
+                    identityKeyHandle.const(),
+                    kyberPrekeyId,
+                    kyberKeyHandle.const(),
+                    kyberSignatureBuffer
+                )
+            )
         }
         self.init(owned: NonNull(result)!)
     }
@@ -78,20 +88,22 @@ public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
             .bytes(signedPrekeySignature),
             .bytes(kyberPrekeySignature)
         ) { signedPrekeyHandle, identityKeyHandle, kyberKeyHandle, ecSignatureBuffer, kyberSignatureBuffer in
-            try checkError(signal_pre_key_bundle_new(
-                &result,
-                registrationId,
-                deviceId,
-                ~0,
-                SignalConstPointerPublicKey(),
-                signedPrekeyId,
-                signedPrekeyHandle.const(),
-                ecSignatureBuffer,
-                identityKeyHandle.const(),
-                kyberPrekeyId,
-                kyberKeyHandle.const(),
-                kyberSignatureBuffer
-            ))
+            try checkError(
+                signal_pre_key_bundle_new(
+                    &result,
+                    registrationId,
+                    deviceId,
+                    ~0,
+                    SignalConstPointerPublicKey(),
+                    signedPrekeyId,
+                    signedPrekeyHandle.const(),
+                    ecSignatureBuffer,
+                    identityKeyHandle.const(),
+                    kyberPrekeyId,
+                    kyberKeyHandle.const(),
+                    kyberSignatureBuffer
+                )
+            )
         }
         self.init(owned: NonNull(result)!)
     }
