@@ -20,8 +20,8 @@ use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::ws::ListenerEvent;
 use libsignal_net::chat::{
-    self, ChatConnection, ConnectError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo, Request,
-    Response as ChatResponse, SendError,
+    self, ChatConnection, ConnectError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo,
+    LanguageList, Request, Response as ChatResponse, SendError, UnauthenticatedChatHeaders,
 };
 use libsignal_net::connect_state::ConnectionResources;
 use libsignal_net::infra::route::{
@@ -78,8 +78,22 @@ enum MaybeChatConnection {
 assert_impl_all!(MaybeChatConnection: Send, Sync);
 
 impl UnauthenticatedChatConnection {
-    pub async fn connect(connection_manager: &ConnectionManager) -> Result<Self, ConnectError> {
-        let inner = establish_chat_connection("unauthenticated", connection_manager, None).await?;
+    pub async fn connect(
+        connection_manager: &ConnectionManager,
+        languages: &[String],
+    ) -> Result<Self, ConnectError> {
+        let inner = establish_chat_connection(
+            "unauthenticated",
+            connection_manager,
+            Some(
+                UnauthenticatedChatHeaders {
+                    languages: LanguageList::parse(languages)
+                        .map_err(|_| ConnectError::InvalidConnectionConfiguration)?,
+                }
+                .into(),
+            ),
+        )
+        .await?;
         Ok(Self {
             inner: MaybeChatConnection::WaitingForListener(
                 tokio::runtime::Handle::current(),
@@ -95,14 +109,20 @@ impl AuthenticatedChatConnection {
         connection_manager: &ConnectionManager,
         auth: Auth,
         receive_stories: bool,
+        languages: &[String],
     ) -> Result<Self, ConnectError> {
         let inner = establish_chat_connection(
             "authenticated",
             connection_manager,
-            Some(chat::AuthenticatedChatHeaders {
-                auth,
-                receive_stories: receive_stories.into(),
-            }),
+            Some(
+                chat::AuthenticatedChatHeaders {
+                    auth,
+                    receive_stories: receive_stories.into(),
+                    languages: LanguageList::parse(languages)
+                        .map_err(|_| ConnectError::InvalidConnectionConfiguration)?,
+                }
+                .into(),
+            ),
         )
         .await?;
         Ok(Self {
@@ -282,7 +302,7 @@ impl FakeChatConnection {
 async fn establish_chat_connection(
     auth_type: &'static str,
     connection_manager: &ConnectionManager,
-    auth: Option<chat::AuthenticatedChatHeaders>,
+    headers: Option<chat::ChatHeaders>,
 ) -> Result<chat::PendingChatConnection, ConnectError> {
     let ConnectionManager {
         env,
@@ -335,7 +355,7 @@ async fn establish_chat_connection(
             remote_idle_timeout: remote_idle_disconnect_timeout,
             initial_request_id: 0,
         },
-        auth,
+        headers,
         auth_type,
     )
     .inspect(|r| match r {

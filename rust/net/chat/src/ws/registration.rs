@@ -5,7 +5,7 @@
 use std::future::Future;
 
 use http::{HeaderName, HeaderValue};
-use libsignal_net::chat::{Request as ChatRequest, Response as ChatResponse};
+use libsignal_net::chat::{LanguageList, Request as ChatRequest, Response as ChatResponse};
 
 use crate::api::registration::{
     AccountKeys, CheckSvr2CredentialsError, CheckSvr2CredentialsResponse, CreateSession,
@@ -158,10 +158,8 @@ where
         client: &str,
         languages: &[String],
     ) -> Result<RegistrationOutput, Self::Error<RequestVerificationCodeError>> {
-        let language_list = (!languages.is_empty())
-            .then(|| languages.join(", ").parse())
-            .transpose()
-            .map_err(|_| RequestError::Unexpected {
+        let language_list =
+            LanguageList::parse(languages).map_err(|_| RequestError::Unexpected {
                 log_safe: "invalid language list".to_owned(),
             })?;
         submit_request(
@@ -171,7 +169,7 @@ where
                 request: RequestVerificationCode {
                     transport,
                     client,
-                    language_list: language_list.as_ref().map(LanguageList),
+                    language_list,
                 },
             },
         )

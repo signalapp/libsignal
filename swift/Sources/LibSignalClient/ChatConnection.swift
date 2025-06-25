@@ -92,7 +92,7 @@ extension ChatConnection {
 
 /// Represents an authenticated connection to the Chat Service.
 ///
-/// An instance of this object is obtained via call to ``Net/connectAuthenticatedChat(username:password:receiveStories:)``.
+/// An instance of this object is obtained via call to ``Net/connectAuthenticatedChat(username:password:receiveStories:languages:)``.
 /// Before an obtained instance can be used, it must be started by calling ``AuthenticatedChatConnection/start(listener:)``.
 public class AuthenticatedChatConnection: NativeHandleOwner<
     SignalMutPointerAuthenticatedChatConnection
@@ -108,18 +108,22 @@ public class AuthenticatedChatConnection: NativeHandleOwner<
         connectionManager: ConnectionManager,
         username: String,
         password: String,
-        receiveStories: Bool
+        receiveStories: Bool,
+        languages: [String]
     ) async throws {
         let nativeHandle = try await tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
             connectionManager.withNativeHandle { connectionManager in
-                signal_authenticated_chat_connection_connect(
-                    promise,
-                    tokioAsyncContext.const(),
-                    connectionManager.const(),
-                    username,
-                    password,
-                    receiveStories
-                )
+                languages.withUnsafeBorrowedBytestringArray { languages in
+                    signal_authenticated_chat_connection_connect(
+                        promise,
+                        tokioAsyncContext.const(),
+                        connectionManager.const(),
+                        username,
+                        password,
+                        receiveStories,
+                        languages
+                    )
+                }
             }
         }
         self.tokioAsyncContext = tokioAsyncContext
@@ -255,15 +259,19 @@ public class UnauthenticatedChatConnection: NativeHandleOwner<
     internal init(
         tokioAsyncContext: TokioAsyncContext,
         connectionManager: ConnectionManager,
+        languages: [String],
         environment: Net.Environment
     ) async throws {
         let nativeHandle = try await tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
             connectionManager.withNativeHandle { connectionManager in
-                signal_unauthenticated_chat_connection_connect(
-                    promise,
-                    tokioAsyncContext.const(),
-                    connectionManager.const()
-                )
+                languages.withUnsafeBorrowedBytestringArray { languages in
+                    signal_unauthenticated_chat_connection_connect(
+                        promise,
+                        tokioAsyncContext.const(),
+                        connectionManager.const(),
+                        languages
+                    )
+                }
             }
         }
         self.tokioAsyncContext = tokioAsyncContext

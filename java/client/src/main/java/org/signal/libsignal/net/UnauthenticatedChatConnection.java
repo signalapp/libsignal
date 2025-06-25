@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.net;
 
+import java.util.Locale;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeTesting;
@@ -37,13 +38,16 @@ public class UnauthenticatedChatConnection extends ChatConnection {
   static CompletableFuture<UnauthenticatedChatConnection> connect(
       final TokioAsyncContext tokioAsyncContext,
       final Network.ConnectionManager connectionManager,
+      final Locale locale,
       ChatConnectionListener chatListener) {
     return tokioAsyncContext.guardedMap(
         asyncContextHandle ->
             connectionManager.guardedMap(
                 connectionManagerHandle ->
                     Native.UnauthenticatedChatConnection_connect(
-                            asyncContextHandle, connectionManagerHandle)
+                            asyncContextHandle,
+                            connectionManagerHandle,
+                            Network.languageCodesForLocale(locale))
                         .makeCancelable(tokioAsyncContext)
                         .thenApply(
                             nativeHandle ->

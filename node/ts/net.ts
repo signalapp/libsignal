@@ -152,16 +152,18 @@ export class Net {
   }
 
   /**
-   *
    * Creates a new instance of {@link UnauthenticatedChatConnection}.
+   *
    * @param listener the listener for incoming events.
    * @param options additional options to pass through.
+   * @param options.languages If provided, a list of languages in Accept-Language syntax to apply
+   * to all requests made on this connection.
    * @param options.abortSignal an {@link AbortSignal} that will cancel the connection attempt.
    * @returns the connected listener, if the connection succeeds.
    */
   public async connectUnauthenticatedChat(
     listener: ConnectionEventsListener,
-    options?: { abortSignal?: AbortSignal }
+    options?: { languages?: string[]; abortSignal?: AbortSignal }
   ): Promise<UnauthenticatedChatConnection> {
     const env = this.options.localTestServer ? undefined : this.options.env;
     return UnauthenticatedChatConnection.connect(
@@ -181,7 +183,7 @@ export class Net {
     password: string,
     receiveStories: boolean,
     listener: ChatServiceListener,
-    options?: { abortSignal?: AbortSignal }
+    options?: { languages?: string[]; abortSignal?: AbortSignal }
   ): Promise<AuthenticatedChatConnection> {
     return AuthenticatedChatConnection.connect(
       this.asyncContext,

@@ -74,8 +74,9 @@ fn ChatConnectionInfo_description(connection_info: &ChatConnectionInfo) -> Strin
 #[bridge_io(TokioAsyncContext)]
 async fn UnauthenticatedChatConnection_connect(
     connection_manager: &ConnectionManager,
+    languages: Box<[String]>,
 ) -> Result<UnauthenticatedChatConnection, ConnectError> {
-    UnauthenticatedChatConnection::connect(connection_manager).await
+    UnauthenticatedChatConnection::connect(connection_manager, &languages).await
 }
 
 #[bridge_fn]
@@ -126,11 +127,13 @@ async fn AuthenticatedChatConnection_connect(
     username: String,
     password: String,
     receive_stories: bool,
+    languages: Box<[String]>,
 ) -> Result<AuthenticatedChatConnection, ConnectError> {
     AuthenticatedChatConnection::connect(
         connection_manager,
         Auth { username, password },
         receive_stories,
+        &languages,
     )
     .await
 }

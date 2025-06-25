@@ -460,7 +460,7 @@ final class ChatConnectionTests: TestCaseBase {
         }
 
         let net = Net(env: .staging, userAgent: Self.userAgent)
-        let chat = try await net.connectUnauthenticatedChat()
+        let chat = try await net.connectUnauthenticatedChat(languages: ["en"])
         _ = chat.info()
         let listener = ExpectDisconnectListener(expectation(description: "disconnect"))
         chat.start(listener: listener)

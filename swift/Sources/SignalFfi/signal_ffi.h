@@ -467,6 +467,16 @@ typedef struct {
   const SignalConnectionManager *raw;
 } SignalConstPointerConnectionManager;
 
+typedef struct {
+  const size_t *base;
+  size_t length;
+} SignalBorrowedSliceOfusize;
+
+typedef struct {
+  SignalBorrowedBuffer bytes;
+  SignalBorrowedSliceOfusize lengths;
+} SignalBorrowedBytestringArray;
+
 /**
  * A C callback used to report the results of Rust futures.
  *
@@ -1118,16 +1128,6 @@ typedef struct {
 } SignalMutPointerRegistrationAccountAttributes;
 
 typedef struct {
-  const size_t *base;
-  size_t length;
-} SignalBorrowedSliceOfusize;
-
-typedef struct {
-  SignalBorrowedBuffer bytes;
-  SignalBorrowedSliceOfusize lengths;
-} SignalBorrowedBytestringArray;
-
-typedef struct {
   /**
    * Bridged as a string of bytes, but each entry is a UTF-8 `String` key
    * concatenated with a byte for the value.
@@ -1392,7 +1392,7 @@ SignalFfiError *signal_auth_credential_with_pni_check_valid_contents(SignalBorro
 
 SignalFfiError *signal_auth_credential_with_pni_response_check_valid_contents(SignalBorrowedBuffer bytes);
 
-SignalFfiError *signal_authenticated_chat_connection_connect(SignalCPromiseMutPointerAuthenticatedChatConnection *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerConnectionManager connection_manager, const char *username, const char *password, bool receive_stories);
+SignalFfiError *signal_authenticated_chat_connection_connect(SignalCPromiseMutPointerAuthenticatedChatConnection *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerConnectionManager connection_manager, const char *username, const char *password, bool receive_stories, SignalBorrowedBytestringArray languages);
 
 SignalFfiError *signal_authenticated_chat_connection_destroy(SignalMutPointerAuthenticatedChatConnection p);
 
@@ -2392,7 +2392,7 @@ SignalFfiError *signal_tokio_async_context_destroy(SignalMutPointerTokioAsyncCon
 
 SignalFfiError *signal_tokio_async_context_new(SignalMutPointerTokioAsyncContext *out);
 
-SignalFfiError *signal_unauthenticated_chat_connection_connect(SignalCPromiseMutPointerUnauthenticatedChatConnection *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerConnectionManager connection_manager);
+SignalFfiError *signal_unauthenticated_chat_connection_connect(SignalCPromiseMutPointerUnauthenticatedChatConnection *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerConnectionManager connection_manager, SignalBorrowedBytestringArray languages);
 
 SignalFfiError *signal_unauthenticated_chat_connection_destroy(SignalMutPointerUnauthenticatedChatConnection p);
 

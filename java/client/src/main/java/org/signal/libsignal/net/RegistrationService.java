@@ -175,10 +175,6 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
    */
   public CompletableFuture<Void> requestVerificationCode(
       VerificationTransport transport, String client, Locale locale) {
-    var languages =
-        locale == null
-            ? new String[0]
-            : new String[] {locale.getLanguage() + "-" + locale.getCountry()};
     return guardedMap(
         nativeHandle ->
             tokioAsyncContext.guardedMap(
@@ -188,7 +184,7 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
                         nativeHandle,
                         transport.name().toLowerCase(),
                         client,
-                        languages)));
+                        Network.languageCodesForLocale(locale))));
   }
 
   /**

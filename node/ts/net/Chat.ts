@@ -137,12 +137,13 @@ export class UnauthenticatedChatConnection implements ChatConnection {
     connectionManager: ConnectionManager,
     listener: ConnectionEventsListener,
     env?: Environment,
-    options?: { abortSignal?: AbortSignal }
+    options?: { languages?: string[]; abortSignal?: AbortSignal }
   ): Promise<UnauthenticatedChatConnection> {
     const nativeChatListener = makeNativeChatListener(asyncContext, listener);
     const connect = Native.UnauthenticatedChatConnection_connect(
       asyncContext,
-      connectionManager
+      connectionManager,
+      options?.languages ?? []
     );
     const chat = await asyncContext.makeCancellable(
       options?.abortSignal,
@@ -248,7 +249,7 @@ export class AuthenticatedChatConnection implements ChatConnection {
     password: string,
     receiveStories: boolean,
     listener: ChatServiceListener,
-    options?: { abortSignal?: AbortSignal }
+    options?: { languages?: string[]; abortSignal?: AbortSignal }
   ): Promise<AuthenticatedChatConnection> {
     const nativeChatListener = makeNativeChatListener(asyncContext, listener);
     const connect = Native.AuthenticatedChatConnection_connect(
@@ -256,7 +257,8 @@ export class AuthenticatedChatConnection implements ChatConnection {
       connectionManager,
       username,
       password,
-      receiveStories
+      receiveStories,
+      options?.languages ?? []
     );
     const chat = await asyncContext.makeCancellable(
       options?.abortSignal,

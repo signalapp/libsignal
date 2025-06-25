@@ -29,6 +29,7 @@ const-str = { workspace = true }
 derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["debug", "from", "try_from"] }
 displaydoc = { workspace = true }
+either = { workspace = true }
 futures-util = { workspace = true }
 hex = { workspace = true }
 hmac = { workspace = true }

@@ -9,6 +9,7 @@ import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -251,8 +252,18 @@ public class Network {
    * other exception type wrapped in a {@link ExecutionException}.
    */
   public CompletableFuture<UnauthenticatedChatConnection> connectUnauthChat(
+      final Locale locale, ChatConnectionListener listener) {
+    return UnauthenticatedChatConnection.connect(
+        tokioAsyncContext, connectionManager, locale, listener);
+  }
+
+  /**
+   * Calls {@link #connectUnauthChat(Locale, ChatConnectionListener)} with no connection-level
+   * locale.
+   */
+  public CompletableFuture<UnauthenticatedChatConnection> connectUnauthChat(
       ChatConnectionListener listener) {
-    return UnauthenticatedChatConnection.connect(tokioAsyncContext, connectionManager, listener);
+    return connectUnauthChat(null, listener);
   }
 
   /**
@@ -270,9 +281,28 @@ public class Network {
       final String username,
       final String password,
       final boolean receiveStories,
+      final Locale locale,
       ChatConnectionListener listener) {
     return AuthenticatedChatConnection.connect(
-        tokioAsyncContext, connectionManager, username, password, receiveStories, listener);
+        tokioAsyncContext, connectionManager, username, password, receiveStories, locale, listener);
+  }
+
+  /**
+   * Calls {@link #connectAuthChat(String, String, boolean, Locale, ChatConnectionListener)} with no
+   * connection-level locale.
+   */
+  public CompletableFuture<AuthenticatedChatConnection> connectAuthChat(
+      final String username,
+      final String password,
+      final boolean receiveStories,
+      ChatConnectionListener listener) {
+    return connectAuthChat(username, password, receiveStories, null, listener);
+  }
+
+  static String[] languageCodesForLocale(Locale locale) {
+    return locale == null
+        ? new String[0]
+        : new String[] {locale.getLanguage() + "-" + locale.getCountry()};
   }
 
   static class ConnectionManager extends NativeHandleGuard.SimpleOwner

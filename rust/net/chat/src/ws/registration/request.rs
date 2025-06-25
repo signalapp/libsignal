@@ -2,8 +2,8 @@ use bytes::Bytes;
 use http::uri::PathAndQuery;
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use libsignal_net::auth::Auth;
-use libsignal_net::chat::Request as ChatRequest;
-use libsignal_net::infra::{AsHttpHeader as _, AsStaticHttpHeader};
+use libsignal_net::chat::{LanguageList, Request as ChatRequest};
+use libsignal_net::infra::AsHttpHeader as _;
 use libsignal_protocol::PublicKey;
 use serde_with::{serde_as, skip_serializing_none, FromInto};
 
@@ -28,16 +28,13 @@ pub(super) struct UpdateRegistrationSession<'a> {
     pub(super) push_challenge: Option<&'a str>,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub(super) struct LanguageList<'a>(pub(crate) &'a HeaderValue);
-
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct RequestVerificationCode<'a> {
     pub(super) transport: VerificationTransport,
     pub(super) client: &'a str,
     #[serde(skip)]
-    pub(super) language_list: Option<LanguageList<'a>>,
+    pub(crate) language_list: Option<LanguageList>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
@@ -131,14 +128,6 @@ impl TryFrom<RegistrationResponse> for crate::api::registration::RegistrationRes
     }
 }
 
-impl AsStaticHttpHeader for LanguageList<'_> {
-    const HEADER_NAME: HeaderName = http::header::ACCEPT_LANGUAGE;
-
-    fn header_value(&self) -> HeaderValue {
-        self.0.clone()
-    }
-}
-
 /// A value that can be sent to the server as part of a REST request.
 pub(super) trait Request {
     /// The HTTP [`Method`] to send the request with
@@ -208,7 +197,10 @@ impl Request for RequestVerificationCode<'_> {
     where
         Self: 's,
     {
-        self.language_list.map(|l| l.as_header()).into_iter()
+        self.language_list
+            .as_ref()
+            .map(|l| l.as_header())
+            .into_iter()
     }
 
     fn to_json_body(&self) -> Option<Box<[u8]>> {
@@ -509,7 +501,7 @@ mod test {
             request: RequestVerificationCode {
                 transport: VerificationTransport::Sms,
                 client: "client name",
-                language_list: Some(LanguageList(&HeaderValue::from_static("tlh"))),
+                language_list: Some(LanguageList(HeaderValue::from_static("tlh"))),
             },
         }
         .into();

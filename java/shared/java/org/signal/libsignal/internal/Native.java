@@ -171,7 +171,7 @@ public final class Native {
   public static native void AuthCredentialWithPni_CheckValidContents(byte[] bytes) throws Exception;
 
   public static native void AuthenticatedChatConnection_Destroy(long handle);
-  public static native CompletableFuture<Long> AuthenticatedChatConnection_connect(long asyncRuntime, long connectionManager, String username, String password, boolean receiveStories);
+  public static native CompletableFuture<Long> AuthenticatedChatConnection_connect(long asyncRuntime, long connectionManager, String username, String password, boolean receiveStories, Object[] languages);
   public static native CompletableFuture AuthenticatedChatConnection_disconnect(long asyncRuntime, long chat);
   public static native void AuthenticatedChatConnection_init_listener(long chat, BridgeChatListener listener);
   public static native CompletableFuture<Void> AuthenticatedChatConnection_preconnect(long asyncRuntime, long connectionManager);
@@ -742,7 +742,7 @@ public final class Native {
   public static native long TokioAsyncContext_new();
 
   public static native void UnauthenticatedChatConnection_Destroy(long handle);
-  public static native CompletableFuture<Long> UnauthenticatedChatConnection_connect(long asyncRuntime, long connectionManager);
+  public static native CompletableFuture<Long> UnauthenticatedChatConnection_connect(long asyncRuntime, long connectionManager, Object[] languages);
   public static native CompletableFuture UnauthenticatedChatConnection_disconnect(long asyncRuntime, long chat);
   public static native long UnauthenticatedChatConnection_info(long chat);
   public static native void UnauthenticatedChatConnection_init_listener(long chat, BridgeChatListener listener);

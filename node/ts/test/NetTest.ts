@@ -317,7 +317,9 @@ describe('chat service api', () => {
         onConnectionInterrupted: (...args: [unknown]) =>
           onInterrupted.resolve(args),
       };
-      const chat = await net.connectUnauthenticatedChat(listener);
+      const chat = await net.connectUnauthenticatedChat(listener, {
+        languages: ['en'],
+      });
       await chat.disconnect();
       await onInterrupted;
       expect(onInterrupted.resolvedValue).to.eql([null]);

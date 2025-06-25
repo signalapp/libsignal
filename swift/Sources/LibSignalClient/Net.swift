@@ -260,6 +260,8 @@ public class Net {
     ///   - username: The username to provide; this is typically of the form `{aci}.{deviceId}`.
     ///   - password: The password to provide to the server.
     ///   - receiveStories: Indicates to the server whether it should send story updates on this connection.
+    ///   - languages: If provided, a list of languages in Accept-Language syntax to apply to all
+    ///     requests made on this connection.
     ///
     /// - Throws: ``SignalError/appExpired(_:)`` if the current app version is too old (as judged by
     ///   the server).
@@ -274,14 +276,16 @@ public class Net {
     public func connectAuthenticatedChat(
         username: String,
         password: String,
-        receiveStories: Bool
+        receiveStories: Bool,
+        languages: [String] = []
     ) async throws -> AuthenticatedChatConnection {
         return try await AuthenticatedChatConnection(
             tokioAsyncContext: self.asyncContext,
             connectionManager: self.connectionManager,
             username: username,
             password: password,
-            receiveStories: receiveStories
+            receiveStories: receiveStories,
+            languages: languages
         )
     }
 
@@ -294,6 +298,10 @@ public class Net {
     /// object can be used to send and receive messages after
     /// ``UnauthenticatedChatConnection/start(listener:)`` is called.
     ///
+    /// - Parameters:
+    ///   - languages: If provided, a list of languages in Accept-Language syntax to apply to all
+    ///     requests made on this connection.
+    ///
     /// - Throws: ``SignalError/appExpired(_:)`` if the current app version is too old (as judged by
     ///   the server).
     /// - Throws: ``SignalError/rateLimitedError(_:, _:)`` if the server
@@ -302,11 +310,11 @@ public class Net {
     ///
     /// - Returns:
     ///   An object representing the established, but not active, connection.
-    public func connectUnauthenticatedChat() async throws -> UnauthenticatedChatConnection {
+    public func connectUnauthenticatedChat(languages: [String] = []) async throws -> UnauthenticatedChatConnection {
         return try await UnauthenticatedChatConnection(
             tokioAsyncContext: self.asyncContext,
-            connectionManager:
-                self.connectionManager,
+            connectionManager: self.connectionManager,
+            languages: languages,
             environment: self.environment
         )
     }

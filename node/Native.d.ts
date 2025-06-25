@@ -199,7 +199,7 @@ export function AuthCredentialPresentation_GetRedemptionTime(presentationBytes: 
 export function AuthCredentialPresentation_GetUuidCiphertext(presentationBytes: Uint8Array): Serialized<UuidCiphertext>;
 export function AuthCredentialWithPniResponse_CheckValidContents(bytes: Uint8Array): void;
 export function AuthCredentialWithPni_CheckValidContents(bytes: Uint8Array): void;
-export function AuthenticatedChatConnection_connect(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, receiveStories: boolean): CancellablePromise<AuthenticatedChatConnection>;
+export function AuthenticatedChatConnection_connect(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, receiveStories: boolean, languages: string[]): CancellablePromise<AuthenticatedChatConnection>;
 export function AuthenticatedChatConnection_disconnect(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>): CancellablePromise<void>;
 export function AuthenticatedChatConnection_info(chat: Wrapper<AuthenticatedChatConnection>): ChatConnectionInfo;
 export function AuthenticatedChatConnection_init_listener(chat: Wrapper<AuthenticatedChatConnection>, listener: ChatListener): void;
@@ -681,7 +681,7 @@ export function TESTING_TestingHandleType_getValue(handle: Wrapper<TestingHandle
 export function TESTING_TokioAsyncFuture(asyncRuntime: Wrapper<TokioAsyncContext>, input: number): CancellablePromise<number>;
 export function TokioAsyncContext_cancel(context: Wrapper<TokioAsyncContext>, rawCancellationId: bigint): void;
 export function TokioAsyncContext_new(): TokioAsyncContext;
-export function UnauthenticatedChatConnection_connect(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>): CancellablePromise<UnauthenticatedChatConnection>;
+export function UnauthenticatedChatConnection_connect(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, languages: string[]): CancellablePromise<UnauthenticatedChatConnection>;
 export function UnauthenticatedChatConnection_disconnect(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>): CancellablePromise<void>;
 export function UnauthenticatedChatConnection_info(chat: Wrapper<UnauthenticatedChatConnection>): ChatConnectionInfo;
 export function UnauthenticatedChatConnection_init_listener(chat: Wrapper<UnauthenticatedChatConnection>, listener: ChatListener): void;

@@ -10,6 +10,7 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -157,7 +158,7 @@ public class ChatServiceTest {
 
       final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
       final Listener listener = new Listener();
-      var chat = net.connectUnauthChat(listener).get();
+      var chat = net.connectUnauthChat(Locale.US, listener).get();
       chat.start();
       Void disconnectFinished = chat.disconnect().get();
 

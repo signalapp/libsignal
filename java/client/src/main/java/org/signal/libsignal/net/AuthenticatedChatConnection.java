@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.net;
 
+import java.util.Locale;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeTesting;
@@ -35,6 +36,7 @@ public class AuthenticatedChatConnection extends ChatConnection {
       final String username,
       final String password,
       final boolean receiveStories,
+      final Locale locale,
       ChatConnectionListener chatListener) {
     return tokioAsyncContext.guardedMap(
         asyncContextHandle ->
@@ -45,7 +47,8 @@ public class AuthenticatedChatConnection extends ChatConnection {
                             connectionManagerHandle,
                             username,
                             password,
-                            receiveStories)
+                            receiveStories,
+                            Network.languageCodesForLocale(locale))
                         .makeCancelable(tokioAsyncContext)
                         .thenApply(
                             nativeHandle ->
