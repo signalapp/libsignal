@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class GroupIdentifier: ByteArray, CustomStringConvertible, @unchecked Sendable {
+public class GroupIdentifier: HashableByteArray, CustomStringConvertible, @unchecked Sendable {
     public static let SIZE: Int = 32
 
     public required init(contents: Data) throws {
@@ -17,4 +17,9 @@ public class GroupIdentifier: ByteArray, CustomStringConvertible, @unchecked Sen
     public var description: String {
         self.serialize().toHex()
     }
+}
+
+private func witnessGroupIdentifierIsHashable() throws {
+    func isHashable<T: Hashable>(_: T) {}
+    isHashable(try GroupIdentifier(contents: Data()))
 }
