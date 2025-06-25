@@ -197,9 +197,6 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
     }
 
-    // Print first 8 bytes of standard keys (same as original)
-    println!("their_signed_pre_key first 8 bytes: {:02x?}", &parameters.their_signed_pre_key().public_key_bytes()[..8]);
-    println!("their_ratchet_key first 8 bytes: {:02x?}", &parameters.their_ratchet_key().public_key_bytes()[..8]);
 /*
     // Add PSWOOSH shared secret derivation
     if let (Some(_our_base_swoosh_key_pair), Some(their_swoosh_pre_key)) = 
@@ -227,8 +224,8 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
     let has_kyber = parameters.their_kyber_pre_key().is_some();
 
     let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
-    println!("🔑 Alice root_key first 8 bytes: {:02x?}", &root_key.key()[..8]);
-    println!("🔑 Alice chain_key first 8 bytes: {:02x?}", &chain_key.key()[..8]);
+    println!("🔑 Alice original root_key first 8 bytes: {:02x?}", &root_key.key()[..8]);
+    println!("🔑 Alice original chain_key first 8 bytes: {:02x?}", &chain_key.key()[..8]);
 
     // Then use the updated root key to create Swoosh chain
     let (sending_swoosh_root_key, sending_swoosh_chain_key) = root_key.create_chain_swoosh(
@@ -238,7 +235,7 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
         is_alice,
     )?;
 
-    println!("🔑 Alice sending swoosh key first 8 bytes: {:02x?}", &sending_swoosh_root_key.key()[..8]);
+    println!("🔑 Alice sending swoosh root key first 8 bytes: {:02x?}", &sending_swoosh_root_key.key()[..8]);
     println!("🔑 Alice sending swoosh chain key first 8 bytes: {:02x?}", &sending_swoosh_chain_key.key()[..8]);
 
     let self_session = local_identity == parameters.their_identity_key();
@@ -279,97 +276,6 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
     if let Some(kyber_ciphertext) = kyber_ciphertext {
         session.set_kyber_ciphertext(kyber_ciphertext);
     }
-
-    Ok(session)
-}
-
-pub(crate) fn initialize_bob_session(
-    parameters: &BobSignalProtocolParameters,
-) -> Result<SessionState> {
-    println!("**Bob session initialized");
-    let local_identity = parameters.our_identity_key_pair().identity_key();
-
-    let mut secrets = Vec::with_capacity(32 * 5);
-
-    secrets.extend_from_slice(&[0xFFu8; 32]); // "discontinuity bytes"
-
-    secrets.extend_from_slice(
-        &parameters
-            .our_signed_pre_key_pair()
-            .private_key
-            .calculate_agreement(parameters.their_identity_key().public_key())?,
-    );
-
-    secrets.extend_from_slice(
-        &parameters
-            .our_identity_key_pair()
-            .private_key()
-            .calculate_agreement(parameters.their_base_key())?,
-    );
-
-    secrets.extend_from_slice(
-        &parameters
-            .our_signed_pre_key_pair()
-            .private_key
-            .calculate_agreement(parameters.their_base_key())?,
-    );
-
-    if let Some(our_one_time_pre_key_pair) = parameters.our_one_time_pre_key_pair() {
-        secrets.extend_from_slice(
-            &our_one_time_pre_key_pair
-                .private_key
-                .calculate_agreement(parameters.their_base_key())?,
-        );
-    }
-
-    match (
-        parameters.our_kyber_pre_key_pair(),
-        parameters.their_kyber_ciphertext(),
-    ) {
-        (Some(key_pair), Some(ciphertext)) => {
-            let ss = key_pair.secret_key.decapsulate(ciphertext)?;
-            secrets.extend_from_slice(ss.as_ref());
-        }
-        (None, None) => (), // Alice does not support kyber prekeys
-        _ => {
-            panic!("Either both or none of the kyber key pair and ciphertext can be provided")
-        }
-    }
-    let has_kyber = parameters.our_kyber_pre_key_pair().is_some();
-
-    let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
-
-    let self_session = local_identity == parameters.their_identity_key();
-    let pqr_state = match parameters.use_pq_ratchet() {
-        UsePQRatchet::Yes => spqr::initial_state(spqr::Params {
-            auth_key: &pqr_key,
-            version: spqr::Version::V1,
-            direction: spqr::Direction::B2A,
-            // Set min_version to V0 (allow fallback to no PQR at all) while
-            // there are clients that don't speak PQR.  Once all clients speak
-            // PQR, we can up this to V1 to require that all subsequent sessions
-            // use at least V1.
-            min_version: spqr::Version::V0,
-            chain_params: spqr_chain_params(self_session),
-        })
-        .map_err(|e| {
-            // Since this is an error associated with the initial creation of the state,
-            // it must be a problem with the arguments provided.
-            SignalProtocolError::InvalidArgument(format!(
-                "post-quantum ratchet: error creating initial B2A state: {e}"
-            ))
-        })?,
-        UsePQRatchet::No => spqr::SerializedState::new(), // empty
-    };
-    let session = SessionState::new(
-        message_version(has_kyber),
-        local_identity,
-        parameters.their_identity_key(),
-        &root_key,
-        parameters.their_base_key(),
-        pqr_state,
-    )
-    .with_sender_chain(parameters.our_ratchet_key_pair(), &chain_key);
 
     Ok(session)
 }
@@ -479,6 +385,97 @@ pub(crate) fn initialize_bob_session_pswoosh(
         pqr_state,
     )
     .with_sender_swoosh_chain(parameters.our_ratchet_swoosh_key_pair().unwrap(), &chain_key);
+
+    Ok(session)
+}
+
+pub(crate) fn initialize_bob_session(
+    parameters: &BobSignalProtocolParameters,
+) -> Result<SessionState> {
+    println!("**Bob session initialized");
+    let local_identity = parameters.our_identity_key_pair().identity_key();
+
+    let mut secrets = Vec::with_capacity(32 * 5);
+
+    secrets.extend_from_slice(&[0xFFu8; 32]); // "discontinuity bytes"
+
+    secrets.extend_from_slice(
+        &parameters
+            .our_signed_pre_key_pair()
+            .private_key
+            .calculate_agreement(parameters.their_identity_key().public_key())?,
+    );
+
+    secrets.extend_from_slice(
+        &parameters
+            .our_identity_key_pair()
+            .private_key()
+            .calculate_agreement(parameters.their_base_key())?,
+    );
+
+    secrets.extend_from_slice(
+        &parameters
+            .our_signed_pre_key_pair()
+            .private_key
+            .calculate_agreement(parameters.their_base_key())?,
+    );
+
+    if let Some(our_one_time_pre_key_pair) = parameters.our_one_time_pre_key_pair() {
+        secrets.extend_from_slice(
+            &our_one_time_pre_key_pair
+                .private_key
+                .calculate_agreement(parameters.their_base_key())?,
+        );
+    }
+
+    match (
+        parameters.our_kyber_pre_key_pair(),
+        parameters.their_kyber_ciphertext(),
+    ) {
+        (Some(key_pair), Some(ciphertext)) => {
+            let ss = key_pair.secret_key.decapsulate(ciphertext)?;
+            secrets.extend_from_slice(ss.as_ref());
+        }
+        (None, None) => (), // Alice does not support kyber prekeys
+        _ => {
+            panic!("Either both or none of the kyber key pair and ciphertext can be provided")
+        }
+    }
+    let has_kyber = parameters.our_kyber_pre_key_pair().is_some();
+
+    let (root_key, chain_key, pqr_key) = derive_keys(has_kyber, &secrets);
+
+    let self_session = local_identity == parameters.their_identity_key();
+    let pqr_state = match parameters.use_pq_ratchet() {
+        UsePQRatchet::Yes => spqr::initial_state(spqr::Params {
+            auth_key: &pqr_key,
+            version: spqr::Version::V1,
+            direction: spqr::Direction::B2A,
+            // Set min_version to V0 (allow fallback to no PQR at all) while
+            // there are clients that don't speak PQR.  Once all clients speak
+            // PQR, we can up this to V1 to require that all subsequent sessions
+            // use at least V1.
+            min_version: spqr::Version::V0,
+            chain_params: spqr_chain_params(self_session),
+        })
+        .map_err(|e| {
+            // Since this is an error associated with the initial creation of the state,
+            // it must be a problem with the arguments provided.
+            SignalProtocolError::InvalidArgument(format!(
+                "post-quantum ratchet: error creating initial B2A state: {e}"
+            ))
+        })?,
+        UsePQRatchet::No => spqr::SerializedState::new(), // empty
+    };
+    let session = SessionState::new(
+        message_version(has_kyber),
+        local_identity,
+        parameters.their_identity_key(),
+        &root_key,
+        parameters.their_base_key(),
+        pqr_state,
+    )
+    .with_sender_chain(parameters.our_ratchet_key_pair(), &chain_key);
 
     Ok(session)
 }

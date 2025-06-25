@@ -217,7 +217,7 @@ impl RootKey {
     ) -> Result<(RootKey, ChainKey)> {
         
         let shared_secret = our_ratchet_key
-            .derive_shared_secret(their_ratchet_key, our_public_key, is_alice)?;
+            .derive_shared_secret(our_public_key, their_ratchet_key, is_alice)?;
         let mut derived_secret_bytes = [0; 64];
         hkdf::Hkdf::<sha2::Sha256>::new(Some(&self.key), &shared_secret)
             .expand(b"WhisperRatchet", &mut derived_secret_bytes)
@@ -234,16 +234,6 @@ impl RootKey {
         ))
     }
 
-    /// Determine Alice/Bob role based on identity keys for SWOOSH
-    /// This provides a deterministic way to assign roles that both parties will agree on
-    pub(crate) fn determine_swoosh_role(
-        our_identity: &IdentityKey,
-        their_identity: &IdentityKey,
-    ) -> bool {
-        // Use lexicographic comparison of identity key bytes
-        // The party with the lexicographically smaller identity key is Alice
-        our_identity.serialize() < their_identity.serialize()
-    }
 }
 
 impl fmt::Display for RootKey {
@@ -254,6 +244,10 @@ impl fmt::Display for RootKey {
 
 #[cfg(test)]
 mod tests {
+    use libsignal_core::curve::KeyPair;
+    use pswoosh::keys::SwooshKeyPair;
+    use rand::TryRngCore as _;
+
     use super::*;
 
     #[test]
@@ -303,4 +297,145 @@ mod tests {
         );
         Ok(())
     }
+
+    #[test]
+    fn test_root_key_create_chain() -> Result<()> {
+        // Test the standard ECDH-based chain creation
+        let root_key_bytes = [
+            0x01u8, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+            0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+            0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+            0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20,
+        ];
+        let root_key = RootKey::new(root_key_bytes);
+
+        // Generate test key pairs
+        let their_key_pair = KeyPair::generate(&mut rand::rngs::OsRng.unwrap_err());
+        let their_public_key = their_key_pair.public_key;
+        let their_private_key = their_key_pair.private_key;
+        let our_key_pair = KeyPair::generate(&mut rand::rngs::OsRng.unwrap_err());
+        let our_private_key = our_key_pair.private_key;
+        let our_public_key = our_key_pair.public_key;
+
+        let (their_new_root_key, their_chain_key) = root_key.clone().create_chain(&their_public_key, &our_private_key)?;
+        let (our_new_root_key, our_chain_key) = root_key.create_chain(&our_public_key, &their_private_key)?;
+        println!("Their new root key: {}", their_new_root_key);
+        println!("Our new root key: {}", our_new_root_key);
+
+        // Verify that new keys are different from the original
+        assert_ne!(their_new_root_key.key(), &root_key_bytes);
+        assert_eq!(their_chain_key.index(), 0);
+
+        assert_eq!(their_new_root_key.key(), our_new_root_key.key());
+        assert_eq!(their_chain_key.key(), our_chain_key.key());
+        
+        // Verify that the chain key can generate message keys
+        let message_keys = their_chain_key.message_keys().generate_keys(None);
+        assert_eq!(message_keys.counter(), 0);
+        assert_eq!(message_keys.cipher_key().len(), 32);
+        assert_eq!(message_keys.mac_key().len(), 32);
+        assert_eq!(message_keys.iv().len(), 16);
+
+        // Verify that next chain key has incremented index
+        let next_chain_key = their_chain_key.next_chain_key();
+        assert_eq!(next_chain_key.index(), 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_root_key_create_chain_deterministic() -> Result<()> {
+        // Test that the same inputs produce the same outputs
+        let root_key_bytes = [
+            0xaau8, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x11, 0x22,
+            0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x00,
+            0xaau8, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x11, 0x22,
+            0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x00,
+        ];
+
+        // Use fixed private key for deterministic testing
+        let their_private_key_bytes = [
+            0x11u8, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+            0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+            0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+            0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+        ];
+        let our_private_key_bytes = [
+            0x22u8, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+            0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+            0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+            0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+        ];
+
+        let their_private_key = PrivateKey::deserialize(&their_private_key_bytes)?;
+        let their_public_key = their_private_key.public_key()?;
+        let our_private_key = PrivateKey::deserialize(&our_private_key_bytes)?;
+
+        // Create chains twice with same inputs
+        let root_key1 = RootKey::new(root_key_bytes);
+        let (new_root_key1, chain_key1) = root_key1.create_chain(&their_public_key, &our_private_key)?;
+
+        let root_key2 = RootKey::new(root_key_bytes);
+        let (new_root_key2, chain_key2) = root_key2.create_chain(&their_public_key, &our_private_key)?;
+
+        // Results should be identical
+        assert_eq!(new_root_key1.key(), new_root_key2.key());
+        assert_eq!(chain_key1.key(), chain_key2.key());
+        assert_eq!(chain_key1.index(), chain_key2.index());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_root_key_create_chain_swoosh() -> Result<()> {
+        // Test the SWOOSH-based chain creation
+        let root_key_bytes = [
+            0x01u8, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+            0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+            0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+            0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20,
+        ];
+        let root_key = RootKey::new(root_key_bytes);
+
+        // Generate SWOOSH key pairs
+        let bob_key_pair = SwooshKeyPair::generate(false);
+        let bob_private_key = bob_key_pair.private_key;
+        let bob_public_key = bob_key_pair.public_key;
+        let alice_key_pair = SwooshKeyPair::generate(true);
+        let alice_private_key = alice_key_pair.private_key;
+        let alice_public_key = alice_key_pair.public_key;
+
+        // Test as Alice
+        let (new_root_key_alice, chain_key_alice) = root_key
+            .clone()
+            .create_chain_swoosh(&bob_public_key, &alice_public_key, &alice_private_key, true)?;
+
+        // Test as Bob
+        let (new_root_key_bob, chain_key_bob) = root_key
+            .create_chain_swoosh(&alice_public_key, &bob_public_key, &bob_private_key, false)?;
+
+        // Verify that new keys are different from the original
+        assert_ne!(new_root_key_alice.key(), &root_key_bytes);
+        assert_ne!(new_root_key_bob.key(), &root_key_bytes);
+        
+        // Alice and Bob should produce different results due to role difference
+        assert_eq!(new_root_key_alice.key(), new_root_key_bob.key());
+        assert_eq!(chain_key_alice.key(), chain_key_bob.key());
+
+        // Both should start with index 0
+        assert_eq!(chain_key_alice.index(), 0);
+        assert_eq!(chain_key_bob.index(), 0);
+
+        // Verify that the chain keys can generate message keys
+        let message_keys_alice = chain_key_alice.message_keys().generate_keys(None);
+        let message_keys_bob = chain_key_bob.message_keys().generate_keys(None);
+        
+        assert_eq!(message_keys_alice.counter(), 0);
+        assert_eq!(message_keys_bob.counter(), 0);
+        assert_eq!(message_keys_alice.cipher_key().len(), 32);
+        assert_eq!(message_keys_bob.cipher_key().len(), 32);
+
+        Ok(())
+    }
+    
 }

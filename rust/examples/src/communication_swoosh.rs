@@ -82,7 +82,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     // Store Bob's pre-keys
     bob_store.save_signed_pre_key(bob_signed_prekey_id, &bob_signed_prekey).await?;
     bob_store.save_swoosh_pre_key(bob_swoosh_prekey_id, &bob_swoosh_prekey).await?;
-    
+    /*
     // Retrieve the same information from bob_store
     println!("\n=== RETRIEVING SWOOSH PRE-KEY FROM STORE ===");
     if let Ok(stored_swoosh_prekey) = bob_store.get_swoosh_pre_key(bob_swoosh_prekey_id).await {
@@ -120,7 +120,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     } else {
         println!("Failed to retrieve Swoosh pre-key from store");
     }
-    ///////////////////////
+    *///////////////////////
     
     // Optional: Generate one-time pre-key for Bob
     let bob_prekey_pair = KeyPair::generate(&mut csprng);
@@ -246,30 +246,9 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("✓ Alice session is usable: {}", alice_final_session.has_usable_sender_chain(SystemTime::now()).unwrap_or(false));
     println!("✓ Bob session is usable: {}", bob_final_session.has_usable_sender_chain(SystemTime::now()).unwrap_or(false));
     
-    // Test with basic SwooshKeyPair to verify shared secret derivation works
-    println!("\n=== SWOOSH SHARED SECRET DERIVATION TEST ===");
-    let test_alice_keypair = pswoosh::keys::SwooshKeyPair::generate(true);  // Alice
-    let test_bob_keypair = pswoosh::keys::SwooshKeyPair::generate(false);   // Bob
-    
-    if let Ok(alice_test_secret) = test_alice_keypair.derive_shared_secret(&test_bob_keypair.public_key, true) {
-        if let Ok(bob_test_secret) = test_bob_keypair.derive_shared_secret(&test_alice_keypair.public_key, false) {
-            println!("✓ Test Alice secret: {} bytes, first 8: {:02x?}", 
-                    alice_test_secret.len(), &alice_test_secret[..8]);
-            println!("✓ Test Bob secret: {} bytes, first 8: {:02x?}", 
-                    bob_test_secret.len(), &bob_test_secret[..8]);
-                    
-            if alice_test_secret == bob_test_secret {
-                println!("🎉 SUCCESS: Test Alice and Bob derived IDENTICAL shared secrets!");
-                println!("   This confirms the Swoosh shared secret derivation mechanism works correctly.");
-            } else {
-                println!("⚠ Test derivation produced different secrets");
-            }
-        }
-    }
-    
     // Now Bob can reply to Alice (session is established)
     let bob_reply = "Hello Alice! Nice to hear from you.";
-    let bob_ciphertext = message_encrypt(
+    let bob_ciphertext = message_encrypt_swoosh(
         bob_reply.as_bytes(),
         &alice_address,
         &mut bob_store.session_store,
@@ -304,7 +283,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     
     // Continue the conversation - Alice sends another message (Turn 3)
     let alice_second_message = "Thanks Bob! How's the Swoosh post-quantum cryptography working for you?";
-    let alice_second_ciphertext = message_encrypt(
+    let alice_second_ciphertext = message_encrypt_swoosh(
         alice_second_message.as_bytes(),
         &bob_address,
         &mut alice_store.session_store,
@@ -339,7 +318,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     
     // Bob sends another reply (Turn 4)
     let bob_second_reply = "It's reliable! The ECDH X25519 provides excellent forward secrecy without quantum overhead.";
-    let bob_second_ciphertext = message_encrypt(
+    let bob_second_ciphertext = message_encrypt_swoosh(
         bob_second_reply.as_bytes(),
         &alice_address,
         &mut bob_store.session_store,

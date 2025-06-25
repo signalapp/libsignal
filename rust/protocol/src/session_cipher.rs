@@ -1080,12 +1080,12 @@ fn get_or_create_chain_swoosh_key(
     let root_key = state.root_key()?;
     let our_ephemeral = state.sender_ratchet_swoosh_private_key()?;
     let our_ephemeral_public = state.sender_ratchet_swoosh_public_key()?;
-    let receiver_chain = root_key.create_chain_swoosh(their_ephemeral, &our_ephemeral_public, &our_ephemeral, is_alice)?;
+    let receiver_chain = root_key.create_chain_swoosh(their_ephemeral, &our_ephemeral_public, &our_ephemeral, false)?;
     
     // Debug: Print the first 8 bytes of receiver_chain root key before it gets moved
-    println!("🔑 Bob root key first 8 bytes: {:02x?}", &receiver_chain.0.key()[..8]);
-    println!("🔑 Bob chain key first 8 bytes: {:02x?}", &receiver_chain.1.key()[..8]);
-    
+    println!("🔑 Bob receiver swoosh root key first 8 bytes: {:02x?}", &receiver_chain.0.key()[..8]);
+    println!("🔑 Bob receiver swoosh chain key first 8 bytes: {:02x?}", &receiver_chain.1.key()[..8]);
+
     let our_new_ephemeral = SwooshKeyPair::generate(is_alice);
     let sender_chain = receiver_chain
         .0
