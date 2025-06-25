@@ -11,7 +11,7 @@ use std::task::{ready, Poll};
 use futures_util::{SinkExt as _, StreamExt as _};
 use snow::HandshakeState;
 
-use crate::noise::{NoiseStream, SendError, Transport, TransportFrameType};
+use crate::noise::{FrameType, NoiseStream, SendError, Transport};
 
 /// Future that performs a Noise handshake over a [`Transport`].
 pub struct Handshaker<S> {
@@ -110,7 +110,7 @@ impl SendRequest {
                 );
                 let () = ready!(transport.poll_ready_unpin(cx)?);
 
-                let frame_type = S::FrameType::from_auth(auth_kind);
+                let frame_type = FrameType::from(auth_kind);
                 transport.start_send_unpin((frame_type, std::mem::take(ciphertext).into()))?;
                 log::trace!("{ptr:x?} sent {}-byte ciphertext", ciphertext.len());
 
@@ -151,25 +151,12 @@ impl<S: Transport + Unpin> Future for Handshaker<S> {
             }
             State::ReadResponse => {
                 log::trace!("{ptr:x?} trying to read next block");
-                let (rx_frame_type, message) = ready!(transport.poll_next_unpin(cx))
+                let message = ready!(transport.poll_next_unpin(cx))
                     .transpose()?
                     .ok_or_else(|| {
-                    IoError::new(IoErrorKind::UnexpectedEof, "stream ended during handshake")
-                })?;
-                log::trace!(
-                    "{ptr:x?} received {}-byte {rx_frame_type} block",
-                    message.len()
-                );
-
-                // The auth frame type is only used for initiating the
-                // handshake. The response to that is a data frame.
-                let expected_frame_type = S::FrameType::DATA;
-                if expected_frame_type != rx_frame_type {
-                    return Poll::Ready(Err(IoError::other(format!(
-                        "protocol error; expected {expected_frame_type}, got {rx_frame_type} block"
-                    ))
-                    .into()));
-                }
+                        IoError::new(IoErrorKind::UnexpectedEof, "stream ended during handshake")
+                    })?;
+                log::trace!("{ptr:x?} received {}-byte block", message.len());
 
                 let payload_len = message
                     .len()
@@ -211,11 +198,11 @@ mod test {
 
     use assert_matches::assert_matches;
     use bytes::Bytes;
-    use futures_util::FutureExt;
+    use futures_util::{FutureExt, StreamExt};
 
     use super::*;
+    use crate::noise::testutil::new_transport;
     use crate::noise::FrameType;
-    use crate::testutil::TestStream;
     use crate::utils::testutil::TestWaker;
 
     struct NkHandshake {
@@ -244,7 +231,7 @@ mod test {
     fn successful_nk_handshake() {
         const EXTRA_PAYLOAD: &[u8] = b"extra payload";
 
-        let (a, mut b) = TestStream::new_pair(3);
+        let (a, mut b) = new_transport(3);
 
         let server_builder = snow::Builder::new(NkHandshake::NOISE_PATTERN.parse().unwrap());
 
@@ -307,8 +294,8 @@ mod test {
     }
 
     #[tokio::test]
-    async fn rejects_unexpected_frame_type() {
-        let (a, mut b) = TestStream::new_pair(3);
+    async fn transport_stream_drops_frame_type() {
+        let (a, mut b) = new_transport(3);
 
         let server_builder = snow::Builder::new(NkHandshake::NOISE_PATTERN.parse().unwrap());
 
@@ -339,7 +326,8 @@ mod test {
         assert_eq!(len, Ok(0));
 
         // Respond to the client but use the wrong frame type. The handshake
-        // future should resolve to an error.
+        // future won't care because it doesn't receive the frame type from the
+        // underlying transport.
 
         let mut server_tx_payload = [0; 64];
         let len = server_state
@@ -352,16 +340,6 @@ mod test {
         .await
         .unwrap();
 
-        let handshake_err: IoError = handshake
-            .await
-            .expect_err("wrong frame type accepted")
-            .into();
-        assert_eq!(handshake_err.kind(), IoErrorKind::Other);
-        assert!(
-            handshake_err
-                .to_string()
-                .contains("expected data, got IK auth"),
-            "message: {handshake_err}"
-        );
+        let (_handshake, _initial_payload) = handshake.await.expect("successful handshake");
     }
 }

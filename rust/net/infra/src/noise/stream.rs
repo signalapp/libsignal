@@ -14,7 +14,7 @@ use futures_util::{SinkExt as _, StreamExt as _};
 use snow::TransportState;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
-use crate::noise::{Transport, TransportFrameType};
+use crate::noise::{FrameType, Transport};
 
 /// Stream abstraction that encrypts/decrypts with [Noise].
 ///
@@ -88,18 +88,13 @@ impl<S: Transport + Unpin> AsyncRead for NoiseStream<S> {
                     ready!(inner.poll_next_unpin(cx)).transpose()?
                 };
 
-                let (frame_type, block) = match next_block {
+                let block = match next_block {
                     None => {
                         log::debug!("{ptr:x?} got EOS, no more blocks");
                         return Poll::Ready(Ok(()));
                     }
                     Some(block) => block,
                 };
-                if frame_type != S::FrameType::DATA {
-                    return Poll::Ready(Err(IoError::other(format!(
-                        "unexpected frame type {frame_type}"
-                    ))));
-                }
 
                 log::trace!("{ptr:x?} received block, decrypting");
                 let plaintext = transport.recv(&block).map_err(IoError::other)?;
@@ -149,7 +144,7 @@ impl<S: Transport + Unpin> AsyncWrite for NoiseStream<S> {
         log::trace!("{ptr:x?} encrypted to {} bytes", ciphertext.len());
 
         // Since the poll_ready above already succeeded, we can just send!
-        inner.start_send_unpin((S::FrameType::DATA, ciphertext.into()))?;
+        inner.start_send_unpin((FrameType::Data, ciphertext.into()))?;
 
         log::trace!("{ptr:x?} sent, waiting for next block");
 
@@ -177,17 +172,13 @@ mod test {
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
     use super::*;
-    use crate::noise::testutil::echo_forever;
-    use crate::noise::{FrameType, HandshakeAuthKind, Untyped};
-    use crate::testutil::TestStream;
+    use crate::noise::testutil::{echo_forever, new_transport_pair, ErrorSink as _};
+    use crate::noise::{FrameType, HandshakeAuthKind};
     use crate::utils::testutil::TestWaker;
 
-    fn new_stream_pair() -> (
-        NoiseStream<impl Transport<FrameType = FrameType>>,
-        NoiseStream<impl Transport<FrameType = FrameType>>,
-    ) {
+    fn new_stream_pair() -> (NoiseStream<impl Transport>, NoiseStream<impl Transport>) {
         let (transport_a, transport_b) = new_handshaken_pair().unwrap();
-        let (a, b) = TestStream::new_pair(100);
+        let (a, b) = new_transport_pair(100);
         let a = NoiseStream::new(a, transport_a, vec![0u8; 32]);
         let b = NoiseStream::new(b, transport_b, vec![0u8; 32]);
         (a, b)
@@ -248,7 +239,7 @@ mod test {
     #[tokio::test]
     async fn read_returns_inner_error() {
         let (transport, _) = new_handshaken_pair().unwrap();
-        let (inner, mut other) = TestStream::<(Untyped, _), _>::new_pair(100);
+        let (inner, mut other) = new_transport_pair(100);
         let mut stream = NoiseStream::new(inner, transport, vec![0u8; 32]);
         stream.write_all(b"ababcdcdefef").await.unwrap();
 
@@ -263,7 +254,7 @@ mod test {
     #[tokio::test]
     async fn returns_write_error() {
         let (transport, _) = new_handshaken_pair().unwrap();
-        let (inner, other) = TestStream::<(Untyped, _), _>::new_pair(100);
+        let (inner, other) = new_transport_pair(100);
         let mut stream = NoiseStream::new(inner, transport, vec![0u8; 32]);
 
         // Drop the read end. With nobody to receive sent bytes, the write to
@@ -273,15 +264,18 @@ mod test {
     }
 
     #[tokio::test]
-    async fn rejects_unexpected_frame_type() {
+    async fn ignores_unexpected_frame_type() {
         let (transport, mut server) = new_handshaken_pair().unwrap();
-        let (inner, mut other) = TestStream::new_pair(100);
+        let (inner, mut other) = new_transport_pair(100);
         let mut stream = NoiseStream::new(inner, transport, vec![0u8; 32]);
+        const CLEARTEXT: &[u8] = b"hi there";
 
-        // Encrypt correctly but send the wrong frame type.
+        // Encrypt correctly but send the wrong frame type. That won't matter
+        // since the client end doesn't receive the frame type from the
+        // Transport.
         {
             let mut payload = [0; 64];
-            let len = server.write_message(b"hi there", &mut payload).unwrap();
+            let len = server.write_message(CLEARTEXT, &mut payload).unwrap();
             other
                 .send((
                     FrameType::Auth(HandshakeAuthKind::IK),
@@ -291,12 +285,11 @@ mod test {
                 .unwrap();
         }
 
-        let err = stream
+        let read = stream
             .read(&mut [0; 32])
             .await
-            .expect_err("wrong frame type accepted");
-        assert_eq!(err.kind(), IoErrorKind::Other);
-        assert!(err.to_string().contains("frame"), "message: {err}");
+            .expect("wrong frame type wasn't ignored");
+        assert_eq!(read, CLEARTEXT.len());
     }
 
     /// [Transport] that terminates after `remaining` items are emitted.
@@ -354,7 +347,7 @@ mod test {
     #[tokio::test]
     async fn respects_fused_is_terminated() {
         let (transport, other_transport) = new_handshaken_pair().unwrap();
-        let (inner, other) = TestStream::<(Untyped, _), _>::new_pair(1);
+        let (inner, other) = new_transport_pair(1);
         let inner = TerminateStreamAfter {
             remaining: 2,
             inner,
@@ -388,7 +381,7 @@ mod test {
     fn write_with_full_transport_send_queue() {
         const CHANNEL_SIZE: usize = 2;
         let (transport_a, transport_b) = new_handshaken_pair().unwrap();
-        let (a, b) = TestStream::<(Untyped, _), _>::new_pair(CHANNEL_SIZE);
+        let (a, b) = new_transport_pair(CHANNEL_SIZE);
         let mut a = NoiseStream::new(a, transport_a, vec![0u8; 32]);
         let mut b = NoiseStream::new(b, transport_b, vec![0u8; 32]);
 

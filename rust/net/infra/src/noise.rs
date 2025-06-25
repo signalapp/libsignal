@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::fmt::Display;
 use std::io::Error as IoError;
 
 use bytes::Bytes;
@@ -30,44 +29,13 @@ impl From<snow::Error> for SendError {
 /// A blanket implementation is provided for types with compatible `Stream` and
 /// `Sink` implementations.
 pub trait Transport:
-    FusedStream<Item = Result<(Self::FrameType, Bytes), IoError>>
-    + Sink<(Self::FrameType, Bytes), Error = IoError>
+    FusedStream<Item = Result<Bytes, IoError>> + Sink<(FrameType, Bytes), Error = IoError>
 {
-    type FrameType: TransportFrameType;
 }
 
-/// The type of a frame sent over a [`Transport`].
-///
-/// This represents the frame type sent "over the wire". It provides a
-/// surjective mapping from [`HandshakeAuthKind`] to an inhabited type `Self`,
-/// though it is legal (and the case for [`Untyped`]) to map all values to the
-/// same frame type.
-pub trait TransportFrameType: Display + PartialEq {
-    const DATA: Self;
-
-    fn from_auth(auth: HandshakeAuthKind) -> Self;
-}
-
-impl<F, S> Transport for S
-where
-    F: TransportFrameType,
-    S: FusedStream<Item = Result<(F, Bytes), IoError>> + Sink<(F, Bytes), Error = IoError>,
+impl<S> Transport for S where
+    S: FusedStream<Item = Result<Bytes, IoError>> + Sink<(FrameType, Bytes), Error = IoError>
 {
-    type FrameType = F;
-}
-
-/// [`TransportFrameType`] implementation for transports that don't
-/// differentiate frame types.
-#[derive(Copy, Clone, Debug, Default, PartialEq, derive_more::Display)]
-#[display("untyped")]
-pub struct Untyped;
-
-impl TransportFrameType for Untyped {
-    const DATA: Self = Self;
-
-    fn from_auth(_: HandshakeAuthKind) -> Self {
-        Self
-    }
 }
 
 /// [`TransportFrameType`] implementation for transports that do differentiate frame types.
@@ -80,19 +48,59 @@ pub enum FrameType {
     Auth(#[from] HandshakeAuthKind),
 }
 
-impl TransportFrameType for FrameType {
-    const DATA: Self = Self::Data;
-
-    fn from_auth(auth: HandshakeAuthKind) -> Self {
-        Self::Auth(auth)
-    }
-}
-
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutil {
-    use futures_util::{SinkExt as _, StreamExt as _};
+    use std::fmt::Debug;
+    use std::future::Future;
+
+    use futures_util::{SinkExt as _, StreamExt as _, TryStreamExt};
 
     use super::*;
+    use crate::testutil::TestStream;
+
+    /// Returns a [`Transport`] implementation and its paired remote end.
+    ///
+    /// The frame type sent by a `TestTransport` is received by the remote end,
+    /// but the frame type sent by the remote end is ignored.
+    pub fn new_transport(
+        channel_size: usize,
+    ) -> (
+        impl Transport + Debug,
+        TestStream<(FrameType, Bytes), IoError>,
+    ) {
+        let (a, b) = TestStream::new_pair(channel_size);
+        (TryStreamExt::map_ok(a, |(_frame_type, bytes)| bytes), b)
+    }
+
+    pub trait ErrorSink {
+        fn send_error(
+            &mut self,
+            err: IoError,
+        ) -> impl Future<Output = Result<(), Option<IoError>>> + Send;
+    }
+
+    impl<F> ErrorSink for futures_util::stream::MapOk<TestStream<(FrameType, Bytes), IoError>, F> {
+        fn send_error(
+            &mut self,
+            err: IoError,
+        ) -> impl Future<Output = Result<(), Option<IoError>>> + Send {
+            self.get_mut().send_error(err)
+        }
+    }
+
+    /// Returns paired [`Transport`] implementations.
+    ///
+    /// The frame types sent to the transports are dropped immediately.
+    pub fn new_transport_pair(
+        channel_size: usize,
+    ) -> (
+        impl Transport + Debug + ErrorSink,
+        impl Transport + Debug + ErrorSink,
+    ) {
+        let (a, b) = TestStream::new_pair(channel_size);
+        let drop_frame_type = |(_frame_type, item)| item;
+        (a.map_ok(drop_frame_type), b.map_ok(drop_frame_type))
+    }
 
     /// Returns a future that echoes incoming payloads back to the same
     /// transport.
@@ -101,7 +109,7 @@ pub mod testutil {
         mut server_state: snow::TransportState,
     ) {
         log::debug!("beginning server echo");
-        while let Some((frame_type, block)) = transport.next().await.transpose().unwrap() {
+        while let Some(block) = transport.next().await.transpose().unwrap() {
             let payload = {
                 let mut payload = vec![0; 65535];
                 let len = server_state.read_message(&block, &mut payload).unwrap();
@@ -111,7 +119,7 @@ pub mod testutil {
             let mut message = vec![0; 65535];
             let len = server_state.write_message(&payload, &mut message).unwrap();
             transport
-                .send((frame_type, Bytes::copy_from_slice(&message[..len])))
+                .send((FrameType::Data, Bytes::copy_from_slice(&message[..len])))
                 .await
                 .unwrap();
         }

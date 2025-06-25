@@ -257,9 +257,8 @@ mod test {
     use bytes::Bytes;
     use const_str::{concat, hex};
     use futures_util::{SinkExt as _, StreamExt as _};
-    use libsignal_net_infra::noise::testutil::echo_forever;
-    use libsignal_net_infra::noise::{FrameType, HandshakeAuthKind};
-    use libsignal_net_infra::testutil::TestStream;
+    use libsignal_net_infra::noise::testutil::{echo_forever, new_transport_pair};
+    use libsignal_net_infra::noise::FrameType;
     use prost::Message;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -267,13 +266,12 @@ mod test {
     use crate::chat::noise::NK_NOISE_PATTERN;
     use crate::proto::chat_noise::{handshake_response, HandshakeInit, HandshakeResponse};
 
-    async fn authenticating_server_handshake<S: Transport<FrameType = FrameType> + Unpin>(
+    async fn authenticating_server_handshake<S: Transport + Unpin>(
         transport: &mut S,
         mut server_state: snow::HandshakeState,
     ) -> (InitialPayload, snow::TransportState) {
         let auth = {
-            let (kind, first) = transport.next().await.unwrap().unwrap();
-            assert_eq!(kind, HandshakeAuthKind::IK.into());
+            let first = transport.next().await.unwrap().unwrap();
             let mut payload = [0; 128];
             let read_count = server_state.read_message(&first, &mut payload).unwrap();
             let HandshakeInit {
@@ -320,13 +318,12 @@ mod test {
         (auth, server_state.into_transport_mode().unwrap())
     }
 
-    async fn anonymous_server_handshake<S: Transport<FrameType = FrameType> + Unpin>(
+    async fn anonymous_server_handshake<S: Transport + Unpin>(
         transport: &mut S,
         mut server_state: snow::HandshakeState,
     ) -> snow::TransportState {
         {
-            let (kind, first) = transport.next().await.unwrap().unwrap();
-            assert_eq!(kind, HandshakeAuthKind::NK.into());
+            let first = transport.next().await.unwrap().unwrap();
             let mut payload = [0; 128];
             let read_count = server_state.read_message(&first, &mut payload).unwrap();
             assert_eq!(read_count, 0);
@@ -362,7 +359,7 @@ mod test {
 
     #[tokio::test]
     async fn encrypted_stream_authenticated_handshake_success() {
-        let (a, b) = TestStream::new_pair(10);
+        let (a, b) = new_transport_pair(10);
 
         let server_builder =
             snow::Builder::new(crate::chat::noise::IK_NOISE_PATTERN.parse().unwrap());
@@ -425,7 +422,7 @@ mod test {
 
     #[tokio::test]
     async fn encrypted_stream_anonymous_handshake_success() {
-        let (a, b) = TestStream::new_pair(10);
+        let (a, b) = new_transport_pair(10);
 
         let server_builder = snow::Builder::new(NK_NOISE_PATTERN.parse().unwrap());
 
@@ -470,7 +467,7 @@ mod test {
 
     #[tokio::test]
     async fn read_only_stream_after_handshake() {
-        let (a, b) = TestStream::new_pair(10);
+        let (a, b) = new_transport_pair(10);
 
         let server_builder = snow::Builder::new(NK_NOISE_PATTERN.parse().unwrap());
 

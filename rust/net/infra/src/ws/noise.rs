@@ -16,11 +16,11 @@ use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::frame::coding::CloseCode;
 use tungstenite::Message;
 
-use crate::noise::{Transport, Untyped};
+use crate::noise::{FrameType, Transport};
 
 pub struct WebSocketTransport<S>(pub WebSocketStream<S>);
 
-assert_impl_all!(WebSocketTransport<tokio::io::DuplexStream>: Transport<FrameType=Untyped>);
+assert_impl_all!(WebSocketTransport<tokio::io::DuplexStream>: Transport);
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 enum TransportError {
@@ -30,7 +30,7 @@ enum TransportError {
     UnexpectedTextFrame { bytes: usize },
 }
 
-impl<S: AsyncRead + AsyncWrite + Unpin> Sink<(Untyped, Bytes)> for WebSocketTransport<S> {
+impl<S: AsyncRead + AsyncWrite + Unpin> Sink<(FrameType, Bytes)> for WebSocketTransport<S> {
     type Error = IoError;
 
     fn poll_ready(
@@ -42,7 +42,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Sink<(Untyped, Bytes)> for WebSocketTran
 
     fn start_send(
         mut self: Pin<&mut Self>,
-        (Untyped, item): (Untyped, Bytes),
+        (_frame_type, item): (FrameType, Bytes),
     ) -> Result<(), Self::Error> {
         self.0
             .start_send_unpin(Message::Binary(item))
@@ -65,7 +65,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Sink<(Untyped, Bytes)> for WebSocketTran
 }
 
 impl<S: AsyncRead + AsyncWrite + Unpin> Stream for WebSocketTransport<S> {
-    type Item = Result<(Untyped, Bytes), IoError>;
+    type Item = Result<Bytes, IoError>;
 
     fn poll_next(
         mut self: Pin<&mut Self>,
@@ -78,7 +78,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Stream for WebSocketTransport<S> {
             match message {
                 Some(Message::Ping(_)) => return self.poll_next(cx),
                 Some(Message::Pong(_)) => return self.poll_next(cx),
-                Some(Message::Binary(bytes)) => Some(Ok((Untyped, bytes))),
+                Some(Message::Binary(bytes)) => Some(Ok(bytes)),
                 None | Some(Message::Close(None)) => None,
                 Some(Message::Close(Some(frame)))
                     if frame.code == CloseCode::Normal && frame.reason.is_empty() =>
