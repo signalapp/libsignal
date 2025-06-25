@@ -15,7 +15,7 @@ use crate::ws::ResponseError;
 
 impl<D> From<ResponseError> for RequestError<UpdateSessionError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error("UpdateSession", |value| {
+        value.into_request_error(|value| {
             let ChatResponse { status, .. } = value;
             match status.as_u16() {
                 403 => Some(UpdateSessionError::Rejected),
@@ -27,13 +27,13 @@ impl<D> From<ResponseError> for RequestError<UpdateSessionError, D> {
 
 impl<D> From<ResponseError> for RequestError<CreateSessionError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error("CreateSession", |_| None)
+        value.into_request_error(|_| None)
     }
 }
 
 impl<D> From<ResponseError> for RequestError<ResumeSessionError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error("ResumeSession", |value| {
+        value.into_request_error(|value| {
             let ChatResponse { status, .. } = value;
             Some(match status.as_u16() {
                 404 => ResumeSessionError::SessionNotFound,
@@ -48,7 +48,7 @@ impl<D> From<ResponseError> for RequestError<ResumeSessionError, D> {
 
 impl<D> From<ResponseError> for RequestError<RequestVerificationCodeError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error("RequestVerificationCode", |value| {
+        value.into_request_error(|value| {
             let ChatResponse {
                 status,
                 body,
@@ -76,7 +76,7 @@ impl<D> From<ResponseError> for RequestError<RequestVerificationCodeError, D> {
 
 impl<D> From<ResponseError> for RequestError<SubmitVerificationError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error("SubmitVerification", |value| {
+        value.into_request_error(|value| {
             let ChatResponse { status, .. } = value;
             Some(match status.as_u16() {
                 400 => SubmitVerificationError::InvalidSessionId,
@@ -90,7 +90,7 @@ impl<D> From<ResponseError> for RequestError<SubmitVerificationError, D> {
 
 impl<D> From<ResponseError> for RequestError<CheckSvr2CredentialsError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error("CheckSvr2credentials", |value| {
+        value.into_request_error(|value| {
             let ChatResponse { status, .. } = value;
             match status.as_u16() {
                 422 => Some(CheckSvr2CredentialsError::CredentialsCouldNotBeParsed),
@@ -102,7 +102,7 @@ impl<D> From<ResponseError> for RequestError<CheckSvr2CredentialsError, D> {
 
 impl<D> From<ResponseError> for RequestError<RegisterAccountError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error("RegisterAccount", |value| {
+        value.into_request_error(|value| {
             let ChatResponse {
                 headers,
                 status,

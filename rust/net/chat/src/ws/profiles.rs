@@ -12,6 +12,7 @@ use serde_with::serde_as;
 use super::{TryIntoResponse as _, WsConnection};
 use crate::api::profiles::ProfileKeyCredentialRequestError;
 use crate::api::{RequestError, Unauth, UserBasedAuthorization};
+use crate::logging::{Redact, RedactHex};
 
 type Base64Padded =
     serde_with::base64::Base64<serde_with::base64::Standard, serde_with::formats::Padded>;
@@ -28,20 +29,31 @@ impl<T: WsConnection> crate::api::profiles::UnauthenticatedChatApi for Unauth<T>
         zkgroup::profiles::ExpiringProfileKeyCredentialResponse,
         RequestError<ProfileKeyCredentialRequestError>,
     > {
+        let profile_key_version = profile_key.get_profile_key_version(peer_aci);
+        let serialized_request = hex::encode(zkgroup::serialize(&request));
         let response = self
-            .send(Request {
-                method: http::Method::GET,
-                path: format!(
-                    "/v1/profile/{}/{}/{}?credentialType=expiringProfileKey",
-                    peer_aci.service_id_string(),
-                    profile_key.get_profile_key_version(peer_aci).as_ref(),
-                    hex::encode(zkgroup::serialize(&request)),
-                )
-                .parse()
-                .expect("valid"),
-                headers: http::HeaderMap::from_iter([auth.as_header()]),
-                body: None,
-            })
+            .send(
+                "unauth",
+                &format!(
+                    "/v1/profile/{}/{}/{}",
+                    Redact(&peer_aci),
+                    RedactHex(profile_key_version.as_ref()),
+                    RedactHex(&serialized_request),
+                ),
+                Request {
+                    method: http::Method::GET,
+                    path: format!(
+                        "/v1/profile/{}/{}/{}?credentialType=expiringProfileKey",
+                        peer_aci.service_id_string(),
+                        profile_key_version.as_ref(),
+                        serialized_request,
+                    )
+                    .parse()
+                    .expect("valid"),
+                    headers: http::HeaderMap::from_iter([auth.as_header()]),
+                    body: None,
+                },
+            )
             .await?;
 
         // Over the websocket interface, this is a combination API. We only parse the single field
@@ -54,7 +66,7 @@ impl<T: WsConnection> crate::api::profiles::UnauthenticatedChatApi for Unauth<T>
         }
 
         let GetProfileResponse { credential } = response.try_into_response().map_err(|e| {
-            e.into_request_error("GET /v1/profile/*/*/*", |response| {
+            e.into_request_error(|response| {
                 Some(match response.status.as_u16() {
                     401 => ProfileKeyCredentialRequestError::AuthFailed,
                     404 => ProfileKeyCredentialRequestError::VersionNotFound,

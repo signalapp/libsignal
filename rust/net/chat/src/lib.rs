@@ -4,5 +4,6 @@
 //
 
 pub mod api;
+mod logging;
 pub mod registration;
 pub mod ws;

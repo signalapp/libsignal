@@ -13,6 +13,7 @@ use libsignal_net::chat::Request;
 
 use super::{ResponseError, TryIntoResponse, WsConnection};
 use crate::api::{RequestError, Unauth};
+use crate::logging::RedactBase64;
 
 #[async_trait]
 impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi for Unauth<T> {
@@ -20,18 +21,20 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi for Unauth<T
         &self,
         hash: &[u8],
     ) -> Result<Option<Aci>, RequestError<Infallible>> {
+        let encoded_hash = BASE64_URL_SAFE_NO_PAD.encode(hash);
         let response = self
-            .send(Request {
-                method: http::Method::GET,
-                path: format!(
-                    "/v1/accounts/username_hash/{}",
-                    BASE64_URL_SAFE_NO_PAD.encode(hash),
-                )
-                .parse()
-                .expect("valid"),
-                headers: http::HeaderMap::new(),
-                body: None,
-            })
+            .send(
+                "unauth",
+                &format!("/v1/accounts/username_hash/{}", RedactBase64(&encoded_hash)),
+                Request {
+                    method: http::Method::GET,
+                    path: format!("/v1/accounts/username_hash/{encoded_hash}")
+                        .parse()
+                        .expect("valid"),
+                    headers: http::HeaderMap::new(),
+                    body: None,
+                },
+            )
             .await?;
 
         #[derive(serde::Deserialize)]
@@ -49,11 +52,7 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi for Unauth<T
                 }
                 return Ok(None);
             }
-            Err(e) => {
-                return Err(
-                    e.into_request_error("GET /v1/accounts/username_hash/*", |_response| None)
-                )
-            }
+            Err(e) => return Err(e.into_request_error(|_response| None)),
         };
 
         let aci = Aci::parse_from_service_id_string(&uuid_string).ok_or_else(|| {

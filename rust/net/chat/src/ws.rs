@@ -49,21 +49,57 @@ impl AsHttpHeader for UserBasedAuthorization {
     }
 }
 
-/// An abstraction over [`chat::ChatConnection`], for testing purposes.
+/// An abstraction over [`chat::ChatConnection`].
 pub trait WsConnection: Sync {
     fn send(
         &self,
+        log_tag: &'static str,
+        log_safe_path: &str,
         request: chat::Request,
     ) -> impl Future<Output = Result<chat::Response, chat::SendError>> + Send;
 }
 
 impl WsConnection for chat::ChatConnection {
-    fn send(
+    async fn send(
         &self,
+        log_tag: &'static str,
+        log_safe_path: &str,
         request: chat::Request,
-    ) -> impl Future<Output = Result<chat::Response, chat::SendError>> + Send {
+    ) -> Result<chat::Response, chat::SendError> {
+        let request_id = rand::random::<u16>();
+        let method = request.method.clone();
+        log::info!("[{log_tag} {request_id:04x}] {method} {log_safe_path}");
+
         // TODO: Figure out timeouts for libsignal-net-chat APIs.
-        self.send(request, Duration::MAX)
+        let result = self.send(request, Duration::MAX).await;
+
+        match &result {
+            Ok(response) => {
+                if response.status.is_success() {
+                    log::info!(
+                        "[{log_tag} {request_id:04x}] {method} {log_safe_path} {}",
+                        response.status
+                    )
+                } else {
+                    log::warn!(
+                        "[{log_tag} {request_id:04x}] {method} {log_safe_path} {}",
+                        response.status
+                    );
+                    log::debug!(
+                        "[{log_tag} {request_id:04x}] {} {}: {:?}",
+                        response.status,
+                        response.message.as_deref().unwrap_or_default(),
+                        DebugAsStrOrBytes(response.body.as_deref().unwrap_or_default())
+                    );
+                }
+            }
+            Err(e) => log::error!(
+                "[{log_tag} {request_id:04x}] {method} {log_safe_path} - {}",
+                e as &dyn LogSafeDisplay
+            ),
+        }
+
+        result
     }
 }
 
@@ -112,7 +148,6 @@ impl ResponseError {
     /// response codes (like 429 Too Many Requests).
     pub(crate) fn into_request_error<E, D>(
         self,
-        operation: &'static str,
         map_unrecognized: impl FnOnce(&chat::Response) -> Option<E>,
     ) -> RequestError<E, D> {
         match self {
@@ -122,62 +157,53 @@ impl ResponseError {
             | ResponseError::UnexpectedData) => RequestError::Unexpected {
                 log_safe: e.to_string(),
             },
-            ResponseError::UnrecognizedStatus { status, response } => {
-                log::warn!("{operation}: {status} response");
-                match map_unrecognized(&response) {
-                    Some(specific_error) => RequestError::Other(specific_error),
-                    None => {
-                        let chat::Response {
-                            status,
-                            message,
-                            body,
-                            headers,
-                        } = &response;
+            ResponseError::UnrecognizedStatus {
+                status: _,
+                response,
+            } => match map_unrecognized(&response) {
+                Some(specific_error) => RequestError::Other(specific_error),
+                None => {
+                    let chat::Response {
+                        status,
+                        message: _,
+                        headers,
+                        body: _,
+                    } = &response;
 
-                        log::debug!(
-                            "{operation}: got unsuccessful response with {status} {}: {:?}",
-                            message.as_deref().unwrap_or_default(),
-                            DebugAsStrOrBytes(body.as_deref().unwrap_or_default())
-                        );
-
-                        if status.is_server_error() {
-                            return RequestError::ServerSideError;
-                        }
-                        if status.as_u16() == 429 {
-                            if let Some(retry_later) = extract_retry_later(headers) {
-                                return RequestError::RetryLater(retry_later);
-                            }
-                        }
-                        if status.as_u16() == 428 {
-                            #[serde_as]
-                            #[derive(serde::Deserialize)]
-                            struct ChallengeBody {
-                                token: String,
-                                #[serde_as(as = "Vec<serde_with::DisplayFromStr>")]
-                                options: Vec<ChallengeOption>,
-                            }
-
-                            if let Ok(ChallengeBody { token, options }) =
-                                parse_json_from_body(&response)
-                            {
-                                return RequestError::Challenge(RateLimitChallenge {
-                                    token,
-                                    options,
-                                });
-                            }
-                        }
-                        if status.as_u16() == 422 {
-                            return RequestError::Unexpected {
-                                log_safe: "the request did not pass server validation".into(),
-                            };
-                        }
-
-                        RequestError::Unexpected {
-                            log_safe: format!("unexpected response status {status}"),
+                    if status.is_server_error() {
+                        return RequestError::ServerSideError;
+                    }
+                    if status.as_u16() == 429 {
+                        if let Some(retry_later) = extract_retry_later(headers) {
+                            return RequestError::RetryLater(retry_later);
                         }
                     }
+                    if status.as_u16() == 428 {
+                        #[serde_as]
+                        #[derive(serde::Deserialize)]
+                        struct ChallengeBody {
+                            token: String,
+                            #[serde_as(as = "Vec<serde_with::DisplayFromStr>")]
+                            options: Vec<ChallengeOption>,
+                        }
+
+                        if let Ok(ChallengeBody { token, options }) =
+                            parse_json_from_body(&response)
+                        {
+                            return RequestError::Challenge(RateLimitChallenge { token, options });
+                        }
+                    }
+                    if status.as_u16() == 422 {
+                        return RequestError::Unexpected {
+                            log_safe: "the request did not pass server validation".into(),
+                        };
+                    }
+
+                    RequestError::Unexpected {
+                        log_safe: format!("unexpected response status {status}"),
+                    }
                 }
-            }
+            },
         }
     }
 }
@@ -326,6 +352,8 @@ mod testutil {
     impl WsConnection for RequestValidator {
         fn send(
             &self,
+            _log_tag: &'static str,
+            _log_safe_path: &str,
             request: chat::Request,
         ) -> impl Future<Output = Result<chat::Response, chat::SendError>> + Send {
             assert_eq!(self.expected, request);
@@ -338,6 +366,8 @@ mod testutil {
     impl WsConnection for ProduceResponse {
         fn send(
             &self,
+            _log_tag: &'static str,
+            _log_safe_path: &str,
             _request: chat::Request,
         ) -> impl Future<Output = Result<chat::Response, chat::SendError>> + Send {
             std::future::ready(Ok(self.0.clone()))
@@ -376,7 +406,7 @@ mod test {
     ) -> Result<Empty, RequestError<std::convert::Infallible>> {
         input
             .try_into_response()
-            .map_err(|e| e.into_request_error("test", |_| None))
+            .map_err(|e| e.into_request_error(|_| None))
     }
 
     #[derive(Debug, serde::Deserialize)]
@@ -401,6 +431,6 @@ mod test {
     ) -> Result<Example, RequestError<std::convert::Infallible>> {
         input
             .try_into_response()
-            .map_err(|e| e.into_request_error("test", |_| None))
+            .map_err(|e| e.into_request_error(|_| None))
     }
 }
