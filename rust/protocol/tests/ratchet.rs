@@ -59,6 +59,7 @@ fn test_ratcheting_session_as_bob() -> Result<(), SignalProtocolError> {
         None, // one time pre key pair
         bob_ephemeral_pair,
         None,
+        None,
         IdentityKey::decode(&alice_identity_public)?,
         alice_base_public_key,
         None,
@@ -220,6 +221,7 @@ fn test_alice_and_bob_agree_on_chain_keys_with_kyber() -> Result<(), SignalProto
         bob_signed_pre_key_pair,
         None,
         bob_ephemeral_key_pair,
+        None,
         Some(bob_kyber_pre_key_pair),
         *alice_identity_key_pair.identity_key(),
         alice_base_key_pair.public_key,

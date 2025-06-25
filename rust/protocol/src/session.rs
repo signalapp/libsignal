@@ -167,7 +167,7 @@ async fn process_prekey_impl(
         println!("DEBUG: Bob has Swoosh pre-key, setting up Swoosh parameters");
         parameters.set_our_swoosh_key_pair(swoosh_key_pair);
         // Get Alice's Swoosh ratchet key from the embedded SignalMessage
-        let their_swoosh_ratchet_key = *message.message().sender_ratchet_swoosh_key();
+        let their_swoosh_ratchet_key = *message.message().sender_ratchet_swoosh_key().unwrap();
         println!("DEBUG: Bob received Alice's Swoosh ratchet key, length: {}, first 8 bytes: {:02x?}", 
                 their_swoosh_ratchet_key.serialize().len(),
                 &their_swoosh_ratchet_key.serialize()[..8.min(their_swoosh_ratchet_key.serialize().len())]);

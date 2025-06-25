@@ -185,8 +185,9 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &server_key.private_key,
             &mut rng,
         )?;
-
+        
         let alice_ptext = vec![1, 2, 3, 23, 99];
+        println!("Sealed sender encrypt");
         let alice_ctext = sealed_sender_encrypt(
             &bob_uuid_address,
             &sender_cert,
@@ -197,7 +198,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut rng,
         )
         .await?;
-
+        
         let bob_ptext = sealed_sender_decrypt(
             &alice_ctext,
             &trust_root.public_key,

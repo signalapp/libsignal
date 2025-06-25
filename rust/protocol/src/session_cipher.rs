@@ -46,8 +46,6 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
     let message_keys = chain_key.message_keys().generate_keys(pqr_key);
     
     let sender_ephemeral = session_state.sender_ratchet_key()?;
-    // sender_ratchet_swoosh_public_key throws InvalidSessionStructure("invalid sender chain private ratchet key")
-    let sender_swoosh_ephemeral = session_state.sender_ratchet_swoosh_public_key()?;
     
     let previous_counter = session_state.previous_counter();
     let session_version = session_state
@@ -104,7 +102,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
             session_version,
             message_keys.mac_key(),
             Some(sender_ephemeral),
-            sender_swoosh_ephemeral,
+            None,
             chain_key.index(),
             previous_counter,
             &ctext,
@@ -134,7 +132,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
             session_version,
             message_keys.mac_key(),
             Some(sender_ephemeral),
-            sender_swoosh_ephemeral,
+            None,
             chain_key.index(),
             previous_counter,
             &ctext,
@@ -260,7 +258,7 @@ pub async fn message_encrypt_swoosh<R: Rng + CryptoRng>(
             session_version,
             message_keys.mac_key(),
             None,
-            sender_swoosh_ephemeral,
+            Some(sender_swoosh_ephemeral),
             chain_key.index(),
             previous_counter,
             &ctext,
@@ -290,7 +288,7 @@ pub async fn message_encrypt_swoosh<R: Rng + CryptoRng>(
             session_version,
             message_keys.mac_key(),
             None,
-            sender_swoosh_ephemeral,
+            Some(sender_swoosh_ephemeral),
             chain_key.index(),
             previous_counter,
             &ctext,
@@ -804,52 +802,17 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
         ));
     }
 
-    let their_ephemeral = ciphertext.sender_ratchet_key();
-    let their_swoosh_ephemeral = ciphertext.sender_ratchet_swoosh_key();
+    let their_ephemeral = ciphertext.sender_ratchet_key().unwrap();
     let counter = ciphertext.counter();
-    
-    println!("DEBUG: Decrypting message - regular key length: {}, swoosh key length: {}", 
-             their_ephemeral.unwrap().serialize().len(), 
-             their_swoosh_ephemeral.serialize().len());
-    
-    // Check if we should use Swoosh (post-quantum) decryption
-    // Determine if this is a Swoosh message by checking if the message contains valid Swoosh keys
-    let (chain_key, message_key_gen) = {
-        // Check if the message has Swoosh keys (non-empty and not just zeros)
-        let swoosh_key_bytes = their_swoosh_ephemeral.serialize();
-        let has_valid_swoosh_key = swoosh_key_bytes.len() > 32 && !swoosh_key_bytes.iter().all(|&b| b == 0);
-        
-        println!("DEBUG: Has valid Swoosh key in message: {}", has_valid_swoosh_key);
-        
-        if has_valid_swoosh_key {
-            // Use Swoosh decryption path
-            let is_alice = state.is_alice();
-            // For receiver chain, use the sender's alice identity (inverse of our identity)
-            let sender_is_alice = !is_alice;
-            let chain_key = get_or_create_chain_swoosh_key(state, their_swoosh_ephemeral, remote_address, sender_is_alice)?;
-            let message_key_gen = get_or_create_message_swoosh_key(
-                state,
-                their_swoosh_ephemeral,
-                remote_address,
-                original_message_type,
-                &chain_key,
-                counter,
-            )?;
-            (chain_key, message_key_gen)
-        } else {
-            // Use regular ECDH decryption path
-            let chain_key = get_or_create_chain_key(state, their_ephemeral.unwrap(), remote_address, csprng)?;
-            let message_key_gen = get_or_create_message_key(
-                state,
-                their_ephemeral.unwrap(),
-                remote_address,
-                original_message_type,
-                &chain_key,
-                counter,
-            )?;
-            (chain_key, message_key_gen)
-        }
-    };
+    let chain_key = get_or_create_chain_key(state, their_ephemeral, remote_address, csprng)?;
+    let message_key_gen = get_or_create_message_key(
+        state,
+        their_ephemeral,
+        remote_address,
+        original_message_type,
+        &chain_key,
+        counter,
+    )?;
     let pqr_key = state
         .pq_ratchet_recv(ciphertext.pq_ratchet())
         .map_err(|e| match e {
@@ -866,8 +829,7 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
             }
         })?;
     let message_keys = message_key_gen.generate_keys(pqr_key);
-    
-    // Print Bob's decryption key (regular/non-Swoosh path)
+
     println!("🔑 BOB DECRYPTION KEY (regular) - length: {}, first 8 bytes: {:02x?}", 
              message_keys.cipher_key().len(),
              &message_keys.cipher_key()[..8.min(message_keys.cipher_key().len())]);
@@ -942,7 +904,7 @@ fn decrypt_message_with_state_swoosh<R: Rng + CryptoRng>(
         ));
     }
 
-    let their_ephemeral = ciphertext.sender_ratchet_swoosh_key();
+    let their_ephemeral = ciphertext.sender_ratchet_swoosh_key().unwrap();
     let counter = ciphertext.counter();
     // For receiver chain, use the sender's alice identity (inverse of our identity)  
     let chain_key = get_or_create_chain_swoosh_key(state, their_ephemeral, remote_address, is_alice)?;
@@ -1102,7 +1064,7 @@ fn get_or_create_chain_swoosh_key(
     state.set_sender_swoosh_chain(&our_new_ephemeral, &sender_chain.1);
 
     // Debug: Print the first 8 bytes of sender_chain.1
-    println!("🔑 Sender chain key first 8 bytes: {:02x?}", &sender_chain.1.key()[..8]);
+    println!("🔑 Sender SWOOSH chain key first 8 bytes: {:02x?}", &sender_chain.1.key()[..8]);
 
     Ok(receiver_chain.1)
 }

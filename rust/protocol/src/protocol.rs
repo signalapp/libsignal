@@ -63,7 +63,7 @@ impl CiphertextMessage {
 pub struct SignalMessage {
     message_version: u8,
     sender_ratchet_key: Option<PublicKey>,
-    sender_ratchet_swoosh_key: PublicSwooshKey,
+    sender_ratchet_swoosh_key: Option<PublicSwooshKey>,
     counter: u32,
     #[cfg_attr(not(test), expect(dead_code))]
     previous_counter: u32,
@@ -80,7 +80,7 @@ impl SignalMessage {
         message_version: u8,
         mac_key: &[u8],
         sender_ratchet_key: Option<PublicKey>,
-        sender_ratchet_swoosh_key: PublicSwooshKey,
+        sender_ratchet_swoosh_key: Option<PublicSwooshKey>,
         counter: u32,
         previous_counter: u32,
         ciphertext: &[u8],
@@ -90,7 +90,7 @@ impl SignalMessage {
     ) -> Result<Self> {
         let message = proto::wire::SignalMessage {
             ratchet_key: sender_ratchet_key.map(|k| k.serialize().into_vec()),
-            ratchet_swoosh_key: Some(sender_ratchet_swoosh_key.serialize().into_vec()),
+            ratchet_swoosh_key: sender_ratchet_swoosh_key.map(|k| k.serialize().into_vec()),
             counter: Some(counter),
             previous_counter: Some(previous_counter),
             ciphertext: Some(Vec::<u8>::from(ciphertext)),
@@ -135,8 +135,8 @@ impl SignalMessage {
         self.sender_ratchet_key.as_ref()
     }
     #[inline]
-    pub fn sender_ratchet_swoosh_key(&self) -> &PublicSwooshKey {
-        &self.sender_ratchet_swoosh_key
+    pub fn sender_ratchet_swoosh_key(&self) -> Option<&PublicSwooshKey> {
+        self.sender_ratchet_swoosh_key.as_ref()
     }
 
     #[inline]
@@ -242,7 +242,7 @@ impl TryFrom<&[u8]> for SignalMessage {
             .ratchet_swoosh_key
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let sender_ratchet_swoosh_key =
-            PublicSwooshKey::deserialize(&sender_ratchet_swoosh_key)?;
+            Some(PublicSwooshKey::deserialize(&sender_ratchet_swoosh_key)?);
         let counter = proto_structure
             .counter
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
@@ -861,12 +861,13 @@ impl DecryptionErrorMessage {
 
         let ratchet_swoosh_key = match original_type {
             CiphertextMessageType::Whisper => {
-                Some(*SignalMessage::try_from(original_bytes)?.sender_ratchet_swoosh_key())
+                Some(*SignalMessage::try_from(original_bytes)?.sender_ratchet_swoosh_key().unwrap())
             }
             CiphertextMessageType::PreKey => Some(
                 *PreKeySignalMessage::try_from(original_bytes)?
                     .message()
-                    .sender_ratchet_swoosh_key(),
+                    .sender_ratchet_swoosh_key()
+                    .unwrap(),
             ),
             CiphertextMessageType::SenderKey => None,
             CiphertextMessageType::Plaintext => {
@@ -999,7 +1000,7 @@ mod tests {
             4,
             &mac_key,
             Some(sender_ratchet_key_pair.public_key),
-            sender_ratchet_swoosh_key_pair.public_key,
+            Some(sender_ratchet_swoosh_key_pair.public_key),
             42,
             41,
             &ciphertext,
