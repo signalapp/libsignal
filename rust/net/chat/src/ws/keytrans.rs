@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use base64::prelude::{
     Engine as _, BASE64_STANDARD, BASE64_STANDARD_NO_PAD, BASE64_URL_SAFE_NO_PAD,
 };
-use http::header::{ACCEPT, CONTENT_TYPE};
+use http::header::ACCEPT;
 use http::uri::PathAndQuery;
 use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{AccountData, LastTreeHead};
@@ -17,7 +17,7 @@ use libsignal_net::chat;
 use libsignal_protocol::PublicKey;
 use serde::{Deserialize, Serialize};
 
-use super::{TryIntoResponse as _, WsConnection, JSON_CONTENT_TYPE};
+use super::{TryIntoResponse as _, WsConnection, CONTENT_TYPE_JSON};
 use crate::api::keytrans::*;
 use crate::api::{RequestError, Unauth};
 
@@ -26,10 +26,7 @@ const DISTINGUISHED_PATH: &str = "/v1/key-transparency/distinguished";
 const MONITOR_PATH: &str = "/v1/key-transparency/monitor";
 
 fn common_headers() -> http::HeaderMap {
-    http::HeaderMap::from_iter([
-        (CONTENT_TYPE, JSON_CONTENT_TYPE),
-        (ACCEPT, JSON_CONTENT_TYPE),
-    ])
+    http::HeaderMap::from_iter([CONTENT_TYPE_JSON, (ACCEPT, CONTENT_TYPE_JSON.1)])
 }
 
 /// String representation of a value to be sent in chat server JSON requests.
