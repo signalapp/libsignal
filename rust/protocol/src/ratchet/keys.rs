@@ -9,7 +9,7 @@ use arrayref::array_ref;
 use pswoosh::keys::{PrivateSwooshKey, PublicSwooshKey};
 
 use crate::proto::storage::session_structure;
-use crate::{crypto, IdentityKey, PrivateKey, PublicKey, Result};
+use crate::{crypto, PrivateKey, PublicKey, Result};
 
 pub(crate) enum MessageKeyGenerator {
     Keys(MessageKeys),
@@ -189,7 +189,6 @@ impl RootKey {
         their_ratchet_key: &PublicKey,
         our_ratchet_key: &PrivateKey,
     ) -> Result<(RootKey, ChainKey)> {
-        println!("**Create chain function called");
         let shared_secret = our_ratchet_key.calculate_agreement(their_ratchet_key)?;
         let mut derived_secret_bytes = [0; 64];
         hkdf::Hkdf::<sha2::Sha256>::new(Some(&self.key), &shared_secret)
@@ -215,7 +214,6 @@ impl RootKey {
         our_ratchet_key: &PrivateSwooshKey,
         is_alice: bool,
     ) -> Result<(RootKey, ChainKey)> {
-        
         let shared_secret = our_ratchet_key
             .derive_shared_secret(our_public_key, their_ratchet_key, is_alice)?;
         let mut derived_secret_bytes = [0; 64];

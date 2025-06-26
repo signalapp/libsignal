@@ -215,7 +215,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             UsePQRatchet::Yes,
         )
         .await?;
-        println!("Sealed sender decrypt");
+        
         assert_eq!(bob_ptext.message, alice_ptext);
         assert_eq!(bob_ptext.sender_uuid, alice_uuid);
         assert_eq!(bob_ptext.sender_e164, Some(alice_e164));
@@ -930,7 +930,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut rng,
         )
         .await?;
-        println!("Sealed test");
+
         message_decrypt(
             &bob_first_message,
             &bob_uuid_address,

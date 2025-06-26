@@ -1935,7 +1935,6 @@ pub async fn sealed_sender_decrypt(
     
     let message = match usmc.msg_type()? {
         CiphertextMessageType::Whisper => {
-            println!("Sealed sender whisper");
             let ctext = SignalMessage::try_from(usmc.contents()?)?;
             session_cipher::message_decrypt_signal(
                 &ctext,
@@ -1947,9 +1946,7 @@ pub async fn sealed_sender_decrypt(
             .await?
         }
         CiphertextMessageType::PreKey => {
-            println!("Sealed sender prekey");
             let ctext = PreKeySignalMessage::try_from(usmc.contents()?)?;
-            println!("Sealed sender prekey try_from successful");
             session_cipher::message_decrypt_prekey(
                 &ctext,
                 &remote_address,

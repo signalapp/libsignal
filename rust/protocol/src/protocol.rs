@@ -242,7 +242,7 @@ impl TryFrom<&[u8]> for SignalMessage {
             Some(key) => PublicSwooshKey::deserialize(&key).ok(),
             None => None,
         };
-        println!("Signal message protobuf");
+
         let counter = proto_structure
             .counter
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
@@ -443,18 +443,8 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
                 None
             }
         };
-        
-        //print all variables for debugging
-        println!("message_version: {:?}, registration_id: {:?}, pre_key_id: {:?}, signed_pre_key_id:, swoosh_signed_pre_key_id: {:?}, base_key: {:?}, identity_key: {:?}",  
-            base_key, 
-            identity_key, 
-            message, 
-            signed_pre_key_id, 
-            base_key, 
-            identity_key);
 
         let base_key = PublicKey::deserialize(base_key.as_ref())?;
-        println!("base_key: {:?}", base_key);
 
         let kyber_payload = match (
             proto_structure.kyber_pre_key_id,
@@ -475,17 +465,7 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
                 ));
             }
         };
-        println!("Before return");
         
-        println!("About to deserialize identity_key");
-        let identity_key_deserialized = IdentityKey::try_from(identity_key.as_ref())?;
-        println!("Successfully deserialized identity_key: {:?}", identity_key_deserialized);
-        
-        println!("About to deserialize SignalMessage");
-        let signal_message_deserialized = SignalMessage::try_from(message.as_ref())?;
-        println!("Successfully deserialized SignalMessage");
-        
-        println!("About to construct PreKeySignalMessage");
         Ok(PreKeySignalMessage {
             message_version,
             registration_id: proto_structure.registration_id.unwrap_or(0),
@@ -494,8 +474,8 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
             kyber_payload,
             swoosh_signed_pre_key_id,
             base_key,
-            identity_key: identity_key_deserialized,
-            message: signal_message_deserialized,
+            identity_key: IdentityKey::try_from(identity_key.as_ref())?,
+            message: SignalMessage::try_from(message.as_ref())?,
             serialized: Box::from(value),
         })
     }
@@ -998,7 +978,6 @@ pub fn extract_decryption_error_message_from_serialized_content(
 #[cfg(test)]
 mod tests {
     use pswoosh::keys::SwooshKeyPair;
-    use pswoosh::sys_a::A;
     use rand::rngs::OsRng;
     use rand::{CryptoRng, Rng, TryRngCore as _};
 

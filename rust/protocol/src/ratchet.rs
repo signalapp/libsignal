@@ -66,7 +66,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     parameters: &AliceSignalProtocolParameters,
     mut csprng: &mut R,
 ) -> Result<SessionState> {
-    println!("**Alice session initialized");
+    
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
     let sending_ratchet_key = KeyPair::generate(&mut csprng);
@@ -91,10 +91,6 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     secrets.extend_from_slice(
         &our_base_private_key.calculate_agreement(parameters.their_signed_pre_key())?,
     );
-
-    // Print first 8 bytes of normal Diffie-Hellman keys  
-    println!("their_signed_pre_key first 8 bytes: {:02x?}", &parameters.their_signed_pre_key().public_key_bytes()[..8]);
-    println!("their_ratchet_key first 8 bytes: {:02x?}", &parameters.their_ratchet_key().public_key_bytes()[..8]);
 
     if let Some(their_one_time_prekey) = parameters.their_one_time_pre_key() {
         secrets
@@ -163,7 +159,7 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
     parameters: &AliceSignalProtocolParameters,
     mut csprng: &mut R,
 ) -> Result<SessionState> {
-    println!("**Alice session initialized (PSWOOSH)");
+
     let is_alice = true; // Always true for Alice's session initialization
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
@@ -197,22 +193,6 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
     }
 
-/*
-    // Add PSWOOSH shared secret derivation
-    if let (Some(_our_base_swoosh_key_pair), Some(their_swoosh_pre_key)) = 
-        (parameters.our_base_swoosh_key_pair(), parameters.their_swoosh_pre_key()) {
-        
-        println!("*their_swoosh_pre_key first 8 bytes: {:02x?}", &their_swoosh_pre_key.public_key_bytes()[..8]);
-        
-        // Use the ratchet key for shared secret derivation (not the base key)
-        // This ensures consistency with what Bob will receive
-        let swoosh_shared_secret = sending_swoosh_ratchet_key.derive_shared_secret(their_swoosh_pre_key, is_alice)?;
-        println!("🔑 ALICE'S SHARED SECRET: length={} bytes, first 8 bytes: {:02x?}", 
-                swoosh_shared_secret.len(), &swoosh_shared_secret[..8]);
-        secrets.extend_from_slice(&swoosh_shared_secret);
-        println!("PSWOOSH shared secret derived and added to key material");
-    }
-*/
     let kyber_ciphertext = parameters
         .their_kyber_pre_key()
         .map(|kyber_public| {
@@ -283,7 +263,7 @@ pub(crate) fn initialize_alice_session_pswoosh<R: Rng + CryptoRng>(
 pub(crate) fn initialize_bob_session_pswoosh(
     parameters: &BobSignalProtocolParameters,
 ) -> Result<SessionState> {
-    println!("**Bob session initialized");
+
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
     let mut secrets = Vec::with_capacity(32 * 5);
@@ -318,23 +298,7 @@ pub(crate) fn initialize_bob_session_pswoosh(
                 .calculate_agreement(parameters.their_base_key())?,
         );
     }
-/*
-    // Add PSWOOSH shared secret derivation for Bob
-    if let (Some(our_swoosh_key_pair), Some(their_swoosh_ratchet_key)) = 
-        (parameters.our_swoosh_key_pair(), parameters.their_swoosh_ratchet_key()) {
-        
-        println!("**Bob deriving Swoosh shared secret");
-        println!("*their_swoosh_ratchet_key first 8 bytes: {:02x?}", &their_swoosh_ratchet_key.public_key_bytes()[..8]);
-        
-        let is_alice = false; // Bob is not Alice
-        // Bob derives shared secret using his pre-key pair and Alice's ratchet key
-        let swoosh_shared_secret = our_swoosh_key_pair.derive_shared_secret(their_swoosh_ratchet_key, is_alice)?;
-        println!("🔑 BOB'S SHARED SECRET: length={} bytes, first 8 bytes: {:02x?}", 
-                swoosh_shared_secret.len(), &swoosh_shared_secret[..8]);
-        secrets.extend_from_slice(&swoosh_shared_secret);
-        println!("PSWOOSH shared secret derived and added to key material (Bob)");
-    }
-*/
+
     match (
         parameters.our_kyber_pre_key_pair(),
         parameters.their_kyber_ciphertext(),
@@ -392,7 +356,7 @@ pub(crate) fn initialize_bob_session_pswoosh(
 pub(crate) fn initialize_bob_session(
     parameters: &BobSignalProtocolParameters,
 ) -> Result<SessionState> {
-    println!("**Bob session initialized");
+    
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
     let mut secrets = Vec::with_capacity(32 * 5);
