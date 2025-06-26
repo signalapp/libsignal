@@ -10,7 +10,6 @@ pub mod chat;
 pub mod connect_state;
 pub mod enclave;
 pub mod env;
-pub mod keytrans;
 pub mod proto;
 pub mod svr;
 pub mod ws;

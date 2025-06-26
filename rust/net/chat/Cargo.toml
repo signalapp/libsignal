@@ -27,6 +27,7 @@ futures-util = { workspace = true }
 hex = { workspace = true }
 http = { workspace = true }
 log = { workspace = true }
+prost = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -48,9 +49,11 @@ anyhow = { workspace = true }
 assert_matches = { workspace = true }
 bytes = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
+const-str = { workspace = true }
 env_logger = { workspace = true }
 futures-util = { workspace = true }
 itertools = { workspace = true }
+nonzero_ext = { workspace = true }
 pretty_assertions = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }

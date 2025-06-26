@@ -25,7 +25,6 @@ use libsignal_core::try_scoped;
 use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSendError};
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::ws::WebSocketServiceError;
-use libsignal_net::keytrans::Error as KeyTransNetError;
 use libsignal_net_chat::api::RateLimitChallenge;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -837,18 +836,42 @@ impl MessageOnlyExceptionJniError for ChatSendError {
     }
 }
 
-impl MessageOnlyExceptionJniError for KeyTransNetError {
+impl MessageOnlyExceptionJniError for libsignal_net_chat::api::DisconnectedError {
     fn exception_class(&self) -> ClassName<'static> {
-        match &self {
-            KeyTransNetError::ChatSendError(send_error) => send_error.exception_class(),
-            KeyTransNetError::RequestFailed(_)
-            | KeyTransNetError::NonFatalVerificationFailure(_)
-            | KeyTransNetError::InvalidResponse(_)
-            | KeyTransNetError::InvalidRequest(_) => {
+        match self {
+            Self::ConnectedElsewhere => ChatSendError::ConnectedElsewhere.exception_class(),
+            Self::ConnectionInvalidated => ChatSendError::ConnectionInvalidated.exception_class(),
+            Self::Transport { .. } => ClassName("org.signal.libsignal.net.ChatServiceException"),
+            Self::Closed => ChatSendError::Disconnected.exception_class(),
+        }
+    }
+}
+
+impl MessageOnlyExceptionJniError for crate::keytrans::BridgeError {
+    fn exception_class(&self) -> ClassName<'static> {
+        use libsignal_net_chat::api::RequestError;
+        match &**self {
+            RequestError::Disconnected(inner) => inner.exception_class(),
+            RequestError::Timeout => ClassName("org.signal.libsignal.net.ChatServiceException"),
+            RequestError::Other(libsignal_net_chat::api::keytrans::Error::VerificationFailed(
+                inner,
+            )) => match inner {
+                libsignal_keytrans::Error::VerificationFailed(_) => {
+                    ClassName("org.signal.libsignal.keytrans.VerificationFailedException")
+                }
+                libsignal_keytrans::Error::RequiredFieldMissing(_)
+                | libsignal_keytrans::Error::BadData(_) => {
+                    ClassName("org.signal.libsignal.keytrans.KeyTransparencyException")
+                }
+            },
+            // TODO: Consider being more consistent with other APIs for RetryLater and
+            // ServerSideError. (Challenge shouldn't happen in practice.)
+            RequestError::RetryLater(_)
+            | RequestError::Challenge { .. }
+            | RequestError::ServerSideError
+            | RequestError::Unexpected { .. }
+            | RequestError::Other(_) => {
                 ClassName("org.signal.libsignal.keytrans.KeyTransparencyException")
-            }
-            KeyTransNetError::FatalVerificationFailure(_) => {
-                ClassName("org.signal.libsignal.keytrans.VerificationFailedException")
             }
         }
     }

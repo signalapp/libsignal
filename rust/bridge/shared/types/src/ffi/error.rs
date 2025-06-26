@@ -11,7 +11,6 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
 use libsignal_net::infra::errors::RetryLater;
-use libsignal_net::keytrans::Error;
 use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_net_chat::api::RateLimitChallenge;
 use libsignal_protocol::*;
@@ -627,28 +626,47 @@ impl FfiError for libsignal_net::chat::SendError {
     }
 }
 
-impl FfiError for libsignal_net::keytrans::Error {
+impl FfiError for libsignal_net_chat::api::DisconnectedError {
     fn describe(&self) -> String {
-        match self {
-            Error::ChatSendError(err) => err.describe(),
-            Error::RequestFailed(_)
-            | Error::InvalidResponse(_)
-            | Error::InvalidRequest(_)
-            | Error::NonFatalVerificationFailure(_)
-            | Error::FatalVerificationFailure(_) => self.to_string(),
-        }
+        self.to_string()
     }
 
     fn code(&self) -> SignalErrorCode {
         match self {
-            Error::ChatSendError(err) => err.code(),
-            Error::RequestFailed(_) => SignalErrorCode::NetworkProtocol,
-            Error::InvalidResponse(_)
-            | Error::InvalidRequest(_)
-            | Error::NonFatalVerificationFailure(_) => SignalErrorCode::KeyTransparencyError,
-            Error::FatalVerificationFailure(_) => {
-                SignalErrorCode::KeyTransparencyVerificationFailed
-            }
+            Self::ConnectedElsewhere => SignalErrorCode::ConnectedElsewhere,
+            Self::ConnectionInvalidated => SignalErrorCode::ConnectionInvalidated,
+            Self::Transport { .. } => SignalErrorCode::NetworkProtocol,
+            Self::Closed => SignalErrorCode::ChatServiceInactive,
+        }
+    }
+}
+
+impl FfiError for crate::keytrans::BridgeError {
+    fn describe(&self) -> String {
+        self.to_string()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        use libsignal_net_chat::api::RequestError;
+        match &**self {
+            RequestError::Disconnected(inner) => inner.code(),
+            RequestError::Timeout => SignalErrorCode::RequestTimedOut,
+            RequestError::Other(libsignal_net_chat::api::keytrans::Error::VerificationFailed(
+                inner,
+            )) => match inner {
+                libsignal_keytrans::Error::VerificationFailed(_) => {
+                    SignalErrorCode::KeyTransparencyVerificationFailed
+                }
+                libsignal_keytrans::Error::RequiredFieldMissing(_)
+                | libsignal_keytrans::Error::BadData(_) => SignalErrorCode::KeyTransparencyError,
+            },
+            // TODO: Consider being more consistent with other APIs for RetryLater and
+            // ServerSideError. (Challenge shouldn't happen in practice.)
+            RequestError::RetryLater(_)
+            | RequestError::Challenge { .. }
+            | RequestError::ServerSideError
+            | RequestError::Unexpected { .. }
+            | RequestError::Other(_) => SignalErrorCode::KeyTransparencyError,
         }
     }
 }

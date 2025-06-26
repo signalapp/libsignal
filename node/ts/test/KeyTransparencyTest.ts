@@ -11,7 +11,6 @@ import { UnauthenticatedChatConnection, Environment, Net } from '../net';
 import { Aci } from '../Address';
 import { PublicKey } from '../EcKeys';
 import {
-  ChatServiceInactive,
   ErrorCode,
   KeyTransparencyError,
   KeyTransparencyVerificationFailed,
@@ -78,7 +77,7 @@ describe('KeyTransparency bridging', () => {
     expect(() => Native.TESTING_KeyTransChatSendError())
       .to.throw(LibSignalErrorBase)
       .that.satisfies(
-        (err: ChatServiceInactive) => err.code === ErrorCode.ChatServiceInactive
+        (err: LibSignalErrorBase) => err.code === ErrorCode.IoError
       );
   });
 });

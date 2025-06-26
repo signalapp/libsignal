@@ -154,7 +154,7 @@ final class KeyTransparencyTests: TestCaseBase {
         do {
             try checkError(signal_testing_key_trans_chat_send_error())
             XCTFail("should have failed")
-        } catch SignalError.chatServiceInactive(_) {
+        } catch SignalError.requestTimeoutError(_) {
         } catch {
             XCTFail("unexpected exception thrown: \(error)")
         }

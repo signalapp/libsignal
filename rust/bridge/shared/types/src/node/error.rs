@@ -5,7 +5,6 @@
 
 use std::fmt;
 
-use libsignal_net::keytrans::Error;
 #[cfg(feature = "signal-media")]
 use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError};
 #[cfg(feature = "signal-media")]
@@ -832,22 +831,62 @@ impl SignalNodeError for libsignal_message_backup::ReadError {
     }
 }
 
-impl SignalNodeError for libsignal_net::keytrans::Error {
+impl SignalNodeError for libsignal_net_chat::api::DisconnectedError {
     fn into_throwable<'a, C: Context<'a>>(
         self,
         cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
     ) -> Handle<'a, JsError> {
-        let name = match self {
-            Error::ChatSendError(err) => return err.into_throwable(cx, module, operation_name),
-            Error::RequestFailed(_)
-            | Error::NonFatalVerificationFailure(_)
-            | Error::InvalidResponse(_)
-            | Error::InvalidRequest(_) => "KeyTransparencyError",
-            Error::FatalVerificationFailure(_) => "KeyTransparencyVerificationFailed",
-        };
         let message = self.to_string();
+        let name = match &self {
+            Self::ConnectedElsewhere => "ConnectedElsewhere",
+            Self::ConnectionInvalidated => "ConnectionInvalidated",
+            Self::Transport { .. } => IO_ERROR,
+            Self::Closed => "ChatServiceInactive",
+        };
+        new_js_error(
+            cx,
+            module,
+            Some(name),
+            &message,
+            operation_name,
+            no_extra_properties,
+        )
+    }
+}
+
+impl SignalNodeError for crate::keytrans::BridgeError {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        cx: &mut C,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> Handle<'a, JsError> {
+        use libsignal_net_chat::api::RequestError;
+        let message = self.to_string();
+        let name = match self.into() {
+            RequestError::Disconnected(inner) => {
+                return inner.into_throwable(cx, module, operation_name)
+            }
+            RequestError::Timeout => IO_ERROR,
+            RequestError::Other(libsignal_net_chat::api::keytrans::Error::VerificationFailed(
+                inner,
+            )) => match inner {
+                libsignal_keytrans::Error::VerificationFailed(_) => {
+                    "KeyTransparencyVerificationFailed"
+                }
+                libsignal_keytrans::Error::RequiredFieldMissing(_)
+                | libsignal_keytrans::Error::BadData(_) => "KeyTransparencyError",
+            },
+            // TODO: Consider being more consistent with other APIs for RetryLater and
+            // ServerSideError. (Challenge shouldn't happen in practice.)
+            RequestError::RetryLater(_)
+            | RequestError::Challenge { .. }
+            | RequestError::ServerSideError
+            | RequestError::Unexpected { .. }
+            | RequestError::Other(_) => "KeyTransparencyError",
+        };
         new_js_error(
             cx,
             module,

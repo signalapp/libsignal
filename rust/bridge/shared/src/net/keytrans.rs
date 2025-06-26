@@ -5,20 +5,25 @@
 
 use itertools::Itertools;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
+use libsignal_bridge_types::keytrans::BridgeError;
 use libsignal_bridge_types::net::chat::UnauthenticatedChatConnection;
 pub use libsignal_bridge_types::net::{Environment, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{AccountData, LocalStateUpdate, StoredAccountData, StoredTreeHead};
-use libsignal_net::keytrans::{
-    monitor_and_search, Error, KeyTransparencyClient, KtApi as _, MaybePartial, SearchKey,
-    UsernameHash,
+use libsignal_net_chat::api::keytrans::{
+    monitor_and_search, Error, KeyTransparencyClient, MaybePartial, SearchKey,
+    UnauthenticatedChatApi as _, UsernameHash,
 };
+use libsignal_net_chat::api::Unauth;
 use libsignal_protocol::PublicKey;
 use prost::{DecodeError, Message};
 
 use crate::support::*;
 use crate::*;
+
+/// An alias to make using `from` cleaner.
+type UnauthConnectionRef<'a, T> = &'a Unauth<T>;
 
 #[bridge_fn]
 fn KeyTransparency_AciSearchKey(aci: Aci) -> Vec<u8> {
@@ -56,10 +61,10 @@ async fn KeyTransparency_Search(
     username_hash: Option<Box<[u8]>>,
     account_data: Option<Box<[u8]>>,
     last_distinguished_tree_head: Box<[u8]>,
-) -> Result<Vec<u8>, Error> {
+) -> Result<Vec<u8>, BridgeError> {
     let username_hash = username_hash.map(UsernameHash::from);
     let config = environment.into_inner().env().keytrans_config;
-    let kt = KeyTransparencyClient::new(chat_connection, config);
+    let kt = KeyTransparencyClient::new(UnauthConnectionRef::from(chat_connection), config);
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
 
@@ -96,7 +101,8 @@ async fn KeyTransparency_Search(
         Err(Error::InvalidResponse(format!(
             "some fields are missing from the response: {}",
             &itertools::join(&missing_fields, ", ")
-        )))
+        ))
+        .into())
     }
 }
 
@@ -115,11 +121,11 @@ async fn KeyTransparency_Monitor(
     // simpler to produce an error once here than on all platforms.
     account_data: Option<Box<[u8]>>,
     last_distinguished_tree_head: Box<[u8]>,
-) -> Result<Vec<u8>, Error> {
+) -> Result<Vec<u8>, BridgeError> {
     let username_hash = username_hash.map(UsernameHash::from);
 
     let Some(account_data) = account_data else {
-        return Err(Error::InvalidRequest("account data not found in store"));
+        return Err(Error::InvalidRequest("account data not found in store").into());
     };
 
     let account_data = {
@@ -134,7 +140,7 @@ async fn KeyTransparency_Monitor(
         .ok_or(Error::InvalidRequest("last distinguished tree is required"))?;
 
     let config = environment.into_inner().env().keytrans_config;
-    let kt = KeyTransparencyClient::new(chat_connection, config);
+    let kt = KeyTransparencyClient::new(UnauthConnectionRef::from(chat_connection), config);
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
     let MaybePartial {
@@ -155,7 +161,8 @@ async fn KeyTransparency_Monitor(
         return Err(Error::InvalidResponse(format!(
             "Missing fields: {}",
             missing_fields.iter().join(", ")
-        )));
+        ))
+        .into());
     }
 
     Ok(StoredAccountData::from(updated_account_data).encode_to_vec())
@@ -167,9 +174,9 @@ async fn KeyTransparency_Distinguished(
     environment: AsType<Environment, u8>,
     chat_connection: &UnauthenticatedChatConnection,
     last_distinguished_tree_head: Option<Box<[u8]>>,
-) -> Result<Vec<u8>, Error> {
+) -> Result<Vec<u8>, BridgeError> {
     let config = environment.into_inner().env().keytrans_config;
-    let kt = KeyTransparencyClient::new(chat_connection, config);
+    let kt = KeyTransparencyClient::new(UnauthConnectionRef::from(chat_connection), config);
 
     let known_distinguished = last_distinguished_tree_head
         .map(try_decode)

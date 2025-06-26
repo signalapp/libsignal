@@ -18,6 +18,7 @@ attest = { workspace = true }
 device-transfer = { workspace = true }
 libsignal-account-keys = { workspace = true }
 libsignal-core = { workspace = true }
+libsignal-keytrans = { workspace = true }
 libsignal-message-backup = { workspace = true }
 libsignal-net = { workspace = true }
 libsignal-net-chat = { workspace = true }
