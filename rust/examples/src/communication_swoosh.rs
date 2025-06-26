@@ -278,7 +278,7 @@ async fn async_main() -> Result<(), SignalProtocolError> {
     println!("Bob received: {}", bob_decrypted_second);
     
     // Bob sends another reply (Turn 4)
-    let bob_second_reply = "It's reliable! SWOOSH provides excellent forward secrecy without quantum overhead.";
+    let bob_second_reply = "It's reliable! SWOOSH provides excellent post-quantum forward secrecy.";
     let bob_second_ciphertext = message_encrypt_swoosh(
         bob_second_reply.as_bytes(),
         &alice_address,
