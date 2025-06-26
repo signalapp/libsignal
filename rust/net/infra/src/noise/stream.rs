@@ -7,7 +7,7 @@ use std::io::Error as IoError;
 use std::pin::Pin;
 use std::task::{ready, Context, Poll};
 
-use attest::client_connection::ClientConnection;
+use attest::client_connection::{ClientConnection, NOISE_TRANSPORT_PER_PAYLOAD_MAX};
 use bytes::Bytes;
 use futures_util::stream::FusedStream;
 use futures_util::{SinkExt as _, StreamExt as _};
@@ -33,7 +33,7 @@ pub struct NoiseStream<S> {
 
 #[derive(Debug, Default)]
 struct Write {
-    buffer_policy: WriteBufferPolicy,
+    buffer: WriteBuffer,
 }
 
 #[derive(Debug, Default)]
@@ -43,10 +43,10 @@ enum Read {
     ReadFromBlock(Bytes),
 }
 
-#[derive(Debug, Default)]
-enum WriteBufferPolicy {
-    #[default]
-    NoBuffering,
+#[derive(Debug)]
+struct WriteBuffer {
+    length: u16,
+    bytes: Box<[u8; NOISE_TRANSPORT_PER_PAYLOAD_MAX]>,
 }
 
 impl<S> NoiseStream<S> {
@@ -132,43 +132,126 @@ impl<S: Transport + Unpin> AsyncWrite for NoiseStream<S> {
         let Self {
             transport,
             inner,
-            write,
+            write: Write { buffer },
             read: _,
         } = self.get_mut();
 
+        let bytes_remaining = buffer.bytes.len() - usize::from(buffer.length);
+
+        if bytes_remaining == 0 {
+            // We need to make space by flushing the contents of the buffer.
+            let () = ready!(buffer.poll_flush(ptr, cx, transport, inner))?;
+
+            debug_assert_eq!(buffer.length, 0);
+        }
+
+        let count = buffer.copy_prefix(buf);
+        log::trace!("{ptr:x?} buffered {count} bytes");
+        Poll::Ready(Ok(count))
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), IoError>> {
+        let ptr = &*self as *const Self;
+
+        let Self {
+            transport,
+            inner,
+            write: Write { buffer },
+            read: _,
+        } = self.get_mut();
+
+        if buffer.length != 0 {
+            log::trace!("{ptr:x?} trying to flush write buffer");
+            let () = ready!(buffer.poll_flush(ptr, cx, transport, inner))?;
+
+            debug_assert_eq!(buffer.length, 0);
+        }
+
+        inner.poll_flush_unpin(cx)
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), IoError>> {
+        let ptr = &*self as *const Self;
+
+        let Self {
+            transport,
+            inner,
+            write: Write { buffer },
+            read: _,
+        } = self.get_mut();
+
+        if buffer.length != 0 {
+            log::trace!("{ptr:x?} flushing write buffer before shutdown");
+            let () = ready!(buffer.poll_flush(ptr, cx, transport, inner))?;
+
+            debug_assert_eq!(buffer.length, 0);
+        }
+
+        inner.poll_close_unpin(cx)
+    }
+}
+
+impl WriteBuffer {
+    fn poll_flush<S: Transport + Unpin>(
+        &mut self,
+        ptr: *const NoiseStream<S>,
+        cx: &mut Context<'_>,
+        transport: &mut ClientConnection,
+        inner: &mut S,
+    ) -> Poll<Result<(), IoError>> {
+        // Check to see if the inner sink is ready before doing anything expensive
+        // or destructive.
         let () = ready!(inner.poll_ready_unpin(cx))?;
 
-        let WriteBufferPolicy::NoBuffering = write.buffer_policy;
-        log::trace!("{ptr:x?} encrypting {} bytes to send", buf.len());
-        let ciphertext = transport.send(buf).map_err(IoError::other)?;
+        let Self { length, bytes } = self;
+
+        log::trace!("{ptr:x?} encrypting {} bytes to send", length);
+        let ciphertext = transport
+            .send(&bytes[..usize::from(*length)])
+            .map_err(IoError::other)?;
         log::trace!("{ptr:x?} encrypted to {} bytes", ciphertext.len());
+
+        *length = 0;
 
         // Since the poll_ready above already succeeded, we can just send!
         inner.start_send_unpin((FrameType::Data, ciphertext.into()))?;
 
-        log::trace!("{ptr:x?} sent, waiting for next block");
-
-        Poll::Ready(Ok(buf.len()))
+        log::trace!("{ptr:x?} flushed write buffer");
+        Poll::Ready(Ok(()))
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), IoError>> {
-        self.get_mut().inner.poll_flush_unpin(cx)
-    }
+    fn copy_prefix(&mut self, buf: &[u8]) -> usize {
+        let Self { bytes, length } = self;
+        let bytes_remaining = bytes.len() - usize::from(*length);
 
-    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), IoError>> {
-        self.get_mut().inner.poll_close_unpin(cx)
+        let to_copy = buf.len().min(bytes_remaining);
+        bytes[(*length).into()..][..to_copy].copy_from_slice(&buf[..to_copy]);
+        *length += u16::try_from(to_copy).expect("small buffer");
+
+        to_copy
+    }
+}
+
+impl Default for WriteBuffer {
+    fn default() -> Self {
+        Self {
+            length: 0,
+            bytes: Box::new([0; NOISE_TRANSPORT_PER_PAYLOAD_MAX]),
+        }
     }
 }
 
 #[cfg(test)]
 mod test {
     use std::io::ErrorKind as IoErrorKind;
+    use std::pin::pin;
     use std::sync::Arc;
 
     use assert_matches::assert_matches;
+    use attest::client_connection::NOISE_TRANSPORT_PER_PACKET_MAX;
     use const_str::concat;
     use futures_util::stream::FusedStream;
-    use futures_util::{pin_mut, FutureExt, Sink, Stream};
+    use futures_util::{FutureExt, Sink, Stream};
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
     use super::*;
@@ -189,15 +272,81 @@ mod test {
         let (mut a, mut b) = new_stream_pair();
 
         a.write_all(b"abcde").await.unwrap();
+        a.flush().await.unwrap();
         let mut buf = [0; 5];
         assert_eq!(buf.len(), b.read(&mut buf).await.unwrap());
         assert_eq!(&buf, b"abcde");
 
         b.write_all(b"1234567890").await.unwrap();
+        b.flush().await.unwrap();
         b.write_all(b"abcdefghij").await.unwrap();
+        b.flush().await.unwrap();
         let mut buf = [0; 20];
         a.read_exact(&mut buf).await.unwrap();
         assert_eq!(&buf, b"1234567890abcdefghij");
+    }
+
+    #[tokio::test]
+    async fn write_is_buffered() {
+        // MITM the two streams so we can see when blocks pass through.
+        let (transport_a, transport_d) = new_handshaken_pair().unwrap();
+        let (a, mut b) = new_transport_pair(2);
+        let (mut c, d) = new_transport_pair(2);
+        let mut a = NoiseStream::new(a, transport_a, vec![0; 32]);
+        let mut d = NoiseStream::new(d, transport_d, vec![0; 32]);
+
+        a.write_all(&[b'a'; NOISE_TRANSPORT_PER_PAYLOAD_MAX - 1])
+            .await
+            .unwrap();
+        assert_matches!(b.next().now_or_never(), None);
+
+        a.write_all(&[b'b'; NOISE_TRANSPORT_PER_PAYLOAD_MAX + 1])
+            .await
+            .unwrap();
+
+        // The second write should have spilled the buffer into the stream,
+        // resulting in one block sent.
+        let first_block = b.next().await.expect("received").expect("msg");
+        assert_matches!(b.next().now_or_never(), None);
+
+        assert!(
+            first_block.len() <= NOISE_TRANSPORT_PER_PACKET_MAX,
+            "first_block.len() = {}",
+            first_block.len()
+        );
+
+        c.send((FrameType::Data, first_block)).await.unwrap();
+        let mut buf = [0; NOISE_TRANSPORT_PER_PAYLOAD_MAX];
+        d.read_exact(&mut buf).await.expect("can read");
+
+        assert_eq!(
+            buf.split_last(),
+            Some((
+                &b'b',
+                [b'a'; NOISE_TRANSPORT_PER_PAYLOAD_MAX - 1].as_slice()
+            ))
+        );
+
+        a.flush().await.unwrap();
+        c.send((FrameType::Data, b.next().await.unwrap().unwrap()))
+            .await
+            .unwrap();
+
+        let mut buf = [0; NOISE_TRANSPORT_PER_PAYLOAD_MAX];
+        d.read_exact(&mut buf).await.expect("can read");
+        assert_eq!(buf, [b'b'; NOISE_TRANSPORT_PER_PAYLOAD_MAX].as_slice());
+    }
+
+    #[tokio::test]
+    async fn write_flushes_on_shutdown() {
+        let (mut a, mut b) = new_stream_pair();
+
+        a.write_all(b"abcdef").await.unwrap();
+        a.shutdown().await.unwrap();
+
+        let mut buf = vec![];
+        b.read_to_end(&mut buf).await.expect("can read");
+        assert_eq!(&buf, b"abcdef");
     }
 
     #[tokio::test]
@@ -257,10 +406,11 @@ mod test {
         let (inner, other) = new_transport_pair(100);
         let mut stream = NoiseStream::new(inner, transport, vec![0u8; 32]);
 
-        // Drop the read end. With nobody to receive sent bytes, the write to
-        // the underlying channel should fail.
+        // Drop the read end. With nobody to receive sent bytes, the write and
+        // flush to the underlying channel should fail.
         drop(other);
-        assert_matches!(stream.write_all(b"ababcdcdefef").await, Err(_));
+        assert_matches!(stream.write_all(b"ababcdcdefef").await, Ok(()));
+        assert_matches!(stream.flush().await, Err(_));
     }
 
     #[tokio::test]
@@ -386,28 +536,30 @@ mod test {
         let mut b = NoiseStream::new(b, transport_b, vec![0u8; 32]);
 
         assert_matches!(a.write(b"first message").now_or_never(), Some(Ok(13)));
+        assert_matches!(a.flush().now_or_never(), Some(Ok(())));
         assert_matches!(a.write(b"second message").now_or_never(), Some(Ok(14)));
+        assert_matches!(a.flush().now_or_never(), Some(Ok(())));
 
-        let a_write = a.write(b"third message");
-        pin_mut!(a_write);
-        let a_write_waker = Arc::new(TestWaker::default());
+        assert_matches!(a.write(b"third message").now_or_never(), Some(Ok(13)));
+        let mut a_flush = pin!(a.flush());
+        let a_flush_waker = Arc::new(TestWaker::default());
         assert_matches!(
-            a_write.poll_unpin(&mut std::task::Context::from_waker(
-                &Arc::clone(&a_write_waker).into()
+            a_flush.poll_unpin(&mut std::task::Context::from_waker(
+                &Arc::clone(&a_flush_waker).into()
             )),
             Poll::Pending
         );
-        assert!(!a_write_waker.was_woken());
+        assert!(!a_flush_waker.was_woken());
 
         let mut read_buf = vec![0; 64];
         assert_matches!(b.read(&mut read_buf).now_or_never(), Some(Ok(13)));
         assert_eq!(&read_buf[..13], b"first message");
 
         // Reading a message from the stream should unblock the writer.
-        assert!(a_write_waker.was_woken());
+        assert!(a_flush_waker.was_woken());
         assert_matches!(
-            a_write.poll_unpin(&mut std::task::Context::from_waker(&a_write_waker.into())),
-            Poll::Ready(Ok(13))
+            a_flush.poll_unpin(&mut std::task::Context::from_waker(&a_flush_waker.into())),
+            Poll::Ready(Ok(()))
         );
 
         drop(a);
