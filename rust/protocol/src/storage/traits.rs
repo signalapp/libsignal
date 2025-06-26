@@ -136,12 +136,15 @@ pub trait KyberPreKeyStore {
     async fn mark_kyber_pre_key_used(&mut self, kyber_prekey_id: KyberPreKeyId) -> Result<()>;
 }
 
+/// Interface for storing signed Swoosh pre-keys downloaded from a server.
+///
+/// NB: libsignal makes no distinction between one-time and last-resort pre-keys.
 #[async_trait(?Send)]
 pub trait SwooshPreKeyStore {
-    /// Look up the signed kyber pre-key corresponding to `kyber_prekey_id`.
+    /// Look up the signed swoosh pre-key corresponding to `swoosh_prekey_id`.
     async fn get_swoosh_pre_key(&self, swoosh_prekey_id: SwooshPreKeyId) -> Result<SwooshPreKeyRecord>;
 
-    /// Set the entry for `kyber_prekey_id` to the value of `record`.
+    /// Set the entry for `swoosh_prekey_id` to the value of `record`.
     async fn save_swoosh_pre_key(
         &mut self,
         swoosh_prekey_id: SwooshPreKeyId,

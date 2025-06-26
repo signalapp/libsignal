@@ -67,10 +67,7 @@ pub struct PublicSwooshKey {
 }
 
 impl PublicSwooshKey {
-    fn new(key: PublicSwooshKeyData) -> Self {
-        Self { key }
-    }
-
+    
     pub fn deserialize(value: &[u8]) -> Result<Self, SwooshError> {
         if value.is_empty() {
             return Err(SwooshError::NoKeyTypeIdentifier);
@@ -317,16 +314,6 @@ impl SwooshKeyPair {
     }
 }
 
-impl TryFrom<PrivateSwooshKey> for SwooshKeyPair {
-    type Error = SwooshError;
-
-    fn try_from(private_key: PrivateSwooshKey) -> Result<Self, SwooshError> {
-        // For pswoosh, we can't derive public key from private key alone
-        // This would need additional matrix parameter in a real implementation
-        Err(SwooshError::KeyGenerationFailed)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -512,12 +499,6 @@ mod tests {
         let serialized_priv = key_pair.private_key.serialize();
         let priv_key: PrivateSwooshKey = serialized_priv.as_slice().try_into()?;
         assert_eq!(key_pair.private_key.secret_key_bytes(), priv_key.secret_key_bytes());
-        
-        // Test TryFrom PrivateSwooshKey to SwooshKeyPair (should fail)
-        assert!(matches!(
-            SwooshKeyPair::try_from(priv_key),
-            Err(SwooshError::KeyGenerationFailed)
-        ));
         
         Ok(())
     }

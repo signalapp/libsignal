@@ -5,7 +5,7 @@ use rand::TryRngCore as _;
 use crate::proto::storage::SignedPreKeyRecordStructure;
 use crate::state::{GenericSignedPreKey, signed_prekey::{KeySerde, KeyPairSerde}};
 use crate::{PrivateKey, Result, Timestamp};
-use pswoosh::keys::{SwooshKeyPair, PrivateSwooshKey, PublicSwooshKey, SwooshKeyType};
+use pswoosh::keys::{SwooshKeyPair, PrivateSwooshKey, PublicSwooshKey};
 
 /// A unique identifier selecting among this client's known signed pre-keys.
 #[derive(
@@ -47,7 +47,6 @@ impl SwooshPreKeyRecord {
 
 impl SwooshPreKeyRecord {
     pub fn generate(
-        swoosh_key_type: pswoosh::keys::SwooshKeyType,
         id: SwooshPreKeyId,
         signing_key: &PrivateKey,
     ) -> Result<SwooshPreKeyRecord> {

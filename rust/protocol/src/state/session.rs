@@ -411,32 +411,6 @@ impl SessionState {
         self
     }
 
-    pub(crate) fn set_sender_hybrid_chain(&mut self, regular_sender: &KeyPair, swoosh_sender: &SwooshKeyPair, next_chain_key: &ChainKey) {
-        let chain_key = session_structure::chain::ChainKey {
-            index: next_chain_key.index(),
-            key: next_chain_key.key().to_vec(),
-        };
-
-        let swoosh_public_serialized = swoosh_sender.public_key().serialize().to_vec();
-        let swoosh_private_serialized = swoosh_sender.private_key().serialize().to_vec();
-
-        let new_chain = session_structure::Chain {
-            sender_ratchet_key: regular_sender.public_key.serialize().to_vec(),
-            sender_ratchet_key_private: regular_sender.private_key.serialize().to_vec(),
-            sender_swoosh_key_public: swoosh_public_serialized,
-            sender_swoosh_key_private: swoosh_private_serialized,
-            chain_key: Some(chain_key),
-            message_keys: vec![],
-        };
-
-        self.session.sender_chain = Some(new_chain);
-    }
-
-    pub(crate) fn with_sender_hybrid_chain(mut self, regular_sender: &KeyPair, swoosh_sender: &SwooshKeyPair, next_chain_key: &ChainKey) -> Self {
-        self.set_sender_hybrid_chain(regular_sender, swoosh_sender, next_chain_key);
-        self
-    }
-
     pub(crate) fn get_sender_chain_key(&self) -> Result<ChainKey, InvalidSessionError> {
         let sender_chain = self
             .session
@@ -754,38 +728,6 @@ impl SessionState {
 
     pub(crate) fn pq_ratchet_state(&self) -> &spqr::SerializedState {
         &self.session.pq_ratchet_state
-    }
-
-    pub(crate) fn set_is_alice(&mut self, is_alice: bool) {
-        self.session.is_alice = is_alice;
-    }
-
-    pub(crate) fn is_alice(&self) -> bool {
-        self.session.is_alice
-    }
-
-    pub(crate) fn sender_swoosh_key_public(&self) -> Result<Option<PublicSwooshKey>, InvalidSessionError> {
-        match &self.session.sender_chain {
-            None => Ok(None),
-            Some(ref c) if c.sender_swoosh_key_public.is_empty() => Ok(None),
-            Some(ref c) => {
-                PublicSwooshKey::deserialize(&c.sender_swoosh_key_public)
-                    .map(Some)
-                    .map_err(|_| InvalidSessionError("invalid sender chain swoosh key"))
-            }
-        }
-    }
-
-    pub(crate) fn sender_swoosh_private_key(&self) -> Result<Option<PrivateSwooshKey>, InvalidSessionError> {
-        match &self.session.sender_chain {
-            None => Ok(None),
-            Some(ref c) if c.sender_swoosh_key_private.is_empty() => Ok(None),
-            Some(ref c) => {
-                PrivateSwooshKey::deserialize(&c.sender_swoosh_key_private)
-                    .map(Some)
-                    .map_err(|_| InvalidSessionError("invalid sender chain private swoosh key"))
-            }
-        }
     }
 
     pub(crate) fn set_sender_swoosh_chain(&mut self, sender: &SwooshKeyPair, next_chain_key: &ChainKey) {
