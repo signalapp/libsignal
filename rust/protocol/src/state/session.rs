@@ -419,11 +419,6 @@ impl SessionState {
 
         let swoosh_public_serialized = swoosh_sender.public_key().serialize().to_vec();
         let swoosh_private_serialized = swoosh_sender.private_key().serialize().to_vec();
-        
-        println!("DEBUG: Storing Swoosh key in sender chain - public length: {}, private length: {}", 
-                swoosh_public_serialized.len(), swoosh_private_serialized.len());
-        println!("DEBUG: First 8 bytes of Swoosh public key: {:02x?}", 
-                &swoosh_public_serialized[..8.min(swoosh_public_serialized.len())]);
 
         let new_chain = session_structure::Chain {
             sender_ratchet_key: regular_sender.public_key.serialize().to_vec(),
@@ -435,7 +430,6 @@ impl SessionState {
         };
 
         self.session.sender_chain = Some(new_chain);
-        println!("DEBUG: Sender chain set successfully");
     }
 
     pub(crate) fn with_sender_hybrid_chain(mut self, regular_sender: &KeyPair, swoosh_sender: &SwooshKeyPair, next_chain_key: &ChainKey) -> Self {

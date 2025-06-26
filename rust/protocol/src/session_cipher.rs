@@ -426,7 +426,6 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
                 ciphertext.message(),
                 CiphertextMessageType::PreKey,
                 identity_store.is_alice().await?,
-                csprng,
             )?
         }
         None => {
@@ -486,7 +485,6 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
                 ciphertext,
                 CiphertextMessageType::Whisper,
                 identity_store.is_alice().await?,
-                csprng,
             )?
         }
         None => {
@@ -785,13 +783,12 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
     }
 }
 
-fn decrypt_message_with_record_swoosh<R: Rng + CryptoRng>(
+fn decrypt_message_with_record_swoosh(
     remote_address: &ProtocolAddress,
     record: &mut SessionRecord,
     ciphertext: &SignalMessage,
     original_message_type: CiphertextMessageType,
     is_alice: bool,
-    csprng: &mut R,
 ) -> Result<Vec<u8>> {
     debug_assert!(matches!(
         original_message_type,
@@ -819,14 +816,6 @@ fn decrypt_message_with_record_swoosh<R: Rng + CryptoRng>(
     if let Some(current_state) = record.session_state() {
         let mut current_state = current_state.clone();
         
-        // Debug: Check what session state Bob has after PreKey processing
-        println!("DEBUG: Bob's session state after PreKey processing:");
-        if let Ok(public_key) = current_state.sender_ratchet_swoosh_public_key() {
-            println!("  - Has Swoosh public key, length: {}", public_key.serialize().len());
-        } else {
-            println!("  - No Swoosh public key found");
-        }
-        
         let result = decrypt_message_with_state_swoosh(
             CurrentOrPrevious::Current,
             &mut current_state,
@@ -834,7 +823,6 @@ fn decrypt_message_with_record_swoosh<R: Rng + CryptoRng>(
             original_message_type,
             remote_address,
             is_alice,
-            csprng,
         );
 
         match result {
@@ -898,7 +886,6 @@ fn decrypt_message_with_record_swoosh<R: Rng + CryptoRng>(
             original_message_type,
             remote_address,
             is_alice,
-            csprng,
         );
 
         match result {
@@ -1072,14 +1059,13 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     Ok(ptext)
 }
 
-fn decrypt_message_with_state_swoosh<R: Rng + CryptoRng>(
+fn decrypt_message_with_state_swoosh(
     current_or_previous: CurrentOrPrevious,
     state: &mut SessionState,
     ciphertext: &SignalMessage,
     original_message_type: CiphertextMessageType,
     remote_address: &ProtocolAddress,
     is_alice: bool,
-    csprng: &mut R,
 ) -> Result<Vec<u8>> {
     // Check for a completely empty or invalid session state before we do anything else.
     let _ = state.root_key().map_err(|_| {

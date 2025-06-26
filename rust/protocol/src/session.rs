@@ -156,33 +156,15 @@ async fn process_prekey_impl(
     );
 
     // Add Swoosh key information if available
-    println!("DEBUG: Bob checking for Swoosh keys - our_swoosh_pre_key_pair: {}", 
-             our_swoosh_pre_key_pair.is_some());
     if let Some(swoosh_key_pair) = our_swoosh_pre_key_pair {
-        println!("DEBUG: Bob has Swoosh pre-key, setting up Swoosh parameters");
         parameters.set_our_swoosh_key_pair(swoosh_key_pair);
         // Get Alice's Swoosh ratchet key from the embedded SignalMessage
         let their_swoosh_ratchet_key = *message.message().sender_ratchet_swoosh_key().unwrap();
-        println!("DEBUG: Bob received Alice's Swoosh ratchet key, length: {}, first 8 bytes: {:02x?}", 
-                their_swoosh_ratchet_key.serialize().len(),
-                &their_swoosh_ratchet_key.serialize()[..8.min(their_swoosh_ratchet_key.serialize().len())]);
         parameters.set_their_swoosh_ratchet_key(their_swoosh_ratchet_key);
-    } else {
-        println!("DEBUG: Bob does not have Swoosh pre-key, using regular decryption");
     }
-
-    // Check if the current session already has Swoosh keys that we need to preserve
-    let existing_has_swoosh = if let Some(existing_session) = session_record.session_state() {
-        existing_session.sender_swoosh_key_public().unwrap_or(None).is_some()
-    } else {
-        false
-    };
-    
-    println!("DEBUG: Existing session has Swoosh keys: {}", existing_has_swoosh);
     
     let mut new_session = if our_swoosh_pre_key_pair.is_some() {
         // Use Swoosh-aware initialization when Swoosh keys are present
-        println!("**Creating new chains");
         ratchet::initialize_bob_session_pswoosh(&parameters)?
     } else {
         // Use standard initialization for non-Swoosh sessions
@@ -191,23 +173,6 @@ async fn process_prekey_impl(
 
     new_session.set_local_registration_id(identity_store.get_local_registration_id().await?);
     new_session.set_remote_registration_id(message.registration_id());
-
-    // If we have existing Swoosh keys and the new session doesn't properly set them up,
-    // we need to preserve them or transfer them to the new session
-    if existing_has_swoosh {
-        println!("DEBUG: Preserving existing Swoosh keys from previous session");
-        if let Some(existing_state) = session_record.session_state() {
-            // Try to copy over the sender Swoosh chain from existing session
-            if let Ok(Some(swoosh_public)) = existing_state.sender_swoosh_key_public() {
-                if let Ok(Some(swoosh_private)) = existing_state.sender_swoosh_private_key() {
-                    println!("DEBUG: Found existing Swoosh keys to preserve - public length: {}, private length: {}", 
-                             swoosh_public.serialize().len(), swoosh_private.serialize().len());
-                    // The new session should already have proper Swoosh setup from initialize_bob_session_pswoosh
-                    // so we may not need to do anything here if it's working correctly
-                }
-            }
-        }
-    }
 
     session_record.promote_state(new_session);
 
