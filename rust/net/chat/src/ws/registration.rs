@@ -4,7 +4,6 @@
 //
 use std::future::Future;
 
-use http::{HeaderName, HeaderValue};
 use libsignal_net::chat::{LanguageList, Request as ChatRequest, Response as ChatResponse};
 
 use crate::api::registration::{
@@ -16,7 +15,7 @@ use crate::api::registration::{
     VerificationTransport,
 };
 use crate::api::{Registration, RequestError};
-use crate::ws::{ResponseError, TryIntoResponse, WsConnection, JSON_CONTENT_TYPE};
+use crate::ws::{ResponseError, TryIntoResponse, WsConnection};
 
 mod error;
 mod request;
@@ -282,6 +281,3 @@ where
 
     response.try_into().map_err(Into::into)
 }
-
-const CONTENT_TYPE_JSON: (HeaderName, HeaderValue) =
-    (http::header::CONTENT_TYPE, JSON_CONTENT_TYPE);

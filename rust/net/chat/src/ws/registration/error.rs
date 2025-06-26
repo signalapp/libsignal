@@ -144,7 +144,7 @@ mod test {
         UpdateSessionErrorDiscriminants,
     };
     use crate::api::RateLimitChallenge;
-    use crate::ws::registration::CONTENT_TYPE_JSON;
+    use crate::ws::CONTENT_TYPE_JSON;
 
     trait AsStatus {
         fn as_status(&self) -> Option<u16>;

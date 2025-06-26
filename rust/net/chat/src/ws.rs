@@ -247,7 +247,10 @@ impl TryIntoResponse<Empty> for chat::Response {
     }
 }
 
-const JSON_CONTENT_TYPE: http::HeaderValue = http::HeaderValue::from_static("application/json");
+const CONTENT_TYPE_JSON: (http::HeaderName, http::HeaderValue) = (
+    http::header::CONTENT_TYPE,
+    http::HeaderValue::from_static("application/json"),
+);
 
 impl<R> TryIntoResponse<R> for chat::Response
 where
@@ -285,7 +288,7 @@ where
     } = response;
 
     let content_type = headers.get(http::header::CONTENT_TYPE);
-    if content_type != Some(&JSON_CONTENT_TYPE) {
+    if content_type != Some(&CONTENT_TYPE_JSON.1) {
         return Err(ResponseError::UnexpectedContentType(content_type.cloned()));
     }
 
@@ -316,7 +319,7 @@ mod testutil {
         chat::Response {
             status: http::StatusCode::from_u16(status).expect("valid"),
             message: None,
-            headers: http::HeaderMap::from_iter([(http::header::CONTENT_TYPE, JSON_CONTENT_TYPE)]),
+            headers: http::HeaderMap::from_iter([CONTENT_TYPE_JSON]),
             body: Some(bytes::Bytes::copy_from_slice(body.as_ref())),
         }
     }

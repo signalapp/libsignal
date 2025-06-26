@@ -12,7 +12,7 @@ use crate::api::registration::{
     ProvidedAccountAttributes, PushTokenType, RegistrationLock, RegistrationSession, SessionId,
     SignedPreKeyBody, SkipDeviceTransfer, VerificationCodeNotDeliverable, VerificationTransport,
 };
-use crate::ws::registration::CONTENT_TYPE_JSON;
+use crate::ws::CONTENT_TYPE_JSON;
 
 #[derive(Clone, Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
