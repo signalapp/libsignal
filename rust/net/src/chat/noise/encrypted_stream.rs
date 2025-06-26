@@ -3,22 +3,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::future::Future;
 use std::io::Error as IoError;
 use std::pin::Pin;
-use std::task::{ready, Context, Poll};
+use std::task::{Context, Poll};
 
 use bytes::Bytes;
-use futures_util::FutureExt;
 use libsignal_core::{Aci, DeviceId};
-use libsignal_net_infra::errors::LogSafeDisplay;
-use libsignal_net_infra::noise::{NoiseStream, Transport};
 use prost::Message as _;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use uuid::Uuid;
 
 use crate::chat::noise::HandshakeAuth;
-use crate::infra::noise::{Handshaker, SendError, EPHEMERAL_KEY_LEN, STATIC_KEY_LEN};
+use crate::infra::errors::LogSafeDisplay;
+use crate::infra::noise::{
+    handshake, NoiseStream, SendError, Transport, EPHEMERAL_KEY_LEN, STATIC_KEY_LEN,
+};
 
 /// A Noise-encrypted stream that wraps an underlying block-based [`Transport`].
 ///
@@ -73,81 +72,32 @@ impl<S: Transport + Unpin> EncryptedStream<S> {
         meta: ConnectMeta,
         transport: S,
     ) -> Result<Self, ConnectError> {
-        let stream = Establishing::Nascent {
-            auth: authorization,
-            transport: Some(transport),
-            buffer_policy: NascentBuffer::NoInitialPayload,
-            connect_meta: meta,
+        let (pattern, initial_payload) = pattern_and_payload(&authorization, meta);
+        let handshaker = handshake(transport, pattern, Some(&initial_payload));
+        let (stream, payload) = handshaker.await?;
+
+        let crate::proto::chat_noise::HandshakeResponse {
+            code,
+            error_details,
+            fast_open_response,
+        } = prost::Message::decode(Bytes::from(payload))?;
+
+        use crate::proto::chat_noise::handshake_response::Code;
+        match Code::try_from(code).map_err(|_| ConnectError::InvalidResponseCode(code))? {
+            e @ Code::Unspecified => Err(ConnectError::InvalidResponseCode(e.into())),
+            Code::Ok => Ok(()),
+            Code::WrongPublicKey => Err(ConnectError::WrongPublicKey),
+            Code::Deprecated => Err(ConnectError::ClientVersionTooOld),
         }
-        .await?;
+        .inspect_err(|e| {
+            log::debug!("server rejection: {e}; server-provided-details: {error_details:?}");
+        })?;
+
+        if !fast_open_response.is_empty() {
+            return Err(ConnectError::UnexpectedFastOpenResponse);
+        }
+
         Ok(Self { stream })
-    }
-}
-
-enum Establishing<S> {
-    /// Initial state, before any bytes have been sent or received.
-    Nascent {
-        auth: Authorization,
-        /// `Option`al so that the value can be taken during state transitions, otherwise always `Some`.
-        transport: Option<S>,
-        buffer_policy: NascentBuffer,
-        connect_meta: ConnectMeta,
-    },
-    /// In the handshake phase, waiting for the server's response.
-    Handshake { handshaker: Handshaker<S> },
-}
-
-enum NascentBuffer {
-    NoInitialPayload,
-}
-
-impl<S: Transport + Unpin> Future for Establishing<S> {
-    type Output = Result<NoiseStream<S>, ConnectError>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        match &mut *self {
-            Establishing::Nascent {
-                auth,
-                transport,
-                connect_meta,
-                buffer_policy,
-            } => match buffer_policy {
-                NascentBuffer::NoInitialPayload => {
-                    let handshaker =
-                        start_handshake(auth, std::mem::take(connect_meta), transport)?;
-                    *self = Establishing::Handshake { handshaker };
-                    self.poll(cx)
-                }
-            },
-            Establishing::Handshake { handshaker } => {
-                let (stream, payload) = ready!(handshaker.poll_unpin(cx))?;
-
-                let crate::proto::chat_noise::HandshakeResponse {
-                    code,
-                    error_details,
-                    fast_open_response,
-                } = prost::Message::decode(Bytes::from(payload))?;
-
-                use crate::proto::chat_noise::handshake_response::Code;
-                match Code::try_from(code).map_err(|_| ConnectError::InvalidResponseCode(code))? {
-                    e @ Code::Unspecified => Err(ConnectError::InvalidResponseCode(e.into())),
-                    Code::Ok => Ok(()),
-                    Code::WrongPublicKey => Err(ConnectError::WrongPublicKey),
-                    Code::Deprecated => Err(ConnectError::ClientVersionTooOld),
-                }
-                .inspect_err(|e| {
-                    log::debug!(
-                        "server rejection: {e}; server-provided-details: {error_details:?}"
-                    );
-                })?;
-
-                if !fast_open_response.is_empty() {
-                    return Err(ConnectError::UnexpectedFastOpenResponse).into();
-                }
-
-                Poll::Ready(Ok(stream))
-            }
-        }
     }
 }
 
@@ -220,11 +170,7 @@ impl From<prost::DecodeError> for ConnectError {
     }
 }
 
-fn start_handshake<S>(
-    auth: &Authorization,
-    meta: ConnectMeta,
-    transport: &mut Option<S>,
-) -> Result<Handshaker<S>, SendError> {
+fn pattern_and_payload(auth: &Authorization, meta: ConnectMeta) -> (HandshakeAuth<'_>, Box<[u8]>) {
     let (pattern, auth) = match &auth {
         Authorization::Authenticated {
             aci,
@@ -244,12 +190,7 @@ fn start_handshake<S>(
     };
 
     let initial_payload = InitialPayload { auth, meta };
-    Handshaker::new(
-        transport.take().expect("always Some in Nascent state"),
-        pattern,
-        Some(&initial_payload.into_bytes()),
-    )
-    .map_err(SendError::from)
+    (pattern, initial_payload.into_bytes())
 }
 
 #[cfg(test)]

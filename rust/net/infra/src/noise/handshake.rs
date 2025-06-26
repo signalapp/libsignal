@@ -3,24 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::future::Future;
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
-use std::pin::Pin;
-use std::task::{ready, Poll};
 
 use futures_util::{SinkExt as _, StreamExt as _};
-use snow::HandshakeState;
 
 use crate::noise::{FrameType, NoiseStream, SendError, Transport};
-
-/// Future that performs a Noise handshake over a [`Transport`].
-pub struct Handshaker<S> {
-    /// Inner state.
-    ///
-    /// `Option`al to allow moving out of. This will only be `None` after
-    /// `Future::poll` returns `Ready`.
-    inner: Option<HandshakerInner<S>>,
-}
 
 pub trait NoiseHandshake {
     /// The number of bytes required in a [Noise handshake message] for this handshake type.
@@ -33,23 +20,6 @@ pub trait NoiseHandshake {
     fn into_handshake_state(self) -> snow::HandshakeState;
 }
 
-struct HandshakerInner<S> {
-    transport: S,
-    state: State,
-    handshake: Box<HandshakeState>,
-    auth_kind: HandshakeAuthKind,
-}
-
-enum State {
-    SendRequest(SendRequest),
-    ReadResponse,
-}
-
-enum SendRequest {
-    InitialSend { ciphertext: Box<[u8]> },
-    FlushSent,
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, strum::Display)]
 pub enum HandshakeAuthKind {
     IK,
@@ -60,141 +30,63 @@ pub const EPHEMERAL_KEY_LEN: usize = 32;
 pub const STATIC_KEY_LEN: usize = 32;
 pub(super) const PAYLOAD_AEAD_TAG_LEN: usize = 16;
 
-impl<S> Handshaker<S> {
-    pub fn new(
-        transport: S,
-        handshake: impl NoiseHandshake,
-        initial_payload: Option<&[u8]>,
-    ) -> Result<Self, snow::Error> {
-        let payload = initial_payload.unwrap_or_default();
-        let initial_message_len =
-            handshake.handshake_message_len() + payload.len() + PAYLOAD_AEAD_TAG_LEN;
-        let auth_kind = handshake.auth_kind();
+/// Perform a Noise handshake over the given [`Transport`].
+///
+/// Sends an initial handshake message, then waits for the response. If the
+/// handshake is successful, a [`NoiseStream`] representing the established
+/// connection is returned along with the initial payload sent by the remote
+/// end.
+pub async fn handshake<S: Transport + Unpin, N: NoiseHandshake>(
+    mut transport: S,
+    handshake: N,
+    initial_payload: Option<&[u8]>,
+) -> Result<(NoiseStream<S>, Box<[u8]>), SendError> {
+    let payload = initial_payload.unwrap_or_default();
+    let initial_message_len =
+        handshake.handshake_message_len() + payload.len() + PAYLOAD_AEAD_TAG_LEN;
+    let auth_kind = handshake.auth_kind();
 
-        let mut handshake = handshake.into_handshake_state();
+    let mut handshake = handshake.into_handshake_state();
 
-        let mut initial_message = vec![0; initial_message_len];
-        handshake.write_message(payload, &mut initial_message)?;
-        let state = State::SendRequest(SendRequest::InitialSend {
-            ciphertext: initial_message.into_boxed_slice(),
-        });
+    let mut initial_message = vec![0; initial_message_len];
 
-        log::debug!("created {auth_kind} handshaker");
-        Ok(Self {
-            inner: Some(HandshakerInner {
-                auth_kind,
-                transport,
-                state,
-                handshake: Box::new(handshake),
-            }),
-        })
+    handshake.write_message(payload, &mut initial_message)?;
+
+    let () = transport
+        .send((FrameType::from(auth_kind), initial_message.into()))
+        .await?;
+
+    let received_message = transport.next().await.ok_or_else(|| {
+        IoError::new(IoErrorKind::UnexpectedEof, "stream ended during handshake")
+    })??;
+
+    let payload_len = received_message
+        .len()
+        .checked_sub(EPHEMERAL_KEY_LEN + PAYLOAD_AEAD_TAG_LEN)
+        .ok_or_else(|| IoError::new(IoErrorKind::InvalidData, "handshake message was too short"))?;
+
+    let mut payload = vec![0; payload_len];
+    let read_count = handshake.read_message(&received_message, &mut payload)?;
+
+    if read_count != payload.len() {
+        return Err(IoError::other(format!(
+            "expected {payload_len}-byte payload but got {read_count}",
+        ))
+        .into());
     }
-}
 
-impl SendRequest {
-    fn poll_send_and_flush<S: Transport + Unpin>(
-        &mut self,
-        cx: &mut std::task::Context<'_>,
-        auth_kind: HandshakeAuthKind,
-        transport: &mut S,
-    ) -> Poll<Result<(), SendError>> {
-        let ptr = self as *const Self;
-
-        match self {
-            SendRequest::InitialSend { ciphertext } => {
-                // Before the flush can complete, the initial handshake message
-                // needs to be sent.
-                log::trace!(
-                    "{ptr:x?} trying to send {}-byte ciphertext",
-                    ciphertext.len()
-                );
-                let () = ready!(transport.poll_ready_unpin(cx)?);
-
-                let frame_type = FrameType::from(auth_kind);
-                transport.start_send_unpin((frame_type, std::mem::take(ciphertext).into()))?;
-                log::trace!("{ptr:x?} sent {}-byte ciphertext", ciphertext.len());
-
-                *self = Self::FlushSent;
-                self.poll_send_and_flush(cx, auth_kind, transport)
-            }
-            SendRequest::FlushSent => {
-                // The flush still needs to be done. Once it finishes we can return to the caller.
-                log::trace!("{ptr:x?} flushing");
-                let () = ready!(transport.poll_flush_unpin(cx)?);
-                log::trace!("{ptr:x?} flushed");
-
-                Poll::Ready(Ok(()))
-            }
-        }
-    }
-}
-
-impl<S: Transport + Unpin> Future for Handshaker<S> {
-    type Output = Result<(NoiseStream<S>, Box<[u8]>), SendError>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
-        let ptr = &*self as *const Self;
-
-        let Self { inner } = self.as_mut().get_mut();
-        let HandshakerInner {
-            transport,
-            state,
-            handshake,
-            auth_kind,
-        } = inner.as_mut().expect("future polled after completion");
-
-        match state {
-            State::SendRequest(send_request) => {
-                let () = ready!(send_request.poll_send_and_flush(cx, *auth_kind, transport))?;
-                *state = State::ReadResponse;
-                self.poll(cx)
-            }
-            State::ReadResponse => {
-                log::trace!("{ptr:x?} trying to read next block");
-                let message = ready!(transport.poll_next_unpin(cx))
-                    .transpose()?
-                    .ok_or_else(|| {
-                        IoError::new(IoErrorKind::UnexpectedEof, "stream ended during handshake")
-                    })?;
-                log::trace!("{ptr:x?} received {}-byte block", message.len());
-
-                let payload_len = message
-                    .len()
-                    .checked_sub(EPHEMERAL_KEY_LEN + PAYLOAD_AEAD_TAG_LEN)
-                    .ok_or_else(|| {
-                        IoError::new(IoErrorKind::InvalidData, "handshake message was too short")
-                    })?;
-                let mut payload = vec![0; payload_len];
-                let read_count = handshake.read_message(&message, &mut payload)?;
-                log::trace!("{ptr:x?} decrypted into {read_count}-byte plaintext");
-
-                if read_count != payload.len() {
-                    return Poll::Ready(Err(IoError::other(format!(
-                        "expected {payload_len}-byte payload but got {read_count}",
-                    ))
-                    .into()));
-                }
-
-                let HandshakerInner {
-                    state: _,
-                    auth_kind: _,
-                    transport,
-                    handshake,
-                } = self.inner.take().expect("just checked above");
-                let handshake_hash = handshake.get_handshake_hash().to_vec();
-                Poll::Ready(Ok((
-                    NoiseStream::new(transport, handshake.into_transport_mode()?, handshake_hash),
-                    payload.into_boxed_slice(),
-                )))
-            }
-        }
-    }
+    let handshake_hash = handshake.get_handshake_hash().to_vec();
+    Ok((
+        NoiseStream::new(transport, handshake.into_transport_mode()?, handshake_hash),
+        payload.into_boxed_slice(),
+    ))
 }
 
 #[cfg(test)]
 mod test {
+    use std::pin::pin;
     use std::sync::Arc;
-    use std::task::Context;
+    use std::task::{Context, Poll};
 
     use assert_matches::assert_matches;
     use bytes::Bytes;
@@ -241,14 +133,13 @@ mod test {
             .build_responder()
             .unwrap();
 
-        let mut handshake = Handshaker::new(
+        let mut handshake = pin!(handshake(
             a,
             NkHandshake {
                 server_public_key: server_keypair.public.try_into().unwrap(),
             },
             Some(EXTRA_PAYLOAD),
-        )
-        .unwrap();
+        ));
 
         let waker = Arc::new(TestWaker::default());
         assert_matches!(
@@ -305,14 +196,13 @@ mod test {
             .build_responder()
             .unwrap();
 
-        let mut handshake = Handshaker::new(
+        let mut handshake = pin!(handshake(
             a,
             NkHandshake {
                 server_public_key: server_keypair.public.try_into().unwrap(),
             },
             None,
-        )
-        .unwrap();
+        ));
 
         // Poll the client so it sends a message, then retrieve that.
         let (rx_frame_type, message) = tokio::select! {
