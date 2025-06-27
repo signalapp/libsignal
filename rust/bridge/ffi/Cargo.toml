@@ -38,4 +38,4 @@ paste = { workspace = true }
 zerocopy = { workspace = true }
 
 [target.aarch64-apple-ios.dependencies]
-cpufeatures = "0.2.1" # Make sure iOS gets optimized crypto.
+cpufeatures = "0.2.6" # Make sure iOS gets optimized crypto.

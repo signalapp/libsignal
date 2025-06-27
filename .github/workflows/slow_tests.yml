@@ -457,6 +457,10 @@ jobs:
         name: fuzzing-artifacts-${{ github.sha }}
         path: rust/*/fuzz/artifacts
 
+    # This isn't fuzzing, but we have to do it with a nightly compiler, so we're going to tack it on to this job.
+    - name: Build everything with no lockfile and -Zdirect-minimal-versions
+      run: mkdir minimal-versions && cargo check --workspace --all-targets --all-features --verbose --keep-going -Zdirect-minimal-versions -Zunstable-options --lockfile-path minimal-versions/Cargo.lock
+
   report_failures:
     name: Report Failures
     runs-on: ubuntu-latest
