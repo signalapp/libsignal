@@ -20,7 +20,7 @@ use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::ChatListener;
-use crate::net::registration::ConnectChatBridge;
+use crate::net::registration::{ConnectChatBridge, RegistrationPushToken};
 use crate::protocol::KyberPublicKey;
 use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
@@ -1272,67 +1272,79 @@ impl<'a> SimpleArgTypeInfo<'a> for libsignal_net_chat::api::registration::Create
             ClassName("org.signal.libsignal.net.RegistrationService$CreateSession"),
         )?;
 
-        let fields = env
-            .with_local_frame(8, |env| {
-                let number = env
-                    .get_field(foreign, "number", jni_signature!(java.lang.String))?
-                    .l()?;
-                let push_token = env
-                    .get_field(foreign, "fcmPushToken", jni_signature!(java.lang.String))?
-                    .l()?;
-                let mcc = env
-                    .get_field(foreign, "mcc", jni_signature!(java.lang.String))?
-                    .l()?;
-                let mnc = env
-                    .get_field(foreign, "mnc", jni_signature!(java.lang.String))?
-                    .l()?;
-                let number = env.get_string(&number.into())?.into();
+        let fields = try_scoped(|| {
+            let number = AutoLocal::new(
+                env.get_field(foreign, "number", jni_signature!(java.lang.String))?
+                    .l()?,
+                env,
+            );
+            let push_token = AutoLocal::new(
+                env.get_field(foreign, "fcmPushToken", jni_signature!(java.lang.String))?
+                    .l()?,
+                env,
+            );
+            let mcc = AutoLocal::new(
+                env.get_field(foreign, "mcc", jni_signature!(java.lang.String))?
+                    .l()?,
+                env,
+            );
+            let mnc = AutoLocal::new(
+                env.get_field(foreign, "mnc", jni_signature!(java.lang.String))?
+                    .l()?,
+                env,
+            );
+            let number = env.get_string((&*number).into())?.into();
 
-                let mut from_nullable_string = |obj: JObject<'_>| {
-                    (!obj.is_null())
-                        .then(|| env.get_string(&obj.into()).map(Into::into))
-                        .transpose()
-                };
-                Ok((
-                    number,
-                    from_nullable_string(push_token)?,
-                    from_nullable_string(mcc)?,
-                    from_nullable_string(mnc)?,
-                ))
-            })
-            .check_exceptions(env, "CreateSession::convert_from")?;
+            let mut from_nullable_string = |obj: AutoLocal<'_, JObject<'_>>| {
+                (!obj.is_null())
+                    .then(|| env.get_string((&*obj).into()).map(Into::into))
+                    .transpose()
+            };
+            Ok((
+                number,
+                push_token,
+                from_nullable_string(mcc)?,
+                from_nullable_string(mnc)?,
+            ))
+        })
+        .check_exceptions(env, "CreateSession::convert_from")?;
         let (number, push_token, mcc, mnc) = fields;
 
-        // Java push tokens are always FCM.
-        let push_token_type = push_token
-            .is_some()
-            .then(|| SimpleArgTypeInfo::convert_from(env, &JObject::null()))
-            .transpose()?;
+        let push_token = SimpleArgTypeInfo::convert_from(env, (&*push_token).into())?;
 
         Ok(Self {
             number,
             push_token,
-            push_token_type,
             mcc,
             mnc,
         })
     }
 }
 
-impl<'a> SimpleArgTypeInfo<'a> for libsignal_net_chat::api::registration::PushTokenType {
-    type ArgType = JObject<'a>;
+impl<'a> SimpleArgTypeInfo<'a> for RegistrationPushToken {
+    type ArgType = JString<'a>;
     fn convert_from(
-        _env: &mut JNIEnv<'a>,
+        env: &mut JNIEnv<'a>,
         foreign: &Self::ArgType,
     ) -> Result<Self, BridgeLayerError> {
-        if !foreign.is_null() {
-            return Err(BridgeLayerError::BadArgument(
-                "push token type is always null".to_owned(),
-            ));
-        }
-
         // Java push tokens are always FCM.
-        Ok(Self::Fcm)
+        Ok(Self::Fcm {
+            push_token: String::convert_from(env, foreign)?,
+        })
+    }
+}
+
+impl<'a> SimpleArgTypeInfo<'a> for Option<RegistrationPushToken> {
+    type ArgType = JString<'a>;
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        if foreign.is_null() {
+            Ok(None)
+        } else {
+            RegistrationPushToken::convert_from(env, foreign).map(Some)
+        }
     }
 }
 
@@ -1855,8 +1867,8 @@ macro_rules! jni_arg_type {
     (RegistrationCreateSessionRequest) => {
         ::jni::objects::JObject<'local>
     };
-    (RegistrationPushTokenType) => {
-        ::jni::objects::JObject<'local>
+    (RegistrationPushToken) => {
+        ::jni::objects::JString<'local>
     };
     (SignedPublicPreKey) => {
         jni::JavaSignedPublicPreKey<'local>

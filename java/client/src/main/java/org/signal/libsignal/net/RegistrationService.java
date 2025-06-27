@@ -127,7 +127,7 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
             tokioAsyncContext.guardedMap(
                 asyncContextHandle ->
                     Native.RegistrationService_RequestPushChallenge(
-                        asyncContextHandle, nativeHandle, fcmPushToken, null)));
+                        asyncContextHandle, nativeHandle, fcmPushToken)));
   }
 
   /**

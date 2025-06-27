@@ -9,7 +9,7 @@ use libsignal_net::chat::{LanguageList, Request as ChatRequest, Response as Chat
 use crate::api::registration::{
     AccountKeys, CheckSvr2CredentialsError, CheckSvr2CredentialsResponse, CreateSession,
     CreateSessionError, ForServiceIds, InvalidSessionId, NewMessageNotification,
-    ProvidedAccountAttributes, PushTokenType, RegisterAccountError, RegisterAccountResponse,
+    ProvidedAccountAttributes, PushToken, RegisterAccountError, RegisterAccountResponse,
     RegistrationChatApi, RegistrationResponse as RegistrationOutput, RequestVerificationCodeError,
     ResumeSessionError, SessionId, SkipDeviceTransfer, SubmitVerificationError, UpdateSessionError,
     VerificationTransport,
@@ -133,8 +133,7 @@ where
     async fn request_push_challenge(
         &self,
         session_id: &SessionId,
-        push_token: &str,
-        push_token_type: PushTokenType,
+        push_token: &PushToken,
     ) -> Result<RegistrationOutput, Self::Error<UpdateSessionError>> {
         submit_request(
             &self.0,
@@ -142,7 +141,6 @@ where
                 session_id,
                 request: UpdateRegistrationSession {
                     push_token: Some(push_token),
-                    push_token_type: Some(push_token_type),
                     ..Default::default()
                 },
             },

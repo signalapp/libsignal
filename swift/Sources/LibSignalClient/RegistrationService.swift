@@ -182,8 +182,7 @@ public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistration
                     promise,
                     asyncContext.const(),
                     $0.const(),
-                    apnPushToken,
-                    nil
+                    apnPushToken
                 )
             }
         }

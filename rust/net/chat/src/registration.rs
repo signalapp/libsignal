@@ -127,8 +127,7 @@ impl<'c> RegistrationService<'c> {
 
     pub async fn request_push_challenge(
         &mut self,
-        push_token: &str,
-        push_token_type: PushTokenType,
+        push_token: &PushToken,
     ) -> Result<(), RequestError<UpdateSessionError>> {
         let Self {
             session_id,
@@ -142,7 +141,7 @@ impl<'c> RegistrationService<'c> {
             session_id: _,
             session: response_session,
         } = Registration(&*connection)
-            .request_push_challenge(session_id, push_token, push_token_type)
+            .request_push_challenge(session_id, push_token)
             .await?;
 
         log::info!("request push challenge succeeded");

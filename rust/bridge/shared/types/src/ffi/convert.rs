@@ -10,7 +10,7 @@ use std::ops::Deref;
 
 use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
-use libsignal_net_chat::api::registration::PushTokenType;
+use libsignal_net_chat::api::registration::PushToken;
 use libsignal_net_chat::api::ChallengeOption;
 use libsignal_protocol::*;
 use paste::paste;
@@ -20,7 +20,7 @@ use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::net::chat::ChatListener;
 use crate::net::registration::{
-    ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushTokenType,
+    ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushToken,
 };
 use crate::support::{extend_lifetime, AsType, FixedLengthBincodeSerializable, Serialized};
 
@@ -510,11 +510,13 @@ impl SimpleArgTypeInfo for Box<dyn ConnectChatBridge> {
     }
 }
 
-impl SimpleArgTypeInfo for RegistrationPushTokenType {
-    type ArgType = *const std::ffi::c_void;
-    fn convert_from(_foreign: Self::ArgType) -> SignalFfiResult<Self> {
+impl SimpleArgTypeInfo for RegistrationPushToken {
+    type ArgType = *const std::ffi::c_char;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         // FFI is only used from Apple platforms.
-        Ok(Self::Apn)
+        Ok(Self::Apn {
+            push_token: String::convert_from(foreign)?,
+        })
     }
 }
 
@@ -531,11 +533,11 @@ impl SimpleArgTypeInfo for RegistrationCreateSessionRequest {
         let push_token: Option<String> = SimpleArgTypeInfo::convert_from(push_token)?;
 
         // The FFI bindings are only used for Swift, which is used on Apple platforms.
-        let push_token_type = push_token.is_some().then_some(PushTokenType::Apn);
+        let push_token = push_token.map(|push_token| PushToken::Apn { push_token });
+
         Ok(Self {
             number: String::convert_from(number)?,
             push_token,
-            push_token_type,
             mcc: SimpleArgTypeInfo::convert_from(mcc)?,
             mnc: SimpleArgTypeInfo::convert_from(mnc)?,
         })
@@ -1085,7 +1087,7 @@ macro_rules! ffi_arg_type {
     (Option<E164>) => (*const std::ffi::c_char);
     (AccountEntropyPool) => (*const std::ffi::c_char);
     (RegistrationCreateSessionRequest) => (ffi::FfiRegistrationCreateSessionRequest);
-    (RegistrationPushTokenType) => (*const std::ffi::c_void);
+    (RegistrationPushToken) => (*const std::ffi::c_char);
     (SignedPublicPreKey) => (ffi::FfiSignedPublicPreKey);
     (&[u8; $len:expr]) => (*const [u8; $len]);
     (Option<&[u8; $len:expr]>) => (*const [u8; $len]);

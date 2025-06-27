@@ -10,7 +10,7 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 use futures_util::TryFutureExt as _;
 use libsignal_net_chat::api::registration::{
     CreateSession, CreateSessionError, ForServiceIds, NewMessageNotification,
-    ProvidedAccountAttributes, PushTokenType, RegisterAccountResponse, RegistrationSession,
+    ProvidedAccountAttributes, PushToken, RegisterAccountResponse, RegistrationSession,
     ResumeSessionError, SessionId, SignedPreKeyBody, SkipDeviceTransfer, UnidentifiedAccessKey,
 };
 use libsignal_net_chat::registration::{self as net_registration, ConnectUnauthChat, RequestError};
@@ -59,7 +59,7 @@ pub struct AccountAttributes {
 // Aliases so that places that refer to syntactic argument names (e.g.
 // jni::jni_arg and friends) aren't ambiguous.
 pub type RegistrationCreateSessionRequest = CreateSession;
-pub type RegistrationPushTokenType = PushTokenType;
+pub type RegistrationPushToken = PushToken;
 pub type RegistrationAccountAttributes = AccountAttributes;
 
 // Alias the type exposed across the bridge since the macros don't support

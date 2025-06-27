@@ -9,7 +9,7 @@ use serde_with::{serde_as, skip_serializing_none, FromInto};
 
 use crate::api::registration::{
     AccountKeys, CreateSession, ForServiceIds, InvalidSessionId, NewMessageNotification,
-    ProvidedAccountAttributes, PushTokenType, RegistrationLock, RegistrationSession, SessionId,
+    ProvidedAccountAttributes, PushToken, RegistrationLock, RegistrationSession, SessionId,
     SignedPreKeyBody, SkipDeviceTransfer, VerificationCodeNotDeliverable, VerificationTransport,
 };
 use crate::ws::CONTENT_TYPE_JSON;
@@ -23,8 +23,8 @@ pub(super) struct GetSession {}
 #[serde(rename_all = "camelCase")]
 pub(super) struct UpdateRegistrationSession<'a> {
     pub(super) captcha: Option<&'a str>,
-    pub(super) push_token: Option<&'a str>,
-    pub(super) push_token_type: Option<PushTokenType>,
+    #[serde(flatten)]
+    pub(super) push_token: Option<&'a PushToken>,
     pub(super) push_challenge: Option<&'a str>,
 }
 
@@ -428,11 +428,36 @@ mod test {
 
     use super::*;
     use crate::api::registration::{
-        CheckSvr2CredentialsResponse, RegisterAccountResponse, RegisterResponseBackup,
+        CheckSvr2CredentialsResponse, PushToken, RegisterAccountResponse, RegisterResponseBackup,
         RegisterResponseBadge, RegisterResponseEntitlements, Svr2CredentialsResult,
     };
     use crate::api::ChallengeOption;
     use crate::ws::TryIntoResponse as _;
+
+    #[test]
+    fn registration_create_session_request_as_chat_request() {
+        let request: ChatRequest = (&CreateSession {
+            number: "+18005550101".to_owned(),
+            push_token: Some(PushToken::Apn {
+                push_token: "someToken".to_owned(),
+            }),
+            mcc: Some("mcc".to_owned()),
+            mnc: Some("mnc".to_owned()),
+        })
+            .into();
+
+        assert_eq!(
+            request,
+            ChatRequest {
+                method: Method::POST,
+                path: PathAndQuery::from_static("/v1/verification/session"),
+                headers: HeaderMap::from_iter([CONTENT_TYPE_JSON]),
+                body: Some(Bytes::from_static(
+                    br#"{"number":"+18005550101","pushTokenType":"apn","pushToken":"someToken","mcc":"mcc","mnc":"mnc"}"#
+                ))
+            }
+        )
+    }
 
     #[test]
     fn registration_get_session_request_as_chat_request() {
@@ -477,7 +502,9 @@ mod test {
         let captcha_request: ChatRequest = RegistrationRequest {
             session_id: &SessionId::from_str("aaabbbcccdddeee").unwrap(),
             request: UpdateRegistrationSession {
-                push_token_type: Some(PushTokenType::Apn),
+                push_token: Some(&PushToken::Apn {
+                    push_token: "token".to_owned(),
+                }),
                 ..Default::default()
             },
         }
@@ -489,7 +516,11 @@ mod test {
                 method: Method::PATCH,
                 path: PathAndQuery::from_static("/v1/verification/session/aaabbbcccdddeee"),
                 headers: HeaderMap::from_iter([CONTENT_TYPE_JSON]),
-                body: Some(b"{\"pushTokenType\":\"apn\"}".as_slice().into())
+                body: Some(
+                    b"{\"pushTokenType\":\"apn\",\"pushToken\":\"token\"}"
+                        .as_slice()
+                        .into()
+                )
             }
         )
     }

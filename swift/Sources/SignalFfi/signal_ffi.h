@@ -2118,7 +2118,7 @@ SignalFfiError *signal_registration_service_register_account(SignalCPromiseMutPo
 
 SignalFfiError *signal_registration_service_registration_session(SignalMutPointerRegistrationSession *out, SignalConstPointerRegistrationService service);
 
-SignalFfiError *signal_registration_service_request_push_challenge(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerRegistrationService service, const char *push_token, const void *push_token_type);
+SignalFfiError *signal_registration_service_request_push_challenge(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerRegistrationService service, const char *push_token);
 
 SignalFfiError *signal_registration_service_request_verification_code(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerRegistrationService service, const char *transport, const char *client, SignalBorrowedBytestringArray languages);
 
