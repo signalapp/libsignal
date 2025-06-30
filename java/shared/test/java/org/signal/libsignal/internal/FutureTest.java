@@ -10,8 +10,10 @@ import static org.junit.Assert.*;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Arrays;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -149,5 +151,65 @@ public class FutureTest {
                     element ->
                         element.getClassName().equals(expectedClassName)
                             && element.getMethodName().contains(expectedMethodName)));
+  }
+
+  private static class TestingValueHolder extends NativeHandleGuard.SimpleOwner {
+    TestingValueHolder(long nativeHandle) {
+      super(nativeHandle);
+    }
+
+    @Override
+    protected void release(long nativeHandle) {
+      NativeTesting.TestingValueHolder_Destroy(nativeHandle);
+    }
+  }
+
+  // Make sure we don't hang if for some reason finalization never happens.
+  @Test(timeout = 10_000)
+  public void testBridgeHandleLifetime() throws Exception {
+    final int INITIAL = 0x10101010;
+
+    TokioAsyncContext context = new TokioAsyncContext();
+    var handleBeingTested =
+        new NativeHandleGuard.SimpleOwner(NativeTesting.TestingValueHolder_New(INITIAL)) {
+          CountDownLatch latch = new CountDownLatch(1);
+
+          @Override
+          protected void release(long nativeHandle) {
+            NativeTesting.TestingValueHolder_Destroy(nativeHandle);
+            latch.countDown();
+          }
+        };
+    var latch = handleBeingTested.latch;
+    var semaphore =
+        new NativeHandleGuard.SimpleOwner(NativeTesting.TestingSemaphore_New(0)) {
+          @Override
+          protected void release(long nativeHandle) {
+            NativeTesting.TestingSemaphore_Destroy(nativeHandle);
+          }
+        };
+
+    CompletableFuture<Integer> future =
+        handleBeingTested.guardedMap(
+            handle ->
+                semaphore.guardedMap(
+                    semaphoreHandle ->
+                        context.guardedMap(
+                            nativeContextHandle ->
+                                NativeTesting.TESTING_AcquireSemaphoreAndGet(
+                                    nativeContextHandle, semaphoreHandle, handle))));
+
+    handleBeingTested = null;
+
+    do {
+      System.gc();
+      System.runFinalization();
+    } while (!latch.await(100, TimeUnit.MILLISECONDS));
+
+    semaphore.guardedRun(
+        semaphoreHandle -> NativeTesting.TestingSemaphore_AddPermits(semaphoreHandle, 1));
+
+    int result = future.get();
+    assertEquals("memory corrupted", result, INITIAL);
   }
 }

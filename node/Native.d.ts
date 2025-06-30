@@ -677,6 +677,10 @@ export function TESTING_ServerMessageAck_Create(): ServerMessageAck;
 export function TESTING_SignedPublicPreKey_CheckBridgesCorrectly(sourcePublicKey: Wrapper<PublicKey>, signedPreKey: SignedPublicPreKey): void;
 export function TESTING_TestingHandleType_getValue(handle: Wrapper<TestingHandleType>): number;
 export function TESTING_TokioAsyncFuture(asyncRuntime: Wrapper<TokioAsyncContext>, input: number): CancellablePromise<number>;
+export function TestingSemaphore_AddPermits(semaphore: Wrapper<TestingSemaphore>, permits: number): void;
+export function TestingSemaphore_New(initial: number): TestingSemaphore;
+export function TestingValueHolder_Get(holder: Wrapper<TestingValueHolder>): number;
+export function TestingValueHolder_New(value: number): TestingValueHolder;
 export function TokioAsyncContext_cancel(context: Wrapper<TokioAsyncContext>, rawCancellationId: bigint): void;
 export function TokioAsyncContext_new(): TokioAsyncContext;
 export function UnauthenticatedChatConnection_connect(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, languages: string[]): CancellablePromise<UnauthenticatedChatConnection>;
@@ -778,6 +782,8 @@ interface SignalMessage { readonly __type: unique symbol; }
 interface SignedPreKeyRecord { readonly __type: unique symbol; }
 interface TestingFutureCancellationCounter { readonly __type: unique symbol; }
 interface TestingHandleType { readonly __type: unique symbol; }
+interface TestingSemaphore { readonly __type: unique symbol; }
+interface TestingValueHolder { readonly __type: unique symbol; }
 interface TokioAsyncContext { readonly __type: unique symbol; }
 interface UnauthenticatedChatConnection { readonly __type: unique symbol; }
 interface UnidentifiedSenderMessageContent { readonly __type: unique symbol; }

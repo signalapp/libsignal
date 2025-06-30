@@ -1179,7 +1179,7 @@ macro_rules! jni_bridge_handle_destroy {
                 handle: $crate::jni::ObjectHandle,
             ) {
                 if handle != 0 {
-                    drop(Box::from_raw(
+                    drop(::std::sync::Arc::from_raw(
                         <$typ as $crate::jni::BridgeHandle>::native_handle_cast(handle)
                             .expect("valid")
                             .as_mut(),

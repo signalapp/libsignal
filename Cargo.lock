@@ -2368,6 +2368,7 @@ dependencies = [
  "attest",
  "bytes",
  "const-str",
+ "derive_more 2.0.1",
  "futures-util",
  "hex",
  "http 1.3.1",

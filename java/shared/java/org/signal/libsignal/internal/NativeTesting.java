@@ -58,6 +58,7 @@ public final class NativeTesting {
 
   public static native byte[] SessionRecord_GetAliceBaseKey(long obj) throws Exception;
 
+  public static native CompletableFuture<Integer> TESTING_AcquireSemaphoreAndGet(long asyncRuntime, long semaphore, long valueHolder);
   public static native String TESTING_BridgedStringMap_dump_to_json(long map);
   public static native void TESTING_CdsiLookupErrorConvert(String errorDescription) throws Exception;
   public static native CompletableFuture<Object> TESTING_CdsiLookupResponseConvert(long asyncRuntime);
@@ -144,6 +145,14 @@ public final class NativeTesting {
   public static native void TestingFutureCancellationCounter_Destroy(long handle);
 
   public static native void TestingHandleType_Destroy(long handle);
+
+  public static native void TestingSemaphore_AddPermits(long semaphore, int permits);
+  public static native void TestingSemaphore_Destroy(long handle);
+  public static native long TestingSemaphore_New(int initial);
+
+  public static native void TestingValueHolder_Destroy(long handle);
+  public static native int TestingValueHolder_Get(long holder);
+  public static native long TestingValueHolder_New(int value);
 
   public static native int test_only_fn_returns_123();
 }

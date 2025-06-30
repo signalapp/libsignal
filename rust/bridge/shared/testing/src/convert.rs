@@ -98,6 +98,15 @@ async fn TESTING_FutureIncrementOnCancel(_guard: TestingFutureCancellationGuard)
     std::future::pending().await
 }
 
+#[bridge_io(TokioAsyncContext, ffi = false, node = false)]
+async fn TESTING_AcquireSemaphoreAndGet(
+    semaphore: &TestingSemaphore,
+    value_holder: &TestingValueHolder,
+) -> i32 {
+    semaphore.acquire().await.expect("not dropped yet").forget();
+    value_holder.0.load(std::sync::atomic::Ordering::SeqCst)
+}
+
 #[bridge_io(TokioAsyncContext)]
 async fn TESTING_TokioAsyncFuture(input: u8) -> i32 {
     i32::from(input) * 3

@@ -49,6 +49,10 @@ typedef struct SignalTestingFutureCancellationCounter SignalTestingFutureCancell
 
 typedef struct SignalTestingHandleType SignalTestingHandleType;
 
+typedef struct SignalTestingSemaphore SignalTestingSemaphore;
+
+typedef struct SignalTestingValueHolder SignalTestingValueHolder;
+
 typedef struct {
   SignalComparableBackup *raw;
 } SignalMutPointerComparableBackup;
@@ -225,6 +229,22 @@ typedef struct {
   const SignalTestingHandleType *raw;
 } SignalConstPointerTestingHandleType;
 
+typedef struct {
+  const SignalTestingSemaphore *raw;
+} SignalConstPointerTestingSemaphore;
+
+typedef struct {
+  SignalTestingSemaphore *raw;
+} SignalMutPointerTestingSemaphore;
+
+typedef struct {
+  SignalTestingValueHolder *raw;
+} SignalMutPointerTestingValueHolder;
+
+typedef struct {
+  const SignalTestingValueHolder *raw;
+} SignalConstPointerTestingValueHolder;
+
 SignalFfiError *signal_comparable_backup_destroy(SignalMutPointerComparableBackup p);
 
 SignalFfiError *signal_comparable_backup_get_comparable_string(const char **out, SignalConstPointerComparableBackup backup);
@@ -399,10 +419,22 @@ SignalFfiError *signal_testing_registration_session_info_convert(SignalMutPointe
 
 SignalFfiError *signal_testing_return_string_array(SignalStringArray *out);
 
+SignalFfiError *signal_testing_semaphore_add_permits(SignalConstPointerTestingSemaphore semaphore, uint32_t permits);
+
+SignalFfiError *signal_testing_semaphore_destroy(SignalMutPointerTestingSemaphore p);
+
+SignalFfiError *signal_testing_semaphore_new(SignalMutPointerTestingSemaphore *out, uint32_t initial);
+
 SignalFfiError *signal_testing_signed_public_pre_key_check_bridges_correctly(SignalConstPointerPublicKey source_public_key, SignalFfiSignedPublicPreKey signed_pre_key);
 
 SignalFfiError *signal_testing_testing_handle_type_get_value(uint8_t *out, SignalConstPointerTestingHandleType handle);
 
 SignalFfiError *signal_testing_tokio_async_future(SignalCPromisei32 *promise, SignalConstPointerTokioAsyncContext async_runtime, uint8_t input);
+
+SignalFfiError *signal_testing_value_holder_destroy(SignalMutPointerTestingValueHolder p);
+
+SignalFfiError *signal_testing_value_holder_get(int32_t *out, SignalConstPointerTestingValueHolder holder);
+
+SignalFfiError *signal_testing_value_holder_new(SignalMutPointerTestingValueHolder *out, int32_t value);
 
 #endif  /* SIGNAL_FFI_TESTING_H_ */
