@@ -867,14 +867,10 @@ pub(crate) mod test_support {
         }
     }
 
-    pub struct RetryingKtClient<'a> {
-        inner: KeyTransparencyClient<'a>,
-    }
-
     // Try connect/send operations to the real server this many times before failing
-    const NETWORK_RETRY_COUNT: usize = 3;
+    pub const NETWORK_RETRY_COUNT: usize = 3;
 
-    async fn retry_n<R, F, P, Fut>(n: usize, mut make_fut: F, mut should_retry: P) -> R
+    pub async fn retry_n<R, F, P, Fut>(n: usize, mut make_fut: F, mut should_retry: P) -> R
     where
         F: FnMut() -> Fut,
         Fut: Future<Output = R>,
@@ -890,82 +886,12 @@ pub(crate) mod test_support {
         result
     }
 
-    impl<'a> RetryingKtClient<'a> {
-        fn new(inner: KeyTransparencyClient<'a>) -> Self {
-            Self { inner }
-        }
-
-        fn is_send_timeout<T>(res: &Result<T, RequestError<Error>>) -> bool {
-            matches!(res, Err(RequestError::Timeout))
-        }
+    pub fn should_retry<T>(res: &Result<T, RequestError<Error>>) -> bool {
+        matches!(res, Err(RequestError::Disconnected(_)))
     }
 
-    impl UnauthenticatedChatApi for RetryingKtClient<'_> {
-        async fn search(
-            &self,
-            aci: &Aci,
-            aci_identity_key: &PublicKey,
-            e164: Option<(E164, Vec<u8>)>,
-            username_hash: Option<UsernameHash<'_>>,
-            stored_account_data: Option<AccountData>,
-            distinguished_tree_head: &LastTreeHead,
-        ) -> Result<MaybePartial<AccountData>, RequestError<Error>> {
-            retry_n(
-                NETWORK_RETRY_COUNT,
-                || {
-                    self.inner.search(
-                        aci,
-                        aci_identity_key,
-                        e164.clone(),
-                        username_hash.clone(),
-                        stored_account_data.clone(),
-                        distinguished_tree_head,
-                    )
-                },
-                Self::is_send_timeout,
-            )
-            .await
-        }
-
-        async fn distinguished(
-            &self,
-            last_distinguished: Option<LastTreeHead>,
-        ) -> Result<SearchStateUpdate, RequestError<Error>> {
-            retry_n(
-                NETWORK_RETRY_COUNT,
-                || self.inner.distinguished(last_distinguished.clone()),
-                Self::is_send_timeout,
-            )
-            .await
-        }
-
-        async fn monitor(
-            &self,
-            aci: &Aci,
-            e164: Option<E164>,
-            username_hash: Option<UsernameHash<'_>>,
-            account_data: AccountData,
-            last_distinguished_tree_head: &LastTreeHead,
-        ) -> Result<AccountData, RequestError<Error>> {
-            retry_n(
-                NETWORK_RETRY_COUNT,
-                || {
-                    self.inner.monitor(
-                        aci,
-                        e164,
-                        username_hash.clone(),
-                        account_data.clone(),
-                        last_distinguished_tree_head,
-                    )
-                },
-                Self::is_send_timeout,
-            )
-            .await
-        }
-    }
-
-    pub fn make_kt(chat: &(dyn LowLevelChatApi + Sync)) -> RetryingKtClient<'_> {
-        RetryingKtClient::new(KeyTransparencyClient::new(chat, KEYTRANS_CONFIG_STAGING))
+    pub fn make_kt(chat: &(dyn LowLevelChatApi + Sync)) -> KeyTransparencyClient<'_> {
+        KeyTransparencyClient::new(chat, KEYTRANS_CONFIG_STAGING)
     }
 
     pub const CHAT_SEARCH_RESPONSE: &[u8] =

@@ -489,7 +489,8 @@ mod test {
     use test_case::test_case;
 
     use super::test_support::{
-        make_chat, make_kt, test_account, test_account_data, test_distinguished_tree,
+        make_chat, make_kt, retry_n, should_retry, test_account, test_account_data,
+        test_distinguished_tree, NETWORK_RETRY_COUNT,
     };
     use super::*;
 
@@ -503,29 +504,36 @@ mod test {
             println!("SKIPPED: running integration tests is not enabled");
             return;
         }
-        let chat = make_chat().await;
-        let kt = make_kt(&chat);
+        retry_n(
+            NETWORK_RETRY_COUNT,
+            || async {
+                let chat = make_chat().await;
+                let kt = make_kt(&chat);
 
-        let aci = test_account::aci();
-        let aci_identity_key = test_account::aci_identity_key();
-        let e164 = (
-            test_account::PHONE_NUMBER,
-            test_account::UNIDENTIFIED_ACCESS_KEY.to_vec(),
-        );
-        let username_hash = test_account::username_hash();
+                let aci = test_account::aci();
+                let aci_identity_key = test_account::aci_identity_key();
+                let e164 = (
+                    test_account::PHONE_NUMBER,
+                    test_account::UNIDENTIFIED_ACCESS_KEY.to_vec(),
+                );
+                let username_hash = test_account::username_hash();
 
-        let known_account_data = test_account_data();
+                let known_account_data = test_account_data();
 
-        kt.search(
-            &aci,
-            &aci_identity_key,
-            use_e164.then_some(e164),
-            use_username_hash.then_some(username_hash),
-            Some(known_account_data),
-            &test_distinguished_tree(),
+                kt.search(
+                    &aci,
+                    &aci_identity_key,
+                    use_e164.then_some(e164),
+                    use_username_hash.then_some(username_hash),
+                    Some(known_account_data),
+                    &test_distinguished_tree(),
+                )
+                .await
+            },
+            should_retry,
         )
         .await
-        .expect("can perform search");
+        .expect("can search");
     }
 
     #[tokio::test]
@@ -537,12 +545,18 @@ mod test {
             return;
         }
 
-        let chat = make_chat().await;
-        let kt = make_kt(&chat);
+        let result = retry_n(
+            NETWORK_RETRY_COUNT,
+            || async {
+                let chat = make_chat().await;
+                let kt = make_kt(&chat);
 
-        let result = kt
-            .distinguished(have_last_distinguished.then_some(test_distinguished_tree()))
-            .await;
+                kt.distinguished(have_last_distinguished.then_some(test_distinguished_tree()))
+                    .await
+            },
+            should_retry,
+        )
+        .await;
 
         assert_matches!(result, Ok( LocalStateUpdate {tree_head, ..}) => assert_ne!(tree_head.tree_size, 0));
     }
@@ -557,8 +571,6 @@ mod test {
             println!("SKIPPED: running integration tests is not enabled");
             return;
         }
-        let chat = make_chat().await;
-        let kt = make_kt(&chat);
 
         let aci = test_account::aci();
         let e164 = test_account::PHONE_NUMBER;
@@ -575,17 +587,25 @@ mod test {
             data
         };
 
-        let updated_account_data = kt
-            .monitor(
-                &aci,
-                use_e164.then_some(e164),
-                use_username_hash.then_some(username_hash),
-                account_data.clone(),
-                &test_distinguished_tree(),
-            )
-            .await
-            .expect("can monitor");
+        let updated_account_data = retry_n(
+            NETWORK_RETRY_COUNT,
+            || async {
+                let chat = make_chat().await;
+                let kt = make_kt(&chat);
 
+                kt.monitor(
+                    &aci,
+                    use_e164.then_some(e164),
+                    use_username_hash.then_some(username_hash.clone()),
+                    account_data.clone(),
+                    &test_distinguished_tree(),
+                )
+                .await
+            },
+            should_retry,
+        )
+        .await
+        .expect("can monitor");
         match Ord::cmp(
             &updated_account_data.last_tree_head.0.tree_size,
             &account_data.last_tree_head.0.tree_size,
