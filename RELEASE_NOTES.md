@@ -1,3 +1,2 @@
-v0.76.3
+v0.76.4
 
-- Update Java publishing job to use new endpoint for Maven Central uploads.
