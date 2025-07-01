@@ -94,23 +94,13 @@ public final class IncrementalMacInputStream extends InputStream {
   }
 
   @Override
-  public synchronized void close() throws IOException {
+  public void close() throws IOException {
     if (this.closed) {
       return;
     }
     this.closed = true;
     this.channel.close();
     this.handleOwner.close();
-  }
-
-  @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() throws Throwable {
-    try {
-      close();
-    } finally {
-      super.finalize();
-    }
   }
 
   // Read implementation for the READ_FROM_INPUT state.
