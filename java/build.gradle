@@ -15,7 +15,7 @@ plugins {
 }
 
 allprojects {
-    version = "0.76.2"
+    version = "0.76.3"
     group   = "org.signal"
 
     tasks.withType(KotlinCompile).configureEach {
