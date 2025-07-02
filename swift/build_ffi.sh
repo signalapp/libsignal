@@ -27,10 +27,15 @@ fi
 
 if [[ "${CARGO_BUILD_TARGET:-}" =~ -ios(-sim|-macabi)?$ ]]; then
   export IPHONEOS_DEPLOYMENT_TARGET=15
+
   # Use full LTO to reduce binary size
   export CARGO_PROFILE_RELEASE_LTO=fat
   export CFLAGS="-flto=full ${CFLAGS:-}"
-  export CFLAGS="-DOPENSSL_SMALL ${CFLAGS:-}" # use small BoringSSL curve tables to reduce binary size
+  export CXXFLAGS="-flto=full ${CXXFLAGS:-}"
+
+  # Use small BoringSSL curve tables to reduce binary size
+  export CFLAGS="-DOPENSSL_SMALL ${CFLAGS:-}"
+  export CXXFLAGS="-DOPENSSL_SMALL ${CXXFLAGS:-}"
 fi
 
 # Work around cc crate bug with Catalyst targets

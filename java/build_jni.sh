@@ -181,6 +181,7 @@ export CARGO_PROFILE_RELEASE_OPT_LEVEL=s # optimize for size over speed
 
 # Use full LTO and small BoringSSL curve tables to reduce binary size.
 export CFLAGS="-DOPENSSL_SMALL -flto=full ${CFLAGS:-}"
+export CXXFLAGS="-DOPENSSL_SMALL -flto=full ${CXXFLAGS:-}"
 export CARGO_PROFILE_RELEASE_LTO=fat
 export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
 
