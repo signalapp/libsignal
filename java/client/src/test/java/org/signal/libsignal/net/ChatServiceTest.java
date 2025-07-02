@@ -10,26 +10,17 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import org.junit.Assume;
-import org.junit.ClassRule;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
-import org.junit.rules.Timeout;
-import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.internal.TokioAsyncContext;
 import org.signal.libsignal.protocol.util.Pair;
 import org.signal.libsignal.util.Base64;
-import org.signal.libsignal.util.TestEnvironment;
-import org.signal.libsignal.util.TestLogger;
 
 public class ChatServiceTest {
 
@@ -125,172 +116,6 @@ public class ChatServiceTest {
                 value,
                 internal.guardedMap(
                     h -> NativeTesting.TESTING_ChatRequestGetHeaderValue(h, name))));
-  }
-
-  public static class ConnectTests {
-    private static class Listener implements ChatConnectionListener {
-      CompletableFuture<ChatServiceException> disconnectReason = new CompletableFuture<>();
-
-      public void onConnectionInterrupted(
-          ChatConnection chat, ChatServiceException disconnectReason) {
-        this.disconnectReason.complete(disconnectReason);
-      }
-
-      public void onIncomingMessage(
-          ChatConnection chat,
-          byte[] envelope,
-          long serverDeliveryTimestamp,
-          ChatConnectionListener.ServerMessageAck sendAck) {
-        throw new AssertionError("Unexpected incoming message");
-      }
-    }
-
-    @ClassRule public static final TestLogger logger = new TestLogger();
-
-    @Rule public Timeout perCaseTimeout = new Timeout(15, TimeUnit.SECONDS);
-
-    @Test
-    public void testConnectUnauth() throws Exception {
-      // Use the presence of the environment setting to know whether we should
-      // make network requests in our tests.
-      final String ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS");
-      Assume.assumeNotNull(ENABLE_TEST);
-
-      final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-      final Listener listener = new Listener();
-      var chat = net.connectUnauthChat(Locale.US, listener).get();
-      chat.start();
-      Void disconnectFinished = chat.disconnect().get();
-
-      ChatServiceException disconnectReason = listener.disconnectReason.get();
-      assertNull(disconnectReason);
-    }
-
-    @Test
-    public void testConnectCancellationUnauth() throws Exception {
-      // Use the presence of the environment setting to know whether we should
-      // make network requests in our tests.
-      final String ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS");
-      Assume.assumeNotNull(ENABLE_TEST);
-
-      final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-      final Listener listener = new Listener();
-      final CompletableFuture<UnauthenticatedChatConnection> connectFuture =
-          net.connectUnauthChat(listener);
-      assertTrue("Expected cancellation of connect in progress", connectFuture.cancel(true));
-      ExecutionException e = assertThrows(ExecutionException.class, () -> connectFuture.get());
-      assertTrue(
-          "Expected CancellationException as cause",
-          e.getCause() instanceof java.util.concurrent.CancellationException);
-    }
-
-    @Test
-    public void testPreconnectAuth() throws Exception {
-      // Use the presence of the environment setting to know whether we should
-      // make network requests in our tests.
-      final String ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS");
-      Assume.assumeNotNull(ENABLE_TEST);
-
-      final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-      final Listener listener = new Listener();
-      net.preconnectChat().get();
-
-      // While we get no direct feedback here whether the preconnect was used,
-      // you can check the log lines for: "[authenticated] using preconnection".
-      // We have to use an authenticated connection because that's the only one that's allowed to
-      // use preconnects.
-      final var e =
-          assertThrows(
-              ExecutionException.class, () -> net.connectAuthChat("", "", false, listener).get());
-      assertTrue(e.getCause() instanceof DeviceDeregisteredException);
-    }
-
-    @Test
-    public void testConnectUnauthThroughProxy() throws Exception {
-      final String PROXY_SERVER = TestEnvironment.get("LIBSIGNAL_TESTING_PROXY_SERVER");
-      Assume.assumeNotNull(PROXY_SERVER);
-
-      // The default TLS proxy config doesn't support staging, so we connect to production.
-      final Network net = new Network(Network.Environment.PRODUCTION, USER_AGENT);
-      final String[] proxyComponents = PROXY_SERVER.split(":");
-      switch (proxyComponents.length) {
-        case 1:
-          net.setProxy(PROXY_SERVER, 443);
-          break;
-        case 2:
-          net.setProxy(proxyComponents[0], Integer.parseInt(proxyComponents[1]));
-          break;
-        default:
-          throw new IllegalArgumentException("invalid LIBSIGNAL_TESTING_PROXY_SERVER");
-      }
-      assertEquals(
-          (int)
-              net.getConnectionManager()
-                  .guardedMap(NativeTesting::TESTING_ConnectionManager_isUsingProxy),
-          1);
-
-      final Listener listener = new Listener();
-      var chat = net.connectUnauthChat(listener).get();
-      chat.start();
-      Void disconnectFinished = chat.disconnect().get();
-
-      ChatServiceException disconnectReason = listener.disconnectReason.get();
-      assertNull(disconnectReason);
-    }
-
-    @Test
-    public void testConnectUnauthThroughProxyByParts() throws Exception {
-      final String PROXY_SERVER = TestEnvironment.get("LIBSIGNAL_TESTING_PROXY_SERVER");
-      Assume.assumeNotNull(PROXY_SERVER);
-
-      // The default TLS proxy config doesn't support staging, so we connect to production.
-      final Network net = new Network(Network.Environment.PRODUCTION, USER_AGENT);
-
-      String host;
-      Integer port;
-      final String[] proxyComponents = PROXY_SERVER.split(":");
-      switch (proxyComponents.length) {
-        case 1:
-          host = PROXY_SERVER;
-          port = null;
-          break;
-        case 2:
-          host = proxyComponents[0];
-          port = Integer.parseInt(proxyComponents[1]);
-          break;
-        default:
-          throw new IllegalArgumentException("invalid LIBSIGNAL_TESTING_PROXY_SERVER");
-      }
-
-      String username;
-      final String[] hostComponents = host.split("@");
-      switch (hostComponents.length) {
-        case 1:
-          username = null;
-          break;
-        case 2:
-          username = hostComponents[0];
-          host = hostComponents[1];
-          break;
-        default:
-          throw new IllegalArgumentException("invalid LIBSIGNAL_TESTING_PROXY_SERVER");
-      }
-
-      net.setProxy(Network.SIGNAL_TLS_PROXY_SCHEME, host, port, username, null);
-      assertEquals(
-          (int)
-              net.getConnectionManager()
-                  .guardedMap(NativeTesting::TESTING_ConnectionManager_isUsingProxy),
-          1);
-
-      final Listener listener = new Listener();
-      var chat = net.connectUnauthChat(listener).get();
-      chat.start();
-      Void disconnectFinished = chat.disconnect().get();
-
-      ChatServiceException disconnectReason = listener.disconnectReason.get();
-      assertNull(disconnectReason);
-    }
   }
 
   @Test

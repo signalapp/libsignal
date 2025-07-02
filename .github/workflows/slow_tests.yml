@@ -1,10 +1,10 @@
 name: Slow Tests
 
 env:
-  ANDROID_API_LEVEL: 21
   ANDROID_NDK_VERSION: 28.0.13004108
   LIBSIGNAL_TESTING_CDSI_ENCLAVE_SECRET: ${{secrets.CDSI_ENCLAVE_SECRET}}
   LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS: true
+  LIBSIGNAL_TESTING_PROXY_SERVER: ${{secrets.LIBSIGNAL_TESTING_PROXY_SERVER}}
   RUST_LOG: debug
 
 on:
@@ -128,6 +128,9 @@ jobs:
     name: Android Emulator Tests
     # For hardware acceleration; see https://github.blog/changelog/2023-02-23-hardware-accelerated-android-virtualization-on-actions-windows-and-linux-larger-hosted-runners/
     runs-on: ubuntu-latest-4-cores
+    env:
+      # Proxy server tests will fail on Android API prior to 28
+      LIBSIGNAL_TESTING_PROXY_SERVER: ${{ fromJSON(matrix.api_level) >= 28 && secrets.LIBSIGNAL_TESTING_PROXY_SERVER || '' }}
     needs: [java-docker]
     if: ${{ needs.java-docker.result == 'success' }}
     timeout-minutes: 45
@@ -135,7 +138,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [x86, x86_64]
+        # 21 is our minimal API level
+        # 33 is our target API level
+        include:
+          - api_level: 21
+            arch: x86
+          - api_level: 21
+            arch: x86_64
+          - api_level: 33
+            arch: x86_64
 
     steps:
       - run: 'echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"'
@@ -166,14 +177,14 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ matrix.arch }}-${{ env.ANDROID_API_LEVEL }}-linux
+          key: avd-${{ matrix.arch }}-${{ matrix.api_level }}-linux
 
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@62dbb605bba737720e10b196cb4220d374026a6d # v2.33.0
         with:
           arch: ${{ matrix.arch }}
-          api-level: ${{ env.ANDROID_API_LEVEL }}
+          api-level: ${{ matrix.api_level }}
           ndk: ${{ env.ANDROID_NDK_VERSION }}
           force-avd-creation: false
           disk-size: 1024M
@@ -184,7 +195,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@62dbb605bba737720e10b196cb4220d374026a6d # v2.33.0
         with:
           arch: ${{ matrix.arch }}
-          api-level: ${{ env.ANDROID_API_LEVEL }}
+          api-level: ${{ matrix.api_level }}
           ndk: ${{ env.ANDROID_NDK_VERSION }}
           disk-size: 1024M
           force-avd-creation: false

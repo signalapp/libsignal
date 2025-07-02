@@ -371,9 +371,8 @@ describe('chat service api', () => {
         this.skip();
       }
 
-      // The default TLS proxy config doesn't support staging, so we connect to production.
       const net = new Net({
-        env: Environment.Production,
+        env: Environment.Staging,
         userAgent: userAgent,
       });
       const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(':', 2);
@@ -390,9 +389,8 @@ describe('chat service api', () => {
         this.skip();
       }
 
-      // The default TLS proxy config doesn't support staging, so we connect to production.
       const net = new Net({
-        env: Environment.Production,
+        env: Environment.Staging,
         userAgent: userAgent,
       });
       const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(':', 2);
@@ -417,9 +415,8 @@ describe('chat service api', () => {
         this.skip();
       }
 
-      // The default TLS proxy config doesn't support staging, so we connect to production.
       const net = new Net({
-        env: Environment.Production,
+        env: Environment.Staging,
         userAgent: userAgent,
       });
 

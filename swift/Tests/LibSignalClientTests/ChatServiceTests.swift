@@ -496,8 +496,7 @@ final class ChatConnectionTests: TestCaseBase {
             throw XCTSkip()
         }
 
-        // The default TLS proxy config doesn't support staging, so we connect to production.
-        let net = Net(env: .production, userAgent: Self.userAgent)
+        let net = Net(env: .staging, userAgent: Self.userAgent)
         let host: Substring
         let port: UInt16
         if let colonIndex = PROXY_SERVER.firstIndex(of: ":") {
@@ -525,8 +524,7 @@ final class ChatConnectionTests: TestCaseBase {
             throw XCTSkip()
         }
 
-        // The default TLS proxy config doesn't support staging, so we connect to production.
-        let net = Net(env: .production, userAgent: Self.userAgent)
+        let net = Net(env: .staging, userAgent: Self.userAgent)
         let host: Substring
         let port: UInt16?
         if let colonIndex = PROXY_SERVER.firstIndex(of: ":") {
