@@ -314,6 +314,14 @@ pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::Unwi
     }
 }
 
+/// Like [`std::panic::AssertUnwindSafe`], but FFI-compatible.
+#[derive(derive_more::Deref)]
+#[repr(transparent)]
+pub struct UnwindSafeArg<T>(pub T);
+
+impl<T> std::panic::UnwindSafe for UnwindSafeArg<T> {}
+impl<T> std::panic::RefUnwindSafe for UnwindSafeArg<T> {}
+
 pub unsafe fn native_handle_cast<T>(handle: *const T) -> Result<&'static T, SignalFfiError> {
     if handle.is_null() {
         return Err(NullPointerError.into());

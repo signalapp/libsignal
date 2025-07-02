@@ -94,7 +94,7 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
     let errType = signal_error_get_type(error)
     // If this actually throws we'd have an infinite loop before we hit the 'try!'.
     let errStr = try! invokeFnReturningString {
-        signal_error_get_message(error, $0)
+        signal_error_get_message($0, error)
     }
     defer { signal_error_free(error) }
 
@@ -136,10 +136,10 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.invalidAttestationData(errStr)
     case SignalErrorCodeFingerprintVersionMismatch:
         let theirs = try invokeFnReturningInteger {
-            signal_error_get_their_fingerprint_version(error, $0)
+            signal_error_get_their_fingerprint_version($0, error)
         }
         let ours = try invokeFnReturningInteger {
-            signal_error_get_our_fingerprint_version(error, $0)
+            signal_error_get_our_fingerprint_version($0, error)
         }
         throw SignalError.fingerprintVersionMismatch(theirs: theirs, ours: ours)
     case SignalErrorCodeUntrustedIdentity:
@@ -152,18 +152,18 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.invalidSession(errStr)
     case SignalErrorCodeInvalidRegistrationId:
         let address: ProtocolAddress = try invokeFnReturningNativeHandle {
-            signal_error_get_address(error, $0)
+            signal_error_get_address($0, error)
         }
         throw SignalError.invalidRegistrationId(address: address, message: errStr)
     case SignalErrorCodeInvalidProtocolAddress:
         var deviceId: UInt32 = 0
         let name = try invokeFnReturningString {
-            signal_error_get_invalid_protocol_address(error, $0, &deviceId)
+            signal_error_get_invalid_protocol_address($0, &deviceId, error)
         }
         throw SignalError.invalidProtocolAddress(name: name, deviceId: deviceId, message: errStr)
     case SignalErrorCodeInvalidSenderKeySession:
         let distributionId = try invokeFnReturningUuid {
-            signal_error_get_uuid(error, $0)
+            signal_error_get_uuid($0, error)
         }
         throw SignalError.invalidSenderKeySession(distributionId: distributionId, message: errStr)
     case SignalErrorCodeDuplicatedMessage:
@@ -220,13 +220,13 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.cdsiInvalidToken(errStr)
     case SignalErrorCodeRateLimited:
         let retryAfterSeconds = try invokeFnReturningInteger {
-            signal_error_get_retry_after_seconds(error, $0)
+            signal_error_get_retry_after_seconds($0, error)
         }
         throw SignalError.rateLimitedError(retryAfter: TimeInterval(retryAfterSeconds), message: errStr)
     case SignalErrorCodeRateLimitChallenge:
         var tokenOut: UnsafePointer<Int8>?
         let options = try invokeFnReturningData {
-            signal_error_get_rate_limit_challenge(error, &tokenOut, $0)
+            signal_error_get_rate_limit_challenge(&tokenOut, $0, error)
         }
         let token = String(cString: tokenOut!)
         signal_free_string(tokenOut)
@@ -239,7 +239,7 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.svrDataMissing(errStr)
     case SignalErrorCodeSvrRestoreFailed:
         let triesRemaining = try invokeFnReturningInteger {
-            signal_error_get_tries_remaining(error, $0)
+            signal_error_get_tries_remaining($0, error)
         }
         throw SignalError.svrRestoreFailed(triesRemaining: triesRemaining, message: errStr)
     case SignalErrorCodeSvrRotationMachineTooManySteps:
@@ -256,7 +256,7 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.connectedElsewhere(errStr)
     case SignalErrorCodeBackupValidation:
         let unknownFields = try invokeFnReturningStringArray {
-            signal_error_get_unknown_fields(error, $0)
+            signal_error_get_unknown_fields($0, error)
         }
         // Special case: we have a dedicated type for this one.
         throw MessageBackupValidationError(
@@ -276,7 +276,7 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
     case SignalErrorCodeRegistrationCodeNotDeliverable:
         var permanent = false
         let message = try invokeFnReturningString {
-            signal_error_get_registration_error_not_deliverable(error, $0, &permanent)
+            signal_error_get_registration_error_not_deliverable($0, &permanent, error)
         }
         throw RegistrationError.codeNotDeliverable(message: message, permanentFailure: permanent)
     case SignalErrorCodeRegistrationSessionUpdateRejected:
@@ -292,7 +292,7 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         var svr2Password = ""
         let svr2Username = try invokeFnReturningString { svr2Username in
             var bridgedPassword: UnsafePointer<CChar>? = nil
-            let err = signal_error_get_registration_lock(error, &timeRemaining, svr2Username, &bridgedPassword)
+            let err = signal_error_get_registration_lock(&timeRemaining, svr2Username, &bridgedPassword, error)
             if err == nil {
                 svr2Password = String(cString: bridgedPassword!)
                 signal_free_string(bridgedPassword)

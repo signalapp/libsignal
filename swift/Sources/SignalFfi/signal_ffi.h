@@ -864,6 +864,11 @@ typedef struct {
   const SignalDecryptionErrorMessage *raw;
 } SignalConstPointerDecryptionErrorMessage;
 
+/**
+ * Like [`std::panic::AssertUnwindSafe`], but FFI-compatible.
+ */
+typedef const SignalFfiError *SignalUnwindSafeArgSignalFfiError;
+
 typedef struct {
   SignalFingerprint *raw;
 } SignalMutPointerFingerprint;
@@ -1588,31 +1593,31 @@ SignalFfiError *signal_encrypt_message(SignalMutPointerCiphertextMessage *out, S
 
 void signal_error_free(SignalFfiError *err);
 
-SignalFfiError *signal_error_get_address(const SignalFfiError *err, SignalMutPointerProtocolAddress *out);
+SignalFfiError *signal_error_get_address(SignalMutPointerProtocolAddress *out, SignalUnwindSafeArgSignalFfiError err);
 
-SignalFfiError *signal_error_get_invalid_protocol_address(const SignalFfiError *err, const char **name_out, uint32_t *device_id_out);
+SignalFfiError *signal_error_get_invalid_protocol_address(const char **name_out, uint32_t *device_id_out, const SignalFfiError *err);
 
-SignalFfiError *signal_error_get_message(const SignalFfiError *err, const char **out);
+SignalFfiError *signal_error_get_message(const char **out, SignalUnwindSafeArgSignalFfiError err);
 
-SignalFfiError *signal_error_get_our_fingerprint_version(const SignalFfiError *err, uint32_t *out);
+SignalFfiError *signal_error_get_our_fingerprint_version(uint32_t *out, SignalUnwindSafeArgSignalFfiError err);
 
-SignalFfiError *signal_error_get_rate_limit_challenge(const SignalFfiError *err, const char **out_token, SignalOwnedBuffer *out_options);
+SignalFfiError *signal_error_get_rate_limit_challenge(const char **out_token, SignalOwnedBuffer *out_options, const SignalFfiError *err);
 
-SignalFfiError *signal_error_get_registration_error_not_deliverable(const SignalFfiError *err, const char **out_reason, bool *out_permanent);
+SignalFfiError *signal_error_get_registration_error_not_deliverable(const char **out_reason, bool *out_permanent, const SignalFfiError *err);
 
-SignalFfiError *signal_error_get_registration_lock(const SignalFfiError *err, uint64_t *out_time_remaining_seconds, const char **out_svr2_username, const char **out_svr2_password);
+SignalFfiError *signal_error_get_registration_lock(uint64_t *out_time_remaining_seconds, const char **out_svr2_username, const char **out_svr2_password, const SignalFfiError *err);
 
-SignalFfiError *signal_error_get_retry_after_seconds(const SignalFfiError *err, uint32_t *out);
+SignalFfiError *signal_error_get_retry_after_seconds(uint32_t *out, SignalUnwindSafeArgSignalFfiError err);
 
-SignalFfiError *signal_error_get_their_fingerprint_version(const SignalFfiError *err, uint32_t *out);
+SignalFfiError *signal_error_get_their_fingerprint_version(uint32_t *out, SignalUnwindSafeArgSignalFfiError err);
 
-SignalFfiError *signal_error_get_tries_remaining(const SignalFfiError *err, uint32_t *out);
+SignalFfiError *signal_error_get_tries_remaining(uint32_t *out, SignalUnwindSafeArgSignalFfiError err);
 
 uint32_t signal_error_get_type(const SignalFfiError *err);
 
-SignalFfiError *signal_error_get_unknown_fields(const SignalFfiError *err, SignalStringArray *out);
+SignalFfiError *signal_error_get_unknown_fields(SignalStringArray *out, SignalUnwindSafeArgSignalFfiError err);
 
-SignalFfiError *signal_error_get_uuid(const SignalFfiError *err, uint8_t (*out)[16]);
+SignalFfiError *signal_error_get_uuid(uint8_t (*out)[16], SignalUnwindSafeArgSignalFfiError err);
 
 SignalFfiError *signal_expiring_profile_key_credential_check_valid_contents(SignalBorrowedBuffer buffer);
 

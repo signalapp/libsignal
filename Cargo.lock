@@ -2489,6 +2489,7 @@ dependencies = [
  "cpufeatures",
  "hex",
  "libsignal-bridge",
+ "libsignal-bridge-macros",
  "libsignal-bridge-testing",
  "libsignal-core",
  "libsignal-net",

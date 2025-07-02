@@ -22,8 +22,13 @@ crate-type = ["staticlib"]
 #     swift test -Xswiftc -DSIGNAL_MEDIA_SUPPORTED -Xcc -DSIGNAL_MEDIA_SUPPORTED
 signal-media = ["libsignal-bridge/signal-media"]
 
+# Here for bridge_fn uniformity
+ffi = []
+default = ["ffi"]
+
 [dependencies]
 libsignal-bridge = { workspace = true, features = ["ffi"] }
+libsignal-bridge-macros = { workspace = true }
 libsignal-bridge-testing = { workspace = true, features = ["ffi"], optional = true }
 libsignal-core = { workspace = true }
 libsignal-net = { workspace = true }

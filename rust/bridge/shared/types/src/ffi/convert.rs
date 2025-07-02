@@ -818,6 +818,25 @@ impl<'a, T: BridgeHandle> ArgTypeInfo<'a> for &'a [&'a T] {
     }
 }
 
+impl<'a> ArgTypeInfo<'a> for &'a SignalFfiError {
+    // This is a lie, we can't *really* guarantee that the contents of an error are unwind-safe. But
+    // it's very unlikely we'll encounter one that isn't, especially when we only use them immutably
+    // in practice.
+    type ArgType = UnwindSafeArg<*const SignalFfiError>;
+    type StoredType = *const SignalFfiError;
+
+    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
+        if foreign.is_null() {
+            return Err(NullPointerError.into());
+        }
+        Ok(foreign.0)
+    }
+
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        unsafe { stored.as_ref() }.expect("non-null checked above")
+    }
+}
+
 impl<T: BridgeHandle> ResultTypeInfo for T {
     type ResultType = MutPointer<T>;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -1089,6 +1108,7 @@ macro_rules! ffi_arg_type {
     (RegistrationCreateSessionRequest) => (ffi::FfiRegistrationCreateSessionRequest);
     (RegistrationPushToken) => (*const std::ffi::c_char);
     (SignedPublicPreKey) => (ffi::FfiSignedPublicPreKey);
+    (&SignalFfiError) => (ffi::UnwindSafeArg<*const SignalFfiError>);
     (&[u8; $len:expr]) => (*const [u8; $len]);
     (Option<&[u8; $len:expr]>) => (*const [u8; $len]);
     (&[& $typ:ty]) => (ffi::BorrowedSliceOf<ffi::ConstPointer< $typ >>);
