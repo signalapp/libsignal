@@ -9,8 +9,7 @@ use std::net::IpAddr;
 use std::sync::Arc;
 
 use either::Either;
-use futures_util::stream::FuturesUnordered;
-use futures_util::{FutureExt as _, TryStreamExt as _};
+use futures_util::FutureExt as _;
 use itertools::Itertools;
 
 use crate::dns::lookup_result::LookupResult;
@@ -97,9 +96,7 @@ pub async fn resolve_route<R: ResolveHostnames + Clone + 'static>(
         })
     });
 
-    let resolved = FuturesUnordered::from_iter(to_resolve)
-        .try_collect::<Vec<_>>()
-        .await?;
+    let resolved = futures_util::future::try_join_all(to_resolve).await?;
 
     let resolutions = resolved
         .into_iter()
