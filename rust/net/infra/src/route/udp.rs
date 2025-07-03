@@ -5,7 +5,6 @@
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::num::NonZeroU16;
-use std::sync::Arc;
 
 use tokio::net::UdpSocket;
 
@@ -27,7 +26,7 @@ impl Connector<UdpRoute<IpAddr>, ()> for StatelessUdpConnector {
         &self,
         (): (),
         route: UdpRoute<IpAddr>,
-        _log_tag: Arc<str>,
+        _log_tag: &str,
     ) -> Result<Self::Connection, Self::Error> {
         let UdpRoute { address, port } = route;
 

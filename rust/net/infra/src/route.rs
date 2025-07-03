@@ -246,7 +246,7 @@ pub async fn connect<R, UR, C, Inner, FatalError>(
     resolver: &impl Resolver,
     connector: C,
     inner: Inner,
-    log_tag: Arc<str>,
+    log_tag: &str,
     on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
 ) -> (
     Result<C::Connection, ConnectError<FatalError>>,
@@ -280,7 +280,7 @@ pub async fn connect_resolved<R, C, Inner, FatalError>(
     delay_policy: impl RouteDelayPolicy<R>,
     connector: C,
     inner: Inner,
-    log_tag: Arc<str>,
+    log_tag: &str,
     on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
 ) -> (
     Result<C::Connection, ConnectError<FatalError>>,
@@ -307,7 +307,7 @@ async fn connect_inner<R, C, Inner, FatalError>(
     delay_policy: impl RouteDelayPolicy<R>,
     connector: C,
     inner: Inner,
-    log_tag: Arc<str>,
+    log_tag: &str,
     mut on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
 ) -> (
     Result<C::Connection, ConnectError<FatalError>>,
@@ -392,12 +392,14 @@ where
             }
 
             Event::NextRouteAvailable(Some(route)) => {
-                let log_tag_for_connect = format!("{log_tag} {connects_started}").into();
+                let log_tag_for_connect = format!("{log_tag} {connects_started}");
+                let connector = &connector;
+                let inner = inner.clone();
                 connects_started += 1;
-                connects_in_progress.push(async {
+                connects_in_progress.push(async move {
                     let started = Instant::now();
                     let result = connector
-                        .connect_over(inner.clone(), route.clone(), log_tag_for_connect)
+                        .connect_over(inner, route.clone(), &log_tag_for_connect)
                         .await;
                     (route, result, started)
                 });
@@ -590,7 +592,7 @@ pub mod testutils {
             &self,
             (): (),
             _route: R,
-            _log_tag: Arc<str>,
+            _log_tag: &str,
         ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
             std::future::pending()
         }
@@ -931,7 +933,7 @@ mod test {
             &self,
             (): (),
             route: R,
-            _log_tag: Arc<str>,
+            _log_tag: &str,
         ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
             let (sender, receiver) = oneshot::channel();
             self.outgoing
@@ -965,7 +967,7 @@ mod test {
                 &resolver,
                 connector,
                 (),
-                "test".into(),
+                "test",
                 |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
             )
             .await
@@ -1057,7 +1059,7 @@ mod test {
             &resolver,
             connector,
             (),
-            "test".into(),
+            "test",
             |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
         )
         .await;
@@ -1131,7 +1133,7 @@ mod test {
             &resolver,
             connector,
             (),
-            "test".into(),
+            "test",
             |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
         )
         .await;
@@ -1183,7 +1185,7 @@ mod test {
                 &resolver,
                 connector,
                 (),
-                "test".into(),
+                "test",
                 |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
             )
             .await
@@ -1237,7 +1239,7 @@ mod test {
                 &resolver,
                 connector,
                 (),
-                "test".into(),
+                "test",
                 |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
             )
             .await

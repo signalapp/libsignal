@@ -6,7 +6,6 @@
 use std::fmt::Debug;
 use std::future::Future;
 use std::marker::PhantomData;
-use std::sync::Arc;
 
 use derive_where::derive_where;
 use futures_util::TryFutureExt as _;
@@ -58,7 +57,7 @@ where
         &self,
         over: Inner,
         route: DirectOrProxyRoute<DR, PR>,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         match route {
             DirectOrProxyRoute::Direct(d) => Either::Left(

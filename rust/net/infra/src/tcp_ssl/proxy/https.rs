@@ -7,7 +7,6 @@ use std::fmt::Display;
 use std::future::Future;
 use std::net::IpAddr;
 use std::num::NonZeroU16;
-use std::sync::Arc;
 use std::time::Duration;
 
 use bytes::Bytes;
@@ -60,7 +59,7 @@ impl Connector<HttpsProxyRoute<IpAddr>, ()> for super::StatelessProxied {
         &self,
         (): (),
         route: HttpsProxyRoute<IpAddr>,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let HttpsProxyRoute { fragment, inner } = route;
         async move {
@@ -68,16 +67,8 @@ impl Connector<HttpsProxyRoute<IpAddr>, ()> for super::StatelessProxied {
             let tcp_connector = StatelessTcpConnector::default();
             let inner = inner
                 .map_either(
-                    |tls| {
-                        tls_connector
-                            .connect(tls, log_tag.clone())
-                            .map_ok(Either::Left)
-                    },
-                    |tcp| {
-                        tcp_connector
-                            .connect(tcp, log_tag.clone())
-                            .map_ok(Either::Right)
-                    },
+                    |tls| tls_connector.connect(tls, log_tag).map_ok(Either::Left),
+                    |tcp| tcp_connector.connect(tcp, log_tag).map_ok(Either::Right),
                 )
                 .await?;
             let info = inner.transport_info();
@@ -423,7 +414,7 @@ mod test {
         };
 
         let mut client_stream = super::super::StatelessProxied
-            .connect(route, "test".into())
+            .connect(route, "test")
             .await
             .expect("can connect");
 
@@ -503,9 +494,7 @@ mod test {
             inner: Either::Right(route_to_proxy),
         };
 
-        let connect_result = super::super::StatelessProxied
-            .connect(route, "test".into())
-            .await;
+        let connect_result = super::super::StatelessProxied.connect(route, "test").await;
 
         assert_matches!(connect_result, Err(TransportConnectError::ProxyProtocol));
     }

@@ -86,12 +86,12 @@ impl FakeTransportConnector {
         self.connect_behavior.lock().unwrap().extend(items)
     }
 
-    fn connect_with_events(
+    fn connect_with_events<'a>(
         &self,
         over: FakeStream,
         target: FakeTransportTarget,
-        log_tag: Arc<str>,
-    ) -> impl Future<Output = Result<FakeStream, TransportConnectError>> + Send + '_ {
+        log_tag: &'a str,
+    ) -> impl Future<Output = Result<FakeStream, TransportConnectError>> + Send + use<'_, 'a> {
         let Self {
             server_stream_sender: _,
             connect_behavior,
@@ -140,7 +140,7 @@ where
         &self,
         (): (),
         route: UsePreconnect<TransportRoute>,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let Self {
             replaced,
@@ -168,7 +168,7 @@ impl Connector<TcpRoute<IpAddr>, FakeStream> for FakeTransportConnector {
         &self,
         client_stream: FakeStream,
         tcp: TcpRoute<IpAddr>,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let target = FakeTransportTarget::from(tcp.clone());
 
@@ -185,7 +185,7 @@ impl Connector<ConnectionProxyRoute<IpAddr>, FakeStream> for FakeTransportConnec
         &self,
         client_stream: FakeStream,
         proxy: ConnectionProxyRoute<IpAddr>,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let target = FakeTransportTarget::from_proxy_route(&proxy);
 
@@ -202,7 +202,7 @@ impl<S: AsyncDuplexStream + 'static> Connector<TlsRouteFragment, S> for FakeTran
         &self,
         inner: S,
         tls: TlsRouteFragment,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let target = FakeTransportTarget::Tls {
             sni: tls.sni.clone(),

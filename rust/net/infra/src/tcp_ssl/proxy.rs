@@ -4,7 +4,6 @@
 //
 
 use std::net::IpAddr;
-use std::sync::Arc;
 
 use futures_util::TryFutureExt;
 use tokio::net::TcpStream;
@@ -37,7 +36,7 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
         &self,
         (): (),
         route: ConnectionProxyRoute<IpAddr>,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> Result<Self::Connection, Self::Error> {
         match route {
             ConnectionProxyRoute::Tls { proxy } => {
@@ -51,7 +50,7 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
                     LONG_TCP_HANDSHAKE_THRESHOLD,
                     "Proxy-TCP",
                 )
-                .connect(inner, log_tag.clone())
+                .connect(inner, log_tag)
                 .await?;
                 LoggingConnector::new(
                     super::StatelessTls,
@@ -388,7 +387,7 @@ mod test {
         };
 
         let stream = super::StatelessProxied
-            .connect(route, "tls proxy test".into())
+            .connect(route, "tls proxy test")
             .await
             .expect("can connect");
 
@@ -405,7 +404,7 @@ mod test {
                     alpn: Some(Alpn::Http1_1),
                     min_protocol_version: None,
                 },
-                "tcp proxy test".into(),
+                "tcp proxy test",
             )
             .await
             .expect("can connect");
@@ -430,7 +429,7 @@ mod test {
         };
 
         let stream = super::StatelessProxied
-            .connect(route, "tcp proxy test".into())
+            .connect(route, "tcp proxy test")
             .await
             .expect("can connect");
 
@@ -447,7 +446,7 @@ mod test {
                     alpn: Some(Alpn::Http1_1),
                     min_protocol_version: None,
                 },
-                "tcp proxy test".into(),
+                "tcp proxy test",
             )
             .await
             .expect("can connect");

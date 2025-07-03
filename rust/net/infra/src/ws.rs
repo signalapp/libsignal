@@ -4,7 +4,6 @@
 //
 
 use std::fmt::{Debug, Display};
-use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{Sink, Stream, TryFutureExt};
@@ -120,7 +119,7 @@ where
         &self,
         inner: Inner,
         route: (WebSocketRouteFragment, HttpRouteFragment),
-        _log_tag: Arc<str>,
+        _log_tag: &str,
     ) -> impl std::future::Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let (
             WebSocketRouteFragment {
@@ -195,7 +194,7 @@ where
         &self,
         inner: Inner,
         route: (WebSocketRouteFragment, HttpRouteFragment),
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> impl std::future::Future<Output = Result<Self::Connection, Self::Error>> + Send {
         self.0.connect_over(inner, route, log_tag).map_ok(
             |StreamWithResponseHeaders {
@@ -323,7 +322,7 @@ pub mod testutil {
                     front_name: None,
                 },
             ),
-            "test".into(),
+            "test",
         );
         let server_future = tokio_tungstenite::accept_async(server);
         let (client_res, server_res) = tokio::join!(client_future, server_future);

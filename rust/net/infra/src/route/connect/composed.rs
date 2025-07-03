@@ -6,7 +6,6 @@
 use std::fmt::Debug;
 use std::future::Future;
 use std::marker::PhantomData;
-use std::sync::Arc;
 
 use derive_where::derive_where;
 
@@ -45,13 +44,13 @@ impl<O, I, E> ComposedConnector<O, I, E> {
         (self.outer_connector, self.inner_connector)
     }
 
-    pub fn connect_inner_then_outer<IR: Send, OR: Send, S: Send>(
+    pub fn connect_inner_then_outer<'a, IR: Send, OR: Send, S: Send>(
         &self,
         transport: S,
         inner_route: IR,
         outer_route: OR,
-        log_tag: Arc<str>,
-    ) -> impl Future<Output = Result<O::Connection, E>> + Send + use<'_, IR, OR, S, I, O, E>
+        log_tag: &'a str,
+    ) -> impl Future<Output = Result<O::Connection, E>> + Send + use<'_, 'a, IR, OR, S, I, O, E>
     where
         O: Connector<OR, I::Connection, Error: Into<E>> + Sync,
         I: Connector<IR, S, Error: Into<E>> + Sync,
@@ -63,7 +62,7 @@ impl<O, I, E> ComposedConnector<O, I, E> {
         } = self;
         async move {
             let inner_connected = inner_connector
-                .connect_over(transport, inner_route, log_tag.clone())
+                .connect_over(transport, inner_route, log_tag)
                 .await
                 .map_err(Into::into)?;
             outer_connector

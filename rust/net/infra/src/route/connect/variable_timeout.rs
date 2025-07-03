@@ -6,7 +6,6 @@
 use std::fmt::Debug;
 use std::future::Future;
 use std::marker::PhantomData;
-use std::sync::Arc;
 
 use derive_where::derive_where;
 use tokio::time::Duration;
@@ -47,13 +46,13 @@ impl<O, I, E> VariableTlsTimeoutConnector<O, I, E> {
         (self.outer_connector, self.inner_connector, self.min_timeout)
     }
 
-    pub fn connect_inner_then_outer_with_timeout<IR: Send, OR: Send, S: Send>(
+    pub fn connect_inner_then_outer_with_timeout<'a, IR: Send, OR: Send, S: Send>(
         &self,
         transport: S,
         inner_route: IR,
         outer_route: OR,
-        log_tag: Arc<str>,
-    ) -> impl Future<Output = Result<O::Connection, E>> + Send + use<'_, IR, OR, S, O, I, E>
+        log_tag: &'a str,
+    ) -> impl Future<Output = Result<O::Connection, E>> + Send + use<'_, 'a, IR, OR, S, O, I, E>
     where
         O: Connector<OR, I::Connection, Error: Into<E>> + Sync,
         I: Connector<IR, S, Error: Into<E>> + Sync,
@@ -68,7 +67,7 @@ impl<O, I, E> VariableTlsTimeoutConnector<O, I, E> {
         async move {
             let start = tokio::time::Instant::now();
             let inner_connected = inner_connector
-                .connect_over(transport, inner_route, log_tag.clone())
+                .connect_over(transport, inner_route, log_tag)
                 .await
                 .map_err(Into::into)?;
 
@@ -99,9 +98,7 @@ mod tests {
 
     const TEST_TRANSPORT: () = ();
     const TEST_ROUTE: () = ();
-    fn test_log_tag() -> Arc<str> {
-        Arc::from("test")
-    }
+    const LOG_TAG: &str = "test";
 
     #[tokio::test(start_paused = true)]
     async fn test_success() {
@@ -115,12 +112,7 @@ mod tests {
             VariableTlsTimeoutConnector::new(outer, inner, min_timeout);
 
         let result: Result<DummyConnection, _> = connector
-            .connect_inner_then_outer_with_timeout(
-                TEST_TRANSPORT,
-                TEST_ROUTE,
-                TEST_ROUTE,
-                test_log_tag(),
-            )
+            .connect_inner_then_outer_with_timeout(TEST_TRANSPORT, TEST_ROUTE, TEST_ROUTE, LOG_TAG)
             .await;
         assert_matches!(result, Ok(_), "Expected successful connection");
     }
@@ -137,12 +129,7 @@ mod tests {
             VariableTlsTimeoutConnector::new(outer, inner, min_timeout);
 
         let result = connector
-            .connect_inner_then_outer_with_timeout(
-                TEST_TRANSPORT,
-                TEST_ROUTE,
-                TEST_ROUTE,
-                test_log_tag(),
-            )
+            .connect_inner_then_outer_with_timeout(TEST_TRANSPORT, TEST_ROUTE, TEST_ROUTE, LOG_TAG)
             .await;
 
         let reason = assert_matches!(result, Err(TransportConnectError::SslFailedHandshake(reason)) => reason);
@@ -165,12 +152,7 @@ mod tests {
             VariableTlsTimeoutConnector::new(outer, inner, min_timeout);
 
         let result = connector
-            .connect_inner_then_outer_with_timeout(
-                TEST_TRANSPORT,
-                TEST_ROUTE,
-                TEST_ROUTE,
-                test_log_tag(),
-            )
+            .connect_inner_then_outer_with_timeout(TEST_TRANSPORT, TEST_ROUTE, TEST_ROUTE, LOG_TAG)
             .await;
 
         let reason = assert_matches!(result, Err(TransportConnectError::SslFailedHandshake(reason)) => reason);

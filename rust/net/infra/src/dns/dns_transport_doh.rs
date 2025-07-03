@@ -4,7 +4,6 @@
 //
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::sync::Arc;
 
 use bytes::Bytes;
 use const_str::ip_addr;
@@ -73,22 +72,19 @@ impl Connector<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>, ()> for DohTransportCo
         &self,
         _over: (),
         route: HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> Result<Self::Connection, Self::Error> {
         let connector = Http2Connector {
             inner: &self.transport_connector,
             max_response_size: MAX_RESPONSE_SIZE,
         };
-        let http_client = connector
-            .connect(route, log_tag.clone())
-            .await
-            .map_err(|e| {
-                log::error!(
-                    "[{log_tag}] Failed to create HTTP2 client: {}",
-                    &e as &dyn LogSafeDisplay
-                );
-                Error::TransportFailure
-            })?;
+        let http_client = connector.connect(route, log_tag).await.map_err(|e| {
+            log::error!(
+                "[{log_tag}] Failed to create HTTP2 client: {}",
+                &e as &dyn LogSafeDisplay
+            );
+            Error::TransportFailure
+        })?;
         Ok(DohTransport { http_client })
     }
 }

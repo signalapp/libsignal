@@ -5,7 +5,6 @@
 
 use std::future::Future;
 use std::net::IpAddr;
-use std::sync::Arc;
 use std::time::Duration;
 
 use boring_signal::ssl::{ConnectConfiguration, SslConnector, SslMethod, SslSignatureAlgorithm};
@@ -97,7 +96,7 @@ impl Connector<TcpRoute<IpAddr>, ()> for StatelessTcp {
         &self,
         (): (),
         route: TcpRoute<IpAddr>,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> {
         let TcpRoute { address, port } = route;
 
@@ -130,7 +129,7 @@ where
         &self,
         inner: Inner,
         fragment: TlsRouteFragment,
-        _log_tag: Arc<str>,
+        _log_tag: &str,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let TlsRouteFragment {
             root_certs,

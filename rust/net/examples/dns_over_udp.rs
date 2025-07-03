@@ -48,7 +48,7 @@ async fn main() {
         NoDelay,
         UdpTransportConnector,
         (),
-        "dns_over_https".into(),
+        "dns_over_https",
         |_| std::ops::ControlFlow::Continue::<std::convert::Infallible>(()),
     )
     .await

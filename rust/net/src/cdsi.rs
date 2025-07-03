@@ -977,7 +977,7 @@ mod test {
                 .serve_incoming(UnboundedReceiverStream::new(incoming_connections)),
         );
 
-        let connector = ConnectFn(|(), _route, _log_tag| {
+        let connector = ConnectFn(|(), _route| {
             let (local, remote) = tokio::io::duplex(1024);
             tx_connections
                 .send(Ok::<_, TransportConnectError>(local))

@@ -69,7 +69,7 @@ async fn main() {
         NoDelay,
         DohTransportConnector::default(),
         (),
-        "dns_over_https".into(),
+        "dns_over_https",
         |_| std::ops::ControlFlow::Continue::<std::convert::Infallible>(()),
     )
     .await

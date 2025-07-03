@@ -148,7 +148,7 @@ where
         &self,
         over: Inner,
         route: HttpsTlsRoute<T>,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> Result<Self::Connection, Self::Error> {
         let HttpsTlsRoute {
             fragment:
@@ -160,10 +160,7 @@ where
             inner: tls_target,
         } = route;
 
-        let ssl_stream = self
-            .inner
-            .connect_over(over, tls_target, log_tag.clone())
-            .await?;
+        let ssl_stream = self.inner.connect_over(over, tls_target, log_tag).await?;
         let info = ssl_stream.transport_info();
         let io = TokioIo::new(ssl_stream);
         let (sender, connection) = http2::handshake::<_, _, Full<Bytes>>(TokioExecutor::new(), io)
@@ -174,6 +171,7 @@ where
         // The task will complete once the connection is closed due to an error
         // or if all clients are dropped.
         let TransportInfo { ip_version, .. } = info;
+        let log_tag = log_tag.to_owned();
         tokio::spawn(async move {
             match connection.await {
                 Ok(_) => log::info!("[{log_tag}] HTTP2 connection [{ip_version}] closed"),
@@ -277,7 +275,7 @@ mod test {
             ConnectionOutcomes<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>,
         >,
         max_response_size: usize,
-        log_tag: &Arc<str>,
+        log_tag: &str,
     ) -> Result<AggregatingHttp2Client, HttpError> {
         let mut outcome_record_snapshot = outcome_record.read().await.clone();
         let tls_connector = crate::route::ComposedConnector::new(
@@ -293,7 +291,7 @@ mod test {
             &mut outcome_record_snapshot,
             connector,
             (),
-            log_tag.clone(),
+            log_tag,
             |e| match e {
                 HttpConnectError::Transport(t) => {
                     log::info!(
@@ -357,7 +355,7 @@ mod test {
             }],
             &outcome_record_for_testing(),
             MAX_RESPONSE_SIZE,
-            &"test".into(),
+            "test",
         )
         .await
         .expect("can connect");
@@ -434,7 +432,7 @@ mod test {
             }],
             &outcome_record_for_testing(),
             MAX_RESPONSE_SIZE,
-            &"test".into(),
+            "test",
         )
         .await
         .expect("can connect");

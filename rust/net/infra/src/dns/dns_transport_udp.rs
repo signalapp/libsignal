@@ -45,10 +45,10 @@ impl Connector<UdpRoute<IpAddr>, ()> for UdpTransportConnector {
         &self,
         _over: (),
         route: UdpRoute<IpAddr>,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> Result<Self::Connection, Self::Error> {
         let socket = StatelessUdpConnector
-            .connect(route, log_tag.clone())
+            .connect(route, log_tag)
             .await
             .map_err(|e| {
                 log::error!("[{log_tag}] Failed to create UDP socket: {}", e.kind());

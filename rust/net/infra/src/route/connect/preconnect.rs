@@ -119,7 +119,7 @@ where
         &self,
         _over: (),
         route: UsePreconnect<R>,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> Result<Self::Connection, Self::Error> {
         if route.should {
             let mut saved_guard = self.shared.saved.lock().expect("not poisoned");
@@ -188,7 +188,7 @@ mod test {
                 Connection = u32,
             > + '_,
     > {
-        let inner_connector = ConnectFn(|_over: (), route: i32, _log_tag: Arc<str>| {
+        let inner_connector = ConnectFn(|_over: (), route: i32| {
             number_of_times_called.fetch_add(1, atomic::Ordering::SeqCst);
             std::future::ready(u32::try_from(route).map_err(|_| "negative"))
         });
@@ -210,11 +210,8 @@ mod test {
 
         // Passthrough behavior when there's no saved connection.
         let connector = ConnectorFactory::<UsePreconnect<_>>::make(&factory);
-        assert_matches!(connector.connect(pre(1), "1".into()).await, Ok(1));
-        assert_matches!(
-            connector.connect(pre(-1), "-1".into()).await,
-            Err("negative")
-        );
+        assert_matches!(connector.connect(pre(1), "1").await, Ok(1));
+        assert_matches!(connector.connect(pre(-1), "-1").await, Err("negative"));
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 2);
     }
 
@@ -225,10 +222,10 @@ mod test {
 
         factory.save_preconnected(1, 10, Instant::now());
         let connector = ConnectorFactory::<UsePreconnect<_>>::make(&factory);
-        assert_matches!(connector.connect(pre(1), "1".into()).await, Ok(10));
+        assert_matches!(connector.connect(pre(1), "1").await, Ok(10));
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 0);
 
-        assert_matches!(connector.connect(pre(1), "1 again".into()).await, Ok(1));
+        assert_matches!(connector.connect(pre(1), "1 again").await, Ok(1));
         assert_eq!(
             number_of_times_called.load(atomic::Ordering::SeqCst),
             1,
@@ -237,7 +234,7 @@ mod test {
 
         factory.save_preconnected(2, 20, Instant::now());
         tokio::time::sleep(TIMEOUT).await;
-        assert_matches!(connector.connect(pre(2), "2".into()).await, Ok(2));
+        assert_matches!(connector.connect(pre(2), "2").await, Ok(2));
         assert_eq!(
             number_of_times_called.load(atomic::Ordering::SeqCst),
             2,
@@ -259,7 +256,7 @@ mod test {
                         should: false,
                         inner: 1
                     },
-                    "1".into()
+                    "1"
                 )
                 .await,
             Ok(1)
@@ -267,7 +264,7 @@ mod test {
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 1);
 
         // The preconnect should still be there.
-        assert_matches!(connector.connect(pre(1), "1".into()).await, Ok(10));
+        assert_matches!(connector.connect(pre(1), "1").await, Ok(10));
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 1);
     }
 
@@ -278,12 +275,12 @@ mod test {
 
         factory.save_preconnected(1, 10, Instant::now());
         let connector = ConnectorFactory::<i32>::make(&factory);
-        assert_matches!(connector.connect(1, "1".into()).await, Ok(1u32));
+        assert_matches!(connector.connect(1, "1").await, Ok(1u32));
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 1);
 
         // The preconnect should still be there.
         let connector = ConnectorFactory::<UsePreconnect<_>>::make(&factory);
-        assert_matches!(connector.connect(pre(1), "1".into()).await, Ok(10));
+        assert_matches!(connector.connect(pre(1), "1").await, Ok(10));
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 1);
     }
 
@@ -295,7 +292,7 @@ mod test {
         factory.save_preconnected(1, 10, Instant::now());
         factory.save_preconnected(2, 20, Instant::now());
         let connector = ConnectorFactory::<UsePreconnect<_>>::make(&factory);
-        assert_matches!(connector.connect(pre(1), "1".into()).await, Ok(1));
+        assert_matches!(connector.connect(pre(1), "1").await, Ok(1));
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 1);
     }
 
@@ -306,8 +303,8 @@ mod test {
 
         factory.save_preconnected(1, 10, Instant::now());
         let connector = ConnectorFactory::<UsePreconnect<_>>::make(&factory);
-        assert_matches!(connector.connect(pre(2), "2".into()).await, Ok(2));
-        assert_matches!(connector.connect(pre(1), "1".into()).await, Ok(1));
+        assert_matches!(connector.connect(pre(2), "2").await, Ok(2));
+        assert_matches!(connector.connect(pre(1), "1").await, Ok(1));
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 2);
     }
 
@@ -318,12 +315,9 @@ mod test {
 
         factory.save_preconnected(1, 10, Instant::now());
         let connector = ConnectorFactory::<UsePreconnect<_>>::make(&factory);
-        assert_matches!(
-            connector.connect(pre(-2), "-2".into()).await,
-            Err("negative")
-        );
+        assert_matches!(connector.connect(pre(-2), "-2").await, Err("negative"));
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 1);
-        assert_matches!(connector.connect(pre(1), "1".into()).await, Ok(10));
+        assert_matches!(connector.connect(pre(1), "1").await, Ok(10));
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 1);
     }
 }

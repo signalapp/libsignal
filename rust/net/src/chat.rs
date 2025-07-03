@@ -290,7 +290,7 @@ impl ChatConnection {
                 // is useful) while limiting us to one fully established connection
                 // at a time.
                 ThrottlingConnector::new(crate::infra::ws::Stateless, 1),
-                log_tag.clone(),
+                &log_tag,
             )
             .await?;
 
@@ -674,7 +674,7 @@ pub(crate) mod test {
         let client = std::sync::Mutex::new(Some(client));
         let connect_state = ConnectState::new_with_transport_connector(
             SUGGESTED_CONNECT_CONFIG,
-            ConnectFn(|_inner, _route, _log_tag| {
+            ConnectFn(|_inner, _route| {
                 std::future::ready(client.lock().expect("unpoisoned").take().ok_or(
                     WebSocketConnectError::Transport(TransportConnectError::TcpConnectionFailed),
                 ))
@@ -735,7 +735,7 @@ pub(crate) mod test {
     async fn preconnect_same_route() {
         let number_of_times_called = AtomicU8::new(0);
 
-        let inner_connector = ConnectFn(|_inner, _route, _log_tag| {
+        let inner_connector = ConnectFn(|_inner, _route| {
             // This acts like a successful TLS connection to a server that immediately closes
             // the connection before sending anything.
             let (client, _server) = tokio::io::duplex(1024);
@@ -791,7 +791,7 @@ pub(crate) mod test {
                     .cloned()
                     .map(|route| route.inner)
                     .collect_vec(),
-                "preconnect".into(),
+                "preconnect",
             )
             .await
             .expect("success");

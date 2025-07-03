@@ -129,7 +129,7 @@ async fn main() {
             async move {
                 tokio::time::sleep(START_NEXT_DELAY * i).await;
                 log::info!("connecting via: {route:?}");
-                connector.connect(route, "main".into()).await
+                connector.connect(route, "main").await
             }
         }));
         // needed to scope the borrow of `connector`

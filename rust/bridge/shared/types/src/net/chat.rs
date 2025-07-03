@@ -157,7 +157,7 @@ impl AuthenticatedChatConnection {
 
         log::info!("preconnecting chat");
         connection_resources
-            .preconnect_and_save(route_provider, "preconnect".into())
+            .preconnect_and_save(route_provider, "preconnect")
             .await?;
         Ok(())
     }

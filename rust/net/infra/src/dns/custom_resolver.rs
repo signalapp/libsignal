@@ -185,7 +185,7 @@ where
             &mut attempts_record_snapshot,
             connector,
             (),
-            "dns".into(),
+            "dns",
             |_e| std::ops::ControlFlow::Continue::<std::convert::Infallible>(()),
         )
         .await;
@@ -435,7 +435,7 @@ pub(crate) mod test {
             &self,
             _over: (),
             _route: IpAddr,
-            _log_tag: Arc<str>,
+            _log_tag: &str,
         ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
             std::future::ready(Err(self.0.clone()))
         }
@@ -485,7 +485,7 @@ pub(crate) mod test {
             &self,
             _over: (),
             _route: IpAddr,
-            _log_tag: Arc<str>,
+            _log_tag: &str,
         ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
             std::future::ready(Ok(self.clone()))
         }
@@ -844,7 +844,7 @@ pub(crate) mod test {
         let routes_tried = Arc::new(Mutex::new(HashSet::new()));
         let resolver = CustomDnsResolver::new(
             ips.to_vec(),
-            ConnectFn(|_over, route: IpAddr, _log_tag| {
+            ConnectFn(|_over, route: IpAddr| {
                 routes_tried.lock().expect("not poisoned").insert(route);
                 std::future::ready(Err::<TestDnsTransportFailingToConnect, _>(Error::Io(
                     std::io::ErrorKind::BrokenPipe,
@@ -875,7 +875,7 @@ pub(crate) mod test {
         let ips = [ip_addr!("3fff::100"), DNS_SERVER_IP];
         let resolver = CustomDnsResolver::new(
             ips.to_vec(),
-            ConnectFn(|_over, route: IpAddr, _log_tag| {
+            ConnectFn(|_over, route: IpAddr| {
                 *attempts_by_ip
                     .lock()
                     .expect("no panic")

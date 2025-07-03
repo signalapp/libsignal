@@ -261,7 +261,7 @@ impl<TC> ConnectionResources<'_, TC> {
         self,
         routes: impl RouteProvider<Route = UR>,
         ws_connector: WC,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> Result<(WC::Connection, RouteInfo), TimeoutOr<ConnectError<WebSocketServiceConnectError>>>
     where
         UR: ResolveHostnames<Resolved = WebSocketServiceRoute<Transport>>
@@ -331,7 +331,7 @@ impl<TC> ConnectionResources<'_, TC> {
             dns_resolver,
             connector,
             (),
-            log_tag.clone(),
+            log_tag,
             |error| {
                 let error = error.into_inner_or_else(|| {
                     WebSocketConnectError::Transport(TransportConnectError::ClientAbort)
@@ -432,7 +432,7 @@ impl<TC> ConnectionResources<'_, TC> {
         });
 
         let (ws, route_info) = self
-            .connect_ws(ws_routes, ws_connector, log_tag.clone())
+            .connect_ws(ws_routes, ws_connector, &log_tag)
             .await
             .map_err(|e| match e {
                 TimeoutOr::Other(
@@ -464,7 +464,7 @@ where
     pub async fn preconnect_and_save(
         self,
         routes: impl RouteProvider<Route = UnresolvedTransportRoute>,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> Result<(), TimeoutOr<ConnectError<TransportConnectError>>> {
         let Self {
             connect_state,
@@ -514,7 +514,7 @@ where
                 &self,
                 over: Inner,
                 route: R,
-                log_tag: Arc<str>,
+                log_tag: &str,
             ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
                 self.0
                     .connect_over(over, route.clone(), log_tag)
@@ -539,7 +539,7 @@ where
             dns_resolver,
             connector,
             (),
-            log_tag.clone(),
+            log_tag,
             |error| {
                 match error {
                     InterfaceChangedOr::InterfaceChanged => {
@@ -701,7 +701,7 @@ mod test {
         // generic parameters.
         let [failing_route, succeeding_route] = (*FAKE_WEBSOCKET_ROUTES).clone();
 
-        let ws_connector = ConnectFn(|(), route, _log_tag| {
+        let ws_connector = ConnectFn(|(), route| {
             let (ws, http) = &route;
             std::future::ready(
                 if (ws, http) == (&failing_route.fragment, &failing_route.inner.fragment) {
@@ -717,7 +717,7 @@ mod test {
         )]));
 
         let fake_transport_connector =
-            ConnectFn(move |(), _, _| std::future::ready(Ok::<_, WebSocketConnectError>(())));
+            ConnectFn(move |(), _| std::future::ready(Ok::<_, WebSocketConnectError>(())));
 
         let state = ConnectState {
             connect_timeout: Duration::MAX,
@@ -741,7 +741,7 @@ mod test {
             .connect_ws(
                 vec![failing_route.clone(), succeeding_route.clone()],
                 ws_connector,
-                "test".into(),
+                "test",
             )
             // This previously hung forever due to a deadlock bug.
             .await;
@@ -764,7 +764,7 @@ mod test {
             LookupResult::new(vec![ip_addr!(v4, "192.0.2.1")], vec![]),
         )]));
 
-        let always_hangs_connector = ConnectFn(|(), _, _| {
+        let always_hangs_connector = ConnectFn(|(), _| {
             std::future::pending::<Result<tokio::io::DuplexStream, WebSocketConnectError>>()
         });
 
@@ -793,7 +793,7 @@ mod test {
         let connect = connection_resources.connect_ws(
             vec![failing_route.clone(), succeeding_route.clone()],
             ws_connector,
-            "test".into(),
+            "test",
         );
 
         let start = Instant::now();
@@ -821,7 +821,7 @@ mod test {
             LookupResult::new(vec![ip_addr!(v4, "192.0.2.1")], vec![]),
         )]));
 
-        let client_abort_connector = ConnectFn(|(), _, _| {
+        let client_abort_connector = ConnectFn(|(), _| {
             std::future::ready(Err::<tokio::io::DuplexStream, _>(
                 TransportConnectError::ClientAbort,
             ))
@@ -852,7 +852,7 @@ mod test {
         let connect = connection_resources.connect_ws(
             vec![failing_route.clone(), succeeding_route.clone()],
             ws_connector,
-            "test".into(),
+            "test",
         );
 
         let result: Result<_, TimeoutOr<ConnectError<_>>> = connect.await;
@@ -876,7 +876,7 @@ mod test {
         let route = FAKE_WEBSOCKET_ROUTES[0].clone();
         let start = Instant::now();
 
-        let ws_connector = ConnectFn(|(), route, _log_tag| std::future::ready(Ok(route)));
+        let ws_connector = ConnectFn(|(), route| std::future::ready(Ok(route)));
         let bad_ip = ip_addr!(v4, "192.0.2.1");
         let good_ip = ip_addr!(v4, "192.0.2.2");
         let resolver = DnsResolver::new_from_static_map(HashMap::from([(
@@ -884,7 +884,7 @@ mod test {
             LookupResult::new(vec![bad_ip, good_ip], vec![]),
         )]));
 
-        let fake_transport_connector = ConnectFn(move |(), route: TransportRoute, _| {
+        let fake_transport_connector = ConnectFn(move |(), route: TransportRoute| {
             std::future::ready(if *route.immediate_target() == bad_ip {
                 Err(WebSocketConnectError::Timeout)
             } else {
@@ -932,7 +932,7 @@ mod test {
         let mut connect = std::pin::pin!(connection_resources.connect_ws(
             vec![route.clone()],
             ws_connector,
-            "test".into(),
+            "test",
         ));
 
         let network_change_delay = Duration::from_millis(500);
@@ -950,7 +950,7 @@ mod test {
 
     #[tokio::test(start_paused = true)]
     async fn preconnect_records_outcomes() {
-        let ws_connector = ConnectFn(|(), route, _log_tag| std::future::ready(Ok(route)));
+        let ws_connector = ConnectFn(|(), route| std::future::ready(Ok(route)));
         let resolver = DnsResolver::new_from_static_map(HashMap::from([(
             FAKE_HOST_NAME,
             LookupResult::new(vec![ip_addr!(v4, "192.0.2.1")], vec![]),
@@ -958,7 +958,7 @@ mod test {
 
         let attempts_by_host = Mutex::new(HashMap::<Host<_>, u32>::new());
         let make_transport_connector = PreconnectingFactory::new(
-            ConnectFn(|(), route: TransportRoute, _| {
+            ConnectFn(|(), route: TransportRoute| {
                 let host = route.fragment.sni;
                 let result = if host == Host::parse_as_ip_or_domain("fail") {
                     Err(TransportConnectError::TcpConnectionFailed)
@@ -1002,7 +1002,7 @@ mod test {
         connection_resources
             .preconnect_and_save(
                 vec![bad_transport_route.clone(), good_transport_route.clone()],
-                "preconnect".into(),
+                "preconnect",
             )
             .await
             .expect("success");
@@ -1043,7 +1043,7 @@ mod test {
                     })
                     .collect_vec(),
                 ws_connector,
-                "test".into(),
+                "test",
             )
             .await
             .expect("succeeded");

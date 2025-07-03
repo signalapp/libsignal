@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::sync::Arc;
 use std::time::Duration;
 
 use crate::errors::LogSafeDisplay;
@@ -50,7 +49,7 @@ where
         &self,
         over: Inner,
         route: R,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> Result<Self::Connection, Self::Error> {
         let Self {
             inner_connector,
@@ -61,8 +60,7 @@ where
         let start = tokio::time::Instant::now();
         let threshold = *slow_connection_threshold;
 
-        let mut connect =
-            std::pin::pin!(inner_connector.connect_over(over, route, log_tag.clone()));
+        let mut connect = std::pin::pin!(inner_connector.connect_over(over, route, log_tag));
 
         let result = match tokio::time::timeout(threshold, connect.as_mut()).await {
             Ok(result) => result,
@@ -112,9 +110,7 @@ mod tests {
 
     const TEST_TRANSPORT: () = ();
     const TEST_ROUTE: () = ();
-    fn test_log_tag() -> Arc<str> {
-        Arc::from("test")
-    }
+    const LOG_TAG: &str = "test";
 
     #[tokio::test(start_paused = true)]
     async fn test_fast_connection() {
@@ -125,7 +121,7 @@ mod tests {
         let connector = LoggingConnector::new(inner, threshold, "test");
 
         let result = connector
-            .connect_over(TEST_TRANSPORT, TEST_ROUTE, test_log_tag())
+            .connect_over(TEST_TRANSPORT, TEST_ROUTE, LOG_TAG)
             .await;
         assert_matches!(result, Ok(_), "Expected successful connection");
     }
@@ -139,7 +135,7 @@ mod tests {
         let connector = LoggingConnector::new(inner, threshold, "test");
 
         let result = connector
-            .connect_over(TEST_TRANSPORT, TEST_ROUTE, test_log_tag())
+            .connect_over(TEST_TRANSPORT, TEST_ROUTE, LOG_TAG)
             .await;
         assert_matches!(
             result,

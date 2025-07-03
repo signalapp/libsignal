@@ -64,7 +64,7 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
         &self,
         (): (),
         route: SocksRoute<IpAddr>,
-        log_tag: Arc<str>,
+        log_tag: &str,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let SocksRoute {
             protocol,
@@ -93,9 +93,7 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
                 }
             };
 
-            let stream = super::super::StatelessTcp
-                .connect(proxy, log_tag.clone())
-                .await?;
+            let stream = super::super::StatelessTcp.connect(proxy, log_tag).await?;
             log::info!("[{log_tag}] performing proxy handshake");
             log::debug!("[{log_tag}] performing proxy handshake with {target:?}");
             protocol
@@ -323,7 +321,7 @@ mod test {
                     username_password: proxy_credentials.clone(),
                 },
             },
-            "socks test".into(),
+            "socks test",
         ));
 
         // Use `select!` to drive both futures since they both need to make
@@ -432,7 +430,7 @@ mod test {
                     username_password: Some(proxy_credentials.clone()),
                 },
             },
-            "socks test".into(),
+            "socks test",
         ));
 
         let proxy_accept_and_negotiate = async {
