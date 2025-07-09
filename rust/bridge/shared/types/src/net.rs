@@ -253,7 +253,7 @@ mod test {
         let cm =
             ConnectionManager::new(Environment::Staging, "test-user-agent", Default::default());
         cm.set_invalid_proxy();
-        let err = UnauthenticatedChatConnection::connect(&cm, &[])
+        let err = UnauthenticatedChatConnection::connect(&cm, Default::default())
             .await
             .map(|_| ())
             .expect_err("should fail to connect");

@@ -137,6 +137,16 @@ export class RegistrationService {
     return this.sessionState;
   }
 
+  /**
+   * Request that a verification code be sent via the given transport method.
+   *
+   * With the websocket transport, this makes a POST request to
+   * `/v1/verification/session/{sessionId}/code`.
+   *
+   * The `languages` parameter should be a list of languages in Accept-Language syntax. Note that
+   * "quality weighting" can be left out; the Signal server will always consider the list to be in
+   * priority order.
+   */
   public async requestVerification({
     transport,
     client,

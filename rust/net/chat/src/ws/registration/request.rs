@@ -34,7 +34,7 @@ pub(super) struct RequestVerificationCode<'a> {
     pub(super) transport: VerificationTransport,
     pub(super) client: &'a str,
     #[serde(skip)]
-    pub(crate) language_list: Option<LanguageList>,
+    pub(crate) language_list: LanguageList,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
@@ -197,10 +197,7 @@ impl Request for RequestVerificationCode<'_> {
     where
         Self: 's,
     {
-        self.language_list
-            .as_ref()
-            .map(|l| l.as_header())
-            .into_iter()
+        self.language_list.clone().into_header().into_iter()
     }
 
     fn to_json_body(&self) -> Option<Box<[u8]>> {
@@ -532,7 +529,7 @@ mod test {
             request: RequestVerificationCode {
                 transport: VerificationTransport::Sms,
                 client: "client name",
-                language_list: Some(LanguageList(HeaderValue::from_static("tlh"))),
+                language_list: LanguageList::parse(&["tlh", "qya"]).expect("valid"),
             },
         }
         .into();
@@ -544,7 +541,10 @@ mod test {
                 path: PathAndQuery::from_static("/v1/verification/session/aaabbbcccdddeee/code"),
                 headers: HeaderMap::from_iter([
                     CONTENT_TYPE_JSON,
-                    ("accept-language".parse().unwrap(), "tlh".parse().unwrap())
+                    (
+                        "accept-language".parse().unwrap(),
+                        "tlh,qya".parse().unwrap()
+                    )
                 ]),
                 body: Some(
                     b"{\"transport\":\"sms\",\"client\":\"client name\"}"

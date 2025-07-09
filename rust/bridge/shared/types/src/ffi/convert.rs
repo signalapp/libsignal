@@ -399,19 +399,13 @@ impl<const LEN: usize> ResultTypeInfo for [u8; LEN] {
 impl SimpleArgTypeInfo for Box<[String]> {
     type ArgType = BorrowedBytestringArray;
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
-        let BorrowedBytestringArray { bytes, lengths } = foreign;
-        let (mut bytes, lengths) = unsafe { (bytes.as_slice()?, lengths.as_slice()?) };
-
-        let mut out = Vec::with_capacity(lengths.len());
-        for length in lengths {
-            let string;
-            (string, bytes) = bytes.split_at(*length);
-            let string = std::str::from_utf8(string)
-                .map_err(|_| SignalProtocolError::InvalidArgument("invalid UTF-8".to_string()))?;
-            out.push(string.to_owned())
-        }
-
-        Ok(out.into_boxed_slice())
+        unsafe { foreign.iter()? }
+            .map(|bytes| {
+                Ok(std::str::from_utf8(bytes)
+                    .map_err(|_| SignalProtocolError::InvalidArgument("invalid UTF-8".to_string()))?
+                    .to_owned())
+            })
+            .try_collect()
     }
 }
 
@@ -422,6 +416,24 @@ impl SimpleArgTypeInfo for Option<Box<[u8]>> {
         let OptionalBorrowedSliceOf { present, value } = foreign;
         let slice = present.then(|| unsafe { value.as_slice() }).transpose()?;
         Ok(slice.map(Box::from))
+    }
+}
+
+impl SimpleArgTypeInfo for libsignal_net::chat::LanguageList {
+    type ArgType = <Box<[String]> as SimpleArgTypeInfo>::ArgType;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let entries: Vec<&str> = unsafe { foreign.iter()? }
+            .map(|bytes| {
+                std::str::from_utf8(bytes)
+                    .map_err(|_| SignalProtocolError::InvalidArgument("invalid UTF-8".to_string()))
+            })
+            .try_collect()?;
+        Ok(
+            libsignal_net::chat::LanguageList::parse(&entries).map_err(|_| {
+                SignalProtocolError::InvalidArgument("invalid language in list".to_string())
+            })?,
+        )
     }
 }
 
@@ -1118,6 +1130,7 @@ macro_rules! ffi_arg_type {
     (&mut $typ:ty) => (ffi::MutPointer< $typ >);
     (Option<& $typ:ty>) => (ffi::ConstPointer< $typ >);
     (Box<[String]>) => (ffi::BorrowedBytestringArray);
+    (LanguageList) => (ffi::BorrowedBytestringArray);
     (Box<[u8]>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
     (Box<dyn $typ:ty >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
     (Option<Box<dyn $typ:ty> >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);

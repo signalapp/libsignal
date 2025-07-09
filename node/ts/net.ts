@@ -157,9 +157,9 @@ export class Net {
    * @param listener the listener for incoming events.
    * @param options additional options to pass through.
    * @param options.languages If provided, a list of languages in Accept-Language syntax to apply
-   * to all requests made on this connection.
+   * to all requests made on this connection. Note that "quality weighting" can be left out; the
+   * Signal server will always consider the list to be in priority order.
    * @param options.abortSignal an {@link AbortSignal} that will cancel the connection attempt.
-   * @returns the connected listener, if the connection succeeds.
    */
   public async connectUnauthenticatedChat(
     listener: ConnectionEventsListener,
@@ -177,6 +177,17 @@ export class Net {
 
   /**
    * Creates a new instance of {@link AuthenticatedChatConnection}.
+   *
+   * @param username the identifier for the local device
+   * @param password the password for the local device
+   * @param receiveStories whether or not the local user has Stories enabled, so the server can
+   * filter them out ahead of time
+   * @param listener the listener for incoming events.
+   * @param options additional options to pass through.
+   * @param options.languages If provided, a list of languages in Accept-Language syntax to apply
+   * to all requests made on this connection. Note that "quality weighting" can be left out; the
+   * Signal server will always consider the list to be in priority order.
+   * @param options.abortSignal an {@link AbortSignal} that will cancel the connection attempt.
    */
   public connectAuthenticatedChat(
     username: string,

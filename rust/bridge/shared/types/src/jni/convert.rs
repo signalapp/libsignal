@@ -353,6 +353,19 @@ impl<'a> SimpleArgTypeInfo<'a> for Box<[String]> {
     }
 }
 
+impl<'a> SimpleArgTypeInfo<'a> for libsignal_net::chat::LanguageList {
+    type ArgType = JObjectArray<'a>;
+
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        let entries = Box::<[String]>::convert_from(env, foreign)?;
+        libsignal_net::chat::LanguageList::parse(&entries)
+            .map_err(|_| BridgeLayerError::BadArgument("invalid language in list".to_owned()))
+    }
+}
+
 impl<'a> SimpleArgTypeInfo<'a> for Option<Box<[u8]>> {
     type ArgType = JByteArray<'a>;
 
@@ -1976,6 +1989,9 @@ macro_rules! jni_arg_type {
         ::jni::objects::JByteArray<'local>
     };
     (Box<[String]>) => {
+        ::jni::objects::JObjectArray<'local>
+    };
+    (LanguageList) => {
         ::jni::objects::JObjectArray<'local>
     };
     (Option<Box<[u8]> >) => {

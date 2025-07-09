@@ -153,6 +153,24 @@ impl<S: AsRef<[u8]>> FromIterator<S> for BytestringArray {
     }
 }
 
+impl BorrowedBytestringArray {
+    /// Allows iterating over the segments.
+    ///
+    /// SAFETY: Must be constructed correctly and refer to valid memory.
+    unsafe fn iter(&self) -> Result<impl ExactSizeIterator<Item = &[u8]>, NullPointerError> {
+        let BorrowedBytestringArray { bytes, lengths } = self;
+        let (mut bytes, lengths) = unsafe { (bytes.as_slice()?, lengths.as_slice()?) };
+
+        // Note that this iterator will support DoubleEndedIterator, but we must not expose that to
+        // callers, since we have a stateful iteration happening here.
+        Ok(lengths.iter().map(move |length| {
+            let next;
+            (next, bytes) = bytes.split_at(*length);
+            next
+        }))
+    }
+}
+
 #[repr(C)]
 pub struct OptionalBorrowedSliceOf<T> {
     pub present: bool,

@@ -153,12 +153,8 @@ where
         session_id: &SessionId,
         transport: VerificationTransport,
         client: &str,
-        languages: &[String],
+        language_list: LanguageList,
     ) -> Result<RegistrationOutput, Self::Error<RequestVerificationCodeError>> {
-        let language_list =
-            LanguageList::parse(languages).map_err(|_| RequestError::Unexpected {
-                log_safe: "invalid language list".to_owned(),
-            })?;
         submit_request(
             &self.0,
             RegistrationRequest {

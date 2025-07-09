@@ -210,9 +210,12 @@ public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistration
     }
 
     /// Request that a verification code be sent via the given transport method.
-    /// Submit the result of a push challenge.
-
+    ///
     /// With the websocket transport, this makes a POST request to `/v1/verification/session/{sessionId}/code`.
+    ///
+    /// The `languages` parameter should be a list of languages in Accept-Language syntax.
+    /// Note that "quality weighting" can be left out; the Signal server will always consider the
+    /// list to be in priority order.
     ///
     /// - Throws: On failure, throws one of
     ///   - ``RegistrationError/sendVerificationFailed(_:)`` if the code couldn't be sent.

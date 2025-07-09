@@ -389,6 +389,16 @@ impl SimpleArgTypeInfo for Box<[String]> {
     }
 }
 
+impl SimpleArgTypeInfo for libsignal_net::chat::LanguageList {
+    type ArgType = JsArray;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let entries = Box::<[String]>::convert_from(cx, foreign)?;
+        libsignal_net::chat::LanguageList::parse(&entries)
+            .or_else(|_| cx.throw_error("invalid language in list"))
+    }
+}
+
 impl SimpleArgTypeInfo for libsignal_net_chat::api::registration::CreateSession {
     type ArgType = JsObject;
 

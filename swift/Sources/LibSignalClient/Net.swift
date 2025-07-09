@@ -261,7 +261,8 @@ public class Net {
     ///   - password: The password to provide to the server.
     ///   - receiveStories: Indicates to the server whether it should send story updates on this connection.
     ///   - languages: If provided, a list of languages in Accept-Language syntax to apply to all
-    ///     requests made on this connection.
+    ///     requests made on this connection. Note that "quality weighting" can be left out;
+    ///     the Signal server will always consider the list to be in priority order.
     ///
     /// - Throws: ``SignalError/appExpired(_:)`` if the current app version is too old (as judged by
     ///   the server).
@@ -300,7 +301,8 @@ public class Net {
     ///
     /// - Parameters:
     ///   - languages: If provided, a list of languages in Accept-Language syntax to apply to all
-    ///     requests made on this connection.
+    ///     requests made on this connection. Note that "quality weighting" can be left out;
+    ///     the Signal server will always consider the list to be in priority order.
     ///
     /// - Throws: ``SignalError/appExpired(_:)`` if the current app version is too old (as judged by
     ///   the server).

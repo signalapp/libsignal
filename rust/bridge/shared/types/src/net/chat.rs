@@ -80,18 +80,12 @@ assert_impl_all!(MaybeChatConnection: Send, Sync);
 impl UnauthenticatedChatConnection {
     pub async fn connect(
         connection_manager: &ConnectionManager,
-        languages: &[String],
+        languages: LanguageList,
     ) -> Result<Self, ConnectError> {
         let inner = establish_chat_connection(
             "unauthenticated",
             connection_manager,
-            Some(
-                UnauthenticatedChatHeaders {
-                    languages: LanguageList::parse(languages)
-                        .map_err(|_| ConnectError::InvalidConnectionConfiguration)?,
-                }
-                .into(),
-            ),
+            Some(UnauthenticatedChatHeaders { languages }.into()),
         )
         .await?;
         Ok(Self {
@@ -109,7 +103,7 @@ impl AuthenticatedChatConnection {
         connection_manager: &ConnectionManager,
         auth: Auth,
         receive_stories: bool,
-        languages: &[String],
+        languages: LanguageList,
     ) -> Result<Self, ConnectError> {
         let inner = establish_chat_connection(
             "authenticated",
@@ -118,8 +112,7 @@ impl AuthenticatedChatConnection {
                 chat::AuthenticatedChatHeaders {
                     auth,
                     receive_stories: receive_stories.into(),
-                    languages: LanguageList::parse(languages)
-                        .map_err(|_| ConnectError::InvalidConnectionConfiguration)?,
+                    languages,
                 }
                 .into(),
             ),

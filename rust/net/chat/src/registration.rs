@@ -6,7 +6,7 @@
 use std::convert::Infallible;
 use std::panic::UnwindSafe;
 
-use libsignal_net::chat::{Request as ChatRequest, Response as ChatResponse};
+use libsignal_net::chat::{LanguageList, Request as ChatRequest, Response as ChatResponse};
 use static_assertions::assert_impl_all;
 
 use crate::api::registration::*;
@@ -153,7 +153,7 @@ impl<'c> RegistrationService<'c> {
         &mut self,
         transport: VerificationTransport,
         client: &str,
-        languages: &[String],
+        languages: LanguageList,
     ) -> Result<(), RequestError<RequestVerificationCodeError>> {
         let Self {
             session_id,

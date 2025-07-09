@@ -12,6 +12,7 @@ use libsignal_bridge_types::net::registration::{
 };
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::*;
+use libsignal_net::chat::LanguageList;
 use libsignal_net_chat::api::registration::*;
 use libsignal_net_chat::api::ChallengeOption;
 use libsignal_net_chat::registration::RequestError;
@@ -85,13 +86,13 @@ async fn RegistrationService_RequestVerificationCode(
     service: &RegistrationService,
     transport: AsType<VerificationTransport, String>,
     client: String,
-    languages: Box<[String]>,
+    languages: LanguageList,
 ) -> Result<(), RequestError<RequestVerificationCodeError>> {
     service
         .0
         .lock()
         .await
-        .request_verification_code(transport.into_inner(), &client, &languages)
+        .request_verification_code(transport.into_inner(), &client, languages)
         .await
 }
 

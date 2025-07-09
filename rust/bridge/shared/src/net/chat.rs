@@ -12,7 +12,7 @@ use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_net::auth::Auth;
-use libsignal_net::chat::{self, ConnectError, Response as ChatResponse, SendError};
+use libsignal_net::chat::{self, ConnectError, LanguageList, Response as ChatResponse, SendError};
 
 use crate::support::*;
 use crate::*;
@@ -74,9 +74,9 @@ fn ChatConnectionInfo_description(connection_info: &ChatConnectionInfo) -> Strin
 #[bridge_io(TokioAsyncContext)]
 async fn UnauthenticatedChatConnection_connect(
     connection_manager: &ConnectionManager,
-    languages: Box<[String]>,
+    languages: LanguageList,
 ) -> Result<UnauthenticatedChatConnection, ConnectError> {
-    UnauthenticatedChatConnection::connect(connection_manager, &languages).await
+    UnauthenticatedChatConnection::connect(connection_manager, languages).await
 }
 
 #[bridge_fn]
@@ -127,13 +127,13 @@ async fn AuthenticatedChatConnection_connect(
     username: String,
     password: String,
     receive_stories: bool,
-    languages: Box<[String]>,
+    languages: LanguageList,
 ) -> Result<AuthenticatedChatConnection, ConnectError> {
     AuthenticatedChatConnection::connect(
         connection_manager,
         Auth { username, password },
         receive_stories,
-        &languages,
+        languages,
     )
     .await
 }

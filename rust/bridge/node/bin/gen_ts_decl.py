@@ -82,6 +82,7 @@ def translate_to_ts(typ: str) -> str:
         "E164": "string",
         "ServiceIdSequence<'_>": "Uint8Array",
         "PathAndQuery": "string",
+        "LanguageList": "string[]",
     }
 
     if typ in type_map:
