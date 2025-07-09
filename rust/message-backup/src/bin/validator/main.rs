@@ -168,7 +168,7 @@ mod test {
             print: false,
             purpose: Purpose::RemoteBackup,
             key_args: KeyArgs {
-                derive_key: DeriveKey { account_entropy: None, aci: None },
+                derive_key: DeriveKey { account_entropy: None, aci: None, forward_secrecy_token: None },
                 key_parts: KeyParts { hmac_key: None, aes_key: None }
             },
         }) => file);
@@ -184,6 +184,8 @@ mod test {
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "--aci",
             "55555555-5555-5555-5555-555555555555",
+            "--forward-secrecy-token",
+            "abababababababababababababababababababababababababababababababab",
         ];
 
         let (file, derive_key) = assert_matches!(Cli::try_parse_from(INPUT), Ok(Cli {
@@ -201,7 +203,8 @@ mod test {
             derive_key,
             DeriveKey {
                 account_entropy: Some(std::str::from_utf8(&[b'a'; 64]).expect("ascii").to_owned()),
-                aci: Some(Aci::from_uuid_bytes([0x55; 16]))
+                aci: Some(Aci::from_uuid_bytes([0x55; 16])),
+                forward_secrecy_token: Some([0xab; 32]),
             }
         );
     }
@@ -223,7 +226,7 @@ mod test {
             print: false,
             purpose: Purpose::RemoteBackup,
             key_args: KeyArgs {
-                derive_key: DeriveKey { account_entropy: None, aci: None},
+                derive_key: DeriveKey { account_entropy: None, aci: None, forward_secrecy_token: None },
                 key_parts,
             }
         }) => (file, key_parts));

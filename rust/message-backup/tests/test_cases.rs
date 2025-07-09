@@ -10,7 +10,7 @@ use assert_matches::assert_matches;
 use dir_test::{dir_test, Fixture};
 use futures::io::Cursor;
 use futures::AsyncRead;
-use libsignal_account_keys::BackupKey;
+use libsignal_account_keys::{BackupForwardSecrecyToken, BackupKey};
 use libsignal_core::Aci;
 use libsignal_message_backup::backup::Purpose;
 use libsignal_message_backup::frame::{FileReaderFactory, VerifyHmac};
@@ -22,6 +22,8 @@ const BACKUP_PURPOSE: Purpose = Purpose::RemoteBackup;
 const ACI: Aci = Aci::from_uuid_bytes([0x11; 16]);
 const RAW_ACCOUNT_ENTROPY_POOL: &str =
     "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm";
+const DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN: BackupForwardSecrecyToken =
+    BackupForwardSecrecyToken([0xAB; 32]);
 const IV: [u8; 16] = [b'I'; 16];
 
 #[dir_test(
@@ -132,7 +134,11 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
     let backup_key = BackupKey::derive_from_account_entropy_pool(
         &RAW_ACCOUNT_ENTROPY_POOL.parse().expect("valid"),
     );
-    let key = MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&ACI));
+    let key = MessageBackupKey::derive(
+        &backup_key,
+        &backup_key.derive_backup_id(&ACI),
+        Some(&DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN),
+    );
     println!("hmac key: {}", hex::encode(key.hmac_key));
     println!("aes key: {}", hex::encode(key.aes_key));
 
@@ -150,6 +156,8 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
             &ACI.service_id_string(),
             "--account-entropy",
             RAW_ACCOUNT_ENTROPY_POOL,
+            "--forward-secrecy-token",
+            &hex::encode(DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN.0),
             "--iv",
             &hex::encode(IV),
             "-",
@@ -185,7 +193,11 @@ fn is_valid_encrypted_proto(input: Fixture<PathBuf>) {
     let backup_key = BackupKey::derive_from_account_entropy_pool(
         &RAW_ACCOUNT_ENTROPY_POOL.parse().expect("valid"),
     );
-    let key = MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&ACI));
+    let key = MessageBackupKey::derive(
+        &backup_key,
+        &backup_key.derive_backup_id(&ACI),
+        Some(&DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN),
+    );
     println!("hmac key: {}", hex::encode(key.hmac_key));
     println!("aes key: {}", hex::encode(key.aes_key));
 
@@ -206,6 +218,8 @@ fn is_valid_encrypted_proto(input: Fixture<PathBuf>) {
             &ACI.service_id_string(),
             "--account-entropy",
             RAW_ACCOUNT_ENTROPY_POOL,
+            "--forward-secrecy-token",
+            &hex::encode(DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN.0),
             "--purpose",
             BACKUP_PURPOSE.into(),
             path.to_str().unwrap(),

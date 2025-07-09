@@ -141,6 +141,21 @@ impl BackupId {
     pub const LEN: usize = 16;
 }
 
+/// An additional token stored in a secure enclave to provide forward secrecy
+/// for backups.
+#[derive(Debug, Clone, Copy, PartialDefault)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(transparent)
+)]
+#[cfg_attr(test, derive(Eq, PartialEq))]
+pub struct BackupForwardSecrecyToken(pub [u8; BackupForwardSecrecyToken::LEN]);
+
+impl BackupForwardSecrecyToken {
+    pub const LEN: usize = 32;
+}
+
 #[cfg(test)]
 pub(crate) mod test {
     use const_str::hex;

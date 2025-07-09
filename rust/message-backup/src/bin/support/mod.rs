@@ -11,7 +11,7 @@ use std::io::Read as _;
 use std::str::FromStr as _;
 
 use clap::Args;
-use libsignal_account_keys::{AccountEntropyPool, BackupKey};
+use libsignal_account_keys::{AccountEntropyPool, BackupForwardSecrecyToken, BackupKey};
 use libsignal_core::Aci;
 use libsignal_message_backup::args::{parse_aci, parse_hex_bytes};
 use libsignal_message_backup::frame::{CursorFactory, FileReaderFactory, ReaderFactory};
@@ -22,6 +22,8 @@ use mediasan_common::SeekSkipAdapter;
 const DEFAULT_ACI: Aci = Aci::from_uuid_bytes([0x11; 16]);
 const DEFAULT_ACCOUNT_ENTROPY: &str =
     "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm";
+const DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN: BackupForwardSecrecyToken =
+    BackupForwardSecrecyToken([0xAB; 32]);
 
 #[derive(Debug, Args, PartialEq)]
 pub struct KeyArgs {
@@ -42,6 +44,9 @@ pub struct DeriveKey {
     /// ACI for the backup creator
     #[arg(long, value_parser=parse_aci)]
     pub aci: Option<Aci>,
+    /// Backup forward secrecy token, used to derive the message backup key
+    #[arg(long, value_parser=parse_hex_bytes::<32>)]
+    pub forward_secrecy_token: Option<[u8; 32]>,
 }
 
 #[derive(Debug, Args, PartialEq)]
@@ -66,8 +71,9 @@ impl KeyArgs {
             let DeriveKey {
                 account_entropy,
                 aci,
+                forward_secrecy_token,
             } = derive_key;
-            aci.map(|aci| (aci, account_entropy))
+            aci.map(|aci| (aci, account_entropy, forward_secrecy_token))
         };
         let key_parts = {
             let KeyParts { hmac_key, aes_key } = key_parts;
@@ -77,15 +83,16 @@ impl KeyArgs {
         match (derive_key, key_parts) {
             (None, None) => None,
             (None, Some((hmac_key, aes_key))) => Some(MessageBackupKey { aes_key, hmac_key }),
-            (Some((_aci, None)), None) => {
+            (Some((_aci, None, _)), None) => {
                 panic!("ACI provided, but no account-entropy")
             }
-            (Some((aci, Some(account_entropy))), None) => Some({
+            (Some((aci, Some(account_entropy), forward_secrecy_token)), None) => Some({
                 let account_entropy =
                     AccountEntropyPool::from_str(&account_entropy).expect("valid account-entropy");
                 let backup_key = BackupKey::derive_from_account_entropy_pool(&account_entropy);
                 let backup_id = backup_key.derive_backup_id(&aci);
-                MessageBackupKey::derive(&backup_key, &backup_id)
+                let forward_secrecy_token = forward_secrecy_token.map(BackupForwardSecrecyToken);
+                MessageBackupKey::derive(&backup_key, &backup_id, forward_secrecy_token.as_ref())
             }),
             (Some(_), Some(_)) => unreachable!("disallowed by clap arg parser"),
         }
@@ -97,7 +104,11 @@ impl KeyArgs {
             let account_entropy =
                 AccountEntropyPool::from_str(DEFAULT_ACCOUNT_ENTROPY).expect("valid");
             let backup_key = BackupKey::derive_from_account_entropy_pool(&account_entropy);
-            MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&DEFAULT_ACI))
+            MessageBackupKey::derive(
+                &backup_key,
+                &backup_key.derive_backup_id(&DEFAULT_ACI),
+                Some(&DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN),
+            )
         })
     }
 }

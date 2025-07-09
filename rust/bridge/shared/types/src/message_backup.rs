@@ -18,7 +18,7 @@ impl MessageBackupKey {
     pub fn from_account_entropy_pool(account_entropy: &AccountEntropyPool, aci: Aci) -> Self {
         let backup_key = BackupKey::derive_from_account_entropy_pool(account_entropy);
         let backup_id = backup_key.derive_backup_id(&aci);
-        Self(MessageBackupKeyInner::derive(&backup_key, &backup_id))
+        Self(MessageBackupKeyInner::derive(&backup_key, &backup_id, None))
     }
 
     /// Used when reading from a local backup, where we might not have the ACI.
@@ -33,7 +33,7 @@ impl MessageBackupKey {
         // The explicit type forces the latest version of the key derivation scheme.
         let backup_key: BackupKey = BackupKey(*backup_key);
         let backup_id = BackupId(*backup_id);
-        Self(MessageBackupKeyInner::derive(&backup_key, &backup_id))
+        Self(MessageBackupKeyInner::derive(&backup_key, &backup_id, None))
     }
 
     pub fn from_parts(
