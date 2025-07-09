@@ -14,7 +14,7 @@ use libsignal_net_infra::EnableDomainFronting;
 
 use crate::auth::Auth;
 use crate::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
-use crate::enclave::{self, EnclaveEndpoint, NewHandshake, Svr3Flavor};
+use crate::enclave::{self, EnclaveEndpoint, NewHandshake, SvrBFlavor};
 use crate::svr::SvrConnection;
 
 const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
@@ -23,7 +23,7 @@ const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::C
     remote_idle_disconnect_timeout: Duration::from_secs(30),
 };
 
-/// This trait helps create direct SVR3 connections for various combinations of
+/// This trait helps create direct SVRB connections for various combinations of
 /// enclaves kinds.
 #[async_trait]
 pub trait DirectConnect {
@@ -35,7 +35,7 @@ pub trait DirectConnect {
 #[async_trait]
 impl<A> DirectConnect for EnclaveEndpoint<'static, A>
 where
-    A: Svr3Flavor + NewHandshake + Sized + Send,
+    A: SvrBFlavor + NewHandshake + Sized + Send,
 {
     type ConnectionResults = Result<SvrConnection<A>, enclave::Error>;
 
@@ -50,7 +50,7 @@ async fn connect_one<Enclave>(
     network_change_event: &NetworkChangeEvent,
 ) -> Result<SvrConnection<Enclave>, enclave::Error>
 where
-    Enclave: Svr3Flavor + NewHandshake + Sized,
+    Enclave: SvrBFlavor + NewHandshake + Sized,
 {
     let confirmation_header_name = endpoint
         .domain_config

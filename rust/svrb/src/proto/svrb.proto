@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-package svr4.client;
+package svrb.client;
 option optimize_for = LITE_RUNTIME;
 
 // Client protocol for SVR4.

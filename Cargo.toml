@@ -62,7 +62,7 @@ libsignal-message-backup = { path = "rust/message-backup" }
 libsignal-net = { path = "rust/net" }
 libsignal-net-chat = { path = "rust/net/chat" }
 libsignal-protocol = { path = "rust/protocol" }
-libsignal-svr3 = { path = "rust/svr3" }
+libsignal-svrb = { path = "rust/svrb" }
 poksho = { path = "rust/poksho" }
 signal-crypto = { path = "rust/crypto" }
 signal-media = { path = "rust/media" }

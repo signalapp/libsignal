@@ -4,7 +4,7 @@
 
 use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_net_infra::ws2::attested::AttestedConnectionError;
-use libsignal_svr3::{Backup4, Secret};
+use libsignal_svrb::{Backup4, Secret};
 use thiserror::Error;
 
 mod ppss_ops;
@@ -17,12 +17,12 @@ pub mod direct;
 
 use crate::ws::WebSocketServiceConnectError;
 
-/// SVR3-specific error type
+/// SVRB-specific error type
 ///
 /// In its essence it is simply a union of two other error types:
-/// - libsignal_svr3::Error for the errors originating in the PPSS implementation. Most of them are
+/// - libsignal_svrb::Error for the errors originating in the PPSS implementation. Most of them are
 ///   unlikely due to the way higher level APIs invoke the lower-level primitives from
-///   libsignal_svr3.
+///   libsignal_svrb.
 /// - libsignal_net::svr::Error for network related errors.
 #[derive(Debug, Error, displaydoc::Display)]
 #[ignore_extra_doc_attributes]
@@ -35,8 +35,8 @@ pub enum Error {
     Protocol(String),
     /// Enclave attestation failed: {0}
     AttestationError(attest::enclave::Error),
-    /// SVR3 request failed with status {0}
-    RequestFailed(libsignal_svr3::ErrorStatus),
+    /// SVRB request failed with status {0}
+    RequestFailed(libsignal_svrb::ErrorStatus),
     /// Failure to restore data. {0} tries remaining.
     ///
     /// This could be caused by an invalid password or share set.
@@ -56,13 +56,13 @@ impl From<attest::enclave::Error> for Error {
     }
 }
 
-impl From<libsignal_svr3::Error> for Error {
-    fn from(err: libsignal_svr3::Error) -> Self {
-        use libsignal_svr3::Error as LogicError;
+impl From<libsignal_svrb::Error> for Error {
+    fn from(err: libsignal_svrb::Error) -> Self {
+        use libsignal_svrb::Error as LogicError;
         match err {
             LogicError::RestoreFailed(tries_remaining) => Self::RestoreFailed(tries_remaining),
-            LogicError::BadResponseStatus(libsignal_svr3::ErrorStatus::Missing)
-            | LogicError::BadResponseStatus4(libsignal_svr3::V4Status::Missing) => {
+            LogicError::BadResponseStatus(libsignal_svrb::ErrorStatus::Missing)
+            | LogicError::BadResponseStatus4(libsignal_svrb::V4Status::Missing) => {
                 Self::DataMissing
             }
             LogicError::BadData
@@ -94,7 +94,7 @@ impl From<AttestedConnectionError> for Error {
     }
 }
 
-/// Attempt a restore from a pair of SVR3 instances.
+/// Attempt a restore from a pair of SVRB instances.
 ///
 /// The function is meant to be used in the registration flow, when the client
 /// app does not yet know whether it is supposed to be trusting one set of enclaves
@@ -129,11 +129,11 @@ pub mod test_support {
 
     use crate::auth::Auth;
     use crate::enclave::PpssSetup;
-    use crate::env::Svr3Env;
-    use crate::svr3::direct::DirectConnect as _;
+    use crate::env::SvrBEnv;
+    use crate::svrb::direct::DirectConnect as _;
 
-    impl Svr3Env<'static> {
-        /// Simplest way to connect to an SVR3 Environment in integration tests, command
+    impl SvrBEnv<'static> {
+        /// Simplest way to connect to an SVRB Environment in integration tests, command
         /// line tools, and examples.
         pub async fn connect_directly(
             &self,
@@ -149,22 +149,22 @@ pub mod test_support {
 mod test {
     use assert_matches::assert_matches;
     use async_trait::async_trait;
-    use libsignal_svr3::{Backup4, Secret};
+    use libsignal_svrb::{Backup4, Secret};
 
     use super::*;
 
-    struct TestSvr3Client {
-        prepare_backup_fn: fn() -> Backup4,
-        backup_fn: fn() -> Result<(), Error>,
+    struct TestSvrBClient {
+        prepare_fn: fn() -> Backup4,
+        finalize_fn: fn() -> Result<(), Error>,
         restore_fn: fn() -> Result<Secret, Error>,
         remove_fn: fn() -> Result<(), Error>,
     }
 
-    impl Default for TestSvr3Client {
+    impl Default for TestSvrBClient {
         fn default() -> Self {
             Self {
-                prepare_backup_fn: || panic!("Unexpected call to prepare_backup_fn"),
-                backup_fn: || panic!("Unexpected call to backup"),
+                prepare_fn: || panic!("Unexpected call to prepare_fn"),
+                finalize_fn: || panic!("Unexpected call to backup"),
                 restore_fn: || panic!("Unexpected call to restore"),
                 remove_fn: || panic!("Unexpected call to remove"),
             }
@@ -172,31 +172,31 @@ mod test {
     }
 
     #[async_trait]
-    impl Backup for TestSvr3Client {
-        fn prepare_backup(&self, _password: &str) -> Backup4 {
-            (self.prepare_backup_fn)()
+    impl Backup for TestSvrBClient {
+        fn prepare(&self, _password: &str) -> Backup4 {
+            (self.prepare_fn)()
         }
-        async fn backup(&self, _b4: &Backup4) -> Result<(), Error> {
-            (self.backup_fn)()
+        async fn finalize(&self, _b4: &Backup4) -> Result<(), Error> {
+            (self.finalize_fn)()
         }
     }
 
     #[async_trait]
-    impl Remove for TestSvr3Client {
+    impl Remove for TestSvrBClient {
         async fn remove(&self) -> Result<(), Error> {
             (self.remove_fn)()
         }
     }
 
     #[async_trait]
-    impl Restore for TestSvr3Client {
+    impl Restore for TestSvrBClient {
         async fn restore(&self, _password: &str) -> Result<Secret, Error> {
             (self.restore_fn)()
         }
     }
 
     #[async_trait]
-    impl Query for TestSvr3Client {
+    impl Query for TestSvrBClient {
         async fn query(&self) -> Result<u32, Error> {
             unreachable!()
         }
@@ -204,13 +204,13 @@ mod test {
 
     #[tokio::test]
     async fn restore_with_fallback_primary_success() {
-        let primary = TestSvr3Client {
+        let primary = TestSvrBClient {
             restore_fn: || Ok(Secret::default()),
-            ..TestSvr3Client::default()
+            ..TestSvrBClient::default()
         };
-        let fallback = TestSvr3Client {
+        let fallback = TestSvrBClient {
             restore_fn: || panic!("Must not be called"),
-            ..TestSvr3Client::default()
+            ..TestSvrBClient::default()
         };
 
         let result = restore_with_fallback((&primary, &fallback), "").await;
@@ -219,13 +219,13 @@ mod test {
 
     #[tokio::test]
     async fn restore_with_fallback_primary_fatal_error() {
-        let primary = TestSvr3Client {
+        let primary = TestSvrBClient {
             restore_fn: || Err(Error::ConnectionTimedOut),
-            ..TestSvr3Client::default()
+            ..TestSvrBClient::default()
         };
-        let fallback = TestSvr3Client {
+        let fallback = TestSvrBClient {
             restore_fn: || panic!("Must not be called"),
-            ..TestSvr3Client::default()
+            ..TestSvrBClient::default()
         };
 
         let result = restore_with_fallback((&primary, &fallback), "").await;
@@ -234,13 +234,13 @@ mod test {
 
     #[tokio::test]
     async fn restore_with_fallback_fallback_error() {
-        let primary = TestSvr3Client {
+        let primary = TestSvrBClient {
             restore_fn: || Err(Error::DataMissing),
-            ..TestSvr3Client::default()
+            ..TestSvrBClient::default()
         };
-        let fallback = TestSvr3Client {
+        let fallback = TestSvrBClient {
             restore_fn: || Err(Error::RestoreFailed(31415)),
-            ..TestSvr3Client::default()
+            ..TestSvrBClient::default()
         };
         let result = restore_with_fallback((&primary, &fallback), "").await;
         assert_matches!(result, Err(Error::RestoreFailed(31415)));
@@ -248,13 +248,13 @@ mod test {
 
     #[tokio::test]
     async fn restore_with_fallback_fallback_success() {
-        let primary = TestSvr3Client {
+        let primary = TestSvrBClient {
             restore_fn: || Err(Error::DataMissing),
-            ..TestSvr3Client::default()
+            ..TestSvrBClient::default()
         };
-        let fallback = TestSvr3Client {
+        let fallback = TestSvrBClient {
             restore_fn: || Ok(Secret::default()),
-            ..TestSvr3Client::default()
+            ..TestSvrBClient::default()
         };
         let result = restore_with_fallback((&primary, &fallback), "").await;
         assert_matches!(result, Ok(output4) => assert_eq!(output4, Secret::default()));

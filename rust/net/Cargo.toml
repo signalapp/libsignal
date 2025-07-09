@@ -19,7 +19,7 @@ attest = { workspace = true }
 libsignal-core = { workspace = true }
 libsignal-keytrans = { workspace = true }
 libsignal-protocol = { workspace = true }
-libsignal-svr3 = { workspace = true }
+libsignal-svrb = { workspace = true }
 zkgroup = { workspace = true }
 
 async-trait = { workspace = true }

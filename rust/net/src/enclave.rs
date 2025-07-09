@@ -20,7 +20,7 @@ use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
 
-use crate::env::{DomainConfig, Svr3Env};
+use crate::env::{DomainConfig, SvrBEnv};
 use crate::infra::{EnableDomainFronting, EnforceMinimumTls};
 use crate::svr::SvrConnection;
 use crate::ws::WebSocketServiceConnectError;
@@ -46,7 +46,7 @@ pub trait EnclaveKind {
     fn url_path(enclave: &[u8]) -> PathAndQuery;
 }
 
-pub trait Svr3Flavor: EnclaveKind {}
+pub trait SvrBFlavor: EnclaveKind {}
 
 pub enum Cdsi {}
 
@@ -66,7 +66,7 @@ impl EnclaveKind for SvrSgx {
     }
 }
 
-impl Svr3Flavor for SvrSgx {}
+impl SvrBFlavor for SvrSgx {}
 
 /// Log-safe human-readable label for a connection.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -162,7 +162,7 @@ pub trait PpssSetup {
     fn server_ids() -> Self::ServerIds;
 }
 
-impl PpssSetup for Svr3Env<'_> {
+impl PpssSetup for SvrBEnv<'_> {
     type ConnectionResults = Result<SvrConnection<SvrSgx>, Error>;
     type ServerIds = [u64; 1];
 

@@ -6,15 +6,15 @@
 //!
 //! These functions are useful if we ever want to perform multiple operations
 //! on the same set of open connections, as opposed to having to connect for
-//! each individual operation, as implied by `Svr3Client` trait.
+//! each individual operation, as implied by `SvrBClient` trait.
 use std::collections::VecDeque;
 
 use futures_util::future::join_all;
 use futures_util::TryFutureExt as _;
 use libsignal_net_infra::ws::NextOrClose;
 use libsignal_net_infra::ws2::attested::AttestedConnectionError;
-pub(crate) use libsignal_svr3::{Backup4, Secret};
-use libsignal_svr3::{Query4, Remove4, Restore1};
+pub(crate) use libsignal_svrb::{Backup4, Secret};
+use libsignal_svrb::{Query4, Remove4, Restore1};
 use rand::rngs::OsRng;
 use rand::TryRngCore;
 
@@ -23,7 +23,7 @@ use crate::enclave::{
     ArrayIsh, ConnectionLabel, IntoConnectionResults, LabeledConnection, PpssSetup,
 };
 
-pub fn prepare_backup<Env: PpssSetup>(password: &str) -> Backup4 {
+pub fn do_prepare<Env: PpssSetup>(password: &str) -> Backup4 {
     let server_ids = Env::server_ids();
     let mut rng = OsRng.unwrap_err();
     Backup4::new(
@@ -229,21 +229,21 @@ mod test {
 
     #[tokio::test]
     async fn do_backup_fails_with_the_first_error() {
-        let backup = prepare_backup::<TestEnv>("");
+        let backup = do_prepare::<TestEnv>("");
         let result = do_backup::<TestEnv>(NotConnectedResults, &backup).await;
-        assert_matches!(result, Err(crate::svr3::Error::ConnectionTimedOut));
+        assert_matches!(result, Err(crate::svrb::Error::ConnectionTimedOut));
     }
 
     #[tokio::test]
     async fn do_restore_fails_with_the_first_error() {
         let result = do_restore::<TestEnv>(NotConnectedResults, "").await;
-        assert_matches!(result, Err(crate::svr3::Error::ConnectionTimedOut));
+        assert_matches!(result, Err(crate::svrb::Error::ConnectionTimedOut));
     }
 
     #[tokio::test]
     async fn do_query_fails_with_the_first_error() {
         let result = do_query(NotConnectedResults).await;
-        assert_matches!(result, Err(crate::svr3::Error::ConnectionTimedOut));
+        assert_matches!(result, Err(crate::svrb::Error::ConnectionTimedOut));
     }
 
     #[tokio::test]

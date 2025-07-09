@@ -14,8 +14,8 @@ use crate::enclave::PpssSetup;
 
 #[async_trait]
 pub trait Backup {
-    fn prepare_backup(&self, password: &str) -> Backup4;
-    async fn backup(&self, backup: &Backup4) -> Result<(), Error>;
+    fn prepare(&self, password: &str) -> Backup4;
+    async fn finalize(&self, backup: &Backup4) -> Result<(), Error>;
 }
 
 #[async_trait]
@@ -34,7 +34,7 @@ pub trait Remove {
 }
 
 #[async_trait]
-pub trait Svr3Connect {
+pub trait SvrBConnect {
     type Env: PpssSetup;
     async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults;
 }
@@ -42,12 +42,12 @@ pub trait Svr3Connect {
 #[async_trait]
 impl<T> Backup for T
 where
-    T: Svr3Connect + Sync,
+    T: SvrBConnect + Sync,
 {
-    fn prepare_backup(&self, password: &str) -> Backup4 {
-        ppss_ops::prepare_backup::<T::Env>(password)
+    fn prepare(&self, password: &str) -> Backup4 {
+        ppss_ops::do_prepare::<T::Env>(password)
     }
-    async fn backup(&self, backup: &Backup4) -> Result<(), Error> {
+    async fn finalize(&self, backup: &Backup4) -> Result<(), Error> {
         ppss_ops::do_backup::<T::Env>(self.connect().await, backup).await
     }
 }
@@ -55,7 +55,7 @@ where
 #[async_trait]
 impl<T> Restore for T
 where
-    T: Svr3Connect + Sync,
+    T: SvrBConnect + Sync,
 {
     async fn restore(&self, password: &str) -> Result<Secret, Error> {
         ppss_ops::do_restore::<T::Env>(self.connect().await, password).await
@@ -65,7 +65,7 @@ where
 #[async_trait]
 impl<T> Remove for T
 where
-    T: Svr3Connect + Sync,
+    T: SvrBConnect + Sync,
 {
     async fn remove(&self) -> Result<(), Error> {
         ppss_ops::do_remove(self.connect().await).await
@@ -75,7 +75,7 @@ where
 #[async_trait]
 impl<T> Query for T
 where
-    T: Svr3Connect + Sync,
+    T: SvrBConnect + Sync,
 {
     async fn query(&self) -> Result<u32, Error> {
         ppss_ops::do_query(self.connect().await).await

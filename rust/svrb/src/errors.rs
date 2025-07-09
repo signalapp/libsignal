@@ -6,7 +6,7 @@ use std::fmt;
 
 use prost::DecodeError;
 
-use crate::proto::svr4;
+use crate::proto::svrb;
 
 #[derive(Debug, displaydoc::Display, PartialEq)]
 pub enum Error {
@@ -21,12 +21,12 @@ pub enum Error {
     /// No auth version was usable.
     NoUsableVersion,
     /// Response status for v4 protocol is not OK: {0}
-    BadResponseStatus4(svr4::response4::Status),
+    BadResponseStatus4(svrb::response4::Status),
     /// Restore failed, {0} tries remaining
     RestoreFailed(u32),
 }
 
-impl std::fmt::Display for svr4::response4::Status {
+impl std::fmt::Display for svrb::response4::Status {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_str_name())
     }

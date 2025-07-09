@@ -505,9 +505,9 @@ impl From<KeyTransConfig> for PublicConfig {
     }
 }
 
-pub struct Svr3Env<'a>(EnclaveEndpoint<'a, SvrSgx>);
+pub struct SvrBEnv<'a>(EnclaveEndpoint<'a, SvrSgx>);
 
-impl<'a> Svr3Env<'a> {
+impl<'a> SvrBEnv<'a> {
     pub const fn new(sgx: EnclaveEndpoint<'a, SvrSgx>) -> Self {
         Self(sgx)
     }
@@ -521,7 +521,7 @@ impl<'a> Svr3Env<'a> {
 pub struct Env<'a> {
     pub cdsi: EnclaveEndpoint<'a, Cdsi>,
     pub svr2: EnclaveEndpoint<'a, SvrSgx>,
-    pub svr_b: Option<Svr3Env<'a>>, // TODO: once svrB is available in all environments, make this no longer optional.
+    pub svr_b: Option<SvrBEnv<'a>>, // TODO: once svrB is available in all environments, make this no longer optional.
     pub chat_domain_config: DomainConfig,
     pub keytrans_config: KeyTransConfig,
 }

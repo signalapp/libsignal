@@ -5,4 +5,4 @@
 
 #![allow(clippy::derive_partial_eq_without_eq)]
 
-include!(concat!(env!("OUT_DIR"), "/svr4.client.rs"));
+include!(concat!(env!("OUT_DIR"), "/svrb.client.rs"));

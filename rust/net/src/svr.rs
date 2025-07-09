@@ -46,7 +46,7 @@ where
                 route_provider,
                 auth,
                 (ws_config, crate::infra::ws::WithoutResponseHeaders::new()),
-                format!("svr3:{}", std::any::type_name::<E>()).into(),
+                format!("svr:{}", std::any::type_name::<E>()).into(),
                 params,
             )
             .await

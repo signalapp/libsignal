@@ -2658,7 +2658,7 @@ dependencies = [
  "libsignal-net",
  "libsignal-net-infra",
  "libsignal-protocol",
- "libsignal-svr3",
+ "libsignal-svrb",
  "log",
  "nonzero_ext",
  "pin-project",
@@ -2861,7 +2861,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "libsignal-svr3"
+name = "libsignal-svrb"
 version = "0.1.0"
 dependencies = [
  "aes-gcm-siv",

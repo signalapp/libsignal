@@ -14,12 +14,12 @@ use prost::Message;
 use rand::{CryptoRng, Rng};
 use sha2::{Digest, Sha256, Sha512};
 
-use crate::proto::svr4;
+use crate::proto::svrb;
 
 mod errors;
 pub use errors::{Error, ErrorStatus};
 mod proto;
-pub use proto::svr4::response4::Status as V4Status;
+pub use proto::svrb::response4::Status as V4Status;
 
 const SECRET_BYTES: usize = 32;
 
@@ -55,8 +55,8 @@ pub struct Query4 {}
 impl Query4 {
     pub fn requests() -> impl Iterator<Item = Vec<u8>> {
         std::iter::repeat(
-            svr4::Request4 {
-                inner: Some(svr4::request4::Inner::Query(svr4::request4::Query {})),
+            svrb::Request4 {
+                inner: Some(svrb::request4::Inner::Query(svrb::request4::Query {})),
             }
             .encode_to_vec(),
         )
@@ -66,9 +66,9 @@ impl Query4 {
         assert!(!responses.is_empty());
         responses
             .iter()
-            .map(|b| svr4::Response4::decode(b.as_ref()).map_err(|_| Error::BadData))
+            .map(|b| svrb::Response4::decode(b.as_ref()).map_err(|_| Error::BadData))
             .map(|rr| match rr?.inner {
-                Some(svr4::response4::Inner::Query(r)) => match status_error(r.status) {
+                Some(svrb::response4::Inner::Query(r)) => match status_error(r.status) {
                     Ok(()) => Ok(r.tries_remaining),
                     Err(e) => Err(e),
                 },
@@ -87,8 +87,8 @@ pub struct Remove4 {}
 impl Remove4 {
     pub fn requests() -> impl Iterator<Item = Vec<u8>> {
         std::iter::repeat(
-            svr4::Request4 {
-                inner: Some(svr4::request4::Inner::Remove(svr4::request4::Remove {})),
+            svrb::Request4 {
+                inner: Some(svrb::request4::Inner::Remove(svrb::request4::Remove {})),
             }
             .encode_to_vec(),
         )
@@ -231,8 +231,8 @@ impl Backup4 {
 
         Self {
             requests: (0usize..server_ids.len())
-                .map(|i| svr4::Request4 {
-                    inner: Some(svr4::request4::Inner::Create(svr4::request4::Create {
+                .map(|i| svrb::Request4 {
+                    inner: Some(svrb::request4::Inner::Create(svrb::request4::Create {
                         version,
                         max_tries: max_tries.get(),
                         oprf_secretshare: oprf_keyshares[i].to_bytes().to_vec(),
@@ -268,8 +268,8 @@ pub struct Restore2<'a> {
 }
 
 fn status_error(s: i32) -> Result<(), Error> {
-    match svr4::response4::Status::try_from(s) {
-        Ok(svr4::response4::Status::Ok) => Ok(()),
+    match svrb::response4::Status::try_from(s) {
+        Ok(svrb::response4::Status::Ok) => Ok(()),
         Ok(s) => Err(Error::BadResponseStatus4(s)),
         Err(_) => Err(Error::BadResponse),
     }
@@ -286,8 +286,8 @@ impl<'a> Restore1<'a> {
         Restore1 {
             requests: server_ids
                 .iter()
-                .map(|_| svr4::Request4 {
-                    inner: Some(svr4::request4::Inner::Restore1(svr4::request4::Restore1 {
+                .map(|_| svrb::Request4 {
+                    inner: Some(svrb::request4::Inner::Restore1(svrb::request4::Restore1 {
                         blinded: (input_hash_pt(&input) * blind)
                             .compress()
                             .to_bytes()
@@ -318,9 +318,9 @@ impl<'a> Restore1<'a> {
         }
         let responses1 = responses1_bytes
             .iter()
-            .map(|b| svr4::Response4::decode(b.as_ref()).map_err(|_| Error::BadResponse))
+            .map(|b| svrb::Response4::decode(b.as_ref()).map_err(|_| Error::BadResponse))
             .map(|rr| match rr?.inner {
-                Some(svr4::response4::Inner::Restore1(r)) => Ok(r),
+                Some(svrb::response4::Inner::Restore1(r)) => Ok(r),
                 _ => Err(Error::BadResponse),
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -332,7 +332,7 @@ impl<'a> Restore1<'a> {
                     // These errors will decrement #tries, others will not.
                     // We only care about returning #tries_remaining in a case
                     // where it's decremented.
-                    svr4::response4::Status::Ok | svr4::response4::Status::Error
+                    svrb::response4::Status::Ok | svrb::response4::Status::Error
                 )
             })
             .map(|rr| rr.tries_remaining)
@@ -398,8 +398,8 @@ impl<'a> Restore1<'a> {
                     let proof_scalar_base = Scalar::from_hash(hash);
                     sk * proof_scalar_base + rand
                 })
-                .map(|proof_scalar| svr4::Request4 {
-                    inner: Some(svr4::request4::Inner::Restore2(svr4::request4::Restore2 {
+                .map(|proof_scalar| svrb::Request4 {
+                    inner: Some(svrb::request4::Inner::Restore2(svrb::request4::Restore2 {
                         auth_point: proof_pt_bytes.to_vec(),
                         auth_scalar: proof_scalar.as_bytes().to_vec(),
                         version,
@@ -418,7 +418,7 @@ impl<'a> Restore1<'a> {
     /// Given a set of responses, each of which have some number of Auths,
     /// return a version that is available in all responses, if such a
     /// one exists.
-    fn version_to_use(&self, responses1: &[svr4::response4::Restore1]) -> Option<u32> {
+    fn version_to_use(&self, responses1: &[svrb::response4::Restore1]) -> Option<u32> {
         let mut versions = BTreeMap::new();
         for r1 in responses1 {
             for auth in &r1.auth {
@@ -439,8 +439,8 @@ impl<'a> Restore1<'a> {
     fn auths_with_version<'b>(
         &self,
         version: u32,
-        responses1: &'b [svr4::response4::Restore1],
-    ) -> Result<Vec<&'b svr4::response4::restore1::Auth>, Error> {
+        responses1: &'b [svrb::response4::Restore1],
+    ) -> Result<Vec<&'b svrb::response4::restore1::Auth>, Error> {
         let mut out = Vec::with_capacity(responses1.len());
         for r1 in responses1 {
             for auth in &r1.auth {
@@ -474,12 +474,12 @@ impl Restore2<'_> {
         }
         let responses2 = responses2_bytes
             .iter()
-            .map(|b| svr4::Response4::decode(b.as_ref()).map_err(|_| Error::BadResponse))
+            .map(|b| svrb::Response4::decode(b.as_ref()).map_err(|_| Error::BadResponse))
             .map(|rr| match rr?.inner {
-                Some(svr4::response4::Inner::Restore2(r)) => Ok(r),
+                Some(svrb::response4::Inner::Restore2(r)) => Ok(r),
                 _ => Err(Error::BadResponse),
             })
-            .collect::<Result<Vec<svr4::response4::Restore2>, _>>()?;
+            .collect::<Result<Vec<svrb::response4::Restore2>, _>>()?;
         status_errors(&mut responses2.iter().map(|r| r.status))
             .map_err(|_| Error::RestoreFailed(self.tries_remaining))?;
 
@@ -566,7 +566,7 @@ mod test {
     }
 
     impl TestServerVersion {
-        fn new(req: &svr4::request4::Create) -> Self {
+        fn new(req: &svrb::request4::Create) -> Self {
             Self {
                 auth_commitment: to_ristretto_pt(&req.auth_commitment)
                     .expect("decode auth_commitment"),
@@ -595,11 +595,11 @@ mod test {
         /// Take in create request, return success/failure
         fn create(&mut self, req_bytes: &[u8]) {
             self.versions.clear();
-            let req = match svr4::Request4::decode(req_bytes)
+            let req = match svrb::Request4::decode(req_bytes)
                 .expect("decode Request4")
                 .inner
             {
-                Some(svr4::request4::Inner::Create(r)) => r,
+                Some(svrb::request4::Inner::Create(r)) => r,
                 _ => {
                     panic!("not Create");
                 }
@@ -616,11 +616,11 @@ mod test {
 
         /// Take in restore1 request, return restore1 response
         fn restore1(&mut self, req_bytes: &[u8]) -> Vec<u8> {
-            let req = match svr4::Request4::decode(req_bytes)
+            let req = match svrb::Request4::decode(req_bytes)
                 .expect("decode Request4")
                 .inner
             {
-                Some(svr4::request4::Inner::Restore1(r)) => r,
+                Some(svrb::request4::Inner::Restore1(r)) => r,
                 _ => {
                     panic!("not Restore1");
                 }
@@ -635,7 +635,7 @@ mod test {
             let auths = self
                 .versions
                 .iter()
-                .map(|(version, state)| svr4::response4::restore1::Auth {
+                .map(|(version, state)| svrb::response4::restore1::Auth {
                     version: *version,
                     element: (blinded * state.oprf_secretshare
                         + userhash_pt * state.zero_secretshare)
@@ -645,10 +645,10 @@ mod test {
                 })
                 .collect::<Vec<_>>();
 
-            svr4::Response4 {
-                inner: Some(svr4::response4::Inner::Restore1(
-                    svr4::response4::Restore1 {
-                        status: svr4::response4::Status::Ok.into(),
+            svrb::Response4 {
+                inner: Some(svrb::response4::Inner::Restore1(
+                    svrb::response4::Restore1 {
+                        status: svrb::response4::Status::Ok.into(),
                         tries_remaining: self.tries,
                         auth: auths,
                     },
@@ -659,11 +659,11 @@ mod test {
 
         /// Take in restore2 request, return restore2 response
         fn restore2(&self, req_bytes: &[u8], handshake_hash: &[u8]) -> Vec<u8> {
-            let req = match svr4::Request4::decode(req_bytes)
+            let req = match svrb::Request4::decode(req_bytes)
                 .expect("decode Request4")
                 .inner
             {
-                Some(svr4::request4::Inner::Restore2(r)) => r,
+                Some(svrb::request4::Inner::Restore2(r)) => r,
                 _ => {
                     panic!("not Restore2");
                 }
@@ -684,10 +684,10 @@ mod test {
 
             assert_eq!(lhs, rhs);
 
-            svr4::Response4 {
-                inner: Some(svr4::response4::Inner::Restore2(
-                    svr4::response4::Restore2 {
-                        status: svr4::response4::Status::Ok.into(),
+            svrb::Response4 {
+                inner: Some(svrb::response4::Inner::Restore2(
+                    svrb::response4::Restore2 {
+                        status: svrb::response4::Status::Ok.into(),
                         encryption_secretshare: state.encryption_secretshare.to_vec(),
                     },
                 )),
