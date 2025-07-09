@@ -19,7 +19,7 @@ use http::uri::PathAndQuery;
 use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
-use libsignal_net::enclave::{EnclaveKind, EndpointParams, MrEnclave, NewHandshake, Svr2};
+use libsignal_net::enclave::{EnclaveKind, EndpointParams, MrEnclave, NewHandshake, Sgx};
 use libsignal_net::svr::SvrConnection;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::DirectOrProxyProvider;
@@ -110,7 +110,7 @@ async fn main() {
         confirmation_header_name,
     };
 
-    let params: EndpointParams<'_, LoggingNewHandshake<Svr2>> = cast_params(&env.params);
+    let params: EndpointParams<'_, LoggingNewHandshake<Sgx>> = cast_params(&env.params);
 
     let _connection = SvrConnection::connect(
         connection_resources,

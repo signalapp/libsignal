@@ -1,0 +1,40 @@
+#
+# Copyright (C) 2023 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+[package]
+name = "libsignal-svr3"
+version = "0.1.0"
+edition = "2021"
+authors.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+signal-crypto = { workspace = true }
+
+aes-gcm-siv = { workspace = true }
+curve25519-dalek = { workspace = true }
+displaydoc = { workspace = true }
+hkdf = { workspace = true }
+prost = { workspace = true }
+rand = { workspace = true }
+rand_core = { workspace = true }
+sha2 = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
+subtle = { workspace = true }
+
+[dev-dependencies]
+assert_matches = { workspace = true }
+const-str = { workspace = true }
+criterion = { workspace = true }
+hex = { workspace = true }
+nonzero_ext = { workspace = true }
+proptest = { workspace = true }
+test-case = { workspace = true }
+zerocopy = { workspace = true }
+
+[build-dependencies]
+prost-build = { workspace = true }

@@ -1,0 +1,123 @@
+// Copyright 2024 Signal Messenger, LLC
+// SPDX-License-Identifier: AGPL-3.0-only
+
+syntax = "proto3";
+
+package svr4.client;
+option optimize_for = LITE_RUNTIME;
+
+// Client protocol for SVR4.
+
+message Request4 {
+  oneof inner {
+    Create create = 1;
+    Restore1 restore1 = 2;
+    Restore2 restore2 = 3;
+    Remove remove = 4;
+    Query query = 5;
+    RotateStart rotate_start = 6;
+    RotateCommit rotate_commit = 7;
+    RotateRollback rotate_rollback = 8;
+  }
+
+  message Create {
+    uint32 max_tries = 1;
+    bytes oprf_secretshare = 2;        // k_i^oprf
+    bytes auth_commitment = 3;         // clienteck^pk
+    bytes encryption_secretshare = 4;  // s_i
+    bytes zero_secretshare = 5;        // z_i
+    fixed32 version = 6;  // cross-backend version # for joins
+  }
+  message Restore1 {
+    bytes blinded = 1;
+  }
+  message Restore2 {
+    bytes auth_point = 1;   // R
+    bytes auth_scalar = 2;  // z
+    fixed32 version = 3;
+  }
+  message Remove {
+  }
+  message Query {
+  }
+  message RotateStart {
+    fixed32 version = 1;                     // new cross-backend version #
+    bytes oprf_secretshare_delta = 2;        // k_i^oprf scalar delta
+    bytes encryption_secretshare_delta = 3;  // s_i XOR delta
+  }
+  message RotateCommit {
+    fixed32 version = 1;  // new version #
+  }
+  message RotateRollback {
+    fixed32 version = 1;  // new version #
+  }
+}
+
+message Response4 {
+  oneof inner {
+    Create create = 1;
+    Restore1 restore1 = 2;
+    Restore2 restore2 = 3;
+    Remove remove = 4;
+    Query query = 5;
+    RotateStart rotate_start = 6;
+    RotateCommit rotate_commit = 7;
+    RotateRollback rotate_rollback = 8;
+  }
+
+  enum Status {
+    UNSET = 0;
+    OK = 1;
+    INVALID_REQUEST = 2;
+    MISSING = 3;
+    ERROR = 4;
+    RESTORE1_MISSING = 5;
+    VERSION_MISMATCH = 6;
+    NOT_ROTATING = 7;
+    ALREADY_ROTATING = 8;
+    MERKLE_FAILURE = 9;
+    DUPLICATE_VERSION = 10;
+  }
+
+  message Create {
+    Status status = 1;
+    uint32 tries_remaining = 2;
+  }
+
+  message Restore1 {
+    Status status = 1;
+    message Auth {
+      bytes element = 1;
+      fixed32 version = 2;
+    }
+    // There will be either 1 or 2 of these, depending on
+    // whether we're currently rotating.
+    repeated Auth auth = 2;
+    uint32 tries_remaining = 3;
+  }
+
+  message Restore2 {
+    Status status = 1;
+    bytes encryption_secretshare = 2;
+  }
+
+  message Remove {
+  }
+
+  message Query {
+    Status status = 1;
+    uint32 tries_remaining = 2;
+    fixed32 version = 3;
+    fixed32 new_version = 4;
+  }
+
+  message RotateStart {
+    Status status = 1;
+  }
+  message RotateCommit {
+    Status status = 1;
+  }
+  message RotateRollback {
+    Status status = 1;
+  }
+}

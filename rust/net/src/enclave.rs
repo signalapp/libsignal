@@ -20,8 +20,9 @@ use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
 
-use crate::env::DomainConfig;
+use crate::env::{DomainConfig, Svr3Env};
 use crate::infra::{EnableDomainFronting, EnforceMinimumTls};
+use crate::svr::SvrConnection;
 use crate::ws::WebSocketServiceConnectError;
 
 pub trait AsRaftConfig<'a> {
@@ -45,9 +46,11 @@ pub trait EnclaveKind {
     fn url_path(enclave: &[u8]) -> PathAndQuery;
 }
 
+pub trait Svr3Flavor: EnclaveKind {}
+
 pub enum Cdsi {}
 
-pub enum Svr2 {}
+pub enum Sgx {}
 
 impl EnclaveKind for Cdsi {
     type RaftConfigType = ();
@@ -56,12 +59,14 @@ impl EnclaveKind for Cdsi {
     }
 }
 
-impl EnclaveKind for Svr2 {
+impl EnclaveKind for Sgx {
     type RaftConfigType = &'static RaftConfig;
     fn url_path(enclave: &[u8]) -> PathAndQuery {
         PathAndQuery::try_from(format!("/v1/{}", hex::encode(enclave))).unwrap()
     }
 }
+
+impl Svr3Flavor for Sgx {}
 
 /// Log-safe human-readable label for a connection.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -148,6 +153,22 @@ pub trait ArrayIsh<T>: AsRef<[T]> + IntoIterator<Item = T> {
 
 impl<T, const N: usize> ArrayIsh<T> for [T; N] {
     const N: usize = N;
+}
+
+pub trait PpssSetup {
+    type ConnectionResults: IntoConnectionResults + Send;
+    type ServerIds: ArrayIsh<u64> + Send;
+    const N: usize = Self::ServerIds::N;
+    fn server_ids() -> Self::ServerIds;
+}
+
+impl PpssSetup for Svr3Env<'_> {
+    type ConnectionResults = Result<SvrConnection<Sgx>, Error>;
+    type ServerIds = [u64; 1];
+
+    fn server_ids() -> Self::ServerIds {
+        [1]
+    }
 }
 
 #[derive_where(Clone, Copy; Bytes)]
@@ -265,7 +286,7 @@ impl<E: EnclaveKind> EnclaveEndpoint<'_, E> {
     }
 }
 
-impl NewHandshake for Svr2 {
+impl NewHandshake for Sgx {
     fn new_handshake(
         params: &EndpointParams<Self>,
         attestation_message: &[u8],

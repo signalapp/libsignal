@@ -29,7 +29,7 @@ use rand::seq::SliceRandom;
 use rand::{rng, Rng};
 
 use crate::certs::{PROXY_G_ROOT_CERTIFICATES, SIGNAL_ROOT_CERTIFICATES};
-use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, Svr2};
+use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, Sgx};
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
 pub const TIMESTAMP_HEADER_NAME: &str = "x-signal-timestamp";
@@ -185,7 +185,7 @@ pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = E
     raft_config: (),
 };
 
-pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, Svr2> = EndpointParams {
+pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, Sgx> = EndpointParams {
     mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_STAGING),
     raft_config: attest::constants::RAFT_CONFIG_SVR2_STAGING,
 };
@@ -197,7 +197,7 @@ pub(crate) const ENDPOINT_PARAMS_CDSI_PROD: EndpointParams<'static, Cdsi> = Endp
 
 // Currently, the production SVR2 is prequantum while we're testing the postquantum
 // handshakes in staging.
-pub(crate) const ENDPOINT_PARAMS_SVR2_PROD_PREQUANTUM: EndpointParams<'static, Svr2> =
+pub(crate) const ENDPOINT_PARAMS_SVR2_PROD_PREQUANTUM: EndpointParams<'static, Sgx> =
     EndpointParams {
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_PROD_PREQUANTUM),
         raft_config: attest::constants::RAFT_CONFIG_SVR2_PROD_PREQUANTUM,
@@ -505,9 +505,23 @@ impl From<KeyTransConfig> for PublicConfig {
     }
 }
 
+pub struct Svr3Env<'a>(EnclaveEndpoint<'a, Sgx>);
+
+impl<'a> Svr3Env<'a> {
+    pub const fn new(sgx: EnclaveEndpoint<'a, Sgx>) -> Self {
+        Self(sgx)
+    }
+
+    #[inline]
+    pub const fn sgx(&self) -> &EnclaveEndpoint<'a, Sgx> {
+        &self.0
+    }
+}
+
 pub struct Env<'a> {
     pub cdsi: EnclaveEndpoint<'a, Cdsi>,
-    pub svr2: EnclaveEndpoint<'a, Svr2>,
+    pub svr2: EnclaveEndpoint<'a, Sgx>,
+    pub svr_b: Option<Svr3Env<'a>>, // TODO: once svrB is available in all environments, make this no longer optional.
     pub chat_domain_config: DomainConfig,
     pub keytrans_config: KeyTransConfig,
 }
@@ -539,6 +553,7 @@ pub const STAGING: Env<'static> = Env {
         domain_config: DOMAIN_CONFIG_SVR2_STAGING,
         params: ENDPOINT_PARAMS_SVR2_STAGING,
     },
+    svr_b: None,
     keytrans_config: KEYTRANS_CONFIG_STAGING,
 };
 
@@ -554,6 +569,7 @@ pub const PROD: Env<'static> = Env {
         // handshakes in staging.
         params: ENDPOINT_PARAMS_SVR2_PROD_PREQUANTUM,
     },
+    svr_b: None,
     keytrans_config: KEYTRANS_CONFIG_PROD,
 };
 
