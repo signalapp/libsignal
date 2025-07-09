@@ -29,7 +29,7 @@ use rand::seq::SliceRandom;
 use rand::{rng, Rng};
 
 use crate::certs::{PROXY_G_ROOT_CERTIFICATES, SIGNAL_ROOT_CERTIFICATES};
-use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, Sgx};
+use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
 pub const TIMESTAMP_HEADER_NAME: &str = "x-signal-timestamp";
@@ -185,7 +185,7 @@ pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = E
     raft_config: (),
 };
 
-pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, Sgx> = EndpointParams {
+pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, SvrSgx> = EndpointParams {
     mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_STAGING),
     raft_config: attest::constants::RAFT_CONFIG_SVR2_STAGING,
 };
@@ -197,7 +197,7 @@ pub(crate) const ENDPOINT_PARAMS_CDSI_PROD: EndpointParams<'static, Cdsi> = Endp
 
 // Currently, the production SVR2 is prequantum while we're testing the postquantum
 // handshakes in staging.
-pub(crate) const ENDPOINT_PARAMS_SVR2_PROD_PREQUANTUM: EndpointParams<'static, Sgx> =
+pub(crate) const ENDPOINT_PARAMS_SVR2_PROD_PREQUANTUM: EndpointParams<'static, SvrSgx> =
     EndpointParams {
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_PROD_PREQUANTUM),
         raft_config: attest::constants::RAFT_CONFIG_SVR2_PROD_PREQUANTUM,
@@ -505,22 +505,22 @@ impl From<KeyTransConfig> for PublicConfig {
     }
 }
 
-pub struct Svr3Env<'a>(EnclaveEndpoint<'a, Sgx>);
+pub struct Svr3Env<'a>(EnclaveEndpoint<'a, SvrSgx>);
 
 impl<'a> Svr3Env<'a> {
-    pub const fn new(sgx: EnclaveEndpoint<'a, Sgx>) -> Self {
+    pub const fn new(sgx: EnclaveEndpoint<'a, SvrSgx>) -> Self {
         Self(sgx)
     }
 
     #[inline]
-    pub const fn sgx(&self) -> &EnclaveEndpoint<'a, Sgx> {
+    pub const fn sgx(&self) -> &EnclaveEndpoint<'a, SvrSgx> {
         &self.0
     }
 }
 
 pub struct Env<'a> {
     pub cdsi: EnclaveEndpoint<'a, Cdsi>,
-    pub svr2: EnclaveEndpoint<'a, Sgx>,
+    pub svr2: EnclaveEndpoint<'a, SvrSgx>,
     pub svr_b: Option<Svr3Env<'a>>, // TODO: once svrB is available in all environments, make this no longer optional.
     pub chat_domain_config: DomainConfig,
     pub keytrans_config: KeyTransConfig,

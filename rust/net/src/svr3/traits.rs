@@ -7,31 +7,20 @@
 //! therefore the module exists as a sort of a "prelude" to make importing them
 //! all in bulk easier.
 
-use std::num::NonZeroU32;
-
 use async_trait::async_trait;
-use libsignal_svr3::EvaluationResult;
 
-use super::{ppss_ops, Error, OpaqueMaskedShareSet};
+use super::{ppss_ops, Backup4, Error, Secret};
 use crate::enclave::PpssSetup;
 
 #[async_trait]
 pub trait Backup {
-    async fn backup(
-        &self,
-        password: &str,
-        secret: [u8; 32],
-        max_tries: NonZeroU32,
-    ) -> Result<OpaqueMaskedShareSet, Error>;
+    fn prepare_backup(&self, password: &str) -> Backup4;
+    async fn backup(&self, backup: &Backup4) -> Result<(), Error>;
 }
 
 #[async_trait]
 pub trait Restore {
-    async fn restore(
-        &self,
-        password: &str,
-        share_set: OpaqueMaskedShareSet,
-    ) -> Result<EvaluationResult, Error>;
+    async fn restore(&self, password: &str) -> Result<Secret, Error>;
 }
 
 #[async_trait]
@@ -55,13 +44,11 @@ impl<T> Backup for T
 where
     T: Svr3Connect + Sync,
 {
-    async fn backup(
-        &self,
-        password: &str,
-        secret: [u8; 32],
-        max_tries: NonZeroU32,
-    ) -> Result<OpaqueMaskedShareSet, Error> {
-        ppss_ops::do_backup::<T::Env>(self.connect().await, password, secret, max_tries).await
+    fn prepare_backup(&self, password: &str) -> Backup4 {
+        ppss_ops::prepare_backup::<T::Env>(password)
+    }
+    async fn backup(&self, backup: &Backup4) -> Result<(), Error> {
+        ppss_ops::do_backup::<T::Env>(self.connect().await, backup).await
     }
 }
 
@@ -70,12 +57,8 @@ impl<T> Restore for T
 where
     T: Svr3Connect + Sync,
 {
-    async fn restore(
-        &self,
-        password: &str,
-        share_set: OpaqueMaskedShareSet,
-    ) -> Result<EvaluationResult, Error> {
-        ppss_ops::do_restore(self.connect().await, password, share_set).await
+    async fn restore(&self, password: &str) -> Result<Secret, Error> {
+        ppss_ops::do_restore::<T::Env>(self.connect().await, password).await
     }
 }
 

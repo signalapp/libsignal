@@ -50,7 +50,7 @@ pub trait Svr3Flavor: EnclaveKind {}
 
 pub enum Cdsi {}
 
-pub enum Sgx {}
+pub enum SvrSgx {}
 
 impl EnclaveKind for Cdsi {
     type RaftConfigType = ();
@@ -59,14 +59,14 @@ impl EnclaveKind for Cdsi {
     }
 }
 
-impl EnclaveKind for Sgx {
+impl EnclaveKind for SvrSgx {
     type RaftConfigType = &'static RaftConfig;
     fn url_path(enclave: &[u8]) -> PathAndQuery {
         PathAndQuery::try_from(format!("/v1/{}", hex::encode(enclave))).unwrap()
     }
 }
 
-impl Svr3Flavor for Sgx {}
+impl Svr3Flavor for SvrSgx {}
 
 /// Log-safe human-readable label for a connection.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -163,7 +163,7 @@ pub trait PpssSetup {
 }
 
 impl PpssSetup for Svr3Env<'_> {
-    type ConnectionResults = Result<SvrConnection<Sgx>, Error>;
+    type ConnectionResults = Result<SvrConnection<SvrSgx>, Error>;
     type ServerIds = [u64; 1];
 
     fn server_ids() -> Self::ServerIds {
@@ -286,7 +286,7 @@ impl<E: EnclaveKind> EnclaveEndpoint<'_, E> {
     }
 }
 
-impl NewHandshake for Sgx {
+impl NewHandshake for SvrSgx {
     fn new_handshake(
         params: &EndpointParams<Self>,
         attestation_message: &[u8],

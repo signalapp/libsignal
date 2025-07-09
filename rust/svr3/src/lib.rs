@@ -13,7 +13,6 @@ use curve25519_dalek::scalar::Scalar;
 use prost::Message;
 use rand::{CryptoRng, Rng};
 use sha2::{Digest, Sha256, Sha512};
-use signal_crypto::{Aes256GcmDecryption, Aes256GcmEncryption};
 
 use crate::proto::svr4;
 
@@ -23,6 +22,8 @@ mod proto;
 pub use proto::svr4::response4::Status as V4Status;
 
 const SECRET_BYTES: usize = 32;
+
+pub type Secret = [u8; 32];
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct EvaluationResult {
@@ -199,24 +200,16 @@ fn password_to_uniform_input(passwd: &[u8]) -> [u8; 64] {
 
 pub struct Backup4 {
     pub requests: Vec<Vec<u8>>,
-    pub output: Output4,
-    pub masked_secret: MaskedSecret,
-}
-
-/// Contains everything necessary to restore a secret given a password.
-pub struct MaskedSecret {
-    pub server_ids: Vec<u64>,
-    pub masked_secret: Vec<u8>,
+    pub output: Secret,
 }
 
 impl Backup4 {
     pub fn new<R: Rng + CryptoRng>(
         server_ids: &[u64],
         password: &[u8],
-        secret: &[u8; 32],
         max_tries: NonZeroU32,
         rng: &mut R,
-    ) -> Result<Self, Error> {
+    ) -> Self {
         assert!(!server_ids.is_empty());
         let input = password_to_uniform_input(password);
         let k_oprf = random_scalar(rng);
@@ -233,12 +226,10 @@ impl Backup4 {
         let auth_pt = auth_pt(&input, &k_oprf);
         let auth_commitments = auth_commitments(server_ids, &input, &auth_pt);
         let version = rng.next_u32();
-        let output = Output4 {
-            k_auth: auth_secret(&input, &auth_pt),
-            s_enc,
-        };
+        let k_auth = auth_secret(&input, &auth_pt);
+        let output = encryption_key(&s_enc, &k_auth);
 
-        Ok(Self {
+        Self {
             requests: (0usize..server_ids.len())
                 .map(|i| svr4::Request4 {
                     inner: Some(svr4::request4::Inner::Create(svr4::request4::Create {
@@ -252,72 +243,13 @@ impl Backup4 {
                 })
                 .map(|cr| cr.encode_to_vec())
                 .collect(),
-            masked_secret: MaskedSecret {
-                server_ids: server_ids.to_vec(),
-                masked_secret: output.mask_secret(secret, rng),
-            },
             output,
-        })
+        }
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct Output4 {
-    k_auth: [u8; 32],
-    s_enc: [u8; 32],
-}
-
-impl Output4 {
-    pub fn encryption_key(&self) -> [u8; 32] {
-        Kdf::make(
-            b"Signal_SVR_EncryptionKey_20240823",
-            &self.s_enc,
-            &self.k_auth,
-        )
-    }
-    pub fn mask_secret<R: Rng + CryptoRng>(&self, secret: &[u8; 32], rng: &mut R) -> Vec<u8> {
-        let mut masked_secret = vec![
-                0u8;
-                // masked_secret will be:  NONCE || ENCRYPTED_SECRET || TAG
-                Aes256GcmEncryption::NONCE_SIZE + secret.len() + Aes256GcmEncryption::TAG_SIZE
-            ];
-        let nonce = {
-            let nonce = &mut masked_secret[..Aes256GcmEncryption::NONCE_SIZE];
-            rng.fill_bytes(nonce);
-            nonce
-        };
-        let mut enc = Aes256GcmEncryption::new(&self.encryption_key(), nonce, b"")
-            .expect("key and nonce should be valid");
-        {
-            let encrypted_secret =
-                &mut masked_secret[Aes256GcmEncryption::NONCE_SIZE..][..secret.len()];
-            encrypted_secret.copy_from_slice(secret);
-            enc.encrypt(encrypted_secret);
-        }
-        let tag = &mut masked_secret[Aes256GcmEncryption::NONCE_SIZE + secret.len()..];
-        tag.copy_from_slice(&enc.compute_tag());
-        masked_secret
-    }
-    pub fn unmask_secret(&self, masked_secret: &[u8]) -> Result<[u8; 32], Error> {
-        let mut secret = [0u8; 32];
-        if masked_secret.len()
-            != Aes256GcmDecryption::NONCE_SIZE + secret.len() + Aes256GcmDecryption::TAG_SIZE
-        {
-            return Err(Error::BadData);
-        }
-        let (nonce, encrypted_secret, tag) = (
-            &masked_secret[..Aes256GcmDecryption::NONCE_SIZE],
-            &masked_secret
-                [Aes256GcmDecryption::NONCE_SIZE..Aes256GcmDecryption::NONCE_SIZE + secret.len()],
-            &masked_secret[Aes256GcmDecryption::NONCE_SIZE + secret.len()..],
-        );
-        secret.copy_from_slice(encrypted_secret);
-        let mut dec = Aes256GcmDecryption::new(&self.encryption_key(), nonce, b"")
-            .expect("key and nonce shoould be valid");
-        dec.decrypt(&mut secret);
-        dec.verify_tag(tag).map_err(|_| Error::BadData)?;
-        Ok(secret)
-    }
+fn encryption_key(s_enc: &[u8], k_auth: &[u8]) -> Secret {
+    Kdf::make(b"Signal_SVR_EncryptionKey_20240823", s_enc, k_auth)
 }
 
 pub struct Restore1<'a> {
@@ -533,7 +465,7 @@ impl<'a> Restore1<'a> {
 }
 
 impl Restore2<'_> {
-    pub fn restore(self, responses2_bytes: &[Vec<u8>]) -> Result<Output4, Error> {
+    pub fn restore(self, responses2_bytes: &[Vec<u8>]) -> Result<Secret, Error> {
         if responses2_bytes.len() != self.server_ids.len() {
             return Err(Error::NumServers {
                 servers: self.server_ids.len(),
@@ -558,10 +490,8 @@ impl Restore2<'_> {
             }
             arr_xor(&resp.encryption_secretshare, &mut s_enc);
         }
-        Ok(Output4 {
-            s_enc,
-            k_auth: auth_secret(&self.input, &self.auth_pt),
-        })
+        let k_auth = auth_secret(&self.input, &self.auth_pt);
+        Ok(encryption_key(&s_enc, &k_auth))
     }
 }
 
@@ -614,13 +544,9 @@ mod test {
 
     #[test]
     fn output_to_encryption() {
-        let o = Output4 {
-            s_enc: [0u8; 32],
-            k_auth: [0u8; 32],
-        };
         assert_eq!(
-            o.encryption_key(),
-            hex!("f609185c9b5bba163a2a413ae11fd5ce6932f5ab7c47b5c0915579568741657b"),
+            encryption_key(&[0u8; 32], &[1u8; 32]),
+            hex!("fd8d53d811528ba9510759ec665dacf31b747f5a94a58f4b84f5d5f40458b9e8"),
         );
     }
 
@@ -781,13 +707,10 @@ mod test {
         let password = [2u8; 67]; // can be arbitrary length
 
         // Create a new backup
-        let secret = [3u8; 32];
-        let backup = Backup4::new(&server_ids, &password, &secret, nonzero!(10u32), &mut rng)
-            .expect("create Backup4");
+        let backup = Backup4::new(&server_ids, &password, nonzero!(10u32), &mut rng);
         for (server, req) in servers.iter_mut().zip(backup.requests) {
             server.create(&req);
         }
-        let masked_secret = backup.masked_secret;
         let handshake_hashes = [&[1u8; 32][..], &[2u8; 32][..], &[3u8; 32][..]];
 
         // Restoring existing backup.
@@ -810,12 +733,5 @@ mod test {
             .restore(&restore2_responses)
             .expect("call restored");
         assert_eq!(backup.output, got);
-        assert_eq!(
-            secret,
-            backup
-                .output
-                .unmask_secret(&masked_secret.masked_secret)
-                .expect("unmask")
-        );
     }
 }

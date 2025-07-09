@@ -1,16 +1,10 @@
-//
 // Copyright 2023 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::num::NonZeroU32;
-
-use bincode::Options as _;
-use libsignal_net_infra::errors::LogSafeDisplay;
 use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_net_infra::ws2::attested::AttestedConnectionError;
-use libsignal_svr3::{EvaluationResult, MaskedSecret};
-use serde::{Deserialize, Serialize};
+use libsignal_svr3::{Backup4, Secret};
 use thiserror::Error;
 
 mod ppss_ops;
@@ -23,109 +17,12 @@ pub mod direct;
 
 use crate::ws::WebSocketServiceConnectError;
 
-// Versions:
-//   0: XOR'd secret
-//   1: AES-GCM encrypted secret
-const MASKED_SHARE_SET_FORMAT: u8 = 1;
-
-#[derive(Clone)]
-#[cfg_attr(test, derive(Debug, PartialEq, Eq, Default))]
-pub struct OpaqueMaskedShareSet {
-    inner: SerializableMaskedShareSet,
-}
-
-// Non pub version of svr3::MaskedSecret used for serialization
-#[derive(Clone, Serialize, Deserialize, Debug)]
-#[cfg_attr(test, derive(PartialEq, Eq, Default))]
-struct SerializableMaskedShareSet {
-    server_ids: Vec<u64>,
-    masked_secret: Vec<u8>,
-}
-
-impl From<MaskedSecret> for SerializableMaskedShareSet {
-    fn from(value: MaskedSecret) -> Self {
-        Self {
-            server_ids: value.server_ids,
-            masked_secret: value.masked_secret,
-        }
-    }
-}
-
-impl SerializableMaskedShareSet {
-    fn into(self) -> MaskedSecret {
-        MaskedSecret {
-            server_ids: self.server_ids,
-            masked_secret: self.masked_secret,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct SerializeError;
-
-#[derive(Debug, Eq, PartialEq, displaydoc::Display, Error)]
-pub enum DeserializeError {
-    /// Unexpected OpaqueMaskedShareSet serialization format version {0}
-    BadVersion(u8),
-    /// Unsupported OpaqueMaskedShareSet serialization format
-    BadFormat,
-}
-
-impl LogSafeDisplay for DeserializeError {}
-
-impl OpaqueMaskedShareSet {
-    fn new(inner: MaskedSecret) -> Self {
-        Self {
-            inner: inner.into(),
-        }
-    }
-    fn into_inner(self) -> MaskedSecret {
-        self.inner.into()
-    }
-
-    // OpaqueMaskedShareSet should be presented to the clients as an opaque blob,
-    // therefore serialize/deserialize should be the only public APIs for it.
-    pub fn serialize(&self) -> Result<Vec<u8>, SerializeError> {
-        let mut buf = vec![MASKED_SHARE_SET_FORMAT];
-
-        Self::bincode_options()
-            .serialize_into(&mut buf, &self.inner)
-            .map_err(|_| SerializeError)?;
-        Ok(buf)
-    }
-
-    pub fn deserialize(bytes: &[u8]) -> Result<Self, DeserializeError> {
-        match bytes {
-            [] => Err(DeserializeError::BadFormat),
-            [MASKED_SHARE_SET_FORMAT, data @ ..] => Self::bincode_deserialize(data),
-            [v, ..] => Err(DeserializeError::BadVersion(*v)),
-        }
-    }
-
-    fn bincode_options() -> impl bincode::Options {
-        // Using options to reject possible trailing bytes but retain the fixed representation for integers.
-        // See https://docs.rs/bincode/latest/bincode/config/index.html#options-struct-vs-bincode-functions
-        bincode::config::DefaultOptions::new()
-            .reject_trailing_bytes()
-            .with_fixint_encoding()
-    }
-
-    fn bincode_deserialize(bytes: &[u8]) -> Result<Self, DeserializeError> {
-        let inner = Self::bincode_options()
-            .deserialize(bytes)
-            .map_err(|_| DeserializeError::BadFormat)?;
-        Ok(Self { inner })
-    }
-}
-
 /// SVR3-specific error type
 ///
-/// In its essence it is simply a union of three other error types:
+/// In its essence it is simply a union of two other error types:
 /// - libsignal_svr3::Error for the errors originating in the PPSS implementation. Most of them are
 ///   unlikely due to the way higher level APIs invoke the lower-level primitives from
 ///   libsignal_svr3.
-/// - DeserializeError for the errors deserializing the OpaqueMaskedShareSet that is stored as a
-///   simple blob by the clients and may be corrupted.
 /// - libsignal_net::svr::Error for network related errors.
 #[derive(Debug, Error, displaydoc::Display)]
 #[ignore_extra_doc_attributes]
@@ -151,12 +48,6 @@ pub enum Error {
     DataMissing,
     /// Connect timed out
     ConnectionTimedOut,
-}
-
-impl From<DeserializeError> for Error {
-    fn from(err: DeserializeError) -> Self {
-        Self::Protocol(format!("DeserializationError {err}"))
-    }
 }
 
 impl From<attest::enclave::Error> for Error {
@@ -219,56 +110,18 @@ impl From<AttestedConnectionError> for Error {
 pub async fn restore_with_fallback<Primary, Fallback>(
     clients: (&Primary, &Fallback),
     password: &str,
-    share_set: OpaqueMaskedShareSet,
-) -> Result<EvaluationResult, Error>
+) -> Result<Secret, Error>
 where
     Primary: Restore + Sync,
     Fallback: Restore + Sync,
 {
     let (primary_conn, fallback_conn) = clients;
 
-    match primary_conn.restore(password, share_set.clone()).await {
+    match primary_conn.restore(password).await {
         Err(Error::DataMissing) => {}
         result @ (Err(_) | Ok(_)) => return result,
     }
-    fallback_conn.restore(password, share_set).await
-}
-
-/// Move the backup from `RemoveFrom` to `BackupTo`, representing previous and
-/// current SVR3 environments, respectively.
-///
-/// No data is _read_ from `RemoveFrom` (types guarantee that), and instead must
-/// be provided by the caller just like for an ordinary `backup` call.
-///
-/// Moving includes _attempting_ deletion from `RemoveFrom` that can fail, in
-/// which case the error will be ignored. The other alternative implementations
-/// could be:
-/// - Do not attempt deleting from `RemoveFrom`.
-///   This would leave the data for harvesting longer than necessary, even
-///   though the migration period is expected to be relatively short, and the
-///   set of `RemoveFrom` enclaves would have been deleted in the end.
-/// - Ignore the successful write to `BackupTo`.
-///   Despite sounding like a better option, it would make `restore_with_fallback`
-///   more complicated, as the data may have been written to `BackupTo`, thus
-///   rendering it impossible to be used for all restores unconditionally.
-///
-/// Using fine-grained SVR3 traits `Remove` and `Backup` guarantees that only
-/// those operations will possibly happen, that is, no removes will happen from
-/// `BackupTo` client, and no backups to `RemoveFrom`.
-pub async fn migrate_backup<RemoveFrom, BackupTo>(
-    clients: (&RemoveFrom, &BackupTo),
-    password: &str,
-    secret: [u8; 32],
-    max_tries: NonZeroU32,
-) -> Result<OpaqueMaskedShareSet, Error>
-where
-    RemoveFrom: Remove + Sync,
-    BackupTo: Backup + Sync,
-{
-    let (from_client, to_client) = clients;
-    let share_set = to_client.backup(password, secret, max_tries).await?;
-    let _ = from_client.remove().await;
-    Ok(share_set)
+    fallback_conn.restore(password).await
 }
 
 #[cfg(feature = "test-util")]
@@ -296,57 +149,21 @@ pub mod test_support {
 mod test {
     use assert_matches::assert_matches;
     use async_trait::async_trait;
-    use nonzero_ext::nonzero;
-    use rand::rngs::OsRng;
-    use rand::{RngCore, TryRngCore};
+    use libsignal_svr3::{Backup4, Secret};
 
     use super::*;
 
-    fn new_empty_share_set() -> OpaqueMaskedShareSet {
-        OpaqueMaskedShareSet {
-            inner: SerializableMaskedShareSet {
-                server_ids: vec![],
-                masked_secret: vec![],
-            },
-        }
-    }
-
-    #[test]
-    fn serialized_share_set_has_version() {
-        let bytes = new_empty_share_set().serialize().expect("can serialize");
-        assert_eq!(MASKED_SHARE_SET_FORMAT, bytes[0]);
-    }
-
-    #[test]
-    fn deserialize_share_set_supported_version() {
-        let there = new_empty_share_set().serialize().expect("can serialize");
-        let and_back = OpaqueMaskedShareSet::deserialize(&there);
-        assert!(and_back.is_ok(), "Should be able to deserialize");
-    }
-
-    #[test]
-    fn deserialize_share_set_bad_version() {
-        let there = {
-            let mut bytes = new_empty_share_set().serialize().expect("can serialize");
-            bytes[0] = 0xff;
-            bytes
-        };
-        let and_back = OpaqueMaskedShareSet::deserialize(&there);
-        assert!(matches!(
-            and_back.expect_err("Unexpected deserialization success"),
-            DeserializeError::BadVersion(_),
-        ));
-    }
-
     struct TestSvr3Client {
-        backup_fn: fn() -> Result<OpaqueMaskedShareSet, Error>,
-        restore_fn: fn() -> Result<EvaluationResult, Error>,
+        prepare_backup_fn: fn() -> Backup4,
+        backup_fn: fn() -> Result<(), Error>,
+        restore_fn: fn() -> Result<Secret, Error>,
         remove_fn: fn() -> Result<(), Error>,
     }
 
     impl Default for TestSvr3Client {
         fn default() -> Self {
             Self {
+                prepare_backup_fn: || panic!("Unexpected call to prepare_backup_fn"),
                 backup_fn: || panic!("Unexpected call to backup"),
                 restore_fn: || panic!("Unexpected call to restore"),
                 remove_fn: || panic!("Unexpected call to remove"),
@@ -356,12 +173,10 @@ mod test {
 
     #[async_trait]
     impl Backup for TestSvr3Client {
-        async fn backup(
-            &self,
-            _password: &str,
-            _secret: [u8; 32],
-            _max_tries: NonZeroU32,
-        ) -> Result<OpaqueMaskedShareSet, Error> {
+        fn prepare_backup(&self, _password: &str) -> Backup4 {
+            (self.prepare_backup_fn)()
+        }
+        async fn backup(&self, _b4: &Backup4) -> Result<(), Error> {
             (self.backup_fn)()
         }
     }
@@ -375,11 +190,7 @@ mod test {
 
     #[async_trait]
     impl Restore for TestSvr3Client {
-        async fn restore(
-            &self,
-            _password: &str,
-            _share_set: OpaqueMaskedShareSet,
-        ) -> Result<EvaluationResult, Error> {
+        async fn restore(&self, _password: &str) -> Result<Secret, Error> {
             (self.restore_fn)()
         }
     }
@@ -391,24 +202,10 @@ mod test {
         }
     }
 
-    fn test_evaluation_result() -> EvaluationResult {
-        EvaluationResult {
-            value: [0; 32],
-            tries_remaining: 42,
-        }
-    }
-
-    fn make_secret() -> [u8; 32] {
-        let mut rng = OsRng.unwrap_err();
-        let mut secret = [0; 32];
-        rng.fill_bytes(&mut secret);
-        secret
-    }
-
     #[tokio::test]
     async fn restore_with_fallback_primary_success() {
         let primary = TestSvr3Client {
-            restore_fn: || Ok(test_evaluation_result()),
+            restore_fn: || Ok(Secret::default()),
             ..TestSvr3Client::default()
         };
         let fallback = TestSvr3Client {
@@ -416,8 +213,8 @@ mod test {
             ..TestSvr3Client::default()
         };
 
-        let result = restore_with_fallback((&primary, &fallback), "", new_empty_share_set()).await;
-        assert_matches!(result, Ok(evaluation_result) => assert_eq!(evaluation_result, test_evaluation_result()));
+        let result = restore_with_fallback((&primary, &fallback), "").await;
+        assert_matches!(result, Ok(output4) => assert_eq!(output4, Secret::default()));
     }
 
     #[tokio::test]
@@ -431,7 +228,7 @@ mod test {
             ..TestSvr3Client::default()
         };
 
-        let result = restore_with_fallback((&primary, &fallback), "", new_empty_share_set()).await;
+        let result = restore_with_fallback((&primary, &fallback), "").await;
         assert_matches!(result, Err(Error::ConnectionTimedOut));
     }
 
@@ -445,7 +242,7 @@ mod test {
             restore_fn: || Err(Error::RestoreFailed(31415)),
             ..TestSvr3Client::default()
         };
-        let result = restore_with_fallback((&primary, &fallback), "", new_empty_share_set()).await;
+        let result = restore_with_fallback((&primary, &fallback), "").await;
         assert_matches!(result, Err(Error::RestoreFailed(31415)));
     }
 
@@ -456,56 +253,10 @@ mod test {
             ..TestSvr3Client::default()
         };
         let fallback = TestSvr3Client {
-            restore_fn: || Ok(test_evaluation_result()),
+            restore_fn: || Ok(Secret::default()),
             ..TestSvr3Client::default()
         };
-        let result = restore_with_fallback((&primary, &fallback), "", new_empty_share_set()).await;
-        assert_matches!(result, Ok(evaluation_result) => assert_eq!(evaluation_result, test_evaluation_result()));
-    }
-
-    #[tokio::test]
-    async fn migrate_backup_write_error() {
-        let destination = TestSvr3Client {
-            backup_fn: || Err(Error::ConnectionTimedOut),
-            ..TestSvr3Client::default()
-        };
-        let result = migrate_backup(
-            (&TestSvr3Client::default(), &destination),
-            "",
-            make_secret(),
-            nonzero!(42u32),
-        )
-        .await;
-        assert_matches!(result, Err(Error::ConnectionTimedOut));
-    }
-
-    #[tokio::test]
-    async fn migrate_backup_remove_error() {
-        let source = TestSvr3Client {
-            remove_fn: || Err(Error::Protocol("Anything at all".to_string())),
-            ..TestSvr3Client::default()
-        };
-        let destination = TestSvr3Client {
-            backup_fn: || Ok(new_empty_share_set()),
-            ..TestSvr3Client::default()
-        };
-        let result =
-            migrate_backup((&source, &destination), "", make_secret(), nonzero!(42u32)).await;
-        assert_matches!(result, Ok(_share_set));
-    }
-
-    #[tokio::test]
-    async fn migrate_backup_remove_success() {
-        let source = TestSvr3Client {
-            remove_fn: || Ok(()),
-            ..TestSvr3Client::default()
-        };
-        let destination = TestSvr3Client {
-            backup_fn: || Ok(new_empty_share_set()),
-            ..TestSvr3Client::default()
-        };
-        let result =
-            migrate_backup((&source, &destination), "", make_secret(), nonzero!(42u32)).await;
-        assert_matches!(result, Ok(_share_set));
+        let result = restore_with_fallback((&primary, &fallback), "").await;
+        assert_matches!(result, Ok(output4) => assert_eq!(output4, Secret::default()));
     }
 }

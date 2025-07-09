@@ -7,7 +7,7 @@ use std::num::NonZeroU16;
 
 use attest::svr2::RaftConfig;
 use const_str::ip_addr;
-use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, Sgx};
+use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
 use libsignal_net::env::{ConnectionConfig, DomainConfig, Env, KeyTransConfig};
 use libsignal_net::infra::certs::RootCertificates;
 
@@ -50,7 +50,7 @@ const DUMMY_CDSI_ENDPOINT_PARAMS: EndpointParams<'static, Cdsi> = EndpointParams
     raft_config: (),
 };
 
-const DUMMY_SVR2_ENDPOINT_PARAMS: EndpointParams<'static, Sgx> = EndpointParams {
+const DUMMY_SVR2_ENDPOINT_PARAMS: EndpointParams<'static, SvrSgx> = EndpointParams {
     mr_enclave: MrEnclave::new(ENCLAVE_ID_MOCK_SERVER),
     raft_config: DUMMY_RAFT_CONFIG,
 };
