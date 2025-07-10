@@ -87,7 +87,7 @@ public class NativeHandleOwner<PointerType: SignalMutPointer> {
         self.handle = handle.toOpaque().map { .borrowed($0) }
     }
 
-    internal class func destroyNativeHandle(_: NonNull<PointerType>) -> SignalFfiErrorRef? {
+    internal class func destroyNativeHandle(_ handle: NonNull<PointerType>) -> SignalFfiErrorRef? {
         fatalError("must be implemented by subclasses")
     }
 
@@ -153,7 +153,7 @@ public class ClonableHandleOwner<PointerType: SignalMutPointer>: NativeHandleOwn
     }
 
     internal class func cloneNativeHandle(
-        _: inout PointerType,
+        _ handle: inout PointerType,
         currentHandle: PointerType.ConstPointer
     ) -> SignalFfiErrorRef? {
         fatalError("must be implemented by subclasses")

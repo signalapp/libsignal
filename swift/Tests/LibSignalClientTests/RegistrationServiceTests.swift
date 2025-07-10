@@ -15,11 +15,11 @@ import Testing
 class RegistrationServiceConversionTests {
     private struct ErrorTest {
         public let operationName: String
-        public let convertFn: (_: UnsafePointer<CChar>) -> OpaquePointer?
+        public let convertFn: (UnsafePointer<CChar>) -> OpaquePointer?
         public let cases: [(String, (Error) -> Bool)]
         public init(
             _ operationName: String,
-            _ convertFn: @escaping (_: UnsafePointer<CChar>) -> OpaquePointer?,
+            _ convertFn: @escaping (UnsafePointer<CChar>) -> OpaquePointer?,
             _ cases: [(String, (Error) -> Bool)]
         ) {
             self.operationName = operationName
