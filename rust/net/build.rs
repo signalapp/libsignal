@@ -5,6 +5,7 @@
 
 fn main() {
     let protos = [
+        "src/proto/backup_metadata.proto",
         "src/proto/chat_websocket.proto",
         "src/proto/cds2.proto",
         "src/proto/chat_noise.proto",

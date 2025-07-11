@@ -2,15 +2,27 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use hmac::{Hmac, Mac};
+use libsignal_account_keys::{
+    BackupForwardSecrecyEncryptionKey, BackupForwardSecrecyToken, BackupKey,
+};
 use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_net_infra::ws2::attested::AttestedConnectionError;
 use libsignal_svrb::{Backup4, Secret};
+use prost::Message;
+use rand::rngs::OsRng;
+use rand::{CryptoRng, Rng, TryRngCore};
+use sha2::Sha256;
+use signal_crypto::{aes_256_cbc_decrypt, aes_256_cbc_encrypt};
+use subtle::ConstantTimeEq;
 use thiserror::Error;
+
+use crate::proto::backup_metadata;
+use crate::proto::backup_metadata::{MetadataPb, NextBackupPb};
 
 mod ppss_ops;
 
 pub mod traits;
-use traits::*;
 
 #[cfg(any(test, feature = "test-util"))]
 pub mod direct;
@@ -48,11 +60,31 @@ pub enum Error {
     DataMissing,
     /// Connect timed out
     ConnectionTimedOut,
+    /// Invalid data from previous backup
+    PreviousBackupDataInvalid,
+    /// Invalid metadata from backup
+    MetadataInvalid,
+    /// Encryption error: {0}
+    EncryptionError(signal_crypto::EncryptionError),
+    /// Decryption error: {0}
+    DecryptionError(signal_crypto::DecryptionError),
 }
 
 impl From<attest::enclave::Error> for Error {
     fn from(err: attest::enclave::Error) -> Self {
         Self::AttestationError(err)
+    }
+}
+
+impl From<signal_crypto::DecryptionError> for Error {
+    fn from(err: signal_crypto::DecryptionError) -> Self {
+        Self::DecryptionError(err)
+    }
+}
+
+impl From<signal_crypto::EncryptionError> for Error {
+    fn from(err: signal_crypto::EncryptionError) -> Self {
+        Self::EncryptionError(err)
     }
 }
 
@@ -94,6 +126,155 @@ impl From<AttestedConnectionError> for Error {
     }
 }
 
+/// provide 32 bytes of entropy pulled from the given rng as an array.
+fn random_32b<R: CryptoRng + Rng>(rng: &mut R) -> [u8; 32] {
+    let mut bytes = [0u8; 32];
+    rng.try_fill_bytes(&mut bytes).expect("available entropy");
+    bytes
+}
+
+const HMAC_SHA256_TRUNCATED_BYTES: usize = 16;
+
+/// provide a HMAC-SHA256 as a 32-byte array.
+fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+    let mut hmac =
+        Hmac::<Sha256>::new_from_slice(key).expect("HMAC-SHA256 should accept any size key");
+    hmac.update(data);
+    hmac.finalize().into_bytes().into()
+}
+
+/// encrypt-then-hmac with AES256-CBC and HMAC-SHA256 truncated to HMAC_SHA256_TRUNCATED_BYTES,
+/// concatenating the results.  IV is not attached to the output.
+fn aes_256_cbc_encrypt_hmacsha256(
+    ek: &BackupForwardSecrecyEncryptionKey,
+    ptext: &[u8],
+) -> Result<Vec<u8>, signal_crypto::EncryptionError> {
+    let mut ctext = aes_256_cbc_encrypt(ptext, &ek.cipher_key, &ek.iv)?;
+    ctext.extend_from_slice(&hmac_sha256(&ek.hmac_key, &ctext)[..HMAC_SHA256_TRUNCATED_BYTES]);
+    Ok(ctext)
+}
+
+/// hmac-then-decrypt with AES256-CBC and HMAC-SHA256 truncated to HMAC_SHA256_TRUNCATED_BYTES,
+/// pulling the HMAC bytes from the end of the ciphertext.  IV is not pulled from the input
+/// and must be provided separately.
+fn aes_256_cbc_hmacsha256_decrypt(
+    ek: &BackupForwardSecrecyEncryptionKey,
+    ctext: &[u8],
+) -> Result<Vec<u8>, signal_crypto::DecryptionError> {
+    if ctext.len() < HMAC_SHA256_TRUNCATED_BYTES {
+        return Err(signal_crypto::DecryptionError::BadCiphertext(
+            "truncated ciphertext",
+        ));
+    }
+    let ctext_len = ctext.len() - HMAC_SHA256_TRUNCATED_BYTES;
+    let (ctext, their_mac) = (&ctext[..ctext_len], &ctext[ctext_len..]);
+    let our_mac = hmac_sha256(&ek.hmac_key, ctext);
+    if our_mac[..HMAC_SHA256_TRUNCATED_BYTES]
+        .ct_eq(their_mac)
+        .into()
+    {
+        aes_256_cbc_decrypt(ctext, &ek.cipher_key, &ek.iv)
+    } else {
+        Err(signal_crypto::DecryptionError::BadCiphertext(
+            "MAC verification failed",
+        ))
+    }
+}
+
+pub struct BackupHandle(Backup4);
+pub struct BackupFileMetadata(pub Vec<u8>);
+pub struct BackupFileMetadataRef<'a>(pub &'a [u8]);
+pub struct BackupPreviousSecretData(pub Vec<u8>);
+pub struct BackupPreviousSecretDataRef<'a>(pub &'a [u8]);
+
+pub struct PrepareBackupResponse {
+    pub handle: BackupHandle,
+    pub forward_secrecy_token: BackupForwardSecrecyToken,
+    pub next_backup_data: BackupPreviousSecretData,
+    pub metadata: BackupFileMetadata,
+}
+
+pub fn prepare_backup<SvrB: traits::Backup>(
+    svrb: &SvrB,
+    backup_key: &BackupKey,
+    previous_backup_data: Option<BackupPreviousSecretDataRef>,
+) -> Result<PrepareBackupResponse, Error> {
+    let mut rng = OsRng.unwrap_err();
+    let password_salt = random_32b(&mut rng);
+    let password_key = backup_key.derive_forward_secrecy_password(&password_salt).0;
+    let forward_secrecy_token = BackupForwardSecrecyToken(random_32b(&mut rng));
+    let backup4 = svrb.prepare(&password_key);
+    let encryption_key_salt = backup4.output;
+    let encryption_key = backup_key.derive_forward_secrecy_encryption_key(&encryption_key_salt);
+    let mut next_backup_pb = NextBackupPb::default();
+    let mut metadata_pb = MetadataPb::default();
+
+    next_backup_pb
+        .pair
+        .push(backup_metadata::next_backup_pb::Pair {
+            pw_salt: password_salt.to_vec(),
+            encryption_key_salt: encryption_key_salt.to_vec(),
+        });
+    metadata_pb.pair.push(backup_metadata::metadata_pb::Pair {
+        pw_salt: password_salt.to_vec(),
+        ct: aes_256_cbc_encrypt_hmacsha256(&encryption_key, &forward_secrecy_token.0)?,
+    });
+
+    if let Some(prev) = previous_backup_data {
+        let previous_backup_pb =
+            NextBackupPb::decode(prev.0).map_err(|_| Error::PreviousBackupDataInvalid)?;
+        if !previous_backup_pb.pair.is_empty() {
+            // Add in another pair using the most recent key.
+            let p = &previous_backup_pb.pair[0];
+            let encryption_key =
+                backup_key.derive_forward_secrecy_encryption_key(&p.encryption_key_salt);
+            next_backup_pb.pair.push(p.clone());
+            metadata_pb.pair.push(backup_metadata::metadata_pb::Pair {
+                pw_salt: p.pw_salt.clone(),
+                ct: aes_256_cbc_encrypt_hmacsha256(&encryption_key, &forward_secrecy_token.0)?,
+            });
+        }
+    };
+
+    Ok(PrepareBackupResponse {
+        handle: BackupHandle(backup4),
+        forward_secrecy_token,
+        next_backup_data: BackupPreviousSecretData(next_backup_pb.encode_to_vec()),
+        metadata: BackupFileMetadata(metadata_pb.encode_to_vec()),
+    })
+}
+
+pub async fn finalize_backup<SvrB: traits::Backup>(
+    svrb: &SvrB,
+    handle: &BackupHandle,
+) -> Result<(), Error> {
+    svrb.finalize(&handle.0).await
+}
+
+pub async fn restore_backup<SvrB: traits::Restore>(
+    svrb: &SvrB,
+    backup_key: &BackupKey,
+    metadata: BackupFileMetadataRef<'_>,
+) -> Result<BackupForwardSecrecyToken, Error> {
+    let metadata = MetadataPb::decode(metadata.0).map_err(|_| Error::MetadataInvalid)?;
+    if metadata.pair.is_empty() {
+        return Err(Error::MetadataInvalid);
+    }
+    // TODO: loop restore attempts by grabbing ConnectionContexts here and
+    //       passing them down into do_restore.
+    let pair = &metadata.pair[0];
+    let password_key = backup_key.derive_forward_secrecy_password(&pair.pw_salt).0;
+    let encryption_key_salt = svrb.restore(&password_key).await?;
+    let encryption_key = backup_key.derive_forward_secrecy_encryption_key(&encryption_key_salt);
+    Ok(BackupForwardSecrecyToken(
+        aes_256_cbc_hmacsha256_decrypt(&encryption_key, &pair.ct)?
+            .try_into()
+            .map_err(|_| {
+                signal_crypto::DecryptionError::BadCiphertext("should decrypt to 32 bytes")
+            })?,
+    ))
+}
+
 /// Attempt a restore from a pair of SVRB instances.
 ///
 /// The function is meant to be used in the registration flow, when the client
@@ -109,11 +290,11 @@ impl From<AttestedConnectionError> for Error {
 /// the body of the function make "primary" and "fallback" a better fit.
 pub async fn restore_with_fallback<Primary, Fallback>(
     clients: (&Primary, &Fallback),
-    password: &str,
+    password: &[u8],
 ) -> Result<Secret, Error>
 where
-    Primary: Restore + Sync,
-    Fallback: Restore + Sync,
+    Primary: traits::Restore + Sync,
+    Fallback: traits::Restore + Sync,
 {
     let (primary_conn, fallback_conn) = clients;
 
@@ -147,8 +328,11 @@ pub mod test_support {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use assert_matches::assert_matches;
     use async_trait::async_trait;
+    use libsignal_account_keys::{AccountEntropyPool, BackupKey};
     use libsignal_svrb::{Backup4, Secret};
 
     use super::*;
@@ -172,8 +356,8 @@ mod test {
     }
 
     #[async_trait]
-    impl Backup for TestSvrBClient {
-        fn prepare(&self, _password: &str) -> Backup4 {
+    impl traits::Backup for TestSvrBClient {
+        fn prepare(&self, _password: &[u8]) -> Backup4 {
             (self.prepare_fn)()
         }
         async fn finalize(&self, _b4: &Backup4) -> Result<(), Error> {
@@ -182,21 +366,21 @@ mod test {
     }
 
     #[async_trait]
-    impl Remove for TestSvrBClient {
+    impl traits::Remove for TestSvrBClient {
         async fn remove(&self) -> Result<(), Error> {
             (self.remove_fn)()
         }
     }
 
     #[async_trait]
-    impl Restore for TestSvrBClient {
-        async fn restore(&self, _password: &str) -> Result<Secret, Error> {
+    impl traits::Restore for TestSvrBClient {
+        async fn restore(&self, _password: &[u8]) -> Result<Secret, Error> {
             (self.restore_fn)()
         }
     }
 
     #[async_trait]
-    impl Query for TestSvrBClient {
+    impl traits::Query for TestSvrBClient {
         async fn query(&self) -> Result<u32, Error> {
             unreachable!()
         }
@@ -213,7 +397,7 @@ mod test {
             ..TestSvrBClient::default()
         };
 
-        let result = restore_with_fallback((&primary, &fallback), "").await;
+        let result = restore_with_fallback((&primary, &fallback), b"").await;
         assert_matches!(result, Ok(output4) => assert_eq!(output4, Secret::default()));
     }
 
@@ -228,7 +412,7 @@ mod test {
             ..TestSvrBClient::default()
         };
 
-        let result = restore_with_fallback((&primary, &fallback), "").await;
+        let result = restore_with_fallback((&primary, &fallback), b"").await;
         assert_matches!(result, Err(Error::ConnectionTimedOut));
     }
 
@@ -242,7 +426,7 @@ mod test {
             restore_fn: || Err(Error::RestoreFailed(31415)),
             ..TestSvrBClient::default()
         };
-        let result = restore_with_fallback((&primary, &fallback), "").await;
+        let result = restore_with_fallback((&primary, &fallback), b"").await;
         assert_matches!(result, Err(Error::RestoreFailed(31415)));
     }
 
@@ -256,7 +440,89 @@ mod test {
             restore_fn: || Ok(Secret::default()),
             ..TestSvrBClient::default()
         };
-        let result = restore_with_fallback((&primary, &fallback), "").await;
+        let result = restore_with_fallback((&primary, &fallback), b"").await;
         assert_matches!(result, Ok(output4) => assert_eq!(output4, Secret::default()));
+    }
+
+    #[test]
+    fn aes_roundtrip() -> Result<(), Error> {
+        let ek = BackupForwardSecrecyEncryptionKey {
+            iv: [0u8; 16],
+            hmac_key: [1u8; 32],
+            cipher_key: [2u8; 32],
+        };
+        let mut ct = aes_256_cbc_encrypt_hmacsha256(&ek, b"plaintext")?;
+        assert_eq!(
+            b"plaintext" as &[u8],
+            &aes_256_cbc_hmacsha256_decrypt(&ek, &ct)?,
+        );
+        ct[0] ^= 1;
+        assert!(matches!(
+            aes_256_cbc_hmacsha256_decrypt(&ek, &ct).unwrap_err(),
+            signal_crypto::DecryptionError::BadCiphertext("MAC verification failed")
+        ));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn backup_key_created_and_restored() {
+        let svrb = TestSvrBClient {
+            prepare_fn: || Backup4 {
+                requests: vec![],
+                output: [1u8; 32],
+            },
+            finalize_fn: || Ok(()),
+            restore_fn: || Ok([1u8; 32]),
+            ..TestSvrBClient::default()
+        };
+        let aep = AccountEntropyPool::from_str(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        )
+        .expect("should create AEP");
+        let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
+        let prepared = prepare_backup(&svrb, &backup_key, None).expect("should prepare");
+        finalize_backup(&svrb, &prepared.handle)
+            .await
+            .expect("should finalize");
+        let restored = restore_backup(
+            &svrb,
+            &backup_key,
+            BackupFileMetadataRef(&prepared.metadata.0),
+        )
+        .await
+        .expect("should restore");
+        assert_eq!(prepared.forward_secrecy_token.0, restored.0);
+    }
+
+    #[tokio::test]
+    async fn backup_key_created_and_restore_failed_due_to_restore_mismatch() {
+        let svrb = TestSvrBClient {
+            prepare_fn: || Backup4 {
+                requests: vec![],
+                output: [1u8; 32],
+            },
+            finalize_fn: || Ok(()),
+            restore_fn: || Ok([2u8; 32]),
+            ..TestSvrBClient::default()
+        };
+        let aep = AccountEntropyPool::from_str(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        )
+        .expect("should create AEP");
+        let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
+        let prepared = prepare_backup(&svrb, &backup_key, None).expect("should prepare");
+        finalize_backup(&svrb, &prepared.handle)
+            .await
+            .expect("should finalize");
+        assert!(matches!(
+            restore_backup(
+                &svrb,
+                &backup_key,
+                BackupFileMetadataRef(&prepared.metadata.0)
+            )
+            .await
+            .unwrap_err(),
+            Error::DecryptionError(_)
+        ));
     }
 }

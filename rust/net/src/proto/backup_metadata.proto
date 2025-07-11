@@ -1,0 +1,26 @@
+//
+// Copyright 2025 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+syntax = "proto3";
+
+package signal.proto.backup_metadata;
+
+message MetadataPb {
+  message Pair {
+    bytes ct = 1;
+    bytes pw_salt = 2;
+  }
+  // newest are first
+  repeated Pair pair = 1;
+}
+
+message NextBackupPb {
+  message Pair {
+    bytes encryption_key_salt = 1;
+    bytes pw_salt = 2;
+  }
+  // newest are first
+  repeated Pair pair = 1;
+}

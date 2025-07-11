@@ -14,13 +14,13 @@ use crate::enclave::PpssSetup;
 
 #[async_trait]
 pub trait Backup {
-    fn prepare(&self, password: &str) -> Backup4;
+    fn prepare(&self, password: &[u8]) -> Backup4;
     async fn finalize(&self, backup: &Backup4) -> Result<(), Error>;
 }
 
 #[async_trait]
 pub trait Restore {
-    async fn restore(&self, password: &str) -> Result<Secret, Error>;
+    async fn restore(&self, password: &[u8]) -> Result<Secret, Error>;
 }
 
 #[async_trait]
@@ -44,7 +44,7 @@ impl<T> Backup for T
 where
     T: SvrBConnect + Sync,
 {
-    fn prepare(&self, password: &str) -> Backup4 {
+    fn prepare(&self, password: &[u8]) -> Backup4 {
         ppss_ops::do_prepare::<T::Env>(password)
     }
     async fn finalize(&self, backup: &Backup4) -> Result<(), Error> {
@@ -57,7 +57,7 @@ impl<T> Restore for T
 where
     T: SvrBConnect + Sync,
 {
-    async fn restore(&self, password: &str) -> Result<Secret, Error> {
+    async fn restore(&self, password: &[u8]) -> Result<Secret, Error> {
         ppss_ops::do_restore::<T::Env>(self.connect().await, password).await
     }
 }

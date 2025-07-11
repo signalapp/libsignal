@@ -16,10 +16,12 @@ workspace = true
 libsignal-net-infra = { path = "infra" }
 
 attest = { workspace = true }
+libsignal-account-keys = { workspace = true }
 libsignal-core = { workspace = true }
 libsignal-keytrans = { workspace = true }
 libsignal-protocol = { workspace = true }
 libsignal-svrb = { workspace = true }
+signal-crypto = { workspace = true }
 zkgroup = { workspace = true }
 
 async-trait = { workspace = true }
@@ -34,6 +36,7 @@ displaydoc = { workspace = true }
 either = { workspace = true }
 futures-util = { workspace = true }
 hex = { workspace = true }
+hkdf = { workspace = true }
 hmac = { workspace = true }
 http = { workspace = true }
 itertools = { workspace = true }
@@ -52,6 +55,7 @@ sha2 = { workspace = true }
 snow = { workspace = true }
 static_assertions = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
+subtle = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
 tokio-boring-signal = { workspace = true }

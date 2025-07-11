@@ -23,12 +23,12 @@ use crate::enclave::{
     ArrayIsh, ConnectionLabel, IntoConnectionResults, LabeledConnection, PpssSetup,
 };
 
-pub fn do_prepare<Env: PpssSetup>(password: &str) -> Backup4 {
+pub fn do_prepare<Env: PpssSetup>(password: &[u8]) -> Backup4 {
     let server_ids = Env::server_ids();
     let mut rng = OsRng.unwrap_err();
     Backup4::new(
         server_ids.as_ref(),
-        password.as_bytes(),
+        password,
         std::num::NonZero::new(255u32).unwrap(), // tries
         &mut rng,
     )
@@ -59,7 +59,7 @@ pub async fn do_backup<Env: PpssSetup>(
 
 pub async fn do_restore<Env: PpssSetup>(
     connect_results: impl IntoConnectionResults,
-    password: &str,
+    password: &[u8],
 ) -> Result<Secret, Error> {
     let mut rng = OsRng.unwrap_err();
     let ConnectionContext {
@@ -71,7 +71,7 @@ pub async fn do_restore<Env: PpssSetup>(
     }
 
     let server_ids = Env::server_ids();
-    let restore1 = Restore1::new(server_ids.as_ref(), password.as_bytes(), &mut rng);
+    let restore1 = Restore1::new(server_ids.as_ref(), password, &mut rng);
     let responses1 = {
         let futures = connections
             .iter_mut()
@@ -229,14 +229,14 @@ mod test {
 
     #[tokio::test]
     async fn do_backup_fails_with_the_first_error() {
-        let backup = do_prepare::<TestEnv>("");
+        let backup = do_prepare::<TestEnv>(b"");
         let result = do_backup::<TestEnv>(NotConnectedResults, &backup).await;
         assert_matches!(result, Err(crate::svrb::Error::ConnectionTimedOut));
     }
 
     #[tokio::test]
     async fn do_restore_fails_with_the_first_error() {
-        let result = do_restore::<TestEnv>(NotConnectedResults, "").await;
+        let result = do_restore::<TestEnv>(NotConnectedResults, b"").await;
         assert_matches!(result, Err(crate::svrb::Error::ConnectionTimedOut));
     }
 
