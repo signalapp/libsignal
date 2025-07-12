@@ -409,7 +409,9 @@ mod test {
             .await
             .expect("can connect");
 
-        make_http_request_response_over(stream).await;
+        make_http_request_response_over(stream)
+            .await
+            .expect("success");
     }
 
     #[tokio::test]
@@ -451,6 +453,8 @@ mod test {
             .await
             .expect("can connect");
 
-        make_http_request_response_over(stream).await;
+        make_http_request_response_over(stream)
+            .await
+            .expect("success");
     }
 }

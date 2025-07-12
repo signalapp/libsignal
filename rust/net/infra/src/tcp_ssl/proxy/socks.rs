@@ -12,7 +12,6 @@ use std::time::Duration;
 
 use auto_enums::enum_derive;
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::net::TcpStream;
 use tokio_socks::tcp::{Socks4Stream, Socks5Stream};
 use tokio_socks::TargetAddr;
 
@@ -20,6 +19,7 @@ use crate::dns::DnsResolver;
 use crate::errors::TransportConnectError;
 use crate::host::Host;
 use crate::route::{Connector, ConnectorExt as _, SocksRoute, TcpRoute};
+use crate::tcp_ssl::TcpStream;
 use crate::Connection;
 
 pub(crate) const LONG_FULL_CONNECT_THRESHOLD: Duration = super::LONG_TCP_HANDSHAKE_THRESHOLD
@@ -196,7 +196,7 @@ mod test {
                 socks5_server::proto::handshake::Method::NONE
             }
         }
-        async fn execute(&self, stream: &mut TcpStream) -> Self::Output {
+        async fn execute(&self, stream: &mut tokio::net::TcpStream) -> Self::Output {
             log::debug!("authenticating incoming stream");
             let accept = !self.deny_all;
 

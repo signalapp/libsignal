@@ -219,7 +219,9 @@ mod test {
         .await
         .expect("successful handshake");
 
-        make_http_request_response_over(connection).await;
+        make_http_request_response_over(connection)
+            .await
+            .expect("no errors");
     }
 
     #[tokio::test]

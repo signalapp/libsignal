@@ -22,6 +22,7 @@ pub mod host;
 pub mod http_client;
 pub mod noise;
 pub mod route;
+mod stream;
 pub mod tcp_ssl;
 pub mod timeouts;
 pub mod utils;

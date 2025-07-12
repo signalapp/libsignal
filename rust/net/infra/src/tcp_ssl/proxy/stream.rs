@@ -4,11 +4,11 @@
 //
 
 use auto_enums::enum_derive;
-use tokio::net::TcpStream;
 use tokio_boring_signal::SslStream;
 
 use crate::tcp_ssl::proxy::https::HttpProxyStream;
 use crate::tcp_ssl::proxy::socks::SocksStream;
+use crate::tcp_ssl::TcpStream;
 use crate::Connection;
 
 #[derive(Debug, derive_more::From)]
