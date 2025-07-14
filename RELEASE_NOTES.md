@@ -1,3 +1,2 @@
-v0.76.4
+v0.76.5
 
-- Work around an issue with misbehaving write(2) calls on macOS.
