@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use prost::Message;
 
-use crate::constants::ENCLAVE_ID_CDSI;
+use crate::constants::{ENCLAVE_ID_CDSI_PROD, ENCLAVE_ID_CDSI_STAGING};
 use crate::dcap;
 use crate::enclave::{Handshake, HandshakeType, Result};
 use crate::proto::cds2;
@@ -15,10 +15,16 @@ use crate::util::SmallMap;
 
 /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
 /// build with that MREnclave value.
-const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&[u8], &'static [&'static str], 1> = &SmallMap::new([(
-    ENCLAVE_ID_CDSI,
-    &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
-)]);
+const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&[u8], &'static [&'static str], 2> = &SmallMap::new([
+    (
+        ENCLAVE_ID_CDSI_PROD,
+        &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+    ),
+    (
+        ENCLAVE_ID_CDSI_STAGING,
+        &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+    ),
+]);
 
 /// SW advisories known to be mitigated by default. If an MREnclave is provided that
 /// is not contained in `ACCEPTABLE_SW_ADVISORIES`, this will be used

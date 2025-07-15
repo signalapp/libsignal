@@ -181,7 +181,7 @@ pub const PROXY_CONFIG_G: ProxyConfig = ProxyConfig {
 };
 
 pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = EndpointParams {
-    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI),
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_STAGING),
     raft_config: (),
 };
 
@@ -191,7 +191,7 @@ pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, SvrSgx> =
 };
 
 pub(crate) const ENDPOINT_PARAMS_CDSI_PROD: EndpointParams<'static, Cdsi> = EndpointParams {
-    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI),
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_PROD),
     raft_config: (),
 };
 

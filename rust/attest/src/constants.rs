@@ -9,7 +9,9 @@ use crate::enclave::HandshakeType;
 use crate::svr2::RaftConfig;
 use crate::util::SmallMap;
 
-pub const ENCLAVE_ID_CDSI: &[u8] =
+pub const ENCLAVE_ID_CDSI_STAGING: &[u8] =
+    &hex!("abb2d4e303f3df869b4ee3bbee225958e73392a17c4a04e7b02b51d246b8926a");
+pub const ENCLAVE_ID_CDSI_PROD: &[u8] =
     &hex!("c6ff0682219217f7045624be472a077c0d4b06193fe71632eb0adb50051d5da1");
 
 pub const ENCLAVE_ID_SVR2_STAGING_PREQUANTUM: &[u8] =
