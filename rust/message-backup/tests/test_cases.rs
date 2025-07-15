@@ -121,6 +121,13 @@ fn scrambler_smoke_test() {
 }
 
 const ENCRYPTED_SOURCE_SUFFIX: &str = ".source.jsonproto";
+
+fn is_legacy_test(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.starts_with("legacy-"))
+        .unwrap_or(false)
+}
 #[dir_test(
         dir: "$CARGO_MANIFEST_DIR/tests/res/test-cases",
         glob: "valid-encrypted/*.binproto.encrypted",
@@ -134,10 +141,17 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
     let backup_key = BackupKey::derive_from_account_entropy_pool(
         &RAW_ACCOUNT_ENTROPY_POOL.parse().expect("valid"),
     );
+
+    let forward_secrecy_token = if is_legacy_test(&path) {
+        None
+    } else {
+        Some(&DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN)
+    };
+
     let key = MessageBackupKey::derive(
         &backup_key,
         &backup_key.derive_backup_id(&ACI),
-        Some(&DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN),
+        forward_secrecy_token,
     );
     println!("hmac key: {}", hex::encode(key.hmac_key));
     println!("aes key: {}", hex::encode(key.aes_key));
@@ -149,19 +163,27 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
         .expect("valid jsonproto")
         .stdout;
 
+    let aci_string = ACI.service_id_string();
+    let iv_hex = hex::encode(IV);
+    let mut args = vec![
+        "--aci",
+        &aci_string,
+        "--account-entropy",
+        RAW_ACCOUNT_ENTROPY_POOL,
+    ];
+
+    let token_hex;
+    if !is_legacy_test(&path) {
+        token_hex = hex::encode(DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN.0);
+        args.push("--forward-secrecy-token");
+        args.push(&token_hex);
+    }
+
+    args.extend_from_slice(&["--iv", &iv_hex, "-"]);
+
     let expected_contents = Command::cargo_bin("examples/encrypt_backup")
         .expect("bin exists")
-        .args([
-            "--aci",
-            &ACI.service_id_string(),
-            "--account-entropy",
-            RAW_ACCOUNT_ENTROPY_POOL,
-            "--forward-secrecy-token",
-            &hex::encode(DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN.0),
-            "--iv",
-            &hex::encode(IV),
-            "-",
-        ])
+        .args(&args)
         .write_stdin(source_as_binproto)
         .ok()
         .expect("can encrypt")
@@ -193,10 +215,17 @@ fn is_valid_encrypted_proto(input: Fixture<PathBuf>) {
     let backup_key = BackupKey::derive_from_account_entropy_pool(
         &RAW_ACCOUNT_ENTROPY_POOL.parse().expect("valid"),
     );
+
+    let forward_secrecy_token = if is_legacy_test(path) {
+        None
+    } else {
+        Some(&DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN)
+    };
+
     let key = MessageBackupKey::derive(
         &backup_key,
         &backup_key.derive_backup_id(&ACI),
-        Some(&DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN),
+        forward_secrecy_token,
     );
     println!("hmac key: {}", hex::encode(key.hmac_key));
     println!("aes key: {}", hex::encode(key.aes_key));
@@ -212,18 +241,25 @@ fn is_valid_encrypted_proto(input: Fixture<PathBuf>) {
     validate(reader);
 
     // The CLI tool should agree.
+    let aci_string = ACI.service_id_string();
+    let mut args = vec![
+        "--aci",
+        &aci_string,
+        "--account-entropy",
+        RAW_ACCOUNT_ENTROPY_POOL,
+    ];
+
+    let token_hex;
+    if !is_legacy_test(path) {
+        token_hex = hex::encode(DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN.0);
+        args.push("--forward-secrecy-token");
+        args.push(&token_hex);
+    }
+
+    args.extend_from_slice(&["--purpose", BACKUP_PURPOSE.into(), path.to_str().unwrap()]);
+
     validator_command()
-        .args([
-            "--aci",
-            &ACI.service_id_string(),
-            "--account-entropy",
-            RAW_ACCOUNT_ENTROPY_POOL,
-            "--forward-secrecy-token",
-            &hex::encode(DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN.0),
-            "--purpose",
-            BACKUP_PURPOSE.into(),
-            path.to_str().unwrap(),
-        ])
+        .args(&args)
         .ok()
         .expect("command failed");
 }
