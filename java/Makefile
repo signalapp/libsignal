@@ -11,6 +11,7 @@ default: java_build
 
 DOCKER_IMAGE := libsignal-builder
 DOCKER_TTY_FLAG := $$(test -t 0 && echo -it)
+GRADLE_OPTIONS ?= --dependency-verification strict
 CROSS_COMPILE_SERVER ?= -PcrossCompileServer
 
 docker_image:
@@ -22,7 +23,7 @@ java_build: docker_image
 		--env LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS \
 		--env LIBSIGNAL_TESTING_PROXY_SERVER \
         -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
-        sh -c "cd src/java; ./gradlew build $(CROSS_COMPILE_SERVER)"
+        sh -c "cd src/java; ./gradlew $(GRADLE_OPTIONS) build $(CROSS_COMPILE_SERVER)"
 
 publish_java: DOCKER_EXTRA = $(shell [ -L build ] && P=$$(readlink build) && echo -v $$P/:$$P )
 publish_java: docker_image
@@ -34,7 +35,7 @@ publish_java: docker_image
 		-e ORG_GRADLE_PROJECT_signingPassword \
 		-e ORG_GRADLE_PROJECT_signingKey \
 		$(DOCKER_IMAGE) \
-		sh -c "cd src/java; ./gradlew publish closeAndReleaseStagingRepositories $(CROSS_COMPILE_SERVER)"
+		sh -c "cd src/java; ./gradlew $(GRADLE_OPTIONS) publish closeAndReleaseStagingRepositories $(CROSS_COMPILE_SERVER)"
 
 # We could run these through Docker, but they would have the same result anyway.
 

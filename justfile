@@ -56,6 +56,7 @@ check-pre-commit: check-format-all
     (cd node && npm run lint)
     (cd swift && ./verify_error_codes.sh)
     (cd swift && swiftlint lint --strict)
+    (cd java && ./gradlew --dependency-verification strict help >/dev/null)
     cargo test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
     cargo clippy --workspace --all-targets --all-features --keep-going -- -D warnings
     @printf "\e[32mBasic pre-commit checks passed! ✅ Hopefully good to push! 🤞\e[0m\n"
