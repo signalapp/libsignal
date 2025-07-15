@@ -40,6 +40,33 @@ export class PublicKey {
   verifyAlternateIdentity(other: PublicKey, signature: Uint8Array): boolean {
     return Native.IdentityKey_VerifyAlternateIdentity(this, other, signature);
   }
+
+  /**
+   * Seals a message so only the holder of the private key can decrypt it.
+   *
+   * Uses HPKE ({@link https://www.rfc-editor.org/rfc/rfc9180.html|RFC 9180}). The output will
+   * include a type byte indicating the chosen algorithms and ciphertext layout. The `info`
+   * parameter should typically be a static value describing the purpose of the message, while
+   * `associatedData` can be used to restrict successful decryption beyond holding the private key.
+   *
+   * A string `info` will be encoded as UTF-8.
+   *
+   * @see PrivateKey#open
+   */
+  seal(
+    msg: Uint8Array,
+    info: string | Uint8Array,
+    associatedData?: Uint8Array
+  ): Uint8Array {
+    const infoBuffer =
+      typeof info === 'string' ? new TextEncoder().encode(info) : info;
+    return Native.PublicKey_HpkeSeal(
+      this,
+      msg,
+      infoBuffer,
+      associatedData ?? new Uint8Array()
+    );
+  }
 }
 
 export class PrivateKey {
@@ -75,6 +102,28 @@ export class PrivateKey {
 
   getPublicKey(): PublicKey {
     return PublicKey._fromNativeHandle(Native.PrivateKey_GetPublicKey(this));
+  }
+
+  /**
+   * Opens a ciphertext sealed with {@link PublicKey#seal}.
+   *
+   * Uses HPKE ({@link https://www.rfc-editor.org/rfc/rfc9180.html|RFC 9180}). The input should
+   * include its original type byte indicating the chosen algorithms and ciphertext layout. The
+   * `info` and `associatedData` must match those used during sealing.
+   */
+  open(
+    ciphertext: Uint8Array,
+    info: string | Uint8Array,
+    associatedData?: Uint8Array
+  ): Uint8Array {
+    const infoBuffer =
+      typeof info === 'string' ? new TextEncoder().encode(info) : info;
+    return Native.PrivateKey_HpkeOpen(
+      this,
+      ciphertext,
+      infoBuffer,
+      associatedData ?? new Uint8Array()
+    );
   }
 }
 

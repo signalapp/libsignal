@@ -742,6 +742,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
+name = "core-models"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94950e87ea550d6d68f1993f3e7bebc8cb7235157bff84337d46195c3aa0b3f0"
+dependencies = [
+ "hax-lib 0.3.1",
+ "pastey",
+ "rand 0.9.0",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1687,6 +1698,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "hpke-rs"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36874953dfe0223fd877a77b0eefcd84f8da36161b446c6fcb47b8311fa0251a"
+dependencies = [
+ "hpke-rs-crypto",
+ "libcrux-sha3 0.0.3",
+ "log",
+ "rand_core 0.9.3",
+ "zeroize",
+]
+
+[[package]]
+name = "hpke-rs-crypto"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d51ffd304e06803f90f2e56a24a6910f19b8516f842d7b72a436c51026279876"
+dependencies = [
+ "rand_core 0.9.3",
+]
+
+[[package]]
 name = "http"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2196,6 +2229,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libcrux-intrinsics"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d3b41dcbc21a5fb7efbbb5af7405b2e79c4bfe443924e90b13afc0080318d31"
+dependencies = [
+ "core-models",
+ "hax-lib 0.3.1",
+]
+
+[[package]]
 name = "libcrux-macros"
 version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2212,9 +2255,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34075e62474b4531bd02647a59190b9d4982b5ecca5d9775fc3d35dd70d9cff1"
 dependencies = [
  "hax-lib 0.2.0",
- "libcrux-intrinsics",
+ "libcrux-intrinsics 0.0.2",
  "libcrux-platform",
- "libcrux-sha3",
+ "libcrux-sha3 0.0.2",
  "rand 0.9.0",
 ]
 
@@ -2245,7 +2288,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3678ede46c5b5e7d5c0035065f8b9575fb67b6df405a88778ddb89cfb71d8fed"
 dependencies = [
  "hax-lib 0.2.0",
- "libcrux-intrinsics",
+ "libcrux-intrinsics 0.0.2",
+ "libcrux-platform",
+]
+
+[[package]]
+name = "libcrux-sha3"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29d95de4257eafdfaf3bffecadb615219b0ca920c553722b3646d32dde76c797"
+dependencies = [
+ "hax-lib 0.3.1",
+ "libcrux-intrinsics 0.0.3",
  "libcrux-platform",
 ]
 
@@ -3388,6 +3442,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
+name = "pastey"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3a8cb46bdc156b1c90460339ae6bfd45ba0394e5effbaa640badb4987fdc261"
+
+[[package]]
 name = "pem"
 version = "3.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4490,15 +4550,23 @@ name = "signal-crypto"
 version = "0.1.0"
 dependencies = [
  "aes",
+ "assert_matches",
  "cbc",
  "const-str",
  "criterion",
  "ctr",
+ "derive_more 2.0.1",
  "displaydoc",
  "ghash",
  "hex",
+ "hkdf",
  "hmac",
+ "hpke-rs",
+ "hpke-rs-crypto",
+ "libsignal-core",
  "rand 0.9.0",
+ "rand_chacha 0.9.0",
+ "rand_core 0.9.3",
  "serde",
  "serde_json",
  "sha1",

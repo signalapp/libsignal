@@ -7,6 +7,7 @@
 
 mod error;
 mod hash;
+mod hpke;
 
 mod aes_cbc;
 mod aes_ctr;
@@ -17,3 +18,4 @@ pub use aes_ctr::Aes256Ctr32;
 pub use aes_gcm::{Aes256GcmDecryption, Aes256GcmEncryption};
 pub use error::{Error, Result};
 pub use hash::{CryptographicHash, CryptographicMac};
+pub use hpke::{HpkeError, SimpleHpkeReceiver, SimpleHpkeSender};

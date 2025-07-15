@@ -299,6 +299,7 @@ public final class Native {
   public static native void ECPrivateKey_Destroy(long handle);
   public static native long ECPrivateKey_Generate();
   public static native long ECPrivateKey_GetPublicKey(long k) throws Exception;
+  public static native byte[] ECPrivateKey_HpkeOpen(long sk, byte[] ciphertext, byte[] info, byte[] associatedData) throws Exception;
   public static native byte[] ECPrivateKey_Serialize(long obj) throws Exception;
   public static native byte[] ECPrivateKey_Sign(long key, byte[] message) throws Exception;
 
@@ -307,6 +308,7 @@ public final class Native {
   public static native void ECPublicKey_Destroy(long handle);
   public static native boolean ECPublicKey_Equals(long lhs, long rhs);
   public static native byte[] ECPublicKey_GetPublicKeyBytes(long obj) throws Exception;
+  public static native byte[] ECPublicKey_HpkeSeal(long pk, byte[] plaintext, byte[] info, byte[] associatedData);
   public static native byte[] ECPublicKey_Serialize(long obj) throws Exception;
   public static native boolean ECPublicKey_Verify(long key, byte[] message, byte[] signature);
 

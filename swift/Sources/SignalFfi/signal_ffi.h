@@ -2003,6 +2003,8 @@ SignalFfiError *signal_privatekey_generate(SignalMutPointerPrivateKey *out);
 
 SignalFfiError *signal_privatekey_get_public_key(SignalMutPointerPublicKey *out, SignalConstPointerPrivateKey k);
 
+SignalFfiError *signal_privatekey_hpke_open(SignalOwnedBuffer *out, SignalConstPointerPrivateKey sk, SignalBorrowedBuffer ciphertext, SignalBorrowedBuffer info, SignalBorrowedBuffer associated_data);
+
 SignalFfiError *signal_privatekey_serialize(SignalOwnedBuffer *out, SignalConstPointerPrivateKey obj);
 
 SignalFfiError *signal_privatekey_sign(SignalOwnedBuffer *out, SignalConstPointerPrivateKey key, SignalBorrowedBuffer message);
@@ -2046,6 +2048,8 @@ SignalFfiError *signal_publickey_destroy(SignalMutPointerPublicKey p);
 SignalFfiError *signal_publickey_equals(bool *out, SignalConstPointerPublicKey lhs, SignalConstPointerPublicKey rhs);
 
 SignalFfiError *signal_publickey_get_public_key_bytes(SignalOwnedBuffer *out, SignalConstPointerPublicKey obj);
+
+SignalFfiError *signal_publickey_hpke_seal(SignalOwnedBuffer *out, SignalConstPointerPublicKey pk, SignalBorrowedBuffer plaintext, SignalBorrowedBuffer info, SignalBorrowedBuffer associated_data);
 
 SignalFfiError *signal_publickey_serialize(SignalOwnedBuffer *out, SignalConstPointerPublicKey obj);
 

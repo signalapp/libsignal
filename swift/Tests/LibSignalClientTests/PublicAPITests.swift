@@ -554,4 +554,12 @@ class PublicAPITests: TestCaseBase {
             XCTAssertEqual(bundle.preKeyPublic, preKey)
         }
     }
+
+    func testHpke() {
+        let keyPair = IdentityKeyPair.generate()
+        let message = Data([11, 22, 33, 44])
+        let sealed = keyPair.publicKey.seal(message, info: "test", associatedData: [1, 2, 3])
+        let opened = try! keyPair.privateKey.open(sealed, info: "test", associatedData: [1, 2, 3])
+        XCTAssertEqual(message, opened)
+    }
 }

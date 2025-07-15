@@ -158,6 +158,22 @@ describe('SignalClient', () => {
     );
   });
 
+  it('can do HPKE', () => {
+    const keyPair = SignalClient.IdentityKeyPair.generate();
+    const message = Uint8Array.of(11, 22, 33, 44);
+    const sealed = keyPair.publicKey.seal(
+      message,
+      'test',
+      Uint8Array.of(1, 2, 3)
+    );
+    const opened = keyPair.privateKey.open(
+      sealed,
+      'test',
+      Uint8Array.of(1, 2, 3)
+    );
+    assert.deepEqual(opened, message);
+  });
+
   it('includes all error codes in LibSignalError', () => {
     // This is a compilation test only.
     type MissingCodes = Exclude<

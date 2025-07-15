@@ -58,6 +58,27 @@ public final class ECPublicKey : NativeHandleGuard.SimpleOwner, Comparable<ECPub
     return guardedMap { Native.ECPublicKey_Verify(it, message, signature) }
   }
 
+  /**
+   * Seals a message so only the holder of the private key can decrypt it.
+   *
+   * Uses HPKE ([RFC 9180][]). The output will include a type byte indicating the chosen
+   * algorithms and ciphertext layout. The `info` parameter should typically be a static value
+   * describing the purpose of the message, while `associatedData` can be used to restrict
+   * successful decryption beyond holding the private key.
+   *
+   * @see ECPrivateKey.open
+   *
+   * [RFC 9180]: https://www.rfc-editor.org/rfc/rfc9180.html
+   */
+  public fun seal(message: ByteArray, info: ByteArray, associatedData: ByteArray = byteArrayOf()): ByteArray {
+    return guardedMap { Native.ECPublicKey_HpkeSeal(it, message, info, associatedData) }
+  }
+
+  /** A convenience overload of [seal(ByteArray,ByteArray,ByteArray)], using the UTF-8 bytes of `info`. */
+  public fun seal(message: ByteArray, info: String, associatedData: ByteArray = byteArrayOf()): ByteArray {
+    return seal(message, info.toByteArray(), associatedData)
+  }
+
   public fun serialize(): ByteArray {
     return guardedMap(Native::ECPublicKey_Serialize)
   }

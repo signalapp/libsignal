@@ -10,6 +10,7 @@ import static org.junit.Assert.*;
 import java.util.Arrays;
 import org.junit.Test;
 import org.signal.libsignal.protocol.InvalidKeyException;
+import org.signal.libsignal.protocol.InvalidMessageException;
 
 public class Curve25519Test {
 
@@ -207,5 +208,14 @@ public class Curve25519Test {
     assertTrue(Arrays.equals(serializedPublic, justRight.serialize()));
     assertTrue(Arrays.equals(extra.serialize(), serializedPublic));
     assertTrue(Arrays.equals(offset.serialize(), serializedPublic));
+  }
+
+  @Test
+  public void testHpke() throws InvalidMessageException {
+    ECKeyPair keyPair = ECKeyPair.generate();
+    byte[] message = new byte[] {11, 22, 33, 44};
+    byte[] sealed = keyPair.getPublicKey().seal(message, "test", new byte[] {1, 2, 3});
+    byte[] opened = keyPair.getPrivateKey().open(sealed, "test", new byte[] {1, 2, 3});
+    assertArrayEquals(message, opened);
   }
 }

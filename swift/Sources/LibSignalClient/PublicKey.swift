@@ -56,6 +56,46 @@ public class PublicKey: ClonableHandleOwner<SignalMutPointerPublicKey>, @uncheck
         return result
     }
 
+    /// Seals a message so only the holder of the private key can decrypt it.
+    ///
+    /// Uses HPKE ([RFC 9180][]). The output will include a type byte indicating the chosen
+    /// algorithms and ciphertext layout. The `info` parameter should typically be a static value
+    /// describing the purpose of the message, while `associatedData` can be used to restrict
+    /// successful decryption beyond holding the private key.
+    ///
+    /// - SeeAlso ``PrivateKey/open(_:info:associatedData:)-55nax``
+    ///
+    /// [RFC 9180]: https://www.rfc-editor.org/rfc/rfc9180.html
+    public func seal(
+        _ message: some ContiguousBytes,
+        info: some ContiguousBytes,
+        associatedData: some ContiguousBytes = []
+    ) -> Data {
+        failOnError {
+            try withAllBorrowed(self, .bytes(message), .bytes(info), .bytes(associatedData)) {
+                nativeHandle,
+                messageBuffer,
+                infoBuffer,
+                aadBuffer in
+                try invokeFnReturningData {
+                    signal_publickey_hpke_seal($0, nativeHandle.const(), messageBuffer, infoBuffer, aadBuffer)
+                }
+            }
+        }
+    }
+
+    /// Convenience overload for ``seal(_:info:associatedData:)-iyot``, using the UTF-8 bytes of `info`.
+    public func seal(
+        _ message: some ContiguousBytes,
+        info: String,
+        associatedData: some ContiguousBytes = []
+    ) -> Data {
+        var info = info
+        return info.withUTF8 {
+            seal(message, info: $0, associatedData: associatedData)
+        }
+    }
+
     public func compare(_ other: PublicKey) -> Int32 {
         var result: Int32 = 0
         failOnError {

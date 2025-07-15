@@ -8,7 +8,11 @@ use aes_gcm_siv::aead::generic_array::typenum::Unsigned;
 use aes_gcm_siv::{AeadCore, AeadInPlace, KeyInit};
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::crypto::{Aes256GcmDecryption, Aes256GcmEncryption, Aes256GcmSiv};
-use signal_crypto::{Aes256Ctr32, CryptographicHash, CryptographicMac, Error, Result};
+use libsignal_core::curve::{PrivateKey, PublicKey};
+use signal_crypto::{
+    Aes256Ctr32, CryptographicHash, CryptographicMac, Error, HpkeError, Result, SimpleHpkeReceiver,
+    SimpleHpkeSender,
+};
 
 use crate::support::*;
 use crate::*;
@@ -187,4 +191,38 @@ fn CryptographicMac_UpdateWithOffset(
 #[bridge_fn(ffi = false, node = false)]
 fn CryptographicMac_Finalize(mac: &mut CryptographicMac) -> Vec<u8> {
     mac.finalize()
+}
+
+#[bridge_fn(ffi = "publickey_hpke_seal", jni = "ECPublicKey_1HpkeSeal")]
+fn PublicKey_HpkeSeal(
+    pk: &PublicKey,
+    plaintext: &[u8],
+    info: &[u8],
+    associated_data: &[u8],
+) -> Vec<u8> {
+    pk.seal(info, associated_data, plaintext)
+        .expect("can seal arbitrary data")
+}
+
+#[bridge_fn(ffi = "privatekey_hpke_open", jni = "ECPrivateKey_1HpkeOpen")]
+fn PrivateKey_HpkeOpen(
+    sk: &PrivateKey,
+    ciphertext: &[u8],
+    info: &[u8],
+    associated_data: &[u8],
+) -> Result<Vec<u8>> {
+    sk.open(info, associated_data, ciphertext)
+        .map_err(|e| match e {
+            HpkeError::OpenError | HpkeError::CryptoError(_) => Error::InvalidTag,
+            HpkeError::InvalidInput => Error::InvalidInputSize,
+            HpkeError::UnknownMode => Error::UnknownAlgorithm("HPKE", "for PrivateKey".to_owned()),
+            HpkeError::InvalidConfig => panic!("invalid HPKE config in libsignal"),
+            HpkeError::InconsistentPsk
+            | HpkeError::MissingPsk
+            | HpkeError::UnnecessaryPsk
+            | HpkeError::InsecurePsk => unreachable!("no PSK"),
+            HpkeError::MessageLimitReached | HpkeError::InsufficientRandomness => {
+                unreachable!("encrypt-only error")
+            }
+        })
 }

@@ -416,6 +416,7 @@ export function PrivateKey_Agree(privateKey: Wrapper<PrivateKey>, publicKey: Wra
 export function PrivateKey_Deserialize(data: Uint8Array): PrivateKey;
 export function PrivateKey_Generate(): PrivateKey;
 export function PrivateKey_GetPublicKey(k: Wrapper<PrivateKey>): PublicKey;
+export function PrivateKey_HpkeOpen(sk: Wrapper<PrivateKey>, ciphertext: Uint8Array, info: Uint8Array, associatedData: Uint8Array): Uint8Array;
 export function PrivateKey_Serialize(obj: Wrapper<PrivateKey>): Uint8Array;
 export function PrivateKey_Sign(key: Wrapper<PrivateKey>, message: Uint8Array): Uint8Array;
 export function ProfileKeyCiphertext_CheckValidContents(buffer: Uint8Array): void;
@@ -437,6 +438,7 @@ export function PublicKey_Compare(key1: Wrapper<PublicKey>, key2: Wrapper<Public
 export function PublicKey_Deserialize(data: Uint8Array): PublicKey;
 export function PublicKey_Equals(lhs: Wrapper<PublicKey>, rhs: Wrapper<PublicKey>): boolean;
 export function PublicKey_GetPublicKeyBytes(obj: Wrapper<PublicKey>): Uint8Array;
+export function PublicKey_HpkeSeal(pk: Wrapper<PublicKey>, plaintext: Uint8Array, info: Uint8Array, associatedData: Uint8Array): Uint8Array;
 export function PublicKey_Serialize(obj: Wrapper<PublicKey>): Uint8Array;
 export function PublicKey_Verify(key: Wrapper<PublicKey>, message: Uint8Array, signature: Uint8Array): boolean;
 export function ReceiptCredentialPresentation_CheckValidContents(buffer: Uint8Array): void;

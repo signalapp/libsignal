@@ -14,18 +14,27 @@ edition = "2021"
 workspace = true
 
 [dependencies]
+libsignal-core = { workspace = true }
+
 aes = { workspace = true, features = ["zeroize"] }
 cbc = { workspace = true, features = ["std", "zeroize"] }
 ctr = { workspace = true, features = ["zeroize"] }
+derive_more = { workspace = true }
 displaydoc = { workspace = true }
 ghash = { workspace = true, features = ["zeroize"] }
+hkdf = { workspace = true }
 hmac = { workspace = true, features = ["reset"] }
+hpke-rs = { workspace = true }
+hpke-rs-crypto = { workspace = true }
+rand_chacha = { workspace = true }
+rand_core = { workspace = true }
 sha1 = { workspace = true }
 sha2 = { workspace = true }
 subtle = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+assert_matches = { workspace = true }
 const-str = { workspace = true }
 criterion = { workspace = true }
 hex = { workspace = true }
@@ -35,4 +44,8 @@ serde_json = { workspace = true }
 
 [[bench]]
 name = "aes_gcm"
+harness = false
+
+[[bench]]
+name = "hpke"
 harness = false

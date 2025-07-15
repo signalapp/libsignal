@@ -69,6 +69,41 @@ public class PrivateKey: ClonableHandleOwner<SignalMutPointerPrivateKey>, @unche
         }
     }
 
+    /// Opens a ciphertext sealed with ``PublicKey/seal(_:info:associatedData:)-iyot``.
+    ///
+    /// Uses HPKE ([RFC 9180][]). The input should include its original type byte indicating the
+    /// chosen algorithms and ciphertext layout. The `info` and `associatedData` must match those
+    /// used during sealing.
+    ///
+    /// [RFC 9180]: https://www.rfc-editor.org/rfc/rfc9180.html
+    public func open(
+        _ ciphertext: some ContiguousBytes,
+        info: some ContiguousBytes,
+        associatedData: some ContiguousBytes = []
+    ) throws -> Data {
+        try withAllBorrowed(self, .bytes(ciphertext), .bytes(info), .bytes(associatedData)) {
+            nativeHandle,
+            ciphertextBuffer,
+            infoBuffer,
+            aadBuffer in
+            try invokeFnReturningData {
+                signal_privatekey_hpke_open($0, nativeHandle.const(), ciphertextBuffer, infoBuffer, aadBuffer)
+            }
+        }
+    }
+
+    /// Convenience overload for ``open(_:info:associatedData:)-55nax``, using the UTF-8 bytes of `info`.
+    public func open(
+        _ ciphertext: some ContiguousBytes,
+        info: String,
+        associatedData: some ContiguousBytes = []
+    ) throws -> Data {
+        var info = info
+        return try info.withUTF8 {
+            try open(ciphertext, info: $0, associatedData: associatedData)
+        }
+    }
+
     public var publicKey: PublicKey {
         return withNativeHandle { nativeHandle in
             failOnError {
