@@ -92,9 +92,9 @@ where
 #[cfg(test)]
 mod test {
     use aes::cipher::typenum::U16;
-    use array_concat::concat_arrays;
     use assert_matches::assert_matches;
     use cbc::cipher::block_padding::Pkcs7;
+    use const_str::concat_bytes;
     use futures::executor::block_on;
     use futures::{FutureExt, StreamExt, TryStreamExt};
 
@@ -117,7 +117,7 @@ mod test {
 
     #[test]
     fn single() {
-        let padded: [u8; 16] = concat_arrays!(LAST, LAST_PADDING);
+        let padded: [u8; 16] = *concat_bytes!(LAST, LAST_PADDING);
         let stream =
             UnpadLast::<_, Pkcs7, BlockSized, 16>::new(futures::stream::iter([Ok(padded.into())]));
 
@@ -127,7 +127,7 @@ mod test {
 
     #[test]
     fn multiple() {
-        let padded: [u8; 16] = concat_arrays!(LAST, LAST_PADDING);
+        let padded: [u8; 16] = *concat_bytes!(LAST, LAST_PADDING);
         let stream = UnpadLast::<_, Pkcs7, BlockSized, 16>::new(futures::stream::iter(
             [[0x11; 16].into(), [0x22; 16].into(), padded.into()].map(Ok),
         ));

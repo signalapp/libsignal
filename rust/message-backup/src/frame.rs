@@ -225,10 +225,9 @@ async fn hmac_sha256(
 #[cfg(test)]
 mod test {
     use aes::cipher::crypto_common::rand_core::{OsRng, RngCore as _};
-    use array_concat::concat_arrays;
     use assert_matches::assert_matches;
     use async_compression::futures::write::GzipEncoder;
-    use const_str::hex;
+    use const_str::{concat_bytes, hex};
     use futures::executor::block_on;
     use futures::io::{Cursor, ErrorKind};
     use futures::AsyncWriteExt;
@@ -253,7 +252,7 @@ mod test {
         const BYTES: [u8; 16] = *b"abcdefghijklmnop";
         const HMAC: [u8; HMAC_LEN] = [0; HMAC_LEN];
 
-        let frame_bytes: [u8; 48] = concat_arrays!(BYTES, HMAC);
+        let frame_bytes: [u8; 48] = *concat_bytes!(BYTES, HMAC);
 
         assert_matches!(
             block_on(FramesReader::new(
@@ -270,7 +269,7 @@ mod test {
         const VALID_HMAC: [u8; HMAC_LEN] =
             hex!("9cc04bb3286dfb4f3f2ba292c9ef192bbec3d8b244aa65e69341a935f61f4fda");
         // Garbage, but with a valid HMAC appended.
-        let frame_bytes: [u8; 58] = concat_arrays!(BYTES, VALID_HMAC);
+        let frame_bytes: [u8; 58] = *concat_bytes!(BYTES, VALID_HMAC);
 
         let mut reader = block_on(FramesReader::new(
             &FAKE_MESSAGE_BACKUP_KEY,

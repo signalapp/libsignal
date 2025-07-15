@@ -20,7 +20,6 @@ signal-crypto = { workspace = true }
 
 aes = { workspace = true, features = ["zeroize"] }
 aes-gcm-siv = { workspace = true }
-arrayref = { workspace = true }
 assert_matches = { workspace = true }
 async-trait = { workspace = true }
 ctr = { workspace = true, features = ["zeroize"] }

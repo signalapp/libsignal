@@ -8,7 +8,6 @@ use std::time::SystemTime;
 
 use aes_gcm_siv::aead::generic_array::typenum::Unsigned;
 use aes_gcm_siv::{AeadInPlace, Aes256GcmSiv, KeyInit};
-use arrayref::array_ref;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use prost::Message;
@@ -636,10 +635,16 @@ mod sealed_sender_v1 {
                 .expand(&[], &mut derived_values)
                 .expect("valid output length");
 
+            let remaining = derived_values;
+            let (&chain_key, remaining) = remaining.split_first_chunk().expect("big enough");
+            let (&cipher_key, remaining) = remaining.split_first_chunk().expect("big enough");
+            let (&mac_key, remaining) = remaining.split_first_chunk().expect("big enough");
+            debug_assert_eq!(remaining.len(), 0);
+
             Ok(Self {
-                chain_key: *array_ref![&derived_values, 0, 32],
-                cipher_key: *array_ref![&derived_values, 32, 32],
-                mac_key: *array_ref![&derived_values, 64, 32],
+                chain_key,
+                cipher_key,
+                mac_key,
             })
         }
     }
@@ -693,9 +698,15 @@ mod sealed_sender_v1 {
                 .expand(&[], &mut derived_values)
                 .expect("valid output length");
 
+            let remaining = derived_values;
+            let (_, remaining) = remaining.split_first_chunk::<32>().expect("big enough");
+            let (&cipher_key, remaining) = remaining.split_first_chunk().expect("big enough");
+            let (&mac_key, remaining) = remaining.split_first_chunk().expect("big enough");
+            debug_assert_eq!(remaining.len(), 0);
+
             Ok(Self {
-                cipher_key: *array_ref![&derived_values, 32, 32],
-                mac_key: *array_ref![&derived_values, 64, 32],
+                cipher_key,
+                mac_key,
             })
         }
     }

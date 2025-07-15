@@ -771,8 +771,8 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
 
 #[cfg(test)]
 mod test {
-    use array_concat::concat_arrays;
     use assert_matches::assert_matches;
+    use const_str::concat_bytes;
     use nonzero_ext::nonzero;
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
@@ -811,7 +811,7 @@ mod test {
         pub(crate) const TEST_PROFILE_KEY: ProfileKeyBytes = [0x36; 32];
         pub(crate) const TEST_E164: E164 = E164(nonzero!(16505550101u64));
         pub(crate) const TEST_IDENTITY_KEY_BYTES: [u8; 33] =
-            concat_arrays!([0x05 /*type byte*/], [0x01; 32]);
+            *concat_bytes!([0x05 /*type byte*/], [0x01; 32]);
 
         fn test_data() -> Self {
             Self {

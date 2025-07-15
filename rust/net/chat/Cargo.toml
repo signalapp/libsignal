@@ -57,7 +57,6 @@ nonzero_ext = { workspace = true }
 pretty_assertions = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
-regex = { workspace = true }
 test-case = { workspace = true }
 test-log = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "test-util"] }

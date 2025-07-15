@@ -5,8 +5,6 @@
 
 use std::fmt;
 
-use arrayref::array_ref;
-
 use crate::proto::storage::session_structure;
 use crate::{crypto, PrivateKey, PublicKey, Result};
 
@@ -97,10 +95,16 @@ impl MessageKeys {
             .expand(b"WhisperMessageKeys", &mut okm)
             .expect("valid output length");
 
+        let remaining = okm;
+        let (&cipher_key, remaining) = remaining.split_first_chunk().expect("big enough");
+        let (&mac_key, remaining) = remaining.split_first_chunk().expect("big enough");
+        let (&iv, remaining) = remaining.split_first_chunk().expect("big enough");
+        debug_assert_eq!(remaining.len(), 0);
+
         MessageKeys {
-            cipher_key: *array_ref![okm, 0, 32],
-            mac_key: *array_ref![okm, 32, 32],
-            iv: *array_ref![okm, 64, 16],
+            cipher_key,
+            mac_key,
+            iv,
             counter,
         }
     }
@@ -194,12 +198,15 @@ impl RootKey {
             .expand(b"WhisperRatchet", &mut derived_secret_bytes)
             .expect("valid output length");
 
+        let remaining = derived_secret_bytes;
+        let (&root_key, remaining) = remaining.split_first_chunk().expect("big enough");
+        let (&chain_key, remaining) = remaining.split_first_chunk().expect("big enough");
+        debug_assert_eq!(remaining.len(), 0);
+
         Ok((
-            RootKey {
-                key: *array_ref![derived_secret_bytes, 0, 32],
-            },
+            RootKey { key: root_key },
             ChainKey {
-                key: *array_ref![derived_secret_bytes, 32, 32],
+                key: chain_key,
                 index: 0,
             },
         ))
