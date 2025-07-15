@@ -29,10 +29,10 @@ RUN    groupadd -o -g "${GID}" libsignal \
     && useradd -m -o -u "${UID}" -g "${GID}" -s /bin/bash libsignal
 
 USER libsignal
-ENV HOME /home/libsignal
-ENV USER libsignal
-ENV SHELL /bin/bash
-ENV LANG C.UTF-8
+ENV HOME=/home/libsignal
+ENV USER=libsignal
+ENV SHELL=/bin/bash
+ENV LANG=C.UTF-8
 
 WORKDIR /home/libsignal
 
@@ -42,8 +42,8 @@ ARG ANDROID_SDK_SHA=124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa
 ARG ANDROID_API_LEVELS=android-34
 ARG ANDROID_BUILD_TOOLS_VERSION=34.0.0
 ARG NDK_VERSION=28.0.13004108
-ENV ANDROID_HOME /home/libsignal/android-sdk
-ENV PATH ${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/cmdline-tools/bin
+ENV ANDROID_HOME=/home/libsignal/android-sdk
+ENV PATH=${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/cmdline-tools/bin
 
 ADD --chown=libsignal --checksum=sha256:${ANDROID_SDK_SHA} \
     https://dl.google.com/android/repository/${ANDROID_SDK_FILENAME} ${ANDROID_SDK_FILENAME}
