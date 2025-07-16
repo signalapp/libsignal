@@ -46,6 +46,10 @@ impl<R: AsyncRead + Unpin> VarintDelimitedReader<R> {
 
     /// Consumes self, returning the inner [`AsyncRead`]er.
     pub fn into_inner(self) -> R {
+        assert!(
+            self.buffer.is_empty(),
+            "would lose data to convert to the inner reader"
+        );
         self.reader
     }
 
