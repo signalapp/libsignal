@@ -54,7 +54,7 @@ pub enum Error {
     /// {0}
     BackupCompletion(#[from] backup::CompletionError),
     /// {0}
-    Parse(#[from] parse::ParseError),
+    Parse(std::io::Error),
     /// no frames found
     NoFrames,
     /// invalid protobuf: {0}
@@ -224,7 +224,11 @@ where
             unknown_fields.extend(iter);
         };
 
-    let first = reader.read_next().await?.ok_or(Error::NoFrames)?;
+    let first = reader
+        .read_next()
+        .await
+        .map_err(Error::Parse)?
+        .ok_or(Error::NoFrames)?;
     let backup_info = proto::backup::BackupInfo::parse_from_bytes(&first)?;
 
     visitor(&backup_info);
@@ -277,7 +281,7 @@ where
         })
         .expect("can create threads");
 
-    'outer: while let Some(mut buf) = reader.read_next().await? {
+    'outer: while let Some(mut buf) = reader.read_next().await.map_err(Error::Parse)? {
         // Try to send to the processing thread in a spin-loop.
         // Normally the processing thread is faster than the reader thread, so this should only spin
         // a few times before success, which is faster than going to sleep and waiting to be woken.
@@ -356,7 +360,7 @@ impl From<VerifyHmacError> for Error {
     fn from(value: VerifyHmacError) -> Self {
         match value {
             VerifyHmacError::HmacMismatch(e) => e.into(),
-            VerifyHmacError::Io(e) => Self::Parse(e.into()),
+            VerifyHmacError::Io(e) => Self::Parse(e),
         }
     }
 }

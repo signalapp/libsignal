@@ -877,16 +877,6 @@ pub enum ConvertJsonError {
 }
 
 #[cfg(feature = "json")]
-impl From<crate::parse::ParseError> for ConvertJsonError {
-    fn from(value: crate::parse::ParseError) -> Self {
-        match value {
-            crate::parse::ParseError::Decode(e) => e.into(),
-            crate::parse::ParseError::Io(e) => e.into(),
-        }
-    }
-}
-
-#[cfg(feature = "json")]
 pub fn convert_from_json(json: Vec<serde_json::Value>) -> Result<Box<[u8]>, ConvertJsonError> {
     let mut it = json.into_iter();
 

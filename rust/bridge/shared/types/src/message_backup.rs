@@ -6,7 +6,6 @@
 use libsignal_account_keys::{AccountEntropyPool, BackupId, BackupKey, BACKUP_KEY_LEN};
 use libsignal_message_backup::frame::ValidationError as FrameValidationError;
 use libsignal_message_backup::key::MessageBackupKey as MessageBackupKeyInner;
-use libsignal_message_backup::parse::ParseError;
 use libsignal_message_backup::{backup, Error, FoundUnknownField};
 use libsignal_protocol::Aci;
 
@@ -57,11 +56,10 @@ impl From<Error> for MessageBackupValidationError {
         match value {
             Error::BackupValidation(e) => Self::String(e.to_string()),
             Error::BackupCompletion(e) => Self::String(e.to_string()),
-            Error::Parse(ParseError::Io(e)) => Self::Io(e),
-            e @ Error::NoFrames
-            | e @ Error::InvalidProtobuf(_)
-            | e @ Error::HmacMismatch(_)
-            | e @ Error::Parse(ParseError::Decode(_)) => Self::String(e.to_string()),
+            Error::Parse(e) => Self::Io(e),
+            e @ Error::NoFrames | e @ Error::InvalidProtobuf(_) | e @ Error::HmacMismatch(_) => {
+                Self::String(e.to_string())
+            }
         }
     }
 }
