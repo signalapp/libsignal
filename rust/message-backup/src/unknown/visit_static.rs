@@ -73,6 +73,12 @@ pub(crate) trait VisitContainerUnknownFields {
     );
 }
 
+impl VisitUnknownFields for SpecialFields {
+    fn visit_unknown_fields(&self, path: Path<'_>, visitor: &mut impl Visitor) {
+        visitor.unknown_fields(path, self.unknown_fields());
+    }
+}
+
 impl VisitContainerUnknownFields for SpecialFields {
     fn visit_unknown_fields_within(
         &self,
@@ -81,7 +87,7 @@ impl VisitContainerUnknownFields for SpecialFields {
         visitor: &mut impl Visitor,
     ) {
         debug_assert_eq!(_field_name, "special_fields");
-        visitor.unknown_fields(parent_path, self.unknown_fields())
+        self.visit_unknown_fields(parent_path, visitor);
     }
 }
 

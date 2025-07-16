@@ -46,8 +46,12 @@ type HmacSha256Reader<R> = MacReader<R, Hmac<Sha256>>;
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum ValidationError {
-    /// io error {0}
+    /// {0}
     Io(#[from] futures::io::Error),
+    /// unrecognized magic number {0:016x}
+    UnrecognizedMagicNumber(u64),
+    /// missing field '{0}' in unencrypted metadata
+    MissingMetadataField(&'static str),
     /// HMAC doesn't match: {0}
     InvalidHmac(#[from] HmacMismatchError),
 }
@@ -82,39 +86,55 @@ impl<R: AsyncRead + AsyncSkip + Unpin> FramesReader<R> {
     pub async fn new(
         key: &MessageBackupKey,
         mut reader_factory: impl ReaderFactory<Reader = R>,
-    ) -> Result<FramesReader<R>, ValidationError> {
-        let content_len;
-        let expected_hmac;
-        {
-            let mut reader = reader_factory.make_reader()?;
-            content_len = reader
-                .stream_len()
-                .await?
-                .checked_sub(HMAC_LEN as u64)
-                .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::UnexpectedEof))?;
-            log::debug!("found {content_len} bytes with a {HMAC_LEN}-byte HMAC");
+    ) -> Result<Self, ValidationError> {
+        let (content_len, hmac) = Self::check_hmac(key, reader_factory.make_reader()?).await?;
+        Self::with_separate_hmac(key, reader_factory.make_reader()?.take(content_len), hmac).await
+    }
 
-            let truncated_reader = reader.borrow_mut().take(content_len);
-            let actual_hmac = hmac_sha256(&key.hmac_key, truncated_reader).await?;
-            expected_hmac = {
-                let mut buf = [0; HMAC_LEN];
-                reader.read_exact(&mut buf).await?;
-                buf
-            };
-            if expected_hmac.ct_ne(&actual_hmac).into() {
-                let err = HmacMismatchError {
-                    expected: expected_hmac,
-                    found: actual_hmac,
-                };
-                log::debug!("invalid HMAC: {err}");
-                return Err(err.into());
-            }
+    /// Checks the contents of `reader` against the HMAC key in `key`.
+    ///
+    /// Assumes the last chunk of bytes will be the HMAC. Returns the covered content length (the
+    /// total length minus the length of the HMAC) along with the HMAC in question (so it can be
+    /// checked again, post-read).
+    pub(crate) async fn check_hmac(
+        key: &MessageBackupKey,
+        mut reader: R,
+    ) -> Result<(u64, [u8; HMAC_LEN]), ValidationError> {
+        let position = reader.stream_position().await?;
+        let content_len = reader
+            .stream_len()
+            .await?
+            .checked_sub(position + HMAC_LEN as u64)
+            .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::UnexpectedEof))?;
+        log::debug!("found {content_len} bytes with a {HMAC_LEN}-byte HMAC");
+
+        let truncated_reader = reader.borrow_mut().take(content_len);
+        let actual_hmac = hmac_sha256(&key.hmac_key, truncated_reader).await?;
+        let expected_hmac = {
+            let mut buf = [0; HMAC_LEN];
+            reader.read_exact(&mut buf).await?;
+            buf
         };
+        if expected_hmac.ct_ne(&actual_hmac).into() {
+            let err = HmacMismatchError {
+                expected: expected_hmac,
+                found: actual_hmac,
+            };
+            log::debug!("invalid HMAC: {err}");
+            return Err(err.into());
+        }
+        Ok((content_len, expected_hmac))
+    }
 
-        let mut content = MacReader::new_sha256(
-            reader_factory.make_reader()?.take(content_len),
-            &key.hmac_key,
-        );
+    /// Creates a `FramesReader` with the specified `key` and `expected_hmac`.
+    ///
+    /// `reader` should already be truncated to only the bytes covered by the HMAC, hence the type.
+    pub(crate) async fn with_separate_hmac(
+        key: &MessageBackupKey,
+        reader: futures::io::Take<R>,
+        expected_hmac: [u8; HMAC_LEN],
+    ) -> Result<Self, ValidationError> {
+        let mut content = MacReader::new_sha256(reader, &key.hmac_key);
 
         let mut iv = [0; AES_IV_SIZE];
         content.read_exact(&mut iv).await?;

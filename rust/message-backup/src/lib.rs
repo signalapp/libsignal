@@ -24,6 +24,7 @@ use crate::unknown::{FormatPath, PathPart, UnknownValue, VisitUnknownFieldsExt a
 
 pub mod args;
 pub mod backup;
+pub mod forward_secrecy;
 pub mod frame;
 pub mod key;
 pub mod parse;
@@ -317,6 +318,21 @@ where
     Ok(backup)
 }
 
+/// For APIs that don't have a good way to report unknown fields, logging is the best we can do if
+/// we don't want a fatal error.
+fn log_unknown_fields<V: crate::unknown::VisitUnknownFields>(input: &V, context: &'static str) {
+    for (path, value) in input.collect_unknown_fields() {
+        log::warn!(
+            "{context}: {}",
+            FoundUnknownField {
+                frame_index: 0,
+                path,
+                value
+            }
+        );
+    }
+}
+
 impl<M: backup::method::Method + backup::ReferencedTypes> backup::PartialBackup<M> {
     pub fn by_parsing(
         raw_backup_info: &[u8],
@@ -325,18 +341,7 @@ impl<M: backup::method::Method + backup::ReferencedTypes> backup::PartialBackup<
     ) -> Result<Self, crate::Error> {
         let backup_info_proto = proto::backup::BackupInfo::parse_from_bytes(raw_backup_info)?;
         visitor(&backup_info_proto);
-        for (path, value) in backup_info_proto.collect_unknown_fields() {
-            // This API doesn't have a good way to report unknown fields; logging is the best we can
-            // do if we don't want a fatal error.
-            log::warn!(
-                "BackupInfo proto: {}",
-                FoundUnknownField {
-                    frame_index: 0,
-                    path,
-                    value
-                }
-            );
-        }
+        log_unknown_fields(&backup_info_proto, "BackupInfo proto");
         Ok(Self::new(backup_info_proto, purpose)?)
     }
 

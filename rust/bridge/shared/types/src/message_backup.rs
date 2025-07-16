@@ -68,7 +68,9 @@ impl From<FrameValidationError> for MessageBackupValidationError {
     fn from(value: FrameValidationError) -> Self {
         match value {
             FrameValidationError::Io(e) => Self::Io(e),
-            e @ FrameValidationError::InvalidHmac(_) => Self::String(e.to_string()),
+            e @ (FrameValidationError::MissingMetadataField(_)
+            | FrameValidationError::InvalidHmac(_)
+            | FrameValidationError::UnrecognizedMagicNumber(_)) => Self::String(e.to_string()),
         }
     }
 }
