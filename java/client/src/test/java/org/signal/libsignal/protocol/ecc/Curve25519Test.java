@@ -7,7 +7,6 @@ package org.signal.libsignal.protocol.ecc;
 
 import static org.junit.Assert.*;
 
-import java.util.Arrays;
 import org.junit.Test;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
@@ -66,17 +65,17 @@ public class Curve25519Test {
       (byte) 0xe6, (byte) 0x29
     };
 
-    ECPublicKey alicePublicKey = new ECPublicKey(alicePublic, 0);
+    ECPublicKey alicePublicKey = new ECPublicKey(alicePublic);
     ECPrivateKey alicePrivateKey = new ECPrivateKey(alicePrivate);
 
-    ECPublicKey bobPublicKey = new ECPublicKey(bobPublic, 0);
+    ECPublicKey bobPublicKey = new ECPublicKey(bobPublic);
     ECPrivateKey bobPrivateKey = new ECPrivateKey(bobPrivate);
 
     byte[] sharedOne = bobPrivateKey.calculateAgreement(alicePublicKey);
     byte[] sharedTwo = alicePrivateKey.calculateAgreement(bobPublicKey);
 
-    assertTrue(Arrays.equals(sharedOne, shared));
-    assertTrue(Arrays.equals(sharedTwo, shared));
+    assertArrayEquals(sharedOne, shared);
+    assertArrayEquals(sharedTwo, shared);
   }
 
   @Test
@@ -88,7 +87,7 @@ public class Curve25519Test {
       byte[] sharedAlice = alice.getPrivateKey().calculateAgreement(bob.getPublicKey());
       byte[] sharedBob = bob.getPrivateKey().calculateAgreement(alice.getPublicKey());
 
-      assertTrue(Arrays.equals(sharedAlice, sharedBob));
+      assertArrayEquals(sharedAlice, sharedBob);
     }
   }
 
@@ -141,15 +140,15 @@ public class Curve25519Test {
     };
 
     ECPrivateKey alicePrivateKey = new ECPrivateKey(aliceIdentityPrivate);
-    ECPublicKey alicePublicKey = new ECPublicKey(aliceIdentityPublic, 0);
-    ECPublicKey aliceEphemeral = new ECPublicKey(aliceEphemeralPublic, 0);
+    ECPublicKey alicePublicKey = new ECPublicKey(aliceIdentityPublic);
+    ECPublicKey aliceEphemeral = new ECPublicKey(aliceEphemeralPublic);
 
     if (!alicePublicKey.verifySignature(aliceEphemeral.serialize(), aliceSignature)) {
       throw new AssertionError("Sig verification failed!");
     }
 
     byte[] aliceKey = aliceEphemeral.getPublicKeyBytes();
-    assertTrue(aliceKey.length == 32);
+    assertEquals(32, aliceKey.length);
 
     for (int i = 0; i < aliceSignature.length; i++) {
       byte[] modifiedSignature = new byte[aliceSignature.length];
@@ -167,23 +166,23 @@ public class Curve25519Test {
   public void testDecodeSize() throws InvalidKeyException {
     ECKeyPair keyPair = ECKeyPair.generate();
     byte[] serializedPublic = keyPair.getPublicKey().serialize();
-    assertEquals(serializedPublic.length, ECPublicKey.KEY_SIZE);
+    assertEquals(ECPublicKey.KEY_SIZE, serializedPublic.length);
 
-    ECPublicKey justRight = new ECPublicKey(serializedPublic, 0);
+    ECPublicKey justRight = new ECPublicKey(serializedPublic);
 
     assertThrows(
         "too small w/ offset",
         InvalidKeyException.class,
-        () -> new ECPublicKey(serializedPublic, 1));
+        () -> new ECPublicKey(serializedPublic, 1, serializedPublic.length - 1));
 
     byte[] truncated = new byte[31];
     System.arraycopy(serializedPublic, 1, truncated, 0, truncated.length);
-    assertThrows("too small", InvalidKeyException.class, () -> new ECPublicKey(truncated, 0));
+    assertThrows("too small", InvalidKeyException.class, () -> new ECPublicKey(truncated));
     assertThrows("too small", InvalidKeyException.class, () -> new ECPrivateKey(truncated));
     assertThrows(
         "too small", InvalidKeyException.class, () -> ECPublicKey.fromPublicKeyBytes(truncated));
 
-    assertThrows("empty", InvalidKeyException.class, () -> new ECPublicKey(new byte[0], 0));
+    assertThrows("empty", InvalidKeyException.class, () -> new ECPublicKey(new byte[0]));
     assertThrows("empty", InvalidKeyException.class, () -> new ECPrivateKey(new byte[0]));
     assertThrows(
         "empty", InvalidKeyException.class, () -> ECPublicKey.fromPublicKeyBytes(new byte[0]));
@@ -191,23 +190,23 @@ public class Curve25519Test {
     byte[] badKeyType = new byte[33];
     System.arraycopy(serializedPublic, 0, badKeyType, 0, serializedPublic.length);
     badKeyType[0] = 0x01;
-    assertThrows(InvalidKeyException.class, () -> new ECPublicKey(badKeyType, 0));
+    assertThrows(InvalidKeyException.class, () -> new ECPublicKey(badKeyType));
 
     // We allow extra trailing space for keys with type bytes for historical compatibility.
     byte[] extraSpace = new byte[serializedPublic.length + 1];
     System.arraycopy(serializedPublic, 0, extraSpace, 0, serializedPublic.length);
-    ECPublicKey extra = new ECPublicKey(extraSpace, 0);
+    ECPublicKey extra = new ECPublicKey(extraSpace);
     assertThrows("too big", InvalidKeyException.class, () -> new ECPrivateKey(extraSpace));
     assertThrows(
         "too big", InvalidKeyException.class, () -> ECPublicKey.fromPublicKeyBytes(extraSpace));
 
     byte[] offsetSpace = new byte[serializedPublic.length + 1];
     System.arraycopy(serializedPublic, 0, offsetSpace, 1, serializedPublic.length);
-    ECPublicKey offset = new ECPublicKey(offsetSpace, 1);
+    ECPublicKey offset = new ECPublicKey(offsetSpace, 1, offsetSpace.length - 1);
 
-    assertTrue(Arrays.equals(serializedPublic, justRight.serialize()));
-    assertTrue(Arrays.equals(extra.serialize(), serializedPublic));
-    assertTrue(Arrays.equals(offset.serialize(), serializedPublic));
+    assertArrayEquals(serializedPublic, justRight.serialize());
+    assertArrayEquals(extra.serialize(), serializedPublic);
+    assertArrayEquals(offset.serialize(), serializedPublic);
   }
 
   @Test
