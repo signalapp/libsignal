@@ -166,13 +166,13 @@ public class MessageBackupValidationTest {
         };
     MessageBackupKey key = makeMessageBackupKey();
 
-    ValidationError error =
+    IOException error =
         assertThrows(
-            ValidationError.class,
+            IOException.class,
             () -> {
               MessageBackup.validate(key, BACKUP_PURPOSE, factory, 0);
             });
-    assertEquals(error.getMessage(), "not enough bytes for an HMAC");
+    assertEquals(error.getMessage(), "unexpected end of file");
   }
 
   @Test
@@ -224,12 +224,11 @@ public class MessageBackupValidationTest {
         };
     MessageBackupKey key = makeMessageBackupKey();
 
-    ValidationError error =
-        assertThrows(
-            ValidationError.class,
-            () -> {
-              MessageBackup.validate(key, BACKUP_PURPOSE, factory, 0);
-            });
+    assertThrows(
+        IOException.class,
+        () -> {
+          MessageBackup.validate(key, BACKUP_PURPOSE, factory, 0);
+        });
     assertTrue("never actually opened?", openCount.get() > 0);
     assertEquals("stream(s) not properly closed", openCount.get(), closeCount.get());
   }

@@ -86,14 +86,19 @@ describe('MessageBackup', () => {
       assertArrayNotEquals(testKey.hmacKey, testKey.aesKey);
     });
 
-    it('produces an error message on empty input', async () => {
-      const outcome = await MessageBackup.validate(
-        testKey,
-        purpose,
-        () => new Uint8ArrayInputStream(new Uint8Array()),
-        0n
-      );
-      assert.equal(outcome.errorMessage, 'not enough bytes for an HMAC');
+    it('throws on empty input', async () => {
+      try {
+        await MessageBackup.validate(
+          testKey,
+          purpose,
+          () => new Uint8ArrayInputStream(new Uint8Array()),
+          0n
+        );
+        assert.fail('did not throw');
+      } catch (e) {
+        assert.instanceOf(e, Error);
+        assert.equal(e.message, 'unexpected end of file');
+      }
     });
 
     it('throws a raised IO error', async () => {
@@ -129,16 +134,17 @@ describe('MessageBackup', () => {
         /* eslint-enable @typescript-eslint/require-await */
       }
 
-      const outcome = await MessageBackup.validate(
-        testKey,
-        purpose,
-        () => {
-          openCount += 1;
-          return new CloseCountingInputStream();
-        },
-        0n
+      await assert.isRejected(
+        MessageBackup.validate(
+          testKey,
+          purpose,
+          () => {
+            openCount += 1;
+            return new CloseCountingInputStream();
+          },
+          0n
+        )
       );
-      assert.equal(outcome.errorMessage, 'not enough bytes for an HMAC');
       assert.isAbove(openCount, 0, 'never opened?');
       assert.equal(openCount, closeCount, 'failed to close all streams');
     });

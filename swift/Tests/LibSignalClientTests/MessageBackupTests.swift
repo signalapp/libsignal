@@ -47,8 +47,8 @@ class MessageBackupTests: TestCaseBase {
 
     func testEmptyInput() throws {
         XCTAssertThrowsError(try Self.validateBackup(bytes: [])) { error in
-            if let error = error as? MessageBackupValidationError {
-                XCTAssertEqual(error.errorMessage, "not enough bytes for an HMAC")
+            if case SignalError.ioError(let message) = error {
+                XCTAssertEqual(message, "IO error: unexpected end of file")
             } else {
                 XCTFail("\(error)")
             }

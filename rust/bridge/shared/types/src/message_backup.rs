@@ -68,9 +68,7 @@ impl From<FrameValidationError> for MessageBackupValidationError {
     fn from(value: FrameValidationError) -> Self {
         match value {
             FrameValidationError::Io(e) => Self::Io(e),
-            e @ (FrameValidationError::TooShort | FrameValidationError::InvalidHmac(_)) => {
-                Self::String(e.to_string())
-            }
+            e @ FrameValidationError::InvalidHmac(_) => Self::String(e.to_string()),
         }
     }
 }

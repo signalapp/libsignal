@@ -48,8 +48,6 @@ type HmacSha256Reader<R> = MacReader<R, Hmac<Sha256>>;
 pub enum ValidationError {
     /// io error {0}
     Io(#[from] futures::io::Error),
-    /// not enough bytes for an HMAC
-    TooShort,
     /// HMAC doesn't match: {0}
     InvalidHmac(#[from] HmacMismatchError),
 }
@@ -93,7 +91,7 @@ impl<R: AsyncRead + AsyncSkip + Unpin> FramesReader<R> {
                 .stream_len()
                 .await?
                 .checked_sub(HMAC_LEN as u64)
-                .ok_or(ValidationError::TooShort)?;
+                .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::UnexpectedEof))?;
             log::debug!("found {content_len} bytes with a {HMAC_LEN}-byte HMAC");
 
             let truncated_reader = reader.borrow_mut().take(content_len);
@@ -243,7 +241,7 @@ mod test {
                 &FAKE_MESSAGE_BACKUP_KEY,
                 CursorFactory::new(&[])
             )),
-            Err(ValidationError::TooShort)
+            Err(ValidationError::Io(e)) if e.kind() == ErrorKind::UnexpectedEof
         );
     }
 
