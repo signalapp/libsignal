@@ -22,6 +22,7 @@ derive_more = { workspace = true, features = ["from"] }
 displaydoc = { workspace = true }
 hkdf = { workspace = true }
 partial-default = { workspace = true, features = ["derive"] }
+protobuf = { workspace = true }
 rand = { workspace = true }
 rand_core = { workspace = true, features = ["os_rng"] }
 serde = { workspace = true, optional = true, features = ["derive"] }
@@ -35,6 +36,9 @@ const-str = { workspace = true }
 criterion = { workspace = true }
 hmac = { workspace = true, features = ["reset"] }
 proptest = { workspace = true }
+
+[build-dependencies]
+protobuf-codegen = { workspace = true }
 
 [[bench]]
 name = "hash"

@@ -2337,6 +2337,8 @@ dependencies = [
  "libsignal-core",
  "partial-default",
  "proptest",
+ "protobuf",
+ "protobuf-codegen",
  "rand 0.9.0",
  "rand_core 0.9.3",
  "serde",

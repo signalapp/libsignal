@@ -3,22 +3,20 @@
 //
 
 use hmac::{Hmac, Mac};
+use libsignal_account_keys::proto::backup_metadata::{self, MetadataPb, NextBackupPb};
+use libsignal_account_keys::proto::Message as _;
 use libsignal_account_keys::{
     BackupForwardSecrecyEncryptionKey, BackupForwardSecrecyToken, BackupKey,
 };
 use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_net_infra::ws2::attested::AttestedConnectionError;
 use libsignal_svrb::{Backup4, Secret};
-use prost::Message;
 use rand::rngs::OsRng;
 use rand::{CryptoRng, Rng, TryRngCore};
 use sha2::Sha256;
 use signal_crypto::{aes_256_cbc_decrypt, aes_256_cbc_encrypt};
 use subtle::ConstantTimeEq;
 use thiserror::Error;
-
-use crate::proto::backup_metadata;
-use crate::proto::backup_metadata::{MetadataPb, NextBackupPb};
 
 mod ppss_ops;
 
@@ -214,15 +212,17 @@ pub fn prepare_backup<SvrB: traits::Backup>(
         .push(backup_metadata::next_backup_pb::Pair {
             pw_salt: password_salt.to_vec(),
             encryption_key_salt: encryption_key_salt.to_vec(),
+            ..Default::default()
         });
     metadata_pb.pair.push(backup_metadata::metadata_pb::Pair {
         pw_salt: password_salt.to_vec(),
         ct: aes_256_cbc_encrypt_hmacsha256(&encryption_key, &forward_secrecy_token.0)?,
+        ..Default::default()
     });
 
     if let Some(prev) = previous_backup_data {
         let previous_backup_pb =
-            NextBackupPb::decode(prev.0).map_err(|_| Error::PreviousBackupDataInvalid)?;
+            NextBackupPb::parse_from_bytes(prev.0).map_err(|_| Error::PreviousBackupDataInvalid)?;
         if !previous_backup_pb.pair.is_empty() {
             // Add in another pair using the most recent key.
             let p = &previous_backup_pb.pair[0];
@@ -232,6 +232,7 @@ pub fn prepare_backup<SvrB: traits::Backup>(
             metadata_pb.pair.push(backup_metadata::metadata_pb::Pair {
                 pw_salt: p.pw_salt.clone(),
                 ct: aes_256_cbc_encrypt_hmacsha256(&encryption_key, &forward_secrecy_token.0)?,
+                ..Default::default()
             });
         }
     };
@@ -239,8 +240,10 @@ pub fn prepare_backup<SvrB: traits::Backup>(
     Ok(PrepareBackupResponse {
         handle: BackupHandle(backup4),
         forward_secrecy_token,
-        next_backup_data: BackupPreviousSecretData(next_backup_pb.encode_to_vec()),
-        metadata: BackupFileMetadata(metadata_pb.encode_to_vec()),
+        next_backup_data: BackupPreviousSecretData(
+            next_backup_pb.write_to_bytes().expect("can serialize"),
+        ),
+        metadata: BackupFileMetadata(metadata_pb.write_to_bytes().expect("can serialize")),
     })
 }
 
@@ -256,7 +259,7 @@ pub async fn restore_backup<SvrB: traits::Restore>(
     backup_key: &BackupKey,
     metadata: BackupFileMetadataRef<'_>,
 ) -> Result<BackupForwardSecrecyToken, Error> {
-    let metadata = MetadataPb::decode(metadata.0).map_err(|_| Error::MetadataInvalid)?;
+    let metadata = MetadataPb::parse_from_bytes(metadata.0).map_err(|_| Error::MetadataInvalid)?;
     if metadata.pair.is_empty() {
         return Err(Error::MetadataInvalid);
     }
