@@ -22,7 +22,8 @@ fn TESTING_KeyTransFatalVerificationFailure() -> Result<(), BridgeError> {
 #[bridge_fn]
 fn TESTING_KeyTransNonFatalVerificationFailure() -> Result<(), BridgeError> {
     Err(RequestError::Other(
-        libsignal_keytrans::Error::BadData("this is a non-fatal verification failure").into(),
+        libsignal_keytrans::Error::BadData("this is a non-fatal verification failure".to_string())
+            .into(),
     )
     .into())
 }
