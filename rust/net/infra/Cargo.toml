@@ -55,8 +55,7 @@ tokio-socks = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-tungstenite = { workspace = true }
 tokio-util = { workspace = true }
-tungstenite = { workspace = true, features = ["url"] }
-url = { workspace = true }
+tungstenite = { workspace = true }
 visibility = { workspace = true }
 warp = { workspace = true, features = ["tls"], optional = true }
 
