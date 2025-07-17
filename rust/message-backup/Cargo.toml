@@ -19,6 +19,10 @@ json = ["dep:serde_json", "dep:protobuf-json-mapping"]
 scramble = ["dep:rand"]
 test-util = []
 
+[[bin]]
+name = "validator"
+required-features = ["env_logger"]
+
 [[example]]
 name = "json_to_binproto"
 required-features = ["json"]
@@ -29,7 +33,7 @@ required-features = ["json"]
 
 [[example]]
 name = "scramble"
-required-features = ["scramble"]
+required-features = ["scramble", "env_logger"]
 
 [[bench]]
 name = "validation"
@@ -58,7 +62,7 @@ clap-stdin = { workspace = true }
 derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["from", "into_iterator", "try_from"] }
 displaydoc = { workspace = true }
-env_logger = { workspace = true }
+env_logger = { workspace = true, optional = true }
 futures = { workspace = true }
 hex = { workspace = true, features = ["serde"] }
 hkdf = { workspace = true }

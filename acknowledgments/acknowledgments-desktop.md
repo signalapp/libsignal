@@ -6051,7 +6051,7 @@ SOFTWARE.
 
 ```
 
-## anstream 0.6.18, anstyle-query 1.1.2, clap 4.5.35, colorchoice 1.0.3, env_filter 0.1.3, env_logger 0.11.8, is_terminal_polyfill 1.70.1, toml_datetime 0.6.8, toml_edit 0.22.24
+## anstream 0.6.18, anstyle-query 1.1.2, clap 4.5.35, colorchoice 1.0.3, is_terminal_polyfill 1.70.1, toml_datetime 0.6.8, toml_edit 0.22.24
 
 ```
 Copyright (c) Individual contributors
@@ -7035,7 +7035,7 @@ THE SOFTWARE.
 
 ```
 
-## aho-corasick 1.1.3, jiff 0.2.5, memchr 2.7.4
+## aho-corasick 1.1.3, memchr 2.7.4
 
 ```
 The MIT License (MIT)
