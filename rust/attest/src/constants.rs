@@ -10,9 +10,9 @@ use crate::svr2::RaftConfig;
 use crate::util::SmallMap;
 
 pub const ENCLAVE_ID_CDSI_STAGING: &[u8] =
-    &hex!("abb2d4e303f3df869b4ee3bbee225958e73392a17c4a04e7b02b51d246b8926a");
+    &hex!("3ded708ca5a42fd84b4639dc661a7ec4b9c9f1b92809c0fc91da2349a5a89d05");
 pub const ENCLAVE_ID_CDSI_PROD: &[u8] =
-    &hex!("c6ff0682219217f7045624be472a077c0d4b06193fe71632eb0adb50051d5da1");
+    &hex!("ee9503070127120074612b6688e593b67e486b1541449f54d71e387484eb40a3");
 
 pub const ENCLAVE_ID_SVR2_STAGING_PREQUANTUM: &[u8] =
     &hex!("38e01eff4fe357dc0b0e8ef7a44b4abc5489fbccba3a78780f3872c277f62bf3");
