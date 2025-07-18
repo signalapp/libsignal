@@ -38,6 +38,12 @@ public class CompletableFuture<T> implements Future<T> {
     this.consumers = new ArrayList<>();
   }
 
+  public static <U> CompletableFuture<U> completedFuture(U value) {
+    final var result = new CompletableFuture<U>();
+    result.complete(value);
+    return result;
+  }
+
   @CalledFromNative
   void setCancellationId(long cancellationId) {
     this.cancellationId = Optional.of(cancellationId);

@@ -59,6 +59,15 @@ public class CompletableFutureTest {
   }
 
   @Test
+  public void testCompletedFutureFactoryMethod() throws Exception {
+    CompletableFuture<Integer> future = CompletableFuture.completedFuture(42);
+    assertTrue(future.isDone());
+    assertFalse(future.isCancelled());
+    assertEquals(42, (int) future.get());
+    assertEquals(42, (int) future.get(1, TimeUnit.MILLISECONDS));
+  }
+
+  @Test
   public void testFailure() throws Exception {
     CompletableFuture<Integer> future = new CompletableFuture<>();
     Exception exception = new RuntimeException("oh no");
