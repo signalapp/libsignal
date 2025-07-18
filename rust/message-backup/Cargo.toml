@@ -17,11 +17,12 @@ workspace = true
 # Enables code to allow conversion of backups to and from JSON.
 json = ["dep:serde_json", "dep:protobuf-json-mapping"]
 scramble = ["dep:rand"]
+cli = ["dep:clap", "dep:clap-stdin", "dep:env_logger"]
 test-util = []
 
 [[bin]]
 name = "validator"
-required-features = ["env_logger"]
+required-features = ["cli"]
 
 [[example]]
 name = "json_to_binproto"
@@ -33,7 +34,7 @@ required-features = ["json"]
 
 [[example]]
 name = "scramble"
-required-features = ["scramble", "env_logger"]
+required-features = ["scramble"]
 
 [[bench]]
 name = "validation"
@@ -57,8 +58,8 @@ assert_matches = { workspace = true }
 async-compression = { workspace = true, features = ["futures-io", "gzip"] }
 async-trait = { workspace = true }
 cbc = { workspace = true }
-clap = { workspace = true, features = ["derive"] }
-clap-stdin = { workspace = true }
+clap = { workspace = true, features = ["derive"], optional = true }
+clap-stdin = { workspace = true, optional = true }
 derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["from", "into_iterator", "try_from"] }
 displaydoc = { workspace = true }
@@ -87,7 +88,7 @@ uuid = { workspace = true, features = ["serde"] }
 visibility = { workspace = true }
 
 [dev-dependencies]
-libsignal-message-backup = { path = "./", features = ["json", "scramble", "test-util"] }
+libsignal-message-backup = { path = "./", features = ["cli", "json", "scramble", "test-util"] }
 
 libsignal-cli-utils = { workspace = true }
 signal-crypto = { workspace = true }
