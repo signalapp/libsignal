@@ -14,7 +14,7 @@ use libsignal_svrb::{Backup4, Secret};
 use rand::rngs::OsRng;
 use rand::{CryptoRng, Rng, TryRngCore};
 use sha2::Sha256;
-use signal_crypto::{aes_256_cbc_decrypt, aes_256_cbc_encrypt};
+use signal_crypto::Aes256Ctr32;
 use subtle::ConstantTimeEq;
 use thiserror::Error;
 
@@ -143,21 +143,23 @@ fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
     hmac.finalize().into_bytes().into()
 }
 
-/// encrypt-then-hmac with AES256-CBC and HMAC-SHA256 truncated to HMAC_SHA256_TRUNCATED_BYTES,
+/// encrypt-then-hmac with AES256-CTR and HMAC-SHA256 truncated to HMAC_SHA256_TRUNCATED_BYTES,
 /// concatenating the results.  IV is not attached to the output.
-fn aes_256_cbc_encrypt_hmacsha256(
+fn aes_256_ctr_encrypt_hmacsha256(
     ek: &BackupForwardSecrecyEncryptionKey,
     ptext: &[u8],
 ) -> Result<Vec<u8>, signal_crypto::EncryptionError> {
-    let mut ctext = aes_256_cbc_encrypt(ptext, &ek.cipher_key, &ek.iv)?;
+    let mut aes = Aes256Ctr32::from_key(&ek.cipher_key, &ek.iv, 0).expect("key size valid");
+    let mut ctext = ptext.to_vec();
+    aes.process(&mut ctext);
     ctext.extend_from_slice(&hmac_sha256(&ek.hmac_key, &ctext)[..HMAC_SHA256_TRUNCATED_BYTES]);
     Ok(ctext)
 }
 
-/// hmac-then-decrypt with AES256-CBC and HMAC-SHA256 truncated to HMAC_SHA256_TRUNCATED_BYTES,
+/// hmac-then-decrypt with AES256-CTR and HMAC-SHA256 truncated to HMAC_SHA256_TRUNCATED_BYTES,
 /// pulling the HMAC bytes from the end of the ciphertext.  IV is not pulled from the input
 /// and must be provided separately.
-fn aes_256_cbc_hmacsha256_decrypt(
+fn aes_256_ctr_hmacsha256_decrypt(
     ek: &BackupForwardSecrecyEncryptionKey,
     ctext: &[u8],
 ) -> Result<Vec<u8>, signal_crypto::DecryptionError> {
@@ -173,7 +175,10 @@ fn aes_256_cbc_hmacsha256_decrypt(
         .ct_eq(their_mac)
         .into()
     {
-        aes_256_cbc_decrypt(ctext, &ek.cipher_key, &ek.iv)
+        let mut aes = Aes256Ctr32::from_key(&ek.cipher_key, &ek.iv, 0).expect("key size valid");
+        let mut ptext = ctext.to_vec();
+        aes.process(&mut ptext);
+        Ok(ptext)
     } else {
         Err(signal_crypto::DecryptionError::BadCiphertext(
             "MAC verification failed",
@@ -218,7 +223,7 @@ pub fn prepare_backup<SvrB: traits::Backup>(
         });
     metadata_pb.pair.push(backup_metadata::metadata_pb::Pair {
         pw_salt: password_salt.to_vec(),
-        ct: aes_256_cbc_encrypt_hmacsha256(&encryption_key, &forward_secrecy_token.0)?,
+        ct: aes_256_ctr_encrypt_hmacsha256(&encryption_key, &forward_secrecy_token.0)?,
         ..Default::default()
     });
 
@@ -233,7 +238,7 @@ pub fn prepare_backup<SvrB: traits::Backup>(
             next_backup_pb.pair.push(p.clone());
             metadata_pb.pair.push(backup_metadata::metadata_pb::Pair {
                 pw_salt: p.pw_salt.clone(),
-                ct: aes_256_cbc_encrypt_hmacsha256(&encryption_key, &forward_secrecy_token.0)?,
+                ct: aes_256_ctr_encrypt_hmacsha256(&encryption_key, &forward_secrecy_token.0)?,
                 ..Default::default()
             });
         }
@@ -265,7 +270,7 @@ async fn restore_backup_attempt<SvrB: traits::Restore>(
     let encryption_key_salt = svrb.restore(&password_key).await?;
     let encryption_key = backup_key.derive_forward_secrecy_encryption_key(&encryption_key_salt);
     Ok(BackupForwardSecrecyToken(
-        aes_256_cbc_hmacsha256_decrypt(&encryption_key, &pair.ct)?
+        aes_256_ctr_hmacsha256_decrypt(&encryption_key, &pair.ct)?
             .try_into()
             .map_err(|_| {
                 signal_crypto::DecryptionError::BadCiphertext("should decrypt to 32 bytes")
@@ -468,18 +473,18 @@ mod test {
     #[test]
     fn aes_roundtrip() -> Result<(), Error> {
         let ek = BackupForwardSecrecyEncryptionKey {
-            iv: [0u8; 16],
+            iv: [0u8; 12],
             hmac_key: [1u8; 32],
             cipher_key: [2u8; 32],
         };
-        let mut ct = aes_256_cbc_encrypt_hmacsha256(&ek, b"plaintext")?;
+        let mut ct = aes_256_ctr_encrypt_hmacsha256(&ek, b"plaintext")?;
         assert_eq!(
             b"plaintext" as &[u8],
-            &aes_256_cbc_hmacsha256_decrypt(&ek, &ct)?,
+            &aes_256_ctr_hmacsha256_decrypt(&ek, &ct)?,
         );
         ct[0] ^= 1;
         assert!(matches!(
-            aes_256_cbc_hmacsha256_decrypt(&ek, &ct).unwrap_err(),
+            aes_256_ctr_hmacsha256_decrypt(&ek, &ct).unwrap_err(),
             signal_crypto::DecryptionError::BadCiphertext("MAC verification failed")
         ));
         Ok(())

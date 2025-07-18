@@ -15,6 +15,7 @@ use libsignal_core::curve::PrivateKey;
 use libsignal_core::Aci;
 use partial_default::PartialDefault;
 use sha2::Sha256;
+use signal_crypto::Aes256Ctr32;
 
 use crate::AccountEntropyPool;
 
@@ -101,7 +102,7 @@ impl BackupKey<V1> {
 
 const BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_CIPHER_KEY_SIZE: usize = 32;
 const BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_HMAC_KEY_SIZE: usize = 32;
-const BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_IV_SIZE: usize = 16;
+const BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_IV_SIZE: usize = Aes256Ctr32::NONCE_SIZE;
 
 pub struct BackupForwardSecrecyPassword(pub [u8; 32]);
 pub struct BackupForwardSecrecyEncryptionKey {

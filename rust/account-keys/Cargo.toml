@@ -16,6 +16,7 @@ workspace = true
 
 [dependencies]
 libsignal-core = { workspace = true }
+signal-crypto = { workspace = true }
 
 argon2 = { workspace = true, features = ["zeroize"] }
 derive_more = { workspace = true, features = ["from"] }

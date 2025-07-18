@@ -2343,6 +2343,7 @@ dependencies = [
  "rand_core 0.9.3",
  "serde",
  "sha2",
+ "signal-crypto",
  "static_assertions",
  "thiserror 2.0.12",
 ]
