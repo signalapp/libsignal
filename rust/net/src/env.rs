@@ -145,6 +145,22 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
     ip_v6: &[],
 };
 
+const DOMAIN_CONFIG_SVRB_STAGING: DomainConfig = DomainConfig {
+    connect: ConnectionConfig {
+        hostname: "svrb.staging.signal.org",
+        port: DEFAULT_HTTPS_PORT,
+        cert: SIGNAL_ROOT_CERTIFICATES,
+        min_tls_version: Some(SslVersion::TLS1_3),
+        confirmation_header_name: None,
+        proxy: Some(ConnectionProxyConfig {
+            path_prefix: "/svrb-staging",
+            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
+        }),
+    },
+    ip_v4: &[ip_addr!(v4, "20.66.46.240")],
+    ip_v6: &[],
+};
+
 pub const PROXY_CONFIG_F_PROD: ProxyConfig = ProxyConfig {
     route_type: RouteType::ProxyF,
     http_host: "reflector-signal.global.ssl.fastly.net",
@@ -188,6 +204,11 @@ pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = E
 pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, SvrSgx> = EndpointParams {
     mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_STAGING),
     raft_config: attest::constants::RAFT_CONFIG_SVR2_STAGING,
+};
+
+pub(crate) const ENDPOINT_PARAMS_SVRB_STAGING: EndpointParams<'static, SvrSgx> = EndpointParams {
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_STAGING),
+    raft_config: attest::constants::RAFT_CONFIG_SVRB_STAGING,
 };
 
 pub(crate) const ENDPOINT_PARAMS_CDSI_PROD: EndpointParams<'static, Cdsi> = EndpointParams {
@@ -553,7 +574,10 @@ pub const STAGING: Env<'static> = Env {
         domain_config: DOMAIN_CONFIG_SVR2_STAGING,
         params: ENDPOINT_PARAMS_SVR2_STAGING,
     },
-    svr_b: None,
+    svr_b: Some(SvrBEnv(EnclaveEndpoint {
+        domain_config: DOMAIN_CONFIG_SVRB_STAGING,
+        params: ENDPOINT_PARAMS_SVRB_STAGING,
+    })),
     keytrans_config: KEYTRANS_CONFIG_STAGING,
 };
 

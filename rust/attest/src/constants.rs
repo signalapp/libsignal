@@ -24,9 +24,12 @@ pub const ENCLAVE_ID_SVR2_STAGING: &[u8] =
 pub const ENCLAVE_ID_SVR2_PROD: &[u8] =
     &hex!("093be9ea32405e85ae28dbb48eb668aebeb7dbe29517b9b86ad4bec4dfe0e6a6");
 
+pub const ENCLAVE_ID_SVRB_STAGING: &[u8] =
+    &hex!("fefd012f3792a5ffd7d385171431adcde938ccb1346d1e1d9d2635da9c44da99");
+
 /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
 /// build with that MREnclave value
-pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'static str], 4> =
+pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'static str], 5> =
     &SmallMap::new([
         (
             ENCLAVE_ID_SVR2_STAGING_PREQUANTUM,
@@ -42,6 +45,10 @@ pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'
         ),
         (
             ENCLAVE_ID_SVR2_PROD,
+            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+        ),
+        (
+            ENCLAVE_ID_SVRB_STAGING,
             &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
         ),
     ]);
@@ -65,6 +72,9 @@ pub const RAFT_CONFIG_SVR2_STAGING_PREQUANTUM: &RaftConfig = &RaftConfig {
     max_voting_replicas: 5,
     super_majority: 0,
     group_id: 3565209795906488720,
+    db_version: 2,
+    attestation_timeout: 604800,
+    simulated: false,
 };
 
 pub const RAFT_CONFIG_SVR2_PROD_PREQUANTUM: &RaftConfig = &RaftConfig {
@@ -72,12 +82,18 @@ pub const RAFT_CONFIG_SVR2_PROD_PREQUANTUM: &RaftConfig = &RaftConfig {
     max_voting_replicas: 7,
     super_majority: 2,
     group_id: 13627152585634424319,
+    db_version: 2,
+    attestation_timeout: 604800,
+    simulated: false,
 };
 pub const RAFT_CONFIG_SVR2_STAGING: &RaftConfig = &RaftConfig {
     min_voting_replicas: 3,
     max_voting_replicas: 9,
     super_majority: 0,
     group_id: 824451999951354968,
+    db_version: 2,
+    attestation_timeout: 604800,
+    simulated: false,
 };
 
 pub const RAFT_CONFIG_SVR2_PROD: &RaftConfig = &RaftConfig {
@@ -85,6 +101,19 @@ pub const RAFT_CONFIG_SVR2_PROD: &RaftConfig = &RaftConfig {
     max_voting_replicas: 13,
     super_majority: 2,
     group_id: 15536668032883538859,
+    db_version: 2,
+    attestation_timeout: 604800,
+    simulated: false,
+};
+
+pub const RAFT_CONFIG_SVRB_STAGING: &RaftConfig = &RaftConfig {
+    min_voting_replicas: 3,
+    max_voting_replicas: 9,
+    super_majority: 0,
+    group_id: 16478507710842799467,
+    db_version: 4,
+    attestation_timeout: 604800,
+    simulated: false,
 };
 
 // This is left here primarily to support SVR2 bridging code that does

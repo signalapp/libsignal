@@ -66,6 +66,8 @@ pub enum Error {
     EncryptionError(signal_crypto::EncryptionError),
     /// Decryption error: {0}
     DecryptionError(signal_crypto::DecryptionError),
+    /// Multiple errors: {0:?}
+    MultipleErrors(Vec<Error>),
 }
 
 impl From<attest::enclave::Error> for Error {
@@ -254,18 +256,11 @@ pub async fn finalize_backup<SvrB: traits::Backup>(
     svrb.finalize(&handle.0).await
 }
 
-pub async fn restore_backup<SvrB: traits::Restore>(
+async fn restore_backup_attempt<SvrB: traits::Restore>(
     svrb: &SvrB,
     backup_key: &BackupKey,
-    metadata: BackupFileMetadataRef<'_>,
+    pair: &backup_metadata::metadata_pb::Pair,
 ) -> Result<BackupForwardSecrecyToken, Error> {
-    let metadata = MetadataPb::parse_from_bytes(metadata.0).map_err(|_| Error::MetadataInvalid)?;
-    if metadata.pair.is_empty() {
-        return Err(Error::MetadataInvalid);
-    }
-    // TODO: loop restore attempts by grabbing ConnectionContexts here and
-    //       passing them down into do_restore.
-    let pair = &metadata.pair[0];
     let password_key = backup_key.derive_forward_secrecy_password(&pair.pw_salt).0;
     let encryption_key_salt = svrb.restore(&password_key).await?;
     let encryption_key = backup_key.derive_forward_secrecy_encryption_key(&encryption_key_salt);
@@ -276,6 +271,29 @@ pub async fn restore_backup<SvrB: traits::Restore>(
                 signal_crypto::DecryptionError::BadCiphertext("should decrypt to 32 bytes")
             })?,
     ))
+}
+
+pub async fn restore_backup<SvrB: traits::Restore>(
+    svrb: &SvrB,
+    backup_key: &BackupKey,
+    metadata: BackupFileMetadataRef<'_>,
+) -> Result<BackupForwardSecrecyToken, Error> {
+    let metadata = MetadataPb::parse_from_bytes(metadata.0).map_err(|_| Error::MetadataInvalid)?;
+    if metadata.pair.is_empty() {
+        return Err(Error::MetadataInvalid);
+    }
+    let mut multiple_errors: Vec<Error> = Vec::new();
+    for pair in metadata.pair {
+        match restore_backup_attempt(svrb, backup_key, &pair).await {
+            Ok(token) => {
+                return Ok(token);
+            }
+            Err(e) => {
+                multiple_errors.push(e);
+            }
+        }
+    }
+    Err(Error::MultipleErrors(multiple_errors))
 }
 
 /// Attempt a restore from a pair of SVRB instances.
@@ -525,7 +543,7 @@ mod test {
             )
             .await
             .unwrap_err(),
-            Error::DecryptionError(_)
+            Error::MultipleErrors(_)
         ));
     }
 }

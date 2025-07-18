@@ -43,6 +43,9 @@ const DUMMY_RAFT_CONFIG: &RaftConfig = &RaftConfig {
     max_voting_replicas: 9,
     super_majority: 0,
     group_id: 17325409821474389983,
+    attestation_timeout: 604800,
+    db_version: 2,
+    simulated: false,
 };
 
 const DUMMY_CDSI_ENDPOINT_PARAMS: EndpointParams<'static, Cdsi> = EndpointParams {

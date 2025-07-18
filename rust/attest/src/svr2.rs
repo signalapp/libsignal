@@ -19,6 +19,9 @@ pub struct RaftConfig {
     pub max_voting_replicas: u32,
     pub super_majority: u32,
     pub group_id: u64,
+    pub db_version: i32,
+    pub attestation_timeout: u32,
+    pub simulated: bool,
 }
 
 impl PartialEq<svr::RaftGroupConfig> for RaftConfig {
@@ -27,6 +30,9 @@ impl PartialEq<svr::RaftGroupConfig> for RaftConfig {
             && pb.max_voting_replicas == self.max_voting_replicas
             && pb.super_majority == self.super_majority
             && pb.group_id == self.group_id
+            && pb.db_version == self.db_version
+            && pb.attestation_timeout == self.attestation_timeout
+            && pb.simulated == self.simulated
     }
 }
 
@@ -127,6 +133,9 @@ mod tests {
                 max_voting_replicas: 5,
                 super_majority: 0,
                 group_id: 3565209795906488720,
+                db_version: 2,
+                attestation_timeout: 604800,
+                simulated: false,
             },
             HandshakeType::PreQuantum,
         )
@@ -150,6 +159,9 @@ mod tests {
                 max_voting_replicas: 5,
                 super_majority: 0,
                 group_id: 0, // wrong
+                db_version: 2,
+                attestation_timeout: 604800,
+                simulated: false,
             },
             HandshakeType::PreQuantum,
         )
@@ -161,6 +173,9 @@ mod tests {
         max_voting_replicas: u32,
         super_majority: u32,
         group_id: u64,
+        db_version: i32,
+        attestation_timeout: u32,
+        simulated: bool,
         expected: &RaftConfig,
     ) -> bool {
         expected
@@ -169,6 +184,9 @@ mod tests {
                 max_voting_replicas,
                 super_majority,
                 group_id,
+                db_version,
+                attestation_timeout,
+                simulated,
             }
     }
 
@@ -179,14 +197,20 @@ mod tests {
             max_voting_replicas: 4,
             super_majority: 1,
             group_id: 12345,
+            db_version: 2,
+            attestation_timeout: 604800,
+            simulated: false,
         };
         // valid
-        assert!(matches(3, 4, 1, 12345, &expected));
+        assert!(matches(3, 4, 1, 12345, 2, 604800, false, &expected));
 
         // invalid
-        assert!(!matches(2, 4, 1, 12345, &expected));
-        assert!(!matches(3, 3, 1, 12345, &expected));
-        assert!(!matches(3, 4, 0, 12345, &expected));
-        assert!(!matches(3, 4, 1, 54321, &expected));
+        assert!(!matches(2, 4, 1, 12345, 2, 604800, false, &expected));
+        assert!(!matches(3, 3, 1, 12345, 2, 604800, false, &expected));
+        assert!(!matches(3, 4, 0, 12345, 2, 604800, false, &expected));
+        assert!(!matches(3, 4, 1, 54321, 2, 604800, false, &expected));
+        assert!(!matches(3, 4, 1, 12345, 4, 604800, false, &expected));
+        assert!(!matches(3, 4, 1, 12345, 2, 604801, false, &expected));
+        assert!(!matches(3, 4, 1, 12345, 2, 604800, true, &expected));
     }
 }

@@ -89,6 +89,10 @@ warp = { workspace = true, features = ["tls"] }
 name = "chat_smoke_test"
 required-features = ["test-util"]
 
+[[example]]
+name = "svrb_test"
+required-features = ["test-util"]
+
 [[test]]
 name = "chat_connect_timing"
 required-features = ["test-util"]

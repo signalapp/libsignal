@@ -19,6 +19,12 @@ message ClientHandshakeStart {
   bytes endorsement = 3;
 }
 
+enum DatabaseVersion {
+  DATABASE_VERSION_UNKNOWN = 0;
+  DATABASE_VERSION_SVR2 = 2;
+  DATABASE_VERSION_SVR3 = 3;
+  DATABASE_VERSION_SVR4 = 4;
+}
 
 // RaftGroupConfig is a configuration shared by members of a Raft group.
 // It's created only once, on creation of the Raft group.  From that
@@ -43,6 +49,12 @@ message RaftGroupConfig {
   // there be fewer than quorum() + super_majority total nodes in the Raft,
   // all Raft nodes will be required.
   uint32 super_majority = 4;
+  // The database version.
+  DatabaseVersion db_version = 5;
+  // Attestation timeout, in seconds
+  uint32 attestation_timeout = 6;
+  // Whether this is a real SGX or simulated SGX environment.
+  bool simulated = 7;
 }
 
 // Does not belong in SVR2 module, but put here to reuse RaftGroupConfig message
