@@ -24,7 +24,6 @@ use crate::unknown::{FormatPath, PathPart, UnknownValue, VisitUnknownFieldsExt a
 
 pub mod args;
 pub mod backup;
-pub mod forward_secrecy;
 pub mod frame;
 pub mod key;
 pub mod parse;

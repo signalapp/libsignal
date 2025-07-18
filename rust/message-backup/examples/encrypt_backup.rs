@@ -8,6 +8,8 @@ use std::io::{stdout, Write as _};
 use aes::cipher::crypto_common::rand_core::{OsRng, RngCore};
 use clap::{ArgAction, Parser};
 use clap_stdin::FileOrStdin;
+use libsignal_account_keys::proto::backup_metadata::{metadata_pb, MetadataPb};
+use libsignal_account_keys::proto::Message as _;
 use libsignal_cli_utils::read_file;
 use libsignal_message_backup::args::parse_hex_bytes;
 use libsignal_message_backup::export::{
@@ -18,6 +20,12 @@ use libsignal_message_backup::key::MessageBackupKey;
 #[path = "../src/bin/support/mod.rs"]
 mod support;
 use support::KeyArgs;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
+enum Format {
+    Legacy,
+    Modern,
+}
 
 #[derive(Parser)]
 /// Compresses and encrypts an unencrypted backup file.
@@ -34,6 +42,10 @@ struct CliArgs {
     #[arg(long, default_value_t = true, action=ArgAction::Set)]
     pad_bucketed: bool,
 
+    /// use the modern forward-secrecy format, or the legacy just-ciphertext format
+    #[arg(long, default_value = "modern")]
+    format: Format,
+
     #[command(flatten)]
     key_args: KeyArgs,
 }
@@ -43,6 +55,7 @@ fn main() {
         input,
         iv,
         pad_bucketed,
+        format,
         key_args,
     } = CliArgs::parse();
 
@@ -65,6 +78,27 @@ fn main() {
     if pad_bucketed {
         pad_gzipped_bucketed(&mut compressed_contents);
         eprintln!("padded to {} bytes", compressed_contents.len());
+    }
+
+    if let Format::Modern = format {
+        write_bytes(
+            "magic number",
+            libsignal_message_backup::frame::forward_secrecy::MAGIC_NUMBER,
+        );
+        let faux_metadata = MetadataPb {
+            pair: vec![metadata_pb::Pair {
+                ct: b"[ciphertext]".to_vec(),
+                pw_salt: b"[pw_salt]".to_vec(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        write_bytes(
+            "faux metadata",
+            faux_metadata
+                .write_length_delimited_to_bytes()
+                .expect("can serialize"),
+        );
     }
 
     let MessageBackupKey { hmac_key, aes_key } = &key;

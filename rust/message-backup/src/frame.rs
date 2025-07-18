@@ -21,6 +21,7 @@ use crate::key::MessageBackupKey;
 mod aes_read;
 mod block_stream;
 mod cbc;
+pub mod forward_secrecy;
 mod mac_read;
 mod reader_factory;
 mod unpad;
@@ -48,10 +49,10 @@ type HmacSha256Reader<R> = MacReader<R, Hmac<Sha256>>;
 pub enum ValidationError {
     /// {0}
     Io(#[from] futures::io::Error),
-    /// unrecognized magic number {0:016x}
-    UnrecognizedMagicNumber(u64),
     /// missing field '{0}' in unencrypted metadata
     MissingMetadataField(&'static str),
+    /// unencrypted metadata contains {0} forward secrecy pairs
+    TooManyForwardSecrecyPairs(usize),
     /// HMAC doesn't match: {0}
     InvalidHmac(#[from] HmacMismatchError),
 }
@@ -87,8 +88,26 @@ impl<R: AsyncRead + AsyncSkip + Unpin> FramesReader<R> {
         key: &MessageBackupKey,
         mut reader_factory: impl ReaderFactory<Reader = R>,
     ) -> Result<Self, ValidationError> {
-        let (content_len, hmac) = Self::check_hmac(key, reader_factory.make_reader()?).await?;
-        Self::with_separate_hmac(key, reader_factory.make_reader()?.take(content_len), hmac).await
+        let mut reader = reader_factory.make_reader()?;
+
+        let mut maybe_magic_number = [0; forward_secrecy::MAGIC_NUMBER.len()];
+        reader.read_exact(&mut maybe_magic_number).await?;
+        let (start_of_encrypted_data, extra_bytes_to_hmac) =
+            if maybe_magic_number == forward_secrecy::MAGIC_NUMBER {
+                Self::verify_metadata(&mut reader).await?;
+                let start_of_encrypted_data = reader.stream_position().await?;
+                (start_of_encrypted_data, &[][..])
+            } else {
+                // Legacy format, with no magic number or unencrypted metadata blob.
+                forward_secrecy::warn_if_close_to_magic_number(maybe_magic_number);
+                (0, &maybe_magic_number[..])
+            };
+
+        let (content_len, hmac) = Self::check_hmac(key, extra_bytes_to_hmac, reader).await?;
+
+        let mut new_reader = reader_factory.make_reader()?;
+        new_reader.skip(start_of_encrypted_data).await?;
+        Self::with_separate_hmac(key, new_reader.take(content_len), hmac).await
     }
 
     /// Checks the contents of `reader` against the HMAC key in `key`.
@@ -96,8 +115,13 @@ impl<R: AsyncRead + AsyncSkip + Unpin> FramesReader<R> {
     /// Assumes the last chunk of bytes will be the HMAC. Returns the covered content length (the
     /// total length minus the length of the HMAC) along with the HMAC in question (so it can be
     /// checked again, post-read).
-    pub(crate) async fn check_hmac(
+    ///
+    /// `extra_bytes_to_hmac` can be used to include bytes that have already been read from
+    /// `reader`; they will be inserted at the front of the stream for the MAC calculation and
+    /// included in the returned content length.
+    async fn check_hmac(
         key: &MessageBackupKey,
+        extra_bytes_to_hmac: &[u8],
         mut reader: R,
     ) -> Result<(u64, [u8; HMAC_LEN]), ValidationError> {
         let position = reader.stream_position().await?;
@@ -109,7 +133,7 @@ impl<R: AsyncRead + AsyncSkip + Unpin> FramesReader<R> {
         log::debug!("found {content_len} bytes with a {HMAC_LEN}-byte HMAC");
 
         let truncated_reader = reader.borrow_mut().take(content_len);
-        let actual_hmac = hmac_sha256(&key.hmac_key, truncated_reader).await?;
+        let actual_hmac = hmac_sha256(&key.hmac_key, extra_bytes_to_hmac, truncated_reader).await?;
         let expected_hmac = {
             let mut buf = [0; HMAC_LEN];
             reader.read_exact(&mut buf).await?;
@@ -123,13 +147,16 @@ impl<R: AsyncRead + AsyncSkip + Unpin> FramesReader<R> {
             log::debug!("invalid HMAC: {err}");
             return Err(err.into());
         }
-        Ok((content_len, expected_hmac))
+        Ok((
+            content_len + extra_bytes_to_hmac.len() as u64,
+            expected_hmac,
+        ))
     }
 
     /// Creates a `FramesReader` with the specified `key` and `expected_hmac`.
     ///
     /// `reader` should already be truncated to only the bytes covered by the HMAC, hence the type.
-    pub(crate) async fn with_separate_hmac(
+    async fn with_separate_hmac(
         key: &MessageBackupKey,
         reader: futures::io::Take<R>,
         expected_hmac: [u8; HMAC_LEN],
@@ -230,11 +257,19 @@ impl<R: AsyncRead + Unpin> VerifyHmac for FramesReader<R> {
     }
 }
 
+/// Convenience wrapper around HMAC-ing the whole contents of an [`AsyncRead`].
+///
+/// `extra_bytes_to_hmac` can be used to include bytes that have already been read from `reader`;
+/// they will be inserted at the front of the stream for the MAC calculation.
 async fn hmac_sha256(
     hmac_key: &[u8],
+    extra_bytes_to_hmac: &[u8],
     reader: impl AsyncRead + Unpin,
 ) -> Result<[u8; HMAC_LEN], futures::io::Error> {
-    let mut reader = MacReader::new_sha256(reader, hmac_key);
+    let mut reader = MacReader::new_sha256(
+        futures::io::Cursor::new(extra_bytes_to_hmac).chain(reader),
+        hmac_key,
+    );
     let mut writer = futures::io::sink();
     futures::io::copy(&mut reader, &mut writer).await?;
     Ok(reader.finalize().into())
@@ -249,9 +284,11 @@ mod test {
     use futures::executor::block_on;
     use futures::io::{Cursor, ErrorKind};
     use futures::AsyncWriteExt;
-    use test_case::test_case;
+    use protobuf::Message as _;
+    use test_case::{test_case, test_matrix};
 
     use super::*;
+    use crate::frame::forward_secrecy::MAGIC_NUMBER;
     use crate::key::test::FAKE_MESSAGE_BACKUP_KEY;
 
     #[test]
@@ -340,7 +377,7 @@ mod test {
         ctext = iv.into_iter().chain(ctext).collect();
 
         // Append the hmac
-        let hmac = hmac_sha256(&key.hmac_key, Cursor::new(&ctext))
+        let hmac = hmac_sha256(&key.hmac_key, &[], Cursor::new(&ctext))
             .await
             .expect("can hash");
         ctext.extend_from_slice(&hmac);
@@ -348,22 +385,39 @@ mod test {
         ctext.into_boxed_slice()
     }
 
-    #[test_case(Pad)]
-    #[test_case(NoPad)]
-    fn frame_round_trip(pad: PadCompressed) {
+    #[derive(Clone, Copy)]
+    enum Format {
+        Legacy,
+        Modern,
+    }
+
+    #[test_matrix([Pad, NoPad], [Format::Legacy, Format::Modern])]
+    fn frame_round_trip(pad: PadCompressed, format: Format) {
         const FRAME_DATA: &[u8] = b"this was a triumph";
 
         let encoded_frame = block_on(make_encrypted(&FAKE_MESSAGE_BACKUP_KEY, FRAME_DATA, pad));
 
+        let full_file = match format {
+            Format::Legacy => encoded_frame.into_vec(),
+            Format::Modern => [
+                MAGIC_NUMBER,
+                &forward_secrecy::test::test_metadata()
+                    .write_length_delimited_to_bytes()
+                    .expect("will not run out of memory"),
+                &encoded_frame,
+            ]
+            .concat(),
+        };
+
         let mut reader = block_on(FramesReader::new(
             &FAKE_MESSAGE_BACKUP_KEY,
-            CursorFactory::new(&encoded_frame),
+            CursorFactory::new(&full_file),
         ))
         .expect("valid HMAC");
         let mut buf = Vec::new();
         block_on(AsyncReadExt::read_to_end(&mut reader, &mut buf)).expect("can read");
 
-        assert_eq!(buf, FRAME_DATA,);
+        assert_eq!(buf, FRAME_DATA);
     }
 
     #[test_case(Pad)]
@@ -403,5 +457,24 @@ mod test {
                 found: hmac_tail(&second_contents)
             }
         );
+    }
+
+    fn assert_io_error(kind: ErrorKind) -> impl Fn(ValidationError) {
+        move |e| assert_matches!(e, ValidationError::Io(e) if e.kind() == kind)
+    }
+
+    #[test_case(b"" => using assert_io_error(ErrorKind::UnexpectedEof))]
+    #[test_case(b"1234" => using assert_io_error(ErrorKind::UnexpectedEof))]
+    #[test_case(b"12345678" => using assert_io_error(ErrorKind::UnexpectedEof))]
+    #[test_case(MAGIC_NUMBER => using assert_io_error(ErrorKind::UnexpectedEof))]
+    #[test_case(const_str::concat_bytes!(MAGIC_NUMBER, 1) => using assert_io_error(ErrorKind::UnexpectedEof))]
+    #[test_case(const_str::concat_bytes!(MAGIC_NUMBER, [1, 0]) => using assert_io_error(ErrorKind::InvalidData))]
+    #[test_case(const_str::concat_bytes!(MAGIC_NUMBER, [0x80, 0x80, 0x80, 0x80, 0x80, 0x01]) => using assert_io_error(ErrorKind::InvalidData))]
+    fn invalid_start_of_file(input: &[u8]) -> ValidationError {
+        block_on(FramesReader::new(
+            &FAKE_MESSAGE_BACKUP_KEY,
+            CursorFactory::new(&input),
+        ))
+        .expect_err("should fail")
     }
 }

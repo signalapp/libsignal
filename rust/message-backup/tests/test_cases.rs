@@ -173,10 +173,11 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
     ];
 
     let token_hex;
-    if !is_legacy_test(&path) {
+    if is_legacy_test(&path) {
+        args.extend_from_slice(&["--format", "legacy"]);
+    } else {
         token_hex = hex::encode(DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN.0);
-        args.push("--forward-secrecy-token");
-        args.push(&token_hex);
+        args.extend_from_slice(&["--forward-secrecy-token", &token_hex]);
     }
 
     args.extend_from_slice(&["--iv", &iv_hex, "-"]);
