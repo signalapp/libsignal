@@ -76,6 +76,7 @@ assert_matches = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 either = { workspace = true }
 env_logger = { workspace = true }
+futures = { workspace = true }
 proptest = { workspace = true }
 rand_chacha = { workspace = true }
 snow = { workspace = true, features = ["default-resolver"] }

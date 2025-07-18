@@ -2691,6 +2691,7 @@ dependencies = [
  "displaydoc",
  "either",
  "env_logger",
+ "futures",
  "futures-util",
  "hex",
  "hkdf",
