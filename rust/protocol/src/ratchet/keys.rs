@@ -5,6 +5,8 @@
 
 use std::fmt;
 
+use zerocopy::{FromBytes, IntoBytes, KnownLayout};
+
 use crate::proto::storage::session_structure;
 use crate::{crypto, PrivateKey, PublicKey, Result};
 
@@ -90,16 +92,16 @@ impl MessageKeys {
         optional_salt: Option<&[u8]>,
         counter: u32,
     ) -> Self {
-        let mut okm = [0; 80];
+        #[derive(Default, KnownLayout, IntoBytes, FromBytes)]
+        #[repr(C, packed)]
+        struct DerivedSecretBytes([u8; 32], [u8; 32], [u8; 16]);
+        let mut okm = DerivedSecretBytes::default();
+
         hkdf::Hkdf::<sha2::Sha256>::new(optional_salt, input_key_material)
-            .expand(b"WhisperMessageKeys", &mut okm)
+            .expand(b"WhisperMessageKeys", okm.as_mut_bytes())
             .expect("valid output length");
 
-        let remaining = okm;
-        let (&cipher_key, remaining) = remaining.split_first_chunk().expect("big enough");
-        let (&mac_key, remaining) = remaining.split_first_chunk().expect("big enough");
-        let (&iv, remaining) = remaining.split_first_chunk().expect("big enough");
-        debug_assert_eq!(remaining.len(), 0);
+        let DerivedSecretBytes(cipher_key, mac_key, iv) = okm;
 
         MessageKeys {
             cipher_key,
@@ -193,15 +195,16 @@ impl RootKey {
         our_ratchet_key: &PrivateKey,
     ) -> Result<(RootKey, ChainKey)> {
         let shared_secret = our_ratchet_key.calculate_agreement(their_ratchet_key)?;
-        let mut derived_secret_bytes = [0; 64];
+        #[derive(Default, KnownLayout, IntoBytes, FromBytes)]
+        #[repr(C, packed)]
+        struct DerivedSecretBytes([u8; 32], [u8; 32]);
+        let mut derived_secret_bytes = DerivedSecretBytes::default();
+
         hkdf::Hkdf::<sha2::Sha256>::new(Some(&self.key), &shared_secret)
-            .expand(b"WhisperRatchet", &mut derived_secret_bytes)
+            .expand(b"WhisperRatchet", derived_secret_bytes.as_mut_bytes())
             .expect("valid output length");
 
-        let remaining = derived_secret_bytes;
-        let (&root_key, remaining) = remaining.split_first_chunk().expect("big enough");
-        let (&chain_key, remaining) = remaining.split_first_chunk().expect("big enough");
-        debug_assert_eq!(remaining.len(), 0);
+        let DerivedSecretBytes(root_key, chain_key) = derived_secret_bytes;
 
         Ok((
             RootKey { key: root_key },
