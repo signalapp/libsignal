@@ -45,7 +45,7 @@ where
             .connect_attested_ws(
                 route_provider,
                 auth,
-                (ws_config, crate::infra::ws::WithoutResponseHeaders::new()),
+                ws_config,
                 format!("svr:{}", std::any::type_name::<E>()).into(),
                 params,
             )

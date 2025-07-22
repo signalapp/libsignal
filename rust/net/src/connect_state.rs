@@ -31,7 +31,7 @@ use libsignal_net_infra::timeouts::{
     ONE_ROUTE_CONNECTION_TIMEOUT, POST_ROUTE_CHANGE_CONNECTION_TIMEOUT,
 };
 use libsignal_net_infra::utils::NetworkChangeEvent;
-use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketStreamLike};
+use libsignal_net_infra::ws::WebSocketConnectError;
 use libsignal_net_infra::ws2::attested::AttestedConnection;
 use libsignal_net_infra::{AsHttpHeader as _, AsyncDuplexStream};
 use rand::distr::uniform::{UniformSampler, UniformUsize};
@@ -407,29 +407,31 @@ impl<TC> ConnectionResources<'_, TC> {
         ))
     }
 
-    pub(crate) async fn connect_attested_ws<E, WC>(
+    pub(crate) async fn connect_attested_ws<E>(
         self,
         routes: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         auth: Auth,
-        (ws_config, ws_connector): (libsignal_net_infra::ws2::Config, WC),
+        ws_config: libsignal_net_infra::ws2::Config,
         log_tag: Arc<str>,
         params: &EndpointParams<'_, E>,
     ) -> Result<(AttestedConnection, RouteInfo), crate::enclave::Error>
     where
         TC: WebSocketTransportConnectorFactory,
-        WC: Connector<
-                (WebSocketRouteFragment, HttpRouteFragment),
-                TC::Connection,
-                Connection: WebSocketStreamLike + Send + 'static,
-                Error = WebSocketConnectError,
-            > + Send
-            + Sync,
         E: NewHandshake,
     {
         let ws_routes = routes.map_routes(|mut route| {
             route.fragment.headers.extend([auth.as_header()]);
             route
         });
+
+        // We don't want to race multiple websocket handshakes because when
+        // we take the first one, the others will be uncermoniously closed.
+        // That looks like unexpected behavior at the server end, and the
+        // wasted handshakes consume resources unnecessarily.  Instead,
+        // allow parallelism at the transport level but throttle the number
+        // of websocket handshakes that can complete.
+        let ws_connector =
+            ThrottlingConnector::new(crate::infra::ws::WithoutResponseHeaders::new(), 1);
 
         let (ws, route_info) = self
             .connect_ws(ws_routes, ws_connector, &log_tag)
