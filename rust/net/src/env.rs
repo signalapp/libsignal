@@ -216,13 +216,10 @@ pub(crate) const ENDPOINT_PARAMS_CDSI_PROD: EndpointParams<'static, Cdsi> = Endp
     raft_config: (),
 };
 
-// Currently, the production SVR2 is prequantum while we're testing the postquantum
-// handshakes in staging.
-pub(crate) const ENDPOINT_PARAMS_SVR2_PROD_PREQUANTUM: EndpointParams<'static, SvrSgx> =
-    EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_PROD_PREQUANTUM),
-        raft_config: attest::constants::RAFT_CONFIG_SVR2_PROD_PREQUANTUM,
-    };
+pub(crate) const ENDPOINT_PARAMS_SVR2_PROD: EndpointParams<'static, SvrSgx> = EndpointParams {
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_PROD),
+    raft_config: attest::constants::RAFT_CONFIG_SVR2_PROD,
+};
 
 pub(crate) const KEYTRANS_SIGNING_KEY_MATERIAL_STAGING: &[u8; 32] =
     &hex!("ac0de1fd7f33552bbeb6ebc12b9d4ea10bf5f025c45073d3fb5f5648955a749e");
@@ -589,9 +586,7 @@ pub const PROD: Env<'static> = Env {
     },
     svr2: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_SVR2,
-        // Currently, the production SVR2 is prequantum while we're testing the postquantum
-        // handshakes in staging.
-        params: ENDPOINT_PARAMS_SVR2_PROD_PREQUANTUM,
+        params: ENDPOINT_PARAMS_SVR2_PROD,
     },
     svr_b: None,
     keytrans_config: KEYTRANS_CONFIG_PROD,
