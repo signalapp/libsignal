@@ -3,14 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{self, CdsiConnection, ClientResponseCollector, Token};
-use libsignal_net::connect_state::ConnectionResources;
 use libsignal_net::infra::errors::RetryLater;
-use libsignal_net::infra::route::{DirectOrProxyProvider, RouteProviderExt};
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
-use libsignal_net::infra::AsHttpHeader as _;
 
 use crate::net::ConnectionManager;
 use crate::*;
@@ -59,54 +55,21 @@ impl CdsiLookup {
         auth: Auth,
         request: cdsi::LookupRequest,
     ) -> Result<Self, cdsi::LookupError> {
-        let ConnectionManager {
-            env,
-            dns_resolver,
-            connect,
-            user_agent,
-            transport_connector,
-            endpoints,
-            network_change_event_tx,
-            ..
-        } = connection_manager;
+        let env_cdsi = &connection_manager.env.cdsi;
 
-        let proxy_config: Option<libsignal_net::infra::route::ConnectionProxyConfig> =
-            (&*transport_connector.lock().expect("not poisoned"))
-                .try_into()
-                .map_err(|InvalidProxyConfig| {
-                    cdsi::LookupError::ConnectTransport(
-                        libsignal_net::infra::errors::TransportConnectError::InvalidConfiguration,
-                    )
-                })?;
-
-        let (enable_domain_fronting, enforce_minimum_tls) = {
-            let guard = endpoints.lock().expect("not poisoned");
-            (guard.enable_fronting, guard.enforce_minimum_tls)
-        };
-        let env_cdsi = &env.cdsi;
-        let cdsi_route_provider = env_cdsi
-            .enclave_websocket_provider_with_options(enable_domain_fronting, enforce_minimum_tls);
-        let route_provider = cdsi_route_provider.map_routes(|mut route| {
-            route.fragment.headers.extend([user_agent.as_header()]);
-            route
-        });
-        let confirmation_header_name = env_cdsi
-            .domain_config
-            .connect
-            .confirmation_header_name
-            .map(HeaderName::from_static);
-        let connection_resources = ConnectionResources {
-            connect_state: connect,
-            dns_resolver,
-            network_change_event: &network_change_event_tx.subscribe(),
-            confirmation_header_name,
-        };
+        let (connection_resources, route_provider) = connection_manager
+            .enclave_connection_resources(env_cdsi)
+            .map_err(|InvalidProxyConfig| {
+                cdsi::LookupError::ConnectTransport(
+                    libsignal_net::infra::errors::TransportConnectError::InvalidConfiguration,
+                )
+            })?;
 
         let connected = CdsiConnection::connect_with(
-            connection_resources,
-            DirectOrProxyProvider::maybe_proxied(route_provider, proxy_config),
+            connection_resources.as_connection_resources(),
+            route_provider,
             env_cdsi.ws_config,
-            &env.cdsi.params,
+            &env_cdsi.params,
             auth,
         )
         .await?;

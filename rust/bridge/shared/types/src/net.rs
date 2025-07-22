@@ -9,14 +9,18 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use libsignal_net::connect_state::{
-    ConnectState, DefaultConnectorFactory, PreconnectingFactory, SUGGESTED_CONNECT_CONFIG,
-    SUGGESTED_TLS_PRECONNECT_LIFETIME,
+    ConnectState, ConnectionResources, DefaultConnectorFactory, PreconnectingFactory,
+    SUGGESTED_CONNECT_CONFIG, SUGGESTED_TLS_PRECONNECT_LIFETIME,
 };
+use libsignal_net::enclave::{EnclaveEndpoint, EnclaveKind};
 use libsignal_net::env::{Env, UserAgent};
 use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::route::ConnectionProxyConfig;
+use libsignal_net::infra::route::{
+    ConnectionProxyConfig, DirectOrProxyProvider, RouteProvider, RouteProviderExt as _,
+    UnresolvedWebsocketServiceRoute,
+};
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
-use libsignal_net::infra::EnableDomainFronting;
+use libsignal_net::infra::{AsHttpHeader as _, EnableDomainFronting};
 
 use self::remote_config::{RemoteConfig, RemoteConfigKeys};
 use crate::*;
@@ -75,6 +79,30 @@ impl EndpointConnections {
                 EnableDomainFronting::No
             },
             enforce_minimum_tls,
+        }
+    }
+}
+
+pub struct EnclaveConnectionResources<'a> {
+    connect_state: &'a std::sync::Mutex<ConnectState<PreconnectingFactory>>,
+    dns_resolver: &'a DnsResolver,
+    network_change_event: ::tokio::sync::watch::Receiver<()>,
+    confirmation_header_name: Option<&'static str>,
+}
+
+impl EnclaveConnectionResources<'_> {
+    pub fn as_connection_resources(&self) -> ConnectionResources<PreconnectingFactory> {
+        let Self {
+            connect_state,
+            dns_resolver,
+            network_change_event,
+            confirmation_header_name,
+        } = self;
+        ConnectionResources {
+            connect_state,
+            dns_resolver,
+            network_change_event,
+            confirmation_header_name: confirmation_header_name.map(http::HeaderName::from_static),
         }
     }
 }
@@ -221,6 +249,41 @@ impl ConnectionManager {
             .lock()
             .expect("not poisoned")
             .network_changed(now.into());
+    }
+
+    pub fn enclave_connection_resources(
+        &self,
+        enclave: &EnclaveEndpoint<impl EnclaveKind>,
+    ) -> Result<
+        (
+            EnclaveConnectionResources,
+            impl RouteProvider<Route = UnresolvedWebsocketServiceRoute> + '_,
+        ),
+        InvalidProxyConfig,
+    > {
+        let proxy_config: Option<libsignal_net::infra::route::ConnectionProxyConfig> =
+            (&*self.transport_connector.lock().expect("not poisoned")).try_into()?;
+
+        let (enable_domain_fronting, enforce_minimum_tls) = {
+            let guard = self.endpoints.lock().expect("not poisoned");
+            (guard.enable_fronting, guard.enforce_minimum_tls)
+        };
+        let route_provider = enclave
+            .enclave_websocket_provider_with_options(enable_domain_fronting, enforce_minimum_tls)
+            .map_routes(|mut route| {
+                route.fragment.headers.extend([self.user_agent.as_header()]);
+                route
+            });
+        let confirmation_header_name = enclave.domain_config.connect.confirmation_header_name;
+        Ok((
+            EnclaveConnectionResources {
+                connect_state: &self.connect,
+                dns_resolver: &self.dns_resolver,
+                network_change_event: self.network_change_event_tx.subscribe(),
+                confirmation_header_name,
+            },
+            DirectOrProxyProvider::maybe_proxied(route_provider, proxy_config),
+        ))
     }
 }
 
