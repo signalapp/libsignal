@@ -26,6 +26,7 @@ partial-default = { workspace = true, features = ["derive"] }
 protobuf = { workspace = true }
 rand = { workspace = true }
 rand_core = { workspace = true, features = ["os_rng"] }
+rand_core_06 = { workspace = true, features = ["getrandom"] }        # used by argon2
 serde = { workspace = true, optional = true, features = ["derive"] }
 sha2 = { workspace = true }
 static_assertions = { workspace = true }
