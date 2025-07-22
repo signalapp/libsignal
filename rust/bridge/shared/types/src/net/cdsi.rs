@@ -79,13 +79,9 @@ impl CdsiLookup {
                     )
                 })?;
 
-        let (ws_config, enable_domain_fronting, enforce_minimum_tls) = {
+        let (enable_domain_fronting, enforce_minimum_tls) = {
             let guard = endpoints.lock().expect("not poisoned");
-            (
-                guard.cdsi_ws2_config,
-                guard.enable_fronting,
-                guard.enforce_minimum_tls,
-            )
+            (guard.enable_fronting, guard.enforce_minimum_tls)
         };
         let env_cdsi = &env.cdsi;
         let cdsi_route_provider = env_cdsi
@@ -109,7 +105,7 @@ impl CdsiLookup {
         let connected = CdsiConnection::connect_with(
             connection_resources,
             DirectOrProxyProvider::maybe_proxied(route_provider, proxy_config),
-            ws_config,
+            env_cdsi.ws_config,
             &env.cdsi.params,
             auth,
         )

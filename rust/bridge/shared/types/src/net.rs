@@ -16,7 +16,7 @@ use libsignal_net::env::{Env, UserAgent};
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::route::ConnectionProxyConfig;
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
-use libsignal_net::infra::{EnableDomainFronting, RECOMMENDED_WS2_CONFIG};
+use libsignal_net::infra::EnableDomainFronting;
 
 use self::remote_config::{RemoteConfig, RemoteConfigKeys};
 use crate::*;
@@ -50,8 +50,6 @@ impl Environment {
 }
 
 struct EndpointConnections {
-    chat_ws2_config: libsignal_net::infra::ws2::Config,
-    cdsi_ws2_config: libsignal_net::infra::ws2::Config,
     enable_fronting: EnableDomainFronting,
     enforce_minimum_tls: EnforceMinimumTls,
 }
@@ -71,8 +69,6 @@ impl EndpointConnections {
             env.chat_domain_config.connect.hostname
         );
         Self {
-            chat_ws2_config: RECOMMENDED_WS2_CONFIG,
-            cdsi_ws2_config: RECOMMENDED_WS2_CONFIG,
             enable_fronting: if use_fallbacks {
                 EnableDomainFronting::OneDomainPerProxy
             } else {

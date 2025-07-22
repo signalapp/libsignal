@@ -16,6 +16,7 @@ use libsignal_net_infra::route::{
     WebSocketProvider, WebSocketRouteFragment,
 };
 use libsignal_net_infra::ws::WebSocketServiceError;
+use libsignal_net_infra::ws2;
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
@@ -203,6 +204,7 @@ pub struct EndpointParams<'a, E: EnclaveKind> {
 #[derive_where(Clone)]
 pub struct EnclaveEndpoint<'a, E: EnclaveKind> {
     pub domain_config: DomainConfig,
+    pub ws_config: ws2::Config,
     pub params: EndpointParams<'a, E>,
 }
 
@@ -248,6 +250,7 @@ impl<E: EnclaveKind> EnclaveEndpoint<'_, E> {
     > {
         let Self {
             domain_config,
+            ws_config: _,
             params,
         } = self;
         let http_provider = domain_config.connect.route_provider(enable_domain_fronting);
@@ -270,6 +273,7 @@ impl<E: EnclaveKind> EnclaveEndpoint<'_, E> {
     > {
         let Self {
             domain_config,
+            ws_config: _,
             params,
         } = self;
         let http_provider = domain_config

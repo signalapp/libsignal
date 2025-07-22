@@ -307,10 +307,9 @@ async fn establish_chat_connection(
         ..
     } = connection_manager;
 
-    let (ws_config, enable_domain_fronting, enforce_minimum_tls) = {
+    let (enable_domain_fronting, enforce_minimum_tls) = {
         let endpoints_guard = endpoints.lock().expect("not poisoned");
         (
-            endpoints_guard.chat_ws2_config,
             endpoints_guard.enable_fronting,
             endpoints_guard.enforce_minimum_tls,
         )
@@ -320,7 +319,7 @@ async fn establish_chat_connection(
         local_idle_timeout,
         remote_idle_disconnect_timeout,
         ..
-    } = ws_config;
+    } = env.chat_ws_config;
 
     let chat_connect = &env.chat_domain_config.connect;
     let connection_resources = ConnectionResources {

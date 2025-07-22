@@ -2,7 +2,6 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use std::time::Duration;
 
 use http::HeaderName;
 use libsignal_net_infra::dns::DnsResolver;
@@ -14,12 +13,6 @@ use crate::auth::Auth;
 use crate::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
 use crate::enclave::{self, EnclaveEndpoint, NewHandshake, SvrBFlavor};
 use crate::svr::SvrConnection;
-
-const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
-    local_idle_timeout: Duration::from_secs(10),
-    remote_idle_ping_timeout: Duration::from_secs(10),
-    remote_idle_disconnect_timeout: Duration::from_secs(30),
-};
 
 pub async fn direct_connect<Enclave>(
     endpoint: &EnclaveEndpoint<'static, Enclave>,
@@ -49,7 +42,7 @@ where
             endpoint.enclave_websocket_provider(EnableDomainFronting::No),
             None,
         ),
-        WS2_CONFIG,
+        endpoint.ws_config,
         &endpoint.params,
         auth.clone(),
     )

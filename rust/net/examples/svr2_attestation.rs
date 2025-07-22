@@ -10,7 +10,6 @@
 //! Usage: `./svr2_attestation --username USERNAME --password PASSWORD | xxd`
 
 use std::io::Write;
-use std::time::Duration;
 
 use attest::enclave;
 use attest::enclave::Handshake;
@@ -25,12 +24,6 @@ use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::DirectOrProxyProvider;
 use libsignal_net_infra::testutil::no_network_change_events;
 use libsignal_net_infra::EnableDomainFronting;
-
-const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
-    local_idle_timeout: Duration::from_secs(10),
-    remote_idle_ping_timeout: Duration::from_secs(10),
-    remote_idle_disconnect_timeout: Duration::from_secs(30),
-};
 
 #[derive(clap::Parser)]
 struct Args {
@@ -118,7 +111,7 @@ async fn main() {
             env.enclave_websocket_provider(EnableDomainFronting::No),
             None,
         ),
-        WS2_CONFIG,
+        env.ws_config,
         &params,
         auth,
     )

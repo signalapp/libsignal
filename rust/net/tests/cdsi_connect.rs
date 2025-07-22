@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::time::Duration;
-
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use http::HeaderName;
 use libsignal_net::auth::Auth;
@@ -16,12 +14,6 @@ use libsignal_net::infra::testutil::no_network_change_events;
 use libsignal_net_infra::route::DirectOrProxyProvider;
 use libsignal_net_infra::EnableDomainFronting;
 use rand_core::{OsRng, RngCore, TryRngCore as _};
-
-const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
-    local_idle_timeout: Duration::from_secs(10),
-    remote_idle_ping_timeout: Duration::from_secs(10),
-    remote_idle_disconnect_timeout: Duration::from_secs(30),
-};
 
 #[tokio::test]
 async fn can_connect_to_cdsi_staging() {
@@ -66,7 +58,7 @@ async fn can_connect_to_cdsi_staging() {
             cdsi_env.enclave_websocket_provider(EnableDomainFronting::No),
             None,
         ),
-        WS2_CONFIG,
+        cdsi_env.ws_config,
         &cdsi_env.params,
         auth,
     )
