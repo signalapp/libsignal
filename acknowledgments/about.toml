@@ -163,10 +163,38 @@ checksum = "9a50bad5a51e0ad726ea3a7f4b7b758e1b4d1784e6abefe1367f5bf01e972725"
 
 
 # The libcrux crates are embedded in a larger repo.
+[libcrux-hacl-rs.clarify]
+license = "Apache-2.0"
+
+[[libcrux-hacl-rs.clarify.git]]
+path = "LICENSE"
+checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
+
+[libcrux-hkdf.clarify]
+license = "Apache-2.0"
+
+[[libcrux-hkdf.clarify.git]]
+path = "LICENSE"
+checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
+
+[libcrux-hmac.clarify]
+license = "Apache-2.0"
+
+[[libcrux-hmac.clarify.git]]
+path = "LICENSE"
+checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
+
 [libcrux-intrinsics.clarify]
 license = "Apache-2.0"
 
 [[libcrux-intrinsics.clarify.git]]
+path = "LICENSE"
+checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
+
+[libcrux-macros.clarify]
+license = "Apache-2.0"
+
+[[libcrux-macros.clarify.git]]
 path = "LICENSE"
 checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
 
@@ -184,10 +212,24 @@ license = "Apache-2.0"
 path = "LICENSE"
 checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
 
+[libcrux-sha2.clarify]
+license = "Apache-2.0"
+
+[[libcrux-sha2.clarify.git]]
+path = "LICENSE"
+checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
+
 [libcrux-sha3.clarify]
 license = "Apache-2.0"
 
 [[libcrux-sha3.clarify.git]]
+path = "LICENSE"
+checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
+
+[libcrux-traits.clarify]
+license = "Apache-2.0"
+
+[[libcrux-traits.clarify.git]]
 path = "LICENSE"
 checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
 
