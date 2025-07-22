@@ -353,10 +353,11 @@ where
 #[cfg(feature = "test-util")]
 pub mod test_support {
 
+    use libsignal_net_infra::testutil::no_network_change_events;
+
     use crate::auth::Auth;
     use crate::enclave::PpssSetup;
     use crate::env::SvrBEnv;
-    use crate::svrb::direct::DirectConnect as _;
 
     impl SvrBEnv<'static> {
         /// Simplest way to connect to an SVRB Environment in integration tests, command
@@ -365,8 +366,7 @@ pub mod test_support {
             &self,
             auth: &Auth,
         ) -> <Self as PpssSetup>::ConnectionResults {
-            let endpoints = self.sgx();
-            endpoints.connect(auth).await
+            super::direct::direct_connect(self.sgx(), auth, &no_network_change_events()).await
         }
     }
 }

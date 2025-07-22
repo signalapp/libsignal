@@ -17,8 +17,9 @@ use libsignal_net::auth::Auth;
 use libsignal_net::enclave::PpssSetup;
 use libsignal_net::env::SvrBEnv;
 use libsignal_net::svrb;
-use libsignal_net::svrb::direct::DirectConnect;
+use libsignal_net::svrb::direct::direct_connect;
 use libsignal_net::svrb::traits::*;
+use libsignal_net_infra::testutil::no_network_change_events;
 use rand::rngs::OsRng;
 use rand::TryRngCore;
 
@@ -46,12 +47,13 @@ struct SvrBClient<'a> {
     auth: Auth,
     env: &'a SvrBEnv<'static>,
 }
+
 #[async_trait]
 impl SvrBConnect for SvrBClient<'_> {
     type Env = SvrBEnv<'static>;
 
     async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults {
-        self.env.sgx().connect(&self.auth).await
+        direct_connect(self.env.sgx(), &self.auth, &no_network_change_events()).await
     }
 }
 
