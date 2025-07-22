@@ -34,7 +34,7 @@ pub const ENCLAVE_ID_SVRB_STAGING: &[u8] =
 
 /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
 /// build with that MREnclave value
-pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'static str], 5> =
+pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'static str], 7> =
     &SmallMap::new([
         (
             ENCLAVE_ID_SVR2_STAGING_PREQUANTUM,
@@ -42,6 +42,14 @@ pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'
         ),
         (
             ENCLAVE_ID_SVR2_PROD_PREQUANTUM,
+            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+        ),
+        (
+            ENCLAVE_ID_SVR2_STAGING_2025Q2,
+            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+        ),
+        (
+            ENCLAVE_ID_SVR2_PROD_2025Q2,
             &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
         ),
         (
