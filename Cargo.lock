@@ -2823,6 +2823,7 @@ dependencies = [
  "pretty_assertions",
  "proptest",
  "prost",
+ "prost-build",
  "rand 0.9.0",
  "rand_core 0.9.3",
  "rangemap",
@@ -2846,6 +2847,7 @@ dependencies = [
  "tungstenite 0.26.2",
  "visibility",
  "warp",
+ "zerocopy",
 ]
 
 [[package]]

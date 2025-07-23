@@ -21,6 +21,7 @@ pub mod errors;
 pub mod host;
 pub mod http_client;
 pub mod noise;
+mod proto;
 pub mod route;
 mod stream;
 pub mod tcp_ssl;

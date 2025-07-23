@@ -17,6 +17,7 @@ dev-util = []
 attest = { workspace = true }
 libsignal-core = { workspace = true }
 
+assert_matches = { workspace = true }
 async-trait = { workspace = true }
 auto_enums = { workspace = true, features = ["tokio1"] }
 base64 = { workspace = true }
@@ -58,9 +59,13 @@ tokio-util = { workspace = true }
 tungstenite = { workspace = true }
 visibility = { workspace = true }
 warp = { workspace = true, features = ["tls"], optional = true }
+zerocopy = { workspace = true, features = ["derive"] }
+
+[build-dependencies]
+prost-build = { workspace = true }
 
 [dev-dependencies]
-assert_matches = { workspace = true }
+const-str = { workspace = true }
 env_logger = { workspace = true }
 hickory-proto = { workspace = true }
 hyper = { workspace = true, features = ["http1", "server"] }

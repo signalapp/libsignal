@@ -9,6 +9,8 @@ use bytes::Bytes;
 use futures_util::stream::FusedStream;
 use futures_util::Sink;
 
+mod direct;
+pub use direct::DirectStream;
 mod handshake;
 pub use handshake::*;
 mod stream;
