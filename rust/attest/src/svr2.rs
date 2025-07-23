@@ -5,12 +5,10 @@
 
 use prost::Message;
 
-use crate::constants::{
-    ACCEPTABLE_SW_ADVISORIES, DEFAULT_SW_ADVISORIES, EXPECTED_RAFT_CONFIG_SVR2,
-    SVR2_POSTQUANTUM_OVERRIDE,
-};
+use crate::constants::{EXPECTED_RAFT_CONFIG_SVR2, SVR2_POSTQUANTUM_OVERRIDE};
 use crate::enclave::{Error, Handshake, HandshakeType, Result};
 use crate::proto::svr;
+use crate::util::get_sw_advisories;
 
 /// A RaftConfig that can be checked against the attested remote config
 #[derive(Debug)]
@@ -75,9 +73,7 @@ pub fn new_handshake(
         mrenclave,
         attestation_msg,
         current_time,
-        ACCEPTABLE_SW_ADVISORIES
-            .get(&mrenclave)
-            .unwrap_or(&DEFAULT_SW_ADVISORIES),
+        get_sw_advisories(mrenclave),
         expected_raft_config,
         SVR2_POSTQUANTUM_OVERRIDE
             .get(&mrenclave)

@@ -8,6 +8,8 @@ use std::time::SystemTime;
 use boring_signal::asn1::Asn1Time;
 use libc::time_t;
 
+use crate::constants::{ACCEPTABLE_SW_ADVISORIES, DEFAULT_SW_ADVISORIES};
+
 /// A replacement for [`std::collections::HashMap`] that performs linear lookups.
 ///
 /// This can be used in place of `HashMap` for supporting lookup in `const`
@@ -89,6 +91,12 @@ pub(crate) fn system_time_to_asn1_time(
         .map_err(|_| FailedToConvertToAsn1Time)?;
 
     Asn1Time::from_unix(t).map_err(|_| FailedToConvertToAsn1Time)
+}
+
+pub(crate) fn get_sw_advisories(enclave_id: &[u8]) -> &[&str] {
+    ACCEPTABLE_SW_ADVISORIES
+        .get(&enclave_id)
+        .unwrap_or(&DEFAULT_SW_ADVISORIES)
 }
 
 #[cfg(test)]
