@@ -4723,7 +4723,7 @@ dependencies = [
 [[package]]
 name = "spqr"
 version = "0.1.0"
-source = "git+https://github.com/signalapp/SparsePostQuantumRatchet.git?tag=v1.0.0#d6c10734689ec5844d09c1a054a288d36cde2adc"
+source = "git+https://github.com/signalapp/SparsePostQuantumRatchet.git?tag=v1.1.0#597cfa57ee7c6dc68794599c068e5e3a18e62f12"
 dependencies = [
  "cpufeatures",
  "curve25519-dalek",
