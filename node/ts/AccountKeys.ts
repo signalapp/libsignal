@@ -165,3 +165,21 @@ export class BackupKey extends ByteArray {
     );
   }
 }
+
+/**
+ * A forward secrecy token used for deriving message backup keys.
+ *
+ * This token is retrieved from the server when restoring a backup and is used together
+ * with the backup key to derive the actual encryption keys for message backups.
+ */
+export class BackupForwardSecrecyToken extends ByteArray {
+  private readonly __type?: never;
+  static SIZE = 32;
+
+  constructor(contents: Uint8Array) {
+    super(
+      contents,
+      BackupForwardSecrecyToken.checkLength(BackupForwardSecrecyToken.SIZE)
+    );
+  }
+}
