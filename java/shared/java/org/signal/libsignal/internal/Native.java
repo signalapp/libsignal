@@ -507,6 +507,10 @@ public final class Native {
   public static native int PreKeySignalMessage_GetVersion(long obj) throws Exception;
   public static native long PreKeySignalMessage_New(int messageVersion, int registrationId, int preKeyId, int signedPreKeyId, long baseKey, long identityKey, long signalMessage) throws Exception;
 
+  public static native void PreparedSvrBContext_Destroy(long handle);
+  public static native byte[] PreparedSvrBContext_GetForwardSecrecyToken(long response) throws Exception;
+  public static native byte[] PreparedSvrBContext_GetOpaqueMetadata(long response) throws Exception;
+
   public static native void ProfileKeyCiphertext_CheckValidContents(byte[] buffer) throws Exception;
 
   public static native void ProfileKeyCommitment_CheckValidContents(byte[] buffer) throws Exception;
@@ -605,6 +609,10 @@ public final class Native {
   public static native byte[] SealedSessionCipher_Encrypt(long destination, long content, IdentityKeyStore identityKeyStore) throws Exception;
   public static native byte[] SealedSessionCipher_MultiRecipientEncrypt(long[] recipients, long[] recipientSessions, byte[] excludedRecipients, long content, IdentityKeyStore identityKeyStore) throws Exception;
   public static native byte[] SealedSessionCipher_MultiRecipientMessageForSingleRecipient(byte[] encodedMultiRecipientMessage) throws Exception;
+
+  public static native CompletableFuture<Void> SecureValueRecoveryForBackups_FinalizeBackupWithServer(long asyncRuntime, long context, int environment);
+  public static native long SecureValueRecoveryForBackups_PrepareBackupLocally(byte[] backupKey, byte[] previousMetadata, int environment) throws Exception;
+  public static native CompletableFuture<byte[]> SecureValueRecoveryForBackups_RestoreBackupFromServer(long asyncRuntime, byte[] backupKey, byte[] metadata, int environment);
 
   public static native long SenderCertificate_Deserialize(byte[] data) throws Exception;
   public static native void SenderCertificate_Destroy(long handle);

@@ -25,6 +25,7 @@ const LATEST: u8 = V1;
 pub const BACKUP_KEY_LEN: usize = 32;
 pub const LOCAL_BACKUP_METADATA_KEY_LEN: usize = 32;
 pub const MEDIA_ID_LEN: usize = 15;
+pub const BACKUP_FORWARD_SECRECY_TOKEN_LEN: usize = 32;
 pub const MEDIA_ENCRYPTION_KEY_LEN: usize = 32 + 32; // HMAC key + AES-CBC key
 
 /// Primary key for backups that is used to derive other keys.
@@ -201,11 +202,7 @@ impl BackupId {
     serde(transparent)
 )]
 #[cfg_attr(test, derive(Eq, PartialEq))]
-pub struct BackupForwardSecrecyToken(pub [u8; BackupForwardSecrecyToken::LEN]);
-
-impl BackupForwardSecrecyToken {
-    pub const LEN: usize = 32;
-}
+pub struct BackupForwardSecrecyToken(pub [u8; BACKUP_FORWARD_SECRECY_TOKEN_LEN]);
 
 #[cfg(test)]
 pub(crate) mod test {

@@ -32,6 +32,7 @@ usernames = { workspace = true }
 zkgroup = { workspace = true }
 
 aes-gcm-siv = { workspace = true }
+async-trait = { workspace = true }
 base64 = { workspace = true }
 bincode = { workspace = true }
 futures-util = { workspace = true }

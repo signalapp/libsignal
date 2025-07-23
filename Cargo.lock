@@ -2355,6 +2355,7 @@ version = "0.1.0"
 dependencies = [
  "aes-gcm-siv",
  "assert_matches",
+ "async-trait",
  "attest",
  "base64 0.22.1",
  "bincode",
@@ -2466,6 +2467,7 @@ dependencies = [
  "libsignal-net",
  "libsignal-net-chat",
  "libsignal-protocol",
+ "libsignal-svrb",
  "linkme",
  "log",
  "mediasan-common",

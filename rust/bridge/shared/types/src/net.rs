@@ -24,6 +24,7 @@ use crate::*;
 pub mod cdsi;
 pub mod chat;
 pub mod registration;
+pub mod svrb;
 
 pub use libsignal_net::infra::EnforceMinimumTls;
 

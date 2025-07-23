@@ -25,6 +25,7 @@ use libsignal_core::try_scoped;
 use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSendError};
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::ws::WebSocketServiceError;
+use libsignal_net::svrb::Error as SvrbError;
 use libsignal_net_chat::api::RateLimitChallenge;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -832,6 +833,68 @@ impl MessageOnlyExceptionJniError for ChatSendError {
             | ChatSendError::RequestTimedOut => {
                 ClassName("org.signal.libsignal.net.ChatServiceException")
             }
+        }
+    }
+}
+
+impl JniError for SvrbError {
+    fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
+        match self {
+            SvrbError::RestoreFailed(tries_remaining) => {
+                let message = env
+                    .new_string(self.to_string())
+                    .check_exceptions(env, "SvrbError::to_throwable")?;
+                let tries_remaining_int: i32 = (*tries_remaining).try_into().map_err(|_| {
+                    BridgeLayerError::IntegerOverflow("tries_remaining too large".to_owned())
+                })?;
+                new_instance(
+                    env,
+                    ClassName("org.signal.libsignal.svr.RestoreFailedException"),
+                    jni_args!((message => java.lang.String, tries_remaining_int => int) -> void),
+                )
+                .map(Into::into)
+            }
+            SvrbError::DataMissing => make_single_message_throwable(
+                env,
+                &self.to_string(),
+                ClassName("org.signal.libsignal.svr.DataMissingException"),
+            ),
+            SvrbError::AttestationError(_) => make_single_message_throwable(
+                env,
+                &self.to_string(),
+                ClassName("org.signal.libsignal.attest.AttestationFailedException"),
+            ),
+            SvrbError::Protocol(_) => make_single_message_throwable(
+                env,
+                &self.to_string(),
+                ClassName("org.signal.libsignal.net.NetworkProtocolException"),
+            ),
+            SvrbError::Connect(_) | SvrbError::Service(_) | SvrbError::ConnectionTimedOut => {
+                // TODO: 429s will be included in this! We should probably handle them separately.
+                make_single_message_throwable(
+                    env,
+                    &self.to_string(),
+                    ClassName("org.signal.libsignal.net.NetworkException"),
+                )
+            }
+            SvrbError::RequestFailed(status) => {
+                let exception_class = match status {
+                    libsignal_svrb::ErrorStatus::Missing => {
+                        ClassName("org.signal.libsignal.svr.DataMissingException")
+                    }
+                    _ => ClassName("org.signal.libsignal.svr.SvrException"),
+                };
+                make_single_message_throwable(env, &self.to_string(), exception_class)
+            }
+            SvrbError::PreviousBackupDataInvalid
+            | SvrbError::MetadataInvalid
+            | SvrbError::EncryptionError(_)
+            | SvrbError::DecryptionError(_)
+            | SvrbError::MultipleErrors(_) => make_single_message_throwable(
+                env,
+                &self.to_string(),
+                ClassName("org.signal.libsignal.svr.SvrException"),
+            ),
         }
     }
 }

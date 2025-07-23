@@ -412,6 +412,8 @@ export function PreKeySignalMessage_GetSignedPreKeyId(obj: Wrapper<PreKeySignalM
 export function PreKeySignalMessage_GetVersion(obj: Wrapper<PreKeySignalMessage>): number;
 export function PreKeySignalMessage_New(messageVersion: number, registrationId: number, preKeyId: number | null, signedPreKeyId: number, baseKey: Wrapper<PublicKey>, identityKey: Wrapper<PublicKey>, signalMessage: Wrapper<SignalMessage>): PreKeySignalMessage;
 export function PreKeySignalMessage_Serialize(obj: Wrapper<PreKeySignalMessage>): Uint8Array;
+export function PreparedSvrBContext_GetForwardSecrecyToken(response: Wrapper<PreparedSvrBContext>): Uint8Array;
+export function PreparedSvrBContext_GetOpaqueMetadata(response: Wrapper<PreparedSvrBContext>): Uint8Array;
 export function PrivateKey_Agree(privateKey: Wrapper<PrivateKey>, publicKey: Wrapper<PublicKey>): Uint8Array;
 export function PrivateKey_Deserialize(data: Uint8Array): PrivateKey;
 export function PrivateKey_Generate(): PrivateKey;
@@ -498,6 +500,9 @@ export function SealedSender_DecryptToUsmc(ctext: Uint8Array, identityStore: Ide
 export function SealedSender_Encrypt(destination: Wrapper<ProtocolAddress>, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore): Promise<Uint8Array>;
 export function SealedSender_MultiRecipientEncrypt(recipients: Wrapper<ProtocolAddress>[], recipientSessions: Wrapper<SessionRecord>[], excludedRecipients: Uint8Array, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore): Promise<Uint8Array>;
 export function SealedSender_MultiRecipientMessageForSingleRecipient(encodedMultiRecipientMessage: Uint8Array): Uint8Array;
+export function SecureValueRecoveryForBackups_FinalizeBackupWithServer(asyncRuntime: Wrapper<TokioAsyncContext>, context: Wrapper<PreparedSvrBContext>, environment: number): CancellablePromise<void>;
+export function SecureValueRecoveryForBackups_PrepareBackupLocally(backupKey: Uint8Array, previousMetadata: Uint8Array, environment: number): PreparedSvrBContext;
+export function SecureValueRecoveryForBackups_RestoreBackupFromServer(asyncRuntime: Wrapper<TokioAsyncContext>, backupKey: Uint8Array, metadata: Uint8Array, environment: number): CancellablePromise<Uint8Array>;
 export function SenderCertificate_Deserialize(data: Uint8Array): SenderCertificate;
 export function SenderCertificate_GetCertificate(obj: Wrapper<SenderCertificate>): Uint8Array;
 export function SenderCertificate_GetDeviceId(obj: Wrapper<SenderCertificate>): number;
@@ -750,6 +755,7 @@ interface PlaintextContent { readonly __type: unique symbol; }
 interface PreKeyBundle { readonly __type: unique symbol; }
 interface PreKeyRecord { readonly __type: unique symbol; }
 interface PreKeySignalMessage { readonly __type: unique symbol; }
+interface PreparedSvrBContext { readonly __type: unique symbol; }
 interface PrivateKey { readonly __type: unique symbol; }
 interface ProfileKey { readonly __type: unique symbol; }
 interface ProfileKeyCiphertext { readonly __type: unique symbol; }

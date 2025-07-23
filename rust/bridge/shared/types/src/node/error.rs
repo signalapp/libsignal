@@ -271,6 +271,58 @@ impl DefaultSignalNodeError for attest::enclave::Error {}
 
 impl DefaultSignalNodeError for signal_crypto::Error {}
 
+impl SignalNodeError for libsignal_net::svrb::Error {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        cx: &mut C,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> Handle<'a, JsError> {
+        let (name, make_props) = match &self {
+            Self::Service(_) | Self::ConnectionTimedOut | Self::Connect(_) => {
+                // TODO: 429s will be included in this! We should probably handle them separately.
+                (Some(IO_ERROR), None)
+            }
+            Self::AttestationError(_) => (Some("SvrAttestationError"), None),
+            Self::RequestFailed(status) => match status {
+                libsignal_svrb::ErrorStatus::Missing => (Some("SvrDataMissing"), None),
+                libsignal_svrb::ErrorStatus::Error | libsignal_svrb::ErrorStatus::Unset => {
+                    (Some("SvrRequestFailed"), None)
+                }
+            },
+            Self::RestoreFailed(tries_remaining) => (
+                Some("SvrRestoreFailed"),
+                Some(move |cx: &mut C| {
+                    let props = cx.empty_object();
+                    let tries_remaining = tries_remaining.convert_into(cx)?;
+                    props.set(cx, "triesRemaining", tries_remaining)?;
+                    Ok(props.upcast())
+                }),
+            ),
+            Self::DataMissing => (Some("SvrDataMissing"), None),
+            Self::Protocol(_) => (Some("IoError"), None),
+            Self::PreviousBackupDataInvalid => (Some("SvrInvalidData"), None),
+            Self::MetadataInvalid => (Some("SvrInvalidData"), None),
+            Self::EncryptionError(_) => (Some("SvrInvalidData"), None),
+            Self::DecryptionError(_) => (Some("SvrInvalidData"), None),
+            Self::MultipleErrors(_) => (Some("SvrMultipleErrors"), None),
+        };
+
+        let message = self.to_string();
+        match make_props {
+            Some(f) => new_js_error(cx, module, name, &message, operation_name, f),
+            None => new_js_error(
+                cx,
+                module,
+                name,
+                &message,
+                operation_name,
+                no_extra_properties,
+            ),
+        }
+    }
+}
+
 impl DefaultSignalNodeError for zkgroup::ZkGroupVerificationFailure {}
 
 impl DefaultSignalNodeError for zkgroup::ZkGroupDeserializationFailure {}

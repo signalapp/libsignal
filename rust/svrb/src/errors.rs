@@ -37,7 +37,6 @@ impl std::fmt::Display for svrb::response4::Status {
 pub enum ErrorStatus {
     Unset,
     Missing,
-    InvalidRequest,
     Error,
 }
 

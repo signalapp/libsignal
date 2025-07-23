@@ -23,6 +23,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #define SignalMEDIA_ID_LEN 15
 
+#define SignalBACKUP_FORWARD_SECRECY_TOKEN_LEN 32
+
 #define SignalMEDIA_ENCRYPTION_KEY_LEN (32 + 32)
 
 #define SignalBackupId_LEN 16
@@ -234,6 +236,7 @@ typedef enum {
   SignalErrorCodeSvrDataMissing = 160,
   SignalErrorCodeSvrRestoreFailed = 161,
   SignalErrorCodeSvrRotationMachineTooManySteps = 162,
+  SignalErrorCodeSvrRequestFailed = 163,
   SignalErrorCodeAppExpired = 170,
   SignalErrorCodeDeviceDeregistered = 171,
   SignalErrorCodeConnectionInvalidated = 172,
@@ -324,6 +327,8 @@ typedef struct SignalPreKeyBundle SignalPreKeyBundle;
 typedef struct SignalPreKeyRecord SignalPreKeyRecord;
 
 typedef struct SignalPreKeySignalMessage SignalPreKeySignalMessage;
+
+typedef struct SignalPreparedSvrBContext SignalPreparedSvrBContext;
 
 typedef struct SignalPrivateKey SignalPrivateKey;
 
@@ -1098,6 +1103,14 @@ typedef struct {
 } SignalMutPointerPreKeySignalMessage;
 
 typedef struct {
+  SignalPreparedSvrBContext *raw;
+} SignalMutPointerPreparedSvrBContext;
+
+typedef struct {
+  const SignalPreparedSvrBContext *raw;
+} SignalConstPointerPreparedSvrBContext;
+
+typedef struct {
   const SignalSenderKeyDistributionMessage *raw;
 } SignalConstPointerSenderKeyDistributionMessage;
 
@@ -1251,6 +1264,21 @@ typedef struct {
 typedef struct {
   SignalUnidentifiedSenderMessageContent *raw;
 } SignalMutPointerUnidentifiedSenderMessageContent;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const uint8_t (*result)[SignalBACKUP_FORWARD_SECRECY_TOKEN_LEN], const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseu8BACKUP_FORWARD_SECRECY_TOKEN_LEN;
 
 typedef struct {
   SignalSenderCertificate *raw;
@@ -1989,6 +2017,12 @@ SignalFfiError *signal_pre_key_signal_message_new(SignalMutPointerPreKeySignalMe
 
 SignalFfiError *signal_pre_key_signal_message_serialize(SignalOwnedBuffer *out, SignalConstPointerPreKeySignalMessage obj);
 
+SignalFfiError *signal_prepared_svr_b_context_destroy(SignalMutPointerPreparedSvrBContext p);
+
+SignalFfiError *signal_prepared_svr_b_context_get_forward_secrecy_token(uint8_t (*out)[SignalBACKUP_FORWARD_SECRECY_TOKEN_LEN], SignalConstPointerPreparedSvrBContext response);
+
+SignalFfiError *signal_prepared_svr_b_context_get_opaque_metadata(SignalOwnedBuffer *out, SignalConstPointerPreparedSvrBContext response);
+
 void signal_print_ptr(const void *p);
 
 SignalFfiError *signal_privatekey_agree(SignalOwnedBuffer *out, SignalConstPointerPrivateKey private_key, SignalConstPointerPublicKey public_key);
@@ -2184,6 +2218,12 @@ SignalFfiError *signal_sealed_sender_multi_recipient_message_for_single_recipien
 SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalMutPointerUnidentifiedSenderMessageContent *out, SignalBorrowedBuffer ctext, SignalConstPointerFfiIdentityKeyStoreStruct identity_store);
 
 SignalFfiError *signal_sealed_session_cipher_encrypt(SignalOwnedBuffer *out, SignalConstPointerProtocolAddress destination, SignalConstPointerUnidentifiedSenderMessageContent content, SignalConstPointerFfiIdentityKeyStoreStruct identity_key_store);
+
+SignalFfiError *signal_secure_value_recovery_for_backups_finalize_backup_with_server(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerPreparedSvrBContext context, uint8_t environment);
+
+SignalFfiError *signal_secure_value_recovery_for_backups_prepare_backup_locally(SignalMutPointerPreparedSvrBContext *out, const uint8_t (*backup_key)[SignalBACKUP_KEY_LEN], SignalBorrowedBuffer previous_metadata, uint8_t environment);
+
+SignalFfiError *signal_secure_value_recovery_for_backups_restore_backup_from_server(SignalCPromiseu8BACKUP_FORWARD_SECRECY_TOKEN_LEN *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalBorrowedBuffer backup_key, SignalBorrowedBuffer metadata, uint8_t environment);
 
 SignalFfiError *signal_sender_certificate_clone(SignalMutPointerSenderCertificate *new_obj, SignalConstPointerSenderCertificate obj);
 

@@ -101,6 +101,7 @@ pub enum SignalErrorCode {
     SvrDataMissing = 160,
     SvrRestoreFailed = 161,
     SvrRotationMachineTooManySteps = 162,
+    SvrRequestFailed = 163,
 
     AppExpired = 170,
     DeviceDeregistered = 171,
@@ -1012,6 +1013,83 @@ impl FfiError for FutureCancelled {
 
     fn code(&self) -> SignalErrorCode {
         SignalErrorCode::Cancelled
+    }
+}
+
+impl FfiError for libsignal_net::svrb::Error {
+    fn describe(&self) -> String {
+        use libsignal_net::infra::ws::WebSocketConnectError;
+        use libsignal_net::ws::WebSocketServiceConnectError;
+
+        match self {
+            Self::ConnectionTimedOut => "Connect timed out".to_owned(),
+            Self::Connect(e) => match e {
+                WebSocketServiceConnectError::Connect(inner, _) => match inner {
+                    WebSocketConnectError::Timeout => "Connect timed out".to_owned(),
+                    WebSocketConnectError::Transport(e) => format!("IO error: {e}"),
+                    WebSocketConnectError::WebSocketError(_) => format!("WebSocket error: {e}"),
+                },
+                WebSocketServiceConnectError::RejectedByServer { .. } => {
+                    // TODO: 429s will be included in this! We should probably handle them separately.
+                    format!("Server rejected connection: {e}")
+                }
+            },
+            Self::Service(e) => format!("WebSocket error: {e}"),
+            Self::Protocol(e) => format!("Protocol error: {e}"),
+            Self::AttestationError(inner) => inner.describe(),
+            Self::RequestFailed(_)
+            | Self::RestoreFailed(_)
+            | Self::DataMissing
+            | Self::PreviousBackupDataInvalid
+            | Self::MetadataInvalid
+            | Self::EncryptionError(_)
+            | Self::DecryptionError(_)
+            | Self::MultipleErrors(_) => {
+                format!("SVR error: {self}")
+            }
+        }
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        use libsignal_net::infra::ws::WebSocketConnectError;
+        use libsignal_net::ws::WebSocketServiceConnectError;
+
+        match self {
+            Self::ConnectionTimedOut => SignalErrorCode::ConnectionTimedOut,
+            Self::Connect(e) => match e {
+                WebSocketServiceConnectError::RejectedByServer { .. } => {
+                    SignalErrorCode::ConnectionFailed
+                }
+                WebSocketServiceConnectError::Connect(inner, _) => match inner {
+                    WebSocketConnectError::Transport(_) => SignalErrorCode::IoError,
+                    WebSocketConnectError::Timeout => SignalErrorCode::ConnectionTimedOut,
+                    WebSocketConnectError::WebSocketError(_) => SignalErrorCode::WebSocket,
+                },
+            },
+            Self::Service(_) => SignalErrorCode::WebSocket,
+            Self::AttestationError(inner) => inner.code(),
+            Self::Protocol(_) => SignalErrorCode::NetworkProtocol,
+            Self::RequestFailed(status) => match status {
+                libsignal_svrb::ErrorStatus::Missing => SignalErrorCode::SvrDataMissing,
+                libsignal_svrb::ErrorStatus::Error | libsignal_svrb::ErrorStatus::Unset => {
+                    SignalErrorCode::SvrRequestFailed
+                }
+            },
+            Self::RestoreFailed(_) => SignalErrorCode::SvrRestoreFailed,
+            Self::DataMissing => SignalErrorCode::SvrDataMissing,
+            Self::PreviousBackupDataInvalid => SignalErrorCode::InvalidArgument,
+            Self::MetadataInvalid => SignalErrorCode::InvalidArgument,
+            Self::EncryptionError(_) => SignalErrorCode::InternalError,
+            Self::DecryptionError(_) => SignalErrorCode::InternalError,
+            Self::MultipleErrors(_) => SignalErrorCode::InternalError,
+        }
+    }
+
+    fn provide_tries_remaining(&self) -> Result<u32, WrongErrorKind> {
+        match self {
+            Self::RestoreFailed(tries) => Ok(*tries),
+            _ => Err(WrongErrorKind),
+        }
     }
 }
 
