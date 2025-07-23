@@ -2742,7 +2742,6 @@ dependencies = [
  "visibility",
  "warp",
  "zerocopy",
- "zkgroup",
 ]
 
 [[package]]

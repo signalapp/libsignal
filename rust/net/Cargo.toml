@@ -22,7 +22,6 @@ libsignal-keytrans = { workspace = true }
 libsignal-protocol = { workspace = true }
 libsignal-svrb = { workspace = true }
 signal-crypto = { workspace = true }
-zkgroup = { workspace = true }
 
 async-trait = { workspace = true }
 base64 = { workspace = true }
