@@ -4725,8 +4725,8 @@ dependencies = [
 
 [[package]]
 name = "spqr"
-version = "0.1.0"
-source = "git+https://github.com/signalapp/SparsePostQuantumRatchet.git?tag=v1.1.0#597cfa57ee7c6dc68794599c068e5e3a18e62f12"
+version = "1.2.0"
+source = "git+https://github.com/signalapp/SparsePostQuantumRatchet.git?tag=v1.2.0#99a759a3fd40cd9304459fb007fcf177db9ed207"
 dependencies = [
  "cpufeatures",
  "curve25519-dalek",
@@ -4736,6 +4736,7 @@ dependencies = [
  "libcrux-hkdf",
  "libcrux-hmac",
  "libcrux-ml-kem",
+ "log",
  "num_enum",
  "prost",
  "prost-build",

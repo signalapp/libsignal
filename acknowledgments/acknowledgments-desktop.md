@@ -2,7 +2,7 @@
 
 libsignal makes use of the following open source projects.
 
-## spqr 0.1.0, partial-default-derive 0.1.0, partial-default 0.1.0
+## spqr 1.2.0, partial-default-derive 0.1.0, partial-default 0.1.0
 
 ```
                     GNU AFFERO GENERAL PUBLIC LICENSE

@@ -679,7 +679,7 @@ For more information on this, and how to apply and follow the GNU AGPL, see
 			<key>License</key>
 			<string>GNU Affero General Public License v3.0</string>
 			<key>Title</key>
-			<string>spqr 0.1.0, partial-default-derive 0.1.0, partial-default 0.1.0</string>
+			<string>spqr 1.2.0, partial-default-derive 0.1.0, partial-default 0.1.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
