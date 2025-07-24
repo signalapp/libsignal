@@ -8,7 +8,7 @@ use std::num::NonZeroU16;
 use attest::svr2::RaftConfig;
 use const_str::ip_addr;
 use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
-use libsignal_net::env::{ConnectionConfig, DomainConfig, Env, KeyTransConfig};
+use libsignal_net::env::{ConnectionConfig, DomainConfig, Env, KeyTransConfig, SvrBEnv};
 use libsignal_net::infra::certs::RootCertificates;
 
 const ENCLAVE_ID_MOCK_SERVER: &[u8] = b"0.20240911.184407";
@@ -36,6 +36,7 @@ pub(crate) struct LocalhostEnvPortConfig {
     pub(crate) chat_port: NonZeroU16,
     pub(crate) cdsi_port: NonZeroU16,
     pub(crate) svr2_port: NonZeroU16,
+    pub(crate) svrb_port: NonZeroU16,
 }
 
 const DUMMY_RAFT_CONFIG: &RaftConfig = &RaftConfig {
@@ -54,6 +55,11 @@ const DUMMY_CDSI_ENDPOINT_PARAMS: EndpointParams<'static, Cdsi> = EndpointParams
 };
 
 const DUMMY_SVR2_ENDPOINT_PARAMS: EndpointParams<'static, SvrSgx> = EndpointParams {
+    mr_enclave: MrEnclave::new(ENCLAVE_ID_MOCK_SERVER),
+    raft_config: DUMMY_RAFT_CONFIG,
+};
+
+const DUMMY_SVRB_ENDPOINT_PARAMS: EndpointParams<'static, SvrSgx> = EndpointParams {
     mr_enclave: MrEnclave::new(ENCLAVE_ID_MOCK_SERVER),
     raft_config: DUMMY_RAFT_CONFIG,
 };
@@ -87,7 +93,13 @@ pub(crate) fn localhost_test_env_with_ports(
             ),
             params: DUMMY_SVR2_ENDPOINT_PARAMS,
         },
-        svr_b: None,
+        svr_b: SvrBEnv::new(EnclaveEndpoint {
+            domain_config: localhost_test_domain_config_with_port_and_cert(
+                ports.svrb_port,
+                root_certificate_der,
+            ),
+            params: DUMMY_SVRB_ENDPOINT_PARAMS,
+        }),
         keytrans_config: DUMMY_KEYTRANS_CONFIG,
     }
 }

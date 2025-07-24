@@ -614,7 +614,7 @@ export function TESTING_ChatRequestGetPath(request: Wrapper<HttpRequest>): strin
 export function TESTING_ChatResponseConvert(bodyPresent: boolean): ChatResponse;
 export function TESTING_ChatSendErrorConvert(errorDescription: string): void;
 export function TESTING_ConnectionManager_isUsingProxy(manager: Wrapper<ConnectionManager>): number;
-export function TESTING_ConnectionManager_newLocalOverride(userAgent: string, chatPort: number, cdsiPort: number, svr2Port: number, rootCertificateDer: Uint8Array): ConnectionManager;
+export function TESTING_ConnectionManager_newLocalOverride(userAgent: string, chatPort: number, cdsiPort: number, svr2Port: number, svrBPort: number, rootCertificateDer: Uint8Array): ConnectionManager;
 export function TESTING_ConvertOptionalUuid(present: boolean): Uuid | null;
 export function TESTING_ErrorOnBorrowAsync(_input: null): Promise<void>;
 export function TESTING_ErrorOnBorrowIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): CancellablePromise<void>;

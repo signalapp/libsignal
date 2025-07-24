@@ -81,6 +81,7 @@ export type NetConstructorOptions = Readonly<
       TESTING_localServer_chatPort: number;
       TESTING_localServer_cdsiPort: number;
       TESTING_localServer_svr2Port: number;
+      TESTING_localServer_svrBPort: number;
       TESTING_localServer_rootCertificateDer: Uint8Array;
     }
 >;
@@ -112,6 +113,7 @@ export class Net {
           options.TESTING_localServer_chatPort,
           options.TESTING_localServer_cdsiPort,
           options.TESTING_localServer_svr2Port,
+          options.TESTING_localServer_svrBPort,
           options.TESTING_localServer_rootCertificateDer
         )
       );

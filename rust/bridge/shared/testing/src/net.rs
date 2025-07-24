@@ -149,12 +149,14 @@ fn TESTING_ConnectionManager_newLocalOverride(
     chatPort: AsType<NonZeroU16, u16>,
     cdsiPort: AsType<NonZeroU16, u16>,
     svr2Port: AsType<NonZeroU16, u16>,
+    svrBPort: AsType<NonZeroU16, u16>,
     rootCertificateDer: &[u8],
 ) -> ConnectionManager {
     let ports = net_env::LocalhostEnvPortConfig {
         chat_port: chatPort.into_inner(),
         cdsi_port: cdsiPort.into_inner(),
         svr2_port: svr2Port.into_inner(),
+        svrb_port: svrBPort.into_inner(),
     };
 
     let env = net_env::localhost_test_env_with_ports(ports, rootCertificateDer);

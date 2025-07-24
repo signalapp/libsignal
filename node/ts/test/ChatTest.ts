@@ -94,6 +94,7 @@ describe('chat connection to mock server', () => {
       TESTING_localServer_chatPort: port,
       TESTING_localServer_cdsiPort: port,
       TESTING_localServer_svr2Port: port,
+      TESTING_localServer_svrBPort: port,
       TESTING_localServer_rootCertificateDer: pemToDer(certificateAuthority),
     });
   });

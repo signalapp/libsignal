@@ -72,15 +72,9 @@ async fn single_request(args: &Args, auth_secret: [u8; 32], sem: &tokio::sync::S
     let auth = Auth::from_uid_and_secret(uid, auth_secret);
 
     let env = if args.prod {
-        libsignal_net::env::PROD
-            .svr_b
-            .as_ref()
-            .expect("prod svrb configured and available")
+        &libsignal_net::env::PROD.svr_b
     } else {
-        libsignal_net::env::STAGING
-            .svr_b
-            .as_ref()
-            .expect("staging svrb configured and available")
+        &libsignal_net::env::STAGING.svr_b
     };
     let client = SvrBClient { auth, env };
 

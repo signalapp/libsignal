@@ -161,6 +161,22 @@ const DOMAIN_CONFIG_SVRB_STAGING: DomainConfig = DomainConfig {
     ip_v6: &[],
 };
 
+const DOMAIN_CONFIG_SVRB_PROD: DomainConfig = DomainConfig {
+    connect: ConnectionConfig {
+        hostname: "svrb.signal.org",
+        port: DEFAULT_HTTPS_PORT,
+        cert: SIGNAL_ROOT_CERTIFICATES,
+        min_tls_version: Some(SslVersion::TLS1_3),
+        confirmation_header_name: None,
+        proxy: Some(ConnectionProxyConfig {
+            path_prefix: "/svrb",
+            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
+        }),
+    },
+    ip_v4: &[ip_addr!(v4, "20.114.45.6")],
+    ip_v6: &[],
+};
+
 pub const PROXY_CONFIG_F_PROD: ProxyConfig = ProxyConfig {
     route_type: RouteType::ProxyF,
     http_host: "reflector-signal.global.ssl.fastly.net",
@@ -209,6 +225,11 @@ pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, SvrSgx> =
 pub(crate) const ENDPOINT_PARAMS_SVRB_STAGING: EndpointParams<'static, SvrSgx> = EndpointParams {
     mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_STAGING),
     raft_config: attest::constants::RAFT_CONFIG_SVRB_STAGING,
+};
+
+pub(crate) const ENDPOINT_PARAMS_SVRB_PROD: EndpointParams<'static, SvrSgx> = EndpointParams {
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_PROD),
+    raft_config: attest::constants::RAFT_CONFIG_SVRB_PROD,
 };
 
 pub(crate) const ENDPOINT_PARAMS_CDSI_PROD: EndpointParams<'static, Cdsi> = EndpointParams {
@@ -539,7 +560,7 @@ impl<'a> SvrBEnv<'a> {
 pub struct Env<'a> {
     pub cdsi: EnclaveEndpoint<'a, Cdsi>,
     pub svr2: EnclaveEndpoint<'a, SvrSgx>,
-    pub svr_b: Option<SvrBEnv<'a>>, // TODO: once svrB is available in all environments, make this no longer optional.
+    pub svr_b: SvrBEnv<'a>,
     pub chat_domain_config: DomainConfig,
     pub keytrans_config: KeyTransConfig,
 }
@@ -571,10 +592,10 @@ pub const STAGING: Env<'static> = Env {
         domain_config: DOMAIN_CONFIG_SVR2_STAGING,
         params: ENDPOINT_PARAMS_SVR2_STAGING,
     },
-    svr_b: Some(SvrBEnv(EnclaveEndpoint {
+    svr_b: SvrBEnv(EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_SVRB_STAGING,
         params: ENDPOINT_PARAMS_SVRB_STAGING,
-    })),
+    }),
     keytrans_config: KEYTRANS_CONFIG_STAGING,
 };
 
@@ -588,7 +609,10 @@ pub const PROD: Env<'static> = Env {
         domain_config: DOMAIN_CONFIG_SVR2,
         params: ENDPOINT_PARAMS_SVR2_PROD,
     },
-    svr_b: None,
+    svr_b: SvrBEnv(EnclaveEndpoint {
+        domain_config: DOMAIN_CONFIG_SVRB_PROD,
+        params: ENDPOINT_PARAMS_SVRB_PROD,
+    }),
     keytrans_config: KEYTRANS_CONFIG_PROD,
 };
 
