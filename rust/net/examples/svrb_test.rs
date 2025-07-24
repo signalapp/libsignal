@@ -46,6 +46,8 @@ struct Args {
         help = "Perform a restore after we backup"
     )]
     restore: bool,
+    #[arg(long, default_value_t = false, help = "Perform a second backup")]
+    backup_twice: bool,
 }
 
 struct SvrBClient<'a> {
@@ -90,22 +92,39 @@ async fn single_request(args: &Args, auth_secret: [u8; 32], sem: &tokio::sync::S
 
     println!("--- Happy-path test, single key ---");
 
+    // Example code for the first backup ever created by a client.
+    // Note that we pass in `None` as the previous_backup_data.
     println!("Preparing backup");
     let prepared = svrb::prepare_backup(&client, &backup_key, None).expect("should prepare");
     println!("Finalizing backup");
     svrb::finalize_backup(&client, &prepared.handle)
         .await
         .expect("should finalize successfully");
+
+    // Example code for restoration of the backup.
     if args.restore {
         println!("Restoring backup");
-        let forward_secrecy_token = svrb::restore_backup(
+        let forward_secrecy_token =
+            svrb::restore_backup(&client, &backup_key, prepared.metadata.as_ref())
+                .await
+                .expect("should restore successfully");
+        assert_eq!(forward_secrecy_token.0, prepared.forward_secrecy_token.0);
+    }
+
+    // Example code for second and subsequent backups.  Note that we pass
+    // in the previous backup's `next_backup_data`.
+    if args.backup_twice {
+        println!("Preparing backup #2");
+        let prepared = svrb::prepare_backup(
             &client,
             &backup_key,
-            svrb::BackupFileMetadataRef(&prepared.metadata.0),
+            Some(prepared.next_backup_data.as_ref()),
         )
-        .await
-        .expect("should restore successfully");
-        assert_eq!(forward_secrecy_token.0, prepared.forward_secrecy_token.0);
+        .expect("should prepare");
+        println!("Finalizing backup #2");
+        svrb::finalize_backup(&client, &prepared.handle)
+            .await
+            .expect("should finalize successfully");
     }
 
     println!("Success!");

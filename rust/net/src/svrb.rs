@@ -192,6 +192,18 @@ pub struct BackupFileMetadataRef<'a>(pub &'a [u8]);
 pub struct BackupPreviousSecretData(pub Vec<u8>);
 pub struct BackupPreviousSecretDataRef<'a>(pub &'a [u8]);
 
+impl BackupFileMetadata {
+    pub fn as_ref(&self) -> BackupFileMetadataRef {
+        BackupFileMetadataRef(&self.0)
+    }
+}
+
+impl BackupPreviousSecretData {
+    pub fn as_ref(&self) -> BackupPreviousSecretDataRef {
+        BackupPreviousSecretDataRef(&self.0)
+    }
+}
+
 pub struct PrepareBackupResponse {
     pub handle: BackupHandle,
     pub forward_secrecy_token: BackupForwardSecrecyToken,
