@@ -7,6 +7,7 @@ package org.signal.libsignal.net;
 
 import static org.junit.Assert.*;
 
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.junit.Assume;
@@ -80,10 +81,7 @@ public class ChatServiceConnectTests {
     final CompletableFuture<UnauthenticatedChatConnection> connectFuture =
         net.connectUnauthChat(listener);
     assertTrue("Expected cancellation of connect in progress", connectFuture.cancel(true));
-    ExecutionException e = assertThrows(ExecutionException.class, () -> connectFuture.get());
-    assertTrue(
-        "Expected CancellationException as cause",
-        e.getCause() instanceof java.util.concurrent.CancellationException);
+    assertThrows(CancellationException.class, () -> connectFuture.get());
   }
 
   @Test
