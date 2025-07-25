@@ -43,6 +43,7 @@ log = { workspace = true }
 nonzero_ext = { workspace = true }
 pin-project = { workspace = true }
 prost = { workspace = true }
+protobuf = { workspace = true }
 rand = { workspace = true }
 rand_core = { workspace = true }
 rustls = { workspace = true, features = ["ring", "std", "tls12"] }

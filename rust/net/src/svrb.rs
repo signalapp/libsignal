@@ -10,7 +10,7 @@ use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_net_infra::ws2::attested::AttestedConnectionError;
 use libsignal_svrb::proto::backup_metadata;
 use libsignal_svrb::{Backup4, Secret};
-use prost::Message;
+use protobuf::Message;
 use rand::rngs::OsRng;
 use rand::{CryptoRng, Rng, TryRngCore};
 use sha2::Sha256;
@@ -94,7 +94,7 @@ impl From<libsignal_svrb::Error> for Error {
         match err {
             LogicError::RestoreFailed(tries_remaining) => Self::RestoreFailed(tries_remaining),
             LogicError::BadResponseStatus(libsignal_svrb::ErrorStatus::Missing)
-            | LogicError::BadResponseStatus4(libsignal_svrb::V4Status::Missing) => {
+            | LogicError::BadResponseStatus4(libsignal_svrb::V4Status::MISSING) => {
                 Self::DataMissing
             }
             LogicError::BadData
@@ -227,10 +227,15 @@ pub async fn store_backup<SvrB: traits::Backup>(
 ) -> Result<BackupResponse, Error> {
     let mut rng = OsRng.unwrap_err();
     let (prev_backup4, prev_password_salt) = if let Some(pbd) = previous_backup_data {
-        let parsed = backup_metadata::NextBackupPb::decode(pbd.0)
+        let parsed = backup_metadata::NextBackupPb::parse_from_bytes(pbd.0)
             .map_err(|_| Error::PreviousBackupDataInvalid)?;
         (
-            Backup4::from_pb(parsed.backup4.ok_or(Error::PreviousBackupDataInvalid)?)?,
+            Backup4::from_pb(
+                parsed
+                    .backup4
+                    .into_option()
+                    .ok_or(Error::PreviousBackupDataInvalid)?,
+            )?,
             parsed
                 .pw_salt
                 .try_into()
@@ -255,20 +260,24 @@ pub async fn store_backup<SvrB: traits::Backup>(
         metadata_pb.pair.push(backup_metadata::metadata_pb::Pair {
             pw_salt: password_salt.to_vec(),
             ct: aes_256_ctr_encrypt_hmacsha256(&encryption_key, &forward_secrecy_token.0)?,
+            ..Default::default()
         });
     }
 
     let next_backup_pb = backup_metadata::NextBackupPb {
         pw_salt: next_password_salt.to_vec(),
-        backup4: Some(next_backup4.into_pb()),
+        backup4: protobuf::MessageField::some(next_backup4.into_pb()),
+        ..Default::default()
     };
 
     svrb.finalize(&prev_backup4).await?;
 
     Ok(BackupResponse {
         forward_secrecy_token,
-        next_backup_data: BackupPreviousSecretData(next_backup_pb.encode_to_vec()),
-        metadata: BackupFileMetadata(metadata_pb.encode_to_vec()),
+        next_backup_data: BackupPreviousSecretData(
+            next_backup_pb.write_to_bytes().expect("should serialize"),
+        ),
+        metadata: BackupFileMetadata(metadata_pb.write_to_bytes().expect("should serialize")),
     })
 }
 
@@ -301,8 +310,8 @@ pub async fn restore_backup<SvrB: traits::Restore>(
     backup_key: &BackupKey,
     metadata: BackupFileMetadataRef<'_>,
 ) -> Result<BackupForwardSecrecyToken, Error> {
-    let metadata =
-        backup_metadata::MetadataPb::decode(metadata.0).map_err(|_| Error::MetadataInvalid)?;
+    let metadata = backup_metadata::MetadataPb::parse_from_bytes(metadata.0)
+        .map_err(|_| Error::MetadataInvalid)?;
     if metadata.pair.is_empty() {
         return Err(Error::MetadataInvalid);
     }

@@ -10,7 +10,7 @@ use std::num::{NonZeroU32, NonZeroUsize};
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
-use prost::Message;
+use protobuf::Message;
 use rand::{CryptoRng, Rng};
 use sha2::{Digest, Sha256, Sha512};
 
@@ -57,9 +57,13 @@ impl Query4 {
     pub fn requests() -> impl Iterator<Item = Vec<u8>> {
         std::iter::repeat(
             svrb::Request4 {
-                inner: Some(svrb::request4::Inner::Query(svrb::request4::Query {})),
+                inner: Some(svrb::request4::Inner::Query(svrb::request4::Query {
+                    ..Default::default()
+                })),
+                ..Default::default()
             }
-            .encode_to_vec(),
+            .write_to_bytes()
+            .expect("serialization succeeds"),
         )
     }
 
@@ -67,7 +71,7 @@ impl Query4 {
         assert!(!responses.is_empty());
         responses
             .iter()
-            .map(|b| svrb::Response4::decode(b.as_ref()).map_err(|_| Error::BadData))
+            .map(|b| svrb::Response4::parse_from_bytes(b.as_ref()).map_err(|_| Error::BadData))
             .map(|rr| match rr?.inner {
                 Some(svrb::response4::Inner::Query(r)) => match status_error(r.status) {
                     Ok(()) => Ok(r.tries_remaining),
@@ -89,9 +93,13 @@ impl Remove4 {
     pub fn requests() -> impl Iterator<Item = Vec<u8>> {
         std::iter::repeat(
             svrb::Request4 {
-                inner: Some(svrb::request4::Inner::Remove(svrb::request4::Remove {})),
+                inner: Some(svrb::request4::Inner::Remove(svrb::request4::Remove {
+                    ..Default::default()
+                })),
+                ..Default::default()
             }
-            .encode_to_vec(),
+            .write_to_bytes()
+            .expect("serialization succeeds"),
         )
     }
 }
@@ -240,9 +248,11 @@ impl Backup4 {
                         auth_commitment: auth_commitments[i].1.compress().to_bytes().to_vec(),
                         encryption_secretshare: enc_keyshares[i].clone(),
                         zero_secretshare: zero_keyshares[i].to_bytes().to_vec(),
+                        ..Default::default()
                     })),
+                    ..Default::default()
                 })
-                .map(|cr| cr.encode_to_vec())
+                .map(|cr| cr.write_to_bytes().expect("serialization succeeds"))
                 .collect(),
             output,
         }
@@ -252,6 +262,7 @@ impl Backup4 {
         Backup4Proto {
             requests: self.requests,
             output: self.output.to_vec(),
+            ..Default::default()
         }
     }
 
@@ -282,15 +293,17 @@ pub struct Restore2<'a> {
     pub requests: Vec<Vec<u8>>,
 }
 
-fn status_error(s: i32) -> Result<(), Error> {
-    match svrb::response4::Status::try_from(s) {
-        Ok(svrb::response4::Status::Ok) => Ok(()),
+fn status_error(s: protobuf::EnumOrUnknown<svrb::response4::Status>) -> Result<(), Error> {
+    match s.enum_value() {
+        Ok(svrb::response4::Status::OK) => Ok(()),
         Ok(s) => Err(Error::BadResponseStatus4(s)),
         Err(_) => Err(Error::BadResponse),
     }
 }
 
-fn status_errors<I: Iterator<Item = i32>>(statuses: &mut I) -> Result<(), Error> {
+fn status_errors<I: Iterator<Item = protobuf::EnumOrUnknown<svrb::response4::Status>>>(
+    statuses: &mut I,
+) -> Result<(), Error> {
     statuses.try_for_each(status_error)
 }
 
@@ -307,9 +320,11 @@ impl<'a> Restore1<'a> {
                             .compress()
                             .to_bytes()
                             .to_vec(),
+                        ..Default::default()
                     })),
+                    ..Default::default()
                 })
-                .map(|rr| rr.encode_to_vec())
+                .map(|rr| rr.write_to_bytes().expect("serialization succeeds"))
                 .collect(),
             server_ids,
             blind,
@@ -333,7 +348,7 @@ impl<'a> Restore1<'a> {
         }
         let responses1 = responses1_bytes
             .iter()
-            .map(|b| svrb::Response4::decode(b.as_ref()).map_err(|_| Error::BadResponse))
+            .map(|b| svrb::Response4::parse_from_bytes(b.as_ref()).map_err(|_| Error::BadResponse))
             .map(|rr| match rr?.inner {
                 Some(svrb::response4::Inner::Restore1(r)) => Ok(r),
                 _ => Err(Error::BadResponse),
@@ -343,11 +358,11 @@ impl<'a> Restore1<'a> {
             .iter()
             .filter(|rr| {
                 matches!(
-                    rr.status(),
+                    rr.status.enum_value(),
                     // These errors will decrement #tries, others will not.
                     // We only care about returning #tries_remaining in a case
                     // where it's decremented.
-                    svrb::response4::Status::Ok | svrb::response4::Status::Error
+                    Ok(svrb::response4::Status::OK | svrb::response4::Status::ERROR)
                 )
             })
             .map(|rr| rr.tries_remaining)
@@ -418,9 +433,11 @@ impl<'a> Restore1<'a> {
                         auth_point: proof_pt_bytes.to_vec(),
                         auth_scalar: proof_scalar.as_bytes().to_vec(),
                         version,
+                        ..Default::default()
                     })),
+                    ..Default::default()
                 })
-                .map(|rr| rr.encode_to_vec())
+                .map(|rr| rr.write_to_bytes().expect("serialization succeeds"))
                 .collect(),
             server_ids: self.server_ids,
             input: self.input,
@@ -489,7 +506,7 @@ impl Restore2<'_> {
         }
         let responses2 = responses2_bytes
             .iter()
-            .map(|b| svrb::Response4::decode(b.as_ref()).map_err(|_| Error::BadResponse))
+            .map(|b| svrb::Response4::parse_from_bytes(b.as_ref()).map_err(|_| Error::BadResponse))
             .map(|rr| match rr?.inner {
                 Some(svrb::response4::Inner::Restore2(r)) => Ok(r),
                 _ => Err(Error::BadResponse),
@@ -610,7 +627,7 @@ mod test {
         /// Take in create request, return success/failure
         fn create(&mut self, req_bytes: &[u8]) {
             self.versions.clear();
-            let req = match svrb::Request4::decode(req_bytes)
+            let req = match svrb::Request4::parse_from_bytes(req_bytes)
                 .expect("decode Request4")
                 .inner
             {
@@ -631,7 +648,7 @@ mod test {
 
         /// Take in restore1 request, return restore1 response
         fn restore1(&mut self, req_bytes: &[u8]) -> Vec<u8> {
-            let req = match svrb::Request4::decode(req_bytes)
+            let req = match svrb::Request4::parse_from_bytes(req_bytes)
                 .expect("decode Request4")
                 .inner
             {
@@ -657,24 +674,28 @@ mod test {
                         .compress()
                         .to_bytes()
                         .to_vec(),
+                    ..Default::default()
                 })
                 .collect::<Vec<_>>();
 
             svrb::Response4 {
                 inner: Some(svrb::response4::Inner::Restore1(
                     svrb::response4::Restore1 {
-                        status: svrb::response4::Status::Ok.into(),
+                        status: svrb::response4::Status::OK.into(),
                         tries_remaining: self.tries,
                         auth: auths,
+                        ..Default::default()
                     },
                 )),
+                ..Default::default()
             }
-            .encode_to_vec()
+            .write_to_bytes()
+            .expect("serialization succeeds")
         }
 
         /// Take in restore2 request, return restore2 response
         fn restore2(&self, req_bytes: &[u8], handshake_hash: &[u8]) -> Vec<u8> {
-            let req = match svrb::Request4::decode(req_bytes)
+            let req = match svrb::Request4::parse_from_bytes(req_bytes)
                 .expect("decode Request4")
                 .inner
             {
@@ -702,12 +723,15 @@ mod test {
             svrb::Response4 {
                 inner: Some(svrb::response4::Inner::Restore2(
                     svrb::response4::Restore2 {
-                        status: svrb::response4::Status::Ok.into(),
+                        status: svrb::response4::Status::OK.into(),
                         encryption_secretshare: state.encryption_secretshare.to_vec(),
+                        ..Default::default()
                     },
                 )),
+                ..Default::default()
             }
-            .encode_to_vec()
+            .write_to_bytes()
+            .expect("serialization succeeds")
         }
     }
 

@@ -284,7 +284,7 @@ mod test {
     use futures::executor::block_on;
     use futures::io::{Cursor, ErrorKind};
     use futures::AsyncWriteExt;
-    use prost::Message;
+    use protobuf::Message as _;
     use test_case::{test_case, test_matrix};
 
     use super::*;
@@ -401,7 +401,9 @@ mod test {
             Format::Legacy => encoded_frame.into_vec(),
             Format::Modern => [
                 MAGIC_NUMBER,
-                &forward_secrecy::test::test_metadata().encode_length_delimited_to_vec(),
+                &forward_secrecy::test::test_metadata()
+                    .write_length_delimited_to_bytes()
+                    .expect("will not run out of memory"),
                 &encoded_frame,
             ]
             .concat(),

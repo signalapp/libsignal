@@ -15,7 +15,7 @@ use libsignal_message_backup::export::{
 };
 use libsignal_message_backup::key::MessageBackupKey;
 use libsignal_svrb::proto::backup_metadata::{metadata_pb, MetadataPb};
-use prost::Message;
+use libsignal_svrb::proto::Message as _;
 
 #[path = "../src/bin/support/mod.rs"]
 mod support;
@@ -89,11 +89,15 @@ fn main() {
             pair: vec![metadata_pb::Pair {
                 ct: b"[ciphertext]".to_vec(),
                 pw_salt: b"[pw_salt]".to_vec(),
+                ..Default::default()
             }],
+            ..Default::default()
         };
         write_bytes(
             "faux metadata",
-            faux_metadata.encode_length_delimited_to_vec(),
+            faux_metadata
+                .write_length_delimited_to_bytes()
+                .expect("can serialize"),
         );
     }
 

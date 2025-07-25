@@ -19,7 +19,7 @@ aes-gcm-siv = { workspace = true }
 curve25519-dalek = { workspace = true }
 displaydoc = { workspace = true }
 hkdf = { workspace = true }
-prost = { workspace = true }
+protobuf = { workspace = true }
 rand = { workspace = true }
 rand_core = { workspace = true }
 sha2 = { workspace = true }
@@ -37,4 +37,4 @@ test-case = { workspace = true }
 zerocopy = { workspace = true }
 
 [build-dependencies]
-prost-build = { workspace = true }
+protobuf-codegen = { workspace = true }
