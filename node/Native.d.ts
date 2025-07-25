@@ -229,6 +229,7 @@ export function BackupKey_DeriveMediaEncryptionKey(backupKey: Uint8Array, mediaI
 export function BackupKey_DeriveMediaId(backupKey: Uint8Array, mediaName: string): Uint8Array;
 export function BackupKey_DeriveThumbnailTransitEncryptionKey(backupKey: Uint8Array, mediaId: Uint8Array): Uint8Array;
 export function BackupResponse_GetForwardSecrecyToken(response: Wrapper<BackupResponse>): Uint8Array;
+export function BackupResponse_GetNextBackupSecretData(response: Wrapper<BackupResponse>): Uint8Array;
 export function BackupResponse_GetOpaqueMetadata(response: Wrapper<BackupResponse>): Uint8Array;
 export function BridgedStringMap_insert(map: Wrapper<BridgedStringMap>, key: string, value: string): void;
 export function BridgedStringMap_new(initialCapacity: number): BridgedStringMap;
@@ -500,9 +501,9 @@ export function SealedSender_DecryptToUsmc(ctext: Uint8Array, identityStore: Ide
 export function SealedSender_Encrypt(destination: Wrapper<ProtocolAddress>, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore): Promise<Uint8Array>;
 export function SealedSender_MultiRecipientEncrypt(recipients: Wrapper<ProtocolAddress>[], recipientSessions: Wrapper<SessionRecord>[], excludedRecipients: Uint8Array, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore): Promise<Uint8Array>;
 export function SealedSender_MultiRecipientMessageForSingleRecipient(encodedMultiRecipientMessage: Uint8Array): Uint8Array;
-export function SecureValueRecoveryForBackups_CreateStoreArgs(backupKey: Uint8Array, previousMetadata: Uint8Array, environment: number): StoreArgs;
-export function SecureValueRecoveryForBackups_RestoreBackupFromServer(asyncRuntime: Wrapper<TokioAsyncContext>, backupKey: Uint8Array, metadata: Uint8Array, environment: number): CancellablePromise<Uint8Array>;
-export function SecureValueRecoveryForBackups_StoreBackup(asyncRuntime: Wrapper<TokioAsyncContext>, store: Wrapper<StoreArgs>): CancellablePromise<BackupResponse>;
+export function SecureValueRecoveryForBackups_CreateStoreArgs(backupKey: Uint8Array, previousSecretData: Uint8Array, environment: number): StoreArgs;
+export function SecureValueRecoveryForBackups_RestoreBackupFromServer(asyncRuntime: Wrapper<TokioAsyncContext>, backupKey: Uint8Array, metadata: Uint8Array, connectionManager: Wrapper<ConnectionManager>, username: string, password: string): CancellablePromise<Uint8Array>;
+export function SecureValueRecoveryForBackups_StoreBackup(asyncRuntime: Wrapper<TokioAsyncContext>, store: Wrapper<StoreArgs>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string): CancellablePromise<BackupResponse>;
 export function SenderCertificate_Deserialize(data: Uint8Array): SenderCertificate;
 export function SenderCertificate_GetCertificate(obj: Wrapper<SenderCertificate>): Uint8Array;
 export function SenderCertificate_GetDeviceId(obj: Wrapper<SenderCertificate>): number;

@@ -1508,6 +1508,8 @@ SignalFfiError *signal_backup_response_destroy(SignalMutPointerBackupResponse p)
 
 SignalFfiError *signal_backup_response_get_forward_secrecy_token(uint8_t (*out)[SignalBACKUP_FORWARD_SECRECY_TOKEN_LEN], SignalConstPointerBackupResponse response);
 
+SignalFfiError *signal_backup_response_get_next_backup_secret_data(SignalOwnedBuffer *out, SignalConstPointerBackupResponse response);
+
 SignalFfiError *signal_backup_response_get_opaque_metadata(SignalOwnedBuffer *out, SignalConstPointerBackupResponse response);
 
 SignalFfiError *signal_bridged_string_map_clone(SignalMutPointerBridgedStringMap *new_obj, SignalConstPointerBridgedStringMap obj);
@@ -2244,11 +2246,11 @@ SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalMutPointerUni
 
 SignalFfiError *signal_sealed_session_cipher_encrypt(SignalOwnedBuffer *out, SignalConstPointerProtocolAddress destination, SignalConstPointerUnidentifiedSenderMessageContent content, SignalConstPointerFfiIdentityKeyStoreStruct identity_key_store);
 
-SignalFfiError *signal_secure_value_recovery_for_backups_create_store_args(SignalMutPointerStoreArgs *out, const uint8_t (*backup_key)[SignalBACKUP_KEY_LEN], SignalBorrowedBuffer previous_metadata, uint8_t environment);
+SignalFfiError *signal_secure_value_recovery_for_backups_create_store_args(SignalMutPointerStoreArgs *out, const uint8_t (*backup_key)[SignalBACKUP_KEY_LEN], SignalBorrowedBuffer previous_secret_data, uint8_t environment);
 
-SignalFfiError *signal_secure_value_recovery_for_backups_restore_backup_from_server(SignalCPromiseu8BACKUP_FORWARD_SECRECY_TOKEN_LEN *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalBorrowedBuffer backup_key, SignalBorrowedBuffer metadata, uint8_t environment);
+SignalFfiError *signal_secure_value_recovery_for_backups_restore_backup_from_server(SignalCPromiseu8BACKUP_FORWARD_SECRECY_TOKEN_LEN *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalBorrowedBuffer backup_key, SignalBorrowedBuffer metadata, SignalConstPointerConnectionManager connection_manager, const char *username, const char *password);
 
-SignalFfiError *signal_secure_value_recovery_for_backups_store_backup(SignalCPromiseMutPointerBackupResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerStoreArgs store);
+SignalFfiError *signal_secure_value_recovery_for_backups_store_backup(SignalCPromiseMutPointerBackupResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerStoreArgs store, SignalConstPointerConnectionManager connection_manager, const char *username, const char *password);
 
 SignalFfiError *signal_sender_certificate_clone(SignalMutPointerSenderCertificate *new_obj, SignalConstPointerSenderCertificate obj);
 
