@@ -15,6 +15,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -266,6 +267,39 @@ public class CompletableFuture<T> implements Future<T> {
             return;
           }
           future.completeExceptionally(throwable);
+        });
+  }
+
+  /**
+   * Returns a future that, when this future completes (either normally or exceptionally), is
+   * completed with the result of invoking the given function.
+   *
+   * <p>The function receives this future's value (or {@code null} if the future completed
+   * exceptionally) and the throwable that caused the failure (or {@code null} on success). Whatever
+   * the function returns becomes the completion value of the returned future.
+   *
+   * <p>If the function itself throws, the returned future completes exceptionally with that thrown
+   * exception.
+   *
+   * <p><strong>Note:</strong> Unlike the standard CompletableFuture implementation, cancellation
+   * propagates both downstream and upstream. If this future or the returned future is cancelled,
+   * all futures in the chain will be cancelled.
+   */
+  public <U> CompletableFuture<U> handle(BiFunction<? super T, Throwable, ? extends U> fn) {
+    return this.addChainedFuture(
+        (CompletableFuture<U> f, T v) -> {
+          try {
+            f.complete(fn.apply(v, null));
+          } catch (Throwable ex) {
+            f.completeExceptionally(ex);
+          }
+        },
+        (CompletableFuture<U> f, Throwable t) -> {
+          try {
+            f.complete(fn.apply(null, t));
+          } catch (Throwable ex) {
+            f.completeExceptionally(ex);
+          }
         });
   }
 
