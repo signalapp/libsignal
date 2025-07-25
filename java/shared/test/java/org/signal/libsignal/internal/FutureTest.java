@@ -10,6 +10,7 @@ import static org.junit.Assert.*;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Arrays;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -62,10 +63,7 @@ public class FutureTest {
                     NativeTesting.TESTING_TokioAsyncFuture(nativeContextHandle, 21))
             .makeCancelable(context);
     if (testFuture.cancel(true)) {
-      ExecutionException e = assertThrows(ExecutionException.class, () -> testFuture.get());
-      assertTrue(
-          "Expected CancellationException as cause",
-          e.getCause() instanceof java.util.concurrent.CancellationException);
+      assertThrows(CancellationException.class, () -> testFuture.get());
       assertTrue(testFuture.isCancelled());
     } else {
       // The future completed before we could cancel it.
@@ -102,10 +100,7 @@ public class FutureTest {
                                 nativeContextHandle, counterHandle)))
             .makeCancelable(context);
     assertTrue(testFuture.cancel(true));
-    ExecutionException e = assertThrows(ExecutionException.class, () -> testFuture.get());
-    assertTrue(
-        "Expected CancellationException as cause",
-        e.getCause() instanceof java.util.concurrent.CancellationException);
+    assertThrows(CancellationException.class, () -> testFuture.get());
     assertTrue(testFuture.isCancelled());
     assertTrue(testFuture.isDone());
 

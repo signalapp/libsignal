@@ -21,7 +21,6 @@ import java.util.function.Function;
 /** A stripped-down, Android-21-compatible version of java.util.concurrent.CompletableFuture. */
 public class CompletableFuture<T> implements Future<T> {
   private boolean completed;
-  private boolean cancelled;
   private T result;
   private Throwable exception;
   private List<ThenApplyCompleter<T>> consumers;
@@ -56,42 +55,16 @@ public class CompletableFuture<T> implements Future<T> {
 
   @Override
   public boolean cancel(boolean mayInterruptIfRunning) {
-    if (!mayInterruptIfRunning) {
-      // The underlying Rust futures start immediately, so if
-      // we can't interrupt them, we can't cancel them.
-      return false;
+    if (!completeExceptionally(new CancellationException("Future was canceled"))) {
+      return isCancelled();
     }
 
-    Throwable throwable = new CancellationException("Future was canceled");
-    final List<ThenApplyCompleter<T>> consumers;
-
-    synchronized (this) {
-      if (completed || cancelled) return false;
-
-      if (!runtime.isPresent() || !cancellationId.isPresent()) {
-        return false;
-      }
-
+    if (runtime.isPresent() && cancellationId.isPresent()) {
       runtime
           .get()
           .guardedRun(
               (nativeContextHandle) ->
                   Native.TokioAsyncContext_cancel(nativeContextHandle, cancellationId.get()));
-
-      // Capture consumers before calling completeExceptionally(), because:
-      //   - we will need to notify them manually *after* releasing the lock
-      //   - completeExceptionally() will invalidate the consumers list
-      consumers = this.consumers;
-      completeExceptionally(throwable, false);
-
-      // completeExceptionally() will set completed = true, so we only need to set cancelled = true
-      cancelled = true;
-    }
-
-    // Manually notify all the consumers that the future was canceled.
-    // We do this outside of the synchronized block to avoid deadlocks.
-    for (ThenApplyCompleter<T> completer : consumers) {
-      completer.completeExceptionally.accept(throwable);
     }
 
     return true;
@@ -99,7 +72,7 @@ public class CompletableFuture<T> implements Future<T> {
 
   @Override
   public synchronized boolean isCancelled() {
-    return cancelled;
+    return exception instanceof CancellationException;
   }
 
   @Override
@@ -112,7 +85,7 @@ public class CompletableFuture<T> implements Future<T> {
     final List<ThenApplyCompleter<T>> consumers;
 
     synchronized (this) {
-      if (completed || cancelled) return false;
+      if (completed) return false;
 
       this.result = result;
       this.completed = true;
@@ -144,7 +117,7 @@ public class CompletableFuture<T> implements Future<T> {
     final List<ThenApplyCompleter<T>> consumers;
 
     synchronized (this) {
-      if (completed || cancelled) return false;
+      if (completed) return false;
 
       if (throwable == null) {
         throwable = new AssertionError("Future failed, but no exception provided");
@@ -178,6 +151,7 @@ public class CompletableFuture<T> implements Future<T> {
       throws CancellationException, ExecutionException, InterruptedException {
     while (!completed) wait();
 
+    if (exception instanceof CancellationException) throw (CancellationException) exception;
     if (exception != null) throw new ExecutionException(exception);
 
     return result;
