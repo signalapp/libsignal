@@ -18,7 +18,8 @@ use crate::proto::svrb;
 
 mod errors;
 pub use errors::{Error, ErrorStatus};
-mod proto;
+pub mod proto;
+pub use proto::backup4::Backup4 as Backup4Proto;
 pub use proto::svrb::response4::Status as V4Status;
 
 const SECRET_BYTES: usize = 32;
@@ -245,6 +246,20 @@ impl Backup4 {
                 .collect(),
             output,
         }
+    }
+
+    pub fn into_pb(self) -> Backup4Proto {
+        Backup4Proto {
+            requests: self.requests,
+            output: self.output.to_vec(),
+        }
+    }
+
+    pub fn from_pb(pb: Backup4Proto) -> Result<Self, Error> {
+        Ok(Self {
+            output: pb.output.try_into().map_err(|_| Error::BadData)?,
+            requests: pb.requests,
+        })
     }
 }
 

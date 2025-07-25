@@ -6,7 +6,6 @@
 mod backup;
 mod error;
 mod hash;
-pub mod proto;
 
 use core::{fmt, str};
 

@@ -40,14 +40,6 @@ struct Args {
     parallelism: usize,
     #[arg(long, default_value_t = 1, help = "Number of total requests to make")]
     requests: usize,
-    #[arg(
-        long,
-        default_value_t = false,
-        help = "Perform a restore after we backup"
-    )]
-    restore: bool,
-    #[arg(long, default_value_t = false, help = "Perform a second backup")]
-    backup_twice: bool,
 }
 
 struct SvrBClient<'a> {
@@ -88,38 +80,43 @@ async fn single_request(args: &Args, auth_secret: [u8; 32], sem: &tokio::sync::S
 
     // Example code for the first backup ever created by a client.
     // Note that we pass in `None` as the previous_backup_data.
-    println!("Preparing backup");
-    let prepared = svrb::prepare_backup(&client, &backup_key, None).expect("should prepare");
-    println!("Finalizing backup");
-    svrb::finalize_backup(&client, &prepared.handle)
+    println!("Storing backup #1");
+    let backup1 = svrb::store_backup(&client, &backup_key, None)
         .await
-        .expect("should finalize successfully");
+        .expect("should backup");
 
     // Example code for restoration of the backup.
-    if args.restore {
-        println!("Restoring backup");
-        let forward_secrecy_token =
-            svrb::restore_backup(&client, &backup_key, prepared.metadata.as_ref())
-                .await
-                .expect("should restore successfully");
-        assert_eq!(forward_secrecy_token.0, prepared.forward_secrecy_token.0);
-    }
+    println!("Restoring backup #1");
+    let forward_secrecy_token =
+        svrb::restore_backup(&client, &backup_key, backup1.metadata.as_ref())
+            .await
+            .expect("should restore successfully");
+    assert_eq!(forward_secrecy_token.0, backup1.forward_secrecy_token.0);
 
     // Example code for second and subsequent backups.  Note that we pass
     // in the previous backup's `next_backup_data`.
-    if args.backup_twice {
-        println!("Preparing backup #2");
-        let prepared = svrb::prepare_backup(
-            &client,
-            &backup_key,
-            Some(prepared.next_backup_data.as_ref()),
-        )
-        .expect("should prepare");
-        println!("Finalizing backup #2");
-        svrb::finalize_backup(&client, &prepared.handle)
+    println!("Storing backup #2");
+    let backup2 = svrb::store_backup(
+        &client,
+        &backup_key,
+        Some(backup1.next_backup_data.as_ref()),
+    )
+    .await
+    .expect("should store");
+
+    // Example code for restoring both backups after storage of backup 2.
+    println!("Restoring backup #1 after storing backup #2");
+    let forward_secrecy_token =
+        svrb::restore_backup(&client, &backup_key, backup1.metadata.as_ref())
             .await
-            .expect("should finalize successfully");
-    }
+            .expect("should restore successfully");
+    assert_eq!(forward_secrecy_token.0, backup1.forward_secrecy_token.0);
+    println!("Restoring backup #2 after storing backup #2");
+    let forward_secrecy_token =
+        svrb::restore_backup(&client, &backup_key, backup2.metadata.as_ref())
+            .await
+            .expect("should restore successfully");
+    assert_eq!(forward_secrecy_token.0, backup2.forward_secrecy_token.0);
 
     println!("Success!");
 }

@@ -8,14 +8,14 @@ use std::io::{stdout, Write as _};
 use aes::cipher::crypto_common::rand_core::{OsRng, RngCore};
 use clap::{ArgAction, Parser};
 use clap_stdin::FileOrStdin;
-use libsignal_account_keys::proto::backup_metadata::{metadata_pb, MetadataPb};
-use libsignal_account_keys::proto::Message as _;
 use libsignal_cli_utils::read_file;
 use libsignal_message_backup::args::parse_hex_bytes;
 use libsignal_message_backup::export::{
     aes_cbc_encrypt, gzip_compress, hmac_checksum, pad_gzipped_bucketed,
 };
 use libsignal_message_backup::key::MessageBackupKey;
+use libsignal_svrb::proto::backup_metadata::{metadata_pb, MetadataPb};
+use prost::Message;
 
 #[path = "../src/bin/support/mod.rs"]
 mod support;
@@ -89,15 +89,11 @@ fn main() {
             pair: vec![metadata_pb::Pair {
                 ct: b"[ciphertext]".to_vec(),
                 pw_salt: b"[pw_salt]".to_vec(),
-                ..Default::default()
             }],
-            ..Default::default()
         };
         write_bytes(
             "faux metadata",
-            faux_metadata
-                .write_length_delimited_to_bytes()
-                .expect("can serialize"),
+            faux_metadata.encode_length_delimited_to_vec(),
         );
     }
 

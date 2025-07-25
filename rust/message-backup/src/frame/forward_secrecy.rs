@@ -6,12 +6,11 @@
 use std::io;
 
 use futures::AsyncRead;
-use libsignal_account_keys::proto::backup_metadata::metadata_pb::Pair as ForwardSecrecyPair;
-use libsignal_account_keys::proto::backup_metadata::MetadataPb;
-use protobuf::Message;
+use libsignal_svrb::proto::backup_metadata::metadata_pb::Pair as ForwardSecrecyPair;
+use libsignal_svrb::proto::backup_metadata::MetadataPb;
+use prost::Message;
 
 use crate::frame::{FramesReader, ValidationError};
-use crate::log_unknown_fields;
 use crate::parse::VarintDelimitedReader;
 
 pub const MAGIC_NUMBER: &[u8] = b"SBACKUP\x01";
@@ -26,14 +25,8 @@ impl<R: AsyncRead + Unpin> FramesReader<R> {
 
         let MetadataPb {
             pair: forward_secrecy_pairs,
-            special_fields,
-        } = MetadataPb::parse_from_bytes(&metadata)
+        } = MetadataPb::decode(&*metadata)
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
-
-        // Since MetadataPb is from outside this crate, we can't derive VisitUnknownFields for it.
-        // We could implement it manually, but in practice it's close enough to approximate it here.
-        // If we end up with a more deeply nested structure in the future we can revisit.
-        log_unknown_fields(&special_fields, "unencrypted metadata");
 
         match forward_secrecy_pairs.len() {
             0 => return Err(ValidationError::MissingMetadataField("pair")),
@@ -45,12 +38,7 @@ impl<R: AsyncRead + Unpin> FramesReader<R> {
         }
 
         for pair_pb in forward_secrecy_pairs {
-            let ForwardSecrecyPair {
-                ct,
-                pw_salt,
-                special_fields,
-            } = pair_pb;
-            log_unknown_fields(&special_fields, "unencrypted metadata 'pair'");
+            let ForwardSecrecyPair { ct, pw_salt } = pair_pb;
             if ct.is_empty() {
                 return Err(ValidationError::MissingMetadataField("pair.ct"));
             }
@@ -96,15 +84,12 @@ pub(crate) mod test {
                 ForwardSecrecyPair {
                     ct: vec![1; 48],
                     pw_salt: vec![2; 32],
-                    ..Default::default()
                 },
                 ForwardSecrecyPair {
                     ct: vec![3; 48],
                     pw_salt: vec![4; 32],
-                    ..Default::default()
                 },
             ],
-            ..Default::default()
         }
     }
 
@@ -116,33 +101,20 @@ pub(crate) mod test {
 
     #[test]
     fn valid() {
-        process(
-            &test_metadata()
-                .write_length_delimited_to_bytes()
-                .expect("can serialize"),
-        )
-        .expect("valid")
+        process(&test_metadata().encode_length_delimited_to_vec()).expect("valid")
     }
 
-    #[test_case(MetadataPb::new() => matches ValidationError::MissingMetadataField("pair"))]
+    #[test_case(MetadataPb::default() => matches ValidationError::MissingMetadataField("pair"))]
     #[test_case(MetadataPb {
         pair: vec![ForwardSecrecyPair { ct: vec![1; 48], ..Default::default() }],
-        ..Default::default()
     } => matches ValidationError::MissingMetadataField("pair.pw_salt"))]
     #[test_case(MetadataPb {
         pair: vec![ForwardSecrecyPair { pw_salt: vec![1; 32], ..Default::default() }],
-        ..Default::default()
     } => matches ValidationError::MissingMetadataField("pair.ct"))]
     #[test_case(MetadataPb {
         pair: vec![Default::default(), Default::default(), Default::default()],
-        ..Default::default()
     } => matches ValidationError::TooManyForwardSecrecyPairs(3))]
     fn invalid(metadata: MetadataPb) -> ValidationError {
-        process(
-            &metadata
-                .write_length_delimited_to_bytes()
-                .expect("can serialize"),
-        )
-        .expect_err("should fail")
+        process(&metadata.encode_length_delimited_to_vec()).expect_err("should fail")
     }
 }

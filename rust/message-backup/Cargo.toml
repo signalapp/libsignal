@@ -47,6 +47,7 @@ libsignal-message-backup-macros = { path = "macros" }
 libsignal-account-keys = { workspace = true }
 libsignal-core = { workspace = true }
 libsignal-protocol = { workspace = true }
+libsignal-svrb = { workspace = true }
 signal-crypto = { workspace = true }
 usernames = { workspace = true }
 zkcredential = { workspace = true, features = ["rayon"] }
@@ -73,6 +74,7 @@ itertools = { workspace = true }
 log = { workspace = true }
 macro_rules_attribute = { workspace = true }
 mediasan-common = { workspace = true }
+prost = { workspace = true }
 protobuf = { workspace = true }
 protobuf-json-mapping = { workspace = true, optional = true }
 rand = { workspace = true, optional = true }

@@ -5,7 +5,9 @@
 
 syntax = "proto3";
 
-package signal.proto.backup_metadata;
+package svrb.backup_metadata;
+
+import "proto/backup4.proto";
 
 message MetadataPb {
   message Pair {
@@ -17,10 +19,6 @@ message MetadataPb {
 }
 
 message NextBackupPb {
-  message Pair {
-    bytes encryption_key_salt = 1;
-    bytes pw_salt = 2;
-  }
-  // newest are first
-  repeated Pair pair = 1;
+  bytes pw_salt = 1;
+  backup4.Backup4 backup4 = 2;
 }
