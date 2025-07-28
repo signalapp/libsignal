@@ -45,6 +45,9 @@ final class SecureValueRecoveryBackupTests: TestCaseBase {
 
     func testFullBackupFlowWithPreviousSecretData() async throws {
         try self.nonHermeticTest()
+        if testAuth.username.isEmpty || testAuth.password.isEmpty {
+            throw XCTSkip("requires LIBSIGNAL_TESTING_SVRB_USERNAME and LIBSIGNAL_TESTING_SVRB_PASSWORD")
+        }
 
         // First backup without previous data
         let firstResponse = try await svrB.storeBackup(backupKey: testBackupKey, previousSecretData: nil)

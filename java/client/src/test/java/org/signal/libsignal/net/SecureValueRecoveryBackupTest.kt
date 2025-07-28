@@ -58,6 +58,7 @@ class SecureValueRecoveryBackupTest {
   fun testStoreReturnsValidResponse() {
     val ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS")
     Assume.assumeNotNull(ENABLE_TEST)
+    Assume.assumeTrue(testUsername.isNotEmpty() && testPassword.isNotEmpty())
 
     val response = makeStoreResponse()
 
@@ -76,6 +77,7 @@ class SecureValueRecoveryBackupTest {
   fun testBackupForwardSecrecyTokenSerializesAndDeserializesCorrectly() {
     val ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS")
     Assume.assumeNotNull(ENABLE_TEST)
+    Assume.assumeTrue(testUsername.isNotEmpty() && testPassword.isNotEmpty())
 
     val response = makeStoreResponse()
     val token = response.forwardSecrecyToken
@@ -102,6 +104,7 @@ class SecureValueRecoveryBackupTest {
   fun testFullBackupFlowWithPreviousSecretData() {
     val ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS")
     Assume.assumeNotNull(ENABLE_TEST)
+    Assume.assumeTrue(testUsername.isNotEmpty() && testPassword.isNotEmpty())
 
     // First backup without previous data
     val firstStoreResult = svrB.store(testBackupKey, null).get(ASYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
