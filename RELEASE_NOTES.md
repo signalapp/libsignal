@@ -10,3 +10,4 @@ v0.77.0
 
     As a bonus, CompletableFuture now supports the `handle()` transformation.
 
+- Provide a TypeScript implementation of the SVR-B API.
