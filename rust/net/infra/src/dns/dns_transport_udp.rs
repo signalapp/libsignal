@@ -51,7 +51,10 @@ impl Connector<UdpRoute<IpAddr>, ()> for UdpTransportConnector {
             .connect(route, log_tag)
             .await
             .map_err(|e| {
-                log::error!("[{log_tag}] Failed to create UDP socket: {}", e.kind());
+                log::warn!(
+                    "[{log_tag}] Failed to create UDP socket for DNS lookup: {}",
+                    e.kind()
+                );
                 Error::TransportFailure
             })?;
         Ok(UdpTransport {

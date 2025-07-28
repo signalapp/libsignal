@@ -79,8 +79,8 @@ impl Connector<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>, ()> for DohTransportCo
             max_response_size: MAX_RESPONSE_SIZE,
         };
         let http_client = connector.connect(route, log_tag).await.map_err(|e| {
-            log::error!(
-                "[{log_tag}] Failed to create HTTP2 client: {}",
+            log::warn!(
+                "[{log_tag}] Failed to create HTTP2 client for DNS lookup: {}",
                 &e as &dyn LogSafeDisplay
             );
             Error::TransportFailure

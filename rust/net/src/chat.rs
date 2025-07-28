@@ -358,7 +358,7 @@ impl PendingChatConnection {
 
     pub async fn disconnect(&mut self) {
         if let Err(error) = self.connection.close(None).await {
-            log::error!(
+            log::warn!(
                 "[{}] pending chat connection disconnect failed with {error}",
                 &self.log_tag
             );

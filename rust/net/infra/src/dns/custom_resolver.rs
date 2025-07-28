@@ -285,7 +285,7 @@ async fn do_lookup_task_body<T: DnsTransport>(
     let stream = match transport.send_queries(request.clone()).await {
         Ok(stream) => stream,
         Err(err) => {
-            log::error!(
+            log::warn!(
                 "While resolving [{}] failed to send queries over [{}]: {}",
                 log_safe_domain(&request.hostname),
                 T::SOURCE,

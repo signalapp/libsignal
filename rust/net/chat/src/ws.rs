@@ -94,7 +94,7 @@ impl WsConnection for chat::ChatConnection {
                     );
                 }
             }
-            Err(e) => log::error!(
+            Err(e) => log::warn!(
                 "[{log_tag} {request_id:04x}] {method} {log_safe_path} - {}",
                 e as &dyn LogSafeDisplay
             ),

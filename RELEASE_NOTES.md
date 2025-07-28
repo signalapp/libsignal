@@ -13,3 +13,5 @@ v0.77.0
 - Exposed the new SVR-B API to TypeScript and Swift.
 
 - BackupForwardSecrecyTokens can now be used to derive MessageBackupKeys.
+
+- Downgraded some networking-related error logs to warnings.
