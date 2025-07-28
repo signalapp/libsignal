@@ -23,6 +23,7 @@ import org.junit.Test;
 import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.protocol.kdf.HKDF;
 import org.signal.libsignal.protocol.util.ByteUtil;
+import org.signal.libsignal.protocol.util.Hex;
 import org.signal.libsignal.util.Base64;
 import org.signal.libsignal.util.ResourceReader;
 
@@ -156,6 +157,32 @@ public class MessageBackupValidationTest {
     assertEquals(32, hmacKey.length);
     assertEquals(32, aesKey.length);
     assertFalse(Arrays.equals(hmacKey, aesKey));
+  }
+
+  @Test
+  public void messageBackupKeyDeriveWithForwardSecrecyToken() throws Exception {
+    final var accountEntropy = "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm";
+    final var aci = new Aci(new UUID(0x1111111111111111L, 0x1111111111111111L));
+    final var token =
+        new BackupForwardSecrecyToken(
+            Hex.fromStringCondensedAssert(
+                "bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf"));
+
+    final var keyFromAEP = new MessageBackupKey(accountEntropy, aci, token);
+    assertFalse(
+        Arrays.equals(
+            keyFromAEP.getAesKey(), new MessageBackupKey(accountEntropy, aci).getAesKey()));
+
+    final var backupKey =
+        new BackupKey(
+            Hex.fromStringCondensedAssert(
+                "babababababababababababababababababababababababababababababababa"));
+    final var backupId = Hex.fromStringCondensedAssert("1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d");
+
+    final var keyFromBackupInfo = new MessageBackupKey(backupKey, backupId, token);
+    assertFalse(
+        Arrays.equals(
+            keyFromAEP.getAesKey(), new MessageBackupKey(backupKey, backupId).getAesKey()));
   }
 
   @Test

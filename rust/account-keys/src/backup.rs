@@ -5,7 +5,7 @@
 
 //! Keys used throughout the backup creation, storage, and recovery process.
 //!
-//! A client will generate a [`BackupKey`] from their master key. The client
+//! A client will generate a [`BackupKey`] from their account entropy pool. The client
 //! will then derive a [`BackupId`] from this key and their [`Aci`]. This
 //! ensures that the `BackupKey` is reconstructible using only state stored in
 //! SVR, so that a restorer can reconstruct the `BackupId`.

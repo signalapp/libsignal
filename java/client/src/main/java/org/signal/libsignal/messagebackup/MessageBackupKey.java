@@ -27,23 +27,43 @@ public class MessageBackupKey extends NativeHandleGuard.SimpleOwner {
    * String here is considered a programmer error.
    */
   public MessageBackupKey(String accountEntropy, Aci aci) {
+    this(accountEntropy, aci, null);
+  }
+
+  /**
+   * Derives a MessageBackupKey from the given account entropy pool.
+   *
+   * <p>{@code accountEntropy} must be a <b>validated</b> account entropy pool; passing an arbitrary
+   * String here is considered a programmer error.
+   */
+  public MessageBackupKey(String accountEntropy, Aci aci, BackupForwardSecrecyToken token) {
     super(
         Native.MessageBackupKey_FromAccountEntropyPool(
-            accountEntropy, aci.toServiceIdFixedWidthBinary()));
+            accountEntropy,
+            aci.toServiceIdFixedWidthBinary(),
+            token == null ? null : token.getInternalContentsForJNI()));
   }
 
   /**
    * Derives a MessageBackupKey from a backup key and ID.
    *
    * <p>Used when reading from a local backup, which may have been created with a different ACI.
-   *
-   * <p>This uses AccountEntropyPool-based key derivation rules; it cannot be used to read a backup
-   * created from a master key.
    */
   public MessageBackupKey(BackupKey backupKey, byte[] backupId) {
+    this(backupKey, backupId, null);
+  }
+
+  /**
+   * Derives a MessageBackupKey from a backup key and ID.
+   *
+   * <p>Used when reading from a local backup, which may have been created with a different ACI.
+   */
+  public MessageBackupKey(BackupKey backupKey, byte[] backupId, BackupForwardSecrecyToken token) {
     super(
         Native.MessageBackupKey_FromBackupKeyAndBackupId(
-            backupKey.getInternalContentsForJNI(), backupId));
+            backupKey.getInternalContentsForJNI(),
+            backupId,
+            token == null ? null : token.getInternalContentsForJNI()));
   }
 
   /**

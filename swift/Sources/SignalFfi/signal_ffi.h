@@ -1904,9 +1904,9 @@ SignalFfiError *signal_lookup_request_set_token(SignalConstPointerLookupRequest 
 
 SignalFfiError *signal_message_backup_key_destroy(SignalMutPointerMessageBackupKey p);
 
-SignalFfiError *signal_message_backup_key_from_account_entropy_pool(SignalMutPointerMessageBackupKey *out, const char *account_entropy, const SignalServiceIdFixedWidthBinaryBytes *aci);
+SignalFfiError *signal_message_backup_key_from_account_entropy_pool(SignalMutPointerMessageBackupKey *out, const char *account_entropy, const SignalServiceIdFixedWidthBinaryBytes *aci, const uint8_t (*forward_secrecy_token)[SignalBACKUP_FORWARD_SECRECY_TOKEN_LEN]);
 
-SignalFfiError *signal_message_backup_key_from_backup_key_and_backup_id(SignalMutPointerMessageBackupKey *out, const uint8_t (*backup_key)[32], const uint8_t (*backup_id)[16]);
+SignalFfiError *signal_message_backup_key_from_backup_key_and_backup_id(SignalMutPointerMessageBackupKey *out, const uint8_t (*backup_key)[32], const uint8_t (*backup_id)[16], const uint8_t (*forward_secrecy_token)[SignalBACKUP_FORWARD_SECRECY_TOKEN_LEN]);
 
 SignalFfiError *signal_message_backup_key_get_aes_key(uint8_t (*out)[32], SignalConstPointerMessageBackupKey key);
 

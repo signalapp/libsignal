@@ -14,10 +14,23 @@ public class MessageBackupKey: NativeHandleOwner<SignalMutPointerMessageBackupKe
     ///
     /// `accountEntropy` must be a **validated** account entropy pool;
     /// passing an arbitrary String here is considered a programmer error.
-    public convenience init(accountEntropy: String, aci: Aci) throws {
-        let handle = try aci.withPointerToFixedWidthBinary { aci in
+    public convenience init(
+        accountEntropy: String,
+        aci: Aci,
+        forwardSecrecyToken: BackupForwardSecrecyToken? = nil
+    ) throws {
+        let handle = try withAllBorrowed(aci, .fixed(forwardSecrecyToken)) {
+            aci,
+            forwardSecrecyToken in
             var outputHandle = SignalMutPointerMessageBackupKey()
-            try checkError(signal_message_backup_key_from_account_entropy_pool(&outputHandle, accountEntropy, aci))
+            try checkError(
+                signal_message_backup_key_from_account_entropy_pool(
+                    &outputHandle,
+                    accountEntropy,
+                    aci,
+                    forwardSecrecyToken
+                )
+            )
             return outputHandle
         }
         self.init(owned: NonNull(handle)!)
@@ -26,19 +39,26 @@ public class MessageBackupKey: NativeHandleOwner<SignalMutPointerMessageBackupKe
     /// Derives a `MessageBackupKey` from the given backup key and ID.
     ///
     /// Used when reading from a local backup, which may have been created with a different ACI.
-    ///
-    /// This uses AccountEntropyPool-based key derivation rules;
-    /// it cannot be used to read a backup created from a master key.
-    public convenience init(backupKey: BackupKey, backupId: Data) throws {
+    public convenience init(
+        backupKey: BackupKey,
+        backupId: Data,
+        forwardSecrecyToken: BackupForwardSecrecyToken? = nil
+    ) throws {
         let backupId = try ByteArray(newContents: backupId, expectedLength: 16)
-        let handle = try backupKey.withUnsafePointerToSerialized { backupKey in
-            try backupId.withUnsafePointerToSerialized { backupId in
-                var outputHandle = SignalMutPointerMessageBackupKey()
-                try checkError(
-                    signal_message_backup_key_from_backup_key_and_backup_id(&outputHandle, backupKey, backupId)
+        let handle = try withAllBorrowed(.fixed(backupKey), .fixed(backupId), .fixed(forwardSecrecyToken)) {
+            backupKey,
+            backupId,
+            forwardSecrecyToken in
+            var outputHandle = SignalMutPointerMessageBackupKey()
+            try checkError(
+                signal_message_backup_key_from_backup_key_and_backup_id(
+                    &outputHandle,
+                    backupKey,
+                    backupId,
+                    forwardSecrecyToken
                 )
-                return outputHandle
-            }
+            )
+            return outputHandle
         }
         self.init(owned: NonNull(handle)!)
     }

@@ -6,14 +6,14 @@
 //! Provides BackupAuthCredential and related types.
 //!
 //! BackupAuthCredential is a MAC over:
-//! - a backup-id (a 16-byte value deterministically derived from the client's master key, blinded at issuance, revealed for verification)
+//! - a backup-id (a 16-byte value deterministically derived from the client's account entropy pool, blinded at issuance, revealed for verification)
 //! - a timestamp, truncated to day granularity (chosen by the chat server at issuance, passed publicly to the verifying server)
 //! - a receipt level (chosen by the chat server at issuance, passed publicly to the verifying server)
 //!
 //! The BackupAuthCredentialPresentation includes the public backup-id in the clear for verification
 //!
 //! The BackupAuthCredential has the additional constraint that it should be deterministically reproducible. Rather than a randomly
-//! seeded blinding key pair, the key pair is derived from, you guessed it, the client's master key.
+//! seeded blinding key pair, the key pair is derived from, you guessed it, the client's AEP.
 
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
 use partial_default::PartialDefault;

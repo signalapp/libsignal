@@ -23,6 +23,31 @@ class MessageBackupTests: TestCaseBase {
         )
     }
 
+    func testDerivingKeyWithForwardSecrecyToken() {
+        let accountEntropy = String(repeating: "m", count: 64)
+        let uuid: uuid_t = (
+            0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11
+        )
+        let aci = Aci(fromUUID: UUID(uuid: uuid))
+        let token = try! BackupForwardSecrecyToken(contents: Data(repeating: 0xbf, count: 32))
+
+        let keyFromAEP = try! MessageBackupKey(accountEntropy: accountEntropy, aci: aci, forwardSecrecyToken: token)
+        XCTAssertNotEqual(keyFromAEP.aesKey, try! MessageBackupKey(accountEntropy: accountEntropy, aci: aci).aesKey)
+
+        let backupKey = try! BackupKey(contents: Data(repeating: 0xba, count: 32))
+        let backupId = Data(repeating: 0x1d, count: 16)
+
+        let keyFromBackupInfo = try! MessageBackupKey(
+            backupKey: backupKey,
+            backupId: backupId,
+            forwardSecrecyToken: token
+        )
+        XCTAssertNotEqual(
+            keyFromBackupInfo.aesKey,
+            try! MessageBackupKey(backupKey: backupKey, backupId: backupId).aesKey
+        )
+    }
+
     func testMessageBackupKeyParts() {
         let testKey = MessageBackupKey.testKey()
         // Just check some basic expectations.

@@ -11,7 +11,11 @@ import { Uint8ArrayInputStream, ErrorInputStream } from './ioutil';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { hkdf, LogLevel } from '..';
-import { AccountEntropyPool, BackupKey } from '../AccountKeys';
+import {
+  AccountEntropyPool,
+  BackupForwardSecrecyToken,
+  BackupKey,
+} from '../AccountKeys';
 import { Readable } from 'node:stream';
 import { InputStream } from '../io';
 import { assertArrayNotEquals } from './util';
@@ -34,6 +38,39 @@ describe('MessageBackup', () => {
   const aci = Aci.fromUuidBytes(new Uint8Array(16).fill(0x11));
   const testKey = new MessageBackup.MessageBackupKey({ accountEntropy, aci });
   const purpose = MessageBackup.Purpose.RemoteBackup;
+
+  describe('MessageBackupKey', () => {
+    it('provides its HMAC and AES keys', () => {
+      // Just check some basic expectations.
+      assert.equal(32, testKey.hmacKey.length);
+      assert.equal(32, testKey.aesKey.length);
+      assertArrayNotEquals(testKey.hmacKey, testKey.aesKey);
+    });
+
+    it('can derive from a forward secrecy token', () => {
+      const forwardSecrecyToken = new BackupForwardSecrecyToken(
+        new Uint8Array(32).fill(0xbf)
+      );
+      const keyFromAep = new MessageBackup.MessageBackupKey({
+        accountEntropy,
+        aci,
+        forwardSecrecyToken,
+      });
+      assertArrayNotEquals(keyFromAep.aesKey, testKey.aesKey);
+
+      const backupKey = new BackupKey(new Uint8Array(32).fill(0xba));
+      const backupId = new Uint8Array(16).fill(0x1d);
+      const keyFromBackupInfo = new MessageBackup.MessageBackupKey({
+        backupKey,
+        backupId,
+        forwardSecrecyToken,
+      });
+      assertArrayNotEquals(
+        keyFromBackupInfo.aesKey,
+        new MessageBackup.MessageBackupKey({ backupKey, backupId }).aesKey
+      );
+    });
+  });
 
   describe('validate', () => {
     it('successfully validates a minimal backup', async () => {
@@ -77,13 +114,6 @@ describe('MessageBackup', () => {
         BigInt(input.length)
       );
       assert.equal(outcome2.errorMessage, null);
-    });
-
-    it('provides its HMAC and AES keys', () => {
-      // Just check some basic expectations.
-      assert.equal(32, testKey.hmacKey.length);
-      assert.equal(32, testKey.aesKey.length);
-      assertArrayNotEquals(testKey.hmacKey, testKey.aesKey);
     });
 
     it('throws on empty input', async () => {

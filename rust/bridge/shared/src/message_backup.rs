@@ -4,7 +4,7 @@
 //
 
 use futures_util::io::BufReader;
-use libsignal_account_keys::AccountEntropyPool;
+use libsignal_account_keys::{AccountEntropyPool, BACKUP_FORWARD_SECRECY_TOKEN_LEN};
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::message_backup::*;
 use libsignal_message_backup::backup::Purpose;
@@ -28,16 +28,18 @@ bridge_handle_fns!(
 fn MessageBackupKey_FromAccountEntropyPool(
     account_entropy: AccountEntropyPool,
     aci: Aci,
+    forward_secrecy_token: Option<&[u8; BACKUP_FORWARD_SECRECY_TOKEN_LEN]>,
 ) -> MessageBackupKey {
-    MessageBackupKey::from_account_entropy_pool(&account_entropy, aci)
+    MessageBackupKey::from_account_entropy_pool(&account_entropy, aci, forward_secrecy_token)
 }
 
 #[bridge_fn]
 fn MessageBackupKey_FromBackupKeyAndBackupId(
     backup_key: &[u8; 32],
     backup_id: &[u8; 16],
+    forward_secrecy_token: Option<&[u8; BACKUP_FORWARD_SECRECY_TOKEN_LEN]>,
 ) -> MessageBackupKey {
-    MessageBackupKey::from_backup_key_and_backup_id(backup_key, backup_id)
+    MessageBackupKey::from_backup_key_and_backup_id(backup_key, backup_id, forward_secrecy_token)
 }
 
 #[bridge_fn(ffi = false, node = false)]

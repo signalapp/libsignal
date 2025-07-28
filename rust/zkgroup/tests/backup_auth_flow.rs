@@ -13,7 +13,7 @@ fn test_backup_auth_request_response() {
     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];
     let randomness3: RandomnessBytes = [0x45u8; RANDOMNESS_LEN];
 
-    // client derives this from the their master key
+    // client derives this from the their account entropy pool.
     // The type annotation is not redundant; it indicates we are using the latest version of the
     // backup key struct.
     let backup_key: libsignal_account_keys::BackupKey =

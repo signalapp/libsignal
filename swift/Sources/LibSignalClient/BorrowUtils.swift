@@ -192,9 +192,27 @@ internal struct FixedLengthWrapper<FixedLengthRepr>: BorrowForFfi {
     }
 }
 
+internal struct OptionalFixedLengthWrapper<FixedLengthRepr>: BorrowForFfi {
+    var inner: ByteArray?
+
+    typealias Borrowed = UnsafePointer<FixedLengthRepr>?
+    func withBorrowed<Result>(_ callback: (Borrowed) throws -> Result) throws -> Result {
+        if let inner {
+            try inner.withUnsafePointerToSerialized(callback)
+        } else {
+            try callback(nil)
+        }
+    }
+}
+
 extension BorrowForFfi {
     static func fixed<FixedLengthRepr>(_ serialized: ByteArray) -> Self
     where Self == FixedLengthWrapper<FixedLengthRepr> {
+        .init(inner: serialized)
+    }
+
+    static func fixed<FixedLengthRepr>(_ serialized: ByteArray?) -> Self
+    where Self == OptionalFixedLengthWrapper<FixedLengthRepr> {
         .init(inner: serialized)
     }
 }

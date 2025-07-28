@@ -10,7 +10,7 @@
  */
 
 import * as Native from '../Native';
-import { BackupKey } from './AccountKeys';
+import { BackupForwardSecrecyToken, BackupKey } from './AccountKeys';
 import { Aci } from './Address';
 import { InputStream } from './io';
 
@@ -51,10 +51,12 @@ export type MessageBackupKeyInput = Readonly<
   | {
       accountEntropy: string;
       aci: Aci;
+      forwardSecrecyToken?: BackupForwardSecrecyToken;
     }
   | {
       backupKey: BackupKey | Uint8Array;
       backupId: Uint8Array;
+      forwardSecrecyToken?: BackupForwardSecrecyToken;
     }
 >;
 
@@ -70,28 +72,29 @@ export class MessageBackupKey {
    * Create a backup bundle key from an account entropy pool and ACI.
    *
    * ...or from a backup key and ID, used when reading from a local backup, which may have been
-   * created with a different ACI. This still uses AccountEntropyPool-based key derivation rules; it
-   * cannot be used to read a backup created from a master key.
+   * created with a different ACI.
    *
    * The account entropy pool must be **validated**; passing an arbitrary string here is considered
    * a programmer error. Similarly, passing a backup key or ID of the wrong length is also an error.
    */
   public constructor(input: MessageBackupKeyInput) {
     if ('accountEntropy' in input) {
-      const { accountEntropy, aci } = input;
+      const { accountEntropy, aci, forwardSecrecyToken } = input;
       this._nativeHandle = Native.MessageBackupKey_FromAccountEntropyPool(
         accountEntropy,
-        aci.getServiceIdFixedWidthBinary()
+        aci.getServiceIdFixedWidthBinary(),
+        forwardSecrecyToken?.contents ?? null
       );
     } else {
-      const { backupId } = input;
+      const { backupId, forwardSecrecyToken } = input;
       let { backupKey } = input;
       if (backupKey instanceof BackupKey) {
         backupKey = backupKey.contents;
       }
       this._nativeHandle = Native.MessageBackupKey_FromBackupKeyAndBackupId(
         backupKey,
-        backupId
+        backupId,
+        forwardSecrecyToken?.contents ?? null
       );
     }
   }

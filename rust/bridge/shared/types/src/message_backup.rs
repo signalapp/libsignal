@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_account_keys::{AccountEntropyPool, BackupId, BackupKey, BACKUP_KEY_LEN};
+use libsignal_account_keys::{
+    AccountEntropyPool, BackupForwardSecrecyToken, BackupId, BackupKey,
+    BACKUP_FORWARD_SECRECY_TOKEN_LEN, BACKUP_KEY_LEN,
+};
 use libsignal_message_backup::frame::ValidationError as FrameValidationError;
 use libsignal_message_backup::key::MessageBackupKey as MessageBackupKeyInner;
 use libsignal_message_backup::{backup, Error, FoundUnknownField};
@@ -14,10 +17,20 @@ use crate::*;
 pub struct MessageBackupKey(pub MessageBackupKeyInner);
 
 impl MessageBackupKey {
-    pub fn from_account_entropy_pool(account_entropy: &AccountEntropyPool, aci: Aci) -> Self {
+    pub fn from_account_entropy_pool(
+        account_entropy: &AccountEntropyPool,
+        aci: Aci,
+        forward_secrecy_token: Option<&[u8; BACKUP_FORWARD_SECRECY_TOKEN_LEN]>,
+    ) -> Self {
         let backup_key = BackupKey::derive_from_account_entropy_pool(account_entropy);
         let backup_id = backup_key.derive_backup_id(&aci);
-        Self(MessageBackupKeyInner::derive(&backup_key, &backup_id, None))
+        let forward_secrecy_token =
+            forward_secrecy_token.map(|bytes| BackupForwardSecrecyToken(*bytes));
+        Self(MessageBackupKeyInner::derive(
+            &backup_key,
+            &backup_id,
+            forward_secrecy_token.as_ref(),
+        ))
     }
 
     /// Used when reading from a local backup, where we might not have the ACI.
@@ -28,11 +41,18 @@ impl MessageBackupKey {
     pub fn from_backup_key_and_backup_id(
         backup_key: &[u8; BACKUP_KEY_LEN],
         backup_id: &[u8; BackupId::LEN],
+        forward_secrecy_token: Option<&[u8; BACKUP_FORWARD_SECRECY_TOKEN_LEN]>,
     ) -> Self {
         // The explicit type forces the latest version of the key derivation scheme.
         let backup_key: BackupKey = BackupKey(*backup_key);
         let backup_id = BackupId(*backup_id);
-        Self(MessageBackupKeyInner::derive(&backup_key, &backup_id, None))
+        let forward_secrecy_token =
+            forward_secrecy_token.map(|bytes| BackupForwardSecrecyToken(*bytes));
+        Self(MessageBackupKeyInner::derive(
+            &backup_key,
+            &backup_id,
+            forward_secrecy_token.as_ref(),
+        ))
     }
 
     pub fn from_parts(

@@ -11,3 +11,5 @@ v0.77.0
     As a bonus, CompletableFuture now supports the `handle()` transformation.
 
 - Exposed the new SVR-B API to TypeScript and Swift.
+
+- BackupForwardSecrecyTokens can now be used to derive MessageBackupKeys.

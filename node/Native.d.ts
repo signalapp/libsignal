@@ -376,8 +376,8 @@ export function LookupRequest_addE164(request: Wrapper<LookupRequest>, e164: str
 export function LookupRequest_addPreviousE164(request: Wrapper<LookupRequest>, e164: string): void;
 export function LookupRequest_new(): LookupRequest;
 export function LookupRequest_setToken(request: Wrapper<LookupRequest>, token: Uint8Array): void;
-export function MessageBackupKey_FromAccountEntropyPool(accountEntropy: AccountEntropyPool, aci: Uint8Array): MessageBackupKey;
-export function MessageBackupKey_FromBackupKeyAndBackupId(backupKey: Uint8Array, backupId: Uint8Array): MessageBackupKey;
+export function MessageBackupKey_FromAccountEntropyPool(accountEntropy: AccountEntropyPool, aci: Uint8Array, forwardSecrecyToken: Uint8Array | null): MessageBackupKey;
+export function MessageBackupKey_FromBackupKeyAndBackupId(backupKey: Uint8Array, backupId: Uint8Array, forwardSecrecyToken: Uint8Array | null): MessageBackupKey;
 export function MessageBackupKey_GetAesKey(key: Wrapper<MessageBackupKey>): Uint8Array;
 export function MessageBackupKey_GetHmacKey(key: Wrapper<MessageBackupKey>): Uint8Array;
 export function MessageBackupValidator_Validate(key: Wrapper<MessageBackupKey>, firstStream: InputStream, secondStream: InputStream, len: bigint, purpose: number): Promise<MessageBackupValidationOutcome>;
