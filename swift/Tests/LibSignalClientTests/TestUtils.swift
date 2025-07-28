@@ -61,6 +61,23 @@ extension RangeReplaceableCollection where Element == UInt8 {
     }
 }
 
+// Helper for async error assertions until XCTest supports async autoclosures
+// Adapted from https://arturgruchala.com/testing-async-await-exceptions/
+func assertThrowsErrorAsync<T>(
+    _ expression: () async throws -> T,
+    _ message: @autoclosure () -> String = "",
+    file: StaticString = #filePath,
+    line: UInt = #line,
+    errorHandler: (Error) -> Void = { _ in }
+) async {
+    do {
+        _ = try await expression()
+        XCTFail(message().isEmpty ? "Expected error to be thrown" : message(), file: file, line: line)
+    } catch {
+        errorHandler(error)
+    }
+}
+
 final class HexTests: XCTestCase {
     func testToHex() throws {
         XCTAssertEqual("", [].hexString)
