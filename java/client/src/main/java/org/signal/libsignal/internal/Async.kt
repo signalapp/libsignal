@@ -36,3 +36,24 @@ public suspend fun <T> CompletableFuture<T>.await(): T = suspendCancellableCorou
     future.cancel(true)
   }
 }
+
+/**
+ * Converts a `CompletableFuture<T>` to a `CompletableFuture<Result<T>>`.
+ *
+ * This helper function wraps the result of a CompletableFuture in a Result,
+ * catching any exceptions and converting them to `Result.failure()`.
+ *
+ * Uses libsignal's chaining mechanism to ensure proper bidirectional cancellation
+ * propagation for long async operations, like network requests.
+ *
+ * @return A new CompletableFuture that completes with `Result.success(value)` or `Result.failure(exception)`
+ */
+public fun <T> CompletableFuture<T>.toResultFuture(): CompletableFuture<Result<T>> {
+  return this.handle { value, throwable ->
+    if (throwable == null) {
+      Result.success(value)
+    } else {
+      Result.failure(throwable)
+    }
+  }
+}

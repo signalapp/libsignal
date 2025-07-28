@@ -54,6 +54,17 @@ public class Network {
   }
 
   /**
+   * Get the SVR-B (Secure Value Recovery for Backups) service for this network instance.
+   *
+   * @param username The username for authenticating with the SVR-B service.
+   * @param password The password for authenticating with the SVR-B service.
+   * @return An SvrB service instance configured for this network environment.
+   */
+  public SvrB svrB(String username, String password) {
+    return new SvrB(this, username, password);
+  }
+
+  /**
    * Sets the proxy host to be used for all new connections (until overridden).
    *
    * <p>Sets a server to be used to proxy all new outgoing connections. The proxy can be overridden
