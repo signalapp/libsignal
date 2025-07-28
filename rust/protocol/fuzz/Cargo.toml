@@ -16,6 +16,11 @@ futures-util = "0.3.7"
 libfuzzer-sys = "0.4"
 log = "0.4"
 rand = "0.9"
+# Pin the version of sorted-vec. This is only used in dependencies, but the
+# newest version isn't compatible with the current MSRV.
+# TODO remove this line entirely once the MSRV >= 1.85, which supports Rust 2024
+# edition.
+sorted-vec = "=0.8.6"
 
 
 # Prevent this from interfering with workspaces
