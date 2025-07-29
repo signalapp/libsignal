@@ -4,9 +4,10 @@
 //
 
 use std::borrow::Cow;
+use std::sync::Arc;
 
 use boring_signal::error::ErrorStack;
-use boring_signal::ssl::{SslAlert, SslConnectorBuilder, SslVerifyError, SslVerifyMode};
+use boring_signal::ssl::{SslAlert, SslConnectorBuilder, SslVerifyMode};
 use boring_signal::x509::store::X509StoreBuilder;
 use boring_signal::x509::X509;
 use rustls::client::danger::ServerCertVerifier;
@@ -70,8 +71,10 @@ impl RootCertificates {
     }
 }
 
-/// Configures [rustls_platform_verifier] as a BoringSSL [custom verify
-/// callback](boring::ssl::SslContextBuilder::set_custom_verify_callback).
+/// Configures [rustls_platform_verifier] as a BoringSSL (async) custom verify callback.
+///
+/// We make it async because the platform verification can do unbounded work (on Android we have
+/// observed it doing network activity!)
 fn set_up_platform_verifier(
     connector: &mut SslConnectorBuilder,
     host: Host<&str>,
@@ -84,11 +87,19 @@ fn set_up_platform_verifier(
         Host::Ip(ip) => rustls::pki_types::ServerName::IpAddress(ip.into()),
     };
 
-    connector.set_custom_verify_callback(SslVerifyMode::PEER, move |ssl| {
+    // Ideally we wouldn't need to wrap these in Arcs, but Rust doesn't understand spawn_blocking
+    // immediately followed by await.
+    let verifier = Arc::new(verifier);
+    let host_as_server_name = Arc::new(host_as_server_name);
+
+    // For maximum generality, this is a *function* that returns a *future* that returns a
+    // *function.* We do as much checking up front as we can before spawning the
+    // potentially-blocking work, but then after that we just return the result directly.
+    connector.set_async_custom_verify_callback(SslVerifyMode::PEER, move |ssl| {
         // Get the certificate chain, lazily convert each certificate to DER (as expected by rustls).
         let mut cert_chain = ssl
             .peer_cert_chain()
-            .ok_or(SslVerifyError::Invalid(SslAlert::NO_CERTIFICATE))?
+            .ok_or(SslAlert::NO_CERTIFICATE)?
             .into_iter()
             .map(|cert| Ok(cert.to_der()?.into()));
 
@@ -96,78 +107,99 @@ fn set_up_platform_verifier(
         let end_entity = match cert_chain.next() {
             Some(Ok(leaf_cert)) => leaf_cert,
             None | Some(Err(_)) => {
-                return Err(SslVerifyError::Invalid(SslAlert::BAD_CERTIFICATE));
+                return Err(SslAlert::BAD_CERTIFICATE);
             }
         };
 
         // The rest of the chain should be valid intermediate certificates.
         let intermediates: Vec<_> = cert_chain
             .collect::<Result<_, boring_signal::error::ErrorStack>>()
-            .map_err(|_| SslVerifyError::Invalid(SslAlert::BAD_CERTIFICATE))?;
+            .map_err(|_| SslAlert::BAD_CERTIFICATE)?;
 
         // We don't do our own OCSP. Either the platform will do its own checks, or it won't.
         let ocsp_responses = [];
 
-        verifier
-            .verify_server_cert(
-                &end_entity,
-                &intermediates,
-                &host_as_server_name,
-                &ocsp_responses,
-                rustls::pki_types::UnixTime::now(),
-            )
-            .map_err(|e| {
-                // The most important thing is to reject the certificate. Mapping the errors over
-                // only affects what message gets reported in logs. Which isn't *unimportant*, but
-                // isn't critical for correctness either.
-                //
-                // From RFC 5246:
-                // - bad_certificate: A certificate was corrupt, contained signatures that did not
-                //   verify correctly, etc.
-                // - certificate_expired: A certificate has expired or is not currently valid.
-                // - certificate_unknown: Some other (unspecified) issue arose in processing the
-                //   certificate, rendering it unacceptable.
-                // - certificate_revoked: A certificate was revoked by its signer.
-                // - unknown_ca: A valid certificate chain or partial chain was received, but the
-                //   certificate was not accepted because the CA certificate could not be located or
-                //   couldn't be matched with a known, trusted CA.
-                // - internal_error: An internal error unrelated to the peer or the correctness of
-                //   the protocol (such as a memory allocation failure) makes it impossible to
-                //   continue.
-                log::info!(
-                    "TLS certificate for {} failed verification: {}",
-                    log_safe_domain(&host_as_server_name.to_str()),
-                    (&error::LogSafeTlsError(&e) as &dyn LogSafeDisplay)
-                );
-                SslVerifyError::Invalid(match e {
-                    rustls::Error::InvalidCertificate(e) => match e {
-                        rustls::CertificateError::BadEncoding => SslAlert::BAD_CERTIFICATE,
-                        rustls::CertificateError::Expired => SslAlert::CERTIFICATE_EXPIRED,
-                        rustls::CertificateError::NotValidYet => SslAlert::CERTIFICATE_UNKNOWN,
-                        rustls::CertificateError::Revoked => SslAlert::CERTIFICATE_REVOKED,
-                        rustls::CertificateError::UnhandledCriticalExtension => {
-                            SslAlert::CERTIFICATE_UNKNOWN
-                        }
-                        rustls::CertificateError::UnknownIssuer => SslAlert::UNKNOWN_CA,
-                        rustls::CertificateError::UnknownRevocationStatus => {
-                            SslAlert::CERTIFICATE_UNKNOWN
-                        }
-                        rustls::CertificateError::BadSignature => SslAlert::BAD_CERTIFICATE,
-                        rustls::CertificateError::NotValidForName => SslAlert::CERTIFICATE_UNKNOWN,
-                        rustls::CertificateError::InvalidPurpose => SslAlert::CERTIFICATE_UNKNOWN,
-                        rustls::CertificateError::ApplicationVerificationFailure => {
-                            SslAlert::INTERNAL_ERROR
-                        }
-                        rustls::CertificateError::Other(_) => SslAlert::CERTIFICATE_UNKNOWN,
+        // Borrow these for the nested task. Ideally this wouldn't require refcounting, but Rust
+        // doesn't understand spawn_blocking immediately followed by await.
+        let verifier = verifier.clone();
+        let host_as_server_name = host_as_server_name.clone();
 
-                        // CertificateError is marked non_exhaustive, so we also have to have an explicit fallback:
-                        _ => SslAlert::CERTIFICATE_UNKNOWN,
-                    },
-                    _ => SslAlert::BAD_CERTIFICATE,
-                })
-            })?;
+        let task = tokio::task::spawn_blocking(move || -> Result<(), SslAlert> {
+            verifier
+                .verify_server_cert(
+                    &end_entity,
+                    &intermediates,
+                    &host_as_server_name,
+                    &ocsp_responses,
+                    rustls::pki_types::UnixTime::now(),
+                )
+                .map_err(|e| {
+                    // The most important thing is to reject the certificate. Mapping the errors over
+                    // only affects what message gets reported in logs. Which isn't *unimportant*, but
+                    // isn't critical for correctness either.
+                    //
+                    // From RFC 5246:
+                    // - bad_certificate: A certificate was corrupt, contained signatures that did not
+                    //   verify correctly, etc.
+                    // - certificate_expired: A certificate has expired or is not currently valid.
+                    // - certificate_unknown: Some other (unspecified) issue arose in processing the
+                    //   certificate, rendering it unacceptable.
+                    // - certificate_revoked: A certificate was revoked by its signer.
+                    // - unknown_ca: A valid certificate chain or partial chain was received, but the
+                    //   certificate was not accepted because the CA certificate could not be located or
+                    //   couldn't be matched with a known, trusted CA.
+                    // - internal_error: An internal error unrelated to the peer or the correctness of
+                    //   the protocol (such as a memory allocation failure) makes it impossible to
+                    //   continue.
+                    log::info!(
+                        "TLS certificate for {} failed verification: {}",
+                        log_safe_domain(&host_as_server_name.to_str()),
+                        (&error::LogSafeTlsError(&e) as &dyn LogSafeDisplay)
+                    );
+                    match e {
+                        rustls::Error::InvalidCertificate(e) => match e {
+                            rustls::CertificateError::BadEncoding => SslAlert::BAD_CERTIFICATE,
+                            rustls::CertificateError::Expired => SslAlert::CERTIFICATE_EXPIRED,
+                            rustls::CertificateError::NotValidYet => SslAlert::CERTIFICATE_UNKNOWN,
+                            rustls::CertificateError::Revoked => SslAlert::CERTIFICATE_REVOKED,
+                            rustls::CertificateError::UnhandledCriticalExtension => {
+                                SslAlert::CERTIFICATE_UNKNOWN
+                            }
+                            rustls::CertificateError::UnknownIssuer => SslAlert::UNKNOWN_CA,
+                            rustls::CertificateError::UnknownRevocationStatus => {
+                                SslAlert::CERTIFICATE_UNKNOWN
+                            }
+                            rustls::CertificateError::BadSignature => SslAlert::BAD_CERTIFICATE,
+                            rustls::CertificateError::NotValidForName => {
+                                SslAlert::CERTIFICATE_UNKNOWN
+                            }
+                            rustls::CertificateError::InvalidPurpose => {
+                                SslAlert::CERTIFICATE_UNKNOWN
+                            }
+                            rustls::CertificateError::ApplicationVerificationFailure => {
+                                SslAlert::INTERNAL_ERROR
+                            }
+                            rustls::CertificateError::Other(_) => SslAlert::CERTIFICATE_UNKNOWN,
 
-        Ok(())
+                            // CertificateError is marked non_exhaustive, so we also have to have an explicit fallback:
+                            _ => SslAlert::CERTIFICATE_UNKNOWN,
+                        },
+                        _ => SslAlert::BAD_CERTIFICATE,
+                    }
+                })?;
+            Ok(())
+        });
+
+        Ok(Box::pin(async move {
+            task.await.unwrap_or(Err(SslAlert::INTERNAL_ERROR))?;
+
+            // Remember, our future is supposed to return...another function. We don't have any
+            // post-platform-verifier work to take care of, though, so our function will just return
+            // Ok(()) all the time.
+            // The explicit reference here seems to be necessary to convince Rust that we
+            // aren't going to use the lifetime of the final argument at all.
+            Ok(Box::new(|_: &mut _| Ok(())) as boring_signal::ssl::BoxCustomVerifyFinish)
+        }))
     });
 
     Ok(())
