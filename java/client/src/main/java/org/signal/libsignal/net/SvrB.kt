@@ -103,33 +103,16 @@ public class SvrB internal constructor(
     backupKey: BackupKey,
     previousSecretData: ByteArray?,
   ): CompletableFuture<Result<SvrBStoreResponse>> {
-    class StoreArgs internal constructor(
-      nativeHandle: Long,
-    ) : NativeHandleGuard.SimpleOwner(nativeHandle) {
-      override fun release(nativeHandle: Long) {
-        Native.StoreArgs_Destroy(nativeHandle)
-      }
-    }
-
-    val storeArgs = StoreArgs(
-      Native.SecureValueRecoveryForBackups_CreateStoreArgs(
-        backupKey.internalContentsForJNI,
-        previousSecretData ?: byteArrayOf(),
-        network.connectionManager.environment().value,
-      ),
-    )
-
     val nativeFuture = network.asyncContext.guardedMap { asyncContextHandle ->
       network.connectionManager.guardedMap { connectionManagerHandle ->
-        storeArgs.guardedMap { storeArgsHandle ->
-          Native.SecureValueRecoveryForBackups_StoreBackup(
-            asyncContextHandle,
-            storeArgsHandle,
-            connectionManagerHandle,
-            username,
-            password,
-          )
-        }
+        Native.SecureValueRecoveryForBackups_StoreBackup(
+          asyncContextHandle,
+          backupKey.internalContentsForJNI,
+          previousSecretData ?: byteArrayOf(),
+          connectionManagerHandle,
+          username,
+          password,
+        )
       }
     }
 

@@ -2346,6 +2346,7 @@ dependencies = [
  "signal-crypto",
  "static_assertions",
  "thiserror 2.0.12",
+ "zerocopy",
 ]
 
 [[package]]

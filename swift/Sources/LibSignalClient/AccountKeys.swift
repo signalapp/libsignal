@@ -308,6 +308,16 @@ public class BackupKey: ByteArray, @unchecked Sendable {
             }
         }
     }
+
+    internal func withUnsafePointer<Result>(
+        callback: (_: UnsafePointer<SignalFfi.SignalBackupKeyBytes>) -> Result
+    ) -> Result {
+        // `self` is guaranteed to hold the correct number of bytes so this should never fail.
+        // If `callback` is changed to a throwing function this will need to be changed.
+        failOnError {
+            try self.withUnsafePointerToSerialized(callback)
+        }
+    }
 }
 
 /// A forward secrecy token used for deriving message backup keys.

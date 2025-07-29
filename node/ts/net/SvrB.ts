@@ -7,7 +7,6 @@ import * as Native from '../../Native';
 import { TokioAsyncContext, Environment, Net } from '../net';
 import { BackupKey, BackupForwardSecrecyToken } from '../AccountKeys';
 import { MessageBackupKey } from '../MessageBackup';
-import { newNativeHandle } from '../internal';
 
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
 
@@ -160,16 +159,10 @@ export class SvrB {
     options?: { abortSignal?: AbortSignal }
   ): Promise<StoreBackupResponse> {
     const secretData = previousSecretData ?? new Uint8Array(0);
-    const handle = newNativeHandle(
-      Native.SecureValueRecoveryForBackups_CreateStoreArgs(
-        backupKey.serialize(),
-        secretData,
-        this.environment
-      )
-    );
     const promise = Native.SecureValueRecoveryForBackups_StoreBackup(
       this.asyncContext,
-      handle,
+      backupKey.serialize(),
+      secretData,
       this.connectionManager,
       this.auth.username,
       this.auth.password

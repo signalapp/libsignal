@@ -34,7 +34,8 @@ pub const MEDIA_ENCRYPTION_KEY_LEN: usize = 32 + 32; // HMAC key + AES-CBC key
 /// from an [`AccountEntropyPool`]. Use [`BackupKeyV0`] if you want to derive keys using the "master
 /// key" scheme. (This will eventually go away.) The version will also be inferred if you use
 /// [`BackupKey::derive_from_master_key`] or [`BackupKey::derive_from_account_entropy_pool`].
-#[derive(Debug, PartialDefault)]
+#[derive(Debug, PartialDefault, zerocopy::FromBytes, zerocopy::Immutable)]
+#[repr(transparent)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
 pub struct BackupKey<const VERSION: u8 = LATEST>(pub [u8; BACKUP_KEY_LEN]);
 
@@ -98,6 +99,12 @@ impl BackupKey<V1> {
             .expand_multi_info(&[INFO, media_id], &mut bytes)
             .expect("valid length");
         bytes
+    }
+}
+
+impl<'a> From<&'a [u8; BACKUP_KEY_LEN]> for &'a BackupKey {
+    fn from(value: &'a [u8; BACKUP_KEY_LEN]) -> Self {
+        zerocopy::transmute_ref!(value)
     }
 }
 

@@ -501,9 +501,8 @@ export function SealedSender_DecryptToUsmc(ctext: Uint8Array, identityStore: Ide
 export function SealedSender_Encrypt(destination: Wrapper<ProtocolAddress>, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore): Promise<Uint8Array>;
 export function SealedSender_MultiRecipientEncrypt(recipients: Wrapper<ProtocolAddress>[], recipientSessions: Wrapper<SessionRecord>[], excludedRecipients: Uint8Array, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore): Promise<Uint8Array>;
 export function SealedSender_MultiRecipientMessageForSingleRecipient(encodedMultiRecipientMessage: Uint8Array): Uint8Array;
-export function SecureValueRecoveryForBackups_CreateStoreArgs(backupKey: Uint8Array, previousSecretData: Uint8Array, environment: number): StoreArgs;
 export function SecureValueRecoveryForBackups_RestoreBackupFromServer(asyncRuntime: Wrapper<TokioAsyncContext>, backupKey: Uint8Array, metadata: Uint8Array, connectionManager: Wrapper<ConnectionManager>, username: string, password: string): CancellablePromise<Uint8Array>;
-export function SecureValueRecoveryForBackups_StoreBackup(asyncRuntime: Wrapper<TokioAsyncContext>, store: Wrapper<StoreArgs>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string): CancellablePromise<BackupResponse>;
+export function SecureValueRecoveryForBackups_StoreBackup(asyncRuntime: Wrapper<TokioAsyncContext>, backupKey: Uint8Array, previousSecretData: Uint8Array, connectionManager: Wrapper<ConnectionManager>, username: string, password: string): CancellablePromise<BackupResponse>;
 export function SenderCertificate_Deserialize(data: Uint8Array): SenderCertificate;
 export function SenderCertificate_GetCertificate(obj: Wrapper<SenderCertificate>): Uint8Array;
 export function SenderCertificate_GetDeviceId(obj: Wrapper<SenderCertificate>): number;
@@ -789,7 +788,6 @@ interface SessionRecord { readonly __type: unique symbol; }
 interface SgxClientState { readonly __type: unique symbol; }
 interface SignalMessage { readonly __type: unique symbol; }
 interface SignedPreKeyRecord { readonly __type: unique symbol; }
-interface StoreArgs { readonly __type: unique symbol; }
 interface TestingFutureCancellationCounter { readonly __type: unique symbol; }
 interface TestingHandleType { readonly __type: unique symbol; }
 interface TestingSemaphore { readonly __type: unique symbol; }

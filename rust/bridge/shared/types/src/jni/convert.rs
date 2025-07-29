@@ -353,6 +353,39 @@ impl<'a> SimpleArgTypeInfo<'a> for Box<[String]> {
     }
 }
 
+impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
+    for &'storage libsignal_account_keys::BackupKey
+{
+    // This needs to be a `Send`-able value so so that the async task that holds
+    // it can be migrated between threads.
+    type StoredType = libsignal_account_keys::BackupKey;
+    type ArgType = JByteArray<'param>;
+
+    fn borrow(
+        env: &mut JNIEnv<'context>,
+        foreign: &'param Self::ArgType,
+    ) -> Result<Self::StoredType, BridgeLayerError> {
+        use libsignal_account_keys::BACKUP_KEY_LEN;
+        let elements = unsafe { env.get_array_elements(foreign, ReleaseMode::NoCopyBack) }
+            .check_exceptions(env, "<&[u8; LEN]>::borrow")?;
+        if elements.len() != BACKUP_KEY_LEN {
+            return Err(BridgeLayerError::IncorrectArrayLength {
+                expected: BACKUP_KEY_LEN,
+                actual: elements.len(),
+            });
+        }
+        Ok(libsignal_account_keys::BackupKey(
+            zerocopy::IntoBytes::as_bytes(&*elements)
+                .try_into()
+                .expect("checked in construction"),
+        ))
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored
+    }
+}
+
 impl<'a> SimpleArgTypeInfo<'a> for libsignal_net::chat::LanguageList {
     type ArgType = JObjectArray<'a>;
 
@@ -1993,6 +2026,9 @@ macro_rules! jni_arg_type {
     };
     (LanguageList) => {
         ::jni::objects::JObjectArray<'local>
+    };
+    (&BackupKey) => {
+        ::jni::objects::JByteArray<'local>
     };
     (Option<Box<[u8]> >) => {
         ::jni::objects::JByteArray<'local>

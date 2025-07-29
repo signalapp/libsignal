@@ -791,6 +791,20 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
     }
 }
 
+impl<'storage> AsyncArgTypeInfo<'storage> for &'storage libsignal_account_keys::BackupKey {
+    type ArgType = JsTypedArray<u8>;
+    type StoredType = PersistentAssumedImmutableBuffer;
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        <&[u8; libsignal_account_keys::BACKUP_KEY_LEN]>::save_async_arg(cx, foreign)
+    }
+    fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
+        <&[u8; libsignal_account_keys::BACKUP_KEY_LEN]>::load_async_arg(stored).into()
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for bool {
     type ResultType = JsBoolean;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
@@ -957,6 +971,30 @@ impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'cont
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.buffer.try_into().expect("checked length already")
+    }
+}
+
+/// Loads from a JsUint8Array, assuming it won't be mutated while in use.
+/// See [`PersistentAssumedImmutableBuffer`].
+impl<'storage, const LEN: usize> AsyncArgTypeInfo<'storage> for &'storage [u8; LEN] {
+    type ArgType = JsUint8Array;
+    type StoredType = PersistentAssumedImmutableBuffer;
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        let result = PersistentAssumedImmutableBuffer::new(cx, foreign);
+        if result.len() != LEN {
+            cx.throw_error(format!(
+                "buffer has incorrect length {} (expected {})",
+                result.len(),
+                LEN
+            ))?;
+        }
+        Ok(result)
+    }
+    fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
+        (&**stored).try_into().expect("checked length already")
     }
 }
 

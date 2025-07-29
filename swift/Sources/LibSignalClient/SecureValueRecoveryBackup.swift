@@ -93,38 +93,20 @@ public class SvrB {
         backupKey: BackupKey,
         previousSecretData: Data?
     ) async throws -> StoreBackupResponse {
-        class StoreArgs: NativeHandleOwner<SignalMutPointerStoreArgs> {
-            override internal class func destroyNativeHandle(
-                _ handle: NonNull<SignalMutPointerStoreArgs>
-            ) -> SignalFfiErrorRef? {
-                signal_store_args_destroy(handle.pointer)
-            }
-        }
-
-        let storeArgs: StoreArgs = try backupKey.withUnsafePointerToSerialized { backupKey in
-            try (previousSecretData ?? Data()).withBorrowed { previousSecretData in
-                try invokeFnReturningNativeHandle {
-                    signal_secure_value_recovery_for_backups_create_store_args(
-                        $0,
-                        backupKey,
-                        previousSecretData,
-                        self.net.environment.rawValue
-                    )
-                }
-            }
-        }
-
         let rawResult = try await self.net.asyncContext.invokeAsyncFunction { promise, runtime in
             net.connectionManager.withNativeHandle { connectionManager in
-                storeArgs.withNativeHandle { storeArgsHandle in
-                    signal_secure_value_recovery_for_backups_store_backup(
-                        promise,
-                        runtime.const(),
-                        storeArgsHandle.const(),
-                        connectionManager.const(),
-                        self.auth.username,
-                        self.auth.password
-                    )
+                backupKey.withUnsafePointer { backupKey in
+                    (previousSecretData ?? Data()).withBorrowed { previousSecretData in
+                        signal_secure_value_recovery_for_backups_store_backup(
+                            promise,
+                            runtime.const(),
+                            backupKey,
+                            previousSecretData,
+                            connectionManager.const(),
+                            self.auth.username,
+                            self.auth.password
+                        )
+                    }
                 }
             }
         }
@@ -158,7 +140,7 @@ public class SvrB {
             promise,
             runtime in
             net.connectionManager.withNativeHandle { connectionManager in
-                backupKey.withUnsafeBorrowedBuffer { keyBuffer in
+                backupKey.withUnsafePointer { keyBuffer in
                     metadata.withUnsafeBorrowedBuffer { metadataBuffer in
                         signal_secure_value_recovery_for_backups_restore_backup_from_server(
                             promise,
@@ -246,28 +228,6 @@ extension SvrB {
 }
 
 // MARK: - SignalMutPointer Conformances
-
-extension SignalMutPointerStoreArgs: SignalMutPointer {
-    public typealias ConstPointer = SignalConstPointerStoreArgs
-
-    public init(untyped: OpaquePointer?) {
-        self.init(raw: untyped)
-    }
-
-    public func toOpaque() -> OpaquePointer? {
-        self.raw
-    }
-
-    public func const() -> Self.ConstPointer {
-        Self.ConstPointer(raw: self.raw)
-    }
-}
-
-extension SignalConstPointerStoreArgs: SignalConstPointer {
-    public func toOpaque() -> OpaquePointer? {
-        self.raw
-    }
-}
 
 extension SignalMutPointerBackupResponse: SignalMutPointer {
     public typealias ConstPointer = SignalConstPointerBackupResponse

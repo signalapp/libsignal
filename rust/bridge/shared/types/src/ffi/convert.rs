@@ -437,6 +437,17 @@ impl SimpleArgTypeInfo for libsignal_net::chat::LanguageList {
     }
 }
 
+impl SimpleArgTypeInfo for &libsignal_account_keys::BackupKey {
+    type ArgType = *const crate::net::svrb::BackupKeyBytes;
+
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn convert_from(arg: Self::ArgType) -> SignalFfiResult<Self> {
+        unsafe { arg.as_ref() }
+            .ok_or(NullPointerError.into())
+            .map(Into::into)
+    }
+}
+
 macro_rules! bridge_trait {
     ($name:ident) => {
         paste! {
@@ -1126,6 +1137,7 @@ macro_rules! ffi_arg_type {
     (&[& $typ:ty]) => (ffi::BorrowedSliceOf<ffi::ConstPointer< $typ >>);
     (&mut dyn $typ:ty) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
     (Option<&dyn $typ:ty>) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
+    (&BackupKey) => (*const $crate::net::svrb::BackupKeyBytes);
     (& $typ:ty) => (ffi::ConstPointer< $typ >);
     (&mut $typ:ty) => (ffi::MutPointer< $typ >);
     (Option<& $typ:ty>) => (ffi::ConstPointer< $typ >);
