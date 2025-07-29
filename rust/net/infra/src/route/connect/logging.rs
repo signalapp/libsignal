@@ -60,6 +60,9 @@ where
         let start = tokio::time::Instant::now();
         let threshold = *slow_connection_threshold;
 
+        #[cfg(target_os = "android")]
+        log::info!("[{log_tag}] {label} connection attempt started");
+
         let mut connect = std::pin::pin!(inner_connector.connect_over(over, route, log_tag));
 
         let result = match tokio::time::timeout(threshold, connect.as_mut()).await {
