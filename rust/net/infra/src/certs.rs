@@ -40,6 +40,13 @@ pub enum RootCertificates {
 }
 
 impl RootCertificates {
+    /// Configures `connector` to verify certificates against `self`.
+    ///
+    /// **Warning:** If `self` is [`RootCertificates::Native`], the resulting connector will
+    /// **depend on tokio** to verify certificates (using rustls-platform-verifier, isolated to a
+    /// blocking task thread). Moreover, when using the resulting [`boring::ssl::Ssl`] object, you
+    /// must call `set_task_waker`. This will be taken care of for you if you use tokio-boring (and
+    /// always poll within a tokio context).
     pub fn apply_to_connector(
         &self,
         connector: &mut SslConnectorBuilder,
@@ -75,6 +82,10 @@ impl RootCertificates {
 ///
 /// We make it async because the platform verification can do unbounded work (on Android we have
 /// observed it doing network activity!)
+///
+/// Note that `connector` will **depend on tokio** to verify certificates. Moreover, when using the
+/// resulting [`boring::ssl::Ssl`] object, you must call `set_task_waker`. This will be taken care
+/// of for you if you use tokio-boring (and always poll within a tokio context).
 fn set_up_platform_verifier(
     connector: &mut SslConnectorBuilder,
     host: Host<&str>,
