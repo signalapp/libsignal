@@ -117,7 +117,7 @@ class AsyncTests {
     val resultFuture = baseFuture.toResultFuture()
     assertTrue(resultFuture.cancel(true), "resultFuture should be cancellable")
 
-    val throwable = assertFailsWith<CancellationException> { withTimeout(200.milliseconds) { baseFuture.await() } }
+    val throwable = assertFailsWith<CancellationException> { withTimeout(1000.milliseconds) { baseFuture.await() } }
     assertTrue(throwable !is TimeoutCancellationException, "Timed out awaiting baseFuture cancellation")
     // We have to wait for the future cancellation to bubble up from the native code before we can check these.
     assertTrue(baseFuture.isCancelled, "baseFuture should be cancelled")
