@@ -116,7 +116,16 @@ impl Connector<TcpRoute<IpAddr>, ()> for StatelessTcp {
                 log::warn!("{log_tag}: TCP connection timed out after {elapsed:?}");
                 TransportConnectError::TcpConnectionFailed
             })?
-            .map_err(|_| TransportConnectError::TcpConnectionFailed)?;
+            .map_err(|e| {
+                let error_kind = e.kind();
+                // The raw error might provide marginally more information than the kind,
+                //   and it takes a long time to rollout logging, so let's just add it now.
+                let os_error = e.raw_os_error();
+                log::info!(
+                    "{log_tag}: TCP connection failed: kind={error_kind:?}, errno={os_error:?}"
+                );
+                TransportConnectError::TcpConnectionFailed
+            })?;
             #[cfg(target_os = "macos")]
             let result = crate::stream::WorkaroundWriteBugDuplexStream::new(result);
             Ok(result)
