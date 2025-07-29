@@ -43,7 +43,7 @@ pub enum DirectStoryReplyError {
     /// reply text is missing
     EmptyText,
     /// text: {0}
-    Text(TextError),
+    Text(#[from] TextError),
     /// long text: {0}
     LongText(FilePointerError),
     /// reply emoji is missing
@@ -75,13 +75,17 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
                 },
             ) => {
                 let text = text.into_option().ok_or(DirectStoryReplyError::EmptyText)?;
-                let text = MessageText::try_from(text).map_err(DirectStoryReplyError::Text)?;
+                let text = MessageText::try_from(text)?;
 
                 let long_text = longText
                     .into_option()
                     .map(|text| text.try_into_with(context))
                     .transpose()
                     .map_err(DirectStoryReplyError::LongText)?;
+
+                if long_text.is_some() {
+                    text.check_length_with_long_text_attachment()?;
+                }
 
                 DirectStoryReplyContent::Text {
                     body: text,
@@ -155,6 +159,10 @@ mod test {
     )]
     #[test_case(|x| x.mut_textReply().longText = Some(proto::FilePointer::test_data()).into() => Ok(()); "long text")]
     #[test_case(|x| x.mut_textReply().longText = Some(Default::default()).into() => Err(DirectStoryReplyError::LongText(FilePointerError::NoLocatorInfo)); "invalid long text")]
+    #[test_case(|x| {
+        x.mut_textReply().longText = Some(proto::FilePointer::test_data()).into();
+        x.mut_textReply().text.as_mut().unwrap().body = "long".repeat(1000);
+    } => Err(DirectStoryReplyError::Text(TextError::TooLongBodyForLongText(4000))); "long text with long inline body")]
     #[test_case(|x| *x.mut_emoji() = "".into() => Err(DirectStoryReplyError::EmptyEmoji); "empty emoji")]
     #[test_case(|x| *x.mut_emoji() = "x".into() => Ok(()); "valid emoji")]
     #[test_case(|x| x.reactions.clear() => Ok(()); "no reactions")]
