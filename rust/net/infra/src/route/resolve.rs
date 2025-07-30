@@ -237,7 +237,13 @@ impl<A: ResolveHostnames> ResolveHostnames for ConnectionProxyRoute<A> {
 
     fn hostnames(&self) -> impl Iterator<Item = &UnresolvedHost> {
         match self {
-            Self::Tls { proxy } => Either::Left(Either::Left(proxy.hostnames())),
+            Self::Tls { proxy } => {
+                let hostnames = Either::Left(proxy.hostnames());
+                #[cfg(feature = "dev-util")]
+                let hostnames = Either::Left(hostnames);
+                hostnames
+            }
+            #[cfg(feature = "dev-util")]
             Self::Tcp { proxy } => Either::Left(Either::Right(proxy.hostnames())),
             Self::Socks(socks) => Either::Right(Either::Right(socks.hostnames())),
             Self::Https(http) => Either::Right(Either::Left(http.hostnames())),
@@ -249,6 +255,7 @@ impl<A: ResolveHostnames> ResolveHostnames for ConnectionProxyRoute<A> {
             ConnectionProxyRoute::Tls { proxy } => ConnectionProxyRoute::Tls {
                 proxy: proxy.resolve(lookup),
             },
+            #[cfg(feature = "dev-util")]
             ConnectionProxyRoute::Tcp { proxy } => ConnectionProxyRoute::Tcp {
                 proxy: proxy.resolve(lookup),
             },
@@ -396,6 +403,7 @@ impl<A: ResolvedRoute> ResolvedRoute for ConnectionProxyRoute<A> {
     fn immediate_target(&self) -> &IpAddr {
         match self {
             ConnectionProxyRoute::Tls { proxy } => proxy.immediate_target(),
+            #[cfg(feature = "dev-util")]
             ConnectionProxyRoute::Tcp { proxy } => proxy.immediate_target(),
             ConnectionProxyRoute::Socks(proxy) => proxy.immediate_target(),
             ConnectionProxyRoute::Https(proxy) => proxy.immediate_target(),

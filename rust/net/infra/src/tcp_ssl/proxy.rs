@@ -61,6 +61,7 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
                 .await
                 .map(Into::into)
             }
+            #[cfg(feature = "dev-util")]
             ConnectionProxyRoute::Tcp { proxy } => {
                 let connector = LoggingConnector::new(
                     super::StatelessTcp,

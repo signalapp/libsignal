@@ -58,6 +58,7 @@ pub enum ConnectionProxyRoute<Addr> {
     Tls {
         proxy: TlsRoute<TcpRoute<Addr>>,
     },
+    #[cfg(feature = "dev-util")]
     /// TCP proxy without encryption, only for testing.
     Tcp {
         proxy: TcpRoute<Addr>,
@@ -104,6 +105,7 @@ pub struct TlsProxy {
     pub proxy_certs: RootCertificates,
 }
 
+#[cfg(feature = "dev-util")]
 #[derive(Debug, Clone)]
 pub struct TcpProxy {
     pub proxy_host: Host<Arc<str>>,
@@ -130,6 +132,7 @@ pub struct HttpProxy {
 #[derive(Debug, Clone, derive_more::From)]
 pub enum ConnectionProxyConfig {
     Tls(TlsProxy),
+    #[cfg(feature = "dev-util")]
     Tcp(TcpProxy),
     Socks(SocksProxy),
     Http(HttpProxy),
@@ -175,29 +178,28 @@ impl ConnectionProxyConfig {
 
         let proxy: ConnectionProxyConfig = match scheme {
             SIGNAL_TLS_PROXY_SCHEME => {
-                if auth
-                    .as_ref()
-                    .is_some_and(|auth| auth.username == "UNENCRYPTED_FOR_TESTING")
-                {
-                    // This is a testing interface only; we don't have to be super strict about it
-                    // because it should be obvious from the username not to use it in general.
-                    TcpProxy {
-                        proxy_host: host,
-                        proxy_port: port.unwrap_or(nonzero!(80u16)),
+                match auth {
+                    #[cfg(feature = "dev-util")]
+                    Some(auth) if auth.username == "UNENCRYPTED_FOR_TESTING" => {
+                        // This is a testing interface only; we don't have to be super strict about it
+                        // because it should be obvious from the username not to use it in general.
+                        TcpProxy {
+                            proxy_host: host,
+                            proxy_port: port.unwrap_or(nonzero!(80u16)),
+                        }
+                        .into()
                     }
-                    .into()
-                } else {
-                    if auth.is_some() {
+                    Some(_) => {
                         return Err(ProxyFromPartsError::SchemeDoesNotSupportUsernames(
                             SIGNAL_TLS_PROXY_SCHEME,
                         ));
                     }
-                    TlsProxy {
+                    None => TlsProxy {
                         proxy_host: host,
                         proxy_port: port.unwrap_or(nonzero!(443u16)),
                         proxy_certs: CERTS_FOR_ARBITRARY_PROXY,
                     }
-                    .into()
+                    .into(),
                 }
             }
             "http" => HttpProxy {
@@ -342,11 +344,15 @@ impl AsReplacer for ConnectionProxyConfig {
             ConnectionProxyConfig::Tls(tls_proxy) => {
                 Either::Left(Either::Left(tls_proxy.as_replacer()))
             }
+            #[cfg(feature = "dev-util")]
             ConnectionProxyConfig::Tcp(tcp_proxy) => {
                 Either::Right(Either::Left(tcp_proxy.as_replacer()))
             }
             ConnectionProxyConfig::Socks(socks_proxy) => {
-                Either::Right(Either::Right(socks_proxy.as_replacer()))
+                let replacer = socks_proxy.as_replacer();
+                #[cfg(feature = "dev-util")]
+                let replacer = Either::Right(replacer);
+                Either::Right(replacer)
             }
             ConnectionProxyConfig::Http(http_proxy) => {
                 Either::Left(Either::Right(http_proxy.as_replacer()))
@@ -355,12 +361,19 @@ impl AsReplacer for ConnectionProxyConfig {
         move |route| match &replacer {
             Either::Left(Either::Left(f)) => f(route),
             Either::Left(Either::Right(f)) => f(route),
-            Either::Right(Either::Left(f)) => f(route),
-            Either::Right(Either::Right(f)) => f(route),
+            Either::Right(f) => match f {
+                #[cfg(feature = "dev-util")]
+                Either::Left(f) => f(route),
+                #[cfg(feature = "dev-util")]
+                Either::Right(f) => f(route),
+                #[cfg(not(feature = "dev-util"))]
+                f => f(route),
+            },
         }
     }
 }
 
+#[cfg(feature = "dev-util")]
 impl AsReplacer for TcpProxy {
     fn as_replacer<R: ReplaceFragment<TcpRoute<UnresolvedHost>>>(
         &self,

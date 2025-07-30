@@ -170,7 +170,12 @@ impl<Transport: UsesTransport<UnresolvedTransportRoute>> DescribeForLog
                 (Host::Domain(address.clone().into()), *port)
             }
             DirectOrProxyRoute::Proxy(proxy) => match proxy {
-                ConnectionProxyRoute::Tls { proxy: _ } | ConnectionProxyRoute::Tcp { proxy: _ } => {
+                ConnectionProxyRoute::Tls { proxy: _ } => {
+                    // The host is implicit; the proxy will look for the TLS SNI and resolve that.
+                    (tls_fragment.sni.clone(), DEFAULT_HTTPS_PORT)
+                }
+                #[cfg(feature = "dev-util")]
+                ConnectionProxyRoute::Tcp { proxy: _ } => {
                     // The host is implicit; the proxy will look for the TLS SNI and resolve that.
                     (tls_fragment.sni.clone(), DEFAULT_HTTPS_PORT)
                 }
