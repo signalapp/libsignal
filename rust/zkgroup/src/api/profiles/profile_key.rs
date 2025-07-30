@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use aes::cipher::{BlockEncrypt as _, KeyInit as _};
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
-use signal_crypto::Aes256GcmEncryption;
 use subtle::ConstantTimeEq;
 
 use crate::common::constants::*;
@@ -65,10 +65,19 @@ impl ProfileKey {
     }
 
     pub fn derive_access_key(&self) -> [u8; ACCESS_KEY_LEN] {
-        let nonce = &[0u8; AESGCM_NONCE_LEN];
-        let mut cipher = Aes256GcmEncryption::new(&self.bytes, nonce, &[]).unwrap();
+        // Uses AES to implement a seeded PRNG, taking the first block of output as the result.
+        // Originally defined as AES-GCM(&mut [0; ACCESS_KEY_LEN], [0; NONCE_LEN], init_ctr=1).
+        // AES-GCM uses the first block to initialize its tag hash, which we discard in this case,
+        // so we can simplify to AES-CTR(&mut [0; ACCESS_KEY_LEN], [0; NONCE_LEN], init_ctr=2)
+        // and then since our "plaintext" is zeros, this becomes simply raw AES([0, 0, ..., 2]).
+        static_assertions::const_assert_eq!(ACCESS_KEY_LEN, {
+            type BlockSize = <::aes::Aes256Enc as ::aes::cipher::BlockSizeUser>::BlockSize;
+            <BlockSize as ::aes::cipher::Unsigned>::USIZE
+        });
+        let aes = ::aes::Aes256Enc::new((&self.bytes).into());
         let mut buf = [0u8; ACCESS_KEY_LEN];
-        cipher.encrypt(&mut buf[..]);
+        buf[ACCESS_KEY_LEN - 1] = 2;
+        aes.encrypt_block((&mut buf).into());
         buf
     }
 }

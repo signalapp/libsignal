@@ -19,12 +19,12 @@ workspace = true
 libsignal-account-keys = { workspace = true, features = ["serde"] }
 libsignal-core = { workspace = true }
 poksho = { workspace = true }
-signal-crypto = { workspace = true }
 zkcredential = { workspace = true, features = ["rayon"] }
 
 # Use our fork of curve25519-dalek for zkgroup support.
 curve25519-dalek-signal = { workspace = true, features = ["serde"] }
 
+aes = { workspace = true }
 aes-gcm-siv = { workspace = true }
 bincode = { workspace = true }
 const-str = { workspace = true }
@@ -38,6 +38,7 @@ rand = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 sha2 = { workspace = true }
+static_assertions = { workspace = true }
 subtle = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }

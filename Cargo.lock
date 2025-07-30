@@ -6045,6 +6045,7 @@ dependencies = [
 name = "zkgroup"
 version = "0.9.0"
 dependencies = [
+ "aes",
  "aes-gcm-siv",
  "assert_matches",
  "base64 0.22.1",
@@ -6065,7 +6066,7 @@ dependencies = [
  "rayon",
  "serde",
  "sha2",
- "signal-crypto",
+ "static_assertions",
  "subtle",
  "test-case",
  "thiserror 2.0.12",
