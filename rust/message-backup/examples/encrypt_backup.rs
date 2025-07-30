@@ -86,6 +86,7 @@ fn main() {
             libsignal_message_backup::frame::forward_secrecy::MAGIC_NUMBER,
         );
         let faux_metadata = MetadataPb {
+            iv: b"iv_12_bytes_".to_vec(),
             pair: vec![metadata_pb::Pair {
                 ct: b"[ciphertext]".to_vec(),
                 pw_salt: b"[pw_salt]".to_vec(),

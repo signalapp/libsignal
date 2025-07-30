@@ -27,6 +27,8 @@ pub mod direct;
 
 use crate::ws::WebSocketServiceConnectError;
 
+const IV_SIZE: usize = Aes256Ctr32::NONCE_SIZE;
+
 /// SVRB-specific error type
 ///
 /// In its essence it is simply a union of two other error types:
@@ -136,9 +138,10 @@ fn random_32b<R: CryptoRng + Rng>(rng: &mut R) -> [u8; 32] {
 const HMAC_SHA256_TRUNCATED_BYTES: usize = 16;
 
 /// provide a HMAC-SHA256 as a 32-byte array.
-fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+fn hmac_sha256(key: &[u8], iv: &[u8; IV_SIZE], data: &[u8]) -> [u8; 32] {
     let mut hmac =
         Hmac::<Sha256>::new_from_slice(key).expect("HMAC-SHA256 should accept any size key");
+    hmac.update(iv);
     hmac.update(data);
     hmac.finalize().into_bytes().into()
 }
@@ -147,12 +150,13 @@ fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
 /// concatenating the results.  IV is not attached to the output.
 fn aes_256_ctr_encrypt_hmacsha256(
     ek: &BackupForwardSecrecyEncryptionKey,
+    iv: &[u8; IV_SIZE],
     ptext: &[u8],
 ) -> Result<Vec<u8>, signal_crypto::EncryptionError> {
-    let mut aes = Aes256Ctr32::from_key(&ek.cipher_key, &ek.iv, 0).expect("key size valid");
+    let mut aes = Aes256Ctr32::from_key(&ek.cipher_key, iv, 0).expect("key size valid");
     let mut ctext = ptext.to_vec();
     aes.process(&mut ctext);
-    ctext.extend_from_slice(&hmac_sha256(&ek.hmac_key, &ctext)[..HMAC_SHA256_TRUNCATED_BYTES]);
+    ctext.extend_from_slice(&hmac_sha256(&ek.hmac_key, iv, &ctext)[..HMAC_SHA256_TRUNCATED_BYTES]);
     Ok(ctext)
 }
 
@@ -161,6 +165,7 @@ fn aes_256_ctr_encrypt_hmacsha256(
 /// and must be provided separately.
 fn aes_256_ctr_hmacsha256_decrypt(
     ek: &BackupForwardSecrecyEncryptionKey,
+    iv: &[u8; IV_SIZE],
     ctext: &[u8],
 ) -> Result<Vec<u8>, signal_crypto::DecryptionError> {
     if ctext.len() < HMAC_SHA256_TRUNCATED_BYTES {
@@ -170,12 +175,12 @@ fn aes_256_ctr_hmacsha256_decrypt(
     }
     let ctext_len = ctext.len() - HMAC_SHA256_TRUNCATED_BYTES;
     let (ctext, their_mac) = (&ctext[..ctext_len], &ctext[ctext_len..]);
-    let our_mac = hmac_sha256(&ek.hmac_key, ctext);
+    let our_mac = hmac_sha256(&ek.hmac_key, iv, ctext);
     if our_mac[..HMAC_SHA256_TRUNCATED_BYTES]
         .ct_eq(their_mac)
         .into()
     {
-        let mut aes = Aes256Ctr32::from_key(&ek.cipher_key, &ek.iv, 0).expect("key size valid");
+        let mut aes = Aes256Ctr32::from_key(&ek.cipher_key, iv, 0).expect("key size valid");
         let mut ptext = ctext.to_vec();
         aes.process(&mut ptext);
         Ok(ptext)
@@ -251,7 +256,13 @@ pub async fn store_backup<SvrB: traits::Backup>(
     let (next_backup4, next_password_salt) = create_backup(svrb, backup_key, &mut rng);
     let forward_secrecy_token = BackupForwardSecrecyToken(random_32b(&mut rng));
 
-    let mut metadata_pb = backup_metadata::MetadataPb::default();
+    let mut iv = [0u8; 12];
+    rng.try_fill_bytes(&mut iv)
+        .expect("should generate entropy");
+    let mut metadata_pb = backup_metadata::MetadataPb {
+        iv: iv.to_vec(),
+        ..Default::default()
+    };
     for (encryption_key_salt, password_salt) in [
         (prev_backup4.output, prev_password_salt),
         (next_backup4.output, next_password_salt),
@@ -259,7 +270,7 @@ pub async fn store_backup<SvrB: traits::Backup>(
         let encryption_key = backup_key.derive_forward_secrecy_encryption_key(&encryption_key_salt);
         metadata_pb.pair.push(backup_metadata::metadata_pb::Pair {
             pw_salt: password_salt.to_vec(),
-            ct: aes_256_ctr_encrypt_hmacsha256(&encryption_key, &forward_secrecy_token.0)?,
+            ct: aes_256_ctr_encrypt_hmacsha256(&encryption_key, &iv, &forward_secrecy_token.0)?,
             ..Default::default()
         });
     }
@@ -291,13 +302,14 @@ pub async fn finalize_backup<SvrB: traits::Backup>(
 async fn restore_backup_attempt<SvrB: traits::Restore>(
     svrb: &SvrB,
     backup_key: &BackupKey,
+    iv: &[u8; IV_SIZE],
     pair: &backup_metadata::metadata_pb::Pair,
 ) -> Result<BackupForwardSecrecyToken, Error> {
     let password_key = backup_key.derive_forward_secrecy_password(&pair.pw_salt).0;
     let encryption_key_salt = svrb.restore(&password_key).await?;
     let encryption_key = backup_key.derive_forward_secrecy_encryption_key(&encryption_key_salt);
     Ok(BackupForwardSecrecyToken(
-        aes_256_ctr_hmacsha256_decrypt(&encryption_key, &pair.ct)?
+        aes_256_ctr_hmacsha256_decrypt(&encryption_key, iv, &pair.ct)?
             .try_into()
             .map_err(|_| {
                 signal_crypto::DecryptionError::BadCiphertext("should decrypt to 32 bytes")
@@ -316,8 +328,9 @@ pub async fn restore_backup<SvrB: traits::Restore>(
         return Err(Error::MetadataInvalid);
     }
     let mut multiple_errors: Vec<Error> = Vec::new();
+    let iv: [u8; IV_SIZE] = metadata.iv.try_into().map_err(|_| Error::MetadataInvalid)?;
     for pair in metadata.pair {
-        match restore_backup_attempt(svrb, backup_key, &pair).await {
+        match restore_backup_attempt(svrb, backup_key, &iv, &pair).await {
             Ok(token) => {
                 return Ok(token);
             }
@@ -501,18 +514,18 @@ mod test {
     #[test]
     fn aes_roundtrip() -> Result<(), Error> {
         let ek = BackupForwardSecrecyEncryptionKey {
-            iv: [0u8; 12],
             hmac_key: [1u8; 32],
             cipher_key: [2u8; 32],
         };
-        let mut ct = aes_256_ctr_encrypt_hmacsha256(&ek, b"plaintext")?;
+        let iv = [0u8; 12];
+        let mut ct = aes_256_ctr_encrypt_hmacsha256(&ek, &iv, b"plaintext")?;
         assert_eq!(
             b"plaintext" as &[u8],
-            &aes_256_ctr_hmacsha256_decrypt(&ek, &ct)?,
+            &aes_256_ctr_hmacsha256_decrypt(&ek, &iv, &ct)?,
         );
         ct[0] ^= 1;
         assert!(matches!(
-            aes_256_ctr_hmacsha256_decrypt(&ek, &ct).unwrap_err(),
+            aes_256_ctr_hmacsha256_decrypt(&ek, &iv, &ct).unwrap_err(),
             signal_crypto::DecryptionError::BadCiphertext("MAC verification failed")
         ));
         Ok(())

@@ -15,7 +15,6 @@ use libsignal_core::curve::PrivateKey;
 use libsignal_core::Aci;
 use partial_default::PartialDefault;
 use sha2::Sha256;
-use signal_crypto::Aes256Ctr32;
 
 use crate::AccountEntropyPool;
 
@@ -110,13 +109,11 @@ impl<'a> From<&'a [u8; BACKUP_KEY_LEN]> for &'a BackupKey {
 
 const BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_CIPHER_KEY_SIZE: usize = 32;
 const BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_HMAC_KEY_SIZE: usize = 32;
-const BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_IV_SIZE: usize = Aes256Ctr32::NONCE_SIZE;
 
 pub struct BackupForwardSecrecyPassword(pub [u8; 32]);
 pub struct BackupForwardSecrecyEncryptionKey {
     pub cipher_key: [u8; BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_CIPHER_KEY_SIZE],
     pub hmac_key: [u8; BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_HMAC_KEY_SIZE],
-    pub iv: [u8; BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_IV_SIZE],
 }
 
 impl<const VERSION: u8> BackupKey<VERSION> {
@@ -161,8 +158,7 @@ impl<const VERSION: u8> BackupKey<VERSION> {
         salt: &[u8],
     ) -> BackupForwardSecrecyEncryptionKey {
         let mut bytes = [0u8; BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_CIPHER_KEY_SIZE
-            + BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_HMAC_KEY_SIZE
-            + BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_IV_SIZE];
+            + BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_HMAC_KEY_SIZE];
         const INFO: &[u8] =
             b"Signal Message Backup 20250627:BackupForwardSecrecyToken Encryption Key";
         Hkdf::<Sha256>::new(Some(salt), &self.0)
@@ -174,10 +170,6 @@ impl<const VERSION: u8> BackupKey<VERSION> {
                 .expect("should have enough bytes"),
             hmac_key: bytes[BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_CIPHER_KEY_SIZE..]
                 [..BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_HMAC_KEY_SIZE]
-                .try_into()
-                .expect("should have enough bytes"),
-            iv: bytes[BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_CIPHER_KEY_SIZE..]
-                [BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_HMAC_KEY_SIZE..]
                 .try_into()
                 .expect("should have enough bytes"),
         }

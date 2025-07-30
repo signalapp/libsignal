@@ -51,6 +51,8 @@ pub enum ValidationError {
     Io(#[from] futures::io::Error),
     /// missing field '{0}' in unencrypted metadata
     MissingMetadataField(&'static str),
+    /// invalid field '{0}' in unencrypted metadata: {1}
+    InvalidMetadataField(&'static str, &'static str),
     /// unencrypted metadata contains {0} forward secrecy pairs
     TooManyForwardSecrecyPairs(usize),
     /// HMAC doesn't match: {0}

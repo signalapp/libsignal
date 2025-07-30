@@ -15,6 +15,7 @@ use crate::log_unknown_fields;
 use crate::parse::VarintDelimitedReader;
 
 pub const MAGIC_NUMBER: &[u8] = b"SBACKUP\x01";
+const BACKUP_METADATA_IV_LEN: usize = 12;
 
 impl<R: AsyncRead + Unpin> FramesReader<R> {
     pub async fn verify_metadata(reader: &mut R) -> Result<(), ValidationError> {
@@ -25,6 +26,7 @@ impl<R: AsyncRead + Unpin> FramesReader<R> {
             .ok_or_else(|| io::Error::from(io::ErrorKind::UnexpectedEof))?;
 
         let MetadataPb {
+            iv,
             pair: forward_secrecy_pairs,
             special_fields,
         } = MetadataPb::parse_from_bytes(&metadata)
@@ -64,6 +66,10 @@ impl<R: AsyncRead + Unpin> FramesReader<R> {
             // at higher levels.
         }
 
+        if iv.len() != BACKUP_METADATA_IV_LEN {
+            return Err(ValidationError::InvalidMetadataField("iv", "wrong length"));
+        }
+
         // Verify that no bytes are left in the VarintDelimitedReader's buffer.
         _ = metadata_frame_reader.into_inner();
         Ok(())
@@ -92,6 +98,7 @@ pub(crate) mod test {
 
     pub(crate) fn test_metadata() -> MetadataPb {
         MetadataPb {
+            iv: vec![0u8; 12],
             pair: vec![
                 ForwardSecrecyPair {
                     ct: vec![1; 48],

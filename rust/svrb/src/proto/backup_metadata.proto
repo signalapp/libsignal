@@ -16,6 +16,7 @@ message MetadataPb {
   }
   // newest are first
   repeated Pair pair = 1;
+  bytes iv = 2;  // IV used for all pairs' cts.
 }
 
 message NextBackupPb {
