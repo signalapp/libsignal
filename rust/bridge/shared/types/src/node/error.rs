@@ -284,12 +284,6 @@ impl SignalNodeError for libsignal_net::svrb::Error {
                 (Some(IO_ERROR), None)
             }
             Self::AttestationError(_) => (Some("SvrAttestationError"), None),
-            Self::RequestFailed(status) => match status {
-                libsignal_svrb::ErrorStatus::Missing => (Some("SvrDataMissing"), None),
-                libsignal_svrb::ErrorStatus::Error | libsignal_svrb::ErrorStatus::Unset => {
-                    (Some("SvrRequestFailed"), None)
-                }
-            },
             Self::RestoreFailed(tries_remaining) => (
                 Some("SvrRestoreFailed"),
                 Some(move |cx: &mut C| {

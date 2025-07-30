@@ -1037,8 +1037,7 @@ impl FfiError for libsignal_net::svrb::Error {
             Self::Service(e) => format!("WebSocket error: {e}"),
             Self::Protocol(e) => format!("Protocol error: {e}"),
             Self::AttestationError(inner) => inner.describe(),
-            Self::RequestFailed(_)
-            | Self::RestoreFailed(_)
+            Self::RestoreFailed(_)
             | Self::DataMissing
             | Self::PreviousBackupDataInvalid
             | Self::MetadataInvalid
@@ -1069,12 +1068,6 @@ impl FfiError for libsignal_net::svrb::Error {
             Self::Service(_) => SignalErrorCode::WebSocket,
             Self::AttestationError(inner) => inner.code(),
             Self::Protocol(_) => SignalErrorCode::NetworkProtocol,
-            Self::RequestFailed(status) => match status {
-                libsignal_svrb::ErrorStatus::Missing => SignalErrorCode::SvrDataMissing,
-                libsignal_svrb::ErrorStatus::Error | libsignal_svrb::ErrorStatus::Unset => {
-                    SignalErrorCode::SvrRequestFailed
-                }
-            },
             Self::RestoreFailed(_) => SignalErrorCode::SvrRestoreFailed,
             Self::DataMissing => SignalErrorCode::SvrDataMissing,
             Self::PreviousBackupDataInvalid => SignalErrorCode::InvalidArgument,

@@ -12,8 +12,6 @@ pub enum Error {
     BadData,
     /// Unexpected or missing server response
     BadResponse,
-    /// Response status is not OK: {0}
-    BadResponseStatus(ErrorStatus),
     /// Inputs {got} do not match the correct number of servers {servers}
     NumServers { servers: usize, got: usize },
     /// No auth version was usable.
@@ -28,14 +26,6 @@ impl std::fmt::Display for svrb::response4::Status {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)
     }
-}
-
-/// Represents an erroneous SVR3 response status
-#[derive(Debug, strum::Display, PartialEq)]
-pub enum ErrorStatus {
-    Unset,
-    Missing,
-    Error,
 }
 
 impl std::error::Error for Error {}

@@ -47,8 +47,6 @@ pub enum Error {
     Protocol(String),
     /// Enclave attestation failed: {0}
     AttestationError(attest::enclave::Error),
-    /// SVRB request failed with status {0}
-    RequestFailed(libsignal_svrb::ErrorStatus),
     /// Failure to restore data. {0} tries remaining.
     ///
     /// This could be caused by an invalid password or share set.
@@ -95,16 +93,12 @@ impl From<libsignal_svrb::Error> for Error {
         use libsignal_svrb::Error as LogicError;
         match err {
             LogicError::RestoreFailed(tries_remaining) => Self::RestoreFailed(tries_remaining),
-            LogicError::BadResponseStatus(libsignal_svrb::ErrorStatus::Missing)
-            | LogicError::BadResponseStatus4(libsignal_svrb::V4Status::MISSING) => {
-                Self::DataMissing
-            }
+            LogicError::BadResponseStatus4(libsignal_svrb::V4Status::MISSING) => Self::DataMissing,
             LogicError::BadData
             | LogicError::BadResponse
             | LogicError::NumServers { .. }
             | LogicError::NoUsableVersion
-            | LogicError::BadResponseStatus4(_)
-            | LogicError::BadResponseStatus(_) => Self::Protocol(err.to_string()),
+            | LogicError::BadResponseStatus4(_) => Self::Protocol(err.to_string()),
         }
     }
 }

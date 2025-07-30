@@ -877,15 +877,6 @@ impl JniError for SvrbError {
                     ClassName("org.signal.libsignal.net.NetworkException"),
                 )
             }
-            SvrbError::RequestFailed(status) => {
-                let exception_class = match status {
-                    libsignal_svrb::ErrorStatus::Missing => {
-                        ClassName("org.signal.libsignal.svr.DataMissingException")
-                    }
-                    _ => ClassName("org.signal.libsignal.svr.SvrException"),
-                };
-                make_single_message_throwable(env, &self.to_string(), exception_class)
-            }
             SvrbError::PreviousBackupDataInvalid
             | SvrbError::MetadataInvalid
             | SvrbError::EncryptionError(_)

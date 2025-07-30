@@ -17,7 +17,7 @@ use sha2::{Digest, Sha256, Sha512};
 use crate::proto::svrb;
 
 mod errors;
-pub use errors::{Error, ErrorStatus};
+pub use errors::Error;
 pub mod proto;
 pub use proto::backup4::Backup4 as Backup4Proto;
 pub use proto::svrb::response4::Status as V4Status;
