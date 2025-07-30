@@ -31,7 +31,7 @@ serde = { workspace = true, optional = true, features = ["derive"] }
 sha2 = { workspace = true }
 static_assertions = { workspace = true }
 thiserror = { workspace = true }
-zerocopy = { workspace = true }
+zerocopy = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
