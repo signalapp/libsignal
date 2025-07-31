@@ -615,6 +615,7 @@ public final class Native {
   public static native byte[] SealedSessionCipher_MultiRecipientEncrypt(long[] recipients, long[] recipientSessions, byte[] excludedRecipients, long content, IdentityKeyStore identityKeyStore) throws Exception;
   public static native byte[] SealedSessionCipher_MultiRecipientMessageForSingleRecipient(byte[] encodedMultiRecipientMessage) throws Exception;
 
+  public static native byte[] SecureValueRecoveryForBackups_CreateNewBackupChain(int environment, byte[] backupKey);
   public static native CompletableFuture<Long> SecureValueRecoveryForBackups_RestoreBackupFromServer(long asyncRuntime, byte[] backupKey, byte[] metadata, long connectionManager, String username, String password);
   public static native CompletableFuture<Long> SecureValueRecoveryForBackups_StoreBackup(long asyncRuntime, byte[] backupKey, byte[] previousSecretData, long connectionManager, String username, String password);
 

@@ -26,12 +26,11 @@ import SignalFfi
 /// ## Storage Flow
 ///
 /// 1. Create a ``Net`` instance and get the `SvrB` service via ``Net/svrB(auth:)``
-/// 2. Call ``store(backupKey:previousSecretData:)``
-///    - Pass the secret data from the last **successful** ``store(backupKey:previousSecretData:)`` or
-///      ``restore(backupKey:metadata:)`` call
-///    - If no previous backup exists or the secret data is unavailable, pass `nil`
-/// 3. Use the returned forward secrecy token to derive encryption keys
-/// 4. Encrypt and upload the backup data to the user's remote, off-device storage location, including the
+/// 2. If this is a fresh install, call ``createNewBackupChain(backupKey:)`` and store the result locally.
+///    Otherwise, retrieve the secret data from the last **successful** backup operation (store or restore).
+/// 3. Call ``store(backupKey:previousSecretData:)``, passing the data from step (2).
+/// 4. Use the returned forward secrecy token to derive encryption keys
+/// 5. Encrypt and upload the backup data to the user's remote, off-device storage location, including the
 ///    returned ``StoreBackupResponse/metadata``. The upload **must succeed**
 ///    before proceeding or the previous backup might become unretrievable.
 /// 5. Store the returned ``StoreBackupResponse/nextBackupSecretData`` locally, overwriting any previously-saved value.
@@ -39,16 +38,16 @@ import SignalFfi
 /// ## Secret handling
 ///
 /// When calling ``store(backupKey:previousSecretData:)``, the `previousSecretData` parameter
-/// must be from the last call to `store` or `restore` that
-/// succeeded. The returned secret from a successful `store` or `restore` call should
-/// be persisted until it is overwritten by the value from a subsequent successful call.
-/// The caller should pass `nil` as `previousSecretData` only for the very first backup from a device.
+/// must be from the last call to `store` or `restore` that succeeded. The returned secret from a successful
+/// store or restore should be persisted until it is overwritten by the value from a subsequent
+/// successful call. The caller should use ``createNewBackupChain(backupKey:)`` only for the very first
+/// backup with a particular backup key.
 ///
 /// ## Restore Flow
 ///
 /// 1. Create a ``Net`` instance and get the ``SvrB`` service via ``Net/svrB(auth:)``
 /// 2. Fetch the backup metadata from storage
-/// 3. Call ``fetchForwardSecrecyTokenFromServer(backupKey:metadata:)`` to get the forward secrecy token
+/// 3. Call ``restore(backupKey:metadata:)`` to get the forward secrecy token
 /// 4. Use the token to derive decryption keys
 /// 5. Decrypt and restore the backup data
 /// 6. Store the returned ``RestoreBackupResponse/nextBackupSecretData`` locally.
@@ -75,6 +74,24 @@ public class SvrB {
         self.auth = auth
     }
 
+    /// Generates backup "secret data" for a fresh install.
+    ///
+    /// Should not be used if any previous backups exist for this `backupKey`, whether uploaded or restored by the local device.
+    /// See ``SvrB`` for more information.
+    public func createNewBackupChain(backupKey: BackupKey) -> Data {
+        backupKey.withUnsafePointer { backupKey in
+            failOnError {
+                try invokeFnReturningData {
+                    signal_secure_value_recovery_for_backups_create_new_backup_chain(
+                        $0,
+                        net.environment.rawValue,
+                        backupKey
+                    )
+                }
+            }
+        }
+    }
+
     /// Prepares a backup for storage with forward secrecy guarantees.
     ///
     /// This makes a network call to the SVR-B server to store the forward secrecy token
@@ -83,22 +100,22 @@ public class SvrB {
     ///
     /// - Parameters:
     ///   - backupKey: The backup key derived from the Account Entropy Pool (AEP).
-    ///   - previousSecretData: Optional secret data from the most recent previous backup.
-    ///     **Critical**: This MUST be the secret data from the last ``store(backupKey:previousSecretKey:)``
-    ///     or ``restore(backupKey:metadata:)`` call whose returned `metadata` was successfully uploaded,
-    ///     and whose `nextBackupSecretData` was persisted.
-    ///     If `nil`, starts a new chain and renders any prior backups unretrievable; this should
-    ///     only be used for the very first backup from a device.
+    ///   - previousSecretData: Secret data from the most recent previous backup operation.
+    ///     **Critical**: This MUST be the secret data from the most recent of the following:
+    ///     - the last **successful** ``store(backupKey:previousSecretKey:)`` call whose returned `metadata` was
+    ///       successfully uploaded, and whose `nextBackupSecretData` was persisted.
+    ///     - the last successful ``restore(backupKey:metadata:)``
+    ///     - the already-persisted result from ``createNewBackupChain(backupKey:)``, only if neither of the other two are available
     /// - Returns: A ``StoreBackupResponse`` containing the forward secrecy token, metadata, and secret data.
     /// - Throws: ``SignalError`` if the previous secret data is malformed or processing or upload fail.
     public func store(
         backupKey: BackupKey,
-        previousSecretData: Data?
+        previousSecretData: Data
     ) async throws -> StoreBackupResponse {
         let rawResult = try await self.net.asyncContext.invokeAsyncFunction { promise, runtime in
             net.connectionManager.withNativeHandle { connectionManager in
                 backupKey.withUnsafePointer { backupKey in
-                    (previousSecretData ?? Data()).withBorrowed { previousSecretData in
+                    previousSecretData.withBorrowed { previousSecretData in
                         signal_secure_value_recovery_for_backups_store_backup(
                             promise,
                             runtime.const(),
@@ -127,7 +144,7 @@ public class SvrB {
     /// 2. Call this function to retrieve the forward secrecy token from SVR-B
     /// 3. Use the token to derive message backup keys
     /// 4. Decrypt and restore the backup data
-    /// 5. Store the returned ``SvrB/RestoreBackupResponse/nextBackupSecretData`` locally.
+    /// 5. Store the returned ``RestoreBackupResponse/nextBackupSecretData`` locally.
     ///
     /// - Parameters:
     ///   - backupKey: The backup key derived from the Account Entropy Pool (AEP).

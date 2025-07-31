@@ -44,7 +44,10 @@ class SecureValueRecoveryBackupTest {
   }
 
   private fun makeStoreResponse(previousSecretData: ByteArray? = null): SvrBStoreResponse {
-    return svrB.store(testBackupKey, previousSecretData).get(ASYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS).getOrThrow()
+    return svrB
+      .store(testBackupKey, previousSecretData ?: svrB.createNewBackupChain(testBackupKey))
+      .get(ASYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+      .getOrThrow()
   }
 
   private fun assertValidToken(token: BackupForwardSecrecyToken) {
@@ -107,7 +110,8 @@ class SecureValueRecoveryBackupTest {
     Assume.assumeTrue(testUsername.isNotEmpty() && testPassword.isNotEmpty())
 
     // First backup without previous data
-    val firstStoreResult = svrB.store(testBackupKey, null).get(ASYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+    val initialSecretData = svrB.createNewBackupChain(testBackupKey)
+    val firstStoreResult = svrB.store(testBackupKey, initialSecretData).get(ASYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
     assertTrue("First store should succeed", firstStoreResult.isSuccess)
     val firstResponse = firstStoreResult.getOrThrow()
     assertNotNull("First response should not be null", firstResponse)

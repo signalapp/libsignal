@@ -51,6 +51,13 @@ where
     }
 }
 
+/// So we can `prepare` without being able to `connect`.
+impl Prepare for crate::env::SvrBEnv<'_> {
+    fn prepare(&self, password: &[u8]) -> libsignal_svrb::Backup4 {
+        ppss_ops::do_prepare::<Self>(password)
+    }
+}
+
 #[async_trait]
 impl<T> Backup for T
 where

@@ -6,11 +6,11 @@
 use libsignal_account_keys::{BackupKey, BACKUP_FORWARD_SECRECY_TOKEN_LEN};
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::net::svrb::SvrBConnectImpl;
-use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
+use libsignal_bridge_types::net::{ConnectionManager, Environment, TokioAsyncContext};
 use libsignal_net::auth::Auth;
 use libsignal_net::svrb::{
-    restore_backup, store_backup, BackupFileMetadataRef, BackupPreviousSecretDataRef,
-    BackupRestoreResponse, BackupStoreResponse, Error as SvrbError,
+    create_new_backup_chain, restore_backup, store_backup, BackupFileMetadataRef,
+    BackupPreviousSecretDataRef, BackupRestoreResponse, BackupStoreResponse, Error as SvrbError,
 };
 
 use crate::support::*;
@@ -18,6 +18,14 @@ use crate::*;
 
 bridge_handle_fns!(BackupStoreResponse, clone = false);
 bridge_handle_fns!(BackupRestoreResponse, clone = false);
+
+#[bridge_fn]
+fn SecureValueRecoveryForBackups_CreateNewBackupChain(
+    environment: AsType<Environment, u8>,
+    backup_key: &BackupKey,
+) -> Vec<u8> {
+    create_new_backup_chain(&environment.env().svr_b, backup_key).0
+}
 
 #[bridge_io(TokioAsyncContext)]
 async fn SecureValueRecoveryForBackups_StoreBackup(
@@ -27,16 +35,16 @@ async fn SecureValueRecoveryForBackups_StoreBackup(
     username: String,
     password: String,
 ) -> Result<BackupStoreResponse, SvrbError> {
-    // Parse previous secret data if provided.
-    let previous_data = (!previous_secret_data.is_empty())
-        .then_some(&*previous_secret_data)
-        .map(BackupPreviousSecretDataRef);
-
     let svrb = SvrBConnectImpl {
         connection_manager,
         auth: Auth { username, password },
     };
-    store_backup(&svrb, backup_key, previous_data).await
+    store_backup(
+        &svrb,
+        backup_key,
+        BackupPreviousSecretDataRef(&previous_secret_data),
+    )
+    .await
 }
 
 #[bridge_io(TokioAsyncContext)]

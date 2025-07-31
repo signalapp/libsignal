@@ -81,9 +81,10 @@ async fn single_request(args: &Args, auth_secret: [u8; 32], sem: &tokio::sync::S
     println!("--- Happy-path test, single key ---");
 
     // Example code for the first backup ever created by a client.
-    // Note that we pass in `None` as the previous_backup_data.
+    // Note that we use `create_new_backup_chain` for the previous_backup_data.
     println!("Storing backup #1");
-    let backup1 = svrb::store_backup(&client, &backup_key, None)
+    let inital_data = svrb::create_new_backup_chain(&client, &backup_key);
+    let backup1 = svrb::store_backup(&client, &backup_key, inital_data.as_ref())
         .await
         .expect("should backup");
 
@@ -100,13 +101,9 @@ async fn single_request(args: &Args, auth_secret: [u8; 32], sem: &tokio::sync::S
     // Example code for second and subsequent backups.  Note that we pass
     // in the previous backup's `next_backup_data`.
     println!("Storing backup #2");
-    let backup2 = svrb::store_backup(
-        &client,
-        &backup_key,
-        Some(backup1.next_backup_data.as_ref()),
-    )
-    .await
-    .expect("should store");
+    let backup2 = svrb::store_backup(&client, &backup_key, backup1.next_backup_data.as_ref())
+        .await
+        .expect("should store");
 
     // Example code for restoring both backups after storage of backup 2.
     println!("Restoring backup #1 after storing backup #2");

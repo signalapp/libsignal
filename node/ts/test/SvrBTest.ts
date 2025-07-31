@@ -75,7 +75,8 @@ describe('SecureValueRecoveryBackup', () => {
 
     it('completes full backup and restore flow with previous secret data', async () => {
       // First backup without previous data
-      const firstResponse = await svrB.store(testBackupKey, undefined);
+      const initialSecretData = svrB.createNewBackupChain(testBackupKey);
+      const firstResponse = await svrB.store(testBackupKey, initialSecretData);
       assert.exists(firstResponse);
       const {
         nextBackupSecretData: firstNextSecretData,

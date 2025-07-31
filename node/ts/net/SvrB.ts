@@ -130,23 +130,24 @@ class RestoreBackupResponseImpl implements RestoreBackupResponse {
  * ## Storage Flow
  *
  * 1. Create a {@link Net} instance and get the {@link SvrB} service via {@link Net#svrB}
- * 2. Call {@link SvrB#store}
- *    - Pass the secret data from the last **successful** {@link SvrB#store} or {@link SvrB#restore} call
- *    - If no previous backup exists or the secret data is unavailable, pass `undefined`
- * 3. Use the returned forward secrecy token to derive encryption keys
- * 4. Encrypt and upload the backup data to the user's remote, off-device storage location, including the
- *    returned {@link StoreBackupResponse#metadata}. The upload **must succeed**
+ * 2. If this is a fresh install, call {@link SvrB#createNewBackupChain} and store the result
+ *    locally. Otherwise, retrieve the secret data from the last **successful** backup operation
+ *    (store or restore).
+ * 3. Call {@link SvrB#store}
+ * 4. Use the returned forward secrecy token to derive encryption keys
+ * 5. Encrypt and upload the backup data to the user's remote, off-device storage location,
+ *    including the returned {@link StoreBackupResponse#metadata}. The upload **must succeed**
  *    before proceeding or the previous backup might become unretrievable.
- * 5. Store the {@link StoreBackupResponse#nextBackupSecretData} locally, overwriting any previously-saved value.
+ * 6. Store the {@link StoreBackupResponse#nextBackupSecretData} locally, overwriting any
+ *    previously-saved value.
  *
  * ## Secret handling
  *
- * When calling {@link SvrB#store}, the `previousSecretData` parameter
- * must be from the last call to {@link SvrB#store} or {@link SvrB#restore} that
- * succeeded. The returned secret from a successful `store()` or `restore()` call should
- * be persisted until it is overwritten by the value from a subsequent
- * successful call. The caller should pass `undefined` as `previousSecretData`
- * only for the very first backup from a device.
+ * When calling {@link SvrB#store}, the `previousSecretData` parameter must be from the last call to
+ * {@link SvrB#store} or {@link SvrB#restore} that succeeded. The returned secret from a successful
+ * store or restore should be persisted until it is overwritten by the value from a subsequent
+ * successful call. The caller should use {@link SvrB#createNewBackupChain} only for the very first
+ * backup with a particular backup key.
  *
  * ## Restore Flow
  *
@@ -180,6 +181,19 @@ export class SvrB {
   ) {}
 
   /**
+   * Generates backup "secret data" for a fresh install.
+   *
+   * Should not be used if any previous backups exist for this `backupKey`, whether uploaded or
+   * restored by the local device. See {@link SvrB} for more information.
+   */
+  createNewBackupChain(backupKey: BackupKey): Uint8Array {
+    return Native.SecureValueRecoveryForBackups_CreateNewBackupChain(
+      this.environment,
+      backupKey.serialize()
+    );
+  }
+
+  /**
    * Prepares a backup for storage with forward secrecy guarantees.
    *
    * This makes a network call to the SVR-B server to store the forward secrecy token and returns a
@@ -188,10 +202,12 @@ export class SvrB {
    *
    * @param backupKey The backup key derived from the Account Entropy Pool (AEP).
    * @param previousSecretData Optional secret data from the most recent previous backup.
-   * **Critical**: This MUST be the secret data from the last {@link #store} or {@link #restore}
-   * whose returned `metadata` was successfully uploaded, and whose `nextBackupSecretData` was
-   * persisted. If `undefined`, starts a new chain and renders any prior backups unretrievable; this
-   * should only be used for the very first backup from a device.
+   * **Critical**: This MUST be the secret data from the most recent of the following:
+   * - the last {@link #store} call whose returned {@link StoreBackupResponse#metadata} was
+   * successfully uploaded, and whose `nextBackupSecretData` was persisted.
+   * - the last {@link #restore} call
+   * - the already-persisted result from {@link #createNewBackupChain}, only if neither of the other
+   * two are available.
    * @param options Optional configuration.
    * @param options.abortSignal An AbortSignal that will cancel the request.
    * @returns a {@link StoreBackupResponse} containing the forward secrecy token, metadata, and
@@ -200,14 +216,13 @@ export class SvrB {
    */
   async store(
     backupKey: BackupKey,
-    previousSecretData?: Uint8Array,
+    previousSecretData: Uint8Array,
     options?: { abortSignal?: AbortSignal }
   ): Promise<StoreBackupResponse> {
-    const secretData = previousSecretData ?? new Uint8Array(0);
     const promise = Native.SecureValueRecoveryForBackups_StoreBackup(
       this.asyncContext,
       backupKey.serialize(),
-      secretData,
+      previousSecretData,
       this.connectionManager,
       this.auth.username,
       this.auth.password

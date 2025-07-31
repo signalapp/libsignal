@@ -503,6 +503,7 @@ export function SealedSender_DecryptToUsmc(ctext: Uint8Array, identityStore: Ide
 export function SealedSender_Encrypt(destination: Wrapper<ProtocolAddress>, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore): Promise<Uint8Array>;
 export function SealedSender_MultiRecipientEncrypt(recipients: Wrapper<ProtocolAddress>[], recipientSessions: Wrapper<SessionRecord>[], excludedRecipients: Uint8Array, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore): Promise<Uint8Array>;
 export function SealedSender_MultiRecipientMessageForSingleRecipient(encodedMultiRecipientMessage: Uint8Array): Uint8Array;
+export function SecureValueRecoveryForBackups_CreateNewBackupChain(environment: number, backupKey: Uint8Array): Uint8Array;
 export function SecureValueRecoveryForBackups_RestoreBackupFromServer(asyncRuntime: Wrapper<TokioAsyncContext>, backupKey: Uint8Array, metadata: Uint8Array, connectionManager: Wrapper<ConnectionManager>, username: string, password: string): CancellablePromise<BackupRestoreResponse>;
 export function SecureValueRecoveryForBackups_StoreBackup(asyncRuntime: Wrapper<TokioAsyncContext>, backupKey: Uint8Array, previousSecretData: Uint8Array, connectionManager: Wrapper<ConnectionManager>, username: string, password: string): CancellablePromise<BackupStoreResponse>;
 export function SenderCertificate_Deserialize(data: Uint8Array): SenderCertificate;

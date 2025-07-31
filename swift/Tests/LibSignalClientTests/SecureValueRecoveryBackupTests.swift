@@ -50,7 +50,8 @@ final class SecureValueRecoveryBackupTests: TestCaseBase {
         }
 
         // First backup without previous data
-        let firstResponse = try await svrB.store(backupKey: testBackupKey, previousSecretData: nil)
+        let initialSecretData = svrB.createNewBackupChain(backupKey: testBackupKey)
+        let firstResponse = try await svrB.store(backupKey: testBackupKey, previousSecretData: initialSecretData)
         let firstToken = firstResponse.forwardSecrecyToken
         assertValidToken(firstToken)
         let firstSecretData = firstResponse.nextBackupSecretData

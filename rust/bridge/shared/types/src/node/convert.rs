@@ -791,6 +791,22 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
     }
 }
 
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
+    for &'storage libsignal_account_keys::BackupKey
+{
+    type ArgType = JsTypedArray<u8>;
+    type StoredType = AssumedImmutableBuffer<'context>;
+    fn borrow(
+        cx: &mut FunctionContext<'context>,
+        foreign: Handle<'context, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        <&[u8; libsignal_account_keys::BACKUP_KEY_LEN]>::borrow(cx, foreign)
+    }
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        <&[u8; libsignal_account_keys::BACKUP_KEY_LEN]>::load_from(stored).into()
+    }
+}
+
 impl<'storage> AsyncArgTypeInfo<'storage> for &'storage libsignal_account_keys::BackupKey {
     type ArgType = JsTypedArray<u8>;
     type StoredType = PersistentAssumedImmutableBuffer;

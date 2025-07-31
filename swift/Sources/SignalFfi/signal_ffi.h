@@ -1275,6 +1275,8 @@ typedef struct {
   SignalUnidentifiedSenderMessageContent *raw;
 } SignalMutPointerUnidentifiedSenderMessageContent;
 
+typedef uint8_t SignalBackupKeyBytes[SignalBACKUP_KEY_LEN];
+
 /**
  * A C callback used to report the results of Rust futures.
  *
@@ -1289,8 +1291,6 @@ typedef struct {
   const void *context;
   SignalCancellationId cancellation_id;
 } SignalCPromiseMutPointerBackupRestoreResponse;
-
-typedef uint8_t SignalBackupKeyBytes[SignalBACKUP_KEY_LEN];
 
 /**
  * A C callback used to report the results of Rust futures.
@@ -2253,6 +2253,8 @@ SignalFfiError *signal_sealed_sender_multi_recipient_message_for_single_recipien
 SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalMutPointerUnidentifiedSenderMessageContent *out, SignalBorrowedBuffer ctext, SignalConstPointerFfiIdentityKeyStoreStruct identity_store);
 
 SignalFfiError *signal_sealed_session_cipher_encrypt(SignalOwnedBuffer *out, SignalConstPointerProtocolAddress destination, SignalConstPointerUnidentifiedSenderMessageContent content, SignalConstPointerFfiIdentityKeyStoreStruct identity_key_store);
+
+SignalFfiError *signal_secure_value_recovery_for_backups_create_new_backup_chain(SignalOwnedBuffer *out, uint8_t environment, const SignalBackupKeyBytes *backup_key);
 
 SignalFfiError *signal_secure_value_recovery_for_backups_restore_backup_from_server(SignalCPromiseMutPointerBackupRestoreResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, const SignalBackupKeyBytes *backup_key, SignalBorrowedBuffer metadata, SignalConstPointerConnectionManager connection_manager, const char *username, const char *password);
 

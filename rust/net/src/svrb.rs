@@ -219,65 +219,74 @@ fn create_backup<SvrB: traits::Prepare, R: Rng + CryptoRng>(
     (svrb.prepare(&password_key), password_salt)
 }
 
+pub fn create_new_backup_chain<SvrB: traits::Prepare>(
+    svrb: &SvrB,
+    backup_key: &BackupKey,
+) -> BackupPreviousSecretData {
+    let mut rng = OsRng.unwrap_err();
+    let (backup4, pw_salt) = create_backup(svrb, backup_key, &mut rng);
+    let secret_data = backup_metadata::NextBackupPb {
+        from_previous: Some(backup_metadata::next_backup_pb::From_previous::Backup(
+            backup_metadata::next_backup_pb::Backup {
+                pw_salt: pw_salt.to_vec(),
+                backup4: protobuf::MessageField::some(backup4.into_pb()),
+                ..Default::default()
+            },
+        )),
+        ..Default::default()
+    };
+    BackupPreviousSecretData(secret_data.write_to_bytes().expect("can serialize"))
+}
+
 pub async fn store_backup<SvrB: traits::Backup + traits::Prepare>(
     svrb: &SvrB,
     backup_key: &BackupKey,
-    previous_backup_data: Option<BackupPreviousSecretDataRef<'_>>,
+    previous_backup_data: BackupPreviousSecretDataRef<'_>,
 ) -> Result<BackupStoreResponse, Error> {
     let mut rng = OsRng.unwrap_err();
-    let (prev_encryption_key_salt, prev_backup4, prev_password_salt) =
-        if let Some(pbd) = previous_backup_data {
-            let parsed = backup_metadata::NextBackupPb::parse_from_bytes(pbd.0)
+    let parsed_prev_data = backup_metadata::NextBackupPb::parse_from_bytes(previous_backup_data.0)
+        .map_err(|_| Error::PreviousBackupDataInvalid)?;
+    let (prev_encryption_key_salt, prev_backup4, prev_password_salt) = match parsed_prev_data
+        .from_previous
+        .ok_or(Error::PreviousBackupDataInvalid)?
+    {
+        backup_metadata::next_backup_pb::From_previous::Restore(restore) => {
+            // `previous_backup_data` came from a `restore_backup` call,
+            // not a `store_backup` call.  In this case, we want to just keep
+            // what's currently in SVRB still in SVRB.  There is no backup4
+            // to store, and we use the existing key_salt+pw_salt.
+            (
+                restore
+                    .enc_salt
+                    .try_into()
+                    .map_err(|_| Error::PreviousBackupDataInvalid)?,
+                None,
+                restore
+                    .pw_salt
+                    .try_into()
+                    .map_err(|_| Error::PreviousBackupDataInvalid)?,
+            )
+        }
+        backup_metadata::next_backup_pb::From_previous::Backup(mut backup) => {
+            // `previous_backup_data` came from a `store_backup` call,
+            // so we know that we can write a new backup into SVRB and still
+            // have the old backup file decrypt.  Do that.
+            let pw_salt = backup
+                .pw_salt
+                .try_into()
                 .map_err(|_| Error::PreviousBackupDataInvalid)?;
-            match parsed
-                .from_previous
-                .ok_or(Error::PreviousBackupDataInvalid)?
-            {
-                backup_metadata::next_backup_pb::From_previous::Restore(restore) => {
-                    // `previous_backup_data` came from a `restore_backup` call,
-                    // not a `store_backup` call.  In this case, we want to just keep
-                    // what's currently in SVRB still in SVRB.  There is no backup4
-                    // to store, and we use the existing key_salt+pw_salt.
-                    (
-                        restore
-                            .enc_salt
-                            .try_into()
-                            .map_err(|_| Error::PreviousBackupDataInvalid)?,
-                        None,
-                        restore
-                            .pw_salt
-                            .try_into()
-                            .map_err(|_| Error::PreviousBackupDataInvalid)?,
-                    )
-                }
-                backup_metadata::next_backup_pb::From_previous::Backup(mut backup) => {
-                    // `previous_backup_data` came from a `store_backup` call,
-                    // so we know that we can write a new backup into SVRB and still
-                    // have the old backup file decrypt.  Do that.
-                    let pw_salt = backup
-                        .pw_salt
-                        .try_into()
-                        .map_err(|_| Error::PreviousBackupDataInvalid)?;
-                    let backup4 = Backup4::from_pb(
-                        backup
-                            .backup4
-                            .take()
-                            .ok_or(Error::PreviousBackupDataInvalid)?,
-                    )?;
-                    (backup4.output, Some(backup4), pw_salt)
-                }
-                _ => {
-                    return Err(Error::PreviousBackupDataInvalid);
-                }
-            }
-        } else {
-            // If this is the first backup, then we generate this key as well.
-            // This allows the second backup onwards to work as expected.  Were
-            // we to use `next_backup` here, then the first backup would be
-            // accessible longer than subsequent ones.
-            let (backup4, password_salt) = create_backup(svrb, backup_key, &mut rng);
-            (backup4.output, Some(backup4), password_salt)
-        };
+            let backup4 = Backup4::from_pb(
+                backup
+                    .backup4
+                    .take()
+                    .ok_or(Error::PreviousBackupDataInvalid)?,
+            )?;
+            (backup4.output, Some(backup4), pw_salt)
+        }
+        _ => {
+            return Err(Error::PreviousBackupDataInvalid);
+        }
+    };
     let (next_backup4, next_password_salt) = create_backup(svrb, backup_key, &mut rng);
     let forward_secrecy_token = BackupForwardSecrecyToken(random_32b(&mut rng));
 
@@ -605,9 +614,13 @@ mod test {
         )
         .expect("should create AEP");
         let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
-        let backup = store_backup(&svrb, &backup_key, None)
-            .await
-            .expect("should store");
+        let backup = store_backup(
+            &svrb,
+            &backup_key,
+            create_new_backup_chain(&svrb, &backup_key).as_ref(),
+        )
+        .await
+        .expect("should store");
         let restored = restore_backup(
             &svrb,
             &backup_key,
@@ -637,9 +650,13 @@ mod test {
         )
         .expect("should create AEP");
         let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
-        let backup = store_backup(&svrb, &backup_key, None)
-            .await
-            .expect("should store");
+        let backup = store_backup(
+            &svrb,
+            &backup_key,
+            create_new_backup_chain(&svrb, &backup_key).as_ref(),
+        )
+        .await
+        .expect("should store");
         assert!(restore_backup(
             &svrb,
             &backup_key,
@@ -665,9 +682,13 @@ mod test {
         )
         .expect("should create AEP");
         let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
-        let backup = store_backup(&svrb, &backup_key, None)
-            .await
-            .expect("should store");
+        let backup = store_backup(
+            &svrb,
+            &backup_key,
+            create_new_backup_chain(&svrb, &backup_key).as_ref(),
+        )
+        .await
+        .expect("should store");
         let restored = restore_backup(
             &svrb,
             &backup_key,
@@ -690,7 +711,7 @@ mod test {
             restore_fn: || Ok([1u8; 32]),
             ..TestSvrBClient::default()
         };
-        let backup = store_backup(&svrb, &backup_key, Some(restored.next_backup_data.as_ref()))
+        let backup = store_backup(&svrb, &backup_key, restored.next_backup_data.as_ref())
             .await
             .expect("should store");
         let restored2 = restore_backup(
