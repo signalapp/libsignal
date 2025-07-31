@@ -268,6 +268,7 @@ pub(crate) mod testutil {
     /// Starts a TCP server that proxies connections to an upstream server.
     ///
     /// Proxies TCP connections to `upstream_addr`.
+    #[cfg(feature = "dev-util")]
     pub(super) fn localhost_tcp_proxy(
         upstream_addr: SocketAddr,
     ) -> (SocketAddr, impl Future<Output = ()>) {
@@ -351,9 +352,7 @@ mod test {
         ConnectionProxyRoute, Connector as _, ConnectorExt as _, TcpRoute, TlsRoute,
         TlsRouteFragment,
     };
-    use crate::tcp_ssl::proxy::testutil::{
-        localhost_tcp_proxy, localhost_tls_proxy, PROXY_CERTIFICATE, PROXY_HOSTNAME,
-    };
+    use crate::tcp_ssl::proxy::testutil::{localhost_tls_proxy, PROXY_CERTIFICATE, PROXY_HOSTNAME};
     use crate::tcp_ssl::testutil::{
         localhost_https_server, make_http_request_response_over, SERVER_CERTIFICATE,
         SERVER_HOSTNAME,
@@ -415,12 +414,13 @@ mod test {
             .expect("success");
     }
 
+    #[cfg(feature = "dev-util")]
     #[tokio::test]
     async fn connect_through_unencrypted_proxy() {
         let (addr, server) = localhost_https_server();
         let _server_handle = tokio::spawn(server);
 
-        let (proxy_addr, proxy) = localhost_tcp_proxy(addr);
+        let (proxy_addr, proxy) = super::testutil::localhost_tcp_proxy(addr);
         let _proxy_handle = tokio::spawn(proxy);
 
         // Ensure that the proxy is doing the right thing

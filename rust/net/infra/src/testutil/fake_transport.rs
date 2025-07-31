@@ -8,8 +8,8 @@ use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::sync::Arc;
 
-use libsignal_net_infra::host::Host;
-use libsignal_net_infra::route::{
+use crate::host::Host;
+use crate::route::{
     ConnectionProxyRoute, HttpProxyRouteFragment, HttpsProxyRoute, ProxyTarget, SocksRoute,
     TcpRoute, DEFAULT_HTTPS_PORT,
 };
@@ -30,14 +30,17 @@ pub enum FakeTransportTarget {
 }
 
 impl FakeTransportTarget {
-    pub(crate) fn from_proxy_route(proxy: &ConnectionProxyRoute<IpAddr>) -> Self {
+    pub fn from_proxy_route(proxy: &ConnectionProxyRoute<IpAddr>) -> Self {
         match proxy {
-            ConnectionProxyRoute::Tls { .. } | ConnectionProxyRoute::Tcp { .. } => {
-                Self::TcpThroughProxy {
-                    host: None,
-                    port: DEFAULT_HTTPS_PORT,
-                }
-            }
+            #[cfg(feature = "dev-util")]
+            ConnectionProxyRoute::Tcp { .. } => Self::TcpThroughProxy {
+                host: None,
+                port: DEFAULT_HTTPS_PORT,
+            },
+            ConnectionProxyRoute::Tls { .. } => Self::TcpThroughProxy {
+                host: None,
+                port: DEFAULT_HTTPS_PORT,
+            },
             ConnectionProxyRoute::Socks(SocksRoute {
                 target_addr: target_host,
                 target_port,

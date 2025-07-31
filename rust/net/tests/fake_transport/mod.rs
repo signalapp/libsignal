@@ -22,6 +22,7 @@ use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::route::{ConnectorFactory, DirectOrProxyProvider, DEFAULT_HTTPS_PORT};
+pub use libsignal_net::infra::testutil::fake_transport::FakeTransportTarget;
 use libsignal_net::infra::{AsyncDuplexStream, EnableDomainFronting, RECOMMENDED_WS2_CONFIG};
 use libsignal_net_infra::route::{Connector, TransportRoute, UsePreconnect};
 use libsignal_net_infra::testutil::no_network_change_events;
@@ -38,9 +39,6 @@ pub use behavior::Behavior;
 
 mod connector;
 pub use connector::{FakeTransportConnector, TransportConnectEvent, TransportConnectEventStage};
-
-mod target;
-pub use target::FakeTransportTarget;
 
 /// Convenience alias for a dynamically-dispatched stream.
 pub type FakeStream = Box<dyn AsyncDuplexStream>;

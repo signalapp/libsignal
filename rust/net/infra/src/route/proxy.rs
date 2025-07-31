@@ -564,6 +564,7 @@ mod test {
         assert_matches!(proxy_certs, RootCertificates::Native);
     }
 
+    #[cfg(feature = "dev-util")]
     #[test_case(EXAMPLE_HOST, None, Some("UNENCRYPTED_FOR_TESTING"), Host::Domain(EXAMPLE_HOST); "UNENCRYPTED_FOR_TESTING")]
     #[test_case(EXAMPLE_HOST, Some(8080), Some("UNENCRYPTED_FOR_TESTING"), Host::Domain(EXAMPLE_HOST); "with port")]
     fn proxy_from_parts_signal_tcp(
