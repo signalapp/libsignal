@@ -25,7 +25,7 @@ pub fn log_enabled_in_apps(metadata: &log::Metadata) -> bool {
     match target.as_bytes()[0] {
         // libsignal naming patterns:
         b'l' => target.starts_with("libsignal_"),
-        b's' => target.starts_with("signal_"),
+        b's' => target.starts_with("signal_") || check("spqr"),
 
         // Other libsignal crates:
         b'a' => check("attest"),
@@ -55,6 +55,7 @@ mod tests {
         "attest",
         "device_transfer",
         "poksho",
+        "spqr",
         "usernames",
         "zkgroup",
         "zkcredential"
