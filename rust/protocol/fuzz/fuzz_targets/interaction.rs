@@ -132,6 +132,15 @@ impl Participant {
         )
         .await
         .unwrap();
+
+        assert!(self
+            .store
+            .load_session(&them.address)
+            .await
+            .unwrap()
+            .expect("just created")
+            .has_usable_sender_chain(SystemTime::UNIX_EPOCH, SessionUsabilityRequirements::all())
+            .unwrap());
     }
 
     async fn send_message(&mut self, them: &mut Self, rng: &mut (impl Rng + CryptoRng)) {
@@ -141,7 +150,14 @@ impl Participant {
             .load_session(&them.address)
             .await
             .unwrap()
-            .and_then(|session| session.has_usable_sender_chain(SystemTime::UNIX_EPOCH).ok())
+            .and_then(|session| {
+                session
+                    .has_usable_sender_chain(
+                        SystemTime::UNIX_EPOCH,
+                        SessionUsabilityRequirements::all(),
+                    )
+                    .ok()
+            })
             .unwrap_or(false)
         {
             self.process_pre_key(them, rng.random_bool(0.75), rng).await;

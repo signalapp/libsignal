@@ -2879,6 +2879,7 @@ dependencies = [
  "aes-gcm-siv",
  "assert_matches",
  "async-trait",
+ "bitflags",
  "clap",
  "const-str",
  "criterion",

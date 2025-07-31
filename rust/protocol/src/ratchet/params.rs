@@ -5,7 +5,7 @@
 
 use crate::{kem, IdentityKey, IdentityKeyPair, KeyPair, PublicKey};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum UsePQRatchet {
     No,
     Yes,

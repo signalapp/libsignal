@@ -75,7 +75,8 @@ pub use session_cipher::{
 };
 pub use state::{
     GenericSignedPreKey, KyberPreKeyId, KyberPreKeyRecord, PreKeyBundle, PreKeyBundleContent,
-    PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord,
+    PreKeyId, PreKeyRecord, SessionRecord, SessionUsabilityRequirements, SignedPreKeyId,
+    SignedPreKeyRecord,
 };
 pub use storage::{
     Direction, IdentityChange, IdentityKeyStore, InMemIdentityKeyStore, InMemKyberPreKeyStore,

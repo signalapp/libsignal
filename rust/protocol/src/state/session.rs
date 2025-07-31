@@ -6,11 +6,13 @@
 use std::result::Result;
 use std::time::{Duration, SystemTime};
 
+use bitflags::bitflags;
 use prost::Message;
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
 
 use crate::proto::storage::{session_structure, RecordStructure, SessionStructure};
+use crate::protocol::CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION;
 use crate::ratchet::{ChainKey, MessageKeyGenerator, RootKey};
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
 use crate::{consts, kem, IdentityKey, KeyPair, PrivateKey, PublicKey, SignalProtocolError};
@@ -87,6 +89,42 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
 
     pub(crate) fn timestamp(&self) -> SystemTime {
         self.timestamp
+    }
+}
+
+bitflags! {
+    /// Specifies which criteria make a session "usable" beyond simply having a present sender
+    /// chain.
+    ///
+    /// These requirements are conjunctive, i.e. specifying `NotStale | EstablishedWithPqxdh` means
+    /// the session must be neither stale nor established with X3DH.
+    ///
+    /// This struct is generated using the `bitflags` crate; the [`Flags`](::bitflags::Flags) trait
+    /// provides most of its API surface. It can also use "classic" C bitflag syntax, with `|` for
+    /// union and `&` for intersection (as shown above).
+    #[repr(transparent)]
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub struct SessionUsabilityRequirements : u32 {
+        /// Requires that a session not be stale.
+        ///
+        /// A non-stale session is one of the following:
+        /// - "incoming", i.e. started by the peer
+        /// - "acknowledged", i.e. started locally but received a response
+        /// - no more than a few weeks old (the exact time is chosen by libsignal)
+        const NotStale = 1 << 0;
+        /// Requires that a session was established using PQXDH (or newer) rather than X3DH/X4DH.
+        ///
+        /// This includes unacknowledged sessions that are using PQXDH, since if they get a
+        /// response, the peer is confirmed to be using PQXDH as well.
+        const EstablishedWithPqxdh = 1 << 1;
+        /// Requires that a session is using SPQR.
+        ///
+        /// **Warning:** This allows unacknowledged sessions that include SPQR in their PreKey
+        /// messages. If the peer downgrades the session (by discarding the SPQR information) and
+        /// the local client allows it, a session that is previously considered "usable" can become
+        /// "not usable" upon receiving a response. Therefore, this should not be used to determine
+        /// whether a session is usable unless future downgrades will also be rejected.
+        const Spqr = 1 << 2;
     }
 }
 
@@ -211,14 +249,32 @@ impl SessionState {
         }
     }
 
-    pub fn has_usable_sender_chain(&self, now: SystemTime) -> Result<bool, InvalidSessionError> {
+    pub fn has_usable_sender_chain(
+        &self,
+        now: SystemTime,
+        requirements: SessionUsabilityRequirements,
+    ) -> Result<bool, InvalidSessionError> {
         if self.session.sender_chain.is_none() {
             return Ok(false);
         }
-        if let Some(pending_pre_key) = &self.session.pending_pre_key {
-            let creation_timestamp =
-                SystemTime::UNIX_EPOCH + Duration::from_secs(pending_pre_key.timestamp);
-            if creation_timestamp + consts::MAX_UNACKNOWLEDGED_SESSION_AGE < now {
+        if requirements.contains(SessionUsabilityRequirements::NotStale) {
+            if let Some(pending_pre_key) = &self.session.pending_pre_key {
+                let creation_timestamp =
+                    SystemTime::UNIX_EPOCH + Duration::from_secs(pending_pre_key.timestamp);
+                if creation_timestamp + consts::MAX_UNACKNOWLEDGED_SESSION_AGE < now {
+                    return Ok(false);
+                }
+            }
+        }
+        #[allow(clippy::collapsible_if)]
+        if requirements.contains(SessionUsabilityRequirements::EstablishedWithPqxdh) {
+            if self.session_version()? <= CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION.into() {
+                return Ok(false);
+            }
+        }
+        #[allow(clippy::collapsible_if)]
+        if requirements.contains(SessionUsabilityRequirements::Spqr) {
+            if self.pq_ratchet_state().is_empty() {
                 return Ok(false);
             }
         }
@@ -783,9 +839,13 @@ impl SessionRecord {
             .remote_identity_key_bytes()?)
     }
 
-    pub fn has_usable_sender_chain(&self, now: SystemTime) -> Result<bool, SignalProtocolError> {
+    pub fn has_usable_sender_chain(
+        &self,
+        now: SystemTime,
+        requirements: SessionUsabilityRequirements,
+    ) -> Result<bool, SignalProtocolError> {
         match &self.current_session {
-            Some(session) => Ok(session.has_usable_sender_chain(now)?),
+            Some(session) => Ok(session.has_usable_sender_chain(now, requirements)?),
             None => Ok(false),
         }
     }

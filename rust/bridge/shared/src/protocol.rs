@@ -989,7 +989,7 @@ fn SessionRecord_ArchiveCurrentState(session_record: &mut SessionRecord) -> Resu
 
 #[bridge_fn]
 fn SessionRecord_HasUsableSenderChain(s: &SessionRecord, now: Timestamp) -> Result<bool> {
-    s.has_usable_sender_chain(now.into())
+    s.has_usable_sender_chain(now.into(), SessionUsabilityRequirements::NotStale)
 }
 
 #[bridge_fn]
