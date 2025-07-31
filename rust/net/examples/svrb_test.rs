@@ -43,8 +43,9 @@ struct Args {
     requests: usize,
 }
 
+#[derive(Clone, Copy)]
 struct SvrBClient<'a> {
-    auth: Auth,
+    auth: &'a Auth,
     env: &'a SvrBEnv<'static>,
 }
 
@@ -53,7 +54,7 @@ impl SvrBConnect for SvrBClient<'_> {
     type Env = SvrBEnv<'static>;
 
     async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults {
-        direct_connect(self.env.sgx(), &self.auth, &no_network_change_events()).await
+        direct_connect(self.env.current(), self.auth, &no_network_change_events()).await
     }
 }
 
@@ -63,7 +64,7 @@ async fn single_request(args: &Args, auth_secret: [u8; 32], sem: &tokio::sync::S
     let mut uid = [0u8; 16];
     rng.try_fill_bytes(&mut uid)
         .expect("should have entropy available");
-    let auth = Auth::from_uid_and_secret(uid, auth_secret);
+    let auth = &Auth::from_uid_and_secret(uid, auth_secret);
 
     let env = if args.prod {
         &libsignal_net::env::PROD.svr_b
@@ -84,13 +85,14 @@ async fn single_request(args: &Args, auth_secret: [u8; 32], sem: &tokio::sync::S
     // Note that we use `create_new_backup_chain` for the previous_backup_data.
     println!("Storing backup #1");
     let inital_data = svrb::create_new_backup_chain(&client, &backup_key);
-    let backup1 = svrb::store_backup(&client, &backup_key, inital_data.as_ref())
-        .await
-        .expect("should backup");
+    let backup1 =
+        svrb::store_backup::<_, SvrBClient>(&client, &[], &backup_key, inital_data.as_ref())
+            .await
+            .expect("should backup");
 
     // Example code for restoration of the backup.
     println!("Restoring backup #1");
-    let restored = svrb::restore_backup(&client, &backup_key, backup1.metadata.as_ref())
+    let restored = svrb::restore_backup(&[client], &backup_key, backup1.metadata.as_ref())
         .await
         .expect("should restore successfully");
     assert_eq!(
@@ -101,13 +103,18 @@ async fn single_request(args: &Args, auth_secret: [u8; 32], sem: &tokio::sync::S
     // Example code for second and subsequent backups.  Note that we pass
     // in the previous backup's `next_backup_data`.
     println!("Storing backup #2");
-    let backup2 = svrb::store_backup(&client, &backup_key, backup1.next_backup_data.as_ref())
-        .await
-        .expect("should store");
+    let backup2 = svrb::store_backup::<_, SvrBClient>(
+        &client,
+        &[],
+        &backup_key,
+        backup1.next_backup_data.as_ref(),
+    )
+    .await
+    .expect("should store");
 
     // Example code for restoring both backups after storage of backup 2.
     println!("Restoring backup #1 after storing backup #2");
-    let restored = svrb::restore_backup(&client, &backup_key, backup1.metadata.as_ref())
+    let restored = svrb::restore_backup(&[client], &backup_key, backup1.metadata.as_ref())
         .await
         .expect("should restore successfully");
     assert_eq!(
@@ -115,7 +122,7 @@ async fn single_request(args: &Args, auth_secret: [u8; 32], sem: &tokio::sync::S
         backup1.forward_secrecy_token.0
     );
     println!("Restoring backup #2 after storing backup #2");
-    let restored = svrb::restore_backup(&client, &backup_key, backup2.metadata.as_ref())
+    let restored = svrb::restore_backup(&[client], &backup_key, backup2.metadata.as_ref())
         .await
         .expect("should restore successfully");
     assert_eq!(

@@ -285,6 +285,10 @@ impl ConnectionManager {
             DirectOrProxyProvider::maybe_proxied(route_provider, proxy_config),
         ))
     }
+
+    pub fn env(&self) -> &Env<'static> {
+        &self.env
+    }
 }
 
 bridge_as_handle!(ConnectionManager);

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use futures_util::StreamExt as _;
 use hmac::{Hmac, Mac};
 use libsignal_account_keys::{
     BackupForwardSecrecyEncryptionKey, BackupForwardSecrecyToken, BackupKey,
@@ -185,7 +186,6 @@ fn aes_256_ctr_hmacsha256_decrypt(
     }
 }
 
-pub struct BackupHandle(Backup4);
 pub struct BackupFileMetadata(pub Vec<u8>);
 pub struct BackupFileMetadataRef<'a>(pub &'a [u8]);
 pub struct BackupPreviousSecretData(pub Vec<u8>);
@@ -238,8 +238,9 @@ pub fn create_new_backup_chain<SvrB: traits::Prepare>(
     BackupPreviousSecretData(secret_data.write_to_bytes().expect("can serialize"))
 }
 
-pub async fn store_backup<SvrB: traits::Backup + traits::Prepare>(
-    svrb: &SvrB,
+pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove>(
+    svrb: &B,
+    previous_svrbs: &[R],
     backup_key: &BackupKey,
     previous_backup_data: BackupPreviousSecretDataRef<'_>,
 ) -> Result<BackupStoreResponse, Error> {
@@ -323,6 +324,15 @@ pub async fn store_backup<SvrB: traits::Backup + traits::Prepare>(
     if let Some(prev_backup4) = prev_backup4 {
         svrb.finalize(&prev_backup4).await?;
     }
+    for r in futures_util::future::join_all(previous_svrbs.iter().map(|p| p.remove())).await {
+        if let Err(e) = r {
+            // Errors here are acceptable, since they might be caused by irreparable
+            // issues like a SVRB replica group going down forever.  We do want to
+            // do our best to remove, though, so we keep trying each time, and we
+            // do report the errors up for debugging purposes.
+            log::info!("previous svrb instance remove failure: {e:?}");
+        }
+    }
 
     Ok(BackupStoreResponse {
         forward_secrecy_token,
@@ -333,32 +343,26 @@ pub async fn store_backup<SvrB: traits::Backup + traits::Prepare>(
     })
 }
 
-pub async fn finalize_backup<SvrB: traits::Backup>(
-    svrb: &SvrB,
-    handle: &BackupHandle,
-) -> Result<(), Error> {
-    svrb.finalize(&handle.0).await
-}
-
-async fn restore_backup_attempt<SvrB: traits::Restore>(
-    svrb: &SvrB,
+async fn restore_backup_attempt<'a, R: traits::Restore>(
+    svrb: &R,
     backup_key: &BackupKey,
     iv: &[u8; IV_SIZE],
-    pair: &backup_metadata::metadata_pb::Pair,
-) -> Result<([u8; 32], BackupForwardSecrecyToken), Error> {
+    pair: &'a backup_metadata::metadata_pb::Pair,
+) -> Result<
+    (
+        [u8; 32],
+        &'a backup_metadata::metadata_pb::Pair,
+        BackupForwardSecrecyToken,
+    ),
+    Error,
+> {
     let password_key = backup_key.derive_forward_secrecy_password(&pair.pw_salt).0;
     let encryption_key_salt = svrb.restore(&password_key).await?;
     let encryption_key = backup_key.derive_forward_secrecy_encryption_key(&encryption_key_salt);
-    Ok((
-        encryption_key_salt,
-        BackupForwardSecrecyToken(
-            aes_256_ctr_hmacsha256_decrypt(&encryption_key, iv, &pair.ct)?
-                .try_into()
-                .map_err(|_| {
-                    signal_crypto::DecryptionError::BadCiphertext("should decrypt to 32 bytes")
-                })?,
-        ),
-    ))
+    let token = aes_256_ctr_hmacsha256_decrypt(&encryption_key, iv, &pair.ct)?
+        .try_into()
+        .map_err(|_| signal_crypto::DecryptionError::BadCiphertext("should decrypt to 32 bytes"))?;
+    Ok((encryption_key_salt, pair, BackupForwardSecrecyToken(token)))
 }
 
 pub struct BackupRestoreResponse {
@@ -366,8 +370,8 @@ pub struct BackupRestoreResponse {
     pub next_backup_data: BackupPreviousSecretData,
 }
 
-pub async fn restore_backup<SvrB: traits::Restore>(
-    svrb: &SvrB,
+pub async fn restore_backup<R: traits::Restore>(
+    current_and_previous_svrbs: &[R],
     backup_key: &BackupKey,
     metadata: BackupFileMetadataRef<'_>,
 ) -> Result<BackupRestoreResponse, Error> {
@@ -378,13 +382,17 @@ pub async fn restore_backup<SvrB: traits::Restore>(
     }
     let mut multiple_errors: Vec<Error> = Vec::new();
     let iv: [u8; IV_SIZE] = metadata.iv.try_into().map_err(|_| Error::MetadataInvalid)?;
-    for pair in metadata.pair {
-        match restore_backup_attempt(svrb, backup_key, &iv, &pair).await {
-            Ok((encryption_key_salt, forward_secrecy_token)) => {
+    // TODO: consider adding random delays to each of these requests.
+    let mut futures = itertools::iproduct!(current_and_previous_svrbs.iter(), metadata.pair.iter())
+        .map(|(svrb, pair)| restore_backup_attempt(svrb, backup_key, &iv, pair))
+        .collect::<futures_util::stream::FuturesUnordered<_>>();
+    while let Some(result) = futures.next().await {
+        match result {
+            Ok((encryption_key_salt, pair, forward_secrecy_token)) => {
                 let next_backup_pb = backup_metadata::NextBackupPb {
                     from_previous: Some(backup_metadata::next_backup_pb::From_previous::Restore(
                         backup_metadata::next_backup_pb::Restore {
-                            pw_salt: pair.pw_salt,
+                            pw_salt: pair.pw_salt.clone(),
                             enc_salt: encryption_key_salt.to_vec(),
                             ..Default::default()
                         },
@@ -406,34 +414,17 @@ pub async fn restore_backup<SvrB: traits::Restore>(
     Err(Error::MultipleErrors(multiple_errors))
 }
 
-/// Attempt a restore from a pair of SVRB instances.
-///
-/// The function is meant to be used in the registration flow, when the client
-/// app does not yet know whether it is supposed to be trusting one set of enclaves
-/// or another. Therefore, it first reads from the primary falling back to the
-/// secondary enclaves only if the primary returned `DataMissing`, that is, the
-/// data has not been migrated yet. Any other error terminates the whole operation
-/// and will need to be retried.
-///
-/// The choice of terms "primary" and "fallback" is, perhaps, a little confusing
-/// when thinking about the enclave migration, where they would be called,
-/// respectively, "next" and "current", but ordering of parameters and actions in
-/// the body of the function make "primary" and "fallback" a better fit.
-pub async fn restore_with_fallback<Primary, Fallback>(
-    clients: (&Primary, &Fallback),
-    password: &[u8],
-) -> Result<Secret, Error>
-where
-    Primary: traits::Restore + Sync,
-    Fallback: traits::Restore + Sync,
-{
-    let (primary_conn, fallback_conn) = clients;
-
-    match primary_conn.restore(password).await {
-        Err(Error::DataMissing) => {}
-        result @ (Err(_) | Ok(_)) => return result,
-    }
-    fallback_conn.restore(password).await
+pub async fn remove_backup<R: traits::Remove>(
+    current_svrb: &R,
+    previous_svrbs: &[R],
+) -> Result<(), Error> {
+    futures_util::future::join_all(
+        std::iter::once(current_svrb)
+            .chain(previous_svrbs)
+            .map(|p| p.remove()),
+    )
+    .await
+    .swap_remove(0) // We only care about the first element (for current_svrb) - this removes it from the vec and returns it.
 }
 
 #[cfg(feature = "test-util")]
@@ -452,7 +443,7 @@ pub mod test_support {
             &self,
             auth: &Auth,
         ) -> <Self as PpssSetup>::ConnectionResults {
-            super::direct::direct_connect(self.sgx(), auth, &no_network_change_events()).await
+            super::direct::direct_connect(self.current(), auth, &no_network_change_events()).await
         }
     }
 }
@@ -460,6 +451,7 @@ pub mod test_support {
 #[cfg(test)]
 mod test {
     use std::str::FromStr;
+    use std::sync::atomic::{AtomicU8, Ordering};
 
     use assert_matches::assert_matches;
     use async_trait::async_trait;
@@ -520,64 +512,6 @@ mod test {
         }
     }
 
-    #[tokio::test]
-    async fn restore_with_fallback_primary_success() {
-        let primary = TestSvrBClient {
-            restore_fn: || Ok(Secret::default()),
-            ..TestSvrBClient::default()
-        };
-        let fallback = TestSvrBClient {
-            restore_fn: || panic!("Must not be called"),
-            ..TestSvrBClient::default()
-        };
-
-        let result = restore_with_fallback((&primary, &fallback), b"").await;
-        assert_matches!(result, Ok(output4) => assert_eq!(output4, Secret::default()));
-    }
-
-    #[tokio::test]
-    async fn restore_with_fallback_primary_fatal_error() {
-        let primary = TestSvrBClient {
-            restore_fn: || Err(Error::ConnectionTimedOut),
-            ..TestSvrBClient::default()
-        };
-        let fallback = TestSvrBClient {
-            restore_fn: || panic!("Must not be called"),
-            ..TestSvrBClient::default()
-        };
-
-        let result = restore_with_fallback((&primary, &fallback), b"").await;
-        assert_matches!(result, Err(Error::ConnectionTimedOut));
-    }
-
-    #[tokio::test]
-    async fn restore_with_fallback_fallback_error() {
-        let primary = TestSvrBClient {
-            restore_fn: || Err(Error::DataMissing),
-            ..TestSvrBClient::default()
-        };
-        let fallback = TestSvrBClient {
-            restore_fn: || Err(Error::RestoreFailed(31415)),
-            ..TestSvrBClient::default()
-        };
-        let result = restore_with_fallback((&primary, &fallback), b"").await;
-        assert_matches!(result, Err(Error::RestoreFailed(31415)));
-    }
-
-    #[tokio::test]
-    async fn restore_with_fallback_fallback_success() {
-        let primary = TestSvrBClient {
-            restore_fn: || Err(Error::DataMissing),
-            ..TestSvrBClient::default()
-        };
-        let fallback = TestSvrBClient {
-            restore_fn: || Ok(Secret::default()),
-            ..TestSvrBClient::default()
-        };
-        let result = restore_with_fallback((&primary, &fallback), b"").await;
-        assert_matches!(result, Ok(output4) => assert_eq!(output4, Secret::default()));
-    }
-
     #[test]
     fn aes_roundtrip() -> Result<(), Error> {
         let ek = BackupForwardSecrecyEncryptionKey {
@@ -598,6 +532,9 @@ mod test {
         Ok(())
     }
 
+    // typed empty list of SVRB clients to pass to store_backup.
+    static EMPTY: [TestSvrBClient; 0] = [];
+
     #[tokio::test]
     async fn backup_key_created_and_restored() {
         let svrb = TestSvrBClient {
@@ -616,13 +553,14 @@ mod test {
         let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
         let backup = store_backup(
             &svrb,
+            &EMPTY,
             &backup_key,
             create_new_backup_chain(&svrb, &backup_key).as_ref(),
         )
         .await
         .expect("should store");
         let restored = restore_backup(
-            &svrb,
+            &[svrb],
             &backup_key,
             BackupFileMetadataRef(&backup.metadata.0),
         )
@@ -652,13 +590,14 @@ mod test {
         let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
         let backup = store_backup(
             &svrb,
+            &EMPTY,
             &backup_key,
             create_new_backup_chain(&svrb, &backup_key).as_ref(),
         )
         .await
         .expect("should store");
         assert!(restore_backup(
-            &svrb,
+            &[svrb],
             &backup_key,
             BackupFileMetadataRef(&backup.metadata.0)
         )
@@ -684,13 +623,14 @@ mod test {
         let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
         let backup = store_backup(
             &svrb,
+            &EMPTY,
             &backup_key,
             create_new_backup_chain(&svrb, &backup_key).as_ref(),
         )
         .await
         .expect("should store");
         let restored = restore_backup(
-            &svrb,
+            &[svrb],
             &backup_key,
             BackupFileMetadataRef(&backup.metadata.0),
         )
@@ -711,11 +651,16 @@ mod test {
             restore_fn: || Ok([1u8; 32]),
             ..TestSvrBClient::default()
         };
-        let backup = store_backup(&svrb, &backup_key, restored.next_backup_data.as_ref())
-            .await
-            .expect("should store");
-        let restored2 = restore_backup(
+        let backup = store_backup(
             &svrb,
+            &EMPTY,
+            &backup_key,
+            restored.next_backup_data.as_ref(),
+        )
+        .await
+        .expect("should store");
+        let restored2 = restore_backup(
+            &[svrb],
             &backup_key,
             BackupFileMetadataRef(&backup.metadata.0),
         )
@@ -735,5 +680,167 @@ mod test {
         assert_eq!(r1.pw_salt, r2.pw_salt);
         // The actual forward secrecy tokens should differ.
         assert!(restored2.forward_secrecy_token.0 != restored.forward_secrecy_token.0);
+    }
+
+    #[tokio::test]
+    async fn restore_primary_success() {
+        let svrb = TestSvrBClient {
+            prepare_fn: || Backup4 {
+                requests: vec![],
+                output: [1u8; 32],
+            },
+            finalize_fn: || Ok(()),
+            restore_fn: || Ok([1u8; 32]),
+            ..TestSvrBClient::default()
+        };
+        let fallback = TestSvrBClient {
+            restore_fn: || panic!("Must not be called"),
+            ..TestSvrBClient::default()
+        };
+        let aep = AccountEntropyPool::from_str(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        )
+        .expect("should create AEP");
+        let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
+        let backup = store_backup(
+            &svrb,
+            &EMPTY,
+            &backup_key,
+            create_new_backup_chain(&svrb, &backup_key).as_ref(),
+        )
+        .await
+        .expect("should store");
+        let restored = restore_backup(
+            &[svrb, fallback],
+            &backup_key,
+            BackupFileMetadataRef(&backup.metadata.0),
+        )
+        .await
+        .expect("should restore");
+        assert_eq!(
+            backup.forward_secrecy_token.0,
+            restored.forward_secrecy_token.0
+        );
+    }
+
+    #[tokio::test]
+    async fn restore_primary_error_fallback_success() {
+        let svrb = TestSvrBClient {
+            prepare_fn: || Backup4 {
+                requests: vec![],
+                output: [1u8; 32],
+            },
+            finalize_fn: || Ok(()),
+            restore_fn: || Err(Error::RestoreFailed(31415)),
+            ..TestSvrBClient::default()
+        };
+        let fallback = TestSvrBClient {
+            restore_fn: || Ok([1u8; 32]),
+            ..TestSvrBClient::default()
+        };
+        let aep = AccountEntropyPool::from_str(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        )
+        .expect("should create AEP");
+        let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
+        let backup = store_backup(
+            &svrb,
+            &EMPTY,
+            &backup_key,
+            create_new_backup_chain(&svrb, &backup_key).as_ref(),
+        )
+        .await
+        .expect("should finalize");
+        let restored = restore_backup(
+            &[svrb, fallback],
+            &backup_key,
+            BackupFileMetadataRef(&backup.metadata.0),
+        )
+        .await
+        .expect("should restore");
+        assert_eq!(
+            backup.forward_secrecy_token.0,
+            restored.forward_secrecy_token.0
+        );
+    }
+
+    #[tokio::test]
+    async fn restore_primary_error_fallback_error() {
+        let svrb = TestSvrBClient {
+            prepare_fn: || Backup4 {
+                requests: vec![],
+                output: [1u8; 32],
+            },
+            finalize_fn: || Ok(()),
+            restore_fn: || Err(Error::RestoreFailed(11111)),
+            ..TestSvrBClient::default()
+        };
+        let fallback = TestSvrBClient {
+            restore_fn: || Err(Error::RestoreFailed(22222)),
+            ..TestSvrBClient::default()
+        };
+        let aep = AccountEntropyPool::from_str(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        )
+        .expect("should create AEP");
+        let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
+        let backup = store_backup(
+            &svrb,
+            &EMPTY,
+            &backup_key,
+            create_new_backup_chain(&svrb, &backup_key).as_ref(),
+        )
+        .await
+        .expect("should store");
+        assert!(restore_backup(
+            &[svrb, fallback],
+            &backup_key,
+            BackupFileMetadataRef(&backup.metadata.0),
+        )
+        .await
+        .is_err());
+    }
+
+    static BACKUP_DELETES_PREVIOUS_ALL_CALLED: AtomicU8 = AtomicU8::new(0);
+
+    #[tokio::test]
+    async fn backup_deletes_previous() {
+        let svrb = TestSvrBClient {
+            prepare_fn: || Backup4 {
+                requests: vec![],
+                output: [1u8; 32],
+            },
+            finalize_fn: || Ok(()),
+            restore_fn: || Err(Error::RestoreFailed(11111)),
+            ..TestSvrBClient::default()
+        };
+        let previous1 = TestSvrBClient {
+            remove_fn: || {
+                BACKUP_DELETES_PREVIOUS_ALL_CALLED.fetch_add(1, Ordering::SeqCst);
+                Err(Error::ConnectionTimedOut)
+            },
+            ..TestSvrBClient::default()
+        };
+        let previous2 = TestSvrBClient {
+            remove_fn: || {
+                BACKUP_DELETES_PREVIOUS_ALL_CALLED.fetch_add(1, Ordering::SeqCst);
+                Err(Error::ConnectionTimedOut)
+            },
+            ..TestSvrBClient::default()
+        };
+        let aep = AccountEntropyPool::from_str(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        )
+        .expect("should create AEP");
+        let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
+        store_backup(
+            &svrb,
+            &[previous1, previous2],
+            &backup_key,
+            create_new_backup_chain(&svrb, &backup_key).as_ref(),
+        )
+        .await
+        .expect("should store");
+        assert_eq!(BACKUP_DELETES_PREVIOUS_ALL_CALLED.load(Ordering::SeqCst), 2);
     }
 }
