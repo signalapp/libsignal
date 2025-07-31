@@ -12,9 +12,12 @@ use async_trait::async_trait;
 use super::{ppss_ops, Backup4, Error, Secret};
 use crate::enclave::PpssSetup;
 
+pub trait Prepare {
+    fn prepare(&self, password: &[u8]) -> Backup4;
+}
+
 #[async_trait]
 pub trait Backup {
-    fn prepare(&self, password: &[u8]) -> Backup4;
     async fn finalize(&self, backup: &Backup4) -> Result<(), Error>;
 }
 
@@ -39,14 +42,20 @@ pub trait SvrBConnect {
     async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults;
 }
 
+impl<T> Prepare for T
+where
+    T: SvrBConnect,
+{
+    fn prepare(&self, password: &[u8]) -> Backup4 {
+        ppss_ops::do_prepare::<T::Env>(password)
+    }
+}
+
 #[async_trait]
 impl<T> Backup for T
 where
     T: SvrBConnect + Sync,
 {
-    fn prepare(&self, password: &[u8]) -> Backup4 {
-        ppss_ops::do_prepare::<T::Env>(password)
-    }
     async fn finalize(&self, backup: &Backup4) -> Result<(), Error> {
         ppss_ops::do_backup::<T::Env>(self.connect().await, backup).await
     }

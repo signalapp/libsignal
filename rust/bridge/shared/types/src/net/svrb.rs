@@ -12,14 +12,15 @@ use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svrb as svrb_impl;
 use libsignal_net::svrb::traits::SvrBConnect;
-use libsignal_net::svrb::BackupResponse;
+use libsignal_net::svrb::{BackupRestoreResponse, BackupStoreResponse};
 // Re-export the error type for FFI implementations
 pub use svrb_impl::Error;
 
 use crate::net::ConnectionManager;
 use crate::*;
 
-bridge_as_handle!(BackupResponse);
+bridge_as_handle!(BackupStoreResponse);
+bridge_as_handle!(BackupRestoreResponse);
 
 pub type BackupKeyBytes = [u8; BACKUP_KEY_LEN];
 

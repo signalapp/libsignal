@@ -203,13 +203,13 @@ impl BackupPreviousSecretData {
     }
 }
 
-pub struct BackupResponse {
+pub struct BackupStoreResponse {
     pub forward_secrecy_token: BackupForwardSecrecyToken,
     pub next_backup_data: BackupPreviousSecretData,
     pub metadata: BackupFileMetadata,
 }
 
-fn create_backup<SvrB: traits::Backup, R: Rng + CryptoRng>(
+fn create_backup<SvrB: traits::Prepare, R: Rng + CryptoRng>(
     svrb: &SvrB,
     backup_key: &BackupKey,
     rng: &mut R,
@@ -219,34 +219,65 @@ fn create_backup<SvrB: traits::Backup, R: Rng + CryptoRng>(
     (svrb.prepare(&password_key), password_salt)
 }
 
-pub async fn store_backup<SvrB: traits::Backup>(
+pub async fn store_backup<SvrB: traits::Backup + traits::Prepare>(
     svrb: &SvrB,
     backup_key: &BackupKey,
     previous_backup_data: Option<BackupPreviousSecretDataRef<'_>>,
-) -> Result<BackupResponse, Error> {
+) -> Result<BackupStoreResponse, Error> {
     let mut rng = OsRng.unwrap_err();
-    let (prev_backup4, prev_password_salt) = if let Some(pbd) = previous_backup_data {
-        let parsed = backup_metadata::NextBackupPb::parse_from_bytes(pbd.0)
-            .map_err(|_| Error::PreviousBackupDataInvalid)?;
-        (
-            Backup4::from_pb(
-                parsed
-                    .backup4
-                    .into_option()
-                    .ok_or(Error::PreviousBackupDataInvalid)?,
-            )?,
-            parsed
-                .pw_salt
-                .try_into()
-                .map_err(|_| Error::PreviousBackupDataInvalid)?,
-        )
-    } else {
-        // If this is the first backup, then we generate this key as well.
-        // This allows the second backup onwards to work as expected.  Were
-        // we to use `next_backup` here, then the first backup would be
-        // accessible longer than subsequent ones.
-        create_backup(svrb, backup_key, &mut rng)
-    };
+    let (prev_encryption_key_salt, prev_backup4, prev_password_salt) =
+        if let Some(pbd) = previous_backup_data {
+            let parsed = backup_metadata::NextBackupPb::parse_from_bytes(pbd.0)
+                .map_err(|_| Error::PreviousBackupDataInvalid)?;
+            match parsed
+                .from_previous
+                .ok_or(Error::PreviousBackupDataInvalid)?
+            {
+                backup_metadata::next_backup_pb::From_previous::Restore(restore) => {
+                    // `previous_backup_data` came from a `restore_backup` call,
+                    // not a `store_backup` call.  In this case, we want to just keep
+                    // what's currently in SVRB still in SVRB.  There is no backup4
+                    // to store, and we use the existing key_salt+pw_salt.
+                    (
+                        restore
+                            .enc_salt
+                            .try_into()
+                            .map_err(|_| Error::PreviousBackupDataInvalid)?,
+                        None,
+                        restore
+                            .pw_salt
+                            .try_into()
+                            .map_err(|_| Error::PreviousBackupDataInvalid)?,
+                    )
+                }
+                backup_metadata::next_backup_pb::From_previous::Backup(mut backup) => {
+                    // `previous_backup_data` came from a `store_backup` call,
+                    // so we know that we can write a new backup into SVRB and still
+                    // have the old backup file decrypt.  Do that.
+                    let pw_salt = backup
+                        .pw_salt
+                        .try_into()
+                        .map_err(|_| Error::PreviousBackupDataInvalid)?;
+                    let backup4 = Backup4::from_pb(
+                        backup
+                            .backup4
+                            .take()
+                            .ok_or(Error::PreviousBackupDataInvalid)?,
+                    )?;
+                    (backup4.output, Some(backup4), pw_salt)
+                }
+                _ => {
+                    return Err(Error::PreviousBackupDataInvalid);
+                }
+            }
+        } else {
+            // If this is the first backup, then we generate this key as well.
+            // This allows the second backup onwards to work as expected.  Were
+            // we to use `next_backup` here, then the first backup would be
+            // accessible longer than subsequent ones.
+            let (backup4, password_salt) = create_backup(svrb, backup_key, &mut rng);
+            (backup4.output, Some(backup4), password_salt)
+        };
     let (next_backup4, next_password_salt) = create_backup(svrb, backup_key, &mut rng);
     let forward_secrecy_token = BackupForwardSecrecyToken(random_32b(&mut rng));
 
@@ -258,7 +289,7 @@ pub async fn store_backup<SvrB: traits::Backup>(
         ..Default::default()
     };
     for (encryption_key_salt, password_salt) in [
-        (prev_backup4.output, prev_password_salt),
+        (prev_encryption_key_salt, prev_password_salt),
         (next_backup4.output, next_password_salt),
     ] {
         let encryption_key = backup_key.derive_forward_secrecy_encryption_key(&encryption_key_salt);
@@ -270,14 +301,21 @@ pub async fn store_backup<SvrB: traits::Backup>(
     }
 
     let next_backup_pb = backup_metadata::NextBackupPb {
-        pw_salt: next_password_salt.to_vec(),
-        backup4: protobuf::MessageField::some(next_backup4.into_pb()),
+        from_previous: Some(backup_metadata::next_backup_pb::From_previous::Backup(
+            backup_metadata::next_backup_pb::Backup {
+                pw_salt: next_password_salt.to_vec(),
+                backup4: protobuf::MessageField::some(next_backup4.into_pb()),
+                ..Default::default()
+            },
+        )),
         ..Default::default()
     };
 
-    svrb.finalize(&prev_backup4).await?;
+    if let Some(prev_backup4) = prev_backup4 {
+        svrb.finalize(&prev_backup4).await?;
+    }
 
-    Ok(BackupResponse {
+    Ok(BackupStoreResponse {
         forward_secrecy_token,
         next_backup_data: BackupPreviousSecretData(
             next_backup_pb.write_to_bytes().expect("should serialize"),
@@ -298,24 +336,32 @@ async fn restore_backup_attempt<SvrB: traits::Restore>(
     backup_key: &BackupKey,
     iv: &[u8; IV_SIZE],
     pair: &backup_metadata::metadata_pb::Pair,
-) -> Result<BackupForwardSecrecyToken, Error> {
+) -> Result<([u8; 32], BackupForwardSecrecyToken), Error> {
     let password_key = backup_key.derive_forward_secrecy_password(&pair.pw_salt).0;
     let encryption_key_salt = svrb.restore(&password_key).await?;
     let encryption_key = backup_key.derive_forward_secrecy_encryption_key(&encryption_key_salt);
-    Ok(BackupForwardSecrecyToken(
-        aes_256_ctr_hmacsha256_decrypt(&encryption_key, iv, &pair.ct)?
-            .try_into()
-            .map_err(|_| {
-                signal_crypto::DecryptionError::BadCiphertext("should decrypt to 32 bytes")
-            })?,
+    Ok((
+        encryption_key_salt,
+        BackupForwardSecrecyToken(
+            aes_256_ctr_hmacsha256_decrypt(&encryption_key, iv, &pair.ct)?
+                .try_into()
+                .map_err(|_| {
+                    signal_crypto::DecryptionError::BadCiphertext("should decrypt to 32 bytes")
+                })?,
+        ),
     ))
+}
+
+pub struct BackupRestoreResponse {
+    pub forward_secrecy_token: BackupForwardSecrecyToken,
+    pub next_backup_data: BackupPreviousSecretData,
 }
 
 pub async fn restore_backup<SvrB: traits::Restore>(
     svrb: &SvrB,
     backup_key: &BackupKey,
     metadata: BackupFileMetadataRef<'_>,
-) -> Result<BackupForwardSecrecyToken, Error> {
+) -> Result<BackupRestoreResponse, Error> {
     let metadata = backup_metadata::MetadataPb::parse_from_bytes(metadata.0)
         .map_err(|_| Error::MetadataInvalid)?;
     if metadata.pair.is_empty() {
@@ -325,8 +371,23 @@ pub async fn restore_backup<SvrB: traits::Restore>(
     let iv: [u8; IV_SIZE] = metadata.iv.try_into().map_err(|_| Error::MetadataInvalid)?;
     for pair in metadata.pair {
         match restore_backup_attempt(svrb, backup_key, &iv, &pair).await {
-            Ok(token) => {
-                return Ok(token);
+            Ok((encryption_key_salt, forward_secrecy_token)) => {
+                let next_backup_pb = backup_metadata::NextBackupPb {
+                    from_previous: Some(backup_metadata::next_backup_pb::From_previous::Restore(
+                        backup_metadata::next_backup_pb::Restore {
+                            pw_salt: pair.pw_salt,
+                            enc_salt: encryption_key_salt.to_vec(),
+                            ..Default::default()
+                        },
+                    )),
+                    ..Default::default()
+                };
+                return Ok(BackupRestoreResponse {
+                    forward_secrecy_token,
+                    next_backup_data: BackupPreviousSecretData(
+                        next_backup_pb.write_to_bytes().expect("should serialize"),
+                    ),
+                });
             }
             Err(e) => {
                 multiple_errors.push(e);
@@ -416,11 +477,14 @@ mod test {
         }
     }
 
-    #[async_trait]
-    impl traits::Backup for TestSvrBClient {
+    impl traits::Prepare for TestSvrBClient {
         fn prepare(&self, _password: &[u8]) -> Backup4 {
             (self.prepare_fn)()
         }
+    }
+
+    #[async_trait]
+    impl traits::Backup for TestSvrBClient {
         async fn finalize(&self, _b4: &Backup4) -> Result<(), Error> {
             (self.finalize_fn)()
         }
@@ -551,7 +615,10 @@ mod test {
         )
         .await
         .expect("should restore");
-        assert_eq!(backup.forward_secrecy_token.0, restored.0);
+        assert_eq!(
+            backup.forward_secrecy_token.0,
+            restored.forward_secrecy_token.0
+        );
     }
 
     #[tokio::test]
@@ -573,15 +640,79 @@ mod test {
         let backup = store_backup(&svrb, &backup_key, None)
             .await
             .expect("should store");
-        assert!(matches!(
-            restore_backup(
-                &svrb,
-                &backup_key,
-                BackupFileMetadataRef(&backup.metadata.0)
-            )
+        assert!(restore_backup(
+            &svrb,
+            &backup_key,
+            BackupFileMetadataRef(&backup.metadata.0)
+        )
+        .await
+        .is_err());
+    }
+
+    #[tokio::test]
+    async fn backup_store_restore_store() {
+        let svrb = TestSvrBClient {
+            prepare_fn: || Backup4 {
+                requests: vec![],
+                output: [1u8; 32],
+            },
+            finalize_fn: || Ok(()),
+            restore_fn: || Ok([1u8; 32]),
+            ..TestSvrBClient::default()
+        };
+        let aep = AccountEntropyPool::from_str(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        )
+        .expect("should create AEP");
+        let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
+        let backup = store_backup(&svrb, &backup_key, None)
             .await
-            .unwrap_err(),
-            Error::MultipleErrors(_)
-        ));
+            .expect("should store");
+        let restored = restore_backup(
+            &svrb,
+            &backup_key,
+            BackupFileMetadataRef(&backup.metadata.0),
+        )
+        .await
+        .expect("should restore");
+        assert_eq!(
+            backup.forward_secrecy_token.0,
+            restored.forward_secrecy_token.0
+        );
+
+        // The next store call should not actually finalize a backup,
+        // since it should just use the key in `restore_previous_secret_data`
+        let svrb = TestSvrBClient {
+            prepare_fn: || Backup4 {
+                requests: vec![],
+                output: [2u8; 32],
+            },
+            restore_fn: || Ok([1u8; 32]),
+            ..TestSvrBClient::default()
+        };
+        let backup = store_backup(&svrb, &backup_key, Some(restored.next_backup_data.as_ref()))
+            .await
+            .expect("should store");
+        let restored2 = restore_backup(
+            &svrb,
+            &backup_key,
+            BackupFileMetadataRef(&backup.metadata.0),
+        )
+        .await
+        .expect("should restore");
+        let r1 = assert_matches!(
+            backup_metadata::NextBackupPb::parse_from_bytes(&restored.next_backup_data.0)
+                .expect("should deserialize")
+                .from_previous
+                .unwrap(), backup_metadata::next_backup_pb::From_previous::Restore(r) => r);
+        let r2 = assert_matches!(
+            backup_metadata::NextBackupPb::parse_from_bytes(&restored2.next_backup_data.0)
+                .expect("should deserialize")
+                .from_previous
+                .unwrap(), backup_metadata::next_backup_pb::From_previous::Restore(r) => r);
+        assert_eq!(r1.enc_salt, r2.enc_salt);
+        assert_eq!(r1.pw_salt, r2.pw_salt);
+        // The actual forward secrecy tokens should differ.
+        assert!(restored2.forward_secrecy_token.0 != restored.forward_secrecy_token.0);
     }
 }

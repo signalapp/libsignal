@@ -89,11 +89,13 @@ async fn single_request(args: &Args, auth_secret: [u8; 32], sem: &tokio::sync::S
 
     // Example code for restoration of the backup.
     println!("Restoring backup #1");
-    let forward_secrecy_token =
-        svrb::restore_backup(&client, &backup_key, backup1.metadata.as_ref())
-            .await
-            .expect("should restore successfully");
-    assert_eq!(forward_secrecy_token.0, backup1.forward_secrecy_token.0);
+    let restored = svrb::restore_backup(&client, &backup_key, backup1.metadata.as_ref())
+        .await
+        .expect("should restore successfully");
+    assert_eq!(
+        restored.forward_secrecy_token.0,
+        backup1.forward_secrecy_token.0
+    );
 
     // Example code for second and subsequent backups.  Note that we pass
     // in the previous backup's `next_backup_data`.
@@ -108,17 +110,21 @@ async fn single_request(args: &Args, auth_secret: [u8; 32], sem: &tokio::sync::S
 
     // Example code for restoring both backups after storage of backup 2.
     println!("Restoring backup #1 after storing backup #2");
-    let forward_secrecy_token =
-        svrb::restore_backup(&client, &backup_key, backup1.metadata.as_ref())
-            .await
-            .expect("should restore successfully");
-    assert_eq!(forward_secrecy_token.0, backup1.forward_secrecy_token.0);
+    let restored = svrb::restore_backup(&client, &backup_key, backup1.metadata.as_ref())
+        .await
+        .expect("should restore successfully");
+    assert_eq!(
+        restored.forward_secrecy_token.0,
+        backup1.forward_secrecy_token.0
+    );
     println!("Restoring backup #2 after storing backup #2");
-    let forward_secrecy_token =
-        svrb::restore_backup(&client, &backup_key, backup2.metadata.as_ref())
-            .await
-            .expect("should restore successfully");
-    assert_eq!(forward_secrecy_token.0, backup2.forward_secrecy_token.0);
+    let restored = svrb::restore_backup(&client, &backup_key, backup2.metadata.as_ref())
+        .await
+        .expect("should restore successfully");
+    assert_eq!(
+        restored.forward_secrecy_token.0,
+        backup2.forward_secrecy_token.0
+    );
 
     println!("Success!");
 }

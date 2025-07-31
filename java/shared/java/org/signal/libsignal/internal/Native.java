@@ -206,10 +206,14 @@ public final class Native {
   public static native byte[] BackupKey_DeriveMediaId(byte[] backupKey, String mediaName);
   public static native byte[] BackupKey_DeriveThumbnailTransitEncryptionKey(byte[] backupKey, byte[] mediaId);
 
-  public static native void BackupResponse_Destroy(long handle);
-  public static native byte[] BackupResponse_GetForwardSecrecyToken(long response) throws Exception;
-  public static native byte[] BackupResponse_GetNextBackupSecretData(long response);
-  public static native byte[] BackupResponse_GetOpaqueMetadata(long response) throws Exception;
+  public static native void BackupRestoreResponse_Destroy(long handle);
+  public static native byte[] BackupRestoreResponse_GetForwardSecrecyToken(long response) throws Exception;
+  public static native byte[] BackupRestoreResponse_GetNextBackupSecretData(long response);
+
+  public static native void BackupStoreResponse_Destroy(long handle);
+  public static native byte[] BackupStoreResponse_GetForwardSecrecyToken(long response) throws Exception;
+  public static native byte[] BackupStoreResponse_GetNextBackupSecretData(long response);
+  public static native byte[] BackupStoreResponse_GetOpaqueMetadata(long response) throws Exception;
 
   public static native void BridgedStringMap_Destroy(long handle);
   public static native void BridgedStringMap_insert(long map, String key, String value);
@@ -611,7 +615,7 @@ public final class Native {
   public static native byte[] SealedSessionCipher_MultiRecipientEncrypt(long[] recipients, long[] recipientSessions, byte[] excludedRecipients, long content, IdentityKeyStore identityKeyStore) throws Exception;
   public static native byte[] SealedSessionCipher_MultiRecipientMessageForSingleRecipient(byte[] encodedMultiRecipientMessage) throws Exception;
 
-  public static native CompletableFuture<byte[]> SecureValueRecoveryForBackups_RestoreBackupFromServer(long asyncRuntime, byte[] backupKey, byte[] metadata, long connectionManager, String username, String password);
+  public static native CompletableFuture<Long> SecureValueRecoveryForBackups_RestoreBackupFromServer(long asyncRuntime, byte[] backupKey, byte[] metadata, long connectionManager, String username, String password);
   public static native CompletableFuture<Long> SecureValueRecoveryForBackups_StoreBackup(long asyncRuntime, byte[] backupKey, byte[] previousSecretData, long connectionManager, String username, String password);
 
   public static native long SenderCertificate_Deserialize(byte[] data) throws Exception;

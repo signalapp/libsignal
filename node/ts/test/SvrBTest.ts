@@ -29,7 +29,7 @@ describe('SecureValueRecoveryBackup', () => {
       const invalidSecretData = new Uint8Array([0xff, 0xff, 0xff, 0xff]);
 
       return assert.isRejected(
-        svrB.storeBackup(testBackupKey, invalidSecretData),
+        svrB.store(testBackupKey, invalidSecretData),
         Error,
         'Invalid data from previous backup'
       );
@@ -38,30 +38,25 @@ describe('SecureValueRecoveryBackup', () => {
     it('throws error with arbitrary test secret data', async () => {
       // Arbitrary test secret data should cause an error
       return assert.isRejected(
-        svrB.storeBackup(testBackupKey, testInvalidSecretData),
+        svrB.store(testBackupKey, testInvalidSecretData),
         Error,
         'Invalid data from previous backup'
       );
     });
   });
 
-  describe('fetchForwardSecrecyTokenFromServer', () => {
+  describe('restoreBackup', () => {
     it('returns a promise', () => {
-      const result = svrB.fetchForwardSecrecyTokenFromServer(
-        testBackupKey,
-        new Uint8Array()
-      );
+      const result = svrB.restore(testBackupKey, new Uint8Array());
       assert.instanceOf(result, Promise);
       result.catch(() => {});
     });
 
     it('supports abort signal', () => {
       const abortController = new AbortController();
-      const result = svrB.fetchForwardSecrecyTokenFromServer(
-        testBackupKey,
-        new Uint8Array(),
-        { abortSignal: abortController.signal }
-      );
+      const result = svrB.restore(testBackupKey, new Uint8Array(), {
+        abortSignal: abortController.signal,
+      });
       assert.instanceOf(result, Promise);
       result.catch(() => {});
     });
@@ -80,7 +75,7 @@ describe('SecureValueRecoveryBackup', () => {
 
     it('completes full backup and restore flow with previous secret data', async () => {
       // First backup without previous data
-      const firstResponse = await svrB.storeBackup(testBackupKey, undefined);
+      const firstResponse = await svrB.store(testBackupKey, undefined);
       assert.exists(firstResponse);
       const {
         nextBackupSecretData: firstNextSecretData,
@@ -92,15 +87,15 @@ describe('SecureValueRecoveryBackup', () => {
       assert.instanceOf(firstNextSecretData, Uint8Array);
       assert.isNotEmpty(firstNextSecretData);
 
-      const restoredFirstToken = await svrB.fetchForwardSecrecyTokenFromServer(
-        testBackupKey,
-        firstMetadata
+      const restoredFirst = await svrB.restore(testBackupKey, firstMetadata);
+
+      assert.deepEqual(
+        firstToken.serialize(),
+        restoredFirst.forwardSecrecyToken.serialize()
       );
 
-      assert.deepEqual(firstToken.serialize(), restoredFirstToken.serialize());
-
       // Second backup with previous secret data
-      const secondResponse = await svrB.storeBackup(
+      const secondResponse = await svrB.store(
         testBackupKey,
         firstNextSecretData
       );
@@ -112,14 +107,14 @@ describe('SecureValueRecoveryBackup', () => {
       // Should also have next secret data for future backups
       assert.isNotEmpty(secondResponse.nextBackupSecretData);
 
-      const restoredSecondToken = await svrB.fetchForwardSecrecyTokenFromServer(
+      const restoredSecond = await svrB.restore(
         testBackupKey,
         secondResponse.metadata
       );
 
       assert.deepEqual(
         secondToken.serialize(),
-        restoredSecondToken.serialize()
+        restoredSecond.forwardSecrecyToken.serialize()
       );
 
       // The tokens should be different between backups

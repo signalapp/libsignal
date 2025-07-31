@@ -279,7 +279,9 @@ typedef struct SignalAes256GcmSiv SignalAes256GcmSiv;
 
 typedef struct SignalAuthenticatedChatConnection SignalAuthenticatedChatConnection;
 
-typedef struct SignalBackupResponse SignalBackupResponse;
+typedef struct SignalBackupRestoreResponse SignalBackupRestoreResponse;
+
+typedef struct SignalBackupStoreResponse SignalBackupStoreResponse;
 
 typedef struct SignalBridgedStringMap SignalBridgedStringMap;
 
@@ -618,12 +620,20 @@ typedef struct {
 } SignalMutPointerPrivateKey;
 
 typedef struct {
-  SignalBackupResponse *raw;
-} SignalMutPointerBackupResponse;
+  SignalBackupRestoreResponse *raw;
+} SignalMutPointerBackupRestoreResponse;
 
 typedef struct {
-  const SignalBackupResponse *raw;
-} SignalConstPointerBackupResponse;
+  const SignalBackupRestoreResponse *raw;
+} SignalConstPointerBackupRestoreResponse;
+
+typedef struct {
+  SignalBackupStoreResponse *raw;
+} SignalMutPointerBackupStoreResponse;
+
+typedef struct {
+  const SignalBackupStoreResponse *raw;
+} SignalConstPointerBackupStoreResponse;
 
 typedef struct {
   SignalBridgedStringMap *raw;
@@ -1275,10 +1285,10 @@ typedef struct {
  * completed once.
  */
 typedef struct {
-  void (*complete)(SignalFfiError *error, const uint8_t (*result)[SignalBACKUP_FORWARD_SECRECY_TOKEN_LEN], const void *context);
+  void (*complete)(SignalFfiError *error, const SignalMutPointerBackupRestoreResponse *result, const void *context);
   const void *context;
   SignalCancellationId cancellation_id;
-} SignalCPromiseu8BACKUP_FORWARD_SECRECY_TOKEN_LEN;
+} SignalCPromiseMutPointerBackupRestoreResponse;
 
 typedef uint8_t SignalBackupKeyBytes[SignalBACKUP_KEY_LEN];
 
@@ -1292,10 +1302,10 @@ typedef uint8_t SignalBackupKeyBytes[SignalBACKUP_KEY_LEN];
  * completed once.
  */
 typedef struct {
-  void (*complete)(SignalFfiError *error, const SignalMutPointerBackupResponse *result, const void *context);
+  void (*complete)(SignalFfiError *error, const SignalMutPointerBackupStoreResponse *result, const void *context);
   const void *context;
   SignalCancellationId cancellation_id;
-} SignalCPromiseMutPointerBackupResponse;
+} SignalCPromiseMutPointerBackupStoreResponse;
 
 typedef struct {
   SignalSenderCertificate *raw;
@@ -1496,13 +1506,19 @@ SignalFfiError *signal_backup_key_derive_media_id(uint8_t (*out)[SignalMEDIA_ID_
 
 SignalFfiError *signal_backup_key_derive_thumbnail_transit_encryption_key(uint8_t (*out)[SignalMEDIA_ENCRYPTION_KEY_LEN], const uint8_t (*backup_key)[SignalBACKUP_KEY_LEN], const uint8_t (*media_id)[SignalMEDIA_ID_LEN]);
 
-SignalFfiError *signal_backup_response_destroy(SignalMutPointerBackupResponse p);
+SignalFfiError *signal_backup_restore_response_destroy(SignalMutPointerBackupRestoreResponse p);
 
-SignalFfiError *signal_backup_response_get_forward_secrecy_token(uint8_t (*out)[SignalBACKUP_FORWARD_SECRECY_TOKEN_LEN], SignalConstPointerBackupResponse response);
+SignalFfiError *signal_backup_restore_response_get_forward_secrecy_token(uint8_t (*out)[SignalBACKUP_FORWARD_SECRECY_TOKEN_LEN], SignalConstPointerBackupRestoreResponse response);
 
-SignalFfiError *signal_backup_response_get_next_backup_secret_data(SignalOwnedBuffer *out, SignalConstPointerBackupResponse response);
+SignalFfiError *signal_backup_restore_response_get_next_backup_secret_data(SignalOwnedBuffer *out, SignalConstPointerBackupRestoreResponse response);
 
-SignalFfiError *signal_backup_response_get_opaque_metadata(SignalOwnedBuffer *out, SignalConstPointerBackupResponse response);
+SignalFfiError *signal_backup_store_response_destroy(SignalMutPointerBackupStoreResponse p);
+
+SignalFfiError *signal_backup_store_response_get_forward_secrecy_token(uint8_t (*out)[SignalBACKUP_FORWARD_SECRECY_TOKEN_LEN], SignalConstPointerBackupStoreResponse response);
+
+SignalFfiError *signal_backup_store_response_get_next_backup_secret_data(SignalOwnedBuffer *out, SignalConstPointerBackupStoreResponse response);
+
+SignalFfiError *signal_backup_store_response_get_opaque_metadata(SignalOwnedBuffer *out, SignalConstPointerBackupStoreResponse response);
 
 SignalFfiError *signal_bridged_string_map_clone(SignalMutPointerBridgedStringMap *new_obj, SignalConstPointerBridgedStringMap obj);
 
@@ -2238,9 +2254,9 @@ SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalMutPointerUni
 
 SignalFfiError *signal_sealed_session_cipher_encrypt(SignalOwnedBuffer *out, SignalConstPointerProtocolAddress destination, SignalConstPointerUnidentifiedSenderMessageContent content, SignalConstPointerFfiIdentityKeyStoreStruct identity_key_store);
 
-SignalFfiError *signal_secure_value_recovery_for_backups_restore_backup_from_server(SignalCPromiseu8BACKUP_FORWARD_SECRECY_TOKEN_LEN *promise, SignalConstPointerTokioAsyncContext async_runtime, const SignalBackupKeyBytes *backup_key, SignalBorrowedBuffer metadata, SignalConstPointerConnectionManager connection_manager, const char *username, const char *password);
+SignalFfiError *signal_secure_value_recovery_for_backups_restore_backup_from_server(SignalCPromiseMutPointerBackupRestoreResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, const SignalBackupKeyBytes *backup_key, SignalBorrowedBuffer metadata, SignalConstPointerConnectionManager connection_manager, const char *username, const char *password);
 
-SignalFfiError *signal_secure_value_recovery_for_backups_store_backup(SignalCPromiseMutPointerBackupResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, const SignalBackupKeyBytes *backup_key, SignalBorrowedBuffer previous_secret_data, SignalConstPointerConnectionManager connection_manager, const char *username, const char *password);
+SignalFfiError *signal_secure_value_recovery_for_backups_store_backup(SignalCPromiseMutPointerBackupStoreResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, const SignalBackupKeyBytes *backup_key, SignalBorrowedBuffer previous_secret_data, SignalConstPointerConnectionManager connection_manager, const char *username, const char *password);
 
 SignalFfiError *signal_sender_certificate_clone(SignalMutPointerSenderCertificate *new_obj, SignalConstPointerSenderCertificate obj);
 

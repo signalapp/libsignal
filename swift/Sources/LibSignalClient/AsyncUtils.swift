@@ -68,22 +68,16 @@ extension SignalCPromiseMutPointerRegisterAccountResponse: PromiseStruct {
     typealias Result = SignalMutPointerRegisterAccountResponse
 }
 
-extension SignalCPromiseMutPointerBackupResponse: PromiseStruct {
-    typealias Result = SignalMutPointerBackupResponse
+extension SignalCPromiseMutPointerBackupStoreResponse: PromiseStruct {
+    typealias Result = SignalMutPointerBackupStoreResponse
+}
+
+extension SignalCPromiseMutPointerBackupRestoreResponse: PromiseStruct {
+    typealias Result = SignalMutPointerBackupRestoreResponse
 }
 
 extension SignalCPromiseOwnedBufferOfc_uchar: PromiseStruct {
     typealias Result = SignalOwnedBuffer
-}
-
-extension SignalCPromiseu8BACKUP_FORWARD_SECRECY_TOKEN_LEN: PromiseStruct {
-    // swiftlint:disable:next large_tuple
-    typealias Result = (
-        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8
-    )
 }
 
 /// A type-erased version of ``Completer``.

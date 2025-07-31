@@ -40,7 +40,7 @@ export type StoreBackupResponse = {
   metadata: Uint8Array;
 
   /**
-   * Opaque value that must be persisted and provided to the next call to {@link SvrB#storeBackup}.
+   * Opaque value that must be persisted and provided to the next call to {@link SvrB#store}.
    *
    * See the {@link SvrB} documentation for lifecycle and persistence handling
    * for this value.
@@ -49,21 +49,65 @@ export type StoreBackupResponse = {
 };
 
 class StoreBackupResponseImpl implements StoreBackupResponse {
-  _nativeHandle: Native.BackupResponse;
-  constructor(handle: Native.BackupResponse) {
+  _nativeHandle: Native.BackupStoreResponse;
+  constructor(handle: Native.BackupStoreResponse) {
     this._nativeHandle = handle;
   }
   get forwardSecrecyToken(): BackupForwardSecrecyToken {
-    const tokenBytes = Native.BackupResponse_GetForwardSecrecyToken(this);
+    const tokenBytes = Native.BackupStoreResponse_GetForwardSecrecyToken(this);
     return new BackupForwardSecrecyToken(tokenBytes);
   }
 
   get metadata(): Uint8Array {
-    return Native.BackupResponse_GetOpaqueMetadata(this);
+    return Native.BackupStoreResponse_GetOpaqueMetadata(this);
   }
 
   get nextBackupSecretData(): Uint8Array {
-    return Native.BackupResponse_GetNextBackupSecretData(this);
+    return Native.BackupStoreResponse_GetNextBackupSecretData(this);
+  }
+}
+
+/**
+ * The result of preparing a backup to be stored with forward secrecy guarantees.
+ *
+ * This context contains all the necessary components to encrypt and store a backup using a
+ * key derived from both the user's Account Entropy Pool and the SVR-B-protected
+ * Forward Secrecy Token.
+ *
+ * @see {@link BackupForwardSecrecyToken}
+ */
+export type RestoreBackupResponse = {
+  /**
+   * The forward secrecy token used to derive MessageBackupKey instances.
+   *
+   * This token provides forward secrecy guarantees by ensuring that compromise of the backup key
+   * alone is insufficient to decrypt backups. Each backup is protected by a value stored on
+   * the SVR-B server that must be retrieved during restoration.
+   */
+  forwardSecrecyToken: BackupForwardSecrecyToken;
+
+  /**
+   * Opaque value that must be persisted and provided to the next call to {@link SvrB#store}.
+   *
+   * See the {@link SvrB} documentation for lifecycle and persistence handling
+   * for this value.
+   */
+  nextBackupSecretData: Uint8Array;
+};
+
+class RestoreBackupResponseImpl implements RestoreBackupResponse {
+  _nativeHandle: Native.BackupRestoreResponse;
+  constructor(handle: Native.BackupRestoreResponse) {
+    this._nativeHandle = handle;
+  }
+  get forwardSecrecyToken(): BackupForwardSecrecyToken {
+    const tokenBytes =
+      Native.BackupRestoreResponse_GetForwardSecrecyToken(this);
+    return new BackupForwardSecrecyToken(tokenBytes);
+  }
+
+  get nextBackupSecretData(): Uint8Array {
+    return Native.BackupRestoreResponse_GetNextBackupSecretData(this);
   }
 }
 
@@ -86,8 +130,8 @@ class StoreBackupResponseImpl implements StoreBackupResponse {
  * ## Storage Flow
  *
  * 1. Create a {@link Net} instance and get the {@link SvrB} service via {@link Net#svrB}
- * 2. Call {@link SvrB#storeBackup}
- *    - Pass the secret data from the last **successful** {@link SvrB#storeBackup} call
+ * 2. Call {@link SvrB#store}
+ *    - Pass the secret data from the last **successful** {@link SvrB#store} or {@link SvrB#restore} call
  *    - If no previous backup exists or the secret data is unavailable, pass `undefined`
  * 3. Use the returned forward secrecy token to derive encryption keys
  * 4. Encrypt and upload the backup data to the user's remote, off-device storage location, including the
@@ -97,9 +141,9 @@ class StoreBackupResponseImpl implements StoreBackupResponse {
  *
  * ## Secret handling
  *
- * When calling {@link SvrB#storeBackup}, the `previousSecretData` parameter
- * must be from the last call to {@link SvrB#storeBackup} that
- * succeeded. The returned secret from a successful `storeBackup()` call should
+ * When calling {@link SvrB#store}, the `previousSecretData` parameter
+ * must be from the last call to {@link SvrB#store} or {@link SvrB#restore} that
+ * succeeded. The returned secret from a successful `store()` or `restore()` call should
  * be persisted until it is overwritten by the value from a subsequent
  * successful call. The caller should pass `undefined` as `previousSecretData`
  * only for the very first backup from a device.
@@ -111,6 +155,7 @@ class StoreBackupResponseImpl implements StoreBackupResponse {
  * 3. Call {@link SvrB#fetchForwardSecrecyTokenFromServer} to get the forward secrecy token
  * 4. Use the token to derive decryption keys
  * 5. Decrypt and restore the backup data
+ * 6. Store the returned {@link RestoreBackupResponse#nextBackupSecretData} locally.
  *
  * ## Usage
  * ```typescript
@@ -137,23 +182,23 @@ export class SvrB {
   /**
    * Prepares a backup for storage with forward secrecy guarantees.
    *
-   * This makes a network call to the SVR-B server to store the forward secrecy token
-   * and returns a {@link StoreBackupResponse}. See its fields' documentation and {@link SvrB}
-   * for how to continue persisting the backup on success.
+   * This makes a network call to the SVR-B server to store the forward secrecy token and returns a
+   * {@link StoreBackupResponse}. See its fields' documentation and {@link SvrB} for how to continue
+   * persisting the backup on success.
    *
    * @param backupKey The backup key derived from the Account Entropy Pool (AEP).
    * @param previousSecretData Optional secret data from the most recent previous backup.
-   * **Critical**: This MUST be the {@link StoreBackupResponse#nextBackupSecretData} data
-   * from the last {@link #storeBackup} whose returned {@link StoreBackupResponse#metadata} was
-   * successfully uploaded, and whose `nextBackupSecretData` was persisted.
-   * If `undefined`, starts a new chain and renders any prior backups unretrievable; this should
-   * only be used for the very first backup from a device.
+   * **Critical**: This MUST be the secret data from the last {@link #store} or {@link #restore}
+   * whose returned `metadata` was successfully uploaded, and whose `nextBackupSecretData` was
+   * persisted. If `undefined`, starts a new chain and renders any prior backups unretrievable; this
+   * should only be used for the very first backup from a device.
    * @param options Optional configuration.
    * @param options.abortSignal An AbortSignal that will cancel the request.
-   * @returns a {@link StoreBackupResponse} containing the forward secrecy token, metadata, and secret data.
-   * @throws Error if the previous secret data is malformed, or if  processing or upload fail.
+   * @returns a {@link StoreBackupResponse} containing the forward secrecy token, metadata, and
+   * secret data.
+   * @throws Error if the previous secret data is malformed, or if processing or upload fail.
    */
-  async storeBackup(
+  async store(
     backupKey: BackupKey,
     previousSecretData?: Uint8Array,
     options?: { abortSignal?: AbortSignal }
@@ -186,6 +231,7 @@ export class SvrB {
    * 2. Call this function to retrieve the forward secrecy token from SVR-B
    * 3. Use the token to derive message backup keys
    * 4. Decrypt and restore the backup data
+   * 5. Store the returned {@link RestoreBackupResponse#nextBackupSecretData} locally.
    *
    * @param backupKey The backup key derived from the Account Entropy Pool (AEP).
    * @param metadata The metadata that was stored in a header in the backup file during backup creation.
@@ -195,11 +241,11 @@ export class SvrB {
    * @throws Error if the metadata is invalid, the network operation fails, or the
    *   backup cannot be found.
    */
-  async fetchForwardSecrecyTokenFromServer(
+  async restore(
     backupKey: BackupKey,
     metadata: Uint8Array,
     options?: { abortSignal?: AbortSignal }
-  ): Promise<BackupForwardSecrecyToken> {
+  ): Promise<RestoreBackupResponse> {
     const promise =
       Native.SecureValueRecoveryForBackups_RestoreBackupFromServer(
         this.asyncContext,
@@ -209,10 +255,10 @@ export class SvrB {
         this.auth.username,
         this.auth.password
       );
-    const tokenBytes = await this.asyncContext.makeCancellable(
+    const response = await this.asyncContext.makeCancellable(
       options?.abortSignal,
       promise
     );
-    return new BackupForwardSecrecyToken(tokenBytes);
+    return new RestoreBackupResponseImpl(response);
   }
 }

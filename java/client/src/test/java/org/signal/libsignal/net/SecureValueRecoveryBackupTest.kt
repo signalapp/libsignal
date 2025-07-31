@@ -119,17 +119,17 @@ class SecureValueRecoveryBackupTest {
     val firstSecretData = firstResponse.nextBackupSecretData
     assertFalse(firstSecretData.isEmpty())
 
-    val firstRestoreResult = svrB.fetchForwardSecrecyTokenFromServer(
+    val firstRestoreResult = svrB.restore(
       testBackupKey,
       firstResponse.metadata,
     ).get(ASYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 
     assertTrue("First restore should succeed", firstRestoreResult.isSuccess)
-    val restoredFirstToken = firstRestoreResult.getOrThrow()
-    assertNotNull("Restored first token should not be null", restoredFirstToken)
+    val restoredFirst = firstRestoreResult.getOrThrow()
+    assertNotNull("Restored first token should not be null", restoredFirst)
 
     val firstTokenBytes = firstToken.serialize()
-    val restoredFirstTokenBytes = restoredFirstToken.serialize()
+    val restoredFirstTokenBytes = restoredFirst.forwardSecrecyToken.serialize()
     assertTrue(
       "Restored first token should match stored token",
       firstTokenBytes.contentEquals(restoredFirstTokenBytes),
@@ -149,17 +149,17 @@ class SecureValueRecoveryBackupTest {
     val secondSecretData = secondResponse.nextBackupSecretData
     assertFalse(secondSecretData.isEmpty())
 
-    val secondRestoreResult = svrB.fetchForwardSecrecyTokenFromServer(
+    val secondRestoreResult = svrB.restore(
       testBackupKey,
       secondResponse.metadata,
     ).get(ASYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 
     assertTrue("Second restore should succeed", secondRestoreResult.isSuccess)
-    val restoredSecondToken = secondRestoreResult.getOrThrow()
-    assertNotNull("Restored second token should not be null", restoredSecondToken)
+    val restoredSecond = secondRestoreResult.getOrThrow()
+    assertNotNull("Restored second token should not be null", restoredSecond)
 
     val secondTokenBytes = secondToken.serialize()
-    val restoredSecondTokenBytes = restoredSecondToken.serialize()
+    val restoredSecondTokenBytes = restoredSecond.forwardSecrecyToken.serialize()
     assertTrue(
       "Restored second token should match stored token",
       secondTokenBytes.contentEquals(restoredSecondTokenBytes),

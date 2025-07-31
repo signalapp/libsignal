@@ -20,6 +20,17 @@ message MetadataPb {
 }
 
 message NextBackupPb {
-  bytes pw_salt = 1;
-  backup4.Backup4 backup4 = 2;
+  oneof from_previous {
+    Backup backup = 1;
+    Restore restore = 2;
+  }
+
+  message Backup {
+    bytes pw_salt = 1;
+    backup4.Backup4 backup4 = 2;
+  }
+  message Restore {
+    bytes pw_salt = 1;
+    bytes enc_salt = 2;
+  }
 }

@@ -28,7 +28,7 @@ final class SecureValueRecoveryBackupTests: TestCaseBase {
 
     func testPrepareBackupWithInvalidPreviousSecretDataThrowsInvalidArgument() async throws {
         await assertThrowsErrorAsync {
-            try await svrB.storeBackup(
+            try await svrB.store(
                 backupKey: testBackupKey,
                 previousSecretData: testInvalidSecretData
             )
@@ -50,7 +50,7 @@ final class SecureValueRecoveryBackupTests: TestCaseBase {
         }
 
         // First backup without previous data
-        let firstResponse = try await svrB.storeBackup(backupKey: testBackupKey, previousSecretData: nil)
+        let firstResponse = try await svrB.store(backupKey: testBackupKey, previousSecretData: nil)
         let firstToken = firstResponse.forwardSecrecyToken
         assertValidToken(firstToken)
         let firstSecretData = firstResponse.nextBackupSecretData
@@ -58,25 +58,25 @@ final class SecureValueRecoveryBackupTests: TestCaseBase {
         XCTAssertFalse(firstResponse.metadata.isEmpty)
 
         // Restore first backup
-        let restoredFirstToken = try await svrB.fetchForwardSecrecyTokenFromServer(
+        let restoredFirst = try await svrB.restore(
             backupKey: testBackupKey,
             metadata: firstResponse.metadata
         )
-        XCTAssertEqual(firstToken.serialize(), restoredFirstToken.serialize())
+        XCTAssertEqual(firstToken.serialize(), restoredFirst.forwardSecrecyToken.serialize())
 
         // Second backup with previous secret data
-        let secondResponse = try await svrB.storeBackup(backupKey: testBackupKey, previousSecretData: firstSecretData)
+        let secondResponse = try await svrB.store(backupKey: testBackupKey, previousSecretData: firstSecretData)
         let secondToken = secondResponse.forwardSecrecyToken
         assertValidToken(secondToken)
         XCTAssertFalse(secondResponse.nextBackupSecretData.isEmpty)
         XCTAssertFalse(secondResponse.metadata.isEmpty)
 
         // Restore second backup
-        let restoredSecondToken = try await svrB.fetchForwardSecrecyTokenFromServer(
+        let restoredSecond = try await svrB.restore(
             backupKey: testBackupKey,
             metadata: secondResponse.metadata
         )
-        XCTAssertEqual(secondToken.serialize(), restoredSecondToken.serialize())
+        XCTAssertEqual(secondToken.serialize(), restoredSecond.forwardSecrecyToken.serialize())
 
         // The tokens should be different between backups
         XCTAssertNotEqual(firstToken.serialize(), secondToken.serialize())

@@ -228,9 +228,11 @@ export function BackupKey_DeriveLocalBackupMetadataKey(backupKey: Uint8Array): U
 export function BackupKey_DeriveMediaEncryptionKey(backupKey: Uint8Array, mediaId: Uint8Array): Uint8Array;
 export function BackupKey_DeriveMediaId(backupKey: Uint8Array, mediaName: string): Uint8Array;
 export function BackupKey_DeriveThumbnailTransitEncryptionKey(backupKey: Uint8Array, mediaId: Uint8Array): Uint8Array;
-export function BackupResponse_GetForwardSecrecyToken(response: Wrapper<BackupResponse>): Uint8Array;
-export function BackupResponse_GetNextBackupSecretData(response: Wrapper<BackupResponse>): Uint8Array;
-export function BackupResponse_GetOpaqueMetadata(response: Wrapper<BackupResponse>): Uint8Array;
+export function BackupRestoreResponse_GetForwardSecrecyToken(response: Wrapper<BackupRestoreResponse>): Uint8Array;
+export function BackupRestoreResponse_GetNextBackupSecretData(response: Wrapper<BackupRestoreResponse>): Uint8Array;
+export function BackupStoreResponse_GetForwardSecrecyToken(response: Wrapper<BackupStoreResponse>): Uint8Array;
+export function BackupStoreResponse_GetNextBackupSecretData(response: Wrapper<BackupStoreResponse>): Uint8Array;
+export function BackupStoreResponse_GetOpaqueMetadata(response: Wrapper<BackupStoreResponse>): Uint8Array;
 export function BridgedStringMap_insert(map: Wrapper<BridgedStringMap>, key: string, value: string): void;
 export function BridgedStringMap_new(initialCapacity: number): BridgedStringMap;
 export function CallLinkAuthCredentialPresentation_CheckValidContents(presentationBytes: Uint8Array): void;
@@ -501,8 +503,8 @@ export function SealedSender_DecryptToUsmc(ctext: Uint8Array, identityStore: Ide
 export function SealedSender_Encrypt(destination: Wrapper<ProtocolAddress>, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore): Promise<Uint8Array>;
 export function SealedSender_MultiRecipientEncrypt(recipients: Wrapper<ProtocolAddress>[], recipientSessions: Wrapper<SessionRecord>[], excludedRecipients: Uint8Array, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore): Promise<Uint8Array>;
 export function SealedSender_MultiRecipientMessageForSingleRecipient(encodedMultiRecipientMessage: Uint8Array): Uint8Array;
-export function SecureValueRecoveryForBackups_RestoreBackupFromServer(asyncRuntime: Wrapper<TokioAsyncContext>, backupKey: Uint8Array, metadata: Uint8Array, connectionManager: Wrapper<ConnectionManager>, username: string, password: string): CancellablePromise<Uint8Array>;
-export function SecureValueRecoveryForBackups_StoreBackup(asyncRuntime: Wrapper<TokioAsyncContext>, backupKey: Uint8Array, previousSecretData: Uint8Array, connectionManager: Wrapper<ConnectionManager>, username: string, password: string): CancellablePromise<BackupResponse>;
+export function SecureValueRecoveryForBackups_RestoreBackupFromServer(asyncRuntime: Wrapper<TokioAsyncContext>, backupKey: Uint8Array, metadata: Uint8Array, connectionManager: Wrapper<ConnectionManager>, username: string, password: string): CancellablePromise<BackupRestoreResponse>;
+export function SecureValueRecoveryForBackups_StoreBackup(asyncRuntime: Wrapper<TokioAsyncContext>, backupKey: Uint8Array, previousSecretData: Uint8Array, connectionManager: Wrapper<ConnectionManager>, username: string, password: string): CancellablePromise<BackupStoreResponse>;
 export function SenderCertificate_Deserialize(data: Uint8Array): SenderCertificate;
 export function SenderCertificate_GetCertificate(obj: Wrapper<SenderCertificate>): Uint8Array;
 export function SenderCertificate_GetDeviceId(obj: Wrapper<SenderCertificate>): number;
@@ -719,7 +721,8 @@ export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, targe
 export function test_only_fn_returns_123(): number;
 interface Aes256GcmSiv { readonly __type: unique symbol; }
 interface AuthenticatedChatConnection { readonly __type: unique symbol; }
-interface BackupResponse { readonly __type: unique symbol; }
+interface BackupRestoreResponse { readonly __type: unique symbol; }
+interface BackupStoreResponse { readonly __type: unique symbol; }
 interface BridgedStringMap { readonly __type: unique symbol; }
 interface CdsiLookup { readonly __type: unique symbol; }
 interface ChatConnectionInfo { readonly __type: unique symbol; }
