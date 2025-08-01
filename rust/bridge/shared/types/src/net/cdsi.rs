@@ -52,7 +52,7 @@ pub struct CdsiLookup {
 impl CdsiLookup {
     pub async fn new_routes(
         connection_manager: &ConnectionManager,
-        auth: Auth,
+        auth: &Auth,
         request: cdsi::LookupRequest,
     ) -> Result<Self, cdsi::LookupError> {
         let env_cdsi = &connection_manager.env.cdsi;

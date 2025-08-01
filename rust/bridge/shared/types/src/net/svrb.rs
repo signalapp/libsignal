@@ -28,7 +28,7 @@ pub struct SvrBConnectImpl<'a> {
     pub connection_manager: &'a ConnectionManager,
     // TODO: replace this with a method of selecting the enclave endpoint.
     pub endpoint: &'a EnclaveEndpoint<'a, SvrSgx>,
-    pub auth: Auth,
+    pub auth: &'a Auth,
 }
 
 #[async_trait]
@@ -53,7 +53,7 @@ impl SvrBConnect for SvrBConnectImpl<'_> {
             route_provider,
             endpoint.ws_config,
             &endpoint.params,
-            auth.clone(),
+            auth,
         )
         .await
     }

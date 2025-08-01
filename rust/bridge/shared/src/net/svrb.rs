@@ -39,7 +39,7 @@ async fn SecureValueRecoveryForBackups_StoreBackup(
     let current_svrb = SvrBConnectImpl {
         connection_manager,
         endpoint: connection_manager.env().svr_b.current(),
-        auth: auth.clone(),
+        auth: &auth,
     };
     let previous_svrb = connection_manager
         .env()
@@ -48,7 +48,7 @@ async fn SecureValueRecoveryForBackups_StoreBackup(
         .map(|e| SvrBConnectImpl {
             connection_manager,
             endpoint: e,
-            auth: auth.clone(),
+            auth: &auth,
         })
         .collect::<Vec<_>>();
 
@@ -72,7 +72,7 @@ async fn SecureValueRecoveryForBackups_RestoreBackupFromServer(
         .map(|e| SvrBConnectImpl {
             connection_manager,
             endpoint: e,
-            auth: auth.clone(),
+            auth: &auth,
         })
         .collect::<Vec<_>>();
     restore_backup(&all_svrbs, backup_key, BackupFileMetadataRef(&metadata)).await

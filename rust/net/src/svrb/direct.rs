@@ -44,7 +44,7 @@ where
         ),
         endpoint.ws_config,
         &endpoint.params,
-        auth.clone(),
+        auth,
     )
     .await
 }

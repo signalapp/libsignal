@@ -102,7 +102,7 @@ async fn main() {
             ),
             cdsi_env.ws_config,
             &cdsi_env.params,
-            auth,
+            &auth,
         )
         .await
     }

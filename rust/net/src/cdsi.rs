@@ -325,7 +325,7 @@ impl CdsiConnection {
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         ws_config: crate::infra::ws2::Config,
         params: &EndpointParams<'_, Cdsi>,
-        auth: Auth,
+        auth: &Auth,
     ) -> Result<Self, LookupError> {
         let (connection, _route_info) = connection_resources
             .connect_attested_ws(route_provider, auth, ws_config, "cdsi".into(), params)
@@ -997,7 +997,7 @@ mod test {
             ),
             ws2_config,
             &env.cdsi.params,
-            auth,
+            &auth,
         )
         .await;
 

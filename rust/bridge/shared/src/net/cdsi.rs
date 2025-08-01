@@ -68,7 +68,7 @@ async fn CdsiLookup_new(
     let request = std::mem::take(&mut *request.lock());
     let auth = Auth { username, password };
 
-    CdsiLookup::new_routes(connection_manager, auth, request).await
+    CdsiLookup::new_routes(connection_manager, &auth, request).await
 }
 
 #[bridge_fn]

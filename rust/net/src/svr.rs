@@ -39,7 +39,7 @@ where
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         ws_config: crate::infra::ws2::Config,
         params: &EndpointParams<'_, E>,
-        auth: Auth,
+        auth: &Auth,
     ) -> Result<Self, Error> {
         connection_resources
             .connect_attested_ws(

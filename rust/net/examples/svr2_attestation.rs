@@ -113,7 +113,7 @@ async fn main() {
         ),
         env.ws_config,
         &params,
-        auth,
+        &auth,
     )
     .await
     .expect("can connect");

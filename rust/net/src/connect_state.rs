@@ -410,7 +410,7 @@ impl<TC> ConnectionResources<'_, TC> {
     pub(crate) async fn connect_attested_ws<E>(
         self,
         routes: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
-        auth: Auth,
+        auth: &Auth,
         ws_config: libsignal_net_infra::ws2::Config,
         log_tag: Arc<str>,
         params: &EndpointParams<'_, E>,

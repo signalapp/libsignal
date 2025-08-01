@@ -60,7 +60,7 @@ async fn can_connect_to_cdsi_staging() {
         ),
         cdsi_env.ws_config,
         &cdsi_env.params,
-        auth,
+        &auth,
     )
     .await
     .expect("can connect to cdsi");
