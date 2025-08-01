@@ -47,7 +47,7 @@ pub enum Error {
     /// Protocol error after establishing a connection: {0}
     Protocol(String),
     /// Enclave attestation failed: {0}
-    AttestationError(attest::enclave::Error),
+    AttestationError(#[from] attest::enclave::Error),
     /// Failure to restore data. {0} tries remaining.
     ///
     /// This could be caused by an invalid password or share set.
@@ -64,21 +64,9 @@ pub enum Error {
     /// Invalid metadata from backup
     MetadataInvalid,
     /// Decryption error: {0}
-    DecryptionError(signal_crypto::DecryptionError),
+    DecryptionError(#[from] signal_crypto::DecryptionError),
     /// Multiple errors: {0:?}
     MultipleErrors(Vec<Error>),
-}
-
-impl From<attest::enclave::Error> for Error {
-    fn from(err: attest::enclave::Error) -> Self {
-        Self::AttestationError(err)
-    }
-}
-
-impl From<signal_crypto::DecryptionError> for Error {
-    fn from(err: signal_crypto::DecryptionError) -> Self {
-        Self::DecryptionError(err)
-    }
 }
 
 impl From<libsignal_svrb::Error> for Error {
