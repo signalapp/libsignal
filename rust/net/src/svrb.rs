@@ -63,8 +63,6 @@ pub enum Error {
     PreviousBackupDataInvalid,
     /// Invalid metadata from backup
     MetadataInvalid,
-    /// Encryption error: {0}
-    EncryptionError(signal_crypto::EncryptionError),
     /// Decryption error: {0}
     DecryptionError(signal_crypto::DecryptionError),
     /// Multiple errors: {0:?}
@@ -80,12 +78,6 @@ impl From<attest::enclave::Error> for Error {
 impl From<signal_crypto::DecryptionError> for Error {
     fn from(err: signal_crypto::DecryptionError) -> Self {
         Self::DecryptionError(err)
-    }
-}
-
-impl From<signal_crypto::EncryptionError> for Error {
-    fn from(err: signal_crypto::EncryptionError) -> Self {
-        Self::EncryptionError(err)
     }
 }
 
@@ -147,12 +139,12 @@ fn aes_256_ctr_encrypt_hmacsha256(
     ek: &BackupForwardSecrecyEncryptionKey,
     iv: &[u8; IV_SIZE],
     ptext: &[u8],
-) -> Result<Vec<u8>, signal_crypto::EncryptionError> {
+) -> Vec<u8> {
     let mut aes = Aes256Ctr32::from_key(&ek.cipher_key, iv, 0).expect("key size valid");
     let mut ctext = ptext.to_vec();
     aes.process(&mut ctext);
     ctext.extend_from_slice(&hmac_sha256(&ek.hmac_key, iv, &ctext)[..HMAC_SHA256_TRUNCATED_BYTES]);
-    Ok(ctext)
+    ctext
 }
 
 /// hmac-then-decrypt with AES256-CTR and HMAC-SHA256 truncated to HMAC_SHA256_TRUNCATED_BYTES,
@@ -305,7 +297,7 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
         let encryption_key = backup_key.derive_forward_secrecy_encryption_key(&encryption_key_salt);
         metadata_pb.pair.push(backup_metadata::metadata_pb::Pair {
             pw_salt: password_salt.to_vec(),
-            ct: aes_256_ctr_encrypt_hmacsha256(&encryption_key, &iv, &forward_secrecy_token.0)?,
+            ct: aes_256_ctr_encrypt_hmacsha256(&encryption_key, &iv, &forward_secrecy_token.0),
             ..Default::default()
         });
     }
@@ -519,7 +511,7 @@ mod test {
             cipher_key: [2u8; 32],
         };
         let iv = [0u8; 12];
-        let mut ct = aes_256_ctr_encrypt_hmacsha256(&ek, &iv, b"plaintext")?;
+        let mut ct = aes_256_ctr_encrypt_hmacsha256(&ek, &iv, b"plaintext");
         assert_eq!(
             b"plaintext" as &[u8],
             &aes_256_ctr_hmacsha256_decrypt(&ek, &iv, &ct)?,

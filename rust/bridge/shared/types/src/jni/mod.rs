@@ -879,7 +879,6 @@ impl JniError for SvrbError {
             }
             SvrbError::PreviousBackupDataInvalid
             | SvrbError::MetadataInvalid
-            | SvrbError::EncryptionError(_)
             | SvrbError::DecryptionError(_)
             | SvrbError::MultipleErrors(_) => make_single_message_throwable(
                 env,

@@ -297,7 +297,6 @@ impl SignalNodeError for libsignal_net::svrb::Error {
             Self::Protocol(_) => (Some("IoError"), None),
             Self::PreviousBackupDataInvalid => (Some("SvrInvalidData"), None),
             Self::MetadataInvalid => (Some("SvrInvalidData"), None),
-            Self::EncryptionError(_) => (Some("SvrInvalidData"), None),
             Self::DecryptionError(_) => (Some("SvrInvalidData"), None),
             Self::MultipleErrors(_) => (Some("SvrMultipleErrors"), None),
         };
