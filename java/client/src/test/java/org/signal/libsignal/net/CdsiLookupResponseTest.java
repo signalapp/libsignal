@@ -82,7 +82,10 @@ public class CdsiLookupResponseTest {
     assertLookupErrorIs("ConnectDnsFailed", IOException.class, "DNS lookup failed");
     assertLookupErrorIs(
         "WebSocketIdleTooLong", NetworkException.class, "channel was idle for too long");
-    assertLookupErrorIs("ConnectionTimedOut", NetworkException.class, "connect timed out");
+    assertLookupErrorIs(
+        "AllConnectionAttemptsFailed",
+        NetworkException.class,
+        "no connection attempts succeeded before timeout");
     assertLookupErrorIs("ServerCrashed", CdsiProtocolException.class, "Server error: crashed");
   }
 

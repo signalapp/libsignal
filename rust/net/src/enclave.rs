@@ -225,8 +225,8 @@ pub enum Error {
     Protocol(AttestedProtocolError),
     /// Enclave attestation failed: {0}
     AttestationError(attest::enclave::Error),
-    /// Connection timeout
-    ConnectionTimedOut,
+    /// No connection attempts succeeded before timeout
+    AllConnectionAttemptsFailed,
 }
 
 impl LogSafeDisplay for Error {}

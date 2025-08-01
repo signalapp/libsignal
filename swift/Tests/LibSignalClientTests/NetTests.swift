@@ -106,9 +106,9 @@ final class NetTests {
             #expect(message == "WebSocket error: channel was idle for too long")
         }
         do {
-            try failWithError("ConnectionTimedOut")
-        } catch SignalError.connectionTimeoutError(let message) {
-            #expect(message == "Connect timed out")
+            try failWithError("AllConnectionAttemptsFailed")
+        } catch SignalError.connectionFailed(let message) {
+            #expect(message == "No connection attempts succeeded before timeout")
         }
         do {
             try failWithError("ServerCrashed")

@@ -95,7 +95,7 @@ make_error_testing_enum! {
         ParseError => Parse,
         ConnectTransport => ConnectDnsFailed,
         WebSocket => WebSocketIdleTooLong,
-        ConnectionTimedOut => ConnectionTimedOut,
+        AllConnectionAttemptsFailed => AllConnectionAttemptsFailed,
         Server => ServerCrashed,
     }
 }
@@ -133,7 +133,9 @@ fn TESTING_CdsiLookupErrorConvert(
         TestingCdsiLookupError::WebSocketIdleTooLong => LookupError::WebSocket(
             libsignal_net::infra::ws::WebSocketServiceError::ChannelIdleTooLong,
         ),
-        TestingCdsiLookupError::ConnectionTimedOut => LookupError::ConnectionTimedOut,
+        TestingCdsiLookupError::AllConnectionAttemptsFailed => {
+            LookupError::AllConnectionAttemptsFailed
+        }
         TestingCdsiLookupError::ServerCrashed => LookupError::Server { reason: "crashed" },
     })
 }

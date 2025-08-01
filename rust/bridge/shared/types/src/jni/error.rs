@@ -26,8 +26,8 @@ pub struct TestingError {
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
-/// connect timed out
-pub(super) struct ConnectTimedOut;
+/// no connection attempts succeeded before timeout
+pub(super) struct AllConnectionAttemptsFailed;
 
 impl SignalJniError {
     pub(super) fn to_throwable<'a>(
@@ -146,7 +146,7 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
     fn from(e: libsignal_net::cdsi::LookupError) -> SignalJniError {
         use libsignal_net::cdsi::LookupError;
         let cdsi_error = match e {
-            LookupError::ConnectionTimedOut => return ConnectTimedOut.into(),
+            LookupError::AllConnectionAttemptsFailed => return AllConnectionAttemptsFailed.into(),
             LookupError::AttestationError(e) => return e.into(),
             LookupError::ConnectTransport(e) => return IoError::from(e).into(),
             LookupError::WebSocket(e) => return e.into(),

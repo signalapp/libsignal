@@ -834,7 +834,11 @@ describe('cdsi lookup', () => {
           ErrorCode.IoError,
           'websocket error: channel was idle for too long',
         ],
-        ['ConnectionTimedOut', ErrorCode.IoError, 'connect attempt timed out'],
+        [
+          'AllConnectionAttemptsFailed',
+          ErrorCode.IoError,
+          'no connection attempts succeeded before timeout',
+        ],
         ['ServerCrashed', ErrorCode.IoError, 'server error: crashed'],
       ];
       cases.forEach((testCase) => {

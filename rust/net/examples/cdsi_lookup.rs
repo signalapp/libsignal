@@ -24,7 +24,7 @@ async fn cdsi_lookup(
 ) -> Result<LookupResponse, LookupError> {
     let (_token, remaining_response) = libsignal_net::infra::utils::timeout(
         timeout,
-        LookupError::ConnectionTimedOut,
+        LookupError::AllConnectionAttemptsFailed,
         cdsi.send_request(request),
     )
     .await?;

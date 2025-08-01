@@ -279,7 +279,7 @@ impl SignalNodeError for libsignal_net::svrb::Error {
         operation_name: &str,
     ) -> Handle<'a, JsError> {
         let (name, make_props) = match &self {
-            Self::Service(_) | Self::ConnectionTimedOut | Self::Connect(_) => {
+            Self::Service(_) | Self::AllConnectionAttemptsFailed | Self::Connect(_) => {
                 // TODO: 429s will be included in this! We should probably handle them separately.
                 (Some(IO_ERROR), None)
             }
@@ -626,7 +626,7 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
             Self::AttestationError(e) => return e.into_throwable(cx, module, operation_name),
             Self::InvalidArgument { server_reason: _ } => None,
             Self::InvalidToken => Some("CdsiInvalidToken"),
-            Self::ConnectionTimedOut
+            Self::AllConnectionAttemptsFailed
             | Self::ConnectTransport(_)
             | Self::WebSocket(_)
             | Self::CdsiProtocol(_)

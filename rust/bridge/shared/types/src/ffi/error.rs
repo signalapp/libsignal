@@ -514,7 +514,9 @@ impl FfiError for libsignal_net::cdsi::LookupError {
             Self::InvalidToken => "CDSI request token was invalid".to_owned(),
             Self::ConnectTransport(e) => format!("IO error: {e}"),
             Self::WebSocket(e) => format!("WebSocket error: {e}"),
-            Self::ConnectionTimedOut => "Connect timed out".to_owned(),
+            Self::AllConnectionAttemptsFailed => {
+                "No connection attempts succeeded before timeout".to_owned()
+            }
             Self::InvalidArgument { .. } => format!("invalid argument: {self}"),
         }
     }
@@ -531,7 +533,7 @@ impl FfiError for libsignal_net::cdsi::LookupError {
             Self::InvalidToken => SignalErrorCode::CdsiInvalidToken,
             Self::ConnectTransport(_) => SignalErrorCode::IoError,
             Self::WebSocket(_) => SignalErrorCode::WebSocket,
-            Self::ConnectionTimedOut => SignalErrorCode::ConnectionTimedOut,
+            Self::AllConnectionAttemptsFailed => SignalErrorCode::ConnectionFailed,
             Self::InvalidArgument { .. } => SignalErrorCode::InvalidArgument,
         }
     }
@@ -1022,7 +1024,9 @@ impl FfiError for libsignal_net::svrb::Error {
         use libsignal_net::ws::WebSocketServiceConnectError;
 
         match self {
-            Self::ConnectionTimedOut => "Connect timed out".to_owned(),
+            Self::AllConnectionAttemptsFailed => {
+                "no connection attempts succeeded before timeout".to_owned()
+            }
             Self::Connect(e) => match e {
                 WebSocketServiceConnectError::Connect(inner, _) => match inner {
                     WebSocketConnectError::Timeout => "Connect timed out".to_owned(),
@@ -1053,7 +1057,7 @@ impl FfiError for libsignal_net::svrb::Error {
         use libsignal_net::ws::WebSocketServiceConnectError;
 
         match self {
-            Self::ConnectionTimedOut => SignalErrorCode::ConnectionTimedOut,
+            Self::AllConnectionAttemptsFailed => SignalErrorCode::ConnectionFailed,
             Self::Connect(e) => match e {
                 WebSocketServiceConnectError::RejectedByServer { .. } => {
                     SignalErrorCode::ConnectionFailed

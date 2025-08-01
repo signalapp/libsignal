@@ -248,8 +248,8 @@ pub enum LookupError {
     ConnectTransport(TransportConnectError),
     /// websocket error: {0}
     WebSocket(WebSocketServiceError),
-    /// connect attempt timed out
-    ConnectionTimedOut,
+    /// no connection attempts succeeded before timeout
+    AllConnectionAttemptsFailed,
     /// request was invalid: {server_reason}
     InvalidArgument { server_reason: String },
     /// server error: {reason}
@@ -291,7 +291,7 @@ impl From<crate::enclave::Error> for LookupError {
                     Self::WebSocket(WebSocketServiceError::Http(response))
                 }
                 WebSocketServiceConnectError::Connect(e, _) => match e {
-                    WebSocketConnectError::Timeout => Self::ConnectionTimedOut,
+                    WebSocketConnectError::Timeout => Self::AllConnectionAttemptsFailed,
                     WebSocketConnectError::Transport(e) => Self::ConnectTransport(e),
                     WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
                 },
@@ -299,7 +299,7 @@ impl From<crate::enclave::Error> for LookupError {
             Error::AttestationError(err) => Self::AttestationError(err),
             Error::WebSocket(err) => Self::WebSocket(err),
             Error::Protocol(error) => Self::EnclaveProtocol(error),
-            Error::ConnectionTimedOut => Self::ConnectionTimedOut,
+            Error::AllConnectionAttemptsFailed => Self::AllConnectionAttemptsFailed,
         }
     }
 }

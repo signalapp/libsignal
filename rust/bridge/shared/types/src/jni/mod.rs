@@ -310,7 +310,7 @@ impl JniError for SignalProtocolError {
     }
 }
 
-impl MessageOnlyExceptionJniError for ConnectTimedOut {
+impl MessageOnlyExceptionJniError for AllConnectionAttemptsFailed {
     fn exception_class(&self) -> ClassName<'static> {
         ClassName("org.signal.libsignal.net.NetworkException")
     }
@@ -869,7 +869,9 @@ impl JniError for SvrbError {
                 &self.to_string(),
                 ClassName("org.signal.libsignal.net.NetworkProtocolException"),
             ),
-            SvrbError::Connect(_) | SvrbError::Service(_) | SvrbError::ConnectionTimedOut => {
+            SvrbError::Connect(_)
+            | SvrbError::Service(_)
+            | SvrbError::AllConnectionAttemptsFailed => {
                 // TODO: 429s will be included in this! We should probably handle them separately.
                 make_single_message_throwable(
                     env,

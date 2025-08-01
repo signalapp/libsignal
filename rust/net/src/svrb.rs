@@ -57,8 +57,8 @@ pub enum Error {
     /// This could mean either the data was never backed-up or we ran out of attempts to restore
     /// it.
     DataMissing,
-    /// Connect timed out
-    ConnectionTimedOut,
+    /// No connection attempts succeeded before timeout
+    AllConnectionAttemptsFailed,
     /// Invalid data from previous backup
     PreviousBackupDataInvalid,
     /// Invalid metadata from backup
@@ -92,7 +92,7 @@ impl From<super::svr::Error> for Error {
             SvrError::WebSocket(inner) => Self::Service(inner),
             SvrError::Protocol(error) => Self::Protocol(error.to_string()),
             SvrError::AttestationError(inner) => Self::AttestationError(inner),
-            SvrError::ConnectionTimedOut => Self::ConnectionTimedOut,
+            SvrError::AllConnectionAttemptsFailed => Self::AllConnectionAttemptsFailed,
         }
     }
 }
@@ -797,14 +797,14 @@ mod test {
         let previous1 = TestSvrBClient {
             remove_fn: || {
                 BACKUP_DELETES_PREVIOUS_ALL_CALLED.fetch_add(1, Ordering::SeqCst);
-                Err(Error::ConnectionTimedOut)
+                Err(Error::AllConnectionAttemptsFailed)
             },
             ..TestSvrBClient::default()
         };
         let previous2 = TestSvrBClient {
             remove_fn: || {
                 BACKUP_DELETES_PREVIOUS_ALL_CALLED.fetch_add(1, Ordering::SeqCst);
-                Err(Error::ConnectionTimedOut)
+                Err(Error::AllConnectionAttemptsFailed)
             },
             ..TestSvrBClient::default()
         };

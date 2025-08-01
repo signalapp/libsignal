@@ -219,7 +219,7 @@ mod test {
 
         fn into_connection_results(self) -> Self::ConnectionResults {
             [
-                Err(Error::ConnectionTimedOut),
+                Err(Error::AllConnectionAttemptsFailed),
                 Err(Error::AttestationError(
                     attest::enclave::Error::InvalidBridgeStateError,
                 )),
@@ -231,19 +231,19 @@ mod test {
     async fn do_backup_fails_with_the_first_error() {
         let backup = do_prepare::<TestEnv>(b"");
         let result = do_backup::<TestEnv>(NotConnectedResults, &backup).await;
-        assert_matches!(result, Err(crate::svrb::Error::ConnectionTimedOut));
+        assert_matches!(result, Err(crate::svrb::Error::AllConnectionAttemptsFailed));
     }
 
     #[tokio::test]
     async fn do_restore_fails_with_the_first_error() {
         let result = do_restore::<TestEnv>(NotConnectedResults, b"").await;
-        assert_matches!(result, Err(crate::svrb::Error::ConnectionTimedOut));
+        assert_matches!(result, Err(crate::svrb::Error::AllConnectionAttemptsFailed));
     }
 
     #[tokio::test]
     async fn do_query_fails_with_the_first_error() {
         let result = do_query(NotConnectedResults).await;
-        assert_matches!(result, Err(crate::svrb::Error::ConnectionTimedOut));
+        assert_matches!(result, Err(crate::svrb::Error::AllConnectionAttemptsFailed));
     }
 
     #[tokio::test]

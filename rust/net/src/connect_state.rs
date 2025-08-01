@@ -442,7 +442,7 @@ impl<TC> ConnectionResources<'_, TC> {
                 )
                 | TimeoutOr::Timeout {
                     attempt_duration: _,
-                } => crate::enclave::Error::ConnectionTimedOut,
+                } => crate::enclave::Error::AllConnectionAttemptsFailed,
                 TimeoutOr::Other(ConnectError::FatalConnect(e)) => {
                     crate::enclave::Error::WebSocketConnect(e)
                 }
