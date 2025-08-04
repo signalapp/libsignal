@@ -11,8 +11,8 @@ use std::collections::VecDeque;
 
 use futures_util::future::join_all;
 use futures_util::TryFutureExt as _;
+use libsignal_net_infra::ws::attested::AttestedConnectionError;
 use libsignal_net_infra::ws::NextOrClose;
-use libsignal_net_infra::ws2::attested::AttestedConnectionError;
 pub(crate) use libsignal_svrb::{Backup4, Secret};
 use libsignal_svrb::{Query4, Remove4, Restore1};
 use rand::rngs::OsRng;
@@ -153,7 +153,7 @@ async fn run_attested_interaction(
     connection: &mut LabeledConnection,
     request: impl AsRef<[u8]>,
 ) -> Result<(NextOrClose<Vec<u8>>, &ConnectionLabel), AttestedConnectionError> {
-    libsignal_net_infra::ws2::attested::run_attested_interaction(&mut connection.0, request)
+    libsignal_net_infra::ws::attested::run_attested_interaction(&mut connection.0, request)
         .map_ok(|n| (n, &connection.1))
         .await
 }

@@ -14,37 +14,46 @@ use tungstenite::{http, Message, Utf8Bytes};
 use crate::errors::LogSafeDisplay;
 use crate::route::{Connector, HttpRouteFragment, WebSocketRouteFragment};
 use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError};
-use crate::{AsyncDuplexStream, Connection};
+use crate::AsyncDuplexStream;
 
 pub mod error;
 pub use error::{LogSafeTungsteniteError, WebSocketConnectError};
 
-mod noise;
+pub mod connection;
+pub use connection::Connection;
+
+pub mod attested;
+
+pub mod noise;
 pub use noise::WebSocketTransport;
 
-/// Configuration for a websocket connection.
-#[derive(Debug, Clone)]
-pub struct WebSocketConfig {
-    /// Protocol-level configuration.
-    pub ws_config: tungstenite::protocol::WebSocketConfig,
-    /// The HTTP path to use when establishing the websocket connection.
-    pub endpoint: PathAndQuery,
-    /// How long to wait after the request before timing out the connection.
+/// Configuration values for managing the connected websocket.
+#[derive(Clone, Copy)]
+pub struct Config {
+    /// How long to wait after the last outgoing message before sending a
+    /// [`Message::Ping`].
     ///
-    /// The amount of time after sending the request with the [`Upgrade`]
-    /// header on HTTP/1.1, or [`CONNECT`] method on HTTP/2, before which the
-    /// server should be assumed to be unavailable and the connection defunct.
+    /// This time is measured across calls to [`Connection::handle_next_event`]
+    /// from the last time an outgoing frame was sent.
+    pub local_idle_timeout: Duration,
+
+    /// The amount of time to wait after the last message received from the
+    /// server before sending a [`Message::Ping`].
     ///
-    /// [`Upgrade`]: http::header::UPGRADE
-    /// [`CONNECT`]: http::method::Method::CONNECT
-    pub max_connection_time: Duration,
-    /// How often to send [`Ping`] frames on the connection.
+    /// This time is measured across calls to [`Connection::handle_next_event`],
+    /// from the most recent message received from the server.
+    pub remote_idle_ping_timeout: Duration,
+
+    /// The amount of time to wait after the last message received from the
+    /// server before disconnecting.
     ///
-    /// [`Ping`]: tungstenite::Message::Ping
-    pub keep_alive_interval: Duration,
-    /// How long to allow the connection to be idle before the server is assumed
-    /// to have become unavailable.
-    pub max_idle_time: Duration,
+    /// This time is measured across calls to [`Connection::handle_next_event`],
+    /// from the most recent message received from the server.
+    ///
+    /// This should be longer than [`Self::remote_idle_ping_timeout`] to allow
+    /// the server time to respond to a sent ping before determining that the
+    /// connection is dead.
+    pub remote_idle_disconnect_timeout: Duration,
 }
 
 /// A type that can be used like a [`tokio_tungstenite::WebSocketStream`].
@@ -263,8 +272,6 @@ impl From<TextOrBinary> for Message {
     }
 }
 
-pub type DefaultStream = tokio_boring_signal::SslStream<tokio::net::TcpStream>;
-
 #[derive(Clone, Eq, PartialEq)]
 #[cfg_attr(any(test, feature = "test-util"), derive(Debug))]
 pub enum NextOrClose<T> {
@@ -288,7 +295,7 @@ impl<T> NextOrClose<T> {
     }
 }
 
-impl<S: Connection + tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin> Connection
+impl<S: crate::Connection + tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin> crate::Connection
     for tokio_tungstenite::WebSocketStream<S>
 {
     fn transport_info(&self) -> crate::TransportInfo {

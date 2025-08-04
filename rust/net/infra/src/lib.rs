@@ -30,7 +30,6 @@ pub mod testutil;
 pub mod timeouts;
 pub mod utils;
 pub mod ws;
-pub mod ws2;
 
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -251,8 +250,8 @@ impl AsRef<[u8]> for Alpn {
     }
 }
 
-pub const RECOMMENDED_WS2_CONFIG: ws2::Config = {
-    ws2::Config {
+pub const RECOMMENDED_WS_CONFIG: ws::Config = {
+    ws::Config {
         local_idle_timeout: WS_KEEP_ALIVE_INTERVAL,
         remote_idle_ping_timeout: WS_KEEP_ALIVE_INTERVAL,
         remote_idle_disconnect_timeout: WS_MAX_IDLE_INTERVAL,

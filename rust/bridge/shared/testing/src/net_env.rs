@@ -10,7 +10,7 @@ use const_str::ip_addr;
 use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
 use libsignal_net::env::{ConnectionConfig, DomainConfig, Env, KeyTransConfig, SvrBEnv};
 use libsignal_net::infra::certs::RootCertificates;
-use libsignal_net::infra::RECOMMENDED_WS2_CONFIG;
+use libsignal_net::infra::RECOMMENDED_WS_CONFIG;
 
 const ENCLAVE_ID_MOCK_SERVER: &[u8] = b"0.20240911.184407";
 
@@ -80,13 +80,13 @@ pub(crate) fn localhost_test_env_with_ports(
             ports.chat_port,
             root_certificate_der,
         ),
-        chat_ws_config: RECOMMENDED_WS2_CONFIG,
+        chat_ws_config: RECOMMENDED_WS_CONFIG,
         cdsi: EnclaveEndpoint {
             domain_config: localhost_test_domain_config_with_port_and_cert(
                 ports.cdsi_port,
                 root_certificate_der,
             ),
-            ws_config: RECOMMENDED_WS2_CONFIG,
+            ws_config: RECOMMENDED_WS_CONFIG,
             params: DUMMY_CDSI_ENDPOINT_PARAMS,
         },
         svr2: EnclaveEndpoint {
@@ -94,7 +94,7 @@ pub(crate) fn localhost_test_env_with_ports(
                 ports.svr2_port,
                 root_certificate_der,
             ),
-            ws_config: RECOMMENDED_WS2_CONFIG,
+            ws_config: RECOMMENDED_WS_CONFIG,
             params: DUMMY_SVR2_ENDPOINT_PARAMS,
         },
         svr_b: SvrBEnv::new(
@@ -103,7 +103,7 @@ pub(crate) fn localhost_test_env_with_ports(
                     ports.svrb_port,
                     root_certificate_der,
                 ),
-                ws_config: RECOMMENDED_WS2_CONFIG,
+                ws_config: RECOMMENDED_WS_CONFIG,
                 params: DUMMY_SVRB_ENDPOINT_PARAMS,
             },
             [None, None, None],

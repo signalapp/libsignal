@@ -21,8 +21,8 @@ use libsignal_net_infra::route::{
     HttpsProvider, TlsRouteProvider,
 };
 use libsignal_net_infra::{
-    ws2, AsStaticHttpHeader, ConnectionParams, EnableDomainFronting, EnforceMinimumTls, RouteType,
-    TransportConnectionParams, RECOMMENDED_WS2_CONFIG,
+    ws, AsStaticHttpHeader, ConnectionParams, EnableDomainFronting, EnforceMinimumTls, RouteType,
+    TransportConnectionParams, RECOMMENDED_WS_CONFIG,
 };
 use nonzero_ext::nonzero;
 use rand::seq::SliceRandom;
@@ -584,7 +584,7 @@ pub struct Env<'a> {
     pub svr2: EnclaveEndpoint<'a, SvrSgx>,
     pub svr_b: SvrBEnv<'a>,
     pub chat_domain_config: DomainConfig,
-    pub chat_ws_config: ws2::Config,
+    pub chat_ws_config: ws::Config,
     pub keytrans_config: KeyTransConfig,
 }
 
@@ -607,21 +607,21 @@ impl<'a> Env<'a> {
 
 pub const STAGING: Env<'static> = Env {
     chat_domain_config: DOMAIN_CONFIG_CHAT_STAGING,
-    chat_ws_config: RECOMMENDED_WS2_CONFIG,
+    chat_ws_config: RECOMMENDED_WS_CONFIG,
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI_STAGING,
-        ws_config: RECOMMENDED_WS2_CONFIG,
+        ws_config: RECOMMENDED_WS_CONFIG,
         params: ENDPOINT_PARAMS_CDSI_STAGING,
     },
     svr2: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_SVR2_STAGING,
-        ws_config: RECOMMENDED_WS2_CONFIG,
+        ws_config: RECOMMENDED_WS_CONFIG,
         params: ENDPOINT_PARAMS_SVR2_STAGING,
     },
     svr_b: SvrBEnv {
         current: EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVRB_STAGING,
-            ws_config: RECOMMENDED_WS2_CONFIG,
+            ws_config: RECOMMENDED_WS_CONFIG,
             params: ENDPOINT_PARAMS_SVRB_STAGING,
         },
         previous: [None, None, None],
@@ -631,21 +631,21 @@ pub const STAGING: Env<'static> = Env {
 
 pub const PROD: Env<'static> = Env {
     chat_domain_config: DOMAIN_CONFIG_CHAT,
-    chat_ws_config: RECOMMENDED_WS2_CONFIG,
+    chat_ws_config: RECOMMENDED_WS_CONFIG,
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI,
-        ws_config: RECOMMENDED_WS2_CONFIG,
+        ws_config: RECOMMENDED_WS_CONFIG,
         params: ENDPOINT_PARAMS_CDSI_PROD,
     },
     svr2: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_SVR2,
-        ws_config: RECOMMENDED_WS2_CONFIG,
+        ws_config: RECOMMENDED_WS_CONFIG,
         params: ENDPOINT_PARAMS_SVR2_PROD,
     },
     svr_b: SvrBEnv {
         current: EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVRB_PROD,
-            ws_config: RECOMMENDED_WS2_CONFIG,
+            ws_config: RECOMMENDED_WS_CONFIG,
             params: ENDPOINT_PARAMS_SVRB_PROD,
         },
         previous: [None, None, None],

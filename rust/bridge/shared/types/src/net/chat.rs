@@ -315,7 +315,7 @@ async fn establish_chat_connection(
         )
     };
 
-    let libsignal_net::infra::ws2::Config {
+    let libsignal_net::infra::ws::Config {
         local_idle_timeout,
         remote_idle_disconnect_timeout,
         ..

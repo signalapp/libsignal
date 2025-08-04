@@ -10,10 +10,10 @@ use libsignal_core::{Aci, Pni, E164};
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
 use libsignal_net_infra::extract_retry_later;
 use libsignal_net_infra::route::{RouteProvider, UnresolvedWebsocketServiceRoute};
-use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServiceError};
-use libsignal_net_infra::ws2::attested::{
+use libsignal_net_infra::ws::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
+use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServiceError};
 use prost::Message as _;
 use thiserror::Error;
 use tungstenite::protocol::frame::coding::CloseCode;
@@ -323,7 +323,7 @@ impl CdsiConnection {
     pub async fn connect_with(
         connection_resources: ConnectionResources<'_, impl WebSocketTransportConnectorFactory>,
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
-        ws_config: crate::infra::ws2::Config,
+        ws_config: crate::infra::ws::Config,
         params: &EndpointParams<'_, Cdsi>,
         auth: &Auth,
     ) -> Result<Self, LookupError> {
@@ -502,12 +502,12 @@ mod test {
     use libsignal_net_infra::route::testutils::ConnectFn;
     use libsignal_net_infra::route::DirectOrProxyProvider;
     use libsignal_net_infra::testutil::no_network_change_events;
-    use libsignal_net_infra::ws::testutil::fake_websocket;
-    use libsignal_net_infra::ws2::attested::testutil::{
+    use libsignal_net_infra::ws::attested::testutil::{
         run_attested_server, AttestedServerOutput, FAKE_ATTESTATION,
     };
+    use libsignal_net_infra::ws::testutil::fake_websocket;
     use libsignal_net_infra::{
-        AsStaticHttpHeader as _, EnableDomainFronting, RECOMMENDED_WS2_CONFIG,
+        AsStaticHttpHeader as _, EnableDomainFronting, RECOMMENDED_WS_CONFIG,
     };
     use nonzero_ext::nonzero;
     use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -691,7 +691,7 @@ mod test {
         }
     }
 
-    const FAKE_WS_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
+    const FAKE_WS_CONFIG: libsignal_net_infra::ws::Config = libsignal_net_infra::ws::Config {
         local_idle_timeout: Duration::from_secs(5),
         remote_idle_ping_timeout: Duration::from_secs(100),
         remote_idle_disconnect_timeout: Duration::from_secs(100),
@@ -969,7 +969,7 @@ mod test {
         });
 
         let env = crate::env::PROD;
-        let ws2_config = RECOMMENDED_WS2_CONFIG;
+        let ws2_config = RECOMMENDED_WS_CONFIG;
         let auth = Auth {
             username: "username".to_string(),
             password: "password".to_string(),

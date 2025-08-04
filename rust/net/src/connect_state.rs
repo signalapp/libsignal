@@ -31,8 +31,8 @@ use libsignal_net_infra::timeouts::{
     ONE_ROUTE_CONNECTION_TIMEOUT, POST_ROUTE_CHANGE_CONNECTION_TIMEOUT,
 };
 use libsignal_net_infra::utils::NetworkChangeEvent;
+use libsignal_net_infra::ws::attested::AttestedConnection;
 use libsignal_net_infra::ws::WebSocketConnectError;
-use libsignal_net_infra::ws2::attested::AttestedConnection;
 use libsignal_net_infra::{AsHttpHeader as _, AsyncDuplexStream};
 use rand::distr::uniform::{UniformSampler, UniformUsize};
 use rand_core::{OsRng, UnwrapErr};
@@ -411,7 +411,7 @@ impl<TC> ConnectionResources<'_, TC> {
         self,
         routes: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         auth: &Auth,
-        ws_config: libsignal_net_infra::ws2::Config,
+        ws_config: libsignal_net_infra::ws::Config,
         log_tag: Arc<str>,
         params: &EndpointParams<'_, E>,
     ) -> Result<(AttestedConnection, RouteInfo), crate::enclave::Error>

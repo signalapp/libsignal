@@ -15,11 +15,11 @@ use libsignal_net_infra::route::{
     DirectTcpRouteProvider, DomainFrontRouteProvider, HttpsProvider, TlsRouteProvider,
     WebSocketProvider, WebSocketRouteFragment,
 };
-use libsignal_net_infra::ws::WebSocketServiceError;
-use libsignal_net_infra::ws2;
-use libsignal_net_infra::ws2::attested::{
+use libsignal_net_infra::ws;
+use libsignal_net_infra::ws::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
+use libsignal_net_infra::ws::WebSocketServiceError;
 
 use crate::env::{DomainConfig, SvrBEnv};
 use crate::infra::{EnableDomainFronting, EnforceMinimumTls};
@@ -204,7 +204,7 @@ pub struct EndpointParams<'a, E: EnclaveKind> {
 #[derive_where(Clone)]
 pub struct EnclaveEndpoint<'a, E: EnclaveKind> {
     pub domain_config: DomainConfig,
-    pub ws_config: ws2::Config,
+    pub ws_config: ws::Config,
     pub params: EndpointParams<'a, E>,
 }
 

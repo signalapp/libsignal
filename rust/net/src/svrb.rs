@@ -7,8 +7,8 @@ use hmac::{Hmac, Mac};
 use libsignal_account_keys::{
     BackupForwardSecrecyEncryptionKey, BackupForwardSecrecyToken, BackupKey,
 };
+use libsignal_net_infra::ws::attested::AttestedConnectionError;
 use libsignal_net_infra::ws::WebSocketServiceError;
-use libsignal_net_infra::ws2::attested::AttestedConnectionError;
 use libsignal_svrb::proto::backup_metadata;
 use libsignal_svrb::{Backup4, Secret};
 use protobuf::Message;

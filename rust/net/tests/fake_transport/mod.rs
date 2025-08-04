@@ -23,7 +23,7 @@ use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::route::{ConnectorFactory, DirectOrProxyProvider, DEFAULT_HTTPS_PORT};
 pub use libsignal_net::infra::testutil::fake_transport::FakeTransportTarget;
-use libsignal_net::infra::{AsyncDuplexStream, EnableDomainFronting, RECOMMENDED_WS2_CONFIG};
+use libsignal_net::infra::{AsyncDuplexStream, EnableDomainFronting, RECOMMENDED_WS_CONFIG};
 use libsignal_net_infra::route::{Connector, TransportRoute, UsePreconnect};
 use libsignal_net_infra::testutil::no_network_change_events;
 use tokio::time::Duration;
@@ -200,11 +200,11 @@ impl FakeDeps {
             resolved_names: _,
             chat_domain_config,
         } = self;
-        let libsignal_net::infra::ws2::Config {
+        let libsignal_net::infra::ws::Config {
             local_idle_timeout,
             remote_idle_ping_timeout,
             remote_idle_disconnect_timeout: _,
-        } = RECOMMENDED_WS2_CONFIG;
+        } = RECOMMENDED_WS_CONFIG;
         let connection_resources = ConnectionResources {
             connect_state,
             dns_resolver,

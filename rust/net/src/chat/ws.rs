@@ -15,9 +15,9 @@ use futures_util::{pin_mut, Stream, StreamExt as _};
 use http::uri::PathAndQuery;
 use http::{Method, StatusCode};
 use itertools::Itertools as _;
+pub use libsignal_net_infra::ws::connection::FinishReason;
+use libsignal_net_infra::ws::connection::Outcome;
 use libsignal_net_infra::ws::{WebSocketServiceError, WebSocketStreamLike};
-pub use libsignal_net_infra::ws2::FinishReason;
-use libsignal_net_infra::ws2::Outcome;
 use pin_project::pin_project;
 use prost::Message as _;
 use tokio::sync::{mpsc, oneshot, Mutex as TokioMutex};
@@ -30,8 +30,8 @@ use crate::chat::{ChatMessageType, MessageProto, Request, RequestProto, Response
 use crate::env::{
     ALERT_HEADER_NAME, CONNECTED_ELSEWHERE_CLOSE_CODE, CONNECTION_INVALIDATED_CLOSE_CODE,
 };
+use crate::infra::ws::connection::{MessageEvent, NextEventError, TungsteniteSendError};
 use crate::infra::ws::TextOrBinary;
-use crate::infra::ws2::{MessageEvent, NextEventError, TungsteniteSendError};
 
 /// Chat service avilable via a connected websocket.
 ///
@@ -189,7 +189,7 @@ impl Chat {
         Self::new_inner(
             (
                 transport,
-                crate::infra::ws2::Config {
+                crate::infra::ws::Config {
                     local_idle_timeout,
                     remote_idle_ping_timeout: local_idle_timeout,
                     remote_idle_disconnect_timeout: remote_idle_timeout,
@@ -853,7 +853,7 @@ trait IntoInnerConnection {
         R: Stream<Item = (TextOrBinary, OutgoingMeta)> + Send + 'static;
 }
 
-impl<S> IntoInnerConnection for (S, crate::infra::ws2::Config)
+impl<S> IntoInnerConnection for (S, crate::infra::ws::Config)
 where
     S: WebSocketStreamLike + Send + 'static,
 {
@@ -866,11 +866,11 @@ where
         R: Stream<Item = (TextOrBinary, OutgoingMeta)> + Send + 'static,
     {
         let (stream, config) = self;
-        crate::infra::ws2::Connection::new(stream, outgoing_stream, config, log_tag)
+        crate::infra::ws::Connection::new(stream, outgoing_stream, config, log_tag)
     }
 }
 
-/// The abstraction presented by [`crate::infra::ws2::Connection`].
+/// The abstraction presented by [`crate::infra::ws::Connection`].
 ///
 /// This exists soley to provide a mock point for testing.
 trait InnerConnection {
@@ -882,7 +882,7 @@ trait InnerConnection {
     > + Send;
 }
 
-impl<S, R> InnerConnection for crate::infra::ws2::Connection<S, R>
+impl<S, R> InnerConnection for crate::infra::ws::Connection<S, R>
 where
     S: WebSocketStreamLike + Send,
     R: Stream<Item = (TextOrBinary, OutgoingMeta)> + Send,
@@ -892,7 +892,7 @@ where
     ) -> impl Future<
         Output = Outcome<MessageEvent<OutgoingMeta>, Result<FinishReason, NextEventError>>,
     > + Send {
-        crate::infra::ws2::Connection::handle_next_event(self)
+        crate::infra::ws::Connection::handle_next_event(self)
     }
 }
 
