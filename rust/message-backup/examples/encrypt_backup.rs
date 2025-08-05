@@ -88,8 +88,8 @@ fn main() {
         let faux_metadata = MetadataPb {
             iv: b"iv_12_bytes_".to_vec(),
             pair: vec![metadata_pb::Pair {
-                ct: b"[ciphertext]".to_vec(),
-                pw_salt: b"[pw_salt]".to_vec(),
+                ct: [0xCC; 48].to_vec(),
+                pw_salt: [0x50; 32].to_vec(),
                 ..Default::default()
             }],
             ..Default::default()
