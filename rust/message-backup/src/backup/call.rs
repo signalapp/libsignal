@@ -91,6 +91,8 @@ pub enum CallError {
 pub enum CallLinkError {
     /// expected {CALL_LINK_ROOT_KEY_LEN:?}-byte root key, found {0} bytes
     InvalidRootKey(usize),
+    /// expected {CALL_LINK_EPOCH_LEN:?}-byte epoch, found {0} bytes
+    InvalidEpoch(usize),
     /// admin key was present but empty
     InvalidAdminKey,
     /// {0}
@@ -137,6 +139,9 @@ pub enum GroupCallState {
 const CALL_LINK_ROOT_KEY_LEN: usize = 16;
 pub(crate) type CallLinkRootKey = [u8; CALL_LINK_ROOT_KEY_LEN];
 
+const CALL_LINK_EPOCH_LEN: usize = 4;
+pub(crate) type CallLinkEpoch = [u8; CALL_LINK_EPOCH_LEN];
+
 /// Validated version of [`proto::CallLink`].
 #[serde_as]
 #[derive(Clone, Debug, serde::Serialize)]
@@ -146,6 +151,9 @@ pub struct CallLink {
     pub restrictions: proto::call_link::Restrictions,
     #[serde(with = "hex")]
     pub root_key: CallLinkRootKey,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "Option<Hex>")]
+    pub epoch: Option<CallLinkEpoch>,
     #[serde_as(as = "Option<Hex>")]
     pub admin_key: Option<Vec<u8>>,
     pub expiration: Timestamp,
@@ -374,6 +382,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<CallLink, C> for proto::CallLink {
     fn try_into_with(self, context: &C) -> Result<CallLink, Self::Error> {
         let proto::CallLink {
             rootKey,
+            epoch,
             adminKey,
             name,
             restrictions,
@@ -384,6 +393,11 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<CallLink, C> for proto::CallLink {
         let root_key = rootKey
             .try_into()
             .map_err(|key: Vec<u8>| CallLinkError::InvalidRootKey(key.len()))?;
+
+        let epoch = epoch
+            .map(|epoch| epoch.try_into())
+            .transpose()
+            .map_err(|bytes: Vec<u8>| CallLinkError::InvalidEpoch(bytes.len()))?;
 
         let admin_key = {
             if adminKey.as_deref() == Some(&[]) {
@@ -398,6 +412,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<CallLink, C> for proto::CallLink {
 
         Ok(CallLink {
             root_key,
+            epoch,
             restrictions,
             admin_key,
             expiration,
@@ -464,11 +479,13 @@ pub(crate) mod test {
     }
 
     const TEST_CALL_LINK_ROOT_KEY: CallLinkRootKey = [b'R'; 16];
+    const TEST_CALL_LINK_EPOCH: CallLinkEpoch = [b'E'; 4];
     const TEST_CALL_LINK_ADMIN_KEY: &[u8] = b"A";
     impl proto::CallLink {
         pub(crate) fn test_data() -> Self {
             Self {
                 rootKey: TEST_CALL_LINK_ROOT_KEY.to_vec(),
+                epoch: Some(TEST_CALL_LINK_EPOCH.to_vec()),
                 adminKey: Some(TEST_CALL_LINK_ADMIN_KEY.to_vec()),
                 restrictions: proto::call_link::Restrictions::NONE.into(),
                 expirationMs: MillisecondsSinceEpoch::TEST_VALUE.0,
@@ -482,6 +499,7 @@ pub(crate) mod test {
             Self {
                 restrictions: proto::call_link::Restrictions::NONE,
                 root_key: TEST_CALL_LINK_ROOT_KEY,
+                epoch: Some(TEST_CALL_LINK_EPOCH),
                 admin_key: Some(TEST_CALL_LINK_ADMIN_KEY.to_vec()),
                 expiration: Timestamp::test_value(),
                 name: "".to_string(),
@@ -665,6 +683,9 @@ pub(crate) mod test {
     }
 
     #[test_case(|x| x.rootKey = vec![123] => Err(CallLinkError::InvalidRootKey(1)); "invalid_root_key")]
+    #[test_case(|x| x.epoch = Some(vec![12]) => Err(CallLinkError::InvalidEpoch(1)); "invalid_epoch")]
+    #[test_case(|x| x.epoch = Some(vec![0x00, 0x00, 0xc3, 0x50]) => Ok(()); "valid_epoch")]
+    #[test_case(|x| x.epoch = None => Ok(()); "no_epoch")]
     #[test_case(|x| x.adminKey = Some(vec![]) => Err(CallLinkError::InvalidAdminKey); "invalid_admin_key")]
     #[test_case(|x| x.adminKey = None => Ok(()); "no_admin_key")]
     #[test_case(|x| x.restrictions = proto::call_link::Restrictions::UNKNOWN.into() => Ok(()); "unknown_restrictions")]
