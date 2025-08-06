@@ -298,7 +298,6 @@ impl SignalNodeError for libsignal_net::svrb::Error {
             Self::PreviousBackupDataInvalid => (Some("SvrInvalidData"), None),
             Self::MetadataInvalid => (Some("SvrInvalidData"), None),
             Self::DecryptionError(_) => (Some("SvrInvalidData"), None),
-            Self::MultipleErrors(_) => (Some("SvrMultipleErrors"), None),
         };
 
         let message = self.to_string();

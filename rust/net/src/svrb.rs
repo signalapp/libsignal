@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use futures_util::StreamExt as _;
+use std::borrow::Cow;
+
+use futures_util::{FutureExt as _, StreamExt as _};
 use hmac::{Hmac, Mac};
 use libsignal_account_keys::{
     BackupForwardSecrecyEncryptionKey, BackupForwardSecrecyToken, BackupKey,
 };
-use libsignal_net_infra::errors::RetryLater;
+use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
 use libsignal_net_infra::ws::attested::AttestedConnectionError;
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
 use libsignal_svrb::proto::backup_metadata;
@@ -66,8 +68,6 @@ pub enum Error {
     MetadataInvalid,
     /// Decryption error: {0}
     DecryptionError(#[from] signal_crypto::DecryptionError),
-    /// Multiple errors: {0:?}
-    MultipleErrors(Vec<Error>),
 }
 
 impl From<libsignal_svrb::Error> for Error {
@@ -102,6 +102,48 @@ impl From<super::svr::Error> for Error {
 impl From<AttestedConnectionError> for Error {
     fn from(err: AttestedConnectionError) -> Self {
         Self::from(super::svr::Error::from(err))
+    }
+}
+
+impl LogSafeDisplay for Error {}
+
+impl Error {
+    fn prioritize_restore_error(first: Self, second: Self) -> Self {
+        match (first, second) {
+            // Structural errors first (these shouldn't actually happen, but if they do we don't
+            // want to hide them).
+            (e @ Self::PreviousBackupDataInvalid, _) | (_, e @ Self::PreviousBackupDataInvalid) => {
+                e
+            }
+            (e @ Self::MetadataInvalid, _) | (_, e @ Self::MetadataInvalid) => e,
+
+            // Then errors where we successfully fetched data from the enclave, but it didn't work.
+            // This indicates a messed up backup (or a logic error), since the enclave is validating
+            // that we have a correct password before returning anything, not just returning
+            // whatever's stored for a particular key.
+            (e @ Self::DecryptionError(_), _) | (_, e @ Self::DecryptionError(_)) => e,
+
+            // Then connection errors, because maybe *another* enclave would have the right data.
+            // These are sorted by "errors that indicate issues that Signal is responsible for"...
+            (e @ Self::AttestationError(_), _) | (_, e @ Self::AttestationError(_)) => e,
+            (e @ Self::Protocol(_), _) | (_, e @ Self::Protocol(_)) => e,
+            // ...then "actionable errors"...
+            (e @ Self::RateLimited(_), _) | (_, e @ Self::RateLimited(_)) => e,
+            // ...and finally generic "try-again" errors.
+            (e @ Self::Service(_), _) | (_, e @ Self::Service(_)) => e,
+            (e @ Self::Connect(_), _) | (_, e @ Self::Connect(_)) => e,
+            (e @ Self::AllConnectionAttemptsFailed, _)
+            | (_, e @ Self::AllConnectionAttemptsFailed) => e,
+
+            // Finally, errors related to the contents of the enclave. It's subtle that
+            // RestoreFailed is here! But consider the case where uploading to a new enclave
+            // succeeds, deleting from an old enclave *fails*, and then the old enclave is consulted
+            // first on restore. We should not return RestoreFailed over whatever connection error
+            // we had getting to the new enclave, because we can't definitively say the key is
+            // altogether wrong.
+            (e @ Self::RestoreFailed(_), _) | (_, e @ Self::RestoreFailed(_)) => e,
+            (e @ Self::DataMissing, _) /*| (_, e @ Self::DataMissing)*/ => e,
+        }
     }
 }
 
@@ -357,18 +399,37 @@ pub async fn restore_backup<R: traits::Restore>(
     backup_key: &BackupKey,
     metadata: BackupFileMetadataRef<'_>,
 ) -> Result<BackupRestoreResponse, Error> {
+    assert!(
+        !current_and_previous_svrbs.is_empty(),
+        "can't restore from 0 enclaves"
+    );
     let metadata = backup_metadata::MetadataPb::parse_from_bytes(metadata.0)
         .map_err(|_| Error::MetadataInvalid)?;
     if metadata.pair.is_empty() {
         return Err(Error::MetadataInvalid);
     }
-    let mut multiple_errors: Vec<Error> = Vec::new();
     let iv: [u8; IV_SIZE] = metadata.iv.try_into().map_err(|_| Error::MetadataInvalid)?;
+
+    let describe_enclave = |i| -> Cow<'static, str> {
+        if i == 0 {
+            "current enclave".into()
+        } else {
+            format!("previous enclave {i}").into()
+        }
+    };
+    let mut most_important_error: Option<Error> = None;
+
     // TODO: consider adding random delays to each of these requests.
-    let mut futures = itertools::iproduct!(current_and_previous_svrbs.iter(), metadata.pair.iter())
-        .map(|(svrb, pair)| restore_backup_attempt(svrb, backup_key, &iv, pair))
-        .collect::<futures_util::stream::FuturesUnordered<_>>();
-    while let Some(result) = futures.next().await {
+    let mut futures = itertools::iproduct!(
+        current_and_previous_svrbs.iter().enumerate(),
+        metadata.pair.iter().enumerate()
+    )
+    .map(|((enclave_index, svrb), (pair_index, pair))| {
+        restore_backup_attempt(svrb, backup_key, &iv, pair)
+            .map(move |result| (enclave_index, pair_index, result))
+    })
+    .collect::<futures_util::stream::FuturesUnordered<_>>();
+    while let Some((enclave_index, pair_index, result)) = futures.next().await {
         match result {
             Ok((encryption_key_salt, pair, forward_secrecy_token)) => {
                 let next_backup_pb = backup_metadata::NextBackupPb {
@@ -381,6 +442,10 @@ pub async fn restore_backup<R: traits::Restore>(
                     )),
                     ..Default::default()
                 };
+                log::info!(
+                    "successfully restored from {} using metadata.pair[{pair_index}]",
+                    describe_enclave(enclave_index)
+                );
                 return Ok(BackupRestoreResponse {
                     forward_secrecy_token,
                     next_backup_data: BackupPreviousSecretData(
@@ -389,11 +454,19 @@ pub async fn restore_backup<R: traits::Restore>(
                 });
             }
             Err(e) => {
-                multiple_errors.push(e);
+                log::warn!(
+                    "failed to restore from {} using metadata.pair[{pair_index}]: {}",
+                    describe_enclave(enclave_index),
+                    &e as &dyn LogSafeDisplay,
+                );
+                most_important_error = Some(match most_important_error {
+                    None => e,
+                    Some(prev) => Error::prioritize_restore_error(prev, e),
+                })
             }
         }
     }
-    Err(Error::MultipleErrors(multiple_errors))
+    Err(most_important_error.expect("at least one request and no successes"))
 }
 
 pub async fn remove_backup<R: traits::Remove>(

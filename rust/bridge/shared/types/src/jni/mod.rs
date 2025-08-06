@@ -879,8 +879,7 @@ impl JniError for SvrbError {
             SvrbError::RateLimited(inner) => inner.to_throwable(env),
             SvrbError::PreviousBackupDataInvalid
             | SvrbError::MetadataInvalid
-            | SvrbError::DecryptionError(_)
-            | SvrbError::MultipleErrors(_) => make_single_message_throwable(
+            | SvrbError::DecryptionError(_) => make_single_message_throwable(
                 env,
                 &self.to_string(),
                 ClassName("org.signal.libsignal.svr.SvrException"),
