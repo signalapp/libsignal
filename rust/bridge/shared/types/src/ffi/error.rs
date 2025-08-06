@@ -1063,7 +1063,7 @@ impl FfiError for libsignal_net::svrb::Error {
             Self::DataMissing => SignalErrorCode::SvrDataMissing,
             Self::PreviousBackupDataInvalid => SignalErrorCode::InvalidArgument,
             Self::MetadataInvalid => SignalErrorCode::InvalidArgument,
-            Self::DecryptionError(_) => SignalErrorCode::InternalError,
+            Self::DecryptionError(_) => SignalErrorCode::InvalidArgument,
         }
     }
 
