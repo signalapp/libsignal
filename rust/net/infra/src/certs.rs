@@ -4,13 +4,14 @@
 //
 
 use std::borrow::Cow;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use boring_signal::error::ErrorStack;
 use boring_signal::ssl::{SslAlert, SslConnectorBuilder, SslVerifyMode};
 use boring_signal::x509::store::X509StoreBuilder;
 use boring_signal::x509::X509;
-use rustls::client::danger::ServerCertVerifier;
+use rustls::client::danger::{ServerCertVerified, ServerCertVerifier};
+use rustls::pki_types::{CertificateDer, ServerName};
 
 use crate::dns::dns_utils::log_safe_domain;
 use crate::errors::LogSafeDisplay;
@@ -54,17 +55,34 @@ impl RootCertificates {
     ) -> Result<(), Error> {
         let ders: &[&[u8]] = match self {
             RootCertificates::Native => {
-                let mut verifier = rustls_platform_verifier::Verifier::new();
-                if cfg!(target_os = "linux")
-                    && rustls::crypto::CryptoProvider::get_default().is_none()
-                {
-                    // On Linux rustls-platform-verifier uses the webpki crate, which requires a
-                    // rustls CryptoProvider. On the other platforms, rustls-platform-verifier ought
-                    // to work even with no provider set, so we omit this to avoid taking a
-                    // dependency on ring.
-                    verifier.set_provider(rustls::crypto::ring::default_provider().into())
-                }
-                return set_up_platform_verifier(connector, host, verifier);
+                static VERIFIER: OnceLock<Box<dyn LimitedServerCertVerifier>> = OnceLock::new();
+
+                let verifier = VERIFIER.get_or_init(|| {
+                    let mut verifier = rustls_platform_verifier::Verifier::new();
+                    if cfg!(target_os = "linux")
+                        && rustls::crypto::CryptoProvider::get_default().is_none()
+                    {
+                        // On Linux rustls-platform-verifier uses the webpki crate, which requires a
+                        // rustls CryptoProvider. On the other platforms, rustls-platform-verifier ought
+                        // to work even with no provider set, so we omit this to avoid taking a
+                        // dependency on ring.
+                        verifier.set_provider(rustls::crypto::ring::default_provider().into())
+                    }
+
+                    if cfg!(target_os = "android") {
+                        // rustls-platform-verifier's Android code permanently
+                        // attaches the thread that makes the verification calls
+                        // to the JVM. Use an implementation that calls into
+                        // verification code on a background thread to prevent
+                        // the current thread from being attached to the JVM.
+                        //
+                        // See https://github.com/rustls/rustls-platform-verifier/issues/184
+                        return Box::new(BackgroundThreadVerifier::new(verifier));
+                    }
+
+                    Box::new(verifier)
+                });
+                return set_up_platform_verifier(connector, host, &**verifier);
             }
             RootCertificates::FromStaticDers(ders) => ders,
             RootCertificates::FromDer(der) => &[der],
@@ -75,6 +93,51 @@ impl RootCertificates {
         }
         connector.set_verify_cert_store(store_builder.build())?;
         Ok(())
+    }
+}
+
+/// A subset of [`ServerCertVerifier`] that only exposes
+/// [`verify_server_cert`](ServerCertVerifier::verify_server_cert).
+///
+/// This is blanket-implemented for `ServerCertVerifier`.
+trait LimitedServerCertVerifier: Send + Sync {
+    fn verify_server_cert(
+        &self,
+        end_entity: CertificateDer<'_>,
+        intermediates: Vec<CertificateDer<'_>>,
+        server_name: &ServerName<'_>,
+    ) -> Result<ServerCertVerified, rustls::Error>;
+}
+
+impl<V: ServerCertVerifier> LimitedServerCertVerifier for V {
+    fn verify_server_cert(
+        &self,
+        end_entity: CertificateDer<'_>,
+        intermediates: Vec<CertificateDer<'_>>,
+        server_name: &ServerName<'_>,
+    ) -> Result<ServerCertVerified, rustls::Error> {
+        // We don't do our own OCSP. Either the platform will do its own checks, or it won't.
+        let ocsp_response = [];
+
+        ServerCertVerifier::verify_server_cert(
+            self,
+            &end_entity,
+            &intermediates,
+            server_name,
+            &ocsp_response,
+            rustls::pki_types::UnixTime::now(),
+        )
+    }
+}
+
+impl LimitedServerCertVerifier for &dyn LimitedServerCertVerifier {
+    fn verify_server_cert(
+        &self,
+        end_entity: CertificateDer<'_>,
+        intermediates: Vec<CertificateDer<'_>>,
+        server_name: &ServerName<'_>,
+    ) -> Result<ServerCertVerified, rustls::Error> {
+        (**self).verify_server_cert(end_entity, intermediates, server_name)
     }
 }
 
@@ -89,13 +152,13 @@ impl RootCertificates {
 fn set_up_platform_verifier(
     connector: &mut SslConnectorBuilder,
     host: Host<&str>,
-    verifier: impl ServerCertVerifier + 'static,
+    verifier: impl LimitedServerCertVerifier + 'static,
 ) -> Result<(), Error> {
     let host_as_server_name = match host {
-        Host::Domain(host_name) => rustls::pki_types::ServerName::try_from(host_name)
+        Host::Domain(host_name) => ServerName::try_from(host_name)
             .map_err(|_| Error::BadHostname)?
             .to_owned(),
-        Host::Ip(ip) => rustls::pki_types::ServerName::IpAddress(ip.into()),
+        Host::Ip(ip) => ServerName::IpAddress(ip.into()),
     };
 
     // Ideally we wouldn't need to wrap these in Arcs, but Rust doesn't understand spawn_blocking
@@ -123,12 +186,9 @@ fn set_up_platform_verifier(
         };
 
         // The rest of the chain should be valid intermediate certificates.
-        let intermediates: Vec<_> = cert_chain
+        let intermediates: Vec<CertificateDer<'_>> = cert_chain
             .collect::<Result<_, boring_signal::error::ErrorStack>>()
             .map_err(|_| SslAlert::BAD_CERTIFICATE)?;
-
-        // We don't do our own OCSP. Either the platform will do its own checks, or it won't.
-        let ocsp_responses = [];
 
         // Borrow these for the nested task. Ideally this wouldn't require refcounting, but Rust
         // doesn't understand spawn_blocking immediately followed by await.
@@ -137,13 +197,7 @@ fn set_up_platform_verifier(
 
         let task = tokio::task::spawn_blocking(move || -> Result<(), SslAlert> {
             verifier
-                .verify_server_cert(
-                    &end_entity,
-                    &intermediates,
-                    &host_as_server_name,
-                    &ocsp_responses,
-                    rustls::pki_types::UnixTime::now(),
-                )
+                .verify_server_cert(end_entity, intermediates, &host_as_server_name)
                 .map_err(|e| {
                     // The most important thing is to reject the certificate. Mapping the errors over
                     // only affects what message gets reported in logs. Which isn't *unimportant*, but
@@ -216,8 +270,77 @@ fn set_up_platform_verifier(
     Ok(())
 }
 
+/// [`LimitedServerCertVerifier`] that runs verification on a background thread.
+struct BackgroundThreadVerifier {
+    sender: std::sync::mpsc::SyncSender<(VerifyContext, BackgroundResultSender)>,
+}
+
+const MAX_QUEUED_VERIFICATIONS: usize = 8;
+
+type BackgroundResultSender =
+    tokio::sync::oneshot::Sender<Result<ServerCertVerified, rustls::Error>>;
+
+impl BackgroundThreadVerifier {
+    fn new(verifier: impl LimitedServerCertVerifier + 'static) -> Self {
+        let (tx, rx) = std::sync::mpsc::sync_channel::<(VerifyContext, BackgroundResultSender)>(
+            MAX_QUEUED_VERIFICATIONS,
+        );
+        let _thread = std::thread::spawn(move || {
+            while let Ok((context, result_sender)) = rx.recv() {
+                let VerifyContext {
+                    end_entity,
+                    intermediates,
+                    server_name,
+                } = context;
+                let result = verifier.verify_server_cert(end_entity, intermediates, &server_name);
+
+                let _ignore_failed_send = result_sender.send(result);
+            }
+        });
+
+        Self { sender: tx }
+    }
+}
+
+/// [`Send`]able package of values that [BackgroundThreadVerifier] pushes to its worker thread
+struct VerifyContext {
+    end_entity: CertificateDer<'static>,
+    intermediates: Vec<CertificateDer<'static>>,
+    server_name: ServerName<'static>,
+}
+
+impl LimitedServerCertVerifier for BackgroundThreadVerifier {
+    fn verify_server_cert(
+        &self,
+        end_entity: CertificateDer<'_>,
+        intermediates: Vec<CertificateDer<'_>>,
+        server_name: &ServerName<'_>,
+    ) -> Result<ServerCertVerified, rustls::Error> {
+        let Self { sender } = self;
+
+        let (result_tx, result_rx) = tokio::sync::oneshot::channel();
+
+        let context = VerifyContext {
+            end_entity: end_entity.clone().into_owned(),
+            intermediates: intermediates
+                .into_iter()
+                .map(CertificateDer::into_owned)
+                .collect(),
+            server_name: server_name.to_owned(),
+        };
+        sender
+            .send((context, result_tx))
+            .expect("Verifier thread is unexpectedly no longer available");
+
+        result_rx
+            .blocking_recv()
+            .map_err(|_recv| rustls::Error::General("worker thread failed".to_owned()))?
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use std::convert::identity;
     use std::sync::Arc;
 
     use assert_matches::assert_matches;
@@ -232,8 +355,29 @@ mod test {
         SERVER_HOSTNAME,
     };
 
+    impl LimitedServerCertVerifier for Box<dyn LimitedServerCertVerifier> {
+        fn verify_server_cert(
+            &self,
+            end_entity: CertificateDer<'_>,
+            intermediates: Vec<CertificateDer<'_>>,
+            server_name: &ServerName<'_>,
+        ) -> Result<ServerCertVerified, rustls::Error> {
+            (**self).verify_server_cert(end_entity, intermediates, server_name)
+        }
+    }
+
+    fn on_background_thread(
+        verifier: Box<dyn LimitedServerCertVerifier>,
+    ) -> Box<dyn LimitedServerCertVerifier> {
+        Box::new(BackgroundThreadVerifier::new(verifier))
+    }
+
+    #[test_case::test_case(identity)]
+    #[test_case::test_case(on_background_thread)]
     #[tokio::test]
-    async fn verify_certificate_via_rustls() {
+    async fn verify_certificate_via_rustls(
+        make_verifier: fn(Box<dyn LimitedServerCertVerifier>) -> Box<dyn LimitedServerCertVerifier>,
+    ) {
         let (addr, server) = localhost_https_server();
         let _server_handle = tokio::spawn(server);
 
@@ -246,12 +390,9 @@ mod test {
             .expect("valid");
 
         let mut ssl = SslConnector::builder(SslMethod::tls_client()).expect("valid");
-        set_up_platform_verifier(
-            &mut ssl,
-            Host::Domain(SERVER_HOSTNAME),
-            Arc::into_inner(verifier).expect("only one referent"),
-        )
-        .expect("valid");
+        let verifier = Arc::into_inner(verifier).expect("only one referent");
+        let verifier = make_verifier(Box::new(verifier));
+        set_up_platform_verifier(&mut ssl, Host::Domain(SERVER_HOSTNAME), verifier).expect("valid");
 
         let transport = TcpStream::connect(addr).await.expect("can connect");
         let connection = tokio_boring_signal::connect(
@@ -267,8 +408,12 @@ mod test {
             .expect("no errors");
     }
 
+    #[test_case::test_case(identity)]
+    #[test_case::test_case(on_background_thread)]
     #[tokio::test]
-    async fn verify_certificate_failure_via_rustls() {
+    async fn verify_certificate_failure_via_rustls(
+        make_verifier: fn(Box<dyn LimitedServerCertVerifier>) -> Box<dyn LimitedServerCertVerifier>,
+    ) {
         let (addr, server) = localhost_https_server();
         let _server_handle = tokio::spawn(server);
 
@@ -282,12 +427,9 @@ mod test {
             .expect("valid");
 
         let mut ssl = SslConnector::builder(SslMethod::tls_client()).expect("valid");
-        set_up_platform_verifier(
-            &mut ssl,
-            Host::Domain(SERVER_HOSTNAME),
-            Arc::into_inner(verifier).expect("only one referent"),
-        )
-        .expect("valid");
+        let verifier = Arc::into_inner(verifier).expect("only one referent");
+        let verifier = make_verifier(Box::new(verifier));
+        set_up_platform_verifier(&mut ssl, Host::Domain(SERVER_HOSTNAME), verifier).expect("valid");
 
         let transport = TcpStream::connect(addr).await.expect("can connect");
         assert_matches!(
