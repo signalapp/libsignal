@@ -871,14 +871,12 @@ impl JniError for SvrbError {
             ),
             SvrbError::Connect(_)
             | SvrbError::Service(_)
-            | SvrbError::AllConnectionAttemptsFailed => {
-                // TODO: 429s will be included in this! We should probably handle them separately.
-                make_single_message_throwable(
-                    env,
-                    &self.to_string(),
-                    ClassName("org.signal.libsignal.net.NetworkException"),
-                )
-            }
+            | SvrbError::AllConnectionAttemptsFailed => make_single_message_throwable(
+                env,
+                &self.to_string(),
+                ClassName("org.signal.libsignal.net.NetworkException"),
+            ),
+            SvrbError::RateLimited(inner) => inner.to_throwable(env),
             SvrbError::PreviousBackupDataInvalid
             | SvrbError::MetadataInvalid
             | SvrbError::DecryptionError(_)

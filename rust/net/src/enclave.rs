@@ -10,16 +10,16 @@ use attest::svr2::RaftConfig;
 use attest::{cds2, enclave};
 use derive_where::derive_where;
 use http::uri::PathAndQuery;
-use libsignal_net_infra::errors::LogSafeDisplay;
+use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_net_infra::extract_retry_later;
 use libsignal_net_infra::route::{
     DirectTcpRouteProvider, DomainFrontRouteProvider, HttpsProvider, TlsRouteProvider,
     WebSocketProvider, WebSocketRouteFragment,
 };
-use libsignal_net_infra::ws;
 use libsignal_net_infra::ws::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
-use libsignal_net_infra::ws::WebSocketServiceError;
+use libsignal_net_infra::ws::{self, WebSocketConnectError, WebSocketServiceError};
 
 use crate::env::{DomainConfig, SvrBEnv};
 use crate::infra::{EnableDomainFronting, EnforceMinimumTls};
@@ -217,8 +217,10 @@ pub trait NewHandshake: EnclaveKind + Sized {
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum Error {
-    /// websocket error: {0}
-    WebSocketConnect(#[from] WebSocketServiceConnectError),
+    /// Websocket error: {0}
+    WebSocketConnect(WebSocketConnectError),
+    /// {0}
+    RateLimited(RetryLater),
     /// Network error: {0}
     WebSocket(#[from] WebSocketServiceError),
     /// Protocol error after establishing a connection: {0}
@@ -237,6 +239,25 @@ impl From<AttestedConnectionError> for Error {
             AttestedConnectionError::WebSocket(net) => Self::WebSocket(net),
             AttestedConnectionError::Protocol(error) => Self::Protocol(error),
             AttestedConnectionError::Attestation(err) => Self::AttestationError(err),
+        }
+    }
+}
+
+impl From<WebSocketServiceConnectError> for Error {
+    fn from(value: WebSocketServiceConnectError) -> Self {
+        match value {
+            WebSocketServiceConnectError::RejectedByServer {
+                response,
+                received_at: _,
+            } => {
+                if response.status() == http::StatusCode::TOO_MANY_REQUESTS {
+                    if let Some(retry_later) = extract_retry_later(response.headers()) {
+                        return Self::RateLimited(retry_later);
+                    }
+                }
+                Self::WebSocket(WebSocketServiceError::Http(response))
+            }
+            WebSocketServiceConnectError::Connect(e, _) => Self::WebSocketConnect(e),
         }
     }
 }

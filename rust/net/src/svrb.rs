@@ -7,8 +7,9 @@ use hmac::{Hmac, Mac};
 use libsignal_account_keys::{
     BackupForwardSecrecyEncryptionKey, BackupForwardSecrecyToken, BackupKey,
 };
+use libsignal_net_infra::errors::RetryLater;
 use libsignal_net_infra::ws::attested::AttestedConnectionError;
-use libsignal_net_infra::ws::WebSocketServiceError;
+use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
 use libsignal_svrb::proto::backup_metadata;
 use libsignal_svrb::{Backup4, Secret};
 use protobuf::Message;
@@ -26,8 +27,6 @@ pub mod traits;
 #[cfg(any(test, feature = "test-util"))]
 pub mod direct;
 
-use crate::ws::WebSocketServiceConnectError;
-
 const IV_SIZE: usize = Aes256Ctr32::NONCE_SIZE;
 
 /// SVRB-specific error type
@@ -41,7 +40,9 @@ const IV_SIZE: usize = Aes256Ctr32::NONCE_SIZE;
 #[ignore_extra_doc_attributes]
 pub enum Error {
     /// Connection error: {0}
-    Connect(WebSocketServiceConnectError),
+    Connect(WebSocketConnectError),
+    /// {0}
+    RateLimited(RetryLater),
     /// Network error: {0}
     Service(#[from] WebSocketServiceError),
     /// Protocol error after establishing a connection: {0}
@@ -89,6 +90,7 @@ impl From<super::svr::Error> for Error {
         use super::svr::Error as SvrError;
         match err {
             SvrError::WebSocketConnect(inner) => Self::Connect(inner),
+            SvrError::RateLimited(inner) => Self::RateLimited(inner),
             SvrError::WebSocket(inner) => Self::Service(inner),
             SvrError::Protocol(error) => Self::Protocol(error.to_string()),
             SvrError::AttestationError(inner) => Self::AttestationError(inner),

@@ -111,6 +111,7 @@ public class SvrB internal constructor(
    *   - [Result.failure] containing [NetworkException] if the network operation fails (connection, service, or timeout errors)
    *   - [Result.failure] containing [NetworkProtocolException] if there is a protocol error
    *   - [Result.failure] containing [AttestationFailedException] if enclave attestation fails
+   *   - [Result.failure] containing [RetryLaterException] if the server is rate limiting this client
    *   - [Result.failure] containing [SvrException] for other SVR request failures
    */
   public fun store(
@@ -168,6 +169,7 @@ public class SvrB internal constructor(
    *   - [Result.failure] containing [NetworkException] if the network operation fails (connection, service, or timeout errors)
    *   - [Result.failure] containing [NetworkProtocolException] if there is a protocol error
    *   - [Result.failure] containing [AttestationFailedException] if enclave attestation fails
+   *   - [Result.failure] containing [RetryLaterException] if the server is rate limiting this client
    *   - [Result.failure] containing [SvrException] for other SVR request failures
    */
   public fun restore(

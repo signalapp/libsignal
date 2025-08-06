@@ -1021,23 +1021,17 @@ impl FfiError for FutureCancelled {
 impl FfiError for libsignal_net::svrb::Error {
     fn describe(&self) -> String {
         use libsignal_net::infra::ws::WebSocketConnectError;
-        use libsignal_net::ws::WebSocketServiceConnectError;
 
         match self {
             Self::AllConnectionAttemptsFailed => {
                 "no connection attempts succeeded before timeout".to_owned()
             }
             Self::Connect(e) => match e {
-                WebSocketServiceConnectError::Connect(inner, _) => match inner {
-                    WebSocketConnectError::Timeout => "Connect timed out".to_owned(),
-                    WebSocketConnectError::Transport(e) => format!("IO error: {e}"),
-                    WebSocketConnectError::WebSocketError(_) => format!("WebSocket error: {e}"),
-                },
-                WebSocketServiceConnectError::RejectedByServer { .. } => {
-                    // TODO: 429s will be included in this! We should probably handle them separately.
-                    format!("Server rejected connection: {e}")
-                }
+                WebSocketConnectError::Timeout => "Connect timed out".to_owned(),
+                WebSocketConnectError::Transport(e) => format!("IO error: {e}"),
+                WebSocketConnectError::WebSocketError(_) => format!("WebSocket error: {e}"),
             },
+            Self::RateLimited(inner) => inner.describe(),
             Self::Service(e) => format!("WebSocket error: {e}"),
             Self::Protocol(e) => format!("Protocol error: {e}"),
             Self::AttestationError(inner) => inner.describe(),
@@ -1054,20 +1048,15 @@ impl FfiError for libsignal_net::svrb::Error {
 
     fn code(&self) -> SignalErrorCode {
         use libsignal_net::infra::ws::WebSocketConnectError;
-        use libsignal_net::ws::WebSocketServiceConnectError;
 
         match self {
             Self::AllConnectionAttemptsFailed => SignalErrorCode::ConnectionFailed,
             Self::Connect(e) => match e {
-                WebSocketServiceConnectError::RejectedByServer { .. } => {
-                    SignalErrorCode::ConnectionFailed
-                }
-                WebSocketServiceConnectError::Connect(inner, _) => match inner {
-                    WebSocketConnectError::Transport(_) => SignalErrorCode::IoError,
-                    WebSocketConnectError::Timeout => SignalErrorCode::ConnectionTimedOut,
-                    WebSocketConnectError::WebSocketError(_) => SignalErrorCode::WebSocket,
-                },
+                WebSocketConnectError::Transport(_) => SignalErrorCode::IoError,
+                WebSocketConnectError::Timeout => SignalErrorCode::ConnectionTimedOut,
+                WebSocketConnectError::WebSocketError(_) => SignalErrorCode::WebSocket,
             },
+            Self::RateLimited(inner) => inner.code(),
             Self::Service(_) => SignalErrorCode::WebSocket,
             Self::AttestationError(inner) => inner.code(),
             Self::Protocol(_) => SignalErrorCode::NetworkProtocol,
@@ -1083,6 +1072,13 @@ impl FfiError for libsignal_net::svrb::Error {
     fn provide_tries_remaining(&self) -> Result<u32, WrongErrorKind> {
         match self {
             Self::RestoreFailed(tries) => Ok(*tries),
+            _ => Err(WrongErrorKind),
+        }
+    }
+
+    fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
+        match self {
+            Self::RateLimited(inner) => inner.provide_retry_after_seconds(),
             _ => Err(WrongErrorKind),
         }
     }

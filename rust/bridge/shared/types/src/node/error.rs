@@ -280,9 +280,9 @@ impl SignalNodeError for libsignal_net::svrb::Error {
     ) -> Handle<'a, JsError> {
         let (name, make_props) = match &self {
             Self::Service(_) | Self::AllConnectionAttemptsFailed | Self::Connect(_) => {
-                // TODO: 429s will be included in this! We should probably handle them separately.
                 (Some(IO_ERROR), None)
             }
+            Self::RateLimited(inner) => return inner.into_throwable(cx, module, operation_name),
             Self::AttestationError(_) => (Some("SvrAttestationError"), None),
             Self::RestoreFailed(tries_remaining) => (
                 Some("SvrRestoreFailed"),

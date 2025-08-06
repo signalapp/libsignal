@@ -5,10 +5,8 @@
 
 use std::default::Default;
 
-use http::StatusCode;
 use libsignal_core::{Aci, Pni, E164};
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
-use libsignal_net_infra::extract_retry_later;
 use libsignal_net_infra::route::{RouteProvider, UnresolvedWebsocketServiceRoute};
 use libsignal_net_infra::ws::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
@@ -24,7 +22,6 @@ use crate::auth::Auth;
 use crate::connect_state::{ConnectionResources, WebSocketTransportConnectorFactory};
 use crate::enclave::{Cdsi, EndpointParams};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
-use crate::ws::WebSocketServiceConnectError;
 
 trait FixedLengthSerializable {
     const SERIALIZED_LEN: usize;
@@ -278,24 +275,12 @@ impl From<crate::enclave::Error> for LookupError {
     fn from(value: crate::enclave::Error) -> Self {
         use crate::enclave::Error;
         match value {
-            Error::WebSocketConnect(err) => match err {
-                WebSocketServiceConnectError::RejectedByServer {
-                    response,
-                    received_at: _,
-                } => {
-                    if response.status() == StatusCode::TOO_MANY_REQUESTS {
-                        if let Some(retry_later) = extract_retry_later(response.headers()) {
-                            return Self::RateLimited(retry_later);
-                        }
-                    }
-                    Self::WebSocket(WebSocketServiceError::Http(response))
-                }
-                WebSocketServiceConnectError::Connect(e, _) => match e {
-                    WebSocketConnectError::Timeout => Self::AllConnectionAttemptsFailed,
-                    WebSocketConnectError::Transport(e) => Self::ConnectTransport(e),
-                    WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
-                },
+            Error::WebSocketConnect(e) => match e {
+                WebSocketConnectError::Timeout => Self::AllConnectionAttemptsFailed,
+                WebSocketConnectError::Transport(e) => Self::ConnectTransport(e),
+                WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
             },
+            Error::RateLimited(inner) => Self::RateLimited(inner),
             Error::AttestationError(err) => Self::AttestationError(err),
             Error::WebSocket(err) => Self::WebSocket(err),
             Error::Protocol(error) => Self::EnclaveProtocol(error),
