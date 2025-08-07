@@ -597,7 +597,7 @@ impl SimpleArgTypeInfo for crate::net::registration::SignedPublicPreKey {
 
 impl<T: ResultTypeInfo, E> ResultTypeInfo for Result<T, E>
 where
-    E: FfiError,
+    E: IntoFfiError,
 {
     type ResultType = T::ResultType;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
