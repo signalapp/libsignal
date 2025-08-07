@@ -69,7 +69,9 @@ import org.signal.libsignal.messagebackup.BackupKey
  * // Securely persist stored.nextBackupSecretData for the next backup
  * ```
  *
- * @see [BackupKey], [MessageBackupKey], [BackupForwardSecrecyToken]
+ * @see [BackupKey]
+ * @see [MessageBackupKey](org.signal.libsignal.messagebackup.MessageBackupKey)
+ * @see [BackupForwardSecrecyToken]
  */
 public class SvrB internal constructor(
   private val network: Network,
@@ -106,13 +108,22 @@ public class SvrB internal constructor(
    * - the already-persisted result from [createNewBackupChain], only if neither of the other
    *   two are available.
    * @return a [CompletableFuture] that completes with:
-   *   - [Result.success] containing [SvrBStoreResponse] with the forward secrecy token, metadata, and secret data on success
-   *   - [Result.failure] containing [SvrException] if the previous secret data is malformed, or for encryption/decryption errors
-   *   - [Result.failure] containing [NetworkException] if the network operation fails (connection, service, or timeout errors)
-   *   - [Result.failure] containing [NetworkProtocolException] if there is a protocol error
-   *   - [Result.failure] containing [AttestationFailedException] if enclave attestation fails
-   *   - [Result.failure] containing [RetryLaterException] if the server is rate limiting this client
-   *   - [Result.failure] containing [SvrException] for other SVR request failures
+   * - **[Result.success]** containing [SvrBStoreResponse] with the forward secrecy token, metadata,
+   *   and secret data on success
+   * - [Result.failure] containing
+   *   [InvalidSvrBDataException](org.signal.libsignal.svr.InvalidSvrBDataException) if the previous
+   *   secret data is malformed. There's no choice here but to **start a new chain**.
+   * - [Result.failure] containing [RetryLaterException] if the server is rate limiting this client.
+   *   This is **retryable** after waiting the designated delay.
+   * - [Result.failure] containing [NetworkException] if the network operation fails (connection,
+   *   service, or timeout errors). These are **retryable**.
+   * - [Result.failure] containing [NetworkProtocolException] if there is a protocol error. This
+   *   indicates a possible bug in libsignal or in the enclave.
+   * - [Result.failure] containing
+   *   [AttestationFailedException](org.signal.libsignal.attest.AttestationFailedException),
+   *   [AttestationDataException](org.signal.libsignal.attest.AttestationDataException), or
+   *   [SgxCommunicationFailureException](org.signal.libsignal.sgxsession.SgxCommunicationFailureException)
+   *   if enclave attestation fails. This indicates a possible bug in libsignal or in the enclave.
    */
   public fun store(
     backupKey: BackupKey,
@@ -160,17 +171,30 @@ public class SvrB internal constructor(
    * 5. Store the returned [SvrBRestoreResponse.nextBackupSecretData] locally.
    *
    * @param backupKey The backup key derived from the Account Entropy Pool (AEP).
-   * @param metadata The metadata that was stored in a header in the backup file during backup creation.
+   * @param metadata The metadata that was stored in a header in the backup file during backup
+   * creation.
    * @return a [CompletableFuture] that completes with:
-   *   - [Result.success] containing [BackupForwardSecrecyToken] needed to derive keys for decrypting the backup
-   *   - [Result.failure] containing [SvrException] if the metadata is invalid
-   *   - [Result.failure] containing [RestoreFailedException] if restoration fails (with remaining tries count)
-   *   - [Result.failure] containing [DataMissingException] if the backup data is not found on the server
-   *   - [Result.failure] containing [NetworkException] if the network operation fails (connection, service, or timeout errors)
-   *   - [Result.failure] containing [NetworkProtocolException] if there is a protocol error
-   *   - [Result.failure] containing [AttestationFailedException] if enclave attestation fails
-   *   - [Result.failure] containing [RetryLaterException] if the server is rate limiting this client
-   *   - [Result.failure] containing [SvrException] for other SVR request failures
+   * - **[Result.success]** containing [BackupForwardSecrecyToken] needed to derive keys for
+   *   decrypting the backup
+   * - [Result.failure] containing
+   *   [InvalidSvrBDataException](org.signal.libsignal.svr.InvalidSvrBDataException) if the backup
+   *   metadata is malformed. In this case the user's data is **not recoverable**.
+   * - [Result.failure] containing [RestoreFailedException] if restoration fails (with remaining
+   *   tries count). This should never happen but if it does the user's data is **not recoverable**.
+   * - [Result.failure] containing [DataMissingException] if the backup data is not found on the
+   *   server, indicating an **incorrect backup key** (which may in turn imply the user's data is
+   *   not recoverable).
+   * - [Result.failure] containing [RetryLaterException] if the server is rate limiting this client.
+   *   This is **retryable** after waiting the designated delay.
+   * - [Result.failure] containing [NetworkException] if the network operation fails (connection,
+   *   service, or timeout errors). These are **retryable**.
+   * - [Result.failure] containing [NetworkProtocolException] if there is a protocol error. This
+   *   indicates a possible bug in libsignal or in the enclave.
+   * - [Result.failure] containing
+   *   [AttestationFailedException](org.signal.libsignal.attest.AttestationFailedException),
+   *   [AttestationDataException](org.signal.libsignal.attest.AttestationDataException), or
+   *   [SgxCommunicationFailureException](org.signal.libsignal.sgxsession.SgxCommunicationFailureException)
+   *   if enclave attestation fails. This indicates a possible bug in libsignal or in the enclave.
    */
   public fun restore(
     backupKey: BackupKey,

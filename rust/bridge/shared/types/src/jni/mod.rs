@@ -859,11 +859,7 @@ impl JniError for SvrbError {
                 &self.to_string(),
                 ClassName("org.signal.libsignal.svr.DataMissingException"),
             ),
-            SvrbError::AttestationError(_) => make_single_message_throwable(
-                env,
-                &self.to_string(),
-                ClassName("org.signal.libsignal.attest.AttestationFailedException"),
-            ),
+            SvrbError::AttestationError(inner) => inner.to_throwable(env),
             SvrbError::Protocol(_) => make_single_message_throwable(
                 env,
                 &self.to_string(),
@@ -882,7 +878,7 @@ impl JniError for SvrbError {
             | SvrbError::DecryptionError(_) => make_single_message_throwable(
                 env,
                 &self.to_string(),
-                ClassName("org.signal.libsignal.svr.SvrException"),
+                ClassName("org.signal.libsignal.svr.InvalidSvrBDataException"),
             ),
         }
     }

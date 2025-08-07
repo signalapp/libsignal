@@ -9,4 +9,8 @@ public class SvrException extends Exception {
   public SvrException(String message) {
     super(message);
   }
+
+  public SvrException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }
