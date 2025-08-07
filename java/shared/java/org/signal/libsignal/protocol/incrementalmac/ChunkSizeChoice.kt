@@ -8,23 +8,24 @@ import org.signal.libsignal.internal.Native
 
 public abstract class ChunkSizeChoice {
   public abstract val sizeInBytes: Int
+
   public companion object {
     @JvmStatic
-    public fun everyNthByte(n: Int): ChunkSizeChoice {
-      return EveryN(n)
-    }
+    public fun everyNthByte(n: Int): ChunkSizeChoice = EveryN(n)
 
     @JvmStatic
-    public fun inferChunkSize(dataSize: Int): ChunkSizeChoice {
-      return ChunksOf(dataSize)
-    }
+    public fun inferChunkSize(dataSize: Int): ChunkSizeChoice = ChunksOf(dataSize)
   }
 }
 
-internal final data class EveryN(val n: Int) : ChunkSizeChoice() {
+internal final data class EveryN(
+  val n: Int,
+) : ChunkSizeChoice() {
   override val sizeInBytes: Int = n
 }
 
-internal final data class ChunksOf(val dataSize: Int) : ChunkSizeChoice() {
+internal final data class ChunksOf(
+  val dataSize: Int,
+) : ChunkSizeChoice() {
   override val sizeInBytes: Int = Native.IncrementalMac_CalculateChunkSize(this.dataSize)
 }

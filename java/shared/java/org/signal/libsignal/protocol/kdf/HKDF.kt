@@ -8,9 +8,11 @@ import org.signal.libsignal.internal.Native
 
 public object HKDF {
   @JvmStatic
-  public fun deriveSecrets(inputKeyMaterial: ByteArray, info: ByteArray, outputLength: Int): ByteArray {
-    return Native.HKDF_DeriveSecrets(outputLength, inputKeyMaterial, info, null)
-  }
+  public fun deriveSecrets(
+    inputKeyMaterial: ByteArray,
+    info: ByteArray,
+    outputLength: Int,
+  ): ByteArray = Native.HKDF_DeriveSecrets(outputLength, inputKeyMaterial, info, null)
 
   @JvmStatic
   public fun deriveSecrets(
@@ -18,7 +20,5 @@ public object HKDF {
     salt: ByteArray,
     info: ByteArray?,
     outputLength: Int,
-  ): ByteArray {
-    return Native.HKDF_DeriveSecrets(outputLength, inputKeyMaterial, info, salt)
-  }
+  ): ByteArray = Native.HKDF_DeriveSecrets(outputLength, inputKeyMaterial, info, salt)
 }

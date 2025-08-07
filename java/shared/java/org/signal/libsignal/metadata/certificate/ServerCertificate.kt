@@ -25,8 +25,7 @@ public class ServerCertificate : NativeHandleGuard.SimpleOwner {
   /** Use `trustRoot` to generate and sign a new server certificate containing `key`. */
   public constructor(trustRoot: ECPrivateKey, keyId: Int, key: ECPublicKey) :
     super(
-      key.guardedMap {
-          serverPublicHandle ->
+      key.guardedMap { serverPublicHandle ->
         trustRoot.guardedMap { trustRootHandle ->
           Native.ServerCertificate_New(keyId, serverPublicHandle, trustRootHandle)
         }
@@ -61,8 +60,8 @@ public class ServerCertificate : NativeHandleGuard.SimpleOwner {
     senderDeviceId: Int,
     senderIdentityKey: ECPublicKey,
     expiration: Long,
-  ): SenderCertificate {
-    return senderIdentityKey.guardedMap { identityHandle ->
+  ): SenderCertificate =
+    senderIdentityKey.guardedMap { identityHandle ->
       this.guardedMap { serverCertificateHandle ->
         signingKey.guardedMap { serverPrivateHandle ->
           SenderCertificate(
@@ -79,7 +78,6 @@ public class ServerCertificate : NativeHandleGuard.SimpleOwner {
         }
       }
     }
-  }
 
   /**
    * Issue a sender certificate.
@@ -94,8 +92,8 @@ public class ServerCertificate : NativeHandleGuard.SimpleOwner {
     senderDeviceId: Int,
     senderIdentityKey: ECPublicKey,
     expiration: Long,
-  ): SenderCertificate {
-    return issue(
+  ): SenderCertificate =
+    issue(
       signingKey,
       sender.toString(),
       senderE164,
@@ -103,7 +101,6 @@ public class ServerCertificate : NativeHandleGuard.SimpleOwner {
       senderIdentityKey,
       expiration,
     )
-  }
 }
 
 @Throws(InvalidCertificateException::class)

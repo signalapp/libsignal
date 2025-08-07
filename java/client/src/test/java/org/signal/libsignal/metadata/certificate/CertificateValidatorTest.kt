@@ -9,5 +9,7 @@ import org.signal.libsignal.protocol.ecc.ECPublicKey
 
 class CertificateValidatorTest {
   // This is the compile-time test. Android relies on this class being inheritable for tests.
-  class CertificateValidatorNeedsToBeinheritable(trustRoot: ECPublicKey) : CertificateValidator(trustRoot)
+  class CertificateValidatorNeedsToBeinheritable(
+    trustRoot: ECPublicKey,
+  ) : CertificateValidator(trustRoot)
 }

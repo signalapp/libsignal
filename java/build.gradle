@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     id "base"
     id "signing"
-    id "com.diffplug.spotless" version "6.20.0"
+    id "com.diffplug.spotless" version "7.2.1"
     id "io.github.gradle-nexus.publish-plugin" version "2.0.0"
 
     id "org.jetbrains.kotlin.jvm" version "2.1.0" apply false

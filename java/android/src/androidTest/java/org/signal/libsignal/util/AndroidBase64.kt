@@ -9,8 +9,9 @@ public class AndroidBase64 : org.signal.libsignal.util.Base64.Impl {
 
   public override fun encode(raw: ByteArray): String = Base64.encodeToString(raw, Base64.NO_WRAP)
 
-  public override fun encodeUrl(raw: ByteArray): String = Base64.encodeToString(
-    raw,
-    Base64.NO_WRAP or Base64.NO_PADDING or Base64.URL_SAFE,
-  )
+  public override fun encodeUrl(raw: ByteArray): String =
+    Base64.encodeToString(
+      raw,
+      Base64.NO_WRAP or Base64.NO_PADDING or Base64.URL_SAFE,
+    )
 }

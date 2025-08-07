@@ -9,9 +9,11 @@ import org.signal.libsignal.internal.Native
 import org.signal.libsignal.internal.NativeHandleGuard
 import org.signal.libsignal.protocol.InvalidKeyException
 
-public class KEMSecretKey(nativeHandle: Long) : NativeHandleGuard.SimpleOwner(
-  NativeHandleGuard.SimpleOwner.throwIfNull(nativeHandle),
-) {
+public class KEMSecretKey(
+  nativeHandle: Long,
+) : NativeHandleGuard.SimpleOwner(
+    NativeHandleGuard.SimpleOwner.throwIfNull(nativeHandle),
+  ) {
   @Throws(InvalidKeyException::class)
   public constructor(privateKey: ByteArray) : this(
     Native.KyberSecretKey_Deserialize(privateKey),
@@ -21,7 +23,5 @@ public class KEMSecretKey(nativeHandle: Long) : NativeHandleGuard.SimpleOwner(
     Native.KyberSecretKey_Destroy(nativeHandle)
   }
 
-  public fun serialize(): ByteArray {
-    return guardedMapChecked(Native::KyberSecretKey_Serialize)
-  }
+  public fun serialize(): ByteArray = guardedMapChecked(Native::KyberSecretKey_Serialize)
 }

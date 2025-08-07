@@ -8,16 +8,17 @@ package org.signal.libsignal.protocol.kem
 import org.signal.libsignal.internal.Native
 import org.signal.libsignal.internal.NativeHandleGuard
 
-public class KEMKeyPair(nativeHandle: Long) : NativeHandleGuard.SimpleOwner(
-  NativeHandleGuard.SimpleOwner.throwIfNull(nativeHandle),
-) {
+public class KEMKeyPair(
+  nativeHandle: Long,
+) : NativeHandleGuard.SimpleOwner(
+    NativeHandleGuard.SimpleOwner.throwIfNull(nativeHandle),
+  ) {
   public companion object {
     @JvmStatic
-    public fun generate(reserved: KEMKeyType): KEMKeyPair {
-      return when (reserved) {
+    public fun generate(reserved: KEMKeyType): KEMKeyPair =
+      when (reserved) {
         KEMKeyType.KYBER_1024 -> KEMKeyPair(Native.KyberKeyPair_Generate())
       }
-    }
   }
 
   protected override fun release(nativeHandle: Long) {

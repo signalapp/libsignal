@@ -28,8 +28,7 @@ public class PreKeyBundle(
   kyberPreKeyId: Int,
   kyberPreKeyPublic: KEMPublicKey,
   kyberPreKeySignature: ByteArray,
-) :
-  NativeHandleGuard.SimpleOwner(
+) : NativeHandleGuard.SimpleOwner(
     createNativeFrom(
       registrationId,
       deviceId,
@@ -44,7 +43,6 @@ public class PreKeyBundle(
       kyberPreKeySignature,
     ),
   ) {
-
   public companion object {
     // -1 is treated as Option<u32>::None by the bridging layer
     public const val NULL_PRE_KEY_ID: Int = -1
@@ -67,10 +65,11 @@ public class PreKeyBundle(
     get() = guardedMapChecked(Native::PreKeyBundle_GetPreKeyId)
 
   public val preKey: ECPublicKey?
-    get() = guardedMapChecked(Native::PreKeyBundle_GetPreKeyPublic).let {
-      if (it == 0L) { return null }
-      ECPublicKey(it)
-    }
+    get() =
+      guardedMapChecked(Native::PreKeyBundle_GetPreKeyPublic).let {
+        if (it == 0L) return null
+        ECPublicKey(it)
+      }
 
   /**
    * @return the unique key ID for this signed prekey.
@@ -94,11 +93,12 @@ public class PreKeyBundle(
    * @return the [IdentityKey] of this PreKey's owner.
    */
   public val identityKey: IdentityKey
-    get() = IdentityKey(
-      ECPublicKey(
-        guardedMapChecked(Native::PreKeyBundle_GetIdentityKey),
-      ),
-    )
+    get() =
+      IdentityKey(
+        ECPublicKey(
+          guardedMapChecked(Native::PreKeyBundle_GetIdentityKey),
+        ),
+      )
 
   /**
    * @return the registration ID associated with this PreKey.
@@ -137,8 +137,8 @@ private fun createNativeFrom(
   kyberPreKeyId: Int,
   kyberPreKeyPublic: KEMPublicKey,
   kyberPreKeySignature: ByteArray,
-): Long {
-  return NativeHandleGuard(preKeyPublic).use { preKeyPublicGuard ->
+): Long =
+  NativeHandleGuard(preKeyPublic).use { preKeyPublicGuard ->
     signedPreKeyPublic.guardedMap { signedPreKeyPublicHandle ->
       identityKey.getPublicKey().guardedMap { identityKeyHandle ->
         kyberPreKeyPublic.guardedMap { kyberPreKeyPublicHandle ->
@@ -159,4 +159,3 @@ private fun createNativeFrom(
       }
     }
   }
-}

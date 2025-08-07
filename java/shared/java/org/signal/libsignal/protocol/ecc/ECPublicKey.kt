@@ -11,7 +11,10 @@ import org.signal.libsignal.protocol.InvalidKeyException
 import org.signal.libsignal.protocol.SerializablePublicKey
 import java.util.Arrays
 
-public final class ECPublicKey : NativeHandleGuard.SimpleOwner, Comparable<ECPublicKey>, SerializablePublicKey {
+public final class ECPublicKey :
+  NativeHandleGuard.SimpleOwner,
+  Comparable<ECPublicKey>,
+  SerializablePublicKey {
   @Deprecated("use the constructor that takes an offset and length")
   @Throws(InvalidKeyException::class)
   public constructor(serialized: ByteArray, offset: Int) : this(serialized, offset, length = serialized.size - offset)
@@ -54,9 +57,13 @@ public final class ECPublicKey : NativeHandleGuard.SimpleOwner, Comparable<ECPub
     }
   }
 
-  public fun verifySignature(message: ByteArray, signature: ByteArray): Boolean {
-    return guardedMap { Native.ECPublicKey_Verify(it, message, signature) }
-  }
+  public fun verifySignature(
+    message: ByteArray,
+    signature: ByteArray,
+  ): Boolean =
+    guardedMap {
+      Native.ECPublicKey_Verify(it, message, signature)
+    }
 
   /**
    * Seals a message so only the holder of the private key can decrypt it.
@@ -70,18 +77,20 @@ public final class ECPublicKey : NativeHandleGuard.SimpleOwner, Comparable<ECPub
    *
    * [RFC 9180]: https://www.rfc-editor.org/rfc/rfc9180.html
    */
-  public fun seal(message: ByteArray, info: ByteArray, associatedData: ByteArray = byteArrayOf()): ByteArray {
-    return guardedMap { Native.ECPublicKey_HpkeSeal(it, message, info, associatedData) }
-  }
+  public fun seal(
+    message: ByteArray,
+    info: ByteArray,
+    associatedData: ByteArray = byteArrayOf(),
+  ): ByteArray = guardedMap { Native.ECPublicKey_HpkeSeal(it, message, info, associatedData) }
 
   /** A convenience overload of [seal(ByteArray,ByteArray,ByteArray)], using the UTF-8 bytes of `info`. */
-  public fun seal(message: ByteArray, info: String, associatedData: ByteArray = byteArrayOf()): ByteArray {
-    return seal(message, info.toByteArray(), associatedData)
-  }
+  public fun seal(
+    message: ByteArray,
+    info: String,
+    associatedData: ByteArray = byteArrayOf(),
+  ): ByteArray = seal(message, info.toByteArray(), associatedData)
 
-  public fun serialize(): ByteArray {
-    return guardedMap(Native::ECPublicKey_Serialize)
-  }
+  public fun serialize(): ByteArray = guardedMap(Native::ECPublicKey_Serialize)
 
   public val publicKeyBytes: ByteArray
     get() = guardedMap(Native::ECPublicKey_GetPublicKeyBytes)
@@ -89,27 +98,24 @@ public final class ECPublicKey : NativeHandleGuard.SimpleOwner, Comparable<ECPub
   public val type: Int
     get() = this.serialize()[0].toInt()
 
-  override fun equals(other: Any?): Boolean {
-    return when (other) {
+  override fun equals(other: Any?): Boolean =
+    when (other) {
       null -> false
-      is ECPublicKey -> this.guardedMap { thisHandle ->
-        other.guardedMap { thatHandle ->
-          Native.ECPublicKey_Equals(thisHandle, thatHandle)
+      is ECPublicKey ->
+        this.guardedMap { thisHandle ->
+          other.guardedMap { thatHandle ->
+            Native.ECPublicKey_Equals(thisHandle, thatHandle)
+          }
         }
-      }
       else -> false
     }
-  }
 
-  public override fun hashCode(): Int {
-    return Arrays.hashCode(this.serialize())
-  }
+  public override fun hashCode(): Int = Arrays.hashCode(this.serialize())
 
-  public override fun compareTo(other: ECPublicKey): Int {
-    return this.guardedMap { thisHandle ->
+  public override fun compareTo(other: ECPublicKey): Int =
+    this.guardedMap { thisHandle ->
       other.guardedMap { otherHandle ->
         Native.ECPublicKey_Compare(thisHandle, otherHandle)
       }
     }
-  }
 }

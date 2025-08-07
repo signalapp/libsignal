@@ -187,7 +187,8 @@ public class BridgingTest {
     map.put("c", "ccc");
     final var dumped = new BridgedStringMap(map).dump();
     assertEquals(
-        dumped, """
+        dumped,
+        """
       {
         "a": "aaa",
         "b": "bbb",

@@ -142,21 +142,23 @@ public annotation class CalledFromNative {
         methodName: String,
         argumentTypes: Array<Class<*>>,
       ) = sequence {
-        var interfaces = klass.let {
-          var stack = arrayListOf(it)
-          var found = HashSet<Class<*>>()
+        var interfaces =
+          klass.let {
+            var stack = arrayListOf(it)
+            var found = HashSet<Class<*>>()
 
-          while (true) {
-            var first = stack.removeLastOrNull() ?: break
-            found.add(first)
-            first.interfaces.filterNotTo(stack) { found.contains(it) }
+            while (true) {
+              var first = stack.removeLastOrNull() ?: break
+              found.add(first)
+              first.interfaces.filterNotTo(stack) { found.contains(it) }
+            }
+            found
           }
-          found
-        }
         for (inter in interfaces) {
           try {
             yield(inter.getDeclaredMethod(methodName, *argumentTypes))
-          } catch (e: NoSuchMethodException) { }
+          } catch (e: NoSuchMethodException) {
+          }
         }
       }
     }

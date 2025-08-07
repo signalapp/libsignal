@@ -13,9 +13,7 @@ import org.signal.libsignal.protocol.InvalidMessageException
 public class ECPrivateKey : NativeHandleGuard.SimpleOwner {
   public companion object {
     @JvmStatic
-    public fun generate(): ECPrivateKey {
-      return ECPrivateKey(Native.ECPrivateKey_Generate())
-    }
+    public fun generate(): ECPrivateKey = ECPrivateKey(Native.ECPrivateKey_Generate())
   }
 
   @Throws(InvalidKeyException::class)
@@ -27,21 +25,16 @@ public class ECPrivateKey : NativeHandleGuard.SimpleOwner {
     Native.ECPrivateKey_Destroy(nativeHandle)
   }
 
-  public fun serialize(): ByteArray {
-    return guardedMapChecked(Native::ECPrivateKey_Serialize)
-  }
+  public fun serialize(): ByteArray = guardedMapChecked(Native::ECPrivateKey_Serialize)
 
-  public fun calculateSignature(message: ByteArray): ByteArray {
-    return guardedMap { Native.ECPrivateKey_Sign(it, message) }
-  }
+  public fun calculateSignature(message: ByteArray): ByteArray = guardedMap { Native.ECPrivateKey_Sign(it, message) }
 
-  public fun calculateAgreement(other: ECPublicKey): ByteArray {
-    return this.guardedMap { privateKey ->
+  public fun calculateAgreement(other: ECPublicKey): ByteArray =
+    this.guardedMap { privateKey ->
       other.guardedMap { publicKey ->
         Native.ECPrivateKey_Agree(privateKey, publicKey)
       }
     }
-  }
 
   /**
    * Opens a ciphertext sealed with [PublicKey.seal(ByteArray,ByteArray,ByteArray)].
@@ -56,18 +49,20 @@ public class ECPrivateKey : NativeHandleGuard.SimpleOwner {
    * [RFC 9180]: https://www.rfc-editor.org/rfc/rfc9180.html
    */
   @Throws(InvalidMessageException::class, IllegalArgumentException::class)
-  public fun open(ciphertext: ByteArray, info: ByteArray, associatedData: ByteArray = byteArrayOf()): ByteArray {
-    return guardedMap { Native.ECPrivateKey_HpkeOpen(it, ciphertext, info, associatedData) }
-  }
+  public fun open(
+    ciphertext: ByteArray,
+    info: ByteArray,
+    associatedData: ByteArray = byteArrayOf(),
+  ): ByteArray = guardedMap { Native.ECPrivateKey_HpkeOpen(it, ciphertext, info, associatedData) }
 
   /** A convenience overload of [open(ByteArray,ByteArray,ByteArray)], using the UTF-8 bytes of `info`. */
   @Throws(InvalidMessageException::class, IllegalArgumentException::class)
-  public fun open(ciphertext: ByteArray, info: String, associatedData: ByteArray = byteArrayOf()): ByteArray {
-    return open(ciphertext, info.toByteArray(), associatedData)
-  }
+  public fun open(
+    ciphertext: ByteArray,
+    info: String,
+    associatedData: ByteArray = byteArrayOf(),
+  ): ByteArray = open(ciphertext, info.toByteArray(), associatedData)
 
   @JvmName("publicKey")
-  public fun getPublicKey(): ECPublicKey {
-    return ECPublicKey(guardedMapChecked(Native::ECPrivateKey_GetPublicKey))
-  }
+  public fun getPublicKey(): ECPublicKey = ECPublicKey(guardedMapChecked(Native::ECPrivateKey_GetPublicKey))
 }

@@ -78,19 +78,17 @@ public class SvrB internal constructor(
   private val username: String,
   private val password: String,
 ) {
-
   /**
    * Generates backup "secret data" for a fresh install.
    *
    * Should not be used if any previous backups exist for this `backupKey`, whether uploaded or
    * restored by the local device. See [SvrB] for more information.
    */
-  public fun createNewBackupChain(backupKey: BackupKey): ByteArray {
-    return Native.SecureValueRecoveryForBackups_CreateNewBackupChain(
+  public fun createNewBackupChain(backupKey: BackupKey): ByteArray =
+    Native.SecureValueRecoveryForBackups_CreateNewBackupChain(
       network.connectionManager.environment().value,
       backupKey.internalContentsForJNI,
     )
-  }
 
   /**
    * Prepares a backup for storage with forward secrecy guarantees.
@@ -129,31 +127,34 @@ public class SvrB internal constructor(
     backupKey: BackupKey,
     previousSecretData: ByteArray,
   ): CompletableFuture<Result<SvrBStoreResponse>> {
-    val nativeFuture = network.asyncContext.guardedMap { asyncContextHandle ->
-      network.connectionManager.guardedMap { connectionManagerHandle ->
-        Native.SecureValueRecoveryForBackups_StoreBackup(
-          asyncContextHandle,
-          backupKey.internalContentsForJNI,
-          previousSecretData,
-          connectionManagerHandle,
-          username,
-          password,
-        )
+    val nativeFuture =
+      network.asyncContext.guardedMap { asyncContextHandle ->
+        network.connectionManager.guardedMap { connectionManagerHandle ->
+          Native.SecureValueRecoveryForBackups_StoreBackup(
+            asyncContextHandle,
+            backupKey.internalContentsForJNI,
+            previousSecretData,
+            connectionManagerHandle,
+            username,
+            password,
+          )
+        }
       }
-    }
 
-    return nativeFuture.thenApply { backupResponseHandle ->
-      val response = BackupStoreResponse(backupResponseHandle)
-      response.guardedMap { _ ->
-        SvrBStoreResponse(
-          forwardSecrecyToken = BackupForwardSecrecyToken(
-            response.guardedMapChecked(Native::BackupStoreResponse_GetForwardSecrecyToken),
-          ),
-          nextBackupSecretData = response.guardedMapChecked(Native::BackupStoreResponse_GetNextBackupSecretData),
-          metadata = response.guardedMapChecked(Native::BackupStoreResponse_GetOpaqueMetadata),
-        )
-      }
-    }.toResultFuture()
+    return nativeFuture
+      .thenApply { backupResponseHandle ->
+        val response = BackupStoreResponse(backupResponseHandle)
+        response.guardedMap { _ ->
+          SvrBStoreResponse(
+            forwardSecrecyToken =
+              BackupForwardSecrecyToken(
+                response.guardedMapChecked(Native::BackupStoreResponse_GetForwardSecrecyToken),
+              ),
+            nextBackupSecretData = response.guardedMapChecked(Native::BackupStoreResponse_GetNextBackupSecretData),
+            metadata = response.guardedMapChecked(Native::BackupStoreResponse_GetOpaqueMetadata),
+          )
+        }
+      }.toResultFuture()
   }
 
   /**
@@ -200,30 +201,33 @@ public class SvrB internal constructor(
     backupKey: BackupKey,
     metadata: ByteArray,
   ): CompletableFuture<Result<SvrBRestoreResponse>> {
-    val nativeFuture = network.asyncContext.guardedMap { asyncContextHandle ->
-      network.connectionManager.guardedMap { connectionManagerHandle ->
-        Native.SecureValueRecoveryForBackups_RestoreBackupFromServer(
-          asyncContextHandle,
-          backupKey.internalContentsForJNI,
-          metadata,
-          connectionManagerHandle,
-          username,
-          password,
-        )
+    val nativeFuture =
+      network.asyncContext.guardedMap { asyncContextHandle ->
+        network.connectionManager.guardedMap { connectionManagerHandle ->
+          Native.SecureValueRecoveryForBackups_RestoreBackupFromServer(
+            asyncContextHandle,
+            backupKey.internalContentsForJNI,
+            metadata,
+            connectionManagerHandle,
+            username,
+            password,
+          )
+        }
       }
-    }
 
-    return nativeFuture.thenApply { backupResponseHandle ->
-      val response = BackupRestoreResponse(backupResponseHandle)
-      response.guardedMap { _ ->
-        SvrBRestoreResponse(
-          forwardSecrecyToken = BackupForwardSecrecyToken(
-            response.guardedMapChecked(Native::BackupRestoreResponse_GetForwardSecrecyToken),
-          ),
-          nextBackupSecretData = response.guardedMapChecked(Native::BackupRestoreResponse_GetNextBackupSecretData),
-        )
-      }
-    }.toResultFuture()
+    return nativeFuture
+      .thenApply { backupResponseHandle ->
+        val response = BackupRestoreResponse(backupResponseHandle)
+        response.guardedMap { _ ->
+          SvrBRestoreResponse(
+            forwardSecrecyToken =
+              BackupForwardSecrecyToken(
+                response.guardedMapChecked(Native::BackupRestoreResponse_GetForwardSecrecyToken),
+              ),
+            nextBackupSecretData = response.guardedMapChecked(Native::BackupRestoreResponse_GetNextBackupSecretData),
+          )
+        }
+      }.toResultFuture()
   }
 }
 
@@ -267,7 +271,6 @@ public data class SvrBStoreResponse(
    * the SVR-B server that must be retrieved during restoration.
    */
   public val forwardSecrecyToken: BackupForwardSecrecyToken,
-
   /**
    * Opaque value that must be persisted and provided to the next call to [SvrB.store].
    *
@@ -275,7 +278,6 @@ public data class SvrBStoreResponse(
    * for this value.
    */
   public val nextBackupSecretData: ByteArray,
-
   /**
    * Opaque metadata that must be stored in the backup file.
    *
@@ -305,7 +307,6 @@ public data class SvrBRestoreResponse(
    * the SVR-B server that must be retrieved during restoration.
    */
   public val forwardSecrecyToken: BackupForwardSecrecyToken,
-
   /**
    * Opaque value that must be persisted and provided to the next call to [SvrB.store].
    *

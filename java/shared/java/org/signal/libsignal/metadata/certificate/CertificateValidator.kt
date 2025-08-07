@@ -8,9 +8,14 @@ package org.signal.libsignal.metadata.certificate
 import org.signal.libsignal.internal.Native
 import org.signal.libsignal.protocol.ecc.ECPublicKey
 
-public open class CertificateValidator(public val trustRoot: ECPublicKey) {
+public open class CertificateValidator(
+  public val trustRoot: ECPublicKey,
+) {
   @Throws(InvalidCertificateException::class)
-  public fun validate(certificate: SenderCertificate, validationTime: Long) {
+  public fun validate(
+    certificate: SenderCertificate,
+    validationTime: Long,
+  ) {
     try {
       certificate.guardedRun { certificateHandle ->
         trustRoot.guardedRun { trustRootHandle ->

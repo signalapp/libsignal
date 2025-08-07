@@ -43,12 +43,11 @@ class SecureValueRecoveryBackupTest {
     svrB = net.svrB(testUsername, testPassword)
   }
 
-  private fun makeStoreResponse(previousSecretData: ByteArray? = null): SvrBStoreResponse {
-    return svrB
+  private fun makeStoreResponse(previousSecretData: ByteArray? = null): SvrBStoreResponse =
+    svrB
       .store(testBackupKey, previousSecretData ?: svrB.createNewBackupChain(testBackupKey))
       .get(ASYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
       .getOrThrow()
-  }
 
   private fun assertValidToken(token: BackupForwardSecrecyToken) {
     val tokenBytes = token.serialize()
@@ -59,8 +58,8 @@ class SecureValueRecoveryBackupTest {
 
   @Test
   fun testStoreReturnsValidResponse() {
-    val ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS")
-    Assume.assumeNotNull(ENABLE_TEST)
+    val enableTest = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS")
+    Assume.assumeNotNull(enableTest)
     Assume.assumeTrue(testUsername.isNotEmpty() && testPassword.isNotEmpty())
 
     val response = makeStoreResponse()
@@ -78,8 +77,8 @@ class SecureValueRecoveryBackupTest {
 
   @Test
   fun testBackupForwardSecrecyTokenSerializesAndDeserializesCorrectly() {
-    val ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS")
-    Assume.assumeNotNull(ENABLE_TEST)
+    val enableTest = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS")
+    Assume.assumeNotNull(enableTest)
     Assume.assumeTrue(testUsername.isNotEmpty() && testPassword.isNotEmpty())
 
     val response = makeStoreResponse()
@@ -105,8 +104,8 @@ class SecureValueRecoveryBackupTest {
   @Test
   @CalledFromNative
   fun testFullBackupFlowWithPreviousSecretData() {
-    val ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS")
-    Assume.assumeNotNull(ENABLE_TEST)
+    val enableTest = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS")
+    Assume.assumeNotNull(enableTest)
     Assume.assumeTrue(testUsername.isNotEmpty() && testPassword.isNotEmpty())
 
     // First backup without previous data
@@ -123,10 +122,12 @@ class SecureValueRecoveryBackupTest {
     val firstSecretData = firstResponse.nextBackupSecretData
     assertFalse(firstSecretData.isEmpty())
 
-    val firstRestoreResult = svrB.restore(
-      testBackupKey,
-      firstResponse.metadata,
-    ).get(ASYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+    val firstRestoreResult =
+      svrB
+        .restore(
+          testBackupKey,
+          firstResponse.metadata,
+        ).get(ASYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 
     assertTrue("First restore should succeed", firstRestoreResult.isSuccess)
     val restoredFirst = firstRestoreResult.getOrThrow()
@@ -153,10 +154,12 @@ class SecureValueRecoveryBackupTest {
     val secondSecretData = secondResponse.nextBackupSecretData
     assertFalse(secondSecretData.isEmpty())
 
-    val secondRestoreResult = svrB.restore(
-      testBackupKey,
-      secondResponse.metadata,
-    ).get(ASYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+    val secondRestoreResult =
+      svrB
+        .restore(
+          testBackupKey,
+          secondResponse.metadata,
+        ).get(ASYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 
     assertTrue("Second restore should succeed", secondRestoreResult.isSuccess)
     val restoredSecond = secondRestoreResult.getOrThrow()
