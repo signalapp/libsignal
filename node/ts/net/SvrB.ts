@@ -152,10 +152,13 @@ class RestoreBackupResponseImpl implements RestoreBackupResponse {
  * ## Secret handling
  *
  * When calling {@link SvrB#store}, the `previousSecretData` parameter must be from the last call to
- * {@link SvrB#store} or {@link SvrB#restore} that succeeded. The returned secret from a successful
- * store or restore should be persisted until it is overwritten by the value from a subsequent
- * successful call. The caller should use {@link SvrB#createNewBackupChain} only for the very first
- * backup with a particular backup key.
+ * {@link SvrB#store} or {@link SvrB#restore} that succeeded. This "chaining" is used to construct
+ * each backup file so that it can be decrypted with either the *previous* token stored in SVR-B, or
+ * the *next* one, which is important in case the overall backup upload is ever interrupted.
+ *
+ * The returned secret from a successful store or restore should be persisted until it is
+ * overwritten by the value from a subsequent successful call. The caller should use
+ * {@link SvrB#createNewBackupChain} only for the very first backup with a particular backup key.
  *
  * ## Restore Flow
  *
