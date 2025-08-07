@@ -10,13 +10,6 @@ rootProject.name = 'libsignal'
 
 include 'client', 'server', 'shared', 'backup-tool'
 
-if (hasProperty('skipAndroid')) {
-    // Do nothing
-} else if (JavaVersion.current().isJava11Compatible()) {
+if (!hasProperty('skipAndroid')) {
     include ':android', ':android:benchmarks', ':android:packaging-test'
-} else if (gradle.startParameter.getTaskNames().any { name -> name.contains('android:') }) {
-    throw new GradleException("building for Android requires JDK 11 or newer")
-} else if (gradle.startParameter.getTaskNames().any { name -> name.lastIndexOf(':') <= 0 }) {
-    // If there are any top-level tasks ("build" or ":build" but not ":client:build")...
-    throw new GradleException("building for Android requires JDK 11 or newer; use 'client:' or 'server:' to only build certain products")
 }
