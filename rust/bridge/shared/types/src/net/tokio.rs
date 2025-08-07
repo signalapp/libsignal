@@ -158,12 +158,29 @@ impl TokioAsyncContext {
         let handle = self.rt.handle().clone();
         let task_map_weak = Arc::downgrade(&self.tasks);
 
+        const STALLED_FUTURE_LOG_TIMEOUT: tokio::time::Duration =
+            tokio::time::Duration::from_secs(90);
+
         #[expect(
             clippy::let_underscore_future,
             reason = "the tasks are never .join()ed"
         )]
         let _: tokio::task::JoinHandle<()> = self.rt.spawn(async move {
-            let report_fn = future.await;
+            let start_time = tokio::time::Instant::now();
+            let deadline = start_time + STALLED_FUTURE_LOG_TIMEOUT;
+            tokio::pin!(future);
+
+            let report_fn = tokio::select! {
+                report_fn = &mut future => report_fn,
+                _ = tokio::time::sleep_until(deadline) => {
+                    log::warn!(
+                        "Future with cancellation_id {:?} seems stalled (elapsed: {:?})",
+                        cancellation_id,
+                        start_time.elapsed()
+                    );
+                    future.await
+                }
+            };
             let _: tokio::task::JoinHandle<()> = handle.spawn_blocking(report_fn);
             // What happens if we don't get here? We leak an entry in the task map. Also, we
             // probably have bigger problems, because in practice all the `bridge_io` futures are
@@ -249,6 +266,7 @@ mod test {
         // Create a runtime with one worker thread running in the background.
         let mut runtime_builder = tokio::runtime::Builder::new_multi_thread();
         runtime_builder.worker_threads(1);
+        runtime_builder.enable_time();
         let runtime = runtime_builder.build().expect("valid runtime");
 
         // Create a task that will sum anything it is sent.
@@ -317,6 +335,7 @@ mod test {
         // Create a runtime with one worker thread running in the background.
         let mut runtime_builder = tokio::runtime::Builder::new_multi_thread();
         runtime_builder.worker_threads(1);
+        runtime_builder.enable_time();
         let runtime = runtime_builder.build().expect("valid runtime");
 
         let async_context = TokioAsyncContext {
