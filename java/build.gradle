@@ -25,30 +25,20 @@ allprojects {
     version = "0.78.3"
     group   = "org.signal"
 
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+        options.compilerArgs += ["-Xlint:deprecation", "-Xlint:fallthrough", "-Xlint:unchecked"]
+    }
+    tasks.withType(Javadoc) {
+        options.encoding = 'UTF-8'
+        options.addStringOption('Xdoclint:none', '-quiet')
+    }
     tasks.withType(KotlinCompile).configureEach {
         compilerOptions.jvmTarget = JvmTarget.JVM_17
     }
-}
-
-subprojects {
-    if (JavaVersion.current().isJava8Compatible()) {
-        allprojects {
-            tasks.withType(Javadoc) {
-                options.encoding = 'UTF-8'
-                options.addStringOption('Xdoclint:none', '-quiet')
-            }
-        }
-    }
-
-    allprojects {
-        tasks.withType(JavaCompile) {
-            options.encoding = 'UTF-8'
-            options.compilerArgs += ["-Xlint:deprecation", "-Xlint:fallthrough", "-Xlint:unchecked"]
-        }
-        tasks.withType(AbstractArchiveTask) {
-            preserveFileTimestamps = false
-            reproducibleFileOrder = true
-        }
+    tasks.withType(AbstractArchiveTask) {
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
     }
 
     apply plugin: "org.jetbrains.dokka"
