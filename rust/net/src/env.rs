@@ -595,13 +595,24 @@ impl<'a> Env<'a> {
             cdsi,
             svr2,
             chat_domain_config,
-            ..
+            svr_b,
+            chat_ws_config: _,
+            keytrans_config: _,
         } = self;
-        HashMap::from([
-            cdsi.domain_config.static_fallback(),
-            svr2.domain_config.static_fallback(),
-            chat_domain_config.static_fallback(),
-        ])
+
+        let svrb_static_fallbacks = svr_b
+            .current_and_previous()
+            .map(|enclave_endpoint| enclave_endpoint.domain_config.static_fallback());
+
+        HashMap::from_iter(
+            [
+                cdsi.domain_config.static_fallback(),
+                svr2.domain_config.static_fallback(),
+                chat_domain_config.static_fallback(),
+            ]
+            .into_iter()
+            .chain(svrb_static_fallbacks),
+        )
     }
 }
 
