@@ -1,3 +1,2 @@
-v0.78.2
+v0.78.3
 
-- Finalize errors produced by SVR-B operations.

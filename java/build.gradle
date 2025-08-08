@@ -22,7 +22,7 @@ repositories {
 }
 
 allprojects {
-    version = "0.78.2"
+    version = "0.78.3"
     group   = "org.signal"
 
     tasks.withType(KotlinCompile).configureEach {
