@@ -79,6 +79,10 @@ pub type JavaMap<'a> = JObject<'a>;
 /// when generating Native.java.
 pub type Throwing<T> = T;
 
+/// Type marker for arguments that are nullable, which gen_java_decl.py will pick out when
+/// generating Native.kt.
+pub type Nullable<T> = T;
+
 /// A Java wrapper for a `CompletableFuture` type.
 #[derive(Default)]
 #[repr(transparent)] // Ensures that the representation is the same as JObject.

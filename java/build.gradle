@@ -132,6 +132,7 @@ spotless {
         }.inject(files()) { collected, next ->
             collected + next.sources
         }
+        targetExclude('**/Native.kt', '**/NativeTesting.kt')
         ktlint()
     }
     java {
@@ -140,7 +141,6 @@ spotless {
         }.inject(files()) { collected, next ->
             collected + next.source
         }
-        targetExclude('**/Native.java', '**/NativeTesting.java')
         importOrder()
         removeUnusedImports()
 

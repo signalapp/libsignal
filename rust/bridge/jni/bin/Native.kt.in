@@ -1,0 +1,141 @@
+//
+// Copyright (C) 2020 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+// WARNING: this file was automatically generated
+
+package org.signal.libsignal.internal
+
+import org.signal.libsignal.net.internal.BridgeChatListener
+import org.signal.libsignal.net.internal.ConnectChatBridge
+import org.signal.libsignal.protocol.SignedPublicPreKey
+import org.signal.libsignal.protocol.groups.state.SenderKeyStore
+import org.signal.libsignal.protocol.logging.Log
+import org.signal.libsignal.protocol.logging.SignalProtocolLogger
+import org.signal.libsignal.protocol.message.CiphertextMessage
+import org.signal.libsignal.protocol.state.IdentityKeyStore
+import org.signal.libsignal.protocol.state.KyberPreKeyStore
+import org.signal.libsignal.protocol.state.PreKeyStore
+import org.signal.libsignal.protocol.state.SessionStore
+import org.signal.libsignal.protocol.state.SignedPreKeyStore
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import java.nio.ByteBuffer
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.Map
+import java.util.UUID
+import java.util.concurrent.Future
+
+public typealias ObjectHandle = Long
+
+private val tempDir: Path by lazy {
+  val tempDir = Files.createTempDirectory("libsignal")
+  tempDir.toFile().deleteOnExit()
+  tempDir
+}
+
+internal object Native {
+  init {
+    loadNativeCode()
+    initializeLibrary()
+  }
+
+  @Throws(IOException::class)
+  private fun copyToTempDirAndLoad(
+    input: InputStream,
+    name: String,
+  ) {
+    val tempFile = Files.createFile(tempDir.resolve(name)).toFile()
+    tempFile.deleteOnExit()
+
+    FileOutputStream(tempFile).use { out ->
+      val buffer = ByteArray(4096)
+
+      while (true) {
+        val read = input.read(buffer)
+        if (read == -1) break
+        out.write(buffer, 0, read)
+      }
+    }
+
+    System.load(tempFile.absolutePath)
+  }
+
+  /**
+    * If the library is embedded within this jar as a resource file, attempt to
+    * copy it to a temporary file and then load it. This allows the jar to be
+    * used even without a shared library existing on the filesystem.
+    *
+    * If a version of the library that includes this system's hardware architecture in its name is
+    * present, prefer that to the supplied name (e.g. "libsignal_amd64.so" will be preferred to
+    * "libsignal.so"). This applies only to libraries embedded as a resource, not libraries
+    * installed on the local machine.
+    */
+  @Throws(IOException::class)
+  private fun loadLibrary(name: String) {
+    var arch = System.getProperty("os.arch")
+    // Special-case: some Java implementations use "x86_64", but OpenJDK uses "amd64".
+    if ("x86_64" == arch) {
+      arch = "amd64"
+    }
+    for (suffix in arrayOf("_$arch", "")) {
+      val libraryName = System.mapLibraryName(name + suffix)
+      Native::class.java.getResourceAsStream("/$libraryName").use { input ->
+        if (input != null) {
+          copyToTempDirAndLoad(input, libraryName)
+          return
+        }
+      }
+    }
+    System.loadLibrary(name)
+  }
+
+  private fun loadNativeCode() {
+    try {
+      // First try to load the testing library. This will only succeed when
+      // libsignal is being used in a test context. The testing library
+      // contains a superset of the functionality of the non-test library, so if
+      // it gets loaded successfully, we're done.
+      loadLibrary("signal_jni_testing")
+      return
+    } catch (_: Throwable) {
+      // The testing library wasn't available. This is expected for production
+      // builds, so no error handling is needed. We'll try to load the non-test
+      // library next.
+    }
+    try {
+      loadLibrary("signal_jni")
+    } catch (e: Exception) {
+      throw RuntimeException(e)
+    }
+  }
+
+  /**
+    * Ensures that the static initializer for this class gets run.
+    */
+  @JvmStatic
+  internal fun ensureLoaded() {}
+
+  /**
+    * Keeps an object from being garbage-collected until this call completes.
+    *
+    * This can be used to keep a Java wrapper around a Rust object handle alive while
+    * earlier calls use that Rust object handle. That is, you should call {@code keepAlive}
+    * <em>after</em> the code where an object must not be garbage-collected.
+    * However, most of the time {@link NativeHandleGuard} is a better choice,
+    * since the lifetime of the guard is clear.
+    *
+    * Effectively equivalent to Java 9's <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/ref/Reference.html#reachabilityFence-java.lang.Object-"><code>reachabilityFence()</code></a>.
+    * Uses {@code native} because the JVM can't look into the implementation of the method
+    * and optimize away the use of {@code obj}. (The actual implementation does nothing.)
+    */
+  @JvmStatic
+  public external fun keepAlive(obj: Object?)
+
+  // INSERT DECLS HERE
+}

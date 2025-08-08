@@ -1,0 +1,45 @@
+//
+// Copyright (C) 2024 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+// WARNING: this file was automatically generated
+
+package org.signal.libsignal.internal
+
+import org.signal.libsignal.net.internal.BridgeChatListener
+import org.signal.libsignal.net.internal.ConnectChatBridge
+import org.signal.libsignal.protocol.SignedPublicPreKey
+import org.signal.libsignal.protocol.groups.state.SenderKeyStore
+import org.signal.libsignal.protocol.logging.Log
+import org.signal.libsignal.protocol.logging.SignalProtocolLogger
+import org.signal.libsignal.protocol.message.CiphertextMessage
+import org.signal.libsignal.protocol.state.IdentityKeyStore
+import org.signal.libsignal.protocol.state.KyberPreKeyStore
+import org.signal.libsignal.protocol.state.PreKeyStore
+import org.signal.libsignal.protocol.state.SessionStore
+import org.signal.libsignal.protocol.state.SignedPreKeyStore
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import java.nio.ByteBuffer
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.Map
+import java.util.UUID
+import java.util.concurrent.Future
+
+// Public so we can call methods on this from Android on-device test code,
+// which behaves differently from unit test code with respect to visibility.
+// Once https://youtrack.jetbrains.com/issue/KT-66351 is fixed we can make
+// this internal.
+public object NativeTesting {
+  init {
+    // Ensure the Native class is loaded, which means the .so is loaded.
+    Native.ensureLoaded()
+  }
+
+  // INSERT DECLS HERE
+}

@@ -90,7 +90,7 @@ public class FutureTest {
             NativeTesting.TestingFutureCancellationCounter_Destroy(nativeHandle);
           }
         };
-    org.signal.libsignal.internal.CompletableFuture<Integer> testFuture =
+    org.signal.libsignal.internal.CompletableFuture<Void> testFuture =
         context
             .guardedMap(
                 (nativeContextHandle) ->

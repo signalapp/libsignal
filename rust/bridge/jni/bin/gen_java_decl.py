@@ -44,7 +44,8 @@ IGNORE_THIS_WARNING = re.compile(
     r"WARN: Skip libsignal-bridge(-testing)?::.+ - \(not `(pub|no_mangle)`\)\.|"
     r"WARN: Couldn't find path for Array\(Path\(GenericPath \{ .+ \}\), Name\(\"LEN\"\)\), skipping associated constants|"
     r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"JavaCompletableFuture\" }.+|"
-    r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"Throwing\" }.+"
+    r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"Throwing\" }.+|"
+    r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"Nullable\" }.+"
     ")")
 
 
@@ -74,55 +75,49 @@ def run_cbindgen(cwd: str) -> str:
     return stdout
 
 
-def box_primitive_if_needed(typ: str) -> str:
-    type_map = {
-        "void": "Void",
-        "boolean": "Boolean",
-        "char": "Character",
-        "byte": "Byte",
-        "short": "Short",
-        "int": "Integer",
-        "long": "Long",
-        "float": "Float",
-        "double": "Double",
-    }
-
-    return type_map.get(typ, typ)
-
-
 def translate_to_java(typ: str) -> Tuple[str, bool]:
     type_map = {
-        "void": "void",
-        "JString": "String",
+        "void": "Unit",
+        "ObjectHandle": "ObjectHandle",
+        "Nullable<ObjectHandle>": "ObjectHandle",
+        "jint": "Int",
+        "jlong": "Long",
+        "jboolean": "Boolean",
         "JObject": "Object",
-        "JClass": "Class",
-        "JByteArray": "byte[]",
-        "JLongArray": "long[]",
-        "JObjectArray": "Object[]",
-        "ObjectHandle": "long",
-        "jint": "int",
-        "jlong": "long",
-        "jboolean": "boolean",
-        "JavaArrayOfByteArray": "byte[][]",
-        "JavaByteBufferArray": "ByteBuffer[]",
+        "JClass": "Class<*>",
+        "JString": "String",
+        "JByteArray": "ByteArray",
+        "JLongArray": "LongArray",
+        "JObjectArray": "Array<Object>",
+        "JavaArrayOfByteArray": "Array<ByteArray>",
+        "JavaByteBufferArray": "Array<ByteBuffer>",
+        "JavaCompletableFuture": "CompletableFuture<Void?>",
+        "JavaCompletableFuture<Throwing>": "CompletableFuture<Void?>",
+        "JavaMap": "Map<*, *>",
+        "JavaSignedPublicPreKey": "SignedPublicPreKey<*>",
     }
 
     if typ in type_map:
         return (type_map[typ], False)
 
     if typ == 'Throwing':
-        return ('void', True)
+        return ('Unit', True)
 
     if (stripped := typ.removeprefix('Throwing<')) != typ:
         assert stripped.endswith('>')
         return (translate_to_java(stripped.removesuffix('>'))[0], True)
 
+    if (stripped := typ.removeprefix('Nullable<')) != typ:
+        assert stripped.endswith('>')
+        inner = translate_to_java(stripped.removesuffix('>'))[0]
+        return (f'{inner}?', False)
+
     if (stripped := typ.removeprefix('JavaCompletableFuture<')) != typ:
         assert stripped.endswith('>')
         inner = translate_to_java(stripped.removesuffix('>'))[0]
-        return (f'CompletableFuture<{box_primitive_if_needed(inner)}>', False)
+        return (f'CompletableFuture<{inner}>', False)
 
-    # Assume anything else prefixed with "Java" refers to an object
+    # Assume anything else prefixed with "Java" refers to a (non-generic) object
     if typ.startswith('Java'):
         return (typ[4:], False)
 
@@ -165,13 +160,13 @@ def parse_decls(cbindgen_output: str) -> Iterator[str]:
             for arg in args.split(', ')[1:]:
                 (arg_type, arg_name) = arg.split(' ')
                 (java_arg_type, _is_throwing) = translate_to_java(arg_type)
-                java_args.append('%s %s' % (java_arg_type, arg_name))
+                java_args.append('%s: %s' % (arg_name, java_arg_type))
 
-        yield ("  public static native %s %s(%s)%s;" % (
-            java_ret_type,
+        yield ("  @JvmStatic%s\n  public external fun %s(%s): %s" % (
+            " @Throws(Exception::class)" if is_throwing else "",
             java_fn_name,
             ", ".join(java_args),
-            " throws Exception" if is_throwing else ""))
+            java_ret_type))
 
 
 def expand_template(template_file: str, decls: Iterable[str]) -> str:
@@ -188,24 +183,24 @@ def verify_contents(expected_output_file: str, expected_contents: str) -> None:
     if first_line:
         sys.stdout.write(first_line)
         sys.stdout.writelines(diff)
-        sys.exit("error: Native.java not up to date; re-run %s!" % sys.argv[0])
+        sys.exit("error: %s not up to date; re-run %s!" % (os.path.basename(expected_output_file), sys.argv[0]))
 
 
-def convert_to_java(rust_crate_dir: str, java_in_path: str, java_out_path: str, verify: bool) -> None:
+def convert_to_java(rust_crate_dir: str, in_path: str, out_path: str, verify: bool) -> None:
     stdout = run_cbindgen(rust_crate_dir)
 
     decls = list(parse_decls(stdout))
 
-    contents = expand_template(java_in_path, decls)
+    contents = expand_template(in_path, decls)
 
-    if not os.access(java_out_path, os.F_OK):
-        raise Exception(f"Didn't find expected file {java_out_path}")
+    if not os.access(out_path, os.F_OK):
+        raise Exception(f"Didn't find expected file {out_path}")
 
     if not verify:
-        with open(java_out_path, 'w') as fh:
+        with open(out_path, 'w') as fh:
             fh.write(contents)
     else:
-        verify_contents(java_out_path, contents)
+        verify_contents(out_path, contents)
 
 
 def main() -> None:
@@ -214,15 +209,15 @@ def main() -> None:
     our_abs_dir = os.path.dirname(os.path.realpath(__file__))
     convert_to_java(
         rust_crate_dir=os.path.join(our_abs_dir, '..', 'impl'),
-        java_in_path=os.path.join(our_abs_dir, 'Native.java.in'),
-        java_out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'java', 'shared', 'java', 'org', 'signal', 'libsignal', 'internal', 'Native.java'),
+        in_path=os.path.join(our_abs_dir, 'Native.kt.in'),
+        out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'java', 'shared', 'java', 'org', 'signal', 'libsignal', 'internal', 'Native.kt'),
         verify=args.verify,
     )
 
     convert_to_java(
         rust_crate_dir=os.path.join(our_abs_dir, '..', 'testing'),
-        java_in_path=os.path.join(our_abs_dir, 'NativeTesting.java.in'),
-        java_out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'java', 'shared', 'java', 'org', 'signal', 'libsignal', 'internal', 'NativeTesting.java'),
+        in_path=os.path.join(our_abs_dir, 'NativeTesting.kt.in'),
+        out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'java', 'shared', 'java', 'org', 'signal', 'libsignal', 'internal', 'NativeTesting.kt'),
         verify=args.verify,
     )
 
