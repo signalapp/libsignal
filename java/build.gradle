@@ -15,6 +15,12 @@ plugins {
     id 'org.jetbrains.kotlin.android' version "2.1.0" apply false
 }
 
+repositories {
+    mavenCentral()
+    google()
+    mavenLocal()
+}
+
 allprojects {
     version = "0.78.2"
     group   = "org.signal"
@@ -45,25 +51,7 @@ subprojects {
         }
     }
 
-    apply plugin: "com.diffplug.spotless"
     apply plugin: "org.jetbrains.dokka"
-    spotless {
-        kotlin {
-            target('**/*.kt')
-            targetExclude("**/acknowledgments/**")
-            ktlint()
-        }
-        java {
-            target('**/*.java')
-            targetExclude('**/Native.java', '**/NativeTesting.java')
-            importOrder()
-            removeUnusedImports()
-
-            googleJavaFormat()
-            formatAnnotations()
-            licenseHeaderFile rootProject.file('license_header.txt')
-        }
-    }
 }
 
 task makeJniLibrariesDesktop(type:Exec) {
@@ -141,4 +129,33 @@ nexusPublishing {
 
 def isReleaseBuild() {
     return version.contains("SNAPSHOT") == false
+}
+
+// Late evaluation after this point.
+
+evaluationDependsOnChildren()
+
+spotless {
+    kotlin {
+        target allprojects.collectMany {
+            return it.tasks.withType(KotlinCompile)
+        }.inject(files()) { collected, next ->
+            collected + next.sources
+        }
+        ktlint()
+    }
+    java {
+        target allprojects.collectMany {
+            return it.tasks.withType(JavaCompile)
+        }.inject(files()) { collected, next ->
+            collected + next.source
+        }
+        targetExclude('**/Native.java', '**/NativeTesting.java')
+        importOrder()
+        removeUnusedImports()
+
+        googleJavaFormat()
+        formatAnnotations()
+        licenseHeaderFile rootProject.file('license_header.txt')
+    }
 }

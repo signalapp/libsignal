@@ -8,7 +8,7 @@ pluginManagement {
 
 rootProject.name = 'libsignal'
 
-include 'client', 'server', 'shared', 'backup-tool'
+include 'client', 'server', 'backup-tool'
 
 if (!hasProperty('skipAndroid')) {
     include ':android', ':android:benchmarks', ':android:packaging-test'
