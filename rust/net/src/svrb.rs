@@ -505,11 +505,13 @@ pub mod test_support {
 
 #[cfg(test)]
 mod test {
+    use std::cell::RefCell;
     use std::str::FromStr;
     use std::sync::atomic::{AtomicU8, Ordering};
 
     use assert_matches::assert_matches;
     use async_trait::async_trait;
+    use futures::future::BoxFuture;
     use libsignal_account_keys::{AccountEntropyPool, BackupKey};
     use libsignal_svrb::{Backup4, Secret};
 
@@ -897,5 +899,252 @@ mod test {
         .await
         .expect("should store");
         assert_eq!(BACKUP_DELETES_PREVIOUS_ALL_CALLED.load(Ordering::SeqCst), 2);
+    }
+
+    struct Scenario {
+        backup_key: BackupKey,
+        currently_stored_in_enclave: RefCell<(u8, Option<Secret>)>,
+        current_uploaded_backup_metadata: Option<BackupFileMetadata>,
+        backup_secret_data: Option<BackupPreviousSecretData>,
+    }
+
+    struct ScenarioClient<'a>(&'a RefCell<(u8, Option<Secret>)>);
+
+    impl traits::Prepare for ScenarioClient<'_> {
+        fn prepare(&self, _password: &[u8]) -> Backup4 {
+            let mut state = self.0.borrow_mut();
+            state.0 += 1;
+            Backup4 {
+                requests: vec![],
+                output: [state.0; 32],
+            }
+        }
+    }
+
+    impl traits::Backup for ScenarioClient<'_> {
+        // Written explicitly so we can modify `self` *before* producing the Future.
+        fn finalize<'life0, 'life1, 'async_trait>(
+            &'life0 self,
+            backup: &'life1 Backup4,
+        ) -> BoxFuture<'life0, Result<(), Error>>
+        where
+            'life0: 'async_trait,
+            'life1: 'async_trait,
+            Self: 'async_trait,
+        {
+            let mut state = self.0.borrow_mut();
+            state.1 = Some(backup.output);
+            Box::pin(std::future::ready(Ok(())))
+        }
+    }
+
+    impl traits::Restore for ScenarioClient<'_> {
+        // Written explicitly so we can access `self` *before* producing the Future.
+        fn restore<'life0, 'life1, 'async_trait>(
+            &'life0 self,
+            _password: &'life1 [u8],
+        ) -> BoxFuture<'life0, Result<Secret, Error>>
+        where
+            'life0: 'async_trait,
+            'life1: 'async_trait,
+            Self: 'async_trait,
+        {
+            let result = self.0.borrow().1.ok_or(Error::DataMissing);
+            Box::pin(std::future::ready(result))
+        }
+    }
+
+    impl Scenario {
+        fn new() -> Self {
+            let aep = AccountEntropyPool::from_str(
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            )
+            .expect("should create AEP");
+            let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
+            Self {
+                backup_key,
+                currently_stored_in_enclave: RefCell::new((0, None)),
+                current_uploaded_backup_metadata: None,
+                backup_secret_data: None,
+            }
+        }
+
+        fn client(&self) -> ScenarioClient<'_> {
+            ScenarioClient(&self.currently_stored_in_enclave)
+        }
+
+        fn create_new_backup_chain(&mut self) {
+            self.backup_secret_data =
+                Some(create_new_backup_chain(&self.client(), &self.backup_key));
+        }
+
+        fn upload_secret_to_svr(&self) -> BackupStoreResponse {
+            let previous_secret_data = self
+                .backup_secret_data
+                .as_ref()
+                .expect("has secret data before store");
+            store_backup(
+                &self.client(),
+                &[] as &[TestSvrBClient],
+                &self.backup_key,
+                previous_secret_data.as_ref(),
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("no errors on store")
+        }
+
+        fn upload_backup_to_server(&mut self, metadata: BackupFileMetadata) {
+            self.current_uploaded_backup_metadata = Some(metadata);
+        }
+
+        fn save_secret_data(&mut self, secret_data: BackupPreviousSecretData) {
+            self.backup_secret_data = Some(secret_data);
+        }
+
+        fn complete_one_successful_backup(&mut self) {
+            if self.backup_secret_data.is_none() {
+                self.create_new_backup_chain();
+            }
+            let BackupStoreResponse {
+                forward_secrecy_token: _,
+                next_backup_data,
+                metadata,
+            } = self.upload_secret_to_svr();
+            self.upload_backup_to_server(metadata);
+            self.save_secret_data(next_backup_data);
+        }
+
+        fn wipe_and_restore(&mut self) {
+            // Strictly unnecessary since it shouldn't be accessed and will be overwritten anyway,
+            // but guarantees we didn't mess something up.
+            self.backup_secret_data = None;
+
+            let metadata = self
+                .current_uploaded_backup_metadata
+                .as_ref()
+                .expect("never uploaded a backup");
+            let BackupRestoreResponse {
+                forward_secrecy_token: _,
+                next_backup_data,
+            } = restore_backup(&[self.client()], &self.backup_key, metadata.as_ref())
+                .now_or_never()
+                .expect("sync")
+                .expect("can restore");
+            self.backup_secret_data = Some(next_backup_data);
+        }
+    }
+
+    #[test]
+    fn simple_scenario() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup();
+
+        scenario.wipe_and_restore();
+        // Even if we're really unlucky...
+        scenario.wipe_and_restore();
+    }
+
+    #[test]
+    fn multiple_backups() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup();
+        scenario.complete_one_successful_backup();
+        scenario.wipe_and_restore();
+    }
+
+    #[test]
+    fn second_backup_interrupted() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup();
+
+        _ = scenario.upload_secret_to_svr();
+        // Never upload the next backup.
+
+        scenario.wipe_and_restore();
+    }
+
+    #[test]
+    fn second_and_third_backup_interrupted() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup();
+
+        _ = scenario.upload_secret_to_svr();
+        // Never upload the next backup.
+        _ = scenario.upload_secret_to_svr();
+        // Again.
+
+        scenario.wipe_and_restore();
+    }
+
+    #[test]
+    fn extremely_poorly_timed_power_outage() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup();
+
+        let BackupStoreResponse {
+            forward_secrecy_token: _,
+            next_backup_data: _,
+            metadata,
+        } = scenario.upload_secret_to_svr();
+        scenario.upload_backup_to_server(metadata);
+        // Forget to save the secret data.
+
+        scenario.complete_one_successful_backup();
+        scenario.wipe_and_restore();
+    }
+
+    #[test]
+    fn extremely_poorly_timed_power_outage_with_next_backup_interrupted() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup();
+
+        let BackupStoreResponse {
+            forward_secrecy_token: _,
+            next_backup_data: _,
+            metadata,
+        } = scenario.upload_secret_to_svr();
+        scenario.upload_backup_to_server(metadata);
+        // Forget to save the secret data.
+        _ = scenario.upload_secret_to_svr();
+        // Never upload a new backup.
+
+        scenario.wipe_and_restore();
+    }
+
+    #[test]
+    fn backup_after_restore() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup();
+
+        scenario.wipe_and_restore();
+        scenario.complete_one_successful_backup();
+
+        scenario.wipe_and_restore();
+    }
+
+    #[test]
+    fn backup_after_restore_interrupted() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup();
+
+        scenario.wipe_and_restore();
+        _ = scenario.upload_secret_to_svr();
+        // Never upload the next backup.
+
+        scenario.wipe_and_restore();
+    }
+
+    #[test]
+    fn backup_after_restore_second_interrupted() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup();
+
+        scenario.wipe_and_restore();
+        scenario.complete_one_successful_backup();
+        _ = scenario.upload_secret_to_svr();
+        // Never upload the next backup.
+
+        scenario.wipe_and_restore();
     }
 }
