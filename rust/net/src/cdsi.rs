@@ -277,7 +277,7 @@ impl From<crate::enclave::Error> for LookupError {
         match value {
             Error::WebSocketConnect(e) => match e {
                 WebSocketConnectError::Transport(e) => Self::ConnectTransport(e),
-                WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
+                WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e),
             },
             Error::RateLimited(inner) => Self::RateLimited(inner),
             Error::AttestationError(err) => Self::AttestationError(err),

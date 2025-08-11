@@ -87,9 +87,7 @@ impl From<WebSocketServiceConnectError> for ConnectError {
                         // but unidentified sockets should never produce a 403 anyway.
                         Self::DeviceDeregistered
                     }
-                    _ => Self::WebSocket(WebSocketConnectError::WebSocketError(
-                        tungstenite::Error::Http(response),
-                    )),
+                    _ => Self::WebSocket(WebSocketServiceError::Http(response).into()),
                 }
             }
         }

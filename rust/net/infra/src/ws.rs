@@ -17,7 +17,7 @@ use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError};
 use crate::AsyncDuplexStream;
 
 pub mod error;
-pub use error::{LogSafeTungsteniteError, WebSocketConnectError};
+pub use error::WebSocketConnectError;
 
 pub mod connection;
 pub use connection::Connection;

@@ -17,7 +17,7 @@ use crate::errors::{LogSafeDisplay, TransportConnectError};
 #[derive(Debug, thiserror::Error)]
 pub enum WebSocketConnectError {
     Transport(#[from] TransportConnectError),
-    WebSocketError(#[from] tungstenite::Error),
+    WebSocketError(#[from] super::WebSocketServiceError),
 }
 
 impl std::fmt::Display for WebSocketConnectError {
@@ -25,7 +25,7 @@ impl std::fmt::Display for WebSocketConnectError {
         match self {
             WebSocketConnectError::Transport(e) => write!(f, "transport: {e}"),
             WebSocketConnectError::WebSocketError(e) => {
-                write!(f, "websocket error: {}", LogSafeTungsteniteError::from(e))
+                write!(f, "websocket error: {}", e)
             }
         }
     }
@@ -35,6 +35,12 @@ impl LogSafeDisplay for WebSocketConnectError {}
 
 impl From<std::io::Error> for WebSocketConnectError {
     fn from(value: std::io::Error) -> Self {
+        super::WebSocketServiceError::Io(value).into()
+    }
+}
+
+impl From<tungstenite::Error> for WebSocketConnectError {
+    fn from(value: tungstenite::Error) -> Self {
         Self::WebSocketError(value.into())
     }
 }
@@ -62,41 +68,6 @@ impl From<Option<CloseFrame>> for UnexpectedCloseError {
         Self(value)
     }
 }
-
-/// Mirror of [`tungstenite::error::Error`].
-///
-/// Provides a user-data-free [`std::fmt::Display`] implementation.
-#[derive(Clone, Debug, Eq, PartialEq, thiserror::Error, displaydoc::Display)]
-pub enum LogSafeTungsteniteError {
-    /// The connection is closed
-    Closed,
-
-    /// Reading or writing failed
-    Io,
-
-    /// Space: {0}
-    Space(#[from] SpaceError),
-
-    /// WebSocket protocol error: {0}
-    Protocol(#[from] ProtocolError),
-
-    /// Invalid URL
-    Url,
-
-    /// UTF-8 encoding error
-    BadUtf8,
-
-    /// The server sent a non-Ok HTTP status: {0}
-    Http(http::StatusCode),
-
-    /// Other HTTP error
-    HttpFormat(#[from] HttpFormatError),
-
-    /// TLS error; this should not happen since tungstinite's TLS is not used
-    UnexpectedTlsError,
-}
-
-impl LogSafeDisplay for LogSafeTungsteniteError {}
 
 /// Mirror of [`tungstenite::error::CapacityError`] and [`tungstenite::Error::WriteBufferFull`].
 ///
@@ -201,34 +172,6 @@ impl<E: Borrow<http::Error>> From<E> for HttpFormatError {
             Self::HeaderValue
         } else {
             Self::Unknown
-        }
-    }
-}
-
-impl From<tungstenite::Error> for LogSafeTungsteniteError {
-    fn from(value: tungstenite::Error) -> Self {
-        match value {
-            tungstenite::Error::Protocol(e) => Self::Protocol(ProtocolError::from(e)),
-            e => Self::from(&e),
-        }
-    }
-}
-
-impl<'a> From<&'a tungstenite::Error> for LogSafeTungsteniteError {
-    fn from(value: &'a tungstenite::Error) -> Self {
-        match value {
-            tungstenite::Error::ConnectionClosed | tungstenite::Error::AlreadyClosed => {
-                Self::Closed
-            }
-            tungstenite::Error::Io(_) | tungstenite::Error::AttackAttempt => Self::Io,
-            tungstenite::Error::Tls(_) => Self::UnexpectedTlsError,
-            tungstenite::Error::Capacity(e) => Self::Space(SpaceError::from(*e)),
-            tungstenite::Error::Protocol(e) => Self::Protocol(ProtocolError::from(e.clone())),
-            tungstenite::Error::WriteBufferFull(_) => Self::Space(SpaceError::SendQueueFull),
-            tungstenite::Error::Utf8 => Self::BadUtf8,
-            tungstenite::Error::Url(_) => Self::Url,
-            tungstenite::Error::Http(response) => Self::Http(response.status()),
-            tungstenite::Error::HttpFormat(e) => Self::HttpFormat(HttpFormatError::from(e)),
         }
     }
 }
