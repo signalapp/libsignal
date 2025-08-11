@@ -93,7 +93,7 @@ make_error_testing_enum! {
         InvalidToken => InvalidToken,
         InvalidArgument => InvalidArgument,
         ParseError => Parse,
-        ConnectTransport => ConnectDnsFailed,
+        ConnectTransport => TcpConnectFailed,
         WebSocket => WebSocketIdleTooLong,
         AllConnectionAttemptsFailed => AllConnectionAttemptsFailed,
         Server => ServerCrashed,
@@ -127,8 +127,8 @@ fn TESTING_CdsiLookupErrorConvert(
             server_reason: "fake reason".into(),
         },
         TestingCdsiLookupError::Parse => LookupError::ParseError,
-        TestingCdsiLookupError::ConnectDnsFailed => LookupError::ConnectTransport(
-            libsignal_net::infra::errors::TransportConnectError::DnsError,
+        TestingCdsiLookupError::TcpConnectFailed => LookupError::ConnectTransport(
+            libsignal_net::infra::errors::TransportConnectError::TcpConnectionFailed,
         ),
         TestingCdsiLookupError::WebSocketIdleTooLong => LookupError::WebSocket(
             libsignal_net::infra::ws::WebSocketServiceError::ChannelIdleTooLong,

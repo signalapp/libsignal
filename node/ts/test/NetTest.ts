@@ -825,9 +825,9 @@ describe('cdsi lookup', () => {
           'failed to parse the response from the server',
         ],
         [
-          'ConnectDnsFailed',
+          'TcpConnectFailed',
           ErrorCode.IoError,
-          'transport failed: DNS lookup failed',
+          'transport failed: Failed to establish TCP connection to any of the IPs',
         ],
         [
           'WebSocketIdleTooLong',

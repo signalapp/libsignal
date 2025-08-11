@@ -79,7 +79,10 @@ public class CdsiLookupResponseTest {
         "invalid argument: request was invalid: fake reason");
     assertLookupErrorIs(
         "Parse", CdsiProtocolException.class, "Failed to parse the response from the server");
-    assertLookupErrorIs("ConnectDnsFailed", IOException.class, "DNS lookup failed");
+    assertLookupErrorIs(
+        "TcpConnectFailed",
+        IOException.class,
+        "Failed to establish TCP connection to any of the IPs");
     assertLookupErrorIs(
         "WebSocketIdleTooLong", NetworkException.class, "channel was idle for too long");
     assertLookupErrorIs(
