@@ -12,7 +12,7 @@ use libsignal_bridge_types::support::AsType;
 use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{AccountData, LocalStateUpdate, StoredAccountData, StoredTreeHead};
 use libsignal_net_chat::api::keytrans::{
-    monitor_and_search, Error, KeyTransparencyClient, MaybePartial, SearchKey,
+    monitor_and_search, Error, KeyTransparencyClient, MaybePartial, MonitorMode, SearchKey,
     UnauthenticatedChatApi as _, UsernameHash,
 };
 use libsignal_net_chat::api::Unauth;
@@ -121,6 +121,7 @@ async fn KeyTransparency_Monitor(
     // simpler to produce an error once here than on all platforms.
     account_data: Option<Box<[u8]>>,
     last_distinguished_tree_head: Box<[u8]>,
+    is_self_monitor: bool,
 ) -> Result<Vec<u8>, BridgeError> {
     let username_hash = username_hash.map(UsernameHash::from);
 
@@ -142,6 +143,12 @@ async fn KeyTransparency_Monitor(
     let config = environment.into_inner().env().keytrans_config;
     let kt = KeyTransparencyClient::new(UnauthConnectionRef::from(chat_connection), config);
 
+    let mode = if is_self_monitor {
+        MonitorMode::MonitorSelf
+    } else {
+        MonitorMode::MonitorOther
+    };
+
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
     let MaybePartial {
         inner: updated_account_data,
@@ -154,6 +161,7 @@ async fn KeyTransparency_Monitor(
         username_hash,
         account_data,
         &last_distinguished_tree_head,
+        mode,
     )
     .await?;
 

@@ -44,6 +44,7 @@ export type Options = { abortSignal?: AbortSignal };
  * ACI descriptor for key transparency requests.
  */
 export type AciInfo = { aci: Aci; identityKey: PublicKey };
+
 /**
  * E.164 descriptor for key transparency requests.
  */
@@ -57,12 +58,32 @@ export type E164Info = {
  *
  */
 export type Request = {
-  /** ACI and ACI Identity Key for the account. Required. */
+  /** ACI information for the request. Required. */
   aciInfo: AciInfo;
   /** Unidentified access key associated with the account. Optional. */
   e164Info?: E164Info;
   /* Hash of the username associated with the account. Optional. */
   usernameHash?: Readonly<Uint8Array>;
+};
+
+/**
+ *  Mode of the monitor operation.
+ *
+ *  If the newer version of account data is found in the key transparency
+ *  log, self-monitor will terminate with an error, but monitor for other
+ *  account will fall back to a full search and update the locally stored
+ *  data.
+ */
+export enum MonitorMode {
+  Self,
+  Other,
+}
+
+/**
+ * An extension of the {@link Request} for the monitor operation.
+ */
+export type MonitorRequest = Request & {
+  mode: MonitorMode;
 };
 
 /**
@@ -122,7 +143,7 @@ export interface Client {
    * verify the data in key transparency server response, such as an incorrect proof or a
    * wrong signature.
    * @throws {ChatServiceInactive} if the chat connection has been closed.
-   * @throws {IoError} if an error occurred while commuicating with the
+   * @throws {IoError} if an error occurred while communicating with the
    * server.
    * */
   search(
@@ -154,13 +175,15 @@ export interface Client {
    * different result.
    * @throws {KeyTransparencyVerificationFailed} when it fails to
    * verify the data in key transparency server response, such as an incorrect proof or a
-   * wrong signature.
+   * wrong signature. This is also the error thrown when new version
+   * of account data is found in the key transparency log when
+   * self-monitoring. See {@link MonitorMode}.
    * @throws {ChatServiceInactive} if the chat connection has been closed.
-   * @throws {IoError} if an error occurred while commuicating with the
+   * @throws {IoError} if an error occurred while communicating with the
    * server.
    */
   monitor(
-    request: Request,
+    request: MonitorRequest,
     store: Store,
     options?: Readonly<Options>
   ): Promise<void>;
@@ -211,7 +234,7 @@ export class ClientImpl implements Client {
   }
 
   async monitor(
-    request: Request,
+    request: MonitorRequest,
     store: Store,
     options?: Readonly<Options>
   ): Promise<void> {
@@ -224,6 +247,7 @@ export class ClientImpl implements Client {
       aciInfo: { aci, identityKey: aciIdentityKey },
       e164Info,
       usernameHash,
+      mode,
     } = request;
     const { e164, unidentifiedAccessKey } = e164Info ?? {
       e164: null,
@@ -241,7 +265,8 @@ export class ClientImpl implements Client {
         unidentifiedAccessKey,
         usernameHash ?? null,
         await store.getAccountData(aci),
-        distinguished
+        distinguished,
+        mode === MonitorMode.Self
       )
     );
     await store.setAccountData(aci, accountData);

@@ -11,6 +11,7 @@ import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.internal.TokioAsyncContext;
 import org.signal.libsignal.keytrans.Store;
+import org.signal.libsignal.net.KeyTransparency.MonitorMode;
 import org.signal.libsignal.protocol.IdentityKey;
 import org.signal.libsignal.protocol.ServiceId;
 
@@ -115,8 +116,8 @@ public class KeyTransparencyClient {
     // requests.
     // It may result in an IllegalArgumentException.
     try (NativeHandleGuard tokioContextGuard = this.tokioAsyncContext.guard();
-        NativeHandleGuard identityKeyGuard = aciIdentityKey.getPublicKey().guard()) {
-      NativeHandleGuard chatConnectionGuard = new NativeHandleGuard(chatConnection);
+        NativeHandleGuard identityKeyGuard = aciIdentityKey.getPublicKey().guard();
+        NativeHandleGuard chatConnectionGuard = new NativeHandleGuard(chatConnection); ) {
       return Native.KeyTransparency_Search(
               tokioContextGuard.nativeHandle(),
               this.environment.value,
@@ -186,9 +187,13 @@ public class KeyTransparencyClient {
    * call. Another way of putting this is: monitor cannot be called before {@link #search}.
    *
    * <p>If any of the monitored fields in the server response contain a version that is higher than
-   * the one currently in the store, a search request will be performed automatically and, if it
-   * succeeds, the updated account data will be stored. Otherwise, if the monitor does not detect
-   * any new versions, a search request will not be triggered.
+   * the one currently in the store, the behavior depends on the mode parameter value.
+   *
+   * <ul>
+   *   <li>{@code MonitorMode.SELF} - An exception will be thrown, no search request will be issued.
+   *   <li>{@code MonitorMode.OTHER} - A search request will be performed automatically and, if it
+   *       succeeds, the updated account data will be stored.
+   * </ul>
    *
    * <p>If the latest distinguished tree head is not present in the store, it will be requested from
    * the server prior to performing the search via {@link #updateDistinguished}.
@@ -210,6 +215,7 @@ public class KeyTransparencyClient {
    *       wrong signature.
    * </ul>
    *
+   * @param mode Mode of the monitor operation. See {@link MonitorMode}.
    * @param aci the ACI of the account to be searched for. Required.
    * @param aciIdentityKey {@link IdentityKey} associated with the ACI. Required.
    * @param e164 string representation of an E.164 number associated with the account. Optional.
@@ -226,7 +232,8 @@ public class KeyTransparencyClient {
    * @throws IllegalArgumentException if the store contains corrupted data.
    */
   public CompletableFuture<Void> monitor(
-      /* @NotNull */ final ServiceId.Aci aci,
+      /* @NotNull */ final MonitorMode mode,
+      final ServiceId.Aci aci,
       /* @NotNull */ final IdentityKey aciIdentityKey,
       final String e164,
       final byte[] unidentifiedAccessKey,
@@ -238,7 +245,7 @@ public class KeyTransparencyClient {
           .thenCompose(
               (ignored) ->
                   this.monitor(
-                      aci, aciIdentityKey, e164, unidentifiedAccessKey, usernameHash, store));
+                      mode, aci, aciIdentityKey, e164, unidentifiedAccessKey, usernameHash, store));
     }
     try (NativeHandleGuard tokioContextGuard = this.tokioAsyncContext.guard();
         NativeHandleGuard identityKeyGuard = aciIdentityKey.getPublicKey().guard();
@@ -255,7 +262,8 @@ public class KeyTransparencyClient {
               // Technically this is a required parameter, but passing null
               // to generate the error on the Rust side.
               store.getAccountData(aci).orElse(null),
-              lastDistinguishedTreeHead.get())
+              lastDistinguishedTreeHead.get(),
+              mode == MonitorMode.SELF)
           .thenApply(
               (updatedAccountData) -> {
                 store.setAccountData(aci, updatedAccountData);

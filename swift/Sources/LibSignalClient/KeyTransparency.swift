@@ -31,6 +31,17 @@ public enum KeyTransparency {
         let unidentifiedAccessKey: Data
     }
 
+    /// Mode of the monitor operation.
+    ///
+    /// If the newer version of account data is found in the key transparency
+    /// log, self-monitor will terminate with an error, but monitor for other
+    /// account will fall back to a full search and update the locally stored
+    /// data.
+    public enum MonitorMode {
+        case `self`
+        case other
+    }
+
     /// Typed API to access the key transparency subsystem using an existing
     /// unauthenticated chat connection.
     ///
@@ -39,7 +50,7 @@ public enum KeyTransparency {
     /// implement high-level key transparency operations.
     ///
     /// Instances should be obtained by using the
-    /// ``UnauthenticatedChatConnection.keyTransparencyClient`` property.
+    /// ``UnauthenticatedChatConnection/keyTransparencyClient`` property.
     ///
     /// Example usage:
     ///
@@ -77,8 +88,8 @@ public enum KeyTransparency {
         /// Search for account information in the key transparency tree.
         ///
         /// - Parameters:
-        ///   - account: ACI identifying information.
-        ///   - e164: E.164 identifying information. Optional.
+        ///   - aciInfo: ACI identifying information.
+        ///   - e164Info: E.164 identifying information. Optional.
         ///   - usernameHash: Hash of the username. Optional.
         ///   - store: Local key transparency storage. It will be queried for both
         ///     the account data and the latest distinguished tree head before sending the
@@ -139,8 +150,9 @@ public enum KeyTransparency {
         /// Perform a monitor operation for an account previously searched for.
         ///
         /// - Parameters:
-        ///   - account: ACI identifying information.
-        ///   - e164: E.164 identifying information. Optional.
+        ///   - mode: Mode of the monitor operation. See ``MonitorMode``.
+        ///   - aciInfo: ACI identifying information.
+        ///   - e164Info: E.164 identifying information. Optional.
         ///   - usernameHash: Hash of the username. Optional.
         ///   - store: Local key transparency storage. It will be queried for both
         ///     the account data and the latest distinguished tree head before sending the
@@ -153,12 +165,15 @@ public enum KeyTransparency {
         ///     different result.
         ///   - `SignalError.keyTransparencyVerificationFailed` when it fails to
         ///     verify the data in key transparency server response, such as an incorrect proof or a
-        ///     wrong signature.
+        ///     wrong signature. This is also the error thrown when new version
+        ///     of account data is found in the key transparency log when
+        ///     self-monitoring. See ``MonitorMode``.
         ///
         /// Completes successfully if the search succeeds and the local state has been
         /// updated to reflect the latest changes. If the operation fails, the UI should
         /// be updated to notify the user of the failure.
         public func monitor(
+            for mode: MonitorMode,
             account aciInfo: AciInfo,
             e164 e164Info: E164Info? = nil,
             usernameHash: Data? = nil,
@@ -191,7 +206,8 @@ public enum KeyTransparency {
                         uakBytes,
                         hashBytes,
                         accDataBytes,
-                        distinguishedBytes
+                        distinguishedBytes,
+                        mode == .self
                     )
                 }
             }

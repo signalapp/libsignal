@@ -17,6 +17,7 @@ import {
   LibSignalErrorBase,
 } from '../Errors';
 import * as KT from '../net/KeyTransparency';
+import { MonitorMode } from '../net/KeyTransparency';
 
 use(chaiAsPromised);
 
@@ -52,6 +53,7 @@ const testRequest = {
     unidentifiedAccessKey: testUnidentifiedAccessKey,
   },
   usernameHash: testUsernameHash,
+  mode: MonitorMode.Other,
 };
 
 describe('KeyTransparency bridging', () => {
@@ -83,6 +85,9 @@ describe('KeyTransparency bridging', () => {
 });
 
 describe('KeyTransparency Integration', function (this: Mocha.Suite) {
+  // Avoid timing out due to slow network or KT environment
+  this.timeout(5000);
+
   before(() => {
     if (!process.env.LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS) {
       this.ctx.skip();

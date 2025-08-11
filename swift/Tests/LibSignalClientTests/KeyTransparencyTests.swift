@@ -120,6 +120,7 @@ final class KeyTransparencyTests: TestCaseBase {
         )
         XCTAssertEqual(1, store.accountData[self.testAccount.aci]!.count)
         try await chat.keyTransparencyClient.monitor(
+            for: .self,
             account: self.testAccount.aciInfo,
             e164: self.testAccount.e164Info,
             store: store

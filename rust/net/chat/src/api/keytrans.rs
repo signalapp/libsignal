@@ -337,6 +337,12 @@ pub trait UnauthenticatedChatApi {
     ) -> impl Future<Output = Result<AccountData, RequestError<Error>>> + Send;
 }
 
+#[derive(Eq, Debug, PartialEq, Clone, Copy)]
+pub enum MonitorMode {
+    MonitorSelf,
+    MonitorOther,
+}
+
 pub async fn monitor_and_search(
     kt: &impl UnauthenticatedChatApi,
     aci: &Aci,
@@ -345,6 +351,7 @@ pub async fn monitor_and_search(
     username_hash: Option<UsernameHash<'_>>,
     stored_account_data: AccountData,
     distinguished_tree_head: &LastTreeHead,
+    mode: MonitorMode,
 ) -> Result<MaybePartial<AccountData>, RequestError<Error>> {
     let updated_account_data = kt
         .monitor(
@@ -359,8 +366,19 @@ pub async fn monitor_and_search(
     // Call to `monitor` guarantees that the optionality of E.164 and username hash data
     // will match between `stored_account_data` and `updated_account_data`. Meaning, they will
     // either both be Some() or both None.
-    let should_search = has_version_changed_between(&stored_account_data, &updated_account_data);
-    let final_account_data = if should_search {
+    let version_changed = has_version_changed_between(&stored_account_data, &updated_account_data);
+
+    // In case of self-monitoring, it is an error to detect a version change.
+    if version_changed && matches!(mode, MonitorMode::MonitorSelf) {
+        return Err(RequestError::Other(
+            libsignal_keytrans::Error::VerificationFailed(
+                "version change detected while self-monitoring".to_string(),
+            )
+            .into(),
+        ));
+    }
+
+    let final_account_data = if version_changed {
         kt.search(
             aci,
             aci_identity_key,
@@ -1104,6 +1122,7 @@ mod test {
             None,
             test_account_data(),
             &test_distinguished_tree(),
+            MonitorMode::MonitorOther,
         )
         .await;
         assert_matches!(
@@ -1126,6 +1145,7 @@ mod test {
             None,
             test_account_data(),
             &test_distinguished_tree(),
+            MonitorMode::MonitorOther,
         )
         .await
         .expect("monitor should succeed");
@@ -1166,6 +1186,7 @@ mod test {
             None,
             test_account_data(),
             &test_distinguished_tree(),
+            MonitorMode::MonitorOther,
         )
         .await;
 
@@ -1174,6 +1195,41 @@ mod test {
         assert_matches!(
             result,
             Err(RequestError::Unexpected { log_safe: msg }) if msg == "pass through unexpected error"
+        );
+    }
+
+    #[tokio::test]
+    async fn monitor_and_search_self_monitor_fail_on_version_change() {
+        let mut monitor_result = test_account_data();
+        // inserting a newer version of E.164
+        let subject = monitor_result.e164.as_mut().unwrap();
+        let max_version = subject.greatest_version();
+        subject.ptrs.insert(u64::MAX, max_version + 1);
+
+        let kt = TestKt::new(
+            Ok(monitor_result.clone()),
+            Err(RequestError::Unexpected {
+                log_safe: "pass through unexpected error".to_owned(),
+            }),
+        );
+
+        let result = monitor_and_search(
+            &kt,
+            &test_account::aci(),
+            &test_account::aci_identity_key(),
+            None,
+            None,
+            test_account_data(),
+            &test_distinguished_tree(),
+            MonitorMode::MonitorSelf,
+        )
+        .await;
+
+        // monitor invocation should have succeeded, and search
+        // should not have been invoked
+        assert_matches!(
+            result,
+            Err(RequestError::Other(Error::VerificationFailed(_)))
         );
     }
 
@@ -1211,6 +1267,7 @@ mod test {
             None,
             test_account_data(),
             &test_distinguished_tree(),
+            MonitorMode::MonitorOther,
         )
         .await
         .expect("both monitor and search should have succeeded");
