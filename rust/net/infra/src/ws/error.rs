@@ -17,7 +17,6 @@ use crate::errors::{LogSafeDisplay, TransportConnectError};
 #[derive(Debug, thiserror::Error)]
 pub enum WebSocketConnectError {
     Transport(#[from] TransportConnectError),
-    Timeout,
     WebSocketError(#[from] tungstenite::Error),
 }
 
@@ -25,7 +24,6 @@ impl std::fmt::Display for WebSocketConnectError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             WebSocketConnectError::Transport(e) => write!(f, "transport: {e}"),
-            WebSocketConnectError::Timeout => write!(f, "timed out while connecting"),
             WebSocketConnectError::WebSocketError(e) => {
                 write!(f, "websocket error: {}", LogSafeTungsteniteError::from(e))
             }

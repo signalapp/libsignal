@@ -57,15 +57,6 @@ impl WebSocketServiceConnectError {
         }
     }
 
-    pub fn timeout() -> Self {
-        Self::Connect(
-            WebSocketConnectError::Timeout,
-            NotRejectedByServer {
-                _limit_construction: (),
-            },
-        )
-    }
-
     pub fn invalid_proxy_configuration() -> Self {
         Self::Connect(
             WebSocketConnectError::Transport(TransportConnectError::InvalidConfiguration),

@@ -886,7 +886,7 @@ mod test {
 
         let fake_transport_connector = ConnectFn(move |(), route: TransportRoute| {
             std::future::ready(if *route.immediate_target() == bad_ip {
-                Err(WebSocketConnectError::Timeout)
+                Err(TransportConnectError::TcpConnectionFailed)
             } else {
                 Ok(())
             })

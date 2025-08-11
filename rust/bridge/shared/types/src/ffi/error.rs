@@ -973,7 +973,6 @@ impl FfiError for libsignal_net::svrb::Error {
                 "no connection attempts succeeded before timeout".into()
             }
             Self::Connect(e) => match e {
-                WebSocketConnectError::Timeout => "Connect timed out".into(),
                 WebSocketConnectError::Transport(e) => format!("IO error: {e}").into(),
                 WebSocketConnectError::WebSocketError(_) => format!("WebSocket error: {e}").into(),
             },
@@ -996,7 +995,6 @@ impl FfiError for libsignal_net::svrb::Error {
             Self::AllConnectionAttemptsFailed => SignalErrorCode::ConnectionFailed,
             Self::Connect(e) => match e {
                 WebSocketConnectError::Transport(_) => SignalErrorCode::IoError,
-                WebSocketConnectError::Timeout => SignalErrorCode::ConnectionTimedOut,
                 WebSocketConnectError::WebSocketError(_) => SignalErrorCode::WebSocket,
             },
             Self::RateLimited(inner) => inner.code(),

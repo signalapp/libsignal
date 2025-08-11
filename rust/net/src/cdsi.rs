@@ -276,7 +276,6 @@ impl From<crate::enclave::Error> for LookupError {
         use crate::enclave::Error;
         match value {
             Error::WebSocketConnect(e) => match e {
-                WebSocketConnectError::Timeout => Self::AllConnectionAttemptsFailed,
                 WebSocketConnectError::Transport(e) => Self::ConnectTransport(e),
                 WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
             },
