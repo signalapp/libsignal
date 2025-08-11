@@ -14,7 +14,7 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use uuid::Uuid;
 
 use crate::chat::noise::HandshakeAuth;
-use crate::infra::errors::LogSafeDisplay;
+use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
 use crate::infra::noise::{
     handshake, NoiseStream, SendError, Transport, EPHEMERAL_KEY_LEN, STATIC_KEY_LEN,
 };
@@ -46,6 +46,8 @@ pub enum Authorization {
 pub enum ConnectError {
     /// send failed: {0}
     Send(#[from] SendError),
+    /// transport error: {0}
+    Transport(#[from] TransportConnectError),
     /// public key mismatch
     WrongPublicKey,
     /// client version is too old
@@ -59,7 +61,17 @@ pub enum ConnectError {
 }
 impl LogSafeDisplay for ConnectError {}
 
-#[derive(Debug, Default, PartialEq)]
+impl From<libsignal_net_infra::noise::ConnectError> for ConnectError {
+    fn from(value: libsignal_net_infra::noise::ConnectError) -> Self {
+        use libsignal_net_infra::noise::ConnectError;
+        match value {
+            ConnectError::Send(send) => Self::Send(send),
+            ConnectError::Transport(transport) => Self::Transport(transport),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ConnectMeta {
     pub accept_language: String,
     pub user_agent: String,

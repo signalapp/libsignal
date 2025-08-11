@@ -9,6 +9,8 @@ use bytes::Bytes;
 use futures_util::stream::FusedStream;
 use futures_util::Sink;
 
+use crate::errors::TransportConnectError;
+
 mod direct;
 pub use direct::DirectStream;
 mod handshake;
@@ -16,14 +18,12 @@ pub use handshake::*;
 mod stream;
 pub use stream::NoiseStream;
 
-#[derive(Debug, thiserror::Error, displaydoc::Display, derive_more::Into)]
-/// {0}
-pub struct SendError(#[from] IoError);
-
-impl From<snow::Error> for SendError {
-    fn from(e: snow::Error) -> Self {
-        Self(IoError::other(format!("noise error: {e}")))
-    }
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+pub enum SendError {
+    /// {0}
+    Io(#[from] IoError),
+    /// {0}
+    Noise(#[from] snow::Error),
 }
 
 /// A frame-based transport that can be used to send Noise packets.
@@ -48,6 +48,14 @@ pub enum FrameType {
 
     /// {0} auth
     Auth(#[from] HandshakeAuthKind),
+}
+
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+pub enum ConnectError {
+    /// {0}
+    Send(#[from] SendError),
+    /// {0}
+    Transport(#[from] TransportConnectError),
 }
 
 #[cfg(any(test, feature = "test-util"))]
