@@ -27,6 +27,9 @@ pub use describe::*;
 mod http;
 pub use http::*;
 
+mod noise;
+pub use noise::*;
+
 pub mod provider;
 pub use crate::route::provider::RouteProviderExt;
 

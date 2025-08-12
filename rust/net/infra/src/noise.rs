@@ -3,13 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::future::Future;
 use std::io::Error as IoError;
 
 use bytes::Bytes;
 use futures_util::stream::FusedStream;
-use futures_util::Sink;
+use futures_util::{Sink, TryFutureExt};
 
 use crate::errors::TransportConnectError;
+use crate::route::{Connector, NoiseRouteFragment};
 
 mod direct;
 pub use direct::DirectStream;
@@ -56,6 +58,72 @@ pub enum ConnectError {
     Send(#[from] SendError),
     /// {0}
     Transport(#[from] TransportConnectError),
+}
+
+/// [`Connector`] that performs a Noise [handshake] to establish a [`NoiseStream`].
+///
+/// On success, the returned connection is a [`NoiseStream`] that can be used as
+/// an [`AsyncRead`] & [`AsyncWrite`] stream and the initial payload sent with
+/// the handshake response.
+///
+/// [`AsyncRead`]: tokio::io::AsyncRead
+/// [`AsyncWrite`]: tokio::io::AsyncWrite
+#[derive(Clone, Debug)]
+pub struct NoiseConnector;
+
+/// [`Connector`] that wraps a [`Transport`] stream into a [`NoiseStream`].
+pub struct NoiseDirectConnector<C>(pub C);
+
+impl<Inner: Transport + Send + Unpin, N: NoiseHandshake + Send>
+    Connector<NoiseRouteFragment<N>, Inner> for NoiseConnector
+{
+    type Connection = (NoiseStream<Inner>, Box<[u8]>);
+
+    type Error = SendError;
+
+    async fn connect_over(
+        &self,
+        over: Inner,
+        route: NoiseRouteFragment<N>,
+        log_tag: &str,
+    ) -> Result<Self::Connection, Self::Error> {
+        let NoiseRouteFragment {
+            handshake: noise_handshake,
+            initial_payload,
+        } = route;
+        log::debug!(
+            "[{log_tag}] performing Noise {} handshake",
+            noise_handshake.auth_kind()
+        );
+
+        handshake(
+            over,
+            noise_handshake,
+            initial_payload.as_ref().map(AsRef::as_ref),
+        )
+        .await
+        .inspect_err(|e| match e {
+            SendError::Io(_) => (),
+            SendError::Noise(e) => log::warn!("[{log_tag}] Noise handshake failed: {e}"),
+        })
+    }
+}
+
+impl<C: Connector<R, Inner>, R, Inner> Connector<R, Inner> for NoiseDirectConnector<C> {
+    type Connection = DirectStream<C::Connection>;
+
+    type Error = C::Error;
+
+    fn connect_over(
+        &self,
+        over: Inner,
+        route: R,
+        log_tag: &str,
+    ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+        let Self(c) = self;
+        c.connect_over(over, route, log_tag)
+            .map_ok(DirectStream::new)
+    }
 }
 
 #[cfg(any(test, feature = "test-util"))]

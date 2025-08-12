@@ -13,11 +13,12 @@ use prost::Message as _;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use uuid::Uuid;
 
-use crate::chat::noise::HandshakeAuth;
+use crate::chat::noise::{ChatNoiseFragment, HandshakeAuth};
 use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
 use crate::infra::noise::{
-    handshake, NoiseStream, SendError, Transport, EPHEMERAL_KEY_LEN, STATIC_KEY_LEN,
+    NoiseConnector, NoiseStream, SendError, Transport, EPHEMERAL_KEY_LEN, STATIC_KEY_LEN,
 };
+use crate::infra::route::{Connector, NoiseRouteFragment};
 
 /// A Noise-encrypted stream that wraps an underlying block-based [`Transport`].
 ///
@@ -26,6 +27,9 @@ pub struct EncryptedStream<S> {
     stream: NoiseStream<S>,
 }
 
+/// Convenience alias for a public server key.
+pub type ServerPublicKey = [u8; STATIC_KEY_LEN];
+
 /// How to identify the client to the server.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Authorization {
@@ -33,13 +37,11 @@ pub enum Authorization {
     Authenticated {
         aci: Aci,
         device_id: DeviceId,
-        server_public_key: [u8; STATIC_KEY_LEN],
+        server_public_key: ServerPublicKey,
         client_private_key: [u8; EPHEMERAL_KEY_LEN],
     },
     /// Connect to a known server as an anonymous client.
-    Anonymous {
-        server_public_key: [u8; STATIC_KEY_LEN],
-    },
+    Anonymous { server_public_key: ServerPublicKey },
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
@@ -76,18 +78,41 @@ pub struct ConnectMeta {
     pub accept_language: String,
     pub user_agent: String,
 }
+pub struct ChatNoiseConnector<C = NoiseConnector>(pub C);
 
-impl<S: Transport + Unpin> EncryptedStream<S> {
-    /// Creates a new stream over the provided transport with the given identification.
-    pub async fn connect(
-        authorization: Authorization,
-        meta: ConnectMeta,
-        transport: S,
-    ) -> Result<Self, ConnectError> {
+impl<Inner, C, NS> Connector<ChatNoiseFragment, Inner> for ChatNoiseConnector<C>
+where
+    C: for<'a> Connector<
+            NoiseRouteFragment<HandshakeAuth<'a>>,
+            Inner,
+            Connection = (NoiseStream<NS>, Box<[u8]>),
+            Error: Into<ConnectError>,
+        > + Sync,
+    Inner: Send,
+{
+    type Connection = EncryptedStream<NS>;
+
+    type Error = ConnectError;
+
+    async fn connect_over(
+        &self,
+        over: Inner,
+        (authorization, meta): ChatNoiseFragment,
+        log_tag: &str,
+    ) -> Result<Self::Connection, Self::Error> {
+        let Self(noise_connector) = self;
         let (pattern, initial_payload) = pattern_and_payload(&authorization, meta);
-        let handshaker = handshake(transport, pattern, Some(&initial_payload));
-        let (stream, payload) = handshaker.await?;
-
+        let (stream, payload) = noise_connector
+            .connect_over(
+                over,
+                NoiseRouteFragment {
+                    handshake: pattern,
+                    initial_payload: Some(initial_payload),
+                },
+                log_tag,
+            )
+            .await
+            .map_err(Into::into)?;
         let crate::proto::chat_noise::HandshakeResponse {
             code,
             error_details,
@@ -108,8 +133,7 @@ impl<S: Transport + Unpin> EncryptedStream<S> {
         if !fast_open_response.is_empty() {
             return Err(ConnectError::UnexpectedFastOpenResponse);
         }
-
-        Ok(Self { stream })
+        Ok(EncryptedStream { stream })
     }
 }
 
@@ -302,6 +326,18 @@ mod test {
 
         assert!(server_state.is_handshake_finished());
         server_state.into_transport_mode().unwrap()
+    }
+
+    impl<T: Transport + Unpin + Send> EncryptedStream<T> {
+        async fn connect(
+            authorization: Authorization,
+            meta: ConnectMeta,
+            inner: T,
+        ) -> Result<EncryptedStream<T>, ConnectError> {
+            ChatNoiseConnector(NoiseConnector)
+                .connect_over(inner, (authorization, meta), "test")
+                .await
+        }
     }
 
     const ACI: Aci = Aci::from_uuid_bytes(hex!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));

@@ -10,9 +10,9 @@ use static_assertions::assert_impl_all;
 
 use crate::errors::TransportConnectError;
 use crate::route::{
-    ConnectionProxyRoute, DirectOrProxyRoute, HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute,
-    TlsRouteFragment, TransportRoute, WebSocketRoute, WebSocketRouteFragment,
-    WebSocketServiceRoute,
+    ConnectionProxyRoute, DirectOrProxyRoute, HttpRouteFragment, HttpsTlsRoute, NoiseRoute,
+    NoiseRouteFragment, TcpRoute, TlsRoute, TlsRouteFragment, TransportRoute, WebSocketRoute,
+    WebSocketRouteFragment, WebSocketServiceRoute,
 };
 use crate::ws::WebSocketConnectError;
 
@@ -202,6 +202,33 @@ where
             inner: tcp_route,
         } = route;
         self.connect_inner_then_outer_with_timeout(over, tcp_route, tls_fragment, log_tag)
+    }
+}
+
+/// Establishes a Noise connection over an unproxied transport stream.
+impl<A, B, Inner, T, Error, N> Connector<NoiseRoute<N, T>, Inner> for ComposedConnector<A, B, Error>
+where
+    A: Connector<NoiseRouteFragment<N>, B::Connection, Error: Into<Error>> + Sync,
+    B: Connector<T, Inner, Error: Into<Error>> + Sync,
+    Inner: Send,
+    T: Send,
+    N: Send,
+{
+    type Connection = A::Connection;
+
+    type Error = Error;
+
+    fn connect_over(
+        &self,
+        over: Inner,
+        route: NoiseRoute<N, T>,
+        log_tag: &str,
+    ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+        let NoiseRoute {
+            fragment,
+            inner: tcp_route,
+        } = route;
+        self.connect_inner_then_outer(over, tcp_route, fragment, log_tag)
     }
 }
 
