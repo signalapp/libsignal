@@ -110,9 +110,14 @@ pub async fn do_remove(connect_results: impl IntoConnectionResults) -> Result<()
         mut connections,
         errors,
     } = ConnectionContext::new(connect_results);
+    if connections.is_empty() {
+        return Err(errors.into_iter().next().expect("at least one connection"));
+    }
+
     for err in errors {
         // For the remove operation we ignore connection failures
-        // and proceed to work with the successful connections.
+        // and proceed to work with the successful connections,
+        // as long as there are any.
         log::debug!("Connection failure '{:?}' will be ignored.", &err);
     }
 
@@ -247,9 +252,8 @@ mod test {
     }
 
     #[tokio::test]
-    async fn do_remove_does_not_fail_on_bad_connections() {
-        do_remove(NotConnectedResults)
-            .await
-            .expect("Should ignore connection errors");
+    async fn do_remove_fails_if_all_connections_failed() {
+        let result = do_remove(NotConnectedResults).await;
+        assert_matches!(result, Err(crate::svrb::Error::AllConnectionAttemptsFailed));
     }
 }
