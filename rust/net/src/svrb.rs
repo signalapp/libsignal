@@ -514,6 +514,8 @@ mod test {
     use futures::future::BoxFuture;
     use libsignal_account_keys::{AccountEntropyPool, BackupKey};
     use libsignal_svrb::{Backup4, Secret};
+    use proptest::prelude::*;
+    use strum::VariantArray as _;
 
     use super::*;
 
@@ -1146,5 +1148,60 @@ mod test {
         // Never upload the next backup.
 
         scenario.wipe_and_restore();
+    }
+
+    #[test]
+    fn proptest_latest_backup_is_always_restored() {
+        #[derive(Clone, Debug, strum::VariantArray)]
+        enum Action {
+            UploadSecret,
+            UploadSecretAndBackup,
+            UploadSecretAndBackupAndSave,
+            WipeAndRestore,
+        }
+
+        impl proptest::arbitrary::Arbitrary for Action {
+            type Parameters = ();
+            type Strategy = proptest::sample::Select<Self>;
+            fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+                proptest::sample::select(Self::VARIANTS)
+            }
+        }
+
+        proptest!(|(actions in proptest::collection::vec(Action::arbitrary(), ..20))| {
+            let mut scenario = Scenario::new();
+            // If we haven't completed at least one backup fully, we don't have any of SVR-B's
+            // guarantees. In particular:
+            //
+            // - If we haven't uploaded a backup, we obviously can't restore.
+            // - More subtly, if we haven't saved the secret data from the first upload, we can't
+            //   recover from the *second* backup process being interrupted.
+            //
+            // But if someone's very first backup fails, hopefully they don't have anything
+            // irreplaceable in Signal yet anyway!
+            scenario.complete_one_successful_backup();
+
+            for action in actions {
+                match action {
+                    Action::UploadSecret => {
+                        _ = scenario.upload_secret_to_svr();
+                    }
+                    Action::UploadSecretAndBackup => {
+                        let BackupStoreResponse {
+                            forward_secrecy_token: _,
+                            next_backup_data: _,
+                            metadata,
+                        } = scenario.upload_secret_to_svr();
+                        scenario.upload_backup_to_server(metadata);
+                    }
+                    Action::UploadSecretAndBackupAndSave => {
+                        scenario.complete_one_successful_backup();
+                    }
+                    Action::WipeAndRestore => {
+                        scenario.wipe_and_restore();
+                    }
+                }
+            }
+        });
     }
 }
