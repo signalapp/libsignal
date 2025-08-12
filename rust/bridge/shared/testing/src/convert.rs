@@ -69,6 +69,11 @@ async fn TESTING_FutureSuccess(input: u8) -> i32 {
     i32::from(input) * 2
 }
 
+#[bridge_io(TokioAsyncContext)]
+async fn TESTING_TokioAsyncContext_FutureSuccessBytes(count: i32) -> Vec<u8> {
+    vec![0; usize::try_from(count).unwrap()]
+}
+
 #[bridge_io(NonSuspendingBackgroundThreadRuntime)]
 async fn TESTING_FutureFailure(_input: u8) -> Result<i32, SignalProtocolError> {
     Err(SignalProtocolError::InvalidArgument("failure".to_string()))

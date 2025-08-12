@@ -207,4 +207,35 @@ public class FutureTest {
     int result = future.get();
     assertEquals("memory corrupted", result, INITIAL);
   }
+
+  @Test(timeout = 10_000)
+  public void testFutureResultIsNotLeakedEvenWithPermanentJVMAttachedThreads() throws Exception {
+    var context =
+        new TokioAsyncContext(NativeTesting.TESTING_TokioAsyncContext_NewSingleThreaded());
+    context.guardedRun(
+        nativeContextHandle ->
+            NativeTesting.TESTING_TokioAsyncContext_AttachBlockingThreadToJVMPermanently(
+                nativeContextHandle, null));
+
+    var finalizationQueue = new java.lang.ref.ReferenceQueue<byte[]>();
+    java.lang.ref.PhantomReference<byte[]> reference;
+
+    {
+      int length = 1024;
+      CompletableFuture<byte[]> future =
+          context.guardedMap(
+              nativeContextHandle ->
+                  NativeTesting.TESTING_TokioAsyncContext_FutureSuccessBytes(
+                      nativeContextHandle, length));
+      byte[] result = future.get();
+      reference = new java.lang.ref.PhantomReference<>(result, finalizationQueue);
+      assertEquals(length, result.length);
+      future = null;
+      result = null;
+    }
+
+    do {
+      System.gc();
+    } while (finalizationQueue.remove(100) != reference);
+  }
 }

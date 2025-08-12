@@ -10,6 +10,15 @@ use futures_util::{FutureExt, TryFutureExt};
 use super::*;
 use crate::support::{AsyncRuntime, CancellationId, ResultReporter};
 
+/// A baseline number of local references to allow on a background thread attaching to the JVM.
+///
+/// 16 is the default guaranteed number of local references for a JNI frame created by calling
+/// *from* Java into a `native` function; if we can usually do a synchronous function's full work
+/// with that, we should be able to do just the return value part as well.
+///
+/// cbindgen:ignore
+pub const REASONABLE_JNI_BACKGROUND_THREAD_FRAME_SIZE: jint = 16;
+
 /// Used to complete a Java CompletableFuture from any thread.
 pub struct FutureCompleter<T> {
     jvm: JavaVM,
@@ -99,73 +108,91 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
             }
         };
 
-        // Catch panics while converting successful results to Java values.
-        // (We have no *expected* panics, but we don't want to bring down the process for a
-        // libsignal-internal bug if we can help it.)
-        let maybe_error: SignalJniResult<()> = result.and_then(|result| {
-            // This AssertUnwindSafe isn't totally justified, but if we get a panic talking to the
-            // JVM, we have bigger problems.
-            let env_for_catch_unwind = std::panic::AssertUnwindSafe(&mut env);
-            let future_for_catch_unwind = &future;
-            std::panic::catch_unwind(move || {
-                // Force the lambda to capture the whole struct instead of an individual field.
-                let _ = &env_for_catch_unwind;
-                let env = env_for_catch_unwind.0;
-                result
-                    .convert_into(env)
-                    .and_then(|result| {
-                        let result_as_jobject = box_primitive_if_needed(env, result.into())?;
-                        _ = call_method_checked(
-                            env,
-                            future_for_catch_unwind,
-                            "complete",
-                            jni_args!((result_as_jobject => java.lang.Object) -> boolean),
-                        )?;
-                        Ok(())
+        let result = env.with_local_frame(
+            REASONABLE_JNI_BACKGROUND_THREAD_FRAME_SIZE,
+            move |mut env| -> jni::errors::Result<()> {
+                // Catch panics while converting successful results to Java values.
+                // (We have no *expected* panics, but we don't want to bring down the process for a
+                // libsignal-internal bug if we can help it.)
+                let maybe_error: SignalJniResult<()> = {
+                    // This AssertUnwindSafe isn't totally justified, but if we get a panic talking to the
+                    // JVM, we have bigger problems.
+                    // Note that we need an extra &mut even though `env` is already `&mut JNIEnv`,
+                    // so we can *release* it once this block is over.
+                    let env_for_catch_unwind = std::panic::AssertUnwindSafe(&mut env);
+                    let future_for_catch_unwind = &future;
+                    result.and_then(|result| {
+                        std::panic::catch_unwind(move || {
+                            // Force the lambda to capture the whole struct instead of an individual field.
+                            let _ = &env_for_catch_unwind;
+                            let env = env_for_catch_unwind.0;
+                            result
+                                .convert_into(env)
+                                .and_then(|result| {
+                                    let result_as_jobject = box_primitive_if_needed(env, result.into())?;
+                                    _ = call_method_checked(
+                                        env,
+                                        future_for_catch_unwind,
+                                        "complete",
+                                        jni_args!((result_as_jobject => java.lang.Object) -> boolean),
+                                    )?;
+                                    Ok(())
+                                })
+                                .map_err(Into::into)
+                        })
+                        .unwrap_or_else(|panic| Err(BridgeLayerError::UnexpectedPanic(panic).into()))
                     })
-                    .map_err(Into::into)
-            })
-            .unwrap_or_else(|panic| Err(BridgeLayerError::UnexpectedPanic(panic).into()))
-        });
+                };
 
-        // From this point on we can't catch panics, because SignalJniError isn't UnwindSafe. This
-        // is consistent with the synchronous implementation in run_ffi_safe, which doesn't catch
-        // panics when converting errors to exceptions either.
-        let future_for_convert = &future;
-        let stack_elements_for_convert = &future_creation_stack_trace_elements;
-        let env_mut = &mut *env;
-        maybe_error.unwrap_or_else(move |error| {
-            convert_to_exception(env_mut, error, move |env, throwable, error| {
-                throwable
-                    .and_then(move |throwable| {
-                        call_method_checked(
-                            env,
-                            &throwable,
-                            "setStackTrace",
-                            jni_args!((stack_elements_for_convert => [java.lang.StackTraceElement]) -> void),
-                        )?;
+                // From this point on we can't catch panics, because SignalJniError isn't UnwindSafe. This
+                // is consistent with the synchronous implementation in run_ffi_safe, which doesn't catch
+                // panics when converting errors to exceptions either.
+                let future_for_convert = &future;
+                let stack_elements_for_convert = &future_creation_stack_trace_elements;
+                maybe_error.unwrap_or_else(move |error| {
+                    convert_to_exception(env, error, move |env, throwable, error| {
+                        throwable
+                            .and_then(move |throwable| {
+                                call_method_checked(
+                                    env,
+                                    &throwable,
+                                    "setStackTrace",
+                                    jni_args!((stack_elements_for_convert => [java.lang.StackTraceElement]) -> void),
+                                )?;
 
-                        _ = call_method_checked(
-                            env,
-                            future_for_convert,
-                            "completeExceptionally",
-                            jni_args!((throwable => java.lang.Throwable) -> boolean),
-                        )?;
-                        Ok(())
+                                _ = call_method_checked(
+                                    env,
+                                    future_for_convert,
+                                    "completeExceptionally",
+                                    jni_args!((throwable => java.lang.Throwable) -> boolean),
+                                )?;
+                                Ok(())
+                            })
+                            .unwrap_or_else(|completion_error| {
+                                log::error!(
+                                    "failed to complete Future with error \"{error}\": {completion_error}"
+                                );
+                            });
                     })
-                    .unwrap_or_else(|completion_error| {
-                        log::error!(
-                            "failed to complete Future with error \"{error}\": {completion_error}"
-                        );
-                    });
-            })
-        });
+                });
 
-        // Explicitly drop these while the thread is still attached to the JVM.
-        drop(future);
-        drop(future_creation_stack_trace_elements);
-        drop(extra_args_to_drop);
-        drop(env);
+                // Explicitly drop these while the thread is still attached to the JVM.
+                drop(future);
+                drop(future_creation_stack_trace_elements);
+                drop(extra_args_to_drop);
+
+                Ok(())
+            });
+
+        match result {
+            Ok(()) => {}
+            Err(e) => {
+                // Most likely this log will fail too,
+                // but really we don't expect with_local_frame's block to fail either.
+                // We try to handle all errors within it explicitly.
+                log::error!("failed to report result while attached to the JVM: {e}");
+            }
+        }
     }
 }
 

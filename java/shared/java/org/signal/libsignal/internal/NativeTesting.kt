@@ -236,6 +236,12 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_TestingHandleType_getValue(handle: ObjectHandle): Int
   @JvmStatic
+  public external fun TESTING_TokioAsyncContext_AttachBlockingThreadToJVMPermanently(context: ObjectHandle, jvm: Object): Unit
+  @JvmStatic
+  public external fun TESTING_TokioAsyncContext_FutureSuccessBytes(asyncRuntime: ObjectHandle, count: Int): CompletableFuture<ByteArray>
+  @JvmStatic
+  public external fun TESTING_TokioAsyncContext_NewSingleThreaded(): ObjectHandle
+  @JvmStatic
   public external fun TESTING_TokioAsyncFuture(asyncRuntime: ObjectHandle, input: Int): CompletableFuture<Int>
 
   @JvmStatic

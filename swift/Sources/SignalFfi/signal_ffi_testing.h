@@ -429,6 +429,10 @@ SignalFfiError *signal_testing_signed_public_pre_key_check_bridges_correctly(Sig
 
 SignalFfiError *signal_testing_testing_handle_type_get_value(uint8_t *out, SignalConstPointerTestingHandleType handle);
 
+SignalFfiError *signal_testing_tokio_async_context_future_success_bytes(SignalCPromiseOwnedBufferOfc_uchar *promise, SignalConstPointerTokioAsyncContext async_runtime, int32_t count);
+
+SignalFfiError *signal_testing_tokio_async_context_new_single_threaded(SignalMutPointerTokioAsyncContext *out);
+
 SignalFfiError *signal_testing_tokio_async_future(SignalCPromisei32 *promise, SignalConstPointerTokioAsyncContext async_runtime, uint8_t input);
 
 SignalFfiError *signal_testing_value_holder_destroy(SignalMutPointerTestingValueHolder p);

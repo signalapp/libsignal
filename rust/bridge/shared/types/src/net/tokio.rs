@@ -23,14 +23,32 @@ pub struct TokioAsyncContext {
 impl TokioAsyncContext {
     // This is an expensive operation, so we don't want to just use Default.
     #[expect(clippy::new_without_default)]
+    #[inline]
     pub fn new() -> Self {
+        Self::from_runtime(&mut Self::default_runtime_builder())
+    }
+
+    #[inline]
+    pub fn new_single_threaded() -> Self {
+        Self::from_runtime(
+            Self::default_runtime_builder()
+                .worker_threads(1)
+                .max_blocking_threads(1),
+        )
+    }
+
+    fn default_runtime_builder() -> tokio::runtime::Builder {
+        let mut builder = tokio::runtime::Builder::new_multi_thread();
+        builder
+            .enable_io()
+            .enable_time()
+            .thread_name("libsignal-tokio-worker");
+        builder
+    }
+
+    fn from_runtime(rt: &mut tokio::runtime::Builder) -> Self {
         Self {
-            rt: tokio::runtime::Builder::new_multi_thread()
-                .enable_io()
-                .enable_time()
-                .thread_name("libsignal-tokio-worker")
-                .build()
-                .expect("failed to create runtime"),
+            rt: rt.build().expect("failed to create runtime"),
             tasks: Default::default(),
             next_raw_cancellation_id: AtomicU64::new(1),
         }

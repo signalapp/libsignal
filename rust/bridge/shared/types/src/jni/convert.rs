@@ -1494,6 +1494,19 @@ impl<'a> SimpleArgTypeInfo<'a> for crate::net::registration::SignedPublicPreKey 
     }
 }
 
+/// For testing purposes
+impl<'a> SimpleArgTypeInfo<'a> for ::jni::JavaVM {
+    type ArgType = JObject<'a>;
+
+    fn convert_from(
+        env: &mut jni::JNIEnv<'a>,
+        _placeholder_parameter: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        env.get_java_vm()
+            .check_exceptions(env, "JavaVM::convert_from")
+    }
+}
+
 impl<'a, T> ResultTypeInfo<'a> for Serialized<T>
 where
     T: FixedLengthBincodeSerializable + serde::Serialize,

@@ -10,6 +10,11 @@ public class TokioAsyncContext extends NativeHandleGuard.SimpleOwner {
     super(Native.TokioAsyncContext_new());
   }
 
+  // For testing
+  TokioAsyncContext(long rawHandle) {
+    super(rawHandle);
+  }
+
   @SuppressWarnings("unchecked")
   public CompletableFuture<Class<Object>> loadClassAsync(String className) {
     return (CompletableFuture<Class<Object>>) Native.AsyncLoadClass(this, className);

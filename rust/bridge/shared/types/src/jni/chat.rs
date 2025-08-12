@@ -50,7 +50,11 @@ fn attach_and_log_on_error(
 ) {
     let attach_and_run = move || {
         let mut env = vm.attach_current_thread().expect("can attach thread");
-        operation(&mut env)
+        env.with_local_frame(REASONABLE_JNI_BACKGROUND_THREAD_FRAME_SIZE, |env| {
+            Ok(operation(env))
+        })
+        .check_exceptions(&mut env, name)
+        .unwrap_or_else(Err)
     };
     match attach_and_run() {
         Ok(()) => {}

@@ -686,6 +686,8 @@ export function TESTING_RoundTripU8(input: number): number;
 export function TESTING_ServerMessageAck_Create(): ServerMessageAck;
 export function TESTING_SignedPublicPreKey_CheckBridgesCorrectly(sourcePublicKey: Wrapper<PublicKey>, signedPreKey: SignedPublicPreKey): void;
 export function TESTING_TestingHandleType_getValue(handle: Wrapper<TestingHandleType>): number;
+export function TESTING_TokioAsyncContext_FutureSuccessBytes(asyncRuntime: Wrapper<TokioAsyncContext>, count: number): CancellablePromise<Uint8Array>;
+export function TESTING_TokioAsyncContext_NewSingleThreaded(): TokioAsyncContext;
 export function TESTING_TokioAsyncFuture(asyncRuntime: Wrapper<TokioAsyncContext>, input: number): CancellablePromise<number>;
 export function TestingSemaphore_AddPermits(semaphore: Wrapper<TestingSemaphore>, permits: number): void;
 export function TestingSemaphore_New(initial: number): TestingSemaphore;
