@@ -2,12 +2,12 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+
 //! High level data operations on instances of `PpssSetup`
 //!
 //! These functions are useful if we ever want to perform multiple operations
 //! on the same set of open connections, as opposed to having to connect for
 //! each individual operation, as implied by `SvrBClient` trait.
-use std::collections::VecDeque;
 
 use futures_util::future::join_all;
 use futures_util::TryFutureExt as _;
@@ -160,19 +160,19 @@ async fn run_attested_interaction(
 
 struct ConnectionContext {
     connections: Vec<LabeledConnection>,
-    errors: VecDeque<Error>,
+    errors: Vec<Error>,
 }
 
 impl ConnectionContext {
     fn new<Arr: IntoConnectionResults>(connect_results: Arr) -> Self {
         let mut connections = Vec::with_capacity(Arr::ConnectionResults::N);
-        let mut errors = VecDeque::with_capacity(Arr::ConnectionResults::N);
+        let mut errors = Vec::with_capacity(Arr::ConnectionResults::N);
         for connect_result in connect_results.into_connection_results().into_iter() {
             match connect_result {
                 Ok((connection, remote_address)) => {
                     connections.push((connection, remote_address));
                 }
-                Err(err) => errors.push_back(err.into()),
+                Err(err) => errors.push(err.into()),
             }
         }
         Self {
