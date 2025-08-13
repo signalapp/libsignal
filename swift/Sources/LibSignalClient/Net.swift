@@ -353,15 +353,20 @@ public struct Auth: Sendable {
     }
 }
 
+// This test endpoint isn't generated in device builds, to save on code size.
+#if !os(iOS) || targetEnvironment(simulator)
+
 extension Auth {
     // To be used by the tests
     internal init(username: String, enclaveSecret: String) throws {
         let otp = try invokeFnReturningString {
-            signal_create_otp_from_base64($0, username, enclaveSecret)
+            signal_testing_create_otp_from_base64($0, username, enclaveSecret)
         }
         self.init(username: username, password: otp)
     }
 }
+
+#endif
 
 internal class ConnectionManager: NativeHandleOwner<SignalMutPointerConnectionManager> {
     private class ProxyConfig: NativeHandleOwner<SignalMutPointerConnectionProxyConfig> {

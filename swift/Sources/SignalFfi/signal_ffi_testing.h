@@ -297,6 +297,10 @@ SignalFfiError *signal_testing_connection_manager_is_using_proxy(int32_t *out, S
 
 SignalFfiError *signal_testing_convert_optional_uuid(SignalOptionalUuid *out, bool present);
 
+SignalFfiError *signal_testing_create_otp(const char **out, const char *username, SignalBorrowedBuffer secret);
+
+SignalFfiError *signal_testing_create_otp_from_base64(const char **out, const char *username, const char *secret);
+
 SignalFfiError *signal_testing_error_on_borrow_async(const void *_input);
 
 SignalFfiError *signal_testing_error_on_borrow_io(SignalCPromisebool *promise, SignalConstPointerNonSuspendingBackgroundThreadRuntime async_runtime, const void *_input);

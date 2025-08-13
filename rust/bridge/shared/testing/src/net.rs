@@ -5,6 +5,7 @@
 
 use std::num::NonZeroU16;
 
+use base64::prelude::{Engine as _, BASE64_STANDARD};
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::chat::ServerMessageAck;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
@@ -172,4 +173,15 @@ fn TESTING_ConnectionManager_isUsingProxy(manager: &ConnectionManager) -> i32 {
         Ok(false) => 0,
         Err(_) => -1,
     }
+}
+
+#[bridge_fn]
+fn TESTING_CreateOTP(username: String, secret: &[u8]) -> String {
+    libsignal_net::auth::Auth::otp(&username, secret, std::time::SystemTime::now())
+}
+
+#[bridge_fn]
+fn TESTING_CreateOTPFromBase64(username: String, secret: String) -> String {
+    let secret = BASE64_STANDARD.decode(secret).expect("valid base64");
+    TESTING_CreateOTP(username, &secret)
 }

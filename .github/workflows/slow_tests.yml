@@ -3,8 +3,9 @@ name: Slow Tests
 env:
   ANDROID_NDK_VERSION: 28.0.13004108
   LIBSIGNAL_TESTING_CDSI_ENCLAVE_SECRET: ${{secrets.CDSI_ENCLAVE_SECRET}}
-  LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS: true
   LIBSIGNAL_TESTING_PROXY_SERVER: ${{secrets.LIBSIGNAL_TESTING_PROXY_SERVER}}
+  LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS: true
+  LIBSIGNAL_TESTING_SVRB_ENCLAVE_SECRET: ${{secrets.LIBSIGNAL_TESTING_SVRB_ENCLAVE_SECRET}}
   RUST_LOG: debug
 
 on:
@@ -389,7 +390,7 @@ jobs:
 
     - name: Run hermetic tests without network access
       run: |
-        TEST_CMD='unset LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS LIBSIGNAL_TESTING_CDSI_ENCLAVE_SECRET && \
+        TEST_CMD='unset LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS LIBSIGNAL_TESTING_CDSI_ENCLAVE_SECRET LIBSIGNAL_TESTING_SVRB_ENCLAVE_SECRET && \
                   cargo +stable test --workspace --all-features --verbose --no-fail-fast -- --include-ignored'
         ./bin/run_with_network_isolation.sh "${TEST_CMD}"
 

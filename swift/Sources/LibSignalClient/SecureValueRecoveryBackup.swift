@@ -207,6 +207,37 @@ public class SvrB {
 
         return RestoreBackupResponse(owned: NonNull(rawResult)!)
     }
+
+    /// Attempts to remove the info stored with SVR-B for this particular username/password pair.
+    ///
+    /// This is a best-effort operation; a successful return means the data has been removed from
+    /// (or never was present in) the current SVR-B enclaves, but may still be present in previous
+    /// ones that have yet to be decommissioned. Conversely, a thrown error may still have removed
+    /// information from previous enclaves.
+    ///
+    /// This should not typically be needed; rather than explicitly removing an entry, the client
+    /// should generally overwrite with a new ``store(backupKey:previousSecretData:)`` instead.
+    ///
+    /// - Throws:
+    ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server is rate limiting
+    ///     this client. This is **retryable** after waiting the designated delay.
+    ///   - Other ``SignalError``s for networking and attestation issues. These are **retryable**,
+    ///     but some may indicate a possible bug in libsignal or in the enclave.
+    public func remove() async throws {
+        let _: Bool = try await self.net.asyncContext.invokeAsyncFunction {
+            promise,
+            runtime in
+            net.connectionManager.withNativeHandle { connectionManager in
+                signal_secure_value_recovery_for_backups_remove_backup(
+                    promise,
+                    runtime.const(),
+                    connectionManager.const(),
+                    self.auth.username,
+                    self.auth.password
+                )
+            }
+        }
+    }
 }
 
 // MARK: - Type Definitions

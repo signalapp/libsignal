@@ -100,6 +100,10 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_ConvertOptionalUuid(present: Boolean): UUID?
   @JvmStatic
+  public external fun TESTING_CreateOTP(username: String, secret: ByteArray): String
+  @JvmStatic
+  public external fun TESTING_CreateOTPFromBase64(username: String, secret: String): String
+  @JvmStatic
   public external fun TESTING_ErrorOnBorrowAsync(input: Object): Unit
   @JvmStatic
   public external fun TESTING_ErrorOnBorrowIo(asyncRuntime: ObjectHandle, input: Object): CompletableFuture<Void?>

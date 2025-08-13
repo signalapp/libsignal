@@ -5,10 +5,8 @@
 
 use std::num::NonZeroU16;
 
-use base64::prelude::{Engine, BASE64_STANDARD};
 use libsignal_bridge_macros::bridge_fn;
 pub use libsignal_bridge_types::net::{ConnectionManager, Environment, TokioAsyncContext};
-use libsignal_net::auth::Auth;
 use libsignal_net::chat::ConnectionInfo;
 use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net::infra::route::ConnectionProxyConfig;
@@ -145,17 +143,6 @@ fn ConnectionManager_set_remote_config(
 #[bridge_fn]
 fn ConnectionManager_on_network_change(connection_manager: &ConnectionManager) {
     connection_manager.on_network_change(std::time::Instant::now())
-}
-
-#[bridge_fn]
-fn CreateOTP(username: String, secret: &[u8]) -> String {
-    Auth::otp(&username, secret, std::time::SystemTime::now())
-}
-
-#[bridge_fn]
-fn CreateOTPFromBase64(username: String, secret: String) -> String {
-    let secret = BASE64_STANDARD.decode(secret).expect("valid base64");
-    Auth::otp(&username, &secret, std::time::SystemTime::now())
 }
 
 #[cfg(any(feature = "node", feature = "jni", feature = "ffi"))]

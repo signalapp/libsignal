@@ -384,12 +384,6 @@ internal object Native {
   public external fun CreateCallLinkCredential_PresentDeterministic(credentialBytes: ByteArray, roomId: ByteArray, userId: ByteArray, serverParamsBytes: ByteArray, callLinkParamsBytes: ByteArray, randomness: ByteArray): ByteArray
 
   @JvmStatic
-  public external fun CreateOTP(username: String, secret: ByteArray): String
-
-  @JvmStatic
-  public external fun CreateOTPFromBase64(username: String, secret: String): String
-
-  @JvmStatic
   public external fun CryptographicHash_Destroy(handle: ObjectHandle): Unit
   @JvmStatic
   public external fun CryptographicHash_Finalize(hash: ObjectHandle): ByteArray
@@ -998,6 +992,8 @@ internal object Native {
 
   @JvmStatic
   public external fun SecureValueRecoveryForBackups_CreateNewBackupChain(environment: Int, backupKey: ByteArray): ByteArray
+  @JvmStatic
+  public external fun SecureValueRecoveryForBackups_RemoveBackup(asyncRuntime: ObjectHandle, connectionManager: ObjectHandle, username: String, password: String): CompletableFuture<Void?>
   @JvmStatic
   public external fun SecureValueRecoveryForBackups_RestoreBackupFromServer(asyncRuntime: ObjectHandle, backupKey: ByteArray, metadata: ByteArray, connectionManager: ObjectHandle, username: String, password: String): CompletableFuture<ObjectHandle>
   @JvmStatic

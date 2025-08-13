@@ -232,6 +232,47 @@ public class SvrB internal constructor(
         }
       }.toResultFuture()
   }
+
+  /**
+   * Attempts to remove the info stored with SVR-B for this particular username/password pair.
+   *
+   * This is a best-effort operation; a successful return means the data has been removed from
+   * (or never was present in) the current SVR-B enclaves, but may still be present in previous
+   * ones that have yet to be decommissioned. Conversely, a thrown error may still have removed
+   * information from previous enclaves.
+   *
+   * This should not typically be needed; rather than explicitly removing an entry, the client
+   * should generally overwrite with a new [store] instead.
+   *
+   * @return a [CompletableFuture] that completes with:
+   * - **[Result.success]** if the data has been removed from the *current* enclave.
+   * - [Result.failure] containing [RetryLaterException] if the server is rate limiting this client.
+   *   This is **retryable** after waiting the designated delay.
+   * - [Result.failure] containing [NetworkException] if the network operation fails (connection,
+   *   service, or timeout errors). These are **retryable**.
+   * - [Result.failure] containing [NetworkProtocolException] if there is a protocol error. This
+   *   indicates a possible bug in libsignal or in the enclave.
+   * - [Result.failure] containing
+   *   [AttestationFailedException](org.signal.libsignal.attest.AttestationFailedException),
+   *   [AttestationDataException](org.signal.libsignal.attest.AttestationDataException), or
+   *   [SgxCommunicationFailureException](org.signal.libsignal.sgxsession.SgxCommunicationFailureException)
+   *   if enclave attestation fails. This indicates a possible bug in libsignal or in the enclave.
+   */
+  public fun remove(): CompletableFuture<Result<Void?>> {
+    val nativeFuture =
+      network.asyncContext.guardedMap { asyncContextHandle ->
+        network.connectionManager.guardedMap { connectionManagerHandle ->
+          Native.SecureValueRecoveryForBackups_RemoveBackup(
+            asyncContextHandle,
+            connectionManagerHandle,
+            username,
+            password,
+          )
+        }
+      }
+
+    return nativeFuture.toResultFuture()
+  }
 }
 
 /**
