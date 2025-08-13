@@ -117,11 +117,6 @@ public class SvrB {
     /// - Throws:
     ///   - ``SignalError/invalidArgument(_:)`` if `previousSecretData` is malformed. There's no
     ///     choice here but to **start a new chain**.
-    ///   - ``SignalError/svrRestoreFailed(triesRemaining:message:)`` if restoration fails. This
-    ///     should never happen but if it does the user's data is **not recoverable**.
-    ///   - ``SignalError/svrDataMissing(_:)`` if the backup data is not found on the server,
-    ///     indicating an **incorrect backup key** (which may in turn imply the user's data is not
-    ///     recoverable).
     ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server is rate limiting
     ///     this client. This is **retryable** after waiting the designated delay.
     ///   - Other ``SignalError``s for networking and attestation issues. These are **retryable**,
