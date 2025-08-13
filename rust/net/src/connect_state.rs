@@ -347,6 +347,7 @@ impl<TC> ConnectionResources<'_, TC> {
                         response,
                         received_at: _,
                     } => {
+                        log::trace!("[{log_tag}] full response: {response:?}");
                         // Retry-After takes precedence over everything else.
                         libsignal_net_infra::extract_retry_later(response.headers()).is_some() ||
                         // If we're rejected based on the request (4xx), there's no point in retrying.
