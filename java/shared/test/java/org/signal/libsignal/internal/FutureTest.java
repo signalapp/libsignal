@@ -236,6 +236,7 @@ public class FutureTest {
 
     do {
       System.gc();
+      System.runFinalization();
     } while (finalizationQueue.remove(100) != reference);
   }
 }
