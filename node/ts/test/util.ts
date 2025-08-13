@@ -7,14 +7,24 @@ import { assert } from 'chai';
 import * as SignalClient from '../index';
 
 export function initLogger(logLevel?: SignalClient.LogLevel): void {
+  const timestampFormatter = new Intl.DateTimeFormat('en-US', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    fractionalSecondDigits: 3,
+  });
   SignalClient.initLogger(
     logLevel ?? SignalClient.LogLevel.Trace,
     (_level, target, fileOrNull, lineOrNull, message) => {
-      const targetPrefix = target ? `[${target}] ` : '';
+      const timestamp = timestampFormatter.format(new Date());
+      const targetPrefix = target
+        ? `[${timestamp} ${target}]`
+        : `[${timestamp}]`;
       const file = fileOrNull ?? '<unknown>';
       const line = lineOrNull ?? 0;
       // eslint-disable-next-line no-console
-      console.log(`${targetPrefix}${file}:${line}: ${message}`);
+      console.log(`${targetPrefix} ${file}:${line}: ${message}`);
     }
   );
 }
