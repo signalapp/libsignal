@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.util;
 
+import java.time.LocalTime;
 import org.signal.libsignal.protocol.logging.SignalProtocolLogger;
 
 public class StderrLogger implements SignalProtocolLogger {
@@ -34,6 +35,6 @@ public class StderrLogger implements SignalProtocolLogger {
         prefix = "";
         break;
     }
-    System.err.println(prefix + tag + ": " + message);
+    System.err.println("[" + LocalTime.now() + " " + tag + "] " + prefix + message);
   }
 }
