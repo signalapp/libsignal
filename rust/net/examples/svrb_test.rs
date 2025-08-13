@@ -8,10 +8,12 @@
 //! Usage: `./svrb_testing --auth-secret [32-byte base64 secret]`
 
 use std::str::FromStr;
+use std::time::SystemTime;
 
 use async_trait::async_trait;
 use base64::prelude::{Engine, BASE64_STANDARD};
 use clap::Parser as _;
+use hex::ToHex as _;
 use libsignal_account_keys::{AccountEntropyPool, BackupKey};
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::PpssSetup;
@@ -25,8 +27,12 @@ use rand::TryRngCore;
 
 #[derive(clap::Parser)]
 struct Args {
-    #[arg(long, env = "AUTH_SECRET")]
-    auth_secret: String,
+    #[arg(long)]
+    username: Option<String>,
+    #[arg(long, default_value = "")]
+    password: String,
+    #[arg(long, env = "AUTH_SECRET", conflicts_with = "password", value_parser = parse_auth_secret)]
+    auth_secret: Option<[u8; 32]>,
     #[arg(
         long,
         default_value_t = false,
@@ -58,20 +64,33 @@ impl SvrBConnect for SvrBClient<'_> {
     }
 }
 
-async fn single_request(args: &Args, auth_secret: [u8; 32], sem: &tokio::sync::Semaphore) {
+async fn single_request(args: &Args, sem: &tokio::sync::Semaphore) {
     let _guard = sem.acquire().await.unwrap();
     let mut rng = OsRng.unwrap_err();
-    let mut uid = [0u8; 16];
-    rng.try_fill_bytes(&mut uid)
-        .expect("should have entropy available");
-    let auth = &Auth::from_uid_and_secret(uid, auth_secret);
+
+    let username = if let Some(username) = args.username.clone() {
+        username
+    } else {
+        // Generate a random SVR username, rather than a static one.
+        let mut uid = [0u8; 16];
+        rng.try_fill_bytes(&mut uid)
+            .expect("should have entropy available");
+        uid.encode_hex()
+    };
+
+    let password = if let Some(auth_secret) = args.auth_secret {
+        Auth::otp(&username, &auth_secret, SystemTime::now())
+    } else {
+        args.password.clone()
+    };
+    let auth = Auth { username, password };
 
     let env = if args.prod {
         &libsignal_net::env::PROD.svr_b
     } else {
         &libsignal_net::env::STAGING.svr_b
     };
-    let client = SvrBClient { auth, env };
+    let client = SvrBClient { auth: &auth, env };
 
     let aep = AccountEntropyPool::from_str(
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -135,6 +154,8 @@ async fn single_request(args: &Args, auth_secret: [u8; 32], sem: &tokio::sync::S
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 8)]
 async fn main() {
+    env_logger::init();
+
     let args = Args::parse();
     println!(
         "Running {} requests {} at a time",
@@ -142,16 +163,16 @@ async fn main() {
     );
     let sem = tokio::sync::Semaphore::new(args.parallelism);
 
-    let auth_secret: [u8; 32] = {
-        BASE64_STANDARD
-            .decode(&args.auth_secret)
-            .expect("valid b64")
-            .try_into()
-            .expect("secret is 32 bytes")
-    };
     let mut v = vec![];
     for _i in 0..args.requests {
-        v.push(single_request(&args, auth_secret, &sem));
+        v.push(single_request(&args, &sem));
     }
     futures::future::join_all(v).await;
+}
+
+fn parse_auth_secret(input: &str) -> Result<[u8; 32], base64::DecodeError> {
+    BASE64_STANDARD
+        .decode(input)?
+        .try_into()
+        .map_err(|_| base64::DecodeError::InvalidLength(input.len()))
 }
