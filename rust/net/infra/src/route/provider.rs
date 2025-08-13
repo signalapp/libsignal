@@ -3,6 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::marker::PhantomData;
+
+use derive_where::derive_where;
+
 use crate::route::{RouteProvider, RouteProviderContext};
 
 /// Additional methods available for [`RouteProvider`]s.
@@ -60,5 +64,21 @@ impl<R: RouteProvider, F: Fn(&R::Route) -> bool> RouteProvider for Filter<R, F> 
         context: &impl RouteProviderContext,
     ) -> impl Iterator<Item = Self::Route> + 's {
         self.0.routes(context).filter(&self.1)
+    }
+}
+
+#[derive_where(Default)]
+pub struct EmptyProvider<R> {
+    route_type: PhantomData<R>,
+}
+
+impl<R> RouteProvider for EmptyProvider<R> {
+    type Route = R;
+
+    fn routes<'s>(
+        &'s self,
+        _context: &impl RouteProviderContext,
+    ) -> impl Iterator<Item = Self::Route> + 's {
+        std::iter::empty()
     }
 }

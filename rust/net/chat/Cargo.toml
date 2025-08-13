@@ -43,6 +43,7 @@ visibility = { workspace = true }
 [dev-dependencies]
 libsignal-cli-utils = { workspace = true }
 libsignal-net = { workspace = true, features = ["test-util"] }
+libsignal-net-grpc = { workspace = true }
 usernames = { workspace = true }
 
 anyhow = { workspace = true }
@@ -52,6 +53,8 @@ clap = { workspace = true, features = ["derive"] }
 const-str = { workspace = true }
 env_logger = { workspace = true }
 futures-util = { workspace = true }
+hyper = { workspace = true, features = ["http2", "client"] }
+hyper-util = { workspace = true }
 itertools = { workspace = true }
 nonzero_ext = { workspace = true }
 pretty_assertions = { workspace = true }
@@ -60,3 +63,5 @@ rand_chacha = { workspace = true }
 test-case = { workspace = true }
 test-log = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "test-util"] }
+tonic = { workspace = true }
+tower = { workspace = true }

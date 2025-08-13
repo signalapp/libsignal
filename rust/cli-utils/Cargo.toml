@@ -17,6 +17,7 @@ workspace = true
 [dependencies]
 libsignal-core = { workspace = true }
 
+base64 = { workspace = true }
 clap-stdin = { workspace = true }
 displaydoc = { workspace = true }
 hex = { workspace = true }

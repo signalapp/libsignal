@@ -61,6 +61,7 @@ libsignal-keytrans = { path = "rust/keytrans" }
 libsignal-message-backup = { path = "rust/message-backup" }
 libsignal-net = { path = "rust/net" }
 libsignal-net-chat = { path = "rust/net/chat" }
+libsignal-net-grpc = { path = "rust/net/grpc" }
 libsignal-protocol = { path = "rust/protocol" }
 libsignal-svrb = { path = "rust/svrb" }
 poksho = { path = "rust/poksho" }
@@ -202,6 +203,9 @@ tokio-socks = "0.5.2"
 tokio-stream = "0.1.14"
 tokio-tungstenite = "0.26.0"
 tokio-util = "0.7.11"
+tonic = "0.13.1"
+tonic-build = "0.13.1"
+tower = "0.5"
 tungstenite = "0.26.0"
 url = "2.4.1"
 uuid = "1.5"
