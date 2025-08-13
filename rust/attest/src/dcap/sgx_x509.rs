@@ -258,37 +258,40 @@ impl<'a> TryFrom<SequenceOf<'a, SgxExtension<'a>>> for Tcb {
         let mut pcesvn = None;
         let mut cpusvn = None;
 
-        // rustfmt doesn't like this next line,
-        // but it's the only way to get simultaneous mutable references to each element!
-        let [compsvn01, compsvn02, compsvn03, compsvn04, compsvn05, compsvn06, compsvn07, compsvn08, compsvn09, compsvn10, compsvn11, compsvn12, compsvn13, compsvn14, compsvn15, compsvn16] =
-            &mut compsvn;
+        let oid_to_compsvn = [
+            TCB_COMP01SVN_OID,
+            TCB_COMP02SVN_OID,
+            TCB_COMP03SVN_OID,
+            TCB_COMP04SVN_OID,
+            TCB_COMP05SVN_OID,
+            TCB_COMP06SVN_OID,
+            TCB_COMP07SVN_OID,
+            TCB_COMP08SVN_OID,
+            TCB_COMP09SVN_OID,
+            TCB_COMP10SVN_OID,
+            TCB_COMP11SVN_OID,
+            TCB_COMP12SVN_OID,
+            TCB_COMP13SVN_OID,
+            TCB_COMP14SVN_OID,
+            TCB_COMP15SVN_OID,
+            TCB_COMP16SVN_OID,
+        ]
+        .into_iter()
+        .zip(
+            compsvn
+                .iter_mut()
+                .map(|v| v as &mut dyn OptionOfTryFromExtensionValue),
+        )
+        .chain([
+            (
+                TCB_PCESVN_OID,
+                &mut pcesvn as &mut dyn OptionOfTryFromExtensionValue,
+            ),
+            (TCB_CPUSVN_OID, &mut cpusvn),
+        ])
+        .collect();
 
-        parse_extensions(
-            value,
-            HashMap::from([
-                (
-                    TCB_COMP01SVN_OID,
-                    compsvn01 as &mut dyn OptionOfTryFromExtensionValue,
-                ),
-                (TCB_COMP02SVN_OID, compsvn02),
-                (TCB_COMP03SVN_OID, compsvn03),
-                (TCB_COMP04SVN_OID, compsvn04),
-                (TCB_COMP05SVN_OID, compsvn05),
-                (TCB_COMP06SVN_OID, compsvn06),
-                (TCB_COMP07SVN_OID, compsvn07),
-                (TCB_COMP08SVN_OID, compsvn08),
-                (TCB_COMP09SVN_OID, compsvn09),
-                (TCB_COMP10SVN_OID, compsvn10),
-                (TCB_COMP11SVN_OID, compsvn11),
-                (TCB_COMP12SVN_OID, compsvn12),
-                (TCB_COMP13SVN_OID, compsvn13),
-                (TCB_COMP14SVN_OID, compsvn14),
-                (TCB_COMP15SVN_OID, compsvn15),
-                (TCB_COMP16SVN_OID, compsvn16),
-                (TCB_PCESVN_OID, &mut pcesvn),
-                (TCB_CPUSVN_OID, &mut cpusvn),
-            ]),
-        )?;
+        parse_extensions(value, oid_to_compsvn)?;
 
         Ok(Self {
             compsvn: compsvn.map(Option::unwrap),
