@@ -27,13 +27,13 @@ use crate::{
 /// The timestamps will have to be in [now - max_behind .. now + max_ahead]
 const ALLOWED_TIMESTAMP_RANGE: &TimestampRange = &TimestampRange {
     max_behind: Duration::from_secs(24 * 60 * 60),
-    max_ahead: Duration::from_secs(10),
+    max_ahead: Duration::from_secs(60),
 };
 
 /// The range of allowed timestamp values relative to "now" used for auditor.
 const ALLOWED_AUDITOR_TIMESTAMP_RANGE: &TimestampRange = &TimestampRange {
     max_behind: Duration::from_secs(7 * 24 * 60 * 60),
-    max_ahead: Duration::from_secs(10),
+    max_ahead: Duration::from_secs(60),
 };
 const ENTRIES_MAX_BEHIND: u64 = 10_000_000;
 
