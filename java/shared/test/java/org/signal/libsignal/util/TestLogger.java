@@ -27,12 +27,7 @@ public class TestLogger extends ExternalResource {
     }
 
     SignalProtocolLoggerProvider.initializeLogging(SignalProtocolLogger.VERBOSE);
-    SignalProtocolLoggerProvider.setProvider(
-        new SignalProtocolLogger() {
-          public void log(int priority, String tag, String message) {
-            System.err.println(priority + " " + message);
-          }
-        });
+    SignalProtocolLoggerProvider.setProvider(new StderrLogger());
   }
 
   @Override
