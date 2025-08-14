@@ -974,7 +974,7 @@ impl FfiError for libsignal_net::svrb::Error {
             }
             Self::Connect(e) => match e {
                 WebSocketConnectError::Transport(e) => format!("IO error: {e}").into(),
-                WebSocketConnectError::WebSocketError(_) => format!("WebSocket error: {e}").into(),
+                WebSocketConnectError::WebSocketError(e) => format!("WebSocket error: {e}").into(),
             },
             Self::RateLimited(inner) => inner.describe(),
             Self::Service(e) => format!("WebSocket error: {e}").into(),

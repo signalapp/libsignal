@@ -119,8 +119,12 @@ public class SvrB {
     ///     choice here but to **start a new chain**.
     ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server is rate limiting
     ///     this client. This is **retryable** after waiting the designated delay.
-    ///   - Other ``SignalError``s for networking and attestation issues. These are **retryable**,
-    ///     but some may indicate a possible bug in libsignal or in the enclave.
+    ///   - ``SignalError/connectionFailed(_:)``, ``SignalError/ioError(_:)``, or
+    ///     ``SignalError/webSocketError(_:)`` for networking failures before and during
+    ///     communication with the server. These can be **automatically retried** (backoff
+    ///     recommended).
+    ///   - Other ``SignalError``s for networking and attestation issues. These can be manually
+    ///     retried, but some may indicate a possible bug in libsignal or in the enclave.
     public func store(
         backupKey: BackupKey,
         previousSecretData: Data
@@ -174,8 +178,12 @@ public class SvrB {
     ///     recoverable).
     ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server is rate limiting
     ///     this client. This is **retryable** after waiting the designated delay.
-    ///   - Other ``SignalError``s for networking and attestation issues. These are **retryable**,
-    ///     but some may indicate a possible bug in libsignal or in the enclave.
+    ///   - ``SignalError/connectionFailed(_:)``, ``SignalError/ioError(_:)``, or
+    ///     ``SignalError/webSocketError(_:)`` for networking failures before and during
+    ///     communication with the server. These can be **automatically retried** (backoff
+    ///     recommended).
+    ///   - Other ``SignalError``s for networking and attestation issues. These can be manually
+    ///     retried, but some may indicate a possible bug in libsignal or in the enclave.
     public func restore(
         backupKey: BackupKey,
         metadata: Data
@@ -216,8 +224,12 @@ public class SvrB {
     /// - Throws:
     ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server is rate limiting
     ///     this client. This is **retryable** after waiting the designated delay.
-    ///   - Other ``SignalError``s for networking and attestation issues. These are **retryable**,
-    ///     but some may indicate a possible bug in libsignal or in the enclave.
+    ///   - ``SignalError/connectionFailed(_:)``, ``SignalError/ioError(_:)``, or
+    ///     ``SignalError/webSocketError(_:)`` for networking failures before and during
+    ///     communication with the server. These can be **automatically retried** (backoff
+    ///     recommended).
+    ///   - Other ``SignalError``s for networking and attestation issues. These can be manually
+    ///     retried, but some may indicate a possible bug in libsignal or in the enclave.
     public func remove() async throws {
         let _: Bool = try await self.net.asyncContext.invokeAsyncFunction {
             promise,

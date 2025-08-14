@@ -117,7 +117,7 @@ public class SvrB internal constructor(
    * - [Result.failure] containing [RetryLaterException] if the server is rate limiting this client.
    *   This is **retryable** after waiting the designated delay.
    * - [Result.failure] containing [NetworkException] if the network operation fails (connection,
-   *   service, or timeout errors). These are **retryable**.
+   *   service, or timeout errors). These can be **automatically retried** (backoff recommended).
    * - [Result.failure] containing [NetworkProtocolException] if there is a protocol error. This
    *   indicates a possible bug in libsignal or in the enclave.
    * - [Result.failure] containing
@@ -191,7 +191,7 @@ public class SvrB internal constructor(
    * - [Result.failure] containing [RetryLaterException] if the server is rate limiting this client.
    *   This is **retryable** after waiting the designated delay.
    * - [Result.failure] containing [NetworkException] if the network operation fails (connection,
-   *   service, or timeout errors). These are **retryable**.
+   *   service, or timeout errors). These can be **automatically retried** (backoff recommended).
    * - [Result.failure] containing [NetworkProtocolException] if there is a protocol error. This
    *   indicates a possible bug in libsignal or in the enclave.
    * - [Result.failure] containing
@@ -249,7 +249,7 @@ public class SvrB internal constructor(
    * - [Result.failure] containing [RetryLaterException] if the server is rate limiting this client.
    *   This is **retryable** after waiting the designated delay.
    * - [Result.failure] containing [NetworkException] if the network operation fails (connection,
-   *   service, or timeout errors). These are **retryable**.
+   *   service, or timeout errors). These can be **automatically retried** (backoff recommended).
    * - [Result.failure] containing [NetworkProtocolException] if there is a protocol error. This
    *   indicates a possible bug in libsignal or in the enclave.
    * - [Result.failure] containing
