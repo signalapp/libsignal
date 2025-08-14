@@ -40,6 +40,10 @@ struct RemoteConfigKey {
 pub enum RemoteConfigKeys {
     /// Whether or not to enforce the hardcoded minimum TLS versions for Chat and CDSI endpoints.
     EnforceMinimumTls,
+    /// If enabled, tries to connect via Noise Direct after establishing an authenticated chat connection.
+    ShadowAuthChatWithNoiseDirect,
+    /// If enabled, tries to connect via Noise Direct after establishing an unauthenticated chat connection.
+    ShadowUnauthChatWithNoiseDirect,
 }
 
 pub enum RemoteConfigValue {
@@ -54,6 +58,12 @@ impl From<RemoteConfigKeys> for RemoteConfigKey {
             //   without reported issues.
             RemoteConfigKeys::EnforceMinimumTls => RemoteConfigKey {
                 raw_key: "enforceMinimumTls",
+            },
+            RemoteConfigKeys::ShadowAuthChatWithNoiseDirect => RemoteConfigKey {
+                raw_key: "shadowAuthChatWithNoise",
+            },
+            RemoteConfigKeys::ShadowUnauthChatWithNoiseDirect => RemoteConfigKey {
+                raw_key: "shadowUnauthChatWithNoise",
             },
         }
     }

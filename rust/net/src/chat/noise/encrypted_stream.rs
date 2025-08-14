@@ -19,6 +19,7 @@ use crate::infra::noise::{
     NoiseConnector, NoiseStream, SendError, Transport, EPHEMERAL_KEY_LEN, STATIC_KEY_LEN,
 };
 use crate::infra::route::{Connector, NoiseRouteFragment};
+use crate::infra::Connection;
 
 /// A Noise-encrypted stream that wraps an underlying block-based [`Transport`].
 ///
@@ -134,6 +135,12 @@ where
             return Err(ConnectError::UnexpectedFastOpenResponse);
         }
         Ok(EncryptedStream { stream })
+    }
+}
+
+impl<S: Connection> Connection for EncryptedStream<S> {
+    fn transport_info(&self) -> libsignal_net_infra::TransportInfo {
+        self.stream.transport_info()
     }
 }
 

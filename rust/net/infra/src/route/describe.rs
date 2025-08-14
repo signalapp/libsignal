@@ -134,6 +134,14 @@ impl std::fmt::Display for UnresolvedRouteDescription {
 }
 
 impl UnresolvedRouteDescription {
+    pub fn proxy(&self) -> Option<ConnectionProxyKind> {
+        self.proxy
+    }
+
+    pub fn domain_front(&self) -> Option<&'static str> {
+        self.front
+    }
+
     pub fn fake() -> Self {
         Self {
             front: None,

@@ -14,9 +14,10 @@ use libsignal_net_infra::route::{
 };
 
 mod encrypted_stream;
-pub use encrypted_stream::{
-    Authorization, ChatNoiseConnector, ConnectError, ConnectMeta, EncryptedStream, ServerPublicKey,
-};
+pub use encrypted_stream::{Authorization, ConnectError, ConnectMeta, ServerPublicKey};
+
+mod shadow;
+pub use shadow::NoiseDirectConnectShadow;
 
 pub type ChatNoiseFragment = (Authorization, ConnectMeta);
 

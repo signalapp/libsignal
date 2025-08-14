@@ -22,6 +22,7 @@ use zerocopy::{FromBytes, IntoBytes};
 use crate::noise::{FrameType, HandshakeAuthKind, Transport};
 use crate::proto::noise_direct::close_reason::Code;
 use crate::proto::noise_direct::CloseReason;
+use crate::Connection;
 
 /// Implements the Noise Direct framing protocol on top of a reliable byte
 /// stream.
@@ -43,6 +44,12 @@ impl<S> DirectStream<S> {
 }
 
 static_assertions::assert_impl_all!(DirectStream<tokio::io::DuplexStream>: Transport);
+
+impl<S: Connection> Connection for DirectStream<S> {
+    fn transport_info(&self) -> crate::TransportInfo {
+        self.inner.transport_info()
+    }
+}
 
 /// State for the [`AsyncRead`] side of a [`DirectStream`].
 #[derive(Debug, Default)]
