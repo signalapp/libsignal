@@ -352,6 +352,11 @@ jobs:
       # We run this for the non-hermetic tests; it's otherwise the same as regular CI.
       - name: Run pod lint
         run: pod lib lint --verbose --platforms=ios
+        env:
+          # /This/ is only here because GitHub removed older simulators from their macos-15 runner,
+          # but still defaults to using Xcode 16.0.
+          # Xcode 16.4 is what Signal-iOS will use to compile this code anyway (as of this writing).
+          DEVELOPER_DIR: /Applications/Xcode_16.4.app
 
       # Make sure we can build for device, just for completeness.
       - name: Set up testing workspace

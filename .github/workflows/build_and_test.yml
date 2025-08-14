@@ -444,3 +444,9 @@ jobs:
 
       - name: Run pod lint
         run: pod lib lint --verbose --platforms=ios --skip-tests
+        env:
+          # /This/ is only here because GitHub removed older simulators from their macos-15 runner,
+          # but still defaults to using Xcode 16.0, and `pod lib lint` tries to specify a simulator
+          # even though we pass --skip-tests.
+          # Xcode 16.4 is what Signal-iOS will use to compile this code anyway (as of this writing).
+          DEVELOPER_DIR: /Applications/Xcode_16.4.app
