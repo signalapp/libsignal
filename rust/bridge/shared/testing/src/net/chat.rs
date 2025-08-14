@@ -334,7 +334,7 @@ fn TESTING_ChatSendErrorConvert(
         TestingChatSendError::ConnectionInvalidated => SendError::ConnectionInvalidated,
         TestingChatSendError::ConnectedElsewhere => SendError::ConnectedElsewhere,
         TestingChatSendError::WebSocketConnectionReset => {
-            SendError::WebSocket(libsignal_net::infra::ws::WebSocketServiceError::Io(
+            SendError::WebSocket(libsignal_net::infra::ws::WebSocketError::Io(
                 std::io::ErrorKind::ConnectionReset.into(),
             ))
         }

@@ -11,7 +11,7 @@ use libsignal_account_keys::{
 };
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
 use libsignal_net_infra::ws::attested::AttestedConnectionError;
-use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
+use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketError};
 use libsignal_svrb::proto::backup_metadata;
 use libsignal_svrb::{Backup4, Secret};
 use protobuf::Message;
@@ -46,7 +46,7 @@ pub enum Error {
     /// {0}
     RateLimited(RetryLater),
     /// Network error: {0}
-    Service(#[from] WebSocketServiceError),
+    Service(#[from] WebSocketError),
     /// Protocol error after establishing a connection: {0}
     Protocol(String),
     /// Enclave attestation failed: {0}

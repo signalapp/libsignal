@@ -17,7 +17,7 @@ use http::{Method, StatusCode};
 use itertools::Itertools as _;
 pub use libsignal_net_infra::ws::connection::FinishReason;
 use libsignal_net_infra::ws::connection::Outcome;
-use libsignal_net_infra::ws::{WebSocketServiceError, WebSocketStreamLike};
+use libsignal_net_infra::ws::{WebSocketError, WebSocketStreamLike};
 use pin_project::pin_project;
 use prost::Message as _;
 use tokio::sync::{mpsc, oneshot, Mutex as TokioMutex};
@@ -1209,7 +1209,7 @@ impl From<TaskExitError> for crate::chat::SendError {
                 NextEventError::PingFailed(tungstenite_error)
                 | NextEventError::CloseFailed(tungstenite_error) => tungstenite_error.into(),
                 NextEventError::ReceiveError(tungstenite_error) => tungstenite_error.into(),
-                NextEventError::UnexpectedConnectionClose => WebSocketServiceError::ChannelClosed,
+                NextEventError::UnexpectedConnectionClose => WebSocketError::ChannelClosed,
                 NextEventError::AbnormalServerClose { code, reason: _ } => match code {
                     CloseCode::Library(CONNECTION_INVALIDATED_CLOSE_CODE) => {
                         return Self::ConnectionInvalidated
@@ -1217,22 +1217,20 @@ impl From<TaskExitError> for crate::chat::SendError {
                     CloseCode::Library(CONNECTED_ELSEWHERE_CLOSE_CODE) => {
                         return Self::ConnectedElsewhere
                     }
-                    _ => WebSocketServiceError::ChannelClosed,
+                    _ => WebSocketError::ChannelClosed,
                 },
-                NextEventError::ServerIdleTimeout(_duration) => {
-                    WebSocketServiceError::ChannelIdleTooLong
-                }
+                NextEventError::ServerIdleTimeout(_duration) => WebSocketError::ChannelIdleTooLong,
             },
             TaskExitError::SendIo(error_kind) => {
-                WebSocketServiceError::Io(std::io::Error::new(error_kind, "[redacted]"))
+                WebSocketError::Io(std::io::Error::new(error_kind, "[redacted]"))
             }
-            TaskExitError::SendTooLarge { size, max_size } => WebSocketServiceError::Capacity(
-                libsignal_net_infra::ws::error::SpaceError::Capacity(
+            TaskExitError::SendTooLarge { size, max_size } => {
+                WebSocketError::Capacity(libsignal_net_infra::ws::error::SpaceError::Capacity(
                     tungstenite::error::CapacityError::MessageTooLong { size, max_size },
-                ),
-            ),
+                ))
+            }
             TaskExitError::SendProtocol(protocol_error) => {
-                WebSocketServiceError::Protocol(protocol_error.into())
+                WebSocketError::Protocol(protocol_error.into())
             }
         })
     }
@@ -1248,18 +1246,14 @@ impl From<SendError> for super::SendError {
             SendError::Disconnected(DisconnectedReason::ConnectionInvalidated) => {
                 Self::ConnectionInvalidated
             }
-            SendError::Io(error_kind) => {
-                Self::WebSocket(WebSocketServiceError::Io(error_kind.into()))
-            }
-            SendError::MessageTooLarge { size, max_size } => {
-                Self::WebSocket(WebSocketServiceError::Capacity(
-                    libsignal_net_infra::ws::error::SpaceError::Capacity(
-                        tungstenite::error::CapacityError::MessageTooLong { size, max_size },
-                    ),
-                ))
-            }
+            SendError::Io(error_kind) => Self::WebSocket(WebSocketError::Io(error_kind.into())),
+            SendError::MessageTooLarge { size, max_size } => Self::WebSocket(
+                WebSocketError::Capacity(libsignal_net_infra::ws::error::SpaceError::Capacity(
+                    tungstenite::error::CapacityError::MessageTooLong { size, max_size },
+                )),
+            ),
             SendError::Protocol(protocol_error) => {
-                Self::WebSocket(WebSocketServiceError::Protocol(protocol_error.into()))
+                Self::WebSocket(WebSocketError::Protocol(protocol_error.into()))
             }
             SendError::InvalidResponse => Self::IncomingDataInvalid,
             SendError::InvalidRequest(InvalidRequestError::InvalidHeader) => {
@@ -1954,11 +1948,11 @@ mod test {
         "CONNECTED_ELSEWHERE_CLOSE_CODE results in ConnectedElsewhere"
     )]
     #[test_case(
-        CloseCode::Normal => matches crate::chat::SendError::WebSocket(WebSocketServiceError::ChannelClosed);
+        CloseCode::Normal => matches crate::chat::SendError::WebSocket(WebSocketError::ChannelClosed);
         "Normal close results in WebSocket ChannelClosed"
     )]
     #[test_case(
-        CloseCode::from(4499_u16) => matches crate::chat::SendError::WebSocket(WebSocketServiceError::ChannelClosed);
+        CloseCode::from(4499_u16) => matches crate::chat::SendError::WebSocket(WebSocketError::ChannelClosed);
         "Other abnormal close results in WebSocket ChannelClosed"
     )]
     #[test_log::test(tokio::test(start_paused = true))]

@@ -74,7 +74,7 @@ impl<S> WebSocketStreamLike for S where
 
 /// A simplified version of [`tungstenite::Error`] that supports [`LogSafeDisplay`].
 #[derive(Debug, thiserror::Error)]
-pub enum WebSocketServiceError {
+pub enum WebSocketError {
     ChannelClosed,
     ChannelIdleTooLong,
     Io(std::io::Error),
@@ -214,28 +214,28 @@ where
     }
 }
 
-impl LogSafeDisplay for WebSocketServiceError {}
-impl Display for WebSocketServiceError {
+impl LogSafeDisplay for WebSocketError {}
+impl Display for WebSocketError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            WebSocketServiceError::ChannelClosed => write!(f, "channel already closed"),
-            WebSocketServiceError::ChannelIdleTooLong => write!(f, "channel was idle for too long"),
-            WebSocketServiceError::Io(e) => write!(f, "IO error: {}", e.kind()),
-            WebSocketServiceError::Protocol(p) => {
+            WebSocketError::ChannelClosed => write!(f, "channel already closed"),
+            WebSocketError::ChannelIdleTooLong => write!(f, "channel was idle for too long"),
+            WebSocketError::Io(e) => write!(f, "IO error: {}", e.kind()),
+            WebSocketError::Protocol(p) => {
                 write!(f, "websocket protocol: {}", p.clone())
             }
-            WebSocketServiceError::Capacity(e) => write!(f, "capacity error: {e}"),
-            WebSocketServiceError::Http(response) => write!(f, "HTTP error: {}", response.status()),
-            WebSocketServiceError::HttpFormat(e) => {
+            WebSocketError::Capacity(e) => write!(f, "capacity error: {e}"),
+            WebSocketError::Http(response) => write!(f, "HTTP error: {}", response.status()),
+            WebSocketError::HttpFormat(e) => {
                 write!(f, "HTTP format error: {}", HttpFormatError::from(e))
             }
-            WebSocketServiceError::Url(_) => write!(f, "URL error"),
-            WebSocketServiceError::Other(message) => write!(f, "other web socket error: {message}"),
+            WebSocketError::Url(_) => write!(f, "URL error"),
+            WebSocketError::Other(message) => write!(f, "other web socket error: {message}"),
         }
     }
 }
 
-impl From<tungstenite::Error> for WebSocketServiceError {
+impl From<tungstenite::Error> for WebSocketError {
     fn from(value: tungstenite::Error) -> Self {
         match value {
             tungstenite::Error::ConnectionClosed => Self::ChannelClosed,

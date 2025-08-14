@@ -7,7 +7,7 @@ use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater, TransportConnectEr
 use libsignal_net_infra::extract_retry_later;
 use libsignal_net_infra::route::ConnectError as RouteConnectError;
 use libsignal_net_infra::timeouts::TimeoutOr;
-use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
+use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketError};
 
 use crate::ws::WebSocketServiceConnectError;
 
@@ -23,13 +23,13 @@ pub enum SendError {
     /// the server explicitly disconnected us for some reason other than that we connected elsewhere
     ConnectionInvalidated,
     /// websocket error: {0}
-    WebSocket(#[from] WebSocketServiceError),
+    WebSocket(#[from] WebSocketError),
     /// failed to decode data received from the server
     IncomingDataInvalid,
     /// request object must contain only ASCII text as header names and values.
     RequestHasInvalidHeader,
 }
-impl LogSafeDisplay for SendError where WebSocketServiceError: LogSafeDisplay {}
+impl LogSafeDisplay for SendError where WebSocketError: LogSafeDisplay {}
 
 /// Error that can occur when connecting to the Chat service.
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
@@ -87,7 +87,7 @@ impl From<WebSocketServiceConnectError> for ConnectError {
                         // but unidentified sockets should never produce a 403 anyway.
                         Self::DeviceDeregistered
                     }
-                    _ => Self::WebSocket(WebSocketServiceError::Http(response).into()),
+                    _ => Self::WebSocket(WebSocketError::Http(response).into()),
                 }
             }
         }

@@ -131,9 +131,9 @@ fn TESTING_CdsiLookupErrorConvert(
         TestingCdsiLookupError::TcpConnectFailed => LookupError::ConnectTransport(
             libsignal_net::infra::errors::TransportConnectError::TcpConnectionFailed,
         ),
-        TestingCdsiLookupError::WebSocketIdleTooLong => LookupError::WebSocket(
-            libsignal_net::infra::ws::WebSocketServiceError::ChannelIdleTooLong,
-        ),
+        TestingCdsiLookupError::WebSocketIdleTooLong => {
+            LookupError::WebSocket(libsignal_net::infra::ws::WebSocketError::ChannelIdleTooLong)
+        }
         TestingCdsiLookupError::AllConnectionAttemptsFailed => {
             LookupError::AllConnectionAttemptsFailed
         }

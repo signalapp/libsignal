@@ -11,7 +11,7 @@ use libsignal_net_infra::route::{RouteProvider, UnresolvedWebsocketServiceRoute}
 use libsignal_net_infra::ws::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
-use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServiceError};
+use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketError};
 use prost::Message as _;
 use thiserror::Error;
 use tungstenite::protocol::frame::coding::CloseCode;
@@ -244,7 +244,7 @@ pub enum LookupError {
     /// transport failed: {0}
     ConnectTransport(TransportConnectError),
     /// websocket error: {0}
-    WebSocket(WebSocketServiceError),
+    WebSocket(WebSocketError),
     /// no connection attempts succeeded before timeout
     AllConnectionAttemptsFailed,
     /// request was invalid: {server_reason}

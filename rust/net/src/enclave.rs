@@ -19,7 +19,7 @@ use libsignal_net_infra::route::{
 use libsignal_net_infra::ws::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
-use libsignal_net_infra::ws::{self, WebSocketConnectError, WebSocketServiceError};
+use libsignal_net_infra::ws::{self, WebSocketConnectError, WebSocketError};
 
 use crate::env::{DomainConfig, SvrBEnv};
 use crate::infra::{EnableDomainFronting, EnforceMinimumTls};
@@ -222,7 +222,7 @@ pub enum Error {
     /// {0}
     RateLimited(RetryLater),
     /// Network error: {0}
-    WebSocket(#[from] WebSocketServiceError),
+    WebSocket(#[from] WebSocketError),
     /// Protocol error after establishing a connection: {0}
     Protocol(AttestedProtocolError),
     /// Enclave attestation failed: {0}
@@ -255,7 +255,7 @@ impl From<WebSocketServiceConnectError> for Error {
                         return Self::RateLimited(retry_later);
                     }
                 }
-                Self::WebSocket(WebSocketServiceError::Http(response))
+                Self::WebSocket(WebSocketError::Http(response))
             }
             WebSocketServiceConnectError::Connect(e, _) => Self::WebSocketConnect(e),
         }

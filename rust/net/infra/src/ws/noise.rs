@@ -131,5 +131,5 @@ fn into_io_error(e: tungstenite::Error) -> IoError {
         | tungstenite::Error::HttpFormat(_) => IoErrorKind::Other,
     };
 
-    IoError::new(error_kind, crate::ws::WebSocketServiceError::from(e))
+    IoError::new(error_kind, crate::ws::WebSocketError::from(e))
 }

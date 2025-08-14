@@ -24,7 +24,7 @@ use libsignal_account_keys::Error as PinError;
 use libsignal_core::try_scoped;
 use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSendError};
 use libsignal_net::infra::errors::RetryLater;
-use libsignal_net::infra::ws::WebSocketServiceError;
+use libsignal_net::infra::ws::WebSocketError;
 use libsignal_net::svrb::Error as SvrbError;
 use libsignal_net_chat::api::RateLimitChallenge;
 use libsignal_protocol::*;
@@ -775,10 +775,10 @@ impl JniError for CdsiError {
     }
 }
 
-impl MessageOnlyExceptionJniError for WebSocketServiceError {
+impl MessageOnlyExceptionJniError for WebSocketError {
     fn exception_class(&self) -> ClassName<'static> {
         match self {
-            WebSocketServiceError::Http(_) => {
+            WebSocketError::Http(_) => {
                 // In practice, all WebSocket HTTP errors come from multi-route connections, so any
                 // that make it to the point of bridging are considered to have resulted from a
                 // successful *connection* that then gets an error status code, and so we use

@@ -4,7 +4,7 @@
 //
 
 use bytes::Bytes;
-use libsignal_net_infra::ws::WebSocketServiceError;
+use libsignal_net_infra::ws::WebSocketError;
 use libsignal_protocol::Timestamp;
 
 use crate::chat::{ws, RequestProto, SendError};
@@ -80,11 +80,11 @@ impl TryFrom<ws::ListenerEvent> for ServerEvent {
 
             ws::ListenerEvent::Finished(reason) => Ok(ServerEvent::Stopped(match reason {
                 Ok(ws::FinishReason::LocalDisconnect) => DisconnectCause::LocalDisconnect,
-                Ok(ws::FinishReason::RemoteDisconnect) => DisconnectCause::Error(
-                    SendError::WebSocket(WebSocketServiceError::ChannelClosed),
-                ),
+                Ok(ws::FinishReason::RemoteDisconnect) => {
+                    DisconnectCause::Error(SendError::WebSocket(WebSocketError::ChannelClosed))
+                }
                 Err(ws::FinishError::Unknown) => DisconnectCause::Error(SendError::WebSocket(
-                    WebSocketServiceError::Other("unexpected exit"),
+                    WebSocketError::Other("unexpected exit"),
                 )),
                 Err(ws::FinishError::Error(e)) => DisconnectCause::Error(e.into()),
             })),

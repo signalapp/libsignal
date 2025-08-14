@@ -16,7 +16,7 @@ use crate::ws::connection::{
     TungsteniteSendError,
 };
 use crate::ws::error::{ProtocolError, SpaceError, UnexpectedCloseError};
-use crate::ws::{NextOrClose, TextOrBinary, WebSocketServiceError, WebSocketStreamLike};
+use crate::ws::{NextOrClose, TextOrBinary, WebSocketError, WebSocketStreamLike};
 
 /// Encrypted connection to an attested host.
 #[derive(Debug)]
@@ -39,7 +39,7 @@ pub enum AttestedProtocolError {
 pub enum AttestedConnectionError {
     Protocol(AttestedProtocolError),
     Attestation(attest::enclave::Error),
-    WebSocket(WebSocketServiceError),
+    WebSocket(WebSocketError),
 }
 
 impl From<attest::client_connection::Error> for AttestedConnectionError {
@@ -447,7 +447,7 @@ impl From<ReceiveError> for AttestedConnectionError {
                 AttestedConnectionError::WebSocket(tungstenite_receive_error.into())
             }
             ReceiveError::ServerIdleTooLong(_duration) => {
-                AttestedConnectionError::WebSocket(WebSocketServiceError::ChannelIdleTooLong)
+                AttestedConnectionError::WebSocket(WebSocketError::ChannelIdleTooLong)
             }
             ReceiveError::UnexpectedConnectionClose => AttestedConnectionError::Protocol(
                 AttestedProtocolError::UnexpectedClose(UnexpectedCloseError::from(None)),
@@ -466,16 +466,14 @@ impl From<SendError> for AttestedConnectionError {
                 AttestedProtocolError::UnexpectedClose(UnexpectedCloseError::from(None)),
             ),
             SendError::WebSocketProtocol(protocol_error) => {
-                AttestedConnectionError::WebSocket(WebSocketServiceError::Protocol(protocol_error))
+                AttestedConnectionError::WebSocket(WebSocketError::Protocol(protocol_error))
             }
-            SendError::Io(error) => {
-                AttestedConnectionError::WebSocket(WebSocketServiceError::Io(error))
-            }
-            SendError::MessageTooLarge { size, max_size } => AttestedConnectionError::WebSocket(
-                WebSocketServiceError::Capacity(SpaceError::Capacity(
+            SendError::Io(error) => AttestedConnectionError::WebSocket(WebSocketError::Io(error)),
+            SendError::MessageTooLarge { size, max_size } => {
+                AttestedConnectionError::WebSocket(WebSocketError::Capacity(SpaceError::Capacity(
                     tungstenite::error::CapacityError::MessageTooLong { size, max_size },
-                )),
-            ),
+                )))
+            }
         }
     }
 }

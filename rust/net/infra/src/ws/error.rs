@@ -17,7 +17,7 @@ use crate::errors::{LogSafeDisplay, TransportConnectError};
 #[derive(Debug, thiserror::Error)]
 pub enum WebSocketConnectError {
     Transport(#[from] TransportConnectError),
-    WebSocketError(#[from] super::WebSocketServiceError),
+    WebSocketError(#[from] super::WebSocketError),
 }
 
 impl std::fmt::Display for WebSocketConnectError {
@@ -35,7 +35,7 @@ impl LogSafeDisplay for WebSocketConnectError {}
 
 impl From<std::io::Error> for WebSocketConnectError {
     fn from(value: std::io::Error) -> Self {
-        super::WebSocketServiceError::Io(value).into()
+        super::WebSocketError::Io(value).into()
     }
 }
 

@@ -7,7 +7,7 @@ use std::fmt::Display;
 
 use http::HeaderName;
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
-use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
+use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketError};
 use tokio::time::Instant;
 
 #[derive(Debug, thiserror::Error)]
@@ -35,7 +35,7 @@ impl WebSocketServiceConnectError {
         received_at: Instant,
     ) -> Self {
         match error {
-            WebSocketConnectError::WebSocketError(WebSocketServiceError::Http(response))
+            WebSocketConnectError::WebSocketError(WebSocketError::Http(response))
                 if confirmation_header
                     .map(|header| response.headers().contains_key(header))
                     .unwrap_or(true) =>
@@ -124,7 +124,7 @@ mod test {
             non_http_error,
             WebSocketServiceConnectError::Connect(
                 libsignal_net_infra::ws::WebSocketConnectError::WebSocketError(
-                    libsignal_net_infra::ws::WebSocketServiceError::Io(_),
+                    libsignal_net_infra::ws::WebSocketError::Io(_),
                 ),
                 _
             )
@@ -143,7 +143,7 @@ mod test {
                 http_4xx_error,
                 WebSocketServiceConnectError::Connect(
                     libsignal_net_infra::ws::WebSocketConnectError::WebSocketError(
-                        libsignal_net_infra::ws::WebSocketServiceError::Http(_)
+                        libsignal_net_infra::ws::WebSocketError::Http(_)
                     ),
                     _
                 )
@@ -162,7 +162,7 @@ mod test {
 
             let error_with_header = WebSocketServiceConnectError::from_websocket_error(
                 WebSocketConnectError::WebSocketError(
-                    libsignal_net_infra::ws::WebSocketServiceError::Http(response_4xx.clone()),
+                    libsignal_net_infra::ws::WebSocketError::Http(response_4xx.clone()),
                 ),
                 confirmation_header.as_ref(),
                 now,

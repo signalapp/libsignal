@@ -17,7 +17,7 @@ use tungstenite::protocol::CloseFrame;
 use tungstenite::Message;
 
 use crate::errors::LogSafeDisplay;
-use crate::ws::{Config, TextOrBinary, WebSocketServiceError, WebSocketStreamLike};
+use crate::ws::{Config, TextOrBinary, WebSocketError, WebSocketStreamLike};
 
 /// An established websocket connection.
 ///
@@ -523,19 +523,19 @@ impl From<TungsteniteReceiveError> for TungsteniteError {
     }
 }
 
-impl From<TungsteniteSendError> for WebSocketServiceError {
+impl From<TungsteniteSendError> for WebSocketError {
     fn from(value: TungsteniteSendError) -> Self {
         TungsteniteError::from(value).into()
     }
 }
 
-impl From<TungsteniteReceiveError> for WebSocketServiceError {
+impl From<TungsteniteReceiveError> for WebSocketError {
     fn from(value: TungsteniteReceiveError) -> Self {
         TungsteniteError::from(value).into()
     }
 }
 
-impl From<TungsteniteError> for WebSocketServiceError {
+impl From<TungsteniteError> for WebSocketError {
     fn from(value: TungsteniteError) -> Self {
         match value {
             TungsteniteError::AlreadyClosed | TungsteniteError::ConnectionClosed => {
