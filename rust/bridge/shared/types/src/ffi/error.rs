@@ -10,6 +10,7 @@ use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
+use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_net_chat::api::RateLimitChallenge;
 use libsignal_protocol::*;
@@ -971,62 +972,65 @@ impl IntoFfiError for FutureCancelled {
     }
 }
 
-impl FfiError for libsignal_net::svrb::Error {
-    fn describe(&self) -> Cow<'_, str> {
-        use libsignal_net::infra::ws::WebSocketConnectError;
+#[derive(Debug)]
+struct SvrRestoreFailed {
+    tries_remaining: u32,
+}
 
-        match self {
-            Self::AllConnectionAttemptsFailed => {
-                "no connection attempts succeeded before timeout".into()
-            }
-            Self::Connect(e) => match e {
-                WebSocketConnectError::Transport(e) => format!("IO error: {e}").into(),
-                WebSocketConnectError::WebSocketError(e) => format!("WebSocket error: {e}").into(),
-            },
-            Self::RateLimited(inner) => inner.describe(),
-            Self::Service(e) => format!("WebSocket error: {e}").into(),
-            Self::Protocol(e) => format!("Protocol error: {e}").into(),
-            Self::AttestationError(inner) => inner.describe(),
-            Self::RestoreFailed(_)
-            | Self::DataMissing
-            | Self::PreviousBackupDataInvalid
-            | Self::MetadataInvalid
-            | Self::DecryptionError(_) => format!("SVR error: {self}").into(),
-        }
+impl FfiError for SvrRestoreFailed {
+    fn describe(&self) -> Cow<'_, str> {
+        format!(
+            "Failure to restore data; {} tries remaining",
+            self.tries_remaining
+        )
+        .into()
     }
 
     fn code(&self) -> SignalErrorCode {
-        use libsignal_net::infra::ws::WebSocketConnectError;
-
-        match self {
-            Self::AllConnectionAttemptsFailed => SignalErrorCode::ConnectionFailed,
-            Self::Connect(e) => match e {
-                WebSocketConnectError::Transport(_) => SignalErrorCode::IoError,
-                WebSocketConnectError::WebSocketError(_) => SignalErrorCode::WebSocket,
-            },
-            Self::RateLimited(inner) => inner.code(),
-            Self::Service(_) => SignalErrorCode::WebSocket,
-            Self::AttestationError(inner) => inner.code(),
-            Self::Protocol(_) => SignalErrorCode::NetworkProtocol,
-            Self::RestoreFailed(_) => SignalErrorCode::SvrRestoreFailed,
-            Self::DataMissing => SignalErrorCode::SvrDataMissing,
-            Self::PreviousBackupDataInvalid => SignalErrorCode::InvalidArgument,
-            Self::MetadataInvalid => SignalErrorCode::InvalidArgument,
-            Self::DecryptionError(_) => SignalErrorCode::InvalidArgument,
-        }
+        SignalErrorCode::SvrRestoreFailed
     }
 
     fn provide_tries_remaining(&self) -> Result<u32, WrongErrorKind> {
-        match self {
-            Self::RestoreFailed(tries) => Ok(*tries),
-            _ => Err(WrongErrorKind),
-        }
+        Ok(self.tries_remaining)
     }
+}
 
-    fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
+impl IntoFfiError for libsignal_net::svrb::Error
+where
+    Self: LogSafeDisplay,
+{
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        use libsignal_net::infra::ws::WebSocketConnectError;
         match self {
-            Self::RateLimited(inner) => inner.provide_retry_after_seconds(),
-            _ => Err(WrongErrorKind),
+            e @ Self::AllConnectionAttemptsFailed => {
+                SimpleError::new(SignalErrorCode::ConnectionFailed, e.to_string()).into()
+            }
+            Self::Connect(e) => match e {
+                WebSocketConnectError::Transport(e) => {
+                    SimpleError::new(SignalErrorCode::IoError, format!("IO error: {e}")).into()
+                }
+                WebSocketConnectError::WebSocketError(e) => {
+                    SimpleError::new(SignalErrorCode::WebSocket, format!("WebSocket error: {e}"))
+                        .into()
+                }
+            },
+            Self::RateLimited(inner) => inner.into_ffi_error().into(),
+            Self::Service(e) => {
+                SimpleError::new(SignalErrorCode::WebSocket, format!("WebSocket error: {e}")).into()
+            }
+            Self::AttestationError(inner) => inner.into_ffi_error().into(),
+            e @ Self::Protocol(_) => {
+                SimpleError::new(SignalErrorCode::NetworkProtocol, e.to_string()).into()
+            }
+            Self::RestoreFailed(tries_remaining) => SvrRestoreFailed { tries_remaining }.into(),
+            e @ Self::DataMissing => {
+                SimpleError::new(SignalErrorCode::SvrDataMissing, e.to_string()).into()
+            }
+            e @ (Self::PreviousBackupDataInvalid
+            | Self::MetadataInvalid
+            | Self::DecryptionError(_)) => {
+                SimpleError::new(SignalErrorCode::InvalidArgument, e.to_string()).into()
+            }
         }
     }
 }

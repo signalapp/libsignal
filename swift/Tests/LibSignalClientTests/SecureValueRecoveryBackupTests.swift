@@ -75,7 +75,7 @@ final class SecureValueRecoveryBackupTests: TestCaseBase {
                 XCTFail("Expected SignalError.invalidArgument, got \(error)")
                 return
             }
-            XCTAssertEqual(message, "SVR error: Invalid data from previous backup")
+            XCTAssertEqual(message, "Invalid data from previous backup")
         }
     }
 
