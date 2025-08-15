@@ -350,14 +350,14 @@ extension Array where Element == UInt8 {
     public func toHex() -> String {
         var hex = [UInt8](repeating: 0, count: self.count * 2)
         hex.withUnsafeMutableBytes { hex in
-            failOnError(
-                signal_hex_encode(
-                    hex.baseAddress?.assumingMemoryBound(to: CChar.self),
-                    hex.count,
-                    self,
-                    self.count
+            self.withUnsafeBorrowedBuffer { input in
+                failOnError(
+                    signal_hex_encode(
+                        SignalBorrowedMutableBuffer(hex),
+                        input
+                    )
                 )
-            )
+            }
         }
         return String(decoding: hex, as: Unicode.UTF8.self)
     }
@@ -368,13 +368,11 @@ extension Data {
     public func toHex() -> String {
         var hex = [UInt8](repeating: 0, count: self.count * 2)
         hex.withUnsafeMutableBytes { hex in
-            self.withUnsafeBytes { input in
+            self.withUnsafeBorrowedBuffer { input in
                 failOnError(
                     signal_hex_encode(
-                        hex.baseAddress?.assumingMemoryBound(to: CChar.self),
-                        hex.count,
-                        input.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                        input.count
+                        SignalBorrowedMutableBuffer(hex),
+                        input
                     )
                 )
             }
