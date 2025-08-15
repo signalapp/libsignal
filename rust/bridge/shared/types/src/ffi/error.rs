@@ -455,20 +455,17 @@ impl IntoFfiError for HsmEnclaveError {
     }
 }
 
-// Kept as an FfiError so other FfiErrors can delegate to it.
-impl FfiError for EnclaveError {
-    fn describe(&self) -> Cow<'_, str> {
-        format!("SGX operation failed: {self}").into()
-    }
-
-    fn code(&self) -> SignalErrorCode {
-        match self {
+impl IntoFfiError for EnclaveError {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        let message = format!("SGX operation failed: {self}");
+        let code = match self {
             Self::AttestationError(_) | Self::NoiseError(_) | Self::NoiseHandshakeError(_) => {
                 SignalErrorCode::InvalidMessage
             }
             Self::AttestationDataError { .. } => SignalErrorCode::InvalidAttestationData,
             Self::InvalidBridgeStateError => SignalErrorCode::InvalidState,
-        }
+        };
+        SimpleError::new(code, message)
     }
 }
 
@@ -743,7 +740,7 @@ mod registration {
     // Self.
     impl<E> IntoFfiError for RequestError<E>
     where
-        E: Send + std::fmt::Display + IntoFfiError + 'static,
+        E: std::fmt::Display + IntoFfiError,
     {
         fn into_ffi_error(self) -> impl Into<SignalFfiError> {
             match self {
