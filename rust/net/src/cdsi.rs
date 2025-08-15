@@ -131,21 +131,8 @@ pub struct LookupResponseEntry {
     pub pni: Option<Pni>,
 }
 
-#[derive(Debug, PartialEq)]
-pub enum LookupResponseParseError {
-    InvalidNumberOfBytes { actual_length: usize },
-}
-
-impl From<LookupResponseParseError> for LookupError {
-    fn from(value: LookupResponseParseError) -> Self {
-        match value {
-            LookupResponseParseError::InvalidNumberOfBytes { .. } => Self::ParseError,
-        }
-    }
-}
-
 impl TryFrom<ClientResponse> for LookupResponse {
-    type Error = LookupResponseParseError;
+    type Error = CdsiProtocolError;
 
     fn try_from(response: ClientResponse) -> Result<Self, Self::Error> {
         let ClientResponse {
@@ -155,7 +142,7 @@ impl TryFrom<ClientResponse> for LookupResponse {
         } = response;
 
         if e164_pni_aci_triples.len() % LookupResponseEntry::SERIALIZED_LEN != 0 {
-            return Err(LookupResponseParseError::InvalidNumberOfBytes {
+            return Err(CdsiProtocolError::InvalidNumberOfBytes {
                 actual_length: e164_pni_aci_triples.len(),
             });
         }
@@ -235,8 +222,6 @@ pub enum LookupError {
     RateLimited(#[from] RetryLater),
     /// request token was invalid
     InvalidToken,
-    /// failed to parse the response from the server
-    ParseError,
     /// protocol error after establishing a connection: {0}
     EnclaveProtocol(AttestedProtocolError),
     /// transport failed: {0}
@@ -250,14 +235,19 @@ pub enum LookupError {
     /// server error: {reason}
     Server { reason: &'static str },
     /// CDS protocol: {0}
-    CdsiProtocol(CdsiProtocolError),
+    CdsiProtocol(#[from] CdsiProtocolError),
 }
 
 #[derive(Debug, Error, displaydoc::Display)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum CdsiProtocolError {
     /// no token found in response
     NoTokenInResponse,
+    /// could not parse response triples ({actual_length} bytes)
+    InvalidNumberOfBytes { actual_length: usize },
 }
+
+impl LogSafeDisplay for CdsiProtocolError {}
 
 impl From<AttestedConnectionError> for LookupError {
     fn from(value: AttestedConnectionError) -> Self {

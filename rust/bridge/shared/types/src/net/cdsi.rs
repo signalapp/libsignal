@@ -21,12 +21,10 @@ pub enum CdsiError {
     Protocol,
     /// Retry later
     RateLimited(RetryLater),
-    /// Failed to parse the response from the server
-    ParseError,
     /// Request token was invalid
     InvalidToken,
-    /// Response token was missing
-    NoTokenInResponse,
+    /// CDS protocol: {0}
+    CdsiProtocol(cdsi::CdsiProtocolError),
     /// Server error: {reason}
     Server { reason: &'static str },
 }

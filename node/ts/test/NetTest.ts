@@ -815,11 +815,6 @@ describe('cdsi lookup', () => {
           'request was invalid: fake reason',
         ],
         [
-          'Parse',
-          ErrorCode.IoError,
-          'failed to parse the response from the server',
-        ],
-        [
           'TcpConnectFailed',
           ErrorCode.IoError,
           'transport failed: Failed to establish TCP connection to any of the IPs',

@@ -92,7 +92,6 @@ make_error_testing_enum! {
         RateLimited => RetryAfter42Seconds,
         InvalidToken => InvalidToken,
         InvalidArgument => InvalidArgument,
-        ParseError => Parse,
         ConnectTransport => TcpConnectFailed,
         WebSocket => WebSocketIdleTooLong,
         AllConnectionAttemptsFailed => AllConnectionAttemptsFailed,
@@ -125,7 +124,6 @@ fn TESTING_CdsiLookupErrorConvert(
         TestingCdsiLookupError::InvalidArgument => LookupError::InvalidArgument {
             server_reason: "fake reason".into(),
         },
-        TestingCdsiLookupError::Parse => LookupError::ParseError,
         TestingCdsiLookupError::TcpConnectFailed => LookupError::ConnectTransport(
             libsignal_net::infra::errors::TransportConnectError::TcpConnectionFailed,
         ),

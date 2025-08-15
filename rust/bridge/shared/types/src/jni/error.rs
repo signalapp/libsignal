@@ -7,7 +7,6 @@ use std::io::Error as IoError;
 
 use jni::objects::{AutoLocal, GlobalRef, JObject, JString, JThrowable};
 use jni::{JNIEnv, JavaVM};
-use libsignal_net::cdsi::CdsiProtocolError;
 use libsignal_protocol::*;
 
 use super::*;
@@ -154,11 +153,8 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
                 return SignalProtocolError::InvalidArgument(e.to_string()).into()
             }
             LookupError::EnclaveProtocol(_) => CdsiError::Protocol,
-            LookupError::CdsiProtocol(CdsiProtocolError::NoTokenInResponse) => {
-                CdsiError::NoTokenInResponse
-            }
+            LookupError::CdsiProtocol(inner) => CdsiError::CdsiProtocol(inner),
             LookupError::RateLimited(retry_later) => CdsiError::RateLimited(retry_later),
-            LookupError::ParseError => CdsiError::ParseError,
             LookupError::InvalidToken => CdsiError::InvalidToken,
             LookupError::Server { reason } => CdsiError::Server { reason },
         };

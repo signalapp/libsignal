@@ -494,14 +494,13 @@ impl IntoFfiError for std::io::Error {
 impl IntoFfiError for libsignal_net::cdsi::LookupError {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         let result: SignalFfiError = match self {
-            Self::CdsiProtocol(_)
-            | Self::EnclaveProtocol(_)
-            | Self::ParseError
-            | Self::Server { .. } => SimpleError::new(
-                SignalErrorCode::NetworkProtocol,
-                format!("Protocol error: {self}"),
-            )
-            .into(),
+            Self::CdsiProtocol(_) | Self::EnclaveProtocol(_) | Self::Server { .. } => {
+                SimpleError::new(
+                    SignalErrorCode::NetworkProtocol,
+                    format!("Protocol error: {self}"),
+                )
+                .into()
+            }
             Self::AttestationError(inner) => inner.into(),
             Self::RateLimited(inner) => inner.into(),
             Self::InvalidToken => SimpleError::new(

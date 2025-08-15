@@ -632,7 +632,6 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
             | Self::WebSocket(_)
             | Self::CdsiProtocol(_)
             | Self::EnclaveProtocol(_)
-            | Self::ParseError
             | Self::Server { reason: _ } => Some(IO_ERROR),
         };
         let message = self.to_string();

@@ -86,11 +86,6 @@ final class NetTests {
             #expect(message == "invalid argument: request was invalid: fake reason")
         }
         do {
-            try failWithError("Parse")
-        } catch SignalError.networkProtocolError(let message) {
-            #expect(message == "Protocol error: failed to parse the response from the server")
-        }
-        do {
             try failWithError("TcpConnectFailed")
         } catch SignalError.ioError(let message) {
             #expect(message == "IO error: Failed to establish TCP connection to any of the IPs")

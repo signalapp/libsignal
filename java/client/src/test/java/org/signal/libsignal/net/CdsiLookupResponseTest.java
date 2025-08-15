@@ -57,7 +57,8 @@ public class CdsiLookupResponseTest {
   public void cdsiLookupErrorConvert() {
     assertLookupErrorIs(
         "Protocol", CdsiProtocolException.class, "Protocol error after establishing a connection");
-    assertLookupErrorIs("CdsiProtocol", CdsiProtocolException.class, "Response token was missing");
+    assertLookupErrorIs(
+        "CdsiProtocol", CdsiProtocolException.class, "CDS protocol: no token found in response");
     assertLookupErrorIs(
         "AttestationDataError",
         AttestationDataException.class,
@@ -73,8 +74,6 @@ public class CdsiLookupResponseTest {
         "InvalidArgument",
         IllegalArgumentException.class,
         "invalid argument: request was invalid: fake reason");
-    assertLookupErrorIs(
-        "Parse", CdsiProtocolException.class, "Failed to parse the response from the server");
     assertLookupErrorIs(
         "TcpConnectFailed",
         IOException.class,
