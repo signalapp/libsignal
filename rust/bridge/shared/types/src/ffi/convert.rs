@@ -1170,6 +1170,7 @@ macro_rules! ffi_result_type {
     // treated as a single unit, and we can't match multiple tokens because Rust's macros match
     // eagerly. Therefore, if you need to return a more complicated Result type, you'll have to add
     // another rule for its form.
+    (std::result::Result<$($rest:tt)+) => (ffi_result_type!(Result<$($rest)+));
     (Result<$typ:tt $(, $_:ty)?>) => (ffi_result_type!($typ));
     (Result<&$typ:tt $(, $_:ty)?>) => (ffi_result_type!(&$typ));
     (Result<Option<&$typ:tt> $(, $_:ty)?>) => (ffi_result_type!(&$typ));

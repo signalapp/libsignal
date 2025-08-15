@@ -47,28 +47,31 @@ public class NumericFingerprintGenerator implements FingerprintGenerator {
       byte[] remoteStableIdentifier,
       final IdentityKey remoteIdentityKey) {
 
-    return filterExceptions(
-        () -> {
-          long handle =
-              Native.NumericFingerprintGenerator_New(
-                  this.iterations,
-                  version,
-                  localStableIdentifier,
-                  localIdentityKey.serialize(),
-                  remoteStableIdentifier,
-                  remoteIdentityKey.serialize());
+    try (var localIdentityKeyGuard = localIdentityKey.getPublicKey().guard();
+        var remoteIdentityKeyGuard = remoteIdentityKey.getPublicKey().guard(); ) {
+      return filterExceptions(
+          () -> {
+            long handle =
+                Native.NumericFingerprintGenerator_New(
+                    this.iterations,
+                    version,
+                    localStableIdentifier,
+                    localIdentityKeyGuard.nativeHandle(),
+                    remoteStableIdentifier,
+                    remoteIdentityKeyGuard.nativeHandle());
 
-          DisplayableFingerprint displayableFingerprint =
-              new DisplayableFingerprint(
-                  Native.NumericFingerprintGenerator_GetDisplayString(handle));
+            DisplayableFingerprint displayableFingerprint =
+                new DisplayableFingerprint(
+                    Native.NumericFingerprintGenerator_GetDisplayString(handle));
 
-          ScannableFingerprint scannableFingerprint =
-              new ScannableFingerprint(
-                  Native.NumericFingerprintGenerator_GetScannableEncoding(handle));
+            ScannableFingerprint scannableFingerprint =
+                new ScannableFingerprint(
+                    Native.NumericFingerprintGenerator_GetScannableEncoding(handle));
 
-          Native.NumericFingerprintGenerator_Destroy(handle);
+            Native.NumericFingerprintGenerator_Destroy(handle);
 
-          return new Fingerprint(displayableFingerprint, scannableFingerprint);
-        });
+            return new Fingerprint(displayableFingerprint, scannableFingerprint);
+          });
+    }
   }
 }

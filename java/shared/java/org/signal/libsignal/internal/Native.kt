@@ -708,7 +708,7 @@ internal object Native {
   @JvmStatic @Throws(Exception::class)
   public external fun NumericFingerprintGenerator_GetScannableEncoding(obj: ObjectHandle): ByteArray
   @JvmStatic @Throws(Exception::class)
-  public external fun NumericFingerprintGenerator_New(iterations: Int, version: Int, localIdentifier: ByteArray, localKey: ByteArray, remoteIdentifier: ByteArray, remoteKey: ByteArray): ObjectHandle
+  public external fun NumericFingerprintGenerator_New(iterations: Int, version: Int, localIdentifier: ByteArray, localKey: ObjectHandle, remoteIdentifier: ByteArray, remoteKey: ObjectHandle): ObjectHandle
 
   @JvmStatic @Throws(Exception::class)
   public external fun OnlineBackupValidator_AddFrame(backup: ObjectHandle, frame: ByteArray): Unit

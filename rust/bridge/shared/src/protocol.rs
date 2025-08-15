@@ -293,7 +293,7 @@ fn IdentityKey_VerifyAlternateIdentity(
     identity.verify_alternate_identity(&other_identity, signature)
 }
 
-#[bridge_fn(jni = false)]
+#[bridge_fn(jni = "NumericFingerprintGenerator_1New")]
 fn Fingerprint_New(
     iterations: u32,
     version: u32,
@@ -301,7 +301,7 @@ fn Fingerprint_New(
     local_key: &PublicKey,
     remote_identifier: &[u8],
     remote_key: &PublicKey,
-) -> Result<Fingerprint> {
+) -> std::result::Result<Fingerprint, FingerprintError> {
     Fingerprint::new(
         version,
         iterations,
@@ -312,41 +312,23 @@ fn Fingerprint_New(
     )
 }
 
-// Alternate implementation that takes untyped buffers.
-#[bridge_fn(ffi = false, node = false)]
-fn NumericFingerprintGenerator_New(
-    iterations: u32,
-    version: u32,
-    local_identifier: &[u8],
-    local_key: &[u8],
-    remote_identifier: &[u8],
-    remote_key: &[u8],
-) -> Result<Fingerprint> {
-    let local_key = IdentityKey::decode(local_key)?;
-    let remote_key = IdentityKey::decode(remote_key)?;
-
-    Fingerprint::new(
-        version,
-        iterations,
-        local_identifier,
-        &local_key,
-        remote_identifier,
-        &remote_key,
-    )
-}
-
 #[bridge_fn(jni = "NumericFingerprintGenerator_1GetScannableEncoding")]
-fn Fingerprint_ScannableEncoding(obj: &Fingerprint) -> Result<Vec<u8>> {
+fn Fingerprint_ScannableEncoding(
+    obj: &Fingerprint,
+) -> std::result::Result<Vec<u8>, FingerprintError> {
     obj.scannable.serialize()
 }
 
-bridge_get!(
-    Fingerprint::display_string as DisplayString -> String,
-    jni = "NumericFingerprintGenerator_1GetDisplayString"
-);
+#[bridge_fn(jni = "NumericFingerprintGenerator_1GetDisplayString")]
+fn Fingerprint_DisplayString(obj: &Fingerprint) -> std::result::Result<String, FingerprintError> {
+    obj.display_string()
+}
 
 #[bridge_fn(ffi = "fingerprint_compare")]
-fn ScannableFingerprint_Compare(fprint1: &[u8], fprint2: &[u8]) -> Result<bool> {
+fn ScannableFingerprint_Compare(
+    fprint1: &[u8],
+    fprint2: &[u8],
+) -> std::result::Result<bool, FingerprintError> {
     ScannableFingerprint::deserialize(fprint1)?.compare(fprint2)
 }
 

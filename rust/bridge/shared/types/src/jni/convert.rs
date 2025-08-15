@@ -2130,6 +2130,9 @@ macro_rules! jni_result_type {
     // and we can't match multiple tokens because Rust's macros match eagerly.
     // Therefore, if you need to return a more complicated Result or Option
     // type, you'll have to add another rule for its form.
+    (std::result::Result<$($rest:tt)+) => {
+        jni_result_type!(Result<$($rest)+)
+    };
     (Result<$typ:tt $(, $_:ty)?>) => {
         $crate::jni::Throwing<jni_result_type!($typ)>
     };

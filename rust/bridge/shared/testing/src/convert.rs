@@ -347,8 +347,6 @@ async fn TESTING_InputStreamReadIntoZeroLengthSlice(
 fn TESTING_FingerprintVersionMismatchError(
     theirs: u32,
     ours: u32,
-) -> Result<(), SignalProtocolError> {
-    Err(SignalProtocolError::FingerprintVersionMismatch(
-        theirs, ours,
-    ))
+) -> Result<(), libsignal_protocol::FingerprintError> {
+    Err(libsignal_protocol::FingerprintError::VersionMismatch { theirs, ours })
 }

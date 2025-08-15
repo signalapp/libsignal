@@ -231,14 +231,6 @@ impl JniError for SignalProtocolError {
                 .map(Into::into);
             }
 
-            SignalProtocolError::FingerprintVersionMismatch(theirs, ours) => return new_instance(
-                env,
-                ClassName(
-                    "org.signal.libsignal.protocol.fingerprint.FingerprintVersionMismatchException",
-                ),
-                jni_args!((*theirs as jint => int, *ours as jint => int) -> void),
-            )
-            .map(Into::into),
             SignalProtocolError::SealedSenderSelfSend => {
                 return new_instance(
                     env,
@@ -304,12 +296,28 @@ impl JniError for SignalProtocolError {
             SignalProtocolError::LegacyCiphertextVersion(_) => {
                 ClassName("org.signal.libsignal.protocol.LegacyMessageException")
             }
-
-            SignalProtocolError::FingerprintParsingError => {
-                ClassName("org.signal.libsignal.protocol.fingerprint.FingerprintParsingException")
-            }
         };
 
+        make_single_message_throwable(env, &self.to_string(), class_name)
+    }
+}
+
+impl JniError for libsignal_protocol::FingerprintError {
+    fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
+        let class_name = match self {
+            Self::VersionMismatch { theirs, ours } => return new_instance(
+                env,
+                ClassName(
+                    "org.signal.libsignal.protocol.fingerprint.FingerprintVersionMismatchException",
+                ),
+                jni_args!((*theirs as jint => int, *ours as jint => int) -> void),
+            )
+            .map(Into::into),
+            Self::ParsingError(_) => {
+                ClassName("org.signal.libsignal.protocol.fingerprint.FingerprintParsingException")
+            }
+            Self::InvalidIterationCount(_) => ClassName("java.lang.IllegalArgumentException"),
+        };
         make_single_message_throwable(env, &self.to_string(), class_name)
     }
 }

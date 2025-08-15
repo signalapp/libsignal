@@ -11,7 +11,17 @@ use sha2::digest::Digest;
 use sha2::Sha512;
 use subtle::ConstantTimeEq;
 
-use crate::{proto, IdentityKey, Result, SignalProtocolError};
+use crate::{proto, IdentityKey};
+
+#[derive(Debug, displaydoc::Display)]
+pub enum Error {
+    /// fingerprint version number mismatch them {theirs} us {ours}
+    VersionMismatch { theirs: u32, ours: u32 },
+    /// fingerprint parsing error: {0}
+    ParsingError(&'static str),
+    /// Invalid fingerprint iterations {0}
+    InvalidIterationCount(u32),
+}
 
 #[derive(Debug, Clone)]
 pub struct DisplayableFingerprint {
@@ -29,10 +39,10 @@ impl fmt::Display for DisplayableFingerprint {
     }
 }
 
-fn get_encoded_string(fprint: &[u8]) -> Result<String> {
+fn get_encoded_string(fprint: &[u8]) -> Result<String, Error> {
     if fprint.len() < 30 {
-        return Err(SignalProtocolError::InvalidArgument(
-            "DisplayableFingerprint created with short encoding".to_string(),
+        return Err(Error::ParsingError(
+            "DisplayableFingerprint created with short encoding",
         ));
     }
 
@@ -54,7 +64,7 @@ fn get_encoded_string(fprint: &[u8]) -> Result<String> {
 }
 
 impl DisplayableFingerprint {
-    pub fn new(local: &[u8], remote: &[u8]) -> Result<Self> {
+    pub fn new(local: &[u8], remote: &[u8]) -> Result<Self, Error> {
         Ok(Self {
             local: get_encoded_string(local)?,
             remote: get_encoded_string(remote)?,
@@ -78,28 +88,26 @@ impl ScannableFingerprint {
         }
     }
 
-    pub fn deserialize(protobuf: &[u8]) -> Result<Self> {
+    pub fn deserialize(protobuf: &[u8]) -> Result<Self, Error> {
         let fingerprint = proto::fingerprint::CombinedFingerprints::decode(protobuf)
-            .map_err(|_| SignalProtocolError::FingerprintParsingError)?;
+            .map_err(|_| Error::ParsingError("failed to decode protobuf"))?;
 
         Ok(Self {
             version: fingerprint
                 .version
-                .ok_or(SignalProtocolError::FingerprintParsingError)?,
+                .ok_or(Error::ParsingError("missing version"))?,
             local_fingerprint: fingerprint
                 .local_fingerprint
-                .ok_or(SignalProtocolError::FingerprintParsingError)?
-                .content
-                .ok_or(SignalProtocolError::FingerprintParsingError)?,
+                .and_then(|m| m.content)
+                .ok_or(Error::ParsingError("missing local fingerprint"))?,
             remote_fingerprint: fingerprint
                 .remote_fingerprint
-                .ok_or(SignalProtocolError::FingerprintParsingError)?
-                .content
-                .ok_or(SignalProtocolError::FingerprintParsingError)?,
+                .and_then(|m| m.content)
+                .ok_or(Error::ParsingError("missing remote fingerprint"))?,
         })
     }
 
-    pub fn serialize(&self) -> Result<Vec<u8>> {
+    pub fn serialize(&self) -> Result<Vec<u8>, Error> {
         let combined_fingerprints = proto::fingerprint::CombinedFingerprints {
             version: Some(self.version),
             local_fingerprint: Some(proto::fingerprint::LogicalFingerprint {
@@ -113,34 +121,30 @@ impl ScannableFingerprint {
         Ok(combined_fingerprints.encode_to_vec())
     }
 
-    pub fn compare(&self, combined: &[u8]) -> Result<bool> {
+    pub fn compare(&self, combined: &[u8]) -> Result<bool, Error> {
         let combined = proto::fingerprint::CombinedFingerprints::decode(combined)
-            .map_err(|_| SignalProtocolError::FingerprintParsingError)?;
+            .map_err(|_| Error::ParsingError("failed to decode their protobuf"))?;
 
         let their_version = combined.version.unwrap_or(0);
 
         if their_version != self.version {
-            return Err(SignalProtocolError::FingerprintVersionMismatch(
-                their_version,
-                self.version,
-            ));
+            return Err(Error::VersionMismatch {
+                theirs: their_version,
+                ours: self.version,
+            });
         }
 
         let same1 = combined
             .local_fingerprint
             .as_ref()
-            .ok_or(SignalProtocolError::FingerprintParsingError)?
-            .content
-            .as_ref()
-            .ok_or(SignalProtocolError::FingerprintParsingError)?
+            .and_then(|m| m.content.as_ref())
+            .ok_or(Error::ParsingError("missing their local fingerprint"))?
             .ct_eq(&self.remote_fingerprint);
         let same2 = combined
             .remote_fingerprint
             .as_ref()
-            .ok_or(SignalProtocolError::FingerprintParsingError)?
-            .content
-            .as_ref()
-            .ok_or(SignalProtocolError::FingerprintParsingError)?
+            .and_then(|m| m.content.as_ref())
+            .ok_or(Error::ParsingError("missing their remote fingerprint"))?
             .ct_eq(&self.local_fingerprint);
 
         Ok(same1.into() && same2.into())
@@ -158,11 +162,9 @@ impl Fingerprint {
         iterations: u32,
         local_id: &[u8],
         local_key: &IdentityKey,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<Vec<u8>, Error> {
         if iterations <= 1 || iterations > 1000000 {
-            return Err(SignalProtocolError::InvalidArgument(format!(
-                "Invalid fingerprint iterations {iterations}"
-            )));
+            return Err(Error::InvalidIterationCount(iterations));
         }
 
         let fingerprint_version = [0u8, 0u8]; // 0x0000
@@ -196,7 +198,7 @@ impl Fingerprint {
         local_key: &IdentityKey,
         remote_id: &[u8],
         remote_key: &IdentityKey,
-    ) -> Result<Fingerprint> {
+    ) -> Result<Fingerprint, Error> {
         let local_fingerprint = Fingerprint::get_fingerprint(iterations, local_id, local_key)?;
         let remote_fingerprint = Fingerprint::get_fingerprint(iterations, remote_id, remote_key)?;
 
@@ -206,8 +208,8 @@ impl Fingerprint {
         })
     }
 
-    pub fn display_string(&self) -> Result<String> {
-        Ok(format!("{}", self.display))
+    pub fn display_string(&self) -> Result<String, Error> {
+        Ok(self.display.to_string())
     }
 }
 
@@ -235,7 +237,7 @@ mod test {
     const BOB_STABLE_ID: &str = "+14153333333";
 
     #[test]
-    fn fingerprint_encodings() -> Result<()> {
+    fn fingerprint_encodings() -> Result<(), Error> {
         let l = vec![0x12; 32];
         let r = vec![0xBA; 32];
 
@@ -250,11 +252,11 @@ mod test {
     }
 
     #[test]
-    fn fingerprint_test_v1() -> Result<()> {
+    fn fingerprint_test_v1() -> Result<(), Error> {
         // testVectorsVersion1 in Java
 
-        let a_key = IdentityKey::decode(ALICE_IDENTITY)?;
-        let b_key = IdentityKey::decode(BOB_IDENTITY)?;
+        let a_key = IdentityKey::decode(ALICE_IDENTITY).expect("valid");
+        let b_key = IdentityKey::decode(BOB_IDENTITY).expect("valid");
 
         let version = 1;
         let iterations = 5200;
@@ -302,11 +304,11 @@ mod test {
     }
 
     #[test]
-    fn fingerprint_test_v2() -> Result<()> {
+    fn fingerprint_test_v2() -> Result<(), Error> {
         // testVectorsVersion2 in Java
 
-        let a_key = IdentityKey::decode(ALICE_IDENTITY)?;
-        let b_key = IdentityKey::decode(BOB_IDENTITY)?;
+        let a_key = IdentityKey::decode(ALICE_IDENTITY).expect("valid");
+        let b_key = IdentityKey::decode(BOB_IDENTITY).expect("valid");
 
         let version = 2;
         let iterations = 5200;
@@ -355,7 +357,7 @@ mod test {
     }
 
     #[test]
-    fn fingerprint_matching_identifiers() -> Result<()> {
+    fn fingerprint_matching_identifiers() -> Result<(), Error> {
         // testMatchingFingerprints
 
         use rand::rngs::OsRng;
@@ -414,7 +416,7 @@ mod test {
     }
 
     #[test]
-    fn fingerprint_mismatching_fingerprints() -> Result<()> {
+    fn fingerprint_mismatching_fingerprints() -> Result<(), Error> {
         use rand::rngs::OsRng;
 
         use crate::IdentityKeyPair;
@@ -465,7 +467,7 @@ mod test {
     }
 
     #[test]
-    fn fingerprint_mismatching_identifiers() -> Result<()> {
+    fn fingerprint_mismatching_identifiers() -> Result<(), Error> {
         use rand::rngs::OsRng;
 
         use crate::IdentityKeyPair;
@@ -514,9 +516,9 @@ mod test {
     }
 
     #[test]
-    fn fingerprint_mismatching_versions() -> Result<()> {
-        let a_key = IdentityKey::decode(ALICE_IDENTITY)?;
-        let b_key = IdentityKey::decode(BOB_IDENTITY)?;
+    fn fingerprint_mismatching_versions() -> Result<(), Error> {
+        let a_key = IdentityKey::decode(ALICE_IDENTITY).expect("valid");
+        let b_key = IdentityKey::decode(BOB_IDENTITY).expect("valid");
 
         let iterations = 5200;
 

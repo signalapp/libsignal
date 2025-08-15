@@ -33,11 +33,6 @@ pub enum SignalProtocolError {
     /// unrecognized message version <{0}>
     UnrecognizedMessageVersion(u32),
 
-    /// fingerprint version number mismatch them {0} us {1}
-    FingerprintVersionMismatch(u32, u32),
-    /// fingerprint parsing error
-    FingerprintParsingError,
-
     /// no key type identifier
     NoKeyTypeIdentifier,
     /// bad key type <{0:#04x}>

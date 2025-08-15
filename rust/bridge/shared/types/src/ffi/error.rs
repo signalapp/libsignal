@@ -288,8 +288,6 @@ impl FfiError for SignalProtocolError {
             Self::UnrecognizedMessageVersion(_) | Self::UnknownSealedSenderVersion(_) => {
                 SignalErrorCode::UnrecognizedMessageVersion
             }
-            Self::FingerprintVersionMismatch(_, _) => SignalErrorCode::FingerprintVersionMismatch,
-            Self::FingerprintParsingError => SignalErrorCode::FingerprintParsingError,
             Self::NoKeyTypeIdentifier
             | Self::BadKeyType(_)
             | Self::BadKeyLength(_, _)
@@ -335,13 +333,24 @@ impl FfiError for SignalProtocolError {
             _ => Err(WrongErrorKind),
         }
     }
+}
+
+impl FfiError for libsignal_protocol::FingerprintError {
+    fn describe(&self) -> Cow<'_, str> {
+        self.to_string().into()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::VersionMismatch { .. } => SignalErrorCode::FingerprintVersionMismatch,
+            Self::ParsingError(_) => SignalErrorCode::FingerprintParsingError,
+            Self::InvalidIterationCount(_) => SignalErrorCode::InvalidArgument,
+        }
+    }
 
     fn provide_fingerprint_versions(&self) -> Result<FingerprintVersions, WrongErrorKind> {
         match self {
-            Self::FingerprintVersionMismatch(theirs, ours) => Ok(FingerprintVersions {
-                theirs: *theirs,
-                ours: *ours,
-            }),
+            &Self::VersionMismatch { theirs, ours } => Ok(FingerprintVersions { theirs, ours }),
             _ => Err(WrongErrorKind),
         }
     }

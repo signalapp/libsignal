@@ -130,10 +130,12 @@ def translate_to_ts(typ: str) -> str:
 
     if typ.startswith('Result<'):
         assert typ.endswith('>')
-        if ',' in typ:
-            success_type = typ[7:].split(',')[0]
-        else:
-            success_type = typ[7:-1]
+        success_type = typ[7:-1].split(',')[0]
+        return translate_to_ts(success_type)
+
+    if typ.startswith('std::result::Result<'):
+        assert typ.endswith('>')
+        success_type = typ[20:-1].split(',')[0]
         return translate_to_ts(success_type)
 
     if typ.startswith('Promise<'):

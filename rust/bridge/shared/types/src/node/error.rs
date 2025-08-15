@@ -263,6 +263,8 @@ impl SignalNodeError for SignalProtocolError {
     }
 }
 
+impl DefaultSignalNodeError for libsignal_protocol::FingerprintError {}
+
 impl DefaultSignalNodeError for device_transfer::Error {}
 
 impl DefaultSignalNodeError for attest::hsm_enclave::Error {}

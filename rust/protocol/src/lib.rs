@@ -43,7 +43,9 @@ mod timestamp;
 
 use error::Result;
 pub use error::SignalProtocolError;
-pub use fingerprint::{DisplayableFingerprint, Fingerprint, ScannableFingerprint};
+pub use fingerprint::{
+    DisplayableFingerprint, Error as FingerprintError, Fingerprint, ScannableFingerprint,
+};
 pub use group_cipher::{
     create_sender_key_distribution_message, group_decrypt, group_encrypt,
     process_sender_key_distribution_message,
