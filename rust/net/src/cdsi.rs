@@ -231,8 +231,6 @@ impl AsMut<AttestedConnection> for CdsiConnection {
 pub enum LookupError {
     /// SGX attestation failed.
     AttestationError(attest::enclave::Error),
-    /// invalid response received from the server
-    InvalidResponse,
     /// retry later
     RateLimited(#[from] RetryLater),
     /// request token was invalid

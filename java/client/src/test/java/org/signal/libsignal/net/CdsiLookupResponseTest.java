@@ -62,10 +62,6 @@ public class CdsiLookupResponseTest {
         "AttestationDataError",
         AttestationDataException.class,
         "attestation data invalid: fake reason");
-    assertLookupErrorIs(
-        "InvalidResponse",
-        CdsiProtocolException.class,
-        "Invalid response received from the server");
     RetryLaterException retryLater =
         assertLookupErrorIs(
             "RetryAfter42Seconds", RetryLaterException.class, "Retry after 42 seconds");

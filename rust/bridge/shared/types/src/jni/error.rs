@@ -153,7 +153,6 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
             LookupError::InvalidArgument { server_reason: _ } => {
                 return SignalProtocolError::InvalidArgument(e.to_string()).into()
             }
-            LookupError::InvalidResponse => CdsiError::InvalidResponse,
             LookupError::EnclaveProtocol(_) => CdsiError::Protocol,
             LookupError::CdsiProtocol(CdsiProtocolError::NoTokenInResponse) => {
                 CdsiError::NoTokenInResponse

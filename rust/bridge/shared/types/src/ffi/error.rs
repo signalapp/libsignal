@@ -496,7 +496,6 @@ impl IntoFfiError for libsignal_net::cdsi::LookupError {
         let result: SignalFfiError = match self {
             Self::CdsiProtocol(_)
             | Self::EnclaveProtocol(_)
-            | Self::InvalidResponse
             | Self::ParseError
             | Self::Server { .. } => SimpleError::new(
                 SignalErrorCode::NetworkProtocol,

@@ -19,8 +19,6 @@ use crate::*;
 pub enum CdsiError {
     /// Protocol error after establishing a connection
     Protocol,
-    /// Invalid response received from the server
-    InvalidResponse,
     /// Retry later
     RateLimited(RetryLater),
     /// Failed to parse the response from the server

@@ -803,11 +803,6 @@ describe('cdsi lookup', () => {
           ErrorCode.Generic,
           'attestation data invalid: fake reason',
         ],
-        [
-          'InvalidResponse',
-          ErrorCode.IoError,
-          'invalid response received from the server',
-        ],
         ['RetryAfter42Seconds', ErrorCode.RateLimitedError, 'retry after 42s'],
         [
           'InvalidToken',

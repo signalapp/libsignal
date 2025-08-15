@@ -71,11 +71,6 @@ final class NetTests {
             #expect(message == "SGX operation failed: attestation data invalid: fake reason")
         }
         do {
-            try failWithError("InvalidResponse")
-        } catch SignalError.networkProtocolError(let message) {
-            #expect(message == "Protocol error: invalid response received from the server")
-        }
-        do {
             try failWithError("RetryAfter42Seconds")
         } catch SignalError.rateLimitedError(retryAfter: 42, let message) {
             #expect(message == "Rate limited; try again after 42s")

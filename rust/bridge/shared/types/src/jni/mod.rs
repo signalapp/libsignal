@@ -771,8 +771,7 @@ impl JniError for CdsiError {
             CdsiError::InvalidToken => {
                 ClassName("org.signal.libsignal.net.CdsiInvalidTokenException")
             }
-            CdsiError::InvalidResponse
-            | CdsiError::ParseError
+            CdsiError::ParseError
             | CdsiError::Protocol
             | CdsiError::NoTokenInResponse
             | CdsiError::Server { reason: _ } => {

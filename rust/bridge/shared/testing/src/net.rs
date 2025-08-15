@@ -89,7 +89,6 @@ make_error_testing_enum! {
         EnclaveProtocol => Protocol,
         CdsiProtocol => CdsiProtocol,
         AttestationError => AttestationDataError,
-        InvalidResponse => InvalidResponse,
         RateLimited => RetryAfter42Seconds,
         InvalidToken => InvalidToken,
         InvalidArgument => InvalidArgument,
@@ -119,7 +118,6 @@ fn TESTING_CdsiLookupErrorConvert(
                 reason: "fake reason".into(),
             })
         }
-        TestingCdsiLookupError::InvalidResponse => LookupError::InvalidResponse,
         TestingCdsiLookupError::RetryAfter42Seconds => LookupError::RateLimited(RetryLater {
             retry_after_seconds: 42,
         }),
