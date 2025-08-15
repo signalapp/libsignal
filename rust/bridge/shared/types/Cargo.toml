@@ -30,6 +30,7 @@ usernames = { workspace = true }
 zkgroup = { workspace = true }
 
 aes-gcm-siv = { workspace = true }
+assert_matches = { workspace = true }
 async-trait = { workspace = true }
 atomic-take = { workspace = true }
 bytes = { workspace = true }
@@ -65,7 +66,6 @@ strum = { workspace = true }
 zerocopy = { workspace = true, optional = true }
 
 [dev-dependencies]
-assert_matches = { workspace = true }
 test-case = { workspace = true }
 tokio = { workspace = true, features = ["test-util", "time", "macros"] }
 

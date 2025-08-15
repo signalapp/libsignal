@@ -6,6 +6,7 @@
 use std::borrow::Cow;
 use std::fmt;
 
+use assert_matches::assert_matches;
 use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
@@ -270,13 +271,106 @@ impl<T: IntoFfiError> From<T> for SignalFfiError {
     }
 }
 
-impl FfiError for SignalProtocolError {
+#[derive(Debug)]
+struct InvalidRegistrationId {
+    peer_addr: ProtocolAddress,
+    invalid_id: u32,
+}
+
+impl FfiError for InvalidRegistrationId {
     fn describe(&self) -> Cow<'_, str> {
-        self.to_string().into()
+        format!(
+            "session for {} has invalid registration ID {:X}",
+            self.peer_addr, self.invalid_id
+        )
+        .into()
     }
 
     fn code(&self) -> SignalErrorCode {
-        match self {
+        SignalErrorCode::InvalidRegistrationId
+    }
+
+    fn provide_address(&self) -> Result<ProtocolAddress, WrongErrorKind> {
+        Ok(self.peer_addr.clone())
+    }
+}
+
+#[derive(Debug)]
+struct InvalidSenderKeySession {
+    distribution_id: uuid::Uuid,
+}
+
+impl FfiError for InvalidSenderKeySession {
+    fn describe(&self) -> Cow<'_, str> {
+        format!(
+            "invalid sender key session with distribution ID {}",
+            self.distribution_id
+        )
+        .into()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        SignalErrorCode::InvalidSenderKeySession
+    }
+
+    fn provide_uuid(&self) -> Result<uuid::Uuid, WrongErrorKind> {
+        Ok(self.distribution_id)
+    }
+}
+
+#[derive(Debug)]
+struct InvalidProtocolAddress {
+    name: String,
+    device_id: u32,
+}
+
+impl FfiError for InvalidProtocolAddress {
+    fn describe(&self) -> Cow<'_, str> {
+        format!(
+            "protocol address is invalid: {}.{}",
+            self.name, self.device_id,
+        )
+        .into()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        SignalErrorCode::InvalidProtocolAddress
+    }
+
+    fn provide_invalid_address(&self) -> Result<(&str, u32), WrongErrorKind> {
+        Ok((&self.name, self.device_id))
+    }
+}
+
+impl IntoFfiError for SignalProtocolError {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        let code = match &self {
+            &Self::InvalidSenderKeySession { distribution_id } => {
+                return SignalFfiError::from(InvalidSenderKeySession { distribution_id })
+            }
+            Self::InvalidRegistrationId(_, _) => {
+                // Re-match as owned.
+                return assert_matches!(
+                    self,
+                    Self::InvalidRegistrationId(peer_addr, invalid_id) =>
+                    InvalidRegistrationId {
+                        peer_addr, invalid_id
+                    }
+                )
+                .into();
+            }
+            Self::InvalidProtocolAddress { .. } => {
+                // Re-match as owned.
+                return assert_matches!(
+                    self,
+                    Self::InvalidProtocolAddress { name, device_id } =>
+                    InvalidProtocolAddress {
+                        name, device_id
+                    }
+                )
+                .into();
+            }
+
             Self::InvalidArgument(_) => SignalErrorCode::InvalidArgument,
             Self::InvalidState(_, _) => SignalErrorCode::InvalidState,
             Self::InvalidProtobufEncoding => SignalErrorCode::ProtobufError,
@@ -305,34 +399,13 @@ impl FfiError for SignalProtocolError {
                 SignalErrorCode::SessionNotFound
             }
             Self::InvalidSessionStructure(_) => SignalErrorCode::InvalidSession,
-            Self::InvalidSenderKeySession { .. } => SignalErrorCode::InvalidSenderKeySession,
-            Self::InvalidRegistrationId(_, _) => SignalErrorCode::InvalidRegistrationId,
-            Self::InvalidProtocolAddress { .. } => SignalErrorCode::InvalidProtocolAddress,
             Self::DuplicatedMessage(_, _) => SignalErrorCode::DuplicatedMessage,
             Self::FfiBindingError(_) => SignalErrorCode::InternalError,
             Self::ApplicationCallbackError(_, _) => SignalErrorCode::CallbackError,
             Self::SealedSenderSelfSend => SignalErrorCode::SealedSenderSelfSend,
-        }
-    }
+        };
 
-    fn provide_address(&self) -> Result<ProtocolAddress, WrongErrorKind> {
-        match self {
-            Self::InvalidRegistrationId(address, _id) => Ok(address.clone()),
-            _ => Err(WrongErrorKind),
-        }
-    }
-
-    fn provide_uuid(&self) -> Result<uuid::Uuid, WrongErrorKind> {
-        match self {
-            Self::InvalidSenderKeySession { distribution_id } => Ok(*distribution_id),
-            _ => Err(WrongErrorKind),
-        }
-    }
-    fn provide_invalid_address(&self) -> Result<(&str, u32), WrongErrorKind> {
-        match self {
-            Self::InvalidProtocolAddress { name, device_id } => Ok((name, *device_id)),
-            _ => Err(WrongErrorKind),
-        }
+        SimpleError::new(code, self.to_string()).into()
     }
 }
 
