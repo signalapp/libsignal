@@ -739,199 +739,169 @@ mod registration {
 
     use super::*;
 
-    #[derive(Debug, derive_more::From)]
-    enum RegistrationError<'a> {
-        InvalidSessionId,
-        Unexpected,
-        SessionNotFound,
-        NotReadyForVerification,
-        SendVerificationCodeFailed,
-        CodeNotDeliverable(&'a VerificationCodeNotDeliverable),
-        SessionUpdateRejected,
-        CredentialsCouldNotBeParsed,
-        DeviceTransferPossible,
-        RegistrationRecoveryVerificationFailed,
-        RegistrationLock(&'a RegistrationLock),
-    }
-
-    impl<'a> From<RegistrationError<'a>> for SignalErrorCode {
-        fn from(value: RegistrationError<'a>) -> Self {
-            match value {
-                RegistrationError::InvalidSessionId => Self::RegistrationInvalidSessionId,
-                RegistrationError::Unexpected => Self::RegistrationUnknown,
-                RegistrationError::SessionNotFound => Self::RegistrationSessionNotFound,
-                RegistrationError::NotReadyForVerification => {
-                    Self::RegistrationNotReadyForVerification
-                }
-                RegistrationError::SendVerificationCodeFailed => {
-                    Self::RegistrationSendVerificationCodeFailed
-                }
-                RegistrationError::CodeNotDeliverable(_) => Self::RegistrationCodeNotDeliverable,
-                RegistrationError::SessionUpdateRejected => Self::RegistrationSessionUpdateRejected,
-                RegistrationError::CredentialsCouldNotBeParsed => {
-                    Self::RegistrationCredentialsCouldNotBeParsed
-                }
-                RegistrationError::DeviceTransferPossible => {
-                    Self::RegistrationDeviceTransferPossible
-                }
-                RegistrationError::RegistrationRecoveryVerificationFailed => {
-                    Self::RegistrationRecoveryVerificationFailed
-                }
-                RegistrationError::RegistrationLock(_) => Self::RegistrationLock,
-            }
-        }
-    }
-
-    impl<E> FfiError for RequestError<E>
+    // We require Display but not LogSafeDisplay for `E` because we will only format other cases of
+    // Self.
+    impl<E> IntoFfiError for RequestError<E>
     where
-        E: Send + LogSafeDisplay + std::fmt::Debug + 'static,
-        for<'a> &'a E: Into<RegistrationError<'a>>,
+        E: Send + std::fmt::Display + IntoFfiError + 'static,
     {
-        fn code(&self) -> SignalErrorCode {
-            let error_class = match self {
-                RequestError::Timeout => return SignalErrorCode::RequestTimedOut,
-                RequestError::ServerSideError | RequestError::Unexpected { log_safe: _ } => {
-                    RegistrationError::Unexpected
-                }
-                RequestError::Other(err) => err.into(),
-                RequestError::RetryLater(retry_later) => return retry_later.code(),
-                RequestError::Challenge(challenge) => return challenge.code(),
-                RequestError::Disconnected(d) => match *d {},
-            };
-            error_class.into()
-        }
-
-        fn describe(&self) -> Cow<'_, str> {
-            self.to_string().into()
-        }
-        fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
+        fn into_ffi_error(self) -> impl Into<SignalFfiError> {
             match self {
-                RequestError::RetryLater(retry_later) => retry_later.provide_retry_after_seconds(),
-                RequestError::Other(_)
-                | RequestError::Timeout
-                | RequestError::Challenge(_)
-                | RequestError::ServerSideError
-                | RequestError::Unexpected { .. } => Err(WrongErrorKind),
-                RequestError::Disconnected(d) => match *d {},
+                RequestError::Timeout => SignalFfiError::from(SimpleError::new(
+                    SignalErrorCode::RequestTimedOut,
+                    self.to_string(),
+                )),
+                RequestError::ServerSideError | RequestError::Unexpected { log_safe: _ } => {
+                    SimpleError::new(SignalErrorCode::RegistrationUnknown, self.to_string()).into()
+                }
+                RequestError::Other(err) => err.into_ffi_error().into(),
+                RequestError::RetryLater(retry_later) => retry_later.into(),
+                RequestError::Challenge(challenge) => challenge.into(),
+                RequestError::Disconnected(d) => match d {},
             }
         }
+    }
+
+    impl IntoFfiError for CreateSessionError
+    where
+        Self: LogSafeDisplay,
+    {
+        fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+            let code = match &self {
+                Self::InvalidSessionId => SignalErrorCode::RegistrationInvalidSessionId,
+            };
+            SimpleError::new(code, self.to_string())
+        }
+    }
+
+    impl IntoFfiError for ResumeSessionError
+    where
+        Self: LogSafeDisplay,
+    {
+        fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+            let code = match &self {
+                Self::InvalidSessionId => SignalErrorCode::RegistrationInvalidSessionId,
+                Self::SessionNotFound => SignalErrorCode::RegistrationSessionNotFound,
+            };
+            SimpleError::new(code, self.to_string())
+        }
+    }
+
+    impl IntoFfiError for RequestVerificationCodeError
+    where
+        Self: LogSafeDisplay,
+    {
+        fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+            let code = match &self {
+                Self::InvalidSessionId => SignalErrorCode::RegistrationInvalidSessionId,
+                Self::SessionNotFound => SignalErrorCode::RegistrationSessionNotFound,
+                Self::NotReadyForVerification => {
+                    SignalErrorCode::RegistrationNotReadyForVerification
+                }
+                Self::SendFailed => SignalErrorCode::RegistrationSendVerificationCodeFailed,
+                Self::CodeNotDeliverable(_) => {
+                    // Re-match as owned.
+                    return SignalFfiError::from(
+                        assert_matches!(self, Self::CodeNotDeliverable(inner) => inner),
+                    );
+                }
+            };
+            SimpleError::new(code, self.to_string()).into()
+        }
+    }
+
+    impl FfiError for VerificationCodeNotDeliverable {
+        fn describe(&self) -> Cow<'_, str> {
+            "the code could not be delivered".into()
+        }
+
+        fn code(&self) -> SignalErrorCode {
+            SignalErrorCode::RegistrationCodeNotDeliverable
+        }
+
         fn provide_registration_code_not_deliverable(
             &self,
         ) -> Result<&VerificationCodeNotDeliverable, WrongErrorKind> {
-            match self {
-                RequestError::Other(e) => match e.into() {
-                    RegistrationError::CodeNotDeliverable(code) => Ok(code),
-                    _ => Err(WrongErrorKind),
-                },
-                RequestError::Timeout
-                | RequestError::RetryLater(_)
-                | RequestError::Challenge(_)
-                | RequestError::ServerSideError
-                | RequestError::Unexpected { .. } => Err(WrongErrorKind),
-                RequestError::Disconnected(d) => match *d {},
-            }
+            Ok(self)
         }
+    }
+
+    impl IntoFfiError for UpdateSessionError
+    where
+        Self: LogSafeDisplay,
+    {
+        fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+            let code = match &self {
+                Self::Rejected => SignalErrorCode::RegistrationSessionUpdateRejected,
+            };
+            SimpleError::new(code, self.to_string())
+        }
+    }
+
+    impl IntoFfiError for SubmitVerificationError
+    where
+        Self: LogSafeDisplay,
+    {
+        fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+            let code = match &self {
+                Self::InvalidSessionId => SignalErrorCode::RegistrationInvalidSessionId,
+                Self::SessionNotFound => SignalErrorCode::RegistrationSessionNotFound,
+                Self::NotReadyForVerification => {
+                    SignalErrorCode::RegistrationNotReadyForVerification
+                }
+            };
+            SimpleError::new(code, self.to_string())
+        }
+    }
+
+    impl IntoFfiError for CheckSvr2CredentialsError
+    where
+        Self: LogSafeDisplay,
+    {
+        fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+            let code = match &self {
+                Self::CredentialsCouldNotBeParsed => {
+                    SignalErrorCode::RegistrationCredentialsCouldNotBeParsed
+                }
+            };
+            SimpleError::new(code, self.to_string())
+        }
+    }
+
+    impl IntoFfiError for RegisterAccountError
+    where
+        Self: LogSafeDisplay,
+    {
+        fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+            let code = match &self {
+                Self::DeviceTransferIsPossibleButNotSkipped => {
+                    SignalErrorCode::RegistrationDeviceTransferPossible
+                }
+                Self::RegistrationRecoveryVerificationFailed => {
+                    SignalErrorCode::RegistrationRecoveryVerificationFailed
+                }
+                Self::RegistrationLock(_) => {
+                    // Re-match as owned.
+                    return SignalFfiError::from(
+                        assert_matches!(self, Self::RegistrationLock(inner) => inner),
+                    );
+                }
+            };
+            SimpleError::new(code, self.to_string()).into()
+        }
+    }
+
+    impl FfiError for RegistrationLock {
+        fn describe(&self) -> Cow<'_, str> {
+            "registration lock is enabled".into()
+        }
+
+        fn code(&self) -> SignalErrorCode {
+            SignalErrorCode::RegistrationLock
+        }
+
         fn provide_registration_lock(&self) -> Result<&RegistrationLock, WrongErrorKind> {
-            match self {
-                RequestError::Other(e) => match e.into() {
-                    RegistrationError::RegistrationLock(lock) => Ok(lock),
-                    _ => Err(WrongErrorKind),
-                },
-                RequestError::Timeout
-                | RequestError::RetryLater(_)
-                | RequestError::Challenge(_)
-                | RequestError::ServerSideError
-                | RequestError::Unexpected { .. } => Err(WrongErrorKind),
-                RequestError::Disconnected(d) => match *d {},
-            }
-        }
-        fn provide_rate_limit_challenge(&self) -> Result<&RateLimitChallenge, WrongErrorKind> {
-            match self {
-                RequestError::Challenge(challenge) => Ok(challenge),
-                RequestError::Other(_)
-                | RequestError::Timeout
-                | RequestError::RetryLater(_)
-                | RequestError::ServerSideError
-                | RequestError::Unexpected { .. } => Err(WrongErrorKind),
-                RequestError::Disconnected(d) => match *d {},
-            }
-        }
-    }
-
-    impl<'a> From<&'a CreateSessionError> for RegistrationError<'a> {
-        fn from(value: &'a CreateSessionError) -> Self {
-            match value {
-                CreateSessionError::InvalidSessionId => Self::InvalidSessionId,
-            }
-        }
-    }
-
-    impl<'a> From<&'a ResumeSessionError> for RegistrationError<'a> {
-        fn from(value: &'a ResumeSessionError) -> Self {
-            match value {
-                ResumeSessionError::InvalidSessionId => Self::InvalidSessionId,
-                ResumeSessionError::SessionNotFound => Self::SessionNotFound,
-            }
-        }
-    }
-
-    impl<'a> From<&'a RequestVerificationCodeError> for RegistrationError<'a> {
-        fn from(value: &'a RequestVerificationCodeError) -> Self {
-            match value {
-                RequestVerificationCodeError::InvalidSessionId => Self::InvalidSessionId,
-                RequestVerificationCodeError::SessionNotFound => Self::SessionNotFound,
-                RequestVerificationCodeError::NotReadyForVerification => {
-                    Self::NotReadyForVerification
-                }
-                RequestVerificationCodeError::SendFailed => Self::SendVerificationCodeFailed,
-                RequestVerificationCodeError::CodeNotDeliverable(not_deliverable) => {
-                    Self::CodeNotDeliverable(not_deliverable)
-                }
-            }
-        }
-    }
-
-    impl<'a> From<&'a UpdateSessionError> for RegistrationError<'a> {
-        fn from(value: &'a UpdateSessionError) -> Self {
-            match value {
-                UpdateSessionError::Rejected => Self::SessionUpdateRejected,
-            }
-        }
-    }
-
-    impl<'a> From<&'a SubmitVerificationError> for RegistrationError<'a> {
-        fn from(value: &'a SubmitVerificationError) -> Self {
-            match value {
-                SubmitVerificationError::InvalidSessionId => Self::InvalidSessionId,
-                SubmitVerificationError::SessionNotFound => Self::SessionNotFound,
-                SubmitVerificationError::NotReadyForVerification => Self::NotReadyForVerification,
-            }
-        }
-    }
-
-    impl<'a> From<&'a CheckSvr2CredentialsError> for RegistrationError<'a> {
-        fn from(value: &'a CheckSvr2CredentialsError) -> Self {
-            match value {
-                CheckSvr2CredentialsError::CredentialsCouldNotBeParsed => {
-                    Self::CredentialsCouldNotBeParsed
-                }
-            }
-        }
-    }
-
-    impl<'a> From<&'a RegisterAccountError> for RegistrationError<'a> {
-        fn from(value: &'a RegisterAccountError) -> Self {
-            match value {
-                RegisterAccountError::DeviceTransferIsPossibleButNotSkipped => {
-                    Self::DeviceTransferPossible
-                }
-                RegisterAccountError::RegistrationRecoveryVerificationFailed => {
-                    Self::RegistrationRecoveryVerificationFailed
-                }
-                RegisterAccountError::RegistrationLock(registration_lock) => {
-                    Self::RegistrationLock(registration_lock)
-                }
-            }
+            Ok(self)
         }
     }
 }
