@@ -94,7 +94,7 @@ public class CdsiLookupResponseTest {
             "for " + errorDescription,
             expectedErrorType,
             () -> NativeTesting.TESTING_CdsiLookupErrorConvert(errorDescription));
-    assertEquals(e.getMessage(), expectedMessage);
+    assertEquals(expectedMessage, e.getMessage());
     return e;
   }
 }
