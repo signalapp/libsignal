@@ -73,8 +73,14 @@ impl TryFrom<ws::ListenerEvent> for ServerEvent {
             ws::ListenerEvent::ReceivedAlerts(alerts) => Ok(Self::Alerts(alerts)),
 
             ws::ListenerEvent::ReceivedMessage(proto, responder) => {
-                convert_received_message(proto, || {
-                    Box::new(move |status| Ok(responder.send_response(status)?))
+                convert_received_message(proto, |timestamp| {
+                    Box::new(move |status| {
+                        log::info!(
+                            "ACKing message delivered at {} (not a message ID)",
+                            timestamp.epoch_millis()
+                        );
+                        Ok(responder.send_response(status)?)
+                    })
                 })
             }
 
@@ -94,7 +100,7 @@ impl TryFrom<ws::ListenerEvent> for ServerEvent {
 
 fn convert_received_message(
     proto: crate::proto::chat_websocket::WebSocketRequestMessage,
-    make_send_ack: impl FnOnce() -> ResponseEnvelopeSender,
+    make_send_ack: impl FnOnce(Timestamp) -> ResponseEnvelopeSender,
 ) -> Result<ServerEvent, ServerEventError> {
     let RequestProto {
         verb,
@@ -110,7 +116,10 @@ fn convert_received_message(
 
     let path = path.unwrap_or_default();
     match &*path {
-        "/api/v1/queue/empty" => Ok(ServerEvent::QueueEmpty),
+        "/api/v1/queue/empty" => {
+            log::info!("received queue empty notification");
+            Ok(ServerEvent::QueueEmpty)
+        }
         "/api/v1/message" => {
             let raw_timestamp = headers
                 .iter()
@@ -123,10 +132,16 @@ fn convert_received_message(
                     }
                 })
                 .next_back();
-            if raw_timestamp.is_none() {
-                log::warn!("server delivered message with no {TIMESTAMP_HEADER_NAME} header");
+
+            if let Some(raw_timestamp) = raw_timestamp {
+                log::info!("received message at {TIMESTAMP_HEADER_NAME}: {raw_timestamp} (this is not a message ID)");
+            } else {
+                log::warn!("server delivered message with no valid {TIMESTAMP_HEADER_NAME} header");
             }
+
             let request_id = id.unwrap_or(0);
+            let server_delivery_timestamp =
+                Timestamp::from_epoch_millis(raw_timestamp.unwrap_or_default());
 
             // We don't check whether the body is missing here. The consumer still needs to ack
             // malformed envelopes, or they'd be delivered over and over, and an empty envelope
@@ -134,10 +149,8 @@ fn convert_received_message(
             Ok(ServerEvent::IncomingMessage {
                 request_id,
                 envelope: body.unwrap_or_default(),
-                server_delivery_timestamp: Timestamp::from_epoch_millis(
-                    raw_timestamp.unwrap_or_default(),
-                ),
-                send_ack: make_send_ack(),
+                server_delivery_timestamp,
+                send_ack: make_send_ack(server_delivery_timestamp),
             })
         }
         "" => Err(ServerEventError::MissingPath),
