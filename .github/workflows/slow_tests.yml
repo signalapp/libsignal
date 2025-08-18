@@ -497,5 +497,6 @@ jobs:
             owner: context.repo.owner,
             repo: context.repo.repo,
             commit_sha: context.sha,
-            body: 'Failed Slow Tests: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>'
+            body: 'Failed Slow Tests: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>\n\n' +
+              'Note that a [later run](${{ github.server_url }}/${{ github.repository }}/actions/workflows/slow_tests.yml) may have succeeded.'
           })
