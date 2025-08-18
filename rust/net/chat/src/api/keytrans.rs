@@ -402,6 +402,7 @@ fn cmp_by_key<T, K: Ord>(lhs: &T, rhs: &T, get_key: impl Fn(&T) -> K) -> Orderin
 /// and decide whether there is a newer version of search key in the tree, in which
 /// case search request needs to be performed.
 fn has_version_changed_between(stored: &AccountData, updated: &AccountData) -> bool {
+    let aci_version = |acc_data: &AccountData| Some(acc_data.aci.greatest_version());
     let e164_version =
         |acc_data: &AccountData| acc_data.e164.as_ref().map(|md| md.greatest_version());
     let username_hash_version = |acc_data: &AccountData| {
@@ -411,7 +412,8 @@ fn has_version_changed_between(stored: &AccountData, updated: &AccountData) -> b
             .map(|md| md.greatest_version())
     };
 
-    cmp_by_key(stored, updated, e164_version) == Ordering::Less
+    cmp_by_key(stored, updated, aci_version) == Ordering::Less
+        || cmp_by_key(stored, updated, e164_version) == Ordering::Less
         || cmp_by_key(stored, updated, username_hash_version) == Ordering::Less
 }
 
@@ -1153,23 +1155,31 @@ mod test {
     }
 
     enum BumpVersionFor {
+        Aci,
         E164,
         UsernameHash,
     }
 
+    impl BumpVersionFor {
+        pub fn apply(&self, acc_data: &mut AccountData) {
+            let subject = match self {
+                BumpVersionFor::Aci => &mut acc_data.aci,
+                BumpVersionFor::E164 => acc_data.e164.as_mut().unwrap(),
+                BumpVersionFor::UsernameHash => acc_data.username_hash.as_mut().unwrap(),
+            };
+            // inserting a newer version of the subject
+            let max_version = subject.greatest_version();
+            subject.ptrs.insert(u64::MAX, max_version + 1);
+        }
+    }
+
     #[tokio::test]
+    #[test_case(BumpVersionFor::Aci; "newer Aci")]
     #[test_case(BumpVersionFor::E164; "newer E.164")]
     #[test_case(BumpVersionFor::UsernameHash; "newer username hash")]
     async fn monitor_and_search_e164_changed(bump: BumpVersionFor) {
         let mut monitor_result = test_account_data();
-        let subject = match bump {
-            BumpVersionFor::E164 => monitor_result.e164.as_mut(),
-            BumpVersionFor::UsernameHash => monitor_result.username_hash.as_mut(),
-        }
-        .unwrap();
-        // inserting a newer version of the subject
-        let max_version = subject.greatest_version();
-        subject.ptrs.insert(u64::MAX, max_version + 1);
+        bump.apply(&mut monitor_result);
 
         let kt = TestKt::new(
             Ok(monitor_result.clone()),
@@ -1199,12 +1209,12 @@ mod test {
     }
 
     #[tokio::test]
-    async fn monitor_and_search_self_monitor_fail_on_version_change() {
+    #[test_case(BumpVersionFor::Aci; "newer Aci")]
+    #[test_case(BumpVersionFor::E164; "newer E.164")]
+    #[test_case(BumpVersionFor::UsernameHash; "newer username hash")]
+    async fn monitor_and_search_self_monitor_fail_on_version_change(bump: BumpVersionFor) {
         let mut monitor_result = test_account_data();
-        // inserting a newer version of E.164
-        let subject = monitor_result.e164.as_mut().unwrap();
-        let max_version = subject.greatest_version();
-        subject.ptrs.insert(u64::MAX, max_version + 1);
+        bump.apply(&mut monitor_result);
 
         let kt = TestKt::new(
             Ok(monitor_result.clone()),
