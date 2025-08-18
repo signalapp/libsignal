@@ -71,9 +71,7 @@ public class CdsiLookupResponseTest {
     assertLookupErrorIs(
         "InvalidToken", CdsiInvalidTokenException.class, "Request token was invalid");
     assertLookupErrorIs(
-        "InvalidArgument",
-        IllegalArgumentException.class,
-        "invalid argument: request was invalid: fake reason");
+        "InvalidArgument", IllegalArgumentException.class, "request was invalid: fake reason");
     assertLookupErrorIs(
         "TcpConnectFailed",
         IOException.class,

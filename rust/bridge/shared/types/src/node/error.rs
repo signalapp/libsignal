@@ -11,6 +11,7 @@ use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError
 use signal_media::sanitize::webp::{Error as WebpError, ParseError as WebpParseError};
 
 use super::*;
+use crate::support::IllegalArgumentError;
 
 const ERRORS_PROPERTY_NAME: &str = "Errors";
 const ERROR_CLASS_NAME: &str = "LibSignalErrorBase";
@@ -150,6 +151,8 @@ impl<S: DefaultSignalNodeError> SignalNodeError for S {
 const INVALID_MEDIA_INPUT: &str = "InvalidMediaInput";
 const IO_ERROR: &str = "IoError";
 const UNSUPPORTED_MEDIA_INPUT: &str = "UnsupportedMediaInput";
+
+impl DefaultSignalNodeError for IllegalArgumentError {}
 
 impl SignalNodeError for SignalProtocolError {
     fn into_throwable<'a, C: Context<'a>>(

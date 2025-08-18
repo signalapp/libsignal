@@ -9,7 +9,7 @@
 use std::ffi::{c_char, c_uchar, CString};
 
 use libsignal_bridge::ffi::{self, *};
-use libsignal_bridge::ffi_arg_type;
+use libsignal_bridge::{ffi_arg_type, IllegalArgumentError};
 use libsignal_bridge_macros::bridge_fn;
 #[cfg(feature = "libsignal-bridge-testing")]
 #[allow(unused_imports)]
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn signal_identitykeypair_deserialize(
 }
 
 #[bridge_fn(jni = false, node = false)]
-fn hex_encode(output: &mut [u8], input: &[u8]) -> Result<(), SignalProtocolError> {
+fn hex_encode(output: &mut [u8], input: &[u8]) -> Result<(), IllegalArgumentError> {
     hex::encode_to_slice(input, output)
-        .map_err(|_| SignalProtocolError::InvalidArgument("output buffer too small".to_string()))
+        .map_err(|_| IllegalArgumentError::new("output buffer too small"))
 }

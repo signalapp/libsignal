@@ -22,7 +22,9 @@ use crate::net::chat::ChatListener;
 use crate::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushToken,
 };
-use crate::support::{extend_lifetime, AsType, FixedLengthBincodeSerializable, Serialized};
+use crate::support::{
+    extend_lifetime, AsType, FixedLengthBincodeSerializable, IllegalArgumentError, Serialized,
+};
 
 /// Converts arguments from their FFI form to their Rust form.
 ///
@@ -286,10 +288,7 @@ impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
             Some(array) => {
                 libsignal_protocol::ServiceId::parse_from_service_id_fixed_width_binary(array)
                     .ok_or_else(|| {
-                        SignalProtocolError::InvalidArgument(
-                            "invalid Service-Id-FixedWidthBinary".to_string(),
-                        )
-                        .into()
+                        IllegalArgumentError::new("invalid Service-Id-FixedWidthBinary").into()
                     })
             }
             None => Err(NullPointerError.into()),
@@ -309,7 +308,7 @@ impl SimpleArgTypeInfo for libsignal_protocol::Aci {
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         libsignal_protocol::ServiceId::convert_from(foreign)?
             .try_into()
-            .map_err(|_| SignalProtocolError::InvalidArgument("not an ACI".to_string()).into())
+            .map_err(|_| IllegalArgumentError::new("not an ACI").into())
     }
 }
 
@@ -325,14 +324,14 @@ impl SimpleArgTypeInfo for libsignal_protocol::Pni {
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         libsignal_protocol::ServiceId::convert_from(foreign)?
             .try_into()
-            .map_err(|_| SignalProtocolError::InvalidArgument("not a PNI".to_string()).into())
+            .map_err(|_| IllegalArgumentError::new("not a PNI").into())
     }
 }
 
 fn parse_e164(s: &str) -> SignalFfiResult<libsignal_core::E164> {
-    let parsed = s.parse().map_err(|_: ParseIntError| {
-        SignalProtocolError::InvalidArgument(format!("{s} is not an e164"))
-    })?;
+    let parsed = s
+        .parse()
+        .map_err(|_: ParseIntError| IllegalArgumentError::new(format!("{s} is not an e164")))?;
     Ok(parsed)
 }
 
@@ -359,7 +358,7 @@ impl SimpleArgTypeInfo for AccountEntropyPool {
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         let string = String::convert_from(foreign)?;
         string.parse().map_err(|e: InvalidAccountEntropyPool| {
-            SignalProtocolError::InvalidArgument(format!("bad account entropy pool: {e}")).into()
+            IllegalArgumentError::new(format!("bad account entropy pool: {e}")).into()
         })
     }
 }
@@ -402,7 +401,7 @@ impl SimpleArgTypeInfo for Box<[String]> {
         unsafe { foreign.iter()? }
             .map(|bytes| {
                 Ok(std::str::from_utf8(bytes)
-                    .map_err(|_| SignalProtocolError::InvalidArgument("invalid UTF-8".to_string()))?
+                    .map_err(|_| IllegalArgumentError::new("invalid UTF-8"))?
                     .to_owned())
             })
             .try_collect()
@@ -425,15 +424,11 @@ impl SimpleArgTypeInfo for libsignal_net::chat::LanguageList {
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         let entries: Vec<&str> = unsafe { foreign.iter()? }
             .map(|bytes| {
-                std::str::from_utf8(bytes)
-                    .map_err(|_| SignalProtocolError::InvalidArgument("invalid UTF-8".to_string()))
+                std::str::from_utf8(bytes).map_err(|_| IllegalArgumentError::new("invalid UTF-8"))
             })
             .try_collect()?;
-        Ok(
-            libsignal_net::chat::LanguageList::parse(&entries).map_err(|_| {
-                SignalProtocolError::InvalidArgument("invalid language in list".to_string())
-            })?,
-        )
+        Ok(libsignal_net::chat::LanguageList::parse(&entries)
+            .map_err(|_| IllegalArgumentError::new("invalid language in list"))?)
     }
 }
 
@@ -908,11 +903,8 @@ where
         let p = P::convert_from(foreign)?;
         p.try_into()
             .map_err(|e| {
-                SignalProtocolError::InvalidArgument(format!(
-                    "invalid {}: {e}",
-                    std::any::type_name::<T>()
-                ))
-                .into()
+                IllegalArgumentError::new(format!("invalid {}: {e}", std::any::type_name::<T>()))
+                    .into()
             })
             .map(AsType::from)
     }

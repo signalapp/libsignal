@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::borrow::Cow;
 use std::future::Future;
 use std::num::NonZeroU64;
 
@@ -33,6 +34,27 @@ pub fn describe_panic(any: &Box<dyn std::any::Any + Send>) -> String {
 /// All call sites need to explain why extending the lifetime is safe.
 pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T: ?Sized>(some_ref: &'a T) -> &'b T {
     std::mem::transmute::<&'a T, &'b T>(some_ref)
+}
+
+/// An error indicating the caller passed an invalid argument (and they should have known it was
+/// invalid ahead of time).
+///
+/// Named for Java's `IllegalArgumentException`, which this will be thrown as in the JNI bridge.
+/// Remember that that's an unchecked exception; that should give you an idea of when this is the
+/// right error to use.
+#[derive(Debug)]
+pub struct IllegalArgumentError(pub(crate) Cow<'static, str>);
+
+impl IllegalArgumentError {
+    pub fn new(log_safe: impl Into<Cow<'static, str>>) -> Self {
+        Self(log_safe.into())
+    }
+}
+
+impl std::fmt::Display for IllegalArgumentError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
 }
 
 /// With `bridge_handle_fns`, exposes a Rust type to each of the bridges as a boxed value.

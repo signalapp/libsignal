@@ -6,9 +6,6 @@
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::sync::Arc;
 
-#[allow(unused_imports)]
-use libsignal_protocol::SignalProtocolError;
-
 #[cfg(feature = "jni")]
 use crate::jni::HandleJniError;
 use crate::*;
@@ -137,7 +134,7 @@ impl ffi::SimpleArgTypeInfo for ErrorOnBorrow {
     type ArgType = *const std::ffi::c_void;
 
     fn convert_from(_foreign: Self::ArgType) -> ffi::SignalFfiResult<Self> {
-        Err(SignalProtocolError::InvalidArgument("deliberate error".to_string()).into())
+        Err(IllegalArgumentError::new("deliberate error").into())
     }
 }
 
@@ -289,7 +286,7 @@ impl ffi::ResultTypeInfo for ErrorOnReturn {
     type ResultType = *const std::ffi::c_void;
 
     fn convert_into(self) -> ffi::SignalFfiResult<Self::ResultType> {
-        Err(SignalProtocolError::InvalidArgument("deliberate error".to_string()).into())
+        Err(IllegalArgumentError::new("deliberate error").into())
     }
 }
 

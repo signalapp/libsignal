@@ -11,7 +11,6 @@ use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::support::*;
 use libsignal_bridge_types::*;
-use libsignal_protocol::SignalProtocolError;
 use uuid::Uuid;
 
 use crate::types::*;
@@ -75,8 +74,8 @@ async fn TESTING_TokioAsyncContext_FutureSuccessBytes(count: i32) -> Vec<u8> {
 }
 
 #[bridge_io(NonSuspendingBackgroundThreadRuntime)]
-async fn TESTING_FutureFailure(_input: u8) -> Result<i32, SignalProtocolError> {
-    Err(SignalProtocolError::InvalidArgument("failure".to_string()))
+async fn TESTING_FutureFailure(_input: u8) -> Result<i32, IllegalArgumentError> {
+    Err(IllegalArgumentError::new("failure"))
 }
 
 bridge_handle_fns!(TestingFutureCancellationCounter, clone = false);

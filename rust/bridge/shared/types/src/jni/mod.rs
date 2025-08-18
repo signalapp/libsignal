@@ -33,6 +33,7 @@ use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 use crate::net::cdsi::CdsiError;
+use crate::support::IllegalArgumentError;
 
 #[macro_use]
 mod args;
@@ -153,6 +154,16 @@ impl JniError for BridgeLayerError {
             BridgeLayerError::Jni(_) => ClassName("java.lang.RuntimeException"),
         };
         make_single_message_throwable(env, &self.to_string(), class_name)
+    }
+}
+
+impl JniError for IllegalArgumentError {
+    fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
+        make_single_message_throwable(
+            env,
+            &self.0,
+            ClassName("java.lang.IllegalArgumentException"),
+        )
     }
 }
 

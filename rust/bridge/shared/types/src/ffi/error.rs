@@ -20,7 +20,7 @@ use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 use super::{FutureCancelled, NullPointerError, UnexpectedPanic};
-use crate::support::describe_panic;
+use crate::support::{describe_panic, IllegalArgumentError};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
@@ -268,6 +268,12 @@ impl<T: FfiError> IntoFfiError for T {
 impl<T: IntoFfiError> From<T> for SignalFfiError {
     fn from(value: T) -> Self {
         value.into_ffi_error().into()
+    }
+}
+
+impl IntoFfiError for IllegalArgumentError {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(SignalErrorCode::InvalidArgument, self.0)
     }
 }
 

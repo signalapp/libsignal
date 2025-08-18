@@ -11,7 +11,7 @@ use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_core::E164;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{self, AciAndAccessKey, LookupResponse};
-use libsignal_protocol::{Aci, SignalProtocolError};
+use libsignal_protocol::Aci;
 
 use crate::support::*;
 use crate::*;
@@ -43,11 +43,11 @@ fn LookupRequest_addAciAndAccessKey(
     request: &LookupRequest,
     aci: Aci,
     access_key: &[u8],
-) -> Result<(), SignalProtocolError> {
+) -> Result<(), IllegalArgumentError> {
     let access_key = access_key
         .try_into()
         .map_err(|_: std::array::TryFromSliceError| {
-            SignalProtocolError::InvalidArgument("access_key has wrong number of bytes".to_string())
+            IllegalArgumentError::new("access_key has wrong number of bytes")
         })?;
     request
         .lock()

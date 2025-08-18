@@ -7,7 +7,6 @@ use std::io::Error as IoError;
 
 use jni::objects::{AutoLocal, GlobalRef, JObject, JString, JThrowable};
 use jni::{JNIEnv, JavaVM};
-use libsignal_protocol::*;
 
 use super::*;
 use crate::net::cdsi::CdsiError;
@@ -150,7 +149,10 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
             LookupError::ConnectTransport(e) => return IoError::from(e).into(),
             LookupError::WebSocket(e) => return e.into(),
             LookupError::InvalidArgument { server_reason: _ } => {
-                return SignalProtocolError::InvalidArgument(e.to_string()).into()
+                // Normally we wouldn't produce an unchecked error for something validated
+                // server-side, but getting an argument validation error for *CDS* does suggest that
+                // the operation was performed with bad arguments.
+                return IllegalArgumentError::new(e.to_string()).into();
             }
             LookupError::EnclaveProtocol(_) => CdsiError::Protocol,
             LookupError::CdsiProtocol(inner) => CdsiError::CdsiProtocol(inner),
