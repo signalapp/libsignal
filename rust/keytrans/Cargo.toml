@@ -18,6 +18,7 @@ curve25519-dalek = { workspace = true }
 displaydoc = { workspace = true }
 ed25519-dalek = { workspace = true }
 hmac = { workspace = true }
+itertools = { workspace = true }
 prost = { workspace = true }
 sha2 = { workspace = true }
 

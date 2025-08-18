@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+use itertools::Itertools as _;
 use sha2::{Digest, Sha256};
 
 use crate::commitments::verify as verify_commitment;
@@ -762,6 +763,10 @@ impl MonitoringDataWrapper {
         }
     }
 
+    fn into_data_update(self) -> Option<MonitoringData> {
+        self.inner
+    }
+
     /// Adds a key to the database of keys to monitor, if it's not already
     /// present.
     fn start_monitoring(
@@ -847,53 +852,93 @@ impl MonitoringDataWrapper {
             return Ok(());
         };
 
-        let mut changed = false;
-        let mut ptrs = HashMap::new();
+        let first_pos = data.pos;
+        let tree_mapping = VersionExtractor(entries);
 
-        for (entry, ver) in data.ptrs.iter() {
-            let mut entry = *entry;
-            let mut ver = *ver;
+        let mut ptrs = HashMap::with_capacity(data.ptrs.len());
+        data.ptrs
+            .iter()
+            .map(|(pos, ver)| {
+                // Find an updated (pos, ver) pair for each of the entries in data.ptrs
+                Self::find_updated_mapping((*pos, *ver), first_pos, tree_size, |position| {
+                    tree_mapping.get(position)
+                })
+                // If no updated pair is found - keep the existing one.
+                .map(|maybe_updated| maybe_updated.unwrap_or((*pos, *ver)))
+            })
+            .process_results(|iter| {
+                // Make sure that if there are multiple positions in the updated pairs,
+                // they all correspond to the same version.
+                Self::collect_ensuring_consistency(&mut ptrs, iter)
+            })??;
 
-            for x in monitoring_path(entry, data.pos, tree_size) {
-                match entries.get(&x) {
-                    None => break,
-                    Some(step) => {
-                        let ctr = get_proto_field(&step.prefix, "prefix")?.counter;
-                        if ctr < ver {
-                            return Err(Error::VerificationFailed(
-                                "prefix tree has unexpectedly low version counter".to_string(),
-                            ));
-                        }
-                        changed = true;
-                        entry = x;
-                        ver = ctr;
-                    }
-                }
-            }
-
-            match ptrs.get(&entry) {
-                Some(other) => {
-                    if ver != *other {
-                        return Err(Error::VerificationFailed(
-                            "inconsistent versions found".to_string(),
-                        ));
-                    }
-                }
-                None => {
-                    ptrs.insert(entry, ver);
-                }
-            };
-        }
-
-        if changed {
-            data.ptrs = ptrs;
-        }
+        data.ptrs = ptrs;
 
         Ok(())
     }
 
-    fn into_data_update(self) -> Option<MonitoringData> {
-        self.inner
+    /// Try to find an updated position->version mapping from the tree response.
+    ///
+    /// Where position is the position in the log, and version (also known as counter)
+    /// is the version of search key value at this position.
+    ///
+    /// Returns Ok(None) if no update has been found, and the stored mapping is
+    /// current.
+    fn find_updated_mapping(
+        stored_mapping: (u64, u32),
+        first_pos: u64,
+        tree_size: u64,
+        get_version_by_position: impl Fn(u64) -> Result<Option<u32>>,
+    ) -> Result<Option<(u64, u32)>> {
+        let (stored_pos, stored_ver) = stored_mapping;
+        let mut updated_mapping = None;
+        // Bubbling up the monitoring path in search of the top-most position
+        // where version is greater or equal to the stored version.
+        for intermediate_pos in monitoring_path(stored_pos, first_pos, tree_size) {
+            match get_version_by_position(intermediate_pos)? {
+                None => break,
+                Some(new_version) if new_version < stored_ver => {
+                    return Err(Error::VerificationFailed(
+                        "prefix tree has unexpectedly low version counter".to_string(),
+                    ));
+                }
+                Some(new_version) => updated_mapping = Some((intermediate_pos, new_version)),
+            }
+        }
+        Ok(updated_mapping)
+    }
+
+    fn collect_ensuring_consistency(
+        out: &mut HashMap<u64, u32>,
+        mappings: impl IntoIterator<Item = (u64, u32)>,
+    ) -> Result<()> {
+        for (pos, ver) in mappings.into_iter() {
+            match out.get(&pos) {
+                Some(existing_ver) if ver != *existing_ver => {
+                    return Err(Error::VerificationFailed(
+                        "inconsistent versions found".to_string(),
+                    ));
+                }
+                Some(_) => (), // the right entry is already present in the map
+                None => {
+                    out.insert(pos, ver);
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Effectively maps a HashMap<u64, ProofStep> to HashMap<u64, u32>,
+/// where value is a version (counter) taken from the ProofStep.
+struct VersionExtractor<'a>(&'a HashMap<u64, ProofStep>);
+
+impl VersionExtractor<'_> {
+    pub fn get(&self, key: u64) -> Result<Option<u32>> {
+        self.0
+            .get(&key)
+            .map(|step| Ok(get_proto_field(&step.prefix, "prefix")?.counter))
+            .transpose()
     }
 }
 
@@ -911,6 +956,7 @@ mod test {
     use test_case::test_case;
 
     use super::*;
+    use crate::proto::PrefixProof;
     use crate::ChatSearchResponse;
 
     const MAX_AHEAD: Duration = Duration::from_secs(42);
@@ -1111,5 +1157,236 @@ mod test {
             VerifierOutcome::Error => assert!(result.is_err()),
             VerifierOutcome::Verifier => assert!(matches!(result, Ok(Some(_)))),
         }
+    }
+
+    // Create ProofStep instance for the MonitoringDataWrapper tests,
+    // where proof and commitment fields don't matter.
+    fn make_proof_step(ver: u32) -> ProofStep {
+        ProofStep {
+            prefix: Some(PrefixProof {
+                proof: vec![],
+                counter: ver,
+            }),
+            commitment: vec![],
+        }
+    }
+
+    fn proof_steps(mappings: impl IntoIterator<Item = (u64, u32)>) -> HashMap<u64, ProofStep> {
+        HashMap::from_iter(
+            mappings
+                .into_iter()
+                .map(|(pos, ver)| (pos, make_proof_step(ver))),
+        )
+    }
+
+    #[test]
+    fn monitoring_data_update_with_real_data() {
+        let mut wrapper = MonitoringDataWrapper::new(Some(MonitoringData {
+            index: [0; 32],
+            pos: 35,
+            // This value is obtained from the hardcoded test account data:
+            // See test_stored_account_data in rust/net/chat/src/api/keytrans.rs
+            ptrs: HashMap::from_iter([(16777215, 2)]),
+            owned: true,
+        }));
+        // These values were obtained by running the integration test in
+        // rust/net/chat/src/api/keytrans.rs and extracting positions and versions
+        // from MonitorProof message.
+        let steps = proof_steps([
+            (70627367, 2),
+            (3621503, 2),
+            (3621455, 2),
+            (8388607, 2),
+            (70627372, 2),
+            (3624959, 2),
+            (70627327, 2),
+            (3407871, 1),
+            (16777215, 2),
+            (67108863, 2),
+            (70627371, 2),
+            (70516735, 2),
+            (3621471, 2),
+            (3621447, 1),
+            (3621439, 1),
+            (3621453, 1),
+            (3621375, 1),
+            (3621454, 2),
+            (3620863, 1),
+            (3145727, 0),
+            (3621887, 2),
+            (3670015, 2),
+            (3621631, 2),
+            (69206015, 2),
+            (3629055, 2),
+            (3637247, 2),
+            (33554431, 2),
+            (70615039, 2),
+            (3622911, 2),
+            (70254591, 2),
+            (3538943, 1),
+            (3604479, 1),
+            (4194303, 2),
+            (70627359, 2),
+            (3621451, 1),
+            (2097151, 0),
+            (70582271, 2),
+            (70623231, 2),
+        ]);
+
+        wrapper.update(70627373, &steps).expect("can update");
+
+        assert_eq!(
+            HashMap::from_iter([(67108863, 2)]),
+            wrapper.inner.expect("valid data").ptrs
+        );
+    }
+
+    // The following tests consider this tree:
+    //                                                [15]
+    //                                                  |
+    //                                +-----------------+---------------+
+    //                                |                                 |
+    //                              [07]                                |
+    //                                |                                 |
+    //              +-----------------+-----------------+               |
+    //              |                                   |               |
+    //             [03]                               [11]              |
+    //              |                                   |               |
+    //      +-------+-------+                   +-------+-------+       |
+    //      |               |                   |               |       |
+    //     [01]           [05]                [09]            [13]      |
+    //      |               |                   |               |       |
+    //   +--+--+         +--+--+             +--+--+         +--+--+    |
+    //   |     |         |     |             |     |         |     |    |
+    //  [00]  [02]      [04]  [06]          [08]  [10]      [12]  [14] [16]
+
+    #[test]
+    fn monitoring_data_update_success() {
+        let mut wrapper = MonitoringDataWrapper::new(Some(MonitoringData {
+            index: [0; 32],
+            pos: 10, // The search key is introduced here
+            ptrs: HashMap::from([(10, 1)]),
+            owned: true,
+        }));
+
+        let steps = proof_steps([(11, 1), (15, 2)]);
+        wrapper.update(16, &steps).expect("can update");
+        assert_eq!(
+            HashMap::from_iter([(15, 2)]),
+            wrapper.inner.expect("valid data").ptrs,
+        )
+    }
+
+    #[test]
+    fn monitoring_data_update_bad_version() {
+        let mut wrapper = MonitoringDataWrapper::new(Some(MonitoringData {
+            index: [0; 32],
+            pos: 10, // The search key is introduced here
+            ptrs: HashMap::from([(10, 1)]),
+            owned: true,
+        }));
+        // later position contains a smaller version
+        let steps = proof_steps([(11, 0)]);
+
+        let result = wrapper.update(16, &steps);
+        assert_matches!(result, Err(Error::VerificationFailed(s)) => assert!(s.contains("low version")));
+    }
+
+    #[test]
+    fn monitoring_data_update_unchanged() {
+        let mut wrapper = MonitoringDataWrapper::new(Some(MonitoringData {
+            index: [0; 32],
+            pos: 10, // The search key is introduced here
+            ptrs: HashMap::from([(10, 1)]),
+            owned: true,
+        }));
+
+        let steps = HashMap::from_iter([
+            // no updates
+        ]);
+        wrapper.update(16, &steps).expect("can update");
+        assert_eq!(
+            HashMap::from_iter([(10, 1)]),
+            wrapper.inner.expect("valid data").ptrs,
+        )
+    }
+
+    #[test]
+    fn monitoring_data_update_inconsistent_versions() {
+        let mut wrapper = MonitoringDataWrapper::new(Some(MonitoringData {
+            index: [0; 32],
+            pos: 10, // The search key is introduced here
+            ptrs: HashMap::from([(10, 1), (11, 2)]),
+            owned: true,
+        }));
+        let steps = proof_steps([(11, 3)]);
+        let result = wrapper.update(16, &steps);
+        assert_matches!(result, Err(Error::VerificationFailed(s)) => assert!(s.contains("inconsistent")));
+    }
+
+    #[test_case([], true ; "empty")]
+    #[test_case([(1, 2), (2, 3)], true ; "distinct")]
+    #[test_case([(1, 2), (1, 2)], true ; "consistent")]
+    #[test_case([(1, 2), (1, 3)], false ; "inconsistent")]
+    fn collect_ensuring_consistency(items: impl IntoIterator<Item = (u64, u32)>, is_ok: bool) {
+        let mut out = HashMap::new();
+        let result = MonitoringDataWrapper::collect_ensuring_consistency(&mut out, items);
+        if is_ok {
+            result.expect("consistent data");
+        } else {
+            assert_matches!(result, Err(Error::VerificationFailed(s)) => assert!(s.contains("inconsistent")));
+        }
+    }
+
+    struct LowVersionError;
+
+    #[test_case((0, 1), [], Ok(None) ; "no changes in log")]
+    #[test_case((6, 1), [(7, 2), (15, 3)], Ok(Some((15, 3))) ; "multiple updates")]
+    #[test_case((6, 1), [(7, 2), (16, 3)], Ok(Some((7, 2))) ; "not on path")]
+    #[test_case((6, 1), [(7, 2), (15, 0)], Err(LowVersionError) ; "lower version")]
+    fn find_updated_mapping(
+        stored: (u64, u32),
+        tree_items: impl IntoIterator<Item = (u64, u32)>,
+        expected: std::result::Result<Option<(u64, u32)>, LowVersionError>,
+    ) {
+        let tree_items: HashMap<u64, u32> = HashMap::from_iter(tree_items);
+
+        let result = MonitoringDataWrapper::find_updated_mapping(stored, 0, 16, |pos| {
+            Ok(tree_items.get(&pos).cloned())
+        });
+
+        match expected {
+            Ok(maybe_updated) => {
+                assert_eq!(result.expect("valid versions"), maybe_updated);
+            }
+            Err(_) => {
+                assert_matches!(result, Err(Error::VerificationFailed(s)) => assert!(s.contains("low version counter")));
+            }
+        };
+    }
+
+    #[test_case(1, Some(2) ; "found")]
+    #[test_case(42, None ; "not found")]
+    fn version_extractor_success(key: u64, expected: Option<u32>) {
+        let steps = proof_steps([(1, 2), (3, 4)]);
+
+        let extractor = VersionExtractor(&steps);
+
+        let actual = extractor.get(key).expect("valid data");
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn version_extractor_bad_proof_step() {
+        let misstep = ProofStep {
+            prefix: None,
+            commitment: vec![],
+        };
+
+        let steps = HashMap::from_iter([(1, misstep)]);
+        let extractor = VersionExtractor(&steps);
+
+        let result = extractor.get(1);
+        assert_matches!(result, Err(Error::RequiredFieldMissing(s)) => assert!(s.contains("prefix")));
     }
 }

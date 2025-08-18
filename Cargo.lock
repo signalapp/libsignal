@@ -2661,6 +2661,7 @@ dependencies = [
  "displaydoc",
  "ed25519-dalek",
  "hmac",
+ "itertools 0.14.0",
  "proptest",
  "prost",
  "prost-build",
