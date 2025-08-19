@@ -84,11 +84,16 @@ private object BuildConfig {
 
 // Only JNI and test code calls this, so unused code warnings are suppressed.
 // Internal for test code - no other Kotlin code should use this object directly.
+// MODIFIED FOR SIGNAL: exposed as public so we can set `shouldCheckRevocation`
 @Suppress("unused")
 // We want to show a difference between Kotlin-side logs and those in Rust code
 @SuppressLint("LongLogTag")
-internal object CertificateVerifier {
+public object CertificateVerifier {
     private const val TAG = "rustls-platform-verifier-android"
+
+    // ADDED BY SIGNAL
+    @JvmStatic
+    public var shouldCheckRevocation: Boolean = false
 
     private fun createTrustManager(keystore: KeyStore?): X509TrustManagerExtensions? {
         // This can never throw since the default algorithm is used.
@@ -322,7 +327,9 @@ internal object CertificateVerifier {
         //
         // This is supported at >= API 24, but we're supporting 22 (Android 5) for the best
         // compatibility.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        //
+        // MODIFIED BY SIGNAL: only if shouldCheckRevocation is set.
+        if (shouldCheckRevocation && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             // Note:
             //
             // 1. Android does not provide any way only to attempt to validate revocation from cached
@@ -390,9 +397,13 @@ internal object CertificateVerifier {
             } catch (e: CertPathValidatorException) {
                 return VerificationResult(StatusCode.Revoked, e.toString())
             }
-        } else {
+
+        // MODIFIED BY SIGNAL: The warning log used to be unconditional.
+        } else if (shouldCheckRevocation) {
             // This is allowed to be skipped since revocation checking is best-effort.
             Log.w(TAG, "did not attempt to validate OCSP due to Android version")
+        } else {
+            Log.v(TAG, "note: revocation checking disabled")
         }
 
         return VerificationResult(StatusCode.Ok)
