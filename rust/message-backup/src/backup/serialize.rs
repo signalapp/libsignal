@@ -394,6 +394,7 @@ mod test {
                 mediaRootBackupKey: vec![0xab; libsignal_account_keys::BACKUP_KEY_LEN],
                 currentAppVersion: "libsignal-testing 0.0.2".into(),
                 firstAppVersion: "libsignal-testing 0.0.1".into(),
+                debugInfo: "https://www.debuglogs.org/libsignal-testing/not-a-real-url".into(),
                 special_fields: Default::default(),
             }
         }

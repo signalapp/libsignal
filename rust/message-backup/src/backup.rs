@@ -585,6 +585,7 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
             mediaRootBackupKey,
             currentAppVersion,
             firstAppVersion,
+            debugInfo: _,
             special_fields: _,
         } = value;
 

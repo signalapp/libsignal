@@ -406,10 +406,11 @@ pub enum Direction<Recipient> {
         read: bool,
         sealed_sender: bool,
     },
-    Outgoing(
+    Outgoing {
         #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
-        UnorderedList<OutgoingSend<Recipient>>,
-    ),
+        recipients: UnorderedList<OutgoingSend<Recipient>>,
+        received: Timestamp,
+    },
     Directionless,
 }
 
@@ -577,7 +578,10 @@ impl<
 
             (
                 MinimalRecipientData::Contact { .. } | MinimalRecipientData::ReleaseNotes,
-                Direction::Outgoing(_),
+                Direction::Outgoing {
+                    recipients: _,
+                    received: _,
+                },
             ) => Err(ChatItemError::OutgoingMessageFrom(
                 author_id,
                 *author_data.as_ref(),
@@ -594,7 +598,13 @@ impl<
                 author_id,
             )),
 
-            (MinimalRecipientData::Self_, Direction::Outgoing(_))
+            (
+                MinimalRecipientData::Self_,
+                Direction::Outgoing {
+                    recipients: _,
+                    received: _,
+                },
+            )
             | (MinimalRecipientData::Self_, Direction::Directionless) => {
                 Ok(ChatItemAuthorKind::Self_)
             }
@@ -701,8 +711,11 @@ impl<
                         read,
                         sealed_sender: _,
                     } => *read,
-                    Direction::Outgoing(outgoing) => {
-                        outgoing.0.iter().all(|send| match send.status {
+                    Direction::Outgoing {
+                        recipients,
+                        received: _,
+                    } => {
+                        recipients.0.iter().all(|send| match send.status {
                             DeliveryStatus::Failed(_) => false,
                             DeliveryStatus::Pending => false,
 
@@ -879,13 +892,19 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             }
             DirectionalDetails::Outgoing(OutgoingMessageDetails {
                 sendStatus,
+                dateReceived,
                 special_fields: _,
-            }) => Ok(Direction::Outgoing(
-                sendStatus
+            }) => Ok(Direction::Outgoing {
+                recipients: sendStatus
                     .into_iter()
                     .map(|s| s.try_into_with(context))
                     .collect::<Result<_, _>>()?,
-            )),
+                received: Timestamp::from_millis(
+                    dateReceived,
+                    "OutgoingMessageDetails.dateReceived",
+                    context,
+                )?,
+            }),
             DirectionalDetails::Directionless(DirectionlessMessageDetails {
                 special_fields: _,
             }) => Ok(Direction::Directionless),
@@ -1078,6 +1097,7 @@ mod test {
         fn test_data() -> Self {
             Self {
                 sendStatus: vec![proto::SendStatus::test_data()],
+                dateReceived: MillisecondsSinceEpoch::TEST_VALUE.0,
                 special_fields: SpecialFields::default(),
             }
         }
@@ -1530,8 +1550,14 @@ mod test {
             last_status_update: Timestamp::test_value(),
         };
 
-        let message1 = Direction::Outgoing(vec![send1.clone(), send2.clone()].into());
-        let message2 = Direction::Outgoing(vec![send2, send1].into());
+        let message1 = Direction::Outgoing {
+            recipients: vec![send1.clone(), send2.clone()].into(),
+            received: Timestamp::test_value(),
+        };
+        let message2 = Direction::Outgoing {
+            recipients: vec![send2, send1].into(),
+            received: Timestamp::test_value(),
+        };
 
         assert_eq!(
             serde_json::to_string_pretty(&message1).expect("valid"),

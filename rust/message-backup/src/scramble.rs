@@ -181,10 +181,12 @@ impl Visit<Scrambler> for proto::BackupInfo {
             mediaRootBackupKey,
             currentAppVersion: _,
             firstAppVersion: _,
+            debugInfo,
             special_fields: _,
         } = self;
 
         mediaRootBackupKey.randomize(&mut visitor.rng);
+        debugInfo.randomize(&mut visitor.rng);
     }
 }
 
@@ -341,7 +343,6 @@ impl Visit<Scrambler> for proto::FilePointer {
             height: _,
             caption,
             blurHash,
-            locator,
             locatorInfo,
             special_fields: _,
         } = self;
@@ -352,91 +353,9 @@ impl Visit<Scrambler> for proto::FilePointer {
         caption.randomize(&mut visitor.rng);
         blurHash.randomize(&mut visitor.rng);
 
-        if let Some(loc) = locator {
-            loc.accept(visitor);
-        }
         if let Some(loc) = locatorInfo.as_mut() {
             loc.accept(visitor);
         }
-    }
-}
-
-impl Visit<Scrambler> for proto::file_pointer::Locator {
-    fn accept(&mut self, visitor: &mut Scrambler) {
-        use proto::file_pointer::Locator;
-        match self {
-            Locator::BackupLocator(loc) => loc.accept(visitor),
-            Locator::AttachmentLocator(loc) => loc.accept(visitor),
-            Locator::LocalLocator(loc) => loc.accept(visitor),
-            Locator::InvalidAttachmentLocator(loc) => loc.accept(visitor),
-        }
-    }
-}
-
-impl Visit<Scrambler> for proto::file_pointer::BackupLocator {
-    fn accept(&mut self, visitor: &mut Scrambler) {
-        let Self {
-            mediaName,
-            cdnNumber: _,
-            key,
-            digest,
-            size: _,
-            transitCdnKey,
-            transitCdnNumber: _,
-            special_fields: _,
-        } = self;
-
-        key.randomize(&mut visitor.rng);
-        digest.randomize(&mut visitor.rng);
-        let is_thumbnail = mediaName.ends_with("_thumbnail");
-        *mediaName = hex::encode(digest);
-        if is_thumbnail {
-            mediaName.push_str("_thumbnail");
-        }
-        transitCdnKey.randomize(&mut visitor.rng);
-    }
-}
-
-impl Visit<Scrambler> for proto::file_pointer::AttachmentLocator {
-    fn accept(&mut self, visitor: &mut Scrambler) {
-        let Self {
-            cdnKey,
-            cdnNumber: _,
-            uploadTimestamp: _,
-            key,
-            digest,
-            size: _,
-            special_fields: _,
-        } = self;
-        cdnKey.randomize(&mut visitor.rng);
-        key.randomize(&mut visitor.rng);
-        digest.randomize(&mut visitor.rng);
-    }
-}
-
-impl Visit<Scrambler> for proto::file_pointer::LocalLocator {
-    fn accept(&mut self, visitor: &mut Scrambler) {
-        let Self {
-            mediaName,
-            localKey,
-            remoteKey,
-            remoteDigest,
-            size: _,
-            backupCdnNumber: _,
-            transitCdnKey,
-            transitCdnNumber: _,
-            special_fields: _,
-        } = self;
-
-        localKey.randomize(&mut visitor.rng);
-        remoteKey.randomize(&mut visitor.rng);
-        remoteDigest.randomize(&mut visitor.rng);
-        let is_thumbnail = mediaName.ends_with("_thumbnail");
-        *mediaName = hex::encode(remoteDigest);
-        if is_thumbnail {
-            mediaName.push_str("_thumbnail");
-        }
-        transitCdnKey.randomize(&mut visitor.rng);
     }
 }
 
@@ -451,8 +370,6 @@ impl Visit<Scrambler> for proto::file_pointer::LocatorInfo {
             transitTierUploadTimestamp: _,
             mediaTierCdnNumber: _,
             localKey,
-            legacyDigest,
-            legacyMediaName,
             special_fields: _,
         } = self;
 
@@ -469,16 +386,6 @@ impl Visit<Scrambler> for proto::file_pointer::LocatorInfo {
         }
 
         transitCdnKey.randomize(&mut visitor.rng);
-
-        // We can remove this after all clients have removed support for the old fields.
-        legacyDigest.randomize(&mut visitor.rng);
-        legacyMediaName.randomize(&mut visitor.rng);
-    }
-}
-
-impl Visit<Scrambler> for proto::file_pointer::InvalidAttachmentLocator {
-    fn accept(&mut self, _visitor: &mut Scrambler) {
-        let Self { special_fields: _ } = self;
     }
 }
 
@@ -913,6 +820,7 @@ impl Visit<Scrambler> for proto::chat_item::OutgoingMessageDetails {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
             sendStatus,
+            dateReceived: _,
             special_fields: _,
         } = self;
         sendStatus.accept(visitor);

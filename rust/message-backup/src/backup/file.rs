@@ -112,8 +112,6 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryIntoWith<LocatorInfo, C>
             transitTierUploadTimestamp,
             mediaTierCdnNumber,
             localKey,
-            legacyDigest: _,
-            legacyMediaName: _,
             special_fields: _,
         } = self;
 
@@ -253,7 +251,6 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryIntoWith<FilePointer, C> for proto::
 
     fn try_into_with(self, context: &C) -> Result<FilePointer, Self::Error> {
         let proto::FilePointer {
-            locator: legacy_locator,
             contentType,
             incrementalMac,
             incrementalMacChunkSize,
@@ -265,10 +262,6 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryIntoWith<FilePointer, C> for proto::
             locatorInfo,
             special_fields: _,
         } = self;
-
-        // The legacy locator format is deprecated and will soon no longer be
-        // accepted. Just ignore it for now.
-        drop(legacy_locator);
 
         let locator_info = locatorInfo
             .into_option()
@@ -367,7 +360,6 @@ mod test {
         fn test_data() -> Self {
             Self {
                 key: hex!("1234").into(),
-                legacyDigest: vec![],
                 integrityCheck: None, // Will be set by specific test data methods
                 size: 123,
                 transitCdnKey: Some("ABCDEFG".into()),
@@ -375,7 +367,6 @@ mod test {
                 transitTierUploadTimestamp: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
                 localKey: None,
                 mediaTierCdnNumber: None,
-                legacyMediaName: "".to_string(),
                 special_fields: Default::default(),
             }
         }
@@ -520,9 +511,6 @@ mod test {
     impl proto::FilePointer {
         pub(crate) fn test_data() -> Self {
             Self {
-                locator: Some(proto::file_pointer::Locator::InvalidAttachmentLocator(
-                    proto::file_pointer::InvalidAttachmentLocator::default(),
-                )),
                 locatorInfo: Some(proto::file_pointer::LocatorInfo::default()).into(),
                 contentType: Some("image/jpeg".into()),
                 incrementalMac: Some(hex!("1234").into()),
@@ -548,7 +536,6 @@ mod test {
     #[test_case(|x| {
         x.locatorInfo = Some(proto::file_pointer::LocatorInfo::test_data_with_plaintext_hash()).into();
     } => Ok(()); "with locatorInfo")]
-    #[test_case(|x| x.locator = None => Ok(()); "no legacy locator")]
     #[test_case(|x| x.locatorInfo = None.into() => Err(FilePointerError::NoLocatorInfo); "no locatorInfo")]
     #[test_case(|x| x.contentType = None => Ok(()); "no contentType")]
     #[test_case(|x| x.contentType = Some("".into()) => Ok(()); "empty contentType")]
