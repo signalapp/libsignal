@@ -2668,6 +2668,7 @@ dependencies = [
  "sha2",
  "test-case",
  "uuid",
+ "zerocopy",
 ]
 
 [[package]]

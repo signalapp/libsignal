@@ -21,6 +21,7 @@ hmac = { workspace = true }
 itertools = { workspace = true }
 prost = { workspace = true }
 sha2 = { workspace = true }
+zerocopy = { workspace = true, features = ["derive"] }
 
 [build-dependencies]
 prost-build = { workspace = true }

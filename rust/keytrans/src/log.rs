@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 //! Implements the Log Tree.
+use std::num::NonZero;
+
 use sha2::{Digest, Sha256};
 
 type Hash = [u8; 32];
@@ -75,61 +77,80 @@ mod math {
         expected <= rightmost
     }
 
-    // Returns the list of full subtrees that x consists of.
-    pub fn full_subtrees(mut x: u64, n: u64) -> Vec<u64> {
-        let mut out = vec![];
+    // Returns an iterator over the list of full subtrees that x consists of.
+    pub fn full_subtrees(x: u64, n: u64) -> impl Iterator<Item = u64> {
+        let mut next_x = Some(x);
+        std::iter::from_fn(move || {
+            let x = next_x?;
 
-        while !is_full_subtree(x, n) {
-            out.push(left(x));
-            x = right(x, n);
-        }
-        out.push(x);
+            if !is_full_subtree(x, n) {
+                next_x = Some(right(x, n));
+                return Some(left(x));
+            }
 
-        out
+            next_x = None;
+            Some(x)
+        })
     }
 
     // Returns the list of node ids to return for a consistency proof between m
     // and n, based on the algorithm from RFC 6962.
     pub fn consistency_proof(m: u64, n: u64) -> Vec<u64> {
-        sub_proof(m, n, true)
+        sub_proof(m, n)
     }
 
-    fn sub_proof(m: u64, n: u64, b: bool) -> Vec<u64> {
-        if m == n {
-            return match b {
-                true => vec![],
-                false => vec![root(m)],
-            };
-        }
-        let mut k = 1u64 << log2(n);
-        if k == n {
-            k /= 2;
-        }
-        if m <= k {
-            let mut proof = sub_proof(m, k, b);
-            proof.push(right(root(n), n));
-            proof
-        } else {
-            let mut proof: Vec<u64> = sub_proof(m - k, n - k, false)
-                .iter()
-                .map(|x| x + 2 * k)
-                .collect();
-            proof.insert(0, left(root(n)));
-            proof
+    fn sub_proof(m: u64, n: u64) -> Vec<u64> {
+        let estimated_output_count = usize::try_from(log2(n)).unwrap_or_default() + 1;
+        let mut output = Vec::with_capacity(estimated_output_count);
+        sub_proof_impl(m, n, true, &mut output);
+        return output;
+
+        #[track_caller]
+        fn sub_proof_impl(m: u64, n: u64, b: bool, output: &mut Vec<u64>) {
+            if m == n {
+                if !b {
+                    output.push(root(m));
+                }
+                return;
+            }
+            let mut k = 1u64 << log2(n);
+            if k == n {
+                k /= 2;
+            }
+            if m <= k {
+                sub_proof_impl(m, k, b, output);
+                output.push(right(root(n), n));
+            } else {
+                output.push(left(root(n)));
+                let subproof_start = output.len();
+
+                sub_proof_impl(m - k, n - k, false, output);
+
+                // Fix up the just-inserted sub-proof values.
+                for x in &mut output[subproof_start..] {
+                    *x += 2 * k;
+                }
+            }
         }
     }
 
     // Returns the copath nodes of a batch of leaves.
     pub fn batch_copath(leaves: &[u64], n: u64) -> Vec<u64> {
         // Convert the leaf indices to node indices.
-        let mut nodes: Vec<u64> = leaves.iter().map(|x| 2 * x).collect();
-        nodes.sort();
+        let mut current_level: Vec<u64> = leaves.iter().map(|x| 2 * x).collect();
+        current_level.sort();
 
         // Iteratively combine nodes until there's only one entry in the list
         // (being the root), keeping track of the extra nodes we needed to get
         // there.
         let mut out = vec![];
         let root = root(n);
+
+        // Use a slice over the elements to make dropping elements from the front
+        // O(1). When we're ready to move on to the next level we'll replace
+        // current_level and regenerate our view into it.
+        let mut nodes = current_level.as_slice();
+
         while !(nodes.len() == 1 && nodes[0] == root) {
             let mut next_level = vec![];
 
@@ -137,11 +158,11 @@ mod math {
                 let p = parent(nodes[0], n);
                 if right(p, n) == nodes[1] {
                     // Sibling is already here.
-                    nodes.drain(..2);
+                    nodes = &nodes[2..];
                 } else {
                     // Need to fetch sibling.
                     out.push(sibling(nodes[0], n));
-                    nodes.drain(..1);
+                    nodes = &nodes[1..];
                 }
                 next_level.push(p);
             }
@@ -154,7 +175,8 @@ mod math {
                 }
             }
 
-            nodes = next_level;
+            current_level = next_level;
+            nodes = current_level.as_slice();
         }
         out.sort();
 
@@ -183,7 +205,7 @@ mod math {
             assert_eq!(sibling(13, 8), 9);
             assert_eq!(sibling(9, 8), 13);
 
-            assert_eq!(full_subtrees(7, 6), vec![3, 9]);
+            assert_eq!(full_subtrees(7, 6).collect::<Vec<_>>(), vec![3, 9]);
 
             assert_eq!(batch_copath(&[0, 2, 3, 4], 8), vec![2, 10, 13]);
             assert_eq!(batch_copath(&[0, 2, 3], 8), vec![2, 11]);
@@ -210,21 +232,23 @@ pub enum Error {
 type Result<T> = std::result::Result<T, Error>;
 
 // The primary wrapper struct for representing a single node in the tree.
-#[derive(Clone)]
+#[repr(C)]
+#[derive(Clone, zerocopy::IntoBytes, zerocopy::Immutable)]
 struct NodeData {
-    leaf: bool,
+    /// `false` for leaf nodes, otherwise `true`
+    interior: bool,
     value: Hash,
 }
 
 impl NodeData {
-    fn marshal(&self) -> [u8; 33] {
-        let mut out = [0u8; 33];
-        if !self.leaf {
-            out[0] = 1;
-        }
-        out[1..33].copy_from_slice(&self.value);
-
-        out
+    fn marshal(&self) -> &[u8; 33] {
+        let Self { interior, value } = self;
+        #[allow(
+            dropping_copy_types,
+            reason = "explicit usages of implicitly-read fields"
+        )]
+        drop((interior, value));
+        zerocopy::transmute_ref!(self)
     }
 }
 
@@ -235,7 +259,7 @@ fn tree_hash(left: &NodeData, right: &NodeData) -> NodeData {
     hasher.update(right.marshal());
 
     NodeData {
-        leaf: false,
+        interior: true,
         value: hasher.finalize().into(),
     }
 }
@@ -250,24 +274,23 @@ impl SimpleRootCalculator {
     }
 
     fn insert(&mut self, level: usize, value: Hash) {
-        while self.chain.len() < level + 1 {
-            self.chain.push(None);
+        if let Some(needed) = (level + 1)
+            .checked_sub(self.chain.len())
+            .and_then(NonZero::new)
+        {
+            self.chain.extend(std::iter::repeat_n(None, needed.get()))
         }
 
         let mut acc = NodeData {
-            leaf: level == 0,
+            interior: level != 0,
             value,
         };
         let mut i = level;
-        while i < self.chain.len() {
-            match self.chain[i].as_ref() {
-                Some(nd) => {
-                    acc = tree_hash(nd, &acc);
-                    self.chain[i] = None;
-                    i += 1;
-                }
-                None => break,
-            }
+
+        while let Some(nd) = self.chain.get(i).and_then(Option::as_ref) {
+            acc = tree_hash(nd, &acc);
+            self.chain[i] = None;
+            i += 1;
         }
         if i == self.chain.len() {
             self.chain.push(Some(acc));
@@ -282,16 +305,17 @@ impl SimpleRootCalculator {
         }
 
         // Find first non-null element of chain.
-        let res = self.chain.iter().enumerate().find(|(_, nd)| nd.is_some());
-        let (root_pos, root) = match res {
-            Some((i, Some(nd))) => (i, (*nd).clone()),
-            _ => return Err(Error::MalformedChain),
-        };
+        let (root_pos, root) = self
+            .chain
+            .iter()
+            .enumerate()
+            .find_map(|(i, nd)| Some(i).zip(nd.as_ref()))
+            .ok_or(Error::MalformedChain)?;
 
         // Fold the hashes above what we just found into one.
         Ok(self.chain[root_pos + 1..]
             .iter()
-            .fold(root, |acc, nd| match nd {
+            .fold(root.clone(), |acc, nd| match nd {
                 Some(nd) => tree_hash(nd, &acc),
                 None => acc,
             })
@@ -311,12 +335,10 @@ pub fn evaluate_batch_proof(x: &[u64], n: u64, values: &[Hash], proof: &[Hash]) 
     if !sorted {
         return Err(Error::InvalidInput("input entries must be in sorted order"));
     }
-    if x.is_empty() {
-        return Err(Error::InvalidInput(
-            "can not evaluate empty batch inclusion proof",
-        ));
-    }
-    if x[x.len() - 1] >= n {
+    let last = x.last().ok_or(Error::InvalidInput(
+        "can not evaluate empty batch inclusion proof",
+    ))?;
+    if *last >= n {
         return Err(Error::InvalidInput(
             "leaf ids can not be larger than tree size",
         ));
@@ -369,33 +391,40 @@ pub fn verify_consistency_proof(
 
     // Step 1: Verify that the consistency proof aligns with m_root.
     let mut calc = SimpleRootCalculator::new();
-    let path = math::full_subtrees(math::root(m), m);
-    if path.len() == 1 {
+
+    let mut path = math::full_subtrees(math::root(m), m);
+
+    let path_is_single_element;
+    let path = {
+        let first = path.next();
+        let second = first.is_some().then(|| path.next()).flatten();
+        path_is_single_element = first.is_some() && second.is_none();
+        [first, second].into_iter().flatten().chain(path)
+    };
+
+    let i;
+    if path_is_single_element {
         // m is a power of two so we don't need to verify anything.
         calc.insert(math::level(math::root(m)), *m_root);
+        i = 0;
     } else {
-        for (i, &elem) in path.iter().enumerate() {
+        let mut path_len = 0;
+        for (i, elem) in path.enumerate() {
             if ids[i] != elem {
                 // TODO: PathMismatch maybe?
                 return Err(Error::Unexpected("id does not match path"));
             }
             calc.insert(math::level(elem), proof[i]);
+            path_len = i + 1;
         }
-        match calc.root() {
-            Ok(root) => {
-                if m_root != &root {
-                    return Err(Error::ProofMismatch("first root does not match proof"));
-                }
-            }
-            Err(err) => return Err(err),
+
+        if m_root != &calc.root()? {
+            return Err(Error::ProofMismatch("first root does not match proof"));
         }
+        i = path_len;
     }
 
     // Step 2: Verify that the consistency proof aligns with n_root.
-    let i = match path.len() {
-        1 => 0,
-        i => i,
-    };
     for j in i..ids.len() {
         calc.insert(math::level(ids[j]), proof[j]);
     }
