@@ -100,37 +100,21 @@ String collectTestEnvironment() {
     result.join(",")
 }
 
-// From https://github.com/rustls/rustls-platform-verifier
-File findRustlsPlatformVerifierClasses() {
+// We include the classes and data for rustls-platform-verifier ourselves,
+// but we want to make sure it's in sync with the Rust side.
+// So we check that there hasn't been a new release of the Android package since we made our fork.
+void checkRustlsPlatformVerifierVersion() {
     def dependencyText = providers.exec {
         it.workingDir = project.rootDir.parentFile
         commandLine("bash", "java/find_cargo.sh", "metadata", "--format-version", "1")
     }.standardOutput.asText.get()
 
     def dependencyJson = new JsonSlurper().parseText(dependencyText)
-    def manifestPath = file(dependencyJson.packages.find { it.name == "rustls-platform-verifier-android" }.manifest_path)
-
-    // Modifications here:
-    // Rather than use the Maven repository in the crates.io source, reference the AAR directly by path.
-    // Then, extract the classes from it so that we have a self-contained library.
-    def aar = fileTree(manifestPath.parentFile).matching {
-        include "maven/rustls/rustls-platform-verifier/*/rustls-platform-verifier-*.aar"
-    }.getSingleFile()
-    def classesJar = zipTree(aar).matching {
-        // Make sure there's nothing in the AAR that we haven't accounted for.
-        // This isn't perfect: there could be something important in AndroidManifest.xml.
-        // But it's likely good enough.
-        exclude "AndroidManifest.xml"
-        exclude "META-INF/com/android/build/gradle/aar-metadata.properties"
-        exclude "R.txt"
-    }.getSingleFile()
-    assert classesJar.name == "classes.jar"
-    return classesJar
+    def dependencyVersion = dependencyJson.packages.find { it.name == "rustls-platform-verifier-android" }.version
+    assert dependencyVersion == "0.1.1"
 }
 
 dependencies {
-    implementation files(findRustlsPlatformVerifierClasses())
-
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
     androidTestImplementation "androidx.test:runner:1.4.0"
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
@@ -174,6 +158,8 @@ task collectAssets(type:Copy) {
 
 // MARK: Publication
 afterEvaluate {
+    checkRustlsPlatformVerifierVersion()
+
     publishing {
         publications {
             mavenJava(MavenPublication) {

@@ -132,7 +132,7 @@ spotless {
         }.inject(files()) { collected, next ->
             collected + next.sources
         }
-        targetExclude('**/Native.kt', '**/NativeTesting.kt')
+        targetExclude('**/Native.kt', '**/NativeTesting.kt', '**/org/rustls/**')
         ktlint()
     }
     java {
