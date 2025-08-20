@@ -10,6 +10,7 @@ use boring_signal::error::ErrorStack;
 use boring_signal::ssl::{SslAlert, SslConnectorBuilder, SslVerifyMode};
 use boring_signal::x509::store::X509StoreBuilder;
 use boring_signal::x509::X509;
+use futures_util::future::BoxFuture;
 use rustls::client::danger::{ServerCertVerified, ServerCertVerifier};
 use rustls::pki_types::{CertificateDer, ServerName};
 
@@ -77,10 +78,10 @@ impl RootCertificates {
                         // the current thread from being attached to the JVM.
                         //
                         // See https://github.com/rustls/rustls-platform-verifier/issues/184
-                        return Box::new(BackgroundThreadVerifier::new(verifier));
+                        Box::new(BackgroundThreadVerifier::new(verifier))
+                    } else {
+                        Box::new(TokioBlockingThreadVerifier::new(verifier))
                     }
-
-                    Box::new(verifier)
                 });
                 return set_up_platform_verifier(connector, host, &**verifier);
             }
@@ -97,46 +98,23 @@ impl RootCertificates {
 }
 
 /// A subset of [`ServerCertVerifier`] that only exposes
-/// [`verify_server_cert`](ServerCertVerifier::verify_server_cert).
-///
-/// This is blanket-implemented for `ServerCertVerifier`.
+/// [`verify_server_cert`](ServerCertVerifier::verify_server_cert) as an async function.
 trait LimitedServerCertVerifier: Send + Sync {
     fn verify_server_cert(
         &self,
-        end_entity: CertificateDer<'_>,
-        intermediates: Vec<CertificateDer<'_>>,
-        server_name: &ServerName<'_>,
-    ) -> Result<ServerCertVerified, rustls::Error>;
-}
-
-impl<V: ServerCertVerifier> LimitedServerCertVerifier for V {
-    fn verify_server_cert(
-        &self,
-        end_entity: CertificateDer<'_>,
-        intermediates: Vec<CertificateDer<'_>>,
-        server_name: &ServerName<'_>,
-    ) -> Result<ServerCertVerified, rustls::Error> {
-        // We don't do our own OCSP. Either the platform will do its own checks, or it won't.
-        let ocsp_response = [];
-
-        ServerCertVerifier::verify_server_cert(
-            self,
-            &end_entity,
-            &intermediates,
-            server_name,
-            &ocsp_response,
-            rustls::pki_types::UnixTime::now(),
-        )
-    }
+        end_entity: CertificateDer<'static>,
+        intermediates: Vec<CertificateDer<'static>>,
+        server_name: &Arc<ServerName<'static>>,
+    ) -> BoxFuture<'static, Result<ServerCertVerified, rustls::Error>>;
 }
 
 impl LimitedServerCertVerifier for &dyn LimitedServerCertVerifier {
     fn verify_server_cert(
         &self,
-        end_entity: CertificateDer<'_>,
-        intermediates: Vec<CertificateDer<'_>>,
-        server_name: &ServerName<'_>,
-    ) -> Result<ServerCertVerified, rustls::Error> {
+        end_entity: CertificateDer<'static>,
+        intermediates: Vec<CertificateDer<'static>>,
+        server_name: &Arc<ServerName<'static>>,
+    ) -> BoxFuture<'static, Result<ServerCertVerified, rustls::Error>> {
         (**self).verify_server_cert(end_entity, intermediates, server_name)
     }
 }
@@ -161,9 +139,7 @@ fn set_up_platform_verifier(
         Host::Ip(ip) => ServerName::IpAddress(ip.into()),
     };
 
-    // Ideally we wouldn't need to wrap these in Arcs, but Rust doesn't understand spawn_blocking
-    // immediately followed by await.
-    let verifier = Arc::new(verifier);
+    // We're going to share this across each of the verifier tasks.
     let host_as_server_name = Arc::new(host_as_server_name);
 
     // For maximum generality, this is a *function* that returns a *future* that returns a
@@ -186,77 +162,64 @@ fn set_up_platform_verifier(
         };
 
         // The rest of the chain should be valid intermediate certificates.
-        let intermediates: Vec<CertificateDer<'_>> = cert_chain
+        let intermediates: Vec<CertificateDer<'static>> = cert_chain
             .collect::<Result<_, boring_signal::error::ErrorStack>>()
             .map_err(|_| SslAlert::BAD_CERTIFICATE)?;
 
-        // Borrow these for the nested task. Ideally this wouldn't require refcounting, but Rust
-        // doesn't understand spawn_blocking immediately followed by await.
-        let verifier = verifier.clone();
-        let host_as_server_name = host_as_server_name.clone();
-
-        let task = tokio::task::spawn_blocking(move || -> Result<(), SslAlert> {
-            verifier
-                .verify_server_cert(end_entity, intermediates, &host_as_server_name)
-                .map_err(|e| {
-                    // The most important thing is to reject the certificate. Mapping the errors over
-                    // only affects what message gets reported in logs. Which isn't *unimportant*, but
-                    // isn't critical for correctness either.
-                    //
-                    // From RFC 5246:
-                    // - bad_certificate: A certificate was corrupt, contained signatures that did not
-                    //   verify correctly, etc.
-                    // - certificate_expired: A certificate has expired or is not currently valid.
-                    // - certificate_unknown: Some other (unspecified) issue arose in processing the
-                    //   certificate, rendering it unacceptable.
-                    // - certificate_revoked: A certificate was revoked by its signer.
-                    // - unknown_ca: A valid certificate chain or partial chain was received, but the
-                    //   certificate was not accepted because the CA certificate could not be located or
-                    //   couldn't be matched with a known, trusted CA.
-                    // - internal_error: An internal error unrelated to the peer or the correctness of
-                    //   the protocol (such as a memory allocation failure) makes it impossible to
-                    //   continue.
-                    log::info!(
-                        "TLS certificate for {} failed verification: {}",
-                        log_safe_domain(&host_as_server_name.to_str()),
-                        (&error::LogSafeTlsError(&e) as &dyn LogSafeDisplay)
-                    );
-                    match e {
-                        rustls::Error::InvalidCertificate(e) => match e {
-                            rustls::CertificateError::BadEncoding => SslAlert::BAD_CERTIFICATE,
-                            rustls::CertificateError::Expired => SslAlert::CERTIFICATE_EXPIRED,
-                            rustls::CertificateError::NotValidYet => SslAlert::CERTIFICATE_UNKNOWN,
-                            rustls::CertificateError::Revoked => SslAlert::CERTIFICATE_REVOKED,
-                            rustls::CertificateError::UnhandledCriticalExtension => {
-                                SslAlert::CERTIFICATE_UNKNOWN
-                            }
-                            rustls::CertificateError::UnknownIssuer => SslAlert::UNKNOWN_CA,
-                            rustls::CertificateError::UnknownRevocationStatus => {
-                                SslAlert::CERTIFICATE_UNKNOWN
-                            }
-                            rustls::CertificateError::BadSignature => SslAlert::BAD_CERTIFICATE,
-                            rustls::CertificateError::NotValidForName => {
-                                SslAlert::CERTIFICATE_UNKNOWN
-                            }
-                            rustls::CertificateError::InvalidPurpose => {
-                                SslAlert::CERTIFICATE_UNKNOWN
-                            }
-                            rustls::CertificateError::ApplicationVerificationFailure => {
-                                SslAlert::INTERNAL_ERROR
-                            }
-                            rustls::CertificateError::Other(_) => SslAlert::CERTIFICATE_UNKNOWN,
-
-                            // CertificateError is marked non_exhaustive, so we also have to have an explicit fallback:
-                            _ => SslAlert::CERTIFICATE_UNKNOWN,
-                        },
-                        _ => SslAlert::BAD_CERTIFICATE,
-                    }
-                })?;
-            Ok(())
-        });
+        let task = verifier.verify_server_cert(end_entity, intermediates, &host_as_server_name);
+        let host_for_logging = host_as_server_name.clone();
 
         Ok(Box::pin(async move {
-            task.await.unwrap_or(Err(SslAlert::INTERNAL_ERROR))?;
+            task.await.map_err(move |e| {
+                // The most important thing is to reject the certificate. Mapping the errors over
+                // only affects what message gets reported in logs. Which isn't *unimportant*, but
+                // isn't critical for correctness either.
+                //
+                // From RFC 5246:
+                // - bad_certificate: A certificate was corrupt, contained signatures that did not
+                //   verify correctly, etc.
+                // - certificate_expired: A certificate has expired or is not currently valid.
+                // - certificate_unknown: Some other (unspecified) issue arose in processing the
+                //   certificate, rendering it unacceptable.
+                // - certificate_revoked: A certificate was revoked by its signer.
+                // - unknown_ca: A valid certificate chain or partial chain was received, but the
+                //   certificate was not accepted because the CA certificate could not be located or
+                //   couldn't be matched with a known, trusted CA.
+                // - internal_error: An internal error unrelated to the peer or the correctness of
+                //   the protocol (such as a memory allocation failure) makes it impossible to
+                //   continue.
+                log::info!(
+                    "TLS certificate for {} failed verification: {}",
+                    log_safe_domain(&host_for_logging.to_str()),
+                    (&error::LogSafeTlsError(&e) as &dyn LogSafeDisplay)
+                );
+                match e {
+                    rustls::Error::InvalidCertificate(e) => match e {
+                        rustls::CertificateError::BadEncoding => SslAlert::BAD_CERTIFICATE,
+                        rustls::CertificateError::Expired => SslAlert::CERTIFICATE_EXPIRED,
+                        rustls::CertificateError::NotValidYet => SslAlert::CERTIFICATE_UNKNOWN,
+                        rustls::CertificateError::Revoked => SslAlert::CERTIFICATE_REVOKED,
+                        rustls::CertificateError::UnhandledCriticalExtension => {
+                            SslAlert::CERTIFICATE_UNKNOWN
+                        }
+                        rustls::CertificateError::UnknownIssuer => SslAlert::UNKNOWN_CA,
+                        rustls::CertificateError::UnknownRevocationStatus => {
+                            SslAlert::CERTIFICATE_UNKNOWN
+                        }
+                        rustls::CertificateError::BadSignature => SslAlert::BAD_CERTIFICATE,
+                        rustls::CertificateError::NotValidForName => SslAlert::CERTIFICATE_UNKNOWN,
+                        rustls::CertificateError::InvalidPurpose => SslAlert::CERTIFICATE_UNKNOWN,
+                        rustls::CertificateError::ApplicationVerificationFailure => {
+                            SslAlert::INTERNAL_ERROR
+                        }
+                        rustls::CertificateError::Other(_) => SslAlert::CERTIFICATE_UNKNOWN,
+
+                        // CertificateError is marked non_exhaustive, so we also have to have an explicit fallback:
+                        _ => SslAlert::CERTIFICATE_UNKNOWN,
+                    },
+                    _ => SslAlert::BAD_CERTIFICATE,
+                }
+            })?;
 
             // Remember, our future is supposed to return...another function. We don't have any
             // post-platform-verifier work to take care of, though, so our function will just return
@@ -272,27 +235,32 @@ fn set_up_platform_verifier(
 
 /// [`LimitedServerCertVerifier`] that runs verification on a background thread.
 struct BackgroundThreadVerifier {
-    sender: std::sync::mpsc::SyncSender<(VerifyContext, BackgroundResultSender)>,
+    sender: tokio::sync::mpsc::Sender<(VerifyContext, BackgroundResultSender)>,
 }
-
-const MAX_QUEUED_VERIFICATIONS: usize = 8;
 
 type BackgroundResultSender =
     tokio::sync::oneshot::Sender<Result<ServerCertVerified, rustls::Error>>;
 
 impl BackgroundThreadVerifier {
-    fn new(verifier: impl LimitedServerCertVerifier + 'static) -> Self {
-        let (tx, rx) = std::sync::mpsc::sync_channel::<(VerifyContext, BackgroundResultSender)>(
-            MAX_QUEUED_VERIFICATIONS,
-        );
+    fn new(verifier: impl ServerCertVerifier + 'static) -> Self {
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<(VerifyContext, BackgroundResultSender)>(1);
         let _thread = std::thread::spawn(move || {
-            while let Ok((context, result_sender)) = rx.recv() {
+            while let Some((context, result_sender)) = rx.blocking_recv() {
                 let VerifyContext {
                     end_entity,
                     intermediates,
                     server_name,
                 } = context;
-                let result = verifier.verify_server_cert(end_entity, intermediates, &server_name);
+
+                // We don't do our own OCSP. Either the platform will do its own checks, or it won't.
+                let ocsp_response = [];
+                let result = verifier.verify_server_cert(
+                    &end_entity,
+                    &intermediates,
+                    &server_name,
+                    &ocsp_response,
+                    rustls::pki_types::UnixTime::now(),
+                );
 
                 let _ignore_failed_send = result_sender.send(result);
             }
@@ -306,41 +274,82 @@ impl BackgroundThreadVerifier {
 struct VerifyContext {
     end_entity: CertificateDer<'static>,
     intermediates: Vec<CertificateDer<'static>>,
-    server_name: ServerName<'static>,
+    server_name: Arc<ServerName<'static>>,
 }
 
 impl LimitedServerCertVerifier for BackgroundThreadVerifier {
     fn verify_server_cert(
         &self,
-        end_entity: CertificateDer<'_>,
-        intermediates: Vec<CertificateDer<'_>>,
-        server_name: &ServerName<'_>,
-    ) -> Result<ServerCertVerified, rustls::Error> {
+        end_entity: CertificateDer<'static>,
+        intermediates: Vec<CertificateDer<'static>>,
+        server_name: &Arc<ServerName<'static>>,
+    ) -> BoxFuture<'static, Result<ServerCertVerified, rustls::Error>> {
         let Self { sender } = self;
-
-        let (result_tx, result_rx) = tokio::sync::oneshot::channel();
+        let sender = sender.clone();
 
         let context = VerifyContext {
-            end_entity: end_entity.clone().into_owned(),
-            intermediates: intermediates
-                .into_iter()
-                .map(CertificateDer::into_owned)
-                .collect(),
-            server_name: server_name.to_owned(),
+            end_entity,
+            intermediates,
+            server_name: server_name.clone(),
         };
-        sender
-            .send((context, result_tx))
-            .expect("Verifier thread is unexpectedly no longer available");
 
-        result_rx
-            .blocking_recv()
-            .map_err(|_recv| rustls::Error::General("worker thread failed".to_owned()))?
+        Box::pin(async move {
+            let (result_tx, result_rx) = tokio::sync::oneshot::channel();
+            sender
+                .send((context, result_tx))
+                .await
+                .expect("Verifier thread is unexpectedly no longer available");
+            result_rx.await.unwrap_or_else(|_recv| {
+                Err(rustls::Error::General("worker thread failed".to_owned()))
+            })
+        })
+    }
+}
+
+/// [`LimitedServerCertVerifier`] that runs verification by spawning onto the current tokio blocking
+/// thread pool.
+struct TokioBlockingThreadVerifier<T> {
+    verifier: Arc<T>,
+}
+
+impl<T: ServerCertVerifier + 'static> TokioBlockingThreadVerifier<T> {
+    fn new(verifier: T) -> Self {
+        Self {
+            verifier: Arc::new(verifier),
+        }
+    }
+}
+
+impl<T: ServerCertVerifier + 'static> LimitedServerCertVerifier for TokioBlockingThreadVerifier<T> {
+    fn verify_server_cert(
+        &self,
+        end_entity: CertificateDer<'static>,
+        intermediates: Vec<CertificateDer<'static>>,
+        server_name: &Arc<ServerName<'static>>,
+    ) -> BoxFuture<'static, Result<ServerCertVerified, rustls::Error>> {
+        let verifier = self.verifier.clone();
+        let server_name = server_name.clone();
+        Box::pin(async move {
+            let task = tokio::task::spawn_blocking(move || {
+                // We don't do our own OCSP. Either the platform will do its own checks, or it won't.
+                let ocsp_response = [];
+                verifier.verify_server_cert(
+                    &end_entity,
+                    &intermediates,
+                    &server_name,
+                    &ocsp_response,
+                    rustls::pki_types::UnixTime::now(),
+                )
+            });
+            task.await.unwrap_or_else(|_panic: tokio::task::JoinError| {
+                Err(rustls::CertificateError::ApplicationVerificationFailure.into())
+            })
+        })
     }
 }
 
 #[cfg(test)]
 mod test {
-    use std::convert::identity;
     use std::sync::Arc;
 
     use assert_matches::assert_matches;
@@ -355,28 +364,33 @@ mod test {
         SERVER_HOSTNAME,
     };
 
-    impl LimitedServerCertVerifier for Box<dyn LimitedServerCertVerifier> {
+    struct AllowSync<T>(T);
+
+    impl<T: ServerCertVerifier + 'static> LimitedServerCertVerifier for AllowSync<T> {
         fn verify_server_cert(
             &self,
-            end_entity: CertificateDer<'_>,
-            intermediates: Vec<CertificateDer<'_>>,
-            server_name: &ServerName<'_>,
-        ) -> Result<ServerCertVerified, rustls::Error> {
-            (**self).verify_server_cert(end_entity, intermediates, server_name)
+            end_entity: CertificateDer<'static>,
+            intermediates: Vec<CertificateDer<'static>>,
+            server_name: &Arc<ServerName<'static>>,
+        ) -> BoxFuture<'static, Result<ServerCertVerified, rustls::Error>> {
+            // We don't do our own OCSP. Either the platform will do its own checks, or it won't.
+            let ocsp_response = [];
+            Box::pin(std::future::ready(self.0.verify_server_cert(
+                &end_entity,
+                &intermediates,
+                server_name,
+                &ocsp_response,
+                rustls::pki_types::UnixTime::now(),
+            )))
         }
     }
 
-    fn on_background_thread(
-        verifier: Box<dyn LimitedServerCertVerifier>,
-    ) -> Box<dyn LimitedServerCertVerifier> {
-        Box::new(BackgroundThreadVerifier::new(verifier))
-    }
-
-    #[test_case::test_case(identity)]
-    #[test_case::test_case(on_background_thread)]
+    #[test_case::test_case(AllowSync)]
+    #[test_case::test_case(BackgroundThreadVerifier::new)]
+    #[test_case::test_case(TokioBlockingThreadVerifier::new)]
     #[tokio::test]
-    async fn verify_certificate_via_rustls(
-        make_verifier: fn(Box<dyn LimitedServerCertVerifier>) -> Box<dyn LimitedServerCertVerifier>,
+    async fn verify_certificate_via_rustls<V: LimitedServerCertVerifier + 'static>(
+        make_verifier: fn(rustls::client::WebPkiServerVerifier) -> V,
     ) {
         let (addr, server) = localhost_https_server();
         let _server_handle = tokio::spawn(server);
@@ -391,7 +405,7 @@ mod test {
 
         let mut ssl = SslConnector::builder(SslMethod::tls_client()).expect("valid");
         let verifier = Arc::into_inner(verifier).expect("only one referent");
-        let verifier = make_verifier(Box::new(verifier));
+        let verifier = make_verifier(verifier);
         set_up_platform_verifier(&mut ssl, Host::Domain(SERVER_HOSTNAME), verifier).expect("valid");
 
         let transport = TcpStream::connect(addr).await.expect("can connect");
@@ -408,11 +422,12 @@ mod test {
             .expect("no errors");
     }
 
-    #[test_case::test_case(identity)]
-    #[test_case::test_case(on_background_thread)]
+    #[test_case::test_case(AllowSync)]
+    #[test_case::test_case(BackgroundThreadVerifier::new)]
+    #[test_case::test_case(TokioBlockingThreadVerifier::new)]
     #[tokio::test]
-    async fn verify_certificate_failure_via_rustls(
-        make_verifier: fn(Box<dyn LimitedServerCertVerifier>) -> Box<dyn LimitedServerCertVerifier>,
+    async fn verify_certificate_failure_via_rustls<V: LimitedServerCertVerifier + 'static>(
+        make_verifier: fn(rustls::client::WebPkiServerVerifier) -> V,
     ) {
         let (addr, server) = localhost_https_server();
         let _server_handle = tokio::spawn(server);
@@ -428,7 +443,7 @@ mod test {
 
         let mut ssl = SslConnector::builder(SslMethod::tls_client()).expect("valid");
         let verifier = Arc::into_inner(verifier).expect("only one referent");
-        let verifier = make_verifier(Box::new(verifier));
+        let verifier = make_verifier(verifier);
         set_up_platform_verifier(&mut ssl, Host::Domain(SERVER_HOSTNAME), verifier).expect("valid");
 
         let transport = TcpStream::connect(addr).await.expect("can connect");
