@@ -87,11 +87,15 @@ impl ChatConnection {
             inner: crate::chat::ws::Chat::new(
                 tokio_runtime,
                 local,
-                connection_info.transport_info.clone(),
-                FakeCurrentInterface,
                 headers,
                 config,
-                log_tag,
+                crate::chat::ws::ConnectionConfig {
+                    log_tag,
+                    post_request_interface_check_timeout: config
+                        .post_request_interface_check_timeout,
+                    transport_info: connection_info.transport_info.clone(),
+                    get_current_interface: FakeCurrentInterface,
+                },
                 listener,
             ),
             connection_info,

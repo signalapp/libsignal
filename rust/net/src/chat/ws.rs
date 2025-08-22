@@ -179,11 +179,11 @@ impl Chat {
     pub fn new<T>(
         tokio_runtime: tokio::runtime::Handle,
         transport: T,
-        transport_info: TransportInfo,
-        get_current_interface: impl GetCurrentInterface<Representation = IpAddr> + Send + 'static,
         connect_response_headers: http::HeaderMap,
         config: Config,
-        log_tag: Arc<str>,
+        connection_config: ConnectionConfig<
+            impl GetCurrentInterface<Representation = IpAddr> + Send + Sync + 'static,
+        >,
         mut listener: EventListener,
     ) -> Self
     where
@@ -195,6 +195,10 @@ impl Chat {
             post_request_interface_check_timeout,
             remote_idle_timeout,
         } = config;
+        debug_assert_eq!(
+            post_request_interface_check_timeout,
+            connection_config.post_request_interface_check_timeout
+        );
 
         Self::report_alerts(connect_response_headers, &mut listener);
 
@@ -209,11 +213,8 @@ impl Chat {
                     remote_idle_disconnect_timeout: remote_idle_timeout,
                 },
             ),
-            transport_info,
-            post_request_interface_check_timeout,
-            get_current_interface,
+            connection_config,
             initial_request_id,
-            log_tag,
             listener,
             tokio_runtime,
         )
@@ -329,16 +330,16 @@ impl Chat {
 
     fn new_inner(
         into_inner_connection: impl IntoInnerConnection,
-        transport_info: TransportInfo,
-        post_request_interface_check_timeout: Duration,
-        get_current_interface: impl GetCurrentInterface<Representation = IpAddr> + Send + 'static,
+        connection_config: ConnectionConfig<
+            impl GetCurrentInterface<Representation = IpAddr> + Send + Sync + 'static,
+        >,
         initial_request_id: u64,
-        log_tag: Arc<str>,
         listener: EventListener,
         tokio_runtime: tokio::runtime::Handle,
     ) -> Self {
         let (request_tx, request_rx) = mpsc::channel(1);
         let (response_tx, response_rx) = mpsc::unbounded_channel();
+        let log_tag = connection_config.log_tag.clone();
 
         let requests_in_flight = InFlightRequests {
             outstanding_reqs: Default::default(),
@@ -366,16 +367,13 @@ impl Chat {
 
         let inner_connection = into_inner_connection.into_inner_connection(
             tokio_stream::StreamExt::merge(request_rx, response_rx),
-            log_tag.clone(),
+            log_tag,
         );
 
         let connection = ConnectionImpl {
             inner: inner_connection,
             requests_in_flight,
-            log_tag,
-            transport_info,
-            post_request_interface_check_timeout,
-            gci: get_current_interface,
+            config: connection_config,
         };
 
         let task = tokio_runtime.spawn(spawned_task_body(
@@ -563,6 +561,14 @@ enum IncomingEvent {
     ReceivedRequest { id: u64, request: RequestProto },
 }
 
+#[derive(Debug)]
+pub struct ConnectionConfig<GCI> {
+    pub log_tag: Arc<str>,
+    pub post_request_interface_check_timeout: Duration,
+    pub transport_info: TransportInfo,
+    pub get_current_interface: GCI,
+}
+
 #[pin_project(project = ConnectionImplProj)]
 /// State for the task running a connection.
 ///
@@ -572,10 +578,7 @@ struct ConnectionImpl<I, GCI> {
     #[pin]
     inner: I,
     requests_in_flight: InFlightRequests,
-    log_tag: Arc<str>,
-    post_request_interface_check_timeout: Duration,
-    transport_info: TransportInfo,
-    gci: GCI,
+    config: ConnectionConfig<GCI>,
 }
 
 /// The metadata for an outgoing message.
@@ -667,7 +670,7 @@ async fn spawned_task_body<
     pin_mut!(connection);
     let tokio_rt = tokio::runtime::Handle::current();
     let listener_state = ListenerState::new(listener);
-    let log_tag = connection.log_tag.clone();
+    let log_tag = connection.config.log_tag.clone();
 
     // In case the task panics, make sure the callback at least knows about the
     // disconnection.
@@ -946,10 +949,13 @@ impl<I: InnerConnection, GCI: GetCurrentInterface<Representation = IpAddr>> Conn
         let ConnectionImplProj {
             mut inner,
             requests_in_flight,
-            log_tag,
-            transport_info,
-            post_request_interface_check_timeout,
-            gci,
+            config:
+                ConnectionConfig {
+                    log_tag,
+                    post_request_interface_check_timeout,
+                    transport_info,
+                    get_current_interface,
+                },
         } = self.project();
 
         let mut event_fut = std::pin::pin!(inner.as_mut().handle_next_event());
@@ -992,8 +998,9 @@ impl<I: InnerConnection, GCI: GetCurrentInterface<Representation = IpAddr>> Conn
                         debug_assert!(false, "no events came in, so nothing should have changed");
                     }
 
-                    let current_default_interface_ip =
-                        gci.get_interface_for(transport_info.remote_addr.ip()).await;
+                    let current_default_interface_ip = get_current_interface
+                        .get_interface_for(transport_info.remote_addr.ip())
+                        .await;
 
                     if current_default_interface_ip != transport_info.local_addr.ip() {
                         log::warn!(
@@ -1439,7 +1446,10 @@ mod test {
         }
         pub(super) fn new_chat_with_config(
             config: FakeConfig,
-            get_current_interface: impl GetCurrentInterface<Representation = IpAddr> + Send + 'static,
+            get_current_interface: impl GetCurrentInterface<Representation = IpAddr>
+                + Send
+                + Sync
+                + 'static,
             listener: EventListener,
         ) -> (Chat, FakeTxRxChannels) {
             let FakeConfig {
@@ -1453,14 +1463,16 @@ mod test {
                     outgoing_events: outgoing_events_tx,
                     incoming_events: incoming_events_rx,
                 },
-                TransportInfo {
-                    local_addr: (Ipv4Addr::LOCALHOST, 1000).into(),
-                    remote_addr: (Ipv4Addr::LOCALHOST, 443).into(),
+                ConnectionConfig {
+                    log_tag: "test".into(),
+                    post_request_interface_check_timeout,
+                    transport_info: TransportInfo {
+                        local_addr: (Ipv4Addr::LOCALHOST, 1000).into(),
+                        remote_addr: (Ipv4Addr::LOCALHOST, 443).into(),
+                    },
+                    get_current_interface,
                 },
-                post_request_interface_check_timeout,
-                get_current_interface,
                 initial_request_id,
-                "test".into(),
                 listener,
                 tokio::runtime::Handle::current(),
             );

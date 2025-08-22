@@ -334,11 +334,15 @@ impl ChatConnection {
             inner: ws::Chat::new(
                 tokio_runtime,
                 connection,
-                transport_info,
-                DefaultGetCurrentInterface,
                 connect_response_headers,
                 ws_config,
-                log_tag,
+                ws::ConnectionConfig {
+                    log_tag,
+                    post_request_interface_check_timeout: ws_config
+                        .post_request_interface_check_timeout,
+                    transport_info,
+                    get_current_interface: DefaultGetCurrentInterface,
+                },
                 listener,
             ),
         }
