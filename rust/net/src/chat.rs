@@ -17,6 +17,7 @@ use libsignal_net_infra::route::{
     ThrottlingConnector, TransportRoute, UnresolvedHttpsServiceRoute,
     UnresolvedWebsocketServiceRoute, UsePreconnect, WebSocketRoute, WebSocketRouteFragment,
 };
+use libsignal_net_infra::utils::NetworkChangeEvent;
 use libsignal_net_infra::ws::StreamWithResponseHeaders;
 use libsignal_net_infra::{
     AsHttpHeader, AsStaticHttpHeader, Connection, IpType, TransportInfo, RECOMMENDED_WS_CONFIG,
@@ -181,6 +182,7 @@ pub struct PendingChatConnection<T = ChatTransportConnection> {
     connect_response_headers: http::HeaderMap,
     ws_config: ws::Config,
     route_info: RouteInfo,
+    network_change_event: NetworkChangeEvent,
     log_tag: Arc<str>,
 }
 
@@ -260,6 +262,8 @@ impl ChatConnection {
     where
         TC: WebSocketTransportConnectorFactory<UsePreconnect<TransportRoute>>,
     {
+        let network_change_event_for_established_connection =
+            connection_resources.network_change_event.clone();
         let should_preconnect = matches!(headers, Some(ChatHeaders::Auth(_)));
         let headers = headers
             .into_iter()
@@ -309,6 +313,7 @@ impl ChatConnection {
             connect_response_headers: response_headers,
             route_info,
             ws_config,
+            network_change_event: network_change_event_for_established_connection,
             log_tag,
         })
     }
@@ -323,6 +328,7 @@ impl ChatConnection {
             connect_response_headers,
             ws_config,
             route_info,
+            network_change_event,
             log_tag,
         } = pending;
         let transport_info = connection.transport_info();
@@ -343,6 +349,7 @@ impl ChatConnection {
                     transport_info,
                     get_current_interface: DefaultGetCurrentInterface,
                 },
+                network_change_event,
                 listener,
             ),
         }

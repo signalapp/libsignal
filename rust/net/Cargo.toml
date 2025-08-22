@@ -59,7 +59,7 @@ subtle = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
 tokio-boring-signal = { workspace = true }
-tokio-stream = { workspace = true }
+tokio-stream = { workspace = true, features = ["sync"] }
 tokio-tungstenite = { workspace = true }
 tungstenite = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }

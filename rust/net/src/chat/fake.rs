@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use futures_util::{Sink, Stream};
 use libsignal_net_infra::route::GetCurrentInterface;
+use libsignal_net_infra::utils::no_network_change_events;
 use libsignal_net_infra::TransportInfo;
 use pin_project::pin_project;
 use prost::Message;
@@ -96,6 +97,7 @@ impl ChatConnection {
                     transport_info: connection_info.transport_info.clone(),
                     get_current_interface: FakeCurrentInterface,
                 },
+                no_network_change_events(),
                 listener,
             ),
             connection_info,
