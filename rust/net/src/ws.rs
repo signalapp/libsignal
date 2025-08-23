@@ -17,7 +17,7 @@ pub enum WebSocketServiceConnectError {
     ///
     /// See [`ConnectionParams::connection_confirmation_header`](crate::infra::ConnectionParams::connection_confirmation_header).
     RejectedByServer {
-        response: http::Response<Option<Vec<u8>>>,
+        response: Box<http::Response<Option<Vec<u8>>>>,
         received_at: Instant,
     },
     /// A connection error that wasn't caused by a server rejection.
@@ -162,7 +162,7 @@ mod test {
 
             let error_with_header = WebSocketServiceConnectError::from_websocket_error(
                 WebSocketConnectError::WebSocketError(
-                    libsignal_net_infra::ws::WebSocketError::Http(response_4xx.clone()),
+                    libsignal_net_infra::ws::WebSocketError::Http(Box::new(response_4xx.clone())),
                 ),
                 confirmation_header.as_ref(),
                 now,
