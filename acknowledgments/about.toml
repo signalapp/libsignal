@@ -339,6 +339,15 @@ path = "LICENSE-APACHE"
 checksum = "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
 
 
+# sync_wrapper's license isn't recognized for some reason
+[sync_wrapper.clarify]
+license = "Apache-2.0"
+
+[[sync_wrapper.clarify.files]]
+path = "LICENSE"
+checksum = "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+
+
 # webpsan is embedded in a larger repo, and has a tag that doesn't match the revision in Cargo
 [webpsan.clarify]
 license = "MIT"
