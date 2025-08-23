@@ -43,7 +43,7 @@ impl<T> UnorderedList<T> {
         self.0.is_empty()
     }
 
-    pub fn iter(&self) -> std::slice::Iter<T> {
+    pub fn iter(&self) -> std::slice::Iter<'_, T> {
         self.0.iter()
     }
 }

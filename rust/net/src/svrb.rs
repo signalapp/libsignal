@@ -216,13 +216,13 @@ pub struct BackupPreviousSecretData(pub Vec<u8>);
 pub struct BackupPreviousSecretDataRef<'a>(pub &'a [u8]);
 
 impl BackupFileMetadata {
-    pub fn as_ref(&self) -> BackupFileMetadataRef {
+    pub fn as_ref(&self) -> BackupFileMetadataRef<'_> {
         BackupFileMetadataRef(&self.0)
     }
 }
 
 impl BackupPreviousSecretData {
-    pub fn as_ref(&self) -> BackupPreviousSecretDataRef {
+    pub fn as_ref(&self) -> BackupPreviousSecretDataRef<'_> {
         BackupPreviousSecretDataRef(&self.0)
     }
 }

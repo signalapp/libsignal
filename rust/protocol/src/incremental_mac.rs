@@ -433,11 +433,11 @@ mod test {
     }
 
     trait RandomChunksIterator<T> {
-        fn random_chunks(&self, max_size: usize) -> RandomChunks<T, ThreadRng>;
+        fn random_chunks(&self, max_size: usize) -> RandomChunks<'_, T, ThreadRng>;
     }
 
     impl<T> RandomChunksIterator<T> for [T] {
-        fn random_chunks(&self, max_size: usize) -> RandomChunks<T, ThreadRng> {
+        fn random_chunks(&self, max_size: usize) -> RandomChunks<'_, T, ThreadRng> {
             assert!(max_size > 0, "Maximal chunk size should be positive");
             RandomChunks {
                 base: self,

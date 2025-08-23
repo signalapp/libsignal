@@ -535,7 +535,7 @@ impl SessionState {
 
     pub(crate) fn unacknowledged_pre_key_message_items(
         &self,
-    ) -> Result<Option<UnacknowledgedPreKeyMessageItems>, InvalidSessionError> {
+    ) -> Result<Option<UnacknowledgedPreKeyMessageItems<'_>>, InvalidSessionError> {
         if let Some(ref pending_pre_key) = self.session.pending_pre_key {
             Ok(Some(UnacknowledgedPreKeyMessageItems::new(
                 pending_pre_key.pre_key_id.map(Into::into),

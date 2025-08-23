@@ -91,7 +91,7 @@ pub struct EnclaveConnectionResources<'a> {
 }
 
 impl EnclaveConnectionResources<'_> {
-    pub fn as_connection_resources(&self) -> ConnectionResources<PreconnectingFactory> {
+    pub fn as_connection_resources(&self) -> ConnectionResources<'_, PreconnectingFactory> {
         let Self {
             connect_state,
             dns_resolver,
@@ -256,7 +256,7 @@ impl ConnectionManager {
         enclave: &EnclaveEndpoint<impl EnclaveKind>,
     ) -> Result<
         (
-            EnclaveConnectionResources,
+            EnclaveConnectionResources<'_>,
             impl RouteProvider<Route = UnresolvedWebsocketServiceRoute> + '_,
         ),
         InvalidProxyConfig,

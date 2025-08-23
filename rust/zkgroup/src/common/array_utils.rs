@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 pub trait ArrayLike<T>: Index<usize, Output = T> {
     const LEN: usize;
     fn create(create_element: impl FnMut() -> T) -> Self;
-    fn iter(&self) -> std::slice::Iter<T>;
+    fn iter(&self) -> std::slice::Iter<'_, T>;
 }
 
 impl<T, const LEN: usize> ArrayLike<T> for [T; LEN] {
@@ -23,7 +23,7 @@ impl<T, const LEN: usize> ArrayLike<T> for [T; LEN] {
     fn create(mut create_element: impl FnMut() -> T) -> Self {
         [0; LEN].map(|_| create_element())
     }
-    fn iter(&self) -> std::slice::Iter<T> {
+    fn iter(&self) -> std::slice::Iter<'_, T> {
         self[..].iter()
     }
 }
@@ -53,7 +53,7 @@ where
         OneBased(Ts::create(create_element))
     }
 
-    fn iter(&self) -> std::slice::Iter<T> {
+    fn iter(&self) -> std::slice::Iter<'_, T> {
         self.0.iter()
     }
 }
