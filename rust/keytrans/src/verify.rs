@@ -15,13 +15,13 @@ use crate::implicit::{full_monitoring_path, monitoring_path};
 use crate::log::{evaluate_batch_proof, verify_consistency_proof};
 use crate::prefix::{evaluate as evaluate_prefix, MalformedProof};
 use crate::proto::{
-    AuditorTreeHead as SingleSignatureTreeHead, CondensedTreeSearchResponse, FullTreeHead,
-    MonitorKey, MonitorProof, MonitorRequest, MonitorResponse, ProofStep, TreeHead,
+    CondensedTreeSearchResponse, FullTreeHead, MonitorKey, MonitorProof, MonitorRequest,
+    MonitorResponse, ProofStep, TreeHead,
 };
 use crate::{
     guide, log, vrf, DeploymentMode, FullSearchResponse, LastTreeHead, MonitorContext,
     MonitorStateUpdate, MonitoringData, PublicConfig, SearchContext, SearchStateUpdate,
-    SlimSearchRequest, TreeRoot,
+    SlimSearchRequest, TreeRoot, VerifiableTreeHead,
 };
 
 /// The range of allowed timestamp values relative to "now".
@@ -143,12 +143,12 @@ fn leaf_hash(prefix_root: &[u8; 32], commitment: &[u8; 32]) -> [u8; 32] {
 /// Checks the signature on the provided transparency tree head using the given key
 fn verify_tree_head_signature(
     config: &PublicConfig,
-    head: &SingleSignatureTreeHead,
+    head: &impl VerifiableTreeHead,
     root: &[u8; 32],
     verifying_key: &VerifyingKey,
 ) -> Result<()> {
-    let raw = marshal_tree_head_tbs(head.tree_size, head.timestamp, root, config)?;
-    let signature = Signature::from_slice(&head.signature)
+    let raw = marshal_tree_head_tbs(head.tree_size(), head.timestamp(), root, config)?;
+    let signature = Signature::from_slice(head.signature_bytes())
         .map_err(|_| Error::BadData("signature has wrong size".to_string()))?;
     verifying_key
         .verify(&raw, &signature)
@@ -186,17 +186,24 @@ fn verify_full_tree_head(
     }
 
     // 2. Verify the signature in TreeHead.signature.
-    {
-        let single_sig_tree_head = tree_head
+    // Intentionally hiding the original tree_head
+    let tree_head = {
+        let verified_single_sig_tree_head = tree_head
             .to_single_signature_tree_head(config)
             .ok_or(Error::RequiredFieldMissing("server signature"))?;
-        verify_tree_head_signature(config, &single_sig_tree_head, &root, &config.signature_key)?;
-    }
+        verify_tree_head_signature(
+            config,
+            &verified_single_sig_tree_head,
+            &root,
+            &config.signature_key,
+        )?;
+        verified_single_sig_tree_head
+    };
 
     // 3. Verify that the timestamp in TreeHead is sufficiently recent.
     verify_timestamp(
         Qualifier::Server,
-        tree_head.timestamp,
+        tree_head.timestamp(),
         ALLOWED_TIMESTAMP_RANGE,
         now,
     )?;
@@ -219,12 +226,12 @@ fn verify_full_tree_head(
 
         // 3. Verify that TreeHead.tree_size is sufficiently close to the most
         //    recent tree head from the service operator.
-        if auditor_head.tree_size > tree_head.tree_size {
+        if auditor_head.tree_size > tree_head.tree_size() {
             return Err(Error::BadData(
                 "auditor tree head may not be further along than service tree head".to_string(),
             ));
         }
-        if tree_head.tree_size - auditor_head.tree_size > ENTRIES_MAX_BEHIND {
+        if tree_head.tree_size() - auditor_head.tree_size > ENTRIES_MAX_BEHIND {
             return Err(Error::BadData(
                 "auditor tree head is too far behind service tree head".to_string(),
             ));
@@ -232,7 +239,7 @@ fn verify_full_tree_head(
         // 4. Verify the consistency proof between this tree head and the most
         //    recent tree head from the service operator.
         // 1. Verify the signature in TreeHead.signature.
-        if tree_head.tree_size > auditor_head.tree_size {
+        if tree_head.tree_size() > auditor_head.tree_size {
             let auditor_root: &[u8; 32] =
                 get_proto_field(&auditor_tree_head.root_value, "root_value")?
                     .as_slice()
@@ -241,7 +248,7 @@ fn verify_full_tree_head(
             let proof = get_hash_proof(&auditor_tree_head.consistency)?;
             verify_consistency_proof(
                 auditor_head.tree_size,
-                tree_head.tree_size,
+                tree_head.tree_size(),
                 &proof,
                 auditor_root,
                 &root,
@@ -262,7 +269,7 @@ fn verify_full_tree_head(
         }
     }
 
-    Ok((tree_head.clone(), root))
+    Ok((tree_head.0, root))
 }
 
 /// Checks if the consistency proof against the baseline tree head needs to be

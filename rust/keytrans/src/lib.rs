@@ -20,7 +20,7 @@ use std::time::SystemTime;
 
 pub use ed25519_dalek::VerifyingKey;
 pub use proto::{
-    AuditorTreeHead as SingleSignatureTreeHead, ChatMonitorResponse, CondensedTreeSearchResponse,
+    ChatMonitorResponse, CondensedTreeSearchResponse,
     DistinguishedResponse as ChatDistinguishedResponse, FullAuditorTreeHead, FullTreeHead,
     MonitorKey, MonitorProof, MonitorRequest, MonitorResponse,
     SearchResponse as ChatSearchResponse, Signature, StoredAccountData, StoredMonitoringData,
@@ -29,6 +29,8 @@ pub use proto::{
 pub use verify::Error;
 use verify::{verify_distinguished, verify_monitor, verify_search};
 pub use vrf::PublicKey as VrfPublicKey;
+
+use crate::proto::AuditorTreeHead;
 
 /// DeploymentMode specifies the way that a transparency log is deployed.
 #[derive(PartialEq, Clone, Copy)]
@@ -342,18 +344,63 @@ impl From<AccountData> for StoredAccountData {
     }
 }
 
+/// Wraps a regular TreeHead, but guarantees there is exactly one value in its signatures field.
+#[derive(Debug, Clone)]
+struct SingleSignatureTreeHead(TreeHead);
+
+trait VerifiableTreeHead {
+    fn tree_size(&self) -> u64;
+    fn timestamp(&self) -> i64;
+    fn signature_bytes(&self) -> &[u8];
+}
+
+impl VerifiableTreeHead for SingleSignatureTreeHead {
+    fn tree_size(&self) -> u64 {
+        self.0.tree_size
+    }
+
+    fn timestamp(&self) -> i64 {
+        self.0.timestamp
+    }
+
+    fn signature_bytes(&self) -> &[u8] {
+        &self
+            .0
+            .signatures
+            .first()
+            .expect("guaranteed by construction")
+            .signature
+    }
+}
+
+impl VerifiableTreeHead for AuditorTreeHead {
+    fn tree_size(&self) -> u64 {
+        self.tree_size
+    }
+
+    fn timestamp(&self) -> i64 {
+        self.timestamp
+    }
+
+    fn signature_bytes(&self) -> &[u8] {
+        &self.signature
+    }
+}
+
 impl TreeHead {
     /// Takes a tree head with multiple signatures and turns it into a more
-    /// conventional single-signature tree head struct which happens to be the
-    /// AuditorTreeHead a.k.a. SingleSignatureTreeHead.
+    /// conventional single-signature tree head.
+    ///
     /// The selection of the correct signature is based on the auditor public key
-    /// available from the config.
+    /// available from the config. Note that it is _not_ signed by an auditor,
+    /// it is signed by the server but auditor's public key is part of the data
+    /// being signed (see `libsignal_keytrans::verify::marshal_tree_head_tbs`).
     ///
     /// Not all key transparency deployment modes have an auditor key, and it is
     /// possible that the source tree head will not contain the matching one. In
     /// both cases the function will return `None`, deciding whether to treat it an
     /// error or not is left to the caller.
-    pub fn to_single_signature_tree_head(
+    fn to_single_signature_tree_head(
         &self,
         config: &PublicConfig,
     ) -> Option<SingleSignatureTreeHead> {
@@ -370,10 +417,12 @@ impl TreeHead {
                     sig.auditor_public_key.as_slice() == auditor_key.as_bytes().as_slice()
                 })
             })
-            .map(|signature| SingleSignatureTreeHead {
-                tree_size: *tree_size,
-                timestamp: *timestamp,
-                signature: signature.signature.clone(),
+            .map(|signature| {
+                SingleSignatureTreeHead(TreeHead {
+                    tree_size: *tree_size,
+                    timestamp: *timestamp,
+                    signatures: vec![signature.clone()],
+                })
             })
     }
 }
