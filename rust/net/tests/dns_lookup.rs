@@ -15,8 +15,8 @@ use libsignal_net_infra::dns::custom_resolver::CustomDnsResolver;
 use libsignal_net_infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest, SystemDnsLookup};
 use libsignal_net_infra::dns::dns_transport_udp::UdpTransportConnectorFactory;
 use libsignal_net_infra::route::UdpRoute;
-use libsignal_net_infra::testutil::no_network_change_events;
 use libsignal_net_infra::timeouts::DNS_LATER_RESPONSE_GRACE_PERIOD;
+use libsignal_net_infra::utils::no_network_change_events;
 use nonzero_ext::nonzero;
 
 macro_rules! skip_unless_nonhermetic {

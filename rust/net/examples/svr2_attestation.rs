@@ -22,7 +22,7 @@ use libsignal_net::enclave::{EnclaveKind, EndpointParams, MrEnclave, NewHandshak
 use libsignal_net::svr::SvrConnection;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::DirectOrProxyProvider;
-use libsignal_net_infra::testutil::no_network_change_events;
+use libsignal_net_infra::utils::no_network_change_events;
 use libsignal_net_infra::EnableDomainFronting;
 
 #[derive(clap::Parser)]

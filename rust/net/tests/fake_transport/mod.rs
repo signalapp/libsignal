@@ -27,7 +27,7 @@ use libsignal_net::infra::route::{ConnectorFactory, DirectOrProxyProvider, DEFAU
 pub use libsignal_net::infra::testutil::fake_transport::FakeTransportTarget;
 use libsignal_net::infra::{AsyncDuplexStream, EnableDomainFronting};
 use libsignal_net_infra::route::{Connector, TransportRoute, UsePreconnect};
-use libsignal_net_infra::testutil::no_network_change_events;
+use libsignal_net_infra::utils::no_network_change_events;
 use tokio::time::Duration;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::Filter as _;

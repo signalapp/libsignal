@@ -395,9 +395,8 @@ pub(crate) mod test {
     use super::*;
     use crate::route::testutils::ConnectFn;
     use crate::route::Connector;
-    use crate::testutil::no_network_change_events;
     use crate::timeouts::DNS_LATER_RESPONSE_GRACE_PERIOD;
-    use crate::utils::{sleep_and_catch_up, sleep_until_and_catch_up};
+    use crate::utils::{no_network_change_events, sleep_and_catch_up, sleep_until_and_catch_up};
 
     // Remove this when Rust figures out how to make arbitrary Div impls const.
     const fn div_duration(input: Duration, divisor: u32) -> Duration {

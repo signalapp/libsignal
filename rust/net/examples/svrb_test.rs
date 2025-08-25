@@ -21,7 +21,7 @@ use libsignal_net::env::SvrBEnv;
 use libsignal_net::svrb;
 use libsignal_net::svrb::direct::direct_connect;
 use libsignal_net::svrb::traits::*;
-use libsignal_net_infra::testutil::no_network_change_events;
+use libsignal_net_infra::utils::no_network_change_events;
 use rand::rngs::OsRng;
 use rand::TryRngCore;
 

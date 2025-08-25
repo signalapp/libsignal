@@ -4,6 +4,7 @@
 //
 
 use std::future::Future;
+use std::sync::LazyLock;
 use std::time::Duration;
 
 use base64::prelude::{Engine as _, BASE64_STANDARD};
@@ -112,6 +113,12 @@ pub async fn timed<T>(f: impl Future<Output = T>) -> (Duration, T) {
 
 /// The type used by ongoing operations to track network change events.
 pub type NetworkChangeEvent = tokio::sync::watch::Receiver<()>;
+
+pub fn no_network_change_events() -> NetworkChangeEvent {
+    static SENDER_THAT_NEVER_SENDS: LazyLock<tokio::sync::watch::Sender<()>> =
+        LazyLock::new(Default::default);
+    SENDER_THAT_NEVER_SENDS.subscribe()
+}
 
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutil {

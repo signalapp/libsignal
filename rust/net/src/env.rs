@@ -737,7 +737,7 @@ mod test {
         HttpRouteFragment, HttpsTlsRoute, RouteProvider as _, TcpRoute, TlsRoute, TlsRouteFragment,
         UnresolvedHost,
     };
-    use libsignal_net_infra::testutil::no_network_change_events;
+    use libsignal_net_infra::utils::no_network_change_events;
     use libsignal_net_infra::Alpn;
     use test_case::test_matrix;
 

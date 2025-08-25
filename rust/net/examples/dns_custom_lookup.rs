@@ -17,8 +17,8 @@ use libsignal_net_infra::dns::dns_transport_udp::UdpTransportConnectorFactory;
 use libsignal_net_infra::route::{
     HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment, UdpRoute,
 };
-use libsignal_net_infra::testutil::no_network_change_events;
 use libsignal_net_infra::timeouts::DNS_LATER_RESPONSE_GRACE_PERIOD;
+use libsignal_net_infra::utils::no_network_change_events;
 use libsignal_net_infra::Alpn;
 use nonzero_ext::nonzero;
 use tokio::time::Instant;

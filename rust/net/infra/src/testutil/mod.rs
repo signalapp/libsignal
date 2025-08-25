@@ -6,7 +6,6 @@
 use std::fmt::Debug;
 use std::io::Error as IoError;
 use std::pin::Pin;
-use std::sync::LazyLock;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -16,7 +15,6 @@ use futures_util::{Sink, SinkExt as _, Stream};
 use tokio_util::sync::PollSender;
 
 use crate::errors::LogSafeDisplay;
-use crate::utils::NetworkChangeEvent;
 
 pub mod fake_transport;
 
@@ -41,12 +39,6 @@ pub const TIMEOUT_DURATION: Duration = Duration::from_millis(1000);
 // we need to advance time in tests by some value not to run into the scenario
 // of attempts starting at the same time, but also by not too much so that we
 // don't step over the cool down time
-
-pub fn no_network_change_events() -> NetworkChangeEvent {
-    static SENDER_THAT_NEVER_SENDS: LazyLock<tokio::sync::watch::Sender<()>> =
-        LazyLock::new(Default::default);
-    SENDER_THAT_NEVER_SENDS.subscribe()
-}
 
 /// Trivial [`Sink`] and [`Stream`] implementation over a pair of buffered channels.
 #[derive(Debug)]

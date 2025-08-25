@@ -648,7 +648,7 @@ mod test {
         UnresolvedHost, UnresolvedTransportRoute, UnsuccessfulOutcome, WebSocketRoute,
         HAPPY_EYEBALLS_DELAY,
     };
-    use libsignal_net_infra::testutil::no_network_change_events;
+    use libsignal_net_infra::utils::no_network_change_events;
     use libsignal_net_infra::{Alpn, RouteType};
     use nonzero_ext::nonzero;
 

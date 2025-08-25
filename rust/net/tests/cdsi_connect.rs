@@ -10,7 +10,7 @@ use libsignal_net::cdsi::CdsiConnection;
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
 use libsignal_net::env::STAGING;
 use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::testutil::no_network_change_events;
+use libsignal_net::infra::utils::no_network_change_events;
 use libsignal_net_infra::route::DirectOrProxyProvider;
 use libsignal_net_infra::EnableDomainFronting;
 use rand_core::{OsRng, RngCore, TryRngCore as _};

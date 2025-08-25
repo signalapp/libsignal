@@ -28,7 +28,7 @@ use libsignal_net::infra::route::{
     HttpVersion, HttpsProvider, NoDelay, RouteResolver, TcpRoute, TlsRouteProvider, UnresolvedHost,
     WebSocketProvider, WebSocketRouteFragment,
 };
-use libsignal_net::infra::testutil::no_network_change_events;
+use libsignal_net::infra::utils::no_network_change_events;
 use libsignal_net::infra::ws::{StreamWithResponseHeaders, WebSocketTransport};
 use libsignal_net::infra::AsyncDuplexStream;
 use libsignal_net_grpc::proto::chat::account::accounts_anonymous_client::AccountsAnonymousClient;

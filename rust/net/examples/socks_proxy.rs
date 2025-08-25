@@ -22,7 +22,7 @@ use libsignal_net_infra::route::{
     ConnectorExt as _, ProxyTarget, SocksRoute, TcpRoute, TlsRoute, TlsRouteFragment,
     UnresolvedHost,
 };
-use libsignal_net_infra::testutil::no_network_change_events;
+use libsignal_net_infra::utils::no_network_change_events;
 use tokio::time::Duration;
 use url::Url;
 

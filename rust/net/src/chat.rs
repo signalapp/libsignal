@@ -399,7 +399,7 @@ pub mod test_support {
 
     use libsignal_net_infra::dns::DnsResolver;
     use libsignal_net_infra::route::ConnectionProxyConfig;
-    use libsignal_net_infra::testutil::no_network_change_events;
+    use libsignal_net_infra::utils::no_network_change_events;
     use libsignal_net_infra::EnableDomainFronting;
 
     use super::*;
@@ -491,7 +491,7 @@ pub(crate) mod test {
         DirectOrProxyRoute, HttpRouteFragment, HttpsTlsRoute, PreconnectingFactory, TcpRoute,
         TlsRoute, TlsRouteFragment, UnresolvedHost, DEFAULT_HTTPS_PORT,
     };
-    use libsignal_net_infra::testutil::no_network_change_events;
+    use libsignal_net_infra::utils::no_network_change_events;
     use libsignal_net_infra::ws::WebSocketConnectError;
     use libsignal_net_infra::Alpn;
     use test_case::test_case;

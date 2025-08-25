@@ -473,7 +473,7 @@ mod test {
     use libsignal_net_infra::dns::DnsResolver;
     use libsignal_net_infra::route::testutils::ConnectFn;
     use libsignal_net_infra::route::DirectOrProxyProvider;
-    use libsignal_net_infra::testutil::no_network_change_events;
+    use libsignal_net_infra::utils::no_network_change_events;
     use libsignal_net_infra::ws::attested::testutil::{
         run_attested_server, AttestedServerOutput, FAKE_ATTESTATION,
     };

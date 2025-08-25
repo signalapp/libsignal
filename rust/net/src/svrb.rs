@@ -485,7 +485,7 @@ pub async fn remove_backup<R: traits::Remove>(
 #[cfg(feature = "test-util")]
 pub mod test_support {
 
-    use libsignal_net_infra::testutil::no_network_change_events;
+    use libsignal_net_infra::utils::no_network_change_events;
 
     use crate::auth::Auth;
     use crate::enclave::PpssSetup;
