@@ -16,7 +16,7 @@ use static_assertions::assert_impl_all;
 
 use crate::errors::{LogSafeDisplay, TransportConnectError};
 use crate::route::{Connector, HttpRouteFragment, HttpsTlsRoute};
-use crate::{AsyncDuplexStream, Connection, TransportInfo};
+use crate::{AsyncDuplexStream, Connection};
 
 #[derive(displaydoc::Display, Debug)]
 pub enum HttpError {
@@ -170,8 +170,8 @@ where
         // Starting a thread to drive client connection events.
         // The task will complete once the connection is closed due to an error
         // or if all clients are dropped.
-        let TransportInfo { ip_version, .. } = info;
         let log_tag = log_tag.to_owned();
+        let ip_version = info.ip_version();
         tokio::spawn(async move {
             match connection.await {
                 Ok(_) => log::info!("[{log_tag}] HTTP2 connection [{ip_version}] closed"),

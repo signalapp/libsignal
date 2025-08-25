@@ -11,7 +11,9 @@ use const_str::ip_addr;
 use futures_util::stream::StreamExt as _;
 use futures_util::Stream;
 use itertools::Itertools as _;
-use libsignal_net::chat::{self, ChatConnection, PendingChatConnection};
+use libsignal_net::chat::{
+    self, ChatConnection, PendingChatConnection, RECOMMENDED_CHAT_WS_CONFIG,
+};
 use libsignal_net::connect_state::{
     ConnectState, ConnectionResources, DefaultConnectorFactory, DefaultTransportConnector,
     SUGGESTED_CONNECT_CONFIG,
@@ -23,7 +25,7 @@ use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::route::{ConnectorFactory, DirectOrProxyProvider, DEFAULT_HTTPS_PORT};
 pub use libsignal_net::infra::testutil::fake_transport::FakeTransportTarget;
-use libsignal_net::infra::{AsyncDuplexStream, EnableDomainFronting, RECOMMENDED_WS_CONFIG};
+use libsignal_net::infra::{AsyncDuplexStream, EnableDomainFronting};
 use libsignal_net_infra::route::{Connector, TransportRoute, UsePreconnect};
 use libsignal_net_infra::testutil::no_network_change_events;
 use tokio::time::Duration;
@@ -200,11 +202,6 @@ impl FakeDeps {
             resolved_names: _,
             chat_domain_config,
         } = self;
-        let libsignal_net::infra::ws::Config {
-            local_idle_timeout,
-            remote_idle_ping_timeout,
-            remote_idle_disconnect_timeout: _,
-        } = RECOMMENDED_WS_CONFIG;
         let connection_resources = ConnectionResources {
             connect_state,
             dns_resolver,
@@ -221,11 +218,7 @@ impl FakeDeps {
                 None,
             ),
             &UserAgent::with_libsignal_version("test"),
-            chat::ws::Config {
-                local_idle_timeout,
-                remote_idle_timeout: remote_idle_ping_timeout,
-                initial_request_id: 0,
-            },
+            RECOMMENDED_CHAT_WS_CONFIG,
             None,
             "fake chat",
         )

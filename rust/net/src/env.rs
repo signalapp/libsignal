@@ -21,7 +21,7 @@ use libsignal_net_infra::route::{
     HttpsProvider, TlsRouteProvider,
 };
 use libsignal_net_infra::{
-    ws, AsStaticHttpHeader, ConnectionParams, EnableDomainFronting, EnforceMinimumTls, RouteType,
+    AsStaticHttpHeader, ConnectionParams, EnableDomainFronting, EnforceMinimumTls, RouteType,
     TransportConnectionParams, RECOMMENDED_WS_CONFIG,
 };
 use nonzero_ext::nonzero;
@@ -29,6 +29,7 @@ use rand::seq::SliceRandom;
 use rand::{rng, Rng};
 
 use crate::certs::{PROXY_G_ROOT_CERTIFICATES, SIGNAL_ROOT_CERTIFICATES};
+use crate::chat::RECOMMENDED_CHAT_WS_CONFIG;
 use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
@@ -612,7 +613,7 @@ pub struct Env<'a> {
     pub svr2: EnclaveEndpoint<'a, SvrSgx>,
     pub svr_b: SvrBEnv<'a>,
     pub chat_domain_config: DomainConfig,
-    pub chat_ws_config: ws::Config,
+    pub chat_ws_config: crate::chat::ws::Config,
     pub keytrans_config: KeyTransConfig,
     pub chat_noise_config: Option<NoiseDomainConfig>,
 }
@@ -672,7 +673,7 @@ impl<'a> Env<'a> {
 pub const STAGING: Env<'static> = Env {
     chat_domain_config: DOMAIN_CONFIG_CHAT_STAGING,
     chat_noise_config: Some(DOMAIN_CONFIG_CHAT_NOISE_STAGING),
-    chat_ws_config: RECOMMENDED_WS_CONFIG,
+    chat_ws_config: RECOMMENDED_CHAT_WS_CONFIG,
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI_STAGING,
         ws_config: RECOMMENDED_WS_CONFIG,
@@ -697,7 +698,7 @@ pub const STAGING: Env<'static> = Env {
 pub const PROD: Env<'static> = Env {
     chat_domain_config: DOMAIN_CONFIG_CHAT,
     chat_noise_config: None,
-    chat_ws_config: RECOMMENDED_WS_CONFIG,
+    chat_ws_config: RECOMMENDED_CHAT_WS_CONFIG,
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI,
         ws_config: RECOMMENDED_WS_CONFIG,

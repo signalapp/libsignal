@@ -13,12 +13,14 @@ use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use bytes::Bytes;
 use either::Either;
 use libsignal_net_infra::route::{
-    Connector, HttpsTlsRoute, RouteProvider, RouteProviderExt, ThrottlingConnector, TransportRoute,
-    UnresolvedHttpsServiceRoute, UnresolvedWebsocketServiceRoute, UsePreconnect, WebSocketRoute,
-    WebSocketRouteFragment,
+    Connector, DefaultGetCurrentInterface, HttpsTlsRoute, RouteProvider, RouteProviderExt,
+    ThrottlingConnector, TransportRoute, UnresolvedHttpsServiceRoute,
+    UnresolvedWebsocketServiceRoute, UsePreconnect, WebSocketRoute, WebSocketRouteFragment,
 };
 use libsignal_net_infra::ws::StreamWithResponseHeaders;
-use libsignal_net_infra::{AsHttpHeader, AsStaticHttpHeader, Connection, IpType, TransportInfo};
+use libsignal_net_infra::{
+    AsHttpHeader, AsStaticHttpHeader, Connection, IpType, TransportInfo, RECOMMENDED_WS_CONFIG,
+};
 use tokio_tungstenite::WebSocketStream;
 
 use crate::auth::Auth;
@@ -42,6 +44,13 @@ pub type ResponseProto = proto::chat_websocket::WebSocketResponseMessage;
 pub type ChatMessageType = proto::chat_websocket::web_socket_message::Type;
 
 const RECEIVE_STORIES_HEADER_NAME: &str = "x-signal-receive-stories";
+
+pub const RECOMMENDED_CHAT_WS_CONFIG: ws::Config = ws::Config {
+    local_idle_timeout: RECOMMENDED_WS_CONFIG.local_idle_timeout,
+    post_request_interface_check_timeout: Duration::MAX,
+    remote_idle_timeout: RECOMMENDED_WS_CONFIG.remote_idle_disconnect_timeout,
+    initial_request_id: 0,
+};
 
 #[derive(Debug)]
 pub struct DebugInfo {
@@ -316,14 +325,17 @@ impl ChatConnection {
             route_info,
             log_tag,
         } = pending;
+        let transport_info = connection.transport_info();
         Self {
             connection_info: ConnectionInfo {
                 route_info,
-                transport_info: connection.transport_info(),
+                transport_info: transport_info.clone(),
             },
             inner: ws::Chat::new(
                 tokio_runtime,
                 connection,
+                transport_info,
+                DefaultGetCurrentInterface,
                 connect_response_headers,
                 ws_config,
                 log_tag,
@@ -371,12 +383,12 @@ impl Display for ConnectionInfo {
         let Self {
             transport_info:
                 TransportInfo {
-                    local_port,
-                    ip_version,
+                    local_addr,
+                    remote_addr: _,
                 },
             route_info,
         } = self;
-        write!(f, "from {ip_version}:{local_port} via {route_info}")
+        write!(f, "from {local_addr} via {route_info}")
     }
 }
 
@@ -426,6 +438,7 @@ pub mod test_support {
         let ws_config = ws::Config {
             initial_request_id: 0,
             local_idle_timeout: Duration::from_secs(60),
+            post_request_interface_check_timeout: Duration::MAX,
             remote_idle_timeout: Duration::from_secs(60),
         };
 
@@ -711,6 +724,7 @@ pub(crate) mod test {
             ws::Config {
                 // We shouldn't get to timing out anyway.
                 local_idle_timeout: Duration::ZERO,
+                post_request_interface_check_timeout: Duration::ZERO,
                 remote_idle_timeout: Duration::ZERO,
                 initial_request_id: 0,
             },
@@ -809,6 +823,7 @@ pub(crate) mod test {
             ws::Config {
                 // We shouldn't get to timing out anyway.
                 local_idle_timeout: Duration::ZERO,
+                post_request_interface_check_timeout: Duration::ZERO,
                 remote_idle_timeout: Duration::ZERO,
                 initial_request_id: 0,
             },
@@ -829,6 +844,7 @@ pub(crate) mod test {
             ws::Config {
                 // We shouldn't get to timing out anyway.
                 local_idle_timeout: Duration::ZERO,
+                post_request_interface_check_timeout: Duration::ZERO,
                 remote_idle_timeout: Duration::ZERO,
                 initial_request_id: 0,
             },

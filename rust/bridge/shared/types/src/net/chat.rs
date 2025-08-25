@@ -366,12 +366,6 @@ async fn establish_chat_connection(
         )
     };
 
-    let libsignal_net::infra::ws::Config {
-        local_idle_timeout,
-        remote_idle_disconnect_timeout,
-        ..
-    } = env.chat_ws_config;
-
     let chat_connect = &env.chat_domain_config.connect;
     let connection_resources = ConnectionResources {
         connect_state: connect,
@@ -393,11 +387,7 @@ async fn establish_chat_connection(
         connection_resources,
         route_provider,
         user_agent,
-        libsignal_net::chat::ws::Config {
-            local_idle_timeout,
-            remote_idle_timeout: remote_idle_disconnect_timeout,
-            initial_request_id: 0,
-        },
+        env.chat_ws_config,
         headers,
         auth_type,
     )
@@ -417,7 +407,7 @@ async fn establish_chat_connection(
         tokio::spawn(async move {
             match connect.await {
                 Ok(stream) => {
-                    let ip_type = stream.transport_info().ip_version;
+                    let ip_type = stream.transport_info().ip_version();
                     log::info!(
                         "{auth_type} shadow: Noise Direct connection succeeded over IP{ip_type}"
                     );

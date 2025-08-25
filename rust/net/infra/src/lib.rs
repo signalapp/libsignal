@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::num::NonZeroU16;
 use std::sync::Arc;
 
@@ -161,11 +161,17 @@ pub struct ServiceConnectionInfo {
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct TransportInfo {
-    /// The IP address version over which the connection is established.
-    pub ip_version: IpType,
+    pub local_addr: SocketAddr,
+    pub remote_addr: SocketAddr,
+}
 
-    /// The local port number for the connection.
-    pub local_port: u16,
+impl TransportInfo {
+    pub fn ip_version(&self) -> IpType {
+        match self.local_addr.ip() {
+            IpAddr::V4(_) => IpType::V4,
+            IpAddr::V6(_) => IpType::V6,
+        }
+    }
 }
 
 /// An established connection.

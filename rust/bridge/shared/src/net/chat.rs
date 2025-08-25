@@ -58,12 +58,12 @@ fn HttpRequest_add_header(
 
 #[bridge_fn(jni = false)]
 fn ChatConnectionInfo_local_port(connection_info: &ChatConnectionInfo) -> u16 {
-    connection_info.transport_info.local_port
+    connection_info.transport_info.local_addr.port()
 }
 
 #[bridge_fn(jni = false)]
 fn ChatConnectionInfo_ip_version(connection_info: &ChatConnectionInfo) -> u8 {
-    connection_info.transport_info.ip_version as u8
+    connection_info.transport_info.ip_version() as u8
 }
 
 #[bridge_fn(jni = false)]

@@ -7,6 +7,7 @@ use std::num::NonZeroU16;
 
 use attest::svr2::RaftConfig;
 use const_str::ip_addr;
+use libsignal_net::chat::RECOMMENDED_CHAT_WS_CONFIG;
 use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
 use libsignal_net::env::{ConnectionConfig, DomainConfig, Env, KeyTransConfig, SvrBEnv};
 use libsignal_net::infra::certs::RootCertificates;
@@ -81,7 +82,7 @@ pub(crate) fn localhost_test_env_with_ports(
             root_certificate_der,
         ),
         chat_noise_config: None,
-        chat_ws_config: RECOMMENDED_WS_CONFIG,
+        chat_ws_config: RECOMMENDED_CHAT_WS_CONFIG,
         cdsi: EnclaveEndpoint {
             domain_config: localhost_test_domain_config_with_port_and_cert(
                 ports.cdsi_port,

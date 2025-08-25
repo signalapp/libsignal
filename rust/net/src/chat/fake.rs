@@ -3,11 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 use std::fmt::Debug;
+use std::future::Future;
 use std::marker::PhantomData;
+use std::net::{IpAddr, Ipv4Addr};
 use std::time::Duration;
 
 use futures_util::{Sink, Stream};
-use libsignal_net_infra::{IpType, TransportInfo};
+use libsignal_net_infra::route::GetCurrentInterface;
+use libsignal_net_infra::TransportInfo;
 use pin_project::pin_project;
 use prost::Message;
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -62,13 +65,14 @@ impl ChatConnection {
         let connection_info = ConnectionInfo {
             route_info: RouteInfo::fake(),
             transport_info: TransportInfo {
-                ip_version: IpType::V4,
-                local_port: 0,
+                local_addr: (Ipv4Addr::UNSPECIFIED, 0).into(),
+                remote_addr: (Ipv4Addr::UNSPECIFIED, 0).into(),
             },
         };
         let log_tag = "fake chat".into();
         let config = crate::chat::ws::Config {
             local_idle_timeout: Duration::from_secs(86400),
+            post_request_interface_check_timeout: Duration::MAX,
             remote_idle_timeout: Duration::from_secs(86400),
             initial_request_id: 0,
         };
@@ -83,6 +87,8 @@ impl ChatConnection {
             inner: crate::chat::ws::Chat::new(
                 tokio_runtime,
                 local,
+                connection_info.transport_info.clone(),
+                FakeCurrentInterface,
                 headers,
                 config,
                 log_tag,
@@ -91,6 +97,18 @@ impl ChatConnection {
             connection_info,
         };
         (chat, remote)
+    }
+}
+
+struct FakeCurrentInterface;
+impl GetCurrentInterface for FakeCurrentInterface {
+    type Representation = IpAddr;
+
+    fn get_interface_for(
+        &self,
+        _target: IpAddr,
+    ) -> impl Future<Output = Self::Representation> + Send {
+        std::future::ready(Ipv4Addr::UNSPECIFIED.into())
     }
 }
 

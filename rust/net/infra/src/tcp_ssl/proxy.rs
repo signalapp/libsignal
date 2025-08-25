@@ -13,7 +13,7 @@ use crate::errors::TransportConnectError;
 use crate::route::{
     ConnectionProxyRoute, Connector, ConnectorExt as _, LoggingConnector, TlsRoute,
 };
-use crate::{Connection, IpType};
+use crate::Connection;
 
 pub mod https;
 pub mod socks;
@@ -109,9 +109,10 @@ impl<L: Connection, R: Connection> Connection for Either<L, R> {
 impl Connection for TcpStream {
     fn transport_info(&self) -> crate::TransportInfo {
         let local_addr = self.local_addr().expect("has local addr");
+        let remote_addr = self.peer_addr().expect("has remote addr");
         crate::TransportInfo {
-            ip_version: IpType::from(&local_addr.ip()),
-            local_port: local_addr.port(),
+            local_addr,
+            remote_addr,
         }
     }
 }

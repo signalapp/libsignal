@@ -171,6 +171,22 @@ impl GetCurrentInterface for DefaultGetCurrentInterface {
     }
 }
 
+/// Convenient for tests.
+#[cfg(any(test, feature = "test-util"))]
+impl<T, F: Fn(IpAddr) -> T> GetCurrentInterface for F
+where
+    T: Future<Output: Eq + Send + Sync> + Send,
+{
+    type Representation = T::Output;
+
+    fn get_interface_for(
+        &self,
+        target: IpAddr,
+    ) -> impl Future<Output = Self::Representation> + Send {
+        self(target)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::convert::Infallible;
@@ -184,21 +200,6 @@ mod test {
     use super::*;
     use crate::route::testutils::{ConnectFn, FakeConnectError, NeverConnect};
     use crate::route::{ConnectorExt as _, TcpRoute};
-
-    /// Convenient for tests.
-    impl<T, F: Fn(IpAddr) -> T> GetCurrentInterface for F
-    where
-        T: Future<Output: Eq + Send + Sync> + Send,
-    {
-        type Representation = T::Output;
-
-        fn get_interface_for(
-            &self,
-            target: IpAddr,
-        ) -> impl Future<Output = Self::Representation> + Send {
-            self(target)
-        }
-    }
 
     const ROUTE_CHANGE_INTERVAL: Duration = Duration::from_secs(10);
     const POST_CHANGE_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
