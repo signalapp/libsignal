@@ -1088,7 +1088,16 @@ impl<I: InnerConnection, GCI: GetCurrentInterface<Representation = IpAddr>> Conn
                     .get_interface_for(transport_info.remote_addr.ip())
                     .await;
 
-                if current_default_interface_ip != transport_info.local_addr.ip() {
+                if current_default_interface_ip == transport_info.local_addr.ip() {
+                    log::info!(
+                        concat!(
+                            "[{}] current connection has not responded to request ",
+                            "sent {:.2?} ago; continuing to wait...",
+                        ),
+                        log_tag,
+                        request_start.elapsed(),
+                    );
+                } else {
                     let elapsed = request_start.elapsed();
                     log::warn!(
                         concat!(
