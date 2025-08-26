@@ -127,7 +127,7 @@ impl ConnectionManager {
     pub fn new(
         environment: Environment,
         user_agent: &str,
-        remote_config: HashMap<String, String>,
+        remote_config: HashMap<String, Arc<str>>,
     ) -> Self {
         log::info!("Initializing connection manager for {}...", &environment);
         Self::new_from_static_environment(environment.env(), user_agent, remote_config)
@@ -136,7 +136,7 @@ impl ConnectionManager {
     pub fn new_from_static_environment(
         env: Env<'static>,
         user_agent: &str,
-        remote_config: HashMap<String, String>,
+        remote_config: HashMap<String, Arc<str>>,
     ) -> Self {
         let (network_change_event_tx, network_change_event_rx) = ::tokio::sync::watch::channel(());
         let user_agent = UserAgent::with_libsignal_version(user_agent);
@@ -222,7 +222,7 @@ impl ConnectionManager {
         *self.endpoints.lock().expect("not poisoned") = Arc::new(new_endpoints);
     }
 
-    pub fn set_remote_config(&self, remote_config: HashMap<String, String>) {
+    pub fn set_remote_config(&self, remote_config: HashMap<String, Arc<str>>) {
         *self.remote_config.lock().expect("not poisoned") = RemoteConfig::new(remote_config);
     }
 

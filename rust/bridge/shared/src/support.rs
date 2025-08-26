@@ -17,5 +17,5 @@ fn BridgedStringMap_new(initial_capacity: u32) -> BridgedStringMap {
 
 #[bridge_fn]
 fn BridgedStringMap_insert(map: &mut BridgedStringMap, key: String, value: String) {
-    map.insert(key, value);
+    map.insert(key, value.into());
 }

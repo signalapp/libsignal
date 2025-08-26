@@ -1,4 +1,10 @@
+//
+// Copyright 2025 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Signal's Remote Config provides an interface for clients to access feature flags and configuration values for
 /// progressive rollouts and emergency rollbacks.
@@ -30,10 +36,7 @@ use std::collections::HashMap;
 ///
 /// This struct provides methods to conveniently determine if a configuration is enabled and to access its associated value.
 pub struct RemoteConfig {
-    raw_map: HashMap<String, String>,
-}
-struct RemoteConfigKey {
-    raw_key: &'static str,
+    raw_map: HashMap<String, Arc<str>>,
 }
 
 #[derive(Copy, Clone)]
@@ -48,7 +51,7 @@ pub enum RemoteConfigKeys {
 
 pub enum RemoteConfigValue {
     Disabled,
-    Enabled(String),
+    Enabled(Arc<str>),
 }
 
 impl From<RemoteConfigKeys> for RemoteConfigKey {
@@ -70,7 +73,7 @@ impl From<RemoteConfigKeys> for RemoteConfigKey {
 }
 
 impl RemoteConfig {
-    pub fn new(raw_map: HashMap<String, String>) -> Self {
+    pub fn new(raw_map: HashMap<String, Arc<str>>) -> Self {
         Self { raw_map }
     }
 
@@ -78,7 +81,7 @@ impl RemoteConfig {
         let key: RemoteConfigKey = key.into();
         self.raw_map
             .get(key.raw_key)
-            .map(|s| RemoteConfigValue::Enabled(s.to_string()))
+            .map(|s| RemoteConfigValue::Enabled(s.clone()))
             .unwrap_or(RemoteConfigValue::Disabled)
     }
 

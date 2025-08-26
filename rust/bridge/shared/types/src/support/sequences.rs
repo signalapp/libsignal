@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
 
 use libsignal_protocol::{ServiceId, ServiceIdFixedWidthBinaryBytes};
 use rayon::iter::ParallelIterator as _;
@@ -72,20 +73,20 @@ impl<'a> rayon::iter::IntoParallelIterator for ServiceIdSequence<'a> {
 }
 
 #[derive(Default, Debug, PartialEq, Eq, Clone)]
-pub struct BridgedStringMap(HashMap<String, String>);
+pub struct BridgedStringMap(HashMap<String, Arc<str>>);
 
 impl BridgedStringMap {
     pub fn with_capacity(capacity: usize) -> Self {
         Self(HashMap::with_capacity(capacity))
     }
 
-    pub fn take(&mut self) -> HashMap<String, String> {
+    pub fn take(&mut self) -> HashMap<String, Arc<str>> {
         std::mem::take(&mut self.0)
     }
 }
 
 impl Deref for BridgedStringMap {
-    type Target = HashMap<String, String>;
+    type Target = HashMap<String, Arc<str>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -96,7 +97,7 @@ impl DerefMut for BridgedStringMap {
         &mut self.0
     }
 }
-impl From<BridgedStringMap> for HashMap<String, String> {
+impl From<BridgedStringMap> for HashMap<String, Arc<str>> {
     fn from(value: BridgedStringMap) -> Self {
         value.0
     }
