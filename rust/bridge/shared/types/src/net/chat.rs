@@ -35,7 +35,7 @@ use libsignal_net_chat::api::Unauth;
 use libsignal_protocol::Timestamp;
 use static_assertions::assert_impl_all;
 
-use crate::net::remote_config::RemoteConfigKeys;
+use crate::net::remote_config::RemoteConfigKey;
 use crate::net::ConnectionManager;
 use crate::*;
 
@@ -161,7 +161,7 @@ impl AuthenticatedChatConnection {
 
 fn maybe_shadow<'a>(
     connection_manager: &'a ConnectionManager,
-    remote_config_key: RemoteConfigKeys,
+    remote_config_key: RemoteConfigKey,
     languages: &LanguageList,
 ) -> Option<NoiseDirectConnectShadow<'a>> {
     let ConnectionManager {
@@ -337,11 +337,11 @@ async fn establish_chat_connection(
         let (languages, remote_config) = match headers {
             chat::ChatHeaders::Auth(auth) => (
                 &auth.languages,
-                RemoteConfigKeys::ShadowAuthChatWithNoiseDirect,
+                RemoteConfigKey::ShadowAuthChatWithNoiseDirect,
             ),
             chat::ChatHeaders::Unauth(unauth) => (
                 &unauth.languages,
-                RemoteConfigKeys::ShadowUnauthChatWithNoiseDirect,
+                RemoteConfigKey::ShadowUnauthChatWithNoiseDirect,
             ),
         };
 

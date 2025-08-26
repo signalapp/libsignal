@@ -22,7 +22,7 @@ use libsignal_net::infra::route::{
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
 use libsignal_net::infra::{AsHttpHeader as _, EnableDomainFronting};
 
-use self::remote_config::{RemoteConfig, RemoteConfigKeys};
+use self::remote_config::{RemoteConfig, RemoteConfigKey};
 use crate::*;
 
 pub mod cdsi;
@@ -146,7 +146,7 @@ impl ConnectionManager {
         let transport_connector =
             std::sync::Mutex::new(TcpSslConnector::new_direct(dns_resolver.clone()));
         let remote_config = RemoteConfig::new(remote_config);
-        let enforce_minimum_tls = if remote_config.is_enabled(RemoteConfigKeys::EnforceMinimumTls) {
+        let enforce_minimum_tls = if remote_config.is_enabled(RemoteConfigKey::EnforceMinimumTls) {
             EnforceMinimumTls::Yes
         } else {
             EnforceMinimumTls::No
@@ -212,7 +212,7 @@ impl ConnectionManager {
             .remote_config
             .lock()
             .expect("not poisoned")
-            .is_enabled(RemoteConfigKeys::EnforceMinimumTls)
+            .is_enabled(RemoteConfigKey::EnforceMinimumTls)
         {
             EnforceMinimumTls::Yes
         } else {

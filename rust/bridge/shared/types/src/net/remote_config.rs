@@ -40,8 +40,10 @@ pub struct RemoteConfig {
 }
 
 #[derive(Copy, Clone)]
-pub enum RemoteConfigKeys {
+pub enum RemoteConfigKey {
     /// Whether or not to enforce the hardcoded minimum TLS versions for Chat and CDSI endpoints.
+    // TODO: Remove after enforcement has been enabled in production long enough without reported
+    // issues.
     EnforceMinimumTls,
     /// If enabled, tries to connect via Noise Direct after establishing an authenticated chat connection.
     ShadowAuthChatWithNoiseDirect,
@@ -54,21 +56,19 @@ pub enum RemoteConfigValue {
     Enabled(Arc<str>),
 }
 
-impl From<RemoteConfigKeys> for RemoteConfigKey {
-    fn from(key: RemoteConfigKeys) -> Self {
-        match key {
-            // TODO: Remove after enforcement has been enabled in production long enough
-            //   without reported issues.
-            RemoteConfigKeys::EnforceMinimumTls => RemoteConfigKey {
-                raw_key: "enforceMinimumTls",
-            },
-            RemoteConfigKeys::ShadowAuthChatWithNoiseDirect => RemoteConfigKey {
-                raw_key: "shadowAuthChatWithNoise",
-            },
-            RemoteConfigKeys::ShadowUnauthChatWithNoiseDirect => RemoteConfigKey {
-                raw_key: "shadowUnauthChatWithNoise",
-            },
+impl RemoteConfigKey {
+    fn raw(&self) -> &'static str {
+        match self {
+            Self::EnforceMinimumTls => "enforceMinimumTls",
+            Self::ShadowAuthChatWithNoiseDirect => "shadowAuthChatWithNoise",
+            Self::ShadowUnauthChatWithNoiseDirect => "shadowUnauthChatWithNoise",
         }
+    }
+}
+
+impl std::fmt::Display for RemoteConfigKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.raw())
     }
 }
 
@@ -77,15 +77,14 @@ impl RemoteConfig {
         Self { raw_map }
     }
 
-    pub fn get(&self, key: RemoteConfigKeys) -> RemoteConfigValue {
-        let key: RemoteConfigKey = key.into();
+    pub fn get(&self, key: RemoteConfigKey) -> RemoteConfigValue {
         self.raw_map
-            .get(key.raw_key)
+            .get(key.raw())
             .map(|s| RemoteConfigValue::Enabled(s.clone()))
             .unwrap_or(RemoteConfigValue::Disabled)
     }
 
-    pub fn is_enabled(&self, key: RemoteConfigKeys) -> bool {
+    pub fn is_enabled(&self, key: RemoteConfigKey) -> bool {
         match self.get(key) {
             RemoteConfigValue::Disabled => false,
             RemoteConfigValue::Enabled(_) => true,
