@@ -355,6 +355,7 @@ async fn establish_chat_connection(
         user_agent,
         endpoints,
         network_change_event_tx,
+        remote_config,
         ..
     } = connection_manager;
 
@@ -383,11 +384,31 @@ async fn establish_chat_connection(
 
     log::info!("connecting {auth_type} chat");
 
+    let mut chat_ws_config = env.chat_ws_config;
+    if let Some(timeout_millis) = remote_config
+        .lock()
+        .expect("unpoisoned")
+        .get(RemoteConfigKey::ChatRequestConnectionCheckTimeoutMilliseconds)
+        .as_option()
+        .and_then(|v| match u64::from_str(v) {
+            Ok(v) => Some(v),
+            Err(e) => {
+                log::error!(
+                    "bad {}: {v:?} ({e})",
+                    RemoteConfigKey::ChatRequestConnectionCheckTimeoutMilliseconds
+                );
+                None
+            }
+        })
+    {
+        chat_ws_config.post_request_interface_check_timeout = Duration::from_millis(timeout_millis);
+    }
+
     let connection = ChatConnection::start_connect_with(
         connection_resources,
         route_provider,
         user_agent,
-        env.chat_ws_config,
+        chat_ws_config,
         headers,
         auth_type,
     )

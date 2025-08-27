@@ -41,6 +41,9 @@ pub struct RemoteConfig {
 
 #[derive(Copy, Clone)]
 pub enum RemoteConfigKey {
+    /// How long to wait for a response to a chat request before checking whether the connection is
+    /// still active.
+    ChatRequestConnectionCheckTimeoutMilliseconds,
     /// Whether or not to enforce the hardcoded minimum TLS versions for Chat and CDSI endpoints.
     // TODO: Remove after enforcement has been enabled in production long enough without reported
     // issues.
@@ -59,6 +62,9 @@ pub enum RemoteConfigValue {
 impl RemoteConfigKey {
     fn raw(&self) -> &'static str {
         match self {
+            Self::ChatRequestConnectionCheckTimeoutMilliseconds => {
+                "chatRequestConnectionCheckTimeoutMillis"
+            }
             Self::EnforceMinimumTls => "enforceMinimumTls",
             Self::ShadowAuthChatWithNoiseDirect => "shadowAuthChatWithNoise",
             Self::ShadowUnauthChatWithNoiseDirect => "shadowUnauthChatWithNoise",
@@ -88,6 +94,15 @@ impl RemoteConfig {
         match self.get(key) {
             RemoteConfigValue::Disabled => false,
             RemoteConfigValue::Enabled(_) => true,
+        }
+    }
+}
+
+impl RemoteConfigValue {
+    pub fn as_option(&self) -> Option<&'_ str> {
+        match self {
+            RemoteConfigValue::Disabled => None,
+            RemoteConfigValue::Enabled(value) => Some(value),
         }
     }
 }
