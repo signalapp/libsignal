@@ -254,14 +254,31 @@ public class SenderCertificate: NativeHandleOwner<SignalMutPointerSenderCertific
         }
     }
 
-    public func validate(trustRoot: PublicKey, time: UInt64) throws -> Bool {
-        var result = false
-        try withAllBorrowed(self, trustRoot) { certificateHandle, trustRootHandle in
-            try checkError(
-                signal_sender_certificate_validate(&result, certificateHandle.const(), trustRootHandle.const(), time)
-            )
+    /// Validates `self` against the given trust root at the given current time.
+    ///
+    /// See ``validate(trustRoots:time:)`` for more information.
+    public func validate(trustRoot: PublicKey, time: UInt64) -> Bool {
+        return validate(trustRoots: [trustRoot], time: time)
+    }
+
+    /// Validates `self` against the given trust roots at the given current time.
+    ///
+    /// Checks the certificate against each key in `trustRoots` in constant time (that is, no result
+    /// is produced until every key is checked), making sure **one** of them has signed its embedded
+    /// server certificate. The `time` parameter is compared numerically against ``expiration``, and
+    /// is not required to use any specific units, but Signal uses milliseconds since 1970.
+    public func validate(trustRoots: [PublicKey], time: UInt64) -> Bool {
+        // Use withExtendedLifetime instead of withNativeHandle for the arrays of wrapper objects,
+        // which aren't compatible with withNativeHandle's simple lexical scoping.
+        return withExtendedLifetime(trustRoots) {
+            let trustRootHandles = trustRoots.map { SignalConstPointerPublicKey(raw: $0.unsafeNativeHandle) }
+            return
+                (try? withAllBorrowed(self, .slice(trustRootHandles)) { certificateHandle, trustRootHandles in
+                    try invokeFnReturningBool {
+                        signal_sender_certificate_validate($0, certificateHandle.const(), trustRootHandles, time)
+                    }
+                }) ?? false
         }
-        return result
     }
 }
 

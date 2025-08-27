@@ -162,6 +162,22 @@ describe('SealedSender', () => {
     assert.deepEqual(bPlaintext.senderAci()?.getServiceIdString(), aUuid);
     assert.deepEqual(bPlaintext.deviceId(), aDeviceId);
 
+    const randomPublicKey = () =>
+      SignalClient.PrivateKey.generate().getPublicKey();
+    assert.isTrue(
+      senderCert.validateWithTrustRoots(
+        [randomPublicKey(), trustRoot.getPublicKey(), randomPublicKey()],
+        31335
+      )
+    );
+
+    assert.isFalse(
+      senderCert.validateWithTrustRoots(
+        [randomPublicKey(), randomPublicKey()],
+        31335
+      )
+    );
+
     const innerMessage = await SignalClient.signalEncrypt(
       aPlaintext,
       bAddress,

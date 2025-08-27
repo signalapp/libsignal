@@ -1324,6 +1324,11 @@ typedef struct {
 } SignalConstPointerServerCertificate;
 
 typedef struct {
+  const SignalConstPointerPublicKey *base;
+  size_t length;
+} SignalBorrowedSliceOfConstPointerPublicKey;
+
+typedef struct {
   SignalSenderKeyDistributionMessage *raw;
 } SignalMutPointerSenderKeyDistributionMessage;
 
@@ -2284,7 +2289,7 @@ SignalFfiError *signal_sender_certificate_get_signature(SignalOwnedBuffer *out, 
 
 SignalFfiError *signal_sender_certificate_new(SignalMutPointerSenderCertificate *out, const char *sender_uuid, const char *sender_e164, uint32_t sender_device_id, SignalConstPointerPublicKey sender_key, uint64_t expiration, SignalConstPointerServerCertificate signer_cert, SignalConstPointerPrivateKey signer_key);
 
-SignalFfiError *signal_sender_certificate_validate(bool *out, SignalConstPointerSenderCertificate cert, SignalConstPointerPublicKey key, uint64_t time);
+SignalFfiError *signal_sender_certificate_validate(bool *out, SignalConstPointerSenderCertificate cert, SignalBorrowedSliceOfConstPointerPublicKey trust_roots, uint64_t time);
 
 SignalFfiError *signal_sender_key_distribution_message_clone(SignalMutPointerSenderKeyDistributionMessage *new_obj, SignalConstPointerSenderKeyDistributionMessage obj);
 

@@ -735,10 +735,10 @@ bridge_get!(SenderCertificate::key -> PublicKey);
 #[bridge_fn]
 fn SenderCertificate_Validate(
     cert: &SenderCertificate,
-    key: &PublicKey,
+    trust_roots: &[&PublicKey],
     time: Timestamp,
 ) -> Result<bool> {
-    cert.validate(key, time)
+    cert.validate_with_trust_roots(trust_roots, time)
 }
 
 #[bridge_fn]

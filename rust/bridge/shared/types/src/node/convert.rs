@@ -1519,6 +1519,46 @@ impl<T: Send + Sync + 'static> Finalize for PersistentBorrowedJsBoxedBridgeHandl
     }
 }
 
+/// Synchronous borrow of `&'a T` from a `JsArray` of wrappers with `_nativeHandle: JsBox<T>`.
+///
+/// Modeled after `PersistentArrayOfBorrowedJsBoxedBridgeHandles` but for sync contexts.
+///
+/// Holds the array `Handle<'a, JsArray>` so wrappers (and their `JsBox<T>`) remain reachable
+/// for the lifetime `'a` of the current Neon handle scope.
+pub struct ArrayOfBorrowedJsBoxedBridgeHandles<'a, T> {
+    // Explicitly show the ownership relationship of the parent array for lifetime of the struct.
+    _owner: Handle<'a, JsArray>,
+    value_refs: Vec<&'a T>,
+}
+
+impl<'a, T: BridgeHandle<Strategy = Immutable<T>>> ArrayOfBorrowedJsBoxedBridgeHandles<'a, T> {
+    /// Creates a new array of borrowed handles from a JavaScript array.
+    ///
+    /// The array must contain objects with a `_nativeHandle` property pointing to a boxed Rust value.
+    pub(crate) fn new(cx: &mut impl Context<'a>, array: Handle<'a, JsArray>) -> NeonResult<Self> {
+        let len = array.len(cx);
+        let value_refs = (0..len)
+            .map(|i| {
+                let element: Handle<JsObject> = array.get(cx, i)?;
+                let value_box: Handle<DefaultJsBox<T>> = element.get(cx, NATIVE_HANDLE_PROPERTY)?;
+                // Use as_inner() to get a reference with lifetime 'a (the handle scope)
+                // This is safe because the array handle keeps everything alive for 'a, and the handle is
+                // immutable so we should not have any aliasing issues.
+                let value_ref: &'a T = value_box.as_inner();
+                Ok(value_ref)
+            })
+            .collect::<NeonResult<Vec<&'a T>>>()?;
+        Ok(Self {
+            _owner: array,
+            value_refs,
+        })
+    }
+
+    pub(crate) fn value_refs(&self) -> &[&T] {
+        &self.value_refs
+    }
+}
+
 /// Safely persists an array of boxed Rust values by treating the array as a GC root.
 ///
 /// The array must contain wrapper objects that refer to an underlying `JsBox<T>`.
@@ -1586,6 +1626,24 @@ impl<'storage, T: BridgeHandle<Strategy = Immutable<T>> + Sync> AsyncArgTypeInfo
         PersistentArrayOfBorrowedJsBoxedBridgeHandles::new(cx, foreign)
     }
     fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
+        stored.value_refs()
+    }
+}
+
+impl<'storage, 'context: 'storage, T: BridgeHandle<Strategy = Immutable<T>> + Sync>
+    ArgTypeInfo<'storage, 'context> for &'storage [&'storage T]
+{
+    type ArgType = JsArray;
+    type StoredType = ArrayOfBorrowedJsBoxedBridgeHandles<'context, T>;
+
+    fn borrow(
+        cx: &mut FunctionContext<'context>,
+        foreign: Handle<'context, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        ArrayOfBorrowedJsBoxedBridgeHandles::new(cx, foreign)
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.value_refs()
     }
 }

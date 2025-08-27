@@ -236,6 +236,12 @@ extension SignalBorrowedSliceOfConstPointerProtocolAddress: FfiBorrowedSlice {
     }
 }
 
+extension SignalBorrowedSliceOfConstPointerPublicKey: FfiBorrowedSlice {
+    init(_ buffer: UnsafeBufferPointer<SignalConstPointerPublicKey>) {
+        self.init(base: buffer.baseAddress, length: buffer.count)
+    }
+}
+
 internal struct ElementsWrapper<FfiType: FfiBorrowedSlice>: BorrowForFfi {
     var inner: [FfiType.Element]
 

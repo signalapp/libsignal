@@ -287,9 +287,23 @@ class SessionTests: TestCaseBase {
             context: NullContext()
         )
         XCTAssertEqual(usmc.messageType, .preKey)
-        XCTAssertTrue(try! usmc.senderCertificate.validate(trustRoot: trust_root.publicKey, time: 31335))
+        XCTAssertTrue(usmc.senderCertificate.validate(trustRoot: trust_root.publicKey, time: 31335))
         XCTAssertEqual(usmc.senderCertificate.sender, sender_addr)
         XCTAssertEqual(usmc.senderCertificate.senderAci, alice_address.serviceId)
+
+        let randomPublicKey = { IdentityKeyPair.generate().publicKey }
+        XCTAssertTrue(
+            usmc.senderCertificate.validate(
+                trustRoots: [randomPublicKey(), trust_root.publicKey, randomPublicKey()],
+                time: 31335
+            )
+        )
+        XCTAssertFalse(
+            usmc.senderCertificate.validate(
+                trustRoots: [randomPublicKey(), randomPublicKey()],
+                time: 31335
+            )
+        )
 
         let plaintext = try signalDecryptPreKey(
             message: try! PreKeySignalMessage(bytes: usmc.contents),

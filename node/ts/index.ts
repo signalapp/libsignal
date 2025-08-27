@@ -823,8 +823,30 @@ export class SenderCertificate {
   signature(): Uint8Array {
     return Native.SenderCertificate_GetSignature(this);
   }
+
+  /**
+   * Validates `this` against the given trust root at the given current time.
+   *
+   * @see validateWithTrustRoots
+   */
   validate(trustRoot: PublicKey, time: number): boolean {
-    return Native.SenderCertificate_Validate(this, trustRoot, time);
+    return Native.SenderCertificate_Validate(this, [trustRoot], time);
+  }
+
+  /**
+   * Validates `this` against the given trust roots at the given current time.
+   *
+   * Checks the certificate against each key in `trustRoots` in constant time (that is, no result
+   * is produced until every key is checked), making sure **one** of them has signed its embedded
+   * server certificate. The `time` parameter is compared numerically against ``expiration``, and
+   * is not required to use any specific units, but Signal uses milliseconds since 1970.
+   */
+  validateWithTrustRoots(trustRoots: PublicKey[], time: number): boolean {
+    try {
+      return Native.SenderCertificate_Validate(this, trustRoots, time);
+    } catch (_error) {
+      return false;
+    }
   }
 }
 

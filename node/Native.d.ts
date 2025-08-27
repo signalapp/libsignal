@@ -516,7 +516,7 @@ export function SenderCertificate_GetSerialized(obj: Wrapper<SenderCertificate>)
 export function SenderCertificate_GetServerCertificate(cert: Wrapper<SenderCertificate>): ServerCertificate;
 export function SenderCertificate_GetSignature(obj: Wrapper<SenderCertificate>): Uint8Array;
 export function SenderCertificate_New(senderUuid: string, senderE164: string | null, senderDeviceId: number, senderKey: Wrapper<PublicKey>, expiration: Timestamp, signerCert: Wrapper<ServerCertificate>, signerKey: Wrapper<PrivateKey>): SenderCertificate;
-export function SenderCertificate_Validate(cert: Wrapper<SenderCertificate>, key: Wrapper<PublicKey>, time: Timestamp): boolean;
+export function SenderCertificate_Validate(cert: Wrapper<SenderCertificate>, trustRoots: Wrapper<PublicKey>[], time: Timestamp): boolean;
 export function SenderKeyDistributionMessage_Create(sender: Wrapper<ProtocolAddress>, distributionId: Uuid, store: SenderKeyStore): Promise<SenderKeyDistributionMessage>;
 export function SenderKeyDistributionMessage_Deserialize(data: Uint8Array): SenderKeyDistributionMessage;
 export function SenderKeyDistributionMessage_GetChainId(obj: Wrapper<SenderKeyDistributionMessage>): number;

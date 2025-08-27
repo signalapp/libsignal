@@ -13,7 +13,7 @@ use itertools::Itertools;
 use prost::Message;
 use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
 use rand::{CryptoRng, Rng, TryRngCore as _};
-use subtle::ConstantTimeEq;
+use subtle::{Choice, ConstantTimeEq};
 use zerocopy::{FromBytes, Immutable, KnownLayout};
 
 use crate::{
@@ -286,6 +286,21 @@ impl SenderCertificate {
         }
 
         Ok(true)
+    }
+
+    pub fn validate_with_trust_roots(
+        &self,
+        trust_roots: &[&PublicKey],
+        validation_time: Timestamp,
+    ) -> Result<bool> {
+        let mut any_valid = Choice::from(0u8);
+
+        for root in trust_roots {
+            let ok = self.validate(root, validation_time)?;
+            any_valid |= Choice::from(u8::from(ok));
+        }
+
+        Ok(bool::from(any_valid))
     }
 
     pub fn signer(&self) -> Result<&ServerCertificate> {

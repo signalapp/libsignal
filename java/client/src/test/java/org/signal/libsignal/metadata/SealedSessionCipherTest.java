@@ -123,6 +123,23 @@ public class SealedSessionCipherTest extends TestCase {
         plaintext.getSenderAci().toServiceIdString(), "9d0652a3-dcc3-4d11-975f-74d61598733f");
     assertEquals(plaintext.getSenderE164().get(), "+14151111111");
     assertEquals(plaintext.getDeviceId(), 1);
+
+    ECPublicKey randomPublicKey1 = ECKeyPair.generate().getPublicKey();
+    ECPublicKey randomPublicKey2 = ECKeyPair.generate().getPublicKey();
+    ECPublicKey randomPublicKey3 = ECKeyPair.generate().getPublicKey();
+    CertificateValidator validatorWithCorrectRoot =
+        new CertificateValidator(
+            Arrays.asList(randomPublicKey1, trustRoot.getPublicKey(), randomPublicKey2));
+    validatorWithCorrectRoot.validate(senderCertificate, 31335);
+
+    CertificateValidator validatorWithoutCorrectRoot =
+        new CertificateValidator(Arrays.asList(randomPublicKey1, randomPublicKey3));
+    try {
+      validatorWithoutCorrectRoot.validate(senderCertificate, 31335);
+      fail("Should have thrown InvalidCertificateException");
+    } catch (InvalidCertificateException e) {
+      // Expected
+    }
   }
 
   public void testEncryptDecryptUntrusted() throws Exception {
