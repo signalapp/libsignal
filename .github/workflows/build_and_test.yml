@@ -407,6 +407,14 @@ jobs:
 
     timeout-minutes: 45
 
+    env:
+      # The default Xcode verison for the macOS 15 runner is Xcode 16.4, which
+      # doesn't work with cloudflare/boring v4.17.0. Use an older Xcode version
+      # to work around that. Once our boring fork is updated to a version that
+      # includes https://github.com/cloudflare/boring/pull/369 we can remove
+      # this.
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app
+
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
@@ -417,13 +425,6 @@ jobs:
       - name: Check formatting
         run: swift format --in-place --parallel --recursive . && git diff --exit-code .
         working-directory: swift
-        env:
-          # This is only here because we're on a macOS 15 runner, which defaults to Xcode 16.0,
-          # which contains a swift-format that fails on some of our Swift 6.0 code.
-          # Once we're on a later runner, this should be removed.
-          # We should know that immediately if this stays at 16.2,
-          # because the new runners usually only keep one previous Xcode major version.
-          DEVELOPER_DIR: /Applications/Xcode_16.2.app
 
       - name: Run lint
         run: swiftlint lint --strict --reporter github-actions-logging
