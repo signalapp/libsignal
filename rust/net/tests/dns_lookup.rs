@@ -6,6 +6,7 @@
 //! Non-hermetic tests to make sure DNS lookups work.
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::time::Duration;
 
 use const_str::ip_addr;
 use itertools::Itertools;
@@ -15,6 +16,7 @@ use libsignal_net_infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest, SystemDn
 use libsignal_net_infra::dns::dns_transport_udp::UdpTransportConnectorFactory;
 use libsignal_net_infra::route::UdpRoute;
 use libsignal_net_infra::testutil::no_network_change_events;
+use libsignal_net_infra::timeouts::DNS_LATER_RESPONSE_GRACE_PERIOD;
 use nonzero_ext::nonzero;
 
 macro_rules! skip_unless_nonhermetic {
@@ -55,6 +57,7 @@ async fn udp_dns_lookup() {
         }],
         UdpTransportConnectorFactory,
         &no_network_change_events(),
+        DNS_LATER_RESPONSE_GRACE_PERIOD,
     );
 
     let result = dns
@@ -74,7 +77,12 @@ async fn udp_dns_lookup() {
 #[tokio::test]
 async fn dns_over_https_lookup() {
     skip_unless_nonhermetic!();
-    let dns = build_custom_resolver_cloudflare_doh(&no_network_change_events());
+    let dns = build_custom_resolver_cloudflare_doh(
+        &no_network_change_events(),
+        // Don't time out the second request early since we're asserting on the
+        // presence of both responses.
+        Duration::MAX,
+    );
 
     let result = dns
         .resolve(DnsLookupRequest {

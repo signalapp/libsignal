@@ -20,7 +20,7 @@ pub const DOH_FALLBACK_LOOKUP_TIMEOUT: Duration = Duration::from_secs(10);
 /// If during a DNS resolution we've sent multiple queries (one per IP type)
 /// and one of them produced a result, we'll wait this time interval
 /// to let the other query complete before proceeding
-pub const DNS_RESOLUTION_DELAY: Duration = Duration::from_millis(50);
+pub const DNS_LATER_RESPONSE_GRACE_PERIOD: Duration = Duration::from_millis(100);
 /// How long before the DNS resolver should give up on a query entirely.
 ///
 /// When making a DNS query, a caller is given a result future that it may or may not

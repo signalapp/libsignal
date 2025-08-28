@@ -25,7 +25,9 @@ use crate::host::Host;
 use crate::route::{
     HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment, DEFAULT_HTTPS_PORT,
 };
-use crate::timeouts::{DNS_SYSTEM_LOOKUP_TIMEOUT, DOH_FALLBACK_LOOKUP_TIMEOUT};
+use crate::timeouts::{
+    DNS_LATER_RESPONSE_GRACE_PERIOD, DNS_SYSTEM_LOOKUP_TIMEOUT, DOH_FALLBACK_LOOKUP_TIMEOUT,
+};
 use crate::utils::oneshot_broadcast::{self, Receiver};
 use crate::utils::NetworkChangeEvent;
 use crate::{utils, Alpn};
@@ -94,6 +96,7 @@ struct LookupOption {
 
 pub fn build_custom_resolver_cloudflare_doh(
     network_change_event: &NetworkChangeEvent,
+    secondary_request_grace_period: Duration,
 ) -> CustomDnsResolver<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>, DohTransportConnectorFactory> {
     let (v4, v6) = CLOUDFLARE_IPS;
     let targets = [IpAddr::V6(v6), IpAddr::V4(v4)].map(|ip_addr| {
@@ -122,6 +125,7 @@ pub fn build_custom_resolver_cloudflare_doh(
         targets.into(),
         DohTransportConnectorFactory,
         network_change_event,
+        secondary_request_grace_period,
     )
 }
 
@@ -167,7 +171,10 @@ impl DnsResolver {
         static_map: HashMap<&'static str, LookupResult>,
         network_change_event: &NetworkChangeEvent,
     ) -> Self {
-        let cloudflare_doh = Box::new(build_custom_resolver_cloudflare_doh(network_change_event));
+        let cloudflare_doh = Box::new(build_custom_resolver_cloudflare_doh(
+            network_change_event,
+            DNS_LATER_RESPONSE_GRACE_PERIOD,
+        ));
 
         let known_good_results = Arc::new(
             static_map

@@ -727,6 +727,7 @@ pub mod constants {
 #[cfg(test)]
 mod test {
     use std::collections::HashSet;
+    use std::time::Duration;
 
     use itertools::Itertools as _;
     use libsignal_net_infra::dns::build_custom_resolver_cloudflare_doh;
@@ -863,7 +864,13 @@ mod test {
         // The point of this test isn't to test the resolver, but to use it to test something else.
         // So, I directly access the raw CustomDnsResolver::resolve method.
         // Other usages should use the higher level DnsResolver::lookup instead.
-        let resolver = build_custom_resolver_cloudflare_doh(&no_network_change_events());
+        let resolver = build_custom_resolver_cloudflare_doh(
+            &no_network_change_events(),
+            // We want to check responses for IPv4 and IPv6 so don't time out if
+            // one of them takes too long. We'll still be subject to the overall
+            // lookup timeout regardless.
+            Duration::MAX,
+        );
 
         let (hostname, static_hardcoded_ips) = config.static_fallback();
 

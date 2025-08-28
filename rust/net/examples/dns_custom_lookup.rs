@@ -18,6 +18,7 @@ use libsignal_net_infra::route::{
     HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment, UdpRoute,
 };
 use libsignal_net_infra::testutil::no_network_change_events;
+use libsignal_net_infra::timeouts::DNS_LATER_RESPONSE_GRACE_PERIOD;
 use libsignal_net_infra::Alpn;
 use nonzero_ext::nonzero;
 use tokio::time::Instant;
@@ -59,6 +60,7 @@ async fn main() {
                 vec![ns_address],
                 UdpTransportConnectorFactory,
                 &no_network_change_events(),
+                DNS_LATER_RESPONSE_GRACE_PERIOD,
             ))
         }
         Transport::Doh => {
@@ -86,6 +88,7 @@ async fn main() {
                 vec![target],
                 DohTransportConnectorFactory,
                 &no_network_change_events(),
+                DNS_LATER_RESPONSE_GRACE_PERIOD,
             ))
         }
     };
