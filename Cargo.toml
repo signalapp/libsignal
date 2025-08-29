@@ -40,7 +40,7 @@ resolver = "2" # so that our dev-dependency features don't leak into products
 version = "0.79.1"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
-rust-version = "1.83.0"
+rust-version = "1.85.0"
 
 [workspace.lints.clippy]
 # Prefer TryFrom between integers unless truncation is desired.
