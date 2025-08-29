@@ -271,7 +271,6 @@ dependencies = [
  "log",
  "prost",
  "prost-build",
- "rand_core 0.6.4",
  "rand_core 0.9.3",
  "serde",
  "serde_json",
@@ -2402,7 +2401,6 @@ dependencies = [
  "protobuf",
  "protobuf-codegen",
  "rand 0.9.0",
- "rand_core 0.6.4",
  "rand_core 0.9.3",
  "serde",
  "sha2",
@@ -4747,15 +4745,16 @@ dependencies = [
 
 [[package]]
 name = "snow"
-version = "0.9.6"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "850948bee068e713b8ab860fe1adc4d109676ab4c3b621fd8147f06b261f2f85"
+checksum = "599b506ccc4aff8cf7844bc42cf783009a434c1e26c964432560fb6d6ad02d82"
 dependencies = [
  "aes-gcm",
  "blake2",
  "chacha20poly1305",
  "curve25519-dalek",
- "rand_core 0.6.4",
+ "getrandom 0.3.2",
+ "ring",
  "rustc_version",
  "sha2",
  "subtle",

@@ -365,7 +365,9 @@ mod test {
 
         let server_state = server_builder
             .local_private_key(&server_keypair.private)
+            .unwrap()
             .remote_public_key(&client_keypair.public)
+            .unwrap()
             .build_responder()
             .unwrap();
 
@@ -425,6 +427,7 @@ mod test {
         let server_keypair = server_builder.generate_keypair().unwrap();
         let server_state = server_builder
             .local_private_key(&server_keypair.private)
+            .unwrap()
             .build_responder()
             .unwrap();
 
@@ -470,6 +473,7 @@ mod test {
         let server_keypair = server_builder.generate_keypair().unwrap();
         let server_state = server_builder
             .local_private_key(&server_keypair.private)
+            .unwrap()
             .build_responder()
             .unwrap();
 

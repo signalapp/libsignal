@@ -29,7 +29,6 @@ libcrux-ml-kem = { workspace = true, features = ["mlkem1024"] }
 log = { workspace = true }
 prost = { workspace = true }
 rand_core = { workspace = true, features = ["os_rng"] }
-rand_core_06 = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["raw_value"] }
 sha2 = { workspace = true }
@@ -43,7 +42,7 @@ zerocopy = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
-snow = { workspace = true, features = ["default-resolver"] }
+snow = { workspace = true, default-features = true }
 
 [build-dependencies]
 prost-build = { workspace = true }

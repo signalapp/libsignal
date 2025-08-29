@@ -10,7 +10,7 @@ license.workspace = true
 workspace = true
 
 [features]
-test-util = ["dep:warp", "snow/default-resolver"]
+test-util = ["dep:warp", "snow/default"]
 dev-util = []
 
 [dependencies]
@@ -46,7 +46,7 @@ rand_core = { workspace = true }
 rangemap = { workspace = true }
 rustls = { workspace = true, features = ["ring", "std", "tls12"] }
 rustls-platform-verifier = { workspace = true }
-snow = { workspace = true }
+snow = { workspace = true, default-features = false }
 static_assertions = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
@@ -72,7 +72,7 @@ hyper = { workspace = true, features = ["http1", "server"] }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rcgen = { workspace = true }
-snow = { workspace = true, features = ["default-resolver"] }
+snow = { workspace = true, default-features = true }
 socks5-server = { workspace = true }
 test-case = { workspace = true }
 test-log = { workspace = true }

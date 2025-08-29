@@ -111,6 +111,7 @@ mod test {
         fn into_handshake_state(self) -> snow::HandshakeState {
             snow::Builder::new(Self::NOISE_PATTERN.parse().unwrap())
                 .remote_public_key(&self.server_public_key)
+                .unwrap()
                 .build_initiator()
                 .unwrap()
         }
@@ -130,6 +131,7 @@ mod test {
         let server_keypair = server_builder.generate_keypair().unwrap();
         let mut server_state = server_builder
             .local_private_key(&server_keypair.private)
+            .unwrap()
             .build_responder()
             .unwrap();
 
@@ -193,6 +195,7 @@ mod test {
         let server_keypair = server_builder.generate_keypair().unwrap();
         let mut server_state = server_builder
             .local_private_key(&server_keypair.private)
+            .unwrap()
             .build_responder()
             .unwrap();
 

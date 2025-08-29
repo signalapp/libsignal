@@ -542,6 +542,7 @@ pub mod testutil {
         let mut server_hs =
             snow::Builder::new(attest::client_connection::NOISE_PATTERN.parse().unwrap())
                 .local_private_key(private_key.as_ref())
+                .unwrap()
                 .build_responder()
                 .unwrap();
 

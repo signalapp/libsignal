@@ -174,7 +174,6 @@ quote = "1.0.38"
 rand = "0.9"
 rand_chacha = "0.9"
 rand_core = "0.9"
-rand_core_06 = { version = "0.6.4", package = "rand_core" }
 rangemap = "1.5.1"
 rayon = "1.8.0"
 rcgen = "0.13.0"
@@ -186,7 +185,7 @@ serde_json = "1.0.45"
 serde_with = "3.1.0"
 sha1 = "0.10"
 sha2 = "0.10"
-snow = { version = "0.9.6", default-features = false }
+snow = { version = "0.10", default-features = false }
 socks5-server = "0.10.1"
 static_assertions = "1.1"
 strum = "0.27.0"

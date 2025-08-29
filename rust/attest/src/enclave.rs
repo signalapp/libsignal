@@ -111,6 +111,7 @@ impl Handshake {
             Box::new(snow_resolver::Resolver),
         )
         .remote_public_key(&claims.public_key)
+        .expect("not called previously")
         .build_initiator()
         .map_err(|_| {
             // The only thing that can go wrong is that claims.public_key is invalid, which isn't a

@@ -6613,7 +6613,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>snow 0.9.6</string>
+			<string>snow 0.10.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
