@@ -4,4 +4,6 @@ v0.79.1
 
 - Java: `CertificateValidator.validate(SenderCertificate, long)` is once again `open` for testing.
 
+- backups: Validate quote body length
+
 - MSRV has been increased to 1.85

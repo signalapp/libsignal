@@ -43,6 +43,8 @@ pub enum TextError {
     TooLongBody(usize),
     /// body was {0} bytes (too long to also have a long text attachment)
     TooLongBodyForLongText(usize),
+    /// body was {0} bytes (too long to be in a quote)
+    TooLongBodyForQuote(usize),
     /// mention had invalid ACI
     MentionInvalidAci,
     /// BodyRange.associatedValue is a oneof but has no value
@@ -51,11 +53,19 @@ pub enum TextError {
 
 const MAX_BODY_LENGTH: usize = 128 * 1024;
 pub(crate) const MAX_BODY_LENGTH_WITH_LONG_TEXT_ATTACHMENT: usize = 2 * 1024;
+pub(crate) const MAX_BODY_LENGTH_FOR_QUOTE: usize = 2 * 1024;
 
 impl MessageText {
     pub fn check_length_with_long_text_attachment(&self) -> Result<(), TextError> {
         if self.text.len() > MAX_BODY_LENGTH_WITH_LONG_TEXT_ATTACHMENT {
             return Err(TextError::TooLongBodyForLongText(self.text.len()));
+        }
+        Ok(())
+    }
+
+    pub fn check_length_for_quote(&self) -> Result<(), TextError> {
+        if self.text.len() > MAX_BODY_LENGTH_FOR_QUOTE {
+            return Err(TextError::TooLongBodyForQuote(self.text.len()));
         }
         Ok(())
     }

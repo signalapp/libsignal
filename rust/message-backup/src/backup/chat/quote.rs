@@ -122,6 +122,9 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
         };
 
         let text = text.into_option().map(|text| text.try_into()).transpose()?;
+        text.as_ref()
+            .map(|text: &MessageText| text.check_length_for_quote())
+            .transpose()?;
 
         let attachments = likely_empty(attachments, |iter| {
             iter.map(|attachment| attachment.try_into_with(context))
@@ -260,6 +263,14 @@ mod test {
     }
 
     #[test_case(|_| {} => Ok(()); "valid")]
+    #[test_case(|x| x.text = Some(proto::Text {
+        body: "a".repeat(2 * 1024),
+        ..proto::Text::test_data()
+    }).into() => Ok(()); "valid longest legal quote text")]
+    #[test_case(|x| x.text = Some(proto::Text {
+        body: "a".repeat(2 * 1024 + 1),
+        ..proto::Text::test_data()
+    }).into() => Err(QuoteError::Text(TextError::TooLongBodyForQuote(2 * 1024 + 1))); "too long text")]
     #[test_case(|x| x.authorId = 0 => Err(QuoteError::AuthorNotFound(RecipientId(0))); "unknown author")]
     #[test_case(|x| {
         x.authorId = TestContext::GROUP_ID.0
