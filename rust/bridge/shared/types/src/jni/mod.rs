@@ -2,6 +2,7 @@
 // Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+use std::convert::Infallible;
 use std::error::Error;
 use std::fmt::{Debug, Display};
 use std::io::Error as IoError;
@@ -26,7 +27,7 @@ use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSen
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::ws::WebSocketError;
 use libsignal_net::svrb::Error as SvrbError;
-use libsignal_net_chat::api::RateLimitChallenge;
+use libsignal_net_chat::api::{RateLimitChallenge, RequestError as ChatRequestError};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -846,8 +847,10 @@ impl MessageOnlyExceptionJniError for ChatSendError {
             ChatSendError::ConnectedElsewhere => {
                 ClassName("org.signal.libsignal.net.ConnectedElsewhereException")
             }
-            ChatSendError::WebSocket(_)
-            | ChatSendError::IncomingDataInvalid
+            ChatSendError::WebSocket(_) => {
+                ClassName("org.signal.libsignal.net.TransportFailureException")
+            }
+            ChatSendError::IncomingDataInvalid
             | ChatSendError::RequestHasInvalidHeader
             | ChatSendError::RequestTimedOut => {
                 ClassName("org.signal.libsignal.net.ChatServiceException")
@@ -908,7 +911,9 @@ impl MessageOnlyExceptionJniError for libsignal_net_chat::api::DisconnectedError
         match self {
             Self::ConnectedElsewhere => ChatSendError::ConnectedElsewhere.exception_class(),
             Self::ConnectionInvalidated => ChatSendError::ConnectionInvalidated.exception_class(),
-            Self::Transport { .. } => ClassName("org.signal.libsignal.net.ChatServiceException"),
+            Self::Transport { .. } => {
+                ClassName("org.signal.libsignal.net.TransportFailureException")
+            }
             Self::Closed => ChatSendError::Disconnected.exception_class(),
         }
     }
@@ -950,6 +955,12 @@ impl MessageOnlyExceptionJniError for TestingError {
     }
 }
 
+impl JniError for Infallible {
+    fn to_throwable<'a>(&self, _env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
+        match *self {}
+    }
+}
+
 impl JniError for RetryLater {
     fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
         let Self {
@@ -980,6 +991,32 @@ impl JniError for RateLimitChallenge {
                 options => [org.signal.libsignal.net.ChallengeOption]) -> void),
         )
         .map(Into::into)
+    }
+}
+
+impl<E: JniError> JniError for ChatRequestError<E> {
+    fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
+        match self {
+            ChatRequestError::Timeout => make_single_message_throwable(
+                env,
+                "Request timed out",
+                ClassName("org.signal.libsignal.net.TimeoutException"),
+            ),
+            ChatRequestError::Disconnected(disconnected) => disconnected.to_throwable(env),
+            ChatRequestError::RetryLater(retry_later) => retry_later.to_throwable(env),
+            ChatRequestError::Challenge(challenge) => challenge.to_throwable(env),
+            ChatRequestError::ServerSideError => make_single_message_throwable(
+                env,
+                "Server-side error",
+                ClassName("org.signal.libsignal.net.ServerSideErrorException"),
+            ),
+            ChatRequestError::Unexpected { log_safe } => make_single_message_throwable(
+                env,
+                &format!("Unexpected error: {}", log_safe),
+                ClassName("org.signal.libsignal.net.UnexpectedResponseException"),
+            ),
+            ChatRequestError::Other(inner) => inner.to_throwable(env),
+        }
     }
 }
 

@@ -19,7 +19,7 @@ public class RateLimitChallengeException : ChatServiceException {
   public val options: Set<ChallengeOption>
 
   @CalledFromNative
-  private constructor(message: String, token: String, options: Array<ChallengeOption>) : super(message) {
+  public constructor(message: String, token: String, options: Array<ChallengeOption>) : super(message) {
     this.token = token
     this.options = EnumSet.copyOf(options.asList())
   }

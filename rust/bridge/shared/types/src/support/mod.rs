@@ -5,6 +5,7 @@
 
 use std::borrow::Cow;
 use std::future::Future;
+use std::marker::PhantomData;
 use std::num::NonZeroU64;
 
 mod as_type;
@@ -34,6 +35,32 @@ pub fn describe_panic(any: &Box<dyn std::any::Any + Send>) -> String {
 /// All call sites need to explain why extending the lifetime is safe.
 pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T: ?Sized>(some_ref: &'a T) -> &'b T {
     std::mem::transmute::<&'a T, &'b T>(some_ref)
+}
+
+/// A wrapper around `&'inner T` that promises `'outer: 'inner`.
+///
+/// Meant to be used with _higher-ranked type bounds_ `for<'inner>` in the context of some broader
+/// lifetime `'outer`. Can usually be consumed like a normal reference because of the Deref impl.
+#[derive(derive_more::Deref)]
+pub struct LimitedLifetimeRef<'outer, 'inner, T>
+where
+    'outer: 'inner,
+{
+    #[deref]
+    inner: &'inner T,
+    parent: PhantomData<&'outer ()>,
+}
+
+impl<'outer, 'inner, T> From<&'inner T> for LimitedLifetimeRef<'outer, 'inner, T>
+where
+    'outer: 'inner,
+{
+    fn from(inner: &'inner T) -> Self {
+        Self {
+            inner,
+            parent: PhantomData,
+        }
+    }
 }
 
 /// An error indicating the caller passed an invalid argument (and they should have known it was

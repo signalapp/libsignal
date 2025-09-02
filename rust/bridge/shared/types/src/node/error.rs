@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::borrow::Cow;
 use std::fmt;
 
 #[cfg(feature = "signal-media")]
@@ -646,6 +647,56 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
             operation_name,
             no_extra_properties,
         )
+    }
+}
+
+impl<E: SignalNodeError> SignalNodeError for libsignal_net_chat::api::RequestError<E> {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        cx: &mut C,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> Handle<'a, JsError> {
+        let io_error_message: Cow<'static, str> = match self {
+            Self::Other(inner) => return inner.into_throwable(cx, module, operation_name),
+            Self::Challenge(challenge) => {
+                return challenge.into_throwable(cx, module, operation_name)
+            }
+            Self::RetryLater(retry_later) => {
+                return retry_later.into_throwable(cx, module, operation_name)
+            }
+            Self::Disconnected(disconnected) => {
+                return disconnected.into_throwable(cx, module, operation_name)
+            }
+            Self::Timeout => {
+                return libsignal_net::chat::SendError::RequestTimedOut.into_throwable(
+                    cx,
+                    module,
+                    operation_name,
+                )
+            }
+            Self::Unexpected { log_safe } => log_safe.into(),
+            Self::ServerSideError => "server-side error".into(),
+        };
+        new_js_error(
+            cx,
+            module,
+            Some(IO_ERROR),
+            &io_error_message,
+            operation_name,
+            no_extra_properties,
+        )
+    }
+}
+
+impl SignalNodeError for std::convert::Infallible {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        _cx: &mut C,
+        _module: Handle<'a, JsObject>,
+        _operation_name: &str,
+    ) -> Handle<'a, JsError> {
+        match self {}
     }
 }
 

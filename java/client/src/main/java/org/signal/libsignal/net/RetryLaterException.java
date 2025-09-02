@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.net;
 
+import java.io.IOException;
 import java.time.Duration;
 import org.signal.libsignal.internal.CalledFromNative;
 
@@ -15,7 +16,7 @@ import org.signal.libsignal.internal.CalledFromNative;
  * requests to a number of endpoints. It can also be produced as the result of a websocket close
  * frame from an enclave service with close code {@code 4008}.
  */
-public class RetryLaterException extends Exception {
+public class RetryLaterException extends IOException {
   /** The amount of time to wait before retrying. */
   public final Duration duration;
 
@@ -24,7 +25,7 @@ public class RetryLaterException extends Exception {
     this(Duration.ofSeconds(retryAfterSeconds));
   }
 
-  private RetryLaterException(Duration duration) {
+  public RetryLaterException(Duration duration) {
     super("Retry after " + duration.getSeconds() + " seconds");
     this.duration = duration;
   }

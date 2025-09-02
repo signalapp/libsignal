@@ -20,6 +20,10 @@ export type ChatRequest = Readonly<{
   timeoutMillis?: number;
 }>;
 
+export type RequestOptions = {
+  abortSignal?: AbortSignal;
+};
+
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
 
 export class ChatServerMessageAck {
@@ -90,7 +94,7 @@ export type ChatConnection = {
    */
   fetch(
     chatRequest: ChatRequest,
-    options?: { abortSignal?: AbortSignal }
+    options?: RequestOptions
   ): Promise<Native.ChatResponse>;
 
   /**
@@ -197,8 +201,9 @@ export class UnauthenticatedChatConnection implements ChatConnection {
   }
 
   private constructor(
-    private readonly asyncContext: TokioAsyncContext,
-    private readonly chatService: Wrapper<Native.UnauthenticatedChatConnection>,
+    // Not true-private so that they can be accessed by the "Service" interfaces in chat/.
+    readonly _asyncContext: TokioAsyncContext,
+    readonly _chatService: Wrapper<Native.UnauthenticatedChatConnection>,
     // Unused except to keep the listener alive since the Rust code only holds a
     // weak reference to the same object.
     private readonly chatListener: Native.ChatListener,
@@ -207,13 +212,13 @@ export class UnauthenticatedChatConnection implements ChatConnection {
 
   fetch(
     chatRequest: ChatRequest,
-    options?: { abortSignal?: AbortSignal }
+    options?: RequestOptions
   ): Promise<Native.ChatResponse> {
-    return this.asyncContext.makeCancellable(
+    return this._asyncContext.makeCancellable(
       options?.abortSignal,
       Native.UnauthenticatedChatConnection_send(
-        this.asyncContext,
-        this.chatService,
+        this._asyncContext,
+        this._chatService,
         buildHttpRequest(chatRequest),
         chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
       )
@@ -222,14 +227,14 @@ export class UnauthenticatedChatConnection implements ChatConnection {
 
   disconnect(): Promise<void> {
     return Native.UnauthenticatedChatConnection_disconnect(
-      this.asyncContext,
-      this.chatService
+      this._asyncContext,
+      this._chatService
     );
   }
 
   connectionInfo(): ConnectionInfo {
     return new ConnectionInfoImpl(
-      Native.UnauthenticatedChatConnection_info(this.chatService)
+      Native.UnauthenticatedChatConnection_info(this._chatService)
     );
   }
 
@@ -237,7 +242,7 @@ export class UnauthenticatedChatConnection implements ChatConnection {
     if (this.env == null) {
       throw new Error('KeyTransparency is not supported on local test server');
     }
-    return new KT.ClientImpl(this.asyncContext, this.chatService, this.env);
+    return new KT.ClientImpl(this._asyncContext, this._chatService, this.env);
   }
 }
 

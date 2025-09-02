@@ -18,6 +18,7 @@ import { SvrB } from './net/SvrB';
 import { BridgedStringMap, newNativeHandle } from './internal';
 export * from './net/CDSI';
 export * from './net/Chat';
+export * from './net/chat/UnauthUsernamesService';
 export * from './net/Registration';
 export * from './net/SvrB';
 

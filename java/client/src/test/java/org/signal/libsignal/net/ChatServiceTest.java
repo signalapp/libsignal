@@ -387,18 +387,12 @@ public class ChatServiceTest {
   // If it hangs for more than five seconds, consider that a failure.
   @Test(timeout = 5000)
   public void testListenerCleanup() throws Exception {
-    class Listener implements ChatConnectionListener {
+    class Listener extends NoOpListener {
       CountDownLatch latch;
 
       Listener(CountDownLatch latch) {
         this.latch = latch;
       }
-
-      public void onIncomingMessage(
-          ChatConnection chat,
-          byte[] envelope,
-          long serverDeliveryTimestamp,
-          ServerMessageAck sendAck) {}
 
       @Override
       @SuppressWarnings("deprecation")

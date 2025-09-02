@@ -11,6 +11,7 @@ use std::time::Duration;
 
 use atomic_take::AtomicTake;
 use bytes::Bytes;
+use futures_util::future::BoxFuture;
 use futures_util::FutureExt as _;
 use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
@@ -37,6 +38,7 @@ use static_assertions::assert_impl_all;
 
 use crate::net::remote_config::RemoteConfigKey;
 use crate::net::ConnectionManager;
+use crate::support::LimitedLifetimeRef;
 use crate::*;
 
 pub type ChatConnectionInfo = ConnectionInfo;
@@ -97,6 +99,27 @@ impl UnauthenticatedChatConnection {
             )
             .into(),
         })
+    }
+
+    /// Provides access to the inner ChatConnection using the [`Unauth`] wrapper of
+    /// libsignal-net-chat.
+    ///
+    /// This callback signature unfortunately requires boxing; there is not yet Rust syntax to say
+    /// "I return an unknown Future that might capture from its arguments" in closure position
+    /// specifically. It's also extra complicated to promise that the result doesn't have to outlive
+    /// &self; unfortunately there doesn't seem to be a simpler way to express this at this time!
+    /// (e.g. `for<'inner where 'outer: 'inner>`)
+    pub async fn as_typed<'outer, F, R>(&'outer self, callback: F) -> R
+    where
+        F: for<'inner> FnOnce(
+            LimitedLifetimeRef<'outer, 'inner, Unauth<ChatConnection>>,
+        ) -> BoxFuture<'inner, R>,
+    {
+        let guard = self.as_ref().read().await;
+        let MaybeChatConnection::Running(inner) = &*guard else {
+            panic!("listener was not set")
+        };
+        callback(LimitedLifetimeRef::from(<&Unauth<_>>::from(inner))).await
     }
 }
 

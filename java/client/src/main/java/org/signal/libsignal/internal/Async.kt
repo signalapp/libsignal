@@ -6,6 +6,7 @@
 package org.signal.libsignal.internal
 
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.concurrent.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -37,6 +38,42 @@ public suspend fun <T> CompletableFuture<T>.await(): T =
       future.cancel(true)
     }
   }
+
+/**
+ * Transforms a CompletableFuture<T> into a CompletableFuture<R> with proper bidirectional cancellation.
+ *
+ * This helper wraps a native future and transforms its result, while ensuring that:
+ * - Success values are transformed using the provided mapper
+ * - CancellationExceptions propagate as cancellations (not completions)
+ * - Other exceptions are transformed using the error mapper
+ * - Cancellation of the outer future cancels the inner future
+ *
+ * @param onSuccess Function to transform success values from T to R
+ * @param onError Function to transform non-cancellation exceptions to R
+ * @return A new CompletableFuture<R> with bidirectional cancellation support
+ */
+public fun <T, R> CompletableFuture<T>.mapWithCancellation(
+  onSuccess: (T) -> R,
+  onError: (Throwable) -> R,
+): CompletableFuture<R> {
+  val outer = CompletableFuture<R>()
+
+  this.whenComplete { value, err ->
+    when (err) {
+      null -> outer.complete(onSuccess(value))
+      is CancellationException -> outer.cancel(true)
+      else -> outer.complete(onError(err))
+    }
+  }
+
+  outer.whenComplete { _, t ->
+    if (t is CancellationException) {
+      this.cancel(true)
+    }
+  }
+
+  return outer
+}
 
 /**
  * Converts a `CompletableFuture<T>` to a `CompletableFuture<Result<T>>`.

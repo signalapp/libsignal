@@ -9,6 +9,7 @@ import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiFunction;
 import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.FilterExceptions;
@@ -35,6 +36,21 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
     super(nativeHandle);
     this.tokioAsyncContext = tokioAsyncContext;
     this.chatListener = chatListener;
+  }
+
+  /**
+   * Executes a function with both the chat connection handle and async context handle properly
+   * guarded. This ensures that neither object is finalized while the function is executing.
+   *
+   * @param function the function to execute with the guarded handles
+   * @param <T> the return type of the function
+   * @return the result of the function
+   */
+  <T> T runWithContextAndConnectionHandles(BiFunction<Long, Long, T> function) {
+    try (final NativeHandleGuard asyncContextHandle = new NativeHandleGuard(tokioAsyncContext);
+        final NativeHandleGuard chatConnectionHandle = new NativeHandleGuard(this)) {
+      return function.apply(asyncContextHandle.nativeHandle(), chatConnectionHandle.nativeHandle());
+    }
   }
 
   protected static class ListenerBridge implements BridgeChatListener {
