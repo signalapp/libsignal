@@ -6,7 +6,6 @@ env:
   LIBSIGNAL_TESTING_PROXY_SERVER: ${{secrets.LIBSIGNAL_TESTING_PROXY_SERVER}}
   LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS: true
   LIBSIGNAL_TESTING_SVRB_ENCLAVE_SECRET: ${{secrets.LIBSIGNAL_TESTING_SVRB_ENCLAVE_SECRET}}
-  RUST_LOG: debug
 
 on:
   schedule:
@@ -401,16 +400,22 @@ jobs:
 
     - name: Run tests
       run: cargo +stable test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
+      env:
+        RUST_LOG: debug
 
     - name: Run hermetic tests without network access
       run: |
         TEST_CMD='unset LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS LIBSIGNAL_TESTING_CDSI_ENCLAVE_SECRET LIBSIGNAL_TESTING_SVRB_ENCLAVE_SECRET && \
                   cargo +stable test --workspace --all-features --verbose --no-fail-fast -- --include-ignored'
         ./bin/run_with_network_isolation.sh "${TEST_CMD}"
+      env:
+        RUST_LOG: debug
 
     - name: Test run benches
       # Run with a match-all regex to select all the benchmarks, which (confusingly) causes other tests to be skipped.
       run: cargo +stable test --workspace --benches --all-features --no-fail-fast --verbose '.*'
+      env:
+        RUST_LOG: debug
 
     - name: Build bins and examples
       run: cargo +stable build --workspace  --bins --examples --all-features --verbose --keep-going
@@ -423,14 +428,20 @@ jobs:
     - name: Run tests (32-bit)
       # Exclude signal-neon-futures because those tests run Node
       run: cargo +stable test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures --no-fail-fast -- --include-ignored
+      env:
+        RUST_LOG: debug
 
     - name: Run libsignal-protocol cross-version tests
       run: cargo +stable test --no-fail-fast
       working-directory: rust/protocol/cross-version-testing
+      env:
+        RUST_LOG: debug
 
     - name: Run libsignal-protocol cross-version tests (32-bit)
       run: cargo +stable test --target i686-unknown-linux-gnu --no-fail-fast
       working-directory: rust/protocol/cross-version-testing
+      env:
+        RUST_LOG: debug
 
     # We don't run Clippy because GitHub silently updates `stable` and that can introduce new lints,
     # and we don't have a guarantee that any particular pinned nightly can build older libsignals.
