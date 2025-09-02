@@ -16,8 +16,6 @@
 
 use std::io::Read;
 
-use foreign_types::ForeignTypeRef as _;
-
 fn main() {
     let mut input = vec![];
     std::io::stdin()
@@ -26,20 +24,12 @@ fn main() {
     let key = boring::pkey::PKey::public_key_from_pem(&input).expect("valid PEM (not DER!)");
 
     const ED25519_PUBLIC_KEY_LENGTH: usize = 32;
-    let mut key_bytes_len = ED25519_PUBLIC_KEY_LENGTH;
     let mut key_bytes = [0u8; ED25519_PUBLIC_KEY_LENGTH];
-    // TODO: Expose this in boring-rs's high-level APIs.
-    // https://commondatastorage.googleapis.com/chromium-boringssl-docs/evp.h.html#EVP_PKEY_get_raw_public_key
-    let 1 = (unsafe {
-        boring_sys::EVP_PKEY_get_raw_public_key(
-            key.as_ptr(),
-            key_bytes.as_mut_ptr(),
-            &mut key_bytes_len,
-        )
-    }) else {
-        panic!("could not extract public key");
-    };
-    assert_eq!(ED25519_PUBLIC_KEY_LENGTH, key_bytes_len);
+    let used_key_bytes = key
+        .raw_public_key(&mut key_bytes)
+        .expect("can extract public key")
+        .len();
+    assert_eq!(ED25519_PUBLIC_KEY_LENGTH, used_key_bytes);
 
     let montgomery_form = curve25519_dalek::edwards::CompressedEdwardsY(key_bytes)
         .decompress()
