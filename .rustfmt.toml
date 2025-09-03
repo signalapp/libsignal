@@ -1,2 +1,3 @@
 imports_granularity = "Module"
 group_imports = "StdExternalCrate"
+style_edition = "2024"

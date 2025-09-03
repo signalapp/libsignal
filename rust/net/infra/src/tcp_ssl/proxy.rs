@@ -9,11 +9,11 @@ use futures_util::TryFutureExt;
 use tokio::net::TcpStream;
 use tokio_util::either::Either;
 
+use crate::Connection;
 use crate::errors::TransportConnectError;
 use crate::route::{
     ConnectionProxyRoute, Connector, ConnectorExt as _, LoggingConnector, TlsRoute,
 };
-use crate::Connection;
 
 pub mod https;
 pub mod socks;
@@ -127,7 +127,7 @@ pub(crate) mod testutil {
     use boring_signal::pkey::PKey;
     use boring_signal::ssl::{SslAcceptor, SslMethod};
     use boring_signal::x509::X509;
-    use futures_util::{pin_mut, Stream, StreamExt as _};
+    use futures_util::{Stream, StreamExt as _, pin_mut};
     use libsignal_core::try_scoped;
     use rcgen::CertifiedKey;
     use tls_parser::{ClientHello, TlsExtension, TlsMessage, TlsMessageHandshake, TlsPlaintext};
@@ -347,19 +347,19 @@ pub(crate) mod testutil {
 mod test {
     use std::borrow::Cow;
 
+    use crate::Alpn;
     use crate::certs::RootCertificates;
     use crate::host::Host;
     use crate::route::{
         ConnectionProxyRoute, Connector as _, ConnectorExt as _, TcpRoute, TlsRoute,
         TlsRouteFragment,
     };
-    use crate::tcp_ssl::proxy::testutil::{localhost_tls_proxy, PROXY_CERTIFICATE, PROXY_HOSTNAME};
-    use crate::tcp_ssl::testutil::{
-        localhost_https_server, make_http_request_response_over, SERVER_CERTIFICATE,
-        SERVER_HOSTNAME,
-    };
     use crate::tcp_ssl::StatelessTls;
-    use crate::Alpn;
+    use crate::tcp_ssl::proxy::testutil::{PROXY_CERTIFICATE, PROXY_HOSTNAME, localhost_tls_proxy};
+    use crate::tcp_ssl::testutil::{
+        SERVER_CERTIFICATE, SERVER_HOSTNAME, localhost_https_server,
+        make_http_request_response_over,
+    };
 
     #[tokio::test]
     async fn connect_through_proxy() {

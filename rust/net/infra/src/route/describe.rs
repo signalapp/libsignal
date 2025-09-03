@@ -15,10 +15,10 @@ use crate::dns::dns_utils::log_safe_domain;
 use crate::errors::LogSafeDisplay;
 use crate::host::Host;
 use crate::route::{
-    ConnectionProxyKind, ConnectionProxyRoute, Connector, DirectOrProxyRoute,
+    ConnectionProxyKind, ConnectionProxyRoute, Connector, DEFAULT_HTTPS_PORT, DirectOrProxyRoute,
     HttpProxyRouteFragment, HttpsProxyRoute, HttpsTlsRoute, ProxyTarget, ResolveHostnames,
     ResolvedRoute, SocksRoute, TcpRoute, TlsRoute, TransportRoute, UnresolvedHost,
-    UnresolvedTransportRoute, UnresolvedWebsocketServiceRoute, UsesTransport, DEFAULT_HTTPS_PORT,
+    UnresolvedTransportRoute, UnresolvedWebsocketServiceRoute, UsesTransport,
 };
 
 /// A type that is not itself loggable but can produce a [`LogSafeDisplay`]

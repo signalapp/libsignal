@@ -7,7 +7,7 @@ use std::collections::HashSet;
 use std::time::SystemTime;
 
 use boring_signal::nid::Nid;
-use boring_signal::x509::crl::{X509CRLRef, X509CRL};
+use boring_signal::x509::crl::{X509CRL, X509CRLRef};
 
 use crate::dcap::{Error, Expireable, Result};
 

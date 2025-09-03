@@ -9,7 +9,7 @@
 
 use async_trait::async_trait;
 
-use super::{ppss_ops, Backup4, Error, Secret};
+use super::{Backup4, Error, Secret, ppss_ops};
 use crate::enclave::PpssSetup;
 
 pub trait Prepare {

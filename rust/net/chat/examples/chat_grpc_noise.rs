@@ -12,13 +12,14 @@ use std::sync::Arc;
 
 use clap::Parser;
 use futures_util::FutureExt;
-use http::uri::{Authority, PathAndQuery, Scheme};
 use http::HeaderMap;
+use http::uri::{Authority, PathAndQuery, Scheme};
 use libsignal_cli_utils::args::{parse_base64_bytes, parse_protocol_address};
 use libsignal_core::{Aci, DeviceId};
 use libsignal_net::certs::SIGNAL_ROOT_CERTIFICATES;
 use libsignal_net::chat::noise::{Authorization, ChatNoiseConnector, ChatNoiseRoute, ConnectMeta};
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
+use libsignal_net::infra::AsyncDuplexStream;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::noise::{NoiseConnector, NoiseDirectConnector};
@@ -30,7 +31,6 @@ use libsignal_net::infra::route::{
 };
 use libsignal_net::infra::utils::no_network_change_events;
 use libsignal_net::infra::ws::{StreamWithResponseHeaders, WebSocketTransport};
-use libsignal_net::infra::AsyncDuplexStream;
 use libsignal_net_grpc::proto::chat::account::accounts_anonymous_client::AccountsAnonymousClient;
 use libsignal_net_grpc::proto::chat::account::accounts_client::AccountsClient;
 use libsignal_net_grpc::proto::chat::account::{

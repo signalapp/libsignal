@@ -26,17 +26,17 @@ use std::sync::Arc;
 
 use clap::Parser;
 use either::Either;
-use futures_util::stream::FuturesUnordered;
 use futures_util::StreamExt;
+use futures_util::stream::FuturesUnordered;
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::host::Host;
+use libsignal_net_infra::Alpn;
 use libsignal_net_infra::route::{
     ConnectorExt as _, HttpProxyAuth, HttpProxyRouteFragment, HttpsProxyRoute, ProxyTarget,
     TcpRoute, TlsRoute, TlsRouteFragment, UnresolvedHost,
 };
 use libsignal_net_infra::utils::no_network_change_events;
-use libsignal_net_infra::Alpn;
 use tokio::time::Duration;
 use url::Url;
 

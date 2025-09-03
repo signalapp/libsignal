@@ -5,16 +5,16 @@
 use std::collections::HashSet;
 
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
+use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::net::registration::{
     ConnectChatBridge, RegisterAccountInner, RegisterAccountRequest, RegistrationAccountAttributes,
     RegistrationCreateSessionRequest, RegistrationPushToken, RegistrationService,
     SignedPublicPreKey,
 };
-use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::*;
 use libsignal_net::chat::LanguageList;
-use libsignal_net_chat::api::registration::*;
 use libsignal_net_chat::api::ChallengeOption;
+use libsignal_net_chat::api::registration::*;
 use libsignal_net_chat::registration::RequestError;
 use libsignal_protocol::*;
 use uuid::Uuid;

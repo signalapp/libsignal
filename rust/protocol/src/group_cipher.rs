@@ -9,8 +9,8 @@ use uuid::Uuid;
 use crate::protocol::SENDERKEY_MESSAGE_CURRENT_VERSION;
 use crate::sender_keys::{SenderKeyState, SenderMessageKey};
 use crate::{
-    consts, CiphertextMessageType, KeyPair, ProtocolAddress, Result, SenderKeyDistributionMessage,
-    SenderKeyMessage, SenderKeyRecord, SenderKeyStore, SignalProtocolError,
+    CiphertextMessageType, KeyPair, ProtocolAddress, Result, SenderKeyDistributionMessage,
+    SenderKeyMessage, SenderKeyRecord, SenderKeyStore, SignalProtocolError, consts,
 };
 
 pub async fn group_encrypt<R: Rng + CryptoRng>(

@@ -21,7 +21,7 @@ use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::ChatListener;
 use crate::node::chat::NodeChatListener;
-use crate::support::{extend_lifetime, Array, AsType, FixedLengthBincodeSerializable, Serialized};
+use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized, extend_lifetime};
 
 /// Converts arguments from their JavaScript form to their Rust form.
 ///

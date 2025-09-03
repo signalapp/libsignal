@@ -15,10 +15,10 @@ use crate::backup::serialize::UnorderedList;
 use crate::backup::time::Duration;
 use crate::backup::{serialize, uuid_bytes_to_aci};
 use crate::proto::backup::{
-    self as proto, group_invitation_revoked_update, GenericGroupUpdate, GroupAdminStatusUpdate,
-    GroupAnnouncementOnlyChangeUpdate, GroupAttributesAccessLevelChangeUpdate, GroupAvatarUpdate,
-    GroupCreationUpdate, GroupDescriptionUpdate, GroupExpirationTimerUpdate,
-    GroupInvitationAcceptedUpdate, GroupInvitationDeclinedUpdate, GroupInvitationRevokedUpdate,
+    self as proto, GenericGroupUpdate, GroupAdminStatusUpdate, GroupAnnouncementOnlyChangeUpdate,
+    GroupAttributesAccessLevelChangeUpdate, GroupAvatarUpdate, GroupCreationUpdate,
+    GroupDescriptionUpdate, GroupExpirationTimerUpdate, GroupInvitationAcceptedUpdate,
+    GroupInvitationDeclinedUpdate, GroupInvitationRevokedUpdate,
     GroupInviteLinkAdminApprovalUpdate, GroupInviteLinkDisabledUpdate,
     GroupInviteLinkEnabledUpdate, GroupInviteLinkResetUpdate, GroupJoinRequestApprovalUpdate,
     GroupJoinRequestCanceledUpdate, GroupJoinRequestUpdate, GroupMemberAddedUpdate,
@@ -28,6 +28,7 @@ use crate::proto::backup::{
     GroupUnknownInviteeUpdate, GroupV2MigrationDroppedMembersUpdate,
     GroupV2MigrationInvitedMembersUpdate, GroupV2MigrationSelfInvitedUpdate,
     GroupV2MigrationUpdate, SelfInvitedOtherUserToGroupUpdate, SelfInvitedToGroupUpdate,
+    group_invitation_revoked_update,
 };
 
 /// Implements `TryFrom<$MESSAGE>` for [`GroupChatUpdate`].

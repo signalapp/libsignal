@@ -13,14 +13,14 @@ use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use http::uri::InvalidUri;
+pub use jni::JNIEnv;
+use jni::JavaVM;
 pub use jni::objects::{
     AutoElements, JByteArray, JClass, JLongArray, JObject, JObjectArray, JString, JValue,
     ReleaseMode,
 };
 use jni::objects::{GlobalRef, JThrowable, JValueOwned};
 pub use jni::sys::{jboolean, jint, jlong};
-pub use jni::JNIEnv;
-use jni::JavaVM;
 use libsignal_account_keys::Error as PinError;
 use libsignal_core::try_scoped;
 use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSendError};
@@ -576,12 +576,12 @@ mod registration {
             let message = match self {
                 RequestError::Other(inner) => return inner.to_throwable(env),
                 RequestError::Timeout => {
-                    return libsignal_net::chat::SendError::RequestTimedOut.to_throwable(env)
+                    return libsignal_net::chat::SendError::RequestTimedOut.to_throwable(env);
                 }
                 RequestError::RetryLater(retry_later) => return retry_later.to_throwable(env),
                 RequestError::Unexpected { log_safe } => log_safe,
                 RequestError::Challenge(rate_limit_challenge) => {
-                    return rate_limit_challenge.to_throwable(env)
+                    return rate_limit_challenge.to_throwable(env);
                 }
                 RequestError::ServerSideError => &self.to_string(),
                 RequestError::Disconnected(d) => match *d {},

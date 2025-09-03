@@ -5,10 +5,6 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
-use curve25519_dalek::ristretto::RistrettoPoint;
-use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::MultiscalarMul;
 // POKSHO implements the "Sigma protocol for arbitrary linear relations" described in section
 // 19.5.3 of https://crypto.stanford.edu/~dabo/cryptobook/BonehShoup_0_4.pdf
 //
@@ -90,6 +86,10 @@ use curve25519_dalek::traits::MultiscalarMul;
 //  for index=0..total number of scalars:
 //   RistrettoScalar
 use PokshoError::*;
+use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
+use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek::traits::MultiscalarMul;
 
 use crate::args::*;
 use crate::errors::*;

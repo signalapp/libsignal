@@ -109,8 +109,8 @@ impl<T: crate::Connection> crate::Connection for WorkaroundWriteBugDuplexStream<
 mod test {
     use std::borrow::Cow;
     use std::io::IoSlice;
-    use std::sync::atomic::AtomicBool;
     use std::sync::Arc;
+    use std::sync::atomic::AtomicBool;
 
     use boring_signal::ssl::{SslConnector, SslMethod};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -119,8 +119,8 @@ mod test {
     use super::*;
     use crate::certs::RootCertificates;
     use crate::tcp_ssl::testutil::{
-        localhost_https_server, make_http_request_response_over, SERVER_CERTIFICATE,
-        SERVER_HOSTNAME,
+        SERVER_CERTIFICATE, SERVER_HOSTNAME, localhost_https_server,
+        make_http_request_response_over,
     };
 
     #[tokio::test]

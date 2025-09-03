@@ -10,8 +10,8 @@ use const_str::ip_addr;
 use libsignal_net::chat::RECOMMENDED_CHAT_WS_CONFIG;
 use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
 use libsignal_net::env::{ConnectionConfig, DomainConfig, Env, KeyTransConfig, SvrBEnv};
-use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::RECOMMENDED_WS_CONFIG;
+use libsignal_net::infra::certs::RootCertificates;
 
 const ENCLAVE_ID_MOCK_SERVER: &[u8] = b"0.20240911.184407";
 

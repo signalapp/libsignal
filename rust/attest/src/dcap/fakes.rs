@@ -23,13 +23,13 @@ use boring_signal::nid::Nid;
 use boring_signal::pkey::{PKey, Private, Public};
 use chrono::Utc;
 
-use crate::cert_chain::testutil::TestCert;
 use crate::cert_chain::CertChain;
+use crate::cert_chain::testutil::TestCert;
 use crate::dcap::ecdsa::EcdsaSigned;
 use crate::dcap::endorsements::SgxEndorsements;
 use crate::dcap::evidence::Evidence;
 use crate::dcap::revocation_list::RevocationList;
-use crate::dcap::{attest_impl, Attestation};
+use crate::dcap::{Attestation, attest_impl};
 
 const EVIDENCE_BYTES: &[u8] = include_bytes!("../../tests/data/dcap.evidence");
 const ENDORSEMENT_BYTES: &[u8] = include_bytes!("../../tests/data/dcap.endorsements");

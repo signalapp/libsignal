@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
 use crate::{
-    kem, proto, IdentityKey, PrivateKey, PublicKey, Result, SignalProtocolError, Timestamp,
+    IdentityKey, PrivateKey, PublicKey, Result, SignalProtocolError, Timestamp, kem, proto,
 };
 
 pub(crate) const CIPHERTEXT_MESSAGE_CURRENT_VERSION: u8 = 4;

@@ -520,7 +520,7 @@ mod test {
 
     use assert_matches::assert_matches;
     use const_str::ip_addr;
-    use futures_util::{pin_mut, FutureExt as _, StreamExt as _};
+    use futures_util::{FutureExt as _, StreamExt as _, pin_mut};
     use nonzero_ext::nonzero;
 
     use super::*;

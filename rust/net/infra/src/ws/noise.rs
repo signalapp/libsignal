@@ -5,7 +5,7 @@
 
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 use std::pin::Pin;
-use std::task::{ready, Poll};
+use std::task::{Poll, ready};
 
 use bytes::Bytes;
 use futures_util::stream::FusedStream;
@@ -13,8 +13,8 @@ use futures_util::{Sink, SinkExt as _, Stream, StreamExt as _};
 use static_assertions::assert_impl_all;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
-use tungstenite::protocol::frame::coding::CloseCode;
 use tungstenite::Message;
+use tungstenite::protocol::frame::coding::CloseCode;
 
 use crate::noise::{FrameType, Transport};
 

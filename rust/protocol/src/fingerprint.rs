@@ -7,11 +7,11 @@ use std::fmt;
 use std::fmt::Write;
 
 use prost::Message;
-use sha2::digest::Digest;
 use sha2::Sha512;
+use sha2::digest::Digest;
 use subtle::ConstantTimeEq;
 
-use crate::{proto, IdentityKey};
+use crate::{IdentityKey, proto};
 
 #[derive(Debug, displaydoc::Display)]
 pub enum Error {
@@ -227,11 +227,11 @@ mod test {
 
     const DISPLAYABLE_FINGERPRINT_V1: &str =
         "300354477692869396892869876765458257569162576843440918079131";
-    const ALICE_SCANNABLE_FINGERPRINT_V1 : &str = "080112220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df1a220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d";
-    const BOB_SCANNABLE_FINGERPRINT_V1   : &str = "080112220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d1a220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df";
+    const ALICE_SCANNABLE_FINGERPRINT_V1: &str = "080112220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df1a220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d";
+    const BOB_SCANNABLE_FINGERPRINT_V1: &str = "080112220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d1a220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df";
 
-    const ALICE_SCANNABLE_FINGERPRINT_V2 : &str = "080212220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df1a220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d";
-    const BOB_SCANNABLE_FINGERPRINT_V2   : & str = "080212220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d1a220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df";
+    const ALICE_SCANNABLE_FINGERPRINT_V2: &str = "080212220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df1a220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d";
+    const BOB_SCANNABLE_FINGERPRINT_V2: &str = "080212220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d1a220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df";
 
     const ALICE_STABLE_ID: &str = "+14152222222";
     const BOB_STABLE_ID: &str = "+14153333333";
@@ -397,20 +397,28 @@ mod test {
         );
         assert_eq!(format!("{}", a_fprint.display).len(), 60);
 
-        assert!(a_fprint
-            .scannable
-            .compare(&b_fprint.scannable.serialize()?)?);
-        assert!(b_fprint
-            .scannable
-            .compare(&a_fprint.scannable.serialize()?)?);
+        assert!(
+            a_fprint
+                .scannable
+                .compare(&b_fprint.scannable.serialize()?)?
+        );
+        assert!(
+            b_fprint
+                .scannable
+                .compare(&a_fprint.scannable.serialize()?)?
+        );
 
         // Java is missing this test
-        assert!(!a_fprint
-            .scannable
-            .compare(&a_fprint.scannable.serialize()?)?);
-        assert!(!b_fprint
-            .scannable
-            .compare(&b_fprint.scannable.serialize()?)?);
+        assert!(
+            !a_fprint
+                .scannable
+                .compare(&a_fprint.scannable.serialize()?)?
+        );
+        assert!(
+            !b_fprint
+                .scannable
+                .compare(&b_fprint.scannable.serialize()?)?
+        );
 
         Ok(())
     }
@@ -456,12 +464,16 @@ mod test {
             format!("{}", b_fprint.display)
         );
 
-        assert!(!a_fprint
-            .scannable
-            .compare(&b_fprint.scannable.serialize()?)?);
-        assert!(!b_fprint
-            .scannable
-            .compare(&a_fprint.scannable.serialize()?)?);
+        assert!(
+            !a_fprint
+                .scannable
+                .compare(&b_fprint.scannable.serialize()?)?
+        );
+        assert!(
+            !b_fprint
+                .scannable
+                .compare(&a_fprint.scannable.serialize()?)?
+        );
 
         Ok(())
     }
@@ -505,12 +517,16 @@ mod test {
             format!("{}", b_fprint.display)
         );
 
-        assert!(!a_fprint
-            .scannable
-            .compare(&b_fprint.scannable.serialize()?)?);
-        assert!(!b_fprint
-            .scannable
-            .compare(&a_fprint.scannable.serialize()?)?);
+        assert!(
+            !a_fprint
+                .scannable
+                .compare(&b_fprint.scannable.serialize()?)?
+        );
+        assert!(
+            !b_fprint
+                .scannable
+                .compare(&a_fprint.scannable.serialize()?)?
+        );
 
         Ok(())
     }

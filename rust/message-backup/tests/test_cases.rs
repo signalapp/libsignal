@@ -7,9 +7,9 @@ use std::path::{Path, PathBuf};
 
 use assert_cmd::Command;
 use assert_matches::assert_matches;
-use dir_test::{dir_test, Fixture};
-use futures::io::Cursor;
+use dir_test::{Fixture, dir_test};
 use futures::AsyncRead;
+use futures::io::Cursor;
 use libsignal_account_keys::{BackupForwardSecrecyToken, BackupKey};
 use libsignal_core::Aci;
 use libsignal_message_backup::backup::Purpose;

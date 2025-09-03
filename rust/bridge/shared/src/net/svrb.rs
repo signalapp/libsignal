@@ -3,14 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_account_keys::{BackupKey, BACKUP_FORWARD_SECRECY_TOKEN_LEN};
+use libsignal_account_keys::{BACKUP_FORWARD_SECRECY_TOKEN_LEN, BackupKey};
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::net::svrb::SvrBConnectImpl;
 use libsignal_bridge_types::net::{ConnectionManager, Environment, TokioAsyncContext};
 use libsignal_net::auth::Auth;
 use libsignal_net::svrb::{
-    create_new_backup_chain, remove_backup, restore_backup, store_backup, BackupFileMetadataRef,
-    BackupPreviousSecretDataRef, BackupRestoreResponse, BackupStoreResponse, Error as SvrbError,
+    BackupFileMetadataRef, BackupPreviousSecretDataRef, BackupRestoreResponse, BackupStoreResponse,
+    Error as SvrbError, create_new_backup_chain, remove_backup, restore_backup, store_backup,
 };
 
 use crate::support::*;

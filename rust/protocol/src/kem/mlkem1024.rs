@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use libcrux_ml_kem::SHARED_SECRET_SIZE;
 use libcrux_ml_kem::mlkem1024::{
     self, MlKem1024Ciphertext, MlKem1024PrivateKey, MlKem1024PublicKey,
 };
-use libcrux_ml_kem::SHARED_SECRET_SIZE;
 use rand::Rng as _;
 
 use super::{

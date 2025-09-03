@@ -9,7 +9,7 @@ use serde_with::hex::Hex;
 use serde_with::serde_as;
 
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
-use crate::backup::{serialize, TryIntoWith};
+use crate::backup::{TryIntoWith, serialize};
 use crate::proto::backup as proto;
 
 #[derive(Debug, serde::Serialize)]
@@ -225,8 +225,8 @@ impl TryFrom<proto::payment_notification::transaction_details::FailedTransaction
     fn try_from(
         value: proto::payment_notification::transaction_details::FailedTransaction,
     ) -> Result<Self, Self::Error> {
-        use proto::payment_notification::transaction_details::failed_transaction::FailureReason;
         use proto::payment_notification::transaction_details::FailedTransaction as FailedTransactionProto;
+        use proto::payment_notification::transaction_details::failed_transaction::FailureReason;
 
         let FailedTransactionProto {
             reason,

@@ -7,9 +7,9 @@ use libsignal_core::{Aci, ServiceId, WrongKindOfServiceIdError};
 use serde_with::serde_as;
 
 use super::GroupError;
+use crate::backup::TryIntoWith;
 use crate::backup::serialize::{self, SerializeOrder};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
-use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -249,8 +249,8 @@ mod tests {
 
     use super::*;
     use crate::backup::testutil::TestContext;
-    use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::time::TimestampError;
+    use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     impl proto::group::Member {
         pub(crate) fn test_data() -> Self {

@@ -8,8 +8,8 @@ use std::fmt::Display;
 use std::net::Ipv6Addr;
 
 use const_str::ip_addr;
-use futures_util::stream::StreamExt as _;
 use futures_util::Stream;
+use futures_util::stream::StreamExt as _;
 use itertools::Itertools as _;
 use libsignal_net::chat::{
     self, ChatConnection, PendingChatConnection, RECOMMENDED_CHAT_WS_CONFIG,
@@ -19,11 +19,11 @@ use libsignal_net::connect_state::{
     SUGGESTED_CONNECT_CONFIG,
 };
 use libsignal_net::env::{ConnectionConfig, DomainConfig, UserAgent};
-use libsignal_net::infra::dns::lookup_result::LookupResult;
 use libsignal_net::infra::dns::DnsResolver;
+use libsignal_net::infra::dns::lookup_result::LookupResult;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::host::Host;
-use libsignal_net::infra::route::{ConnectorFactory, DirectOrProxyProvider, DEFAULT_HTTPS_PORT};
+use libsignal_net::infra::route::{ConnectorFactory, DEFAULT_HTTPS_PORT, DirectOrProxyProvider};
 pub use libsignal_net::infra::testutil::fake_transport::FakeTransportTarget;
 use libsignal_net::infra::{AsyncDuplexStream, EnableDomainFronting};
 use libsignal_net_infra::route::{Connector, TransportRoute, UsePreconnect};

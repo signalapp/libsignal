@@ -121,7 +121,7 @@ mod test {
     use cbc::cipher::{BlockEncryptMut, KeyIvInit};
     use futures::executor::block_on;
     use futures::io::{AsyncReadExt, Cursor, ErrorKind};
-    use futures::{pin_mut, FutureExt, TryStreamExt};
+    use futures::{FutureExt, TryStreamExt, pin_mut};
     use test_case::test_case;
 
     use super::*;

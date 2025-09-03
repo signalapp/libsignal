@@ -8,8 +8,8 @@ use std::sync::{Arc, OnceLock};
 
 use boring_signal::error::ErrorStack;
 use boring_signal::ssl::{SslAlert, SslConnectorBuilder, SslVerifyMode};
-use boring_signal::x509::store::X509StoreBuilder;
 use boring_signal::x509::X509;
+use boring_signal::x509::store::X509StoreBuilder;
 use futures_util::future::BoxFuture;
 use rustls::client::danger::{ServerCertVerified, ServerCertVerifier};
 use rustls::pki_types::{CertificateDer, ServerName};
@@ -360,8 +360,8 @@ mod test {
     use super::*;
     use crate::tcp_ssl::proxy::testutil::PROXY_CERTIFICATE;
     use crate::tcp_ssl::testutil::{
-        localhost_https_server, make_http_request_response_over, SERVER_CERTIFICATE,
-        SERVER_HOSTNAME,
+        SERVER_CERTIFICATE, SERVER_HOSTNAME, localhost_https_server,
+        make_http_request_response_over,
     };
 
     struct AllowSync<T>(T);

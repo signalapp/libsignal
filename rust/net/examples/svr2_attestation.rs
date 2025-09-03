@@ -14,16 +14,16 @@ use std::io::Write;
 use attest::enclave;
 use attest::enclave::Handshake;
 use clap::Parser as _;
-use http::uri::PathAndQuery;
 use http::HeaderName;
+use http::uri::PathAndQuery;
 use libsignal_net::auth::Auth;
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
 use libsignal_net::enclave::{EnclaveKind, EndpointParams, MrEnclave, NewHandshake, SvrSgx};
 use libsignal_net::svr::SvrConnection;
+use libsignal_net_infra::EnableDomainFronting;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::DirectOrProxyProvider;
 use libsignal_net_infra::utils::no_network_change_events;
-use libsignal_net_infra::EnableDomainFronting;
 
 #[derive(clap::Parser)]
 struct Args {

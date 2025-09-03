@@ -65,7 +65,7 @@ use crate::credentials::{Credential, CredentialKeyPair, CredentialPublicKey, NUM
 use crate::issuance::IssuanceProof;
 use crate::issuance::IssuanceProofBuilder;
 use crate::sho::ShoExt;
-use crate::{VerificationFailure, RANDOMNESS_LEN};
+use crate::{RANDOMNESS_LEN, VerificationFailure};
 
 /// Marker trait used by [`BlindedPoint`] and [`BlindedAttribute`].
 ///

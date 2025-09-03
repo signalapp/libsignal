@@ -24,10 +24,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::attributes::{Attribute, PublicAttribute};
 use crate::credentials::{
-    Credential, CredentialKeyPair, CredentialPublicKey, SystemParams, NUM_SUPPORTED_ATTRS,
+    Credential, CredentialKeyPair, CredentialPublicKey, NUM_SUPPORTED_ATTRS, SystemParams,
 };
 use crate::sho::ShoExt;
-use crate::{VerificationFailure, RANDOMNESS_LEN};
+use crate::{RANDOMNESS_LEN, VerificationFailure};
 
 /// Contains a [`Credential`] along with a proof of its validity.
 ///

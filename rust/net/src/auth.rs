@@ -6,8 +6,8 @@ use std::ops::Deref;
 use std::time::SystemTime;
 
 use hmac::{Hmac, Mac};
-use libsignal_net_infra::utils::basic_authorization;
 use libsignal_net_infra::AsStaticHttpHeader;
+use libsignal_net_infra::utils::basic_authorization;
 use sha2::Sha256;
 
 /// Generic username/password combination.

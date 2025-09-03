@@ -10,9 +10,9 @@ use std::process::ExitCode;
 use clap::{Parser, ValueEnum};
 use futures_util::{FutureExt, StreamExt};
 use libsignal_net::chat::ConnectError;
+use libsignal_net_infra::EnableDomainFronting;
 use libsignal_net_infra::host::Host;
 use libsignal_net_infra::route::{ConnectionProxyConfig, SIGNAL_TLS_PROXY_SCHEME};
-use libsignal_net_infra::EnableDomainFronting;
 use strum::IntoEnumIterator as _;
 use url::Url;
 
@@ -69,7 +69,7 @@ async fn main() -> ExitCode {
     let snis = allowed_route_types.iter().flat_map(|route_type| {
         let (index, libsignal_net_type) = match route_type {
             RouteType::Direct => {
-                return std::slice::from_ref(&env.chat_domain_config.connect.hostname)
+                return std::slice::from_ref(&env.chat_domain_config.connect.hostname);
             }
             RouteType::ProxyF => (0, libsignal_net_infra::RouteType::ProxyF),
             RouteType::ProxyG => (1, libsignal_net_infra::RouteType::ProxyG),

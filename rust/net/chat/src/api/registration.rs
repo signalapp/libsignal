@@ -12,7 +12,7 @@ use libsignal_net::auth::Auth;
 use libsignal_net::chat::LanguageList;
 use libsignal_protocol::{GenericSignedPreKey, PublicKey};
 use serde_with::{
-    serde_as, skip_serializing_none, DurationMilliSeconds, DurationSeconds, FromInto,
+    DurationMilliSeconds, DurationSeconds, FromInto, serde_as, skip_serializing_none,
 };
 use uuid::Uuid;
 
@@ -56,8 +56,9 @@ pub(crate) trait RegistrationChatApi {
         transport: VerificationTransport,
         client: &str,
         languages: LanguageList,
-    ) -> impl Future<Output = Result<RegistrationResponse, Self::Error<RequestVerificationCodeError>>>
-           + Send;
+    ) -> impl Future<
+        Output = Result<RegistrationResponse, Self::Error<RequestVerificationCodeError>>,
+    > + Send;
 
     fn submit_push_challenge(
         &self,

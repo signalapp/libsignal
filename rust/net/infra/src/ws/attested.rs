@@ -8,8 +8,8 @@ use std::sync::Arc;
 use attest::client_connection::ClientConnection;
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
-use tungstenite::protocol::frame::coding::CloseCode;
 use tungstenite::protocol::CloseFrame;
+use tungstenite::protocol::frame::coding::CloseCode;
 
 use crate::ws::connection::{
     FinishReason, MessageEvent, NextEventError, Outcome, TungsteniteReceiveError,
@@ -274,7 +274,9 @@ async fn spawned_task_body(
                         .send(Err(tungstenite_send_error.into()))
                         .is_err()
                     {
-                        log::debug!("[{log_tag}] failed to signal send error because the sender was dropped");
+                        log::debug!(
+                            "[{log_tag}] failed to signal send error because the sender was dropped"
+                        );
                     }
                     return Err(task_err);
                 }
@@ -320,7 +322,9 @@ async fn spawned_task_body(
                             .await
                             .is_err()
                         {
-                            log::debug!("[{log_tag}] failed to send abnormal close event because the receiver was dropped");
+                            log::debug!(
+                                "[{log_tag}] failed to send abnormal close event because the receiver was dropped"
+                            );
                         }
                         return Err(TaskExitError::AbnormalServerClose { code });
                     }
@@ -609,11 +613,11 @@ mod test {
     use tokio_tungstenite::WebSocketStream;
 
     use super::*;
+    use crate::AsyncDuplexStream;
     use crate::ws::attested::testutil::{
-        run_attested_server, AttestedServerOutput, FAKE_ATTESTATION,
+        AttestedServerOutput, FAKE_ATTESTATION, run_attested_server,
     };
     use crate::ws::testutil::fake_websocket;
-    use crate::AsyncDuplexStream;
 
     const ECHO_BYTES: &[u8] = b"two nibbles to a byte";
 

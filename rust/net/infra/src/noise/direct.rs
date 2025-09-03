@@ -8,21 +8,21 @@
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 use std::num::NonZeroU8;
 use std::pin::Pin;
-use std::task::{ready, Context, Poll};
+use std::task::{Context, Poll, ready};
 
 use assert_matches::assert_matches;
 use bytes::Bytes;
+use futures_util::Stream;
 use futures_util::sink::Sink;
 use futures_util::stream::FusedStream;
-use futures_util::Stream;
 use prost::Message as _;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use zerocopy::{FromBytes, IntoBytes};
 
-use crate::noise::{FrameType, HandshakeAuthKind, Transport};
-use crate::proto::noise_direct::close_reason::Code;
-use crate::proto::noise_direct::CloseReason;
 use crate::Connection;
+use crate::noise::{FrameType, HandshakeAuthKind, Transport};
+use crate::proto::noise_direct::CloseReason;
+use crate::proto::noise_direct::close_reason::Code;
 
 /// Implements the Noise Direct framing protocol on top of a reliable byte
 /// stream.
@@ -702,8 +702,8 @@ mod test {
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt};
 
     use super::*;
-    use crate::proto::noise_direct::close_reason::Code;
     use crate::proto::noise_direct::CloseReason;
+    use crate::proto::noise_direct::close_reason::Code;
 
     #[test_log::test]
     fn reads_frame_as_it_comes_in() {

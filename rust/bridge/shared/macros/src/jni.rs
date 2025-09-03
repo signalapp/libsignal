@@ -8,8 +8,8 @@ use quote::*;
 use syn::*;
 use syn_mid::Signature;
 
-use crate::util::{extract_arg_names_and_types, result_type};
 use crate::BridgingKind;
+use crate::util::{extract_arg_names_and_types, result_type};
 
 pub(crate) fn bridge_fn(
     name: &str,

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use aes_gcm_siv::aead::generic_array::GenericArray;
 use aes_gcm_siv::aead::Aead;
+use aes_gcm_siv::aead::generic_array::GenericArray;
 use aes_gcm_siv::{Aes256GcmSiv, KeyInit};
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};

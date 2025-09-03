@@ -29,7 +29,7 @@ mod unpad;
 #[cfg(feature = "test-util")]
 pub use aes_read::AES_KEY_SIZE;
 #[cfg_attr(feature = "test-util", visibility::make(pub))]
-use aes_read::{Aes256CbcReader, AES_IV_SIZE};
+use aes_read::{AES_IV_SIZE, Aes256CbcReader};
 #[cfg_attr(feature = "test-util", visibility::make(pub))]
 use mac_read::MacReader;
 pub use reader_factory::{CursorFactory, FileReaderFactory, LimitedReaderFactory, ReaderFactory};
@@ -287,9 +287,9 @@ mod test {
     use assert_matches::assert_matches;
     use async_compression::futures::write::GzipEncoder;
     use const_str::{concat_bytes, hex};
+    use futures::AsyncWriteExt;
     use futures::executor::block_on;
     use futures::io::{Cursor, ErrorKind};
-    use futures::AsyncWriteExt;
     use protobuf::Message as _;
     use test_case::{test_case, test_matrix};
 

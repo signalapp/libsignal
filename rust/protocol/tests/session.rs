@@ -148,19 +148,23 @@ fn test_basic_prekey() -> TestResult {
 
             let bobs_response = "Who watches the watchers?";
 
-            assert!(bob_store_builder
-                .store
-                .load_session(&alice_address)
-                .await?
-                .is_some());
+            assert!(
+                bob_store_builder
+                    .store
+                    .load_session(&alice_address)
+                    .await?
+                    .is_some()
+            );
             let bobs_session_with_alice = bob_store_builder
                 .store
                 .load_session(&alice_address)
                 .await?
                 .expect("session found");
-            assert!(bobs_session_with_alice
-                .has_usable_sender_chain(SystemTime::now(), established_session_requirements)
-                .expect("can check usability"));
+            assert!(
+                bobs_session_with_alice
+                    .has_usable_sender_chain(SystemTime::now(), established_session_requirements)
+                    .expect("can check usability")
+            );
             assert_eq!(
                 bobs_session_with_alice.session_version()?,
                 expected_session_version
@@ -179,12 +183,14 @@ fn test_basic_prekey() -> TestResult {
                 String::from_utf8(alice_decrypts).expect("valid utf8"),
                 bobs_response
             );
-            assert!(alice_store
-                .load_session(&bob_address)
-                .await?
-                .expect("session found")
-                .has_usable_sender_chain(SystemTime::now(), established_session_requirements)
-                .expect("can check usability"));
+            assert!(
+                alice_store
+                    .load_session(&bob_address)
+                    .await?
+                    .expect("session found")
+                    .has_usable_sender_chain(SystemTime::now(), established_session_requirements)
+                    .expect("can check usability")
+            );
 
             run_interaction(
                 alice_store,
@@ -261,17 +267,19 @@ fn test_basic_prekey() -> TestResult {
                 })
                 .expect("can reconstruct the bundle");
 
-            assert!(process_prekey_bundle(
-                &bob_address,
-                &mut alter_alice_store.session_store,
-                &mut alter_alice_store.identity_store,
-                &bad_bob_pre_key_bundle,
-                SystemTime::now(),
-                &mut csprng,
-                UsePQRatchet::Yes,
-            )
-            .await
-            .is_err());
+            assert!(
+                process_prekey_bundle(
+                    &bob_address,
+                    &mut alter_alice_store.session_store,
+                    &mut alter_alice_store.identity_store,
+                    &bad_bob_pre_key_bundle,
+                    SystemTime::now(),
+                    &mut csprng,
+                    UsePQRatchet::Yes,
+                )
+                .await
+                .is_err()
+            );
 
             Ok(())
         }
@@ -329,14 +337,16 @@ fn test_chain_jump_over_limit() -> TestResult {
 
             let too_far = encrypt(alice_store, &bob_address, "Now you have gone too far").await?;
 
-            assert!(decrypt(
-                &mut bob_store_builder.store,
-                &alice_address,
-                &too_far,
-                UsePQRatchet::Yes
-            )
-            .await
-            .is_err());
+            assert!(
+                decrypt(
+                    &mut bob_store_builder.store,
+                    &alice_address,
+                    &too_far,
+                    UsePQRatchet::Yes
+                )
+                .await
+                .is_err()
+            );
             Ok(())
         }
         .now_or_never()
@@ -447,17 +457,19 @@ fn test_bad_signed_pre_key_signature() -> TestResult {
                 .modify(|content| content.signed_pre_key_signature = Some(bad_signature))
                 .expect("can recreate the bundle");
 
-            assert!(process_prekey_bundle(
-                &bob_address,
-                &mut alice_store.session_store,
-                &mut alice_store.identity_store,
-                &bad_bundle,
-                SystemTime::now(),
-                &mut csprng,
-                UsePQRatchet::Yes,
-            )
-            .await
-            .is_err());
+            assert!(
+                process_prekey_bundle(
+                    &bob_address,
+                    &mut alice_store.session_store,
+                    &mut alice_store.identity_store,
+                    &bad_bundle,
+                    SystemTime::now(),
+                    &mut csprng,
+                    UsePQRatchet::Yes,
+                )
+                .await
+                .is_err()
+            );
         }
 
         // Finally check that the non-corrupted signature is accepted:
@@ -678,14 +690,16 @@ fn test_bad_message_bundle() -> TestResult {
                 PreKeySignalMessage::try_from(corrupted_message.as_slice())?,
             );
 
-            assert!(decrypt(
-                bob_store,
-                &alice_address,
-                &incoming_message,
-                UsePQRatchet::Yes
-            )
-            .await
-            .is_err());
+            assert!(
+                decrypt(
+                    bob_store,
+                    &alice_address,
+                    &incoming_message,
+                    UsePQRatchet::Yes
+                )
+                .await
+                .is_err()
+            );
             assert!(bob_store.get_pre_key(pre_key_id).await.is_ok());
 
             let incoming_message = CiphertextMessage::PreKeySignalMessage(
@@ -2124,24 +2138,30 @@ fn test_unacknowledged_sessions_eventually_expire() -> TestResult {
             .await
             .expect("session can be loaded")
             .expect("session exists");
-        assert!(initial_session
-            .has_usable_sender_chain(
-                SystemTime::UNIX_EPOCH,
-                SessionUsabilityRequirements::NotStale
-            )
-            .expect("can check for a sender chain"));
-        assert!(!initial_session
-            .has_usable_sender_chain(
-                SystemTime::UNIX_EPOCH + WELL_PAST_EXPIRATION,
-                SessionUsabilityRequirements::NotStale
-            )
-            .expect("can check for a sender chain"));
-        assert!(initial_session
-            .has_usable_sender_chain(
-                SystemTime::UNIX_EPOCH + WELL_PAST_EXPIRATION,
-                SessionUsabilityRequirements::empty()
-            )
-            .expect("respects usability requirements"));
+        assert!(
+            initial_session
+                .has_usable_sender_chain(
+                    SystemTime::UNIX_EPOCH,
+                    SessionUsabilityRequirements::NotStale
+                )
+                .expect("can check for a sender chain")
+        );
+        assert!(
+            !initial_session
+                .has_usable_sender_chain(
+                    SystemTime::UNIX_EPOCH + WELL_PAST_EXPIRATION,
+                    SessionUsabilityRequirements::NotStale
+                )
+                .expect("can check for a sender chain")
+        );
+        assert!(
+            initial_session
+                .has_usable_sender_chain(
+                    SystemTime::UNIX_EPOCH + WELL_PAST_EXPIRATION,
+                    SessionUsabilityRequirements::empty()
+                )
+                .expect("respects usability requirements")
+        );
 
         let original_message = "L'homme est condamné à être libre";
         let outgoing_message = message_encrypt(
@@ -2165,18 +2185,22 @@ fn test_unacknowledged_sessions_eventually_expire() -> TestResult {
             .await
             .expect("session can be loaded")
             .expect("session exists");
-        assert!(updated_session
-            .has_usable_sender_chain(
-                SystemTime::UNIX_EPOCH,
-                SessionUsabilityRequirements::NotStale
-            )
-            .expect("can check for a sender chain"));
-        assert!(!updated_session
-            .has_usable_sender_chain(
-                SystemTime::UNIX_EPOCH + WELL_PAST_EXPIRATION,
-                SessionUsabilityRequirements::NotStale
-            )
-            .expect("can check for a sender chain"));
+        assert!(
+            updated_session
+                .has_usable_sender_chain(
+                    SystemTime::UNIX_EPOCH,
+                    SessionUsabilityRequirements::NotStale
+                )
+                .expect("can check for a sender chain")
+        );
+        assert!(
+            !updated_session
+                .has_usable_sender_chain(
+                    SystemTime::UNIX_EPOCH + WELL_PAST_EXPIRATION,
+                    SessionUsabilityRequirements::NotStale
+                )
+                .expect("can check for a sender chain")
+        );
 
         let error = message_encrypt(
             original_message.as_bytes(),
@@ -2292,12 +2316,14 @@ fn prekey_message_failed_decryption_does_not_update_stores() -> TestResult {
             None
         );
 
-        assert!(alice_store
-            .session_store
-            .load_session(&bob_address)
-            .await
-            .expect("can load")
-            .is_none());
+        assert!(
+            alice_store
+                .session_store
+                .load_session(&bob_address)
+                .await
+                .expect("can load")
+                .is_none()
+        );
 
         Ok(())
     }
@@ -2306,8 +2332,8 @@ fn prekey_message_failed_decryption_does_not_update_stores() -> TestResult {
 }
 
 #[test]
-fn prekey_message_failed_decryption_does_not_update_stores_even_when_previously_archived(
-) -> TestResult {
+fn prekey_message_failed_decryption_does_not_update_stores_even_when_previously_archived()
+-> TestResult {
     async {
         let mut csprng = OsRng.unwrap_err();
         let alice_address =
@@ -2356,15 +2382,19 @@ fn prekey_message_failed_decryption_does_not_update_stores_even_when_previously_
             .await
             .expect("can load")
             .expect("has session record");
-        assert!(alice_session_with_bob
-            .has_usable_sender_chain(SystemTime::now(), SessionUsabilityRequirements::all())
-            .expect("can ask about sender chains"));
+        assert!(
+            alice_session_with_bob
+                .has_usable_sender_chain(SystemTime::now(), SessionUsabilityRequirements::all())
+                .expect("can ask about sender chains")
+        );
         alice_session_with_bob
             .archive_current_state()
             .expect("can archive");
-        assert!(!alice_session_with_bob
-            .has_usable_sender_chain(SystemTime::now(), SessionUsabilityRequirements::empty())
-            .expect("can ask about sender chains"));
+        assert!(
+            !alice_session_with_bob
+                .has_usable_sender_chain(SystemTime::now(), SessionUsabilityRequirements::empty())
+                .expect("can ask about sender chains")
+        );
         alice_store
             .store_session(&bob_address, &alice_session_with_bob)
             .await
@@ -2429,9 +2459,11 @@ fn prekey_message_failed_decryption_does_not_update_stores_even_when_previously_
             .expect("can load")
             .expect("has session record");
 
-        assert!(!alice_current_session_with_bob
-            .has_usable_sender_chain(SystemTime::now(), SessionUsabilityRequirements::empty())
-            .expect("can ask about sender chains"));
+        assert!(
+            !alice_current_session_with_bob
+                .has_usable_sender_chain(SystemTime::now(), SessionUsabilityRequirements::empty())
+                .expect("can ask about sender chains")
+        );
         assert_eq!(
             &alice_session_with_bob.serialize().expect("can serialize"),
             &alice_current_session_with_bob
@@ -3277,23 +3309,27 @@ fn test_pqr_state_empty_if_disabled() -> TestResult {
             let msg = encrypt(bob_store, &alice_address, "msg2").await?;
             decrypt(alice_store, &bob_address, &msg, alice_pqr).await?;
 
-            assert!(alice_store
-                .session_store
-                .load_existing_sessions(&[&bob_address])?
-                .first()
-                .expect("should have Bob's address")
-                .current_pq_state()
-                .expect("should have Bob's PQ state")
-                .is_empty());
+            assert!(
+                alice_store
+                    .session_store
+                    .load_existing_sessions(&[&bob_address])?
+                    .first()
+                    .expect("should have Bob's address")
+                    .current_pq_state()
+                    .expect("should have Bob's PQ state")
+                    .is_empty()
+            );
 
-            assert!(bob_store
-                .session_store
-                .load_existing_sessions(&[&alice_address])?
-                .first()
-                .expect("should have Alice's address")
-                .current_pq_state()
-                .expect("should have Alice's PQ state")
-                .is_empty());
+            assert!(
+                bob_store
+                    .session_store
+                    .load_existing_sessions(&[&alice_address])?
+                    .first()
+                    .expect("should have Alice's address")
+                    .current_pq_state()
+                    .expect("should have Alice's PQ state")
+                    .is_empty()
+            );
 
             Ok(())
         }
@@ -3504,12 +3540,14 @@ fn x3dh_established_session_is_or_is_not_usable() {
             .await
             .expect("can load")
             .expect("has session");
-        assert!(bob_session_with_alice
-            .has_usable_sender_chain(
-                SystemTime::now(),
-                SessionUsabilityRequirements::EstablishedWithPqxdh
-            )
-            .expect("can check usability"));
+        assert!(
+            bob_session_with_alice
+                .has_usable_sender_chain(
+                    SystemTime::now(),
+                    SessionUsabilityRequirements::EstablishedWithPqxdh
+                )
+                .expect("can check usability")
+        );
 
         let mut serialized_session = bob_session_with_alice.serialize().expect("can serialize");
         let session_version: u8 = bob_session_with_alice
@@ -3540,15 +3578,19 @@ fn x3dh_established_session_is_or_is_not_usable() {
                 .expect("can get session version"),
             PRE_KYBER_MESSAGE_VERSION
         );
-        assert!(reconstituted_session
-            .has_usable_sender_chain(SystemTime::now(), SessionUsabilityRequirements::empty())
-            .expect("can check usability"));
-        assert!(!reconstituted_session
-            .has_usable_sender_chain(
-                SystemTime::now(),
-                SessionUsabilityRequirements::EstablishedWithPqxdh
-            )
-            .expect("can check usability"));
+        assert!(
+            reconstituted_session
+                .has_usable_sender_chain(SystemTime::now(), SessionUsabilityRequirements::empty())
+                .expect("can check usability")
+        );
+        assert!(
+            !reconstituted_session
+                .has_usable_sender_chain(
+                    SystemTime::now(),
+                    SessionUsabilityRequirements::EstablishedWithPqxdh
+                )
+                .expect("can check usability")
+        );
     }
     .now_or_never()
     .expect("sync")

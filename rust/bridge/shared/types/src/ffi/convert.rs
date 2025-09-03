@@ -3,15 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::ffi::{c_char, c_uchar, CStr};
+use std::ffi::{CStr, c_char, c_uchar};
 use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::ops::Deref;
 
 use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
-use libsignal_net_chat::api::registration::PushToken;
 use libsignal_net_chat::api::ChallengeOption;
+use libsignal_net_chat::api::registration::PushToken;
 use libsignal_protocol::*;
 use paste::paste;
 use uuid::Uuid;
@@ -23,7 +23,7 @@ use crate::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushToken,
 };
 use crate::support::{
-    extend_lifetime, AsType, FixedLengthBincodeSerializable, IllegalArgumentError, Serialized,
+    AsType, FixedLengthBincodeSerializable, IllegalArgumentError, Serialized, extend_lifetime,
 };
 
 /// Converts arguments from their FFI form to their Rust form.

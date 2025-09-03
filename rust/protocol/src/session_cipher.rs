@@ -11,9 +11,9 @@ use crate::consts::{MAX_FORWARD_JUMPS, MAX_UNACKNOWLEDGED_SESSION_AGE};
 use crate::ratchet::{ChainKey, MessageKeyGenerator, UsePQRatchet};
 use crate::state::{InvalidSessionError, SessionState};
 use crate::{
-    session, CiphertextMessage, CiphertextMessageType, Direction, IdentityKeyStore, KeyPair,
-    KyberPayload, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, ProtocolAddress, PublicKey,
-    Result, SessionRecord, SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore,
+    CiphertextMessage, CiphertextMessageType, Direction, IdentityKeyStore, KeyPair, KyberPayload,
+    KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, ProtocolAddress, PublicKey, Result,
+    SessionRecord, SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore, session,
 };
 
 pub async fn message_encrypt<R: Rng + CryptoRng>(
@@ -556,8 +556,9 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             log::error!(
                 "No valid session for recipient: {}, current session base key {}, number of previous states: {}",
                 remote_address,
-                current_state.sender_ratchet_key_for_logging()
-                .unwrap_or_else(|e| format!("<error: {e}>")),
+                current_state
+                    .sender_ratchet_key_for_logging()
+                    .unwrap_or_else(|e| format!("<error: {e}>")),
                 previous_state_count(),
             );
         } else {

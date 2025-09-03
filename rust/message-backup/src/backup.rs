@@ -4,7 +4,7 @@
 //
 
 use std::cell::RefCell;
-use std::collections::{hash_map, HashMap};
+use std::collections::{HashMap, hash_map};
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -78,7 +78,7 @@ pub trait ReferencedTypes {
     ) -> &'a Self::RecipientReference;
 
     fn is_same_reference(left: &Self::RecipientReference, right: &Self::RecipientReference)
-        -> bool;
+    -> bool;
 }
 
 pub struct PartialBackup<M: Method + ReferencedTypes> {

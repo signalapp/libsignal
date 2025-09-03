@@ -56,19 +56,19 @@ pub use libsignal_core::{
     Aci, DeviceId, Pni, ProtocolAddress, ServiceId, ServiceIdFixedWidthBinaryBytes, ServiceIdKind,
 };
 pub use protocol::{
-    extract_decryption_error_message_from_serialized_content, CiphertextMessage,
-    CiphertextMessageType, DecryptionErrorMessage, KyberPayload, PlaintextContent,
-    PreKeySignalMessage, SenderKeyDistributionMessage, SenderKeyMessage, SignalMessage,
+    CiphertextMessage, CiphertextMessageType, DecryptionErrorMessage, KyberPayload,
+    PlaintextContent, PreKeySignalMessage, SenderKeyDistributionMessage, SenderKeyMessage,
+    SignalMessage, extract_decryption_error_message_from_serialized_content,
 };
 pub use ratchet::{
-    initialize_alice_session_record, initialize_bob_session_record, AliceSignalProtocolParameters,
-    BobSignalProtocolParameters, UsePQRatchet,
+    AliceSignalProtocolParameters, BobSignalProtocolParameters, UsePQRatchet,
+    initialize_alice_session_record, initialize_bob_session_record,
 };
 pub use sealed_sender::{
-    sealed_sender_decrypt, sealed_sender_decrypt_to_usmc, sealed_sender_encrypt,
-    sealed_sender_encrypt_from_usmc, sealed_sender_multi_recipient_encrypt, ContentHint,
-    SealedSenderDecryptionResult, SealedSenderV2SentMessage, SealedSenderV2SentMessageRecipient,
-    SenderCertificate, ServerCertificate, UnidentifiedSenderMessageContent,
+    ContentHint, SealedSenderDecryptionResult, SealedSenderV2SentMessage,
+    SealedSenderV2SentMessageRecipient, SenderCertificate, ServerCertificate,
+    UnidentifiedSenderMessageContent, sealed_sender_decrypt, sealed_sender_decrypt_to_usmc,
+    sealed_sender_encrypt, sealed_sender_encrypt_from_usmc, sealed_sender_multi_recipient_encrypt,
 };
 pub use sender_keys::SenderKeyRecord;
 pub use session::{process_prekey, process_prekey_bundle};

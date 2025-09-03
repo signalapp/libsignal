@@ -9,7 +9,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
-use crate::backup::{likely_empty, TryIntoWith};
+use crate::backup::{TryIntoWith, likely_empty};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::Quote`]

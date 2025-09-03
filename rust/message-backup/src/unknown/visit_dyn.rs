@@ -6,8 +6,8 @@
 //! Unknown field searching via dynamic traversal of protubuf message
 //! descriptors.
 
-use protobuf::reflect::{ReflectFieldRef, ReflectValueRef};
 use protobuf::MessageDyn;
+use protobuf::reflect::{ReflectFieldRef, ReflectValueRef};
 
 use crate::unknown::{MapKey, Part, Path, UnknownFieldVisitor, UnknownValue};
 

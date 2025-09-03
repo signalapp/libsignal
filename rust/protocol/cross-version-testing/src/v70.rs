@@ -7,7 +7,7 @@ use std::time::SystemTime;
 
 use futures_util::FutureExt;
 use libsignal_protocol_v70::*;
-use rand_v8::{thread_rng, Rng};
+use rand_v8::{Rng, thread_rng};
 
 fn address(id: &str) -> ProtocolAddress {
     ProtocolAddress::new(id.into(), 1.into())

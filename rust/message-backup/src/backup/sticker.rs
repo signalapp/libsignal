@@ -5,10 +5,10 @@
 
 use derive_where::derive_where;
 
+use crate::backup::TryIntoWith;
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::method::Method;
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StickerPack`].

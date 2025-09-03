@@ -8,13 +8,13 @@ use std::sync::Arc;
 
 use nonzero_ext::nonzero;
 
+use crate::Alpn;
 use crate::certs::RootCertificates;
 use crate::host::Host;
 use crate::route::{
     ReplaceFragment, RouteProvider, RouteProviderContext, SetAlpn, SimpleRoute, TcpRoute, TlsRoute,
     TlsRouteFragment, UnresolvedHost,
 };
-use crate::Alpn;
 
 pub const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443u16);
 

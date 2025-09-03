@@ -12,15 +12,15 @@ use std::time::Duration;
 
 use auto_enums::enum_derive;
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio_socks::tcp::{Socks4Stream, Socks5Stream};
 use tokio_socks::TargetAddr;
+use tokio_socks::tcp::{Socks4Stream, Socks5Stream};
 
+use crate::Connection;
 use crate::dns::DnsResolver;
 use crate::errors::TransportConnectError;
 use crate::host::Host;
 use crate::route::{Connector, ConnectorExt as _, SocksRoute, TcpRoute};
 use crate::tcp_ssl::TcpStream;
-use crate::Connection;
 
 pub(crate) const LONG_FULL_CONNECT_THRESHOLD: Duration = super::LONG_TCP_HANDSHAKE_THRESHOLD
     .saturating_add(super::LONG_TLS_HANDSHAKE_THRESHOLD)
@@ -82,7 +82,9 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
                 address: proxy_host,
                 port: proxy_port,
             } = &proxy;
-            log::debug!("[{log_tag}] connecting to {protocol:?} proxy at {proxy_host}:{proxy_port} over TCP");
+            log::debug!(
+                "[{log_tag}] connecting to {protocol:?} proxy at {proxy_host}:{proxy_port} over TCP"
+            );
 
             let target = match &target_addr {
                 crate::route::ProxyTarget::ResolvedLocally(ip) => {
@@ -159,15 +161,15 @@ mod test {
 
     use assert_matches::assert_matches;
     use async_trait::async_trait;
-    use futures_util::{select, FutureExt as _};
+    use futures_util::{FutureExt as _, select};
     use test_case::test_matrix;
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
     use tokio::join;
 
     use super::*;
     use crate::route::ProxyTarget;
-    use crate::tcp_ssl::proxy::testutil::{TcpServer, TlsServer};
     use crate::tcp_ssl::proxy::StatelessProxied;
+    use crate::tcp_ssl::proxy::testutil::{TcpServer, TlsServer};
     use crate::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
 
     /// Authentication method.

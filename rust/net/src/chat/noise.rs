@@ -8,7 +8,7 @@ use std::net::IpAddr;
 
 use libsignal_core::try_scoped;
 use libsignal_net_infra::noise::{
-    HandshakeAuthKind, NoiseHandshake, EPHEMERAL_KEY_LEN, STATIC_KEY_LEN,
+    EPHEMERAL_KEY_LEN, HandshakeAuthKind, NoiseHandshake, STATIC_KEY_LEN,
 };
 use libsignal_net_infra::route::{
     ComposedConnector, Connector, ResolveHostnames, ResolvedRoute, UnresolvedHost,

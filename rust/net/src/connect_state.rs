@@ -28,12 +28,12 @@ use libsignal_net_infra::route::{
 };
 use libsignal_net_infra::tcp_ssl::{LONG_TCP_HANDSHAKE_THRESHOLD, LONG_TLS_HANDSHAKE_THRESHOLD};
 use libsignal_net_infra::timeouts::{
-    TimeoutOr, MIN_TLS_HANDSHAKE_TIMEOUT, NETWORK_INTERFACE_POLL_INTERVAL,
-    ONE_ROUTE_CONNECTION_TIMEOUT, POST_ROUTE_CHANGE_CONNECTION_TIMEOUT,
+    MIN_TLS_HANDSHAKE_TIMEOUT, NETWORK_INTERFACE_POLL_INTERVAL, ONE_ROUTE_CONNECTION_TIMEOUT,
+    POST_ROUTE_CHANGE_CONNECTION_TIMEOUT, TimeoutOr,
 };
 use libsignal_net_infra::utils::NetworkChangeEvent;
-use libsignal_net_infra::ws::attested::AttestedConnection;
 use libsignal_net_infra::ws::WebSocketConnectError;
+use libsignal_net_infra::ws::attested::AttestedConnection;
 use libsignal_net_infra::{AsHttpHeader as _, AsyncDuplexStream};
 use rand::distr::uniform::{UniformSampler, UniformUsize};
 use rand_core::{OsRng, UnwrapErr};
@@ -80,10 +80,10 @@ pub trait WebSocketTransportConnectorFactory<Transport = TransportRoute>:
 
 impl<F, Transport> WebSocketTransportConnectorFactory<Transport> for F where
     F: ConnectorFactory<
-        Transport,
-        Connector: Sync + Connector<Transport, (), Error: Into<WebSocketConnectError>>,
-        Connection: AsyncDuplexStream + 'static,
-    >
+            Transport,
+            Connector: Sync + Connector<Transport, (), Error: Into<WebSocketConnectError>>,
+            Connection: AsyncDuplexStream + 'static,
+        >
 {
 }
 
@@ -281,10 +281,10 @@ impl<TC> ConnectionResources<'_, TC> {
         // Note that we're not using WebSocketTransportConnectorFactory here to make `connect_ws`
         // easier to test; specifically, the output is not guaranteed to be an AsyncDuplexStream.
         TC: ConnectorFactory<
-            Transport,
-            Connection: Send,
-            Connector: Sync + Connector<Transport, (), Error: Into<WebSocketConnectError>>,
-        >,
+                Transport,
+                Connection: Send,
+                Connector: Sync + Connector<Transport, (), Error: Into<WebSocketConnectError>>,
+            >,
         WC: Connector<
                 (WebSocketRouteFragment, HttpRouteFragment),
                 TC::Connection,
@@ -637,16 +637,16 @@ mod test {
 
     use assert_matches::assert_matches;
     use const_str::ip_addr;
-    use http::uri::PathAndQuery;
     use http::HeaderMap;
+    use http::uri::PathAndQuery;
     use libsignal_net_infra::certs::RootCertificates;
     use libsignal_net_infra::dns::lookup_result::LookupResult;
     use libsignal_net_infra::host::Host;
     use libsignal_net_infra::route::testutils::ConnectFn;
     use libsignal_net_infra::route::{
-        AttemptOutcome, DirectOrProxyRoute, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment,
-        UnresolvedHost, UnresolvedTransportRoute, UnsuccessfulOutcome, WebSocketRoute,
-        HAPPY_EYEBALLS_DELAY,
+        AttemptOutcome, DirectOrProxyRoute, HAPPY_EYEBALLS_DELAY, HttpsTlsRoute, TcpRoute,
+        TlsRoute, TlsRouteFragment, UnresolvedHost, UnresolvedTransportRoute, UnsuccessfulOutcome,
+        WebSocketRoute,
     };
     use libsignal_net_infra::utils::no_network_change_events;
     use libsignal_net_infra::{Alpn, RouteType};

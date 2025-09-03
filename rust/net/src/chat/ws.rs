@@ -14,21 +14,21 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use futures_util::future::Either;
-use futures_util::{pin_mut, FutureExt as _, Stream, StreamExt as _};
+use futures_util::{FutureExt as _, Stream, StreamExt as _, pin_mut};
 use http::uri::PathAndQuery;
 use http::{Method, StatusCode};
 use itertools::Itertools as _;
+use libsignal_net_infra::TransportInfo;
 use libsignal_net_infra::route::GetCurrentInterface;
-use libsignal_net_infra::utils::future::SomeOrPending;
 use libsignal_net_infra::utils::NetworkChangeEvent;
+use libsignal_net_infra::utils::future::SomeOrPending;
 pub use libsignal_net_infra::ws::connection::FinishReason;
 use libsignal_net_infra::ws::connection::Outcome;
 use libsignal_net_infra::ws::{WebSocketError, WebSocketStreamLike};
-use libsignal_net_infra::TransportInfo;
 use pin_project::pin_project;
 use prost::Message as _;
 use tokio::sync::mpsc::WeakSender;
-use tokio::sync::{mpsc, oneshot, Mutex as TokioMutex};
+use tokio::sync::{Mutex as TokioMutex, mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tokio::time::{Duration, Instant};
 use tokio_stream::wrappers::{ReceiverStream, UnboundedReceiverStream};
@@ -38,8 +38,8 @@ use crate::chat::{ChatMessageType, MessageProto, Request, RequestProto, Response
 use crate::env::{
     ALERT_HEADER_NAME, CONNECTED_ELSEWHERE_CLOSE_CODE, CONNECTION_INVALIDATED_CLOSE_CODE,
 };
-use crate::infra::ws::connection::{MessageEvent, NextEventError, TungsteniteSendError};
 use crate::infra::ws::TextOrBinary;
+use crate::infra::ws::connection::{MessageEvent, NextEventError, TungsteniteSendError};
 
 /// Chat service avilable via a connected websocket.
 ///
@@ -770,13 +770,13 @@ async fn send_request(
                 return Err(SendError::Disconnected(DisconnectedReason::SocketClosed {
                     #[cfg(test)]
                     reason: "task was already signalled to end",
-                }))
+                }));
             }
             TaskState::Finished(Ok(_reason)) => {
                 return Err(SendError::Disconnected(DisconnectedReason::SocketClosed {
                     #[cfg(test)]
                     reason: "task already ended gracefully",
-                }))
+                }));
             }
             TaskState::Finished(Err(err)) => return Err(SendError::from(&*err)),
         }
@@ -1124,7 +1124,7 @@ impl<I: InnerConnection, GCI: GetCurrentInterface<Representation = IpAddr>> Conn
         match event {
             Outcome::Finished(Ok(finish)) => return Outcome::Finished(Ok(finish)),
             Outcome::Finished(Err(err)) => {
-                return Outcome::Finished(Err(TaskExitError::WebsocketError(err)))
+                return Outcome::Finished(Err(TaskExitError::WebsocketError(err)));
             }
             Outcome::Continue(MessageEvent::SentPing | MessageEvent::ReceivedPingPong) => {}
             Outcome::Continue(MessageEvent::SentMessage(OutgoingMeta::SentRequest(
@@ -1210,7 +1210,7 @@ impl<I: InnerConnection, GCI: GetCurrentInterface<Representation = IpAddr>> Conn
                         return Outcome::Continue(Some(IncomingEvent::ReceivedRequest {
                             id,
                             request: request_proto,
-                        }))
+                        }));
                     }
                 }
             }
@@ -1253,7 +1253,7 @@ impl TryFrom<TextOrBinary> for ChatMessage {
     fn try_from(message: TextOrBinary) -> Result<Self, Self::Error> {
         let data = match message {
             TextOrBinary::Text(text) => {
-                return Err(ChatProtocolError::ReceivedTextMessage { len: text.len() })
+                return Err(ChatProtocolError::ReceivedTextMessage { len: text.len() });
             }
             TextOrBinary::Binary(data) => data,
         };
@@ -1418,10 +1418,10 @@ impl From<TaskExitError> for crate::chat::SendError {
                 NextEventError::UnexpectedConnectionClose => WebSocketError::ChannelClosed,
                 NextEventError::AbnormalServerClose { code, reason: _ } => match code {
                     CloseCode::Library(CONNECTION_INVALIDATED_CLOSE_CODE) => {
-                        return Self::ConnectionInvalidated
+                        return Self::ConnectionInvalidated;
                     }
                     CloseCode::Library(CONNECTED_ELSEWHERE_CLOSE_CODE) => {
-                        return Self::ConnectedElsewhere
+                        return Self::ConnectedElsewhere;
                     }
                     _ => WebSocketError::ChannelClosed,
                 },
@@ -1545,9 +1545,9 @@ mod test {
         pub(super) fn new_chat_with_config(
             config: FakeConfig,
             get_current_interface: impl GetCurrentInterface<Representation = IpAddr>
-                + Send
-                + Sync
-                + 'static,
+            + Send
+            + Sync
+            + 'static,
             listener: EventListener,
         ) -> (Chat, FakeTxRxChannels) {
             let FakeConfig {
@@ -1637,7 +1637,7 @@ mod test {
                                 OutcomeOrPanic::IntentionalPanic(message) => {
                                     panic!("intentional panic: {message}")
                                 }
-                            }
+                            };
                         }
                     }
                 }

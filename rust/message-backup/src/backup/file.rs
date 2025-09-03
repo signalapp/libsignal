@@ -8,7 +8,7 @@ use serde_with::serde_as;
 use uuid::Uuid;
 
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
-use crate::backup::{serialize, TryIntoWith};
+use crate::backup::{TryIntoWith, serialize};
 use crate::proto::backup as proto;
 
 #[serde_as]

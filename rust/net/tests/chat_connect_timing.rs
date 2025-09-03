@@ -24,13 +24,13 @@ use tokio::time::{Duration, Instant};
 
 mod fake_transport;
 use fake_transport::{
-    allow_domain_fronting, connect_websockets_on_incoming, error_all_hosts_after,
-    only_direct_routes, FakeDeps,
+    FakeDeps, allow_domain_fronting, connect_websockets_on_incoming, error_all_hosts_after,
+    only_direct_routes,
 };
 
 use crate::fake_transport::{
-    allow_all_routes, Behavior, FakeTransportTarget, TransportConnectEvent,
-    TransportConnectEventStage,
+    Behavior, FakeTransportTarget, TransportConnectEvent, TransportConnectEventStage,
+    allow_all_routes,
 };
 
 #[test_log::test(tokio::test(start_paused = true))]

@@ -41,7 +41,7 @@ impl Behavior {
                 }
                 Behavior::Fail(make_error) => return Err(make_error()),
                 Behavior::ReturnStream(stream) => {
-                    return Ok(stream.unwrap_or(std::convert::identity))
+                    return Ok(stream.unwrap_or(std::convert::identity));
                 }
                 Behavior::Unreachable => unreachable!("this test should not attempt to connect"),
             }

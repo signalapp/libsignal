@@ -9,14 +9,14 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::time::Duration;
 
 use futures_util::{Sink, Stream};
+use libsignal_net_infra::TransportInfo;
 use libsignal_net_infra::route::GetCurrentInterface;
 use libsignal_net_infra::utils::no_network_change_events;
-use libsignal_net_infra::TransportInfo;
 use pin_project::pin_project;
 use prost::Message;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::chat::{ws, ChatConnection, ConnectionInfo, MessageProto, RequestProto, ResponseProto};
+use crate::chat::{ChatConnection, ConnectionInfo, MessageProto, RequestProto, ResponseProto, ws};
 use crate::connect_state::RouteInfo;
 use crate::env::ALERT_HEADER_NAME;
 

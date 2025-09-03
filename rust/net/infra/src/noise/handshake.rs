@@ -93,8 +93,8 @@ mod test {
     use futures_util::{FutureExt, StreamExt};
 
     use super::*;
-    use crate::noise::testutil::new_transport;
     use crate::noise::FrameType;
+    use crate::noise::testutil::new_transport;
     use crate::utils::testutil::TestWaker;
 
     struct NkHandshake {

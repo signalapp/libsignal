@@ -8,12 +8,12 @@ use std::process::ExitCode;
 use clap::Parser;
 use clap_stdin::FileOrStdin;
 use futures::future::Either;
+use libsignal_message_backup::FoundUnknownField;
 use libsignal_message_backup::backup::{CompletedBackup, PartialBackup, Purpose, ValidateOnly};
 use libsignal_message_backup::frame::{FramesReader, ReaderFactory as _};
 use libsignal_message_backup::parse::VarintDelimitedReader;
 use libsignal_message_backup::scramble::Scrambler;
 use libsignal_message_backup::unknown::VisitUnknownFieldsExt as _;
-use libsignal_message_backup::FoundUnknownField;
 
 #[path = "../src/bin/support/mod.rs"]
 mod support;
@@ -123,7 +123,9 @@ fn main() -> ExitCode {
             match (original_result, new_result) {
                 (Ok(original_unknown_fields), Ok(())) => {
                     if original_unknown_fields.len() != new_unknown_fields.len() {
-                        log::warn!("scrambling may have removed some unknown fields in frame {frame_index}; here are the post-scrambling fields:");
+                        log::warn!(
+                            "scrambling may have removed some unknown fields in frame {frame_index}; here are the post-scrambling fields:"
+                        );
                         for (path, value) in new_unknown_fields {
                             log::info!(
                                 "{}",
@@ -137,16 +139,22 @@ fn main() -> ExitCode {
                     }
                 }
                 (Ok(_), Err(e)) => {
-                    log::error!("scrambling of frame {frame_index} introduced a new error: {e} (continuing anyway!)");
+                    log::error!(
+                        "scrambling of frame {frame_index} introduced a new error: {e} (continuing anyway!)"
+                    );
                     exit_code = ExitCode::FAILURE;
                 }
                 (Err(old_error), Err(new_error)) => {
                     if old_error.to_string() != new_error.to_string() {
-                        log::warn!("validation error for frame {frame_index} changed post-scrambling: {new_error}");
+                        log::warn!(
+                            "validation error for frame {frame_index} changed post-scrambling: {new_error}"
+                        );
                     }
                 }
                 (Err(_), Ok(_)) => {
-                    log::error!("scrambling of frame {frame_index} removed an error; this may no longer be a suitable test case!");
+                    log::error!(
+                        "scrambling of frame {frame_index} removed an error; this may no longer be a suitable test case!"
+                    );
                     exit_code = ExitCode::FAILURE;
                 }
             }

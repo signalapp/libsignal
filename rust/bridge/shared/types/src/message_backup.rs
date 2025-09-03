@@ -4,12 +4,12 @@
 //
 
 use libsignal_account_keys::{
-    AccountEntropyPool, BackupForwardSecrecyToken, BackupId, BackupKey,
-    BACKUP_FORWARD_SECRECY_TOKEN_LEN, BACKUP_KEY_LEN,
+    AccountEntropyPool, BACKUP_FORWARD_SECRECY_TOKEN_LEN, BACKUP_KEY_LEN,
+    BackupForwardSecrecyToken, BackupId, BackupKey,
 };
 use libsignal_message_backup::frame::ValidationError as FrameValidationError;
 use libsignal_message_backup::key::MessageBackupKey as MessageBackupKeyInner;
-use libsignal_message_backup::{backup, Error, FoundUnknownField};
+use libsignal_message_backup::{Error, FoundUnknownField, backup};
 use libsignal_protocol::Aci;
 
 use crate::*;

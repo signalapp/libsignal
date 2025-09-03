@@ -6,10 +6,10 @@
 #![allow(clippy::missing_safety_doc)]
 #![warn(clippy::unwrap_used)]
 
-use std::ffi::{c_char, c_uchar, CString};
+use std::ffi::{CString, c_char, c_uchar};
 
 use libsignal_bridge::ffi::{self, *};
-use libsignal_bridge::{ffi_arg_type, IllegalArgumentError};
+use libsignal_bridge::{IllegalArgumentError, ffi_arg_type};
 use libsignal_bridge_macros::bridge_fn;
 #[cfg(feature = "libsignal-bridge-testing")]
 #[allow(unused_imports)]

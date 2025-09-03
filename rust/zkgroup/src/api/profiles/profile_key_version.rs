@@ -10,7 +10,7 @@ use super::ProfileKey;
 use crate::common::sho::Sho;
 use crate::common::simple_types::*;
 use crate::{
-    api, PROFILE_KEY_LEN, PROFILE_KEY_VERSION_ENCODED_LEN, PROFILE_KEY_VERSION_LEN, UUID_LEN,
+    PROFILE_KEY_LEN, PROFILE_KEY_VERSION_ENCODED_LEN, PROFILE_KEY_VERSION_LEN, UUID_LEN, api,
 };
 
 /// An identifier for a particular (profile key, ACI) combination.

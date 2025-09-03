@@ -8,7 +8,7 @@ use std::fmt;
 use zerocopy::{FromBytes, IntoBytes, KnownLayout};
 
 use crate::proto::storage::session_structure;
-use crate::{crypto, PrivateKey, PublicKey, Result};
+use crate::{PrivateKey, PublicKey, Result, crypto};
 
 pub(crate) enum MessageKeyGenerator {
     Keys(MessageKeys),

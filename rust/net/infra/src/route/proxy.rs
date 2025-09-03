@@ -9,6 +9,7 @@ use std::sync::Arc;
 use either::Either;
 use nonzero_ext::nonzero;
 
+use crate::Alpn;
 use crate::certs::RootCertificates;
 use crate::errors::LogSafeDisplay;
 use crate::host::Host;
@@ -17,7 +18,6 @@ use crate::route::{
     TlsRouteFragment, UnresolvedHost,
 };
 use crate::tcp_ssl::proxy::socks;
-use crate::Alpn;
 
 pub const SIGNAL_TLS_PROXY_SCHEME: &str = "org.signal.tls";
 

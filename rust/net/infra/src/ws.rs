@@ -9,12 +9,12 @@ use std::time::Duration;
 use futures_util::{Sink, Stream, TryFutureExt};
 use http::uri::PathAndQuery;
 use tungstenite::protocol::CloseFrame;
-use tungstenite::{http, Message, Utf8Bytes};
+use tungstenite::{Message, Utf8Bytes, http};
 
+use crate::AsyncDuplexStream;
 use crate::errors::LogSafeDisplay;
 use crate::route::{Connector, HttpRouteFragment, WebSocketRouteFragment};
 use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError};
-use crate::AsyncDuplexStream;
 
 pub mod error;
 pub use error::WebSocketConnectError;
@@ -191,10 +191,10 @@ impl<T, Inner> Connector<(WebSocketRouteFragment, HttpRouteFragment), Inner>
     for WithoutResponseHeaders<T>
 where
     T: Connector<
-        (WebSocketRouteFragment, HttpRouteFragment),
-        Inner,
-        Connection = StreamWithResponseHeaders<tokio_tungstenite::WebSocketStream<Inner>>,
-    >,
+            (WebSocketRouteFragment, HttpRouteFragment),
+            Inner,
+            Connection = StreamWithResponseHeaders<tokio_tungstenite::WebSocketStream<Inner>>,
+        >,
 {
     type Connection = tokio_tungstenite::WebSocketStream<Inner>;
     type Error = T::Error;

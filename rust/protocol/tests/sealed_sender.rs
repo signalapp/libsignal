@@ -8,8 +8,8 @@ use std::time::SystemTime;
 
 use futures_util::FutureExt;
 use libsignal_protocol::*;
-use rand::rngs::OsRng;
 use rand::TryRngCore as _;
+use rand::rngs::OsRng;
 use support::*;
 use uuid::Uuid;
 
@@ -674,8 +674,8 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
 }
 
 #[test]
-fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
-) -> Result<(), SignalProtocolError> {
+fn test_sealed_sender_multi_recipient_encrypt_with_archived_session()
+-> Result<(), SignalProtocolError> {
     async {
         let mut rng = OsRng.unwrap_err();
 
@@ -780,8 +780,8 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
 }
 
 #[test]
-fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
-) -> Result<(), SignalProtocolError> {
+fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id()
+-> Result<(), SignalProtocolError> {
     async {
         let mut rng = OsRng.unwrap_err();
 

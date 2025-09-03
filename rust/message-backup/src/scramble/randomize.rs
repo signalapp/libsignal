@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use rand::distr::{Alphanumeric, SampleString as _};
 use rand::Rng;
+use rand::distr::{Alphanumeric, SampleString as _};
 
 /// Replaces the contents with something random that is the same length.
 ///

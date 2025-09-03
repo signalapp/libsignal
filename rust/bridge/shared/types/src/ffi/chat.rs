@@ -7,17 +7,17 @@ use std::ffi::{c_uchar, c_void};
 use std::panic::UnwindSafe;
 
 use bytes::Bytes;
-use futures_util::future::BoxFuture;
 use futures_util::FutureExt as _;
+use futures_util::future::BoxFuture;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::{ChatConnection, ConnectError};
 use libsignal_net_chat::api::Unauth;
 use libsignal_net_chat::registration::ConnectUnauthChat;
 
 use super::*;
+use crate::net::ConnectionManager;
 use crate::net::chat::{ChatListener, ServerMessageAck};
 use crate::net::registration::ConnectChatBridge;
-use crate::net::ConnectionManager;
 
 type ReceivedIncomingMessage = extern "C" fn(
     ctx: *mut c_void,

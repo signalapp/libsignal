@@ -145,23 +145,25 @@ mod tests {
         let mrenclave_bytes =
             hex!("38e01eff4fe357dc0b0e8ef7a44b4abc5489fbccba3a78780f3872c277f62bf3");
 
-        assert!(new_handshake_with_constants(
-            &mrenclave_bytes,
-            HANDSHAKE_BYTES,
-            current_time,
-            &[],
-            &RaftConfig {
-                min_voting_replicas: 3,
-                max_voting_replicas: 5,
-                super_majority: 0,
-                group_id: 0, // wrong
-                db_version: 2,
-                attestation_timeout: 604800,
-                simulated: false,
-            },
-            HandshakeType::PreQuantum,
-        )
-        .is_err());
+        assert!(
+            new_handshake_with_constants(
+                &mrenclave_bytes,
+                HANDSHAKE_BYTES,
+                current_time,
+                &[],
+                &RaftConfig {
+                    min_voting_replicas: 3,
+                    max_voting_replicas: 5,
+                    super_majority: 0,
+                    group_id: 0, // wrong
+                    db_version: 2,
+                    attestation_timeout: 604800,
+                    simulated: false,
+                },
+                HandshakeType::PreQuantum,
+            )
+            .is_err()
+        );
     }
 
     fn matches(

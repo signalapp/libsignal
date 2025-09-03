@@ -9,6 +9,7 @@ use libsignal_bridge_macros::*;
 use libsignal_bridge_types::zkgroup::validate_serialization;
 use libsignal_protocol::{Aci, Pni, ServiceId};
 use uuid::Uuid;
+pub(crate) use zkgroup::Timestamp;
 use zkgroup::auth::*;
 use zkgroup::backups::{
     BackupAuthCredential, BackupAuthCredentialPresentation, BackupAuthCredentialRequest,
@@ -19,7 +20,6 @@ use zkgroup::generic_server_params::*;
 use zkgroup::groups::*;
 use zkgroup::profiles::*;
 use zkgroup::receipts::*;
-pub(crate) use zkgroup::Timestamp;
 use zkgroup::*;
 
 use crate::support::*;

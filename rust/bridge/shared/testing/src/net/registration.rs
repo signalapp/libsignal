@@ -6,16 +6,16 @@
 use std::collections::HashSet;
 use std::time::Duration;
 
-use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
+use futures_util::future::BoxFuture;
 use libsignal_bridge_macros::*;
+use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationService,
 };
-use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_net::auth::Auth;
-use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::ChatConnection;
+use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net_chat::api::registration::*;
 use libsignal_net_chat::api::{ChallengeOption, RateLimitChallenge, Unauth};
@@ -39,8 +39,8 @@ pub fn TESTING_RegistrationSessionInfoConvert() -> RegistrationSession {
 }
 
 #[bridge_fn]
-pub fn TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert(
-) -> CheckSvr2CredentialsResponse {
+pub fn TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert()
+-> CheckSvr2CredentialsResponse {
     CheckSvr2CredentialsResponse {
         matches: [
             ("username:pass-match", Svr2CredentialsResult::Match),

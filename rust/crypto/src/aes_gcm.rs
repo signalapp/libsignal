@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use aes::Aes256;
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::{BlockEncrypt, KeyInit};
-use aes::Aes256;
-use ghash::universal_hash::UniversalHash;
 use ghash::GHash;
+use ghash::universal_hash::UniversalHash;
 use subtle::ConstantTimeEq;
 
 use crate::{Aes256Ctr32, Error, Result};

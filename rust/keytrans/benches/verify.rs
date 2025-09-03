@@ -6,7 +6,7 @@
 use std::time::{Duration, SystemTime};
 
 use const_str::hex;
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use libsignal_keytrans::{
     ChatSearchResponse, DeploymentMode, FullSearchResponse, KeyTransparency, PublicConfig,
     SearchContext, SlimSearchRequest, VerifyingKey, VrfPublicKey,

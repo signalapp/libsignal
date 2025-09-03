@@ -9,7 +9,7 @@ use rand::TryRngCore as _;
 
 use crate::proto::storage::SignedPreKeyRecordStructure;
 use crate::state::GenericSignedPreKey;
-use crate::{kem, PrivateKey, Result, Timestamp};
+use crate::{PrivateKey, Result, Timestamp, kem};
 
 /// A unique identifier selecting among this client's known signed pre-keys.
 #[derive(

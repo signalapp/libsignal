@@ -14,7 +14,7 @@ use crate::constants::{
     USERNAME_LINK_KEY_SIZE, USERNAME_LINK_LABEL_AUTHENTICATION_KEY,
     USERNAME_LINK_LABEL_ENCRYPTION_KEY,
 };
-use crate::{proto, UsernameLinkError};
+use crate::{UsernameLinkError, proto};
 
 /// Generates the encrypted buffer used for a username link, decryptable by [`decrypt_username`].
 ///
@@ -106,8 +106,8 @@ fn random_bytes<const SIZE: usize, R: Rng + CryptoRng>(rng: &mut R) -> [u8; SIZE
 
 #[cfg(test)]
 mod test {
-    use rand::rngs::OsRng;
     use rand::TryRngCore as _;
+    use rand::rngs::OsRng;
 
     use super::*;
     use crate::constants::{DISCRIMINATOR_RANGES, MAX_NICKNAME_LENGTH};

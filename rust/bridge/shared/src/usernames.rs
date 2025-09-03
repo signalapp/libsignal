@@ -5,8 +5,8 @@
 
 #[allow(unused_imports)]
 use ::usernames::{
-    create_for_username, decrypt_username, NicknameLimits, Username, UsernameError,
-    UsernameLinkError,
+    NicknameLimits, Username, UsernameError, UsernameLinkError, create_for_username,
+    decrypt_username,
 };
 use libsignal_bridge_macros::*;
 use rand::TryRngCore as _;

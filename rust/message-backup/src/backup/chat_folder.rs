@@ -6,11 +6,11 @@
 use intmap::IntMap;
 use itertools::Itertools;
 
+use crate::backup::TryIntoWith;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
-use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::ChatFolder`].

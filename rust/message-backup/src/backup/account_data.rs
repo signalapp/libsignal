@@ -7,17 +7,17 @@ use std::fmt::Debug;
 use std::num::NonZeroU32;
 
 use derive_where::derive_where;
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::{DisplayFromStr, serde_as};
 use usernames::constants::USERNAME_LINK_ENTROPY_SIZE;
 use usernames::{Username, UsernameError};
 use uuid::Uuid;
-use zkgroup::api::backups::BackupLevel;
 use zkgroup::ProfileKeyBytes;
+use zkgroup::api::backups::BackupLevel;
 
 use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError, CustomColorMap};
 use crate::backup::method::Method;
 use crate::backup::time::{Duration, ReportUnusualTimestamp};
-use crate::backup::{serialize, ReferencedTypes, TryIntoWith};
+use crate::backup::{ReferencedTypes, TryIntoWith, serialize};
 use crate::proto::backup as proto;
 
 #[derive_where(Debug)]
@@ -382,7 +382,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
         use proto::account_data::PhoneNumberSharingMode;
         let phone_number_sharing = match phoneNumberSharingMode.enum_value_or_default() {
             PhoneNumberSharingMode::UNKNOWN => {
-                return Err(AccountDataError::UnknownPhoneNumberSharingMode)
+                return Err(AccountDataError::UnknownPhoneNumberSharingMode);
             }
             PhoneNumberSharingMode::EVERYBODY => PhoneSharing::WithEverybody,
             PhoneNumberSharingMode::NOBODY => PhoneSharing::WithNobody,

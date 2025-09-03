@@ -5,8 +5,8 @@
 
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
 use curve25519_dalek_signal::scalar::Scalar;
-use poksho::shoapi::ShoApiExt as _;
 use poksho::ShoApi;
+use poksho::shoapi::ShoApiExt as _;
 
 pub struct Sho {
     internal_sho: poksho::ShoHmacSha256,

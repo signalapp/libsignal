@@ -173,8 +173,8 @@ mod test {
     use assert_matches::assert_matches;
 
     use super::*;
-    use crate::route::testutils::ConnectFn;
     use crate::route::ConnectorExt;
+    use crate::route::testutils::ConnectFn;
 
     const TIMEOUT: Duration = Duration::from_secs(1);
 
@@ -183,10 +183,10 @@ mod test {
     ) -> PreconnectingFactory<
         i32,
         impl ConnectorFactory<
-                i32,
-                Connector: Connector<i32, (), Error = &'static str> + Sync,
-                Connection = u32,
-            > + '_,
+            i32,
+            Connector: Connector<i32, (), Error = &'static str> + Sync,
+            Connection = u32,
+        > + '_,
     > {
         let inner_connector = ConnectFn(|_over: (), route: i32| {
             number_of_times_called.fetch_add(1, atomic::Ordering::SeqCst);

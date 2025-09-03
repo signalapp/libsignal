@@ -11,11 +11,11 @@ use prost::Message;
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
 
-use crate::proto::storage::{session_structure, RecordStructure, SessionStructure};
+use crate::proto::storage::{RecordStructure, SessionStructure, session_structure};
 use crate::protocol::CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION;
 use crate::ratchet::{ChainKey, MessageKeyGenerator, RootKey};
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
-use crate::{consts, kem, IdentityKey, KeyPair, PrivateKey, PublicKey, SignalProtocolError};
+use crate::{IdentityKey, KeyPair, PrivateKey, PublicKey, SignalProtocolError, consts, kem};
 
 /// A distinct error type to keep from accidentally propagating deserialization errors.
 #[derive(Debug)]

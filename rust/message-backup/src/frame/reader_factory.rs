@@ -6,8 +6,8 @@
 use std::fs::File;
 
 use arrayvec::ArrayVec;
-use futures::io::{AllowStdIo, Cursor};
 use futures::AsyncRead;
+use futures::io::{AllowStdIo, Cursor};
 use mediasan_common::{AsyncSkip, SeekSkipAdapter};
 
 /// Provider of an [`AsyncRead`] and [`AsyncSkip`] reader.

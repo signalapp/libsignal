@@ -9,8 +9,8 @@ use std::panic::UnwindSafe;
 use libsignal_net::chat::{LanguageList, Request as ChatRequest, Response as ChatResponse};
 use static_assertions::assert_impl_all;
 
-use crate::api::registration::*;
 use crate::api::Registration;
+use crate::api::registration::*;
 
 mod service;
 pub use service::*;
@@ -309,8 +309,8 @@ mod testutil {
     use std::future::Future;
     use std::marker::PhantomData;
 
-    use futures_util::future::BoxFuture;
     use futures_util::FutureExt as _;
+    use futures_util::future::BoxFuture;
     use libsignal_net::chat::fake::FakeChatRemote;
     use libsignal_net::chat::ws::ListenerEvent;
     use libsignal_net::chat::{ChatConnection, ConnectError as ChatConnectError};
@@ -394,8 +394,8 @@ mod test {
 
     use assert_matches::assert_matches;
     use bytes::Bytes;
-    use futures_util::future::BoxFuture;
     use futures_util::FutureExt as _;
+    use futures_util::future::BoxFuture;
     use libsignal_net::chat::fake::FakeChatRemote;
     use libsignal_net::chat::{ChatConnection, ConnectError};
     use libsignal_net::proto::chat_websocket::WebSocketRequestMessage;

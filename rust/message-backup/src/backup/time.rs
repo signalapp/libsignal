@@ -242,7 +242,7 @@ mod test {
     use test_case::{test_case, test_matrix};
 
     use super::*;
-    use crate::backup::time::testutil::{MillisecondsSinceEpoch, FIXED_DATE};
+    use crate::backup::time::testutil::{FIXED_DATE, MillisecondsSinceEpoch};
 
     impl Timestamp {
         pub(crate) fn test_value() -> Self {

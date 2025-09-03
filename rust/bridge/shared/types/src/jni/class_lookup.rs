@@ -2,8 +2,8 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use jni::objects::{GlobalRef, JClass, JMethodID, JObject, JValue};
 use jni::JNIEnv;
+use jni::objects::{GlobalRef, JClass, JMethodID, JObject, JValue};
 use libsignal_core::try_scoped;
 use once_cell::sync::OnceCell;
 

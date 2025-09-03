@@ -6,8 +6,8 @@
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
-use crate::common::serialization::ReservedByte;
 use crate::RandomnessBytes;
+use crate::common::serialization::ReservedByte;
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct GenericServerSecretParams {

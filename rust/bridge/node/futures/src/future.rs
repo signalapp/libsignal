@@ -6,7 +6,7 @@
 use std::future::Future;
 use std::marker::PhantomData;
 use std::mem;
-use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, Weak};
 use std::task::{Poll, Waker};

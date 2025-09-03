@@ -8,7 +8,7 @@ use std::task::Poll;
 
 use cbc::cipher::{Block, BlockCipher, BlockDecryptMut};
 use derive_where::derive_where;
-use futures::{ready, Stream, StreamExt as _};
+use futures::{Stream, StreamExt as _, ready};
 
 /// Stream adapter that decrypts with a CBC stream cipher.
 ///
@@ -60,9 +60,9 @@ where
 mod test {
     use aes::Aes256;
     use assert_matches::assert_matches;
+    use cbc::Decryptor;
     use cbc::cipher::generic_array::GenericArray;
     use cbc::cipher::{BlockEncryptMut, BlockSizeUser, KeyIvInit, Unsigned};
-    use cbc::Decryptor;
     use futures::executor::block_on;
     use futures::{FutureExt as _, TryStreamExt};
 

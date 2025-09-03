@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::process::abort;
 
 use jni::objects::{AutoLocal, GlobalRef, JClass, JObject, JStaticMethodID, JValue};

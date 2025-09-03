@@ -6,10 +6,10 @@
 #![allow(clippy::missing_safety_doc)]
 #![deny(clippy::unwrap_used)]
 
+use jni::JNIEnv;
 #[cfg(not(target_os = "android"))]
 use jni::objects::{AutoLocal, JList, JMap, JValue};
 use jni::objects::{JByteArray, JClass, JLongArray, JObject, JString};
-use jni::JNIEnv;
 use libsignal_bridge::jni::*;
 use libsignal_bridge::net::TokioAsyncContext;
 use libsignal_bridge::{jni_args, jni_signature};

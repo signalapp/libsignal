@@ -22,9 +22,9 @@
 //! Credential presentation is defined in Chase-Perrin-Zaverucha section 3.2; proofs for verifiable
 //! encryption are defined in section 4.1.
 
+use curve25519_dalek::Scalar;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::traits::Identity;
-use curve25519_dalek::Scalar;
 use partial_default::PartialDefault;
 use poksho::shoapi::ShoApiExt as _;
 use poksho::{ShoApi, ShoHmacSha256};
@@ -32,11 +32,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::attributes::{self, Attribute, PublicAttribute, RevealedAttribute};
 use crate::credentials::{
-    Credential, CredentialKeyPair, CredentialPrivateKey, CredentialPublicKey, SystemParams,
-    NUM_SUPPORTED_ATTRS,
+    Credential, CredentialKeyPair, CredentialPrivateKey, CredentialPublicKey, NUM_SUPPORTED_ATTRS,
+    SystemParams,
 };
 use crate::sho::ShoExt;
-use crate::{VerificationFailure, RANDOMNESS_LEN};
+use crate::{RANDOMNESS_LEN, VerificationFailure};
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 struct PresentationProofCommitments {

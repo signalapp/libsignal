@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
+use criterion::{BatchSize, BenchmarkId, Criterion, criterion_group, criterion_main};
 use curve25519_dalek::RistrettoPoint;
 use poksho::ShoApi;
+use zkcredential::RANDOMNESS_LEN;
 use zkcredential::endorsements::*;
 use zkcredential::sho::ShoExt;
-use zkcredential::RANDOMNESS_LEN;
 
 fn endorsement_flow(c: &mut Criterion) {
     let mut group = c.benchmark_group("endorsements");

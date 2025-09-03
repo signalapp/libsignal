@@ -7,7 +7,7 @@ use bytes::Bytes;
 use libsignal_net_infra::ws::WebSocketError;
 use libsignal_protocol::Timestamp;
 
-use crate::chat::{ws, RequestProto, SendError};
+use crate::chat::{RequestProto, SendError, ws};
 use crate::env::TIMESTAMP_HEADER_NAME;
 
 pub type ResponseEnvelopeSender =
@@ -134,7 +134,9 @@ fn convert_received_message(
                 .next_back();
 
             if let Some(raw_timestamp) = raw_timestamp {
-                log::info!("received message at {TIMESTAMP_HEADER_NAME}: {raw_timestamp} (this is not a message ID)");
+                log::info!(
+                    "received message at {TIMESTAMP_HEADER_NAME}: {raw_timestamp} (this is not a message ID)"
+                );
             } else {
                 log::warn!("server delivered message with no valid {TIMESTAMP_HEADER_NAME} header");
             }

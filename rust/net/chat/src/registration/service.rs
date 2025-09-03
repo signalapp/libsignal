@@ -208,7 +208,7 @@ async fn spawn_connected_chat(
                 );
                 match err {
                     ChatConnectError::InvalidConnectionConfiguration => {
-                        return Err(FatalConnectError::InvalidConfiguration)
+                        return Err(FatalConnectError::InvalidConfiguration);
                     }
                     ChatConnectError::RetryLater(retry_later) => {
                         return Err(FatalConnectError::RetryLater(retry_later));
@@ -230,7 +230,7 @@ async fn spawn_connected_chat(
                     ChatConnectError::AppExpired => {
                         return Err(FatalConnectError::Unexpected(
                             "unauthenticated socket signaled app expired",
-                        ))
+                        ));
                     }
                     ChatConnectError::DeviceDeregistered => {
                         return Err(FatalConnectError::Unexpected(
@@ -438,12 +438,12 @@ async fn start_request(chat: &ChatConnection, (request, mut responder): Incoming
 
 #[cfg(test)]
 mod test {
-    use std::sync::atomic::AtomicUsize;
     use std::sync::LazyLock;
+    use std::sync::atomic::AtomicUsize;
 
     use assert_matches::assert_matches;
-    use http::uri::PathAndQuery;
     use http::HeaderMap;
+    use http::uri::PathAndQuery;
     use test_case::test_case;
     use tokio::sync::oneshot;
     use tokio::time::Instant;

@@ -7,8 +7,8 @@ use std::io;
 
 use futures::AsyncRead;
 use libsignal_account_keys::BACKUP_FORWARD_SECRECY_TOKEN_LEN;
-use libsignal_svrb::proto::backup_metadata::metadata_pb::Pair as ForwardSecrecyPair;
 use libsignal_svrb::proto::backup_metadata::MetadataPb;
+use libsignal_svrb::proto::backup_metadata::metadata_pb::Pair as ForwardSecrecyPair;
 use protobuf::Message;
 use sha2::Digest;
 

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use base64::prelude::BASE64_STANDARD;
 use base64::Engine as _;
+use base64::prelude::BASE64_STANDARD;
 use libsignal_core::{Aci, DeviceId, ServiceId};
 
 #[derive(Debug, thiserror::Error)]

@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use asn1::{oid, ObjectIdentifier, SequenceOf};
+use asn1::{ObjectIdentifier, SequenceOf, oid};
 use boring_signal::asn1::Asn1ObjectRef;
 use boring_signal::nid::Nid;
 

@@ -8,7 +8,7 @@ use std::pin::Pin;
 use std::task::Poll;
 
 use arrayvec::ArrayVec;
-use futures::{ready, AsyncRead, Stream, StreamExt};
+use futures::{AsyncRead, Stream, StreamExt, ready};
 
 /// Adapter that reads blocks into a stream.
 ///
@@ -96,10 +96,10 @@ impl<S, const N: usize> ExactBlockStream<N, S> {
 }
 
 impl<
-        S: Stream<Item = Result<ArrayVec<u8, N>, E>> + Unpin,
-        E: Into<futures::io::Error>,
-        const N: usize,
-    > Stream for ExactBlockStream<N, S>
+    S: Stream<Item = Result<ArrayVec<u8, N>, E>> + Unpin,
+    E: Into<futures::io::Error>,
+    const N: usize,
+> Stream for ExactBlockStream<N, S>
 {
     type Item = futures::io::Result<[u8; N]>;
     fn poll_next(

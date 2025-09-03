@@ -13,15 +13,15 @@ use crate::commitments::verify as verify_commitment;
 use crate::guide::{InvalidState, ProofGuide};
 use crate::implicit::{full_monitoring_path, monitoring_path};
 use crate::log::{evaluate_batch_proof, verify_consistency_proof};
-use crate::prefix::{evaluate as evaluate_prefix, MalformedProof};
+use crate::prefix::{MalformedProof, evaluate as evaluate_prefix};
 use crate::proto::{
     CondensedTreeSearchResponse, FullTreeHead, MonitorKey, MonitorProof, MonitorRequest,
     MonitorResponse, ProofStep, TreeHead,
 };
 use crate::{
-    guide, log, vrf, DeploymentMode, FullSearchResponse, LastTreeHead, MonitorContext,
-    MonitorStateUpdate, MonitoringData, PublicConfig, SearchContext, SearchStateUpdate,
-    SlimSearchRequest, TreeRoot, VerifiableTreeHead,
+    DeploymentMode, FullSearchResponse, LastTreeHead, MonitorContext, MonitorStateUpdate,
+    MonitoringData, PublicConfig, SearchContext, SearchStateUpdate, SlimSearchRequest, TreeRoot,
+    VerifiableTreeHead, guide, log, vrf,
 };
 
 /// The range of allowed timestamp values relative to "now".
@@ -402,7 +402,7 @@ pub fn verify_distinguished(
         _ => {
             return Err(Error::BadData(
                 "expected tree head not found in storage".to_string(),
-            ))
+            ));
         }
     };
 
@@ -633,7 +633,7 @@ pub fn verify_monitor<'a>(
             _ => {
                 return Err(Error::VerificationFailed(
                     "monitoring response is malformed: inclusion proof should be root".to_string(),
-                ))
+                ));
             }
         }
     } else {
@@ -963,8 +963,8 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-    use crate::proto::PrefixProof;
     use crate::ChatSearchResponse;
+    use crate::proto::PrefixProof;
 
     const MAX_AHEAD: Duration = Duration::from_secs(42);
     const MAX_BEHIND: Duration = Duration::from_secs(42);

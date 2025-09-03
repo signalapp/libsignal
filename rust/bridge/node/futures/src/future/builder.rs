@@ -5,8 +5,8 @@
 
 use neon::prelude::*;
 
-use crate::future::*;
 use crate::PersistentException;
+use crate::future::*;
 
 /// Sets up a [JsFuture] using a builder pattern. See [JsFuture::get_promise].
 pub struct JsFutureBuilder<'a, F, T: 'static + Send>

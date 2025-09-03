@@ -5,7 +5,7 @@ use libsignal_net::auth::Auth;
 use libsignal_net::chat::{LanguageList, Request as ChatRequest};
 use libsignal_net::infra::AsHttpHeader as _;
 use libsignal_protocol::PublicKey;
-use serde_with::{serde_as, skip_serializing_none, FromInto};
+use serde_with::{FromInto, serde_as, skip_serializing_none};
 
 use crate::api::registration::{
     AccountKeys, CreateSession, ForServiceIds, InvalidSessionId, NewMessageNotification,
@@ -424,11 +424,11 @@ mod test {
     use uuid::uuid;
 
     use super::*;
+    use crate::api::ChallengeOption;
     use crate::api::registration::{
         CheckSvr2CredentialsResponse, PushToken, RegisterAccountResponse, RegisterResponseBackup,
         RegisterResponseBadge, RegisterResponseEntitlements, Svr2CredentialsResult,
     };
-    use crate::api::ChallengeOption;
     use crate::ws::TryIntoResponse as _;
 
     #[test]

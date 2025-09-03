@@ -6,8 +6,8 @@
 use std::convert::Infallible;
 
 use async_trait::async_trait;
-use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use base64::Engine;
+use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use libsignal_core::Aci;
 use libsignal_net::chat::Request;
 
@@ -73,7 +73,7 @@ mod test {
 
     use super::*;
     use crate::api::usernames::UnauthenticatedChatApi;
-    use crate::ws::testutil::{empty, json, RequestValidator};
+    use crate::ws::testutil::{RequestValidator, empty, json};
 
     const ACI_UUID: &str = "9d0652a3-dcc3-4d11-975f-74d61598733f";
 

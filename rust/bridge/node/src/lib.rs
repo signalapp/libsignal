@@ -10,8 +10,8 @@ use libsignal_bridge::node::{AssumedImmutableBuffer, ResultTypeInfo, SignalNodeE
 use libsignal_protocol::{IdentityKeyPair, SealedSenderV2SentMessage};
 use minidump::Minidump;
 use minidump_processor::ProcessorOptions;
-use minidump_unwind::symbols::string_symbol_supplier;
 use minidump_unwind::Symbolizer;
+use minidump_unwind::symbols::string_symbol_supplier;
 use neon::prelude::*;
 use neon::types::buffer::TypedArray;
 

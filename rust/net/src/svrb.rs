@@ -655,13 +655,15 @@ mod test {
         )
         .await
         .expect("should store");
-        assert!(restore_backup(
-            &[svrb],
-            &backup_key,
-            BackupFileMetadataRef(&backup.metadata.0)
-        )
-        .await
-        .is_err());
+        assert!(
+            restore_backup(
+                &[svrb],
+                &backup_key,
+                BackupFileMetadataRef(&backup.metadata.0)
+            )
+            .await
+            .is_err()
+        );
     }
 
     #[tokio::test]
@@ -851,13 +853,15 @@ mod test {
         )
         .await
         .expect("should store");
-        assert!(restore_backup(
-            &[svrb, fallback],
-            &backup_key,
-            BackupFileMetadataRef(&backup.metadata.0),
-        )
-        .await
-        .is_err());
+        assert!(
+            restore_backup(
+                &[svrb, fallback],
+                &backup_key,
+                BackupFileMetadataRef(&backup.metadata.0),
+            )
+            .await
+            .is_err()
+        );
     }
 
     static BACKUP_DELETES_PREVIOUS_ALL_CALLED: AtomicU8 = AtomicU8::new(0);

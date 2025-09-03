@@ -19,7 +19,7 @@ use sha2::Digest;
 use zerocopy::{FromBytes, Immutable, IntoBytes};
 
 use crate::cert_chain::CertChain;
-use crate::dcap::ecdsa::{ecdsa_signature_from_bytes, EcdsaSigned};
+use crate::dcap::ecdsa::{EcdsaSigned, ecdsa_signature_from_bytes};
 use crate::dcap::sgx_report_body::SgxReportBody;
 use crate::dcap::sgx_x509::SgxPckExtension;
 use crate::dcap::{Error, Expireable};

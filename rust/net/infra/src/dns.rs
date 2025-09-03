@@ -17,20 +17,20 @@ use crate::certs::RootCertificates;
 use crate::dns::custom_resolver::CustomDnsResolver;
 use crate::dns::dns_errors::Error;
 use crate::dns::dns_lookup::{DnsLookup, DnsLookupRequest, StaticDnsMap, SystemDnsLookup};
-use crate::dns::dns_transport_doh::{DohTransportConnectorFactory, CLOUDFLARE_IPS};
+use crate::dns::dns_transport_doh::{CLOUDFLARE_IPS, DohTransportConnectorFactory};
 use crate::dns::dns_types::ResourceType;
 use crate::dns::dns_utils::log_safe_domain;
 use crate::dns::lookup_result::LookupResult;
 use crate::host::Host;
 use crate::route::{
-    HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment, DEFAULT_HTTPS_PORT,
+    DEFAULT_HTTPS_PORT, HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment,
 };
 use crate::timeouts::{
     DNS_LATER_RESPONSE_GRACE_PERIOD, DNS_SYSTEM_LOOKUP_TIMEOUT, DOH_FALLBACK_LOOKUP_TIMEOUT,
 };
-use crate::utils::oneshot_broadcast::{self, Receiver};
 use crate::utils::NetworkChangeEvent;
-use crate::{utils, Alpn};
+use crate::utils::oneshot_broadcast::{self, Receiver};
+use crate::{Alpn, utils};
 
 pub mod custom_resolver;
 mod dns_errors;

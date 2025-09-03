@@ -25,8 +25,8 @@ use crate::common::serialization::ReservedByte;
 use crate::crypto::uid_encryption;
 use crate::groups::{GroupSecretParams, UuidCiphertext};
 use crate::{
-    crypto, RandomnessBytes, Timestamp, ZkGroupDeserializationFailure, ZkGroupVerificationFailure,
-    SECONDS_PER_DAY,
+    RandomnessBytes, SECONDS_PER_DAY, Timestamp, ZkGroupDeserializationFailure,
+    ZkGroupVerificationFailure, crypto,
 };
 
 const SECONDS_PER_HOUR: u64 = 60 * 60;
@@ -246,9 +246,9 @@ impl GroupSendEndorsementsResponse {
     ) -> Result<Vec<ReceivedEndorsement>, ZkGroupVerificationFailure>
     where
         T: rayon::iter::IntoParallelIterator<
-            Item = libsignal_core::ServiceId,
-            Iter: rayon::iter::IndexedParallelIterator,
-        >,
+                Item = libsignal_core::ServiceId,
+                Iter: rayon::iter::IndexedParallelIterator,
+            >,
     {
         let derived_key = self.derive_public_signing_key_from_expiration(now, root_public_key)?;
 

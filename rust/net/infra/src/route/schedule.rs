@@ -17,12 +17,12 @@ use pin_project::pin_project;
 use rangemap::RangeSet;
 use tokio::time::{Duration, Instant};
 
-use crate::dns::dns_utils::log_safe_domain;
 use crate::dns::DnsError;
+use crate::dns::dns_utils::log_safe_domain;
 use crate::route::{ResolveHostnames, ResolvedRoute, Resolver, TransportRoute, UsesTransport};
+use crate::utils::NetworkChangeEvent;
 use crate::utils::binary_heap::{MinKeyValueQueue, Queue};
 use crate::utils::future::SomeOrPending;
-use crate::utils::NetworkChangeEvent;
 
 /// Resolves routes with domain names to equivalent routes with IP addresses.
 ///

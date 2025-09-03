@@ -26,8 +26,8 @@ use poksho::ShoApi;
 use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
 
-use crate::sho::ShoExt;
 use crate::VerificationFailure;
+use crate::sho::ShoExt;
 
 /// An attribute that doesn't need to be hidden from the issuing server or verifying server.
 ///

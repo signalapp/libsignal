@@ -6,10 +6,10 @@
 use std::panic::UnwindSafe;
 
 use bytes::Bytes;
-use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
-use libsignal_net::chat::server_requests::DisconnectCause;
+use futures_util::future::BoxFuture;
 use libsignal_net::chat::ChatConnection;
+use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net_chat::api::Unauth;
 
 use super::*;

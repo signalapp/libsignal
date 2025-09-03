@@ -11,10 +11,10 @@ use core::{fmt, str};
 
 pub use backup::*;
 pub use error::{Error, Result};
-pub use hash::{local_pin_hash, verify_local_pin_hash, PinHash};
+pub use hash::{PinHash, local_pin_hash, verify_local_pin_hash};
 use hkdf::Hkdf;
-use rand::distr::slice;
 use rand::Rng;
+use rand::distr::slice;
 use sha2::Sha256;
 
 pub const SVR_KEY_LEN: usize = 32;

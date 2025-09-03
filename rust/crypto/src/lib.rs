@@ -13,7 +13,7 @@ mod aes_cbc;
 mod aes_ctr;
 mod aes_gcm;
 
-pub use aes_cbc::{aes_256_cbc_decrypt, aes_256_cbc_encrypt, DecryptionError, EncryptionError};
+pub use aes_cbc::{DecryptionError, EncryptionError, aes_256_cbc_decrypt, aes_256_cbc_encrypt};
 pub use aes_ctr::Aes256Ctr32;
 pub use aes_gcm::{Aes256GcmDecryption, Aes256GcmEncryption};
 pub use error::{Error, Result};

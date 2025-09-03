@@ -10,7 +10,7 @@ use zkgroup::GroupMasterKeyBytes;
 
 use crate::backup::serialize::{self, UnorderedList};
 use crate::backup::time::{Duration, ReportUnusualTimestamp, TimestampError};
-use crate::backup::{likely_empty, TryIntoWith};
+use crate::backup::{TryIntoWith, likely_empty};
 use crate::proto::backup as proto;
 
 mod members;

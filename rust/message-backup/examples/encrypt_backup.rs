@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::io::{stdout, Write as _};
+use std::io::{Write as _, stdout};
 
 use aes::cipher::crypto_common::rand_core::{OsRng, RngCore};
 use clap::{ArgAction, Parser};
@@ -14,8 +14,8 @@ use libsignal_message_backup::export::{
     aes_cbc_encrypt, gzip_compress, hmac_checksum, pad_gzipped_bucketed,
 };
 use libsignal_message_backup::key::MessageBackupKey;
-use libsignal_svrb::proto::backup_metadata::{metadata_pb, MetadataPb};
 use libsignal_svrb::proto::Message as _;
+use libsignal_svrb::proto::backup_metadata::{MetadataPb, metadata_pb};
 
 #[path = "../src/bin/support/mod.rs"]
 mod support;

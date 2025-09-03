@@ -29,9 +29,9 @@ use crate::timeouts::{
     DNS_CALL_BACKGROUND_TIMEOUT, NETWORK_INTERFACE_POLL_INTERVAL,
     POST_ROUTE_CHANGE_CONNECTION_TIMEOUT,
 };
-use crate::utils::future::results_within_interval;
 use crate::utils::NetworkChangeEvent;
-use crate::{dns, DnsSource};
+use crate::utils::future::results_within_interval;
+use crate::{DnsSource, dns};
 
 pub type DnsIpv4Result = Expiring<Vec<Ipv4Addr>>;
 pub type DnsIpv6Result = Expiring<Vec<Ipv6Addr>>;
@@ -384,8 +384,8 @@ pub(crate) mod test {
     use std::iter;
     use std::net::IpAddr;
     use std::pin::pin;
-    use std::sync::atomic::{AtomicU32, Ordering};
     use std::sync::Mutex;
+    use std::sync::atomic::{AtomicU32, Ordering};
 
     use assert_matches::assert_matches;
     use const_str::ip_addr;
@@ -393,8 +393,8 @@ pub(crate) mod test {
     use test_case::test_case;
 
     use super::*;
-    use crate::route::testutils::ConnectFn;
     use crate::route::Connector;
+    use crate::route::testutils::ConnectFn;
     use crate::timeouts::DNS_LATER_RESPONSE_GRACE_PERIOD;
     use crate::utils::{no_network_change_events, sleep_and_catch_up, sleep_until_and_catch_up};
 

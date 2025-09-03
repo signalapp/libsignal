@@ -7,7 +7,7 @@ use std::future::Future;
 use std::sync::LazyLock;
 use std::time::Duration;
 
-use base64::prelude::{Engine as _, BASE64_STANDARD};
+use base64::prelude::{BASE64_STANDARD, Engine as _};
 use http::HeaderValue;
 use tokio::time::Instant;
 
@@ -122,8 +122,8 @@ pub fn no_network_change_events() -> NetworkChangeEvent {
 
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutil {
-    use std::sync::atomic::AtomicUsize;
     use std::sync::Arc;
+    use std::sync::atomic::AtomicUsize;
 
     /// Usable as a [Waker](std::task::Waker) for async polling.
     #[derive(Debug, Default)]
@@ -157,8 +157,8 @@ pub mod testutil {
 #[cfg(test)]
 mod test {
     use std::future::Future;
-    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::Duration;
 
     use tokio::time;

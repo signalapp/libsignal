@@ -533,8 +533,8 @@ mod test {
     use curve25519_dalek::scalar::Scalar;
     use nonzero_ext::nonzero;
     use proptest::proptest;
-    use rand::rngs::OsRng;
     use rand::TryRngCore;
+    use rand::rngs::OsRng;
 
     use super::*;
 

@@ -16,6 +16,7 @@ use poksho::ShoApi;
 use serde::{Deserialize, Serialize};
 
 use super::{CallLinkPublicParams, CallLinkSecretParams};
+use crate::ZkGroupVerificationFailure;
 use crate::common::serialization::ReservedByte;
 use crate::common::sho::Sho;
 use crate::common::simple_types::*;
@@ -23,7 +24,6 @@ use crate::crypto::uid_encryption;
 use crate::crypto::uid_struct::UidStruct;
 use crate::generic_server_params::{GenericServerPublicParams, GenericServerSecretParams};
 use crate::groups::UuidCiphertext;
-use crate::ZkGroupVerificationFailure;
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 struct CallLinkRoomIdPoint(RistrettoPoint);

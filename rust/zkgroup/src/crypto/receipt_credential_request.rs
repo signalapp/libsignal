@@ -11,10 +11,10 @@ use curve25519_dalek_signal::scalar::Scalar;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
+use crate::ReceiptSerialBytes;
 use crate::common::sho::Sho;
 use crate::crypto::credentials;
 use crate::crypto::credentials::{BlindedReceiptCredential, ReceiptCredential};
-use crate::ReceiptSerialBytes;
 
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct KeyPair {

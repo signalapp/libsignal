@@ -4,12 +4,12 @@
 //
 
 use crypto_common::KeyInit;
-use hmac::digest::typenum::Unsigned;
-use hmac::digest::{crypto_common, OutputSizeUser};
 use hmac::Hmac;
+use hmac::digest::typenum::Unsigned;
+use hmac::digest::{OutputSizeUser, crypto_common};
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::incremental_mac::*;
-use libsignal_protocol::incremental_mac::{calculate_chunk_size, Incremental};
+use libsignal_protocol::incremental_mac::{Incremental, calculate_chunk_size};
 
 use crate::support::*;
 use crate::*;

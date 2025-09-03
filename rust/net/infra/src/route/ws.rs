@@ -5,8 +5,8 @@
 
 use std::hash::Hash;
 
-use http::uri::PathAndQuery;
 use http::HeaderMap;
+use http::uri::PathAndQuery;
 use tungstenite::protocol::WebSocketConfig;
 
 use crate::route::{ReplaceFragment, RouteProvider, RouteProviderContext, SimpleRoute};

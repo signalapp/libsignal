@@ -20,7 +20,7 @@ use libsignal_net_infra::route::{
 use libsignal_net_infra::utils::NetworkChangeEvent;
 use libsignal_net_infra::ws::StreamWithResponseHeaders;
 use libsignal_net_infra::{
-    AsHttpHeader, AsStaticHttpHeader, Connection, IpType, TransportInfo, RECOMMENDED_WS_CONFIG,
+    AsHttpHeader, AsStaticHttpHeader, Connection, IpType, RECOMMENDED_WS_CONFIG, TransportInfo,
 };
 use tokio_tungstenite::WebSocketStream;
 
@@ -235,9 +235,9 @@ impl ChatConnection {
     ) -> Result<PendingChatConnection, ConnectError>
     where
         TC: WebSocketTransportConnectorFactory<
-            UsePreconnect<TransportRoute>,
-            Connection = ChatTransportConnection,
-        >,
+                UsePreconnect<TransportRoute>,
+                Connection = ChatTransportConnection,
+            >,
     {
         Self::start_connect_with_transport(
             connection_resources,
@@ -408,13 +408,13 @@ pub mod test_support {
 
     use std::time::Duration;
 
+    use libsignal_net_infra::EnableDomainFronting;
     use libsignal_net_infra::dns::DnsResolver;
     use libsignal_net_infra::route::ConnectionProxyConfig;
     use libsignal_net_infra::utils::no_network_change_events;
-    use libsignal_net_infra::EnableDomainFronting;
 
     use super::*;
-    use crate::chat::{ws, ChatConnection};
+    use crate::chat::{ChatConnection, ws};
     use crate::connect_state::{
         ConnectState, DefaultConnectorFactory, PreconnectingFactory, SUGGESTED_CONNECT_CONFIG,
     };
@@ -492,19 +492,19 @@ pub(crate) mod test {
     use assert_matches::assert_matches;
     use http::{HeaderName, HeaderValue};
     use itertools::Itertools;
+    use libsignal_net_infra::Alpn;
     use libsignal_net_infra::certs::RootCertificates;
-    use libsignal_net_infra::dns::lookup_result::LookupResult;
     use libsignal_net_infra::dns::DnsResolver;
+    use libsignal_net_infra::dns::lookup_result::LookupResult;
     use libsignal_net_infra::errors::{RetryLater, TransportConnectError};
     use libsignal_net_infra::host::Host;
     use libsignal_net_infra::route::testutils::ConnectFn;
     use libsignal_net_infra::route::{
-        DirectOrProxyRoute, HttpRouteFragment, HttpsTlsRoute, PreconnectingFactory, TcpRoute,
-        TlsRoute, TlsRouteFragment, UnresolvedHost, DEFAULT_HTTPS_PORT,
+        DEFAULT_HTTPS_PORT, DirectOrProxyRoute, HttpRouteFragment, HttpsTlsRoute,
+        PreconnectingFactory, TcpRoute, TlsRoute, TlsRouteFragment, UnresolvedHost,
     };
     use libsignal_net_infra::utils::no_network_change_events;
     use libsignal_net_infra::ws::WebSocketConnectError;
-    use libsignal_net_infra::Alpn;
     use test_case::test_case;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 

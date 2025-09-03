@@ -13,10 +13,10 @@ use poksho::{ShoApi, ShoSha256};
 use serde::{Deserialize, Serialize};
 use zkcredential::attributes::{Attribute, Domain, RevealedAttribute};
 use zkcredential::credentials::CredentialKeyPair;
+use zkcredential::issuance::IssuanceProofBuilder;
 use zkcredential::issuance::blind::{
     BlindedAttribute, BlindedPoint, BlindingKeyPair, BlindingPublicKey, WithoutNonce,
 };
-use zkcredential::issuance::IssuanceProofBuilder;
 use zkcredential::presentation::{
     PresentationProof, PresentationProofBuilder, PresentationProofVerifier,
 };

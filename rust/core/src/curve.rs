@@ -356,8 +356,8 @@ impl TryFrom<PrivateKey> for KeyPair {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use rand::rngs::OsRng;
     use rand::TryRngCore as _;
+    use rand::rngs::OsRng;
 
     use super::*;
 
@@ -377,8 +377,12 @@ mod tests {
         let public_key = key_pair.private_key.public_key()?;
         assert!(public_key.verify_signature(&message, &signature));
 
-        assert!(public_key
-            .verify_signature_for_multipart_message(&[&message[..7], &message[7..]], &signature));
+        assert!(
+            public_key.verify_signature_for_multipart_message(
+                &[&message[..7], &message[7..]],
+                &signature
+            )
+        );
 
         let signature = key_pair
             .private_key

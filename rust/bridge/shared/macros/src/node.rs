@@ -8,8 +8,8 @@ use quote::*;
 use syn::*;
 use syn_mid::Signature;
 
-use crate::util::{extract_arg_names_and_types, result_type};
 use crate::BridgingKind;
+use crate::util::{extract_arg_names_and_types, result_type};
 
 fn bridge_fn_body(orig_name: &Ident, input_args: &[(&Ident, &Type)]) -> TokenStream2 {
     // Scroll down to the end of the function to see the quote template.

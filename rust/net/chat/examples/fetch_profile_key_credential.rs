@@ -5,8 +5,8 @@
 
 use std::time::SystemTime;
 
-use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use clap::{Parser, ValueEnum};
 use libsignal_cli_utils::args::{parse_aci, parse_hex_bytes};
 use libsignal_core::Aci;

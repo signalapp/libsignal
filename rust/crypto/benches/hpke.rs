@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use libsignal_core::curve::PrivateKey;
 use signal_crypto::{SimpleHpkeReceiver as _, SimpleHpkeSender as _};
 

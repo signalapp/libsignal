@@ -13,7 +13,7 @@ use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::method::{Lookup, Method};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::{serialize, Color, ColorError, ReferencedTypes, TryIntoWith};
+use crate::backup::{Color, ColorError, ReferencedTypes, TryIntoWith, serialize};
 use crate::proto::backup as proto;
 
 #[derive(serde::Serialize)]
@@ -276,8 +276,8 @@ impl TryFrom<proto::chat_style::custom_chat_color::Color> for CustomChatColor {
     type Error = ChatStyleError;
 
     fn try_from(value: proto::chat_style::custom_chat_color::Color) -> Result<Self, Self::Error> {
-        use proto::chat_style::custom_chat_color::Color as ColorProto;
         use proto::chat_style::Gradient;
+        use proto::chat_style::custom_chat_color::Color as ColorProto;
 
         Ok(match value {
             ColorProto::Gradient(gradient) => {

@@ -16,7 +16,7 @@ use boring::error::ErrorStack;
 use boring::hash::MessageDigest;
 use boring::pkey::{PKey, Private};
 use boring::rsa::Rsa;
-use boring::x509::{X509Builder, X509Name, X509NameBuilder, X509};
+use boring::x509::{X509, X509Builder, X509Name, X509NameBuilder};
 
 /// Error types for device transfer.
 #[derive(Copy, Clone, Debug)]

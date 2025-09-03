@@ -19,7 +19,7 @@ use serde_json::value::RawValue;
 use strum::EnumCount;
 
 use crate::cert_chain::CertChain;
-use crate::dcap::ecdsa::{deserialize_ecdsa_signature, EcdsaSigned};
+use crate::dcap::ecdsa::{EcdsaSigned, deserialize_ecdsa_signature};
 use crate::dcap::revocation_list::RevocationList;
 use crate::dcap::{Error, Expireable, Result};
 use crate::endian::UInt32LE;
@@ -326,9 +326,11 @@ mod tests {
             TcbStatus::SWHardeningNeeded,
             tcb_info.tcb_levels[0].tcb_status
         );
-        assert!(tcb_info.tcb_levels[0]
-            .advisory_ids
-            .contains(&"INTEL-SA-00657".to_owned()));
+        assert!(
+            tcb_info.tcb_levels[0]
+                .advisory_ids
+                .contains(&"INTEL-SA-00657".to_owned())
+        );
         assert_eq!(
             [7, 9, 3, 3, 255, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             tcb_info.tcb_levels[0].tcb.components()

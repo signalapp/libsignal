@@ -9,19 +9,19 @@
 //! (but not all) of them can be run on an externally-provided backup file as well. See the
 //! `LIBSIGNAL_TESTING`-prefixed environment variables below.
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use futures::io::{BufReader, Cursor};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use futures::AsyncRead;
+use futures::io::{BufReader, Cursor};
 use libsignal_account_keys::{BackupForwardSecrecyToken, BackupKey};
 use libsignal_core::Aci;
+use libsignal_message_backup::BackupReader;
 use libsignal_message_backup::backup::{CompletedBackup, PartialBackup, ValidateOnly};
 use libsignal_message_backup::frame::{
-    Aes256CbcReader, CursorFactory, FramesReader, MacReader, ReaderFactory, AES_IV_SIZE,
-    AES_KEY_SIZE,
+    AES_IV_SIZE, AES_KEY_SIZE, Aes256CbcReader, CursorFactory, FramesReader, MacReader,
+    ReaderFactory,
 };
 use libsignal_message_backup::key::MessageBackupKey;
 use libsignal_message_backup::parse::VarintDelimitedReader;
-use libsignal_message_backup::BackupReader;
 use mediasan_common::AsyncSkip;
 use protobuf::Message as _;
 use sha2::Digest as _;

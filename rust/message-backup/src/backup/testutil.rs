@@ -7,8 +7,8 @@ use std::sync::{Arc, LazyLock};
 
 use super::recipient::MinimalRecipientData;
 use crate::backup::call::CallLink;
-use crate::backup::chat::chat_style::{CustomChatColor, CustomColorId};
 use crate::backup::chat::PinOrder;
+use crate::backup::chat::chat_style::{CustomChatColor, CustomColorId};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{Lookup, LookupPair};
 use crate::backup::recipient::group::GroupData;

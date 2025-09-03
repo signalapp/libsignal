@@ -16,12 +16,12 @@ use serde_with::serde_as;
 use uuid::Uuid;
 use zkgroup::ProfileKeyBytes;
 
+use crate::backup::TryIntoWith;
 use crate::backup::call::{CallLink, CallLinkError, CallLinkRootKey};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::serialize::{self, SerializeOrder, UnorderedList};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
-use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
 
@@ -230,7 +230,7 @@ pub struct FullRecipientData(Arc<(MinimalRecipientData, Destination<FullRecipien
 
 impl serde::Serialize for FullRecipientData {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.0 .1.serialize(serializer)
+        self.0.1.serialize(serializer)
     }
 }
 
@@ -376,7 +376,7 @@ impl AsRef<DestinationKind> for MinimalRecipientData {
 impl std::ops::Deref for FullRecipientData {
     type Target = Destination<FullRecipientData>;
     fn deref(&self) -> &Self::Target {
-        &self.0 .1
+        &self.0.1
     }
 }
 
@@ -416,7 +416,7 @@ impl FullRecipientData {
 
 impl AsRef<MinimalRecipientData> for FullRecipientData {
     fn as_ref(&self) -> &MinimalRecipientData {
-        &self.0 .0
+        &self.0.0
     }
 }
 
@@ -731,7 +731,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
                         distribution_id == MY_STORY_UUID,
                     ) {
                         (proto::distribution_list::PrivacyMode::UNKNOWN, _) => {
-                            return Err(RecipientError::DistributionListPrivacyUnknown)
+                            return Err(RecipientError::DistributionListPrivacyUnknown);
                         }
                         (proto::distribution_list::PrivacyMode::ONLY_WITH, _) => {
                             PrivacyMode::OnlyWith(members)

@@ -5,6 +5,7 @@
 #[cfg(test)]
 use derive_where::derive_where;
 
+use crate::backup::TryIntoWith;
 use crate::backup::chat::{ChatItemError, ReactionSet};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
@@ -12,7 +13,6 @@ use crate::backup::recipient::MinimalRecipientData;
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::sticker::MessageSticker;
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StickerMessage`].

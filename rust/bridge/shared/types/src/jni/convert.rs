@@ -8,9 +8,9 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use itertools::Itertools as _;
-use jni::objects::{AutoLocal, JByteBuffer, JMap, JObjectArray};
-use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
+use jni::objects::{AutoLocal, JByteBuffer, JMap, JObjectArray};
+use jni::sys::{JNI_FALSE, JNI_TRUE, jbyte};
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_core::try_scoped;
 use libsignal_net::cdsi::LookupResponseEntry;
@@ -23,7 +23,7 @@ use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::ChatListener;
 use crate::net::registration::{ConnectChatBridge, RegistrationPushToken};
 use crate::protocol::KyberPublicKey;
-use crate::support::{extend_lifetime, Array, AsType, FixedLengthBincodeSerializable, Serialized};
+use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized, extend_lifetime};
 
 /// Converts arguments from their JNI form to their Rust form.
 ///
@@ -1770,9 +1770,9 @@ fn make_object_array<'a, It>(
 ) -> Result<JObjectArray<'a>, BridgeLayerError>
 where
     It: IntoIterator<
-        Item: ResultTypeInfo<'a, ResultType: Into<JObject<'a>>>,
-        IntoIter: ExactSizeIterator,
-    >,
+            Item: ResultTypeInfo<'a, ResultType: Into<JObject<'a>>>,
+            IntoIter: ExactSizeIterator,
+        >,
 {
     let it = it.into_iter();
     let len = it.len();

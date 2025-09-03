@@ -9,8 +9,8 @@ use zkgroup::crypto::proofs::{ReceiptCredentialIssuanceProof, ReceiptCredentialP
 use zkgroup::crypto::receipt_struct::ReceiptStruct;
 use zkgroup::crypto::{credentials, receipt_credential_request};
 use zkgroup::{
-    RandomnessBytes, ReceiptLevel, ReceiptSerialBytes, ServerSecretParams, Timestamp,
-    RANDOMNESS_LEN, RECEIPT_SERIAL_LEN,
+    RANDOMNESS_LEN, RECEIPT_SERIAL_LEN, RandomnessBytes, ReceiptLevel, ReceiptSerialBytes,
+    ServerSecretParams, Timestamp,
 };
 
 #[test]

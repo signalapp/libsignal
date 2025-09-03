@@ -14,8 +14,8 @@ use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::{self, ConnectError, LanguageList, Response as ChatResponse, SendError};
-use libsignal_net_chat::api::usernames::UnauthenticatedChatApi;
 use libsignal_net_chat::api::RequestError;
+use libsignal_net_chat::api::usernames::UnauthenticatedChatApi;
 use uuid::Uuid;
 
 use crate::support::*;

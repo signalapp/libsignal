@@ -11,8 +11,8 @@ use std::time::Duration;
 
 use bytes::Bytes;
 use futures_util::TryFutureExt as _;
-use http::uri::Authority;
 use http::Uri;
+use http::uri::Authority;
 use http_body_util::Empty;
 use hyper_util::rt::TokioIo;
 use pin_project::pin_project;
@@ -268,8 +268,8 @@ impl Connection for HttpProxyStream {
 mod test {
     use assert_matches::assert_matches;
     use either::Either;
-    use futures_util::future::BoxFuture;
     use futures_util::FutureExt;
+    use futures_util::future::BoxFuture;
     use http::method::Method;
     use http::{HeaderMap, HeaderValue, StatusCode};
     use http_body_util::Empty;

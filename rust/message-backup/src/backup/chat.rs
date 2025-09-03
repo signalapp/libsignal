@@ -19,7 +19,7 @@ use crate::backup::sticker::MessageStickerError;
 use crate::backup::time::{
     Duration, ReportUnusualTimestamp, Timestamp, TimestampError, TimestampOrForever,
 };
-use crate::backup::{likely_empty, BackupMeta, CallError, ReferencedTypes, TryIntoWith};
+use crate::backup::{BackupMeta, CallError, ReferencedTypes, TryIntoWith, likely_empty};
 use crate::proto::backup as proto;
 
 mod contact_message;
@@ -457,12 +457,12 @@ pub enum OutgoingSendError {
 }
 
 impl<
-        M: Method + ReferencedTypes,
-        C: LookupPair<RecipientId, MinimalRecipientData, M::RecipientReference>
-            + Lookup<PinOrder, M::RecipientReference>
-            + Lookup<CustomColorId, M::CustomColorReference>
-            + ReportUnusualTimestamp,
-    > TryIntoWith<ChatData<M>, C> for proto::Chat
+    M: Method + ReferencedTypes,
+    C: LookupPair<RecipientId, MinimalRecipientData, M::RecipientReference>
+        + Lookup<PinOrder, M::RecipientReference>
+        + Lookup<CustomColorId, M::CustomColorReference>
+        + ReportUnusualTimestamp,
+> TryIntoWith<ChatData<M>, C> for proto::Chat
 {
     type Error = ChatError;
 
@@ -528,11 +528,11 @@ impl<
 }
 
 impl<
-        C: LookupPair<RecipientId, MinimalRecipientData, M::RecipientReference>
-            + AsRef<BackupMeta>
-            + ReportUnusualTimestamp,
-        M: Method + ReferencedTypes,
-    > TryIntoWith<ChatItemData<M>, C> for proto::ChatItem
+    C: LookupPair<RecipientId, MinimalRecipientData, M::RecipientReference>
+        + AsRef<BackupMeta>
+        + ReportUnusualTimestamp,
+    M: Method + ReferencedTypes,
+> TryIntoWith<ChatItemData<M>, C> for proto::ChatItem
 {
     type Error = ChatItemError;
 
@@ -1005,11 +1005,11 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
 }
 
 impl<
-        C: LookupPair<RecipientId, MinimalRecipientData, M::RecipientReference>
-            + AsRef<BackupMeta>
-            + ReportUnusualTimestamp,
-        M: Method + ReferencedTypes,
-    > TryIntoWith<ChatItemMessage<M>, C> for proto::chat_item::Item
+    C: LookupPair<RecipientId, MinimalRecipientData, M::RecipientReference>
+        + AsRef<BackupMeta>
+        + ReportUnusualTimestamp,
+    M: Method + ReferencedTypes,
+> TryIntoWith<ChatItemMessage<M>, C> for proto::chat_item::Item
 {
     type Error = ChatItemError;
 
@@ -1065,10 +1065,10 @@ mod test {
     use test_case::test_case;
 
     use super::*;
+    use crate::backup::Purpose;
     use crate::backup::method::Store;
     use crate::backup::testutil::TestContext;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
-    use crate::backup::Purpose;
 
     impl proto::ChatItem {
         pub(crate) fn test_data() -> Self {

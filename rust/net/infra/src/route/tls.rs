@@ -7,10 +7,10 @@ use std::sync::Arc;
 
 use boring_signal::ssl::SslVersion;
 
+use crate::Alpn;
 use crate::certs::RootCertificates;
 use crate::host::Host;
 use crate::route::{ReplaceFragment, RouteProvider, RouteProviderContext, SimpleRoute};
-use crate::Alpn;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TlsRouteFragment {

@@ -2,9 +2,9 @@
 // Copyright 2023 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use criterion::{criterion_group, criterion_main, Criterion};
-use rand::rngs::OsRng;
+use criterion::{Criterion, criterion_group, criterion_main};
 use rand::TryRngCore as _;
+use rand::rngs::OsRng;
 
 extern crate usernames;
 use usernames::{NicknameLimits, Username, UsernameError};

@@ -10,7 +10,7 @@ use boring_signal::pkey::Public;
 use boring_signal::stack::{Stack, Stackable};
 use boring_signal::x509::crl::X509CRLRef;
 use boring_signal::x509::store::X509StoreRef;
-use boring_signal::x509::{X509StoreContext, X509};
+use boring_signal::x509::{X509, X509StoreContext};
 
 use crate::error::ContextError;
 use crate::expireable::Expireable;
@@ -169,9 +169,9 @@ pub mod testutil {
     use boring_signal::hash::MessageDigest;
     use boring_signal::nid::Nid;
     use boring_signal::pkey::{PKey, Private};
-    use boring_signal::x509::crl::{X509CRLBuilder, X509Revoked, X509CRL};
+    use boring_signal::x509::crl::{X509CRL, X509CRLBuilder, X509Revoked};
     use boring_signal::x509::extension::BasicConstraints;
-    use boring_signal::x509::{X509Name, X509};
+    use boring_signal::x509::{X509, X509Name};
 
     use super::CertChain;
 
@@ -311,9 +311,9 @@ pub mod testutil {
 mod test {
     use assert_matches::assert_matches;
     use boring_signal::nid::Nid;
+    use boring_signal::x509::X509Ref;
     use boring_signal::x509::store::{X509Store, X509StoreBuilder};
     use boring_signal::x509::verify::X509VerifyFlags;
-    use boring_signal::x509::X509Ref;
 
     use super::testutil::*;
     use super::*;
@@ -422,9 +422,11 @@ mod test {
         let cert_chain = CertChain {
             certs: c.into_iter().map(|p| p.x509).collect(),
         };
-        assert!(cert_chain
-            .validate_chain(&trust, &[&intermediate_crl])
-            .is_err())
+        assert!(
+            cert_chain
+                .validate_chain(&trust, &[&intermediate_crl])
+                .is_err()
+        )
     }
 
     #[test]
@@ -436,9 +438,11 @@ mod test {
         let cert_chain = CertChain {
             certs: c.into_iter().map(|p| p.x509).collect(),
         };
-        assert!(cert_chain
-            .validate_chain(&trust, &[&intermediate_crl])
-            .is_err())
+        assert!(
+            cert_chain
+                .validate_chain(&trust, &[&intermediate_crl])
+                .is_err()
+        )
     }
 
     #[test]

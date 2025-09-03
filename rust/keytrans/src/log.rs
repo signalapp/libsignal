@@ -62,11 +62,7 @@ mod math {
     // Returns the other child of the node's parent.
     fn sibling(x: u64, n: u64) -> u64 {
         let p = parent(x, n);
-        if x < p {
-            right(p, n)
-        } else {
-            left(p)
-        }
+        if x < p { right(p, n) } else { left(p) }
     }
 
     // Returns true if node x represents a full subtree.

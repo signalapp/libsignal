@@ -14,8 +14,8 @@ use bitstream_io::{
 };
 use tokio::time::Instant;
 
-use crate::dns::dns_types::Expiring;
 use crate::dns::ResourceType;
+use crate::dns::dns_types::Expiring;
 
 pub(crate) const QCLASS_IN: u16 = 1;
 const POINTER_MASK: u8 = 0xC0;

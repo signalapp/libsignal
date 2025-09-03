@@ -11,8 +11,8 @@
 //! SVR, so that a restorer can reconstruct the `BackupId`.
 
 use hkdf::Hkdf;
-use libsignal_core::curve::PrivateKey;
 use libsignal_core::Aci;
+use libsignal_core::curve::PrivateKey;
 use partial_default::PartialDefault;
 use sha2::Sha256;
 

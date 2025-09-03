@@ -8,8 +8,8 @@ use std::panic::UnwindSafe;
 use std::sync::Arc;
 
 use bytes::Bytes;
-use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
+use futures_util::future::BoxFuture;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::{ChatConnection, ConnectError};
 use libsignal_net_chat::api::Unauth;
@@ -21,8 +21,8 @@ use neon::prelude::{Context, Finalize, JsObject, Object};
 use neon::result::NeonResult;
 use signal_neon_futures::call_method;
 
-use crate::net::chat::{ChatListener, ServerMessageAck};
 use crate::net::ConnectionManager;
+use crate::net::chat::{ChatListener, ServerMessageAck};
 use crate::node::{PersistentBorrowedJsBoxedBridgeHandle, ResultTypeInfo, SignalNodeError as _};
 
 #[derive(Clone)]

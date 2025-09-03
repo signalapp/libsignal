@@ -6,19 +6,19 @@
 use std::net::IpAddr;
 use std::sync::Arc;
 
-use futures_util::{stream, Stream, StreamExt};
+use futures_util::{Stream, StreamExt, stream};
 use tokio::net::UdpSocket;
 
 use crate::dns::custom_resolver::{DnsQueryResult, DnsTransport};
 use crate::dns::dns_errors::Error;
 use crate::dns::dns_lookup::DnsLookupRequest;
 use crate::dns::dns_message;
-use crate::dns::dns_message::{parse_a_record, parse_aaaa_record, MAX_DNS_UDP_MESSAGE_LEN};
+use crate::dns::dns_message::{MAX_DNS_UDP_MESSAGE_LEN, parse_a_record, parse_aaaa_record};
 use crate::dns::dns_types::ResourceType;
 use crate::route::{
     Connector, ConnectorExt as _, ConnectorFactory, StatelessUdpConnector, UdpRoute,
 };
-use crate::{dns, DnsSource};
+use crate::{DnsSource, dns};
 
 const A_REQUEST_ID: u16 = 0;
 const AAAA_REQUEST_ID: u16 = 1;

@@ -5,9 +5,9 @@
 
 use std::result::Result;
 
+use aes::Aes256;
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
-use aes::Aes256;
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 pub enum EncryptionError {

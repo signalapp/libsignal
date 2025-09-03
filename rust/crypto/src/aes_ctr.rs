@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use aes::Aes256;
 use aes::cipher::typenum::Unsigned;
 use aes::cipher::{InnerIvInit, KeyInit, StreamCipher, StreamCipherSeek};
-use aes::Aes256;
 
 use crate::error::{Error, Result};
 

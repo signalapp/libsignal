@@ -4,7 +4,7 @@
 //
 
 use criterion::measurement::Measurement;
-use criterion::{criterion_group, criterion_main, BenchmarkGroup, Criterion};
+use criterion::{BenchmarkGroup, Criterion, criterion_group, criterion_main};
 use rand::rngs::OsRng;
 use rand::{RngCore, TryRngCore as _};
 

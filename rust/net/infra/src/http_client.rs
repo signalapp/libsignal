@@ -6,9 +6,9 @@
 use std::sync::Arc;
 
 use bytes::Bytes;
+use http::HeaderMap;
 use http::response::Parts;
 use http::uri::PathAndQuery;
-use http::HeaderMap;
 use http_body_util::{BodyExt, Full, Limited};
 use hyper::client::conn::http2;
 use hyper_util::rt::{TokioExecutor, TokioIo};
@@ -97,7 +97,7 @@ impl AggregatingHttp2Client {
 
         let content = match content_length {
             Some(content_length) if content_length > self.max_response_size => {
-                return Err(HttpError::ResponseTooLarge)
+                return Err(HttpError::ResponseTooLarge);
             }
             Some(content_length) => Limited::new(body, content_length)
                 .collect()
@@ -252,8 +252,8 @@ mod test {
         server.bind_ephemeral((Ipv6Addr::LOCALHOST, 0))
     }
 
-    fn outcome_record_for_testing(
-    ) -> tokio::sync::RwLock<ConnectionOutcomes<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>> {
+    fn outcome_record_for_testing()
+    -> tokio::sync::RwLock<ConnectionOutcomes<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>> {
         const MAX_DELAY: Duration = Duration::from_secs(100);
         const AGE_CUTOFF: Duration = Duration::from_secs(1000);
         const MAX_COUNT: u8 = 5;

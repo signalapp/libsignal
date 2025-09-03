@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use base64::prelude::{Engine as _, BASE64_STANDARD};
+use base64::prelude::{BASE64_STANDARD, Engine as _};
 use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::CdsiConnection;
@@ -11,8 +11,8 @@ use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_
 use libsignal_net::env::STAGING;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::utils::no_network_change_events;
-use libsignal_net_infra::route::DirectOrProxyProvider;
 use libsignal_net_infra::EnableDomainFronting;
+use libsignal_net_infra::route::DirectOrProxyProvider;
 use rand_core::{OsRng, RngCore, TryRngCore as _};
 
 #[tokio::test]

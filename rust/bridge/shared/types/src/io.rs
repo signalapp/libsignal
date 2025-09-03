@@ -166,7 +166,7 @@ impl AsyncRead for AsyncInput<'_> {
             AsyncInputState::Idle => self.stream.read(buf)?,
             AsyncInputState::Reading(read_future) => InputStreamRead::Pending(read_future),
             AsyncInputState::Skipping { .. } => {
-                return Poll::Ready(Err(io::Error::other("cannot read while skipping")))
+                return Poll::Ready(Err(io::Error::other("cannot read while skipping")));
             }
         };
 
@@ -203,7 +203,7 @@ impl AsyncSkip for AsyncInput<'_> {
             AsyncInputState::Idle => self.stream.skip(amount),
             AsyncInputState::Skipping(skip_future) => skip_future,
             AsyncInputState::Reading { .. } => {
-                return Poll::Ready(Err(io::Error::other("cannot skip while reading")))
+                return Poll::Ready(Err(io::Error::other("cannot skip while reading")));
             }
         };
         match skip_future.poll_unpin(cx) {

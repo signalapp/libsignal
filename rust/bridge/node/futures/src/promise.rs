@@ -4,7 +4,7 @@
 //
 
 use std::future::Future;
-use std::panic::{catch_unwind, AssertUnwindSafe, UnwindSafe};
+use std::panic::{AssertUnwindSafe, UnwindSafe, catch_unwind};
 
 use futures_util::FutureExt;
 use neon::prelude::*;

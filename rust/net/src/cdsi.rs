@@ -5,7 +5,7 @@
 
 use std::default::Default;
 
-use libsignal_core::{Aci, Pni, E164};
+use libsignal_core::{Aci, E164, Pni};
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
 use libsignal_net_infra::route::{RouteProvider, UnresolvedWebsocketServiceRoute};
 use libsignal_net_infra::ws::attested::{
@@ -14,8 +14,8 @@ use libsignal_net_infra::ws::attested::{
 use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketError};
 use prost::Message as _;
 use thiserror::Error;
-use tungstenite::protocol::frame::coding::CloseCode;
 use tungstenite::protocol::CloseFrame;
+use tungstenite::protocol::frame::coding::CloseCode;
 use uuid::Uuid;
 
 use crate::auth::Auth;
@@ -471,11 +471,11 @@ mod test {
     use const_str::hex;
     use itertools::Itertools as _;
     use libsignal_net_infra::dns::DnsResolver;
-    use libsignal_net_infra::route::testutils::ConnectFn;
     use libsignal_net_infra::route::DirectOrProxyProvider;
+    use libsignal_net_infra::route::testutils::ConnectFn;
     use libsignal_net_infra::utils::no_network_change_events;
     use libsignal_net_infra::ws::attested::testutil::{
-        run_attested_server, AttestedServerOutput, FAKE_ATTESTATION,
+        AttestedServerOutput, FAKE_ATTESTATION, run_attested_server,
     };
     use libsignal_net_infra::ws::testutil::fake_websocket;
     use libsignal_net_infra::{
@@ -483,8 +483,8 @@ mod test {
     };
     use nonzero_ext::nonzero;
     use tokio_stream::wrappers::UnboundedReceiverStream;
-    use tungstenite::protocol::frame::coding::CloseCode;
     use tungstenite::protocol::CloseFrame;
+    use tungstenite::protocol::frame::coding::CloseCode;
     use uuid::Uuid;
     use warp::Filter as _;
 

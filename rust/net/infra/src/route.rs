@@ -613,8 +613,8 @@ mod test {
     use std::num::NonZeroU16;
     use std::sync::LazyLock;
 
-    use ::http::uri::PathAndQuery;
     use ::http::HeaderMap;
+    use ::http::uri::PathAndQuery;
     use assert_matches::assert_matches;
     use const_str::ip_addr;
     use futures_util::{Stream, StreamExt};
@@ -625,6 +625,7 @@ mod test {
     use tungstenite::protocol::WebSocketConfig;
 
     use super::*;
+    use crate::Alpn;
     use crate::certs::RootCertificates;
     use crate::dns::lookup_result::LookupResult;
     use crate::host::Host;
@@ -632,7 +633,6 @@ mod test {
     use crate::route::testutils::{FakeConnectError, FakeContext, FakeRoute};
     use crate::route::{SocksProxy, TlsProxy};
     use crate::tcp_ssl::proxy::socks;
-    use crate::Alpn;
 
     static WS_ENDPOINT: LazyLock<PathAndQuery> =
         LazyLock::new(|| PathAndQuery::from_static("/ws-path"));

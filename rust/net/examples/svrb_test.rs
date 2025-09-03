@@ -11,7 +11,7 @@ use std::str::FromStr;
 use std::time::SystemTime;
 
 use async_trait::async_trait;
-use base64::prelude::{Engine, BASE64_STANDARD};
+use base64::prelude::{BASE64_STANDARD, Engine};
 use clap::Parser as _;
 use hex::ToHex as _;
 use libsignal_account_keys::{AccountEntropyPool, BackupKey};
@@ -22,8 +22,8 @@ use libsignal_net::svrb;
 use libsignal_net::svrb::direct::direct_connect;
 use libsignal_net::svrb::traits::*;
 use libsignal_net_infra::utils::no_network_change_events;
-use rand::rngs::OsRng;
 use rand::TryRngCore;
+use rand::rngs::OsRng;
 
 #[derive(clap::Parser)]
 struct Args {

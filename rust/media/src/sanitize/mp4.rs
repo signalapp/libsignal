@@ -6,7 +6,7 @@
 use futures_util::AsyncRead;
 use mediasan_common::AsyncSkip;
 pub use mp4san::parse::ParseError;
-use mp4san::{sanitize_async_with_config, Config};
+use mp4san::{Config, sanitize_async_with_config};
 pub use mp4san::{InputSpan, SanitizedMetadata};
 
 /// Error type returned by [`sanitize`].

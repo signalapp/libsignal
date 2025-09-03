@@ -5,9 +5,9 @@
 
 use std::sync::OnceLock;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use poksho::ShoApi;
-use zkcredential::attributes::{derive_default_generator_points, Domain, KeyPair};
+use zkcredential::attributes::{Domain, KeyPair, derive_default_generator_points};
 
 struct ExampleDomain;
 impl Domain for ExampleDomain {

@@ -91,7 +91,7 @@ impl std::fmt::Display for ProtocolError {
         use tungstenite::error::{ProtocolError, SubProtocolError};
         let str = match &self.0 {
             ProtocolError::InvalidHeader(header_name) => {
-                return write!(f, "InvalidHeader: {header_name}")
+                return write!(f, "InvalidHeader: {header_name}");
             }
 
             ProtocolError::WrongHttpMethod => "WrongHttpMethod",

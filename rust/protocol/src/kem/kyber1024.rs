@@ -4,7 +4,7 @@
 //
 
 use libcrux_ml_kem::mlkem1024::{MlKem1024Ciphertext, MlKem1024PrivateKey, MlKem1024PublicKey};
-use libcrux_ml_kem::{kyber1024, SHARED_SECRET_SIZE};
+use libcrux_ml_kem::{SHARED_SECRET_SIZE, kyber1024};
 use rand::{CryptoRng, Rng as _};
 
 use super::{

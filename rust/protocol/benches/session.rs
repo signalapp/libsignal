@@ -5,11 +5,11 @@
 
 use std::time::SystemTime;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use futures_util::FutureExt;
 use libsignal_protocol::*;
-use rand::rngs::OsRng;
 use rand::TryRngCore as _;
+use rand::rngs::OsRng;
 
 #[path = "../tests/support/mod.rs"]
 mod support;

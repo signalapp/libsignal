@@ -9,8 +9,8 @@ use std::future::Future;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
-use futures_util::future::BoxFuture;
 use futures_util::FutureExt as _;
+use futures_util::future::BoxFuture;
 
 use crate::support::*;
 use crate::*;
@@ -106,7 +106,9 @@ impl AsyncRuntimeBase for TokioAsyncContext {
         if maybe_cancel_tx.is_some() {
             log::trace!("cancelling task for {cancellation_token:?}");
         } else {
-            log::trace!("ignoring cancellation for task {cancellation_token:?} (probably completed already)");
+            log::trace!(
+                "ignoring cancellation for task {cancellation_token:?} (probably completed already)"
+            );
         }
         drop(maybe_cancel_tx);
     }

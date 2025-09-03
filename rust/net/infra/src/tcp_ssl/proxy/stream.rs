@@ -6,10 +6,10 @@
 use auto_enums::enum_derive;
 use tokio_boring_signal::SslStream;
 
+use crate::Connection;
+use crate::tcp_ssl::TcpStream;
 use crate::tcp_ssl::proxy::https::HttpProxyStream;
 use crate::tcp_ssl::proxy::socks::SocksStream;
-use crate::tcp_ssl::TcpStream;
-use crate::Connection;
 
 #[derive(Debug, derive_more::From)]
 #[enum_derive(tokio1::AsyncRead, tokio1::AsyncWrite)]

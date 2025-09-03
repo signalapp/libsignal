@@ -12,7 +12,7 @@ pub(crate) use self::keys::{ChainKey, MessageKeyGenerator, RootKey};
 pub use self::params::{AliceSignalProtocolParameters, BobSignalProtocolParameters, UsePQRatchet};
 use crate::protocol::CIPHERTEXT_MESSAGE_CURRENT_VERSION;
 use crate::state::SessionState;
-use crate::{consts, KeyPair, Result, SessionRecord, SignalProtocolError};
+use crate::{KeyPair, Result, SessionRecord, SignalProtocolError, consts};
 
 type InitialPQRKey = [u8; 32];
 

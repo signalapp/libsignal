@@ -5,12 +5,12 @@
 
 use libsignal_net::chat::Response as ChatResponse;
 
+use crate::api::RequestError;
 use crate::api::registration::{
     CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationLock,
     RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError, UpdateSessionError,
     VerificationCodeNotDeliverable,
 };
-use crate::api::RequestError;
 use crate::ws::ResponseError;
 
 impl<D> From<ResponseError> for RequestError<UpdateSessionError, D> {
@@ -131,19 +131,19 @@ mod test {
 
     use http::{HeaderMap, StatusCode};
     use itertools::Itertools;
-    use libsignal_net::infra::errors::RetryLater;
     use libsignal_net::infra::AsHttpHeader;
+    use libsignal_net::infra::errors::RetryLater;
     use strum::{IntoDiscriminant, IntoEnumIterator};
     use test_case::test_case;
 
     use super::*;
+    use crate::api::RateLimitChallenge;
     use crate::api::registration::{
         CheckSvr2CredentialsErrorDiscriminants, CreateSessionErrorDiscriminants,
         RegisterAccountErrorDiscriminants, RequestVerificationCodeErrorDiscriminants,
         ResumeSessionErrorDiscriminants, SubmitVerificationErrorDiscriminants,
         UpdateSessionErrorDiscriminants,
     };
-    use crate::api::RateLimitChallenge;
     use crate::ws::CONTENT_TYPE_JSON;
 
     trait AsStatus {

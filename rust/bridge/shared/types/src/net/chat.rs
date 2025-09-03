@@ -11,8 +11,8 @@ use std::time::Duration;
 
 use atomic_take::AtomicTake;
 use bytes::Bytes;
-use futures_util::future::BoxFuture;
 use futures_util::FutureExt as _;
+use futures_util::future::BoxFuture;
 use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
@@ -36,8 +36,8 @@ use libsignal_net_chat::api::Unauth;
 use libsignal_protocol::Timestamp;
 use static_assertions::assert_impl_all;
 
-use crate::net::remote_config::RemoteConfigKey;
 use crate::net::ConnectionManager;
+use crate::net::remote_config::RemoteConfigKey;
 use crate::support::LimitedLifetimeRef;
 use crate::*;
 

@@ -6,8 +6,8 @@
 use clap::{Parser, ValueEnum};
 use libsignal_net::chat::test_support::simple_chat_connection;
 use libsignal_net::infra::EnableDomainFronting;
-use libsignal_net_chat::api::usernames::UnauthenticatedChatApi;
 use libsignal_net_chat::api::Unauth;
+use libsignal_net_chat::api::usernames::UnauthenticatedChatApi;
 
 #[derive(Parser)]
 struct Config {

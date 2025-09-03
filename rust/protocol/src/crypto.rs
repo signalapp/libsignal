@@ -5,8 +5,8 @@
 
 use std::result::Result;
 
-use aes::cipher::{KeyIvInit, StreamCipher};
 use aes::Aes256;
+use aes::cipher::{KeyIvInit, StreamCipher};
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;

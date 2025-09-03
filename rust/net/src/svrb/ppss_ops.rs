@@ -9,14 +9,14 @@
 //! on the same set of open connections, as opposed to having to connect for
 //! each individual operation, as implied by `SvrBClient` trait.
 
-use futures_util::future::join_all;
 use futures_util::TryFutureExt as _;
-use libsignal_net_infra::ws::attested::AttestedConnectionError;
+use futures_util::future::join_all;
 use libsignal_net_infra::ws::NextOrClose;
+use libsignal_net_infra::ws::attested::AttestedConnectionError;
 pub(crate) use libsignal_svrb::{Backup4, Secret};
 use libsignal_svrb::{Query4, Remove4, Restore1};
-use rand::rngs::OsRng;
 use rand::TryRngCore;
+use rand::rngs::OsRng;
 
 use super::Error;
 use crate::enclave::{

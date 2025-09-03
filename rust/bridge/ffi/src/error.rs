@@ -7,9 +7,9 @@ use std::ffi::{c_char, c_uchar};
 use std::panic::AssertUnwindSafe;
 
 use libsignal_bridge::ffi::{
-    self, run_ffi_safe, write_result_to, NullPointerError, OwnedBufferOf, SignalFfiError,
+    self, NullPointerError, OwnedBufferOf, SignalFfiError, run_ffi_safe, write_result_to,
 };
-use libsignal_bridge::{ffi_arg_type, ffi_result_type, IllegalArgumentError};
+use libsignal_bridge::{IllegalArgumentError, ffi_arg_type, ffi_result_type};
 use libsignal_bridge_macros::bridge_fn;
 use libsignal_core::ProtocolAddress;
 

@@ -6,10 +6,10 @@
 use ::zkgroup;
 use partial_default::PartialDefault;
 use serde::Deserialize;
+pub use zkgroup::Timestamp;
 use zkgroup::groups::*;
 use zkgroup::profiles::*;
 use zkgroup::receipts::*;
-pub use zkgroup::Timestamp;
 use zkgroup::*;
 
 use crate::support::*;

@@ -15,7 +15,7 @@ use crate::backup::method::LookupPair;
 use crate::backup::recipient::MinimalRecipientData;
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::{likely_empty, TryIntoWith};
+use crate::backup::{TryIntoWith, likely_empty};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StandardMessage`].
@@ -115,8 +115,8 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-    use crate::backup::chat::text::{TextError, MAX_BODY_LENGTH_WITH_LONG_TEXT_ATTACHMENT};
     use crate::backup::chat::Reaction;
+    use crate::backup::chat::text::{MAX_BODY_LENGTH_WITH_LONG_TEXT_ATTACHMENT, TextError};
     use crate::backup::recipient::FullRecipientData;
     use crate::backup::testutil::TestContext;
 

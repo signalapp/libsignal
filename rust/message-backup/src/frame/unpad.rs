@@ -9,9 +9,9 @@ use std::task::Poll;
 
 use aes::cipher::BlockSizeUser;
 use arrayvec::ArrayVec;
-use cbc::cipher::block_padding::{Padding, UnpadError};
 use cbc::cipher::Block;
-use futures::{ready, Stream, StreamExt as _};
+use cbc::cipher::block_padding::{Padding, UnpadError};
+use futures::{Stream, StreamExt as _, ready};
 
 /// Stream wrapper that un-pads the last block.
 ///

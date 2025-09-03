@@ -24,16 +24,18 @@ fn group_no_send_session() -> Result<(), SignalProtocolError> {
 
     let mut alice_store = test_in_memory_protocol_store()?;
 
-    assert!(group_encrypt(
-        &mut alice_store,
-        &sender_address,
-        distribution_id,
-        "space camp?".as_bytes(),
-        &mut csprng,
-    )
-    .now_or_never()
-    .expect("sync")
-    .is_err());
+    assert!(
+        group_encrypt(
+            &mut alice_store,
+            &sender_address,
+            distribution_id,
+            "space camp?".as_bytes(),
+            &mut csprng,
+        )
+        .now_or_never()
+        .expect("sync")
+        .is_err()
+    );
 
     Ok(())
 }
@@ -1204,13 +1206,15 @@ fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
-        assert!(group_decrypt(
-            alice_ciphertext.serialized(),
-            &mut bob_store,
-            &sender_address,
-        )
-        .await
-        .is_err());
+        assert!(
+            group_decrypt(
+                alice_ciphertext.serialized(),
+                &mut bob_store,
+                &sender_address,
+            )
+            .await
+            .is_err()
+        );
 
         Ok(())
     }

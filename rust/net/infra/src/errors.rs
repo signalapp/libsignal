@@ -9,7 +9,7 @@ use std::time::Duration;
 use http::{HeaderName, HeaderValue};
 use tokio_boring_signal::HandshakeError;
 
-use crate::{certs, AsStaticHttpHeader};
+use crate::{AsStaticHttpHeader, certs};
 
 pub trait LogSafeDisplay: Display {}
 

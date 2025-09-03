@@ -21,7 +21,7 @@
 //!  3. The string must then be [NFKD normalized](https://unicode.org/reports/tr15/#Norm_Forms)
 //!
 
-use argon2::password_hash::{rand_core, Salt, SaltString};
+use argon2::password_hash::{Salt, SaltString, rand_core};
 use argon2::{
     Algorithm, Argon2, ParamsBuilder, PasswordHash, PasswordHasher, PasswordVerifier, Version,
 };
@@ -131,7 +131,7 @@ mod test {
     use sha2::Sha256;
 
     use super::*;
-    use crate::hash::{local_pin_hash, verify_local_pin_hash, PinHash};
+    use crate::hash::{PinHash, local_pin_hash, verify_local_pin_hash};
 
     fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
         type HmacSha256 = Hmac<Sha256>;
@@ -193,7 +193,9 @@ mod test {
             hex!("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"),
             hex!("202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"),
             hex!("ab7e8499d21f80a6600b3b9ee349ac6d72c07e3359fe885a934ba7aa844429f8"),
-            hex!("3f33ce58eb25b40436592a30eae2a8fabab1899095f4e2fba6e2d0dc43b4a2d9cac5a3931748522393951e0e54dec769"),
+            hex!(
+                "3f33ce58eb25b40436592a30eae2a8fabab1899095f4e2fba6e2d0dc43b4a2d9cac5a3931748522393951e0e54dec769"
+            ),
         );
     }
 
@@ -204,7 +206,9 @@ mod test {
             hex!("202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"),
             hex!("88a787415a2ecd79da0d1016a82a27c5c695c9a19b88b0aa1d35683280aa9a67"),
             hex!("301d9dd1e96f20ce51083f67d3298fd37b97525de8324d5e12ed2d407d3d927b"),
-            hex!("9d9b05402ea39c17ff1c9298c8a0e86784a352aa02a74943bf8bcf07ec0f4b574a5b786ad0182c8d308d9eb06538b8c9"),
+            hex!(
+                "9d9b05402ea39c17ff1c9298c8a0e86784a352aa02a74943bf8bcf07ec0f4b574a5b786ad0182c8d308d9eb06538b8c9"
+            ),
         );
     }
 

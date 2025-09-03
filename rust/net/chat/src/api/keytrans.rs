@@ -918,11 +918,15 @@ pub(crate) mod test_support {
         include_bytes!("../../../tests/data/chat_search_response.dat");
     pub const CHAT_SEARCH_RESPONSE_VALID_AT: Duration = Duration::from_secs(1746042060);
 
-    const DISTINGUISHED_TREE_25223230_HEAD: &[u8] = &hex!("08bec0830c10f1beddc1e8321a640a201123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e75512404dc142dc8f20605328f39b230b7f4160638c8c9c0fd1985b5348d152bd482c449efbba837ac5bed017e02216ae26ca72fd0b654401c99fdbaa0fdcee38d4a90b");
+    const DISTINGUISHED_TREE_25223230_HEAD: &[u8] = &hex!(
+        "08bec0830c10f1beddc1e8321a640a201123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e75512404dc142dc8f20605328f39b230b7f4160638c8c9c0fd1985b5348d152bd482c449efbba837ac5bed017e02216ae26ca72fd0b654401c99fdbaa0fdcee38d4a90b"
+    );
     const DISTINGUISHED_TREE_25223230_ROOT: &[u8] =
         &hex!("85d15cf60676285c0105d9474139dfc7b070996c6dba7ab12ccf2ffcfff8cbcd");
 
-    const STORED_ACCOUNT_DATA_25223245: &[u8] = &hex!("0a2f0a203901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a10231a0708ffffff071002200112300a2086052cc2a2689558e852d053c5ab411d8c3baef20171ec298e551574806ca95d1081011a0708ffffff07100220011a300a20bc1cfaae736c27c437b99175798933ee32caf07a5226840ec963a4e614916e9010dc011a0708ffffff071002200122300a0c08cdc0830c10a8d6ddc1e832122048e51aeb705ffa2fe7bed5f7aad51d216c551547892280eded1db2708eba359a");
+    const STORED_ACCOUNT_DATA_25223245: &[u8] = &hex!(
+        "0a2f0a203901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a10231a0708ffffff071002200112300a2086052cc2a2689558e852d053c5ab411d8c3baef20171ec298e551574806ca95d1081011a0708ffffff07100220011a300a20bc1cfaae736c27c437b99175798933ee32caf07a5226840ec963a4e614916e9010dc011a0708ffffff071002200122300a0c08cdc0830c10a8d6ddc1e832122048e51aeb705ffa2fe7bed5f7aad51d216c551547892280eded1db2708eba359a"
+    );
 
     pub fn test_distinguished_tree() -> LastTreeHead {
         (
@@ -951,8 +955,8 @@ mod test {
     use test_case::test_case;
 
     use super::test_support::{
-        test_account, test_account_data, test_distinguished_tree, CHAT_SEARCH_RESPONSE,
-        CHAT_SEARCH_RESPONSE_VALID_AT, KEYTRANS_CONFIG_STAGING,
+        CHAT_SEARCH_RESPONSE, CHAT_SEARCH_RESPONSE_VALID_AT, KEYTRANS_CONFIG_STAGING, test_account,
+        test_account_data, test_distinguished_tree,
     };
     use super::*;
 

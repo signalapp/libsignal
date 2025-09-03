@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use crate::backup::TryIntoWith;
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
-use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 #[derive(Debug, serde::Serialize)]

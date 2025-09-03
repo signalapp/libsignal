@@ -15,12 +15,12 @@ mod usernames;
 use std::future::Future;
 use std::time::Duration;
 
-use base64::prelude::BASE64_STANDARD;
 use base64::Engine as _;
+use base64::prelude::BASE64_STANDARD;
 use http::StatusCode;
 use libsignal_net::chat;
 use libsignal_net::infra::errors::LogSafeDisplay;
-use libsignal_net::infra::{extract_retry_later, AsHttpHeader};
+use libsignal_net::infra::{AsHttpHeader, extract_retry_later};
 use serde_with::serde_as;
 
 use crate::api::{
@@ -381,8 +381,8 @@ mod testutil {
 
 #[cfg(test)]
 mod test {
-    use libsignal_net::infra::errors::RetryLater;
     use libsignal_net::infra::AsStaticHttpHeader as _;
+    use libsignal_net::infra::errors::RetryLater;
     use test_case::test_case;
 
     use super::testutil::*;

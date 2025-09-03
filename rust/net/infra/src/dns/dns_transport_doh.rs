@@ -7,8 +7,8 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use bytes::Bytes;
 use const_str::ip_addr;
-use futures_util::stream::FuturesUnordered;
 use futures_util::Stream;
+use futures_util::stream::FuturesUnordered;
 use http::uri::PathAndQuery;
 use http::{HeaderValue, Method};
 
@@ -25,7 +25,7 @@ use crate::route::{
     TlsRoute, VariableTlsTimeoutConnector,
 };
 use crate::timeouts::MIN_TLS_HANDSHAKE_TIMEOUT;
-use crate::{dns, DnsSource};
+use crate::{DnsSource, dns};
 
 pub(crate) const CLOUDFLARE_IPS: (Ipv4Addr, Ipv6Addr) = (
     ip_addr!(v4, "1.1.1.1"),

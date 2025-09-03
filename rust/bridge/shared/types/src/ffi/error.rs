@@ -12,15 +12,15 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
 use libsignal_net::infra::errors::LogSafeDisplay;
-use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_net_chat::api::RateLimitChallenge;
+use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 use super::{FutureCancelled, NullPointerError, UnexpectedPanic};
-use crate::support::{describe_panic, IllegalArgumentError};
+use crate::support::{IllegalArgumentError, describe_panic};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
@@ -362,7 +362,7 @@ impl IntoFfiError for SignalProtocolError {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         let code = match &self {
             &Self::InvalidSenderKeySession { distribution_id } => {
-                return SignalFfiError::from(InvalidSenderKeySession { distribution_id })
+                return SignalFfiError::from(InvalidSenderKeySession { distribution_id });
             }
             Self::InvalidRegistrationId(_, _) => {
                 // Re-match as owned.

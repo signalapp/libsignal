@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator as _};
-use zkgroup::auth::AuthCredentialWithPniZkcResponse;
 use zkgroup::SECONDS_PER_DAY;
+use zkgroup::auth::AuthCredentialWithPniZkcResponse;
 
 fn benchmark_integration_auth(c: &mut Criterion) {
     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);

@@ -83,16 +83,16 @@ impl<T: WsConnection> crate::api::profiles::UnauthenticatedChatApi for Unauth<T>
 
 #[cfg(test)]
 mod test {
-    use base64::prelude::BASE64_STANDARD;
     use base64::Engine as _;
+    use base64::prelude::BASE64_STANDARD;
     use futures_util::FutureExt as _;
     use libsignal_net::chat;
     use test_case::test_case;
 
     use super::*;
     use crate::api::profiles::UnauthenticatedChatApi;
-    use crate::ws::testutil::{empty, json, ProduceResponse, RequestValidator};
     use crate::ws::ACCESS_KEY_HEADER_NAME;
+    use crate::ws::testutil::{ProduceResponse, RequestValidator, empty, json};
 
     const ACI_UUID: &str = "9d0652a3-dcc3-4d11-975f-74d61598733f";
 

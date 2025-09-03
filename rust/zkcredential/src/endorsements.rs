@@ -67,7 +67,7 @@ use sha2::Digest;
 use subtle::ConstantTimeEq;
 
 use crate::sho::ShoExt;
-use crate::{VerificationFailure, RANDOMNESS_LEN};
+use crate::{RANDOMNESS_LEN, VerificationFailure};
 
 /// A server's secret key for issuing and verifying endorsements.
 ///

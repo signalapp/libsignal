@@ -7,10 +7,10 @@ use bytes::Bytes;
 use http::{HeaderMap, StatusCode};
 use libsignal_net::infra::errors::LogSafeDisplay;
 
+use crate::api::RequestError;
 use crate::api::registration::{
     InvalidSessionId, RegistrationLock, VerificationCodeNotDeliverable,
 };
-use crate::api::RequestError;
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(strum::EnumDiscriminants))]

@@ -11,11 +11,11 @@ use std::sync::{Arc, Mutex};
 
 use futures_util::TryFutureExt as _;
 use libsignal_net::infra::errors::TransportConnectError;
+use libsignal_net_infra::AsyncDuplexStream;
 use libsignal_net_infra::host::Host;
 use libsignal_net_infra::route::{
     ConnectionProxyRoute, Connector, TcpRoute, TlsRouteFragment, TransportRoute, UsePreconnect,
 };
-use libsignal_net_infra::AsyncDuplexStream;
 use tokio::io::DuplexStream;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;

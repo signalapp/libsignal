@@ -21,12 +21,12 @@ use libsignal_net_infra::route::{
     HttpsProvider, TlsRouteProvider,
 };
 use libsignal_net_infra::{
-    AsStaticHttpHeader, ConnectionParams, EnableDomainFronting, EnforceMinimumTls, RouteType,
-    TransportConnectionParams, RECOMMENDED_WS_CONFIG,
+    AsStaticHttpHeader, ConnectionParams, EnableDomainFronting, EnforceMinimumTls,
+    RECOMMENDED_WS_CONFIG, RouteType, TransportConnectionParams,
 };
 use nonzero_ext::nonzero;
 use rand::seq::SliceRandom;
-use rand::{rng, Rng};
+use rand::{Rng, rng};
 
 use crate::certs::{PROXY_G_ROOT_CERTIFICATES, SIGNAL_ROOT_CERTIFICATES};
 use crate::chat::RECOMMENDED_CHAT_WS_CONFIG;
@@ -730,6 +730,7 @@ mod test {
     use std::time::Duration;
 
     use itertools::Itertools as _;
+    use libsignal_net_infra::Alpn;
     use libsignal_net_infra::dns::build_custom_resolver_cloudflare_doh;
     use libsignal_net_infra::dns::dns_lookup::DnsLookupRequest;
     use libsignal_net_infra::route::testutils::FakeContext;
@@ -738,7 +739,6 @@ mod test {
         UnresolvedHost,
     };
     use libsignal_net_infra::utils::no_network_change_events;
-    use libsignal_net_infra::Alpn;
     use test_case::test_matrix;
 
     use super::*;

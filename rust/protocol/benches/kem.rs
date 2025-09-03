@@ -4,10 +4,10 @@
 //
 use std::hint::black_box;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use libsignal_protocol::kem::{KeyPair, KeyType};
-use rand::rngs::OsRng;
 use rand::TryRngCore as _;
+use rand::rngs::OsRng;
 
 fn bench_kem(c: &mut Criterion) {
     for key_type in [KeyType::Kyber768, KeyType::Kyber1024] {

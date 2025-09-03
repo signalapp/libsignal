@@ -24,7 +24,7 @@ use crate::common::serialization::ReservedByte;
 use crate::common::sho::Sho;
 use crate::common::simple_types::*;
 use crate::generic_server_params::{GenericServerPublicParams, GenericServerSecretParams};
-use crate::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure, SECONDS_PER_DAY};
+use crate::{SECONDS_PER_DAY, ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 struct BackupIdPoint(RistrettoPoint);
@@ -324,7 +324,7 @@ mod tests {
     use assert_matches::assert_matches;
 
     use super::*;
-    use crate::{common, RandomnessBytes, Timestamp, RANDOMNESS_LEN, SECONDS_PER_DAY};
+    use crate::{RANDOMNESS_LEN, RandomnessBytes, SECONDS_PER_DAY, Timestamp, common};
 
     const DAY_ALIGNED_TIMESTAMP: Timestamp = Timestamp::from_epoch_seconds(1681344000); // 2023-04-13 00:00:00 UTC
     const KEY: libsignal_account_keys::BackupKey = libsignal_account_keys::BackupKey([0x42u8; 32]);

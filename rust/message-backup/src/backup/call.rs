@@ -12,7 +12,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
-use crate::backup::{serialize, TryIntoWith};
+use crate::backup::{TryIntoWith, serialize};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::AdHocCall`].
@@ -325,10 +325,8 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
     }
 }
 
-impl<
-        C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp,
-        R: Clone + Debug,
-    > TryIntoWith<AdHocCall<R>, C> for proto::AdHocCall
+impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp, R: Clone + Debug>
+    TryIntoWith<AdHocCall<R>, C> for proto::AdHocCall
 {
     type Error = CallError;
 

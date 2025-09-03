@@ -584,10 +584,10 @@ mod service_id_tests {
             ServiceId::parse_from_service_id_string("PNI:8c78cd2a16ff427d83dc1a5e36ce713d")
                 .is_none()
         );
-        assert!(ServiceId::parse_from_service_id_string(
-            "PNI:{8c78cd2a-16ff-427d-83dc-1a5e36ce713d}"
-        )
-        .is_none());
+        assert!(
+            ServiceId::parse_from_service_id_string("PNI:{8c78cd2a-16ff-427d-83dc-1a5e36ce713d}")
+                .is_none()
+        );
     }
 
     #[test]

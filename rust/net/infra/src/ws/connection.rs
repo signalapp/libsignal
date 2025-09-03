@@ -12,9 +12,9 @@ use futures_util::{SinkExt as _, Stream, StreamExt as _};
 use pin_project::pin_project;
 use tokio::select;
 use tokio::time::{Duration, Instant};
-use tungstenite::protocol::frame::coding::CloseCode;
-use tungstenite::protocol::CloseFrame;
 use tungstenite::Message;
+use tungstenite::protocol::CloseFrame;
+use tungstenite::protocol::frame::coding::CloseCode;
 
 use crate::errors::LogSafeDisplay;
 use crate::ws::{Config, TextOrBinary, WebSocketError, WebSocketStreamLike};
@@ -613,7 +613,7 @@ mod test {
     use std::task::{Context, Poll};
 
     use assert_matches::assert_matches;
-    use futures_util::{pin_mut, FutureExt as _};
+    use futures_util::{FutureExt as _, pin_mut};
     use tokio::sync::mpsc;
     use tokio_stream::wrappers::ReceiverStream;
 

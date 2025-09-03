@@ -11,11 +11,11 @@ pub use libsignal_bridge_types::net::{Environment, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{AccountData, LocalStateUpdate, StoredAccountData, StoredTreeHead};
-use libsignal_net_chat::api::keytrans::{
-    monitor_and_search, Error, KeyTransparencyClient, MaybePartial, MonitorMode, SearchKey,
-    UnauthenticatedChatApi as _, UsernameHash,
-};
 use libsignal_net_chat::api::Unauth;
+use libsignal_net_chat::api::keytrans::{
+    Error, KeyTransparencyClient, MaybePartial, MonitorMode, SearchKey,
+    UnauthenticatedChatApi as _, UsernameHash, monitor_and_search,
+};
 use libsignal_protocol::PublicKey;
 use prost::{DecodeError, Message};
 

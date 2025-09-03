@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use zkgroup::receipts::ReceiptCredentialPresentation;
 use zkgroup::ZkGroupDeserializationFailure;
+use zkgroup::receipts::ReceiptCredentialPresentation;
 
 use crate::proto::backup as proto;
 

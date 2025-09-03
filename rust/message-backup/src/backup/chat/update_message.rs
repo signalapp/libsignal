@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use crate::backup::TryIntoWith;
 use crate::backup::call::{GroupCall, IndividualCall};
-use crate::backup::chat::group::GroupChatUpdate;
 use crate::backup::chat::ChatItemError;
+use crate::backup::chat::group::GroupChatUpdate;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
-use crate::backup::recipient::{ChatItemAuthorKind, ChatRecipientKind, MinimalRecipientData, E164};
+use crate::backup::recipient::{ChatItemAuthorKind, ChatRecipientKind, E164, MinimalRecipientData};
 use crate::backup::time::{Duration, ReportUnusualTimestamp};
-use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::chat_update_message::Update`].
