@@ -48,7 +48,7 @@ impl<T> BorrowedSliceOf<T> {
             return Ok(&[]);
         }
 
-        Ok(std::slice::from_raw_parts(self.base, self.length))
+        Ok(unsafe { std::slice::from_raw_parts(self.base, self.length) })
     }
 }
 
@@ -68,7 +68,7 @@ impl<T> BorrowedMutableSliceOf<T> {
             return Ok(&mut []);
         }
 
-        Ok(std::slice::from_raw_parts_mut(self.base, self.length))
+        Ok(unsafe { std::slice::from_raw_parts_mut(self.base, self.length) })
     }
 }
 
@@ -94,7 +94,7 @@ impl<T> OwnedBufferOf<T> {
             return Box::new([]);
         }
 
-        Box::from_raw(std::slice::from_raw_parts_mut(base, length))
+        unsafe { Box::from_raw(std::slice::from_raw_parts_mut(base, length)) }
     }
 }
 
@@ -131,8 +131,8 @@ impl BytestringArray {
     pub unsafe fn into_boxed_parts(self) -> (Box<[u8]>, Box<[usize]>) {
         let Self { bytes, lengths } = self;
 
-        let bytes = bytes.into_box();
-        let lengths = lengths.into_box();
+        let bytes = unsafe { bytes.into_box() };
+        let lengths = unsafe { lengths.into_box() };
         (bytes, lengths)
     }
 }
@@ -345,7 +345,7 @@ pub unsafe fn native_handle_cast<T>(handle: *const T) -> Result<&'static T, Sign
         return Err(NullPointerError.into());
     }
 
-    Ok(&*(handle))
+    Ok(unsafe { &*(handle) })
 }
 
 pub unsafe fn native_handle_cast_mut<T>(handle: *mut T) -> Result<&'static mut T, SignalFfiError> {
@@ -353,7 +353,7 @@ pub unsafe fn native_handle_cast_mut<T>(handle: *mut T) -> Result<&'static mut T
         return Err(NullPointerError.into());
     }
 
-    Ok(&mut *handle)
+    Ok(unsafe { &mut *handle })
 }
 
 pub unsafe fn write_result_to<T: ResultTypeInfo>(
@@ -363,7 +363,9 @@ pub unsafe fn write_result_to<T: ResultTypeInfo>(
     if ptr.is_null() {
         return Err(NullPointerError.into());
     }
-    *ptr = value.convert_into()?;
+    unsafe {
+        *ptr = value.convert_into()?;
+    }
     Ok(())
 }
 
@@ -375,11 +377,11 @@ macro_rules! ffi_bridge_handle_destroy {
     ( $typ:ty as $ffi_name:ident ) => {
         ::paste::paste! {
             #[cfg(feature = "ffi")]
-            #[export_name = concat!(
+            #[unsafe(export_name = concat!(
                 env!("LIBSIGNAL_BRIDGE_FN_PREFIX_FFI"),
                 stringify!($ffi_name),
                 "_destroy",
-            )]
+            ))]
             #[allow(non_snake_case)]
             pub unsafe extern "C" fn [<__bridge_handle_ffi_ $ffi_name _destroy>](
                 p: $crate::ffi::MutPointer<$typ>

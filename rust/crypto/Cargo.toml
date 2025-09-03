@@ -8,7 +8,7 @@ name = "signal-crypto"
 version = "0.1.0"
 authors.workspace = true
 license.workspace = true
-edition = "2021"
+edition = "2024"
 
 [lints]
 workspace = true

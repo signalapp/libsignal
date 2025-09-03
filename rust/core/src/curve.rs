@@ -141,7 +141,7 @@ impl PublicKey {
 
     fn key_data(&self) -> &[u8] {
         match &self.key {
-            PublicKeyData::DjbPublicKey(ref k) => k.as_ref(),
+            PublicKeyData::DjbPublicKey(k) => k.as_ref(),
         }
     }
 

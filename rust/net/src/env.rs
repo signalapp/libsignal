@@ -507,12 +507,15 @@ pub struct ProxyConfig {
 }
 
 impl ProxyConfig {
-    pub fn shuffled_connection_params(
+    pub fn shuffled_connection_params<R>(
         &self,
         proxy_path: &'static str,
         confirmation_header_name: Option<&'static str>,
-        rng: &mut impl Rng,
-    ) -> impl Iterator<Item = ConnectionParams> {
+        rng: &mut R,
+    ) -> impl Iterator<Item = ConnectionParams> + use<R>
+    where
+        R: Rng,
+    {
         let route_type = self.route_type;
         let http_host = Arc::from(self.http_host);
         let certs = self.certs.clone();

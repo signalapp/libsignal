@@ -8,8 +8,8 @@ name = "libsignal-cli-utils"
 version = "0.1.0"
 authors.workspace = true
 license.workspace = true
-edition = "2021"
-rust-version = "1.80"
+edition = "2024"
+rust-version = "1.85"
 
 [lints]
 workspace = true

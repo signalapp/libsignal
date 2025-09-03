@@ -20,7 +20,7 @@ impl LibSignalProtocolV70 {
         let mut csprng = thread_rng();
         let identity_key = IdentityKeyPair::generate(&mut csprng);
         // Valid registration IDs fit in 14 bits.
-        let registration_id: u8 = csprng.gen();
+        let registration_id: u8 = csprng.r#gen();
 
         Self(
             InMemSignalProtocolStore::new(identity_key, registration_id as u32)
@@ -59,9 +59,9 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
             .expect("can sign");
 
         let device_id: u32 = csprng.gen_range(1..=127);
-        let pre_key_id: u32 = csprng.gen();
-        let signed_pre_key_id: u32 = csprng.gen();
-        let kyber_pre_key_id: u32 = csprng.gen();
+        let pre_key_id: u32 = csprng.r#gen();
+        let signed_pre_key_id: u32 = csprng.r#gen();
+        let kyber_pre_key_id: u32 = csprng.r#gen();
 
         let pre_key_bundle = super::PreKeyBundle::new(
             self.0
@@ -96,7 +96,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
             .expect("synchronous")
             .expect("can save pre-keys");
 
-        let timestamp = csprng.gen();
+        let timestamp = csprng.r#gen();
 
         self.0
             .save_signed_pre_key(

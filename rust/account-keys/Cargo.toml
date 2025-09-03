@@ -8,7 +8,7 @@ name = "libsignal-account-keys"
 authors.workspace = true
 license.workspace = true
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "Operations for various account-associated keys"
 
 [lints]

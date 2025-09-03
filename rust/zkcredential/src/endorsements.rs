@@ -405,7 +405,7 @@ impl EndorsementResponse {
     ) -> Vec<Scalar> {
         debug_assert_eq!(E.len(), R.len());
 
-        let mut gen = poksho::ShoHmacSha256::new(
+        let mut hasher = poksho::ShoHmacSha256::new(
             b"Signal_ZKCredential_Endorsements_EndorsementResponse_ProofWeights_20240207",
         );
 
@@ -415,19 +415,19 @@ impl EndorsementResponse {
         // same output (e.g. absorbing [1,2,3] then [4] gives same output as
         // absorbing [1,2] then [3,4]). Furthermore we do not need to use the
         // Sho's underlying secret until we squeeze out the random challenges.
-        gen.absorb(public_key.PK_prime.compress().as_bytes());
+        hasher.absorb(public_key.PK_prime.compress().as_bytes());
 
         // It is more efficient to double and compress than to compress individually, and the doubled values
         // bind the prover to the E values just as much as compressing the E values directly would.
         let compressed_double_Es = RistrettoPoint::double_and_compress_batch(E);
 
         for E_i in compressed_double_Es {
-            gen.absorb(E_i.as_bytes());
+            hasher.absorb(E_i.as_bytes());
         }
         for R_i in R {
-            gen.absorb(R_i.as_bytes());
+            hasher.absorb(R_i.as_bytes());
         }
-        gen.ratchet();
+        hasher.ratchet();
 
         // Deliberately generate scalars < 2^127 only, which we can multiply faster.
         // This still gives us 127-bit soundness according to Henry's analysis of RME (cited above).
@@ -435,7 +435,7 @@ impl EndorsementResponse {
         // We squeeze all of the scalar bytes at once so that we don't pay the cost of ratcheting
         // between each.
         const SMALL_SCALAR_BYTES: usize = 16;
-        let randomness = gen.squeeze_and_ratchet((E.len() - 1) * SMALL_SCALAR_BYTES);
+        let randomness = hasher.squeeze_and_ratchet((E.len() - 1) * SMALL_SCALAR_BYTES);
         randomness
             .chunks_exact(SMALL_SCALAR_BYTES)
             .map(|chunk| {

@@ -191,7 +191,7 @@ impl JniError for SignalProtocolError {
                 ClassName("java.lang.RuntimeException")
             }
 
-            SignalProtocolError::UntrustedIdentity(ref addr) => {
+            SignalProtocolError::UntrustedIdentity(addr) => {
                 let addr_name = to_java_string(env, addr.name())?;
                 return new_instance(
                     env,
@@ -200,7 +200,7 @@ impl JniError for SignalProtocolError {
                 )
                 .map(Into::into);
             }
-            SignalProtocolError::SessionNotFound(ref addr) => {
+            SignalProtocolError::SessionNotFound(addr) => {
                 let addr_object = protocol_address_to_jobject(env, addr)?;
                 let message = to_java_string(env, self.to_string())?;
                 return new_instance(
@@ -214,7 +214,7 @@ impl JniError for SignalProtocolError {
                 .map(Into::into);
             }
 
-            SignalProtocolError::InvalidRegistrationId(ref addr, _value) => {
+            SignalProtocolError::InvalidRegistrationId(addr, _value) => {
                 let addr_object = protocol_address_to_jobject(env, addr)?;
                 let message = to_java_string(env, self.to_string())?;
                 return new_instance(
@@ -1271,11 +1271,11 @@ impl<'a> CiphertextMessageRef<'a> {
 macro_rules! jni_bridge_handle_destroy {
     ( $typ:ty as $jni_name:ident ) => {
         ::paste::paste! {
-            #[export_name = concat!(
+            #[unsafe(export_name = concat!(
                 env!("LIBSIGNAL_BRIDGE_FN_PREFIX_JNI"),
                 stringify!($jni_name),
                 "_1Destroy"
-            )]
+            ))]
             #[allow(non_snake_case)]
             pub unsafe extern "C" fn [<__bridge_handle_jni_ $jni_name _destroy>](
                 _env: ::jni::JNIEnv,

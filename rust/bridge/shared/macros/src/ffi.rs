@@ -58,7 +58,7 @@ pub(crate) fn bridge_fn(
 
     Ok(quote! {
         #[cfg(feature = "ffi")]
-        #[export_name = concat!(env!("LIBSIGNAL_BRIDGE_FN_PREFIX_FFI"), #name)]
+        #[unsafe(export_name = concat!(env!("LIBSIGNAL_BRIDGE_FN_PREFIX_FFI"), #name))]
         pub unsafe extern "C" fn #wrapper_name(
             #implicit_args
             #(#input_args),*

@@ -54,7 +54,7 @@ impl NoiseDirectConnectShadow<'_> {
             EncryptedStream<impl Transport + Connection>,
             libsignal_net_infra::route::ConnectError<impl LogSafeDisplay>,
         >,
-    > {
+    > + 'static {
         let Self {
             route_resolver,
             dns_resolver,

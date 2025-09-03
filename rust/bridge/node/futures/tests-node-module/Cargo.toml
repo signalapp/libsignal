@@ -10,7 +10,7 @@ name = "signal-neon-futures-tests"
 version = "0.1.0"
 authors.workspace = true
 license.workspace = true
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]

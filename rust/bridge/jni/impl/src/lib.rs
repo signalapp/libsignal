@@ -18,7 +18,7 @@ use libsignal_protocol::*;
 
 pub mod logging;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_IdentityKeyPair_1Deserialize<
     'local,
 >(
@@ -47,7 +47,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_IdentityKeyPa
 ///
 /// Initialization function used to set up internal data structures. This should
 /// be called once when the library is first loaded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_initializeLibrary<'local>(
     mut env: JNIEnv<'local>,
     class: JClass<'local>,
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_initializeLib
     })
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_AsyncLoadClass<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass,
@@ -104,7 +104,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_AsyncLoadClas
 }
 
 #[cfg(not(target_os = "android"))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_1MultiRecipientParseSentMessage<
     'local,
 >(
@@ -162,13 +162,15 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
                 AutoLocal::new(
                     // Use the unchecked method with a cached method identifier
                     // to improve performance.
-                    call_static_method_unchecked(
-                        env,
-                        &service_id_class,
-                        parse_from_fixed_width_binary_method,
-                        jni::signature::ReturnType::Object,
-                        &[JValue::from(&java_service_id_bytes).as_jni()],
-                    )
+                    unsafe {
+                        call_static_method_unchecked(
+                            env,
+                            &service_id_class,
+                            parse_from_fixed_width_binary_method,
+                            jni::signature::ReturnType::Object,
+                            &[JValue::from(&java_service_id_bytes).as_jni()],
+                        )
+                    }
                     .and_then(|v| v.l())
                     .check_exceptions(env, "parseFromFixedWidthBinary")?,
                     env,
@@ -211,18 +213,20 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
                 AutoLocal::new(
                     // Use the unchecked method with a cached method identifier
                     // to improve performance.
-                    new_object_unchecked(
-                        env,
-                        &recipient_class,
-                        recipient_class_constructor,
-                        &[
-                            JValue::from(&java_device_ids),
-                            JValue::from(&java_registration_ids),
-                            JValue::Int(range.start.try_into().expect("data too large")),
-                            JValue::Int(range.len().try_into().expect("data too large")),
-                        ]
-                        .map(|j| j.as_jni()),
-                    )
+                    unsafe {
+                        new_object_unchecked(
+                            env,
+                            &recipient_class,
+                            recipient_class_constructor,
+                            &[
+                                JValue::from(&java_device_ids),
+                                JValue::from(&java_registration_ids),
+                                JValue::Int(range.start.try_into().expect("data too large")),
+                                JValue::Int(range.len().try_into().expect("data too large")),
+                            ]
+                            .map(|j| j.as_jni()),
+                        )
+                    }
                     .check_exceptions(env, RECIPIENT_CLASS_NAME.0)?,
                     env,
                 )
@@ -251,7 +255,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
 /// An optimization barrier / guard against garbage collection.
 ///
 /// cbindgen:ignore
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_keepAlive(
     _env: JNIEnv,
     _class: JClass,

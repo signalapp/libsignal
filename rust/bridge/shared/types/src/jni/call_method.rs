@@ -92,7 +92,9 @@ where
     // Note that we are *not* unwrapping the result yet!
     // We need to check for exceptions *first*.
     #[allow(clippy::disallowed_methods)]
-    env.call_static_method_unchecked(cls.as_ref(), method_id.as_ref(), ret, args)
+    unsafe {
+        env.call_static_method_unchecked(cls.as_ref(), method_id.as_ref(), ret, args)
+    }
 }
 
 /// Constructs a new object using [`JniArgs`].
@@ -128,7 +130,9 @@ where
     }
 
     #[allow(clippy::disallowed_methods)]
-    env.new_object_unchecked(cls.as_ref(), ctor_id, ctor_args)
+    unsafe {
+        env.new_object_unchecked(cls.as_ref(), ctor_id, ctor_args)
+    }
 }
 
 fn check_exceptions_and_convert_result<'output, R: TryFrom<JValueOwned<'output>>>(

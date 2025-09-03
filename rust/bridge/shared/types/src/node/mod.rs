@@ -17,7 +17,7 @@ pub use neon::types::buffer::TypedArray;
 macro_rules! node_register {
     ( $name:ident ) => {
         ::paste::paste! {
-            #[no_mangle] // necessary because we are linking as a cdylib
+            #[unsafe(no_mangle)] // necessary because we are linking as a cdylib
             #[allow(non_upper_case_globals)]
             #[linkme::distributed_slice($crate::node::LIBSIGNAL_FNS)]
             static [<signal_register_node_ $name>]: (&str, $crate::node::JsFn) =

@@ -8,8 +8,8 @@ name = "poksho"
 version = "0.7.0"
 authors.workspace = true
 license.workspace = true
-edition = "2021"
-rust-version = "1.81"
+edition = "2024"
+rust-version = "1.85"
 
 [lints]
 workspace = true

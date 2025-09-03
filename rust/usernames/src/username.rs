@@ -344,7 +344,7 @@ fn gen_range<'a, R: Rng>(
     rng: &mut R,
     range: &'a Range<usize>,
     amount: usize,
-) -> impl Iterator<Item = usize> + 'a {
+) -> impl Iterator<Item = usize> + use<'a, R> {
     let length = range.end - range.start;
     let indices = rand::seq::index::sample(rng, length, amount);
     indices.into_iter().map(move |i| range.start + i)

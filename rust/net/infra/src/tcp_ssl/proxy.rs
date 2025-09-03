@@ -230,7 +230,9 @@ pub(crate) mod testutil {
             }
         }
 
-        pub(super) async fn accept(&self) -> (impl AsyncRead + AsyncWrite + Unpin, SocketAddr) {
+        pub(super) async fn accept(
+            &self,
+        ) -> (impl AsyncRead + AsyncWrite + Unpin + use<>, SocketAddr) {
             let (tcp_stream, remote_addr) = self.tcp.accept().await;
             let ssl_stream = tokio_boring_signal::accept(&self.ssl_acceptor, tcp_stream)
                 .await

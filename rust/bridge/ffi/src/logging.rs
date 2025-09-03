@@ -95,7 +95,7 @@ impl log::Log for FfiLogger {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn signal_init_logger(max_level: LogLevel, logger: FfiLogger) -> bool {
     match log::set_logger(Box::leak(Box::new(logger))) {
         Ok(_) => {
