@@ -63,6 +63,8 @@ export enum ErrorCode {
 
   KeyTransparencyError,
   KeyTransparencyVerificationFailed,
+
+  IncrementalMacVerificationFailed,
 }
 
 export class LibSignalErrorBase extends Error {
@@ -319,6 +321,10 @@ export type KeyTransparencyVerificationFailed = LibSignalErrorCommon & {
   code: ErrorCode.KeyTransparencyVerificationFailed;
 };
 
+export type IncrementalMacVerificationFailed = LibSignalErrorCommon & {
+  code: ErrorCode.IncrementalMacVerificationFailed;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -364,4 +370,5 @@ export type LibSignalError =
   | BackupValidationError
   | CancellationError
   | KeyTransparencyError
-  | KeyTransparencyVerificationFailed;
+  | KeyTransparencyVerificationFailed
+  | IncrementalMacVerificationFailed;

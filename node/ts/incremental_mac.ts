@@ -5,7 +5,7 @@
 
 import * as Native from '../Native';
 import * as stream from 'stream';
-import { LibSignalErrorBase } from './Errors';
+import { IncrementalMacVerificationFailed, LibSignalErrorBase } from './Errors';
 
 type CallbackType = (error?: Error | null) => void;
 
@@ -258,10 +258,12 @@ export function chunkSizeInBytes(sizeChoice: ChunkSizeChoice): number {
   }
 }
 
-function makeVerificationError(message: string): LibSignalErrorBase {
+function makeVerificationError(
+  message: string
+): IncrementalMacVerificationFailed {
   return new LibSignalErrorBase(
     message,
-    'VerificationFailed',
+    'IncrementalMacVerificationFailed',
     'incremental_mac'
-  );
+  ) as IncrementalMacVerificationFailed;
 }
