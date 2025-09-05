@@ -322,13 +322,12 @@ jobs:
     runs-on: ${{ inputs.ios_runner || 'macos-15' }}
     if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
     timeout-minutes: 45
-    env:
-      # The default Xcode verison for the macOS 15 runner is Xcode 16.4, which
-      # doesn't work with cloudflare/boring v4.17.0. Use an older Xcode version
-      # to work around that. Once our boring fork is updated to a version that
-      # includes https://github.com/cloudflare/boring/pull/369 we can remove
-      # this.
-      DEVELOPER_DIR: /Applications/Xcode_16.2.app
+
+    # Uncomment this to select a specific version of Xcode to build and test with. Check the runner
+    # image (in https://github.com/actions/runner-images/) to see which ones are available. You can
+    # also set this on specific steps if necessary.
+    # env:
+    #   DEVELOPER_DIR: /Applications/Xcode_16.2.app
 
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -358,13 +357,6 @@ jobs:
       # We run this for the non-hermetic tests; it's otherwise the same as regular CI.
       - name: Run pod lint
         run: pod lib lint --verbose --platforms=ios
-        env:
-          # GitHub's macOS 15 runners don't include the simulator used by Xcode
-          # 16.2, so run with 16.4, which is what Signal-iOS will use to compile
-          # this code anyway (as of this writing). This can be removed when it's
-          # not needed to override the same environment variable set at the job
-          # level.
-          DEVELOPER_DIR: /Applications/Xcode_16.4.app
 
       # Make sure we can build for device, just for completeness.
       - name: Set up testing workspace
