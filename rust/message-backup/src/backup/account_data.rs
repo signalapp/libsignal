@@ -162,8 +162,6 @@ pub enum AccountDataError {
     BackupSubscription(SubscriptionError),
     /// unknown backup tier value: {0}
     UnknownBackupTier(u64),
-    /// backup subscription is present with free tier
-    BackupSubscriptionWithFreeTier,
     /// optimize on device storage is enabled without paid tier
     OptimizeStorageWithoutPaidTier,
 }
@@ -214,11 +212,6 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
         let account_settings_proto = accountSettings
             .into_option()
             .ok_or(AccountDataError::MissingSettings)?;
-
-        let backup_tier = account_settings_proto.backupTier;
-        if backup_tier == Some(BackupLevel::Free as u64) && backupsSubscriberData.is_some() {
-            return Err(AccountDataError::BackupSubscriptionWithFreeTier);
-        }
 
         let account_settings = account_settings_proto.try_into_with(context)?;
 
@@ -644,11 +637,13 @@ mod test {
         Ok(());
         "no_backup_tier_no_subscription"
     )]
+    // Both iOS and Android teams confirm that it's possible and legal to end up
+    // on the free tier with some subscription information stored in your backup.
     #[test_case(
         |x| {
             x.accountSettings.as_mut().unwrap().backupTier = Some(BackupLevel::Free.into());
         } =>
-        Err(AccountDataError::BackupSubscriptionWithFreeTier);
+        Ok(());
         "backup_subscription_with_free_tier"
     )]
     #[test_case(
