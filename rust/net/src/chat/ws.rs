@@ -1058,21 +1058,24 @@ impl<I: InnerConnection, GCI: GetCurrentInterface<Representation = IpAddr>> Conn
                     requests_in_flight.oldest_outstanding_req_sent_at, None,
                     "no events came in, so no new requests should be recorded"
                 );
-                if let Some(request_tx) = outgoing_request_tx.upgrade() {
+                if let Some(reservation) = outgoing_request_tx
+                    .upgrade()
+                    .as_ref()
+                    .and_then(|request_tx| request_tx.try_reserve().ok())
+                {
                     log::info!(
                         "sending internal keepalive to determine if connection is still usable"
                     );
-                    _ = request_tx
-                        .send(OutgoingRequest {
-                            request: PartialRequestProto {
-                                verb: Method::GET,
-                                path: PathAndQuery::from_static("/v1/keepalive"),
-                                body: None,
-                                headers: vec![],
-                            },
-                            response_sender: oneshot::channel().0,
-                        })
-                        .await;
+                    reservation.send(OutgoingRequest {
+                        request: PartialRequestProto {
+                            verb: Method::GET,
+                            path: PathAndQuery::from_static("/v1/keepalive"),
+                            body: None,
+                            headers: vec![],
+                        },
+                        response_sender: oneshot::channel().0,
+                    });
+                    log::info!("finished sending off internal keepalive")
                 }
             }
             ConnectionEventInterruption::OutstandingRequestTimeout {
