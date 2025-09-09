@@ -35,8 +35,12 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     let message_to_decrypt = support::encrypt(&mut alice_store, &bob_address, "a short message")
         .now_or_never()
         .expect("sync")?;
+    assert_eq!(
+        message_to_decrypt.message_type(),
+        CiphertextMessageType::Whisper
+    );
 
-    c.bench_function("session decrypt first message", |b| {
+    c.bench_function("decrypting the first message on a chain", |b| {
         b.iter(|| {
             let mut bob_store = bob_store.clone();
             support::decrypt(
@@ -59,11 +63,16 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     )
     .now_or_never()
     .expect("sync")?;
+
     let message_to_decrypt = support::encrypt(&mut alice_store, &bob_address, "a short message")
         .now_or_never()
         .expect("sync")?;
+    assert_eq!(
+        message_to_decrypt.message_type(),
+        CiphertextMessageType::Whisper
+    );
 
-    c.bench_function("session encrypt", |b| {
+    c.bench_function("encrypting on an existing chain", |b| {
         b.iter(|| {
             support::encrypt(&mut alice_store, &bob_address, "a short message")
                 .now_or_never()
@@ -71,7 +80,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
                 .expect("success");
         })
     });
-    c.bench_function("session decrypt", |b| {
+    c.bench_function("decrypting on an existing chain", |b| {
         b.iter(|| {
             let mut bob_store = bob_store.clone();
             support::decrypt(
@@ -203,39 +212,50 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     let message_to_decrypt = support::encrypt(&mut alice_store, &bob_address, "a short message")
         .now_or_never()
         .expect("sync")?;
+    assert_eq!(
+        message_to_decrypt.message_type(),
+        CiphertextMessageType::PreKey,
+        "Alice still hasn't received an acknowledgment"
+    );
 
-    c.bench_function("session decrypt with archived state", |b| {
-        b.iter(|| {
-            let mut bob_store = bob_store.clone();
-            support::decrypt(
-                &mut bob_store,
-                &alice_address,
-                &message_to_decrypt,
-                UsePQRatchet::No,
-            )
-            .now_or_never()
-            .expect("sync")
-            .expect("success");
-        })
-    });
+    c.bench_function(
+        "decrypting on an existing chain with an (unused) archived session",
+        |b| {
+            b.iter(|| {
+                let mut bob_store = bob_store.clone();
+                support::decrypt(
+                    &mut bob_store,
+                    &alice_address,
+                    &message_to_decrypt,
+                    UsePQRatchet::No,
+                )
+                .now_or_never()
+                .expect("sync")
+                .expect("success");
+            })
+        },
+    );
 
     // Reset once more to go back to the original message.
     bob_store.identity_store.reset();
 
-    c.bench_function("session decrypt using previous state", |b| {
-        b.iter(|| {
-            let mut bob_store = bob_store.clone();
-            support::decrypt(
-                &mut bob_store,
-                &alice_address,
-                &original_message_to_decrypt,
-                UsePQRatchet::No,
-            )
-            .now_or_never()
-            .expect("sync")
-            .expect("success");
-        })
-    });
+    c.bench_function(
+        "decrypt using an existing chain in an archived session",
+        |b| {
+            b.iter(|| {
+                let mut bob_store = bob_store.clone();
+                support::decrypt(
+                    &mut bob_store,
+                    &alice_address,
+                    &original_message_to_decrypt,
+                    UsePQRatchet::No,
+                )
+                .now_or_never()
+                .expect("sync")
+                .expect("success");
+            })
+        },
+    );
 
     Ok(())
 }
