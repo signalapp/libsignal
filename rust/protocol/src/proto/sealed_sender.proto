@@ -20,11 +20,17 @@ message ServerCertificate {
 message SenderCertificate {
     message Certificate {
         optional string            senderE164    = 1;
-        optional string            senderUuid    = 6;
+        oneof senderUuid {
+            string                 uuidString    = 6;
+            bytes                  uuidBytes     = 7;
+        }
         optional uint32            senderDevice  = 2;
         optional fixed64           expires       = 3;
         optional bytes             identityKey   = 4;
-        optional ServerCertificate signer        = 5;
+        oneof signer {
+            bytes /*ServerCertificate*/ certificate = 5;
+            uint32                      id          = 8;
+        }
     }
 
     optional bytes certificate = 1;

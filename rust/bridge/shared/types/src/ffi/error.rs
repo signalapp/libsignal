@@ -419,6 +419,7 @@ impl IntoFfiError for SignalProtocolError {
             Self::FfiBindingError(_) => SignalErrorCode::InternalError,
             Self::ApplicationCallbackError(_, _) => SignalErrorCode::CallbackError,
             Self::SealedSenderSelfSend => SignalErrorCode::SealedSenderSelfSend,
+            Self::UnknownSealedSenderServerCertificateId(_) => SignalErrorCode::VerificationFailure,
         };
 
         SimpleError::new(code, self.to_string()).into()

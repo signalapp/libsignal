@@ -45,6 +45,8 @@ public open class CertificateValidator(
           throw InvalidCertificateException("Validation failed")
         }
       }
+    } catch (e: InvalidCertificateException) {
+      throw e
     } catch (e: Exception) {
       throw InvalidCertificateException(e)
     }

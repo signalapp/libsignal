@@ -275,6 +275,7 @@ impl JniError for SignalProtocolError {
 
             SignalProtocolError::NoKeyTypeIdentifier
             | SignalProtocolError::SignatureValidationFailed
+            | SignalProtocolError::UnknownSealedSenderServerCertificateId(_)
             | SignalProtocolError::BadKeyType(_)
             | SignalProtocolError::BadKeyLength(_, _)
             | SignalProtocolError::InvalidMacKeyLength(_)

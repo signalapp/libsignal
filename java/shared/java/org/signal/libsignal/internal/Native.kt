@@ -1023,7 +1023,7 @@ internal object Native {
   public external fun SenderCertificate_GetSignature(obj: ObjectHandle): ByteArray
   @JvmStatic @Throws(Exception::class)
   public external fun SenderCertificate_New(senderUuid: String, senderE164: String?, senderDeviceId: Int, senderKey: ObjectHandle, expiration: Long, signerCert: ObjectHandle, signerKey: ObjectHandle): ObjectHandle
-  @JvmStatic @Throws(Exception::class)
+  @JvmStatic
   public external fun SenderCertificate_Validate(cert: ObjectHandle, trustRoots: LongArray, time: Long): Boolean
 
   @JvmStatic @Throws(Exception::class)

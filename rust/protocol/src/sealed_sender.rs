@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::collections::HashMap;
 use std::ops::Range;
+use std::sync::LazyLock;
 use std::time::SystemTime;
 
 use aes_gcm_siv::aead::generic_array::typenum::Unsigned;
@@ -42,6 +44,46 @@ If a production server certificate is ever generated which collides
 with this test certificate ID, Bad Things will happen.
 */
 const REVOKED_SERVER_CERTIFICATE_KEY_IDS: &[u32] = &[0xDEADC357];
+
+/// A set of server certificates that can be omitted from sender certificates for space savings,
+/// keyed by ID.
+///
+/// The middle item is the trust root for the signature in the certificate, used to check integrity
+/// and potentially to filter out irrelevant certificates during validation. This is the serialized
+/// bytes of an XEd25519 public key, without the leading "type byte" used by the PublicKey type.
+///
+/// Technically the ID is also stored in the certificate data, but listing it here makes it easier
+/// for maintainers to tell which certificates are present.
+const KNOWN_SERVER_CERTIFICATES: &[(u32, [u8; 32], &[u8])] = &[
+    (
+        2,
+        // A trust root used in Staging (but this crate doesn't care about staging / production)
+        const_str::hex!("8854ead3e3a8fe3a286644cd1b3538be14dfd5797653c9fd7d3d85ae2b12b926"),
+        &const_str::hex!(
+            "0a25080212210539450d63ebd0752c0fd4038b9d07a916f5e174b756d409b5ca79f4c97400631e124064c5a38b1e927497d3d4786b101a623ab34a7da3954fae126b04dba9d7a3604ed88cdc8550950f0d4a9134ceb7e19b94139151d2c3d6e1c81e9d1128aafca806"
+        ),
+    ),
+    (
+        3,
+        // A trust root used in Production (but this crate doesn't care about staging / production)
+        const_str::hex!("4918d08fbdfa83e00c29f8f8073a22ef35df2bea903aff81af03ccbc45c6e93a"),
+        &const_str::hex!(
+            "0a250803122105bc9d1d290be964810dfa7e94856480a3f7060d004c9762c24c575a1522353a5a1240c11ec3c401eb0107ab38f8600e8720a63169e0e2eb8a3fae24f63099f85ea319c3c1c46d3454706ae2a679d1fee690a488adda98a2290b66c906bb60295ed781"
+        ),
+    ),
+    (
+        // "Test cert"
+        0x7357C357,
+        // This is the public key that corresponds to a private key of all zeros, which will never
+        // be used in a real service.
+        const_str::hex!("2fe57da347cd62431528daac5fbb290730fff684afc4cfc2ed90995f58cb3b74"),
+        // And we use it to sign a server certificate for a private key of all 0xFF bytes, also
+        // never used in a real service.
+        &const_str::hex!(
+            "0a2908d786df9a07122105847c0d2c375234f365e660955187a3735a0f7613d1609d3a6a4d8c53aeaa5a221240e0b9ebacdfc3aa2827f7924b697784d1c25e44ca05dd433e1a38dc6382eb2730d419ca9a250b1be9d5a9463e61efd6781777a91b83c97b844d014206e2829785"
+        ),
+    ),
+];
 
 // Valid registration IDs fit in 14 bits.
 // TODO: move this into a RegistrationId strong type.
@@ -113,13 +155,6 @@ impl ServerCertificate {
         })
     }
 
-    pub(crate) fn to_protobuf(&self) -> Result<proto::sealed_sender::ServerCertificate> {
-        Ok(proto::sealed_sender::ServerCertificate {
-            certificate: Some(self.certificate.clone()),
-            signature: Some(self.signature.clone()),
-        })
-    }
-
     pub fn validate(&self, trust_root: &PublicKey) -> Result<bool> {
         if REVOKED_SERVER_CERTIFICATE_KEY_IDS.contains(&self.key_id()?) {
             log::error!(
@@ -153,8 +188,14 @@ impl ServerCertificate {
 }
 
 #[derive(Debug, Clone)]
+enum SenderCertificateSigner {
+    Embedded(ServerCertificate),
+    Reference(u32),
+}
+
+#[derive(Debug, Clone)]
 pub struct SenderCertificate {
-    signer: ServerCertificate,
+    signer: SenderCertificateSigner,
     key: PublicKey,
     sender_device_id: DeviceId,
     sender_uuid: String,
@@ -187,12 +228,31 @@ impl SenderCertificate {
             .expires
             .map(Timestamp::from_epoch_millis)
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
-        let signer_pb = certificate_data
+        let signer = match certificate_data
             .signer
-            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
-        let sender_uuid = certificate_data
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
+        {
+            proto::sealed_sender::sender_certificate::certificate::Signer::Certificate(encoded) => {
+                SenderCertificateSigner::Embedded(ServerCertificate::deserialize(&encoded)?)
+            }
+            proto::sealed_sender::sender_certificate::certificate::Signer::Id(id) => {
+                SenderCertificateSigner::Reference(id)
+            }
+        };
+        let sender_uuid = match certificate_data
             .sender_uuid
-            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
+        {
+            proto::sealed_sender::sender_certificate::certificate::SenderUuid::UuidString(
+                uuid_str,
+            ) => uuid_str,
+            proto::sealed_sender::sender_certificate::certificate::SenderUuid::UuidBytes(raw) => {
+                // For now, map this back to a string locally.
+                uuid::Uuid::from_slice(&raw)
+                    .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?
+                    .to_string()
+            }
+        };
         let sender_e164 = certificate_data.sender_e164;
 
         let key = PublicKey::try_from(
@@ -200,9 +260,6 @@ impl SenderCertificate {
                 .identity_key
                 .ok_or(SignalProtocolError::InvalidProtobufEncoding)?[..],
         )?;
-
-        let signer_bits = signer_pb.encode_to_vec();
-        let signer = ServerCertificate::deserialize(&signer_bits)?;
 
         Ok(Self {
             signer,
@@ -228,12 +285,20 @@ impl SenderCertificate {
         rng: &mut R,
     ) -> Result<Self> {
         let certificate_pb = proto::sealed_sender::sender_certificate::Certificate {
-            sender_uuid: Some(sender_uuid.clone()),
+            sender_uuid: Some(
+                proto::sealed_sender::sender_certificate::certificate::SenderUuid::UuidString(
+                    sender_uuid.clone(),
+                ),
+            ),
             sender_e164: sender_e164.clone(),
             sender_device: Some(sender_device_id.into()),
             expires: Some(expiration.epoch_millis()),
             identity_key: Some(key.serialize().to_vec()),
-            signer: Some(signer.to_protobuf()?),
+            signer: Some(
+                proto::sealed_sender::sender_certificate::certificate::Signer::Certificate(
+                    signer.serialized()?.to_vec(),
+                ),
+            ),
         };
 
         let certificate = certificate_pb.encode_to_vec();
@@ -247,7 +312,7 @@ impl SenderCertificate {
         .encode_to_vec();
 
         Ok(Self {
-            signer,
+            signer: SenderCertificateSigner::Embedded(signer),
             key,
             sender_device_id,
             sender_uuid,
@@ -260,15 +325,16 @@ impl SenderCertificate {
     }
 
     pub fn validate(&self, trust_root: &PublicKey, validation_time: Timestamp) -> Result<bool> {
-        if !self.signer.validate(trust_root)? {
+        let signer = self.signer()?;
+
+        if !signer.validate(trust_root)? {
             log::error!(
                 "sender certificate contained server certificate that wasn't signed by trust root"
             );
             return Ok(false);
         }
 
-        if !self
-            .signer
+        if !signer
             .public_key()?
             .verify_signature(&self.certificate, &self.signature)
         {
@@ -304,7 +370,28 @@ impl SenderCertificate {
     }
 
     pub fn signer(&self) -> Result<&ServerCertificate> {
-        Ok(&self.signer)
+        static CERT_MAP: LazyLock<HashMap<u32, (PublicKey, ServerCertificate)>> =
+            LazyLock::new(|| {
+                HashMap::from_iter(KNOWN_SERVER_CERTIFICATES.iter().map(
+                    |(id, trust_root, cert)| {
+                        (
+                            *id,
+                            (
+                                PublicKey::from_djb_public_key_bytes(trust_root).expect("valid"),
+                                ServerCertificate::deserialize(cert).expect("valid"),
+                            ),
+                        )
+                    },
+                ))
+            });
+
+        match &self.signer {
+            SenderCertificateSigner::Embedded(cert) => Ok(cert),
+            SenderCertificateSigner::Reference(id) => CERT_MAP
+                .get(id)
+                .map(|(_trust_root, cert)| cert)
+                .ok_or_else(|| SignalProtocolError::UnknownSealedSenderServerCertificateId(*id)),
+        }
     }
 
     pub fn key(&self) -> Result<PublicKey> {
@@ -2015,7 +2102,7 @@ fn test_lossless_round_trip() -> Result<()> {
     //
     // Step 3: Serialize and print out the new fixture data (uncomment the following)
     //
-    // let mut rng = rand::rngs::OsRng;
+    // let mut rng = rand::rngs::OsRng.unwrap_err();
     // let server_key = KeyPair::generate(&mut rng);
     // let sender_key = KeyPair::generate(&mut rng);
     //
@@ -2023,35 +2110,137 @@ fn test_lossless_round_trip() -> Result<()> {
     //     ServerCertificate::new(1, server_key.public_key, &trust_root, &mut rng)?;
     //
     // let sender_cert = proto::sealed_sender::sender_certificate::Certificate {
-    //     sender_uuid: Some("aaaaaaaa-7000-11eb-b32a-33b8a8a487a6".to_string()),
+    //     sender_uuid: Some(
+    //         proto::sealed_sender::sender_certificate::certificate::SenderUuid::UuidString(
+    //             "aaaaaaaa-7000-11eb-b32a-33b8a8a487a6".to_string(),
+    //         ),
+    //     ),
     //     sender_e164: None,
     //     sender_device: Some(1),
     //     expires: Some(31337),
     //     identity_key: Some(sender_key.public_key.serialize().to_vec()),
-    //     signer: Some(server_cert.to_protobuf()?),
+    //     signer: Some(
+    //         proto::sealed_sender::sender_certificate::certificate::Signer::Certificate(
+    //             server_cert.serialized()?.to_vec(),
+    //         ),
+    //     ),
     //     some_fake_field: Some("crashing right down".to_string()),
     // };
     //
     // eprintln!("<SNIP>");
     // let serialized_certificate_data = sender_cert.encode_to_vec();
     // let certificate_data_encoded = hex::encode(&serialized_certificate_data);
-    // eprintln!("let certificate_data_encoded = \"{}\";", certificate_data_encoded);
+    // eprintln!("let certificate_data = const_str::hex!(\"{}\");", certificate_data_encoded);
     //
     // let certificate_signature = server_key.calculate_signature(&serialized_certificate_data, &mut rng)?;
     // let certificate_signature_encoded = hex::encode(certificate_signature);
-    // eprintln!("let certificate_signature_encoded = \"{}\";", certificate_signature_encoded);
+    // eprintln!("let certificate_signature = const_str::hex!(\"{}\");", certificate_signature_encoded);
 
-    // Step 4: update the following *_encoded fixture data with the new values from above.
-    let certificate_data_encoded = "100119697a0000000000002221056c9d1f8deb82b9a898f9c277a1b74989ec009afb5c0acb5e8e69e3d5ca29d6322a690a2508011221053b03ca070e6f6b2f271d32f27321689cdf4e59b106c10b58fbe15063ed868a5a124024bc92954e52ad1a105b5bda85c9db410dcfeb42a671b45a523b3a46e9594a8bde0efc671d8e8e046b32c67f59b80a46ffdf24071850779bc21325107902af89322461616161616161612d373030302d313165622d623332612d333362386138613438376136ba3e136372617368696e6720726967687420646f776e";
-    let certificate_signature_encoded = "a22d8f86f5d00794f319add821e342c6ffffb6b34f741e569f8b321ab0255f2d1757ecf648e53a3602cae8f09b3fc80dcf27534d67efd272b6739afc31f75c8c";
-
-    // The rest of the test should be stable.
-    let certificate_data = hex::decode(certificate_data_encoded).expect("valid hex");
-    let certificate_signature = hex::decode(certificate_signature_encoded).expect("valid hex");
+    // Step 4: update the following fixture data with the new values from above.
+    let certificate_data = const_str::hex!(
+        "100119697a0000000000002221056c9d1f8deb82b9a898f9c277a1b74989ec009afb5c0acb5e8e69e3d5ca29d6322a690a2508011221053b03ca070e6f6b2f271d32f27321689cdf4e59b106c10b58fbe15063ed868a5a124024bc92954e52ad1a105b5bda85c9db410dcfeb42a671b45a523b3a46e9594a8bde0efc671d8e8e046b32c67f59b80a46ffdf24071850779bc21325107902af89322461616161616161612d373030302d313165622d623332612d333362386138613438376136ba3e136372617368696e6720726967687420646f776e"
+    );
+    let certificate_signature = const_str::hex!(
+        "a22d8f86f5d00794f319add821e342c6ffffb6b34f741e569f8b321ab0255f2d1757ecf648e53a3602cae8f09b3fc80dcf27534d67efd272b6739afc31f75c8c"
+    );
 
     let sender_certificate_data = proto::sealed_sender::SenderCertificate {
-        certificate: Some(certificate_data),
-        signature: Some(certificate_signature),
+        certificate: Some(certificate_data.to_vec()),
+        signature: Some(certificate_signature.to_vec()),
+    };
+
+    let sender_certificate =
+        SenderCertificate::deserialize(&sender_certificate_data.encode_to_vec())?;
+    assert_eq!(
+        sender_certificate.sender_uuid().expect("valid"),
+        "aaaaaaaa-7000-11eb-b32a-33b8a8a487a6",
+    );
+    assert_eq!(sender_certificate.sender_e164().expect("valid"), None);
+    assert_eq!(
+        sender_certificate.sender_device_id().expect("valid"),
+        DeviceId::new(1).expect("valid"),
+    );
+    assert_eq!(
+        sender_certificate
+            .expiration()
+            .expect("valid")
+            .epoch_millis(),
+        31337
+    );
+    assert!(sender_certificate.validate(
+        &trust_root.public_key()?,
+        Timestamp::from_epoch_millis(31336)
+    )?);
+    Ok(())
+}
+
+#[test]
+fn test_uuid_bytes_representation() -> Result<()> {
+    let trust_root = PrivateKey::deserialize(&[0u8; 32])?;
+
+    // Same structure as above, but using the uuidBytes representation instead of uuidString.
+    let certificate_data = const_str::hex!(
+        "100119697a000000000000222105e083a8ce423d1c1955174107a85a6a7f3bcbf566723624077f75eafe8e0a07752a690a25080112210507a24397ae27d06fa76d2f02cfb5546e0b23a7e0c3670c1eb1e73b135a8e1e4d12407d127509ae1f5e9dcaa511793d3e94350dcb269e4ca54500da6e1f4dc13d95940c15badef019edfe8666315500c54e4489d4b83f6ce79c7f65c9772a1a83d88c3a10aaaaaaaa700011ebb32a33b8a8a487a6"
+    );
+    let certificate_signature = const_str::hex!(
+        "755c428e9bf6ba367152f1e545834649b4e8f70df8383a352a953fdb774862af5d42fab573fc52b90ad47c331c36f93b1a4fa7a2504917d895452ffe7f44bd0e"
+    );
+
+    let sender_certificate_data = proto::sealed_sender::SenderCertificate {
+        certificate: Some(certificate_data.to_vec()),
+        signature: Some(certificate_signature.to_vec()),
+    };
+
+    let sender_certificate =
+        SenderCertificate::deserialize(&sender_certificate_data.encode_to_vec())?;
+    assert_eq!(
+        sender_certificate.sender_uuid().expect("valid"),
+        "aaaaaaaa-7000-11eb-b32a-33b8a8a487a6",
+    );
+    assert_eq!(sender_certificate.sender_e164().expect("valid"), None);
+    assert_eq!(
+        sender_certificate.sender_device_id().expect("valid"),
+        DeviceId::new(1).expect("valid"),
+    );
+    assert_eq!(
+        sender_certificate
+            .expiration()
+            .expect("valid")
+            .epoch_millis(),
+        31337
+    );
+    assert!(sender_certificate.validate(
+        &trust_root.public_key()?,
+        Timestamp::from_epoch_millis(31336)
+    )?);
+    Ok(())
+}
+
+#[test]
+fn test_known_server_cert() -> Result<()> {
+    // Same structure as test_lossless_round_trip, but using the fixed server key from the 7357c357
+    // certificate, and a reference to it rather than embedding it.
+    //
+    // % pbpaste | xxd -r -p | protoscope
+    // 2: 1
+    // 3: 31337i64
+    // 4: {`05d75b13e15c7700079dd226f51e5a790ba395e819e88a74d0cf5cedfad8b43348`}
+    // 8: 1935131479
+    // 6: {"aaaaaaaa-7000-11eb-b32a-33b8a8a487a6"}
+
+    let trust_root = PrivateKey::deserialize(&[0u8; 32])?;
+    // let server_key = PrivateKey::deserialize(&[0xff; 32])?;
+
+    let certificate_data = const_str::hex!(
+        "100119697a000000000000222105d75b13e15c7700079dd226f51e5a790ba395e819e88a74d0cf5cedfad8b4334840d786df9a07322461616161616161612d373030302d313165622d623332612d333362386138613438376136"
+    );
+    let certificate_signature = const_str::hex!(
+        "e62667bce627caed56ca2ab309b6ae7bc890a30a7482c0e1fd77ec9c3b7528abfd45c8c42b240509a71d973ef5e0f1dbd2685fe01410f0fdbaa8fb247a67e08f"
+    );
+
+    let sender_certificate_data = proto::sealed_sender::SenderCertificate {
+        certificate: Some(certificate_data.to_vec()),
+        signature: Some(certificate_signature.to_vec()),
     };
 
     let sender_certificate =
@@ -2060,5 +2249,29 @@ fn test_lossless_round_trip() -> Result<()> {
         &trust_root.public_key()?,
         Timestamp::from_epoch_millis(31336)
     )?);
+
     Ok(())
+}
+
+#[test]
+fn verify_known_certificates() {
+    assert!(
+        KNOWN_SERVER_CERTIFICATES
+            .iter()
+            .map(|(id, _trust_root, _cert)| id)
+            .all_unique(),
+        "all known certificate IDs must be unique"
+    );
+
+    for (id, trust_root, cert) in KNOWN_SERVER_CERTIFICATES {
+        let trust_root = PublicKey::from_djb_public_key_bytes(trust_root)
+            .unwrap_or_else(|e| panic!("[{id:x}] has invalid trust root: {e}"));
+        let cert = ServerCertificate::deserialize(cert)
+            .unwrap_or_else(|e| panic!("[{id:x}] has invalid certificate data: {e}"));
+        assert_eq!(*id, cert.key_id, "[{id:x}] mismatched certificate ID");
+        assert!(
+            cert.validate(&trust_root).expect("can validate"),
+            "[{id:x}] has wrong trust root"
+        );
+    }
 }

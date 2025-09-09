@@ -89,6 +89,8 @@ pub enum SignalProtocolError {
     UnknownSealedSenderVersion(u8),
     /// self send of a sealed sender message
     SealedSenderSelfSend,
+    /// unknown server certificate ID: {0}
+    UnknownSealedSenderServerCertificateId(u32),
 
     /// bad KEM key type <{0:#04x}>
     BadKEMKeyType(u8),

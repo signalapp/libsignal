@@ -842,11 +842,7 @@ export class SenderCertificate {
    * is not required to use any specific units, but Signal uses milliseconds since 1970.
    */
   validateWithTrustRoots(trustRoots: PublicKey[], time: number): boolean {
-    try {
-      return Native.SenderCertificate_Validate(this, trustRoots, time);
-    } catch (_error) {
-      return false;
-    }
+    return Native.SenderCertificate_Validate(this, trustRoots, time);
   }
 }
 
