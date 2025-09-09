@@ -182,6 +182,24 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     alice_store.identity_store.reset();
     bob_store.identity_store.reset();
 
+    c.bench_function("process_prekey_bundle", |b| {
+        b.iter(|| {
+            let mut alice_store = alice_store.clone();
+            process_prekey_bundle(
+                &bob_address,
+                &mut alice_store.session_store,
+                &mut alice_store.identity_store,
+                &bob_pre_key_bundle,
+                SystemTime::now(),
+                &mut OsRng.unwrap_err(),
+                UsePQRatchet::No,
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
+        })
+    });
+
     process_prekey_bundle(
         &bob_address,
         &mut alice_store.session_store,
@@ -200,6 +218,29 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     let message_to_decrypt = support::encrypt(&mut alice_store, &bob_address, "a short message")
         .now_or_never()
         .expect("sync")?;
+    assert_eq!(
+        message_to_decrypt.message_type(),
+        CiphertextMessageType::PreKey,
+    );
+
+    c.bench_function(
+        "decrypting a PreKeySignalMessage for an unknown session",
+        |b| {
+            b.iter(|| {
+                let mut bob_store = bob_store.clone();
+                support::decrypt(
+                    &mut bob_store,
+                    &alice_address,
+                    &message_to_decrypt,
+                    UsePQRatchet::No,
+                )
+                .now_or_never()
+                .expect("sync")
+                .expect("success")
+            })
+        },
+    );
+
     let _ = support::decrypt(
         &mut bob_store,
         &alice_address,
