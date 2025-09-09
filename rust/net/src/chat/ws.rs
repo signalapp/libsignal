@@ -377,12 +377,16 @@ impl Chat {
             log_tag,
         );
 
+        // Wrap our watch receiver stream so that when the last sender is
+        // dropped, polling the stream will return `Pending` forever.
+        let network_change_event =
+            tokio_stream::wrappers::WatchStream::from_changes(network_change_event)
+                .chain(futures_util::stream::pending());
+
         let connection = ConnectionImpl {
             inner: inner_connection,
             requests_in_flight,
-            network_change_event: tokio_stream::wrappers::WatchStream::from_changes(
-                network_change_event,
-            ),
+            network_change_event,
             config: connection_config,
             outgoing_request_tx: request_tx.downgrade(),
         };
@@ -589,7 +593,10 @@ struct ConnectionImpl<I, GCI> {
     #[pin]
     inner: I,
     requests_in_flight: InFlightRequests,
-    network_change_event: tokio_stream::wrappers::WatchStream<()>,
+    network_change_event: futures_util::stream::Chain<
+        tokio_stream::wrappers::WatchStream<()>,
+        futures_util::stream::Pending<()>,
+    >,
     outgoing_request_tx: WeakSender<OutgoingRequest>,
     config: ConnectionConfig<GCI>,
 }
@@ -1473,6 +1480,7 @@ impl From<SendError> for super::SendError {
 mod test {
     use std::io::Error as IoError;
     use std::net::Ipv4Addr;
+    use std::sync::atomic::AtomicUsize;
 
     use assert_matches::assert_matches;
     use const_str::ip_addr;
@@ -3112,6 +3120,45 @@ mod test {
         assert_eq!(
             decoded.request.expect("should have request").path(),
             "/v1/keepalive"
+        );
+    }
+
+    #[test_log::test(tokio::test(start_paused = true))]
+    async fn network_change_sender_can_be_dropped() {
+        let (network_change_event_tx, network_change_event) = tokio::sync::watch::channel(());
+        let (listener_tx, _listener_rx) = mpsc::unbounded_channel();
+        let interface_check_count = Arc::new(AtomicUsize::new(0));
+        let count = Arc::clone(&interface_check_count);
+        let (chat, (mut chat_events, _inner_responses)) = fake::new_chat_with_config(
+            fake::FakeConfig {
+                network_change_event,
+                ..Default::default()
+            },
+            move |_| {
+                // Behave as if we haven't switched interfaces.
+                count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                tokio::task::yield_now().map(|()| Ipv4Addr::LOCALHOST.into())
+            },
+            Box::new(move |evt| {
+                let _ = listener_tx.send(evt);
+            }),
+        );
+
+        assert!(chat.is_connected().await);
+        tokio::task::yield_now().await;
+
+        // Dropping the sender should prevent any future network events.
+        drop(network_change_event_tx);
+        tokio::task::yield_now().await;
+
+        let _: tokio::time::error::Elapsed =
+            tokio::time::timeout(Duration::from_secs(300), chat_events.recv())
+                .await
+                .expect_err("should time out");
+
+        assert_eq!(
+            interface_check_count.load(std::sync::atomic::Ordering::SeqCst),
+            0
         );
     }
 
