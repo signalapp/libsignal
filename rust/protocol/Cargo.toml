@@ -56,6 +56,7 @@ mlkem1024 = []
 [dev-dependencies]
 clap = { workspace = true, features = ["derive"] }
 criterion = { workspace = true }
+curve25519-dalek = { workspace = true, features = ["digest"] }
 env_logger = { workspace = true }
 futures-util = { workspace = true }
 proptest = { workspace = true }

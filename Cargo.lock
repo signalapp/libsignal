@@ -2956,6 +2956,7 @@ dependencies = [
  "const-str",
  "criterion",
  "ctr",
+ "curve25519-dalek",
  "derive-where",
  "derive_more 2.0.1",
  "displaydoc",
