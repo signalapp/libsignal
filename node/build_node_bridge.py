@@ -71,14 +71,19 @@ def main(args: Optional[List[str]] = None) -> int:
                       help='specify destination dir (default build/$CONFIGURATION_NAME)')
     parser.add_option('--configuration', default='Release', metavar='C',
                       help='specify build configuration (Release or Debug)')
-    parser.add_option('--os-name', default=None, metavar='OS',
+    # Luckily, Python's sys.platform matches Node's OS names for our supported targets.
+    parser.add_option('--os-name', default=sys.platform, metavar='OS',
                       help='specify Node OS name')
-    parser.add_option('--cargo-build-dir', default='target', metavar='PATH',
+    parser.add_option('--cargo-build-dir', default=os.path.join('..', 'target'), metavar='PATH',
                       help='specify cargo build dir (default %default)')
     parser.add_option('--cargo-target', default=None,
                       help='specify cargo target')
-    parser.add_option('--node-arch', default=None,
+    parser.add_option('--node-arch', '--arch', default=None,
                       help='specify node arch (x64, ia32, arm64)')
+    parser.add_option('--copy-to-prebuilds', action='store_true',
+                      help='copy library to prebuilds/$OS-$ARCH when finished')
+    parser.add_option('--debug-level-logs', action='store_true',
+                      help='include log levels below INFO (default for Debug builds)')
 
     (options, args) = parser.parse_args(args)
 
@@ -91,21 +96,30 @@ def main(args: Optional[List[str]] = None) -> int:
         return 1
 
     node_os_name = options.os_name
-    if node_os_name is None:
-        print('ERROR: --os-name is required')
-        return 1
-
-    cargo_target = options.cargo_target
-    if cargo_target is None:
-        print('ERROR: --cargo-target is required')
-        return 1
 
     node_arch = options.node_arch
     if node_arch is None:
-        print('ERROR: --node_arch is required')
-        return 1
+        # Python doesn't provide many guarantees about the format of platform.machine(),
+        # so we turn to Node instead.
+        node_arch = subprocess.check_output(
+            ['node', '-e', "console.log(require('node:process').arch)"],
+            encoding="utf8").strip()
 
-    out_dir = options.out_dir.strip('"') or os.path.join('build', configuration_name)
+    cargo_target = options.cargo_target
+    if cargo_target is None:
+        cargo_arch = {
+            'ia32': 'i686',
+            'x64': 'x86_64',
+            'arm64': 'aarch64',
+        }.get(node_arch, node_arch)
+        cargo_target_suffix = {
+            'darwin': 'apple-darwin',
+            'win32': 'pc-windows-msvc',
+            'linux': 'unknown-linux-gnu',
+        }.get(node_os_name, node_os_name)
+        cargo_target = f"{cargo_arch}-{cargo_target_suffix}"
+
+    out_dir = (options.out_dir or os.path.join('build', configuration_name)).strip('"')
 
     # Fetch all dependencies first, so we can check information about them in constructing our
     # command lines.
@@ -113,7 +127,7 @@ def main(args: Optional[List[str]] = None) -> int:
 
     features = []
     allow_debug_level_logs = False
-    if 'npm_config_libsignal_debug_level_logs' in os.environ:
+    if options.debug_level_logs:
         allow_debug_level_logs = True
     else:
         features.append('log/release_max_level_info')
@@ -225,8 +239,7 @@ def main(args: Optional[List[str]] = None) -> int:
 
         dst_path = os.path.join(out_dir, dst_base + '.node')
         print("Copying %s to %s" % (src_path, dst_path))
-        if not os.path.exists(out_dir):
-            os.makedirs(out_dir)
+        os.makedirs(out_dir, exist_ok=True)
         if objcopy:
             subprocess.check_call([objcopy, '-S', src_path, dst_path])
         else:
@@ -238,6 +251,14 @@ def main(args: Optional[List[str]] = None) -> int:
             dst_path=os.path.join(out_dir, dst_base + '-debuginfo.sym'),
             dst_checksum_path=os.path.join(out_dir, dst_base + '-debuginfo.sha256'),
         )
+
+        if options.copy_to_prebuilds:
+            prebuild_dir = os.path.join('prebuilds', f"{node_os_name}-{node_arch}")
+            prebuild_path = os.path.join(prebuild_dir, '@signalapp+libsignal-client.node')
+            print("Copying %s to %s" % (dst_path, prebuild_path))
+            os.makedirs(prebuild_dir, exist_ok=True)
+            # We copy from dst_path in the build directory because it's already gone through an objcopy pass
+            shutil.copyfile(dst_path, prebuild_path)
     else:
         print("ERROR: did not find generated library")
         return 1

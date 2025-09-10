@@ -78,11 +78,8 @@ jobs:
       with:
         node-version-file: '.nvmrc'
 
-    - run: npm ci
-      working-directory: node
-
     - name: Build for arm64
-      run: npx prebuildify --napi -t '${{ steps.get-nvm-version.outputs.node-version }}' --arch arm64
+      run: npm run build -- --arch arm64 --copy-to-prebuilds
       working-directory: node
 
     - name: Save arm64 debug info
@@ -91,7 +88,7 @@ jobs:
       shell: bash
 
     - name: Build for x64
-      run: npx prebuildify --napi -t '${{ steps.get-nvm-version.outputs.node-version }}' --arch x64
+      run: npm run build -- --arch x64 --copy-to-prebuilds
       working-directory: node
 
     - name: Save x64 debug info

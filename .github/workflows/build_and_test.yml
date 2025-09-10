@@ -338,7 +338,7 @@ jobs:
     - run: npm ci
       working-directory: node
 
-    - run: npx node-gyp rebuild
+    - run: npm run build
       working-directory: node
 
     - run: npm run tsc

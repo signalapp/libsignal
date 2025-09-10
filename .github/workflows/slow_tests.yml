@@ -311,10 +311,8 @@ jobs:
     - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
       with:
         node-version-file: '.nvmrc'
-    - run: npm ci
-      working-directory: node
     - name: Build for arm64
-      run: npx prebuildify --napi -t '${{ steps.get-nvm-version.outputs.node-version }}' --arch arm64
+      run: npm run build -- --arch arm64 --copy-to-prebuilds
       working-directory: node
 
   swift-cocoapod:

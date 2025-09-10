@@ -182,13 +182,13 @@ To learn about the Swift build process see [``swift/README.md``](swift/)
 You'll need Node installed to build. If you have [nvm][], you can run `nvm use` to select an
 appropriate version automatically.
 
-We use `npm` as our package manager, and `node-gyp` to control building the Rust library.
+We use `npm` as our package manager, and a Python script to control building the Rust library, accessible as `npm run build`.
 
 ```shell
 $ cd node
 $ nvm use
 $ npm install
-$ npx node-gyp rebuild  # clean->configure->build
+$ npm run build
 $ npm run tsc
 $ npm run test
 ```
