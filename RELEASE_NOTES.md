@@ -1,3 +1,2 @@
-v0.80.2
+v0.80.3
 
-- backups: Add logging to BackupAuthCredentialRequestContext_ReceiveResponse internals
