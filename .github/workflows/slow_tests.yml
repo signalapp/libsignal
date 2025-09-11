@@ -238,7 +238,7 @@ jobs:
       with:
         submodules: recursive
     - run: node/docker-prebuildify.sh
-    - run: npm run tsc && npm run test
+    - run: npm ci && npm run tsc && npm run test
       working-directory: node
       env:
         PREBUILDS_ONLY: 1
