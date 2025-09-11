@@ -247,7 +247,7 @@ impl From<tungstenite::Error> for WebSocketError {
             tungstenite::Error::Url(e) => Self::Url(e),
             tungstenite::Error::Http(response) => Self::Http(Box::new(response)),
             tungstenite::Error::HttpFormat(e) => Self::HttpFormat(e),
-            tungstenite::Error::Utf8 => Self::Other("UTF-8 error"),
+            tungstenite::Error::Utf8(_) => Self::Other("UTF-8 error"),
             tungstenite::Error::AttackAttempt => Self::Other("attack attempt"),
             tungstenite::Error::Tls(_) => unreachable!("all TLS is handled below tungstenite"),
         }

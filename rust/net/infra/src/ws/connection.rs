@@ -567,7 +567,7 @@ impl From<tungstenite::Error> for TungsteniteError {
                 max_size,
             }) => Self::CapacityErrorMessageTooLarge { size, max_size },
             tungstenite::Error::Protocol(e) => Self::Protocol(e),
-            tungstenite::Error::Utf8 => Self::Utf8,
+            tungstenite::Error::Utf8(_) => Self::Utf8,
 
             tungstenite::Error::WriteBufferFull(_) => Self::WriteBufferFull,
             tungstenite::Error::Url(_) => {

@@ -124,7 +124,7 @@ fn into_io_error(e: tungstenite::Error) -> IoError {
         | tungstenite::Error::Capacity(_)
         | tungstenite::Error::Protocol(_)
         | tungstenite::Error::WriteBufferFull(_)
-        | tungstenite::Error::Utf8
+        | tungstenite::Error::Utf8(_)
         | tungstenite::Error::AttackAttempt
         | tungstenite::Error::Url(_)
         | tungstenite::Error::Http(_)
