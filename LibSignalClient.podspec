@@ -42,6 +42,7 @@ Pod::Spec.new do |s|
 
       'CARGO_BUILD_TARGET[sdk=iphonesimulator*][arch=arm64]' => 'aarch64-apple-ios-sim',
       'CARGO_BUILD_TARGET[sdk=iphonesimulator*][arch=*]' => 'x86_64-apple-ios',
+      'CARGO_BUILD_TARGET[sdk=iphoneos*][arch=arm64e]' => 'arm64e-apple-ios',
       'CARGO_BUILD_TARGET[sdk=iphoneos*]' => 'aarch64-apple-ios',
       # Presently, there's no special SDK or arch for maccatalyst,
       # so we need to hackily use the "IS_MACCATALYST" build flag
