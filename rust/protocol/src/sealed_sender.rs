@@ -325,11 +325,25 @@ impl SenderCertificate {
     }
 
     pub fn validate(&self, trust_root: &PublicKey, validation_time: Timestamp) -> Result<bool> {
+        self.validate_with_trust_roots(&[trust_root], validation_time)
+    }
+
+    pub fn validate_with_trust_roots(
+        &self,
+        trust_roots: &[&PublicKey],
+        validation_time: Timestamp,
+    ) -> Result<bool> {
         let signer = self.signer()?;
 
-        if !signer.validate(trust_root)? {
+        // Check the signer against every trust root to hide which one was the correct one.
+        let mut any_valid = Choice::from(0u8);
+        for root in trust_roots {
+            let ok = signer.validate(root)?;
+            any_valid |= Choice::from(u8::from(ok));
+        }
+        if !bool::from(any_valid) {
             log::error!(
-                "sender certificate contained server certificate that wasn't signed by trust root"
+                "sender certificate contained server certificate that wasn't signed by any trust root"
             );
             return Ok(false);
         }
@@ -352,21 +366,6 @@ impl SenderCertificate {
         }
 
         Ok(true)
-    }
-
-    pub fn validate_with_trust_roots(
-        &self,
-        trust_roots: &[&PublicKey],
-        validation_time: Timestamp,
-    ) -> Result<bool> {
-        let mut any_valid = Choice::from(0u8);
-
-        for root in trust_roots {
-            let ok = self.validate(root, validation_time)?;
-            any_valid |= Choice::from(u8::from(ok));
-        }
-
-        Ok(bool::from(any_valid))
     }
 
     pub fn signer(&self) -> Result<&ServerCertificate> {
