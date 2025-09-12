@@ -3,8 +3,9 @@
 //
 
 use std::borrow::Cow;
+use std::time::Duration;
 
-use futures_util::{FutureExt as _, StreamExt as _};
+use futures_util::StreamExt as _;
 use hmac::{Hmac, Mac};
 use libsignal_account_keys::{
     BackupForwardSecrecyEncryptionKey, BackupForwardSecrecyToken, BackupKey,
@@ -30,6 +31,10 @@ pub mod traits;
 pub mod direct;
 
 const IV_SIZE: usize = Aes256Ctr32::NONCE_SIZE;
+/// Used to avoid a potentially very large number of TCP connections
+/// all being initiated at the same time, when hitting multiple backends
+/// in parallel.
+const BACKUP_CONNECTION_DELAY: Duration = Duration::from_millis(50);
 
 /// SVRB-specific error type
 ///
@@ -348,7 +353,17 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
     if let Some(prev_backup4) = prev_backup4 {
         svrb.finalize(&prev_backup4).await?;
     }
-    for r in futures_util::future::join_all(previous_svrbs.iter().map(|p| p.remove())).await {
+    for r in
+        futures_util::future::join_all(previous_svrbs.iter().enumerate().map(async |(i, p)| {
+            tokio::time::sleep(
+                u32::try_from(i).expect("should be a small non-negative integer")
+                    * BACKUP_CONNECTION_DELAY,
+            )
+            .await;
+            p.remove().await
+        }))
+        .await
+    {
         if let Err(e) = r {
             // Errors here are acceptable, since they might be caused by irreparable
             // issues like a SVRB replica group going down forever.  We do want to
@@ -419,14 +434,19 @@ pub async fn restore_backup<R: traits::Restore>(
     };
     let mut most_important_error: Option<Error> = None;
 
-    // TODO: consider adding random delays to each of these requests.
+    fn delay(enclave_index: usize, pair_index: usize, pairs_len: usize) -> Duration {
+        u32::try_from(pair_index + enclave_index * pairs_len)
+            .expect("should be a small non-negative integer")
+            * BACKUP_CONNECTION_DELAY
+    }
     let mut futures = itertools::iproduct!(
         current_and_previous_svrbs.iter().enumerate(),
         metadata.pair.iter().enumerate()
     )
-    .map(|((enclave_index, svrb), (pair_index, pair))| {
-        restore_backup_attempt(svrb, backup_key, &iv, pair)
-            .map(move |result| (enclave_index, pair_index, result))
+    .map(async |((enclave_index, svrb), (pair_index, pair))| {
+        tokio::time::sleep(delay(enclave_index, pair_index, metadata.pair.len())).await;
+        let result = restore_backup_attempt(svrb, backup_key, &iv, pair).await;
+        (enclave_index, pair_index, result)
     })
     .collect::<futures_util::stream::FuturesUnordered<_>>();
     while let Some((enclave_index, pair_index, result)) = futures.next().await {
@@ -476,7 +496,15 @@ pub async fn remove_backup<R: traits::Remove>(
     futures_util::future::join_all(
         std::iter::once(current_svrb)
             .chain(previous_svrbs)
-            .map(|p| p.remove()),
+            .enumerate()
+            .map(async |(i, p)| {
+                tokio::time::sleep(
+                    u32::try_from(i).expect("should be a small non-negative integer")
+                        * BACKUP_CONNECTION_DELAY,
+                )
+                .await;
+                p.remove().await
+            }),
     )
     .await
     .swap_remove(0) // We only care about the first element (for current_svrb) - this removes it from the vec and returns it.
@@ -594,7 +622,7 @@ mod test {
     // typed empty list of SVRB clients to pass to store_backup.
     static EMPTY: [TestSvrBClient; 0] = [];
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn backup_key_created_and_restored() {
         let svrb = TestSvrBClient {
             prepare_fn: || Backup4 {
@@ -631,7 +659,7 @@ mod test {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn backup_key_created_and_restore_failed_due_to_restore_mismatch() {
         let svrb = TestSvrBClient {
             prepare_fn: || Backup4 {
@@ -666,7 +694,7 @@ mod test {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn backup_store_restore_store() {
         let svrb = TestSvrBClient {
             prepare_fn: || Backup4 {
@@ -743,7 +771,7 @@ mod test {
         assert!(restored2.forward_secrecy_token.0 != restored.forward_secrecy_token.0);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn restore_primary_success() {
         let svrb = TestSvrBClient {
             prepare_fn: || Backup4 {
@@ -784,7 +812,7 @@ mod test {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn restore_primary_error_fallback_success() {
         let svrb = TestSvrBClient {
             prepare_fn: || Backup4 {
@@ -825,7 +853,7 @@ mod test {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn restore_primary_error_fallback_error() {
         let svrb = TestSvrBClient {
             prepare_fn: || Backup4 {
@@ -866,7 +894,7 @@ mod test {
 
     static BACKUP_DELETES_PREVIOUS_ALL_CALLED: AtomicU8 = AtomicU8::new(0);
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn backup_deletes_previous() {
         let svrb = TestSvrBClient {
             prepare_fn: || Backup4 {
@@ -984,7 +1012,7 @@ mod test {
                 Some(create_new_backup_chain(&self.client(), &self.backup_key));
         }
 
-        fn upload_secret_to_svr(&self) -> BackupStoreResponse {
+        async fn upload_secret_to_svr(&self) -> BackupStoreResponse {
             let previous_secret_data = self
                 .backup_secret_data
                 .as_ref()
@@ -995,8 +1023,7 @@ mod test {
                 &self.backup_key,
                 previous_secret_data.as_ref(),
             )
-            .now_or_never()
-            .expect("sync")
+            .await
             .expect("no errors on store")
         }
 
@@ -1008,7 +1035,7 @@ mod test {
             self.backup_secret_data = Some(secret_data);
         }
 
-        fn complete_one_successful_backup(&mut self) {
+        async fn complete_one_successful_backup(&mut self) {
             if self.backup_secret_data.is_none() {
                 self.create_new_backup_chain();
             }
@@ -1016,12 +1043,12 @@ mod test {
                 forward_secrecy_token: _,
                 next_backup_data,
                 metadata,
-            } = self.upload_secret_to_svr();
+            } = self.upload_secret_to_svr().await;
             self.upload_backup_to_server(metadata);
             self.save_secret_data(next_backup_data);
         }
 
-        fn wipe_and_restore(&mut self) {
+        async fn wipe_and_restore(&mut self) {
             // Strictly unnecessary since it shouldn't be accessed and will be overwritten anyway,
             // but guarantees we didn't mess something up.
             self.backup_secret_data = None;
@@ -1034,124 +1061,123 @@ mod test {
                 forward_secrecy_token: _,
                 next_backup_data,
             } = restore_backup(&[self.client()], &self.backup_key, metadata.as_ref())
-                .now_or_never()
-                .expect("sync")
+                .await
                 .expect("can restore");
             self.backup_secret_data = Some(next_backup_data);
         }
     }
 
-    #[test]
-    fn simple_scenario() {
+    #[tokio::test(start_paused = true)]
+    async fn simple_scenario() {
         let mut scenario = Scenario::new();
-        scenario.complete_one_successful_backup();
+        scenario.complete_one_successful_backup().await;
 
-        scenario.wipe_and_restore();
+        scenario.wipe_and_restore().await;
         // Even if we're really unlucky...
-        scenario.wipe_and_restore();
+        scenario.wipe_and_restore().await;
     }
 
-    #[test]
-    fn multiple_backups() {
+    #[tokio::test(start_paused = true)]
+    async fn multiple_backups() {
         let mut scenario = Scenario::new();
-        scenario.complete_one_successful_backup();
-        scenario.complete_one_successful_backup();
-        scenario.wipe_and_restore();
+        scenario.complete_one_successful_backup().await;
+        scenario.complete_one_successful_backup().await;
+        scenario.wipe_and_restore().await;
     }
 
-    #[test]
-    fn second_backup_interrupted() {
+    #[tokio::test(start_paused = true)]
+    async fn second_backup_interrupted() {
         let mut scenario = Scenario::new();
-        scenario.complete_one_successful_backup();
+        scenario.complete_one_successful_backup().await;
 
-        _ = scenario.upload_secret_to_svr();
+        _ = scenario.upload_secret_to_svr().await;
         // Never upload the next backup.
 
-        scenario.wipe_and_restore();
+        scenario.wipe_and_restore().await;
     }
 
-    #[test]
-    fn second_and_third_backup_interrupted() {
+    #[tokio::test(start_paused = true)]
+    async fn second_and_third_backup_interrupted() {
         let mut scenario = Scenario::new();
-        scenario.complete_one_successful_backup();
+        scenario.complete_one_successful_backup().await;
 
-        _ = scenario.upload_secret_to_svr();
+        _ = scenario.upload_secret_to_svr().await;
         // Never upload the next backup.
-        _ = scenario.upload_secret_to_svr();
+        _ = scenario.upload_secret_to_svr().await;
         // Again.
 
-        scenario.wipe_and_restore();
+        scenario.wipe_and_restore().await;
     }
 
-    #[test]
-    fn extremely_poorly_timed_power_outage() {
+    #[tokio::test(start_paused = true)]
+    async fn extremely_poorly_timed_power_outage() {
         let mut scenario = Scenario::new();
-        scenario.complete_one_successful_backup();
+        scenario.complete_one_successful_backup().await;
 
         let BackupStoreResponse {
             forward_secrecy_token: _,
             next_backup_data: _,
             metadata,
-        } = scenario.upload_secret_to_svr();
+        } = scenario.upload_secret_to_svr().await;
         scenario.upload_backup_to_server(metadata);
         // Forget to save the secret data.
 
-        scenario.complete_one_successful_backup();
-        scenario.wipe_and_restore();
+        scenario.complete_one_successful_backup().await;
+        scenario.wipe_and_restore().await;
     }
 
-    #[test]
-    fn extremely_poorly_timed_power_outage_with_next_backup_interrupted() {
+    #[tokio::test(start_paused = true)]
+    async fn extremely_poorly_timed_power_outage_with_next_backup_interrupted() {
         let mut scenario = Scenario::new();
-        scenario.complete_one_successful_backup();
+        scenario.complete_one_successful_backup().await;
 
         let BackupStoreResponse {
             forward_secrecy_token: _,
             next_backup_data: _,
             metadata,
-        } = scenario.upload_secret_to_svr();
+        } = scenario.upload_secret_to_svr().await;
         scenario.upload_backup_to_server(metadata);
         // Forget to save the secret data.
-        _ = scenario.upload_secret_to_svr();
+        _ = scenario.upload_secret_to_svr().await;
         // Never upload a new backup.
 
-        scenario.wipe_and_restore();
+        scenario.wipe_and_restore().await;
     }
 
-    #[test]
-    fn backup_after_restore() {
+    #[tokio::test(start_paused = true)]
+    async fn backup_after_restore() {
         let mut scenario = Scenario::new();
-        scenario.complete_one_successful_backup();
+        scenario.complete_one_successful_backup().await;
 
-        scenario.wipe_and_restore();
-        scenario.complete_one_successful_backup();
+        scenario.wipe_and_restore().await;
+        scenario.complete_one_successful_backup().await;
 
-        scenario.wipe_and_restore();
+        scenario.wipe_and_restore().await;
     }
 
-    #[test]
-    fn backup_after_restore_interrupted() {
+    #[tokio::test(start_paused = true)]
+    async fn backup_after_restore_interrupted() {
         let mut scenario = Scenario::new();
-        scenario.complete_one_successful_backup();
+        scenario.complete_one_successful_backup().await;
 
-        scenario.wipe_and_restore();
-        _ = scenario.upload_secret_to_svr();
+        scenario.wipe_and_restore().await;
+        _ = scenario.upload_secret_to_svr().await;
         // Never upload the next backup.
 
-        scenario.wipe_and_restore();
+        scenario.wipe_and_restore().await;
     }
 
-    #[test]
-    fn backup_after_restore_second_interrupted() {
+    #[tokio::test(start_paused = true)]
+    async fn backup_after_restore_second_interrupted() {
         let mut scenario = Scenario::new();
-        scenario.complete_one_successful_backup();
+        scenario.complete_one_successful_backup().await;
 
-        scenario.wipe_and_restore();
-        scenario.complete_one_successful_backup();
-        _ = scenario.upload_secret_to_svr();
+        scenario.wipe_and_restore().await;
+        scenario.complete_one_successful_backup().await;
+        _ = scenario.upload_secret_to_svr().await;
         // Never upload the next backup.
 
-        scenario.wipe_and_restore();
+        scenario.wipe_and_restore().await;
     }
 
     #[test]
@@ -1174,6 +1200,9 @@ mod test {
 
         proptest!(|(actions in proptest::collection::vec(Action::arbitrary(), ..20))| {
             let mut scenario = Scenario::new();
+
+            let rt = tokio::runtime::Builder::new_current_thread().enable_time().start_paused(true).build().unwrap();
+            rt.block_on(async {
             // If we haven't completed at least one backup fully, we don't have any of SVR-B's
             // guarantees. In particular:
             //
@@ -1183,29 +1212,30 @@ mod test {
             //
             // But if someone's very first backup fails, hopefully they don't have anything
             // irreplaceable in Signal yet anyway!
-            scenario.complete_one_successful_backup();
+            scenario.complete_one_successful_backup().await;
 
             for action in actions {
                 match action {
                     Action::UploadSecret => {
-                        _ = scenario.upload_secret_to_svr();
+                        _ = scenario.upload_secret_to_svr().await;
                     }
                     Action::UploadSecretAndBackup => {
                         let BackupStoreResponse {
                             forward_secrecy_token: _,
                             next_backup_data: _,
                             metadata,
-                        } = scenario.upload_secret_to_svr();
+                        } = scenario.upload_secret_to_svr().await;
                         scenario.upload_backup_to_server(metadata);
                     }
                     Action::UploadSecretAndBackupAndSave => {
-                        scenario.complete_one_successful_backup();
+                        scenario.complete_one_successful_backup().await;
                     }
                     Action::WipeAndRestore => {
-                        scenario.wipe_and_restore();
+                        scenario.wipe_and_restore().await;
                     }
                 }
             }
+            });
         });
     }
 }
