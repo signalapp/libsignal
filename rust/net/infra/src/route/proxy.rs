@@ -207,7 +207,7 @@ impl ConnectionProxyConfig {
                 proxy_port: port.unwrap_or(nonzero!(80u16)),
                 proxy_tls: None,
                 proxy_authorization: auth,
-                resolve_hostname_locally: true,
+                resolve_hostname_locally: false,
             }
             .into(),
             "https" => HttpProxy {
@@ -215,7 +215,7 @@ impl ConnectionProxyConfig {
                 proxy_port: port.unwrap_or(nonzero!(443u16)),
                 proxy_tls: Some(CERTS_FOR_ARBITRARY_PROXY),
                 proxy_authorization: auth,
-                resolve_hostname_locally: true,
+                resolve_hostname_locally: false,
             }
             .into(),
             "socks4" | "socks4a" => {
@@ -638,9 +638,13 @@ mod test {
                 .as_ref()
                 .map(|auth| (auth.username.as_str(), auth.password.as_str())),
         );
+
+        // Deferring hostname resolution to the proxy is in line with the published recommendations for
+        //   proxy configuration at:
+        // https://support.signal.org/hc/en-us/articles/360007320291-Firewall-and-Internet-settings
         assert!(
-            resolve_hostname_locally,
-            "this endpoint never produces a config that defers to the proxy"
+            !resolve_hostname_locally,
+            "we should always defer to the proxy for DNS resolution"
         );
     }
 
