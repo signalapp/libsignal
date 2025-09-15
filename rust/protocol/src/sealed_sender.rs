@@ -54,11 +54,11 @@ const REVOKED_SERVER_CERTIFICATE_KEY_IDS: &[u32] = &[0xDEADC357];
 ///
 /// Technically the ID is also stored in the certificate data, but listing it here makes it easier
 /// for maintainers to tell which certificates are present.
-const KNOWN_SERVER_CERTIFICATES: &[(u32, [u8; 32], &[u8])] = &[
+const KNOWN_SERVER_CERTIFICATES: &[(u32, [u8; 33], &[u8])] = &[
     (
         2,
         // A trust root used in Staging (but this crate doesn't care about staging / production)
-        const_str::hex!("8854ead3e3a8fe3a286644cd1b3538be14dfd5797653c9fd7d3d85ae2b12b926"),
+        data_encoding_macro::base64!("BYhU6tPjqP46KGZEzRs1OL4U39V5dlPJ/X09ha4rErkm"),
         &const_str::hex!(
             "0a25080212210539450d63ebd0752c0fd4038b9d07a916f5e174b756d409b5ca79f4c97400631e124064c5a38b1e927497d3d4786b101a623ab34a7da3954fae126b04dba9d7a3604ed88cdc8550950f0d4a9134ceb7e19b94139151d2c3d6e1c81e9d1128aafca806"
         ),
@@ -66,7 +66,7 @@ const KNOWN_SERVER_CERTIFICATES: &[(u32, [u8; 32], &[u8])] = &[
     (
         3,
         // A trust root used in Production (but this crate doesn't care about staging / production)
-        const_str::hex!("4918d08fbdfa83e00c29f8f8073a22ef35df2bea903aff81af03ccbc45c6e93a"),
+        data_encoding_macro::base64!("BUkY0I+9+oPgDCn4+Ac6Iu813yvqkDr/ga8DzLxFxuk6"),
         &const_str::hex!(
             "0a250803122105bc9d1d290be964810dfa7e94856480a3f7060d004c9762c24c575a1522353a5a1240c11ec3c401eb0107ab38f8600e8720a63169e0e2eb8a3fae24f63099f85ea319c3c1c46d3454706ae2a679d1fee690a488adda98a2290b66c906bb60295ed781"
         ),
@@ -75,8 +75,8 @@ const KNOWN_SERVER_CERTIFICATES: &[(u32, [u8; 32], &[u8])] = &[
         // "Test cert"
         0x7357C357,
         // This is the public key that corresponds to a private key of all zeros, which will never
-        // be used in a real service.
-        const_str::hex!("2fe57da347cd62431528daac5fbb290730fff684afc4cfc2ed90995f58cb3b74"),
+        // be used in a real service or trusted by a real app.
+        data_encoding_macro::base64!("BS/lfaNHzWJDFSjarF+7KQcw//aEr8TPwu2QmV9Yyzt0"),
         // And we use it to sign a server certificate for a private key of all 0xFF bytes, also
         // never used in a real service.
         &const_str::hex!(
@@ -376,7 +376,7 @@ impl SenderCertificate {
                         (
                             *id,
                             (
-                                PublicKey::from_djb_public_key_bytes(trust_root).expect("valid"),
+                                PublicKey::deserialize(trust_root).expect("valid"),
                                 ServerCertificate::deserialize(cert).expect("valid"),
                             ),
                         )
@@ -2263,7 +2263,7 @@ fn verify_known_certificates() {
     );
 
     for (id, trust_root, cert) in KNOWN_SERVER_CERTIFICATES {
-        let trust_root = PublicKey::from_djb_public_key_bytes(trust_root)
+        let trust_root = PublicKey::deserialize(trust_root)
             .unwrap_or_else(|e| panic!("[{id:x}] has invalid trust root: {e}"));
         let cert = ServerCertificate::deserialize(cert)
             .unwrap_or_else(|e| panic!("[{id:x}] has invalid certificate data: {e}"));

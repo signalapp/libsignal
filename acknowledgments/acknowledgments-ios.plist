@@ -7143,7 +7143,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>data-encoding 2.8.0</string>
+			<string>data-encoding-macro-internal 0.1.16, data-encoding-macro 0.1.18, data-encoding 2.9.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

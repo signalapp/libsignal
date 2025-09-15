@@ -25,6 +25,7 @@ async-trait = { workspace = true }
 bitflags = { workspace = true }
 const-str = { workspace = true }
 ctr = { workspace = true, features = ["zeroize"] }
+data-encoding-macro = { workspace = true }
 derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["deref", "from", "into", "try_from"] }
 displaydoc = { workspace = true }
