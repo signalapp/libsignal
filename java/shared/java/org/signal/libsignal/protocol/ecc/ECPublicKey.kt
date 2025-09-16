@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.protocol.ecc
 
+import org.signal.libsignal.internal.CalledFromNative
 import org.signal.libsignal.internal.Native
 import org.signal.libsignal.internal.NativeHandleGuard
 import org.signal.libsignal.protocol.InvalidKeyException
@@ -45,6 +46,7 @@ public final class ECPublicKey :
     }
   }
 
+  @CalledFromNative
   public constructor(nativeHandle: Long) : super(nativeHandle) {
     if (nativeHandle == 0L) {
       throw NullPointerException()
