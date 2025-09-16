@@ -958,12 +958,9 @@ fn into_sorted_pairs<K: Ord + Copy, V>(map: HashMap<K, V>) -> (Vec<K>, Vec<V>) {
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;
-    use const_str::hex;
-    use prost::Message as _;
     use test_case::test_case;
 
     use super::*;
-    use crate::ChatSearchResponse;
     use crate::proto::PrefixProof;
 
     const MAX_AHEAD: Duration = Duration::from_secs(42);
@@ -998,91 +995,6 @@ mod test {
         assert_matches!(
             verify_timestamp(Qualifier::Server, ts, TIMESTAMP_RANGE, SystemTime::now()),
             Ok(())
-        );
-    }
-
-    #[test]
-    fn can_verify_search_response() {
-        let sig_key = VerifyingKey::from_bytes(&hex!(
-            "ac0de1fd7f33552bbeb6ebc12b9d4ea10bf5f025c45073d3fb5f5648955a749e"
-        ))
-        .unwrap();
-        let vrf_key = vrf::PublicKey::try_from(hex!(
-            "ec3a268237cf5c47115cf222405d5f90cc633ebe05caf82c0dd5acf9d341dadb"
-        ))
-        .unwrap();
-        let auditor_key = VerifyingKey::from_bytes(&hex!(
-            "1123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e755"
-        ))
-        .unwrap();
-        let aci = uuid::uuid!("90c979fd-eab4-4a08-b6da-69dedeab9b29");
-        let request = SlimSearchRequest::new([b"a", aci.as_bytes().as_slice()].concat());
-
-        let (response_tree_head, condensed_response) = {
-            let bytes = include_bytes!("../res/chat_search_response.dat");
-            let response =
-                ChatSearchResponse::decode(bytes.as_slice()).expect("can decode chat response");
-
-            let mut head = response.tree_head.expect("has tree head");
-            // we don't expect these fields to be present in the verification that follows
-            head.distinguished = vec![];
-            head.last = vec![];
-
-            (head, response.aci.expect("has ACI condensed response"))
-        };
-        let response = FullSearchResponse {
-            condensed: condensed_response,
-            tree_head: &response_tree_head,
-        };
-
-        let valid_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1746042060);
-        let config = PublicConfig {
-            mode: DeploymentMode::ThirdPartyAuditing(auditor_key),
-            signature_key: sig_key,
-            vrf_key,
-        };
-
-        let last_root = hex!("87d59202bfd679c7d5753c6e5ad241852abbc2c45650de114b02620ed6098a07");
-        let expected_data_update = MonitoringData {
-            index: hex!("3901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a"),
-            pos: 35,
-            ptrs: HashMap::from([(16777215, 2)]),
-            owned: true,
-        };
-
-        assert_matches!(
-            verify_search_internal(&config, request.clone(), response.clone(), SearchContext::default(), true, valid_at),
-            Ok(update) => {
-                assert_eq!(&update.tree_head, response_tree_head.tree_head.as_ref().expect("has tree head"));
-                assert_eq!(update.tree_root, last_root);
-                assert_eq!(update.monitoring_data, Some(expected_data_update.clone()));
-            }
-        );
-        // Verification result should always include the monitoring data field, even if it has not changed.
-        let last_tree_head = response_tree_head.tree_head.as_ref().unwrap();
-        let last_tree = (last_tree_head.clone(), last_root);
-        let context = SearchContext {
-            last_tree_head: Some(&last_tree),
-            data: Some(expected_data_update.clone()),
-            ..SearchContext::default()
-        };
-
-        assert_matches!(
-            verify_search_internal(&config, request.clone(), response.clone(), context, true, valid_at),
-            Ok(update) => {
-                assert_eq!(&update.tree_head, last_tree_head);
-                assert_eq!(update.tree_root, last_root);
-                assert_eq!(update.monitoring_data, Some(expected_data_update));
-            }
-        );
-        assert_matches!(
-            verify_search_internal(&config, request, response, SearchContext::default(), false, valid_at),
-            Ok(update) => {
-                assert_eq!(&update.tree_head, last_tree_head);
-                assert_eq!(update.tree_root, last_root);
-                // When monitor == false there should be no data update
-                assert!(update.monitoring_data.is_none());
-            }
         );
     }
 

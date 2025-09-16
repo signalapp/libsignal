@@ -60,13 +60,13 @@ final class KeyTransparencyTests: TestCaseBase {
     private var testAccount = TestAccount(
         aci: Aci(fromUUID: UUID(uuidString: "90c979fd-eab4-4a08-b6da-69dedeab9b29")!),
         identityKey: try! IdentityKey(
-            bytes: [UInt8](fromHexString: "05111f9464c1822c6a2405acf1c5a4366679dc3349fc8eb015c8d7260e3f771177")!
+            bytes: [UInt8](fromHexString: "05cdcbb178067f0ddfd258bb21d006e0aa9c7ab132d9fb5e8b027de07d947f9d0c")!
         ),
         e164: "+18005550100",
-        unidentifiedAccessKey: Data(fromHexString: "c6f7c258c24d69538ea553b4a943c8d9")!,
+        unidentifiedAccessKey: Data(fromHexString: "108d84b71be307bdf101e380a1d7f2a2")!,
         usernameHash: Data(
             fromHexString:
-                "d237a4b83b463ca7da58d4a16bf6a3ba104506eb412b235eb603ea10f467c655"
+                "dc711808c2cf66d5e6a33ce41f27d69d942d2e1ff4db22d39b42d2eff8d09746"
         )!
     )
 

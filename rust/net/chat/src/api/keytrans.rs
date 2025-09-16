@@ -868,11 +868,11 @@ pub(crate) mod test_support {
 
         pub const ACI: Uuid = uuid::uuid!("90c979fd-eab4-4a08-b6da-69dedeab9b29");
         pub const ACI_IDENTITY_KEY_BYTES: &[u8] =
-            &hex!("05111f9464c1822c6a2405acf1c5a4366679dc3349fc8eb015c8d7260e3f771177");
+            &hex!("05cdcbb178067f0ddfd258bb21d006e0aa9c7ab132d9fb5e8b027de07d947f9d0c");
         pub const USERNAME_HASH: &[u8] =
-            &hex!("d237a4b83b463ca7da58d4a16bf6a3ba104506eb412b235eb603ea10f467c655");
+            &hex!("dc711808c2cf66d5e6a33ce41f27d69d942d2e1ff4db22d39b42d2eff8d09746");
         pub const PHONE_NUMBER: E164 = E164::new(nonzero!(18005550100u64));
-        pub const UNIDENTIFIED_ACCESS_KEY: &[u8] = &hex!("c6f7c258c24d69538ea553b4a943c8d9");
+        pub const UNIDENTIFIED_ACCESS_KEY: &[u8] = &hex!("108d84b71be307bdf101e380a1d7f2a2");
 
         pub fn aci() -> Aci {
             Aci::from(ACI)
@@ -916,29 +916,29 @@ pub(crate) mod test_support {
 
     pub const CHAT_SEARCH_RESPONSE: &[u8] =
         include_bytes!("../../../tests/data/chat_search_response.dat");
-    pub const CHAT_SEARCH_RESPONSE_VALID_AT: Duration = Duration::from_secs(1746042060);
+    pub const CHAT_SEARCH_RESPONSE_VALID_AT: Duration = Duration::from_secs(1757956750);
 
-    const DISTINGUISHED_TREE_25223230_HEAD: &[u8] = &hex!(
-        "08bec0830c10f1beddc1e8321a640a201123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e75512404dc142dc8f20605328f39b230b7f4160638c8c9c0fd1985b5348d152bd482c449efbba837ac5bed017e02216ae26ca72fd0b654401c99fdbaa0fdcee38d4a90b"
+    const DISTINGUISHED_TREE_84792241_HEAD: &[u8] = &hex!(
+        "08b1a7b72810c39e8cf394331a640a201123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e7551240b146ceb73bb6ba1fa7cb3d59e860ab72c9824732de1dfbdfed71456a6c14726acb0090fa1fc6c266a9a1fdfcc09b6c7cd23f1ad372aa15f7dfbbcf5e6719050b"
     );
-    const DISTINGUISHED_TREE_25223230_ROOT: &[u8] =
-        &hex!("85d15cf60676285c0105d9474139dfc7b070996c6dba7ab12ccf2ffcfff8cbcd");
+    const DISTINGUISHED_TREE_84792241_ROOT: &[u8] =
+        &hex!("b4c248c262e1233b54d1078f7bc875cc2285aa1ddd300d1e234b47994ef80e7c");
 
-    const STORED_ACCOUNT_DATA_25223245: &[u8] = &hex!(
-        "0a2f0a203901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a10231a0708ffffff071002200112300a2086052cc2a2689558e852d053c5ab411d8c3baef20171ec298e551574806ca95d1081011a0708ffffff07100220011a300a20bc1cfaae736c27c437b99175798933ee32caf07a5226840ec963a4e614916e9010dc011a0708ffffff071002200122300a0c08cdc0830c10a8d6ddc1e832122048e51aeb705ffa2fe7bed5f7aad51d216c551547892280eded1db2708eba359a"
+    const STORED_ACCOUNT_DATA_84792266: &[u8] = &hex!(
+        "0a2f0a203901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a10231a0708ff9fb7281006200112300a2086052cc2a2689558e852d053c5ab411d8c3baef20171ec298e551574806ca95d1081011a0708ffffff1f100220011a300a206f55ac745ebeaf39fd5b21177c7fa692876c42678ffa1f3d58ed8fbc5ef023b910fb9fb7281a0508ff9fb72820012296010a7208caa7b72810d4c58cf394331a640a201123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e7551240a3161c07d1ce2375a7dce77f3b7bbf157c5bc095ebe4753cf391e45e68045b798b1abbb01e2fd0b6a4b9ffee2ebf6e8e35b3b35c3c1197af44a8e6a1a3e6ac0f12202125811b94b41dc08e6a969f59834a7cd6924ec7253888991c32a4b2f8a22ca2"
     );
 
     pub fn test_distinguished_tree() -> LastTreeHead {
         (
-            TreeHead::decode(DISTINGUISHED_TREE_25223230_HEAD).expect("valid TreeHead"),
-            DISTINGUISHED_TREE_25223230_ROOT
+            TreeHead::decode(DISTINGUISHED_TREE_84792241_HEAD).expect("valid TreeHead"),
+            DISTINGUISHED_TREE_84792241_ROOT
                 .try_into()
                 .expect("valid root size"),
         )
     }
 
     pub fn test_stored_account_data() -> StoredAccountData {
-        StoredAccountData::decode(STORED_ACCOUNT_DATA_25223245).expect("valid stored acc data")
+        StoredAccountData::decode(STORED_ACCOUNT_DATA_84792266).expect("valid stored acc data")
     }
 
     pub fn test_account_data() -> AccountData {

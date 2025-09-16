@@ -53,7 +53,7 @@ fn bench_verify_search(c: &mut Criterion) {
         tree_head: response_tree_head,
     };
 
-    let valid_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1746042060);
+    let valid_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1757956750);
     let kt = KeyTransparency {
         config: PublicConfig {
             mode: DeploymentMode::ThirdPartyAuditing(auditor_key),
