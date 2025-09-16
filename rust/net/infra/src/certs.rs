@@ -34,7 +34,7 @@ impl From<ErrorStack> for Error {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum RootCertificates {
     Native,
     FromStaticDers(&'static [&'static [u8]]),
@@ -94,6 +94,19 @@ impl RootCertificates {
         }
         connector.set_verify_cert_store(store_builder.build())?;
         Ok(())
+    }
+}
+
+impl std::fmt::Debug for RootCertificates {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Native => write!(f, "Native"),
+            Self::FromStaticDers(ders) => f
+                .debug_tuple("FromStaticDers")
+                .field(&format_args!("<{} cert(s)>", ders.len()))
+                .finish(),
+            Self::FromDer(_) => f.debug_tuple("FromDer").field(&"_").finish(),
+        }
     }
 }
 
