@@ -3595,3 +3595,80 @@ fn x3dh_established_session_is_or_is_not_usable() {
     .now_or_never()
     .expect("sync")
 }
+
+#[test]
+fn prekey_message_sent_from_different_user_is_rejected() {
+    async {
+        let mut csprng = OsRng.unwrap_err();
+
+        let alice_device_id = DeviceId::new(1).unwrap();
+        let bob_device_id = DeviceId::new(1).unwrap();
+        let mallory_device_id = DeviceId::new(b'M').unwrap();
+
+        let alice_address = ProtocolAddress::new("+14151111111".to_owned(), alice_device_id);
+        let bob_address = ProtocolAddress::new("+14151111112".to_owned(), bob_device_id);
+        let mallory_address = ProtocolAddress::new("+14151111113".to_owned(), mallory_device_id);
+
+        let mut bob_store_builder = TestStoreBuilder::new();
+        // No one-time EC key here.
+        bob_store_builder.add_signed_pre_key(IdChoice::Next);
+        bob_store_builder.add_kyber_pre_key(IdChoice::Next);
+
+        let bob_pre_key_bundle = bob_store_builder.make_bundle_with_latest_keys(bob_device_id);
+
+        let mut alice_store = TestStoreBuilder::new().store;
+        process_prekey_bundle(
+            &bob_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &bob_pre_key_bundle,
+            SystemTime::now(),
+            &mut csprng,
+            UsePQRatchet::No,
+        )
+        .await
+        .expect("valid");
+
+        let pre_key_message = support::encrypt(&mut alice_store, &bob_address, "bad")
+            .await
+            .expect("valid");
+
+        let bob_store = &mut bob_store_builder.store;
+        _ = support::decrypt(
+            bob_store,
+            &alice_address,
+            &pre_key_message,
+            UsePQRatchet::No,
+        )
+        .await
+        .expect("unmodified message is fine");
+        _ = bob_store
+            .load_session(&alice_address)
+            .await
+            .expect("can load sessions")
+            .expect("session successfully created");
+
+        let err = support::decrypt(
+            bob_store,
+            &mallory_address,
+            &pre_key_message,
+            UsePQRatchet::No,
+        )
+        .await
+        .expect_err("should be rejected");
+        assert_matches!(
+            err,
+            SignalProtocolError::InvalidMessage(CiphertextMessageType::PreKey, "reused base key")
+        );
+        assert!(
+            bob_store
+                .load_session(&mallory_address)
+                .await
+                .expect("can load sessions")
+                .is_none(),
+            "should not have created second session"
+        )
+    }
+    .now_or_never()
+    .expect("sync")
+}

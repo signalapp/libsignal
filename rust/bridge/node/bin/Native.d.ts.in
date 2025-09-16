@@ -100,7 +100,11 @@ type KyberPreKeyStore = {
     record: KyberPreKeyRecord
   ): Promise<void>;
   _getKyberPreKey(kyberPreKeyId: number): Promise<KyberPreKeyRecord>;
-  _markKyberPreKeyUsed(kyberPreKeyId: number): Promise<void>;
+  _markKyberPreKeyUsed(
+    kyberPreKeyId: number,
+    signedPreKeyId: number,
+    baseKey: PublicKey
+  ): Promise<void>;
 };
 
 type SenderKeyStore = {

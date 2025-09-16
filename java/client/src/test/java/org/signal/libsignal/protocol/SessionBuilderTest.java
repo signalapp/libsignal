@@ -8,6 +8,7 @@ package org.signal.libsignal.protocol;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
@@ -44,6 +45,8 @@ public class SessionBuilderTest {
       filterExceptions(() -> new SignalProtocolAddress("+14151111111", 1));
   static final SignalProtocolAddress BOB_ADDRESS =
       filterExceptions(() -> new SignalProtocolAddress("+14152222222", 1));
+  static final SignalProtocolAddress MALLORY_ADDRESS =
+      filterExceptions(() -> new SignalProtocolAddress("+14153333333", 1));
 
   @RunWith(Parameterized.class)
   public static class Versioned {
@@ -317,6 +320,55 @@ public class SessionBuilderTest {
       } catch (NoSessionException e) {
         // Expected
       }
+    }
+
+    @Test
+    public void testRejectsPreKeyMesageSentFromDifferentUser() throws Exception {
+      SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
+      SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+
+      SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
+      PreKeyBundle bobPreKey = bundleFactory.createBundle(bobStore);
+
+      // Simply remove the pre-key information from a valid bundle
+      bobPreKey =
+          new PreKeyBundle(
+              bobPreKey.getRegistrationId(),
+              1,
+              -1,
+              null,
+              bobPreKey.getSignedPreKeyId(),
+              bobPreKey.getSignedPreKey(),
+              bobPreKey.getSignedPreKeySignature(),
+              bobPreKey.getIdentityKey(),
+              bobPreKey.getKyberPreKeyId(),
+              bobPreKey.getKyberPreKey(),
+              bobPreKey.getKyberPreKeySignature());
+
+      aliceSessionBuilder.process(bobPreKey, UsePqRatchet.YES);
+
+      assertTrue(aliceStore.containsSession(BOB_ADDRESS));
+      assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == expectedVersion);
+
+      String originalMessage = "Good, fast, cheap: pick two";
+      SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
+      CiphertextMessage outgoingMessage = aliceSessionCipher.encrypt(originalMessage.getBytes());
+
+      assertTrue(outgoingMessage.getType() == CiphertextMessage.PREKEY_TYPE);
+
+      PreKeySignalMessage incomingMessage = new PreKeySignalMessage(outgoingMessage.serialize());
+      assertTrue(!incomingMessage.getPreKeyId().isPresent());
+
+      SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+      bobSessionCipher.decrypt(incomingMessage, UsePqRatchet.YES);
+
+      assertTrue(bobStore.containsSession(ALICE_ADDRESS));
+      assertEquals(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion(), expectedVersion);
+
+      SessionCipher bobSessionCipherForMallory = new SessionCipher(bobStore, MALLORY_ADDRESS);
+      assertThrows(
+          ReusedBaseKeyException.class,
+          () -> bobSessionCipherForMallory.decrypt(incomingMessage, UsePqRatchet.YES));
     }
   }
 

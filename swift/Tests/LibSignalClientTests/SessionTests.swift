@@ -215,6 +215,123 @@ class SessionTests: TestCaseBase {
         )
     }
 
+    func testRejectsPreKeyMessageSentFromDifferentUser() {
+        let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
+        let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
+        let mallory_address = try! ProtocolAddress(name: "+14151111113", deviceId: 1)
+
+        let alice_store = InMemorySignalProtocolStore()
+        let bob_store = InMemorySignalProtocolStore()
+
+        let bob_signed_pre_key = PrivateKey.generate()
+        let bob_kyber_pre_key = KEMKeyPair.generate()
+
+        let bob_signed_pre_key_public = bob_signed_pre_key.publicKey.serialize()
+        let bob_kyber_pre_key_public = bob_kyber_pre_key.publicKey.serialize()
+
+        let bob_identity_key_pair = try! bob_store.identityKeyPair(context: NullContext())
+        let bob_identity_key = bob_identity_key_pair.identityKey
+        let bob_signed_pre_key_signature = bob_identity_key_pair.privateKey.generateSignature(
+            message: bob_signed_pre_key_public
+        )
+        let bob_kyber_pre_key_signature = bob_identity_key_pair.privateKey.generateSignature(
+            message: bob_kyber_pre_key_public
+        )
+
+        let signed_prekey_id: UInt32 = 3006
+        let kyber_pre_key_id: UInt32 = 8888
+
+        try! bob_store
+            .storeSignedPreKey(
+                SignedPreKeyRecord(
+                    id: signed_prekey_id,
+                    timestamp: 42000,
+                    privateKey: bob_signed_pre_key,
+                    signature: bob_signed_pre_key_signature
+                ),
+                id: signed_prekey_id,
+                context: NullContext()
+            )
+        try! bob_store
+            .storeKyberPreKey(
+                KyberPreKeyRecord(
+                    id: kyber_pre_key_id,
+                    timestamp: 42000,
+                    keyPair: bob_kyber_pre_key,
+                    signature: bob_kyber_pre_key_signature
+                ),
+                id: kyber_pre_key_id,
+                context: NullContext()
+            )
+
+        let bob_bundle = try! PreKeyBundle(
+            registrationId: bob_store.localRegistrationId(context: NullContext()),
+            deviceId: 9,
+            signedPrekeyId: signed_prekey_id,
+            signedPrekey: bob_signed_pre_key.publicKey,
+            signedPrekeySignature: bob_signed_pre_key_signature,
+            identity: bob_identity_key,
+            kyberPrekeyId: kyber_pre_key_id,
+            kyberPrekey: bob_kyber_pre_key.publicKey,
+            kyberPrekeySignature: bob_kyber_pre_key_signature
+        )
+
+        // Alice processes the bundle:
+        try! processPreKeyBundle(
+            bob_bundle,
+            for: bob_address,
+            sessionStore: alice_store,
+            identityStore: alice_store,
+            context: NullContext(),
+            usePqRatchet: true
+        )
+
+        // Alice sends a message:
+        let ptext_a: [UInt8] = [8, 6, 7, 5, 3, 0, 9]
+
+        let ctext_a = try! signalEncrypt(
+            message: ptext_a,
+            for: bob_address,
+            sessionStore: alice_store,
+            identityStore: alice_store,
+            context: NullContext()
+        )
+
+        XCTAssertEqual(ctext_a.messageType, .preKey)
+        let ctext_b = try! PreKeySignalMessage(bytes: ctext_a.serialize())
+
+        _ = try! signalDecryptPreKey(
+            message: ctext_b,
+            from: alice_address,
+            sessionStore: bob_store,
+            identityStore: bob_store,
+            preKeyStore: bob_store,
+            signedPreKeyStore: bob_store,
+            kyberPreKeyStore: bob_store,
+            context: NullContext(),
+            usePqRatchet: true
+        )
+
+        do {
+            _ = try signalDecryptPreKey(
+                message: ctext_b,
+                from: mallory_address,
+                sessionStore: bob_store,
+                identityStore: bob_store,
+                preKeyStore: bob_store,
+                signedPreKeyStore: bob_store,
+                kyberPreKeyStore: bob_store,
+                context: NullContext(),
+                usePqRatchet: true
+            )
+            XCTFail("should have thrown")
+        } catch SignalError.invalidMessage(_) {
+            // okay, this is what InMemorySignalProtocolStore throws in this case
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
     func testSealedSenderSession() throws {
         let alice_address = try! ProtocolAddress(name: "9d0652a3-dcc3-4d11-975f-74d61598733f", deviceId: 1)
         let bob_address = try! ProtocolAddress(name: "6838237D-02F6-4098-B110-698253D15961", deviceId: 1)

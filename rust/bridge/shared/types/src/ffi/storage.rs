@@ -273,7 +273,12 @@ type StoreKyberPreKey = extern "C" fn(
     id: u32,
     record: ConstPointer<KyberPreKeyRecord>,
 ) -> c_int;
-type MarkKyberPreKeyUsed = extern "C" fn(store_ctx: *mut c_void, id: u32) -> c_int;
+type MarkKyberPreKeyUsed = extern "C" fn(
+    store_ctx: *mut c_void,
+    id: u32,
+    signed_prekey_id: u32,
+    base_key: ConstPointer<PublicKey>,
+) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -322,8 +327,15 @@ impl KyberPreKeyStore for &FfiKyberPreKeyStoreStruct {
     async fn mark_kyber_pre_key_used(
         &mut self,
         id: KyberPreKeyId,
+        ec_prekey_id: SignedPreKeyId,
+        base_key: &PublicKey,
     ) -> Result<(), SignalProtocolError> {
-        let result = (self.mark_kyber_pre_key_used)(self.ctx, id.into());
+        let result = (self.mark_kyber_pre_key_used)(
+            self.ctx,
+            id.into(),
+            ec_prekey_id.into(),
+            base_key.into(),
+        );
 
         CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
             "mark_kyber_pre_key_used",

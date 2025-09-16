@@ -25,6 +25,7 @@ open class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPre
     private var signedPrekeyMap: [UInt32: SignedPreKeyRecord] = [:]
     private var kyberPrekeyMap: [UInt32: KyberPreKeyRecord] = [:]
     private var kyberPrekeysUsed: Set<UInt32> = []
+    private var baseKeysSeen: [UInt64: [PublicKey]] = [:]
     private var sessionMap: [ProtocolAddress: SessionRecord] = [:]
     private var senderKeyMap: [SenderKeyName: SenderKeyRecord] = [:]
 
@@ -116,7 +117,13 @@ open class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPre
         self.kyberPrekeyMap[id] = record
     }
 
-    open func markKyberPreKeyUsed(id: UInt32, context: StoreContext) throws {
+    open func markKyberPreKeyUsed(id: UInt32, signedPreKeyId: UInt32, baseKey: PublicKey, context: StoreContext) throws
+    {
+        let bothKeyIds = (UInt64(id) << 32) | UInt64(signedPreKeyId)
+        if baseKeysSeen[bothKeyIds, default: []].contains(baseKey) {
+            throw SignalError.invalidMessage("reused base key")
+        }
+        baseKeysSeen[bothKeyIds, default: []].append(baseKey)
         self.kyberPrekeysUsed.insert(id)
     }
 

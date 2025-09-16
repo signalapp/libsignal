@@ -8,6 +8,8 @@ package org.signal.libsignal.protocol.state;
 import java.util.List;
 import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.protocol.InvalidKeyIdException;
+import org.signal.libsignal.protocol.ReusedBaseKeyException;
+import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
 @CalledFromNative
 public interface KyberPreKeyStore {
@@ -47,7 +49,34 @@ public interface KyberPreKeyStore {
    *
    * <p>Remove if it is a one-time pre key and noop if it is last-resort.
    *
-   * @param kyberPreKeyId The ID of the KyberPreKeyRecord to marked.
+   * @param kyberPreKeyId The ID of the KyberPreKeyRecord to be marked.
+   * @deprecated Use {@link markKyberPreKeyUsed(int, int, ECPublicKey)} instead.
    */
-  public void markKyberPreKeyUsed(int kyberPreKeyId);
+  @Deprecated
+  public default void markKyberPreKeyUsed(int kyberPreKeyId) {
+    // Providing this implementation allows clients to delete their own once they've implemented the
+    // new overload.
+    throw new UnsupportedOperationException("implement markKyberPreKeyUsed(int,int,ECPublicKey)");
+  }
+
+  /**
+   * Mark a KyberPreKeyRecord in the local storage as used.
+   *
+   * <p>If it's a one-time pre-key, remove it.
+   *
+   * <p>If it's a last-resort pre-key, check whether this specific <code>
+   * (kyberPreKeyId, signedPreKeyId, baseKey)</code> tuple has been seen before, and throw an
+   * exception if so. If not, record it for later. Entries can be removed when either the Kyber key
+   * or the last-resort key is <strong>deleted</strong> (not just rotated).
+   *
+   * @param kyberPreKeyId The ID of the KyberPreKeyRecord to be marked.
+   * @param signedPreKeyId The ID of the SignedPreKeyRecord that was used with this Kyber pre-key.
+   * @param baseKey The session-specific key from the sender used with this Kyber pre-key.
+   */
+  public default void markKyberPreKeyUsed(
+      int kyberPreKeyId, int signedPreKeyId, ECPublicKey baseKey) throws ReusedBaseKeyException {
+    // Providing this implementation allows existing clients to continue to behave as they did
+    // before.
+    markKyberPreKeyUsed(kyberPreKeyId);
+  }
 }

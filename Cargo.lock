@@ -2606,7 +2606,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi"
-version = "0.80.4"
+version = "0.81.0"
 dependencies = [
  "cpufeatures",
  "hex",
@@ -2626,14 +2626,14 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.80.4"
+version = "0.81.0"
 dependencies = [
  "libsignal-jni-impl",
 ]
 
 [[package]]
 name = "libsignal-jni-impl"
-version = "0.80.4"
+version = "0.81.0"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -2650,7 +2650,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni-testing"
-version = "0.80.4"
+version = "0.81.0"
 dependencies = [
  "jni",
  "libsignal-bridge-testing",
@@ -2948,7 +2948,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.80.4"
+version = "0.81.0"
 dependencies = [
  "cmake",
  "futures",

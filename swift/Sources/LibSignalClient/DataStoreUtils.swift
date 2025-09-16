@@ -268,13 +268,17 @@ internal func withKyberPreKeyStore<Result>(
 
     func ffiShimMarkKyberPreKeyUsed(
         storeCtx: UnsafeMutableRawPointer?,
-        id: UInt32
+        id: UInt32,
+        signedPreKeyId: UInt32,
+        baseKey: SignalConstPointerPublicKey,
     ) -> Int32 {
         let storeContext = storeCtx!.assumingMemoryBound(
             to: ErrorHandlingContext<(KyberPreKeyStore, StoreContext)>.self
         )
         return storeContext.pointee.catchCallbackErrors { store, context in
-            try store.markKyberPreKeyUsed(id: id, context: context)
+            var baseKey = PublicKey(borrowing: baseKey)
+            defer { cloneOrForgetAsNeeded(&baseKey) }
+            try store.markKyberPreKeyUsed(id: id, signedPreKeyId: signedPreKeyId, baseKey: baseKey, context: context)
             return 0
         }
     }

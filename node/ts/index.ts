@@ -1190,8 +1190,16 @@ export abstract class KyberPreKeyStore implements Native.KyberPreKeyStore {
     return prekey._nativeHandle;
   }
 
-  async _markKyberPreKeyUsed(kyberPreKeyId: number): Promise<void> {
-    return this.markKyberPreKeyUsed(kyberPreKeyId);
+  async _markKyberPreKeyUsed(
+    kyberPreKeyId: number,
+    signedPreKeyId: number,
+    baseKey: Native.PublicKey
+  ): Promise<void> {
+    return this.markKyberPreKeyUsed(
+      kyberPreKeyId,
+      signedPreKeyId,
+      PublicKey._fromNativeHandle(baseKey)
+    );
   }
 
   abstract saveKyberPreKey(
@@ -1199,7 +1207,11 @@ export abstract class KyberPreKeyStore implements Native.KyberPreKeyStore {
     record: KyberPreKeyRecord
   ): Promise<void>;
   abstract getKyberPreKey(kyberPreKeyId: number): Promise<KyberPreKeyRecord>;
-  abstract markKyberPreKeyUsed(kyberPreKeyId: number): Promise<void>;
+  abstract markKyberPreKeyUsed(
+    kyberPreKeyId: number,
+    signedPreKeyId: number,
+    baseKey: PublicKey
+  ): Promise<void>;
 }
 
 export abstract class SenderKeyStore implements Native.SenderKeyStore {

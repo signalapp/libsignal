@@ -866,7 +866,7 @@ typedef struct {
 
 typedef int (*SignalStoreKyberPreKey)(void *store_ctx, uint32_t id, SignalConstPointerKyberPreKeyRecord record);
 
-typedef int (*SignalMarkKyberPreKeyUsed)(void *store_ctx, uint32_t id);
+typedef int (*SignalMarkKyberPreKeyUsed)(void *store_ctx, uint32_t id, uint32_t signed_prekey_id, SignalConstPointerPublicKey base_key);
 
 typedef struct {
   void *ctx;

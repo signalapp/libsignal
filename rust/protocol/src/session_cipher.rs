@@ -258,19 +258,25 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         )
         .await?;
 
+    if let Some(pre_key_used) = pre_key_used {
+        if let Some(kyber_pre_key_id) = pre_key_used.kyber_pre_key_id {
+            kyber_pre_key_store
+                .mark_kyber_pre_key_used(
+                    kyber_pre_key_id,
+                    pre_key_used.signed_ec_pre_key_id,
+                    ciphertext.base_key(),
+                )
+                .await?;
+        }
+
+        if let Some(pre_key_id) = pre_key_used.one_time_ec_pre_key_id {
+            pre_key_store.remove_pre_key(pre_key_id).await?;
+        }
+    }
+
     session_store
         .store_session(remote_address, &session_record)
         .await?;
-
-    if let Some(pre_key_id) = pre_key_used.pre_key_id {
-        pre_key_store.remove_pre_key(pre_key_id).await?;
-    }
-
-    if let Some(kyber_pre_key_id) = pre_key_used.kyber_pre_key_id {
-        kyber_pre_key_store
-            .mark_kyber_pre_key_used(kyber_pre_key_id)
-            .await?;
-    }
 
     Ok(ptext)
 }

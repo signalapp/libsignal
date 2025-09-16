@@ -284,13 +284,25 @@ impl NodeKyberPreKeyStore {
         .await
     }
 
-    async fn do_mark_kyber_pre_key_used(&self, id: u32) -> Result<(), String> {
+    async fn do_mark_kyber_pre_key_used(
+        &self,
+        id: u32,
+        ec_prekey_id: u32,
+        base_key: PublicKey,
+    ) -> Result<(), String> {
         let store_object_shared = self.store_object.clone();
         JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let id: Handle<JsNumber> = id.convert_into(cx)?;
-            let result = call_method(cx, store_object, "_markKyberPreKeyUsed", [id.upcast()])?
-                .downcast_or_throw(cx)?;
+            let ec_prekey_id: Handle<JsNumber> = ec_prekey_id.convert_into(cx)?;
+            let base_key: Handle<JsValue> = base_key.convert_into(cx)?;
+            let result = call_method(
+                cx,
+                store_object,
+                "_markKyberPreKeyUsed",
+                [id.upcast(), ec_prekey_id.upcast(), base_key],
+            )?
+            .downcast_or_throw(cx)?;
             store_object_shared.finalize(cx);
             Ok(result)
         })
@@ -338,8 +350,10 @@ impl KyberPreKeyStore for NodeKyberPreKeyStore {
     async fn mark_kyber_pre_key_used(
         &mut self,
         kyber_pre_key_id: KyberPreKeyId,
+        ec_prekey_id: SignedPreKeyId,
+        base_key: &PublicKey,
     ) -> Result<(), SignalProtocolError> {
-        self.do_mark_kyber_pre_key_used(kyber_pre_key_id.into())
+        self.do_mark_kyber_pre_key_used(kyber_pre_key_id.into(), ec_prekey_id.into(), *base_key)
             .await
             .map_err(|s| js_error_to_rust("markKyberPreKeyUsed", s))
     }

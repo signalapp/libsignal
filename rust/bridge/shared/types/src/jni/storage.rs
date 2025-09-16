@@ -499,16 +499,33 @@ impl JniKyberPreKeyStore<'_> {
             })
     }
 
-    fn do_mark_kyber_pre_key_used(&mut self, prekey_id: u32) -> Result<(), BridgeOrProtocolError> {
+    fn do_mark_kyber_pre_key_used(
+        &mut self,
+        prekey_id: u32,
+        ec_prekey_id: u32,
+        base_key: PublicKey,
+    ) -> Result<(), BridgeOrProtocolError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "markKyberPreKeyUsed", |env| {
                 let java_id = prekey_id.convert_into(env)?;
+                let java_ec_prekey_id = ec_prekey_id.convert_into(env)?;
+                let base_key_handle = base_key.convert_into(env)?;
+                let base_key_object = jobject_from_native_handle(
+                    env,
+                    ClassName("org.signal.libsignal.protocol.ecc.ECPublicKey"),
+                    base_key_handle,
+                )?;
+
                 call_method_checked(
                     env,
                     self.store,
                     "markKyberPreKeyUsed",
-                    jni_args!((java_id => int) -> void),
+                    jni_args!((
+                        java_id => int,
+                        java_ec_prekey_id => int,
+                        base_key_object => org.signal.libsignal.protocol.ecc.ECPublicKey,
+                    ) -> void),
                 )?;
                 Ok(())
             })
@@ -535,8 +552,10 @@ impl KyberPreKeyStore for JniKyberPreKeyStore<'_> {
     async fn mark_kyber_pre_key_used(
         &mut self,
         prekey_id: KyberPreKeyId,
+        ec_prekey_id: SignedPreKeyId,
+        base_key: &PublicKey,
     ) -> Result<(), SignalProtocolError> {
-        Ok(self.do_mark_kyber_pre_key_used(prekey_id.into())?)
+        Ok(self.do_mark_kyber_pre_key_used(prekey_id.into(), ec_prekey_id.into(), *base_key)?)
     }
 }
 

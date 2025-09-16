@@ -52,7 +52,26 @@ public protocol SignedPreKeyStore: AnyObject {
 public protocol KyberPreKeyStore: AnyObject {
     func loadKyberPreKey(id: UInt32, context: StoreContext) throws -> KyberPreKeyRecord
     func storeKyberPreKey(_ record: KyberPreKeyRecord, id: UInt32, context: StoreContext) throws
+    @available(*, deprecated, message: "use markKyberPreKeyUsed(id:signedPreKeyId:baseKey:context:) instead")
     func markKyberPreKeyUsed(id: UInt32, context: StoreContext) throws
+    func markKyberPreKeyUsed(id: UInt32, signedPreKeyId: UInt32, baseKey: PublicKey, context: StoreContext) throws
+}
+extension KyberPreKeyStore {
+    // Provide a default for backwards compatibility...
+    @available(*, deprecated, message: "implement markKyberPreKeyUsed(id:signedPreKeyId:baseKey:context:) manually")
+    public func markKyberPreKeyUsed(
+        id: UInt32,
+        signedPreKeyId: UInt32,
+        baseKey: PublicKey,
+        context: StoreContext
+    ) throws {
+        try markKyberPreKeyUsed(id: id, context: context)
+    }
+
+    // ...and one for *forwards* compatibility, until this overload gets removed.
+    public func markKyberPreKeyUsed(id: UInt32, context: StoreContext) throws {
+        fatalError("implement markKyberPreKeyUsed(id:signedPreKeyId:baseKey:context:)")
+    }
 }
 
 public protocol SessionStore: AnyObject {

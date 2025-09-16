@@ -665,7 +665,8 @@ const sessionVersionTestCases = [
 
 async function makePQXDHBundle(
   address: SignalClient.ProtocolAddress,
-  stores: TestStores
+  stores: TestStores,
+  excludeOneTimePreKey?: boolean
 ): Promise<SignalClient.PreKeyBundle> {
   const identityKey = await stores.identity.getIdentityKey();
   const prekeyId = chance.natural({ max: 10000 });
@@ -710,8 +711,8 @@ async function makePQXDHBundle(
   return SignalClient.PreKeyBundle.new(
     await stores.identity.getLocalRegistrationId(),
     address.deviceId(),
-    prekeyId,
-    prekey.getPublicKey(),
+    excludeOneTimePreKey ? null : prekeyId,
+    excludeOneTimePreKey ? null : prekey.getPublicKey(),
     signedPrekeyId,
     signedPrekey.getPublicKey(),
     signedPrekeySignature,
@@ -985,6 +986,70 @@ for (const testCase of sessionVersionTestCases) {
           aliceStores.session,
           aliceStores.identity,
           new Date('2023-01-01')
+        )
+      );
+    });
+
+    it('rejects pre-key messages sent from a second user', async () => {
+      const aliceStores = new TestStores();
+      const bobStores = new TestStores();
+
+      const aAddress = SignalClient.ProtocolAddress.new('+14151111111', 1);
+      const bAddress = SignalClient.ProtocolAddress.new('+14151111112', 1);
+      const mAddress = SignalClient.ProtocolAddress.new('+14151111113', 1);
+
+      const bPreKeyBundle = await testCase.makeBundle(
+        bAddress,
+        bobStores,
+        /*excludeOneTimePreKey*/ true
+      );
+
+      await SignalClient.processPreKeyBundle(
+        bPreKeyBundle,
+        bAddress,
+        aliceStores.session,
+        aliceStores.identity,
+        SignalClient.UsePQRatchet.Yes
+      );
+      const aMessage = Buffer.from('Greetings hoo-man', 'utf8');
+
+      const aCiphertext = await SignalClient.signalEncrypt(
+        aMessage,
+        bAddress,
+        aliceStores.session,
+        aliceStores.identity
+      );
+
+      assert.deepEqual(
+        aCiphertext.type(),
+        SignalClient.CiphertextMessageType.PreKey
+      );
+
+      const aCiphertextR = SignalClient.PreKeySignalMessage.deserialize(
+        aCiphertext.serialize()
+      );
+
+      void (await SignalClient.signalDecryptPreKey(
+        aCiphertextR,
+        aAddress,
+        bobStores.session,
+        bobStores.identity,
+        bobStores.prekey,
+        bobStores.signed,
+        bobStores.kyber,
+        SignalClient.UsePQRatchet.Yes
+      ));
+
+      await assert.isRejected(
+        SignalClient.signalDecryptPreKey(
+          aCiphertextR,
+          mAddress,
+          bobStores.session,
+          bobStores.identity,
+          bobStores.prekey,
+          bobStores.signed,
+          bobStores.kyber,
+          SignalClient.UsePQRatchet.Yes
         )
       );
     });

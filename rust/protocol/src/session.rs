@@ -13,12 +13,13 @@ use crate::state::GenericSignedPreKey;
 use crate::{
     CiphertextMessageType, Direction, IdentityKey, IdentityKeyStore, KeyPair, KyberPreKeyId,
     KyberPreKeyStore, PreKeyBundle, PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress,
-    Result, SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyStore, ratchet,
+    Result, SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyId, SignedPreKeyStore,
+    ratchet,
 };
 
-#[derive(Default)]
 pub struct PreKeysUsed {
-    pub pre_key_id: Option<PreKeyId>,
+    pub one_time_ec_pre_key_id: Option<PreKeyId>,
+    pub signed_ec_pre_key_id: SignedPreKeyId,
     pub kyber_pre_key_id: Option<KyberPreKeyId>,
 }
 
@@ -51,7 +52,7 @@ pub async fn process_prekey<'a>(
     signed_prekey_store: &dyn SignedPreKeyStore,
     kyber_prekey_store: &dyn KyberPreKeyStore,
     use_pq_ratchet: ratchet::UsePQRatchet,
-) -> Result<(PreKeysUsed, IdentityToSave<'a>)> {
+) -> Result<(Option<PreKeysUsed>, IdentityToSave<'a>)> {
     let their_identity_key = message.identity_key();
 
     if !identity_store
@@ -92,13 +93,13 @@ async fn process_prekey_impl(
     pre_key_store: &dyn PreKeyStore,
     identity_store: &dyn IdentityKeyStore,
     use_pq_ratchet: ratchet::UsePQRatchet,
-) -> Result<PreKeysUsed> {
+) -> Result<Option<PreKeysUsed>> {
     if session_record.promote_matching_session(
         message.message_version() as u32,
         &message.base_key().serialize(),
     )? {
         // We've already set up a session for this message, we can exit early.
-        return Ok(Default::default());
+        return Ok(None);
     }
 
     // Check this *after* looking for an existing session; since we have already performed XDH for
@@ -165,10 +166,11 @@ async fn process_prekey_impl(
     session_record.promote_state(new_session);
 
     let pre_keys_used = PreKeysUsed {
-        pre_key_id: message.pre_key_id(),
+        one_time_ec_pre_key_id: message.pre_key_id(),
+        signed_ec_pre_key_id: message.signed_pre_key_id(),
         kyber_pre_key_id: message.kyber_pre_key_id(),
     };
-    Ok(pre_keys_used)
+    Ok(Some(pre_keys_used))
 }
 
 pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
