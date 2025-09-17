@@ -28,7 +28,11 @@ let package = Package(
         .target(
             name: "LibSignalClient",
             dependencies: ["SignalFfi"],
-            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
+            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")],
+            linkerSettings: [
+                // link libz, which is required for permessage-deflate websocket support.
+                .linkedLibrary("z")
+            ]
         ),
         .testTarget(
             name: "LibSignalClientTests",

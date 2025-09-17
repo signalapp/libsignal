@@ -52,6 +52,8 @@ pub enum RemoteConfigKey {
     ShadowAuthChatWithNoiseDirect,
     /// If enabled, tries to connect via Noise Direct after establishing an unauthenticated chat connection.
     ShadowUnauthChatWithNoiseDirect,
+    /// Determines whether a chat websocket connection attempts to negotiate permessage-deflate support.
+    EnableChatPermessageDeflate,
 }
 
 pub enum RemoteConfigValue {
@@ -68,6 +70,7 @@ impl RemoteConfigKey {
             Self::EnforceMinimumTls => "enforceMinimumTls",
             Self::ShadowAuthChatWithNoiseDirect => "shadowAuthChatWithNoise",
             Self::ShadowUnauthChatWithNoiseDirect => "shadowUnauthChatWithNoise",
+            Self::EnableChatPermessageDeflate => "chatPermessageDeflate",
         }
     }
 }

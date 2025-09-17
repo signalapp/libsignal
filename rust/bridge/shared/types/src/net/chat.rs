@@ -23,7 +23,8 @@ use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::ws::ListenerEvent;
 use libsignal_net::chat::{
     self, ChatConnection, ConnectError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo,
-    LanguageList, Request, Response as ChatResponse, SendError, UnauthenticatedChatHeaders,
+    EnablePermessageDeflate, LanguageList, Request, Response as ChatResponse, SendError,
+    UnauthenticatedChatHeaders,
 };
 use libsignal_net::connect_state::ConnectionResources;
 use libsignal_net::infra::route::{
@@ -408,10 +409,14 @@ async fn establish_chat_connection(
     log::info!("connecting {auth_type} chat");
 
     let mut chat_ws_config = env.chat_ws_config;
-    if let Some(timeout_millis) = remote_config
-        .lock()
-        .expect("unpoisoned")
-        .get(RemoteConfigKey::ChatRequestConnectionCheckTimeoutMilliseconds)
+    let (timeout_millis, enable_permessage_deflate) = {
+        let guard = remote_config.lock().expect("unpoisoned");
+        (
+            guard.get(RemoteConfigKey::ChatRequestConnectionCheckTimeoutMilliseconds),
+            guard.is_enabled(RemoteConfigKey::EnableChatPermessageDeflate),
+        )
+    };
+    if let Some(timeout_millis) = timeout_millis
         .as_option()
         .and_then(|v| match u64::from_str(v) {
             Ok(v) => Some(v),
@@ -427,11 +432,16 @@ async fn establish_chat_connection(
         chat_ws_config.post_request_interface_check_timeout = Duration::from_millis(timeout_millis);
     }
 
+    let enable_permessage_deflate = match enable_permessage_deflate {
+        true => EnablePermessageDeflate::Yes,
+        false => EnablePermessageDeflate::No,
+    };
     let connection = ChatConnection::start_connect_with(
         connection_resources,
         route_provider,
         user_agent,
         chat_ws_config,
+        enable_permessage_deflate,
         headers,
         auth_type,
     )
