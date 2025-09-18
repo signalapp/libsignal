@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "author": "Signal Messenger LLC",
   "license": "AGPL-3.0-only",
+  "type": "module",
   "dependencies": {},
   "scripts": {
     "test": "npm install && mocha --recursive test",
@@ -10,9 +11,9 @@
   },
   "devDependencies": {
     "benchmark": "^2.1.4",
-    "chai": "^4.2.0",
-    "chai-as-promised": "^7.1.1",
+    "chai": "^6.0.1",
+    "chai-as-promised": "^8.0.2",
     "microtime": "^3.0.0",
-    "mocha": "^9"
+    "mocha": "^11"
   }
 }

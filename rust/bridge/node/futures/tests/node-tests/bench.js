@@ -5,8 +5,10 @@
 
 /* eslint-env es2017 */
 
-const Benchmark = require('benchmark');
+import Benchmark from 'benchmark';
+import { createRequire } from 'node:module';
 
+const require = createRequire(import.meta.url)
 const Native = require(process.env.SIGNAL_NEON_FUTURES_TEST_LIB);
 
 const suite = new Benchmark.Suite();
