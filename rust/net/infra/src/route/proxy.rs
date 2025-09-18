@@ -90,7 +90,7 @@ pub enum DirectOrProxyRoute<D, P> {
     Proxy(P),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, strum::EnumDiscriminants)]
 pub enum DirectOrProxyMode {
     DirectOnly,
     ProxyOnly(ConnectionProxyConfig),

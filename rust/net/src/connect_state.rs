@@ -196,9 +196,10 @@ impl<ConnectorFactory> ConnectState<ConnectorFactory> {
     }
 }
 
+#[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
 pub struct RouteInfo {
-    unresolved: UnresolvedRouteDescription,
+    pub unresolved: UnresolvedRouteDescription,
 }
 
 impl LogSafeDisplay for RouteInfo {}

@@ -61,9 +61,9 @@ pub struct DescribedRouteConnector<C>(pub C);
 /// Loggable description for a [`UnresolvedWebsocketServiceRoute`].
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnresolvedRouteDescription {
-    front: Option<&'static str>,
-    proxy: Option<ConnectionProxyKind>,
-    target: (Host<Arc<str>>, NonZeroU16),
+    pub front: Option<&'static str>,
+    pub proxy: Option<ConnectionProxyKind>,
+    pub target: (Host<Arc<str>>, NonZeroU16),
 }
 
 impl<R: ResolveHostnames + DescribeForLog> ResolveHostnames for ResolveWithSavedDescription<R> {

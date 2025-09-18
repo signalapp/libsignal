@@ -27,8 +27,8 @@ use libsignal_net::chat::{
 };
 use libsignal_net::connect_state::ConnectionResources;
 use libsignal_net::infra::route::{
-    DirectOrProxyMode, DirectOrProxyProvider, RouteProvider, RouteProviderExt,
-    UnresolvedHttpsServiceRoute,
+    DirectOrProxyMode, DirectOrProxyModeDiscriminants, DirectOrProxyProvider, RouteProvider,
+    RouteProviderExt, TcpRoute, TlsRoute, UnresolvedHttpsServiceRoute,
 };
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls};
@@ -355,6 +355,7 @@ async fn establish_chat_connection(
         enable_domain_fronting,
         enforce_minimum_tls,
     )?;
+    let proxy_mode = DirectOrProxyModeDiscriminants::from(&route_provider.mode);
 
     log::info!("connecting {auth_type} chat");
 
@@ -396,7 +397,27 @@ async fn establish_chat_connection(
         auth_type,
     )
     .inspect(|r| match r {
-        Ok(_) => log::info!("successfully connected {auth_type} chat"),
+        Ok(connection) => {
+            match (
+                connection.connection_info().route_info.unresolved.proxy,
+                proxy_mode,
+            ) {
+                (None, DirectOrProxyModeDiscriminants::DirectOnly)
+                | (Some(_), DirectOrProxyModeDiscriminants::ProxyOnly)
+                | (Some(_), DirectOrProxyModeDiscriminants::ProxyThenDirect) => {
+                    log::info!("successfully connected {auth_type} chat")
+                }
+                (None, DirectOrProxyModeDiscriminants::ProxyThenDirect) => log::warn!(
+                    "connected {auth_type} chat using a direct connection rather than the specified proxy"
+                ),
+                (None, DirectOrProxyModeDiscriminants::ProxyOnly) => unreachable!(
+                    "made a direct connection despite using only proxy routes; this is a bug in libsignal"
+                ),
+                (Some(_), DirectOrProxyModeDiscriminants::DirectOnly) => unreachable!(
+                    "made a proxy connection despite not having proxy config; this is a bug in libsignal"
+                ),
+            }
+        }
         Err(e) => log::warn!("failed to connect {auth_type} chat: {e}"),
     })
     .await
@@ -406,7 +427,16 @@ fn make_route_provider(
     connection_manager: &ConnectionManager,
     enable_domain_fronting: EnableDomainFronting,
     enforce_minimum_tls: EnforceMinimumTls,
-) -> Result<impl RouteProvider<Route = UnresolvedHttpsServiceRoute>, ConnectError> {
+) -> Result<
+    DirectOrProxyProvider<
+        impl RouteProvider<
+            Route = UnresolvedHttpsServiceRoute<
+                TlsRoute<TcpRoute<libsignal_net::infra::route::UnresolvedHost>>,
+            >,
+        >,
+    >,
+    ConnectError,
+> {
     let ConnectionManager {
         env,
         transport_connector,
