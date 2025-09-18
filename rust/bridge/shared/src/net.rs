@@ -8,6 +8,7 @@ use std::num::NonZeroU16;
 use libsignal_bridge_macros::bridge_fn;
 pub use libsignal_bridge_types::net::{ConnectionManager, Environment, TokioAsyncContext};
 use libsignal_net::chat::ConnectionInfo;
+use libsignal_net::connect_state::infer_proxy_mode_for_config;
 use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net::infra::route::ConnectionProxyConfig;
 
@@ -106,7 +107,7 @@ fn ConnectionManager_set_proxy(
     connection_manager: &ConnectionManager,
     proxy: &ConnectionProxyConfig,
 ) {
-    connection_manager.set_proxy(proxy.clone())
+    connection_manager.set_proxy_mode(infer_proxy_mode_for_config(proxy.clone()))
 }
 
 #[bridge_fn]
@@ -116,7 +117,7 @@ fn ConnectionManager_set_invalid_proxy(connection_manager: &ConnectionManager) {
 
 #[bridge_fn]
 fn ConnectionManager_clear_proxy(connection_manager: &ConnectionManager) {
-    connection_manager.clear_proxy();
+    connection_manager.set_proxy_mode(libsignal_net::infra::route::DirectOrProxyMode::DirectOnly);
 }
 
 #[bridge_fn(jni = false, ffi = false)]

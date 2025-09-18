@@ -10,9 +10,12 @@ use std::process::ExitCode;
 use clap::{Parser, ValueEnum};
 use futures_util::{FutureExt, StreamExt};
 use libsignal_net::chat::ConnectError;
+use libsignal_net::connect_state::infer_proxy_mode_for_config;
 use libsignal_net_infra::EnableDomainFronting;
 use libsignal_net_infra::host::Host;
-use libsignal_net_infra::route::{ConnectionProxyConfig, SIGNAL_TLS_PROXY_SCHEME};
+use libsignal_net_infra::route::{
+    ConnectionProxyConfig, DirectOrProxyMode, SIGNAL_TLS_PROXY_SCHEME,
+};
 use strum::IntoEnumIterator as _;
 use url::Url;
 
@@ -175,7 +178,8 @@ async fn test_connection(
     dry_run: bool,
 ) -> Result<(), ConnectError> {
     use libsignal_net::chat::test_support::simple_chat_connection;
-    let chat_connection = simple_chat_connection(env, domain_fronting, proxy, |route| {
+    let proxy_mode = proxy.map_or(DirectOrProxyMode::DirectOnly, infer_proxy_mode_for_config);
+    let chat_connection = simple_chat_connection(env, domain_fronting, proxy_mode, |route| {
         match &route.inner.fragment.sni {
             Host::Domain(domain) => {
                 if !snis.contains(&domain[..]) {

@@ -428,7 +428,7 @@ pub mod test_support {
 
     use libsignal_net_infra::EnableDomainFronting;
     use libsignal_net_infra::dns::DnsResolver;
-    use libsignal_net_infra::route::{ConnectionProxyConfig, DirectOrProxyMode};
+    use libsignal_net_infra::route::DirectOrProxyMode;
     use libsignal_net_infra::utils::no_network_change_events;
 
     use super::*;
@@ -442,7 +442,7 @@ pub mod test_support {
     pub async fn simple_chat_connection(
         env: &Env<'static>,
         enable_domain_fronting: EnableDomainFronting,
-        proxy: Option<ConnectionProxyConfig>,
+        proxy_mode: DirectOrProxyMode,
         filter_routes: impl Fn(&UnresolvedHttpsServiceRoute) -> bool,
     ) -> Result<ChatConnection, ConnectError> {
         let dns_resolver = DnsResolver::new_with_static_fallback(
@@ -455,7 +455,7 @@ pub mod test_support {
                 .chat_domain_config
                 .connect
                 .route_provider(enable_domain_fronting),
-            mode: proxy.map_or(DirectOrProxyMode::DirectOnly, DirectOrProxyMode::ProxyOnly),
+            mode: proxy_mode,
         }
         .filter_routes(filter_routes);
 

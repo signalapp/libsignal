@@ -335,7 +335,7 @@ mod test_support {
     use libsignal_net::chat::ChatConnection;
     use libsignal_net::env;
     use libsignal_net::infra::EnableDomainFronting;
-    use libsignal_net::infra::route::DirectOrProxyRoute;
+    use libsignal_net::infra::route::DirectOrProxyMode;
     use prost::Message as _;
 
     use super::*;
@@ -346,8 +346,8 @@ mod test_support {
         let chat = simple_chat_connection(
             &env::STAGING,
             EnableDomainFronting::OneDomainPerProxy,
-            None,
-            |route| matches!(route.inner.inner, DirectOrProxyRoute::Direct(_)),
+            DirectOrProxyMode::DirectOnly,
+            |_| true,
         )
         .await
         .expect("can connect to chat");

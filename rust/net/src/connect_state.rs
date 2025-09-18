@@ -16,14 +16,15 @@ use itertools::Itertools as _;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::route::{
-    ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes, Connector,
-    ConnectorFactory, DelayBasedOnTransport, DescribeForLog, DescribedRouteConnector,
-    DirectOrProxy, HttpRouteFragment, InterfaceChangedOr, InterfaceMonitor, LoggingConnector,
-    ResettingConnectionOutcomes, ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute,
-    RouteProvider, RouteProviderContext, RouteProviderExt as _, RouteResolver,
-    StaticTcpTimeoutConnector, ThrottlingConnector, TransportRoute, UnresolvedRouteDescription,
-    UnresolvedTransportRoute, UnresolvedWebsocketServiceRoute, UsePreconnect, UsesTransport,
-    VariableTlsTimeoutConnector, WebSocketRouteFragment, WebSocketServiceRoute,
+    ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes,
+    ConnectionProxyConfig, Connector, ConnectorFactory, DelayBasedOnTransport, DescribeForLog,
+    DescribedRouteConnector, DirectOrProxy, DirectOrProxyMode, HttpRouteFragment,
+    InterfaceChangedOr, InterfaceMonitor, LoggingConnector, ResettingConnectionOutcomes,
+    ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute, RouteProvider,
+    RouteProviderContext, RouteProviderExt as _, RouteResolver, StaticTcpTimeoutConnector,
+    ThrottlingConnector, TransportRoute, UnresolvedRouteDescription, UnresolvedTransportRoute,
+    UnresolvedWebsocketServiceRoute, UsePreconnect, UsesTransport, VariableTlsTimeoutConnector,
+    WebSocketRouteFragment, WebSocketServiceRoute,
 };
 use libsignal_net_infra::tcp_ssl::{LONG_TCP_HANDSHAKE_THRESHOLD, LONG_TLS_HANDSHAKE_THRESHOLD};
 use libsignal_net_infra::timeouts::{
@@ -619,6 +620,17 @@ impl RouteProviderContext for RouteProviderContextImpl {
 /// Convenience alias for using `PreconnectingConnector`s with [`ConnectState`].
 pub type PreconnectingFactory<Inner = DefaultConnectorFactory> =
     libsignal_net_infra::route::PreconnectingFactory<TransportRoute, Inner>;
+
+pub fn infer_proxy_mode_for_config(config: ConnectionProxyConfig) -> DirectOrProxyMode {
+    if config.is_signal_transparent_proxy() {
+        // This was configured in the app, we should take it as a requirement.
+        DirectOrProxyMode::ProxyOnly(config)
+    } else {
+        // This was set at the system level or provided as an environment variable, it may not have
+        // been intended to apply to Signal.
+        DirectOrProxyMode::ProxyThenDirect(config)
+    }
+}
 
 #[cfg(test)]
 mod test {

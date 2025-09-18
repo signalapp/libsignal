@@ -256,6 +256,15 @@ impl ConnectionProxyConfig {
 
         Ok(proxy)
     }
+
+    pub fn is_signal_transparent_proxy(&self) -> bool {
+        match self {
+            Self::Tls(_) => true,
+            #[cfg(feature = "dev-util")]
+            Self::Tcp(_) => true,
+            Self::Socks(_) | Self::Http(_) => false,
+        }
+    }
 }
 
 impl<D> DirectOrProxyProvider<D> {

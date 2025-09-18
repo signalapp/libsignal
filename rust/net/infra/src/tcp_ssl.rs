@@ -14,7 +14,7 @@ use crate::certs::RootCertificates;
 use crate::dns::DnsResolver;
 use crate::errors::TransportConnectError;
 use crate::host::Host;
-use crate::route::{ConnectionProxyConfig, Connector, TcpRoute, TlsRouteFragment};
+use crate::route::{Connector, DirectOrProxyMode, TcpRoute, TlsRouteFragment};
 #[cfg(feature = "dev-util")]
 #[allow(unused_imports)]
 use crate::utils::development_only_enable_nss_standard_debug_interop;
@@ -33,14 +33,14 @@ pub type TcpStream = tokio::net::TcpStream;
 #[derive(Clone, Debug)]
 pub struct TcpSslConnector {
     dns_resolver: DnsResolver,
-    proxy: Result<Option<ConnectionProxyConfig>, InvalidProxyConfig>,
+    proxy_mode: Result<DirectOrProxyMode, InvalidProxyConfig>,
 }
 
 impl TcpSslConnector {
     pub fn new_direct(dns_resolver: DnsResolver) -> Self {
         Self {
             dns_resolver,
-            proxy: Ok(None),
+            proxy_mode: Ok(DirectOrProxyMode::DirectOnly),
         }
     }
 
@@ -48,38 +48,31 @@ impl TcpSslConnector {
         self.dns_resolver.set_ipv6_enabled(ipv6_enabled);
     }
 
-    pub fn set_proxy(&mut self, proxy: ConnectionProxyConfig) {
-        self.proxy = Ok(Some(proxy));
+    pub fn set_proxy_mode(&mut self, proxy_mode: DirectOrProxyMode) {
+        self.proxy_mode = Ok(proxy_mode);
     }
 
     pub fn set_invalid(&mut self) {
-        self.proxy = Err(InvalidProxyConfig)
+        self.proxy_mode = Err(InvalidProxyConfig)
     }
 
-    pub fn clear_proxy(&mut self) {
-        self.proxy = Ok(None);
-    }
-
-    pub fn proxy(&self) -> Result<Option<&ConnectionProxyConfig>, InvalidProxyConfig> {
-        self.proxy
-            .as_ref()
-            .map(Option::as_ref)
-            .map_err(InvalidProxyConfig::clone)
+    pub fn proxy(&self) -> Result<&DirectOrProxyMode, InvalidProxyConfig> {
+        self.proxy_mode.as_ref().map_err(InvalidProxyConfig::clone)
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct InvalidProxyConfig;
 
-impl TryFrom<&TcpSslConnector> for Option<ConnectionProxyConfig> {
+impl TryFrom<&TcpSslConnector> for DirectOrProxyMode {
     type Error = InvalidProxyConfig;
 
     fn try_from(value: &TcpSslConnector) -> Result<Self, Self::Error> {
         let TcpSslConnector {
             dns_resolver: _,
-            proxy,
+            proxy_mode,
         } = value;
-        proxy.clone()
+        proxy_mode.clone()
     }
 }
 

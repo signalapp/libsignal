@@ -173,9 +173,9 @@ impl ConnectionManager {
         }
     }
 
-    pub fn set_proxy(&self, proxy: ConnectionProxyConfig) {
+    pub fn set_proxy_mode(&self, proxy_mode: DirectOrProxyMode) {
         let mut guard = self.transport_connector.lock().expect("not poisoned");
-        guard.set_proxy(proxy);
+        guard.set_proxy_mode(proxy_mode);
     }
 
     pub fn set_invalid_proxy(&self) {
@@ -183,14 +183,11 @@ impl ConnectionManager {
         guard.set_invalid();
     }
 
-    pub fn clear_proxy(&self) {
-        let mut guard = self.transport_connector.lock().expect("not poisoned");
-        guard.clear_proxy();
-    }
-
     pub fn is_using_proxy(&self) -> Result<bool, InvalidProxyConfig> {
         let guard = self.transport_connector.lock().expect("not poisoned");
-        guard.proxy().map(|proxy| proxy.is_some())
+        guard
+            .proxy()
+            .map(|proxy| !matches!(proxy, DirectOrProxyMode::DirectOnly))
     }
 
     pub fn set_ipv6_enabled(&self, ipv6_enabled: bool) {
@@ -261,7 +258,7 @@ impl ConnectionManager {
         ),
         InvalidProxyConfig,
     > {
-        let proxy_config: Option<libsignal_net::infra::route::ConnectionProxyConfig> =
+        let proxy_mode: DirectOrProxyMode =
             (&*self.transport_connector.lock().expect("not poisoned")).try_into()?;
 
         let (enable_domain_fronting, enforce_minimum_tls) = {
@@ -284,8 +281,7 @@ impl ConnectionManager {
             },
             DirectOrProxyProvider {
                 inner: route_provider,
-                mode: proxy_config
-                    .map_or(DirectOrProxyMode::DirectOnly, DirectOrProxyMode::ProxyOnly),
+                mode: proxy_mode,
             },
         ))
     }

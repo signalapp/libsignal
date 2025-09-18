@@ -12,6 +12,7 @@ use libsignal_cli_utils::args::{parse_aci, parse_hex_bytes};
 use libsignal_core::Aci;
 use libsignal_net::chat::test_support::simple_chat_connection;
 use libsignal_net::infra::EnableDomainFronting;
+use libsignal_net::infra::route::DirectOrProxyMode;
 use libsignal_net_chat::api::profiles::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{Unauth, UserBasedAuthorization};
 use zkgroup::profiles::ProfileKey;
@@ -53,7 +54,13 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let chat_connection = Unauth(
-        simple_chat_connection(&env, EnableDomainFronting::AllDomains, None, |_route| true).await?,
+        simple_chat_connection(
+            &env,
+            EnableDomainFronting::AllDomains,
+            DirectOrProxyMode::DirectOnly,
+            |_route| true,
+        )
+        .await?,
     );
 
     let zkparams: zkgroup::ServerPublicParams =

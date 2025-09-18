@@ -27,8 +27,8 @@ use libsignal_net::chat::{
 };
 use libsignal_net::connect_state::ConnectionResources;
 use libsignal_net::infra::route::{
-    ConnectionProxyConfig, DirectOrProxyMode, DirectOrProxyProvider, RouteProvider,
-    RouteProviderExt, UnresolvedHttpsServiceRoute,
+    DirectOrProxyMode, DirectOrProxyProvider, RouteProvider, RouteProviderExt,
+    UnresolvedHttpsServiceRoute,
 };
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls};
@@ -413,17 +413,16 @@ fn make_route_provider(
         ..
     } = connection_manager;
 
-    let proxy_config: Option<ConnectionProxyConfig> =
-        (&*transport_connector.lock().expect("not poisoned"))
-            .try_into()
-            .map_err(|InvalidProxyConfig| ConnectError::InvalidConnectionConfiguration)?;
+    let proxy_mode: DirectOrProxyMode = (&*transport_connector.lock().expect("not poisoned"))
+        .try_into()
+        .map_err(|InvalidProxyConfig| ConnectError::InvalidConnectionConfiguration)?;
 
     let chat_connect = &env.chat_domain_config.connect;
 
     Ok(DirectOrProxyProvider {
         inner: chat_connect
             .route_provider_with_options(enable_domain_fronting, enforce_minimum_tls),
-        mode: proxy_config.map_or(DirectOrProxyMode::DirectOnly, DirectOrProxyMode::ProxyOnly),
+        mode: proxy_mode,
     })
 }
 
