@@ -962,10 +962,9 @@ mod test {
                 network_change_event: &network_change_event,
                 confirmation_header_name: None,
             },
-            DirectOrProxyProvider::maybe_proxied(
+            DirectOrProxyProvider::direct(
                 env.cdsi
                     .enclave_websocket_provider(EnableDomainFronting::No),
-                None,
             ),
             ws2_config,
             &env.cdsi.params,

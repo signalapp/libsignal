@@ -428,7 +428,7 @@ pub mod test_support {
 
     use libsignal_net_infra::EnableDomainFronting;
     use libsignal_net_infra::dns::DnsResolver;
-    use libsignal_net_infra::route::ConnectionProxyConfig;
+    use libsignal_net_infra::route::{ConnectionProxyConfig, DirectOrProxyMode};
     use libsignal_net_infra::utils::no_network_change_events;
 
     use super::*;
@@ -450,12 +450,13 @@ pub mod test_support {
             &no_network_change_events(),
         );
 
-        let route_provider = DirectOrProxyProvider::maybe_proxied(
-            env.chat_domain_config
+        let route_provider = DirectOrProxyProvider {
+            inner: env
+                .chat_domain_config
                 .connect
                 .route_provider(enable_domain_fronting),
-            proxy,
-        )
+            mode: proxy.map_or(DirectOrProxyMode::DirectOnly, DirectOrProxyMode::ProxyOnly),
+        }
         .filter_routes(filter_routes);
 
         let connect = ConnectState::new_with_transport_connector(

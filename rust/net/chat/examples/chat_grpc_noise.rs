@@ -260,10 +260,7 @@ async fn connect_over_websocket(
                     SIGNAL_ROOT_CERTIFICATES,
                     None,
                     sni.clone(),
-                    DirectOrProxyProvider::maybe_proxied(
-                        DirectTcpRouteProvider::new(host, port),
-                        None,
-                    ),
+                    DirectOrProxyProvider::direct(DirectTcpRouteProvider::new(host, port)),
                 ),
             ),
         ),

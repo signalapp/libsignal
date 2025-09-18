@@ -16,8 +16,8 @@ use libsignal_net::enclave::{EnclaveEndpoint, EnclaveKind};
 use libsignal_net::env::{Env, UserAgent};
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::route::{
-    ConnectionProxyConfig, DirectOrProxyProvider, RouteProvider, RouteProviderExt as _,
-    UnresolvedWebsocketServiceRoute,
+    ConnectionProxyConfig, DirectOrProxyMode, DirectOrProxyProvider, RouteProvider,
+    RouteProviderExt as _, UnresolvedWebsocketServiceRoute,
 };
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
 use libsignal_net::infra::{AsHttpHeader as _, EnableDomainFronting};
@@ -282,7 +282,11 @@ impl ConnectionManager {
                 network_change_event: self.network_change_event_tx.subscribe(),
                 confirmation_header_name,
             },
-            DirectOrProxyProvider::maybe_proxied(route_provider, proxy_config),
+            DirectOrProxyProvider {
+                inner: route_provider,
+                mode: proxy_config
+                    .map_or(DirectOrProxyMode::DirectOnly, DirectOrProxyMode::ProxyOnly),
+            },
         ))
     }
 

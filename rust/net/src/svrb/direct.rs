@@ -38,9 +38,8 @@ where
 
     SvrConnection::connect(
         connection_resources,
-        DirectOrProxyProvider::maybe_proxied(
+        DirectOrProxyProvider::direct(
             endpoint.enclave_websocket_provider(EnableDomainFronting::No),
-            None,
         ),
         endpoint.ws_config,
         &endpoint.params,

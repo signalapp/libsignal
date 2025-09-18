@@ -27,8 +27,8 @@ use libsignal_net::chat::{
 };
 use libsignal_net::connect_state::ConnectionResources;
 use libsignal_net::infra::route::{
-    ConnectionProxyConfig, DirectOrProxyProvider, RouteProvider, RouteProviderExt,
-    UnresolvedHttpsServiceRoute,
+    ConnectionProxyConfig, DirectOrProxyMode, DirectOrProxyProvider, RouteProvider,
+    RouteProviderExt, UnresolvedHttpsServiceRoute,
 };
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls};
@@ -420,10 +420,11 @@ fn make_route_provider(
 
     let chat_connect = &env.chat_domain_config.connect;
 
-    Ok(DirectOrProxyProvider::maybe_proxied(
-        chat_connect.route_provider_with_options(enable_domain_fronting, enforce_minimum_tls),
-        proxy_config,
-    ))
+    Ok(DirectOrProxyProvider {
+        inner: chat_connect
+            .route_provider_with_options(enable_domain_fronting, enforce_minimum_tls),
+        mode: proxy_config.map_or(DirectOrProxyMode::DirectOnly, DirectOrProxyMode::ProxyOnly),
+    })
 }
 
 pub struct HttpRequest {

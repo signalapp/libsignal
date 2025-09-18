@@ -777,13 +777,15 @@ mod test {
             },
         };
 
-        let provider = ConnectionProxyRouteProvider {
-            proxy: TlsProxy {
-                proxy_host: Host::Domain("tls-proxy".into()),
-                proxy_port: PROXY_PORT,
-                proxy_certs: PROXY_CERTS,
-            }
-            .into(),
+        let provider = DirectOrProxyProvider {
+            mode: DirectOrProxyMode::ProxyOnly(
+                TlsProxy {
+                    proxy_host: Host::Domain("tls-proxy".into()),
+                    proxy_port: PROXY_PORT,
+                    proxy_certs: PROXY_CERTS,
+                }
+                .into(),
+            ),
             inner: direct_provider,
         };
 
@@ -798,7 +800,7 @@ mod test {
                     alpn: None,
                     min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_1),
                 },
-                inner: ConnectionProxyRoute::Tls {
+                inner: DirectOrProxyRoute::Proxy(ConnectionProxyRoute::Tls {
                     proxy: TlsRoute {
                         inner: TcpRoute {
                             address: Host::Domain(UnresolvedHost("tls-proxy".into())),
@@ -811,7 +813,7 @@ mod test {
                             min_protocol_version: None,
                         },
                     },
-                },
+                }),
             }]
         );
     }
@@ -834,39 +836,55 @@ mod test {
             },
         };
 
-        let provider = ConnectionProxyRouteProvider {
-            proxy: SocksProxy {
-                proxy_host: Host::Domain("socks-proxy".into()),
-                proxy_port: PROXY_PORT,
-                protocol: SOCKS_PROTOCOL,
-                resolve_hostname_locally: false,
-            }
-            .into(),
+        let provider = DirectOrProxyProvider {
+            mode: DirectOrProxyMode::ProxyThenDirect(
+                SocksProxy {
+                    proxy_host: Host::Domain("socks-proxy".into()),
+                    proxy_port: PROXY_PORT,
+                    protocol: SOCKS_PROTOCOL,
+                    resolve_hostname_locally: false,
+                }
+                .into(),
+            ),
             inner: direct_provider,
         };
 
         let routes = provider.routes(&FakeContext::new()).collect_vec();
 
-        let expected_routes = vec![TlsRoute {
-            fragment: TlsRouteFragment {
-                root_certs: ROOT_CERTS.clone(),
-                sni: Host::Domain("direct-sni".into()),
-                alpn: None,
-                min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_1),
+        let expected_routes = vec![
+            TlsRoute {
+                fragment: TlsRouteFragment {
+                    root_certs: ROOT_CERTS.clone(),
+                    sni: Host::Domain("direct-sni".into()),
+                    alpn: None,
+                    min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_1),
+                },
+                inner: DirectOrProxyRoute::Proxy(ConnectionProxyRoute::Socks(SocksRoute {
+                    proxy: TcpRoute {
+                        address: Host::Domain(UnresolvedHost("socks-proxy".into())),
+                        port: PROXY_PORT,
+                    },
+                    target_addr: ProxyTarget::ResolvedRemotely {
+                        name: "direct-target".into(),
+                    },
+                    target_port: TARGET_PORT,
+                    protocol: SOCKS_PROTOCOL,
+                })),
             },
-            inner: ConnectionProxyRoute::Socks(SocksRoute {
-                proxy: TcpRoute {
-                    address: Host::Domain(UnresolvedHost("socks-proxy".into())),
-                    port: PROXY_PORT,
+            TlsRoute {
+                fragment: TlsRouteFragment {
+                    root_certs: ROOT_CERTS.clone(),
+                    sni: Host::Domain("direct-sni".into()),
+                    alpn: None,
+                    min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_1),
                 },
-                target_addr: ProxyTarget::ResolvedRemotely {
-                    name: "direct-target".into(),
-                },
-                target_port: TARGET_PORT,
-                protocol: SOCKS_PROTOCOL,
-            }),
-        }];
-        assert_eq!(routes, expected_routes);
+                inner: DirectOrProxyRoute::Direct(TcpRoute {
+                    address: UnresolvedHost("direct-target".into()),
+                    port: TARGET_PORT,
+                }),
+            },
+        ];
+        pretty_assertions::assert_eq!(expected_routes, routes);
     }
 
     #[test]
@@ -874,14 +892,13 @@ mod test {
         // Compilation-only test that makes sure we can wrap a fully-specified
         // websocket route provider with a connection proxy provider.
         fn asserts_route_type<P: RouteProvider<Route = T>, T>() {}
-        type MaybeProxyProvider<P> = DirectOrProxyProvider<P, ConnectionProxyRouteProvider<P>>;
 
         type WsProvider = WebSocketProvider<
             HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>>,
         >;
 
         asserts_route_type::<
-            MaybeProxyProvider<WsProvider>,
+            DirectOrProxyProvider<WsProvider>,
             WebSocketRoute<
                 HttpsTlsRoute<
                     TlsRoute<

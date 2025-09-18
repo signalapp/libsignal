@@ -212,11 +212,10 @@ impl FakeDeps {
 
         ChatConnection::start_connect_with_transport(
             connection_resources,
-            DirectOrProxyProvider::maybe_proxied(
+            DirectOrProxyProvider::direct(
                 chat_domain_config
                     .connect
                     .route_provider(EnableDomainFronting::OneDomainPerProxy),
-                None,
             ),
             &UserAgent::with_libsignal_version("test"),
             RECOMMENDED_CHAT_WS_CONFIG,
