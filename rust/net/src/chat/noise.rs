@@ -19,9 +19,6 @@ pub use encrypted_stream::{
     Authorization, ChatNoiseConnector, ConnectError, ConnectMeta, ServerPublicKey,
 };
 
-mod shadow;
-pub use shadow::NoiseDirectConnectShadow;
-
 pub type ChatNoiseFragment = (Authorization, ConnectMeta);
 
 #[derive(Clone, Debug, PartialEq)]

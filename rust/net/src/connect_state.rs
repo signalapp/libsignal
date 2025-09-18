@@ -16,15 +16,14 @@ use itertools::Itertools as _;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::route::{
-    ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes,
-    ConnectionProxyKind, Connector, ConnectorFactory, DelayBasedOnTransport, DescribeForLog,
-    DescribedRouteConnector, DirectOrProxy, HttpRouteFragment, InterfaceChangedOr,
-    InterfaceMonitor, LoggingConnector, ResettingConnectionOutcomes, ResolveHostnames,
-    ResolveWithSavedDescription, ResolvedRoute, RouteProvider, RouteProviderContext,
-    RouteProviderExt as _, RouteResolver, StaticTcpTimeoutConnector, ThrottlingConnector,
-    TransportRoute, UnresolvedRouteDescription, UnresolvedTransportRoute,
-    UnresolvedWebsocketServiceRoute, UsePreconnect, UsesTransport, VariableTlsTimeoutConnector,
-    WebSocketRouteFragment, WebSocketServiceRoute,
+    ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes, Connector,
+    ConnectorFactory, DelayBasedOnTransport, DescribeForLog, DescribedRouteConnector,
+    DirectOrProxy, HttpRouteFragment, InterfaceChangedOr, InterfaceMonitor, LoggingConnector,
+    ResettingConnectionOutcomes, ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute,
+    RouteProvider, RouteProviderContext, RouteProviderExt as _, RouteResolver,
+    StaticTcpTimeoutConnector, ThrottlingConnector, TransportRoute, UnresolvedRouteDescription,
+    UnresolvedTransportRoute, UnresolvedWebsocketServiceRoute, UsePreconnect, UsesTransport,
+    VariableTlsTimeoutConnector, WebSocketRouteFragment, WebSocketServiceRoute,
 };
 use libsignal_net_infra::tcp_ssl::{LONG_TCP_HANDSHAKE_THRESHOLD, LONG_TLS_HANDSHAKE_THRESHOLD};
 use libsignal_net_infra::timeouts::{
@@ -210,14 +209,6 @@ impl std::fmt::Display for RouteInfo {
 }
 
 impl RouteInfo {
-    pub fn proxy(&self) -> Option<ConnectionProxyKind> {
-        self.unresolved.proxy()
-    }
-
-    pub fn domain_front(&self) -> Option<&'static str> {
-        self.unresolved.domain_front()
-    }
-
     pub fn fake() -> Self {
         Self {
             unresolved: UnresolvedRouteDescription::fake(),

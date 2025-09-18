@@ -14,7 +14,6 @@ use futures_util::{SinkExt as _, StreamExt as _};
 use snow::TransportState;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
-use crate::Connection;
 use crate::noise::{FrameType, Transport};
 
 /// Stream abstraction that encrypts/decrypts with [Noise].
@@ -63,12 +62,6 @@ impl<S> NoiseStream<S> {
             read: Read::default(),
             write: Write::default(),
         }
-    }
-}
-
-impl<S: Connection> Connection for NoiseStream<S> {
-    fn transport_info(&self) -> crate::TransportInfo {
-        self.inner.transport_info()
     }
 }
 

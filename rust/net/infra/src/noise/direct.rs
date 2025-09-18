@@ -19,7 +19,6 @@ use prost::Message as _;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use zerocopy::{FromBytes, IntoBytes};
 
-use crate::Connection;
 use crate::noise::{FrameType, HandshakeAuthKind, Transport};
 use crate::proto::noise_direct::CloseReason;
 use crate::proto::noise_direct::close_reason::Code;
@@ -44,12 +43,6 @@ impl<S> DirectStream<S> {
 }
 
 static_assertions::assert_impl_all!(DirectStream<tokio::io::DuplexStream>: Transport);
-
-impl<S: Connection> Connection for DirectStream<S> {
-    fn transport_info(&self) -> crate::TransportInfo {
-        self.inner.transport_info()
-    }
-}
 
 /// State for the [`AsyncRead`] side of a [`DirectStream`].
 #[derive(Debug, Default)]

@@ -48,10 +48,6 @@ pub enum RemoteConfigKey {
     // TODO: Remove after enforcement has been enabled in production long enough without reported
     // issues.
     EnforceMinimumTls,
-    /// If enabled, tries to connect via Noise Direct after establishing an authenticated chat connection.
-    ShadowAuthChatWithNoiseDirect,
-    /// If enabled, tries to connect via Noise Direct after establishing an unauthenticated chat connection.
-    ShadowUnauthChatWithNoiseDirect,
     /// Determines whether a chat websocket connection attempts to negotiate permessage-deflate support.
     EnableChatPermessageDeflate,
 }
@@ -68,8 +64,6 @@ impl RemoteConfigKey {
                 "chatRequestConnectionCheckTimeoutMillis"
             }
             Self::EnforceMinimumTls => "enforceMinimumTls",
-            Self::ShadowAuthChatWithNoiseDirect => "shadowAuthChatWithNoise",
-            Self::ShadowUnauthChatWithNoiseDirect => "shadowUnauthChatWithNoise",
             Self::EnableChatPermessageDeflate => "chatPermessageDeflate",
         }
     }

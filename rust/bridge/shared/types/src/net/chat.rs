@@ -18,7 +18,6 @@ use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::fake::FakeChatRemote;
-use libsignal_net::chat::noise::NoiseDirectConnectShadow;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::ws::ListenerEvent;
 use libsignal_net::chat::{
@@ -32,7 +31,7 @@ use libsignal_net::infra::route::{
     UnresolvedHttpsServiceRoute,
 };
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
-use libsignal_net::infra::{Connection as _, EnableDomainFronting, EnforceMinimumTls};
+use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls};
 use libsignal_net_chat::api::Unauth;
 use libsignal_protocol::Timestamp;
 use static_assertions::assert_impl_all;
@@ -144,7 +143,6 @@ impl AuthenticatedChatConnection {
             ),
         )
         .await?;
-
         Ok(Self {
             inner: MaybeChatConnection::WaitingForListener(
                 tokio::runtime::Handle::current(),
@@ -181,39 +179,6 @@ impl AuthenticatedChatConnection {
             .await?;
         Ok(())
     }
-}
-
-fn maybe_shadow<'a>(
-    connection_manager: &'a ConnectionManager,
-    remote_config_key: RemoteConfigKey,
-    languages: &LanguageList,
-) -> Option<NoiseDirectConnectShadow<'a>> {
-    let ConnectionManager {
-        user_agent,
-        env,
-        remote_config,
-        connect,
-        dns_resolver,
-        ..
-    } = connection_manager;
-
-    let noise_config = env.chat_noise_config.as_ref()?.connect;
-
-    if !remote_config
-        .lock()
-        .expect("not poisoned")
-        .is_enabled(remote_config_key)
-    {
-        return None;
-    }
-
-    Some(NoiseDirectConnectShadow {
-        route_resolver: connect.lock().expect("not poisoned").route_resolver.clone(),
-        dns_resolver: dns_resolver.clone(),
-        noise_config,
-        language_list: languages.clone(),
-        user_agent,
-    })
 }
 
 impl AsRef<tokio::sync::RwLock<MaybeChatConnection>> for AuthenticatedChatConnection {
@@ -357,21 +322,6 @@ async fn establish_chat_connection(
     connection_manager: &ConnectionManager,
     headers: Option<chat::ChatHeaders>,
 ) -> Result<chat::PendingChatConnection, ConnectError> {
-    let noise_shadow = headers.as_ref().and_then(|headers| {
-        let (languages, remote_config) = match headers {
-            chat::ChatHeaders::Auth(auth) => (
-                &auth.languages,
-                RemoteConfigKey::ShadowAuthChatWithNoiseDirect,
-            ),
-            chat::ChatHeaders::Unauth(unauth) => (
-                &unauth.languages,
-                RemoteConfigKey::ShadowUnauthChatWithNoiseDirect,
-            ),
-        };
-
-        maybe_shadow(connection_manager, remote_config, languages)
-    });
-
     let ConnectionManager {
         env,
         dns_resolver,
@@ -436,7 +386,7 @@ async fn establish_chat_connection(
         true => EnablePermessageDeflate::Yes,
         false => EnablePermessageDeflate::No,
     };
-    let connection = ChatConnection::start_connect_with(
+    ChatConnection::start_connect_with(
         connection_resources,
         route_provider,
         user_agent,
@@ -449,30 +399,7 @@ async fn establish_chat_connection(
         Ok(_) => log::info!("successfully connected {auth_type} chat"),
         Err(e) => log::warn!("failed to connect {auth_type} chat: {e}"),
     })
-    .await?;
-
-    let real_connection_info = connection.connection_info().route_info;
-    let real_connection_was_direct =
-        real_connection_info.proxy().is_none() && real_connection_info.domain_front().is_none();
-
-    if let Some(noise_shadow) = real_connection_was_direct.then_some(noise_shadow).flatten() {
-        log::info!("shadowing {auth_type} chat with Noise Direct");
-        let connect = noise_shadow.connect();
-        tokio::spawn(async move {
-            match connect.await {
-                Ok(stream) => {
-                    let ip_type = stream.transport_info().ip_version();
-                    log::info!(
-                        "{auth_type} shadow: Noise Direct connection succeeded over IP{ip_type}"
-                    );
-                    drop(stream);
-                }
-                Err(e) => log::info!("{auth_type} shadow: Noise Direct connection failed: {e}"),
-            }
-        });
-    }
-
-    Ok(connection)
+    .await
 }
 
 fn make_route_provider(

@@ -14,7 +14,6 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use uuid::Uuid;
 
 use crate::chat::noise::{ChatNoiseFragment, HandshakeAuth};
-use crate::infra::Connection;
 use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
 use crate::infra::noise::{
     EPHEMERAL_KEY_LEN, NoiseConnector, NoiseStream, STATIC_KEY_LEN, SendError, Transport,
@@ -135,12 +134,6 @@ where
             return Err(ConnectError::UnexpectedFastOpenResponse);
         }
         Ok(EncryptedStream { stream })
-    }
-}
-
-impl<S: Connection> Connection for EncryptedStream<S> {
-    fn transport_info(&self) -> libsignal_net_infra::TransportInfo {
-        self.stream.transport_info()
     }
 }
 

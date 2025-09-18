@@ -82,24 +82,6 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
     },
 };
 
-const DOMAIN_CONFIG_CHAT_NOISE_STAGING: NoiseDomainConfig = NoiseDomainConfig {
-    ip_v4: &[
-        ip_addr!(v4, "166.117.73.74"),
-        ip_addr!(v4, "166.117.238.163"),
-    ],
-    ip_v6: &[
-        ip_addr!(v6, "2600:9000:a61f:527c:52e7:dca0:a539:345e"),
-        ip_addr!(v6, "2600:9000:a507:ab6d:bd21:581c:edad:2f5f"),
-    ],
-    connect: NoiseConnectionConfig {
-        hostname: "noise-direct.chat.staging.signal.org",
-        port: DEFAULT_HTTPS_PORT,
-        server_public_key: &hex!(
-            "143f97ca37cfa4e7fb427520715514c683e22e8c519a188b3f5133a8fcd25619"
-        ),
-    },
-};
-
 const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
         hostname: "cdsi.signal.org",
@@ -344,15 +326,6 @@ impl DomainConfig {
     }
 }
 
-impl NoiseDomainConfig {
-    pub fn static_fallback(&self) -> (&'static str, LookupResult) {
-        (
-            self.connect.hostname,
-            LookupResult::new(self.ip_v4.into(), self.ip_v6.into()),
-        )
-    }
-}
-
 impl ConnectionConfig {
     pub fn direct_connection_params(&self) -> ConnectionParams {
         let result = {
@@ -477,7 +450,6 @@ impl ConnectionConfig {
     }
 }
 
-#[derive(Clone)]
 pub struct UserAgent(HeaderValue);
 
 impl UserAgent {
@@ -618,29 +590,6 @@ pub struct Env<'a> {
     pub chat_domain_config: DomainConfig,
     pub chat_ws_config: crate::chat::ws::Config,
     pub keytrans_config: KeyTransConfig,
-    pub chat_noise_config: Option<NoiseDomainConfig>,
-}
-
-/// Noise analog of [`DomainConfig`].
-// TODO combine with other version when using Noise connections for real.
-pub struct NoiseDomainConfig {
-    /// The portions of the config used during connection attempts.
-    pub connect: NoiseConnectionConfig,
-    /// Static IPv4 addresses to try if domain name resolution fails.
-    pub ip_v4: &'static [Ipv4Addr],
-    /// Static IPv6 addresses to try if domain name resolution fails.
-    pub ip_v6: &'static [Ipv6Addr],
-}
-/// Noise analog of [`ConnectionConfig`].
-// TODO combine with other version when using Noise connections for real.
-#[derive(Copy, Clone)]
-pub struct NoiseConnectionConfig {
-    /// The domain name of the resource.
-    pub hostname: &'static str,
-    /// The port for the resource.
-    pub port: NonZeroU16,
-    /// The server's public key.
-    pub server_public_key: &'static crate::chat::noise::ServerPublicKey,
 }
 
 impl<'a> Env<'a> {
@@ -651,7 +600,6 @@ impl<'a> Env<'a> {
             svr2,
             chat_domain_config,
             svr_b,
-            chat_noise_config,
             chat_ws_config: _,
             keytrans_config: _,
         } = self;
@@ -667,15 +615,13 @@ impl<'a> Env<'a> {
                 chat_domain_config.static_fallback(),
             ]
             .into_iter()
-            .chain(svrb_static_fallbacks)
-            .chain(chat_noise_config.as_ref().map(|n| n.static_fallback())),
+            .chain(svrb_static_fallbacks),
         )
     }
 }
 
 pub const STAGING: Env<'static> = Env {
     chat_domain_config: DOMAIN_CONFIG_CHAT_STAGING,
-    chat_noise_config: Some(DOMAIN_CONFIG_CHAT_NOISE_STAGING),
     chat_ws_config: RECOMMENDED_CHAT_WS_CONFIG,
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI_STAGING,
@@ -700,7 +646,6 @@ pub const STAGING: Env<'static> = Env {
 
 pub const PROD: Env<'static> = Env {
     chat_domain_config: DOMAIN_CONFIG_CHAT,
-    chat_noise_config: None,
     chat_ws_config: RECOMMENDED_CHAT_WS_CONFIG,
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI,
