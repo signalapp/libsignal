@@ -432,7 +432,7 @@ export class Net {
    *
    * @param remoteConfig A map containing preprocessed libsignal configuration keys and their associated values.
    */
-  setRemoteConfig(remoteConfig: Map<string, string>): void {
+  setRemoteConfig(remoteConfig: ReadonlyMap<string, string>): void {
     Native.ConnectionManager_set_remote_config(
       this._connectionManager,
       new BridgedStringMap(remoteConfig)

@@ -8,7 +8,7 @@ import * as Native from '../Native';
 export class BridgedStringMap {
   readonly _nativeHandle: Native.BridgedStringMap;
 
-  constructor(input: Map<string, string>) {
+  constructor(input: ReadonlyMap<string, string>) {
     this._nativeHandle = Native.BridgedStringMap_new(input.size);
     for (const [key, value] of input) {
       Native.BridgedStringMap_insert(this, key, value);
