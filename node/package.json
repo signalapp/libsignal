@@ -19,16 +19,16 @@
     "prebuilds/*/*.node"
   ],
   "scripts": {
-    "install": "echo Use \\`npm run build\\` to build the native library if needed",
     "build": "python3 build_node_bridge.py",
     "build-with-debug-level-logs": "python3 build_node_bridge.py --debug-level-logs",
-    "tsc": "tsc -b",
     "clean": "rimraf dist build prebuilds",
-    "test": "mocha --recursive dist/test --require source-map-support/register",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "p() { prettier ${@:- --write} '**/*.{css,js,json,md,scss,ts,tsx}' ../rust/bridge/node/bin/Native.d.ts.in; }; p",
     "format-check": "p() { prettier ${@:- --check} '**/*.{css,js,json,md,scss,ts,tsx}' ../rust/bridge/node/bin/Native.d.ts.in; }; p",
-    "prepack": "cp ../acknowledgments/acknowledgments-desktop.md dist/acknowledgments.md"
+    "install": "echo Use \\`npm run build\\` to build the native library if needed",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "prepack": "cp ../acknowledgments/acknowledgments-desktop.md dist/acknowledgments.md",
+    "test": "mocha --recursive dist/test --require source-map-support/register",
+    "tsc": "tsc -b"
   },
   "dependencies": {
     "node-gyp-build": "^4.8.0",
@@ -61,6 +61,7 @@
     "eslint-plugin-more": "^1.0.0",
     "mocha": "^9",
     "prettier": "^2.7.1",
+    "prettier-plugin-packagejson": "^2.5.19",
     "rimraf": "^6.0.1",
     "sinon": "^18.0.0",
     "sinon-chai": "^3.7.0",
