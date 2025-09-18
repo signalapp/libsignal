@@ -1,5 +1,2 @@
-v0.81.1
+v0.81.2
 
-- Enable negotiating permessage-deflate support for chat websocket connections, if configured.
-
-- Net: remove Noise connection shadowing for staging Chat websocket connections.
