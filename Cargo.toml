@@ -120,11 +120,11 @@ data-encoding-macro = "0.1.18"
 derive-where = "1.2.7"
 derive_more = "2.0.0"
 dir-test = "0.4.1"
-displaydoc = "0.2.4"
+displaydoc = "0.2.5"
 ed25519-dalek = "2.1.0"
 either = "1.13.0"
 env_logger = "0.11.7"
-flate2 = { version = "1.0.13", default-features = false }
+flate2 = { version = "1.1.1", default-features = false }
 foreign-types = "0.5"
 futures = "0.3"
 futures-util = "0.3"
