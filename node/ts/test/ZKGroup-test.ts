@@ -402,7 +402,7 @@ describe('ZKGroup', () => {
     try {
       serverPublicParams.verifySignature(alteredMessage, signature);
       assert.fail('signature validation should have failed!');
-    } catch (error) {
+    } catch (_error) {
       // good
     }
   });

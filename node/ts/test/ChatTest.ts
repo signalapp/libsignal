@@ -164,7 +164,7 @@ describe('chat connection to mock server', () => {
 
       await chat.disconnect();
       await onDisconnected;
-      expect(onDisconnected.resolvedValue).to.be.null;
+      expect(onDisconnected.resolvedValue).to.be.a('null');
     });
   });
 

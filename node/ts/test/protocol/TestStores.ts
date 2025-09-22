@@ -37,7 +37,7 @@ export class InMemorySessionStore extends SignalClient.SessionStore {
       const idx = `${address.name()}::${address.deviceId()}`;
       const serialized = this.state.get(idx);
       if (!serialized) {
-        throw `no session for ${idx}`;
+        throw new Error(`no session for ${idx}`);
       }
       return SignalClient.SessionRecord.deserialize(serialized);
     });

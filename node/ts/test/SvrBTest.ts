@@ -66,6 +66,7 @@ describe('SecureValueRecoveryBackup', () => {
     it('returns a promise', () => {
       const result = svrB.restore(testBackupKey, new Uint8Array());
       assert.instanceOf(result, Promise);
+      // eslint-disable-next-line promise/prefer-await-to-then
       result.catch(() => {});
     });
 
@@ -75,6 +76,7 @@ describe('SecureValueRecoveryBackup', () => {
         abortSignal: abortController.signal,
       });
       assert.instanceOf(result, Promise);
+      // eslint-disable-next-line promise/prefer-await-to-then
       result.catch(() => {});
     });
   });

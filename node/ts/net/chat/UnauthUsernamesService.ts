@@ -11,6 +11,7 @@ import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
 import type * as usernames from '../../usernames.js';
 
 declare module '../Chat' {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface UnauthenticatedChatConnection extends UnauthUsernamesService {}
 }
 

@@ -122,12 +122,14 @@ describe('KeyTransparency Integration', function (this: Mocha.Suite) {
     await kt.search(testRequest, store, {});
 
     const accountDataHistory = store.storage.get(testAci) ?? null;
-    expect(accountDataHistory).to.not.be.null;
+    if (accountDataHistory === null) {
+      expect.fail('accountDataHistory is null');
+    }
 
-    expect(accountDataHistory!.length).to.equal(1);
+    expect(accountDataHistory.length).to.equal(1);
 
     await kt.monitor(testRequest, store, {});
-    expect(accountDataHistory!.length).to.equal(2);
+    expect(accountDataHistory.length).to.equal(2);
   });
 });
 

@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-/* eslint-disable @typescript-eslint/require-await */
-
 import * as SignalClient from '../../index.js';
 import * as util from '../util.js';
 

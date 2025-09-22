@@ -1,6 +1,0 @@
-build/**
-dist/**
-.eslintrc.js
-Native.js
-zkgroup.js
-zkgroup.d.ts

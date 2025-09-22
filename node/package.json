@@ -26,7 +26,7 @@
     "format": "p() { prettier ${@:- --write} '**/*.{css,js,json,md,scss,ts,tsx}' ../rust/bridge/node/bin/Native.d.ts.in; }; p",
     "format-check": "p() { prettier ${@:- --check} '**/*.{css,js,json,md,scss,ts,tsx}' ../rust/bridge/node/bin/Native.d.ts.in; }; p",
     "install": "echo Use \\`npm run build\\` to build the native library if needed",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint": "eslint .",
     "prepack": "cp ../acknowledgments/acknowledgments-desktop.md dist/acknowledgments.md",
     "test": "mocha --recursive dist/test --require source-map-support/register",
     "tsc": "tsc -b"
@@ -37,6 +37,7 @@
     "uuid": "^11"
   },
   "devDependencies": {
+    "@eslint/js": "^9.35.0",
     "@indutny/bencher": "^1.2.0",
     "@signalapp/mock-server": "^11.1.0",
     "@types/bindings": "^1.3.0",
@@ -46,12 +47,11 @@
     "@types/node": "~20.11.0",
     "@types/sinon": "^17.0.3",
     "@types/sinon-chai": "^4.0.0",
-    "@typescript-eslint/eslint-plugin": "^6.18.1",
-    "@typescript-eslint/parser": "^6.18.1",
+    "@typescript-eslint/parser": "^8.44.0",
     "chai": "^6.0.1",
     "chai-as-promised": "^8.0.2",
     "chance": "^1.1.11",
-    "eslint": "^8.30.0",
+    "eslint": "^9.35.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-import-resolver-typescript": "^2.0.0",
     "eslint-plugin-chai-expect": "^3.1.0",
@@ -59,8 +59,8 @@
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-jsdoc": "^48.2.0",
     "eslint-plugin-mocha": "^10.1.0",
-    "eslint-plugin-more": "^1.0.0",
     "eslint-plugin-node-import": "1.0.5",
+    "eslint-plugin-promise": "^7.2.1",
     "mocha": "^11",
     "prettier": "^2.7.1",
     "prettier-plugin-packagejson": "^2.5.19",
@@ -68,6 +68,7 @@
     "sinon": "^21.0.0",
     "sinon-chai": "^4.0.1",
     "source-map-support": "^0.5.19",
-    "typescript": "5.3.3"
+    "typescript": "5.3.3",
+    "typescript-eslint": "^8.44.0"
   }
 }
