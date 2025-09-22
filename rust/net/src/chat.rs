@@ -323,7 +323,7 @@ impl ChatConnection {
         } = connection.into_inner();
 
         if stream.get_config().extensions.permessage_deflate.is_some() {
-            log::info!("[{log_tag}] established connection is using permessage-deflate")
+            log::info!("[{log_tag}] had permessage-deflate negotiation enabled")
         }
 
         Ok(PendingChatConnection {
