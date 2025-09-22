@@ -30,8 +30,8 @@ public class CompletableFuture<T> implements Future<T> {
   //   is invalidated after the future is completed.
   private final List<ThenApplyCompleter<T>> INVALIDATED_LIST = Collections.emptyList();
 
-  private Optional<TokioAsyncContext> runtime = Optional.empty();
-  private Optional<Long> cancellationId = Optional.empty();
+  private volatile Optional<TokioAsyncContext> runtime = Optional.empty();
+  private volatile Optional<Long> cancellationId = Optional.empty();
 
   @CalledFromNative
   public CompletableFuture() {
