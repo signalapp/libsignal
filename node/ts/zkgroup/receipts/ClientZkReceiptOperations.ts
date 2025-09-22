@@ -3,15 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { randomBytes } from 'crypto';
-import { RANDOM_LENGTH } from '../internal/Constants';
-import * as Native from '../../../Native';
-import ServerPublicParams from '../ServerPublicParams';
-import ReceiptCredential from './ReceiptCredential';
-import ReceiptCredentialPresentation from './ReceiptCredentialPresentation';
-import ReceiptCredentialRequestContext from './ReceiptCredentialRequestContext';
-import ReceiptCredentialResponse from './ReceiptCredentialResponse';
-import ReceiptSerial from './ReceiptSerial';
+import { randomBytes } from 'node:crypto';
+import { RANDOM_LENGTH } from '../internal/Constants.js';
+import Native from '../../../Native.js';
+import ServerPublicParams from '../ServerPublicParams.js';
+import ReceiptCredential from './ReceiptCredential.js';
+import ReceiptCredentialPresentation from './ReceiptCredentialPresentation.js';
+import ReceiptCredentialRequestContext from './ReceiptCredentialRequestContext.js';
+import ReceiptCredentialResponse from './ReceiptCredentialResponse.js';
+import ReceiptSerial from './ReceiptSerial.js';
 
 export default class ClientZkReceiptOperations {
   serverPublicParams: ServerPublicParams;

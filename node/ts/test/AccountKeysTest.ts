@@ -5,10 +5,10 @@
 
 import { assert } from 'chai';
 import * as uuid from 'uuid';
-import * as AccountKeys from '../AccountKeys';
-import * as util from './util';
-import { Aci } from '../Address';
-import { assertArrayNotEquals } from './util';
+import * as AccountKeys from '../AccountKeys.js';
+import * as util from './util.js';
+import { Aci } from '../Address.js';
+import { assertArrayNotEquals } from './util.js';
 
 util.initLogger();
 

@@ -3,9 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import * as Native from '../Native';
-import * as stream from 'stream';
-import { IncrementalMacVerificationFailed, LibSignalErrorBase } from './Errors';
+import Native from '../Native.js';
+import * as stream from 'node:stream';
+import {
+  IncrementalMacVerificationFailed,
+  LibSignalErrorBase,
+} from './Errors.js';
 
 type CallbackType = (error?: Error | null) => void;
 

@@ -11,6 +11,7 @@ module.exports = {
 
   settings: {
     'import/core-modules': ['electron'],
+    "import/resolver": 'typescript'
   },
 
   plugins: [
@@ -20,6 +21,7 @@ module.exports = {
     'jsdoc',
     'mocha',
     'more',
+    'node-import',
     '@typescript-eslint',
   ],
 
@@ -96,6 +98,9 @@ module.exports = {
 
     // We prefer named exports
     'import/prefer-default-export': 'off',
+
+    // We prefer importing node modules with the prefix.
+    "node-import/prefer-node-protocol": 'error',
 
     'prefer-template': 'error',
 

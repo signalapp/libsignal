@@ -4,21 +4,21 @@
 //
 
 import { assert } from 'chai';
-import * as MessageBackup from '../MessageBackup';
-import * as util from './util';
-import { Aci } from '../Address';
-import { Uint8ArrayInputStream, ErrorInputStream } from './ioutil';
+import * as MessageBackup from '../MessageBackup.js';
+import * as util from './util.js';
+import { Aci } from '../Address.js';
+import { Uint8ArrayInputStream, ErrorInputStream } from './ioutil.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { hkdf, LogLevel } from '..';
+import { hkdf, LogLevel } from '../index.js';
 import {
   AccountEntropyPool,
   BackupForwardSecrecyToken,
   BackupKey,
-} from '../AccountKeys';
+} from '../AccountKeys.js';
 import { Readable } from 'node:stream';
-import { InputStream } from '../io';
-import { assertArrayNotEquals } from './util';
+import { InputStream } from '../io.js';
+import { assertArrayNotEquals } from './util.js';
 
 util.initLogger(LogLevel.Trace);
 
@@ -75,7 +75,10 @@ describe('MessageBackup', () => {
   describe('validate', () => {
     it('successfully validates a minimal backup', async () => {
       const input = fs.readFileSync(
-        path.join(__dirname, '../../ts/test/new_account.binproto.encrypted')
+        path.join(
+          import.meta.dirname,
+          '../../ts/test/new_account.binproto.encrypted'
+        )
       );
 
       const outcome = await MessageBackup.validate(
@@ -182,7 +185,7 @@ describe('MessageBackup', () => {
 });
 
 const exampleBackup = fs.readFileSync(
-  path.join(__dirname, '../../ts/test/canonical-backup.binproto')
+  path.join(import.meta.dirname, '../../ts/test/canonical-backup.binproto')
 );
 
 describe('ComparableBackup', () => {
@@ -195,7 +198,10 @@ describe('ComparableBackup', () => {
       );
 
       const expectedOutput = fs.readFileSync(
-        path.join(__dirname, '../../ts/test/canonical-backup.expected.json')
+        path.join(
+          import.meta.dirname,
+          '../../ts/test/canonical-backup.expected.json'
+        )
       );
       const output = comparable.comparableString();
       assert.equal(output, new String(expectedOutput));

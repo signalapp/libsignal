@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import ByteArray from '../internal/ByteArray';
-import * as Native from '../../../Native';
+import ByteArray from '../internal/ByteArray.js';
+import Native from '../../../Native.js';
 
-import CallLinkPublicParams from './CallLinkPublicParams';
-import GenericServerSecretParams from '../GenericServerSecretParams';
-import UuidCiphertext from '../groups/UuidCiphertext';
+import CallLinkPublicParams from './CallLinkPublicParams.js';
+import GenericServerSecretParams from '../GenericServerSecretParams.js';
+import UuidCiphertext from '../groups/UuidCiphertext.js';
 
 export default class CallLinkAuthCredentialPresentation extends ByteArray {
   private readonly __type?: never;

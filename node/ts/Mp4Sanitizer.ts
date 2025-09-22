@@ -31,13 +31,13 @@
  * @module Mp4Sanitizer
  */
 
-import * as Native from '../Native';
+import Native from '../Native.js';
 import {
   IoError,
   InvalidMediaInputError,
   UnsupportedMediaInputError,
-} from './Errors';
-import { InputStream } from './io';
+} from './Errors.js';
+import { InputStream } from './io.js';
 
 export class SanitizedMetadata {
   readonly _nativeHandle: Native.SanitizedMetadata;

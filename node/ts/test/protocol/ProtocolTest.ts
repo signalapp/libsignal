@@ -5,12 +5,12 @@
 
 /* eslint-disable @typescript-eslint/require-await */
 
-import * as SignalClient from '../../index';
-import * as util from '../util';
+import * as SignalClient from '../../index.js';
+import * as util from '../util.js';
 
 import { assert, use } from 'chai';
-import * as chaiAsPromised from 'chai-as-promised';
-import * as Chance from 'chance';
+import chaiAsPromised from 'chai-as-promised';
+import Chance from 'chance';
 
 import TestStores, {
   InMemoryIdentityKeyStore,
@@ -19,7 +19,7 @@ import TestStores, {
   InMemorySenderKeyStore,
   InMemorySessionStore,
   InMemorySignedPreKeyStore,
-} from './TestStores';
+} from './TestStores.js';
 
 use(chaiAsPromised);
 util.initLogger();

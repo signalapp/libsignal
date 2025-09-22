@@ -4,23 +4,27 @@
 //
 
 import type { ReadonlyDeep } from 'type-fest';
-import * as Native from '../Native';
-import { cdsiLookup, CDSRequestOptionsType, CDSResponseType } from './net/CDSI';
+import Native from '../Native.js';
+import {
+  cdsiLookup,
+  CDSRequestOptionsType,
+  CDSResponseType,
+} from './net/CDSI.js';
 import {
   ChatConnection,
   ConnectionEventsListener,
   UnauthenticatedChatConnection,
   AuthenticatedChatConnection,
   ChatServiceListener,
-} from './net/Chat';
-import { RegistrationService } from './net/Registration';
-import { SvrB } from './net/SvrB';
-import { BridgedStringMap, newNativeHandle } from './internal';
-export * from './net/CDSI';
-export * from './net/Chat';
-export * from './net/chat/UnauthUsernamesService';
-export * from './net/Registration';
-export * from './net/SvrB';
+} from './net/Chat.js';
+import { RegistrationService } from './net/Registration.js';
+import { SvrB } from './net/SvrB.js';
+import { BridgedStringMap, newNativeHandle } from './internal.js';
+export * from './net/CDSI.js';
+export * from './net/Chat.js';
+export * from './net/chat/UnauthUsernamesService.js';
+export * from './net/Registration.js';
+export * from './net/SvrB.js';
 
 // This must match the libsignal-bridge Rust enum of the same name.
 export enum Environment {

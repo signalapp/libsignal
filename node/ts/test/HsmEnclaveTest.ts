@@ -4,9 +4,9 @@
 //
 
 import { assert, use } from 'chai';
-import * as chaiAsPromised from 'chai-as-promised';
-import * as SignalClient from '../index';
-import * as util from './util';
+import chaiAsPromised from 'chai-as-promised';
+import * as SignalClient from '../index.js';
+import * as util from './util.js';
 
 use(chaiAsPromised);
 util.initLogger();

@@ -9,10 +9,10 @@
  * @module MessageBackup
  */
 
-import * as Native from '../Native';
-import { BackupForwardSecrecyToken, BackupKey } from './AccountKeys';
-import { Aci } from './Address';
-import { InputStream } from './io';
+import Native from '../Native.js';
+import { BackupForwardSecrecyToken, BackupKey } from './AccountKeys.js';
+import { Aci } from './Address.js';
+import { InputStream } from './io.js';
 
 export type InputStreamFactory = () => InputStream;
 

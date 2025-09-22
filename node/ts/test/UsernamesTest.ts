@@ -4,10 +4,10 @@
 //
 
 import { assert, expect } from 'chai';
-import { ErrorCode, LibSignalError, LibSignalErrorBase } from '../Errors';
-import * as usernames from '../usernames';
-import * as util from './util';
-import { decryptUsernameLink } from '../usernames';
+import { ErrorCode, LibSignalError, LibSignalErrorBase } from '../Errors.js';
+import * as usernames from '../usernames.js';
+import * as util from './util.js';
+import { decryptUsernameLink } from '../usernames.js';
 
 util.initLogger();
 

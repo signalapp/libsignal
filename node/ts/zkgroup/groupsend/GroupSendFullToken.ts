@@ -3,14 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import ByteArray from '../internal/ByteArray';
-import * as Native from '../../../Native';
-import { ServiceId } from '../../Address';
-import GroupSendDerivedKeyPair from './GroupSendDerivedKeyPair';
+import ByteArray from '../internal/ByteArray.js';
+import Native from '../../../Native.js';
+import { ServiceId } from '../../Address.js';
+import GroupSendDerivedKeyPair from './GroupSendDerivedKeyPair.js';
 
 // For docs
-import type GroupSendEndorsement from './GroupSendEndorsement';
-import type { VerificationFailedError } from '../../Errors';
+import type GroupSendEndorsement from './GroupSendEndorsement.js';
+import type { VerificationFailedError } from '../../Errors.js';
 
 /**
  * A token representing a particular {@link GroupSendEndorsement}, along with the endorsement's

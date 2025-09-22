@@ -4,15 +4,15 @@
 //
 
 import { assert, config, expect, use } from 'chai';
-import * as chaiAsPromised from 'chai-as-promised';
-import * as Native from '../../../Native';
-import * as util from '../util';
-import { TokioAsyncContext, UnauthUsernamesService } from '../../net';
-import { connectUnauth } from './ServiceTestUtils';
-import { InternalRequest } from '../NetTest';
-import { newNativeHandle } from '../../internal';
-import { ErrorCode, LibSignalErrorBase } from '../../Errors';
-import { Aci } from '../../Address';
+import chaiAsPromised from 'chai-as-promised';
+import Native from '../../../Native.js';
+import * as util from '../util.js';
+import { TokioAsyncContext, UnauthUsernamesService } from '../../net.js';
+import { connectUnauth } from './ServiceTestUtils.js';
+import { InternalRequest } from '../NetTest.js';
+import { newNativeHandle } from '../../internal.js';
+import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
+import { Aci } from '../../Address.js';
 
 use(chaiAsPromised);
 

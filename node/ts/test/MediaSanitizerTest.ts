@@ -4,12 +4,12 @@
 //
 
 import { assert } from 'chai';
-import * as Mp4Sanitizer from '../Mp4Sanitizer';
-import * as WebpSanitizer from '../WebpSanitizer';
-import { SanitizedMetadata } from '../Mp4Sanitizer';
-import * as util from './util';
-import { ErrorCode, LibSignalErrorBase } from '../Errors';
-import { ErrorInputStream, Uint8ArrayInputStream } from './ioutil';
+import * as Mp4Sanitizer from '../Mp4Sanitizer.js';
+import * as WebpSanitizer from '../WebpSanitizer.js';
+import { SanitizedMetadata } from '../Mp4Sanitizer.js';
+import * as util from './util.js';
+import { ErrorCode, LibSignalErrorBase } from '../Errors.js';
+import { ErrorInputStream, Uint8ArrayInputStream } from './ioutil.js';
 
 util.initLogger();
 

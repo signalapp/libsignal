@@ -4,7 +4,7 @@
 //
 
 import { assert } from 'chai';
-import * as SignalClient from '../index';
+import * as SignalClient from '../index.js';
 
 export function initLogger(logLevel?: SignalClient.LogLevel): void {
   const timestampFormatter = new Intl.DateTimeFormat('en-US', {

@@ -4,7 +4,7 @@
 //
 
 import { assert, expect } from 'chai';
-import { BackupForwardSecrecyToken } from '../AccountKeys';
+import { BackupForwardSecrecyToken } from '../AccountKeys.js';
 
 describe('BackupForwardSecrecyToken', () => {
   it('can create a valid token and retrieve same bytes', () => {

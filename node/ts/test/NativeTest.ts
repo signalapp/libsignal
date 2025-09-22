@@ -4,8 +4,8 @@
 //
 
 import { assert, use } from 'chai';
-import * as chaiAsPromised from 'chai-as-promised';
-import * as Native from '../../Native';
+import chaiAsPromised from 'chai-as-promised';
+import Native from '../../Native.js';
 
 use(chaiAsPromised);
 

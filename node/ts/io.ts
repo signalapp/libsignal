@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import * as Native from '../Native';
-import type { IoError } from './Errors';
+import Native from '../Native.js';
+import type { IoError } from './Errors.js';
 
 /**
  * An abstract class representing an input stream of bytes.

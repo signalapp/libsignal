@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'node:crypto';
 
-import ByteArray from '../internal/ByteArray';
-import * as Native from '../../../Native';
-import { RANDOM_LENGTH } from '../internal/Constants';
-import GroupMasterKey from './GroupMasterKey';
-import GroupPublicParams from './GroupPublicParams';
+import ByteArray from '../internal/ByteArray.js';
+import Native from '../../../Native.js';
+import { RANDOM_LENGTH } from '../internal/Constants.js';
+import GroupMasterKey from './GroupMasterKey.js';
+import GroupPublicParams from './GroupPublicParams.js';
 
 export default class GroupSecretParams extends ByteArray {
   private readonly __type?: never;

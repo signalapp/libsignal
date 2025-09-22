@@ -3,16 +3,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { randomBytes } from 'crypto';
-import { RANDOM_LENGTH } from '../internal/Constants';
-import * as Native from '../../../Native';
+import { randomBytes } from 'node:crypto';
+import { RANDOM_LENGTH } from '../internal/Constants.js';
+import Native from '../../../Native.js';
 
-import UuidCiphertext from './UuidCiphertext';
+import UuidCiphertext from './UuidCiphertext.js';
 
-import ProfileKeyCiphertext from './ProfileKeyCiphertext';
-import ProfileKey from '../profiles/ProfileKey';
-import GroupSecretParams from './GroupSecretParams';
-import { Aci, ServiceId } from '../../Address';
+import ProfileKeyCiphertext from './ProfileKeyCiphertext.js';
+import ProfileKey from '../profiles/ProfileKey.js';
+import GroupSecretParams from './GroupSecretParams.js';
+import { Aci, ServiceId } from '../../Address.js';
 
 export default class ClientZkGroupCipher {
   groupSecretParams: GroupSecretParams;

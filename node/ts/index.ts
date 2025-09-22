@@ -5,24 +5,24 @@
 
 import * as uuid from 'uuid';
 
-import * as Errors from './Errors';
-export * from './Errors';
+import * as Errors from './Errors.js';
+export * from './Errors.js';
 
-import { Aci, ProtocolAddress, ServiceId } from './Address';
-export * from './Address';
-import { PrivateKey, PublicKey } from './EcKeys';
-export * from './EcKeys';
+import { Aci, ProtocolAddress, ServiceId } from './Address.js';
+export * from './Address.js';
+import { PrivateKey, PublicKey } from './EcKeys.js';
+export * from './EcKeys.js';
 
-export * as usernames from './usernames';
+export * as usernames from './usernames.js';
 
-export * as io from './io';
+export * as io from './io.js';
 
-export * as Net from './net';
+export * as Net from './net.js';
 
-export * as Mp4Sanitizer from './Mp4Sanitizer';
-export * as WebpSanitizer from './WebpSanitizer';
+export * as Mp4Sanitizer from './Mp4Sanitizer.js';
+export * as WebpSanitizer from './WebpSanitizer.js';
 
-import * as Native from '../Native';
+import Native from '../Native.js';
 
 Native.registerErrors(Errors);
 

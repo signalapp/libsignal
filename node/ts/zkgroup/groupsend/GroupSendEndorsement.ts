@@ -3,19 +3,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import ByteArray, { UNCHECKED_AND_UNCLONED } from '../internal/ByteArray';
-import * as Native from '../../../Native';
+import ByteArray, { UNCHECKED_AND_UNCLONED } from '../internal/ByteArray.js';
+import Native from '../../../Native.js';
 
-import GroupSecretParams from '../groups/GroupSecretParams';
-import GroupSendFullToken from './GroupSendFullToken';
-import GroupSendToken from './GroupSendToken';
+import GroupSecretParams from '../groups/GroupSecretParams.js';
+import GroupSendFullToken from './GroupSendFullToken.js';
+import GroupSendToken from './GroupSendToken.js';
 
 // For docs
 import type {
   default as GroupSendEndorsementsResponse,
   ReceivedEndorsements,
-} from './GroupSendEndorsementsResponse';
-import CallLinkSecretParams from '../calllinks/CallLinkSecretParams';
+} from './GroupSendEndorsementsResponse.js';
+import CallLinkSecretParams from '../calllinks/CallLinkSecretParams.js';
 
 /**
  * An endorsement for a user or set of users in a group.

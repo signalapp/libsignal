@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { randomBytes } from 'crypto';
-import * as Native from '../../../Native';
-import { RANDOM_LENGTH } from '../internal/Constants';
-import ServerSecretParams from '../ServerSecretParams';
-import ReceiptCredentialRequest from './ReceiptCredentialRequest';
-import ReceiptCredentialResponse from './ReceiptCredentialResponse';
-import ReceiptCredentialPresentation from './ReceiptCredentialPresentation';
+import { randomBytes } from 'node:crypto';
+import Native from '../../../Native.js';
+import { RANDOM_LENGTH } from '../internal/Constants.js';
+import ServerSecretParams from '../ServerSecretParams.js';
+import ReceiptCredentialRequest from './ReceiptCredentialRequest.js';
+import ReceiptCredentialResponse from './ReceiptCredentialResponse.js';
+import ReceiptCredentialPresentation from './ReceiptCredentialPresentation.js';
 
 export default class ServerZkReceiptOperations {
   serverSecretParams: ServerSecretParams;

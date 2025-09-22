@@ -4,9 +4,9 @@
 //
 
 import { assert, use } from 'chai';
-import * as chaiAsPromised from 'chai-as-promised';
-import * as SignalClient from '../index';
-import * as util from './util';
+import chaiAsPromised from 'chai-as-promised';
+import * as SignalClient from '../index.js';
+import * as util from './util.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -21,7 +21,7 @@ describe('Cds2Client', () => {
   const currentDate = new Date(1655857680000);
 
   const attestationMessage = fs.readFileSync(
-    path.join(__dirname, '../../ts/test/cds2handshakestart.data')
+    path.join(import.meta.dirname, '../../ts/test/cds2handshakestart.data')
   );
 
   it('create client', () => {

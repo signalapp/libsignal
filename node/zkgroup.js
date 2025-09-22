@@ -4,4 +4,4 @@
 //
 
 // Make it possible to import from '@signalapp/libsignal-client/zkgroup'.
-module.exports = require('./dist/zkgroup');
+export * from './dist/zkgroup/index.js';

@@ -12,12 +12,12 @@
  * @module WebpSanitizer
  */
 
-import * as Native from '../Native';
+import Native from '../Native.js';
 import type {
   IoError,
   InvalidMediaInputError,
   UnsupportedMediaInputError,
-} from './Errors';
+} from './Errors.js';
 
 /**
  * Sanitize a WebP input.

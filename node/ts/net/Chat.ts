@@ -3,12 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import * as Native from '../../Native';
-import { LibSignalError } from '../Errors';
-import { ServerMessageAck, Wrapper } from '../../Native';
-import { TokioAsyncContext, Environment } from '../net';
-import * as KT from './KeyTransparency';
-import { newNativeHandle } from '../internal';
+import Native, { ServerMessageAck, Wrapper } from '../../Native.js';
+import { LibSignalError } from '../Errors.js';
+import { TokioAsyncContext, Environment } from '../net.js';
+import * as KT from './KeyTransparency.js';
+import { newNativeHandle } from '../internal.js';
 
 const DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS = 5000;
 

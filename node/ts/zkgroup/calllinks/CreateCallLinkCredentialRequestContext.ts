@@ -3,17 +3,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'node:crypto';
 
-import ByteArray from '../internal/ByteArray';
-import { RANDOM_LENGTH } from '../internal/Constants';
-import * as Native from '../../../Native';
+import ByteArray from '../internal/ByteArray.js';
+import { RANDOM_LENGTH } from '../internal/Constants.js';
+import Native from '../../../Native.js';
 
-import CreateCallLinkCredentialRequest from './CreateCallLinkCredentialRequest';
-import CreateCallLinkCredentialResponse from './CreateCallLinkCredentialResponse';
-import CreateCallLinkCredential from './CreateCallLinkCredential';
-import GenericServerPublicParams from '../GenericServerPublicParams';
-import { Aci } from '../../Address';
+import CreateCallLinkCredentialRequest from './CreateCallLinkCredentialRequest.js';
+import CreateCallLinkCredentialResponse from './CreateCallLinkCredentialResponse.js';
+import CreateCallLinkCredential from './CreateCallLinkCredential.js';
+import GenericServerPublicParams from '../GenericServerPublicParams.js';
+import { Aci } from '../../Address.js';
 
 export default class CreateCallLinkCredentialRequestContext extends ByteArray {
   private readonly __type?: never;

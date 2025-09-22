@@ -4,7 +4,7 @@
 //
 
 import { randomUUID } from 'node:crypto';
-import { Aci, ServiceId } from '../../Address';
+import { Aci, ServiceId } from '../../Address.js';
 import {
   ClientZkGroupCipher,
   GroupMasterKey,
@@ -12,7 +12,7 @@ import {
   GroupSendDerivedKeyPair,
   GroupSendEndorsementsResponse,
   ServerSecretParams,
-} from '../../zkgroup';
+} from '../../zkgroup/index.js';
 
 const SECONDS_PER_DAY = 60 * 60 * 24;
 

@@ -5,9 +5,9 @@
 
 /* eslint @typescript-eslint/no-shadow: ["error", { "allow": ["hash"] }] */
 
-import { randomBytes } from 'crypto';
-import { RANDOM_LENGTH } from './zkgroup/internal/Constants';
-import * as Native from '../Native';
+import { randomBytes } from 'node:crypto';
+import { RANDOM_LENGTH } from './zkgroup/internal/Constants.js';
+import Native from '../Native.js';
 
 export type UsernameLink = {
   entropy: Uint8Array;

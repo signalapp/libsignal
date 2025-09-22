@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { randomBytes } from 'crypto';
-import * as Native from '../../Native';
+import { randomBytes } from 'node:crypto';
+import Native from '../../Native.js';
 
-import { RANDOM_LENGTH } from './internal/Constants';
-import ServerPublicParams from './ServerPublicParams';
-import NotarySignature from './NotarySignature';
+import { RANDOM_LENGTH } from './internal/Constants.js';
+import ServerPublicParams from './ServerPublicParams.js';
+import NotarySignature from './NotarySignature.js';
 
 export default class ServerSecretParams {
   static generate(): ServerSecretParams {

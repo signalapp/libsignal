@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import * as Native from '../../../Native';
-import { Aci } from '../../Address';
-import { RequestOptions, UnauthenticatedChatConnection } from '../Chat';
+import Native from '../../../Native.js';
+import { Aci } from '../../Address.js';
+import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
 
 // For documentation
-import type * as usernames from '../../usernames';
+import type * as usernames from '../../usernames.js';
 
 declare module '../Chat' {
   interface UnauthenticatedChatConnection extends UnauthUsernamesService {}

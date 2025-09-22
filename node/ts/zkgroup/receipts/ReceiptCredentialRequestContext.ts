@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import ByteArray from '../internal/ByteArray';
-import * as Native from '../../../Native';
-import ReceiptCredentialRequest from './ReceiptCredentialRequest';
+import ByteArray from '../internal/ByteArray.js';
+import Native from '../../../Native.js';
+import ReceiptCredentialRequest from './ReceiptCredentialRequest.js';
 
 export default class ReceiptCredentialRequestContext extends ByteArray {
   private readonly __type?: never;

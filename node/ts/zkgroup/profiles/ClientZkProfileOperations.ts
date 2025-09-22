@@ -3,21 +3,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'node:crypto';
 
-import { RANDOM_LENGTH } from '../internal/Constants';
-import * as Native from '../../../Native';
+import { RANDOM_LENGTH } from '../internal/Constants.js';
+import Native from '../../../Native.js';
 
-import ServerPublicParams from '../ServerPublicParams';
-import GroupSecretParams from '../groups/GroupSecretParams';
+import ServerPublicParams from '../ServerPublicParams.js';
+import GroupSecretParams from '../groups/GroupSecretParams.js';
 
-import ExpiringProfileKeyCredential from './ExpiringProfileKeyCredential';
-import ExpiringProfileKeyCredentialResponse from './ExpiringProfileKeyCredentialResponse';
-import ProfileKey from './ProfileKey';
-import ProfileKeyCredentialPresentation from './ProfileKeyCredentialPresentation';
-import ProfileKeyCredentialRequestContext from './ProfileKeyCredentialRequestContext';
+import ExpiringProfileKeyCredential from './ExpiringProfileKeyCredential.js';
+import ExpiringProfileKeyCredentialResponse from './ExpiringProfileKeyCredentialResponse.js';
+import ProfileKey from './ProfileKey.js';
+import ProfileKeyCredentialPresentation from './ProfileKeyCredentialPresentation.js';
+import ProfileKeyCredentialRequestContext from './ProfileKeyCredentialRequestContext.js';
 
-import { Aci } from '../../Address';
+import { Aci } from '../../Address.js';
 
 export default class ClientZkProfileOperations {
   serverPublicParams: ServerPublicParams;

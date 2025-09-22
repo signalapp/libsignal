@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import * as Native from '../Native';
+import Native from '../Native.js';
 
 export class PublicKey {
   readonly _nativeHandle: Native.PublicKey;

@@ -3,4 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-module.exports = require('node-gyp-build')(__dirname);
+import load from 'node-gyp-build';
+
+const Native = load(import.meta.dirname);
+export default Native;

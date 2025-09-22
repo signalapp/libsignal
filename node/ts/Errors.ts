@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { ProtocolAddress } from './Address';
-import * as Native from '../Native';
+import { ProtocolAddress } from './Address.js';
+import Native from '../Native.js';
 
 export enum ErrorCode {
   Generic,

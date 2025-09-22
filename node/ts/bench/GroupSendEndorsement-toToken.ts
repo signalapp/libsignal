@@ -12,7 +12,7 @@ import {
   groupSecretParams,
   response,
   serverPublicParams,
-} from './support/GroupSendEndorsementHelpers';
+} from './support/GroupSendEndorsementHelpers.js';
 
 export const name = 'GroupSendEndorsement-toTokens';
 

@@ -3,19 +3,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import * as Native from '../../Native';
-import { Aci } from '../Address';
-import { PublicKey } from '../EcKeys';
-import { Environment, type TokioAsyncContext } from '../net';
+import Native from '../../Native.js';
+import { Aci } from '../Address.js';
+import { PublicKey } from '../EcKeys.js';
+import { Environment, type TokioAsyncContext } from '../net.js';
 
 // For JSDoc references
-import { type UnauthenticatedChatConnection } from './Chat';
+import { type UnauthenticatedChatConnection } from './Chat.js';
 import {
   type KeyTransparencyError,
   type KeyTransparencyVerificationFailed,
   type ChatServiceInactive,
   type IoError,
-} from '../Errors';
+} from '../Errors.js';
 
 /**
  * Interface of a local persistent key transparency data store.

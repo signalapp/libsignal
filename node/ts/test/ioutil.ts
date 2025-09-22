@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { InputStream } from '../io';
+import { InputStream } from '../io.js';
 
 export class ErrorInputStream extends InputStream {
   public static Error = class extends Error {};

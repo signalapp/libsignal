@@ -4,22 +4,22 @@
 //
 
 import { assert, config, expect, use } from 'chai';
-import * as chaiAsPromised from 'chai-as-promised';
-import * as sinonChai from 'sinon-chai';
-import * as util from './util';
-import * as Native from '../../Native';
-import { ErrorCode, LibSignalErrorBase } from '../Errors';
+import chaiAsPromised from 'chai-as-promised';
+import sinonChai from 'sinon-chai';
+import * as util from './util.js';
+import Native from '../../Native.js';
+import { ErrorCode, LibSignalErrorBase } from '../Errors.js';
 import {
   RegisterAccountResponse,
   RegistrationService,
   RegistrationSessionState,
   Svr2CredentialResult,
   TokioAsyncContext,
-} from '../net';
-import { InternalRequest } from './NetTest';
-import { IdentityKeyPair } from '../EcKeys';
-import { Aci, Pni } from '../Address';
-import { newNativeHandle } from '../internal';
+} from '../net.js';
+import { InternalRequest } from './NetTest.js';
+import { IdentityKeyPair } from '../EcKeys.js';
+import { Aci, Pni } from '../Address.js';
+import { newNativeHandle } from '../internal.js';
 
 use(chaiAsPromised);
 use(sinonChai);

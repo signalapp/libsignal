@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { randomBytes } from 'crypto';
-import * as Native from '../../Native';
-import ByteArray from './internal/ByteArray';
+import { randomBytes } from 'node:crypto';
+import Native from '../../Native.js';
+import ByteArray from './internal/ByteArray.js';
 
-import { RANDOM_LENGTH } from './internal/Constants';
-import GenericServerPublicParams from './GenericServerPublicParams';
+import { RANDOM_LENGTH } from './internal/Constants.js';
+import GenericServerPublicParams from './GenericServerPublicParams.js';
 
 export default class GenericServerSecretParams extends ByteArray {
   private readonly __type?: never;

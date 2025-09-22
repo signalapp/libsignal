@@ -4,13 +4,13 @@
 //
 
 import { assert, config, expect, use } from 'chai';
-import * as chaiAsPromised from 'chai-as-promised';
-import * as sinon from 'sinon';
-import * as sinonChai from 'sinon-chai';
-import * as util from './util';
-import { Aci, Pni } from '../Address';
-import * as Native from '../../Native';
-import { ErrorCode, LibSignalErrorBase } from '../Errors';
+import chaiAsPromised from 'chai-as-promised';
+import sinon from 'sinon';
+import sinonChai from 'sinon-chai';
+import * as util from './util.js';
+import { Aci, Pni } from '../Address.js';
+import Native, { type ChatResponse } from '../../Native.js';
+import { ErrorCode, LibSignalErrorBase } from '../Errors.js';
 import {
   AuthenticatedChatConnection,
   buildHttpRequest,
@@ -22,14 +22,12 @@ import {
   SIGNAL_TLS_PROXY_SCHEME,
   TokioAsyncContext,
   UnauthenticatedChatConnection,
-} from '../net';
-import {
-  ChatResponse,
-  TESTING_ConnectionManager_isUsingProxy,
-} from '../../Native';
-import { CompletablePromise } from './util';
-import { fail } from 'assert';
-import { newNativeHandle } from '../internal';
+} from '../net.js';
+import { CompletablePromise } from './util.js';
+import { fail } from 'node:assert';
+import { newNativeHandle } from '../internal.js';
+
+const { TESTING_ConnectionManager_isUsingProxy } = Native;
 
 use(chaiAsPromised);
 use(sinonChai);

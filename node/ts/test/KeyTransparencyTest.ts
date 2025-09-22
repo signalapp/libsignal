@@ -3,21 +3,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import * as Native from '../../Native';
+import Native from '../../Native.js';
 import { config, expect, use } from 'chai';
-import * as chaiAsPromised from 'chai-as-promised';
-import * as util from './util';
-import { UnauthenticatedChatConnection, Environment, Net } from '../net';
-import { Aci } from '../Address';
-import { PublicKey } from '../EcKeys';
+import chaiAsPromised from 'chai-as-promised';
+import * as util from './util.js';
+import { UnauthenticatedChatConnection, Environment, Net } from '../net.js';
+import { Aci } from '../Address.js';
+import { PublicKey } from '../EcKeys.js';
 import {
   ErrorCode,
   KeyTransparencyError,
   KeyTransparencyVerificationFailed,
   LibSignalErrorBase,
-} from '../Errors';
-import * as KT from '../net/KeyTransparency';
-import { MonitorMode } from '../net/KeyTransparency';
+} from '../Errors.js';
+import * as KT from '../net/KeyTransparency.js';
+import { MonitorMode } from '../net/KeyTransparency.js';
 
 use(chaiAsPromised);
 

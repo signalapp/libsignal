@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import * as Native from '../../../Native';
-import { TokioAsyncContext, UnauthenticatedChatConnection } from '../../net';
+import Native from '../../../Native.js';
+import { TokioAsyncContext, UnauthenticatedChatConnection } from '../../net.js';
 
 /**
  * A requirement that `Sub` not contain any properties that aren't in `Super`, or properties with

@@ -12,10 +12,10 @@
  */
 
 import * as crypto from 'node:crypto';
-import * as Native from '../Native';
-import ByteArray from './zkgroup/internal/ByteArray';
-import { Aci } from './Address';
-import { PrivateKey } from './EcKeys';
+import Native from '../Native.js';
+import ByteArray from './zkgroup/internal/ByteArray.js';
+import { Aci } from './Address.js';
+import { PrivateKey } from './EcKeys.js';
 
 /**
  * The randomly-generated user-memorized entropy used to derive the backup key,

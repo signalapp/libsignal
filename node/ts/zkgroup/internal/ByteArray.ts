@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { LibSignalErrorBase } from '../../Errors';
-import * as Native from '../../../Native';
+import { LibSignalErrorBase } from '../../Errors.js';
+import Native from '../../../Native.js';
 
 export const UNCHECKED_AND_UNCLONED: unique symbol = Symbol();
 

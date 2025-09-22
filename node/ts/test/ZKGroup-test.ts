@@ -59,14 +59,14 @@ import {
   ReceiptCredentialResponse,
   BackupLevel,
   BackupCredentialType,
-} from '../zkgroup/';
-import { Aci, Pni } from '../Address';
-import { LibSignalErrorBase, Uuid } from '..';
+} from '../zkgroup/index.js';
+import { Aci, Pni } from '../Address.js';
+import { LibSignalErrorBase, Uuid } from '../index.js';
 import {
   assertArrayEquals,
   assertArrayNotEquals,
   assertByteArray,
-} from './util';
+} from './util.js';
 
 const SECONDS_PER_DAY = 86400;
 

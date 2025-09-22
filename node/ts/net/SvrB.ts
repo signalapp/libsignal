@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import * as Native from '../../Native';
-import { TokioAsyncContext, Environment, Net } from '../net';
-import { BackupKey, BackupForwardSecrecyToken } from '../AccountKeys';
-import { MessageBackupKey } from '../MessageBackup';
+import Native from '../../Native.js';
+import { TokioAsyncContext, Environment, Net } from '../net.js';
+import { BackupKey, BackupForwardSecrecyToken } from '../AccountKeys.js';
+import { MessageBackupKey } from '../MessageBackup.js';
 import type {
   IoError,
   RateLimitedError,
@@ -14,7 +14,7 @@ import type {
   SvrDataMissingError,
   SvrInvalidDataError,
   SvrRestoreFailedError,
-} from '../Errors';
+} from '../Errors.js';
 
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
 
