@@ -44,6 +44,12 @@ public class CompletableFuture<T> implements Future<T> {
     return result;
   }
 
+  public static <U> CompletableFuture<U> failedFuture(Throwable cause) {
+    final var future = new CompletableFuture<U>();
+    future.completeExceptionally(cause);
+    return future;
+  }
+
   @CalledFromNative
   void setCancellationId(long cancellationId) {
     this.cancellationId = Optional.of(cancellationId);
