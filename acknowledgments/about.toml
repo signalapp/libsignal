@@ -7,7 +7,7 @@ accepted = [
     "BSD-3-Clause",
     "ISC",
     "MPL-2.0",
-    "AGPL-3.0",
+    "AGPL-3.0-only",
     "OpenSSL",
     "Unicode-3.0",
     "Unicode-DFS-2016",
@@ -79,15 +79,6 @@ end = "SOFTWARE."
 checksum = "7d5e1fb4bbd5e89a687f94c3d3826db50e26bd6f4ade136a025dc2080c5bdc85"
 
 
-# const-str is embedded in a larger repo
-[const-str.clarify]
-license = "MIT"
-
-[[const-str.clarify.git]]
-path = "LICENSE"
-checksum = "565aacda8f5ea53f937f867ed49a0ac7e6828b60b4568803185cd0a13297d4e4"
-
-
 # Newer versions of convert_case have a LICENSE file, we'll use that one
 [convert_case.clarify]
 license = "MIT"
@@ -135,15 +126,6 @@ override-git-commit = "b0faeec90f3c2fa9fd0cb34796308602cabf5f04"
 [[dyn-clonable-impl.clarify.git]]
 path = "LICENSE"
 checksum = "d2c376e2d8ee747383aaf0d5b52997bd6aa04ab73720b6797edeb64fe90c05a3"
-
-
-# half includes both its licenses as separate files
-[half.clarify]
-license = "MIT" # OR Apache-2.0, but we're using MIT
-
-[[half.clarify.files]]
-path = "LICENSES/MIT.txt"
-checksum = "b85dcd3e453d05982552c52b5fc9e0bdd6d23c6f8e844b984a88af32570b0cc0"
 
 
 # The hax crates are embedded in a larger repo.
@@ -234,15 +216,6 @@ path = "LICENSE"
 checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
 
 
-# linkme-impl is embedded in a larger repo.
-[linkme-impl.clarify]
-license = "MIT OR Apache-2.0"
-
-[[linkme-impl.clarify.git]]
-path = "LICENSE-MIT"
-checksum = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
-
-
 # miniz_oxide's LICENSE and LICENSE-MIT.md don't get consistently chosen between. Force the choice here.
 [miniz_oxide.clarify]
 license = "MIT OR Zlib OR Apache-2.0"
@@ -252,10 +225,9 @@ path = "LICENSE"
 checksum = "4108245a1f2df9d4e94df8abed5b4ba0759bb2f9b40a6b939f1be141077ae50b"
 
 
-# mp4san is embedded in a larger repo, and has a tag that doesn't match the revision in Cargo
+# mp4san is embedded in a larger repo
 [mediasan-common.clarify]
 license = "MIT"
-override-git-commit = "0.5.1"
 
 [[mediasan-common.clarify.git]]
 path = "LICENSE"
@@ -263,7 +235,6 @@ checksum = "f78d723e5d254b2037aa633b034dfe314caf37ace39727c66271b119027e5730"
 
 [mp4san.clarify]
 license = "MIT"
-override-git-commit = "0.5.1"
 
 [[mp4san.clarify.git]]
 path = "LICENSE"
@@ -271,7 +242,6 @@ checksum = "f78d723e5d254b2037aa633b034dfe314caf37ace39727c66271b119027e5730"
 
 [mp4san-derive.clarify]
 license = "MIT"
-override-git-commit = "0.5.1"
 
 [[mp4san-derive.clarify.git]]
 path = "LICENSE"
@@ -295,15 +265,6 @@ path = "LICENSE"
 checksum = "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
 
 
-# procfs-core is embedded in a larger repo
-[procfs-core.clarify]
-license = "MIT"
-
-[[procfs-core.clarify.git]]
-path = "LICENSE-MIT"
-checksum = "c5bbf39118b0639bf8bd391ae0d7d81f25c1cb4066e0fdae6a405b20fb7ca170"
-
-
 # protobuf-parse has an addendum for the standard Google protobufs
 [protobuf-parse.clarify]
 license = "MIT"
@@ -313,14 +274,7 @@ path = "LICENSE.txt"
 checksum = "ea240b0b1a772a073d2f8941f2145dd8f0b5b2d83c700107a84a1f7eb8ac7af1"
 
 
-# The rustls-platform-verifier crates are embedded in a larger repo
-[rustls-platform-verifier.clarify]
-license = "MIT OR Apache-2.0"
-
-[[rustls-platform-verifier.clarify.git]]
-path = "LICENSE-MIT"
-checksum = "1c7cf76689c837a68ed8d704994e52a0f2940c087958f860d17f3186afbdcc0c"
-
+# rustls-platform-verifier-android is embedded in a larger repo
 [rustls-platform-verifier-android.clarify]
 license = "MIT OR Apache-2.0"
 override-git-commit = "v/0.3.2"
@@ -348,10 +302,9 @@ path = "LICENSE"
 checksum = "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
 
 
-# webpsan is embedded in a larger repo, and has a tag that doesn't match the revision in Cargo
+# webpsan is embedded in a larger repo
 [webpsan.clarify]
 license = "MIT"
-override-git-commit = "0.5.1"
 
 [[webpsan.clarify.git]]
 path = "LICENSE"
