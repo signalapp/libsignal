@@ -515,8 +515,9 @@ pub mod testutils {
     use std::future::Future;
     use std::net::IpAddr;
 
+    use rand::SeedableRng;
     use rand::distr::uniform::{UniformSampler, UniformUsize};
-    use rand::rngs::mock::StepRng;
+    use rand::rngs::SmallRng;
 
     pub use super::connect::testutils::*;
     pub use super::resolve::testutils::*;
@@ -555,7 +556,7 @@ pub mod testutils {
     }
 
     pub struct FakeContext {
-        rng: RefCell<StepRng>,
+        rng: RefCell<SmallRng>,
     }
 
     impl Default for FakeContext {
@@ -567,8 +568,7 @@ pub mod testutils {
     impl FakeContext {
         pub fn new() -> Self {
             Self {
-                // Randomly chosen initial and increment values.
-                rng: StepRng::new(13618430565133050083, 8391096191305687941).into(),
+                rng: RefCell::new(SmallRng::seed_from_u64(0x1234567890abcdef)),
             }
         }
     }

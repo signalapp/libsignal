@@ -16,10 +16,10 @@
 # hax-lib: highly inlinable, mostly annotated versions of simple operations
 # libcrux-sha3, libcrux-intrinsics: v0.0.3 is referenced by hpke-rs, but only needed if you use X-Wing KEM
 EXPECTED="
-getrandom v0.2.15
-getrandom v0.3.2
+getrandom v0.2.16
+getrandom v0.3.3
 hax-lib v0.2.0
-hax-lib v0.3.1
+hax-lib v0.3.4
 libcrux-intrinsics v0.0.2
 libcrux-intrinsics v0.0.3
 libcrux-sha3 v0.0.2
@@ -27,7 +27,7 @@ libcrux-sha3 v0.0.3
 rand_core v0.6.4
 rand_core v0.9.3
 thiserror v1.0.69
-thiserror v2.0.12"
+thiserror v2.0.16"
 
 check_cargo_tree() {
     # Only check the mobile targets, where we care most about code size.

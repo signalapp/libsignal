@@ -336,12 +336,12 @@ mod test {
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
                             root_certs: RootCertificates::Native,
-                            sni: Host::Domain("front-sni-2b".into()),
+                            sni: Host::Domain("front-sni-2a".into()),
                             alpn: Some(Alpn::Http1_1),
                             min_protocol_version: None,
                         },
                         inner: TcpRoute {
-                            address: UnresolvedHost("front-sni-2b".into()),
+                            address: UnresolvedHost("front-sni-2a".into()),
                             port: DEFAULT_HTTPS_PORT
                         },
                     }
