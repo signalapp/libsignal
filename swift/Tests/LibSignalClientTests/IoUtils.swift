@@ -55,6 +55,8 @@ public class ThrowsAfterInputStream: SignalInputStream {
     private var readBeforeThrow: UInt64
 }
 
+#if !os(iOS) || targetEnvironment(simulator)
+
 func readResource(forName name: String) -> Data {
     try! Data(
         contentsOf: URL(fileURLWithPath: #filePath)
@@ -63,3 +65,5 @@ func readResource(forName name: String) -> Data {
             .appendingPathComponent(name)
     )
 }
+
+#endif

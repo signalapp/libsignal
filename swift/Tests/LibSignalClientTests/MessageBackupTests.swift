@@ -8,6 +8,7 @@ import XCTest
 @testable import LibSignalClient
 
 class MessageBackupTests: TestCaseBase {
+    #if !os(iOS) || targetEnvironment(simulator)
     func testValidInput() throws {
         let validBackupContents = readResource(forName: "new_account.binproto.encrypted")
 
@@ -22,6 +23,7 @@ class MessageBackupTests: TestCaseBase {
             makeStream: { SignalInputStreamAdapter(validBackupContents) }
         )
     }
+    #endif
 
     func testDerivingKeyWithForwardSecrecyToken() {
         let accountEntropy = String(repeating: "m", count: 64)
@@ -56,6 +58,7 @@ class MessageBackupTests: TestCaseBase {
         XCTAssertNotEqual(testKey.hmacKey, testKey.aesKey)
     }
 
+    #if !os(iOS) || targetEnvironment(simulator)
     func testInvalidInput() throws {
         // Start with a valid file, then overwrite some bytes
         var bytes = readResource(forName: "new_account.binproto.encrypted")
@@ -69,6 +72,7 @@ class MessageBackupTests: TestCaseBase {
             }
         }
     }
+    #endif
 
     func testEmptyInput() throws {
         XCTAssertThrowsError(try Self.validateBackup(bytes: [])) { error in
@@ -94,6 +98,7 @@ class MessageBackupTests: TestCaseBase {
         }
     }
 
+    #if !os(iOS) || targetEnvironment(simulator)
     func testInputThrowsAfter() {
         let bytes = readResource(forName: "new_account.binproto.encrypted")
         let makeStream = {
@@ -110,6 +115,7 @@ class MessageBackupTests: TestCaseBase {
             if error is TestIoError {} else { XCTFail("\(error)") }
         }
     }
+    #endif
 
     func testOnlineValidatorInvalidBackupInfo() throws {
         XCTAssertThrowsError(try OnlineBackupValidator(backupInfo: [], purpose: .remoteBackup))

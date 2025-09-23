@@ -6,6 +6,8 @@
 import LibSignalClient
 import XCTest
 
+#if !os(iOS) || targetEnvironment(simulator)
+
 class SgxTests: TestCaseBase {
     enum ServiceType {
         case svr2, cds2
@@ -117,3 +119,5 @@ class SgxTests: TestCaseBase {
         }
     }
 }
+
+#endif
