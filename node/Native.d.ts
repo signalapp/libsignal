@@ -64,80 +64,83 @@ enum IdentityChange {
 }
 
 type IdentityKeyStore = {
-  _getIdentityKey(): Promise<PrivateKey>;
-  _getLocalRegistrationId(): Promise<number>;
-  _saveIdentity(name: ProtocolAddress, key: PublicKey): Promise<IdentityChange>;
-  _isTrustedIdentity(
+  _getIdentityKey: () => Promise<PrivateKey>;
+  _getLocalRegistrationId: () => Promise<number>;
+  _saveIdentity: (
+    name: ProtocolAddress,
+    key: PublicKey
+  ) => Promise<IdentityChange>;
+  _isTrustedIdentity: (
     name: ProtocolAddress,
     key: PublicKey,
     sending: boolean
-  ): Promise<boolean>;
-  _getIdentity(name: ProtocolAddress): Promise<PublicKey | null>;
+  ) => Promise<boolean>;
+  _getIdentity: (name: ProtocolAddress) => Promise<PublicKey | null>;
 };
 
 type SessionStore = {
-  _saveSession(addr: ProtocolAddress, record: SessionRecord): Promise<void>;
-  _getSession(addr: ProtocolAddress): Promise<SessionRecord | null>;
+  _saveSession: (addr: ProtocolAddress, record: SessionRecord) => Promise<void>;
+  _getSession: (addr: ProtocolAddress) => Promise<SessionRecord | null>;
 };
 
 type PreKeyStore = {
-  _savePreKey(preKeyId: number, record: PreKeyRecord): Promise<void>;
-  _getPreKey(preKeyId: number): Promise<PreKeyRecord>;
-  _removePreKey(preKeyId: number): Promise<void>;
+  _savePreKey: (preKeyId: number, record: PreKeyRecord) => Promise<void>;
+  _getPreKey: (preKeyId: number) => Promise<PreKeyRecord>;
+  _removePreKey: (preKeyId: number) => Promise<void>;
 };
 
 type SignedPreKeyStore = {
-  _saveSignedPreKey(
+  _saveSignedPreKey: (
     signedPreKeyId: number,
     record: SignedPreKeyRecord
-  ): Promise<void>;
-  _getSignedPreKey(signedPreKeyId: number): Promise<SignedPreKeyRecord>;
+  ) => Promise<void>;
+  _getSignedPreKey: (signedPreKeyId: number) => Promise<SignedPreKeyRecord>;
 };
 
 type KyberPreKeyStore = {
-  _saveKyberPreKey(
+  _saveKyberPreKey: (
     kyberPreKeyId: number,
     record: KyberPreKeyRecord
-  ): Promise<void>;
-  _getKyberPreKey(kyberPreKeyId: number): Promise<KyberPreKeyRecord>;
-  _markKyberPreKeyUsed(
+  ) => Promise<void>;
+  _getKyberPreKey: (kyberPreKeyId: number) => Promise<KyberPreKeyRecord>;
+  _markKyberPreKeyUsed: (
     kyberPreKeyId: number,
     signedPreKeyId: number,
     baseKey: PublicKey
-  ): Promise<void>;
+  ) => Promise<void>;
 };
 
 type SenderKeyStore = {
-  _saveSenderKey(
+  _saveSenderKey: (
     sender: ProtocolAddress,
     distributionId: Uuid,
     record: SenderKeyRecord
-  ): Promise<void>;
-  _getSenderKey(
+  ) => Promise<void>;
+  _getSenderKey: (
     sender: ProtocolAddress,
     distributionId: Uuid
-  ): Promise<SenderKeyRecord | null>;
+  ) => Promise<SenderKeyRecord | null>;
 };
 
 type InputStream = {
-  _read(amount: number): Promise<Uint8Array>;
-  _skip(amount: number): Promise<void>;
+  _read: (amount: number) => Promise<Uint8Array>;
+  _skip: (amount: number) => Promise<void>;
 };
 
 type SyncInputStream = Uint8Array;
 
 type ChatListener = {
-  _incoming_message(
+  _incoming_message: (
     envelope: Uint8Array,
     timestamp: number,
     ack: ServerMessageAck
-  ): void;
-  _queue_empty(): void;
-  _received_alerts(alerts: string[]): void;
-  _connection_interrupted(
+  ) => void;
+  _queue_empty: () => void;
+  _received_alerts: (alerts: string[]) => void;
+  _connection_interrupted: (
     // A LibSignalError or null, but not naming the type to avoid circular import dependencies.
     reason: Error | null
-  ): void;
+  ) => void;
 };
 
 type ChallengeOption = 'pushChallenge' | 'captcha';

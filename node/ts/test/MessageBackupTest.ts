@@ -215,7 +215,7 @@ describe('OnlineBackupValidator', () => {
     // Here we override that `read` member with one that always produces a Uint8Array,
     // for more convenient use in the test. Note that this is unchecked.
     type ReadableUsingUint8Array = Omit<Readable, 'read'> & {
-      read(size: number): Uint8Array;
+      read: (size: number) => Uint8Array;
     };
     const input: ReadableUsingUint8Array = new Readable();
     input.push(exampleBackup);

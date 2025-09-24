@@ -41,7 +41,7 @@ export interface ConnectionEventsListener {
    * closures. If the closure was not due to a deliberate disconnect, the error
    * will be provided.
    */
-  onConnectionInterrupted(cause: LibSignalError | null): void;
+  onConnectionInterrupted: (cause: LibSignalError | null) => void;
 }
 
 export interface ChatServiceListener extends ConnectionEventsListener {
@@ -53,11 +53,11 @@ export interface ChatServiceListener extends ConnectionEventsListener {
    * If `ack`'s `send` method is not called, the server will leave this message in the message
    * queue and attempt to deliver it again in the future.
    */
-  onIncomingMessage(
+  onIncomingMessage: (
     envelope: Uint8Array,
     timestamp: number,
     ack: ChatServerMessageAck
-  ): void;
+  ) => void;
 
   /**
    * Called when the server indicates that there are no further messages in the message queue.
@@ -65,14 +65,14 @@ export interface ChatServiceListener extends ConnectionEventsListener {
    * Note that further messages may still be delivered; this merely indicates that all messages that
    * were in the queue *when the connection was established* have been delivered.
    */
-  onQueueEmpty(): void;
+  onQueueEmpty: () => void;
 
   /**
    * Called when the server has alerts for the current device.
    *
    * In practice this happens as part of the connecting process.
    */
-  onReceivedAlerts?(alerts: string[]): void;
+  onReceivedAlerts?: (alerts: string[]) => void;
 }
 
 /**
@@ -86,20 +86,20 @@ export type ChatConnection = {
    * Initiates termination of the underlying connection to the Chat Service. After the service is
    * disconnected, it cannot be used again.
    */
-  disconnect(): Promise<void>;
+  disconnect: () => Promise<void>;
 
   /**
    * Sends request to the Chat service.
    */
-  fetch(
+  fetch: (
     chatRequest: ChatRequest,
     options?: RequestOptions
-  ): Promise<Native.ChatResponse>;
+  ) => Promise<Native.ChatResponse>;
 
   /**
    * Information about the connection to the Chat service.
    */
-  connectionInfo(): ConnectionInfo;
+  connectionInfo: () => ConnectionInfo;
 };
 
 export interface ConnectionInfo {
@@ -438,8 +438,8 @@ function makeNativeChatListener(
         );
       }
     },
-    _connection_interrupted(cause: LibSignalError | null): void {
-      listener.onConnectionInterrupted(cause);
+    _connection_interrupted(cause: Error | null): void {
+      listener.onConnectionInterrupted(cause as LibSignalError);
     },
   };
 }

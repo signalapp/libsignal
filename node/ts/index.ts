@@ -237,16 +237,16 @@ export class KEMKeyPair {
 
 /** The public information contained in a {@link SignedPreKeyRecord} */
 export type SignedPublicPreKey = {
-  id(): number;
-  publicKey(): PublicKey;
-  signature(): Uint8Array;
+  id: () => number;
+  publicKey: () => PublicKey;
+  signature: () => Uint8Array;
 };
 
 /** The public information contained in a {@link KyberPreKeyRecord} */
 export type SignedKyberPublicPreKey = {
-  id(): number;
-  publicKey(): KEMPublicKey;
-  signature(): Uint8Array;
+  id: () => number;
+  publicKey: () => KEMPublicKey;
+  signature: () => Uint8Array;
 };
 
 export class PreKeyBundle {
@@ -1320,7 +1320,7 @@ export class SealedSenderDecryptionResult {
 }
 
 export interface CiphertextMessageConvertible {
-  asCiphertextMessage(): CiphertextMessage;
+  asCiphertextMessage: () => CiphertextMessage;
 }
 
 export class CiphertextMessage {

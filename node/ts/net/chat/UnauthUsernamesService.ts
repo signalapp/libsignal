@@ -25,12 +25,12 @@ export interface UnauthUsernamesService {
    * Throws / completes with failure only if the request can't be completed, potentially including
    * if the hash is structurally invalid.
    */
-  lookUpUsernameHash(
+  lookUpUsernameHash: (
     request: {
       hash: Uint8Array;
     },
     options?: RequestOptions
-  ): Promise<Aci | null>;
+  ) => Promise<Aci | null>;
 }
 
 UnauthenticatedChatConnection.prototype.lookUpUsernameHash = async function (
