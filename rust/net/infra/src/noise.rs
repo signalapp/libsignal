@@ -42,7 +42,7 @@ impl<S> Transport for S where
 {
 }
 
-/// [`TransportFrameType`] implementation for transports that do differentiate frame types.
+/// Used by some transports to differentiate frame types.
 #[derive(Copy, Clone, Debug, PartialEq, displaydoc::Display, derive_more::From)]
 pub enum FrameType {
     /// data

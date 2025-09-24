@@ -61,7 +61,8 @@ pub const SUGGESTED_CONNECT_CONFIG: Config = Config {
     post_route_change_connect_timeout: POST_ROUTE_CHANGE_CONNECTION_TIMEOUT,
 };
 
-/// Suggested lifetime for a [`PreconnectingConnector`] that handles up to a TLS handshake.
+/// Suggested lifetime for a [`PreconnectingFactory`]'s connector that handles up to a TLS
+/// handshake.
 pub const SUGGESTED_TLS_PRECONNECT_LIFETIME: Duration = Duration::from_millis(1500);
 
 /// Effectively an alias for [`ConnectorFactory`] with connection, route, and error

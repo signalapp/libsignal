@@ -3,9 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-//! Errors that can be returned during websocket operations. The top-level
-//! [`Error`] type is a mirror of [`tungstenite::error::Error`] whose
-//! [`std::fmt::Display`] impl doesn't contain any user data.
+//! Errors that can be returned during websocket operations. Many types are mirrors of tungstenite
+//! errors whose [`std::fmt::Display`] impl doesn't contain any user data.
 
 use std::borrow::Borrow;
 

@@ -150,6 +150,7 @@ pub struct FingerprintVersions {
 /// if they merely delegate to another error, or have no additional properties at all, prefer
 /// implementing [`IntoFfiError`] instead, using [`SimpleError`] for the cases that don't need
 /// special handling.
+#[allow(rustdoc::private_intra_doc_links)]
 pub trait FfiError: UpcastAsAny + fmt::Debug + Send + 'static {
     fn describe(&self) -> Cow<'_, str>;
     fn code(&self) -> SignalErrorCode;

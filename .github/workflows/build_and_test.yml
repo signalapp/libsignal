@@ -184,7 +184,7 @@ jobs:
       run: cargo +${{ matrix.toolchain }} doc --workspace --all-features --keep-going
       if: matrix.version == 'stable'
       env:
-        RUSTFLAGS: -D warnings
+        RUSTDOCFLAGS: -D warnings
 
     # We check the fuzz targets on stable because they don't have lockfiles,
     # and crates don't generally support arbitrary nightly versions.

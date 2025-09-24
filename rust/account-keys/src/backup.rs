@@ -30,9 +30,8 @@ pub const MEDIA_ENCRYPTION_KEY_LEN: usize = 32 + 32; // HMAC key + AES-CBC key
 /// Primary key for backups that is used to derive other keys.
 ///
 /// The type `BackupKey`, leaving the `VERSION` parameter as its default, is used for keys derived
-/// from an [`AccountEntropyPool`]. Use [`BackupKeyV0`] if you want to derive keys using the "master
-/// key" scheme. (This will eventually go away.) The version will also be inferred if you use
-/// [`BackupKey::derive_from_master_key`] or [`BackupKey::derive_from_account_entropy_pool`].
+/// from an [`AccountEntropyPool`]. The version will also be inferred if you use
+/// [`BackupKey::derive_from_account_entropy_pool`].
 #[derive(Debug, PartialDefault, zerocopy::FromBytes, zerocopy::Immutable)]
 #[repr(transparent)]
 #[cfg_attr(test, derive(Eq, PartialEq))]

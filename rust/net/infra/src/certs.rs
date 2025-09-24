@@ -46,9 +46,9 @@ impl RootCertificates {
     ///
     /// **Warning:** If `self` is [`RootCertificates::Native`], the resulting connector will
     /// **depend on tokio** to verify certificates (using rustls-platform-verifier, isolated to a
-    /// blocking task thread). Moreover, when using the resulting [`boring::ssl::Ssl`] object, you
-    /// must call `set_task_waker`. This will be taken care of for you if you use tokio-boring (and
-    /// always poll within a tokio context).
+    /// blocking task thread). Moreover, when using the resulting [`Ssl`](boring_signal::ssl::Ssl)
+    /// object, you must call `set_task_waker`. This will be taken care of for you if you use
+    /// tokio-boring (and always poll within a tokio context).
     pub fn apply_to_connector(
         &self,
         connector: &mut SslConnectorBuilder,

@@ -72,11 +72,11 @@ bridge_as_handle!(RegisterAccountRequest);
 bridge_as_handle!(RegisterAccountResponse);
 bridge_as_handle!(RegistrationAccountAttributes);
 
-/// Precursor to a [`Box<dyn ConnectChat>`](ConnectChat).
+/// Precursor to a [`Box<dyn ConnectUnauthChat>`](ConnectUnauthChat).
 ///
-/// Functionally a `FnOnce(Handle) -> Box<dyn ConnectChat>` but named for clarity.
+/// Functionally a `FnOnce(Handle) -> Box<dyn ConnectUnauthChat>` but named for clarity.
 pub trait ConnectChatBridge: Send + UnwindSafe {
-    /// Converts `self` into a `ConnectChat` impl.
+    /// Converts `self` into a `ConnectUnauthChat` impl.
     ///
     /// The provided runtime handle can be used to spawn tasks needed by the
     /// implementation.

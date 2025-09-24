@@ -19,7 +19,7 @@ pub use version::VERSION;
 /// Simple wrapper that invokes a lambda.
 ///
 /// Once try-blocks are stabilized
-/// (https://github.com/rust-lang/rust/issues/31436), usages of this function
+/// (<https://github.com/rust-lang/rust/issues/31436>), usages of this function
 /// can be removed and replaced with the new syntax.
 #[inline]
 #[track_caller]

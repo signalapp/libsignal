@@ -495,7 +495,8 @@ impl ConnectionOutcomeParams {
     }
 }
 
-/// A [`RouteDelayPolicy`] that acts on a route's [`TransportPart`], ignoring the rest of it.
+/// A [`RouteDelayPolicy`] that acts on a route's [transport part](UsesTransport), ignoring the rest
+/// of it.
 pub struct DelayBasedOnTransport<T>(pub T);
 
 impl<T, R: UsesTransport> RouteDelayPolicy<R> for DelayBasedOnTransport<T>
