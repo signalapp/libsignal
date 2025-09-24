@@ -49,7 +49,9 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
 - You don't have to write doc comments on everything, but **if you do write a comment, make it a doc comment**, because they show up more nicely in IDEs.
 
-- We build with a pinned nightly toolchain, but **we also support stable**. The specific minimum supported version of stable is checked in CI (specifically, at the top of [build_and_test.yml](.github/workflows/build_and_test.yml)). We permit ourselves to bump this as needed, but try not to do so capriciously because we know external people might be in non-rustup scenarios where getting a new stable is tricky. If you need to bump the minimum supported version of stable, make sure the next release has a "breaking" version number.
+- We build with a pinned nightly toolchain, but **we also support stable**. The specific minimum supported version of stable is listed in our top-level Cargo.toml and checked in CI. We permit ourselves to bump this as needed, but try not to do so capriciously because we know external people might be in non-rustup scenarios where getting a new stable is tricky; in practice we often end up following tokio's "six months back" policy. If you need to bump the minimum supported version of stable, make sure the next release has a "breaking" version number.
+
+    - Crate-level Cargo.tomls don't usually inherit the workspace `rust-version`, because many crates are relatively stable and may continue working for external folks using earlier versions of Rust even though we no longer test for them; picking up the top-level MSRV update would therefore be unnecessarily breaking. Instead, they have a `rust-version` that indicates a known minimum at some point in the past; it may be too low, but it will never be overly high. The exceptions are the `bridge` crates, which are not intended to be used for anything but the app language libraries.
 
 - **We do not have a changelog file**; we rely on [GitHub displaying all our releases](https://github.com/signalapp/libsignal/releases).
 
