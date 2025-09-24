@@ -394,7 +394,7 @@ macro_rules! ffi_bridge_handle_destroy {
                 let p = std::panic::AssertUnwindSafe(p.into_inner());
                 ffi::run_ffi_safe(|| {
                     if !p.is_null() {
-                        drop(Box::from_raw(*p));
+                        drop(unsafe { Box::from_raw(*p) });
                     }
                     Ok(())
                 })

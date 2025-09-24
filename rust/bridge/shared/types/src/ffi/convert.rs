@@ -1022,7 +1022,7 @@ macro_rules! ffi_bridge_handle_clone {
                 new_obj: *mut ffi::MutPointer<$typ>,
                 obj: ffi::ConstPointer<$typ>,
             ) -> *mut $crate::ffi::SignalFfiError {
-                $crate::ffi::run_ffi_safe(|| {
+                $crate::ffi::run_ffi_safe(|| unsafe {
                     let obj = $crate::ffi::native_handle_cast::<$typ>(obj.into_inner())?;
                     $crate::ffi::write_result_to::<$typ>(new_obj, obj.clone())
                 })
