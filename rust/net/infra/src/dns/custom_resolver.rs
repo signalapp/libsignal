@@ -10,7 +10,7 @@ use std::future::Future;
 use std::hash::Hash;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use either::Either;
 use futures_util::{FutureExt as _, Stream, StreamExt as _};
@@ -86,7 +86,8 @@ impl<K, V> Default for SharedCacheWithGenerations<K, V> {
 }
 
 const DNS_CONNECTION_COOLDOWN_CONFIG: ConnectionOutcomeParams = ConnectionOutcomeParams {
-    age_cutoff: Duration::from_secs(5 * 60),
+    short_term_age_cutoff: Duration::from_secs(5 * 60),
+    long_term_age_cutoff: Duration::from_secs(5 * 60),
     cooldown_growth_factor: 10.0,
     max_count: 5,
     max_delay: Duration::from_secs(30),
@@ -193,10 +194,11 @@ where
             |_e| std::ops::ControlFlow::Continue::<std::convert::Infallible>(()),
         )
         .await;
-        self.attempts_record
-            .write()
-            .await
-            .apply_outcome_updates(updates.outcomes, updates.finished_at);
+        self.attempts_record.write().await.apply_outcome_updates(
+            updates.outcomes,
+            updates.finished_at,
+            SystemTime::now(),
+        );
         let transport = result.map_err(|e| match e {
             crate::route::ConnectError::NoResolvedRoutes => dns::DnsError::TransportRestricted,
             crate::route::ConnectError::AllAttemptsFailed

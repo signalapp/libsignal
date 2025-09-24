@@ -8,23 +8,24 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::ops::ControlFlow;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
+use assert_matches::debug_assert_matches;
 use futures_util::TryFutureExt as _;
 use http::HeaderName;
 use itertools::Itertools as _;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::route::{
-    ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes,
+    AttemptOutcome, ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes,
     ConnectionProxyConfig, Connector, ConnectorFactory, DelayBasedOnTransport, DescribeForLog,
-    DescribedRouteConnector, DirectOrProxy, DirectOrProxyMode, HttpRouteFragment,
-    InterfaceChangedOr, InterfaceMonitor, LoggingConnector, ResettingConnectionOutcomes,
-    ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute, RouteProvider,
-    RouteProviderContext, RouteProviderExt as _, RouteResolver, StaticTcpTimeoutConnector,
-    ThrottlingConnector, TransportRoute, UnresolvedRouteDescription, UnresolvedTransportRoute,
-    UnresolvedWebsocketServiceRoute, UsePreconnect, UsesTransport, VariableTlsTimeoutConnector,
-    WebSocketRouteFragment, WebSocketServiceRoute,
+    DescribedRouteConnector, DirectOrProxy, DirectOrProxyMode, DirectOrProxyRoute,
+    HttpRouteFragment, InterfaceChangedOr, InterfaceMonitor, LoggingConnector,
+    ResettingConnectionOutcomes, ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute,
+    RouteProvider, RouteProviderContext, RouteProviderExt as _, RouteResolver,
+    StaticTcpTimeoutConnector, ThrottlingConnector, TransportRoute, UnresolvedRouteDescription,
+    UnresolvedTransportRoute, UnresolvedWebsocketServiceRoute, UnsuccessfulOutcome, UsePreconnect,
+    UsesTransport, VariableTlsTimeoutConnector, WebSocketRouteFragment, WebSocketServiceRoute,
 };
 use libsignal_net_infra::tcp_ssl::{LONG_TCP_HANDSHAKE_THRESHOLD, LONG_TLS_HANDSHAKE_THRESHOLD};
 use libsignal_net_infra::timeouts::{
@@ -46,7 +47,8 @@ use crate::ws::WebSocketServiceConnectError;
 
 /// Suggested values for [`ConnectionOutcomeParams`].
 pub const SUGGESTED_CONNECT_PARAMS: ConnectionOutcomeParams = ConnectionOutcomeParams {
-    age_cutoff: Duration::from_secs(5 * 60),
+    short_term_age_cutoff: Duration::from_secs(5 * 60),
+    long_term_age_cutoff: Duration::from_secs(6 * 60 * 60),
     cooldown_growth_factor: 10.0,
     max_count: 5,
     max_delay: Duration::from_secs(30),
@@ -233,7 +235,7 @@ struct ConnectStateSnapshot<C> {
 }
 
 impl<TC> ConnectState<TC> {
-    fn snapshot<Transport>(&self) -> ConnectStateSnapshot<TC::Connector>
+    fn prepare_snapshot<Transport>(&mut self) -> ConnectStateSnapshot<TC::Connector>
     where
         TC: ConnectorFactory<Transport>,
     {
@@ -246,6 +248,8 @@ impl<TC> ConnectState<TC> {
             attempts_record,
             route_provider_context,
         } = self;
+
+        attempts_record.reset_if_system_has_probably_been_asleep(SystemTime::now());
 
         ConnectStateSnapshot {
             route_resolver: route_resolver.clone(),
@@ -302,7 +306,10 @@ impl<TC> ConnectionResources<'_, TC> {
             transport_connector,
             attempts_record,
             route_provider_context,
-        } = connect_state.lock().expect("not poisoned").snapshot();
+        } = connect_state
+            .lock()
+            .expect("not poisoned")
+            .prepare_snapshot();
 
         let routes = routes.routes(&route_provider_context).collect_vec();
 
@@ -390,17 +397,13 @@ impl<TC> ConnectionResources<'_, TC> {
             Err(e) => log::info!("[{log_tag}] connection failed with {e}"),
         }
 
+        let outcomes = process_outcomes(updates.outcomes);
+
         connect_state
             .lock()
             .expect("not poisoned")
             .attempts_record
-            .apply_outcome_updates(
-                updates
-                    .outcomes
-                    .into_iter()
-                    .map(|(route, outcome)| (route.into_transport_part(), outcome)),
-                updates.finished_at,
-            );
+            .apply_outcome_updates(outcomes, updates.finished_at, SystemTime::now());
 
         let (connection, description) = result?;
         Ok((
@@ -459,6 +462,52 @@ impl<TC> ConnectionResources<'_, TC> {
     }
 }
 
+fn process_outcomes<R: UsesTransport>(
+    mut outcomes: Vec<(R, AttemptOutcome)>,
+) -> impl Iterator<Item = (TransportRoute, AttemptOutcome)> {
+    // First pass: collect information, tentatively tag proxies as LongTerm outcomes.
+    // This in-place tagging avoids checking whether a route is a proxy route a second time.
+    let mut any_direct_successes = false;
+    let mut any_proxy_successes = false;
+    for (route, outcome) in &mut outcomes {
+        match route.transport_part().inner {
+            DirectOrProxyRoute::Direct(_) => {
+                any_direct_successes |= outcome.result.is_ok();
+            }
+            DirectOrProxyRoute::Proxy(_) if outcome.result.is_err() => {
+                debug_assert_matches!(
+                    outcome.result.expect_err("just checked"),
+                    UnsuccessfulOutcome::ShortTerm,
+                    "no routes should be tagged as long term yet"
+                );
+                outcome.result = Err(UnsuccessfulOutcome::LongTerm);
+            }
+            DirectOrProxyRoute::Proxy(_) => {
+                any_proxy_successes = true;
+            }
+        }
+    }
+
+    // Second (deferred) pass: drop unneeded route info, decide whether to use our tentative tags.
+    outcomes.into_iter().map(move |(r, outcome)| {
+        (
+            r.into_transport_part(),
+            AttemptOutcome {
+                result: outcome.result.map_err(|failure| {
+                    if any_direct_successes && !any_proxy_successes {
+                        failure
+                    } else {
+                        // If no direct route succeeded, or if a proxy route *did* succeed, undo our
+                        // tentative tag as LongTerm.
+                        UnsuccessfulOutcome::ShortTerm
+                    }
+                }),
+                ..outcome
+            },
+        )
+    })
+}
+
 impl<TC> ConnectionResources<'_, PreconnectingFactory<TC>>
 where
     // Note that we're not using WebSocketTransportConnectorFactory here to make `connect_ws`
@@ -488,7 +537,7 @@ where
         } = connect_state
             .lock()
             .expect("not poisoned")
-            .snapshot::<UsePreconnect<_>>();
+            .prepare_snapshot::<UsePreconnect<_>>();
 
         let routes = routes
             .map_routes(|r| UsePreconnect {
@@ -586,6 +635,7 @@ where
                     .into_iter()
                     .map(|(route, outcome)| (route.into_transport_part(), outcome)),
                 updates.finished_at,
+                SystemTime::now(),
             );
 
             let (
@@ -919,7 +969,7 @@ mod test {
 
         let past_failure = AttemptOutcome {
             started: start,
-            result: Err(UnsuccessfulOutcome),
+            result: Err(UnsuccessfulOutcome::default()),
         };
         state.attempts_record.apply_outcome_updates(
             [
@@ -933,6 +983,7 @@ mod test {
                 ),
             ],
             start,
+            SystemTime::now(),
         );
 
         let (network_change_tx, network_change_rx) = tokio::sync::watch::channel(());
@@ -961,6 +1012,87 @@ mod test {
         let (connection, _info) = result.expect("succeeded");
         assert_eq!(connection, (route.fragment, route.inner.fragment));
         assert_eq!(start.elapsed(), network_change_delay + HAPPY_EYEBALLS_DELAY);
+    }
+
+    mod outcome_processing {
+        use std::net::Ipv4Addr;
+        use std::num::NonZero;
+
+        use UnsuccessfulOutcome::*;
+        use libsignal_net_infra::route::{ConnectionProxyRoute, ProxyTarget, SocksRoute};
+        use libsignal_net_infra::tcp_ssl::proxy::socks;
+        use test_case::test_case;
+
+        use super::*;
+
+        #[derive(Clone, Copy, Debug)]
+        enum OutcomeTestCase {
+            DirectSuccess,
+            DirectFailure,
+            ProxySuccess,
+            ProxyFailure,
+        }
+        use OutcomeTestCase::*;
+
+        impl OutcomeTestCase {
+            fn make(
+                self,
+                port: NonZero<u16>,
+                started: Instant,
+            ) -> (TransportRoute, AttemptOutcome) {
+                let route = TlsRoute {
+                    fragment: FAKE_TRANSPORT_ROUTE.fragment.clone(),
+                    inner: match self {
+                        DirectSuccess | DirectFailure => DirectOrProxyRoute::Direct(TcpRoute {
+                            address: ip_addr!("192.0.2.1"),
+                            port,
+                        }),
+                        ProxySuccess | ProxyFailure => {
+                            DirectOrProxyRoute::Proxy(ConnectionProxyRoute::Socks(SocksRoute {
+                                proxy: TcpRoute {
+                                    address: Ipv4Addr::LOCALHOST.into(),
+                                    port: nonzero!(1080u16),
+                                },
+                                target_addr: ProxyTarget::ResolvedLocally(ip_addr!("192.0.2.1")),
+                                target_port: port,
+                                protocol: socks::Protocol::Socks5 {
+                                    username_password: None,
+                                },
+                            }))
+                        }
+                    },
+                };
+                let outcome = AttemptOutcome {
+                    started,
+                    result: match self {
+                        DirectSuccess | ProxySuccess => Ok(()),
+                        DirectFailure | ProxyFailure => Err(UnsuccessfulOutcome::default()),
+                    },
+                };
+                (route, outcome)
+            }
+        }
+
+        #[test_case([DirectFailure, DirectFailure, ProxyFailure, ProxyFailure] => [Err(ShortTerm), Err(ShortTerm), Err(ShortTerm), Err(ShortTerm)])]
+        #[test_case([DirectSuccess, DirectFailure, ProxyFailure, ProxyFailure] => [Ok(()), Err(ShortTerm), Err(LongTerm), Err(LongTerm)])]
+        #[test_case([ProxyFailure, ProxyFailure, DirectFailure, DirectSuccess] => [Err(LongTerm), Err(LongTerm), Err(ShortTerm), Ok(())])]
+        #[test_case([ProxyFailure, ProxySuccess, DirectFailure, DirectFailure] => [Err(ShortTerm), Ok(()), Err(ShortTerm), Err(ShortTerm)])]
+        #[test_case([ProxyFailure, ProxySuccess, DirectFailure, DirectSuccess] => [Err(ShortTerm), Ok(()), Err(ShortTerm), Ok(())])]
+        #[test_case([DirectFailure, DirectSuccess, ProxyFailure, ProxySuccess] => [Err(ShortTerm), Ok(()), Err(ShortTerm), Ok(())])]
+        fn outcome_processing_long_term_vs_short_term<const N: usize>(
+            outcomes: [OutcomeTestCase; N],
+        ) -> [Result<(), UnsuccessfulOutcome>; N] {
+            let now = Instant::now();
+            let outcomes = outcomes
+                .into_iter()
+                .zip(1..)
+                .map(|(test_case, port)| test_case.make(port.try_into().expect("non-zero"), now))
+                .collect_vec();
+            process_outcomes(outcomes)
+                .map(|(_route, outcome)| outcome.result)
+                .collect_array()
+                .unwrap()
+        }
     }
 
     #[tokio::test(start_paused = true)]

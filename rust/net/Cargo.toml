@@ -23,6 +23,7 @@ libsignal-protocol = { workspace = true }
 libsignal-svrb = { workspace = true }
 signal-crypto = { workspace = true }
 
+assert_matches = { workspace = true }
 async-trait = { workspace = true }
 base64 = { workspace = true }
 bincode = { workspace = true }
@@ -72,7 +73,6 @@ prost-build = { workspace = true }
 [dev-dependencies]
 libsignal-net = { path = ".", features = ["test-util"] }
 
-assert_matches = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 either = { workspace = true }
 env_logger = { workspace = true }

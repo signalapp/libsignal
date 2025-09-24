@@ -9,6 +9,7 @@ use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use derive_where::derive_where;
 use futures_util::stream::{FusedStream, FuturesUnordered};
@@ -85,16 +86,25 @@ pub struct Schedule<S, R, SP> {
 #[derive(Clone)]
 pub struct ConnectionOutcomes<R> {
     params: ConnectionOutcomeParams,
-    recent_failures: HashMap<R, (Instant, u8)>,
+    recent_failures: HashMap<R, ConnectionFailureRecord>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConnectionOutcomeParams {
-    pub age_cutoff: Duration,
+    pub short_term_age_cutoff: Duration,
+    pub long_term_age_cutoff: Duration,
     pub cooldown_growth_factor: f32,
     pub count_growth_factor: f32,
     pub max_count: u8,
     pub max_delay: Duration,
+}
+
+#[derive(Clone)]
+struct ConnectionFailureRecord {
+    outcome: UnsuccessfulOutcome,
+    started: Instant,
+    wall_clock: SystemTime,
+    failure_count: u8,
 }
 
 impl Default for RouteResolver {
@@ -313,12 +323,13 @@ pub struct AttemptOutcome {
     pub result: Result<(), UnsuccessfulOutcome>,
 }
 
-/// Unit type that represents a failure to connect.
-///
-/// Right now the cause of the failure is unimportant, though if that changes in
-/// the future this should be made an `enum`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct UnsuccessfulOutcome;
+/// Represents a failure to connect, and how long it should be remembered.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum UnsuccessfulOutcome {
+    #[default]
+    ShortTerm,
+    LongTerm,
+}
 
 impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
     pub fn new(params: ConnectionOutcomeParams) -> Self {
@@ -331,7 +342,8 @@ impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
     /// Configuration that stores no history, suitable for one-shot connections.
     pub fn for_oneshot() -> Self {
         Self::new(ConnectionOutcomeParams {
-            age_cutoff: Duration::ZERO,
+            short_term_age_cutoff: Duration::ZERO,
+            long_term_age_cutoff: Duration::ZERO,
             cooldown_growth_factor: 0.0,
             count_growth_factor: 0.0,
             max_count: 0,
@@ -344,6 +356,7 @@ impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
         &mut self,
         updates: impl IntoIterator<Item = (R, AttemptOutcome)>,
         now: Instant,
+        wall_clock: SystemTime,
     ) {
         use std::collections::hash_map::Entry;
 
@@ -353,8 +366,18 @@ impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
         } = self;
 
         // Age out any old entries.
-        recent_failures.retain(|_route, (last_time, _failure_count)| {
-            now.saturating_duration_since(*last_time) < params.age_cutoff
+        recent_failures.retain(|_route, record| {
+            let ConnectionFailureRecord {
+                outcome,
+                started: last_time,
+                wall_clock: _,
+                failure_count: _,
+            } = record;
+            let age_cutoff = match outcome {
+                UnsuccessfulOutcome::ShortTerm => params.short_term_age_cutoff,
+                UnsuccessfulOutcome::LongTerm => params.long_term_age_cutoff,
+            };
+            now.saturating_duration_since(*last_time) < age_cutoff
         });
 
         for (route, outcome) in updates {
@@ -364,14 +387,21 @@ impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
                 Ok(()) => {
                     let _ = recent_failures.remove(&route);
                 }
-                Err(UnsuccessfulOutcome) => match recent_failures.entry(route) {
+                Err(unsuccessful_outcome) => match recent_failures.entry(route) {
                     Entry::Occupied(mut entry) => {
-                        let (when, count) = entry.get_mut();
-                        *count = (*count + 1).min(params.max_count);
-                        *when = started;
+                        entry.get_mut().update(
+                            unsuccessful_outcome,
+                            started,
+                            wall_clock,
+                            params.max_count,
+                        );
                     }
                     Entry::Vacant(entry) => {
-                        entry.insert((started, 1));
+                        entry.insert(ConnectionFailureRecord::new(
+                            unsuccessful_outcome,
+                            started,
+                            wall_clock,
+                        ));
                     }
                 },
             }
@@ -383,7 +413,69 @@ impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
     /// Assumes those that completed after the cutoff are still relevant.
     pub fn reset(&mut self, cutoff: Instant) {
         self.recent_failures
-            .retain(|_route, (last_time, _failure_count)| cutoff < *last_time);
+            .retain(|_route, record| cutoff < record.started);
+    }
+
+    /// Clear any outcomes that should have expired according to the wall clock.
+    ///
+    /// Normal operation of ConnectionOutcomes works on [`Instant`], which has nice properties such
+    /// as monotonicity and immunity to manual system time adjustments. However, `Instant` does not
+    /// track time when the system is suspended, and as such we might have a `LongTerm` failure that
+    /// appears more recent than it actually is. This method removes any entries that would have
+    /// expired assuming `Instant` was following `SystemTime`.
+    ///
+    /// Detection based on `SystemTime` is a heuristic, since the user may also adjust the system
+    /// clock manually. But clearing when it would be better not to is equivalent to restarting the
+    /// app, and *not* clearing can always be *fixed* by restarting the app.
+    pub fn reset_if_system_has_probably_been_asleep(&mut self, now: SystemTime) {
+        let Self {
+            params,
+            recent_failures,
+        } = self;
+        let Some(cutoff) = now.checked_sub(params.long_term_age_cutoff) else {
+            // Give up with too long a cutoff.
+            return;
+        };
+        recent_failures.retain(|_route, record| cutoff < record.wall_clock);
+    }
+}
+
+impl ConnectionFailureRecord {
+    fn new(outcome: UnsuccessfulOutcome, started: Instant, wall_clock: SystemTime) -> Self {
+        Self {
+            outcome,
+            started,
+            wall_clock,
+            failure_count: 1,
+        }
+    }
+
+    fn update(
+        &mut self,
+        new_outcome: UnsuccessfulOutcome,
+        new_started: Instant,
+        new_wall_clock: SystemTime,
+        max_count: u8,
+    ) {
+        let Self {
+            outcome,
+            started,
+            wall_clock,
+            failure_count,
+        } = self;
+        *outcome = outcome.merge(new_outcome);
+        *started = new_started;
+        *wall_clock = new_wall_clock;
+        *failure_count = (*failure_count + 1).min(max_count)
+    }
+}
+
+impl UnsuccessfulOutcome {
+    fn merge(self, other: UnsuccessfulOutcome) -> UnsuccessfulOutcome {
+        match (self, other) {
+            (Self::LongTerm, _) | (_, Self::LongTerm) => Self::LongTerm,
+            (Self::ShortTerm, Self::ShortTerm) => Self::ShortTerm,
+        }
     }
 }
 
@@ -410,11 +502,21 @@ impl<R: Hash + Eq> RouteDelayPolicy<R> for ConnectionOutcomes<R> {
             params,
         } = self;
 
-        let Some((when, count)) = recent_failures.get(route) else {
+        let Some(ConnectionFailureRecord {
+            outcome,
+            started,
+            wall_clock: _,
+            failure_count,
+        }) = recent_failures.get(route)
+        else {
             return Duration::ZERO;
         };
 
-        params.compute_delay(now.saturating_duration_since(*when), *count)
+        params.compute_delay(
+            *outcome,
+            now.saturating_duration_since(*started),
+            *failure_count,
+        )
     }
 }
 
@@ -426,16 +528,23 @@ impl ConnectionOutcomeParams {
     /// based on the amount of time since the last known failure.
     pub fn compute_delay(
         &self,
+        unsuccessful_outcome: UnsuccessfulOutcome,
         since_last_failure: Duration,
         consecutive_failure_count: u8,
     ) -> Duration {
         let Self {
-            age_cutoff,
+            short_term_age_cutoff,
+            long_term_age_cutoff,
             cooldown_growth_factor,
             count_growth_factor,
             max_count,
             max_delay,
         } = *self;
+
+        let age_cutoff = match unsuccessful_outcome {
+            UnsuccessfulOutcome::ShortTerm => short_term_age_cutoff,
+            UnsuccessfulOutcome::LongTerm => long_term_age_cutoff,
+        };
 
         // Exponential backoff: as the count grows, the delay should be longer.
         //
@@ -910,7 +1019,8 @@ mod test {
             const COUNT_CUTOFF: u8 = 5;
 
             let params = ConnectionOutcomeParams {
-                age_cutoff: AGE_CUTOFF,
+                short_term_age_cutoff: AGE_CUTOFF,
+                long_term_age_cutoff: AGE_CUTOFF,
                 cooldown_growth_factor,
                 count_growth_factor,
                 max_count: COUNT_CUTOFF,
@@ -919,7 +1029,7 @@ mod test {
 
             // Lots of failures, the last one recent.
             assert_eq!(
-                params.compute_delay(Duration::ZERO, COUNT_CUTOFF),
+                params.compute_delay(UnsuccessfulOutcome::ShortTerm, Duration::ZERO, COUNT_CUTOFF),
                 MAX_DELAY
             );
 
@@ -927,13 +1037,17 @@ mod test {
                 // Regardless of the count, the delay is zero if the information is
                 // too old.
                 assert_eq!(
-                    params.compute_delay(AGE_CUTOFF, count),
+                    params.compute_delay(UnsuccessfulOutcome::ShortTerm, AGE_CUTOFF, count),
                     Duration::ZERO
                 );
             });
 
             proptest!(|(count in 0..COUNT_CUTOFF, age_seconds in 0..AGE_CUTOFF.as_secs())| {
-                let delay = params.compute_delay(Duration::from_secs(age_seconds), count);
+                let delay = params.compute_delay(
+                    UnsuccessfulOutcome::ShortTerm,
+                    Duration::from_secs(age_seconds),
+                    count
+                );
                 // The delay should always be less than the configured max.
                 assert_in_range!(delay, Duration::ZERO..MAX_DELAY);
             });
@@ -951,6 +1065,7 @@ mod test {
             self.apply_outcome_updates(
                 [(route, AttemptOutcome { started, result })],
                 started + connect_duration,
+                SystemTime::now(),
             )
         }
     }
@@ -962,7 +1077,8 @@ mod test {
 
         const MAX_COUNT: u8 = 5;
         let mut outcomes = ConnectionOutcomes::new(ConnectionOutcomeParams {
-            age_cutoff: AGE_CUTOFF,
+            short_term_age_cutoff: AGE_CUTOFF,
+            long_term_age_cutoff: AGE_CUTOFF,
             cooldown_growth_factor: 2.0,
             count_growth_factor: 10.0,
             max_count: MAX_COUNT,
@@ -980,7 +1096,12 @@ mod test {
         for _ in 0..=MAX_COUNT {
             const CONNECT_DELAY: Duration = Duration::from_secs(10);
             // Record that the previous connection attempt failed after CONNECT_DELAY.
-            outcomes.record_outcome(ROUTE, now, CONNECT_DELAY, Err(UnsuccessfulOutcome));
+            outcomes.record_outcome(
+                ROUTE,
+                now,
+                CONNECT_DELAY,
+                Err(UnsuccessfulOutcome::default()),
+            );
             now += CONNECT_DELAY;
 
             // Compute the new delay and "wait" for it to elapse before the next
@@ -1003,7 +1124,8 @@ mod test {
         const MAX_COUNT: u8 = 5;
 
         let mut outcomes = ConnectionOutcomes::new(ConnectionOutcomeParams {
-            age_cutoff: AGE_CUTOFF,
+            short_term_age_cutoff: AGE_CUTOFF,
+            long_term_age_cutoff: AGE_CUTOFF,
             cooldown_growth_factor: 2.0,
             count_growth_factor: 10.0,
             max_count: MAX_COUNT,
@@ -1018,18 +1140,23 @@ mod test {
 
         const CONNECT_DELAY: Duration = Duration::from_secs(10);
         // Record some failures.
-        outcomes.record_outcome(ROUTE, start, CONNECT_DELAY, Err(UnsuccessfulOutcome));
+        outcomes.record_outcome(
+            ROUTE,
+            start,
+            CONNECT_DELAY,
+            Err(UnsuccessfulOutcome::default()),
+        );
         outcomes.record_outcome(
             ROUTE,
             start + CONNECT_DELAY,
             CONNECT_DELAY,
-            Err(UnsuccessfulOutcome),
+            Err(UnsuccessfulOutcome::default()),
         );
         outcomes.record_outcome(
             ROUTE,
             start + 2 * CONNECT_DELAY,
             CONNECT_DELAY,
-            Err(UnsuccessfulOutcome),
+            Err(UnsuccessfulOutcome::default()),
         );
 
         let full_delay = outcomes.compute_delay(&ROUTE, start + 3 * CONNECT_DELAY);
@@ -1051,7 +1178,8 @@ mod test {
         const MAX_COUNT: u8 = 5;
 
         let mut outcomes = ConnectionOutcomes::new(ConnectionOutcomeParams {
-            age_cutoff: AGE_CUTOFF,
+            short_term_age_cutoff: AGE_CUTOFF,
+            long_term_age_cutoff: AGE_CUTOFF,
             cooldown_growth_factor: 2.0,
             count_growth_factor: 10.0,
             max_count: MAX_COUNT,
@@ -1060,7 +1188,12 @@ mod test {
 
         const ROUTE: &str = "route";
         let start = Instant::now();
-        outcomes.record_outcome(ROUTE, start, Duration::ZERO, Err(UnsuccessfulOutcome));
+        outcomes.record_outcome(
+            ROUTE,
+            start,
+            Duration::ZERO,
+            Err(UnsuccessfulOutcome::default()),
+        );
 
         let delays = (0..=5)
             .map(|i| {
@@ -1073,6 +1206,158 @@ mod test {
             delays.iter().map(Duration::as_secs).collect_vec(),
             [6, 5, 4, 3, 1, 0]
         );
+    }
+
+    #[test]
+    fn connection_outcomes_delays_distinguish_short_and_long_term() {
+        const MAX_DELAY: Duration = Duration::from_secs(100);
+        const AGE_CUTOFF: Duration = Duration::from_secs(1000);
+        const MAX_COUNT: u8 = 5;
+
+        let mut outcomes = ConnectionOutcomes::new(ConnectionOutcomeParams {
+            short_term_age_cutoff: Duration::ZERO,
+            long_term_age_cutoff: AGE_CUTOFF,
+            cooldown_growth_factor: 2.0,
+            count_growth_factor: 10.0,
+            max_count: MAX_COUNT,
+            max_delay: MAX_DELAY,
+        });
+
+        const SHORT_TERM: &str = "short-term";
+        const LONG_TERM: &str = "long-term";
+        let start = Instant::now();
+        outcomes.record_outcome(
+            SHORT_TERM,
+            start,
+            Duration::ZERO,
+            Err(UnsuccessfulOutcome::ShortTerm),
+        );
+        outcomes.record_outcome(
+            LONG_TERM,
+            start,
+            Duration::ZERO,
+            Err(UnsuccessfulOutcome::LongTerm),
+        );
+
+        let delays = (0..=5)
+            .map(|i| {
+                let when = start + Duration::from_secs(i * 200);
+                (
+                    outcomes.compute_delay(&SHORT_TERM, when),
+                    outcomes.compute_delay(&LONG_TERM, when),
+                )
+            })
+            .collect_vec();
+
+        assert_eq!(
+            delays
+                .iter()
+                .map(|(a, b)| (Duration::as_secs(a), Duration::as_secs(b)))
+                .collect_vec(),
+            [(0, 6), (0, 5), (0, 4), (0, 3), (0, 1), (0, 0)]
+        );
+    }
+
+    #[test]
+    fn connection_outcomes_prefers_long_term() {
+        const MAX_DELAY: Duration = Duration::from_secs(100);
+        const AGE_CUTOFF: Duration = Duration::from_secs(1000);
+        const MAX_COUNT: u8 = 5;
+
+        let mut outcomes = ConnectionOutcomes::new(ConnectionOutcomeParams {
+            // If we set this to zero, the short-then-long case gets GC'd immediately.
+            short_term_age_cutoff: Duration::from_millis(1),
+            long_term_age_cutoff: AGE_CUTOFF,
+            cooldown_growth_factor: 2.0,
+            count_growth_factor: 10.0,
+            max_count: MAX_COUNT,
+            max_delay: MAX_DELAY,
+        });
+
+        const SHORT_THEN_LONG: &str = "short-long";
+        const LONG_THEN_SHORT: &str = "long-short";
+        let start = Instant::now();
+        outcomes.record_outcome(
+            SHORT_THEN_LONG,
+            start,
+            Duration::ZERO,
+            Err(UnsuccessfulOutcome::ShortTerm),
+        );
+        outcomes.record_outcome(
+            SHORT_THEN_LONG,
+            start,
+            Duration::ZERO,
+            Err(UnsuccessfulOutcome::LongTerm),
+        );
+        outcomes.record_outcome(
+            LONG_THEN_SHORT,
+            start,
+            Duration::ZERO,
+            Err(UnsuccessfulOutcome::LongTerm),
+        );
+        outcomes.record_outcome(
+            LONG_THEN_SHORT,
+            start,
+            Duration::ZERO,
+            Err(UnsuccessfulOutcome::ShortTerm),
+        );
+
+        let delays = (0..=5)
+            .map(|i| {
+                let when = start + Duration::from_secs(i * 200);
+                (
+                    outcomes.compute_delay(&SHORT_THEN_LONG, when),
+                    outcomes.compute_delay(&LONG_THEN_SHORT, when),
+                )
+            })
+            .collect_vec();
+
+        assert_eq!(
+            delays
+                .iter()
+                .map(|(a, b)| (Duration::as_secs(a), Duration::as_secs(b)))
+                .collect_vec(),
+            [(16, 16), (14, 14), (11, 11), (8, 8), (4, 4), (0, 0)]
+        );
+    }
+
+    #[test]
+    fn connection_outcomes_resets_after_sleep() {
+        const MAX_DELAY: Duration = Duration::from_secs(100);
+        const AGE_CUTOFF: Duration = Duration::from_secs(1000);
+        const MAX_COUNT: u8 = 5;
+
+        let mut outcomes = ConnectionOutcomes::new(ConnectionOutcomeParams {
+            short_term_age_cutoff: AGE_CUTOFF,
+            long_term_age_cutoff: AGE_CUTOFF,
+            cooldown_growth_factor: 2.0,
+            count_growth_factor: 10.0,
+            max_count: MAX_COUNT,
+            max_delay: MAX_DELAY,
+        });
+
+        const ROUTE: &str = "route";
+        let start = Instant::now();
+        let wall_clock_start = SystemTime::now();
+        outcomes.apply_outcome_updates(
+            [(
+                ROUTE,
+                AttemptOutcome {
+                    started: start,
+                    result: Err(UnsuccessfulOutcome::default()),
+                },
+            )],
+            start,
+            wall_clock_start,
+        );
+
+        assert_eq!(outcomes.compute_delay(&ROUTE, start).as_secs(), 6);
+
+        outcomes.reset_if_system_has_probably_been_asleep(wall_clock_start + AGE_CUTOFF / 2);
+        assert_eq!(outcomes.compute_delay(&ROUTE, start).as_secs(), 6);
+
+        outcomes.reset_if_system_has_probably_been_asleep(wall_clock_start + AGE_CUTOFF);
+        assert_eq!(outcomes.compute_delay(&ROUTE, start).as_secs(), 0);
     }
 
     #[tokio::test(start_paused = true)]

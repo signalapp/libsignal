@@ -428,7 +428,7 @@ where
                     }
                     Err(ControlFlow::Continue(())) => {
                         // Record the non-fatal error outcome and move on.
-                        outcomes.push(make_outcome(Err(UnsuccessfulOutcome)));
+                        outcomes.push(make_outcome(Err(UnsuccessfulOutcome::default())));
                     }
                     Err(ControlFlow::Break(fatal_err)) => {
                         // This isn't a route-level error, it's a
@@ -1100,7 +1100,10 @@ mod test {
             update_outcomes,
             HOSTNAMES[..SUCCESSFUL_ROUTE_INDEX]
                 .iter()
-                .map(|(_, ip)| (FakeRoute(IpAddr::V6(*ip)), Err(UnsuccessfulOutcome)))
+                .map(|(_, ip)| (
+                    FakeRoute(IpAddr::V6(*ip)),
+                    Err(UnsuccessfulOutcome::default())
+                ))
                 .chain(std::iter::once({
                     let (_, ip) = HOSTNAMES[SUCCESSFUL_ROUTE_INDEX];
                     (FakeRoute(IpAddr::V6(ip)), Ok(()))

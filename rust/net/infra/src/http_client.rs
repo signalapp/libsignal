@@ -197,7 +197,7 @@ mod test {
     use std::net::{IpAddr, Ipv6Addr, SocketAddr};
     use std::num::NonZeroU16;
     use std::ops::ControlFlow;
-    use std::time::Duration;
+    use std::time::{Duration, SystemTime};
 
     use assert_matches::assert_matches;
     use http::{HeaderName, HeaderValue, Method, StatusCode};
@@ -259,7 +259,8 @@ mod test {
         const MAX_COUNT: u8 = 5;
 
         ConnectionOutcomes::new(ConnectionOutcomeParams {
-            age_cutoff: AGE_CUTOFF,
+            short_term_age_cutoff: AGE_CUTOFF,
+            long_term_age_cutoff: AGE_CUTOFF,
             cooldown_growth_factor: 2.0,
             count_growth_factor: 10.0,
             max_count: MAX_COUNT,
@@ -307,10 +308,11 @@ mod test {
         )
         .await;
 
-        outcome_record
-            .write()
-            .await
-            .apply_outcome_updates(updates.outcomes, updates.finished_at);
+        outcome_record.write().await.apply_outcome_updates(
+            updates.outcomes,
+            updates.finished_at,
+            SystemTime::now(),
+        );
 
         result.map_err(|e| match e {
             ConnectError::AllAttemptsFailed | ConnectError::NoResolvedRoutes => {
