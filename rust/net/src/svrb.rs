@@ -1203,40 +1203,46 @@ mod test {
         proptest!(|(actions in proptest::collection::vec(Action::arbitrary(), ..20))| {
             let mut scenario = Scenario::new();
 
-            let rt = tokio::runtime::Builder::new_current_thread().enable_time().start_paused(true).build().unwrap();
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_time()
+                .start_paused(true)
+                .build()
+                .unwrap();
             rt.block_on(async {
-            // If we haven't completed at least one backup fully, we don't have any of SVR-B's
-            // guarantees. In particular:
-            //
-            // - If we haven't uploaded a backup, we obviously can't restore.
-            // - More subtly, if we haven't saved the secret data from the first upload, we can't
-            //   recover from the *second* backup process being interrupted.
-            //
-            // But if someone's very first backup fails, hopefully they don't have anything
-            // irreplaceable in Signal yet anyway!
-            scenario.complete_one_successful_backup().await;
+                // If we haven't completed at least one backup fully, we don't have any of SVR-B's
+                // guarantees. In particular:
+                //
+                // - If we haven't uploaded a backup, we obviously can't restore.
+                // - More subtly, if we haven't saved the secret data from the first upload, we can't
+                //   recover from the *second* backup process being interrupted.
+                //
+                // But if someone's very first backup fails, hopefully they don't have anything
+                // irreplaceable in Signal yet anyway!
+                scenario.complete_one_successful_backup().await;
 
-            for action in actions {
-                match action {
-                    Action::UploadSecret => {
-                        _ = scenario.upload_secret_to_svr().await;
-                    }
-                    Action::UploadSecretAndBackup => {
-                        let BackupStoreResponse {
-                            forward_secrecy_token: _,
-                            next_backup_data: _,
-                            metadata,
-                        } = scenario.upload_secret_to_svr().await;
-                        scenario.upload_backup_to_server(metadata);
-                    }
-                    Action::UploadSecretAndBackupAndSave => {
-                        scenario.complete_one_successful_backup().await;
-                    }
-                    Action::WipeAndRestore => {
-                        scenario.wipe_and_restore().await;
+                for action in actions {
+                    match action {
+                        Action::UploadSecret => {
+                            _ = scenario.upload_secret_to_svr().await;
+                        }
+                        Action::UploadSecretAndBackup => {
+                            let BackupStoreResponse {
+                                forward_secrecy_token: _,
+                                next_backup_data: _,
+                                metadata,
+                            } = scenario.upload_secret_to_svr().await;
+                            scenario.upload_backup_to_server(metadata);
+                        }
+                        Action::UploadSecretAndBackupAndSave => {
+                            scenario.complete_one_successful_backup().await;
+                        }
+                        Action::WipeAndRestore => {
+                            scenario.wipe_and_restore().await;
+                        }
                     }
                 }
-            }
+
+                scenario.wipe_and_restore().await;
             });
         });
     }
