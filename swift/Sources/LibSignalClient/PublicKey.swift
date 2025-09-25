@@ -63,7 +63,7 @@ public class PublicKey: ClonableHandleOwner<SignalMutPointerPublicKey>, @uncheck
     /// describing the purpose of the message, while `associatedData` can be used to restrict
     /// successful decryption beyond holding the private key.
     ///
-    /// - SeeAlso ``PrivateKey/open(_:info:associatedData:)-55nax``
+    /// - SeeAlso ``PrivateKey/open(_:info:associatedData:)-(_,ContiguousBytes,_)``
     ///
     /// [RFC 9180]: https://www.rfc-editor.org/rfc/rfc9180.html
     public func seal(
@@ -84,7 +84,7 @@ public class PublicKey: ClonableHandleOwner<SignalMutPointerPublicKey>, @uncheck
         }
     }
 
-    /// Convenience overload for ``seal(_:info:associatedData:)-iyot``, using the UTF-8 bytes of `info`.
+    /// Convenience overload for ``seal(_:info:associatedData:)-(_,ContiguousBytes,_)``, using the UTF-8 bytes of `info`.
     public func seal(
         _ message: some ContiguousBytes,
         info: String,

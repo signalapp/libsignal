@@ -107,7 +107,7 @@ public class SvrB {
     ///   - backupKey: The backup key derived from the Account Entropy Pool (AEP).
     ///   - previousSecretData: Secret data from the most recent previous backup operation.
     ///     **Critical**: This MUST be the secret data from the most recent of the following:
-    ///     - the last **successful** ``store(backupKey:previousSecretKey:)`` call whose returned
+    ///     - the last **successful** ``store(backupKey:previousSecretData:)`` call whose returned
     ///       `metadata` was successfully uploaded, and whose `nextBackupSecretData` was persisted.
     ///     - the last successful ``restore(backupKey:metadata:)``
     ///     - the already-persisted result from ``createNewBackupChain(backupKey:)``, only if

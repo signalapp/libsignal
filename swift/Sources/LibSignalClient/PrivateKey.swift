@@ -69,7 +69,7 @@ public class PrivateKey: ClonableHandleOwner<SignalMutPointerPrivateKey>, @unche
         }
     }
 
-    /// Opens a ciphertext sealed with ``PublicKey/seal(_:info:associatedData:)-iyot``.
+    /// Opens a ciphertext sealed with ``PublicKey/seal(_:info:associatedData:)-(_,ContiguousBytes,_)``.
     ///
     /// Uses HPKE ([RFC 9180][]). The input should include its original type byte indicating the
     /// chosen algorithms and ciphertext layout. The `info` and `associatedData` must match those
@@ -92,7 +92,7 @@ public class PrivateKey: ClonableHandleOwner<SignalMutPointerPrivateKey>, @unche
         }
     }
 
-    /// Convenience overload for ``open(_:info:associatedData:)-55nax``, using the UTF-8 bytes of `info`.
+    /// Convenience overload for ``open(_:info:associatedData:)-(_,ContiguousBytes,_)``, using the UTF-8 bytes of `info`.
     public func open(
         _ ciphertext: some ContiguousBytes,
         info: String,

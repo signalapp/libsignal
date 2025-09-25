@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-/// Wrapper for an ``OpaquePointer?`` allocated by native code.
+/// Wrapper for an `OpaquePointer?` allocated by native code.
 public protocol SignalMutPointer {
     associatedtype ConstPointer: SignalConstPointer
 
@@ -12,7 +12,7 @@ public protocol SignalMutPointer {
     func const() -> ConstPointer
 }
 
-/// Wrapper for an ``OpaquePointer?`` only used as a const argument.
+/// Wrapper for an `OpaquePointer?` only used as a const argument.
 public protocol SignalConstPointer {
     func toOpaque() -> OpaquePointer?
 }

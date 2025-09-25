@@ -42,7 +42,7 @@ public class Net {
     /// or the overload that takes a separate domain and port number.
     ///
     /// Existing connections and services will continue with the setting they were created with.
-    /// (In particular, changing this setting will not affect any existing ``ChatService``s.)
+    /// (In particular, changing this setting will not affect any existing ``ChatConnection``s.)
     ///
     /// - Throws: if the scheme is unsupported or if the provided parameters are invalid for that scheme
     ///   (e.g. Signal TLS proxies don't support authentication)
@@ -247,7 +247,7 @@ public class Net {
     /// Starts the process of connecting to the chat server.
     ///
     /// If this completes successfully, the next call to
-    /// ``connectAuthenticatedChat(username:password:receiveStories:)`` may be able to finish more
+    /// ``connectAuthenticatedChat(username:password:receiveStories:languages:)`` may be able to finish more
     /// quickly. If it's incomplete or produces an error, such a call will start from scratch as
     /// usual. Only one preconnect is recorded, so there's no point in calling this more than once.
     public func preconnectChat() async throws {
@@ -281,7 +281,7 @@ public class Net {
     ///
     /// - Throws: ``SignalError/appExpired(_:)`` if the current app version is too old (as judged by
     ///   the server).
-    /// - Throws: ``SignalError/rateLimitedError(_:, _:)`` if the server
+    /// - Throws: ``SignalError/rateLimitedError(retryAfter:message:)`` if the server
     ///   response indicates the request should be tried again after some time.
     /// - Throws: ``SignalError/deviceDeregistered(_:)`` if the server response
     ///   indicates the device is no longer registered.
@@ -321,7 +321,7 @@ public class Net {
     ///
     /// - Throws: ``SignalError/appExpired(_:)`` if the current app version is too old (as judged by
     ///   the server).
-    /// - Throws: ``SignalError/rateLimitedError(_:, _:)`` if the server
+    /// - Throws: ``SignalError/rateLimitedError(retryAfter:message:)` if the server
     ///   response indicates the request should be tried again after some time.
     /// - Throws: Other ``SignalError``s for other kinds of failures.
     ///

@@ -74,10 +74,10 @@ public class ByteArray {
     }
 }
 
-/// A newtype for ``ByteArray`` that conforms to ``Hashable``
+/// A newtype for ``ByteArray`` that conforms to `Hashable`
 ///
 /// Regular ``ByteArray`` is often used for keys and should not conform
-/// to ``Hashable`` or implement `==` as a non-constant-time operation.
+/// to `Hashable` or implement `==` as a non-constant-time operation.
 public class HashableByteArray: ByteArray {}
 
 extension HashableByteArray: Equatable {

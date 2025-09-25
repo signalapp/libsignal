@@ -15,7 +15,7 @@ public class ClientZkAuthOperations {
 
     /// Produces the `AuthCredentialWithPni` from a server-generated `AuthCredentialWithPniResponse`.
     ///
-    /// - parameter redemptionTime: This is provided by the server as an integer, and should be passed through directly.
+    /// The `redemptionTime` is provided by the server as an integer, and should be passed through directly.
     public func receiveAuthCredentialWithPniAsServiceId(
         aci: Aci,
         pni: Pni,
