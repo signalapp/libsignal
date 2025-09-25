@@ -154,7 +154,7 @@ fn bridge_io_body(
         jni::run_ffi_safe(&mut env, |env| {
             #load_async_runtime
             #(#input_saving)*
-            jni::run_future_on_runtime(env, async_runtime, |__cancel| async move {
+            jni::run_future_on_runtime(env, async_runtime, stringify!(#orig_name), |__cancel| async move {
                 // Wrap the actual work to catch any panics.
                 let __future = jni::catch_unwind(std::panic::AssertUnwindSafe(async {
                     #(#input_loading)*

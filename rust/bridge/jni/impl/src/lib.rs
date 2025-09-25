@@ -96,7 +96,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_AsyncLoadClas
             .get_string(&class_name)
             .check_exceptions(env, "AsyncLoadClass")?
             .into();
-        run_future_on_runtime(env, &*tokio_context, |_cancel| async {
+        run_future_on_runtime(env, &*tokio_context, "AsyncLoadClass", |_cancel| async {
             FutureResultReporter::new(Ok(LoadClassFromName(class_name)), ())
         })
     })

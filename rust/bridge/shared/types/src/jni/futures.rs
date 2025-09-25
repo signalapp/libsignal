@@ -210,7 +210,7 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
 /// # use libsignal_bridge_types::jni::*;
 /// # use libsignal_bridge_types::support::NoOpAsyncRuntime;
 /// # fn test(env: &mut JNIEnv, async_runtime: &NoOpAsyncRuntime) -> SignalJniResult<()> {
-/// let java_future = run_future_on_runtime(env, async_runtime, |_cancel| async {
+/// let java_future = run_future_on_runtime(env, async_runtime, "task", |_cancel| async {
 ///     let result: i32 = 1 + 2;
 ///     // Do some complicated awaiting here.
 ///     FutureResultReporter::new(Ok(result), ())
@@ -220,6 +220,7 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
 pub fn run_future_on_runtime<'local, R, F, O>(
     env: &mut JNIEnv<'local>,
     runtime: &R,
+    label: &'static str,
     future: impl FnOnce(R::Cancellation) -> F,
 ) -> SignalJniResult<JavaCompletableFuture<'local, <O as ResultTypeInfo<'local>>::ResultType>>
 where
@@ -236,7 +237,7 @@ where
     )?;
 
     let completer = FutureCompleter::new(env, &java_future)?;
-    let cancellation_token = runtime.run_future(future, completer);
+    let cancellation_token = runtime.run_future(future, completer, label);
     if let CancellationId::Id(cancellation_id) = cancellation_token {
         call_method_checked(
             env,

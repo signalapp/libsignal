@@ -40,6 +40,7 @@ where
         &self,
         make_future: impl FnOnce(Self::Cancellation) -> F,
         completer: <F::Output as ResultReporter>::Receiver,
+        _label: &'static str,
     ) -> CancellationId {
         let future = make_future(std::future::pending());
         std::thread::spawn(move || {

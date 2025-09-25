@@ -165,6 +165,7 @@ fn bridge_io_body(
             ffi::run_future_on_runtime(
                 async_runtime,
                 promise,
+                stringify!(#orig_name),
                 |__cancel| async move {
                     let __future = ffi::catch_unwind(std::panic::AssertUnwindSafe(async move {
                         #(#input_loading)*

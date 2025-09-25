@@ -124,19 +124,23 @@ where
         &self,
         make_future: impl FnOnce(TokioContextCancellation) -> F,
         completer: <F::Output as ResultReporter>::Receiver,
+        label: &'static str,
     ) -> CancellationId {
         // Delegate to a non-templated function with dynamic dispatch to save on
         // compiled code size.
-        self.run_future_boxed(Box::new(move |cancellation| {
-            let future = make_future(cancellation);
-            async {
-                let reporter = future.await;
-                let report_cb: Box<dyn FnOnce() + Send> =
-                    Box::new(move || reporter.report_to(completer));
-                report_cb
-            }
-            .boxed()
-        }))
+        self.run_future_boxed(
+            label,
+            Box::new(move |cancellation| {
+                let future = make_future(cancellation);
+                async {
+                    let reporter = future.await;
+                    let report_cb: Box<dyn FnOnce() + Send> =
+                        Box::new(move || reporter.report_to(completer));
+                    report_cb
+                }
+                .boxed()
+            }),
+        )
     }
 }
 
@@ -152,6 +156,7 @@ impl TokioAsyncContext {
     /// appropriate type.
     fn run_future_boxed<'s>(
         &'s self,
+        label: &'static str,
         make_future: Box<
             dyn 's + FnOnce(TokioContextCancellation) -> BoxFuture<'static, ReportResultBoxed>,
         >,
@@ -194,7 +199,8 @@ impl TokioAsyncContext {
                 report_fn = &mut future => report_fn,
                 _ = tokio::time::sleep_until(deadline) => {
                     log::warn!(
-                        "Future with cancellation_id {:?} seems stalled (elapsed: {:?})",
+                        "Future for {} with cancellation_id {:?} seems stalled (elapsed: {:?})",
+                        label,
                         cancellation_id,
                         start_time.elapsed()
                     );
@@ -211,10 +217,10 @@ impl TokioAsyncContext {
                     .expect("task map isn't poisoned")
                     .remove(&cancellation_id);
             }
-            log::trace!("completed task with {cancellation_id:?}");
+            log::trace!("completed task for {label} with {cancellation_id:?}");
         });
 
-        log::trace!("started task with {cancellation_id:?}");
+        log::trace!("started task for {label} with {cancellation_id:?}");
         cancellation_id
     }
 }
@@ -314,6 +320,7 @@ mod test {
                     }
                 },
                 (),
+                "test",
             );
             (sender, output, when_reporting)
         };
@@ -374,6 +381,7 @@ mod test {
                 }
             },
             (),
+            "test",
         );
 
         let (on_start_reporting2, mut when_reporting2) = oneshot::channel();
@@ -386,6 +394,7 @@ mod test {
                 }
             },
             (),
+            "test",
         );
 
         assert_matches!(

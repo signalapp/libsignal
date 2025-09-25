@@ -197,7 +197,7 @@ where
 {
     let (deferred, promise) = cx.promise();
     let completer = PromiseSettler::new(cx, deferred, node_function_name);
-    let cancellation_token = runtime.run_future(future, completer);
+    let cancellation_token = runtime.run_future(future, completer, node_function_name);
     if cancellation_token != CancellationId::NotSupported {
         let js_cancellation_token = JsBigInt::from_u64(cx, cancellation_token.into());
         promise.set(cx, "_cancellationToken", js_cancellation_token)?;
@@ -266,6 +266,7 @@ where
         &self,
         make_future: impl FnOnce(Self::Cancellation) -> F,
         completer: <F::Output as ResultReporter>::Receiver,
+        _label: &'static str,
     ) -> CancellationId {
         // Because we're on the JS main thread, we don't need `future` to be Send; it will only be
         // run synchronously with other JS tasks by the Node microtask queue.

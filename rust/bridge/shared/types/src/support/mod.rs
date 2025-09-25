@@ -331,6 +331,7 @@ pub trait AsyncRuntime<F: Future<Output: ResultReporter>>: AsyncRuntimeBase {
         &self,
         make_future: impl FnOnce(Self::Cancellation) -> F,
         completer: <F::Output as ResultReporter>::Receiver,
+        label: &'static str,
     ) -> CancellationId;
 }
 
@@ -349,6 +350,7 @@ impl<F: Future<Output: ResultReporter>> AsyncRuntime<F> for NoOpAsyncRuntime {
         &self,
         _make_future: impl FnOnce(Self::Cancellation) -> F,
         _completer: <F::Output as ResultReporter>::Receiver,
+        _label: &'static str,
     ) -> CancellationId {
         CancellationId::NotSupported
     }
