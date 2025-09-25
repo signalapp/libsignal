@@ -352,6 +352,8 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
 
     if let Some(prev_backup4) = prev_backup4 {
         svrb.finalize(&prev_backup4).await?;
+    } else {
+        log::info!("previous backup data came from a restore; skipping upload to SVR-B");
     }
     for r in
         futures_util::future::join_all(previous_svrbs.iter().enumerate().map(async |(i, p)| {
