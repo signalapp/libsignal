@@ -152,6 +152,8 @@ def main(args: Optional[List[str]] = None) -> int:
     cargo_env['CARGO_PROFILE_RELEASE_LTO'] = 'thin'
     # Enable ARMv8 cryptography acceleration when available
     cargo_env['RUSTFLAGS'] += ' --cfg aes_armv8'
+    # Access tokio's unstable metrics
+    cargo_env['RUSTFLAGS'] += ' --cfg tokio_unstable'
     # Strip absolute paths
     for path in build_helpers.rust_paths_to_remap():
         cargo_env['RUSTFLAGS'] += f' --remap-path-prefix {path}='

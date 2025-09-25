@@ -81,6 +81,7 @@ export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 if [[ -n "${CARGO_BUILD_TARGET:-}" ]]; then
   # Avoid overriding RUSTFLAGS for host builds, because that resets the incremental build.
   RUSTFLAGS="--cfg aes_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
+  RUSTFLAGS="--cfg tokio_unstable ${RUSTFLAGS:-}" # Access tokio's unstable metrics
   RUSTFLAGS="$(rust_remap_path_options) ${RUSTFLAGS:-}" # Strip absolute paths
   export RUSTFLAGS
 fi

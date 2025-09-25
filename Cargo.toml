@@ -48,7 +48,10 @@ rust-version = "1.85"
 cast_possible_truncation = "warn"
 
 [workspace.lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
+unexpected_cfgs = { level = "warn", check-cfg = [
+    'cfg(fuzzing)',
+    'cfg(tokio_unstable)',
+] }
 
 [workspace.dependencies]
 # Our own crates, so that we don't have to depend on them by inter-crate paths

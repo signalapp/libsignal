@@ -207,6 +207,9 @@ impl TokioAsyncContext {
                     future.await
                 }
             };
+
+            Self::check_metrics(&handle, label);
+
             let _: tokio::task::JoinHandle<()> = handle.spawn_blocking(report_fn);
             // What happens if we don't get here? We leak an entry in the task map. Also, we
             // probably have bigger problems, because in practice all the `bridge_io` futures are
@@ -222,6 +225,28 @@ impl TokioAsyncContext {
 
         log::trace!("started task for {label} with {cancellation_id:?}");
         cancellation_id
+    }
+
+    fn check_metrics(handle: &tokio::runtime::Handle, current_task_label: &'static str) {
+        let metrics = handle.metrics();
+        #[cfg(tokio_unstable)]
+        {
+            let active_blocking_threads =
+                metrics.num_blocking_threads() - metrics.num_idle_blocking_threads();
+            // By default there are as many *regular* worker threads as CPUs, so we're treating
+            // "twice the CPU count" as "an abnormal number of blocking threads".
+            if active_blocking_threads > 2 * metrics.num_workers() {
+                log::info!(
+                    "observed {active_blocking_threads} active blocking worker threads while completing {current_task_label}"
+                );
+            } else {
+                log::trace!(
+                    "observed {active_blocking_threads} active blocking worker threads while completing {current_task_label}"
+                );
+            }
+        }
+        _ = metrics;
+        _ = current_task_label;
     }
 }
 
