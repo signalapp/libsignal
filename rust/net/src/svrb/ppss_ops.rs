@@ -9,7 +9,6 @@
 //! on the same set of open connections, as opposed to having to connect for
 //! each individual operation, as implied by `SvrBClient` trait.
 
-use futures_util::TryFutureExt as _;
 use futures_util::future::join_all;
 use libsignal_net_infra::ws::NextOrClose;
 use libsignal_net_infra::ws::attested::AttestedConnectionError;
@@ -158,9 +157,10 @@ async fn run_attested_interaction(
     connection: &mut LabeledConnection,
     request: impl AsRef<[u8]>,
 ) -> Result<(NextOrClose<Vec<u8>>, &ConnectionLabel), AttestedConnectionError> {
-    libsignal_net_infra::ws::attested::run_attested_interaction(&mut connection.0, request)
-        .map_ok(|n| (n, &connection.1))
-        .await
+    let (connection, label) = connection;
+    connection.send_bytes(request.as_ref()).await?;
+    let received = connection.receive_bytes().await?;
+    Ok((received, label))
 }
 
 struct ConnectionContext {

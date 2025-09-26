@@ -277,6 +277,16 @@ impl<D> DirectOrProxyProvider<D> {
     }
 }
 
+impl DirectOrProxyMode {
+    /// Convenience constructor [`DirectOnly`] or [`ProxyOnly`]
+    ///
+    /// [`DirectOnly`]: DirectOrProxyMode::DirectOnly
+    /// [`ProxyOnly`]: DirectOrProxyMode::ProxyOnly
+    pub fn maybe_proxy(proxy: Option<ConnectionProxyConfig>) -> Self {
+        proxy.map_or(Self::DirectOnly, Self::ProxyOnly)
+    }
+}
+
 type DirectOrProxyReplacement =
     DirectOrProxyRoute<TcpRoute<UnresolvedHost>, ConnectionProxyRoute<Host<UnresolvedHost>>>;
 

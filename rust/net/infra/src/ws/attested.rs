@@ -48,15 +48,6 @@ impl From<attest::client_connection::Error> for AttestedConnectionError {
     }
 }
 
-pub async fn run_attested_interaction<C: AsMut<AttestedConnection>, B: AsRef<[u8]>>(
-    connection: &mut C,
-    bytes: B,
-) -> Result<NextOrClose<Vec<u8>>, AttestedConnectionError> {
-    let connection = connection.as_mut();
-    connection.send_bytes(bytes.as_ref()).await?;
-    connection.receive_bytes().await
-}
-
 /// The number of messages the client can buffer outside of the websocket.
 const WS_MESSAGE_BUFFER: usize = 2;
 
@@ -146,12 +137,6 @@ impl AttestedConnection {
     /// Get the hash of the Noise handshake.
     pub fn handshake_hash(&self) -> &[u8] {
         &self.client_connection.handshake_hash
-    }
-}
-
-impl AsMut<Self> for AttestedConnection {
-    fn as_mut(&mut self) -> &mut Self {
-        self
     }
 }
 

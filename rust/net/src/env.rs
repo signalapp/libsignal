@@ -450,6 +450,7 @@ impl ConnectionConfig {
     }
 }
 
+#[derive(Clone)]
 pub struct UserAgent(HeaderValue);
 
 impl UserAgent {
