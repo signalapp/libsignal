@@ -155,7 +155,11 @@ impl FakeChatRemote {
             return Ok(None);
         };
         let proto = match message {
-            tungstenite::Message::Close(None) => return Ok(None),
+            tungstenite::Message::Close(None)
+            | tungstenite::Message::Close(Some(tungstenite::protocol::CloseFrame {
+                code: tungstenite::protocol::frame::coding::CloseCode::Normal,
+                reason: _,
+            })) => return Ok(None),
             tungstenite::Message::Binary(message) => ws::decode_and_validate(&message)?,
             _ => return Err(ReceiveRequestError::InvalidWebsocketMessageType),
         };

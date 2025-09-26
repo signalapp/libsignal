@@ -327,7 +327,14 @@ where
             Event::ClientDisconnect => {
                 // The client has been closed, so there aren't any more messages
                 // coming in. Tell the server we're done.
-                let result = stream.send(Message::Close(None)).await;
+                // Note: we hardcode a Normal (1000) close here; if we ever want to support abnormal
+                // closes, we'll have to add a way for the connection owner to indicate that.
+                let result = stream
+                    .send(Message::Close(Some(CloseFrame {
+                        code: CloseCode::Normal,
+                        reason: Default::default(),
+                    })))
+                    .await;
                 Outcome::Finished(match result {
                     Ok(()) => Ok(FinishReason::LocalDisconnect),
                     Err(e) => Err({
@@ -628,7 +635,7 @@ mod test {
     async fn sends_outgoing_messages() {
         let (mut ws_server, ws_client) = TestStream::new_pair(1);
         let (outgoing_tx, outgoing_rx) = mpsc::channel(1);
-        let connection = Connection::new(
+        let mut connection = Box::pin(Connection::new(
             ws_client,
             ReceiverStream::new(outgoing_rx),
             Config {
@@ -637,8 +644,7 @@ mod test {
                 remote_idle_disconnect_timeout: FOREVER,
             },
             "test".into(),
-        );
-        pin_mut!(connection);
+        ));
 
         const SENT_MESSAGE: &str = "client-sent message";
         const SENT_META: u32 = 123456;
@@ -649,7 +655,7 @@ mod test {
             .await
             .expect("can send to connection");
 
-        let result = connection.handle_next_event().await;
+        let result = connection.as_mut().handle_next_event().await;
         assert_matches!(
             result,
             Outcome::Continue(MessageEvent::SentMessage(SENT_META))
@@ -658,6 +664,17 @@ mod test {
             ws_server.next().now_or_never(),
             Some(Some(Ok(Message::Text(text)))) if text == SENT_MESSAGE
         );
+
+        drop(outgoing_tx);
+        let result = connection.as_mut().handle_next_event().await;
+        assert_matches!(result, Outcome::Finished(Ok(FinishReason::LocalDisconnect)));
+        assert_matches!(
+            ws_server.next().now_or_never(),
+            Some(Some(Ok(Message::Close(Some(CloseFrame { code: CloseCode::Normal, reason }))))) if reason.is_empty()
+        );
+
+        drop(connection);
+        assert_matches!(ws_server.next().await, None);
     }
 
     #[tokio::test(start_paused = true)]
