@@ -5,17 +5,18 @@
 
 use itertools::Itertools;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
-use libsignal_bridge_types::keytrans::BridgeError;
 use libsignal_bridge_types::net::chat::UnauthenticatedChatConnection;
 pub use libsignal_bridge_types::net::{Environment, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_core::{Aci, E164};
-use libsignal_keytrans::{AccountData, LocalStateUpdate, StoredAccountData, StoredTreeHead};
-use libsignal_net_chat::api::Unauth;
+use libsignal_keytrans::{
+    AccountData, LastTreeHead, LocalStateUpdate, StoredAccountData, StoredTreeHead,
+};
 use libsignal_net_chat::api::keytrans::{
     Error, KeyTransparencyClient, MaybePartial, MonitorMode, SearchKey,
     UnauthenticatedChatApi as _, UsernameHash, monitor_and_search,
 };
+use libsignal_net_chat::api::{RequestError, Unauth};
 use libsignal_protocol::PublicKey;
 use prost::{DecodeError, Message};
 
@@ -40,14 +41,6 @@ fn KeyTransparency_UsernameHashSearchKey(hash: &[u8]) -> Vec<u8> {
     UsernameHash::from_slice(hash).as_search_key()
 }
 
-fn try_decode<B, T>(bytes: B) -> Result<T, DecodeError>
-where
-    B: AsRef<[u8]>,
-    T: Message + Default,
-{
-    T::decode(bytes.as_ref())
-}
-
 #[bridge_io(TokioAsyncContext)]
 #[expect(clippy::too_many_arguments)]
 async fn KeyTransparency_Search(
@@ -61,30 +54,18 @@ async fn KeyTransparency_Search(
     username_hash: Option<Box<[u8]>>,
     account_data: Option<Box<[u8]>>,
     last_distinguished_tree_head: Box<[u8]>,
-) -> Result<Vec<u8>, BridgeError> {
+) -> Result<Vec<u8>, RequestError<Error>> {
     let username_hash = username_hash.map(UsernameHash::from);
     let config = environment.into_inner().env().keytrans_config;
     let kt = KeyTransparencyClient::new(UnauthConnectionRef::from(chat_connection), config);
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
 
-    let account_data = account_data
-        .map(|bytes| {
-            let stored: StoredAccountData = try_decode(bytes)
-                .map_err(|_| Error::InvalidRequest("could not decode account data"))?;
-            AccountData::try_from(stored).map_err(Error::from)
-        })
-        .transpose()?;
+    let account_data = account_data.map(try_decode_account_data).transpose()?;
 
-    let last_distinguished_tree_head = try_decode(last_distinguished_tree_head)
-        .map(|stored: StoredTreeHead| stored.into_last_tree_head())
-        .map_err(|_| Error::InvalidRequest("could not decode last distinguished tree head"))?
-        .ok_or(Error::InvalidRequest("last distinguished tree is required"))?;
+    let last_distinguished_tree_head = try_decode_distinguished(last_distinguished_tree_head)?;
 
-    let MaybePartial {
-        inner: returned_account_data,
-        missing_fields,
-    } = kt
+    let maybe_partial_result = kt
         .search(
             &aci,
             aci_identity_key,
@@ -95,15 +76,7 @@ async fn KeyTransparency_Search(
         )
         .await?;
 
-    if missing_fields.is_empty() {
-        Ok(StoredAccountData::from(returned_account_data).encode_to_vec())
-    } else {
-        Err(Error::InvalidResponse(format!(
-            "some fields are missing from the response: {}",
-            &itertools::join(&missing_fields, ", ")
-        ))
-        .into())
-    }
+    maybe_partial_to_serialized_account_data(maybe_partial_result)
 }
 
 #[bridge_io(TokioAsyncContext)]
@@ -122,23 +95,16 @@ async fn KeyTransparency_Monitor(
     account_data: Option<Box<[u8]>>,
     last_distinguished_tree_head: Box<[u8]>,
     is_self_monitor: bool,
-) -> Result<Vec<u8>, BridgeError> {
+) -> Result<Vec<u8>, RequestError<Error>> {
     let username_hash = username_hash.map(UsernameHash::from);
 
     let Some(account_data) = account_data else {
-        return Err(Error::InvalidRequest("account data not found in store").into());
+        return Err(invalid_request("account data not found in store"));
     };
 
-    let account_data = {
-        let stored: StoredAccountData = try_decode(account_data)
-            .map_err(|_| Error::InvalidRequest("could not decode account data"))?;
-        AccountData::try_from(stored).map_err(Error::from)?
-    };
+    let account_data = try_decode_account_data(account_data)?;
 
-    let last_distinguished_tree_head = try_decode(last_distinguished_tree_head)
-        .map(|stored: StoredTreeHead| stored.into_last_tree_head())
-        .map_err(|_| Error::InvalidRequest("could not decode last distinguished tree head"))?
-        .ok_or(Error::InvalidRequest("last distinguished tree is required"))?;
+    let last_distinguished_tree_head = try_decode_distinguished(last_distinguished_tree_head)?;
 
     let config = environment.into_inner().env().keytrans_config;
     let kt = KeyTransparencyClient::new(UnauthConnectionRef::from(chat_connection), config);
@@ -150,10 +116,7 @@ async fn KeyTransparency_Monitor(
     };
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
-    let MaybePartial {
-        inner: updated_account_data,
-        missing_fields,
-    } = monitor_and_search(
+    let maybe_partial_result = monitor_and_search(
         &kt,
         &aci,
         aci_identity_key,
@@ -165,15 +128,7 @@ async fn KeyTransparency_Monitor(
     )
     .await?;
 
-    if !missing_fields.is_empty() {
-        return Err(Error::InvalidResponse(format!(
-            "Missing fields: {}",
-            missing_fields.iter().join(", ")
-        ))
-        .into());
-    }
-
-    Ok(StoredAccountData::from(updated_account_data).encode_to_vec())
+    maybe_partial_to_serialized_account_data(maybe_partial_result)
 }
 
 #[bridge_io(TokioAsyncContext)]
@@ -182,14 +137,14 @@ async fn KeyTransparency_Distinguished(
     environment: AsType<Environment, u8>,
     chat_connection: &UnauthenticatedChatConnection,
     last_distinguished_tree_head: Option<Box<[u8]>>,
-) -> Result<Vec<u8>, BridgeError> {
+) -> Result<Vec<u8>, RequestError<Error>> {
     let config = environment.into_inner().env().keytrans_config;
     let kt = KeyTransparencyClient::new(UnauthConnectionRef::from(chat_connection), config);
 
     let known_distinguished = last_distinguished_tree_head
         .map(try_decode)
         .transpose()
-        .map_err(|_| Error::InvalidRequest("could not decode account data"))?
+        .map_err(|_| invalid_request("could not decode account data"))?
         .and_then(|stored: StoredTreeHead| stored.into_last_tree_head());
     let LocalStateUpdate {
         tree_head,
@@ -201,18 +156,57 @@ async fn KeyTransparency_Distinguished(
     Ok(serialized)
 }
 
+fn invalid_request(msg: &'static str) -> RequestError<Error> {
+    RequestError::Other(Error::InvalidRequest(msg))
+}
+
+fn invalid_response(msg: String) -> RequestError<Error> {
+    RequestError::Other(Error::InvalidResponse(msg))
+}
+
 fn make_e164_pair(
     e164: Option<E164>,
     unidentified_access_key: Option<Box<[u8]>>,
-) -> Result<Option<(E164, Vec<u8>)>, Error> {
+) -> Result<Option<(E164, Vec<u8>)>, RequestError<Error>> {
     match (e164, unidentified_access_key) {
         (None, None) => Ok(None),
         (Some(e164), Some(uak)) => Ok(Some((e164, uak.into_vec()))),
-        (None, Some(_uak)) => Err(Error::InvalidRequest(
-            "Unidentified access key without an E164",
-        )),
-        (Some(_e164), None) => Err(Error::InvalidRequest(
-            "E164 without unidentified access key",
-        )),
+        (None, Some(_uak)) => Err(invalid_request("Unidentified access key without an E164")),
+        (Some(_e164), None) => Err(invalid_request("E164 without unidentified access key")),
     }
+}
+
+fn try_decode<B, T>(bytes: B) -> Result<T, DecodeError>
+where
+    B: AsRef<[u8]>,
+    T: Message + Default,
+{
+    T::decode(bytes.as_ref())
+}
+
+fn try_decode_account_data(bytes: Box<[u8]>) -> Result<AccountData, RequestError<Error>> {
+    let stored: StoredAccountData =
+        try_decode(bytes).map_err(|_| invalid_request("could not decode account data"))?;
+    AccountData::try_from(stored).map_err(|err| RequestError::Other(Error::from(err)))
+}
+
+fn try_decode_distinguished(bytes: Box<[u8]>) -> Result<LastTreeHead, RequestError<Error>> {
+    try_decode(bytes)
+        .map(|stored: StoredTreeHead| stored.into_last_tree_head())
+        .map_err(|_| invalid_request("could not decode last distinguished tree head"))?
+        .ok_or(invalid_request("last distinguished tree is required"))
+}
+
+fn maybe_partial_to_serialized_account_data(
+    maybe_partial: MaybePartial<AccountData>,
+) -> Result<Vec<u8>, RequestError<Error>> {
+    maybe_partial
+        .map(|data| StoredAccountData::from(data).encode_to_vec())
+        .into_result()
+        .map_err(|missing| {
+            invalid_response(format!(
+                "Some fields are missing from the response: {}",
+                missing.iter().join(", ")
+            ))
+        })
 }

@@ -160,5 +160,53 @@ final class KeyTransparencyTests: TestCaseBase {
             XCTFail("unexpected exception thrown: \(error)")
         }
     }
+
+    func customNetworkErrorTestImpl(status: UInt16, headers: [String: String] = [:]) async throws {
+        let tokio = TokioAsyncContext()
+        let (chat, remote) = UnauthenticatedChatConnection.fakeConnect(
+            tokioAsyncContext: tokio,
+            listener: NoOpListener()
+        )
+        defer { withExtendedLifetime(chat) {} }
+
+        async let future = chat.keyTransparencyClient.getDistinguished()
+
+        let (_, id) = try await remote.getNextIncomingRequest()
+
+        try remote.sendResponse(requestId: id, ChatResponse(status: status, headers: headers))
+        _ = try await future
+    }
+
+    func testRetryAfter() async throws {
+        do {
+            try await customNetworkErrorTestImpl(status: 429, headers: ["retry-after": "42"])
+            XCTFail("should have failed")
+        } catch SignalError.rateLimitedError(_, _) {
+        } catch {
+            XCTFail("Unexpected exception thrown: \(error)")
+        }
+    }
+
+    func testUnexpectedRetryAfter() async throws {
+        do {
+            // 429 without retry-after header is unexpected
+            try await customNetworkErrorTestImpl(status: 429)
+            XCTFail("should have failed")
+        } catch SignalError.networkProtocolError(_) {
+        } catch {
+            XCTFail("Unexpected exception thrown: \(error)")
+        }
+    }
+
+    func testServerError() async throws {
+        do {
+            try await customNetworkErrorTestImpl(status: 500)
+            XCTFail("should have failed")
+        } catch SignalError.networkProtocolError(_) {
+        } catch {
+            XCTFail("Unexpected exception thrown: \(error)")
+        }
+    }
+
     #endif
 }

@@ -13,6 +13,7 @@ use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
 use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net_chat::api::RateLimitChallenge;
+use libsignal_net_chat::api::keytrans::Error as KeyTransError;
 use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -690,29 +691,24 @@ impl IntoFfiError for libsignal_net::chat::SendError {
     }
 }
 
-// Special case for api::RequestError<Infallible, DisconnectedError>
-// (used outside the registration module)
-impl IntoFfiError
-    for libsignal_net_chat::api::RequestError<
-        std::convert::Infallible,
-        libsignal_net_chat::api::DisconnectedError,
-    >
+impl<E: IntoFfiError> IntoFfiError
+    for libsignal_net_chat::api::RequestError<E, libsignal_net_chat::api::DisconnectedError>
 where
-    libsignal_net_chat::api::RequestError<std::convert::Infallible>: std::fmt::Display,
+    libsignal_net_chat::api::RequestError<E>: std::fmt::Display,
 {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         match self {
-            libsignal_net_chat::api::RequestError::Timeout => SignalFfiError::from(
-                SimpleError::new(SignalErrorCode::RequestTimedOut, self.to_string()),
-            ),
-            libsignal_net_chat::api::RequestError::ServerSideError
-            | libsignal_net_chat::api::RequestError::Unexpected { log_safe: _ } => {
+            Self::Timeout => SignalFfiError::from(SimpleError::new(
+                SignalErrorCode::RequestTimedOut,
+                self.to_string(),
+            )),
+            Self::ServerSideError | Self::Unexpected { log_safe: _ } => {
                 SimpleError::new(SignalErrorCode::NetworkProtocol, self.to_string()).into()
             }
-            libsignal_net_chat::api::RequestError::Other(err) => match err {},
-            libsignal_net_chat::api::RequestError::RetryLater(retry_later) => retry_later.into(),
-            libsignal_net_chat::api::RequestError::Challenge(challenge) => challenge.into(),
-            libsignal_net_chat::api::RequestError::Disconnected(d) => d.into_ffi_error().into(),
+            Self::Other(err) => err.into_ffi_error().into(),
+            Self::RetryLater(retry_later) => retry_later.into(),
+            Self::Challenge(challenge) => challenge.into(),
+            Self::Disconnected(d) => d.into_ffi_error().into(),
         }
     }
 }
@@ -729,31 +725,18 @@ impl IntoFfiError for libsignal_net_chat::api::DisconnectedError {
     }
 }
 
-impl IntoFfiError for crate::keytrans::BridgeError {
+impl IntoFfiError for KeyTransError {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
-        use libsignal_net_chat::api::RequestError;
         let message = self.to_string();
-        let code = match self.into() {
-            RequestError::Disconnected(inner) => return inner.into_ffi_error().into(),
-            RequestError::Timeout => SignalErrorCode::RequestTimedOut,
-            RequestError::Other(libsignal_net_chat::api::keytrans::Error::VerificationFailed(
-                inner,
-            )) => match inner {
-                libsignal_keytrans::Error::VerificationFailed(_) => {
-                    SignalErrorCode::KeyTransparencyVerificationFailed
-                }
-                libsignal_keytrans::Error::RequiredFieldMissing(_)
-                | libsignal_keytrans::Error::BadData(_) => SignalErrorCode::KeyTransparencyError,
-            },
-            // TODO: Consider being more consistent with other APIs for RetryLater and
-            // ServerSideError. (Challenge shouldn't happen in practice.)
-            RequestError::RetryLater(_)
-            | RequestError::Challenge { .. }
-            | RequestError::ServerSideError
-            | RequestError::Unexpected { .. }
-            | RequestError::Other(_) => SignalErrorCode::KeyTransparencyError,
+        let code = match self {
+            Self::VerificationFailed(libsignal_keytrans::Error::VerificationFailed(_)) => {
+                SignalErrorCode::KeyTransparencyVerificationFailed
+            }
+            Self::VerificationFailed(_) | Self::InvalidResponse(_) | Self::InvalidRequest(_) => {
+                SignalErrorCode::KeyTransparencyError
+            }
         };
-        SimpleError::new(code, message).into()
+        SimpleError::new(code, message)
     }
 }
 

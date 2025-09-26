@@ -72,7 +72,15 @@ public class KeyTransparencyClient {
    *
    * <ul>
    *   <li>{@link ChatServiceException} for errors related to communication with the server.
-   *       Depending on the severity, the search can be retried.
+   *       Depending on the concrete subclass, client can retry the operation. See also {@link
+   *       TimeoutException}, {@link ServerSideErrorException}, {@link UnexpectedResponseException},
+   *       {@link AppExpiredException},
+   *   <li>{@link RetryLaterException} when the client is being throttled. Wait for the specified
+   *       amount of time before making new requests.
+   *   <li>{@link NetworkException} when the network operation fails. Clients can retry the call
+   *       after a recommended period.
+   *   <li>{@link NetworkProtocolException} when a high level network protocol fails. For example,
+   *       failure to establish a websocket connection.
    *   <li>{@link org.signal.libsignal.keytrans.KeyTransparencyException} for errors related to key
    *       transparency logic, which includes missing required fields in the serialized data.
    *       Retrying the search without changing any of the arguments (including the state of the
@@ -147,7 +155,15 @@ public class KeyTransparencyClient {
    *
    * <ul>
    *   <li>{@link ChatServiceException} for errors related to communication with the server.
-   *       Depending on the severity, the request can be retried.
+   *       Depending on the concrete subclass, client can retry the operation. See also {@link
+   *       TimeoutException}, {@link ServerSideErrorException}, {@link UnexpectedResponseException},
+   *       {@link AppExpiredException},
+   *   <li>{@link RetryLaterException} when the client is being throttled. Wait for the specified
+   *       amount of time before making new requests.
+   *   <li>{@link NetworkException} when the network operation fails. Clients can retry the call
+   *       after a recommended period.
+   *   <li>{@link NetworkProtocolException} when a high level network protocol fails. For example,
+   *       failure to establish a websocket connection.
    *   <li>{@link org.signal.libsignal.keytrans.KeyTransparencyException} for errors related to key
    *       transparency logic. Retrying the search without changing any of the arguments (including
    *       the state of the store) is unlikely to yield a different result.
@@ -205,7 +221,15 @@ public class KeyTransparencyClient {
    *
    * <ul>
    *   <li>{@link ChatServiceException} for errors related to communication with the server.
-   *       Depending on the severity, the search can be retried.
+   *       Depending on the concrete subclass, client can retry the operation. See also {@link
+   *       TimeoutException}, {@link ServerSideErrorException}, {@link UnexpectedResponseException},
+   *       {@link AppExpiredException},
+   *   <li>{@link RetryLaterException} when the client is being throttled. Wait for the specified
+   *       amount of time before making new requests.
+   *   <li>{@link NetworkException} when the network operation fails. Clients can retry the call
+   *       after a recommended period.
+   *   <li>{@link NetworkProtocolException} when a high level network protocol fails. For example,
+   *       failure to establish a websocket connection.
    *   <li>{@link org.signal.libsignal.keytrans.KeyTransparencyException} for errors related to key
    *       transparency logic, which includes missing required fields in the serialized data.
    *       Retrying the search without changing any of the arguments (including the state of the

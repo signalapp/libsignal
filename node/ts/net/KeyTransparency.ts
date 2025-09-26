@@ -15,6 +15,7 @@ import {
   type KeyTransparencyVerificationFailed,
   type ChatServiceInactive,
   type IoError,
+  type RateLimitedError,
 } from '../Errors.js';
 
 /**
@@ -145,6 +146,8 @@ export interface Client {
    * @throws {ChatServiceInactive} if the chat connection has been closed.
    * @throws {IoError} if an error occurred while communicating with the
    * server.
+   * @throws {RateLimitedError} if the server is rate limiting this client. This is **retryable**
+   * after waiting the designated delay.
    * */
   search: (
     request: Request,
@@ -181,6 +184,8 @@ export interface Client {
    * @throws {ChatServiceInactive} if the chat connection has been closed.
    * @throws {IoError} if an error occurred while communicating with the
    * server.
+   * @throws {RateLimitedError} if the server is rate limiting this client. This is **retryable**
+   * after waiting the designated delay.
    */
   monitor: (
     request: MonitorRequest,
@@ -201,7 +206,7 @@ export class ClientImpl implements Client {
     store: Store,
     options?: Readonly<Options>
   ): Promise<void> {
-    const distinguished = await this.getLatestDistinguished(
+    const distinguished = await this._getLatestDistinguished(
       store,
       options ?? {}
     );
@@ -238,7 +243,7 @@ export class ClientImpl implements Client {
     store: Store,
     options?: Readonly<Options>
   ): Promise<void> {
-    const distinguished = await this.getLatestDistinguished(
+    const distinguished = await this._getLatestDistinguished(
       store,
       options ?? {}
     );
@@ -289,7 +294,7 @@ export class ClientImpl implements Client {
     return bytes;
   }
 
-  private async getLatestDistinguished(
+  async _getLatestDistinguished(
     store: Store,
     options: Readonly<Options>
   ): Promise<Uint8Array> {

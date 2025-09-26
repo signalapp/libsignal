@@ -954,36 +954,23 @@ impl SignalNodeError for libsignal_net_chat::api::DisconnectedError {
     }
 }
 
-impl SignalNodeError for crate::keytrans::BridgeError {
+impl SignalNodeError for libsignal_net_chat::api::keytrans::Error {
     fn into_throwable<'a, C: Context<'a>>(
         self,
         cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
     ) -> Handle<'a, JsError> {
-        use libsignal_net_chat::api::RequestError;
+        use libsignal_keytrans::Error as KtError;
+
         let message = self.to_string();
-        let name = match self.into() {
-            RequestError::Disconnected(inner) => {
-                return inner.into_throwable(cx, module, operation_name);
-            }
-            RequestError::Timeout => IO_ERROR,
-            RequestError::Other(libsignal_net_chat::api::keytrans::Error::VerificationFailed(
-                inner,
-            )) => match inner {
-                libsignal_keytrans::Error::VerificationFailed(_) => {
-                    "KeyTransparencyVerificationFailed"
-                }
-                libsignal_keytrans::Error::RequiredFieldMissing(_)
-                | libsignal_keytrans::Error::BadData(_) => "KeyTransparencyError",
-            },
-            // TODO: Consider being more consistent with other APIs for RetryLater and
-            // ServerSideError. (Challenge shouldn't happen in practice.)
-            RequestError::RetryLater(_)
-            | RequestError::Challenge { .. }
-            | RequestError::ServerSideError
-            | RequestError::Unexpected { .. }
-            | RequestError::Other(_) => "KeyTransparencyError",
+        let name = match self {
+            libsignal_net_chat::api::keytrans::Error::VerificationFailed(
+                KtError::VerificationFailed(_),
+            ) => "KeyTransparencyVerificationFailed",
+            libsignal_net_chat::api::keytrans::Error::VerificationFailed(_)
+            | libsignal_net_chat::api::keytrans::Error::InvalidResponse(_)
+            | libsignal_net_chat::api::keytrans::Error::InvalidRequest(_) => "KeyTransparencyError",
         };
         new_js_error(
             cx,

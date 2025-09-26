@@ -84,7 +84,8 @@ extension SignalFfi.SignalConstPointerTestingFutureCancellationCounter: LibSigna
     }
 }
 
-private final class CancelCounter: NativeHandleOwner<SignalMutPointerTestingFutureCancellationCounter>, @unchecked
+private final class CancelCounter: NativeHandleOwner<SignalMutPointerTestingFutureCancellationCounter>,
+    @unchecked
     Sendable
 {
     public convenience init(initialValue: UInt8 = 0) {

@@ -4,10 +4,15 @@
 //
 
 import Native from '../../Native.js';
-import { config, expect, use } from 'chai';
+import { assert, config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import * as util from './util.js';
-import { UnauthenticatedChatConnection, Environment, Net } from '../net.js';
+import {
+  UnauthenticatedChatConnection,
+  Environment,
+  Net,
+  TokioAsyncContext,
+} from '../net.js';
 import { Aci } from '../Address.js';
 import { PublicKey } from '../EcKeys.js';
 import {
@@ -18,6 +23,8 @@ import {
 } from '../Errors.js';
 import * as KT from '../net/KeyTransparency.js';
 import { MonitorMode } from '../net/KeyTransparency.js';
+import { InternalRequest } from './NetTest.js';
+import { newNativeHandle } from '../internal.js';
 
 use(chaiAsPromised);
 
@@ -81,6 +88,67 @@ describe('KeyTransparency bridging', () => {
       .that.satisfies(
         (err: LibSignalErrorBase) => err.code === ErrorCode.IoError
       );
+  });
+});
+
+describe('KeyTransparency network errors', () => {
+  it('can bridge network errors', async () => {
+    async function run(statusCode: number, headers: string[] = []) {
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+      const [unauth, remote] = UnauthenticatedChatConnection.fakeConnect(
+        tokio,
+        {
+          onConnectionInterrupted: () => {},
+          onIncomingMessage: () => {},
+          onReceivedAlerts: () => {},
+          onQueueEmpty: () => {},
+        }
+      );
+      const client = new KT.ClientImpl(
+        tokio,
+        unauth._chatService,
+        Environment.Staging
+      );
+      const promise = client._getLatestDistinguished(new InMemoryKtStore(), {});
+
+      const requestFromServerWithId =
+        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
+          tokio,
+          remote
+        );
+      assert(requestFromServerWithId !== null);
+      const requestId = new InternalRequest(requestFromServerWithId).requestId;
+
+      const response = Native.TESTING_FakeChatResponse_Create(
+        requestId,
+        statusCode,
+        '',
+        headers,
+        null
+      );
+
+      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
+        remote,
+        newNativeHandle(response)
+      );
+      return promise;
+    }
+
+    // 429 without a retry-after header is a generic error
+    await expect(run(429)).to.be.rejected.and.eventually.have.property(
+      'code',
+      ErrorCode.IoError
+    );
+    await expect(
+      run(429, ['retry-after: 42'])
+    ).to.be.rejected.and.eventually.have.property(
+      'code',
+      ErrorCode.RateLimitedError
+    );
+    await expect(run(500)).to.be.rejected.and.eventually.have.property(
+      'code',
+      ErrorCode.IoError
+    );
   });
 });
 

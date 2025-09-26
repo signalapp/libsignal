@@ -96,13 +96,21 @@ public enum KeyTransparency {
         ///     server request and, if the request succeeds, will be updated with the
         ///     search operation results.
         /// - Throws:
-        ///   - `SignalError.keyTransparencyError` for errors related to key transparency logic, which
+        ///   - ``SignalError/keyTransparencyError`` for errors related to key transparency logic, which
         ///     includes missing required fields in the serialized data. Retrying the search without
         ///     changing any of the arguments (including the state of the store) is unlikely to yield a
         ///     different result.
-        ///   - `SignalError.keyTransparencyVerificationFailed` when it fails to
+        ///   - ``SignalError/keyTransparencyVerificationFailed`` when it fails to
         ///     verify the data in key transparency server response, such as an incorrect proof or a
         ///     wrong signature.
+        ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server is rate limiting
+        ///     this client. This is **retryable** after waiting the designated delay.
+        ///   - ``SignalError/connectionFailed(_:)``, ``SignalError/ioError(_:)``, or
+        ///     ``SignalError/webSocketError(_:)`` for networking failures before and during
+        ///     communication with the server. These can be **automatically retried** (backoff
+        ///     recommended).
+        ///   - Other ``SignalError``s for networking issues. These can be manually
+        ///     retried, but some may indicate a possible bug in libsignal.
         ///
         /// Completes successfully if the search succeeds and the local state has been
         /// updated to reflect the latest changes. If the operation fails, the UI should
@@ -159,15 +167,24 @@ public enum KeyTransparency {
         ///     server request and, if the request succeeds, will be updated with the
         ///     search operation results.
         /// - Throws:
-        ///   - `SignalError.keyTransparencyError` for errors related to key transparency logic, which
+        ///   - ``SignalErrorrkeyTransparencyError`` for errors related to key transparency logic, which
         ///     includes missing required fields in the serialized data. Retrying the search without
         ///     changing any of the arguments (including the state of the store) is unlikely to yield a
         ///     different result.
-        ///   - `SignalError.keyTransparencyVerificationFailed` when it fails to
+        ///   - ``SignalError/keyTransparencyVerificationFailed`` when it fails to
         ///     verify the data in key transparency server response, such as an incorrect proof or a
         ///     wrong signature. This is also the error thrown when new version
         ///     of account data is found in the key transparency log when
         ///     self-monitoring. See ``MonitorMode``.
+        ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server is rate limiting
+        ///     this client. This is **retryable** after waiting the designated delay.
+        ///   - ``SignalError/connectionFailed(_:)``, ``SignalError/ioError(_:)``, or
+        ///     ``SignalError/webSocketError(_:)`` for networking failures before and during
+        ///     communication with the server. These can be **automatically retried** (backoff
+        ///     recommended).
+        ///   - Other ``SignalError``s for networking issues. These can be manually
+        ///     retried, but some may indicate a possible bug in libsignal.
+        ///
         ///
         /// Completes successfully if the search succeeds and the local state has been
         /// updated to reflect the latest changes. If the operation fails, the UI should

@@ -8,12 +8,15 @@ import org.junit.Assert
 import org.junit.Assume
 import org.junit.Test
 import org.signal.libsignal.internal.CompletableFuture
+import org.signal.libsignal.internal.TokioAsyncContext
 import org.signal.libsignal.keytrans.KeyTransparencyException
 import org.signal.libsignal.keytrans.TestStore
 import org.signal.libsignal.net.KeyTransparency.MonitorMode
 import org.signal.libsignal.util.TestEnvironment
 import java.util.Deque
 import java.util.concurrent.ExecutionException
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 
 private fun <T> retryImpl(
   n: Int,
@@ -147,6 +150,40 @@ class KeyTransparencyClientTest {
     } catch (e: ExecutionException) {
       Assert.assertTrue(e.cause is KeyTransparencyException)
     }
+  }
+
+  inline fun <reified E> networkExceptionsTestImpl(
+    statusCode: Int,
+    message: String = "",
+    headers: Array<String> = arrayOf(),
+  ) {
+    val tokio = TokioAsyncContext()
+    val chatAndFakeRemote =
+      UnauthenticatedChatConnection.fakeConnect(
+        tokio,
+        NoOpListener(),
+        Network.Environment.STAGING,
+      )
+    val chat = chatAndFakeRemote.first()
+    val remote = chatAndFakeRemote.second()
+
+    val store = TestStore()
+    val responseFuture = chat.keyTransparencyClient().updateDistinguished(store)
+
+    val requestId = remote.getNextIncomingRequest().get().second()
+    remote.sendResponse(requestId, statusCode, message, headers, byteArrayOf())
+
+    val exception = assertFailsWith<ExecutionException> { responseFuture.get() }
+    assertIs<E>(exception.cause)
+  }
+
+  @Test
+  @Throws(ExecutionException::class, InterruptedException::class)
+  fun networkExceptions() {
+    networkExceptionsTestImpl<RetryLaterException>(429, headers = arrayOf("retry-after: 42"))
+    networkExceptionsTestImpl<ServerSideErrorException>(500)
+    // 429 without the retry-after is unexpected
+    networkExceptionsTestImpl<UnexpectedResponseException>(429)
   }
 
   companion object {

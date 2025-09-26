@@ -191,14 +191,14 @@ impl<T> MaybePartial<T> {
         }
     }
 
-    fn map<U>(self, f: impl FnOnce(T) -> U) -> MaybePartial<U> {
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> MaybePartial<U> {
         MaybePartial {
             inner: f(self.inner),
             missing_fields: self.missing_fields,
         }
     }
 
-    fn and_then<U>(self, f: impl FnOnce(T) -> MaybePartial<U>) -> MaybePartial<U> {
+    pub fn and_then<U>(self, f: impl FnOnce(T) -> MaybePartial<U>) -> MaybePartial<U> {
         let MaybePartial {
             inner,
             mut missing_fields,
@@ -216,6 +216,18 @@ impl<T> MaybePartial<T> {
 
     pub fn into_inner(self) -> T {
         self.inner
+    }
+
+    pub fn into_result(self) -> Result<T, BTreeSet<AccountDataField>> {
+        let Self {
+            inner,
+            missing_fields,
+        } = self;
+        if missing_fields.is_empty() {
+            Ok(inner)
+        } else {
+            Err(missing_fields)
+        }
     }
 }
 

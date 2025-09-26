@@ -47,12 +47,17 @@ public class KeyTransparencyTest {
 
   @Test
   public void canBridgeNonFatalError() {
-    assertThrows(
-        KeyTransparencyException.class, NativeTesting::TESTING_KeyTransNonFatalVerificationFailure);
+    var exception =
+        assertThrows(
+            KeyTransparencyException.class,
+            NativeTesting::TESTING_KeyTransNonFatalVerificationFailure);
+    // Since VerificationFailedException is a subclass of KeyTransparencyException,
+    // it would also satisfy assertThrows.
+    assertNotEquals(VerificationFailedException.class, exception.getClass());
   }
 
   @Test
   public void canBridgeChatSendError() {
-    assertThrows(ChatServiceException.class, NativeTesting::TESTING_KeyTransChatSendError);
+    assertThrows(TimeoutException.class, NativeTesting::TESTING_KeyTransChatSendError);
   }
 }
