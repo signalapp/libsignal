@@ -1,0 +1,34 @@
+name: Publish to crates.io
+
+on:
+  workflow_dispatch:
+  push:
+  release:
+
+jobs:
+  publish:
+    environment: release
+    
+    permissions:
+      # Needed for rust-lang/crates-io-auth-action
+      id-token: write
+
+    runs-on: ubuntu-latest
+
+    needs: changes
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: rust-lang/crates-io-auth-action@e919bc7605cde86df457cf5b93c5e103838bd879 # v1.0.1
+        id: auth
+
+      - run: cargo publish --dry-run
+        if: ${{ github.event_name != 'release' && github.event_name != 'workflow_dispatch' }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
+      - run: cargo publish
+        if: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
