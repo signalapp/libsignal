@@ -1064,7 +1064,7 @@ impl<I: InnerConnection, GCI: GetCurrentInterface<Representation = IpAddr>> Conn
                     .and_then(|request_tx| request_tx.try_reserve().ok())
                 {
                     log::info!(
-                        "sending internal keepalive to determine if connection is still usable"
+                        "[{log_tag}] sending internal keepalive to determine if connection is still usable"
                     );
                     reservation.send(OutgoingRequest {
                         request: PartialRequestProto {
@@ -1075,7 +1075,7 @@ impl<I: InnerConnection, GCI: GetCurrentInterface<Representation = IpAddr>> Conn
                         },
                         response_sender: oneshot::channel().0,
                     });
-                    log::info!("finished sending off internal keepalive")
+                    log::info!("[{log_tag}] finished sending off internal keepalive");
                 }
             }
             ConnectionEventInterruption::OutstandingRequestTimeout {
