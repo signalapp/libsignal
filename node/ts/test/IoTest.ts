@@ -5,6 +5,7 @@
 
 import { use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
+import { Buffer } from 'node:buffer';
 
 import Native from '../../Native.js';
 import { Uint8ArrayInputStream } from './ioutil.js';

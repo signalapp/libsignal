@@ -4,6 +4,7 @@
 //
 
 import { assert } from 'chai';
+import { Buffer } from 'node:buffer';
 
 import {
   ServerSecretParams,

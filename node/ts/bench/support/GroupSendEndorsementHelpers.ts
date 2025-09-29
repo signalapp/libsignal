@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
+
 import { Aci, ServiceId } from '../../Address.js';
 import {
   ClientZkGroupCipher,

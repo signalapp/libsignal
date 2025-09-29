@@ -5,6 +5,8 @@
 
 import { assert } from 'chai';
 import * as uuid from 'uuid';
+import { Buffer } from 'node:buffer';
+
 import * as AccountKeys from '../AccountKeys.js';
 import * as util from './util.js';
 import { Aci } from '../Address.js';

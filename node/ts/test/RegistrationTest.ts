@@ -6,6 +6,8 @@
 import { assert, config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinonChai from 'sinon-chai';
+import { Buffer } from 'node:buffer';
+
 import * as util from './util.js';
 import Native from '../../Native.js';
 import { ErrorCode, LibSignalErrorBase } from '../Errors.js';

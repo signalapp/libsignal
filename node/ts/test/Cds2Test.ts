@@ -5,10 +5,12 @@
 
 import { assert, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import * as SignalClient from '../index.js';
-import * as util from './util.js';
+import { Buffer } from 'node:buffer';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+
+import * as SignalClient from '../index.js';
+import * as util from './util.js';
 
 use(chaiAsPromised);
 util.initLogger();

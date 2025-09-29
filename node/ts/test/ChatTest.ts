@@ -8,11 +8,15 @@ import {
   Server,
   loadCertificates,
 } from '@signalapp/mock-server';
-import * as os from 'node:os';
 import { config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
+import { Buffer } from 'node:buffer';
+import { randomBytes } from 'node:crypto';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
 import * as util from './util.js';
 import {
   ChatConnection,
@@ -21,8 +25,6 @@ import {
   ConnectionEventsListener,
   Net,
 } from '../net.js';
-import { randomBytes } from 'node:crypto';
-import * as path from 'node:path';
 
 use(chaiAsPromised);
 use(sinonChai);

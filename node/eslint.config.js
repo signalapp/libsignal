@@ -53,6 +53,14 @@ const config = defineConfig(
         },
       ],
 
+      'no-restricted-globals': [
+        'error',
+        {
+          name: 'Buffer',
+          message: 'Import from node:buffer instead.',
+        },
+      ],
+
       'mocha/no-exclusive-tests': 'error',
       'promise/prefer-await-to-then': 'error',
       'no-use-before-define': 'off',

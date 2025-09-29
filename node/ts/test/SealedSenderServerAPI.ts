@@ -4,6 +4,8 @@
 //
 
 import { assert } from 'chai';
+import { Buffer } from 'node:buffer';
+
 import {
   Recipient,
   default as SealedSenderMultiRecipientMessage,

@@ -4,8 +4,11 @@
 //
 
 import { assert, expect, use } from 'chai';
-import { randomBytes } from 'node:crypto';
 import chaiAsPromised from 'chai-as-promised';
+import { Buffer } from 'node:buffer';
+import { randomBytes } from 'node:crypto';
+import * as stream from 'node:stream';
+
 import {
   chunkSizeInBytes,
   DigestingPassThrough,
@@ -15,7 +18,6 @@ import {
 } from '../incremental_mac.js';
 import { ErrorCode, LibSignalErrorBase } from '../Errors.js';
 
-import * as stream from 'node:stream';
 import { assertArrayEquals } from './util.js';
 
 use(chaiAsPromised);

@@ -8,6 +8,8 @@ import * as util from '../util.js';
 
 import { assert, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
+import { Buffer } from 'node:buffer';
+
 import {
   InMemoryIdentityKeyStore,
   InMemoryKyberPreKeyStore,

@@ -3,9 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import Native from '../../Native.js';
 import { assert, config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
+import { Buffer } from 'node:buffer';
+
+import Native from '../../Native.js';
 import * as util from './util.js';
 import {
   UnauthenticatedChatConnection,

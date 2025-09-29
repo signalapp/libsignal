@@ -5,6 +5,8 @@
 
 import { assert, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
+import { Buffer } from 'node:buffer';
+
 import * as SignalClient from '../index.js';
 import * as util from './util.js';
 

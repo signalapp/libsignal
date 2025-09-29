@@ -6,6 +6,7 @@
 import Native from '../Native.js';
 
 import * as uuid from 'uuid';
+import { Buffer } from 'node:buffer';
 
 export enum ServiceIdKind {
   Aci = 0,

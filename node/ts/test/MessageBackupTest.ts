@@ -4,19 +4,21 @@
 //
 
 import { assert } from 'chai';
+import { Buffer } from 'node:buffer';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { Readable } from 'node:stream';
+
 import * as MessageBackup from '../MessageBackup.js';
 import * as util from './util.js';
 import { Aci } from '../Address.js';
 import { Uint8ArrayInputStream, ErrorInputStream } from './ioutil.js';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { hkdf, LogLevel } from '../index.js';
 import {
   AccountEntropyPool,
   BackupForwardSecrecyToken,
   BackupKey,
 } from '../AccountKeys.js';
-import { Readable } from 'node:stream';
 import { InputStream } from '../io.js';
 import { assertArrayNotEquals } from './util.js';
 

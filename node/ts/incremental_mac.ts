@@ -3,8 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import Native from '../Native.js';
 import * as stream from 'node:stream';
+import { Buffer } from 'node:buffer';
+
+import Native from '../Native.js';
 import {
   IncrementalMacVerificationFailed,
   LibSignalErrorBase,

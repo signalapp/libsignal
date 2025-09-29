@@ -4,6 +4,8 @@
 //
 
 import { assert } from 'chai';
+import { Buffer } from 'node:buffer';
+
 import { Environment, Net, SvrB } from '../net.js';
 import { BackupKey, BackupForwardSecrecyToken } from '../AccountKeys.js';
 import { Aci } from '../Address.js';

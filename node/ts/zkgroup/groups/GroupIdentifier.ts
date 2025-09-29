@@ -4,6 +4,7 @@
 //
 
 import ByteArray from '../internal/ByteArray.js';
+import { Buffer } from 'node:buffer';
 
 export default class GroupIdentifier extends ByteArray {
   private readonly __type?: never;

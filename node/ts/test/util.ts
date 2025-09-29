@@ -4,6 +4,7 @@
 //
 
 import { assert } from 'chai';
+import { Buffer } from 'node:buffer';
 import * as SignalClient from '../index.js';
 
 export function initLogger(logLevel?: SignalClient.LogLevel): void {

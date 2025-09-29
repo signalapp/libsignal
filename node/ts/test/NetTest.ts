@@ -7,6 +7,9 @@ import { assert, config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
+import { fail } from 'node:assert';
+import { Buffer } from 'node:buffer';
+
 import * as util from './util.js';
 import { Aci, Pni } from '../Address.js';
 import Native, { type ChatResponse } from '../../Native.js';
@@ -24,7 +27,6 @@ import {
   UnauthenticatedChatConnection,
 } from '../net.js';
 import { CompletablePromise } from './util.js';
-import { fail } from 'node:assert';
 import { newNativeHandle } from '../internal.js';
 
 const { TESTING_ConnectionManager_isUsingProxy } = Native;

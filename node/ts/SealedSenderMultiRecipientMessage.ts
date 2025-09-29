@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import { Buffer } from 'node:buffer';
+
 import Native from '../Native.js';
 
 /**
