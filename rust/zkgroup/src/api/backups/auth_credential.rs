@@ -24,7 +24,7 @@ use crate::common::serialization::ReservedByte;
 use crate::common::sho::Sho;
 use crate::common::simple_types::*;
 use crate::generic_server_params::{GenericServerPublicParams, GenericServerSecretParams};
-use crate::{SECONDS_PER_DAY, ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
+use crate::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 struct BackupIdPoint(RistrettoPoint);
@@ -297,18 +297,10 @@ impl BackupAuthCredentialPresentation {
         current_time: Timestamp,
         server_params: &GenericServerSecretParams,
     ) -> Result<(), ZkGroupVerificationFailure> {
-        let acceptable_start_time = self
-            .redemption_time
-            .checked_sub_seconds(SECONDS_PER_DAY)
-            .ok_or(ZkGroupVerificationFailure)?;
-        let acceptable_end_time = self
-            .redemption_time
-            .checked_add_seconds(2 * SECONDS_PER_DAY)
-            .ok_or(ZkGroupVerificationFailure)?;
-
-        if !(acceptable_start_time..=acceptable_end_time).contains(&current_time) {
-            return Err(ZkGroupVerificationFailure);
-        }
+        crate::ServerSecretParams::check_auth_credential_redemption_time(
+            self.redemption_time,
+            current_time,
+        )?;
 
         zkcredential::presentation::PresentationProofVerifier::new(CREDENTIAL_LABEL)
             .add_public_attribute(&self.redemption_time)
