@@ -11,7 +11,7 @@ plugins {
     id "org.jetbrains.dokka" version "2.0.0" apply false
 
     // These plugins need to be loaded together, so we must declare them up front.
-    id 'com.android.library' version "8.9.0" apply false
+    id 'com.android.library' version "8.10.1" apply false
     id 'org.jetbrains.kotlin.android' version "2.1.0" apply false
 }
 
