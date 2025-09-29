@@ -8,3 +8,6 @@ acknowledgments/acknowledgments.*.hbs merge text=auto
 
 # Avoid Windows line-endings for files compared literally.
 **/*.expected.json text eol=lf
+
+**/*.kt.in linguist-language=Kotlin
+**/*.ts.in linguist-language=TypeScript
