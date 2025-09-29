@@ -101,6 +101,7 @@ const config = defineConfig(
       ],
 
       'import/prefer-default-export': 'off',
+      'import/enforce-node-protocol-usage': ['error', 'always'],
       'prefer-template': 'error',
       '@typescript-eslint/no-require-imports': 'error',
       '@typescript-eslint/consistent-type-assertions': 'error',

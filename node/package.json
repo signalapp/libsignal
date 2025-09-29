@@ -56,7 +56,7 @@
     "eslint-import-resolver-typescript": "^2.0.0",
     "eslint-plugin-chai-expect": "^3.1.0",
     "eslint-plugin-header": "^3.1.0",
-    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-jsdoc": "^48.2.0",
     "eslint-plugin-mocha": "^10.1.0",
     "eslint-plugin-node-import": "1.0.5",
