@@ -1966,9 +1966,7 @@ SignalFfiError *signal_message_new(SignalMutPointerSignalMessage *out, uint8_t m
 
 SignalFfiError *signal_message_verify_mac(bool *out, SignalConstPointerSignalMessage msg, SignalConstPointerPublicKey sender_identity_key, SignalConstPointerPublicKey receiver_identity_key, SignalBorrowedBuffer mac_key);
 
-#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_mp4_sanitizer_sanitize(SignalMutPointerSanitizedMetadata *out, SignalConstPointerFfiInputStreamStruct input, uint64_t len);
-#endif
 
 SignalFfiError *signal_online_backup_validator_add_frame(SignalMutPointerOnlineBackupValidator backup, SignalBorrowedBuffer frame);
 
@@ -2242,25 +2240,15 @@ SignalFfiError *signal_registration_session_get_requested_information(SignalOwne
 
 SignalFfiError *signal_registration_session_get_verified(bool *out, SignalConstPointerRegistrationSession session);
 
-#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_sanitized_metadata_clone(SignalMutPointerSanitizedMetadata *new_obj, SignalConstPointerSanitizedMetadata obj);
-#endif
 
-#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_sanitized_metadata_destroy(SignalMutPointerSanitizedMetadata p);
-#endif
 
-#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_sanitized_metadata_get_data_len(uint64_t *out, SignalConstPointerSanitizedMetadata sanitized);
-#endif
 
-#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_sanitized_metadata_get_data_offset(uint64_t *out, SignalConstPointerSanitizedMetadata sanitized);
-#endif
 
-#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_sanitized_metadata_get_metadata(SignalOwnedBuffer *out, SignalConstPointerSanitizedMetadata sanitized);
-#endif
 
 SignalFfiError *signal_sealed_sender_multi_recipient_encrypt(SignalOwnedBuffer *out, SignalBorrowedSliceOfConstPointerProtocolAddress recipients, SignalBorrowedSliceOfConstPointerSessionRecord recipient_sessions, SignalBorrowedBuffer excluded_recipients, SignalConstPointerUnidentifiedSenderMessageContent content, SignalConstPointerFfiIdentityKeyStoreStruct identity_key_store);
 
@@ -2466,9 +2454,7 @@ SignalFfiError *signal_sgx_client_state_established_send(SignalOwnedBuffer *out,
 
 SignalFfiError *signal_sgx_client_state_initial_request(SignalOwnedBuffer *out, SignalConstPointerSgxClientState obj);
 
-#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_signal_media_check_available(void);
-#endif
 
 SignalFfiError *signal_signed_pre_key_record_clone(SignalMutPointerSignedPreKeyRecord *new_obj, SignalConstPointerSignedPreKeyRecord obj);
 
@@ -2556,8 +2542,6 @@ SignalFfiError *signal_validating_mac_initialize(SignalMutPointerValidatingMac *
 
 SignalFfiError *signal_validating_mac_update(int32_t *out, SignalMutPointerValidatingMac mac, SignalBorrowedBuffer bytes, uint32_t offset, uint32_t length);
 
-#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_webp_sanitizer_sanitize(SignalConstPointerFfiSyncInputStreamStruct input);
-#endif
 
 #endif  /* SIGNAL_FFI_H_ */

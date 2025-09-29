@@ -90,6 +90,7 @@ trait Parameters {
     const PUBLIC_KEY_LENGTH: usize;
     const SECRET_KEY_LENGTH: usize;
     const CIPHERTEXT_LENGTH: usize;
+    #[cfg_attr(not(test), expect(dead_code))]
     const SHARED_SECRET_LENGTH: usize;
     fn generate<R: CryptoRng + ?Sized>(
         csprng: &mut R,

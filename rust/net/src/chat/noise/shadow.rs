@@ -25,6 +25,7 @@ pub struct NoiseDirectConnectShadow<'a> {
 }
 
 #[derive(Debug, derive_more::From, displaydoc::Display)]
+#[expect(dead_code)]
 enum Error {
     /// IO: {0}
     Io(#[from] std::io::ErrorKind),

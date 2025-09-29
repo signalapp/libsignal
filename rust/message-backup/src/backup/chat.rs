@@ -370,7 +370,6 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
     DirectStoryReply(DirectStoryReplyMessage<M::RecipientReference>),
 }
 
-#[expect(dead_code)]
 const CHAT_ITEM_MESSAGE_SIZE_LIMIT: usize = 200;
 static_assertions::const_assert!(
     std::mem::size_of::<StandardMessage<RecipientId>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT

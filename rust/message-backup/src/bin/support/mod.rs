@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+#![allow(dead_code)]
+
 //! Key derivation from arguments, also shared with the examples.
 //!
 //! These *don't* live in the main library because they depend on clap.

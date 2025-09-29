@@ -868,7 +868,7 @@ mod test {
     fn write_frame_piece_by_piece() {
         // Leave only enough space for the payload to assert that the header
         // bytes were pulled out.
-        let (mut read, write) = tokio::io::simplex(Header::LEN);
+        let (read, write) = tokio::io::simplex(Header::LEN);
         let mut read = pin!(read);
         let mut direct = DirectStream::new(write);
 
@@ -921,7 +921,7 @@ mod test {
     #[test_log::test]
     fn writes_whole_frame_if_possible() {
         const PAYLOAD: &[u8] = b"abcde";
-        let (mut read, write) = tokio::io::simplex(Header::LEN + PAYLOAD.len());
+        let (read, write) = tokio::io::simplex(Header::LEN + PAYLOAD.len());
         let mut read = pin!(read);
         let mut direct = DirectStream::new(write);
 
@@ -947,7 +947,7 @@ mod test {
 
     #[test_log::test]
     fn writes_multiple_frames_before_close() {
-        let (mut read, write) = tokio::io::simplex(60);
+        let (read, write) = tokio::io::simplex(60);
         let mut read = pin!(read);
         let mut direct = DirectStream::new(write);
 
@@ -992,7 +992,7 @@ mod test {
         const PAYLOAD: &[u8] = b"abcde";
         // The simplex's buffer is small enough that the entire frame won't fit
         // at once.
-        let (mut read, write) = tokio::io::simplex(Header::LEN);
+        let (read, write) = tokio::io::simplex(Header::LEN);
         let mut read = pin!(read);
         let mut direct = DirectStream::new(write);
 

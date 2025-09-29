@@ -70,6 +70,9 @@ bridge_as_handle!(AuthenticatedChatConnection);
 impl UnwindSafe for AuthenticatedChatConnection {}
 impl RefUnwindSafe for AuthenticatedChatConnection {}
 
+// We could Box the PendingChatConnection, but in practice this type will be on the heap anyway, and
+// there won't be a ton of them allocated.
+#[expect(clippy::large_enum_variant)]
 enum MaybeChatConnection {
     Running(ChatConnection),
     WaitingForListener(

@@ -9,6 +9,7 @@ version = "0.1.0"
 authors.workspace = true
 license.workspace = true
 edition = "2024"
+rust-version = "1.85"
 
 [lints]
 workspace = true

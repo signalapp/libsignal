@@ -213,20 +213,6 @@ mod test {
     use crate::route::testutils::FakeContext;
     use crate::route::{DirectTcpRouteProvider, TlsRouteProvider};
 
-    #[derive(Copy, Clone, Debug, Default)]
-    struct FakeProvider;
-
-    impl RouteProvider for FakeProvider {
-        type Route = ();
-
-        fn routes<'s>(
-            &'s self,
-            _context: &impl RouteProviderContext,
-        ) -> impl Iterator<Item = Self::Route> + 's {
-            std::iter::once(())
-        }
-    }
-
     #[test]
     fn http_provider_route_order() {
         const DIRECT_TCP_PORT: NonZeroU16 = nonzero!(1234u16);

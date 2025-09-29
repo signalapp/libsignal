@@ -276,6 +276,7 @@ fn check_response_status(response: chat::Response) -> Result<chat::Response, Res
 }
 
 /// Like [`TryIntoResponse`], but without checking the status code first.
+#[expect(clippy::result_large_err)]
 fn parse_json_from_body<R>(response: &chat::Response) -> Result<R, ResponseError>
 where
     R: for<'a> serde::Deserialize<'a>,

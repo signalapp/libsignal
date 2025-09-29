@@ -94,7 +94,7 @@ impl<T> OwnedBufferOf<T> {
             return Box::new([]);
         }
 
-        unsafe { Box::from_raw(std::slice::from_raw_parts_mut(base, length)) }
+        unsafe { Box::from_raw(std::ptr::slice_from_raw_parts_mut(base, length)) }
     }
 }
 

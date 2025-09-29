@@ -37,7 +37,12 @@ pub unsafe extern "C" fn signal_free_buffer(buf: *const c_uchar, buf_len: usize)
     if buf.is_null() {
         return;
     }
-    drop(unsafe { Box::from_raw(std::slice::from_raw_parts_mut(buf as *mut c_uchar, buf_len)) });
+    drop(unsafe {
+        Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+            buf as *mut c_uchar,
+            buf_len,
+        ))
+    });
 }
 
 #[unsafe(no_mangle)]
