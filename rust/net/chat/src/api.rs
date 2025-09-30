@@ -11,6 +11,7 @@ use std::convert::Infallible;
 use libsignal_net::infra::errors::LogSafeDisplay;
 
 pub mod keytrans;
+pub mod messages;
 pub mod profiles;
 pub mod registration;
 pub mod usernames;
@@ -129,12 +130,14 @@ pub enum ChallengeOption {
 /// This should be extended to include any new submodules' traits.
 pub trait UnauthenticatedChatApi:
     keytrans::UnauthenticatedChatApi
+    + messages::UnauthenticatedChatApi
     + profiles::UnauthenticatedChatApi
     + usernames::UnauthenticatedChatApi
 {
 }
 impl<T> UnauthenticatedChatApi for T where
     T: keytrans::UnauthenticatedChatApi
+        + messages::UnauthenticatedChatApi
         + profiles::UnauthenticatedChatApi
         + usernames::UnauthenticatedChatApi
 {

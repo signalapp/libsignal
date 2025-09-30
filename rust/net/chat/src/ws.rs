@@ -7,6 +7,7 @@
 //! websocket, as implemented in [`libsignal_net::chat`].
 
 mod keytrans;
+mod messages;
 mod profiles;
 // TODO make this not pub(crate)
 pub(crate) mod registration;
@@ -148,6 +149,8 @@ pub(crate) enum CustomError<E> {
 }
 
 impl<E> CustomError<E> {
+    /// A convenience method to be used with [`ResponseError::into_request_error`] that always
+    /// produces `NoCustomHandling`.
     fn no_custom_handling(_: &chat::Response) -> Self {
         Self::NoCustomHandling
     }
@@ -380,7 +383,7 @@ mod testutil {
             _log_safe_path: &str,
             request: chat::Request,
         ) -> impl Future<Output = Result<chat::Response, chat::SendError>> + Send {
-            assert_eq!(self.expected, request);
+            pretty_assertions::assert_eq!(self.expected, request);
             std::future::ready(Ok(self.response.clone()))
         }
     }
