@@ -1,0 +1,72 @@
+name: Android Integration Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      signal_android_branch:
+        description: 'Signal-Android branch to test against'
+        required: false
+        default: 'main'
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+  NDK_VERSION: 28.0.13004108
+
+jobs:
+  android-integration:
+    name: Android Client Integration Test
+
+    runs-on: ubuntu-latest-8-cores
+
+    timeout-minutes: 60
+
+    steps:
+    - name: Checkout libsignal
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        path: libsignal
+        submodules: recursive
+
+    - name: Checkout Signal-Android
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        repository: signalapp/Signal-Android
+        ref: ${{ inputs.signal_android_branch }}
+        path: Signal-Android
+
+    - run: 'echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"'
+
+    - name: Validate Gradle Wrapper
+      uses: gradle/actions/wrapper-validation@d156388eb19639ec20ade50009f3d199ce1e2808 # v4.1.0
+
+    - run: |
+        cd libsignal
+        rustup toolchain install $(cat rust-toolchain) --profile minimal --target aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
+
+    - name: Install protoc
+      run: |
+        curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v32.0/protoc-32.0-linux-x86_64.zip
+        sudo unzip -o protoc-32.0-linux-x86_64.zip -d /usr/local bin/protoc
+        sudo unzip -o protoc-32.0-linux-x86_64.zip -d /usr/local 'include/*'
+        rm protoc-32.0-linux-x86_64.zip
+
+    - name: Install Android NDK
+      run: |
+        sudo ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;$NDK_VERSION"
+        echo "ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+    - name: Run Android's QA checks with local libsignal
+      run: ./gradlew qa --no-daemon --stacktrace -PlibsignalClientPath=../libsignal -F OFF
+      working-directory: Signal-Android
+      shell: bash # Explicitly setting the shell turns on pipefail in GitHub Actions
+
+    - name: Upload test results
+      if: failure()
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: test-results
+        path: |
+          Signal-Android/**/build/reports/
+          Signal-Android/**/build/test-results/
+        retention-days: 7
