@@ -11,7 +11,7 @@ use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use libsignal_core::Aci;
 use libsignal_net::chat::Request;
 
-use super::{ResponseError, TryIntoResponse, WsConnection};
+use super::{CustomError, ResponseError, TryIntoResponse, WsConnection};
 use crate::api::{RequestError, Unauth};
 use crate::logging::RedactBase64;
 
@@ -52,7 +52,7 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi for Unauth<T
                 }
                 return Ok(None);
             }
-            Err(e) => return Err(e.into_request_error(|_response| None)),
+            Err(e) => return Err(e.into_request_error(CustomError::no_custom_handling)),
         };
 
         let aci = Aci::parse_from_service_id_string(&uuid_string).ok_or_else(|| {

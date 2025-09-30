@@ -9,7 +9,7 @@ use libsignal_net::chat::Request;
 use libsignal_net::infra::AsHttpHeader as _;
 use serde_with::serde_as;
 
-use super::{TryIntoResponse as _, WsConnection};
+use super::{CustomError, TryIntoResponse as _, WsConnection};
 use crate::api::profiles::ProfileKeyCredentialRequestError;
 use crate::api::{RequestError, Unauth, UserBasedAuthorization};
 use crate::logging::{Redact, RedactHex};
@@ -67,10 +67,10 @@ impl<T: WsConnection> crate::api::profiles::UnauthenticatedChatApi for Unauth<T>
 
         let GetProfileResponse { credential } = response.try_into_response().map_err(|e| {
             e.into_request_error(|response| {
-                Some(match response.status.as_u16() {
+                CustomError::Err(match response.status.as_u16() {
                     401 => ProfileKeyCredentialRequestError::AuthFailed,
                     404 => ProfileKeyCredentialRequestError::VersionNotFound,
-                    _ => return None,
+                    _ => return CustomError::NoCustomHandling,
                 })
             })
         })?;

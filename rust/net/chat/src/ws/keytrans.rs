@@ -17,7 +17,7 @@ use libsignal_net::chat;
 use libsignal_protocol::PublicKey;
 use serde::{Deserialize, Serialize};
 
-use super::{CONTENT_TYPE_JSON, TryIntoResponse as _, WsConnection};
+use super::{CONTENT_TYPE_JSON, CustomError, TryIntoResponse as _, WsConnection};
 use crate::api::keytrans::*;
 use crate::api::{RequestError, Unauth};
 
@@ -265,7 +265,7 @@ impl<T: WsConnection> Unauth<T> {
         );
         let response: RawChatSerializedResponse = response
             .try_into_response()
-            .map_err(|e| e.into_request_error(|_| None))?;
+            .map_err(|e| e.into_request_error(CustomError::no_custom_handling))?;
         BASE64_STANDARD_NO_PAD
             .decode(&response.serialized_response)
             .map_err(|_| RequestError::Other(Error::InvalidResponse("invalid base64".to_string())))
