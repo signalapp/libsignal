@@ -33,7 +33,6 @@ pub struct NodeChatListener {
 
 struct Roots {
     callback_object: Root<JsObject>,
-    module: Root<JsObject>,
 }
 
 impl ChatListener for NodeChatListener {
@@ -98,13 +97,9 @@ impl ChatListener for NodeChatListener {
         };
         let roots_shared = self.roots.clone();
         self.js_channel.send(move |mut cx| {
-            let Roots {
-                callback_object,
-                module,
-            } = &*roots_shared;
-            let module = module.to_inner(&mut cx);
+            let Roots { callback_object } = &*roots_shared;
             let cause = disconnect_cause
-                .map(|cause| cause.into_throwable(&mut cx, module, "connection_interrupted"))
+                .map(|cause| cause.into_throwable(&mut cx, "connection_interrupted"))
                 .convert_into(&mut cx)?;
 
             let callback = callback_object.to_inner(&mut cx);
@@ -120,13 +115,10 @@ impl NodeChatListener {
         let mut channel = cx.channel();
         channel.unref(cx);
 
-        let module = cx.this::<JsObject>()?;
-
         Ok(Self {
             js_channel: channel,
             roots: Arc::new(Roots {
                 callback_object: callbacks.root(cx),
-                module: module.root(cx),
             }),
         })
     }
@@ -147,7 +139,6 @@ impl Finalize for NodeChatListener {
 impl Finalize for Roots {
     fn finalize<'a, C: neon::prelude::Context<'a>>(self, cx: &mut C) {
         self.callback_object.finalize(cx);
-        self.module.finalize(cx);
     }
 }
 

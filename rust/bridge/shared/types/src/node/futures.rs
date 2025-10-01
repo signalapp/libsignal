@@ -23,7 +23,6 @@ pub struct CancellationError;
 pub struct PromiseSettler<T, E> {
     deferred: Deferred,
     channel: Channel,
-    error_module: Root<JsObject>,
     node_function_name: &'static str,
     complete_signature: PhantomData<fn(Result<T, E>)>,
 }
@@ -43,14 +42,9 @@ where
         node_function_name: &'static str,
     ) -> Self {
         let channel = cx.channel();
-        let error_module = cx
-            .this::<JsObject>()
-            .expect("'this' is the module containing errors, which is a valid object")
-            .root(cx);
         Self {
             deferred,
             channel,
-            error_module,
             node_function_name,
             complete_signature: PhantomData,
         }
@@ -96,7 +90,6 @@ where
         let PromiseSettler {
             deferred,
             channel,
-            error_module,
             node_function_name,
             complete_signature: _,
         } = receiver;
@@ -105,7 +98,6 @@ where
             // Finalize all the extra args and unwrap our globals before anything else, so we don't
             // leak anything.
             extra_args_to_finalize.finalize(&mut cx);
-            let error_module = error_module.into_inner(&mut cx);
 
             // If we didn't panic during execution of the future, we can convert the result to a
             // JavaScript value or error. But we might panic during *that* operation, so we'll run
@@ -124,16 +116,12 @@ where
                             Ok(success.convert_into(*cx)?.upcast())
                         }),
                         Ok(Err(failure)) => {
-                            let throwable =
-                                failure.into_throwable(*cx, error_module, node_function_name);
+                            let throwable = failure.into_throwable(*cx, node_function_name);
                             Ok(cx.throw(throwable))
                         }
                         Err(CancellationError) => {
-                            let throwable = CancellationError.into_throwable(
-                                *cx,
-                                error_module,
-                                node_function_name,
-                            );
+                            let throwable =
+                                CancellationError.into_throwable(*cx, node_function_name);
                             Ok(cx.throw(throwable))
                         }
                     }
