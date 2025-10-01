@@ -339,7 +339,7 @@ internal object Native {
   @JvmStatic
   public external fun ConnectionManager_clear_proxy(connectionManager: ObjectHandle): Unit
   @JvmStatic
-  public external fun ConnectionManager_new(environment: Int, userAgent: String, remoteConfig: ObjectHandle): ObjectHandle
+  public external fun ConnectionManager_new(environment: Int, userAgent: String, remoteConfig: ObjectHandle, buildVariant: Int): ObjectHandle
   @JvmStatic
   public external fun ConnectionManager_on_network_change(connectionManager: ObjectHandle): Unit
   @JvmStatic
@@ -349,7 +349,7 @@ internal object Native {
   @JvmStatic
   public external fun ConnectionManager_set_proxy(connectionManager: ObjectHandle, proxy: ObjectHandle): Unit
   @JvmStatic
-  public external fun ConnectionManager_set_remote_config(connectionManager: ObjectHandle, remoteConfig: ObjectHandle): Unit
+  public external fun ConnectionManager_set_remote_config(connectionManager: ObjectHandle, remoteConfig: ObjectHandle, buildVariant: Int): Unit
 
   @JvmStatic
   public external fun ConnectionProxyConfig_Destroy(handle: ObjectHandle): Unit

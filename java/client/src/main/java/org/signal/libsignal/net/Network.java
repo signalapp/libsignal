@@ -35,6 +35,30 @@ public class Network {
   }
 
   /**
+   * Build variant for remote config key selection.
+   *
+   * <p>This enum must be kept in sync with the Rust version.
+   *
+   * <ul>
+   *   <li>{@link #PRODUCTION}: Use for release builds or any build that may become a release build
+   *       (e.g., beta builds on Android). Only uses base remote config keys without suffixes.
+   *   <li>{@link #BETA}: Use for all other builds (nightly, alpha, internal, public betas). Prefers
+   *       keys with a {@code .beta} suffix, falling back to base keys if the suffixed key is not
+   *       present.
+   * </ul>
+   */
+  public enum BuildVariant {
+    PRODUCTION(0),
+    BETA(1);
+
+    final int value;
+
+    BuildVariant(int value) {
+      this.value = value;
+    }
+  }
+
+  /**
    * The "scheme" for Signal TLS proxies. See {@link #setProxy(String, String, Integer, String,
    * String)}.
    */
@@ -44,13 +68,31 @@ public class Network {
 
   private final ConnectionManager connectionManager;
 
+  /**
+   * @deprecated Use {@link #Network(Environment, String, Map, BuildVariant)} instead, explicitly
+   *     specifying BuildVariant.PRODUCTION or BuildVariant.BETA.
+   */
+  @Deprecated
   public Network(Environment env, String userAgent) {
-    this(env, userAgent, Collections.emptyMap());
+    this(env, userAgent, Collections.emptyMap(), BuildVariant.PRODUCTION);
   }
 
+  /**
+   * @deprecated Use {@link #Network(Environment, String, Map, BuildVariant)} instead, explicitly
+   *     specifying BuildVariant.PRODUCTION or BuildVariant.BETA.
+   */
+  @Deprecated
   public Network(Environment env, String userAgent, Map<String, String> remoteConfig) {
+    this(env, userAgent, remoteConfig, BuildVariant.PRODUCTION);
+  }
+
+  public Network(
+      Environment env,
+      String userAgent,
+      Map<String, String> remoteConfig,
+      BuildVariant buildVariant) {
     this.tokioAsyncContext = new TokioAsyncContext();
-    this.connectionManager = new ConnectionManager(env, userAgent, remoteConfig);
+    this.connectionManager = new ConnectionManager(env, userAgent, remoteConfig, buildVariant);
   }
 
   /**
@@ -153,7 +195,7 @@ public class Network {
   }
 
   /**
-   * Updates libsignal's remote configuration settings.
+   * Updates libsignal's remote configuration settings with the specified build variant.
    *
    * <p>The provided configuration map must conform to the following requirements:
    *
@@ -174,9 +216,26 @@ public class Network {
    *
    * @param remoteConfig a map containing preprocessed libsignal configuration keys and their
    *     associated values
+   * @param buildVariant the build variant (Production or Beta) that determines which remote config
+   *     keys to use
    */
+  public void setRemoteConfig(Map<String, String> remoteConfig, BuildVariant buildVariant) {
+    this.connectionManager.setRemoteConfig(remoteConfig, buildVariant);
+  }
+
+  /**
+   * Updates libsignal's remote configuration settings using Production build variant.
+   *
+   * <p>This is a backwards-compatible overload that defaults to Production.
+   *
+   * @param remoteConfig a map containing preprocessed libsignal configuration keys and their
+   *     associated values
+   * @deprecated Use {@link #setRemoteConfig(Map, BuildVariant)} instead, explicitly specifying
+   *     BuildVariant.PRODUCTION or BuildVariant.BETA.
+   */
+  @Deprecated
   public void setRemoteConfig(Map<String, String> remoteConfig) {
-    this.connectionManager.setRemoteConfig(remoteConfig);
+    this.setRemoteConfig(remoteConfig, BuildVariant.PRODUCTION);
   }
 
   /**
@@ -320,10 +379,16 @@ public class Network {
       implements ConnectChatBridge {
     private final Environment environment;
 
-    private ConnectionManager(Environment env, String userAgent, Map<String, String> remoteConfig) {
+    private ConnectionManager(
+        Environment env,
+        String userAgent,
+        Map<String, String> remoteConfig,
+        BuildVariant buildVariant) {
       super(
           new BridgedStringMap(remoteConfig)
-              .guardedMap(map -> Native.ConnectionManager_new(env.value, userAgent, map)));
+              .guardedMap(
+                  map ->
+                      Native.ConnectionManager_new(env.value, userAgent, map, buildVariant.value)));
       this.environment = env;
     }
 
@@ -372,10 +437,12 @@ public class Network {
       guardedRun(h -> Native.ConnectionManager_set_censorship_circumvention_enabled(h, enabled));
     }
 
-    private void setRemoteConfig(Map<String, String> remoteConfig) {
+    private void setRemoteConfig(Map<String, String> remoteConfig, BuildVariant buildVariant) {
       new BridgedStringMap(remoteConfig)
           .guardedRun(
-              map -> this.guardedRun(h -> Native.ConnectionManager_set_remote_config(h, map)));
+              map ->
+                  this.guardedRun(
+                      h -> Native.ConnectionManager_set_remote_config(h, map, buildVariant.value)));
     }
 
     @Override

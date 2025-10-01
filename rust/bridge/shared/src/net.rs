@@ -6,7 +6,9 @@
 use std::num::NonZeroU16;
 
 use libsignal_bridge_macros::bridge_fn;
-pub use libsignal_bridge_types::net::{ConnectionManager, Environment, TokioAsyncContext};
+pub use libsignal_bridge_types::net::{
+    BuildVariant, ConnectionManager, Environment, TokioAsyncContext,
+};
 use libsignal_net::chat::ConnectionInfo;
 use libsignal_net::connect_state::infer_proxy_mode_for_config;
 use libsignal_net::infra::errors::LogSafeDisplay;
@@ -94,11 +96,13 @@ fn ConnectionManager_new(
     environment: AsType<Environment, u8>,
     user_agent: String,
     remote_config: &mut BridgedStringMap,
+    build_variant: AsType<BuildVariant, u8>,
 ) -> ConnectionManager {
     ConnectionManager::new(
         environment.into_inner(),
         user_agent.as_str(),
         remote_config.take(),
+        build_variant.into_inner(),
     )
 }
 
@@ -137,8 +141,9 @@ fn ConnectionManager_set_censorship_circumvention_enabled(
 fn ConnectionManager_set_remote_config(
     connection_manager: &ConnectionManager,
     remote_config: &mut BridgedStringMap,
+    build_variant: AsType<BuildVariant, u8>,
 ) {
-    connection_manager.set_remote_config(remote_config.take());
+    connection_manager.set_remote_config(remote_config.take(), build_variant.into_inner());
 }
 
 #[bridge_fn]

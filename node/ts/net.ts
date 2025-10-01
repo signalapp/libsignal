@@ -32,6 +32,20 @@ export enum Environment {
   Production = 1,
 }
 
+/**
+ * Build variant for remote config key selection.
+ *
+ * This must match the libsignal-bridge Rust enum of the same name.
+ *
+ * - `Production`: Use for release builds. Only uses base remote config keys without suffixes.
+ * - `Beta`: Use for all other builds (nightly, alpha, internal, public betas). Prefers
+ *   keys with a `.beta` suffix, falling back to base keys if the suffixed key is not present.
+ */
+export enum BuildVariant {
+  Production = 0,
+  Beta = 1,
+}
+
 export type ServiceAuth = {
   username: string;
   password: string;
@@ -81,6 +95,7 @@ export type NetConstructorOptions = Readonly<
       env: Environment;
       userAgent: string;
       remoteConfig?: Map<string, string>;
+      buildVariant?: BuildVariant;
     }
   | {
       localTestServer: true;
@@ -125,13 +140,18 @@ export class Net {
         )
       );
     } else {
+      const {
+        env,
+        userAgent,
+        remoteConfig = new Map<string, string>(),
+        buildVariant = BuildVariant.Production,
+      } = options;
       this._connectionManager = newNativeHandle(
         Native.ConnectionManager_new(
-          options.env,
-          options.userAgent,
-          new BridgedStringMap(
-            options.remoteConfig || new Map<string, string>()
-          )
+          env,
+          userAgent,
+          new BridgedStringMap(remoteConfig),
+          buildVariant
         )
       );
     }
@@ -434,12 +454,41 @@ export class Net {
    * Only new connections made *after* this call will use the new remote config settings.
    * Existing connections are not affected.
    *
+   * @deprecated Calling without buildVariant is deprecated. Please explicitly specify BuildVariant.Production or BuildVariant.Beta.
    * @param remoteConfig A map containing preprocessed libsignal configuration keys and their associated values.
    */
-  setRemoteConfig(remoteConfig: ReadonlyMap<string, string>): void {
+  setRemoteConfig(remoteConfig: ReadonlyMap<string, string>): void;
+  /**
+   * Updates libsignal's remote configuration settings.
+   *
+   * The provided configuration map must conform to the following requirements:
+   * - Each key represents an enabled configuration and directly indicates that the setting is enabled.
+   * - Keys must have had the platform-specific prefix (e.g., `"desktop.libsignal."`) removed.
+   * - Entries explicitly disabled by the server must not appear in the map.
+   * - Values originally set to `null` by the server must be represented as empty strings.
+   * - Values should otherwise maintain the same format as they are returned by the server.
+   *
+   * These constraints ensure configurations passed to libsignal precisely reflect enabled
+   * server-provided settings without ambiguity.
+   *
+   * Only new connections made *after* this call will use the new remote config settings.
+   * Existing connections are not affected.
+   *
+   * @param remoteConfig A map containing preprocessed libsignal configuration keys and their associated values.
+   * @param buildVariant The build variant (BuildVariant.Production or BuildVariant.Beta) that determines which remote config keys to use.
+   */
+  setRemoteConfig(
+    remoteConfig: ReadonlyMap<string, string>,
+    buildVariant: BuildVariant
+  ): void;
+  setRemoteConfig(
+    remoteConfig: ReadonlyMap<string, string>,
+    buildVariant: BuildVariant = BuildVariant.Production
+  ): void {
     Native.ConnectionManager_set_remote_config(
       this._connectionManager,
-      new BridgedStringMap(remoteConfig)
+      new BridgedStringMap(remoteConfig),
+      buildVariant
     );
   }
 

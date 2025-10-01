@@ -22,6 +22,7 @@ use libsignal_net::infra::route::{
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
 use libsignal_net::infra::{AsHttpHeader as _, EnableDomainFronting};
 
+pub use self::remote_config::BuildVariant;
 use self::remote_config::{RemoteConfig, RemoteConfigKey};
 use crate::*;
 
@@ -128,15 +129,22 @@ impl ConnectionManager {
         environment: Environment,
         user_agent: &str,
         remote_config: HashMap<String, Arc<str>>,
+        build_variant: BuildVariant,
     ) -> Self {
         log::info!("Initializing connection manager for {}...", &environment);
-        Self::new_from_static_environment(environment.env(), user_agent, remote_config)
+        Self::new_from_static_environment(
+            environment.env(),
+            user_agent,
+            remote_config,
+            build_variant,
+        )
     }
 
     pub fn new_from_static_environment(
         env: Env<'static>,
         user_agent: &str,
         remote_config: HashMap<String, Arc<str>>,
+        build_variant: BuildVariant,
     ) -> Self {
         let (network_change_event_tx, network_change_event_rx) = ::tokio::sync::watch::channel(());
         let user_agent = UserAgent::with_libsignal_version(user_agent);
@@ -145,7 +153,7 @@ impl ConnectionManager {
             DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event_rx);
         let transport_connector =
             std::sync::Mutex::new(TcpSslConnector::new_direct(dns_resolver.clone()));
-        let remote_config = RemoteConfig::new(remote_config);
+        let remote_config = RemoteConfig::new(remote_config, build_variant);
         let enforce_minimum_tls = if remote_config.is_enabled(RemoteConfigKey::EnforceMinimumTls) {
             EnforceMinimumTls::Yes
         } else {
@@ -219,8 +227,13 @@ impl ConnectionManager {
         *self.endpoints.lock().expect("not poisoned") = Arc::new(new_endpoints);
     }
 
-    pub fn set_remote_config(&self, remote_config: HashMap<String, Arc<str>>) {
-        *self.remote_config.lock().expect("not poisoned") = RemoteConfig::new(remote_config);
+    pub fn set_remote_config(
+        &self,
+        remote_config: HashMap<String, Arc<str>>,
+        build_variant: BuildVariant,
+    ) {
+        *self.remote_config.lock().expect("not poisoned") =
+            RemoteConfig::new(remote_config, build_variant);
     }
 
     const NETWORK_CHANGE_DEBOUNCE: Duration = Duration::from_secs(1);
@@ -307,15 +320,24 @@ mod test {
     #[test_case(Environment::Staging; "staging")]
     #[test_case(Environment::Prod; "prod")]
     fn can_create_connection_manager(env: Environment) {
-        let _ = ConnectionManager::new(env, "test-user-agent", Default::default());
+        let _ = ConnectionManager::new(
+            env,
+            "test-user-agent",
+            Default::default(),
+            BuildVariant::Production,
+        );
     }
 
     // Normally we would write this test in the app languages, but it depends on timeouts.
     // Using a paused tokio runtime auto-advances time when there's no other work to be done.
     #[tokio::test(start_paused = true)]
     async fn cannot_connect_through_invalid_proxy() {
-        let cm =
-            ConnectionManager::new(Environment::Staging, "test-user-agent", Default::default());
+        let cm = ConnectionManager::new(
+            Environment::Staging,
+            "test-user-agent",
+            Default::default(),
+            BuildVariant::Production,
+        );
         cm.set_invalid_proxy();
         let err = UnauthenticatedChatConnection::connect(&cm, Default::default())
             .await
@@ -326,8 +348,12 @@ mod test {
 
     #[test]
     fn network_change_event_debounced() {
-        let cm =
-            ConnectionManager::new(Environment::Staging, "test-user-agent", Default::default());
+        let cm = ConnectionManager::new(
+            Environment::Staging,
+            "test-user-agent",
+            Default::default(),
+            BuildVariant::Production,
+        );
 
         let mut fired = cm.network_change_event_tx.subscribe();
         assert_matches!(fired.has_changed(), Ok(false));

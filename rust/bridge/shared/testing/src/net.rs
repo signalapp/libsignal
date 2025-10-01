@@ -8,7 +8,7 @@ use std::num::NonZeroU16;
 use base64::prelude::{BASE64_STANDARD, Engine as _};
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::chat::ServerMessageAck;
-use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
+use libsignal_bridge_types::net::{BuildVariant, ConnectionManager, TokioAsyncContext};
 use libsignal_core::E164;
 use libsignal_net::cdsi::{CdsiProtocolError, LookupError, LookupResponse, LookupResponseEntry};
 use libsignal_net::infra::errors::RetryLater;
@@ -159,7 +159,12 @@ fn TESTING_ConnectionManager_newLocalOverride(
     };
 
     let env = net_env::localhost_test_env_with_ports(ports, rootCertificateDer);
-    ConnectionManager::new_from_static_environment(env, userAgent.as_str(), Default::default())
+    ConnectionManager::new_from_static_environment(
+        env,
+        userAgent.as_str(),
+        Default::default(),
+        BuildVariant::Production,
+    )
 }
 
 #[bridge_fn]

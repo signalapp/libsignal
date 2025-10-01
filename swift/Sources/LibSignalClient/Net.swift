@@ -22,14 +22,56 @@ public class Net {
         case production = 1
     }
 
+    /// Build variant for remote config key selection.
+    ///
+    /// This enum must be kept in sync with the Rust version.
+    ///
+    /// - ``production``: Use for release builds. Only uses base remote config keys without suffixes.
+    /// - ``beta``: Use for all other builds (nightly, alpha, internal, public betas). Prefers
+    ///   keys with a `.beta` suffix, falling back to base keys if the suffixed key is not present.
+    public enum BuildVariant: UInt8, Sendable {
+        /// Production build variant: uses only base remote config keys.
+        case production = 0
+
+        /// Beta build variant: prefers `.beta` suffixed keys, falls back to base keys.
+        case beta = 1
+    }
+
     /// The "scheme" for Signal TLS proxies. See ``Net/setProxy(scheme:host:port:username:password:)``.
     public static let signalTlsProxyScheme = "org.signal.tls"
 
     /// Creates a new `Net` instance that enables interacting with services in the given Signal environment.
-    public init(env: Environment, userAgent: String, remoteConfig: [String: String] = [:]) {
+    ///
+    /// - Warning: This initializer is deprecated. Use ``init(env:userAgent:buildVariant:remoteConfig:)`` instead.
+    @available(*, deprecated, message: "Use init(env:userAgent:buildVariant:remoteConfig:) instead")
+    public convenience init(
+        env: Environment,
+        userAgent: String,
+        remoteConfig: [String: String] = [:]
+    ) {
+        self.init(
+            env: env,
+            userAgent: userAgent,
+            buildVariant: .production,
+            remoteConfig: remoteConfig
+        )
+    }
+
+    /// Creates a new `Net` instance that enables interacting with services in the given Signal environment.
+    public init(
+        env: Environment,
+        userAgent: String,
+        buildVariant: BuildVariant,
+        remoteConfig: [String: String] = [:]
+    ) {
         self.environment = env
         self.asyncContext = TokioAsyncContext()
-        self.connectionManager = ConnectionManager(env: env, userAgent: userAgent, remoteConfig: remoteConfig)
+        self.connectionManager = ConnectionManager(
+            env: env,
+            userAgent: userAgent,
+            remoteConfig: remoteConfig,
+            buildVariant: buildVariant
+        )
     }
 
     /// Sets the proxy host to be used for all new connections (until overridden).
@@ -122,7 +164,7 @@ public class Net {
         self.connectionManager.setCensorshipCircumventionEnabled(enabled)
     }
 
-    /// Updates the remote configuration settings used by libsignal.
+    /// Updates the remote configuration settings used by libsignal with the specified build variant.
     ///
     /// The provided dictionary should be preprocessed as follows:
     /// - Include only keys representing enabled configurations (entries explicitly disabled by the server should be omitted).
@@ -133,9 +175,25 @@ public class Net {
     /// Only new connections made *after* this call will use the new remote config settings.
     /// Existing connections are not affected.
     ///
+    /// - Parameters:
+    ///   - remoteConfig: A dictionary containing preprocessed libsignal configuration keys and their associated values
+    ///   - buildVariant: The build variant (Production or Beta) that determines which remote config keys to use
+    public func setRemoteConfig(_ remoteConfig: [String: String], buildVariant: BuildVariant) {
+        self.connectionManager.setRemoteConfig(remoteConfig, buildVariant: buildVariant)
+    }
+
+    /// Updates the remote configuration settings used by libsignal using Production build variant.
+    ///
+    /// This is a backwards-compatible overload that defaults to Production.
+    ///
     /// - Parameter remoteConfig: A dictionary containing preprocessed libsignal configuration keys and their associated values
+    @available(
+        *,
+        deprecated,
+        message: "Use setRemoteConfig(_:buildVariant:) instead, explicitly specifying .production or .beta"
+    )
     public func setRemoteConfig(_ remoteConfig: [String: String]) {
-        self.connectionManager.setRemoteConfig(remoteConfig)
+        self.setRemoteConfig(remoteConfig, buildVariant: .production)
     }
 
     /// Notifies libsignal that the network has changed.
@@ -377,10 +435,17 @@ internal class ConnectionManager: NativeHandleOwner<SignalMutPointerConnectionMa
         }
     }
 
-    convenience init(env: Net.Environment, userAgent: String, remoteConfig: [String: String]) {
+    convenience init(
+        env: Net.Environment,
+        userAgent: String,
+        remoteConfig: [String: String],
+        buildVariant: Net.BuildVariant
+    ) {
         var handle = SignalMutPointerConnectionManager()
         remoteConfig.withBridgedStringMap { remoteConfig in
-            failOnError(signal_connection_manager_new(&handle, env.rawValue, userAgent, remoteConfig))
+            failOnError(
+                signal_connection_manager_new(&handle, env.rawValue, userAgent, remoteConfig, buildVariant.rawValue)
+            )
         }
         self.init(owned: NonNull(handle)!)
     }
@@ -428,10 +493,12 @@ internal class ConnectionManager: NativeHandleOwner<SignalMutPointerConnectionMa
         }
     }
 
-    internal func setRemoteConfig(_ remoteConfig: [String: String]) {
+    internal func setRemoteConfig(_ remoteConfig: [String: String], buildVariant: Net.BuildVariant) {
         remoteConfig.withBridgedStringMap { remoteConfig in
             self.withNativeHandle {
-                failOnError(signal_connection_manager_set_remote_config($0.const(), remoteConfig))
+                failOnError(
+                    signal_connection_manager_set_remote_config($0.const(), remoteConfig, buildVariant.rawValue)
+                )
             }
         }
     }
