@@ -116,7 +116,7 @@ final class NetTests {
             acisAndAccessKeys: [],
             token: nil
         )
-        let net = Net(env: .staging, userAgent: userAgent)
+        let net = Net(env: .staging, userAgent: userAgent, buildVariant: .production)
 
         let lookup = try await net.cdsiLookup(auth: auth, request: request)
         let response = try await lookup.complete()
@@ -130,7 +130,7 @@ final class NetTests {
     @Test
     func networkChangeEvent() throws {
         // There's no feedback from this, we're just making sure it doesn't normally crash or throw.
-        let net = Net(env: .staging, userAgent: userAgent)
+        let net = Net(env: .staging, userAgent: userAgent, buildVariant: .production)
         try net.networkDidChange()
     }
 }

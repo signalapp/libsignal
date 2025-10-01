@@ -77,7 +77,7 @@ final class KeyTransparencyTests: TestCaseBase {
     func testUnknownDistinguished() async throws {
         try self.nonHermeticTest()
 
-        let net = Net(env: .staging, userAgent: userAgent)
+        let net = Net(env: .staging, userAgent: userAgent, buildVariant: .production)
         let chat = try await net.connectUnauthenticatedChat()
         chat.start(listener: NoOpListener())
 
@@ -87,7 +87,7 @@ final class KeyTransparencyTests: TestCaseBase {
     func testSearch() async throws {
         try self.nonHermeticTest()
 
-        let net = Net(env: .staging, userAgent: userAgent)
+        let net = Net(env: .staging, userAgent: userAgent, buildVariant: .production)
         let chat = try await net.connectUnauthenticatedChat()
         chat.start(listener: NoOpListener())
         let store = TestStore()
@@ -106,7 +106,7 @@ final class KeyTransparencyTests: TestCaseBase {
     func testMonitor() async throws {
         try self.nonHermeticTest()
 
-        let net = Net(env: .staging, userAgent: userAgent)
+        let net = Net(env: .staging, userAgent: userAgent, buildVariant: .production)
         let chat = try await net.connectUnauthenticatedChat()
         chat.start(listener: NoOpListener())
         let store = TestStore()

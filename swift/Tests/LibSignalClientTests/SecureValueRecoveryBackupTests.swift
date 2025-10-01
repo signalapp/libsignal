@@ -13,7 +13,7 @@ final class SecureValueRecoveryBackupTests: TestCaseBase {
     private let testAci = try! Aci.parseFrom(serviceIdString: "e74beed0-e70f-4cfd-abbb-7e3eb333bbac")
     private let testBackupKey = BackupKey.generateRandom()
     private let testInvalidSecretData = Data("invalid secret data".utf8)
-    private lazy var net = Net(env: .staging, userAgent: "test")
+    private lazy var net = Net(env: .staging, userAgent: "test", buildVariant: .production)
     private lazy var testAuth: Auth = {
         let process = ProcessInfo.processInfo
 

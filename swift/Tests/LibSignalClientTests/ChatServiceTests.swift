@@ -169,7 +169,7 @@ final class ChatServiceTests: TestCaseBase {
     #endif
 
     func testInvalidProxyRejected() {
-        let net = Net(env: .production, userAgent: Self.userAgent)
+        let net = Net(env: .production, userAgent: Self.userAgent, buildVariant: .production)
 
         func check(callback: () throws -> Void) {
             net.connectionManager.assertIsUsingProxyIs(0)
@@ -426,7 +426,7 @@ final class ChatConnectionTests: TestCaseBase {
             func connectionWasInterrupted(_: UnauthenticatedChatConnection, error: Error?) {}
         }
 
-        let net = Net(env: .staging, userAgent: Self.userAgent)
+        let net = Net(env: .staging, userAgent: Self.userAgent, buildVariant: .production)
         var expectations: [XCTestExpectation] = []
 
         do {
@@ -459,7 +459,7 @@ final class ChatConnectionTests: TestCaseBase {
             throw XCTSkip()
         }
 
-        let net = Net(env: .staging, userAgent: Self.userAgent)
+        let net = Net(env: .staging, userAgent: Self.userAgent, buildVariant: .production)
         let chat = try await net.connectUnauthenticatedChat(languages: ["en"])
         _ = chat.info()
         let listener = ExpectDisconnectListener(expectation(description: "disconnect"))
@@ -477,7 +477,7 @@ final class ChatConnectionTests: TestCaseBase {
             throw XCTSkip()
         }
 
-        let net = Net(env: .staging, userAgent: Self.userAgent)
+        let net = Net(env: .staging, userAgent: Self.userAgent, buildVariant: .production)
         try await net.preconnectChat()
         do {
             // While we get no direct feedback here whether the preconnect was used,
@@ -496,7 +496,7 @@ final class ChatConnectionTests: TestCaseBase {
             throw XCTSkip()
         }
 
-        let net = Net(env: .staging, userAgent: Self.userAgent)
+        let net = Net(env: .staging, userAgent: Self.userAgent, buildVariant: .production)
         let host: Substring
         let port: UInt16
         if let colonIndex = PROXY_SERVER.firstIndex(of: ":") {
@@ -524,7 +524,7 @@ final class ChatConnectionTests: TestCaseBase {
             throw XCTSkip()
         }
 
-        let net = Net(env: .staging, userAgent: Self.userAgent)
+        let net = Net(env: .staging, userAgent: Self.userAgent, buildVariant: .production)
         let host: Substring
         let port: UInt16?
         if let colonIndex = PROXY_SERVER.firstIndex(of: ":") {
@@ -563,7 +563,7 @@ final class ChatConnectionTests: TestCaseBase {
             throw XCTSkip()
         }
 
-        let net = Net(env: .staging, userAgent: Self.userAgent)
+        let net = Net(env: .staging, userAgent: Self.userAgent, buildVariant: .production)
         let chat = try await net.connectUnauthenticatedChat()
         // Intentionally don't call .start and set a listener; sometimes the client app does not do this before
         // calling .disconnect()
