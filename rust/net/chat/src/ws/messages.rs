@@ -18,10 +18,10 @@ use crate::api::messages::{
 };
 use crate::api::{RequestError, Unauth};
 
+const GROUP_SEND_TOKEN_HEADER: http::HeaderName = http::HeaderName::from_static("group-send-token");
+
 impl MultiRecipientSendAuthorization {
     fn to_header(&self) -> Option<(http::HeaderName, http::HeaderValue)> {
-        const GROUP_SEND_TOKEN_HEADER: http::HeaderName =
-            http::HeaderName::from_static("group-send-token");
         match self {
             MultiRecipientSendAuthorization::Story => None,
             MultiRecipientSendAuthorization::Group(group_send_full_token) => Some((
@@ -190,6 +190,7 @@ fn parse_multi_recipient_mismatched_devices_response(
 
 #[cfg(test)]
 mod test {
+    use const_str::concat_bytes;
     use futures_util::FutureExt;
     use libsignal_core::{Aci, Pni};
     use libsignal_protocol::Timestamp;
@@ -279,7 +280,7 @@ mod test {
             expected: Request {
                 method: http::Method::PUT,
                 path: http::uri::PathAndQuery::from_static(
-                    "/v1/messages/multi_recipient?ts=1700000000&online=false&urgent=true&story=true",
+                    "/v1/messages/multi_recipient?ts=1700000000000&online=false&urgent=true&story=true",
                 ),
                 headers: http::HeaderMap::from_iter([(
                     http::header::CONTENT_TYPE,
@@ -293,12 +294,61 @@ mod test {
         Unauth(validator)
             .send_multi_recipient_message(
                 vec![1, 2, 3].into(),
-                Timestamp::from_epoch_millis(1700000000),
+                Timestamp::from_epoch_millis(1700000000000),
                 MultiRecipientSendAuthorization::Story,
                 false,
                 true,
             )
             .now_or_never()
             .expect("sync")
+    }
+
+    #[test]
+    fn test_group_send() {
+        let validator = RequestValidator {
+            expected: Request {
+                method: http::Method::PUT,
+                path: http::uri::PathAndQuery::from_static(
+                    "/v1/messages/multi_recipient?ts=1700000000000&online=true&urgent=false",
+                ),
+                headers: http::HeaderMap::from_iter([
+                    (
+                        http::header::CONTENT_TYPE,
+                        http::HeaderValue::from_static("application/vnd.signal-messenger.mrm"),
+                    ),
+                    (
+                        GROUP_SEND_TOKEN_HEADER,
+                        http::HeaderValue::from_static(
+                            "ABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABo5c+LAQAA",
+                        ),
+                    ),
+                ]),
+                body: Some(vec![1, 2, 3].into()),
+            },
+            response: json(200, "{}"),
+        };
+
+        // A full token is a version byte, a length-prefixed truncated hash, and a 64-bit
+        // day-aligned expiration timestamp in seconds.
+        let fake_token = zkgroup::deserialize(concat_bytes!(
+            0,
+            16u64.to_le_bytes(),
+            [0; 16],
+            1700000000000u64.to_le_bytes()
+        ))
+        .expect("valid (enough)");
+
+        let MultiRecipientMessageResponse { unregistered_ids } = Unauth(validator)
+            .send_multi_recipient_message(
+                vec![1, 2, 3].into(),
+                Timestamp::from_epoch_millis(1700000000000),
+                MultiRecipientSendAuthorization::Group(fake_token),
+                true,
+                false,
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
+        assert_eq!(unregistered_ids, &[] as &[ServiceId]);
     }
 }

@@ -43,9 +43,7 @@ pub struct Registration<T>(pub T);
 
 /// Authorization for requests on unauthenticated connections involving other users.
 ///
-/// TODO: for multi-recipient message sends *specifically* there's one more kind of authorization,
-/// "this is a story". That should be handled as a separate type since other requests don't have
-/// that.
+/// For multi-recipient messages, see [messages::MultiRecipientSendAuthorization].
 pub enum UserBasedAuthorization {
     AccessKey([u8; 16]),
     Group(zkgroup::groups::GroupSendFullToken),
