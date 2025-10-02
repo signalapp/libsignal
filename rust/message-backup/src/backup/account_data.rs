@@ -193,6 +193,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             donationSubscriberData,
             backupsSubscriberData,
             svrPin,
+            androidSpecificSettings: _,
             special_fields: _,
         } = self;
 
@@ -369,6 +370,11 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             customChatColors,
             optimizeOnDeviceStorage,
             backupTier,
+            showSealedSenderIndicators: _,
+            defaultSentMediaQuality: _,
+            mobileAutoDownloadSettings: _,
+            wifiAutoDownloadSettings: _,
+            screenLockTimeoutMinutes: _,
             special_fields: _,
         } = self;
 

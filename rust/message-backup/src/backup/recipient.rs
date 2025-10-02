@@ -147,6 +147,11 @@ impl ChatRecipientKind {
             Self::Self_ => false,
         }
     }
+
+    /// Returns true iff `self` is a group recipient.
+    pub fn is_group(&self) -> bool {
+        matches!(self, Self::Group)
+    }
 }
 
 impl From<ChatRecipientKind> for DestinationKind {

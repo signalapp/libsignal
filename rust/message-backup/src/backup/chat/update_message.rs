@@ -6,6 +6,7 @@ use crate::backup::TryIntoWith;
 use crate::backup::call::{GroupCall, IndividualCall};
 use crate::backup::chat::ChatItemError;
 use crate::backup::chat::group::GroupChatUpdate;
+use crate::backup::chat::poll::PollTerminate;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::{ChatItemAuthorKind, ChatRecipientKind, E164, MinimalRecipientData};
@@ -25,6 +26,7 @@ pub enum UpdateMessage<Recipient> {
     IndividualCall(IndividualCall),
     GroupCall(GroupCall<Recipient>),
     LearnedProfileUpdate(proto::learned_profile_chat_update::PreviousName),
+    PollTerminate(PollTerminate),
 }
 
 /// Validated version of [`proto::simple_chat_update::Type`].
@@ -165,6 +167,9 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
             }) => UpdateMessage::LearnedProfileUpdate(
                 previousName.ok_or(ChatItemError::LearnedProfileIsEmpty)?,
             ),
+            Update::PollTerminate(proto) => {
+                UpdateMessage::PollTerminate(proto.try_into_with(context)?)
+            }
         })
     }
 }
@@ -289,6 +294,13 @@ impl<R> UpdateMessage<R> {
                     Ok(())
                 }
             }
+            UpdateMessage::PollTerminate(_) => {
+                if !author.is_valid_sender_account() {
+                    Err(ChatItemError::PollTerminateNotFromContact)
+                } else {
+                    Ok(())
+                }
+            }
         }
     }
 
@@ -386,6 +398,13 @@ impl<R> UpdateMessage<R> {
             UpdateMessage::GroupCall(_) => {
                 if !matches!(chat, ChatRecipientKind::Group) {
                     Err(ChatItemError::GroupCallNotInGroupThread)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::PollTerminate(_) => {
+                if !chat.is_group() {
+                    Err(ChatItemError::PollTerminateNotInGroup((*chat).into()))
                 } else {
                     Ok(())
                 }

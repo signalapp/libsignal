@@ -32,6 +32,7 @@ pub enum QuoteType {
     Normal,
     GiftBadge,
     ViewOnce,
+    Poll,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -119,6 +120,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             }
             proto::quote::Type::GIFT_BADGE => QuoteType::GiftBadge,
             proto::quote::Type::VIEW_ONCE => QuoteType::ViewOnce,
+            proto::quote::Type::POLL => QuoteType::Poll,
         };
 
         let text = text.into_option().map(|text| text.try_into()).transpose()?;

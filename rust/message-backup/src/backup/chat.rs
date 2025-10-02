@@ -66,6 +66,9 @@ use view_once_message::*;
 mod voice_message;
 use voice_message::*;
 
+mod poll;
+use poll::*;
+
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum ChatError {
@@ -237,6 +240,14 @@ pub enum ChatItemError {
     InvalidE164,
     /// {0}
     InvalidTimestamp(#[from] TimestampError),
+    /// invalid poll {0}
+    InvalidPoll(#[from] PollError),
+    /// poll with a destination that is not group but {0:?}
+    PollNotInGroup(DestinationKind),
+    /// poll terminate with a destination that is not group but {0:?}
+    PollTerminateNotInGroup(DestinationKind),
+    /// poll terminate not from contact or self
+    PollTerminateNotFromContact,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -368,6 +379,7 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
     GiftBadge(M::BoxedValue<GiftBadge>),
     ViewOnce(ViewOnceMessage<M::RecipientReference>),
     DirectStoryReply(DirectStoryReplyMessage<M::RecipientReference>),
+    Poll(Poll<M::RecipientReference>),
 }
 
 const CHAT_ITEM_MESSAGE_SIZE_LIMIT: usize = 200;
@@ -647,7 +659,8 @@ impl<
                 | ChatItemMessage::Update(_)
                 | ChatItemMessage::PaymentNotification(_)
                 | ChatItemMessage::GiftBadge(_)
-                | ChatItemMessage::ViewOnce(_) => {
+                | ChatItemMessage::ViewOnce(_)
+                | ChatItemMessage::Poll(_) => {
                     return Err(ChatItemError::NonStandardMessageHasRevisions);
                 }
             }
@@ -851,6 +864,11 @@ impl<M: Method + ReferencedTypes> ChatItemData<M> {
                     ));
                 }
             }
+            ChatItemMessage::Poll(_) => {
+                if !recipient_data.is_group() {
+                    return Err(ChatItemError::PollNotInGroup((*recipient_data).into()));
+                }
+            }
         }
 
         Ok(())
@@ -1051,6 +1069,7 @@ impl<
             Item::DirectStoryReplyMessage(message) => {
                 ChatItemMessage::DirectStoryReply(message.try_into_with(context)?)
             }
+            Item::Poll(poll) => ChatItemMessage::Poll(poll.try_into_with(context)?),
         })
     }
 }

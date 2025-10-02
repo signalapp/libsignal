@@ -227,6 +227,7 @@ impl Visit<Scrambler> for proto::AccountData {
             backupsSubscriberData,
             svrPin,
             special_fields: _,
+            androidSpecificSettings: _,
         } = self;
 
         profileKey.randomize(&mut visitor.rng);
@@ -297,6 +298,11 @@ impl Visit<Scrambler> for proto::account_data::AccountSettings {
             optimizeOnDeviceStorage: _,
             backupTier: _,
             special_fields: _,
+            showSealedSenderIndicators: _,
+            defaultSentMediaQuality: _,
+            mobileAutoDownloadSettings: _,
+            wifiAutoDownloadSettings: _,
+            screenLockTimeoutMinutes: _,
         } = self;
 
         defaultChatStyle.accept(visitor);
@@ -799,6 +805,7 @@ impl Visit<Scrambler> for proto::ChatItem {
                 Item::GiftBadge(item) => item.accept(visitor),
                 Item::ViewOnceMessage(item) => item.accept(visitor),
                 Item::DirectStoryReplyMessage(item) => item.accept(visitor),
+                Item::Poll(item) => item.accept(visitor),
             }
         }
     }
@@ -1234,6 +1241,7 @@ impl Visit<Scrambler> for proto::ChatUpdateMessage {
                 Update::IndividualCall(update) => update.accept(visitor),
                 Update::GroupCall(update) => update.accept(visitor),
                 Update::LearnedProfileChange(update) => update.accept(visitor),
+                Update::PollTerminate(update) => update.accept(visitor),
             }
         }
     }
@@ -2058,5 +2066,53 @@ impl Visit<Scrambler> for proto::ChatFolder {
 
         name.randomize(&mut visitor.rng);
         id.randomize(&mut visitor.rng);
+    }
+}
+
+impl Visit<Scrambler> for proto::poll::poll_option::PollVote {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            voterId: _,
+            voteCount,
+            special_fields: _,
+        } = self;
+        voteCount.randomize(&mut visitor.rng);
+    }
+}
+
+impl Visit<Scrambler> for proto::poll::PollOption {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            option,
+            votes,
+            special_fields: _,
+        } = self;
+        option.randomize(&mut visitor.rng);
+        votes.accept(visitor);
+    }
+}
+
+impl Visit<Scrambler> for proto::Poll {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            question,
+            allowMultiple: _,
+            options,
+            hasEnded: _,
+            special_fields: _,
+        } = self;
+        question.randomize(&mut visitor.rng);
+        options.accept(visitor);
+    }
+}
+
+impl Visit<Scrambler> for proto::PollTerminateUpdate {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            targetSentTimestamp: _,
+            question,
+            special_fields: _,
+        } = self;
+        question.randomize(&mut visitor.rng);
     }
 }

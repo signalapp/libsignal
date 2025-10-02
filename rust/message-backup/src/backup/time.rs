@@ -67,7 +67,7 @@ impl Timestamp {
         4_102_444_800_000;
 
     /// The maximum timestamp we allow in backup files, also the limit of JavaScript's Date type.
-    const MAX_SAFE_TIMESTAMP_MS: u64 = 100_000_000 * 1000 * 60 * 60 * 24;
+    pub(crate) const MAX_SAFE_TIMESTAMP_MS: u64 = 100_000_000 * 1000 * 60 * 60 * 24;
 
     /// Validates and converts a timestamp represented as seconds since [`UNIX_EPOCH`].
     ///

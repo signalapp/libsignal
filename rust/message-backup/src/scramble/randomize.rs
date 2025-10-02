@@ -49,11 +49,18 @@ impl<T: Randomize> Randomize for Vec<T> {
     }
 }
 
-impl Randomize for u64 {
-    fn randomize(&mut self, rng: &mut impl Rng) {
-        *self = rng.random();
-    }
+macro_rules! randomize_integer {
+    ($name:ty) => {
+        impl Randomize for $name {
+            fn randomize(&mut self, rng: &mut impl Rng) {
+                *self = rng.random();
+            }
+        }
+    };
 }
+
+randomize_integer!(u32);
+randomize_integer!(u64);
 
 /// Generates a random but valid v4 UUID.
 pub fn random_uuid(rng: &mut impl Rng) -> Vec<u8> {
