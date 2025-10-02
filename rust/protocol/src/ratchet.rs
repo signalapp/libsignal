@@ -9,7 +9,7 @@ mod params;
 use rand::{CryptoRng, Rng};
 
 pub(crate) use self::keys::{ChainKey, MessageKeyGenerator, RootKey};
-pub use self::params::{AliceSignalProtocolParameters, BobSignalProtocolParameters, UsePQRatchet};
+pub use self::params::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
 use crate::protocol::CIPHERTEXT_MESSAGE_CURRENT_VERSION;
 use crate::state::SessionState;
 use crate::{KeyPair, Result, SessionRecord, SignalProtocolError, consts};
@@ -98,27 +98,24 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     )?;
 
     let self_session = local_identity == parameters.their_identity_key();
-    let pqr_state = match parameters.use_pq_ratchet() {
-        UsePQRatchet::Yes => spqr::initial_state(spqr::Params {
-            auth_key: &pqr_key,
-            version: spqr::Version::V1,
-            direction: spqr::Direction::A2B,
-            // Set min_version to V0 (allow fallback to no PQR at all) while
-            // there are clients that don't speak PQR.  Once all clients speak
-            // PQR, we can up this to V1 to require that all subsequent sessions
-            // use at least V1.
-            min_version: spqr::Version::V0,
-            chain_params: spqr_chain_params(self_session),
-        })
-        .map_err(|e| {
-            // Since this is an error associated with the initial creation of the state,
-            // it must be a problem with the arguments provided.
-            SignalProtocolError::InvalidArgument(format!(
-                "post-quantum ratchet: error creating initial A2B state: {e}"
-            ))
-        })?,
-        UsePQRatchet::No => spqr::SerializedState::new(), // empty
-    };
+    let pqr_state = spqr::initial_state(spqr::Params {
+        auth_key: &pqr_key,
+        version: spqr::Version::V1,
+        direction: spqr::Direction::A2B,
+        // Set min_version to V0 (allow fallback to no PQR at all) while
+        // there are clients that don't speak PQR.  Once all clients speak
+        // PQR, we can up this to V1 to require that all subsequent sessions
+        // use at least V1.
+        min_version: spqr::Version::V0,
+        chain_params: spqr_chain_params(self_session),
+    })
+    .map_err(|e| {
+        // Since this is an error associated with the initial creation of the state,
+        // it must be a problem with the arguments provided.
+        SignalProtocolError::InvalidArgument(format!(
+            "post-quantum ratchet: error creating initial A2B state: {e}"
+        ))
+    })?;
 
     let mut session = SessionState::new(
         CIPHERTEXT_MESSAGE_CURRENT_VERSION,
@@ -192,27 +189,24 @@ pub(crate) fn initialize_bob_session(
     let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
 
     let self_session = local_identity == parameters.their_identity_key();
-    let pqr_state = match parameters.use_pq_ratchet() {
-        UsePQRatchet::Yes => spqr::initial_state(spqr::Params {
-            auth_key: &pqr_key,
-            version: spqr::Version::V1,
-            direction: spqr::Direction::B2A,
-            // Set min_version to V0 (allow fallback to no PQR at all) while
-            // there are clients that don't speak PQR.  Once all clients speak
-            // PQR, we can up this to V1 to require that all subsequent sessions
-            // use at least V1.
-            min_version: spqr::Version::V0,
-            chain_params: spqr_chain_params(self_session),
-        })
-        .map_err(|e| {
-            // Since this is an error associated with the initial creation of the state,
-            // it must be a problem with the arguments provided.
-            SignalProtocolError::InvalidArgument(format!(
-                "post-quantum ratchet: error creating initial B2A state: {e}"
-            ))
-        })?,
-        UsePQRatchet::No => spqr::SerializedState::new(), // empty
-    };
+    let pqr_state = spqr::initial_state(spqr::Params {
+        auth_key: &pqr_key,
+        version: spqr::Version::V1,
+        direction: spqr::Direction::B2A,
+        // Set min_version to V0 (allow fallback to no PQR at all) while
+        // there are clients that don't speak PQR.  Once all clients speak
+        // PQR, we can up this to V1 to require that all subsequent sessions
+        // use at least V1.
+        min_version: spqr::Version::V0,
+        chain_params: spqr_chain_params(self_session),
+    })
+    .map_err(|e| {
+        // Since this is an error associated with the initial creation of the state,
+        // it must be a problem with the arguments provided.
+        SignalProtocolError::InvalidArgument(format!(
+            "post-quantum ratchet: error creating initial B2A state: {e}"
+        ))
+    })?;
     let session = SessionState::new(
         CIPHERTEXT_MESSAGE_CURRENT_VERSION,
         local_identity,

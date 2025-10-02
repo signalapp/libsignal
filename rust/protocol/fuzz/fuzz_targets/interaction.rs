@@ -128,19 +128,22 @@ impl Participant {
             &their_pre_key_bundle,
             SystemTime::UNIX_EPOCH,
             rng,
-            UsePQRatchet::Yes,
         )
         .await
         .unwrap();
 
-        assert!(self
-            .store
-            .load_session(&them.address)
-            .await
-            .unwrap()
-            .expect("just created")
-            .has_usable_sender_chain(SystemTime::UNIX_EPOCH, SessionUsabilityRequirements::all())
-            .unwrap());
+        assert!(
+            self.store
+                .load_session(&them.address)
+                .await
+                .unwrap()
+                .expect("just created")
+                .has_usable_sender_chain(
+                    SystemTime::UNIX_EPOCH,
+                    SessionUsabilityRequirements::all()
+                )
+                .unwrap()
+        );
     }
 
     async fn send_message(&mut self, them: &mut Self, rng: &mut (impl Rng + CryptoRng)) {
@@ -208,7 +211,6 @@ impl Participant {
                 &mut self.store.signed_pre_key_store,
                 &mut self.store.kyber_pre_key_store,
                 rng,
-                UsePQRatchet::Yes,
             )
             .await
             .unwrap();

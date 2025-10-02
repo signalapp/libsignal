@@ -49,7 +49,6 @@ pub async fn decrypt(
     store: &mut InMemSignalProtocolStore,
     remote_address: &ProtocolAddress,
     msg: &CiphertextMessage,
-    use_pq_ratchet: UsePQRatchet,
 ) -> Result<Vec<u8>, SignalProtocolError> {
     let mut csprng = OsRng.unwrap_err();
     message_decrypt(
@@ -61,7 +60,6 @@ pub async fn decrypt(
         &store.signed_pre_key_store,
         &mut store.kyber_pre_key_store,
         &mut csprng,
-        use_pq_ratchet,
     )
     .await
 }
@@ -160,7 +158,6 @@ pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), Signal
         bob_base_key.public_key,
         bob_ephemeral_key.public_key,
         bob_kyber_key.public_key.clone(),
-        UsePQRatchet::No,
     );
 
     let alice_session = initialize_alice_session_record(&alice_params, &mut csprng)?;
@@ -181,7 +178,6 @@ pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), Signal
         *alice_identity.identity_key(),
         alice_base_key.public_key,
         &kyber_ciphertext,
-        UsePQRatchet::No,
     );
 
     let bob_session = initialize_bob_session_record(&bob_params)?;

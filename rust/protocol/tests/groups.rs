@@ -181,7 +181,6 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut csprng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -192,7 +191,6 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
             &carol_pre_key_bundle,
             SystemTime::now(),
             &mut csprng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -395,7 +393,6 @@ fn group_sealed_sender_multiple_devices() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut csprng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -406,7 +403,6 @@ fn group_sealed_sender_multiple_devices() -> Result<(), SignalProtocolError> {
             &carol_pre_key_bundle,
             SystemTime::now(),
             &mut csprng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -417,7 +413,6 @@ fn group_sealed_sender_multiple_devices() -> Result<(), SignalProtocolError> {
             &carol2_pre_key_bundle,
             SystemTime::now(),
             &mut csprng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -633,7 +628,6 @@ fn group_sealed_sender_multiple_devices_and_excluded_recipients() -> Result<(), 
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut csprng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -644,7 +638,6 @@ fn group_sealed_sender_multiple_devices_and_excluded_recipients() -> Result<(), 
             &carol_pre_key_bundle,
             SystemTime::now(),
             &mut csprng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -655,7 +648,6 @@ fn group_sealed_sender_multiple_devices_and_excluded_recipients() -> Result<(), 
             &carol2_pre_key_bundle,
             SystemTime::now(),
             &mut csprng,
-            UsePQRatchet::Yes,
         )
         .await?;
 

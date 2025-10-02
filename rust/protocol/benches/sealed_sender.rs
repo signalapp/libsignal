@@ -43,7 +43,6 @@ pub fn v1(c: &mut Criterion) {
         &bob_pre_key_bundle,
         SystemTime::now(),
         &mut rng,
-        UsePQRatchet::No,
     )
     .now_or_never()
     .expect("sync")
@@ -141,7 +140,6 @@ pub fn v2(c: &mut Criterion) {
         &bob_pre_key_bundle,
         SystemTime::now(),
         &mut rng,
-        UsePQRatchet::No,
     )
     .now_or_never()
     .expect("sync")
@@ -242,7 +240,6 @@ pub fn v2(c: &mut Criterion) {
             &next_pre_key_bundle,
             SystemTime::now(),
             &mut rng,
-            UsePQRatchet::No,
         )
         .now_or_never()
         .expect("sync")

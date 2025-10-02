@@ -1157,10 +1157,10 @@ internal object Native {
   public external fun ServiceId_ServiceIdString(value: ByteArray): String
 
   @JvmStatic @Throws(Exception::class)
-  public external fun SessionBuilder_ProcessPreKeyBundle(bundle: ObjectHandle, protocolAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, now: Long, usePqRatchet: Boolean): Unit
+  public external fun SessionBuilder_ProcessPreKeyBundle(bundle: ObjectHandle, protocolAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, now: Long): Unit
 
   @JvmStatic @Throws(Exception::class)
-  public external fun SessionCipher_DecryptPreKeySignalMessage(message: ObjectHandle, protocolAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore, kyberPrekeyStore: KyberPreKeyStore, usePqRatchet: Boolean): ByteArray
+  public external fun SessionCipher_DecryptPreKeySignalMessage(message: ObjectHandle, protocolAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore, kyberPrekeyStore: KyberPreKeyStore): ByteArray
   @JvmStatic @Throws(Exception::class)
   public external fun SessionCipher_DecryptSignalMessage(message: ObjectHandle, protocolAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore): ByteArray
   @JvmStatic @Throws(Exception::class)

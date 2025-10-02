@@ -61,8 +61,8 @@ pub use protocol::{
     SignalMessage, extract_decryption_error_message_from_serialized_content,
 };
 pub use ratchet::{
-    AliceSignalProtocolParameters, BobSignalProtocolParameters, UsePQRatchet,
-    initialize_alice_session_record, initialize_bob_session_record,
+    AliceSignalProtocolParameters, BobSignalProtocolParameters, initialize_alice_session_record,
+    initialize_bob_session_record,
 };
 pub use sealed_sender::{
     ContentHint, SealedSenderDecryptionResult, SealedSenderV2SentMessage,

@@ -1016,7 +1016,6 @@ async fn SessionBuilder_ProcessPreKeyBundle(
     session_store: &mut dyn SessionStore,
     identity_key_store: &mut dyn IdentityKeyStore,
     now: Timestamp,
-    use_pq_ratchet: bool,
 ) -> Result<()> {
     let mut csprng = rand::rngs::OsRng.unwrap_err();
     process_prekey_bundle(
@@ -1026,7 +1025,6 @@ async fn SessionBuilder_ProcessPreKeyBundle(
         bundle,
         now.into(),
         &mut csprng,
-        UsePQRatchet::from(use_pq_ratchet),
     )
     .await
 }
@@ -1078,7 +1076,6 @@ async fn SessionCipher_DecryptPreKeySignalMessage(
     prekey_store: &mut dyn PreKeyStore,
     signed_prekey_store: &mut dyn SignedPreKeyStore,
     kyber_prekey_store: &mut dyn KyberPreKeyStore,
-    use_pq_ratchet: bool,
 ) -> Result<Vec<u8>> {
     let mut csprng = rand::rngs::OsRng.unwrap_err();
     message_decrypt_prekey(
@@ -1090,7 +1087,6 @@ async fn SessionCipher_DecryptPreKeySignalMessage(
         signed_prekey_store,
         kyber_prekey_store,
         &mut csprng,
-        UsePQRatchet::from(use_pq_ratchet),
     )
     .await
 }
@@ -1185,7 +1181,6 @@ async fn SealedSender_DecryptMessage(
     prekey_store: &mut dyn PreKeyStore,
     signed_prekey_store: &mut dyn SignedPreKeyStore,
     kyber_prekey_store: &mut dyn KyberPreKeyStore,
-    use_pq_ratchet: bool,
 ) -> Result<SealedSenderDecryptionResult> {
     let local_device_id = local_device_id
         .try_into()
@@ -1203,7 +1198,6 @@ async fn SealedSender_DecryptMessage(
         prekey_store,
         signed_prekey_store,
         kyber_prekey_store,
-        UsePQRatchet::from(use_pq_ratchet),
     )
     .await
 }

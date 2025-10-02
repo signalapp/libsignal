@@ -122,7 +122,7 @@ public class SessionCipher {
    * @throws InvalidKeyException when the message is formatted incorrectly.
    * @throws UntrustedIdentityException when the {@link IdentityKey} of the sender is untrusted.
    */
-  public byte[] decrypt(PreKeySignalMessage ciphertext, UsePqRatchet usePqRatchet)
+  public byte[] decrypt(PreKeySignalMessage ciphertext)
       throws DuplicateMessageException,
           InvalidMessageException,
           InvalidKeyIdException,
@@ -144,8 +144,7 @@ public class SessionCipher {
                   identityKeyStore,
                   preKeyStore,
                   signedPreKeyStore,
-                  kyberPreKeyStore,
-                  usePqRatchet == UsePqRatchet.YES));
+                  kyberPreKeyStore));
     }
   }
 

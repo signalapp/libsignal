@@ -163,7 +163,6 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut rng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -210,7 +209,6 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut bob_store.pre_key_store,
             &bob_store.signed_pre_key_store,
             &mut bob_store.kyber_pre_key_store,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -244,7 +242,6 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut bob_store.pre_key_store,
             &bob_store.signed_pre_key_store,
             &mut bob_store.kyber_pre_key_store,
-            UsePQRatchet::Yes,
         )
         .await;
 
@@ -285,7 +282,6 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut bob_store.pre_key_store,
             &bob_store.signed_pre_key_store,
             &mut bob_store.kyber_pre_key_store,
-            UsePQRatchet::Yes,
         )
         .await;
 
@@ -338,7 +334,6 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut rng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -452,7 +447,6 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut rng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -523,7 +517,6 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut bob_store.pre_key_store,
             &bob_store.signed_pre_key_store,
             &mut bob_store.kyber_pre_key_store,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -590,7 +583,6 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut bob_store.pre_key_store,
             &bob_store.signed_pre_key_store,
             &mut bob_store.kyber_pre_key_store,
-            UsePQRatchet::Yes,
         )
         .await;
 
@@ -653,7 +645,6 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut bob_store.pre_key_store,
             &bob_store.signed_pre_key_store,
             &mut bob_store.kyber_pre_key_store,
-            UsePQRatchet::Yes,
         )
         .await;
 
@@ -703,7 +694,6 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session()
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut rng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -810,7 +800,6 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id()
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut rng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -909,7 +898,6 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &alice_pre_key_bundle,
             SystemTime::now(),
             &mut rng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -934,7 +922,6 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &alice_store.signed_pre_key_store,
             &mut alice_store.kyber_pre_key_store,
             &mut rng,
-            UsePQRatchet::Yes,
         )
         .await?;
 
@@ -1056,7 +1043,6 @@ fn test_sealed_sender_multi_recipient_redundant_empty_devices() -> Result<(), Si
             &bob_pre_key_bundle,
             SystemTime::now(),
             &mut csprng,
-            UsePQRatchet::Yes,
         )
         .await?;
 

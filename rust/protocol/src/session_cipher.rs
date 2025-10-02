@@ -8,7 +8,7 @@ use std::time::SystemTime;
 use rand::{CryptoRng, Rng};
 
 use crate::consts::{MAX_FORWARD_JUMPS, MAX_UNACKNOWLEDGED_SESSION_AGE};
-use crate::ratchet::{ChainKey, MessageKeyGenerator, UsePQRatchet};
+use crate::ratchet::{ChainKey, MessageKeyGenerator};
 use crate::state::{InvalidSessionError, SessionState};
 use crate::{
     CiphertextMessage, CiphertextMessageType, Direction, IdentityKeyStore, KeyPair, KyberPayload,
@@ -168,7 +168,6 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
     signed_pre_key_store: &dyn SignedPreKeyStore,
     kyber_pre_key_store: &mut dyn KyberPreKeyStore,
     csprng: &mut R,
-    use_pq_ratchet: UsePQRatchet,
 ) -> Result<Vec<u8>> {
     match ciphertext {
         CiphertextMessage::SignalMessage(m) => {
@@ -184,7 +183,6 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
                 signed_pre_key_store,
                 kyber_pre_key_store,
                 csprng,
-                use_pq_ratchet,
             )
             .await
         }
@@ -205,7 +203,6 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     signed_pre_key_store: &dyn SignedPreKeyStore,
     kyber_pre_key_store: &mut dyn KyberPreKeyStore,
     csprng: &mut R,
-    use_pq_ratchet: UsePQRatchet,
 ) -> Result<Vec<u8>> {
     let mut session_record = session_store
         .load_session(remote_address)
@@ -221,7 +218,6 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         pre_key_store,
         signed_pre_key_store,
         kyber_pre_key_store,
-        use_pq_ratchet,
     )
     .await;
 

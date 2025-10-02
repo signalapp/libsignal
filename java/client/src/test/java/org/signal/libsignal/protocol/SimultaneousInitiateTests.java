@@ -66,8 +66,8 @@ public class SimultaneousInitiateTests {
     SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
     SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
-    aliceSessionBuilder.process(bobPreKeyBundle, UsePqRatchet.YES);
-    bobSessionBuilder.process(alicePreKeyBundle, UsePqRatchet.YES);
+    aliceSessionBuilder.process(bobPreKeyBundle);
+    bobSessionBuilder.process(alicePreKeyBundle);
 
     CiphertextMessage messageForBob = aliceSessionCipher.encrypt("hey there".getBytes());
     CiphertextMessage messageForAlice = bobSessionCipher.encrypt("sample message".getBytes());
@@ -79,11 +79,9 @@ public class SimultaneousInitiateTests {
     assertSessionIdNotEquals(aliceStore, bobStore);
 
     byte[] alicePlaintext =
-        aliceSessionCipher.decrypt(
-            new PreKeySignalMessage(messageForAlice.serialize()), UsePqRatchet.YES);
+        aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
     byte[] bobPlaintext =
-        bobSessionCipher.decrypt(
-            new PreKeySignalMessage(messageForBob.serialize()), UsePqRatchet.YES);
+        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -135,8 +133,8 @@ public class SimultaneousInitiateTests {
     SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
     SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
-    aliceSessionBuilder.process(bobPreKeyBundle, UsePqRatchet.YES);
-    bobSessionBuilder.process(alicePreKeyBundle, UsePqRatchet.YES);
+    aliceSessionBuilder.process(bobPreKeyBundle);
+    bobSessionBuilder.process(alicePreKeyBundle);
 
     CiphertextMessage messageForBob = aliceSessionCipher.encrypt("hey there".getBytes());
     CiphertextMessage messageForAlice = bobSessionCipher.encrypt("sample message".getBytes());
@@ -147,8 +145,7 @@ public class SimultaneousInitiateTests {
     assertSessionIdNotEquals(aliceStore, bobStore);
 
     byte[] bobPlaintext =
-        bobSessionCipher.decrypt(
-            new PreKeySignalMessage(messageForBob.serialize()), UsePqRatchet.YES);
+        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
     assertTrue(new String(bobPlaintext).equals("hey there"));
     assertEquals(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion(), expectedVersion);
@@ -158,8 +155,7 @@ public class SimultaneousInitiateTests {
     assertEquals(aliceResponse.getType(), CiphertextMessage.PREKEY_TYPE);
 
     byte[] responsePlaintext =
-        bobSessionCipher.decrypt(
-            new PreKeySignalMessage(aliceResponse.serialize()), UsePqRatchet.YES);
+        bobSessionCipher.decrypt(new PreKeySignalMessage(aliceResponse.serialize()));
 
     assertTrue(new String(responsePlaintext).equals("second message"));
     assertSessionIdEquals(aliceStore, bobStore);
@@ -196,8 +192,8 @@ public class SimultaneousInitiateTests {
     SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
     SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
-    aliceSessionBuilder.process(bobPreKeyBundle, UsePqRatchet.YES);
-    bobSessionBuilder.process(alicePreKeyBundle, UsePqRatchet.YES);
+    aliceSessionBuilder.process(bobPreKeyBundle);
+    bobSessionBuilder.process(alicePreKeyBundle);
 
     CiphertextMessage messageForBob = aliceSessionCipher.encrypt("hey there".getBytes());
     CiphertextMessage messageForAlice = bobSessionCipher.encrypt("sample message".getBytes());
@@ -208,11 +204,9 @@ public class SimultaneousInitiateTests {
     assertSessionIdNotEquals(aliceStore, bobStore);
 
     byte[] alicePlaintext =
-        aliceSessionCipher.decrypt(
-            new PreKeySignalMessage(messageForAlice.serialize()), UsePqRatchet.YES);
+        aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
     byte[] bobPlaintext =
-        bobSessionCipher.decrypt(
-            new PreKeySignalMessage(messageForBob.serialize()), UsePqRatchet.YES);
+        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -260,8 +254,8 @@ public class SimultaneousInitiateTests {
     SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
     SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
-    aliceSessionBuilder.process(bobPreKeyBundle, UsePqRatchet.YES);
-    bobSessionBuilder.process(alicePreKeyBundle, UsePqRatchet.YES);
+    aliceSessionBuilder.process(bobPreKeyBundle);
+    bobSessionBuilder.process(alicePreKeyBundle);
 
     CiphertextMessage messageForBob = aliceSessionCipher.encrypt("hey there".getBytes());
     CiphertextMessage messageForAlice = bobSessionCipher.encrypt("sample message".getBytes());
@@ -272,11 +266,9 @@ public class SimultaneousInitiateTests {
     assertSessionIdNotEquals(aliceStore, bobStore);
 
     byte[] alicePlaintext =
-        aliceSessionCipher.decrypt(
-            new PreKeySignalMessage(messageForAlice.serialize()), UsePqRatchet.YES);
+        aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
     byte[] bobPlaintext =
-        bobSessionCipher.decrypt(
-            new PreKeySignalMessage(messageForBob.serialize()), UsePqRatchet.YES);
+        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -350,8 +342,8 @@ public class SimultaneousInitiateTests {
       PreKeyBundle alicePreKeyBundle = bundleFactory.createBundle(aliceStore);
       PreKeyBundle bobPreKeyBundle = bundleFactory.createBundle(bobStore);
 
-      aliceSessionBuilder.process(bobPreKeyBundle, UsePqRatchet.YES);
-      bobSessionBuilder.process(alicePreKeyBundle, UsePqRatchet.YES);
+      aliceSessionBuilder.process(bobPreKeyBundle);
+      bobSessionBuilder.process(alicePreKeyBundle);
 
       CiphertextMessage messageForBob = aliceSessionCipher.encrypt("hey there".getBytes());
       CiphertextMessage messageForAlice = bobSessionCipher.encrypt("sample message".getBytes());
@@ -362,11 +354,9 @@ public class SimultaneousInitiateTests {
       assertSessionIdNotEquals(aliceStore, bobStore);
 
       byte[] alicePlaintext =
-          aliceSessionCipher.decrypt(
-              new PreKeySignalMessage(messageForAlice.serialize()), UsePqRatchet.YES);
+          aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
       byte[] bobPlaintext =
-          bobSessionCipher.decrypt(
-              new PreKeySignalMessage(messageForBob.serialize()), UsePqRatchet.YES);
+          bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
       assertTrue(new String(alicePlaintext).equals("sample message"));
       assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -439,7 +429,7 @@ public class SimultaneousInitiateTests {
 
     PreKeyBundle bobLostPreKeyBundle = bundleFactory.createBundle(bobStore);
 
-    aliceSessionBuilder.process(bobLostPreKeyBundle, UsePqRatchet.YES);
+    aliceSessionBuilder.process(bobLostPreKeyBundle);
 
     CiphertextMessage lostMessageForBob = aliceSessionCipher.encrypt("hey there".getBytes());
 
@@ -447,8 +437,8 @@ public class SimultaneousInitiateTests {
       PreKeyBundle alicePreKeyBundle = bundleFactory.createBundle(aliceStore);
       PreKeyBundle bobPreKeyBundle = bundleFactory.createBundle(bobStore);
 
-      aliceSessionBuilder.process(bobPreKeyBundle, UsePqRatchet.YES);
-      bobSessionBuilder.process(alicePreKeyBundle, UsePqRatchet.YES);
+      aliceSessionBuilder.process(bobPreKeyBundle);
+      bobSessionBuilder.process(alicePreKeyBundle);
 
       CiphertextMessage messageForBob = aliceSessionCipher.encrypt("hey there".getBytes());
       CiphertextMessage messageForAlice = bobSessionCipher.encrypt("sample message".getBytes());
@@ -459,11 +449,9 @@ public class SimultaneousInitiateTests {
       assertFalse(isSessionIdEqual(aliceStore, bobStore));
 
       byte[] alicePlaintext =
-          aliceSessionCipher.decrypt(
-              new PreKeySignalMessage(messageForAlice.serialize()), UsePqRatchet.YES);
+          aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
       byte[] bobPlaintext =
-          bobSessionCipher.decrypt(
-              new PreKeySignalMessage(messageForBob.serialize()), UsePqRatchet.YES);
+          bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
       assertTrue(new String(alicePlaintext).equals("sample message"));
       assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -515,8 +503,7 @@ public class SimultaneousInitiateTests {
     assertTrue(isSessionIdEqual(aliceStore, bobStore));
 
     byte[] lostMessagePlaintext =
-        bobSessionCipher.decrypt(
-            new PreKeySignalMessage(lostMessageForBob.serialize()), UsePqRatchet.YES);
+        bobSessionCipher.decrypt(new PreKeySignalMessage(lostMessageForBob.serialize()));
     assertTrue(new String(lostMessagePlaintext).equals("hey there"));
 
     assertFalse(isSessionIdEqual(aliceStore, bobStore));

@@ -31,7 +31,6 @@ import org.signal.libsignal.protocol.SessionBuilder;
 import org.signal.libsignal.protocol.SessionCipher;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
 import org.signal.libsignal.protocol.UntrustedIdentityException;
-import org.signal.libsignal.protocol.UsePqRatchet;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.groups.GroupCipher;
@@ -111,11 +110,7 @@ public class SealedSessionCipherTest extends TestCase {
             bobStore, UUID.fromString("e80f7bbe-5b94-471e-bd8c-2173654ea3d1"), "+14152222222", 1);
 
     DecryptionResult plaintext =
-        bobCipher.decrypt(
-            new CertificateValidator(trustRoot.getPublicKey()),
-            ciphertext,
-            31335,
-            UsePqRatchet.YES);
+        bobCipher.decrypt(new CertificateValidator(trustRoot.getPublicKey()), ciphertext, 31335);
 
     assertEquals(new String(plaintext.getPaddedMessage()), "smert za smert");
     assertEquals(plaintext.getSenderUuid(), "9d0652a3-dcc3-4d11-975f-74d61598733f");
@@ -172,8 +167,7 @@ public class SealedSessionCipherTest extends TestCase {
             bobStore, UUID.fromString("e80f7bbe-5b94-471e-bd8c-2173654ea3d1"), "+14152222222", 1);
 
     try {
-      bobCipher.decrypt(
-          new CertificateValidator(trustRoot.getPublicKey()), ciphertext, 31335, UsePqRatchet.YES);
+      bobCipher.decrypt(new CertificateValidator(trustRoot.getPublicKey()), ciphertext, 31335);
       throw new AssertionError();
     } catch (InvalidMetadataMessageException e) {
       // good
@@ -209,8 +203,7 @@ public class SealedSessionCipherTest extends TestCase {
             bobStore, UUID.fromString("e80f7bbe-5b94-471e-bd8c-2173654ea3d1"), "+14152222222", 1);
 
     try {
-      bobCipher.decrypt(
-          new CertificateValidator(trustRoot.getPublicKey()), ciphertext, 31338, UsePqRatchet.YES);
+      bobCipher.decrypt(new CertificateValidator(trustRoot.getPublicKey()), ciphertext, 31338);
       throw new AssertionError();
     } catch (InvalidMetadataMessageException e) {
       // good
@@ -246,8 +239,7 @@ public class SealedSessionCipherTest extends TestCase {
             bobStore, UUID.fromString("e80f7bbe-5b94-471e-bd8c-2173654ea3d1"), "+14152222222", 1);
 
     try {
-      bobCipher.decrypt(
-          new CertificateValidator(trustRoot.getPublicKey()), ciphertext, 31335, UsePqRatchet.YES);
+      bobCipher.decrypt(new CertificateValidator(trustRoot.getPublicKey()), ciphertext, 31335);
     } catch (InvalidMetadataMessageException e) {
       // good
     }
@@ -328,11 +320,7 @@ public class SealedSessionCipherTest extends TestCase {
     byte[] bobMessage = SealedSessionCipher.multiRecipientMessageForSingleRecipient(aliceMessage);
 
     DecryptionResult plaintext =
-        bobCipher.decrypt(
-            new CertificateValidator(trustRoot.getPublicKey()),
-            bobMessage,
-            31335,
-            UsePqRatchet.YES);
+        bobCipher.decrypt(new CertificateValidator(trustRoot.getPublicKey()), bobMessage, 31335);
 
     assertEquals(new String(plaintext.getPaddedMessage()), "smert ze smert");
     assertEquals(plaintext.getSenderUuid(), "9d0652a3-dcc3-4d11-975f-74d61598733f");
@@ -384,7 +372,7 @@ public class SealedSessionCipherTest extends TestCase {
             bobKyberPreKey.getKeyPair().getPublicKey(),
             bobKyberPreKey.getSignature());
     SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, bobAddress);
-    aliceSessionBuilder.process(bobBundle, UsePqRatchet.YES);
+    aliceSessionBuilder.process(bobBundle);
 
     ECKeyPair trustRoot = ECKeyPair.generate();
     SenderCertificate senderCertificate =
@@ -473,7 +461,7 @@ public class SealedSessionCipherTest extends TestCase {
             bobKyberPreKey.getKeyPair().getPublicKey(),
             bobKyberPreKey.getSignature());
     SessionBuilder aliceSessionBuilderForBob = new SessionBuilder(aliceStore, bobAddress);
-    aliceSessionBuilderForBob.process(bobBundle, UsePqRatchet.YES);
+    aliceSessionBuilderForBob.process(bobBundle);
 
     ECKeyPair carolPreKey = ECKeyPair.generate();
     IdentityKeyPair carolIdentityKey = carolStore.getIdentityKeyPair();
@@ -494,7 +482,7 @@ public class SealedSessionCipherTest extends TestCase {
             carolKyberPreKey.getKeyPair().getPublicKey(),
             carolKyberPreKey.getSignature());
     SessionBuilder aliceSessionBuilderForCarol = new SessionBuilder(aliceStore, carolAddress);
-    aliceSessionBuilderForCarol.process(carolBundle, UsePqRatchet.YES);
+    aliceSessionBuilderForCarol.process(carolBundle);
 
     ECKeyPair trustRoot = ECKeyPair.generate();
     SenderCertificate senderCertificate =
@@ -584,7 +572,7 @@ public class SealedSessionCipherTest extends TestCase {
             bobKyberPreKey.getKeyPair().getPublicKey(),
             bobKyberPreKey.getSignature());
     SessionBuilder aliceSessionBuilderForBob = new SessionBuilder(aliceStore, bobAddress);
-    aliceSessionBuilderForBob.process(bobBundle, UsePqRatchet.YES);
+    aliceSessionBuilderForBob.process(bobBundle);
 
     ECKeyPair trustRoot = ECKeyPair.generate();
     SenderCertificate senderCertificate =
@@ -680,7 +668,7 @@ public class SealedSessionCipherTest extends TestCase {
             bobKyberPreKey.getKeyPair().getPublicKey(),
             bobKyberPreKey.getSignature());
     SessionBuilder aliceSessionBuilderForBob = new SessionBuilder(aliceStore, bobAddress);
-    aliceSessionBuilderForBob.process(bobBundle, UsePqRatchet.YES);
+    aliceSessionBuilderForBob.process(bobBundle);
 
     ECKeyPair carolPreKey = ECKeyPair.generate();
     IdentityKeyPair carolIdentityKey = carolStore.getIdentityKeyPair();
@@ -701,7 +689,7 @@ public class SealedSessionCipherTest extends TestCase {
             carolKyberPreKey.getKeyPair().getPublicKey(),
             carolKyberPreKey.getSignature());
     SessionBuilder aliceSessionBuilderForCarol = new SessionBuilder(aliceStore, carolAddress);
-    aliceSessionBuilderForCarol.process(carolBundle, UsePqRatchet.YES);
+    aliceSessionBuilderForCarol.process(carolBundle);
 
     ECKeyPair trustRoot = ECKeyPair.generate();
     SenderCertificate senderCertificate =
@@ -831,8 +819,7 @@ public class SealedSessionCipherTest extends TestCase {
     byte[] bobMessage = SealedSessionCipher.multiRecipientMessageForSingleRecipient(aliceMessage);
 
     try {
-      bobCipher.decrypt(
-          new CertificateValidator(trustRoot.getPublicKey()), bobMessage, 31335, UsePqRatchet.YES);
+      bobCipher.decrypt(new CertificateValidator(trustRoot.getPublicKey()), bobMessage, 31335);
       fail("should have thrown");
     } catch (ProtocolNoSessionException e) {
       assertEquals(e.getSender(), "9d0652a3-dcc3-4d11-975f-74d61598733f");
@@ -889,7 +876,7 @@ public class SealedSessionCipherTest extends TestCase {
         new SealedSessionCipher(
             bobStore, UUID.fromString("e80f7bbe-5b94-471e-bd8c-2173654ea3d1"), "+14152222222", 1);
 
-    bobCipher.decrypt(certificateValidator, ciphertext, 31335, UsePqRatchet.YES);
+    bobCipher.decrypt(certificateValidator, ciphertext, 31335);
 
     // Pretend Bob's reply fails to decrypt.
     SignalProtocolAddress aliceAddress =
@@ -910,7 +897,7 @@ public class SealedSessionCipherTest extends TestCase {
     byte[] errorMessageCiphertext = aliceCipher.encrypt(bobAddress, errorMessageUsmc);
 
     DecryptionResult result =
-        bobCipher.decrypt(certificateValidator, errorMessageCiphertext, 31335, UsePqRatchet.YES);
+        bobCipher.decrypt(certificateValidator, errorMessageCiphertext, 31335);
     DecryptionErrorMessage bobErrorMessage =
         DecryptionErrorMessage.extractFromSerializedContent(result.getPaddedMessage());
     assertEquals(bobErrorMessage.getTimestamp(), 408);
@@ -964,7 +951,7 @@ public class SealedSessionCipherTest extends TestCase {
             bobKyberPreKey.getKeyPair().getPublicKey(),
             bobKyberPreKey.getSignature());
     SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, bobAddress);
-    aliceSessionBuilder.process(bobBundle, UsePqRatchet.YES);
+    aliceSessionBuilder.process(bobBundle);
 
     bobStore.storeSignedPreKey(2, bobSignedPreKey);
     bobStore.storeKyberPreKey(12, bobKyberPreKey);

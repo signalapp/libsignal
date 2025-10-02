@@ -26,7 +26,6 @@ import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.SessionBuilder;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
 import org.signal.libsignal.protocol.UntrustedIdentityException;
-import org.signal.libsignal.protocol.UsePqRatchet;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.groups.GroupCipher;
@@ -209,7 +208,7 @@ public class SealedSender {
             bobKyberPreKey.getKeyPair().getPublicKey(),
             bobKyberPreKey.getSignature());
     SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, bobAddress);
-    aliceSessionBuilder.process(bobBundle, UsePqRatchet.YES);
+    aliceSessionBuilder.process(bobBundle);
 
     bobStore.storeSignedPreKey(2, bobSignedPreKey);
     bobStore.storeKyberPreKey(12, bobKyberPreKey);

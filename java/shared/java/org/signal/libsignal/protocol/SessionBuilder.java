@@ -91,9 +91,8 @@ public class SessionBuilder {
    * @throws org.signal.libsignal.protocol.UntrustedIdentityException when the sender's {@link
    *     IdentityKey} is not trusted.
    */
-  public void process(PreKeyBundle preKey, UsePqRatchet usePqRatchet)
-      throws InvalidKeyException, UntrustedIdentityException {
-    process(preKey, Instant.now(), usePqRatchet);
+  public void process(PreKeyBundle preKey) throws InvalidKeyException, UntrustedIdentityException {
+    process(preKey, Instant.now());
   }
 
   /**
@@ -109,7 +108,7 @@ public class SessionBuilder {
    * @throws org.signal.libsignal.protocol.UntrustedIdentityException when the sender's {@link
    *     IdentityKey} is not trusted.
    */
-  public void process(PreKeyBundle preKey, Instant now, UsePqRatchet usePqRatchet)
+  public void process(PreKeyBundle preKey, Instant now)
       throws InvalidKeyException, UntrustedIdentityException {
     try (NativeHandleGuard preKeyGuard = new NativeHandleGuard(preKey);
         NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress)) {
@@ -122,8 +121,7 @@ public class SessionBuilder {
                   remoteAddressGuard.nativeHandle(),
                   sessionStore,
                   identityKeyStore,
-                  now.toEpochMilli(),
-                  usePqRatchet == UsePqRatchet.YES));
+                  now.toEpochMilli()));
     }
   }
 }

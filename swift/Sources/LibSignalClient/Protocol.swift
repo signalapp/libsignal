@@ -64,8 +64,7 @@ public func signalDecryptPreKey(
     preKeyStore: PreKeyStore,
     signedPreKeyStore: SignedPreKeyStore,
     kyberPreKeyStore: KyberPreKeyStore,
-    context: StoreContext,
-    usePqRatchet: Bool
+    context: StoreContext
 ) throws -> Data {
     return try withAllBorrowed(message, address) { messageHandle, addressHandle in
         try withSessionStore(sessionStore, context) { ffiSessionStore in
@@ -82,8 +81,7 @@ public func signalDecryptPreKey(
                                     ffiIdentityStore,
                                     ffiPreKeyStore,
                                     ffiSignedPreKeyStore,
-                                    ffiKyberPreKeyStore,
-                                    usePqRatchet
+                                    ffiKyberPreKeyStore
                                 )
                             }
                         }
@@ -100,8 +98,7 @@ public func processPreKeyBundle(
     sessionStore: SessionStore,
     identityStore: IdentityKeyStore,
     now: Date = Date(),
-    context: StoreContext,
-    usePqRatchet: Bool
+    context: StoreContext
 ) throws {
     return try withAllBorrowed(bundle, address) { bundleHandle, addressHandle in
         try withSessionStore(sessionStore, context) { ffiSessionStore in
@@ -112,8 +109,7 @@ public func processPreKeyBundle(
                         addressHandle.const(),
                         ffiSessionStore,
                         ffiIdentityStore,
-                        UInt64(now.timeIntervalSince1970 * 1000),
-                        usePqRatchet
+                        UInt64(now.timeIntervalSince1970 * 1000)
                     )
                 )
             }

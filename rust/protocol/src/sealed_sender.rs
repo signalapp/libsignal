@@ -23,7 +23,7 @@ use crate::{
     IdentityKeyStore, KeyPair, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, PrivateKey,
     ProtocolAddress, PublicKey, Result, ServiceId, ServiceIdFixedWidthBinaryBytes, SessionRecord,
     SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore, Timestamp, crypto,
-    message_encrypt, proto, ratchet, session_cipher,
+    message_encrypt, proto, session_cipher,
 };
 
 #[derive(Debug, Clone)]
@@ -2009,7 +2009,6 @@ pub async fn sealed_sender_decrypt(
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &dyn SignedPreKeyStore,
     kyber_pre_key_store: &mut dyn KyberPreKeyStore,
-    use_pq_ratchet: ratchet::UsePQRatchet,
 ) -> Result<SealedSenderDecryptionResult> {
     let usmc = sealed_sender_decrypt_to_usmc(ciphertext, identity_store).await?;
 
@@ -2060,7 +2059,6 @@ pub async fn sealed_sender_decrypt(
                 signed_pre_key_store,
                 kyber_pre_key_store,
                 &mut rng,
-                use_pq_ratchet,
             )
             .await?
         }

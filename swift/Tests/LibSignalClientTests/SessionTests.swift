@@ -48,8 +48,7 @@ class SessionTests: TestCaseBase {
                 preKeyStore: bob_store,
                 signedPreKeyStore: bob_store,
                 kyberPreKeyStore: bob_store,
-                context: NullContext(),
-                usePqRatchet: true
+                context: NullContext()
             )
 
             XCTAssertEqual(ptext_a, ptext_b)
@@ -117,8 +116,7 @@ class SessionTests: TestCaseBase {
                     preKeyStore: bob_store,
                     signedPreKeyStore: bob_store,
                     kyberPreKeyStore: bob_store,
-                    context: NullContext(),
-                    usePqRatchet: true
+                    context: NullContext()
                 ),
                 "should fail to decrypt"
             ) { error in
@@ -177,8 +175,7 @@ class SessionTests: TestCaseBase {
             sessionStore: alice_store,
             identityStore: alice_store,
             now: Date(timeIntervalSinceReferenceDate: 0),
-            context: NullContext(),
-            usePqRatchet: true
+            context: NullContext()
         )
 
         let initial_session = try! alice_store.loadSession(for: bob_address, context: NullContext())!
@@ -282,8 +279,7 @@ class SessionTests: TestCaseBase {
             for: bob_address,
             sessionStore: alice_store,
             identityStore: alice_store,
-            context: NullContext(),
-            usePqRatchet: true
+            context: NullContext()
         )
 
         // Alice sends a message:
@@ -308,8 +304,7 @@ class SessionTests: TestCaseBase {
             preKeyStore: bob_store,
             signedPreKeyStore: bob_store,
             kyberPreKeyStore: bob_store,
-            context: NullContext(),
-            usePqRatchet: true
+            context: NullContext()
         )
 
         do {
@@ -321,8 +316,7 @@ class SessionTests: TestCaseBase {
                 preKeyStore: bob_store,
                 signedPreKeyStore: bob_store,
                 kyberPreKeyStore: bob_store,
-                context: NullContext(),
-                usePqRatchet: true
+                context: NullContext()
             )
             XCTFail("should have thrown")
         } catch SignalError.invalidMessage(_) {
@@ -430,8 +424,7 @@ class SessionTests: TestCaseBase {
             preKeyStore: bob_store,
             signedPreKeyStore: bob_store,
             kyberPreKeyStore: bob_store,
-            context: NullContext(),
-            usePqRatchet: true
+            context: NullContext()
         )
 
         XCTAssertEqual(plaintext, message)
@@ -781,8 +774,7 @@ class SessionTests: TestCaseBase {
             preKeyStore: alice_store,
             signedPreKeyStore: alice_store,
             kyberPreKeyStore: alice_store,
-            context: NullContext(),
-            usePqRatchet: true
+            context: NullContext()
         )
 
         let bob_message = try signalEncrypt(
@@ -901,8 +893,7 @@ private func initializeSessionsV4(
         for: bob_address,
         sessionStore: alice_store,
         identityStore: alice_store,
-        context: NullContext(),
-        usePqRatchet: true
+        context: NullContext()
     )
 
     XCTAssertEqual(try! alice_store.loadSession(for: bob_address, context: NullContext())?.hasCurrentState, true)
