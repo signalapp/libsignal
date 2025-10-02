@@ -59,4 +59,5 @@ check-pre-commit: check-format-all
     (cd java && ./gradlew --dependency-verification strict help >/dev/null)
     cargo test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
     cargo clippy --workspace --all-targets --all-features --keep-going -- -D warnings
+    cargo check --workspace --all-targets --all-features --verbose --keep-going -Zdirect-minimal-versions -Zunstable-options --lockfile-path $(mktemp -d)/Cargo.lock
     @printf "\e[32mBasic pre-commit checks passed! ✅ Hopefully good to push! 🤞\e[0m\n"
