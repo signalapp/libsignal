@@ -4742,6 +4742,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
+name = "signal-c-binding"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "libsignal-core",
+ "libsignal-protocol",
+ "log",
+ "rand 0.9.2",
+]
+
+[[package]]
 name = "signal-crypto"
 version = "0.1.0"
 dependencies = [

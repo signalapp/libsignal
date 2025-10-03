@@ -21,6 +21,7 @@ members = [
     "rust/bridge/jni/impl",
     "rust/bridge/jni/testing",
     "rust/bridge/node",
+    "signal-c-binding",
 ]
 default-members = [
     "rust/crypto",

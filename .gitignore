@@ -35,3 +35,5 @@ java/server/src/main/resources/*.dll
 Brewfile.lock.json
 
 __pycache__
+
+signal-c-binding/include/signal_c_binding.h

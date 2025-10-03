@@ -1,0 +1,14 @@
+[package]
+name = "signal-c-binding"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+libsignal-protocol = { workspace = true }
+libsignal-core = { workspace = true }
+rand = { workspace = true }
+futures = { workspace = true }
+log = { workspace = true }
