@@ -12,7 +12,7 @@ use std::sync::Arc;
 use boring_signal::ssl::SslVersion;
 use const_str::{hex, ip_addr};
 use http::HeaderValue;
-use libsignal_keytrans::{DeploymentMode, PublicConfig, VerifyingKey, VrfPublicKey};
+use libsignal_keytrans::{DeploymentMode, PublicConfig, VerifyingKey, VerifyingKeys, VrfPublicKey};
 use libsignal_net_infra::certs::RootCertificates;
 use libsignal_net_infra::dns::lookup_result::LookupResult;
 use libsignal_net_infra::host::Host;
@@ -247,8 +247,11 @@ pub(crate) const KEYTRANS_SIGNING_KEY_MATERIAL_STAGING: &[u8; 32] =
     &hex!("ac0de1fd7f33552bbeb6ebc12b9d4ea10bf5f025c45073d3fb5f5648955a749e");
 pub(crate) const KEYTRANS_VRF_KEY_MATERIAL_STAGING: &[u8; 32] =
     &hex!("ec3a268237cf5c47115cf222405d5f90cc633ebe05caf82c0dd5acf9d341dadb");
-pub(crate) const KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING: &[u8; 32] =
-    &hex!("1123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e755");
+pub(crate) const KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING: &[&[u8; 32]] = &[
+    &hex!("1123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e755"),
+    &hex!("bd1e26a0fbdbfa923486ccc9296f4227db490b4add29f5507775171ea0fb7a4e"),
+    &hex!("093ee42d95502b3e81f4e604179c82c149fffb96167642b9eb81b03d6e2dd636"),
+];
 
 pub(crate) const KEYTRANS_CONFIG_STAGING: KeyTransConfig = KeyTransConfig {
     signing_key_material: KEYTRANS_SIGNING_KEY_MATERIAL_STAGING,
@@ -260,8 +263,11 @@ pub(crate) const KEYTRANS_SIGNING_KEY_MATERIAL_PROD: &[u8; 32] =
     &hex!("a3973067984382cfa89ec26d7cc176680aefe92b3d2eba85159dad0b8354b622");
 pub(crate) const KEYTRANS_VRF_KEY_MATERIAL_PROD: &[u8; 32] =
     &hex!("3849cf116c7bc9aef5f13f0c61a7c246e5bade4eb7e1c7b0efcacdd8c1e6a6ff");
-pub(crate) const KEYTRANS_AUDITOR_KEY_MATERIAL_PROD: &[u8; 32] =
-    &hex!("2d973608e909a09e12cbdbd21ad58775fd72fe1034a5a079f26541d5764ce17f");
+pub(crate) const KEYTRANS_AUDITOR_KEY_MATERIAL_PROD: &[&[u8; 32]] = &[
+    &hex!("2d973608e909a09e12cbdbd21ad58775fd72fe1034a5a079f26541d5764ce17f"),
+    &hex!("2f217a86cd2dbc95d46a84420942a95877b3723f634bc64bb9e406796df746ef"),
+    &hex!("7fe5d91de235188486d8fb836a6da37e625e2b10eb6d144185b9364cc83cbbb6"),
+];
 
 pub(crate) const KEYTRANS_CONFIG_PROD: KeyTransConfig = KeyTransConfig {
     signing_key_material: KEYTRANS_SIGNING_KEY_MATERIAL_PROD,
@@ -314,7 +320,7 @@ pub struct ConnectionProxyConfig {
 pub struct KeyTransConfig {
     pub signing_key_material: &'static [u8; 32],
     pub vrf_key_material: &'static [u8; 32],
-    pub auditor_key_material: &'static [u8; 32],
+    pub auditor_key_material: &'static [&'static [u8; 32]],
 }
 
 impl DomainConfig {
@@ -538,11 +544,12 @@ impl From<KeyTransConfig> for PublicConfig {
         } = src;
         let signature_key =
             VerifyingKey::from_bytes(signing_key_material).expect("valid signing key material");
-        let auditor_key =
-            VerifyingKey::from_bytes(auditor_key_material).expect("valid auditor key material");
+        let auditor_keys = auditor_key_material
+            .iter()
+            .map(|bytes| VerifyingKey::from_bytes(bytes).expect("valid auditor key material"));
         let vrf_key = VrfPublicKey::try_from(*vrf_key_material).expect("valid VRF key material");
         Self {
-            mode: DeploymentMode::ThirdPartyAuditing(auditor_key),
+            mode: DeploymentMode::ThirdPartyAuditing(VerifyingKeys::from(auditor_keys)),
             signature_key,
             vrf_key,
         }

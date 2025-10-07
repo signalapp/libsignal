@@ -88,38 +88,6 @@ fn get_hash_proof(proof: &[Vec<u8>]) -> Result<Vec<[u8; 32]>> {
         .map_err(|_| Error::BadData("proof element is wrong size".to_string()))
 }
 
-fn serialize_key(buffer: &mut Vec<u8>, key_material: &[u8], key_kind: &str) {
-    let key_len = u16::try_from(key_material.len())
-        .unwrap_or_else(|_| panic!("{} {}", key_kind, "key is too long to be encoded"));
-    buffer.extend_from_slice(&key_len.to_be_bytes());
-    buffer.extend_from_slice(key_material);
-}
-
-fn marshal_tree_head_tbs(
-    tree_size: u64,
-    timestamp: i64,
-    root: &[u8; 32],
-    config: &PublicConfig,
-) -> Result<Vec<u8>> {
-    let mut buf = vec![];
-
-    buf.extend_from_slice(&[0, 0]); // Ciphersuite
-    buf.push(config.mode.byte()); // Deployment mode
-
-    serialize_key(&mut buf, config.signature_key.as_bytes(), "signature");
-    serialize_key(&mut buf, config.vrf_key.as_bytes(), "VRF");
-
-    if let Some(key) = config.mode.get_associated_key() {
-        serialize_key(&mut buf, key.as_bytes(), "third party signature")
-    }
-
-    buf.extend_from_slice(&tree_size.to_be_bytes()); // Tree size
-    buf.extend_from_slice(&timestamp.to_be_bytes()); // Timestamp
-    buf.extend_from_slice(root); // Root hash
-
-    Ok(buf)
-}
-
 fn marshal_update_value(value: &[u8]) -> Result<Vec<u8>> {
     let mut buf = vec![];
 
@@ -146,12 +114,13 @@ fn verify_tree_head_signature(
     head: &impl VerifiableTreeHead,
     root: &[u8; 32],
     verifying_key: &VerifyingKey,
+    maybe_auditor_key: Option<&VerifyingKey>,
 ) -> Result<()> {
-    let raw = marshal_tree_head_tbs(head.tree_size(), head.timestamp(), root, config)?;
+    let to_be_signed = head.to_signable_header(root, config, maybe_auditor_key);
     let signature = Signature::from_slice(head.signature_bytes())
         .map_err(|_| Error::BadData("signature has wrong size".to_string()))?;
     verifying_key
-        .verify(&raw, &signature)
+        .verify(&to_be_signed, &signature)
         .map_err(|_| Error::VerificationFailed("failed to verify tree head signature".to_string()))
 }
 
@@ -185,91 +154,110 @@ fn verify_full_tree_head(
         }
     }
 
-    // 2. Verify the signature in TreeHead.signature.
-    // Intentionally hiding the original tree_head
-    let tree_head = {
-        let verified_single_sig_tree_head = tree_head
-            .to_single_signature_tree_head(config)
-            .ok_or(Error::RequiredFieldMissing("server signature"))?;
-        verify_tree_head_signature(
-            config,
-            &verified_single_sig_tree_head,
-            &root,
-            &config.signature_key,
-        )?;
-        verified_single_sig_tree_head
-    };
+    // 2. Verify the signatures in TreeHead.signature.
+    {
+        for (key, head) in
+            &tree_head
+                .to_single_signature_tree_heads(config)
+                .ok_or(Error::BadData(
+                    "server signatures are either missing or not available for all auditors"
+                        .to_string(),
+                ))?
+        {
+            verify_tree_head_signature(config, head, &root, &config.signature_key, Some(key))?;
+        }
+    }
 
     // 3. Verify that the timestamp in TreeHead is sufficiently recent.
     verify_timestamp(
         Qualifier::Server,
-        tree_head.timestamp(),
+        tree_head.timestamp,
         ALLOWED_TIMESTAMP_RANGE,
         now,
     )?;
 
-    // 4. If third-party auditing is used, verify auditor_tree_head with the
+    // 4. If third-party auditing is used, verify every auditor_tree_head with the
     //    steps described in Section 11.2.
-    if let DeploymentMode::ThirdPartyAuditing(auditor_key) = config.mode {
-        let auditor_tree_head = fth
-            .select_auditor_tree_head(&auditor_key)
-            .ok_or(Error::RequiredFieldMissing("auditor tree head"))?;
-        let auditor_head = get_proto_field(&auditor_tree_head.tree_head, "tree_head")?;
+    if let DeploymentMode::ThirdPartyAuditing(auditor_keys) = &config.mode {
+        let key_head_pairs = fth
+            .auditor_tree_heads(auditor_keys.iter())
+            .ok_or(Error::BadData(
+                "auditor tree heads are either missing or not available for all auditors"
+                    .to_string(),
+            ))?;
 
-        // 2. Verify that TreeHead.timestamp is sufficiently recent.
-        verify_timestamp(
-            Qualifier::Validator,
-            auditor_head.timestamp,
-            ALLOWED_AUDITOR_TIMESTAMP_RANGE,
-            now,
-        )?;
+        for (verifying_key, auditor_tree_head) in key_head_pairs.iter() {
+            let auditor_head = get_proto_field(&auditor_tree_head.tree_head, "tree_head")?;
 
-        // 3. Verify that TreeHead.tree_size is sufficiently close to the most
-        //    recent tree head from the service operator.
-        if auditor_head.tree_size > tree_head.tree_size() {
-            return Err(Error::BadData(
-                "auditor tree head may not be further along than service tree head".to_string(),
-            ));
-        }
-        if tree_head.tree_size() - auditor_head.tree_size > ENTRIES_MAX_BEHIND {
-            return Err(Error::BadData(
-                "auditor tree head is too far behind service tree head".to_string(),
-            ));
-        }
-        // 4. Verify the consistency proof between this tree head and the most
-        //    recent tree head from the service operator.
-        // 1. Verify the signature in TreeHead.signature.
-        if tree_head.tree_size() > auditor_head.tree_size {
-            let auditor_root: &[u8; 32] =
-                get_proto_field(&auditor_tree_head.root_value, "root_value")?
-                    .as_slice()
-                    .try_into()
-                    .map_err(|_| Error::BadData("auditor tree head is malformed".to_string()))?;
-            let proof = get_hash_proof(&auditor_tree_head.consistency)?;
-            verify_consistency_proof(
-                auditor_head.tree_size,
-                tree_head.tree_size(),
-                &proof,
-                auditor_root,
-                &root,
+            // 2. Verify that TreeHead.timestamp is sufficiently recent.
+            verify_timestamp(
+                Qualifier::Validator,
+                auditor_head.timestamp,
+                ALLOWED_AUDITOR_TIMESTAMP_RANGE,
+                now,
             )?;
-            verify_tree_head_signature(config, auditor_head, auditor_root, &auditor_key)?;
-        } else {
-            if !auditor_tree_head.consistency.is_empty() {
+
+            // 3. Verify that TreeHead.tree_size is sufficiently close to the most
+            //    recent tree head from the service operator.
+            if auditor_head.tree_size > tree_head.tree_size {
                 return Err(Error::BadData(
-                    "consistency proof provided when not expected".to_string(),
+                    "auditor tree head may not be further along than service tree head".to_string(),
                 ));
             }
-            if auditor_tree_head.root_value.is_some() {
+            if tree_head.tree_size - auditor_head.tree_size > ENTRIES_MAX_BEHIND {
                 return Err(Error::BadData(
-                    "explicit root value provided when not expected".to_string(),
+                    "auditor tree head is too far behind service tree head".to_string(),
                 ));
             }
-            verify_tree_head_signature(config, auditor_head, &root, &auditor_key)?;
+            // 4. Verify the consistency proof between this tree head and the most
+            //    recent tree head from the service operator.
+            // 1. Verify the signature in TreeHead.signature.
+            if tree_head.tree_size > auditor_head.tree_size {
+                let auditor_root: &[u8; 32] =
+                    get_proto_field(&auditor_tree_head.root_value, "root_value")?
+                        .as_slice()
+                        .try_into()
+                        .map_err(|_| {
+                            Error::BadData("auditor tree head is malformed".to_string())
+                        })?;
+                let proof = get_hash_proof(&auditor_tree_head.consistency)?;
+                verify_consistency_proof(
+                    auditor_head.tree_size,
+                    tree_head.tree_size,
+                    &proof,
+                    auditor_root,
+                    &root,
+                )?;
+                verify_tree_head_signature(
+                    config,
+                    auditor_head,
+                    auditor_root,
+                    verifying_key,
+                    Some(verifying_key),
+                )?;
+            } else {
+                if !auditor_tree_head.consistency.is_empty() {
+                    return Err(Error::BadData(
+                        "consistency proof provided when not expected".to_string(),
+                    ));
+                }
+                if auditor_tree_head.root_value.is_some() {
+                    return Err(Error::BadData(
+                        "explicit root value provided when not expected".to_string(),
+                    ));
+                }
+                verify_tree_head_signature(
+                    config,
+                    auditor_head,
+                    &root,
+                    verifying_key,
+                    Some(verifying_key),
+                )?;
+            }
         }
     }
 
-    Ok((tree_head.0, root))
+    Ok((tree_head.clone(), root))
 }
 
 /// Checks if the consistency proof against the baseline tree head needs to be

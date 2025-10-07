@@ -69,7 +69,7 @@ const DUMMY_SVRB_ENDPOINT_PARAMS: EndpointParams<'static, SvrSgx> = EndpointPara
 const DUMMY_KEYTRANS_CONFIG: KeyTransConfig = KeyTransConfig {
     signing_key_material: &[0; 32],
     vrf_key_material: &[0; 32],
-    auditor_key_material: &[0; 32],
+    auditor_key_material: &[&[0; 32]],
 };
 
 pub(crate) fn localhost_test_env_with_ports(
