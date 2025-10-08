@@ -157,11 +157,11 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         }
         throw SignalError.invalidRegistrationId(address: address, message: errStr)
     case SignalErrorCodeInvalidProtocolAddress:
-        var deviceId: UInt32 = 0
-        let name = try invokeFnReturningString {
-            signal_error_get_invalid_protocol_address($0, &deviceId, error)
-        }
-        throw SignalError.invalidProtocolAddress(name: name, deviceId: deviceId, message: errStr)
+        var pair = SignalPairOfc_charu32()
+        try checkError(signal_error_get_invalid_protocol_address(&pair, error))
+        defer { signal_free_string(pair.first) }
+        let name = String(cString: pair.first!)
+        throw SignalError.invalidProtocolAddress(name: name, deviceId: pair.second, message: errStr)
     case SignalErrorCodeInvalidSenderKeySession:
         let distributionId = try invokeFnReturningUuid {
             signal_error_get_uuid($0, error)
@@ -225,15 +225,17 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         }
         throw SignalError.rateLimitedError(retryAfter: TimeInterval(retryAfterSeconds), message: errStr)
     case SignalErrorCodeRateLimitChallenge:
-        var tokenOut: UnsafePointer<Int8>?
-        let options = try invokeFnReturningData {
-            signal_error_get_rate_limit_challenge(&tokenOut, $0, error)
+        var pair = SignalPairOfc_charOwnedBufferOfc_uchar()
+        try checkError(signal_error_get_rate_limit_challenge(&pair, error))
+        defer {
+            signal_free_string(pair.first)
+            signal_free_buffer(pair.second.base, pair.second.length)
         }
-        let token = String(cString: tokenOut!)
-        signal_free_string(tokenOut)
+        let token = String(cString: pair.first)
+        let options = UnsafeBufferPointer(start: pair.second.base, count: pair.second.length)
         throw SignalError.rateLimitChallengeError(
             token: token,
-            options: Set(try options.map { try ChallengeOption(fromNative: $0) }),
+            options: Set(try options.lazy.map { try ChallengeOption(fromNative: $0) }),
             message: errStr
         )
     case SignalErrorCodeSvrDataMissing:
@@ -277,11 +279,11 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
     case SignalErrorCodeRegistrationSendVerificationCodeFailed:
         throw RegistrationError.sendVerificationFailed(errStr)
     case SignalErrorCodeRegistrationCodeNotDeliverable:
-        var permanent = false
-        let message = try invokeFnReturningString {
-            signal_error_get_registration_error_not_deliverable($0, &permanent, error)
-        }
-        throw RegistrationError.codeNotDeliverable(message: message, permanentFailure: permanent)
+        var pair = SignalPairOfc_charbool()
+        try checkError(signal_error_get_registration_error_not_deliverable(&pair, error))
+        defer { signal_free_string(pair.first) }
+        let message = String(cString: pair.first!)
+        throw RegistrationError.codeNotDeliverable(message: message, permanentFailure: pair.second)
     case SignalErrorCodeRegistrationSessionUpdateRejected:
         throw RegistrationError.sessionUpdateRejected(errStr)
     case SignalErrorCodeRegistrationCredentialsCouldNotBeParsed:

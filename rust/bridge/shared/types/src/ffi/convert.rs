@@ -1182,8 +1182,8 @@ macro_rules! ffi_result_type {
     (()) => (bool); // Only relevant for Futures.
 
     // Like Result, we can't use `:ty` here because we need the resulting tokens to be matched
-    // recursively.
-    (($a:tt, $b:tt)) => (ffi::PairOf<ffi_result_type!($a), ffi_result_type!($b)>);
+    // recursively. We can at least match several tokens in the second component though.
+    (($a:tt, $($b:tt)+)) => (ffi::PairOf<ffi_result_type!($a), ffi_result_type!($($b)+)>);
 
     (u8) => (u8);
     (u16) => (u16);
