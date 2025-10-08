@@ -583,8 +583,8 @@ internal object Native {
   @JvmStatic @Throws(Exception::class)
   public external fun HttpRequest_new(method: String, path: String, bodyAsSlice: ByteArray?): ObjectHandle
 
-  @JvmStatic
-  public external fun IdentityKeyPair_Deserialize(data: ByteArray): LongArray
+  @JvmStatic @Throws(Exception::class)
+  public external fun IdentityKeyPair_Deserialize(input: ByteArray): Pair<*, *>
   @JvmStatic
   public external fun IdentityKeyPair_Serialize(publicKey: ObjectHandle, privateKey: ObjectHandle): ByteArray
   @JvmStatic @Throws(Exception::class)

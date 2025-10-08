@@ -268,6 +268,12 @@ fn IdentityKeyPair_Serialize(public_key: &PublicKey, private_key: &PrivateKey) -
     identity_key_pair.serialize().into_vec()
 }
 
+#[bridge_fn(ffi = "identitykeypair_deserialize")]
+fn IdentityKeyPair_Deserialize(input: &[u8]) -> Result<(PublicKey, PrivateKey)> {
+    let key_pair = IdentityKeyPair::try_from(input)?;
+    Ok((*key_pair.public_key(), *key_pair.private_key()))
+}
+
 #[bridge_fn(ffi = "identitykeypair_sign_alternate_identity")]
 fn IdentityKeyPair_SignAlternateIdentity(
     public_key: &PublicKey,

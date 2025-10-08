@@ -347,7 +347,7 @@ export function HsmEnclaveClient_InitialRequest(obj: Wrapper<HsmEnclaveClient>):
 export function HsmEnclaveClient_New(trustedPublicKey: Uint8Array, trustedCodeHashes: Uint8Array): HsmEnclaveClient;
 export function HttpRequest_add_header(request: Wrapper<HttpRequest>, name: string, value: string): void;
 export function HttpRequest_new(method: string, path: string, bodyAsSlice: Uint8Array | null): HttpRequest;
-export function IdentityKeyPair_Deserialize(buffer: Uint8Array): {publicKey:PublicKey,privateKey:PrivateKey};
+export function IdentityKeyPair_Deserialize(input: Uint8Array): [PublicKey, PrivateKey];
 export function IdentityKeyPair_Serialize(publicKey: Wrapper<PublicKey>, privateKey: Wrapper<PrivateKey>): Uint8Array;
 export function IdentityKeyPair_SignAlternateIdentity(publicKey: Wrapper<PublicKey>, privateKey: Wrapper<PrivateKey>, otherIdentity: Wrapper<PublicKey>): Uint8Array;
 export function IdentityKey_VerifyAlternateIdentity(publicKey: Wrapper<PublicKey>, otherIdentity: Wrapper<PublicKey>, signature: Uint8Array): boolean;

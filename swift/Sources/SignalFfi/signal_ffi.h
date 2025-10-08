@@ -974,6 +974,11 @@ typedef struct {
 } SignalMutPointerHttpRequest;
 
 typedef struct {
+  SignalMutPointerPublicKey first;
+  SignalMutPointerPrivateKey second;
+} SignalPairOfMutPointerPublicKeyMutPointerPrivateKey;
+
+typedef struct {
   const SignalPrivateKey *raw;
 } SignalConstPointerPrivateKey;
 
@@ -1834,7 +1839,7 @@ SignalFfiError *signal_http_request_new_without_body(SignalMutPointerHttpRequest
 
 SignalFfiError *signal_identitykey_verify_alternate_identity(bool *out, SignalConstPointerPublicKey public_key, SignalConstPointerPublicKey other_identity, SignalBorrowedBuffer signature);
 
-SignalFfiError *signal_identitykeypair_deserialize(SignalMutPointerPrivateKey *private_key, SignalMutPointerPublicKey *public_key, SignalBorrowedBuffer input);
+SignalFfiError *signal_identitykeypair_deserialize(SignalPairOfMutPointerPublicKeyMutPointerPrivateKey *out, SignalBorrowedBuffer input);
 
 SignalFfiError *signal_identitykeypair_serialize(SignalOwnedBuffer *out, SignalConstPointerPublicKey public_key, SignalConstPointerPrivateKey private_key);
 

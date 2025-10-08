@@ -48,14 +48,13 @@ public struct IdentityKeyPair: Sendable {
     }
 
     public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        var pubkeyPtr = SignalMutPointerPublicKey()
-        var privkeyPtr = SignalMutPointerPrivateKey()
+        var out = SignalPairOfMutPointerPublicKeyMutPointerPrivateKey()
         try bytes.withUnsafeBorrowedBuffer {
-            try checkError(signal_identitykeypair_deserialize(&privkeyPtr, &pubkeyPtr, $0))
+            try checkError(signal_identitykeypair_deserialize(&out, $0))
         }
 
-        self.publicKey = PublicKey(owned: NonNull(pubkeyPtr)!)
-        self.privateKey = PrivateKey(owned: NonNull(privkeyPtr)!)
+        self.publicKey = PublicKey(owned: NonNull(out.first)!)
+        self.privateKey = PrivateKey(owned: NonNull(out.second)!)
     }
 
     public init(publicKey: PublicKey, privateKey: PrivateKey) {

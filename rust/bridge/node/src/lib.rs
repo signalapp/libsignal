@@ -6,8 +6,8 @@
 #![warn(clippy::unwrap_used)]
 
 use futures::executor;
-use libsignal_bridge::node::{AssumedImmutableBuffer, ResultTypeInfo, SignalNodeError};
-use libsignal_protocol::{IdentityKeyPair, SealedSenderV2SentMessage};
+use libsignal_bridge::node::{AssumedImmutableBuffer, SignalNodeError};
+use libsignal_protocol::SealedSenderV2SentMessage;
 use minidump::Minidump;
 use minidump_processor::ProcessorOptions;
 use minidump_unwind::Symbolizer;
@@ -26,29 +26,12 @@ use libsignal_bridge_testing::*;
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
     libsignal_bridge::node::register(&mut cx)?;
     cx.export_function("initLogger", logging::init_logger)?;
-    cx.export_function("IdentityKeyPair_Deserialize", identitykeypair_deserialize)?;
     cx.export_function(
         "SealedSenderMultiRecipientMessage_Parse",
         sealed_sender_multi_recipient_message_parse,
     )?;
     cx.export_function("MinidumpToJSONString", minidump_to_json_string)?;
     Ok(())
-}
-
-/// ts: export function IdentityKeyPair_Deserialize(buffer: Uint8Array): { publicKey: PublicKey, privateKey: PrivateKey }
-fn identitykeypair_deserialize(mut cx: FunctionContext) -> JsResult<JsObject> {
-    let buffer = cx.argument::<JsUint8Array>(0)?;
-    let identity_keypair_or_error = IdentityKeyPair::try_from(buffer.as_slice(&cx));
-    let identity_keypair = identity_keypair_or_error.or_else(|e| {
-        let throwable = e.into_throwable(&mut cx, "identitykeypair_deserialize");
-        cx.throw(throwable)
-    })?;
-    let public_key = identity_keypair.public_key().convert_into(&mut cx)?;
-    let private_key = identity_keypair.private_key().convert_into(&mut cx)?;
-    let result = cx.empty_object();
-    result.set(&mut cx, "publicKey", public_key)?;
-    result.set(&mut cx, "privateKey", private_key)?;
-    Ok(result)
 }
 
 struct ArrayBuilder<'a> {

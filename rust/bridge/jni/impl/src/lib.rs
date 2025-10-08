@@ -9,7 +9,7 @@
 use jni::JNIEnv;
 #[cfg(not(target_os = "android"))]
 use jni::objects::{AutoLocal, JList, JMap, JValue};
-use jni::objects::{JByteArray, JClass, JLongArray, JObject, JString};
+use jni::objects::{JByteArray, JClass, JObject, JString};
 use libsignal_bridge::jni::*;
 use libsignal_bridge::net::TokioAsyncContext;
 use libsignal_bridge::{jni_args, jni_signature};
@@ -17,31 +17,6 @@ use libsignal_core::try_scoped;
 use libsignal_protocol::*;
 
 pub mod logging;
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_IdentityKeyPair_1Deserialize<
-    'local,
->(
-    mut env: JNIEnv<'local>,
-    _class: JClass,
-    data: JByteArray,
-) -> JLongArray<'local> {
-    run_ffi_safe(&mut env, |env| {
-        let data = env
-            .convert_byte_array(data)
-            .check_exceptions(env, "deserialize")?;
-        let key = IdentityKeyPair::try_from(data.as_ref())?;
-
-        let public_key_handle = key.identity_key().public_key().convert_into(env)?;
-        let private_key_handle = key.private_key().convert_into(env)?;
-        let tuple = [public_key_handle, private_key_handle];
-
-        let result = env.new_long_array(2).check_exceptions(env, "deserialize")?;
-        env.set_long_array_region(&result, 0, &tuple)
-            .check_exceptions(env, "deserialize")?;
-        Ok(result)
-    })
-}
 
 /// Initialize internal data structures.
 ///
