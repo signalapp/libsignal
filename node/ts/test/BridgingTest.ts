@@ -201,6 +201,12 @@ describe('bridge_fn', () => {
     const absent = Native.TESTING_ConvertOptionalUuid(false);
     assert.isNull(absent);
   });
+
+  it('can return pairs', () => {
+    const [num, str] = Native.TESTING_ReturnPair();
+    assert.equal(num, 1);
+    assert.equal(str, 'libsignal');
+  });
 });
 
 describe('BridgedStringMap', () => {

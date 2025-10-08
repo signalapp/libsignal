@@ -1035,6 +1035,18 @@ impl<'a> ResultTypeInfo<'a> for () {
     }
 }
 
+impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A, B) {
+    type ResultType = JsArray;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let a = self.0.convert_into(cx)?;
+        let b = self.1.convert_into(cx)?;
+        let result = cx.empty_array();
+        result.set(cx, 0, a)?;
+        result.set(cx, 1, b)?;
+        Ok(result)
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
     type ResultType = JsObject;
 

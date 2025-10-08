@@ -230,6 +230,11 @@ typedef struct {
 } SignalConstPointerTestingHandleType;
 
 typedef struct {
+  int32_t first;
+  const char *second;
+} SignalPairOfi32c_char;
+
+typedef struct {
   const SignalTestingSemaphore *raw;
 } SignalConstPointerTestingSemaphore;
 
@@ -420,6 +425,8 @@ SignalFfiError *signal_testing_registration_service_submit_verification_error_co
 SignalFfiError *signal_testing_registration_service_update_session_error_convert(const char *error_description);
 
 SignalFfiError *signal_testing_registration_session_info_convert(SignalMutPointerRegistrationSession *out);
+
+SignalFfiError *signal_testing_return_pair(SignalPairOfi32c_char *out);
 
 SignalFfiError *signal_testing_return_string_array(SignalStringArray *out);
 

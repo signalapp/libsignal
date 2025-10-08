@@ -19,6 +19,7 @@ import org.signal.libsignal.protocol.state.KyberPreKeyStore
 import org.signal.libsignal.protocol.state.PreKeyStore
 import org.signal.libsignal.protocol.state.SessionStore
 import org.signal.libsignal.protocol.state.SignedPreKeyStore
+import org.signal.libsignal.protocol.util.Pair
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -223,6 +224,8 @@ public object NativeTesting {
   public external fun TESTING_RegistrationService_UpdateSessionErrorConvert(errorDescription: String): Unit
   @JvmStatic
   public external fun TESTING_RegistrationSessionInfoConvert(): ObjectHandle
+  @JvmStatic
+  public external fun TESTING_ReturnPair(): Pair<*, *>
   @JvmStatic
   public external fun TESTING_ReturnStringArray(): Array<Object>
   @JvmStatic

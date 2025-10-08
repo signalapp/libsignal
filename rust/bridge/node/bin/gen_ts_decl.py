@@ -124,6 +124,13 @@ def translate_to_ts(typ: str) -> str:
     if typ.startswith('&'):
         return 'Wrapper<' + typ[1:] + '>'
 
+    if typ.startswith('('):
+        assert typ.endswith(')'), typ
+        inner = typ[1:-1].split(',')
+        if len(inner) == 1:
+            return translate_to_ts(inner[0])
+        return '[' + ', '.join(translate_to_ts(x) for x in inner) + ']'
+
     if typ.startswith('Option<'):
         assert typ.endswith('>')
         return translate_to_ts(typ[7:-1]) + ' | null'

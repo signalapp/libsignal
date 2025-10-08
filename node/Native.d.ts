@@ -685,6 +685,7 @@ export function TESTING_RegistrationService_ResumeSessionErrorConvert(errorDescr
 export function TESTING_RegistrationService_SubmitVerificationErrorConvert(errorDescription: string): void;
 export function TESTING_RegistrationService_UpdateSessionErrorConvert(errorDescription: string): void;
 export function TESTING_RegistrationSessionInfoConvert(): RegistrationSession;
+export function TESTING_ReturnPair(): [number, string];
 export function TESTING_ReturnStringArray(): string[];
 export function TESTING_RoundTripI32(input: number): number;
 export function TESTING_RoundTripU16(input: number): number;

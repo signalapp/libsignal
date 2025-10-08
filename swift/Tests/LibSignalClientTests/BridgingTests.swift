@@ -265,6 +265,14 @@ final class BridgingTests: XCTestCase {
             XCTAssertEqual(ours, actualOurs)
         }
     }
+
+    func testReturnPair() throws {
+        var pair = SignalPairOfi32c_char()
+        try checkError(signal_testing_return_pair(&pair))
+        defer { signal_free_string(pair.second) }
+        XCTAssertEqual(pair.first, 1 as Int32)
+        XCTAssertEqual(String(cString: pair.second), "libsignal")
+    }
 }
 
 #endif

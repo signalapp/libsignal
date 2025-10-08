@@ -94,6 +94,7 @@ def translate_to_java(typ: str) -> Tuple[str, bool]:
         "JavaCompletableFuture": "CompletableFuture<Void?>",
         "JavaCompletableFuture<Throwing>": "CompletableFuture<Void?>",
         "JavaMap": "Map<*, *>",
+        "JavaPair": "Pair<*, *>",
         "JavaSignedPublicPreKey": "SignedPublicPreKey<*>",
     }
 

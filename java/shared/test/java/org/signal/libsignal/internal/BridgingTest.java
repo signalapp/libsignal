@@ -16,6 +16,7 @@ import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
+import org.signal.libsignal.protocol.util.Pair;
 
 public class BridgingTest {
   long ioRuntime = 0;
@@ -214,5 +215,12 @@ public class BridgingTest {
     } finally {
       NativeTesting.TestingHandleType_Destroy(handle);
     }
+  }
+
+  @Test
+  public void testReturnPair() throws Exception {
+    @SuppressWarnings("unchecked")
+    var pair = (Pair<Integer, String>) NativeTesting.TESTING_ReturnPair();
+    assertEquals(pair, new Pair(1, "libsignal"));
   }
 }

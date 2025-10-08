@@ -455,3 +455,8 @@ fn TestingValueHolder_New(value: i32) -> TestingValueHolder {
 fn TestingValueHolder_Get(holder: &TestingValueHolder) -> i32 {
     holder.0.load(std::sync::atomic::Ordering::SeqCst)
 }
+
+#[bridge_fn]
+fn TESTING_ReturnPair() -> (i32, String) {
+    (1, "libsignal".into())
+}

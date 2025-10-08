@@ -1164,6 +1164,21 @@ impl<T: BridgeHandle> ResultTypeInfo<'_> for Option<T> {
     }
 }
 
+impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A, B) {
+    type ResultType = JavaPair<'a>;
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let a = self.0.convert_into(env)?;
+        let a = box_primitive_if_needed(env, a.into())?;
+        let b = self.1.convert_into(env)?;
+        let b = box_primitive_if_needed(env, b.into())?;
+        new_instance(
+            env,
+            ClassName("org.signal.libsignal.protocol.util.Pair"),
+            jni_args!((a => java.lang.Object, b => java.lang.Object) -> void),
+        )
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for ServiceId {
     type ResultType = JByteArray<'a>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
@@ -1205,31 +1220,6 @@ macro_rules! impl_result_type_info_for_option {
 
 impl_result_type_info_for_option!(Aci);
 impl_result_type_info_for_option!(Pni);
-
-impl<'a> ResultTypeInfo<'a> for (Vec<u8>, Vec<u8>) {
-    type ResultType = JObjectArray<'a>;
-
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        let key = env
-            .byte_array_from_slice(&self.0)
-            .check_exceptions(env, "search key to jByteArray")?;
-        let value = env
-            .byte_array_from_slice(&self.1)
-            .check_exceptions(env, "monitoring data to jByteArray")?;
-        let pair = env
-            .new_object_array(2, jni_signature!([byte]), JavaObject::null())
-            .check_exceptions(env, "new_object_array")?;
-
-        env.set_object_array_element(&pair, 0, key)
-            .check_exceptions(env, "set key")?;
-        env.set_object_array_element(&pair, 1, value)
-            .check_exceptions(env, "set value")?;
-        Ok(pair)
-    }
-}
-
-type PairOfByteVecs = (Vec<u8>, Vec<u8>);
-impl_result_type_info_for_option!(PairOfByteVecs);
 
 impl<'a, T> SimpleArgTypeInfo<'a> for Serialized<T>
 where
@@ -2166,6 +2156,9 @@ macro_rules! jni_result_type {
     (()) => {
         ()
     };
+    (($a:ty, $b:ty)) => {
+        $crate::jni::JavaPair<'local>
+    };
     (bool) => {
         ::jni::sys::jboolean
     };
@@ -2203,9 +2196,6 @@ macro_rules! jni_result_type {
     };
     (Vec<u8>) => {
         ::jni::objects::JByteArray<'local>
-    };
-    ((Vec<u8>, Vec<u8>)) => {
-        ::jni::objects::JObjectArray<'local>
     };
     (&[String]) => {
         ::jni::objects::JObjectArray<'local>

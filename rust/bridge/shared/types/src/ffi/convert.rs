@@ -931,6 +931,17 @@ impl ResultTypeInfo for () {
     }
 }
 
+impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for (A, B) {
+    type ResultType = PairOf<A::ResultType, B::ResultType>;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(PairOf {
+            first: self.0.convert_into()?,
+            second: self.1.convert_into()?,
+        })
+    }
+}
+
 impl ResultTypeInfo for libsignal_net::cdsi::LookupResponse {
     type ResultType = FfiCdsiLookupResponse;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -1169,6 +1180,10 @@ macro_rules! ffi_result_type {
     (Result<$typ:tt<$($args:tt),+> $(, $_:ty)?>) => (ffi_result_type!($typ<$($args)+>));
 
     (()) => (bool); // Only relevant for Futures.
+
+    // Like Result, we can't use `:ty` here because we need the resulting tokens to be matched
+    // recursively.
+    (($a:tt, $b:tt)) => (ffi::PairOf<ffi_result_type!($a), ffi_result_type!($b)>);
 
     (u8) => (u8);
     (u16) => (u16);

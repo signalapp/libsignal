@@ -180,6 +180,12 @@ pub struct OptionalBorrowedSliceOf<T> {
 pub type OptionalUuid = [u8; 17];
 
 #[repr(C)]
+pub struct PairOf<A, B> {
+    pub first: A,
+    pub second: B,
+}
+
+#[repr(C)]
 #[derive(Debug)]
 /// cbindgen:field-names=[e164, rawAciUuid, rawPniUuid]
 pub struct FfiCdsiLookupResponseEntry {
