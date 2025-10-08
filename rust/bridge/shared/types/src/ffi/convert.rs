@@ -942,6 +942,25 @@ impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for (A, B) {
     }
 }
 
+impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for Option<(A, B)>
+where
+    A::ResultType: Default,
+    B::ResultType: Default,
+{
+    type ResultType = OptionalPairOf<A::ResultType, B::ResultType>;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let Some(value) = self else {
+            return Ok(OptionalPairOf::default());
+        };
+        Ok(OptionalPairOf {
+            present: true,
+            first: value.0.convert_into()?,
+            second: value.1.convert_into()?,
+        })
+    }
+}
+
 impl ResultTypeInfo for libsignal_net::cdsi::LookupResponse {
     type ResultType = FfiCdsiLookupResponse;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -1184,6 +1203,7 @@ macro_rules! ffi_result_type {
     // Like Result, we can't use `:ty` here because we need the resulting tokens to be matched
     // recursively. We can at least match several tokens in the second component though.
     (($a:tt, $($b:tt)+)) => (ffi::PairOf<ffi_result_type!($a), ffi_result_type!($($b)+)>);
+    (Option<($a:tt, $($b:tt)+)>) => (ffi::OptionalPairOf<ffi_result_type!($a), ffi_result_type!($($b)+)>);
 
     (u8) => (u8);
     (u16) => (u16);

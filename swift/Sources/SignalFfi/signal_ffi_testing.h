@@ -24,8 +24,6 @@ typedef struct SignalFakeChatRemoteEnd SignalFakeChatRemoteEnd;
 
 typedef struct SignalFakeChatResponse SignalFakeChatResponse;
 
-typedef struct SignalFakeChatSentRequest SignalFakeChatSentRequest;
-
 typedef struct SignalFakeChatServer SignalFakeChatServer;
 
 typedef struct SignalNonSuspendingBackgroundThreadRuntime SignalNonSuspendingBackgroundThreadRuntime;
@@ -76,10 +74,6 @@ typedef struct {
 } SignalMutPointerFakeChatResponse;
 
 typedef struct {
-  SignalFakeChatSentRequest *raw;
-} SignalMutPointerFakeChatSentRequest;
-
-typedef struct {
   SignalFakeChatServer *raw;
 } SignalMutPointerFakeChatServer;
 
@@ -126,6 +120,12 @@ typedef struct {
   const SignalFakeChatRemoteEnd *raw;
 } SignalConstPointerFakeChatRemoteEnd;
 
+typedef struct {
+  bool present;
+  SignalMutPointerHttpRequest first;
+  uint64_t second;
+} SignalOptionalPairOfMutPointerHttpRequestu64;
+
 /**
  * A C callback used to report the results of Rust futures.
  *
@@ -136,18 +136,14 @@ typedef struct {
  * completed once.
  */
 typedef struct {
-  void (*complete)(SignalFfiError *error, const SignalMutPointerFakeChatSentRequest *result, const void *context);
+  void (*complete)(SignalFfiError *error, const SignalOptionalPairOfMutPointerHttpRequestu64 *result, const void *context);
   const void *context;
   SignalRawCancellationId cancellation_id;
-} SignalCPromiseMutPointerFakeChatSentRequest;
+} SignalCPromiseOptionalPairOfMutPointerHttpRequestu64;
 
 typedef struct {
   const SignalFakeChatResponse *raw;
 } SignalConstPointerFakeChatResponse;
-
-typedef struct {
-  const SignalFakeChatSentRequest *raw;
-} SignalConstPointerFakeChatSentRequest;
 
 /**
  * A C callback used to report the results of Rust futures.
@@ -264,8 +260,6 @@ SignalFfiError *signal_fake_chat_remote_end_destroy(SignalMutPointerFakeChatRemo
 
 SignalFfiError *signal_fake_chat_response_destroy(SignalMutPointerFakeChatResponse p);
 
-SignalFfiError *signal_fake_chat_sent_request_destroy(SignalMutPointerFakeChatSentRequest p);
-
 SignalFfiError *signal_fake_chat_server_destroy(SignalMutPointerFakeChatServer p);
 
 SignalFfiError *signal_other_testing_handle_type_clone(SignalMutPointerOtherTestingHandleType *new_obj, SignalConstPointerOtherTestingHandleType obj);
@@ -328,7 +322,7 @@ SignalFfiError *signal_testing_fake_chat_connection_take_unauthenticated_chat(Si
 
 SignalFfiError *signal_testing_fake_chat_remote_end_inject_connection_interrupted(SignalConstPointerFakeChatRemoteEnd chat);
 
-SignalFfiError *signal_testing_fake_chat_remote_end_receive_incoming_request(SignalCPromiseMutPointerFakeChatSentRequest *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerFakeChatRemoteEnd chat);
+SignalFfiError *signal_testing_fake_chat_remote_end_receive_incoming_request(SignalCPromiseOptionalPairOfMutPointerHttpRequestu64 *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerFakeChatRemoteEnd chat);
 
 SignalFfiError *signal_testing_fake_chat_remote_end_send_raw_server_request(SignalConstPointerFakeChatRemoteEnd chat, SignalBorrowedBuffer bytes);
 
@@ -337,10 +331,6 @@ SignalFfiError *signal_testing_fake_chat_remote_end_send_raw_server_response(Sig
 SignalFfiError *signal_testing_fake_chat_remote_end_send_server_response(SignalConstPointerFakeChatRemoteEnd chat, SignalConstPointerFakeChatResponse response);
 
 SignalFfiError *signal_testing_fake_chat_response_create(SignalMutPointerFakeChatResponse *out, uint64_t id, uint16_t status, const char *message, SignalBorrowedBytestringArray headers, SignalOptionalBorrowedSliceOfc_uchar body);
-
-SignalFfiError *signal_testing_fake_chat_sent_request_request_id(uint64_t *out, SignalConstPointerFakeChatSentRequest request);
-
-SignalFfiError *signal_testing_fake_chat_sent_request_take_http_request(SignalMutPointerHttpRequest *out, SignalMutPointerFakeChatSentRequest request);
 
 SignalFfiError *signal_testing_fake_chat_server_create(SignalMutPointerFakeChatServer *out);
 

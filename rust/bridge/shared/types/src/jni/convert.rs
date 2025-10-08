@@ -1179,6 +1179,16 @@ impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A
     }
 }
 
+impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<(A, B)> {
+    type ResultType = JavaPair<'a>;
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let Some(value) = self else {
+            return Ok(JObject::null());
+        };
+        value.convert_into(env)
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for ServiceId {
     type ResultType = JByteArray<'a>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {

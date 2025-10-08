@@ -848,11 +848,9 @@ export class InternalRequest implements Native.Wrapper<Native.HttpRequest> {
   readonly _nativeHandle: Native.HttpRequest;
   readonly requestId: bigint;
 
-  constructor(fakeRequest: Native.FakeChatSentRequest) {
-    const wrapper = newNativeHandle(fakeRequest);
-    this._nativeHandle =
-      Native.TESTING_FakeChatSentRequest_TakeHttpRequest(wrapper);
-    this.requestId = Native.TESTING_FakeChatSentRequest_RequestId(wrapper);
+  constructor([nativeHandle, requestId]: [Native.HttpRequest, bigint]) {
+    this._nativeHandle = nativeHandle;
+    this.requestId = requestId;
   }
 
   public get verb(): string {

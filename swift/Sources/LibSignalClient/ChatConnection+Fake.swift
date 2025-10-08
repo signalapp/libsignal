@@ -180,26 +180,25 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
     }
 
     func getNextIncomingRequest() async throws -> (ChatRequest.InternalRequest, UInt64) {
-        let request = try await self.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
-            withNativeHandle { handle in
-                signal_testing_fake_chat_remote_end_receive_incoming_request(
-                    promise,
-                    asyncContext.const(),
-                    handle.const()
-                )
+        while true {
+            let request = try await self.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
+                withNativeHandle { handle in
+                    signal_testing_fake_chat_remote_end_receive_incoming_request(
+                        promise,
+                        asyncContext.const(),
+                        handle.const()
+                    )
+                }
             }
-        }
-        defer { signal_fake_chat_sent_request_destroy(request) }
-
-        let httpRequest: ChatRequest.InternalRequest =
-            try invokeFnReturningNativeHandle {
-                signal_testing_fake_chat_sent_request_take_http_request($0, request)
+            guard request.present else {
+                continue
             }
-        let requestId = try invokeFnReturningInteger {
-            signal_testing_fake_chat_sent_request_request_id($0, request.const())
-        }
 
-        return (httpRequest, requestId)
+            let httpRequest = ChatRequest.InternalRequest(owned: NonNull(request.first)!)
+            let requestId = request.second
+
+            return (httpRequest, requestId)
+        }
     }
 
     func sendResponse(requestId: UInt64, _ response: ChatResponse) throws {
@@ -413,28 +412,6 @@ extension SignalConstPointerFakeChatRemoteEnd: SignalConstPointer {
     }
 }
 
-extension SignalMutPointerFakeChatSentRequest: SignalMutPointer {
-    public typealias ConstPointer = SignalConstPointerFakeChatSentRequest
-
-    public init(untyped: OpaquePointer?) {
-        self.init(raw: untyped)
-    }
-
-    public func toOpaque() -> OpaquePointer? {
-        self.raw
-    }
-
-    public func const() -> Self.ConstPointer {
-        Self.ConstPointer(raw: self.raw)
-    }
-}
-
-extension SignalConstPointerFakeChatSentRequest: SignalConstPointer {
-    public func toOpaque() -> OpaquePointer? {
-        self.raw
-    }
-}
-
 extension SignalMutPointerFakeChatServer: SignalMutPointer {
     public typealias ConstPointer = SignalConstPointerFakeChatServer
 
@@ -479,8 +456,8 @@ extension SignalConstPointerFakeChatResponse: SignalConstPointer {
     }
 }
 
-extension SignalCPromiseMutPointerFakeChatSentRequest: PromiseStruct {
-    typealias Result = SignalMutPointerFakeChatSentRequest
+extension SignalCPromiseOptionalPairOfMutPointerHttpRequestu64: PromiseStruct {
+    typealias Result = SignalOptionalPairOfMutPointerHttpRequestu64
 }
 
 extension SignalCPromiseMutPointerFakeChatRemoteEnd: PromiseStruct {

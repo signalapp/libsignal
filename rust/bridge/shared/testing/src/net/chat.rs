@@ -31,20 +31,12 @@ pub struct FakeChatServer {
 
 pub struct FakeChatRemoteEnd(FakeChatRemote);
 
-pub struct FakeChatSentRequest {
-    // Hold as an Option so that the value can be taken.
-    http: Option<HttpRequest>,
-    id: u64,
-}
-
 pub struct FakeChatResponse(ResponseProto);
 
 bridge_as_handle!(FakeChatConnection);
 bridge_handle_fns!(FakeChatConnection, clone = false);
 bridge_as_handle!(FakeChatRemoteEnd);
 bridge_handle_fns!(FakeChatRemoteEnd, clone = false);
-bridge_as_handle!(FakeChatSentRequest, mut = true);
-bridge_handle_fns!(FakeChatSentRequest, clone = false);
 bridge_as_handle!(FakeChatServer);
 bridge_handle_fns!(FakeChatServer, clone = false);
 bridge_as_handle!(FakeChatResponse);
@@ -152,7 +144,7 @@ fn TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: &FakeChatRemoteEn
 #[bridge_io(TokioAsyncContext)]
 async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
     chat: &FakeChatRemoteEnd,
-) -> Option<FakeChatSentRequest> {
+) -> Option<(HttpRequest, u64)> {
     let request = chat
         .0
         .receive_request()
@@ -183,20 +175,7 @@ async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
             .into(),
     };
 
-    Some(FakeChatSentRequest {
-        http: Some(http_request),
-        id: id.unwrap(),
-    })
-}
-
-#[bridge_fn]
-fn TESTING_FakeChatSentRequest_TakeHttpRequest(request: &mut FakeChatSentRequest) -> HttpRequest {
-    request.http.take().expect("not taken yet")
-}
-
-#[bridge_fn]
-fn TESTING_FakeChatSentRequest_RequestId(request: &FakeChatSentRequest) -> u64 {
-    request.id
+    Some((http_request, id.unwrap()))
 }
 
 #[bridge_fn]

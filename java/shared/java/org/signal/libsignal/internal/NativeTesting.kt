@@ -61,9 +61,6 @@ public object NativeTesting {
   public external fun FakeChatResponse_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic
-  public external fun FakeChatSentRequest_Destroy(handle: ObjectHandle): Unit
-
-  @JvmStatic
   public external fun FakeChatServer_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic
@@ -127,7 +124,7 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: ObjectHandle): Unit
   @JvmStatic
-  public external fun TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<ObjectHandle>
+  public external fun TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Pair<*, *>?>
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_SendRawServerRequest(chat: ObjectHandle, bytes: ByteArray): Unit
   @JvmStatic
@@ -136,10 +133,6 @@ public object NativeTesting {
   public external fun TESTING_FakeChatRemoteEnd_SendServerResponse(chat: ObjectHandle, response: ObjectHandle): Unit
   @JvmStatic
   public external fun TESTING_FakeChatResponse_Create(id: Long, status: Int, message: String, headers: Array<Object>, body: ByteArray?): ObjectHandle
-  @JvmStatic
-  public external fun TESTING_FakeChatSentRequest_RequestId(request: ObjectHandle): Long
-  @JvmStatic
-  public external fun TESTING_FakeChatSentRequest_TakeHttpRequest(request: ObjectHandle): ObjectHandle
   @JvmStatic
   public external fun TESTING_FakeChatServer_Create(): ObjectHandle
   @JvmStatic

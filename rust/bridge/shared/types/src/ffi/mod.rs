@@ -186,6 +186,14 @@ pub struct PairOf<A, B> {
 }
 
 #[repr(C)]
+#[derive(Default)]
+pub struct OptionalPairOf<A, B> {
+    pub present: bool,
+    pub first: A,
+    pub second: B,
+}
+
+#[repr(C)]
 #[derive(Debug)]
 /// cbindgen:field-names=[e164, rawAciUuid, rawPniUuid]
 pub struct FfiCdsiLookupResponseEntry {
@@ -300,6 +308,12 @@ impl<T> MutPointer<T> {
         Self {
             raw: std::ptr::null_mut(),
         }
+    }
+}
+
+impl<T> Default for MutPointer<T> {
+    fn default() -> Self {
+        Self::null()
     }
 }
 

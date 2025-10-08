@@ -642,13 +642,11 @@ export function TESTING_FakeChatConnection_TakeAuthenticatedChat(chat: Wrapper<F
 export function TESTING_FakeChatConnection_TakeRemote(chat: Wrapper<FakeChatConnection>): FakeChatRemoteEnd;
 export function TESTING_FakeChatConnection_TakeUnauthenticatedChat(chat: Wrapper<FakeChatConnection>): UnauthenticatedChatConnection;
 export function TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: Wrapper<FakeChatRemoteEnd>): void;
-export function TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<FakeChatRemoteEnd>): CancellablePromise<FakeChatSentRequest | null>;
+export function TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<FakeChatRemoteEnd>): CancellablePromise<[HttpRequest, bigint] | null>;
 export function TESTING_FakeChatRemoteEnd_SendRawServerRequest(chat: Wrapper<FakeChatRemoteEnd>, bytes: Uint8Array): void;
 export function TESTING_FakeChatRemoteEnd_SendRawServerResponse(chat: Wrapper<FakeChatRemoteEnd>, bytes: Uint8Array): void;
 export function TESTING_FakeChatRemoteEnd_SendServerResponse(chat: Wrapper<FakeChatRemoteEnd>, response: Wrapper<FakeChatResponse>): void;
 export function TESTING_FakeChatResponse_Create(id: bigint, status: number, message: string, headers: string[], body: Uint8Array | null): FakeChatResponse;
-export function TESTING_FakeChatSentRequest_RequestId(request: Wrapper<FakeChatSentRequest>): bigint;
-export function TESTING_FakeChatSentRequest_TakeHttpRequest(request: Wrapper<FakeChatSentRequest>): HttpRequest;
 export function TESTING_FakeChatServer_Create(): FakeChatServer;
 export function TESTING_FakeChatServer_GetNextRemote(asyncRuntime: Wrapper<TokioAsyncContext>, server: Wrapper<FakeChatServer>): CancellablePromise<FakeChatRemoteEnd>;
 export function TESTING_FakeRegistrationSession_CreateSession(asyncRuntime: Wrapper<TokioAsyncContext>, createSession: RegistrationCreateSessionRequest, chat: Wrapper<FakeChatServer>): CancellablePromise<RegistrationService>;
@@ -754,7 +752,6 @@ interface ExpiringProfileKeyCredentialResponse { readonly __type: unique symbol;
 interface FakeChatConnection { readonly __type: unique symbol; }
 interface FakeChatRemoteEnd { readonly __type: unique symbol; }
 interface FakeChatResponse { readonly __type: unique symbol; }
-interface FakeChatSentRequest { readonly __type: unique symbol; }
 interface FakeChatServer { readonly __type: unique symbol; }
 interface Fingerprint { readonly __type: unique symbol; }
 interface GroupMasterKey { readonly __type: unique symbol; }

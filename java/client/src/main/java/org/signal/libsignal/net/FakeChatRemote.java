@@ -20,6 +20,7 @@ class FakeChatRemote extends NativeHandleGuard.SimpleOwner {
     this.tokioContext = tokioContext;
   }
 
+  @SuppressWarnings("unchecked")
   public CompletableFuture<Pair<InternalRequest, Long>> getNextIncomingRequest() {
     return tokioContext
         .guardedMap(
@@ -29,16 +30,9 @@ class FakeChatRemote extends NativeHandleGuard.SimpleOwner {
                         NativeTesting.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
                             asyncContextHandle, fakeRemote)))
         .thenApply(
-            sentRequest -> {
-              try {
-                var httpRequest =
-                    new InternalRequest(
-                        NativeTesting.TESTING_FakeChatSentRequest_TakeHttpRequest(sentRequest));
-                var requestId = NativeTesting.TESTING_FakeChatSentRequest_RequestId(sentRequest);
-                return new Pair<>(httpRequest, requestId);
-              } finally {
-                NativeTesting.FakeChatSentRequest_Destroy(sentRequest);
-              }
+            rawRequest -> {
+              var sentRequest = (Pair<Long, Long>) rawRequest;
+              return new Pair(new InternalRequest(sentRequest.first()), sentRequest.second());
             });
   }
 
