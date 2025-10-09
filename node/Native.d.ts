@@ -741,7 +741,6 @@ interface CdsiLookup { readonly __type: unique symbol; }
 interface ChatConnectionInfo { readonly __type: unique symbol; }
 interface CiphertextMessage { readonly __type: unique symbol; }
 interface ComparableBackup { readonly __type: unique symbol; }
-interface ComparableBackup { readonly __type: unique symbol; }
 interface ConnectionManager { readonly __type: unique symbol; }
 interface ConnectionProxyConfig { readonly __type: unique symbol; }
 interface DecryptionErrorMessage { readonly __type: unique symbol; }

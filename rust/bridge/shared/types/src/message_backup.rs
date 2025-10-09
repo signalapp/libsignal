@@ -102,13 +102,6 @@ pub struct MessageBackupValidationOutcome {
 }
 bridge_as_handle!(MessageBackupValidationOutcome, jni = false, node = false);
 
-pub struct ComparableBackup {
-    pub backup: backup::serialize::Backup,
-    pub found_unknown_fields: Vec<FoundUnknownField>,
-}
-
-bridge_as_handle!(ComparableBackup);
-
 pub struct OnlineBackupValidator {
     backup: Option<backup::PartialBackup<backup::ValidateOnly>>,
 }
