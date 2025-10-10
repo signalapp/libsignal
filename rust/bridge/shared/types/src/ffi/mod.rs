@@ -318,7 +318,7 @@ impl std::fmt::Debug for UnexpectedPanic {
 // Swift code considers all opaque pointers to be the same type, but
 // differentiates between the generated named struct types.
 #[repr(C)]
-#[derive(derive_more::From)]
+#[derive(derive_more::From, zerocopy::FromZeros)]
 #[derive_where(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct MutPointer<T> {
     raw: *mut T,

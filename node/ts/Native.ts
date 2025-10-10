@@ -536,6 +536,7 @@ type NativeFunctions = {
   UnauthenticatedChatConnection_disconnect: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>) => CancellablePromise<void>;
   UnauthenticatedChatConnection_info: (chat: Wrapper<UnauthenticatedChatConnection>) => ChatConnectionInfo;
   UnauthenticatedChatConnection_look_up_username_hash: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, hash: Uint8Array) => CancellablePromise<Uuid | null>;
+  UnauthenticatedChatConnection_look_up_username_link: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, uuid: Uuid, entropy: Uint8Array) => CancellablePromise<[string, Uint8Array] | null>;
   UnauthenticatedChatConnection_send_multi_recipient_message: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, payload: Uint8Array, timestamp: Timestamp, auth: Uint8Array|null, onlineOnly: boolean, isUrgent: boolean) => CancellablePromise<Uint8Array[]>;
   AuthenticatedChatConnection_preconnect: (asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>) => CancellablePromise<void>;
   AuthenticatedChatConnection_connect: (asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, receiveStories: boolean, languages: string[]) => CancellablePromise<AuthenticatedChatConnection>;
@@ -1081,6 +1082,7 @@ const { registerErrors,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_info,
   UnauthenticatedChatConnection_look_up_username_hash,
+  UnauthenticatedChatConnection_look_up_username_link,
   UnauthenticatedChatConnection_send_multi_recipient_message,
   AuthenticatedChatConnection_preconnect,
   AuthenticatedChatConnection_connect,
@@ -1628,6 +1630,7 @@ export { registerErrors,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_info,
   UnauthenticatedChatConnection_look_up_username_hash,
+  UnauthenticatedChatConnection_look_up_username_link,
   UnauthenticatedChatConnection_send_multi_recipient_message,
   AuthenticatedChatConnection_preconnect,
   AuthenticatedChatConnection_connect,

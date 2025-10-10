@@ -1460,6 +1460,27 @@ typedef struct {
   SignalCancellationId cancellation_id;
 } SignalCPromiseOptionalUuid;
 
+typedef struct {
+  bool present;
+  const char *first;
+  uint8_t second[32];
+} SignalOptionalPairOfc_charu832;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalOptionalPairOfc_charu832 *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseOptionalPairOfc_charu832;
+
 /**
  * A C callback used to report the results of Rust futures.
  *
@@ -2578,6 +2599,8 @@ SignalFfiError *signal_unauthenticated_chat_connection_info(SignalMutPointerChat
 SignalFfiError *signal_unauthenticated_chat_connection_init_listener(SignalConstPointerUnauthenticatedChatConnection chat, SignalConstPointerFfiChatListenerStruct listener);
 
 SignalFfiError *signal_unauthenticated_chat_connection_look_up_username_hash(SignalCPromiseOptionalUuid *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, SignalBorrowedBuffer hash);
+
+SignalFfiError *signal_unauthenticated_chat_connection_look_up_username_link(SignalCPromiseOptionalPairOfc_charu832 *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, const uint8_t (*uuid)[16], SignalBorrowedBuffer entropy);
 
 SignalFfiError *signal_unauthenticated_chat_connection_send(SignalCPromiseFfiChatResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, SignalConstPointerHttpRequest http_request, uint32_t timeout_millis);
 
