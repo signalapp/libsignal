@@ -21,10 +21,10 @@ public class SessionRecord: ClonableHandleOwner<SignalMutPointerSessionRecord> {
     }
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        let handle = try bytes.withUnsafeBorrowedBuffer {
-            var result = SignalMutPointerSessionRecord()
-            try checkError(signal_session_record_deserialize(&result, $0))
-            return result
+        let handle = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_session_record_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(handle)!)
     }
@@ -44,17 +44,17 @@ public class SessionRecord: ClonableHandleOwner<SignalMutPointerSessionRecord> {
     }
 
     public func hasCurrentState(now: Date) -> Bool {
-        var result = false
-        self.withNativeHandle { nativeHandle in
-            failOnError(
-                signal_session_record_has_usable_sender_chain(
-                    &result,
-                    nativeHandle.const(),
-                    UInt64(now.timeIntervalSince1970 * 1000)
-                )
-            )
+        return self.withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningBool {
+                    signal_session_record_has_usable_sender_chain(
+                        $0,
+                        nativeHandle.const(),
+                        UInt64(now.timeIntervalSince1970 * 1000)
+                    )
+                }
+            }
         }
-        return result
     }
 
     public func archiveCurrentState() {
@@ -72,13 +72,11 @@ public class SessionRecord: ClonableHandleOwner<SignalMutPointerSessionRecord> {
     }
 
     public func currentRatchetKeyMatches(_ key: PublicKey) throws -> Bool {
-        var result = false
-        try withAllBorrowed(self, key) { sessionHandle, keyHandle in
-            try checkError(
-                signal_session_record_current_ratchet_key_matches(&result, sessionHandle.const(), keyHandle.const())
-            )
+        return try withAllBorrowed(self, key) { sessionHandle, keyHandle in
+            try invokeFnReturningBool {
+                signal_session_record_current_ratchet_key_matches($0, sessionHandle.const(), keyHandle.const())
+            }
         }
-        return result
     }
 }
 

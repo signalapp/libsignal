@@ -14,9 +14,10 @@ public class PreKeySignalMessage: NativeHandleOwner<SignalMutPointerPreKeySignal
     }
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        var result = SignalMutPointerPreKeySignalMessage()
-        try bytes.withUnsafeBorrowedBuffer {
-            try checkError(signal_pre_key_signal_message_deserialize(&result, $0))
+        let result = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_pre_key_signal_message_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(result)!)
     }

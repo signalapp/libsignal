@@ -14,17 +14,21 @@ public class PlaintextContent: NativeHandleOwner<SignalMutPointerPlaintextConten
     }
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        var result = SignalMutPointerPlaintextContent()
-        try bytes.withUnsafeBorrowedBuffer {
-            try checkError(signal_plaintext_content_deserialize(&result, $0))
+        let result = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_plaintext_content_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(result)!)
     }
 
     public convenience init(_ decryptionError: DecryptionErrorMessage) {
-        var result = SignalMutPointerPlaintextContent()
-        decryptionError.withNativeHandle { decryptionErrorHandle in
-            failOnError(signal_plaintext_content_from_decryption_error_message(&result, decryptionErrorHandle.const()))
+        let result = decryptionError.withNativeHandle { decryptionErrorHandle in
+            failOnError {
+                try invokeFnReturningValueByPointer(.init()) {
+                    signal_plaintext_content_from_decryption_error_message($0, decryptionErrorHandle.const())
+                }
+            }
         }
         self.init(owned: NonNull(result)!)
     }
@@ -80,9 +84,10 @@ public class DecryptionErrorMessage: NativeHandleOwner<SignalMutPointerDecryptio
     }
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        var result = SignalMutPointerDecryptionErrorMessage()
-        try bytes.withUnsafeBorrowedBuffer {
-            try checkError(signal_decryption_error_message_deserialize(&result, $0))
+        let result = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_decryption_error_message_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(result)!)
     }
@@ -93,17 +98,16 @@ public class DecryptionErrorMessage: NativeHandleOwner<SignalMutPointerDecryptio
         timestamp: UInt64,
         originalSenderDeviceId: UInt32
     ) throws {
-        var result = SignalMutPointerDecryptionErrorMessage()
-        try bytes.withUnsafeBorrowedBuffer {
-            try checkError(
+        let result = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
                 signal_decryption_error_message_for_original_message(
-                    &result,
                     $0,
+                    bytes,
                     type.rawValue,
                     timestamp,
                     originalSenderDeviceId
                 )
-            )
+            }
         }
         self.init(owned: NonNull(result)!)
     }

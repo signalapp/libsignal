@@ -47,16 +47,18 @@ public struct ChatRequest: Equatable, Sendable {
     // Exposed for testing
     internal class InternalRequest: NativeHandleOwner<SignalMutPointerHttpRequest> {
         convenience init(_ request: ChatRequest) throws {
-            var handle = SignalMutPointerHttpRequest(untyped: nil)
-            if let body = request.body {
-                try body.withUnsafeBorrowedBuffer { body in
-                    try checkError(
-                        signal_http_request_new_with_body(&handle, request.method, request.pathAndQuery, body)
-                    )
+            let handle =
+                if let body = request.body {
+                    try body.withUnsafeBorrowedBuffer { body in
+                        try invokeFnReturningValueByPointer(.init()) {
+                            signal_http_request_new_with_body($0, request.method, request.pathAndQuery, body)
+                        }
+                    }
+                } else {
+                    try invokeFnReturningValueByPointer(.init()) {
+                        signal_http_request_new_without_body($0, request.method, request.pathAndQuery)
+                    }
                 }
-            } else {
-                try checkError(signal_http_request_new_without_body(&handle, request.method, request.pathAndQuery))
-            }
             // Make sure we clean up the handle if there are any errors adding headers.
             self.init(owned: NonNull(handle)!)
 

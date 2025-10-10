@@ -8,8 +8,11 @@ import SignalFfi
 
 internal class TokioAsyncContext: NativeHandleOwner<SignalMutPointerTokioAsyncContext>, @unchecked Sendable {
     convenience init() {
-        var handle = SignalMutPointerTokioAsyncContext()
-        failOnError(signal_tokio_async_context_new(&handle))
+        let handle = failOnError {
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_tokio_async_context_new($0)
+            }
+        }
         self.init(owned: NonNull(handle)!)
     }
 

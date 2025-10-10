@@ -21,10 +21,10 @@ public class SenderKeyRecord: ClonableHandleOwner<SignalMutPointerSenderKeyRecor
     }
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        let handle = try bytes.withUnsafeBorrowedBuffer {
-            var result = SignalMutPointerSenderKeyRecord()
-            try checkError(signal_sender_key_record_deserialize(&result, $0))
-            return result
+        let handle = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_sender_key_record_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(handle)!)
     }

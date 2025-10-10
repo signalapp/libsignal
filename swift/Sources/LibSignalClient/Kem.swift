@@ -73,10 +73,10 @@ extension SignalConstPointerKyberKeyPair: SignalConstPointer {
 
 public class KEMPublicKey: ClonableHandleOwner<SignalMutPointerKyberPublicKey>, @unchecked Sendable {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
-        let handle = try bytes.withUnsafeBorrowedBuffer {
-            var result = SignalMutPointerKyberPublicKey()
-            try checkError(signal_kyber_public_key_deserialize(&result, $0))
-            return result
+        let handle = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_kyber_public_key_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(handle)!)
     }
@@ -141,10 +141,10 @@ extension KEMPublicKey: Equatable {
 
 public class KEMSecretKey: ClonableHandleOwner<SignalMutPointerKyberSecretKey>, @unchecked Sendable {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
-        let handle = try bytes.withUnsafeBorrowedBuffer {
-            var result = SignalMutPointerKyberSecretKey()
-            try checkError(signal_kyber_secret_key_deserialize(&result, $0))
-            return result
+        let handle = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_kyber_secret_key_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(handle)!)
     }

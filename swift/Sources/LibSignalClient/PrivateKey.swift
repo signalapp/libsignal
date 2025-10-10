@@ -8,10 +8,10 @@ import SignalFfi
 
 public class PrivateKey: ClonableHandleOwner<SignalMutPointerPrivateKey>, @unchecked Sendable {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
-        let handle = try bytes.withUnsafeBorrowedBuffer {
-            var result = SignalMutPointerPrivateKey()
-            try checkError(signal_privatekey_deserialize(&result, $0))
-            return result
+        let handle = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_privatekey_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(handle)!)
     }

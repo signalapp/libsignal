@@ -91,16 +91,14 @@ public class Aes256GcmEncryption: NativeHandleOwner<SignalMutPointerAes256GcmEnc
         let handle = try key.withUnsafeBorrowedBuffer { keyBuffer in
             try nonce.withUnsafeBorrowedBuffer { nonceBuffer in
                 try associatedData.withUnsafeBorrowedBuffer { adBuffer in
-                    var result = SignalMutPointerAes256GcmEncryption()
-                    try checkError(
+                    try invokeFnReturningValueByPointer(.init()) {
                         signal_aes256_gcm_encryption_new(
-                            &result,
+                            $0,
                             keyBuffer,
                             nonceBuffer,
                             adBuffer
                         )
-                    )
-                    return result
+                    }
                 }
             }
         }
@@ -163,16 +161,14 @@ public class Aes256GcmDecryption: NativeHandleOwner<SignalMutPointerAes256GcmDec
         let handle = try key.withUnsafeBorrowedBuffer { keyBuffer in
             try nonce.withUnsafeBorrowedBuffer { nonceBuffer in
                 try associatedData.withUnsafeBorrowedBuffer { adBuffer in
-                    var result = SignalMutPointerAes256GcmDecryption()
-                    try checkError(
+                    try invokeFnReturningValueByPointer(.init()) {
                         signal_aes256_gcm_decryption_new(
-                            &result,
+                            $0,
                             keyBuffer,
                             nonceBuffer,
                             adBuffer
                         )
-                    )
-                    return result
+                    }
                 }
             }
         }
@@ -203,15 +199,9 @@ public class Aes256GcmDecryption: NativeHandleOwner<SignalMutPointerAes256GcmDec
     public func verifyTag(_ tag: some ContiguousBytes) throws -> Bool {
         return try withNativeHandle { nativeHandle in
             try tag.withUnsafeBorrowedBuffer { tagBuffer in
-                var result = false
-                try checkError(
-                    signal_aes256_gcm_decryption_verify_tag(
-                        &result,
-                        nativeHandle,
-                        tagBuffer
-                    )
-                )
-                return result
+                try invokeFnReturningBool {
+                    signal_aes256_gcm_decryption_verify_tag($0, nativeHandle, tagBuffer)
+                }
             }
         }
     }

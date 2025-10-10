@@ -14,9 +14,10 @@ public class SenderKeyMessage: NativeHandleOwner<SignalMutPointerSenderKeyMessag
     }
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        var result = SignalMutPointerSenderKeyMessage()
-        try bytes.withUnsafeBorrowedBuffer {
-            try checkError(signal_sender_key_message_deserialize(&result, $0))
+        let result = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_sender_key_message_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(result)!)
     }
@@ -72,13 +73,11 @@ public class SenderKeyMessage: NativeHandleOwner<SignalMutPointerSenderKeyMessag
     }
 
     public func verifySignature(against key: PublicKey) throws -> Bool {
-        var result = false
-        try withAllBorrowed(self, key) { messageHandle, keyHandle in
-            try checkError(
-                signal_sender_key_message_verify_signature(&result, messageHandle.const(), keyHandle.const())
-            )
+        return try withAllBorrowed(self, key) { messageHandle, keyHandle in
+            try invokeFnReturningBool {
+                signal_sender_key_message_verify_signature($0, messageHandle.const(), keyHandle.const())
+            }
         }
-        return result
     }
 }
 

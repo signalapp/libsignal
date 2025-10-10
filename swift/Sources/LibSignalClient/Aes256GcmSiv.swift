@@ -8,10 +8,10 @@ import SignalFfi
 
 public class Aes256GcmSiv: NativeHandleOwner<SignalMutPointerAes256GcmSiv> {
     public convenience init<Bytes: ContiguousBytes>(key bytes: Bytes) throws {
-        let handle = try bytes.withUnsafeBorrowedBuffer {
-            var result = SignalMutPointerAes256GcmSiv()
-            try checkError(signal_aes256_gcm_siv_new(&result, $0))
-            return result
+        let handle = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_aes256_gcm_siv_new($0, bytes)
+            }
         }
         self.init(owned: NonNull(handle)!)
     }

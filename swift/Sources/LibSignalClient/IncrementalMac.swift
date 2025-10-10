@@ -30,9 +30,9 @@ public class IncrementalMacContext: NativeHandleOwner<SignalMutPointerIncrementa
     public convenience init<Key: ContiguousBytes>(key: Key, chunkSize sizeChoice: SizeChoice) throws {
         let chunkSize = try sizeChoice.sizeInBytes()
         let handle = try key.withUnsafeBorrowedBuffer { keyBuffer in
-            var macHandle = SignalMutPointerIncrementalMac()
-            try checkError(signal_incremental_mac_initialize(&macHandle, keyBuffer, chunkSize))
-            return macHandle
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_incremental_mac_initialize($0, keyBuffer, chunkSize)
+            }
         }
         self.init(owned: NonNull(handle)!)
         self.chunkSizeInBytes = chunkSize
@@ -91,9 +91,9 @@ public class ValidatingMacContext: NativeHandleOwner<SignalMutPointerValidatingM
         let chunkSize = try sizeChoice.sizeInBytes()
         let handle = try key.withUnsafeBorrowedBuffer { keyBuffer in
             try digest.withUnsafeBorrowedBuffer { digestBuffer in
-                var macHandle = SignalMutPointerValidatingMac()
-                try checkError(signal_validating_mac_initialize(&macHandle, keyBuffer, chunkSize, digestBuffer))
-                return macHandle
+                try invokeFnReturningValueByPointer(.init()) {
+                    signal_validating_mac_initialize($0, keyBuffer, chunkSize, digestBuffer)
+                }
             }
         }
         self.init(owned: NonNull(handle)!)

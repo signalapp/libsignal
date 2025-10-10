@@ -441,11 +441,12 @@ internal class ConnectionManager: NativeHandleOwner<SignalMutPointerConnectionMa
         remoteConfig: [String: String],
         buildVariant: Net.BuildVariant
     ) {
-        var handle = SignalMutPointerConnectionManager()
-        remoteConfig.withBridgedStringMap { remoteConfig in
-            failOnError(
-                signal_connection_manager_new(&handle, env.rawValue, userAgent, remoteConfig, buildVariant.rawValue)
-            )
+        let handle = remoteConfig.withBridgedStringMap { remoteConfig in
+            failOnError {
+                try invokeFnReturningValueByPointer(.init()) {
+                    signal_connection_manager_new($0, env.rawValue, userAgent, remoteConfig, buildVariant.rawValue)
+                }
+            }
         }
         self.init(owned: NonNull(handle)!)
     }

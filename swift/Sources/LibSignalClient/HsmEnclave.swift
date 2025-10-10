@@ -53,15 +53,9 @@ public class HsmEnclaveClient: NativeHandleOwner<SignalMutPointerHsmEnclaveClien
 
         let handle = try publicKey.withUnsafeBorrowedBuffer { publicKeyBuffer in
             try codeHashBytes.withUnsafeBorrowedBuffer { codeHashBuffer in
-                var result = SignalMutPointerHsmEnclaveClient()
-                try checkError(
-                    signal_hsm_enclave_client_new(
-                        &result,
-                        publicKeyBuffer,
-                        codeHashBuffer
-                    )
-                )
-                return result
+                try invokeFnReturningValueByPointer(.init()) {
+                    signal_hsm_enclave_client_new($0, publicKeyBuffer, codeHashBuffer)
+                }
             }
         }
 

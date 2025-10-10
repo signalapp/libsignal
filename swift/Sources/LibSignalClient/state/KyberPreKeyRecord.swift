@@ -21,10 +21,10 @@ public class KyberPreKeyRecord: ClonableHandleOwner<SignalMutPointerKyberPreKeyR
     }
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        let handle = try bytes.withUnsafeBorrowedBuffer {
-            var result = SignalMutPointerKyberPreKeyRecord()
-            try checkError(signal_kyber_pre_key_record_deserialize(&result, $0))
-            return result
+        let handle = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_kyber_pre_key_record_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(handle)!)
     }
@@ -35,10 +35,11 @@ public class KyberPreKeyRecord: ClonableHandleOwner<SignalMutPointerKyberPreKeyR
         keyPair: KEMKeyPair,
         signature: Bytes
     ) throws {
-        var result = SignalMutPointerKyberPreKeyRecord()
-        try keyPair.withNativeHandle { keyPairHandle in
-            try signature.withUnsafeBorrowedBuffer {
-                try checkError(signal_kyber_pre_key_record_new(&result, id, timestamp, keyPairHandle.const(), $0))
+        let result = try keyPair.withNativeHandle { keyPairHandle in
+            try signature.withUnsafeBorrowedBuffer { signature in
+                try invokeFnReturningValueByPointer(.init()) {
+                    signal_kyber_pre_key_record_new($0, id, timestamp, keyPairHandle.const(), signature)
+                }
             }
         }
         self.init(owned: NonNull(result)!)

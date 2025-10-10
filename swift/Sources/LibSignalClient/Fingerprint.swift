@@ -18,13 +18,13 @@ public struct ScannableFingerprint: Sendable {
     /// Throws an error if `other` is not a valid fingerprint encoding, or if it uses an
     /// incompatible encoding version.
     public func compare<Other: ContiguousBytes>(againstEncoding other: Other) throws -> Bool {
-        var result = false
-        try encoding.withUnsafeBorrowedBuffer { encodingBuffer in
+        return try encoding.withUnsafeBorrowedBuffer { encodingBuffer in
             try other.withUnsafeBorrowedBuffer { otherBuffer in
-                try checkError(signal_fingerprint_compare(&result, encodingBuffer, otherBuffer))
+                try invokeFnReturningBool {
+                    signal_fingerprint_compare($0, encodingBuffer, otherBuffer)
+                }
             }
         }
-        return result
     }
 }
 
@@ -52,16 +52,15 @@ public struct NumericFingerprintGenerator: Sendable {
         remoteIdentifier: some ContiguousBytes,
         remoteKey: PublicKey
     ) throws -> Fingerprint {
-        var obj = SignalMutPointerFingerprint()
-        try withAllBorrowed(
+        let obj = try withAllBorrowed(
             localKey,
             remoteKey,
             .bytes(localIdentifier),
             .bytes(remoteIdentifier)
         ) { localKeyHandle, remoteKeyHandle, localBuffer, remoteBuffer in
-            try checkError(
+            try invokeFnReturningValueByPointer(.init()) {
                 signal_fingerprint_new(
-                    &obj,
+                    $0,
                     UInt32(self.iterations),
                     UInt32(version),
                     localBuffer,
@@ -69,7 +68,7 @@ public struct NumericFingerprintGenerator: Sendable {
                     remoteBuffer,
                     remoteKeyHandle.const()
                 )
-            )
+            }
         }
 
         let fprintStr = try invokeFnReturningString {

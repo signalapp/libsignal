@@ -21,10 +21,10 @@ public class PreKeyRecord: ClonableHandleOwner<SignalMutPointerPreKeyRecord> {
     }
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        let handle: SignalMutPointerPreKeyRecord = try bytes.withUnsafeBorrowedBuffer {
-            var result = SignalMutPointerPreKeyRecord()
-            try checkError(signal_pre_key_record_deserialize(&result, $0))
-            return result
+        let handle = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_pre_key_record_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(handle)!)
     }
@@ -34,9 +34,10 @@ public class PreKeyRecord: ClonableHandleOwner<SignalMutPointerPreKeyRecord> {
         publicKey: PublicKey,
         privateKey: PrivateKey
     ) throws {
-        var handle = SignalMutPointerPreKeyRecord()
-        try withAllBorrowed(publicKey, privateKey) { publicKeyHandle, privateKeyHandle in
-            try checkError(signal_pre_key_record_new(&handle, id, publicKeyHandle.const(), privateKeyHandle.const()))
+        let handle = try withAllBorrowed(publicKey, privateKey) { publicKeyHandle, privateKeyHandle in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_pre_key_record_new($0, id, publicKeyHandle.const(), privateKeyHandle.const())
+            }
         }
         self.init(owned: NonNull(handle)!)
     }

@@ -41,9 +41,12 @@ public class CiphertextMessage: NativeHandleOwner<SignalMutPointerCiphertextMess
     }
 
     public convenience init(_ plaintextContent: PlaintextContent) {
-        var result = SignalMutPointerCiphertextMessage()
-        plaintextContent.withNativeHandle { plaintextContentHandle in
-            failOnError(signal_ciphertext_message_from_plaintext_content(&result, plaintextContentHandle.const()))
+        let result = plaintextContent.withNativeHandle { plaintextContentHandle in
+            failOnError {
+                try invokeFnReturningValueByPointer(.init()) {
+                    signal_ciphertext_message_from_plaintext_content($0, plaintextContentHandle.const())
+                }
+            }
         }
         self.init(owned: NonNull(result)!)
     }

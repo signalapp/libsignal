@@ -109,12 +109,13 @@ public class PinHash: NativeHandleOwner<SignalMutPointerPinHash>, @unchecked Sen
         normalizedPin: PinBytes,
         salt: SaltBytes
     ) throws {
-        var result = SignalMutPointerPinHash()
-        try normalizedPin.withUnsafeBorrowedBuffer { pinBytes in
+        let result = try normalizedPin.withUnsafeBorrowedBuffer { pinBytes in
             try salt.withUnsafeBytes { saltBytes in
                 try ByteArray(newContents: Data(saltBytes), expectedLength: 32).withUnsafePointerToSerialized {
                     saltTuple in
-                    try checkError(signal_pin_hash_from_salt(&result, pinBytes, saltTuple))
+                    try invokeFnReturningValueByPointer(.init()) {
+                        signal_pin_hash_from_salt($0, pinBytes, saltTuple)
+                    }
                 }
             }
         }
@@ -134,13 +135,12 @@ public class PinHash: NativeHandleOwner<SignalMutPointerPinHash>, @unchecked Sen
         username: String,
         mrenclave: MrenclaveBytes
     ) throws {
-        var result = SignalMutPointerPinHash()
-        try normalizedPin.withUnsafeBorrowedBuffer { pinBytes in
+        let result = try normalizedPin.withUnsafeBorrowedBuffer { pinBytes in
             try mrenclave.withUnsafeBorrowedBuffer { mrenclaveBytes in
                 try username.withCString { userBytes in
-                    try checkError(
-                        signal_pin_hash_from_username_mrenclave(&result, pinBytes, userBytes, mrenclaveBytes)
-                    )
+                    try invokeFnReturningValueByPointer(.init()) {
+                        signal_pin_hash_from_username_mrenclave($0, pinBytes, userBytes, mrenclaveBytes)
+                    }
                 }
             }
         }

@@ -13,14 +13,9 @@ public class ProtocolAddress: ClonableHandleOwner<SignalMutPointerProtocolAddres
     ///
     /// - Throws: ``SignalError#invalidProtocolAddress(name:deviceId:message:)`` if the address is not valid.
     public convenience init(name: String, deviceId: UInt32) throws {
-        var handle = SignalMutPointerProtocolAddress()
-        try checkError(
-            signal_address_new(
-                &handle,
-                name,
-                deviceId
-            )
-        )
+        let handle = try invokeFnReturningValueByPointer(.init()) {
+            signal_address_new($0, name, deviceId)
+        }
         self.init(owned: NonNull(handle)!)
     }
 

@@ -21,8 +21,11 @@ public class CdsiLookupRequest: NativeHandleOwner<SignalMutPointerLookupRequest>
     public private(set) var hasToken: Bool = false
 
     private convenience init() {
-        var handle = SignalMutPointerLookupRequest(untyped: nil)
-        try! checkError(signal_lookup_request_new(&handle))
+        let handle = failOnError {
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_lookup_request_new($0)
+            }
+        }
         self.init(owned: NonNull(handle)!)
     }
 

@@ -10,25 +10,28 @@ import SignalFfi
 import Security
 #endif
 
+internal func invokeFnReturningValueByPointer<Value>(
+    _ initial: Value,
+    fn: (UnsafeMutablePointer<Value>?) -> SignalFfiErrorRef?
+) throws -> Value {
+    var output = initial
+    try checkError(fn(&output))
+    return output
+}
+
 internal func invokeFnReturningString(
     fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?
-) throws
-    -> String
-{
+) throws -> String {
     try invokeFnReturningOptionalString(fn: fn)!
 }
 
 internal func invokeFnReturningOptionalString(
     fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?
-)
-    throws -> String?
-{
-    var output: UnsafePointer<Int8>?
-    try checkError(fn(&output))
-    if output == nil {
+) throws -> String? {
+    guard let output = try invokeFnReturningValueByPointer(nil, fn: fn) else {
         return nil
     }
-    let result = String(cString: output!)
+    let result = String(cString: output)
     signal_free_string(output)
     return result
 }
@@ -37,8 +40,7 @@ internal func invokeFnReturningSomeBytestringArray<Element>(
     fn: (UnsafeMutablePointer<SignalBytestringArray>?) -> SignalFfiErrorRef?,
     transform: (UnsafeBufferPointer<UInt8>) -> Element
 ) throws -> [Element] {
-    var array = SignalFfi.SignalBytestringArray()
-    try checkError(fn(&array))
+    let array = try invokeFnReturningValueByPointer(.init(), fn: fn)
 
     var bytes = UnsafeBufferPointer(start: array.bytes.base, count: array.bytes.length)[...]
     let lengths = UnsafeBufferPointer(start: array.lengths.base, count: array.lengths.length)
@@ -55,9 +57,7 @@ internal func invokeFnReturningSomeBytestringArray<Element>(
 
 internal func invokeFnReturningStringArray(
     fn: (UnsafeMutablePointer<SignalStringArray>?) -> SignalFfiErrorRef?
-) throws
-    -> [String]
-{
+) throws -> [String] {
     return try invokeFnReturningSomeBytestringArray(fn: fn) {
         String(decoding: $0, as: Unicode.UTF8.self)
     }
@@ -65,9 +65,7 @@ internal func invokeFnReturningStringArray(
 
 internal func invokeFnReturningBytestringArray(
     fn: (UnsafeMutablePointer<SignalBytestringArray>?) -> SignalFfiErrorRef?
-)
-    throws -> [Data]
-{
+) throws -> [Data] {
     return try invokeFnReturningSomeBytestringArray(fn: fn) {
         Data($0)
     }
@@ -75,11 +73,8 @@ internal func invokeFnReturningBytestringArray(
 
 internal func invokeFnReturningOptionalArray(
     fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?
-)
-    throws -> Data?
-{
-    var output = SignalOwnedBuffer()
-    try checkError(fn(&output))
+) throws -> Data? {
+    let output = try invokeFnReturningValueByPointer(.init(), fn: fn)
 
     return if output.base == nil {
         nil
@@ -96,16 +91,7 @@ internal func invokeFnReturningOptionalArray(
 
 internal func invokeFnReturningData(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> Data
 {
-    var output = SignalOwnedBuffer()
-    try checkError(fn(&output))
-    guard let base = output.base else { return Data() }
-    return Data(
-        bytesNoCopy: base,
-        count: output.length,
-        deallocator: .custom { base, length in
-            signal_free_buffer(base, length)
-        }
-    )
+    try invokeFnReturningOptionalArray(fn: fn) ?? Data()
 }
 
 internal func invokeFnReturningFixedLengthArray<ResultAsTuple>(
@@ -173,30 +159,24 @@ internal func invokeFnReturningServiceId<Id: ServiceId>(
 internal func invokeFnReturningInteger<Result: FixedWidthInteger>(
     fn: (UnsafeMutablePointer<Result>?) -> SignalFfiErrorRef?
 ) throws -> Result {
-    var output: Result = 0
-    try checkError(fn(&output))
-    return output
+    return try invokeFnReturningValueByPointer(0, fn: fn)
 }
 
 internal func invokeFnReturningBool(fn: (UnsafeMutablePointer<Bool>?) -> SignalFfiErrorRef?) throws -> Bool {
-    var output = false
-    try checkError(fn(&output))
-    return output
+    return try invokeFnReturningValueByPointer(false, fn: fn)
 }
 
 internal func invokeFnReturningNativeHandle<Owner: NativeHandleOwner<PointerType>, PointerType>(
     fn: (UnsafeMutablePointer<PointerType>?) -> SignalFfiErrorRef?
 ) throws -> Owner {
-    var handle = PointerType(untyped: nil)
-    try checkError(fn(&handle))
+    let handle = try invokeFnReturningValueByPointer(PointerType(untyped: nil), fn: fn)
     return Owner(owned: NonNull(handle)!)
 }
 
 internal func invokeFnReturningOptionalNativeHandle<Owner: NativeHandleOwner<PointerType>, PointerType>(
     fn: (UnsafeMutablePointer<PointerType>?) -> SignalFfiErrorRef?
 ) throws -> Owner? {
-    var handle = PointerType(untyped: nil)
-    try checkError(fn(&handle))
+    let handle = try invokeFnReturningValueByPointer(PointerType(untyped: nil), fn: fn)
     return NonNull<PointerType>(handle).map { Owner(owned: $0) }
 }
 

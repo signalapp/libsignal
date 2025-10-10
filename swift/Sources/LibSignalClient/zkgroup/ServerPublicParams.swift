@@ -8,9 +8,10 @@ import SignalFfi
 
 public class ServerPublicParams: NativeHandleOwner<SignalMutPointerServerPublicParams> {
     public convenience init(contents: Data) throws {
-        var handle = SignalMutPointerServerPublicParams()
-        try contents.withUnsafeBorrowedBuffer {
-            try checkError(signal_server_public_params_deserialize(&handle, $0))
+        let handle = try contents.withUnsafeBorrowedBuffer { contents in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_server_public_params_deserialize($0, contents)
+            }
         }
         self.init(owned: NonNull(handle)!)
     }

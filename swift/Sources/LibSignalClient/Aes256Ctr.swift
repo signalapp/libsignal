@@ -30,16 +30,14 @@ public class Aes256Ctr32: NativeHandleOwner<SignalMutPointerAes256Ctr32> {
                     UInt32(nonceBytes[15])
                 var nonceBufferWithoutCounter = SignalBorrowedBuffer(nonceBytes)
                 nonceBufferWithoutCounter.length -= 4
-                var result = SignalMutPointerAes256Ctr32()
-                try checkError(
+                return try invokeFnReturningValueByPointer(.init()) {
                     signal_aes256_ctr32_new(
-                        &result,
+                        $0,
                         keyBuffer,
                         nonceBufferWithoutCounter,
                         initialCounter
                     )
-                )
-                return result
+                }
             }
         }
         self.init(owned: NonNull(handle)!)

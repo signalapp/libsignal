@@ -22,18 +22,19 @@ public struct IdentityKey: Equatable, Sendable {
     }
 
     public func verifyAlternateIdentity<Bytes: ContiguousBytes>(_ other: IdentityKey, signature: Bytes) throws -> Bool {
-        var result = false
-        try withAllBorrowed(publicKey, other.publicKey, .bytes(signature)) { selfHandle, otherHandle, signatureBuffer in
-            try checkError(
+        return try withAllBorrowed(publicKey, other.publicKey, .bytes(signature)) {
+            selfHandle,
+            otherHandle,
+            signatureBuffer in
+            try invokeFnReturningBool {
                 signal_identitykey_verify_alternate_identity(
-                    &result,
+                    $0,
                     selfHandle.const(),
                     otherHandle.const(),
                     signatureBuffer
                 )
-            )
+            }
         }
-        return result
     }
 }
 
@@ -48,9 +49,10 @@ public struct IdentityKeyPair: Sendable {
     }
 
     public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        var out = SignalPairOfMutPointerPublicKeyMutPointerPrivateKey()
-        try bytes.withUnsafeBorrowedBuffer {
-            try checkError(signal_identitykeypair_deserialize(&out, $0))
+        let out = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_identitykeypair_deserialize($0, bytes)
+            }
         }
 
         self.publicKey = PublicKey(owned: NonNull(out.first)!)

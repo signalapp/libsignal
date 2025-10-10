@@ -33,9 +33,10 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner<SignalMutPointe
     public convenience init<Bytes: ContiguousBytes>(
         bytes: Bytes
     ) throws {
-        var result = SignalMutPointerUnidentifiedSenderMessageContent()
-        try bytes.withUnsafeBorrowedBuffer {
-            try checkError(signal_unidentified_sender_message_content_deserialize(&result, $0))
+        let result = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_unidentified_sender_message_content_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(result)!)
     }
@@ -45,16 +46,15 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner<SignalMutPointe
         identityStore: IdentityKeyStore,
         context: StoreContext
     ) throws {
-        var result = SignalMutPointerUnidentifiedSenderMessageContent()
-        try sealedSenderMessage.withUnsafeBorrowedBuffer { messageBuffer in
+        let result = try sealedSenderMessage.withUnsafeBorrowedBuffer { messageBuffer in
             try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
-                try checkError(
+                try invokeFnReturningValueByPointer(.init()) {
                     signal_sealed_session_cipher_decrypt_to_usmc(
-                        &result,
+                        $0,
                         messageBuffer,
                         ffiIdentityStore
                     )
-                )
+                }
             }
         }
         self.init(owned: NonNull(result)!)
@@ -66,17 +66,19 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner<SignalMutPointe
         contentHint: ContentHint,
         groupId: GroupIdBytes
     ) throws {
-        var result = SignalMutPointerUnidentifiedSenderMessageContent()
-        try withAllBorrowed(message, sender, .bytes(groupId)) { messageHandle, senderHandle, groupIdBuffer in
-            try checkError(
+        let result = try withAllBorrowed(message, sender, .bytes(groupId)) {
+            messageHandle,
+            senderHandle,
+            groupIdBuffer in
+            try invokeFnReturningValueByPointer(.init()) {
                 signal_unidentified_sender_message_content_new(
-                    &result,
+                    $0,
                     messageHandle.const(),
                     senderHandle.const(),
                     contentHint.rawValue,
                     groupIdBuffer
                 )
-            )
+            }
         }
         self.init(owned: NonNull(result)!)
     }
@@ -88,18 +90,20 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner<SignalMutPointe
         contentHint: ContentHint,
         groupId: GroupIdBytes
     ) throws {
-        var result = SignalMutPointerUnidentifiedSenderMessageContent()
-        try withAllBorrowed(.bytes(message), sender, .bytes(groupId)) { messageBuffer, senderHandle, groupIdBuffer in
-            try checkError(
+        let result = try withAllBorrowed(.bytes(message), sender, .bytes(groupId)) {
+            messageBuffer,
+            senderHandle,
+            groupIdBuffer in
+            try invokeFnReturningValueByPointer(.init()) {
                 signal_unidentified_sender_message_content_new_from_content_and_type(
-                    &result,
+                    $0,
                     messageBuffer,
                     type.rawValue,
                     senderHandle.const(),
                     contentHint.rawValue,
                     groupIdBuffer
                 )
-            )
+            }
         }
         self.init(owned: NonNull(result)!)
     }

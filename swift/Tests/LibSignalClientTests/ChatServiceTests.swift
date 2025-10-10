@@ -41,8 +41,9 @@ final class ChatServiceTests: TestCaseBase {
     func testConvertResponse() throws {
         do {
             // Empty body
-            var rawResponse = SignalFfiChatResponse()
-            try checkError(signal_testing_chat_response_convert(&rawResponse, false))
+            let rawResponse = try invokeFnReturningValueByPointer(.init()) {
+                signal_testing_chat_response_convert($0, false)
+            }
             let response = try ChatConnection.Response(consuming: rawResponse)
             XCTAssertEqual(Self.expectedStatus, response.status)
             XCTAssertEqual(Self.expectedMessage, response.message)
@@ -52,8 +53,9 @@ final class ChatServiceTests: TestCaseBase {
 
         do {
             // Present body
-            var rawResponse = SignalFfiChatResponse()
-            try checkError(signal_testing_chat_response_convert(&rawResponse, true))
+            let rawResponse = try invokeFnReturningValueByPointer(.init()) {
+                signal_testing_chat_response_convert($0, true)
+            }
             let response = try ChatConnection.Response(consuming: rawResponse)
             XCTAssertEqual(Self.expectedStatus, response.status)
             XCTAssertEqual(Self.expectedMessage, response.message)

@@ -22,16 +22,14 @@ public class MessageBackupKey: NativeHandleOwner<SignalMutPointerMessageBackupKe
         let handle = try withAllBorrowed(aci, .fixed(forwardSecrecyToken)) {
             aci,
             forwardSecrecyToken in
-            var outputHandle = SignalMutPointerMessageBackupKey()
-            try checkError(
+            try invokeFnReturningValueByPointer(.init()) {
                 signal_message_backup_key_from_account_entropy_pool(
-                    &outputHandle,
+                    $0,
                     accountEntropy,
                     aci,
                     forwardSecrecyToken
                 )
-            )
-            return outputHandle
+            }
         }
         self.init(owned: NonNull(handle)!)
     }
@@ -49,16 +47,14 @@ public class MessageBackupKey: NativeHandleOwner<SignalMutPointerMessageBackupKe
             backupKey,
             backupId,
             forwardSecrecyToken in
-            var outputHandle = SignalMutPointerMessageBackupKey()
-            try checkError(
+            try invokeFnReturningValueByPointer(.init()) {
                 signal_message_backup_key_from_backup_key_and_backup_id(
-                    &outputHandle,
+                    $0,
                     backupKey,
                     backupId,
                     forwardSecrecyToken
                 )
-            )
-            return outputHandle
+            }
         }
         self.init(owned: NonNull(handle)!)
     }
@@ -194,9 +190,9 @@ public class OnlineBackupValidator: NativeHandleOwner<SignalMutPointerOnlineBack
     /// - Throws: ``MessageBackupValidationError`` on error.
     public convenience init<Bytes: ContiguousBytes>(backupInfo: Bytes, purpose: MessageBackupPurpose) throws {
         let handle = try backupInfo.withUnsafeBorrowedBuffer { backupInfo in
-            var outputHandle = SignalMutPointerOnlineBackupValidator()
-            try checkError(signal_online_backup_validator_new(&outputHandle, backupInfo, purpose.rawValue))
-            return outputHandle
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_online_backup_validator_new($0, backupInfo, purpose.rawValue)
+            }
         }
         self.init(owned: NonNull(handle)!)
     }

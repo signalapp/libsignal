@@ -8,21 +8,20 @@ import SignalFfi
 
 public class ServerCertificate: NativeHandleOwner<SignalMutPointerServerCertificate>, @unchecked Sendable {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
-        let handle = try bytes.withUnsafeBorrowedBuffer {
-            var result = SignalMutPointerServerCertificate()
-            try checkError(signal_server_certificate_deserialize(&result, $0))
-            return result
+        let handle = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_server_certificate_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(handle)!)
     }
 
     // For testing
     public convenience init(keyId: UInt32, publicKey: PublicKey, trustRoot: PrivateKey) throws {
-        var result = SignalMutPointerServerCertificate()
-        try withAllBorrowed(publicKey, trustRoot) { publicKeyHandle, trustRootHandle in
-            try checkError(
-                signal_server_certificate_new(&result, keyId, publicKeyHandle.const(), trustRootHandle.const())
-            )
+        let result = try withAllBorrowed(publicKey, trustRoot) { publicKeyHandle, trustRootHandle in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_server_certificate_new($0, keyId, publicKeyHandle.const(), trustRootHandle.const())
+            }
         }
         self.init(owned: NonNull(result)!)
     }
@@ -108,10 +107,10 @@ extension SignalConstPointerServerCertificate: SignalConstPointer {
 
 public class SenderCertificate: NativeHandleOwner<SignalMutPointerSenderCertificate>, @unchecked Sendable {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
-        let handle = try bytes.withUnsafeBorrowedBuffer {
-            var result = SignalMutPointerSenderCertificate()
-            try checkError(signal_sender_certificate_deserialize(&result, $0))
-            return result
+        let handle = try bytes.withUnsafeBorrowedBuffer { bytes in
+            try invokeFnReturningValueByPointer(.init()) {
+                signal_sender_certificate_deserialize($0, bytes)
+            }
         }
         self.init(owned: NonNull(handle)!)
     }
@@ -124,14 +123,13 @@ public class SenderCertificate: NativeHandleOwner<SignalMutPointerSenderCertific
         signerCertificate: ServerCertificate,
         signerKey: PrivateKey
     ) throws {
-        var result = SignalMutPointerSenderCertificate()
-        try withAllBorrowed(publicKey, signerCertificate, signerKey) {
+        let result = try withAllBorrowed(publicKey, signerCertificate, signerKey) {
             publicKeyHandle,
             signerCertificateHandle,
             signerKeyHandle in
-            try checkError(
+            try invokeFnReturningValueByPointer(.init()) {
                 signal_sender_certificate_new(
-                    &result,
+                    $0,
                     sender.uuidString,
                     sender.e164,
                     sender.deviceId,
@@ -140,7 +138,7 @@ public class SenderCertificate: NativeHandleOwner<SignalMutPointerSenderCertific
                     signerCertificateHandle.const(),
                     signerKeyHandle.const()
                 )
-            )
+            }
         }
         self.init(owned: NonNull(result)!)
     }

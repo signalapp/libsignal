@@ -30,8 +30,7 @@ public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
         kyberPrekey: KEMPublicKey,
         kyberPrekeySignature: KEMBytes
     ) throws {
-        var result = SignalMutPointerPreKeyBundle()
-        try withAllBorrowed(
+        let result = try withAllBorrowed(
             prekey,
             signedPrekey,
             identityKey.publicKey,
@@ -45,9 +44,9 @@ public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
             kyberKeyHandle,
             ecSignatureBuffer,
             kyberSignatureBuffer in
-            try checkError(
+            try invokeFnReturningValueByPointer(.init()) {
                 signal_pre_key_bundle_new(
-                    &result,
+                    $0,
                     registrationId,
                     deviceId,
                     prekeyId,
@@ -60,7 +59,7 @@ public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
                     kyberKeyHandle.const(),
                     kyberSignatureBuffer
                 )
-            )
+            }
         }
         self.init(owned: NonNull(result)!)
     }
@@ -80,17 +79,16 @@ public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
         kyberPrekey: KEMPublicKey,
         kyberPrekeySignature: KEMBytes
     ) throws {
-        var result = SignalMutPointerPreKeyBundle()
-        try withAllBorrowed(
+        let result = try withAllBorrowed(
             signedPrekey,
             identityKey.publicKey,
             kyberPrekey,
             .bytes(signedPrekeySignature),
             .bytes(kyberPrekeySignature)
         ) { signedPrekeyHandle, identityKeyHandle, kyberKeyHandle, ecSignatureBuffer, kyberSignatureBuffer in
-            try checkError(
+            try invokeFnReturningValueByPointer(.init()) {
                 signal_pre_key_bundle_new(
-                    &result,
+                    $0,
                     registrationId,
                     deviceId,
                     ~0,
@@ -103,7 +101,7 @@ public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
                     kyberKeyHandle.const(),
                     kyberSignatureBuffer
                 )
-            )
+            }
         }
         self.init(owned: NonNull(result)!)
     }
