@@ -114,6 +114,7 @@ export class MessageBackupKey {
 export enum Purpose {
   DeviceTransfer = 0,
   RemoteBackup = 1,
+  TakeoutExport = 2,
 }
 
 /**
@@ -275,5 +276,54 @@ export class ComparableBackup {
    */
   public get unknownFields(): Array<string> {
     return Native.ComparableBackup_GetUnknownFields(this);
+  }
+}
+
+/**
+ * Streaming exporter that produces a human-readable JSON representation of a backup.
+ */
+export class BackupJsonExporter {
+  readonly _nativeHandle: Native.BackupJsonExporter;
+
+  private constructor(handle: Native.BackupJsonExporter) {
+    this._nativeHandle = handle;
+  }
+
+  /**
+   * Initializes the streaming exporter and returns the first chunk of output.
+   * @param backupInfo The serialized BackupInfo protobuf without a varint header.
+   * @param [options] Additional configuration for the exporter.
+   * @param [options.validate=true] Whether to run semantic validation on the backup.
+   * @returns An object containing the exporter and the first chunk of output, containing the backup info.
+   * @throws Error if the input is invalid.
+   */
+  public static start(
+    backupInfo: Uint8Array,
+    options?: { validate?: boolean }
+  ): { exporter: BackupJsonExporter; chunk: string } {
+    const shouldValidate = options?.validate ?? true;
+    const handle = Native.BackupJsonExporter_New(backupInfo, shouldValidate);
+    const exporter = new BackupJsonExporter(handle);
+    const chunk = Native.BackupJsonExporter_GetInitialChunk(exporter);
+    return { exporter, chunk };
+  }
+
+  /**
+   * Validates and exports a human-readable JSON representation of backup frames.
+   * @param frames One or more varint delimited Frame serialized protobuf messages.
+   * @returns A string containing the exported frames.
+   * @throws Error if the input is invalid.
+   */
+  public exportFrames(frames: Uint8Array): string {
+    return Native.BackupJsonExporter_ExportFrames(this, frames);
+  }
+
+  /**
+   * Completes the validation and export of the previously exported frames.
+   * @returns A string containing the final chunk of the output.
+   * @throws Error if some previous input fails validation at the final stage.
+   */
+  public finish(): string {
+    return Native.BackupJsonExporter_Finish(this);
   }
 }

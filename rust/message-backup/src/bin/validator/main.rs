@@ -304,6 +304,9 @@ mod test {
     #[test_case("transfer", Purpose::DeviceTransfer; "transfer")]
     #[test_case("device-transfer", Purpose::DeviceTransfer; "transfer hyphen")]
     #[test_case("device_transfer", Purpose::DeviceTransfer; "transfer underscore")]
+    #[test_case("takeout", Purpose::TakeoutExport; "takeout")]
+    #[test_case("takeout-export", Purpose::TakeoutExport; "takeout hyphen")]
+    #[test_case("takeout_export", Purpose::TakeoutExport; "takeout underscore")]
     fn cli_parse_purpose(purpose_flag: &str, expected_purpose: Purpose) {
         let input = [EXECUTABLE_NAME, "filename", "--purpose", purpose_flag];
         let cli = Cli::try_parse_from(input).expect("parse failed");

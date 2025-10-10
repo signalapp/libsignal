@@ -117,6 +117,7 @@ async fn MessageBackupValidator_Validate(
 }
 
 bridge_handle_fns!(OnlineBackupValidator, clone = false);
+bridge_handle_fns!(BackupJsonExporter, clone = false, ffi = false, jni = false);
 
 #[bridge_fn]
 fn OnlineBackupValidator_New(
@@ -154,4 +155,33 @@ fn OnlineBackupValidator_AddFrame(
 #[bridge_fn]
 fn OnlineBackupValidator_Finalize(backup: &mut OnlineBackupValidator) -> Result<(), ReadError> {
     backup.finalize().map_err(ReadError::with_error_only)
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn BackupJsonExporter_New(
+    backup_info: &[u8],
+    should_validate: bool,
+) -> Result<BackupJsonExporter, ReadError> {
+    let (exporter, initial_chunk) =
+        libsignal_message_backup::json::exporter::JsonExporter::new(backup_info, should_validate)?;
+
+    Ok(BackupJsonExporter::new(exporter, initial_chunk))
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn BackupJsonExporter_GetInitialChunk(exporter: &BackupJsonExporter) -> String {
+    exporter.initial_chunk()
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn BackupJsonExporter_ExportFrames(
+    exporter: &mut BackupJsonExporter,
+    frames: &[u8],
+) -> Result<String, ReadError> {
+    exporter.inner_mut().export_frames(frames)
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn BackupJsonExporter_Finish(exporter: &mut BackupJsonExporter) -> Result<String, ReadError> {
+    exporter.inner_mut().finish()
 }

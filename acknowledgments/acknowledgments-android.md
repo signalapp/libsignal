@@ -5018,7 +5018,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## protobuf-codegen 3.7.2, protobuf-support 3.7.2, protobuf 3.7.2
+## protobuf-codegen 3.7.2, protobuf-json-mapping 3.7.2, protobuf-support 3.7.2, protobuf 3.7.2
 
 ```
 Copyright (c) 2019 Stepan Koltsov

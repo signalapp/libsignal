@@ -22,7 +22,7 @@ libsignal-bridge-macros = { workspace = true }
 libsignal-bridge-types = { workspace = true }
 libsignal-core = { workspace = true }
 libsignal-keytrans = { workspace = true }
-libsignal-message-backup = { workspace = true }
+libsignal-message-backup = { workspace = true, features = ["json"] }
 libsignal-net = { workspace = true }
 libsignal-net-chat = { workspace = true }
 libsignal-protocol = { workspace = true }

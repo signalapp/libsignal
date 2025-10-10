@@ -229,6 +229,10 @@ export function BackupAuthCredential_GetBackupId(credentialBytes: Uint8Array): U
 export function BackupAuthCredential_GetBackupLevel(credentialBytes: Uint8Array): number;
 export function BackupAuthCredential_GetType(credentialBytes: Uint8Array): number;
 export function BackupAuthCredential_PresentDeterministic(credentialBytes: Uint8Array, serverParamsBytes: Uint8Array, randomness: Uint8Array): Uint8Array;
+export function BackupJsonExporter_ExportFrames(exporter: Wrapper<BackupJsonExporter>, frames: Uint8Array): string;
+export function BackupJsonExporter_Finish(exporter: Wrapper<BackupJsonExporter>): string;
+export function BackupJsonExporter_GetInitialChunk(exporter: Wrapper<BackupJsonExporter>): string;
+export function BackupJsonExporter_New(backupInfo: Uint8Array, shouldValidate: boolean): BackupJsonExporter;
 export function BackupKey_DeriveBackupId(backupKey: Uint8Array, aci: Uint8Array): Uint8Array;
 export function BackupKey_DeriveEcKey(backupKey: Uint8Array, aci: Uint8Array): PrivateKey;
 export function BackupKey_DeriveLocalBackupMetadataKey(backupKey: Uint8Array): Uint8Array;
@@ -734,6 +738,7 @@ export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, targe
 export function test_only_fn_returns_123(): number;
 interface Aes256GcmSiv { readonly __type: unique symbol; }
 interface AuthenticatedChatConnection { readonly __type: unique symbol; }
+interface BackupJsonExporter { readonly __type: unique symbol; }
 interface BackupRestoreResponse { readonly __type: unique symbol; }
 interface BackupStoreResponse { readonly __type: unique symbol; }
 interface BridgedStringMap { readonly __type: unique symbol; }

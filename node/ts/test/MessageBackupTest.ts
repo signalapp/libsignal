@@ -8,6 +8,8 @@ import { Buffer } from 'node:buffer';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Readable } from 'node:stream';
+import protobuf from 'protobufjs/minimal.js';
+const { Reader } = protobuf;
 
 import * as MessageBackup from '../MessageBackup.js';
 import * as util from './util.js';
@@ -190,6 +192,60 @@ const exampleBackup = fs.readFileSync(
   path.join(import.meta.dirname, '../../ts/test/canonical-backup.binproto')
 );
 
+function chunkLengthDelimited(binproto: Uint8Array): Uint8Array[] {
+  const r = Reader.create(binproto);
+  const chunks: Uint8Array[] = [];
+
+  while (r.pos < r.len) {
+    const headerStart = r.pos; // start of the varint length prefix
+    const length = r.uint32(); // implicitly advances to the start of the body
+    const bodyStart = r.pos; // now points to the start of the proto message
+    const end = bodyStart + length;
+
+    if (end > r.len) {
+      throw new Error('truncated length-delimited chunk');
+    }
+
+    // Include the varint header + body
+    chunks.push(binproto.subarray(headerStart, end));
+    r.pos = end;
+  }
+
+  return chunks;
+}
+
+function stripLengthPrefix(chunk: Uint8Array): Uint8Array {
+  const reader = Reader.create(chunk);
+  const length = reader.uint32();
+  const bodyStart = reader.pos;
+  const bodyEnd = bodyStart + length;
+  if (bodyEnd > reader.len) {
+    throw new Error('truncated length-delimited chunk');
+  }
+  if (bodyEnd !== reader.len) {
+    throw new Error('unexpected trailing data after chunk body');
+  }
+  return chunk.subarray(bodyStart, bodyEnd);
+}
+
+const exampleBackupChunks = chunkLengthDelimited(exampleBackup);
+if (exampleBackupChunks.length === 0) {
+  throw new Error('expected at least one length-delimited chunk');
+}
+const [exampleBackupInfoChunk, ...exampleFrameChunks] = exampleBackupChunks;
+const exampleBackupInfo = stripLengthPrefix(exampleBackupInfoChunk);
+const exampleFrames = exampleFrameChunks;
+
+function concatFrames(chunks: ReadonlyArray<Uint8Array>): Uint8Array {
+  if (chunks.length === 0) {
+    return new Uint8Array();
+  }
+  if (chunks.length === 1) {
+    return new Uint8Array(chunks[0]);
+  }
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
+}
+
 describe('ComparableBackup', () => {
   describe('exampleBackup', () => {
     it('stringifies to the expected value', async () => {
@@ -208,6 +264,121 @@ describe('ComparableBackup', () => {
       const output = comparable.comparableString();
       assert.equal(output, new String(expectedOutput));
     });
+  });
+});
+
+describe('BackupJsonExporter', () => {
+  it('streams pretty JSON for a canonical backup', () => {
+    const backupInfo = exampleBackupInfo;
+    const frames = exampleFrames.slice();
+
+    const { exporter, chunk: initialChunk } =
+      MessageBackup.BackupJsonExporter.start(backupInfo);
+
+    // Stream the frames across multiple chunks to mirror the real exporter usage.
+    const chunkGroups = [frames.slice(0, 2), frames.slice(2)].filter(
+      (group) => group.length > 0
+    );
+    const exportedFrameChunks = chunkGroups.map((group) =>
+      exporter.exportFrames(concatFrames(group))
+    );
+
+    const jsonText = [
+      initialChunk,
+      ...exportedFrameChunks,
+      exporter.finish(),
+    ].join('');
+    assert.isTrue(jsonText.startsWith('[\n  {'));
+    assert.isTrue(jsonText.endsWith(']\n'));
+
+    const parsed = JSON.parse(jsonText) as unknown;
+    assert.isArray(parsed);
+
+    const parsedArray = parsed as Array<unknown>;
+    assert.lengthOf(parsedArray, frames.length + 1);
+
+    const [backupInfoJson, firstFrame] = parsedArray;
+    assert.isObject(backupInfoJson);
+    assert.containsAllKeys(backupInfoJson as Record<string, unknown>, [
+      'version',
+      'mediaRootBackupKey',
+    ]);
+    assert.isObject(firstFrame);
+    const firstFrameRecord = firstFrame as Record<string, unknown>;
+    assert.property(firstFrameRecord, 'account');
+    const accountValue = firstFrameRecord.account;
+    assert.isObject(accountValue);
+    const accountRecord = accountValue as Record<string, unknown>;
+    assert.containsAllKeys(accountRecord, [
+      'profileKey',
+      'username',
+      'accountSettings',
+    ]);
+  });
+
+  it('returns an empty chunk when no frames are provided', () => {
+    const backupInfo = exampleBackupInfo;
+    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo);
+    assert.equal(exporter.exportFrames(new Uint8Array()), '');
+  });
+
+  it('validates frames when requested', () => {
+    const backupInfo = exampleBackupInfo;
+    const frames = exampleFrames.slice();
+    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo, {
+      validate: true,
+    });
+
+    const groupedFrames = [frames.slice(0, 1), frames.slice(1)];
+    for (const group of groupedFrames) {
+      if (group.length === 0) {
+        continue;
+      }
+      exporter.exportFrames(concatFrames(group));
+    }
+
+    exporter.finish();
+  });
+
+  it('throws when validation fails', () => {
+    const backupInfo = exampleBackupInfo;
+    const frames = exampleFrames.slice();
+    const { exporter, chunk } = MessageBackup.BackupJsonExporter.start(
+      backupInfo,
+      {
+        validate: true,
+      }
+    );
+
+    // baseline chunk should still be produced
+    assert.isTrue(chunk.startsWith('[\n'));
+
+    const missingAccountChunk = concatFrames(frames.slice(1));
+    exporter.exportFrames(missingAccountChunk);
+
+    assert.throws(() => exporter.finish());
+  });
+
+  it('can skip validation when explicitly disabled', () => {
+    const backupInfo = exampleBackupInfo;
+    const frames = exampleFrames.slice();
+    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo, {
+      validate: false,
+    });
+
+    const missingAccountChunk = concatFrames(frames.slice(1));
+    exporter.exportFrames(missingAccountChunk);
+
+    exporter.finish();
+  });
+
+  it('still rejects malformed data even when validation is disabled', () => {
+    const backupInfo = exampleBackupInfo;
+    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo, {
+      validate: false,
+    });
+
+    assert.throws(() => exporter.exportFrames(Uint8Array.of(0x02, 0x01)));
   });
 });
 

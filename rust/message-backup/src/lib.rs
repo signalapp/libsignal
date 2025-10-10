@@ -29,6 +29,9 @@ pub mod key;
 pub mod parse;
 pub mod unknown;
 
+#[cfg(feature = "json")]
+pub mod json;
+
 // visibility::make isn't supported for modules, so we have to write it twice instead.
 #[cfg(feature = "test-util")]
 pub mod proto;
