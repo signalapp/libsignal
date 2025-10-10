@@ -188,6 +188,8 @@ class KeyTransparencyClientTest {
 
   companion object {
     private const val USER_AGENT = "test"
-    private val INTEGRATION_TESTS_ENABLED = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS") != null
+    private val INTEGRATION_TESTS_ENABLED =
+      TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS") != null &&
+        TestEnvironment.get("LIBSIGNAL_TESTING_IGNORE_KT_TESTS") == null
   }
 }

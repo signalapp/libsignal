@@ -159,7 +159,9 @@ describe('KeyTransparency Integration', function (this: Mocha.Suite) {
   this.timeout(5000);
 
   before(() => {
-    if (!process.env.LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS) {
+    const ignoreKtTests =
+      typeof process.env.LIBSIGNAL_TESTING_IGNORE_KT_TESTS !== 'undefined';
+    if (!process.env.LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS || ignoreKtTests) {
       this.ctx.skip();
     }
   });

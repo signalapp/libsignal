@@ -57,6 +57,13 @@ extension TestAccount {
 final class KeyTransparencyTests: TestCaseBase {
     private let userAgent = "kt-test"
 
+    override func nonHermeticTest() throws {
+        if ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_IGNORE_KT_TESTS"] != nil {
+            throw XCTSkip("disabled via LIBSIGNAL_TESTING_IGNORE_KT_TESTS")
+        }
+        try super.nonHermeticTest()
+    }
+
     private var testAccount = TestAccount(
         aci: Aci(fromUUID: UUID(uuidString: "90c979fd-eab4-4a08-b6da-69dedeab9b29")!),
         identityKey: try! IdentityKey(

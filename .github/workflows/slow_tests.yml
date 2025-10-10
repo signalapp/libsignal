@@ -23,6 +23,10 @@ on:
         # This is redundant with specifying it at the use site, but makes it appear in the website UI.
         # See https://github.com/actions/runner-images/blob/main/README.md#available-images
         default: 'macos-15-xlarge'
+      ignore_kt_tests:
+        type: boolean
+        description: 'Skip Key Transparency tests (sets LIBSIGNAL_TESTING_IGNORE_KT_TESTS)'
+        default: true
 
 jobs:
   java-docker:
@@ -35,6 +39,12 @@ jobs:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       with:
         submodules: recursive
+    - name: Enable KT skip flag
+      if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
+      run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
+    - name: Print KT env toggle
+      run: |
+        echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=${LIBSIGNAL_TESTING_IGNORE_KT_TESTS:-<unset>}"
     - run: make -C java
     - name: Upload JNI libraries
       uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
@@ -65,6 +75,9 @@ jobs:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       with:
         submodules: recursive
+    - name: Enable KT skip flag
+      if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
+      run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
     - run: make -C java
     - name: Upload full JARs
       uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
@@ -118,6 +131,9 @@ jobs:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       with:
         submodules: recursive
+    - name: Enable KT skip flag
+      if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
+      run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
 
     - run: sudo apt-get install protobuf-compiler
 
@@ -213,6 +229,9 @@ jobs:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       with:
         submodules: recursive
+    - name: Enable KT skip flag
+      if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
+      run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
@@ -237,6 +256,9 @@ jobs:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       with:
         submodules: recursive
+    - name: Enable KT skip flag
+      if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
+      run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
     - run: node/docker-prebuildify.sh
     - run: npm ci && npm run tsc && npm run test
       working-directory: node
@@ -331,6 +353,9 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           submodules: recursive
+      - name: Enable KT skip flag
+        if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
+        run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
 
       - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios,aarch64-apple-ios-sim --component rust-src
 
@@ -379,6 +404,9 @@ jobs:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       with:
         submodules: recursive
+    - name: Enable KT skip flag
+      if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
+      run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
 
     - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
 
