@@ -167,6 +167,10 @@ jobs:
     steps:
       - run: 'echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"'
 
+      - name: Enable KT skip flag
+        if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
+        run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
+
       # For hardware acceleration; see https://github.blog/changelog/2023-02-23-hardware-accelerated-android-virtualization-on-actions-windows-and-linux-larger-hosted-runners/
       - name: Enable KVM group perms
         run: |
