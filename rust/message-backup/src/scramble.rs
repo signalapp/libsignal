@@ -300,8 +300,7 @@ impl Visit<Scrambler> for proto::account_data::AccountSettings {
             special_fields: _,
             showSealedSenderIndicators: _,
             defaultSentMediaQuality: _,
-            mobileAutoDownloadSettings: _,
-            wifiAutoDownloadSettings: _,
+            autoDownloadSettings: _,
             screenLockTimeoutMinutes: _,
         } = self;
 

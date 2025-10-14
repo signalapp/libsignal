@@ -372,8 +372,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             backupTier,
             showSealedSenderIndicators: _,
             defaultSentMediaQuality: _,
-            mobileAutoDownloadSettings: _,
-            wifiAutoDownloadSettings: _,
+            autoDownloadSettings: _,
             screenLockTimeoutMinutes: _,
             special_fields: _,
         } = self;

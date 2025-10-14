@@ -113,8 +113,8 @@ message AccountData {
     optional uint64 backupTier = 21;
     bool showSealedSenderIndicators = 22;
     SentMediaQuality defaultSentMediaQuality = 23;
-    AutoDownloadSettings mobileAutoDownloadSettings = 24;
-    AutoDownloadSettings wifiAutoDownloadSettings = 25;
+    AutoDownloadSettings autoDownloadSettings = 24;
+    reserved /* wifiAutoDownloadSettings */ 25;
     optional uint32 screenLockTimeoutMinutes = 26; // If unset, consider screen lock to be disabled.
   }
 
