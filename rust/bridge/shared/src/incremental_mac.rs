@@ -60,12 +60,26 @@ pub fn IncrementalMac_Finalize(mac: &mut IncrementalMac) -> Vec<u8> {
 bridge_handle_fns!(ValidatingMac, clone = false);
 
 #[bridge_fn]
-pub fn ValidatingMac_Initialize(key: &[u8], chunk_size: u32, digests: &[u8]) -> ValidatingMac {
+pub fn ValidatingMac_Initialize(
+    key: &[u8],
+    chunk_size: u32,
+    digests: &[u8],
+) -> Option<ValidatingMac> {
     let hmac =
         Hmac::<Digest>::new_from_slice(key).expect("Should be able to create a new HMAC instance");
+    if chunk_size == 0 {
+        return None;
+    }
     let incremental = Incremental::new(hmac, chunk_size as usize);
-    let macs = digests.chunks(<Digest as OutputSizeUser>::OutputSize::USIZE);
-    ValidatingMac(Some(incremental.validating(macs)))
+    const MAC_SIZE: usize = <Digest as OutputSizeUser>::OutputSize::USIZE;
+    // TODO: When we reach an MSRV of 1.88, we can use as_chunks instead.
+    let macs = digests.chunks_exact(MAC_SIZE);
+    if !macs.remainder().is_empty() {
+        return None;
+    }
+    Some(ValidatingMac(Some(incremental.validating(macs.map(
+        |chunk| <&[u8; MAC_SIZE]>::try_from(chunk).expect("split into correct size already"),
+    )))))
 }
 
 #[bridge_fn]

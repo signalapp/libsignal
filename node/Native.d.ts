@@ -729,7 +729,7 @@ export function Username_Proof(username: string, randomness: Uint8Array): Uint8A
 export function Username_Verify(proof: Uint8Array, hash: Uint8Array): void;
 export function UuidCiphertext_CheckValidContents(buffer: Uint8Array): void;
 export function ValidatingMac_Finalize(mac: Wrapper<ValidatingMac>): number;
-export function ValidatingMac_Initialize(key: Uint8Array, chunkSize: number, digests: Uint8Array): ValidatingMac;
+export function ValidatingMac_Initialize(key: Uint8Array, chunkSize: number, digests: Uint8Array): ValidatingMac | null;
 export function ValidatingMac_Update(mac: Wrapper<ValidatingMac>, bytes: Uint8Array, offset: number, length: number): number;
 export function WebpSanitizer_Sanitize(input: SyncInputStream): void;
 export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void

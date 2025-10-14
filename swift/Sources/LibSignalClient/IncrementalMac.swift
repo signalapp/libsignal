@@ -96,7 +96,10 @@ public class ValidatingMacContext: NativeHandleOwner<SignalMutPointerValidatingM
                 }
             }
         }
-        self.init(owned: NonNull(handle)!)
+        guard let checkedHandle = NonNull<SignalMutPointerValidatingMac>(handle) else {
+            throw SignalError.verificationFailed("invalid configuration data")
+        }
+        self.init(owned: checkedHandle)
     }
 
     override internal class func destroyNativeHandle(

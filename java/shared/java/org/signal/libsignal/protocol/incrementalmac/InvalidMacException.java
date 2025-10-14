@@ -7,4 +7,12 @@ package org.signal.libsignal.protocol.incrementalmac;
 
 import java.io.IOException;
 
-public class InvalidMacException extends IOException {}
+public class InvalidMacException extends IOException {
+  InvalidMacException() {
+    super();
+  }
+
+  InvalidMacException(String message) {
+    super(message);
+  }
+}

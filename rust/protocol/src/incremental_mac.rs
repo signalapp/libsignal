@@ -55,15 +55,18 @@ impl<M: Mac + Clone> Incremental<M> {
         }
     }
 
-    pub fn validating<A, I>(self, macs: I) -> Validating<M>
+    pub fn validating<'a, A, I>(self, macs: I) -> Validating<M>
     where
-        A: AsRef<[u8]>,
-        I: IntoIterator<Item = A>,
-        <I as IntoIterator>::IntoIter: DoubleEndedIterator,
+        // This is a clunky way to spell an iterator over `&'a [u8; M::OutputSize]`, which requires
+        // feature(generic_const_exprs). The Sized requirement is because the older version of
+        // generic-array we're using (via the digest crate) provides From<&[u8]>; it was removed in
+        // generic-array 1.0.
+        A: Into<&'a GenericArray<u8, M::OutputSize>> + std::ops::Deref<Target: Sized>,
+        I: IntoIterator<Item = A, IntoIter: DoubleEndedIterator>,
     {
         let expected = macs
             .into_iter()
-            .map(|mac| GenericArray::<u8, M::OutputSize>::from_slice(mac.as_ref()).to_owned())
+            .map(|mac| mac.into().to_owned())
             .rev()
             .collect();
         Validating {
@@ -239,8 +242,7 @@ mod test {
             expected_macs.into_iter().map(|mac| mac.into()).collect();
 
         {
-            let mut validating =
-                new_incremental(key, TEST_CHUNK_SIZE).validating(expected_bytes.clone());
+            let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(&expected_bytes);
             validating
                 .update(bytes)
                 .expect("update: validation should succeed");
@@ -255,7 +257,7 @@ mod test {
                 .first_mut()
                 .expect("there must be at least one mac")[0] ^= 0xff;
             let mut validating =
-                new_incremental(key, TEST_CHUNK_SIZE).validating(failing_first_update);
+                new_incremental(key, TEST_CHUNK_SIZE).validating(&failing_first_update);
             validating.update(bytes).expect_err("MacError");
         }
 
@@ -264,7 +266,8 @@ mod test {
             failing_finalize
                 .last_mut()
                 .expect("there must be at least one mac")[0] ^= 0xff;
-            let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(failing_finalize);
+            let mut validating =
+                new_incremental(key, TEST_CHUNK_SIZE).validating(&failing_finalize);
             validating.update(bytes).expect("update should succeed");
             validating.finalize().expect_err("MacError");
         }
@@ -279,7 +282,7 @@ mod test {
         {
             let missing_first_mac: Vec<_> = expected_bytes.clone().into_iter().skip(1).collect();
             let mut validating =
-                new_incremental(key, TEST_CHUNK_SIZE).validating(missing_first_mac);
+                new_incremental(key, TEST_CHUNK_SIZE).validating(&missing_first_mac);
             validating.update(bytes).expect_err("MacError");
         }
         // To make clippy happy and allow extending the test in the future
@@ -299,7 +302,7 @@ mod test {
         let expected_bytes: Vec<[u8; 32]> =
             expected_macs.into_iter().map(|mac| mac.into()).collect();
 
-        let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(expected_bytes);
+        let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(&expected_bytes);
 
         // Splitting input into chunks of 16 will give us one full incremental chunk + 3 bytes
         // authenticated by call to finalize.
@@ -338,7 +341,7 @@ mod test {
                 .collect();
             produced.push(incremental.finalize().into());
 
-            let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(produced);
+            let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(&produced);
             for chunk in input_chunks.clone() {
                 validating.update(chunk).expect("update: validation should succeed");
             }

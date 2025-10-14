@@ -73,4 +73,15 @@ class IncrementalMacTests: TestCaseBase {
             XCTFail("Unexpected error thrown")
         }
     }
+
+    func testValidationInvalidDigest() throws {
+        do {
+            _ = try ValidatingMacContext(key: TEST_KEY, chunkSize: CHUNK_SIZE, expectingDigest: [0])
+            XCTFail("Should have failed")
+        } catch SignalError.verificationFailed {
+        } catch {
+            XCTFail("Unexpected error thrown")
+        }
+    }
+
 }

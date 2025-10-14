@@ -191,6 +191,16 @@ describe('Incremental MAC', () => {
       assert.equal(error.code, ErrorCode.IncrementalMacVerificationFailed);
       assert.equal(error.message, 'Corrupted input data');
     });
+
+    it('handles an invalid digest', () => {
+      const badDigest = Buffer.of(1);
+      expect(
+        () =>
+          new ValidatingPassThrough(TEST_KEY, inferChunkSize(1000), badDigest)
+      )
+        .to.throw(LibSignalErrorBase)
+        .with.property('code', ErrorCode.IncrementalMacVerificationFailed);
+    });
   });
 });
 

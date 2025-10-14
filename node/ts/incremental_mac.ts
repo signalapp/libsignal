@@ -124,11 +124,18 @@ class ValidatingWritable extends stream.Writable {
     digest: Uint8Array
   ) {
     super();
-    this._nativeHandle = Native.ValidatingMac_Initialize(
+    const handle = Native.ValidatingMac_Initialize(
       key,
       chunkSizeInBytes(sizeChoice),
       digest
     );
+    if (!handle) {
+      // Not sure why eslint isn't treating IncrementalMacVerificationFailed as an Error;
+      // standalone examples are not reproducing.
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
+      throw makeVerificationError('Invalid configuration data');
+    }
+    this._nativeHandle = handle;
   }
 
   validatedSize(): number {
