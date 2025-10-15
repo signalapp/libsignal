@@ -113,10 +113,14 @@ impl From<AttestedConnectionError> for Error {
 impl LogSafeDisplay for Error {}
 
 impl Error {
-    fn prioritize_restore_error(first: Self, second: Self) -> Self {
+    /// prioritize_error is used in both backup operations (when combining errors across multiple
+    /// backup attempts) and remove errors (when consolidating removals across multiple `current`
+    /// enclaves).
+    fn prioritize_error(first: Self, second: Self) -> Self {
         match (first, second) {
             // Structural errors first (these shouldn't actually happen, but if they do we don't
             // want to hide them).
+            // These will not be returned by `remove` operations.
             (e @ Self::PreviousBackupDataInvalid, _) | (_, e @ Self::PreviousBackupDataInvalid) => {
                 e
             }
@@ -126,9 +130,11 @@ impl Error {
             // This indicates a messed up backup (or a logic error), since the enclave is validating
             // that we have a correct password before returning anything, not just returning
             // whatever's stored for a particular key.
+            // These will not be returned by `remove` operations.
             (e @ Self::DecryptionError(_), _) | (_, e @ Self::DecryptionError(_)) => e,
 
             // Then connection errors, because maybe *another* enclave would have the right data.
+            // These may be returned by `remove` operations.
             // These are sorted by "errors that indicate issues that Signal is responsible for"...
             (e @ Self::AttestationError(_), _) | (_, e @ Self::AttestationError(_)) => e,
             (e @ Self::Protocol(_), _) | (_, e @ Self::Protocol(_)) => e,
@@ -146,6 +152,7 @@ impl Error {
             // first on restore. We should not return RestoreFailed over whatever connection error
             // we had getting to the new enclave, because we can't definitively say the key is
             // altogether wrong.
+            // These will not be returned by `remove` operations.
             (e @ Self::RestoreFailed(_), _) | (_, e @ Self::RestoreFailed(_)) => e,
             (e @ Self::DataMissing, _) /*| (_, e @ Self::DataMissing)*/ => e,
         }
@@ -268,7 +275,7 @@ pub fn create_new_backup_chain<SvrB: traits::Prepare>(
 }
 
 pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove>(
-    svrb: &B,
+    current_svrbs: &[B],
     previous_svrbs: &[R],
     backup_key: &BackupKey,
     previous_backup_data: BackupPreviousSecretDataRef<'_>,
@@ -317,7 +324,9 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
             return Err(Error::PreviousBackupDataInvalid);
         }
     };
-    let (next_backup4, next_password_salt) = create_backup(svrb, backup_key, &mut rng);
+    // We create a single backup object using the most current SVRB.
+    // We then use that backup for all SVRB instances.
+    let (next_backup4, next_password_salt) = create_backup(&current_svrbs[0], backup_key, &mut rng);
     let forward_secrecy_token = BackupForwardSecrecyToken(random_32b(&mut rng));
 
     let mut iv = [0u8; 12];
@@ -351,28 +360,35 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
     };
 
     if let Some(prev_backup4) = prev_backup4 {
-        svrb.finalize(&prev_backup4).await?;
+        let mut futures = current_svrbs
+            .iter()
+            .map(|svrb| svrb.finalize(&prev_backup4))
+            .collect::<futures_util::stream::FuturesUnordered<_>>();
+        while let Some(result) = futures.next().await {
+            result?;
+        }
+
+        for r in
+            futures_util::future::join_all(previous_svrbs.iter().enumerate().map(async |(i, p)| {
+                tokio::time::sleep(
+                    u32::try_from(i).expect("should be a small non-negative integer")
+                        * BACKUP_CONNECTION_DELAY,
+                )
+                .await;
+                p.remove().await
+            }))
+            .await
+        {
+            if let Err(e) = r {
+                // Errors here are acceptable, since they might be caused by irreparable
+                // issues like a SVRB replica group going down forever.  We do want to
+                // do our best to remove, though, so we keep trying each time, and we
+                // do report the errors up for debugging purposes.
+                log::info!("previous svrb instance remove failure: {e:?}");
+            }
+        }
     } else {
         log::info!("previous backup data came from a restore; skipping upload to SVR-B");
-    }
-    for r in
-        futures_util::future::join_all(previous_svrbs.iter().enumerate().map(async |(i, p)| {
-            tokio::time::sleep(
-                u32::try_from(i).expect("should be a small non-negative integer")
-                    * BACKUP_CONNECTION_DELAY,
-            )
-            .await;
-            p.remove().await
-        }))
-        .await
-    {
-        if let Err(e) = r {
-            // Errors here are acceptable, since they might be caused by irreparable
-            // issues like a SVRB replica group going down forever.  We do want to
-            // do our best to remove, though, so we keep trying each time, and we
-            // do report the errors up for debugging purposes.
-            log::info!("previous svrb instance remove failure: {e:?}");
-        }
     }
 
     Ok(BackupStoreResponse {
@@ -483,7 +499,7 @@ pub async fn restore_backup<R: traits::Restore>(
                 );
                 most_important_error = Some(match most_important_error {
                     None => e,
-                    Some(prev) => Error::prioritize_restore_error(prev, e),
+                    Some(prev) => Error::prioritize_error(prev, e),
                 })
             }
         }
@@ -492,24 +508,34 @@ pub async fn restore_backup<R: traits::Restore>(
 }
 
 pub async fn remove_backup<R: traits::Remove>(
-    current_svrb: &R,
+    current_svrbs: &[R],
     previous_svrbs: &[R],
 ) -> Result<(), Error> {
-    futures_util::future::join_all(
-        std::iter::once(current_svrb)
-            .chain(previous_svrbs)
-            .enumerate()
-            .map(async |(i, p)| {
+    let mut most_important_error: Result<(), Error> = Ok(());
+    for r in
+        futures_util::future::join_all(current_svrbs.iter().chain(previous_svrbs).enumerate().map(
+            async |(i, p)| {
                 tokio::time::sleep(
                     u32::try_from(i).expect("should be a small non-negative integer")
                         * BACKUP_CONNECTION_DELAY,
                 )
                 .await;
                 p.remove().await
-            }),
-    )
-    .await
-    .swap_remove(0) // We only care about the first element (for current_svrb) - this removes it from the vec and returns it.
+            },
+        ))
+        .await
+        .into_iter()
+        // we only care about error codes from the current SVRBs
+        .take(current_svrbs.len())
+    {
+        if let Err(e) = r {
+            most_important_error = Err(match most_important_error {
+                Ok(_) => e,
+                Err(prev) => Error::prioritize_error(prev, e),
+            });
+        }
+    }
+    most_important_error
 }
 
 #[cfg(feature = "test-util")]
@@ -528,7 +554,14 @@ pub mod test_support {
             &self,
             auth: &Auth,
         ) -> <Self as PpssSetup>::ConnectionResults {
-            super::direct::direct_connect(self.current(), auth, &no_network_change_events()).await
+            super::direct::direct_connect(
+                self.current()
+                    .next()
+                    .expect("should have at least one current SVRB"),
+                auth,
+                &no_network_change_events(),
+            )
+            .await
         }
     }
 }
@@ -536,6 +569,7 @@ pub mod test_support {
 #[cfg(test)]
 mod test {
     use std::cell::RefCell;
+    use std::collections::VecDeque;
     use std::str::FromStr;
     use std::sync::atomic::{AtomicU8, Ordering};
 
@@ -573,8 +607,14 @@ mod test {
         }
     }
 
+    impl traits::Prepare for &TestSvrBClient {
+        fn prepare(&self, _password: &[u8]) -> Backup4 {
+            (self.prepare_fn)()
+        }
+    }
+
     #[async_trait]
-    impl traits::Backup for TestSvrBClient {
+    impl traits::Backup for &TestSvrBClient {
         async fn finalize(&self, _b4: &Backup4) -> Result<(), Error> {
             (self.finalize_fn)()
         }
@@ -641,7 +681,7 @@ mod test {
         .expect("should create AEP");
         let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
         let backup = store_backup(
-            &svrb,
+            &[&svrb],
             &EMPTY,
             &backup_key,
             create_new_backup_chain(&svrb, &backup_key).as_ref(),
@@ -678,7 +718,7 @@ mod test {
         .expect("should create AEP");
         let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
         let backup = store_backup(
-            &svrb,
+            &[&svrb],
             &EMPTY,
             &backup_key,
             create_new_backup_chain(&svrb, &backup_key).as_ref(),
@@ -713,7 +753,7 @@ mod test {
         .expect("should create AEP");
         let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
         let backup = store_backup(
-            &svrb,
+            &[&svrb],
             &EMPTY,
             &backup_key,
             create_new_backup_chain(&svrb, &backup_key).as_ref(),
@@ -743,7 +783,7 @@ mod test {
             ..TestSvrBClient::default()
         };
         let backup = store_backup(
-            &svrb,
+            &[&svrb],
             &EMPTY,
             &backup_key,
             restored.next_backup_data.as_ref(),
@@ -794,7 +834,7 @@ mod test {
         .expect("should create AEP");
         let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
         let backup = store_backup(
-            &svrb,
+            &[&svrb],
             &EMPTY,
             &backup_key,
             create_new_backup_chain(&svrb, &backup_key).as_ref(),
@@ -835,7 +875,7 @@ mod test {
         .expect("should create AEP");
         let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
         let backup = store_backup(
-            &svrb,
+            &[&svrb],
             &EMPTY,
             &backup_key,
             create_new_backup_chain(&svrb, &backup_key).as_ref(),
@@ -876,7 +916,7 @@ mod test {
         .expect("should create AEP");
         let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
         let backup = store_backup(
-            &svrb,
+            &[&svrb],
             &EMPTY,
             &backup_key,
             create_new_backup_chain(&svrb, &backup_key).as_ref(),
@@ -927,7 +967,7 @@ mod test {
         .expect("should create AEP");
         let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
         store_backup(
-            &svrb,
+            &[&svrb],
             &[previous1, previous2],
             &backup_key,
             create_new_backup_chain(&svrb, &backup_key).as_ref(),
@@ -939,20 +979,32 @@ mod test {
 
     struct Scenario {
         backup_key: BackupKey,
-        currently_stored_in_enclave: RefCell<(u8, Option<Secret>)>,
+        // We emulate N enclaves at a time, where the first `current_enclaves` are current,
+        // and the remaining ones are previous.  Each enclave can store new data.
+        // This is affected by the following functions:
+        //   create_new_current_enclave - pushes a new `current` enclave on the front of the deque
+        //   demote_oldest_current_enclave - marks the oldest `current` enclave as `previous`
+        //   remove_oldest_previous_enclave - pops the last `previous` enclave, if one exists
+        currently_stored_in_enclaves: VecDeque<RefCell<Option<Secret>>>,
+        current_enclaves: usize,
+
         current_uploaded_backup_metadata: Option<BackupFileMetadata>,
         backup_secret_data: Option<BackupPreviousSecretData>,
     }
 
-    struct ScenarioClient<'a>(&'a RefCell<(u8, Option<Secret>)>);
+    enum ScenarioClientOutcome {
+        Success,
+        Failure,
+    }
+
+    struct ScenarioClient<'a>(&'a RefCell<Option<Secret>>, ScenarioClientOutcome);
 
     impl traits::Prepare for ScenarioClient<'_> {
         fn prepare(&self, _password: &[u8]) -> Backup4 {
-            let mut state = self.0.borrow_mut();
-            state.0 += 1;
+            let output = random_32b(&mut OsRng.unwrap_err());
             Backup4 {
                 requests: vec![],
-                output: [state.0; 32],
+                output,
             }
         }
     }
@@ -968,8 +1020,27 @@ mod test {
             'life1: 'async_trait,
             Self: 'async_trait,
         {
+            if let ScenarioClientOutcome::Failure = self.1 {
+                return Box::pin(std::future::ready(Err(Error::AllConnectionAttemptsFailed)));
+            }
             let mut state = self.0.borrow_mut();
-            state.1 = Some(backup.output);
+            *state = Some(backup.output);
+            Box::pin(std::future::ready(Ok(())))
+        }
+    }
+
+    impl traits::Remove for ScenarioClient<'_> {
+        // Written explicitly so we can modify `self` *before* producing the Future.
+        fn remove<'life0, 'async_trait>(&'life0 self) -> BoxFuture<'life0, Result<(), Error>>
+        where
+            'life0: 'async_trait,
+            Self: 'async_trait,
+        {
+            if let ScenarioClientOutcome::Failure = self.1 {
+                return Box::pin(std::future::ready(Err(Error::AllConnectionAttemptsFailed)));
+            }
+            let mut state = self.0.borrow_mut();
+            *state = None;
             Box::pin(std::future::ready(Ok(())))
         }
     }
@@ -985,7 +1056,10 @@ mod test {
             'life1: 'async_trait,
             Self: 'async_trait,
         {
-            let result = self.0.borrow().1.ok_or(Error::DataMissing);
+            if let ScenarioClientOutcome::Failure = self.1 {
+                return Box::pin(std::future::ready(Err(Error::AllConnectionAttemptsFailed)));
+            }
+            let result = self.0.borrow().ok_or(Error::DataMissing);
             Box::pin(std::future::ready(result))
         }
     }
@@ -997,36 +1071,84 @@ mod test {
             )
             .expect("should create AEP");
             let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
+            let mut currently_stored_in_enclaves = VecDeque::new();
+            currently_stored_in_enclaves.push_back(RefCell::new(None));
             Self {
                 backup_key,
-                currently_stored_in_enclave: RefCell::new((0, None)),
+                currently_stored_in_enclaves,
+                current_enclaves: 1,
                 current_uploaded_backup_metadata: None,
                 backup_secret_data: None,
             }
         }
 
-        fn client(&self) -> ScenarioClient<'_> {
-            ScenarioClient(&self.currently_stored_in_enclave)
+        fn client(&self, i: usize, outcome: ScenarioClientOutcome) -> ScenarioClient<'_> {
+            ScenarioClient(&self.currently_stored_in_enclaves[i], outcome)
         }
 
         fn create_new_backup_chain(&mut self) {
-            self.backup_secret_data =
-                Some(create_new_backup_chain(&self.client(), &self.backup_key));
+            self.backup_secret_data = Some(create_new_backup_chain(
+                &self.client(0, ScenarioClientOutcome::Success),
+                &self.backup_key,
+            ));
         }
 
-        async fn upload_secret_to_svr(&self) -> BackupStoreResponse {
+        fn failures_outcome(i: usize, failures: &[usize]) -> ScenarioClientOutcome {
+            if failures.contains(&i) {
+                ScenarioClientOutcome::Failure
+            } else {
+                ScenarioClientOutcome::Success
+            }
+        }
+
+        fn current_stored_values(&self) -> Vec<Option<Secret>> {
+            self.currently_stored_in_enclaves
+                .iter()
+                .map(|rc| *rc.borrow())
+                .collect::<Vec<_>>()
+        }
+
+        fn current_enclaves(&self, failures: &[usize]) -> Vec<ScenarioClient<'_>> {
+            (0..self.current_enclaves)
+                .map(|i| self.client(i, Self::failures_outcome(i, failures)))
+                .collect::<Vec<_>>()
+        }
+
+        fn previous_enclaves(&self, failures: &[usize]) -> Vec<ScenarioClient<'_>> {
+            (self.current_enclaves..self.currently_stored_in_enclaves.len())
+                .map(|i| self.client(i, Self::failures_outcome(i, failures)))
+                .collect::<Vec<_>>()
+        }
+
+        fn current_and_previous_enclaves(&self, failures: &[usize]) -> Vec<ScenarioClient<'_>> {
+            (0..self.currently_stored_in_enclaves.len())
+                .map(|i| self.client(i, Self::failures_outcome(i, failures)))
+                .collect::<Vec<_>>()
+        }
+
+        async fn upload_secret_to_svr(
+            &self,
+            failures: &[usize],
+        ) -> Result<BackupStoreResponse, Error> {
             let previous_secret_data = self
                 .backup_secret_data
                 .as_ref()
                 .expect("has secret data before store");
             store_backup(
-                &self.client(),
-                &[] as &[TestSvrBClient],
+                &self.current_enclaves(failures),
+                &self.previous_enclaves(failures),
                 &self.backup_key,
                 previous_secret_data.as_ref(),
             )
             .await
-            .expect("no errors on store")
+        }
+
+        async fn remove_secret_from_svr(&self, failures: &[usize]) -> Result<(), Error> {
+            remove_backup(
+                &self.current_enclaves(failures),
+                &self.previous_enclaves(failures),
+            )
+            .await
         }
 
         fn upload_backup_to_server(&mut self, metadata: BackupFileMetadata) {
@@ -1045,16 +1167,16 @@ mod test {
                 forward_secrecy_token: _,
                 next_backup_data,
                 metadata,
-            } = self.upload_secret_to_svr().await;
+            } = self
+                .upload_secret_to_svr(&[])
+                .await
+                .expect("upload should succeed");
             self.upload_backup_to_server(metadata);
             self.save_secret_data(next_backup_data);
         }
 
-        async fn wipe_and_restore(&mut self) {
-            // Strictly unnecessary since it shouldn't be accessed and will be overwritten anyway,
-            // but guarantees we didn't mess something up.
-            self.backup_secret_data = None;
-
+        async fn wipe_and_try_to_restore(&mut self, failures: &[usize]) -> Result<(), Error> {
+            self.backup_secret_data = None; // clear even if restore might fail.
             let metadata = self
                 .current_uploaded_backup_metadata
                 .as_ref()
@@ -1062,10 +1184,45 @@ mod test {
             let BackupRestoreResponse {
                 forward_secrecy_token: _,
                 next_backup_data,
-            } = restore_backup(&[self.client()], &self.backup_key, metadata.as_ref())
-                .await
-                .expect("can restore");
+            } = restore_backup(
+                &self.current_and_previous_enclaves(failures),
+                &self.backup_key,
+                metadata.as_ref(),
+            )
+            .await?;
             self.backup_secret_data = Some(next_backup_data);
+            Ok(())
+        }
+
+        fn create_new_current_enclave(&mut self) {
+            self.currently_stored_in_enclaves
+                .push_front(RefCell::new(None));
+            self.current_enclaves += 1;
+        }
+
+        fn demote_oldest_current_enclave(&mut self) -> Result<(), &'static str> {
+            if self.current_enclaves <= 1 {
+                Err("cowardly refusal to remove last remaining enclave")
+            } else {
+                self.current_enclaves -= 1;
+                Ok(())
+            }
+        }
+
+        fn remove_oldest_previous_enclave(&mut self) -> Result<(), &'static str> {
+            if self.currently_stored_in_enclaves.len() <= self.current_enclaves {
+                Err("cowardly refusal to remove a current enclave")
+            } else if !self
+                .currently_stored_in_enclaves
+                .iter()
+                .take(self.currently_stored_in_enclaves.len() - 1)
+                .any(|enc| enc.borrow().is_some())
+            {
+                Err("cowardly refusal to remove the only enclave with data in it")
+            } else {
+                self.currently_stored_in_enclaves.pop_back();
+                Ok(())
+            }
         }
     }
 
@@ -1074,9 +1231,15 @@ mod test {
         let mut scenario = Scenario::new();
         scenario.complete_one_successful_backup().await;
 
-        scenario.wipe_and_restore().await;
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
         // Even if we're really unlucky...
-        scenario.wipe_and_restore().await;
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
     }
 
     #[tokio::test(start_paused = true)]
@@ -1084,7 +1247,10 @@ mod test {
         let mut scenario = Scenario::new();
         scenario.complete_one_successful_backup().await;
         scenario.complete_one_successful_backup().await;
-        scenario.wipe_and_restore().await;
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
     }
 
     #[tokio::test(start_paused = true)]
@@ -1092,10 +1258,16 @@ mod test {
         let mut scenario = Scenario::new();
         scenario.complete_one_successful_backup().await;
 
-        _ = scenario.upload_secret_to_svr().await;
+        _ = scenario
+            .upload_secret_to_svr(&[])
+            .await
+            .expect("upload should succeed");
         // Never upload the next backup.
 
-        scenario.wipe_and_restore().await;
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
     }
 
     #[tokio::test(start_paused = true)]
@@ -1103,12 +1275,21 @@ mod test {
         let mut scenario = Scenario::new();
         scenario.complete_one_successful_backup().await;
 
-        _ = scenario.upload_secret_to_svr().await;
+        _ = scenario
+            .upload_secret_to_svr(&[])
+            .await
+            .expect("upload should succeed");
         // Never upload the next backup.
-        _ = scenario.upload_secret_to_svr().await;
+        _ = scenario
+            .upload_secret_to_svr(&[])
+            .await
+            .expect("upload should succeed");
         // Again.
 
-        scenario.wipe_and_restore().await;
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
     }
 
     #[tokio::test(start_paused = true)]
@@ -1120,12 +1301,18 @@ mod test {
             forward_secrecy_token: _,
             next_backup_data: _,
             metadata,
-        } = scenario.upload_secret_to_svr().await;
+        } = scenario
+            .upload_secret_to_svr(&[])
+            .await
+            .expect("upload should succeed");
         scenario.upload_backup_to_server(metadata);
         // Forget to save the secret data.
 
         scenario.complete_one_successful_backup().await;
-        scenario.wipe_and_restore().await;
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
     }
 
     #[tokio::test(start_paused = true)]
@@ -1137,13 +1324,22 @@ mod test {
             forward_secrecy_token: _,
             next_backup_data: _,
             metadata,
-        } = scenario.upload_secret_to_svr().await;
+        } = scenario
+            .upload_secret_to_svr(&[])
+            .await
+            .expect("upload should succeed");
         scenario.upload_backup_to_server(metadata);
         // Forget to save the secret data.
-        _ = scenario.upload_secret_to_svr().await;
+        _ = scenario
+            .upload_secret_to_svr(&[])
+            .await
+            .expect("upload should succeed");
         // Never upload a new backup.
 
-        scenario.wipe_and_restore().await;
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
     }
 
     #[tokio::test(start_paused = true)]
@@ -1151,10 +1347,16 @@ mod test {
         let mut scenario = Scenario::new();
         scenario.complete_one_successful_backup().await;
 
-        scenario.wipe_and_restore().await;
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
         scenario.complete_one_successful_backup().await;
 
-        scenario.wipe_and_restore().await;
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
     }
 
     #[tokio::test(start_paused = true)]
@@ -1162,11 +1364,20 @@ mod test {
         let mut scenario = Scenario::new();
         scenario.complete_one_successful_backup().await;
 
-        scenario.wipe_and_restore().await;
-        _ = scenario.upload_secret_to_svr().await;
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
+        _ = scenario
+            .upload_secret_to_svr(&[])
+            .await
+            .expect("upload should succeed");
         // Never upload the next backup.
 
-        scenario.wipe_and_restore().await;
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
     }
 
     #[tokio::test(start_paused = true)]
@@ -1174,12 +1385,185 @@ mod test {
         let mut scenario = Scenario::new();
         scenario.complete_one_successful_backup().await;
 
-        scenario.wipe_and_restore().await;
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
         scenario.complete_one_successful_backup().await;
-        _ = scenario.upload_secret_to_svr().await;
+        _ = scenario
+            .upload_secret_to_svr(&[])
+            .await
+            .expect("upload should succeed");
         // Never upload the next backup.
 
-        scenario.wipe_and_restore().await;
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn backup_from_previous_enclave() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup().await;
+        scenario.create_new_current_enclave();
+        scenario
+            .demote_oldest_current_enclave()
+            .expect("demote should succeed");
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn backup_after_previous_enclave_removed() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup().await;
+        scenario.create_new_current_enclave();
+        scenario
+            .demote_oldest_current_enclave()
+            .expect("demote should succeed");
+        scenario.complete_one_successful_backup().await;
+        scenario
+            .remove_oldest_previous_enclave()
+            .expect("removal of previous enclave should succeed");
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn backup_fails_when_one_current_enclave_fails() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup().await;
+        scenario.create_new_current_enclave();
+        // Failure of either current enclave causes total failure
+        assert!(scenario.upload_secret_to_svr(&[0]).await.is_err());
+        assert!(scenario.upload_secret_to_svr(&[1]).await.is_err());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn backup_succeeds_when_previous_enclave_fails() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup().await;
+        scenario.create_new_current_enclave();
+        scenario
+            .demote_oldest_current_enclave()
+            .expect("demote should succeed");
+        scenario
+            .upload_secret_to_svr(&[1])
+            .await
+            .expect("backup should succeed");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn backup_restore_succeeds_after_partial_write_failure() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup().await;
+        scenario.create_new_current_enclave();
+        assert!(scenario.upload_secret_to_svr(&[0]).await.is_err());
+        scenario
+            .wipe_and_try_to_restore(&[0])
+            .await
+            .expect("restore should succeed when unable to talk to 0");
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed when able to talk to all backends");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn operations_fail_if_all_enclaves_fail() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup().await;
+        scenario.create_new_current_enclave();
+        assert!(scenario.upload_secret_to_svr(&[0, 1]).await.is_err());
+        assert!(scenario.wipe_and_try_to_restore(&[0, 1]).await.is_err());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn backup_succeeds_if_multiple_previous_fail() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup().await;
+        scenario.create_new_current_enclave();
+        scenario.create_new_current_enclave();
+        scenario
+            .demote_oldest_current_enclave()
+            .expect("demote succeeds");
+        scenario
+            .demote_oldest_current_enclave()
+            .expect("demote succeeds");
+        scenario
+            .upload_secret_to_svr(&[1, 2])
+            .await
+            .expect("should successfully upload");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn remove_succeeds_if_multiple_previous_fail() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup().await;
+        scenario.create_new_current_enclave();
+        scenario.create_new_current_enclave();
+        scenario
+            .demote_oldest_current_enclave()
+            .expect("demote succeeds");
+        scenario
+            .demote_oldest_current_enclave()
+            .expect("demote succeeds");
+        scenario
+            .remove_secret_from_svr(&[1, 2])
+            .await
+            .expect("should successfully remove");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn remove_succeeds_on_working_enclaves() {
+        let mut scenario = Scenario::new();
+        scenario.create_new_current_enclave();
+        scenario.create_new_current_enclave();
+        scenario.create_new_current_enclave();
+        scenario.complete_one_successful_backup().await;
+        scenario
+            .demote_oldest_current_enclave()
+            .expect("demote succeeds");
+        scenario
+            .demote_oldest_current_enclave()
+            .expect("demote succeeds");
+        assert!(scenario.remove_secret_from_svr(&[0, 2]).await.is_err());
+        let values = scenario.current_stored_values();
+        assert!(values[0].is_some());
+        assert!(values[1].is_none());
+        assert!(values[2].is_some());
+        assert!(values[3].is_none());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn backup_not_removed_on_upload_after_restore() {
+        let mut scenario = Scenario::new();
+        scenario.complete_one_successful_backup().await;
+        scenario.create_new_current_enclave();
+        scenario
+            .demote_oldest_current_enclave()
+            .expect("demote succeeds");
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
+        // This test makes sure right here that upload_secret_to_svr doesn't remove
+        // the secret from the previous SVRB instance, even though it's been demoted.
+        // Since we're "uploading" after a restore, we don't actually upload, which
+        // also means we shouldn't actually remove old ones.
+        _ = scenario
+            .upload_secret_to_svr(&[])
+            .await
+            .expect("upload should succeed");
+        scenario
+            .wipe_and_try_to_restore(&[])
+            .await
+            .expect("restore should succeed");
     }
 
     #[test]
@@ -1190,6 +1574,10 @@ mod test {
             UploadSecretAndBackup,
             UploadSecretAndBackupAndSave,
             WipeAndRestore,
+            AddNewEnclave,
+            DemoteCurrentEnclave,
+            RemovePreviousEnclave,
+            FailedWriteToCurrent,
         }
 
         impl proptest::arbitrary::Arbitrary for Action {
@@ -1223,26 +1611,41 @@ mod test {
                 for action in actions {
                     match action {
                         Action::UploadSecret => {
-                            _ = scenario.upload_secret_to_svr().await;
+                            _ = scenario.upload_secret_to_svr(&[]).await.expect("upload should succeed");
                         }
                         Action::UploadSecretAndBackup => {
                             let BackupStoreResponse {
                                 forward_secrecy_token: _,
                                 next_backup_data: _,
                                 metadata,
-                            } = scenario.upload_secret_to_svr().await;
+                            } = scenario.upload_secret_to_svr(&[]).await.expect("upload should succeed");
                             scenario.upload_backup_to_server(metadata);
                         }
                         Action::UploadSecretAndBackupAndSave => {
                             scenario.complete_one_successful_backup().await;
                         }
                         Action::WipeAndRestore => {
-                            scenario.wipe_and_restore().await;
+                            scenario.wipe_and_try_to_restore(&[]).await.expect("restore should succeed");
+                        }
+                        Action::AddNewEnclave => {
+                          scenario.create_new_current_enclave();
+                        },
+                        Action::DemoteCurrentEnclave => {
+                          let _ = scenario.demote_oldest_current_enclave();
+                        },
+                        Action::RemovePreviousEnclave => {
+                          let _ = scenario.remove_oldest_previous_enclave();
+                        }
+                        Action::FailedWriteToCurrent => {
+                            let failing_instance = OsRng.unwrap_err().next_u32() as usize % scenario.current_enclaves(&[]).len();
+                            // this may succeed if done directly after a WipeAndRestore,
+                            // since it'd issue no writes, or it might fail otherwise.
+                            let _ = scenario.upload_secret_to_svr(&[failing_instance]).await;
                         }
                     }
                 }
 
-                scenario.wipe_and_restore().await;
+                scenario.wipe_and_try_to_restore(&[]).await.expect("restore should succeed");
             });
         });
     }

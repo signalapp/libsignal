@@ -60,7 +60,15 @@ impl SvrBConnect for SvrBClient<'_> {
     type Env = SvrBEnv<'static>;
 
     async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults {
-        direct_connect(self.env.current(), self.auth, &no_network_change_events()).await
+        direct_connect(
+            self.env
+                .current()
+                .next()
+                .expect("should have at least one current SVRB instance"),
+            self.auth,
+            &no_network_change_events(),
+        )
+        .await
     }
 }
 
@@ -105,7 +113,7 @@ async fn single_request(args: &Args, sem: &tokio::sync::Semaphore) {
     println!("Storing backup #1");
     let inital_data = svrb::create_new_backup_chain(&client, &backup_key);
     let backup1 =
-        svrb::store_backup::<_, SvrBClient>(&client, &[], &backup_key, inital_data.as_ref())
+        svrb::store_backup::<_, SvrBClient>(&[client], &[], &backup_key, inital_data.as_ref())
             .await
             .expect("should backup");
 
@@ -123,7 +131,7 @@ async fn single_request(args: &Args, sem: &tokio::sync::Semaphore) {
     // in the previous backup's `next_backup_data`.
     println!("Storing backup #2");
     let backup2 = svrb::store_backup::<_, SvrBClient>(
-        &client,
+        &[client],
         &[],
         &backup_key,
         backup1.next_backup_data.as_ref(),

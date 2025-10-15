@@ -556,28 +556,29 @@ impl From<KeyTransConfig> for PublicConfig {
     }
 }
 
+const SVRB_ENV_MAX_CURRENT: usize = 3;
 const SVRB_ENV_MAX_PREVIOUS: usize = 3;
 
 pub struct SvrBEnv<'a> {
-    current: EnclaveEndpoint<'a, SvrSgx>,
-    // There may be differing numbers of previous endpoints in staging vs prod,
-    // so rather than store a fixed-sized array of previous, we store
+    // There may be differing numbers of current/previous endpoints in staging vs prod,
+    // so rather than store a fixed-sized array of current/previous, we store
     // a max-sized list of Options, which are often None but can be set.
-    // Thus, if staging has 2 and prod has 1, they can set [foo, bar, None] and
-    // [baz, None, None] respectively.
+    // Thus, if staging has 2 and prod has 1, they can set [Some(foo), Some(bar), None] and
+    // [Some(baz), None, None] respectively.
+    current: [Option<EnclaveEndpoint<'a, SvrSgx>>; SVRB_ENV_MAX_CURRENT],
     previous: [Option<EnclaveEndpoint<'a, SvrSgx>>; SVRB_ENV_MAX_PREVIOUS],
 }
 
 impl<'a> SvrBEnv<'a> {
     pub const fn new(
-        current: EnclaveEndpoint<'a, SvrSgx>,
+        current: [Option<EnclaveEndpoint<'a, SvrSgx>>; SVRB_ENV_MAX_CURRENT],
         previous: [Option<EnclaveEndpoint<'a, SvrSgx>>; SVRB_ENV_MAX_PREVIOUS],
     ) -> Self {
         Self { current, previous }
     }
 
-    pub const fn current(&self) -> &EnclaveEndpoint<'a, SvrSgx> {
-        &self.current
+    pub fn current(&self) -> impl std::iter::Iterator<Item = &EnclaveEndpoint<'a, SvrSgx>> {
+        self.current.iter().filter_map(|a| a.as_ref())
     }
 
     pub fn previous(&self) -> impl std::iter::Iterator<Item = &EnclaveEndpoint<'a, SvrSgx>> {
@@ -587,7 +588,7 @@ impl<'a> SvrBEnv<'a> {
     pub fn current_and_previous(
         &self,
     ) -> impl std::iter::Iterator<Item = &EnclaveEndpoint<'a, SvrSgx>> {
-        std::iter::once(&self.current).chain(self.previous.iter().filter_map(|a| a.as_ref()))
+        self.current().chain(self.previous())
     }
 }
 
@@ -642,11 +643,15 @@ pub const STAGING: Env<'static> = Env {
         params: ENDPOINT_PARAMS_SVR2_STAGING,
     },
     svr_b: SvrBEnv {
-        current: EnclaveEndpoint {
-            domain_config: DOMAIN_CONFIG_SVRB_STAGING,
-            ws_config: RECOMMENDED_WS_CONFIG,
-            params: ENDPOINT_PARAMS_SVRB_STAGING,
-        },
+        current: [
+            Some(EnclaveEndpoint {
+                domain_config: DOMAIN_CONFIG_SVRB_STAGING,
+                ws_config: RECOMMENDED_WS_CONFIG,
+                params: ENDPOINT_PARAMS_SVRB_STAGING,
+            }),
+            None,
+            None,
+        ],
         previous: [None, None, None],
     },
     keytrans_config: KEYTRANS_CONFIG_STAGING,
@@ -666,11 +671,15 @@ pub const PROD: Env<'static> = Env {
         params: ENDPOINT_PARAMS_SVR2_PROD,
     },
     svr_b: SvrBEnv {
-        current: EnclaveEndpoint {
-            domain_config: DOMAIN_CONFIG_SVRB_PROD,
-            ws_config: RECOMMENDED_WS_CONFIG,
-            params: ENDPOINT_PARAMS_SVRB_PROD,
-        },
+        current: [
+            Some(EnclaveEndpoint {
+                domain_config: DOMAIN_CONFIG_SVRB_PROD,
+                ws_config: RECOMMENDED_WS_CONFIG,
+                params: ENDPOINT_PARAMS_SVRB_PROD,
+            }),
+            None,
+            None,
+        ],
         previous: [None, None, None],
     },
     keytrans_config: KEYTRANS_CONFIG_PROD,

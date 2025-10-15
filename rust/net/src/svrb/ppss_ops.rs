@@ -37,6 +37,7 @@ pub async fn do_backup<Env: PpssSetup>(
     connect_results: Env::ConnectionResults,
     backup: &Backup4,
 ) -> Result<(), Error> {
+    assert_eq!(Env::N, backup.requests.len());
     let ConnectionContext {
         mut connections,
         errors,

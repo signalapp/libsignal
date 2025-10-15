@@ -36,11 +36,16 @@ async fn SecureValueRecoveryForBackups_StoreBackup(
     password: String,
 ) -> Result<BackupStoreResponse, SvrbError> {
     let auth = Auth { username, password };
-    let current_svrb = SvrBConnectImpl {
-        connection_manager,
-        endpoint: connection_manager.env().svr_b.current(),
-        auth: &auth,
-    };
+    let current_svrb = connection_manager
+        .env()
+        .svr_b
+        .current()
+        .map(|e| SvrBConnectImpl {
+            connection_manager,
+            endpoint: e,
+            auth: &auth,
+        })
+        .collect::<Vec<_>>();
     let previous_svrb = connection_manager
         .env()
         .svr_b
@@ -85,11 +90,16 @@ async fn SecureValueRecoveryForBackups_RemoveBackup(
     password: String,
 ) -> Result<(), SvrbError> {
     let auth = Auth { username, password };
-    let current_svrb = SvrBConnectImpl {
-        connection_manager,
-        endpoint: connection_manager.env().svr_b.current(),
-        auth: &auth,
-    };
+    let current_svrb = connection_manager
+        .env()
+        .svr_b
+        .current()
+        .map(|e| SvrBConnectImpl {
+            connection_manager,
+            endpoint: e,
+            auth: &auth,
+        })
+        .collect::<Vec<_>>();
     let previous_svrb = connection_manager
         .env()
         .svr_b
