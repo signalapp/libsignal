@@ -7,6 +7,9 @@ v0.85.0
     - Node: ValidatingWritable's constructor will now throw IncrementalMacVerificationFailed (instead of a plain Error)
     - Rust: Incremental::validating now specifically takes an iterator over borrowed arrays (or GenericArrays)
 
-- Backups: The consolidated away wifiAutoDownloadSettings is now treated as unknown.
+- Backups:
+
+    - The consolidated away wifiAutoDownloadSettings is now treated as unknown.
+    - Support poll reactions.
 
 - Typed APIs: `UnauthMessagesService.sendMultiRecipientMessage` has been added to libsignal's app layer.

@@ -2098,10 +2098,12 @@ impl Visit<Scrambler> for proto::Poll {
             allowMultiple: _,
             options,
             hasEnded: _,
+            reactions,
             special_fields: _,
         } = self;
         question.randomize(&mut visitor.rng);
         options.accept(visitor);
+        reactions.accept(visitor);
     }
 }
 

@@ -12,6 +12,7 @@ use intmap::IntMap;
 use itertools::Itertools as _;
 
 use crate::backup::TryIntoWith;
+use crate::backup::chat::reactions::{ReactionError, ReactionSet};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::MinimalRecipientData;
@@ -42,13 +43,15 @@ pub struct PollOption<Recipient> {
 }
 
 #[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive_where(PartialEq; Recipient: PartialEq))]
+#[cfg_attr(test, derive_where(PartialEq; Recipient: PartialEq + SerializeOrder))]
 pub struct Poll<Recipient> {
     pub question: String,
     pub allow_multiple: bool,
     #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
     pub options: Vec<PollOption<Recipient>>,
     pub has_ended: bool,
+    #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
+    pub reactions: ReactionSet<Recipient>,
     _limit_construction_to_module: (),
 }
 
@@ -74,6 +77,8 @@ pub enum PollError {
     InvalidTimestamp(#[from] TimestampError),
     /// multiple vote records from voters: {0:?}
     NonUniqueVoters(Vec<RecipientId>),
+    /// invalid reaction: {0}
+    Reaction(#[from] ReactionError),
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
@@ -140,6 +145,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             allowMultiple: allow_multiple,
             options,
             hasEnded: has_ended,
+            reactions,
             special_fields: _,
         } = self;
         validate_poll_string_len(&question)?;
@@ -150,11 +156,13 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             .into_iter()
             .map(|opt| opt.try_into_with(context))
             .collect::<Result<Vec<_>, _>>()?;
+        let reactions = reactions.try_into_with(context)?;
         Ok(Poll {
             question,
             allow_multiple,
             options,
             has_ended,
+            reactions,
             _limit_construction_to_module: (),
         })
     }
@@ -227,7 +235,9 @@ mod test {
     use test_case::test_case;
 
     use super::*;
+    use crate::backup::chat::reactions::Reaction;
     use crate::backup::testutil::TestContext;
+    use crate::proto::backup::Reaction as ReactionProto;
 
     fn poll_vote_proto() -> PollVoteProto {
         PollVoteProto {
@@ -285,6 +295,7 @@ mod test {
                 poll_option_proto("question"),
             ],
             hasEnded: false,
+            reactions: vec![ReactionProto::test_data()],
             special_fields: Default::default(),
         }
     }
@@ -333,6 +344,7 @@ mod test {
                 allow_multiple: false,
                 options,
                 has_ended: false,
+                reactions,
                 _limit_construction_to_module
             }) => {
                 assert_eq!(question, proto.question);
@@ -340,6 +352,7 @@ mod test {
                 let PollVote{voter, vote_count, _limit_construction_to_module} = vote;
                 assert_eq!(vote_count, &proto.options[0].votes[0].voteCount);
                 assert_matches!(voter.as_ref(), MinimalRecipientData::Self_);
+                assert_eq!(reactions, ReactionSet::from_iter([Reaction::from_proto_test_data()]))
             }
         );
     }
@@ -352,6 +365,8 @@ mod test {
     #[test_case(|x| x.question = "a".to_string() => Ok(()); "question len lower bound")]
     #[test_case(|x| x.question = format!("{:0100}", 0) => Ok(()); "question len upper bound")]
     #[test_case(|x| x.question = format!("{:0101}", 0) => Err(PollError::InvalidPollStringSize(101)); "question too long")]
+    #[test_case(|x| x.reactions.clear() => Ok(()); "no reactions")]
+    #[test_case(|x| x.reactions.push(ReactionProto::default()) => Err(PollError::Reaction(ReactionError::EmptyEmoji)); "invalid reaction")]
     fn poll(modify: fn(&mut PollProto)) -> Result<(), PollError> {
         let mut poll = poll_proto();
         modify(&mut poll);
