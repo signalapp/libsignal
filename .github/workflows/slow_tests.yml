@@ -220,8 +220,25 @@ jobs:
           disk-size: 1024M
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim -no-metrics
-          script: ./gradlew android:connectedCheck android:packaging-test:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries
+          script: |
+            adb logcat -c
+            adb logcat > logcat.log &
+            LOGCAT_PID="$!"
+            echo "LOGCAT_PID=$LOGCAT_PID" >> "$GITHUB_ENV"
+            ./gradlew android:connectedCheck android:packaging-test:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries
           working-directory: java
+
+      - name: Stop logcat
+        if: always()
+        run: kill ${{ env.LOGCAT_PID}} || true
+
+      - name: Upload logcat logs
+        if: always()
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+            name: logcat-logs-api${{ matrix.api_level }}-${{ matrix.arch }}
+            path: java/logcat.log
+            retention-days: 2
 
   aarch64:
     name: AArch64 Linux Tests
