@@ -84,6 +84,7 @@ def translate_to_ts(typ: str) -> str:
         "PathAndQuery": "string",
         "LanguageList": "string[]",
         "&BackupKey": "Uint8Array",
+        "MultiRecipientSendAuthorization": "Uint8Array|null",
     }
 
     if typ in type_map:

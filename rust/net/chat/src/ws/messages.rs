@@ -19,6 +19,8 @@ use crate::api::messages::{
 use crate::api::{RequestError, Unauth};
 
 const GROUP_SEND_TOKEN_HEADER: http::HeaderName = http::HeaderName::from_static("group-send-token");
+const MULTI_RECIPIENT_MESSAGE_CONTENT_TYPE: http::HeaderValue =
+    http::HeaderValue::from_static("application/vnd.signal-messenger.mrm");
 
 impl MultiRecipientSendAuthorization {
     fn to_header(&self) -> Option<(http::HeaderName, http::HeaderValue)> {
@@ -66,7 +68,7 @@ impl<T: WsConnection> crate::api::messages::UnauthenticatedChatApi for Unauth<T>
                     headers: http::HeaderMap::from_iter(
                         [(
                             http::header::CONTENT_TYPE,
-                            http::HeaderValue::from_static("application/vnd.signal-messenger.mrm"),
+                            MULTI_RECIPIENT_MESSAGE_CONTENT_TYPE,
                         )]
                         .into_iter()
                         .chain(auth.to_header()),
@@ -284,7 +286,7 @@ mod test {
                 ),
                 headers: http::HeaderMap::from_iter([(
                     http::header::CONTENT_TYPE,
-                    http::HeaderValue::from_static("application/vnd.signal-messenger.mrm"),
+                    MULTI_RECIPIENT_MESSAGE_CONTENT_TYPE,
                 )]),
                 body: Some(vec![1, 2, 3].into()),
             },
@@ -314,7 +316,7 @@ mod test {
                 headers: http::HeaderMap::from_iter([
                     (
                         http::header::CONTENT_TYPE,
-                        http::HeaderValue::from_static("application/vnd.signal-messenger.mrm"),
+                        MULTI_RECIPIENT_MESSAGE_CONTENT_TYPE,
                     ),
                     (
                         GROUP_SEND_TOKEN_HEADER,

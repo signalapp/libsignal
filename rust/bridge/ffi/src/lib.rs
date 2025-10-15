@@ -81,6 +81,24 @@ pub unsafe extern "C" fn signal_free_bytestring_array(array: BytestringArray) {
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn signal_free_list_of_service_ids(
+    buffer: OwnedBufferOf<libsignal_core::ServiceIdFixedWidthBinaryBytes>,
+) {
+    drop(unsafe { buffer.into_box() })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn signal_free_list_of_mismatched_device_errors(
+    buffer: OwnedBufferOf<FfiMismatchedDevicesError>,
+) {
+    let entries = unsafe { buffer.into_box() };
+    for mut entry in entries {
+        unsafe { entry.free_buffers() };
+    }
+    // The for-in loop already consumed 'entries'; our work is done.
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn signal_error_free(err: *mut SignalFfiError) {
     if !err.is_null() {
         let _boxed_err = unsafe { Box::from_raw(err) };

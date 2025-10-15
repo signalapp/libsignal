@@ -15,6 +15,7 @@ use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use neon::prelude::*;
 use neon::types::JsBigInt;
 use paste::paste;
+use zkgroup::ZkGroupDeserializationFailure;
 
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
@@ -357,6 +358,25 @@ impl SimpleArgTypeInfo for AccountEntropyPool {
         pool.parse().or_else(|e: InvalidAccountEntropyPool| {
             cx.throw_type_error(format!("bad account entropy pool: {e}"))
         })
+    }
+}
+
+impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSendAuthorization {
+    type ArgType = JsValue;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        // If we ever have more than two options, we won't be able to just use null for one of them,
+        // but for now this is convenient.
+        if foreign.is_a::<JsNull, _>(cx) {
+            Ok(Self::Story)
+        } else {
+            let elements = foreign.downcast_or_throw::<JsUint8Array, _>(cx)?;
+            let bytes = elements.as_slice(cx);
+            let token =
+                zkgroup::deserialize(bytes).or_else(|_: ZkGroupDeserializationFailure| {
+                    cx.throw_type_error("bad GroupSendFullToken")
+                })?;
+            Ok(Self::Group(token))
+        }
     }
 }
 
@@ -1195,6 +1215,30 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::ChallengeOption {
 }
 
 impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net_chat::api::ChallengeOption]> {
+    type ResultType = JsArray;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        make_array(cx, self)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::messages::MismatchedDeviceError {
+    type ResultType = JsObject;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let js_account = self.account.convert_into(cx)?;
+        let js_missing_devices = make_array(cx, self.missing_devices.into_iter().map(u32::from))?;
+        let js_extra_devices = make_array(cx, self.extra_devices.into_iter().map(u32::from))?;
+        let js_stale_devices = make_array(cx, self.stale_devices.into_iter().map(u32::from))?;
+
+        let result = JsObject::new(cx);
+        result.set(cx, "account", js_account)?;
+        result.set(cx, "missingDevices", js_missing_devices)?;
+        result.set(cx, "extraDevices", js_extra_devices)?;
+        result.set(cx, "staleDevices", js_stale_devices)?;
+        Ok(result)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for Vec<ServiceId> {
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self)

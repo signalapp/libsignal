@@ -115,7 +115,14 @@ public sealed interface RequestResult<out T, out E : BadRequestError> {
  */
 public interface BadRequestError
 
-internal fun <E : BadRequestError> Throwable.toRequestResult(): RequestResult<Nothing, E> =
+@JvmName("toRequestResultTyped")
+internal inline fun <reified E : BadRequestError> Throwable.toRequestResult(): RequestResult<Nothing, E> =
+  when (this) {
+    is E -> RequestResult.NonSuccess(this)
+    else -> this.toRequestResult() as RequestResult<Nothing, Nothing>
+  }
+
+internal fun Throwable.toRequestResult(): RequestResult<Nothing, Nothing> =
   when (this) {
     is TimeoutException -> RequestResult.RetryableNetworkError(this, null)
     is ConnectedElsewhereException -> RequestResult.RetryableNetworkError(this)

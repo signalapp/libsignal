@@ -1005,6 +1005,32 @@ impl<E: JniError> JniError for ChatRequestError<E> {
     }
 }
 
+impl JniError for libsignal_net_chat::api::messages::MultiRecipientSendFailure {
+    fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
+        let message = self.to_string();
+        match self {
+            Self::Unauthorized => make_single_message_throwable(
+                env,
+                &message,
+                ClassName("org.signal.libsignal.net.RequestUnauthorizedException"),
+            ),
+            Self::MismatchedDevices(mismatched_device_errors) => {
+                let java_error_entries = mismatched_device_errors.convert_into(env)?;
+                let message = message.convert_into(env)?;
+                new_instance(
+                    env,
+                    ClassName("org.signal.libsignal.net.MismatchedDeviceException"),
+                    jni_args!((
+                        message => java.lang.String,
+                        java_error_entries => [org.signal.libsignal.net.MismatchedDeviceException::Entry]
+                    ) -> void),
+                )
+                .map(Into::into)
+            }
+        }
+    }
+}
+
 /// Translates errors into Java exceptions.
 ///
 /// Exceptions thrown in callbacks will be rethrown; all other errors will be mapped to an

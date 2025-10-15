@@ -70,6 +70,8 @@ public enum SignalError: Error {
     case connectedElsewhere(String)
     case keyTransparencyError(String)
     case keyTransparencyVerificationFailed(String)
+    case requestUnauthorized(String)
+    case mismatchedDevices(entries: [MismatchedDeviceEntry], message: String)
 
     case unknown(UInt32, String)
 }
@@ -317,6 +319,16 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.keyTransparencyError(errStr)
     case SignalErrorCodeKeyTransparencyVerificationFailed:
         throw SignalError.keyTransparencyVerificationFailed(errStr)
+    case SignalErrorCodeRequestUnauthorized:
+        throw SignalError.requestUnauthorized(errStr)
+    case SignalErrorCodeMismatchedDevices:
+        var entries = SignalOwnedBufferOfFfiMismatchedDevicesError()
+        try checkError(signal_error_get_mismatched_device_errors(&entries, error))
+        defer { signal_free_list_of_mismatched_device_errors(entries) }
+        throw SignalError.mismatchedDevices(
+            entries: UnsafeBufferPointer(start: entries.base, count: entries.length).map { MismatchedDeviceEntry($0) },
+            message: errStr
+        )
     default:
         throw SignalError.unknown(errType, errStr)
     }

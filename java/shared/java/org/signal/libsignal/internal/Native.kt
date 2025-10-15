@@ -1270,6 +1270,8 @@ internal object Native {
   public external fun UnauthenticatedChatConnection_look_up_username_hash(asyncRuntime: ObjectHandle, chat: ObjectHandle, hash: ByteArray): CompletableFuture<UUID?>
   @JvmStatic
   public external fun UnauthenticatedChatConnection_send(asyncRuntime: ObjectHandle, chat: ObjectHandle, httpRequest: ObjectHandle, timeoutMillis: Int): CompletableFuture<Object>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_send_multi_recipient_message(asyncRuntime: ObjectHandle, chat: ObjectHandle, payload: ByteArray, timestamp: Long, auth: ByteArray?, onlineOnly: Boolean, isUrgent: Boolean): CompletableFuture<Array<Object>>
 
   @JvmStatic @Throws(Exception::class)
   public external fun UnidentifiedSenderMessageContent_Deserialize(data: ByteArray): ObjectHandle

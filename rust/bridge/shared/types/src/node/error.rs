@@ -621,6 +621,48 @@ impl SignalNodeError for std::convert::Infallible {
     }
 }
 
+impl SignalNodeError for libsignal_net_chat::api::messages::MultiRecipientSendFailure {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        cx: &mut C,
+        operation_name: &str,
+    ) -> Handle<'a, JsError> {
+        let msg = self.to_string();
+        match self {
+            Self::Unauthorized => new_js_error(
+                cx,
+                Some("RequestUnauthorized"),
+                &msg,
+                operation_name,
+                no_extra_properties,
+            ),
+            Self::MismatchedDevices(mismatched_device_errors) => {
+                new_js_error(cx, Some("MismatchedDevices"), &msg, operation_name, |cx| {
+                    let errors_module: Handle<JsObject> = match ERRORS_MODULE.get(cx) {
+                        Some(root) => root.to_inner(cx),
+                        None => cx.throw_error("registerErrors not called")?,
+                    };
+                    // We want to use the actual class so it can have a real ServiceId object as a
+                    // field, which isn't currently accessible to the Rust side of the bridge.
+                    let mismatched_device_entry_cls: Handle<JsFunction> =
+                        errors_module.get(cx, "MismatchedDevicesEntry")?;
+                    let mismatched_device_entry_array = cx.empty_array();
+                    for (error, i) in mismatched_device_errors.into_iter().zip(0..) {
+                        let js_entry = error.convert_into(cx)?;
+                        let js_entry_with_strong_type =
+                            mismatched_device_entry_cls.construct(cx, [js_entry.upcast()])?;
+                        mismatched_device_entry_array.set(cx, i, js_entry_with_strong_type)?;
+                    }
+
+                    let props = JsObject::new(cx);
+                    props.set(cx, "entries", mismatched_device_entry_array)?;
+                    Ok(props.upcast())
+                })
+            }
+        }
+    }
+}
+
 mod registration {
     use libsignal_net_chat::api::registration::{
         CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationLock,

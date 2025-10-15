@@ -4,9 +4,12 @@
 //
 
 use async_trait::async_trait;
+use itertools::Itertools as _;
 use libsignal_core::{DeviceId, ServiceId};
+use libsignal_net::infra::errors::LogSafeDisplay;
 
 use super::RequestError;
+use crate::logging::Redact;
 
 #[derive(Debug)]
 pub struct MultiRecipientMessageResponse {
@@ -44,3 +47,24 @@ pub trait UnauthenticatedChatApi {
         urgent: bool,
     ) -> Result<MultiRecipientMessageResponse, RequestError<MultiRecipientSendFailure>>;
 }
+
+impl std::fmt::Display for MultiRecipientSendFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MultiRecipientSendFailure::Unauthorized => {
+                f.write_str("Invalid authorization for send")
+            }
+            MultiRecipientSendFailure::MismatchedDevices(mismatched_device_errors) => {
+                write!(
+                    f,
+                    "mismatched devices for {}",
+                    mismatched_device_errors
+                        .iter()
+                        .map(|entry| Redact(&entry.account))
+                        .join(", ")
+                )
+            }
+        }
+    }
+}
+impl LogSafeDisplay for MultiRecipientSendFailure {}

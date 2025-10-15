@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { ProtocolAddress } from './Address.js';
+import { ProtocolAddress, ServiceId } from './Address.js';
 import Native from '../Native.js';
 
 export enum ErrorCode {
@@ -65,6 +65,49 @@ export enum ErrorCode {
   KeyTransparencyVerificationFailed,
 
   IncrementalMacVerificationFailed,
+
+  RequestUnauthorized,
+  MismatchedDevices,
+}
+
+/** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
+type ServiceIdFixedWidthBinary = Uint8Array;
+
+/**
+ * A failure sending to a recipient on account of not being up to date on their devices.
+ *
+ * An entry in {@link MismatchedDevicesError}. Each entry represents a recipient that has either
+ * added, removed, or relinked some devices in their account (potentially including their primary
+ * device), as represented by the {@link MismatchedDevicesEntry#missingDevices},
+ * {@link MismatchedDevicesEntry#extraDevices}, and {@link MismatchedDevicesEntry#staleDevices}
+ * arrays, respectively. Handling the exception involves removing the "extra" devices and
+ * establishing new sessions for the "missing" and "stale" devices.
+ */
+export class MismatchedDevicesEntry {
+  account: ServiceId;
+  missingDevices: number[];
+  extraDevices: number[];
+  staleDevices: number[];
+
+  constructor({
+    account,
+    missingDevices,
+    extraDevices,
+    staleDevices,
+  }: {
+    account: ServiceId | ServiceIdFixedWidthBinary;
+    missingDevices?: number[];
+    extraDevices?: number[];
+    staleDevices?: number[];
+  }) {
+    this.account =
+      account instanceof ServiceId
+        ? account
+        : ServiceId.parseFromServiceIdFixedWidthBinary(account);
+    this.missingDevices = missingDevices ?? [];
+    this.extraDevices = extraDevices ?? [];
+    this.staleDevices = staleDevices ?? [];
+  }
 }
 
 export class LibSignalErrorBase extends Error {
@@ -325,6 +368,15 @@ export type IncrementalMacVerificationFailed = LibSignalErrorCommon & {
   code: ErrorCode.IncrementalMacVerificationFailed;
 };
 
+export type RequestUnauthorizedError = LibSignalErrorCommon & {
+  code: ErrorCode.RequestUnauthorized;
+};
+
+export type MismatchedDevicesError = LibSignalErrorCommon & {
+  code: ErrorCode.MismatchedDevices;
+  readonly entries: MismatchedDevicesEntry[];
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -371,4 +423,6 @@ export type LibSignalError =
   | CancellationError
   | KeyTransparencyError
   | KeyTransparencyVerificationFailed
-  | IncrementalMacVerificationFailed;
+  | IncrementalMacVerificationFailed
+  | RequestUnauthorizedError
+  | MismatchedDevicesError;

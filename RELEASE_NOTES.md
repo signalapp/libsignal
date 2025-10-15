@@ -8,3 +8,5 @@ v0.85.0
     - Rust: Incremental::validating now specifically takes an iterator over borrowed arrays (or GenericArrays)
 
 - Backups: The consolidated away wifiAutoDownloadSettings is now treated as unknown.
+
+- Typed APIs: `UnauthMessagesService.sendMultiRecipientMessage` has been added to libsignal's app layer.

@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use itertools::Itertools as _;
 use jni::JNIEnv;
-use jni::objects::{AutoLocal, JByteBuffer, JMap, JObjectArray};
+use jni::objects::{AutoLocal, JByteBuffer, JIntArray, JMap, JObjectArray};
 use jni::sys::{JNI_FALSE, JNI_TRUE, jbyte};
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_core::try_scoped;
@@ -313,6 +313,30 @@ impl<'a> SimpleArgTypeInfo<'a> for AccountEntropyPool {
         pool.parse().map_err(|e: InvalidAccountEntropyPool| {
             BridgeLayerError::BadArgument(format!("bad account entropy pool: {e}"))
         })
+    }
+}
+
+impl<'a> SimpleArgTypeInfo<'a>
+    for libsignal_net_chat::api::messages::MultiRecipientSendAuthorization
+{
+    type ArgType = JByteArray<'a>;
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        // If we ever have more than two options, we won't be able to just use null for one of them,
+        // but for now this is convenient.
+        if foreign.is_null() {
+            Ok(Self::Story)
+        } else {
+            let mut elements_guard = <&[u8]>::borrow(env, foreign)?;
+            let bytes = <&[u8]>::load_from(&mut elements_guard);
+            let token =
+                zkgroup::deserialize(bytes).map_err(|_: ZkGroupDeserializationFailure| {
+                    BridgeLayerError::BadArgument("bad GroupSendFullToken".into())
+                })?;
+            Ok(Self::Group(token))
+        }
     }
 }
 
@@ -1676,6 +1700,80 @@ impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net_chat::api::ChallengeOption]> 
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for Vec<ServiceId> {
+    type ResultType = JObjectArray<'a>;
+
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        make_object_array(env, jni_signature!([byte]), self)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for &'_ libsignal_net_chat::api::messages::MismatchedDeviceError {
+    type ResultType = JObject<'a>;
+
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let libsignal_net_chat::api::messages::MismatchedDeviceError {
+            account,
+            missing_devices,
+            extra_devices,
+            stale_devices,
+        } = self;
+
+        fn convert_device_list<'a>(
+            env: &mut JNIEnv<'a>,
+            input: &[DeviceId],
+        ) -> Result<JIntArray<'a>, BridgeLayerError> {
+            let len = input.len().try_into().map_err(|_| {
+                // This is not *really* the correct error, it will produce an
+                // IllegalArgumentException even though we're making a result. But also we shouldn't
+                // in practice try to return arrays of 2 billion IDs.
+                BridgeLayerError::IntegerOverflow(format!("{}_usize to i32", input.len()))
+            })?;
+            let array = env
+                .new_int_array(len)
+                .check_exceptions(env, "MismatchedDeviceError::convert_into")?;
+            let mut elems = unsafe { env.get_array_elements(&array, ReleaseMode::CopyBack) }
+                .check_exceptions(env, "MismatchedDeviceError::convert_into")?;
+
+            for (elem, id) in elems.iter_mut().zip(input) {
+                *elem = u8::from(*id).into();
+            }
+
+            // `elems` borrows from `array`, so we have to drop it before we return.
+            drop(elems);
+            Ok(array)
+        }
+
+        let account_bytes = account.convert_into(env)?;
+        let missing_devices = convert_device_list(env, missing_devices)?;
+        let extra_devices = convert_device_list(env, extra_devices)?;
+        let stale_devices = convert_device_list(env, stale_devices)?;
+
+        new_instance(
+            env,
+            ClassName("org.signal.libsignal.net.MismatchedDeviceException$Entry"),
+            jni_args!((
+                account_bytes => [byte],
+                missing_devices => [int],
+                extra_devices => [int],
+                stale_devices => [int]
+            ) -> void),
+        )
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for &'_ [libsignal_net_chat::api::messages::MismatchedDeviceError] {
+    type ResultType = JObjectArray<'a>;
+
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        make_object_array(
+            env,
+            jni_class_name!(org.signal.libsignal.net.MismatchedDeviceException::Entry),
+            self,
+        )
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::registration::RegisterResponseBadge {
     type ResultType = JObject<'a>;
 
@@ -2061,6 +2159,9 @@ macro_rules! jni_arg_type {
     (AccountEntropyPool) => {
         ::jni::objects::JString<'local>
     };
+    (MultiRecipientSendAuthorization) => {
+        $crate::jni::Nullable<::jni::objects::JByteArray<'local>>
+    };
     (ServiceIdSequence<'_>) => {
         ::jni::objects::JByteArray<'local>
     };
@@ -2245,6 +2346,9 @@ macro_rules! jni_result_type {
     };
     (CiphertextMessage) => {
         jni::JavaCiphertextMessage<'local>
+    };
+    (Vec<ServiceId>) => {
+        ::jni::objects::JObjectArray<'local>
     };
     (Box<[ChallengeOption] >) => {
         ::jni::objects::JObjectArray<'local>

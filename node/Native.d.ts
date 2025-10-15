@@ -712,6 +712,7 @@ export function UnauthenticatedChatConnection_info(chat: Wrapper<Unauthenticated
 export function UnauthenticatedChatConnection_init_listener(chat: Wrapper<UnauthenticatedChatConnection>, listener: ChatListener): void;
 export function UnauthenticatedChatConnection_look_up_username_hash(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, hash: Uint8Array): CancellablePromise<Uuid | null>;
 export function UnauthenticatedChatConnection_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ChatResponse>;
+export function UnauthenticatedChatConnection_send_multi_recipient_message(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, payload: Uint8Array, timestamp: Timestamp, auth: Uint8Array|null, onlineOnly: boolean, isUrgent: boolean): CancellablePromise<Uint8Array[]>;
 export function UnidentifiedSenderMessageContent_Deserialize(data: Uint8Array): UnidentifiedSenderMessageContent;
 export function UnidentifiedSenderMessageContent_GetContentHint(m: Wrapper<UnidentifiedSenderMessageContent>): number;
 export function UnidentifiedSenderMessageContent_GetContents(obj: Wrapper<UnidentifiedSenderMessageContent>): Uint8Array;

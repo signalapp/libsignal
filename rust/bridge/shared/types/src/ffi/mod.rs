@@ -85,7 +85,7 @@ impl<T> OwnedBufferOf<T> {
     /// Converts back into a `Box`ed slice.
     ///
     /// Callers of this function must ensure that
-    /// - the `OwnedBufferOf` was originally created from `Box`
+    /// - the `OwnedBufferOf` was originally created from `Box` (or `default()`)
     /// - any C code operating on the buffer left all its elements in a valid
     ///   state.
     pub unsafe fn into_box(self) -> Box<[T]> {
@@ -95,6 +95,15 @@ impl<T> OwnedBufferOf<T> {
         }
 
         unsafe { Box::from_raw(std::ptr::slice_from_raw_parts_mut(base, length)) }
+    }
+}
+
+impl<T> Default for OwnedBufferOf<T> {
+    fn default() -> Self {
+        Self {
+            base: std::ptr::null_mut(),
+            length: 0,
+        }
     }
 }
 
@@ -275,6 +284,22 @@ pub struct FfiSignedPublicPreKey {
 pub enum FfiPublicKeyType {
     ECC,
     Kyber,
+}
+
+#[repr(C)]
+pub struct FfiMismatchedDevicesError {
+    pub account: ServiceIdFixedWidthBinaryBytes,
+    pub missing_devices: OwnedBufferOf<u32>,
+    pub extra_devices: OwnedBufferOf<u32>,
+    pub stale_devices: OwnedBufferOf<u32>,
+}
+
+impl FfiMismatchedDevicesError {
+    pub unsafe fn free_buffers(&mut self) {
+        _ = unsafe { std::mem::take(&mut self.missing_devices).into_box() };
+        _ = unsafe { std::mem::take(&mut self.extra_devices).into_box() };
+        _ = unsafe { std::mem::take(&mut self.stale_devices).into_box() };
+    }
 }
 
 #[cfg_attr(doc, visibility::make(pub))]

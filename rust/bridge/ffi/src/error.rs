@@ -13,6 +13,7 @@ use libsignal_bridge::{IllegalArgumentError, ffi_arg_type, ffi_result_type};
 use libsignal_bridge_macros::bridge_fn;
 use libsignal_core::ProtocolAddress;
 use libsignal_net_chat::api::ChallengeOption;
+use libsignal_net_chat::api::messages::MismatchedDeviceError;
 
 // Not using bridge_fn because it also handles `NULL`.
 #[unsafe(no_mangle)]
@@ -157,4 +158,15 @@ fn Error_GetRateLimitChallenge(
             ))
         })?;
     Ok((token.clone(), options[..].into()))
+}
+
+#[bridge_fn(jni = false, node = false)]
+fn Error_GetMismatchedDeviceErrors(
+    err: &SignalFfiError,
+) -> Result<&[MismatchedDeviceError], IllegalArgumentError> {
+    err.provide_mismatched_device_errors().map_err(|_| {
+        IllegalArgumentError::new(format!(
+            "cannot get mismatched device errors from error ({err})"
+        ))
+    })
 }

@@ -14,6 +14,7 @@ use libsignal_account_keys::Error as PinError;
 use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net_chat::api::RateLimitChallenge;
 use libsignal_net_chat::api::keytrans::Error as KeyTransError;
+use libsignal_net_chat::api::messages::MismatchedDeviceError;
 use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -126,6 +127,9 @@ pub enum SignalErrorCode {
 
     KeyTransparencyError = 210,
     KeyTransparencyVerificationFailed = 211,
+
+    RequestUnauthorized = 220,
+    MismatchedDevices = 221,
 }
 
 pub trait UpcastAsAny {
@@ -186,6 +190,9 @@ pub trait FfiError: UpcastAsAny + fmt::Debug + Send + 'static {
         Err(WrongErrorKind)
     }
     fn provide_fingerprint_versions(&self) -> Result<FingerprintVersions, WrongErrorKind> {
+        Err(WrongErrorKind)
+    }
+    fn provide_mismatched_device_errors(&self) -> Result<&[MismatchedDeviceError], WrongErrorKind> {
         Err(WrongErrorKind)
     }
 }
@@ -709,6 +716,26 @@ where
             Self::RetryLater(retry_later) => retry_later.into(),
             Self::Challenge(challenge) => challenge.into(),
             Self::Disconnected(d) => d.into_ffi_error().into(),
+        }
+    }
+}
+
+impl FfiError for libsignal_net_chat::api::messages::MultiRecipientSendFailure {
+    fn describe(&self) -> Cow<'_, str> {
+        self.to_string().into()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::Unauthorized => SignalErrorCode::RequestUnauthorized,
+            Self::MismatchedDevices(_) => SignalErrorCode::MismatchedDevices,
+        }
+    }
+
+    fn provide_mismatched_device_errors(&self) -> Result<&[MismatchedDeviceError], WrongErrorKind> {
+        match self {
+            Self::Unauthorized => Err(WrongErrorKind),
+            Self::MismatchedDevices(mismatched_device_errors) => Ok(mismatched_device_errors),
         }
     }
 }

@@ -255,6 +255,8 @@ typedef enum {
   SignalErrorCodeRegistrationLock = 201,
   SignalErrorCodeKeyTransparencyError = 210,
   SignalErrorCodeKeyTransparencyVerificationFailed = 211,
+  SignalErrorCodeRequestUnauthorized = 220,
+  SignalErrorCodeMismatchedDevices = 221,
 } SignalErrorCode;
 
 enum SignalSvr2CredentialsResult {
@@ -897,6 +899,35 @@ typedef struct {
   uint32_t second;
 } SignalPairOfc_charu32;
 
+/**
+ * A representation of a array allocated on the Rust heap for use in C code.
+ */
+typedef struct {
+  uint32_t *base;
+  /**
+   * The number of elements in the buffer (not necessarily the number of bytes).
+   */
+  size_t length;
+} SignalOwnedBufferOfu32;
+
+typedef struct {
+  SignalServiceIdFixedWidthBinaryBytes account;
+  SignalOwnedBufferOfu32 missing_devices;
+  SignalOwnedBufferOfu32 extra_devices;
+  SignalOwnedBufferOfu32 stale_devices;
+} SignalFfiMismatchedDevicesError;
+
+/**
+ * A representation of a array allocated on the Rust heap for use in C code.
+ */
+typedef struct {
+  SignalFfiMismatchedDevicesError *base;
+  /**
+   * The number of elements in the buffer (not necessarily the number of bytes).
+   */
+  size_t length;
+} SignalOwnedBufferOfFfiMismatchedDevicesError;
+
 typedef struct {
   const char *first;
   SignalOwnedBuffer second;
@@ -940,6 +971,17 @@ typedef struct {
    */
   size_t length;
 } SignalOwnedBufferOfFfiRegisterResponseBadge;
+
+/**
+ * A representation of a array allocated on the Rust heap for use in C code.
+ */
+typedef struct {
+  SignalServiceIdFixedWidthBinaryBytes *base;
+  /**
+   * The number of elements in the buffer (not necessarily the number of bytes).
+   */
+  size_t length;
+} SignalOwnedBufferOfServiceIdFixedWidthBinaryBytes;
 
 typedef struct {
   SignalSenderKeyRecord *raw;
@@ -1418,6 +1460,21 @@ typedef struct {
   SignalCancellationId cancellation_id;
 } SignalCPromiseOptionalUuid;
 
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalOwnedBufferOfServiceIdFixedWidthBinaryBytes *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseOwnedBufferOfServiceIdFixedWidthBinaryBytes;
+
 typedef struct {
   SignalValidatingMac *raw;
 } SignalMutPointerValidatingMac;
@@ -1704,6 +1761,8 @@ SignalFfiError *signal_error_get_invalid_protocol_address(SignalPairOfc_charu32 
 
 SignalFfiError *signal_error_get_message(const char **out, SignalUnwindSafeArgSignalFfiError err);
 
+SignalFfiError *signal_error_get_mismatched_device_errors(SignalOwnedBufferOfFfiMismatchedDevicesError *out, SignalUnwindSafeArgSignalFfiError err);
+
 SignalFfiError *signal_error_get_our_fingerprint_version(uint32_t *out, SignalUnwindSafeArgSignalFfiError err);
 
 SignalFfiError *signal_error_get_rate_limit_challenge(SignalPairOfc_charOwnedBufferOfc_uchar *out, SignalUnwindSafeArgSignalFfiError err);
@@ -1746,7 +1805,11 @@ void signal_free_buffer(const unsigned char *buf, size_t buf_len);
 
 void signal_free_bytestring_array(SignalBytestringArray array);
 
+void signal_free_list_of_mismatched_device_errors(SignalOwnedBufferOfFfiMismatchedDevicesError buffer);
+
 void signal_free_list_of_register_response_badges(SignalOwnedBufferOfFfiRegisterResponseBadge buffer);
+
+void signal_free_list_of_service_ids(SignalOwnedBufferOfServiceIdFixedWidthBinaryBytes buffer);
 
 void signal_free_list_of_strings(SignalOwnedBufferOfCStringPtr buffer);
 
@@ -2517,6 +2580,8 @@ SignalFfiError *signal_unauthenticated_chat_connection_init_listener(SignalConst
 SignalFfiError *signal_unauthenticated_chat_connection_look_up_username_hash(SignalCPromiseOptionalUuid *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, SignalBorrowedBuffer hash);
 
 SignalFfiError *signal_unauthenticated_chat_connection_send(SignalCPromiseFfiChatResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, SignalConstPointerHttpRequest http_request, uint32_t timeout_millis);
+
+SignalFfiError *signal_unauthenticated_chat_connection_send_multi_recipient_message(SignalCPromiseOwnedBufferOfServiceIdFixedWidthBinaryBytes *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, SignalBorrowedBuffer payload, uint64_t timestamp, SignalBorrowedBuffer auth, bool online_only, bool is_urgent);
 
 SignalFfiError *signal_unidentified_sender_message_content_deserialize(SignalMutPointerUnidentifiedSenderMessageContent *out, SignalBorrowedBuffer data);
 
