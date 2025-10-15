@@ -1684,11 +1684,9 @@ impl<'a> ResultTypeInfo<'a> for &'_ [libsignal_net_chat::api::ChallengeOption] {
     type ResultType = JObjectArray<'a>;
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        make_object_array(
-            env,
-            jni_class_name!(org.signal.libsignal.net.ChallengeOption),
-            self.iter().copied(),
-        )
+        let element_class = find_class(env, ClassName("org.signal.libsignal.net.ChallengeOption"))
+            .check_exceptions(env, "ChallengeOption::convert_into")?;
+        make_object_array(env, element_class, self.iter().copied())
     }
 }
 
@@ -1704,7 +1702,9 @@ impl<'a> ResultTypeInfo<'a> for Vec<ServiceId> {
     type ResultType = JObjectArray<'a>;
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        make_object_array(env, jni_signature!([byte]), self)
+        let element_class = find_primitive_array_class(env, jni_signature!([byte]))
+            .check_exceptions(env, "Vec<ServiceId>::convert_into")?;
+        make_object_array(env, element_class, self)
     }
 }
 
@@ -1766,11 +1766,12 @@ impl<'a> ResultTypeInfo<'a> for &'_ [libsignal_net_chat::api::messages::Mismatch
     type ResultType = JObjectArray<'a>;
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        make_object_array(
+        let element_class = find_class(
             env,
-            jni_class_name!(org.signal.libsignal.net.MismatchedDeviceException::Entry),
-            self,
+            ClassName("org.signal.libsignal.net.MismatchedDeviceException$Entry"),
         )
+        .check_exceptions(env, "MismatchedDeviceError::convert_into")?;
+        make_object_array(env, element_class, self)
     }
 }
 
@@ -1813,11 +1814,12 @@ impl<'a> ResultTypeInfo<'a>
     type ResultType = JObjectArray<'a>;
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        make_object_array(
+        let element_class = find_class(
             env,
-            jni_class_name!(org.signal.libsignal.net.RegisterAccountResponse::BadgeEntitlement),
-            self,
+            ClassName("org.signal.libsignal.net.RegisterAccountResponse$BadgeEntitlement"),
         )
+        .check_exceptions(env, "RegisterResponseBadge::convert_into")?;
+        make_object_array(env, element_class, self)
     }
 }
 
@@ -1855,15 +1857,9 @@ impl<'a> ResultTypeInfo<'a>
 }
 
 /// Converts each element of `it` to a Java object, storing the result in an array.
-///
-/// `element_type_signature` should use [`jni_class_name`] if it's a plain class and
-/// [`jni_signature`] if it's an array (according to the official docs for the JNI [FindClass][]
-/// operation).
-///
-/// [FindClass]: https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#FindClass
 fn make_object_array<'a, It>(
     env: &mut JNIEnv<'a>,
-    element_type_signature: &str,
+    element_type: JClass<'a>,
     it: It,
 ) -> Result<JObjectArray<'a>, BridgeLayerError>
 where
@@ -1882,7 +1878,7 @@ where
                 // in practice try to return arrays of 2 billion objects.
                 BridgeLayerError::IntegerOverflow(format!("{len}_usize to i32"))
             })?,
-            element_type_signature,
+            element_type,
             JavaObject::null(),
         )
         .check_exceptions(env, "make_object_array")?;
@@ -1903,14 +1899,18 @@ where
 impl<'a> ResultTypeInfo<'a> for Box<[String]> {
     type ResultType = JObjectArray<'a>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        make_object_array(env, jni_class_name!(java.lang.String), self)
+        let element_class = find_class(env, ClassName("java.lang.String"))
+            .check_exceptions(env, "Box<[String]>::convert_into")?;
+        make_object_array(env, element_class, self)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for Box<[Vec<u8>]> {
     type ResultType = JObjectArray<'a>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        make_object_array(env, jni_signature!([byte]), self)
+        let element_class = find_primitive_array_class(env, jni_signature!([byte]))
+            .check_exceptions(env, "Box<[Vec<u8>]>::convert_into")?;
+        make_object_array(env, element_class, self)
     }
 }
 
@@ -1923,9 +1923,11 @@ impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
             found_unknown_fields,
         } = self;
 
+        let element_class = find_class(env, ClassName("java.lang.String"))
+            .check_exceptions(env, "MessageBackupValidationOutcome::convert_into")?;
         let unknown_fields = make_object_array(
             env,
-            jni_class_name!(java.lang.String),
+            element_class,
             found_unknown_fields.into_iter().map(|f| f.to_string()),
         )?;
         let error_message = error_message.convert_into(env)?;
