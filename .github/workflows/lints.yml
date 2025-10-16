@@ -19,7 +19,7 @@ jobs:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       with:
         submodules: recursive
-    - run: sudo apt-get update && sudo apt-get install python3-flake8 python3-mypy
+    - run: sudo apt-get update && sudo apt-get install python3-flake8 python3-flake8-comprehensions python3-flake8-deprecated python3-flake8-import-order python3-flake8-quotes python3-mypy
     - run: |
         shopt -s globstar
         shellcheck -- **/*.sh bin/verify_duplicate_crates bin/adb-run-test

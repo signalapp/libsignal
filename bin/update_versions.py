@@ -9,10 +9,10 @@
 
 import collections
 import fileinput
+import os
+import re
 import subprocess
 import sys
-import re
-import os
 
 
 def read_version(file: str, pattern: re.Pattern[str]) -> str:
@@ -21,13 +21,13 @@ def read_version(file: str, pattern: re.Pattern[str]) -> str:
             match = pattern.match(line)
             if match:
                 return match.group(2)
-    raise Exception(f"Could not determine version from {file}")
+    raise Exception(f'Could not determine version from {file}')
 
 
 def update_version(file: str, pattern: re.Pattern[str], new_version: str) -> None:
     with fileinput.input(files=(file,), inplace=True) as f:
         for line in f:
-            print(pattern.sub(f"\\g<1>{new_version}\\g<3>", line, count=1), end='')
+            print(pattern.sub(f'\\g<1>{new_version}\\g<3>', line, count=1), end='')
 
 
 # Note that all of these capture three groups; update_version() relies on that.
@@ -74,11 +74,11 @@ def main() -> int:
         found_versions[version].append(path)
 
     if len(found_versions) != 1:
-        print("ERROR: found inconsistent versions:")
+        print('ERROR: found inconsistent versions:')
         for (version, files) in sorted(found_versions.items()):
-            print(f"{version}:")
+            print(f'{version}:')
             for file in files:
-                print(f"  {file}")
+                print(f'  {file}')
 
         return 1
 

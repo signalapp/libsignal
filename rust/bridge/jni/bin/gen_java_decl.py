@@ -8,10 +8,9 @@
 import collections
 import difflib
 import os
-import subprocess
 import re
+import subprocess
 import sys
-
 from typing import Iterable, Iterator, Tuple
 
 Args = collections.namedtuple('Args', 'verify')
@@ -36,17 +35,17 @@ def parse_args() -> Args:
 
 
 IGNORE_THIS_WARNING = re.compile(
-    "("
+    '('
     r"WARN: Can't find .*\. This usually means that this type was incompatible or not found\.|"
-    r"WARN: Missing `\[defines\]` entry for `feature = \".*\"` in cbindgen config\.|"
-    r"WARN: Missing `\[defines\]` entry for `target_os = \"android\"` in cbindgen config\.|"
-    r"WARN: Missing `\[defines\]` entry for `ios_device_as_detected_in_build_rs` in cbindgen config\.|"
-    r"WARN: Skip libsignal-bridge(-testing)?::.+ - \(not `(pub|no_mangle)`\)\.|"
-    r"WARN: Couldn't find path for Array\(Path\(GenericPath \{ .+ \}\), Name\(\"LEN\"\)\), skipping associated constants|"
-    r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"JavaCompletableFuture\" }.+|"
-    r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"Throwing\" }.+|"
-    r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"Nullable\" }.+"
-    ")")
+    r'WARN: Missing `\[defines\]` entry for `feature = ".*"` in cbindgen config\.|'
+    r'WARN: Missing `\[defines\]` entry for `target_os = "android"` in cbindgen config\.|'
+    r'WARN: Missing `\[defines\]` entry for `ios_device_as_detected_in_build_rs` in cbindgen config\.|'
+    r'WARN: Skip libsignal-bridge(-testing)?::.+ - \(not `(pub|no_mangle)`\)\.|'
+    r"WARN: Couldn't find path for Array\(Path\(GenericPath \{ .+ \}\), Name\(\'LEN\'\)\), skipping associated constants|"
+    r'WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: "JavaCompletableFuture" }.+|'
+    r'WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: "Throwing" }.+|'
+    r'WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: "Nullable" }.+'
+    ')')
 
 
 def run_cbindgen(cwd: str) -> str:
@@ -60,7 +59,7 @@ def run_cbindgen(cwd: str) -> str:
     unknown_warning = False
 
     for l in stderr.split('\n'):
-        if l == "":
+        if l == '':
             continue
 
         if IGNORE_THIS_WARNING.match(l):
@@ -70,32 +69,32 @@ def run_cbindgen(cwd: str) -> str:
         unknown_warning = True
 
     if unknown_warning:
-        raise Exception("cbindgen produced unknown warning")
+        raise Exception('cbindgen produced unknown warning')
 
     return stdout
 
 
 def translate_to_java(typ: str) -> Tuple[str, bool]:
     type_map = {
-        "void": "Unit",
-        "ObjectHandle": "ObjectHandle",
-        "Nullable<ObjectHandle>": "ObjectHandle",
-        "jint": "Int",
-        "jlong": "Long",
-        "jboolean": "Boolean",
-        "JObject": "Object",
-        "JClass": "Class<*>",
-        "JString": "String",
-        "JByteArray": "ByteArray",
-        "JLongArray": "LongArray",
-        "JObjectArray": "Array<Object>",
-        "JavaArrayOfByteArray": "Array<ByteArray>",
-        "JavaByteBufferArray": "Array<ByteBuffer>",
-        "JavaCompletableFuture": "CompletableFuture<Void?>",
-        "JavaCompletableFuture<Throwing>": "CompletableFuture<Void?>",
-        "JavaMap": "Map<*, *>",
-        "JavaPair": "Pair<*, *>",
-        "JavaSignedPublicPreKey": "SignedPublicPreKey<*>",
+        'void': 'Unit',
+        'ObjectHandle': 'ObjectHandle',
+        'Nullable<ObjectHandle>': 'ObjectHandle',
+        'jint': 'Int',
+        'jlong': 'Long',
+        'jboolean': 'Boolean',
+        'JObject': 'Object',
+        'JClass': 'Class<*>',
+        'JString': 'String',
+        'JByteArray': 'ByteArray',
+        'JLongArray': 'LongArray',
+        'JObjectArray': 'Array<Object>',
+        'JavaArrayOfByteArray': 'Array<ByteArray>',
+        'JavaByteBufferArray': 'Array<ByteBuffer>',
+        'JavaCompletableFuture': 'CompletableFuture<Void?>',
+        'JavaCompletableFuture<Throwing>': 'CompletableFuture<Void?>',
+        'JavaMap': 'Map<*, *>',
+        'JavaPair': 'Pair<*, *>',
+        'JavaSignedPublicPreKey': 'SignedPublicPreKey<*>',
     }
 
     if typ in type_map:
@@ -144,13 +143,13 @@ def parse_decls(cbindgen_output: str) -> Iterator[str]:
 
         match = JAVA_DECL.match(line)
         if match is None:
-            raise Exception("Could not understand", line)
+            raise Exception('Could not understand', line)
 
         (ret_type, method_name, this_type, args) = match.groups()
 
         # Add newlines between groups of functions for readability
         if cur_type is None or this_type != cur_type:
-            yield ""
+            yield ''
             cur_type = this_type
 
         java_fn_name = method_name.replace('_1', '_')
@@ -163,16 +162,16 @@ def parse_decls(cbindgen_output: str) -> Iterator[str]:
                 (java_arg_type, _is_throwing) = translate_to_java(arg_type)
                 java_args.append('%s: %s' % (arg_name, java_arg_type))
 
-        yield ("  @JvmStatic%s\n  public external fun %s(%s): %s" % (
-            " @Throws(Exception::class)" if is_throwing else "",
+        yield ('  @JvmStatic%s\n  public external fun %s(%s): %s' % (
+            ' @Throws(Exception::class)' if is_throwing else '',
             java_fn_name,
-            ", ".join(java_args),
+            ', '.join(java_args),
             java_ret_type))
 
 
 def expand_template(template_file: str, decls: Iterable[str]) -> str:
-    with open(template_file, "r") as f:
-        contents = f.read().replace('\n  // INSERT DECLS HERE', "\n".join(decls))
+    with open(template_file, 'r') as f:
+        contents = f.read().replace('\n  // INSERT DECLS HERE', '\n'.join(decls))
     return contents
 
 
@@ -184,7 +183,7 @@ def verify_contents(expected_output_file: str, expected_contents: str) -> None:
     if first_line:
         sys.stdout.write(first_line)
         sys.stdout.writelines(diff)
-        sys.exit("error: %s not up to date; re-run %s!" % (os.path.basename(expected_output_file), sys.argv[0]))
+        sys.exit('error: %s not up to date; re-run %s!' % (os.path.basename(expected_output_file), sys.argv[0]))
 
 
 def convert_to_java(rust_crate_dir: str, in_path: str, out_path: str, verify: bool) -> None:
@@ -223,5 +222,5 @@ def main() -> None:
     )
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
