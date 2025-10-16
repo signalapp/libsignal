@@ -1129,6 +1129,31 @@ pub fn check_jobject_type(
     Ok(())
 }
 
+pub fn map_native_handle_if_matching_jobject<'a, T: BridgeHandle, U>(
+    env: &mut JNIEnv,
+    foreign: &JObject<'a>,
+    class_name: ClassName<'static>,
+    make_result: impl FnOnce(&'a T) -> U,
+) -> Result<Option<U>, BridgeLayerError> {
+    let cls = find_class(env, class_name).check_exceptions(env, class_name.0)?;
+    if env
+        .is_instance_of(foreign, cls)
+        .check_exceptions(env, class_name.0)?
+    {
+        let handle: jlong = call_method_checked(
+            env,
+            foreign,
+            "unsafeNativeHandleWithoutGuard",
+            jni_args!(() -> long),
+        )?;
+        Ok(Some(make_result(unsafe {
+            T::native_handle_cast(handle)?.as_ref()
+        })))
+    } else {
+        Ok(None)
+    }
+}
+
 /// Wraps [`JNIEnv::with_local_frame`] to check exceptions thrown by `with_local_frame` itself.
 pub fn with_local_frame<T, E: From<BridgeLayerError>>(
     env: &mut JNIEnv<'_>,
