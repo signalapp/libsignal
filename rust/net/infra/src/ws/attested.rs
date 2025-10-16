@@ -19,6 +19,14 @@ use crate::ws::error::{ProtocolError, SpaceError, UnexpectedCloseError};
 use crate::ws::{NextOrClose, TextOrBinary, WebSocketError, WebSocketStreamLike};
 
 /// Encrypted connection to an attested host.
+///
+/// An established websocket connection to server whose message contents are
+/// encrypted via Noise. The actual implementation starts a background task
+/// to handle communication that it communicates with via [`mpsc`] channels.
+///
+/// Since the actual protocol used to communicate with attested hosts is
+/// request-reply oriented, all the async methods on this class can take a
+/// `&mut Self`.
 #[derive(Debug)]
 pub struct AttestedConnection {
     ws_client: WsClient,
@@ -140,6 +148,13 @@ impl AttestedConnection {
     }
 }
 
+/// Communicates with a [`super::Connection`] running on a background task.
+///
+/// This type does *not* implement [`futures_util::Sink`] or
+/// [`futures_util::Stream`] because the former would require using
+/// [`tokio_util::sync::PollSender`] which adds an extra layer of dynamic
+/// dispatch, and breaking symmetry by implementing the latter doesn't seem
+/// worth it.
 #[derive(Debug)]
 struct WsClient {
     outgoing_tx: mpsc::Sender<(TextOrBinary, oneshot::Sender<Result<(), SendError>>)>,

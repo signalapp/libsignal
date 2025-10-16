@@ -3,6 +3,80 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+//! Provides traits and types that collectively implement the "route" abstraction.
+//!
+//! There are a couple guiding principles for the abstractions in this module
+//! and the "route-based" parts of the crate in general:
+//!
+//! 1. types are used to distinguish important properties, like whether a value
+//!    can contain unresolved hostnames or not;
+//! 2. types describing connection parameters are separated from the code that
+//!    acts on them to establish connections;
+//! 3. types and traits are generic to improve flexibility and to allow
+//!    replacing dependencies for unit tests;
+//! 4. in-progress operations, like establishing connections, are represented
+//!    as [`Future`]s that resolve to resource values (or errors).
+//!
+//! # "Routes"
+//!
+//! For the purposes of this module and the parent crate, a "route" describes
+//! how to connect to a remote resource. The route types, like [`TcpRoute`],
+//! [`HttpsTlsRoute`], and [`WebSocketRoute`], are generic and composable so
+//! that, e.g., a [`TlsRoute`] can wrap either a `TcpRoute` or a
+//! [`ConnectionProxyRoute`]. Most importantly, route types are **plain old
+//! data** types: they can't do anything other than hold and provide access to
+//! data.
+//!
+//! The divisions between route types mostly matches the layering of the HTTPS
+//! protocol stack. The definition of the [`WebSocketServiceRoute`] type alias
+//! demonstrates this: it wraps a transport route with HTTP and websocket
+//! handshake parameters.
+//!
+//! Most "route types" are actually type aliases of [`SimpleRoute`] that wrap an
+//! inner route type and then specify a "fragment" type for a specific level of
+//! the protcol stack. This use of aliasing is not required, since each type
+//! could be defined with its own trait implementations, but using an alias
+//! helps reduce code duplication.
+//!
+//! # Route providers
+//!
+//! The [`RouteProvider`] trait captures the idea of "a thing that can produce a
+//! list of routes". Where route types are "plain old data", a `RouteProvider`
+//! encapsulates a policy decision (either encoded in its impl of
+//! [`RouteProvider::routes`] or made by whatever constructed it) about what
+//! connection attempts are to be made. Where route types should be able to
+//! represent any possible parameters for connecting (for the specific protocol
+//! layer(s)), the actual values for those parameters come from a
+//! [`RouteProvider`].
+//!
+//! # Connectors
+//!
+//! Where route types are plain data, types that implement [`Connector`] are
+//! used to actually establish connections to remote resources.
+//! [`Connector::connect_over`] is the important part; it takes a route and uses
+//! it to establish a higher-level-protocol connection over an existing
+//! lower-level connection (or `()` for
+//! [`StatelessTcp`](crate::tcp_ssl::StatelessTcp)).
+//!
+//! `Connector` implementations are often stateless, like `StatelessTcp`, but
+//! they can hold and use state, like [`ThrottlingConnector`], to effect
+//! particular policies over time or across multiple routes.
+//!
+//! # Name resolution
+//!
+//! Most route types are generic over the identifier for the end host so that
+//! they can be used to hold unresolved names or IP addresses. The distinction
+//! between "resolved" and "unresolved" routes in the type system is important
+//! since it makes explicit the decision of when DNS resolution happens (and
+//! therefore when it can fail). The [`resolve_route`] function used to convert
+//! from one to the other by delegating to a [`Resolver`] for the actual name
+//! lookup, and to a route's [`ResolveHostnames::resolve`] implementation to
+//! construct an equivalent resolved route.
+//!
+//! # Putting it all together
+//!
+//! ...is done by the [`fn@connect`] function.
+
 use std::hash::Hash;
 use std::net::IpAddr;
 use std::ops::ControlFlow;

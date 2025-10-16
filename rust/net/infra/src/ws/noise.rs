@@ -18,10 +18,17 @@ use tungstenite::protocol::frame::coding::CloseCode;
 
 use crate::noise::{FrameType, Transport};
 
+/// A [`noise::Transport`](Transport) implementation over a websocket.
+///
+/// This is a simple wrapper over a [`WebSocketStream`] that sends and receives
+/// Noise frames as [`Message::Binary`] messages.
 pub struct WebSocketTransport<S>(pub WebSocketStream<S>);
 
 assert_impl_all!(WebSocketTransport<tokio::io::DuplexStream>: Transport);
 
+/// Errors encountered during [`WebSocketTransport`] as [`Transport`] operation.
+///
+/// This is a simple error type that is convertible to [`std::io::Error`].
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 enum TransportError {
     /// websocket unexpectedly closed with code {code:?}
