@@ -111,7 +111,7 @@ impl ChatListener for JniChatListener {
     fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
         let listener = &self.listener;
         attach_and_log_on_error(&self.vm, "connection interrupted", move |env| {
-            let throw_exception = move |env, listener, throwable: JThrowable<'_>| {
+            let report_to_java = move |env, listener, throwable: JThrowable<'_>| {
                 call_method_checked(
                     env,
                     listener,
@@ -122,21 +122,18 @@ impl ChatListener for JniChatListener {
             };
             match disconnect_cause {
                 DisconnectCause::LocalDisconnect => {
-                    throw_exception(env, listener, JObject::null().into())?
+                    report_to_java(env, listener, JObject::null().into())?
                 }
-                DisconnectCause::Error(disconnect_cause) => convert_to_exception(
-                    env,
-                    SignalJniError::from(disconnect_cause),
-                    move |env, throwable, _error| {
-                        throwable
-                            .and_then(|throwable| throw_exception(env, listener, throwable))
-                            .unwrap_or_else(|error| {
-                                log::error!(
-                                    "failed to call onConnectionInterrupted with cause: {error}"
-                                );
-                            });
-                    },
-                ),
+                DisconnectCause::Error(disconnect_cause) => {
+                    let throwable = SignalJniError::from(disconnect_cause).to_throwable(env);
+                    throwable
+                        .and_then(|throwable| report_to_java(env, listener, throwable))
+                        .unwrap_or_else(|error| {
+                            log::error!(
+                                "failed to call onConnectionInterrupted with cause: {error}"
+                            );
+                        });
+                }
             };
             Ok(())
         });

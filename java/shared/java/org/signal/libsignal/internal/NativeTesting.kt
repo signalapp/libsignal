@@ -156,6 +156,8 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_FutureThrowsCustomErrorType(asyncRuntime: ObjectHandle): CompletableFuture<Void?>
   @JvmStatic
+  public external fun TESTING_FutureThrowsPoisonErrorType(asyncRuntime: ObjectHandle): CompletableFuture<Void?>
+  @JvmStatic
   public external fun TESTING_InputStreamReadIntoZeroLengthSlice(capsAlphabetInput: InputStream): ByteArray
   @JvmStatic
   public external fun TESTING_JoinStringArray(array: Array<Object>, joinWith: String): String

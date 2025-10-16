@@ -28,16 +28,38 @@ pub struct TestingError {
 pub(super) struct AllConnectionAttemptsFailed;
 
 impl SignalJniError {
+    #[cold]
     pub(super) fn to_throwable<'a>(
         &self,
         env: &mut JNIEnv<'a>,
     ) -> Result<JThrowable<'a>, BridgeLayerError> {
-        self.0.to_throwable(env)
+        self.0.to_throwable_impl(env).or_else(|convert_error| {
+            // Recover by producing *some* throwable (AssertionError). This is particularly important
+            // for Futures, which will otherwise hang. However, if this fails, give up and return the
+            // *original* BridgeLayerError.
+            try_scoped(|| {
+                let message = env
+                    .new_string(format!(
+                        "failed to convert error \"{self}\": {convert_error}"
+                    ))
+                    .check_exceptions(env, "JniError::into_throwable")?;
+                let error_obj = new_instance(
+                    env,
+                    ClassName("java.lang.AssertionError"),
+                    jni_args!((message => java.lang.Object) -> void),
+                )?;
+                Ok(error_obj.into())
+            })
+            .map_err(|_: BridgeLayerError| convert_error)
+        })
     }
 }
 
 pub(super) trait JniError: Debug + Display {
-    fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError>;
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut JNIEnv<'a>,
+    ) -> Result<JThrowable<'a>, BridgeLayerError>;
 }
 
 /// Simpler trait that provides a blanket impl of [`JniError`].
@@ -51,7 +73,10 @@ pub(super) trait MessageOnlyExceptionJniError: Debug + Display {
 }
 
 impl<M: MessageOnlyExceptionJniError> JniError for M {
-    fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut JNIEnv<'a>,
+    ) -> Result<JThrowable<'a>, BridgeLayerError> {
         let class = self.exception_class();
         let throwable = env
             .new_string(self.to_string())

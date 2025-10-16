@@ -150,30 +150,29 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
                 let future_for_convert = &future;
                 let stack_elements_for_convert = &future_creation_stack_trace_elements;
                 maybe_error.unwrap_or_else(move |error| {
-                    convert_to_exception(env, error, move |env, throwable, error| {
-                        throwable
-                            .and_then(move |throwable| {
-                                call_method_checked(
-                                    env,
-                                    &throwable,
-                                    "setStackTrace",
-                                    jni_args!((stack_elements_for_convert => [java.lang.StackTraceElement]) -> void),
-                                )?;
+                    let throwable = error.to_throwable(env);
+                    throwable
+                        .and_then(move |throwable| {
+                            call_method_checked(
+                                env,
+                                &throwable,
+                                "setStackTrace",
+                                jni_args!((stack_elements_for_convert => [java.lang.StackTraceElement]) -> void),
+                            )?;
 
-                                _ = call_method_checked(
-                                    env,
-                                    future_for_convert,
-                                    "completeExceptionally",
-                                    jni_args!((throwable => java.lang.Throwable) -> boolean),
-                                )?;
-                                Ok(())
-                            })
-                            .unwrap_or_else(|completion_error| {
-                                log::error!(
-                                    "failed to complete Future with error \"{error}\": {completion_error}"
-                                );
-                            });
-                    })
+                            _ = call_method_checked(
+                                env,
+                                future_for_convert,
+                                "completeExceptionally",
+                                jni_args!((throwable => java.lang.Throwable) -> boolean),
+                            )?;
+                            Ok(())
+                        })
+                        .unwrap_or_else(|completion_error| {
+                            log::error!(
+                                "failed to complete Future with error \"{error}\": {completion_error}"
+                            );
+                        });
                 });
 
                 // Explicitly drop these while the thread is still attached to the JVM.
