@@ -5637,6 +5637,8 @@ dependencies = [
 name = "usernames"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
+ "clap",
  "criterion",
  "curve25519-dalek",
  "displaydoc",
