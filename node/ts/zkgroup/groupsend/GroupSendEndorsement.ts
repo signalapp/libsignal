@@ -4,7 +4,7 @@
 //
 
 import ByteArray, { UNCHECKED_AND_UNCLONED } from '../internal/ByteArray.js';
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 
 import GroupSecretParams from '../groups/GroupSecretParams.js';
 import GroupSendFullToken from './GroupSendFullToken.js';

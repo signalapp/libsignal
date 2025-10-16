@@ -260,11 +260,24 @@ def collect_decls(crate_dir: str, features: Iterable[str] = ()) -> Iterator[str]
 
 
 def expand_template(template_file: str, decls: Iterable[str]) -> str:
+    decls = list(decls)
     with open(template_file, "r") as f:
         contents = f.read()
-        contents += "\n"
-        contents += "\n".join(sorted(decls))
-        contents += "\n"
+
+        # Rewrite from function syntax to property syntax to take advantage of
+        # https://www.typescriptlang.org/tsconfig/#strictFunctionTypes.
+        contents = contents.replace("NATIVE_FNS;", "\n  ".join(
+            x.removeprefix('export function ')
+             .replace('(', ': (', 1)
+             .replace('):', ') =>') for x in decls if x.startswith("export function ")
+        ))
+        contents = contents.replace("NATIVE_FN_NAMES", "".join(
+            "\n  " + x.removeprefix("export function ").split('(')[0] + ","
+            for x in decls if x.startswith("export function ")
+        ) + "\n")
+        contents = contents.replace("NATIVE_TYPES;", "\n".join(
+            'export ' + x.removeprefix('export ') for x in decls if not x.startswith("export function ")
+        ))
 
         return contents
 
@@ -300,7 +313,7 @@ def convert_to_typescript(rust_crates: Iterable[Crate], ts_in_path: str, ts_out_
 def main() -> None:
     args = parse_args()
     our_abs_dir = os.path.dirname(os.path.realpath(__file__))
-    output_file_name = 'Native.d.ts'
+    output_file_name = 'Native.ts'
 
     convert_to_typescript(
         rust_crates=[
@@ -310,7 +323,7 @@ def main() -> None:
             Crate(path=os.path.join(our_abs_dir, '..', '..', 'shared', 'testing'), features=('node', 'signal-media')),
         ],
         ts_in_path=os.path.join(our_abs_dir, output_file_name + '.in'),
-        ts_out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'node', output_file_name),
+        ts_out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'node', 'ts', output_file_name),
         verify=args.verify,
     )
 

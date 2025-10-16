@@ -4,7 +4,7 @@
 //
 
 import ByteArray from '../internal/ByteArray.js';
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 import ServerSecretParams from '../ServerSecretParams.js';
 
 // For docs

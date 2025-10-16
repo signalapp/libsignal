@@ -31,7 +31,7 @@
  * @module Mp4Sanitizer
  */
 
-import Native from '../Native.js';
+import * as Native from './Native.js';
 import {
   IoError,
   InvalidMediaInputError,

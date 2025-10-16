@@ -5,51 +5,51 @@
 
 // WARNING: this file was automatically generated
 
-type Uuid = Uint8Array;
+export type Uuid = Uint8Array;
 
 /// A Native.Timestamp may be measured in seconds or in milliseconds;
 /// what's important is that it's an integer less than Number.MAX_SAFE_INTEGER.
-type Timestamp = number;
+export type Timestamp = number;
 
 // Rust code produces or consumes values that conform to these interface
 // definitions. They must be kept in sync to prevent bridging errors.
 
-type LookupResponse = {
+export type LookupResponse = {
   entries: Map<string, LookupResponseEntry>;
   debugPermitsUsed: number;
 };
 
-type LookupResponseEntry = {
+export type LookupResponseEntry = {
   readonly aci: string | undefined;
   readonly pni: string | undefined;
 };
 
-type ChatResponse = {
+export type ChatResponse = {
   status: number;
   message: string | undefined;
   headers: ReadonlyArray<[string, string]>;
   body: Uint8Array | undefined;
 };
 
-type ChatServiceDebugInfo = {
+export type ChatServiceDebugInfo = {
   ipType: number;
   durationMillis: number;
   connectionInfo: string;
 };
 
-type ResponseAndDebugInfo = {
+export type ResponseAndDebugInfo = {
   response: ChatResponse;
   debugInfo: ChatServiceDebugInfo;
 };
 
-type SealedSenderMultiRecipientMessageRecipient = {
+export type SealedSenderMultiRecipientMessageRecipient = {
   deviceIds: number[];
   registrationIds: number[];
   rangeOffset: number;
   rangeLen: number;
 };
 
-type SealedSenderMultiRecipientMessage = {
+export type SealedSenderMultiRecipientMessage = {
   recipientMap: {
     [serviceId: string]: SealedSenderMultiRecipientMessageRecipient;
   };
@@ -57,13 +57,13 @@ type SealedSenderMultiRecipientMessage = {
   offsetOfSharedData: number;
 };
 
-enum IdentityChange {
+export enum IdentityChange {
   // This must be kept in sync with the Rust enum of the same name.
   NewOrUnchanged = 0,
   ReplacedExisting = 1,
 }
 
-type IdentityKeyStore = {
+export type IdentityKeyStore = {
   _getIdentityKey: () => Promise<PrivateKey>;
   _getLocalRegistrationId: () => Promise<number>;
   _saveIdentity: (
@@ -78,18 +78,18 @@ type IdentityKeyStore = {
   _getIdentity: (name: ProtocolAddress) => Promise<PublicKey | null>;
 };
 
-type SessionStore = {
+export type SessionStore = {
   _saveSession: (addr: ProtocolAddress, record: SessionRecord) => Promise<void>;
   _getSession: (addr: ProtocolAddress) => Promise<SessionRecord | null>;
 };
 
-type PreKeyStore = {
+export type PreKeyStore = {
   _savePreKey: (preKeyId: number, record: PreKeyRecord) => Promise<void>;
   _getPreKey: (preKeyId: number) => Promise<PreKeyRecord>;
   _removePreKey: (preKeyId: number) => Promise<void>;
 };
 
-type SignedPreKeyStore = {
+export type SignedPreKeyStore = {
   _saveSignedPreKey: (
     signedPreKeyId: number,
     record: SignedPreKeyRecord
@@ -97,7 +97,7 @@ type SignedPreKeyStore = {
   _getSignedPreKey: (signedPreKeyId: number) => Promise<SignedPreKeyRecord>;
 };
 
-type KyberPreKeyStore = {
+export type KyberPreKeyStore = {
   _saveKyberPreKey: (
     kyberPreKeyId: number,
     record: KyberPreKeyRecord
@@ -110,7 +110,7 @@ type KyberPreKeyStore = {
   ) => Promise<void>;
 };
 
-type SenderKeyStore = {
+export type SenderKeyStore = {
   _saveSenderKey: (
     sender: ProtocolAddress,
     distributionId: Uuid,
@@ -122,14 +122,14 @@ type SenderKeyStore = {
   ) => Promise<SenderKeyRecord | null>;
 };
 
-type InputStream = {
+export type InputStream = {
   _read: (amount: number) => Promise<Uint8Array>;
   _skip: (amount: number) => Promise<void>;
 };
 
-type SyncInputStream = Uint8Array;
+export type SyncInputStream = Uint8Array;
 
-type ChatListener = {
+export type ChatListener = {
   _incoming_message: (
     envelope: Uint8Array,
     timestamp: number,
@@ -143,11 +143,11 @@ type ChatListener = {
   ) => void;
 };
 
-type ChallengeOption = 'pushChallenge' | 'captcha';
+export type ChallengeOption = 'pushChallenge' | 'captcha';
 
-type RegistrationPushTokenType = 'apn' | 'fcm';
+export type RegistrationPushTokenType = 'apn' | 'fcm';
 
-type RegistrationCreateSessionRequest = {
+export type RegistrationCreateSessionRequest = {
   number: string;
   push_token?: string;
   push_token_type?: RegistrationPushTokenType;
@@ -155,39 +155,55 @@ type RegistrationCreateSessionRequest = {
   mnc?: string;
 };
 
-type RegisterResponseBadge = {
+export type RegisterResponseBadge = {
   id: string;
   visible: boolean;
   expirationSeconds: number;
 };
 
-type CheckSvr2CredentialsResponse = Map<
+export type CheckSvr2CredentialsResponse = Map<
   string,
   'match' | 'no-match' | 'invalid'
 >;
 
-type SignedPublicPreKey = {
+export type SignedPublicPreKey = {
   keyId: number;
   publicKey: Uint8Array;
   signature: Uint8Array;
 };
 
-type Wrapper<T> = Readonly<{
+export type Wrapper<T> = Readonly<{
   _nativeHandle: T;
 }>;
 
-type MessageBackupValidationOutcome = {
+export type MessageBackupValidationOutcome = {
   errorMessage: string | null;
   unknownFieldMessages: Array<string>;
 };
 
-type AccountEntropyPool = string;
+export type AccountEntropyPool = string;
 
-type CancellablePromise<T> = Promise<T> & {
+export type CancellablePromise<T> = Promise<T> & {
   _cancellationToken: bigint;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-type Serialized<T> = Uint8Array;
+export type Serialized<T> = Uint8Array;
 
-export function registerErrors(errorsModule: Record<string, unknown>): void;
+type ConnectChatBridge = Wrapper<ConnectionManager>;
+type TestingFutureCancellationGuard = Wrapper<TestingFutureCancellationCounter>;
+
+import load from 'node-gyp-build';
+
+type NativeFunctions = {
+  registerErrors: (errorsModule: Record<string, unknown>) => void;
+  NATIVE_FNS;
+};
+
+const { registerErrors, NATIVE_FN_NAMES } = load(
+  `${import.meta.dirname}/../`
+) as NativeFunctions;
+
+export { registerErrors, NATIVE_FN_NAMES };
+
+NATIVE_TYPES;

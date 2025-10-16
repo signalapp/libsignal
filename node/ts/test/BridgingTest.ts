@@ -6,7 +6,7 @@
 import * as uuid from 'uuid';
 import { assert, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import Native from '../../Native.js';
+import * as Native from '../Native.js';
 import { BridgedStringMap } from '../internal.js';
 
 use(chaiAsPromised);

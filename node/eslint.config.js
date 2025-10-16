@@ -164,6 +164,7 @@ const config = defineConfig(
         '**/Native.js',
         '**/zkgroup.js',
         '**/zkgroup.d.ts',
+        'ts/node-gyp-build.d.ts',
       ],
     },
   ]);

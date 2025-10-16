@@ -6,7 +6,7 @@
 import * as uuid from 'uuid';
 
 import ByteArray from '../internal/ByteArray.js';
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 
 import BackupAuthCredentialRequest from './BackupAuthCredentialRequest.js';
 import BackupAuthCredentialResponse from './BackupAuthCredentialResponse.js';

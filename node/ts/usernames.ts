@@ -7,7 +7,7 @@
 
 import { randomBytes } from 'node:crypto';
 import { RANDOM_LENGTH } from './zkgroup/internal/Constants.js';
-import Native from '../Native.js';
+import * as Native from './Native.js';
 
 export type UsernameLink = {
   entropy: Uint8Array;

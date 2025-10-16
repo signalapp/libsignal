@@ -5,7 +5,7 @@
 
 import { Buffer } from 'node:buffer';
 
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 import { Aci } from '../../Address.js';
 import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
 

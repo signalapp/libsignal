@@ -4,7 +4,7 @@
 //
 
 import ByteArray from '../internal/ByteArray.js';
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 import { ServiceId } from '../../Address.js';
 import GroupSendDerivedKeyPair from './GroupSendDerivedKeyPair.js';
 

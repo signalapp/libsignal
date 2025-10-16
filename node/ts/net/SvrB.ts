@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import Native from '../../Native.js';
+import * as Native from '../Native.js';
 import { TokioAsyncContext, Environment, Net } from '../net.js';
 import { BackupKey, BackupForwardSecrecyToken } from '../AccountKeys.js';
 import { MessageBackupKey } from '../MessageBackup.js';

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 import { ServiceId } from '../../Address.js';
 import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
 import { GroupSendFullToken } from '../../zkgroup/index.js';

@@ -5,7 +5,7 @@
 
 import { assert, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import Native from '../../Native.js';
+import * as Native from '../Native.js';
 import { ErrorCode, LibSignalError, LibSignalErrorBase } from '../Errors.js';
 import { TokioAsyncContext } from '../net.js';
 import { setTimeout } from 'node:timers/promises';

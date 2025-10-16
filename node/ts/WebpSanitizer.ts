@@ -12,7 +12,7 @@
  * @module WebpSanitizer
  */
 
-import Native from '../Native.js';
+import * as Native from './Native.js';
 import type {
   IoError,
   InvalidMediaInputError,

@@ -12,7 +12,7 @@ import { Buffer } from 'node:buffer';
 
 import * as util from './util.js';
 import { Aci, Pni } from '../Address.js';
-import Native, { type ChatResponse } from '../../Native.js';
+import * as Native from '../Native.js';
 import { ErrorCode, LibSignalErrorBase } from '../Errors.js';
 import {
   AuthenticatedChatConnection,
@@ -106,13 +106,13 @@ describe('chat service api', () => {
       ['content-type', 'application/octet-stream'],
       ['forwarded', '1.1.1.1'],
     ];
-    const expectedWithContent: ChatResponse = {
+    const expectedWithContent: Native.ChatResponse = {
       status: status,
       message: 'OK',
       headers: headers,
       body: Buffer.from('content'),
     };
-    const expectedWithoutContent: ChatResponse = {
+    const expectedWithoutContent: Native.ChatResponse = {
       status: status,
       message: 'OK',
       headers: headers,

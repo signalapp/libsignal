@@ -5,7 +5,7 @@
 
 import type { ReadonlyDeep } from 'type-fest';
 
-import Native from '../../Native.js';
+import * as Native from '../Native.js';
 import { LibSignalError, RateLimitedError } from '../Errors.js';
 import { type Net, type TokioAsyncContext } from '../net.js';
 import { PublicKey } from '../EcKeys.js';

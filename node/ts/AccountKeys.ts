@@ -12,7 +12,7 @@
  */
 
 import * as crypto from 'node:crypto';
-import Native from '../Native.js';
+import * as Native from './Native.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
 import { Aci } from './Address.js';
 import { PrivateKey } from './EcKeys.js';

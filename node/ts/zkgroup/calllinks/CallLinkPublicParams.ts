@@ -4,7 +4,7 @@
 //
 
 import ByteArray from '../internal/ByteArray.js';
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 
 export default class CallLinkPublicParams extends ByteArray {
   private readonly __type?: never;

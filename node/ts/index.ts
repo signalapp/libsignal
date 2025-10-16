@@ -24,7 +24,7 @@ export * as Net from './net.js';
 export * as Mp4Sanitizer from './Mp4Sanitizer.js';
 export * as WebpSanitizer from './WebpSanitizer.js';
 
-import Native from '../Native.js';
+import * as Native from './Native.js';
 
 Native.registerErrors(Errors);
 

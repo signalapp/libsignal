@@ -7,7 +7,7 @@ import { assert, config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { Buffer } from 'node:buffer';
 
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 import * as util from '../util.js';
 import {
   MultiRecipientMessageResponse,
