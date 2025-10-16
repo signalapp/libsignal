@@ -256,7 +256,7 @@ jobs:
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+    - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
     # Skip building for Android; that's handled by the previous tests.
     - run: ./gradlew build -PskipAndroid | tee ./gradle-output.txt
@@ -339,7 +339,7 @@ jobs:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       with:
         submodules: recursive
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target aarch64-pc-windows-msvc
+    - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal --target aarch64-pc-windows-msvc
     # install nasm compiler for boring
     - name: Install nasm
       run: choco install nasm
@@ -350,7 +350,7 @@ jobs:
     - name: Get Node version from .nvmrc
       id: get-nvm-version
       shell: bash
-      run: echo "node-version=$(cat .nvmrc)" >> $GITHUB_OUTPUT
+      run: echo "node-version=$(cat .nvmrc)" >> "$GITHUB_OUTPUT"
     - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
       with:
         node-version-file: '.nvmrc'
@@ -378,7 +378,7 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
         run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
 
-      - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios,aarch64-apple-ios-sim --component rust-src
+      - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal --target x86_64-apple-ios,aarch64-apple-ios,aarch64-apple-ios-sim --component rust-src
 
       - run: brew install protobuf
 
@@ -503,7 +503,7 @@ jobs:
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+    - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
     - name: Cache cargo-fuzz
       uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
@@ -514,7 +514,7 @@ jobs:
     - name: Install cargo-fuzz if needed
       run: cargo +stable install --version ${{ env.CARGO_FUZZ_VERSION }} --locked cargo-fuzz --root local-tools
 
-    - run: echo "$PWD/local-tools/bin" >> $GITHUB_PATH
+    - run: echo "$PWD/local-tools/bin" >> "$GITHUB_PATH"
 
     # Note that these invocations will use libsignal's pinned toolchain,
     # but it's always possible cargo-fuzz will want an older/newer nightly.

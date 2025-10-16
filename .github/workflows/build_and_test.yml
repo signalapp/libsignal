@@ -93,7 +93,9 @@ jobs:
 
     - name: Check pattern completeness
       run: echo "::error file=.github/workflows/build_and_test.yml::File not included in any filter" && false
-      if: ${{ !contains(steps.filter.outputs.*, 'true') }}
+      # `actionlint` does not like it when you write this like: `!contains(steps.filter.outputs.*, 'true')`
+      # It also does not include a way to inline ignore a single instance of a warning. C'est la vie.
+      if: ${{ !contains(toJSON(steps.filter.outputs), '"true"') }}
 
   rust:
     name: Rust
@@ -124,7 +126,7 @@ jobs:
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
-    - run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal --component rustfmt,clippy
+    - run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal --component rustfmt,clippy
 
     - name: Cache locally-built tools
       uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
@@ -133,11 +135,11 @@ jobs:
         key: ${{ runner.os }}-local-tools-${{ matrix.version }}-${{ hashFiles('acknowledgments/cargo-about-version', '.taplo-cli-version') }}
 
     - name: Build cargo-about if needed
-      run: cargo +stable install --version $(cat acknowledgments/cargo-about-version) --locked cargo-about --root local-tools
+      run: cargo +stable install --version "$(cat acknowledgments/cargo-about-version)" --locked cargo-about --root local-tools
       if: matrix.version == 'nightly'
 
     - name: Build taplo-cli if needed
-      run: cargo +stable install --version $(cat .taplo-cli-version) --locked taplo-cli --root local-tools
+      run: cargo +stable install --version "$(cat .taplo-cli-version)" --locked taplo-cli --root local-tools
       if: matrix.version == 'nightly'
 
     # This should be done before anything else
@@ -233,7 +235,7 @@ jobs:
 
     - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
 
-    - run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal --target i686-unknown-linux-gnu
+    - run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal --target i686-unknown-linux-gnu
 
     - name: Run tests (32-bit)
       # Exclude signal-neon-futures because those tests run Node
@@ -265,13 +267,14 @@ jobs:
         fetch-depth: 0
 
     - name: Install NDK
-      run: ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VERSION}"
+      run: |
+        "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;${NDK_VERSION}"
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
     - run: cargo +stable install cbindgen
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
+    - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal --target aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
 
     - name: Verify that the JNI bindings are up to date
       run: rust/bridge/jni/bin/gen_java_decl.py --verify
@@ -288,7 +291,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
 
-    - run: grep -v -F '***' ./check_code_size-output.txt >> $GITHUB_STEP_SUMMARY
+    - run: grep -v -F '***' ./check_code_size-output.txt >> "$GITHUB_STEP_SUMMARY"
 
   node:
     name: Node
@@ -310,7 +313,7 @@ jobs:
       with:
         submodules: recursive
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+    - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
     # install nasm compiler for boring
     - name: Install nasm
@@ -371,7 +374,7 @@ jobs:
       with:
         submodules: recursive
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+    - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
@@ -422,7 +425,7 @@ jobs:
         run: swiftlint lint --strict --reporter github-actions-logging
         working-directory: swift
 
-      - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios-sim
+      - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal --target x86_64-apple-ios,aarch64-apple-ios-sim
 
       # Build only the targets that `pod lib lint` will test building.
       - name: Build for x86_64-apple-ios
