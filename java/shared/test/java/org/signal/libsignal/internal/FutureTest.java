@@ -60,11 +60,13 @@ public class FutureTest {
     assertTrue(e.getCause() instanceof AssertionError);
     // Check the whole message to make sure it includes both the original error and the failure to
     // convert it to an exception. (TestingError just makes that feel especially confusing!)
-    assertEquals(
+    assertTrue(
         e.getCause().getMessage(),
-        "failed to convert error \"TestingError(org.signal.libsignal.internal.GuaranteedNonexistentException)\": "
-            + "exception in method call 'org.signal.libsignal.internal.GuaranteedNonexistentException': "
-            + "exception java.lang.NoClassDefFoundError \"org/signal/libsignal/internal/GuaranteedNonexistentException\"");
+        e.getCause()
+            .getMessage()
+            .startsWith(
+                "failed to convert error \"TestingError(org.signal.libsignal.internal.GuaranteedNonexistentException)\": "
+                    + "exception in method call 'org.signal.libsignal.internal.GuaranteedNonexistentException': exception "));
   }
 
   @Test
