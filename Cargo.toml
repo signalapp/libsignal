@@ -213,7 +213,7 @@ tungstenite = "0.27.0"
 url = "2.4.1"
 uuid = "1.5"
 visibility = "0.1.1"
-warp = "0.3.6"
+warp = "0.4.2"
 webpsan = { version = "0.5.3", default-features = false }
 x25519-dalek = "2.0.0"
 zerocopy = "0.8.24"

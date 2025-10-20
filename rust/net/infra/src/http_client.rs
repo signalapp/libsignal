@@ -209,7 +209,7 @@ mod test {
         ConnectError, ConnectionOutcomeParams, ConnectionOutcomes, TcpRoute, ThrottlingConnector,
         TlsRoute, TlsRouteFragment,
     };
-    use crate::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
+    use crate::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME, localhost_https_server};
 
     const FAKE_RESPONSE: &str = "RESPONSE";
     const FAKE_RESPONSE_HEADER: (HeaderName, HeaderValue) = (
@@ -228,28 +228,24 @@ mod test {
     fn localhost_https_server_with_fake_response(
         write_request_to: std::sync::mpsc::Sender<RequestInfo>,
     ) -> (SocketAddr, impl Future<Output = ()>) {
-        let filter = warp::any()
-            .map(|| {
-                warp::reply::with_header(
-                    FAKE_RESPONSE,
-                    FAKE_RESPONSE_HEADER.0.as_str(),
-                    FAKE_RESPONSE_HEADER.1.as_bytes(),
-                )
-            })
-            .with(warp::log::custom(move |info| {
-                let _ignore_error = write_request_to.send(RequestInfo {
-                    headers: info.request_headers().clone(),
-                    method: info.method().clone(),
-                    path: info.path().to_string(),
-                    version: info.version(),
-                });
-            }));
-        let server = warp::serve(filter)
-            .tls()
-            .cert(SERVER_CERTIFICATE.cert.pem())
-            .key(SERVER_CERTIFICATE.key_pair.serialize_pem());
-
-        server.bind_ephemeral((Ipv6Addr::LOCALHOST, 0))
+        localhost_https_server(
+            warp::any()
+                .map(|| {
+                    warp::reply::with_header(
+                        FAKE_RESPONSE,
+                        FAKE_RESPONSE_HEADER.0.as_str(),
+                        FAKE_RESPONSE_HEADER.1.as_bytes(),
+                    )
+                })
+                .with(warp::log::custom(move |info| {
+                    let _ignore_error = write_request_to.send(RequestInfo {
+                        headers: info.request_headers().clone(),
+                        method: info.method().clone(),
+                        path: info.path().to_string(),
+                        version: info.version(),
+                    });
+                })),
+        )
     }
 
     fn outcome_record_for_testing()
@@ -346,7 +342,7 @@ mod test {
                         root_certs: crate::certs::RootCertificates::FromDer(Cow::Borrowed(
                             SERVER_CERTIFICATE.cert.der(),
                         )),
-                        alpn: None,
+                        alpn: Some(crate::Alpn::Http2),
                         min_protocol_version: None,
                     },
                     inner: TcpRoute {

@@ -119,8 +119,8 @@ mod test {
     use super::*;
     use crate::certs::RootCertificates;
     use crate::tcp_ssl::testutil::{
-        SERVER_CERTIFICATE, SERVER_HOSTNAME, localhost_https_server,
-        make_http_request_response_over,
+        SERVER_CERTIFICATE, SERVER_HOSTNAME, make_http_request_response_over,
+        simple_localhost_https_server,
     };
 
     #[tokio::test]
@@ -243,7 +243,7 @@ mod test {
 
     #[tokio::test]
     async fn problematic_stream_causes_ssl_abort() {
-        let (addr, server) = localhost_https_server();
+        let (addr, server) = simple_localhost_https_server();
         let _server_handle = tokio::spawn(server);
 
         let mut ssl = SslConnector::builder(SslMethod::tls_client()).expect("valid");

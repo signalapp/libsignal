@@ -373,8 +373,8 @@ mod test {
     use super::*;
     use crate::tcp_ssl::proxy::testutil::PROXY_CERTIFICATE;
     use crate::tcp_ssl::testutil::{
-        SERVER_CERTIFICATE, SERVER_HOSTNAME, localhost_https_server,
-        make_http_request_response_over,
+        SERVER_CERTIFICATE, SERVER_HOSTNAME, make_http_request_response_over,
+        simple_localhost_https_server,
     };
 
     struct AllowSync<T>(T);
@@ -405,7 +405,7 @@ mod test {
     async fn verify_certificate_via_rustls<V: LimitedServerCertVerifier + 'static>(
         make_verifier: fn(rustls::client::WebPkiServerVerifier) -> V,
     ) {
-        let (addr, server) = localhost_https_server();
+        let (addr, server) = simple_localhost_https_server();
         let _server_handle = tokio::spawn(server);
 
         let mut root_cert_store = RootCertStore::empty();
@@ -442,7 +442,7 @@ mod test {
     async fn verify_certificate_failure_via_rustls<V: LimitedServerCertVerifier + 'static>(
         make_verifier: fn(rustls::client::WebPkiServerVerifier) -> V,
     ) {
-        let (addr, server) = localhost_https_server();
+        let (addr, server) = simple_localhost_https_server();
         let _server_handle = tokio::spawn(server);
 
         let mut root_cert_store = RootCertStore::empty();

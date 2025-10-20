@@ -77,6 +77,8 @@ clap = { workspace = true, features = ["derive", "env"] }
 either = { workspace = true }
 env_logger = { workspace = true }
 futures = { workspace = true }
+hyper = { workspace = true }
+hyper-util = { workspace = true }
 proptest = { workspace = true }
 rand_chacha = { workspace = true }
 snow = { workspace = true, default-features = true }
@@ -84,7 +86,7 @@ test-case = { workspace = true }
 test-log = { workspace = true }
 tokio = { workspace = true, features = ["test-util", "io-std", "rt-multi-thread"] }
 url = { workspace = true }
-warp = { workspace = true, features = ["tls"] }
+warp = { workspace = true, features = ["server", "websocket"] }
 
 [[example]]
 name = "chat_smoke_test"

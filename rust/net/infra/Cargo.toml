@@ -58,7 +58,7 @@ tokio-tungstenite = { workspace = true }
 tokio-util = { workspace = true }
 tungstenite = { workspace = true }
 visibility = { workspace = true }
-warp = { workspace = true, features = ["tls"], optional = true }
+warp = { workspace = true, optional = true, features = ["server"] }
 zerocopy = { workspace = true, features = ["derive"] }
 
 [build-dependencies]
@@ -78,4 +78,4 @@ test-case = { workspace = true }
 test-log = { workspace = true }
 tls-parser = { workspace = true }
 tokio = { workspace = true, features = ["test-util", "io-std", "rt-multi-thread"] }
-warp = { workspace = true, features = ["tls"] }
+warp = { workspace = true, features = ["server"] }

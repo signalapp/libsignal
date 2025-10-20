@@ -212,6 +212,8 @@ pub(crate) mod testutil {
     use std::net::{Ipv6Addr, SocketAddr};
     use std::sync::LazyLock;
 
+    use const_str::concat_bytes;
+    use futures_util::TryFuture;
     use rcgen::CertifiedKey;
     use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
     use warp::Filter;
@@ -222,19 +224,116 @@ pub(crate) mod testutil {
         rcgen::generate_simple_self_signed([SERVER_HOSTNAME.to_string()]).expect("can generate")
     });
 
+    /// Starts an HTTPS server on `::1` using [`SERVER_CERTIFICATE`] and the provided `warp` filter.
+    ///
+    /// The resulting future **must be run on a tokio context** if using HTTP/2, since it needs to
+    /// spawn additional tasks to maintain connections. Note that as implemented it can **only serve
+    /// one connection at a time**; this is not an insurmountable restriction, but merely keeping
+    /// the code simple.
+    ///
+    /// The complicated generics are an attempt to mimic [`warp::service`]'s requirements;
+    /// unfortunately, `warp` uses a lot of non-public and unnameable types.
+    pub(crate) fn localhost_https_server<F>(service: F) -> (SocketAddr, impl Future<Output = ()>)
+    where
+        F: warp::Filter<Error = std::convert::Infallible> + Send + Clone + 'static,
+        <F::Future as TryFuture>::Ok: warp::Reply,
+    {
+        // We're essentially rebuilding warp::serve, but with a TLS layer in the middle. warp used
+        // to provide this in a convenient package, but no longer. So we manually send up a TCP
+        // listener, then using Boring to run the server-side TLS, then use Hyper to handle the HTTP
+        // framing, before finally handing things off to our Warp filter.
+        let listener =
+            std::net::TcpListener::bind((Ipv6Addr::LOCALHOST, 0)).expect("can bind to localhost");
+        listener
+            .set_nonblocking(true)
+            .expect("can make nonblocking");
+        let addr = listener.local_addr().expect("successful bind");
+
+        let listener_task = async move {
+            let listener =
+                tokio::net::TcpListener::from_std(listener).expect("can convert to tokio");
+
+            let private_key = boring_signal::pkey::PKey::private_key_from_der(
+                SERVER_CERTIFICATE.key_pair.serialized_der(),
+            )
+            .expect("valid key");
+            let cert = boring_signal::x509::X509::from_der(SERVER_CERTIFICATE.cert.der())
+                .expect("valid certificate");
+            // ALPN "wire format", a sequence of length-prefixed protocol names.
+            // See https://docs.rs/boring/4.19.0/boring/ssl/struct.SslContextBuilder.html#method.set_alpn_protos.
+            const ALPN_HTTP_1_1: &[u8] = b"http/1.1";
+            const ALPN_H2: &[u8] = b"h2";
+            #[allow(clippy::cast_possible_truncation)]
+            const SERVER_SUPPORTED_ALPN: &[u8] = concat_bytes!(
+                ALPN_H2.len() as u8,
+                ALPN_H2,
+                ALPN_HTTP_1_1.len() as u8,
+                ALPN_HTTP_1_1
+            );
+
+            // This loop means the server can process multiple connections, but as written it will
+            // process them serially. If that's ever a problem this can be rewritten to collect
+            // active connection tasks and poll them alongside listening for new ones.
+            loop {
+                let (stream, _addr) = listener
+                    .accept()
+                    .await
+                    .expect("can accept an incoming connection");
+
+                let mut tls_acceptor = boring_signal::ssl::SslAcceptor::mozilla_modern(
+                    boring_signal::ssl::SslMethod::tls_server(),
+                )
+                .expect("can build");
+                tls_acceptor
+                    .set_private_key(&private_key)
+                    .expect("valid key");
+                tls_acceptor
+                    .set_certificate(&cert)
+                    .expect("valid certificate");
+                tls_acceptor.set_alpn_select_callback(move |_, client| {
+                    boring_signal::ssl::select_next_proto(SERVER_SUPPORTED_ALPN, client)
+                        .ok_or(boring_signal::ssl::AlpnError::ALERT_FATAL)
+                });
+                let tls_acceptor = tls_acceptor.build();
+
+                let stream = tokio_boring_signal::accept(&tls_acceptor, stream)
+                    .await
+                    .expect("TLS handshake succeeds");
+                let stream = hyper_util::rt::TokioIo::new(stream);
+                let service =
+                    hyper_util::service::TowerToHyperService::new(warp::service(service.clone()));
+
+                match stream.inner().ssl().selected_alpn_protocol() {
+                    None | Some(ALPN_HTTP_1_1) => {
+                        hyper::server::conn::http1::Builder::new()
+                            .serve_connection(stream, service)
+                            .await
+                            .expect("HTTP/1.1 connection completes without error");
+                    }
+                    Some(ALPN_H2) => {
+                        hyper::server::conn::http2::Builder::new(
+                            hyper_util::rt::TokioExecutor::new(),
+                        )
+                        .serve_connection(stream, service)
+                        .await
+                        .expect("H2 connection completes without error");
+                    }
+                    Some(other) => {
+                        unreachable!("should have picked a supported ALPN, but picked {other:?}")
+                    }
+                }
+            }
+        };
+        (addr, listener_task)
+    }
+
     const FAKE_RESPONSE: &str = "Hello there";
     /// Starts an HTTPS server listening on `::1` that responds with 200 and
     /// [`FAKE_RESPONSE`].
     ///
     /// Returns the address of the server and a [`Future`] that runs it.
-    pub(crate) fn localhost_https_server() -> (SocketAddr, impl Future<Output = ()>) {
-        let filter = warp::any().map(|| FAKE_RESPONSE);
-        let server = warp::serve(filter)
-            .tls()
-            .cert(SERVER_CERTIFICATE.cert.pem())
-            .key(SERVER_CERTIFICATE.key_pair.serialize_pem());
-
-        server.bind_ephemeral((Ipv6Addr::LOCALHOST, 0))
+    pub(crate) fn simple_localhost_https_server() -> (SocketAddr, impl Future<Output = ()>) {
+        localhost_https_server(warp::any().map(|| FAKE_RESPONSE))
     }
 
     /// Makes an HTTP request on the provided stream and asserts on the response.
