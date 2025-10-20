@@ -13,6 +13,7 @@ env:
   # For dev builds, include limited debug info in the output. See
   # https://doc.rust-lang.org/cargo/reference/profiles.html#debug
   CARGO_PROFILE_DEV_DEBUG: limited
+  SHOULD_USE_CARGO_CACHE: ${{ secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.R2_ENDPOINT != '' }}
 
 jobs:
   changes:
@@ -43,6 +44,7 @@ jobs:
         filters: |
           all: &all
           - '.github/workflows/build_and_test.yml'
+          - '.github/actions/**'
           - 'bin/**'
           - 'rust/*'
           - 'rust/!(bridge|protocol)/**'
@@ -128,6 +130,20 @@ jobs:
 
     - run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal --component rustfmt,clippy
 
+    - name: Restore cargo cache
+      id: rust-cache
+      if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+      uses: ./.github/actions/restore-cargo-cache
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
+        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      with:
+        job-name: rust-${{ matrix.version }}
+        toolchain: ${{ matrix.toolchain }}
+
     - name: Cache locally-built tools
       uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
       with:
@@ -209,7 +225,7 @@ jobs:
   rust32:
     name: Rust (32-bit testing)
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
 
     needs: changes
 
@@ -236,6 +252,20 @@ jobs:
     - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
 
     - run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal --target i686-unknown-linux-gnu
+
+    - name: Restore cargo cache
+      id: rust-cache
+      if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+      uses: ./.github/actions/restore-cargo-cache
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
+        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      with:
+        job-name: rust32-${{ matrix.version }}
+        toolchain: ${{ matrix.toolchain }}
 
     - name: Run tests (32-bit)
       # Exclude signal-neon-futures because those tests run Node
@@ -276,6 +306,19 @@ jobs:
 
     - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal --target aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
 
+    - name: Restore cargo cache
+      id: rust-cache
+      if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+      uses: ./.github/actions/restore-cargo-cache
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
+        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      with:
+        job-name: java
+
     - name: Verify that the JNI bindings are up to date
       run: rust/bridge/jni/bin/gen_java_decl.py --verify
 
@@ -300,7 +343,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-15]
+        os: [ubuntu-latest-4-cores, windows-latest, macos-15]
 
     needs: changes
 
@@ -315,6 +358,19 @@ jobs:
 
     - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
+    - name: Restore cargo cache
+      id: rust-cache
+      if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+      uses: ./.github/actions/restore-cargo-cache
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
+        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      with:
+        job-name: node
+
     # install nasm compiler for boring
     - name: Install nasm
       if: startsWith(matrix.os, 'windows')
@@ -322,7 +378,7 @@ jobs:
       shell: cmd
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
-      if: matrix.os == 'ubuntu-latest'
+      if: startsWith(matrix.os, 'ubuntu-')
 
     - run: choco install protoc
       if: matrix.os == 'windows-latest'
@@ -336,7 +392,7 @@ jobs:
 
     - name: Verify that the Node bindings are up to date
       run: rust/bridge/node/bin/gen_ts_decl.py --verify
-      if: matrix.os == 'ubuntu-latest'
+      if: startsWith(matrix.os, 'ubuntu-')
 
     - run: npm ci
       working-directory: node
@@ -348,11 +404,11 @@ jobs:
       working-directory: node
 
     - run: npm run lint
-      if: matrix.os == 'ubuntu-latest'
+      if: startsWith(matrix.os, 'ubuntu-')
       working-directory: node
 
     - run: npm run format-check
-      if: matrix.os == 'ubuntu-latest'
+      if: startsWith(matrix.os, 'ubuntu-')
       working-directory: node
 
     - run: npm run test
@@ -375,6 +431,19 @@ jobs:
         submodules: recursive
 
     - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
+
+    - name: Restore cargo cache
+      id: rust-cache
+      if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+      uses: ./.github/actions/restore-cargo-cache
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
+        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      with:
+        job-name: swift-package
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
@@ -426,6 +495,19 @@ jobs:
         working-directory: swift
 
       - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal --target x86_64-apple-ios,aarch64-apple-ios-sim
+
+      - name: Restore cargo cache
+        id: rust-cache
+        if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+        uses: ./.github/actions/restore-cargo-cache
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+          RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+          RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        with:
+          job-name: swift-cocoapod
 
       # Build only the targets that `pod lib lint` will test building.
       - name: Build for x86_64-apple-ios

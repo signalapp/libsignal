@@ -1,0 +1,52 @@
+name: 'Restore Cargo Cache'
+description: 'Restore cargo and build cache with appropriate keys'
+inputs:
+  job-name:
+    description: 'Name for the cache (e.g., rust-nightly, node, java)'
+    required: true
+  toolchain:
+    description: 'Optional rustup toolchain spec to override the repo default'
+    required: false
+    default: 'workspace'
+outputs:
+  rustc-version:
+    description: 'Full rustc --version string for the resolved toolchain'
+    value: ${{ steps.calculate.outputs.rustc-version }}
+  cache-key-merge-base:
+    description: 'The merge base commit with origin/main'
+    value: ${{ steps.calculate.outputs['cache-key-merge-base'] }}
+  cache-key-current:
+    description: 'Hash of current working tree'
+    value: ${{ steps.calculate.outputs['cache-key-current'] }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Calculate cache key inputs
+      id: calculate
+      shell: bash
+      run: python3 "${{ github.action_path }}/calculate_cache_keys.py" --toolchain "${{ inputs.toolchain }}" >> "$GITHUB_OUTPUT"
+
+    - name: Restore cargo cache
+      uses: runs-on/cache@3a15256b3556fbc5ae15f7f04598e4c7680e9c25 # v4
+      with:
+        path: |
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/registry/src
+          ~/.cargo/git/db
+          ~/.cargo/git/checkouts
+          target
+        # Cache key strategy:
+        # - The GitHub Actions cache API treats an exact key match as authoritative and skips re-uploading.
+        # - We use the working tree hash as the final key component to ensure uniqueness per commit.
+        # - On cache miss, we fall back, in order, to:
+        #   1. Most recent cache from the last common ancestor with main.
+        #   2. Most recent cache for this job/OS/rustc combination.
+        #   3. Most recent cache for this job/OS combination.
+        # This yields perfect hits on reruns while still warming cold builds with close matches.
+        # See: https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#cache-key-matching
+        key: ${{ inputs['job-name'] }}-${{ runner.os }}-${{ steps.calculate.outputs['rustc-version'] }}-${{ steps.calculate.outputs['cache-key-merge-base'] }}-${{ steps.calculate.outputs['cache-key-current'] }}
+        restore-keys: |
+          ${{ inputs['job-name'] }}-${{ runner.os }}-${{ steps.calculate.outputs['rustc-version'] }}-${{ steps.calculate.outputs['cache-key-merge-base'] }}-
+          ${{ inputs['job-name'] }}-${{ runner.os }}-${{ steps.calculate.outputs['rustc-version'] }}-
+          ${{ inputs['job-name'] }}-${{ runner.os }}-
