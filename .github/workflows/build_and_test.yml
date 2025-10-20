@@ -126,7 +126,10 @@ jobs:
       with:
         submodules: recursive
 
-    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+    - name: Install protoc
+      run: ./bin/install_protoc_linux
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal --component rustfmt,clippy
 
@@ -249,7 +252,12 @@ jobs:
       with:
         submodules: recursive
 
-    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
+    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib
+
+    - name: Install protoc
+      run: ./bin/install_protoc_linux
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal --target i686-unknown-linux-gnu
 
@@ -300,7 +308,10 @@ jobs:
       run: |
         "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;${NDK_VERSION}"
 
-    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+    - name: Install protoc
+      run: ./bin/install_protoc_linux
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - run: cargo +stable install cbindgen
 
@@ -377,7 +388,10 @@ jobs:
       run: choco install nasm
       shell: cmd
 
-    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+    - name: Install protoc
+      run: ./bin/install_protoc_linux
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       if: startsWith(matrix.os, 'ubuntu-')
 
     - run: choco install protoc
@@ -445,7 +459,10 @@ jobs:
       with:
         job-name: swift-package
 
-    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+    - name: Install protoc
+      run: ./bin/install_protoc_linux
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - run: cargo +stable install cbindgen
 

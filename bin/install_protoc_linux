@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Install the latest Linux x86_64 protoc release using the GitHub CLI.
+
+archive=$(mktemp)
+trap 'rm -f "$archive"' EXIT
+
+gh release download \
+  -R protocolbuffers/protobuf \
+  --pattern 'protoc-*-linux-x86_64.zip' \
+  --output "$archive" \
+  --clobber
+
+# This extracts just bin/protoc and anything in the include directory
+# to usr/local. We don't need anything else.
+sudo unzip -q -o "$archive" -d /usr/local bin/protoc 'include/*'
+
+echo "Installed protoc to /usr/local/bin/protoc"
