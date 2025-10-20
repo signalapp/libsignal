@@ -12,8 +12,6 @@ import * as Native from '../../Native.js';
 import * as util from '../util.js';
 import { TokioAsyncContext, UnauthUsernamesService } from '../../net.js';
 import { connectUnauth } from './ServiceTestUtils.js';
-import { InternalRequest } from '../NetTest.js';
-import { newNativeHandle } from '../../internal.js';
 import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
 import { Aci } from '../../Address.js';
 
@@ -31,13 +29,8 @@ describe('UnauthUsernamesService', () => {
       const hash = Uint8Array.of(1, 2, 3, 4);
       const responseFuture = chat.lookUpUsernameHash({ hash });
 
-      const rawRequest =
-        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-          tokio,
-          fakeRemote
-        );
-      assert(rawRequest !== null);
-      const request = new InternalRequest(rawRequest);
+      const request = await fakeRemote.assertReceiveIncomingRequest();
+
       expect(request.verb).to.eq('GET');
       expect(request.path).to.eq(
         `/v1/accounts/username_hash/${Buffer.from(hash).toString('base64url')}`
@@ -45,22 +38,16 @@ describe('UnauthUsernamesService', () => {
 
       const aci = '4fcfe887-a600-40cd-9ab7-fd2a695e9981';
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            request.requestId,
-            200,
-            'OK',
-            ['content-type: application/json'],
-            Buffer.from(
-              JSON.stringify({
-                uuid: aci,
-              })
-            )
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(request, {
+        status: 200,
+        message: 'OK',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            uuid: aci,
+          })
+        ),
+      });
 
       const responseFromServer = await responseFuture;
       assert(responseFromServer !== null);
@@ -74,30 +61,17 @@ describe('UnauthUsernamesService', () => {
       const hash = Uint8Array.of(1, 2, 3, 4);
       const responseFuture = chat.lookUpUsernameHash({ hash });
 
-      const rawRequest =
-        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-          tokio,
-          fakeRemote
-        );
-      assert(rawRequest !== null);
-      const request = new InternalRequest(rawRequest);
+      const request = await fakeRemote.assertReceiveIncomingRequest();
+
       expect(request.verb).to.eq('GET');
       expect(request.path).to.eq(
         `/v1/accounts/username_hash/${Buffer.from(hash).toString('base64url')}`
       );
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            request.requestId,
-            404,
-            'Not Found',
-            [],
-            Buffer.of()
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(request, {
+        status: 404,
+        message: 'Not Found',
+      });
 
       const responseFromServer = await responseFuture;
       assert.isNull(responseFromServer);
@@ -110,35 +84,24 @@ describe('UnauthUsernamesService', () => {
       const hash = Uint8Array.of(1, 2, 3, 4);
       const responseFuture = chat.lookUpUsernameHash({ hash });
 
-      const rawRequest =
-        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-          tokio,
-          fakeRemote
-        );
-      assert(rawRequest !== null);
-      const request = new InternalRequest(rawRequest);
+      const request = await fakeRemote.assertReceiveIncomingRequest();
+
       expect(request.verb).to.eq('GET');
       expect(request.path).to.eq(
         `/v1/accounts/username_hash/${Buffer.from(hash).toString('base64url')}`
       );
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            request.requestId,
-            428,
-            'Precondition Required',
-            ['content-type: application/json'],
-            Buffer.from(
-              JSON.stringify({
-                token: 'not-legal-tender',
-                options: ['pushChallenge'],
-              })
-            )
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(request, {
+        status: 428,
+        message: 'Precondition Required',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            token: 'not-legal-tender',
+            options: ['pushChallenge'],
+          })
+        ),
+      });
 
       await expect(responseFuture)
         .to.eventually.be.rejectedWith(LibSignalErrorBase)
@@ -156,30 +119,17 @@ describe('UnauthUsernamesService', () => {
       const hash = Uint8Array.of(1, 2, 3, 4);
       const responseFuture = chat.lookUpUsernameHash({ hash });
 
-      const rawRequest =
-        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-          tokio,
-          fakeRemote
-        );
-      assert(rawRequest !== null);
-      const request = new InternalRequest(rawRequest);
+      const request = await fakeRemote.assertReceiveIncomingRequest();
+
       expect(request.verb).to.eq('GET');
       expect(request.path).to.eq(
         `/v1/accounts/username_hash/${Buffer.from(hash).toString('base64url')}`
       );
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            request.requestId,
-            500,
-            'Internal Server Error',
-            [],
-            Buffer.of()
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(request, {
+        status: 500,
+        message: 'Internal Server Error',
+      });
 
       await expect(responseFuture)
         .to.eventually.be.rejectedWith(LibSignalErrorBase)
@@ -207,34 +157,23 @@ describe('UnauthUsernamesService', () => {
         entropy: ENCRYPTED_USERNAME_ENTROPY,
       });
 
-      const rawRequest =
-        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-          tokio,
-          fakeRemote
-        );
-      assert(rawRequest !== null);
-      const request = new InternalRequest(rawRequest);
+      const request = await fakeRemote.assertReceiveIncomingRequest();
+
       expect(request.verb).to.eq('GET');
       expect(request.path).to.eq(
         '/v1/accounts/username_link/00000000-0000-0000-0000-000000000000'
       );
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            request.requestId,
-            200,
-            'OK',
-            ['content-type: application/json'],
-            Buffer.from(
-              JSON.stringify({
-                usernameLinkEncryptedValue: ENCRYPTED_USERNAME,
-              })
-            )
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(request, {
+        status: 200,
+        message: 'OK',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            usernameLinkEncryptedValue: ENCRYPTED_USERNAME,
+          })
+        ),
+      });
 
       const responseFromServer = await responseFuture;
       assert.isNotNull(responseFromServer);
@@ -251,30 +190,17 @@ describe('UnauthUsernamesService', () => {
         entropy: ENCRYPTED_USERNAME_ENTROPY,
       });
 
-      const rawRequest =
-        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-          tokio,
-          fakeRemote
-        );
-      assert(rawRequest !== null);
-      const request = new InternalRequest(rawRequest);
+      const request = await fakeRemote.assertReceiveIncomingRequest();
+
       expect(request.verb).to.eq('GET');
       expect(request.path).to.eq(
         '/v1/accounts/username_link/00000000-0000-0000-0000-000000000000'
       );
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            request.requestId,
-            404,
-            'Not Found',
-            [],
-            Buffer.of()
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(request, {
+        status: 404,
+        message: 'Not Found',
+      });
 
       const responseFromServer = await responseFuture;
       assert.isNull(responseFromServer);
@@ -289,34 +215,23 @@ describe('UnauthUsernamesService', () => {
         entropy: ENCRYPTED_USERNAME_ENTROPY,
       });
 
-      const rawRequest =
-        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-          tokio,
-          fakeRemote
-        );
-      assert(rawRequest !== null);
-      const request = new InternalRequest(rawRequest);
+      const request = await fakeRemote.assertReceiveIncomingRequest();
+
       expect(request.verb).to.eq('GET');
       expect(request.path).to.eq(
         '/v1/accounts/username_link/00000000-0000-0000-0000-000000000000'
       );
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            request.requestId,
-            200,
-            'OK',
-            ['content-type: application/json'],
-            Buffer.from(
-              JSON.stringify({
-                usernameLinkEncryptedValue: `${ENCRYPTED_USERNAME}A`,
-              })
-            )
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(request, {
+        status: 200,
+        message: 'OK',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            usernameLinkEncryptedValue: `${ENCRYPTED_USERNAME}A`,
+          })
+        ),
+      });
 
       await expect(responseFuture)
         .to.eventually.be.rejectedWith(LibSignalErrorBase)
@@ -334,30 +249,18 @@ describe('UnauthUsernamesService', () => {
         entropy: ENCRYPTED_USERNAME_ENTROPY,
       });
 
-      const rawRequest =
-        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-          tokio,
-          fakeRemote
-        );
-      assert(rawRequest !== null);
-      const request = new InternalRequest(rawRequest);
+      const request = await fakeRemote.assertReceiveIncomingRequest();
+      assert(request !== null);
+
       expect(request.verb).to.eq('GET');
       expect(request.path).to.eq(
         '/v1/accounts/username_link/00000000-0000-0000-0000-000000000000'
       );
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            request.requestId,
-            500,
-            'Internal Server Error',
-            [],
-            Buffer.of()
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(request, {
+        status: 500,
+        message: 'Internal Server Error',
+      });
 
       await expect(responseFuture)
         .to.eventually.be.rejectedWith(LibSignalErrorBase)

@@ -5,9 +5,10 @@
 
 import * as Native from '../Native.js';
 import { LibSignalError } from '../Errors.js';
-import { TokioAsyncContext, Environment } from '../net.js';
+import { Environment, TokioAsyncContext } from '../net.js';
 import * as KT from './KeyTransparency.js';
 import { newNativeHandle } from '../internal.js';
+import { FakeChatRemote } from './FakeChat.js';
 
 const DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS = 5000;
 
@@ -178,7 +179,7 @@ export class UnauthenticatedChatConnection implements ChatConnection {
   public static fakeConnect(
     asyncContext: TokioAsyncContext,
     listener: ChatServiceListener
-  ): [UnauthenticatedChatConnection, Native.Wrapper<Native.FakeChatRemoteEnd>] {
+  ): [UnauthenticatedChatConnection, FakeChatRemote] {
     const nativeChatListener = makeNativeChatListener(asyncContext, listener);
 
     const fakeChat = newNativeHandle(
@@ -195,7 +196,10 @@ export class UnauthenticatedChatConnection implements ChatConnection {
 
     return [
       new UnauthenticatedChatConnection(asyncContext, chat, nativeChatListener),
-      newNativeHandle(Native.TESTING_FakeChatConnection_TakeRemote(fakeChat)),
+      new FakeChatRemote(
+        asyncContext,
+        Native.TESTING_FakeChatConnection_TakeRemote(fakeChat)
+      ),
     ];
   }
 
@@ -293,7 +297,7 @@ export class AuthenticatedChatConnection implements ChatConnection {
     asyncContext: TokioAsyncContext,
     listener: ChatServiceListener,
     alerts?: ReadonlyArray<string>
-  ): [AuthenticatedChatConnection, Native.Wrapper<Native.FakeChatRemoteEnd>] {
+  ): [AuthenticatedChatConnection, FakeChatRemote] {
     const nativeChatListener = makeNativeChatListener(asyncContext, listener);
 
     const fakeChat = newNativeHandle(
@@ -310,7 +314,10 @@ export class AuthenticatedChatConnection implements ChatConnection {
 
     return [
       new AuthenticatedChatConnection(asyncContext, chat, nativeChatListener),
-      newNativeHandle(Native.TESTING_FakeChatConnection_TakeRemote(fakeChat)),
+      new FakeChatRemote(
+        asyncContext,
+        Native.TESTING_FakeChatConnection_TakeRemote(fakeChat)
+      ),
     ];
   }
 
