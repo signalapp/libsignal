@@ -496,6 +496,9 @@ jobs:
 
     timeout-minutes: 45
 
+    env:
+      LIBSIGNAL_TESTING_ONLY_ACTIVE_ARCH: 1
+
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
@@ -511,7 +514,7 @@ jobs:
         run: swiftlint lint --strict --reporter github-actions-logging
         working-directory: swift
 
-      - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal --target x86_64-apple-ios,aarch64-apple-ios-sim
+      - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal --target aarch64-apple-ios-sim
 
       - name: Restore cargo cache
         id: rust-cache
@@ -525,12 +528,6 @@ jobs:
           RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
         with:
           job-name: swift-cocoapod
-
-      # Build only the targets that `pod lib lint` will test building.
-      - name: Build for x86_64-apple-ios
-        run: swift/build_ffi.sh --release
-        env:
-          CARGO_BUILD_TARGET: x86_64-apple-ios
 
       - name: Build for aarch64-apple-ios-sim
         run: swift/build_ffi.sh --release

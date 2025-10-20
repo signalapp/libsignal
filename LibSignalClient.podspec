@@ -24,7 +24,7 @@ Pod::Spec.new do |s|
     'acknowledgments/acknowledgments-ios.plist',
   ]
 
-  s.pod_target_xcconfig = {
+  pod_target_xcconfig = {
       'HEADER_SEARCH_PATHS' => '$(PODS_TARGET_SRCROOT)/swift/Sources/SignalFfi',
       # Duplicate this here to make sure the search path is passed on to Swift dependencies.
       'SWIFT_INCLUDE_PATHS' => '$(HEADER_SEARCH_PATHS)',
@@ -58,6 +58,14 @@ Pod::Spec.new do |s|
       'ARCHS[sdk=iphonesimulator*]' => 'x86_64 arm64',
       'ARCHS[sdk=iphoneos*]' => 'arm64',
   }
+
+  if ENV['LIBSIGNAL_TESTING_ONLY_ACTIVE_ARCH']
+    pod_target_xcconfig['ONLY_ACTIVE_ARCH'] = 'YES'
+
+    s.user_target_xcconfig = { 'ONLY_ACTIVE_ARCH' => 'YES' }
+  end
+
+  s.pod_target_xcconfig = pod_target_xcconfig
 
   s.script_phases = [
     { name: 'Download libsignal-ffi if not in cache',
@@ -103,10 +111,11 @@ Pod::Spec.new do |s|
     test_spec.preserve_paths = [
       'swift/Tests/*/Resources',
     ]
-    test_spec.pod_target_xcconfig = {
+    test_pod_target_xcconfig = {
       # Don't also link into the test target.
       'LIBSIGNAL_FFI_LIB_TO_LINK' => '',
     }
+    test_spec.pod_target_xcconfig = test_pod_target_xcconfig
 
     # Ideally we'd do this at run time, not configuration time, but CocoaPods doesn't make that easy.
     # This is good enough.
