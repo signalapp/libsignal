@@ -39,11 +39,16 @@ pub fn run(action: &str) {
         eprintln!("note: use `npm run test` directly to turn RUST_BACKTRACE on");
     }
 
+    // Use cfg!(debug_assertions) as a proxy for "we're smoke testing benchmarks, not actually
+    // running them". This only affects the benchmarks, but it definitely helps there.
+    let smoke_test_only = if cfg!(debug_assertions) { "1" } else { "" };
+
     let test_cases = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/node-tests");
     let status = Command::new("npm")
         .arg("run")
         .arg(action)
         .env("SIGNAL_NEON_FUTURES_TEST_LIB", &node_library_path)
+        .env("SIGNAL_NEON_FUTURES_TEST_SMOKE_ONLY", smoke_test_only)
         .env("MALLOC_PERTURB_", "1") // Add glibc and macOS use-after-free detection.
         .env("MALLOC_SCRIBBLE", "1")
         .env("RUST_BACKTRACE", "0") // Don't slow down tests by printing backtraces.
