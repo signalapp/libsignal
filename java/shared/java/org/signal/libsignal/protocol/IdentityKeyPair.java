@@ -12,7 +12,6 @@ import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.ecc.ECPrivateKey;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
-import org.signal.libsignal.protocol.util.Pair;
 
 /**
  * Holder for public and private identity key pair.
@@ -30,8 +29,7 @@ public class IdentityKeyPair {
 
   public IdentityKeyPair(byte[] serialized) throws InvalidKeyException {
     try {
-      @SuppressWarnings("unchecked")
-      var pair = (Pair<Long, Long>) Native.IdentityKeyPair_Deserialize(serialized);
+      var pair = Native.IdentityKeyPair_Deserialize(serialized);
       this.publicKey = new IdentityKey(pair.first());
       this.privateKey = new ECPrivateKey(pair.second());
     } catch (Exception e) {

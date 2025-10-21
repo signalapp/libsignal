@@ -43,6 +43,7 @@ IGNORE_THIS_WARNING = re.compile(
     r'WARN: Skip libsignal-bridge(-testing)?::.+ - \(not `(pub|no_mangle)`\)\.|'
     r"WARN: Couldn't find path for Array\(Path\(GenericPath \{ .+ \}\), Name\(\'LEN\'\)\), skipping associated constants|"
     r'WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: "JavaCompletableFuture" }.+|'
+    r'WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: "JavaPair" }.+|'
     r'WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: "Throwing" }.+|'
     r'WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: "Nullable" }.+'
     ')')
@@ -93,7 +94,6 @@ def translate_to_java(typ: str) -> Tuple[str, bool]:
         'JavaCompletableFuture': 'CompletableFuture<Void?>',
         'JavaCompletableFuture<Throwing>': 'CompletableFuture<Void?>',
         'JavaMap': 'Map<*, *>',
-        'JavaPair': 'Pair<*, *>',
         'JavaSignedPublicPreKey': 'SignedPublicPreKey<*>',
     }
 
@@ -116,6 +116,11 @@ def translate_to_java(typ: str) -> Tuple[str, bool]:
         assert stripped.endswith('>')
         inner = translate_to_java(stripped.removesuffix('>'))[0]
         return (f'CompletableFuture<{inner}>', False)
+
+    if (stripped := typ.removeprefix('JavaPair<')) != typ:
+        assert stripped.endswith('>')
+        inner_args = stripped[:-1].split(',')
+        return ('Pair<' + ', '.join(translate_to_java(x.strip())[0] for x in inner_args) + '>', False)
 
     # Assume anything else prefixed with "Java" refers to a (non-generic) object
     if typ.startswith('Java'):

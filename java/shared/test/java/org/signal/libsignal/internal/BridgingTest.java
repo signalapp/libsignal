@@ -219,8 +219,7 @@ public class BridgingTest {
 
   @Test
   public void testReturnPair() throws Exception {
-    @SuppressWarnings("unchecked")
-    var pair = (Pair<Integer, String>) NativeTesting.TESTING_ReturnPair();
-    assertEquals(pair, new Pair(1, "libsignal"));
+    var pair = NativeTesting.TESTING_ReturnPair();
+    assertEquals(pair, new Pair<>(1, "libsignal"));
   }
 }

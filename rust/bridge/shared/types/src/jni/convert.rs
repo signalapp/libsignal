@@ -1164,25 +1164,26 @@ impl<T: BridgeHandle> ResultTypeInfo<'_> for Option<T> {
 }
 
 impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A, B) {
-    type ResultType = JavaPair<'a>;
+    type ResultType = JavaPair<'a, A::ResultType, B::ResultType>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let a = self.0.convert_into(env)?;
         let a = box_primitive_if_needed(env, a.into())?;
         let b = self.1.convert_into(env)?;
         let b = box_primitive_if_needed(env, b.into())?;
-        new_instance(
+        Ok(new_instance(
             env,
             ClassName("org.signal.libsignal.protocol.util.Pair"),
             jni_args!((a => java.lang.Object, b => java.lang.Object) -> void),
-        )
+        )?
+        .into())
     }
 }
 
 impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<(A, B)> {
-    type ResultType = JavaPair<'a>;
+    type ResultType = JavaPair<'a, A::ResultType, B::ResultType>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let Some(value) = self else {
-            return Ok(JObject::null());
+            return Ok(JObject::null().into());
         };
         value.convert_into(env)
     }
@@ -2239,8 +2240,8 @@ macro_rules! jni_result_type {
     (()) => {
         ()
     };
-    (($a:ty, $b:ty)) => {
-        $crate::jni::JavaPair<'local>
+    (($a:tt, $b:tt)) => {
+        $crate::jni::JavaPair<'local, $crate::jni_result_type!($a), $crate::jni_result_type!($b)>
     };
     (bool) => {
         ::jni::sys::jboolean

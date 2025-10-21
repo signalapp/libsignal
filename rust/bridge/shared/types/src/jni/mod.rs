@@ -74,7 +74,6 @@ pub type JavaByteBufferArray<'a> = JObjectArray<'a>;
 pub type JavaObject<'a> = JObject<'a>;
 pub type JavaUUID<'a> = JObject<'a>;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;
-pub type JavaPair<'a> = JObject<'a>;
 pub type JavaSignedPublicPreKey<'a> = JObject<'a>;
 pub type JavaMap<'a> = JObject<'a>;
 
@@ -106,6 +105,31 @@ impl<'a, T> From<JObject<'a>> for JavaCompletableFuture<'a, T> {
 impl<'a, T> From<JavaCompletableFuture<'a, T>> for JObject<'a> {
     fn from(value: JavaCompletableFuture<'a, T>) -> Self {
         value.future_object
+    }
+}
+
+/// A Java wrapper for a `Pair` type.
+#[derive(Default)]
+#[repr(transparent)] // Ensures that the representation is the same as JObject.
+pub struct JavaPair<'a, A, B> {
+    pair_object: JObject<'a>,
+    a: PhantomData<A>,
+    b: PhantomData<B>,
+}
+
+impl<'a, A, B> From<JObject<'a>> for JavaPair<'a, A, B> {
+    fn from(pair_object: JObject<'a>) -> Self {
+        Self {
+            pair_object,
+            a: PhantomData,
+            b: PhantomData,
+        }
+    }
+}
+
+impl<'a, A, B> From<JavaPair<'a, A, B>> for JObject<'a> {
+    fn from(value: JavaPair<'a, A, B>) -> Self {
+        value.pair_object
     }
 }
 

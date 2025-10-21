@@ -124,7 +124,7 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: ObjectHandle): Unit
   @JvmStatic
-  public external fun TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Pair<*, *>?>
+  public external fun TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Pair<ObjectHandle, Long>?>
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_SendRawServerRequest(chat: ObjectHandle, bytes: ByteArray): Unit
   @JvmStatic
@@ -220,7 +220,7 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_RegistrationSessionInfoConvert(): ObjectHandle
   @JvmStatic
-  public external fun TESTING_ReturnPair(): Pair<*, *>
+  public external fun TESTING_ReturnPair(): Pair<Int, String>
   @JvmStatic
   public external fun TESTING_ReturnStringArray(): Array<Object>
   @JvmStatic
