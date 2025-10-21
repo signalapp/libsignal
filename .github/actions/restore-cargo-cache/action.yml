@@ -29,6 +29,9 @@ runs:
     - name: Restore cargo cache
       uses: runs-on/cache@3a15256b3556fbc5ae15f7f04598e4c7680e9c25 # v4
       with:
+        # The special handling for the Windows target path comes because we overwrite
+        # $CARGO_BUILD_TARGET_DIR in build_node_bridge.py because Visual Studio's CLI
+        # tools are not long-path aware.
         path: |
           ~/.cargo/registry/index
           ~/.cargo/registry/cache
@@ -36,6 +39,7 @@ runs:
           ~/.cargo/git/db
           ~/.cargo/git/checkouts
           target
+          ${{ runner.os == 'Windows' && format('{0}\\libsignal', runner.temp) || '' }}
         # Cache key strategy:
         # - The GitHub Actions cache API treats an exact key match as authoritative and skips re-uploading.
         # - We use the working tree hash as the final key component to ensure uniqueness per commit.
