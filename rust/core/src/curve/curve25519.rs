@@ -86,7 +86,7 @@ impl PrivateKey {
         }
         hash1.update(&random_bytes[..]);
 
-        let r = Scalar::from_hash(hash1);
+        let r = Scalar::from_bytes_mod_order_wide(&hash1.finalize().into());
         let cap_r = (&r * ED25519_BASEPOINT_TABLE).compress();
 
         let mut hash = Sha512::new();
@@ -96,7 +96,7 @@ impl PrivateKey {
             hash.update(message_piece);
         }
 
-        let h = Scalar::from_hash(hash);
+        let h = Scalar::from_bytes_mod_order_wide(&hash.finalize().into());
         let s = (h * a) + r;
 
         let mut result = [0u8; SIGNATURE_LENGTH];
@@ -136,7 +136,7 @@ impl PrivateKey {
         for message_piece in message {
             hash.update(message_piece);
         }
-        let h = Scalar::from_hash(hash);
+        let h = Scalar::from_bytes_mod_order_wide(&hash.finalize().into());
 
         let cap_r_check_point = EdwardsPoint::vartime_double_scalar_mul_basepoint(
             &h,

@@ -172,7 +172,7 @@ fn auth_commitments(
                 &id.to_be_bytes(),
             )
         })
-        .map(|k: [u8; 64]| Scalar::hash_from_bytes::<Sha512>(&k))
+        .map(|k: [u8; 64]| Scalar::from_bytes_mod_order_wide(&Sha512::digest(k).into()))
         .map(|s| (s, RISTRETTO_BASEPOINT_TABLE * &s))
         .collect()
 }
@@ -425,7 +425,8 @@ impl<'a> Restore1<'a> {
                         sha512.update(handshake_hash);
                         sha512
                     };
-                    let proof_scalar_base = Scalar::from_hash(hash);
+                    let proof_scalar_base =
+                        Scalar::from_bytes_mod_order_wide(&hash.finalize().into());
                     sk * proof_scalar_base + rand
                 })
                 .map(|proof_scalar| svrb::Request4 {
@@ -714,7 +715,8 @@ mod test {
                 handshake_hash,
             ]
             .concat();
-            let scalar_hash = Scalar::hash_from_bytes::<Sha512>(&scalar_hash_bytes);
+            let scalar_hash =
+                Scalar::from_bytes_mod_order_wide(&Sha512::digest(&scalar_hash_bytes).into());
             let lhs = RISTRETTO_BASEPOINT_TABLE * &auth_scalar;
             let rhs = state.auth_commitment * scalar_hash + auth_point;
 

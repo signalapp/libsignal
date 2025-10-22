@@ -209,7 +209,7 @@ fn username_sha_scalar(nickname: &str, discriminator: u64) -> Result<Scalar, Use
     hash.update(nickname.as_bytes());
     hash.update([0x00]);
     hash.update(discriminator.to_be_bytes());
-    Ok(Scalar::from_hash(hash))
+    Ok(Scalar::from_bytes_mod_order_wide(&hash.finalize().into()))
 }
 
 fn nickname_scalar(nickname: &str) -> Result<Scalar, UsernameError> {
