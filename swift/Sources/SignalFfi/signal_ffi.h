@@ -29,6 +29,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #define SignalBackupId_LEN 16
 
+#define SignalAes256GcmEncryption_TAG_SIZE SignalTAG_SIZE
+
+#define SignalAes256GcmEncryption_NONCE_SIZE SignalNONCE_SIZE
+
+#define SignalAes256GcmDecryption_TAG_SIZE SignalTAG_SIZE
+
+#define SignalAes256GcmDecryption_NONCE_SIZE SignalNONCE_SIZE
+
 #define SignalNUM_AUTH_CRED_ATTRIBUTES 3
 
 #define SignalNUM_PROFILE_KEY_CRED_ATTRIBUTES 4
@@ -125,11 +133,30 @@ SPDX-License-Identifier: AGPL-3.0-only
  */
 #define SignalFourCC_ENCODED_LEN 4
 
+typedef enum {
+  SignalLogLevelError = 1,
+  SignalLogLevelWarn,
+  SignalLogLevelInfo,
+  SignalLogLevelDebug,
+  SignalLogLevelTrace,
+} SignalLogLevel;
+
+enum SignalFfiPublicKeyType {
+  SignalFfiPublicKeyTypeECC,
+  SignalFfiPublicKeyTypeKyber,
+};
+typedef uint8_t SignalFfiPublicKeyType;
+
 enum SignalChallengeOption {
   SignalChallengeOptionPushChallenge,
   SignalChallengeOptionCaptcha,
 };
 typedef uint8_t SignalChallengeOption;
+
+typedef enum {
+  SignalDirectionSending = 0,
+  SignalDirectionReceiving = 1,
+} SignalDirection;
 
 typedef enum {
   SignalCiphertextMessageTypeWhisper = 2,
@@ -144,17 +171,6 @@ typedef enum {
   SignalContentHintImplicit = 2,
 } SignalContentHint;
 
-typedef enum {
-  SignalDirectionSending = 0,
-  SignalDirectionReceiving = 1,
-} SignalDirection;
-
-enum SignalFfiPublicKeyType {
-  SignalFfiPublicKeyTypeECC,
-  SignalFfiPublicKeyTypeKyber,
-};
-typedef uint8_t SignalFfiPublicKeyType;
-
 /**
  * The result of saving a new identity key for a protocol address.
  */
@@ -168,14 +184,6 @@ typedef enum {
    */
   SignalIdentityChangeReplacedExisting,
 } SignalIdentityChange;
-
-typedef enum {
-  SignalLogLevelError = 1,
-  SignalLogLevelWarn,
-  SignalLogLevelInfo,
-  SignalLogLevelDebug,
-  SignalLogLevelTrace,
-} SignalLogLevel;
 
 typedef enum {
   SignalErrorCodeUnknownError = 1,
