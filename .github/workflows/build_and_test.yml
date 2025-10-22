@@ -147,43 +147,6 @@ jobs:
         job-name: rust-${{ matrix.version }}
         toolchain: ${{ matrix.toolchain }}
 
-    - name: Cache locally-built tools
-      uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
-      with:
-        path: local-tools
-        key: ${{ runner.os }}-local-tools-${{ matrix.version }}-${{ hashFiles('acknowledgments/cargo-about-version', '.taplo-cli-version') }}
-
-    - name: Build cargo-about if needed
-      run: cargo +stable install --version "$(cat acknowledgments/cargo-about-version)" --locked cargo-about --root local-tools
-      if: matrix.version == 'nightly'
-
-    - name: Build taplo-cli if needed
-      run: cargo +stable install --version "$(cat .taplo-cli-version)" --locked taplo-cli --root local-tools
-      if: matrix.version == 'nightly'
-
-    # This should be done before anything else
-    # because it also checks that the lockfile is up to date.
-    - name: Check for duplicate dependencies
-      run: ./bin/verify_duplicate_crates
-      if: matrix.version == 'nightly'
-
-    - name: Cargo.toml formatting check
-      run: PATH="$PATH:$PWD/local-tools/bin" taplo format -c .taplo.toml --check
-      if: matrix.version == 'nightly'
-
-    - name: Rustfmt check
-      run: cargo fmt --all -- --check
-      if: matrix.version == 'nightly'
-
-    - name: Rustfmt check for cross-version-testing
-      run: cargo fmt --all -- --check
-      working-directory: rust/protocol/cross-version-testing
-      if: matrix.version == 'nightly'
-
-    - name: Check acknowledgments
-      run: PATH="$PATH:$PWD/local-tools/bin" ./bin/regenerate_acknowledgments.sh && git diff --exit-code acknowledgments
-      if: matrix.version == 'nightly'
-
     - name: Build
       run: cargo +${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose --keep-going
 
@@ -206,24 +169,6 @@ jobs:
       if: matrix.version == 'stable'
       env:
         RUSTDOCFLAGS: -D warnings
-
-    # We check the fuzz targets on stable because they don't have lockfiles,
-    # and crates don't generally support arbitrary nightly versions.
-    # See https://github.com/dtolnay/proc-macro2/issues/307 for an example.
-
-    - name: Check that the protocol fuzz target still builds
-      run: cargo +${{ matrix.toolchain }} check --all-targets --keep-going
-      working-directory: rust/protocol/fuzz
-      env:
-        RUSTFLAGS: --cfg fuzzing
-      if: matrix.version == 'stable'
-
-    - name: Check that the attest fuzz target still builds
-      run: cargo +${{ matrix.toolchain }} check --all-targets --keep-going
-      working-directory: rust/attest/fuzz
-      env:
-        RUSTFLAGS: --cfg fuzzing
-      if: matrix.version == 'stable'
 
   rust32:
     name: Rust (32-bit testing)
@@ -278,6 +223,112 @@ jobs:
     - name: Run tests (32-bit)
       # Exclude signal-neon-futures because those tests run Node
       run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures --no-fail-fast -- --include-ignored
+
+  rust-fuzz-build:
+    name: Rust (Fuzz Targets)
+
+    runs-on: ubuntu-latest
+
+    needs: changes
+
+    if: ${{ needs.changes.outputs.rust == 'true' }}
+
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
+
+    - name: Install protoc
+      run: ./bin/install_protoc_linux
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Resolve latest stable MSRV toolchain
+      id: rust-fuzz-build-toolchain
+      run: echo "latest-stable-msrv-toolchain=$(yq '.workspace.package.rust-version' Cargo.toml)" >> "$GITHUB_OUTPUT"
+
+    - name: Install Rust stable toolchain
+      run: rustup toolchain install "${{ steps.rust-fuzz-build-toolchain.outputs.latest-stable-msrv-toolchain }}" --profile minimal
+
+    - name: Restore cargo cache
+      id: rust-cache
+      uses: ./.github/actions/restore-cargo-cache
+      with:
+        job-name: rust-fuzz-build
+        toolchain: ${{ steps.rust-fuzz-build-toolchain.outputs.latest-stable-msrv-toolchain }}
+
+    # We check the fuzz targets on stable because they don't have lockfiles,
+    # and crates don't generally support arbitrary nightly versions.
+    # See https://github.com/dtolnay/proc-macro2/issues/307 for an example.
+    - name: Check that the protocol fuzz target still builds
+      run: cargo +${{ steps.rust-fuzz-build-toolchain.outputs.latest-stable-msrv-toolchain }} check --all-targets --keep-going
+      working-directory: rust/protocol/fuzz
+      env:
+        RUSTFLAGS: --cfg fuzzing
+
+    - name: Check that the attest fuzz target still builds
+      run: cargo +${{ steps.rust-fuzz-build-toolchain.outputs.latest-stable-msrv-toolchain }} check --all-targets --keep-going
+      working-directory: rust/attest/fuzz
+      env:
+        RUSTFLAGS: --cfg fuzzing
+
+  rust-fmt:
+    name: Rust (Formatting and Acknowledgments)
+
+    runs-on: ubuntu-latest
+
+    needs: changes
+
+    if: ${{ needs.changes.outputs.rust == 'true' }}
+
+    timeout-minutes: 45
+
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
+
+    - name: Install protoc
+      run: ./bin/install_protoc_linux
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Resolve pinned nightly toolchain
+      id: rust-fmt-toolchain
+      run: echo "pinned-nightly-toolchain=$(cat rust-toolchain)" >> "$GITHUB_OUTPUT"
+
+    - name: Install pinned nightly toolchain
+      run: rustup toolchain install "${{ steps.rust-fmt-toolchain.outputs.pinned-nightly-toolchain }}" --profile minimal --component rustfmt
+
+    - name: Cache locally-built tools
+      uses: runs-on/cache@3a15256b3556fbc5ae15f7f04598e4c7680e9c25 # v4
+      with:
+        path: local-tools
+        key: local-tools-${{ runner.os }}-infra-${{ hashFiles('acknowledgments/cargo-about-version', '.taplo-cli-version') }}
+
+    - name: Build cargo-about if needed
+      run: cargo +stable install --version "$(cat acknowledgments/cargo-about-version)" --locked cargo-about --root local-tools
+
+    - name: Build taplo-cli if needed
+      run: cargo +stable install --version "$(cat .taplo-cli-version)" --locked taplo-cli --root local-tools
+
+    # This should be done before anything else
+    # because it also checks that the lockfile is up to date.
+    - name: Check for duplicate dependencies
+      run: ./bin/verify_duplicate_crates
+
+    - name: Cargo.toml formatting check
+      run: PATH="$PATH:$PWD/local-tools/bin" taplo format -c .taplo.toml --check
+
+    - name: Rustfmt check
+      run: cargo +${{ steps.rust-fmt-toolchain.outputs.pinned-nightly-toolchain }} fmt --all -- --check
+
+    - name: Rustfmt check for cross-version-testing
+      run: cargo +${{ steps.rust-fmt-toolchain.outputs.pinned-nightly-toolchain }} fmt --all -- --check
+      working-directory: rust/protocol/cross-version-testing
+
+    - name: Check acknowledgments
+      run: PATH="$PATH:$PWD/local-tools/bin" ./bin/regenerate_acknowledgments.sh && git diff --exit-code acknowledgments
 
   java:
     name: Java
