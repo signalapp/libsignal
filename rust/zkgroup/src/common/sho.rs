@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use curve25519_dalek_signal::ristretto::RistrettoPoint;
-use curve25519_dalek_signal::scalar::Scalar;
+use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::scalar::Scalar;
 use poksho::ShoApi;
 use poksho::shoapi::ShoApiExt as _;
 

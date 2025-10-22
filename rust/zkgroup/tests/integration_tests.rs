@@ -4,7 +4,7 @@
 //
 
 use const_str::hex;
-use curve25519_dalek_signal::ristretto::RistrettoPoint;
+use curve25519_dalek::ristretto::RistrettoPoint;
 use sha2::Sha256;
 use zkgroup::{SECONDS_PER_DAY, Timestamp};
 

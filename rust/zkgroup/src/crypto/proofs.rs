@@ -5,9 +5,9 @@
 
 #![allow(non_snake_case)]
 
-use curve25519_dalek_signal::constants::RISTRETTO_BASEPOINT_POINT;
-use curve25519_dalek_signal::ristretto::RistrettoPoint;
-use curve25519_dalek_signal::traits::Identity;
+use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
+use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::traits::Identity;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use zkcredential::attributes::Attribute;

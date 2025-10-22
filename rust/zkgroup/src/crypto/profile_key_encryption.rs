@@ -7,7 +7,7 @@
 
 use std::sync::LazyLock;
 
-use curve25519_dalek_signal::ristretto::RistrettoPoint;
+use curve25519_dalek::ristretto::RistrettoPoint;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};

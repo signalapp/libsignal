@@ -915,7 +915,8 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "4.1.3"
-source = "git+https://github.com/signalapp/curve25519-dalek?tag=signal-curve25519-4.1.3#7c6d34756355a3566a704da84dce7b1c039a6572"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97fb8b7c4503de7d6ae7b42ab72a5a59857b4c937ec27a3d4539dba95b5ab2be"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -932,7 +933,8 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek-derive"
 version = "0.1.1"
-source = "git+https://github.com/signalapp/curve25519-dalek?tag=signal-curve25519-4.1.3#7c6d34756355a3566a704da84dce7b1c039a6572"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f46882e17999c6cc590af592290432be3bce0428cb0d5f8b6715e4dc7b383eb3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6464,3 +6466,8 @@ dependencies = [
  "uuid",
  "zkcredential",
 ]
+
+[[patch.unused]]
+name = "curve25519-dalek"
+version = "5.0.0-pre.1"
+source = "git+https://github.com/dalek-cryptography/curve25519-dalek?branch=upstream-lizard#5e1bc8c20247f7cb456a23f33f6ecc3d322b0ca7"
