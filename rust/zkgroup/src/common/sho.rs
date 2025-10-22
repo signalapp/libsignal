@@ -36,9 +36,7 @@ impl Sho {
     }
 
     pub fn get_point_single_elligator(&mut self) -> RistrettoPoint {
-        RistrettoPoint::from_uniform_bytes_single_elligator(
-            &self.internal_sho.squeeze_and_ratchet_as_array(),
-        )
+        RistrettoPoint::map_to_curve(self.internal_sho.squeeze_and_ratchet_as_array())
     }
 
     pub fn get_scalar(&mut self) -> Scalar {

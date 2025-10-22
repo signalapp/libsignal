@@ -26,7 +26,7 @@ aes = { workspace = true }
 aes-gcm-siv = { workspace = true }
 bincode = { workspace = true }
 const-str = { workspace = true }
-curve25519-dalek = { workspace = true, features = ["serde"] }
+curve25519-dalek = { workspace = true, features = ["lizard", "serde"] }
 derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["from", "try_from"] }
 displaydoc = { workspace = true }
@@ -36,7 +36,8 @@ partial-default = { workspace = true, features = ["derive"] }
 rand = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-sha2 = { workspace = true }
+# sha2 = { workspace = true }
+sha2 = { version = "0.11.0-rc.2" }
 static_assertions = { workspace = true }
 subtle = { workspace = true }
 thiserror = { workspace = true }

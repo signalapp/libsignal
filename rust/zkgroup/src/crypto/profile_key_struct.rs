@@ -27,7 +27,7 @@ impl ProfileKeyStruct {
         encoded_profile_key[0] &= 254;
         encoded_profile_key[31] &= 63;
         let M3 = Self::calc_M3(profile_key_bytes, uid_bytes);
-        let M4 = RistrettoPoint::from_uniform_bytes_single_elligator(&encoded_profile_key);
+        let M4 = RistrettoPoint::map_to_curve_restricted(encoded_profile_key);
 
         ProfileKeyStruct {
             bytes: profile_key_bytes,

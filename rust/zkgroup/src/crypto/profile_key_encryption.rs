@@ -10,7 +10,7 @@ use std::sync::LazyLock;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
+use subtle::{ConditionallySelectable, ConstantTimeEq, CtOption};
 use zkcredential::attributes::Attribute;
 
 use crate::common::errors::*;
@@ -76,7 +76,7 @@ impl ProfileKeyEncryptionDomain {
         let M4 = key_pair
             .decrypt_to_second_point(ciphertext)
             .map_err(|_| ZkGroupVerificationFailure)?;
-        let (mask, candidates) = M4.decode_253_bits();
+        let candidates = M4.map_to_curve_inverse();
 
         let target_M3 = key_pair.a1.invert() * ciphertext.as_points()[0];
 
@@ -84,10 +84,9 @@ impl ProfileKeyEncryptionDomain {
         let mut n_found = 0;
         #[allow(clippy::needless_range_loop)]
         for i in 0..8 {
-            let is_valid_fe = Choice::from((mask >> i) & 1);
-            let profile_key_bytes: ProfileKeyBytes = candidates[i];
+            let profile_key_bytes: CtOption<ProfileKeyBytes> = candidates[i];
             for j in 0..8 {
-                let mut pk = profile_key_bytes;
+                let mut pk = profile_key_bytes.unwrap_or(Default::default());
                 if ((j >> 2) & 1) == 1 {
                     pk[0] |= 0x01;
                 }
@@ -99,9 +98,18 @@ impl ProfileKeyEncryptionDomain {
                 }
                 let M3 = profile_key_struct::ProfileKeyStruct::calc_M3(pk, uid_bytes);
                 let candidate_retval = profile_key_struct::ProfileKeyStruct { bytes: pk, M3, M4 };
-                let found = M3.ct_eq(&target_M3) & is_valid_fe;
+                let found = M3.ct_eq(&target_M3) & profile_key_bytes.is_some();
                 retval.conditional_assign(&candidate_retval, found);
                 n_found += found.unwrap_u8();
+            }
+        }
+        if cfg!(debug_assertions) {
+            // Double-check that the negative candidates are always at the end; because we encode
+            // with map_to_curve_restricted, we should never need to check these.
+            #[allow(clippy::needless_range_loop)]
+            for i in 9..16 {
+                let extra_candidate = candidates[i].unwrap_or([0xFF; 32]);
+                debug_assert_eq!(extra_candidate[0] & 1, 1);
             }
         }
         if n_found == 1 {

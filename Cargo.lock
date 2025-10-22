@@ -268,7 +268,7 @@ dependencies = [
  "rand_core 0.9.3",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.10.9",
  "snow",
  "static_assertions",
  "strum",
@@ -778,6 +778,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
 
 [[package]]
+name = "const-oid"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0dabb6555f92fb9ee4140454eb5dcd14c7960e1225c6d1a6cc361f032947713e"
+
+[[package]]
 name = "const-str"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -950,7 +956,7 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "5.0.0-pre.1"
-source = "git+https://github.com/dalek-cryptography/curve25519-dalek#c3a82a8a38a58aee500a20bde1664012fcfa83ba"
+source = "git+https://github.com/dalek-cryptography/curve25519-dalek?branch=upstream-lizard#5e1bc8c20247f7cb456a23f33f6ecc3d322b0ca7"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -1050,7 +1056,7 @@ version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7c1832837b905bbfb5101e07cc24c8deddf52f93225eee6ead5f4d63d53ddcb"
 dependencies = [
- "const-oid",
+ "const-oid 0.9.6",
  "zeroize",
 ]
 
@@ -1190,6 +1196,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dac89f8a64533a9b0eaa73a68e424db0fb1fd6271c74cc0125336a05f090568d"
 dependencies = [
  "block-buffer 0.11.0-rc.5",
+ "const-oid 0.10.1",
  "crypto-common 0.2.0-rc.4",
 ]
 
@@ -1283,7 +1290,7 @@ dependencies = [
  "curve25519-dalek 4.1.3",
  "ed25519",
  "serde",
- "sha2",
+ "sha2 0.10.9",
  "subtle",
  "zeroize",
 ]
@@ -2507,7 +2514,7 @@ dependencies = [
  "rand 0.9.2",
  "rand_core 0.9.3",
  "serde",
- "sha2",
+ "sha2 0.10.9",
  "signal-crypto",
  "static_assertions",
  "thiserror 2.0.16",
@@ -2548,7 +2555,7 @@ dependencies = [
  "prost",
  "rand 0.9.2",
  "scopeguard",
- "sha2",
+ "sha2 0.10.9",
  "signal-crypto",
  "signal-media",
  "static_assertions",
@@ -2643,7 +2650,7 @@ dependencies = [
  "paste",
  "rayon",
  "serde",
- "sha2",
+ "sha2 0.10.9",
  "signal-crypto",
  "signal-media",
  "signal-neon-futures",
@@ -2690,7 +2697,7 @@ dependencies = [
  "log",
  "proptest",
  "rand 0.9.2",
- "sha2",
+ "sha2 0.10.9",
  "subtle",
  "thiserror 2.0.16",
  "uuid",
@@ -2767,7 +2774,7 @@ dependencies = [
  "proptest",
  "prost",
  "prost-build",
- "sha2",
+ "sha2 0.10.9",
  "test-case",
  "uuid",
  "zerocopy",
@@ -2822,7 +2829,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "sha2",
+ "sha2 0.10.9",
  "signal-crypto",
  "static_assertions",
  "strum",
@@ -2895,7 +2902,7 @@ dependencies = [
  "scopeguard",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.10.9",
  "signal-crypto",
  "snow",
  "static_assertions",
@@ -3092,7 +3099,7 @@ dependencies = [
  "rand_core 0.9.3",
  "rayon",
  "serde",
- "sha2",
+ "sha2 0.10.9",
  "signal-crypto",
  "spqr",
  "subtle",
@@ -3119,7 +3126,7 @@ dependencies = [
  "protobuf-codegen",
  "rand 0.9.2",
  "rand_core 0.9.3",
- "sha2",
+ "sha2 0.10.9",
  "signal-crypto",
  "strum",
  "subtle",
@@ -3708,7 +3715,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42919b05089acbd0a5dcd5405fb304d17d1053847b81163d09c4ad18ce8e8420"
 dependencies = [
  "pest",
- "sha2",
+ "sha2 0.10.9",
 ]
 
 [[package]]
@@ -3844,7 +3851,7 @@ dependencies = [
  "hex",
  "hmac",
  "rand 0.9.2",
- "sha2",
+ "sha2 0.10.9",
 ]
 
 [[package]]
@@ -4778,6 +4785,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha2"
+version = "0.11.0-rc.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1e3878ab0f98e35b2df35fe53201d088299b41a6bb63e3e34dada2ac4abd924"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "digest 0.11.0-rc.3",
+]
+
+[[package]]
 name = "sha2-asm"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4826,7 +4844,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha1",
- "sha2",
+ "sha2 0.10.9",
  "subtle",
  "thiserror 2.0.16",
 ]
@@ -4911,7 +4929,7 @@ dependencies = [
  "getrandom 0.3.3",
  "ring",
  "rustc_version",
- "sha2",
+ "sha2 0.10.9",
  "subtle",
 ]
 
@@ -4999,7 +5017,7 @@ dependencies = [
  "prost-build",
  "rand 0.9.2",
  "rand_core 0.9.3",
- "sha2",
+ "sha2 0.10.9",
  "sorted-vec",
  "thiserror 2.0.16",
 ]
@@ -5708,7 +5726,7 @@ dependencies = [
  "prost",
  "prost-build",
  "rand 0.9.2",
- "sha2",
+ "sha2 0.10.9",
  "signal-crypto",
  "subtle",
  "thiserror 2.0.16",
@@ -6486,7 +6504,7 @@ dependencies = [
  "poksho",
  "rayon",
  "serde",
- "sha2",
+ "sha2 0.10.9",
  "subtle",
  "thiserror 2.0.16",
 ]
@@ -6516,7 +6534,7 @@ dependencies = [
  "rand 0.9.2",
  "rayon",
  "serde",
- "sha2",
+ "sha2 0.11.0-rc.2",
  "static_assertions",
  "subtle",
  "test-case",
