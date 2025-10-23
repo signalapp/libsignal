@@ -8,14 +8,24 @@ use curve25519_dalek_signal::scalar::Scalar;
 use poksho::ShoApi;
 use poksho::shoapi::ShoApiExt as _;
 
+#[derive(Clone)]
 pub struct Sho {
     internal_sho: poksho::ShoHmacSha256,
 }
 
 impl Sho {
+    /// Creates a Sho and immediately absorbs `data` and ratchets.
+    ///
+    /// This is exactly equivalent to calling [`Sho::new_seed`] followed by
+    /// [`Sho::absorb_and_ratchet`]. Meant for when you're not doing any other absorbing.
     pub fn new(label: &[u8], data: &[u8]) -> Self {
-        let mut sho = poksho::ShoHmacSha256::new(label);
+        let mut sho = Self::new_seed(label);
         sho.absorb_and_ratchet(data);
+        sho
+    }
+
+    pub fn new_seed(label: &[u8]) -> Self {
+        let sho = poksho::ShoHmacSha256::new(label);
         Sho { internal_sho: sho }
     }
 

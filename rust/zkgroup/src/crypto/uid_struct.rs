@@ -32,7 +32,7 @@ pub struct UidStruct {
 
 impl UidStruct {
     pub fn from_service_id(service_id: ServiceId) -> Self {
-        let M1 = Self::calc_M1(service_id);
+        let M1 = Self::calc_M1(Self::seed_M1(), service_id);
         let raw_uuid_bytes = service_id.raw_uuid().into_bytes();
         let M2 = RistrettoPoint::lizard_encode::<Sha256>(&raw_uuid_bytes);
         UidStruct {
@@ -42,12 +42,13 @@ impl UidStruct {
         }
     }
 
-    pub fn calc_M1(service_id: ServiceId) -> RistrettoPoint {
-        let mut sho = Sho::new(
-            b"Signal_ZKGroup_20200424_UID_CalcM1",
-            &service_id.service_id_binary(),
-        );
-        sho.get_point()
+    pub(crate) fn seed_M1() -> Sho {
+        Sho::new_seed(b"Signal_ZKGroup_20200424_UID_CalcM1")
+    }
+
+    pub(crate) fn calc_M1(mut seed: Sho, service_id: ServiceId) -> RistrettoPoint {
+        seed.absorb_and_ratchet(&service_id.service_id_binary());
+        seed.get_point()
     }
 }
 

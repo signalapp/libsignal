@@ -197,10 +197,12 @@ impl GroupSendEndorsementsResponse {
         // We have to compute the ciphertexts (expensive), but we can skip the second point (which
         // would be much more expensive).
         // We zip the results together with a set of indexes so we can un-sort the results later.
+        let uid_sho_seed = crypto::uid_struct::UidStruct::seed_M1();
         let mut member_points: Vec<(usize, curve25519_dalek_signal::RistrettoPoint)> = user_ids
             .into_iter()
             .map(|user_id| {
-                group_params.uid_enc_key_pair.a1 * crypto::uid_struct::UidStruct::calc_M1(user_id)
+                group_params.uid_enc_key_pair.a1
+                    * crypto::uid_struct::UidStruct::calc_M1(uid_sho_seed.clone(), user_id)
             })
             .enumerate()
             .collect();
@@ -256,10 +258,12 @@ impl GroupSendEndorsementsResponse {
         // We have to compute the ciphertexts (expensive), but we can skip the second point (which
         // would be much more expensive).
         // We zip the results together with a set of indexes so we can un-sort the results later.
+        let uid_sho_seed = crypto::uid_struct::UidStruct::seed_M1();
         let mut member_points: Vec<(usize, curve25519_dalek_signal::RistrettoPoint)> = user_ids
             .into_par_iter()
             .map(|user_id| {
-                group_params.uid_enc_key_pair.a1 * crypto::uid_struct::UidStruct::calc_M1(user_id)
+                group_params.uid_enc_key_pair.a1
+                    * crypto::uid_struct::UidStruct::calc_M1(uid_sho_seed.clone(), user_id)
             })
             .enumerate()
             .collect();
@@ -574,9 +578,10 @@ impl GroupSendFullToken {
             "wrong key pair used for this token"
         );
 
+        let uid_sho_seed = crypto::uid_struct::UidStruct::seed_M1();
         let user_id_sum: curve25519_dalek_signal::RistrettoPoint = user_ids
             .into_iter()
-            .map(crypto::uid_struct::UidStruct::calc_M1)
+            .map(|user_id| crypto::uid_struct::UidStruct::calc_M1(uid_sho_seed.clone(), user_id))
             .sum();
 
         key_pair
