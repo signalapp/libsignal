@@ -956,7 +956,7 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "5.0.0-pre.1"
-source = "git+https://github.com/dalek-cryptography/curve25519-dalek?branch=upstream-lizard#5e1bc8c20247f7cb456a23f33f6ecc3d322b0ca7"
+source = "git+https://github.com/dalek-cryptography/curve25519-dalek?branch=upstream-lizard#b7f7cc86a84e00c6c6e9ed57dd3278d7bf00149d"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -1038,7 +1038,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d162beedaa69905488a8da94f5ac3edb4dd4788b732fadb7bd120b2625c1976"
 dependencies = [
  "data-encoding",
- "syn 2.0.106",
+ "syn 1.0.109",
 ]
 
 [[package]]
