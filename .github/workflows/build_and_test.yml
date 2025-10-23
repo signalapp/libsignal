@@ -422,7 +422,7 @@ jobs:
 
     - run: cargo +stable install cbindgen
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+    - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
     - name: Restore cargo cache
       id: rust-cache
