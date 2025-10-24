@@ -12,19 +12,16 @@ use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{
     AccountData, LastTreeHead, LocalStateUpdate, StoredAccountData, StoredTreeHead,
 };
+use libsignal_net_chat::api::RequestError;
 use libsignal_net_chat::api::keytrans::{
     Error, KeyTransparencyClient, MaybePartial, MonitorMode, SearchKey,
     UnauthenticatedChatApi as _, UsernameHash, monitor_and_search,
 };
-use libsignal_net_chat::api::{RequestError, Unauth};
 use libsignal_protocol::PublicKey;
 use prost::{DecodeError, Message};
 
 use crate::support::*;
 use crate::*;
-
-/// An alias to make using `from` cleaner.
-type UnauthConnectionRef<'a, T> = &'a Unauth<T>;
 
 #[bridge_fn]
 fn KeyTransparency_AciSearchKey(aci: Aci) -> Vec<u8> {
@@ -57,7 +54,6 @@ async fn KeyTransparency_Search(
 ) -> Result<Vec<u8>, RequestError<Error>> {
     let username_hash = username_hash.map(UsernameHash::from);
     let config = environment.into_inner().env().keytrans_config;
-    let kt = KeyTransparencyClient::new(UnauthConnectionRef::from(chat_connection), config);
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
 
@@ -65,15 +61,21 @@ async fn KeyTransparency_Search(
 
     let last_distinguished_tree_head = try_decode_distinguished(last_distinguished_tree_head)?;
 
-    let maybe_partial_result = kt
-        .search(
-            &aci,
-            aci_identity_key,
-            e164_pair,
-            username_hash,
-            account_data,
-            &last_distinguished_tree_head,
-        )
+    let maybe_partial_result = chat_connection
+        .as_typed(|chat| {
+            Box::pin(async move {
+                let kt = KeyTransparencyClient::new(*chat, config);
+                kt.search(
+                    &aci,
+                    aci_identity_key,
+                    e164_pair,
+                    username_hash,
+                    account_data,
+                    &last_distinguished_tree_head,
+                )
+                .await
+            })
+        })
         .await?;
 
     maybe_partial_to_serialized_account_data(maybe_partial_result)
@@ -107,7 +109,6 @@ async fn KeyTransparency_Monitor(
     let last_distinguished_tree_head = try_decode_distinguished(last_distinguished_tree_head)?;
 
     let config = environment.into_inner().env().keytrans_config;
-    let kt = KeyTransparencyClient::new(UnauthConnectionRef::from(chat_connection), config);
 
     let mode = if is_self_monitor {
         MonitorMode::MonitorSelf
@@ -116,17 +117,25 @@ async fn KeyTransparency_Monitor(
     };
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
-    let maybe_partial_result = monitor_and_search(
-        &kt,
-        &aci,
-        aci_identity_key,
-        e164_pair,
-        username_hash,
-        account_data,
-        &last_distinguished_tree_head,
-        mode,
-    )
-    .await?;
+
+    let maybe_partial_result = chat_connection
+        .as_typed(|chat| {
+            Box::pin(async move {
+                let kt = KeyTransparencyClient::new(*chat, config);
+                monitor_and_search(
+                    &kt,
+                    &aci,
+                    aci_identity_key,
+                    e164_pair,
+                    username_hash,
+                    account_data,
+                    &last_distinguished_tree_head,
+                    mode,
+                )
+                .await
+            })
+        })
+        .await?;
 
     maybe_partial_to_serialized_account_data(maybe_partial_result)
 }
@@ -139,18 +148,26 @@ async fn KeyTransparency_Distinguished(
     last_distinguished_tree_head: Option<Box<[u8]>>,
 ) -> Result<Vec<u8>, RequestError<Error>> {
     let config = environment.into_inner().env().keytrans_config;
-    let kt = KeyTransparencyClient::new(UnauthConnectionRef::from(chat_connection), config);
 
     let known_distinguished = last_distinguished_tree_head
         .map(try_decode)
         .transpose()
         .map_err(|_| invalid_request("could not decode account data"))?
         .and_then(|stored: StoredTreeHead| stored.into_last_tree_head());
+
     let LocalStateUpdate {
         tree_head,
         tree_root,
         monitoring_data: _,
-    } = kt.distinguished(known_distinguished).await?;
+    } = chat_connection
+        .as_typed(|chat| {
+            Box::pin(async move {
+                let kt = KeyTransparencyClient::new(*chat, config);
+                kt.distinguished(known_distinguished).await
+            })
+        })
+        .await?;
+
     let updated_distinguished = StoredTreeHead::from((tree_head, tree_root));
     let serialized = updated_distinguished.encode_to_vec();
     Ok(serialized)

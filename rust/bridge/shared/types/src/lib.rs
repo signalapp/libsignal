@@ -45,7 +45,6 @@ pub mod incremental_mac;
 pub mod message_backup;
 
 pub mod io;
-pub mod keytrans;
 
 pub mod media {
     // Wrapper struct for cbindgen
