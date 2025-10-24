@@ -373,6 +373,8 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    - run: cargo +stable install --version "$(cat .cbindgen-version)" --locked cbindgen
+
     - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal --target aarch64-linux-android,armv7-linux-androideabi
 
     - name: Restore cargo cache
@@ -569,7 +571,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - run: cargo +stable install cbindgen
+    - run: cargo +stable install --version "$(cat .cbindgen-version)" --locked cbindgen
 
     - run: swift/verify_error_codes.sh
 

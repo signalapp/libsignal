@@ -191,6 +191,17 @@ def verify_contents(expected_output_file: str, expected_contents: str) -> None:
         sys.exit('error: %s not up to date; re-run %s!' % (os.path.basename(expected_output_file), sys.argv[0]))
 
 
+def check_cbindgen_version(repo_root: str) -> None:
+    version = subprocess.check_output(['cbindgen', '--version'], text=True).strip()
+
+    cbindgen_version_file = os.path.join(repo_root, '.cbindgen-version')
+    with open(cbindgen_version_file) as f:
+        expected_version = f.read().strip()
+
+    if version != f'cbindgen {expected_version}':
+        print(f'warning: this script expects cbindgen version {expected_version}, but {version} is installed', file=sys.stderr)
+
+
 def convert_to_java(rust_crate_dir: str, in_path: str, out_path: str, verify: bool) -> None:
     stdout = run_cbindgen(rust_crate_dir)
 
@@ -212,17 +223,20 @@ def main() -> None:
     args = parse_args()
 
     our_abs_dir = os.path.dirname(os.path.realpath(__file__))
+    repo_root = os.path.join(our_abs_dir, '..', '..', '..', '..')
+
+    check_cbindgen_version(repo_root)
     convert_to_java(
         rust_crate_dir=os.path.join(our_abs_dir, '..', 'impl'),
         in_path=os.path.join(our_abs_dir, 'Native.kt.in'),
-        out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'java', 'shared', 'java', 'org', 'signal', 'libsignal', 'internal', 'Native.kt'),
+        out_path=os.path.join(repo_root, 'java', 'shared', 'java', 'org', 'signal', 'libsignal', 'internal', 'Native.kt'),
         verify=args.verify,
     )
 
     convert_to_java(
         rust_crate_dir=os.path.join(our_abs_dir, '..', 'testing'),
         in_path=os.path.join(our_abs_dir, 'NativeTesting.kt.in'),
-        out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'java', 'shared', 'java', 'org', 'signal', 'libsignal', 'internal', 'NativeTesting.kt'),
+        out_path=os.path.join(repo_root, 'java', 'shared', 'java', 'org', 'signal', 'libsignal', 'internal', 'NativeTesting.kt'),
         verify=args.verify,
     )
 
