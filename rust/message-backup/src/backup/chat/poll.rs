@@ -10,6 +10,7 @@ use std::ops::RangeInclusive;
 use derive_where::derive_where;
 use intmap::IntMap;
 use itertools::Itertools as _;
+use unicode_segmentation::UnicodeSegmentation as _;
 
 use crate::backup::TryIntoWith;
 use crate::backup::chat::reactions::{ReactionError, ReactionSet};
@@ -69,8 +70,8 @@ pub enum PollError {
     UnknownVoterId,
     /// voter id is not self nor contact
     InvalidVoterId,
-    /// poll option size ({0}) is out of bounds
-    InvalidPollStringSize(usize),
+    /// {0} size ({1}) is out of bounds
+    InvalidPollStringSize(&'static str, usize),
     /// {0} option(s) is too few for a poll
     TooFewOptions(usize),
     /// {0}
@@ -123,7 +124,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             votes,
             special_fields: _,
         } = self;
-        validate_poll_string_len(&option)?;
+        validate_poll_string_len(&option, "poll option")?;
         validate_unique_voters(&votes)?;
         let votes = votes
             .into_iter()
@@ -148,7 +149,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             reactions,
             special_fields: _,
         } = self;
-        validate_poll_string_len(&question)?;
+        validate_poll_string_len(&question, "poll question")?;
         if options.len() < MIN_POLL_OPTIONS {
             return Err(Self::Error::TooFewOptions(options.len()));
         }
@@ -177,7 +178,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<PollTerminate, C> for PollTerminateP
             question,
             special_fields: _,
         } = self;
-        validate_poll_string_len(&question)?;
+        validate_poll_string_len(&question, "poll question")?;
         let target_sent_timestamp = Timestamp::from_millis(
             targetSentTimestamp,
             "PollTerminateUpdate.targetSentTimestamp",
@@ -190,10 +191,10 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<PollTerminate, C> for PollTerminateP
     }
 }
 
-fn validate_poll_string_len(s: &str) -> Result<(), PollError> {
-    let len = s.len();
+fn validate_poll_string_len(s: &str, description: &'static str) -> Result<(), PollError> {
+    let len = s.graphemes(true).count();
     if !POLL_STRING_LENGTH_RANGE.contains(&len) {
-        return Err(PollError::InvalidPollStringSize(len));
+        return Err(PollError::InvalidPollStringSize(description, len));
     }
     Ok(())
 }
@@ -270,10 +271,11 @@ mod test {
 
     #[test_case("a" => Ok(()); "lower bound")]
     #[test_case(&format!("{:0100}", 0) => Ok(()); "upper bound")]
-    #[test_case("" => Err(PollError::InvalidPollStringSize(0)); "too short")]
-    #[test_case(&format!("{:0101}", 0) => Err(PollError::InvalidPollStringSize(101)); "too long")]
+    #[test_case("" => Err(PollError::InvalidPollStringSize("test string", 0)); "too short")]
+    #[test_case(&format!("{:0101}", 0) => Err(PollError::InvalidPollStringSize("test string", 101)); "too long")]
+    #[test_case("🧑‍🧑‍🧒‍🧒🧑‍🧑‍🧒‍🧒🧑‍🧑‍🧒‍🧒🧑‍🧑‍🧒‍🧒🧑‍🧑‍🧒‍🧒" => Ok(()); "grapheme clusters")]
     fn length_check(s: &str) -> Result<(), PollError> {
-        validate_poll_string_len(s)
+        validate_poll_string_len(s, "test string")
     }
 
     fn poll_option_proto(option: &str) -> PollOptionProto {
@@ -361,10 +363,10 @@ mod test {
     #[test_case(|x| x.options = vec![] => Err(PollError::TooFewOptions(0)); "not an option")]
     #[test_case(|x| x.options.truncate(1) => Err(PollError::TooFewOptions(1)); "but one option")]
     #[test_case(|x| x.options.truncate(2) => Ok(()); "barely enough choice")]
-    #[test_case(|x| x.question = "".to_string() => Err(PollError::InvalidPollStringSize(0)); "empty question")]
+    #[test_case(|x| x.question = "".to_string() => Err(PollError::InvalidPollStringSize("poll question", 0)); "empty question")]
     #[test_case(|x| x.question = "a".to_string() => Ok(()); "question len lower bound")]
     #[test_case(|x| x.question = format!("{:0100}", 0) => Ok(()); "question len upper bound")]
-    #[test_case(|x| x.question = format!("{:0101}", 0) => Err(PollError::InvalidPollStringSize(101)); "question too long")]
+    #[test_case(|x| x.question = format!("{:0101}", 0) => Err(PollError::InvalidPollStringSize("poll question", 101)); "question too long")]
     #[test_case(|x| x.reactions.clear() => Ok(()); "no reactions")]
     #[test_case(|x| x.reactions.push(ReactionProto::default()) => Err(PollError::Reaction(ReactionError::EmptyEmoji)); "invalid reaction")]
     fn poll(modify: fn(&mut PollProto)) -> Result<(), PollError> {
@@ -401,10 +403,10 @@ mod test {
     #[test_case(|_| {} => Ok(()); "happy path")]
     #[test_case(|x| x.targetSentTimestamp = Timestamp::MAX_SAFE_TIMESTAMP_MS + 1 =>
         Err(PollError::InvalidTimestamp(TimestampError("PollTerminateUpdate.targetSentTimestamp", Timestamp::MAX_SAFE_TIMESTAMP_MS + 1))); "bad timestamp")]
-    #[test_case(|x| x.question = "".to_string() => Err(PollError::InvalidPollStringSize(0)); "empty question")]
+    #[test_case(|x| x.question = "".to_string() => Err(PollError::InvalidPollStringSize("poll question", 0)); "empty question")]
     #[test_case(|x| x.question = "a".to_string() => Ok(()); "question len lower bound")]
     #[test_case(|x| x.question = format!("{:0100}", 0) => Ok(()); "question len upper bound")]
-    #[test_case(|x| x.question = format!("{:0101}", 0) => Err(PollError::InvalidPollStringSize(101)); "question too long")]
+    #[test_case(|x| x.question = format!("{:0101}", 0) => Err(PollError::InvalidPollStringSize("poll question", 101)); "question too long")]
     fn poll_terminate(modify: fn(&mut PollTerminateProto)) -> Result<(), PollError> {
         let mut terminate = poll_terminate_proto();
         modify(&mut terminate);
