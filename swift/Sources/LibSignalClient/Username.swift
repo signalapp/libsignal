@@ -10,6 +10,11 @@ public struct Username: Sendable {
     public let value: String
     public let hash: Data
 
+    internal init(_ value: String, uncheckedHash: Data) {
+        self.value = value
+        self.hash = uncheckedHash
+    }
+
     public init<S: StringProtocol>(_ s: S) throws {
         self.value = String(s)
         self.hash = try generateHash(self.value)

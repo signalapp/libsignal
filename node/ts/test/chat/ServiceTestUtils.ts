@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import Native from '../../../Native.js';
 import { TokioAsyncContext, UnauthenticatedChatConnection } from '../../net.js';
+import { FakeChatRemote } from '../../net/FakeChat';
 
 /**
  * A requirement that `Sub` not contain any properties that aren't in `Super`, or properties with
@@ -33,10 +33,7 @@ export function connectUnauth<
   Api extends Subset<UnauthenticatedChatConnection, Api> = object
 >(
   tokio: TokioAsyncContext
-): [
-  PickSubset<UnauthenticatedChatConnection, Api>,
-  Native.Wrapper<Native.FakeChatRemoteEnd>
-] {
+): [PickSubset<UnauthenticatedChatConnection, Api>, FakeChatRemote] {
   return UnauthenticatedChatConnection.fakeConnect(tokio, {
     onConnectionInterrupted: () => {},
     onIncomingMessage: () => {},

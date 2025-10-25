@@ -38,8 +38,9 @@ pub fn save_class_loader(
         )?;
 
         try_scoped(|| {
+            let loader_class = env.get_object_class(&loader)?;
             let load_class_method = env.get_method_id(
-                jni_class_name!(java.lang.ClassLoader),
+                loader_class,
                 "loadClass",
                 jni_signature!((java.lang.String) -> java.lang.Class),
             )?;

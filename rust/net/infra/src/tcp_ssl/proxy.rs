@@ -359,13 +359,13 @@ mod test {
     use crate::tcp_ssl::StatelessTls;
     use crate::tcp_ssl::proxy::testutil::{PROXY_CERTIFICATE, PROXY_HOSTNAME, localhost_tls_proxy};
     use crate::tcp_ssl::testutil::{
-        SERVER_CERTIFICATE, SERVER_HOSTNAME, localhost_https_server,
-        make_http_request_response_over,
+        SERVER_CERTIFICATE, SERVER_HOSTNAME, make_http_request_response_over,
+        simple_localhost_https_server,
     };
 
     #[tokio::test]
     async fn connect_through_proxy() {
-        let (addr, server) = localhost_https_server();
+        let (addr, server) = simple_localhost_https_server();
         let _server_handle = tokio::spawn(server);
 
         let (proxy_addr, proxy) = localhost_tls_proxy(SERVER_HOSTNAME, addr);
@@ -420,7 +420,7 @@ mod test {
     #[cfg(feature = "dev-util")]
     #[tokio::test]
     async fn connect_through_unencrypted_proxy() {
-        let (addr, server) = localhost_https_server();
+        let (addr, server) = simple_localhost_https_server();
         let _server_handle = tokio::spawn(server);
 
         let (proxy_addr, proxy) = super::testutil::localhost_tcp_proxy(addr);

@@ -5,13 +5,14 @@
 
 import type { ReadonlyDeep } from 'type-fest';
 
-import Native from '../../Native.js';
+import * as Native from '../Native.js';
 import { LibSignalError, RateLimitedError } from '../Errors.js';
 import { type Net, type TokioAsyncContext } from '../net.js';
 import { PublicKey } from '../EcKeys.js';
 import { Aci, Pni, ServiceIdKind } from '../Address.js';
 import { SignedKyberPublicPreKey, SignedPublicPreKey } from '../index.js';
 import { newNativeHandle } from '../internal.js';
+import { FakeChatRemote } from './FakeChat.js';
 
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
 
@@ -264,15 +265,15 @@ export class RegistrationService {
   /**
    * Create a registration client that sends requests to the returned fake chat.
    *
-   * Calling code will need to retrieve the first fake remote from the fake chat
-   * server and respond in order for the returned Promise to resolve.
+   * Calling code will need to await and use the returned fake chat remote
+   * to respond in order for the returned Promise<RegistrationService> to resolve.
    *
    * Internal, only public for testing
    */
   static fakeCreateSession(
     tokio: TokioAsyncContext,
     { e164 }: CreateSessionArgs
-  ): [Promise<RegistrationService>, Native.Wrapper<Native.FakeChatServer>] {
+  ): [Promise<RegistrationService>, Promise<FakeChatRemote>] {
     const server = newNativeHandle(Native.TESTING_FakeChatServer_Create());
     const registration = async () => {
       const handle = await Native.TESTING_FakeRegistrationSession_CreateSession(
@@ -283,7 +284,14 @@ export class RegistrationService {
       return new RegistrationService(handle, tokio);
     };
 
-    return [registration(), server];
+    const remote = async () => {
+      return new FakeChatRemote(
+        tokio,
+        await Native.TESTING_FakeChatServer_GetNextRemote(tokio, server)
+      );
+    };
+
+    return [registration(), remote()];
   }
 }
 

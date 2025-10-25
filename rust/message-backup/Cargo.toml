@@ -86,6 +86,7 @@ static_assertions = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 subtle = { workspace = true }
 thiserror = { workspace = true }
+unicode-segmentation = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
 visibility = { workspace = true }
 

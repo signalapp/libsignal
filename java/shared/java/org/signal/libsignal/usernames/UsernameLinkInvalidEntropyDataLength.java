@@ -5,7 +5,10 @@
 
 package org.signal.libsignal.usernames;
 
-public class UsernameLinkInvalidEntropyDataLength extends BaseUsernameException {
+import org.signal.libsignal.net.LookUpUsernameLinkFailure;
+
+public class UsernameLinkInvalidEntropyDataLength extends BaseUsernameException
+    implements LookUpUsernameLinkFailure {
   public UsernameLinkInvalidEntropyDataLength(final String message) {
     super(message);
   }

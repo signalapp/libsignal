@@ -136,6 +136,25 @@ async fn UnauthenticatedChatConnection_look_up_username_hash(
 }
 
 #[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_look_up_username_link(
+    chat: &UnauthenticatedChatConnection,
+    uuid: Uuid,
+    entropy: Box<[u8]>,
+) -> Result<Option<(String, [u8; 32])>, RequestError<::usernames::UsernameLinkError>> {
+    let entropy = entropy[..].try_into().map_err(|_| {
+        RequestError::Other(::usernames::UsernameLinkError::InvalidEntropyDataLength)
+    })?;
+    Ok(chat
+        .as_typed(|chat| chat.look_up_username_link(uuid, &entropy))
+        .await?
+        .map(|username| {
+            // Return both the username and the hash now; we already did the work of computing the
+            // hash when validating the decrypted username.
+            (username.to_string(), username.hash())
+        }))
+}
+
+#[bridge_io(TokioAsyncContext)]
 async fn UnauthenticatedChatConnection_send_multi_recipient_message(
     chat: &UnauthenticatedChatConnection,
     payload: Box<[u8]>,

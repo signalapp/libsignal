@@ -81,7 +81,7 @@ C-style `.h` file that the Swift toolchain can consume.
 
 For TypeScript, the [`libsignal-node`] crate is expanded and processed by
 [`gen_ts_decl.py`](./node/bin/gen_ts_decl.py) and the output is interpolated into
-[`Native.ts.d.in`](./node/bin/Native.d.ts.in). The output, however, only
+[`Native.ts.in`](./node/bin/Native.ts.in). The output, however, only
 declares the function signatures; to make them accessible to the JavaScript
 runtime, additional machinery is used. This takes the form of `#[linkme]`
 annotations on to the generated entry points; the [`linkme`] crate is used to

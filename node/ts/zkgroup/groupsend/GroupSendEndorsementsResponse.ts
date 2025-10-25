@@ -6,7 +6,7 @@
 import { randomBytes } from 'node:crypto';
 
 import ByteArray, { UNCHECKED_AND_UNCLONED } from '../internal/ByteArray.js';
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 import { RANDOM_LENGTH } from '../internal/Constants.js';
 
 import GroupSecretParams from '../groups/GroupSecretParams.js';

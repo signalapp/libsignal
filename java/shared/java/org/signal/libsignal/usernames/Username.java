@@ -62,6 +62,11 @@ public final class Username {
     this.hash = hash;
   }
 
+  // This could be `internal` in Kotlin.
+  public static Username _withPrecomputedHash(String username, byte[] hash) {
+    return new Username(username, hash);
+  }
+
   public String getUsername() {
     return this.username;
   }

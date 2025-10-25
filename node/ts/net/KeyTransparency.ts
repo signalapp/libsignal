@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import Native from '../../Native.js';
+import * as Native from '../Native.js';
 import { Aci } from '../Address.js';
 import { PublicKey } from '../EcKeys.js';
 import { Environment, type TokioAsyncContext } from '../net.js';

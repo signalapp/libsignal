@@ -16,4 +16,10 @@ pub trait UnauthenticatedChatApi {
         &self,
         hash: &[u8],
     ) -> Result<Option<Aci>, RequestError<Infallible>>;
+
+    async fn look_up_username_link(
+        &self,
+        uuid: uuid::Uuid,
+        entropy: &[u8; usernames::constants::USERNAME_LINK_ENTROPY_SIZE],
+    ) -> Result<Option<usernames::Username>, RequestError<usernames::UsernameLinkError>>;
 }

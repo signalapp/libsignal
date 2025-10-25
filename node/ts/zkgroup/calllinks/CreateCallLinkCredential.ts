@@ -7,7 +7,7 @@ import { randomBytes } from 'node:crypto';
 
 import ByteArray from '../internal/ByteArray.js';
 import { RANDOM_LENGTH } from '../internal/Constants.js';
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 
 import CallLinkSecretParams from './CallLinkSecretParams.js';
 import CreateCallLinkCredentialPresentation from './CreateCallLinkCredentialPresentation.js';

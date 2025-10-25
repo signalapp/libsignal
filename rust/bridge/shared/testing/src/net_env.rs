@@ -99,14 +99,18 @@ pub(crate) fn localhost_test_env_with_ports(
             params: DUMMY_SVR2_ENDPOINT_PARAMS,
         },
         svr_b: SvrBEnv::new(
-            EnclaveEndpoint {
-                domain_config: localhost_test_domain_config_with_port_and_cert(
-                    ports.svrb_port,
-                    root_certificate_der,
-                ),
-                ws_config: RECOMMENDED_WS_CONFIG,
-                params: DUMMY_SVRB_ENDPOINT_PARAMS,
-            },
+            [
+                Some(EnclaveEndpoint {
+                    domain_config: localhost_test_domain_config_with_port_and_cert(
+                        ports.svrb_port,
+                        root_certificate_der,
+                    ),
+                    ws_config: RECOMMENDED_WS_CONFIG,
+                    params: DUMMY_SVRB_ENDPOINT_PARAMS,
+                }),
+                None,
+                None,
+            ],
             [None, None, None],
         ),
         keytrans_config: DUMMY_KEYTRANS_CONFIG,

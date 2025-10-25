@@ -4,7 +4,7 @@
 //
 
 import { ProtocolAddress, ServiceId } from './Address.js';
-import Native from '../Native.js';
+import * as Native from './Native.js';
 
 export enum ErrorCode {
   Generic,

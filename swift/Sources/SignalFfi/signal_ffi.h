@@ -29,6 +29,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #define SignalBackupId_LEN 16
 
+#define SignalAes256GcmEncryption_TAG_SIZE SignalTAG_SIZE
+
+#define SignalAes256GcmEncryption_NONCE_SIZE SignalNONCE_SIZE
+
+#define SignalAes256GcmDecryption_TAG_SIZE SignalTAG_SIZE
+
+#define SignalAes256GcmDecryption_NONCE_SIZE SignalNONCE_SIZE
+
 #define SignalNUM_AUTH_CRED_ATTRIBUTES 3
 
 #define SignalNUM_PROFILE_KEY_CRED_ATTRIBUTES 4
@@ -125,11 +133,30 @@ SPDX-License-Identifier: AGPL-3.0-only
  */
 #define SignalFourCC_ENCODED_LEN 4
 
+typedef enum {
+  SignalLogLevelError = 1,
+  SignalLogLevelWarn,
+  SignalLogLevelInfo,
+  SignalLogLevelDebug,
+  SignalLogLevelTrace,
+} SignalLogLevel;
+
+enum SignalFfiPublicKeyType {
+  SignalFfiPublicKeyTypeECC,
+  SignalFfiPublicKeyTypeKyber,
+};
+typedef uint8_t SignalFfiPublicKeyType;
+
 enum SignalChallengeOption {
   SignalChallengeOptionPushChallenge,
   SignalChallengeOptionCaptcha,
 };
 typedef uint8_t SignalChallengeOption;
+
+typedef enum {
+  SignalDirectionSending = 0,
+  SignalDirectionReceiving = 1,
+} SignalDirection;
 
 typedef enum {
   SignalCiphertextMessageTypeWhisper = 2,
@@ -144,17 +171,6 @@ typedef enum {
   SignalContentHintImplicit = 2,
 } SignalContentHint;
 
-typedef enum {
-  SignalDirectionSending = 0,
-  SignalDirectionReceiving = 1,
-} SignalDirection;
-
-enum SignalFfiPublicKeyType {
-  SignalFfiPublicKeyTypeECC,
-  SignalFfiPublicKeyTypeKyber,
-};
-typedef uint8_t SignalFfiPublicKeyType;
-
 /**
  * The result of saving a new identity key for a protocol address.
  */
@@ -168,14 +184,6 @@ typedef enum {
    */
   SignalIdentityChangeReplacedExisting,
 } SignalIdentityChange;
-
-typedef enum {
-  SignalLogLevelError = 1,
-  SignalLogLevelWarn,
-  SignalLogLevelInfo,
-  SignalLogLevelDebug,
-  SignalLogLevelTrace,
-} SignalLogLevel;
 
 typedef enum {
   SignalErrorCodeUnknownError = 1,
@@ -1460,6 +1468,27 @@ typedef struct {
   SignalCancellationId cancellation_id;
 } SignalCPromiseOptionalUuid;
 
+typedef struct {
+  bool present;
+  const char *first;
+  uint8_t second[32];
+} SignalOptionalPairOfc_charu832;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalOptionalPairOfc_charu832 *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseOptionalPairOfc_charu832;
+
 /**
  * A C callback used to report the results of Rust futures.
  *
@@ -2578,6 +2607,8 @@ SignalFfiError *signal_unauthenticated_chat_connection_info(SignalMutPointerChat
 SignalFfiError *signal_unauthenticated_chat_connection_init_listener(SignalConstPointerUnauthenticatedChatConnection chat, SignalConstPointerFfiChatListenerStruct listener);
 
 SignalFfiError *signal_unauthenticated_chat_connection_look_up_username_hash(SignalCPromiseOptionalUuid *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, SignalBorrowedBuffer hash);
+
+SignalFfiError *signal_unauthenticated_chat_connection_look_up_username_link(SignalCPromiseOptionalPairOfc_charu832 *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, const uint8_t (*uuid)[16], SignalBorrowedBuffer entropy);
 
 SignalFfiError *signal_unauthenticated_chat_connection_send(SignalCPromiseFfiChatResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, SignalConstPointerHttpRequest http_request, uint32_t timeout_millis);
 

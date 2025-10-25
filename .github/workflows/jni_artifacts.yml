@@ -49,9 +49,9 @@ jobs:
             core.setFailed("the action should either be launched on a tag or with a 'dry run' switch");
           }
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+    - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
-    - run: rustup target add ${{ matrix.additional-rust-target }}
+    - run: rustup target add "${{ matrix.additional-rust-target }}"
       if: ${{ matrix.additional-rust-target != '' }}
 
     # install nasm compiler for boring
@@ -113,7 +113,7 @@ jobs:
       with:
         submodules: recursive
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+    - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 

@@ -255,6 +255,26 @@ async fn TESTING_FutureThrowsCustomErrorType() -> Result<(), CustomErrorType> {
     std::future::ready(Err(CustomErrorType)).await
 }
 
+#[cfg(feature = "jni")]
+struct PoisonErrorType;
+
+#[cfg(feature = "jni")]
+impl From<PoisonErrorType> for crate::jni::SignalJniError {
+    fn from(PoisonErrorType: PoisonErrorType) -> Self {
+        crate::jni::TestingError {
+            exception_class: crate::jni::ClassName(
+                "org.signal.libsignal.internal.GuaranteedNonexistentException",
+            ),
+        }
+        .into()
+    }
+}
+
+#[bridge_io(NonSuspendingBackgroundThreadRuntime, ffi = false, node = false)]
+async fn TESTING_FutureThrowsPoisonErrorType() -> Result<(), PoisonErrorType> {
+    std::future::ready(Err(PoisonErrorType)).await
+}
+
 #[bridge_fn]
 fn TESTING_ReturnStringArray() -> Box<[String]> {
     ["easy", "as", "ABC", "123"]

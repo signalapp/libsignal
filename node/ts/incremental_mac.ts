@@ -6,7 +6,7 @@
 import * as stream from 'node:stream';
 import { Buffer } from 'node:buffer';
 
-import Native from '../Native.js';
+import * as Native from './Native.js';
 import {
   IncrementalMacVerificationFailed,
   LibSignalErrorBase,

@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { assert, config, expect, use } from 'chai';
+import { config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { Buffer } from 'node:buffer';
 
-import Native from '../../Native.js';
+import * as Native from '../Native.js';
 import * as util from './util.js';
 import {
   UnauthenticatedChatConnection,
@@ -25,8 +25,6 @@ import {
 } from '../Errors.js';
 import * as KT from '../net/KeyTransparency.js';
 import { MonitorMode } from '../net/KeyTransparency.js';
-import { InternalRequest } from './NetTest.js';
-import { newNativeHandle } from '../internal.js';
 
 use(chaiAsPromised);
 
@@ -113,26 +111,12 @@ describe('KeyTransparency network errors', () => {
       );
       const promise = client._getLatestDistinguished(new InMemoryKtStore(), {});
 
-      const requestFromServerWithId =
-        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-          tokio,
-          remote
-        );
-      assert(requestFromServerWithId !== null);
-      const requestId = new InternalRequest(requestFromServerWithId).requestId;
+      const request = await remote.assertReceiveIncomingRequest();
 
-      const response = Native.TESTING_FakeChatResponse_Create(
-        requestId,
-        statusCode,
-        '',
-        headers,
-        null
-      );
-
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        remote,
-        newNativeHandle(response)
-      );
+      remote.sendReplyTo(request, {
+        status: statusCode,
+        headers: headers,
+      });
       return promise;
     }
 

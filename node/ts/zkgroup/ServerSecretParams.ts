@@ -4,7 +4,7 @@
 //
 
 import { randomBytes } from 'node:crypto';
-import Native from '../../Native.js';
+import * as Native from '../Native.js';
 
 import { RANDOM_LENGTH } from './internal/Constants.js';
 import ServerPublicParams from './ServerPublicParams.js';

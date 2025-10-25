@@ -1,5 +1,2 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application
-        android:networkSecurityConfig="@xml/crl_distribution_allowlist_security_config"
-    />
 </manifest>

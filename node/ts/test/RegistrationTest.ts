@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { assert, config, expect, use } from 'chai';
+import { config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinonChai from 'sinon-chai';
 import { Buffer } from 'node:buffer';
 
 import * as util from './util.js';
-import Native from '../../Native.js';
+import * as Native from '../Native.js';
 import { ErrorCode, LibSignalErrorBase } from '../Errors.js';
 import {
   RegisterAccountResponse,
@@ -18,7 +18,6 @@ import {
   Svr2CredentialResult,
   TokioAsyncContext,
 } from '../net.js';
-import { InternalRequest } from './NetTest.js';
 import { IdentityKeyPair } from '../EcKeys.js';
 import { Aci, Pni } from '../Address.js';
 import { newNativeHandle } from '../internal.js';
@@ -254,44 +253,30 @@ describe('Registration client', () => {
     it('can create a new session', async () => {
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
 
-      const [createSession, server] = RegistrationService.fakeCreateSession(
+      const [createSession, getRemote] = RegistrationService.fakeCreateSession(
         tokio,
         { e164: '+18005550123' }
       );
+      const fakeRemote = await getRemote;
 
-      const fakeRemote = newNativeHandle(
-        await Native.TESTING_FakeChatServer_GetNextRemote(tokio, server)
-      );
-      const firstRequestHandle =
-        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-          tokio,
-          fakeRemote
-        );
-      assert(firstRequestHandle !== null);
-      const firstRequest = new InternalRequest(firstRequestHandle);
+      const firstRequest = await fakeRemote.assertReceiveIncomingRequest();
 
       expect(firstRequest.verb).to.eq('POST');
       expect(firstRequest.path).to.eq('/v1/verification/session');
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            firstRequest.requestId,
-            200,
-            'OK',
-            ['content-type: application/json'],
-            Buffer.from(
-              JSON.stringify({
-                allowedToRequestCode: true,
-                verified: false,
-                requestedInformation: ['pushChallenge', 'captcha'],
-                id: 'fake-session-A',
-              })
-            )
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(firstRequest, {
+        status: 200,
+        message: 'OK',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            allowedToRequestCode: true,
+            verified: false,
+            requestedInformation: ['pushChallenge', 'captcha'],
+            id: 'fake-session-A',
+          })
+        ),
+      });
 
       const session = await createSession;
       expect(session.sessionId).to.eq('fake-session-A');
@@ -306,13 +291,7 @@ describe('Registration client', () => {
         languages: ['fr-CA'],
       });
 
-      const secondRequestHandle =
-        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-          tokio,
-          fakeRemote
-        );
-      assert(secondRequestHandle !== null);
-      const secondRequest = new InternalRequest(secondRequestHandle);
+      const secondRequest = await fakeRemote.assertReceiveIncomingRequest();
 
       expect(secondRequest.verb).to.eq('POST');
       expect(secondRequest.path).to.eq(
@@ -328,25 +307,19 @@ describe('Registration client', () => {
         ])
       );
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            secondRequest.requestId,
-            200,
-            'OK',
-            ['content-type: application/json'],
-            Buffer.from(
-              JSON.stringify({
-                allowedToRequestCode: true,
-                verified: false,
-                requestedInformation: ['pushChallenge', 'captcha'],
-                id: 'fake-session-A',
-              })
-            )
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(secondRequest, {
+        status: 200,
+        message: 'OK',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            allowedToRequestCode: true,
+            verified: false,
+            requestedInformation: ['pushChallenge', 'captcha'],
+            id: 'fake-session-A',
+          })
+        ),
+      });
 
       await requestVerification;
     });

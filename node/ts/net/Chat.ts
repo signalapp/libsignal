@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import Native, { ServerMessageAck, Wrapper } from '../../Native.js';
+import * as Native from '../Native.js';
 import { LibSignalError } from '../Errors.js';
-import { TokioAsyncContext, Environment } from '../net.js';
+import { Environment, TokioAsyncContext } from '../net.js';
 import * as KT from './KeyTransparency.js';
 import { newNativeHandle } from '../internal.js';
+import { FakeChatRemote } from './FakeChat.js';
 
 const DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS = 5000;
 
@@ -109,7 +110,7 @@ export interface ConnectionInfo {
 }
 
 class ConnectionInfoImpl
-  implements Wrapper<Native.ChatConnectionInfo>, ConnectionInfo
+  implements Native.Wrapper<Native.ChatConnectionInfo>, ConnectionInfo
 {
   constructor(public _nativeHandle: Native.ChatConnectionInfo) {}
 
@@ -178,7 +179,7 @@ export class UnauthenticatedChatConnection implements ChatConnection {
   public static fakeConnect(
     asyncContext: TokioAsyncContext,
     listener: ChatServiceListener
-  ): [UnauthenticatedChatConnection, Wrapper<Native.FakeChatRemoteEnd>] {
+  ): [UnauthenticatedChatConnection, FakeChatRemote] {
     const nativeChatListener = makeNativeChatListener(asyncContext, listener);
 
     const fakeChat = newNativeHandle(
@@ -195,14 +196,17 @@ export class UnauthenticatedChatConnection implements ChatConnection {
 
     return [
       new UnauthenticatedChatConnection(asyncContext, chat, nativeChatListener),
-      newNativeHandle(Native.TESTING_FakeChatConnection_TakeRemote(fakeChat)),
+      new FakeChatRemote(
+        asyncContext,
+        Native.TESTING_FakeChatConnection_TakeRemote(fakeChat)
+      ),
     ];
   }
 
   private constructor(
     // Not true-private so that they can be accessed by the "Service" interfaces in chat/.
     readonly _asyncContext: TokioAsyncContext,
-    readonly _chatService: Wrapper<Native.UnauthenticatedChatConnection>,
+    readonly _chatService: Native.Wrapper<Native.UnauthenticatedChatConnection>,
     // Unused except to keep the listener alive since the Rust code only holds a
     // weak reference to the same object.
     private readonly chatListener: Native.ChatListener,
@@ -293,7 +297,7 @@ export class AuthenticatedChatConnection implements ChatConnection {
     asyncContext: TokioAsyncContext,
     listener: ChatServiceListener,
     alerts?: ReadonlyArray<string>
-  ): [AuthenticatedChatConnection, Wrapper<Native.FakeChatRemoteEnd>] {
+  ): [AuthenticatedChatConnection, FakeChatRemote] {
     const nativeChatListener = makeNativeChatListener(asyncContext, listener);
 
     const fakeChat = newNativeHandle(
@@ -310,13 +314,16 @@ export class AuthenticatedChatConnection implements ChatConnection {
 
     return [
       new AuthenticatedChatConnection(asyncContext, chat, nativeChatListener),
-      newNativeHandle(Native.TESTING_FakeChatConnection_TakeRemote(fakeChat)),
+      new FakeChatRemote(
+        asyncContext,
+        Native.TESTING_FakeChatConnection_TakeRemote(fakeChat)
+      ),
     ];
   }
 
   private constructor(
     private readonly asyncContext: TokioAsyncContext,
-    private readonly chatService: Wrapper<Native.AuthenticatedChatConnection>,
+    private readonly chatService: Native.Wrapper<Native.AuthenticatedChatConnection>,
     // Unused except to keep the listener alive since the Rust code only holds a
     // weak reference to the same object.
     private readonly chatListener: Native.ChatListener
@@ -379,7 +386,7 @@ class WeakListenerWrapper implements Native.ChatListener {
   _incoming_message(
     envelope: Uint8Array,
     timestamp: number,
-    ack: ServerMessageAck
+    ack: Native.ServerMessageAck
   ): void {
     this.listener.deref()?._incoming_message(envelope, timestamp, ack);
   }
@@ -400,7 +407,7 @@ function makeNativeChatListener(
       _incoming_message(
         envelope: Uint8Array,
         timestamp: number,
-        ack: ServerMessageAck
+        ack: Native.ServerMessageAck
       ): void {
         listener.onIncomingMessage(
           envelope,
@@ -424,7 +431,7 @@ function makeNativeChatListener(
     _incoming_message(
       _envelope: Uint8Array,
       _timestamp: number,
-      _ack: ServerMessageAck
+      _ack: Native.ServerMessageAck
     ): void {
       throw new Error('Event not supported on unauthenticated connection');
     },
@@ -446,7 +453,7 @@ function makeNativeChatListener(
 
 export function buildHttpRequest(
   chatRequest: ChatRequest
-): Wrapper<Native.HttpRequest> {
+): Native.Wrapper<Native.HttpRequest> {
   const { verb, path, body, headers } = chatRequest;
   const httpRequest = {
     _nativeHandle: Native.HttpRequest_new(verb, path, body ?? null),

@@ -9,7 +9,7 @@
  * @module MessageBackup
  */
 
-import Native from '../Native.js';
+import * as Native from './Native.js';
 import { BackupForwardSecrecyToken, BackupKey } from './AccountKeys.js';
 import { Aci } from './Address.js';
 import { InputStream } from './io.js';

@@ -23,6 +23,12 @@ use crate::route::{
 
 /// A type that is not itself loggable but can produce a [`LogSafeDisplay`]
 /// value.
+///
+/// The description type must be [`Display`](std::fmt::Display)-able and tagged
+/// as log-safe. Implementers are encouraged to use a type that holds
+/// structured data instead of a string wrapper to avoid unnecessary
+/// string-ification and to enable consumers who know the concrete type access
+/// to typed values.
 pub trait DescribeForLog {
     /// The loggable description of `Self`.
     type Description: LogSafeDisplay;
@@ -32,11 +38,23 @@ pub trait DescribeForLog {
 }
 
 /// Wrapper for a [resolvable](ResolveHostnames) [`Route`](super) that resolves
-/// to [`WithLoggableDescription<R>`].
+/// to a [`WithLoggableDescription`] route.
+///
+/// To actually resolve a route, `R` must implement the [`DescribeForLog`]
+/// trait. The description of the unresolved route is saved and added to the
+/// result of [`<R as ResolveHostnames>::resolve`](ResolveHostnames::resolve).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ResolveWithSavedDescription<R>(pub R);
 
 /// A [route](super) with a description for logging.
+///
+/// This is a wrapper for an inner route and some "description" metadata. It
+/// is produced by resolving a [`ResolveWithSavedDescription<R>`] which tacks on
+/// a description of the route generated before resolution.
+///
+/// The [`DescribedRouteConnector`], likewise, can connect routes of this type
+/// by delegating to an inner [`Connector`] and pairing the description with the
+/// resulting connection type on success.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct WithLoggableDescription<R, D> {
     pub route: R,
@@ -54,8 +72,10 @@ impl<R: UsesTransport, D> UsesTransport for WithLoggableDescription<R, D> {
 
 /// [`Connector`] implementation for [`WithLoggableDescription`].
 ///
-/// Delegates to the wrapped connector, and produces on success its connection
-/// along with the loggable description from the input route.
+/// Implements [`Connector::connect_over`] by delegating to the wrapped
+/// connector, while saving through the description (which was created from the
+/// unresolved route).  If the inner connect attempt succeeds, the description
+/// is paired with the connection as the output.
 pub struct DescribedRouteConnector<C>(pub C);
 
 /// Loggable description for a [`UnresolvedWebsocketServiceRoute`].

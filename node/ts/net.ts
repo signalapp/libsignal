@@ -4,7 +4,7 @@
 //
 
 import type { ReadonlyDeep } from 'type-fest';
-import Native from '../Native.js';
+import * as Native from './Native.js';
 import {
   cdsiLookup,
   CDSRequestOptionsType,

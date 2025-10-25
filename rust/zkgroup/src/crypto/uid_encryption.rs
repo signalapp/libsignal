@@ -90,8 +90,9 @@ impl UidEncryptionDomain {
                 ];
                 let decoded_aci = &decoded_service_ids[0];
                 let decoded_pni = &decoded_service_ids[1];
-                let aci_M1 = uid_struct::UidStruct::calc_M1(*decoded_aci);
-                let pni_M1 = uid_struct::UidStruct::calc_M1(*decoded_pni);
+                let sho_seed = uid_struct::UidStruct::seed_M1();
+                let aci_M1 = uid_struct::UidStruct::calc_M1(sho_seed.clone(), *decoded_aci);
+                let pni_M1 = uid_struct::UidStruct::calc_M1(sho_seed, *decoded_pni);
                 debug_assert!(aci_M1 != pni_M1);
                 let decrypted_M1 = key_pair.a1.invert() * ciphertext.as_points()[0];
                 let mut index = u8::MAX;

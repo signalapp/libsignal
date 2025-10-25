@@ -7,35 +7,11 @@ use std::marker::PhantomData;
 
 use jni::objects::{JObject, JValue};
 
-/// Takes a Java-esque class name of the form `org.signal.Outer::Inner` and turns it into a
-/// JNI-style name `org/signal/Outer$Inner`.
-#[macro_export]
-macro_rules! jni_class_name {
-    ( $arg_base:tt $(. $arg_rest:ident)+ $(:: $nested:ident)* ) => {
-        concat!(
-            stringify!($arg_base),
-            $("/", stringify!($arg_rest),)+
-            $("$", stringify!($nested),)*
-        )
-    }
-}
-
-#[test]
-fn test_jni_class_name() {
-    assert_eq!(jni_class_name!(foo.bar), "foo/bar");
-    assert_eq!(jni_class_name!(foo.bar.baz), "foo/bar/baz");
-    assert_eq!(jni_class_name!(foo.bar.baz::garply), "foo/bar/baz$garply");
-    assert_eq!(
-        jni_class_name!(foo.bar.baz::garply::qux),
-        "foo/bar/baz$garply$qux"
-    );
-}
-
 /// Converts a function or type signature to a JNI signature string.
 ///
 /// This macro uses Rust function syntax `(Foo, Bar) -> Baz`, and uses Rust syntax for Java arrays
-/// `[Foo]`, but otherwise uses Java names for types: `boolean`, `byte`, `void`. Like
-/// [`jni_class_name`], inner classes are indicated with `::` rather than `.`.
+/// `[Foo]`, but otherwise uses Java names for types: `boolean`, `byte`, `void`. Inner classes are
+/// indicated with `::` rather than `.`.
 #[macro_export]
 macro_rules! jni_signature {
     ( boolean ) => ("Z");
@@ -61,7 +37,9 @@ macro_rules! jni_signature {
     ( $arg_base:tt $(. $arg_rest:ident)+ $(:: $nested:ident)* ) => {
         concat!(
             "L",
-            $crate::jni_class_name!($arg_base $(. $arg_rest)* $(:: $nested)*),
+            stringify!($arg_base),
+            $("/", stringify!($arg_rest),)+
+            $("$", stringify!($nested),)*
             ";"
         )
     };

@@ -14,6 +14,8 @@ import { Aci, ProtocolAddress, ServiceId } from './Address.js';
 export * from './Address.js';
 import { PrivateKey, PublicKey } from './EcKeys.js';
 export * from './EcKeys.js';
+import { Uuid } from './uuid.js';
+export * from './uuid.js';
 
 export * as usernames from './usernames.js';
 
@@ -24,7 +26,7 @@ export * as Net from './net.js';
 export * as Mp4Sanitizer from './Mp4Sanitizer.js';
 export * as WebpSanitizer from './WebpSanitizer.js';
 
-import Native from '../Native.js';
+import * as Native from './Native.js';
 
 Native.registerErrors(Errors);
 
@@ -48,8 +50,6 @@ export enum ContentHint {
   Resendable = 1,
   Implicit = 2,
 }
-
-export type Uuid = string;
 
 export function hkdf(
   outputLength: number,

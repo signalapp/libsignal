@@ -53,7 +53,7 @@ jobs:
             core.setFailed("the action should either be launched on a tag or with a 'dry run' switch");
           }
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target ${{ matrix.rust-cross-target }}
+    - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal --target "${{ matrix.rust-cross-target }}"
 
     # install nasm compiler for boring
     - name: (Windows) Install nasm
@@ -72,7 +72,7 @@ jobs:
     - name: Get Node version from .nvmrc
       id: get-nvm-version
       shell: bash
-      run: echo "node-version=$(cat .nvmrc)" >> $GITHUB_OUTPUT
+      run: echo "node-version=$(cat .nvmrc)" >> "$GITHUB_OUTPUT"
 
     - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.24
       with:
@@ -149,7 +149,7 @@ jobs:
       with:
         submodules: recursive
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+    - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 

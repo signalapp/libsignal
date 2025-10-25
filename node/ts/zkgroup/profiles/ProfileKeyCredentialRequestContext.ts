@@ -4,7 +4,7 @@
 //
 
 import ByteArray from '../internal/ByteArray.js';
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 import ProfileKeyCredentialRequest from './ProfileKeyCredentialRequest.js';
 
 export default class ProfileKeyCredentialRequestContext extends ByteArray {

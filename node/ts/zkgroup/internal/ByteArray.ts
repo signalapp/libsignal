@@ -4,7 +4,7 @@
 //
 
 import { LibSignalErrorBase } from '../../Errors.js';
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 
 export const UNCHECKED_AND_UNCLONED: unique symbol = Symbol();
 

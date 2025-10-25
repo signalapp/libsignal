@@ -13,7 +13,6 @@ import shlex
 import shutil
 import subprocess
 import sys
-
 from typing import List, Optional
 
 sys.path.append(os.path.join(
@@ -33,7 +32,7 @@ def check_for_debug_level_logs(src_path: str) -> None:
 def maybe_dump_debug_symbols(*, src_path: str, src_checksum_path: str, dst_path: str, dst_checksum_path: str) -> None:
     dump_syms = shutil.which('dump_syms')
     if not dump_syms:
-        print("note: dump_syms not installed; skipping debug info processing")
+        print('note: dump_syms not installed; skipping debug info processing')
         return
 
     with open(src_checksum_path, 'rb') as f:
@@ -47,13 +46,13 @@ def maybe_dump_debug_symbols(*, src_path: str, src_checksum_path: str, dst_path:
     if os.path.exists(dst_checksum_path):
         with open(dst_checksum_path, 'r') as f:
             if f.read() == checksum:
-                print("Debug info did not change")
+                print('Debug info did not change')
                 return
 
     with open(dst_checksum_path, 'w') as f:
         f.write(checksum)
 
-    print("Dumping debug symbols to %s" % dst_path)
+    print('Dumping debug symbols to %s' % dst_path)
     subprocess.check_call([dump_syms, src_path, '-o', dst_path])
 
 
@@ -103,7 +102,7 @@ def main(args: Optional[List[str]] = None) -> int:
         # so we turn to Node instead.
         node_arch = subprocess.check_output(
             ['node', '-e', "console.log(require('node:process').arch)"],
-            encoding="utf8").strip()
+            encoding='utf8').strip()
 
     cargo_target = options.cargo_target
     if cargo_target is None:
@@ -117,7 +116,7 @@ def main(args: Optional[List[str]] = None) -> int:
             'win32': 'pc-windows-msvc',
             'linux': 'unknown-linux-gnu',
         }.get(node_os_name, node_os_name)
-        cargo_target = f"{cargo_arch}-{cargo_target_suffix}"
+        cargo_target = f'{cargo_arch}-{cargo_target_suffix}'
 
     out_dir = (options.out_dir or os.path.join('build', configuration_name)).strip('"')
 
@@ -192,7 +191,7 @@ def main(args: Optional[List[str]] = None) -> int:
             # but that also isn't accepted by all of Visual Studio's CLI tools.
             tmpdir = cargo_env['RUNNER_TEMP']
             if len(tmpdir) < len(abs_build_dir):
-                cargo_env['CARGO_BUILD_TARGET_DIR'] = os.path.join(tmpdir, "libsignal")
+                cargo_env['CARGO_BUILD_TARGET_DIR'] = os.path.join(tmpdir, 'libsignal')
 
     elif node_os_name == 'darwin':
         # Save the debug info in dSYM format...
@@ -221,10 +220,10 @@ def main(args: Optional[List[str]] = None) -> int:
 
         objcopy = shutil.which('%s-linux-gnu-objcopy' % cargo_target.split('-')[0]) or 'objcopy'
 
-    print("with environment:")
+    print('with environment:')
     for (k, v) in cargo_env.items():
-        print("%s=%s" % (k, v))
-    print("", flush=True)
+        print('%s=%s' % (k, v))
+    print('', flush=True)
 
     subprocess.check_call(cmdline, env=cargo_env)
 
@@ -240,7 +239,7 @@ def main(args: Optional[List[str]] = None) -> int:
         dst_base = 'libsignal_client_%s_%s' % (node_os_name, node_arch)
 
         dst_path = os.path.join(out_dir, dst_base + '.node')
-        print("Copying %s to %s" % (src_path, dst_path))
+        print('Copying %s to %s' % (src_path, dst_path))
         os.makedirs(out_dir, exist_ok=True)
         if objcopy:
             subprocess.check_call([objcopy, '-S', src_path, dst_path])
@@ -255,14 +254,14 @@ def main(args: Optional[List[str]] = None) -> int:
         )
 
         if options.copy_to_prebuilds:
-            prebuild_dir = os.path.join('prebuilds', f"{node_os_name}-{node_arch}")
+            prebuild_dir = os.path.join('prebuilds', f'{node_os_name}-{node_arch}')
             prebuild_path = os.path.join(prebuild_dir, '@signalapp+libsignal-client.node')
-            print("Copying %s to %s" % (dst_path, prebuild_path))
+            print('Copying %s to %s' % (dst_path, prebuild_path))
             os.makedirs(prebuild_dir, exist_ok=True)
             # We copy from dst_path in the build directory because it's already gone through an objcopy pass
             shutil.copyfile(dst_path, prebuild_path)
     else:
-        print("ERROR: did not find generated library")
+        print('ERROR: did not find generated library')
         return 1
 
     return 0

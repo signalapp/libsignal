@@ -22,7 +22,6 @@ use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::ChatListener;
 use crate::net::registration::{ConnectChatBridge, RegistrationPushToken};
-use crate::protocol::KyberPublicKey;
 use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized, extend_lifetime};
 
 /// Converts arguments from their JNI form to their Rust form.
@@ -675,66 +674,42 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
 impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
     type ArgType = JavaCiphertextMessage<'a>;
     fn convert_from(env: &mut JNIEnv, foreign: &Self::ArgType) -> Result<Self, BridgeLayerError> {
-        fn native_handle_from_message<'a, T: BridgeHandle>(
-            env: &mut JNIEnv,
-            foreign: &JavaCiphertextMessage<'a>,
-            class_name: &'static str,
-            make_result: fn(&'a T) -> CiphertextMessageRef<'a>,
-        ) -> Result<Option<CiphertextMessageRef<'a>>, BridgeLayerError> {
-            if env
-                .is_instance_of(foreign, class_name)
-                .check_exceptions(env, "CiphertextMessageRef::convert_from")?
-            {
-                let handle: jlong = call_method_checked(
-                    env,
-                    foreign,
-                    "unsafeNativeHandleWithoutGuard",
-                    jni_args!(() -> long),
-                )?;
-                Ok(Some(make_result(unsafe {
-                    T::native_handle_cast(handle)?.as_ref()
-                })))
-            } else {
-                Ok(None)
-            }
-        }
-
         if foreign.is_null() {
             return Err(BridgeLayerError::NullPointer(Some("CipherTextMessageRef")));
         }
 
         None.or_else(|| {
-            native_handle_from_message(
+            map_native_handle_if_matching_jobject(
                 env,
                 foreign,
-                jni_class_name!(org.signal.libsignal.protocol.message.SignalMessage),
+                ClassName("org.signal.libsignal.protocol.message.SignalMessage"),
                 Self::SignalMessage,
             )
             .transpose()
         })
         .or_else(|| {
-            native_handle_from_message(
+            map_native_handle_if_matching_jobject(
                 env,
                 foreign,
-                jni_class_name!(org.signal.libsignal.protocol.message.PreKeySignalMessage),
+                ClassName("org.signal.libsignal.protocol.message.PreKeySignalMessage"),
                 Self::PreKeySignalMessage,
             )
             .transpose()
         })
         .or_else(|| {
-            native_handle_from_message(
+            map_native_handle_if_matching_jobject(
                 env,
                 foreign,
-                jni_class_name!(org.signal.libsignal.protocol.message.SenderKeyMessage),
+                ClassName("org.signal.libsignal.protocol.message.SenderKeyMessage"),
                 Self::SenderKeyMessage,
             )
             .transpose()
         })
         .or_else(|| {
-            native_handle_from_message(
+            map_native_handle_if_matching_jobject(
                 env,
                 foreign,
-                jni_class_name!(org.signal.libsignal.protocol.message.PlaintextContent),
+                ClassName("org.signal.libsignal.protocol.message.PlaintextContent"),
                 Self::PlaintextContent,
             )
             .transpose()
@@ -1189,25 +1164,26 @@ impl<T: BridgeHandle> ResultTypeInfo<'_> for Option<T> {
 }
 
 impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A, B) {
-    type ResultType = JavaPair<'a>;
+    type ResultType = JavaPair<'a, A::ResultType, B::ResultType>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let a = self.0.convert_into(env)?;
         let a = box_primitive_if_needed(env, a.into())?;
         let b = self.1.convert_into(env)?;
         let b = box_primitive_if_needed(env, b.into())?;
-        new_instance(
+        Ok(new_instance(
             env,
             ClassName("org.signal.libsignal.protocol.util.Pair"),
             jni_args!((a => java.lang.Object, b => java.lang.Object) -> void),
-        )
+        )?
+        .into())
     }
 }
 
 impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<(A, B)> {
-    type ResultType = JavaPair<'a>;
+    type ResultType = JavaPair<'a, A::ResultType, B::ResultType>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let Some(value) = self else {
-            return Ok(JObject::null());
+            return Ok(JObject::null().into());
         };
         value.convert_into(env)
     }
@@ -1479,34 +1455,29 @@ impl<'a> SimpleArgTypeInfo<'a> for crate::net::registration::SignedPublicPreKey 
         })?;
 
         let public_key = {
-            let native_handle = call_method_checked(
-                env,
-                &public_key,
-                "unsafeNativeHandleWithoutGuard",
-                jni_args!(() -> long),
-            )?;
-
-            if env
-                .is_instance_of(
+            None.or_else(|| {
+                map_native_handle_if_matching_jobject(
+                    env,
                     &public_key,
-                    jni_class_name!(org.signal.libsignal.protocol.ecc.ECPublicKey),
+                    ClassName("org.signal.libsignal.protocol.ecc.ECPublicKey"),
+                    PublicKey::serialize,
                 )
-                .expect_no_exceptions()?
-            {
-                unsafe { PublicKey::native_handle_cast(native_handle)?.as_ref() }.serialize()
-            } else if env
-                .is_instance_of(
+                .transpose()
+            })
+            .or_else(|| {
+                map_native_handle_if_matching_jobject(
+                    env,
                     &public_key,
-                    jni_class_name!(org.signal.libsignal.protocol.kem.KEMPublicKey),
+                    ClassName("org.signal.libsignal.protocol.kem.KEMPublicKey"),
+                    kem::PublicKey::serialize,
                 )
-                .expect_no_exceptions()?
-            {
-                unsafe { KyberPublicKey::native_handle_cast(native_handle)?.as_ref() }.serialize()
-            } else {
-                return Err(BridgeLayerError::BadArgument(
+                .transpose()
+            })
+            .unwrap_or_else(|| {
+                Err(BridgeLayerError::BadArgument(
                     "publicKey type is not supported".to_owned(),
-                ));
-            }
+                ))
+            })?
         };
         let signature = <Box<[u8]>>::convert_from(env, &signature)?;
 
@@ -2269,8 +2240,8 @@ macro_rules! jni_result_type {
     (()) => {
         ()
     };
-    (($a:ty, $b:ty)) => {
-        $crate::jni::JavaPair<'local>
+    (($a:tt, $b:tt)) => {
+        $crate::jni::JavaPair<'local, $crate::jni_result_type!($a), $crate::jni_result_type!($b)>
     };
     (bool) => {
         ::jni::sys::jboolean

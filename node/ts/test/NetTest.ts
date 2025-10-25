@@ -12,7 +12,7 @@ import { Buffer } from 'node:buffer';
 
 import * as util from './util.js';
 import { Aci, Pni } from '../Address.js';
-import Native, { type ChatResponse } from '../../Native.js';
+import * as Native from '../Native.js';
 import { ErrorCode, LibSignalErrorBase } from '../Errors.js';
 import {
   AuthenticatedChatConnection,
@@ -28,6 +28,7 @@ import {
 } from '../net.js';
 import { CompletablePromise } from './util.js';
 import { newNativeHandle } from '../internal.js';
+import { FakeChatRemote } from '../net/FakeChat.js';
 
 const { TESTING_ConnectionManager_isUsingProxy } = Native;
 
@@ -106,13 +107,13 @@ describe('chat service api', () => {
       ['content-type', 'application/octet-stream'],
       ['forwarded', '1.1.1.1'],
     ];
-    const expectedWithContent: ChatResponse = {
+    const expectedWithContent: Native.ChatResponse = {
       status: status,
       message: 'OK',
       headers: headers,
       body: Buffer.from('content'),
     };
-    const expectedWithoutContent: ChatResponse = {
+    const expectedWithoutContent: Native.ChatResponse = {
       status: status,
       message: 'OK',
       headers: headers,
@@ -498,10 +499,7 @@ describe('chat service api', () => {
         expectedMethod.reset();
         const completable = new CompletablePromise();
         expectedMethod.callsFake(completable.resolve);
-        Native.TESTING_FakeChatRemoteEnd_SendRawServerRequest(
-          fakeRemote,
-          serverRequest
-        );
+        fakeRemote.sendRawServerRequest(serverRequest);
         await completable.done();
         expect(expectedMethod).to.have.been.calledOnceWith(
           ...expectedArguments
@@ -547,11 +545,6 @@ describe('chat service api', () => {
         tokio,
         listener
       );
-      const sendRawServerRequest = (message: Uint8Array) =>
-        Native.TESTING_FakeChatRemoteEnd_SendRawServerRequest(
-          fakeRemote,
-          message
-        );
 
       const completable = new CompletablePromise();
       const callsToMake: Buffer[] = [
@@ -586,9 +579,9 @@ describe('chat service api', () => {
         }
       };
       callsToMake.forEach((serverRequest) =>
-        sendRawServerRequest(serverRequest)
+        fakeRemote.sendRawServerRequest(serverRequest)
       );
-      Native.TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(fakeRemote);
+      fakeRemote.injectConnectionInterrupted();
       await completable.done();
 
       expect(callsReceived).to.have.lengthOf(callsExpected.length);
@@ -639,7 +632,7 @@ describe('chat service api', () => {
   describe('fake chat connection', () => {
     type FakeConnectFn = (
       tokio: TokioAsyncContext
-    ) => [ChatConnection, Native.Wrapper<Native.FakeChatRemoteEnd>];
+    ) => [ChatConnection, FakeChatRemote];
     const cases: Array<[string, FakeConnectFn]> = [
       [
         'authenticated',
@@ -677,15 +670,9 @@ describe('chat service api', () => {
           };
           const responseFuture = chat.fetch(request);
 
-          const requestFromServerWithId =
-            await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-              tokio,
-              fakeRemote
-            );
-          assert(requestFromServerWithId !== null);
-          const requestFromServer = new InternalRequest(
-            requestFromServerWithId
-          );
+          const requestFromServer =
+            await fakeRemote.assertReceiveIncomingRequest();
+
           expect(requestFromServer.verb).to.eq(request.verb);
           expect(requestFromServer.path).to.eq(request.path);
           expect(requestFromServer.body).to.deep.eq(request.body);
@@ -699,8 +686,7 @@ describe('chat service api', () => {
           // 3: {"Created"}
           // 5: {"purpose: test response"}
           // 4: {5}
-          Native.TESTING_FakeChatRemoteEnd_SendRawServerResponse(
-            fakeRemote,
+          fakeRemote.sendRawServerResponse(
             Buffer.from(
               'CAAQyQEaB0NyZWF0ZWQqFnB1cnBvc2U6IHRlc3QgcmVzcG9uc2UiAQU=',
               'base64'
@@ -843,34 +829,3 @@ describe('cdsi lookup', () => {
     });
   });
 });
-
-export class InternalRequest implements Native.Wrapper<Native.HttpRequest> {
-  readonly _nativeHandle: Native.HttpRequest;
-  readonly requestId: bigint;
-
-  constructor([nativeHandle, requestId]: [Native.HttpRequest, bigint]) {
-    this._nativeHandle = nativeHandle;
-    this.requestId = requestId;
-  }
-
-  public get verb(): string {
-    return Native.TESTING_ChatRequestGetMethod(this);
-  }
-
-  public get path(): string {
-    return Native.TESTING_ChatRequestGetPath(this);
-  }
-
-  public get headers(): Map<string, string> {
-    const names = Native.TESTING_ChatRequestGetHeaderNames(this);
-    return new Map(
-      names.map((name) => {
-        return [name, Native.TESTING_ChatRequestGetHeaderValue(this, name)];
-      })
-    );
-  }
-
-  public get body(): Uint8Array {
-    return Native.TESTING_ChatRequestGetBody(this);
-  }
-}

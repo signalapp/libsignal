@@ -5,7 +5,7 @@
 
 import { randomBytes } from 'node:crypto';
 import { RANDOM_LENGTH } from '../internal/Constants.js';
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 
 import UuidCiphertext from './UuidCiphertext.js';
 

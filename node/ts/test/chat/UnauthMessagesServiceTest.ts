@@ -7,7 +7,7 @@ import { assert, config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { Buffer } from 'node:buffer';
 
-import Native from '../../../Native.js';
+import * as Native from '../../Native.js';
 import * as util from '../util.js';
 import {
   MultiRecipientMessageResponse,
@@ -15,10 +15,9 @@ import {
   UnauthMessagesService,
 } from '../../net.js';
 import { connectUnauth } from './ServiceTestUtils.js';
-import { InternalRequest } from '../NetTest.js';
-import { newNativeHandle } from '../../internal.js';
 import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
 import { Aci } from '../../Address.js';
+import { FakeChatRemote, InternalRequest } from '../../net/FakeChat.js';
 
 use(chaiAsPromised);
 
@@ -28,10 +27,9 @@ config.truncateThreshold = 0;
 describe('UnauthMessagesService', () => {
   describe('multi-recipient messages', () => {
     async function sendTestMultiRecipientMessage(
-      tokio: TokioAsyncContext,
       chat: UnauthMessagesService,
-      fakeRemote: Native.Wrapper<Native.FakeChatRemoteEnd>
-    ): Promise<[Promise<MultiRecipientMessageResponse>, bigint]> {
+      fakeRemote: FakeChatRemote
+    ): Promise<[Promise<MultiRecipientMessageResponse>, InternalRequest]> {
       const payload = Uint8Array.of(1, 2, 3, 4);
       const timestamp = 1700000000000;
       const responseFuture = chat.sendMultiRecipientMessage({
@@ -43,13 +41,8 @@ describe('UnauthMessagesService', () => {
       });
 
       // Get the incoming request from the fake remote
-      const rawRequest =
-        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-          tokio,
-          fakeRemote
-        );
-      assert(rawRequest !== null);
-      const request = new InternalRequest(rawRequest);
+      const request = await fakeRemote.assertReceiveIncomingRequest();
+
       expect(request.verb).to.eq('PUT');
       expect(request.path).to.eq(
         '/v1/messages/multi_recipient?ts=1700000000000&online=false&urgent=true&story=true'
@@ -59,37 +52,30 @@ describe('UnauthMessagesService', () => {
       );
       expect(request.body).to.deep.eq(payload);
 
-      return [responseFuture, request.requestId];
+      return [responseFuture, request];
     }
 
     it('can send', async () => {
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
       const [chat, fakeRemote] = connectUnauth<UnauthMessagesService>(tokio);
 
-      const [responseFuture, requestId] = await sendTestMultiRecipientMessage(
-        tokio,
+      const [responseFuture, request] = await sendTestMultiRecipientMessage(
         chat,
         fakeRemote
       );
 
       const uuid = '4fcfe887-a600-40cd-9ab7-fd2a695e9981';
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            requestId,
-            200,
-            'OK',
-            ['content-type: application/json'],
-            Buffer.from(
-              JSON.stringify({
-                uuids404: [uuid],
-              })
-            )
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(request, {
+        status: 200,
+        message: 'OK',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            uuids404: [uuid],
+          })
+        ),
+      });
 
       const responseFromServer = await responseFuture;
       assert(responseFromServer !== null);
@@ -102,24 +88,15 @@ describe('UnauthMessagesService', () => {
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
       const [chat, fakeRemote] = connectUnauth<UnauthMessagesService>(tokio);
 
-      const [responseFuture, requestId] = await sendTestMultiRecipientMessage(
-        tokio,
+      const [responseFuture, request] = await sendTestMultiRecipientMessage(
         chat,
         fakeRemote
       );
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            requestId,
-            401,
-            'Unauthorized',
-            [],
-            null
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(request, {
+        status: 401,
+        message: 'Unauthorized',
+      });
 
       await expect(responseFuture)
         .to.eventually.be.rejectedWith(LibSignalErrorBase)
@@ -132,34 +109,27 @@ describe('UnauthMessagesService', () => {
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
       const [chat, fakeRemote] = connectUnauth<UnauthMessagesService>(tokio);
 
-      const [responseFuture, requestId] = await sendTestMultiRecipientMessage(
-        tokio,
+      const [responseFuture, request] = await sendTestMultiRecipientMessage(
         chat,
         fakeRemote
       );
 
       const uuid = '4fcfe887-a600-40cd-9ab7-fd2a695e9981';
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            requestId,
-            409,
-            'Conflict',
-            ['content-type: application/json'],
-            Buffer.from(
-              JSON.stringify([
-                {
-                  uuid,
-                  missingDevices: [4, 5],
-                  extraDevices: [40, 50],
-                },
-              ])
-            )
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(request, {
+        status: 409,
+        message: 'Conflict',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify([
+            {
+              uuid,
+              missingDevices: [4, 5],
+              extraDevices: [40, 50],
+            },
+          ])
+        ),
+      });
 
       await expect(responseFuture)
         .to.eventually.be.rejectedWith(LibSignalErrorBase)
@@ -180,33 +150,26 @@ describe('UnauthMessagesService', () => {
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
       const [chat, fakeRemote] = connectUnauth<UnauthMessagesService>(tokio);
 
-      const [responseFuture, requestId] = await sendTestMultiRecipientMessage(
-        tokio,
+      const [responseFuture, request] = await sendTestMultiRecipientMessage(
         chat,
         fakeRemote
       );
 
       const uuid = '4fcfe887-a600-40cd-9ab7-fd2a695e9981';
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            requestId,
-            410,
-            'Gone',
-            ['content-type: application/json'],
-            Buffer.from(
-              JSON.stringify([
-                {
-                  uuid,
-                  staleDevices: [4, 5],
-                },
-              ])
-            )
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(request, {
+        status: 410,
+        message: 'Gone',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify([
+            {
+              uuid,
+              staleDevices: [4, 5],
+            },
+          ])
+        ),
+      });
 
       await expect(responseFuture)
         .to.eventually.be.rejectedWith(LibSignalErrorBase)
@@ -227,24 +190,15 @@ describe('UnauthMessagesService', () => {
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
       const [chat, fakeRemote] = connectUnauth<UnauthMessagesService>(tokio);
 
-      const [responseFuture, requestId] = await sendTestMultiRecipientMessage(
-        tokio,
+      const [responseFuture, request] = await sendTestMultiRecipientMessage(
         chat,
         fakeRemote
       );
 
-      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
-        fakeRemote,
-        newNativeHandle(
-          Native.TESTING_FakeChatResponse_Create(
-            requestId,
-            500,
-            'Internal Server Error',
-            [],
-            null
-          )
-        )
-      );
+      fakeRemote.sendReplyTo(request, {
+        status: 500,
+        message: 'Internal Server Error',
+      });
 
       await expect(responseFuture)
         .to.eventually.be.rejectedWith(LibSignalErrorBase)

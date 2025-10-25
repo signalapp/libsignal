@@ -9,7 +9,7 @@ import { Buffer } from 'node:buffer';
 import { Environment, Net, SvrB } from '../net.js';
 import { BackupKey, BackupForwardSecrecyToken } from '../AccountKeys.js';
 import { Aci } from '../Address.js';
-import Native from '../../Native.js';
+import * as Native from '../Native.js';
 
 describe('SecureValueRecoveryBackup', () => {
   const testAci = Aci.parseFromServiceIdString(

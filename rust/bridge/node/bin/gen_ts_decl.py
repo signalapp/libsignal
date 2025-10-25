@@ -9,10 +9,9 @@ import collections
 import difflib
 import itertools
 import os
-import subprocess
 import re
+import subprocess
 import sys
-
 from typing import Iterable, Iterator, Tuple
 
 Args = collections.namedtuple('Args', ['verify'])
@@ -64,27 +63,27 @@ def translate_to_ts(typ: str) -> str:
     typ = typ.replace(' ', '')
 
     type_map = {
-        "()": "void",
-        "&[u8]": "Uint8Array",
-        "i32": "number",
-        "u8": "number",
-        "u16": "number",
-        "u32": "number",
-        "u64": "bigint",
-        "bool": "boolean",
-        "String": "string",
-        "&str": "string",
-        "Vec<u8>": "Uint8Array",
-        "Box<[u8]>": "Uint8Array",
-        "ServiceId": "Uint8Array",
-        "Aci": "Uint8Array",
-        "Pni": "Uint8Array",
-        "E164": "string",
-        "ServiceIdSequence<'_>": "Uint8Array",
-        "PathAndQuery": "string",
-        "LanguageList": "string[]",
-        "&BackupKey": "Uint8Array",
-        "MultiRecipientSendAuthorization": "Uint8Array|null",
+        '()': 'void',
+        '&[u8]': 'Uint8Array',
+        'i32': 'number',
+        'u8': 'number',
+        'u16': 'number',
+        'u32': 'number',
+        'u64': 'bigint',
+        'bool': 'boolean',
+        'String': 'string',
+        '&str': 'string',
+        'Vec<u8>': 'Uint8Array',
+        'Box<[u8]>': 'Uint8Array',
+        'ServiceId': 'Uint8Array',
+        'Aci': 'Uint8Array',
+        'Pni': 'Uint8Array',
+        'E164': 'string',
+        "ServiceIdSequence<'_>": 'Uint8Array',
+        'PathAndQuery': 'string',
+        'LanguageList': 'string[]',
+        '&BackupKey': 'Uint8Array',
+        'MultiRecipientSendAuthorization': 'Uint8Array|null',
     }
 
     if typ in type_map:
@@ -173,14 +172,14 @@ def translate_to_ts(typ: str) -> str:
 
 
 DIAGNOSTICS_TO_IGNORE = [
-    r"warning: \d+ warnings? emitted",
-    r"warning: unused import",
-    r"warning: field.+ never read",
-    r"warning: variant.+ never constructed",
-    r"warning: method.+ never used",
-    r"warning: associated function.+ never used",
+    r'warning: \d+ warnings? emitted',
+    r'warning: unused import',
+    r'warning: field.+ never read',
+    r'warning: variant.+ never constructed',
+    r'warning: method.+ never used',
+    r'warning: associated function.+ never used',
 ]
-SHOULD_IGNORE_PATTERN = re.compile("(" + ")|(".join(DIAGNOSTICS_TO_IGNORE) + ")")
+SHOULD_IGNORE_PATTERN = re.compile('(' + ')|('.join(DIAGNOSTICS_TO_IGNORE) + ')')
 
 
 def camelcase(arg: str) -> str:
@@ -212,7 +211,7 @@ def collect_decls(crate_dir: str, features: Iterable[str] = ()) -> Iterator[str]
 
     had_error = False
     for l in stderr.split('\n'):
-        if l == "":
+        if l == '':
             continue
 
         if SHOULD_IGNORE_PATTERN.search(l):
@@ -222,7 +221,7 @@ def collect_decls(crate_dir: str, features: Iterable[str] = ()) -> Iterator[str]
         had_error = True
 
     if had_error:
-        print("Exiting with error")
+        print('Exiting with error')
         sys.exit(1)
 
     comment_decl = re.compile(r'\s*///\s*ts: (.+)')
@@ -250,7 +249,7 @@ def collect_decls(crate_dir: str, features: Iterable[str] = ()) -> Iterator[str]
         ts_ret_type = translate_to_ts(ret_type)
         ts_args = []
         if '::' in fn_args:
-            raise Exception(f'Paths are not supported. Use alias for the type of \'{fn_args}\'')
+            raise Exception(f"Paths are not supported. Use alias for the type of '{fn_args}'")
 
         for (arg_name, arg_type) in split_rust_args(fn_args):
             ts_arg_type = translate_to_ts(arg_type)
@@ -260,11 +259,24 @@ def collect_decls(crate_dir: str, features: Iterable[str] = ()) -> Iterator[str]
 
 
 def expand_template(template_file: str, decls: Iterable[str]) -> str:
-    with open(template_file, "r") as f:
+    decls = list(decls)
+    with open(template_file, 'r') as f:
         contents = f.read()
-        contents += "\n"
-        contents += "\n".join(sorted(decls))
-        contents += "\n"
+
+        # Rewrite from function syntax to property syntax to take advantage of
+        # https://www.typescriptlang.org/tsconfig/#strictFunctionTypes.
+        contents = contents.replace('NATIVE_FNS;', '\n  '.join(
+            x.removeprefix('export function ')
+             .replace('(', ': (', 1)
+             .replace('):', ') =>') for x in decls if x.startswith('export function ')
+        ))
+        contents = contents.replace('NATIVE_FN_NAMES', ''.join(
+            '\n  ' + x.removeprefix('export function ').split('(')[0] + ','
+            for x in decls if x.startswith('export function ')
+        ) + '\n')
+        contents = contents.replace('NATIVE_TYPES;', '\n'.join(
+            'export ' + x.removeprefix('export ') for x in decls if not x.startswith('export function ')
+        ))
 
         return contents
 
@@ -277,10 +289,10 @@ def verify_contents(expected_output_file: str, expected_contents: str) -> None:
     if first_line:
         sys.stdout.write(first_line)
         sys.stdout.writelines(diff)
-        sys.exit(f"error: {expected_output_file} not up to date; re-run {sys.argv[0]}!")
+        sys.exit(f'error: {expected_output_file} not up to date; re-run {sys.argv[0]}!')
 
 
-Crate = collections.namedtuple('Crate', ["path", "features"], defaults=[()])
+Crate = collections.namedtuple('Crate', ['path', 'features'], defaults=[()])
 
 
 def convert_to_typescript(rust_crates: Iterable[Crate], ts_in_path: str, ts_out_path: str, verify: bool) -> None:
@@ -300,7 +312,7 @@ def convert_to_typescript(rust_crates: Iterable[Crate], ts_in_path: str, ts_out_
 def main() -> None:
     args = parse_args()
     our_abs_dir = os.path.dirname(os.path.realpath(__file__))
-    output_file_name = 'Native.d.ts'
+    output_file_name = 'Native.ts'
 
     convert_to_typescript(
         rust_crates=[
@@ -310,7 +322,7 @@ def main() -> None:
             Crate(path=os.path.join(our_abs_dir, '..', '..', 'shared', 'testing'), features=('node', 'signal-media')),
         ],
         ts_in_path=os.path.join(our_abs_dir, output_file_name + '.in'),
-        ts_out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'node', output_file_name),
+        ts_out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'node', 'ts', output_file_name),
         verify=args.verify,
     )
 

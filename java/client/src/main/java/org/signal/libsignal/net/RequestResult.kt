@@ -100,21 +100,6 @@ public sealed interface RequestResult<out T, out E : BadRequestError> {
     }
 }
 
-/**
- * Marker interface for business logic errors returned by typed APIs.
- *
- * All API-specific error types must implement this interface. Errors can
- * implement multiple specific error interfaces to indicate they may be
- * returned by multiple APIs.
- *
- * Example:
- * ```kotlin
- * sealed interface AciByUsernameFetchError : BadRequestError
- * object UserNotFound : AciByUsernameFetchError
- * ```
- */
-public interface BadRequestError
-
 @JvmName("toRequestResultTyped")
 internal inline fun <reified E : BadRequestError> Throwable.toRequestResult(): RequestResult<Nothing, E> =
   when (this) {

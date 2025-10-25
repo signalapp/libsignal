@@ -8,7 +8,6 @@
 import os
 import subprocess
 import sys
-
 from typing import Iterator
 
 
@@ -16,7 +15,7 @@ def rust_paths_to_remap() -> Iterator[str]:
     # Repo root
     yield os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 
-    rust_sysroot = subprocess.check_output(["rustc", "--print", "sysroot"], text=True).strip()
+    rust_sysroot = subprocess.check_output(['rustc', '--print', 'sysroot'], text=True).strip()
     yield rust_sysroot
     # Rust stdlib internals (must go after sysroot)
     yield os.path.join(rust_sysroot, 'lib', 'rustlib', 'src', 'rust')
@@ -24,7 +23,7 @@ def rust_paths_to_remap() -> Iterator[str]:
     # but (a) there are precompiled strings with library/ as the root in the stdlib,
     # and (b) both the stdlib and libsignal have a core/ subdirectory.
 
-    cargo_home = os.environ.get("CARGO_HOME", os.path.join(os.path.expanduser('~'), '.cargo'))
+    cargo_home = os.environ.get('CARGO_HOME', os.path.join(os.path.expanduser('~'), '.cargo'))
     # Git dependencies
     yield os.path.join(cargo_home, 'git', 'checkouts')
     # Iterate over all crates.io dependency directories:
