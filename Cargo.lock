@@ -944,7 +944,7 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "5.0.0-pre.1"
-source = "git+https://github.com/dalek-cryptography/curve25519-dalek?branch=upstream-lizard#b7f7cc86a84e00c6c6e9ed57dd3278d7bf00149d"
+source = "git+https://github.com/dalek-cryptography/curve25519-dalek#b76b924080dad8bd07bc26f00bf2d4e4fc5daed1"
 dependencies = [
  "cfg-if",
  "cpufeatures",

@@ -223,7 +223,7 @@ zerocopy = "0.8.24"
 
 boring = { git = 'https://github.com/signalapp/boring', tag = 'signal-v4.18.0' }
 boring-sys = { git = 'https://github.com/signalapp/boring', tag = 'signal-v4.18.0' }
-curve25519-dalek = { git = 'https://github.com/dalek-cryptography/curve25519-dalek', branch = "upstream-lizard" }
+curve25519-dalek = { git = 'https://github.com/dalek-cryptography/curve25519-dalek', ref = "b76b924080dad8bd07bc26f00bf2d4e4fc5daed1" }
 tungstenite = { git = 'https://github.com/signalapp/tungstenite-rs', tag = 'signal-v0.27.0' }
 
 [profile.dev.package.argon2]
