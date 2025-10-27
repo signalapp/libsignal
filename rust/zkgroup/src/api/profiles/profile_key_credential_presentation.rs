@@ -12,7 +12,7 @@ use crate::common::serialization::VersionByte;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKeyCredentialPresentationV1 {
     pub(crate) version: u8, // Not ReservedByte or VersionByte to allow deserializing a V2 presentation as V1.
     pub(crate) proof: crypto::proofs::ProfileKeyCredentialPresentationProofV1,
@@ -37,7 +37,7 @@ impl ProfileKeyCredentialPresentationV1 {
 }
 
 /// Like [`ProfileKeyCredentialPresentationV1`], but with an optimized proof.
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKeyCredentialPresentationV2 {
     pub(crate) version: VersionByte<PRESENTATION_VERSION_2>,
     pub(crate) proof: crypto::proofs::ProfileKeyCredentialPresentationProofV2,
@@ -61,7 +61,7 @@ impl ProfileKeyCredentialPresentationV2 {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ExpiringProfileKeyCredentialPresentation {
     pub(crate) version: VersionByte<PRESENTATION_VERSION_3>,
     pub(crate) proof: crypto::proofs::ExpiringProfileKeyCredentialPresentationProof,

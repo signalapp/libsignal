@@ -13,7 +13,7 @@ use crate::{ReceiptLevel, ReceiptSerialBytes, Timestamp, crypto};
 // Note that this type appears in gift badge messages, and thus in backups.
 // Therefore it must be possible to at least deserialize any past versions of it,
 // though they don't have to still be considered valid.
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ReceiptCredentialPresentation {
     pub(crate) reserved: ReservedByte,
     pub(crate) proof: crypto::proofs::ReceiptCredentialPresentationProof,

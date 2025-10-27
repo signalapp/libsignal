@@ -23,7 +23,7 @@ use crate::groups::UuidCiphertext;
 
 const CREDENTIAL_LABEL: &[u8] = b"20230421_Signal_CallLinkAuthCredential";
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct CallLinkAuthCredentialResponse {
     reserved: ReservedByte,
     proof: zkcredential::issuance::IssuanceProof,
@@ -70,7 +70,7 @@ impl CallLinkAuthCredentialResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct CallLinkAuthCredential {
     reserved: ReservedByte,
     credential: zkcredential::credentials::Credential,
@@ -100,7 +100,7 @@ impl CallLinkAuthCredential {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct CallLinkAuthCredentialPresentation {
     reserved: ReservedByte,
     pub(crate) proof: zkcredential::presentation::PresentationProof,

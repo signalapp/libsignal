@@ -10,7 +10,7 @@ use crate::common::serialization::ReservedByte;
 use crate::common::simple_types::*;
 use crate::crypto;
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ReceiptCredentialResponse {
     pub(crate) reserved: ReservedByte,
     pub(crate) receipt_expiration_time: Timestamp,

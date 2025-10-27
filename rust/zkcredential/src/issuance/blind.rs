@@ -243,7 +243,7 @@ impl Serialize for BlindingKeyPair {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 struct BlindedCredential {
     t: Scalar,
     U: RistrettoPoint,
@@ -256,7 +256,7 @@ struct BlindedCredential {
 /// Slightly larger than a typical [`IssuanceProof`] (which is why it's a separate type at all).
 ///
 /// Use [`IssuanceProofBuilder`] to validate and extract the credential.
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct BlindedIssuanceProof {
     credential: BlindedCredential,
     poksho_proof: Vec<u8>,

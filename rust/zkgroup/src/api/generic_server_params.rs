@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::RandomnessBytes;
 use crate::common::serialization::ReservedByte;
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct GenericServerSecretParams {
     version: ReservedByte,
     pub(crate) credential_key: zkcredential::credentials::CredentialKeyPair,
@@ -31,7 +31,7 @@ impl GenericServerSecretParams {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct GenericServerPublicParams {
     version: ReservedByte,
     pub(crate) credential_key: zkcredential::credentials::CredentialPublicKey,

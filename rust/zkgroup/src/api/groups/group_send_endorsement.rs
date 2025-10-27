@@ -36,7 +36,7 @@ const SECONDS_PER_HOUR: u64 = 60 * 60;
 /// These are intended to be cheaply cached -- it's not a problem to regenerate them, but they're
 /// expected to be reused frequently enough that they're *worth* caching, given that they're only
 /// rotated every 24 hours.
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct GroupSendDerivedKeyPair {
     reserved: ReservedByte,
     key_pair: zkcredential::endorsements::ServerDerivedKeyPair,
@@ -69,7 +69,7 @@ impl GroupSendDerivedKeyPair {
 ///
 /// The group server may cache this for a particular group as long as the group membership does not
 /// change (being careful of expiration, of course). It is the same for every requesting member.
-#[derive(Serialize, Deserialize, PartialDefault, Debug)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault, Debug)]
 pub struct GroupSendEndorsementsResponse {
     reserved: ReservedByte,
     endorsements: zkcredential::endorsements::EndorsementResponse,
@@ -509,7 +509,7 @@ impl GroupSendEndorsement {
 ///
 /// This can be cached by the client for repeatedly sending to the same recipient,
 /// but must be converted to a GroupSendFullToken before sending it to the server.
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct GroupSendToken {
     reserved: ReservedByte,
     raw_token: Box<[u8]>,
@@ -540,7 +540,7 @@ impl GroupSendToken {
 /// A token representing an endorsement, along with its expiration.
 ///
 /// This will be serialized and sent to the chat server for verification.
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct GroupSendFullToken {
     reserved: ReservedByte,
     raw_token: Box<[u8]>,

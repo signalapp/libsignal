@@ -10,7 +10,7 @@ use crate::common::serialization::ReservedByte;
 use crate::common::simple_types::*;
 use crate::crypto;
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ExpiringProfileKeyCredentialResponse {
     pub(crate) reserved: ReservedByte,
     pub(crate) blinded_credential: crypto::credentials::BlindedExpiringProfileKeyCredential,

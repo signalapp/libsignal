@@ -107,7 +107,7 @@ impl TryFrom<u64> for BackupCredentialType {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialRequestContext {
     reserved: ReservedByte,
     blinded_backup_id: zkcredential::issuance::blind::BlindedPoint,
@@ -150,7 +150,7 @@ impl BackupAuthCredentialRequestContext {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialRequest {
     reserved: ReservedByte,
     blinded_backup_id: zkcredential::issuance::blind::BlindedPoint,
@@ -181,7 +181,7 @@ impl BackupAuthCredentialRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialResponse {
     reserved: ReservedByte,
     // In theory, we don't need to store this (AuthCredentialResponse doesn't),
@@ -240,7 +240,7 @@ impl BackupAuthCredentialRequestContext {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredential {
     reserved: ReservedByte,
     redemption_time: Timestamp,
@@ -281,7 +281,7 @@ impl BackupAuthCredential {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialPresentation {
     version: ReservedByte,
     backup_level: BackupLevel,

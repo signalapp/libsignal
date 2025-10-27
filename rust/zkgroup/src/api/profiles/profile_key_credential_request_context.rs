@@ -10,7 +10,7 @@ use crate::common::serialization::ReservedByte;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
 
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKeyCredentialRequestContext {
     pub(crate) reserved: ReservedByte,
     pub(crate) aci_bytes: UidBytes,
