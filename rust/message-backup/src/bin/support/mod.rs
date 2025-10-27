@@ -46,7 +46,7 @@ pub struct DeriveKey {
     /// ACI for the backup creator
     #[arg(long, value_parser=parse_aci)]
     pub aci: Option<Aci>,
-    /// Backup forward secrecy token, used to derive the message backup key
+    /// Backup forward secrecy token, used to derive the message backup key. May be absent.
     #[arg(long, value_parser=parse_hex_bytes::<32>)]
     pub forward_secrecy_token: Option<[u8; 32]>,
 }
