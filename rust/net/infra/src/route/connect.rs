@@ -151,6 +151,32 @@ where
     }
 }
 
+/// Establishes an HTTPS connection over a transport stream.
+impl<A, B, Inner, T, Error> Connector<HttpsTlsRoute<T>, Inner> for ComposedConnector<A, B, Error>
+where
+    A: Connector<HttpRouteFragment, B::Connection, Error: Into<Error>> + Sync,
+    B: Connector<T, Inner, Error: Into<Error>> + Sync,
+    Inner: Send,
+    T: Send,
+{
+    type Connection = A::Connection;
+
+    type Error = Error;
+
+    fn connect_over(
+        &self,
+        over: Inner,
+        route: HttpsTlsRoute<T>,
+        log_tag: &str,
+    ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+        let HttpsTlsRoute {
+            fragment: http_fragment,
+            inner: tls_route,
+        } = route;
+        self.connect_inner_then_outer(over, tls_route, http_fragment, log_tag)
+    }
+}
+
 /// Establishes a TLS connection over a transport stream.
 impl<A, B, Inner, T, Error> Connector<TlsRoute<T>, Inner> for ComposedConnector<A, B, Error>
 where

@@ -19,7 +19,7 @@ use crate::dns::dns_message;
 use crate::dns::dns_message::{parse_a_record, parse_aaaa_record};
 use crate::dns::dns_types::ResourceType;
 use crate::errors::{LogSafeDisplay, TransportConnectError};
-use crate::http_client::{AggregatingHttp2Client, Http2Connector};
+use crate::http_client::{AggregatingHttp2Client, Http2Connector, HttpConnectError};
 use crate::route::{
     Connector, ConnectorExt, ConnectorFactory, HttpsTlsRoute, TcpRoute, ThrottlingConnector,
     TlsRoute, VariableTlsTimeoutConnector,
@@ -74,17 +74,23 @@ impl Connector<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>, ()> for DohTransportCo
         route: HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>,
         log_tag: &str,
     ) -> Result<Self::Connection, Self::Error> {
-        let connector = Http2Connector {
-            inner: &self.transport_connector,
-            max_response_size: MAX_RESPONSE_SIZE,
-        };
-        let http_client = connector.connect(route, log_tag).await.map_err(|e| {
-            log::warn!(
-                "[{log_tag}] Failed to create HTTP2 client for DNS lookup: {}",
-                &e as &dyn LogSafeDisplay
-            );
-            Error::TransportFailure
-        })?;
+        let connector = crate::route::ComposedConnector::new(
+            Http2Connector {
+                max_response_size: MAX_RESPONSE_SIZE,
+            },
+            &self.transport_connector,
+        );
+        let http_client =
+            connector
+                .connect(route, log_tag)
+                .await
+                .map_err(|e: HttpConnectError| {
+                    log::warn!(
+                        "[{log_tag}] Failed to create HTTP2 client for DNS lookup: {}",
+                        &e as &dyn LogSafeDisplay
+                    );
+                    Error::TransportFailure
+                })?;
         Ok(DohTransport { http_client })
     }
 }
