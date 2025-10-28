@@ -148,10 +148,46 @@ fn main() {
             let frame_end = position.load(Ordering::SeqCst);
             let frame_proto = proto::backup::Frame::parse_from_bytes(&frame).expect("valid proto");
             let key = match frame_proto.item.expect("not empty") {
+                proto::backup::frame::Item::ChatItem(ci) => match ci.item.expect("not empty") {
+                    proto::backup::chat_item::Item::StandardMessage(_) => {
+                        "ChatItem.StandardMessage"
+                    }
+                    proto::backup::chat_item::Item::ContactMessage(_) => "ChatItem.ContactMessage",
+                    proto::backup::chat_item::Item::StickerMessage(_) => "ChatItem.StickerMessage",
+                    proto::backup::chat_item::Item::RemoteDeletedMessage(_) => {
+                        "ChatItem.RemoteDeletedMessage"
+                    }
+                    proto::backup::chat_item::Item::UpdateMessage(_) => "ChatItem.UpdateMessage",
+                    proto::backup::chat_item::Item::PaymentNotification(_) => {
+                        "ChatItem.PaymentNotification"
+                    }
+                    proto::backup::chat_item::Item::GiftBadge(_) => "ChatItem.GiftBadge",
+                    proto::backup::chat_item::Item::ViewOnceMessage(_) => {
+                        "ChatItem.ViewOnceMessage"
+                    }
+                    proto::backup::chat_item::Item::DirectStoryReplyMessage(_) => {
+                        "ChatItem.DirectStoryReplyMessage"
+                    }
+                    proto::backup::chat_item::Item::Poll(_) => "ChatItem.Poll",
+                    _ => "ChatItem.unknown",
+                },
+                proto::backup::frame::Item::Recipient(r) => {
+                    match r.destination.expect("not empty") {
+                        proto::backup::recipient::Destination::Contact(_) => "Recipient.Contact",
+                        proto::backup::recipient::Destination::Group(_) => "Recipient.Group",
+                        proto::backup::recipient::Destination::DistributionList(_) => {
+                            "Recipient.DistributionList"
+                        }
+                        proto::backup::recipient::Destination::Self_(_) => "Recipient.Self",
+                        proto::backup::recipient::Destination::ReleaseNotes(_) => {
+                            "Recipient.ReleaseNotes"
+                        }
+                        proto::backup::recipient::Destination::CallLink(_) => "Recipient.CallLink",
+                        _ => "Recipient.unknown",
+                    }
+                }
                 proto::backup::frame::Item::Account(_) => "Account",
-                proto::backup::frame::Item::Recipient(_) => "Recipient",
                 proto::backup::frame::Item::Chat(_) => "Chat",
-                proto::backup::frame::Item::ChatItem(_) => "ChatItem",
                 proto::backup::frame::Item::StickerPack(_) => "StickerPack",
                 proto::backup::frame::Item::AdHocCall(_) => "AdHocCall",
                 proto::backup::frame::Item::NotificationProfile(_) => "NotificationProfile",
