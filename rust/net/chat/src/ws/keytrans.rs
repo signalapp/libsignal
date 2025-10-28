@@ -470,7 +470,7 @@ mod test_support {
         }
 
         println!(
-            "const CHAT_SEARCH_RESPONSE_VALID_AT: Duration = Duration::from_secs({});",
+            "Update the net/tests/data/chat_response_valid_at.in file to: `Duration::from_secs({})`",
             SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs()
         );
 
@@ -486,6 +486,9 @@ mod test {
 
     use assert_matches::assert_matches;
     use libsignal_keytrans::LocalStateUpdate;
+    use libsignal_protocol::IdentityKeyPair;
+    use rand::TryRngCore;
+    use rand::rngs::OsRng;
     use test_case::test_case;
 
     use super::test_support::{
@@ -626,7 +629,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn search_for_deleted_account() {
+    async fn search_with_wrong_identity_key() {
         if !kt_integration_enabled() {
             println!("SKIPPED: running integration tests is not enabled");
             return;
@@ -635,15 +638,15 @@ mod test {
         let chat = make_chat().await;
         let kt = make_kt(&chat);
 
-        // This ACI belongs to account 18005550102
-        // The correct ACI identity key is `hex!("05b65b151f64638b0ea549efb2989e9d726ad2b87fbca1328d872ed6f8fbb7a333")`
-        let aci = Aci::from(uuid::uuid!("4129e9d6-dbb3-4f44-97b4-2dd29f0e2681"));
-
-        let wrong_identity_key = test_account::aci_identity_key();
+        let wrong_identity_key = {
+            let mut rng = OsRng.unwrap_err();
+            let key_pair = IdentityKeyPair::generate(&mut rng);
+            *key_pair.public_key()
+        };
 
         let result = kt
             .search(
-                &aci,
+                &test_account::aci(),
                 &wrong_identity_key,
                 None,
                 None,

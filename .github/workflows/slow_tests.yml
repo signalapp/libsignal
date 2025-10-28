@@ -26,7 +26,7 @@ on:
       ignore_kt_tests:
         type: boolean
         description: 'Skip Key Transparency tests (sets LIBSIGNAL_TESTING_IGNORE_KT_TESTS)'
-        default: true
+        default: false
 
 jobs:
   java-docker:
