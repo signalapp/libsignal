@@ -57,6 +57,9 @@ check-pre-commit: check-format-all
     (cd swift && ./verify_error_codes.sh)
     (cd swift && swiftlint lint --strict)
     (cd java && ./gradlew --dependency-verification strict help >/dev/null)
+    shellcheck -- **/*.sh bin/verify_duplicate_crates bin/adb-run-test
+    $(command -v flake8 || echo python3 -m flake8) . --exclude target,node/node_modules,node/build
+    $(command -v mypy || echo python3 -m mypy) . --python-version 3.9 --strict --exclude target --exclude node/node_modules --exclude node/build
     cargo test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
     cargo clippy --workspace --all-targets --all-features --keep-going -- -D warnings
     cargo check --workspace --all-targets --all-features --verbose --keep-going -Zdirect-minimal-versions -Zunstable-options --lockfile-path $(mktemp -d)/Cargo.lock

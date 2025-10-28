@@ -36,14 +36,14 @@ def build_argument_parser() -> argparse.ArgumentParser:
 
 def download_if_needed(archive_file: str, url: str, checksum: str) -> BinaryIO:
     try:
-        f = open(archive_file, 'rb')
+        fr = open(archive_file, 'rb')
         digest = hashlib.sha256()
-        chunk = f.read1()
+        chunk = fr.read1()
         while chunk:
             digest.update(chunk)
-            chunk = f.read1()
+            chunk = fr.read1()
         if digest.hexdigest() == checksum.lower():
-            return f
+            return fr
         print("existing file '{}' has non-matching checksum {}; re-downloading...".format(archive_file, digest.hexdigest()), file=sys.stderr)
     except FileNotFoundError:
         pass
@@ -52,15 +52,15 @@ def download_if_needed(archive_file: str, url: str, checksum: str) -> BinaryIO:
     try:
         with urllib.request.urlopen(url) as response:
             digest = hashlib.sha256()
-            f = open(UNVERIFIED_DOWNLOAD_NAME, 'w+b')
+            fw = open(UNVERIFIED_DOWNLOAD_NAME, 'w+b')
             chunk = response.read1()
             while chunk:
                 digest.update(chunk)
-                f.write(chunk)
+                fw.write(chunk)
                 chunk = response.read1()
             assert digest.hexdigest() == checksum.lower(), 'expected {}, actual {}'.format(checksum.lower(), digest.hexdigest())
             os.replace(UNVERIFIED_DOWNLOAD_NAME, archive_file)
-            return f
+            return fw
     except (urllib.error.HTTPError, urllib.error.URLError) as e:
         if isinstance(e.reason, ssl.SSLCertVerificationError):
             # See:
