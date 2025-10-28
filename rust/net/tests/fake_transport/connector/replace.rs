@@ -19,13 +19,12 @@ pub trait ReplaceStatelessConnectorsWithFake {
     fn replace_with_fake(self, fake: FakeTransportConnector) -> Self::Replacement;
 }
 
-impl<Outer, Inner, Error> ReplaceStatelessConnectorsWithFake
-    for ComposedConnector<Outer, Inner, Error>
+impl<Outer, Inner> ReplaceStatelessConnectorsWithFake for ComposedConnector<Outer, Inner>
 where
     Outer: ReplaceStatelessConnectorsWithFake,
     Inner: ReplaceStatelessConnectorsWithFake,
 {
-    type Replacement = ComposedConnector<Outer::Replacement, Inner::Replacement, Error>;
+    type Replacement = ComposedConnector<Outer::Replacement, Inner::Replacement>;
 
     fn replace_with_fake(self, fake: FakeTransportConnector) -> Self::Replacement {
         let (outer, inner) = self.into_connectors();

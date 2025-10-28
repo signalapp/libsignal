@@ -5,7 +5,6 @@
 
 use std::fmt::Debug;
 use std::future::Future;
-use std::marker::PhantomData;
 
 use derive_where::derive_where;
 
@@ -20,22 +19,16 @@ use crate::route::Connector;
 /// provided by the inner Connector.
 #[derive_where(Debug; Outer: Debug, Inner: Debug)]
 #[derive_where(Default; Outer: Default, Inner: Default)]
-pub struct ComposedConnector<Outer, Inner, Error> {
+pub struct ComposedConnector<Outer, Inner> {
     outer_connector: Outer,
     inner_connector: Inner,
-    /// The type of error returned by [`Connector::connect_over`].
-    ///
-    /// This lets us produce an error type that is distinct from the inner and
-    /// outer `Connector` error types.
-    _error: PhantomData<Error>,
 }
 
-impl<O, I, E> ComposedConnector<O, I, E> {
+impl<O, I> ComposedConnector<O, I> {
     pub fn new(outer: O, inner: I) -> Self {
         Self {
             outer_connector: outer,
             inner_connector: inner,
-            _error: PhantomData,
         }
     }
 
@@ -50,15 +43,16 @@ impl<O, I, E> ComposedConnector<O, I, E> {
         inner_route: IR,
         outer_route: OR,
         log_tag: &'a str,
-    ) -> impl Future<Output = Result<O::Connection, E>> + Send + use<'_, 'a, IR, OR, S, I, O, E>
+    ) -> impl Future<Output = Result<O::Connection, O::Error>> + Send + use<'_, 'a, IR, OR, S, I, O>
     where
-        O: Connector<OR, I::Connection, Error: Into<E>> + Sync,
-        I: Connector<IR, S, Error: Into<E>> + Sync,
+        O: Connector<OR, I::Connection> + Sync,
+        // We use Into rather than From for the errors because the outer error is more likely to be
+        // a concrete type.
+        I: Connector<IR, S, Error: Into<O::Error>> + Sync,
     {
         let Self {
             inner_connector,
             outer_connector,
-            _error,
         } = self;
         async move {
             let inner_connected = inner_connector
@@ -68,7 +62,6 @@ impl<O, I, E> ComposedConnector<O, I, E> {
             outer_connector
                 .connect_over(inner_connected, outer_route, log_tag)
                 .await
-                .map_err(Into::into)
         }
     }
 }

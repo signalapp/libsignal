@@ -262,14 +262,11 @@ mod test {
         log_tag: &str,
     ) -> Result<AggregatingHttp2Client, HttpError> {
         let mut outcome_record_snapshot = outcome_record.read().await.clone();
-        let tls_connector = ComposedConnector::<_, _, TransportConnectError>::new(
+        let tls_connector = ComposedConnector::new(
             ThrottlingConnector::new(crate::tcp_ssl::StatelessTls, 1),
             crate::tcp_ssl::StatelessTcp,
         );
-        let connector = ComposedConnector::<_, _, HttpConnectError>::new(
-            Http2Connector { max_response_size },
-            tls_connector,
-        );
+        let connector = ComposedConnector::new(Http2Connector { max_response_size }, tls_connector);
         let (result, updates) = crate::route::connect_resolved(
             targets.into_iter().collect(),
             &mut outcome_record_snapshot,

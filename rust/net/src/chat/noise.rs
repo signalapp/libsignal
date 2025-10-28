@@ -99,16 +99,15 @@ impl<T: ResolvedRoute> ResolvedRoute for ChatNoiseRoute<T> {
     }
 }
 
-impl<A, B, Inner, T, Error> Connector<ChatNoiseRoute<T>, Inner> for ComposedConnector<A, B, Error>
+impl<A, B, Inner, T> Connector<ChatNoiseRoute<T>, Inner> for ComposedConnector<A, B>
 where
-    A: Connector<ChatNoiseFragment, B::Connection, Error: Into<Error>> + Sync,
-    B: Connector<T, Inner, Error: Into<Error>> + Sync,
+    A: Connector<ChatNoiseFragment, B::Connection> + Sync,
+    B: Connector<T, Inner, Error: Into<A::Error>> + Sync,
     Inner: Send,
     T: Send,
 {
     type Connection = A::Connection;
-
-    type Error = Error;
+    type Error = A::Error;
 
     fn connect_over(
         &self,

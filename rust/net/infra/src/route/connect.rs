@@ -14,7 +14,6 @@ use crate::route::{
     NoiseRouteFragment, TcpRoute, TlsRoute, TlsRouteFragment, TransportRoute, WebSocketRoute,
     WebSocketRouteFragment, WebSocketServiceRoute,
 };
-use crate::ws::WebSocketConnectError;
 
 mod composed;
 pub use composed::*;
@@ -94,13 +93,9 @@ type DirectProxyConnector = DirectOrProxy<
     crate::tcp_ssl::proxy::StatelessProxied,
     TransportConnectError,
 >;
-type TransportConnector = ComposedConnector<
-    LoggingConnector<crate::tcp_ssl::StatelessTls>,
-    DirectProxyConnector,
-    TransportConnectError,
->;
-type WebSocketHttpConnector =
-    ComposedConnector<crate::ws::Stateless, TransportConnector, WebSocketConnectError>;
+type TransportConnector =
+    ComposedConnector<LoggingConnector<crate::tcp_ssl::StatelessTls>, DirectProxyConnector>;
+type WebSocketHttpConnector = ComposedConnector<crate::ws::Stateless, TransportConnector>;
 
 assert_impl_all!(TcpConnector: Connector<TcpRoute<IpAddr>, ()>);
 assert_impl_all!(
@@ -119,18 +114,15 @@ assert_impl_all!(WebSocketHttpConnector: Connector<WebSocketServiceRoute, ()>);
 /// See the documentation for the `Connector` impl for [`crate::ws::Stateless`]
 /// for more about why [`WebSocketRouteFragment`] and [`HttpRouteFragment`] are
 /// treated as a single protocol level.
-impl<A, B, Inner, T, Error> Connector<WebSocketRoute<HttpsTlsRoute<T>>, Inner>
-    for ComposedConnector<A, B, Error>
+impl<A, B, Inner, T> Connector<WebSocketRoute<HttpsTlsRoute<T>>, Inner> for ComposedConnector<A, B>
 where
-    A: Connector<(WebSocketRouteFragment, HttpRouteFragment), B::Connection, Error: Into<Error>>
-        + Sync,
-    B: Connector<T, Inner, Error: Into<Error>> + Sync,
+    A: Connector<(WebSocketRouteFragment, HttpRouteFragment), B::Connection> + Sync,
+    B: Connector<T, Inner, Error: Into<A::Error>> + Sync,
     Inner: Send,
     T: Send,
 {
     type Connection = A::Connection;
-
-    type Error = Error;
+    type Error = A::Error;
 
     fn connect_over(
         &self,
@@ -152,16 +144,15 @@ where
 }
 
 /// Establishes an HTTPS connection over a transport stream.
-impl<A, B, Inner, T, Error> Connector<HttpsTlsRoute<T>, Inner> for ComposedConnector<A, B, Error>
+impl<A, B, Inner, T> Connector<HttpsTlsRoute<T>, Inner> for ComposedConnector<A, B>
 where
-    A: Connector<HttpRouteFragment, B::Connection, Error: Into<Error>> + Sync,
-    B: Connector<T, Inner, Error: Into<Error>> + Sync,
+    A: Connector<HttpRouteFragment, B::Connection> + Sync,
+    B: Connector<T, Inner, Error: Into<A::Error>> + Sync,
     Inner: Send,
     T: Send,
 {
     type Connection = A::Connection;
-
-    type Error = Error;
+    type Error = A::Error;
 
     fn connect_over(
         &self,
@@ -178,16 +169,15 @@ where
 }
 
 /// Establishes a TLS connection over a transport stream.
-impl<A, B, Inner, T, Error> Connector<TlsRoute<T>, Inner> for ComposedConnector<A, B, Error>
+impl<A, B, Inner, T> Connector<TlsRoute<T>, Inner> for ComposedConnector<A, B>
 where
-    A: Connector<TlsRouteFragment, B::Connection, Error: Into<Error>> + Sync,
-    B: Connector<T, Inner, Error: Into<Error>> + Sync,
+    A: Connector<TlsRouteFragment, B::Connection> + Sync,
+    B: Connector<T, Inner, Error: Into<A::Error>> + Sync,
     Inner: Send,
     T: Send,
 {
     type Connection = A::Connection;
-
-    type Error = Error;
+    type Error = A::Error;
 
     fn connect_over(
         &self,
@@ -232,17 +222,16 @@ where
 }
 
 /// Establishes a Noise connection over an unproxied transport stream.
-impl<A, B, Inner, T, Error, N> Connector<NoiseRoute<N, T>, Inner> for ComposedConnector<A, B, Error>
+impl<A, B, Inner, T, N> Connector<NoiseRoute<N, T>, Inner> for ComposedConnector<A, B>
 where
-    A: Connector<NoiseRouteFragment<N>, B::Connection, Error: Into<Error>> + Sync,
-    B: Connector<T, Inner, Error: Into<Error>> + Sync,
+    A: Connector<NoiseRouteFragment<N>, B::Connection> + Sync,
+    B: Connector<T, Inner, Error: Into<A::Error>> + Sync,
     Inner: Send,
     T: Send,
     N: Send,
 {
     type Connection = A::Connection;
-
-    type Error = Error;
+    type Error = A::Error;
 
     fn connect_over(
         &self,
