@@ -16,11 +16,12 @@ use http::HeaderName;
 use itertools::Itertools as _;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
+use libsignal_net_infra::http_client::HttpConnectError;
 use libsignal_net_infra::route::{
     AttemptOutcome, ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes,
     ConnectionProxyConfig, Connector, ConnectorFactory, DelayBasedOnTransport, DescribeForLog,
     DescribedRouteConnector, DirectOrProxy, DirectOrProxyMode, DirectOrProxyRoute,
-    HttpRouteFragment, InterfaceChangedOr, InterfaceMonitor, LoggingConnector,
+    HttpRouteFragment, HttpsServiceRoute, InterfaceChangedOr, InterfaceMonitor, LoggingConnector,
     ResettingConnectionOutcomes, ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute,
     RouteProvider, RouteProviderContext, RouteProviderExt as _, RouteResolver,
     StaticTcpTimeoutConnector, ThrottlingConnector, TransportRoute, UnresolvedRouteDescription,
@@ -265,17 +266,22 @@ impl<TC> ConnectState<TC> {
 
 impl<TC> ConnectionResources<'_, TC> {
     pub async fn connect_ws<WC, UR, Transport>(
-        self,
+        mut self,
         routes: impl RouteProvider<Route = UR>,
         ws_connector: WC,
         log_tag: &str,
     ) -> Result<(WC::Connection, RouteInfo), TimeoutOr<ConnectError<WebSocketServiceConnectError>>>
     where
+        // Our routes should be unresolved and describable, but resolve to a WebSocketServiceRoute
+        // with a custom Transport (to support preconnecting the transport).
         UR: ResolveHostnames<Resolved = WebSocketServiceRoute<Transport>>
             + DescribeForLog<Description = UnresolvedRouteDescription>
             + Clone
             + 'static,
+        // The transport needs to provide properties that are required of the resolved route.
         Transport: Clone + Send + UsesTransport + ResolvedRoute,
+        // The transport connector factory needs to (a) connect over Transport, and (b) have a
+        // compatible error type.
         // Note that we're not using WebSocketTransportConnectorFactory here to make `connect_ws`
         // easier to test; specifically, the output is not guaranteed to be an AsyncDuplexStream.
         TC: ConnectorFactory<
@@ -283,64 +289,19 @@ impl<TC> ConnectionResources<'_, TC> {
                 Connection: Send,
                 Connector: Sync + Connector<Transport, (), Error: Into<WebSocketConnectError>>,
             >,
+        // The websocket-level connector matches the shape of `ws::Stateless`, but might be
+        // something else for testing purposes.
         WC: Connector<
                 (WebSocketRouteFragment, HttpRouteFragment),
                 TC::Connection,
                 Connection: Send,
                 Error = WebSocketConnectError,
-            > + Send
-            + Sync,
+            > + Sync,
     {
-        let Self {
-            connect_state,
-            dns_resolver,
-            network_change_event,
-            confirmation_header_name,
-        } = self;
-
-        let ConnectStateSnapshot {
-            route_resolver,
-            connect_timeout,
-            network_interface_poll_interval,
-            post_route_change_connect_timeout,
-            transport_connector,
-            attempts_record,
-            route_provider_context,
-        } = connect_state
-            .lock()
-            .expect("not poisoned")
-            .prepare_snapshot();
-
-        let routes = routes.routes(&route_provider_context).collect_vec();
-
-        log::info!(
-            "[{log_tag}] starting connection attempt with {} routes",
-            routes.len()
-        );
-
-        let route_provider = routes.into_iter().map(ResolveWithSavedDescription);
-        let connector = InterfaceMonitor::new(
-            DescribedRouteConnector(ComposedConnector::new(
-                LoggingConnector::new(ws_connector, Duration::from_secs(3), "websocket"),
-                &transport_connector,
-            )),
-            network_change_event.clone(),
-            network_interface_poll_interval,
-            post_route_change_connect_timeout,
-        );
-        let delay_policy = DelayBasedOnTransport(ResettingConnectionOutcomes::new(
-            attempts_record,
-            network_change_event,
-        ));
-
-        let start = Instant::now();
-        let connect = crate::infra::route::connect(
-            &route_resolver,
-            delay_policy,
-            route_provider,
-            dns_resolver,
-            connector,
-            (),
+        let confirmation_header_name = self.confirmation_header_name.take();
+        self.connect_over_transport(
+            routes,
+            LoggingConnector::new(ws_connector, Duration::from_secs(3), "ws"),
             log_tag,
             |error| {
                 let error = error.into_inner_or_else(|| {
@@ -381,37 +342,8 @@ impl<TC> ConnectionResources<'_, TC> {
                     ControlFlow::Continue(())
                 }
             },
-        );
-
-        let (result, updates) = tokio::time::timeout(connect_timeout, connect)
-            .await
-            .map_err(|_: tokio::time::error::Elapsed| TimeoutOr::Timeout {
-                attempt_duration: connect_timeout,
-            })?;
-
-        match &result {
-            Ok((_connection, route)) => log::info!(
-                "[{log_tag}] connection through {route} succeeded after {:.3?}",
-                updates.finished_at - start
-            ),
-            Err(e) => log::info!("[{log_tag}] connection failed with {e}"),
-        }
-
-        let outcomes = process_outcomes(updates.outcomes);
-
-        connect_state
-            .lock()
-            .expect("not poisoned")
-            .attempts_record
-            .apply_outcome_updates(outcomes, updates.finished_at, SystemTime::now());
-
-        let (connection, description) = result?;
-        Ok((
-            connection,
-            RouteInfo {
-                unresolved: description,
-            },
-        ))
+        )
+        .await
     }
 
     pub(crate) async fn connect_attested_ws<E>(
@@ -459,6 +391,170 @@ impl<TC> ConnectionResources<'_, TC> {
             })
             .await?;
         Ok((connection, route_info))
+    }
+
+    pub async fn connect_h2<HC, UR, Transport>(
+        self,
+        routes: impl RouteProvider<Route = UR>,
+        h2_connector: HC,
+        log_tag: &str,
+    ) -> Result<(HC::Connection, RouteInfo), TimeoutOr<ConnectError<HttpConnectError>>>
+    where
+        // Our routes should be unresolved and describable, but resolve to an HttpsServiceRoute
+        // with a custom Transport (to support preconnecting the transport).
+        UR: ResolveHostnames<Resolved = HttpsServiceRoute<Transport>>
+            + DescribeForLog<Description = UnresolvedRouteDescription>
+            + Clone
+            + 'static,
+        // The transport needs to provide properties that are required of the resolved route.
+        Transport: Clone + Send + UsesTransport + ResolvedRoute,
+        // The transport connector factory needs to (a) connect over Transport, and (b) have a
+        // compatible error type.
+        TC: ConnectorFactory<
+                Transport,
+                Connection: Send,
+                Connector: Sync + Connector<Transport, (), Error: Into<HttpConnectError>>,
+            >,
+        // The H2-level connector matches the shape of `Http2Connector`, but might be something else
+        // for testing purposes.
+        HC: Connector<HttpRouteFragment, TC::Connection, Connection: Send, Error = HttpConnectError>
+            + Sync,
+    {
+        self.connect_over_transport(
+            routes,
+            LoggingConnector::new(h2_connector, Duration::from_secs(3), "h2"),
+            log_tag,
+            |error| {
+                let error = error.into_inner_or_else(|| {
+                    HttpConnectError::Transport(TransportConnectError::ClientAbort)
+                });
+                log::debug!("[{log_tag}] connection attempt failed with {error}");
+                // Note: the H2 handshake doesn't provide a confirmation header, so we have to treat
+                // any failures as route-specific (other than choosing to abort).
+                let is_fatal = matches!(
+                    error,
+                    HttpConnectError::Transport(TransportConnectError::ClientAbort)
+                );
+                if is_fatal {
+                    ControlFlow::Break(error)
+                } else {
+                    ControlFlow::Continue(())
+                }
+            },
+        )
+        .await
+    }
+
+    async fn connect_over_transport<HC, UR, Transport, Fragment, FatalError>(
+        self,
+        routes: impl RouteProvider<Route = UR>,
+        high_level_connector: HC,
+        log_tag: &str,
+        on_error: impl FnMut(InterfaceChangedOr<HC::Error>) -> ControlFlow<FatalError>,
+    ) -> Result<(HC::Connection, RouteInfo), TimeoutOr<ConnectError<FatalError>>>
+    where
+        // Our routes should be unresolved and describable, plus whatever we'll need for connecting.
+        UR: ResolveHostnames<Resolved: Clone + Send + UsesTransport>
+            + DescribeForLog<Description = UnresolvedRouteDescription>
+            + Clone
+            + 'static,
+        // Our transport connector factory has very minimal requirements about thread safety.
+        // (Note that Transport is unconstrained here! We get all we need from the ComposedConnector
+        // constraint below.)
+        TC: ConnectorFactory<Transport, Connector: Sync>,
+        // Similarly, the high-level connector mostly just connects over the low-level connection
+        // *somehow,* plus thread-safety.
+        HC: Connector<Fragment, TC::Connection> + Sync,
+        // What we really care about is that we can compose the two connectors to get a full
+        // connection over the resolved route.
+        for<'a> ComposedConnector<HC, &'a TC::Connector>:
+            Connector<UR::Resolved, (), Connection = HC::Connection, Error = HC::Error>,
+        // And if we have any fatal errors, we want to be able to log them.
+        FatalError: LogSafeDisplay,
+    {
+        let Self {
+            connect_state,
+            dns_resolver,
+            network_change_event,
+            confirmation_header_name: _,
+        } = self;
+
+        let ConnectStateSnapshot {
+            route_resolver,
+            connect_timeout,
+            network_interface_poll_interval,
+            post_route_change_connect_timeout,
+            transport_connector,
+            attempts_record,
+            route_provider_context,
+        } = connect_state
+            .lock()
+            .expect("not poisoned")
+            .prepare_snapshot();
+
+        let routes = routes.routes(&route_provider_context).collect_vec();
+
+        log::info!(
+            "[{log_tag}] starting connection attempt with {} routes",
+            routes.len()
+        );
+
+        let route_provider = routes.into_iter().map(ResolveWithSavedDescription);
+        let connector = InterfaceMonitor::new(
+            DescribedRouteConnector(ComposedConnector::new(
+                high_level_connector,
+                &transport_connector,
+            )),
+            network_change_event.clone(),
+            network_interface_poll_interval,
+            post_route_change_connect_timeout,
+        );
+        let delay_policy = DelayBasedOnTransport(ResettingConnectionOutcomes::new(
+            attempts_record,
+            network_change_event,
+        ));
+
+        let start = Instant::now();
+        let connect = crate::infra::route::connect(
+            &route_resolver,
+            delay_policy,
+            route_provider,
+            dns_resolver,
+            connector,
+            (),
+            log_tag,
+            on_error,
+        );
+
+        let (result, updates) = tokio::time::timeout(connect_timeout, connect)
+            .await
+            .map_err(|_: tokio::time::error::Elapsed| TimeoutOr::Timeout {
+                attempt_duration: connect_timeout,
+            })?;
+
+        match &result {
+            Ok((_connection, route)) => log::info!(
+                "[{log_tag}] connection through {route} succeeded after {:.3?}",
+                updates.finished_at - start
+            ),
+            Err(e) => log::info!("[{log_tag}] connection failed with {e}"),
+        }
+
+        let outcomes = process_outcomes(updates.outcomes);
+
+        connect_state
+            .lock()
+            .expect("not poisoned")
+            .attempts_record
+            .apply_outcome_updates(outcomes, updates.finished_at, SystemTime::now());
+
+        let (connection, description) = result?;
+        Ok((
+            connection,
+            RouteInfo {
+                unresolved: description,
+            },
+        ))
     }
 }
 
@@ -1012,6 +1108,121 @@ mod test {
         let (connection, _info) = result.expect("succeeded");
         assert_eq!(connection, (route.fragment, route.inner.fragment));
         assert_eq!(start.elapsed(), network_change_delay + HAPPY_EYEBALLS_DELAY);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn connect_h2_successful() {
+        // This doesn't actually matter since we're using a fake connector, but
+        // using the real route type is easier than trying to add yet more
+        // generic parameters.
+        let [failing_route, succeeding_route] = (*FAKE_WEBSOCKET_ROUTES).clone();
+
+        let h2_connector = ConnectFn(|(), route| {
+            std::future::ready(if route == failing_route.inner.fragment {
+                Err(HttpConnectError::HttpHandshake)
+            } else {
+                Ok(route)
+            })
+        });
+        let resolver = DnsResolver::new_from_static_map(HashMap::from([(
+            FAKE_HOST_NAME,
+            LookupResult::new(vec![ip_addr!(v4, "192.0.2.1")], vec![]),
+        )]));
+
+        let fake_transport_connector =
+            ConnectFn(move |(), _| std::future::ready(Ok::<_, HttpConnectError>(())));
+
+        let state = ConnectState {
+            connect_timeout: Duration::MAX,
+            network_interface_poll_interval: Duration::MAX,
+            post_route_change_connect_timeout: Duration::MAX,
+            route_resolver: RouteResolver::default(),
+            attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            make_transport_connector: fake_transport_connector,
+            route_provider_context: Default::default(),
+        }
+        .into();
+
+        let connection_resources = ConnectionResources {
+            connect_state: &state,
+            dns_resolver: &resolver,
+            network_change_event: &no_network_change_events(),
+            confirmation_header_name: None,
+        };
+
+        let result = connection_resources
+            .connect_h2(
+                vec![failing_route.inner.clone(), succeeding_route.inner.clone()],
+                h2_connector,
+                "test",
+            )
+            // This previously hung forever due to a deadlock bug.
+            .await;
+
+        let (connection, info) = result.expect("succeeded");
+        assert_eq!(connection, succeeding_route.inner.fragment);
+        let RouteInfo { unresolved } = info;
+
+        assert_eq!(unresolved.to_string(), "REDACTED:1234 fronted by proxyf");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn client_abort_transport_error_is_fatal_for_h2() {
+        // We can't directly test the ClientAbort produced for a network change without *more*
+        // custom dependency injection for connect_h2---we can fire the network change event, but we
+        // can't actually change the local IP detection logic. But we can test a ClientAbort
+        // produced by the underlying connector.
+
+        let h2_connector = ConnectFn(|_, _| -> std::future::Pending<Result<(), _>> {
+            unreachable!("transport should fail to connect")
+        });
+        let resolver = DnsResolver::new_from_static_map(HashMap::from([(
+            FAKE_HOST_NAME,
+            LookupResult::new(vec![ip_addr!(v4, "192.0.2.1")], vec![]),
+        )]));
+
+        let client_abort_connector = ConnectFn(|(), _| {
+            std::future::ready(Err::<tokio::io::DuplexStream, _>(
+                TransportConnectError::ClientAbort,
+            ))
+        });
+
+        const CONNECT_TIMEOUT: Duration = Duration::from_secs(31);
+
+        let state = ConnectState {
+            connect_timeout: CONNECT_TIMEOUT,
+            network_interface_poll_interval: Duration::MAX,
+            post_route_change_connect_timeout: Duration::MAX,
+            route_resolver: RouteResolver::default(),
+            attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            make_transport_connector: client_abort_connector,
+            route_provider_context: Default::default(),
+        }
+        .into();
+
+        let [failing_route, succeeding_route] = (*FAKE_WEBSOCKET_ROUTES).clone();
+
+        let connection_resources = ConnectionResources {
+            connect_state: &state,
+            dns_resolver: &resolver,
+            network_change_event: &no_network_change_events(),
+            confirmation_header_name: None,
+        };
+
+        let connect = connection_resources.connect_h2(
+            vec![failing_route.inner.clone(), succeeding_route.inner.clone()],
+            h2_connector,
+            "test",
+        );
+
+        let result: Result<_, TimeoutOr<ConnectError<_>>> = connect.await;
+
+        assert_matches!(
+            result,
+            Err(TimeoutOr::Other(ConnectError::FatalConnect(
+                HttpConnectError::Transport(TransportConnectError::ClientAbort),
+            )))
+        );
     }
 
     mod outcome_processing {

@@ -113,12 +113,12 @@ impl AggregatingHttp2Client {
         Ok((parts, content))
     }
 }
-pub(crate) struct Http2Connector {
+pub struct Http2Connector {
     pub max_response_size: usize,
 }
 
-#[derive(derive_more::From, displaydoc::Display)]
-pub(crate) enum HttpConnectError {
+#[derive(Debug, derive_more::From, displaydoc::Display)]
+pub enum HttpConnectError {
     /// {0}
     Transport(#[from] TransportConnectError),
     /// HTTP handshake failed

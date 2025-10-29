@@ -16,8 +16,8 @@ use crate::errors::LogSafeDisplay;
 use crate::host::Host;
 use crate::route::{
     ConnectionProxyKind, ConnectionProxyRoute, Connector, DEFAULT_HTTPS_PORT, DirectOrProxyRoute,
-    HttpProxyRouteFragment, HttpsProxyRoute, HttpsTlsRoute, ProxyTarget, ResolveHostnames,
-    ResolvedRoute, SocksRoute, TcpRoute, TlsRoute, TransportRoute, UnresolvedHost,
+    HttpProxyRouteFragment, HttpsProxyRoute, ProxyTarget, ResolveHostnames, ResolvedRoute,
+    SocksRoute, TcpRoute, TlsRoute, TransportRoute, UnresolvedHost, UnresolvedHttpsServiceRoute,
     UnresolvedTransportRoute, UnresolvedWebsocketServiceRoute, UsesTransport,
 };
 
@@ -167,18 +167,14 @@ impl UnresolvedRouteDescription {
 }
 
 impl<Transport: UsesTransport<UnresolvedTransportRoute>> DescribeForLog
-    for UnresolvedWebsocketServiceRoute<Transport>
+    for UnresolvedHttpsServiceRoute<Transport>
 {
     type Description = UnresolvedRouteDescription;
 
     fn describe_for_log(&self) -> Self::Description {
         let Self {
-            fragment: _ws_fragment,
-            inner:
-                HttpsTlsRoute {
-                    fragment: http_fragment,
-                    inner: transport,
-                },
+            fragment: http_fragment,
+            inner: transport,
         } = self;
         let TlsRoute {
             fragment: tls_fragment,
@@ -227,6 +223,16 @@ impl<Transport: UsesTransport<UnresolvedTransportRoute>> DescribeForLog
             proxy,
             target,
         }
+    }
+}
+
+impl<Transport: UsesTransport<UnresolvedTransportRoute>> DescribeForLog
+    for UnresolvedWebsocketServiceRoute<Transport>
+{
+    type Description = UnresolvedRouteDescription;
+
+    fn describe_for_log(&self) -> Self::Description {
+        self.inner.describe_for_log()
     }
 }
 
