@@ -686,7 +686,7 @@ mod test {
             .await;
         assert_matches!(
             result,
-            Err(RequestError::Unexpected { log_safe: msg }) if msg == "unexpected response status 404 Not Found"
+            Err(RequestError::Unexpected { log_safe: msg }) if msg == "unexpected response status 403 Forbidden"
         );
     }
 }
