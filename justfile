@@ -62,5 +62,5 @@ check-pre-commit: check-format-all
     $(command -v mypy || echo python3 -m mypy) . --python-version 3.9 --strict --exclude target --exclude node/node_modules --exclude node/build
     cargo test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
     cargo clippy --workspace --all-targets --all-features --keep-going -- -D warnings
-    cargo check --workspace --all-targets --all-features --verbose --keep-going -Zdirect-minimal-versions -Zunstable-options --lockfile-path $(mktemp -d)/Cargo.lock
+    bin/without_building_boring.sh cargo check --workspace --all-targets --all-features --keep-going -Zdirect-minimal-versions -Zunstable-options --lockfile-path $(mktemp -d)/Cargo.lock
     @printf "\e[32mBasic pre-commit checks passed! ✅ Hopefully good to push! 🤞\e[0m\n"
