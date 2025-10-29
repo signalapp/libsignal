@@ -5,9 +5,10 @@
 
 import { TokioAsyncContext } from '../net.js';
 import * as Native from '../Native.js';
-import { assert } from 'chai';
 import { newNativeHandle } from '../internal.js';
 import { FakeChatRemoteEnd } from '../Native.js';
+
+import assert from 'node:assert';
 
 export class InternalRequest implements Native.Wrapper<Native.HttpRequest> {
   readonly _nativeHandle: Native.HttpRequest;
