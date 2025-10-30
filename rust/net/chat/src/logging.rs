@@ -62,6 +62,12 @@ impl std::fmt::Display for RedactHex<'_> {
         )
     }
 }
+/// Implemented for use in DebugStruct etc, but still uses the Display impl.
+impl std::fmt::Debug for RedactHex<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
 
 /// Redacts all but the last 2 non-padding characters of its contents, which are assumed to be
 /// base64 or base64url.
@@ -87,6 +93,16 @@ impl std::fmt::Display for RedactBase64<'_> {
             index_of_last_two_non_padding_characters,
             &self.0[index_of_last_two_non_padding_characters..],
         )
+    }
+}
+
+pub struct DebugAsStrOrBytes<'b>(pub &'b [u8]);
+impl std::fmt::Debug for DebugAsStrOrBytes<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match std::str::from_utf8(self.0) {
+            Ok(s) => s.fmt(f),
+            Err(_) => hex::encode(self.0).fmt(f),
+        }
     }
 }
 

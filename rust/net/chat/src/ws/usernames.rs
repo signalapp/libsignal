@@ -12,7 +12,7 @@ use libsignal_core::Aci;
 use libsignal_net::chat::Request;
 use serde_with::serde_as;
 
-use super::{CustomError, ResponseError, TryIntoResponse, WsConnection};
+use super::{CustomError, OverWs, ResponseError, TryIntoResponse, WsConnection};
 use crate::api::{RequestError, Unauth};
 use crate::logging::{Redact, RedactBase64};
 
@@ -20,7 +20,7 @@ type Base64Url =
     serde_with::base64::Base64<serde_with::base64::UrlSafe, serde_with::formats::Unpadded>;
 
 #[async_trait]
-impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi for Unauth<T> {
+impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for Unauth<T> {
     async fn look_up_username_hash(
         &self,
         hash: &[u8],

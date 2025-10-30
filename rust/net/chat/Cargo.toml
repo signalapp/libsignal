@@ -43,10 +43,18 @@ tokio-stream = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
 visibility = { workspace = true }
 
+http-body = { workspace = true, optional = true }
+libsignal-net-grpc = { workspace = true, optional = true }
+tonic = { workspace = true, optional = true }
+
+[features]
+grpc = ["libsignal-net-grpc", "http-body", "tonic"]
+
 [dev-dependencies]
+libsignal-net-chat = { path = ".", features = ["grpc"] }
+
 libsignal-cli-utils = { workspace = true }
 libsignal-net = { workspace = true, features = ["test-util"] }
-libsignal-net-grpc = { workspace = true }
 
 anyhow = { workspace = true }
 bytes = { workspace = true }
@@ -54,6 +62,7 @@ clap = { workspace = true, features = ["derive"] }
 const-str = { workspace = true }
 env_logger = { workspace = true }
 futures-util = { workspace = true }
+http-body-util = { workspace = true }
 hyper = { workspace = true, features = ["http2", "client"] }
 hyper-util = { workspace = true }
 nonzero_ext = { workspace = true }

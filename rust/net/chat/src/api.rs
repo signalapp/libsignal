@@ -126,17 +126,23 @@ pub enum ChallengeOption {
 /// A convenience trait covering all Chat APIs.
 ///
 /// This should be extended to include any new submodules' traits.
-pub trait UnauthenticatedChatApi:
+///
+/// ### Generic?
+///
+/// The type parameter `T` is a marker to distinguish blanket impls that would otherwise overlap.
+/// Any concrete type will only impl this trait in one way; anywhere that needs to use
+/// UnauthenticatedChatApi generically should accept an arbitrary `T` here.
+pub trait UnauthenticatedChatApi<T>:
     keytrans::UnauthenticatedChatApi
     + messages::UnauthenticatedChatApi
     + profiles::UnauthenticatedChatApi
-    + usernames::UnauthenticatedChatApi
+    + usernames::UnauthenticatedChatApi<T>
 {
 }
-impl<T> UnauthenticatedChatApi for T where
-    T: keytrans::UnauthenticatedChatApi
+impl<T, U> UnauthenticatedChatApi<T> for U where
+    U: keytrans::UnauthenticatedChatApi
         + messages::UnauthenticatedChatApi
         + profiles::UnauthenticatedChatApi
-        + usernames::UnauthenticatedChatApi
+        + usernames::UnauthenticatedChatApi<T>
 {
 }

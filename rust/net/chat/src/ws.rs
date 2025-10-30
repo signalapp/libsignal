@@ -27,6 +27,7 @@ use serde_with::serde_as;
 use crate::api::{
     ChallengeOption, DisconnectedError, RateLimitChallenge, RequestError, UserBasedAuthorization,
 };
+use crate::logging::DebugAsStrOrBytes;
 
 const ACCESS_KEY_HEADER_NAME: http::HeaderName =
     http::HeaderName::from_static("unidentified-access-key");
@@ -50,6 +51,9 @@ impl AsHttpHeader for UserBasedAuthorization {
         }
     }
 }
+
+/// Marker type for use in [`crate::api`] traits.
+pub enum OverWs {}
 
 /// An abstraction over [`chat::ChatConnection`].
 pub trait WsConnection: Sync {
@@ -322,16 +326,6 @@ where
         | serde_json::error::Category::Io
         | serde_json::error::Category::Eof => ResponseError::InvalidJson,
     })
-}
-
-struct DebugAsStrOrBytes<'b>(&'b [u8]);
-impl std::fmt::Debug for DebugAsStrOrBytes<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match std::str::from_utf8(self.0) {
-            Ok(s) => s.fmt(f),
-            Err(_) => hex::encode(self.0).fmt(f),
-        }
-    }
 }
 
 #[cfg(test)]
