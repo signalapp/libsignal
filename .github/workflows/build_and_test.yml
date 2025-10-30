@@ -262,6 +262,12 @@ jobs:
     - name: Restore cargo cache
       id: rust-cache
       uses: ./.github/actions/restore-cargo-cache
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
+        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         job-name: rust-fuzz-build
         toolchain: ${{ steps.rust-fuzz-build-toolchain.outputs.latest-stable-msrv-toolchain }}
