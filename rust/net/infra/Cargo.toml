@@ -61,9 +61,6 @@ visibility = { workspace = true }
 warp = { workspace = true, optional = true, features = ["server"] }
 zerocopy = { workspace = true, features = ["derive"] }
 
-[build-dependencies]
-prost-build = { workspace = true }
-
 [dev-dependencies]
 const-str = { workspace = true }
 env_logger = { workspace = true }

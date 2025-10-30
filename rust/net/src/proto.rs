@@ -4,5 +4,4 @@
 //
 
 pub(crate) mod cds2;
-pub(crate) mod chat_noise;
 pub mod chat_websocket;

@@ -53,7 +53,6 @@ scopeguard = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
-snow = { workspace = true, default-features = false }
 static_assertions = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 subtle = { workspace = true }
@@ -81,7 +80,6 @@ hyper = { workspace = true }
 hyper-util = { workspace = true }
 proptest = { workspace = true }
 rand_chacha = { workspace = true }
-snow = { workspace = true, default-features = true }
 test-case = { workspace = true }
 test-log = { workspace = true }
 tokio = { workspace = true, features = ["test-util", "io-std", "rt-multi-thread"] }

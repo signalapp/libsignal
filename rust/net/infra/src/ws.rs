@@ -24,9 +24,6 @@ pub use connection::Connection;
 
 pub mod attested;
 
-pub mod noise;
-pub use noise::WebSocketTransport;
-
 /// Configuration values for managing the connected websocket.
 #[derive(Clone, Copy)]
 pub struct Config {

@@ -17,8 +17,8 @@ use crate::dns::{DnsError, DnsResolver};
 use crate::host::Host;
 use crate::route::{
     ConnectionProxyRoute, DirectOrProxyRoute, HttpProxyRouteFragment, HttpsProxyRoute,
-    HttpsTlsRoute, NoiseRoute, ProxyTarget, SocksRoute, TcpRoute, TlsRoute, UdpRoute,
-    UnresolvedHost, UsePreconnect, WebSocketRoute,
+    HttpsTlsRoute, ProxyTarget, SocksRoute, TcpRoute, TlsRoute, UdpRoute, UnresolvedHost,
+    UsePreconnect, WebSocketRoute,
 };
 
 /// A route with hostnames that can be resolved.
@@ -366,20 +366,6 @@ impl<A: ResolveHostnames> ProxyTarget<A> {
     }
 }
 
-impl<A: ResolveHostnames, N> ResolveHostnames for NoiseRoute<N, A> {
-    type Resolved = NoiseRoute<N, A::Resolved>;
-    fn hostnames(&self) -> impl Iterator<Item = &UnresolvedHost> {
-        self.inner.hostnames()
-    }
-    fn resolve(self, lookup: impl FnMut(&str) -> IpAddr) -> Self::Resolved {
-        let Self { inner, fragment } = self;
-        Self::Resolved {
-            inner: inner.resolve(lookup),
-            fragment,
-        }
-    }
-}
-
 macro_rules! impl_resolved_route {
     ($typ:ident, $delegate_field:ident) => {
         impl<A: ResolvedRoute> ResolvedRoute for $typ<A> {
@@ -445,12 +431,6 @@ impl<L: ResolvedRoute, R: ResolvedRoute> ResolvedRoute for Either<L, R> {
                 ResolvedRoute::immediate_target,
             )
             .into_inner()
-    }
-}
-
-impl<N, A: ResolvedRoute> ResolvedRoute for NoiseRoute<N, A> {
-    fn immediate_target(&self) -> &IpAddr {
-        self.inner.immediate_target()
     }
 }
 

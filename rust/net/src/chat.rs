@@ -36,7 +36,6 @@ mod error;
 pub use error::{ConnectError, SendError};
 
 pub mod fake;
-pub mod noise;
 pub mod server_requests;
 pub mod ws;
 
