@@ -64,7 +64,9 @@
         "IosAppStoreOriginalTransactionId": 5
       }
     },
-    "svr_pin": ""
+    "svr_pin": "",
+    "bio_text": "",
+    "bio_emoji": ""
   },
   "recipients": [],
   "chats": [],

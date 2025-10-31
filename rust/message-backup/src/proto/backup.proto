@@ -153,6 +153,8 @@ message AccountData {
   IAPSubscriberData backupsSubscriberData = 10;
   string svrPin = 11;
   AndroidSpecificSettings androidSpecificSettings = 12;
+  string bioText = 13;
+  string bioEmoji = 14;
 }
 
 message Recipient {

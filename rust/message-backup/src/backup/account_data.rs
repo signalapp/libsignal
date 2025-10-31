@@ -44,6 +44,8 @@ pub struct AccountData<M: Method + ReferencedTypes> {
     pub donation_subscription: M::Value<Option<Subscription>>,
     pub backup_subscription: M::Value<Option<IapSubscriberData>>,
     pub svr_pin: M::Value<String>,
+    pub bio_text: M::Value<String>,
+    pub bio_emoji: M::Value<String>,
 }
 
 #[serde_as]
@@ -194,6 +196,8 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             backupsSubscriberData,
             svrPin,
             androidSpecificSettings: _,
+            bioText,
+            bioEmoji,
             special_fields: _,
         } = self;
 
@@ -237,6 +241,8 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             donation_subscription: M::value(donation_subscription),
             backup_subscription: M::value(backup_subscription),
             svr_pin: M::value(svrPin),
+            bio_text: M::value(bioText),
+            bio_emoji: M::value(bioEmoji),
         })
     }
 }
@@ -574,6 +580,8 @@ mod test {
                 }),
                 donation_subscription: None,
                 svr_pin: "".to_string(),
+                bio_text: "".to_string(),
+                bio_emoji: "".to_string(),
             }
         }
     }

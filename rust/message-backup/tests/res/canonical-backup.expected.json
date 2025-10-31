@@ -49,7 +49,9 @@
       "manually_canceled": true
     },
     "backup_subscription": null,
-    "svr_pin": ""
+    "svr_pin": "",
+    "bio_text": "",
+    "bio_emoji": ""
   },
   "recipients": [
     {
