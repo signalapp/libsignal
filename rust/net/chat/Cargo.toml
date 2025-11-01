@@ -48,7 +48,12 @@ libsignal-net-grpc = { workspace = true, optional = true }
 tonic = { workspace = true, optional = true, default-features = false }
 
 [features]
-grpc = ["libsignal-net-grpc", "http-body", "tonic"]
+grpc = [
+    "http-body",
+    "libsignal-net/tower-service",
+    "libsignal-net-grpc",
+    "tonic",
+]
 
 [dev-dependencies]
 libsignal-net-chat = { path = ".", features = ["grpc"] }

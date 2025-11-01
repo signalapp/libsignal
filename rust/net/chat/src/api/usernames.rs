@@ -6,6 +6,7 @@
 use std::convert::Infallible;
 
 use async_trait::async_trait;
+use either::Either;
 use libsignal_core::Aci;
 
 use super::RequestError;
@@ -29,4 +30,32 @@ pub trait UnauthenticatedChatApi<T> {
         uuid: uuid::Uuid,
         entropy: &[u8; usernames::constants::USERNAME_LINK_ENTROPY_SIZE],
     ) -> Result<Option<usernames::Username>, RequestError<usernames::UsernameLinkError>>;
+}
+
+#[async_trait]
+impl<A, AMarker, B, BMarker> UnauthenticatedChatApi<Either<AMarker, BMarker>> for Either<A, B>
+where
+    A: UnauthenticatedChatApi<AMarker> + Sync,
+    B: UnauthenticatedChatApi<BMarker> + Sync,
+{
+    async fn look_up_username_hash(
+        &self,
+        hash: &[u8],
+    ) -> Result<Option<Aci>, RequestError<Infallible>> {
+        match self {
+            Either::Left(a) => a.look_up_username_hash(hash).await,
+            Either::Right(b) => b.look_up_username_hash(hash).await,
+        }
+    }
+
+    async fn look_up_username_link(
+        &self,
+        uuid: uuid::Uuid,
+        entropy: &[u8; usernames::constants::USERNAME_LINK_ENTROPY_SIZE],
+    ) -> Result<Option<usernames::Username>, RequestError<usernames::UsernameLinkError>> {
+        match self {
+            Either::Left(a) => a.look_up_username_link(uuid, entropy).await,
+            Either::Right(b) => b.look_up_username_link(uuid, entropy).await,
+        }
+    }
 }
