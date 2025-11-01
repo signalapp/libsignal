@@ -38,7 +38,7 @@ const ZKGROUP_PARAMS_PROD: &str = "AMhf5ywVwITZMsff/eCyudZx9JDmkkkbV6PInzG4p8x3V
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    env_logger::builder()
+    env_logger::Builder::new()
         .filter_module(module_path!(), log::LevelFilter::Info)
         .parse_default_env()
         .init();

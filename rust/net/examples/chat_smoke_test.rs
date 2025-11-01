@@ -49,7 +49,7 @@ enum Environment {
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    env_logger::builder()
+    env_logger::Builder::new()
         .filter_module(module_path!(), log::LevelFilter::Info)
         .parse_default_env()
         .init();

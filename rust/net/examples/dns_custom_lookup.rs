@@ -43,9 +43,10 @@ struct Args {
 
 #[tokio::main]
 async fn main() {
-    let _ = env_logger::builder()
+    env_logger::Builder::new()
         .filter_level(log::LevelFilter::Debug)
-        .try_init();
+        .parse_default_env()
+        .init();
 
     let args = Args::parse();
     const HOST_IP: IpAddr = ip_addr!("1.1.1.1");
