@@ -45,7 +45,7 @@ visibility = { workspace = true }
 
 http-body = { workspace = true, optional = true }
 libsignal-net-grpc = { workspace = true, optional = true }
-tonic = { workspace = true, optional = true }
+tonic = { workspace = true, optional = true, default-features = false }
 
 [features]
 grpc = ["libsignal-net-grpc", "http-body", "tonic"]
@@ -72,5 +72,5 @@ rand_chacha = { workspace = true }
 test-case = { workspace = true }
 test-log = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "test-util"] }
-tonic = { workspace = true }
+tonic = { workspace = true, default-features = false }
 tower = { workspace = true }
