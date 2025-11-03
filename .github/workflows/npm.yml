@@ -160,8 +160,10 @@ jobs:
     name: Publish
 
     permissions:
+      # Required for OIDC
+      id-token: write
       # Needed for ncipollo/release-action.
-      contents: 'write'
+      contents: write
 
     runs-on: ubuntu-latest
 
@@ -193,6 +195,9 @@ jobs:
         path: debuginfo
         merge-multiple: true
 
+    - name: Update npm
+      run: npm install -g npm@latest
+
     - run: npm ci
       working-directory: node
 
@@ -212,8 +217,6 @@ jobs:
 
     - run: npm publish --tag '${{ github.event.inputs.npm_tag }}' --access public ${{ inputs.dry_run && '--dry-run' || ''}}
       working-directory: node
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     # This step is expected to fail if not run on a tag.
     - name: Upload debug info to release
