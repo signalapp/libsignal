@@ -5,9 +5,9 @@ name: Lints
 on:
   push:
     branches: [ main ]
-    paths: ['**/*.sh', '**/*.py', '.github/workflows/lints.yml']
+    paths: ['**/*.sh', '**/*.py', '.github/workflows/*.yml']
   pull_request:
-    paths: ['**/*.sh', '**/*.py', '.github/workflows/lints.yml']
+    paths: ['**/*.sh', '**/*.py', '.github/workflows/*.yml']
 
 jobs:
   lint:
