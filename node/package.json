@@ -1,6 +1,6 @@
 {
   "name": "@signalapp/libsignal-client",
-  "version": "0.85.4",
+  "version": "0.85.5",
   "license": "AGPL-3.0-only",
   "type": "module",
   "main": "dist/index.js",
