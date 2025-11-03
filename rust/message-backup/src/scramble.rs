@@ -308,6 +308,7 @@ impl Visit<Scrambler> for proto::account_data::AccountSettings {
             defaultSentMediaQuality: _,
             autoDownloadSettings: _,
             screenLockTimeoutMinutes: _,
+            pinReminders: _,
         } = self;
 
         defaultChatStyle.accept(visitor);

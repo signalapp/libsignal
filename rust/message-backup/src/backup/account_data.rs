@@ -380,6 +380,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             defaultSentMediaQuality: _,
             autoDownloadSettings: _,
             screenLockTimeoutMinutes: _,
+            pinReminders: _,
             special_fields: _,
         } = self;
 
