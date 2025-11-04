@@ -141,7 +141,7 @@ def main(args: Optional[List[str]] = None) -> int:
     cargo_env = os.environ.copy()
     cargo_env['RUSTFLAGS'] = cargo_env.get('RUSTFLAGS') or ''
     cargo_env['CARGO_BUILD_TARGET_DIR'] = options.cargo_build_dir
-    cargo_env['MACOSX_DEPLOYMENT_TARGET'] = '10.13'
+    cargo_env['MACOSX_DEPLOYMENT_TARGET'] = '12'
     # Build with debug line tables, but not full debug info.
     cargo_env['CARGO_PROFILE_RELEASE_DEBUG'] = '1'
     # On Linux, cdylibs don't include public symbols from their dependencies,
