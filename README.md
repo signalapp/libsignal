@@ -147,7 +147,7 @@ addition to rebuilding. This requires installing the `cbindgen` Rust tool, as de
 
 ### Maven Central
 
-Signal publishes Java packages on [Maven Central](https://central.sonatype.org) for its own use,
+Signal publishes Java packages using GitHub's package registry for its own use,
 under the names org.signal:libsignal-server, org.signal:libsignal-client, and
 org.signal:libsignal-android. libsignal-client and libsignal-server contain native libraries for
 Debian-flavored x86_64 Linux as well as Windows (x86_64) and macOS (x86_64 and arm64).

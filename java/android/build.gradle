@@ -161,6 +161,16 @@ afterEvaluate {
     checkRustlsPlatformVerifierVersion()
 
     publishing {
+        repositories {
+            maven {
+                name = "GitHubPackages"
+                url = uri("https://maven.pkg.github.com/signalapp/libsignal")
+                credentials {
+                    username = project.findProperty("githubUsername")
+                    password = project.findProperty("githubToken")
+                }
+            }
+        }
         publications {
             mavenJava(MavenPublication) {
                 artifactId = archivesBaseName

@@ -54,11 +54,9 @@ git push <remote> HEAD:main <release tag, e.g. v0.x.y>
 
 ## 3. Submit to package repositories as needed
 
-### Android and Server: Sonatype
+### Android and Server: GitHub Package Registry
 
-In the signalapp/libsignal repository on GitHub, run the "Upload Java libraries to Sonatype" action on the tag you just made. Then go to [Maven Central][] and wait for the build to show up (it can take up to an hour).
-
-[Maven Central]: https://central.sonatype.com/artifact/org.signal/libsignal-client/versions
+In the signalapp/libsignal repository on GitHub, run the "Publish Java libraries" action on the tag you just made.
 
 ### Node: NPM
 
