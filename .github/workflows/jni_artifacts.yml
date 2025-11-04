@@ -21,10 +21,10 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-latest, macos-15]
+        os: [windows-latest-8-cores, macos-15-xlarge]
         include:
-          - os: windows-latest
-          - os: macos-15
+          - os: windows-latest-8-cores
+          - os: macos-15-xlarge
             additional-rust-target: x86_64-apple-darwin
         # Ubuntu binaries are built using Docker, below
 
@@ -61,7 +61,7 @@ jobs:
       shell: cmd
 
     - run: choco install protoc
-      if: matrix.os == 'windows-latest'
+      if: startsWith(matrix.os, 'windows-')
 
     - run: brew install protobuf
       if: startsWith(matrix.os, 'macos-')
@@ -125,7 +125,7 @@ jobs:
   publish:
     name: Build for production and publish
 
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest-8-cores
 
     needs: [build, verify-rust]
 
