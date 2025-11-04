@@ -179,6 +179,18 @@ jobs:
       env:
         RUSTDOCFLAGS: -D warnings
 
+    - name: Save cargo cache
+      if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+      uses: ./.github/actions/save-cargo-cache
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
+        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      with:
+        key: ${{ steps['rust-cache'].outputs['cache-key'] }}
+
   rust32:
     name: Rust (32-bit testing)
 
@@ -233,6 +245,18 @@ jobs:
       # Exclude signal-neon-futures because those tests run Node
       run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures --no-fail-fast -- --include-ignored
 
+    - name: Save cargo cache
+      if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+      uses: ./.github/actions/save-cargo-cache
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
+        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      with:
+        key: ${{ steps['rust-cache'].outputs['cache-key'] }}
+
   rust-fuzz-build:
     name: Rust (Fuzz Targets)
 
@@ -261,6 +285,7 @@ jobs:
 
     - name: Restore cargo cache
       id: rust-cache
+      if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
       uses: ./.github/actions/restore-cargo-cache
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -286,6 +311,18 @@ jobs:
       working-directory: rust/attest/fuzz
       env:
         RUSTFLAGS: --cfg fuzzing
+
+    - name: Save cargo cache
+      uses: ./.github/actions/save-cargo-cache
+      if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
+        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      with:
+        key: ${{ steps['rust-cache'].outputs['cache-key'] }}
 
   rust-fmt:
     name: Rust (Formatting and Acknowledgments)
@@ -410,6 +447,18 @@ jobs:
 
     - run: grep -v -F '***' ./check_code_size-output.txt >> "$GITHUB_STEP_SUMMARY"
 
+    - name: Save cargo cache
+      if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+      uses: ./.github/actions/save-cargo-cache
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
+        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      with:
+        key: ${{ steps['rust-cache'].outputs['cache-key'] }}
+
   java_jvm:
     name: Java JVM
 
@@ -459,6 +508,18 @@ jobs:
 
     - run: ./gradlew --dependency-verification strict build -PskipAndroid
       working-directory: java
+
+    - name: Save cargo cache
+      if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+      uses: ./.github/actions/save-cargo-cache
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
+        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      with:
+        key: ${{ steps['rust-cache'].outputs['cache-key'] }}
 
   node:
     name: Node
@@ -541,6 +602,18 @@ jobs:
     - run: npm run test
       working-directory: node
 
+    - name: Save cargo cache
+      if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+      uses: ./.github/actions/save-cargo-cache
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
+        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      with:
+        key: ${{ steps['rust-cache'].outputs['cache-key'] }}
+
   swift_package:
     name: Swift Package
 
@@ -591,6 +664,18 @@ jobs:
     - name: Build and run Swift benchmarks (in debug mode)
       run: swift run -v Benchmarks --allow-debug-build
       working-directory: swift/Benchmarks
+
+    - name: Save cargo cache
+      if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+      uses: ./.github/actions/save-cargo-cache
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
+        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      with:
+        key: ${{ steps['rust-cache'].outputs['cache-key'] }}
 
 # Disabled for now, broken on Linux in the Swift 6.0 release.
 # See https://forums.swift.org/t/generate-documentation-failing-for-swift-6-pre-release/74534
@@ -649,3 +734,15 @@ jobs:
 
       - name: Run pod lint
         run: pod lib lint --verbose --platforms=ios --skip-tests
+
+      - name: Save cargo cache
+        if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
+        uses: ./.github/actions/save-cargo-cache
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+          RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+          RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        with:
+          key: ${{ steps['rust-cache'].outputs['cache-key'] }}

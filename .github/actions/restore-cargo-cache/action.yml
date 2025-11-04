@@ -18,6 +18,9 @@ outputs:
   cache-key-current:
     description: 'Hash of current working tree'
     value: ${{ steps.calculate.outputs['cache-key-current'] }}
+  cache-key:
+    description: 'Full cache key used for cargo artifacts'
+    value: ${{ steps.cache.outputs['cache-primary-key'] }}
 runs:
   using: 'composite'
   steps:
@@ -27,7 +30,8 @@ runs:
       run: python3 "${{ github.action_path }}/calculate_cache_keys.py" --toolchain "${{ inputs.toolchain }}" >> "$GITHUB_OUTPUT"
 
     - name: Restore cargo cache
-      uses: runs-on/cache@3a15256b3556fbc5ae15f7f04598e4c7680e9c25 # v4
+      id: cache
+      uses: runs-on/cache/restore@3a15256b3556fbc5ae15f7f04598e4c7680e9c25 # v4
       with:
         # The special handling for the Windows target path comes because we overwrite
         # $CARGO_BUILD_TARGET_DIR in build_node_bridge.py because Visual Studio's CLI
