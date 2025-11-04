@@ -125,7 +125,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             special_fields: _,
         } = self;
         validate_poll_string_len(&option, "poll option")?;
-        validate_unique_voters(&votes)?;
+        validate_unique_voters(votes.iter().map(|vote| vote.voterId))?;
         let votes = votes
             .into_iter()
             .map(|vote| vote.try_into_with(context))
@@ -153,10 +153,19 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
         if options.len() < MIN_POLL_OPTIONS {
             return Err(Self::Error::TooFewOptions(options.len()));
         }
+        // Per option enforcement of unique voters happens inside PollOptionProto::try_with_context,
+        // but we need to stash all voter ids in order to enforce single vote per voter if allow_multiple is false.
+        let all_voter_ids = options
+            .iter()
+            .flat_map(|opt| opt.votes.iter().map(|vote| vote.voterId))
+            .collect_vec();
         let options = options
             .into_iter()
             .map(|opt| opt.try_into_with(context))
             .collect::<Result<Vec<_>, _>>()?;
+        if !allow_multiple {
+            validate_unique_voters(all_voter_ids.iter().copied())?;
+        }
         let reactions = reactions.try_into_with(context)?;
         Ok(Poll {
             question,
@@ -199,10 +208,10 @@ fn validate_poll_string_len(s: &str, description: &'static str) -> Result<(), Po
     Ok(())
 }
 
-fn validate_unique_voters(votes: &[PollVoteProto]) -> Result<(), PollError> {
-    let mut hist = IntMap::<_, usize>::with_capacity(votes.len());
-    for vote in votes {
-        let id = RecipientId(vote.voterId);
+fn validate_unique_voters(ids: impl ExactSizeIterator<Item = u64>) -> Result<(), PollError> {
+    let mut hist = IntMap::<_, usize>::with_capacity(ids.len());
+    for id in ids {
+        let id = RecipientId(id);
         *hist.entry(id).or_default() += 1;
     }
     let non_unique_voters = hist
@@ -289,7 +298,7 @@ mod test {
     fn poll_proto() -> PollProto {
         PollProto {
             question: "To be or not to be?".to_string(),
-            allowMultiple: false,
+            allowMultiple: true,
             options: vec![
                 poll_option_proto("that"),
                 poll_option_proto("is"),
@@ -343,7 +352,7 @@ mod test {
             result,
             Ok(Poll {
                 question,
-                allow_multiple: false,
+                allow_multiple: true,
                 options,
                 has_ended: false,
                 reactions,
@@ -369,6 +378,7 @@ mod test {
     #[test_case(|x| x.question = format!("{:0101}", 0) => Err(PollError::InvalidPollStringSize("poll question", 101)); "question too long")]
     #[test_case(|x| x.reactions.clear() => Ok(()); "no reactions")]
     #[test_case(|x| x.reactions.push(ReactionProto::default()) => Err(PollError::Reaction(ReactionError::EmptyEmoji)); "invalid reaction")]
+    #[test_case(|x| x.allowMultiple = false => Err(PollError::NonUniqueVoters(vec![TestContext::SELF_ID])); "non unique voters")]
     fn poll(modify: fn(&mut PollProto)) -> Result<(), PollError> {
         let mut poll = poll_proto();
         modify(&mut poll);
