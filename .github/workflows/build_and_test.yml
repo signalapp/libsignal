@@ -467,7 +467,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest-4-cores, windows-latest, macos-15]
+        os: [ubuntu-latest-4-cores, windows-latest-8-cores, macos-15]
 
     needs: changes
 
@@ -508,7 +508,7 @@ jobs:
       if: startsWith(matrix.os, 'ubuntu-')
 
     - run: choco install protoc
-      if: matrix.os == 'windows-latest'
+      if: startsWith(matrix.os, 'windows-')
 
     - run: brew install protobuf
       if: startsWith(matrix.os, 'macos-')
