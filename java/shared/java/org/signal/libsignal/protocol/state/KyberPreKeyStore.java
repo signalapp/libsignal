@@ -47,21 +47,6 @@ public interface KyberPreKeyStore {
   /**
    * Mark a KyberPreKeyRecord in the local storage as used.
    *
-   * <p>Remove if it is a one-time pre key and noop if it is last-resort.
-   *
-   * @param kyberPreKeyId The ID of the KyberPreKeyRecord to be marked.
-   * @deprecated Use {@link markKyberPreKeyUsed(int, int, ECPublicKey)} instead.
-   */
-  @Deprecated
-  public default void markKyberPreKeyUsed(int kyberPreKeyId) {
-    // Providing this implementation allows clients to delete their own once they've implemented the
-    // new overload.
-    throw new UnsupportedOperationException("implement markKyberPreKeyUsed(int,int,ECPublicKey)");
-  }
-
-  /**
-   * Mark a KyberPreKeyRecord in the local storage as used.
-   *
    * <p>If it's a one-time pre-key, remove it.
    *
    * <p>If it's a last-resort pre-key, check whether this specific <code>
@@ -73,10 +58,6 @@ public interface KyberPreKeyStore {
    * @param signedPreKeyId The ID of the SignedPreKeyRecord that was used with this Kyber pre-key.
    * @param baseKey The session-specific key from the sender used with this Kyber pre-key.
    */
-  public default void markKyberPreKeyUsed(
-      int kyberPreKeyId, int signedPreKeyId, ECPublicKey baseKey) throws ReusedBaseKeyException {
-    // Providing this implementation allows existing clients to continue to behave as they did
-    // before.
-    markKyberPreKeyUsed(kyberPreKeyId);
-  }
+  public void markKyberPreKeyUsed(int kyberPreKeyId, int signedPreKeyId, ECPublicKey baseKey)
+      throws ReusedBaseKeyException;
 }
