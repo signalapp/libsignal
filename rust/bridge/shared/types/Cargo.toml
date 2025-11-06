@@ -47,6 +47,7 @@ mediasan-common = { workspace = true }
 once_cell = { workspace = true }
 partial-default = { workspace = true }
 paste = { workspace = true }
+rand = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
 sha2 = { workspace = true }

@@ -126,7 +126,15 @@ const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
             configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
         }),
     },
-    ip_v4: &[ip_addr!(v4, "20.66.40.69")],
+    ip_v4: &[
+        ip_addr!(v4, "20.236.21.158"),
+        ip_addr!(v4, "20.104.52.125"),
+        ip_addr!(v4, "20.9.45.98"),
+        ip_addr!(v4, "20.66.40.69"),
+        ip_addr!(v4, "20.119.62.85"),
+        ip_addr!(v4, "20.65.43.198"),
+        ip_addr!(v4, "13.84.216.212"),
+    ],
     ip_v6: &[],
 };
 
@@ -142,7 +150,13 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
             configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
         }),
     },
-    ip_v4: &[ip_addr!(v4, "20.253.229.239")],
+    ip_v4: &[
+        ip_addr!(v4, "104.43.134.192"),
+        ip_addr!(v4, "20.253.229.239"),
+        ip_addr!(v4, "157.55.188.67"),
+        ip_addr!(v4, "20.127.86.118"),
+        ip_addr!(v4, "20.186.175.196"),
+    ],
     ip_v6: &[],
 };
 
@@ -158,7 +172,13 @@ const DOMAIN_CONFIG_SVRB_STAGING: DomainConfig = DomainConfig {
             configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
         }),
     },
-    ip_v4: &[ip_addr!(v4, "20.66.46.240")],
+    ip_v4: &[
+        ip_addr!(v4, "20.45.59.200"),
+        ip_addr!(v4, "132.196.9.248"),
+        ip_addr!(v4, "52.225.216.56"),
+        ip_addr!(v4, "20.66.46.240"),
+        ip_addr!(v4, "172.178.57.240"),
+    ],
     ip_v6: &[],
 };
 
@@ -174,7 +194,15 @@ const DOMAIN_CONFIG_SVRB_PROD: DomainConfig = DomainConfig {
             configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
         }),
     },
-    ip_v4: &[ip_addr!(v4, "20.114.45.6")],
+    ip_v4: &[
+        ip_addr!(v4, "4.151.136.48"),
+        ip_addr!(v4, "20.232.191.209"),
+        ip_addr!(v4, "135.119.74.80"),
+        ip_addr!(v4, "172.200.87.186"),
+        ip_addr!(v4, "20.63.12.55"),
+        ip_addr!(v4, "20.66.41.177"),
+        ip_addr!(v4, "20.114.45.6"),
+    ],
     ip_v6: &[],
 };
 
@@ -323,12 +351,40 @@ pub struct KeyTransConfig {
     pub auditor_key_material: &'static [&'static [u8; 32]],
 }
 
+pub enum StaticIpOrder<'a, R> {
+    Hardcoded,
+    Shuffled(&'a mut R),
+}
+
+impl StaticIpOrder<'_, rand::rngs::ThreadRng> {
+    /// A convenience alias for [`Self::Hardcoded`] with a fixed RNG type.
+    pub const HARDCODED: Self = Self::Hardcoded;
+}
+
+impl<'a, R> StaticIpOrder<'a, R> {
+    /// Borrow `self` without consuming it.
+    ///
+    /// Makes up for `&mut` not being `Clone`, cf [`Option::as_mut`].
+    fn as_mut<'b>(&'b mut self) -> StaticIpOrder<'b, R> {
+        match self {
+            StaticIpOrder::Hardcoded => StaticIpOrder::Hardcoded,
+            StaticIpOrder::Shuffled(rng) => StaticIpOrder::Shuffled(rng),
+        }
+    }
+}
+
 impl DomainConfig {
-    pub fn static_fallback(&self) -> (&'static str, LookupResult) {
-        (
-            self.connect.hostname,
-            LookupResult::new(self.ip_v4.into(), self.ip_v6.into()),
-        )
+    pub fn static_fallback(
+        &self,
+        rng: StaticIpOrder<'_, impl Rng>,
+    ) -> (&'static str, LookupResult) {
+        let mut ip_v4 = self.ip_v4.to_vec();
+        let mut ip_v6 = self.ip_v6.to_vec();
+        if let StaticIpOrder::Shuffled(rng) = rng {
+            ip_v4.shuffle(rng);
+            ip_v6.shuffle(rng);
+        }
+        (self.connect.hostname, LookupResult::new(ip_v4, ip_v6))
     }
 }
 
@@ -603,7 +659,12 @@ pub struct Env<'a> {
 
 impl<'a> Env<'a> {
     /// Returns a static mapping from hostnames to [`LookupResult`]s.
-    pub fn static_fallback(&self) -> HashMap<&'a str, LookupResult> {
+    ///
+    /// If an RNG is provided, the static IPs are shuffled in the resulting map.
+    pub fn static_fallback(
+        &self,
+        mut rng: StaticIpOrder<'_, impl Rng>,
+    ) -> HashMap<&'a str, LookupResult> {
         let Self {
             cdsi,
             svr2,
@@ -613,19 +674,17 @@ impl<'a> Env<'a> {
             keytrans_config: _,
         } = self;
 
-        let svrb_static_fallbacks = svr_b
-            .current_and_previous()
-            .map(|enclave_endpoint| enclave_endpoint.domain_config.static_fallback());
-
-        HashMap::from_iter(
-            [
-                cdsi.domain_config.static_fallback(),
-                svr2.domain_config.static_fallback(),
-                chat_domain_config.static_fallback(),
-            ]
-            .into_iter()
-            .chain(svrb_static_fallbacks),
-        )
+        let mut result = HashMap::from_iter([
+            cdsi.domain_config.static_fallback(rng.as_mut()),
+            svr2.domain_config.static_fallback(rng.as_mut()),
+            chat_domain_config.static_fallback(rng.as_mut()),
+        ]);
+        result.extend(
+            svr_b.current_and_previous().map(|enclave_endpoint| {
+                enclave_endpoint.domain_config.static_fallback(rng.as_mut())
+            }),
+        );
+        result
     }
 }
 
@@ -837,7 +896,7 @@ mod test {
             Duration::MAX,
         );
 
-        let (hostname, static_hardcoded_ips) = config.static_fallback();
+        let (hostname, static_hardcoded_ips) = config.static_fallback(StaticIpOrder::HARDCODED);
 
         let resolved_ips: Vec<_> = resolver
             .resolve(DnsLookupRequest {

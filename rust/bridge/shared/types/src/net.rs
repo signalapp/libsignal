@@ -13,7 +13,7 @@ use libsignal_net::connect_state::{
     SUGGESTED_CONNECT_CONFIG, SUGGESTED_TLS_PRECONNECT_LIFETIME,
 };
 use libsignal_net::enclave::{EnclaveEndpoint, EnclaveKind};
-use libsignal_net::env::{Env, UserAgent};
+use libsignal_net::env::{Env, StaticIpOrder, UserAgent};
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::route::{
     ConnectionProxyConfig, DirectOrProxyMode, DirectOrProxyProvider, RouteProvider,
@@ -21,6 +21,7 @@ use libsignal_net::infra::route::{
 };
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
 use libsignal_net::infra::{AsHttpHeader as _, EnableDomainFronting};
+use rand::TryRngCore as _;
 
 pub use self::remote_config::BuildVariant;
 use self::remote_config::{RemoteConfig, RemoteConfigKey};
@@ -149,8 +150,10 @@ impl ConnectionManager {
         let (network_change_event_tx, network_change_event_rx) = ::tokio::sync::watch::channel(());
         let user_agent = UserAgent::with_libsignal_version(user_agent);
 
-        let dns_resolver =
-            DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event_rx);
+        let dns_resolver = DnsResolver::new_with_static_fallback(
+            env.static_fallback(StaticIpOrder::Shuffled(&mut rand::rngs::OsRng.unwrap_err())),
+            &network_change_event_rx,
+        );
         let transport_connector =
             std::sync::Mutex::new(TcpSslConnector::new_direct(dns_resolver.clone()));
         let remote_config = RemoteConfig::new(remote_config, build_variant);

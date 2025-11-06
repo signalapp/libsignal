@@ -490,6 +490,7 @@ mod test {
     use super::*;
     use crate::auth::Auth;
     use crate::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
+    use crate::env::StaticIpOrder;
 
     #[test]
     fn parse_lookup_response_entries() {
@@ -953,7 +954,10 @@ mod test {
         let network_change_event = no_network_change_events();
 
         // If we don't mock out the DNS, this test will fail on machines without internet access.
-        let static_map = HashMap::from([env.cdsi.domain_config.static_fallback()]);
+        let static_map = HashMap::from([env
+            .cdsi
+            .domain_config
+            .static_fallback(StaticIpOrder::HARDCODED)]);
         let dns_resolver = DnsResolver::new_from_static_map(static_map);
 
         let result = CdsiConnection::connect_with(

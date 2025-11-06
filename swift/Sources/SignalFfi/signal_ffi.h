@@ -1518,6 +1518,8 @@ typedef uint8_t SignalRandomnessBytes[SignalRANDOMNESS_LEN];
 
 typedef uint8_t SignalUnidentifiedAccessKey[SignalACCESS_KEY_LEN];
 
+
+
 SignalFfiError *signal_account_entropy_pool_derive_backup_key(uint8_t (*out)[SignalBACKUP_KEY_LEN], const char *account_entropy);
 
 SignalFfiError *signal_account_entropy_pool_derive_svr_key(uint8_t (*out)[SignalSVR_KEY_LEN], const char *account_entropy);

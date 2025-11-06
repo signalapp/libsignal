@@ -435,7 +435,7 @@ pub mod test_support {
     use crate::connect_state::{
         ConnectState, DefaultConnectorFactory, PreconnectingFactory, SUGGESTED_CONNECT_CONFIG,
     };
-    use crate::env::{Env, UserAgent};
+    use crate::env::{Env, StaticIpOrder, UserAgent};
     use crate::infra::route::DirectOrProxyProvider;
 
     pub async fn simple_chat_connection(
@@ -445,7 +445,7 @@ pub mod test_support {
         filter_routes: impl Fn(&UnresolvedHttpsServiceRoute) -> bool,
     ) -> Result<ChatConnection, ConnectError> {
         let dns_resolver = DnsResolver::new_with_static_fallback(
-            env.static_fallback(),
+            env.static_fallback(StaticIpOrder::HARDCODED),
             &no_network_change_events(),
         );
 
