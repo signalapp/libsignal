@@ -158,12 +158,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 21 is our minimal API level
+        # 23 is our minimal API level
         # 33 is our target API level
         include:
-          - api_level: 21
+          - api_level: 23
             arch: x86
-          - api_level: 21
+          - api_level: 23
             arch: x86_64
           - api_level: 33
             arch: x86_64
@@ -211,7 +211,7 @@ jobs:
           api-level: ${{ matrix.api_level }}
           ndk: ${{ env.ANDROID_NDK_VERSION }}
           force-avd-creation: false
-          disk-size: 1024M
+          disk-size: 2048M
           emulator-options: -no-window -noaudio -no-boot-anim -no-metrics
           script: echo "Generated AVD snapshot for caching."
 
@@ -221,7 +221,7 @@ jobs:
           arch: ${{ matrix.arch }}
           api-level: ${{ matrix.api_level }}
           ndk: ${{ env.ANDROID_NDK_VERSION }}
-          disk-size: 1024M
+          disk-size: 2048M
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim -no-metrics
           script: |

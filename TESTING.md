@@ -42,7 +42,7 @@ Rust allows running tests with cross-compiled targets, but normally that only wo
     ANDROID_NDK_HOME=path/to/ndk
     CARGO_PROFILE_TEST_STRIP=debuginfo   # make the "push" step take less time
     CARGO_PROFILE_BENCH_STRIP=debuginfo  # same for benchmarks
-    CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=path/to/ndk/toolchains/llvm/prebuilt/YOUR_HOST_HERE/bin/aarch64-linux-android21-clang
+    CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=path/to/ndk/toolchains/llvm/prebuilt/YOUR_HOST_HERE/bin/aarch64-linux-android23-clang
     CARGO_TARGET_AARCH64_LINUX_ANDROID_RUNNER=bin/adb-run-test # in the repo root
     ```
 

@@ -22,7 +22,7 @@ android {
     ndkVersion '28.0.13004108'
 
     defaultConfig {
-        minSdkVersion 21
+        minSdkVersion 23
         targetSdkVersion 33
         multiDexEnabled true
         testInstrumentationRunner "org.signal.libsignal.util.AndroidJUnitRunner"

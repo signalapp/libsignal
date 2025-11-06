@@ -81,7 +81,7 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
 # Java
 
-- Many of our APIs are shared between Android and Server, and we also run the client tests on desktop machines, so **stick to Java 8** unless you've verified that something newer is available on Android (back to our earliest supported version, API level 21, at the time of this writing), and don't use Android-specific APIs unless you're actually in Android-specific code. (This *should* be checked in CI but things have slipped through before, and it'll save you time to know whether you're allowed to use something.)
+- Many of our APIs are shared between Android and Server, and we also run the client tests on desktop machines, so **stick to Java 8** unless you've verified that something newer is available on Android (back to our earliest supported version, API level 23, at the time of this update), and don't use Android-specific APIs unless you're actually in Android-specific code. (This *should* be checked in CI but things have slipped through before, and it'll save you time to know whether you're allowed to use something.)
 
 - **Put server-specific APIs in the server/ folder if they're not needed to test client features**, so they don't add code size for Android.
 
