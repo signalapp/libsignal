@@ -518,10 +518,7 @@ impl BlindedIssuanceProofBuilder<'_> {
                 &point_args,
                 self.inner.authenticated_message,
             )
-            .map_err(|e| {
-                log::warn!("poksho proof verification failed {:?}", e);
-                VerificationFailure
-            })?;
+            .map_err(|_| VerificationFailure)?;
         let V = proof.credential.S2 - blinding_key.private_key().y * proof.credential.S1;
         Ok(Credential {
             t: proof.credential.t,

@@ -18,7 +18,6 @@ workspace = true
 [dependencies]
 libsignal-account-keys = { workspace = true, features = ["serde"] }
 libsignal-core = { workspace = true }
-log = { workspace = true }
 poksho = { workspace = true }
 zkcredential = { workspace = true, features = ["rayon"] }
 

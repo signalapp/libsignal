@@ -200,41 +200,28 @@ impl BackupAuthCredentialRequestContext {
         params: &GenericServerPublicParams,
         expected_redemption_time: Timestamp,
     ) -> Result<BackupAuthCredential, ZkGroupVerificationFailure> {
-        if response.redemption_time != expected_redemption_time {
-            log::warn!(
-                "redemption_time mismatch: {} != {}",
-                response.redemption_time.epoch_seconds(),
-                expected_redemption_time.epoch_seconds()
-            );
+        if response.redemption_time != expected_redemption_time
+            || !response.redemption_time.is_day_aligned()
+        {
             return Err(ZkGroupVerificationFailure);
         }
-
-        if !response.redemption_time.is_day_aligned() {
-            log::warn!(
-                "redemption_time is not day-aligned: {}",
-                response.redemption_time.epoch_seconds()
-            );
-            return Err(ZkGroupVerificationFailure);
-        }
-
-        let credential = zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
-            .add_public_attribute(&response.redemption_time)
-            .add_public_attribute(&u64::from(response.backup_level))
-            .add_public_attribute(&u64::from(response.credential_type))
-            .add_blinded_revealed_attribute(&self.blinded_backup_id)
-            .verify(
-                &params.credential_key,
-                &self.key_pair,
-                response.blinded_credential,
-            )
-            .map_err(|_| ZkGroupVerificationFailure)?;
 
         Ok(BackupAuthCredential {
             reserved: Default::default(),
             redemption_time: response.redemption_time,
             backup_level: response.backup_level,
             credential_type: response.credential_type,
-            credential,
+            credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
+                .add_public_attribute(&response.redemption_time)
+                .add_public_attribute(&u64::from(response.backup_level))
+                .add_public_attribute(&u64::from(response.credential_type))
+                .add_blinded_revealed_attribute(&self.blinded_backup_id)
+                .verify(
+                    &params.credential_key,
+                    &self.key_pair,
+                    response.blinded_credential,
+                )
+                .map_err(|_| ZkGroupVerificationFailure)?,
             backup_id: self.backup_id,
         })
     }

@@ -21,7 +21,6 @@ cfg-if = { workspace = true }
 curve25519-dalek = { workspace = true, features = ["serde"] }
 derive-where = { workspace = true }
 displaydoc = { workspace = true }
-log = { workspace = true }
 partial-default = { workspace = true, features = ["derive"] }
 serde = { workspace = true, features = ["derive"] }
 sha2 = { workspace = true }
