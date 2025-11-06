@@ -6,6 +6,7 @@
 use std::num::NonZeroU16;
 
 use libsignal_bridge_macros::bridge_fn;
+pub use libsignal_bridge_types::net::remote_config::RemoteConfigKey;
 pub use libsignal_bridge_types::net::{
     BuildVariant, ConnectionManager, Environment, TokioAsyncContext,
 };

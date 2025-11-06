@@ -6,7 +6,7 @@
 #![warn(clippy::unwrap_used)]
 
 use futures::executor;
-use libsignal_bridge::node::{AssumedImmutableBuffer, SignalNodeError};
+use libsignal_bridge::node::{AssumedImmutableBuffer, ResultTypeInfo, SignalNodeError};
 use libsignal_protocol::SealedSenderV2SentMessage;
 use minidump::Minidump;
 use minidump_processor::ProcessorOptions;
@@ -31,6 +31,8 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         sealed_sender_multi_recipient_message_parse,
     )?;
     cx.export_function("MinidumpToJSONString", minidump_to_json_string)?;
+    let remote_config_keys = libsignal_bridge::net::RemoteConfigKey::KEYS.convert_into(&mut cx)?;
+    cx.export_value("NetRemoteConfigKeys", remote_config_keys)?;
     Ok(())
 }
 

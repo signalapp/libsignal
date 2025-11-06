@@ -1836,6 +1836,7 @@ export { registerErrors,
   TESTING_TokioAsyncContext_NewSingleThreaded,
  };
 
+/* eslint-disable comma-dangle */
 export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
 export interface BridgedStringMap { readonly __type: unique symbol; }
 export interface Aes256GcmSiv { readonly __type: unique symbol; }
@@ -1854,6 +1855,7 @@ export interface RegisterAccountResponse { readonly __type: unique symbol; }
 export interface RegistrationAccountAttributes { readonly __type: unique symbol; }
 export interface BackupStoreResponse { readonly __type: unique symbol; }
 export interface BackupRestoreResponse { readonly __type: unique symbol; }
+export const NetRemoteConfigKeys = ['chatRequestConnectionCheckTimeoutMillis', 'chatPermessageDeflate', ] as const;
 export interface TokioAsyncContext { readonly __type: unique symbol; }
 export interface ConnectionManager { readonly __type: unique symbol; }
 export interface ConnectionProxyConfig { readonly __type: unique symbol; }

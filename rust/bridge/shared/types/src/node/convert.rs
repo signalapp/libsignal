@@ -957,17 +957,24 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for &[&str] {
+    type ResultType = JsArray;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        make_array(cx, self.iter().copied())
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for Box<[String]> {
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        make_array(cx, self.into_vec())
+        make_array(cx, self)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for Box<[Vec<u8>]> {
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        make_array(cx, self.into_vec())
+        make_array(cx, self)
     }
 }
 

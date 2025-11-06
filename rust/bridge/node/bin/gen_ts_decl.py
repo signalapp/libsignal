@@ -241,7 +241,8 @@ def collect_decls(crate_dir: str, features: Iterable[str] = ()) -> Iterator[str]
 
         function_match = function_sig.match(decl)
         if function_match is None:
-            yield decl
+            # Fix backslash-escaped double-quotes.
+            yield bytes(decl, 'utf-8').decode('unicode_escape')
             continue
 
         (prefix, fn_args, ret_type) = function_match.groups()

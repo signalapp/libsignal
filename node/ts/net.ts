@@ -121,6 +121,28 @@ export type ProxyOptions = {
 /** The "scheme" for Signal TLS proxies. See {@link Net.setProxy()}. */
 export const SIGNAL_TLS_PROXY_SCHEME = 'org.signal.tls';
 
+type WithSuffix<Keys extends readonly string[], Suffix extends string> = {
+  [Key in keyof Keys]: `${Keys[Key]}.${Suffix}`;
+};
+
+function withSuffix<Keys extends readonly string[], Suffix extends string>(
+  keys: Keys,
+  suffix: Suffix
+): WithSuffix<Keys, Suffix> {
+  return keys.map((key) => `${key}.${suffix}`) as WithSuffix<Keys, Suffix>;
+}
+
+const BETA_REMOTE_CONFIG_KEYS = withSuffix(Native.NetRemoteConfigKeys, 'beta');
+// By convention suffix-less keys mean ".prod". These keys predate convention.
+// TODO: Remove this line once all the non-conventional keys have been removed.
+const PROD_REMOTE_CONFIG_KEYS = ['chatPermessageDeflate.prod'] as const;
+
+export const REMOTE_CONFIG_KEYS = [
+  ...Native.NetRemoteConfigKeys,
+  ...BETA_REMOTE_CONFIG_KEYS,
+  ...PROD_REMOTE_CONFIG_KEYS,
+] as const;
+
 export class Net {
   private readonly asyncContext: TokioAsyncContext;
   /** Exposed only for testing. */
@@ -458,7 +480,9 @@ export class Net {
    * @deprecated Calling without buildVariant is deprecated. Please explicitly specify BuildVariant.Production or BuildVariant.Beta.
    * @param remoteConfig A map containing preprocessed libsignal configuration keys and their associated values.
    */
-  setRemoteConfig(remoteConfig: ReadonlyMap<string, string>): void;
+  setRemoteConfig(
+    remoteConfig: ReadonlyMap<(typeof REMOTE_CONFIG_KEYS)[number], string>
+  ): void;
   /**
    * Updates libsignal's remote configuration settings.
    *

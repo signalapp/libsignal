@@ -206,4 +206,5 @@ const { registerErrors, NATIVE_FN_NAMES } = load(
 
 export { registerErrors, NATIVE_FN_NAMES };
 
+/* eslint-disable comma-dangle */
 NATIVE_TYPES;
