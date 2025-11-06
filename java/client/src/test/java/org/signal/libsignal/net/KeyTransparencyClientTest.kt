@@ -158,19 +158,17 @@ class KeyTransparencyClientTest {
     headers: Array<String> = arrayOf(),
   ) {
     val tokio = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, remote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokio,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val remote = chatAndFakeRemote.second()
 
     val store = TestStore()
     val responseFuture = chat.keyTransparencyClient().updateDistinguished(store)
 
-    val requestId = remote.getNextIncomingRequest().get().second()
+    val (_, requestId) = remote.getNextIncomingRequest().get()
     remote.sendResponse(requestId, statusCode, message, headers, byteArrayOf())
 
     val exception = assertFailsWith<ExecutionException> { responseFuture.get() }

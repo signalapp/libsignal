@@ -14,12 +14,12 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import kotlin.Pair;
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.internal.TokioAsyncContext;
-import org.signal.libsignal.protocol.util.Pair;
 import org.signal.libsignal.util.Base64;
 
 public class ChatServiceTest {
@@ -258,8 +258,8 @@ public class ChatServiceTest {
     final Pair<AuthenticatedChatConnection, FakeChatRemote> chatAndFakeRemote =
         AuthenticatedChatConnection.fakeConnect(
             tokioAsyncContext, listener, new String[] {"UPPERcase", "lowercase"});
-    final AuthenticatedChatConnection chat = chatAndFakeRemote.first();
-    final FakeChatRemote fakeRemote = chatAndFakeRemote.second();
+    final AuthenticatedChatConnection chat = chatAndFakeRemote.getFirst();
+    final FakeChatRemote fakeRemote = chatAndFakeRemote.getSecond();
 
     // The following payloads were generated via protoscope.
     // % protoscope -s | base64
@@ -311,8 +311,8 @@ public class ChatServiceTest {
     final TokioAsyncContext tokioAsyncContext = new TokioAsyncContext();
     final Pair<AuthenticatedChatConnection, FakeChatRemote> chatAndFakeRemote =
         AuthenticatedChatConnection.fakeConnect(tokioAsyncContext, null);
-    final AuthenticatedChatConnection chat = chatAndFakeRemote.first();
-    final FakeChatRemote fakeRemote = chatAndFakeRemote.second();
+    final AuthenticatedChatConnection chat = chatAndFakeRemote.getFirst();
+    final FakeChatRemote fakeRemote = chatAndFakeRemote.getSecond();
 
     var request =
         new AuthenticatedChatConnection.Request(
@@ -320,12 +320,12 @@ public class ChatServiceTest {
     var responseFuture = chat.send(request);
 
     var requestFromServerWithId = fakeRemote.getNextIncomingRequest().get();
-    var requestFromServer = requestFromServerWithId.first();
+    var requestFromServer = requestFromServerWithId.getFirst();
     assertEquals(requestFromServer.getMethod(), request.method());
     assertEquals(requestFromServer.getPathAndQuery(), request.pathAndQuery());
     assertArrayEquals(requestFromServer.getBody(), request.body());
     assertEquals(requestFromServer.getHeaders(), request.headers());
-    assertEquals(requestFromServerWithId.second(), Long.valueOf(0));
+    assertEquals(requestFromServerWithId.getSecond(), Long.valueOf(0));
 
     // 1: 0
     // 2: 201
@@ -350,8 +350,8 @@ public class ChatServiceTest {
     final Pair<UnauthenticatedChatConnection, FakeChatRemote> chatAndFakeRemote =
         UnauthenticatedChatConnection.fakeConnect(
             tokioAsyncContext, null, Network.Environment.STAGING);
-    final UnauthenticatedChatConnection chat = chatAndFakeRemote.first();
-    final FakeChatRemote fakeRemote = chatAndFakeRemote.second();
+    final UnauthenticatedChatConnection chat = chatAndFakeRemote.getFirst();
+    final FakeChatRemote fakeRemote = chatAndFakeRemote.getSecond();
 
     var request =
         new UnauthenticatedChatConnection.Request(
@@ -359,12 +359,12 @@ public class ChatServiceTest {
     var responseFuture = chat.send(request);
 
     var requestFromServerWithId = fakeRemote.getNextIncomingRequest().get();
-    var requestFromServer = requestFromServerWithId.first();
+    var requestFromServer = requestFromServerWithId.getFirst();
     assertEquals(requestFromServer.getMethod(), request.method());
     assertEquals(requestFromServer.getPathAndQuery(), request.pathAndQuery());
     assertArrayEquals(requestFromServer.getBody(), request.body());
     assertEquals(requestFromServer.getHeaders(), request.headers());
-    assertEquals(requestFromServerWithId.second(), Long.valueOf(0));
+    assertEquals(requestFromServerWithId.getSecond(), Long.valueOf(0));
 
     // 1: 0
     // 2: 201

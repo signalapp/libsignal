@@ -1172,7 +1172,7 @@ impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A
         let b = box_primitive_if_needed(env, b.into())?;
         Ok(new_instance(
             env,
-            ClassName("org.signal.libsignal.protocol.util.Pair"),
+            ClassName("kotlin.Pair"),
             jni_args!((a => java.lang.Object, b => java.lang.Object) -> void),
         )?
         .into())
@@ -1905,7 +1905,7 @@ impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
 
         new_instance(
             env,
-            ClassName("org.signal.libsignal.protocol.util.Pair"),
+            ClassName("kotlin.Pair"),
             jni_args!((error_message => java.lang.Object, unknown_fields => java.lang.Object) -> void),
         )
     }

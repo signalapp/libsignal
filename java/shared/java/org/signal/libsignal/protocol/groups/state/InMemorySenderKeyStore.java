@@ -8,9 +8,9 @@ package org.signal.libsignal.protocol.groups.state;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import kotlin.Pair;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
-import org.signal.libsignal.protocol.util.Pair;
 
 public class InMemorySenderKeyStore implements SenderKeyStore {
 

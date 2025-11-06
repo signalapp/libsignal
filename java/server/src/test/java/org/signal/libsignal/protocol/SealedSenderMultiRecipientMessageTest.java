@@ -13,9 +13,9 @@ import static org.junit.Assert.assertThrows;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import kotlin.Pair;
 import org.junit.Test;
 import org.signal.libsignal.protocol.util.Hex;
-import org.signal.libsignal.protocol.util.Pair;
 
 public class SealedSenderMultiRecipientMessageTest {
   static final String VERSION_ACI_ONLY = "22";

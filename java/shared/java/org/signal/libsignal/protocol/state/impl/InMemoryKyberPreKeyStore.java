@@ -12,13 +12,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import kotlin.Pair;
 import org.signal.libsignal.protocol.InvalidKeyIdException;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.ReusedBaseKeyException;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
 import org.signal.libsignal.protocol.state.KyberPreKeyStore;
-import org.signal.libsignal.protocol.util.Pair;
 
 public class InMemoryKyberPreKeyStore implements KyberPreKeyStore {
 

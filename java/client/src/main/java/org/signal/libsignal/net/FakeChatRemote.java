@@ -5,12 +5,12 @@
 
 package org.signal.libsignal.net;
 
+import kotlin.Pair;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.internal.TokioAsyncContext;
 import org.signal.libsignal.net.ChatConnection.InternalRequest;
-import org.signal.libsignal.protocol.util.Pair;
 
 class FakeChatRemote extends NativeHandleGuard.SimpleOwner {
   private TokioAsyncContext tokioContext;
@@ -32,7 +32,7 @@ class FakeChatRemote extends NativeHandleGuard.SimpleOwner {
         .thenApply(
             rawRequest -> {
               var sentRequest = (Pair<Long, Long>) rawRequest;
-              return new Pair(new InternalRequest(sentRequest.first()), sentRequest.second());
+              return new Pair(new InternalRequest(sentRequest.getFirst()), sentRequest.getSecond());
             });
   }
 

@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import kotlin.Pair;
 import org.junit.Test;
 import org.junit.experimental.runners.Enclosed;
 import org.junit.runner.RunWith;
@@ -37,7 +38,6 @@ import org.signal.libsignal.protocol.state.PreKeyBundle;
 import org.signal.libsignal.protocol.state.SessionRecord;
 import org.signal.libsignal.protocol.state.SignalProtocolStore;
 import org.signal.libsignal.protocol.util.Medium;
-import org.signal.libsignal.protocol.util.Pair;
 
 @RunWith(Enclosed.class)
 public class SessionBuilderTest {
@@ -125,8 +125,8 @@ public class SessionBuilderTest {
             UntrustedIdentityException,
             NoSessionException {
       var stores = initializeSessions();
-      SignalProtocolStore aliceStore = stores.first();
-      SignalProtocolStore bobStore = stores.second();
+      SignalProtocolStore aliceStore = stores.getFirst();
+      SignalProtocolStore bobStore = stores.getSecond();
 
       runInteraction(aliceStore, bobStore);
 
@@ -682,8 +682,9 @@ public class SessionBuilderTest {
 
     for (Pair<String, CiphertextMessage> aliceOutOfOrderMessage : aliceOutOfOrderMessages) {
       byte[] outOfOrderPlaintext =
-          bobSessionCipher.decrypt(new SignalMessage(aliceOutOfOrderMessage.second().serialize()));
-      assertTrue(new String(outOfOrderPlaintext).equals(aliceOutOfOrderMessage.first()));
+          bobSessionCipher.decrypt(
+              new SignalMessage(aliceOutOfOrderMessage.getSecond().serialize()));
+      assertTrue(new String(outOfOrderPlaintext).equals(aliceOutOfOrderMessage.getFirst()));
     }
   }
 }

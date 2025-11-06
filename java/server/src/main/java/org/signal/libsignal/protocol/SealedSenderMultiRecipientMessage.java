@@ -12,9 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import kotlin.Pair;
 import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
-import org.signal.libsignal.protocol.util.Pair;
 
 /**
  * A parsed Sealed Sender v2 "SentMessage", ready to be fanned out to multiple recipients.

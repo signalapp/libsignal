@@ -285,13 +285,13 @@ public class RegistrationServiceTest {
     var fakeRemote = fakeServer.getNextRemote().get();
     var firstRequestAndId = fakeRemote.getNextIncomingRequest().get();
     assertNotNull(firstRequestAndId);
-    var firstRequest = firstRequestAndId.first();
+    var firstRequest = firstRequestAndId.getFirst();
 
     assertEquals(firstRequest.getMethod(), "POST");
     assertEquals(firstRequest.getPathAndQuery(), "/v1/verification/session");
 
     fakeRemote.sendResponse(
-        firstRequestAndId.second(),
+        firstRequestAndId.getSecond(),
         200,
         "OK",
         new String[] {"content-type: application/json"},
@@ -322,7 +322,7 @@ public class RegistrationServiceTest {
 
     var secondRequestAndId = fakeRemote.getNextIncomingRequest().get();
     assertNotNull(secondRequestAndId);
-    var secondRequest = secondRequestAndId.first();
+    var secondRequest = secondRequestAndId.getFirst();
 
     assertEquals(secondRequest.getMethod(), "POST");
     assertEquals(secondRequest.getPathAndQuery(), "/v1/verification/session/fake-session-A/code");
@@ -335,7 +335,7 @@ public class RegistrationServiceTest {
         Map.of("content-type", "application/json", "accept-language", "fr-CA"));
 
     fakeRemote.sendResponse(
-        secondRequestAndId.second(),
+        secondRequestAndId.getSecond(),
         200,
         "OK",
         new String[] {"content-type: application/json"},
@@ -368,7 +368,7 @@ public class RegistrationServiceTest {
 
     // Send a response to allow the request to complete.
     fakeRemote.sendResponse(
-        firstRequestAndId.second(),
+        firstRequestAndId.getSecond(),
         200,
         "OK",
         new String[] {"content-type: application/json"},
@@ -412,7 +412,7 @@ public class RegistrationServiceTest {
 
     var secondRequestAndId = fakeRemote.getNextIncomingRequest().get();
     assertNotNull(secondRequestAndId);
-    var secondRequest = secondRequestAndId.first();
+    var secondRequest = secondRequestAndId.getFirst();
 
     assertEquals("POST", secondRequest.getMethod());
     assertEquals("/v1/registration", secondRequest.getPathAndQuery());
@@ -470,7 +470,7 @@ public class RegistrationServiceTest {
         secondRequestJson.get("aciPqLastResortPreKey"));
 
     fakeRemote.sendResponse(
-        secondRequestAndId.second(),
+        secondRequestAndId.getSecond(),
         200,
         "OK",
         new String[] {"content-type: application/json"},

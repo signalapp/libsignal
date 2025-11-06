@@ -226,8 +226,10 @@ public class SessionCipherTest extends TestCase {
   private PairOfSessions initializeSessionsV4() throws InvalidKeyException {
     var builder = new SessionBuilderTest.Versioned(new PQXDHBundleFactory(), 4);
     var stores = builder.initializeSessions();
-    SessionRecord aliceSessionRecord = stores.first().loadSession(SessionBuilderTest.BOB_ADDRESS);
-    SessionRecord bobSessionRecord = stores.second().loadSession(SessionBuilderTest.ALICE_ADDRESS);
+    SessionRecord aliceSessionRecord =
+        stores.getFirst().loadSession(SessionBuilderTest.BOB_ADDRESS);
+    SessionRecord bobSessionRecord =
+        stores.getSecond().loadSession(SessionBuilderTest.ALICE_ADDRESS);
     return new PairOfSessions(aliceSessionRecord, bobSessionRecord);
   }
 }

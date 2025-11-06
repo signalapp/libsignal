@@ -33,23 +33,19 @@ class UnauthUsernamesServiceTest {
   @Test
   fun testLookupUsernameHashSuccess() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val accountsService = UnauthUsernamesService(chat)
     val testHash = byteArrayOf(1, 2, 3, 4)
     val responseFuture = accountsService.lookUpUsernameHash(testHash)
 
     // Get the incoming request from the fake remote
-    val requestAndId = fakeRemote.getNextIncomingRequest().get()
-    val request = requestAndId.first()
-    val requestId = requestAndId.second()
+    val (request, requestId) = fakeRemote.getNextIncomingRequest().get()
 
     assertEquals("GET", request.method)
     val expectedPath = "/v1/accounts/username_hash/" + Base64.encodeToStringUrl(testHash)
@@ -81,23 +77,19 @@ class UnauthUsernamesServiceTest {
   @Test
   fun testLookupUsernameHashNotFound() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val accountsService = UnauthUsernamesService(chat)
     val testHash = byteArrayOf(1, 2, 3, 4)
     val responseFuture = accountsService.lookUpUsernameHash(testHash)
 
     // Get the incoming request from the fake remote
-    val requestAndId = fakeRemote.getNextIncomingRequest().get()
-    val request = requestAndId.first()
-    val requestId = requestAndId.second()
+    val (request, requestId) = fakeRemote.getNextIncomingRequest().get()
 
     assertEquals("GET", request.method)
     val expectedPath = "/v1/accounts/username_hash/" + Base64.encodeToStringUrl(testHash)
@@ -121,23 +113,19 @@ class UnauthUsernamesServiceTest {
   @Test
   fun testLookupUsernameHashRetryLater() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val accountsService = UnauthUsernamesService(chat)
     val testHash = byteArrayOf(1, 2, 3, 4)
     val responseFuture = accountsService.lookUpUsernameHash(testHash)
 
     // Get the incoming request from the fake remote
-    val requestAndId = fakeRemote.getNextIncomingRequest().get()
-    val request = requestAndId.first()
-    val requestId = requestAndId.second()
+    val (request, requestId) = fakeRemote.getNextIncomingRequest().get()
 
     assertEquals("GET", request.method)
 
@@ -159,23 +147,19 @@ class UnauthUsernamesServiceTest {
   @Test
   fun testLookupUsernameHashServerError() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val accountsService = UnauthUsernamesService(chat)
     val testHash = byteArrayOf(1, 2, 3, 4)
     val responseFuture = accountsService.lookUpUsernameHash(testHash)
 
     // Get the incoming request from the fake remote
-    val requestAndId = fakeRemote.getNextIncomingRequest().get()
-    val request = requestAndId.first()
-    val requestId = requestAndId.second()
+    val (request, requestId) = fakeRemote.getNextIncomingRequest().get()
 
     assertEquals("GET", request.method)
 
@@ -197,22 +181,18 @@ class UnauthUsernamesServiceTest {
   @Test
   fun testLookupUsernameLinkSuccess() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val accountsService = UnauthUsernamesService(chat)
     val responseFuture = accountsService.lookUpUsernameLink(UUID(0, 0), ENCRYPTED_USERNAME_ENTROPY)
 
     // Get the incoming request from the fake remote
-    val requestAndId = fakeRemote.getNextIncomingRequest().get()
-    val request = requestAndId.first()
-    val requestId = requestAndId.second()
+    val (request, requestId) = fakeRemote.getNextIncomingRequest().get()
 
     assertEquals("GET", request.method)
     assertEquals("/v1/accounts/username_link/00000000-0000-0000-0000-000000000000", request.pathAndQuery)
@@ -243,22 +223,18 @@ class UnauthUsernamesServiceTest {
   @Test
   fun testLookupUsernameLinkNotFound() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val accountsService = UnauthUsernamesService(chat)
     val responseFuture = accountsService.lookUpUsernameLink(UUID(0, 0), ENCRYPTED_USERNAME_ENTROPY)
 
     // Get the incoming request from the fake remote
-    val requestAndId = fakeRemote.getNextIncomingRequest().get()
-    val request = requestAndId.first()
-    val requestId = requestAndId.second()
+    val (request, requestId) = fakeRemote.getNextIncomingRequest().get()
 
     assertEquals("GET", request.method)
     assertEquals("/v1/accounts/username_link/00000000-0000-0000-0000-000000000000", request.pathAndQuery)
@@ -281,22 +257,18 @@ class UnauthUsernamesServiceTest {
   @Test
   fun testLookupUsernameLinkGarbageCiphertext() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val accountsService = UnauthUsernamesService(chat)
     val responseFuture = accountsService.lookUpUsernameLink(UUID(0, 0), ENCRYPTED_USERNAME_ENTROPY)
 
     // Get the incoming request from the fake remote
-    val requestAndId = fakeRemote.getNextIncomingRequest().get()
-    val request = requestAndId.first()
-    val requestId = requestAndId.second()
+    val (request, requestId) = fakeRemote.getNextIncomingRequest().get()
 
     assertEquals("GET", request.method)
     assertEquals("/v1/accounts/username_link/00000000-0000-0000-0000-000000000000", request.pathAndQuery)
@@ -326,22 +298,18 @@ class UnauthUsernamesServiceTest {
   @Test
   fun testLookupUsernameLinkServerError() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val accountsService = UnauthUsernamesService(chat)
     val responseFuture = accountsService.lookUpUsernameLink(UUID(0, 0), ENCRYPTED_USERNAME_ENTROPY)
 
     // Get the incoming request from the fake remote
-    val requestAndId = fakeRemote.getNextIncomingRequest().get()
-    val request = requestAndId.first()
-    val requestId = requestAndId.second()
+    val (request, requestId) = fakeRemote.getNextIncomingRequest().get()
 
     assertEquals("GET", request.method)
     assertEquals("/v1/accounts/username_link/00000000-0000-0000-0000-000000000000", request.pathAndQuery)
@@ -364,14 +332,12 @@ class UnauthUsernamesServiceTest {
   @Test
   fun testLookupUsernameLinkBadEntropy() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val accountsService = UnauthUsernamesService(chat)
     val responseFuture =

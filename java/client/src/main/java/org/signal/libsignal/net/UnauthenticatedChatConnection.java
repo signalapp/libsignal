@@ -6,12 +6,12 @@
 package org.signal.libsignal.net;
 
 import java.util.Locale;
+import kotlin.Pair;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.internal.TokioAsyncContext;
 import org.signal.libsignal.net.internal.BridgeChatListener;
-import org.signal.libsignal.protocol.util.Pair;
 
 /**
  * Represents an unauthenticated (i.e. hopefully anonymous) communication channel with the Chat

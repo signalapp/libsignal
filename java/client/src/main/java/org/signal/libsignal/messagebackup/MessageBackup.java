@@ -10,9 +10,9 @@ import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.Supplier;
+import kotlin.Pair;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
-import org.signal.libsignal.protocol.util.Pair;
 
 /** Message-backup-related functionality. */
 public class MessageBackup {
@@ -73,11 +73,11 @@ public class MessageBackup {
       result = outputPair;
     }
 
-    String errorMessage = result.first();
+    String errorMessage = result.getFirst();
     if (errorMessage != null) {
-      throw new ValidationError(errorMessage, result.second());
+      throw new ValidationError(errorMessage, result.getSecond());
     }
 
-    return new ValidationResult(result.second());
+    return new ValidationResult(result.getSecond());
   }
 }

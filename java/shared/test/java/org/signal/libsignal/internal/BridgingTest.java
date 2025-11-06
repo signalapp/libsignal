@@ -12,11 +12,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import kotlin.Pair;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
-import org.signal.libsignal.protocol.util.Pair;
 
 public class BridgingTest {
   long ioRuntime = 0;

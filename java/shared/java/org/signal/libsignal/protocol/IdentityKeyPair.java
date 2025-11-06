@@ -30,8 +30,8 @@ public class IdentityKeyPair {
   public IdentityKeyPair(byte[] serialized) throws InvalidKeyException {
     try {
       var pair = Native.IdentityKeyPair_Deserialize(serialized);
-      this.publicKey = new IdentityKey(pair.first());
-      this.privateKey = new ECPrivateKey(pair.second());
+      this.publicKey = new IdentityKey(pair.getFirst());
+      this.privateKey = new ECPrivateKey(pair.getSecond());
     } catch (Exception e) {
       throw new InvalidKeyException(e);
     }

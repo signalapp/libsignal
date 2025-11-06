@@ -60,7 +60,7 @@ public class UnauthUsernamesService(
             if (pair == null) {
               RequestResult.Success(null)
             } else {
-              RequestResult.Success(Username._withPrecomputedHash(pair.first(), pair.second()))
+              RequestResult.Success(Username._withPrecomputedHash(pair.first, pair.second))
             }
           },
           onError = { err -> err.toRequestResult<LookUpUsernameLinkFailure>() },

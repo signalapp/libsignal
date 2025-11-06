@@ -34,9 +34,7 @@ class UnauthMessagesServiceTest {
       )
 
     // Get the incoming request from the fake remote
-    val requestAndId = fakeRemote.getNextIncomingRequest().get()
-    val request = requestAndId.first()
-    val requestId = requestAndId.second()
+    val (request, requestId) = fakeRemote.getNextIncomingRequest().get()
 
     assertEquals("PUT", request.method)
     val expectedPath = "/v1/messages/multi_recipient?ts=1700000000000&online=false&urgent=true&story=true"
@@ -50,14 +48,12 @@ class UnauthMessagesServiceTest {
   @Test
   fun testSendMultiRecipientMessageSuccess() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val (responseFuture, requestId) = sendTestMultiRecipientMessage(chat, fakeRemote)
 
@@ -87,14 +83,12 @@ class UnauthMessagesServiceTest {
   @Test
   fun testSendMultiRecipientMessageUnauthorized() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val (responseFuture, requestId) = sendTestMultiRecipientMessage(chat, fakeRemote)
     fakeRemote.sendResponse(
@@ -114,14 +108,12 @@ class UnauthMessagesServiceTest {
   @Test
   fun testSendMultiRecipientMessageMismatchedDevices() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val (responseFuture, requestId) = sendTestMultiRecipientMessage(chat, fakeRemote)
 
@@ -164,14 +156,12 @@ class UnauthMessagesServiceTest {
   @Test
   fun testSendMultiRecipientMessageStaleDevices() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val (responseFuture, requestId) = sendTestMultiRecipientMessage(chat, fakeRemote)
 
@@ -212,14 +202,12 @@ class UnauthMessagesServiceTest {
   @Test
   fun testSendMultiRecipientMessageServerSideError() {
     val tokioAsyncContext = TokioAsyncContext()
-    val chatAndFakeRemote =
+    val (chat, fakeRemote) =
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
         Network.Environment.STAGING,
       )
-    val chat = chatAndFakeRemote.first()
-    val fakeRemote = chatAndFakeRemote.second()
 
     val (responseFuture, requestId) = sendTestMultiRecipientMessage(chat, fakeRemote)
     fakeRemote.sendResponse(
