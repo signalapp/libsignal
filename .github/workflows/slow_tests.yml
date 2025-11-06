@@ -27,11 +27,15 @@ on:
         type: boolean
         description: 'Skip Key Transparency tests (sets LIBSIGNAL_TESTING_IGNORE_KT_TESTS)'
         default: false
+      bigger_workers:
+        type: boolean
+        description: 'Run on larger, more expensive workers for faster results'
+        default: false
 
 jobs:
   java-docker:
     name: Java (Docker)
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ${{ inputs.bigger_workers == true && 'ubuntu-latest-8-cores' || 'ubuntu-latest-4-cores' }}
     if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
     timeout-minutes: 60
 
@@ -67,7 +71,7 @@ jobs:
 
   java-docker-secondary:
     name: Java (Secondary Docker)
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ${{ inputs.bigger_workers == true && 'ubuntu-latest-8-cores' || 'ubuntu-latest-4-cores' }}
     if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
     timeout-minutes: 60
 
@@ -143,7 +147,7 @@ jobs:
   android-emulator-tests:
     name: Android Emulator Tests
     # For hardware acceleration; see https://github.blog/changelog/2023-02-23-hardware-accelerated-android-virtualization-on-actions-windows-and-linux-larger-hosted-runners/
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ${{ inputs.bigger_workers == true && 'ubuntu-latest-8-cores' || 'ubuntu-latest-4-cores' }}
     env:
       # Proxy server tests will fail on Android API prior to 28
       LIBSIGNAL_TESTING_PROXY_SERVER: ${{ fromJSON(matrix.api_level) >= 28 && secrets.LIBSIGNAL_TESTING_PROXY_SERVER || '' }}
@@ -269,7 +273,7 @@ jobs:
 
   node-docker:
     name: Node (Ubuntu via Docker)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.bigger_workers == true && 'ubuntu-latest-4-cores' || 'ubuntu-latest' }}
     if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
     timeout-minutes: 45
 
@@ -294,7 +298,7 @@ jobs:
 
   node-docker-secondary:
     name: Node (Secondary Ubuntu via Docker)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.bigger_workers == true && 'ubuntu-latest-4-cores' || 'ubuntu-latest' }}
     if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
     timeout-minutes: 45
 
