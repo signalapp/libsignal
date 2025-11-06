@@ -24,7 +24,7 @@ use libsignal_net::infra::{AsHttpHeader as _, EnableDomainFronting};
 use rand::TryRngCore as _;
 
 pub use self::remote_config::BuildVariant;
-use self::remote_config::{RemoteConfig, RemoteConfigKey};
+use self::remote_config::RemoteConfig;
 use crate::*;
 
 pub mod cdsi;
@@ -157,13 +157,8 @@ impl ConnectionManager {
         let transport_connector =
             std::sync::Mutex::new(TcpSslConnector::new_direct(dns_resolver.clone()));
         let remote_config = RemoteConfig::new(remote_config, build_variant);
-        let enforce_minimum_tls = if remote_config.is_enabled(RemoteConfigKey::EnforceMinimumTls) {
-            EnforceMinimumTls::Yes
-        } else {
-            EnforceMinimumTls::No
-        };
         let endpoints = std::sync::Mutex::new(
-            EndpointConnections::new(&env, false, enforce_minimum_tls).into(),
+            EndpointConnections::new(&env, false, EnforceMinimumTls::Yes).into(),
         );
         Self {
             env,
@@ -216,17 +211,7 @@ impl ConnectionManager {
     /// This is not itself a network change event; existing working connections are expected to
     /// continue to work, and existing failing connections will continue to fail.
     pub fn set_censorship_circumvention_enabled(&self, enabled: bool) {
-        let enforce_minimum_tls = if self
-            .remote_config
-            .lock()
-            .expect("not poisoned")
-            .is_enabled(RemoteConfigKey::EnforceMinimumTls)
-        {
-            EnforceMinimumTls::Yes
-        } else {
-            EnforceMinimumTls::No
-        };
-        let new_endpoints = EndpointConnections::new(&self.env, enabled, enforce_minimum_tls);
+        let new_endpoints = EndpointConnections::new(&self.env, enabled, EnforceMinimumTls::Yes);
         *self.endpoints.lock().expect("not poisoned") = Arc::new(new_endpoints);
     }
 
