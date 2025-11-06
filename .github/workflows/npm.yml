@@ -24,11 +24,11 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-latest, macos-15]
+        os: [windows-latest-8-cores, macos-15-xlarge]
         include:
-        - os: macos-15
+        - os: macos-15-xlarge
           rust-cross-target: x86_64-apple-darwin
-        - os: windows-latest
+        - os: windows-latest-8-cores
           rust-cross-target: aarch64-pc-windows-msvc
         # Ubuntu binaries are built using Docker, below
 
@@ -113,7 +113,7 @@ jobs:
   build-docker:
     name: Build (Ubuntu via Docker)
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
 
     timeout-minutes: 45
 
