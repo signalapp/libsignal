@@ -147,6 +147,11 @@ impl Duration {
         Self(std::time::Duration::from_millis(millis))
     }
 
+    pub(super) const fn from_mins(mins: u64) -> Self {
+        // std::time::Duration::from_mins isn't stable yet, but it's the same as this.
+        Self(std::time::Duration::from_secs(60 * mins))
+    }
+
     pub(super) const fn from_hours(hours: u64) -> Self {
         // std::time::Duration::from_hours isn't stable yet, but it's the same as this.
         Self(std::time::Duration::from_secs(60 * 60 * hours))

@@ -12,10 +12,11 @@
         "hasSetMyStoriesPrivacy": true,
         "hasViewedOnboardingStory": true,
         "linkPreviews": true,
-        "phoneNumberSharingMode": "NOBODY",
         "readReceipts": true,
         "storyViewReceiptsEnabled": true,
-        "typingIndicators": true
+        "typingIndicators": true,
+        "phoneNumberSharingMode": "NOBODY",
+        "defaultSentMediaQuality": "STANDARD"
       },
       "givenName": "User A",
       "profileKey": "o1dR4GmMYarDp9Nof/lWorlnXUIz2Q85X/5deikxPio="

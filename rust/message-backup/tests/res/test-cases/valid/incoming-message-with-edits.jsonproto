@@ -28,7 +28,8 @@
         "storyViewReceiptsEnabled": false,
         "hasSeenGroupStoryEducationSheet": false,
         "hasCompletedUsernameOnboarding": false,
-        "phoneNumberSharingMode": "NOBODY"
+        "phoneNumberSharingMode": "NOBODY",
+        "defaultSentMediaQuality": "STANDARD"
       }
     }
   },

@@ -40,7 +40,12 @@
       "default_chat_style": null,
       "custom_chat_colors": {},
       "optimize_on_device_storage": false,
-      "backup_level": null
+      "backup_level": null,
+      "show_sealed_sender_indicators": false,
+      "default_sent_media_quality": "Standard",
+      "auto_download_settings": null,
+      "screen_lock_timeout": null,
+      "pin_reminders": null
     },
     "avatar_url_path": "",
     "donation_subscription": {
@@ -50,6 +55,7 @@
     },
     "backup_subscription": null,
     "svr_pin": "",
+    "android_specific_settings": null,
     "bio_text": "",
     "bio_emoji": ""
   },

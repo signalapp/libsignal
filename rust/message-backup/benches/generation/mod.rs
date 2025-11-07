@@ -101,6 +101,7 @@ pub fn generate_frames(
             hasSeenGroupStoryEducationSheet: true,
             hasCompletedUsernameOnboarding: true,
             phoneNumberSharingMode: proto::account_data::PhoneNumberSharingMode::EVERYBODY.into(),
+            defaultSentMediaQuality: proto::account_data::SentMediaQuality::STANDARD.into(),
             ..Default::default()
         })
         .into(),

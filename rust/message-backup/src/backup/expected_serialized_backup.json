@@ -54,7 +54,17 @@
         }
       },
       "optimize_on_device_storage": false,
-      "backup_level": 201
+      "backup_level": 201,
+      "show_sealed_sender_indicators": false,
+      "default_sent_media_quality": "Standard",
+      "auto_download_settings": {
+        "images": "Never",
+        "audio": "Never",
+        "video": "Wifi",
+        "documents": "WifiAndCellular"
+      },
+      "screen_lock_timeout": 2520000,
+      "pin_reminders": null
     },
     "avatar_url_path": "",
     "donation_subscription": null,
@@ -65,6 +75,10 @@
       }
     },
     "svr_pin": "",
+    "android_specific_settings": {
+      "use_system_emoji": true,
+      "screenshot_security": false
+    },
     "bio_text": "",
     "bio_emoji": ""
   },

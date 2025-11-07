@@ -8,7 +8,8 @@
         "account": {
             "profileKey": "YQKRq+3DQklInaOaMcmlzZnN0m/1hzLiaONX7gB12dg=",
             "accountSettings": {
-                "phoneNumberSharingMode": "NOBODY"
+                "phoneNumberSharingMode": "NOBODY",
+                "defaultSentMediaQuality": "STANDARD"
             }
         }
     },
