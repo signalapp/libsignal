@@ -3,9 +3,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id "base"
-    id "maven-publish"
     id "signing"
     id "com.diffplug.spotless" version "7.2.1"
+    id "io.github.gradle-nexus.publish-plugin" version "2.0.0"
 
     id "org.jetbrains.kotlin.jvm" version "2.1.0" apply false
     id "org.jetbrains.dokka" version "2.0.0" apply false
@@ -101,6 +101,19 @@ ext.setUpSigningKey = { signingExt ->
     def signingPassword = findProperty("signingPassword")
     if (signingKeyId && signingKey && signingPassword) {
         signingExt.useInMemoryPgpKeys(signingKeyId.trim(), signingKey.trim(), signingPassword.trim())
+    }
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            username = project.findProperty('sonatypeUsername') ?: ""
+            password = project.findProperty('sonatypePassword') ?: ""
+            // This is the recommended configuration from the README for the plugin we use, gradle-nexus/publish-plugin.
+            // The URLs are from https://central.sonatype.org/publish/publish-portal-ossrh-staging-api/#configuration
+            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
+        }
     }
 }
 

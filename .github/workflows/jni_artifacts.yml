@@ -1,4 +1,4 @@
-name: Publish Java libraries
+name: Upload Java libraries to Sonatype
 run-name: ${{ github.workflow }} (${{ github.ref_name }})
 
 on:
@@ -125,10 +125,6 @@ jobs:
   publish:
     name: Build for production and publish
 
-    permissions:
-      contents: read
-      packages: write
-
     runs-on: ubuntu-latest-8-cores
 
     needs: [build, verify-rust]
@@ -183,8 +179,8 @@ jobs:
       if: ${{ !inputs.dry_run }}
       working-directory: java
       env:
-        ORG_GRADLE_PROJECT_githubUsername: ${{ github.actor }}
-        ORG_GRADLE_PROJECT_githubToken: ${{ secrets.GITHUB_TOKEN }}
+        ORG_GRADLE_PROJECT_sonatypeUsername: ${{ secrets.SONATYPE_USER }}
+        ORG_GRADLE_PROJECT_sonatypePassword: ${{ secrets.SONATYPE_PASSWORD }}
         ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.SIGNING_KEYID }}
         ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.SIGNING_PASSWORD }}
         # ASCII-armored PGP secret key
