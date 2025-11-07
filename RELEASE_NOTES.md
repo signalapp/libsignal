@@ -1,3 +1,2 @@
-v0.86.1
+v0.86.2
 
-- Revert back to publishing to Maven Central.
