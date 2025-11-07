@@ -48,6 +48,11 @@ public annotation class CalledFromNative {
           return
         }
 
+        // Special-case kotlin.Pair; we mention its constructor manually in libsignal.pro.
+        if (declaringClass == Pair::class.java) {
+          return
+        }
+
         // If the constructor itself is annotated directly, we're done.
         if (constructor.isAnnotationPresent(CalledFromNative::class.java)) {
           return
