@@ -136,7 +136,7 @@ fn is_legacy_test(path: &Path) -> bool {
     )]
 fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
     let path = input.into_content();
-    let expected_source_path = format!("{}{ENCRYPTED_SOURCE_SUFFIX}", path.to_str().unwrap());
+    let expected_source_path = &format!("{}{ENCRYPTED_SOURCE_SUFFIX}", path.to_str().unwrap());
 
     let backup_key = BackupKey::derive_from_account_entropy_pool(
         &RAW_ACCOUNT_ENTROPY_POOL.parse().expect("valid"),
@@ -155,9 +155,6 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
     );
     println!("hmac key: {}", hex::encode(key.hmac_key));
     println!("aes key: {}", hex::encode(key.aes_key));
-
-    let source_as_json: serde_json::Value =
-        json5::from_str(&std::fs::read_to_string(expected_source_path).unwrap()).unwrap();
 
     let aci_string = ACI.service_id_string();
     let mut args = vec![
@@ -182,10 +179,14 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
         .stdout;
 
     if write_expected_output() {
-        eprintln!("writing expected decrypted contents to {path:?}");
-        std::fs::write(path, decrypted_contents).expect("failed to overwrite expected contents");
+        eprintln!("writing expected decrypted contents to {expected_source_path:?}");
+        std::fs::write(expected_source_path, decrypted_contents)
+            .expect("failed to overwrite expected contents");
         return;
     }
+
+    let source_as_json: serde_json::Value =
+        json5::from_str(&std::fs::read_to_string(expected_source_path).unwrap()).unwrap();
 
     assert_eq!(
         json5::from_str::<serde_json::Value>(

@@ -42,3 +42,13 @@ The crate is used in some specific ways that have led to unusual design decision
     This is exposed to the client apps using pretty-printed JSON, since getting good output from a structural diff algorithm is hard and the goal should be "no differences" anyway.
 
     (The fully value-preserving, round-trip mechanism for serializing a backup is to keep it in the pre-validated protobuf form.)
+
+## Updating the test data
+
+Sometimes, when introducing new required fields, test data will need to be updated. Most of the ".jsonproto" files can be updated automatically by setting an `OVERWRITE_EXPECTED_DATA=1` environment variable prior to running the tests.
+
+This, however, is not the case for the tests in test-cases/ folder. ".jsonproto" files there will need to be updated manually.
+
+If you find yourself needing to update a ".binproto" file, use the combination of "json_to_binproto" and "binproto_to_json" tools located in the examples/ folder.
+
+In the worst case, when you need to update the ".binproto.encrypted" files, use the "encrypt_backup" tool providing it "--hmac-key" and "--aes-key" from the test output as well as the "--iv 49494949494949494949494949494949" (which corresponds to 16 characters 'I' for IV). BE AWARE that encrypt_backup tool will take ANY input you provide. Tests expect a serialized protobuf bytes (a.k.a "binproto") to be fed into encrypt_data in order to produce ".binproto.encrypted" files.

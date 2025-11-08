@@ -46,6 +46,10 @@ struct CliArgs {
     #[arg(long, default_value = "modern")]
     format: Format,
 
+    /// ignore the all-ASCII input check
+    #[arg(long, default_value_t = false)]
+    force: bool,
+
     #[command(flatten)]
     key_args: KeyArgs,
 }
@@ -56,6 +60,7 @@ fn main() {
         iv,
         pad_bucketed,
         format,
+        force,
         key_args,
     } = CliArgs::parse();
 
@@ -71,6 +76,13 @@ fn main() {
 
     let contents = read_file(input);
     eprintln!("read {} bytes", contents.len());
+
+    if !force && contents.is_ascii() {
+        eprintln!(
+            "⚠️ encrypting a text file may not be what you want. Use --force if you mean it."
+        );
+        std::process::exit(-1);
+    }
 
     let mut compressed_contents = gzip_compress(futures::io::Cursor::new(contents));
     eprintln!("compressed to {} bytes", compressed_contents.len());
