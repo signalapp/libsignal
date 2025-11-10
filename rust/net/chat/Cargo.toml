@@ -72,5 +72,4 @@ rand_chacha = { workspace = true }
 test-case = { workspace = true }
 test-log = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "test-util"] }
-tonic = { workspace = true, default-features = false }
-tower = { workspace = true }
+tower-service = { workspace = true }

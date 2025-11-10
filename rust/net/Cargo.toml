@@ -8,6 +8,7 @@ license.workspace = true
 
 [features]
 test-util = ["libsignal-net-infra/test-util"]
+tower-service = ["libsignal-net-infra/tower-service"]
 
 [lints]
 workspace = true

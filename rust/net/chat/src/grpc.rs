@@ -219,7 +219,7 @@ mod testutil {
         pub response: http::Response<Vec<u8>>,
     }
 
-    impl tower::Service<http::Request<tonic::body::Body>> for &'_ RequestValidator {
+    impl tower_service::Service<http::Request<tonic::body::Body>> for &'_ RequestValidator {
         type Response = http::Response<http_body_util::Full<bytes::Bytes>>;
 
         type Error = hyper::Error;

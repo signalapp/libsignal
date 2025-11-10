@@ -74,12 +74,8 @@ impl Connector<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>, ()> for DohTransportCo
         route: HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>,
         log_tag: &str,
     ) -> Result<Self::Connection, Self::Error> {
-        let connector = crate::route::ComposedConnector::new(
-            Http2Connector {
-                max_response_size: MAX_RESPONSE_SIZE,
-            },
-            &self.transport_connector,
-        );
+        let connector =
+            crate::route::ComposedConnector::new(Http2Connector::new(), &self.transport_connector);
         let http_client =
             connector
                 .connect(route, log_tag)
@@ -91,7 +87,9 @@ impl Connector<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>, ()> for DohTransportCo
                     );
                     Error::TransportFailure
                 })?;
-        Ok(DohTransport { http_client })
+        Ok(DohTransport {
+            http_client: AggregatingHttp2Client::new(http_client, MAX_RESPONSE_SIZE),
+        })
     }
 }
 
@@ -122,7 +120,7 @@ impl DnsTransport for DohTransport {
 
 impl DohTransport {
     async fn send_request(
-        self,
+        mut self,
         request: DnsLookupRequest,
         resource_type: ResourceType,
     ) -> dns::Result<DnsQueryResult> {

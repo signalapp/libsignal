@@ -2742,7 +2742,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tonic",
- "tower",
+ "tower-service",
  "usernames",
  "uuid",
  "visibility",
@@ -2814,6 +2814,7 @@ dependencies = [
  "tokio-stream",
  "tokio-tungstenite",
  "tokio-util",
+ "tower-service",
  "tungstenite",
  "visibility",
  "warp",
@@ -5162,16 +5163,6 @@ dependencies = [
  "prost-types",
  "quote",
  "syn 2.0.106",
-]
-
-[[package]]
-name = "tower"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d039ad9159c98b70ecfd540b2573b97f7f52c3e8d9f8ad57a24b916a536975f9"
-dependencies = [
- "tower-layer",
- "tower-service",
 ]
 
 [[package]]

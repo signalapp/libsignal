@@ -56,6 +56,7 @@ tokio-socks = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-tungstenite = { workspace = true }
 tokio-util = { workspace = true }
+tower-service = { workspace = true, optional = true }
 tungstenite = { workspace = true }
 visibility = { workspace = true }
 warp = { workspace = true, optional = true, features = ["server"] }
