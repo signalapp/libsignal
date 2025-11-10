@@ -81,11 +81,13 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
                 e164: None,
                 aci: None,
                 pni: _,
+                username: _,
             } => Err(ReactionError::AuthorHasNoAciOrE164(author_id)),
             MinimalRecipientData::Contact {
                 e164: _,
                 aci: _,
                 pni: _,
+                username: _,
             }
             | MinimalRecipientData::Self_ => Ok(author.clone()),
             MinimalRecipientData::Group { .. }

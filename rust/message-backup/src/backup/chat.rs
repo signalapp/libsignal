@@ -605,6 +605,7 @@ impl<
                     e164: None,
                     aci: None,
                     pni: _,
+                    username: _,
                 },
                 Direction::Incoming { .. },
             ) => Err(ChatItemError::IncomingMessageFromContactWithoutAciOrE164(

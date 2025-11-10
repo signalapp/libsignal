@@ -190,6 +190,8 @@ pub enum CompletionError {
     MissingSelfRecipient,
     /// {0:?} and {1:?} have the same phone number
     DuplicateContactE164(RecipientId, RecipientId),
+    /// {0:?} and {1:?} have the same username
+    DuplicateContactUsername(RecipientId, RecipientId),
     /// {0:?} and {1:?} have the same ACI
     DuplicateContactAci(RecipientId, RecipientId),
     /// {0:?} and {1:?} have the same PNI
@@ -321,16 +323,21 @@ impl<M: Method + ReferencedTypes> CompletedBackup<M> {
                     * std::mem::size_of::<(Aci, RecipientId)>()
                 + HIGH_BUT_REASONABLE_NUMBER_OF_CONTACTS
                     * std::mem::size_of::<(Pni, RecipientId)>()
+                + HIGH_BUT_REASONABLE_NUMBER_OF_CONTACTS
+                    * std::mem::size_of::<(&str, RecipientId)>()
                 + HIGH_BUT_REASONABLE_NUMBER_OF_GROUPS
                     * std::mem::size_of::<(zkgroup::GroupMasterKeyBytes, RecipientId)>()
                 + HIGH_BUT_REASONABLE_NUMBER_OF_DISTRIBUTION_LISTS
                     * std::mem::size_of::<(uuid::Uuid, RecipientId)>()
                 + HIGH_BUT_REASONABLE_NUMBER_OF_CALL_LINKS
                     * std::mem::size_of::<(call::CallLinkRootKey, RecipientId)>()
-                < 250_000,
+                < 350_000,
         );
 
         let mut e164s = IntMap::<u64, RecipientId>::with_capacity(
+            recipients.len().min(HIGH_BUT_REASONABLE_NUMBER_OF_CONTACTS),
+        );
+        let mut usernames = HashMap::<&str, RecipientId>::with_capacity(
             recipients.len().min(HIGH_BUT_REASONABLE_NUMBER_OF_CONTACTS),
         );
         let mut acis = AssumedRandomInputHasher::map_with_capacity::<Aci, RecipientId>(
@@ -365,7 +372,19 @@ impl<M: Method + ReferencedTypes> CompletedBackup<M> {
 
         for (id, recipient) in recipients.iter() {
             match recipient.as_ref() {
-                MinimalRecipientData::Contact { e164, aci, pni } => {
+                MinimalRecipientData::Contact {
+                    e164,
+                    aci,
+                    pni,
+                    username,
+                } => {
+                    insert_or_error(
+                        &mut usernames,
+                        username.as_deref(),
+                        id,
+                        CompletionError::DuplicateContactUsername,
+                    )?;
+
                     // We can't use insert_or_throw_error for `e164s` because it's an IntMap.
                     // Here's an inlined copy:
                     if let Some(e164) = *e164 {
@@ -1278,6 +1297,9 @@ mod test {
             }),
             (CompletionError::DuplicateContactE164, |x| {
                 x.e164 = Some(proto::Contact::TEST_E164.into());
+            }),
+            (CompletionError::DuplicateContactUsername, |x| {
+                x.username = Some("duplicate.1234".to_owned());
             }),
         ]
     )]

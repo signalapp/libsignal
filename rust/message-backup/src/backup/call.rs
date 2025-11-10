@@ -247,6 +247,7 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
                         aci: None,
                         e164: _,
                         pni: _,
+                        username: _,
                     } => Err(CallError::CallStarterHasNoAci(id)),
                     MinimalRecipientData::Contact { .. } | MinimalRecipientData::Self_ => {
                         Ok(starter.clone())
@@ -272,6 +273,7 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
                         aci: None,
                         e164: _,
                         pni: _,
+                        username: _,
                     } => Err(CallError::RingerHasNoAci(id)),
                     MinimalRecipientData::Contact { .. } | MinimalRecipientData::Self_ => {
                         Ok(ringer.clone())
@@ -518,6 +520,7 @@ pub(crate) mod test {
                     proto::Contact::TEST_ACI,
                 )),
                 pni: None,
+                username: None,
             };
             static PNI_RECIPIENT: MinimalRecipientData = MinimalRecipientData::Contact {
                 e164: Some(proto::Contact::TEST_E164),
@@ -525,6 +528,7 @@ pub(crate) mod test {
                 pni: Some(libsignal_core::Pni::from_uuid_bytes(
                     proto::Contact::TEST_PNI,
                 )),
+                username: None,
             };
             match key {
                 RecipientId(proto::Recipient::TEST_ID) => Some((&CONTACT_RECIPIENT, key)),

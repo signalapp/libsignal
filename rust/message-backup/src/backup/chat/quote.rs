@@ -88,10 +88,20 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             return Err(QuoteError::AuthorNotFound(author_id));
         };
         let author = match author_data {
-            MinimalRecipientData::Contact { e164: None, aci: None, pni: _ } => {
+            MinimalRecipientData::Contact {
+                e164: None,
+                aci: None,
+                pni: _,
+                username: _,
+            } => {
                 Err(QuoteError::AuthorHasNoAciOrE164(author_id))
             }
-            MinimalRecipientData::Contact { e164: _, aci: _, pni: _ } => {
+            MinimalRecipientData::Contact {
+                e164: _,
+                aci: _,
+                pni: _,
+                username: _,
+            } => {
                 Ok(author.clone())
             }
             MinimalRecipientData::Self_

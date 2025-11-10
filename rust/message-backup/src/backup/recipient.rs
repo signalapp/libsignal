@@ -103,6 +103,7 @@ pub enum MinimalRecipientData {
         e164: Option<E164>,
         aci: Option<Aci>,
         pni: Option<Pni>,
+        username: Option<String>,
     },
     Group {
         master_key: zkgroup::GroupMasterKeyBytes,
@@ -388,9 +389,18 @@ impl std::ops::Deref for FullRecipientData {
 impl<R> From<Destination<R>> for MinimalRecipientData {
     fn from(value: Destination<R>) -> Self {
         match value {
-            Destination::Contact(ContactData { aci, pni, e164, .. }) => {
-                Self::Contact { e164, aci, pni }
-            }
+            Destination::Contact(ContactData {
+                aci,
+                pni,
+                username,
+                e164,
+                ..
+            }) => Self::Contact {
+                e164,
+                aci,
+                pni,
+                username,
+            },
             Destination::Group(GroupData { master_key, .. }) => Self::Group { master_key },
             Destination::DistributionList(
                 DistributionListItem::Deleted {
@@ -541,7 +551,14 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<ContactData, C> for proto::Contact {
             .map(|username| {
                 usernames::Username::new(&username)
                     .map_err(|_| RecipientError::InvalidContactUsername)
-                    .map(|_| username)
+                    .map(|_| {
+                        // NB: There's a little bit of spooky at a distance here.
+                        // By storing the username in a cannonical lowercase format as soon as
+                        // we pull it in from the proto, we ensure that if this backup has multiple
+                        // usernames that are the same despite the capitalization, they will be
+                        // caught by the de-duplication check in the CompletedBackup::try_from.
+                        username.to_ascii_lowercase()
+                    })
             })
             .transpose()?;
 
@@ -713,6 +730,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
                                     aci: None,
                                     pni: None,
                                     e164: _,
+                                    username: _,
                                 } => Err(RecipientError::DistributionListMemberHasNoServiceIds(id)),
                                 MinimalRecipientData::Contact { .. } => {
                                     Ok(recipient_reference.clone())
