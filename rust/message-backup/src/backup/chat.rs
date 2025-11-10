@@ -654,14 +654,12 @@ impl<
             update.validate_author(&cached_author_kind)?;
         }
 
-        if matches!(
-            (purpose, &message),
-            (
-                crate::backup::Purpose::TakeoutExport,
-                ChatItemMessage::ViewOnce(_)
-            )
-        ) {
-            return Err(InvalidExpiration::NotAllowedForPurpose(purpose).into());
+        if let (crate::backup::Purpose::TakeoutExport, ChatItemMessage::ViewOnce(view_once)) =
+            (purpose, &message)
+        {
+            if view_once.attachment.is_some() {
+                return Err(InvalidExpiration::NotAllowedForPurpose(purpose).into());
+            }
         }
 
         if !revisions.is_empty() {
@@ -1506,7 +1504,7 @@ mod test {
     }
 
     #[test]
-    fn takeout_export_rejects_view_once_messages() {
+    fn takeout_export_rejects_view_once_messages_with_attachment() {
         let mut item = proto::ChatItem::test_data();
         item.expireStartDate = None;
         item.expiresInMs = None;
@@ -1530,7 +1528,7 @@ mod test {
         };
 
         let error = TryIntoWith::<ChatItemData<Store>, _>::try_into_with(item, &TestContext(meta))
-            .expect_err("view-once message should be rejected");
+            .expect_err("view-once message with attachment should be rejected");
 
         assert_matches!(
             error,
@@ -1538,6 +1536,34 @@ mod test {
                 Purpose::TakeoutExport
             ))
         );
+    }
+
+    #[test]
+    fn takeout_export_allows_view_once_messages_without_attachment() {
+        let mut item = proto::ChatItem::test_data();
+        item.expireStartDate = None;
+        item.expiresInMs = None;
+        item.item = Some(proto::chat_item::Item::ViewOnceMessage(
+            proto::ViewOnceMessage {
+                attachment: None.into(),
+                reactions: vec![proto::Reaction::test_data()],
+                ..Default::default()
+            },
+        ));
+
+        let meta = BackupMeta {
+            purpose: Purpose::TakeoutExport,
+            backup_time: Timestamp::test_value(),
+            media_root_backup_key: libsignal_account_keys::BackupKey(
+                [0xab; libsignal_account_keys::BACKUP_KEY_LEN],
+            ),
+            version: 0,
+            current_app_version: "libsignal-testing 0.0.2".into(),
+            first_app_version: "libsignal-testing 0.0.1".into(),
+        };
+
+        let result = TryIntoWith::<ChatItemData<Store>, _>::try_into_with(item, &TestContext(meta));
+        assert_matches!(result, Ok(_));
     }
 
     #[test]
