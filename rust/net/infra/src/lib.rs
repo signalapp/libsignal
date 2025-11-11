@@ -21,7 +21,7 @@ pub mod errors;
 pub mod host;
 pub mod http_client;
 pub mod route;
-mod stream;
+pub mod stream;
 pub mod tcp_ssl;
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutil;
