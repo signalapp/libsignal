@@ -228,6 +228,15 @@ function stripLengthPrefix(chunk: Uint8Array): Uint8Array {
   return chunk.subarray(bodyStart, bodyEnd);
 }
 
+function insertLengthPrefix(chunk: Uint8Array): Uint8Array {
+  if (chunk.byteLength > 0x7f) {
+    throw new Error(
+      'not implemented: chunks with more than one varint byte of length'
+    );
+  }
+  return concatFrames([Uint8Array.of(chunk.byteLength), chunk]);
+}
+
 const exampleBackupChunks = chunkLengthDelimited(exampleBackup);
 if (exampleBackupChunks.length === 0) {
   throw new Error('expected at least one length-delimited chunk');
@@ -244,6 +253,57 @@ function concatFrames(chunks: ReadonlyArray<Uint8Array>): Uint8Array {
     return new Uint8Array(chunks[0]);
   }
   return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
+}
+
+// The following frame encodes a disappearing chat item. Regenerate with:
+// % protoc rust/message-backup/src/proto/backup.proto \
+//     --encode signal.backup.Frame <<'PROTO' | base64
+// chatItem: {
+//   chatId: 1
+//   authorId: 2
+//   dateSent: 3
+//   expiresInMs: 1
+// }
+// PROTO
+const DISAPPEARING_CHAT_ITEM_FRAME = Uint8Array.from(
+  Buffer.from('IggIARACGAMoAQ==', 'base64')
+);
+
+// The following frame encodes a view-once chat item with revisions (not something that's normally
+// allowed, but we want to test the recursive sanitization). Regenerate with:
+// % protoc rust/message-backup/src/proto/backup.proto \
+//     --encode signal.backup.Frame <<'PROTO' | base64
+// chatItem: {
+//   chatId: 10
+//   authorId: 11
+//   dateSent: 12
+//   viewOnceMessage: {
+//     attachment: {
+//       wasDownloaded: true
+//     }
+//   }
+//   revisions: [{
+//     chatId: 10
+//     authorId: 11
+//     dateSent: 9
+//     viewOnceMessage: {
+//       attachment: {
+//         wasDownloaded: true
+//       }
+//     }
+//   }]
+// }
+// PROTO
+const VIEW_ONCE_CHAT_ITEM_FRAME = Uint8Array.from(
+  Buffer.from('IhwIChALGAwyDQgKEAsYCZIBBAoCGAGSAQQKAhgB', 'base64')
+);
+
+function createDisappearingChatItemFrame(): Uint8Array {
+  return insertLengthPrefix(DISAPPEARING_CHAT_ITEM_FRAME);
+}
+
+function createViewOnceChatItemFrame(): Uint8Array {
+  return insertLengthPrefix(VIEW_ONCE_CHAT_ITEM_FRAME);
 }
 
 describe('ComparableBackup', () => {
@@ -268,7 +328,7 @@ describe('ComparableBackup', () => {
 });
 
 describe('BackupJsonExporter', () => {
-  it('streams pretty JSON for a canonical backup', () => {
+  it('streams JSON lines for a canonical backup', () => {
     const backupInfo = exampleBackupInfo;
     const frames = exampleFrames.slice();
 
@@ -279,34 +339,38 @@ describe('BackupJsonExporter', () => {
     const chunkGroups = [frames.slice(0, 2), frames.slice(2)].filter(
       (group) => group.length > 0
     );
-    const exportedFrameChunks = chunkGroups.map((group) =>
+    const exportedFrameResults = chunkGroups.flatMap((group) =>
       exporter.exportFrames(concatFrames(group))
     );
+    const exportedFrameLines = exportedFrameResults.map((result) => {
+      assert.isDefined(result.line, 'canonical backup should validate');
+      assert.isUndefined(
+        result.errorMessage,
+        'canonical backup should validate'
+      );
+      return result.line;
+    });
+    const finishResult = exporter.finish();
+    assert.isUndefined(
+      finishResult.errorMessage,
+      'canonical backup should validate'
+    );
 
-    const jsonText = [
-      initialChunk,
-      ...exportedFrameChunks,
-      exporter.finish(),
-    ].join('');
-    assert.isTrue(jsonText.startsWith('[\n  {'));
-    assert.isTrue(jsonText.endsWith(']\n'));
+    const allLines = [initialChunk, ...exportedFrameLines];
 
-    const parsed = JSON.parse(jsonText) as unknown;
-    assert.isArray(parsed);
+    assert.lengthOf(allLines, frames.length + 1);
+    for (const line of allLines) {
+      assert.isFalse(line.includes('\n'));
+    }
 
-    const parsedArray = parsed as Array<unknown>;
-    assert.lengthOf(parsedArray, frames.length + 1);
+    const parsedLines = allLines.map(
+      (line) => JSON.parse(line) as Record<string, unknown>
+    );
 
-    const [backupInfoJson, firstFrame] = parsedArray;
-    assert.isObject(backupInfoJson);
-    assert.containsAllKeys(backupInfoJson as Record<string, unknown>, [
-      'version',
-      'mediaRootBackupKey',
-    ]);
-    assert.isObject(firstFrame);
-    const firstFrameRecord = firstFrame as Record<string, unknown>;
-    assert.property(firstFrameRecord, 'account');
-    const accountValue = firstFrameRecord.account;
+    const [backupInfoJson, firstFrame, ...rest] = parsedLines;
+    assert.containsAllKeys(backupInfoJson, ['version', 'mediaRootBackupKey']);
+    assert.property(firstFrame, 'account');
+    const accountValue = firstFrame.account;
     assert.isObject(accountValue);
     const accountRecord = accountValue as Record<string, unknown>;
     assert.containsAllKeys(accountRecord, [
@@ -314,12 +378,156 @@ describe('BackupJsonExporter', () => {
       'username',
       'accountSettings',
     ]);
+    assert.lengthOf(rest, frames.length - 1);
   });
 
   it('returns an empty chunk when no frames are provided', () => {
     const backupInfo = exampleBackupInfo;
-    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo);
-    assert.equal(exporter.exportFrames(new Uint8Array()), '');
+    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo, {
+      validate: false,
+    });
+    assert.deepEqual(exporter.exportFrames(new Uint8Array()), []);
+    const finishResult = exporter.finish();
+    assert.isUndefined(finishResult.errorMessage, 'ok');
+  });
+
+  it('filters disappearing messages from the output', () => {
+    const backupInfo = exampleBackupInfo;
+    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo, {
+      validate: false,
+    });
+
+    const frame = createDisappearingChatItemFrame();
+    const results = exporter.exportFrames(frame);
+    assert.deepEqual(results, [{}]);
+
+    const finishResult = exporter.finish();
+    assert.isUndefined(finishResult.errorMessage, 'ok');
+  });
+
+  it('includes results without errors for otherwise legal filtered frames', () => {
+    const backupInfo = exampleBackupInfo;
+    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo, {
+      validate: true,
+    });
+
+    const frame = createDisappearingChatItemFrame();
+    const results = exporter.exportFrames(frame);
+    assert.lengthOf(results, 1);
+    const [result] = results;
+    assert.isUndefined(result.line);
+    assert.isUndefined(result.errorMessage);
+    const finishResult = exporter.finish();
+    // We should see an error here because we don't include an AccountData frame.
+    assert.isNotEmpty(finishResult.errorMessage);
+  });
+
+  it('strips attachments from view-once messages', () => {
+    const backupInfo = exampleBackupInfo;
+    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo, {
+      validate: false,
+    });
+
+    const frame = createViewOnceChatItemFrame();
+    const results = exporter.exportFrames(frame);
+    assert.lengthOf(results, 1);
+    const [result] = results;
+    assert.isDefined(result.line);
+    assert.isUndefined(result.errorMessage);
+
+    const json = JSON.parse(result.line) as Record<string, unknown>;
+    assert.deepStrictEqual(json, {
+      chatItem: {
+        chatId: '10',
+        authorId: '11',
+        dateSent: '12',
+        viewOnceMessage: {
+          // no "attachment"
+        },
+        revisions: [
+          {
+            chatId: '10',
+            authorId: '11',
+            dateSent: '9',
+            viewOnceMessage: {
+              // no "attachment"
+            },
+          },
+        ],
+      },
+    });
+
+    const finishResult = exporter.finish();
+    assert.isUndefined(finishResult.errorMessage, 'ok');
+  });
+
+  it('filters disappearing messages from the output', () => {
+    const backupInfo = exampleBackupInfo;
+    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo, {
+      validate: false,
+    });
+
+    const frame = createDisappearingChatItemFrame();
+    const results = exporter.exportFrames(frame);
+    assert.deepEqual(results, [{}]);
+
+    const finishResult = exporter.finish();
+    assert.isUndefined(finishResult.errorMessage, 'ok');
+  });
+
+  it('sanitizes frames before validation to avoid validation errors', () => {
+    const backupInfo = exampleBackupInfo;
+    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo, {
+      validate: true,
+    });
+
+    const frame = createDisappearingChatItemFrame();
+    const results = exporter.exportFrames(frame);
+    assert.lengthOf(results, 1);
+    const [result] = results;
+    assert.isUndefined(result.line);
+    assert.isUndefined(result.errorMessage);
+    const finishResult = exporter.finish();
+    assert.isDefined(finishResult.errorMessage);
+  });
+
+  it('strips attachments from view-once messages', () => {
+    const backupInfo = exampleBackupInfo;
+    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo, {
+      validate: false,
+    });
+
+    const frame = createViewOnceChatItemFrame();
+    const results = exporter.exportFrames(frame);
+    assert.lengthOf(results, 1);
+    const [result] = results;
+    assert.isDefined(result.line);
+    assert.isUndefined(result.errorMessage);
+
+    const json = JSON.parse(result.line) as Record<string, unknown>;
+    assert.deepStrictEqual(json, {
+      chatItem: {
+        chatId: '10',
+        authorId: '11',
+        dateSent: '12',
+        viewOnceMessage: {
+          // no "attachment"
+        },
+        revisions: [
+          {
+            chatId: '10',
+            authorId: '11',
+            dateSent: '9',
+            viewOnceMessage: {
+              // no "attachment"
+            },
+          },
+        ],
+      },
+    });
+
+    const finishResult = exporter.finish();
+    assert.isUndefined(finishResult.errorMessage, 'ok');
   });
 
   it('validates frames when requested', () => {
@@ -334,10 +542,15 @@ describe('BackupJsonExporter', () => {
       if (group.length === 0) {
         continue;
       }
-      exporter.exportFrames(concatFrames(group));
+      const results = exporter.exportFrames(concatFrames(group));
+      for (const result of results) {
+        assert.isDefined(result.line);
+        assert.isUndefined(result.errorMessage);
+      }
     }
 
-    exporter.finish();
+    const finishResult = exporter.finish();
+    assert.isUndefined(finishResult.errorMessage);
   });
 
   it('throws when validation fails', () => {
@@ -351,12 +564,13 @@ describe('BackupJsonExporter', () => {
     );
 
     // baseline chunk should still be produced
-    assert.isTrue(chunk.startsWith('[\n'));
+    assert.isAbove(chunk.length, 0);
+    assert.isTrue(chunk[0].startsWith('{'));
 
     const missingAccountChunk = concatFrames(frames.slice(1));
     exporter.exportFrames(missingAccountChunk);
-
-    assert.throws(() => exporter.finish());
+    const finishResult = exporter.finish();
+    assert.isNotEmpty(finishResult.errorMessage);
   });
 
   it('can skip validation when explicitly disabled', () => {
@@ -367,9 +581,13 @@ describe('BackupJsonExporter', () => {
     });
 
     const missingAccountChunk = concatFrames(frames.slice(1));
-    exporter.exportFrames(missingAccountChunk);
+    const results = exporter.exportFrames(missingAccountChunk);
+    for (const result of results) {
+      assert.isUndefined(result.errorMessage);
+    }
 
-    exporter.finish();
+    const finishResult = exporter.finish();
+    assert.isUndefined(finishResult.errorMessage);
   });
 
   it('still rejects malformed data even when validation is disabled', () => {

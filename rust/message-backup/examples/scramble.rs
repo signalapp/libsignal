@@ -99,15 +99,12 @@ fn main() -> ExitCode {
 
             match &original_result {
                 Ok(unknown_fields) => {
-                    for (path, value) in unknown_fields {
-                        log::warn!(
-                            "{}",
-                            FoundUnknownField {
-                                frame_index,
-                                path: path.clone(),
-                                value: *value,
-                            }
-                        );
+                    for entry in unknown_fields
+                        .iter()
+                        .cloned()
+                        .map(FoundUnknownField::in_frame(frame_index))
+                    {
+                        log::warn!("{entry}");
                     }
                 }
                 Err(e) => {
@@ -126,15 +123,12 @@ fn main() -> ExitCode {
                         log::warn!(
                             "scrambling may have removed some unknown fields in frame {frame_index}; here are the post-scrambling fields:"
                         );
-                        for (path, value) in new_unknown_fields {
-                            log::info!(
-                                "{}",
-                                FoundUnknownField {
-                                    frame_index,
-                                    path: path.clone(),
-                                    value,
-                                }
-                            );
+                        for entry in new_unknown_fields
+                            .iter()
+                            .cloned()
+                            .map(FoundUnknownField::in_frame(frame_index))
+                        {
+                            log::info!("{entry}");
                         }
                     }
                 }

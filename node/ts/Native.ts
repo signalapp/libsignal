@@ -181,6 +181,18 @@ export type MessageBackupValidationOutcome = {
   unknownFieldMessages: Array<string>;
 };
 
+export type BackupJsonFrameError = {
+  message: string;
+  unknownFields: string[];
+};
+
+export type BackupJsonFrameResult = {
+  line?: string;
+  error?: BackupJsonFrameError;
+};
+
+export type JsonFrameExportResult = BackupJsonFrameResult;
+
 export type AccountEntropyPool = string;
 
 export type CancellablePromise<T> = Promise<T> & {
@@ -630,8 +642,8 @@ type NativeFunctions = {
   OnlineBackupValidator_Finalize: (backup: Wrapper<OnlineBackupValidator>) => void;
   BackupJsonExporter_New: (backupInfo: Uint8Array, shouldValidate: boolean) => BackupJsonExporter;
   BackupJsonExporter_GetInitialChunk: (exporter: Wrapper<BackupJsonExporter>) => string;
-  BackupJsonExporter_ExportFrames: (exporter: Wrapper<BackupJsonExporter>, frames: Uint8Array) => string;
-  BackupJsonExporter_Finish: (exporter: Wrapper<BackupJsonExporter>) => string;
+  BackupJsonExporter_ExportFrames: (exporter: Wrapper<BackupJsonExporter>, frames: Uint8Array) => JsonFrameExportResult[];
+  BackupJsonExporter_Finish: (exporter: Wrapper<BackupJsonExporter>) => void;
   Username_Hash: (username: string) => Uint8Array;
   Username_Proof: (username: string, randomness: Uint8Array) => Uint8Array;
   Username_Verify: (proof: Uint8Array, hash: Uint8Array) => void;

@@ -10,6 +10,7 @@
  */
 
 import * as Native from './Native.js';
+import { ErrorCode, LibSignalErrorBase } from './Errors.js';
 import { BackupForwardSecrecyToken, BackupKey } from './AccountKeys.js';
 import { Aci } from './Address.js';
 import { InputStream } from './io.js';
@@ -280,17 +281,36 @@ export class ComparableBackup {
 }
 
 /**
+ * The output from processing a single frame for JSON export.
+ *
+ * There are four possibilities:
+ * - `line` present, `errorMessage` absent - the common case, a frame converted (and possibly sanitized)
+ *   with no problems.
+ * - `line` present, `errorMessage` present - the frame has been converted, but would have failed
+ *   validation.
+ * - `line` absent, `errorMessage` absent - the frame has been filtered out wholesale.
+ * - `line` absent, `errorMessage` present - the frame has been filtered out wholesale, but would have
+ *   failed validation had it not been filtered out.
+ */
+export type BackupJsonFrameResult = {
+  line?: string;
+  errorMessage?: string;
+};
+
+export type BackupJsonFinishResult = { errorMessage?: string };
+
+/**
  * Streaming exporter that produces a human-readable JSON representation of a backup.
+ *
+ * Validation feedback returned by this exporter is best-effort and intended for logging or
+ * diagnostics. Even when a frame reports a validation error, the serialized line is still
+ * produced so consumers can continue streaming the export.
  */
 export class BackupJsonExporter {
-  readonly _nativeHandle: Native.BackupJsonExporter;
-
-  private constructor(handle: Native.BackupJsonExporter) {
-    this._nativeHandle = handle;
-  }
+  private constructor(readonly _nativeHandle: Native.BackupJsonExporter) {}
 
   /**
-   * Initializes the streaming exporter and returns the first chunk of output.
+   * Initializes the streaming exporter and returns the first set of output lines.
    * @param backupInfo The serialized BackupInfo protobuf without a varint header.
    * @param [options] Additional configuration for the exporter.
    * @param [options.validate=true] Whether to run semantic validation on the backup.
@@ -311,19 +331,32 @@ export class BackupJsonExporter {
   /**
    * Validates and exports a human-readable JSON representation of backup frames.
    * @param frames One or more varint delimited Frame serialized protobuf messages.
-   * @returns A string containing the exported frames.
-   * @throws Error if the input is invalid.
+   * @returns An array containing the line and any validation error for each frame.
+   * Frames that report validation errors still include their serialized `line`, so consumers
+   * should continue processing the export and surface the errors for observability rather than
+   * aborting.
+   * @throws Error if the input data cannot be parsed.
    */
-  public exportFrames(frames: Uint8Array): string {
+  public exportFrames(frames: Uint8Array): BackupJsonFrameResult[] {
     return Native.BackupJsonExporter_ExportFrames(this, frames);
   }
 
   /**
    * Completes the validation and export of the previously exported frames.
-   * @returns A string containing the final chunk of the output.
-   * @throws Error if some previous input fails validation at the final stage.
+   *
+   * Per-frame validation errors are reported via `exportFrames`, so callers
+   * should inspect earlier results even if this returns with no error.
+   * @returns The outcome of the final validation stage.
    */
-  public finish(): string {
-    return Native.BackupJsonExporter_Finish(this);
+  public finish(): BackupJsonFinishResult {
+    try {
+      Native.BackupJsonExporter_Finish(this);
+      return {};
+    } catch (error: unknown) {
+      if (LibSignalErrorBase.is(error, ErrorCode.BackupValidation)) {
+        return { errorMessage: error.message };
+      }
+      throw error;
+    }
   }
 }

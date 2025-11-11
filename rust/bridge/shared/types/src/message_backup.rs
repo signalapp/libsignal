@@ -107,6 +107,20 @@ pub struct BackupJsonExporter {
     initial_chunk: String,
 }
 
+pub struct JsonFrameExportResult {
+    pub line: Option<String>,
+    pub validation_error: Option<libsignal_message_backup::Error>,
+}
+
+impl From<libsignal_message_backup::json::exporter::FrameExportResult> for JsonFrameExportResult {
+    fn from(value: libsignal_message_backup::json::exporter::FrameExportResult) -> Self {
+        Self {
+            line: value.line,
+            validation_error: value.validation_error,
+        }
+    }
+}
+
 impl BackupJsonExporter {
     pub fn new(
         inner: libsignal_message_backup::json::exporter::JsonExporter,
@@ -130,7 +144,6 @@ impl BackupJsonExporter {
 bridge_as_handle!(BackupJsonExporter, mut = true, ffi = false, jni = false);
 impl std::panic::RefUnwindSafe for BackupJsonExporter {}
 static_assertions::assert_impl_all!(BackupJsonExporter: std::panic::UnwindSafe);
-
 pub struct OnlineBackupValidator {
     backup: Option<backup::PartialBackup<backup::ValidateOnly>>,
 }
