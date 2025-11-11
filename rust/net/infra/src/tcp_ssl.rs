@@ -237,7 +237,7 @@ pub(crate) mod testutil {
     /// unfortunately, `warp` uses a lot of non-public and unnameable types.
     pub(crate) fn localhost_https_server<F>(service: F) -> (SocketAddr, impl Future<Output = ()>)
     where
-        F: warp::Filter<Error = std::convert::Infallible> + Send + Clone + 'static,
+        F: warp::Filter + Send + Clone + 'static,
         <F::Future as TryFuture>::Ok: warp::Reply,
     {
         localhost_https_server_with_custom_service(
@@ -352,6 +352,7 @@ pub(crate) mod testutil {
                         hyper::server::conn::http2::Builder::new(
                             hyper_util::rt::TokioExecutor::new(),
                         )
+                        .enable_connect_protocol()
                         .serve_connection(stream, service)
                         .await
                         .expect("H2 connection completes without error");

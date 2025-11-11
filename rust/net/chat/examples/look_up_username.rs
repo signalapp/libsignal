@@ -33,8 +33,10 @@ struct Config {
     username: String,
 
     #[arg(long)]
+    h2: bool,
+    #[arg(long)]
     use_grpc: bool,
-    #[arg(long, requires = "use_grpc", default_value = "")]
+    #[arg(long, default_value = "")]
     host: String,
 }
 
@@ -55,10 +57,11 @@ async fn main() -> anyhow::Result<()> {
     let Config {
         env,
         username,
+        h2,
         use_grpc,
         host,
     } = Config::parse();
-    let env = match env {
+    let mut env = match env {
         Environment::Staging => libsignal_net::env::STAGING,
         Environment::Production => libsignal_net::env::PROD,
     };
@@ -71,10 +74,19 @@ async fn main() -> anyhow::Result<()> {
         };
         Either::Left(Unauth(grpc_connection(host).await?))
     } else {
+        if !host.is_empty() {
+            // This is cheating, but we're just using it for testing anyway.
+            env.chat_domain_config.connect.hostname = Box::leak(host.into_boxed_str());
+            env.chat_domain_config.ip_v4 = &[];
+            env.chat_domain_config.ip_v6 = &[];
+        }
+        if h2 {
+            env.chat_domain_config.connect.http_version = Some(HttpVersion::Http2);
+        }
         Either::Right(Unauth(
             simple_chat_connection(
                 &env,
-                EnableDomainFronting::AllDomains,
+                EnableDomainFronting::No,
                 DirectOrProxyMode::DirectOnly,
                 |_route| true,
             )

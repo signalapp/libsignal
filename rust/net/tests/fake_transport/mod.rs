@@ -198,9 +198,7 @@ impl FakeDeps {
         &self.resolved_names
     }
 
-    pub async fn connect_chat(
-        &self,
-    ) -> Result<PendingChatConnection<impl AsyncDuplexStream>, chat::ConnectError> {
+    pub async fn connect_chat(&self) -> Result<PendingChatConnection, chat::ConnectError> {
         let Self {
             connect_state,
             dns_resolver,

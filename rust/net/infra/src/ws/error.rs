@@ -83,7 +83,7 @@ pub enum SpaceError {
 ///
 /// Provides a user-data-free [`std::fmt::Display`] implementation.
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
-pub struct ProtocolError(#[from] tungstenite::error::ProtocolError);
+pub struct ProtocolError(#[from] pub(crate) tungstenite::error::ProtocolError);
 
 impl std::fmt::Display for ProtocolError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

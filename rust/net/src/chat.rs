@@ -13,12 +13,12 @@ use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use bytes::Bytes;
 use either::Either;
 use libsignal_net_infra::route::{
-    Connector, DefaultGetCurrentInterface, HttpsTlsRoute, RouteProvider, RouteProviderExt,
+    DefaultGetCurrentInterface, HttpsTlsRoute, RouteProvider, RouteProviderExt,
     ThrottlingConnector, TransportRoute, UnresolvedHttpsServiceRoute,
     UnresolvedWebsocketServiceRoute, UsePreconnect, WebSocketRoute, WebSocketRouteFragment,
 };
 use libsignal_net_infra::utils::NetworkChangeEvent;
-use libsignal_net_infra::ws::StreamWithResponseHeaders;
+use libsignal_net_infra::ws::{StreamWithResponseHeaders, WebSocketTransportStream};
 use libsignal_net_infra::{
     AsHttpHeader, AsStaticHttpHeader, Connection, IpType, RECOMMENDED_WS_CONFIG, TransportInfo,
 };
@@ -26,9 +26,7 @@ use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::WebSocketConfig;
 
 use crate::auth::Auth;
-use crate::connect_state::{
-    ConnectionResources, DefaultTransportConnector, RouteInfo, WebSocketTransportConnectorFactory,
-};
+use crate::connect_state::{ConnectionResources, RouteInfo, WebSocketTransportConnectorFactory};
 use crate::env::UserAgent;
 use crate::proto;
 
@@ -170,15 +168,10 @@ pub struct ChatConnection {
     connection_info: ConnectionInfo,
 }
 
-type ChatTransportConnection =
-    <DefaultTransportConnector as Connector<TransportRoute, ()>>::Connection;
-
 /// A connection to the chat service that isn't yet active.
-///
-/// Parameterized over the type of the transport-level connection for testing.
 #[derive(Debug)]
-pub struct PendingChatConnection<T = ChatTransportConnection> {
-    connection: WebSocketStream<T>,
+pub struct PendingChatConnection {
+    connection: WebSocketStream<Box<dyn WebSocketTransportStream>>,
     connect_response_headers: http::HeaderMap,
     ws_config: ws::Config,
     route_info: RouteInfo,
@@ -234,10 +227,7 @@ impl ChatConnection {
         log_tag: &str,
     ) -> Result<PendingChatConnection, ConnectError>
     where
-        TC: WebSocketTransportConnectorFactory<
-                UsePreconnect<TransportRoute>,
-                Connection = ChatTransportConnection,
-            >,
+        TC: WebSocketTransportConnectorFactory<UsePreconnect<TransportRoute>>,
     {
         Self::start_connect_with_transport(
             connection_resources,
@@ -258,7 +248,7 @@ impl ChatConnection {
         ws_config: self::ws::Config,
         headers: Option<ChatHeaders>,
         log_tag: &str,
-    ) -> Result<PendingChatConnection<TC::Connection>, ConnectError>
+    ) -> Result<PendingChatConnection, ConnectError>
     where
         TC: WebSocketTransportConnectorFactory<UsePreconnect<TransportRoute>>,
     {

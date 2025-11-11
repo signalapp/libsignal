@@ -57,18 +57,18 @@ pub struct Http2Client<B> {
 
 impl<B: hyper::body::Body + 'static> Http2Client<B> {
     #[cfg(feature = "tower-service")]
-    fn poll_ready(
+    pub fn poll_ready(
         &mut self,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), hyper::Error>> {
         self.service.poll_ready(cx)
     }
 
-    async fn ready(&mut self) -> Result<(), hyper::Error> {
+    pub async fn ready(&mut self) -> Result<(), hyper::Error> {
         self.service.ready().await
     }
 
-    fn send_request(
+    pub fn send_request(
         &mut self,
         mut req: http::Request<B>,
     ) -> impl Future<Output = Result<http::Response<hyper::body::Incoming>, hyper::Error>> + 'static
