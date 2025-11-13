@@ -179,7 +179,7 @@ fn ssl_config(
     let mut ssl = SslConnector::builder(SslMethod::tls_client())?;
     certs.apply_to_connector(&mut ssl, host)?;
     if let Some(alpn) = alpn {
-        ssl.set_alpn_protos(alpn.as_ref())?;
+        ssl.set_alpn_protos(alpn.length_prefixed())?;
     }
     ssl.set_min_proto_version(min_required_tls_version)?;
 
@@ -218,6 +218,8 @@ pub(crate) mod testutil {
     use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
     use warp::Filter;
 
+    use crate::{Alpn, UnrecognizedAlpn};
+
     pub(crate) const SERVER_HOSTNAME: &str = "test-server.signal.org.local";
 
     pub(crate) static SERVER_CERTIFICATE: LazyLock<CertifiedKey> = LazyLock::new(|| {
@@ -238,6 +240,43 @@ pub(crate) mod testutil {
         F: warp::Filter<Error = std::convert::Infallible> + Send + Clone + 'static,
         <F::Future as TryFuture>::Ok: warp::Reply,
     {
+        localhost_https_server_with_custom_service(
+            concat_bytes!(
+                Alpn::Http2.length_prefixed(),
+                Alpn::Http1_1.length_prefixed()
+            ),
+            hyper_util::service::TowerToHyperService::new(warp::service(service)),
+        )
+    }
+
+    /// Starts an HTTPS server on `::1` using [`SERVER_CERTIFICATE`] and the provided `hyper`
+    /// service.
+    ///
+    /// The resulting future **must be run on a tokio context** if using HTTP/2, since it needs to
+    /// spawn additional tasks to maintain connections. Note that as implemented it can **only serve
+    /// one connection at a time**; this is not an insurmountable restriction, but merely keeping
+    /// the code simple.
+    ///
+    /// `supported_alpn_encoded` should be a concatenation ([`concat_bytes!`]) of
+    /// [`Alpn::length_prefixed`] values. The complicated generics come from hyper's
+    /// `serve_connection` APIs.
+    pub(crate) fn localhost_https_server_with_custom_service<T, B>(
+        supported_alpn_encoded: &'static [u8],
+        service: T,
+    ) -> (SocketAddr, impl Future<Output = ()>)
+    where
+        T: hyper::service::Service<
+                http::Request<hyper::body::Incoming>,
+                Response = http::Response<B>,
+                Future: Send + 'static,
+                Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+            > + Clone,
+        B: hyper::body::Body<Data: Send, Error: Into<Box<dyn std::error::Error + Send + Sync>>>
+            + Send
+            + 'static,
+    {
+        assert_valid_length_encoding(supported_alpn_encoded);
+
         // We're essentially rebuilding warp::serve, but with a TLS layer in the middle. warp used
         // to provide this in a convenient package, but no longer. So we manually send up a TCP
         // listener, then using Boring to run the server-side TLS, then use Hyper to handle the HTTP
@@ -259,17 +298,6 @@ pub(crate) mod testutil {
             .expect("valid key");
             let cert = boring_signal::x509::X509::from_der(SERVER_CERTIFICATE.cert.der())
                 .expect("valid certificate");
-            // ALPN "wire format", a sequence of length-prefixed protocol names.
-            // See https://docs.rs/boring/4.19.0/boring/ssl/struct.SslContextBuilder.html#method.set_alpn_protos.
-            const ALPN_HTTP_1_1: &[u8] = b"http/1.1";
-            const ALPN_H2: &[u8] = b"h2";
-            #[allow(clippy::cast_possible_truncation)]
-            const SERVER_SUPPORTED_ALPN: &[u8] = concat_bytes!(
-                ALPN_H2.len() as u8,
-                ALPN_H2,
-                ALPN_HTTP_1_1.len() as u8,
-                ALPN_HTTP_1_1
-            );
 
             // This loop means the server can process multiple connections, but as written it will
             // process them serially. If that's ever a problem this can be rewritten to collect
@@ -291,26 +319,36 @@ pub(crate) mod testutil {
                     .set_certificate(&cert)
                     .expect("valid certificate");
                 tls_acceptor.set_alpn_select_callback(move |_, client| {
-                    boring_signal::ssl::select_next_proto(SERVER_SUPPORTED_ALPN, client)
+                    boring_signal::ssl::select_next_proto(supported_alpn_encoded, client)
                         .ok_or(boring_signal::ssl::AlpnError::ALERT_FATAL)
                 });
                 let tls_acceptor = tls_acceptor.build();
 
-                let stream = tokio_boring_signal::accept(&tls_acceptor, stream)
-                    .await
-                    .expect("TLS handshake succeeds");
-                let stream = hyper_util::rt::TokioIo::new(stream);
-                let service =
-                    hyper_util::service::TowerToHyperService::new(warp::service(service.clone()));
+                let stream = match tokio_boring_signal::accept(&tls_acceptor, stream).await {
+                    Ok(stream) => hyper_util::rt::TokioIo::new(stream),
+                    Err(e) => {
+                        log::error!("[server] TLS handshake failed: {e}");
+                        continue;
+                    }
+                };
+                let service = service.clone();
 
-                match stream.inner().ssl().selected_alpn_protocol() {
-                    None | Some(ALPN_HTTP_1_1) => {
+                let raw_alpn = stream.inner().ssl().selected_alpn_protocol();
+                let chosen_version = match raw_alpn.map(Alpn::try_from).transpose() {
+                    Ok(chosen) => chosen.unwrap_or(Alpn::Http1_1),
+                    Err(UnrecognizedAlpn) => panic!(
+                        "unsupported ALPN: {}",
+                        raw_alpn.expect("tried to parse").escape_ascii()
+                    ),
+                };
+                match chosen_version {
+                    Alpn::Http1_1 => {
                         hyper::server::conn::http1::Builder::new()
                             .serve_connection(stream, service)
                             .await
                             .expect("HTTP/1.1 connection completes without error");
                     }
-                    Some(ALPN_H2) => {
+                    Alpn::Http2 => {
                         hyper::server::conn::http2::Builder::new(
                             hyper_util::rt::TokioExecutor::new(),
                         )
@@ -318,13 +356,19 @@ pub(crate) mod testutil {
                         .await
                         .expect("H2 connection completes without error");
                     }
-                    Some(other) => {
-                        unreachable!("should have picked a supported ALPN, but picked {other:?}")
-                    }
                 }
             }
         };
         (addr, listener_task)
+    }
+
+    fn assert_valid_length_encoding(mut input: &[u8]) {
+        while !input.is_empty() {
+            let chunk_len = usize::from(input[0]);
+            (_, input) = input
+                .split_at_checked(chunk_len + 1)
+                .expect("input should be a concatenation of length-prefixed chunks");
+        }
     }
 
     const FAKE_RESPONSE: &str = "Hello there";
@@ -357,5 +401,74 @@ pub(crate) mod testutil {
         assert_eq!(lines.last(), Some(FAKE_RESPONSE).as_ref(), "{lines:?}");
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::borrow::Cow;
+    use std::num::NonZero;
+
+    use assert_matches::assert_matches;
+    use futures_util::future::Either;
+    use test_case::test_case;
+    use warp::Filter as _;
+
+    use super::testutil::*;
+    use super::*;
+    use crate::route::{ComposedConnector, ConnectorExt as _, TlsRoute};
+
+    #[test_case(Alpn::Http1_1, Alpn::Http2)]
+    #[test_case(Alpn::Http2, Alpn::Http1_1)]
+    #[test_log::test(tokio::test)]
+    async fn alpn_mismatch(client_alpn: Alpn, server_alpn: Alpn) {
+        // This is overkill for testing a TLS connection, but it's also where we've set up a
+        // configurable TLS server.
+        let (addr, server) = localhost_https_server_with_custom_service(
+            server_alpn.length_prefixed(),
+            hyper_util::service::TowerToHyperService::new(warp::service(
+                warp::any().map(warp::reply),
+            )),
+        );
+        let server = Box::pin(server);
+
+        type StatelessTlsConnector = ComposedConnector<StatelessTls, StatelessTcp>;
+        let connector = StatelessTlsConnector::default();
+        let client = std::pin::pin!(connector.connect(
+            TlsRoute {
+                fragment: TlsRouteFragment {
+                    root_certs: RootCertificates::FromDer(Cow::Borrowed(
+                        SERVER_CERTIFICATE.cert.der(),
+                    )),
+                    sni: Host::Domain(SERVER_HOSTNAME.into()),
+                    alpn: Some(client_alpn),
+                    min_protocol_version: None,
+                },
+                inner: TcpRoute {
+                    address: addr.ip(),
+                    port: NonZero::new(addr.port()).expect("successful listener has a valid port"),
+                },
+            },
+            "transport",
+        ));
+
+        let err = match futures_util::future::select(client, server).await {
+            Either::Left((stream, _server)) => stream.expect_err("should have failed negotiation"),
+            Either::Right(_) => panic!("server exited unexpectedly"),
+        };
+
+        let reason = assert_matches!(
+            err,
+            TransportConnectError::SslFailedHandshake(reason) =>
+            reason
+        );
+        // TODO: This assert is deliberately inverted; we would like to see this error code in the
+        // message so we know what went wrong, but tokio-boring doesn't provide access to that
+        // information, https://github.com/cloudflare/boring/issues/405. This assert is a reminder
+        // to update the test once we're able to provide it.
+        assert!(
+            !reason.to_string().contains("NO_APPLICATION_PROTOCOL"),
+            "{reason}"
+        );
     }
 }

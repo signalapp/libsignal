@@ -237,20 +237,38 @@ pub trait AsyncDuplexStream: AsyncRead + AsyncWrite + Unpin + Send {}
 impl<S: AsyncRead + AsyncWrite + Unpin + Send> AsyncDuplexStream for S {}
 
 /// A single ALPN list entry.
-///
-/// Implements `AsRef<[u8]>` as the length-delimited wire form.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Alpn {
     Http1_1,
     Http2,
 }
 
-impl AsRef<[u8]> for Alpn {
-    fn as_ref(&self) -> &[u8] {
+impl Alpn {
+    pub const fn encoded(&self) -> &'static [u8] {
+        self.length_prefixed().split_first().unwrap().1
+    }
+
+    pub const fn length_prefixed(&self) -> &'static [u8] {
         match self {
-            Alpn::Http1_1 => b"\x08http/1.1",
-            Alpn::Http2 => b"\x02h2",
+            Self::Http1_1 => b"\x08http/1.1",
+            Self::Http2 => b"\x02h2",
         }
+    }
+}
+
+pub struct UnrecognizedAlpn;
+
+impl TryFrom<&'_ [u8]> for Alpn {
+    type Error = UnrecognizedAlpn;
+
+    fn try_from(value: &'_ [u8]) -> Result<Self, Self::Error> {
+        if value == Self::Http2.encoded() {
+            return Ok(Self::Http2);
+        }
+        if value == Self::Http1_1.encoded() {
+            return Ok(Self::Http1_1);
+        }
+        Err(UnrecognizedAlpn)
     }
 }
 
