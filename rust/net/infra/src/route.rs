@@ -88,6 +88,7 @@ use futures_util::{FutureExt, StreamExt};
 use tokio::time::Instant;
 use tokio_util::either::Either;
 
+use crate::IpType;
 use crate::errors::LogSafeDisplay;
 use crate::host::Host;
 use crate::utils::future::SomeOrPending;
@@ -388,7 +389,7 @@ async fn connect_inner<R, C, Inner, FatalError>(
     OutcomeUpdates<R>,
 )
 where
-    R: Clone,
+    R: ResolvedRoute + Clone,
     Inner: Clone,
     C: Connector<R, Inner>,
 {
@@ -466,7 +467,8 @@ where
             }
 
             Event::NextRouteAvailable(Some(route)) => {
-                let log_tag_for_connect = format!("{log_tag} {connects_started}");
+                let ip_version = IpType::from(route.immediate_target());
+                let log_tag_for_connect = format!("{log_tag} {connects_started} {ip_version}");
                 let connector = &connector;
                 let inner = inner.clone();
                 connects_started += 1;
