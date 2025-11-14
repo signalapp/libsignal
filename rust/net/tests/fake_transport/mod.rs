@@ -12,8 +12,7 @@ use futures_util::Stream;
 use futures_util::stream::StreamExt as _;
 use itertools::Itertools as _;
 use libsignal_net::chat::{
-    self, ChatConnection, EnablePermessageDeflate, PendingChatConnection,
-    RECOMMENDED_CHAT_WS_CONFIG,
+    self, ChatConnection, PendingChatConnection, RECOMMENDED_CHAT_WS_CONFIG,
 };
 use libsignal_net::connect_state::{
     ConnectState, ConnectionResources, DefaultConnectorFactory, DefaultTransportConnector,
@@ -221,7 +220,6 @@ impl FakeDeps {
             ),
             &UserAgent::with_libsignal_version("test"),
             RECOMMENDED_CHAT_WS_CONFIG,
-            EnablePermessageDeflate::No,
             None,
             "fake chat",
         )

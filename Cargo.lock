@@ -5247,12 +5247,11 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 [[package]]
 name = "tungstenite"
 version = "0.27.0"
-source = "git+https://github.com/signalapp/tungstenite-rs?tag=signal-v0.27.0#d9409e3622ff867e7cf77e864be95487113ae499"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eadc29d668c91fcc564941132e17b28a7ceb2f3ebf0b9dae3e03fd7a6748eb0d"
 dependencies = [
  "bytes",
  "data-encoding",
- "flate2",
- "headers",
  "http",
  "httparse",
  "log",

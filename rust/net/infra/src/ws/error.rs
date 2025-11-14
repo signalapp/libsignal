@@ -127,10 +127,6 @@ impl std::fmt::Display for ProtocolError {
             ProtocolError::ResetWithoutClosingHandshake => "ResetWithoutClosingHandshake",
             ProtocolError::InvalidOpcode(_) => "InvalidOpcode",
             ProtocolError::InvalidCloseSequence => "InvalidCloseSequence",
-            ProtocolError::InvalidExtensionsHeader(_) => "InvalidExtensionsHeader",
-            ProtocolError::CompressedContinueFrame => "CompressedContinueFrame",
-            ProtocolError::CompressedControlFrame => "CompressedControlFrame",
-            ProtocolError::CompressionFailure(_) => "CompressionFailure",
         };
         write!(f, "{str}")
     }

@@ -95,7 +95,6 @@ pub enum RemoteConfigKey {
     /// How long to wait for a response to a chat request before checking whether the connection is
     /// still active.
     ChatRequestConnectionCheckTimeoutMilliseconds => "chatRequestConnectionCheckTimeoutMillis",
-    /// Whether or not to enforce the hardcoded minimum TLS versions for Chat and CDSI endpoints.
     /// Determines whether a chat websocket connection attempts to negotiate permessage-deflate support.
     EnableChatPermessageDeflate => "chatPermessageDeflate",
 }
