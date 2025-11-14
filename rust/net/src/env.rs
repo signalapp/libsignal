@@ -191,7 +191,7 @@ const DOMAIN_CONFIG_SVRB_PROD: DomainConfig = DomainConfig {
         confirmation_header_name: None,
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svrb",
-            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
+            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
         }),
     },
     ip_v4: &[
