@@ -124,8 +124,10 @@ describe('UnauthMessagesService', () => {
           JSON.stringify([
             {
               uuid,
-              missingDevices: [4, 5],
-              extraDevices: [40, 50],
+              devices: {
+                missingDevices: [4, 5],
+                extraDevices: [40, 50],
+              },
             },
           ])
         ),
@@ -165,7 +167,9 @@ describe('UnauthMessagesService', () => {
           JSON.stringify([
             {
               uuid,
-              staleDevices: [4, 5],
+              devices: {
+                staleDevices: [4, 5],
+              },
             },
           ])
         ),

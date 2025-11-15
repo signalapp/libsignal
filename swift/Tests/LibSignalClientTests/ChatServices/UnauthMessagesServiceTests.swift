@@ -86,8 +86,10 @@ class UnauthMessagesServiceTests: UnauthChatServiceTestBase<any UnauthMessagesSe
                         [
                             {
                                 "uuid": "\(uuid)",
-                                "missingDevices": [4, 5],
-                                "extraDevices": [40, 50]
+                                "devices": {
+                                    "missingDevices": [4, 5],
+                                    "extraDevices": [40, 50]
+                                }
                             }
                         ]
                         """.utf8
@@ -118,7 +120,9 @@ class UnauthMessagesServiceTests: UnauthChatServiceTestBase<any UnauthMessagesSe
                         [
                             {
                                 "uuid": "\(uuid)",
-                                "staleDevices": [4, 5]
+                                "devices": {
+                                    "staleDevices": [4, 5]
+                                }
                             }
                         ]
                         """.utf8

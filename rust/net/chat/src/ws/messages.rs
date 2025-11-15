@@ -121,10 +121,16 @@ fn parse_multi_recipient_mismatched_devices_response(
     debug_assert_matches!(response.status.as_u16(), 409 | 410);
 
     #[derive(serde::Deserialize)]
-    #[serde(rename_all = "camelCase")]
     struct ParsedMismatchedDevicesEntry {
         #[serde(rename = "uuid")]
         service_id: String,
+        devices: ParsedMismatchedDevices,
+    }
+
+    // Note: this can be shared with the 1:1 mismatched devices response.
+    #[derive(serde::Deserialize, Default, PartialEq, Eq)]
+    #[serde(rename_all = "camelCase")]
+    struct ParsedMismatchedDevices {
         // 409 fields
         #[serde(default)]
         missing_devices: Vec<u8>,
@@ -158,10 +164,19 @@ fn parse_multi_recipient_mismatched_devices_response(
         .map(|entry| {
             let ParsedMismatchedDevicesEntry {
                 service_id,
+                devices,
+            } = entry;
+            if devices == Default::default() {
+                return Err(CustomError::Unexpected {
+                    log_safe: "no devices listed in mismatched device response".to_owned(),
+                });
+            }
+            let ParsedMismatchedDevices {
                 missing_devices,
                 extra_devices,
                 stale_devices,
-            } = entry;
+            } = devices;
+
             Ok(MismatchedDeviceError {
                 account: ServiceId::parse_from_service_id_string(&service_id).ok_or_else(|| {
                     CustomError::Unexpected {
@@ -224,8 +239,8 @@ mod test {
     #[test_case(empty(409) => matches Err(RequestError::Unexpected { .. }))]
     #[test_case(json(
         409, format!(r#"[
-            {{"uuid":"{ACI_UUID}","missingDevices":[50,60]}},
-            {{"uuid":"PNI:{PNI_UUID}","missingDevices":[],"extraDevices":[4,5]}}
+            {{"uuid":"{ACI_UUID}","devices":{{"missingDevices":[50,60]}}}},
+            {{"uuid":"PNI:{PNI_UUID}","devices":{{"missingDevices":[],"extraDevices":[4,5]}}}}
         ]"#)
     ) => matches Err(RequestError::Other(MrFailure::MismatchedDevices(errors))) if errors == [
         MismatchedDeviceError {
@@ -243,8 +258,8 @@ mod test {
     ])]
     #[test_case(json(
         410, format!(r#"[
-            {{"uuid":"{ACI_UUID}","staleDevices":[4,5]}},
-            {{"uuid":"PNI:{PNI_UUID}","staleDevices":[]}}
+            {{"uuid":"{ACI_UUID}","devices":{{"staleDevices":[4,5]}}}},
+            {{"uuid":"PNI:{PNI_UUID}","devices":{{"staleDevices":[1]}}}}
         ]"#)
     ) => matches Err(RequestError::Other(MrFailure::MismatchedDevices(errors))) if errors == [
         MismatchedDeviceError {
@@ -257,23 +272,26 @@ mod test {
             account: Pni::from(Uuid::try_parse(PNI_UUID).unwrap()).into(),
             missing_devices: vec![],
             extra_devices: vec![],
-            stale_devices: vec![],
+            stale_devices: vec![DeviceId::new(1).unwrap()],
         },
     ])]
     #[test_case(json(
         410, r#"["#
     ) => matches Err(RequestError::Unexpected { .. }))]
     #[test_case(json(
-        410, format!(r#"{{"uuid":"{ACI_UUID}","staleDevices":[4,5]}}"#)
+        410, format!(r#"{{"uuid":"{ACI_UUID}","devices":{{"staleDevices":[4,5]}}}}"#)
     ) => matches Err(RequestError::Unexpected { .. }))]
     #[test_case(json(
-        410, r#"[{"uuid":"garbage","staleDevices":[4,5]}]"#
+        410, format!(r#"[{{"uuid":"{ACI_UUID}","devices":{{}}}}]"#)
     ) => matches Err(RequestError::Unexpected { .. }))]
     #[test_case(json(
-        410, format!(r#"{{"uuid":"{ACI_UUID}","staleDevices":[200]}}"#)
+        410, r#"[{"uuid":"garbage","devices":{{"staleDevices":[4,5]}}}]"#
     ) => matches Err(RequestError::Unexpected { .. }))]
     #[test_case(json(
-        410, format!(r#"{{"uuid":"{ACI_UUID}","staleDevices":["4"]}}"#)
+        410, format!(r#"[{{"uuid":"{ACI_UUID}","devices":{{"staleDevices":[200]}}}}]"#)
+    ) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(json(
+        410, format!(r#"[{{"uuid":"{ACI_UUID}","devices":{{"staleDevices":["4"]}}}}]"#)
     ) => matches Err(RequestError::Unexpected { .. }))]
     fn test_story(
         response: Response,
