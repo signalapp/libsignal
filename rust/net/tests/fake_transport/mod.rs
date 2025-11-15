@@ -28,6 +28,7 @@ pub use libsignal_net::infra::testutil::fake_transport::FakeTransportTarget;
 use libsignal_net::infra::{AsyncDuplexStream, EnableDomainFronting};
 use libsignal_net_infra::route::{Connector, TransportRoute, UsePreconnect};
 use libsignal_net_infra::utils::no_network_change_events;
+use libsignal_net_infra::ws::WebSocketTransportStream;
 use tokio::time::Duration;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::Filter as _;
@@ -43,7 +44,10 @@ mod connector;
 pub use connector::{FakeTransportConnector, TransportConnectEvent, TransportConnectEventStage};
 
 /// Convenience alias for a dynamically-dispatched stream.
-pub type FakeStream = Box<dyn AsyncDuplexStream>;
+///
+/// We use this for streams other than websocket transports, but [`WebSocketTransportStream`] is
+/// still a handy *maximal* set of requirements.
+pub type FakeStream = Box<dyn WebSocketTransportStream>;
 
 /// Produces an iterator with just direct routes (without chaining domain fronted routes).
 pub fn only_direct_routes(

@@ -83,6 +83,25 @@ pub enum WebSocketError {
     Other(&'static str),
 }
 
+/// A manual trait alias collecting the requirements for a websocket's transport stream.
+///
+/// May some day be replaceable by a language-provided trait alias,
+/// <https://github.com/rust-lang/rust/issues/41517>.
+pub trait WebSocketTransportStream:
+    AsyncDuplexStream + crate::Connection + std::fmt::Debug + 'static
+{
+}
+impl<T> WebSocketTransportStream for T where
+    T: AsyncDuplexStream + crate::Connection + std::fmt::Debug + 'static
+{
+}
+
+impl crate::Connection for Box<dyn WebSocketTransportStream> {
+    fn transport_info(&self) -> crate::TransportInfo {
+        (**self).transport_info()
+    }
+}
+
 /// Stateless [`Connector`] implementation for websocket-over-HTTPS routes.
 #[derive(Default)]
 pub struct Stateless;
@@ -115,7 +134,7 @@ pub struct StreamWithResponseHeaders<Inner> {
 /// connection (before HTTP/2).
 impl<Inner> Connector<(WebSocketRouteFragment, HttpRouteFragment), Inner> for Stateless
 where
-    Inner: AsyncDuplexStream,
+    Inner: WebSocketTransportStream,
 {
     type Connection = StreamWithResponseHeaders<tokio_tungstenite::WebSocketStream<Inner>>;
 
@@ -308,11 +327,14 @@ impl<S: crate::Connection + tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin
 /// Test utilities related to websockets.
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutil {
+    use std::net::{Ipv4Addr, SocketAddr};
+
     use tokio::io::DuplexStream;
     use tokio_tungstenite::WebSocketStream;
     use tungstenite::protocol::WebSocketConfig;
 
     use super::*;
+    use crate::TransportInfo;
 
     pub async fn fake_websocket() -> (WebSocketStream<DuplexStream>, WebSocketStream<DuplexStream>)
     {
@@ -342,6 +364,15 @@ pub mod testutil {
         } = client_res.unwrap();
         let server_stream = server_res.unwrap();
         (server_stream, client_stream)
+    }
+
+    impl crate::Connection for DuplexStream {
+        fn transport_info(&self) -> TransportInfo {
+            TransportInfo {
+                local_addr: SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0),
+                remote_addr: SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0),
+            }
+        }
     }
 }
 

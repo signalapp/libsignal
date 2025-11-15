@@ -14,6 +14,7 @@ use assert_matches::debug_assert_matches;
 use futures_util::TryFutureExt as _;
 use http::HeaderName;
 use itertools::Itertools as _;
+use libsignal_net_infra::AsHttpHeader as _;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::http_client::HttpConnectError;
@@ -34,9 +35,8 @@ use libsignal_net_infra::timeouts::{
     POST_ROUTE_CHANGE_CONNECTION_TIMEOUT, TimeoutOr,
 };
 use libsignal_net_infra::utils::NetworkChangeEvent;
-use libsignal_net_infra::ws::WebSocketConnectError;
 use libsignal_net_infra::ws::attested::AttestedConnection;
-use libsignal_net_infra::{AsHttpHeader as _, AsyncDuplexStream};
+use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketTransportStream};
 use rand::distr::uniform::{UniformSampler, UniformUsize};
 use rand_core::{OsRng, UnwrapErr};
 use static_assertions::assert_eq_size_val;
@@ -77,7 +77,7 @@ pub trait WebSocketTransportConnectorFactory<Transport = TransportRoute>:
     ConnectorFactory<
         Transport,
         Connector: Sync + Connector<Transport, (), Error: Into<WebSocketConnectError>>,
-        Connection: AsyncDuplexStream + 'static,
+        Connection: WebSocketTransportStream,
     >
 {
 }
@@ -86,7 +86,7 @@ impl<F, Transport> WebSocketTransportConnectorFactory<Transport> for F where
     F: ConnectorFactory<
             Transport,
             Connector: Sync + Connector<Transport, (), Error: Into<WebSocketConnectError>>,
-            Connection: AsyncDuplexStream + 'static,
+            Connection: WebSocketTransportStream,
         >
 {
 }
@@ -283,7 +283,7 @@ impl<TC> ConnectionResources<'_, TC> {
         // The transport connector factory needs to (a) connect over Transport, and (b) have a
         // compatible error type.
         // Note that we're not using WebSocketTransportConnectorFactory here to make `connect_ws`
-        // easier to test; specifically, the output is not guaranteed to be an AsyncDuplexStream.
+        // easier to test; specifically, the output is not guaranteed to be a WebSocketTransportStream.
         TC: ConnectorFactory<
                 Transport,
                 Connection: Send,
@@ -607,7 +607,7 @@ fn process_outcomes<R: UsesTransport>(
 impl<TC> ConnectionResources<'_, PreconnectingFactory<TC>>
 where
     // Note that we're not using WebSocketTransportConnectorFactory here to make `connect_ws`
-    // easier to test; specifically, the output is not guaranteed to be an AsyncDuplexStream.
+    // easier to test; specifically, the output is not guaranteed to be a WebSocketTransportStream.
     TC: ConnectorFactory<TransportRoute, Connector: Sync, Connection: Send>,
 {
     pub async fn preconnect_and_save(
