@@ -52,6 +52,7 @@ const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
+        http_version: Some(HttpVersion::Http1_1),
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/service",
@@ -74,6 +75,7 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
+        http_version: Some(HttpVersion::Http1_1),
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/service-staging",
@@ -88,6 +90,7 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
+        http_version: Some(HttpVersion::Http1_1),
         confirmation_header_name: None,
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/cdsi",
@@ -104,6 +107,7 @@ const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
+        http_version: Some(HttpVersion::Http1_1),
         confirmation_header_name: None,
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/cdsi-staging",
@@ -120,6 +124,7 @@ const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
+        http_version: Some(HttpVersion::Http1_1),
         confirmation_header_name: None,
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svr2",
@@ -144,6 +149,7 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
+        http_version: Some(HttpVersion::Http1_1),
         confirmation_header_name: None,
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svr2-staging",
@@ -166,6 +172,7 @@ const DOMAIN_CONFIG_SVRB_STAGING: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
+        http_version: Some(HttpVersion::Http1_1),
         confirmation_header_name: None,
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svrb-staging",
@@ -188,6 +195,7 @@ const DOMAIN_CONFIG_SVRB_PROD: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
+        http_version: Some(HttpVersion::Http1_1),
         confirmation_header_name: None,
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svrb",
@@ -324,6 +332,10 @@ pub struct ConnectionConfig {
     pub cert: RootCertificates,
     /// Which minimum version of TLS to require when connecting to the resource.
     pub min_tls_version: Option<SslVersion>,
+    /// Which version of HTTP to expect when connecting to the resource.
+    ///
+    /// This may be `None` for a non-HTTP resource.
+    pub http_version: Option<HttpVersion>,
     /// A header to look for that indicates that the resource was reached.
     ///
     /// If this is `Some()`, then the presence of the header in an HTTP response
@@ -439,6 +451,7 @@ impl ConnectionConfig {
             port,
             cert,
             min_tls_version,
+            http_version,
             confirmation_header_name: _,
             proxy,
         } = self;
@@ -481,7 +494,7 @@ impl ConnectionConfig {
 
         HttpsProvider::new(
             Arc::clone(&hostname),
-            HttpVersion::Http1_1,
+            http_version.expect("must have an HTTP version to connect to an HTTP resource"),
             DomainFrontRouteProvider::new(HttpVersion::Http1_1, domain_front_configs),
             TlsRouteProvider::new(
                 cert.clone(),
@@ -823,6 +836,7 @@ mod test {
             port: PORT,
             cert: RootCertificates::Native,
             min_tls_version: Some(SslVersion::TLS1_2),
+            http_version: Some(HttpVersion::Http1_1),
             confirmation_header_name: None,
             proxy: Some(ConnectionProxyConfig {
                 path_prefix: "proxy-prefix",
@@ -853,6 +867,7 @@ mod test {
             fragment: HttpRouteFragment {
                 host_header: "host".into(),
                 path_prefix: "".into(),
+                http_version: Some(HttpVersion::Http1_1),
                 front_name: None,
             },
             inner: TlsRoute {

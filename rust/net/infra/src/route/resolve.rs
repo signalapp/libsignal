@@ -677,6 +677,7 @@ mod test {
         let http_fragment = HttpRouteFragment {
             host_header: "target-domain".into(),
             path_prefix: "".into(),
+            http_version: None,
             front_name: None,
         };
 

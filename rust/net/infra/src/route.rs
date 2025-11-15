@@ -761,6 +761,7 @@ mod test {
                     fragment: HttpRouteFragment {
                         host_header: "http-host".into(),
                         path_prefix: "".into(),
+                        http_version: Some(HttpVersion::Http1_1),
                         front_name: None,
                     },
                     inner: TlsRoute {
@@ -787,6 +788,7 @@ mod test {
                     fragment: HttpRouteFragment {
                         host_header: "front-host".into(),
                         path_prefix: "/front-host-path-prefix".into(),
+                        http_version: Some(HttpVersion::Http2),
                         front_name: Some("front-host"),
                     },
                     inner: TlsRoute {
@@ -813,6 +815,7 @@ mod test {
                     fragment: HttpRouteFragment {
                         host_header: "front-host".into(),
                         path_prefix: "/front-host-path-prefix".into(),
+                        http_version: Some(HttpVersion::Http2),
                         front_name: Some("front-host"),
                     },
                     inner: TlsRoute {

@@ -23,7 +23,8 @@ use crate::dns::dns_utils::log_safe_domain;
 use crate::dns::lookup_result::LookupResult;
 use crate::host::Host;
 use crate::route::{
-    DEFAULT_HTTPS_PORT, HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment,
+    DEFAULT_HTTPS_PORT, HttpRouteFragment, HttpVersion, HttpsTlsRoute, TcpRoute, TlsRoute,
+    TlsRouteFragment,
 };
 use crate::timeouts::{
     DNS_LATER_RESPONSE_GRACE_PERIOD, DNS_SYSTEM_LOOKUP_TIMEOUT, DOH_FALLBACK_LOOKUP_TIMEOUT,
@@ -106,6 +107,7 @@ pub fn build_custom_resolver_cloudflare_doh(
                 path_prefix: "".into(),
                 front_name: None,
                 host_header: Arc::from(host.to_string()),
+                http_version: Some(HttpVersion::Http2),
             },
             inner: TlsRoute {
                 fragment: TlsRouteFragment {

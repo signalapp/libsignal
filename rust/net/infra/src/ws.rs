@@ -13,7 +13,7 @@ use tungstenite::{Message, Utf8Bytes, http};
 
 use crate::AsyncDuplexStream;
 use crate::errors::LogSafeDisplay;
-use crate::route::{Connector, HttpRouteFragment, WebSocketRouteFragment};
+use crate::route::{Connector, HttpRouteFragment, HttpVersion, WebSocketRouteFragment};
 use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError};
 
 pub mod error;
@@ -136,9 +136,14 @@ where
             HttpRouteFragment {
                 host_header,
                 path_prefix,
+                http_version,
                 front_name: _,
             },
         ) = route;
+
+        if !matches!(http_version, None | Some(HttpVersion::Http1_1)) {
+            unimplemented!("can only connect over HTTP/1.1 right now");
+        }
 
         let uri_path = if path_prefix.is_empty() {
             Ok(endpoint)
@@ -323,6 +328,7 @@ pub mod testutil {
                 HttpRouteFragment {
                     host_header: "localhost".into(),
                     path_prefix: "".into(),
+                    http_version: Some(HttpVersion::Http1_1),
                     front_name: None,
                 },
             ),

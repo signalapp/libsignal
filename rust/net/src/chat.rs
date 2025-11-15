@@ -519,7 +519,7 @@ pub(crate) mod test {
     use libsignal_net_infra::host::Host;
     use libsignal_net_infra::route::testutils::ConnectFn;
     use libsignal_net_infra::route::{
-        DEFAULT_HTTPS_PORT, DirectOrProxyRoute, HttpRouteFragment, HttpsTlsRoute,
+        DEFAULT_HTTPS_PORT, DirectOrProxyRoute, HttpRouteFragment, HttpVersion, HttpsTlsRoute,
         PreconnectingFactory, TcpRoute, TlsRoute, TlsRouteFragment, UnresolvedHost,
     };
     use libsignal_net_infra::utils::no_network_change_events;
@@ -735,6 +735,7 @@ pub(crate) mod test {
                 fragment: HttpRouteFragment {
                     host_header: CHAT_DOMAIN.into(),
                     path_prefix: "".into(),
+                    http_version: Some(HttpVersion::Http1_1),
                     front_name: None,
                 },
                 inner: TlsRoute {
@@ -799,6 +800,7 @@ pub(crate) mod test {
             fragment: HttpRouteFragment {
                 host_header: CHAT_DOMAIN.into(),
                 path_prefix: "".into(),
+                http_version: Some(HttpVersion::Http1_1),
                 front_name: None,
             },
             inner: TlsRoute {

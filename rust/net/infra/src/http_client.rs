@@ -18,7 +18,7 @@ use hyper_util::rt::{TokioExecutor, TokioIo};
 use static_assertions::assert_impl_all;
 
 use crate::errors::{LogSafeDisplay, TransportConnectError};
-use crate::route::{Connector, HttpRouteFragment};
+use crate::route::{Connector, HttpRouteFragment, HttpVersion};
 use crate::{AsyncDuplexStream, Connection};
 
 #[derive(displaydoc::Display, Debug)]
@@ -243,8 +243,13 @@ where
         let HttpRouteFragment {
             host_header,
             path_prefix,
+            http_version,
             front_name: _,
         } = route;
+
+        if http_version != Some(HttpVersion::Http2) {
+            return Err(HttpConnectError::InvalidConfig("wrong HTTP version"));
+        }
 
         let info = over.transport_info();
         let io = TokioIo::new(over);
@@ -436,6 +441,7 @@ mod test {
                 fragment: HttpRouteFragment {
                     host_header: Arc::clone(&host),
                     path_prefix: prefix.into(),
+                    http_version: Some(HttpVersion::Http2),
                     front_name: None,
                 },
                 inner: TlsRoute {
@@ -513,6 +519,7 @@ mod test {
                 fragment: HttpRouteFragment {
                     host_header,
                     path_prefix: "".into(),
+                    http_version: Some(HttpVersion::Http2),
                     front_name: None,
                 },
                 inner: TlsRoute {

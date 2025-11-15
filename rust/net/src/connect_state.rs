@@ -795,9 +795,9 @@ mod test {
     use libsignal_net_infra::host::Host;
     use libsignal_net_infra::route::testutils::ConnectFn;
     use libsignal_net_infra::route::{
-        AttemptOutcome, DirectOrProxyRoute, HAPPY_EYEBALLS_DELAY, HttpsTlsRoute, TcpRoute,
-        TlsRoute, TlsRouteFragment, UnresolvedHost, UnresolvedTransportRoute, UnsuccessfulOutcome,
-        WebSocketRoute,
+        AttemptOutcome, DirectOrProxyRoute, HAPPY_EYEBALLS_DELAY, HttpVersion, HttpsTlsRoute,
+        TcpRoute, TlsRoute, TlsRouteFragment, UnresolvedHost, UnresolvedTransportRoute,
+        UnsuccessfulOutcome, WebSocketRoute,
     };
     use libsignal_net_infra::utils::no_network_change_events;
     use libsignal_net_infra::{Alpn, RouteType};
@@ -832,6 +832,7 @@ mod test {
                         fragment: HttpRouteFragment {
                             host_header: "first-host".into(),
                             path_prefix: "".into(),
+                            http_version: Some(HttpVersion::Http1_1),
                             front_name: None,
                         },
                         inner: (*FAKE_TRANSPORT_ROUTE).clone(),
@@ -847,6 +848,7 @@ mod test {
                         fragment: HttpRouteFragment {
                             host_header: "second-host".into(),
                             path_prefix: "".into(),
+                            http_version: Some(HttpVersion::Http1_1),
                             front_name: Some(RouteType::ProxyF.into()),
                         },
                         inner: (*FAKE_TRANSPORT_ROUTE).clone(),
@@ -1394,6 +1396,7 @@ mod test {
                             fragment: HttpRouteFragment {
                                 host_header: "host".into(),
                                 path_prefix: "".into(),
+                                http_version: Some(HttpVersion::Http1_1),
                                 front_name: None,
                             },
                             inner: route,
