@@ -40,7 +40,14 @@
         "hasSeenGroupStoryEducationSheet": true,
         "hasCompletedUsernameOnboarding": true,
         "phoneNumberSharingMode": "NOBODY",
-        "defaultSentMediaQuality": "STANDARD"
+        "defaultSentMediaQuality": "STANDARD",
+        "appTheme": "SYSTEM",
+        "callsUseLessDataSetting": "MOBILE_DATA_ONLY"
+      },
+      "androidSpecificSettings": {
+        "useSystemEmoji": true,
+        "screenshotSecurity": true,
+        "navigationBarSize": "NORMAL"
       }
     }
   },

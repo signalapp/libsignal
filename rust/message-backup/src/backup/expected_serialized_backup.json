@@ -55,7 +55,6 @@
       },
       "optimize_on_device_storage": false,
       "backup_level": 201,
-      "show_sealed_sender_indicators": false,
       "default_sent_media_quality": "Standard",
       "auto_download_settings": {
         "images": "Never",
@@ -64,7 +63,9 @@
         "documents": "WifiAndCellular"
       },
       "screen_lock_timeout": 2520000,
-      "pin_reminders": null
+      "pin_reminders": null,
+      "app_theme": "System",
+      "calls_use_less_data_setting": "MobileDataOnly"
     },
     "avatar_url_path": "",
     "donation_subscription": null,
@@ -77,7 +78,8 @@
     "svr_pin": "",
     "android_specific_settings": {
       "use_system_emoji": true,
-      "screenshot_security": false
+      "screenshot_security": false,
+      "navigation_bar_size": "Compact"
     },
     "bio_text": "",
     "bio_emoji": ""

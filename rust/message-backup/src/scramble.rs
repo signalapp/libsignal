@@ -303,12 +303,13 @@ impl Visit<Scrambler> for proto::account_data::AccountSettings {
             customChatColors,
             optimizeOnDeviceStorage: _,
             backupTier: _,
-            special_fields: _,
-            showSealedSenderIndicators: _,
+            appTheme: _,
+            callsUseLessDataSetting: _,
             defaultSentMediaQuality: _,
             autoDownloadSettings: _,
             screenLockTimeoutMinutes: _,
             pinReminders: _,
+            special_fields: _,
         } = self;
 
         defaultChatStyle.accept(visitor);
