@@ -136,6 +136,13 @@ export class Fingerprint {
   }
 }
 
+/**
+ * Implements the <a href="https://en.wikipedia.org/wiki/AES-GCM-SIV">AES-256-GCM-SIV</a>
+ * authenticated stream cipher with a 12-byte nonce.
+ *
+ * AES-GCM-SIV is a multi-pass algorithm (to generate the "synthetic initialization vector"), so
+ * this API does not expose a streaming form.
+ */
 export class Aes256GcmSiv {
   readonly _nativeHandle: Native.Aes256GcmSiv;
 
@@ -147,20 +154,38 @@ export class Aes256GcmSiv {
     return new Aes256GcmSiv(key);
   }
 
+  /**
+   * Encrypts the given plaintext using the given nonce, and authenticating the ciphertext and given
+   * associated data.
+   *
+   * The associated data is not included in the ciphertext; instead, it's expected to match between
+   * the encrypter and decrypter. If you don't need any extra data, pass an empty array.
+   *
+   * @returns The encrypted data, including an appended 16-byte authentication tag.
+   */
   encrypt(
     message: Uint8Array,
     nonce: Uint8Array,
-    associated_data: Uint8Array
+    associatedData: Uint8Array
   ): Uint8Array {
-    return Native.Aes256GcmSiv_Encrypt(this, message, nonce, associated_data);
+    return Native.Aes256GcmSiv_Encrypt(this, message, nonce, associatedData);
   }
 
+  /**
+   * Decrypts the given ciphertext using the given nonce, and authenticating the ciphertext and given
+   * associated data.
+   *
+   * The associated data is not included in the ciphertext; instead, it's expected to match between
+   * the encrypter and decrypter.
+   *
+   * @returns The decrypted data
+   */
   decrypt(
     message: Uint8Array,
     nonce: Uint8Array,
-    associated_data: Uint8Array
+    associatedData: Uint8Array
   ): Uint8Array {
-    return Native.Aes256GcmSiv_Decrypt(this, message, nonce, associated_data);
+    return Native.Aes256GcmSiv_Decrypt(this, message, nonce, associatedData);
   }
 }
 

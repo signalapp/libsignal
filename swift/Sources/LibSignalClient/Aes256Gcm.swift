@@ -6,6 +6,13 @@
 import Foundation
 import SignalFfi
 
+/// Provides convenient use of the
+/// [AES-256-GCM](https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation#Galois/counter_(GCM))
+/// authenticated stream cipher with a 12-byte nonce.
+///
+/// This struct packs up all the data needed to transmit an AES-GCM ciphertext, and makes it easy to
+/// operate on a full ciphertext at once. If you need streaming encryption or decryption, you can
+/// use the more manual APIs ``Aes256GcmEncryption`` and ``Aes256GcmDecryption``.
 public struct Aes256GcmEncryptedData: Sendable {
     public static let keyLength: Int = 32
     public static let nonceLength: Int = 12
@@ -22,6 +29,11 @@ public struct Aes256GcmEncryptedData: Sendable {
         self.authenticationTag = authenticationTag
     }
 
+    /// Assumes `concatenated` is the concatenation `nonce || ciphertext || authenticationTag`, and
+    /// splits it up accordingly.
+    ///
+    /// Throws if the data is too short to contain all three parts (though technically the
+    /// ciphertext may be empty).
     @inlinable
     public init(concatenated: Data) throws {
         guard concatenated.count >= Self.nonceLength + Self.authenticationTagLength else {
@@ -32,6 +44,10 @@ public struct Aes256GcmEncryptedData: Sendable {
         self.authenticationTag = concatenated.suffix(Self.authenticationTagLength)
     }
 
+    /// Concatenates the nonce, ciphertext, and authentication tag, in that order.
+    ///
+    /// This is a fairly standard way to send AES-GCM ciphertexts. The result is suitable for
+    /// passing to ``init(concatenated:)``.
     public func concatenate() -> Data {
         var result = Data(capacity: nonce.count + self.ciphertext.count + self.authenticationTag.count)
         result += self.nonce
@@ -40,6 +56,14 @@ public struct Aes256GcmEncryptedData: Sendable {
         return result
     }
 
+    /// Encrypts the given plaintext using the given key, and authenticating the ciphertext and
+    /// given associated data.
+    ///
+    /// The associated data is not included in the ciphertext; instead, it's expected to match
+    /// between the encrypter and decrypter. If you don't need any extra data, use the other
+    /// overload ``encrypt(_:key:)``.
+    ///
+    /// This API will generate a random nonce, which is included in the result.
     public static func encrypt(
         _ message: Data,
         key: some ContiguousBytes,
@@ -56,12 +80,22 @@ public struct Aes256GcmEncryptedData: Sendable {
         return Self(nonce: nonce, ciphertext: ciphertext, authenticationTag: tag)
     }
 
+    /// Encrypts the given plaintext using the given key, authenticating the ciphertext.
+    ///
+    /// This API will generate a random nonce, which is included in the result.
+    ///
+    /// - SeeAlso: ``encrypt(_:key:associatedData:)``
     public static func encrypt(_ message: Data, key: some ContiguousBytes) throws -> Self {
         return try self.encrypt(message, key: key, associatedData: [])
     }
 
-    // Inlinable here specifically to avoid copying the ciphertext again if the struct is no longer used.
-    @inlinable
+    /// Decrypts `self` using the given key, and authenticates the ciphertext and given associated
+    /// data.
+    ///
+    /// The associated data is not included in the ciphertext; instead, it's expected to match
+    /// between the encrypter and decrypter. If you don't have any extra data, use the other
+    /// overload ``decrypt(key:)``.
+    @inlinable  // Inlinable here specifically to avoid copying the ciphertext again if the struct is no longer used.
     public func decrypt(
         key: some ContiguousBytes,
         associatedData: some ContiguousBytes
@@ -75,14 +109,30 @@ public struct Aes256GcmEncryptedData: Sendable {
         return plaintext
     }
 
+    /// Decrypts `self` using the given key, authenticating the ciphertext.
+    ///
+    /// - SeeAlso: ``decrypt(key:associatedData:)``
     @inlinable
     public func decrypt(key: some ContiguousBytes) throws -> Data {
         return try self.decrypt(key: key, associatedData: [])
     }
 }
 
-/// Supports streamed encryption and custom nonces. Use Aes256GcmEncryptedData if you don't need either.
+/// Implements the
+/// [AES-256-GCM](https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation#Galois/counter_(GCM))
+/// authenticated stream cipher with a 12-byte nonce.
+///
+/// This API exposes the streaming nature of AES-GCM to allow decrypting data without having it
+/// resident in memory all at once. You must call ``computeTag()`` when the encryption is complete,
+/// or else you have no authenticity guarantees. Use ``Aes256GcmEncryptedData`` instead if you don't
+/// need to stream the data or choose your own nonce.
+///
+/// - SeeAlso: ``Aes256GcmDecryption``
 public class Aes256GcmEncryption: NativeHandleOwner<SignalMutPointerAes256GcmEncryption> {
+    /// Initializes the cipher with the given inputs.
+    ///
+    /// The associated data is not included in the plaintext or tag; instead, it's expected to match
+    /// between the encrypter and decrypter. If you don't need any extra data, pass an empty array.
     public convenience init(
         key: some ContiguousBytes,
         nonce: some ContiguousBytes,
@@ -111,6 +161,9 @@ public class Aes256GcmEncryption: NativeHandleOwner<SignalMutPointerAes256GcmEnc
         return signal_aes256_gcm_encryption_destroy(handle.pointer)
     }
 
+    /// Encrypts `message` in place and advances the state of the cipher.
+    ///
+    /// Don't forget to call ``computeTag()`` when encryption is complete.
     public func encrypt(_ message: inout Data) throws {
         try withNativeHandle { nativeHandle in
             try message.withUnsafeMutableBytes { messageBytes in
@@ -126,6 +179,9 @@ public class Aes256GcmEncryption: NativeHandleOwner<SignalMutPointerAes256GcmEnc
         }
     }
 
+    /// Produces an authentication tag for the plaintext that has been processed.
+    ///
+    /// After calling `computeTag()`, this object may not be used anymore.
     public func computeTag() throws -> Data {
         return try withNativeHandle { nativeHandle in
             try invokeFnReturningData {
@@ -151,8 +207,21 @@ extension SignalMutPointerAes256GcmEncryption: SignalMutPointer {
     }
 }
 
-/// Supports streamed decryption. Use Aes256GcmEncryptedData if you don't need streamed decryption.
+/// Implements the
+/// [AES-256-GCM](https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation#Galois/counter_(GCM))
+/// authenticated stream cipher with a 12-byte nonce.
+///
+/// This API exposes the streaming nature of AES-GCM to allow decrypting data without having it
+/// resident in memory all at once. You **must** call ``verifyTag(_:)`` when the decryption is
+/// complete, or else you have no authenticity guarantees. Use ``Aes256GcmEncryptedData`` instead if
+/// you don't need streamed decryption.
+///
+/// - SeeAlso: ``Aes256GcmEncryption``
 public class Aes256GcmDecryption: NativeHandleOwner<SignalMutPointerAes256GcmDecryption> {
+    /// Initializes the cipher with the given inputs.
+    ///
+    /// The associated data is not included in the plaintext or tag; instead, it's expected to match
+    /// between the encrypter and decrypter.
     public convenience init(
         key: some ContiguousBytes,
         nonce: some ContiguousBytes,
@@ -181,6 +250,9 @@ public class Aes256GcmDecryption: NativeHandleOwner<SignalMutPointerAes256GcmDec
         return signal_aes256_gcm_decryption_destroy(handle.pointer)
     }
 
+    /// Decrypts `message` in place and advances the state of the cipher.
+    ///
+    /// Don't forget to call ``verifyTag(_:)`` when decryption is complete.
     public func decrypt(_ message: inout Data) throws {
         try withNativeHandle { nativeHandle in
             try message.withUnsafeMutableBytes { messageBytes in
@@ -196,6 +268,12 @@ public class Aes256GcmDecryption: NativeHandleOwner<SignalMutPointerAes256GcmDec
         }
     }
 
+    /// Returns `true` if and only if `tag` matches the ciphertext that has been processed.
+    ///
+    /// Throws if the tag is not structurally valid (which it's acceptable to treat as "did not
+    /// return `true`").
+    ///
+    /// After calling `verifyTag(_:)`, this object may not be used anymore.
     public func verifyTag(_ tag: some ContiguousBytes) throws -> Bool {
         return try withNativeHandle { nativeHandle in
             try tag.withUnsafeBorrowedBuffer { tagBuffer in

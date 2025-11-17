@@ -6,10 +6,19 @@
 import Foundation
 import SignalFfi
 
+/// Implements the
+/// [AES-256-CTR](https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation#Counter_(CTR))
+/// stream cipher with a combined 12-byte nonce and initial 4-byte counter.
+///
+/// CTR mode is built on XOR, so encrypting and decrypting are the same operation.
 public class Aes256Ctr32: NativeHandleOwner<SignalMutPointerAes256Ctr32> {
     public static let keyLength: Int = 32
     public static let nonceLength: Int = 16
 
+    /// Initializes the cipher with the given key and combined nonce.
+    ///
+    /// The first 12 bytes of the nonce are treated as a traditional nonce, while the last four are
+    /// treated as the initial counter---the position in the cipher stream to start at.
     public convenience init<KeyBytes, NonceBytes>(
         key: KeyBytes,
         nonce: NonceBytes
@@ -49,6 +58,8 @@ public class Aes256Ctr32: NativeHandleOwner<SignalMutPointerAes256Ctr32> {
         return signal_aes256_ctr32_destroy(handle.pointer)
     }
 
+    /// Encrypts the plaintext, or decrypts the ciphertext, in `message`, in place, advancing the
+    /// state of the cipher.
     public func process(_ message: inout Data) throws {
         try withNativeHandle { nativeHandle in
             try message.withUnsafeMutableBytes { messageBytes in
@@ -64,6 +75,10 @@ public class Aes256Ctr32: NativeHandleOwner<SignalMutPointerAes256Ctr32> {
         }
     }
 
+    /// Encrypts the plaintext, or decrypts the ciphertext, in `message`, in place, using the given
+    /// key and nonce.
+    ///
+    /// This is a convenience for when the entire message fits in memory.
     public static func process<KeyBytes, NonceBytes>(
         _ message: inout Data,
         key: KeyBytes,
