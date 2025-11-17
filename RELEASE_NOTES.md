@@ -1,3 +1,2 @@
-v0.86.5
+v0.86.6
 
-- chat: Fixed parsing of 409/410 responses for sendMultiRecipientMessage.
