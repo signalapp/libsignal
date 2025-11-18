@@ -24,10 +24,11 @@ fn main() {
 
     let json_input = String::from_utf8(read_file(input))
         .expect("not a string")
-        // Work around https://github.com/callum-oakley/json5-rs/issues/21
+        // Work around https://github.com/callum-oakley/json5-rs/issues/21,
+        // which persists in the serde_json5 fork.
         .replace("\u{2028}", "\\u2028")
         .replace("\u{2029}", "\\u2029");
-    let contents = json5::from_str(&json_input).expect("invalid JSON");
+    let contents = serde_json5::from_str(&json_input).expect("invalid JSON");
 
     let contents = assert_matches!(contents, serde_json::Value::Array(contents) => contents);
     let serialized =

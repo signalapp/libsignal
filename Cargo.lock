@@ -2109,17 +2109,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "json5"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96b0db21af676c1ce64250b5f40f3ce2cf27e4e47cb91ed91eb6fe9350b430c1"
-dependencies = [
- "pest",
- "pest_derive",
- "serde",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2577,7 +2566,6 @@ dependencies = [
  "hmac",
  "intmap",
  "itertools 0.14.0",
- "json5",
  "libsignal-account-keys",
  "libsignal-cli-utils",
  "libsignal-core",
@@ -2598,6 +2586,7 @@ dependencies = [
  "rand 0.9.2",
  "serde",
  "serde_json",
+ "serde_json5",
  "serde_with",
  "sha2",
  "signal-crypto",
@@ -4426,6 +4415,17 @@ dependencies = [
  "ryu",
  "serde",
  "serde_core",
+]
+
+[[package]]
+name = "serde_json5"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d34d03f54462862f2a42918391c9526337f53171eaa4d8894562be7f252edd3"
+dependencies = [
+ "pest",
+ "pest_derive",
+ "serde",
 ]
 
 [[package]]

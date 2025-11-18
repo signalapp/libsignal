@@ -101,10 +101,10 @@ const-str = { workspace = true }
 criterion = { workspace = true }
 dir-test = { workspace = true }
 futures = { workspace = true, features = ["executor"] }
-json5 = { workspace = true }
 nonzero_ext = { workspace = true }
 once_cell = { workspace = true }
 pretty_assertions = { workspace = true }
+serde_json5 = { workspace = true }
 test-case = { workspace = true }
 test-log = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
