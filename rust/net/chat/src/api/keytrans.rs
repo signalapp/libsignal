@@ -10,7 +10,6 @@ use std::future::Future;
 use std::time::SystemTime;
 
 use async_trait::async_trait;
-use futures_util::future::try_join_all;
 use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{
     AccountData, ChatDistinguishedResponse, ChatMonitorResponse, ChatSearchResponse,
@@ -519,10 +518,11 @@ pub async fn monitor_and_search(
                 result
             };
 
-            let futures = all_search_params
-                .into_iter()
-                .map(|params| search_with_params(kt, params));
-            try_join_all(futures).await?;
+            // Running the tasks sequentially instead of try_join_all to let
+            // other networking tasks be scheduled to use our single connection.
+            for params in all_search_params {
+                search_with_params(kt, params).await?;
+            }
             // If all the version specific searches succeed it is OK to accept the
             // account data monitor returned.
             updated_account_data.into()
