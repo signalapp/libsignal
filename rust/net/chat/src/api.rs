@@ -50,6 +50,7 @@ pub enum UserBasedAuthorization {
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
+#[cfg_attr(test, derive(Clone))]
 #[ignore_extra_doc_attributes]
 pub enum RequestError<E, D = DisconnectedError> {
     /// the request timed out
@@ -85,6 +86,7 @@ impl<E, D> From<Infallible> for RequestError<E, D> {
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
+#[cfg_attr(test, derive(Clone))]
 #[ignore_extra_doc_attributes]
 pub enum DisconnectedError {
     /// the server explicitly disconnected us because we connected elsewhere with the same credentials
@@ -106,6 +108,7 @@ impl<E> From<DisconnectedError> for RequestError<E> {
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
+#[cfg_attr(test, derive(Clone))]
 /// retry after completing a rate limit challenge {options:?}
 pub struct RateLimitChallenge {
     pub token: String,

@@ -12,7 +12,7 @@ use base64::prelude::{
 use http::header::ACCEPT;
 use http::uri::PathAndQuery;
 use libsignal_core::{Aci, E164};
-use libsignal_keytrans::{AccountData, LastTreeHead};
+use libsignal_keytrans::{AccountData, LastTreeHead, Versioned};
 use libsignal_net::chat;
 use libsignal_protocol::PublicKey;
 use serde::{Deserialize, Serialize};
@@ -66,25 +66,34 @@ struct RawChatSearchRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     last_tree_head_size: Option<u64>,
     distinguished_tree_head_size: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    aci_version: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    e164_version: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    username_hash_version: Option<u32>,
 }
 
 impl RawChatSearchRequest {
     fn new(
-        aci: &Aci,
+        aci: Versioned<&Aci>,
         aci_identity_key: &PublicKey,
-        e164: Option<&(E164, Vec<u8>)>,
-        username_hash: Option<&UsernameHash>,
+        e164: Option<Versioned<&(E164, Vec<u8>)>>,
+        username_hash: Option<Versioned<&UsernameHash>>,
         last_tree_head_size: Option<u64>,
         distinguished_tree_head_size: u64,
     ) -> Self {
         Self {
-            aci: aci.as_chat_value(),
+            aci: aci.item.as_chat_value(),
             aci_identity_key: BASE64_STANDARD.encode(aci_identity_key.serialize()),
-            e164: e164.map(|x| x.0.as_chat_value()),
-            username_hash: username_hash.map(|x| x.as_chat_value()),
-            unidentified_access_key: e164.map(|x| BASE64_STANDARD.encode(&x.1)),
+            e164: e164.as_ref().map(|x| x.item.0.as_chat_value()),
+            username_hash: username_hash.as_ref().map(|x| x.item.as_chat_value()),
+            unidentified_access_key: e164.as_ref().map(|x| BASE64_STANDARD.encode(&x.item.1)),
             last_tree_head_size,
             distinguished_tree_head_size,
+            aci_version: aci.version,
+            e164_version: e164.and_then(|x| x.version),
+            username_hash_version: username_hash.and_then(|x| x.version),
         }
     }
 }
@@ -276,10 +285,10 @@ impl<T: WsConnection> Unauth<T> {
 impl<T: WsConnection> LowLevelChatApi for Unauth<T> {
     async fn search(
         &self,
-        aci: &Aci,
+        aci: Versioned<&Aci>,
         aci_identity_key: &PublicKey,
-        e164: Option<&(E164, Vec<u8>)>,
-        username_hash: Option<&UsernameHash<'_>>,
+        e164: Option<Versioned<&(E164, Vec<u8>)>>,
+        username_hash: Option<Versioned<&UsernameHash<'_>>>,
         stored_account_data: Option<&AccountData>,
         distinguished_tree_head: &LastTreeHead,
     ) -> Result<Vec<u8>, RequestError<Error>> {
@@ -419,10 +428,10 @@ mod test_support {
 
         let account_data = kt
             .search(
-                &aci,
+                (&aci).into(),
                 &aci_identity_key,
-                Some(e164.clone()),
-                Some(username_hash.clone()),
+                Some(e164.clone().into()),
+                Some(username_hash.clone().into()),
                 None,
                 &distinguished_tree,
             )
@@ -447,10 +456,10 @@ mod test_support {
         prompt("Now advance the tree. Yes, again! (and press ENTER)");
 
         let raw_request = RawChatSearchRequest::new(
-            &aci,
+            (&aci).into(),
             &aci_identity_key,
-            Some(&e164),
-            Some(&username_hash),
+            Some((&e164).into()),
+            Some((&username_hash).into()),
             Some(account_data.last_tree_head.0.tree_size),
             distinguished_tree.0.tree_size,
         );
@@ -530,10 +539,10 @@ mod test {
                 let known_account_data = test_account_data();
 
                 kt.search(
-                    &aci,
+                    (&aci).into(),
                     &aci_identity_key,
-                    use_e164.then_some(e164),
-                    use_username_hash.then_some(username_hash),
+                    use_e164.then_some(e164.into()),
+                    use_username_hash.then_some(username_hash.into()),
                     Some(known_account_data),
                     &test_distinguished_tree(),
                 )
@@ -543,6 +552,38 @@ mod test {
         )
         .await
         .expect("can search");
+    }
+
+    #[tokio::test]
+    async fn search_with_version_integration_test() {
+        if !kt_integration_enabled() {
+            println!("SKIPPED: running integration tests is not enabled");
+            return;
+        }
+        retry_n(
+            NETWORK_RETRY_COUNT,
+            || async {
+                let chat = make_chat().await;
+                let kt = make_kt(&chat);
+
+                let known_account_data = test_account_data();
+                let aci_version = known_account_data.aci.greatest_version();
+
+                kt.search(
+                    Versioned::new(&test_account::aci(), aci_version),
+                    // (&test_account::aci()).into(),
+                    &test_account::aci_identity_key(),
+                    Some(test_account::e164_pair().into()),
+                    Some(test_account::username_hash().into()),
+                    None,
+                    &test_distinguished_tree(),
+                )
+                .await
+            },
+            should_retry,
+        )
+        .await
+        .expect("can search with version");
     }
 
     #[tokio::test]
@@ -646,7 +687,7 @@ mod test {
 
         let result = kt
             .search(
-                &test_account::aci(),
+                (&test_account::aci()).into(),
                 &wrong_identity_key,
                 None,
                 None,
@@ -676,7 +717,7 @@ mod test {
 
         let result = kt
             .search(
-                &aci,
+                (&aci).into(),
                 &wrong_identity_key,
                 None,
                 None,

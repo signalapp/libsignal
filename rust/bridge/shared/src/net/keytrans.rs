@@ -10,7 +10,7 @@ pub use libsignal_bridge_types::net::{Environment, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{
-    AccountData, LastTreeHead, LocalStateUpdate, StoredAccountData, StoredTreeHead,
+    AccountData, LastTreeHead, LocalStateUpdate, StoredAccountData, StoredTreeHead, Versioned,
 };
 use libsignal_net_chat::api::RequestError;
 use libsignal_net_chat::api::keytrans::{
@@ -66,10 +66,10 @@ async fn KeyTransparency_Search(
             Box::pin(async move {
                 let kt = KeyTransparencyClient::new(*chat, config);
                 kt.search(
-                    &aci,
+                    Versioned::from(&aci),
                     aci_identity_key,
-                    e164_pair,
-                    username_hash,
+                    e164_pair.map(Versioned::from),
+                    username_hash.map(Versioned::from),
                     account_data,
                     &last_distinguished_tree_head,
                 )

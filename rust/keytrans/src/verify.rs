@@ -38,7 +38,7 @@ const ALLOWED_AUDITOR_TIMESTAMP_RANGE: &TimestampRange = &TimestampRange {
 };
 const ENTRIES_MAX_BEHIND: u64 = 10_000_000;
 
-#[derive(Debug, displaydoc::Display)]
+#[derive(Clone, Debug, displaydoc::Display)]
 pub enum Error {
     /// Required field '{0}' not found
     RequiredFieldMissing(&'static str),
