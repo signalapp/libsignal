@@ -29,14 +29,13 @@ java_build: docker_image
 publish_java: DOCKER_EXTRA = $(shell [ -L build ] && P=$$(readlink build) && echo -v $$P/:$$P )
 publish_java: docker_image
 	$(DOCKER) run --rm --user $$(id -u):$$(id -g) \
-		-v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) \
-		-e ORG_GRADLE_PROJECT_sonatypeUsername \
-		-e ORG_GRADLE_PROJECT_sonatypePassword \
 		-e ORG_GRADLE_PROJECT_signingKeyId \
 		-e ORG_GRADLE_PROJECT_signingPassword \
 		-e ORG_GRADLE_PROJECT_signingKey \
+		-e CLOUDSDK_AUTH_ACCESS_TOKEN \
+		-v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) \
 		$(DOCKER_IMAGE) \
-		sh -c "cd src/java; ./gradlew $(GRADLE_OPTIONS) publish closeAndReleaseStagingRepositories $(CROSS_COMPILE_SERVER)"
+		sh -c "cd src/java; ./gradlew $(GRADLE_OPTIONS) publish $(CROSS_COMPILE_SERVER)"
 
 # We could run these through Docker, but they would have the same result anyway.
 

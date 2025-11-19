@@ -145,13 +145,25 @@ $ make
 When exposing new APIs to Java, you will need to run `rust/bridge/jni/bin/gen_java_decl.py` in
 addition to rebuilding. This requires installing the `cbindgen` Rust tool, as detailed above. 
 
-### Maven Central
+### Use as a library
 
-Signal publishes Java packages on [Maven Central](https://central.sonatype.org) for its own use,
-under the names org.signal:libsignal-server, org.signal:libsignal-client, and
-org.signal:libsignal-android. libsignal-client and libsignal-server contain native libraries for
-Debian-flavored x86_64 Linux as well as Windows (x86_64) and macOS (x86_64 and arm64).
-libsignal-android contains native libraries for armeabi-v7a, arm64-v8a, x86, and x86_64 Android.
+Signal publishes Java packages for its own use, under the names org.signal:libsignal-server,
+org.signal:libsignal-client, and org.signal:libsignal-android. libsignal-client and libsignal-server
+contain native libraries for Debian-flavored x86_64 Linux as well as Windows (x86_64) and macOS
+(x86_64 and arm64). libsignal-android contains native libraries for armeabi-v7a, arm64-v8a, x86, and
+x86_64 Android. These are located in a Maven repository at
+https://build-artifacts.signal.org/libraries/maven/; for use from Gradle, add the following to your
+`repositories` block:
+
+```
+maven {
+  name = "SignalBuildArtifacts"
+  // The "uri()" part is only necessary for Kotlin Gradle; Groovy Gradle accepts a bare string here.
+  url = uri("https://build-artifacts.signal.org/libraries/maven/")
+}
+```
+
+Older builds were published to [Maven Central](https://central.sonatype.org) instead.
 
 When building for Android you need *both* libsignal-android and libsignal-client, but the Windows
 and macOS libraries in libsignal-client won't automatically be excluded from your final app. You can

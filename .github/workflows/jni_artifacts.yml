@@ -1,4 +1,4 @@
-name: Upload Java libraries to Sonatype
+name: Upload Java libraries
 run-name: ${{ github.workflow }} (${{ github.ref_name }})
 
 on:
@@ -125,6 +125,11 @@ jobs:
   publish:
     name: Build for production and publish
 
+    permissions:
+      contents: read
+      # Needed for google-github-actions/auth.
+      id-token: write
+
     runs-on: ubuntu-latest-8-cores
 
     needs: [build, verify-rust]
@@ -175,12 +180,19 @@ jobs:
         name: libsignal-server
         path: java/server/build/libs/libsignal-server-*.jar
 
+    - id: gcp-auth
+      uses: google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c # v2.1.2
+      if: ${{ !inputs.dry_run }}
+      with:
+        workload_identity_provider: 'projects/741367068918/locations/global/workloadIdentityPools/github/providers/github-actions'
+        service_account: 'github-actions@signal-build-artifacts.iam.gserviceaccount.com'
+        token_format: 'access_token'
+
     - run: make publish_java
       if: ${{ !inputs.dry_run }}
       working-directory: java
       env:
-        ORG_GRADLE_PROJECT_sonatypeUsername: ${{ secrets.SONATYPE_USER }}
-        ORG_GRADLE_PROJECT_sonatypePassword: ${{ secrets.SONATYPE_PASSWORD }}
+        CLOUDSDK_AUTH_ACCESS_TOKEN: ${{ steps.gcp-auth.outputs.access_token }}
         ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.SIGNING_KEYID }}
         ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.SIGNING_PASSWORD }}
         # ASCII-armored PGP secret key
