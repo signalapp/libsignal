@@ -533,7 +533,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest-4-cores, windows-latest-8-cores, macos-15]
+        os: [ubuntu-latest-4-cores, windows-latest-8-cores, macos-15-xlarge]
 
     needs: changes
 
@@ -691,7 +691,7 @@ jobs:
   swift_cocoapod:
     name: Swift CocoaPod
 
-    runs-on: macos-15
+    runs-on: macos-15-xlarge
 
     needs: changes
 
