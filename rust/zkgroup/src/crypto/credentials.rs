@@ -27,8 +27,9 @@ use crate::{
     NUM_AUTH_CRED_ATTRIBUTES, NUM_PROFILE_KEY_CRED_ATTRIBUTES, NUM_RECEIPT_CRED_ATTRIBUTES,
 };
 
-static SYSTEM_PARAMS: LazyLock<SystemParams> =
-    LazyLock::new(|| crate::deserialize::<SystemParams>(SystemParams::SYSTEM_HARDCODED).unwrap());
+static SYSTEM_PARAMS: LazyLock<SystemParams> = LazyLock::new(|| {
+    crate::deserialize(SystemParams::SYSTEM_HARDCODED).expect("valid hardcoded params")
+});
 
 const NUM_SUPPORTED_ATTRS: usize = 6;
 #[derive(Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

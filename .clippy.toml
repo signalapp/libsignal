@@ -7,5 +7,5 @@ disallowed-methods = [
     { path = "jni::JNIEnv::call_static_method_unchecked", reason = "use helper method instead" },
     { path = "jni::JNIEnv::new_object", reason = "use helper method instead" },
     { path = "jni::JNIEnv::new_object_unchecked", reason = "use helper method instead" },
-    ".." # keep any defaults
 ]
+allow-unwrap-in-tests = true

@@ -4,12 +4,13 @@
 //
 
 use std::fmt::{Debug, Display, Formatter};
-use std::ops::{Add, Range, RangeInclusive};
+use std::ops::{Range, RangeInclusive};
 use std::str::FromStr;
 use std::sync::LazyLock;
 
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek::traits::MultiscalarMul;
 use poksho::args::{PointArgs, ScalarArgs};
 use poksho::{PokshoError, Statement};
 use rand::Rng;
@@ -161,7 +162,6 @@ impl Username {
     ) -> Result<Vec<String>, UsernameError> {
         validate_nickname(nickname, &limits)?;
         let candidates = random_discriminators(rng, &CANDIDATES_PER_RANGE, &DISCRIMINATOR_RANGES)
-            .unwrap()
             .iter()
             .map(|d| Self::format_parts(nickname, d))
             .collect();
@@ -173,12 +173,10 @@ impl Username {
     }
 
     fn hash_from_scalars(scalars: &[Scalar]) -> RistrettoPoint {
-        BASE_POINTS
-            .iter()
-            .zip(scalars)
-            .map(|(point, scalar)| point * scalar)
-            .reduce(RistrettoPoint::add)
-            .unwrap()
+        // Will panic if the number of scalars doesn't match the number of base points.
+        // If we ever change the encoding to not use a fixed number of scalars, this will need to be
+        // updated.
+        RistrettoPoint::multiscalar_mul(scalars, BASE_POINTS.iter())
     }
 
     fn make_scalar_args(scalars: &[Scalar]) -> ScalarArgs {
@@ -330,14 +328,14 @@ fn random_discriminators<R: Rng>(
     rng: &mut R,
     count_per_range: &[usize],
     ranges: &[Range<usize>],
-) -> Result<Vec<usize>, UsernameError> {
+) -> Vec<usize> {
     assert!(count_per_range.len() <= ranges.len(), "Not enough ranges");
     let total_count: usize = count_per_range.iter().sum();
     let mut results = Vec::with_capacity(total_count);
     for (n, range) in count_per_range.iter().zip(ranges) {
         results.extend(gen_range(rng, range, *n));
     }
-    Ok(results)
+    results
 }
 
 fn gen_range<'a, R: Rng>(
@@ -520,7 +518,7 @@ mod test {
     #[test]
     fn generate_discriminators() {
         let mut rng = rand::rng();
-        let ds = random_discriminators(&mut rng, &[4, 3, 2, 1], &DISCRIMINATOR_RANGES).unwrap();
+        let ds = random_discriminators(&mut rng, &[4, 3, 2, 1], &DISCRIMINATOR_RANGES);
         assert!(DISCRIMINATOR_RANGES[0].contains(&ds[0]));
         assert!(DISCRIMINATOR_RANGES[0].contains(&ds[1]));
         assert!(DISCRIMINATOR_RANGES[0].contains(&ds[2]));

@@ -252,7 +252,7 @@ impl<'a> IssuanceProofBuilder<'a> {
                 self.authenticated_message,
                 &sho.squeeze_and_ratchet_as_array::<RANDOMNESS_LEN>(),
             )
-            .unwrap();
+            .expect("valid proof");
         IssuanceProof {
             poksho_proof,
             credential,

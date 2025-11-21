@@ -36,7 +36,7 @@
 //! [paper]: https://eprint.iacr.org/2019/1416
 
 #![allow(non_snake_case)]
-#![warn(missing_docs)]
+#![warn(missing_docs, clippy::unwrap_used)]
 
 /// A zkcredential operation failed to verify.
 #[derive(Debug, thiserror::Error, displaydoc::Display)]

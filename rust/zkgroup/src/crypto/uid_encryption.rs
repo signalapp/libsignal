@@ -17,8 +17,9 @@ use crate::common::errors::*;
 use crate::common::sho::*;
 use crate::crypto::uid_struct;
 
-static SYSTEM_PARAMS: LazyLock<SystemParams> =
-    LazyLock::new(|| crate::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap());
+static SYSTEM_PARAMS: LazyLock<SystemParams> = LazyLock::new(|| {
+    crate::deserialize(&SystemParams::SYSTEM_HARDCODED).expect("valid hardcoded params")
+});
 
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct SystemParams {

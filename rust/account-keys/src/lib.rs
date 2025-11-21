@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+#![warn(clippy::unwrap_used)]
+
 mod backup;
 mod error;
 mod hash;
@@ -31,7 +33,7 @@ impl AccountEntropyPool {
     const ALPHABET: &'static [u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
 
     pub fn generate(rng: &mut impl Rng) -> AccountEntropyPool {
-        let alphabet_dist = slice::Choose::new(Self::ALPHABET).unwrap();
+        let alphabet_dist = slice::Choose::new(Self::ALPHABET).expect("non-empty");
         let entropy_pool: [u8; Self::LENGTH] = std::array::from_fn(|_| *rng.sample(alphabet_dist));
         Self { entropy_pool }
     }

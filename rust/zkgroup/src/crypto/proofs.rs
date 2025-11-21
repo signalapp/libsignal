@@ -140,7 +140,7 @@ impl ProfileKeyCredentialRequestProof {
                 &[],
                 &sho.squeeze_as_array::<RANDOMNESS_LEN>(),
             )
-            .unwrap();
+            .expect("valid proof");
         ProfileKeyCredentialRequestProof { poksho_proof }
     }
 
@@ -262,7 +262,7 @@ impl ExpiringProfileKeyCredentialIssuanceProof {
                 &[],
                 &sho.squeeze_as_array::<RANDOMNESS_LEN>(),
             )
-            .unwrap();
+            .expect("valid proof");
         ExpiringProfileKeyCredentialIssuanceProof { poksho_proof }
     }
 
@@ -390,7 +390,7 @@ impl ReceiptCredentialIssuanceProof {
                 &[],
                 &sho.squeeze_as_array::<RANDOMNESS_LEN>(),
             )
-            .unwrap();
+            .expect("valid proof");
         Self { poksho_proof }
     }
 
@@ -564,7 +564,7 @@ impl ExpiringProfileKeyCredentialPresentationProof {
                 &[],
                 &sho.squeeze_as_array::<RANDOMNESS_LEN>(),
             )
-            .unwrap();
+            .expect("valid proof");
 
         ExpiringProfileKeyCredentialPresentationProof {
             C_y1,
@@ -723,7 +723,7 @@ impl ReceiptCredentialPresentationProof {
                 &[],
                 &sho.squeeze_as_array::<RANDOMNESS_LEN>(),
             )
-            .unwrap();
+            .expect("valid proof");
 
         Self {
             C_x0,

@@ -757,7 +757,10 @@ impl fmt::Display for DeviceId {
 
 impl rand::distr::Distribution<DeviceId> for rand::distr::StandardUniform {
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> DeviceId {
-        DeviceId(NonZeroU8::new(rng.random_range(1..=MAX_VALID_DEVICE_ID)).unwrap())
+        DeviceId(
+            NonZeroU8::new(rng.random_range(1..=MAX_VALID_DEVICE_ID))
+                .expect("guaranteed by random_range"),
+        )
     }
 }
 

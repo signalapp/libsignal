@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#![cfg_attr(not(test), warn(clippy::unwrap_used))]
+#![warn(clippy::unwrap_used)]
 
 mod commitments;
 mod guide;

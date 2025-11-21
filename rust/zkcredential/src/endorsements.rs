@@ -374,7 +374,7 @@ impl EndorsementResponse {
         scalar_args.add("sk_prime", private_key.sk_prime);
         let proof = statement
             .prove(&scalar_args, &point_args, b"", &randomness)
-            .unwrap();
+            .expect("valid proof");
 
         EndorsementResponse { R, proof }
     }

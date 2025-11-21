@@ -7,6 +7,8 @@
 //!
 //! Contains code to read and validate message backup files.
 
+#![warn(clippy::unwrap_used)]
+
 use std::time::Duration;
 
 use futures::AsyncRead;

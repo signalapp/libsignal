@@ -6,7 +6,7 @@
 //! Support logic for Signal's device-to-device transfer feature.
 
 #![deny(unsafe_code)]
-#![warn(missing_docs)]
+#![warn(missing_docs, clippy::unwrap_used)]
 
 use std::fmt;
 use std::time::{Duration, SystemTime};

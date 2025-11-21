@@ -491,7 +491,7 @@ impl BlindedIssuanceProofBuilder<'_> {
                 self.inner.authenticated_message,
                 &sho.squeeze_and_ratchet_as_array::<RANDOMNESS_LEN>(),
             )
-            .unwrap();
+            .expect("valid proof");
         BlindedIssuanceProof {
             poksho_proof,
             credential,

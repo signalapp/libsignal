@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+#![warn(clippy::unwrap_used)]
+
 mod address;
 // Not exporting the members because they have overly-generic names.
 pub mod curve;

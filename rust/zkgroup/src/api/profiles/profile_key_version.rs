@@ -37,7 +37,7 @@ impl Serialize for ProfileKeyVersion {
     where
         S: Serializer,
     {
-        let mut seq = serializer.serialize_tuple(self.ascii.len()).unwrap();
+        let mut seq = serializer.serialize_tuple(self.ascii.len())?;
         for b in self.ascii.iter() {
             seq.serialize_element(b)?;
         }

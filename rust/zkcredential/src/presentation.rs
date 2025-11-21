@@ -547,7 +547,7 @@ impl<'a> PresentationProofBuilder<'a> {
                 self.core.authenticated_message,
                 &sho.squeeze_and_ratchet_as_array::<RANDOMNESS_LEN>(),
             )
-            .unwrap();
+            .expect("valid proof");
 
         PresentationProof {
             commitments,
