@@ -19,6 +19,7 @@ use http::uri::PathAndQuery;
 use http::{Method, StatusCode};
 use itertools::Itertools as _;
 use libsignal_net_infra::TransportInfo;
+use libsignal_net_infra::http_client::Http2Client;
 use libsignal_net_infra::route::GetCurrentInterface;
 use libsignal_net_infra::utils::NetworkChangeEvent;
 use libsignal_net_infra::utils::future::SomeOrPending;
@@ -34,7 +35,9 @@ use tokio::time::{Duration, Instant};
 use tokio_stream::wrappers::{ReceiverStream, UnboundedReceiverStream};
 use tungstenite::protocol::frame::coding::CloseCode;
 
-use crate::chat::{ChatMessageType, MessageProto, Request, RequestProto, Response, ResponseProto};
+use crate::chat::{
+    ChatMessageType, GrpcBody, MessageProto, Request, RequestProto, Response, ResponseProto,
+};
 use crate::env::{
     ALERT_HEADER_NAME, CONNECTED_ELSEWHERE_CLOSE_CODE, CONNECTION_INVALIDATED_CLOSE_CODE,
 };
@@ -188,6 +191,7 @@ impl Chat {
         connection_config: ConnectionConfig<
             impl GetCurrentInterface<Representation = IpAddr> + Send + Sync + 'static,
         >,
+        shared_h2_connection: Option<Http2Client<GrpcBody>>,
         network_change_event: NetworkChangeEvent,
         mut listener: EventListener,
     ) -> Self
@@ -219,6 +223,7 @@ impl Chat {
                 },
             ),
             connection_config,
+            shared_h2_connection,
             network_change_event,
             initial_request_id,
             listener,
@@ -239,6 +244,20 @@ impl Chat {
             })
             .collect_vec();
         listener(ListenerEvent::ReceivedAlerts(alerts))
+    }
+
+    pub async fn shared_h2_connection(&self) -> Option<Http2Client<GrpcBody>> {
+        let state = self.state.lock().await;
+        match &*state {
+            TaskState::MaybeStillRunning {
+                request_tx: _,
+                response_tx: _,
+                task: _,
+                shared_h2_connection,
+            } => shared_h2_connection.clone(),
+            TaskState::SignaledToEnd(_) => None,
+            TaskState::Finished(_) => None,
+        }
     }
 
     /// Sends a request to the server and waits for the response.
@@ -289,11 +308,13 @@ impl Chat {
                 request_tx,
                 response_tx,
                 task,
+                shared_h2_connection,
             } => {
                 // Signal to the task, if it's still running, that it should
                 // quit. Do this by hanging up on it, at which point it will
                 // exit.
                 drop((request_tx, response_tx));
+                drop(shared_h2_connection);
                 TaskState::SignaledToEnd(task)
             }
             state @ (TaskState::SignaledToEnd(_) | TaskState::Finished(_)) => state,
@@ -315,6 +336,7 @@ impl Chat {
                 request_tx: _,
                 response_tx: _,
                 task,
+                shared_h2_connection: _,
             } => {
                 if !task.is_finished() {
                     return true;
@@ -339,6 +361,7 @@ impl Chat {
         connection_config: ConnectionConfig<
             impl GetCurrentInterface<Representation = IpAddr> + Send + Sync + 'static,
         >,
+        shared_h2_connection: Option<Http2Client<GrpcBody>>,
         network_change_event: NetworkChangeEvent,
         initial_request_id: u64,
         listener: EventListener,
@@ -400,6 +423,7 @@ impl Chat {
             request_tx,
             response_tx,
             task,
+            shared_h2_connection,
         };
 
         Self {
@@ -437,6 +461,7 @@ enum TaskState {
         request_tx: mpsc::Sender<OutgoingRequest>,
         response_tx: mpsc::UnboundedSender<OutgoingResponse>,
         task: JoinHandle<Result<FinishReason, TaskErrorState>>,
+        shared_h2_connection: Option<Http2Client<GrpcBody>>,
     },
     /// The task has been signalled to end and should be terminating soon, but
     /// not necessarily immediately.
@@ -772,6 +797,7 @@ async fn send_request(
                 request_tx,
                 response_tx: _,
                 task: _,
+                shared_h2_connection: _,
             } => request_tx.clone(),
             TaskState::SignaledToEnd(_) => {
                 return Err(SendError::Disconnected(DisconnectedReason::SocketClosed {
@@ -828,6 +854,7 @@ async fn wait_for_task_to_finish(state: &mut TaskState) -> &Result<FinishReason,
             task,
             request_tx: _,
             response_tx: _,
+            shared_h2_connection: _,
         } => {
             // The send can only fail if the task has ended since it owns the
             // other end of the channel.
@@ -1582,6 +1609,7 @@ mod test {
                     },
                     get_current_interface,
                 },
+                None,
                 network_change_event,
                 initial_request_id,
                 listener,

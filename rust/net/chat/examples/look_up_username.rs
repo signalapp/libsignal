@@ -7,7 +7,6 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use clap::{Parser, ValueEnum};
-use either::Either;
 use libsignal_net::certs::SIGNAL_ROOT_CERTIFICATES;
 use libsignal_net::chat::test_support::simple_chat_connection;
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
@@ -66,13 +65,17 @@ async fn main() -> anyhow::Result<()> {
         Environment::Production => libsignal_net::env::PROD,
     };
 
-    let chat_connection = if use_grpc {
+    let grpc_connection;
+    let ws_connection;
+
+    if use_grpc {
         let host = if host.is_empty() {
             env.chat_domain_config.connect.hostname
         } else {
             &host
         };
-        Either::Left(Unauth(grpc_connection(host).await?))
+        grpc_connection = Some(Unauth(make_grpc_connection(host).await?));
+        ws_connection = None;
     } else {
         if !host.is_empty() {
             // This is cheating, but we're just using it for testing anyway.
@@ -83,22 +86,48 @@ async fn main() -> anyhow::Result<()> {
         if h2 {
             env.chat_domain_config.connect.http_version = Some(HttpVersion::Http2);
         }
-        Either::Right(Unauth(
-            simple_chat_connection(
-                &env,
-                EnableDomainFronting::No,
-                DirectOrProxyMode::DirectOnly,
-                |_route| true,
-            )
-            .await?,
-        ))
-    };
+        let chat_connection = simple_chat_connection(
+            &env,
+            EnableDomainFronting::No,
+            DirectOrProxyMode::DirectOnly,
+            |_route| true,
+        )
+        .await?;
+        grpc_connection = chat_connection.shared_h2_connection().await.map(Unauth);
+        ws_connection = Some(Unauth(chat_connection));
+    }
 
     let username = usernames::Username::new(&username)?;
-    if let Some(aci) = chat_connection
-        .look_up_username_hash(&username.hash())
-        .await?
-    {
+    let username_hash = username.hash();
+
+    let result = match (grpc_connection, ws_connection) {
+        (Some(grpc_connection), Some(ws_connection)) => {
+            log::info!("trying both gRPC and websocket...");
+            let (grpc_result, ws_result) = futures_util::future::try_join(
+                grpc_connection.look_up_username_hash(&username_hash),
+                ws_connection.look_up_username_hash(&username_hash),
+            )
+            .await?;
+            assert_eq!(
+                grpc_result, ws_result,
+                "connections disagreed on the answer?"
+            );
+            ws_result
+        }
+        (Some(grpc_connection), None) => {
+            log::info!("sending request over gRPC...");
+            grpc_connection
+                .look_up_username_hash(&username_hash)
+                .await?
+        }
+        (None, Some(ws_connection)) => {
+            log::info!("sending request over websocket...");
+            ws_connection.look_up_username_hash(&username_hash).await?
+        }
+        (None, None) => unreachable!("we established at least one connection"),
+    };
+
+    if let Some(aci) = result {
         log::info!("found {}", aci.service_id_string());
     } else {
         log::info!("no user found");
@@ -113,7 +142,7 @@ assert_impl_all!(Http2Client<tonic::body::Body>: tonic::client::GrpcService<toni
 ///
 /// Eventually this should be covered by a libsignal-net-level API like `simple_chat_connection`.
 /// We're not just making an *arbitrary* H2 connection; we're specifically talking to chat-server.
-async fn grpc_connection(host: &str) -> anyhow::Result<Http2Client<tonic::body::Body>> {
+async fn make_grpc_connection(host: &str) -> anyhow::Result<Http2Client<tonic::body::Body>> {
     let host: Arc<str> = Arc::from(host);
     let connect_state = Arc::new(ConnectState::new(SUGGESTED_CONNECT_CONFIG));
     let resolver = DnsResolver::new(&no_network_change_events());

@@ -223,13 +223,23 @@ pub enum HttpConnectError {
 assert_impl_all!(TransportConnectError: LogSafeDisplay);
 impl LogSafeDisplay for HttpConnectError {}
 
+/// A refinement of [`hyper::body::Body`] that supports our use of hyper's H2 connections.
+pub trait H2Body:
+    hyper::body::Body<Data: Send, Error: Into<Box<dyn Error + Send + Sync>>> + Send + Unpin + 'static
+{
+}
+impl<T> H2Body for T where
+    T: hyper::body::Body<Data: Send, Error: Into<Box<dyn Error + Send + Sync>>>
+        + Send
+        + Unpin
+        + 'static
+{
+}
+
 impl<B, Inner> Connector<HttpRouteFragment, Inner> for Http2Connector<B>
 where
     Inner: Connection + AsyncDuplexStream + Send + 'static,
-    B: hyper::body::Body<Data: Send, Error: Into<Box<dyn Error + Send + Sync>>>
-        + Send
-        + Unpin
-        + 'static,
+    B: H2Body,
 {
     type Connection = Http2Client<B>;
     type Error = HttpConnectError;

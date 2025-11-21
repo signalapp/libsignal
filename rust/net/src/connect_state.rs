@@ -921,7 +921,7 @@ mod test {
 
     #[tokio::test(start_paused = true)]
     async fn connect_ws_timeout() {
-        let ws_connector = crate::infra::ws::Stateless;
+        let ws_connector = <crate::infra::ws::Stateless>::default();
         let resolver = DnsResolver::new_from_static_map(HashMap::from([(
             FAKE_HOST_NAME,
             LookupResult::new(vec![ip_addr!(v4, "192.0.2.1")], vec![]),
@@ -978,7 +978,7 @@ mod test {
         // can't actually change the local IP detection logic. But we can test a ClientAbort
         // produced by the underlying connector.
 
-        let ws_connector = crate::infra::ws::Stateless;
+        let ws_connector = <crate::infra::ws::Stateless>::default();
         let resolver = DnsResolver::new_from_static_map(HashMap::from([(
             FAKE_HOST_NAME,
             LookupResult::new(vec![ip_addr!(v4, "192.0.2.1")], vec![]),

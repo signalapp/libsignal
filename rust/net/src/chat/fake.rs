@@ -97,6 +97,7 @@ impl ChatConnection {
                     transport_info: connection_info.transport_info.clone(),
                     get_current_interface: FakeCurrentInterface,
                 },
+                None,
                 no_network_change_events(),
                 listener,
             ),

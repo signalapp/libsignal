@@ -4,8 +4,10 @@
 //
 
 use std::fmt::{Debug, Display};
+use std::marker::PhantomData;
 use std::time::Duration;
 
+use derive_where::derive_where;
 use futures_util::future::Either;
 use futures_util::{Sink, Stream, TryFutureExt};
 use http::uri::PathAndQuery;
@@ -15,7 +17,7 @@ use tungstenite::{Message, Utf8Bytes, http};
 
 use crate::AsyncDuplexStream;
 use crate::errors::LogSafeDisplay;
-use crate::http_client::Http2Connector;
+use crate::http_client::{H2Body, Http2Client, Http2Connector};
 use crate::route::{Connector, HttpRouteFragment, HttpVersion, WebSocketRouteFragment};
 use crate::stream::StreamWithFixedTransportInfo;
 use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError};
@@ -109,8 +111,17 @@ impl crate::Connection for Box<dyn WebSocketTransportStream> {
 }
 
 /// Stateless [`Connector`] implementation for websocket-over-HTTPS routes.
-#[derive(Default)]
-pub struct Stateless;
+///
+/// The `B` parameter controls what body type to use to allow sharing an underlying H2 connection
+/// (it will be ignored for an H1 connection). If you don't care, use the default, which you can get
+/// in expression contexts by using angle brackets: `<ws::Stateless>`.
+#[derive_where(Default)]
+pub struct Stateless<B = http_body_util::Empty<bytes::Bytes>> {
+    // The connector does not itself carry a 'B', but it produces something that itself consumes
+    // 'B's, which as far as variance goes is the same as consuming 'B's now. (This is probably
+    // overthinking; the important part is that it's not just a plain B.)
+    body: PhantomData<fn(B)>,
+}
 
 /// [`Connector`] for websocket-over-HTTPS routes that discards the response headers.
 #[derive(Default)]
@@ -126,21 +137,24 @@ impl WithoutResponseHeaders {
 }
 
 #[derive(Debug)]
-pub struct StreamWithResponseHeaders<Inner> {
+pub struct StreamWithResponseHeaders<Inner, B> {
     pub stream: Inner,
     pub response_headers: http::HeaderMap,
+    pub connection: Option<Http2Client<B>>,
 }
 
 /// Connects a websocket on top of an existing connection.
 ///
 /// This can't just take as the route type a [`WebSocketRouteFragment`] because
 /// there are HTTP-level fields that also affect connection establishment.
-impl<Inner> Connector<(WebSocketRouteFragment, HttpRouteFragment), Inner> for Stateless
+impl<Inner, B> Connector<(WebSocketRouteFragment, HttpRouteFragment), Inner> for Stateless<B>
 where
     Inner: WebSocketTransportStream,
+    B: H2Body + Default,
 {
     type Connection = StreamWithResponseHeaders<
         tokio_tungstenite::WebSocketStream<Box<dyn WebSocketTransportStream>>,
+        B,
     >;
 
     type Error = WebSocketConnectError;
@@ -158,7 +172,7 @@ where
     }
 }
 
-async fn connect_http1<Inner: WebSocketTransportStream>(
+async fn connect_http1<Inner: WebSocketTransportStream, B>(
     inner: Inner,
     ws: WebSocketRouteFragment,
     http: HttpRouteFragment,
@@ -166,6 +180,7 @@ async fn connect_http1<Inner: WebSocketTransportStream>(
 ) -> Result<
     StreamWithResponseHeaders<
         tokio_tungstenite::WebSocketStream<Box<dyn WebSocketTransportStream>>,
+        B,
     >,
     WebSocketConnectError,
 > {
@@ -230,10 +245,11 @@ async fn connect_http1<Inner: WebSocketTransportStream>(
     Ok(StreamWithResponseHeaders {
         stream,
         response_headers: response.into_parts().0.headers,
+        connection: None,
     })
 }
 
-async fn connect_http2<Inner: WebSocketTransportStream>(
+async fn connect_http2<Inner: WebSocketTransportStream, B: H2Body + Default>(
     inner: Inner,
     ws: WebSocketRouteFragment,
     http: HttpRouteFragment,
@@ -241,6 +257,7 @@ async fn connect_http2<Inner: WebSocketTransportStream>(
 ) -> Result<
     StreamWithResponseHeaders<
         tokio_tungstenite::WebSocketStream<Box<dyn WebSocketTransportStream>>,
+        B,
     >,
     WebSocketConnectError,
 > {
@@ -272,9 +289,7 @@ async fn connect_http2<Inner: WebSocketTransportStream>(
         ));
     }
 
-    // For now, hardcode the body type to Empty; in the future, we'll want to make this generic so
-    // that it's compatible with tonic::body::Body.
-    let h2_connector = Http2Connector::<http_body_util::Empty<bytes::Bytes>>::new();
+    let h2_connector = Http2Connector::<B>::new();
     let transport_info = inner.transport_info();
 
     let mut client = h2_connector
@@ -307,7 +322,7 @@ async fn connect_http2<Inner: WebSocketTransportStream>(
         .body(Default::default())
         .map_err(tungstenite::Error::from)?;
 
-    let response = async move {
+    let response = async {
         client.ready().await?;
         client.send_request(request).await
     }
@@ -399,16 +414,17 @@ async fn connect_http2<Inner: WebSocketTransportStream>(
     Ok(StreamWithResponseHeaders {
         stream: ws,
         response_headers,
+        connection: Some(client),
     })
 }
 
-impl<T, Inner, C> Connector<(WebSocketRouteFragment, HttpRouteFragment), Inner>
+impl<T, Inner, C, B> Connector<(WebSocketRouteFragment, HttpRouteFragment), Inner>
     for WithoutResponseHeaders<T>
 where
     T: Connector<
             (WebSocketRouteFragment, HttpRouteFragment),
             Inner,
-            Connection = StreamWithResponseHeaders<C>,
+            Connection = StreamWithResponseHeaders<C, B>,
         >,
 {
     type Connection = C;
@@ -424,6 +440,7 @@ where
             |StreamWithResponseHeaders {
                  stream,
                  response_headers: _,
+                 connection: _,
              }| stream,
         )
     }
@@ -535,7 +552,8 @@ pub mod testutil {
         WebSocketStream<Box<dyn WebSocketTransportStream>>,
     ) {
         let (client, server) = tokio::io::duplex(1024);
-        let client_future = Stateless.connect_over(
+        let connector = WithoutResponseHeaders::new();
+        let client_future = connector.connect_over(
             client,
             (
                 WebSocketRouteFragment {
@@ -554,10 +572,7 @@ pub mod testutil {
         );
         let server_future = tokio_tungstenite::accept_async(server);
         let (client_res, server_res) = tokio::join!(client_future, server_future);
-        let StreamWithResponseHeaders {
-            stream: client_stream,
-            response_headers: _,
-        } = client_res.unwrap();
+        let client_stream = client_res.unwrap();
         let server_stream = server_res.unwrap();
         (server_stream, client_stream)
     }
@@ -780,7 +795,7 @@ mod test {
         .await;
         let server_task = tokio::spawn(server);
 
-        let mut ws = Stateless
+        let mut ws = <Stateless>::default()
             .connect_over(
                 stream,
                 (
@@ -820,7 +835,7 @@ mod test {
         let (stream, server) = localhost_h2_ws(upgrade_failure_tx, Default::default()).await;
         tokio::spawn(server);
 
-        let err = Stateless
+        let err = <Stateless>::default()
             .connect_over(
                 stream,
                 (
@@ -860,7 +875,7 @@ mod test {
         // "Oops, the server dropped the connection."
         drop(server);
 
-        let err = Stateless
+        let err = <Stateless>::default()
             .connect_over(
                 stream,
                 (
@@ -903,7 +918,7 @@ mod test {
         .await;
         tokio::spawn(server);
 
-        let err = Stateless
+        let err = <Stateless>::default()
             .connect_over(
                 stream,
                 (
@@ -950,7 +965,7 @@ mod test {
         .await;
         let server_task = tokio::spawn(server);
 
-        let mut ws = Stateless
+        let mut ws = <Stateless>::default()
             .connect_over(
                 stream,
                 (

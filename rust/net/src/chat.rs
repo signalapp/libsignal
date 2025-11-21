@@ -12,6 +12,7 @@ use ::http::uri::PathAndQuery;
 use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use bytes::Bytes;
 use either::Either;
+use libsignal_net_infra::http_client::Http2Client;
 use libsignal_net_infra::route::{
     DefaultGetCurrentInterface, HttpsTlsRoute, RouteProvider, RouteProviderExt,
     ThrottlingConnector, TransportRoute, UnresolvedHttpsServiceRoute,
@@ -168,10 +169,13 @@ pub struct ChatConnection {
     connection_info: ConnectionInfo,
 }
 
+pub type GrpcBody = tonic::body::Body;
+
 /// A connection to the chat service that isn't yet active.
 #[derive(Debug)]
 pub struct PendingChatConnection {
     connection: WebSocketStream<Box<dyn WebSocketTransportStream>>,
+    shared_h2_connection: Option<Http2Client<GrpcBody>>,
     connect_response_headers: http::HeaderMap,
     ws_config: ws::Config,
     route_info: RouteInfo,
@@ -286,7 +290,7 @@ impl ChatConnection {
                 // lets us get connection parallelism at the transport level (which
                 // is useful) while limiting us to one fully established connection
                 // at a time.
-                ThrottlingConnector::new(crate::infra::ws::Stateless, 1),
+                ThrottlingConnector::new(crate::infra::ws::Stateless::default(), 1),
                 &log_tag,
             )
             .await?;
@@ -296,10 +300,12 @@ impl ChatConnection {
         let StreamWithResponseHeaders {
             stream,
             response_headers,
+            connection: shared_h2_connection,
         } = connection.into_inner();
 
         Ok(PendingChatConnection {
             connection: stream,
+            shared_h2_connection,
             connect_response_headers: response_headers,
             route_info,
             ws_config,
@@ -315,6 +321,7 @@ impl ChatConnection {
     ) -> Self {
         let PendingChatConnection {
             connection,
+            shared_h2_connection,
             connect_response_headers,
             ws_config,
             route_info,
@@ -339,6 +346,7 @@ impl ChatConnection {
                     transport_info,
                     get_current_interface: DefaultGetCurrentInterface,
                 },
+                shared_h2_connection,
                 network_change_event,
                 listener,
             ),
@@ -359,6 +367,10 @@ impl ChatConnection {
     pub fn connection_info(&self) -> &ConnectionInfo {
         &self.connection_info
     }
+
+    pub async fn shared_h2_connection(&self) -> Option<Http2Client<GrpcBody>> {
+        self.inner.shared_h2_connection().await
+    }
 }
 
 impl PendingChatConnection {
@@ -370,6 +382,7 @@ impl PendingChatConnection {
     }
 
     pub async fn disconnect(&mut self) {
+        _ = self.shared_h2_connection.take();
         if let Err(error) = self.connection.close(None).await {
             log::warn!(
                 "[{}] pending chat connection disconnect failed with {error}",
