@@ -32,7 +32,7 @@ impl<'a, T> From<&'a T> for &'a Unauth<T> {
             std::ptr::from_ref(value)
                 .cast::<Unauth<T>>()
                 .as_ref()
-                .unwrap()
+                .expect("started with a reference")
         }
     }
 }

@@ -537,6 +537,7 @@ impl<S: crate::Connection + tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin
 
 /// Test utilities related to websockets.
 #[cfg(any(test, feature = "test-util"))]
+#[allow(clippy::unwrap_used)]
 pub mod testutil {
     use std::net::{Ipv4Addr, SocketAddr};
 

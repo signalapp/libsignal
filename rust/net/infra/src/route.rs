@@ -649,7 +649,7 @@ pub mod testutils {
     impl RouteProviderContext for FakeContext {
         fn random_usize(&self) -> usize {
             UniformUsize::sample_single_inclusive(0, usize::MAX, &mut self.rng.borrow_mut())
-                .unwrap()
+                .expect("non-empty range")
         }
     }
 

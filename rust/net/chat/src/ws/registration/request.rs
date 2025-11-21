@@ -157,7 +157,7 @@ impl Request for GetSession {
             session_id.as_url_path_segment()
         )
         .parse()
-        .unwrap()
+        .expect("valid path")
     }
     fn log_safe_path(session_id: &SessionId) -> String {
         format!("{VERIFICATION_SESSION_PATH_PREFIX}/{session_id}")
@@ -217,7 +217,7 @@ impl Request for SubmitVerificationCode<'_> {
             session_id.as_url_path_segment()
         )
         .parse()
-        .unwrap()
+        .expect("valid path")
     }
     fn log_safe_path(session_id: &SessionId) -> String {
         format!("{VERIFICATION_SESSION_PATH_PREFIX}/{session_id}/code")

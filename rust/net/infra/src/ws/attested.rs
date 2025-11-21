@@ -483,6 +483,7 @@ impl From<SendError> for AttestedConnectionError {
 }
 
 #[cfg(any(test, feature = "test-util"))]
+#[allow(clippy::unwrap_used)]
 pub mod testutil {
 
     use futures_util::{SinkExt as _, StreamExt as _};

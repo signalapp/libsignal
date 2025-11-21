@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 use super::{CONTENT_TYPE_JSON, CustomError, TryIntoResponse as _, WsConnection};
 use crate::api::keytrans::*;
 use crate::api::{RequestError, Unauth};
+use crate::logging::DebugAsStrOrBytes;
 
 const SEARCH_PATH: &str = "/v1/key-transparency/search";
 const DISTINGUISHED_PATH: &str = "/v1/key-transparency/distinguished";
@@ -102,7 +103,11 @@ impl From<RawChatSearchRequest> for chat::Request {
     fn from(request: RawChatSearchRequest) -> Self {
         Self {
             method: http::Method::POST,
-            body: Some(serde_json::to_vec(&request).unwrap().into()),
+            body: Some(
+                serde_json::to_vec(&request)
+                    .expect("can convert to JSON")
+                    .into(),
+            ),
             headers: common_headers(),
             path: PathAndQuery::from_static(SEARCH_PATH),
         }
@@ -190,7 +195,11 @@ impl From<RawChatMonitorRequest> for chat::Request {
     fn from(request: RawChatMonitorRequest) -> Self {
         Self {
             method: http::Method::POST,
-            body: Some(serde_json::to_vec(&request).unwrap().into()),
+            body: Some(
+                serde_json::to_vec(&request)
+                    .expect("can convert to JSON")
+                    .into(),
+            ),
             headers: common_headers(),
             path: PathAndQuery::from_static(MONITOR_PATH),
         }
@@ -224,8 +233,12 @@ impl RawChatMonitorRequest {
             e164: e164.map(|e164| {
                 ValueMonitor::for_e164(
                     e164,
-                    account_data.e164.as_ref().unwrap().latest_log_position(),
-                    &account_data.e164.as_ref().unwrap().index,
+                    account_data
+                        .e164
+                        .as_ref()
+                        .expect("checked above")
+                        .latest_log_position(),
+                    &account_data.e164.as_ref().expect("checked above").index,
                 )
             }),
             username_hash: username_hash.as_ref().map(|unh| {
@@ -234,9 +247,13 @@ impl RawChatMonitorRequest {
                     account_data
                         .username_hash
                         .as_ref()
-                        .unwrap()
+                        .expect("checked above")
                         .latest_log_position(),
-                    &account_data.username_hash.as_ref().unwrap().index,
+                    &account_data
+                        .username_hash
+                        .as_ref()
+                        .expect("checked above")
+                        .index,
                 )
             }),
             last_non_distinguished_tree_head_size,
@@ -252,8 +269,8 @@ impl<T: WsConnection> Unauth<T> {
     ) -> Result<Vec<u8>, RequestError<Error>> {
         log::debug!("{}", &request.path.as_str());
         log::debug!(
-            "{}",
-            &String::from_utf8(request.clone().body.unwrap_or_default().to_vec()).unwrap()
+            "{:?}",
+            DebugAsStrOrBytes(request.body.as_deref().unwrap_or_default())
         );
         // All KT requests keep identifying information out of the path+query, so it's okay to log
         // it. The Distinguished request does include the tree size, but that only reveals when the

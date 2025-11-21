@@ -56,14 +56,15 @@ pub enum SvrSgx {}
 impl EnclaveKind for Cdsi {
     type RaftConfigType = ();
     fn url_path(enclave: &[u8]) -> PathAndQuery {
-        PathAndQuery::try_from(format!("/v1/{}/discovery", hex::encode(enclave))).unwrap()
+        PathAndQuery::try_from(format!("/v1/{}/discovery", hex::encode(enclave)))
+            .expect("valid path")
     }
 }
 
 impl EnclaveKind for SvrSgx {
     type RaftConfigType = &'static RaftConfig;
     fn url_path(enclave: &[u8]) -> PathAndQuery {
-        PathAndQuery::try_from(format!("/v1/{}", hex::encode(enclave))).unwrap()
+        PathAndQuery::try_from(format!("/v1/{}", hex::encode(enclave))).expect("valid path")
     }
 }
 

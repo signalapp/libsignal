@@ -33,7 +33,7 @@ impl Auth {
     pub fn otp(username: &str, secret: &[u8], now: SystemTime) -> String {
         let ts = now
             .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
+            .expect("not be used with times in the past")
             .as_secs();
 
         let mac_input = format!("{}:{}", &username, ts);

@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+#![warn(clippy::unwrap_used)]
+
 use std::net::{IpAddr, SocketAddr};
 use std::num::NonZeroU16;
 use std::sync::Arc;
@@ -255,7 +257,10 @@ pub enum Alpn {
 
 impl Alpn {
     pub const fn encoded(&self) -> &'static [u8] {
-        self.length_prefixed().split_first().unwrap().1
+        self.length_prefixed()
+            .split_first()
+            .expect("always has a prefix to strip")
+            .1
     }
 
     pub const fn length_prefixed(&self) -> &'static [u8] {

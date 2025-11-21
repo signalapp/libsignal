@@ -750,7 +750,11 @@ impl UnauthenticatedChatApi for KeyTransparencyClient<'_> {
                 monitor_keys.push(key);
 
                 // The proof must be present. Checked in TypedMonitorResponse::from_untyped
-                proofs.push(chat_monitor_response.e164.unwrap());
+                proofs.push(
+                    chat_monitor_response
+                        .e164
+                        .expect("checked in TypedMonitorResponse::from_untyped"),
+                );
                 monitoring_data_map.insert(e164.as_search_key(), monitoring_data);
             }
 
@@ -765,7 +769,11 @@ impl UnauthenticatedChatApi for KeyTransparencyClient<'_> {
                 };
                 monitor_keys.push(key);
                 // The proof must be present. Checked in TypedMonitorResponse::from_untyped
-                proofs.push(chat_monitor_response.username_hash.unwrap());
+                proofs.push(
+                    chat_monitor_response
+                        .username_hash
+                        .expect("checked in TypedMonitorResponse::from_untyped"),
+                );
                 monitoring_data_map.insert(username_hash.as_search_key(), monitoring_data);
             }
 

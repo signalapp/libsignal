@@ -101,11 +101,11 @@ impl<'c> RegistrationConnection<'c> {
             connect_chat,
         } = self;
 
-        let sender = sender.lock().unwrap().clone();
+        let sender = sender.lock().expect("not poisoned").clone();
 
         let (response, request_sender) =
             send_request(request, &**connect_chat, Some(&sender)).await?;
-        *self.sender.lock().unwrap() = request_sender;
+        *self.sender.lock().expect("not poisoned") = request_sender;
 
         Ok(response)
     }

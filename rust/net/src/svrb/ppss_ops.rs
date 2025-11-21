@@ -14,6 +14,7 @@ use libsignal_net_infra::ws::NextOrClose;
 use libsignal_net_infra::ws::attested::AttestedConnectionError;
 pub(crate) use libsignal_svrb::{Backup4, Secret};
 use libsignal_svrb::{Query4, Remove4, Restore1};
+use nonzero_ext::nonzero;
 use rand::TryRngCore;
 use rand::rngs::OsRng;
 
@@ -28,7 +29,7 @@ pub fn do_prepare<Env: PpssSetup>(password: &[u8]) -> Backup4 {
     Backup4::new(
         server_ids.as_ref(),
         password,
-        std::num::NonZero::new(255u32).unwrap(), // tries
+        nonzero!(255u32), // tries
         &mut rng,
     )
 }
