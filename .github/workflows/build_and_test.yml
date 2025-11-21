@@ -27,6 +27,7 @@ env:
   # For dev builds, include limited debug info in the output. See
   # https://doc.rust-lang.org/cargo/reference/profiles.html#debug
   CARGO_PROFILE_DEV_DEBUG: limited
+  DO_CLEAN_BUILD_AND_POPULATE_CACHE: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
   SHOULD_USE_CARGO_CACHE: ${{ secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.R2_ENDPOINT != '' && inputs.skip_cargo_cache != true }}
 
 jobs:

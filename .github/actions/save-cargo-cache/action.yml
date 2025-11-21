@@ -8,7 +8,7 @@ runs:
   using: 'composite'
   steps:
     - name: Save cargo cache
-      if: ${{ github.ref == 'refs/heads/main' }}
+      if: ${{ env.DO_CLEAN_BUILD_AND_POPULATE_CACHE == 'true' }}
       uses: runs-on/cache/save@3a15256b3556fbc5ae15f7f04598e4c7680e9c25 # v4
       with:
         # Keep this path list in sync with restore-cargo-cache/action.yml.

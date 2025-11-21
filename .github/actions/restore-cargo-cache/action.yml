@@ -20,7 +20,7 @@ outputs:
     value: ${{ steps.calculate.outputs['cache-key-current'] }}
   cache-key:
     description: 'Full cache key used for cargo artifacts'
-    value: ${{ steps.cache.outputs['cache-primary-key'] }}
+    value: ${{ steps.calculate-primary-cache-key.outputs['cache-primary-key'] }}
 runs:
   using: 'composite'
   steps:
@@ -29,8 +29,14 @@ runs:
       shell: bash
       run: python3 "${{ github.action_path }}/calculate_cache_keys.py" --toolchain "${{ inputs.toolchain }}" >> "$GITHUB_OUTPUT"
 
+    - name: Calculate primary cache key
+      id: calculate-primary-cache-key
+      shell: bash
+      run: echo "cache-primary-key=${{ inputs['job-name'] }}-${{ runner.os }}-${{ steps.calculate.outputs['rustc-version'] }}-${{ steps.calculate.outputs['cache-key-merge-base'] }}-${{ steps.calculate.outputs['cache-key-current'] }}" >> "$GITHUB_OUTPUT"
+
     - name: Restore cargo cache
       id: cache
+      if: ${{ env.DO_CLEAN_BUILD_AND_POPULATE_CACHE != 'true' }}
       uses: runs-on/cache/restore@3a15256b3556fbc5ae15f7f04598e4c7680e9c25 # v4
       with:
         # The special handling for the Windows target path comes because we overwrite
@@ -49,6 +55,8 @@ runs:
         # - We use the working tree hash as the final key component to ensure uniqueness per commit.
         # - On cache miss, we fall back, in order, to:
         #   1. Most recent cache from the last common ancestor with main.
+        #   1.1. Most recent cache from the last common ancestor with main's parent.
+        #   1.2. Most recent cache from the last common ancestor with main's grandparent.
         #   2. Most recent cache for this job/OS/rustc combination.
         #   3. Most recent cache for this job/OS combination.
         # This yields perfect hits on reruns while still warming cold builds with close matches.
@@ -56,5 +64,7 @@ runs:
         key: ${{ inputs['job-name'] }}-${{ runner.os }}-${{ steps.calculate.outputs['rustc-version'] }}-${{ steps.calculate.outputs['cache-key-merge-base'] }}-${{ steps.calculate.outputs['cache-key-current'] }}
         restore-keys: |
           ${{ inputs['job-name'] }}-${{ runner.os }}-${{ steps.calculate.outputs['rustc-version'] }}-${{ steps.calculate.outputs['cache-key-merge-base'] }}-
+          ${{ inputs['job-name'] }}-${{ runner.os }}-${{ steps.calculate.outputs['rustc-version'] }}-${{ steps.calculate.outputs['cache-key-merge-base-parent'] }}-
+          ${{ inputs['job-name'] }}-${{ runner.os }}-${{ steps.calculate.outputs['rustc-version'] }}-${{ steps.calculate.outputs['cache-key-merge-base-grandparent'] }}-
           ${{ inputs['job-name'] }}-${{ runner.os }}-${{ steps.calculate.outputs['rustc-version'] }}-
           ${{ inputs['job-name'] }}-${{ runner.os }}-

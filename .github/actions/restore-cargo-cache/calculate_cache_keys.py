@@ -42,6 +42,17 @@ def get_merge_base() -> str:
     return output
 
 
+def get_merge_base_parent(commit: str) -> str:
+    """Get the parent commit of the given commit."""
+    returncode, output, _ = run_command(
+        ['git', 'rev-parse', f'{commit}^'],
+        check=False,
+    )
+    if returncode != 0 or not output:
+        return 'none'
+    return output
+
+
 def get_working_tree_hash() -> str:
     """Get a hash representing the current working tree state."""
     returncode, working_tree_hash, _ = run_command(
@@ -109,16 +120,22 @@ def main() -> None:
     rustc_version_hash = hashlib.sha256(rustc_version.encode()).hexdigest()[:32]
 
     lca = get_merge_base()
+    lca_parent = get_merge_base_parent(lca)
+    lca_grandparent = get_merge_base_parent(lca_parent)
     current = get_working_tree_hash()
 
     print(f'rustc-version={rustc_version_hash}')
     print(f'cache-key-merge-base={lca}')
+    print(f'cache-key-merge-base-parent={lca_parent}')
+    print(f'cache-key-merge-base-grandparent={lca_grandparent}')
     print(f'cache-key-current={current}')
 
     debug_parts = [
         f'Toolchain={toolchain}',
         f'RustcVersion={rustc_version}',
         f'LCA={lca}',
+        f'LCAParent={lca_parent}',
+        f'LCAGrandparent={lca_grandparent}',
         f'Current={current}',
     ]
     print('Debug: ' + '; '.join(debug_parts), file=sys.stderr)
