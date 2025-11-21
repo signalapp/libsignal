@@ -18,6 +18,7 @@ use libsignal_net::connect_state::{
     ConnectState, ConnectionResources, DefaultConnectorFactory, DefaultTransportConnector,
     SUGGESTED_CONNECT_CONFIG,
 };
+use libsignal_net::env::constants::CHAT_WEBSOCKET_PATH;
 use libsignal_net::env::{ConnectionConfig, DomainConfig, UserAgent};
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::dns::lookup_result::LookupResult;
@@ -219,6 +220,7 @@ impl FakeDeps {
                 EnableDomainFronting::OneDomainPerProxy,
                 OverrideNagleAlgorithm::UseSystemDefault,
             )),
+            CHAT_WEBSOCKET_PATH,
             &UserAgent::with_libsignal_version("test"),
             RECOMMENDED_CHAT_WS_CONFIG,
             None,

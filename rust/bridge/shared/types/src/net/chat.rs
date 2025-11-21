@@ -25,6 +25,7 @@ use libsignal_net::chat::{
     LanguageList, Request, Response as ChatResponse, SendError, UnauthenticatedChatHeaders,
 };
 use libsignal_net::connect_state::ConnectionResources;
+use libsignal_net::env::constants::CHAT_WEBSOCKET_PATH;
 use libsignal_net::infra::route::{
     DirectOrProxyMode, DirectOrProxyModeDiscriminants, DirectOrProxyProvider, RouteProvider,
     RouteProviderExt, TcpRoute, TlsRoute, UnresolvedHttpsServiceRoute,
@@ -91,6 +92,7 @@ impl UnauthenticatedChatConnection {
         let inner = establish_chat_connection(
             "unauthenticated",
             connection_manager,
+            CHAT_WEBSOCKET_PATH,
             Some(UnauthenticatedChatHeaders { languages }.into()),
         )
         .await?;
@@ -135,6 +137,7 @@ impl AuthenticatedChatConnection {
         let inner = establish_chat_connection(
             "authenticated",
             connection_manager,
+            CHAT_WEBSOCKET_PATH,
             Some(
                 chat::AuthenticatedChatHeaders {
                     auth,
@@ -256,7 +259,13 @@ pub(crate) async fn connect_registration_chat(
     connection_manager: &ConnectionManager,
     drop_on_disconnect: tokio::sync::oneshot::Sender<Infallible>,
 ) -> Result<Unauth<ChatConnection>, ConnectError> {
-    let pending = establish_chat_connection("registration", connection_manager, None).await?;
+    let pending = establish_chat_connection(
+        "registration",
+        connection_manager,
+        CHAT_WEBSOCKET_PATH,
+        None,
+    )
+    .await?;
 
     let mut on_disconnect = Some(drop_on_disconnect);
     let listener = move |event| match event {
@@ -320,8 +329,9 @@ impl FakeChatConnection {
 }
 
 async fn establish_chat_connection(
-    auth_type: &'static str,
+    kind: &'static str,
     connection_manager: &ConnectionManager,
+    endpoint_path: &'static str,
     headers: Option<chat::ChatHeaders>,
 ) -> Result<chat::PendingChatConnection, ConnectError> {
     let ConnectionManager {
@@ -359,7 +369,7 @@ async fn establish_chat_connection(
     )?;
     let proxy_mode = DirectOrProxyModeDiscriminants::from(&route_provider.mode);
 
-    log::info!("connecting {auth_type} chat");
+    log::info!("connecting {kind} chat");
 
     let mut chat_ws_config = env.chat_ws_config;
     let timeout_millis = {
@@ -385,10 +395,11 @@ async fn establish_chat_connection(
     ChatConnection::start_connect_with(
         connection_resources,
         route_provider,
+        endpoint_path,
         user_agent,
         chat_ws_config,
         headers,
-        auth_type,
+        kind,
     )
     .inspect(|r| match r {
         Ok(connection) => {
@@ -399,10 +410,10 @@ async fn establish_chat_connection(
                 (None, DirectOrProxyModeDiscriminants::DirectOnly)
                 | (Some(_), DirectOrProxyModeDiscriminants::ProxyOnly)
                 | (Some(_), DirectOrProxyModeDiscriminants::ProxyThenDirect) => {
-                    log::info!("successfully connected {auth_type} chat")
+                    log::info!("successfully connected {kind} chat")
                 }
                 (None, DirectOrProxyModeDiscriminants::ProxyThenDirect) => log::warn!(
-                    "connected {auth_type} chat using a direct connection rather than the specified proxy"
+                    "connected {kind} chat using a direct connection rather than the specified proxy"
                 ),
                 (None, DirectOrProxyModeDiscriminants::ProxyOnly) => unreachable!(
                     "made a direct connection despite using only proxy routes; this is a bug in libsignal"
@@ -412,7 +423,7 @@ async fn establish_chat_connection(
                 ),
             }
         }
-        Err(e) => log::warn!("failed to connect {auth_type} chat: {e}"),
+        Err(e) => log::warn!("failed to connect {kind} chat: {e}"),
     })
     .await
 }

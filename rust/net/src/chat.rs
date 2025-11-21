@@ -226,6 +226,7 @@ impl ChatConnection {
     pub async fn start_connect_with<TC>(
         connection_resources: ConnectionResources<'_, TC>,
         http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
+        endpoint_path: &'static str,
         user_agent: &UserAgent,
         ws_config: self::ws::Config,
         headers: Option<ChatHeaders>,
@@ -237,6 +238,7 @@ impl ChatConnection {
         Self::start_connect_with_transport(
             connection_resources,
             http_route_provider,
+            endpoint_path,
             user_agent,
             ws_config,
             headers,
@@ -249,6 +251,7 @@ impl ChatConnection {
     async fn start_connect_with_transport<TC>(
         connection_resources: ConnectionResources<'_, TC>,
         http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
+        endpoint_path: &'static str,
         user_agent: &UserAgent,
         ws_config: self::ws::Config,
         headers: Option<ChatHeaders>,
@@ -266,7 +269,7 @@ impl ChatConnection {
             .chain([user_agent.as_header()]);
         let ws_fragment = WebSocketRouteFragment {
             ws_config: WebSocketConfig::default(),
-            endpoint: PathAndQuery::from_static(crate::env::constants::WEB_SOCKET_PATH),
+            endpoint: PathAndQuery::from_static(endpoint_path),
             headers: HeaderMap::from_iter(headers),
         };
 
@@ -422,6 +425,7 @@ pub mod test_support {
     use crate::connect_state::{
         ConnectState, DefaultConnectorFactory, PreconnectingFactory, SUGGESTED_CONNECT_CONFIG,
     };
+    use crate::env::constants::CHAT_WEBSOCKET_PATH;
     use crate::env::{Env, StaticIpOrder, UserAgent};
     use crate::infra::route::DirectOrProxyProvider;
 
@@ -472,6 +476,7 @@ pub mod test_support {
         let pending = ChatConnection::start_connect_with(
             connection_resources,
             route_provider,
+            CHAT_WEBSOCKET_PATH,
             &user_agent,
             ws_config,
             None,
@@ -515,6 +520,7 @@ pub(crate) mod test {
 
     use super::*;
     use crate::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
+    use crate::env::constants::CHAT_WEBSOCKET_PATH;
 
     #[test]
     fn proto_into_response_works_with_valid_data() {
@@ -738,6 +744,7 @@ pub(crate) mod test {
                     }),
                 },
             }],
+            CHAT_WEBSOCKET_PATH,
             &UserAgent::with_libsignal_version("test"),
             ws::Config {
                 // We shouldn't get to timing out anyway.
@@ -839,6 +846,7 @@ pub(crate) mod test {
         let err = ChatConnection::start_connect_with_transport(
             make_connection_resources(),
             routes.clone(),
+            CHAT_WEBSOCKET_PATH,
             &UserAgent::with_libsignal_version("test"),
             ws::Config {
                 // We shouldn't get to timing out anyway.
@@ -860,6 +868,7 @@ pub(crate) mod test {
         let err = ChatConnection::start_connect_with_transport(
             make_connection_resources(),
             routes.clone(),
+            CHAT_WEBSOCKET_PATH,
             &UserAgent::with_libsignal_version("test"),
             ws::Config {
                 // We shouldn't get to timing out anyway.
