@@ -14,16 +14,18 @@
 # thiserror: minimal and highly inlinable, most of the code is synthesized at the use site
 # rand_core, getrandom: waiting on snow to support rand_core 0.9
 # hax-lib: highly inlinable, mostly annotated versions of simple operations
-# libcrux-sha3, libcrux-intrinsics: v0.0.3 is referenced by hpke-rs, but only needed if you use X-Wing KEM
+# libcrux-sha3, libcrux-intrinsics, libcrux-traits: v0.0.4 is referenced by hpke-rs, but only needed if you use X-Wing KEM
 EXPECTED="
 getrandom v0.2.16
 getrandom v0.3.3
 hax-lib v0.2.0
-hax-lib v0.3.4
+hax-lib v0.3.5
 libcrux-intrinsics v0.0.2
-libcrux-intrinsics v0.0.3
+libcrux-intrinsics v0.0.4
 libcrux-sha3 v0.0.2
-libcrux-sha3 v0.0.3
+libcrux-sha3 v0.0.4
+libcrux-traits v0.0.2
+libcrux-traits v0.0.4
 rand_core v0.6.4
 rand_core v0.9.3
 thiserror v1.0.69
