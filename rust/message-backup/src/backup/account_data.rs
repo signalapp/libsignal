@@ -143,6 +143,7 @@ pub struct AccountSettings<M: Method + ReferencedTypes> {
     pub pin_reminders: M::Value<Option<bool>>,
     pub app_theme: M::Value<AppTheme>,
     pub calls_use_less_data_setting: M::Value<CallsUseLessDataSetting>,
+    pub allow_sealed_sender_from_anyone: M::Value<bool>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize)]
@@ -463,6 +464,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             pinReminders,
             appTheme,
             callsUseLessDataSetting,
+            allowSealedSenderFromAnyone,
             special_fields: _,
         } = self;
 
@@ -562,6 +564,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             screen_lock_timeout: M::value(screen_lock_timeout),
             app_theme: M::value(app_theme),
             calls_use_less_data_setting: M::value(calls_use_less_data_setting),
+            allow_sealed_sender_from_anyone: M::value(allowSealedSenderFromAnyone),
         })
     }
 }
@@ -822,6 +825,7 @@ mod test {
                     screen_lock_timeout: Some(Duration::from_mins(42)),
                     app_theme: AppTheme::System,
                     calls_use_less_data_setting: CallsUseLessDataSetting::MobileDataOnly,
+                    allow_sealed_sender_from_anyone: false,
                 },
                 avatar_url_path: "".to_string(),
                 backup_subscription: Some(IapSubscriberData {

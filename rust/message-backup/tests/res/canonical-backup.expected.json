@@ -46,7 +46,8 @@
       "screen_lock_timeout": null,
       "pin_reminders": null,
       "app_theme": "System",
-      "calls_use_less_data_setting": "MobileDataOnly"
+      "calls_use_less_data_setting": "MobileDataOnly",
+      "allow_sealed_sender_from_anyone": false
     },
     "avatar_url_path": "",
     "donation_subscription": {

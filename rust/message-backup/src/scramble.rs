@@ -309,6 +309,7 @@ impl Visit<Scrambler> for proto::account_data::AccountSettings {
             autoDownloadSettings: _,
             screenLockTimeoutMinutes: _,
             pinReminders: _,
+            allowSealedSenderFromAnyone: _,
             special_fields: _,
         } = self;
 
