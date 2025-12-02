@@ -22,6 +22,7 @@ Pod::Spec.new do |s|
     'swift/Sources/SignalFfi',
     'bin/fetch_archive.py',
     'acknowledgments/acknowledgments-ios.plist',
+    'LibSignalClient.podspec',
   ]
 
   pod_target_xcconfig = {
@@ -70,11 +71,8 @@ Pod::Spec.new do |s|
   s.script_phases = [
     { name: 'Download libsignal-ffi if not in cache',
       execution_position: :before_compile,
-      # It's not *ideal* to check the cache every build, but it's usually just a shasum.
-      # It might be possible to rely on the relative mtimes of the podspec and the fetched archive,
-      # but I wouldn't want to risk a mismatched archive giving us cryptic errors at link or run
-      # time later. This Is Fine.
-      always_out_of_date: '1',
+      input_files: ['$(PODS_TARGET_SRCROOT)/LibSignalClient.podspec'],
+      output_files: ['$(USER_LIBRARY_DIR)/Caches/org.signal.libsignal/$(LIBSIGNAL_FFI_PREBUILD_ARCHIVE)'],
       script: %q(
         set -euo pipefail
         if [ -e "${PODS_TARGET_SRCROOT}/swift/build_ffi.sh" ]; then
