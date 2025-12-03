@@ -6,9 +6,11 @@
 use bytes::Bytes;
 use libsignal_net_infra::ws::WebSocketError;
 use libsignal_protocol::Timestamp;
+use prost::Message;
 
 use crate::chat::{RequestProto, SendError, ws};
 use crate::env::TIMESTAMP_HEADER_NAME;
+use crate::proto::chat_provisioning as pb;
 
 pub type ResponseEnvelopeSender =
     Box<dyn FnOnce(http::StatusCode) -> Result<(), SendError> + Send + Sync>;
@@ -63,6 +65,8 @@ pub enum ServerEventError {
     MissingPath,
     /// server sent an unknown request: {0}
     UnrecognizedPath(String),
+    /// could not parse server request body
+    MalformedBody,
 }
 
 impl TryFrom<ws::ListenerEvent> for ServerEvent {
@@ -84,17 +88,23 @@ impl TryFrom<ws::ListenerEvent> for ServerEvent {
                 })
             }
 
-            ws::ListenerEvent::Finished(reason) => Ok(ServerEvent::Stopped(match reason {
-                Ok(ws::FinishReason::LocalDisconnect) => DisconnectCause::LocalDisconnect,
-                Ok(ws::FinishReason::RemoteDisconnect) => {
-                    DisconnectCause::Error(SendError::WebSocket(WebSocketError::ChannelClosed))
-                }
-                Err(ws::FinishError::Unknown) => DisconnectCause::Error(SendError::WebSocket(
-                    WebSocketError::Other("unexpected exit"),
-                )),
-                Err(ws::FinishError::Error(e)) => DisconnectCause::Error(e.into()),
-            })),
+            ws::ListenerEvent::Finished(reason) => {
+                Ok(ServerEvent::Stopped(convert_finished_reason(reason)))
+            }
         }
+    }
+}
+
+fn convert_finished_reason(reason: Result<ws::FinishReason, ws::FinishError>) -> DisconnectCause {
+    match reason {
+        Ok(ws::FinishReason::LocalDisconnect) => DisconnectCause::LocalDisconnect,
+        Ok(ws::FinishReason::RemoteDisconnect) => {
+            DisconnectCause::Error(SendError::WebSocket(WebSocketError::ChannelClosed))
+        }
+        Err(ws::FinishError::Unknown) => DisconnectCause::Error(SendError::WebSocket(
+            WebSocketError::Other("unexpected exit"),
+        )),
+        Err(ws::FinishError::Error(e)) => DisconnectCause::Error(e.into()),
     }
 }
 
@@ -157,5 +167,174 @@ fn convert_received_message(
         }
         "" => Err(ServerEventError::MissingPath),
         _unknown_path => Err(ServerEventError::UnrecognizedPath(path)),
+    }
+}
+
+pub enum ProvisioningEvent {
+    ReceivedAddress {
+        address: String,
+        send_ack: ResponseEnvelopeSender,
+    },
+    ReceivedEnvelope {
+        envelope: Bytes,
+        send_ack: ResponseEnvelopeSender,
+    },
+    Stopped(DisconnectCause),
+}
+
+impl std::fmt::Debug for ProvisioningEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ReceivedAddress {
+                address: _,
+                send_ack: _,
+            } => f
+                .debug_tuple("ReceivedAddress")
+                .field(&"<address>")
+                .finish(),
+            Self::ReceivedEnvelope {
+                envelope,
+                send_ack: _,
+            } => f
+                .debug_tuple("ReceivedEnvelope")
+                .field(&format_args!("{} bytes", envelope.len()))
+                .finish(),
+            Self::Stopped(error) => f
+                .debug_struct("ConnectionInterrupted")
+                .field("reason", error)
+                .finish(),
+        }
+    }
+}
+
+impl TryFrom<ws::ListenerEvent> for ProvisioningEvent {
+    type Error = ServerEventError;
+
+    fn try_from(value: ws::ListenerEvent) -> Result<Self, Self::Error> {
+        match value {
+            // Provisioning shouldn't have alerts; produce an error if it does.
+            ws::ListenerEvent::ReceivedAlerts(_alerts) => Err(ServerEventError::UnrecognizedPath(
+                crate::env::ALERT_HEADER_NAME.to_owned(),
+            )),
+
+            ws::ListenerEvent::ReceivedMessage(proto, responder) => {
+                let RequestProto {
+                    verb,
+                    path,
+                    body,
+                    headers: _,
+                    id: _,
+                } = proto;
+                let verb = verb.unwrap_or_default();
+                if verb != http::Method::PUT.as_str() {
+                    return Err(ServerEventError::UnexpectedVerb(verb));
+                }
+
+                let path = path.unwrap_or_default();
+                match &*path {
+                    "/v1/address" => {
+                        let proto = pb::ProvisioningAddress::decode(body.unwrap_or_default())
+                            .map_err(|_| ServerEventError::MalformedBody)?;
+                        Ok(ProvisioningEvent::ReceivedAddress {
+                            address: proto.address.unwrap_or_default(),
+                            send_ack: Box::new(move |status| {
+                                log::info!("acknowledging provisioning address with {status}");
+                                Ok(responder.send_response(status)?)
+                            }),
+                        })
+                    }
+                    "/v1/message" => Ok(ProvisioningEvent::ReceivedEnvelope {
+                        envelope: body.unwrap_or_default(),
+                        send_ack: Box::new(move |status| {
+                            log::info!("acknowledging provisioning envelope with {status}");
+                            Ok(responder.send_response(status)?)
+                        }),
+                    }),
+                    "" => Err(ServerEventError::MissingPath),
+                    _unknown_path => Err(ServerEventError::UnrecognizedPath(path)),
+                }
+            }
+
+            ws::ListenerEvent::Finished(reason) => {
+                Ok(ProvisioningEvent::Stopped(convert_finished_reason(reason)))
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use assert_matches::assert_matches;
+    use test_case::test_case;
+
+    use super::*;
+    use crate::proto::chat_websocket::WebSocketRequestMessage;
+
+    #[test]
+    fn provisioning_address() {
+        const ADDRESS: &str = "addr-for-qr-code";
+        let event = ProvisioningEvent::try_from(ws::ListenerEvent::ReceivedMessage(
+            WebSocketRequestMessage {
+                verb: Some("PUT".to_owned()),
+                path: Some("/v1/address".to_owned()),
+                body: Some(
+                    pb::ProvisioningAddress {
+                        address: Some(ADDRESS.to_owned()),
+                    }
+                    .encode_to_vec()
+                    .into(),
+                ),
+                headers: vec![],
+                id: Some(1),
+            },
+            ws::Responder::dummy(),
+        ))
+        .expect("valid");
+        assert_matches!(event, ProvisioningEvent::ReceivedAddress { address, .. } if address == ADDRESS);
+    }
+
+    #[test]
+    fn provisioning_envelope() {
+        const BODY: &[u8] = b"encoded provisioning envelope";
+        let event = ProvisioningEvent::try_from(ws::ListenerEvent::ReceivedMessage(
+            WebSocketRequestMessage {
+                verb: Some("PUT".to_owned()),
+                path: Some("/v1/message".to_owned()),
+                body: Some(BODY.into()),
+                headers: vec![],
+                id: Some(1),
+            },
+            ws::Responder::dummy(),
+        ))
+        .expect("valid");
+        assert_matches!(event, ProvisioningEvent::ReceivedEnvelope { envelope, .. } if envelope == BODY);
+    }
+
+    #[test_case(WebSocketRequestMessage {
+        verb: Some("GET".to_owned()),
+        path: Some("/v1/message".to_owned()),
+        ..Default::default()
+    } => matches ServerEventError::UnexpectedVerb(verb) if verb == "GET")]
+    #[test_case(WebSocketRequestMessage {
+        verb: Some("PUT".to_owned()),
+        path: Some("/v1/address".to_owned()),
+        body: Some(b"not valid protobuf"[..].into()),
+        ..Default::default()
+    } => matches ServerEventError::MalformedBody)]
+    #[test_case(WebSocketRequestMessage {
+        verb: Some("PUT".to_owned()),
+        ..Default::default()
+    } => matches ServerEventError::MissingPath)]
+    #[test_case(WebSocketRequestMessage {
+        verb: Some("PUT".to_owned()),
+        path: Some("/absolute-nonsense".to_owned()),
+        ..Default::default()
+    } => matches ServerEventError::UnrecognizedPath(path) if path == "/absolute-nonsense")]
+    fn malformed_provisioning_events(message: WebSocketRequestMessage) -> ServerEventError {
+        ProvisioningEvent::try_from(ws::ListenerEvent::ReceivedMessage(
+            message,
+            ws::Responder::dummy(),
+        ))
+        .expect_err("malformed")
     }
 }

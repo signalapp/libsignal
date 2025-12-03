@@ -1525,6 +1525,15 @@ mod test {
 
     use super::*;
 
+    impl Responder {
+        pub(crate) fn dummy() -> Self {
+            Self {
+                id: 1,
+                tx: tokio::sync::mpsc::unbounded_channel().0.downgrade(),
+            }
+        }
+    }
+
     mod fake {
         use futures_util::future::Either;
         use futures_util::stream::FusedStream;

@@ -1,0 +1,18 @@
+/*
+ * Copyright 2020 Signal Messenger, LLC
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+syntax = "proto2";
+
+package signal.proto.chat_provisioning;
+
+// An opaque address sent by the server when clients first open a provisioning
+// WebSocket
+message ProvisioningAddress {
+
+  // The opaque provisioning address for the active provisioning WebSocket
+  // session; clients should not attempt to interpret or modify the contents
+  // of the address string
+  optional string address = 1;
+}

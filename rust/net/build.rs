@@ -4,9 +4,16 @@
 //
 
 fn main() {
-    let protos = ["src/proto/chat_websocket.proto", "src/proto/cds2.proto"];
+    let protos = [
+        "src/proto/cds2.proto",
+        "src/proto/chat_provisioning.proto",
+        "src/proto/chat_websocket.proto",
+    ];
     prost_build::Config::new()
-        .bytes([".signal.proto.chat_websocket"])
+        .bytes([
+            ".signal.proto.chat_provisioning",
+            ".signal.proto.chat_websocket",
+        ])
         .compile_protos(&protos, &["src"])
         .expect("Protobufs in src are valid");
     for proto in &protos {
