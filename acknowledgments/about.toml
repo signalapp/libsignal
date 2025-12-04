@@ -29,7 +29,31 @@ workarounds = [
     "chrono",
     "prost",
     "ring",
+    "tonic",
 ]
+
+
+# The async-compression crates are embedded in a larger repo
+[async-compression.clarify]
+license = "MIT"
+
+[[async-compression.clarify.git]]
+path = "LICENSE-MIT"
+checksum = "88d1e3160df48926ad3310a8ec5699b502889565908f1be7e77cd21282c7a709"
+
+[compression-codecs.clarify]
+license = "MIT"
+
+[[compression-codecs.clarify.git]]
+path = "LICENSE-MIT"
+checksum = "88d1e3160df48926ad3310a8ec5699b502889565908f1be7e77cd21282c7a709"
+
+[compression-core.clarify]
+license = "MIT"
+
+[[compression-core.clarify.git]]
+path = "LICENSE-MIT"
+checksum = "88d1e3160df48926ad3310a8ec5699b502889565908f1be7e77cd21282c7a709"
 
 
 # Boring's main license isn't at the root of the repo
@@ -194,6 +218,13 @@ license = "Apache-2.0"
 path = "LICENSE"
 checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
 
+[libcrux-secrets.clarify]
+license = "Apache-2.0"
+
+[[libcrux-secrets.clarify.git]]
+path = "LICENSE"
+checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
+
 [libcrux-sha2.clarify]
 license = "Apache-2.0"
 
@@ -300,6 +331,22 @@ license = "Apache-2.0"
 [[sync_wrapper.clarify.files]]
 path = "LICENSE"
 checksum = "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+
+
+# The tonic-prost crates are embedded in a larger repo
+[tonic-prost.clarify]
+license = "MIT"
+
+[[tonic-prost.clarify.git]]
+path = "LICENSE"
+checksum = "e24a56698aa6feaf3a02272b3624f9dc255d982970c5ed97ac4525a95056a5b3"
+
+[tonic-prost-build.clarify]
+license = "MIT"
+
+[[tonic-prost-build.clarify.git]]
+path = "LICENSE"
+checksum = "e24a56698aa6feaf3a02272b3624f9dc255d982970c5ed97ac4525a95056a5b3"
 
 
 # webpsan is embedded in a larger repo

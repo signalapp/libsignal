@@ -46,6 +46,7 @@ visibility = { workspace = true }
 http-body = { workspace = true, optional = true }
 libsignal-net-grpc = { workspace = true, optional = true }
 tonic = { workspace = true, optional = true, default-features = false }
+tonic-prost = { workspace = true, optional = true }
 
 [features]
 grpc = [
@@ -53,6 +54,7 @@ grpc = [
     "libsignal-net/tower-service",
     "libsignal-net-grpc",
     "tonic",
+    "tonic-prost",
 ]
 
 [dev-dependencies]

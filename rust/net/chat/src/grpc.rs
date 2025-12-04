@@ -161,14 +161,12 @@ mod testutil {
     use futures_util::FutureExt as _;
     use http_body_util::BodyExt as _;
     use tonic::Status;
-    use tonic::codec::Codec as _;
 
     use super::*;
 
     pub(crate) fn req(uri: &str, body: impl prost::Message + 'static) -> http::Request<Vec<u8>> {
-        let mut codec = tonic::codec::ProstCodec::<_, ()>::default();
         let body = tonic::codec::EncodeBody::new_client(
-            codec.encoder(),
+            tonic_prost::ProstEncoder::new(Default::default()),
             futures_util::stream::iter([Ok(body)]),
             None,
             None,
@@ -193,9 +191,8 @@ mod testutil {
     }
 
     pub(crate) fn ok(response: impl prost::Message + 'static) -> http::Response<Vec<u8>> {
-        let mut codec = tonic::codec::ProstCodec::<_, ()>::default();
         let body = tonic::codec::EncodeBody::new_server(
-            codec.encoder(),
+            tonic_prost::ProstEncoder::new(Default::default()),
             futures_util::stream::iter([Ok(response)]),
             None,
             Default::default(),
