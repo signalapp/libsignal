@@ -800,7 +800,7 @@ mod test {
         UnsuccessfulOutcome, WebSocketRoute,
     };
     use libsignal_net_infra::utils::no_network_change_events;
-    use libsignal_net_infra::{Alpn, RouteType};
+    use libsignal_net_infra::{Alpn, OverrideNagleAlgorithm, RouteType};
     use nonzero_ext::nonzero;
 
     use super::*;
@@ -817,6 +817,7 @@ mod test {
         inner: DirectOrProxyRoute::Direct(TcpRoute {
             address: UnresolvedHost::from(Arc::from(FAKE_HOST_NAME)),
             port: nonzero!(1234u16),
+            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
         }),
     });
     static FAKE_WEBSOCKET_ROUTES: LazyLock<[UnresolvedWebsocketServiceRoute; 2]> =
@@ -1259,12 +1260,15 @@ mod test {
                         DirectSuccess | DirectFailure => DirectOrProxyRoute::Direct(TcpRoute {
                             address: ip_addr!("192.0.2.1"),
                             port,
+                            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                         }),
                         ProxySuccess | ProxyFailure => {
                             DirectOrProxyRoute::Proxy(ConnectionProxyRoute::Socks(SocksRoute {
                                 proxy: TcpRoute {
                                     address: Ipv4Addr::LOCALHOST.into(),
                                     port: nonzero!(1080u16),
+                                    override_nagle_algorithm:
+                                        OverrideNagleAlgorithm::UseSystemDefault,
                                 },
                                 target_addr: ProxyTarget::ResolvedLocally(ip_addr!("192.0.2.1")),
                                 target_port: port,

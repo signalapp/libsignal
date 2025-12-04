@@ -182,7 +182,7 @@ impl<Transport: UsesTransport<UnresolvedTransportRoute>> DescribeForLog
         } = transport.transport_part();
 
         let target = match direct_or_proxy {
-            DirectOrProxyRoute::Direct(TcpRoute { address, port }) => {
+            DirectOrProxyRoute::Direct(TcpRoute { address, port, .. }) => {
                 (Host::Domain(address.clone().into()), *port)
             }
             DirectOrProxyRoute::Proxy(proxy) => match proxy {

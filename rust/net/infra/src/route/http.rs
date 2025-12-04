@@ -8,13 +8,13 @@ use std::sync::Arc;
 
 use nonzero_ext::nonzero;
 
-use crate::Alpn;
 use crate::certs::RootCertificates;
 use crate::host::Host;
 use crate::route::{
     ReplaceFragment, RouteProvider, RouteProviderContext, SetAlpn, SimpleRoute, TcpRoute, TlsRoute,
     TlsRouteFragment, UnresolvedHost,
 };
+use crate::{Alpn, OverrideNagleAlgorithm};
 
 pub const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443u16);
 
@@ -50,6 +50,7 @@ pub struct HttpsProvider<F, P> {
 pub struct DomainFrontRouteProvider {
     pub(crate) fronts: Vec<DomainFrontConfig>,
     pub(crate) http_version: HttpVersion,
+    pub(crate) override_nagle_algorithm: OverrideNagleAlgorithm,
 }
 
 /// A supported HTTP version for [`HttpsTlsRoute`].
@@ -96,10 +97,15 @@ impl<F, P> HttpsProvider<F, P> {
 }
 
 impl DomainFrontRouteProvider {
-    pub fn new(http_version: HttpVersion, fronts: Vec<DomainFrontConfig>) -> Self {
+    pub fn new(
+        http_version: HttpVersion,
+        fronts: Vec<DomainFrontConfig>,
+        override_nagle_algorithm: OverrideNagleAlgorithm,
+    ) -> Self {
         Self {
             fronts,
             http_version,
+            override_nagle_algorithm,
         }
     }
 }
@@ -114,6 +120,7 @@ impl RouteProvider for DomainFrontRouteProvider {
         let Self {
             fronts,
             http_version,
+            override_nagle_algorithm,
         } = self;
 
         let sni_index = context.random_usize();
@@ -140,6 +147,7 @@ impl RouteProvider for DomainFrontRouteProvider {
                         inner: TcpRoute {
                             address: UnresolvedHost(Arc::clone(sni)),
                             port: DEFAULT_HTTPS_PORT,
+                            override_nagle_algorithm: *override_nagle_algorithm,
                         },
                         fragment: TlsRouteFragment {
                             root_certs: root_certs.clone(),
@@ -222,6 +230,7 @@ mod test {
     use itertools::Itertools;
 
     use super::*;
+    use crate::OverrideNagleAlgorithm;
     use crate::route::testutils::FakeContext;
     use crate::route::{DirectTcpRouteProvider, TlsRouteProvider};
 
@@ -251,6 +260,7 @@ mod test {
                     },
                 ],
                 http_version: HttpVersion::Http1_1,
+                override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
             },
             inner: TlsRouteProvider {
                 sni: Host::Domain("direct-host".into()),
@@ -259,6 +269,7 @@ mod test {
                 inner: DirectTcpRouteProvider {
                     dns_hostname: "direct-tcp-host".into(),
                     port: DIRECT_TCP_PORT,
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                 },
             },
         };
@@ -285,6 +296,7 @@ mod test {
                         inner: TcpRoute {
                             address: UnresolvedHost("direct-tcp-host".into()),
                             port: DIRECT_TCP_PORT,
+                            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                         },
                     },
                 },
@@ -304,7 +316,8 @@ mod test {
                         },
                         inner: TcpRoute {
                             address: UnresolvedHost("front-sni-1a".into()),
-                            port: DEFAULT_HTTPS_PORT
+                            port: DEFAULT_HTTPS_PORT,
+                            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                         },
                     }
                 },
@@ -324,7 +337,8 @@ mod test {
                         },
                         inner: TcpRoute {
                             address: UnresolvedHost("front-sni-1b".into()),
-                            port: DEFAULT_HTTPS_PORT
+                            port: DEFAULT_HTTPS_PORT,
+                            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                         },
                     }
                 },
@@ -344,7 +358,8 @@ mod test {
                         },
                         inner: TcpRoute {
                             address: UnresolvedHost("front-sni-2a".into()),
-                            port: DEFAULT_HTTPS_PORT
+                            port: DEFAULT_HTTPS_PORT,
+                            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                         },
                     }
                 }

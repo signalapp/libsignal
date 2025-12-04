@@ -10,7 +10,6 @@ use either::Either;
 use itertools::Itertools as _;
 use nonzero_ext::nonzero;
 
-use crate::Alpn;
 use crate::certs::RootCertificates;
 use crate::errors::LogSafeDisplay;
 use crate::host::Host;
@@ -19,6 +18,7 @@ use crate::route::{
     TlsRouteFragment, UnresolvedHost,
 };
 use crate::tcp_ssl::proxy::socks;
+use crate::{Alpn, OverrideNagleAlgorithm};
 
 pub const SIGNAL_TLS_PROXY_SCHEME: &str = "org.signal.tls";
 
@@ -401,11 +401,14 @@ impl AsReplacer for TcpProxy {
                 Host::Domain(domain) => Host::Domain(UnresolvedHost(Arc::clone(domain))),
             },
             port: *proxy_port,
+            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
         };
 
         move |route| {
-            route.replace(|_: TcpRoute<UnresolvedHost>| ConnectionProxyRoute::Tcp {
-                proxy: tcp.clone(),
+            route.replace(|tcp_route: TcpRoute<UnresolvedHost>| {
+                let mut proxy_tcp = tcp.clone();
+                proxy_tcp.override_nagle_algorithm = tcp_route.override_nagle_algorithm;
+                ConnectionProxyRoute::Tcp { proxy: proxy_tcp }
             })
         }
     }
@@ -433,6 +436,7 @@ impl AsReplacer for TlsProxy {
                 Host::Domain(domain) => Host::Domain(UnresolvedHost(Arc::clone(domain))),
             },
             port: *proxy_port,
+            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
         };
 
         let tls_route = TlsRoute {
@@ -440,8 +444,10 @@ impl AsReplacer for TlsProxy {
             fragment: tls_fragment,
         };
         move |route| {
-            route.replace(|_: TcpRoute<UnresolvedHost>| ConnectionProxyRoute::Tls {
-                proxy: tls_route.clone(),
+            route.replace(|tcp_route: TcpRoute<UnresolvedHost>| {
+                let mut tls_route = tls_route.clone();
+                tls_route.inner.override_nagle_algorithm = tcp_route.override_nagle_algorithm;
+                ConnectionProxyRoute::Tls { proxy: tls_route }
             })
         }
     }
@@ -463,20 +469,29 @@ impl AsReplacer for SocksProxy {
                 Host::Domain(domain) => Host::Domain(UnresolvedHost(Arc::clone(domain))),
             },
             port: *proxy_port,
+            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
         };
         move |route| {
-            route.replace(|TcpRoute { address, port }| {
-                ConnectionProxyRoute::Socks(SocksRoute {
-                    proxy: proxy.clone(),
-                    protocol: protocol.clone(),
-                    target_addr: if *resolve_hostname_locally {
-                        ProxyTarget::ResolvedLocally(Host::Domain(address))
-                    } else {
-                        ProxyTarget::ResolvedRemotely { name: address.0 }
-                    },
-                    target_port: port,
-                })
-            })
+            route.replace(
+                |TcpRoute {
+                     address,
+                     port,
+                     override_nagle_algorithm,
+                 }| {
+                    let mut proxy = proxy.clone();
+                    proxy.override_nagle_algorithm = override_nagle_algorithm;
+                    ConnectionProxyRoute::Socks(SocksRoute {
+                        proxy,
+                        protocol: protocol.clone(),
+                        target_addr: if *resolve_hostname_locally {
+                            ProxyTarget::ResolvedLocally(Host::Domain(address))
+                        } else {
+                            ProxyTarget::ResolvedRemotely { name: address.0 }
+                        },
+                        target_port: port,
+                    })
+                },
+            )
         }
     }
 }
@@ -495,6 +510,7 @@ impl AsReplacer for HttpProxy {
         let proxy_tcp_route = TcpRoute {
             address: proxy_host.clone().map_domain(UnresolvedHost::from),
             port: *proxy_port,
+            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
         };
         let inner_route = match proxy_tls {
             Some(proxy_certs) => Either::Left(TlsRoute {
@@ -509,20 +525,38 @@ impl AsReplacer for HttpProxy {
             None => Either::Right(proxy_tcp_route),
         };
         move |route| {
-            route.replace(|TcpRoute { address, port }| {
-                ConnectionProxyRoute::Https(HttpsProxyRoute {
-                    fragment: HttpProxyRouteFragment {
-                        target_host: if *resolve_hostname_locally {
-                            ProxyTarget::ResolvedLocally(Host::Domain(address))
-                        } else {
-                            ProxyTarget::ResolvedRemotely { name: address.0 }
+            route.replace(
+                |TcpRoute {
+                     address,
+                     port,
+                     override_nagle_algorithm,
+                 }| {
+                    let inner_route = match &inner_route {
+                        Either::Left(tls) => {
+                            let mut tls = tls.clone();
+                            tls.inner.override_nagle_algorithm = override_nagle_algorithm;
+                            Either::Left(tls)
+                        }
+                        Either::Right(tcp) => {
+                            let mut tcp = tcp.clone();
+                            tcp.override_nagle_algorithm = override_nagle_algorithm;
+                            Either::Right(tcp)
+                        }
+                    };
+                    ConnectionProxyRoute::Https(HttpsProxyRoute {
+                        fragment: HttpProxyRouteFragment {
+                            target_host: if *resolve_hostname_locally {
+                                ProxyTarget::ResolvedLocally(Host::Domain(address))
+                            } else {
+                                ProxyTarget::ResolvedRemotely { name: address.0 }
+                            },
+                            target_port: port,
+                            authorization: proxy_authorization.clone(),
                         },
-                        target_port: port,
-                        authorization: proxy_authorization.clone(),
-                    },
-                    inner: inner_route.clone(),
-                })
-            })
+                        inner: inner_route,
+                    })
+                },
+            )
         }
     }
 }

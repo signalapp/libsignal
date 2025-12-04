@@ -12,7 +12,6 @@ use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::dns::custom_resolver::CustomDnsResolver;
 use libsignal_net::infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest};
 use libsignal_net::infra::host::Host;
-use libsignal_net_infra::Alpn;
 use libsignal_net_infra::dns::dns_transport_doh::DohTransportConnectorFactory;
 use libsignal_net_infra::dns::dns_transport_udp::UdpTransportConnectorFactory;
 use libsignal_net_infra::route::{
@@ -20,6 +19,7 @@ use libsignal_net_infra::route::{
 };
 use libsignal_net_infra::timeouts::DNS_LATER_RESPONSE_GRACE_PERIOD;
 use libsignal_net_infra::utils::no_network_change_events;
+use libsignal_net_infra::{Alpn, OverrideNagleAlgorithm};
 use nonzero_ext::nonzero;
 use tokio::time::Instant;
 
@@ -83,6 +83,7 @@ async fn main() {
                     inner: TcpRoute {
                         address: HOST_IP,
                         port: nonzero!(443u16),
+                        override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                     },
                 },
             };

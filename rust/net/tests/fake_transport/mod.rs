@@ -25,7 +25,7 @@ use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::route::{ConnectorFactory, DEFAULT_HTTPS_PORT, DirectOrProxyProvider};
 pub use libsignal_net::infra::testutil::fake_transport::FakeTransportTarget;
-use libsignal_net::infra::{AsyncDuplexStream, EnableDomainFronting};
+use libsignal_net::infra::{AsyncDuplexStream, EnableDomainFronting, OverrideNagleAlgorithm};
 use libsignal_net_infra::route::{Connector, TransportRoute, UsePreconnect};
 use libsignal_net_infra::utils::no_network_change_events;
 use libsignal_net_infra::ws::WebSocketTransportStream;
@@ -215,11 +215,10 @@ impl FakeDeps {
 
         ChatConnection::start_connect_with_transport(
             connection_resources,
-            DirectOrProxyProvider::direct(
-                chat_domain_config
-                    .connect
-                    .route_provider(EnableDomainFronting::OneDomainPerProxy),
-            ),
+            DirectOrProxyProvider::direct(chat_domain_config.connect.route_provider(
+                EnableDomainFronting::OneDomainPerProxy,
+                OverrideNagleAlgorithm::UseSystemDefault,
+            )),
             &UserAgent::with_libsignal_version("test"),
             RECOMMENDED_CHAT_WS_CONFIG,
             None,

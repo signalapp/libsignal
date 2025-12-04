@@ -208,7 +208,7 @@ macro_rules! impl_resolve_hostnames {
     }
 }
 
-impl_resolve_hostnames!(TcpRoute, address, port);
+impl_resolve_hostnames!(TcpRoute, address, port, override_nagle_algorithm);
 impl_resolve_hostnames!(TlsRoute, inner, fragment);
 impl_resolve_hostnames!(HttpsTlsRoute, inner, fragment);
 impl_resolve_hostnames!(WebSocketRoute, inner, fragment);
@@ -504,6 +504,7 @@ mod test {
     use nonzero_ext::nonzero;
 
     use super::*;
+    use crate::OverrideNagleAlgorithm;
     use crate::certs::RootCertificates;
     use crate::host::Host;
     use crate::route::resolve::testutils::{FakeResolver, FakeResponder};
@@ -693,6 +694,7 @@ mod test {
                 proxy: TcpRoute {
                     address: proxy,
                     port: PROXY_PORT,
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                 },
                 target_addr: ProxyTarget::ResolvedLocally(target),
                 target_port: TARGET_PORT,

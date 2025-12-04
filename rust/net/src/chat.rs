@@ -29,6 +29,7 @@ use tungstenite::protocol::WebSocketConfig;
 use crate::auth::Auth;
 use crate::connect_state::{ConnectionResources, RouteInfo, WebSocketTransportConnectorFactory};
 use crate::env::UserAgent;
+use crate::infra::OverrideNagleAlgorithm;
 use crate::proto;
 
 mod error;
@@ -436,10 +437,10 @@ pub mod test_support {
         );
 
         let route_provider = DirectOrProxyProvider {
-            inner: env
-                .chat_domain_config
-                .connect
-                .route_provider(enable_domain_fronting),
+            inner: env.chat_domain_config.connect.route_provider(
+                enable_domain_fronting,
+                OverrideNagleAlgorithm::UseSystemDefault,
+            ),
             mode: proxy_mode,
         }
         .filter_routes(filter_routes);
@@ -733,6 +734,7 @@ pub(crate) mod test {
                     inner: DirectOrProxyRoute::Direct(TcpRoute {
                         address: UnresolvedHost(CHAT_DOMAIN.into()),
                         port: DEFAULT_HTTPS_PORT,
+                        override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                     }),
                 },
             }],
@@ -797,6 +799,7 @@ pub(crate) mod test {
                 inner: DirectOrProxyRoute::Direct(TcpRoute {
                     address: UnresolvedHost(CHAT_DOMAIN.into()),
                     port: DEFAULT_HTTPS_PORT,
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                 }),
             },
         }];

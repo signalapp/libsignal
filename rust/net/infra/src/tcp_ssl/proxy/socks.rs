@@ -81,6 +81,7 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
             let TcpRoute {
                 address: proxy_host,
                 port: proxy_port,
+                ..
             } = &proxy;
             log::debug!(
                 "[{log_tag}] connecting to {protocol:?} proxy at {proxy_host}:{proxy_port} over TCP"
@@ -167,6 +168,7 @@ mod test {
     use tokio::join;
 
     use super::*;
+    use crate::OverrideNagleAlgorithm;
     use crate::route::ProxyTarget;
     use crate::tcp_ssl::proxy::StatelessProxied;
     use crate::tcp_ssl::proxy::testutil::{TcpServer, TlsServer};
@@ -311,6 +313,7 @@ mod test {
             TcpRoute {
                 address: local_addr.ip(),
                 port: local_addr.port().try_into().unwrap(),
+                override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
             }
         };
 
@@ -418,6 +421,7 @@ mod test {
             TcpRoute {
                 address: local_addr.ip(),
                 port: local_addr.port().try_into().unwrap(),
+                override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
             }
         };
 

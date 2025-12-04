@@ -442,10 +442,15 @@ fn make_route_provider(
         .map_err(|InvalidProxyConfig| ConnectError::InvalidConnectionConfiguration)?;
 
     let chat_connect = &env.chat_domain_config.connect;
+    let override_nagle_algorithm = connection_manager.tcp_nagle_override();
 
+    let inner = chat_connect.route_provider_with_options(
+        enable_domain_fronting,
+        enforce_minimum_tls,
+        override_nagle_algorithm,
+    );
     Ok(DirectOrProxyProvider {
-        inner: chat_connect
-            .route_provider_with_options(enable_domain_fronting, enforce_minimum_tls),
+        inner,
         mode: proxy_mode,
     })
 }

@@ -18,7 +18,7 @@ use crate::route::{Connector, DirectOrProxyMode, TcpRoute, TlsRouteFragment};
 #[cfg(feature = "dev-util")]
 #[allow(unused_imports)]
 use crate::utils::development_only_enable_nss_standard_debug_interop;
-use crate::{Alpn, AsyncDuplexStream, Connection};
+use crate::{Alpn, AsyncDuplexStream, Connection, OverrideNagleAlgorithm};
 
 pub mod proxy;
 
@@ -95,7 +95,11 @@ impl Connector<TcpRoute<IpAddr>, ()> for StatelessTcp {
         route: TcpRoute<IpAddr>,
         log_tag: &str,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> {
-        let TcpRoute { address, port } = route;
+        let TcpRoute {
+            address,
+            port,
+            override_nagle_algorithm,
+        } = route;
 
         async move {
             let start = tokio::time::Instant::now();
@@ -106,7 +110,7 @@ impl Connector<TcpRoute<IpAddr>, ()> for StatelessTcp {
             .await
             .map_err(|_| {
                 let elapsed = tokio::time::Instant::now() - start;
-                log::warn!("{log_tag}: TCP connection timed out after {elapsed:?}");
+                log::warn!("[{log_tag}] TCP connection timed out after {elapsed:?}");
                 TransportConnectError::TcpConnectionFailed
             })?
             .map_err(|e| {
@@ -115,10 +119,18 @@ impl Connector<TcpRoute<IpAddr>, ()> for StatelessTcp {
                 //   and it takes a long time to rollout logging, so let's just add it now.
                 let os_error = e.raw_os_error();
                 log::info!(
-                    "{log_tag}: TCP connection failed: kind={error_kind:?}, errno={os_error:?}"
+                    "[{log_tag}] TCP connection failed: kind={error_kind:?}, errno={os_error:?}"
                 );
                 TransportConnectError::TcpConnectionFailed
             })?;
+            match override_nagle_algorithm {
+                OverrideNagleAlgorithm::UseSystemDefault => {}
+                OverrideNagleAlgorithm::OverrideToOff => {
+                    if let Err(e) = result.set_nodelay(true) {
+                        log::info!("[{log_tag}] failed to set TCP_NODELAY: {e}");
+                    }
+                }
+            }
             #[cfg(target_os = "macos")]
             let result = crate::stream::WorkaroundWriteBugDuplexStream::new(result);
             Ok(result)
@@ -417,6 +429,7 @@ mod test {
 
     use super::testutil::*;
     use super::*;
+    use crate::OverrideNagleAlgorithm;
     use crate::route::{ComposedConnector, ConnectorExt as _, TlsRoute};
 
     #[test_case(Alpn::Http1_1, Alpn::Http2)]
@@ -448,6 +461,7 @@ mod test {
                 inner: TcpRoute {
                     address: addr.ip(),
                     port: NonZero::new(addr.port()).expect("successful listener has a valid port"),
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                 },
             },
             "transport",

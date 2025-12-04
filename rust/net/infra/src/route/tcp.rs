@@ -7,6 +7,7 @@ use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::sync::Arc;
 
+use crate::OverrideNagleAlgorithm;
 use crate::host::Host;
 use crate::route::{ReplaceFragment, RouteProvider, RouteProviderContext, UnresolvedHost};
 
@@ -14,6 +15,7 @@ use crate::route::{ReplaceFragment, RouteProvider, RouteProviderContext, Unresol
 pub struct TcpRoute<Addr> {
     pub address: Addr,
     pub port: NonZeroU16,
+    pub override_nagle_algorithm: OverrideNagleAlgorithm,
 }
 
 impl<A> ReplaceFragment<Self> for TcpRoute<A> {
@@ -32,10 +34,15 @@ impl<D> From<&TcpRoute<IpAddr>> for Host<D> {
 
 impl<D> From<TcpRoute<IpAddr>> for TcpRoute<Host<D>> {
     fn from(value: TcpRoute<IpAddr>) -> Self {
-        let TcpRoute { address, port } = value;
+        let TcpRoute {
+            address,
+            port,
+            override_nagle_algorithm,
+        } = value;
         Self {
             address: Host::Ip(address),
             port,
+            override_nagle_algorithm,
         }
     }
 }
@@ -43,13 +50,19 @@ impl<D> From<TcpRoute<IpAddr>> for TcpRoute<Host<D>> {
 pub struct DirectTcpRouteProvider {
     pub(crate) dns_hostname: Arc<str>,
     pub(crate) port: NonZeroU16,
+    pub(crate) override_nagle_algorithm: OverrideNagleAlgorithm,
 }
 
 impl DirectTcpRouteProvider {
-    pub fn new(hostname: Arc<str>, port: NonZeroU16) -> Self {
+    pub fn new(
+        hostname: Arc<str>,
+        port: NonZeroU16,
+        override_nagle_algorithm: OverrideNagleAlgorithm,
+    ) -> Self {
         Self {
             dns_hostname: hostname,
             port,
+            override_nagle_algorithm,
         }
     }
 }
@@ -61,11 +74,16 @@ impl RouteProvider for DirectTcpRouteProvider {
         &'s self,
         _context: &impl RouteProviderContext,
     ) -> impl Iterator<Item = Self::Route> + 's {
-        let Self { dns_hostname, port } = self;
+        let Self {
+            dns_hostname,
+            port,
+            override_nagle_algorithm,
+        } = self;
 
         std::iter::once(TcpRoute {
             address: UnresolvedHost(Arc::clone(dns_hostname)),
             port: *port,
+            override_nagle_algorithm: *override_nagle_algorithm,
         })
     }
 }
@@ -82,6 +100,7 @@ impl TryFrom<std::net::SocketAddr> for TcpRoute<IpAddr> {
         Ok(Self {
             address: value.ip(),
             port: NonZeroU16::new(value.port()).ok_or(ZeroPortNumber)?,
+            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
         })
     }
 }

@@ -198,6 +198,7 @@ mod test {
     use tokio::time::Instant;
 
     use super::*;
+    use crate::OverrideNagleAlgorithm;
     use crate::route::testutils::{ConnectFn, FakeConnectError, NeverConnect};
     use crate::route::{ConnectorExt as _, TcpRoute};
 
@@ -251,6 +252,7 @@ mod test {
         let route = TcpRoute {
             address: ip_addr!("192.0.2.1"),
             port: nonzero!(443u16),
+            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
         };
 
         let result = connector.connect(route, "test").await;

@@ -317,6 +317,7 @@ mod test {
     use warp::Filter as _;
 
     use super::*;
+    use crate::OverrideNagleAlgorithm;
     use crate::host::Host;
     use crate::route::{
         ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes,
@@ -466,6 +467,7 @@ mod test {
                     inner: TcpRoute {
                         address: Ipv6Addr::LOCALHOST.into(),
                         port: NonZeroU16::new(server_addr.port()).unwrap(),
+                        override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                     },
                 },
             }],
@@ -544,6 +546,7 @@ mod test {
                     inner: TcpRoute {
                         address: Ipv6Addr::LOCALHOST.into(),
                         port: NonZeroU16::new(server_addr.port()).unwrap(),
+                        override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                     },
                 },
             }],

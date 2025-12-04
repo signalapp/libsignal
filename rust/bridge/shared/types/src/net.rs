@@ -20,11 +20,11 @@ use libsignal_net::infra::route::{
     RouteProviderExt as _, UnresolvedWebsocketServiceRoute,
 };
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
-use libsignal_net::infra::{AsHttpHeader as _, EnableDomainFronting};
+use libsignal_net::infra::{AsHttpHeader as _, EnableDomainFronting, OverrideNagleAlgorithm};
 use rand::TryRngCore as _;
 
 pub use self::remote_config::BuildVariant;
-use self::remote_config::RemoteConfig;
+use self::remote_config::{RemoteConfig, RemoteConfigKey};
 use crate::*;
 
 pub mod cdsi;
@@ -224,6 +224,15 @@ impl ConnectionManager {
             RemoteConfig::new(remote_config, build_variant);
     }
 
+    fn tcp_nagle_override(&self) -> OverrideNagleAlgorithm {
+        let guard = self.remote_config.lock().expect("not poisoned");
+        if guard.is_enabled(RemoteConfigKey::DisableNagleAlgorithm) {
+            OverrideNagleAlgorithm::OverrideToOff
+        } else {
+            OverrideNagleAlgorithm::UseSystemDefault
+        }
+    }
+
     const NETWORK_CHANGE_DEBOUNCE: Duration = Duration::from_secs(1);
 
     pub fn on_network_change(&self, now: Instant) {
@@ -266,8 +275,13 @@ impl ConnectionManager {
             let guard = self.endpoints.lock().expect("not poisoned");
             (guard.enable_fronting, guard.enforce_minimum_tls)
         };
+        let override_nagle_algorithm = self.tcp_nagle_override();
         let route_provider = enclave
-            .enclave_websocket_provider_with_options(enable_domain_fronting, enforce_minimum_tls)
+            .enclave_websocket_provider_with_options(
+                enable_domain_fronting,
+                enforce_minimum_tls,
+                override_nagle_algorithm,
+            )
             .map_routes(|mut route| {
                 route.fragment.headers.extend([self.user_agent.as_header()]);
                 route

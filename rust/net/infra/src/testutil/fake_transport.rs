@@ -81,7 +81,7 @@ impl Display for FakeTransportTarget {
 }
 
 impl From<TcpRoute<IpAddr>> for FakeTransportTarget {
-    fn from(TcpRoute { address, port }: TcpRoute<IpAddr>) -> Self {
+    fn from(TcpRoute { address, port, .. }: TcpRoute<IpAddr>) -> Self {
         Self::Tcp {
             host: address,
             port,

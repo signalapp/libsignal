@@ -13,6 +13,7 @@ use std::sync::Arc;
 use clap::Parser;
 use futures_util::StreamExt;
 use futures_util::stream::FuturesUnordered;
+use libsignal_net::infra::OverrideNagleAlgorithm;
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::host::Host;
@@ -106,6 +107,7 @@ async fn main() {
                     address: Host::<Arc<str>>::parse_as_ip_or_domain(proxy_host)
                         .map_domain(UnresolvedHost::from),
                     port: proxy_port,
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                 },
                 target_addr: target_host,
                 target_port,

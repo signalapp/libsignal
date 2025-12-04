@@ -349,7 +349,6 @@ pub(crate) mod testutil {
 mod test {
     use std::borrow::Cow;
 
-    use crate::Alpn;
     use crate::certs::RootCertificates;
     use crate::host::Host;
     use crate::route::{
@@ -362,6 +361,7 @@ mod test {
         SERVER_CERTIFICATE, SERVER_HOSTNAME, make_http_request_response_over,
         simple_localhost_https_server,
     };
+    use crate::{Alpn, OverrideNagleAlgorithm};
 
     #[tokio::test]
     async fn connect_through_proxy() {
@@ -385,6 +385,7 @@ mod test {
                 inner: TcpRoute {
                     address: proxy_addr.ip(),
                     port: proxy_addr.port().try_into().unwrap(),
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                 },
             },
         };
@@ -431,6 +432,7 @@ mod test {
             proxy: TcpRoute {
                 address: proxy_addr.ip(),
                 port: proxy_addr.port().try_into().unwrap(),
+                override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
             },
         };
 

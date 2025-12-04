@@ -10,7 +10,6 @@ use clap::{Parser, ValueEnum};
 use libsignal_net::certs::SIGNAL_ROOT_CERTIFICATES;
 use libsignal_net::chat::test_support::simple_chat_connection;
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
-use libsignal_net::infra::EnableDomainFronting;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::http_client::{Http2Client, Http2Connector};
@@ -21,6 +20,7 @@ use libsignal_net::infra::route::{
 };
 use libsignal_net::infra::timeouts::TimeoutOr;
 use libsignal_net::infra::utils::no_network_change_events;
+use libsignal_net::infra::{EnableDomainFronting, OverrideNagleAlgorithm};
 use libsignal_net_chat::api::Unauth;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi;
 use nonzero_ext::nonzero;
@@ -164,6 +164,7 @@ async fn make_grpc_connection(host: &str) -> anyhow::Result<Http2Client<tonic::b
                 DirectOrProxyProvider::direct(DirectTcpRouteProvider::new(
                     host.clone(),
                     nonzero!(443u16),
+                    OverrideNagleAlgorithm::UseSystemDefault,
                 )),
             ),
         ),

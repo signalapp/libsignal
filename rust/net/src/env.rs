@@ -22,7 +22,7 @@ use libsignal_net_infra::route::{
 };
 use libsignal_net_infra::{
     AsStaticHttpHeader, ConnectionParams, EnableDomainFronting, EnforceMinimumTls,
-    RECOMMENDED_WS_CONFIG, RouteType, TransportConnectionParams,
+    OverrideNagleAlgorithm, RECOMMENDED_WS_CONFIG, RouteType, TransportConnectionParams,
 };
 use nonzero_ext::nonzero;
 use rand::seq::SliceRandom;
@@ -473,6 +473,7 @@ impl ConnectionConfig {
     pub fn route_provider(
         &self,
         enable_domain_fronting: EnableDomainFronting,
+        override_nagle_algorithm: OverrideNagleAlgorithm,
     ) -> HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>> {
         let Self {
             hostname,
@@ -520,15 +521,22 @@ impl ConnectionConfig {
 
         let hostname = Arc::<str>::from(*hostname);
 
+        let direct_tcp_provider =
+            DirectTcpRouteProvider::new(Arc::clone(&hostname), *port, override_nagle_algorithm);
+
         HttpsProvider::new(
             Arc::clone(&hostname),
             http_version.expect("must have an HTTP version to connect to an HTTP resource"),
-            DomainFrontRouteProvider::new(HttpVersion::Http1_1, domain_front_configs),
+            DomainFrontRouteProvider::new(
+                HttpVersion::Http1_1,
+                domain_front_configs,
+                override_nagle_algorithm,
+            ),
             TlsRouteProvider::new(
                 cert.clone(),
                 *min_tls_version,
                 Host::Domain(Arc::clone(&hostname)),
-                DirectTcpRouteProvider::new(hostname, *port),
+                direct_tcp_provider,
             ),
         )
     }
@@ -537,12 +545,15 @@ impl ConnectionConfig {
         &self,
         enable_domain_fronting: EnableDomainFronting,
         enforce_minimum_tls: EnforceMinimumTls,
+        override_nagle_algorithm: OverrideNagleAlgorithm,
     ) -> HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>> {
         match enforce_minimum_tls {
-            EnforceMinimumTls::Yes => self.route_provider(enable_domain_fronting),
+            EnforceMinimumTls::Yes => {
+                self.route_provider(enable_domain_fronting, override_nagle_algorithm)
+            }
             EnforceMinimumTls::No => self
                 .config_with_permissive_min_tls_version()
-                .route_provider(enable_domain_fronting),
+                .route_provider(enable_domain_fronting, override_nagle_algorithm),
         }
     }
 
@@ -856,8 +867,17 @@ mod test {
         }
     }
 
-    #[test_matrix([true, false])]
-    fn connect_config_routes_enable_domain_fronting(enable_domain_fronting: bool) {
+    #[test_matrix(
+        [true, false],
+        [
+            OverrideNagleAlgorithm::UseSystemDefault,
+            OverrideNagleAlgorithm::OverrideToOff
+        ]
+    )]
+    fn connect_config_routes_respect_route_provider_settings(
+        enable_domain_fronting: bool,
+        override_nagle_algorithm: OverrideNagleAlgorithm,
+    ) {
         const PORT: NonZeroU16 = nonzero!(123u16);
         const CONNECT_CONFIG: ConnectionConfig = ConnectionConfig {
             hostname: "host",
@@ -884,11 +904,14 @@ mod test {
                 ],
             }),
         };
-        let route_provider = CONNECT_CONFIG.route_provider(if enable_domain_fronting {
-            EnableDomainFronting::OneDomainPerProxy
-        } else {
-            EnableDomainFronting::No
-        });
+        let route_provider = CONNECT_CONFIG.route_provider(
+            if enable_domain_fronting {
+                EnableDomainFronting::OneDomainPerProxy
+            } else {
+                EnableDomainFronting::No
+            },
+            override_nagle_algorithm,
+        );
         let routes = route_provider.routes(&FakeContext::new()).collect_vec();
 
         let expected_direct_route = HttpsTlsRoute {
@@ -908,9 +931,14 @@ mod test {
                 inner: TcpRoute {
                     address: UnresolvedHost::from(Arc::from("host")),
                     port: PORT,
+                    override_nagle_algorithm,
                 },
             },
         };
+
+        assert!(routes
+            .iter()
+            .all(|route| route.inner.inner.override_nagle_algorithm == override_nagle_algorithm));
 
         if enable_domain_fronting {
             assert_eq!(routes.first(), Some(&expected_direct_route));

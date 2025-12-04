@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 use clap::Parser;
 use futures_util::StreamExt;
-use libsignal_net::infra::Alpn;
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::dns::custom_resolver::DnsTransport;
 use libsignal_net::infra::dns::dns_lookup::DnsLookupRequest;
@@ -17,6 +16,7 @@ use libsignal_net::infra::host::Host;
 use libsignal_net::infra::route::{
     HttpRouteFragment, HttpVersion, HttpsTlsRoute, NoDelay, TcpRoute, TlsRoute, TlsRouteFragment,
 };
+use libsignal_net::infra::{Alpn, OverrideNagleAlgorithm};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -62,6 +62,7 @@ async fn main() {
             inner: TcpRoute {
                 address,
                 port: args.ns_port,
+                override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
             },
         },
     };

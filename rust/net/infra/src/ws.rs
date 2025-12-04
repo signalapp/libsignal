@@ -612,7 +612,7 @@ mod test {
         SERVER_CERTIFICATE, SERVER_HOSTNAME, localhost_https_server_with_custom_service,
     };
     use crate::tcp_ssl::{StatelessTcp, StatelessTls};
-    use crate::{Alpn, Connection};
+    use crate::{Alpn, Connection, OverrideNagleAlgorithm};
 
     #[tokio::test]
     async fn websocket_client_sends_pong_on_server_ping() {
@@ -764,6 +764,7 @@ mod test {
                 inner: TcpRoute {
                     address: addr.ip(),
                     port: NonZero::new(addr.port()).expect("successful listener has a valid port"),
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                 },
             },
             "transport",

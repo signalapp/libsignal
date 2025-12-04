@@ -22,7 +22,7 @@ use libsignal_net_infra::ws::attested::{
 use libsignal_net_infra::ws::{self, WebSocketConnectError, WebSocketError};
 
 use crate::env::{DomainConfig, SvrBEnv};
-use crate::infra::{EnableDomainFronting, EnforceMinimumTls};
+use crate::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagleAlgorithm};
 use crate::svr::SvrConnection;
 use crate::ws::WebSocketServiceConnectError;
 
@@ -274,7 +274,10 @@ impl<E: EnclaveKind> EnclaveEndpoint<'_, E> {
             ws_config: _,
             params,
         } = self;
-        let http_provider = domain_config.connect.route_provider(enable_domain_fronting);
+        let http_provider = domain_config.connect.route_provider(
+            enable_domain_fronting,
+            OverrideNagleAlgorithm::UseSystemDefault,
+        );
 
         let ws_fragment = WebSocketRouteFragment {
             ws_config: Default::default(),
@@ -289,6 +292,7 @@ impl<E: EnclaveKind> EnclaveEndpoint<'_, E> {
         &self,
         enable_domain_fronting: EnableDomainFronting,
         enforce_minimum_tls: EnforceMinimumTls,
+        override_nagle_algorithm: OverrideNagleAlgorithm,
     ) -> WebSocketProvider<
         HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>>,
     > {
@@ -297,9 +301,11 @@ impl<E: EnclaveKind> EnclaveEndpoint<'_, E> {
             ws_config: _,
             params,
         } = self;
-        let http_provider = domain_config
-            .connect
-            .route_provider_with_options(enable_domain_fronting, enforce_minimum_tls);
+        let http_provider = domain_config.connect.route_provider_with_options(
+            enable_domain_fronting,
+            enforce_minimum_tls,
+            override_nagle_algorithm,
+        );
 
         let ws_fragment = WebSocketRouteFragment {
             ws_config: Default::default(),

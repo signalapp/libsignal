@@ -78,6 +78,16 @@ pub enum EnforceMinimumTls {
     No,
 }
 
+/// Whether to override the platform default for the Nagle algorithm via TCP_NODELAY.
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub enum OverrideNagleAlgorithm {
+    /// Explicitly disable the Nagle algorithm (enable TCP_NODELAY).
+    OverrideToOff,
+    /// Leave the operating system's default behavior unchanged.
+    #[default]
+    UseSystemDefault,
+}
+
 /// The fully general version of [`AsStaticHttpHeader`], where the name of the header may depend on the
 /// value.
 pub trait AsHttpHeader {

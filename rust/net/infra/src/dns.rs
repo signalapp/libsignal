@@ -31,7 +31,7 @@ use crate::timeouts::{
 };
 use crate::utils::NetworkChangeEvent;
 use crate::utils::oneshot_broadcast::{self, Receiver};
-use crate::{Alpn, utils};
+use crate::{Alpn, OverrideNagleAlgorithm, utils};
 
 pub mod custom_resolver;
 mod dns_errors;
@@ -119,6 +119,7 @@ pub fn build_custom_resolver_cloudflare_doh(
                 inner: TcpRoute {
                     address: ip_addr,
                     port: DEFAULT_HTTPS_PORT,
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                 },
             },
         }

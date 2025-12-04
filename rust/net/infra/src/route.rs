@@ -698,7 +698,6 @@ mod test {
     use tungstenite::protocol::WebSocketConfig;
 
     use super::*;
-    use crate::Alpn;
     use crate::certs::RootCertificates;
     use crate::dns::lookup_result::LookupResult;
     use crate::host::Host;
@@ -706,6 +705,7 @@ mod test {
     use crate::route::testutils::{FakeConnectError, FakeContext, FakeRoute};
     use crate::route::{SocksProxy, TlsProxy};
     use crate::tcp_ssl::proxy::socks;
+    use crate::{Alpn, OverrideNagleAlgorithm};
 
     static WS_ENDPOINT: LazyLock<PathAndQuery> =
         LazyLock::new(|| PathAndQuery::from_static("/ws-path"));
@@ -735,6 +735,7 @@ mod test {
                         return_routes_with_all_snis: true,
                     }],
                     http_version: HttpVersion::Http2,
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                 },
                 inner: TlsRouteProvider {
                     sni: Host::Domain("sni-name".into()),
@@ -743,6 +744,7 @@ mod test {
                     inner: DirectTcpRouteProvider {
                         dns_hostname: "target-host".into(),
                         port: TARGET_PORT,
+                        override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                     },
                 },
             },
@@ -774,6 +776,7 @@ mod test {
                         inner: TcpRoute {
                             address: UnresolvedHost("target-host".into()),
                             port: TARGET_PORT,
+                            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                         },
                     },
                 },
@@ -801,6 +804,7 @@ mod test {
                         inner: TcpRoute {
                             address: UnresolvedHost("front-sni1".into()),
                             port: http::DEFAULT_HTTPS_PORT,
+                            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                         },
                     },
                 },
@@ -828,6 +832,7 @@ mod test {
                         inner: TcpRoute {
                             address: UnresolvedHost("front-sni2".into()),
                             port: DEFAULT_HTTPS_PORT,
+                            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                         },
                     },
                 },
@@ -850,6 +855,7 @@ mod test {
             inner: DirectTcpRouteProvider {
                 dns_hostname: "direct-target".into(),
                 port: TARGET_PORT,
+                override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
             },
         };
 
@@ -881,6 +887,7 @@ mod test {
                         inner: TcpRoute {
                             address: Host::Domain(UnresolvedHost("tls-proxy".into())),
                             port: PROXY_PORT,
+                            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                         },
                         fragment: TlsRouteFragment {
                             root_certs: PROXY_CERTS.clone(),
@@ -909,6 +916,7 @@ mod test {
             inner: DirectTcpRouteProvider {
                 dns_hostname: "direct-target".into(),
                 port: TARGET_PORT,
+                override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
             },
         };
 
@@ -939,6 +947,7 @@ mod test {
                     proxy: TcpRoute {
                         address: Host::Domain(UnresolvedHost("socks-proxy".into())),
                         port: PROXY_PORT,
+                        override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                     },
                     target_addr: ProxyTarget::ResolvedRemotely {
                         name: "direct-target".into(),
@@ -957,6 +966,7 @@ mod test {
                 inner: DirectOrProxyRoute::Direct(TcpRoute {
                     address: UnresolvedHost("direct-target".into()),
                     port: TARGET_PORT,
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
                 }),
             },
         ];
