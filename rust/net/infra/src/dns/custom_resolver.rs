@@ -191,7 +191,7 @@ where
             connector,
             (),
             "dns",
-            |_e| std::ops::ControlFlow::Continue::<std::convert::Infallible>(()),
+            |_e| crate::route::ErrorHandling::Continue::<std::convert::Infallible>,
         )
         .await;
         self.attempts_record.write().await.apply_outcome_updates(

@@ -73,7 +73,7 @@ async fn main() {
         DohTransportConnector::default(),
         (),
         "dns_over_https",
-        |_| std::ops::ControlFlow::Continue::<std::convert::Infallible>(()),
+        |_| libsignal_net_infra::route::ErrorHandling::Continue::<std::convert::Infallible>,
     )
     .await
     .0

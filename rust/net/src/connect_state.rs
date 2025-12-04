@@ -6,7 +6,6 @@
 use std::default::Default;
 use std::fmt::Debug;
 use std::future::Future;
-use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
@@ -21,7 +20,7 @@ use libsignal_net_infra::http_client::HttpConnectError;
 use libsignal_net_infra::route::{
     AttemptOutcome, ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes,
     ConnectionProxyConfig, Connector, ConnectorFactory, DelayBasedOnTransport, DescribeForLog,
-    DescribedRouteConnector, DirectOrProxy, DirectOrProxyMode, DirectOrProxyRoute,
+    DescribedRouteConnector, DirectOrProxy, DirectOrProxyMode, DirectOrProxyRoute, ErrorHandling,
     HttpRouteFragment, HttpsServiceRoute, InterfaceChangedOr, InterfaceMonitor, LoggingConnector,
     ResettingConnectionOutcomes, ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute,
     RouteProvider, RouteProviderContext, RouteProviderExt as _, RouteResolver,
@@ -337,9 +336,9 @@ impl<TC> ConnectionResources<'_, TC> {
                     }
                 };
                 if is_fatal {
-                    ControlFlow::Break(error)
+                    ErrorHandling::Fatal(error)
                 } else {
-                    ControlFlow::Continue(())
+                    ErrorHandling::Continue
                 }
             },
         )
@@ -434,9 +433,9 @@ impl<TC> ConnectionResources<'_, TC> {
                     HttpConnectError::Transport(TransportConnectError::ClientAbort)
                 );
                 if is_fatal {
-                    ControlFlow::Break(error)
+                    ErrorHandling::Fatal(error)
                 } else {
-                    ControlFlow::Continue(())
+                    ErrorHandling::Continue
                 }
             },
         )
@@ -448,7 +447,7 @@ impl<TC> ConnectionResources<'_, TC> {
         routes: impl RouteProvider<Route = UR>,
         high_level_connector: HC,
         log_tag: &str,
-        on_error: impl FnMut(InterfaceChangedOr<HC::Error>) -> ControlFlow<FatalError>,
+        on_error: impl FnMut(InterfaceChangedOr<HC::Error>) -> ErrorHandling<FatalError>,
     ) -> Result<(HC::Connection, RouteInfo), TimeoutOr<ConnectError<FatalError>>>
     where
         // Our routes should be unresolved and describable, plus whatever we'll need for connecting.
@@ -690,12 +689,12 @@ where
             |error| {
                 match error {
                     InterfaceChangedOr::InterfaceChanged => {
-                        ControlFlow::Break(TransportConnectError::ClientAbort)
+                        ErrorHandling::Fatal(TransportConnectError::ClientAbort)
                     }
                     InterfaceChangedOr::Other(_) => {
                         // All normal transport-level errors are considered intermittent; see
                         // WebSocketServiceConnectError::classify.
-                        ControlFlow::Continue(())
+                        ErrorHandling::Continue
                     }
                 }
             },

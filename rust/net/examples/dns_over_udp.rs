@@ -12,7 +12,7 @@ use futures_util::StreamExt;
 use libsignal_net::infra::dns::custom_resolver::DnsTransport;
 use libsignal_net::infra::dns::dns_lookup::DnsLookupRequest;
 use libsignal_net_infra::dns::dns_transport_udp::UdpTransportConnector;
-use libsignal_net_infra::route::{NoDelay, UdpRoute};
+use libsignal_net_infra::route::{ErrorHandling, NoDelay, UdpRoute};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -50,7 +50,7 @@ async fn main() {
         UdpTransportConnector,
         (),
         "dns_over_https",
-        |_| std::ops::ControlFlow::Continue::<std::convert::Infallible>(()),
+        |_| ErrorHandling::Continue::<std::convert::Infallible>,
     )
     .await
     .0

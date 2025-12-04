@@ -307,7 +307,6 @@ mod test {
     use std::future::Future;
     use std::net::{IpAddr, Ipv6Addr, SocketAddr};
     use std::num::NonZeroU16;
-    use std::ops::ControlFlow;
     use std::sync::Arc;
     use std::time::{Duration, SystemTime};
 
@@ -321,7 +320,7 @@ mod test {
     use crate::host::Host;
     use crate::route::{
         ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes,
-        HttpsTlsRoute, TcpRoute, ThrottlingConnector, TlsRoute, TlsRouteFragment,
+        ErrorHandling, HttpsTlsRoute, TcpRoute, ThrottlingConnector, TlsRoute, TlsRouteFragment,
     };
     use crate::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME, localhost_https_server};
 
@@ -406,13 +405,13 @@ mod test {
                         "[{log_tag}] HTTP2 connection failed: {}",
                         (&t as &dyn LogSafeDisplay)
                     );
-                    ControlFlow::Continue(())
+                    ErrorHandling::Continue
                 }
                 HttpConnectError::HttpHandshake => {
-                    ControlFlow::Break(HttpError::Http2HandshakeFailed)
+                    ErrorHandling::Fatal(HttpError::Http2HandshakeFailed)
                 }
                 HttpConnectError::InvalidConfig(_) => {
-                    ControlFlow::Break(HttpError::FailedToCreateRequest)
+                    ErrorHandling::Fatal(HttpError::FailedToCreateRequest)
                 }
             },
         )

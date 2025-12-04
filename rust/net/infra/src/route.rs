@@ -79,7 +79,6 @@
 
 use std::hash::Hash;
 use std::net::IpAddr;
-use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -281,6 +280,14 @@ pub enum ConnectError<E> {
     FatalConnect(E),
 }
 
+/// Used in [`connect()`]'s callback to decide what to do when a route fails with an error.
+pub enum ErrorHandling<E> {
+    /// Don't try any more routes; exit with the given error.
+    Fatal(E),
+    /// Continue trying routes.
+    Continue,
+}
+
 /// Recorded success and failure information from [`connect()`].
 ///
 /// This should be used to update the internal state of the delay policy after
@@ -320,7 +327,7 @@ pub async fn connect<R, UR, C, Inner, FatalError>(
     connector: C,
     inner: Inner,
     log_tag: &str,
-    on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
+    on_error: impl FnMut(C::Error) -> ErrorHandling<FatalError>,
 ) -> (
     Result<C::Connection, ConnectError<FatalError>>,
     OutcomeUpdates<R>,
@@ -354,7 +361,7 @@ pub async fn connect_resolved<R, C, Inner, FatalError>(
     connector: C,
     inner: Inner,
     log_tag: &str,
-    on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
+    on_error: impl FnMut(C::Error) -> ErrorHandling<FatalError>,
 ) -> (
     Result<C::Connection, ConnectError<FatalError>>,
     OutcomeUpdates<R>,
@@ -381,7 +388,7 @@ async fn connect_inner<R, C, Inner, FatalError>(
     connector: C,
     inner: Inner,
     log_tag: &str,
-    mut on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
+    mut on_error: impl FnMut(C::Error) -> ErrorHandling<FatalError>,
 ) -> (
     Result<C::Connection, ConnectError<FatalError>>,
     OutcomeUpdates<R>,
@@ -497,11 +504,11 @@ where
                         outcomes.push(make_outcome(Ok(())));
                         break Ok(connection);
                     }
-                    Err(ControlFlow::Continue(())) => {
+                    Err(ErrorHandling::Continue) => {
                         // Record the non-fatal error outcome and move on.
                         outcomes.push(make_outcome(Err(UnsuccessfulOutcome::default())));
                     }
-                    Err(ControlFlow::Break(fatal_err)) => {
+                    Err(ErrorHandling::Fatal(fatal_err)) => {
                         // This isn't a route-level error, it's a
                         // service-level error. It doesn't necessarily mean
                         // the route is bad, so don't record the
@@ -676,7 +683,6 @@ pub mod testutils {
 mod test {
     use std::borrow::Cow;
     use std::collections::HashMap;
-    use std::convert::Infallible;
     use std::fmt::Debug;
     use std::future::Future;
     use std::net::{IpAddr, Ipv6Addr};
@@ -1071,7 +1077,7 @@ mod test {
                 connector,
                 (),
                 "test",
-                |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
+                |_err: FakeConnectError| ErrorHandling::Continue::<std::convert::Infallible>,
             )
             .await
         });
@@ -1163,7 +1169,7 @@ mod test {
             connector,
             (),
             "test",
-            |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
+            |_err: FakeConnectError| ErrorHandling::Continue::<std::convert::Infallible>,
         )
         .await;
 
@@ -1240,7 +1246,7 @@ mod test {
             connector,
             (),
             "test",
-            |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
+            |_err: FakeConnectError| ErrorHandling::Continue::<std::convert::Infallible>,
         )
         .await;
         assert_matches!(result, Err(_));
@@ -1292,7 +1298,7 @@ mod test {
                 connector,
                 (),
                 "test",
-                |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
+                |_err: FakeConnectError| ErrorHandling::Continue::<std::convert::Infallible>,
             )
             .await
         });
@@ -1346,7 +1352,7 @@ mod test {
                 connector,
                 (),
                 "test",
-                |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
+                |_err: FakeConnectError| ErrorHandling::Continue::<std::convert::Infallible>,
             )
             .await
         });
