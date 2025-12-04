@@ -426,9 +426,7 @@ mod test {
 
         Ok(AggregatingHttp2Client::new(
             result.map_err(|e| match e {
-                ConnectError::AllAttemptsFailed | ConnectError::NoResolvedRoutes => {
-                    HttpError::SslHandshakeFailed
-                }
+                ConnectError::AllAttemptsFailed => HttpError::SslHandshakeFailed,
                 ConnectError::FatalConnect(e) => e,
             })?,
             max_response_size,

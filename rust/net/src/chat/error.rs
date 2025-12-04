@@ -54,9 +54,6 @@ impl LogSafeDisplay for ConnectError {}
 impl<T: Into<ConnectError>> From<TimeoutOr<RouteConnectError<T>>> for ConnectError {
     fn from(e: TimeoutOr<RouteConnectError<T>>) -> Self {
         match e {
-            TimeoutOr::Other(RouteConnectError::NoResolvedRoutes) => {
-                ConnectError::InvalidConnectionConfiguration
-            }
             TimeoutOr::Other(RouteConnectError::AllAttemptsFailed) => {
                 ConnectError::AllAttemptsFailed
             }

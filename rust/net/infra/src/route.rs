@@ -275,8 +275,6 @@ impl_uses_transport!(UsePreconnect, inner);
 /// Error for [`connect()`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ConnectError<E> {
-    /// The route provider did not produce any routes.
-    NoResolvedRoutes,
     /// All attempts to connect failed, but none fatally.
     AllAttemptsFailed,
     /// An attempt to connect failed fatally.
@@ -544,7 +542,6 @@ impl<E: LogSafeDisplay> LogSafeDisplay for ConnectError<E> {}
 impl<E: std::fmt::Display> std::fmt::Display for ConnectError<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConnectError::NoResolvedRoutes => f.write_str("no resolved routes"),
             ConnectError::AllAttemptsFailed => f.write_str("all connect attempts failed"),
             ConnectError::FatalConnect(e) => write!(f, "fatal connect error: {e}"),
         }

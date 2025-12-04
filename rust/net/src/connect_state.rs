@@ -376,9 +376,7 @@ impl<TC> ConnectionResources<'_, TC> {
             .connect_ws(ws_routes, ws_connector, &log_tag)
             .await
             .map_err(|e| match e {
-                TimeoutOr::Other(
-                    ConnectError::NoResolvedRoutes | ConnectError::AllAttemptsFailed,
-                )
+                TimeoutOr::Other(ConnectError::AllAttemptsFailed)
                 | TimeoutOr::Timeout {
                     attempt_duration: _,
                 } => crate::enclave::Error::AllConnectionAttemptsFailed,

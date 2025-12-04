@@ -28,8 +28,6 @@ pub enum Error {
     DohRequestBadStatus(u16),
     /// Specific IP requested but only other type available
     RequestedIpTypeNotFound,
-    /// Failed to create transport due to restrictions
-    TransportRestricted,
     /// Protocol error: {0}
     Protocol(dns_message::Error),
     /// DNS request resulted in a non-zero error code: {0}

@@ -199,11 +199,7 @@ where
             updates.finished_at,
             SystemTime::now(),
         );
-        let transport = result.map_err(|e| match e {
-            crate::route::ConnectError::NoResolvedRoutes => dns::DnsError::TransportRestricted,
-            crate::route::ConnectError::AllAttemptsFailed
-            | crate::route::ConnectError::FatalConnect(_) => dns::DnsError::TransportFailure,
-        })?;
+        let transport = result.map_err(|_| dns::DnsError::TransportFailure)?;
 
         let (ipv4_res_rx, ipv6_res_rx) = self.send_dns_queries(transport, request);
         let (maybe_ipv4, maybe_ipv6) = results_within_interval(
