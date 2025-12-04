@@ -8,11 +8,13 @@ use libsignal_account_keys::BACKUP_KEY_LEN;
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{EnclaveEndpoint, PpssSetup, SvrSgx};
 use libsignal_net::env::SvrBEnv;
+use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svrb as svrb_impl;
 use libsignal_net::svrb::traits::SvrBConnect;
 use libsignal_net::svrb::{BackupRestoreResponse, BackupStoreResponse};
+use libsignal_net::ws::WebSocketServiceConnectError;
 // Re-export the error type for FFI implementations
 pub use svrb_impl::Error;
 
@@ -45,7 +47,7 @@ impl SvrBConnect for SvrBConnectImpl<'_> {
         let (connection_resources, route_provider) = connection_manager
             .enclave_connection_resources(endpoint)
             .map_err(|InvalidProxyConfig| {
-                libsignal_net::ws::WebSocketServiceConnectError::invalid_proxy_configuration()
+                WebSocketServiceConnectError::from(TransportConnectError::InvalidConfiguration)
             })?;
 
         SvrConnection::connect(

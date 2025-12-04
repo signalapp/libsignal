@@ -56,15 +56,6 @@ impl WebSocketServiceConnectError {
             ),
         }
     }
-
-    pub fn invalid_proxy_configuration() -> Self {
-        Self::Connect(
-            WebSocketConnectError::Transport(TransportConnectError::InvalidConfiguration),
-            NotRejectedByServer {
-                _limit_construction: (),
-            },
-        )
-    }
 }
 
 impl Display for WebSocketServiceConnectError {
@@ -85,6 +76,17 @@ impl Display for WebSocketServiceConnectError {
                 _not_rejected_by_server,
             ) => web_socket_connect_error.fmt(f),
         }
+    }
+}
+
+impl From<TransportConnectError> for WebSocketServiceConnectError {
+    fn from(error: TransportConnectError) -> Self {
+        Self::Connect(
+            error.into(),
+            NotRejectedByServer {
+                _limit_construction: (),
+            },
+        )
     }
 }
 
