@@ -423,6 +423,7 @@ mod test {
     use std::num::NonZero;
 
     use assert_matches::assert_matches;
+    use boring_signal::x509::X509VerifyError;
     use futures_util::future::Either;
     use test_case::test_case;
     use warp::Filter as _;
@@ -430,7 +431,9 @@ mod test {
     use super::testutil::*;
     use super::*;
     use crate::OverrideNagleAlgorithm;
+    use crate::errors::FailedHandshakeReason;
     use crate::route::{ComposedConnector, ConnectorExt as _, TlsRoute};
+    use crate::tcp_ssl::proxy::testutil::PROXY_CERTIFICATE;
 
     #[test_case(Alpn::Http1_1, Alpn::Http2)]
     #[test_case(Alpn::Http2, Alpn::Http1_1)]
@@ -484,6 +487,48 @@ mod test {
         assert!(
             !reason.to_string().contains("NO_APPLICATION_PROTOCOL"),
             "{reason}"
+        );
+    }
+
+    #[test_log::test(tokio::test)]
+    async fn cert_mismatch() {
+        // This is overkill for testing a TLS connection, but it's also simple and more realistic
+        // than a generic server socket.
+        let (addr, server) = simple_localhost_https_server();
+        let server = Box::pin(server);
+
+        type StatelessTlsConnector = ComposedConnector<StatelessTls, StatelessTcp>;
+        let connector = StatelessTlsConnector::default();
+        let client = std::pin::pin!(connector.connect(
+            TlsRoute {
+                fragment: TlsRouteFragment {
+                    root_certs: RootCertificates::FromDer(Cow::Borrowed(
+                        // Wrong certificate!
+                        PROXY_CERTIFICATE.cert.der(),
+                    )),
+                    sni: Host::Domain(SERVER_HOSTNAME.into()),
+                    alpn: None,
+                    min_protocol_version: None,
+                },
+                inner: TcpRoute {
+                    address: addr.ip(),
+                    port: NonZero::new(addr.port()).expect("successful listener has a valid port"),
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
+                },
+            },
+            "transport",
+        ));
+
+        let err = match futures_util::future::select(client, server).await {
+            Either::Left((stream, _server)) => stream.expect_err("should have failed negotiation"),
+            Either::Right(_) => panic!("server exited unexpectedly"),
+        };
+
+        assert_matches!(
+            err,
+            TransportConnectError::SslFailedHandshake(FailedHandshakeReason::Cert(
+                X509VerifyError::DEPTH_ZERO_SELF_SIGNED_CERT
+            ))
         );
     }
 }

@@ -60,16 +60,19 @@ impl Display for SslErrorReasons {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct FailedHandshakeReason {
-    io: Option<std::io::ErrorKind>,
-    code: Option<boring_signal::ssl::ErrorCode>,
+pub enum FailedHandshakeReason {
+    Io(std::io::ErrorKind),
+    Cert(boring_signal::x509::X509VerifyError),
+    OtherBoring(boring_signal::ssl::ErrorCode),
 }
 
+// Coarse check for user data in the BoringSSL error code types.
+// This isn't perfect---an IP address is Copy---but it'll catch Strings and Vecs at least.
+static_assertions::assert_impl_all!(boring_signal::x509::X509VerifyError: Copy);
+static_assertions::assert_impl_all!(boring_signal::ssl::ErrorCode: Copy);
+
 impl FailedHandshakeReason {
-    pub const TIMED_OUT: Self = Self {
-        io: Some(std::io::ErrorKind::TimedOut),
-        code: None,
-    };
+    pub const TIMED_OUT: Self = Self::Io(std::io::ErrorKind::TimedOut);
 }
 
 /// Error type for TLS handshake timeouts
@@ -80,28 +83,43 @@ pub struct TlsHandshakeTimeout;
 impl<S> From<HandshakeError<S>> for FailedHandshakeReason {
     fn from(value: HandshakeError<S>) -> Self {
         log::debug!("handshake error: {value}");
-        let io = value.as_io_error().map(std::io::Error::kind);
-        let code = value.code();
-        Self { io, code }
+
+        // Prefer IO errors over Boring errors; the IO error will likely be more specific.
+        if let Some(io) = value.as_io_error().map(std::io::Error::kind) {
+            return Self::Io(io);
+        }
+
+        let code = value.code().unwrap_or(boring_signal::ssl::ErrorCode::NONE);
+
+        // If we specifically have an *SSL* error, check if it's an *X509* error underneath.
+        // (But not X509VerifyError::INVALID_CALL, which means we're not in the right state to
+        // query for verification errors.)
+        if code == boring_signal::ssl::ErrorCode::SSL {
+            if let Some(cert_error_code) = value.ssl().and_then(|ssl| ssl.verify_result().err()) {
+                if cert_error_code != boring_signal::x509::X509VerifyError::INVALID_CALL {
+                    return Self::Cert(cert_error_code);
+                }
+            }
+        }
+
+        Self::OtherBoring(code)
     }
 }
 
 impl LogSafeDisplay for FailedHandshakeReason {}
 impl Display for FailedHandshakeReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.io.is_none() && self.code.is_none() {
-            return write!(f, "unknown error");
+        match self {
+            Self::OtherBoring(boring_signal::ssl::ErrorCode::NONE) => write!(f, "unknown error"),
+            Self::Io(error_kind) => write!(f, "IO error: {error_kind}"),
+            Self::Cert(code) => write!(
+                f,
+                "boring X509 error code: {} {}",
+                code.as_raw(),
+                code.error_string()
+            ),
+            Self::OtherBoring(code) => write!(f, "boring SSL error code: {}", code.as_raw()),
         }
-
-        if let Some(code) = self.code {
-            write!(f, "boring SSL error code:{}", code.as_raw())?;
-        }
-
-        if let Some(io) = self.io {
-            write!(f, "IO error: {io}")?
-        }
-
-        Ok(())
     }
 }
 

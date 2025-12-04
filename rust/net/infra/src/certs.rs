@@ -367,6 +367,7 @@ mod test {
 
     use assert_matches::assert_matches;
     use boring_signal::ssl::{ErrorCode, SslConnector, SslMethod};
+    use boring_signal::x509::X509VerifyError;
     use rustls::RootCertStore;
     use tokio::net::TcpStream;
 
@@ -460,14 +461,16 @@ mod test {
         set_up_platform_verifier(&mut ssl, Host::Domain(SERVER_HOSTNAME), verifier).expect("valid");
 
         let transport = TcpStream::connect(addr).await.expect("can connect");
-        assert_matches!(
+        let err = assert_matches!(
             tokio_boring_signal::connect(
                 ssl.build().configure().expect("valid"),
                 SERVER_HOSTNAME,
                 transport,
             )
             .await,
-            Err(e) if e.code() == Some(ErrorCode::SSL)
+            Err(e) if e.code() == Some(ErrorCode::SSL) => e
         );
+        let failure = err.ssl().and_then(|ssl| ssl.verify_result().err());
+        assert_matches!(failure, Some(X509VerifyError::APPLICATION_VERIFICATION));
     }
 }
