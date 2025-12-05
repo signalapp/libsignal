@@ -56,6 +56,7 @@ describe('chat service api', () => {
     const cases: Array<[string, ErrorCode | object]> = [
       ['AppExpired', ErrorCode.AppExpired],
       ['DeviceDeregistered', ErrorCode.DeviceDelinked],
+      ['PossibleCaptiveNetwork', ErrorCode.PossibleCaptiveNetwork],
 
       ['WebSocketConnectionFailed', ErrorCode.IoError],
       ['Timeout', ErrorCode.IoError],

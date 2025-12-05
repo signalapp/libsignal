@@ -33,6 +33,8 @@ import org.signal.libsignal.protocol.kem.KEMPublicKey;
  *   <li>{@link RegistrationSessionNotFoundException} if the server rejects the session ID,
  *   <li>{@link ChatServiceException} if a request times out after being sent to the server,
  *   <li>{@link RetryLaterException} if the server responds with an HTTP 429,
+ *   <li>{@link PossibleCaptiveNetworkException} if the server's TLS response suggests a captive
+ *       network.
  *   <li>{@link RegistrationSessionIdInvalidException} if the session ID is invalid,
  *   <li>{@link RegistrationException} for other unexpected error responses
  * </ul>

@@ -59,11 +59,13 @@ public class ChatServiceTest {
   public void chatConnectErrorConvert() {
     assertChatConnectErrorIs("AppExpired", AppExpiredException.class);
     assertChatConnectErrorIs("DeviceDeregistered", DeviceDeregisteredException.class);
+    assertChatConnectErrorIs("PossibleCaptiveNetwork", PossibleCaptiveNetworkException.class);
 
     assertChatConnectErrorIs("WebSocketConnectionFailed", ChatServiceException.class);
     assertChatConnectErrorIs("Timeout", ChatServiceException.class);
     assertChatConnectErrorIs("AllAttemptsFailed", ChatServiceException.class);
     assertChatConnectErrorIs("InvalidConnectionConfiguration", ChatServiceException.class);
+
     RetryLaterException retryLater =
         assertChatConnectErrorIs("RetryAfter42Seconds", RetryLaterException.class);
     assertEquals(retryLater.duration, Duration.ofSeconds(42));

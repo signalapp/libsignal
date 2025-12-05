@@ -339,7 +339,7 @@ impl<TC> ConnectionResources<'_, TC> {
                             // error, we want to report this one to the caller.
                             WebSocketConnectError::Transport(
                                 TransportConnectError::SslFailedHandshake(reason),
-                            ) if reason.is_unexpected_self_signed_certificate() => {
+                            ) if reason.is_possible_captive_network() => {
                                 // Avoid a clone by leaving a placeholder behind in the original
                                 // error (which will be discarded).
                                 let reason = std::mem::replace(
@@ -455,11 +455,9 @@ impl<TC> ConnectionResources<'_, TC> {
                     }
                     HttpConnectError::Transport(TransportConnectError::SslFailedHandshake(
                         reason,
-                    )) if reason.is_unexpected_self_signed_certificate() => {
-                        ErrorHandling::Fallback(
-                            TransportConnectError::SslFailedHandshake(reason).into(),
-                        )
-                    }
+                    )) if reason.is_possible_captive_network() => ErrorHandling::Fallback(
+                        TransportConnectError::SslFailedHandshake(reason).into(),
+                    ),
                     _ => ErrorHandling::Continue,
                 }
             },
@@ -1072,7 +1070,7 @@ mod test {
                     // This hardcodes the error instead of getting boring to produce it organically.
                     // infra's tcp_ssl.rs has a test for when the server's *root* certificate is
                     // self-signed, but that's a different error code. Still, this is what we expect
-                    // in practice (and is_unexpected_self_signed_certificate checks for both).
+                    // in practice (and is_possible_captive_network checks for both).
                     TransportConnectError::SslFailedHandshake(FailedHandshakeReason::Cert(
                         X509VerifyError::SELF_SIGNED_CERT_IN_CHAIN,
                     ))

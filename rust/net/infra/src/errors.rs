@@ -74,7 +74,7 @@ static_assertions::assert_impl_all!(boring_signal::ssl::ErrorCode: Copy);
 impl FailedHandshakeReason {
     pub const TIMED_OUT: Self = Self::Io(std::io::ErrorKind::TimedOut);
 
-    pub fn is_unexpected_self_signed_certificate(&self) -> bool {
+    pub fn is_possible_captive_network(&self) -> bool {
         matches!(
             self,
             Self::Cert(

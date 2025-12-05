@@ -96,6 +96,8 @@ public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistration
     /// - Throws: On failure, throws one of
     ///   - ``RegistrationError`` if the request fails with a known error response.
     ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server requests a retry later.
+    ///   - ``SignalError/possibleCaptiveNetwork(_:)`` if the server's TLS response
+    ///     suggests a captive network.
     ///   - Some other `SignalError` if the request can't be completed.
     public static func createSession(
         _ net: Net,

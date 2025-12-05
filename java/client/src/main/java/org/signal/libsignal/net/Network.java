@@ -318,8 +318,9 @@ public class Network {
    * to the chat service, and incoming events will be provided via the provided {@link
    * ChatConnectionListener} argument.
    *
-   * <p>If the connection attempt fails, the future will contain a {@link ChatServiceException} or
-   * other exception type wrapped in a {@link ExecutionException}.
+   * <p>If the connection attempt fails, the future will contain a {@link ChatServiceException},
+   * {@link PossibleCaptiveNetworkException}, or other exception type wrapped in a {@link
+   * ExecutionException}.
    */
   public CompletableFuture<UnauthenticatedChatConnection> connectUnauthChat(
       final Locale locale, ChatConnectionListener listener) {
@@ -344,8 +345,9 @@ public class Network {
    * the chat service, and incoming events will be provided via the provided {@link
    * ChatConnectionListener} argument.
    *
-   * <p>If the connection attempt fails, the future will contain a {@link ChatServiceException} or
-   * other exception type wrapped in a {@link ExecutionException}.
+   * <p>If the connection attempt fails, the future will contain a {@link ChatServiceException},
+   * {@link PossibleCaptiveNetworkException}, or other exception type wrapped in a {@link
+   * ExecutionException}.
    */
   public CompletableFuture<AuthenticatedChatConnection> connectAuthChat(
       final String username,

@@ -6,6 +6,8 @@
 use std::borrow::Cow;
 use std::fmt;
 
+use libsignal_net::infra::errors::TransportConnectError;
+use libsignal_net::infra::ws::WebSocketConnectError;
 use neon::thread::LocalKey;
 #[cfg(feature = "signal-media")]
 use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError};
@@ -445,6 +447,11 @@ impl SignalNodeError for libsignal_net::chat::ConnectError {
             Self::RetryLater(retry_later) => {
                 return retry_later.into_throwable(cx, operation_name);
             }
+            // Special case for self-signed certs, in case the app wants to tell the user to switch
+            // networks.
+            Self::WebSocket(WebSocketConnectError::Transport(
+                TransportConnectError::SslFailedHandshake(ref reason),
+            )) if reason.is_possible_captive_network() => "PossibleCaptiveNetwork",
             Self::WebSocket(_)
             | Self::Timeout
             | Self::AllAttemptsFailed

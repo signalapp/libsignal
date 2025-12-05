@@ -75,6 +75,9 @@ final class ChatServiceTests: TestCaseBase {
         do {
             try failWithError("DeviceDeregistered")
         } catch SignalError.deviceDeregistered(_) {}
+        do {
+            try failWithError("PossibleCaptiveNetwork")
+        } catch SignalError.possibleCaptiveNetwork(_) {}
 
         do {
             try failWithError("WebSocketConnectionFailed")

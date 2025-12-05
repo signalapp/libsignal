@@ -2289,6 +2289,7 @@ version = "0.1.0"
 dependencies = [
  "attest",
  "base64",
+ "boring",
  "bytes",
  "const-str",
  "derive_more 2.0.1",

@@ -68,6 +68,7 @@ public enum SignalError: Error {
     case deviceDeregistered(String)
     case connectionInvalidated(String)
     case connectedElsewhere(String)
+    case possibleCaptiveNetwork(String)
     case keyTransparencyError(String)
     case keyTransparencyVerificationFailed(String)
     case requestUnauthorized(String)
@@ -263,6 +264,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.connectionInvalidated(errStr)
     case SignalErrorCodeConnectedElsewhere:
         throw SignalError.connectedElsewhere(errStr)
+    case SignalErrorCodePossibleCaptiveNetwork:
+        throw SignalError.possibleCaptiveNetwork(errStr)
     case SignalErrorCodeBackupValidation:
         let unknownFields = try invokeFnReturningStringArray {
             signal_error_get_unknown_fields($0, error)

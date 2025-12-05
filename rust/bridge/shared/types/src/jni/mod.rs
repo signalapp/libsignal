@@ -24,8 +24,8 @@ pub use jni::sys::{jboolean, jint, jlong};
 use libsignal_account_keys::Error as PinError;
 use libsignal_core::try_scoped;
 use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSendError};
-use libsignal_net::infra::errors::RetryLater;
-use libsignal_net::infra::ws::WebSocketError;
+use libsignal_net::infra::errors::{RetryLater, TransportConnectError};
+use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketError};
 use libsignal_net::svrb::Error as SvrbError;
 use libsignal_net_chat::api::{RateLimitChallenge, RequestError as ChatRequestError};
 use libsignal_protocol::*;
@@ -863,6 +863,13 @@ impl JniError for ChatConnectError {
             }
             ChatConnectError::DeviceDeregistered => {
                 ClassName("org.signal.libsignal.net.DeviceDeregisteredException")
+            }
+            // Special case for self-signed certs, in case the app wants to tell the user to switch
+            // networks.
+            ChatConnectError::WebSocket(WebSocketConnectError::Transport(
+                TransportConnectError::SslFailedHandshake(ref reason),
+            )) if reason.is_possible_captive_network() => {
+                ClassName("org.signal.libsignal.net.PossibleCaptiveNetworkException")
             }
             ChatConnectError::WebSocket(_)
             | ChatConnectError::Timeout

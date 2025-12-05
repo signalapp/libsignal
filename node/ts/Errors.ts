@@ -56,6 +56,7 @@ export enum ErrorCode {
   DeviceDelinked,
   ConnectionInvalidated,
   ConnectedElsewhere,
+  PossibleCaptiveNetwork,
 
   BackupValidation,
 
@@ -326,6 +327,10 @@ export type ConnectedElsewhereError = LibSignalErrorBase & {
   code: ErrorCode.ConnectedElsewhere;
 };
 
+export type PossibleCaptiveNetworkError = LibSignalErrorBase & {
+  code: ErrorCode.PossibleCaptiveNetwork;
+};
+
 export type SvrDataMissingError = LibSignalErrorBase & {
   code: ErrorCode.SvrDataMissing;
 };
@@ -417,6 +422,7 @@ export type LibSignalError =
   | DeviceDelinkedError
   | ConnectionInvalidatedError
   | ConnectedElsewhereError
+  | PossibleCaptiveNetworkError
   | RateLimitedError
   | RateLimitChallengeError
   | BackupValidationError

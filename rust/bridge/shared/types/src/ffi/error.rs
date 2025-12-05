@@ -11,7 +11,8 @@ use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
-use libsignal_net::infra::errors::LogSafeDisplay;
+use libsignal_net::infra::errors::{LogSafeDisplay, TransportConnectError};
+use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net_chat::api::RateLimitChallenge;
 use libsignal_net_chat::api::keytrans::Error as KeyTransError;
 use libsignal_net_chat::api::messages::MismatchedDeviceError;
@@ -100,6 +101,7 @@ pub enum SignalErrorCode {
     ChatServiceInactive = 149,
     RequestTimedOut = 150,
     RateLimitChallenge = 151,
+    PossibleCaptiveNetwork = 152,
 
     SvrDataMissing = 160,
     SvrRestoreFailed = 161,
@@ -629,6 +631,13 @@ impl IntoFfiError for libsignal_net::cdsi::LookupError {
 impl IntoFfiError for libsignal_net::chat::ConnectError {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         match self {
+            // Special case for self-signed certs, in case the app wants to tell the user to switch
+            // networks.
+            Self::WebSocket(WebSocketConnectError::Transport(
+                ref e @ TransportConnectError::SslFailedHandshake(ref reason),
+            )) if reason.is_possible_captive_network() => {
+                SimpleError::new(SignalErrorCode::PossibleCaptiveNetwork, e.to_string()).into()
+            }
             Self::WebSocket(e) => {
                 SimpleError::new(SignalErrorCode::WebSocket, format!("WebSocket error: {e}")).into()
             }

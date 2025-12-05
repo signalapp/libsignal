@@ -343,6 +343,8 @@ public class Net {
     ///   response indicates the request should be tried again after some time.
     /// - Throws: ``SignalError/deviceDeregistered(_:)`` if the server response
     ///   indicates the device is no longer registered.
+    /// - Throws: ``SignalError/possibleCaptiveNetwork(_:)`` if the server's TLS response
+    ///   suggests a captive network.
     /// - Throws: Other ``SignalError``s for other kinds of failures.
     ///
     /// - Returns:
@@ -381,6 +383,8 @@ public class Net {
     ///   the server).
     /// - Throws: ``SignalError/rateLimitedError(retryAfter:message:)` if the server
     ///   response indicates the request should be tried again after some time.
+    /// - Throws: ``SignalError/possibleCaptiveNetwork(_:)`` if the server's TLS response
+    ///   suggests a captive network.
     /// - Throws: Other ``SignalError``s for other kinds of failures.
     ///
     /// - Returns:

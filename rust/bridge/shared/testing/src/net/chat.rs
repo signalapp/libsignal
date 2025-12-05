@@ -263,6 +263,8 @@ make_error_testing_enum! {
         AllAttemptsFailed => AllAttemptsFailed,
         InvalidConnectionConfiguration => InvalidConnectionConfiguration,
         RetryLater => RetryAfter42Seconds,
+        ;
+        PossibleCaptiveNetwork,
     }
 }
 
@@ -287,6 +289,15 @@ fn TESTING_ChatConnectErrorConvert(
         TestingChatConnectError::RetryAfter42Seconds => ConnectError::RetryLater(RetryLater {
             retry_after_seconds: 42,
         }),
+        TestingChatConnectError::PossibleCaptiveNetwork => {
+            ConnectError::WebSocket(libsignal_net::infra::ws::WebSocketConnectError::Transport(
+                libsignal_net::infra::errors::TransportConnectError::SslFailedHandshake(
+                    libsignal_net::infra::errors::FailedHandshakeReason::Cert(
+                        boring_signal::x509::X509VerifyError::SELF_SIGNED_CERT_IN_CHAIN,
+                    ),
+                ),
+            ))
+        }
     })
 }
 
