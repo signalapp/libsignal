@@ -284,6 +284,12 @@ pub enum ConnectError<E> {
 pub enum ErrorHandling<E> {
     /// Don't try any more routes; exit with the given error.
     Fatal(E),
+    /// Continue trying routes. If no routes end up succeeding, exit with this error instead of
+    /// [`ConnectError::AllAttemptsFailed`].
+    ///
+    /// If multiple routes produce fallback errors, the one from the attempt that *began earliest*
+    /// will be returned.
+    Fallback(E),
     /// Continue trying routes.
     Continue,
 }
@@ -422,6 +428,10 @@ where
     let mut connects_started = 0;
     let mut connects_in_progress = FuturesUnordered::new();
     let mut outcomes = Vec::new();
+    let mut fallback_error = None;
+    // Pick an initial value "far in the future", to simplify comparisons later.
+    let mut fallback_error_start =
+        start_of_connecting + 1000 * crate::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 
     #[derive(Debug)]
     enum Event<C, R> {
@@ -457,7 +467,9 @@ where
         // If there aren't any connection attempts in progress and there
         // also aren't gonna be any more, we've run out of possibilities.
         if poll_or_wait.is_none() && next_connect_in_progress.is_none() {
-            break Err(ConnectError::AllAttemptsFailed);
+            break Err(
+                fallback_error.map_or(ConnectError::AllAttemptsFailed, ConnectError::FatalConnect)
+            );
         }
 
         let event = tokio::select! {
@@ -507,6 +519,16 @@ where
                     Err(ErrorHandling::Continue) => {
                         // Record the non-fatal error outcome and move on.
                         outcomes.push(make_outcome(Err(UnsuccessfulOutcome::default())));
+                    }
+                    Err(ErrorHandling::Fallback(err)) => {
+                        // Record the non-fatal error outcome, but also save the fallback error if
+                        // needed. We pick the error for the earliest route we actually tried, as a
+                        // proxy for which route the caller would have preferred in a vacuum.
+                        outcomes.push(make_outcome(Err(UnsuccessfulOutcome::default())));
+                        if started < fallback_error_start {
+                            fallback_error = Some(err);
+                            fallback_error_start = started;
+                        }
                     }
                     Err(ErrorHandling::Fatal(fatal_err)) => {
                         // This isn't a route-level error, it's a
@@ -1005,38 +1027,35 @@ mod test {
     struct FakeConnection<R>(R);
 
     #[derive(Debug)]
-    struct FakeConnector<R> {
-        outgoing: mpsc::UnboundedSender<FakeConnectResponder<R>>,
+    struct FakeConnector<R, E> {
+        outgoing: mpsc::UnboundedSender<FakeConnectResponder<R, E>>,
     }
 
     #[derive(Debug)]
-    struct FakeConnectResponder<R>(
-        R,
-        oneshot::Sender<Result<FakeConnection<R>, FakeConnectError>>,
-    );
+    struct FakeConnectResponder<R, E>(R, oneshot::Sender<Result<FakeConnection<R>, E>>);
 
-    impl<R: Debug> FakeConnectResponder<R> {
+    impl<R: Debug, E: Debug> FakeConnectResponder<R, E> {
         fn route(&self) -> &R {
             &self.0
         }
-        fn respond(self, result: Result<(), FakeConnectError>) {
+        fn respond(self, result: Result<(), E>) {
             self.1
                 .send(result.map(|()| FakeConnection(self.0)))
                 .expect("not dropped")
         }
     }
 
-    impl<R> FakeConnector<R> {
-        fn new() -> (Self, impl Stream<Item = FakeConnectResponder<R>>) {
+    impl<R, E> FakeConnector<R, E> {
+        fn new() -> (Self, impl Stream<Item = FakeConnectResponder<R, E>>) {
             let (outgoing, incoming) = mpsc::unbounded_channel();
 
             (Self { outgoing }, UnboundedReceiverStream::new(incoming))
         }
     }
 
-    impl<R: Send> Connector<R, ()> for FakeConnector<R> {
+    impl<R: Send, E: Send> Connector<R, ()> for FakeConnector<R, E> {
         type Connection = FakeConnection<R>;
-        type Error = FakeConnectError;
+        type Error = E;
 
         fn connect_over(
             &self,
@@ -1132,7 +1151,7 @@ mod test {
             ("G", ip_addr!(v6, "3fff::7")),
         ];
 
-        let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>>::new();
+        let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>, _>::new();
         let (resolver, mut resolution_responders) = FakeResolver::new();
 
         const SUCCESSFUL_ROUTE_INDEX: usize = 4;
@@ -1216,7 +1235,7 @@ mod test {
             ("C", &[ip_addr!(v6, "3fff::3:1")]),
         ];
 
-        let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>>::new();
+        let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>, _>::new();
         let (resolver, mut resolution_responders) = FakeResolver::new();
 
         let connect_task = tokio::spawn(async move {
@@ -1306,7 +1325,7 @@ mod test {
         // We should see routes A, B, and C tried. Don't complete any but the last one.
         let [_a, _b, c] = connection_responders
             .take(3)
-            .collect::<Vec<FakeConnectResponder<_>>>()
+            .collect::<Vec<FakeConnectResponder<_, _>>>()
             .await
             .try_into()
             .unwrap();
@@ -1381,5 +1400,209 @@ mod test {
 
         let (result, _outcomes) = connect_task.await.unwrap();
         assert_matches!(result, Err(_));
+    }
+
+    #[derive(Debug, PartialEq, Clone)]
+    struct LabeledConnectError(&'static str);
+
+    #[tokio::test(start_paused = true)]
+    async fn fallback_error_chosen_if_no_successes() {
+        const HOSTNAMES: &[(&str, Ipv6Addr)] = &[
+            ("A", ip_addr!(v6, "3fff::1")),
+            ("B", ip_addr!(v6, "3fff::2")),
+            ("C", ip_addr!(v6, "3fff::3")),
+            ("D", ip_addr!(v6, "3fff::4")),
+            ("E", ip_addr!(v6, "3fff::5")),
+            ("F", ip_addr!(v6, "3fff::6")),
+            ("G", ip_addr!(v6, "3fff::7")),
+        ];
+
+        let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>, _>::new();
+        let (resolver, mut resolution_responders) = FakeResolver::new();
+
+        let _connect_task = tokio::spawn(async move {
+            while let Some(responder) = connection_responders.next().await {
+                let index = HOSTNAMES
+                    .iter()
+                    .position(|entry| responder.route().0 == entry.1)
+                    .unwrap();
+                // Complete in opposite order, so we can check that the first route *started* is the
+                // one that wins.
+                let delay = Duration::from_secs((HOSTNAMES.len() - index).try_into().unwrap());
+
+                tokio::task::spawn(async move {
+                    tokio::time::sleep(delay).await;
+                    responder.respond(Err(LabeledConnectError(HOSTNAMES[index].0)));
+                });
+            }
+        });
+        let _resolve_task = tokio::spawn(async move {
+            // The routes should be sent for resolution in order.
+            for (host, addr) in HOSTNAMES {
+                let responder = resolution_responders.next().await.unwrap();
+                assert_eq!(responder.hostname(), *host);
+                responder.respond(Ok(LookupResult::new(vec![], vec![*addr])));
+            }
+        });
+
+        let (result, updates) = connect(
+            &RouteResolver::default(),
+            NoDelay,
+            HOSTNAMES
+                .iter()
+                .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
+            &resolver,
+            connector,
+            (),
+            "test",
+            |e: LabeledConnectError| ErrorHandling::Fallback(e),
+        )
+        .await;
+
+        assert_matches!(
+            result,
+            Err(ConnectError::FatalConnect(LabeledConnectError("A")))
+        );
+        // No early exits!
+        assert_eq!(updates.outcomes.len(), HOSTNAMES.len());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn fatal_error_wins_over_fallback_error() {
+        const HOSTNAMES: &[(&str, Ipv6Addr)] = &[
+            ("A", ip_addr!(v6, "3fff::1")),
+            ("B", ip_addr!(v6, "3fff::2")),
+            ("C", ip_addr!(v6, "3fff::3")),
+            ("Fatal", ip_addr!(v6, "3fff::4")),
+            ("E", ip_addr!(v6, "3fff::5")),
+            ("F", ip_addr!(v6, "3fff::6")),
+            ("G", ip_addr!(v6, "3fff::7")),
+        ];
+
+        let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>, _>::new();
+        let (resolver, mut resolution_responders) = FakeResolver::new();
+
+        let _connect_task = tokio::spawn(async move {
+            while let Some(responder) = connection_responders.next().await {
+                let (label, _) = HOSTNAMES
+                    .iter()
+                    .find(|entry| responder.route().0 == entry.1)
+                    .unwrap();
+                responder.respond(Err(LabeledConnectError(label)));
+            }
+        });
+        let _resolve_task = tokio::spawn(async move {
+            // The routes should be sent for resolution in order.
+            for (host, addr) in HOSTNAMES {
+                let responder = resolution_responders.next().await.unwrap();
+                assert_eq!(responder.hostname(), *host);
+                responder.respond(Ok(LookupResult::new(vec![], vec![*addr])));
+            }
+        });
+
+        let (result, updates) = connect(
+            &RouteResolver::default(),
+            NoDelay,
+            HOSTNAMES
+                .iter()
+                .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
+            &resolver,
+            connector,
+            (),
+            "test",
+            |e: LabeledConnectError| {
+                if e.0 == "Fatal" {
+                    ErrorHandling::Fatal(e)
+                } else {
+                    ErrorHandling::Fallback(e)
+                }
+            },
+        )
+        .await;
+
+        assert_matches!(
+            result,
+            Err(ConnectError::FatalConnect(LabeledConnectError("Fatal")))
+        );
+        // We *should* early exit this time.
+        assert_eq!(
+            updates
+                .outcomes
+                .iter()
+                .map(|(route, _outcome)| route.0)
+                .collect_vec(),
+            HOSTNAMES
+                .iter()
+                .take_while(|&&(label, _route)| label != "Fatal")
+                .map(|&(_label, route)| route)
+                .collect_vec(),
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn success_wins_over_fallback_error() {
+        const HOSTNAMES: &[(&str, Ipv6Addr)] = &[
+            ("A", ip_addr!(v6, "3fff::1")),
+            ("B", ip_addr!(v6, "3fff::2")),
+            ("C", ip_addr!(v6, "3fff::3")),
+            ("Success", ip_addr!(v6, "3fff::4")),
+            ("E", ip_addr!(v6, "3fff::5")),
+            ("F", ip_addr!(v6, "3fff::6")),
+            ("G", ip_addr!(v6, "3fff::7")),
+        ];
+
+        let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>, _>::new();
+        let (resolver, mut resolution_responders) = FakeResolver::new();
+
+        let _connect_task = tokio::spawn(async move {
+            while let Some(responder) = connection_responders.next().await {
+                let &(label, _) = HOSTNAMES
+                    .iter()
+                    .find(|entry| responder.route().0 == entry.1)
+                    .unwrap();
+                if label == "Success" {
+                    responder.respond(Ok(()));
+                } else {
+                    responder.respond(Err(LabeledConnectError(label)));
+                }
+            }
+        });
+        let _resolve_task = tokio::spawn(async move {
+            // The routes should be sent for resolution in order.
+            for (host, addr) in HOSTNAMES {
+                let responder = resolution_responders.next().await.unwrap();
+                assert_eq!(responder.hostname(), *host);
+                responder.respond(Ok(LookupResult::new(vec![], vec![*addr])));
+            }
+        });
+
+        let (result, updates) = connect(
+            &RouteResolver::default(),
+            NoDelay,
+            HOSTNAMES
+                .iter()
+                .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
+            &resolver,
+            connector,
+            (),
+            "test",
+            |e: LabeledConnectError| ErrorHandling::Fallback(e),
+        )
+        .await;
+
+        _ = result.expect("connect should have succeeded");
+        // We *should* early exit this time.
+        assert_eq!(
+            updates
+                .outcomes
+                .iter()
+                .map(|(route, _outcome)| route.0)
+                .collect_vec(),
+            HOSTNAMES
+                .iter()
+                .take_while_inclusive(|&&(label, _route)| label != "Success")
+                .map(|&(_label, route)| route)
+                .collect_vec(),
+        );
     }
 }
