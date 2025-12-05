@@ -15,7 +15,7 @@ use http::HeaderName;
 use itertools::Itertools as _;
 use libsignal_net_infra::AsHttpHeader as _;
 use libsignal_net_infra::dns::DnsResolver;
-use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
+use libsignal_net_infra::errors::{FailedHandshakeReason, LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::http_client::HttpConnectError;
 use libsignal_net_infra::route::{
     AttemptOutcome, ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes,
@@ -306,13 +306,13 @@ impl<TC> ConnectionResources<'_, TC> {
                 let error = error.into_inner_or_else(|| {
                     WebSocketConnectError::Transport(TransportConnectError::ClientAbort)
                 });
-                let error = WebSocketServiceConnectError::from_websocket_error(
+                let mut error = WebSocketServiceConnectError::from_websocket_error(
                     error,
                     confirmation_header_name.as_ref(),
                     Instant::now(),
                 );
                 log::debug!("[{log_tag}] connection attempt failed with {error}");
-                let is_fatal = match &error {
+                let is_fatal = match &mut error {
                     WebSocketServiceConnectError::RejectedByServer {
                         response,
                         received_at: _,
@@ -327,12 +327,33 @@ impl<TC> ConnectionResources<'_, TC> {
                         connect_error,
                         crate::ws::NotRejectedByServer { .. },
                     ) => {
-                        // If we *locally* chose to abort, that isn't route-specific; treat it as fatal.
-                        // In any other case, if we didn't make it to the server, we should retry.
-                        matches!(
-                            connect_error,
-                            WebSocketConnectError::Transport(TransportConnectError::ClientAbort)
-                        )
+                        match connect_error {
+                            // If we *locally* chose to abort, that isn't route-specific; treat it
+                            // as fatal.
+                            WebSocketConnectError::Transport(
+                                TransportConnectError::ClientAbort,
+                            ) => true,
+                            // An unexpected self-signed certificate suggests a traffic-inspecting
+                            // proxy of some kind. This isn't a *fatal* error; we still want to try
+                            // other routes. However, if no routes succeed nor have a more specific
+                            // error, we want to report this one to the caller.
+                            WebSocketConnectError::Transport(
+                                TransportConnectError::SslFailedHandshake(reason),
+                            ) if reason.is_unexpected_self_signed_certificate() => {
+                                // Avoid a clone by leaving a placeholder behind in the original
+                                // error (which will be discarded).
+                                let reason = std::mem::replace(
+                                    reason,
+                                    FailedHandshakeReason::Io(std::io::ErrorKind::Other),
+                                );
+                                return ErrorHandling::Fallback(
+                                    TransportConnectError::SslFailedHandshake(reason).into(),
+                                );
+                            }
+                            // In any other case, if we didn't make it to the server, we should
+                            // retry.
+                            _ => false,
+                        }
                     }
                 };
                 if is_fatal {
@@ -428,14 +449,18 @@ impl<TC> ConnectionResources<'_, TC> {
                 log::debug!("[{log_tag}] connection attempt failed with {error}");
                 // Note: the H2 handshake doesn't provide a confirmation header, so we have to treat
                 // any failures as route-specific (other than choosing to abort).
-                let is_fatal = matches!(
-                    error,
-                    HttpConnectError::Transport(TransportConnectError::ClientAbort)
-                );
-                if is_fatal {
-                    ErrorHandling::Fatal(error)
-                } else {
-                    ErrorHandling::Continue
+                match error {
+                    HttpConnectError::Transport(TransportConnectError::ClientAbort) => {
+                        ErrorHandling::Fatal(error)
+                    }
+                    HttpConnectError::Transport(TransportConnectError::SslFailedHandshake(
+                        reason,
+                    )) if reason.is_unexpected_self_signed_certificate() => {
+                        ErrorHandling::Fallback(
+                            TransportConnectError::SslFailedHandshake(reason).into(),
+                        )
+                    }
+                    _ => ErrorHandling::Continue,
                 }
             },
         )
@@ -784,11 +809,13 @@ mod test {
     use std::time::Duration;
 
     use assert_matches::assert_matches;
+    use boring_signal::x509::X509VerifyError;
     use const_str::ip_addr;
     use http::HeaderMap;
     use http::uri::PathAndQuery;
     use libsignal_net_infra::certs::RootCertificates;
     use libsignal_net_infra::dns::lookup_result::LookupResult;
+    use libsignal_net_infra::errors::FailedHandshakeReason;
     use libsignal_net_infra::host::Host;
     use libsignal_net_infra::route::testutils::ConnectFn;
     use libsignal_net_infra::route::{
@@ -1023,6 +1050,76 @@ mod test {
             Err(TimeoutOr::Other(ConnectError::FatalConnect(
                 WebSocketServiceConnectError::Connect(
                     WebSocketConnectError::Transport(TransportConnectError::ClientAbort),
+                    NotRejectedByServer { .. }
+                )
+            )))
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn self_signed_cert_is_reported_as_dedicated_error() {
+        let ws_connector = <crate::infra::ws::Stateless>::default();
+        let resolver = DnsResolver::new_from_static_map(HashMap::from([(
+            FAKE_HOST_NAME,
+            LookupResult::new(vec![ip_addr!(v4, "192.0.2.1")], vec![]),
+        )]));
+
+        let [generic_failure_route, specific_failure_route] = (*FAKE_WEBSOCKET_ROUTES).clone();
+
+        let transport_connector = ConnectFn(|(), route: TlsRoute<_>| {
+            std::future::ready(Err::<tokio::io::DuplexStream, _>(
+                if route.fragment.sni == specific_failure_route.inner.inner.fragment.sni {
+                    // This hardcodes the error instead of getting boring to produce it organically.
+                    // infra's tcp_ssl.rs has a test for when the server's *root* certificate is
+                    // self-signed, but that's a different error code. Still, this is what we expect
+                    // in practice (and is_unexpected_self_signed_certificate checks for both).
+                    TransportConnectError::SslFailedHandshake(FailedHandshakeReason::Cert(
+                        X509VerifyError::SELF_SIGNED_CERT_IN_CHAIN,
+                    ))
+                } else {
+                    TransportConnectError::TcpConnectionFailed
+                },
+            ))
+        });
+
+        const CONNECT_TIMEOUT: Duration = Duration::from_secs(31);
+
+        let state = ConnectState {
+            connect_timeout: CONNECT_TIMEOUT,
+            network_interface_poll_interval: Duration::MAX,
+            post_route_change_connect_timeout: Duration::MAX,
+            route_resolver: RouteResolver::default(),
+            attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            make_transport_connector: transport_connector,
+            route_provider_context: Default::default(),
+        }
+        .into();
+
+        let connection_resources = ConnectionResources {
+            connect_state: &state,
+            dns_resolver: &resolver,
+            network_change_event: &no_network_change_events(),
+            confirmation_header_name: None,
+        };
+
+        let connect = connection_resources.connect_ws(
+            vec![
+                generic_failure_route.clone(),
+                specific_failure_route.clone(),
+            ],
+            ws_connector,
+            "test",
+        );
+
+        let result: Result<_, TimeoutOr<ConnectError<_>>> = connect.await;
+
+        assert_matches!(
+            result,
+            Err(TimeoutOr::Other(ConnectError::FatalConnect(
+                WebSocketServiceConnectError::Connect(
+                    WebSocketConnectError::Transport(TransportConnectError::SslFailedHandshake(
+                        FailedHandshakeReason::Cert(X509VerifyError::SELF_SIGNED_CERT_IN_CHAIN)
+                    )),
                     NotRejectedByServer { .. }
                 )
             )))

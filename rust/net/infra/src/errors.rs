@@ -73,6 +73,16 @@ static_assertions::assert_impl_all!(boring_signal::ssl::ErrorCode: Copy);
 
 impl FailedHandshakeReason {
     pub const TIMED_OUT: Self = Self::Io(std::io::ErrorKind::TimedOut);
+
+    pub fn is_unexpected_self_signed_certificate(&self) -> bool {
+        matches!(
+            self,
+            Self::Cert(
+                boring_signal::x509::X509VerifyError::SELF_SIGNED_CERT_IN_CHAIN
+                    | boring_signal::x509::X509VerifyError::DEPTH_ZERO_SELF_SIGNED_CERT
+            )
+        )
+    }
 }
 
 /// Error type for TLS handshake timeouts
