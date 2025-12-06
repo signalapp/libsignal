@@ -411,6 +411,101 @@ final class ChatConnectionTests: TestCaseBase {
         XCTAssertEqual(responseFromServer.headers, ["purpose": "test response"])
         XCTAssertEqual(responseFromServer.body, Data([5]))
     }
+
+    func testProvisioningCallbacks() async throws {
+        class Listener: ProvisioningConnectionListener {
+            let addressReceived: XCTestExpectation
+            let envelopeReceived: XCTestExpectation
+            let connectionInterrupted: XCTestExpectation
+
+            var expectations: [XCTestExpectation] {
+                [self.addressReceived, self.envelopeReceived, self.connectionInterrupted]
+            }
+
+            init(
+                addressReceived: XCTestExpectation,
+                envelopeReceived: XCTestExpectation,
+                connectionInterrupted: XCTestExpectation,
+            ) {
+                self.addressReceived = addressReceived
+                self.envelopeReceived = envelopeReceived
+                self.connectionInterrupted = connectionInterrupted
+            }
+
+            func provisioningConnection(
+                _ connection: ProvisioningConnection,
+                didReceiveAddress address: String,
+                sendAck: @escaping () throws -> Void
+            ) {
+                XCTAssertEqual(address, "the address")
+                try! sendAck()
+                self.addressReceived.fulfill()
+            }
+
+            func provisioningConnection(
+                _ connection: ProvisioningConnection,
+                didReceiveEnvelope envelope: Data,
+                sendAck: @escaping () throws -> Void
+            ) {
+                XCTAssertEqual(envelope, Data("encoded envelope".utf8))
+                try! sendAck()
+                self.envelopeReceived.fulfill()
+            }
+
+            func connectionWasInterrupted(_: ProvisioningConnection, error: Error?) {
+                XCTAssertNotNil(error)
+                self.connectionInterrupted.fulfill()
+            }
+        }
+
+        let tokioAsyncContext = TokioAsyncContext()
+        let listener = Listener(
+            addressReceived: expectation(description: "address received"),
+            envelopeReceived: expectation(description: "envelope received"),
+            connectionInterrupted: expectation(description: "connection interrupted")
+        )
+        let (chat, fakeRemote) = ProvisioningConnection.fakeConnect(
+            tokioAsyncContext: tokioAsyncContext,
+            listener: listener,
+        )
+        // Make sure the chat object doesn't go away too soon.
+        defer { withExtendedLifetime(chat) {} }
+
+        // The following payloads were generated via protoscope.
+        // % protoscope -s | base64
+        // The fields are described by chat_websocket.proto and chat_provisioning.proto in the
+        // libsignal-net crate.
+
+        // 1: {"PUT"}
+        // 2: {"/v1/address"}
+        // 3: {1: {"the address"}}
+        // 5: {"x-signal-timestamp: 1000"}
+        // 4: 1
+        fakeRemote.injectServerRequest(
+            base64: "CgNQVVQSCy92MS9hZGRyZXNzGg0KC3RoZSBhZGRyZXNzKhh4LXNpZ25hbC10aW1lc3RhbXA6IDEwMDAgAQ=="
+        )
+
+        // Sending an invalid message should not affect the listener at all, nor should it stop future requests.
+        // 1: {"PUT"}
+        // 2: {"/invalid"}
+        // 4: 10
+        fakeRemote.injectServerRequest(base64: "CgNQVVQSCC9pbnZhbGlkIAo=")
+
+        // 1: {"PUT"}
+        // 2: {"/v1/message"}
+        // 3: {"encoded envelope"}
+        // 5: {"x-signal-timestamp: 1000"}
+        // 4: 2
+        fakeRemote.injectServerRequest(
+            base64: "CgNQVVQSCy92MS9tZXNzYWdlGhBlbmNvZGVkIGVudmVsb3BlKhh4LXNpZ25hbC10aW1lc3RhbXA6IDEwMDAgAg=="
+        )
+
+        fakeRemote.injectConnectionInterrupted()
+
+        await self.fulfillment(of: listener.expectations, timeout: 2, enforceOrder: true)
+
+    }
+
     #endif
 
     func testListenerCleanup() async throws {

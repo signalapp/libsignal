@@ -56,6 +56,10 @@ extension SignalCPromiseMutPointerUnauthenticatedChatConnection: PromiseStruct {
     typealias Result = SignalMutPointerUnauthenticatedChatConnection
 }
 
+extension SignalCPromiseMutPointerProvisioningChatConnection: PromiseStruct {
+    typealias Result = SignalMutPointerProvisioningChatConnection
+}
+
 extension SignalCPromiseMutPointerRegistrationService: PromiseStruct {
     typealias Result = SignalMutPointerRegistrationService
 }

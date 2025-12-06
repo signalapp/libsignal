@@ -350,6 +350,8 @@ typedef struct SignalPrivateKey SignalPrivateKey;
  */
 typedef struct SignalProtocolAddress SignalProtocolAddress;
 
+typedef struct SignalProvisioningChatConnection SignalProvisioningChatConnection;
+
 typedef struct SignalPublicKey SignalPublicKey;
 
 typedef struct SignalRegisterAccountRequest SignalRegisterAccountRequest;
@@ -1194,6 +1196,62 @@ typedef struct {
 typedef struct {
   const SignalSenderKeyDistributionMessage *raw;
 } SignalConstPointerSenderKeyDistributionMessage;
+
+typedef struct {
+  SignalProvisioningChatConnection *raw;
+} SignalMutPointerProvisioningChatConnection;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalMutPointerProvisioningChatConnection *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseMutPointerProvisioningChatConnection;
+
+typedef struct {
+  const SignalProvisioningChatConnection *raw;
+} SignalConstPointerProvisioningChatConnection;
+
+typedef void (*SignalReceivedProvisioningAddress)(void *ctx, const char *addr, SignalServerMessageAck *cleanup);
+
+typedef void (*SignalReceivedProvisioningEnvelope)(void *ctx, SignalOwnedBuffer data, SignalServerMessageAck *cleanup);
+
+typedef void (*SignalDestroyProvisioningListener)(void *ctx);
+
+/**
+ * Callbacks for [`ProvisioningListener`].
+ *
+ * Callbacks will be serialized (i.e. two calls will not come in at the same time), but may not
+ * always happen on the same thread. Calls should be responded to promptly to avoid blocking later
+ * messages.
+ *
+ * # Safety
+ *
+ * This type contains raw pointers. Code that constructs an instance of this type must ensure
+ * memory safety assuming that
+ * - the callback function pointer fields are called with `ctx` as an argument;
+ * - the `destroy` function pointer field is called with `ctx` as an argument;
+ * - no function pointer fields are called after `destroy` is called.
+ */
+typedef struct {
+  void *ctx;
+  SignalReceivedProvisioningAddress received_address;
+  SignalReceivedProvisioningEnvelope received_envelope;
+  SignalConnectionInterrupted connection_interrupted;
+  SignalDestroyProvisioningListener destroy;
+} SignalFfiProvisioningListenerStruct;
+
+typedef struct {
+  const SignalFfiProvisioningListenerStruct *raw;
+} SignalConstPointerFfiProvisioningListenerStruct;
 
 typedef struct {
   SignalRegisterAccountRequest *raw;
@@ -2234,6 +2292,16 @@ SignalFfiError *signal_profile_key_derive_access_key(uint8_t (*out)[SignalACCESS
 SignalFfiError *signal_profile_key_get_commitment(unsigned char (*out)[SignalPROFILE_KEY_COMMITMENT_LEN], const unsigned char (*profile_key)[SignalPROFILE_KEY_LEN], const SignalServiceIdFixedWidthBinaryBytes *user_id);
 
 SignalFfiError *signal_profile_key_get_profile_key_version(uint8_t (*out)[SignalPROFILE_KEY_VERSION_ENCODED_LEN], const unsigned char (*profile_key)[SignalPROFILE_KEY_LEN], const SignalServiceIdFixedWidthBinaryBytes *user_id);
+
+SignalFfiError *signal_provisioning_chat_connection_connect(SignalCPromiseMutPointerProvisioningChatConnection *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerConnectionManager connection_manager);
+
+SignalFfiError *signal_provisioning_chat_connection_destroy(SignalMutPointerProvisioningChatConnection p);
+
+SignalFfiError *signal_provisioning_chat_connection_disconnect(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerProvisioningChatConnection chat);
+
+SignalFfiError *signal_provisioning_chat_connection_info(SignalMutPointerChatConnectionInfo *out, SignalConstPointerProvisioningChatConnection chat);
+
+SignalFfiError *signal_provisioning_chat_connection_init_listener(SignalConstPointerProvisioningChatConnection chat, SignalConstPointerFfiProvisioningListenerStruct listener);
 
 SignalFfiError *signal_publickey_clone(SignalMutPointerPublicKey *new_obj, SignalConstPointerPublicKey obj);
 

@@ -77,7 +77,7 @@ pub struct ProvisioningChatConnection {
     /// reader/writer contention.
     inner: tokio::sync::RwLock<MaybeChatConnection>,
 }
-bridge_as_handle!(ProvisioningChatConnection, ffi = false, jni = false);
+bridge_as_handle!(ProvisioningChatConnection, jni = false);
 impl UnwindSafe for ProvisioningChatConnection {}
 impl RefUnwindSafe for ProvisioningChatConnection {}
 

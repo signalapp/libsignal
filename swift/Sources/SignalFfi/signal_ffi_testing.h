@@ -314,7 +314,11 @@ SignalFfiError *signal_testing_error_on_return_sync(const void **out, const void
 
 SignalFfiError *signal_testing_fake_chat_connection_create(SignalMutPointerFakeChatConnection *out, SignalConstPointerTokioAsyncContext tokio, SignalConstPointerFfiChatListenerStruct listener, const char *alerts_joined_by_newlines);
 
+SignalFfiError *signal_testing_fake_chat_connection_create_provisioning(SignalMutPointerFakeChatConnection *out, SignalConstPointerTokioAsyncContext tokio, SignalConstPointerFfiProvisioningListenerStruct listener);
+
 SignalFfiError *signal_testing_fake_chat_connection_take_authenticated_chat(SignalMutPointerAuthenticatedChatConnection *out, SignalConstPointerFakeChatConnection chat);
+
+SignalFfiError *signal_testing_fake_chat_connection_take_provisioning_chat(SignalMutPointerProvisioningChatConnection *out, SignalConstPointerFakeChatConnection chat);
 
 SignalFfiError *signal_testing_fake_chat_connection_take_remote(SignalMutPointerFakeChatRemoteEnd *out, SignalConstPointerFakeChatConnection chat);
 

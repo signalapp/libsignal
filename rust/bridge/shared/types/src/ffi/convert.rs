@@ -19,7 +19,7 @@ use zkgroup::ZkGroupDeserializationFailure;
 
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
-use crate::net::chat::ChatListener;
+use crate::net::chat::{ChatListener, ProvisioningListener};
 use crate::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushToken,
 };
@@ -537,6 +537,24 @@ impl<'a> ArgTypeInfo<'a> for Option<Box<dyn ChatListener>> {
     }
     fn load_from(stored: &'a mut Self::StoredType) -> Self {
         stored.take().map(|b| b as Box<_>)
+    }
+}
+
+impl<'a> ArgTypeInfo<'a> for Box<dyn ProvisioningListener> {
+    type ArgType = crate::ffi::ConstPointer<FfiProvisioningListenerStruct>;
+    type StoredType = Option<Box<dyn ProvisioningListener>>;
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
+        Ok(Some(unsafe {
+            foreign
+                .into_inner()
+                .as_ref()
+                .ok_or(NullPointerError)?
+                .make_listener()
+        }))
+    }
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        stored.take().expect("not previously taken")
     }
 }
 

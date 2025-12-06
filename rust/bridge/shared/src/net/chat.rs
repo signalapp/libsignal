@@ -30,6 +30,7 @@ use crate::*;
 bridge_handle_fns!(HttpRequest, clone = false);
 bridge_handle_fns!(UnauthenticatedChatConnection, clone = false);
 bridge_handle_fns!(AuthenticatedChatConnection, clone = false);
+bridge_handle_fns!(ProvisioningChatConnection, clone = false, jni = false);
 
 #[bridge_fn(ffi = false)]
 fn HttpRequest_new(
@@ -253,14 +254,14 @@ fn ServerMessageAck_SendStatus(
     sender(status.into_inner().into())
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, jni = false)]
 async fn ProvisioningChatConnection_connect(
     connection_manager: &ConnectionManager,
 ) -> Result<ProvisioningChatConnection, ConnectError> {
     ProvisioningChatConnection::connect(connection_manager).await
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(jni = false)]
 fn ProvisioningChatConnection_init_listener(
     chat: &ProvisioningChatConnection,
     listener: Box<dyn ProvisioningListener>,
@@ -268,12 +269,12 @@ fn ProvisioningChatConnection_init_listener(
     chat.init_listener(listener)
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(jni = false)]
 fn ProvisioningChatConnection_info(chat: &ProvisioningChatConnection) -> ChatConnectionInfo {
     chat.info()
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, jni = false)]
 async fn ProvisioningChatConnection_disconnect(chat: &ProvisioningChatConnection) {
     chat.disconnect().await
 }

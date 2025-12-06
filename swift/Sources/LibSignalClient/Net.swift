@@ -398,6 +398,29 @@ public class Net {
         )
     }
 
+    /// Asynchronously establishes a provisioning connection to the remote
+    /// chat service.
+    ///
+    /// Creates a connection to the remote chat service, or throws a
+    /// ``SignalError`` if one cannot be established, or if the connection
+    /// attempt is rejected. Once the connection is established, the returned
+    /// object can be used to receive messages after
+    /// ``ProvisioningConnection/start(listener:)`` is called.
+    ///
+    /// - Throws: ``SignalError/appExpired(_:)`` if the current app version is too old (as judged by
+    ///   the server).
+    /// - Throws: ``SignalError/rateLimitedError(retryAfter:message:)` if the server
+    ///   response indicates the request should be tried again after some time.
+    /// - Throws: Other ``SignalError``s for other kinds of failures.
+    ///
+    /// - Returns:
+    ///   An object representing the established, but not active, connection.
+    public func connectProvisioning() async throws -> ProvisioningConnection {
+        return try await ProvisioningConnection(
+            tokioAsyncContext: self.asyncContext,
+            connectionManager: self.connectionManager,
+        )
+    }
     internal var asyncContext: TokioAsyncContext
     internal var connectionManager: ConnectionManager
     internal let environment: Environment

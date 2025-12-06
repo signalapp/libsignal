@@ -103,6 +103,51 @@ extension UnauthenticatedChatConnection {
     }
 }
 
+extension ProvisioningConnection {
+    internal static func fakeConnect(
+        tokioAsyncContext: TokioAsyncContext,
+        listener: any ProvisioningConnectionListener
+    ) -> (ProvisioningConnection, FakeChatRemote) {
+        let (fakeChatConnection, listenerBridge) = failOnError {
+            try FakeChatConnection.create(
+                tokioAsyncContext: tokioAsyncContext,
+                listener: listener,
+            )
+        }
+
+        return failOnError {
+            let connectionHandle = try fakeChatConnection.withNativeHandle { connectionHandle in
+                try invokeFnReturningValueByPointer(.init()) {
+                    signal_testing_fake_chat_connection_take_provisioning_chat(
+                        $0,
+                        connectionHandle.const()
+                    )
+                }
+            }
+            let connection = ProvisioningConnection(
+                fakeHandle: NonNull(connectionHandle)!,
+                tokioAsyncContext: tokioAsyncContext,
+            )
+
+            listenerBridge.setConnection(connection)
+            let fakeRemoteHandle = try fakeChatConnection.withNativeHandle { connectionHandle in
+                try invokeFnReturningValueByPointer(.init()) {
+                    signal_testing_fake_chat_connection_take_remote(
+                        $0,
+                        connectionHandle.const()
+                    )
+                }
+            }
+
+            let fakeRemote = FakeChatRemote(
+                handle: NonNull(fakeRemoteHandle)!,
+                tokioAsyncContext: tokioAsyncContext
+            )
+            return (connection, fakeRemote)
+        }
+    }
+}
+
 private class SetChatLaterListenerBridge: ChatListenerBridge {
     private var savedAlerts: [String]?
 
@@ -140,6 +185,19 @@ private class SetChatLaterUnauthListenerBridge: UnauthConnectionEventsListenerBr
 
     func setConnection(chatConnection: UnauthenticatedChatConnection) {
         self.chatConnection = chatConnection
+    }
+}
+
+// swiftlint:disable:next type_name
+private class SetConnectionLaterProvisioningListenerBridge: ProvisioningListenerBridge {
+    override init(
+        connectionListenerForTesting listener: any ProvisioningConnectionListener
+    ) {
+        super.init(connectionListenerForTesting: listener)
+    }
+
+    func setConnection(_ connection: ProvisioningConnection) {
+        self.connection = connection
     }
 }
 
@@ -336,6 +394,28 @@ private class FakeChatConnection: NativeHandleOwner<SignalMutPointerFakeChatConn
         var listenerStruct = listenerBridge.makeListenerStruct()
         let chat = try FakeChatConnection.internalCreate(tokioAsyncContext, &listenerStruct, alerts)
         return (chat, listenerBridge)
+    }
+
+    static func create(
+        tokioAsyncContext: TokioAsyncContext,
+        listener: any ProvisioningConnectionListener
+    ) throws -> (FakeChatConnection, SetConnectionLaterProvisioningListenerBridge) {
+        let listenerBridge = SetConnectionLaterProvisioningListenerBridge(
+            connectionListenerForTesting: listener
+        )
+        var listenerStruct = listenerBridge.makeListenerStruct()
+        let connection: FakeChatConnection = try withUnsafePointer(to: &listenerStruct) { listener in
+            try tokioAsyncContext.withNativeHandle { asyncContext in
+                try invokeFnReturningNativeHandle {
+                    signal_testing_fake_chat_connection_create_provisioning(
+                        $0,
+                        asyncContext.const(),
+                        SignalConstPointerFfiProvisioningListenerStruct(raw: listener),
+                    )
+                }
+            }
+        }
+        return (connection, listenerBridge)
     }
 
     private static func internalCreate(

@@ -88,7 +88,7 @@ fn TESTING_FakeChatConnection_Create(
     }
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(jni = false)]
 fn TESTING_FakeChatConnection_CreateProvisioning(
     tokio: &TokioAsyncContext,
     listener: Box<dyn ProvisioningListener>,
@@ -120,7 +120,7 @@ fn TESTING_FakeChatConnection_TakeUnauthenticatedChat(
     chat.expect("can't take chat twice").into_unauthenticated()
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(jni = false)]
 fn TESTING_FakeChatConnection_TakeProvisioningChat(
     chat: &FakeChatConnection,
 ) -> ProvisioningChatConnection {
