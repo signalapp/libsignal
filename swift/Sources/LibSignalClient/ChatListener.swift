@@ -97,15 +97,14 @@ internal class ChatListenerBridge {
     /// or the ChatListenerBridge object used to construct it (`self`) will be leaked.
     func makeListenerStruct() -> SignalFfiChatListenerStruct {
         let receivedIncomingMessage: SignalReceivedIncomingMessage = { rawCtx, envelope, timestamp, ackHandle in
-            defer { signal_free_buffer(envelope.base, envelope.length) }
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
 
+            let envelopeData = Data(consuming: envelope)
             let ackHandleOwner = AckHandleOwner(owned: NonNull(ackHandle)!)
             guard let chatConnection = bridge.chatConnection else {
                 return
             }
 
-            let envelopeData = Data(bytes: envelope.base, count: envelope.length)
             bridge.chatListener.chatConnection(
                 chatConnection,
                 didReceiveIncomingMessage: envelopeData,

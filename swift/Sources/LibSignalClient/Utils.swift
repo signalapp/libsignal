@@ -79,13 +79,7 @@ internal func invokeFnReturningOptionalArray(
     return if output.base == nil {
         nil
     } else {
-        Data(
-            bytesNoCopy: output.base,
-            count: output.length,
-            deallocator: .custom { base, length in
-                signal_free_buffer(base, length)
-            }
-        )
+        Data(consuming: output)
     }
 }
 

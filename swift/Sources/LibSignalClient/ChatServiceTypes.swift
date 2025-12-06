@@ -191,13 +191,7 @@ public struct ChatResponse: Equatable, Sendable {
         )
 
         // Avoid copying the body when possible!
-        self.body = Data(
-            bytesNoCopy: rawResponse.body.base,
-            count: rawResponse.body.length,
-            deallocator: .custom { base, length in
-                signal_free_buffer(base, length)
-            }
-        )
+        self.body = Data(consuming: rawResponse.body)
         // Clear it out so it doesn't get freed eagerly.
         rawResponse.body = .init()
 
