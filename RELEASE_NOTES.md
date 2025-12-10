@@ -1,3 +1,2 @@
-v0.86.8
+v0.86.9
 
-- backups: Support pinned messages
