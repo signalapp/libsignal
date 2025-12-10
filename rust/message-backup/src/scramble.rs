@@ -785,12 +785,17 @@ impl Visit<Scrambler> for proto::ChatItem {
             expiresInMs: _,
             revisions,
             sms: _,
+            pinDetails,
             directionalDetails,
             item,
             special_fields: _,
         } = self;
 
         revisions.accept(visitor);
+
+        if let Some(pin_details) = pinDetails.as_mut() {
+            pin_details.accept(visitor);
+        }
 
         if let Some(details) = directionalDetails {
             use proto::chat_item::DirectionalDetails;
@@ -1250,6 +1255,7 @@ impl Visit<Scrambler> for proto::ChatUpdateMessage {
                 Update::GroupCall(update) => update.accept(visitor),
                 Update::LearnedProfileChange(update) => update.accept(visitor),
                 Update::PollTerminate(update) => update.accept(visitor),
+                Update::PinMessage(update) => update.accept(visitor),
             }
         }
     }
@@ -2124,5 +2130,25 @@ impl Visit<Scrambler> for proto::PollTerminateUpdate {
             special_fields: _,
         } = self;
         question.randomize(&mut visitor.rng);
+    }
+}
+
+impl Visit<Scrambler> for proto::PinMessageUpdate {
+    fn accept(&mut self, _visitor: &mut Scrambler) {
+        let Self {
+            targetSentTimestamp: _,
+            authorId: _,
+            special_fields: _,
+        } = self;
+    }
+}
+
+impl Visit<Scrambler> for proto::chat_item::PinDetails {
+    fn accept(&mut self, _visitor: &mut Scrambler) {
+        let Self {
+            pinnedAtTimestamp: _,
+            pinExpiry: _,
+            special_fields: _,
+        } = self;
     }
 }

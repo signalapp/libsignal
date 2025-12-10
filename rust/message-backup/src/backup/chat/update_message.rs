@@ -6,6 +6,7 @@ use crate::backup::TryIntoWith;
 use crate::backup::call::{GroupCall, IndividualCall};
 use crate::backup::chat::ChatItemError;
 use crate::backup::chat::group::GroupChatUpdate;
+use crate::backup::chat::pinned::PinMessageUpdate;
 use crate::backup::chat::poll::PollTerminate;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
@@ -27,6 +28,7 @@ pub enum UpdateMessage<Recipient> {
     GroupCall(GroupCall<Recipient>),
     LearnedProfileUpdate(proto::learned_profile_chat_update::PreviousName),
     PollTerminate(PollTerminate),
+    PinMessage(PinMessageUpdate<Recipient>),
 }
 
 /// Validated version of [`proto::simple_chat_update::Type`].
@@ -170,6 +172,7 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
             Update::PollTerminate(proto) => {
                 UpdateMessage::PollTerminate(proto.try_into_with(context)?)
             }
+            Update::PinMessage(proto) => UpdateMessage::PinMessage(proto.try_into_with(context)?),
         })
     }
 }
@@ -301,6 +304,13 @@ impl<R> UpdateMessage<R> {
                     Ok(())
                 }
             }
+            UpdateMessage::PinMessage(_) => {
+                if !author.is_valid_sender_account() {
+                    Err(ChatItemError::PinMessageNotFromContact)
+                } else {
+                    Ok(())
+                }
+            }
         }
     }
 
@@ -409,6 +419,13 @@ impl<R> UpdateMessage<R> {
                     Ok(())
                 }
             }
+            UpdateMessage::PinMessage(_) => {
+                if matches!(chat, ChatRecipientKind::ReleaseNotes) {
+                    Err(ChatItemError::PinMessageToReleaseNotes)
+                } else {
+                    Ok(())
+                }
+            }
         }
     }
 }
@@ -420,6 +437,7 @@ mod test {
 
     use super::*;
     use crate::backup::call::CallError;
+    use crate::backup::chat::pinned::PinMessageError;
     use crate::backup::testutil::TestContext;
     use crate::proto::backup::chat_update_message::Update as ChatUpdateProto;
 
@@ -521,6 +539,14 @@ mod test {
     #[test_case(
         proto::LearnedProfileChatUpdate::default(),
         Err(ChatItemError::LearnedProfileIsEmpty)
+    )]
+    #[test_case(
+        proto::PinMessageUpdate::default(),
+        Err(ChatItemError::InvalidPinMessage(PinMessageError::UnknownAuthorId))
+    )]
+    #[test_case(
+        proto::PinMessageUpdate::test_data(),
+        Ok(())
     )]
     fn chat_update_message_item(
         update: impl Into<proto::chat_update_message::Update>,

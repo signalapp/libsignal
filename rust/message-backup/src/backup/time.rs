@@ -69,6 +69,10 @@ impl Timestamp {
     /// The maximum timestamp we allow in backup files, also the limit of JavaScript's Date type.
     pub(crate) const MAX_SAFE_TIMESTAMP_MS: u64 = 100_000_000 * 1000 * 60 * 60 * 24;
 
+    /// Invalid timestamp value for use in tests.
+    #[cfg(test)]
+    pub(crate) const INVALID_TIMESTAMP_MS: u64 = Timestamp::MAX_SAFE_TIMESTAMP_MS + 1;
+
     /// Validates and converts a timestamp represented as seconds since [`UNIX_EPOCH`].
     ///
     /// If the timestamp is unlikely to represent an event during Signal's history, `reporter` is
@@ -251,9 +255,11 @@ mod test {
 
     impl Timestamp {
         pub(crate) fn test_value() -> Self {
-            Self(
-                UNIX_EPOCH + std::time::Duration::from_millis(MillisecondsSinceEpoch::TEST_VALUE.0),
-            )
+            Self::from_millis_for_testing(MillisecondsSinceEpoch::TEST_VALUE.0)
+        }
+
+        pub(crate) fn from_millis_for_testing(millis: u64) -> Self {
+            Self(UNIX_EPOCH + std::time::Duration::from_millis(millis))
         }
     }
 

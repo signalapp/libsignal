@@ -66,6 +66,9 @@ use view_once_message::*;
 mod voice_message;
 use voice_message::*;
 
+mod pinned;
+use pinned::*;
+
 mod poll;
 use poll::*;
 
@@ -248,6 +251,12 @@ pub enum ChatItemError {
     PollTerminateNotInGroup(DestinationKind),
     /// poll terminate not from contact or self
     PollTerminateNotFromContact,
+    /// pin message not from contact or self
+    PinMessageNotFromContact,
+    /// pin message sent to release notes
+    PinMessageToReleaseNotes,
+    /// invalid pin message {0}
+    InvalidPinMessage(#[from] PinMessageError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -358,6 +367,7 @@ pub struct ChatItemData<M: Method + ReferencedTypes> {
     /// The position of this chat item among all chat items (across chats) in
     /// the source stream.
     pub total_chat_item_order_index: usize,
+    pub pin_details: Option<PinDetails>,
     _limit_construction_to_module: (),
 }
 
@@ -553,6 +563,7 @@ impl<
         let proto::ChatItem {
             chatId: _,
             authorId,
+            pinDetails,
             item,
             directionalDetails,
             revisions,
@@ -805,6 +816,11 @@ impl<
             }
         }
 
+        let pin_details = pinDetails
+            .into_option()
+            .map(|x| x.try_into_with(context))
+            .transpose()?;
+
         Ok(ChatItemData {
             author: author.clone(),
             cached_author_kind,
@@ -815,6 +831,7 @@ impl<
             expire_start,
             expires_in,
             sms,
+            pin_details,
             total_chat_item_order_index: Default::default(),
             _limit_construction_to_module: (),
         })
@@ -1128,6 +1145,7 @@ mod test {
                 expireStartDate: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
                 expiresInMs: Some(24 * 60 * 60 * 1000),
                 dateSent: MillisecondsSinceEpoch::TEST_VALUE.0,
+                pinDetails: Some(proto::chat_item::PinDetails::test_data()).into(),
                 ..Default::default()
             }
         }
@@ -1232,6 +1250,7 @@ mod test {
                 sent_at: Timestamp::test_value(),
                 sms: false,
                 total_chat_item_order_index: 0,
+                pin_details: Some(PinDetails::from_proto_test_data()),
                 _limit_construction_to_module: (),
             })
         )
