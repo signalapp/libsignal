@@ -67,15 +67,12 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
     public void onIncomingMessage(
         byte[] envelope, long serverDeliveryTimestamp, long sendAckHandle) {
 
+      var ack = new ChatConnectionListener.ServerMessageAck(sendAckHandle);
       ChatConnection chat = this.chat.get();
       if (chat == null) return;
       if (chat.chatListener == null) return;
 
-      chat.chatListener.onIncomingMessage(
-          chat,
-          envelope,
-          serverDeliveryTimestamp,
-          new ChatConnectionListener.ServerMessageAck(chat.tokioAsyncContext, sendAckHandle));
+      chat.chatListener.onIncomingMessage(chat, envelope, serverDeliveryTimestamp, ack);
     }
 
     public void onQueueEmpty() {
