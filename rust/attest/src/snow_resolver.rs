@@ -65,7 +65,12 @@ impl Dh for Dh25519 {
     }
 
     fn dh(&self, pubkey: &[u8], out: &mut [u8]) -> Result<(), SnowError> {
-        let result = x25519::x25519(self.privkey, pubkey[..self.pub_len()].try_into().unwrap());
+        let result = x25519::x25519(
+            self.privkey,
+            pubkey[..self.pub_len()]
+                .try_into()
+                .expect("public key length checked by snow"),
+        );
         out[..result.len()].copy_from_slice(&result);
         Ok(())
     }
@@ -166,7 +171,7 @@ impl Cipher for CipherChaChaPoly {
 
         let tag = ChaCha20Poly1305::new(&self.key.into())
             .encrypt_in_place_detached(&nonce_bytes.into(), authtext, &mut out[0..plaintext.len()])
-            .unwrap();
+            .expect("can encrypt");
 
         copy_slices!(tag, &mut out[plaintext.len()..]);
 
@@ -269,7 +274,9 @@ impl Kem for Kyber1024 {
         .ok_or(SnowError::Input)?;
         // We don't get a RNG passed in, so currently we use OsRng directly:
         let mut randomness = [0u8; 32];
-        rand_core::OsRng.try_fill_bytes(&mut randomness).unwrap();
+        rand_core::OsRng
+            .try_fill_bytes(&mut randomness)
+            .expect("system RNG should always be available");
         let (ciphertext, shared_secret) = mlkem1024::encapsulate(&mlkem_pubkey, randomness);
         shared_secret_out.copy_from_slice(shared_secret.as_ref());
         ciphertext_out.copy_from_slice(ciphertext.as_ref());

@@ -4,6 +4,7 @@
 //
 
 #![deny(unsafe_code)]
+#![warn(clippy::unwrap_used)]
 
 pub mod cds2;
 pub mod client_connection;

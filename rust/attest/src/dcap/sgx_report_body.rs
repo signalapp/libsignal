@@ -111,7 +111,10 @@ bitflags! {
 impl SgxReportBody {
     pub fn has_flag(&self, flag: SgxFlags) -> bool {
         // first 8 bytes are little endian SGX flags
-        let bytes: [u8; 8] = self.sgx_attributes[0..8].try_into().unwrap();
+        let bytes: [u8; 8] = *self
+            .sgx_attributes
+            .first_chunk()
+            .expect("more than 8 bytes long");
         SgxFlags::from_bits_truncate(u64::from_le_bytes(bytes)).contains(flag)
     }
 }

@@ -84,7 +84,10 @@ impl CertChain {
             #[cfg(not(fuzzing))]
             return Err(Error::new(format!(
                 "invalid certificate: {:?}",
-                ctx.verify_result().unwrap_err()
+                match ctx.verify_result() {
+                    Ok(()) => boring_signal::x509::X509VerifyError::UNSPECIFIED,
+                    Err(e) => e,
+                }
             )));
         }
 
@@ -136,13 +139,9 @@ impl CertChain {
 
 impl Expireable for CertChain {
     fn valid_at(&self, timestamp: SystemTime) -> bool {
-        let asn1_timestamp = crate::util::system_time_to_asn1_time(timestamp);
-
-        if asn1_timestamp.is_err() {
+        let Ok(asn1_timestamp) = crate::util::system_time_to_asn1_time(timestamp) else {
             return false;
-        }
-
-        let asn1_timestamp = asn1_timestamp.unwrap();
+        };
 
         self.certs.iter().all(|cert| -> bool {
             cert.not_before()
