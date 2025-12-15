@@ -167,6 +167,10 @@ public class ChatServiceTest {
                 chatHandle, Base64.decode(requestBase64)));
   }
 
+  private void injectConnectionInterrupted(FakeChatRemote fakeRemote) {
+    fakeRemote.guardedRun(NativeTesting::TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted);
+  }
+
   @Test
   public void testConnectionListenerCallbacks() throws Throwable {
     class Listener implements ChatConnectionListener {
@@ -174,7 +178,7 @@ public class ChatServiceTest {
       boolean receivedMessage1;
       boolean receivedMessage2;
       boolean receivedQueueEmpty;
-      Throwable error;
+      Throwable anyError;
       CountDownLatch latch = new CountDownLatch(1);
 
       public void onIncomingMessage(
@@ -202,8 +206,8 @@ public class ChatServiceTest {
               throw new AssertionError("unexpected message");
           }
         } catch (Throwable error) {
-          if (this.error == null) {
-            this.error = error;
+          if (anyError == null) {
+            anyError = error;
           }
         }
       }
@@ -216,8 +220,8 @@ public class ChatServiceTest {
           assertFalse(receivedQueueEmpty);
           receivedQueueEmpty = true;
         } catch (Throwable error) {
-          if (this.error == null) {
-            this.error = error;
+          if (anyError == null) {
+            anyError = error;
           }
         }
       }
@@ -231,8 +235,8 @@ public class ChatServiceTest {
           assertArrayEquals(alerts, new String[] {"UPPERcase", "lowercase"});
           receivedAlerts = true;
         } catch (Throwable error) {
-          if (this.error == null) {
-            this.error = error;
+          if (anyError == null) {
+            anyError = error;
           }
         }
       }
@@ -246,8 +250,8 @@ public class ChatServiceTest {
           assertTrue(receivedQueueEmpty);
           assertEquals("websocket error: channel already closed", disconnectReason.getMessage());
         } catch (Throwable error) {
-          if (this.error == null) {
-            this.error = error;
+          if (anyError == null) {
+            anyError = error;
           }
         } finally {
           latch.countDown();
@@ -296,12 +300,12 @@ public class ChatServiceTest {
     // 4: 99
     injectServerRequest(fakeRemote, "CgNQVVQSEy9hcGkvdjEvcXVldWUvZW1wdHkgYw==");
 
-    fakeRemote.guardedRun(NativeTesting::TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted);
+    injectConnectionInterrupted(fakeRemote);
 
     listener.latch.await();
-    if (listener.error != null) {
+    if (listener.anyError != null) {
       // Rethrow for the original backtrace.
-      throw listener.error;
+      throw listener.anyError;
     }
 
     // Make sure the chat object doesn't get GC'd early.
@@ -425,7 +429,7 @@ public class ChatServiceTest {
     class Listener implements ProvisioningConnectionListener {
       boolean receivedAddress;
       boolean receivedEnvelope;
-      Throwable error;
+      Throwable anyError;
       CountDownLatch latch = new CountDownLatch(1);
 
       public void onReceivedAddress(
@@ -437,8 +441,8 @@ public class ChatServiceTest {
           assertEquals("the address", address);
           sendAck.send();
         } catch (Throwable error) {
-          if (this.error == null) {
-            this.error = error;
+          if (anyError == null) {
+            anyError = error;
           }
         }
       }
@@ -452,8 +456,8 @@ public class ChatServiceTest {
           assertArrayEquals("encoded envelope".getBytes(StandardCharsets.UTF_8), envelope);
           sendAck.send();
         } catch (Throwable error) {
-          if (this.error == null) {
-            this.error = error;
+          if (anyError == null) {
+            anyError = error;
           }
         }
       }
@@ -465,8 +469,8 @@ public class ChatServiceTest {
           assertTrue(receivedEnvelope);
           assertEquals("websocket error: channel already closed", disconnectReason.getMessage());
         } catch (Throwable error) {
-          if (this.error == null) {
-            this.error = error;
+          if (anyError == null) {
+            anyError = error;
           }
         } finally {
           latch.countDown();
@@ -510,12 +514,12 @@ public class ChatServiceTest {
     // 4: 10
     injectServerRequest(fakeRemote, "CgNQVVQSCC9pbnZhbGlkIAo=");
 
-    fakeRemote.guardedRun(NativeTesting::TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted);
+    injectConnectionInterrupted(fakeRemote);
 
     listener.latch.await();
-    if (listener.error != null) {
+    if (listener.anyError != null) {
       // Rethrow for the original backtrace.
-      throw listener.error;
+      throw listener.anyError;
     }
 
     // Make sure the chat object doesn't get GC'd early.
