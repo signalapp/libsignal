@@ -8,7 +8,8 @@ use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::net::chat::{
-    AuthenticatedChatConnection, ChatListener, HttpRequest, UnauthenticatedChatConnection,
+    AuthenticatedChatConnection, ChatListener, HttpRequest, ProvisioningChatConnection,
+    ProvisioningListener, UnauthenticatedChatConnection,
 };
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::{
@@ -78,8 +79,24 @@ fn TESTING_FakeChatConnection_Create(
     let alerts = alerts_joined_by_newlines.split_terminator('\n');
     let (chat, remote) = libsignal_bridge_types::net::chat::FakeChatConnection::new(
         tokio.handle(),
-        listener,
+        listener.into_event_listener(),
         alerts,
+    );
+    FakeChatConnection {
+        chat: Some(chat).into(),
+        remote_end: Some(remote).into(),
+    }
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_FakeChatConnection_CreateProvisioning(
+    tokio: &TokioAsyncContext,
+    listener: Box<dyn ProvisioningListener>,
+) -> FakeChatConnection {
+    let (chat, remote) = libsignal_bridge_types::net::chat::FakeChatConnection::new(
+        tokio.handle(),
+        listener.into_event_listener(),
+        vec![],
     );
     FakeChatConnection {
         chat: Some(chat).into(),
@@ -101,6 +118,14 @@ fn TESTING_FakeChatConnection_TakeUnauthenticatedChat(
 ) -> UnauthenticatedChatConnection {
     let chat = chat.chat.lock().expect("not poisoned").take();
     chat.expect("can't take chat twice").into_unauthenticated()
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_FakeChatConnection_TakeProvisioningChat(
+    chat: &FakeChatConnection,
+) -> ProvisioningChatConnection {
+    let chat = chat.chat.lock().expect("not poisoned").take();
+    chat.expect("can't take chat twice").into_provisioning()
 }
 
 #[bridge_fn]

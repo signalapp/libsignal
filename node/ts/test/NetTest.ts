@@ -22,6 +22,8 @@ import {
   ChatServiceListener,
   Environment,
   Net,
+  ProvisioningConnection,
+  ProvisioningConnectionListener,
   SIGNAL_TLS_PROXY_SCHEME,
   TokioAsyncContext,
   UnauthenticatedChatConnection,
@@ -703,6 +705,116 @@ describe('chat service api', () => {
           expect(responseFromServer)
             .property('body')
             .to.deep.eq(Uint8Array.of(5));
+        });
+      });
+    });
+  });
+
+  describe('fake provisioning connection', () => {
+    // The following payloads were generated via protoscope.
+    // % protoscope -s | base64
+    // The fields are described by chat_websocket.proto and chat_provisioning.proto in the
+    // libsignal-net crate.
+
+    // 1: {"PUT"}
+    // 2: {"/v1/address"}
+    // 3: {1: {"the address"}}
+    // 5: {"x-signal-timestamp: 1000"}
+    // 4: 1
+    const PUT_ADDRESS = Buffer.from(
+      'CgNQVVQSCy92MS9hZGRyZXNzGg0KC3RoZSBhZGRyZXNzKhh4LXNpZ25hbC10aW1lc3RhbXA6IDEwMDAgAQ==',
+      'base64'
+    );
+
+    // 1: {"PUT"}
+    // 2: {"/v1/message"}
+    // 3: {"encoded envelope"}
+    // 5: {"x-signal-timestamp: 1000"}
+    // 4: 2
+    const PUT_ENVELOPE = Buffer.from(
+      'CgNQVVQSCy92MS9tZXNzYWdlGhBlbmNvZGVkIGVudmVsb3BlKhh4LXNpZ25hbC10aW1lc3RhbXA6IDEwMDAgAg==',
+      'base64'
+    );
+
+    // 1: {"PUT"}
+    // 2: {"/invalid"}
+    // 4: 10
+    const INVALID_MESSAGE = Buffer.from('CgNQVVQSCC9pbnZhbGlkIAo=', 'base64');
+
+    it('receives callbacks', async () => {
+      const listener: ProvisioningConnectionListener = {
+        onReceivedAddress(address: string, ack: ChatServerMessageAck): void {
+          recordCall('onReceivedAddress', address);
+          ack.send(200);
+        },
+        onReceivedEnvelope(
+          envelope: Uint8Array,
+          ack: ChatServerMessageAck
+        ): void {
+          recordCall('onReceivedEnvelope', envelope);
+          ack.send(200);
+        },
+        onConnectionInterrupted(cause: object | null): void {
+          recordCall('onConnectionInterrupted', cause);
+        },
+      };
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+      const [_chat, fakeRemote] = ProvisioningConnection.fakeConnect(
+        tokio,
+        listener
+      );
+
+      const completable = new CompletablePromise();
+      const callsToMake: Buffer[] = [
+        PUT_ADDRESS,
+        INVALID_MESSAGE,
+        PUT_ENVELOPE,
+      ];
+      const callsReceived: [string, unknown[]][] = [];
+      const callsExpected: [string, ((value: unknown) => void)[]][] = [
+        [
+          'onReceivedAddress',
+          [(value) => expect(value).deep.equals('the address')],
+        ],
+        [
+          'onReceivedEnvelope',
+          [
+            (value) =>
+              expect(value).deep.equals(
+                Buffer.from('encoded envelope', 'utf8')
+              ),
+          ],
+        ],
+        [
+          'onConnectionInterrupted',
+          [
+            (error) =>
+              expect(error)
+                .instanceOf(LibSignalErrorBase)
+                .property('code', ErrorCode.IoError),
+          ],
+        ],
+      ];
+      const recordCall = function (name: string, ...args: unknown[]) {
+        callsReceived.push([name, args]);
+        if (callsReceived.length == callsExpected.length) {
+          completable.complete();
+        }
+      };
+      callsToMake.forEach((serverRequest) =>
+        fakeRemote.sendRawServerRequest(serverRequest)
+      );
+      fakeRemote.injectConnectionInterrupted();
+      await completable.done();
+
+      expect(callsReceived).to.have.lengthOf(callsExpected.length);
+      callsReceived.forEach((element, index) => {
+        const [call, args] = element;
+        const [expectedCall, expectedArgs] = callsExpected[index];
+        expect(call).to.eql(expectedCall);
+        expect(args.length).to.eql(expectedArgs.length);
+        args.map((arg, i) => {
+          expectedArgs[i](arg);
         });
       });
     });

@@ -5,3 +5,5 @@ v0.86.9
     - Java: PossibleCaptiveNetworkException
     - Swift: SignalError.PossibleCaptiveNetwork
     - Node: PossibleCaptiveNetworkError
+
+- Node: added `Net.connectProvisioning` and `ProvisioningConnectionListener`

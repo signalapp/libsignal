@@ -252,3 +252,28 @@ fn ServerMessageAck_SendStatus(
     let sender = ack.take().expect("a message is only acked once");
     sender(status.into_inner().into())
 }
+
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn ProvisioningChatConnection_connect(
+    connection_manager: &ConnectionManager,
+) -> Result<ProvisioningChatConnection, ConnectError> {
+    ProvisioningChatConnection::connect(connection_manager).await
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn ProvisioningChatConnection_init_listener(
+    chat: &ProvisioningChatConnection,
+    listener: Box<dyn ProvisioningListener>,
+) {
+    chat.init_listener(listener)
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn ProvisioningChatConnection_info(chat: &ProvisioningChatConnection) -> ChatConnectionInfo {
+    chat.info()
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn ProvisioningChatConnection_disconnect(chat: &ProvisioningChatConnection) {
+    chat.disconnect().await
+}

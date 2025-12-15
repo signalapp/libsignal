@@ -25,7 +25,7 @@ use libsignal_net::chat::{
     LanguageList, Request, Response as ChatResponse, SendError, UnauthenticatedChatHeaders,
 };
 use libsignal_net::connect_state::ConnectionResources;
-use libsignal_net::env::constants::CHAT_WEBSOCKET_PATH;
+use libsignal_net::env::constants::{CHAT_PROVISIONING_PATH, CHAT_WEBSOCKET_PATH};
 use libsignal_net::infra::route::{
     DirectOrProxyMode, DirectOrProxyModeDiscriminants, DirectOrProxyProvider, RouteProvider,
     RouteProviderExt, TcpRoute, TlsRoute, UnresolvedHttpsServiceRoute,
@@ -69,6 +69,17 @@ pub struct AuthenticatedChatConnection {
 bridge_as_handle!(AuthenticatedChatConnection);
 impl UnwindSafe for AuthenticatedChatConnection {}
 impl RefUnwindSafe for AuthenticatedChatConnection {}
+
+pub struct ProvisioningChatConnection {
+    /// The possibly-still-being-constructed [`ChatConnection`].
+    ///
+    /// See [`AuthenticatedChatConnection::inner`] for rationale around lack of
+    /// reader/writer contention.
+    inner: tokio::sync::RwLock<MaybeChatConnection>,
+}
+bridge_as_handle!(ProvisioningChatConnection, ffi = false, jni = false);
+impl UnwindSafe for ProvisioningChatConnection {}
+impl RefUnwindSafe for ProvisioningChatConnection {}
 
 // We could Box the PendingChatConnection, but in practice this type will be on the heap anyway, and
 // there won't be a ton of them allocated.
@@ -186,6 +197,35 @@ impl AuthenticatedChatConnection {
     }
 }
 
+impl ProvisioningChatConnection {
+    pub async fn connect(connection_manager: &ConnectionManager) -> Result<Self, ConnectError> {
+        let inner = establish_chat_connection(
+            "provisioning",
+            connection_manager,
+            CHAT_PROVISIONING_PATH,
+            None,
+        )
+        .await?;
+        Ok(Self {
+            inner: MaybeChatConnection::WaitingForListener(
+                tokio::runtime::Handle::current(),
+                inner.into(),
+            )
+            .into(),
+        })
+    }
+
+    // Deliberately shadows the implementation on BridgeChatConnection, which takes the wrong kind
+    // of listener. Nothing *prevents* calling that on a ProvisioningChatConnection, but it won't be
+    // very useful, so don't do that.
+    pub fn init_listener(&self, listener: Box<dyn ProvisioningListener>) {
+        init_listener(
+            &mut self.as_ref().blocking_write(),
+            listener.into_event_listener(),
+        )
+    }
+}
+
 impl AsRef<tokio::sync::RwLock<MaybeChatConnection>> for AuthenticatedChatConnection {
     fn as_ref(&self) -> &tokio::sync::RwLock<MaybeChatConnection> {
         &self.inner
@@ -193,6 +233,12 @@ impl AsRef<tokio::sync::RwLock<MaybeChatConnection>> for AuthenticatedChatConnec
 }
 
 impl AsRef<tokio::sync::RwLock<MaybeChatConnection>> for UnauthenticatedChatConnection {
+    fn as_ref(&self) -> &tokio::sync::RwLock<MaybeChatConnection> {
+        &self.inner
+    }
+}
+
+impl AsRef<tokio::sync::RwLock<MaybeChatConnection>> for ProvisioningChatConnection {
     fn as_ref(&self) -> &tokio::sync::RwLock<MaybeChatConnection> {
         &self.inner
     }
@@ -214,7 +260,10 @@ pub trait BridgeChatConnection {
 
 impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnection for C {
     fn init_listener(&self, listener: Box<dyn ChatListener>) {
-        init_listener(&mut self.as_ref().blocking_write(), listener)
+        init_listener(
+            &mut self.as_ref().blocking_write(),
+            listener.into_event_listener(),
+        )
     }
 
     async fn send(&self, message: Request, timeout: Duration) -> Result<ChatResponse, SendError> {
@@ -240,7 +289,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
 
     fn info(&self) -> ConnectionInfo {
         let guard = self.as_ref().blocking_read();
-        let connection_info = match &*guard {
+        match &*guard {
             MaybeChatConnection::Running(chat_connection) => {
                 chat_connection.connection_info().clone()
             }
@@ -248,9 +297,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
                 pending_chat_connection.blocking_lock().connection_info()
             }
             MaybeChatConnection::TemporarilyEvicted => unreachable!("unobservable state"),
-        };
-
-        connection_info.clone()
+        }
     }
 }
 
@@ -280,7 +327,7 @@ pub(crate) async fn connect_registration_chat(
     )))
 }
 
-fn init_listener(connection: &mut MaybeChatConnection, listener: Box<dyn ChatListener>) {
+fn init_listener(connection: &mut MaybeChatConnection, listener: chat::ws::EventListener) {
     let (tokio_runtime, pending) =
         match std::mem::replace(connection, MaybeChatConnection::TemporarilyEvicted) {
             MaybeChatConnection::Running(chat_connection) => {
@@ -296,7 +343,7 @@ fn init_listener(connection: &mut MaybeChatConnection, listener: Box<dyn ChatLis
     *connection = MaybeChatConnection::Running(ChatConnection::finish_connect(
         tokio_runtime,
         pending.into_inner(),
-        listener.into_event_listener(),
+        listener,
     ))
 }
 
@@ -305,11 +352,10 @@ pub struct FakeChatConnection(ChatConnection);
 impl FakeChatConnection {
     pub fn new<'a>(
         tokio_runtime: tokio::runtime::Handle,
-        listener: Box<dyn ChatListener>,
+        listener: chat::ws::EventListener,
         alerts: impl IntoIterator<Item = &'a str>,
     ) -> (Self, FakeChatRemote) {
-        let (inner, remote) =
-            ChatConnection::new_fake(tokio_runtime, listener.into_event_listener(), alerts);
+        let (inner, remote) = ChatConnection::new_fake(tokio_runtime, listener, alerts);
         (Self(inner), remote)
     }
 
@@ -323,6 +369,13 @@ impl FakeChatConnection {
     pub fn into_authenticated(self) -> AuthenticatedChatConnection {
         let Self(inner) = self;
         AuthenticatedChatConnection {
+            inner: MaybeChatConnection::Running(inner).into(),
+        }
+    }
+
+    pub fn into_provisioning(self) -> ProvisioningChatConnection {
+        let Self(inner) = self;
+        ProvisioningChatConnection {
             inner: MaybeChatConnection::Running(inner).into(),
         }
     }
@@ -561,7 +614,7 @@ impl dyn ChatListener {
         }
     }
 
-    fn into_event_listener(mut self: Box<Self>) -> Box<dyn FnMut(chat::ws::ListenerEvent) + Send> {
+    pub fn into_event_listener(mut self: Box<Self>) -> chat::ws::EventListener {
         Box::new(move |event| {
             let event: chat::server_requests::ServerEvent = match event.try_into() {
                 Ok(event) => event,
@@ -598,3 +651,52 @@ bridge_as_handle!(ServerMessageAck);
 // makes it `!RefUnwindSafe`. We're putting that back; because we only manipulate the `AtomicTake`
 // using its atomic operations, it can never be in an invalid state.
 impl std::panic::RefUnwindSafe for ServerMessageAck {}
+
+/// A trait of callbacks for different kinds of [`chat::server_requests::ProvisioningEvent`].
+///
+/// Done as multiple functions so we can adjust the types to be more suitable for bridging.
+pub trait ProvisioningListener: Send {
+    fn received_address(&mut self, address: String, send_ack: ServerMessageAck);
+    fn received_envelope(&mut self, envelope: Bytes, send_ack: ServerMessageAck);
+    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause);
+}
+
+impl dyn ProvisioningListener {
+    /// A helper to translate from the libsignal-net enum to the separate callback methods in this
+    /// trait.
+    fn received_server_request(&mut self, request: chat::server_requests::ProvisioningEvent) {
+        match request {
+            chat::server_requests::ProvisioningEvent::ReceivedAddress { address, send_ack } => {
+                self.received_address(address, ServerMessageAck::new(send_ack))
+            }
+            chat::server_requests::ProvisioningEvent::ReceivedEnvelope { envelope, send_ack } => {
+                self.received_envelope(envelope, ServerMessageAck::new(send_ack))
+            }
+            chat::server_requests::ProvisioningEvent::Stopped(error) => {
+                self.connection_interrupted(error)
+            }
+        }
+    }
+
+    pub fn into_event_listener(mut self: Box<Self>) -> chat::ws::EventListener {
+        Box::new(move |event| {
+            if let ListenerEvent::ReceivedAlerts(alerts) = &event {
+                if !alerts.is_empty() {
+                    log::warn!(
+                        "unexpected alerts on provisioning connection: {}",
+                        alerts.join(",")
+                    );
+                }
+                return;
+            }
+            let event: chat::server_requests::ProvisioningEvent = match event.try_into() {
+                Ok(event) => event,
+                Err(err) => {
+                    log::error!("{err}");
+                    return;
+                }
+            };
+            self.received_server_request(event);
+        })
+    }
+}

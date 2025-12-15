@@ -22,7 +22,7 @@ use neon::result::NeonResult;
 use signal_neon_futures::call_method;
 
 use crate::net::ConnectionManager;
-use crate::net::chat::{ChatListener, ServerMessageAck};
+use crate::net::chat::{ChatListener, ProvisioningListener, ServerMessageAck};
 use crate::node::{PersistentBorrowedJsBoxedBridgeHandle, ResultTypeInfo, SignalNodeError as _};
 
 #[derive(Clone)]
@@ -139,6 +139,88 @@ impl Finalize for NodeChatListener {
 impl Finalize for Roots {
     fn finalize<'a, C: neon::prelude::Context<'a>>(self, cx: &mut C) {
         self.callback_object.finalize(cx);
+    }
+}
+
+#[derive(Clone)]
+pub struct NodeProvisioningListener {
+    js_channel: Channel,
+    roots: Arc<Roots>,
+}
+
+impl ProvisioningListener for NodeProvisioningListener {
+    fn received_address(&mut self, address: String, ack: ServerMessageAck) {
+        let roots_shared = self.roots.clone();
+        self.js_channel.send(move |mut cx| {
+            let callback_object_shared = &roots_shared.callback_object;
+            let callback = callback_object_shared.to_inner(&mut cx);
+            let addr_value = address.convert_into(&mut cx)?.upcast();
+            let ack = ack.convert_into(&mut cx)?.upcast();
+            let _result = call_method(&mut cx, callback, "_received_address", [addr_value, ack])?;
+            roots_shared.finalize(&mut cx);
+            Ok(())
+        });
+    }
+
+    fn received_envelope(&mut self, envelope: Bytes, ack: ServerMessageAck) {
+        let roots_shared = self.roots.clone();
+        self.js_channel.send(move |mut cx| {
+            let callback_object_shared = &roots_shared.callback_object;
+            let callback = callback_object_shared.to_inner(&mut cx);
+            let envelope_value = envelope.convert_into(&mut cx)?.upcast();
+            let ack = ack.convert_into(&mut cx)?.upcast();
+            let _result = call_method(
+                &mut cx,
+                callback,
+                "_received_envelope",
+                [envelope_value, ack],
+            )?;
+            roots_shared.finalize(&mut cx);
+            Ok(())
+        });
+    }
+
+    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
+        let disconnect_cause = match disconnect_cause {
+            DisconnectCause::LocalDisconnect => None,
+            DisconnectCause::Error(cause) => Some(cause),
+        };
+        let roots_shared = self.roots.clone();
+        self.js_channel.send(move |mut cx| {
+            let Roots { callback_object } = &*roots_shared;
+            let cause = disconnect_cause
+                .map(|cause| cause.into_throwable(&mut cx, "connection_interrupted"))
+                .convert_into(&mut cx)?;
+
+            let callback = callback_object.to_inner(&mut cx);
+            let _result = call_method(&mut cx, callback, "_connection_interrupted", [cause])?;
+            roots_shared.finalize(&mut cx);
+            Ok(())
+        });
+    }
+}
+
+impl NodeProvisioningListener {
+    pub(crate) fn new(cx: &mut FunctionContext, callbacks: Handle<JsObject>) -> NeonResult<Self> {
+        let mut channel = cx.channel();
+        channel.unref(cx);
+
+        Ok(Self {
+            js_channel: channel,
+            roots: Arc::new(Roots {
+                callback_object: callbacks.root(cx),
+            }),
+        })
+    }
+
+    pub(crate) fn make_listener(&self) -> Box<dyn ProvisioningListener> {
+        Box::new(self.clone())
+    }
+}
+
+impl Finalize for NodeProvisioningListener {
+    fn finalize<'a, C: neon::prelude::Context<'a>>(self, cx: &mut C) {
+        self.roots.finalize(cx);
     }
 }
 

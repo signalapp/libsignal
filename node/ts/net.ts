@@ -16,6 +16,8 @@ import {
   UnauthenticatedChatConnection,
   AuthenticatedChatConnection,
   ChatServiceListener,
+  ProvisioningConnection,
+  ProvisioningConnectionListener,
 } from './net/Chat.js';
 import { RegistrationService } from './net/Registration.js';
 import { SvrB } from './net/SvrB.js';
@@ -254,6 +256,25 @@ export class Net {
       username,
       password,
       receiveStories,
+      listener,
+      options
+    );
+  }
+
+  /**
+   * Creates a new instance of {@link ProvisioningConnection}.
+   *
+   * @param listener the listener for incoming events.
+   * @param options additional options to pass through.
+   * @param options.abortSignal an {@link AbortSignal} that will cancel the connection attempt.
+   */
+  public async connectProvisioning(
+    listener: ProvisioningConnectionListener,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<ProvisioningConnection> {
+    return ProvisioningConnection.connect(
+      this.asyncContext,
+      this._connectionManager,
       listener,
       options
     );

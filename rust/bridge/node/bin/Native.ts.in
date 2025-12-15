@@ -143,6 +143,15 @@ export type ChatListener = {
   ) => void;
 };
 
+export type ProvisioningListener = {
+  _received_address: (address: string, ack: ServerMessageAck) => void;
+  _received_envelope: (envelope: Uint8Array, ack: ServerMessageAck) => void;
+  _connection_interrupted: (
+    // A LibSignalError or null, but not naming the type to avoid circular import dependencies.
+    reason: Error | null
+  ) => void;
+};
+
 export type ChallengeOption = 'pushChallenge' | 'captcha';
 
 export type RegistrationPushTokenType = 'apn' | 'fcm';

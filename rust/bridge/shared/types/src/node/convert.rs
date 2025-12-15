@@ -21,8 +21,8 @@ use zkgroup::ZkGroupDeserializationFailure;
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
-use crate::net::chat::ChatListener;
-use crate::node::chat::NodeChatListener;
+use crate::net::chat::{ChatListener, ProvisioningListener};
+use crate::node::chat::{NodeChatListener, NodeProvisioningListener};
 use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized, extend_lifetime};
 
 /// Converts arguments from their JavaScript form to their Rust form.
@@ -771,6 +771,24 @@ impl<'a> AsyncArgTypeInfo<'a> for Box<dyn ChatListener> {
     }
 
     fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
+        stored.make_listener()
+    }
+}
+
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
+    for Box<dyn ProvisioningListener>
+{
+    type ArgType = JsObject;
+    type StoredType = NodeProvisioningListener;
+
+    fn borrow(
+        cx: &mut FunctionContext<'context>,
+        foreign: Handle<'context, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        NodeProvisioningListener::new(cx, foreign)
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.make_listener()
     }
 }

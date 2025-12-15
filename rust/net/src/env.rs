@@ -798,6 +798,7 @@ pub const PROD: Env<'static> = Env {
 
 pub mod constants {
     pub const CHAT_WEBSOCKET_PATH: &str = "/v1/websocket/";
+    pub const CHAT_PROVISIONING_PATH: &str = "/v1/websocket/provisioning/";
 }
 
 #[cfg(test)]
