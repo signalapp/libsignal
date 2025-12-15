@@ -556,26 +556,23 @@ describe('chat service api', () => {
         INVALID_MESSAGE,
         INCOMING_MESSAGE_2,
       ];
-      const callsReceived: [string, (object | null)[]][] = [];
-      const callsExpected: [string, ((value: object | null) => void)[]][] = [
-        [
-          '_received_alerts',
-          [(value: object | null) => expect(value).deep.equals([])],
-        ],
+      const callsReceived: [string, unknown[]][] = [];
+      const callsExpected: [string, ((value: unknown) => void)[]][] = [
+        ['_received_alerts', [(value) => expect(value).deep.equals([])]],
         ['_incoming_message', []],
         ['_queue_empty', []],
         ['_incoming_message', []],
         [
           '_connection_interrupted',
           [
-            (error: object | null) =>
+            (error) =>
               expect(error)
                 .instanceOf(LibSignalErrorBase)
                 .property('code', ErrorCode.IoError),
           ],
         ],
       ];
-      const recordCall = function (name: string, ...args: (object | null)[]) {
+      const recordCall = function (name: string, ...args: unknown[]) {
         callsReceived.push([name, args]);
         if (callsReceived.length == callsExpected.length) {
           completable.complete();
@@ -590,11 +587,11 @@ describe('chat service api', () => {
       expect(callsReceived).to.have.lengthOf(callsExpected.length);
       callsReceived.forEach((element, index) => {
         const [call, args] = element;
-        const [expectedCall, expectedArgs] = callsExpected[index];
+        const [expectedCall, argExpectations] = callsExpected[index];
         expect(call).to.eql(expectedCall);
-        expect(args.length).to.eql(expectedArgs.length);
+        expect(args.length).to.eql(argExpectations.length);
         args.map((arg, i) => {
-          expectedArgs[i](arg);
+          argExpectations[i](arg);
         });
       });
     });
@@ -810,11 +807,11 @@ describe('chat service api', () => {
       expect(callsReceived).to.have.lengthOf(callsExpected.length);
       callsReceived.forEach((element, index) => {
         const [call, args] = element;
-        const [expectedCall, expectedArgs] = callsExpected[index];
+        const [expectedCall, argExpectations] = callsExpected[index];
         expect(call).to.eql(expectedCall);
-        expect(args.length).to.eql(expectedArgs.length);
+        expect(args.length).to.eql(argExpectations.length);
         args.map((arg, i) => {
-          expectedArgs[i](arg);
+          argExpectations[i](arg);
         });
       });
     });
