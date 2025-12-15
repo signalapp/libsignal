@@ -3,6 +3,9 @@ self-hosted-runner:
   labels:
     # Used in Slow Tests' AArch64 Linux Tests.
     - ubuntu-24.04-arm64-4-cores
+    # This is... not a custom worker label, but it's not included in actionlint for some reason.
+    # See: https://github.com/rhysd/actionlint/blob/f9408506b4c7f9cda1263bca8166271f65e65c3d/rule_runner_label.go#L29
+    - windows-latest-4-cores
 
 # Configuration variables in array of strings defined in your repository or
 # organization. `null` means disabling configuration variables check.

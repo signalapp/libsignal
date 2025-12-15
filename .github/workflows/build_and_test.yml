@@ -534,7 +534,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest-4-cores, windows-latest-8-cores, macos-15-xlarge]
+        os: [ubuntu-latest-4-cores, windows-latest-4-cores, macos-15-xlarge]
 
     needs: changes
 
