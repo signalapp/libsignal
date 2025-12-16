@@ -1364,6 +1364,17 @@ impl<'a> ResultTypeInfo<'a>
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::server_requests::DisconnectCause {
+    type ResultType = JsValue;
+
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        match self {
+            Self::LocalDisconnect => Ok(cx.null().upcast()),
+            Self::Error(err) => Ok(err.into_throwable(cx, "DisconnectCause").upcast()),
+        }
+    }
+}
+
 macro_rules! full_range_integer {
     ($typ:ty) => {
         #[doc = "Converts all valid integer values for the type."]

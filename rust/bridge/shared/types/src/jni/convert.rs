@@ -1848,6 +1848,17 @@ impl<'a> ResultTypeInfo<'a>
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::server_requests::DisconnectCause {
+    type ResultType = JThrowable<'a>;
+
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        match self {
+            Self::LocalDisconnect => Ok(JObject::null().into()),
+            Self::Error(err) => SignalJniError::from(err).to_throwable(env),
+        }
+    }
+}
+
 /// Converts each element of `it` to a Java object, storing the result in an array.
 fn make_object_array<'a, It>(
     env: &mut JNIEnv<'a>,

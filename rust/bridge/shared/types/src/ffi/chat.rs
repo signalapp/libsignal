@@ -130,14 +130,10 @@ impl ChatListener for ChatListenerStruct {
     }
 
     fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
-        let error = match disconnect_cause {
-            DisconnectCause::LocalDisconnect => None,
-            DisconnectCause::Error(c) => Some(Box::new(SignalFfiError::from(c))),
-        };
-        (self.0.connection_interrupted)(
-            self.0.ctx,
-            error.map_or(std::ptr::null_mut(), Box::into_raw),
-        )
+        let error = disconnect_cause
+            .convert_into()
+            .expect("error conversion is infallible");
+        (self.0.connection_interrupted)(self.0.ctx, error)
     }
 }
 
@@ -238,14 +234,10 @@ impl ProvisioningListener for ProvisioningListenerStruct {
     }
 
     fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
-        let error = match disconnect_cause {
-            DisconnectCause::LocalDisconnect => None,
-            DisconnectCause::Error(c) => Some(Box::new(SignalFfiError::from(c))),
-        };
-        (self.0.connection_interrupted)(
-            self.0.ctx,
-            error.map_or(std::ptr::null_mut(), Box::into_raw),
-        )
+        let error = disconnect_cause
+            .convert_into()
+            .expect("error conversion is infallible");
+        (self.0.connection_interrupted)(self.0.ctx, error)
     }
 }
 

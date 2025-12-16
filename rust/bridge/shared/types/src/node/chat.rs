@@ -23,7 +23,7 @@ use signal_neon_futures::call_method;
 
 use crate::net::ConnectionManager;
 use crate::net::chat::{ChatListener, ProvisioningListener, ServerMessageAck};
-use crate::node::{PersistentBorrowedJsBoxedBridgeHandle, ResultTypeInfo, SignalNodeError as _};
+use crate::node::{PersistentBorrowedJsBoxedBridgeHandle, ResultTypeInfo};
 
 #[derive(Clone)]
 pub struct NodeChatListener {
@@ -91,18 +91,11 @@ impl ChatListener for NodeChatListener {
     }
 
     fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
-        let disconnect_cause = match disconnect_cause {
-            DisconnectCause::LocalDisconnect => None,
-            DisconnectCause::Error(cause) => Some(cause),
-        };
         let roots_shared = self.roots.clone();
         self.js_channel.send(move |mut cx| {
             let Roots { callback_object } = &*roots_shared;
-            let cause = disconnect_cause
-                .map(|cause| cause.into_throwable(&mut cx, "connection_interrupted"))
-                .convert_into(&mut cx)?;
-
             let callback = callback_object.to_inner(&mut cx);
+            let cause = disconnect_cause.convert_into(&mut cx)?;
             let _result = call_method(&mut cx, callback, "_connection_interrupted", [cause])?;
             roots_shared.finalize(&mut cx);
             Ok(())
@@ -181,18 +174,11 @@ impl ProvisioningListener for NodeProvisioningListener {
     }
 
     fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
-        let disconnect_cause = match disconnect_cause {
-            DisconnectCause::LocalDisconnect => None,
-            DisconnectCause::Error(cause) => Some(cause),
-        };
         let roots_shared = self.roots.clone();
         self.js_channel.send(move |mut cx| {
             let Roots { callback_object } = &*roots_shared;
-            let cause = disconnect_cause
-                .map(|cause| cause.into_throwable(&mut cx, "connection_interrupted"))
-                .convert_into(&mut cx)?;
-
             let callback = callback_object.to_inner(&mut cx);
+            let cause = disconnect_cause.convert_into(&mut cx)?;
             let _result = call_method(&mut cx, callback, "_connection_interrupted", [cause])?;
             roots_shared.finalize(&mut cx);
             Ok(())

@@ -1126,6 +1126,17 @@ impl ResultTypeInfo for libsignal_net_chat::api::registration::CheckSvr2Credenti
     }
 }
 
+impl ResultTypeInfo for libsignal_net::chat::server_requests::DisconnectCause {
+    type ResultType = *mut SignalFfiError;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        match self {
+            Self::LocalDisconnect => Ok(std::ptr::null_mut()),
+            Self::Error(c) => Ok(SignalFfiError::from(c).into_raw_box_for_ffi()),
+        }
+    }
+}
+
 /// Defines an `extern "C"` function for cloning the given type.
 #[macro_export]
 macro_rules! ffi_bridge_handle_clone {
