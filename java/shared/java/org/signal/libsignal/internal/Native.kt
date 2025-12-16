@@ -8,6 +8,7 @@
 package org.signal.libsignal.internal
 
 import org.signal.libsignal.net.internal.BridgeChatListener
+import org.signal.libsignal.net.internal.BridgeProvisioningListener
 import org.signal.libsignal.net.internal.ConnectChatBridge
 import org.signal.libsignal.protocol.SignedPublicPreKey
 import org.signal.libsignal.protocol.groups.state.SenderKeyStore
@@ -854,6 +855,15 @@ internal object Native {
   public external fun ProtocolAddress_Name(obj: ObjectHandle): String
   @JvmStatic @Throws(Exception::class)
   public external fun ProtocolAddress_New(name: String, deviceId: Int): ObjectHandle
+
+  @JvmStatic
+  public external fun ProvisioningChatConnection_Destroy(handle: ObjectHandle): Unit
+  @JvmStatic
+  public external fun ProvisioningChatConnection_connect(asyncRuntime: ObjectHandle, connectionManager: ObjectHandle): CompletableFuture<ObjectHandle>
+  @JvmStatic
+  public external fun ProvisioningChatConnection_disconnect(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun ProvisioningChatConnection_init_listener(chat: ObjectHandle, listener: BridgeProvisioningListener): Unit
 
   @JvmStatic @Throws(Exception::class)
   public external fun ReceiptCredentialPresentation_CheckValidContents(buffer: ByteArray): Unit

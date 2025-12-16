@@ -8,6 +8,7 @@
 package org.signal.libsignal.internal
 
 import org.signal.libsignal.net.internal.BridgeChatListener
+import org.signal.libsignal.net.internal.BridgeProvisioningListener
 import org.signal.libsignal.net.internal.ConnectChatBridge
 import org.signal.libsignal.protocol.SignedPublicPreKey
 import org.signal.libsignal.protocol.groups.state.SenderKeyStore

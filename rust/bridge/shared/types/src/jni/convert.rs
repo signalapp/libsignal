@@ -20,7 +20,7 @@ use paste::paste;
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
-use crate::net::chat::ChatListener;
+use crate::net::chat::{ChatListener, ProvisioningListener};
 use crate::net::registration::{ConnectChatBridge, RegistrationPushToken};
 use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized, extend_lifetime};
 
@@ -648,6 +648,27 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
             return Err(BridgeLayerError::NullPointer(Some("BridgeChatListener")));
         }
         Ok(Some(JniBridgeChatListener::new(env, store)?))
+    }
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored.take().expect("not previously taken").into_listener()
+    }
+}
+
+impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
+    for Box<dyn ProvisioningListener>
+{
+    type ArgType = JObject<'context>;
+    type StoredType = Option<JniBridgeProvisioningListener>;
+    fn borrow(
+        env: &mut JNIEnv<'context>,
+        store: &'param Self::ArgType,
+    ) -> Result<Self::StoredType, BridgeLayerError> {
+        if store.is_null() {
+            return Err(BridgeLayerError::NullPointer(Some(
+                "BridgeProvisioningListener",
+            )));
+        }
+        Ok(Some(JniBridgeProvisioningListener::new(env, store)?))
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.take().expect("not previously taken").into_listener()
@@ -2083,6 +2104,9 @@ macro_rules! jni_arg_type {
     };
     (Box<dyn ChatListener >) =>{
         jni::JavaBridgeChatListener<'local>
+    };
+    (Box<dyn ProvisioningListener >) =>{
+        jni::JavaBridgeProvisioningListener<'local>
     };
     (Box<dyn ConnectChatBridge >) =>{
         $crate::jni::JavaConnectChatBridge<'local>

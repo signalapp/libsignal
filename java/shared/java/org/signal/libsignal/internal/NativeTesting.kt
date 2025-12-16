@@ -8,6 +8,7 @@
 package org.signal.libsignal.internal
 
 import org.signal.libsignal.net.internal.BridgeChatListener
+import org.signal.libsignal.net.internal.BridgeProvisioningListener
 import org.signal.libsignal.net.internal.ConnectChatBridge
 import org.signal.libsignal.protocol.SignedPublicPreKey
 import org.signal.libsignal.protocol.groups.state.SenderKeyStore
@@ -115,7 +116,11 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_FakeChatConnection_Create(tokio: ObjectHandle, listener: BridgeChatListener, alertsJoinedByNewlines: String): ObjectHandle
   @JvmStatic
+  public external fun TESTING_FakeChatConnection_CreateProvisioning(tokio: ObjectHandle, listener: BridgeProvisioningListener): ObjectHandle
+  @JvmStatic
   public external fun TESTING_FakeChatConnection_TakeAuthenticatedChat(chat: ObjectHandle): ObjectHandle
+  @JvmStatic
+  public external fun TESTING_FakeChatConnection_TakeProvisioningChat(chat: ObjectHandle): ObjectHandle
   @JvmStatic
   public external fun TESTING_FakeChatConnection_TakeRemote(chat: ObjectHandle): ObjectHandle
   @JvmStatic

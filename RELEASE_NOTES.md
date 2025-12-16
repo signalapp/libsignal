@@ -6,4 +6,4 @@ v0.86.9
     - Swift: SignalError.PossibleCaptiveNetwork
     - Node: PossibleCaptiveNetworkError
 
-- Node: added `Net.connectProvisioning` and `ProvisioningConnectionListener`
+- Added `Net(work).connectProvisioning` and `ProvisioningConnectionListener`. Provisioning connections are used when linking secondary devices.

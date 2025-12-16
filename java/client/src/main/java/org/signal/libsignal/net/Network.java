@@ -377,6 +377,17 @@ public class Network {
         : new String[] {locale.getLanguage() + "-" + locale.getCountry()};
   }
 
+  /**
+   * Creates a new instance of {@link ProvisioningConnection}.
+   *
+   * <p>If the connection attempt fails, the future will contain a {@link ChatServiceException} or
+   * other exception type wrapped in a {@link ExecutionException}.
+   */
+  public CompletableFuture<ProvisioningConnection> connectProvisioning(
+      ProvisioningConnectionListener listener) {
+    return ProvisioningConnection.connect(tokioAsyncContext, connectionManager, listener);
+  }
+
   static class ConnectionManager extends NativeHandleGuard.SimpleOwner
       implements ConnectChatBridge {
     private final Environment environment;

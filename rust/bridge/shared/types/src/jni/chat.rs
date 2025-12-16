@@ -13,7 +13,7 @@ use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net_chat::api::Unauth;
 
 use super::*;
-use crate::net::chat::{ChatListener, ServerMessageAck};
+use crate::net::chat::{ChatListener, ProvisioningListener, ServerMessageAck};
 
 pub type JavaBridgeChatListener<'a> = JObject<'a>;
 
@@ -104,6 +104,95 @@ impl ChatListener for JniChatListener {
                 listener,
                 "onReceivedAlerts",
                 jni_args!((alerts => [java.lang.String]) -> void),
+            )
+        });
+    }
+
+    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
+        let listener = &self.listener;
+        attach_and_log_on_error(&self.vm, "connection interrupted", move |env| {
+            let report_to_java = move |env, listener, throwable: JThrowable<'_>| {
+                call_method_checked(
+                    env,
+                    listener,
+                    "onConnectionInterrupted",
+                    jni_args!((throwable => java.lang.Throwable) -> void),
+                )?;
+                Ok(())
+            };
+            match disconnect_cause {
+                DisconnectCause::LocalDisconnect => {
+                    report_to_java(env, listener, JObject::null().into())?
+                }
+                DisconnectCause::Error(disconnect_cause) => {
+                    let throwable = SignalJniError::from(disconnect_cause).to_throwable(env);
+                    throwable
+                        .and_then(|throwable| report_to_java(env, listener, throwable))
+                        .unwrap_or_else(|error| {
+                            log::error!(
+                                "failed to call onConnectionInterrupted with cause: {error}"
+                            );
+                        });
+                }
+            };
+            Ok(())
+        });
+    }
+}
+
+pub type JavaBridgeProvisioningListener<'a> = JObject<'a>;
+
+pub struct JniBridgeProvisioningListener(JniProvisioningListener);
+
+impl JniBridgeProvisioningListener {
+    pub fn new(env: &mut JNIEnv<'_>, listener: &JObject) -> Result<Self, BridgeLayerError> {
+        check_jobject_type(
+            env,
+            listener,
+            ClassName("org.signal.libsignal.net.internal.BridgeProvisioningListener"),
+        )?;
+        Ok(Self(JniProvisioningListener {
+            vm: env.get_java_vm().expect("can get VM"),
+            listener: env.new_global_ref(listener).expect("can get env"),
+        }))
+    }
+
+    pub(crate) fn into_listener(self) -> Box<dyn ProvisioningListener> {
+        let Self(listener) = self;
+        Box::new(listener)
+    }
+}
+
+struct JniProvisioningListener {
+    vm: JavaVM,
+    listener: GlobalRef,
+}
+
+impl ProvisioningListener for JniProvisioningListener {
+    fn received_address(&mut self, address: String, ack: ServerMessageAck) {
+        let listener = &self.listener;
+        attach_and_log_on_error(&self.vm, "received address", move |env| {
+            let addr_object = address.convert_into(env)?;
+            let ack_handle = ack.convert_into(env)?;
+            call_method_checked(
+                env,
+                listener,
+                "onReceivedAddress",
+                jni_args!((addr_object => java.lang.String, ack_handle => long) -> void),
+            )
+        });
+    }
+
+    fn received_envelope(&mut self, envelope: Bytes, ack: ServerMessageAck) {
+        let listener = &self.listener;
+        attach_and_log_on_error(&self.vm, "received envelope", move |env| {
+            let envelope_array = envelope.convert_into(env)?;
+            let ack_handle = ack.convert_into(env)?;
+            call_method_checked(
+                env,
+                listener,
+                "onReceivedEnvelope",
+                jni_args!((envelope_array => [byte], ack_handle => long) -> void),
             )
         });
     }
