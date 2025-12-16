@@ -183,7 +183,7 @@ internal class ProvisioningListenerBridge {
             defer { signal_free_string(rawAddress) }
             let bridge = Unmanaged<ProvisioningListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
 
-            let ackHandleOwner = AckHandleOwner(owned: NonNull(ackHandle)!)
+            let ackHandleOwner = AckHandleOwner(owned: NonNull(untyped: ackHandle!))
             guard let connection = bridge.connection else {
                 return
             }
@@ -197,7 +197,7 @@ internal class ProvisioningListenerBridge {
         let receivedEnvelope: SignalReceivedProvisioningEnvelope = { rawCtx, envelope, ackHandle in
             let bridge = Unmanaged<ProvisioningListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
 
-            let ackHandleOwner = AckHandleOwner(owned: NonNull(ackHandle)!)
+            let ackHandleOwner = AckHandleOwner(owned: NonNull(untyped: ackHandle!))
             let envelopeData = Data(consuming: envelope)
             guard let connection = bridge.connection else {
                 return

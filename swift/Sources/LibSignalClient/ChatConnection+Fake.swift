@@ -72,7 +72,7 @@ extension UnauthenticatedChatConnection {
         return failOnError {
             let chatHandle = try fakeChatConnection.withNativeHandle { connectionHandle in
                 try invokeFnReturningValueByPointer(.init()) {
-                    signal_testing_fake_chat_connection_take_authenticated_chat(
+                    signal_testing_fake_chat_connection_take_unauthenticated_chat(
                         $0,
                         connectionHandle.const()
                     )

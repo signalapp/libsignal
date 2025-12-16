@@ -100,7 +100,7 @@ internal class ChatListenerBridge {
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
 
             let envelopeData = Data(consuming: envelope)
-            let ackHandleOwner = AckHandleOwner(owned: NonNull(ackHandle)!)
+            let ackHandleOwner = AckHandleOwner(owned: NonNull(untyped: ackHandle!))
             guard let chatConnection = bridge.chatConnection else {
                 return
             }

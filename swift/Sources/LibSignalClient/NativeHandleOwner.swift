@@ -20,14 +20,14 @@ public protocol SignalConstPointer {
 public struct NonNull<PointerType: SignalMutPointer> {
     private var opaquePointer: OpaquePointer
 
-    internal init?(_ p: any SignalMutPointer) {
+    internal init?(_ p: PointerType) {
         guard let pointer = p.toOpaque() else {
             return nil
         }
         self.opaquePointer = pointer
     }
 
-    fileprivate init(untyped: OpaquePointer) {
+    internal init(untyped: OpaquePointer) {
         self.opaquePointer = untyped
     }
 
