@@ -64,7 +64,7 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
       this.chat = new WeakReference<>(chat);
     }
 
-    public void onIncomingMessage(
+    public void receivedIncomingMessage(
         byte[] envelope, long serverDeliveryTimestamp, long sendAckHandle) {
 
       var ack = new ChatConnectionListener.ServerMessageAck(sendAckHandle);
@@ -75,7 +75,7 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
       chat.chatListener.onIncomingMessage(chat, envelope, serverDeliveryTimestamp, ack);
     }
 
-    public void onQueueEmpty() {
+    public void receivedQueueEmpty() {
       ChatConnection chat = this.chat.get();
       if (chat == null) return;
       if (chat.chatListener == null) return;
@@ -83,7 +83,7 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
       chat.chatListener.onQueueEmpty(chat);
     }
 
-    public void onReceivedAlerts(String[] alerts) {
+    public void receivedAlerts(String[] alerts) {
       ChatConnection chat = this.chat.get();
       if (chat == null) return;
       if (chat.chatListener == null) return;
@@ -91,7 +91,7 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
       chat.chatListener.onReceivedAlerts(chat, alerts);
     }
 
-    public void onConnectionInterrupted(Throwable disconnectReason) {
+    public void connectionInterrupted(Throwable disconnectReason) {
       ChatConnection chat = this.chat.get();
       if (chat == null) return;
       if (chat.chatListener == null) return;
@@ -116,19 +116,20 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
     void setChat(ChatConnection chat) {
       this.chat = new WeakReference<>(chat);
       if (savedAlerts != null) {
-        super.onReceivedAlerts(savedAlerts);
+        super.receivedAlerts(savedAlerts);
         savedAlerts = null;
       }
     }
 
-    public void onReceivedAlerts(String[] alerts) {
+    @Override
+    public void receivedAlerts(String[] alerts) {
       // This callback can happen before setChat, so we might need to replay it later.
       if (this.chat.get() == null) {
         savedAlerts = alerts;
         return;
       }
 
-      super.onReceivedAlerts(alerts);
+      super.receivedAlerts(alerts);
     }
   }
 

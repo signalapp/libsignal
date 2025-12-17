@@ -580,7 +580,7 @@ impl HttpRequest {
 /// A trait of callbacks for different kinds of [`chat::server_requests::ServerEvent`].
 ///
 /// Done as multiple functions so we can adjust the types to be more suitable for bridging.
-#[bridge_callbacks]
+#[bridge_callbacks(jni = "org.signal.libsignal.net.internal.BridgeChatListener")]
 pub trait ChatListener: Send {
     fn received_incoming_message(
         &mut self,
@@ -659,7 +659,7 @@ impl std::panic::RefUnwindSafe for ServerMessageAck {}
 /// A trait of callbacks for different kinds of [`chat::server_requests::ProvisioningEvent`].
 ///
 /// Done as multiple functions so we can adjust the types to be more suitable for bridging.
-#[bridge_callbacks]
+#[bridge_callbacks(jni = "org.signal.libsignal.net.internal.BridgeProvisioningListener")]
 pub trait ProvisioningListener: Send {
     fn received_address(&mut self, address: String, send_ack: ServerMessageAck);
     fn received_envelope(&mut self, envelope: bytes::Bytes, send_ack: ServerMessageAck);

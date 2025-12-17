@@ -36,6 +36,7 @@ assert_matches = { workspace = true }
 async-trait = { workspace = true }
 atomic-take = { workspace = true }
 bytes = { workspace = true }
+const-str = { workspace = true }
 derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["deref", "deref_mut", "from", "into"] }
 displaydoc = { workspace = true }

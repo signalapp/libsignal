@@ -2328,6 +2328,7 @@ dependencies = [
  "atomic-take",
  "attest",
  "bytes",
+ "const-str",
  "derive-where",
  "derive_more 2.0.1",
  "device-transfer",

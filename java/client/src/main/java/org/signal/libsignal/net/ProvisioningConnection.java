@@ -62,7 +62,7 @@ public class ProvisioningConnection extends NativeHandleGuard.SimpleOwner {
       this.connection = new WeakReference<>(connection);
     }
 
-    public void onReceivedAddress(String address, long sendAckHandle) {
+    public void receivedAddress(String address, long sendAckHandle) {
       var ack = new ChatConnectionListener.ServerMessageAck(sendAckHandle);
       ProvisioningConnection connection = this.connection.get();
       if (connection == null) return;
@@ -71,7 +71,7 @@ public class ProvisioningConnection extends NativeHandleGuard.SimpleOwner {
       connection.listener.onReceivedAddress(connection, address, ack);
     }
 
-    public void onReceivedEnvelope(byte[] envelope, long sendAckHandle) {
+    public void receivedEnvelope(byte[] envelope, long sendAckHandle) {
       var ack = new ChatConnectionListener.ServerMessageAck(sendAckHandle);
       ProvisioningConnection connection = this.connection.get();
       if (connection == null) return;
@@ -80,7 +80,7 @@ public class ProvisioningConnection extends NativeHandleGuard.SimpleOwner {
       connection.listener.onReceivedEnvelope(connection, envelope, ack);
     }
 
-    public void onConnectionInterrupted(Throwable disconnectReason) {
+    public void connectionInterrupted(Throwable disconnectReason) {
       ProvisioningConnection connection = this.connection.get();
       if (connection == null) return;
       if (connection.listener == null) return;

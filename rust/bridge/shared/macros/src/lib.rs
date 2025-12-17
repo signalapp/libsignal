@@ -373,13 +373,45 @@ pub fn bridge_io(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// TODO: more docs
 #[proc_macro_attribute]
-pub fn bridge_callbacks(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    // TODO: parse attr for "ffi = false" and similar, like bridge_fn.
+pub fn bridge_callbacks(attr: TokenStream, item: TokenStream) -> TokenStream {
     let trait_item = parse_macro_input!(item as ItemTrait);
-    let ffi_item = ffi::bridge_trait(&trait_item).unwrap_or_else(Error::into_compile_error);
+    let item_names =
+        parse_macro_input!(attr with Punctuated<MetaNameValue, Token![,]>::parse_terminated);
+
+    let ffi_name = match name_for_meta_key(&item_names, "ffi", || trait_item.ident.to_string()) {
+        Ok(name) => name,
+        Err(error) => return error.to_compile_error().into(),
+    };
+    let jni_name = match name_for_meta_key(&item_names, "jni", || trait_item.ident.to_string()) {
+        Ok(name) => name,
+        Err(error) => return error.to_compile_error().into(),
+    };
+    let node_name = match name_for_meta_key(&item_names, "node", || trait_item.ident.to_string()) {
+        Ok(name) => name,
+        Err(error) => return error.to_compile_error().into(),
+    };
+
+    let ffi_feature = ffi_name.as_ref().map(|_| quote!(feature = "ffi"));
+    let jni_feature = jni_name.as_ref().map(|_| quote!(feature = "jni"));
+    let node_feature = node_name.as_ref().map(|_| quote!(feature = "node"));
+    let maybe_features = [ffi_feature, jni_feature, node_feature];
+    let feature_list = maybe_features.iter().flatten();
+
+    // We could early-exit on the Errors returned from generating each wrapper,
+    // but since they could be for unrelated issues, it's better to show all of them to the user.
+    let ffi_items = ffi_name
+        .map(|_name| ffi::bridge_trait(&trait_item).unwrap_or_else(Error::into_compile_error));
+    let jni_items = jni_name.map(|name| {
+        jni::bridge_trait(&trait_item, &name).unwrap_or_else(Error::into_compile_error)
+    });
+
     quote! {
+        #[cfg(any(#(#feature_list,)*))]
         #trait_item
-        #ffi_item
+
+        #ffi_items
+
+        #jni_items
     }
     .into()
 }

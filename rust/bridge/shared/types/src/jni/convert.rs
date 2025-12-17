@@ -20,7 +20,9 @@ use paste::paste;
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
-use crate::net::chat::{ChatListener, ProvisioningListener};
+use crate::net::chat::{
+    ChatListener, JniChatListener, JniProvisioningListener, ProvisioningListener,
+};
 use crate::net::registration::{ConnectChatBridge, RegistrationPushToken};
 use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized, extend_lifetime};
 
@@ -143,6 +145,17 @@ where
 pub trait ResultTypeInfo<'a>: Sized {
     /// The JNI form of the result (e.g. `jint`).
     type ResultType: Into<JValueOwned<'a>>;
+
+    /// The JNI signature of the result type.
+    ///
+    /// Use [`jni_signature`] to fill this in properly. In particular, for class types this should
+    /// be a *specific* class, not just "Object".
+    ///
+    /// Defaulted to empty because most types aren't used in a context where the signature is
+    /// needed. To be sure a type is providing a signature, use [`jni_signature_for`] instead of
+    /// referencing this constant directly.
+    const JNI_SIGNATURE: &'static str = "";
+
     /// Converts the data in `self` to the JNI type, similar to `try_into()`.
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError>;
 }
@@ -631,7 +644,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
         }
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
-        stored.take().map(|j| j.into_listener())
+        stored.take().map(|j| Box::new(j) as Box<_>)
     }
 }
 
@@ -650,7 +663,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
         Ok(Some(JniChatListener::new(env, store)?))
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
-        stored.take().expect("not previously taken").into_listener()
+        Box::new(stored.take().expect("not previously taken"))
     }
 }
 
@@ -671,7 +684,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
         Ok(Some(JniProvisioningListener::new(env, store)?))
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
-        stored.take().expect("not previously taken").into_listener()
+        Box::new(stored.take().expect("not previously taken"))
     }
 }
 
@@ -820,6 +833,7 @@ impl ResultTypeInfo<'_> for u64 {
 /// Note that this is different from the implementation of [`ArgTypeInfo`] for `Timestamp`.
 impl ResultTypeInfo<'_> for crate::protocol::Timestamp {
     type ResultType = jlong;
+    const JNI_SIGNATURE: &'static str = jni_signature!(long);
     fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         // Note that we don't check bounds here.
         Ok(self.epoch_millis() as jlong)
@@ -850,6 +864,7 @@ impl ResultTypeInfo<'_> for crate::zkgroup::Timestamp {
 
 impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JString<'a>;
+    const JNI_SIGNATURE: &'static str = jni_signature!(java.lang.String);
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         self.deref().convert_into(env)
     }
@@ -882,6 +897,7 @@ impl<'a> ResultTypeInfo<'a> for Option<&str> {
 
 impl<'a> ResultTypeInfo<'a> for &[u8] {
     type ResultType = JByteArray<'a>;
+    const JNI_SIGNATURE: &'static str = jni_signature!([byte]);
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         env.byte_array_from_slice(self)
             .check_exceptions(env, "<&[u8]>::convert_into")
@@ -890,6 +906,7 @@ impl<'a> ResultTypeInfo<'a> for &[u8] {
 
 impl<'a> ResultTypeInfo<'a> for Option<&[u8]> {
     type ResultType = JByteArray<'a>;
+    const JNI_SIGNATURE: &'static str = <&'static [u8]>::JNI_SIGNATURE;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         match self {
             Some(s) => s.convert_into(env),
@@ -900,6 +917,15 @@ impl<'a> ResultTypeInfo<'a> for Option<&[u8]> {
 
 impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     type ResultType = JByteArray<'a>;
+    const JNI_SIGNATURE: &'static str = <&'static [u8]>::JNI_SIGNATURE;
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        self.deref().convert_into(env)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for bytes::Bytes {
+    type ResultType = JByteArray<'a>;
+    const JNI_SIGNATURE: &'static str = <&'static [u8]>::JNI_SIGNATURE;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         self.deref().convert_into(env)
     }
@@ -1169,6 +1195,7 @@ where
 
 impl<T: BridgeHandle> ResultTypeInfo<'_> for T {
     type ResultType = ObjectHandle;
+    const JNI_SIGNATURE: &'static str = jni_signature!(long);
     fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         Ok(T::encode_as_handle(Arc::new(self)))
     }
@@ -1176,6 +1203,7 @@ impl<T: BridgeHandle> ResultTypeInfo<'_> for T {
 
 impl<T: BridgeHandle> ResultTypeInfo<'_> for Option<T> {
     type ResultType = ObjectHandle;
+    const JNI_SIGNATURE: &'static str = T::JNI_SIGNATURE;
     fn convert_into(self, env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         match self {
             Some(obj) => obj.convert_into(env),
@@ -1850,6 +1878,7 @@ impl<'a> ResultTypeInfo<'a>
 
 impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::server_requests::DisconnectCause {
     type ResultType = JThrowable<'a>;
+    const JNI_SIGNATURE: &'static str = jni_signature!(java.lang.Throwable);
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         match self {
@@ -1901,6 +1930,7 @@ where
 
 impl<'a> ResultTypeInfo<'a> for Box<[String]> {
     type ResultType = JObjectArray<'a>;
+    const JNI_SIGNATURE: &'static str = jni_signature!([java.lang.String]);
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let element_class = find_class(env, ClassName("java.lang.String"))
             .check_exceptions(env, "Box<[String]>::convert_into")?;
@@ -2314,6 +2344,9 @@ macro_rules! jni_result_type {
         ::jni::objects::JByteArray<'local>
     };
     (Vec<u8>) => {
+        ::jni::objects::JByteArray<'local>
+    };
+    (bytes::Bytes) => {
         ::jni::objects::JByteArray<'local>
     };
     (&[String]) => {
