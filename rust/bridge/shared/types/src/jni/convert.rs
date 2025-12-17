@@ -619,7 +619,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     for Option<Box<dyn ChatListener>>
 {
     type ArgType = JObject<'context>;
-    type StoredType = Option<JniBridgeChatListener>;
+    type StoredType = Option<JniChatListener>;
     fn borrow(
         env: &mut JNIEnv<'context>,
         store: &'param Self::ArgType,
@@ -627,7 +627,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
         if store.is_null() {
             Ok(None)
         } else {
-            Ok(Some(JniBridgeChatListener::new(env, store)?))
+            Ok(Some(JniChatListener::new(env, store)?))
         }
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
@@ -639,7 +639,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     for Box<dyn ChatListener>
 {
     type ArgType = JObject<'context>;
-    type StoredType = Option<JniBridgeChatListener>;
+    type StoredType = Option<JniChatListener>;
     fn borrow(
         env: &mut JNIEnv<'context>,
         store: &'param Self::ArgType,
@@ -647,7 +647,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
         if store.is_null() {
             return Err(BridgeLayerError::NullPointer(Some("BridgeChatListener")));
         }
-        Ok(Some(JniBridgeChatListener::new(env, store)?))
+        Ok(Some(JniChatListener::new(env, store)?))
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.take().expect("not previously taken").into_listener()
@@ -658,7 +658,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     for Box<dyn ProvisioningListener>
 {
     type ArgType = JObject<'context>;
-    type StoredType = Option<JniBridgeProvisioningListener>;
+    type StoredType = Option<JniProvisioningListener>;
     fn borrow(
         env: &mut JNIEnv<'context>,
         store: &'param Self::ArgType,
@@ -668,7 +668,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
                 "BridgeProvisioningListener",
             )));
         }
-        Ok(Some(JniBridgeProvisioningListener::new(env, store)?))
+        Ok(Some(JniProvisioningListener::new(env, store)?))
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.take().expect("not previously taken").into_listener()

@@ -17,30 +17,27 @@ use crate::net::chat::{ChatListener, ProvisioningListener, ServerMessageAck};
 
 pub type JavaBridgeChatListener<'a> = JObject<'a>;
 
-pub struct JniBridgeChatListener(JniChatListener);
+pub struct JniChatListener {
+    vm: JavaVM,
+    listener: GlobalRef,
+}
 
-impl JniBridgeChatListener {
+impl JniChatListener {
     pub fn new(env: &mut JNIEnv<'_>, listener: &JObject) -> Result<Self, BridgeLayerError> {
         check_jobject_type(
             env,
             listener,
             ClassName("org.signal.libsignal.net.internal.BridgeChatListener"),
         )?;
-        Ok(Self(JniChatListener {
+        Ok(Self {
             vm: env.get_java_vm().expect("can get VM"),
             listener: env.new_global_ref(listener).expect("can get env"),
-        }))
+        })
     }
 
     pub(crate) fn into_listener(self) -> Box<dyn ChatListener> {
-        let Self(listener) = self;
-        Box::new(listener)
+        Box::new(self)
     }
-}
-
-struct JniChatListener {
-    vm: JavaVM,
-    listener: GlobalRef,
 }
 
 fn attach_and_log_on_error(
@@ -125,30 +122,27 @@ impl ChatListener for JniChatListener {
 
 pub type JavaBridgeProvisioningListener<'a> = JObject<'a>;
 
-pub struct JniBridgeProvisioningListener(JniProvisioningListener);
+pub struct JniProvisioningListener {
+    vm: JavaVM,
+    listener: GlobalRef,
+}
 
-impl JniBridgeProvisioningListener {
+impl JniProvisioningListener {
     pub fn new(env: &mut JNIEnv<'_>, listener: &JObject) -> Result<Self, BridgeLayerError> {
         check_jobject_type(
             env,
             listener,
             ClassName("org.signal.libsignal.net.internal.BridgeProvisioningListener"),
         )?;
-        Ok(Self(JniProvisioningListener {
+        Ok(Self {
             vm: env.get_java_vm().expect("can get VM"),
             listener: env.new_global_ref(listener).expect("can get env"),
-        }))
+        })
     }
 
     pub(crate) fn into_listener(self) -> Box<dyn ProvisioningListener> {
-        let Self(listener) = self;
-        Box::new(listener)
+        Box::new(self)
     }
-}
-
-struct JniProvisioningListener {
-    vm: JavaVM,
-    listener: GlobalRef,
 }
 
 impl ProvisioningListener for JniProvisioningListener {
