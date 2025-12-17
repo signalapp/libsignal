@@ -413,8 +413,10 @@ impl<R> UpdateMessage<R> {
                 }
             }
             UpdateMessage::PollTerminate(_) => {
-                if !chat.is_group() {
-                    Err(ChatItemError::PollTerminateNotInGroup((*chat).into()))
+                if matches!(chat, ChatRecipientKind::ReleaseNotes) {
+                    Err(ChatItemError::PollTerminateUnexpectedDestination(
+                        (*chat).into(),
+                    ))
                 } else {
                     Ok(())
                 }
@@ -546,6 +548,10 @@ mod test {
     )]
     #[test_case(
         proto::PinMessageUpdate::test_data(),
+        Ok(())
+    )]
+    #[test_case(
+        proto::PollTerminateUpdate::test_data(),
         Ok(())
     )]
     fn chat_update_message_item(

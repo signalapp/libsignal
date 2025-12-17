@@ -84,4 +84,9 @@ impl_from_oneof!(
     LearnedProfileChatUpdate,
     LearnedProfileChange
 );
+impl_from_oneof!(
+    chat_update_message::Update,
+    PollTerminateUpdate,
+    PollTerminate
+);
 impl_from_oneof!(chat_update_message::Update, PinMessageUpdate, PinMessage);

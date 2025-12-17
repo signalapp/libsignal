@@ -245,10 +245,10 @@ pub enum ChatItemError {
     InvalidTimestamp(#[from] TimestampError),
     /// invalid poll {0}
     InvalidPoll(#[from] PollError),
-    /// poll with a destination that is not group but {0:?}
-    PollNotInGroup(DestinationKind),
-    /// poll terminate with a destination that is not group but {0:?}
-    PollTerminateNotInGroup(DestinationKind),
+    /// unexpected poll destination {0:?}
+    PollUnexpectedDestination(DestinationKind),
+    /// unexpected poll terminate destination {0:?}
+    PollTerminateUnexpectedDestination(DestinationKind),
     /// poll terminate not from contact or self
     PollTerminateNotFromContact,
     /// pin message not from contact or self
@@ -904,8 +904,10 @@ impl<M: Method + ReferencedTypes> ChatItemData<M> {
                 }
             }
             ChatItemMessage::Poll(_) => {
-                if !recipient_data.is_group() {
-                    return Err(ChatItemError::PollNotInGroup((*recipient_data).into()));
+                if matches!(recipient_data, ChatRecipientKind::ReleaseNotes) {
+                    return Err(ChatItemError::PollUnexpectedDestination(
+                        (*recipient_data).into(),
+                    ));
                 }
             }
         }
@@ -1746,6 +1748,27 @@ mod test {
         Err(ChatItemError::DirectStoryReplyNotInContactThread(DestinationKind::Group));
         "direct story reply in group chat"
     )]
+    #[test_case(
+        TestContext::RELEASE_NOTES_ID,
+        |x| {
+            x.authorId = TestContext::RELEASE_NOTES_ID.0;
+            x.item = Some(proto::chat_item::Item::Poll(proto::Poll::test_data()))
+        } => Err(ChatItemError::PollUnexpectedDestination(DestinationKind::ReleaseNotes));
+        "poll from release notes"
+    )]
+    #[test_case(
+        TestContext::RELEASE_NOTES_ID,
+        |x| {
+            x.directionalDetails = Some(
+                proto::chat_item::DirectionalDetails::Directionless(
+                    proto::chat_item::DirectionlessMessageDetails::default()));
+            x.authorId = TestContext::SELF_ID.0;
+            x.item = Some(proto::chat_item::Item::UpdateMessage(proto::ChatUpdateMessage {
+                update: Some(proto::chat_update_message::Update::PollTerminate(proto::PollTerminateUpdate::test_data())),
+                ..proto::ChatUpdateMessage::default()
+            }))
+        } => Err(ChatItemError::PollTerminateUnexpectedDestination(DestinationKind::ReleaseNotes));
+        "poll terminate update to release notes")]
     fn validate_chat_recipient(
         recipient_id: RecipientId,
         modifier: fn(&mut proto::ChatItem),
