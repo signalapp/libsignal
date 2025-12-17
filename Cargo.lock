@@ -2277,6 +2277,7 @@ name = "libsignal-bridge-macros"
 version = "0.1.0"
 dependencies = [
  "heck",
+ "itertools 0.14.0",
  "proc-macro2",
  "quote",
  "syn 2.0.106",

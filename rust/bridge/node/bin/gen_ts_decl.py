@@ -40,8 +40,8 @@ def split_rust_args(args: str) -> Iterator[Tuple[str, str]]:
 
     Account for templates, tuples, and slices.
     """
-    while ':' in args:
-        (name, args) = args.split(':', maxsplit=1)
+    while ': ' in args:
+        (name, args) = args.split(': ', maxsplit=1)
         if name.startswith('mut '):
             name = name[4:]
         open_pairs = 0
@@ -75,6 +75,7 @@ def translate_to_ts(typ: str) -> str:
         '&str': 'string',
         'Vec<u8>': 'Uint8Array',
         'Box<[u8]>': 'Uint8Array',
+        'bytes::Bytes': 'Uint8Array',
         'ServiceId': 'Uint8Array',
         'Aci': 'Uint8Array',
         'Pni': 'Uint8Array',
@@ -84,6 +85,7 @@ def translate_to_ts(typ: str) -> str:
         'LanguageList': 'string[]',
         '&BackupKey': 'Uint8Array',
         'MultiRecipientSendAuthorization': 'Uint8Array|null',
+        'DisconnectCause': 'Error|null',
     }
 
     if typ in type_map:
@@ -191,6 +193,33 @@ def camelcase(arg: str) -> str:
         arg)
 
 
+def rewrite_function_as_property(ts_function: str) -> str:
+    return ts_function.replace('(', ': (', 1).replace('):', ') =>')
+
+
+def rewrite_fn(function_match: re.Match[str]) -> str:
+    (prefix, fn_args, ret_type) = function_match.groups()
+
+    ts_ret_type = translate_to_ts(ret_type)
+    ts_args = []
+
+    for (arg_name, arg_type) in split_rust_args(fn_args):
+        ts_arg_type = translate_to_ts(arg_type)
+        ts_args.append('%s: %s' % (camelcase(arg_name.strip()), ts_arg_type))
+
+    return '%s(%s): %s;' % (prefix, ', '.join(ts_args), ts_ret_type)
+
+
+def rewrite_trait(decl: str, function_sig: re.Pattern[str]) -> Iterator[str]:
+    for line in decl.split('\\n'):
+        if function_match := function_sig.match(line.rstrip(';')):
+            yield '  ' + rewrite_function_as_property(rewrite_fn(function_match))
+            continue
+
+        # Fix backslash-escaped double-quotes.
+        yield bytes(line, 'utf-8').decode('unicode_escape')
+
+
 def collect_decls(crate_dir: str, features: Iterable[str] = ()) -> Iterator[str]:
     args = [
         'cargo',
@@ -230,7 +259,7 @@ def collect_decls(crate_dir: str, features: Iterable[str] = ()) -> Iterator[str]
 
     # Make sure /not/ to match arguments with nested parentheses,
     # which won't survive textual splitting below.
-    function_sig = re.compile(r'(.+)\(([^()]*)\): (.+);?')
+    function_sig = re.compile(r'(.+)\(([^()]*)\): (.+)')
 
     for line in stdout.split('\n'):
         match = comment_decl.match(line) or attr_decl.match(line)
@@ -239,24 +268,16 @@ def collect_decls(crate_dir: str, features: Iterable[str] = ()) -> Iterator[str]
 
         (decl,) = match.groups()
 
-        function_match = function_sig.match(decl)
-        if function_match is None:
-            # Fix backslash-escaped double-quotes.
-            yield bytes(decl, 'utf-8').decode('unicode_escape')
+        if decl.startswith('export /*trait*/ type '):
+            yield '\n'.join(rewrite_trait(decl, function_sig))
             continue
 
-        (prefix, fn_args, ret_type) = function_match.groups()
+        if function_match := function_sig.match(decl):
+            yield rewrite_fn(function_match)
+            continue
 
-        ts_ret_type = translate_to_ts(ret_type)
-        ts_args = []
-        if '::' in fn_args:
-            raise Exception(f"Paths are not supported. Use alias for the type of '{fn_args}'")
-
-        for (arg_name, arg_type) in split_rust_args(fn_args):
-            ts_arg_type = translate_to_ts(arg_type)
-            ts_args.append('%s: %s' % (camelcase(arg_name.strip()), ts_arg_type))
-
-        yield '%s(%s): %s;' % (prefix, ', '.join(ts_args), ts_ret_type)
+        # Fix backslash-escaped double-quotes.
+        yield bytes(decl, 'utf-8').decode('unicode_escape')
 
 
 def expand_template(template_file: str, decls: Iterable[str]) -> str:
@@ -267,9 +288,8 @@ def expand_template(template_file: str, decls: Iterable[str]) -> str:
         # Rewrite from function syntax to property syntax to take advantage of
         # https://www.typescriptlang.org/tsconfig/#strictFunctionTypes.
         contents = contents.replace('NATIVE_FNS;', '\n  '.join(
-            x.removeprefix('export function ')
-             .replace('(', ': (', 1)
-             .replace('):', ') =>') for x in decls if x.startswith('export function ')
+            rewrite_function_as_property(x.removeprefix('export function '))
+            for x in decls if x.startswith('export function ')
         ))
         contents = contents.replace('NATIVE_FN_NAMES', ''.join(
             '\n  ' + x.removeprefix('export function ').split('(')[0] + ','

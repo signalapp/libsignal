@@ -4,6 +4,7 @@
 //
 
 use heck::ToLowerCamelCase as _;
+use itertools::Itertools as _;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::*;
 use syn::spanned::Spanned as _;
@@ -265,9 +266,16 @@ pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait) -> Result<TokenStream2> 
         .map(bridge_callback_item)
         .collect::<Result<Vec<_>>>()?;
     let callback_impls = callbacks.iter().map(|c| &c.implementation);
+    let callback_ts_decls = callbacks.iter().map(|c| &c.ts_decl);
+
+    let ts_declaration_comment = format!(
+        "ts: export /*trait*/ type {trait_name} = {{\n{}\n}};",
+        callback_ts_decls.format("\n")
+    );
 
     Ok(quote! {
         #[cfg(feature = "node")]
+        #[doc = #ts_declaration_comment]
         pub struct #wrapper_name(node::RootAndChannel);
 
         #[cfg(feature = "node")]
@@ -296,6 +304,7 @@ pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait) -> Result<TokenStream2> 
 
 struct Callback {
     implementation: TokenStream2,
+    ts_decl: String,
 }
 
 fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
@@ -364,5 +373,21 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
         }
     };
 
-    Ok(Callback { implementation })
+    // operation(foo: number): void;
+    let js_arg_decls = item.sig.inputs.iter().filter_map(|arg| match arg {
+        FnArg::Receiver(_) => None,
+        FnArg::Typed(arg) => {
+            let Pat::Ident(arg_name) = &*arg.pat else {
+                // Diagnosed elsewhere.
+                return None;
+            };
+            Some(format!("{}: {}", arg_name.ident, arg.ty.to_token_stream()))
+        }
+    });
+    let ts_decl = format!("{js_operation_name}({}): void;", js_arg_decls.format(", "));
+
+    Ok(Callback {
+        implementation,
+        ts_decl,
+    })
 }

@@ -129,29 +129,6 @@ export type InputStream = {
 
 export type SyncInputStream = Uint8Array;
 
-export type ChatListener = {
-  receivedIncomingMessage: (
-    envelope: Uint8Array,
-    timestamp: number,
-    ack: ServerMessageAck
-  ) => void;
-  receivedQueueEmpty: () => void;
-  receivedAlerts: (alerts: string[]) => void;
-  connectionInterrupted: (
-    // A LibSignalError or null, but not naming the type to avoid circular import dependencies.
-    reason: Error | null
-  ) => void;
-};
-
-export type ProvisioningListener = {
-  receivedAddress: (address: string, ack: ServerMessageAck) => void;
-  receivedEnvelope: (envelope: Uint8Array, ack: ServerMessageAck) => void;
-  connectionInterrupted: (
-    // A LibSignalError or null, but not naming the type to avoid circular import dependencies.
-    reason: Error | null
-  ) => void;
-};
-
 export type ChallengeOption = 'pushChallenge' | 'captcha';
 
 export type RegistrationPushTokenType = 'apn' | 'fcm';
@@ -1887,7 +1864,18 @@ export interface UnauthenticatedChatConnection { readonly __type: unique symbol;
 export interface AuthenticatedChatConnection { readonly __type: unique symbol; }
 export interface ProvisioningChatConnection { readonly __type: unique symbol; }
 export interface HttpRequest { readonly __type: unique symbol; }
+export /*trait*/ type ChatListener = {
+  receivedIncomingMessage: (envelope: Uint8Array, timestamp: Timestamp, ack: ServerMessageAck) => void;
+  receivedQueueEmpty: () => void;
+  receivedAlerts: (alerts: string[]) => void;
+  connectionInterrupted: (disconnectCause: Error|null) => void;
+};
 export interface ServerMessageAck { readonly __type: unique symbol; }
+export /*trait*/ type ProvisioningListener = {
+  receivedAddress: (address: string, sendAck: ServerMessageAck) => void;
+  receivedEnvelope: (envelope: Uint8Array, sendAck: ServerMessageAck) => void;
+  connectionInterrupted: (disconnectCause: Error|null) => void;
+};
 export interface RegistrationService { readonly __type: unique symbol; }
 export interface RegistrationSession { readonly __type: unique symbol; }
 export interface RegisterAccountRequest { readonly __type: unique symbol; }
