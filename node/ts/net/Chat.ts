@@ -448,16 +448,16 @@ export class ProvisioningConnection {
     listener: ProvisioningConnectionListener
   ): Native.ProvisioningListener {
     return {
-      _received_address(address: string, ack: Native.ServerMessageAck): void {
+      receivedAddress(address: string, ack: Native.ServerMessageAck): void {
         listener.onReceivedAddress(address, new ChatServerMessageAck(ack));
       },
-      _received_envelope(
+      receivedEnvelope(
         envelope: Uint8Array,
         ack: Native.ServerMessageAck
       ): void {
         listener.onReceivedEnvelope(envelope, new ChatServerMessageAck(ack));
       },
-      _connection_interrupted(cause: Error | null): void {
+      connectionInterrupted(cause: Error | null): void {
         listener.onConnectionInterrupted(cause as LibSignalError | null);
       },
     };
@@ -507,21 +507,21 @@ class WeakListenerWrapper implements Native.ChatListener {
   constructor(listener: Native.ChatListener) {
     this.listener = new WeakRef(listener);
   }
-  _connection_interrupted(reason: Error | null): void {
-    this.listener.deref()?._connection_interrupted(reason);
+  connectionInterrupted(reason: Error | null): void {
+    this.listener.deref()?.connectionInterrupted(reason);
   }
-  _incoming_message(
+  receivedIncomingMessage(
     envelope: Uint8Array,
     timestamp: number,
     ack: Native.ServerMessageAck
   ): void {
-    this.listener.deref()?._incoming_message(envelope, timestamp, ack);
+    this.listener.deref()?.receivedIncomingMessage(envelope, timestamp, ack);
   }
-  _queue_empty(): void {
-    this.listener.deref()?._queue_empty();
+  receivedQueueEmpty(): void {
+    this.listener.deref()?.receivedQueueEmpty();
   }
-  _received_alerts(alerts: string[]): void {
-    this.listener.deref()?._received_alerts(alerts);
+  receivedAlerts(alerts: string[]): void {
+    this.listener.deref()?.receivedAlerts(alerts);
   }
 }
 
@@ -531,14 +531,14 @@ class WeakProvisioningListenerWrapper implements Native.ProvisioningListener {
   constructor(listener: Native.ProvisioningListener) {
     this.listener = new WeakRef(listener);
   }
-  _received_address(address: string, ack: Native.ServerMessageAck): void {
-    this.listener.deref()?._received_address(address, ack);
+  receivedAddress(address: string, ack: Native.ServerMessageAck): void {
+    this.listener.deref()?.receivedAddress(address, ack);
   }
-  _received_envelope(envelope: Uint8Array, ack: Native.ServerMessageAck): void {
-    this.listener.deref()?._received_envelope(envelope, ack);
+  receivedEnvelope(envelope: Uint8Array, ack: Native.ServerMessageAck): void {
+    this.listener.deref()?.receivedEnvelope(envelope, ack);
   }
-  _connection_interrupted(reason: Error | null): void {
-    this.listener.deref()?._connection_interrupted(reason);
+  connectionInterrupted(reason: Error | null): void {
+    this.listener.deref()?.connectionInterrupted(reason);
   }
 }
 
@@ -548,7 +548,7 @@ function makeNativeChatListener(
 ): Native.ChatListener {
   if ('onQueueEmpty' in listener) {
     return {
-      _incoming_message(
+      receivedIncomingMessage(
         envelope: Uint8Array,
         timestamp: number,
         ack: Native.ServerMessageAck
@@ -559,37 +559,37 @@ function makeNativeChatListener(
           new ChatServerMessageAck(ack)
         );
       },
-      _queue_empty(): void {
+      receivedQueueEmpty(): void {
         listener.onQueueEmpty();
       },
-      _received_alerts(alerts: string[]): void {
+      receivedAlerts(alerts: string[]): void {
         listener.onReceivedAlerts?.(alerts);
       },
-      _connection_interrupted(cause: Error | null): void {
+      connectionInterrupted(cause: Error | null): void {
         listener.onConnectionInterrupted(cause as LibSignalError | null);
       },
     };
   }
 
   return {
-    _incoming_message(
+    receivedIncomingMessage(
       _envelope: Uint8Array,
       _timestamp: number,
       _ack: Native.ServerMessageAck
     ): void {
       throw new Error('Event not supported on unauthenticated connection');
     },
-    _queue_empty(): void {
+    receivedQueueEmpty(): void {
       throw new Error('Event not supported on unauthenticated connection');
     },
-    _received_alerts(alerts: string[]): void {
+    receivedAlerts(alerts: string[]): void {
       if (alerts.length != 0) {
         throw new Error(
           `Got ${alerts.length} unexpected alerts on an unauthenticated connection`
         );
       }
     },
-    _connection_interrupted(cause: Error | null): void {
+    connectionInterrupted(cause: Error | null): void {
       listener.onConnectionInterrupted(cause as LibSignalError);
     },
   };

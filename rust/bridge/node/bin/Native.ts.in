@@ -130,23 +130,23 @@ export type InputStream = {
 export type SyncInputStream = Uint8Array;
 
 export type ChatListener = {
-  _incoming_message: (
+  receivedIncomingMessage: (
     envelope: Uint8Array,
     timestamp: number,
     ack: ServerMessageAck
   ) => void;
-  _queue_empty: () => void;
-  _received_alerts: (alerts: string[]) => void;
-  _connection_interrupted: (
+  receivedQueueEmpty: () => void;
+  receivedAlerts: (alerts: string[]) => void;
+  connectionInterrupted: (
     // A LibSignalError or null, but not naming the type to avoid circular import dependencies.
     reason: Error | null
   ) => void;
 };
 
 export type ProvisioningListener = {
-  _received_address: (address: string, ack: ServerMessageAck) => void;
-  _received_envelope: (envelope: Uint8Array, ack: ServerMessageAck) => void;
-  _connection_interrupted: (
+  receivedAddress: (address: string, ack: ServerMessageAck) => void;
+  receivedEnvelope: (envelope: Uint8Array, ack: ServerMessageAck) => void;
+  connectionInterrupted: (
     // A LibSignalError or null, but not naming the type to avoid circular import dependencies.
     reason: Error | null
   ) => void;

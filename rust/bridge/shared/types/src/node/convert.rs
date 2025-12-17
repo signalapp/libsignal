@@ -21,8 +21,9 @@ use zkgroup::ZkGroupDeserializationFailure;
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
-use crate::net::chat::{ChatListener, ProvisioningListener};
-use crate::node::chat::{NodeChatListener, NodeProvisioningListener};
+use crate::net::chat::{
+    ChatListener, NodeChatListener, NodeProvisioningListener, ProvisioningListener,
+};
 use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized, extend_lifetime};
 
 /// Converts arguments from their JavaScript form to their Rust form.
@@ -743,53 +744,19 @@ bridge_trait!(SignedPreKeyStore);
 bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
 
-impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Box<dyn ChatListener> {
+impl SimpleArgTypeInfo for Box<dyn ChatListener> {
     type ArgType = JsObject;
-    type StoredType = NodeChatListener;
 
-    fn borrow(
-        cx: &mut FunctionContext<'context>,
-        foreign: Handle<'context, Self::ArgType>,
-    ) -> NeonResult<Self::StoredType> {
-        NodeChatListener::new(cx, foreign)
-    }
-
-    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
-        stored.make_listener()
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        Ok(Box::new(NodeChatListener::new(cx, foreign)?))
     }
 }
 
-impl<'a> AsyncArgTypeInfo<'a> for Box<dyn ChatListener> {
+impl SimpleArgTypeInfo for Box<dyn ProvisioningListener> {
     type ArgType = JsObject;
-    type StoredType = NodeChatListener;
 
-    fn save_async_arg(
-        cx: &mut FunctionContext,
-        foreign: Handle<Self::ArgType>,
-    ) -> NeonResult<Self::StoredType> {
-        NodeChatListener::new(cx, foreign)
-    }
-
-    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
-        stored.make_listener()
-    }
-}
-
-impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
-    for Box<dyn ProvisioningListener>
-{
-    type ArgType = JsObject;
-    type StoredType = NodeProvisioningListener;
-
-    fn borrow(
-        cx: &mut FunctionContext<'context>,
-        foreign: Handle<'context, Self::ArgType>,
-    ) -> NeonResult<Self::StoredType> {
-        NodeProvisioningListener::new(cx, foreign)
-    }
-
-    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
-        stored.make_listener()
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        Ok(Box::new(NodeProvisioningListener::new(cx, foreign)?))
     }
 }
 
@@ -970,6 +937,13 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {
 }
 
 impl<'a> ResultTypeInfo<'a> for Vec<u8> {
+    type ResultType = JsUint8Array;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
+        JsUint8Array::from_slice(cx, &self)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for bytes::Bytes {
     type ResultType = JsUint8Array;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         JsUint8Array::from_slice(cx, &self)
