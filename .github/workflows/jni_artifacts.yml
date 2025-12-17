@@ -1,4 +1,4 @@
-name: Upload Java libraries
+name: "Release - Java"
 run-name: ${{ github.workflow }} (${{ github.ref_name }})
 
 on:

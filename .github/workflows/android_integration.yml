@@ -1,4 +1,4 @@
-name: Android Integration Test
+name: "Integration - Android"
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: Publish to NPM
+name: "Release - NPM"
 
 on:
   workflow_dispatch:

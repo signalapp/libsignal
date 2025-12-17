@@ -1,4 +1,4 @@
-name: Slow Tests
+name: "Integration - Slow Tests"
 
 env:
   ANDROID_NDK_VERSION: 28.0.13004108

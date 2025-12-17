@@ -1,4 +1,4 @@
-name: Check release notes
+name: "[CI] Check release notes"
 # This is in a separate job because it only runs on pull requests and triggers
 # on label changes in addition to code changes.
 

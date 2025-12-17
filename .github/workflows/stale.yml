@@ -1,4 +1,4 @@
-name: 'Close stale issues and PRs'
+name: "[auto] Close stale issues and PRs"
 on:
   schedule:
   - cron: '15 12 * * *' # 7:15 EST, early in a workday

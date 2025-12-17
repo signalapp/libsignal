@@ -1,4 +1,4 @@
-name: Check Versions
+name: "[CI] Check Versions"
 # We want to run this job on all changes, so that we do not have to risk breakage slipping
 # through due to the set of files included in the version consistency check getting out of sync
 # with the set of files checked by the test dispatch logic.

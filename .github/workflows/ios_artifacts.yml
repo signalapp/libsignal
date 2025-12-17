@@ -1,4 +1,4 @@
-name: Build iOS Artifacts
+name: "Release - iOS"
 
 on:
   workflow_dispatch:

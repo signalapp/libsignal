@@ -1,4 +1,4 @@
-name: Lints
+name: "[CI] Lints"
 # This is in a separate job because we have shell scripts scattered across all our targets,
 # *and* some of them have common dependencies.
 

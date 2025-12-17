@@ -54,17 +54,17 @@ git push <remote> HEAD:main <release tag, e.g. v0.x.y>
 
 ## 3. Submit to package repositories as needed
 
-### Android and Server: Sonatype
+### Android and Server: Maven
 
-In the signalapp/libsignal repository on GitHub, run the "Upload Java libraries" action on the tag you just made.
+In the signalapp/libsignal repository on GitHub, run the "Release - Java" action on the tag you just made.
 
 ### Node: NPM
 
-In the signalapp/libsignal repository on GitHub, run the "Publish to NPM" action on the tag you just made. Leave the "NPM Tag" as "latest".
+In the signalapp/libsignal repository on GitHub, run the "Release - NPM" action on the tag you just made. Leave the "NPM Tag" as "latest".
 
 ### iOS: Build Artifacts
 
-In the signalapp/libsignal repository on GitHub, run the "Build iOS Artifacts" action on the tag you just made. Share the resulting checksum with whoever will update the iOS app repository.
+In the signalapp/libsignal repository on GitHub, run the "Release - iOS" action on the tag you just made. Share the resulting checksum with whoever will update the iOS app repository.
 
 ## Appendix: Release Standards and Information
 

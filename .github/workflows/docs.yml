@@ -1,4 +1,4 @@
-name: Docs
+name: "[CI] Docs"
 
 env:
   MDBOOK_VERSION: "0.4.43"
