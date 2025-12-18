@@ -135,11 +135,12 @@ internal class ChatListenerBridge {
         }
         let connectionInterrupted: SignalConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
+            let error = convertError(maybeError)
+
             guard let chatConnection = bridge.chatConnection else {
                 return
             }
 
-            let error = convertError(maybeError)
             bridge.chatListener.connectionWasInterrupted(chatConnection, error: error)
         }
         return .init(
@@ -232,12 +233,11 @@ internal class UnauthConnectionEventsListenerBridge {
         let connectionInterrupted: SignalConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<UnauthConnectionEventsListenerBridge>.fromOpaque(rawCtx!)
                 .takeUnretainedValue()
+            let error = convertError(maybeError)
 
             guard let chatConnection = bridge.chatConnection else {
                 return
             }
-
-            let error = convertError(maybeError)
 
             bridge.chatListener.connectionWasInterrupted(chatConnection, error: error)
         }

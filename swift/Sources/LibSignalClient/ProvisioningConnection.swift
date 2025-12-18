@@ -209,11 +209,12 @@ internal class ProvisioningListenerBridge {
         }
         let connectionInterrupted: SignalConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<ProvisioningListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
+            let error = convertError(maybeError)
+
             guard let connection = bridge.connection else {
                 return
             }
 
-            let error = convertError(maybeError)
             bridge.listener.connectionWasInterrupted(connection, error: error)
         }
         return .init(
