@@ -185,13 +185,15 @@ internal class ProvisioningListenerBridge {
 
             let ackHandleOwner = AckHandleOwner(owned: NonNull(ackHandle)!)
             guard let connection = bridge.connection else {
-                return
+                // The client no longer listening is not an error.
+                return 0
             }
 
             let address = String(cString: rawAddress!)
             bridge.listener.provisioningConnection(connection, didReceiveAddress: address) {
                 _ = ackHandleOwner.withNativeHandle { ackHandle in signal_server_message_ack_send(ackHandle.const()) }
             }
+            return 0
         }
 
         let receivedEnvelope: SignalFfiProvisioningListenerReceivedEnvelope = { rawCtx, envelope, ackHandle in
@@ -200,22 +202,26 @@ internal class ProvisioningListenerBridge {
             let ackHandleOwner = AckHandleOwner(owned: NonNull(ackHandle)!)
             let envelopeData = Data(consuming: envelope)
             guard let connection = bridge.connection else {
-                return
+                // The client no longer listening is not an error.
+                return 0
             }
 
             bridge.listener.provisioningConnection(connection, didReceiveEnvelope: envelopeData) {
                 _ = ackHandleOwner.withNativeHandle { ackHandle in signal_server_message_ack_send(ackHandle.const()) }
             }
+            return 0
         }
         let connectionInterrupted: SignalFfiProvisioningListenerConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<ProvisioningListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
             let error = convertError(maybeError)
 
             guard let connection = bridge.connection else {
-                return
+                // The client no longer listening is not an error.
+                return 0
             }
 
             bridge.listener.connectionWasInterrupted(connection, error: error)
+            return 0
         }
         return .init(
             ctx: Unmanaged.passRetained(self).toOpaque(),

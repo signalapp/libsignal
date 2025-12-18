@@ -106,7 +106,8 @@ internal class ChatListenerBridge {
             let envelopeData = Data(consuming: envelope)
             let ackHandleOwner = AckHandleOwner(owned: NonNull(ackHandle)!)
             guard let chatConnection = bridge.chatConnection else {
-                return
+                // The client no longer listening is not an error.
+                return 0
             }
 
             bridge.chatListener.chatConnection(
@@ -114,16 +115,20 @@ internal class ChatListenerBridge {
                 didReceiveIncomingMessage: envelopeData,
                 serverDeliveryTimestamp: timestamp
             ) { _ = ackHandleOwner.withNativeHandle { ackHandle in signal_server_message_ack_send(ackHandle.const()) } }
+            return 0
         }
 
         let receivedQueueEmpty: SignalFfiChatListenerReceivedQueueEmpty = { rawCtx in
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
             guard let chatConnection = bridge.chatConnection else {
-                return
+                // The client no longer listening is not an error.
+                return 0
             }
 
             bridge.chatListener.chatConnectionDidReceiveQueueEmpty(chatConnection)
+            return 0
         }
+
         let receivedAlerts: SignalFfiChatListenerReceivedAlerts = { rawCtx, alerts in
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
 
@@ -135,17 +140,22 @@ internal class ChatListenerBridge {
             }
 
             bridge.didReceiveAlerts(swiftAlerts)
+            return 0
         }
+
         let connectionInterrupted: SignalFfiChatListenerConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
             let error = convertError(maybeError)
 
             guard let chatConnection = bridge.chatConnection else {
-                return
+                // The client no longer listening is not an error.
+                return 0
             }
 
             bridge.chatListener.connectionWasInterrupted(chatConnection, error: error)
+            return 0
         }
+
         return .init(
             ctx: Unmanaged.passRetained(self).toOpaque(),
             received_incoming_message: receivedIncomingMessage,
@@ -212,6 +222,8 @@ internal class UnauthConnectionEventsListenerBridge {
                 line: #line,
                 message: "unauth socket received an incoming request"
             )
+            // We don't need to log *another* error.
+            return 0
         }
         let receivedQueueEmpty: SignalFfiChatListenerReceivedQueueEmpty = { _ in
             // Not used in the unauth chat listener
@@ -221,6 +233,8 @@ internal class UnauthConnectionEventsListenerBridge {
                 line: #line,
                 message: "unauth socket received a \"queue empty\" notification"
             )
+            // We don't need to log *another* error.
+            return 0
         }
         let receivedAlerts: SignalFfiChatListenerReceivedAlerts = { _, alerts in
             // Not used in the unauth chat listener
@@ -232,6 +246,8 @@ internal class UnauthConnectionEventsListenerBridge {
                     message: "unauth socket received \(alerts.lengths.length) alerts"
                 )
             }
+            // We don't need to log *another* error.
+            return 0
         }
         let connectionInterrupted: SignalFfiChatListenerConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<UnauthConnectionEventsListenerBridge>.fromOpaque(rawCtx!)
@@ -239,10 +255,12 @@ internal class UnauthConnectionEventsListenerBridge {
             let error = convertError(maybeError)
 
             guard let chatConnection = bridge.chatConnection else {
-                return
+                // The client no longer listening is not an error.
+                return 0
             }
 
             bridge.chatListener.connectionWasInterrupted(chatConnection, error: error)
+            return 0
         }
 
         return .init(

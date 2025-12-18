@@ -526,9 +526,9 @@ typedef struct {
   SignalServerMessageAck *raw;
 } SignalMutPointerServerMessageAck;
 
-typedef void (*SignalFfiChatListenerReceivedIncomingMessage)(void *ctx, SignalOwnedBuffer envelope, uint64_t timestamp, SignalMutPointerServerMessageAck ack);
+typedef int (*SignalFfiChatListenerReceivedIncomingMessage)(void *ctx, SignalOwnedBuffer envelope, uint64_t timestamp, SignalMutPointerServerMessageAck ack);
 
-typedef void (*SignalFfiChatListenerReceivedQueueEmpty)(void *ctx);
+typedef int (*SignalFfiChatListenerReceivedQueueEmpty)(void *ctx);
 
 /**
  * A representation of a array allocated on the Rust heap for use in C code.
@@ -548,9 +548,9 @@ typedef struct {
 
 typedef SignalBytestringArray SignalStringArray;
 
-typedef void (*SignalFfiChatListenerReceivedAlerts)(void *ctx, SignalStringArray alerts);
+typedef int (*SignalFfiChatListenerReceivedAlerts)(void *ctx, SignalStringArray alerts);
 
-typedef void (*SignalFfiChatListenerConnectionInterrupted)(void *ctx, SignalFfiError *disconnect_cause);
+typedef int (*SignalFfiChatListenerConnectionInterrupted)(void *ctx, SignalFfiError *disconnect_cause);
 
 typedef void (*SignalFfiChatListenerDestroy)(void *ctx);
 
@@ -1216,11 +1216,11 @@ typedef struct {
   const SignalProvisioningChatConnection *raw;
 } SignalConstPointerProvisioningChatConnection;
 
-typedef void (*SignalFfiProvisioningListenerReceivedAddress)(void *ctx, const char *address, SignalMutPointerServerMessageAck send_ack);
+typedef int (*SignalFfiProvisioningListenerReceivedAddress)(void *ctx, const char *address, SignalMutPointerServerMessageAck send_ack);
 
-typedef void (*SignalFfiProvisioningListenerReceivedEnvelope)(void *ctx, SignalOwnedBuffer envelope, SignalMutPointerServerMessageAck send_ack);
+typedef int (*SignalFfiProvisioningListenerReceivedEnvelope)(void *ctx, SignalOwnedBuffer envelope, SignalMutPointerServerMessageAck send_ack);
 
-typedef void (*SignalFfiProvisioningListenerConnectionInterrupted)(void *ctx, SignalFfiError *disconnect_cause);
+typedef int (*SignalFfiProvisioningListenerConnectionInterrupted)(void *ctx, SignalFfiError *disconnect_cause);
 
 typedef void (*SignalFfiProvisioningListenerDestroy)(void *ctx);
 

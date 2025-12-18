@@ -294,7 +294,7 @@ fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback
         type #callback_ty_name = extern "C" fn(
             ctx: *mut std::ffi::c_void,
             #(#callback_args,)*
-        ) // note the lack of trailing semicolon
+        ) -> std::ffi::c_int // note the lack of trailing semicolon
     };
 
     // operation: FfiMyTraitOperation
@@ -304,7 +304,10 @@ fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback
     };
 
     // fn operation(foo: u32) {
-    //   (self.operation)(self.ctx, ffi::ResultTypeInfo::convert_into(foo).expect("can convert"))
+    //   ffi::CallbackError::log_on_error(
+    //       "operation"
+    //       (self.operation)(self.ctx, ffi::ResultTypeInfo::convert_into(foo).expect("can convert"))
+    //   )
     // }
     let arg_conversions = item.sig.inputs.iter().map(|arg| match arg {
         FnArg::Receiver(_) => quote!(self.ctx),
@@ -325,7 +328,10 @@ fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback
         // #sig carries everything from `fn` to the return type and possible where-clause.
         // All we provide is the body.
         #sig {
-            (self.#field_name)(#(#arg_conversions,)*)
+            ffi::CallbackError::log_on_error(
+                stringify!(#req_name),
+                (self.#field_name)(#(#arg_conversions,)*)
+            )
         }
     };
 

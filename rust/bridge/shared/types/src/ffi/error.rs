@@ -1154,6 +1154,13 @@ impl CallbackError {
             Some(value) => Err(Self { value }),
         }
     }
+
+    pub fn log_on_error(operation: &str, value: i32) {
+        match Self::check(value) {
+            Ok(()) => {}
+            Err(value) => log::error!("failed '{operation}' with {value}"),
+        }
+    }
 }
 
 impl fmt::Display for CallbackError {
