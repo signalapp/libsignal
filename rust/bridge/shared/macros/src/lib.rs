@@ -185,40 +185,72 @@ enum ResultKind {
     Void,
 }
 
-impl From<&syn_mid::Signature> for ResultKind {
-    fn from(value: &syn_mid::Signature) -> Self {
-        let type_ = match &value.output {
-            ReturnType::Default => return Self::Void,
+#[derive(Clone, Copy)]
+#[cfg_attr(test, derive(Debug, PartialEq))]
+struct ResultInfo {
+    kind: ResultKind,
+    #[allow(dead_code)]
+    failable: bool,
+}
+
+impl From<&syn::ReturnType> for ResultInfo {
+    fn from(value: &syn::ReturnType) -> Self {
+        let type_ = match &value {
+            ReturnType::Default => {
+                return ResultInfo {
+                    kind: ResultKind::Void,
+                    failable: false,
+                };
+            }
             ReturnType::Type(_, type_) => type_.as_ref(),
         };
 
         let output_type = match &type_ {
             syn::Type::Path(path) if path.qself.is_none() => &path.path,
-            syn::Type::Tuple(t) if t.elems.is_empty() => return ResultKind::Void,
-            _ => return ResultKind::Regular,
+            syn::Type::Tuple(t) if t.elems.is_empty() => {
+                return ResultInfo {
+                    kind: ResultKind::Void,
+                    failable: false,
+                };
+            }
+            _ => {
+                return ResultInfo {
+                    kind: ResultKind::Regular,
+                    failable: false,
+                };
+            }
         };
 
-        let is_void_result = |segment: &syn::PathSegment| {
+        let check_for_result = |segment: &syn::PathSegment| {
             if segment.ident != "Result" {
-                return false;
+                return None;
             }
 
             let PathArguments::AngleBracketed(args) = &segment.arguments else {
-                return false;
+                return None;
             };
 
-            args.args.first().is_some_and(|arg| match arg {
-                GenericArgument::Type(syn::Type::Tuple(t)) => t.elems.is_empty(),
-                _ => false,
-            })
+            let arg = args.args.first()?;
+            match arg {
+                GenericArgument::Type(syn::Type::Tuple(t)) if t.elems.is_empty() => {
+                    Some(ResultKind::Void)
+                }
+                _ => Some(ResultKind::Regular),
+            }
         };
 
         let last_segment = output_type.segments.last();
-        if last_segment.is_some_and(is_void_result) {
-            return ResultKind::Void;
+        if let Some(result_kind) = last_segment.and_then(check_for_result) {
+            return ResultInfo {
+                kind: result_kind,
+                failable: true,
+            };
         }
 
-        ResultKind::Regular
+        ResultInfo {
+            kind: ResultKind::Regular,
+            failable: false,
+        }
     }
 }
 
@@ -282,7 +314,7 @@ fn bridge_fn_impl(
             )
         }
     };
-    let result_kind = ResultKind::from(&function.sig);
+    let result_info = ResultInfo::from(&function.sig.output);
 
     let ffi_name = match name_for_meta_key(&item_names, "ffi", || {
         ffi::name_from_ident(&function.sig.ident)
@@ -312,7 +344,7 @@ fn bridge_fn_impl(
     // We could early-exit on the Errors returned from generating each wrapper,
     // but since they could be for unrelated issues, it's better to show all of them to the user.
     let ffi_fn = ffi_name.map(|name| {
-        ffi::bridge_fn(&name, &function.sig, result_kind, &bridging_kind)
+        ffi::bridge_fn(&name, &function.sig, result_info, &bridging_kind)
             .unwrap_or_else(Error::into_compile_error)
     });
     let jni_fn = jni_name.map(|name| {
@@ -476,7 +508,13 @@ mod return_type_test {
         let parsed: ItemFn = parse_quote! {
             fn no_return() {}
         };
-        assert_eq!(ResultKind::from(&parsed.sig), ResultKind::Void)
+        assert_eq!(
+            ResultInfo::from(&parsed.sig.output),
+            ResultInfo {
+                kind: ResultKind::Void,
+                failable: false,
+            }
+        );
     }
 
     #[test]
@@ -484,7 +522,13 @@ mod return_type_test {
         let parsed: ItemFn = parse_quote! {
             fn returns_empty_tuple() -> () {}
         };
-        assert_eq!(ResultKind::from(&parsed.sig), ResultKind::Void)
+        assert_eq!(
+            ResultInfo::from(&parsed.sig.output),
+            ResultInfo {
+                kind: ResultKind::Void,
+                failable: false,
+            }
+        );
     }
 
     #[test]
@@ -498,8 +542,11 @@ mod return_type_test {
 
         for item in parsed {
             assert_eq!(
-                ResultKind::from(&item.sig),
-                ResultKind::Void,
+                ResultInfo::from(&item.sig.output),
+                ResultInfo {
+                    kind: ResultKind::Void,
+                    failable: true,
+                },
                 "{}",
                 item.to_token_stream()
             );
@@ -511,15 +558,38 @@ mod return_type_test {
         let parsed: &[ItemFn] = &[
             parse_quote! { fn returns_bool() -> bool { unimplemented!() } },
             parse_quote! { fn returns_u32() -> u32 { unimplemented!() } },
+            parse_quote! { fn returns_bool_and_u32() -> (bool, u32) { unimplemented!() } },
+        ];
+
+        for item in parsed {
+            assert_eq!(
+                ResultInfo::from(&item.sig.output),
+                ResultInfo {
+                    kind: ResultKind::Regular,
+                    failable: false,
+                },
+                "{}",
+                item.to_token_stream()
+            );
+        }
+    }
+
+    #[test]
+    fn regular_result_types() {
+        let parsed: &[ItemFn] = &[
             parse_quote! { fn returns_result_u32_alias() -> Result<u32> { unimplemented!() } },
             parse_quote! { fn returns_result_u32() -> Result<u32, Err> { unimplemented!() } },
+            parse_quote! { fn returns_result_two_u32() -> Result<(u32, u32), Err> { unimplemented!() } },
             parse_quote! { fn returns_fq_result_u32() -> std::result::Result<u32, Err> { unimplemented!() } },
         ];
 
         for item in parsed {
             assert_eq!(
-                ResultKind::from(&item.sig),
-                ResultKind::Regular,
+                ResultInfo::from(&item.sig.output),
+                ResultInfo {
+                    kind: ResultKind::Regular,
+                    failable: true,
+                },
                 "{}",
                 item.to_token_stream()
             );
