@@ -251,33 +251,33 @@ impl SimpleArgTypeInfo for Option<String> {
 }
 
 impl SimpleArgTypeInfo for uuid::Uuid {
-    type ArgType = *const [u8; 16];
+    type ArgType = super::Uuid;
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
-        match unsafe { foreign.as_ref() } {
-            Some(array) => Ok(uuid::Uuid::from_bytes(*array)),
-            None => Err(NullPointerError.into()),
-        }
+        Ok(uuid::Uuid::from_bytes(foreign.bytes))
     }
 }
 
 impl ResultTypeInfo for uuid::Uuid {
-    type ResultType = uuid::Bytes;
+    type ResultType = super::Uuid;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        Ok(*self.as_bytes())
+        Ok(super::Uuid {
+            bytes: *self.as_bytes(),
+        })
     }
 }
 
 impl ResultTypeInfo for Option<uuid::Uuid> {
-    type ResultType = [u8; 17];
+    type ResultType = OptionalUuid;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        let mut bytes = [0; 17];
         if let Some(uuid) = self {
-            let (present, out) = bytes.split_first_mut().expect("not empty");
-            *present = true.into();
-            out.copy_from_slice(uuid.as_bytes());
+            Ok(OptionalUuid {
+                present: true,
+                bytes: *uuid.as_bytes(),
+            })
+        } else {
+            Ok(OptionalUuid::default())
         }
-        Ok(bytes)
     }
 }
 
@@ -1242,7 +1242,7 @@ macro_rules! ffi_arg_type {
     (Option<String>) => (*const std::ffi::c_char);
     (Option<&str>) => (*const std::ffi::c_char);
     (Timestamp) => (u64);
-    (Uuid) => (*const [u8; 16]);
+    (Uuid) => (ffi::Uuid);
     (ServiceId) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Aci) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Pni) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
@@ -1318,7 +1318,7 @@ macro_rules! ffi_result_type {
     (Option<String>) => (*const std::ffi::c_char);
     (Option<&str>) => (*const std::ffi::c_char);
     (Timestamp) => (u64);
-    (Uuid) => ([u8; 16]);
+    (Uuid) => (ffi::Uuid);
     (Option<Uuid>) => (ffi::OptionalUuid);
     (ServiceId) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Aci) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);

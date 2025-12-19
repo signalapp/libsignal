@@ -186,7 +186,18 @@ pub struct OptionalBorrowedSliceOf<T> {
     pub value: BorrowedSliceOf<T>,
 }
 
-pub type OptionalUuid = [u8; 17];
+/// A wrapper type for raw UUIDs, because C treats arrays specially in argument position.
+#[repr(C)]
+pub struct Uuid {
+    pub bytes: [u8; 16],
+}
+
+#[derive(Default)]
+#[repr(C)]
+pub struct OptionalUuid {
+    pub present: bool,
+    pub bytes: [u8; 16],
+}
 
 #[repr(C)]
 pub struct PairOf<A, B> {

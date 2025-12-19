@@ -177,9 +177,9 @@ extension BorrowForFfi {
 }
 
 extension UUID: BorrowForFfi {
-    typealias Borrowed = UnsafePointer<uuid_t>
+    typealias Borrowed = SignalUuid
     func withBorrowed<Result>(_ callback: (Borrowed) throws -> Result) rethrows -> Result {
-        return try withUnsafePointer(to: self.uuid, callback)
+        return try callback(SignalUuid(bytes: self.uuid))
     }
 }
 

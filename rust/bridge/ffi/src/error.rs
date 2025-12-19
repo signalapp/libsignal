@@ -14,6 +14,7 @@ use libsignal_bridge_macros::bridge_fn;
 use libsignal_core::ProtocolAddress;
 use libsignal_net_chat::api::ChallengeOption;
 use libsignal_net_chat::api::messages::MismatchedDeviceError;
+use uuid::Uuid;
 
 // Not using bridge_fn because it also handles `NULL`.
 #[unsafe(no_mangle)]
@@ -36,11 +37,9 @@ fn Error_GetAddress(err: &SignalFfiError) -> Result<ProtocolAddress, IllegalArgu
 }
 
 #[bridge_fn(jni = false, node = false)]
-fn Error_GetUuid(err: &SignalFfiError) -> Result<[u8; 16], IllegalArgumentError> {
-    Ok(err
-        .provide_uuid()
-        .map_err(|_| IllegalArgumentError::new(format!("cannot get UUID from error ({err})")))?
-        .into_bytes())
+fn Error_GetUuid(err: &SignalFfiError) -> Result<Uuid, IllegalArgumentError> {
+    err.provide_uuid()
+        .map_err(|_| IllegalArgumentError::new(format!("cannot get UUID from error ({err})")))
 }
 
 #[bridge_fn(jni = false, node = false)]

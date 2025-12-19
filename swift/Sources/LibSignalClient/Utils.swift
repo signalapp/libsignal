@@ -124,22 +124,18 @@ internal func invokeFnReturningOptionalVariableLengthSerialized<Result: ByteArra
     return try Result(contents: output)
 }
 
-internal func invokeFnReturningUuid(fn: (UnsafeMutablePointer<uuid_t>?) -> SignalFfiErrorRef?) throws -> UUID {
-    var output: uuid_t = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    try checkError(fn(&output))
-    return UUID(uuid: output)
+internal func invokeFnReturningUuid(fn: (UnsafeMutablePointer<SignalUuid>?) -> SignalFfiErrorRef?) throws -> UUID {
+    return UUID(uuid: try invokeFnReturningValueByPointer(.init(), fn: fn).bytes)
 }
 
 internal func invokeFnReturningOptionalUuid(
     fn: (UnsafeMutablePointer<SignalOptionalUuid>?) -> SignalFfiErrorRef?
 ) throws -> UUID? {
-    var output: SignalOptionalUuid = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    try checkError(fn(&output))
-    let (isPresent, u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12, u13, u14, u15) = output
-    if isPresent == 0 {
+    let output = try invokeFnReturningValueByPointer(.init(), fn: fn)
+    if output.present == false {
         return nil
     }
-    return UUID(uuid: (u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12, u13, u14, u15))
+    return UUID(uuid: output.bytes)
 }
 
 internal func invokeFnReturningServiceId<Id: ServiceId>(

@@ -2426,6 +2426,7 @@ dependencies = [
  "log-panics",
  "paste",
  "signal-media",
+ "uuid",
  "zerocopy",
 ]
 

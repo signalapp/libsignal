@@ -20,16 +20,14 @@ public class SenderKeyDistributionMessage: NativeHandleOwner<SignalMutPointerSen
         context: StoreContext
     ) throws {
         let result = try sender.withNativeHandle { senderHandle in
-            try withUnsafePointer(to: distributionId.uuid) { distributionId in
-                try withSenderKeyStore(store, context) { store in
-                    try invokeFnReturningValueByPointer(.init()) {
-                        signal_sender_key_distribution_message_create(
-                            $0,
-                            senderHandle.const(),
-                            distributionId,
-                            store
-                        )
-                    }
+            try withSenderKeyStore(store, context) { store in
+                try invokeFnReturningValueByPointer(.init()) {
+                    signal_sender_key_distribution_message_create(
+                        $0,
+                        senderHandle.const(),
+                        SignalUuid(bytes: distributionId.uuid),
+                        store
+                    )
                 }
             }
         }

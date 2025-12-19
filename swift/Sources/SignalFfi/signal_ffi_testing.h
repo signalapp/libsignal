@@ -89,8 +89,6 @@ typedef struct {
   SignalNonSuspendingBackgroundThreadRuntime *raw;
 } SignalMutPointerNonSuspendingBackgroundThreadRuntime;
 
-typedef uint8_t SignalOptionalUuid[17];
-
 typedef struct {
   const SignalNonSuspendingBackgroundThreadRuntime *raw;
 } SignalConstPointerNonSuspendingBackgroundThreadRuntime;
