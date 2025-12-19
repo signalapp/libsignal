@@ -109,10 +109,35 @@ where
     }
 }
 
+/// A variation of [`ArgTypeInfo`] for callback results.
+///
+/// All [`SimpleArgTypeInfo`] implementations are reusable for this, but the general [`ArgTypeInfo`]
+/// allows borrowing from the foreign value and a callback result can't do that.
+pub trait CallbackResultTypeInfo: Sized {
+    /// The FFI form of the argument (e.g. `std::ffi::c_uchar`).
+    type ResultType;
+    /// Converts the data in `foreign` to the Rust type.
+    fn convert_from_callback(foreign: Self::ResultType) -> SignalFfiResult<Self>;
+}
+
+impl<T: SimpleArgTypeInfo> CallbackResultTypeInfo for T {
+    type ResultType = <Self as SimpleArgTypeInfo>::ArgType;
+
+    fn convert_from_callback(foreign: Self::ResultType) -> SignalFfiResult<Self> {
+        T::convert_from(foreign)
+    }
+}
+
+impl CallbackResultTypeInfo for () {
+    type ResultType = std::ffi::c_void;
+    fn convert_from_callback(_foreign: Self::ResultType) -> SignalFfiResult<Self> {
+        Ok(())
+    }
+}
+
 /// Converts result values from their Rust form to their FFI form.
 ///
 /// `ResultTypeInfo` is used to implement the `bridge_fn` macro, but can also be used outside it.
-/// `ResultTypeInfo` is also used for callback arguments in the `bridge_callback` macro.
 ///
 /// ```
 /// # use libsignal_bridge_types::ffi::*;
@@ -1180,6 +1205,19 @@ macro_rules! ffi_bridge_as_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
     ( $typ:ty as $ffi_name:ident ) => {
         impl $crate::ffi::BridgeHandle for $typ {}
+        // Unfortunately this conflicts with the blanket impl for the trait if done generically.
+        impl $crate::ffi::CallbackResultTypeInfo for $typ {
+            type ResultType = $crate::ffi::MutPointer<$typ>;
+            fn convert_from_callback(
+                foreign: Self::ResultType,
+            ) -> $crate::ffi::SignalFfiResult<Self> {
+                let foreign = foreign.into_inner();
+                if foreign.is_null() {
+                    return Err($crate::ffi::NullPointerError.into());
+                }
+                Ok(unsafe { *Box::from_raw(foreign) })
+            }
+        }
     };
     ( $typ:ty ) => {
         ::paste::paste! {
