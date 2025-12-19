@@ -355,3 +355,22 @@ impl<F: Future<Output: ResultReporter>> AsyncRuntime<F> for NoOpAsyncRuntime {
         CancellationId::NotSupported
     }
 }
+
+/// Attaches context to a value, usually an error.
+///
+/// Intended to be used with `From` implementations, so standard Rust error handling idioms can work
+/// even for error types that want the additional context.
+pub struct WithContext<T> {
+    pub operation: &'static str,
+    pub inner: T,
+}
+
+/// Provides access to [`Result`]'s `Success` and `Error` types using associated type syntax.
+pub trait ResultLike {
+    type Success;
+    type Error;
+}
+impl<T, E> ResultLike for Result<T, E> {
+    type Success = T;
+    type Error = E;
+}

@@ -529,9 +529,24 @@ bridge_trait!(PreKeyStore);
 bridge_trait!(SenderKeyStore);
 bridge_trait!(SessionStore);
 bridge_trait!(SignedPreKeyStore);
-bridge_trait!(KyberPreKeyStore);
+// bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
 bridge_trait!(SyncInputStream);
+
+impl<'a> ArgTypeInfo<'a> for &'a mut dyn KyberPreKeyStore {
+    type ArgType = crate::ffi::ConstPointer<FfiBridgeKyberPreKeyStoreStruct>;
+    type StoredType = BridgedStore<OwnedCallbackStruct<FfiBridgeKyberPreKeyStoreStruct>>;
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
+        match unsafe { foreign.into_inner().as_ref() } {
+            None => Err(NullPointerError.into()),
+            Some(store) => Ok(BridgedStore(OwnedCallbackStruct(store.clone()))),
+        }
+    }
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        stored
+    }
+}
 
 impl<'a> ArgTypeInfo<'a> for Box<dyn ChatListener> {
     type ArgType = crate::ffi::ConstPointer<FfiChatListenerStruct>;
@@ -1244,6 +1259,20 @@ macro_rules! ffi_bridge_handle_fns {
     };
 }
 
+// This can't be done generically because it would conflict with the blanket impl, and it *also*
+// can't be done as part of the common `bridge_as_handle!` macro because when used outside this
+// crate it would violate the orphan rule. Perhaps there'll be a workaround later.
+impl CallbackResultTypeInfo for Option<KyberPreKeyRecord> {
+    type ResultType = MutPointer<KyberPreKeyRecord>;
+
+    fn convert_from_callback(foreign: Self::ResultType) -> SignalFfiResult<Self> {
+        if foreign == MutPointer::null() {
+            return Ok(None);
+        }
+        KyberPreKeyRecord::convert_from_callback(foreign).map(Some)
+    }
+}
+
 macro_rules! trivial {
     ($typ:ty) => {
         impl SimpleArgTypeInfo for $typ {
@@ -1269,13 +1298,13 @@ trivial!(u64);
 trivial!(usize);
 trivial!(bool);
 
-/// Syntactically translates `bridge_fn` argument types to FFI types for `cbindgen`.
+/// Syntactically translates `bridge_fn` argument types (and callback result types) to FFI types for
+/// `cbindgen`.
 ///
 /// This is a syntactic transformation (because that's how Rust macros work), so new argument types
 /// will need to be added here directly even if they already implement [`ArgTypeInfo`]. The default
-/// behavior for references is to pass them through as pointers; the default behavior for
-/// `&mut dyn Foo` is to assume there's a struct called `ffi::FfiFooStruct` and produce a pointer
-/// to that.
+/// behavior for references is to pass them through as pointers; the default behavior for `&mut dyn
+/// Foo` is to assume there's a struct called `ffi::FfiFooStruct` and produce a pointer to that.
 #[macro_export]
 macro_rules! ffi_arg_type {
     (u8) => (u8);
@@ -1330,9 +1359,16 @@ macro_rules! ffi_arg_type {
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
     (Serialized<$typ:ident>) => (*const [std::ffi::c_uchar; ::paste::paste!([<$typ:snake:upper _LEN>])]);
+
+    // For use in callbacks.
+    (Result<$typ:tt $(, $ignored:ty)?>) => (ffi_arg_type!($typ));
+    (Result<$typ:tt<$($args:tt),+> $(, $ignored:ty)?>) => (ffi_arg_type!($typ<$($args),+>));
+    (Option<$typ:ty>) => (ffi::MutPointer< $typ >);
+    ($typ:ty) => (ffi::MutPointer< $typ >);
 }
 
-/// Syntactically translates `bridge_fn` result types to FFI types for `cbindgen`.
+/// Syntactically translates `bridge_fn` result types (and callback argument types) to FFI types for
+/// `cbindgen`.
 ///
 /// This is a syntactic transformation (because that's how Rust macros work), so new result types
 /// will need to be added here directly even if they already implement [`ResultTypeInfo`]. The

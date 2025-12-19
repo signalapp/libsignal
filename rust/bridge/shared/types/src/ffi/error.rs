@@ -23,7 +23,7 @@ use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 use super::{FutureCancelled, NullPointerError, UnexpectedPanic};
-use crate::support::{IllegalArgumentError, describe_panic};
+use crate::support::{IllegalArgumentError, WithContext, describe_panic};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
@@ -1170,3 +1170,22 @@ impl fmt::Display for CallbackError {
 }
 
 impl std::error::Error for CallbackError {}
+
+impl From<WithContext<CallbackError>> for SignalProtocolError {
+    fn from(value: WithContext<CallbackError>) -> Self {
+        let WithContext { operation, inner } = value;
+        SignalProtocolError::for_application_callback(operation)(inner)
+    }
+}
+
+/// This is overly general, but in practice is only used to handle errors converting callback
+/// results.
+impl From<WithContext<SignalFfiError>> for SignalProtocolError {
+    fn from(value: WithContext<SignalFfiError>) -> Self {
+        let WithContext {
+            operation: _,
+            inner,
+        } = value;
+        SignalProtocolError::FfiBindingError(inner.to_string())
+    }
+}

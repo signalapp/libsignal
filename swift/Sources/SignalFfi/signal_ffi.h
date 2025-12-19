@@ -867,22 +867,23 @@ typedef struct {
   SignalKyberPreKeyRecord *raw;
 } SignalMutPointerKyberPreKeyRecord;
 
-typedef int (*SignalLoadKyberPreKey)(void *store_ctx, SignalMutPointerKyberPreKeyRecord *recordp, uint32_t id);
+typedef int (*SignalFfiBridgeKyberPreKeyStoreLoadKyberPreKey)(void *ctx, SignalMutPointerKyberPreKeyRecord *out, uint32_t id);
 
-typedef struct {
-  const SignalKyberPreKeyRecord *raw;
-} SignalConstPointerKyberPreKeyRecord;
+typedef int (*SignalFfiBridgeKyberPreKeyStoreStoreKyberPreKey)(void *ctx, uint32_t id, SignalMutPointerKyberPreKeyRecord record);
 
-typedef int (*SignalStoreKyberPreKey)(void *store_ctx, uint32_t id, SignalConstPointerKyberPreKeyRecord record);
+typedef int (*SignalFfiBridgeKyberPreKeyStoreMarkKyberPreKeyUsed)(void *ctx, uint32_t id, uint32_t ec_prekey_id, SignalMutPointerPublicKey base_key);
 
-typedef int (*SignalMarkKyberPreKeyUsed)(void *store_ctx, uint32_t id, uint32_t signed_prekey_id, SignalConstPointerPublicKey base_key);
+typedef void (*SignalFfiBridgeKyberPreKeyStoreDestroy)(void *ctx);
 
 typedef struct {
   void *ctx;
-  SignalLoadKyberPreKey load_kyber_pre_key;
-  SignalStoreKyberPreKey store_kyber_pre_key;
-  SignalMarkKyberPreKeyUsed mark_kyber_pre_key_used;
-} SignalKyberPreKeyStore;
+  SignalFfiBridgeKyberPreKeyStoreLoadKyberPreKey load_kyber_pre_key;
+  SignalFfiBridgeKyberPreKeyStoreStoreKyberPreKey store_kyber_pre_key;
+  SignalFfiBridgeKyberPreKeyStoreMarkKyberPreKeyUsed mark_kyber_pre_key_used;
+  SignalFfiBridgeKyberPreKeyStoreDestroy destroy;
+} SignalFfiBridgeKyberPreKeyStoreStruct;
+
+typedef SignalFfiBridgeKyberPreKeyStoreStruct SignalKyberPreKeyStore;
 
 typedef struct {
   const SignalKyberPreKeyStore *raw;
@@ -1110,6 +1111,10 @@ typedef SignalSecretKey SignalKyberSecretKey;
 typedef struct {
   SignalKyberSecretKey *raw;
 } SignalMutPointerKyberSecretKey;
+
+typedef struct {
+  const SignalKyberPreKeyRecord *raw;
+} SignalConstPointerKyberPreKeyRecord;
 
 typedef struct {
   const SignalKyberPublicKey *raw;

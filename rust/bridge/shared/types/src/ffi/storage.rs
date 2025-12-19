@@ -6,9 +6,12 @@
 use std::ffi::{c_int, c_uint, c_void};
 
 use async_trait::async_trait;
+use libsignal_bridge_macros::bridge_callbacks;
 use uuid::Uuid;
 
 use super::*;
+use crate::ffi;
+use crate::support::{ResultLike, WithContext};
 
 type GetIdentityKeyPair =
     extern "C" fn(store_ctx: *mut c_void, keyp: *mut MutPointer<PrivateKey>) -> c_int;
@@ -263,53 +266,45 @@ impl SignedPreKeyStore for &FfiSignedPreKeyStoreStruct {
     }
 }
 
-type LoadKyberPreKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    recordp: *mut MutPointer<KyberPreKeyRecord>,
-    id: u32,
-) -> c_int;
-type StoreKyberPreKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    id: u32,
-    record: ConstPointer<KyberPreKeyRecord>,
-) -> c_int;
-type MarkKyberPreKeyUsed = extern "C" fn(
-    store_ctx: *mut c_void,
-    id: u32,
-    signed_prekey_id: u32,
-    base_key: ConstPointer<PublicKey>,
-) -> c_int;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct FfiKyberPreKeyStoreStruct {
-    ctx: *mut c_void,
-    load_kyber_pre_key: LoadKyberPreKey,
-    store_kyber_pre_key: StoreKyberPreKey,
-    mark_kyber_pre_key_used: MarkKyberPreKeyUsed,
+/// A bridge-friendly version of [`KyberPreKeyStore`].
+#[bridge_callbacks(jni = false, node = false)]
+pub trait BridgeKyberPreKeyStore {
+    fn load_kyber_pre_key(&self, id: u32)
+    -> Result<Option<KyberPreKeyRecord>, SignalProtocolError>;
+    fn store_kyber_pre_key(
+        &self,
+        id: u32,
+        record: KyberPreKeyRecord,
+    ) -> Result<(), SignalProtocolError>;
+    fn mark_kyber_pre_key_used(
+        &self,
+        id: u32,
+        ec_prekey_id: u32,
+        base_key: PublicKey,
+    ) -> Result<(), SignalProtocolError>;
 }
 
+/// A wrapper struct so we can implement e.g. [`KyberPreKeyStore`] for all
+/// [`BridgeKyberPreKeyStore`]s.
+///
+/// Trying to do so directly would violate the [orphan rule][], because rustc doesn't know
+/// `BridgeKyberPreKeyStore` is only implemented by a closed set of types defined in this crate.
+///
+/// [orphan rule]: https://doc.rust-lang.org/book/ch20-02-advanced-traits.html#implementing-external-traits-with-the-newtype-pattern
+pub struct BridgedStore<T>(pub T);
+
+// TODO: This alias is because of the ffi_arg_type macro expecting all bridging structs to use a
+// particular naming scheme; eventually we should be able to remove it.
+pub type FfiKyberPreKeyStoreStruct = FfiBridgeKyberPreKeyStoreStruct;
+
 #[async_trait(?Send)]
-impl KyberPreKeyStore for &FfiKyberPreKeyStoreStruct {
+impl<T: BridgeKyberPreKeyStore> KyberPreKeyStore for BridgedStore<T> {
     async fn get_kyber_pre_key(
         &self,
         id: KyberPreKeyId,
     ) -> Result<KyberPreKeyRecord, SignalProtocolError> {
-        let mut record = MutPointer::null();
-        let result = (self.load_kyber_pre_key)(self.ctx, &mut record, id.into());
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "load_kyber_pre_key",
-        ))?;
-
-        let record = record.into_inner();
-        if record.is_null() {
-            return Err(SignalProtocolError::InvalidKyberPreKeyId);
-        }
-
-        let record = unsafe { Box::from_raw(record) };
-
-        Ok(*record)
+        BridgeKyberPreKeyStore::load_kyber_pre_key(&self.0, id.into())?
+            .ok_or(SignalProtocolError::InvalidKyberPreKeyId)
     }
 
     async fn save_kyber_pre_key(
@@ -317,11 +312,7 @@ impl KyberPreKeyStore for &FfiKyberPreKeyStoreStruct {
         id: KyberPreKeyId,
         record: &KyberPreKeyRecord,
     ) -> Result<(), SignalProtocolError> {
-        let result = (self.store_kyber_pre_key)(self.ctx, id.into(), record.into());
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "store_kyber_pre_key",
-        ))
+        BridgeKyberPreKeyStore::store_kyber_pre_key(&self.0, id.into(), record.clone())
     }
 
     async fn mark_kyber_pre_key_used(
@@ -330,16 +321,12 @@ impl KyberPreKeyStore for &FfiKyberPreKeyStoreStruct {
         ec_prekey_id: SignedPreKeyId,
         base_key: &PublicKey,
     ) -> Result<(), SignalProtocolError> {
-        let result = (self.mark_kyber_pre_key_used)(
-            self.ctx,
+        BridgeKyberPreKeyStore::mark_kyber_pre_key_used(
+            &self.0,
             id.into(),
             ec_prekey_id.into(),
-            base_key.into(),
-        );
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "mark_kyber_pre_key_used",
-        ))
+            *base_key,
+        )
     }
 }
 

@@ -271,8 +271,10 @@ fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback
 
     let sig = &item.sig;
     let req_name = &item.sig.ident;
+    let result_info = ResultInfo::from(&sig.output);
+    let result_ty = result_type(&sig.output);
 
-    // type FfiMyTraitOperation = extern "C" fn(ctx: *mut c_void, foo: ffi_result_type!(u32))
+    // type FfiMyTraitOperation = extern "C" fn(ctx: *mut c_void, foo: ffi_result_type!(u32)) -> c_int
     let callback_ty_name = format_ident!(
         "Ffi{}{}",
         trait_name,
@@ -280,7 +282,10 @@ fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback
         span = req_name.span()
     );
     let callback_args = item.sig.inputs.iter().filter_map(|arg| match arg {
-        FnArg::Receiver(_) => None,
+        FnArg::Receiver(_) => match result_info.kind {
+            ResultKind::Regular => Some(quote!(out: *mut ffi_arg_type!(#result_ty))),
+            ResultKind::Void => None,
+        },
         FnArg::Typed(arg) => {
             let Pat::Ident(arg_name) = &*arg.pat else {
                 // We'll error about this elsewhere.
@@ -309,8 +314,12 @@ fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback
     //       (self.operation)(self.ctx, ffi::ResultTypeInfo::convert_into(foo).expect("can convert"))
     //   )
     // }
+    let out_ptr_arg = match result_info.kind {
+        ResultKind::Regular => quote!(, __result.as_mut_ptr()), // note the LEADING comma
+        ResultKind::Void => quote!(),
+    };
     let arg_conversions = item.sig.inputs.iter().map(|arg| match arg {
-        FnArg::Receiver(_) => quote!(self.ctx),
+        FnArg::Receiver(_) => quote!(self.ctx #out_ptr_arg),
         FnArg::Typed(arg) => {
             let Pat::Ident(arg_name) = &*arg.pat else {
                 return Error::new(arg.pat.span(), "only simple argument syntax is supported")
@@ -324,14 +333,37 @@ fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback
             }
         }
     });
-    let implementation = quote! {
-        // #sig carries everything from `fn` to the return type and possible where-clause.
-        // All we provide is the body.
-        #sig {
-            ffi::CallbackError::log_on_error(
-                stringify!(#req_name),
-                (self.#field_name)(#(#arg_conversions,)*)
-            )
+    let implementation = if result_info.failable {
+        quote! {
+            // #sig carries everything from `fn` to the return type and possible where-clause.
+            // All we provide is the body.
+            #sig {
+                let mut __result = std::mem::MaybeUninit::zeroed();
+                ffi::CallbackError::check((self.#field_name)(#(#arg_conversions,)*))
+                    .map_err(|e| WithContext {
+                        operation: stringify!(#req_name),
+                        inner: e
+                    })?;
+                <<#result_ty as ResultLike>::Success as ffi::CallbackResultTypeInfo>::convert_from_callback(
+                    // SAFETY: if the C function returns 0 (success), they had better initialize this.
+                    // (Exception: a void function has no out-parameter, but `()` is trivially initialized.)
+                    unsafe { __result.assume_init() }
+                ).map_err(|e| WithContext {
+                    operation: stringify!(#req_name),
+                    inner: e
+                }.into())
+            }
+        }
+    } else {
+        quote! {
+            #sig {
+                // Not implemented: callbacks that *do* have a return value but *don't* have a place for errors.
+                // We can handle those some if we need them.
+                ffi::CallbackError::log_on_error(
+                    stringify!(#req_name),
+                    (self.#field_name)(#(#arg_conversions,)*)
+                )
+            }
         }
     };
 

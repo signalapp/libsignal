@@ -238,14 +238,13 @@ internal func withKyberPreKeyStore<Result>(
     func ffiShimStoreKyberPreKey(
         storeCtx: UnsafeMutableRawPointer?,
         id: UInt32,
-        record: SignalConstPointerKyberPreKeyRecord
+        record: SignalMutPointerKyberPreKeyRecord
     ) -> Int32 {
         let storeContext = storeCtx!.assumingMemoryBound(
             to: ErrorHandlingContext<(KyberPreKeyStore, StoreContext)>.self
         )
         return storeContext.pointee.catchCallbackErrors { store, context in
-            var record = KyberPreKeyRecord(borrowing: record)
-            defer { cloneOrForgetAsNeeded(&record) }
+            let record = KyberPreKeyRecord(owned: NonNull(record)!)
             try store.storeKyberPreKey(record, id: id, context: context)
             return 0
         }
@@ -270,14 +269,13 @@ internal func withKyberPreKeyStore<Result>(
         storeCtx: UnsafeMutableRawPointer?,
         id: UInt32,
         signedPreKeyId: UInt32,
-        baseKey: SignalConstPointerPublicKey,
+        baseKey: SignalMutPointerPublicKey,
     ) -> Int32 {
         let storeContext = storeCtx!.assumingMemoryBound(
             to: ErrorHandlingContext<(KyberPreKeyStore, StoreContext)>.self
         )
         return storeContext.pointee.catchCallbackErrors { store, context in
-            var baseKey = PublicKey(borrowing: baseKey)
-            defer { cloneOrForgetAsNeeded(&baseKey) }
+            let baseKey = PublicKey(owned: NonNull(baseKey)!)
             try store.markKyberPreKeyUsed(id: id, signedPreKeyId: signedPreKeyId, baseKey: baseKey, context: context)
             return 0
         }
@@ -288,7 +286,8 @@ internal func withKyberPreKeyStore<Result>(
             ctx: $0,
             load_kyber_pre_key: ffiShimLoadKyberPreKey,
             store_kyber_pre_key: ffiShimStoreKyberPreKey,
-            mark_kyber_pre_key_used: ffiShimMarkKyberPreKeyUsed
+            mark_kyber_pre_key_used: ffiShimMarkKyberPreKeyUsed,
+            destroy: { _ in }
         )
         return try withUnsafePointer(to: &ffiStore) {
             try body(SignalConstPointerFfiKyberPreKeyStoreStruct(raw: $0))
