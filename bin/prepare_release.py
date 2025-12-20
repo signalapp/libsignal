@@ -45,6 +45,18 @@ class ReleaseFailedException(Exception):
 #  execute the rest while performing a rollback.
 on_failure_rollback_commands: list[list[str]] = []
 
+# The following ids can be obtained by running:
+#   gh workflow list
+# or, more programmatically friendly,
+#   gh workflow list --json id,name
+BUILD_AND_TEST_WORKFLOW_ID = 6587503
+SLOW_TEST_WORKFLOW_ID = 30989402
+RELEASE_WORKFLOW_IDS = [
+    10143338,  # Node
+    15104239,  # Android
+    46287777,  # iOS
+]
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -101,10 +113,25 @@ def main() -> None:
     sys.exit(exit_code)
 
 
+def get_workflow_name_mapping() -> dict[int, str]:
+    """Gets a mapping of workflow ids to their names from github."""
+    list_workflows_cmd = [
+        'gh', 'workflow', 'list',
+        '--json', 'name,id'
+    ]
+
+    raw_json = run_command(list_workflows_cmd)
+    data = json.loads(raw_json)
+    return {d['id']: d['name'] for d in data}
+
+
 def prepare_release(*, skip_main_check: bool = False, skip_tests_pass_check: bool = False, skip_worktree_clean_check: bool = False, dry_run: bool = False) -> None:
     setup_and_check_env(skip_main_check, skip_worktree_clean_check)
     REPO_NAME = get_repo_name()
     RELEASE_NOTES_FILE_PATH = Path('RELEASE_NOTES.md')
+
+    # Obtain the workflow ids once
+    workflows = get_workflow_name_mapping()
 
     # Get the commit sha of the commit we intend to mark as the release.
     head_sha = run_command(['git', 'rev-parse', 'HEAD']).strip()
@@ -117,8 +144,8 @@ def prepare_release(*, skip_main_check: bool = False, skip_tests_pass_check: boo
     # If needed, you can run the Slow Tests manually under the repository Actions tab on GitHub.
     # You should run the Slow Tests before running this script.
     if not skip_tests_pass_check:
-        build_and_test_run_id = check_workflow_success(REPO_NAME, 'Build and Test', head_sha)
-        slow_test_run_id = check_workflow_success(REPO_NAME, 'Slow Tests', head_sha)
+        build_and_test_run_id = check_workflow_success(REPO_NAME, workflows[BUILD_AND_TEST_WORKFLOW_ID], head_sha)
+        slow_test_run_id = check_workflow_success(REPO_NAME, workflows[SLOW_TEST_WORKFLOW_ID], head_sha)
 
         print('Found GitHub Actions runs! They look good, but please double check manually as well.')
         print(f'Build and Test: https://github.com/signalapp/{REPO_NAME}/actions/runs/{build_and_test_run_id}')
@@ -221,9 +248,14 @@ def prepare_release(*, skip_main_check: bool = False, skip_tests_pass_check: boo
     print('Next steps:')
     print('1) Verify the GitHub Actions runs above passed.')
     print('2) If they passed, push to the proper remote(s), e.g.:')
-    print(f'     git push {upstream} HEAD~1:main {head_release_version} && git push {origin} HEAD:main {head_release_version}')
+    print(f'\tgit push {upstream} HEAD~1:main {head_release_version} && git push {origin} HEAD:main {head_release_version}')
     print('3) To review the reset commit, you can run:')
-    print('     git show')
+    print('\tgit show')
+    print('4) To run post-release actions, you can run:')
+    for id in RELEASE_WORKFLOW_IDS:
+        name = workflows[id]
+        raw_field = ' --raw-field dry_run=true' if dry_run else ''
+        print(f'\tgh workflow run "{name}" --repo signalapp/{REPO_NAME} --ref {head_release_version}{raw_field}')
 
 
 def setup_and_check_env(skip_main_check: bool = False, skip_worktree_clean_check: bool = False) -> None:
