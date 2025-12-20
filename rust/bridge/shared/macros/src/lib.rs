@@ -423,12 +423,6 @@ pub fn bridge_callbacks(attr: TokenStream, item: TokenStream) -> TokenStream {
         Err(error) => return error.to_compile_error().into(),
     };
 
-    let ffi_feature = ffi_name.as_ref().map(|_| quote!(feature = "ffi"));
-    let jni_feature = jni_name.as_ref().map(|_| quote!(feature = "jni"));
-    let node_feature = node_name.as_ref().map(|_| quote!(feature = "node"));
-    let maybe_features = [ffi_feature, jni_feature, node_feature];
-    let feature_list = maybe_features.iter().flatten();
-
     // We could early-exit on the Errors returned from generating each wrapper,
     // but since they could be for unrelated issues, it's better to show all of them to the user.
     let ffi_items = ffi_name
@@ -440,7 +434,8 @@ pub fn bridge_callbacks(attr: TokenStream, item: TokenStream) -> TokenStream {
         .map(|_name| node::bridge_trait(&trait_item).unwrap_or_else(Error::into_compile_error));
 
     quote! {
-        #[cfg(any(#(#feature_list,)*))]
+        // Unlike bridge_fn, we still declare the trait even when the bridging synthesis is
+        // disabled. This allows for manual implementations.
         #trait_item
 
         #ffi_items
