@@ -10,8 +10,8 @@ use syn::spanned::Spanned as _;
 use syn::*;
 use syn_mid::Signature;
 
-use crate::BridgingKind;
 use crate::util::{extract_arg_names_and_types, result_type};
+use crate::{BridgingKind, ResultInfo};
 
 pub(crate) fn bridge_fn(
     name: &str,
@@ -246,6 +246,8 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
     let sig = &item.sig;
     let req_name = &item.sig.ident;
     let java_operation_name = req_name.to_string().to_lower_camel_case();
+    let result_info = ResultInfo::from(&sig.output);
+    let result_ty = result_type(&sig.output);
 
     // fn operation(foo: u32) {
     //     self.0.attach_and_log_on_error("operation", move |env, object| {
@@ -302,23 +304,47 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
             Some(quote!(jni::jni_signature_for::<#ty>()))
         }
     });
-    let implementation = quote! {
-        // #sig carries everything from `fn` to the return type and possible where-clause.
-        // All we provide is the body.
-        #sig {
-            self.0.attach_and_log_on_error(#java_operation_name, move |env, object| {
-                #(#arg_conversions;)*
-                jni::call_method_checked(
-                    env,
-                    object,
-                    #java_operation_name,
-                    jni::JniArgs {
-                        sig: const_str::concat!("(", #(#arg_signatures,)* ")V"),
-                        args: [#(jni::JValue::from(&#converted_args)),*],
-                        _return: std::marker::PhantomData::<fn()>,
-                    }
-                )
-            });
+    let implementation = if result_info.failable {
+        quote! {
+            // #sig carries everything from `fn` to the return type and possible where-clause.
+            // All we provide is the body.
+            #sig {
+                self.0.attach(#java_operation_name, move |env, __object| {
+                    #(#arg_conversions;)*
+                    let __result = jni::call_method_checked(
+                        env,
+                        __object,
+                        #java_operation_name,
+                        jni::JniArgs {
+                            sig: const_str::concat!("(", #(#arg_signatures,)* ")", jni::jni_signature_for_result::<#result_ty>()),
+                            args: [#(jni::JValue::from(&#converted_args)),*],
+                            // Some result types have 'local in them, so we have to provide that lifetime here.
+                            _return: std::marker::PhantomData::<for<'local> fn(&'local ()) -> jni_arg_type!(#result_ty)>,
+                        }
+                    )?;
+                    jni::CallbackResultTypeInfo::convert_from_callback(env, __result)
+                })
+            }
+        }
+    } else {
+        quote! {
+            #sig {
+                // Not implemented: callbacks that *do* have a return value but *don't* have a place for errors.
+                // We can handle those some if we need them.
+                self.0.attach_and_log_on_error(#java_operation_name, move |env, __object| {
+                    #(#arg_conversions;)*
+                    jni::call_method_checked(
+                        env,
+                        __object,
+                        #java_operation_name,
+                        jni::JniArgs {
+                            sig: const_str::concat!("(", #(#arg_signatures,)* ")V"),
+                            args: [#(jni::JValue::from(&#converted_args)),*],
+                            _return: std::marker::PhantomData::<fn(&())>,
+                        }
+                    )
+                });
+            }
         }
     };
 

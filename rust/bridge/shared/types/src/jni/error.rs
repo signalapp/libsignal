@@ -143,6 +143,24 @@ impl fmt::Display for BridgeLayerError {
     }
 }
 
+impl From<WithContext<BridgeLayerError>> for SignalProtocolError {
+    fn from(value: WithContext<BridgeLayerError>) -> Self {
+        let WithContext {
+            operation: _,
+            inner,
+        } = value;
+        match inner {
+            BridgeLayerError::BadJniParameter(m) => {
+                SignalProtocolError::InvalidArgument(m.to_string())
+            }
+            BridgeLayerError::CallbackException(callback, exception) => {
+                SignalProtocolError::ApplicationCallbackError(callback, Box::new(exception))
+            }
+            err => SignalProtocolError::FfiBindingError(err.to_string()),
+        }
+    }
+}
+
 #[cfg(feature = "signal-media")]
 impl From<signal_media::sanitize::mp4::Error> for SignalJniError {
     fn from(e: signal_media::sanitize::mp4::Error) -> Self {

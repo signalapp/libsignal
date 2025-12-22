@@ -34,7 +34,7 @@ use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 use crate::net::cdsi::CdsiError;
-use crate::support::IllegalArgumentError;
+use crate::support::{IllegalArgumentError, ResultLike, WithContext};
 
 #[macro_use]
 mod args;
@@ -1474,11 +1474,14 @@ impl GlobalAndVM {
         })
     }
 
-    pub fn attach_and_log_on_error(
+    pub fn attach<T, E>(
         &self,
         name: &'static str,
-        operation: impl FnOnce(&mut JNIEnv<'_>, &JObject<'_>) -> Result<(), BridgeLayerError>,
-    ) {
+        operation: impl FnOnce(&mut JNIEnv<'_>, &JObject<'_>) -> Result<T, BridgeLayerError>,
+    ) -> Result<T, E>
+    where
+        E: From<WithContext<BridgeLayerError>>,
+    {
         let mut env = self.vm.attach_current_thread().expect("can attach thread");
         env.with_local_frame(REASONABLE_JNI_BACKGROUND_THREAD_FRAME_SIZE, |env| {
             // with_local_frame wants an error type convertible from jni::error::Error, but we use
@@ -1489,7 +1492,24 @@ impl GlobalAndVM {
         })
         .check_exceptions(&mut env, name)
         .unwrap_or_else(Err)
-        .unwrap_or_else(|e| log::error!("failed to report {name}: {e}"))
+        .map_err(|e| {
+            WithContext {
+                operation: name,
+                inner: e,
+            }
+            .into()
+        })
+    }
+
+    pub fn attach_and_log_on_error(
+        &self,
+        name: &'static str,
+        operation: impl FnOnce(&mut JNIEnv<'_>, &JObject<'_>) -> Result<(), BridgeLayerError>,
+    ) {
+        self.attach(name, operation)
+            .unwrap_or_else(|e: WithContext<BridgeLayerError>| {
+                log::error!("failed to report {name}: {}", e.inner)
+            })
     }
 }
 
@@ -1554,6 +1574,18 @@ fn box_primitive_if_needed<'a>(
 #[inline]
 pub const fn jni_signature_for<T: ResultTypeInfo<'static>>() -> &'static str {
     let result = T::JNI_SIGNATURE;
+    assert!(!result.is_empty(), "missing JNI_SIGNATURE");
+    result
+}
+
+/// Like [`jni_signature_for`], but expecting its type to be a [`Result`] and the actual signature
+/// to come from the success case.
+#[inline]
+pub const fn jni_signature_for_result<T: ResultLike>() -> &'static str
+where
+    T::Success: CallbackResultTypeInfo<'static>,
+{
+    let result = T::Success::JNI_RESULT_SIGNATURE;
     assert!(!result.is_empty(), "missing JNI_SIGNATURE");
     result
 }

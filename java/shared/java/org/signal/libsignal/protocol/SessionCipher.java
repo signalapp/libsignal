@@ -15,6 +15,7 @@ import org.signal.libsignal.protocol.message.PreKeySignalMessage;
 import org.signal.libsignal.protocol.message.SignalMessage;
 import org.signal.libsignal.protocol.state.IdentityKeyStore;
 import org.signal.libsignal.protocol.state.KyberPreKeyStore;
+import org.signal.libsignal.protocol.state.PreKeyRecord;
 import org.signal.libsignal.protocol.state.PreKeyStore;
 import org.signal.libsignal.protocol.state.SessionRecord;
 import org.signal.libsignal.protocol.state.SessionStore;
@@ -142,7 +143,19 @@ public class SessionCipher {
                   remoteAddressGuard.nativeHandle(),
                   sessionStore,
                   identityKeyStore,
-                  preKeyStore,
+                  new org.signal.libsignal.protocol.state.internal.PreKeyStore() {
+                    public NativeHandleGuard.Owner loadPreKey(int id) throws Exception {
+                      return preKeyStore.loadPreKey(id);
+                    }
+
+                    public void storePreKey(int id, long rawPreKey) throws Exception {
+                      preKeyStore.storePreKey(id, new PreKeyRecord(rawPreKey));
+                    }
+
+                    public void removePreKey(int id) throws Exception {
+                      preKeyStore.removePreKey(id);
+                    }
+                  },
                   signedPreKeyStore,
                   kyberPreKeyStore));
     }

@@ -193,15 +193,17 @@ macro_rules! jni_return_type {
 /// Represents a return type, used by [`JniArgs`].
 ///
 /// This is an implementation detail of [`jni_args`] and [`JniArgs`]. Using a function type makes
-/// `JniArgs` covariant, which allows the compiler to be less strict about the lifetime marker.
-pub type PhantomReturnType<R> = PhantomData<fn() -> R>;
+/// `JniArgs` covariant, which allows the compiler to be less strict about the lifetime of the
+/// result. Having a lifetime *input* allows the result to depend on the JNI environment, which is
+/// important for callbacks.
+pub type PhantomReturnType<'local, R> = PhantomData<fn(&'local ()) -> R>;
 
 /// A JNI argument list, type-checked with its signature.
 #[derive(Debug, Clone, Copy)]
 pub struct JniArgs<'local, 'obj_ref, R, const LEN: usize> {
     pub sig: &'static str,
     pub args: [JValue<'local, 'obj_ref>; LEN],
-    pub _return: PhantomReturnType<R>,
+    pub _return: PhantomReturnType<'local, R>,
 }
 
 impl<'local, 'obj_ref, 'output, const LEN: usize> JniArgs<'local, 'obj_ref, JObject<'output>, LEN> {
