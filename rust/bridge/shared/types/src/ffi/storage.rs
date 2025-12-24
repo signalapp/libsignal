@@ -9,16 +9,8 @@ use uuid::Uuid;
 
 use super::*;
 use crate::ffi;
-use crate::support::{ResultLike, WithContext};
-
-/// A wrapper struct so we can implement e.g. [`KyberPreKeyStore`] for all
-/// [`BridgeKyberPreKeyStore`]s.
-///
-/// Trying to do so directly would violate the [orphan rule][], because rustc doesn't know
-/// `BridgeKyberPreKeyStore` is only implemented by a closed set of types defined in this crate.
-///
-/// [orphan rule]: https://doc.rust-lang.org/book/ch20-02-advanced-traits.html#implementing-external-traits-with-the-newtype-pattern
-pub struct BridgedStore<T>(pub T);
+use crate::protocol::storage::FfiBridgePreKeyStoreStruct;
+use crate::support::{BridgedCallbacks, ResultLike, WithContext};
 
 /// A bridge-friendly version of [`IdentityKeyStore`].
 #[bridge_callbacks(jni = false, node = false)]
@@ -57,7 +49,7 @@ pub enum FfiDirection {
 }
 
 #[async_trait(?Send)]
-impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedStore<T> {
+impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedCallbacks<T> {
     async fn get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalProtocolError> {
         let priv_key = self.0.get_local_identity_private_key()?;
         let pub_key = priv_key.public_key()?;
@@ -108,38 +100,9 @@ impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedStore<T> {
     }
 }
 
-/// A bridge-friendly version of [`PreKeyStore`].
-#[bridge_callbacks(jni = false, node = false)]
-pub trait BridgePreKeyStore {
-    fn load_pre_key(&self, id: u32) -> Result<Option<PreKeyRecord>, SignalProtocolError>;
-    fn store_pre_key(&self, id: u32, record: PreKeyRecord) -> Result<(), SignalProtocolError>;
-    fn remove_pre_key(&self, id: u32) -> Result<(), SignalProtocolError>;
-}
-
 // TODO: This alias is because of the ffi_arg_type macro expecting all bridging structs to use a
 // particular naming scheme; eventually we should be able to remove it.
 pub type FfiPreKeyStoreStruct = FfiBridgePreKeyStoreStruct;
-
-#[async_trait(?Send)]
-impl<T: BridgePreKeyStore> PreKeyStore for BridgedStore<T> {
-    async fn get_pre_key(&self, prekey_id: PreKeyId) -> Result<PreKeyRecord, SignalProtocolError> {
-        self.0
-            .load_pre_key(prekey_id.into())?
-            .ok_or(SignalProtocolError::InvalidPreKeyId)
-    }
-
-    async fn save_pre_key(
-        &mut self,
-        prekey_id: PreKeyId,
-        record: &PreKeyRecord,
-    ) -> Result<(), SignalProtocolError> {
-        self.0.store_pre_key(prekey_id.into(), record.clone())
-    }
-
-    async fn remove_pre_key(&mut self, prekey_id: PreKeyId) -> Result<(), SignalProtocolError> {
-        self.0.remove_pre_key(prekey_id.into())
-    }
-}
 
 /// A bridge-friendly version of [`SignedPreKeyStore`].
 #[bridge_callbacks(jni = false, node = false)]
@@ -160,7 +123,7 @@ pub trait BridgeSignedPreKeyStore {
 pub type FfiSignedPreKeyStoreStruct = FfiBridgeSignedPreKeyStoreStruct;
 
 #[async_trait(?Send)]
-impl<T: BridgeSignedPreKeyStore> SignedPreKeyStore for BridgedStore<T> {
+impl<T: BridgeSignedPreKeyStore> SignedPreKeyStore for BridgedCallbacks<T> {
     async fn get_signed_pre_key(
         &self,
         prekey_id: SignedPreKeyId,
@@ -203,7 +166,7 @@ pub trait BridgeKyberPreKeyStore {
 pub type FfiKyberPreKeyStoreStruct = FfiBridgeKyberPreKeyStoreStruct;
 
 #[async_trait(?Send)]
-impl<T: BridgeKyberPreKeyStore> KyberPreKeyStore for BridgedStore<T> {
+impl<T: BridgeKyberPreKeyStore> KyberPreKeyStore for BridgedCallbacks<T> {
     async fn get_kyber_pre_key(
         &self,
         id: KyberPreKeyId,
@@ -254,7 +217,7 @@ pub trait BridgeSessionStore {
 pub type FfiSessionStoreStruct = FfiBridgeSessionStoreStruct;
 
 #[async_trait(?Send)]
-impl<T: BridgeSessionStore> SessionStore for BridgedStore<T> {
+impl<T: BridgeSessionStore> SessionStore for BridgedCallbacks<T> {
     async fn load_session(
         &self,
         address: &ProtocolAddress,
@@ -292,7 +255,7 @@ pub trait BridgeSenderKeyStore {
 pub type FfiSenderKeyStoreStruct = FfiBridgeSenderKeyStoreStruct;
 
 #[async_trait(?Send)]
-impl<T: BridgeSenderKeyStore> SenderKeyStore for BridgedStore<T> {
+impl<T: BridgeSenderKeyStore> SenderKeyStore for BridgedCallbacks<T> {
     async fn store_sender_key(
         &mut self,
         sender: &ProtocolAddress,

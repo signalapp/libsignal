@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+pub mod storage;
+
 // Will be unused when building for Node only.
 #[allow(unused_imports)]
 use futures_util::FutureExt;

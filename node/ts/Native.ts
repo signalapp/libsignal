@@ -1851,11 +1851,6 @@ export { registerErrors,
 
 /* eslint-disable comma-dangle */
 export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
-export /*trait*/ type BridgePreKeyStore = {
-  loadPreKey: (id: number) => Promise<PreKeyRecord | null>;
-  storePreKey: (id: number, record: PreKeyRecord) => Promise<void>;
-  removePreKey: (id: number) => Promise<void>;
-};
 export interface BridgedStringMap { readonly __type: unique symbol; }
 export interface Aes256GcmSiv { readonly __type: unique symbol; }
 export interface HsmEnclaveClient { readonly __type: unique symbol; }
@@ -1889,6 +1884,11 @@ export const NetRemoteConfigKeys = ['chatRequestConnectionCheckTimeoutMillis', '
 export interface TokioAsyncContext { readonly __type: unique symbol; }
 export interface ConnectionManager { readonly __type: unique symbol; }
 export interface ConnectionProxyConfig { readonly __type: unique symbol; }
+export /*trait*/ type BridgePreKeyStore = {
+  loadPreKey: (id: number) => Promise<PreKeyRecord | null>;
+  storePreKey: (id: number, record: PreKeyRecord) => Promise<void>;
+  removePreKey: (id: number) => Promise<void>;
+};
 export interface CiphertextMessage { readonly __type: unique symbol; }
 export interface DecryptionErrorMessage { readonly __type: unique symbol; }
 export interface Fingerprint { readonly __type: unique symbol; }

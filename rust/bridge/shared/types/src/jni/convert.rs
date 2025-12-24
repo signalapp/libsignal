@@ -24,7 +24,10 @@ use crate::net::chat::{
     ChatListener, JniChatListener, JniProvisioningListener, ProvisioningListener,
 };
 use crate::net::registration::{ConnectChatBridge, RegistrationPushToken};
-use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized, extend_lifetime};
+use crate::protocol::storage::JniBridgePreKeyStore;
+use crate::support::{
+    Array, AsType, BridgedCallbacks, FixedLengthBincodeSerializable, Serialized, extend_lifetime,
+};
 
 /// Converts arguments from their JNI form to their Rust form.
 ///
@@ -663,12 +666,12 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     for &'storage mut dyn PreKeyStore
 {
     type ArgType = JObject<'context>;
-    type StoredType = BridgedStore<JniBridgePreKeyStore>;
+    type StoredType = BridgedCallbacks<JniBridgePreKeyStore>;
     fn borrow(
         env: &mut JNIEnv<'context>,
         store: &'param Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
-        Ok(BridgedStore(JniBridgePreKeyStore::new(env, store)?))
+        Ok(BridgedCallbacks(JniBridgePreKeyStore::new(env, store)?))
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored

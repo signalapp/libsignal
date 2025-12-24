@@ -380,10 +380,11 @@ fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback
             Some(arg_name)
         }
     });
+    let await_if_needed = sig.asyncness.map(|_| quote!(.await));
     let forwarding_impl = quote! {
         #[inline]
         #sig {
-            self.0.#req_name(#(#arg_names),*)
+            self.0.#req_name(#(#arg_names),*) #await_if_needed
         }
     };
 

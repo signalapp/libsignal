@@ -7,59 +7,15 @@ use std::cell::RefCell;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use libsignal_bridge_macros::bridge_callbacks;
 use signal_neon_futures::*;
 use uuid::Uuid;
 
 use super::*;
-use crate::node;
+use crate::support::BridgedCallbacks;
 
-/// A wrapper struct so we can implement e.g. [`PreKeyStore`] for all `BridgePreKeyStore`s.
-///
-/// Trying to do so directly would violate the [orphan rule][], because rustc doesn't know
-/// `BridgePreKeyStore` is only implemented by a closed set of types defined in this crate.
-///
-/// [orphan rule]: https://doc.rust-lang.org/book/ch20-02-advanced-traits.html#implementing-external-traits-with-the-newtype-pattern
-// TODO: Merge with the one in ffi/storage.
-pub struct BridgedStore<T>(pub T);
-
-impl<T: Finalize> Finalize for BridgedStore<T> {
+impl<T: Finalize> Finalize for BridgedCallbacks<T> {
     fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
         self.0.finalize(cx);
-    }
-}
-
-/// A bridge-friendly version of [`PreKeyStore`].
-// TODO: merge with the one in ffi/storage.
-#[bridge_callbacks(ffi = false, jni = false)]
-pub(crate) trait BridgePreKeyStore {
-    async fn load_pre_key(&self, id: u32) -> Result<Option<PreKeyRecord>, SignalProtocolError>;
-    async fn store_pre_key(&self, id: u32, record: PreKeyRecord)
-    -> Result<(), SignalProtocolError>;
-    async fn remove_pre_key(&self, id: u32) -> Result<(), SignalProtocolError>;
-}
-
-#[async_trait(?Send)]
-impl<T: BridgePreKeyStore> PreKeyStore for BridgedStore<T> {
-    async fn get_pre_key(&self, pre_key_id: PreKeyId) -> Result<PreKeyRecord, SignalProtocolError> {
-        self.0
-            .load_pre_key(pre_key_id.into())
-            .await?
-            .ok_or(SignalProtocolError::InvalidPreKeyId)
-    }
-
-    async fn save_pre_key(
-        &mut self,
-        pre_key_id: PreKeyId,
-        record: &PreKeyRecord,
-    ) -> Result<(), SignalProtocolError> {
-        self.0
-            .store_pre_key(pre_key_id.into(), record.clone())
-            .await
-    }
-
-    async fn remove_pre_key(&mut self, pre_key_id: PreKeyId) -> Result<(), SignalProtocolError> {
-        self.0.remove_pre_key(pre_key_id.into()).await
     }
 }
 

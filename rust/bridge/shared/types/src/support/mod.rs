@@ -356,6 +356,17 @@ impl<F: Future<Output: ResultReporter>> AsyncRuntime<F> for NoOpAsyncRuntime {
     }
 }
 
+/// A wrapper struct so we can implement e.g. [`PreKeyStore`](libsignal_protocol::PreKeyStore) for
+/// all `BridgePreKeyStore`s (the corresponding
+/// [`bridge_callbacks`](libsignal_bridge_macros::bridge_callbacks) trait).
+///
+/// Trying to do so directly would violate the [orphan rule][], because rustc doesn't know
+/// `BridgePreKeyStore` is only implemented by a closed set of types defined in this crate.
+///
+/// [orphan rule]:
+///     https://doc.rust-lang.org/book/ch20-02-advanced-traits.html#implementing-external-traits-with-the-newtype-pattern
+pub struct BridgedCallbacks<T>(pub T);
+
 /// Attaches context to a value, usually an error.
 ///
 /// Intended to be used with `From` implementations, so standard Rust error handling idioms can work

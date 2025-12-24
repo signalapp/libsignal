@@ -24,7 +24,10 @@ use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::{
     ChatListener, NodeChatListener, NodeProvisioningListener, ProvisioningListener,
 };
-use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized, extend_lifetime};
+use crate::protocol::storage::NodeBridgePreKeyStore;
+use crate::support::{
+    Array, AsType, BridgedCallbacks, FixedLengthBincodeSerializable, Serialized, extend_lifetime,
+};
 
 /// Converts arguments from their JavaScript form to their Rust form.
 ///
@@ -771,12 +774,12 @@ bridge_trait!(InputStream);
 
 impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn PreKeyStore {
     type ArgType = JsObject;
-    type StoredType = BridgedStore<NodeBridgePreKeyStore>;
+    type StoredType = BridgedCallbacks<NodeBridgePreKeyStore>;
     fn save_async_arg(
         cx: &mut FunctionContext,
         foreign: Handle<Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
-        Ok(BridgedStore(NodeBridgePreKeyStore::new(cx, foreign)?))
+        Ok(BridgedCallbacks(NodeBridgePreKeyStore::new(cx, foreign)?))
     }
     fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         stored

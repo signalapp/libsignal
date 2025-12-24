@@ -25,8 +25,10 @@ use crate::net::chat::{
 use crate::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushToken,
 };
+use crate::protocol::storage::FfiBridgePreKeyStoreStruct;
 use crate::support::{
-    AsType, FixedLengthBincodeSerializable, IllegalArgumentError, Serialized, extend_lifetime,
+    AsType, BridgedCallbacks, FixedLengthBincodeSerializable, IllegalArgumentError, Serialized,
+    extend_lifetime,
 };
 
 /// Converts arguments from their FFI form to their Rust form.
@@ -507,12 +509,12 @@ macro_rules! bridge_trait {
         paste! {
             impl<'a> ArgTypeInfo<'a> for &'a mut dyn $name {
                 type ArgType = crate::ffi::ConstPointer< [<FfiBridge $name Struct >] >;
-                type StoredType = BridgedStore<OwnedCallbackStruct< [<FfiBridge $name Struct >] >>;
+                type StoredType = BridgedCallbacks<OwnedCallbackStruct< [<FfiBridge $name Struct >] >>;
                 #[allow(clippy::not_unsafe_ptr_arg_deref)]
                 fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
                     match unsafe { foreign.into_inner().as_ref() } {
                         None => Err(NullPointerError.into()),
-                        Some(store) => Ok(BridgedStore(OwnedCallbackStruct(store.clone()))),
+                        Some(store) => Ok(BridgedCallbacks(OwnedCallbackStruct(store.clone()))),
                     }
                 }
                 fn load_from(stored: &'a mut Self::StoredType) -> Self {

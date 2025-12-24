@@ -8,9 +8,9 @@ use std::io;
 use async_trait::async_trait;
 use libsignal_bridge_macros::bridge_callbacks;
 
-use crate::ffi::{self, BridgedStore};
+use crate::ffi;
 use crate::io::{InputStream, InputStreamRead, SyncInputStream};
-use crate::support::{ResultLike, WithContext};
+use crate::support::{BridgedCallbacks, ResultLike, WithContext};
 
 #[bridge_callbacks(jni = false, node = false)]
 trait BridgeInputStream {
@@ -26,7 +26,7 @@ pub type FfiInputStreamStruct = FfiBridgeInputStreamStruct;
 pub type FfiSyncInputStreamStruct = FfiBridgeSyncInputStreamStruct;
 
 #[async_trait(?Send)]
-impl<T: BridgeInputStream> InputStream for BridgedStore<T> {
+impl<T: BridgeInputStream> InputStream for BridgedCallbacks<T> {
     fn read<'out, 'a: 'out>(&'a self, buf: &mut [u8]) -> io::Result<InputStreamRead<'out>> {
         let amount_read = self.0.read(buf)?;
         Ok(InputStreamRead::Ready { amount_read })
@@ -37,7 +37,7 @@ impl<T: BridgeInputStream> InputStream for BridgedStore<T> {
     }
 }
 
-impl<T: BridgeInputStream> SyncInputStream for BridgedStore<T> {
+impl<T: BridgeInputStream> SyncInputStream for BridgedCallbacks<T> {
     fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
     }
