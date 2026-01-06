@@ -257,7 +257,7 @@ def prepare_release(*, skip_main_check: bool = False, skip_tests_pass_check: boo
     for id in RELEASE_WORKFLOW_IDS:
         name = workflows[id]
         raw_field = ' --raw-field dry_run=true' if dry_run else ''
-        print(f'\tgh workflow run "{name}" --repo signalapp/{REPO_NAME} --ref {head_release_version}{raw_field}')
+        print(f'\tgh workflow run "{name}" --repo signalapp/libsignal --ref {head_release_version}{raw_field}')
 
 
 def setup_and_check_env(skip_main_check: bool = False, skip_worktree_clean_check: bool = False) -> None:
