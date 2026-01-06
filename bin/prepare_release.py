@@ -114,10 +114,11 @@ def main() -> None:
     sys.exit(exit_code)
 
 
-def get_workflow_name_mapping() -> dict[int, str]:
+def get_workflow_name_mapping(repo_name: str) -> dict[int, str]:
     """Gets a mapping of workflow ids to their names from github."""
     list_workflows_cmd = [
         'gh', 'workflow', 'list',
+        '--repo', f'signalapp/{repo_name}',
         '--json', 'name,id'
     ]
 
@@ -132,7 +133,7 @@ def prepare_release(*, skip_main_check: bool = False, skip_tests_pass_check: boo
     RELEASE_NOTES_FILE_PATH = Path('RELEASE_NOTES.md')
 
     # Obtain the workflow ids once
-    workflows = get_workflow_name_mapping()
+    workflows = get_workflow_name_mapping(REPO_NAME)
 
     # Get the commit sha of the commit we intend to mark as the release.
     head_sha = run_command(['git', 'rev-parse', 'HEAD']).strip()
