@@ -345,8 +345,6 @@ impl<R> UpdateMessage<R> {
                 | SimpleChatUpdate::BadDecrypt
                 | SimpleChatUpdate::UnsupportedProtocolMessage
                 | SimpleChatUpdate::ReportedSpam
-                | SimpleChatUpdate::Blocked
-                | SimpleChatUpdate::Unblocked
                 | SimpleChatUpdate::MessageRequestAccepted,
             )
             | UpdateMessage::ProfileChange { .. }
@@ -369,6 +367,11 @@ impl<R> UpdateMessage<R> {
                 } else {
                     Ok(())
                 }
+            }
+            UpdateMessage::Simple(SimpleChatUpdate::Blocked | SimpleChatUpdate::Unblocked) => {
+                // It is possible to block the Release Notes chat in addition to a contact or group.
+                // Self is allowed because of possible past thread merging; see above.
+                Ok(())
             }
             UpdateMessage::GroupChange { .. } => {
                 if !matches!(chat, ChatRecipientKind::Group) {
@@ -435,7 +438,7 @@ impl<R> UpdateMessage<R> {
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;
-    use test_case::test_case;
+    use test_case::{test_case, test_matrix};
 
     use super::*;
     use crate::backup::call::CallError;
@@ -591,5 +594,34 @@ mod test {
         .expect("Conversion should succeed for a valid SessionSwitchover update");
 
         assert_eq!(result, expected);
+    }
+
+    #[test_matrix(
+        [proto::simple_chat_update::Type::BLOCKED, proto::simple_chat_update::Type::UNBLOCKED],
+        [
+            ChatRecipientKind::Self_,
+            ChatRecipientKind::Group,
+            ChatRecipientKind::Contact { has_aci: true },
+            ChatRecipientKind::Contact { has_aci: false },
+            ChatRecipientKind::ReleaseNotes
+        ]
+    )]
+    fn updates_for_every_chat(
+        update_type: proto::simple_chat_update::Type,
+        chat_kind: ChatRecipientKind,
+    ) {
+        let um: UpdateMessage<_> = proto::ChatUpdateMessage {
+            update: Some(proto::chat_update_message::Update::SimpleUpdate(
+                proto::SimpleChatUpdate {
+                    type_: update_type.into(),
+                    special_fields: Default::default(),
+                },
+            )),
+            ..Default::default()
+        }
+        .try_into_with(&TestContext::default())
+        .expect("Conversion should succeed for a valid update");
+        um.validate_chat_recipient(&chat_kind)
+            .expect("should be valid");
     }
 }
