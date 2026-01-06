@@ -300,10 +300,17 @@ fuzz_target!(|data: (u64, &[u8])| {
                     info!("{}: shuffle incoming messages", me.name);
                     me.message_queue.shuffle(&mut csprng);
                 }
-                _ => {
-                    if them.message_queue.len() < 1_500 {
-                        // Only send if it can't result in a too-long chain.
-                        // We're not testing that.
+                i => {
+                    // Only send if it can't result in a too-long chain.
+                    // We're not testing that.
+                    let space_in_queue = 1_500usize.saturating_sub(them.message_queue.len());
+                    // Send several messages at once, to increase the likelihood of PQ ratchets.
+                    let messages_to_send = i
+                        .saturating_sub(64)
+                        .div_ceil(4)
+                        .max(1)
+                        .min(u8::try_from(space_in_queue).unwrap_or(u8::MAX));
+                    for _ in 0..messages_to_send {
                         me.send_message(them, &mut csprng).await
                     }
                 }
