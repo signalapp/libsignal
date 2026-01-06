@@ -30,6 +30,7 @@ import re
 import subprocess
 import sys
 import time
+import traceback
 from pathlib import Path
 from shutil import which
 
@@ -99,7 +100,7 @@ def main() -> None:
         print('User interrupted execution! Aborting...')
         exit_code = 1
     except Exception as ex:
-        print(f'Unexpected error: {ex}')
+        traceback.print_exception(None, value=ex, tb=ex.__traceback__)
         exit_code = 1
 
     if exit_code != 0:
