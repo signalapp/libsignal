@@ -7,7 +7,7 @@ use libsignal_core::Aci;
 use serde_with::serde_as;
 
 use crate::backup::serialize::{self, UnorderedList};
-use crate::backup::{likely_empty, uuid_bytes_to_aci};
+use crate::backup::{HasUnknownFields, likely_empty, uuid_bytes_to_aci};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::Text`].
@@ -47,8 +47,8 @@ pub enum TextError {
     TooLongBodyForQuote(usize),
     /// mention had invalid ACI
     MentionInvalidAci,
-    /// BodyRange.associatedValue is a oneof but has no value
-    NoAssociatedValueForBodyRange,
+    /// BodyRange.associatedValue is a oneof but has no value, with {0}
+    NoAssociatedValueForBodyRange(HasUnknownFields),
 }
 
 const MAX_BODY_LENGTH: usize = 128 * 1024;
@@ -93,19 +93,23 @@ impl TryFrom<proto::Text> for MessageText {
                     start,
                     length,
                     associatedValue,
-                    special_fields: _,
+                    special_fields,
                 } = range;
                 use proto::body_range::AssociatedValue;
-                let effect =
-                    match associatedValue.ok_or(TextError::NoAssociatedValueForBodyRange)? {
-                        AssociatedValue::MentionAci(aci) => TextEffect::MentionAci(
-                            uuid_bytes_to_aci(aci).map_err(|_| TextError::MentionInvalidAci)?,
-                        ),
-                        AssociatedValue::Style(style) => {
-                            // All style values are valid
-                            TextEffect::Style(style.enum_value_or_default())
-                        }
-                    };
+                let associated_value = associatedValue.ok_or_else(|| {
+                    TextError::NoAssociatedValueForBodyRange(HasUnknownFields::check(
+                        &special_fields,
+                    ))
+                })?;
+                let effect = match associated_value {
+                    AssociatedValue::MentionAci(aci) => TextEffect::MentionAci(
+                        uuid_bytes_to_aci(aci).map_err(|_| TextError::MentionInvalidAci)?,
+                    ),
+                    AssociatedValue::Style(style) => {
+                        // All style values are valid
+                        TextEffect::Style(style.enum_value_or_default())
+                    }
+                };
                 Ok(TextRange {
                     start,
                     length,
@@ -167,7 +171,9 @@ mod test {
     #[test_case(|x| x.body = "".into() => Err(TextError::EmptyBody); "empty body")]
     #[test_case(|x| x.body = "x".repeat(MAX_BODY_LENGTH) => Ok(()); "longest body")]
     #[test_case(|x| x.body = "x".repeat(MAX_BODY_LENGTH + 1) => Err(TextError::TooLongBody(MAX_BODY_LENGTH + 1)); "too long body")]
-    #[test_case(|x| x.bodyRanges.push(Default::default()) => Err(TextError::NoAssociatedValueForBodyRange); "invalid body range")]
+    #[test_case(|x| {
+        x.bodyRanges.push(Default::default())
+    } => Err(TextError::NoAssociatedValueForBodyRange(HasUnknownFields::No)); "invalid body range")]
     #[test_case(|x| {
         x.bodyRanges.push(proto::BodyRange {
             associatedValue: Some(proto::body_range::AssociatedValue::MentionAci(vec![])),

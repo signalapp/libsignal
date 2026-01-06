@@ -13,7 +13,7 @@ use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::method::{Lookup, Method};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::{Color, ColorError, ReferencedTypes, TryIntoWith, serialize};
+use crate::backup::{Color, ColorError, HasUnknownFields, ReferencedTypes, TryIntoWith, serialize};
 use crate::proto::backup as proto;
 
 #[derive(serde::Serialize)]
@@ -124,10 +124,10 @@ impl<M: ReferencedTypes> serde::Serialize for CustomColorMap<M> {
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum ChatStyleError {
-    /// ChatStyle.bubbleColor is a oneof but is empty
-    NoBubbleColor,
-    /// CustomChatColor.color is a oneof but is empty
-    NoCustomColor,
+    /// ChatStyle.bubbleColor is a oneof but is empty with {0}
+    NoBubbleColor(HasUnknownFields),
+    /// CustomChatColor.color is a oneof but is empty with {0}
+    NoCustomColor(HasUnknownFields),
     /// found {color_count} colors but {position_count} positions in gradient
     GradientLengthMismatch {
         color_count: usize,
@@ -192,13 +192,13 @@ impl<M: Method + ReferencedTypes> ChatStyle<M> {
             wallpaper,
             bubbleColor,
             dimWallpaperInDarkMode,
-            special_fields: _,
+            special_fields,
         } = value;
 
         let wallpaper = wallpaper.map(|w| w.try_into_with(context)).transpose()?;
 
         let bubble_color = bubbleColor
-            .ok_or(ChatStyleError::NoBubbleColor)?
+            .ok_or_else(|| ChatStyleError::NoBubbleColor(HasUnknownFields::check(&special_fields)))?
             .try_into_with(color_map)?;
 
         Ok(Self {
@@ -264,10 +264,12 @@ impl TryFrom<proto::chat_style::CustomChatColor> for (CustomColorId, CustomChatC
         let proto::chat_style::CustomChatColor {
             id,
             color,
-            special_fields: _,
+            special_fields,
         } = value;
 
-        let custom_color = color.ok_or(ChatStyleError::NoCustomColor)?.try_into()?;
+        let custom_color = color
+            .ok_or_else(|| ChatStyleError::NoCustomColor(HasUnknownFields::check(&special_fields)))?
+            .try_into()?;
         Ok((CustomColorId(id), custom_color))
     }
 }
@@ -565,7 +567,11 @@ mod test {
     }
 
     #[test_case(|x| x.wallpaper = None => Ok(()); "no wallpaper")]
-    #[test_case(|x| x.bubbleColor = None => Err(ChatStyleError::NoBubbleColor); "no bubble color")]
+    #[test_case(
+        |x| x.bubbleColor = None =>
+        Err(ChatStyleError::NoBubbleColor(HasUnknownFields::No));
+        "no bubble color"
+    )]
     #[test_case(
         |x| x.set_customColorId(333333333) =>
         Err(ChatStyleError::UnknownCustomColorId(333333333));

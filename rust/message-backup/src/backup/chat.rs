@@ -19,7 +19,9 @@ use crate::backup::sticker::MessageStickerError;
 use crate::backup::time::{
     Duration, ReportUnusualTimestamp, Timestamp, TimestampError, TimestampOrForever,
 };
-use crate::backup::{BackupMeta, CallError, ReferencedTypes, TryIntoWith, likely_empty};
+use crate::backup::{
+    BackupMeta, CallError, HasUnknownFields, ReferencedTypes, TryIntoWith, likely_empty,
+};
 use crate::proto::backup as proto;
 
 mod contact_message;
@@ -113,8 +115,8 @@ pub enum ChatItemError {
     OutgoingMessageFrom(RecipientId, DestinationKind),
     /// incoming message authored by contact {0:?} with no ACI or e164
     IncomingMessageFromContactWithoutAciOrE164(RecipientId),
-    /// ChatItem.item is a oneof but is empty
-    MissingItem,
+    /// ChatItem.item is a oneof but is empty with {0}
+    MissingItem(HasUnknownFields),
     /// StandardMessage has neither text nor attachments
     StandardMessageIsEmpty,
     /// text: {0}
@@ -131,14 +133,14 @@ pub enum ChatItemError {
     Reaction(#[from] ReactionError),
     /// payment: {0}
     Payment(#[from] PaymentError),
-    /// ChatUpdateMessage.update is a oneof but is empty
-    UpdateIsEmpty,
+    /// ChatUpdateMessage.update is a oneof but is empty with {0}
+    UpdateIsEmpty(HasUnknownFields),
     /// call error: {0}
     Call(#[from] CallError),
     /// GroupChange has no changes.
     GroupChangeIsEmpty,
-    /// for GroupUpdate change {0}, Update.update is a oneof but is empty
-    GroupChangeUpdateIsEmpty(usize),
+    /// for GroupUpdate change {0}, Update.update is a oneof but is empty with {1}
+    GroupChangeUpdateIsEmpty(usize, HasUnknownFields),
     /// group update: {0}
     GroupUpdate(#[from] GroupUpdateError),
     /// StickerMessage has no sticker
@@ -151,8 +153,8 @@ pub enum ChatItemError {
     ViewOnce(#[from] ViewOnceMessageError),
     /// direct story reply: {0}
     DirectStoryReply(#[from] DirectStoryReplyError),
-    /// ChatItem.directionalDetails is a oneof but is empty
-    NoDirection,
+    /// ChatItem.directionalDetails is a oneof but is empty with {0}
+    NoDirection(HasUnknownFields),
     /// directionless ChatItem wasn't an update message
     DirectionlessMessage,
     /// update message wasn't directionless
@@ -571,11 +573,11 @@ impl<
             expiresInMs,
             dateSent,
             sms,
-            special_fields: _,
+            special_fields,
         } = self;
 
         let direction = directionalDetails
-            .ok_or(ChatItemError::NoDirection)?
+            .ok_or_else(|| ChatItemError::NoDirection(HasUnknownFields::check(&special_fields)))?
             .try_into_with(context)?;
 
         let author_id = RecipientId(authorId);
@@ -647,7 +649,7 @@ impl<
         }?;
 
         let message = item
-            .ok_or(ChatItemError::MissingItem)?
+            .ok_or_else(|| ChatItemError::MissingItem(HasUnknownFields::check(&special_fields)))?
             .try_into_with(context)?;
 
         let purpose = context.as_ref().purpose;
@@ -1261,7 +1263,7 @@ mod test {
     #[test_case(|x| x.authorId = 0xffff => Err(ChatItemError::AuthorNotFound(RecipientId(0xffff))); "unknown_author")]
     #[test_case(|x| x.authorId = TestContext::GROUP_ID.0 => Err(ChatItemError::InvalidAuthor(TestContext::GROUP_ID, DestinationKind::Group)); "invalid author")]
     #[test_case(|x| x.authorId = TestContext::PNI_ONLY_ID.0 => Err(ChatItemError::IncomingMessageFromContactWithoutAciOrE164(TestContext::PNI_ONLY_ID)); "pni-only author")]
-    #[test_case(|x| x.directionalDetails = None => Err(ChatItemError::NoDirection); "no_direction")]
+    #[test_case(|x| x.directionalDetails = None => Err(ChatItemError::NoDirection(HasUnknownFields::No)); "no_direction")]
     #[test_case(|x| {
         x.authorId = TestContext::SELF_ID.0;
         x.directionalDetails = Some(proto::chat_item::OutgoingMessageDetails::test_data().into());

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::backup::TryIntoWith;
 use crate::backup::call::{GroupCall, IndividualCall};
 use crate::backup::chat::ChatItemError;
 use crate::backup::chat::group::GroupChatUpdate;
@@ -12,6 +11,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::{ChatItemAuthorKind, ChatRecipientKind, E164, MinimalRecipientData};
 use crate::backup::time::{Duration, ReportUnusualTimestamp};
+use crate::backup::{HasUnknownFields, TryIntoWith};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::chat_update_message::Update`].
@@ -61,10 +61,12 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
     fn try_into_with(self, context: &C) -> Result<UpdateMessage<R>, Self::Error> {
         let proto::ChatUpdateMessage {
             update,
-            special_fields: _,
+            special_fields,
         } = self;
 
-        let update = update.ok_or(ChatItemError::UpdateIsEmpty)?;
+        let update = update.ok_or_else(|| {
+            ChatItemError::UpdateIsEmpty(HasUnknownFields::check(&special_fields))
+        })?;
 
         use proto::chat_update_message::Update;
         Ok(match update {
@@ -113,11 +115,15 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
                                 i,
                                 proto::group_change_chat_update::Update {
                                     update,
-                                    special_fields: _,
+                                    special_fields,
                                 },
                             )| {
-                                let update =
-                                    update.ok_or(ChatItemError::GroupChangeUpdateIsEmpty(i))?;
+                                let update = update.ok_or_else(|| {
+                                    ChatItemError::GroupChangeUpdateIsEmpty(
+                                        i,
+                                        HasUnknownFields::check(&special_fields),
+                                    )
+                                })?;
                                 GroupChatUpdate::try_from(update).map_err(ChatItemError::from)
                             },
                         )
@@ -501,7 +507,7 @@ mod test {
     fn chat_update_message_no_item() {
         assert_matches!(
             proto::ChatUpdateMessage::default().try_into_with(&TestContext::default()),
-            Err(ChatItemError::UpdateIsEmpty)
+            Err(ChatItemError::UpdateIsEmpty(HasUnknownFields::No))
         );
     }
 

@@ -16,12 +16,12 @@ use serde_with::serde_as;
 use uuid::Uuid;
 use zkgroup::ProfileKeyBytes;
 
-use crate::backup::TryIntoWith;
 use crate::backup::call::{CallLink, CallLinkError, CallLinkRootKey};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::serialize::{self, SerializeOrder, UnorderedList};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
+use crate::backup::{HasUnknownFields, TryIntoWith};
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
 
@@ -37,8 +37,8 @@ pub enum RecipientError {
     InvalidId,
     /// multiple frames with the same ID
     DuplicateRecipient,
-    /// Recipient.destination is a oneof but is empty
-    MissingDestination,
+    /// Recipient.destination is a oneof but is empty with {0}
+    MissingDestination(HasUnknownFields),
     /// invalid {0}
     InvalidServiceId(ServiceIdKind),
     /// invalid e164
@@ -76,8 +76,8 @@ pub enum RecipientError {
     InvalidContactUsername,
     /// DistributionList for My Story should not be deleted
     CannotDeleteMyStory,
-    /// DistributionList.item is a oneof but is empty
-    DistributionListItemMissing,
+    /// DistributionList.item is a oneof but is empty with {0}
+    DistributionListItemMissing(HasUnknownFields),
     /// distribution list member {0:?} is unknown
     DistributionListMemberUnknown(RecipientId),
     /// distribution list member {0:?} appears multiple times
@@ -478,10 +478,12 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
         let Self {
             id: _,
             destination,
-            special_fields: _,
+            special_fields,
         } = self;
 
-        let destination = destination.ok_or(RecipientError::MissingDestination)?;
+        let destination = destination.ok_or_else(|| {
+            RecipientError::MissingDestination(HasUnknownFields::check(&special_fields))
+        })?;
 
         Ok(match destination {
             RecipientDestination::Contact(contact) => {
@@ -679,7 +681,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
         let Self {
             distributionId,
             item,
-            special_fields: _,
+            special_fields,
         } = self;
 
         let distribution_id = Uuid::from_bytes(
@@ -687,108 +689,105 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
                 .try_into()
                 .map_err(|_| RecipientError::InvalidDistributionId)?,
         );
+        let item = item.ok_or_else(|| {
+            RecipientError::DistributionListItemMissing(HasUnknownFields::check(&special_fields))
+        })?;
 
-        Ok(
-            match item.ok_or(RecipientError::DistributionListItemMissing)? {
-                proto::distribution_list_item::Item::DeletionTimestamp(deletion_timestamp) => {
-                    if distribution_id == MY_STORY_UUID {
-                        return Err(RecipientError::CannotDeleteMyStory);
-                    }
-
-                    let at = Timestamp::from_millis(
-                        deletion_timestamp,
-                        "DistributionList.deletionTimestamp",
-                        context,
-                    )?;
-                    DistributionListItem::Deleted {
-                        distribution_id,
-                        at,
-                    }
+        Ok(match item {
+            proto::distribution_list_item::Item::DeletionTimestamp(deletion_timestamp) => {
+                if distribution_id == MY_STORY_UUID {
+                    return Err(RecipientError::CannotDeleteMyStory);
                 }
-                proto::distribution_list_item::Item::DistributionList(
-                    proto::DistributionList {
-                        name,
-                        allowReplies,
-                        privacyMode,
-                        memberRecipientIds,
-                        special_fields: _,
-                    },
-                ) => {
-                    let mut members_seen = IntMap::default();
-                    let members: UnorderedList<R> = memberRecipientIds
-                        .into_iter()
-                        .map(|id| {
-                            let id = RecipientId(id);
-                            if members_seen.insert(id, ()).is_some() {
-                                return Err(RecipientError::DistributionListMemberDuplicate(id));
-                            }
-                            let (recipient_data, recipient_reference) = context
-                                .lookup_pair(&id)
-                                .ok_or(RecipientError::DistributionListMemberUnknown(id))?;
-                            match recipient_data {
-                                MinimalRecipientData::Contact {
-                                    aci: None,
-                                    pni: None,
-                                    e164: _,
-                                    username: _,
-                                } => Err(RecipientError::DistributionListMemberHasNoServiceIds(id)),
-                                MinimalRecipientData::Contact { .. } => {
-                                    Ok(recipient_reference.clone())
-                                }
-                                MinimalRecipientData::Group { .. }
-                                | MinimalRecipientData::DistributionList { .. }
-                                | MinimalRecipientData::Self_
-                                | MinimalRecipientData::ReleaseNotes
-                                | MinimalRecipientData::CallLink { .. } => {
-                                    Err(RecipientError::DistributionListMemberWrongKind(
-                                        id,
-                                        *recipient_data.as_ref(),
-                                    ))
-                                }
-                            }
-                        })
-                        .try_collect()?;
 
-                    let privacy_mode = match (
-                        privacyMode.enum_value_or_default(),
-                        distribution_id == MY_STORY_UUID,
-                    ) {
-                        (proto::distribution_list::PrivacyMode::UNKNOWN, _) => {
-                            return Err(RecipientError::DistributionListPrivacyUnknown);
-                        }
-                        (proto::distribution_list::PrivacyMode::ONLY_WITH, _) => {
-                            PrivacyMode::OnlyWith(members)
-                        }
-                        (proto::distribution_list::PrivacyMode::ALL_EXCEPT, true) => {
-                            if members.is_empty() {
-                                return Err(
-                                    RecipientError::DistributionListPrivacyAllExceptWithEmptyMembers,
-                                );
-                            }
-                            PrivacyMode::AllExcept(members)
-                        }
-                        (proto::distribution_list::PrivacyMode::ALL, true) => {
-                            if !members.is_empty() {
-                                return Err(
-                                    RecipientError::DistributionListPrivacyAllWithNonemptyMembers,
-                                );
-                            }
-                            PrivacyMode::All
-                        }
-                        (privacy, false) => {
-                            return Err(RecipientError::DistributionListPrivacyInvalid(privacy));
-                        }
-                    };
-
-                    DistributionListItem::List {
-                        distribution_id,
-                        name,
-                        allow_replies: allowReplies,
-                        privacy_mode,
-                    }
+                let at = Timestamp::from_millis(
+                    deletion_timestamp,
+                    "DistributionList.deletionTimestamp",
+                    context,
+                )?;
+                DistributionListItem::Deleted {
+                    distribution_id,
+                    at,
                 }
-            },
-        )
+            }
+            proto::distribution_list_item::Item::DistributionList(proto::DistributionList {
+                name,
+                allowReplies,
+                privacyMode,
+                memberRecipientIds,
+                special_fields: _,
+            }) => {
+                let mut members_seen = IntMap::default();
+                let members: UnorderedList<R> = memberRecipientIds
+                    .into_iter()
+                    .map(|id| {
+                        let id = RecipientId(id);
+                        if members_seen.insert(id, ()).is_some() {
+                            return Err(RecipientError::DistributionListMemberDuplicate(id));
+                        }
+                        let (recipient_data, recipient_reference) = context
+                            .lookup_pair(&id)
+                            .ok_or(RecipientError::DistributionListMemberUnknown(id))?;
+                        match recipient_data {
+                            MinimalRecipientData::Contact {
+                                aci: None,
+                                pni: None,
+                                e164: _,
+                                username: _,
+                            } => Err(RecipientError::DistributionListMemberHasNoServiceIds(id)),
+                            MinimalRecipientData::Contact { .. } => Ok(recipient_reference.clone()),
+                            MinimalRecipientData::Group { .. }
+                            | MinimalRecipientData::DistributionList { .. }
+                            | MinimalRecipientData::Self_
+                            | MinimalRecipientData::ReleaseNotes
+                            | MinimalRecipientData::CallLink { .. } => {
+                                Err(RecipientError::DistributionListMemberWrongKind(
+                                    id,
+                                    *recipient_data.as_ref(),
+                                ))
+                            }
+                        }
+                    })
+                    .try_collect()?;
+
+                let privacy_mode = match (
+                    privacyMode.enum_value_or_default(),
+                    distribution_id == MY_STORY_UUID,
+                ) {
+                    (proto::distribution_list::PrivacyMode::UNKNOWN, _) => {
+                        return Err(RecipientError::DistributionListPrivacyUnknown);
+                    }
+                    (proto::distribution_list::PrivacyMode::ONLY_WITH, _) => {
+                        PrivacyMode::OnlyWith(members)
+                    }
+                    (proto::distribution_list::PrivacyMode::ALL_EXCEPT, true) => {
+                        if members.is_empty() {
+                            return Err(
+                                RecipientError::DistributionListPrivacyAllExceptWithEmptyMembers,
+                            );
+                        }
+                        PrivacyMode::AllExcept(members)
+                    }
+                    (proto::distribution_list::PrivacyMode::ALL, true) => {
+                        if !members.is_empty() {
+                            return Err(
+                                RecipientError::DistributionListPrivacyAllWithNonemptyMembers,
+                            );
+                        }
+                        PrivacyMode::All
+                    }
+                    (privacy, false) => {
+                        return Err(RecipientError::DistributionListPrivacyInvalid(privacy));
+                    }
+                };
+
+                DistributionListItem::List {
+                    distribution_id,
+                    name,
+                    allow_replies: allowReplies,
+                    privacy_mode,
+                }
+            }
+        })
     }
 }
 
@@ -918,14 +917,24 @@ mod test {
 
     #[test]
     fn requires_destination() {
-        let recipient = proto::Recipient {
+        let mut recipient = proto::Recipient {
             destination: None,
             ..proto::Recipient::test_data()
         };
 
         assert_matches!(
+            recipient.clone().try_into_with(&TestContext::default()),
+            Err(RecipientError::MissingDestination(HasUnknownFields::No))
+        );
+
+        recipient
+            .special_fields
+            .mut_unknown_fields()
+            .add_length_delimited(999, vec![]);
+
+        assert_matches!(
             recipient.try_into_with(&TestContext::default()),
-            Err(RecipientError::MissingDestination)
+            Err(RecipientError::MissingDestination(HasUnknownFields::Yes))
         );
     }
 

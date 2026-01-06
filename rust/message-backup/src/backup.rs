@@ -450,10 +450,28 @@ impl<M: Method + ReferencedTypes> CompletedBackup<M> {
     }
 }
 
+#[derive(Debug, displaydoc::Display, PartialEq, Eq, Clone, Copy)]
+pub enum HasUnknownFields {
+    /// no unknown fields
+    No,
+    /// unknown fields
+    Yes,
+}
+
+impl HasUnknownFields {
+    pub fn check(special_fields: &protobuf::SpecialFields) -> Self {
+        if special_fields.unknown_fields().iter().next().is_some() {
+            Self::Yes
+        } else {
+            Self::No
+        }
+    }
+}
+
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 pub enum ValidationError {
-    /// Frame.item is a oneof but has no value
-    EmptyFrame,
+    /// Frame.item is a oneof but has no value with {0}
+    EmptyFrame(HasUnknownFields),
     /// BackupInfo error: {0}
     BackupInfoError(#[from] MetadataError),
     /// multiple AccountData frames found
@@ -652,7 +670,9 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
     }
 
     pub fn add_frame(&mut self, frame: proto::Frame) -> Result<(), ValidationError> {
-        self.add_frame_item(frame.item.ok_or(ValidationError::EmptyFrame)?)
+        self.add_frame_item(frame.item.ok_or_else(|| {
+            ValidationError::EmptyFrame(HasUnknownFields::check(&frame.special_fields))
+        })?)
     }
 
     fn add_frame_item(&mut self, item: FrameItem) -> Result<(), ValidationError> {
