@@ -522,9 +522,13 @@ typedef struct {
   SignalChatConnectionInfo *raw;
 } SignalMutPointerChatConnectionInfo;
 
-typedef void (*SignalReceivedIncomingMessage)(void *ctx, SignalOwnedBuffer envelope, uint64_t timestamp_millis, SignalServerMessageAck *cleanup);
+typedef struct {
+  SignalServerMessageAck *raw;
+} SignalMutPointerServerMessageAck;
 
-typedef void (*SignalReceivedQueueEmpty)(void *ctx);
+typedef void (*SignalFfiChatListenerReceivedIncomingMessage)(void *ctx, SignalOwnedBuffer envelope, uint64_t timestamp, SignalMutPointerServerMessageAck ack);
+
+typedef void (*SignalFfiChatListenerReceivedQueueEmpty)(void *ctx);
 
 /**
  * A representation of a array allocated on the Rust heap for use in C code.
@@ -544,34 +548,19 @@ typedef struct {
 
 typedef SignalBytestringArray SignalStringArray;
 
-typedef void (*SignalReceivedAlerts)(void *ctx, SignalStringArray alerts);
+typedef void (*SignalFfiChatListenerReceivedAlerts)(void *ctx, SignalStringArray alerts);
 
-typedef void (*SignalConnectionInterrupted)(void *ctx, SignalFfiError *error);
+typedef void (*SignalFfiChatListenerConnectionInterrupted)(void *ctx, SignalFfiError *disconnect_cause);
 
-typedef void (*SignalDestroyChatListener)(void *ctx);
+typedef void (*SignalFfiChatListenerDestroy)(void *ctx);
 
-/**
- * Callbacks for [`ChatListener`].
- *
- * Callbacks will be serialized (i.e. two calls will not come in at the same time), but may not
- * always happen on the same thread. Calls should be responded to promptly to avoid blocking later
- * messages.
- *
- * # Safety
- *
- * This type contains raw pointers. Code that constructs an instance of this type must ensure
- * memory safety assuming that
- * - the callback function pointer fields are called with `ctx` as an argument;
- * - the `destroy` function pointer field is called with `ctx` as an argument;
- * - no function pointer fields are called after `destroy` is called.
- */
 typedef struct {
   void *ctx;
-  SignalReceivedIncomingMessage received_incoming_message;
-  SignalReceivedQueueEmpty received_queue_empty;
-  SignalReceivedAlerts received_alerts;
-  SignalConnectionInterrupted connection_interrupted;
-  SignalDestroyChatListener destroy;
+  SignalFfiChatListenerReceivedIncomingMessage received_incoming_message;
+  SignalFfiChatListenerReceivedQueueEmpty received_queue_empty;
+  SignalFfiChatListenerReceivedAlerts received_alerts;
+  SignalFfiChatListenerConnectionInterrupted connection_interrupted;
+  SignalFfiChatListenerDestroy destroy;
 } SignalFfiChatListenerStruct;
 
 typedef struct {
@@ -1227,33 +1216,20 @@ typedef struct {
   const SignalProvisioningChatConnection *raw;
 } SignalConstPointerProvisioningChatConnection;
 
-typedef void (*SignalReceivedProvisioningAddress)(void *ctx, const char *addr, SignalServerMessageAck *cleanup);
+typedef void (*SignalFfiProvisioningListenerReceivedAddress)(void *ctx, const char *address, SignalMutPointerServerMessageAck send_ack);
 
-typedef void (*SignalReceivedProvisioningEnvelope)(void *ctx, SignalOwnedBuffer data, SignalServerMessageAck *cleanup);
+typedef void (*SignalFfiProvisioningListenerReceivedEnvelope)(void *ctx, SignalOwnedBuffer envelope, SignalMutPointerServerMessageAck send_ack);
 
-typedef void (*SignalDestroyProvisioningListener)(void *ctx);
+typedef void (*SignalFfiProvisioningListenerConnectionInterrupted)(void *ctx, SignalFfiError *disconnect_cause);
 
-/**
- * Callbacks for [`ProvisioningListener`].
- *
- * Callbacks will be serialized (i.e. two calls will not come in at the same time), but may not
- * always happen on the same thread. Calls should be responded to promptly to avoid blocking later
- * messages.
- *
- * # Safety
- *
- * This type contains raw pointers. Code that constructs an instance of this type must ensure
- * memory safety assuming that
- * - the callback function pointer fields are called with `ctx` as an argument;
- * - the `destroy` function pointer field is called with `ctx` as an argument;
- * - no function pointer fields are called after `destroy` is called.
- */
+typedef void (*SignalFfiProvisioningListenerDestroy)(void *ctx);
+
 typedef struct {
   void *ctx;
-  SignalReceivedProvisioningAddress received_address;
-  SignalReceivedProvisioningEnvelope received_envelope;
-  SignalConnectionInterrupted connection_interrupted;
-  SignalDestroyProvisioningListener destroy;
+  SignalFfiProvisioningListenerReceivedAddress received_address;
+  SignalFfiProvisioningListenerReceivedEnvelope received_envelope;
+  SignalFfiProvisioningListenerConnectionInterrupted connection_interrupted;
+  SignalFfiProvisioningListenerDestroy destroy;
 } SignalFfiProvisioningListenerStruct;
 
 typedef struct {
@@ -1478,10 +1454,6 @@ typedef struct {
 typedef struct {
   const SignalSenderKeyMessage *raw;
 } SignalConstPointerSenderKeyMessage;
-
-typedef struct {
-  SignalServerMessageAck *raw;
-} SignalMutPointerServerMessageAck;
 
 typedef struct {
   const SignalServerMessageAck *raw;

@@ -71,7 +71,7 @@ impl ChatListener for NodeChatListener {
         });
     }
 
-    fn received_alerts(&mut self, alerts: Vec<String>) {
+    fn received_alerts(&mut self, alerts: Box<[String]>) {
         let roots_shared = self.roots.clone();
         self.js_channel.send(move |mut cx| {
             let callback_object_shared = &roots_shared.callback_object;

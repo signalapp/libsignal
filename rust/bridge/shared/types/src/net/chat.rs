@@ -16,6 +16,7 @@ use futures_util::future::BoxFuture;
 use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
+use libsignal_bridge_macros::bridge_callbacks;
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
@@ -579,15 +580,16 @@ impl HttpRequest {
 /// A trait of callbacks for different kinds of [`chat::server_requests::ServerEvent`].
 ///
 /// Done as multiple functions so we can adjust the types to be more suitable for bridging.
+#[bridge_callbacks]
 pub trait ChatListener: Send {
     fn received_incoming_message(
         &mut self,
-        envelope: Bytes,
+        envelope: bytes::Bytes,
         timestamp: Timestamp,
         ack: ServerMessageAck,
     );
     fn received_queue_empty(&mut self);
-    fn received_alerts(&mut self, alerts: Vec<String>);
+    fn received_alerts(&mut self, alerts: Box<[String]>);
     fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause);
 }
 
@@ -607,7 +609,9 @@ impl dyn ChatListener {
                 ServerMessageAck::new(send_ack),
             ),
             chat::server_requests::ServerEvent::QueueEmpty => self.received_queue_empty(),
-            chat::server_requests::ServerEvent::Alerts(alerts) => self.received_alerts(alerts),
+            chat::server_requests::ServerEvent::Alerts(alerts) => {
+                self.received_alerts(alerts.into_boxed_slice())
+            }
             chat::server_requests::ServerEvent::Stopped(error) => {
                 self.connection_interrupted(error)
             }
@@ -655,9 +659,10 @@ impl std::panic::RefUnwindSafe for ServerMessageAck {}
 /// A trait of callbacks for different kinds of [`chat::server_requests::ProvisioningEvent`].
 ///
 /// Done as multiple functions so we can adjust the types to be more suitable for bridging.
+#[bridge_callbacks]
 pub trait ProvisioningListener: Send {
     fn received_address(&mut self, address: String, send_ack: ServerMessageAck);
-    fn received_envelope(&mut self, envelope: Bytes, send_ack: ServerMessageAck);
+    fn received_envelope(&mut self, envelope: bytes::Bytes, send_ack: ServerMessageAck);
     fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause);
 }
 

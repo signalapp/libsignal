@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use heck::ToSnakeCase;
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::*;
+use syn::spanned::Spanned;
 use syn::*;
 use syn_mid::Signature;
 
@@ -190,4 +191,166 @@ fn bridge_io_body(
 
 pub(crate) fn name_from_ident(ident: &Ident) -> String {
     ident.to_string().to_snake_case()
+}
+
+/// Generates a struct of C functions and a context pointer to serve as the bridged representation
+/// of a trait.
+///
+/// The struct will be named "Ffi{MyTrait}Struct", and will have helper types for each callback
+/// function as "Ffi{MyTrait}{OperationCamelCase}", plus one extra callback "Ffi{MyTrait}Destroy".
+/// The struct will implement the original trait as well as `ffi::FfiDestroyable`. The original
+/// trait will also be implemented for `ffi::OwnedCallbackStruct<Ffi{MyTrait}Struct>`, so that
+/// `Box<dyn {MyTrait}>` handles cleanup properly.
+pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait) -> Result<TokenStream2> {
+    let trait_name = &trait_to_bridge.ident;
+    let struct_name = format_ident!("Ffi{}Struct", trait_to_bridge.ident);
+    let destroy_name = format_ident!("Ffi{}Destroy", trait_to_bridge.ident);
+
+    let callbacks = trait_to_bridge
+        .items
+        .iter()
+        .map(|item| bridge_callback_item(trait_name, item))
+        .collect::<Result<Vec<_>>>()?;
+    let callback_aliases = callbacks.iter().map(|c| &c.alias);
+    let callback_fields = callbacks.iter().map(|c| &c.field);
+    let callback_impls = callbacks.iter().map(|c| &c.implementation);
+    let callback_forwarding_impls = callbacks.iter().map(|c| &c.forwarding_impl);
+
+    Ok(quote! {
+        // Aliases for the callback functions.
+        #[cfg(feature = "ffi")]
+        pub type #destroy_name = extern "C" fn(ctx: *mut std::ffi::c_void);
+        #(
+            #[cfg(feature = "ffi")]
+            pub #callback_aliases;
+        )*
+
+        // The struct of callbacks, plus an opaque context pointer, in usual C style.
+        //
+        // This could be Copy as well, all C structs are Copy,
+        // but leaving it out makes it clearer how manual ownership is being transferred.
+        #[cfg(feature = "ffi")]
+        #[derive(Clone)]
+        #[repr(C)]
+        pub struct #struct_name {
+            ctx: *mut std::ffi::c_void,
+            #(#callback_fields,)*
+            destroy: #destroy_name,
+        }
+
+        #[cfg(feature = "ffi")]
+        impl ffi::FfiDestroyable for #struct_name {
+            fn destroy(&mut self) {
+                (self.destroy)(self.ctx);
+            }
+        }
+
+        #[cfg(feature = "ffi")]
+        impl #trait_name for #struct_name {
+            #(#callback_impls)*
+        }
+
+        #[cfg(feature = "ffi")]
+        impl #trait_name for ffi::OwnedCallbackStruct<#struct_name> {
+            #(#callback_forwarding_impls)*
+        }
+    })
+}
+
+struct Callback {
+    alias: TokenStream2,
+    field: TokenStream2,
+    implementation: TokenStream2,
+    forwarding_impl: TokenStream2,
+}
+
+fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback> {
+    let TraitItem::Fn(item) = item else {
+        return Err(Error::new(item.span(), "only fns are supported"));
+    };
+
+    let sig = &item.sig;
+    let req_name = &item.sig.ident;
+
+    // type FfiMyTraitOperation = extern "C" fn(ctx: *mut c_void, foo: ffi_result_type!(u32))
+    let callback_ty_name = format_ident!(
+        "Ffi{}{}",
+        trait_name,
+        req_name.to_string().to_upper_camel_case(),
+        span = req_name.span()
+    );
+    let callback_args = item.sig.inputs.iter().filter_map(|arg| match arg {
+        FnArg::Receiver(_) => None,
+        FnArg::Typed(arg) => {
+            let Pat::Ident(arg_name) = &*arg.pat else {
+                // We'll error about this elsewhere.
+                return None;
+            };
+            let ty = &arg.ty;
+            Some(quote!(#arg_name: ffi_result_type!(#ty)))
+        }
+    });
+    let alias = quote! {
+        type #callback_ty_name = extern "C" fn(
+            ctx: *mut std::ffi::c_void,
+            #(#callback_args,)*
+        ) // note the lack of trailing semicolon
+    };
+
+    // operation: FfiMyTraitOperation
+    let field_name = &req_name;
+    let field = quote! {
+        #field_name: #callback_ty_name // note the lack of trailing comma
+    };
+
+    // fn operation(foo: u32) {
+    //   (self.operation)(self.ctx, ffi::ResultTypeInfo::convert_into(foo).expect("can convert"))
+    // }
+    let arg_conversions = item.sig.inputs.iter().map(|arg| match arg {
+        FnArg::Receiver(_) => quote!(self.ctx),
+        FnArg::Typed(arg) => {
+            let Pat::Ident(arg_name) = &*arg.pat else {
+                return Error::new(arg.pat.span(), "only simple argument syntax is supported")
+                    .into_compile_error();
+            };
+            quote! {
+                ffi::ResultTypeInfo::convert_into(#arg_name)
+                    .expect(concat!("can convert argument for ", stringify!(#req_name)))
+            }
+        }
+    });
+    let implementation = quote! {
+        // #sig carries everything from `fn` to the return type and possible where-clause.
+        // All we provide is the body.
+        #sig {
+            (self.#field_name)(#(#arg_conversions,)*)
+        }
+    };
+
+    // fn operation(foo: u32) {
+    //   self.0.operation(foo)
+    // }
+    let arg_names = item.sig.inputs.iter().filter_map(|arg| match arg {
+        FnArg::Receiver(_) => None,
+        FnArg::Typed(arg) => {
+            let Pat::Ident(arg_name) = &*arg.pat else {
+                // We'll error about this elsewhere.
+                return None;
+            };
+            Some(arg_name)
+        }
+    });
+    let forwarding_impl = quote! {
+        #[inline]
+        #sig {
+            self.0.#req_name(#(#arg_names),*)
+        }
+    };
+
+    Ok(Callback {
+        alias,
+        field,
+        implementation,
+        forwarding_impl,
+    })
 }

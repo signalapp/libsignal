@@ -65,6 +65,10 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
     These are automatically detected on x86_64, but will require an opt-in for aarch64 until we can update to `aes 0.9` or newer (not out yet at the time of this writing). All our app library build scripts set this themselves, but doing a manual `cargo build --release` will not.
 
+- Our bridging logic uses code generation tools for the app-language interface files (C header for Swift, wrapper APIs for Java/Kotlin and TypeScript). These tools, or the macros used with them, depend on how types are written in `#[bridge_fn]` and other bridged APIs. Therefore, **use qualified names for non-std, non-libsignal types** in bridged signatures, so that they can be matched specifically and without ambiguity.
+
+    (There is one exception: `uuid::Uuid` has been `Uuid` for a long time, and is sufficiently unique to justify leaving it that way.)
+
 
 ## Async
 

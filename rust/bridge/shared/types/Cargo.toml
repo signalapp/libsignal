@@ -18,6 +18,7 @@ workspace = true
 attest = { workspace = true }
 device-transfer = { workspace = true }
 libsignal-account-keys = { workspace = true }
+libsignal-bridge-macros = { workspace = true }
 libsignal-core = { workspace = true }
 libsignal-keytrans = { workspace = true }
 libsignal-message-backup = { workspace = true, features = ["json"] }
@@ -36,7 +37,7 @@ async-trait = { workspace = true }
 atomic-take = { workspace = true }
 bytes = { workspace = true }
 derive-where = { workspace = true }
-derive_more = { workspace = true, features = ["deref", "from", "into"] }
+derive_more = { workspace = true, features = ["deref", "deref_mut", "from", "into"] }
 displaydoc = { workspace = true }
 futures-util = { workspace = true }
 hmac = { workspace = true }

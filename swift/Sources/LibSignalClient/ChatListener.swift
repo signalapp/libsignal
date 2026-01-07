@@ -96,11 +96,15 @@ internal class ChatListenerBridge {
     /// The resulting struct must eventually have its `destroy` callback invoked with its `ctx` as argument,
     /// or the ChatListenerBridge object used to construct it (`self`) will be leaked.
     func makeListenerStruct() -> SignalFfiChatListenerStruct {
-        let receivedIncomingMessage: SignalReceivedIncomingMessage = { rawCtx, envelope, timestamp, ackHandle in
+        let receivedIncomingMessage: SignalFfiChatListenerReceivedIncomingMessage = {
+            rawCtx,
+            envelope,
+            timestamp,
+            ackHandle in
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
 
             let envelopeData = Data(consuming: envelope)
-            let ackHandleOwner = AckHandleOwner(owned: NonNull(untyped: ackHandle!))
+            let ackHandleOwner = AckHandleOwner(owned: NonNull(ackHandle)!)
             guard let chatConnection = bridge.chatConnection else {
                 return
             }
@@ -112,7 +116,7 @@ internal class ChatListenerBridge {
             ) { _ = ackHandleOwner.withNativeHandle { ackHandle in signal_server_message_ack_send(ackHandle.const()) } }
         }
 
-        let receivedQueueEmpty: SignalReceivedQueueEmpty = { rawCtx in
+        let receivedQueueEmpty: SignalFfiChatListenerReceivedQueueEmpty = { rawCtx in
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
             guard let chatConnection = bridge.chatConnection else {
                 return
@@ -120,10 +124,9 @@ internal class ChatListenerBridge {
 
             bridge.chatListener.chatConnectionDidReceiveQueueEmpty(chatConnection)
         }
-        let receivedAlerts: SignalReceivedAlerts = { rawCtx, alerts in
+        let receivedAlerts: SignalFfiChatListenerReceivedAlerts = { rawCtx, alerts in
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
 
-            // We do this *before* the early-exit so that the memory is reliably cleaned up.
             let swiftAlerts = failOnError {
                 try invokeFnReturningStringArray {
                     $0!.pointee = alerts
@@ -133,7 +136,7 @@ internal class ChatListenerBridge {
 
             bridge.didReceiveAlerts(swiftAlerts)
         }
-        let connectionInterrupted: SignalConnectionInterrupted = { rawCtx, maybeError in
+        let connectionInterrupted: SignalFfiChatListenerConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
             let error = convertError(maybeError)
 
@@ -201,7 +204,7 @@ internal class UnauthConnectionEventsListenerBridge {
     /// The resulting struct must eventually have its `destroy` callback invoked with its `ctx` as argument,
     /// or the ChatListenerBridge object used to construct it (`self`) will be leaked.
     func makeListenerStruct() -> SignalFfiChatListenerStruct {
-        let receivedIncomingMessage: SignalReceivedIncomingMessage = { _, _, _, _ in
+        let receivedIncomingMessage: SignalFfiChatListenerReceivedIncomingMessage = { _, _, _, _ in
             // Not used in the unauth chat listener
             LoggerBridge.shared?.logger.log(
                 level: .error,
@@ -210,7 +213,7 @@ internal class UnauthConnectionEventsListenerBridge {
                 message: "unauth socket received an incoming request"
             )
         }
-        let receivedQueueEmpty: SignalReceivedQueueEmpty = { _ in
+        let receivedQueueEmpty: SignalFfiChatListenerReceivedQueueEmpty = { _ in
             // Not used in the unauth chat listener
             LoggerBridge.shared?.logger.log(
                 level: .error,
@@ -219,7 +222,7 @@ internal class UnauthConnectionEventsListenerBridge {
                 message: "unauth socket received a \"queue empty\" notification"
             )
         }
-        let receivedAlerts: SignalReceivedAlerts = { _, alerts in
+        let receivedAlerts: SignalFfiChatListenerReceivedAlerts = { _, alerts in
             // Not used in the unauth chat listener
             if alerts.lengths.length != 0 {
                 LoggerBridge.shared?.logger.log(
@@ -230,7 +233,7 @@ internal class UnauthConnectionEventsListenerBridge {
                 )
             }
         }
-        let connectionInterrupted: SignalConnectionInterrupted = { rawCtx, maybeError in
+        let connectionInterrupted: SignalFfiChatListenerConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<UnauthConnectionEventsListenerBridge>.fromOpaque(rawCtx!)
                 .takeUnretainedValue()
             let error = convertError(maybeError)

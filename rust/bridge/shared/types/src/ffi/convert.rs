@@ -19,7 +19,9 @@ use zkgroup::ZkGroupDeserializationFailure;
 
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
-use crate::net::chat::{ChatListener, ProvisioningListener};
+use crate::net::chat::{
+    ChatListener, FfiChatListenerStruct, FfiProvisioningListenerStruct, ProvisioningListener,
+};
 use crate::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushToken,
 };
@@ -511,11 +513,13 @@ impl<'a> ArgTypeInfo<'a> for Box<dyn ChatListener> {
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
         Ok(Some(unsafe {
-            foreign
-                .into_inner()
-                .as_ref()
-                .ok_or(NullPointerError)?
-                .make_listener()
+            Box::new(OwnedCallbackStruct(
+                foreign
+                    .into_inner()
+                    .as_ref()
+                    .ok_or(NullPointerError)?
+                    .clone(),
+            ))
         }))
     }
     fn load_from(stored: &'a mut Self::StoredType) -> Self {
@@ -532,7 +536,7 @@ impl<'a> ArgTypeInfo<'a> for Option<Box<dyn ChatListener>> {
             foreign
                 .into_inner()
                 .as_ref()
-                .map(|f| f.make_listener() as Box<_>)
+                .map(|f| Box::new(OwnedCallbackStruct(f.clone())) as Box<_>)
         })
     }
     fn load_from(stored: &'a mut Self::StoredType) -> Self {
@@ -546,11 +550,13 @@ impl<'a> ArgTypeInfo<'a> for Box<dyn ProvisioningListener> {
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
         Ok(Some(unsafe {
-            foreign
-                .into_inner()
-                .as_ref()
-                .ok_or(NullPointerError)?
-                .make_listener()
+            Box::new(OwnedCallbackStruct(
+                foreign
+                    .into_inner()
+                    .as_ref()
+                    .ok_or(NullPointerError)?
+                    .clone(),
+            ))
         }))
     }
     fn load_from(stored: &'a mut Self::StoredType) -> Self {
@@ -694,6 +700,13 @@ impl ResultTypeInfo for Vec<u8> {
     type ResultType = OwnedBufferOf<std::ffi::c_uchar>;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(OwnedBufferOf::from(self.into_boxed_slice()))
+    }
+}
+
+impl ResultTypeInfo for bytes::Bytes {
+    type ResultType = OwnedBufferOf<std::ffi::c_uchar>;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Vec::from(self).convert_into()
     }
 }
 
@@ -1327,6 +1340,7 @@ macro_rules! ffi_result_type {
     (&[u8]) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
     (Option<&[u8]>) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
     (Vec<u8>) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
+    (bytes::Bytes) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
     (Box<[String]>) => (ffi::StringArray);
     (Box<[Vec<u8>]>) => (ffi::BytestringArray);
     (Box<[ChallengeOption]>) => (ffi_result_type!(Vec<u8>));
@@ -1338,6 +1352,7 @@ macro_rules! ffi_result_type {
     (ChatResponse) => (ffi::FfiChatResponse);
     (CheckSvr2CredentialsResponse) => (ffi::FfiCheckSvr2CredentialsResponse);
     (Box<[RegisterResponseBadge]>) => (ffi::OwnedBufferOf<ffi::FfiRegisterResponseBadge>);
+    (DisconnectCause) => (*mut ffi::SignalFfiError);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

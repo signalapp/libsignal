@@ -103,5 +103,5 @@ extra_bindings = [
 ]
 
 [parse.expand]
-crates = ["libsignal-ffi", "libsignal-bridge"]
-features = ["libsignal-bridge/ffi", "libsignal-bridge/signal-media"]
+crates = ["libsignal-ffi", "libsignal-bridge", "libsignal-bridge-types"]
+features = ["ffi", "signal-media"]

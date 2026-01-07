@@ -365,6 +365,25 @@ pub fn bridge_io(attr: TokenStream, item: TokenStream) -> TokenStream {
     bridge_fn_impl(attr, item, BridgingKind::Io { runtime: () })
 }
 
+/// Generates C, Java, and Node bridging for the callbacks in a Rust trait.
+///
+/// Arguments to callbacks use the same handling as result types as described in the [crate-level
+/// documentation](crate). Argument conversion is assumed to be generally infallible under normal
+/// circumstances and will only produce logs on failure.
+///
+/// TODO: more docs
+#[proc_macro_attribute]
+pub fn bridge_callbacks(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    // TODO: parse attr for "ffi = false" and similar, like bridge_fn.
+    let trait_item = parse_macro_input!(item as ItemTrait);
+    let ffi_item = ffi::bridge_trait(&trait_item).unwrap_or_else(Error::into_compile_error);
+    quote! {
+        #trait_item
+        #ffi_item
+    }
+    .into()
+}
+
 #[cfg(test)]
 mod bridge_io_params_tests {
     use super::*;

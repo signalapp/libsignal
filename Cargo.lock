@@ -2338,6 +2338,7 @@ dependencies = [
  "itertools 0.14.0",
  "jni",
  "libsignal-account-keys",
+ "libsignal-bridge-macros",
  "libsignal-core",
  "libsignal-keytrans",
  "libsignal-message-backup",

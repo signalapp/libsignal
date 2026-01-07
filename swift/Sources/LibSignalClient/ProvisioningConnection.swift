@@ -179,11 +179,11 @@ internal class ProvisioningListenerBridge {
     /// The resulting struct must eventually have its `destroy` callback invoked with its `ctx` as argument,
     /// or the ProvisioningListenerBridge object used to construct it (`self`) will be leaked.
     func makeListenerStruct() -> SignalFfiProvisioningListenerStruct {
-        let receivedAddress: SignalReceivedProvisioningAddress = { rawCtx, rawAddress, ackHandle in
+        let receivedAddress: SignalFfiProvisioningListenerReceivedAddress = { rawCtx, rawAddress, ackHandle in
             defer { signal_free_string(rawAddress) }
             let bridge = Unmanaged<ProvisioningListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
 
-            let ackHandleOwner = AckHandleOwner(owned: NonNull(untyped: ackHandle!))
+            let ackHandleOwner = AckHandleOwner(owned: NonNull(ackHandle)!)
             guard let connection = bridge.connection else {
                 return
             }
@@ -194,10 +194,10 @@ internal class ProvisioningListenerBridge {
             }
         }
 
-        let receivedEnvelope: SignalReceivedProvisioningEnvelope = { rawCtx, envelope, ackHandle in
+        let receivedEnvelope: SignalFfiProvisioningListenerReceivedEnvelope = { rawCtx, envelope, ackHandle in
             let bridge = Unmanaged<ProvisioningListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
 
-            let ackHandleOwner = AckHandleOwner(owned: NonNull(untyped: ackHandle!))
+            let ackHandleOwner = AckHandleOwner(owned: NonNull(ackHandle)!)
             let envelopeData = Data(consuming: envelope)
             guard let connection = bridge.connection else {
                 return
@@ -207,7 +207,7 @@ internal class ProvisioningListenerBridge {
                 _ = ackHandleOwner.withNativeHandle { ackHandle in signal_server_message_ack_send(ackHandle.const()) }
             }
         }
-        let connectionInterrupted: SignalConnectionInterrupted = { rawCtx, maybeError in
+        let connectionInterrupted: SignalFfiProvisioningListenerConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<ProvisioningListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
             let error = convertError(maybeError)
 

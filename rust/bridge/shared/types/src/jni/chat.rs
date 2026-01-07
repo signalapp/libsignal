@@ -95,10 +95,10 @@ impl ChatListener for JniChatListener {
         });
     }
 
-    fn received_alerts(&mut self, alerts: Vec<String>) {
+    fn received_alerts(&mut self, alerts: Box<[String]>) {
         let listener = &self.listener;
         attach_and_log_on_error(&self.vm, "received alerts", move |env| {
-            let alerts = alerts.into_boxed_slice().convert_into(env)?;
+            let alerts = alerts.convert_into(env)?;
             call_method_checked(
                 env,
                 listener,
