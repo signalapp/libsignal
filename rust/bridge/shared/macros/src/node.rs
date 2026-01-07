@@ -339,6 +339,8 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
             };
             let js_arg_name = format_ident!("js_{}", arg_name.ident);
             Some(quote! {
+                // Note that we use *Result*TypeInfo for callback arguments,
+                // since we are passing values from Rust into JS.
                 let #js_arg_name = node::ResultTypeInfo::convert_into(#arg_name, cx)?
                     .upcast() // note no trailing semicolon
             })

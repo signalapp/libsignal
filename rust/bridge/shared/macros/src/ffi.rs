@@ -314,6 +314,8 @@ fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback
                     .into_compile_error();
             };
             quote! {
+                // Note that we use *Result*TypeInfo for callback arguments,
+                // since we are passing values from Rust into C.
                 ffi::ResultTypeInfo::convert_into(#arg_name)
                     .expect(concat!("can convert argument for ", stringify!(#req_name)))
             }

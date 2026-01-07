@@ -276,6 +276,8 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
             let java_arg_name = format_ident!("java_{}", arg_name.ident);
             Some(quote! {
                 let #java_arg_name = jni::JValueOwned::from(
+                    // Note that we use *Result*TypeInfo for callback arguments,
+                    // since we are passing values from Rust into Java.
                     jni::ResultTypeInfo::convert_into(#arg_name, env)?
                 ) // note no trailing semicolon
             })

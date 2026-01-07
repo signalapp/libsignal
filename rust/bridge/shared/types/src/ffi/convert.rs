@@ -112,6 +112,7 @@ where
 /// Converts result values from their Rust form to their FFI form.
 ///
 /// `ResultTypeInfo` is used to implement the `bridge_fn` macro, but can also be used outside it.
+/// `ResultTypeInfo` is also used for callback arguments in the `bridge_callback` macro.
 ///
 /// ```
 /// # use libsignal_bridge_types::ffi::*;
