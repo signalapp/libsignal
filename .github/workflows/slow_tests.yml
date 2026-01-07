@@ -528,6 +528,9 @@ jobs:
     - run: cargo fuzz build sealed_sender_v2 && cargo fuzz run sealed_sender_v2 -j${{ env.FUZZ_JOBS }} -- -max_total_time=${{ env.FUZZ_TIME_SECONDS }}
       working-directory: rust/protocol
 
+    - run: cargo fuzz build session_management && cargo fuzz run session_management -j${{ env.FUZZ_JOBS }} -- -max_total_time=${{ env.FUZZ_TIME_SECONDS }}
+      working-directory: rust/protocol
+
     - run: cargo fuzz build dcap && cargo fuzz run dcap -j${{ env.FUZZ_JOBS }} -- -max_total_time=${{ env.FUZZ_TIME_SECONDS }}
       working-directory: rust/attest
 

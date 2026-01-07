@@ -13,7 +13,7 @@ libsignal-protocol = { path = ".." }
 
 env_logger = "0.11.4"
 futures-util = "0.3.7"
-libfuzzer-sys = "0.4"
+libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
 log = "0.4"
 rand = "0.9"
 
@@ -34,6 +34,12 @@ path = "fuzz_targets/sealed_sender_v2.rs"
 test = false
 doc = false
 
+[[bin]]
+name = "session_management"
+path = "fuzz_targets/session_management.rs"
+test = false
+doc = false
+
 [patch.crates-io]
-# Use our fork of curve25519-dalek for zkgroup support.
-curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.0.0' }
+# Use our fork to be consistent with the regular build.
+curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.1.3' }
