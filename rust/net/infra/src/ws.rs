@@ -383,7 +383,7 @@ async fn connect_http2<Inner: WebSocketTransportStream, B: H2Body + Default>(
         );
         return Err(tungstenite::Error::Protocol(
             tungstenite::error::ProtocolError::InvalidHeader(
-                http::header::SEC_WEBSOCKET_EXTENSIONS,
+                http::header::SEC_WEBSOCKET_EXTENSIONS.into(),
             ),
         )
         .into());
@@ -477,7 +477,7 @@ impl From<tungstenite::Error> for WebSocketError {
             tungstenite::Error::Capacity(e) => Self::Capacity(e.into()),
             tungstenite::Error::WriteBufferFull(_) => Self::Capacity(SpaceError::SendQueueFull),
             tungstenite::Error::Url(e) => Self::Url(e),
-            tungstenite::Error::Http(response) => Self::Http(Box::new(response)),
+            tungstenite::Error::Http(response) => Self::Http(response),
             tungstenite::Error::HttpFormat(e) => Self::HttpFormat(e),
             tungstenite::Error::Utf8(_) => Self::Other("UTF-8 error"),
             tungstenite::Error::AttackAttempt => Self::Other("attack attempt"),
@@ -945,7 +945,7 @@ mod test {
             err,
             WebSocketConnectError::WebSocketError(WebSocketError::Protocol(
                 ProtocolError(tungstenite::error::ProtocolError::InvalidHeader(h))
-            )) if h == http::header::SEC_WEBSOCKET_EXTENSIONS
+            )) if *h == http::header::SEC_WEBSOCKET_EXTENSIONS
         );
     }
 

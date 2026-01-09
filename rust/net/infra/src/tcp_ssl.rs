@@ -234,9 +234,10 @@ pub(crate) mod testutil {
 
     pub(crate) const SERVER_HOSTNAME: &str = "test-server.signal.org.local";
 
-    pub(crate) static SERVER_CERTIFICATE: LazyLock<CertifiedKey> = LazyLock::new(|| {
-        rcgen::generate_simple_self_signed([SERVER_HOSTNAME.to_string()]).expect("can generate")
-    });
+    pub(crate) static SERVER_CERTIFICATE: LazyLock<CertifiedKey<rcgen::KeyPair>> =
+        LazyLock::new(|| {
+            rcgen::generate_simple_self_signed([SERVER_HOSTNAME.to_string()]).expect("can generate")
+        });
 
     /// Starts an HTTPS server on `::1` using [`SERVER_CERTIFICATE`] and the provided `warp` filter.
     ///
@@ -305,7 +306,7 @@ pub(crate) mod testutil {
                 tokio::net::TcpListener::from_std(listener).expect("can convert to tokio");
 
             let private_key = boring_signal::pkey::PKey::private_key_from_der(
-                SERVER_CERTIFICATE.key_pair.serialized_der(),
+                SERVER_CERTIFICATE.signing_key.serialized_der(),
             )
             .expect("valid key");
             let cert = boring_signal::x509::X509::from_der(SERVER_CERTIFICATE.cert.der())

@@ -136,7 +136,7 @@ mod test {
         *response_4xx.status_mut() = http::StatusCode::BAD_REQUEST;
 
         let http_4xx_error = WebSocketServiceConnectError::from_websocket_error(
-            tungstenite::Error::Http(response_4xx.clone()).into(),
+            tungstenite::Error::Http(response_4xx.clone().into()).into(),
             confirmation_header.as_ref(),
             now,
         );

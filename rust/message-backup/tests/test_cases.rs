@@ -88,12 +88,17 @@ fn serialized_account_settings_is_valid() {
     pretty_assertions::assert_str_eq!(expected_canonical_str, canonical_repr)
 }
 
+fn cargo_bin_dir() -> &'static Path {
+    Path::new(env!("CARGO_BIN_EXE_validator"))
+        .parent()
+        .expect("has parent")
+}
+
 #[test]
 fn scrambler_smoke_test() {
     // Scrambling is deterministic, so we can check against expected output.
     let binproto = include_bytes!("res/canonical-backup.binproto");
-    let scrambled_binproto = Command::cargo_bin("examples/scramble")
-        .expect("bin exists")
+    let scrambled_binproto = Command::new(cargo_bin_dir().join("examples/scramble"))
         .arg("-")
         .write_stdin(binproto)
         .ok()
@@ -171,8 +176,7 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
     }
     args.push(path.to_str().unwrap());
 
-    let decrypted_contents = Command::cargo_bin("examples/decrypt_backup")
-        .expect("bin exists")
+    let decrypted_contents = Command::new(cargo_bin_dir().join("examples/decrypt_backup"))
         .args(&args)
         .ok()
         .expect("can decrypt")
@@ -210,8 +214,7 @@ fn encrypt_tool_can_encrypt(input: Fixture<&str>) {
     }
 
     let contents = input.into_content();
-    let binproto = Command::cargo_bin("examples/json_to_binproto")
-        .expect("bin exists")
+    let binproto = Command::new(cargo_bin_dir().join("examples/json_to_binproto"))
         .arg("-")
         .write_stdin(contents)
         .ok()
@@ -257,8 +260,7 @@ fn encrypt_tool_can_encrypt(input: Fixture<&str>) {
         }
         args.push("-");
 
-        let encrypted = Command::cargo_bin("examples/encrypt_backup")
-            .expect("bin exists")
+        let encrypted = Command::new(cargo_bin_dir().join("examples/encrypt_backup"))
             .args(&args)
             .write_stdin(binproto.clone())
             .ok()
@@ -409,5 +411,5 @@ fn validate(mut reader: BackupReader<impl AsyncRead + Unpin + VerifyHmac>) {
 }
 
 fn validator_command() -> Command {
-    Command::cargo_bin("validator").expect("bin not found")
+    Command::new(env!("CARGO_BIN_EXE_validator"))
 }

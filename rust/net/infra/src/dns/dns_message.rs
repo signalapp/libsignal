@@ -271,7 +271,7 @@ mod test {
     use const_str::{concat_bytes, ip_addr};
     use hickory_proto::op::{MessageType, ResponseCode};
     use hickory_proto::rr::rdata::{A, CNAME};
-    use hickory_proto::rr::{Name, RData, RecordType};
+    use hickory_proto::rr::{Name, RecordType};
     use hickory_proto::serialize::binary::BinEncodable;
     use itertools::Itertools;
     use tokio::time::Instant;
@@ -375,12 +375,12 @@ mod test {
         let response_message = response_bytes(RecordType::A, |message| {
             for ip_and_ttl in expected_ips_and_ttls {
                 let (ip, ttl) = ip_and_ttl;
-                let mut rr = hickory_proto::rr::Record::<RData>::new();
-                rr.set_name(name.clone())
-                    .set_record_type(RecordType::A)
-                    .set_ttl(ttl.as_secs().try_into().unwrap())
-                    .set_data(Some(RData::A(A::from(ip))));
-                message.add_answer(rr);
+                let rr = hickory_proto::rr::Record::from_rdata(
+                    name.clone(),
+                    ttl.as_secs().try_into().unwrap(),
+                    A::from(ip),
+                );
+                message.add_answer(rr.into_record_of_rdata());
             }
         });
 
@@ -483,20 +483,13 @@ mod test {
         let response_message = response_bytes(RecordType::A, |message| {
             // add CNAME record
             let cname = Name::from_str("cname.signal.org").unwrap();
-            let mut rr = hickory_proto::rr::Record::<RData>::new();
-            rr.set_name(name.clone())
-                .set_record_type(RecordType::CNAME)
-                .set_ttl(ttl_sec)
-                .set_data(Some(RData::CNAME(CNAME(cname))));
-            message.add_answer(rr);
+            let rr = hickory_proto::rr::Record::from_rdata(name.clone(), ttl_sec, CNAME(cname));
+            message.add_answer(rr.into_record_of_rdata());
 
             // add A record
-            let mut rr = hickory_proto::rr::Record::<RData>::new();
-            rr.set_name(name.clone())
-                .set_record_type(RecordType::A)
-                .set_ttl(ttl_sec)
-                .set_data(Some(RData::A(A::from(expected_ip))));
-            message.add_answer(rr);
+            let rr =
+                hickory_proto::rr::Record::from_rdata(name.clone(), ttl_sec, A::from(expected_ip));
+            message.add_answer(rr.into_record_of_rdata());
         });
 
         // parsing response message
@@ -515,20 +508,17 @@ mod test {
         let ip_to_simulate_error = ip_addr!(v4, "192.0.2.2");
         let response_message = response_bytes(RecordType::A, move |message| {
             // add invalid record
-            let mut rr = hickory_proto::rr::Record::<RData>::new();
-            rr.set_name(name.clone())
-                .set_record_type(RecordType::A)
-                .set_ttl(ttl_sec)
-                .set_data(Some(RData::A(A::from(ip_to_simulate_error))));
-            message.add_answer(rr);
+            let rr = hickory_proto::rr::Record::from_rdata(
+                name.clone(),
+                ttl_sec,
+                A::from(ip_to_simulate_error),
+            );
+            message.add_answer(rr.into_record_of_rdata());
 
             // add A record
-            let mut rr = hickory_proto::rr::Record::<RData>::new();
-            rr.set_name(name.clone())
-                .set_record_type(RecordType::A)
-                .set_ttl(ttl_sec)
-                .set_data(Some(RData::A(A::from(EXPECTED_IP))));
-            message.add_answer(rr);
+            let rr =
+                hickory_proto::rr::Record::from_rdata(name.clone(), ttl_sec, A::from(EXPECTED_IP));
+            message.add_answer(rr.into_record_of_rdata());
         });
 
         // parsing response message

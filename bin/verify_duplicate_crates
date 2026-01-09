@@ -15,11 +15,11 @@
 # rand_core, getrandom: waiting to update all the RustCrypto crates together
 EXPECTED="
 getrandom v0.2.16
-getrandom v0.3.3
+getrandom v0.3.4
 rand_core v0.6.4
 rand_core v0.9.3
 thiserror v1.0.69
-thiserror v2.0.16"
+thiserror v2.0.17"
 
 check_cargo_tree() {
     # Only check the mobile targets, where we care most about code size.
