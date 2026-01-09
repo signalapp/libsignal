@@ -2400,7 +2400,6 @@ dependencies = [
  "curve25519-dalek",
  "derive_more 2.0.1",
  "displaydoc",
- "foreign-types",
  "hex",
  "log",
  "proptest",

@@ -32,7 +32,6 @@ boring-sys = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 const-str = { workspace = true }
 criterion = { workspace = true }
-foreign-types = { workspace = true }
 hex = { workspace = true }
 proptest = { workspace = true }
 
