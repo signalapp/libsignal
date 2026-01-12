@@ -8,6 +8,7 @@ use curve25519_dalek::edwards::{CompressedEdwardsY, EdwardsPoint};
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::{IsIdentity as _, VartimeMultiscalarMul as _};
 use sha2::{Digest as _, Sha512};
+use zerocopy::{FromBytes, Immutable, KnownLayout};
 
 const SUITE_ID: u8 = 0x03;
 const DOMAIN_SEPARATOR_ENCODE: u8 = 0x01;
@@ -98,20 +99,33 @@ impl PublicKey {
     /// the index if so.
     pub fn proof_to_hash(&self, m: &[u8], proof: &[u8; 80]) -> Result<[u8; 32]> {
         // Decode proof into its component parts: gamma, c, and s.
-        let gamma = CompressedEdwardsY(proof[..32].try_into().expect("proof has enough bytes"))
+        #[derive(FromBytes, Immutable, KnownLayout)]
+        #[repr(C)]
+        struct ProofRepr {
+            gamma_bytes: [u8; 32],
+            c_lower_bytes: [u8; 16],
+            s_bytes: [u8; 32],
+        }
+
+        let ProofRepr {
+            gamma_bytes,
+            c_lower_bytes,
+            s_bytes,
+        } = zerocopy::transmute_ref!(proof);
+
+        let gamma = CompressedEdwardsY(*gamma_bytes)
             .decompress()
             .ok_or(Error::InvalidProof)?;
 
         let mut c_bytes = [0u8; 32];
-        c_bytes[..16].copy_from_slice(&proof[32..48]);
+        c_bytes[..16].copy_from_slice(c_lower_bytes);
         let c = -Scalar::from_canonical_bytes(c_bytes)
             .into_option()
             .ok_or(Error::InvalidProof)?;
 
-        let s =
-            Scalar::from_canonical_bytes(proof[48..80].try_into().expect("proof has enough bytes"))
-                .into_option()
-                .ok_or(Error::InvalidProof)?;
+        let s = Scalar::from_canonical_bytes(*s_bytes)
+            .into_option()
+            .ok_or(Error::InvalidProof)?;
 
         // H = encode_to_curve_try_and_increment(pk, m)
         // U = [s]B - [c]Y
@@ -125,11 +139,11 @@ impl PublicKey {
         let c_prime = generate_challenge([
             &self.compressed,
             &h.compress().0,
-            proof[..32].try_into().expect("proof has enough bytes"),
+            gamma_bytes,
             &u.compress().0,
             &v.compress().0,
         ]);
-        if proof[32..48] != c_prime {
+        if *c_lower_bytes != c_prime {
             return Err(Error::InvalidProof);
         }
 

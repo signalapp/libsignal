@@ -17,6 +17,7 @@ use thiserror::Error;
 use tungstenite::protocol::CloseFrame;
 use tungstenite::protocol::frame::coding::CloseCode;
 use uuid::Uuid;
+use zerocopy::{FromBytes, Immutable, KnownLayout};
 
 use crate::auth::Auth;
 use crate::connect_state::{ConnectionResources, WebSocketTransportConnectorFactory};
@@ -166,20 +167,29 @@ impl TryFrom<ClientResponse> for LookupResponse {
 
 impl LookupResponseEntry {
     fn try_parse_from(record: &[u8; Self::SERIALIZED_LEN]) -> Option<Self> {
-        fn non_nil_uuid<T: From<Uuid>>(bytes: &uuid::Bytes) -> Option<T> {
-            let uuid = Uuid::from_bytes(*bytes);
+        fn non_nil_uuid<T: From<Uuid>>(bytes: uuid::Bytes) -> Option<T> {
+            let uuid = Uuid::from_bytes(bytes);
             (!uuid.is_nil()).then(|| uuid.into())
         }
 
-        // TODO(https://github.com/rust-lang/rust/issues/90091): use split_array
-        // instead of expect() on the output.
-        let (e164_bytes, record) = record.split_at(E164::SERIALIZED_LEN);
-        let e164_bytes = <&[u8; E164::SERIALIZED_LEN]>::try_from(e164_bytes).expect("split at len");
-        let e164 = E164::from_be_bytes(*e164_bytes)?;
-        let (pni_bytes, aci_bytes) = record.split_at(Uuid::SERIALIZED_LEN);
+        // Decode record into its component parts.
+        #[derive(FromBytes, Immutable, KnownLayout)]
+        #[repr(C)]
+        struct RecordRepr {
+            e164_bytes: [u8; E164::SERIALIZED_LEN],
+            pni_bytes: [u8; Uuid::SERIALIZED_LEN],
+            aci_bytes: [u8; Uuid::SERIALIZED_LEN],
+        }
 
-        let pni = non_nil_uuid(pni_bytes.try_into().expect("split at len"));
-        let aci = non_nil_uuid(aci_bytes.try_into().expect("split at len"));
+        let RecordRepr {
+            e164_bytes,
+            pni_bytes,
+            aci_bytes,
+        } = zerocopy::transmute_ref!(record);
+
+        let e164 = E164::from_be_bytes(*e164_bytes)?;
+        let pni = non_nil_uuid(*pni_bytes);
+        let aci = non_nil_uuid(*aci_bytes);
 
         Some(Self { e164, aci, pni })
     }
