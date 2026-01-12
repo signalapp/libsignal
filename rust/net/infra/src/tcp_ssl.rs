@@ -195,16 +195,20 @@ fn ssl_config(
     }
     ssl.set_min_proto_version(min_required_tls_version)?;
 
-    // This is just the default Boring TLS supported signature scheme list
-    //   with ed25519 added at the top of the preference order.
+    // This is the BoringSSL kVerifySignatureAlgorithms list with SHA-1 removed
+    //   and ed25519 added at the top of the preference order.
+    // See: https://github.com/google/boringssl/blob/13526b337f4d30d6303d9f51825c61519a2b1af1/ssl/extensions.cc#L287
     // We can't be any more specific because of the fallback proxies.
     ssl.set_verify_algorithm_prefs(&[
         SslSignatureAlgorithm::ED25519,
+        SslSignatureAlgorithm::ECDSA_SECP256R1_SHA256,
         SslSignatureAlgorithm::RSA_PSS_RSAE_SHA256,
         SslSignatureAlgorithm::RSA_PKCS1_SHA256,
-        SslSignatureAlgorithm::ECDSA_SECP256R1_SHA256,
-        SslSignatureAlgorithm::RSA_PKCS1_SHA1,
-        SslSignatureAlgorithm::ECDSA_SHA1,
+        SslSignatureAlgorithm::ECDSA_SECP384R1_SHA384,
+        SslSignatureAlgorithm::RSA_PSS_RSAE_SHA384,
+        SslSignatureAlgorithm::RSA_PKCS1_SHA384,
+        SslSignatureAlgorithm::RSA_PSS_RSAE_SHA512,
+        SslSignatureAlgorithm::RSA_PKCS1_SHA512,
     ])?;
 
     // Uncomment and build with the feature "dev-util" to enable NSS-standard
