@@ -72,9 +72,8 @@ pub fn decrypt_username(
         return Err(UsernameLinkError::HmacMismatch);
     }
 
-    let ctext = &encrypted_username[USERNAME_LINK_IV_SIZE..len - USERNAME_LINK_HMAC_LEN];
+    let (iv, ctext) = iv_and_ctext.split_at(USERNAME_LINK_IV_SIZE);
     let aes_key = hkdf(entropy, USERNAME_LINK_LABEL_ENCRYPTION_KEY);
-    let iv = &encrypted_username[..USERNAME_LINK_IV_SIZE];
     let ptext =
         aes_256_cbc_decrypt(ctext, &aes_key, iv).map_err(|_| UsernameLinkError::BadCiphertext)?;
 
