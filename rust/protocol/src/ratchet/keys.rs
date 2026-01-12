@@ -5,7 +5,7 @@
 
 use std::fmt;
 
-use zerocopy::{FromBytes, IntoBytes, KnownLayout};
+use libsignal_core::derive_arrays;
 
 use crate::proto::storage::session_structure;
 use crate::{PrivateKey, PublicKey, Result, crypto};
@@ -92,16 +92,11 @@ impl MessageKeys {
         optional_salt: Option<&[u8]>,
         counter: u32,
     ) -> Self {
-        #[derive(Default, KnownLayout, IntoBytes, FromBytes)]
-        #[repr(C, packed)]
-        struct DerivedSecretBytes([u8; 32], [u8; 32], [u8; 16]);
-        let mut okm = DerivedSecretBytes::default();
-
-        hkdf::Hkdf::<sha2::Sha256>::new(optional_salt, input_key_material)
-            .expand(b"WhisperMessageKeys", okm.as_mut_bytes())
-            .expect("valid output length");
-
-        let DerivedSecretBytes(cipher_key, mac_key, iv) = okm;
+        let (cipher_key, mac_key, iv) = derive_arrays(|okm| {
+            hkdf::Hkdf::<sha2::Sha256>::new(optional_salt, input_key_material)
+                .expand(b"WhisperMessageKeys", okm)
+                .expect("valid output length")
+        });
 
         MessageKeys {
             cipher_key,
@@ -195,16 +190,11 @@ impl RootKey {
         our_ratchet_key: &PrivateKey,
     ) -> Result<(RootKey, ChainKey)> {
         let shared_secret = our_ratchet_key.calculate_agreement(their_ratchet_key)?;
-        #[derive(Default, KnownLayout, IntoBytes, FromBytes)]
-        #[repr(C, packed)]
-        struct DerivedSecretBytes([u8; 32], [u8; 32]);
-        let mut derived_secret_bytes = DerivedSecretBytes::default();
-
-        hkdf::Hkdf::<sha2::Sha256>::new(Some(&self.key), &shared_secret)
-            .expand(b"WhisperRatchet", derived_secret_bytes.as_mut_bytes())
-            .expect("valid output length");
-
-        let DerivedSecretBytes(root_key, chain_key) = derived_secret_bytes;
+        let (root_key, chain_key, []) = derive_arrays(|bytes| {
+            hkdf::Hkdf::<sha2::Sha256>::new(Some(&self.key), &shared_secret)
+                .expand(b"WhisperRatchet", bytes)
+                .expect("valid output length")
+        });
 
         Ok((
             RootKey { key: root_key },

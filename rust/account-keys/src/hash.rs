@@ -26,6 +26,7 @@ use argon2::{
     Algorithm, Argon2, ParamsBuilder, PasswordHash, PasswordHasher, PasswordVerifier, Version,
 };
 use hkdf::Hkdf;
+use libsignal_core::try_derive_arrays;
 use sha2::Sha256;
 
 use crate::error::Result;
@@ -60,15 +61,12 @@ impl PinHash {
                 .build()
                 .expect("valid params"),
         );
-        let mut output_key_material = [0u8; 64];
-        hasher.hash_password_into(pin, salt, &mut output_key_material)?;
+        let (encryption_key, access_key, []) = try_derive_arrays(|output_key_material| {
+            hasher.hash_password_into(pin, salt, output_key_material)
+        })?;
         Ok(PinHash {
-            encryption_key: output_key_material[..32]
-                .try_into()
-                .expect("target length 32"),
-            access_key: output_key_material[32..]
-                .try_into()
-                .expect("target length 32"),
+            encryption_key,
+            access_key,
         })
     }
 

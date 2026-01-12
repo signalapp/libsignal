@@ -2513,6 +2513,7 @@ dependencies = [
  "thiserror 2.0.17",
  "uuid",
  "x25519-dalek",
+ "zerocopy",
 ]
 
 [[package]]

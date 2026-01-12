@@ -7,6 +7,7 @@
 
 use hkdf::Hkdf;
 use libsignal_account_keys::{BackupForwardSecrecyToken, BackupId, BackupKey};
+use libsignal_core::derive_arrays;
 use sha2::Sha256;
 
 #[derive(Debug)]
@@ -33,35 +34,27 @@ impl MessageBackupKey {
         backup_id: &BackupId,
         backup_nonce: Option<&BackupForwardSecrecyToken>,
     ) -> Self {
-        let mut full_bytes = [0; MessageBackupKey::LEN];
+        let (hmac_key, aes_key, []) = derive_arrays(|full_bytes| {
+            // See [`BackupKey::derive_backup_id`] for an explanation of this pattern.
+            match VERSION {
+                // Disable inference by using explicit type syntax <>, giving us the latest version.
+                <BackupKey>::VERSION => {
+                    const OLD_DST: &[u8] = b"20241007_SIGNAL_BACKUP_ENCRYPT_MESSAGE_BACKUP:";
+                    const NEW_DST: &[u8] = b"20250708_SIGNAL_BACKUP_ENCRYPT_MESSAGE_BACKUP:";
 
-        // See [`BackupKey::derive_backup_id`] for an explanation of this pattern.
-        match VERSION {
-            // Disable inference by using explicit type syntax <>, giving us the latest version.
-            <BackupKey>::VERSION => {
-                const OLD_DST: &[u8] = b"20241007_SIGNAL_BACKUP_ENCRYPT_MESSAGE_BACKUP:";
-                const NEW_DST: &[u8] = b"20250708_SIGNAL_BACKUP_ENCRYPT_MESSAGE_BACKUP:";
+                    let (salt, dst) = match backup_nonce {
+                        Some(nonce) => (Some(&nonce.0[..]), NEW_DST),
+                        None => (None, OLD_DST),
+                    };
 
-                let (salt, dst) = match backup_nonce {
-                    Some(nonce) => (Some(&nonce.0[..]), NEW_DST),
-                    None => (None, OLD_DST),
-                };
-
-                Hkdf::<Sha256>::new(salt, &backup_key.0)
-                    .expand_multi_info(&[dst, &backup_id.0], &mut full_bytes)
-                    .expect("valid length");
+                    Hkdf::<Sha256>::new(salt, &backup_key.0)
+                        .expand_multi_info(&[dst, &backup_id.0], full_bytes)
+                        .expect("valid length");
+                }
+                _ => unreachable!("invalid backup key version"),
             }
-            _ => unreachable!("invalid backup key version"),
-        }
-
-        // TODO split into arrays instead of slices when the API for that is
-        // stabilized. See https://github.com/rust-lang/rust/issues/90091
-        let (hmac_key, aes_key) = full_bytes.split_at(Self::HMAC_KEY_LEN);
-
-        Self {
-            hmac_key: hmac_key.try_into().expect("correct length"),
-            aes_key: aes_key.try_into().expect("correct length"),
-        }
+        });
+        Self { hmac_key, aes_key }
     }
 }
 

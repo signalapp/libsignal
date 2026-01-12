@@ -11,8 +11,8 @@
 //! SVR, so that a restorer can reconstruct the `BackupId`.
 
 use hkdf::Hkdf;
-use libsignal_core::Aci;
 use libsignal_core::curve::PrivateKey;
+use libsignal_core::{Aci, derive_arrays};
 use partial_default::PartialDefault;
 use sha2::Sha256;
 
@@ -156,21 +156,16 @@ impl<const VERSION: u8> BackupKey<VERSION> {
         &self,
         salt: &[u8],
     ) -> BackupForwardSecrecyEncryptionKey {
-        let mut bytes = [0u8; BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_CIPHER_KEY_SIZE
-            + BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_HMAC_KEY_SIZE];
-        const INFO: &[u8] =
-            b"Signal Message Backup 20250627:BackupForwardSecrecyToken Encryption Key";
-        Hkdf::<Sha256>::new(Some(salt), &self.0)
-            .expand(INFO, &mut bytes)
-            .expect("valid length");
+        let (cipher_key, hmac_key, []) = derive_arrays(|bytes| {
+            const INFO: &[u8] =
+                b"Signal Message Backup 20250627:BackupForwardSecrecyToken Encryption Key";
+            Hkdf::<Sha256>::new(Some(salt), &self.0)
+                .expand(INFO, bytes)
+                .expect("valid length");
+        });
         BackupForwardSecrecyEncryptionKey {
-            cipher_key: bytes[..BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_CIPHER_KEY_SIZE]
-                .try_into()
-                .expect("should have enough bytes"),
-            hmac_key: bytes[BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_CIPHER_KEY_SIZE..]
-                [..BACKUP_FORWARD_SECRECY_ENCRYPTION_KEY_HMAC_KEY_SIZE]
-                .try_into()
-                .expect("should have enough bytes"),
+            cipher_key,
+            hmac_key,
         }
     }
 }

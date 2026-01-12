@@ -6,6 +6,7 @@
 mod keys;
 mod params;
 
+use libsignal_core::derive_arrays;
 use rand::{CryptoRng, Rng};
 
 pub(crate) use self::keys::{ChainKey, MessageKeyGenerator, RootKey};
@@ -24,16 +25,15 @@ fn derive_keys(secret_input: &[u8]) -> (RootKey, ChainKey, InitialPQRKey) {
 }
 
 fn derive_keys_with_label(label: &[u8], secret_input: &[u8]) -> (RootKey, ChainKey, InitialPQRKey) {
-    let mut secrets = [0; 96];
-    hkdf::Hkdf::<sha2::Sha256>::new(None, secret_input)
-        .expand(label, &mut secrets)
-        .expect("valid length");
-    let (root_key_bytes, chain_key_bytes, pqr_bytes) =
-        (&secrets[0..32], &secrets[32..64], &secrets[64..96]);
+    let (root_key_bytes, chain_key_bytes, pqr_bytes) = derive_arrays(|bytes| {
+        hkdf::Hkdf::<sha2::Sha256>::new(None, secret_input)
+            .expand(label, bytes)
+            .expect("valid length")
+    });
 
-    let root_key = RootKey::new(root_key_bytes.try_into().expect("correct length"));
-    let chain_key = ChainKey::new(chain_key_bytes.try_into().expect("correct length"), 0);
-    let pqr_key: InitialPQRKey = pqr_bytes.try_into().expect("correct length");
+    let root_key = RootKey::new(root_key_bytes);
+    let chain_key = ChainKey::new(chain_key_bytes, 0);
+    let pqr_key: InitialPQRKey = pqr_bytes;
 
     (root_key, chain_key, pqr_key)
 }
