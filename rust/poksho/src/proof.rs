@@ -19,8 +19,7 @@ impl Proof {
     /// Returns `None` if the input is invalid. This does not run in constant
     /// time!
     pub fn from_slice(bytes: &[u8]) -> Option<Self> {
-        // TODO use Iterator::array_chunks once that's stabilized.
-        // See https://github.com/rust-lang/rust/issues/100450.
+        // TODO: use as_chunks instead once we reach MSRV 1.88.
         let chunks = bytes.chunks_exact(32);
         if !chunks.remainder().is_empty() {
             return None;

@@ -204,8 +204,7 @@ impl Statement {
         sho2.absorb_and_ratchet(message); // M
         let blinding_scalar_bytes = sho2.squeeze_and_ratchet(g1.len() * 64);
 
-        // TODO use array_chunks once that's stabilized.
-        // See https://github.com/rust-lang/rust/issues/74985.
+        // TODO: use as_chunks once we reach MSRV 1.88.
         let nonce: G1 = blinding_scalar_bytes
             .chunks_exact(64)
             .map(|chunk| {

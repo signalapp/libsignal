@@ -147,6 +147,7 @@ impl TryFrom<ClientResponse> for LookupResponse {
             });
         }
 
+        // TODO: Use as_chunks when we reach MSRV 1.88.
         let records = e164_pni_aci_triples
             .chunks(LookupResponseEntry::SERIALIZED_LEN)
             .flat_map(|record| {

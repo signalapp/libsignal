@@ -55,6 +55,7 @@ impl<'a> IntoIterator for ServiceIdSequence<'a> {
     type Item = ServiceId;
 
     fn into_iter(self) -> Self::IntoIter {
+        // TODO: Use as_chunks when we reach MSRV 1.88.
         self.0
             .chunks_exact(Self::SERVICE_ID_FIXED_WIDTH_BINARY_LEN)
             .map(Self::parse_single_chunk)
@@ -66,6 +67,7 @@ impl<'a> rayon::iter::IntoParallelIterator for ServiceIdSequence<'a> {
     type Item = ServiceId;
 
     fn into_par_iter(self) -> Self::Iter {
+        // TODO: Use as_chunks when we reach MSRV 1.88.
         self.0
             .par_chunks_exact(Self::SERVICE_ID_FIXED_WIDTH_BINARY_LEN)
             .map(Self::parse_single_chunk)

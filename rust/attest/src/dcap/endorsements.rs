@@ -106,6 +106,7 @@ impl TryFrom<&[u8]> for SgxEndorsements {
 
         let (offsets, data) = src.split_at(offsets_required_size);
 
+        // TODO: Use as_chunks instead at MSRV 1.88.
         let offsets = offsets
             .chunks_exact(4)
             .map(|d| u32::from_le_bytes(d.try_into().expect("correct size")) as usize)
