@@ -184,14 +184,14 @@ fn decrypt_only(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("Aes256CbcReader");
     benchmark_multiple_backup_sizes(|size, backup, message_backup_key| {
-        let iv = backup[..AES_IV_SIZE].try_into().unwrap();
+        let iv = backup.first_chunk().unwrap();
 
         group.bench_function(BenchmarkId::new("direct", size), |b| {
             b.iter(|| {
                 process(
                     cursor_without_appended_hash(backup),
                     &message_backup_key.aes_key,
-                    &iv,
+                    iv,
                 )
             })
         });
@@ -200,7 +200,7 @@ fn decrypt_only(c: &mut Criterion) {
                 process(
                     YieldingReader(cursor_without_appended_hash(backup)),
                     &message_backup_key.aes_key,
-                    &iv,
+                    iv,
                 )
             })
         });

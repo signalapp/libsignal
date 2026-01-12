@@ -47,7 +47,7 @@ impl<'a> SgxQuote<'a> {
         }
 
         // check the version before we try to deserialize (don't advance bytes)
-        let version = u16::from_le_bytes(bytes[0..2].try_into().expect("correct size"));
+        let version = u16::from_le_bytes(*bytes.first_chunk().expect("checked size"));
         if version != QUOTE_V3 {
             return Err(Error::new("unsupported quote version"));
         }

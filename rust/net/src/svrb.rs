@@ -199,13 +199,11 @@ fn aes_256_ctr_hmacsha256_decrypt(
     iv: &[u8; IV_SIZE],
     ctext: &[u8],
 ) -> Result<Vec<u8>, signal_crypto::DecryptionError> {
-    if ctext.len() < HMAC_SHA256_TRUNCATED_BYTES {
-        return Err(signal_crypto::DecryptionError::BadCiphertext(
+    let (ctext, their_mac) = ctext
+        .split_last_chunk::<HMAC_SHA256_TRUNCATED_BYTES>()
+        .ok_or(signal_crypto::DecryptionError::BadCiphertext(
             "truncated ciphertext",
-        ));
-    }
-    let ctext_len = ctext.len() - HMAC_SHA256_TRUNCATED_BYTES;
-    let (ctext, their_mac) = (&ctext[..ctext_len], &ctext[ctext_len..]);
+        ))?;
     let our_mac = hmac_sha256(&ek.hmac_key, iv, ctext);
     if our_mac[..HMAC_SHA256_TRUNCATED_BYTES]
         .ct_eq(their_mac)

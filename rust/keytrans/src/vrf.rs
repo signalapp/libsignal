@@ -37,7 +37,7 @@ fn encode_to_curve_try_and_increment(salt: &[u8], data: &[u8]) -> EdwardsPoint {
         let r = hasher.finalize_reset();
 
         if let Some(pt) =
-            CompressedEdwardsY(r[..32].try_into().expect("hash has enough bytes")).decompress()
+            CompressedEdwardsY(*r.first_chunk().expect("hash has enough bytes")).decompress()
         {
             let maybe_res = pt.mul_by_cofactor();
             if !maybe_res.is_identity() {
@@ -58,7 +58,7 @@ fn generate_challenge(pts: [&[u8; 32]; 5]) -> [u8; 16] {
     hasher.update([DOMAIN_SEPARATOR_BACK]);
     let c = hasher.finalize();
 
-    c[..16].try_into().expect("hash has enough bytes")
+    *c.first_chunk().expect("hash has enough bytes")
 }
 
 fn proof_to_hash(gamma: &EdwardsPoint) -> [u8; 32] {
@@ -68,7 +68,7 @@ fn proof_to_hash(gamma: &EdwardsPoint) -> [u8; 32] {
     hasher.update([DOMAIN_SEPARATOR_BACK]);
     let index = hasher.finalize();
 
-    index[..32].try_into().expect("hash has enough bytes")
+    *index.first_chunk().expect("hash has enough bytes")
 }
 
 /// PublicKey holds a VRF public key.

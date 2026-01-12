@@ -156,13 +156,12 @@ impl SignalMessage {
         receiver_identity_key: &IdentityKey,
         mac_key: &[u8],
     ) -> Result<bool> {
-        let our_mac = &Self::compute_mac(
-            sender_identity_key,
-            receiver_identity_key,
-            mac_key,
-            &self.serialized[..self.serialized.len() - Self::MAC_LENGTH],
-        )?;
-        let their_mac = &self.serialized[self.serialized.len() - Self::MAC_LENGTH..];
+        let (content, their_mac) = self
+            .serialized
+            .split_last_chunk::<{ Self::MAC_LENGTH }>()
+            .expect("length checked at construction");
+        let our_mac =
+            Self::compute_mac(sender_identity_key, receiver_identity_key, mac_key, content)?;
         let result: bool = our_mac.ct_eq(their_mac).into();
         if !result {
             // A warning instead of an error because we try multiple sessions.
@@ -190,8 +189,11 @@ impl SignalMessage {
         mac.update(sender_identity_key.public_key().serialize().as_ref());
         mac.update(receiver_identity_key.public_key().serialize().as_ref());
         mac.update(message);
-        let mut result = [0u8; Self::MAC_LENGTH];
-        result.copy_from_slice(&mac.finalize().into_bytes()[..Self::MAC_LENGTH]);
+        let result = *mac
+            .finalize()
+            .into_bytes()
+            .first_chunk()
+            .expect("enough bytes");
         Ok(result)
     }
 }
@@ -497,10 +499,11 @@ impl SenderKeyMessage {
     }
 
     pub fn verify_signature(&self, signature_key: &PublicKey) -> Result<bool> {
-        let valid = signature_key.verify_signature(
-            &self.serialized[..self.serialized.len() - Self::SIGNATURE_LEN],
-            &self.serialized[self.serialized.len() - Self::SIGNATURE_LEN..],
-        );
+        let (content, signature) = self
+            .serialized
+            .split_last_chunk::<{ Self::SIGNATURE_LEN }>()
+            .expect("length checked on initialization");
+        let valid = signature_key.verify_signature(content, signature);
 
         Ok(valid)
     }

@@ -63,7 +63,9 @@ pub fn decrypt_username(
     }
 
     let mac_key = hkdf(entropy, USERNAME_LINK_LABEL_AUTHENTICATION_KEY);
-    let (iv_and_ctext, expected_hash) = encrypted_username.split_at(len - USERNAME_LINK_HMAC_LEN);
+    let (iv_and_ctext, expected_hash) = encrypted_username
+        .split_last_chunk::<USERNAME_LINK_HMAC_LEN>()
+        .expect("length already checked");
     let actual_hash = hmac(&mac_key, iv_and_ctext);
 
     if !bool::from(expected_hash.ct_eq(&actual_hash)) {

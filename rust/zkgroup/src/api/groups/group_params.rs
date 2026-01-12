@@ -204,8 +204,9 @@ impl GroupSecretParams {
             return Err(ZkGroupVerificationFailure);
         }
         let unreserved_len = ciphertext.len() - 1;
-        let nonce = &ciphertext[unreserved_len - AESGCM_NONCE_LEN..unreserved_len];
-        let ciphertext = &ciphertext[..unreserved_len - AESGCM_NONCE_LEN];
+        let (ciphertext, nonce) = ciphertext[..unreserved_len]
+            .split_last_chunk::<AESGCM_NONCE_LEN>()
+            .expect("checked length already");
         self.decrypt_blob_aesgcmsiv(&self.blob_key, nonce, ciphertext)
     }
 
@@ -215,13 +216,11 @@ impl GroupSecretParams {
     ) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
         let mut decrypted = self.decrypt_blob(ciphertext)?;
 
-        if decrypted.len() < ENCRYPTED_BLOB_PADDING_LENGTH_SIZE {
-            return Err(ZkGroupVerificationFailure);
-        }
-        let (padding_len_bytes, plaintext_plus_padding) =
-            decrypted.split_at(ENCRYPTED_BLOB_PADDING_LENGTH_SIZE);
+        let (padding_len_bytes, plaintext_plus_padding) = decrypted
+            .split_first_chunk::<ENCRYPTED_BLOB_PADDING_LENGTH_SIZE>()
+            .ok_or(ZkGroupVerificationFailure)?;
 
-        let padding_len = u32::from_be_bytes(padding_len_bytes.try_into().expect("correct size"));
+        let padding_len = u32::from_be_bytes(*padding_len_bytes);
         if plaintext_plus_padding.len() < padding_len as usize {
             return Err(ZkGroupVerificationFailure);
         }

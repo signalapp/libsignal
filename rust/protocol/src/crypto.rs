@@ -67,16 +67,15 @@ pub(crate) fn aes256_ctr_hmacsha256_decrypt(
     cipher_key: &[u8],
     mac_key: &[u8],
 ) -> Result<Vec<u8>, DecryptionError> {
-    if ctext.len() < 10 {
-        return Err(DecryptionError::BadCiphertext("truncated ciphertext"));
-    }
-    let ptext_len = ctext.len() - 10;
-    let our_mac = hmac_sha256(mac_key, &ctext[..ptext_len]);
-    let same: bool = our_mac[..10].ct_eq(&ctext[ptext_len..]).into();
+    let (ctext, their_mac) = ctext
+        .split_last_chunk::<10>()
+        .ok_or(DecryptionError::BadCiphertext("truncated ciphertext"))?;
+    let our_mac = hmac_sha256(mac_key, ctext);
+    let same: bool = our_mac[..10].ct_eq(their_mac).into();
     if !same {
         return Err(DecryptionError::BadCiphertext("MAC verification failed"));
     }
-    aes_256_ctr_decrypt(&ctext[..ptext_len], cipher_key)
+    aes_256_ctr_decrypt(ctext, cipher_key)
 }
 
 #[cfg(test)]

@@ -453,7 +453,7 @@ mod test {
             .expect("encoded HMAC is valid");
         block_on(futures::io::copy(&mut reader, &mut futures::io::sink())).expect("can read");
 
-        let hmac_tail = |bytes: &[u8]| bytes[bytes.len() - HMAC_LEN..].try_into().unwrap();
+        let hmac_tail = |bytes: &[u8]| *bytes.last_chunk::<HMAC_LEN>().unwrap();
         let hmac_err = block_on(reader.verify_hmac());
         let err = assert_matches!( hmac_err, Err(VerifyHmacError::HmacMismatch(e)) => e);
         assert_eq!(
