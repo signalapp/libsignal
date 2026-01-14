@@ -182,6 +182,7 @@ impl DnsResolver {
         let known_good_results = Arc::new(
             static_map
                 .iter()
+                .filter(|(_host, result)| !result.is_empty())
                 .map(|(host, result)| (*host, HashSet::from_iter(result)))
                 .collect(),
         );
