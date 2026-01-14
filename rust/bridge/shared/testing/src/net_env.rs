@@ -83,6 +83,10 @@ pub(crate) fn localhost_test_env_with_ports(
             ports.chat_port,
             root_certificate_der,
         ),
+        experimental_chat_h2_domain_config: localhost_test_domain_config_with_port_and_cert(
+            ports.chat_port,
+            root_certificate_der,
+        ),
         chat_ws_config: RECOMMENDED_CHAT_WS_CONFIG,
         cdsi: EnclaveEndpoint {
             domain_config: localhost_test_domain_config_with_port_and_cert(
