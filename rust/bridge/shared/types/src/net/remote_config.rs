@@ -99,6 +99,8 @@ pub enum RemoteConfigKey {
     EnableChatPermessageDeflate => "chatPermessageDeflate",
     /// Whether to disable the Nagle algorithm (sets TCP_NODELAY).
     DisableNagleAlgorithm => "disableNagleAlgorithm",
+    /// If set, unauth chat connections (only!) will connect over H2.
+    UseH2ForUnauthChat => "useH2ForUnauthChat"
 }
 }
 

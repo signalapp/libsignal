@@ -571,6 +571,25 @@ final class ChatConnectionTests: TestCaseBase {
         await self.fulfillment(of: [listener.expectation], timeout: 2)
     }
 
+    func testConnectUnauthH2() async throws {
+        // Use the presence of the environment setting to know whether we should make network requests in our tests.
+        guard ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS"] != nil else {
+            throw XCTSkip()
+        }
+
+        let net = Net(env: .staging, userAgent: Self.userAgent, buildVariant: .production)
+        net.setRemoteConfig(["useH2ForUnauthChat": "true"], buildVariant: .beta)
+        let chat = try await net.connectUnauthenticatedChat(languages: ["en"])
+        _ = chat.info()
+        let listener = ExpectDisconnectListener(expectation(description: "disconnect"))
+        chat.start(listener: listener)
+
+        // Just make sure we can connect.
+        try await chat.disconnect()
+
+        await self.fulfillment(of: [listener.expectation], timeout: 2)
+    }
+
     func testPreconnectAuth() async throws {
         // Use the presence of the environment setting to know whether we should make network requests in our tests.
         guard ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS"] != nil else {

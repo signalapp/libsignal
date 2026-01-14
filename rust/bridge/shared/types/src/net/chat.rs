@@ -7,6 +7,7 @@ use std::convert::Infallible;
 use std::future::Future;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::str::FromStr;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use atomic_take::AtomicTake;
@@ -27,6 +28,7 @@ use libsignal_net::chat::{
 };
 use libsignal_net::connect_state::ConnectionResources;
 use libsignal_net::env::constants::{CHAT_PROVISIONING_PATH, CHAT_WEBSOCKET_PATH};
+use libsignal_net::env::{ConnectionConfig, Env};
 use libsignal_net::infra::route::{
     DirectOrProxyMode, DirectOrProxyModeDiscriminants, DirectOrProxyProvider, RouteProvider,
     RouteProviderExt, TcpRoute, TlsRoute, UnresolvedHttpsServiceRoute,
@@ -38,7 +40,7 @@ use libsignal_protocol::Timestamp;
 use static_assertions::assert_impl_all;
 
 use crate::net::ConnectionManager;
-use crate::net::remote_config::RemoteConfigKey;
+use crate::net::remote_config::{RemoteConfig, RemoteConfigKey};
 use crate::support::LimitedLifetimeRef;
 use crate::*;
 
@@ -181,6 +183,7 @@ impl AuthenticatedChatConnection {
             connection_manager,
             enable_domain_fronting,
             enforce_minimum_tls,
+            None,
         )?
         .map_routes(|r| r.inner);
         let connection_resources = ConnectionResources {
@@ -420,6 +423,7 @@ async fn establish_chat_connection(
         connection_manager,
         enable_domain_fronting,
         enforce_minimum_tls,
+        headers.as_ref(),
     )?;
     let proxy_mode = DirectOrProxyModeDiscriminants::from(&route_provider.mode);
 
@@ -486,13 +490,14 @@ fn make_route_provider(
     connection_manager: &ConnectionManager,
     enable_domain_fronting: EnableDomainFronting,
     enforce_minimum_tls: EnforceMinimumTls,
+    chat_headers: Option<&chat::ChatHeaders>,
 ) -> Result<
     DirectOrProxyProvider<
         impl RouteProvider<
             Route = UnresolvedHttpsServiceRoute<
                 TlsRoute<TcpRoute<libsignal_net::infra::route::UnresolvedHost>>,
             >,
-        >,
+        > + use<>,
     >,
     ConnectError,
 > {
@@ -506,8 +511,14 @@ fn make_route_provider(
         .try_into()
         .map_err(|InvalidProxyConfig| ConnectError::InvalidConnectionConfiguration)?;
 
-    let chat_connect = &env.chat_domain_config.connect;
     let override_nagle_algorithm = connection_manager.tcp_nagle_override();
+
+    let chat_connect = choose_chat_connection_config(
+        env,
+        &proxy_mode,
+        chat_headers,
+        &connection_manager.remote_config,
+    );
 
     let inner = chat_connect.route_provider_with_options(
         enable_domain_fronting,
@@ -518,6 +529,46 @@ fn make_route_provider(
         inner,
         mode: proxy_mode,
     })
+}
+
+fn choose_chat_connection_config<'a>(
+    env: &'a Env<'_>,
+    proxy_mode: &DirectOrProxyMode,
+    chat_headers: Option<&chat::ChatHeaders>,
+    remote_config: &Mutex<RemoteConfig>,
+) -> &'a ConnectionConfig {
+    // At this time, in order to try the experimental H2 configuration:
+    let default_config = &env.chat_domain_config.connect;
+
+    // - We must specifically be making an unauthenticated connection.
+    match chat_headers {
+        None | Some(chat::ChatHeaders::Auth(_)) => {
+            return default_config;
+        }
+        Some(chat::ChatHeaders::Unauth(_)) => {}
+    }
+
+    // - We must be opted in to the experiment.
+    {
+        let guard = remote_config.lock().expect("not poisoned");
+        if !guard.is_enabled(RemoteConfigKey::UseH2ForUnauthChat) {
+            return default_config;
+        }
+    }
+
+    // - We must not be connecting via Signal-TLS-Proxy.
+    match proxy_mode {
+        DirectOrProxyMode::ProxyOnly(connection_proxy_config)
+        | DirectOrProxyMode::ProxyThenDirect(connection_proxy_config)
+            if connection_proxy_config.is_signal_transparent_proxy() =>
+        {
+            // Transparent proxies won't understand the H2 domain.
+            default_config
+        }
+        DirectOrProxyMode::DirectOnly
+        | DirectOrProxyMode::ProxyOnly(_)
+        | DirectOrProxyMode::ProxyThenDirect(_) => &env.experimental_chat_h2_domain_config.connect,
+    }
 }
 
 pub struct HttpRequest {

@@ -17,6 +17,7 @@ import { ErrorCode, LibSignalErrorBase } from '../Errors.js';
 import {
   AuthenticatedChatConnection,
   buildHttpRequest,
+  BuildVariant,
   ChatConnection,
   ChatServerMessageAck,
   ChatServiceListener,
@@ -337,6 +338,21 @@ describe('chat service api', () => {
         env: Environment.Production,
         userAgent: userAgent,
       });
+      await connectChatUnauthenticated(net);
+    }).timeout(10000);
+
+    it('can connect unauthenticated over H2', async function () {
+      if (!process.env.LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS) {
+        this.skip();
+      }
+      const net = new Net({
+        env: Environment.Production,
+        userAgent: userAgent,
+      });
+      net.setRemoteConfig(
+        new Map([['useH2ForUnauthChat', 'true']]),
+        BuildVariant.Beta
+      );
       await connectChatUnauthenticated(net);
     }).timeout(10000);
 
