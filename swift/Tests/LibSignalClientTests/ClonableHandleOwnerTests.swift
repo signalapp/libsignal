@@ -40,28 +40,6 @@ class ClonableHandleOwnerTests: XCTestCase {
         XCTAssertFalse(handle.destroyed.clone)
     }
 
-    func testBorrowAndForget() {
-        var handle = FakeHandle()
-        withUnsafeMutablePointer(to: &handle) {
-            var owner = MockClonableHandleOwner(borrowing: OpaquePointer($0))
-            cloneOrForgetAsNeeded(&owner)
-        }
-        XCTAssertFalse(handle.destroyed.original)
-        XCTAssertFalse(handle.destroyed.clone)
-    }
-
-    func testBorrowAndEscape() {
-        var handle = FakeHandle()
-        withUnsafeMutablePointer(to: &handle) {
-            var owner = MockClonableHandleOwner(borrowing: OpaquePointer($0))
-            let fakeEscape = Unmanaged.passRetained(owner)
-            cloneOrForgetAsNeeded(&owner)
-            fakeEscape.release()
-        }
-        XCTAssertFalse(handle.destroyed.original)
-        XCTAssertTrue(handle.destroyed.clone)
-    }
-
     func testTake() {
         var handle = FakeHandle()
         withUnsafeMutablePointer(to: &handle) {

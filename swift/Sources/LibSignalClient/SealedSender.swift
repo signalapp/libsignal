@@ -235,8 +235,8 @@ public func sealedSenderMultiRecipientEncrypt(
     // Use withExtendedLifetime instead of withNativeHandle for the arrays of wrapper objects,
     // which aren't compatible with withNativeHandle's simple lexical scoping.
     return try withExtendedLifetime((recipients, sessions)) {
-        let recipientHandles = recipients.map { SignalConstPointerProtocolAddress(raw: $0.unsafeNativeHandle) }
-        let sessionHandles = sessions.map { SignalConstPointerSessionRecord(raw: $0.unsafeNativeHandle) }
+        let recipientHandles = recipients.map { $0.unsafeNativeHandle.const() }
+        let sessionHandles = sessions.map { $0.unsafeNativeHandle.const() }
         return try withAllBorrowed(
             content,
             .slice(recipientHandles),

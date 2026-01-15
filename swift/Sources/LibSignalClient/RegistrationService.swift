@@ -573,8 +573,7 @@ extension SignalFfiConnectChatBridgeStruct {
         return SignalFfiConnectChatBridgeStruct(
             ctx: Unmanaged.passRetained(connectionManager).toOpaque(),
             get_connection_manager: { ctx in
-                Unmanaged<ConnectionManager>.fromOpaque(ctx!).takeUnretainedValue()
-                    .unsafeNativeHandle
+                Unmanaged<ConnectionManager>.fromOpaque(ctx!).takeUnretainedValue().unsafeNativeHandle.toOpaque()
             },
             destroy: { ctx in _ = Unmanaged<ConnectionManager>.fromOpaque(ctx!).takeRetainedValue()
             }

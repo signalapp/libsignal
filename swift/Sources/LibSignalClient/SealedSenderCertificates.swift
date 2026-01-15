@@ -269,7 +269,7 @@ public class SenderCertificate: NativeHandleOwner<SignalMutPointerSenderCertific
         // Use withExtendedLifetime instead of withNativeHandle for the arrays of wrapper objects,
         // which aren't compatible with withNativeHandle's simple lexical scoping.
         return withExtendedLifetime(trustRoots) {
-            let trustRootHandles = trustRoots.map { SignalConstPointerPublicKey(raw: $0.unsafeNativeHandle) }
+            let trustRootHandles = trustRoots.map { $0.unsafeNativeHandle.const() }
             return
                 (try? withAllBorrowed(self, .slice(trustRootHandles)) { certificateHandle, trustRootHandles in
                     try invokeFnReturningBool {
