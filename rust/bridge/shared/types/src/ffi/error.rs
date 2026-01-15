@@ -1189,3 +1189,21 @@ impl From<WithContext<SignalFfiError>> for SignalProtocolError {
         SignalProtocolError::FfiBindingError(inner.to_string())
     }
 }
+
+impl From<WithContext<CallbackError>> for std::io::Error {
+    fn from(value: WithContext<CallbackError>) -> Self {
+        std::io::Error::other(SignalProtocolError::from(value))
+    }
+}
+
+/// This is overly general, but in practice is only used to handle errors converting callback
+/// results.
+impl From<WithContext<SignalFfiError>> for std::io::Error {
+    fn from(value: WithContext<SignalFfiError>) -> Self {
+        let WithContext {
+            operation: _,
+            inner,
+        } = value;
+        std::io::Error::other(inner.to_string())
+    }
+}

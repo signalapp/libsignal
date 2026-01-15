@@ -276,9 +276,10 @@ internal struct ErrorHandlingContext<Store> {
         self.store = store
     }
 
-    mutating func catchCallbackErrors(_ body: (Store) throws -> Int32) -> Int32 {
+    mutating func catchCallbackErrors(_ body: (Store) throws -> Void) -> Int32 {
         do {
-            return try body(self.store)
+            try body(self.store)
+            return 0
         } catch {
             self.error = error
             return -1

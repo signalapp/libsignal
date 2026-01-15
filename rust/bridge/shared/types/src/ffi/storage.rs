@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::ffi::{c_int, c_uint, c_void};
-
 use async_trait::async_trait;
 use libsignal_bridge_macros::bridge_callbacks;
 use uuid::Uuid;
@@ -13,25 +11,43 @@ use super::*;
 use crate::ffi;
 use crate::support::{ResultLike, WithContext};
 
-type GetIdentityKeyPair =
-    extern "C" fn(store_ctx: *mut c_void, keyp: *mut MutPointer<PrivateKey>) -> c_int;
-type GetLocalRegistrationId = extern "C" fn(store_ctx: *mut c_void, idp: *mut u32) -> c_int;
-type GetIdentityKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    public_keyp: *mut MutPointer<PublicKey>,
-    address: ConstPointer<ProtocolAddress>,
-) -> c_int;
-type SaveIdentityKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    address: ConstPointer<ProtocolAddress>,
-    public_key: ConstPointer<PublicKey>,
-) -> c_int;
-type IsTrustedIdentity = extern "C" fn(
-    store_ctx: *mut c_void,
-    address: ConstPointer<ProtocolAddress>,
-    public_key: ConstPointer<PublicKey>,
-    direction: c_uint,
-) -> c_int;
+/// A wrapper struct so we can implement e.g. [`KyberPreKeyStore`] for all
+/// [`BridgeKyberPreKeyStore`]s.
+///
+/// Trying to do so directly would violate the [orphan rule][], because rustc doesn't know
+/// `BridgeKyberPreKeyStore` is only implemented by a closed set of types defined in this crate.
+///
+/// [orphan rule]: https://doc.rust-lang.org/book/ch20-02-advanced-traits.html#implementing-external-traits-with-the-newtype-pattern
+pub struct BridgedStore<T>(pub T);
+
+/// A bridge-friendly version of [`IdentityKeyStore`].
+#[bridge_callbacks(jni = false, node = false)]
+pub trait BridgeIdentityKeyStore {
+    // We ask for just the private key because IdentityKeyPair isn't a single bridge_handle; it's a
+    // pair of objects. This is easier to bridge.
+    fn get_local_identity_private_key(&self) -> Result<PrivateKey, SignalProtocolError>;
+    fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError>;
+    fn get_identity_key(
+        &self,
+        address: ProtocolAddress,
+    ) -> Result<Option<PublicKey>, SignalProtocolError>;
+    // TODO: Use AsType for stronger types on these raw integers.
+    fn save_identity_key(
+        &self,
+        address: ProtocolAddress,
+        public_key: PublicKey,
+    ) -> Result</*IdentityChange*/ u8, SignalProtocolError>;
+    fn is_trusted_identity(
+        &self,
+        address: ProtocolAddress,
+        public_key: PublicKey,
+        direction: /*Direction*/ u32,
+    ) -> Result<bool, SignalProtocolError>;
+}
+
+// TODO: This alias is because of the ffi_arg_type macro expecting all bridging structs to use a
+// particular naming scheme; eventually we should be able to remove it.
+pub type FfiIdentityKeyStoreStruct = FfiBridgeIdentityKeyStoreStruct;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -40,50 +56,16 @@ pub enum FfiDirection {
     Receiving = 1,
 }
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct FfiIdentityKeyStoreStruct {
-    ctx: *mut c_void,
-    get_identity_key_pair: GetIdentityKeyPair,
-    get_local_registration_id: GetLocalRegistrationId,
-    save_identity: SaveIdentityKey,
-    get_identity: GetIdentityKey,
-    is_trusted_identity: IsTrustedIdentity,
-}
-
 #[async_trait(?Send)]
-impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
+impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedStore<T> {
     async fn get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalProtocolError> {
-        let mut key = MutPointer::null();
-        let result = (self.get_identity_key_pair)(self.ctx, &mut key);
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "get_identity_key_pair",
-        ))?;
-
-        let key = key.into_inner();
-        if key.is_null() {
-            return Err(SignalProtocolError::InvalidState(
-                "get_identity_key_pair",
-                "no local identity key".to_string(),
-            ));
-        }
-
-        let priv_key = unsafe { Box::from_raw(key) };
+        let priv_key = self.0.get_local_identity_private_key()?;
         let pub_key = priv_key.public_key()?;
-
-        Ok(IdentityKeyPair::new(IdentityKey::new(pub_key), *priv_key))
+        Ok(IdentityKeyPair::new(IdentityKey::new(pub_key), priv_key))
     }
 
     async fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError> {
-        let mut id = 0;
-        let result = (self.get_local_registration_id)(self.ctx, &mut id);
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "get_local_registration_id",
-        ))?;
-
-        Ok(id)
+        self.0.get_local_registration_id()
     }
 
     async fn save_identity(
@@ -91,17 +73,14 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
         address: &ProtocolAddress,
         identity: &IdentityKey,
     ) -> Result<IdentityChange, SignalProtocolError> {
-        let result = (self.save_identity)(self.ctx, address.into(), identity.public_key().into());
-
-        result
-            .try_into()
-            .ok()
-            .and_then(|r: isize| IdentityChange::try_from(r).ok())
-            .ok_or_else(|| {
-                SignalProtocolError::for_application_callback("save_identity")(
-                    CallbackError::check(result).expect_err("verified non-zero"),
-                )
-            })
+        let raw_result = self
+            .0
+            .save_identity_key(address.clone(), *identity.public_key())?;
+        IdentityChange::try_from(isize::from(raw_result)).map_err(|_| {
+            SignalProtocolError::FfiBindingError(format!(
+                "invalid result for save_identity: {raw_result}"
+            ))
+        })
     }
 
     async fn is_trusted_identity(
@@ -114,78 +93,39 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
             Direction::Sending => FfiDirection::Sending,
             Direction::Receiving => FfiDirection::Receiving,
         };
-        let result = (self.is_trusted_identity)(
-            self.ctx,
-            address.into(),
-            identity.public_key().into(),
-            direction as u32,
-        );
-
-        match result {
-            0 => Ok(false),
-            1 => Ok(true),
-            r => Err(SignalProtocolError::for_application_callback(
-                "is_trusted_identity",
-            )(
-                CallbackError::check(r).expect_err("verified non-zero")
-            )),
-        }
+        self.0
+            .is_trusted_identity(address.clone(), *identity.public_key(), direction as u32)
     }
 
     async fn get_identity(
         &self,
         address: &ProtocolAddress,
     ) -> Result<Option<IdentityKey>, SignalProtocolError> {
-        let mut key = MutPointer::null();
-        let result = (self.get_identity)(self.ctx, &mut key, address.into());
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "get_identity",
-        ))?;
-
-        let key = key.into_inner();
-        if key.is_null() {
-            return Ok(None);
-        }
-
-        let pk = unsafe { Box::from_raw(key) };
-
-        Ok(Some(IdentityKey::new(*pk)))
+        Ok(self
+            .0
+            .get_identity_key(address.clone())?
+            .map(IdentityKey::new))
     }
 }
 
-type LoadPreKey =
-    extern "C" fn(store_ctx: *mut c_void, recordp: *mut MutPointer<PreKeyRecord>, id: u32) -> c_int;
-type StorePreKey =
-    extern "C" fn(store_ctx: *mut c_void, id: u32, record: ConstPointer<PreKeyRecord>) -> c_int;
-type RemovePreKey = extern "C" fn(store_ctx: *mut c_void, id: u32) -> c_int;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct FfiPreKeyStoreStruct {
-    ctx: *mut c_void,
-    load_pre_key: LoadPreKey,
-    store_pre_key: StorePreKey,
-    remove_pre_key: RemovePreKey,
+/// A bridge-friendly version of [`PreKeyStore`].
+#[bridge_callbacks(jni = false, node = false)]
+pub trait BridgePreKeyStore {
+    fn load_pre_key(&self, id: u32) -> Result<Option<PreKeyRecord>, SignalProtocolError>;
+    fn store_pre_key(&self, id: u32, record: PreKeyRecord) -> Result<(), SignalProtocolError>;
+    fn remove_pre_key(&self, id: u32) -> Result<(), SignalProtocolError>;
 }
 
+// TODO: This alias is because of the ffi_arg_type macro expecting all bridging structs to use a
+// particular naming scheme; eventually we should be able to remove it.
+pub type FfiPreKeyStoreStruct = FfiBridgePreKeyStoreStruct;
+
 #[async_trait(?Send)]
-impl PreKeyStore for &FfiPreKeyStoreStruct {
+impl<T: BridgePreKeyStore> PreKeyStore for BridgedStore<T> {
     async fn get_pre_key(&self, prekey_id: PreKeyId) -> Result<PreKeyRecord, SignalProtocolError> {
-        let mut record = MutPointer::null();
-        let result = (self.load_pre_key)(self.ctx, &mut record, prekey_id.into());
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "load_pre_key",
-        ))?;
-
-        let record = record.into_inner();
-        if record.is_null() {
-            return Err(SignalProtocolError::InvalidPreKeyId);
-        }
-
-        let record = unsafe { Box::from_raw(record) };
-        Ok(*record)
+        self.0
+            .load_pre_key(prekey_id.into())?
+            .ok_or(SignalProtocolError::InvalidPreKeyId)
     }
 
     async fn save_pre_key(
@@ -193,62 +133,41 @@ impl PreKeyStore for &FfiPreKeyStoreStruct {
         prekey_id: PreKeyId,
         record: &PreKeyRecord,
     ) -> Result<(), SignalProtocolError> {
-        let result = (self.store_pre_key)(self.ctx, prekey_id.into(), record.into());
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "store_pre_key",
-        ))
+        self.0.store_pre_key(prekey_id.into(), record.clone())
     }
 
     async fn remove_pre_key(&mut self, prekey_id: PreKeyId) -> Result<(), SignalProtocolError> {
-        let result = (self.remove_pre_key)(self.ctx, prekey_id.into());
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "remove_pre_key",
-        ))
+        self.0.remove_pre_key(prekey_id.into())
     }
 }
 
-type LoadSignedPreKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    recordp: *mut MutPointer<SignedPreKeyRecord>,
-    id: u32,
-) -> c_int;
-type StoreSignedPreKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    id: u32,
-    record: ConstPointer<SignedPreKeyRecord>,
-) -> c_int;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct FfiSignedPreKeyStoreStruct {
-    ctx: *mut c_void,
-    load_signed_pre_key: LoadSignedPreKey,
-    store_signed_pre_key: StoreSignedPreKey,
+/// A bridge-friendly version of [`SignedPreKeyStore`].
+#[bridge_callbacks(jni = false, node = false)]
+pub trait BridgeSignedPreKeyStore {
+    fn load_signed_pre_key(
+        &self,
+        id: u32,
+    ) -> Result<Option<SignedPreKeyRecord>, SignalProtocolError>;
+    fn store_signed_pre_key(
+        &self,
+        id: u32,
+        record: SignedPreKeyRecord,
+    ) -> Result<(), SignalProtocolError>;
 }
 
+// TODO: This alias is because of the ffi_arg_type macro expecting all bridging structs to use a
+// particular naming scheme; eventually we should be able to remove it.
+pub type FfiSignedPreKeyStoreStruct = FfiBridgeSignedPreKeyStoreStruct;
+
 #[async_trait(?Send)]
-impl SignedPreKeyStore for &FfiSignedPreKeyStoreStruct {
+impl<T: BridgeSignedPreKeyStore> SignedPreKeyStore for BridgedStore<T> {
     async fn get_signed_pre_key(
         &self,
         prekey_id: SignedPreKeyId,
     ) -> Result<SignedPreKeyRecord, SignalProtocolError> {
-        let mut record = MutPointer::from(std::ptr::null_mut());
-        let result = (self.load_signed_pre_key)(self.ctx, &mut record, prekey_id.into());
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "load_signed_pre_key",
-        ))?;
-
-        let record = record.into_inner();
-        if record.is_null() {
-            return Err(SignalProtocolError::InvalidSignedPreKeyId);
-        }
-
-        let record = unsafe { Box::from_raw(record) };
-
-        Ok(*record)
+        self.0
+            .load_signed_pre_key(prekey_id.into())?
+            .ok_or(SignalProtocolError::InvalidSignedPreKeyId)
     }
 
     async fn save_signed_pre_key(
@@ -256,13 +175,8 @@ impl SignedPreKeyStore for &FfiSignedPreKeyStoreStruct {
         prekey_id: SignedPreKeyId,
         record: &SignedPreKeyRecord,
     ) -> Result<(), SignalProtocolError> {
-        let result = (self.store_signed_pre_key)(self.ctx, prekey_id.into(), record.into());
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "store_signed_pre_key",
-        ))?;
-
-        Ok(())
+        self.0
+            .store_signed_pre_key(prekey_id.into(), record.clone())
     }
 }
 
@@ -283,15 +197,6 @@ pub trait BridgeKyberPreKeyStore {
         base_key: PublicKey,
     ) -> Result<(), SignalProtocolError>;
 }
-
-/// A wrapper struct so we can implement e.g. [`KyberPreKeyStore`] for all
-/// [`BridgeKyberPreKeyStore`]s.
-///
-/// Trying to do so directly would violate the [orphan rule][], because rustc doesn't know
-/// `BridgeKyberPreKeyStore` is only implemented by a closed set of types defined in this crate.
-///
-/// [orphan rule]: https://doc.rust-lang.org/book/ch20-02-advanced-traits.html#implementing-external-traits-with-the-newtype-pattern
-pub struct BridgedStore<T>(pub T);
 
 // TODO: This alias is because of the ffi_arg_type macro expecting all bridging structs to use a
 // particular naming scheme; eventually we should be able to remove it.
@@ -330,46 +235,31 @@ impl<T: BridgeKyberPreKeyStore> KyberPreKeyStore for BridgedStore<T> {
     }
 }
 
-type LoadSession = extern "C" fn(
-    store_ctx: *mut c_void,
-    recordp: *mut MutPointer<SessionRecord>,
-    address: ConstPointer<ProtocolAddress>,
-) -> c_int;
-type StoreSession = extern "C" fn(
-    store_ctx: *mut c_void,
-    address: ConstPointer<ProtocolAddress>,
-    record: ConstPointer<SessionRecord>,
-) -> c_int;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct FfiSessionStoreStruct {
-    ctx: *mut c_void,
-    load_session: LoadSession,
-    store_session: StoreSession,
+/// A bridge-friendly version of [`SessionStore`].
+#[bridge_callbacks(jni = false, node = false)]
+pub trait BridgeSessionStore {
+    fn load_session(
+        &self,
+        address: ProtocolAddress,
+    ) -> Result<Option<SessionRecord>, SignalProtocolError>;
+    fn store_session(
+        &self,
+        address: ProtocolAddress,
+        record: SessionRecord,
+    ) -> Result<(), SignalProtocolError>;
 }
 
+// TODO: This alias is because of the ffi_arg_type macro expecting all bridging structs to use a
+// particular naming scheme; eventually we should be able to remove it.
+pub type FfiSessionStoreStruct = FfiBridgeSessionStoreStruct;
+
 #[async_trait(?Send)]
-impl SessionStore for &FfiSessionStoreStruct {
+impl<T: BridgeSessionStore> SessionStore for BridgedStore<T> {
     async fn load_session(
         &self,
         address: &ProtocolAddress,
     ) -> Result<Option<SessionRecord>, SignalProtocolError> {
-        let mut record = MutPointer::null();
-        let result = (self.load_session)(self.ctx, &mut record, address.into());
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "load_session",
-        ))?;
-
-        let record = record.into_inner();
-        if record.is_null() {
-            return Ok(None);
-        }
-
-        let record = unsafe { Box::from_raw(record) };
-
-        Ok(Some(*record))
+        self.0.load_session(address.clone())
     }
 
     async fn store_session(
@@ -377,53 +267,40 @@ impl SessionStore for &FfiSessionStoreStruct {
         address: &ProtocolAddress,
         record: &SessionRecord,
     ) -> Result<(), SignalProtocolError> {
-        let result = (self.store_session)(self.ctx, address.into(), record.into());
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "store_session",
-        ))
+        self.0.store_session(address.clone(), record.clone())
     }
 }
 
-type LoadSenderKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    *mut MutPointer<SenderKeyRecord>,
-    ConstPointer<ProtocolAddress>,
-    distribution_id: *const [u8; 16],
-) -> c_int;
-type StoreSenderKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    ConstPointer<ProtocolAddress>,
-    distribution_id: *const [u8; 16],
-    ConstPointer<SenderKeyRecord>,
-) -> c_int;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct FfiSenderKeyStoreStruct {
-    ctx: *mut c_void,
-    load_sender_key: LoadSenderKey,
-    store_sender_key: StoreSenderKey,
+/// A bridge-friendly version of [`SenderKeyStore`].
+#[bridge_callbacks(jni = false, node = false)]
+pub trait BridgeSenderKeyStore {
+    fn load_sender_key(
+        &self,
+        sender: ProtocolAddress,
+        distribution_id: Uuid,
+    ) -> Result<Option<SenderKeyRecord>, SignalProtocolError>;
+    fn store_sender_key(
+        &self,
+        sender: ProtocolAddress,
+        distribution_id: Uuid,
+        record: SenderKeyRecord,
+    ) -> Result<(), SignalProtocolError>;
 }
 
+// TODO: This alias is because of the ffi_arg_type macro expecting all bridging structs to use a
+// particular naming scheme; eventually we should be able to remove it.
+pub type FfiSenderKeyStoreStruct = FfiBridgeSenderKeyStoreStruct;
+
 #[async_trait(?Send)]
-impl SenderKeyStore for &FfiSenderKeyStoreStruct {
+impl<T: BridgeSenderKeyStore> SenderKeyStore for BridgedStore<T> {
     async fn store_sender_key(
         &mut self,
         sender: &ProtocolAddress,
         distribution_id: Uuid,
         record: &SenderKeyRecord,
     ) -> Result<(), SignalProtocolError> {
-        let result = (self.store_sender_key)(
-            self.ctx,
-            sender.into(),
-            distribution_id.as_bytes(),
-            record.into(),
-        );
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "store_sender_key",
-        ))
+        self.0
+            .store_sender_key(sender.clone(), distribution_id, record.clone())
     }
 
     async fn load_sender_key(
@@ -431,25 +308,6 @@ impl SenderKeyStore for &FfiSenderKeyStoreStruct {
         sender: &ProtocolAddress,
         distribution_id: Uuid,
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
-        let mut record = MutPointer::null();
-        let result = (self.load_sender_key)(
-            self.ctx,
-            &mut record,
-            sender.into(),
-            distribution_id.as_bytes(),
-        );
-
-        CallbackError::check(result).map_err(SignalProtocolError::for_application_callback(
-            "load_sender_key",
-        ))?;
-
-        let record = record.into_inner();
-        if record.is_null() {
-            return Ok(None);
-        }
-
-        let record = unsafe { Box::from_raw(record) };
-
-        Ok(Some(*record))
+        self.0.load_sender_key(sender.clone(), distribution_id)
     }
 }

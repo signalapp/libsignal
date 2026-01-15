@@ -3,67 +3,46 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::ffi::{c_int, c_void};
 use std::io;
 
 use async_trait::async_trait;
-use libsignal_protocol::SignalProtocolError;
+use libsignal_bridge_macros::bridge_callbacks;
 
-use super::CallbackError;
+use crate::ffi::{self, BridgedStore};
 use crate::io::{InputStream, InputStreamRead, SyncInputStream};
+use crate::support::{ResultLike, WithContext};
 
-type Read =
-    extern "C" fn(ctx: *mut c_void, buf: *mut u8, buf_len: usize, amount_read: *mut usize) -> c_int;
-type Skip = extern "C" fn(ctx: *mut c_void, amount: u64) -> c_int;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct FfiInputStreamStruct {
-    ctx: *mut c_void,
-    read: Read,
-    skip: Skip,
+#[bridge_callbacks(jni = false, node = false)]
+trait BridgeInputStream {
+    fn read(&self, buf: &mut [u8]) -> Result<usize, io::Error>;
+    fn skip(&self, amount: u64) -> Result<(), io::Error>;
 }
 
-pub type FfiSyncInputStreamStruct = FfiInputStreamStruct;
+pub type FfiBridgeSyncInputStreamStruct = FfiBridgeInputStreamStruct;
 
-impl FfiInputStreamStruct {
-    fn do_read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let mut amount_read = 0;
-        let result = (self.read)(self.ctx, buf.as_mut_ptr(), buf.len(), &mut amount_read);
-        CallbackError::check(result).map_err(|e| {
-            let err = SignalProtocolError::for_application_callback("read")(e);
-            io::Error::other(err)
-        })?;
-        Ok(amount_read)
-    }
-
-    fn do_skip(&self, amount: u64) -> io::Result<()> {
-        let result = (self.skip)(self.ctx, amount);
-        CallbackError::check(result).map_err(|e| {
-            let err = SignalProtocolError::for_application_callback("skip")(e);
-            io::Error::other(err)
-        })
-    }
-}
+// TODO: These aliases are because of the ffi_arg_type macro expecting all bridging structs to use a
+// particular naming scheme; eventually we should be able to remove it.
+pub type FfiInputStreamStruct = FfiBridgeInputStreamStruct;
+pub type FfiSyncInputStreamStruct = FfiBridgeSyncInputStreamStruct;
 
 #[async_trait(?Send)]
-impl InputStream for &FfiInputStreamStruct {
+impl<T: BridgeInputStream> InputStream for BridgedStore<T> {
     fn read<'out, 'a: 'out>(&'a self, buf: &mut [u8]) -> io::Result<InputStreamRead<'out>> {
-        let amount_read = self.do_read(buf)?;
+        let amount_read = self.0.read(buf)?;
         Ok(InputStreamRead::Ready { amount_read })
     }
 
     async fn skip(&self, amount: u64) -> io::Result<()> {
-        self.do_skip(amount)
+        self.0.skip(amount)
     }
 }
 
-impl SyncInputStream for &FfiInputStreamStruct {
+impl<T: BridgeInputStream> SyncInputStream for BridgedStore<T> {
     fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        self.do_read(buf)
+        self.0.read(buf)
     }
 
     fn skip(&self, amount: u64) -> io::Result<()> {
-        self.do_skip(amount)
+        self.0.skip(amount)
     }
 }

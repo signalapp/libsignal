@@ -187,6 +187,17 @@ impl<'a> ArgTypeInfo<'a> for &'a mut [u8] {
     }
 }
 
+impl ResultTypeInfo for &'_ mut [u8] {
+    type ResultType = BorrowedMutableSliceOf<c_uchar>;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(BorrowedMutableSliceOf {
+            base: self.as_mut_ptr(),
+            length: self.len(),
+        })
+    }
+}
+
 impl<'a> ArgTypeInfo<'a> for crate::support::ServiceIdSequence<'a> {
     type ArgType = <&'a [u8] as ArgTypeInfo<'a>>::ArgType;
     type StoredType = Self::ArgType;
@@ -495,29 +506,17 @@ macro_rules! bridge_trait {
     ($name:ident) => {
         paste! {
             impl<'a> ArgTypeInfo<'a> for &'a mut dyn $name {
-                type ArgType = crate::ffi::ConstPointer< [<Ffi $name Struct>] >;
-                type StoredType = &'a [<Ffi $name Struct>];
+                type ArgType = crate::ffi::ConstPointer< [<FfiBridge $name Struct >] >;
+                type StoredType = BridgedStore<OwnedCallbackStruct< [<FfiBridge $name Struct >] >>;
                 #[allow(clippy::not_unsafe_ptr_arg_deref)]
                 fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
                     match unsafe { foreign.into_inner().as_ref() } {
                         None => Err(NullPointerError.into()),
-                        Some(store) => Ok(store),
+                        Some(store) => Ok(BridgedStore(OwnedCallbackStruct(store.clone()))),
                     }
                 }
                 fn load_from(stored: &'a mut Self::StoredType) -> Self {
                     stored
-                }
-            }
-
-            impl<'a> ArgTypeInfo<'a> for Option<&'a dyn $name> {
-                type ArgType = crate::ffi::ConstPointer< [<Ffi $name Struct>] >;
-                type StoredType = Option<&'a [<Ffi $name Struct>]>;
-                #[allow(clippy::not_unsafe_ptr_arg_deref)]
-                fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
-                    Ok(unsafe { foreign.into_inner().as_ref() })
-                }
-                fn load_from(stored: &'a mut Self::StoredType) -> Self {
-                    stored.as_ref().map(|x| x as &'a dyn $name)
                 }
             }
         }
@@ -529,24 +528,9 @@ bridge_trait!(PreKeyStore);
 bridge_trait!(SenderKeyStore);
 bridge_trait!(SessionStore);
 bridge_trait!(SignedPreKeyStore);
-// bridge_trait!(KyberPreKeyStore);
+bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
 bridge_trait!(SyncInputStream);
-
-impl<'a> ArgTypeInfo<'a> for &'a mut dyn KyberPreKeyStore {
-    type ArgType = crate::ffi::ConstPointer<FfiBridgeKyberPreKeyStoreStruct>;
-    type StoredType = BridgedStore<OwnedCallbackStruct<FfiBridgeKyberPreKeyStoreStruct>>;
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
-    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
-        match unsafe { foreign.into_inner().as_ref() } {
-            None => Err(NullPointerError.into()),
-            Some(store) => Ok(BridgedStore(OwnedCallbackStruct(store.clone()))),
-        }
-    }
-    fn load_from(stored: &'a mut Self::StoredType) -> Self {
-        stored
-    }
-}
 
 impl<'a> ArgTypeInfo<'a> for Box<dyn ChatListener> {
     type ArgType = crate::ffi::ConstPointer<FfiChatListenerStruct>;
@@ -1262,16 +1246,27 @@ macro_rules! ffi_bridge_handle_fns {
 // This can't be done generically because it would conflict with the blanket impl, and it *also*
 // can't be done as part of the common `bridge_as_handle!` macro because when used outside this
 // crate it would violate the orphan rule. Perhaps there'll be a workaround later.
-impl CallbackResultTypeInfo for Option<KyberPreKeyRecord> {
-    type ResultType = MutPointer<KyberPreKeyRecord>;
+macro_rules! optional_callback_result_type {
+    ($typ:ty) => {
+        impl CallbackResultTypeInfo for Option<$typ> {
+            type ResultType = MutPointer<$typ>;
 
-    fn convert_from_callback(foreign: Self::ResultType) -> SignalFfiResult<Self> {
-        if foreign == MutPointer::null() {
-            return Ok(None);
+            fn convert_from_callback(foreign: Self::ResultType) -> SignalFfiResult<Self> {
+                if foreign == MutPointer::null() {
+                    return Ok(None);
+                }
+                <$typ>::convert_from_callback(foreign).map(Some)
+            }
         }
-        KyberPreKeyRecord::convert_from_callback(foreign).map(Some)
-    }
+    };
 }
+
+optional_callback_result_type!(KyberPreKeyRecord);
+optional_callback_result_type!(PreKeyRecord);
+optional_callback_result_type!(PublicKey);
+optional_callback_result_type!(SenderKeyRecord);
+optional_callback_result_type!(SignedPreKeyRecord);
+optional_callback_result_type!(SessionRecord);
 
 macro_rules! trivial {
     ($typ:ty) => {
@@ -1434,6 +1429,9 @@ macro_rules! ffi_result_type {
     (Serialized<$typ:ident>) => ([std::ffi::c_uchar; ::paste::paste!([<$typ:snake:upper _LEN>])]);
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
+
+    // Callback-specific --> safe to borrow.
+    (&mut [u8]) => (ffi::BorrowedMutableSliceOf<std::ffi::c_uchar>);
 
     ( $typ:ty ) => ($crate::ffi::MutPointer<$typ>);
 }

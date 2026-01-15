@@ -11,7 +11,7 @@ internal func withIdentityKeyStore<Result>(
     _ context: StoreContext,
     _ body: (SignalConstPointerFfiIdentityKeyStoreStruct) throws -> Result
 ) throws -> Result {
-    func ffiShimGetIdentityKeyPair(
+    func ffiShimGetIdentityPrivateKey(
         storeCtx: UnsafeMutableRawPointer?,
         keyp: UnsafeMutablePointer<SignalMutPointerPrivateKey>?
     ) -> Int32 {
@@ -21,7 +21,6 @@ internal func withIdentityKeyStore<Result>(
         return storeContext.pointee.catchCallbackErrors { store, context in
             var privateKey = try store.identityKeyPair(context: context).privateKey
             keyp!.pointee = try cloneOrTakeHandle(from: &privateKey)
-            return 0
         }
     }
 
@@ -35,66 +34,62 @@ internal func withIdentityKeyStore<Result>(
         return storeContext.pointee.catchCallbackErrors { store, context in
             let id = try store.localRegistrationId(context: context)
             idp!.pointee = id
-            return 0
         }
     }
 
     func ffiShimSaveIdentity(
         storeCtx: UnsafeMutableRawPointer?,
-        address: SignalConstPointerProtocolAddress,
-        public_key: SignalConstPointerPublicKey
+        result: UnsafeMutablePointer<UInt8>?,
+        address: SignalMutPointerProtocolAddress,
+        public_key: SignalMutPointerPublicKey
     ) -> Int32 {
         let storeContext = storeCtx!.assumingMemoryBound(
             to: ErrorHandlingContext<(IdentityKeyStore, StoreContext)>.self
         )
         return storeContext.pointee.catchCallbackErrors { store, context in
-            var address = ProtocolAddress(borrowing: address)
-            defer { cloneOrForgetAsNeeded(&address) }
-            var public_key = PublicKey(borrowing: public_key)
-            defer { cloneOrForgetAsNeeded(&public_key) }
+            let address = ProtocolAddress(owned: NonNull(address)!)
+            let public_key = PublicKey(owned: NonNull(public_key)!)
             let identity = IdentityKey(publicKey: public_key)
-            return switch try store.saveIdentity(identity, for: address, context: context) {
-            case .newOrUnchanged: Int32(SignalIdentityChangeNewOrUnchanged.rawValue)
-            case .replacedExisting: Int32(SignalIdentityChangeReplacedExisting.rawValue)
-            }
+            result!.pointee =
+                switch try store.saveIdentity(identity, for: address, context: context) {
+                case .newOrUnchanged: UInt8(SignalIdentityChangeNewOrUnchanged.rawValue)
+                case .replacedExisting: UInt8(SignalIdentityChangeReplacedExisting.rawValue)
+                }
         }
     }
 
     func ffiShimGetIdentity(
         storeCtx: UnsafeMutableRawPointer?,
         public_key: UnsafeMutablePointer<SignalMutPointerPublicKey>?,
-        address: SignalConstPointerProtocolAddress
+        address: SignalMutPointerProtocolAddress
     ) -> Int32 {
         let storeContext = storeCtx!.assumingMemoryBound(
             to: ErrorHandlingContext<(IdentityKeyStore, StoreContext)>.self
         )
         return storeContext.pointee.catchCallbackErrors { store, context in
-            var address = ProtocolAddress(borrowing: address)
-            defer { cloneOrForgetAsNeeded(&address) }
+            let address = ProtocolAddress(owned: NonNull(address)!)
             if let pk = try store.identity(for: address, context: context) {
                 var publicKey = pk.publicKey
                 public_key!.pointee = try cloneOrTakeHandle(from: &publicKey)
             } else {
                 public_key!.pointee = SignalMutPointerPublicKey()
             }
-            return 0
         }
     }
 
     func ffiShimIsTrustedIdentity(
         storeCtx: UnsafeMutableRawPointer?,
-        address: SignalConstPointerProtocolAddress,
-        public_key: SignalConstPointerPublicKey,
+        result: UnsafeMutablePointer<Bool>?,
+        address: SignalMutPointerProtocolAddress,
+        public_key: SignalMutPointerPublicKey,
         raw_direction: UInt32
     ) -> Int32 {
         let storeContext = storeCtx!.assumingMemoryBound(
             to: ErrorHandlingContext<(IdentityKeyStore, StoreContext)>.self
         )
         return storeContext.pointee.catchCallbackErrors { store, context in
-            var address = ProtocolAddress(borrowing: address)
-            defer { cloneOrForgetAsNeeded(&address) }
-            var public_key = PublicKey(borrowing: public_key)
-            defer { cloneOrForgetAsNeeded(&public_key) }
+            let address = ProtocolAddress(owned: NonNull(address)!)
+            let public_key = PublicKey(owned: NonNull(public_key)!)
             let direction: Direction
             switch SignalDirection(raw_direction) {
             case SignalDirectionSending:
@@ -102,23 +97,27 @@ internal func withIdentityKeyStore<Result>(
             case SignalDirectionReceiving:
                 direction = .receiving
             default:
-                assertionFailure("unexpected direction value")
-                return -1
+                throw SignalError.internalError("unexpected direction value \(raw_direction)")
             }
             let identity = IdentityKey(publicKey: public_key)
-            let trusted = try store.isTrustedIdentity(identity, for: address, direction: direction, context: context)
-            return trusted ? 1 : 0
+            result!.pointee = try store.isTrustedIdentity(
+                identity,
+                for: address,
+                direction: direction,
+                context: context
+            )
         }
     }
 
     return try rethrowCallbackErrors((store, context)) {
         var ffiStore = SignalIdentityKeyStore(
             ctx: $0,
-            get_identity_key_pair: ffiShimGetIdentityKeyPair,
+            get_local_identity_private_key: ffiShimGetIdentityPrivateKey,
             get_local_registration_id: ffiShimGetLocalRegistrationId,
-            save_identity: ffiShimSaveIdentity,
-            get_identity: ffiShimGetIdentity,
-            is_trusted_identity: ffiShimIsTrustedIdentity
+            get_identity_key: ffiShimGetIdentity,
+            save_identity_key: ffiShimSaveIdentity,
+            is_trusted_identity: ffiShimIsTrustedIdentity,
+            destroy: { _ in }
         )
         return try withUnsafePointer(to: &ffiStore) {
             try body(SignalConstPointerFfiIdentityKeyStoreStruct(raw: $0))
@@ -134,14 +133,12 @@ internal func withPreKeyStore<Result>(
     func ffiShimStorePreKey(
         storeCtx: UnsafeMutableRawPointer?,
         id: UInt32,
-        record: SignalConstPointerPreKeyRecord
+        record: SignalMutPointerPreKeyRecord
     ) -> Int32 {
         let storeContext = storeCtx!.assumingMemoryBound(to: ErrorHandlingContext<(PreKeyStore, StoreContext)>.self)
         return storeContext.pointee.catchCallbackErrors { store, context in
-            var record = PreKeyRecord(borrowing: record)
-            defer { cloneOrForgetAsNeeded(&record) }
+            let record = PreKeyRecord(owned: NonNull(record)!)
             try store.storePreKey(record, id: id, context: context)
-            return 0
         }
     }
 
@@ -154,7 +151,6 @@ internal func withPreKeyStore<Result>(
         return storeContext.pointee.catchCallbackErrors { store, context in
             var record = try store.loadPreKey(id: id, context: context)
             recordp!.pointee = try cloneOrTakeHandle(from: &record)
-            return 0
         }
     }
 
@@ -165,7 +161,6 @@ internal func withPreKeyStore<Result>(
         let storeContext = storeCtx!.assumingMemoryBound(to: ErrorHandlingContext<(PreKeyStore, StoreContext)>.self)
         return storeContext.pointee.catchCallbackErrors { store, context in
             try store.removePreKey(id: id, context: context)
-            return 0
         }
     }
 
@@ -174,7 +169,8 @@ internal func withPreKeyStore<Result>(
             ctx: $0,
             load_pre_key: ffiShimLoadPreKey,
             store_pre_key: ffiShimStorePreKey,
-            remove_pre_key: ffiShimRemovePreKey
+            remove_pre_key: ffiShimRemovePreKey,
+            destroy: { _ in }
         )
         return try withUnsafePointer(to: &ffiStore) {
             try body(SignalConstPointerFfiPreKeyStoreStruct(raw: $0))
@@ -190,16 +186,14 @@ internal func withSignedPreKeyStore<Result>(
     func ffiShimStoreSignedPreKey(
         storeCtx: UnsafeMutableRawPointer?,
         id: UInt32,
-        record: SignalConstPointerSignedPreKeyRecord
+        record: SignalMutPointerSignedPreKeyRecord
     ) -> Int32 {
         let storeContext = storeCtx!.assumingMemoryBound(
             to: ErrorHandlingContext<(SignedPreKeyStore, StoreContext)>.self
         )
         return storeContext.pointee.catchCallbackErrors { store, context in
-            var record = SignedPreKeyRecord(borrowing: record)
-            defer { cloneOrForgetAsNeeded(&record) }
+            let record = SignedPreKeyRecord(owned: NonNull(record)!)
             try store.storeSignedPreKey(record, id: id, context: context)
-            return 0
         }
     }
 
@@ -214,7 +208,6 @@ internal func withSignedPreKeyStore<Result>(
         return storeContext.pointee.catchCallbackErrors { store, context in
             var record = try store.loadSignedPreKey(id: id, context: context)
             recordp!.pointee = try cloneOrTakeHandle(from: &record)
-            return 0
         }
     }
 
@@ -222,7 +215,8 @@ internal func withSignedPreKeyStore<Result>(
         var ffiStore = SignalSignedPreKeyStore(
             ctx: $0,
             load_signed_pre_key: ffiShimLoadSignedPreKey,
-            store_signed_pre_key: ffiShimStoreSignedPreKey
+            store_signed_pre_key: ffiShimStoreSignedPreKey,
+            destroy: { _ in }
         )
         return try withUnsafePointer(to: &ffiStore) {
             try body(SignalConstPointerFfiSignedPreKeyStoreStruct(raw: $0))
@@ -246,7 +240,6 @@ internal func withKyberPreKeyStore<Result>(
         return storeContext.pointee.catchCallbackErrors { store, context in
             let record = KyberPreKeyRecord(owned: NonNull(record)!)
             try store.storeKyberPreKey(record, id: id, context: context)
-            return 0
         }
     }
 
@@ -261,7 +254,6 @@ internal func withKyberPreKeyStore<Result>(
         return storeContext.pointee.catchCallbackErrors { store, context in
             var record = try store.loadKyberPreKey(id: id, context: context)
             recordp!.pointee = try cloneOrTakeHandle(from: &record)
-            return 0
         }
     }
 
@@ -277,7 +269,6 @@ internal func withKyberPreKeyStore<Result>(
         return storeContext.pointee.catchCallbackErrors { store, context in
             let baseKey = PublicKey(owned: NonNull(baseKey)!)
             try store.markKyberPreKeyUsed(id: id, signedPreKeyId: signedPreKeyId, baseKey: baseKey, context: context)
-            return 0
         }
     }
 
@@ -302,35 +293,30 @@ internal func withSessionStore<Result>(
 ) throws -> Result {
     func ffiShimStoreSession(
         storeCtx: UnsafeMutableRawPointer?,
-        address: SignalConstPointerProtocolAddress,
-        record: SignalConstPointerSessionRecord
+        address: SignalMutPointerProtocolAddress,
+        record: SignalMutPointerSessionRecord
     ) -> Int32 {
         let storeContext = storeCtx!.assumingMemoryBound(to: ErrorHandlingContext<(SessionStore, StoreContext)>.self)
         return storeContext.pointee.catchCallbackErrors { store, context in
-            var address = ProtocolAddress(borrowing: address)
-            defer { cloneOrForgetAsNeeded(&address) }
-            var record = SessionRecord(borrowing: record)
-            defer { cloneOrForgetAsNeeded(&record) }
+            let address = ProtocolAddress(owned: NonNull(address)!)
+            let record = SessionRecord(owned: NonNull(record)!)
             try store.storeSession(record, for: address, context: context)
-            return 0
         }
     }
 
     func ffiShimLoadSession(
         storeCtx: UnsafeMutableRawPointer?,
         recordp: UnsafeMutablePointer<SignalMutPointerSessionRecord>?,
-        address: SignalConstPointerProtocolAddress
+        address: SignalMutPointerProtocolAddress
     ) -> Int32 {
         let storeContext = storeCtx!.assumingMemoryBound(to: ErrorHandlingContext<(SessionStore, StoreContext)>.self)
         return storeContext.pointee.catchCallbackErrors { store, context in
-            var address = ProtocolAddress(borrowing: address)
-            defer { cloneOrForgetAsNeeded(&address) }
+            let address = ProtocolAddress(owned: NonNull(address)!)
             if var record = try store.loadSession(for: address, context: context) {
                 recordp!.pointee = try cloneOrTakeHandle(from: &record)
             } else {
                 recordp!.pointee = SignalMutPointerSessionRecord()
             }
-            return 0
         }
     }
 
@@ -338,7 +324,8 @@ internal func withSessionStore<Result>(
         var ffiStore = SignalSessionStore(
             ctx: $0,
             load_session: ffiShimLoadSession,
-            store_session: ffiShimStoreSession
+            store_session: ffiShimStoreSession,
+            destroy: { _ in }
         )
         return try withUnsafePointer(to: &ffiStore) {
             try body(SignalConstPointerFfiSessionStoreStruct(raw: $0))
@@ -353,39 +340,34 @@ internal func withSenderKeyStore<Result>(
 ) rethrows -> Result {
     func ffiShimStoreSenderKey(
         storeCtx: UnsafeMutableRawPointer?,
-        sender: SignalConstPointerProtocolAddress,
-        distributionId: UnsafePointer<uuid_t>?,
-        record: SignalConstPointerSenderKeyRecord
+        sender: SignalMutPointerProtocolAddress,
+        distributionId: SignalUuid,
+        record: SignalMutPointerSenderKeyRecord
     ) -> Int32 {
         let storeContext = storeCtx!.assumingMemoryBound(to: ErrorHandlingContext<(SenderKeyStore, StoreContext)>.self)
         return storeContext.pointee.catchCallbackErrors { store, context in
-            var sender = ProtocolAddress(borrowing: sender)
-            let distributionId = UUID(uuid: distributionId!.pointee)
-            defer { cloneOrForgetAsNeeded(&sender) }
-            var record = SenderKeyRecord(borrowing: record)
-            defer { cloneOrForgetAsNeeded(&record) }
+            let sender = ProtocolAddress(owned: NonNull(sender)!)
+            let distributionId = UUID(uuid: distributionId.bytes)
+            let record = SenderKeyRecord(owned: NonNull(record)!)
             try store.storeSenderKey(from: sender, distributionId: distributionId, record: record, context: context)
-            return 0
         }
     }
 
     func ffiShimLoadSenderKey(
         storeCtx: UnsafeMutableRawPointer?,
         recordp: UnsafeMutablePointer<SignalMutPointerSenderKeyRecord>?,
-        sender: SignalConstPointerProtocolAddress,
-        distributionId: UnsafePointer<uuid_t>?
+        sender: SignalMutPointerProtocolAddress,
+        distributionId: SignalUuid,
     ) -> Int32 {
         let storeContext = storeCtx!.assumingMemoryBound(to: ErrorHandlingContext<(SenderKeyStore, StoreContext)>.self)
         return storeContext.pointee.catchCallbackErrors { store, context in
-            var sender = ProtocolAddress(borrowing: sender)
-            let distributionId = UUID(uuid: distributionId!.pointee)
-            defer { cloneOrForgetAsNeeded(&sender) }
+            let sender = ProtocolAddress(owned: NonNull(sender)!)
+            let distributionId = UUID(uuid: distributionId.bytes)
             if var record = try store.loadSenderKey(from: sender, distributionId: distributionId, context: context) {
                 recordp!.pointee = try cloneOrTakeHandle(from: &record)
             } else {
                 recordp!.pointee = SignalMutPointerSenderKeyRecord()
             }
-            return 0
         }
     }
 
@@ -393,7 +375,8 @@ internal func withSenderKeyStore<Result>(
         var ffiStore = SignalSenderKeyStore(
             ctx: $0,
             load_sender_key: ffiShimLoadSenderKey,
-            store_sender_key: ffiShimStoreSenderKey
+            store_sender_key: ffiShimStoreSenderKey,
+            destroy: { _ in }
         )
         return try withUnsafePointer(to: &ffiStore) {
             try body(SignalConstPointerFfiSenderKeyStoreStruct(raw: $0))
