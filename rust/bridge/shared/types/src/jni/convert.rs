@@ -121,6 +121,36 @@ where
     }
 }
 
+/// A variation of [`ArgTypeInfo`] for callback results.
+///
+/// All [`SimpleArgTypeInfo`] implementations are reusable for this, but the general [`ArgTypeInfo`]
+/// allows borrowing from the foreign value and a callback result can't do that.
+///
+/// Note that because a JNI type signature is required, while [`SimpleArgTypeInfo`] doesn't provide
+/// one, the blanket implementation for `CallbackResultTypeInfo` also requires [`ResultTypeInfo`].
+/// If this is not available, you'll have to provide a manual implementation of
+/// `CallbackResultTypeInfo` instead.
+pub trait CallbackResultTypeInfo<'a>: Sized {
+    type ResultType;
+    const JNI_RESULT_SIGNATURE: &'static str;
+    fn convert_from_callback(
+        env: &mut JNIEnv<'a>,
+        foreign: Self::ResultType,
+    ) -> Result<Self, BridgeLayerError>;
+}
+
+impl<'a, T: SimpleArgTypeInfo<'a> + ResultTypeInfo<'a>> CallbackResultTypeInfo<'a> for T {
+    type ResultType = <T as SimpleArgTypeInfo<'a>>::ArgType;
+    const JNI_RESULT_SIGNATURE: &'static str = <T as ResultTypeInfo<'a>>::JNI_SIGNATURE;
+
+    fn convert_from_callback(
+        env: &mut JNIEnv<'a>,
+        foreign: Self::ResultType,
+    ) -> Result<Self, BridgeLayerError> {
+        Self::convert_from(env, &foreign)
+    }
+}
+
 /// Converts result values from their Rust form to their FFI form.
 ///
 /// `ResultTypeInfo` is used to implement the `bridge_fn` macro, but can also be used outside it.
@@ -772,6 +802,26 @@ impl<'a> ResultTypeInfo<'a> for crate::cds2::Cds2Metrics {
             jmap.put(env, &k, &v).check_exceptions(env, "put")?;
         }
         Ok(jobj)
+    }
+}
+
+impl ResultTypeInfo<'_> for () {
+    type ResultType = ();
+    const JNI_SIGNATURE: &'static str = jni_signature!(void);
+    fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
+        Ok(self)
+    }
+}
+
+impl CallbackResultTypeInfo<'_> for () {
+    type ResultType = ();
+    const JNI_RESULT_SIGNATURE: &'static str = jni_signature!(void);
+
+    fn convert_from_callback(
+        _env: &mut JNIEnv<'_>,
+        _foreign: Self::ResultType,
+    ) -> Result<Self, BridgeLayerError> {
+        Ok(())
     }
 }
 
@@ -2076,25 +2126,18 @@ macro_rules! jni_bridge_handle_fns {
     };
 }
 
-macro_rules! trivial {
-    ($typ:ty) => {
-        impl SimpleArgTypeInfo<'_> for $typ {
-            type ArgType = Self;
-            fn convert_from(_env: &mut JNIEnv, foreign: &Self) -> Result<Self, BridgeLayerError> {
-                Ok(*foreign)
-            }
-        }
-        impl ResultTypeInfo<'_> for $typ {
-            type ResultType = Self;
-            fn convert_into(self, _env: &mut JNIEnv) -> Result<Self, BridgeLayerError> {
-                Ok(self)
-            }
-        }
-    };
+impl SimpleArgTypeInfo<'_> for i32 {
+    type ArgType = Self;
+    fn convert_from(_env: &mut JNIEnv, foreign: &Self) -> Result<Self, BridgeLayerError> {
+        Ok(*foreign)
+    }
 }
-
-trivial!(i32);
-trivial!(());
+impl ResultTypeInfo<'_> for i32 {
+    type ResultType = Self;
+    fn convert_into(self, _env: &mut JNIEnv) -> Result<Self, BridgeLayerError> {
+        Ok(self)
+    }
+}
 
 /// Syntactically translates `bridge_fn` argument types to JNI types for `cbindgen` and
 /// `gen_java_decl.py`.
