@@ -75,9 +75,9 @@ class PinTests: TestCaseBase {
         let pin = Array("password".utf8)
         let username = "username"
 
-        let mrenclave = [UInt8](fromHexString: "38e01eff4fe357dc0b0e8ef7a44b4abc5489fbccba3a78780f3872c277f62bf3")!
+        let mrenclave = [UInt8](fromHexString: "97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535")!
 
-        let knownSalt = [UInt8](fromHexString: "9898e82efa6cbf24c831da35b45c16748137f10fba9c0cb026d3b767281e8664")!
+        let knownSalt = [UInt8](fromHexString: "70dd66bdcbb23f5173323f054becc5b617ae475ba8de067946f198efff7a5f83")!
 
         let pinHash = try PinHash(normalizedPin: pin, username: username, mrenclave: mrenclave)
 

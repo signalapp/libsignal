@@ -81,10 +81,10 @@ public class PinTest {
   @Test
   public void testSaltWithGroupId() throws IOException {
     final byte[] mrenclave =
-        Hex.fromStringCondensed("38e01eff4fe357dc0b0e8ef7a44b4abc5489fbccba3a78780f3872c277f62bf3");
+        Hex.fromStringCondensed("97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535");
     final byte[] pin = "password".getBytes(StandardCharsets.UTF_8);
     final String username = "username";
-    final long groupId = Long.parseUnsignedLong("3565209795906488720");
+    final long groupId = Long.parseUnsignedLong("2330628069874851020");
     final PinHash actual = PinHash.svr2(pin, username, mrenclave);
 
     // svr2 hash should use salt derived from groupId
@@ -92,7 +92,7 @@ public class PinTest {
         HKDF.deriveSecrets(
             username.getBytes(StandardCharsets.UTF_8), bebytes(groupId), new byte[] {}, 32);
     final byte[] knownSalt =
-        Hex.fromStringCondensed("9898e82efa6cbf24c831da35b45c16748137f10fba9c0cb026d3b767281e8664");
+        Hex.fromStringCondensed("70dd66bdcbb23f5173323f054becc5b617ae475ba8de067946f198efff7a5f83");
     assertArrayEquals(knownSalt, expectedSalt);
 
     final PinHash expected = PinHash.svr1(pin, expectedSalt);

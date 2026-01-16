@@ -22,9 +22,9 @@ class SgxTests: TestCaseBase {
         ),
         (
             ServiceType.svr2,
-            [UInt8](fromHexString: "38e01eff4fe357dc0b0e8ef7a44b4abc5489fbccba3a78780f3872c277f62bf3")!,
+            [UInt8](fromHexString: "97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535")!,
             readResource(forName: "svr2handshakestart.data"),
-            Date(timeIntervalSince1970: 1_741_649_483)
+            Date(timeIntervalSince1970: 1_768_516_141)
         ),
     ]
 
@@ -59,7 +59,7 @@ class SgxTests: TestCaseBase {
                 currentDate: currentDate
             )
             let initialMessage = client.initialRequest()
-            XCTAssertEqual(serviceType == .svr2 ? 48 : 1632, initialMessage.count, String(describing: serviceType))
+            XCTAssertEqual(1632, initialMessage.count, String(describing: serviceType))
         }
     }
 
