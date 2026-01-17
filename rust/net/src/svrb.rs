@@ -442,11 +442,7 @@ pub async fn restore_backup<R: traits::Restore>(
     let iv: [u8; IV_SIZE] = metadata.iv.try_into().map_err(|_| Error::MetadataInvalid)?;
 
     let describe_enclave = |i| -> Cow<'static, str> {
-        if i == 0 {
-            "current enclave".into()
-        } else {
-            format!("previous enclave {i}").into()
-        }
+        format!("enclave {i} of {}", current_and_previous_svrbs.len()).into()
     };
     let mut most_important_error: Option<Error> = None;
 

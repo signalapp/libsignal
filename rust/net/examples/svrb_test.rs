@@ -16,7 +16,7 @@ use clap::Parser as _;
 use hex::ToHex as _;
 use libsignal_account_keys::{AccountEntropyPool, BackupKey};
 use libsignal_net::auth::Auth;
-use libsignal_net::enclave::PpssSetup;
+use libsignal_net::enclave::{EnclaveEndpoint, PpssSetup, SvrSgx};
 use libsignal_net::env::SvrBEnv;
 use libsignal_net::svrb;
 use libsignal_net::svrb::direct::direct_connect;
@@ -52,7 +52,7 @@ struct Args {
 #[derive(Clone, Copy)]
 struct SvrBClient<'a> {
     auth: &'a Auth,
-    env: &'a SvrBEnv<'static>,
+    endpoint: &'a EnclaveEndpoint<'static, SvrSgx>,
 }
 
 #[async_trait]
@@ -60,15 +60,7 @@ impl SvrBConnect for SvrBClient<'_> {
     type Env = SvrBEnv<'static>;
 
     async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults {
-        direct_connect(
-            self.env
-                .current()
-                .next()
-                .expect("should have at least one current SVRB instance"),
-            self.auth,
-            &no_network_change_events(),
-        )
-        .await
+        direct_connect(self.endpoint, self.auth, &no_network_change_events()).await
     }
 }
 
@@ -98,7 +90,27 @@ async fn single_request(args: &Args, sem: &tokio::sync::Semaphore) {
     } else {
         &libsignal_net::env::STAGING.svr_b
     };
-    let client = SvrBClient { auth: &auth, env };
+    let current_clients = env
+        .current()
+        .map(|endpoint| SvrBClient {
+            auth: &auth,
+            endpoint,
+        })
+        .collect::<Vec<_>>();
+    let previous_clients = env
+        .previous()
+        .map(|endpoint| SvrBClient {
+            auth: &auth,
+            endpoint,
+        })
+        .collect::<Vec<_>>();
+    let current_and_previous_clients = env
+        .current_and_previous()
+        .map(|endpoint| SvrBClient {
+            auth: &auth,
+            endpoint,
+        })
+        .collect::<Vec<_>>();
 
     let aep = AccountEntropyPool::from_str(
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -111,17 +123,25 @@ async fn single_request(args: &Args, sem: &tokio::sync::Semaphore) {
     // Example code for the first backup ever created by a client.
     // Note that we use `create_new_backup_chain` for the previous_backup_data.
     println!("Storing backup #1");
-    let inital_data = svrb::create_new_backup_chain(&client, &backup_key);
-    let backup1 =
-        svrb::store_backup::<_, SvrBClient>(&[client], &[], &backup_key, inital_data.as_ref())
-            .await
-            .expect("should backup");
+    let inital_data = svrb::create_new_backup_chain(&current_clients[0], &backup_key);
+    let backup1 = svrb::store_backup::<_, SvrBClient>(
+        &current_clients,
+        &previous_clients,
+        &backup_key,
+        inital_data.as_ref(),
+    )
+    .await
+    .expect("should backup");
 
     // Example code for restoration of the backup.
     println!("Restoring backup #1");
-    let restored = svrb::restore_backup(&[client], &backup_key, backup1.metadata.as_ref())
-        .await
-        .expect("should restore successfully");
+    let restored = svrb::restore_backup(
+        &current_and_previous_clients,
+        &backup_key,
+        backup1.metadata.as_ref(),
+    )
+    .await
+    .expect("should restore successfully");
     assert_eq!(
         restored.forward_secrecy_token.0,
         backup1.forward_secrecy_token.0
@@ -131,8 +151,8 @@ async fn single_request(args: &Args, sem: &tokio::sync::Semaphore) {
     // in the previous backup's `next_backup_data`.
     println!("Storing backup #2");
     let backup2 = svrb::store_backup::<_, SvrBClient>(
-        &[client],
-        &[],
+        &current_clients,
+        &previous_clients,
         &backup_key,
         backup1.next_backup_data.as_ref(),
     )
@@ -141,17 +161,25 @@ async fn single_request(args: &Args, sem: &tokio::sync::Semaphore) {
 
     // Example code for restoring both backups after storage of backup 2.
     println!("Restoring backup #1 after storing backup #2");
-    let restored = svrb::restore_backup(&[client], &backup_key, backup1.metadata.as_ref())
-        .await
-        .expect("should restore successfully");
+    let restored = svrb::restore_backup(
+        &current_and_previous_clients,
+        &backup_key,
+        backup1.metadata.as_ref(),
+    )
+    .await
+    .expect("should restore successfully");
     assert_eq!(
         restored.forward_secrecy_token.0,
         backup1.forward_secrecy_token.0
     );
     println!("Restoring backup #2 after storing backup #2");
-    let restored = svrb::restore_backup(&[client], &backup_key, backup2.metadata.as_ref())
-        .await
-        .expect("should restore successfully");
+    let restored = svrb::restore_backup(
+        &current_and_previous_clients,
+        &backup_key,
+        backup2.metadata.as_ref(),
+    )
+    .await
+    .expect("should restore successfully");
     assert_eq!(
         restored.forward_secrecy_token.0,
         backup2.forward_secrecy_token.0
