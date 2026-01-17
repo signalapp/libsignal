@@ -330,7 +330,7 @@ impl SenderCertificate {
 
     pub fn validate_with_trust_roots(
         &self,
-        trust_roots: &[&PublicKey],
+        trust_roots: &[impl AsRef<PublicKey>],
         validation_time: Timestamp,
     ) -> Result<bool> {
         let signer = self.signer()?;
@@ -338,7 +338,7 @@ impl SenderCertificate {
         // Check the signer against every trust root to hide which one was the correct one.
         let mut any_valid = Choice::from(0u8);
         for root in trust_roots {
-            let ok = signer.validate(root)?;
+            let ok = signer.validate(root.as_ref())?;
             any_valid |= Choice::from(u8::from(ok));
         }
         if !bool::from(any_valid) {
