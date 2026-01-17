@@ -65,6 +65,17 @@ pub struct PublicKey {
     key: PublicKeyData,
 }
 
+// This implementation allows functions with the following signature
+// ```
+// fn foo(impl AsRef<PublicKey>) { ... }
+// ```
+// to accept both referenced `&PublicKey` and owned `PublicKey`.
+impl AsRef<PublicKey> for PublicKey {
+    fn as_ref(&self) -> &PublicKey {
+        self
+    }
+}
+
 impl PublicKey {
     fn new(key: PublicKeyData) -> Self {
         Self { key }
