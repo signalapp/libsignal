@@ -24,7 +24,7 @@ subtle = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
 x25519-dalek = { workspace = true, features = ["static_secrets"] }
-zerocopy = { workspace = true }
+zerocopy = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
