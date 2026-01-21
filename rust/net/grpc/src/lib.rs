@@ -19,6 +19,11 @@ pub mod proto {
         pub mod errors {
             tonic::include_proto!("org.signal.chat.errors");
         }
+
+        // Not actually a proto, we just make sure to generate our helper file in the same place.
+        pub mod services {
+            tonic::include_proto!("service_methods");
+        }
     }
 }
 

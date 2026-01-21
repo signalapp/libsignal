@@ -9,6 +9,7 @@ license = "AGPL-3.0-only"
 libsignal-core = { workspace = true }
 
 prost = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
 tonic = { workspace = true, default-features = false, features = ["codegen"] }
 tonic-prost = { workspace = true }
 

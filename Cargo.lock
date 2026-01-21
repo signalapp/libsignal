@@ -2800,6 +2800,7 @@ version = "0.1.0"
 dependencies = [
  "libsignal-core",
  "prost",
+ "strum",
  "tonic",
  "tonic-prost",
  "tonic-prost-build",
