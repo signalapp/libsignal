@@ -45,7 +45,7 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
 - **Prefer `expect()` to `unwrap()`.** As noted, we don't have a no-panics policy, but `expect()` forces you to write down why you believe something should *never* happen except for programmer errors. In particular, untrusted input that fails to validate should *not* panic.
 
-    (Yes, there's a Clippy lint for this, but we also have a lot of code that predates this guideline.)
+    As an exception, it's okay to use `unwrap()` in tests, though `expect()` is still preferred if it's for the thing you're actively testing.
 
 - You don't have to write doc comments on everything, but **if you do write a comment, make it a doc comment**, because they show up more nicely in IDEs.
 
@@ -53,7 +53,7 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
     - Crate-level Cargo.tomls don't usually inherit the workspace `rust-version`, because many crates are relatively stable and may continue working for external folks using earlier versions of Rust even though we no longer test for them; picking up the top-level MSRV update would therefore be unnecessarily breaking. Instead, they have a `rust-version` that indicates a known minimum at some point in the past; it may be too low, but it will never be overly high. The exceptions are the `bridge` crates, which are not intended to be used for anything but the app language libraries.
 
-- **We do not have a changelog file**; we rely on [GitHub displaying all our releases](https://github.com/signalapp/libsignal/releases).
+- **We do not have a changelog file**; we rely on [GitHub displaying all our releases](https://github.com/signalapp/libsignal/releases). Unreleased changes are collected in [RELEASE_NOTES.md][], which is reset after each release.
 
 - **Avoid `cargo add`**, or fix up the Cargo.toml afterwards. Some of our dependency lists are organized and `cargo add` doesn't respect that.
 
