@@ -27,7 +27,9 @@ impl HsmEnclaveClient {
             return Err(hsm_enclave::Error::InvalidPublicKeyError);
         }
         if trusted_code_hashes.is_empty()
-            || trusted_code_hashes.len() % hsm_enclave::CODE_HASH_SIZE != 0
+            || !trusted_code_hashes
+                .len()
+                .is_multiple_of(hsm_enclave::CODE_HASH_SIZE)
         {
             return Err(hsm_enclave::Error::InvalidCodeHashError);
         }

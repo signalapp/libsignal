@@ -44,10 +44,10 @@ impl<P> WebSocketProvider<P> {
 impl<P: RouteProvider> RouteProvider for WebSocketProvider<P> {
     type Route = WebSocketRoute<P::Route>;
 
-    fn routes<'s>(
+    fn routes<'s, C: RouteProviderContext>(
         &'s self,
-        context: &impl RouteProviderContext,
-    ) -> impl Iterator<Item = Self::Route> + 's {
+        context: &mut C,
+    ) -> impl Iterator<Item = Self::Route> + use<'s, C, P> {
         self.inner.routes(context).map(|route| WebSocketRoute {
             inner: route,
             fragment: self.fragment.clone(),

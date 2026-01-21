@@ -64,10 +64,10 @@ pub(crate) trait SetAlpn {
 impl<P: RouteProvider> RouteProvider for TlsRouteProvider<P> {
     type Route = TlsRoute<P::Route>;
 
-    fn routes<'s>(
+    fn routes<'s, C: RouteProviderContext>(
         &'s self,
-        context: &impl RouteProviderContext,
-    ) -> impl Iterator<Item = Self::Route> + 's {
+        context: &mut C,
+    ) -> impl Iterator<Item = Self::Route> + use<'s, C, P> {
         let Self {
             sni,
             certs,

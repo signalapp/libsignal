@@ -45,10 +45,10 @@ pub struct Map<R, F>(R, F);
 impl<R: RouteProvider, F: Fn(R::Route) -> T, T> RouteProvider for Map<R, F> {
     type Route = T;
 
-    fn routes<'s>(
+    fn routes<'s, C: RouteProviderContext>(
         &'s self,
-        context: &impl RouteProviderContext,
-    ) -> impl Iterator<Item = Self::Route> + 's {
+        context: &mut C,
+    ) -> impl Iterator<Item = Self::Route> + use<'s, C, R, F, T> {
         self.0.routes(context).map(&self.1)
     }
 }
@@ -59,10 +59,10 @@ pub struct Filter<R, F>(R, F);
 impl<R: RouteProvider, F: Fn(&R::Route) -> bool> RouteProvider for Filter<R, F> {
     type Route = R::Route;
 
-    fn routes<'s>(
+    fn routes<'s, C: RouteProviderContext>(
         &'s self,
-        context: &impl RouteProviderContext,
-    ) -> impl Iterator<Item = Self::Route> + 's {
+        context: &mut C,
+    ) -> impl Iterator<Item = Self::Route> + use<'s, C, R, F> {
         self.0.routes(context).filter(&self.1)
     }
 }
@@ -75,10 +75,10 @@ pub struct EmptyProvider<R> {
 impl<R> RouteProvider for EmptyProvider<R> {
     type Route = R;
 
-    fn routes<'s>(
+    fn routes<'s, C: RouteProviderContext>(
         &'s self,
-        _context: &impl RouteProviderContext,
-    ) -> impl Iterator<Item = Self::Route> + 's {
+        _context: &mut C,
+    ) -> impl Iterator<Item = Self::Route> + use<'s, C, R> {
         std::iter::empty()
     }
 }

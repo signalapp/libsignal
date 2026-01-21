@@ -143,30 +143,10 @@ pub trait RouteProvider {
     /// The routes must be produced in the order in which connection attempts
     /// should be made. The iterator is allowed to borrow from `self` as an
     /// optimization.
-    ///
-    /// Why is `context` a `&` instead of a `&mut`? Because as of Jan 2025,
-    /// there's no way to prevent the lifetime in the type of `context` from
-    /// being captured in the opaque return type. That's important because there
-    /// are some implementations of this trait where it's necessary to combine
-    /// the output of two different comprising providers. If `context` was a
-    /// `&mut` the first call's exclusive borrow for its entire lifetime would
-    /// prevent the second call from being able to use the same `context`.
-    ///
-    /// There are two potential ways we could work around this:
-    ///
-    /// 1. Use the new precise-capture syntax introduced in Rust 1.82, and
-    ///    stabilized for use in traits in Rust 1.87.
-    ///
-    /// 2. Introduce a named associated type that only captures `'s`, not `'c`.
-    ///    This works now, but would require all returned iterator types to be
-    ///    named. That would prevent us from using `Iterator::map` and other
-    ///    combinators, or require any uses be `Box`ed and those tradeoffs
-    ///    aren't (currently) worth the imprecision.
-    // TODO: when our MSRV >= 1.87, use precise captures and make context &mut.
-    fn routes<'s>(
+    fn routes<'s, C: RouteProviderContext>(
         &'s self,
-        context: &impl RouteProviderContext,
-    ) -> impl Iterator<Item = Self::Route> + 's;
+        context: &mut C,
+    ) -> impl Iterator<Item = Self::Route> + use<'s, C, Self>;
 }
 
 /// Context parameter passed to [`RouteProvider::routes`].
@@ -175,7 +155,7 @@ pub trait RouteProvider {
 /// implementer can use to make decisions about what routes to emit.
 pub trait RouteProviderContext {
     /// Returns a uniformly random [`usize`].
-    fn random_usize(&self) -> usize;
+    fn random_usize(&mut self) -> usize;
 }
 
 /// A hostname in a route that can later be resolved to IP addresses.
@@ -586,13 +566,13 @@ fn pull_next_route_delay<F>(connects_in_progress: &FuturesUnordered<F>) -> Durat
     PER_CONNECTION_WAIT_DURATION * connections_factor
 }
 
-impl<R: RouteProvider> RouteProvider for &R {
+impl<'a, R: RouteProvider> RouteProvider for &'a R {
     type Route = R::Route;
 
-    fn routes<'s>(
+    fn routes<'s, C: RouteProviderContext>(
         &'s self,
-        context: &impl RouteProviderContext,
-    ) -> impl Iterator<Item = Self::Route> + 's {
+        context: &mut C,
+    ) -> impl Iterator<Item = Self::Route> + use<'s, 'a, C, R> {
         R::routes(self, context)
     }
 }
@@ -646,10 +626,10 @@ pub mod testutils {
     impl<R: Clone> RouteProvider for Vec<R> {
         type Route = R;
 
-        fn routes<'s>(
+        fn routes<'s, C: RouteProviderContext>(
             &'s self,
-            _context: &impl RouteProviderContext,
-        ) -> impl Iterator<Item = Self::Route> + 's {
+            _context: &mut C,
+        ) -> impl Iterator<Item = Self::Route> + use<'s, R, C> {
             self.iter().cloned()
         }
     }
@@ -673,7 +653,7 @@ pub mod testutils {
     }
 
     impl RouteProviderContext for FakeContext {
-        fn random_usize(&self) -> usize {
+        fn random_usize(&mut self) -> usize {
             UniformUsize::sample_single_inclusive(0, usize::MAX, &mut self.rng.borrow_mut())
                 .expect("non-empty range")
         }
@@ -775,7 +755,7 @@ mod test {
             },
         };
 
-        let routes = RouteProvider::routes(&provider, &FakeContext::new()).collect_vec();
+        let routes = RouteProvider::routes(&provider, &mut FakeContext::new()).collect_vec();
 
         let expected_routes = vec![
             WebSocketRoute {
@@ -896,7 +876,7 @@ mod test {
             inner: direct_provider,
         };
 
-        let routes = provider.routes(&FakeContext::new()).collect_vec();
+        let routes = provider.routes(&mut FakeContext::new()).collect_vec();
 
         assert_eq!(
             routes,
@@ -958,7 +938,7 @@ mod test {
             inner: direct_provider,
         };
 
-        let routes = provider.routes(&FakeContext::new()).collect_vec();
+        let routes = provider.routes(&mut FakeContext::new()).collect_vec();
 
         let expected_routes = vec![
             TlsRoute {

@@ -142,20 +142,17 @@ impl TryFrom<ClientResponse> for LookupResponse {
             debug_permits_used,
         } = response;
 
-        if e164_pni_aci_triples.len() % LookupResponseEntry::SERIALIZED_LEN != 0 {
+        let (record_chunks, record_remainder) =
+            e164_pni_aci_triples.as_chunks::<{ LookupResponseEntry::SERIALIZED_LEN }>();
+
+        if !record_remainder.is_empty() {
             return Err(CdsiProtocolError::InvalidNumberOfBytes {
                 actual_length: e164_pni_aci_triples.len(),
             });
         }
-
-        // TODO: Use as_chunks when we reach MSRV 1.88.
-        let records = e164_pni_aci_triples
-            .chunks(LookupResponseEntry::SERIALIZED_LEN)
-            .flat_map(|record| {
-                LookupResponseEntry::try_parse_from(
-                    record.try_into().expect("chunk size is correct"),
-                )
-            })
+        let records = record_chunks
+            .iter()
+            .flat_map(LookupResponseEntry::try_parse_from)
             .collect();
 
         Ok(Self {

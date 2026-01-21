@@ -441,10 +441,10 @@ impl Responder {
     pub fn send_response(self, status: StatusCode) -> Result<(), SendError> {
         let Self { id, tx } = self;
 
-        if let Some(tx) = tx.upgrade() {
-            if let Ok(()) = tx.send(OutgoingResponse { id, status }) {
-                return Ok(());
-            }
+        if let Some(tx) = tx.upgrade()
+            && let Ok(()) = tx.send(OutgoingResponse { id, status })
+        {
+            return Ok(());
         }
 
         Err(SendError::Disconnected(DisconnectedReason::SocketClosed {

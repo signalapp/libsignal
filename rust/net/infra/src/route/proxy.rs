@@ -307,10 +307,10 @@ where
 {
     type Route = R;
 
-    fn routes<'s>(
+    fn routes<'s, C: RouteProviderContext>(
         &'s self,
-        context: &impl RouteProviderContext,
-    ) -> impl Iterator<Item = Self::Route> + 's {
+        context: &mut C,
+    ) -> impl Iterator<Item = Self::Route> + use<'s, C, D, R> {
         let Self { inner, mode } = self;
         let original_routes = inner.routes(context);
         match mode {

@@ -93,16 +93,15 @@ pub fn verify_remote_attestation(
     let attestation = attest(evidence_bytes, endorsement_bytes, current_time)?;
 
     // 4. Verify the status of the Intel® SGX TCB described in the chain.
-    if let TcbStanding::SWHardeningNeeded { advisory_ids } = attestation.tcb_standing {
-        if advisory_ids
+    if let TcbStanding::SWHardeningNeeded { advisory_ids } = attestation.tcb_standing
+        && advisory_ids
             .iter()
             .any(|id| !acceptable_sw_advisories.contains(&id.as_str()))
-        {
-            return Err(Error::new(format!(
-                "TCB contains unmitigated unaccepted advisory ids: {advisory_ids:?}"
-            ))
-            .into());
-        }
+    {
+        return Err(Error::new(format!(
+            "TCB contains unmitigated unaccepted advisory ids: {advisory_ids:?}"
+        ))
+        .into());
     }
 
     // 5. Verify the enclave measurements in the Quote reflect an enclave identity expected.

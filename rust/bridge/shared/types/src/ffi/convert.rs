@@ -1063,21 +1063,15 @@ impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for (A, B) {
 }
 
 impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for Option<(A, B)>
-// We can simplify this when our MSRV is 1.88, when pointers become Default.
-// Meanwhile, we'll rely on the fact that every C type is zeroable.
 where
-    A::ResultType: zerocopy::FromZeros,
-    B::ResultType: zerocopy::FromZeros,
+    A::ResultType: Default,
+    B::ResultType: Default,
 {
     type ResultType = OptionalPairOf<A::ResultType, B::ResultType>;
 
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         let Some(value) = self else {
-            return Ok(OptionalPairOf {
-                present: false,
-                first: zerocopy::FromZeros::new_zeroed(),
-                second: zerocopy::FromZeros::new_zeroed(),
-            });
+            return Ok(OptionalPairOf::default());
         };
         Ok(OptionalPairOf {
             present: true,

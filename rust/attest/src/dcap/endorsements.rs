@@ -106,10 +106,12 @@ impl TryFrom<&[u8]> for SgxEndorsements {
 
         let (offsets, data) = src.split_at(offsets_required_size);
 
-        // TODO: Use as_chunks instead at MSRV 1.88.
+        let (offsets, offsets_remainder) = offsets.as_chunks::<{ std::mem::size_of::<u32>() }>();
+        // offsets_required_size is a multiple of std::mem::size_of::<u32>
+        assert!(offsets_remainder.is_empty());
         let offsets = offsets
-            .chunks_exact(4)
-            .map(|d| u32::from_le_bytes(d.try_into().expect("correct size")) as usize)
+            .iter()
+            .map(|d| u32::from_le_bytes(*d) as usize)
             .collect::<Vec<usize>>();
 
         validate_offsets(&offsets, data)?;

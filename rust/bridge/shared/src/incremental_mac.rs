@@ -72,14 +72,11 @@ pub fn ValidatingMac_Initialize(
     }
     let incremental = Incremental::new(hmac, chunk_size as usize);
     const MAC_SIZE: usize = <Digest as OutputSizeUser>::OutputSize::USIZE;
-    // TODO: When we reach an MSRV of 1.88, we can use as_chunks instead.
-    let macs = digests.chunks_exact(MAC_SIZE);
-    if !macs.remainder().is_empty() {
+    let (macs, macs_remainder) = digests.as_chunks::<MAC_SIZE>();
+    if !macs_remainder.is_empty() {
         return None;
     }
-    Some(ValidatingMac(Some(incremental.validating(macs.map(
-        |chunk| <&[u8; MAC_SIZE]>::try_from(chunk).expect("split into correct size already"),
-    )))))
+    Some(ValidatingMac(Some(incremental.validating(macs.iter()))))
 }
 
 #[bridge_fn]

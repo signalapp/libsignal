@@ -70,10 +70,10 @@ impl DirectTcpRouteProvider {
 impl RouteProvider for DirectTcpRouteProvider {
     type Route = TcpRoute<UnresolvedHost>;
 
-    fn routes<'s>(
+    fn routes<'s, C: RouteProviderContext>(
         &'s self,
-        _context: &impl RouteProviderContext,
-    ) -> impl Iterator<Item = Self::Route> + 's {
+        _context: &mut C,
+    ) -> impl Iterator<Item = Self::Route> + use<'s, C> {
         let Self {
             dns_hostname,
             port,

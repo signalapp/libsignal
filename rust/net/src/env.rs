@@ -962,7 +962,7 @@ mod test {
             },
             override_nagle_algorithm,
         );
-        let routes = route_provider.routes(&FakeContext::new()).collect_vec();
+        let routes = route_provider.routes(&mut FakeContext::new()).collect_vec();
 
         let expected_direct_route = HttpsTlsRoute {
             fragment: HttpRouteFragment {

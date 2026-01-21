@@ -204,13 +204,11 @@ impl Statement {
         sho2.absorb_and_ratchet(message); // M
         let blinding_scalar_bytes = sho2.squeeze_and_ratchet(g1.len() * 64);
 
-        // TODO: use as_chunks once we reach MSRV 1.88.
         let nonce: G1 = blinding_scalar_bytes
-            .chunks_exact(64)
-            .map(|chunk| {
-                let chunk = chunk.try_into().expect("correct width");
-                Scalar::from_bytes_mod_order_wide(chunk)
-            })
+            .as_chunks::<64>()
+            .0
+            .iter()
+            .map(Scalar::from_bytes_mod_order_wide)
             .collect();
 
         // Commitment from nonce by applying homomorphism F: commitment = F(nonce)

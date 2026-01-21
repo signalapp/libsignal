@@ -113,10 +113,10 @@ impl DomainFrontRouteProvider {
 impl RouteProvider for DomainFrontRouteProvider {
     type Route = HttpsTlsRoute<TlsRoute<TcpRoute<UnresolvedHost>>>;
 
-    fn routes<'s>(
+    fn routes<'s, C: RouteProviderContext>(
         &'s self,
-        context: &impl RouteProviderContext,
-    ) -> impl Iterator<Item = Self::Route> + 's {
+        context: &mut C,
+    ) -> impl Iterator<Item = Self::Route> + use<'s, C> {
         let Self {
             fronts,
             http_version,
@@ -174,10 +174,10 @@ where
     F: RouteProvider<Route = HttpsTlsRoute<P::Route>>,
 {
     type Route = HttpsTlsRoute<P::Route>;
-    fn routes<'s>(
+    fn routes<'s, C: RouteProviderContext>(
         &'s self,
-        context: &impl RouteProviderContext,
-    ) -> impl Iterator<Item = Self::Route> + 's {
+        context: &mut C,
+    ) -> impl Iterator<Item = Self::Route> + use<'s, C, F, P> {
         let Self {
             direct_host_header,
             direct_http_version,
@@ -274,7 +274,7 @@ mod test {
             },
         };
 
-        let routes = provider.routes(&FakeContext::new()).collect_vec();
+        let routes = provider.routes(&mut FakeContext::new()).collect_vec();
 
         assert_eq!(
             routes,

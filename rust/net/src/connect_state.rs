@@ -506,13 +506,13 @@ impl<TC> ConnectionResources<'_, TC> {
             post_route_change_connect_timeout,
             transport_connector,
             attempts_record,
-            route_provider_context,
+            mut route_provider_context,
         } = connect_state
             .lock()
             .expect("not poisoned")
             .prepare_snapshot();
 
-        let routes = routes.routes(&route_provider_context).collect_vec();
+        let routes = routes.routes(&mut route_provider_context).collect_vec();
 
         log::info!(
             "[{log_tag}] starting connection attempt with {} routes",
@@ -649,7 +649,7 @@ where
             post_route_change_connect_timeout,
             transport_connector,
             attempts_record,
-            route_provider_context,
+            mut route_provider_context,
         } = connect_state
             .lock()
             .expect("not poisoned")
@@ -660,7 +660,7 @@ where
                 should: true,
                 inner: r,
             })
-            .routes(&route_provider_context)
+            .routes(&mut route_provider_context)
             .collect_vec();
 
         log::info!(
@@ -777,7 +777,7 @@ where
 struct RouteProviderContextImpl(UnwrapErr<OsRng>);
 
 impl RouteProviderContext for RouteProviderContextImpl {
-    fn random_usize(&self) -> usize {
+    fn random_usize(&mut self) -> usize {
         // OsRng is zero-sized, so we're not losing random values by copying it.
         let mut owned_rng: UnwrapErr<OsRng> = self.0;
         assert_eq_size_val!(owned_rng, ());
