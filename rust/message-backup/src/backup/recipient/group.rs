@@ -71,12 +71,16 @@ pub enum GroupError {
     MemberRoleUnknown,
     /// member profile key was not valid
     MemberInvalidProfileKey,
+    /// member labelEmoji was set without labelString set
+    MemberLabelEmojiWithoutString,
     /// MemberPendingProfileKey missing nested Member info
     MemberPendingProfileKeyMissingMember,
     /// MemberPendingProfileKey has a profile key
     MemberPendingProfileKeyHasProfileKey,
     /// MemberPendingProfileKey's userId and addedByUserId are the same
     MemberPendingProfileKeyWasInvitedBySelf,
+    /// MemberPendingProfileKey's labels were set
+    MemberPendingProfileKeyHasLabel,
     /// {0}
     InvalidTimestamp(#[from] TimestampError),
 }
@@ -474,7 +478,7 @@ mod test {
     #[test_case(|x| x.accessControl.as_mut().unwrap().members = AccessRequired::ANY.into() => Err(GroupError::InvalidAccess { which: "members", access: AccessRequired::ANY }); "bad members AccessRequired")]
     #[test_case(|x| x.accessControl.as_mut().unwrap().addFromInviteLink = AccessRequired::MEMBER.into() => Err(GroupError::InvalidAccess { which: "addFromInviteLink", access: AccessRequired::MEMBER }); "bad addFromInviteLink AccessRequired")]
     #[test_case(|x| x.inviteLinkPassword = vec![] => Ok(()); "empty invite link password")]
-    #[test_case(|x| x.members[0].userId = vec![] => Err(GroupError::MemberInvalidServiceId { which: "member" }); "bad member")]
+    #[test_case(|x| x.members[0].user_id = vec![] => Err(GroupError::MemberInvalidServiceId { which: "member" }); "bad member")]
     fn group_snapshot(
         modifier: impl FnOnce(&mut proto::group::GroupSnapshot),
     ) -> Result<(), GroupError> {

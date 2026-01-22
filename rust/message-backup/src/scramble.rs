@@ -644,12 +644,20 @@ impl Visit<Scrambler> for proto::group::AccessControl {
 impl Visit<Scrambler> for proto::group::Member {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
-            userId,
+            user_id,
             role: _,
             joinedAtVersion: _,
+            label_emoji,
+            label_string,
             special_fields: _,
         } = self;
-        visitor.replace_service_id(userId);
+        visitor.replace_service_id(user_id);
+        if !label_emoji.is_empty() {
+            *label_emoji = REPLACEMENT_EMOJI.to_string();
+        }
+        if !label_string.is_empty() {
+            label_string.randomize(&mut visitor.rng);
+        }
     }
 }
 
@@ -669,22 +677,22 @@ impl Visit<Scrambler> for proto::group::MemberPendingProfileKey {
 impl Visit<Scrambler> for proto::group::MemberPendingAdminApproval {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
-            userId,
+            user_id,
             timestamp: _,
             special_fields: _,
         } = self;
-        visitor.replace_service_id(userId);
+        visitor.replace_service_id(user_id);
     }
 }
 
 impl Visit<Scrambler> for proto::group::MemberBanned {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
-            userId,
+            user_id,
             timestamp: _,
             special_fields: _,
         } = self;
-        visitor.replace_service_id(userId);
+        visitor.replace_service_id(user_id);
     }
 }
 
