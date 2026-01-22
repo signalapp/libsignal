@@ -13,7 +13,7 @@ fn main() {
         "proto/org/signal/chat/payments.proto",
         "proto/org/signal/chat/profile.proto",
     ];
-
+    println!("cargo:rerun-if-changed=proto/");
     tonic_prost_build::configure()
         .build_server(false)
         .build_transport(false)
