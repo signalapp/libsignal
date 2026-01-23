@@ -290,6 +290,9 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
             // not a `store_backup` call.  In this case, we want to just keep
             // what's currently in SVRB still in SVRB.  There is no backup4
             // to store, and we use the existing key_salt+pw_salt.
+            log::info!(
+                "using previous_backup_data.from_previous.restore, keeping existing keys in svr without overwrite"
+            );
             (
                 restore
                     .enc_salt
@@ -306,6 +309,9 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
             // `previous_backup_data` came from a `store_backup` call,
             // so we know that we can write a new backup into SVRB and still
             // have the old backup file decrypt.  Do that.
+            log::info!(
+                "using previous_backup_data.from_previous.backup, storing new keys into svr overwriting old"
+            );
             let pw_salt = backup
                 .pw_salt
                 .try_into()
@@ -358,6 +364,10 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
     };
 
     if let Some(prev_backup4) = prev_backup4 {
+        log::info!(
+            "finalizing backup in {} current backends",
+            current_svrbs.len()
+        );
         let mut futures = current_svrbs
             .iter()
             .map(|svrb| svrb.finalize(&prev_backup4))
@@ -366,6 +376,10 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
             result?;
         }
 
+        log::info!(
+            "removing backup from {} previous backends",
+            previous_svrbs.len()
+        );
         for r in
             futures_util::future::join_all(previous_svrbs.iter().enumerate().map(async |(i, p)| {
                 tokio::time::sleep(
@@ -389,6 +403,7 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
         log::info!("previous backup data came from a restore; skipping upload to SVR-B");
     }
 
+    log::info!("store_backup success");
     Ok(BackupStoreResponse {
         forward_secrecy_token,
         next_backup_data: BackupPreviousSecretData(
@@ -434,6 +449,10 @@ pub async fn restore_backup<R: traits::Restore>(
         !current_and_previous_svrbs.is_empty(),
         "can't restore from 0 enclaves"
     );
+    log::info!(
+        "restoring backup from {} backends",
+        current_and_previous_svrbs.len()
+    );
     let metadata = backup_metadata::MetadataPb::parse_from_bytes(metadata.0)
         .map_err(|_| Error::MetadataInvalid)?;
     if metadata.pair.is_empty() {
@@ -457,6 +476,10 @@ pub async fn restore_backup<R: traits::Restore>(
     )
     .map(async |((enclave_index, svrb), (pair_index, pair))| {
         tokio::time::sleep(delay(enclave_index, pair_index, metadata.pair.len())).await;
+        log::info!(
+            "attempting restore from {} of metadata.pair[{pair_index}]",
+            describe_enclave(enclave_index)
+        );
         let result = restore_backup_attempt(svrb, backup_key, &iv, pair).await;
         (enclave_index, pair_index, result)
     })
@@ -506,6 +529,11 @@ pub async fn remove_backup<R: traits::Remove>(
     previous_svrbs: &[R],
 ) -> Result<(), Error> {
     let mut most_important_error: Result<(), Error> = Ok(());
+    log::info!(
+        "removing from {} current and {} previous backends",
+        current_svrbs.len(),
+        previous_svrbs.len()
+    );
     for r in
         futures_util::future::join_all(current_svrbs.iter().chain(previous_svrbs).enumerate().map(
             async |(i, p)| {
@@ -514,6 +542,7 @@ pub async fn remove_backup<R: traits::Remove>(
                         * BACKUP_CONNECTION_DELAY,
                 )
                 .await;
+                log::info!("requesting removal {i}");
                 p.remove().await
             },
         ))
