@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use libsignal_core::Aci;
 use libsignal_net_grpc::proto::chat::account::accounts_anonymous_client::AccountsAnonymousClient;
 use libsignal_net_grpc::proto::chat::account::*;
+use libsignal_net_grpc::proto::chat::errors;
 
 use super::{GrpcServiceProvider, OverGrpc, into_default_request_error, log_and_send};
 use crate::api::{RequestError, Unauth};
@@ -30,14 +31,21 @@ impl<T: GrpcServiceProvider> crate::api::usernames::UnauthenticatedChatApi<OverG
         })
         .await;
 
-        let id = match result.map(tonic::Response::into_inner) {
-            Ok(LookupUsernameHashResponse { service_identifier }) => service_identifier,
-            Err(e) if e.code() == tonic::Code::NotFound => return Ok(None),
-            Err(e) => return Err(into_default_request_error(e)),
+        let response = match result.map(tonic::Response::into_inner) {
+            Ok(LookupUsernameHashResponse { response }) => {
+                response.ok_or_else(|| RequestError::Unexpected {
+                    log_safe: "missing response".to_owned(),
+                })
+            }
+            Err(e) => Err(into_default_request_error(e)),
+        }?;
+
+        let id = match response {
+            lookup_username_hash_response::Response::ServiceIdentifier(service_id) => service_id,
+            lookup_username_hash_response::Response::NotFound(errors::NotFound {}) => {
+                return Ok(None);
+            }
         }
-        .ok_or_else(|| RequestError::Unexpected {
-            log_safe: "missing service ID in response".to_owned(),
-        })?
         .try_into_service_id()
         .ok_or_else(|| RequestError::Unexpected {
             log_safe: "unable to parse service ID in response".to_owned(),
@@ -82,33 +90,35 @@ mod test {
     const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
 
     #[test_case(ok(LookupUsernameHashResponse {
-        service_identifier: Some(ServiceIdentifier {
+        response: Some(lookup_username_hash_response::Response::ServiceIdentifier(ServiceIdentifier {
             identity_type: IdentityType::Aci.into(),
             uuid: ACI_UUID.as_bytes().to_vec(),
-        }),
+        })),
     }) => matches Ok(Some(aci)) if Uuid::from(aci) == ACI_UUID)]
     #[test_case(ok(LookupUsernameHashResponse {
-        service_identifier: Some(ServiceIdentifier {
+        response: Some(lookup_username_hash_response::Response::ServiceIdentifier(ServiceIdentifier {
             identity_type: IdentityType::Pni.into(),
             uuid: ACI_UUID.as_bytes().to_vec(),
-        }),
+        })),
     }) => matches Err(RequestError::Unexpected { .. }))]
     #[test_case(ok(LookupUsernameHashResponse {
-        service_identifier: Some(ServiceIdentifier {
+        response: Some(lookup_username_hash_response::Response::ServiceIdentifier(ServiceIdentifier {
             identity_type: 50,
             uuid: ACI_UUID.as_bytes().to_vec(),
-        }),
+        })),
     }) => matches Err(RequestError::Unexpected { .. }))]
     #[test_case(ok(LookupUsernameHashResponse {
-        service_identifier: Some(ServiceIdentifier {
+        response: Some(lookup_username_hash_response::Response::ServiceIdentifier(ServiceIdentifier {
             identity_type: IdentityType::Aci.into(),
             uuid: vec![1, 2, 3],
-        }),
+        })),
     }) => matches Err(RequestError::Unexpected { .. }))]
     #[test_case(ok(LookupUsernameHashResponse {
-        service_identifier: None,
+        response: None,
     }) => matches Err(RequestError::Unexpected { .. }))]
-    #[test_case(err(tonic::Code::NotFound) => matches Ok(None))]
+    #[test_case(ok(LookupUsernameHashResponse {
+        response: Some(lookup_username_hash_response::Response::NotFound(Default::default())),
+    }) => matches Ok(None))]
     #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
     fn test_hash_lookup(
         response: http::Response<Vec<u8>>,

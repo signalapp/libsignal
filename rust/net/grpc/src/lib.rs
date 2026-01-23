@@ -16,6 +16,9 @@ pub mod proto {
         pub mod device {
             tonic::include_proto!("org.signal.chat.device");
         }
+        pub mod errors {
+            tonic::include_proto!("org.signal.chat.errors");
+        }
     }
 }
 
