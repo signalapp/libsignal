@@ -106,6 +106,12 @@ fn test_sender_cert() -> Result<(), SignalProtocolError> {
     assert!(sender_cert.validate(&trust_root.public_key, expires)?);
     assert!(!sender_cert.validate(&trust_root.public_key, expires.add_millis(1))?); // expired
 
+    // Regression test validation on both &[&PublicKey] and &[PublicKey]
+    // Cfr. https://github.com/signalapp/libsignal/pull/643
+    assert!(sender_cert.validate_with_trust_roots(&[trust_root.public_key], expires)?);
+    assert!(sender_cert.validate_with_trust_roots(&[&trust_root.public_key], expires)?);
+
+
     // Next, check that flipping any bit in the serialized form of the certificate leads to a parse
     // or validation failure. Because of the use of OsRng, sender_cert isn't completely the same
     // each time: the root key -> server cert signature and the server cert -> sender cert signature
