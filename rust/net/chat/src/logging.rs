@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::fmt::Formatter;
+
 use libsignal_core::{Aci, Pni, ServiceId};
 
 pub struct Redact<T>(pub T);
@@ -40,6 +42,21 @@ impl std::fmt::Display for Redact<&'_ ServiceId> {
             ServiceId::Aci(specific_service_id) => Redact(specific_service_id).fmt(f),
             ServiceId::Pni(specific_service_id) => Redact(specific_service_id).fmt(f),
         }
+    }
+}
+
+impl std::fmt::Display for Redact<ServiceId> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Redact(&self.0))
+    }
+}
+
+impl<T> std::fmt::Debug for Redact<T>
+where
+    Redact<T>: std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(f, "{self}")
     }
 }
 

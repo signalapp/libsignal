@@ -3,13 +3,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::convert::Infallible;
+
 use async_trait::async_trait;
-use libsignal_core::Aci;
+use http::HeaderMap;
+use libsignal_core::{Aci, ServiceId};
 use libsignal_net::chat::Request;
 use libsignal_net::infra::AsHttpHeader as _;
 use serde_with::serde_as;
 
-use super::{CustomError, TryIntoResponse as _, WsConnection};
+use super::{CustomError, OverWs, ResponseError, TryIntoResponse as _, WsConnection};
 use crate::api::profiles::ProfileKeyCredentialRequestError;
 use crate::api::{RequestError, Unauth, UserBasedAuthorization};
 use crate::logging::{Redact, RedactHex};
@@ -81,8 +84,42 @@ impl<T: WsConnection> crate::api::profiles::UnauthenticatedChatApi for Unauth<T>
     }
 }
 
+#[async_trait]
+impl<T: WsConnection> crate::api::profiles::UnauthenticatedAccountExistenceApi<OverWs>
+    for Unauth<T>
+{
+    async fn account_exists(&self, account: ServiceId) -> Result<bool, RequestError<Infallible>> {
+        let log_safe_path = format!("/v1/accounts/account/{}", Redact(&account));
+        let response = self
+            .send(
+                "unauth",
+                &log_safe_path,
+                Request {
+                    method: http::Method::HEAD,
+                    path: format!("/v1/accounts/account/{}", account.service_id_string(),)
+                        .parse()
+                        .expect("valid"),
+                    headers: HeaderMap::default(),
+                    body: None,
+                },
+            )
+            .await?;
+        if let Some(body) = response.body.as_ref()
+            && !body.is_empty()
+        {
+            log::warn!("HEAD {log_safe_path} returned a non-empty body");
+        }
+        match response.status {
+            http::status::StatusCode::OK => Ok(true),
+            http::status::StatusCode::NOT_FOUND => Ok(false),
+            status => Err(ResponseError::UnrecognizedStatus { status, response }
+                .into_request_error(CustomError::no_custom_handling)),
+        }
+    }
+}
+
 #[cfg(test)]
-mod test {
+mod test_profile_key {
     use base64::Engine as _;
     use base64::prelude::BASE64_STANDARD;
     use futures_util::FutureExt as _;
@@ -202,5 +239,55 @@ mod test {
             .expect("sync")
             .map(|_| ())
             .expect_err("should have failed")
+    }
+}
+
+#[cfg(test)]
+mod test_account_exists {
+    use futures_util::FutureExt;
+    use libsignal_core::Pni;
+    use libsignal_net::chat::Response;
+    use test_case::test_case;
+    use uuid::{Uuid, uuid};
+
+    use super::*;
+    use crate::api::profiles::UnauthenticatedAccountExistenceApi;
+    use crate::ws::testutil::RequestValidator;
+
+    const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
+    const PNI_UUID: Uuid = uuid!("796abedb-ca4e-4f18-8803-1fde5b921f9f");
+
+    #[test_case(Aci::from(ACI_UUID).into(), true)]
+    #[test_case(Pni::from(PNI_UUID).into(), true)]
+    #[test_case(Aci::from(ACI_UUID).into(), false)]
+    #[test_case(Pni::from(PNI_UUID).into(), false)]
+    #[tokio::test]
+    async fn test_it(service_id: ServiceId, found: bool) {
+        let validator = RequestValidator {
+            expected: Request {
+                method: http::Method::HEAD,
+                path: format!("/v1/accounts/account/{}", service_id.service_id_string())
+                    .parse()
+                    .expect("valid"),
+                headers: Default::default(),
+                body: None,
+            },
+            response: Response {
+                status: if found {
+                    http::StatusCode::OK
+                } else {
+                    http::StatusCode::NOT_FOUND
+                },
+                message: None,
+                headers: Default::default(),
+                body: None,
+            },
+        };
+        let result = Unauth(validator)
+            .account_exists(service_id)
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
+        assert_eq!(result, found);
     }
 }

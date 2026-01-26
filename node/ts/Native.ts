@@ -553,6 +553,7 @@ type NativeFunctions = {
   KeyTransparency_Search: (asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, aci: Uint8Array, aciIdentityKey: Wrapper<PublicKey>, e164: string | null, unidentifiedAccessKey: Uint8Array | null, usernameHash: Uint8Array | null, accountData: Uint8Array | null, lastDistinguishedTreeHead: Uint8Array) => CancellablePromise<Uint8Array>;
   KeyTransparency_Monitor: (asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, aci: Uint8Array, aciIdentityKey: Wrapper<PublicKey>, e164: string | null, unidentifiedAccessKey: Uint8Array | null, usernameHash: Uint8Array | null, accountData: Uint8Array | null, lastDistinguishedTreeHead: Uint8Array, isSelfMonitor: boolean) => CancellablePromise<Uint8Array>;
   KeyTransparency_Distinguished: (asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, lastDistinguishedTreeHead: Uint8Array | null) => CancellablePromise<Uint8Array>;
+  UnauthenticatedChatConnection_account_exists: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, account: Uint8Array) => CancellablePromise<boolean>;
   RegistrationService_CreateSession: (asyncRuntime: Wrapper<TokioAsyncContext>, createSession: RegistrationCreateSessionRequest, connectChat: ConnectChatBridge) => CancellablePromise<RegistrationService>;
   RegistrationService_ResumeSession: (asyncRuntime: Wrapper<TokioAsyncContext>, sessionId: string, number: string, connectChat: ConnectChatBridge) => CancellablePromise<RegistrationService>;
   RegistrationService_RequestVerificationCode: (asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, transport: string, client: string, languages: string[]) => CancellablePromise<void>;
@@ -1105,6 +1106,7 @@ const { registerErrors,
   KeyTransparency_Search,
   KeyTransparency_Monitor,
   KeyTransparency_Distinguished,
+  UnauthenticatedChatConnection_account_exists,
   RegistrationService_CreateSession,
   RegistrationService_ResumeSession,
   RegistrationService_RequestVerificationCode,
@@ -1659,6 +1661,7 @@ export { registerErrors,
   KeyTransparency_Search,
   KeyTransparency_Monitor,
   KeyTransparency_Distinguished,
+  UnauthenticatedChatConnection_account_exists,
   RegistrationService_CreateSession,
   RegistrationService_ResumeSession,
   RegistrationService_RequestVerificationCode,

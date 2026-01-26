@@ -49,17 +49,17 @@ impl From<libsignal_core::Pni> for proto::chat::common::ServiceIdentifier {
 }
 
 impl proto::chat::common::ServiceIdentifier {
-    pub fn try_into_service_id(self) -> Option<libsignal_core::ServiceId> {
+    pub fn try_as_service_id(&self) -> Option<libsignal_core::ServiceId> {
         let Self {
             identity_type,
             uuid,
         } = self;
-        Some(match identity_type.try_into().ok()? {
+        Some(match (*identity_type).try_into().ok()? {
             proto::chat::common::IdentityType::Aci => {
-                libsignal_core::Aci::from_uuid_bytes(uuid.try_into().ok()?).into()
+                libsignal_core::Aci::from_uuid_bytes(uuid.as_slice().try_into().ok()?).into()
             }
             proto::chat::common::IdentityType::Pni => {
-                libsignal_core::Pni::from_uuid_bytes(uuid.try_into().ok()?).into()
+                libsignal_core::Pni::from_uuid_bytes(uuid.as_slice().try_into().ok()?).into()
             }
             proto::chat::common::IdentityType::Unspecified => return None,
         })

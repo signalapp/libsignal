@@ -46,7 +46,7 @@ impl<T: GrpcServiceProvider> crate::api::usernames::UnauthenticatedChatApi<OverG
                 return Ok(None);
             }
         }
-        .try_into_service_id()
+        .try_as_service_id()
         .ok_or_else(|| RequestError::Unexpected {
             log_safe: "unable to parse service ID in response".to_owned(),
         })?;

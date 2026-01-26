@@ -1269,6 +1269,8 @@ internal object Native {
   @JvmStatic
   public external fun UnauthenticatedChatConnection_Destroy(handle: ObjectHandle): Unit
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_account_exists(asyncRuntime: ObjectHandle, chat: ObjectHandle, account: ByteArray): CompletableFuture<Boolean>
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_connect(asyncRuntime: ObjectHandle, connectionManager: ObjectHandle, languages: Array<Object>): CompletableFuture<ObjectHandle>
   @JvmStatic
   public external fun UnauthenticatedChatConnection_disconnect(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Void?>
