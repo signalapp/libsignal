@@ -276,7 +276,7 @@ impl Participant {
                             .expect("can encode DEM");
                             them.message_queue.push((
                                 CiphertextMessage::PlaintextContent(error_msg.into()),
-                                Default::default(),
+                                u64::MAX,
                             ));
                         }
                     }
@@ -462,9 +462,15 @@ fuzz_target!(|actions: Vec<(Who, Event)>| {
                 }
                 Event::Receive => me.receive_messages(them, &mut csprng).await,
                 Event::Drop => {
-                    if let Some((_, id)) = me.message_queue.pop() {
-                        info!("{}: drop incoming message {id}", me.name);
-                        them.nack(id);
+                    match me.message_queue.pop() {
+                        None => {}
+                        Some((CiphertextMessage::PlaintextContent(_), _)) => {
+                            info!("{}: drop incoming decryption error message", me.name);
+                        }
+                        Some((_, id)) => {
+                            info!("{}: drop incoming message {id}", me.name);
+                            them.nack(id);
+                        }
                     }
                 }
                 Event::Shuffle => {
