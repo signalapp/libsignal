@@ -64,5 +64,5 @@ check-pre-commit: check-format-all check-python
     shellcheck -- **/*.sh bin/verify_duplicate_crates bin/adb-run-test
     cargo test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
     cargo clippy --workspace --all-targets --all-features --keep-going -- -D warnings
-    bin/without_building_boring.sh cargo check --workspace --all-targets --all-features --keep-going -Zdirect-minimal-versions -Zunstable-options --lockfile-path $(mktemp -d)/Cargo.lock
+    env "CARGO_TARGET_DIR=$PWD/target/without_building_boring" bin/without_building_boring.sh cargo check --workspace --all-targets --all-features --keep-going -Zdirect-minimal-versions -Zunstable-options --lockfile-path $(mktemp -d)/Cargo.lock
     @printf "\e[32mBasic pre-commit checks passed! ✅ Hopefully good to push! 🤞\e[0m\n"
