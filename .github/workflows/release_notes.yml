@@ -13,8 +13,8 @@ env:
 jobs:
   check:
     name: Check for release notes
-    # Don't check draft PRs
-    if: github.event.pull_request.draft == false
+    # Only check non-draft PRs in Signal's private repo.
+    if: (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private') && github.event.pull_request.draft == false)
 
     runs-on: ubuntu-latest
 
