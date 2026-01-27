@@ -109,59 +109,60 @@ where
     result
 }
 
-/// Converts a standard gRPC error code into a RequestError.
-///
-/// This should only be used after any processing of request-specific codes.
-fn into_default_request_error<E>(status: tonic::Status) -> RequestError<E> {
-    if let Some((details, info)) = extract_server_side_error(&status) {
-        return request_error_from_server_side_error_info(details, info);
-    }
+impl<E> From<tonic::Status> for RequestError<E> {
+    fn from(status: tonic::Status) -> Self {
+        if let Some((details, info)) = extract_server_side_error(&status) {
+            return request_error_from_server_side_error_info(details, info);
+        }
 
-    match status.code() {
-        // TODO: Unfortunately we can't distinguish between server-side gRPC library errors and
-        // client-side gRPC library errors, so we need to pick a conservative interpretation of all
-        // of these codes.
-        tonic::Code::DeadlineExceeded => return RequestError::Timeout,
-        tonic::Code::Unavailable => return RequestError::Disconnected(DisconnectedError::Closed),
-
-        tonic::Code::ResourceExhausted => {
-            if let Some(retry_after_seconds) = status
-                .metadata()
-                .get(http::header::RETRY_AFTER.as_str())
-                .and_then(|header| header.to_str().ok())
-                .and_then(|retry_after_str| retry_after_str.parse().ok())
-            {
-                return libsignal_net::infra::errors::RetryLater {
-                    retry_after_seconds,
-                }
-                .into();
+        match status.code() {
+            // TODO: Unfortunately we can't distinguish between server-side gRPC library errors and
+            // client-side gRPC library errors, so we need to pick a conservative interpretation of all
+            // of these codes.
+            tonic::Code::DeadlineExceeded => return RequestError::Timeout,
+            tonic::Code::Unavailable => {
+                return RequestError::Disconnected(DisconnectedError::Closed);
             }
-            // TODO: also handle challenges here?
-        }
-        tonic::Code::Ok => {
-            return RequestError::Unexpected {
-                log_safe: "request failed with status OK".to_owned(),
-            };
-        }
 
-        tonic::Code::Cancelled
-        | tonic::Code::Unknown
-        | tonic::Code::InvalidArgument
-        | tonic::Code::NotFound
-        | tonic::Code::AlreadyExists
-        | tonic::Code::PermissionDenied
-        | tonic::Code::FailedPrecondition
-        | tonic::Code::Aborted
-        | tonic::Code::OutOfRange
-        | tonic::Code::Unimplemented
-        | tonic::Code::Internal
-        | tonic::Code::DataLoss
-        | tonic::Code::Unauthenticated => {}
-    }
-    // Use the Debug implementation to get the name of the code, which is easier to identify than
-    // the human-readable description.
-    RequestError::Unexpected {
-        log_safe: format!("unexpected error: {:?}", status.code()),
+            tonic::Code::ResourceExhausted => {
+                if let Some(retry_after_seconds) = status
+                    .metadata()
+                    .get(http::header::RETRY_AFTER.as_str())
+                    .and_then(|header| header.to_str().ok())
+                    .and_then(|retry_after_str| retry_after_str.parse().ok())
+                {
+                    return libsignal_net::infra::errors::RetryLater {
+                        retry_after_seconds,
+                    }
+                    .into();
+                }
+                // TODO: also handle challenges here?
+            }
+            tonic::Code::Ok => {
+                return RequestError::Unexpected {
+                    log_safe: "request failed with status OK".to_owned(),
+                };
+            }
+
+            tonic::Code::Cancelled
+            | tonic::Code::Unknown
+            | tonic::Code::InvalidArgument
+            | tonic::Code::NotFound
+            | tonic::Code::AlreadyExists
+            | tonic::Code::PermissionDenied
+            | tonic::Code::FailedPrecondition
+            | tonic::Code::Aborted
+            | tonic::Code::OutOfRange
+            | tonic::Code::Unimplemented
+            | tonic::Code::Internal
+            | tonic::Code::DataLoss
+            | tonic::Code::Unauthenticated => {}
+        }
+        // Use the Debug implementation to get the name of the code, which is easier to identify than
+        // the human-readable description.
+        RequestError::Unexpected {
+            log_safe: format!("unexpected error: {:?}", status.code()),
+        }
     }
 }
 

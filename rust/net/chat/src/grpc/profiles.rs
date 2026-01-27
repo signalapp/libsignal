@@ -13,7 +13,7 @@ use libsignal_net_grpc::proto::chat::account::{
 };
 
 use crate::api::{RequestError, Unauth};
-use crate::grpc::{GrpcServiceProvider, OverGrpc, into_default_request_error, log_and_send};
+use crate::grpc::{GrpcServiceProvider, OverGrpc, log_and_send};
 use crate::logging::Redact;
 
 impl std::fmt::Display for Redact<&'_ CheckAccountExistenceRequest> {
@@ -40,14 +40,13 @@ impl<T: GrpcServiceProvider> crate::api::profiles::UnauthenticatedAccountExisten
             service_identifier: Some(account.into()),
         };
         let log_safe_description = Redact(&request).to_string();
-        let result = log_and_send("unauth", &log_safe_description, || {
-            account_service.check_account_existence(request)
-        })
-        .await;
-        result
-            .map(tonic::Response::into_inner)
-            .map_err(into_default_request_error)
-            .map(|CheckAccountExistenceResponse { account_exists }| account_exists)
+        let CheckAccountExistenceResponse { account_exists } =
+            log_and_send("unauth", &log_safe_description, || {
+                account_service.check_account_existence(request)
+            })
+            .await?
+            .into_inner();
+        Ok(account_exists)
     }
 }
 

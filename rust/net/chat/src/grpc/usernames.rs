@@ -11,7 +11,7 @@ use libsignal_net_grpc::proto::chat::account::accounts_anonymous_client::Account
 use libsignal_net_grpc::proto::chat::account::*;
 use libsignal_net_grpc::proto::chat::errors;
 
-use super::{GrpcServiceProvider, OverGrpc, into_default_request_error, log_and_send};
+use super::{GrpcServiceProvider, OverGrpc, log_and_send};
 use crate::api::{RequestError, Unauth};
 use crate::logging::{Redact, RedactHex};
 
@@ -26,19 +26,16 @@ impl<T: GrpcServiceProvider> crate::api::usernames::UnauthenticatedChatApi<OverG
             username_hash: hash.into(),
         };
         let log_safe_description = Redact(&request).to_string();
-        let result = log_and_send("unauth", &log_safe_description, || {
-            account_service.lookup_username_hash(request)
-        })
-        .await;
+        let LookupUsernameHashResponse { response } =
+            log_and_send("unauth", &log_safe_description, || {
+                account_service.lookup_username_hash(request)
+            })
+            .await?
+            .into_inner();
 
-        let response = match result.map(tonic::Response::into_inner) {
-            Ok(LookupUsernameHashResponse { response }) => {
-                response.ok_or_else(|| RequestError::Unexpected {
-                    log_safe: "missing response".to_owned(),
-                })
-            }
-            Err(e) => Err(into_default_request_error(e)),
-        }?;
+        let response = response.ok_or_else(|| RequestError::Unexpected {
+            log_safe: "missing response".to_owned(),
+        })?;
 
         let id = match response {
             lookup_username_hash_response::Response::ServiceIdentifier(service_id) => service_id,
