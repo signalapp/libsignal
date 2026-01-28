@@ -29,7 +29,6 @@ use tungstenite::protocol::WebSocketConfig;
 use crate::auth::Auth;
 use crate::connect_state::{ConnectionResources, RouteInfo, WebSocketTransportConnectorFactory};
 use crate::env::UserAgent;
-use crate::infra::OverrideNagleAlgorithm;
 use crate::proto;
 
 mod error;
@@ -427,6 +426,7 @@ pub mod test_support {
     };
     use crate::env::constants::CHAT_WEBSOCKET_PATH;
     use crate::env::{Env, StaticIpOrder, UserAgent};
+    use crate::infra::OverrideNagleAlgorithm;
     use crate::infra::route::DirectOrProxyProvider;
 
     pub async fn simple_chat_connection(
@@ -521,6 +521,7 @@ pub(crate) mod test {
     use super::*;
     use crate::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
     use crate::env::constants::CHAT_WEBSOCKET_PATH;
+    use crate::infra::OverrideNagleAlgorithm;
 
     #[test]
     fn proto_into_response_works_with_valid_data() {
