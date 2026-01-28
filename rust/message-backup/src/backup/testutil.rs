@@ -66,6 +66,7 @@ static E164_ONLY_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
         system_nickname: "".to_owned(),
         avatar_color: None,
         note: "".into(),
+        key_transparency_data: None,
     }))
 });
 static PNI_ONLY_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
@@ -92,6 +93,7 @@ static PNI_ONLY_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
         nickname: None,
         avatar_color: None,
         note: "".into(),
+        key_transparency_data: None,
     }))
 });
 static GROUP_RECIPIENT: LazyLock<FullRecipientData> =

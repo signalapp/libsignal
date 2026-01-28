@@ -315,6 +315,7 @@ pub struct ContactData {
     pub system_nickname: String,
     #[serde_as(as = "Option<serialize::EnumAsString>")]
     pub avatar_color: Option<proto::AvatarColor>,
+    pub key_transparency_data: Option<Vec<u8>>,
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -522,6 +523,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<ContactData, C> for proto::Contact {
             e164,
             blocked,
             visibility,
+            keyTransparencyData,
             registration,
             profileSharing,
             profileGivenName,
@@ -668,6 +670,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<ContactData, C> for proto::Contact {
             system_family_name: systemFamilyName,
             system_nickname: systemNickname,
             avatar_color,
+            key_transparency_data: keyTransparencyData,
         })
     }
 }
@@ -911,6 +914,7 @@ mod test {
                 system_nickname: "SystemNickName".to_owned(),
                 note: "nb".into(),
                 avatar_color: None,
+                key_transparency_data: None,
             }
         }
     }

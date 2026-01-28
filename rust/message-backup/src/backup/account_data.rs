@@ -30,7 +30,9 @@ use crate::proto::backup as proto;
     M::Value<Option<IapSubscriberData>>: PartialEq,
     AccountSettings<M>: PartialEq,
     M::Value<Option<AndroidSpecificSettings>>: PartialEq,
+    M::Value<Option<Vec<u8>>>: PartialEq
 ))]
+#[serde_as]
 pub struct AccountData<M: Method + ReferencedTypes> {
     #[serde(
         with = "hex",
@@ -48,6 +50,8 @@ pub struct AccountData<M: Method + ReferencedTypes> {
     pub android_specific_settings: M::Value<Option<AndroidSpecificSettings>>,
     pub bio_text: M::Value<String>,
     pub bio_emoji: M::Value<String>,
+    #[serde_as(as = "Option<Hex>")]
+    pub key_transparency_data: M::Value<Option<Vec<u8>>>,
 }
 
 #[serde_as]
@@ -144,6 +148,7 @@ pub struct AccountSettings<M: Method + ReferencedTypes> {
     pub app_theme: M::Value<AppTheme>,
     pub calls_use_less_data_setting: M::Value<CallsUseLessDataSetting>,
     pub allow_sealed_sender_from_anyone: M::Value<bool>,
+    pub allow_automatic_key_verification: M::Value<bool>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize)]
@@ -274,6 +279,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             androidSpecificSettings,
             bioText,
             bioEmoji,
+            keyTransparencyData,
             special_fields: _,
         } = self;
 
@@ -325,6 +331,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             android_specific_settings: M::value(android_specific_settings),
             bio_text: M::value(bioText),
             bio_emoji: M::value(bioEmoji),
+            key_transparency_data: M::value(keyTransparencyData),
         })
     }
 }
@@ -465,6 +472,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             appTheme,
             callsUseLessDataSetting,
             allowSealedSenderFromAnyone,
+            allowAutomaticKeyVerification,
             special_fields: _,
         } = self;
 
@@ -565,6 +573,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             app_theme: M::value(app_theme),
             calls_use_less_data_setting: M::value(calls_use_less_data_setting),
             allow_sealed_sender_from_anyone: M::value(allowSealedSenderFromAnyone),
+            allow_automatic_key_verification: M::value(allowAutomaticKeyVerification),
         })
     }
 }
@@ -826,6 +835,7 @@ mod test {
                     app_theme: AppTheme::System,
                     calls_use_less_data_setting: CallsUseLessDataSetting::MobileDataOnly,
                     allow_sealed_sender_from_anyone: false,
+                    allow_automatic_key_verification: false,
                 },
                 avatar_url_path: "".to_string(),
                 backup_subscription: Some(IapSubscriberData {
@@ -837,6 +847,7 @@ mod test {
                 android_specific_settings: Some(AndroidSpecificSettings::from_proto_test_data()),
                 bio_text: "".to_string(),
                 bio_emoji: "".to_string(),
+                key_transparency_data: None,
             }
         }
     }

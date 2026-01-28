@@ -47,7 +47,8 @@
       "pin_reminders": null,
       "app_theme": "System",
       "calls_use_less_data_setting": "MobileDataOnly",
-      "allow_sealed_sender_from_anyone": false
+      "allow_sealed_sender_from_anyone": false,
+      "allow_automatic_key_verification": false
     },
     "avatar_url_path": "",
     "donation_subscription": {
@@ -63,7 +64,8 @@
       "navigation_bar_size": "Normal"
     },
     "bio_text": "",
-    "bio_emoji": ""
+    "bio_emoji": "",
+    "key_transparency_data": null
   },
   "recipients": [
     {
