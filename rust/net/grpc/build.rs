@@ -48,7 +48,7 @@ fn collect_services_as_enums(fds: &tonic_prost_build::FileDescriptorSet) -> Stri
             writeln!(
                 service_method_contents,
                 concat!(
-                    "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, ::strum::AsRefStr)]\n",
+                    "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, ::strum::EnumIter, ::strum::IntoStaticStr)]\n",
                     "#[strum(prefix = \"{0}\")]\n",
                     "pub enum {0} {{"
                 ),

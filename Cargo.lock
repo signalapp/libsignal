@@ -2450,6 +2450,7 @@ dependencies = [
  "libsignal-message-backup",
  "libsignal-net",
  "libsignal-net-chat",
+ "libsignal-net-grpc",
  "libsignal-protocol",
  "libsignal-svrb",
  "linkme",

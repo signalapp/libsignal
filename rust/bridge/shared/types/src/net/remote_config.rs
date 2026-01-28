@@ -104,7 +104,11 @@ pub enum RemoteConfigKey {
     /// Whether to disable the Nagle algorithm (sets TCP_NODELAY).
     DisableNagleAlgorithm => "disableNagleAlgorithm",
     /// If set, unauth chat connections (only!) will connect over H2.
-    UseH2ForUnauthChat => "useH2ForUnauthChat"
+    UseH2ForUnauthChat => "useH2ForUnauthChat",
+
+    // Typed API keys, based on gRPC request names.
+    // These should all start with "grpc."
+    AccountsAnonymousLookupUsernameHash => "grpc.AccountsAnonymousLookupUsernameHash",
 }
 }
 
@@ -170,6 +174,10 @@ impl RemoteConfigValue {
 // `define_keys` produces some things that end up not used, silence that.
 #[expect(dead_code)]
 mod tests {
+    use std::collections::HashSet;
+
+    use itertools::Itertools as _;
+
     use super::*;
 
     define_keys! {
@@ -215,5 +223,26 @@ mod tests {
         assert_eq!(prod.get(RemoteConfigKey::TestKey).as_option(), None);
 
         assert!(!prod.is_enabled(RemoteConfigKey::TestKey));
+    }
+
+    #[test]
+    fn grpc_keys_are_from_some_grpc_service() {
+        use libsignal_net_grpc::proto::chat::services;
+        // Add new services as they become relevant.
+        let all_known_grpc_keys: HashSet<&str> = std::iter::empty()
+            .chain(services::AccountsAnonymous::iter().map(|x| x.into()))
+            .chain(services::KeysAnonymous::iter().map(|x| x.into()))
+            .collect();
+
+        for key in super::RemoteConfigKey::KEYS
+            .iter()
+            .filter_map(|k| k.strip_prefix("grpc."))
+        {
+            assert!(
+                all_known_grpc_keys.contains(key),
+                "unexpected gRPC key grpc.{key} (known keys:\n\t{}\n)",
+                all_known_grpc_keys.into_iter().sorted().join("\n\t")
+            );
+        }
     }
 }

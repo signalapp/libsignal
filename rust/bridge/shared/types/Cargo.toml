@@ -70,6 +70,8 @@ neon = { workspace = true, optional = true, default-features = false, features =
 signal-neon-futures = { workspace = true, optional = true }
 
 [dev-dependencies]
+libsignal-net-grpc = { workspace = true }
+
 test-case = { workspace = true }
 tokio = { workspace = true, features = ["test-util", "time", "macros"] }
 
