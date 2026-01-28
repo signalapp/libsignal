@@ -102,6 +102,7 @@ impl ChatConnection {
                 listener,
             ),
             connection_info,
+            grpc_overrides: Default::default(),
         };
         (chat, remote)
     }

@@ -159,6 +159,10 @@ where
             RemoteConfigValue::Enabled(_) => true,
         }
     }
+
+    pub fn iter_enabled(&self) -> impl Iterator<Item = (&Key, &Arc<str>)> {
+        self.inner.iter()
+    }
 }
 
 impl RemoteConfigValue {

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::future::Future;
 use std::panic::{RefUnwindSafe, UnwindSafe};
@@ -89,10 +90,11 @@ impl RefUnwindSafe for ProvisioningChatConnection {}
 #[expect(clippy::large_enum_variant)]
 enum MaybeChatConnection {
     Running(ChatConnection),
-    WaitingForListener(
-        tokio::runtime::Handle,
-        tokio::sync::Mutex<chat::PendingChatConnection>,
-    ),
+    WaitingForListener {
+        runtime: tokio::runtime::Handle,
+        pending: tokio::sync::Mutex<chat::PendingChatConnection>,
+        grpc_overrides: HashMap<&'static str, chat::GrpcOverride>,
+    },
     TemporarilyEvicted,
 }
 
@@ -103,18 +105,20 @@ impl UnauthenticatedChatConnection {
         connection_manager: &ConnectionManager,
         languages: LanguageList,
     ) -> Result<Self, ConnectError> {
-        let inner = establish_chat_connection(
+        let pending = establish_chat_connection(
             "unauthenticated",
             connection_manager,
             CHAT_WEBSOCKET_PATH,
             Some(UnauthenticatedChatHeaders { languages }.into()),
         )
         .await?;
+        let grpc_overrides = connection_manager.chat_grpc_overrides();
         Ok(Self {
-            inner: MaybeChatConnection::WaitingForListener(
-                tokio::runtime::Handle::current(),
-                inner.into(),
-            )
+            inner: MaybeChatConnection::WaitingForListener {
+                runtime: tokio::runtime::Handle::current(),
+                pending: pending.into(),
+                grpc_overrides,
+            }
             .into(),
         })
     }
@@ -148,7 +152,7 @@ impl AuthenticatedChatConnection {
         receive_stories: bool,
         languages: LanguageList,
     ) -> Result<Self, ConnectError> {
-        let inner = establish_chat_connection(
+        let pending = establish_chat_connection(
             "authenticated",
             connection_manager,
             CHAT_WEBSOCKET_PATH,
@@ -162,11 +166,13 @@ impl AuthenticatedChatConnection {
             ),
         )
         .await?;
+        let grpc_overrides = connection_manager.chat_grpc_overrides();
         Ok(Self {
-            inner: MaybeChatConnection::WaitingForListener(
-                tokio::runtime::Handle::current(),
-                inner.into(),
-            )
+            inner: MaybeChatConnection::WaitingForListener {
+                runtime: tokio::runtime::Handle::current(),
+                pending: pending.into(),
+                grpc_overrides,
+            }
             .into(),
         })
     }
@@ -203,7 +209,7 @@ impl AuthenticatedChatConnection {
 
 impl ProvisioningChatConnection {
     pub async fn connect(connection_manager: &ConnectionManager) -> Result<Self, ConnectError> {
-        let inner = establish_chat_connection(
+        let pending = establish_chat_connection(
             "provisioning",
             connection_manager,
             CHAT_PROVISIONING_PATH,
@@ -211,10 +217,11 @@ impl ProvisioningChatConnection {
         )
         .await?;
         Ok(Self {
-            inner: MaybeChatConnection::WaitingForListener(
-                tokio::runtime::Handle::current(),
-                inner.into(),
-            )
+            inner: MaybeChatConnection::WaitingForListener {
+                runtime: tokio::runtime::Handle::current(),
+                pending: pending.into(),
+                grpc_overrides: Default::default(),
+            }
             .into(),
         })
     }
@@ -282,9 +289,11 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
         let guard = self.as_ref().read().await;
         match &*guard {
             MaybeChatConnection::Running(chat_connection) => chat_connection.disconnect().await,
-            MaybeChatConnection::WaitingForListener(_handle, pending_chat_mutex) => {
-                pending_chat_mutex.lock().await.disconnect().await
-            }
+            MaybeChatConnection::WaitingForListener {
+                runtime: _,
+                pending,
+                grpc_overrides: _,
+            } => pending.lock().await.disconnect().await,
             MaybeChatConnection::TemporarilyEvicted => {
                 unreachable!("unobservable state");
             }
@@ -297,9 +306,11 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
             MaybeChatConnection::Running(chat_connection) => {
                 chat_connection.connection_info().clone()
             }
-            MaybeChatConnection::WaitingForListener(_, pending_chat_connection) => {
-                pending_chat_connection.blocking_lock().connection_info()
-            }
+            MaybeChatConnection::WaitingForListener {
+                runtime: _,
+                pending,
+                grpc_overrides: _,
+            } => pending.blocking_lock().connection_info(),
             MaybeChatConnection::TemporarilyEvicted => unreachable!("unobservable state"),
         }
     }
@@ -327,26 +338,30 @@ pub(crate) async fn connect_registration_chat(
     Ok(Unauth(ChatConnection::finish_connect(
         tokio_runtime.clone(),
         pending,
+        Default::default(),
         Box::new(listener),
     )))
 }
 
 fn init_listener(connection: &mut MaybeChatConnection, listener: chat::ws::EventListener) {
-    let (tokio_runtime, pending) =
+    let (tokio_runtime, pending, grpc_overrides) =
         match std::mem::replace(connection, MaybeChatConnection::TemporarilyEvicted) {
             MaybeChatConnection::Running(chat_connection) => {
                 *connection = MaybeChatConnection::Running(chat_connection);
                 panic!("listener already set")
             }
-            MaybeChatConnection::WaitingForListener(tokio_runtime, pending_chat_connection) => {
-                (tokio_runtime, pending_chat_connection)
-            }
+            MaybeChatConnection::WaitingForListener {
+                runtime,
+                pending,
+                grpc_overrides,
+            } => (runtime, pending, grpc_overrides),
             MaybeChatConnection::TemporarilyEvicted => panic!("should be a temporary state"),
         };
 
     *connection = MaybeChatConnection::Running(ChatConnection::finish_connect(
         tokio_runtime,
         pending.into_inner(),
+        grpc_overrides,
         listener,
     ))
 }

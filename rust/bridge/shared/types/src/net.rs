@@ -25,6 +25,7 @@ use rand::TryRngCore as _;
 
 pub use self::remote_config::BuildVariant;
 use self::remote_config::{RemoteConfig, RemoteConfigKey};
+use crate::net::remote_config::HasRawKey;
 use crate::*;
 
 pub mod cdsi;
@@ -231,6 +232,26 @@ impl ConnectionManager {
         } else {
             OverrideNagleAlgorithm::UseSystemDefault
         }
+    }
+
+    fn chat_grpc_overrides(&self) -> HashMap<&'static str, libsignal_net::chat::GrpcOverride> {
+        use libsignal_net::chat::GrpcOverride;
+        let guard = self.remote_config.lock().expect("not poisoned");
+        guard
+            .iter_enabled()
+            .filter_map(|(k, v)| {
+                k.raw().strip_prefix("grpc.").map(|k| {
+                    (
+                        k,
+                        if **v == *"ws" {
+                            GrpcOverride::UseWs
+                        } else {
+                            GrpcOverride::UseGrpc
+                        },
+                    )
+                })
+            })
+            .collect()
     }
 
     const NETWORK_CHANGE_DEBOUNCE: Duration = Duration::from_secs(1);
