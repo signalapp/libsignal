@@ -1,6 +1,2 @@
-v0.86.15
+v0.86.16
 
-- SVR2: update production enclave
-- SVRB: add new production enclave to `current` set
-- Add accountExists() typed API
-- backups: Support for key transparency fields
