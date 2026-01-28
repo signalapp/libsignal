@@ -7,6 +7,8 @@ use std::fmt::Write as _;
 
 fn main() {
     const SERVICE_PROTOS: &[&str] = &[
+        "proto/google/rpc/error_details.proto",
+        "proto/google/rpc/status.proto",
         "proto/org/signal/chat/account.proto",
         "proto/org/signal/chat/backups.proto",
         "proto/org/signal/chat/calling.proto",

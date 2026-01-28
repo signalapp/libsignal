@@ -8,7 +8,9 @@ license = "AGPL-3.0-only"
 [dependencies]
 libsignal-core = { workspace = true }
 
+const-str = { workspace = true }
 prost = { workspace = true }
+prost-types = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 tonic = { workspace = true, default-features = false, features = ["codegen"] }
 tonic-prost = { workspace = true }

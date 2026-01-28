@@ -25,6 +25,14 @@ pub mod proto {
             tonic::include_proto!("service_methods");
         }
     }
+
+    // These protos come directly from Google and their doc comments aren't necessarily valid Markdown.
+    #[allow(rustdoc::invalid_html_tags, rustdoc::bare_urls)]
+    pub mod google {
+        pub mod rpc {
+            tonic::include_proto!("google.rpc");
+        }
+    }
 }
 
 impl From<libsignal_core::ServiceId> for proto::chat::common::ServiceIdentifier {
@@ -68,5 +76,49 @@ impl proto::chat::common::ServiceIdentifier {
             }
             proto::chat::common::IdentityType::Unspecified => return None,
         })
+    }
+}
+
+// We only need Name support for these few types, so we just do it here instead of adding it during
+// the build step using `prost_build::Config::enable_type_names`.
+impl prost::Name for proto::google::rpc::ErrorInfo {
+    const NAME: &'static str = "ErrorInfo";
+    const PACKAGE: &'static str = "google.rpc";
+
+    fn type_url() -> String {
+        const_str::concat!(
+            "type.googleapis.com/",
+            proto::google::rpc::ErrorInfo::PACKAGE,
+            proto::google::rpc::ErrorInfo::NAME
+        )
+        .to_owned()
+    }
+}
+
+impl prost::Name for proto::google::rpc::BadRequest {
+    const NAME: &'static str = "BadRequest";
+    const PACKAGE: &'static str = "google.rpc";
+
+    fn type_url() -> String {
+        const_str::concat!(
+            "type.googleapis.com/",
+            proto::google::rpc::BadRequest::PACKAGE,
+            proto::google::rpc::BadRequest::NAME
+        )
+        .to_owned()
+    }
+}
+
+impl prost::Name for proto::google::rpc::RetryInfo {
+    const NAME: &'static str = "RetryInfo";
+    const PACKAGE: &'static str = "google.rpc";
+
+    fn type_url() -> String {
+        const_str::concat!(
+            "type.googleapis.com/",
+            proto::google::rpc::RetryInfo::PACKAGE,
+            proto::google::rpc::RetryInfo::NAME
+        )
+        .to_owned()
     }
 }
