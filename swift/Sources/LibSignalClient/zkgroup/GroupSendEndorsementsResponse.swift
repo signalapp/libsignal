@@ -76,6 +76,7 @@ public class GroupSendEndorsementsResponse: ByteArray, @unchecked Sendable {
     /// endorsement for each member of the group, in the same order they were originally provided,
     /// plus a combined endorsement for "everyone but me", intended for multi-recipient sends.
     public struct ReceivedEndorsements: Sendable {
+        // swiftlint:disable:previous explicit_init_for_public_struct
         public var endorsements: [GroupSendEndorsement]
         public var combinedEndorsement: GroupSendEndorsement
     }

@@ -187,6 +187,8 @@ extension SignalConstPointerCdsiLookup: SignalConstPointer {
 ///
 /// Returned by ``CdsiLookup/complete()`` on success.
 public struct CdsiLookupResponse {
+    // swiftlint:disable:previous explicit_init_for_public_struct
+
     /// The entries received from the server.
     public let entries: LookupResponseEntryList
     /// How many "permits" were used in making the request.

@@ -185,11 +185,18 @@ public struct BadgeEntitlement: Equatable {
     public let id: String
     public let visible: Bool
     public let expiration: TimeInterval
+
+    public init(id: String, visible: Bool, expiration: TimeInterval) {
+        self.id = id
+        self.visible = visible
+        self.expiration = expiration
+    }
 }
 
 public struct BackupEntitlement: Equatable {
     public let expiration: TimeInterval
     public let level: UInt64
+
     public init(expiration: TimeInterval, level: UInt64) {
         self.expiration = expiration
         self.level = level

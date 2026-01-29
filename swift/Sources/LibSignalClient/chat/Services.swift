@@ -125,6 +125,8 @@ public protocol UnauthServiceSelector {
 ///
 /// See ``UnauthServiceSelector/usernames`` for an example of how this is used.
 public struct UnauthServiceSelectorHelper<Api>: UnauthServiceSelector {
+    // swiftlint:disable:previous explicit_init_for_public_struct
+
     /// An escape hatch in case libsignal adds a new service protocol but forgets to add a selector
     /// for it.
     ///

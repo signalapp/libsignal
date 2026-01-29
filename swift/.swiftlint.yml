@@ -31,3 +31,10 @@ nesting:
 excluded:
   - .build/**
   - Benchmarks/.build/**
+custom_rules:
+  explicit_init_for_public_struct:
+    name: "Public structs should have explicit initializers"
+    # This says a public struct must have `init` before the first close-brace or nested open-brace.
+    # Regexes don't pair braces, but this is close enough in practice.
+    regex: "(public)[ \t\n][^{]*struct[^{]+[{]((?!init[ ?!<(])[^{}])+[{}]"
+    capture_group: 1

@@ -254,11 +254,20 @@ public struct MessageBackupValidationError: Error {
     public var errorMessage: String
     /// Unknown fields encountered while validating.
     public var unknownFields: MessageBackupUnknownFields
+
+    public init(errorMessage: String, unknownFields: MessageBackupUnknownFields) {
+        self.errorMessage = errorMessage
+        self.unknownFields = unknownFields
+    }
 }
 
 /// Unknown fields encountered while validating.
 public struct MessageBackupUnknownFields: Sendable {
     public let fields: [String]
+
+    public init(fields: [String]) {
+        self.fields = fields
+    }
 }
 
 private class ValidationOutcome: NativeHandleOwner<SignalMutPointerMessageBackupValidationOutcome> {
