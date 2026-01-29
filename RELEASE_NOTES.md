@@ -1,3 +1,2 @@
-v0.86.16
+v0.86.17
 
-- swift: Make `AciInfo` and `E164Info` constructors public
