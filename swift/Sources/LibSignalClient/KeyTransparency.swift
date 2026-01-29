@@ -21,14 +21,24 @@ public enum KeyTransparency {
 
     /// ACI descriptor for key transparency requests.
     public struct AciInfo {
-        let aci: Aci
-        let identityKey: IdentityKey
+        public let aci: Aci
+        public let identityKey: IdentityKey
+
+        public init(aci: Aci, identityKey: IdentityKey) {
+            self.aci = aci
+            self.identityKey = identityKey
+        }
     }
 
     /// E.164 descriptor for key transparency requests.
     public struct E164Info {
-        let e164: String
-        let unidentifiedAccessKey: Data
+        public let e164: String
+        public let unidentifiedAccessKey: Data
+
+        public init(e164: String, unidentifiedAccessKey: Data) {
+            self.e164 = e164
+            self.unidentifiedAccessKey = unidentifiedAccessKey
+        }
     }
 
     /// Mode of the monitor operation.
