@@ -209,7 +209,7 @@ tokio-tungstenite = "0.28.0"
 tokio-util = "0.7.11"
 tonic = { version = "0.14", default-features = false }
 tonic-prost = "0.14"
-tonic-prost-build = "0.14"
+tonic-prost-build = { version = "0.14", default-features = false }
 tower-service = "0.3.3"
 tungstenite = "0.28.0"
 unicode-segmentation = "1.12.0"

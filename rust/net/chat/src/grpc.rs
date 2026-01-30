@@ -59,7 +59,7 @@ where
 /// messages for the duration of that message. However, the chat-server API we present to clients
 /// allows multiple messages to be sent from different threads without synchronization, and we run
 /// multiple gRPC services over the same connection (Keys, Messages, etc).
-trait GrpcServiceProvider: Sync {
+pub trait GrpcServiceProvider: Send + Sync {
     type Service: GrpcService;
     fn service(&self) -> Self::Service;
 }
@@ -317,7 +317,7 @@ fn matching_details<M: Default + prost::Name>(
 }
 
 #[cfg(test)]
-mod testutil {
+pub(crate) mod testutil {
     use futures_util::FutureExt as _;
     use http_body_util::BodyExt as _;
     use tonic::Status;

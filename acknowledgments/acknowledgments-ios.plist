@@ -924,7 +924,7 @@ You should also get your employer (if you work as a programmer) or school, if an
 			<key>License</key>
 			<string>GNU Affero General Public License v3.0 only</string>
 			<key>Title</key>
-			<string>libsignal-account-keys, attest, libsignal-ffi, libsignal-bridge, libsignal-bridge-macros, libsignal-bridge-testing, libsignal-bridge-types, libsignal-core, signal-crypto, device-transfer, libsignal-keytrans, signal-media, libsignal-message-backup, libsignal-message-backup-macros, libsignal-net, libsignal-net-chat, libsignal-net-infra, poksho, libsignal-protocol, libsignal-svrb, usernames, zkcredential, zkgroup</string>
+			<string>libsignal-account-keys, attest, libsignal-ffi, libsignal-bridge, libsignal-bridge-macros, libsignal-bridge-testing, libsignal-bridge-types, libsignal-core, signal-crypto, device-transfer, libsignal-keytrans, signal-media, libsignal-message-backup, libsignal-message-backup-macros, libsignal-net, libsignal-net-chat, libsignal-net-grpc, libsignal-net-infra, poksho, libsignal-protocol, libsignal-svrb, usernames, zkcredential, zkgroup</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -6126,7 +6126,7 @@ THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>tonic 0.14.2</string>
+			<string>tonic-build 0.14.2, tonic-prost-build 0.14.2, tonic-prost 0.14.2, tonic 0.14.2</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

@@ -27,7 +27,12 @@ pub mod proto {
     }
 
     // These protos come directly from Google and their doc comments aren't necessarily valid Markdown.
-    #[allow(rustdoc::invalid_html_tags, rustdoc::bare_urls)]
+    #[allow(
+        clippy::doc_overindented_list_items,
+        rustdoc::bare_urls,
+        rustdoc::broken_intra_doc_links,
+        rustdoc::invalid_html_tags
+    )]
     pub mod google {
         pub mod rpc {
             tonic::include_proto!("google.rpc");

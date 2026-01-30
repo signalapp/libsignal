@@ -21,6 +21,7 @@ use base64::prelude::BASE64_STANDARD;
 use http::StatusCode;
 use libsignal_net::chat;
 use libsignal_net::infra::errors::LogSafeDisplay;
+use libsignal_net::infra::http_client::Http2Client;
 use libsignal_net::infra::{AsHttpHeader, extract_retry_later};
 use serde_with::serde_as;
 
@@ -63,6 +64,13 @@ pub trait WsConnection: Sync {
         log_safe_path: &str,
         request: chat::Request,
     ) -> impl Future<Output = Result<chat::Response, chat::SendError>> + Send;
+
+    fn grpc_service_to_use_instead(
+        &self,
+        _message: &'static str,
+    ) -> impl Future<Output = Option<impl crate::grpc::GrpcServiceProvider>> + Send {
+        std::future::ready(None::<Http2Client<chat::GrpcBody>>)
+    }
 }
 
 impl WsConnection for chat::ChatConnection {
@@ -106,6 +114,22 @@ impl WsConnection for chat::ChatConnection {
         }
 
         result
+    }
+
+    fn grpc_service_to_use_instead(
+        &self,
+        message: &'static str,
+    ) -> impl Future<Output = Option<impl crate::grpc::GrpcServiceProvider>> + Send {
+        use futures_util::future::Either;
+
+        match self
+            .grpc_overrides()
+            .get(message)
+            .unwrap_or(&chat::GrpcOverride::UseWs)
+        {
+            chat::GrpcOverride::UseGrpc => Either::Left(self.shared_h2_connection()),
+            chat::GrpcOverride::UseWs => Either::Right(std::future::ready(None)),
+        }
     }
 }
 

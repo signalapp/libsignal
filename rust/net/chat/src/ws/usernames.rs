@@ -10,6 +10,7 @@ use base64::Engine;
 use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use libsignal_core::Aci;
 use libsignal_net::chat::Request;
+use libsignal_net_grpc::proto::chat::services;
 use serde_with::serde_as;
 
 use super::{CustomError, OverWs, ResponseError, TryIntoResponse, WsConnection};
@@ -25,6 +26,13 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for 
         &self,
         hash: &[u8],
     ) -> Result<Option<Aci>, RequestError<Infallible>> {
+        if let Some(grpc) = self
+            .grpc_service_to_use_instead(services::AccountsAnonymous::LookupUsernameHash.into())
+            .await
+        {
+            return Unauth(grpc).look_up_username_hash(hash).await;
+        }
+
         let encoded_hash = BASE64_URL_SAFE_NO_PAD.encode(hash);
         let response = self
             .send(
@@ -273,5 +281,58 @@ mod test {
             err,
             RequestError::Other(usernames::UsernameLinkError::InvalidDecryptedDataStructure)
         );
+    }
+
+    #[test]
+    fn test_grpc_override() {
+        use libsignal_net_grpc::proto::chat as grpc_chat;
+
+        struct GrpcPreferringWsConnection(crate::grpc::testutil::RequestValidator);
+        impl WsConnection for GrpcPreferringWsConnection {
+            async fn send(
+                &self,
+                _log_tag: &'static str,
+                _log_safe_path: &str,
+                _request: chat::Request,
+            ) -> Result<chat::Response, chat::SendError> {
+                panic!("should have preferred gRPC");
+            }
+
+            async fn grpc_service_to_use_instead(
+                &self,
+                message: &'static str,
+            ) -> Option<impl crate::grpc::GrpcServiceProvider> {
+                assert_eq!(
+                    message,
+                    <&str>::from(grpc_chat::services::AccountsAnonymous::LookupUsernameHash)
+                );
+                Some(&self.0)
+            }
+        }
+
+        // Not realistic, but includes bits that encode differently in base64 vs base64url.
+        let hash = &[0x00, 0xff, 0xff, 0xff];
+
+        // Basically a simplified test from grpc/usernames.rs.
+        let validator = crate::grpc::testutil::RequestValidator {
+            expected: crate::grpc::testutil::req(
+                "/org.signal.chat.account.AccountsAnonymous/LookupUsernameHash",
+                grpc_chat::account::LookupUsernameHashRequest {
+                    username_hash: hash.to_vec(),
+                },
+            ),
+            response: crate::grpc::testutil::ok(grpc_chat::account::LookupUsernameHashResponse {
+                response: Some(
+                    grpc_chat::account::lookup_username_hash_response::Response::NotFound(
+                        Default::default(),
+                    ),
+                ),
+            }),
+        };
+        let response = Unauth(GrpcPreferringWsConnection(validator))
+            .look_up_username_hash(hash)
+            .now_or_never()
+            .expect("sync");
+        assert_matches!(response, Ok(None));
     }
 }

@@ -17,3 +17,8 @@ tonic-prost = { workspace = true }
 
 [build-dependencies]
 tonic-prost-build = { workspace = true }
+
+[lib]
+# Some of the Google protos have unmarked code blocks that confuse the doctest runner.
+# tonic-prost-build has a feature to rewrite (or omit) the doc comments, but that's overkill.
+doctest = false

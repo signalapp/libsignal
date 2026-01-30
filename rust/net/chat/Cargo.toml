@@ -12,7 +12,8 @@ workspace = true
 [dependencies]
 libsignal-core = { workspace = true }
 libsignal-keytrans = { workspace = true }
-libsignal-net = { workspace = true }
+libsignal-net = { workspace = true, features = ["tower-service"] }
+libsignal-net-grpc = { workspace = true }
 libsignal-protocol = { workspace = true }
 usernames = { workspace = true }
 zkgroup = { workspace = true }
@@ -28,6 +29,7 @@ either = { workspace = true }
 futures-util = { workspace = true }
 hex = { workspace = true }
 http = { workspace = true }
+http-body = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 prost = { workspace = true }
@@ -41,26 +43,12 @@ strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
 tokio-stream = { workspace = true }
+tonic = { workspace = true, default-features = false }
+tonic-prost = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
 visibility = { workspace = true }
 
-http-body = { workspace = true, optional = true }
-libsignal-net-grpc = { workspace = true, optional = true }
-tonic = { workspace = true, optional = true, default-features = false }
-tonic-prost = { workspace = true, optional = true }
-
-[features]
-grpc = [
-    "http-body",
-    "libsignal-net/tower-service",
-    "libsignal-net-grpc",
-    "tonic",
-    "tonic-prost",
-]
-
 [dev-dependencies]
-libsignal-net-chat = { path = ".", features = ["grpc"] }
-
 libsignal-cli-utils = { workspace = true }
 libsignal-net = { workspace = true, features = ["test-util"] }
 
