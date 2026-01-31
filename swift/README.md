@@ -35,6 +35,11 @@ When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag 
 [pc]: https://guides.cocoapods.org/syntax/podspec.html#prepare_command
 
 
+## Testing a local build with Signal-iOS
+
+The iOS Podfile has a commented-out line to use a checkout of libsignal as a path-based dependency. Uncomment that and run `pod install` (or `bundle exec pod install`, see the iOS app repo for more details). Run the build commands in "Development as a CocoaPod", and then build the iOS app from its Xcode workspace as usual. When you're done, revert the changes to the Podfile and run `pod install` again.
+
+
 # Development as a Swift Package
 
 1. Build the Rust library using `swift/build_ffi.sh`. The Swift Package.swift is configured to use the debug build of the Rust library.
