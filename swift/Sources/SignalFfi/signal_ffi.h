@@ -2324,8 +2324,6 @@ SignalFfiError *signal_provisioning_chat_connection_init_listener(SignalConstPoi
 
 SignalFfiError *signal_publickey_clone(SignalMutPointerPublicKey *new_obj, SignalConstPointerPublicKey obj);
 
-SignalFfiError *signal_publickey_compare(int32_t *out, SignalConstPointerPublicKey key1, SignalConstPointerPublicKey key2);
-
 SignalFfiError *signal_publickey_deserialize(SignalMutPointerPublicKey *out, SignalBorrowedBuffer data);
 
 SignalFfiError *signal_publickey_destroy(SignalMutPointerPublicKey p);

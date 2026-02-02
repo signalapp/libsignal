@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class PublicKey: ClonableHandleOwner<SignalMutPointerPublicKey>, @unchecked Sendable {
+public class PublicKey: ClonableHandleOwner<SignalMutPointerPublicKey>, @unchecked Sendable, Equatable {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
         let handle = try bytes.withUnsafeBorrowedBuffer { bytes in
             try invokeFnReturningValueByPointer(.init()) {
@@ -99,26 +99,14 @@ public class PublicKey: ClonableHandleOwner<SignalMutPointerPublicKey>, @uncheck
         }
     }
 
-    public func compare(_ other: PublicKey) -> Int32 {
+    public static func == (lhs: PublicKey, rhs: PublicKey) -> Bool {
         return failOnError {
-            try withAllBorrowed(self, other) { selfHandle, otherHandle in
-                try invokeFnReturningInteger {
-                    signal_publickey_compare($0, selfHandle.const(), otherHandle.const())
+            try withAllBorrowed(lhs, rhs) { lhsHandle, rhsHandle in
+                try invokeFnReturningBool {
+                    signal_publickey_equals($0, lhsHandle.const(), rhsHandle.const())
                 }
             }
         }
-    }
-}
-
-extension PublicKey: Equatable {
-    public static func == (lhs: PublicKey, rhs: PublicKey) -> Bool {
-        return lhs.compare(rhs) == 0
-    }
-}
-
-extension PublicKey: Comparable {
-    public static func < (lhs: PublicKey, rhs: PublicKey) -> Bool {
-        return lhs.compare(rhs) < 0
     }
 }
 

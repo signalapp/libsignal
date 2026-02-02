@@ -216,7 +216,6 @@ type NativeFunctions = {
   ProtocolAddress_DeviceId: (obj: Wrapper<ProtocolAddress>) => number;
   ProtocolAddress_Name: (obj: Wrapper<ProtocolAddress>) => string;
   PublicKey_Equals: (lhs: Wrapper<PublicKey>, rhs: Wrapper<PublicKey>) => boolean;
-  PublicKey_Compare: (key1: Wrapper<PublicKey>, key2: Wrapper<PublicKey>) => number;
   PublicKey_Verify: (key: Wrapper<PublicKey>, message: Uint8Array, signature: Uint8Array) => boolean;
   PrivateKey_Deserialize: (data: Uint8Array) => PrivateKey;
   PrivateKey_Serialize: (obj: Wrapper<PrivateKey>) => Uint8Array;
@@ -769,7 +768,6 @@ const { registerErrors,
   ProtocolAddress_DeviceId,
   ProtocolAddress_Name,
   PublicKey_Equals,
-  PublicKey_Compare,
   PublicKey_Verify,
   PrivateKey_Deserialize,
   PrivateKey_Serialize,
@@ -1324,7 +1322,6 @@ export { registerErrors,
   ProtocolAddress_DeviceId,
   ProtocolAddress_Name,
   PublicKey_Equals,
-  PublicKey_Compare,
   PublicKey_Verify,
   PrivateKey_Deserialize,
   PrivateKey_Serialize,

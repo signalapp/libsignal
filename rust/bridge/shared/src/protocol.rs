@@ -162,15 +162,6 @@ fn ECPublicKey_Equals(lhs: &PublicKey, rhs: &PublicKey) -> bool {
     lhs == rhs
 }
 
-#[bridge_fn(ffi = "publickey_compare", node = "PublicKey_Compare")]
-fn ECPublicKey_Compare(key1: &PublicKey, key2: &PublicKey) -> i32 {
-    match key1.cmp(key2) {
-        std::cmp::Ordering::Less => -1,
-        std::cmp::Ordering::Equal => 0,
-        std::cmp::Ordering::Greater => 1,
-    }
-}
-
 #[bridge_fn(ffi = "publickey_verify", node = "PublicKey_Verify")]
 fn ECPublicKey_Verify(key: &PublicKey, message: &[u8], signature: &[u8]) -> bool {
     key.verify_signature(message, signature)

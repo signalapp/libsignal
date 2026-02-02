@@ -446,8 +446,6 @@ internal object Native {
   @JvmStatic @Throws(Exception::class)
   public external fun ECPrivateKey_Sign(key: ObjectHandle, message: ByteArray): ByteArray
 
-  @JvmStatic
-  public external fun ECPublicKey_Compare(key1: ObjectHandle, key2: ObjectHandle): Int
   @JvmStatic @Throws(Exception::class)
   public external fun ECPublicKey_Deserialize(data: ByteArray, offset: Int, length: Int): ObjectHandle
   @JvmStatic

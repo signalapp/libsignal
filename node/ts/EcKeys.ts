@@ -20,9 +20,8 @@ export class PublicKey {
     return new PublicKey(Native.PublicKey_Deserialize(buf));
   }
 
-  /// Returns -1, 0, or 1
-  compare(other: PublicKey): number {
-    return Native.PublicKey_Compare(this, other);
+  equals(other: PublicKey): boolean {
+    return Native.PublicKey_Equals(this, other);
   }
 
   serialize(): Uint8Array {

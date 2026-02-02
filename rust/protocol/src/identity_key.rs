@@ -19,9 +19,7 @@ const ALTERNATE_IDENTITY_SIGNATURE_PREFIX_2: &[u8] = b"Signal_PNI_Signature";
 /// A public key that represents the identity of a user.
 ///
 /// Wrapper for [`PublicKey`].
-#[derive(
-    Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, derive_more::From, derive_more::Into,
-)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, derive_more::From, derive_more::Into)]
 pub struct IdentityKey {
     public_key: PublicKey,
 }

@@ -4,9 +4,7 @@
 //
 
 mod curve25519;
-mod utils;
 
-use std::cmp::Ordering;
 use std::fmt;
 
 use curve25519_dalek::{MontgomeryPoint, scalar};
@@ -214,22 +212,6 @@ impl subtle::ConstantTimeEq for PublicKey {
 impl PartialEq for PublicKey {
     fn eq(&self, other: &PublicKey) -> bool {
         bool::from(self.ct_eq(other))
-    }
-}
-
-impl Ord for PublicKey {
-    fn cmp(&self, other: &Self) -> Ordering {
-        if self.key_type() != other.key_type() {
-            return self.key_type().cmp(&other.key_type());
-        }
-
-        utils::constant_time_cmp(self.key_data(), other.key_data())
-    }
-}
-
-impl PartialOrd for PublicKey {
-    fn partial_cmp(&self, other: &PublicKey) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 

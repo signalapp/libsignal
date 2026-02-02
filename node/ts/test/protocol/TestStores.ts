@@ -70,7 +70,7 @@ export class InMemoryIdentityKeyStore extends SignalClient.IdentityKeyStore {
     const idx = `${name.name()}::${name.deviceId()}`;
     const currentKey = this.idKeys.get(idx);
     if (currentKey) {
-      return currentKey.compare(key) == 0;
+      return currentKey.equals(key);
     } else {
       return true;
     }
@@ -84,7 +84,7 @@ export class InMemoryIdentityKeyStore extends SignalClient.IdentityKeyStore {
     const currentKey = this.idKeys.get(idx);
     this.idKeys.set(idx, key);
 
-    const changed = (currentKey?.compare(key) ?? 0) != 0;
+    const changed = !(currentKey?.equals(key) ?? true);
     return changed
       ? SignalClient.IdentityChange.ReplacedExisting
       : SignalClient.IdentityChange.NewOrUnchanged;
@@ -161,7 +161,7 @@ export class InMemoryKyberPreKeyStore extends SignalClient.KyberPreKeyStore {
     const baseKeysSeen = this.baseKeysSeen.get(bothKeyIds);
     if (!baseKeysSeen) {
       this.baseKeysSeen.set(bothKeyIds, [baseKey]);
-    } else if (baseKeysSeen.every((key) => key.compare(baseKey) != 0)) {
+    } else if (baseKeysSeen.every((key) => !key.equals(baseKey))) {
       baseKeysSeen.push(baseKey);
     } else {
       throw new Error('reused base key');
