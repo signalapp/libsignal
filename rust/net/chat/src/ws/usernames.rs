@@ -82,6 +82,13 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for 
         uuid: uuid::Uuid,
         entropy: &[u8; usernames::constants::USERNAME_LINK_ENTROPY_SIZE],
     ) -> Result<Option<usernames::Username>, RequestError<usernames::UsernameLinkError>> {
+        if let Some(grpc) = self
+            .grpc_service_to_use_instead(services::AccountsAnonymous::LookupUsernameLink.into())
+            .await
+        {
+            return Unauth(grpc).look_up_username_link(uuid, entropy).await;
+        }
+
         let response = self
             .send(
                 "unauth",

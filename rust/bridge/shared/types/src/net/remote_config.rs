@@ -109,6 +109,7 @@ pub enum RemoteConfigKey {
     // Typed API keys, based on gRPC request names.
     // These should all start with "grpc."
     AccountsAnonymousLookupUsernameHash => "grpc.AccountsAnonymousLookupUsernameHash",
+    AccountsAnonymousLookupUsernameLink => "grpc.AccountsAnonymousLookupUsernameLink",
 }
 }
 
