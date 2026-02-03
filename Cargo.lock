@@ -149,6 +149,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
+name = "arbitrary"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
+dependencies = [
+ "derive_arbitrary",
+]
+
+[[package]]
 name = "argon2"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1079,6 +1088,17 @@ name = "derive-where"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef941ded77d15ca19b40374869ac6000af1c9f2a4c0f3d4c70926287e6364a8f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.114",
+]
+
+[[package]]
+name = "derive_arbitrary"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e567bd82dcff979e4b03460c307b3cdc9e96fde3d73bed1496d2bc75d9dd62a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2914,8 +2934,10 @@ dependencies = [
  "itertools 0.14.0",
  "libcrux-ml-kem",
  "libsignal-core",
+ "libsignal-protocol-test-support",
  "log",
  "proptest",
+ "proptest-arbitrary-interop",
  "prost",
  "prost-build",
  "rand 0.9.2",
@@ -2930,6 +2952,16 @@ dependencies = [
  "thiserror 2.0.17",
  "uuid",
  "zerocopy",
+]
+
+[[package]]
+name = "libsignal-protocol-test-support"
+version = "0.1.0"
+dependencies = [
+ "arbitrary",
+ "libsignal-protocol",
+ "log",
+ "rand 0.9.2",
 ]
 
 [[package]]
@@ -3843,6 +3875,16 @@ dependencies = [
  "rusty-fork",
  "tempfile",
  "unarray",
+]
+
+[[package]]
+name = "proptest-arbitrary-interop"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1981e49bd2432249da8b0e11e5557099a8e74690d6b94e721f7dc0bb7f3555f"
+dependencies = [
+ "arbitrary",
+ "proptest",
 ]
 
 [[package]]

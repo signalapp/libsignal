@@ -55,12 +55,15 @@ kyber768 = ["libcrux-ml-kem/kyber", "libcrux-ml-kem/mlkem768"]
 mlkem1024 = []
 
 [dev-dependencies]
+libsignal-protocol-test-support = { path = "test-support" }
+
 clap = { workspace = true, features = ["derive"] }
 criterion = { workspace = true }
 curve25519-dalek = { workspace = true, features = ["digest"] }
 env_logger = { workspace = true }
 futures-util = { workspace = true }
 proptest = { workspace = true }
+proptest-arbitrary-interop = { workspace = true }
 rand_chacha = { workspace = true }
 rand_core = { workspace = true }
 

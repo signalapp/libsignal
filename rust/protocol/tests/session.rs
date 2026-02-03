@@ -10,6 +10,7 @@ use std::time::{Duration, SystemTime};
 use assert_matches::assert_matches;
 use futures_util::FutureExt;
 use libsignal_protocol::*;
+use proptest::proptest;
 use rand::rngs::OsRng;
 use rand::{RngCore, SeedableRng, TryRngCore as _};
 use support::*;
@@ -3303,4 +3304,89 @@ fn prekey_message_sent_from_different_user_is_rejected() {
     }
     .now_or_never()
     .expect("sync")
+}
+
+#[test]
+fn proptest_session_resets() {
+    // This is the same test setup as fuzz/fuzz_targets/session_management.rs. If this test fails,
+    // you should run the fuzz target as well after any fixes, for (slightly) increased confidence.
+    proptest!(|(actions in proptest::collection::vec(
+        (proptest::bool::ANY, proptest_arbitrary_interop::arb::<libsignal_protocol_test_support::Event>()),
+        ..40
+    ))| {
+        async {
+            let mut csprng = rand::rngs::StdRng::seed_from_u64(0);
+
+            let mut alice = libsignal_protocol_test_support::Participant::new(
+                "alice",
+                ProtocolAddress::new("+14151111111".to_owned(), DeviceId::new(1).unwrap()),
+                &mut csprng,
+            );
+            let mut bob = libsignal_protocol_test_support::Participant::new(
+                "bob",
+                ProtocolAddress::new("+14151111112".to_owned(), DeviceId::new(1).unwrap()),
+                &mut csprng,
+            );
+
+            for (who, event) in actions {
+                let (me, them) = match who {
+                    true => (&mut alice, &mut bob),
+                    false => (&mut bob, &mut alice),
+                };
+                event.run(me, them, &mut csprng).await
+            }
+
+            // Allow time to quiesce: bring both sides up to speed, send one message in each direction
+            // (synchronized), and service resend requests until both queues are empty.
+            log::info!("Quiescing...");
+            while alice.has_pending_incoming_messages() || bob.has_pending_incoming_messages() {
+                alice.receive_messages(&mut bob, &mut csprng).await;
+                bob.receive_messages(&mut alice, &mut csprng).await;
+            }
+
+            async fn exchange_messages_until_agreement(
+                attempts: usize,
+                alice: &mut libsignal_protocol_test_support::Participant,
+                bob: &mut libsignal_protocol_test_support::Participant,
+                rng: &mut (impl rand::Rng + rand::CryptoRng),
+            ) {
+                for _ in 0..attempts {
+                    // Go back to taking turns and see if things even out.
+                    alice.send_message(bob, rng).await;
+                    bob.receive_messages(alice, rng).await;
+                    bob.send_message(alice, rng).await;
+                    alice.receive_messages(bob, rng).await;
+
+                    let a_to_b_session = alice
+                        .current_store()
+                        .load_session(bob.address())
+                        .await
+                        .expect("can load")
+                        .expect("Alice has a session with Bob");
+                    let b_to_a_session = bob
+                        .current_store()
+                        .load_session(alice.address())
+                        .await
+                        .expect("can load")
+                        .expect("Bob has a session with Alice");
+                    if a_to_b_session
+                        .alice_base_key()
+                        .expect("A->B session established")
+                        == b_to_a_session
+                            .alice_base_key()
+                            .expect("B->A session established")
+                    {
+                        return;
+                    }
+                }
+                panic!(
+                    "even after {attempts} more messages in each direction, Alice and Bob are not on the same session"
+                );
+            }
+
+            exchange_messages_until_agreement(10, &mut alice, &mut bob, &mut csprng).await;
+        }
+        .now_or_never()
+        .expect("sync");
+    });
 }
