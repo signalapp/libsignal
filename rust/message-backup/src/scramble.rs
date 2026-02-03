@@ -754,7 +754,6 @@ impl Visit<Scrambler> for proto::CallLink {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
             rootKey,
-            epoch,
             adminKey,
             name,
             restrictions: _,
@@ -762,7 +761,6 @@ impl Visit<Scrambler> for proto::CallLink {
             special_fields: _,
         } = self;
         rootKey.randomize(&mut visitor.rng);
-        epoch.randomize(&mut visitor.rng);
         adminKey.randomize(&mut visitor.rng);
         name.randomize(&mut visitor.rng);
     }

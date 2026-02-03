@@ -432,8 +432,7 @@ mod tests {
                 r#""adminKey":"QQ==","#,
                 // Note this integer here for the unknown enum...
                 r#""restrictions":50,"#,
-                r#""expirationMs":"1702944000000","#,
-                r#""epoch":"RUVFRQ==""#,
+                r#""expirationMs":"1702944000000""#,
                 r#"}}}"# // ...and no representation at all of the top-level unknown field.
             )
         );

@@ -330,7 +330,7 @@ impl<M: Method + ReferencedTypes> CompletedBackup<M> {
                 + HIGH_BUT_REASONABLE_NUMBER_OF_DISTRIBUTION_LISTS
                     * std::mem::size_of::<(uuid::Uuid, RecipientId)>()
                 + HIGH_BUT_REASONABLE_NUMBER_OF_CALL_LINKS
-                    * std::mem::size_of::<(call::CallLinkRootKey, RecipientId)>()
+                    * std::mem::size_of::<(&[u8], RecipientId)>()
                 < 350_000,
         );
 
@@ -361,14 +361,12 @@ impl<M: Method + ReferencedTypes> CompletedBackup<M> {
         );
         let mut self_recipient = None;
         let mut release_notes_recipient = None;
-        let mut call_link_root_keys = AssumedRandomInputHasher::map_with_capacity::<
-            HashBytesAllAtOnce<call::CallLinkRootKey>,
-            RecipientId,
-        >(
-            recipients
-                .len()
-                .min(HIGH_BUT_REASONABLE_NUMBER_OF_CALL_LINKS),
-        );
+        let mut call_link_root_keys =
+            AssumedRandomInputHasher::map_with_capacity::<HashBytesAllAtOnce<&[u8]>, RecipientId>(
+                recipients
+                    .len()
+                    .min(HIGH_BUT_REASONABLE_NUMBER_OF_CALL_LINKS),
+            );
 
         for (id, recipient) in recipients.iter() {
             match recipient.as_ref() {
@@ -434,7 +432,7 @@ impl<M: Method + ReferencedTypes> CompletedBackup<M> {
                 MinimalRecipientData::CallLink { root_key } => {
                     insert_or_error(
                         &mut call_link_root_keys,
-                        Some(*root_key),
+                        Some(root_key.as_slice()),
                         id,
                         CompletionError::DuplicateCallLinkRootKey,
                     )?;

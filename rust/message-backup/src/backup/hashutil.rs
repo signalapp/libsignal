@@ -36,6 +36,18 @@ impl Hasher for AssumedRandomInputHasher {
 #[derive(PartialEq, Eq)]
 pub(crate) struct HashBytesAllAtOnce<T>(T);
 
+impl<'a> From<&'a [u8]> for HashBytesAllAtOnce<&'a [u8]> {
+    fn from(value: &'a [u8]) -> Self {
+        Self(value)
+    }
+}
+
+impl Hash for HashBytesAllAtOnce<&[u8]> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write(self.0);
+    }
+}
+
 impl<const N: usize> From<[u8; N]> for HashBytesAllAtOnce<[u8; N]> {
     fn from(value: [u8; N]) -> Self {
         Self(value)
