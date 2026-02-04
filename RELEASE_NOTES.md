@@ -1,3 +1,3 @@
 v0.87.1
 
-- Allow CallLinkRootKey to vary in size and remove call link epochs from backup
+- Make ROOT_KEY_MAX_BYTES_FOR_SHO visible to the outside world

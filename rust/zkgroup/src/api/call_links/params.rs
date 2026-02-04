@@ -33,7 +33,7 @@ pub struct CallLinkPublicParams {
 }
 
 impl CallLinkSecretParams {
-    const ROOT_KEY_MAX_BYTES_FOR_SHO: usize = 16;
+    pub const ROOT_KEY_MAX_BYTES_FOR_SHO: usize = 16;
 
     pub fn derive_from_root_key(root_key: &[u8]) -> Self {
         let byte_count = Self::ROOT_KEY_MAX_BYTES_FOR_SHO.min(root_key.len());

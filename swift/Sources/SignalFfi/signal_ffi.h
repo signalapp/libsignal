@@ -37,6 +37,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #define SignalAes256GcmDecryption_NONCE_SIZE SignalNONCE_SIZE
 
+#define SignalCallLinkSecretParams_ROOT_KEY_MAX_BYTES_FOR_SHO 16
+
 #define SignalNUM_AUTH_CRED_ATTRIBUTES 3
 
 #define SignalNUM_PROFILE_KEY_CRED_ATTRIBUTES 4
