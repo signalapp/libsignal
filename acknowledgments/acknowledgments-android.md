@@ -4519,7 +4519,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## bytes 1.11.0
+## bytes 1.11.1
 
 ```
 Copyright (c) 2018 Carl Lerche
