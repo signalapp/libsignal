@@ -48,7 +48,7 @@ const RECEIVE_STORIES_HEADER_NAME: &str = "x-signal-receive-stories";
 
 pub const RECOMMENDED_CHAT_WS_CONFIG: ws::Config = ws::Config {
     local_idle_timeout: RECOMMENDED_WS_CONFIG.local_idle_timeout,
-    post_request_interface_check_timeout: Duration::MAX,
+    post_request_interface_check_timeout: Duration::from_secs(5),
     remote_idle_timeout: RECOMMENDED_WS_CONFIG.remote_idle_disconnect_timeout,
     initial_request_id: 0,
 };
