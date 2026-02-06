@@ -232,3 +232,15 @@ curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag 
 
 [profile.dev.package.argon2]
 opt-level = 2 # libsignal-account-keys unit tests are too slow with an unoptimized argon2
+
+[profile.release]
+overflow-checks = true
+
+[profile.release.package.curve25519-dalek]
+overflow-checks = false
+
+[profile.release.package.sha2]
+overflow-checks = false
+
+[profile.release.package.hmac]
+overflow-checks = false
