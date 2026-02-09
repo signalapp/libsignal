@@ -17,6 +17,8 @@
     "codegen": "python scripts/gen_jsi_bindings.py ../swift/Sources/SignalFfi/signal_ffi.h cpp/generated_jsi_bindings.cpp ../node/ts/Native.ts",
     "build-android": "bash scripts/build_android.sh",
     "build-ios": "bash scripts/build_ios.sh",
+    "test": "bash scripts/run_tests.sh --skip-rust-build",
+    "test:full": "bash scripts/run_tests.sh",
     "prepare": "npm run build"
   },
   "repository": {

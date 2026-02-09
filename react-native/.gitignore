@@ -1,0 +1,9 @@
+node_modules/
+android/build/
+android/.cxx/
+android/.gradle/
+tests/build/
+lib/
+cpp/signal_ffi.h
+cpp/signal_ffi_cpp.h
+android/jniLibs/

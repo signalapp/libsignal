@@ -20,13 +20,26 @@
   "mounts": [
     "source=libsignal-cargo-cache,target=/usr/local/cargo/registry,type=volume",
     "source=libsignal-cargo-git,target=/usr/local/cargo/git,type=volume",
-    "source=libsignal-target,target=${containerWorkspaceFolder}/target,type=volume"
+    "source=libsignal-target,target=${containerWorkspaceFolder}/target,type=volume",
+    "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind",
+    "source=/mnt/wslg,target=/mnt/wslg,type=bind",
+    "source=/usr/lib/wsl,target=/usr/lib/wsl,type=bind"
   ],
   "containerEnv": {
     "ANDROID_HOME": "/opt/android-sdk",
     "ANDROID_NDK_HOME": "/opt/android-sdk/ndk/27.1.12297006",
-    "CMAKE_GENERATOR": "Ninja"
+    "CMAKE_GENERATOR": "Ninja",
+    "DISPLAY": "${localEnv:DISPLAY}",
+    "WAYLAND_DISPLAY": "${localEnv:WAYLAND_DISPLAY}",
+    "XDG_RUNTIME_DIR": "${localEnv:XDG_RUNTIME_DIR}",
+    "PULSE_SERVER": "${localEnv:PULSE_SERVER}",
+    "LD_LIBRARY_PATH": "/usr/lib/wsl/lib"
   },
+  "runArgs": [
+    "--device=/dev/kvm",
+    "--device=/dev/dxg",
+    "--gpus=all"
+  ],
   "postCreateCommand": ".devcontainer/post-create.sh",
   "remoteUser": "vscode"
 }

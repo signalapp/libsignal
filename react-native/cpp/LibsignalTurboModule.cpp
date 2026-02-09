@@ -135,21 +135,69 @@ SignalUuid LibsignalModule::jsiToUuid(jsi::Runtime& rt, const jsi::Value& val) {
     return uuid;
 }
 
-SignalServiceIdFixedWidthBinaryBytes LibsignalModule::jsiToServiceId(
-    jsi::Runtime& rt, const jsi::Value& val) {
+void LibsignalModule::jsiToServiceId(
+    jsi::Runtime& rt, const jsi::Value& val, SignalServiceIdFixedWidthBinaryBytes out) {
     auto buf = jsiToBuffer(rt, val);
     if (buf.length != 17) {
         throw jsi::JSError(rt, "ServiceId must be exactly 17 bytes");
     }
-    SignalServiceIdFixedWidthBinaryBytes bytes;
-    std::memcpy(bytes, buf.base, 17);
-    return bytes;
+    std::memcpy(out, buf.base, 17);
 }
 
 std::vector<uint8_t> LibsignalModule::jsiToFixedBuffer(
     jsi::Runtime& rt, const jsi::Value& val) {
     auto buf = jsiToBuffer(rt, val);
     return std::vector<uint8_t>(buf.base, buf.base + buf.length);
+}
+
+LibsignalModule::BorrowedSliceOfBuffers LibsignalModule::jsiToSliceOfBuffers(
+    jsi::Runtime& rt, const jsi::Value& val) {
+    BorrowedSliceOfBuffers result;
+
+    auto obj = val.asObject(rt);
+    auto arr = obj.asArray(rt);
+    size_t len = arr.size(rt);
+
+    result.buffers.resize(len);
+    for (size_t i = 0; i < len; i++) {
+        auto elem = arr.getValueAtIndex(rt, i);
+        result.buffers[i] = jsiToBuffer(rt, elem);
+    }
+
+    result.slice.base = result.buffers.data();
+    result.slice.length = len;
+    return result;
+}
+
+SignalBorrowedBytestringArray LibsignalModule::jsiToBytestringArray(
+    jsi::Runtime& rt, const jsi::Value& val) {
+    // BorrowedBytestringArray packs all strings into one contiguous buffer
+    // with a separate lengths array. Since we can't easily manage the lifetime
+    // of the packed buffer here, we use a thread_local static to hold it.
+    // This is safe because JSI calls are single-threaded.
+    thread_local std::vector<uint8_t> packedBytes;
+    thread_local std::vector<size_t> lengths;
+
+    packedBytes.clear();
+    lengths.clear();
+
+    auto obj = val.asObject(rt);
+    auto arr = obj.asArray(rt);
+    size_t len = arr.size(rt);
+
+    for (size_t i = 0; i < len; i++) {
+        auto elem = arr.getValueAtIndex(rt, i);
+        auto buf = jsiToBuffer(rt, elem);
+        packedBytes.insert(packedBytes.end(), buf.base, buf.base + buf.length);
+        lengths.push_back(buf.length);
+    }
+
+    SignalBorrowedBytestringArray result;
+    result.bytes.base = packedBytes.data();
+    result.bytes.length = packedBytes.size();
+    result.lengths.base = lengths.data();
+    result.lengths.length = lengths.size();
+    return result;
 }
 
 // ---------------------------------------------------------------
@@ -215,62 +263,9 @@ jsi::Value LibsignalModule::bytestringArrayToJsi(
         cursor += entryLen;
     }
 
-    // Free the owned buffers
-    signal_free_buffer(arr.bytes.base, arr.bytes.length);
-    free(arr.lengths.base);
+    signal_free_bytestring_array(arr);
 
     return jsi::Value(rt, jsArray);
-}
-
-// ---------------------------------------------------------------
-// Template implementations for pointer conversions
-// ---------------------------------------------------------------
-
-template<typename T>
-T LibsignalModule::jsiToConstPointer(jsi::Runtime& rt, const jsi::Value& val) {
-    if (val.isNull() || val.isUndefined()) {
-        return T{nullptr};
-    }
-
-    auto obj = val.asObject(rt);
-    auto hostObj = obj.asHostObject<NativePointer>(rt);
-    T wrapper;
-    wrapper.raw = reinterpret_cast<
-        typename std::remove_pointer<decltype(wrapper.raw)>::type*>(
-            hostObj->get());
-    return wrapper;
-}
-
-template<typename T>
-T LibsignalModule::jsiToMutPointer(jsi::Runtime& rt, const jsi::Value& val) {
-    if (val.isNull() || val.isUndefined()) {
-        return T{nullptr};
-    }
-
-    auto obj = val.asObject(rt);
-    auto hostObj = obj.asHostObject<NativePointer>(rt);
-    T wrapper;
-    wrapper.raw = reinterpret_cast<
-        typename std::remove_pointer<decltype(wrapper.raw)>::type*>(
-            hostObj->get());
-    return wrapper;
-}
-
-template<typename WrapperType>
-jsi::Value LibsignalModule::pointerToJsi(jsi::Runtime& rt, WrapperType ptr) {
-    if (!ptr.raw) {
-        return jsi::Value::null();
-    }
-
-    // Look up the appropriate destroy function.
-    // We use the raw pointer and the specific wrapper type's destroy function.
-    // The caller is responsible for using the right type.
-    auto pointerObj = std::make_shared<NativePointer>(
-        reinterpret_cast<void*>(ptr.raw),
-        nullptr  // destructor set by specific instantiations below
-    );
-
-    return jsi::Object::createFromHostObject(rt, pointerObj);
 }
 
 // ---------------------------------------------------------------

@@ -1,11 +1,11 @@
 plugins {
-    id 'com.android.library'
+    id 'com.android.library' version '8.3.0'
 }
 
 android {
     namespace "org.signal.libsignal.reactnative"
     compileSdk 34
-    ndkVersion "25.1.8937393"
+    ndkVersion "27.1.12297006"
 
     defaultConfig {
         minSdk 24
@@ -14,8 +14,9 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags "-O2 -frtti -fexceptions -std=c++17"
-                // Build for all supported architectures
-                abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+                // Build for architectures we have Rust .so files for
+                abiFilters "arm64-v8a", "x86_64"
+                arguments "-DANDROID_STL=c++_shared"
             }
         }
     }

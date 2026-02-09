@@ -108,8 +108,8 @@ def classify_param(param_type: str, param_name: str, is_first: bool) -> tuple:
     if t == 'SignalBorrowedMutableBuffer':
         return ('borrowed_mutable_buffer', False, False)
 
-    # SignalOwnedBuffer *out
-    if 'SignalOwnedBuffer' in t and '*' in t:
+    # SignalOwnedBuffer *out (but NOT SignalOwnedBufferOfFfi* which are typed buffers)
+    if 'SignalOwnedBuffer' in t and '*' in t and 'SignalOwnedBufferOf' not in t:
         return ('buffer', True, False)
 
     # SignalBytestringArray *out
@@ -194,8 +194,8 @@ def classify_param(param_type: str, param_name: str, is_first: bool) -> tuple:
     if t == 'void *' or t == 'const void *':
         return ('other', False, False)
 
-    # SignalFfiError * (return type handling)
-    if 'SignalFfiError' in t:
+    # SignalFfiError * (return type handling, or input to error inspection functions)
+    if 'SignalFfiError' in t or 'SignalUnwindSafeArg' in t:
         return ('other', False, False)
 
     # SignalPairOf... (compound return)
@@ -204,7 +204,23 @@ def classify_param(param_type: str, param_name: str, is_first: bool) -> tuple:
     if 'SignalPairOf' in t:
         return ('other', False, False)
 
-    # SignalFfi* struct by value (e.g. SignalFfiSignedPublicPreKey)
+    # SignalOwnedBufferOfFfi* — typed owned buffers (not simple byte buffers)
+    # e.g. SignalOwnedBufferOfFfiMismatchedDevicesError, SignalOwnedBufferOfFfiRegisterResponseBadge
+    if re.match(r'SignalOwnedBufferOfFfi\w+', t.lstrip('const ').rstrip(' *')):
+        if '*' in t:
+            return ('other', True, False)
+        return ('other', False, False)
+
+    # SignalFfiSignedPublicPreKey — complex struct passed by value
+    if 'SignalFfiSignedPublicPreKey' in t:
+        return ('other', False, False)
+
+    # Fixed-size byte array types passed as pointers:
+    # const SignalBackupKeyBytes *, const SignalRandomnessBytes *, const SignalUnidentifiedAccessKey *
+    if re.match(r'const\s+Signal\w+Bytes\s*\*$', t) or re.match(r'const\s+SignalUnidentifiedAccessKey\s*\*$', t):
+        return ('fixed_array', False, True)
+
+    # SignalFfi* struct by value (e.g. other Signal* types we haven't matched)
     if t.startswith('SignalFfi') or t.startswith('Signal'):
         if '*' in t:
             return ('other', True if is_first else False, is_const)
@@ -481,6 +497,11 @@ def determine_skipped(func: FfiFunction) -> tuple:
     if func.name.startswith('signal_free_'):
         return True, "free function (handled internally)"
 
+    # Skip error inspection functions — these are internal helpers used by
+    # checkError(), not meant to be called from JS
+    if func.name.startswith('signal_error_'):
+        return True, "error inspection function (used internally by checkError)"
+
     # Skip print/debug functions
     if func.name == 'signal_print_ptr':
         return True, "debug function"
@@ -488,6 +509,17 @@ def determine_skipped(func: FfiFunction) -> tuple:
     # Skip init_logger (needs special callback handling)
     if func.name == 'signal_init_logger':
         return True, "logger init (needs hand-written implementation)"
+
+    # Skip media sanitizer functions (signal-media feature not enabled by default)
+    if any(x in func.name for x in ['mp4_sanitizer', 'webp_sanitizer', 'sanitized_metadata', 'signal_media_check']):
+        return True, "media sanitizer (requires signal-media feature)"
+
+    # Skip functions that have any 'other' category parameters we can't convert
+    for p in func.params:
+        if p.category == 'other' and not p.is_out:
+            return True, f"has unconvertible input param: {p.type} {p.name}"
+        if p.category == 'other' and p.is_out:
+            return True, f"has unconvertible output param: {p.type} {p.name}"
 
     return False, ""
 
@@ -692,9 +724,22 @@ def gen_input_conversion(param: Param, arg_idx: int) -> tuple:
         # const unsigned char (*params)[N] or const SignalServiceIdFixedWidthBinaryBytes *
         if 'SignalServiceIdFixedWidthBinaryBytes' in t:
             return (
-                [f'auto {var}_buf = jsiToServiceId(rt, args[{arg_idx}]);'],
+                [f'SignalServiceIdFixedWidthBinaryBytes {var}_buf = {{0}};',
+                 f'jsiToServiceId(rt, args[{arg_idx}], {var}_buf);'],
                 f'&{var}_buf'
             )
+        # const SignalBackupKeyBytes *, const SignalRandomnessBytes *, const SignalUnidentifiedAccessKey *
+        # These are typedefs for fixed-size uint8_t arrays
+        fixed_type_match = re.match(r'const\s+(Signal\w+)\s*\*$', t)
+        if fixed_type_match:
+            fixed_type = fixed_type_match.group(1)
+            return (
+                [f'{fixed_type} {var}_buf = {{0}};',
+                 f'auto {var}_src = jsiToBuffer(rt, args[{arg_idx}]);',
+                 f'std::memcpy({var}_buf, {var}_src.base, std::min({var}_src.length, sizeof({fixed_type})));'],
+                f'&{var}_buf'
+            )
+        # Generic fixed array: uint8_t (*out)[N]
         return (
             [f'auto {var} = jsiToFixedBuffer(rt, args[{arg_idx}]);'],
             f'reinterpret_cast<decltype(std::declval<{t.split("(")[0].strip()}>())>({var}.data())'
@@ -709,14 +754,16 @@ def gen_input_conversion(param: Param, arg_idx: int) -> tuple:
     if param.category == 'slice_of_buffers':
         return (
             [f'auto {var} = jsiToSliceOfBuffers(rt, args[{arg_idx}]);'],
-            f'{var}'
+            f'{var}.slice'
         )
 
     if param.category == 'slice_of_pointers':
+        # Extract the base type from the parameter type
+        # e.g. SignalBorrowedSliceOfConstPointerPublicKey
+        base = t.strip()
         return (
-            [f'// TODO: slice_of_pointers conversion for {param.name}',
-             f'auto {var} = jsiToSliceOfPointers(rt, args[{arg_idx}]);'],
-            f'{var}'
+            [f'auto {var} = jsiToSliceOfPointers<{base}>(rt, args[{arg_idx}]);'],
+            f'{var}.slice'
         )
 
     # Fallback

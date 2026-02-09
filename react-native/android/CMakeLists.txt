@@ -35,8 +35,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME}
     signal_ffi
     ReactAndroid::jsi
-    ReactAndroid::turbomodulejsijni
-    ReactAndroid::react_nativemodule_core
+    ReactAndroid::reactnative
     android
     log
 )
