@@ -53,7 +53,7 @@ as recent versions of Clang, libclang, [CMake](https://cmake.org), Make, protoc,
 On a Debian-like system, you can get these extra dependencies through `apt`:
 
 ```shell
-$ apt-get install clang libclang-dev cmake make protobuf-compiler python3 git
+$ apt-get install clang libclang-dev cmake make protobuf-compiler libprotobuf-dev python3 git
 ```
 
 #### macOS
