@@ -1,0 +1,47 @@
+{
+  "name": "@aspect-build/react-native-libsignal",
+  "version": "0.1.0",
+  "description": "React Native bindings for libsignal-client",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib/",
+    "cpp/",
+    "ios/",
+    "android/",
+    "scripts/",
+    "react-native-libsignal.podspec"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "codegen": "python scripts/gen_jsi_bindings.py ../swift/Sources/SignalFfi/signal_ffi.h cpp/generated_jsi_bindings.cpp ../node/ts/Native.ts",
+    "build-android": "bash scripts/build_android.sh",
+    "build-ios": "bash scripts/build_ios.sh",
+    "prepare": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicegram/nicegram-libsignal"
+  },
+  "author": "nicegram",
+  "license": "AGPL-3.0-only",
+  "homepage": "https://github.com/nicegram/nicegram-libsignal#readme",
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-native": ">=0.71.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "react-native": "^0.73.0",
+    "react": "^18.0.0",
+    "@types/react-native": "^0.72.0"
+  },
+  "codegenConfig": {
+    "name": "LibsignalSpec",
+    "type": "modules",
+    "jsSrcsDir": "src/specs",
+    "android": {
+      "javaPackageName": "org.signal.libsignal.reactnative"
+    }
+  }
+}

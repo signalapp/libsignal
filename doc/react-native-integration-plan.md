@@ -1,3 +1,5 @@
+copilot --resume=cbf1a16c-1ce9-49ff-81f9-fda945851b29
+
 # React Native Integration Plan for libsignal
 
 ## Problem Statement
@@ -839,3 +841,428 @@ which has good Hermes BigInt support.
 - **~2000 lines** of adapted TypeScript (fork of node/ts/ with React Native adaptations)
 - **~200 lines** of build scripts and configuration
 - **~300 lines** of Python codegen script
+
+---
+
+## Implementation Progress
+
+### Completed
+
+#### ✅ Phase 1: Directory Structure
+Created `react-native/` directory with all subdirectories:
+- `cpp/` — C++ TurboModule code
+- `android/` — Android platform files (Java, C++, Gradle, CMake)
+- `ios/` — iOS platform files (Objective-C++)
+- `ts/` — Forked TypeScript layer
+- `scripts/` — Build and codegen scripts
+
+#### ✅ Phase 2: Codegen Script (`scripts/gen_jsi_bindings.py`)
+Python script that parses `swift/Sources/SignalFfi/signal_ffi.h` and generates C++ JSI wrappers.
+- Parses all 576 C functions from the header
+- Classifies parameters as input/output with correct type mapping
+- Matches C function names to JS names from `node/ts/Native.ts` (414 of 576 matched)
+- Generates sync wrappers (439 functions) and async stubs (28 functions)
+- Skips destroy/clone functions (handled by NativePointer destructor)
+- Skips functions with callback struct params (need hand-written implementations)
+
+**Bug fixes applied:**
+- Fixed `const char *` being incorrectly classified as output (was matching `startswith('const char *') && endswith('*')`)
+- Fixed regex to handle `SignalFfiError *signal_foo(` with no space between `*` and function name
+
+#### ✅ Phase 3: Generated C++ Bindings (`cpp/generated_jsi_bindings.cpp`)
+Auto-generated 4549-line file with 439 sync + 28 async function bindings.
+
+#### ✅ Phase 4: C++ TurboModule Infrastructure
+- `cpp/LibsignalTurboModule.h` — Header with `LibsignalModule` (JSI HostObject) and `NativePointer` (GC-driven cleanup)
+- `cpp/LibsignalTurboModule.cpp` — Implementation with:
+  - `checkError()` — Converts `SignalFfiError*` to JSI exceptions with error type code
+  - `jsiToBuffer()` / `jsiToMutableBuffer()` — Uint8Array/ArrayBuffer → `SignalBorrowedBuffer`
+  - `jsiToString()` — JSI string → `std::string`
+  - `jsiToUuid()` — 16-byte Uint8Array → `SignalUuid`
+  - `jsiToServiceId()` — 17-byte buffer → `SignalServiceIdFixedWidthBinaryBytes`
+  - `jsiToConstPointer<T>()` / `jsiToMutPointer<T>()` — Extract raw pointers from NativePointer HostObjects
+  - `ownedBufferToJsi()` — `SignalOwnedBuffer` → Uint8Array (frees native memory)
+  - `fixedArrayToJsi()` — Fixed-size array → Uint8Array
+  - `stringToJsi()` — C string → JSI string (frees native string)
+  - `uuidToJsi()` — `SignalUuid` → Uint8Array
+  - `bytestringArrayToJsi()` — `SignalBytestringArray` → JS array of Uint8Array
+  - `pointerToJsi<T>()` — Wrap native pointer in NativePointer HostObject
+  - `install()` — Sets `global.__libsignal_native` on the JSI runtime
+  - `createAsyncCall()` — Promise creation stub (needs threading infrastructure)
+
+#### ✅ Phase 5: Android Platform Files
+- `android/build.gradle` — Gradle build config with CMake integration
+- `android/CMakeLists.txt` — CMake config linking against `libsignal_ffi.so` and React Native JSI
+- `android/src/main/java/.../LibsignalModule.java` — Loads native libs, calls `nativeInstall()`
+- `android/src/main/java/.../LibsignalPackage.java` — ReactPackage registration
+- `android/src/main/cpp/jni_install.cpp` — JNI bridge calling `LibsignalModule::install()`
+- `android/src/main/AndroidManifest.xml` — Minimal manifest
+- `android/gradle.properties` — AndroidX property
+
+#### ✅ Phase 6: iOS Platform Files (Placeholder)
+- `ios/LibsignalInstaller.mm` — ObjC++ bridge module that installs JSI bindings
+- `react-native-libsignal.podspec` — CocoaPods spec
+
+#### ✅ Phase 7: Package Config
+- `package.json` — NPM package with scripts for codegen and building
+- `tsconfig.json` — TypeScript compilation config
+
+#### ✅ Phase 8: TypeScript Layer Fork
+- `ts/Native.ts` — Fork of `node/ts/Native.ts` with:
+  - Replaced `import load from 'node-gyp-build'` with `getNativeModule()` accessing `global.__libsignal_native`
+  - All type definitions preserved (1962 lines)
+- `ts/index.ts` — Entry point with `install()` function and re-exports
+
+#### ✅ Phase 9: Cargo.toml Change
+- Added `"cdylib"` to `rust/bridge/ffi/Cargo.toml` `crate-type` for Android shared library
+
+#### ✅ Phase 10: Build Scripts
+- `scripts/build_android.sh` — Cross-compiles for 4 Android ABIs using cargo-ndk
+- `scripts/build_ios.sh` — Compiles for iOS device + simulator targets
+
+### ⚠️ Cross-Compilation: Windows vs Linux
+
+We attempted Android cross-compilation on Windows and hit persistent issues with the
+`boring-sys` crate (BoringSSL Rust bindings). **Use Linux (or macOS) for this step.**
+
+#### What Went Wrong on Windows
+
+The build chain for Android cross-compilation is:
+```
+cargo build --target aarch64-linux-android
+  → boring-sys build.rs
+    → cmake (BoringSSL C/C++ compilation) ✅ works fine
+    → bindgen (generate Rust bindings from BoringSSL headers) ❌ fails
+```
+
+`bindgen` uses `libclang` to parse C headers. On Windows, three interacting problems
+make this fail for Android cross-compilation:
+
+1. **Path separators & spaces**: `BINDGEN_EXTRA_CLANG_ARGS` values with spaces in paths
+   (e.g., `C:\Program Files\LLVM\...`) get split into multiple arguments by bindgen's
+   argument parser. Using 8.3 short paths (`C:\PROGRA~1\...`) fixes `stddef.h` but
+   reveals the next problem.
+
+2. **Conflicting sysroots**: `boring-sys` adds `--sysroot={ndk_sysroot}` via its build
+   script, and `cargo-ndk` sets `BINDGEN_EXTRA_CLANG_ARGS_{target}` with another
+   `--sysroot`. When `--sysroot` is passed, clang stops searching its own builtin include
+   directory for headers like `stddef.h`. You must add `-isystem {clang_builtins_dir}` to
+   compensate, but the path space issue makes this fragile.
+
+3. **`cargo-ndk` Windows bugs**: `cargo-ndk` sets `CLANG_PATH` without `.exe` suffix,
+   causing `clang-sys` to warn "not a full path to an executable" and fall back. The
+   `BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android` it sets includes `--sysroot` and
+   target includes but NOT the clang builtins include path. The target-specific env var
+   takes priority over the generic `BINDGEN_EXTRA_CLANG_ARGS`, so you can't easily
+   supplement it.
+
+4. **Header resolution cascade**: Even after fixing `stddef.h` (clang builtin), the next
+   failure is `sys/types.h` (NDK sysroot header). This suggests the NDK sysroot path
+   (which uses Windows backslashes from `PathBuf`) isn't being resolved correctly by
+   libclang on Windows.
+
+**Bottom line**: The NDK toolchain, `cargo-ndk`, `bindgen`, and `boring-sys` all assume
+Unix-style paths and were designed/tested on Linux and macOS. Windows cross-compilation
+hits a death-by-a-thousand-cuts of path handling issues.
+
+#### Environment Details (for reference)
+
+The Windows environment used:
+- Rust: `nightly-2025-09-24-x86_64-pc-windows-msvc`
+- Android NDK: `27.1.12297006` (at `%LOCALAPPDATA%\Android\Sdk\ndk\27.1.12297006`)
+- System LLVM: version 21 (at `C:\Program Files\LLVM`)
+- CMake: 3.22.1 (from Android SDK)
+- `cargo-ndk`: 4.1.2
+- Android targets installed: `aarch64-linux-android`, `armv7-linux-androideabi`,
+  `i686-linux-android`, `x86_64-linux-android`
+
+Env vars that were set (for the record — **this did NOT fully work**):
+```powershell
+$ndkRoot = "$env:LOCALAPPDATA\Android\Sdk\ndk\27.1.12297006"
+$ndkToolchain = "$ndkRoot\toolchains\llvm\prebuilt\windows-x86_64"
+$env:ANDROID_NDK_HOME = $ndkRoot
+$env:CMAKE_GENERATOR = "Ninja"
+$env:CC_aarch64_linux_android = "$ndkToolchain\bin\aarch64-linux-android24-clang.cmd"
+$env:CXX_aarch64_linux_android = "$ndkToolchain\bin\aarch64-linux-android24-clang++.cmd"
+$env:AR_aarch64_linux_android = "$ndkToolchain\bin\llvm-ar.exe"
+$env:CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER = "$ndkToolchain\bin\aarch64-linux-android24-clang.cmd"
+$env:BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android = "-isystem C:\PROGRA~1\LLVM\lib\clang\21\include"
+```
+
+The CMake BoringSSL compilation succeeded, but bindgen header parsing failed at
+`sys/types.h` (NDK sysroot header not found despite `--sysroot` being passed).
+
+### Remaining Work
+
+#### 🔲 Step 1: Cross-compile `libsignal_ffi.so` for Android (use Linux)
+
+**Prerequisites** (Linux devcontainer or CI):
+```bash
+# 1. Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.cargo/env
+
+# 2. Install the Rust nightly toolchain (match repo's rust-toolchain file)
+rustup install nightly-2025-09-24
+rustup default nightly-2025-09-24
+
+# 3. Add Android cross-compilation targets
+rustup target add aarch64-linux-android
+rustup target add armv7-linux-androideabi
+rustup target add x86_64-linux-android
+rustup target add i686-linux-android
+
+# 4. Install cargo-ndk
+cargo install cargo-ndk
+
+# 5. Install Android NDK (version 27.x recommended)
+#    Option A: Via sdkmanager
+sdkmanager --install "ndk;27.1.12297006"
+export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.1.12297006
+
+#    Option B: Direct download
+#    https://developer.android.com/ndk/downloads
+#    Extract and set ANDROID_NDK_HOME
+
+# 6. Install system dependencies for boring-sys
+sudo apt-get install -y cmake ninja-build clang libclang-dev
+
+# 7. Verify the core library builds natively first
+cd /path/to/libsignal
+cargo build -p libsignal-ffi
+```
+
+**Build the Android shared library:**
+```bash
+cd /path/to/libsignal
+
+# Build for all 4 Android ABIs
+# cargo-ndk handles setting CC, CXX, AR, LINKER, sysroot, etc.
+cargo ndk \
+  -t arm64-v8a \
+  -t armeabi-v7a \
+  -t x86_64 \
+  -t x86 \
+  build -p libsignal-ffi --lib --release
+
+# If cargo-ndk gives trouble, you can build one target at a time:
+cargo ndk -t arm64-v8a build -p libsignal-ffi --lib --release
+
+# The .so files will be at:
+# target/aarch64-linux-android/release/libsignal_ffi.so
+# target/armv7-linux-androideabi/release/libsignal_ffi.so
+# target/x86_64-linux-android/release/libsignal_ffi.so
+# target/i686-linux-android/release/libsignal_ffi.so
+```
+
+**If `cargo ndk` fails** (e.g., on older versions), use direct cargo build:
+```bash
+export ANDROID_NDK_HOME=/path/to/ndk
+NDK_TC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
+
+# For arm64-v8a:
+export CC_aarch64_linux_android=$NDK_TC/bin/aarch64-linux-android24-clang
+export CXX_aarch64_linux_android=$NDK_TC/bin/aarch64-linux-android24-clang++
+export AR_aarch64_linux_android=$NDK_TC/bin/llvm-ar
+export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$NDK_TC/bin/aarch64-linux-android24-clang
+cargo build --target aarch64-linux-android -p libsignal-ffi --lib --release
+```
+
+**Copy outputs to the React Native package:**
+```bash
+mkdir -p react-native/android/jniLibs/{arm64-v8a,armeabi-v7a,x86_64,x86}
+cp target/aarch64-linux-android/release/libsignal_ffi.so \
+   react-native/android/jniLibs/arm64-v8a/
+cp target/armv7-linux-androideabi/release/libsignal_ffi.so \
+   react-native/android/jniLibs/armeabi-v7a/
+cp target/x86_64-linux-android/release/libsignal_ffi.so \
+   react-native/android/jniLibs/x86_64/
+cp target/i686-linux-android/release/libsignal_ffi.so \
+   react-native/android/jniLibs/x86/
+```
+
+**Copy the C header for C++ compilation:**
+```bash
+cp swift/Sources/SignalFfi/signal_ffi.h react-native/cpp/signal_ffi.h
+```
+
+#### 🔲 Step 2: Verify C++ TurboModule Compiles
+
+Once the `.so` files and `signal_ffi.h` are in place, test C++ compilation via a React
+Native app's Android build:
+
+1. Create a test React Native app:
+   ```bash
+   npx @react-native-community/cli init TestLibsignal --version 0.76
+   cd TestLibsignal
+   ```
+
+2. Add the libsignal package to `settings.gradle`:
+   ```groovy
+   include ':react-native-libsignal'
+   project(':react-native-libsignal').projectDir =
+       new File('../libsignal/react-native/android')
+   ```
+
+3. Add dependency in `app/build.gradle`:
+   ```groovy
+   implementation project(':react-native-libsignal')
+   ```
+
+4. Register the package in `MainApplication.java` / `MainApplication.kt`
+
+5. Build the Android app:
+   ```bash
+   cd android && ./gradlew assembleDebug
+   ```
+
+6. **Expect C++ compilation errors** — the generated bindings and TurboModule code have
+   not been tested against real React Native headers. Fix errors iteratively.
+
+#### 🔲 Step 3: Fix C++ Compilation Issues
+
+Likely issues to fix:
+- **Include paths**: `signal_ffi.h` may need to be at a different relative path
+- **JSI API changes**: React Native 0.73+ JSI APIs may differ from what we assumed
+- **Type mismatches**: Some `signal_ffi.h` types (e.g., fixed-size arrays, callback
+  structs) may need adjusted conversion code
+- **Missing React Native headers**: `CMakeLists.txt` may need additional include dirs
+
+#### 🔲 Step 4: Test Basic Operations
+
+In the test React Native app:
+```typescript
+import { NativeModules } from 'react-native';
+
+// After JSI install:
+const native = (global as any).__libsignal_native;
+
+// Test 1: Key generation
+const keyPtr = native.PrivateKey_Generate();
+console.log('Generated key:', keyPtr);
+
+// Test 2: Get public key
+const pubKeyPtr = native.PrivateKey_GetPublicKey(keyPtr);
+console.log('Public key:', pubKeyPtr);
+
+// Test 3: Serialize
+const serialized = native.PublicKey_Serialize(pubKeyPtr);
+console.log('Serialized:', serialized.length, 'bytes');
+```
+
+#### 🔲 Step 5: Improve Codegen Quality
+1. 162 functions have generated (not matched) JS names — improve C→JS name mapping
+2. Async functions need proper CPromise callback infrastructure with threading
+3. ~20 functions with callback struct params need hand-written implementations (stores, listeners)
+
+#### 🔲 Step 6: Thread-Safe Async Support
+1. Implement proper background thread dispatch using React Native's `CallInvoker`
+2. Wire up `SignalCPromise*` callback structs to resolve/reject JS Promises
+3. Handle cancellation tokens for cancellable async operations
+
+#### 🔲 Step 7: Store/Listener Implementations
+Hand-written JSI implementations needed for:
+- `SessionStore` operations (load, store, archive sessions)
+- `IdentityKeyStore` operations
+- `PreKeyStore` / `SignedPreKeyStore` / `KyberPreKeyStore`
+- `SenderKeyStore`
+- Chat connection listeners
+- Input stream callbacks
+
+#### 🔲 Step 8: TypeScript Layer Completeness
+1. Verify all exports from `node/ts/` are compatible with React Native
+2. Handle any `Buffer` usage (should already be `Uint8Array` in newer versions)
+3. Add React Native-specific helpers if needed (e.g., base64 utilities)
+
+#### 🔲 Step 9: iOS Build (requires macOS)
+1. Build `libsignal_ffi.a` for iOS targets using `scripts/build_ios.sh`
+2. Verify CocoaPods integration via `pod install` in a test app
+3. Test on iOS simulator
+
+### File Inventory
+
+```
+react-native/
+├── package.json                    # NPM package config
+├── tsconfig.json                   # TypeScript config
+├── react-native-libsignal.podspec  # iOS CocoaPods spec
+├── cpp/
+│   ├── LibsignalTurboModule.h      # JSI module header (hand-written)
+│   ├── LibsignalTurboModule.cpp    # JSI module implementation (hand-written)
+│   └── generated_jsi_bindings.cpp  # Auto-generated bindings (439 sync + 28 async)
+├── android/
+│   ├── build.gradle                # Gradle config
+│   ├── CMakeLists.txt              # CMake config for C++
+│   ├── gradle.properties           # AndroidX
+│   ├── src/main/
+│   │   ├── AndroidManifest.xml
+│   │   ├── cpp/jni_install.cpp     # JNI → JSI bridge
+│   │   └── java/.../
+│   │       ├── LibsignalModule.java   # Native module (loads libs, installs JSI)
+│   │       └── LibsignalPackage.java  # ReactPackage
+│   └── jniLibs/                    # (created by build_android.sh)
+│       ├── arm64-v8a/libsignal_ffi.so
+│       ├── armeabi-v7a/libsignal_ffi.so
+│       ├── x86_64/libsignal_ffi.so
+│       └── x86/libsignal_ffi.so
+├── ios/
+│   ├── LibsignalInstaller.mm       # ObjC++ bridge module
+│   └── libsignal_ffi.a             # (created by build_ios.sh)
+├── ts/
+│   ├── index.ts                    # Package entry point
+│   └── Native.ts                   # Forked from node/ts/Native.ts
+└── scripts/
+    ├── gen_jsi_bindings.py         # Codegen: signal_ffi.h → C++ JSI wrappers
+    ├── build_android.sh            # Cross-compile for Android
+    └── build_ios.sh                # Compile for iOS
+```
+
+### Integration Guide (for consuming React Native app)
+
+#### Android Setup
+1. Build the Rust library: `cd react-native && bash scripts/build_android.sh --release`
+2. Add to your app's `settings.gradle`:
+   ```groovy
+   include ':react-native-libsignal'
+   project(':react-native-libsignal').projectDir = new File('../path/to/libsignal/react-native/android')
+   ```
+3. Add to your app's `build.gradle`:
+   ```groovy
+   implementation project(':react-native-libsignal')
+   ```
+4. Add the package in your `MainApplication.java`:
+   ```java
+   import org.signal.libsignal.reactnative.LibsignalPackage;
+   // In getPackages():
+   packages.add(new LibsignalPackage());
+   ```
+5. In your JS code:
+   ```typescript
+   import { install, PrivateKey_Generate } from '@aspect-build/react-native-libsignal';
+   install();
+   const key = PrivateKey_Generate();
+   ```
+
+#### iOS Setup
+1. Build the Rust library: `cd react-native && bash scripts/build_ios.sh --release`
+2. Add to your app's `Podfile`:
+   ```ruby
+   pod 'react-native-libsignal', :path => '../path/to/libsignal/react-native'
+   ```
+3. Run `pod install`
+4. The JSI bindings auto-install via `RCT_EXPORT_MODULE`
+
+---
+
+## Resuming This Work
+
+To pick up where we left off:
+
+1. **Read this document** — all scaffolding code is already written and committed
+2. **Switch to Linux** (devcontainer, CI, or native) — Windows cross-compilation is
+   not viable due to `boring-sys`/`bindgen` path handling issues (see above)
+3. **Start at Step 1** in the "Remaining Work" section — cross-compile `libsignal_ffi.so`
+4. The copilot session can be resumed with:
+   ```
+   copilot --resume=cbf1a16c-1ce9-49ff-81f9-fda945851b29
+   ```

@@ -15,7 +15,7 @@ workspace = true
 
 [lib]
 name = "signal_ffi"
-crate-type = ["staticlib"]
+crate-type = ["staticlib", "cdylib"]
 
 [features]
 # Testing the Swift side of this requires compiling with SIGNAL_MEDIA_SUPPORTED enabled for both Swift and C:

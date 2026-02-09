@@ -1,0 +1,32 @@
+{
+  "name": "libsignal React Native Build",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "github.copilot",
+        "github.copilot-chat"
+      ]
+    }
+  },
+  "mounts": [
+    "source=libsignal-cargo-cache,target=/usr/local/cargo/registry,type=volume",
+    "source=libsignal-cargo-git,target=/usr/local/cargo/git,type=volume",
+    "source=libsignal-target,target=${containerWorkspaceFolder}/target,type=volume"
+  ],
+  "containerEnv": {
+    "ANDROID_HOME": "/opt/android-sdk",
+    "ANDROID_NDK_HOME": "/opt/android-sdk/ndk/27.1.12297006",
+    "CMAKE_GENERATOR": "Ninja"
+  },
+  "postCreateCommand": ".devcontainer/post-create.sh",
+  "remoteUser": "vscode"
+}
