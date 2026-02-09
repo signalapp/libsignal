@@ -153,6 +153,9 @@ def main(args: Optional[List[str]] = None) -> int:
     cargo_env['RUSTFLAGS'] += ' --cfg aes_armv8'
     # Access tokio's unstable metrics
     cargo_env['RUSTFLAGS'] += ' --cfg tokio_unstable'
+    # Work around CMake bug introduced in cmake-rs v1.49.0
+    # https://github.com/rust-lang/cmake-rs/pull/158#issuecomment-1544782070
+    cargo_env['CMAKE_ARGS'] = '-DCMAKE_SYSTEM_NAME='
     # Strip absolute paths
     for path in build_helpers.rust_paths_to_remap():
         cargo_env['RUSTFLAGS'] += f' --remap-path-prefix {path}='

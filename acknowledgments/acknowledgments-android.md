@@ -2592,7 +2592,7 @@ limitations under the License.
 
 ```
 
-## boring 4.18.0
+## boring 4.21.1
 
 ```
 Copyright 2011-2017 Google Inc.
@@ -2852,7 +2852,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-## boring-sys 4.18.0
+## boring-sys 4.21.1
 
 ```
 /* Copyright (c) 2015, Google Inc.
@@ -3103,7 +3103,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## backtrace 0.3.76, cc 1.2.52, cfg-if 1.0.4, cmake 0.1.48, find-msvc-tools 0.1.7, pkg-config 0.3.32, rustc-demangle 0.1.26, socket2 0.6.1
+## backtrace 0.3.76, cc 1.2.52, cfg-if 1.0.4, cmake 0.1.57, find-msvc-tools 0.1.7, pkg-config 0.3.32, rustc-demangle 0.1.26, socket2 0.6.1
 
 ```
 Copyright (c) 2014 Alex Crichton
@@ -3134,7 +3134,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## boring-sys 4.18.0
+## boring-sys 4.21.1
 
 ```
 Copyright (c) 2014 Alex Crichton
@@ -3668,7 +3668,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## boring-sys 4.18.0
+## boring-sys 4.21.1
 
 ```
 Copyright (c) 2015-2016 the fiat-crypto authors (see
@@ -4006,7 +4006,7 @@ SOFTWARE.
 
 ```
 
-## tokio-boring 4.18.0
+## tokio-boring 4.21.1
 
 ```
 Copyright (c) 2016 Tokio contributors
@@ -7465,7 +7465,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 ```
 
-## boring-sys 4.18.0
+## boring-sys 4.21.1
 
 ```
 /* ====================================================================

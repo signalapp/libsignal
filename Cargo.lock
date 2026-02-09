@@ -453,8 +453,8 @@ dependencies = [
 
 [[package]]
 name = "boring"
-version = "4.18.0"
-source = "git+https://github.com/signalapp/boring?tag=signal-v4.18.0#81d4aa19ac6c5af99238ff0bf9328b381ccebcdd"
+version = "4.21.1"
+source = "git+https://github.com/signalapp/boring?tag=signal-v4.21.1#a721d89d087eec6ed35cbe6bb6490bfdb3bdedeb"
 dependencies = [
  "bitflags",
  "boring-sys",
@@ -465,10 +465,9 @@ dependencies = [
 
 [[package]]
 name = "boring-sys"
-version = "4.18.0"
-source = "git+https://github.com/signalapp/boring?tag=signal-v4.18.0#81d4aa19ac6c5af99238ff0bf9328b381ccebcdd"
+version = "4.21.1"
+source = "git+https://github.com/signalapp/boring?tag=signal-v4.21.1#a721d89d087eec6ed35cbe6bb6490bfdb3bdedeb"
 dependencies = [
- "autocfg",
  "bindgen",
  "cmake",
  "fs_extra",
@@ -712,9 +711,9 @@ checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
 name = "cmake"
-version = "0.1.48"
+version = "0.1.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8ad8cef104ac57b68b89df3208164d228503abbdce70f6880ffa3d970e7443a"
+checksum = "75443c44cd6b379beb8c5b45d85d0773baf31cce901fe7bb252f4eff3008ef7d"
 dependencies = [
  "cc",
 ]
@@ -2896,7 +2895,6 @@ dependencies = [
 name = "libsignal-node"
 version = "0.87.2"
 dependencies = [
- "cmake",
  "futures",
  "libsignal-bridge",
  "libsignal-bridge-testing",
@@ -5121,8 +5119,8 @@ dependencies = [
 
 [[package]]
 name = "tokio-boring"
-version = "4.18.0"
-source = "git+https://github.com/signalapp/boring?tag=signal-v4.18.0#81d4aa19ac6c5af99238ff0bf9328b381ccebcdd"
+version = "4.21.1"
+source = "git+https://github.com/signalapp/boring?tag=signal-v4.21.1#a721d89d087eec6ed35cbe6bb6490bfdb3bdedeb"
 dependencies = [
  "boring",
  "boring-sys",

@@ -2664,7 +2664,7 @@ limitations under the License.
 			<key>License</key>
 			<string>Apache License 2.0</string>
 			<key>Title</key>
-			<string>boring 4.18.0</string>
+			<string>boring 4.21.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -2952,7 +2952,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 			<key>License</key>
 			<string>ISC License</string>
 			<key>Title</key>
-			<string>boring-sys 4.18.0</string>
+			<string>boring-sys 4.21.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -3291,7 +3291,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>backtrace 0.3.76, cc 1.2.52, cfg-if 1.0.4, cmake 0.1.48, find-msvc-tools 0.1.7, rustc-demangle 0.1.26, socket2 0.6.1</string>
+			<string>backtrace 0.3.76, cc 1.2.52, cfg-if 1.0.4, cmake 0.1.57, find-msvc-tools 0.1.7, rustc-demangle 0.1.26, socket2 0.6.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -3327,7 +3327,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>boring-sys 4.18.0</string>
+			<string>boring-sys 4.21.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -3861,7 +3861,7 @@ SOFTWARE.</string>
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>boring-sys 4.18.0</string>
+			<string>boring-sys 4.21.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -4254,7 +4254,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>tokio-boring 4.18.0</string>
+			<string>tokio-boring 4.21.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -8009,7 +8009,7 @@ Exhibit B - &quot;Incompatible With Secondary Licenses&quot; Notice
 			<key>License</key>
 			<string>OpenSSL License</string>
 			<key>Title</key>
-			<string>boring-sys 4.18.0</string>
+			<string>boring-sys 4.21.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
