@@ -12,6 +12,7 @@ use libsignal_net_grpc::proto::chat::account::*;
 use libsignal_net_grpc::proto::chat::errors;
 
 use super::{GrpcServiceProvider, OverGrpc, log_and_send};
+use crate::api::usernames::validate_username_from_link;
 use crate::api::{RequestError, Unauth};
 use crate::logging::{Redact, RedactHex};
 
@@ -57,14 +58,42 @@ impl<T: GrpcServiceProvider> crate::api::usernames::UnauthenticatedChatApi<OverG
 
     async fn look_up_username_link(
         &self,
-        _uuid: uuid::Uuid,
-        _entropy: &[u8; usernames::constants::USERNAME_LINK_ENTROPY_SIZE],
+        uuid: uuid::Uuid,
+        entropy: &[u8; usernames::constants::USERNAME_LINK_ENTROPY_SIZE],
     ) -> Result<Option<usernames::Username>, RequestError<usernames::UsernameLinkError>> {
-        unimplemented!();
+        let mut account_service = AccountsAnonymousClient::new(self.0.service());
+        let request = LookupUsernameLinkRequest {
+            username_link_handle: uuid.as_bytes().to_vec(),
+        };
+        let log_safe_description = Redact(&request).to_string();
+        let LookupUsernameLinkResponse { response } =
+            log_and_send("unauth", &log_safe_description, || {
+                account_service.lookup_username_link(request)
+            })
+            .await?
+            .into_inner();
+
+        let response = response.ok_or_else(|| RequestError::Unexpected {
+            log_safe: "missing response".to_owned(),
+        })?;
+
+        let encrypted_username = match response {
+            lookup_username_link_response::Response::UsernameCiphertext(ciphertext) => ciphertext,
+            lookup_username_link_response::Response::NotFound(errors::NotFound {}) => {
+                return Ok(None);
+            }
+        };
+
+        let plaintext_username = usernames::decrypt_username(entropy, &encrypted_username)
+            .map_err(RequestError::Other)?;
+
+        let validated_username = validate_username_from_link(&plaintext_username)?;
+
+        Ok(Some(validated_username))
     }
 }
 
-impl std::fmt::Display for Redact<&'_ LookupUsernameHashRequest> {
+impl std::fmt::Display for Redact<LookupUsernameHashRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(LookupUsernameHashRequest { username_hash }) = self;
         f.debug_struct("LookupUsernameHash")
@@ -73,8 +102,25 @@ impl std::fmt::Display for Redact<&'_ LookupUsernameHashRequest> {
     }
 }
 
+impl std::fmt::Display for Redact<LookupUsernameLinkRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(LookupUsernameLinkRequest {
+            username_link_handle,
+        }) = self;
+        f.debug_struct("LookupUsernameLink")
+            .field(
+                "username_link_handle",
+                &uuid::Uuid::from_slice(username_link_handle)
+                    .ok()
+                    .map(Redact),
+            )
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use data_encoding_macro::base64url_nopad;
     use futures_util::FutureExt as _;
     use libsignal_net_grpc::proto::chat::common::{IdentityType, ServiceIdentifier};
     use test_case::test_case;
@@ -137,5 +183,42 @@ mod test {
             .look_up_username_hash(hash)
             .now_or_never()
             .expect("sync")
+    }
+
+    const EXPECTED_USERNAME: &str = "moxie.01";
+    const ENCRYPTED_USERNAME: &[u8] = &base64url_nopad!(
+        "kj5ah-VbEgjpfJsNt-Wto2H626DRmJSVpYPy0yPOXA8kiSFkBCD8ysFlJ-Z3MhiAnt_R3Nm7ZY0W5fiRDLVbhaE2z-KO2xdf5NcVbkewCzhvveecS3hHskDp1aSfbvwTZNNGPmAuKWvJ1MPdHzsF0w"
+    );
+    const ENCRYPTED_USERNAME_ENTROPY: [u8; usernames::constants::USERNAME_LINK_ENTROPY_SIZE] =
+        const_str::hex!("4302c613c092a51c5394becffeb6f697300a605348e93f03c3db95e0b03d28f1");
+
+    #[test_case(ok(LookupUsernameLinkResponse {
+        response: Some(lookup_username_link_response::Response::UsernameCiphertext(ENCRYPTED_USERNAME.to_vec()))
+    }) => matches Ok(Some(username)) if username == EXPECTED_USERNAME)]
+    #[test_case(ok(LookupUsernameLinkResponse {
+        response: Some(lookup_username_link_response::Response::UsernameCiphertext(b"!garbage!".to_vec()))
+    }) => matches Err(RequestError::Other(usernames::UsernameLinkError::UsernameLinkDataTooShort)))]
+    #[test_case(ok(LookupUsernameLinkResponse {
+        response: Some(lookup_username_link_response::Response::NotFound(Default::default()))
+    }) => matches Ok(None))]
+    #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
+    fn test_link_lookup(
+        response: http::Response<Vec<u8>>,
+    ) -> Result<Option<String>, RequestError<usernames::UsernameLinkError>> {
+        let validator = RequestValidator {
+            expected: req(
+                "/org.signal.chat.account.AccountsAnonymous/LookupUsernameLink",
+                LookupUsernameLinkRequest {
+                    username_link_handle: uuid::Uuid::nil().as_bytes().to_vec(),
+                },
+            ),
+            response,
+        };
+
+        Unauth(&validator)
+            .look_up_username_link(uuid::Uuid::nil(), &ENCRYPTED_USERNAME_ENTROPY)
+            .now_or_never()
+            .expect("sync")
+            .map(|u| u.map(|u| u.to_string()))
     }
 }

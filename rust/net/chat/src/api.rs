@@ -9,6 +9,7 @@
 use std::convert::Infallible;
 
 use libsignal_net::infra::errors::LogSafeDisplay;
+use ref_cast::RefCast as _;
 
 pub mod keytrans;
 pub mod messages;
@@ -19,21 +20,13 @@ pub mod usernames;
 /// Marker wrapper for unauthenticated connections.
 ///
 /// You can get `&Unauth<Connection>` from `&Connection` using `Into`.
-#[derive(derive_more::Deref)]
+#[derive(derive_more::Deref, ref_cast::RefCast)]
 #[repr(transparent)]
 pub struct Unauth<T>(pub T);
 
 impl<'a, T> From<&'a T> for &'a Unauth<T> {
     fn from(value: &'a T) -> Self {
-        // SAFETY: We use repr(transparent) to ensure that T and Unauth<T> have the same
-        // representation. Therefore, every valid reference to a T is also a valid reference to an
-        // Unauth T. (The standard library does the same thing for std::array::from_ref.)
-        unsafe {
-            std::ptr::from_ref(value)
-                .cast::<Unauth<T>>()
-                .as_ref()
-                .expect("started with a reference")
-        }
+        Unauth::ref_cast(value)
     }
 }
 

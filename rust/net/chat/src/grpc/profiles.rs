@@ -16,7 +16,7 @@ use crate::api::{RequestError, Unauth};
 use crate::grpc::{GrpcServiceProvider, OverGrpc, log_and_send};
 use crate::logging::Redact;
 
-impl std::fmt::Display for Redact<&'_ CheckAccountExistenceRequest> {
+impl std::fmt::Display for Redact<CheckAccountExistenceRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(CheckAccountExistenceRequest { service_identifier }) = self;
         f.debug_struct("CheckAccountExistenceRequest")

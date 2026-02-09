@@ -183,6 +183,7 @@ rand_core = "0.9"
 rangemap = "1.5.1"
 rayon = "1.8.0"
 rcgen = "0.14.0"
+ref-cast = "1.0.25"
 rustls = { version = "0.23.25", default-features = false }
 rustls-platform-verifier = "0.5.1"
 scopeguard = "1.0"

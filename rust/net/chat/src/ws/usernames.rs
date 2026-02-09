@@ -14,6 +14,7 @@ use libsignal_net_grpc::proto::chat::services;
 use serde_with::serde_as;
 
 use super::{CustomError, OverWs, ResponseError, TryIntoResponse, WsConnection};
+use crate::api::usernames::validate_username_from_link;
 use crate::api::{RequestError, Unauth};
 use crate::logging::{Redact, RedactBase64};
 
@@ -120,31 +121,7 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for 
         let plaintext_username = usernames::decrypt_username(entropy, &encrypted_username)
             .map_err(RequestError::Other)?;
 
-        let validated_username = usernames::Username::new(&plaintext_username).map_err(|e| {
-            // Exhaustively match UsernameError to make sure there's nothing we shouldn't log.
-            let _username_error_carries_no_information_that_would_be_bad_to_log = match e {
-                usernames::UsernameError::MissingSeparator
-                | usernames::UsernameError::NicknameCannotBeEmpty
-                | usernames::UsernameError::NicknameCannotStartWithDigit
-                | usernames::UsernameError::BadNicknameCharacter
-                | usernames::UsernameError::NicknameTooShort
-                | usernames::UsernameError::NicknameTooLong
-                | usernames::UsernameError::DiscriminatorCannotBeEmpty
-                | usernames::UsernameError::DiscriminatorCannotBeZero
-                | usernames::UsernameError::DiscriminatorCannotBeSingleDigit
-                | usernames::UsernameError::DiscriminatorCannotHaveLeadingZeros
-                | usernames::UsernameError::BadDiscriminatorCharacter
-                | usernames::UsernameError::DiscriminatorTooLarge => {}
-            };
-            log::warn!("username link decrypted to an invalid username: {e}");
-            log::debug!(
-                "username link decrypted to '{plaintext_username}', which is not valid: {e}"
-            );
-            // The user didn't ever type this username, so the precise way in which it's invalid
-            // isn't important. Treat this equivalent to having found garbage data in the link. This
-            // simplifies error handling for callers.
-            RequestError::Other(usernames::UsernameLinkError::InvalidDecryptedDataStructure)
-        })?;
+        let validated_username = validate_username_from_link(&plaintext_username)?;
 
         Ok(Some(validated_username))
     }

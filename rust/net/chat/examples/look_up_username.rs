@@ -6,6 +6,8 @@
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use base64::Engine as _;
+use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use clap::{Parser, ValueEnum};
 use libsignal_net::certs::SIGNAL_ROOT_CERTIFICATES;
 use libsignal_net::chat::test_support::simple_chat_connection;
@@ -97,7 +99,56 @@ async fn main() -> anyhow::Result<()> {
         ws_connection = Some(Unauth(chat_connection));
     }
 
-    let username = usernames::Username::new(&username)?;
+    let username = if let Some(offset) = username.find("//signal.me/#eu/") {
+        let payload = username[offset..]
+            .strip_prefix("//signal.me/#eu/")
+            .and_then(|payload| BASE64_URL_SAFE_NO_PAD.decode(payload).ok())
+            .ok_or_else(|| anyhow!("invalid username link"))?;
+        let (entropy, handle_uuid) = payload
+            .split_first_chunk::<{ usernames::constants::USERNAME_LINK_ENTROPY_SIZE }>()
+            .ok_or_else(|| anyhow!("invalid username link payload"))?;
+        let handle_uuid = uuid::Uuid::from_slice(handle_uuid)
+            .map_err(|_| anyhow!("invalid username link UUID"))?;
+        let username = match (&grpc_connection, &ws_connection) {
+            (Some(grpc_connection), Some(ws_connection)) => {
+                log::info!("trying both gRPC and websocket...");
+                let (grpc_result, ws_result) = futures_util::future::try_join(
+                    grpc_connection.look_up_username_link(handle_uuid, entropy),
+                    ws_connection.look_up_username_link(handle_uuid, entropy),
+                )
+                .await?;
+                assert_eq!(
+                    grpc_result, ws_result,
+                    "connections disagreed on the answer?"
+                );
+                ws_result
+            }
+            (Some(grpc_connection), None) => {
+                log::info!("sending request over gRPC...");
+                grpc_connection
+                    .look_up_username_link(handle_uuid, entropy)
+                    .await?
+            }
+            (None, Some(ws_connection)) => {
+                log::info!("sending request over websocket...");
+                ws_connection
+                    .look_up_username_link(handle_uuid, entropy)
+                    .await?
+            }
+            (None, None) => unreachable!("we established at least one connection"),
+        };
+
+        let Some(username) = username else {
+            log::info!("username link not found");
+            return Ok(());
+        };
+
+        log::info!("found username {username}");
+        username
+    } else {
+        usernames::Username::new(&username)?
+    };
+
     let username_hash = username.hash();
 
     let result = match (grpc_connection, ws_connection) {

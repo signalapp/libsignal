@@ -59,3 +59,33 @@ where
         }
     }
 }
+
+/// Wraps [`usernames::Username::new`] with error handling appropriate for a username retrieved from
+/// a link.
+pub(crate) fn validate_username_from_link(
+    username: &str,
+) -> Result<usernames::Username, RequestError<usernames::UsernameLinkError>> {
+    usernames::Username::new(username).map_err(|e| {
+        // Exhaustively match UsernameError to make sure there's nothing we shouldn't log.
+        match e {
+            usernames::UsernameError::MissingSeparator
+            | usernames::UsernameError::NicknameCannotBeEmpty
+            | usernames::UsernameError::NicknameCannotStartWithDigit
+            | usernames::UsernameError::BadNicknameCharacter
+            | usernames::UsernameError::NicknameTooShort
+            | usernames::UsernameError::NicknameTooLong
+            | usernames::UsernameError::DiscriminatorCannotBeEmpty
+            | usernames::UsernameError::DiscriminatorCannotBeZero
+            | usernames::UsernameError::DiscriminatorCannotBeSingleDigit
+            | usernames::UsernameError::DiscriminatorCannotHaveLeadingZeros
+            | usernames::UsernameError::BadDiscriminatorCharacter
+            | usernames::UsernameError::DiscriminatorTooLarge => {}
+        }
+        log::warn!("username link decrypted to an invalid username: {e}");
+        log::debug!("username link decrypted to '{username}', which is not valid: {e}");
+        // The user didn't ever type this username, so the precise way in which it's invalid
+        // isn't important. Treat this equivalent to having found garbage data in the link. This
+        // simplifies error handling for callers.
+        RequestError::Other(usernames::UsernameLinkError::InvalidDecryptedDataStructure)
+    })
+}
