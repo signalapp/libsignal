@@ -10,6 +10,7 @@ pub use neon::context::Context;
 pub use neon::prelude::*;
 pub use neon::types::buffer::TypedArray;
 pub use signal_neon_futures::call_method;
+use signal_neon_futures::{JsFuture, JsPromiseResult};
 
 /// Used to keep track of all generated entry points.
 ///
@@ -46,6 +47,8 @@ mod chat;
 mod storage;
 
 pub use storage::*;
+
+use crate::support::WithContext;
 
 /// A function pointer referring to a Neon-based Node entry point.
 #[doc(hidden)]
@@ -90,6 +93,73 @@ impl RootAndChannel {
         })
     }
 
+    /// Scaffolding to invoke a callback on the object owned by `self`, and return a Future for its
+    /// result.
+    ///
+    /// Concretely, `operation` will be sent to the JavaScript thread, and is expected to produce a
+    /// JavaScript Promise. A resolved promise will convert the result back to Rust using
+    /// [`SimpleArgTypeInfo`]; a rejected promise will stringify the error and convert it to the
+    /// error type of the caller's choice.
+    ///
+    /// Used by [`bridge_callbacks`](libsignal_bridge_macros::bridge_callbacks), but can be invoked
+    /// directly as well.
+    pub fn get_promise<F, T, E>(&self, name: &'static str, operation: F) -> JsFuture<Result<T, E>>
+    where
+        F: for<'a> FnOnce(&mut Cx<'a>, Handle<'a, JsObject>) -> NeonResult<Handle<'a, JsObject>>
+            + Send
+            + 'static,
+        T: SimpleArgTypeInfo + Send + 'static,
+        E: From<WithContext<String>> + Send,
+    {
+        /// Generates a closure to convert the promise's result type back to Rust.
+        ///
+        /// This is a separate function to keep it from being instantiated as many times as
+        /// `get_promise`, which will have a unique instantiation for every callback.
+        ///
+        /// Skip past this function to see the implementation of `get_promise`.
+        fn handle_result<T, E>(
+            name: &'static str,
+        ) -> impl for<'a> FnOnce(&mut FunctionContext<'a>, JsPromiseResult<'a>) -> Result<T, E>
+        where
+            T: SimpleArgTypeInfo,
+            E: From<WithContext<String>>,
+        {
+            move |cx, result| {
+                result
+                    .and_then(|value| {
+                        cx.try_catch(|cx| {
+                            let value = value.downcast_or_throw(cx)?;
+                            T::convert_from(cx, value)
+                        })
+                    })
+                    .map_err(|error| {
+                        let description = error.to_string(cx).map(|s| s.value(cx)).unwrap_or_else(
+                            |_: neon::result::Throw| "<unknown JavaScript error>".into(),
+                        );
+                        WithContext {
+                            operation: name,
+                            inner: description,
+                        }
+                        .into()
+                    })
+            }
+        }
+
+        let root = self.root.clone();
+        JsFuture::get_promise(&self.js_channel, move |cx| {
+            let object = root.to_inner(cx);
+            let result = operation(cx, object);
+            root.finalize(cx);
+            result
+        })
+        .then(handle_result(name))
+    }
+
+    /// Runs an operation on the JavaScript thread, with the object owned by `self` available for
+    /// use.
+    ///
+    /// This is a "fire and forget" operation; it does not complete synchronously, and it will not
+    /// do anything but log error results.
     pub fn send_and_log_on_error<F>(&self, name: &'static str, operation: F)
     where
         F: for<'a> FnOnce(&mut Cx<'a>, Handle<'a, JsObject>) -> NeonResult<()> + Send + 'static,

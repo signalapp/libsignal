@@ -7,107 +7,45 @@ use std::cell::RefCell;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use libsignal_bridge_macros::bridge_callbacks;
 use signal_neon_futures::*;
 use uuid::Uuid;
 
 use super::*;
+use crate::node;
 
-pub struct NodePreKeyStore {
-    js_channel: Channel,
-    store_object: Arc<Root<JsObject>>,
-}
+/// A wrapper struct so we can implement e.g. [`PreKeyStore`] for all `BridgePreKeyStore`s.
+///
+/// Trying to do so directly would violate the [orphan rule][], because rustc doesn't know
+/// `BridgePreKeyStore` is only implemented by a closed set of types defined in this crate.
+///
+/// [orphan rule]: https://doc.rust-lang.org/book/ch20-02-advanced-traits.html#implementing-external-traits-with-the-newtype-pattern
+// TODO: Merge with the one in ffi/storage.
+pub struct BridgedStore<T>(pub T);
 
-impl NodePreKeyStore {
-    pub(crate) fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
-        Self {
-            js_channel: cx.channel(),
-            store_object: Arc::new(store.root(cx)),
-        }
-    }
-
-    async fn do_get_pre_key(&self, id: u32) -> Result<PreKeyRecord, String> {
-        let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_channel, move |cx| {
-            let store_object = store_object_shared.to_inner(cx);
-            let id = id.convert_into(cx)?;
-            let result = call_method(cx, store_object, "_getPreKey", [id.upcast()])?;
-            let result = result.downcast_or_throw(cx)?;
-            store_object_shared.finalize(cx);
-            Ok(result)
-        })
-        .then(|cx, result| match result {
-            Ok(value) => match value.downcast::<DefaultJsBox<PreKeyRecord>, _>(cx) {
-                Ok(obj) => Ok((***obj).clone()),
-                Err(_) => Err("result must be an object".to_owned()),
-            },
-            Err(error) => Err(error
-                .to_string(cx)
-                .expect("can convert to string")
-                .value(cx)),
-        })
-        .await
-    }
-
-    async fn do_save_pre_key(&self, id: u32, record: PreKeyRecord) -> Result<(), String> {
-        let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_channel, move |cx| {
-            let store_object = store_object_shared.to_inner(cx);
-            let id: Handle<JsNumber> = id.convert_into(cx)?;
-            let record: Handle<JsValue> = record.convert_into(cx)?;
-            let result = call_method(cx, store_object, "_savePreKey", [id.upcast(), record])?
-                .downcast_or_throw(cx)?;
-            store_object_shared.finalize(cx);
-            Ok(result)
-        })
-        .then(|cx, result| match result {
-            Ok(value) => match value.downcast::<JsUndefined, _>(cx) {
-                Ok(_) => Ok(()),
-                Err(_) => Err("unexpected result from _savePreKey".into()),
-            },
-            Err(error) => Err(error
-                .to_string(cx)
-                .expect("can convert to string")
-                .value(cx)),
-        })
-        .await
-    }
-
-    async fn do_remove_pre_key(&self, id: u32) -> Result<(), String> {
-        let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_channel, move |cx| {
-            let store_object = store_object_shared.to_inner(cx);
-            let id: Handle<JsNumber> = id.convert_into(cx)?;
-            let result = call_method(cx, store_object, "_removePreKey", [id.upcast()])?
-                .downcast_or_throw(cx)?;
-            store_object_shared.finalize(cx);
-            Ok(result)
-        })
-        .then(|cx, result| match result {
-            Ok(value) => match value.downcast::<JsUndefined, _>(cx) {
-                Ok(_) => Ok(()),
-                Err(_) => Err("unexpected result from _removePreKey".into()),
-            },
-            Err(error) => Err(error
-                .to_string(cx)
-                .expect("can convert to string")
-                .value(cx)),
-        })
-        .await
+impl<T: Finalize> Finalize for BridgedStore<T> {
+    fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
+        self.0.finalize(cx);
     }
 }
 
-impl Finalize for NodePreKeyStore {
-    fn finalize<'b, C: neon::prelude::Context<'b>>(self, cx: &mut C) {
-        self.store_object.finalize(cx)
-    }
+/// A bridge-friendly version of [`PreKeyStore`].
+// TODO: merge with the one in ffi/storage.
+#[bridge_callbacks(ffi = false, jni = false)]
+pub(crate) trait BridgePreKeyStore {
+    async fn load_pre_key(&self, id: u32) -> Result<Option<PreKeyRecord>, SignalProtocolError>;
+    async fn store_pre_key(&self, id: u32, record: PreKeyRecord)
+    -> Result<(), SignalProtocolError>;
+    async fn remove_pre_key(&self, id: u32) -> Result<(), SignalProtocolError>;
 }
 
 #[async_trait(?Send)]
-impl PreKeyStore for NodePreKeyStore {
+impl<T: BridgePreKeyStore> PreKeyStore for BridgedStore<T> {
     async fn get_pre_key(&self, pre_key_id: PreKeyId) -> Result<PreKeyRecord, SignalProtocolError> {
-        self.do_get_pre_key(pre_key_id.into())
-            .await
-            .map_err(|s| js_error_to_rust("getPreKey", s))
+        self.0
+            .load_pre_key(pre_key_id.into())
+            .await?
+            .ok_or(SignalProtocolError::InvalidPreKeyId)
     }
 
     async fn save_pre_key(
@@ -115,15 +53,13 @@ impl PreKeyStore for NodePreKeyStore {
         pre_key_id: PreKeyId,
         record: &PreKeyRecord,
     ) -> Result<(), SignalProtocolError> {
-        self.do_save_pre_key(pre_key_id.into(), record.clone())
+        self.0
+            .store_pre_key(pre_key_id.into(), record.clone())
             .await
-            .map_err(|s| js_error_to_rust("savePreKey", s))
     }
 
     async fn remove_pre_key(&mut self, pre_key_id: PreKeyId) -> Result<(), SignalProtocolError> {
-        self.do_remove_pre_key(pre_key_id.into())
-            .await
-            .map_err(|s| js_error_to_rust("removePreKey", s))
+        self.0.remove_pre_key(pre_key_id.into()).await
     }
 }
 

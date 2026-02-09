@@ -315,6 +315,7 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
     let sig = &item.sig;
     let req_name = &item.sig.ident;
     let js_operation_name = req_name.to_string().to_lower_camel_case();
+    let result_ty = result_type(&sig.output);
 
     // fn operation(foo: u32) {
     //     self.0.send_and_log_on_error("operation", move |cx, object| {
@@ -358,20 +359,40 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
             Some(format_ident!("js_{}", arg_name.ident).into_token_stream())
         }
     });
-    let implementation = quote! {
-        // #sig carries everything from `fn` to the return type and possible where-clause.
-        // All we provide is the body.
-        #sig {
-            self.0.send_and_log_on_error(#js_operation_name, move |cx, object| {
-                #(#arg_conversions;)*
-                let _result = node::call_method(
-                    cx,
-                    object,
+    let implementation = if sig.asyncness.is_some() {
+        quote! {
+            // #sig carries everything from `fn` to the return type and possible where-clause.
+            // All we provide is the body.
+            #sig {
+                self.0.get_promise(
                     #js_operation_name,
-                    [#(#converted_args),*],
-                )?;
-                Ok(())
-            })
+                    move |cx, object| {
+                        #(#arg_conversions;)*
+                        node::call_method(
+                            cx,
+                            object,
+                            #js_operation_name,
+                            [#(#converted_args),*],
+                        )?.downcast_or_throw(cx)
+                    },
+                )
+                .await
+            }
+        }
+    } else {
+        quote! {
+            #sig {
+                self.0.send_and_log_on_error(#js_operation_name, move |cx, object| {
+                    #(#arg_conversions;)*
+                    let _result = node::call_method(
+                        cx,
+                        object,
+                        #js_operation_name,
+                        [#(#converted_args),*],
+                    )?;
+                    Ok(())
+                })
+            }
         }
     };
 
@@ -386,7 +407,18 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
             Some(format!("{}: {}", arg_name.ident, arg.ty.to_token_stream()))
         }
     });
-    let ts_decl = format!("{js_operation_name}({}): void;", js_arg_decls.format(", "));
+
+    let result_string = if sig.asyncness.is_some() {
+        format!("Promise<{result_ty}>")
+    } else {
+        result_ty.to_string()
+    };
+    let ts_decl = format!(
+        "{}({}): {};",
+        js_operation_name,
+        js_arg_decls.format(", "),
+        result_string
+    );
 
     Ok(Callback {
         implementation,

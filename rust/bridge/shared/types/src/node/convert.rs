@@ -354,6 +354,19 @@ impl SimpleArgTypeInfo for libsignal_core::E164 {
     }
 }
 
+impl SimpleArgTypeInfo for Option<PreKeyRecord> {
+    type ArgType = JsValue;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        if foreign.downcast::<JsNull, _>(cx).is_ok() {
+            return Ok(None);
+        }
+        let non_optional_value: Handle<DefaultJsBox<JsBoxContentsFor<PreKeyRecord>>> =
+            foreign.downcast_or_throw(cx)?;
+        Ok(Some(non_optional_value.as_inner().0.clone()))
+    }
+}
+
 impl SimpleArgTypeInfo for AccountEntropyPool {
     type ArgType = <String as SimpleArgTypeInfo>::ArgType;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
@@ -380,6 +393,17 @@ impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSend
                 })?;
             Ok(Self::Group(token))
         }
+    }
+}
+
+// Used for callback results.
+impl SimpleArgTypeInfo for () {
+    type ArgType = JsUndefined;
+    fn convert_from(
+        _cx: &mut FunctionContext,
+        _foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self> {
+        Ok(())
     }
 }
 
@@ -738,12 +762,26 @@ macro_rules! bridge_trait {
 }
 
 bridge_trait!(IdentityKeyStore);
-bridge_trait!(PreKeyStore);
+// bridge_trait!(PreKeyStore);
 bridge_trait!(SenderKeyStore);
 bridge_trait!(SessionStore);
 bridge_trait!(SignedPreKeyStore);
 bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
+
+impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn PreKeyStore {
+    type ArgType = JsObject;
+    type StoredType = BridgedStore<NodeBridgePreKeyStore>;
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        Ok(BridgedStore(NodeBridgePreKeyStore::new(cx, foreign)?))
+    }
+    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
+        stored
+    }
+}
 
 impl SimpleArgTypeInfo for Box<dyn ChatListener> {
     type ArgType = JsObject;

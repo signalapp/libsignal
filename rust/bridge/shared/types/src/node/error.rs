@@ -15,7 +15,7 @@ use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError
 use signal_media::sanitize::webp::{Error as WebpError, ParseError as WebpParseError};
 
 use super::*;
-use crate::support::IllegalArgumentError;
+use crate::support::{IllegalArgumentError, WithContext};
 
 static ERRORS_MODULE: LocalKey<Root<JsObject>> = LocalKey::new();
 const ERROR_CLASS_NAME: &str = "LibSignalErrorBase";
@@ -90,8 +90,8 @@ impl ThrownException {
             ThrownException::String(
                 error
                     .to_string(cx)
-                    .expect("can convert to string")
-                    .value(cx),
+                    .map(|s| s.value(cx))
+                    .unwrap_or_else(|_: neon::result::Throw| "<unknown JavaScript error>".into()),
             )
         }
     }
@@ -955,4 +955,11 @@ impl std::error::Error for CallbackError {}
 /// Converts a JavaScript error message to a [`SignalProtocolError::ApplicationCallbackError`].
 pub fn js_error_to_rust(func: &'static str, err: String) -> SignalProtocolError {
     SignalProtocolError::ApplicationCallbackError(func, Box::new(CallbackError::new(err)))
+}
+
+impl From<WithContext<String>> for SignalProtocolError {
+    fn from(value: WithContext<String>) -> Self {
+        let WithContext { operation, inner } = value;
+        js_error_to_rust(operation, inner)
+    }
 }
