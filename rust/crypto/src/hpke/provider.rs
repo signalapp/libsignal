@@ -82,10 +82,10 @@ impl HpkeCrypto for CryptoProvider {
         let pk =
             PublicKey::from_djb_public_key_bytes(pk).map_err(|_| HpkeError::KemInvalidPublicKey)?;
         let sk = PrivateKey::deserialize(sk).map_err(|_| HpkeError::KemInvalidSecretKey)?;
-        Ok(sk
+        let shared_secret = sk
             .calculate_agreement(&pk)
-            .expect("cannot fail when using X25519")
-            .into_vec())
+            .map_err(|_| HpkeError::KemInvalidPublicKey)?;
+        Ok(shared_secret.into_vec())
     }
 
     fn secret_to_public(alg: KemAlgorithm, sk: &[u8]) -> Result<Vec<u8>, HpkeError> {

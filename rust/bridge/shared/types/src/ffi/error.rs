@@ -413,6 +413,7 @@ impl IntoFfiError for SignalProtocolError {
             Self::NoKeyTypeIdentifier
             | Self::BadKeyType(_)
             | Self::BadKeyLength(_, _)
+            | Self::InvalidKeyAgreement
             | Self::InvalidMacKeyLength(_)
             | Self::BadKEMKeyType(_)
             | Self::WrongKEMKeyType(_, _)

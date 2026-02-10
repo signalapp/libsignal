@@ -13,7 +13,7 @@ use sha2::{Digest, Sha512};
 use subtle::ConstantTimeEq;
 use x25519_dalek::{PublicKey, StaticSecret};
 
-const AGREEMENT_LENGTH: usize = 32;
+pub const AGREEMENT_LENGTH: usize = 32;
 pub const PRIVATE_KEY_LENGTH: usize = 32;
 pub const PUBLIC_KEY_LENGTH: usize = 32;
 pub const SIGNATURE_LENGTH: usize = 64;
@@ -37,6 +37,13 @@ impl PrivateKey {
         PrivateKey { secret }
     }
 
+    // Performs a raw X25519 Diffie-Hellman and returns the shared secret.
+    //
+    // Warning: This method does not validate input or output for malformation
+    // or low-order points. It is infallible and may return the all-zero shared
+    // secret for certain malicious inputs. Callers MAY validate the output as
+    // described in [RFC 7748 section
+    // 6.1](https://www.rfc-editor.org/rfc/rfc7748.html#section-6.1)
     pub fn calculate_agreement(
         &self,
         their_public_key: &[u8; PUBLIC_KEY_LENGTH],

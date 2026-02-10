@@ -300,6 +300,7 @@ impl JniError for SignalProtocolError {
             | SignalProtocolError::UnknownSealedSenderServerCertificateId(_)
             | SignalProtocolError::BadKeyType(_)
             | SignalProtocolError::BadKeyLength(_, _)
+            | SignalProtocolError::InvalidKeyAgreement
             | SignalProtocolError::InvalidMacKeyLength(_)
             | SignalProtocolError::BadKEMKeyType(_)
             | SignalProtocolError::WrongKEMKeyType(_, _)

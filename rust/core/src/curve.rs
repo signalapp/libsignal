@@ -38,6 +38,8 @@ pub enum CurveError {
     BadKeyType(u8),
     /// bad key length <{1}> for key with type <{0}>
     BadKeyLength(KeyType, usize),
+    /// invalid key agreement output (all-zero shared secret)
+    InvalidKeyAgreement,
 }
 
 impl std::error::Error for CurveError {}
@@ -295,7 +297,13 @@ impl PrivateKey {
         match (self.key, their_key.key) {
             (PrivateKeyData::DjbPrivateKey(priv_key), PublicKeyData::DjbPublicKey(pub_key)) => {
                 let private_key = curve25519::PrivateKey::from(priv_key);
-                Ok(Box::new(private_key.calculate_agreement(&pub_key)))
+                let shared: [u8; curve25519::AGREEMENT_LENGTH] =
+                    private_key.calculate_agreement(&pub_key);
+                if bool::from(shared.ct_eq(&[0u8; curve25519::AGREEMENT_LENGTH])) {
+                    // Reject the invalid all-zero shared secret in constant time
+                    return Err(CurveError::InvalidKeyAgreement);
+                }
+                Ok(Box::new(shared))
             }
         }
     }
