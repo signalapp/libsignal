@@ -98,7 +98,7 @@ impl RootAndChannel {
     ///
     /// Concretely, `operation` will be sent to the JavaScript thread, and is expected to produce a
     /// JavaScript Promise. A resolved promise will convert the result back to Rust using
-    /// [`SimpleArgTypeInfo`]; a rejected promise will stringify the error and convert it to the
+    /// [`CallbackResultTypeInfo`]; a rejected promise will stringify the error and convert it to the
     /// error type of the caller's choice.
     ///
     /// Used by [`bridge_callbacks`](libsignal_bridge_macros::bridge_callbacks), but can be invoked
@@ -108,7 +108,7 @@ impl RootAndChannel {
         F: for<'a> FnOnce(&mut Cx<'a>, Handle<'a, JsObject>) -> NeonResult<Handle<'a, JsObject>>
             + Send
             + 'static,
-        T: SimpleArgTypeInfo + Send + 'static,
+        T: CallbackResultTypeInfo + Send + 'static,
         E: From<WithContext<String>> + Send,
     {
         /// Generates a closure to convert the promise's result type back to Rust.
@@ -121,7 +121,7 @@ impl RootAndChannel {
             name: &'static str,
         ) -> impl for<'a> FnOnce(&mut FunctionContext<'a>, JsPromiseResult<'a>) -> Result<T, E>
         where
-            T: SimpleArgTypeInfo,
+            T: CallbackResultTypeInfo,
             E: From<WithContext<String>>,
         {
             move |cx, result| {
@@ -129,7 +129,7 @@ impl RootAndChannel {
                     .and_then(|value| {
                         cx.try_catch(|cx| {
                             let value = value.downcast_or_throw(cx)?;
-                            T::convert_from(cx, value)
+                            T::convert_from_callback(cx, value)
                         })
                     })
                     .map_err(|error| {

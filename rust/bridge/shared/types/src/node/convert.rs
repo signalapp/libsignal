@@ -192,6 +192,31 @@ where
     }
 }
 
+/// A variation of [`ArgTypeInfo`] for callback results.
+///
+/// All [`SimpleArgTypeInfo`] implementations are reusable for this, but the general [`ArgTypeInfo`]
+/// allows borrowing from the foreign value and a callback result can't do that.
+pub trait CallbackResultTypeInfo: Sized {
+    /// The JavaScript form of the argument (e.g. `JsNumber`).
+    type ResultType: neon::types::Value;
+    /// Converts the data in `foreign` to the Rust type.
+    fn convert_from_callback(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ResultType>,
+    ) -> NeonResult<Self>;
+}
+
+impl<T: SimpleArgTypeInfo> CallbackResultTypeInfo for T {
+    type ResultType = T::ArgType;
+
+    fn convert_from_callback(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ResultType>,
+    ) -> NeonResult<Self> {
+        Self::convert_from(cx, foreign)
+    }
+}
+
 // Implement AsyncArgTypeInfo for a slice of SessionRecords outside of
 // the node_bridge_as_handle macro since we don't want to use async for
 // the HsmEnclave module.
@@ -357,10 +382,13 @@ impl SimpleArgTypeInfo for libsignal_core::E164 {
     }
 }
 
-impl SimpleArgTypeInfo for Option<PreKeyRecord> {
-    type ArgType = JsValue;
+impl CallbackResultTypeInfo for Option<PreKeyRecord> {
+    type ResultType = JsValue;
 
-    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+    fn convert_from_callback(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ResultType>,
+    ) -> NeonResult<Self> {
         if foreign.downcast::<JsNull, _>(cx).is_ok() {
             return Ok(None);
         }
