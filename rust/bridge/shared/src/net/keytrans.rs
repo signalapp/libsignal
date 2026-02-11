@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::time::SystemTime;
+
 use itertools::Itertools;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::net::chat::UnauthenticatedChatConnection;
@@ -53,6 +55,8 @@ async fn KeyTransparency_Search(
     last_distinguished_tree_head: Box<[u8]>,
 ) -> Result<Vec<u8>, RequestError<Error>> {
     let username_hash = username_hash.map(UsernameHash::from);
+    let maybe_hash_search_key = username_hash.as_ref().map(|x| x.as_search_key());
+
     let config = environment.into_inner().env().keytrans_config;
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
@@ -78,7 +82,12 @@ async fn KeyTransparency_Search(
         })
         .await?;
 
-    maybe_partial_to_serialized_account_data(maybe_partial_result)
+    maybe_partial_result.into_serialized_account_data(
+        aci.as_search_key(),
+        e164.map(|x| x.as_search_key()),
+        maybe_hash_search_key,
+        SystemTime::now(),
+    )
 }
 
 #[bridge_io(TokioAsyncContext)]
@@ -99,6 +108,7 @@ async fn KeyTransparency_Monitor(
     is_self_monitor: bool,
 ) -> Result<Vec<u8>, RequestError<Error>> {
     let username_hash = username_hash.map(UsernameHash::from);
+    let maybe_hash_search_key = username_hash.as_ref().map(|x| x.as_search_key());
 
     let Some(account_data) = account_data else {
         return Err(invalid_request("account data not found in store"));
@@ -137,7 +147,12 @@ async fn KeyTransparency_Monitor(
         })
         .await?;
 
-    maybe_partial_to_serialized_account_data(maybe_partial_result)
+    maybe_partial_result.into_serialized_account_data(
+        aci.as_search_key(),
+        e164.map(|x| x.as_search_key()),
+        maybe_hash_search_key,
+        SystemTime::now(),
+    )
 }
 
 #[bridge_io(TokioAsyncContext)]
@@ -168,7 +183,7 @@ async fn KeyTransparency_Distinguished(
         })
         .await?;
 
-    let updated_distinguished = StoredTreeHead::from((tree_head, tree_root));
+    let updated_distinguished = LastTreeHead(tree_head, tree_root).into_stored(SystemTime::now());
     let serialized = updated_distinguished.encode_to_vec();
     Ok(serialized)
 }
@@ -214,11 +229,33 @@ fn try_decode_distinguished(bytes: Box<[u8]>) -> Result<LastTreeHead, RequestErr
         .ok_or(invalid_request("last distinguished tree is required"))
 }
 
-fn maybe_partial_to_serialized_account_data(
-    maybe_partial: MaybePartial<AccountData>,
-) -> Result<Vec<u8>, RequestError<Error>> {
-    maybe_partial
-        .map(|data| StoredAccountData::from(data).encode_to_vec())
+trait MaybePartialExt {
+    fn into_serialized_account_data(
+        self,
+        aci_search_key: Vec<u8>,
+        maybe_e164_search_key: Option<Vec<u8>>,
+        maybe_hash_search_key: Option<Vec<u8>>,
+        stored_at: SystemTime,
+    ) -> Result<Vec<u8>, RequestError<Error>>;
+}
+
+impl MaybePartialExt for MaybePartial<AccountData> {
+    fn into_serialized_account_data(
+        self,
+        aci_search_key: Vec<u8>,
+        maybe_e164_search_key: Option<Vec<u8>>,
+        maybe_hash_search_key: Option<Vec<u8>>,
+        stored_at: SystemTime,
+    ) -> Result<Vec<u8>, RequestError<Error>> {
+        self.map(|data| {
+            data.into_stored(
+                aci_search_key,
+                maybe_e164_search_key,
+                maybe_hash_search_key,
+                stored_at,
+            )
+            .encode_to_vec()
+        })
         .into_result()
         .map_err(|missing| {
             invalid_response(format!(
@@ -226,4 +263,5 @@ fn maybe_partial_to_serialized_account_data(
                 missing.iter().join(", ")
             ))
         })
+    }
 }

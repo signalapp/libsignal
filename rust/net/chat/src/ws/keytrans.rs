@@ -357,7 +357,7 @@ impl<T: WsConnection> LowLevelChatApi for Unauth<T> {
 mod test_support {
     use std::time::SystemTime;
 
-    use libsignal_keytrans::{ChatSearchResponse, StoredAccountData};
+    use libsignal_keytrans::ChatSearchResponse;
     use libsignal_net::chat::ChatConnection;
     use libsignal_net::env;
     use libsignal_net::infra::EnableDomainFronting;
@@ -428,7 +428,7 @@ mod test_support {
             &hex::encode(result.tree_root)
         );
 
-        let distinguished_tree = (result.tree_head, result.tree_root);
+        let distinguished_tree = LastTreeHead(result.tree_head, result.tree_root);
 
         prompt("Now advance the tree (and press ENTER)");
 
@@ -463,12 +463,23 @@ mod test_support {
             "The tree did not advance!"
         );
 
-        println!("Stored account data:");
-        println!(
-            "const STORED_ACCOUNT_DATA_{}: &[u8] = &hex!(\"{}\");",
-            last_tree_size,
-            &hex::encode(StoredAccountData::from(account_data.clone()).encode_to_vec())
-        );
+        {
+            let stored_account_data = account_data
+                .clone()
+                .into_stored(
+                    aci.as_search_key(),
+                    Some(test_account::PHONE_NUMBER.as_search_key()),
+                    Some(username_hash.as_search_key()),
+                    SystemTime::now(),
+                )
+                .encode_to_vec();
+            println!("Stored account data:");
+            println!(
+                "const STORED_ACCOUNT_DATA_{}: &[u8] = &hex!(\"{}\");",
+                last_tree_size,
+                &hex::encode(stored_account_data)
+            );
+        }
 
         prompt("Now advance the tree. Yes, again! (and press ENTER)");
 

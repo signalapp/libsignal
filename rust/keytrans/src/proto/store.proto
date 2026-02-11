@@ -11,6 +11,7 @@ import "wire.proto";
 message StoredTreeHead {
   TreeHead tree_head = 1;
   bytes root = 2;
+  uint64 stored_at_ms = 3;
 }
 
 // StoredMonitoringData is encoded monitoring data stored on-disk.
@@ -19,6 +20,7 @@ message StoredMonitoringData {
   uint64 pos = 2;
   map<uint64, uint32> ptrs = 3;
   bool owned = 4;
+  bytes search_key = 5;
 }
 
 message StoredAccountData {

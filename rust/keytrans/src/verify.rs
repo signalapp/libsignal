@@ -257,7 +257,7 @@ fn verify_full_tree_head(
         }
     }
 
-    Ok((tree_head.clone(), root))
+    Ok(LastTreeHead(tree_head.clone(), root))
 }
 
 /// Checks if the consistency proof against the baseline tree head needs to be
@@ -288,7 +288,7 @@ fn check_consistency_metadata<'a>(
             };
             Ok(None)
         }
-        Some((last, last_root)) if last.tree_size == current_head.tree_size => {
+        Some(LastTreeHead(last, last_root)) if last.tree_size == current_head.tree_size => {
             if current_root != last_root {
                 return Err(Error::BadData(
                     "root is different but tree size is same".to_string(),
@@ -306,7 +306,7 @@ fn check_consistency_metadata<'a>(
             }
             Ok(None)
         }
-        Some((last_head, last_root)) => {
+        Some(LastTreeHead(last_head, last_root)) => {
             if current_head.tree_size < last_head.tree_size {
                 return Err(Error::BadData(
                     "current tree size is less than previous tree size".to_string(),
@@ -386,7 +386,7 @@ pub fn verify_distinguished(
         return Ok(());
     }
     let root = match last_tree_head {
-        Some((tree_head, root)) if tree_head.tree_size == tree_size => root,
+        Some(LastTreeHead(tree_head, root)) if tree_head.tree_size == tree_size => root,
         _ => {
             return Err(Error::BadData(
                 "expected tree head not found in storage".to_string(),
@@ -394,7 +394,7 @@ pub fn verify_distinguished(
         }
     };
 
-    let (
+    let LastTreeHead(
         TreeHead {
             tree_size: distinguished_size,
             timestamp: _,
@@ -1029,7 +1029,7 @@ mod test {
         let baseline = {
             let head = current_head.clone();
             let root = [0u8; 32];
-            let mut baseline = Some((head, root));
+            let mut baseline = Some(LastTreeHead(head, root));
 
             for baseline_mod in baseline_mods {
                 let Some(result) = baseline.as_mut() else {

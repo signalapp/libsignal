@@ -828,7 +828,7 @@ impl UnauthenticatedChatApi for KeyTransparencyClient<'_> {
                         )
                     })
                     .transpose()?,
-                last_tree_head: (tree_head, tree_root),
+                last_tree_head: LastTreeHead(tree_head, tree_root),
             }
         };
 
@@ -972,7 +972,7 @@ fn verify_chat_search_response(
             .ok_or_else(|| Error::InvalidResponse("ACI data is missing".to_string()))?,
         e164: e164_result.and_then(|r| r.state_update.monitoring_data),
         username_hash: username_hash_result.and_then(|r| r.state_update.monitoring_data),
-        last_tree_head: (tree_head, tree_root),
+        last_tree_head: LastTreeHead(tree_head, tree_root),
     };
 
     Ok(MaybePartial {
@@ -1094,27 +1094,27 @@ pub(crate) mod test_support {
     pub const CHAT_SEARCH_RESPONSE_VALID_AT: Duration =
         include!("../../../tests/data/chat_response_valid_at.in");
 
-    const DISTINGUISHED_TREE_2646749_HEAD: &[u8] = &hex!(
-        "08ddc5a101109ac8fdc0a2331a640a20093ee42d95502b3e81f4e604179c82c149fffb96167642b9eb81b03d6e2dd63612405e7d690bca490bf2ac11afa44192f6990a94d4c06734794e238c71e1686977b4a9d49db286e72bf6e81b3b8a7c65b818574943a0c8d485ed4be9a7b886dea1071a640a20bd1e26a0fbdbfa923486ccc9296f4227db490b4add29f5507775171ea0fb7a4e1240ca0e265ba8f7ef29ecdaeb3475177e7434ef82bfa59bc77b7c34be801165796d5ee1f9af67a8ec2cf3ff5db283b228409ea8c81d2877475b898298d4439f39051a640a201123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e755124043d3d62cd55564ccf7e95f311f1f9b30946e8979577fbb3e70906aa6e96211a436245ec1c0f791bb9b06e6b29a92a554d35cd74712866b591589d065fbf80e00"
+    const DISTINGUISHED_TREE_48419053_HEAD: &[u8] = &hex!(
+        "08eda18b1710efcdb4cec4331a640a20bd1e26a0fbdbfa923486ccc9296f4227db490b4add29f5507775171ea0fb7a4e12409e2954d37dad743d4eb2209309ee5ba85ed72a2fb7c39b34158270bc9954ead0e61cb418c548373955e99592c82506e9188ab6c960f8b2d8b6b864197165ca0d1a640a201123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e7551240fa9f4b8c4fe55a16c559d6da4d974cdf7e6957cb31a1a55dbaf9e4f715cbefc40d273a1bfde5b77b2eb2731a298b454a44bba41557f2b9f87c6eec4f3623ca041a640a20093ee42d95502b3e81f4e604179c82c149fffb96167642b9eb81b03d6e2dd6361240e9cee1ed1a8d5d1026cac0ac7101a608b131fa592f6d26505cde31c111c450afad61ca7d685924438ebc8e12bf1c3632b6161334e10c9e3ad72b7931cb6f0504"
     );
-    const DISTINGUISHED_TREE_2646749_ROOT: &[u8] =
-        &hex!("3d7343936b2e2b7f6e250f5c17ddd8c511428f62a8e4ffb9bcb525e89500f9a7");
+    const DISTINGUISHED_TREE_48419053_ROOT: &[u8] =
+        &hex!("9bc6752695ec310be8eca0257becbfa5ca8daeceac318989e764e8b7c7fb1608");
 
-    const STORED_ACCOUNT_DATA_2646789: &[u8] = &hex!(
-        "0a2c0a203901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a10301a0408ffff7f2001122d0a2086052cc2a2689558e852d053c5ab411d8c3baef20171ec298e551574806ca95d1096011a0408ffff7f20011a2d0a206f55ac745ebeaf39fd5b21177c7fa692876c42678ffa1f3d58ed8fbc5ef023b910cc011a0408ffff7f200122e3020abe020885c6a10110da86fec0a2331a640a20bd1e26a0fbdbfa923486ccc9296f4227db490b4add29f5507775171ea0fb7a4e1240618471ea3986f40a215510c00e86e850ba8fa6b93e95a3dd337846bf87db82ca606490154dd0b366b2696631f1c5944806d2251805d18ca860e2ae0114d7d6031a640a201123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e7551240888394a2727dab22354fcc41eefde316fb57ebe802f549ca8a9f2d4b152c8bd67adf42564a203c96466a84c2f3d4500b2cb26ab078c3939affc24a8437e913091a640a20093ee42d95502b3e81f4e604179c82c149fffb96167642b9eb81b03d6e2dd6361240b407b7c434f0e8944c133fdf0efdf03d1c52809d4b8fce52663fb57d79c951cf91b99b78dee7d8211a35030ad87ddd025a2ea018f5ddd83bb4b4776402c0230b1220de186e87e061a4fea370946919cba4733e652c926a5bbfc6528ebcc3395ca4c4"
+    const STORED_ACCOUNT_DATA_48419073: &[u8] = &hex!(
+        "0a400a203901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a10301a0508ffffff0f20012a116190c979fdeab44a08b6da69dedeab9b29123d0a2086052cc2a2689558e852d053c5ab411d8c3baef20171ec298e551574806ca95d1096011a0508ffffff0f20012a0d6e2b31383030353535303130301a510a206f55ac745ebeaf39fd5b21177c7fa692876c42678ffa1f3d58ed8fbc5ef023b910cc011a0508ffffff0f20012a2175dc711808c2cf66d5e6a33ce41f27d69d942d2e1ff4db22d39b42d2eff8d0974622ea020abe020881a28b171096edb4cec4331a640a20bd1e26a0fbdbfa923486ccc9296f4227db490b4add29f5507775171ea0fb7a4e12407c1136788cda4543f6cdf9154b40a5fdaab6eb44ff3c350ed8595c975f48db40f86b78f2f7684dcb4f3c36e2f1491ae1c08aa3665bdcaa0c8492b913c37b0d0e1a640a201123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e7551240ec504259cfba1b31665abe005f8ded7096090d505ae39a4cad456b57f58307be8cb2cd5d74eb3eeb77a9387f22601595286f4bfe6fb6e49cc70d4834d84f21041a640a20093ee42d95502b3e81f4e604179c82c149fffb96167642b9eb81b03d6e2dd636124013c9a37acb164f9b2bc022e69ff621bcc0012dfab38ef56638f4bd9eafd855cda6eb5dcc17ffde2ba306589284861177e035dce98fe781ae59d58c59a39643091220967878356efab797d8945d7e523da0ac943237e7a6a246bb03a1c174486f0bea18f5fab4cec433"
     );
 
     pub fn test_distinguished_tree() -> LastTreeHead {
-        (
-            TreeHead::decode(DISTINGUISHED_TREE_2646749_HEAD).expect("valid TreeHead"),
-            DISTINGUISHED_TREE_2646749_ROOT
+        LastTreeHead(
+            TreeHead::decode(DISTINGUISHED_TREE_48419053_HEAD).expect("valid TreeHead"),
+            DISTINGUISHED_TREE_48419053_ROOT
                 .try_into()
                 .expect("valid root size"),
         )
     }
 
     pub fn test_stored_account_data() -> StoredAccountData {
-        StoredAccountData::decode(STORED_ACCOUNT_DATA_2646789).expect("valid stored acc data")
+        StoredAccountData::decode(STORED_ACCOUNT_DATA_48419073).expect("valid stored acc data")
     }
 
     pub fn test_account_data() -> AccountData {
