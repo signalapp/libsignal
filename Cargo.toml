@@ -84,10 +84,10 @@ signal-neon-futures = { path = "rust/bridge/node/futures" }
 # Our forks of some dependencies, accessible as xxx_signal so that usages of them are obvious in source code. Crates
 # that want to use the real things can depend on those directly.
 
-boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v4.21.1", package = "boring", default-features = false }
+boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v4.21.1a", package = "boring", default-features = false }
 curve25519-dalek-signal = { git = 'https://github.com/signalapp/curve25519-dalek', package = "curve25519-dalek", tag = 'signal-curve25519-4.1.3' }
 spqr = { git = "https://github.com/signalapp/SparsePostQuantumRatchet.git", tag = "v1.4.0" }
-tokio-boring-signal = { git = "https://github.com/signalapp/boring", package = "tokio-boring", tag = "signal-v4.21.1" }
+tokio-boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v4.21.1a", package = "tokio-boring" }
 
 aes = "0.8.3"
 aes-gcm-siv = "0.11.1"
@@ -227,8 +227,8 @@ zerocopy = "0.8.24"
 [patch.crates-io]
 # When building libsignal, just use our forks so we don't end up with two different versions of the libraries.
 
-boring = { git = 'https://github.com/signalapp/boring', tag = 'signal-v4.21.1' }
-boring-sys = { git = 'https://github.com/signalapp/boring', tag = 'signal-v4.21.1' }
+boring = { git = "https://github.com/signalapp/boring", tag = "signal-v4.21.1a" }
+boring-sys = { git = "https://github.com/signalapp/boring", tag = "signal-v4.21.1a" }
 curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.1.3' }
 
 [profile.dev.package.argon2]
