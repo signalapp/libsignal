@@ -20,6 +20,7 @@ import org.signal.libsignal.protocol.state.PreKeyStore;
 import org.signal.libsignal.protocol.state.SessionRecord;
 import org.signal.libsignal.protocol.state.SessionStore;
 import org.signal.libsignal.protocol.state.SignalProtocolStore;
+import org.signal.libsignal.protocol.state.SignedPreKeyRecord;
 import org.signal.libsignal.protocol.state.SignedPreKeyStore;
 
 /**
@@ -156,7 +157,15 @@ public class SessionCipher {
                       preKeyStore.removePreKey(id);
                     }
                   },
-                  signedPreKeyStore,
+                  new org.signal.libsignal.protocol.state.internal.SignedPreKeyStore() {
+                    public NativeHandleGuard.Owner loadSignedPreKey(int id) throws Exception {
+                      return signedPreKeyStore.loadSignedPreKey(id);
+                    }
+
+                    public void storeSignedPreKey(int id, long rawPreKey) throws Exception {
+                      signedPreKeyStore.storeSignedPreKey(id, new SignedPreKeyRecord(rawPreKey));
+                    }
+                  },
                   kyberPreKeyStore));
     }
   }

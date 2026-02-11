@@ -5,7 +5,10 @@
 
 use async_trait::async_trait;
 use libsignal_bridge_macros::bridge_callbacks;
-use libsignal_protocol::{PreKeyId, PreKeyRecord, PreKeyStore, SignalProtocolError};
+use libsignal_protocol::{
+    PreKeyId, PreKeyRecord, PreKeyStore, SignalProtocolError, SignedPreKeyId, SignedPreKeyRecord,
+    SignedPreKeyStore,
+};
 
 use crate::support::{BridgedCallbacks, ResultLike, WithContext};
 use crate::*;
@@ -40,5 +43,44 @@ impl<T: BridgePreKeyStore> PreKeyStore for BridgedCallbacks<T> {
 
     async fn remove_pre_key(&mut self, pre_key_id: PreKeyId) -> Result<(), SignalProtocolError> {
         self.0.remove_pre_key(pre_key_id.into()).await
+    }
+}
+
+/// A bridge-friendly version of [`SignedPreKeyStore`].
+#[bridge_callbacks(jni = "org.signal.libsignal.protocol.state.internal.SignedPreKeyStore")]
+pub(crate) trait BridgeSignedPreKeyStore {
+    async fn load_signed_pre_key(
+        &self,
+        id: u32,
+    ) -> Result<Option<SignedPreKeyRecord>, SignalProtocolError>;
+    async fn store_signed_pre_key(
+        &self,
+        id: u32,
+        record: SignedPreKeyRecord,
+    ) -> Result<(), SignalProtocolError>;
+}
+
+#[async_trait(?Send)]
+impl<T: BridgeSignedPreKeyStore> SignedPreKeyStore for BridgedCallbacks<T> {
+    /// Look up the signed pre-key corresponding to `signed_prekey_id`.
+    async fn get_signed_pre_key(
+        &self,
+        signed_prekey_id: SignedPreKeyId,
+    ) -> Result<SignedPreKeyRecord, SignalProtocolError> {
+        self.0
+            .load_signed_pre_key(signed_prekey_id.into())
+            .await?
+            .ok_or(SignalProtocolError::InvalidSignedPreKeyId)
+    }
+
+    /// Set the entry for `signed_prekey_id` to the value of `record`.
+    async fn save_signed_pre_key(
+        &mut self,
+        signed_prekey_id: SignedPreKeyId,
+        record: &SignedPreKeyRecord,
+    ) -> Result<(), SignalProtocolError> {
+        self.0
+            .store_signed_pre_key(signed_prekey_id.into(), record.clone())
+            .await
     }
 }

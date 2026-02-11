@@ -25,3 +25,15 @@ internal interface PreKeyStore {
   @Throws(Exception::class)
   public fun removePreKey(id: Int)
 }
+
+@CalledFromNative
+internal interface SignedPreKeyStore {
+  @Throws(Exception::class)
+  public fun loadSignedPreKey(id: Int): NativeHandleGuard.Owner
+
+  @Throws(Exception::class)
+  public fun storeSignedPreKey(
+    id: Int,
+    rawSignedPreKey: ObjectHandle,
+  )
+}

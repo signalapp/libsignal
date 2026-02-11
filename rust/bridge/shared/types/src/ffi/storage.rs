@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use super::*;
 use crate::ffi;
-use crate::protocol::storage::FfiBridgePreKeyStoreStruct;
+use crate::protocol::storage::{FfiBridgePreKeyStoreStruct, FfiBridgeSignedPreKeyStoreStruct};
 use crate::support::{BridgedCallbacks, ResultLike, WithContext};
 
 /// A bridge-friendly version of [`IdentityKeyStore`].
@@ -100,48 +100,10 @@ impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedCallbacks<T> {
     }
 }
 
-// TODO: This alias is because of the ffi_arg_type macro expecting all bridging structs to use a
-// particular naming scheme; eventually we should be able to remove it.
+// TODO: These aliases are because of the ffi_arg_type macro expecting all bridging structs to use a
+// particular naming scheme; eventually we should be able to remove them.
 pub type FfiPreKeyStoreStruct = FfiBridgePreKeyStoreStruct;
-
-/// A bridge-friendly version of [`SignedPreKeyStore`].
-#[bridge_callbacks(jni = false, node = false)]
-pub trait BridgeSignedPreKeyStore {
-    fn load_signed_pre_key(
-        &self,
-        id: u32,
-    ) -> Result<Option<SignedPreKeyRecord>, SignalProtocolError>;
-    fn store_signed_pre_key(
-        &self,
-        id: u32,
-        record: SignedPreKeyRecord,
-    ) -> Result<(), SignalProtocolError>;
-}
-
-// TODO: This alias is because of the ffi_arg_type macro expecting all bridging structs to use a
-// particular naming scheme; eventually we should be able to remove it.
 pub type FfiSignedPreKeyStoreStruct = FfiBridgeSignedPreKeyStoreStruct;
-
-#[async_trait(?Send)]
-impl<T: BridgeSignedPreKeyStore> SignedPreKeyStore for BridgedCallbacks<T> {
-    async fn get_signed_pre_key(
-        &self,
-        prekey_id: SignedPreKeyId,
-    ) -> Result<SignedPreKeyRecord, SignalProtocolError> {
-        self.0
-            .load_signed_pre_key(prekey_id.into())?
-            .ok_or(SignalProtocolError::InvalidSignedPreKeyId)
-    }
-
-    async fn save_signed_pre_key(
-        &mut self,
-        prekey_id: SignedPreKeyId,
-        record: &SignedPreKeyRecord,
-    ) -> Result<(), SignalProtocolError> {
-        self.0
-            .store_signed_pre_key(prekey_id.into(), record.clone())
-    }
-}
 
 /// A bridge-friendly version of [`KyberPreKeyStore`].
 #[bridge_callbacks(jni = false, node = false)]
