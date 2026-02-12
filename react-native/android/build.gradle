@@ -1,10 +1,9 @@
-plugins {
-    id 'com.android.library' version '8.3.0'
-}
+apply plugin: 'com.android.library'
+apply plugin: 'maven-publish'
 
 android {
     namespace "org.signal.libsignal.reactnative"
-    compileSdk 34
+    compileSdk 35
     ndkVersion "27.1.12297006"
 
     defaultConfig {
@@ -48,9 +47,42 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    // Exclude React Native .so files from the AAR — the consuming app provides these
+    packagingOptions {
+        exclude 'jni/**/libc++_shared.so'
+        exclude 'jni/**/libfbjni.so'
+        exclude 'jni/**/libjsi.so'
+        exclude 'jni/**/libreactnative.so'
+        exclude 'jni/**/libreactnativejni.so'
+        exclude 'jni/**/libhermes.so'
+        exclude 'jni/**/libhermestooling.so'
+    }
 }
 
 dependencies {
     //noinspection GradleDynamicVersion
     implementation "com.facebook.react:react-android:+"
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                artifact(bundleReleaseAar)
+
+                groupId = 'org.signal'
+                artifactId = 'libsignal-react-native'
+                version = '0.1.0'
+
+                pom.withXml {
+                    def dependenciesNode = asNode().appendNode('dependencies')
+                    def dep = dependenciesNode.appendNode('dependency')
+                    dep.appendNode('groupId', 'com.facebook.react')
+                    dep.appendNode('artifactId', 'react-android')
+                    dep.appendNode('scope', 'provided')
+                }
+            }
+        }
+    }
 }

@@ -37,13 +37,5 @@
     "react-native": "^0.73.0",
     "react": "^18.0.0",
     "@types/react-native": "^0.72.0"
-  },
-  "codegenConfig": {
-    "name": "LibsignalSpec",
-    "type": "modules",
-    "jsSrcsDir": "src/specs",
-    "android": {
-      "javaPackageName": "org.signal.libsignal.reactnative"
-    }
   }
 }

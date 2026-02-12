@@ -4,6 +4,7 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.module.annotations.ReactModule;
+import com.facebook.react.turbomodule.core.interfaces.CallInvokerHolder;
 
 @ReactModule(name = LibsignalModule.NAME)
 public class LibsignalModule extends ReactContextBaseJavaModule {
@@ -32,12 +33,14 @@ public class LibsignalModule extends ReactContextBaseJavaModule {
             long jsiRuntimePointer = getReactApplicationContext()
                 .getJavaScriptContextHolder()
                 .get();
-            nativeInstall(jsiRuntimePointer);
+            CallInvokerHolder callInvokerHolder = getReactApplicationContext()
+                .getJSCallInvokerHolder();
+            nativeInstall(jsiRuntimePointer, callInvokerHolder);
             return true;
         } catch (Exception e) {
             return false;
         }
     }
 
-    private static native void nativeInstall(long jsiRuntimePointer);
+    private static native void nativeInstall(long jsiRuntimePointer, Object callInvokerHolder);
 }

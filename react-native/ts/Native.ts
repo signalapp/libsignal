@@ -756,6 +756,44 @@ type NativeFunctions = {
   test_only_fn_returns_123: () => number;
   TESTING_BridgedStringMap_dump_to_json: (map: Wrapper<BridgedStringMap>) => string;
   TESTING_TokioAsyncContext_NewSingleThreaded: () => TokioAsyncContext;
+
+  // FFI-only functions (not available in Node.js bridge)
+  Hkdf_Derive: (output: Uint8Array, ikm: Uint8Array, label: Uint8Array, salt: Uint8Array) => void;
+  Aes256_Ctr32_New: (key: Uint8Array, nonce: Uint8Array, initialCtr: number) => Aes256Ctr32;
+  Aes256_Ctr32_Process: (obj: Wrapper<Aes256Ctr32>, data: Uint8Array) => Uint8Array;
+  Aes256_Gcm_Encryption_New: (key: Uint8Array, nonce: Uint8Array, associatedData: Uint8Array) => Aes256GcmEncryption;
+  Aes256_Gcm_Encryption_Update: (obj: Wrapper<Aes256GcmEncryption>, data: Uint8Array) => Uint8Array;
+  Aes256_Gcm_Encryption_Compute_Tag: (obj: Wrapper<Aes256GcmEncryption>) => Uint8Array;
+  Aes256_Gcm_Decryption_New: (key: Uint8Array, nonce: Uint8Array, associatedData: Uint8Array) => Aes256GcmDecryption;
+  Aes256_Gcm_Decryption_Update: (obj: Wrapper<Aes256GcmDecryption>, data: Uint8Array) => Uint8Array;
+  Aes256_Gcm_Decryption_Verify_Tag: (obj: Wrapper<Aes256GcmDecryption>, tag: Uint8Array) => boolean;
+  Hex_Encode: (data: Uint8Array) => string;
+  Pin_Hash_From_Salt: (pin: Uint8Array, salt: Uint8Array) => PinHash;
+  Pin_Hash_From_Username_Mrenclave: (pin: Uint8Array, username: string, mrenclave: Uint8Array) => PinHash;
+  Pin_Hash_Access_Key: (hash: Wrapper<PinHash>) => Uint8Array;
+  Pin_Hash_Encryption_Key: (hash: Wrapper<PinHash>) => Uint8Array;
+  Pin_Local_Hash: (pin: Uint8Array) => string;
+  Pin_Verify_Local_Hash: (encodedHash: string, pin: Uint8Array) => boolean;
+  Svr2_Client_New: (mrenclave: Uint8Array, attestationMsg: Uint8Array, currentDate: number, env: number) => Sgx2Client;
+  Message_Get_Sender_Ratchet_Key: (msg: Wrapper<SignalMessage>) => PublicKey;
+  Pre_Key_Signal_Message_Get_Base_Key: (msg: Wrapper<PreKeySignalMessage>) => PublicKey;
+  Pre_Key_Signal_Message_Get_Identity_Key: (msg: Wrapper<PreKeySignalMessage>) => PublicKey;
+  Pre_Key_Signal_Message_Get_Signal_Message: (msg: Wrapper<PreKeySignalMessage>) => Uint8Array;
+  Sender_Key_Distribution_Message_Get_Signature_Key: (msg: Wrapper<SenderKeyDistributionMessage>) => PublicKey;
+  Unidentified_Sender_Message_Content_Get_Group_Id_Or_Empty: (msg: Wrapper<UnidentifiedSenderMessageContent>) => Uint8Array;
+  Device_Transfer_Generate_Private_Key: () => Uint8Array;
+  Device_Transfer_Generate_Private_Key_With_Format: (keyFormat: number) => Uint8Array;
+  Device_Transfer_Generate_Certificate: (privateKey: Uint8Array, name: string, daysToExpire: number) => Uint8Array;
+  Http_Request_New_With_Body: (method: string, url: string, contentType: string, body: Uint8Array) => HttpRequest;
+  Http_Request_New_Without_Body: (method: string, url: string) => HttpRequest;
+  Server_Message_Ack_Send: (ack: Wrapper<ServerMessageAck>, status: number) => void;
+  Message_Backup_Validation_Outcome_Get_Error_Message: (outcome: Wrapper<MessageBackupValidationOutcome>) => string | null;
+  Message_Backup_Validation_Outcome_Get_Unknown_Fields: (outcome: Wrapper<MessageBackupValidationOutcome>) => string[];
+  Register_Account_Request_Set_Apn_Push_Token: (req: Wrapper<RegisterAccountRequest>, token: string) => void;
+  Registration_Service_Request_Push_Challenge: (svc: Wrapper<RegistrationService>) => void;
+  Registration_Service_Submit_Push_Challenge: (svc: Wrapper<RegistrationService>, challenge: string) => void;
+  Unidentified_Sender_Message_Content_New_From_Content_And_Type: (content: Uint8Array, contentType: number) => UnidentifiedSenderMessageContent;
+  UsernameLink_CreateAllowingEmptyEntropy: (username: string, entropy: Uint8Array) => Uint8Array;
 };
 
 const native = getNativeModule();
@@ -1959,4 +1997,11 @@ export interface FakeChatResponse { readonly __type: unique symbol; }
 export interface TestingSemaphore { readonly __type: unique symbol; }
 export interface TestingFutureCancellationCounter { readonly __type: unique symbol; }
 export interface TestingValueHolder { readonly __type: unique symbol; }
+// FFI-only opaque types (not in Node.js bridge)
+export interface Aes256Ctr32 { readonly __type: unique symbol; }
+export interface Aes256GcmEncryption { readonly __type: unique symbol; }
+export interface Aes256GcmDecryption { readonly __type: unique symbol; }
+export interface PinHash { readonly __type: unique symbol; }
+export interface Sgx2Client { readonly __type: unique symbol; }
+export interface MessageBackupValidator { readonly __type: unique symbol; }
 

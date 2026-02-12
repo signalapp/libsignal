@@ -1,0 +1,17 @@
+# https://dev.classmethod.jp/articles/add-vs-code-remote-development-settings-to-existing-docker-environment/
+
+version: "3.7"
+services:
+  libsignal:
+    build:
+      dockerfile: ./Dockerfile
+    env_file:
+      - ./.env.wslg
+    restart: always
+    tty: true
+    volumes:
+      - ../:/home/user/code
+      - /run/desktop/mnt/host/wslg:/mnt/wslg
+      - /run/desktop/mnt/host/wslg/.X11-unix:/tmp/.X11-unix
+    devices:
+      - /dev/kvm:/dev/kvm

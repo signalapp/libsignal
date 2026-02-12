@@ -8,15 +8,21 @@
  *
  * Before using any exports from this module, you must install the native module:
  *
- * Android (Java):
- *   LibsignalModule module = new LibsignalModule(reactContext);
- *   module.install();
+ * ```typescript
+ * import { install } from '@aspect-build/react-native-libsignal';
+ * install(); // Call once at app startup
+ * ```
  *
- * iOS (ObjC) — handled automatically via RCT_EXPORT_MODULE.
+ * Then use the high-level API:
  *
- * Then in JavaScript:
- *   import { install } from '@aspect-build/react-native-libsignal';
- *   install(); // ensures native module is loaded
+ * ```typescript
+ * import { PrivateKey, PublicKey, hkdf, Fingerprint } from '@aspect-build/react-native-libsignal';
+ *
+ * const key = PrivateKey.generate();
+ * const pub = key.getPublicKey();
+ * const sig = key.sign(message);
+ * const valid = pub.verify(message, sig);
+ * ```
  */
 
 import { NativeModules } from 'react-native';
@@ -38,5 +44,23 @@ export function install(): boolean {
   return libsignal.install();
 }
 
-// Re-export everything from the Native module
-export * from './Native';
+// High-level typed API
+export { PublicKey, PrivateKey, IdentityKeyPair } from './EcKeys';
+export { ProtocolAddress } from './Address';
+export {
+  Fingerprint,
+  DisplayableFingerprint,
+  ScannableFingerprint,
+} from './Fingerprint';
+export { Aes256GcmSiv, hkdf } from './Crypto';
+export {
+  AccountEntropyPool,
+  KEMPublicKey,
+  KEMSecretKey,
+  KEMKeyPair,
+} from './AccountKeys';
+export { LibSignalError, InvalidKeyError, InvalidSignatureError, ErrorCode } from './Errors';
+
+// Re-export low-level Native types for advanced usage
+import * as _Native from './Native';
+export { _Native as Native };

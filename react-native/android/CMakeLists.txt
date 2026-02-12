@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find React Native (provides JSI headers and library)
 find_package(ReactAndroid REQUIRED CONFIG)
+find_package(fbjni REQUIRED CONFIG)
 
 # Locate the prebuilt libsignal_ffi shared library.
 # When building, the Rust cross-compiled .so files should be placed under:
@@ -15,6 +16,7 @@ set(LIBSIGNAL_FFI_DIR "${CMAKE_SOURCE_DIR}/jniLibs/${ANDROID_ABI}")
 add_library(signal_ffi SHARED IMPORTED)
 set_target_properties(signal_ffi PROPERTIES
     IMPORTED_LOCATION "${LIBSIGNAL_FFI_DIR}/libsignal_ffi.so"
+    IMPORTED_NO_SONAME TRUE
 )
 
 # Our C++ source files
@@ -36,6 +38,7 @@ target_link_libraries(${PROJECT_NAME}
     signal_ffi
     ReactAndroid::jsi
     ReactAndroid::reactnative
+    fbjni::fbjni
     android
     log
 )

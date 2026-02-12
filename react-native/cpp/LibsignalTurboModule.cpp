@@ -272,9 +272,26 @@ jsi::Value LibsignalModule::bytestringArrayToJsi(
 // Constructor
 // ---------------------------------------------------------------
 
-LibsignalModule::LibsignalModule(jsi::Runtime& runtime) {
+LibsignalModule::LibsignalModule(jsi::Runtime& runtime, std::shared_ptr<facebook::react::CallInvoker> callInvoker)
+    : callInvoker_(callInvoker), asyncContext_({nullptr}), ownsAsyncContext_(false) {
+    // Create a TokioAsyncContext for async FFI calls
+    SignalMutPointerTokioAsyncContext ctx = {nullptr};
+    SignalFfiError* err = signal_tokio_async_context_new(&ctx);
+    if (!err && ctx.raw) {
+        asyncContext_.raw = ctx.raw;
+        ownsAsyncContext_ = true;
+    }
+
     registerGeneratedFunctions(runtime);
     registerHandwrittenFunctions(runtime);
+}
+
+LibsignalModule::~LibsignalModule() {
+    if (ownsAsyncContext_ && asyncContext_.raw) {
+        SignalMutPointerTokioAsyncContext mut;
+        mut.raw = const_cast<SignalTokioAsyncContext*>(asyncContext_.raw);
+        signal_tokio_async_context_destroy(mut);
+    }
 }
 
 // ---------------------------------------------------------------
@@ -315,8 +332,8 @@ std::vector<jsi::PropNameID> LibsignalModule::getPropertyNames(jsi::Runtime& rt)
 // Install
 // ---------------------------------------------------------------
 
-void LibsignalModule::install(jsi::Runtime& runtime) {
-    auto module = std::make_shared<LibsignalModule>(runtime);
+void LibsignalModule::install(jsi::Runtime& runtime, std::shared_ptr<facebook::react::CallInvoker> callInvoker) {
+    auto module = std::make_shared<LibsignalModule>(runtime, callInvoker);
     runtime.global().setProperty(
         runtime,
         "__libsignal_native",
@@ -344,6 +361,41 @@ void LibsignalModule::registerHandwrittenFunctions(jsi::Runtime& rt) {
         return jsi::Value::undefined();
     };
 
+    // TokioAsyncContext_New - returns the module's shared async context.
+    // We expose it as a NativePointer wrapping the module's TokioAsyncContext.
+    // The destructor is null because the module owns the context lifecycle.
+    auto asyncCtx = asyncContext_;
+    functions_["TokioAsyncContext_New"] = [asyncCtx](jsi::Runtime& rt,
+            const jsi::Value&, const jsi::Value* args, size_t count) -> jsi::Value {
+        if (!asyncCtx.raw) {
+            throw jsi::JSError(rt, "TokioAsyncContext not available");
+        }
+        auto pointerObj = std::make_shared<NativePointer>(
+            const_cast<void*>(reinterpret_cast<const void*>(asyncCtx.raw)),
+            nullptr  // Module owns the lifecycle, no destructor
+        );
+        return jsi::Object::createFromHostObject(rt, pointerObj);
+    };
+
+    // TokioAsyncContext_Cancel - cancel an async operation
+    auto asyncCtxForCancel = asyncContext_;
+    functions_["TokioAsyncContext_Cancel"] = [asyncCtxForCancel](jsi::Runtime& rt,
+            const jsi::Value&, const jsi::Value* args, size_t count) -> jsi::Value {
+        if (!asyncCtxForCancel.raw) {
+            throw jsi::JSError(rt, "TokioAsyncContext not available");
+        }
+        // args[0] is a BigInt cancellation_id
+        // args[1] is the TokioAsyncContext (ignored, we use the module's)
+        uint64_t cancellationId = 0;
+        if (count > 0 && args[0].isBigInt()) {
+            cancellationId = args[0].getBigInt(rt).getUint64(rt);
+        } else if (count > 0 && args[0].isNumber()) {
+            cancellationId = static_cast<uint64_t>(args[0].getNumber());
+        }
+        checkError(rt, signal_tokio_async_context_cancel(asyncCtxForCancel, cancellationId));
+        return jsi::Value::undefined();
+    };
+
     // TODO: Add store callback implementations:
     // - SessionStore operations
     // - IdentityKeyStore operations
@@ -353,13 +405,14 @@ void LibsignalModule::registerHandwrittenFunctions(jsi::Runtime& rt) {
 }
 
 // ---------------------------------------------------------------
-// Async helpers (stub — needs threading infrastructure)
+// Async helpers — uses CallInvoker for thread-safe JS dispatch
 // ---------------------------------------------------------------
 
 jsi::Value LibsignalModule::createAsyncCall(
     jsi::Runtime& rt,
     const jsi::Value* args,
     size_t count,
+    std::shared_ptr<facebook::react::CallInvoker> callInvoker,
     std::function<void(jsi::Runtime&, const jsi::Value*, size_t, PromiseResolver)> work) {
 
     // Create a JS Promise
@@ -368,7 +421,7 @@ jsi::Value LibsignalModule::createAsyncCall(
         rt,
         jsi::PropNameID::forAscii(rt, "promiseCallback"),
         2,
-        [&work, args, count](jsi::Runtime& rt,
+        [work = std::move(work), args, count, callInvoker](jsi::Runtime& rt,
                              const jsi::Value&,
                              const jsi::Value* promiseArgs,
                              size_t) -> jsi::Value {
@@ -376,21 +429,71 @@ jsi::Value LibsignalModule::createAsyncCall(
             auto reject = std::make_shared<jsi::Value>(rt, promiseArgs[1]);
 
             PromiseResolver resolver{
-                .resolve = [&rt, resolve](jsi::Value val) {
-                    resolve->asObject(rt).asFunction(rt).call(rt, std::move(val));
+                .resolve_bool = [callInvoker, resolve](bool val) {
+                    if (callInvoker) {
+                        callInvoker->invokeAsync([resolve, val](jsi::Runtime& rt) {
+                            resolve->asObject(rt).asFunction(rt).call(rt, jsi::Value(val));
+                        });
+                    }
                 },
-                .reject = [&rt, reject](std::string msg) {
-                    auto errCtor = rt.global().getPropertyAsFunction(rt, "Error");
-                    auto err = errCtor.callAsConstructor(
-                        rt, jsi::String::createFromUtf8(rt, msg));
-                    reject->asObject(rt).asFunction(rt).call(rt, std::move(err));
+                .resolve_int = [callInvoker, resolve](int32_t val) {
+                    if (callInvoker) {
+                        callInvoker->invokeAsync([resolve, val](jsi::Runtime& rt) {
+                            resolve->asObject(rt).asFunction(rt).call(rt, jsi::Value(val));
+                        });
+                    }
+                },
+                .resolve_null = [callInvoker, resolve]() {
+                    if (callInvoker) {
+                        callInvoker->invokeAsync([resolve](jsi::Runtime& rt) {
+                            resolve->asObject(rt).asFunction(rt).call(rt, jsi::Value::null());
+                        });
+                    }
+                },
+                .reject = [callInvoker, reject](std::string msg) {
+                    if (callInvoker) {
+                        callInvoker->invokeAsync([reject, msg = std::move(msg)](jsi::Runtime& rt) {
+                            auto errCtor = rt.global().getPropertyAsFunction(rt, "Error");
+                            auto err = errCtor.callAsConstructor(
+                                rt, jsi::String::createFromUtf8(rt, msg));
+                            reject->asObject(rt).asFunction(rt).call(rt, std::move(err));
+                        });
+                    }
+                },
+                .resolve_with_data = [callInvoker, resolve](std::shared_ptr<std::vector<uint8_t>> data) {
+                    if (callInvoker) {
+                        callInvoker->invokeAsync([resolve, data](jsi::Runtime& rt) {
+                            auto arrayBuffer = rt.global()
+                                .getPropertyAsFunction(rt, "ArrayBuffer")
+                                .callAsConstructor(rt, static_cast<int>(data->size()))
+                                .getObject(rt);
+                            auto bufPtr = arrayBuffer.getArrayBuffer(rt).data(rt);
+                            memcpy(bufPtr, data->data(), data->size());
+                            auto uint8Ctor = rt.global().getPropertyAsFunction(rt, "Uint8Array");
+                            auto result = uint8Ctor.callAsConstructor(rt, std::move(arrayBuffer));
+                            resolve->asObject(rt).asFunction(rt).call(rt, std::move(result));
+                        });
+                    }
+                },
+                .resolve_with_pointer = [callInvoker, resolve](void* ptr) {
+                    if (callInvoker) {
+                        callInvoker->invokeAsync([resolve, ptr](jsi::Runtime& rt) {
+                            if (!ptr) {
+                                resolve->asObject(rt).asFunction(rt).call(rt, jsi::Value::null());
+                                return;
+                            }
+                            auto pointerObj = std::make_shared<NativePointer>(ptr, nullptr);
+                            auto result = jsi::Object::createFromHostObject(rt, pointerObj);
+                            resolve->asObject(rt).asFunction(rt).call(rt, std::move(result));
+                        });
+                    }
                 }
             };
 
-            // TODO: For proper async support, this should dispatch `work`
-            // to a background thread and call resolve/reject via the
-            // React Native CallInvoker on the JS thread.
-            // For now, we execute synchronously on the JS thread.
+            // The work callback sets up the CPromise and calls the FFI function.
+            // The FFI function's CPromise callback will be invoked from the Rust
+            // async runtime on a background thread, and will use the resolver
+            // (which dispatches via CallInvoker) to safely resolve on the JS thread.
             work(rt, args, count, std::move(resolver));
 
             return jsi::Value::undefined();

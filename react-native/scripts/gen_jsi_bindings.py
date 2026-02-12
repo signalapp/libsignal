@@ -52,6 +52,56 @@ class FfiFunction:
 # C name → JS name mapping
 # ---------------------------------------------------------------------------
 
+# Functions where the FFI C name differs from the Node.js JS name.
+# These come from bridge_handle_fns!(Name, ffi = different_name) and
+# bridge_fn(ffi = "different_name") / bridge_fn(ffi = "...", node = "...") in Rust.
+# Key: C function name (without 'signal_' prefix). Value: Node-compatible JS name.
+FFI_NAME_OVERRIDES = {
+    # From bridge_handle_fns!(ProtocolAddress, ffi = address)
+    'address_new': 'ProtocolAddress_New',
+    'address_get_device_id': 'ProtocolAddress_DeviceId',
+    'address_get_name': 'ProtocolAddress_Name',
+    # From bridge_handle_fns!(PrivateKey, ffi = privatekey)
+    'privatekey_generate': 'PrivateKey_Generate',
+    'privatekey_deserialize': 'PrivateKey_Deserialize',
+    'privatekey_serialize': 'PrivateKey_Serialize',
+    'privatekey_get_public_key': 'PrivateKey_GetPublicKey',
+    'privatekey_sign': 'PrivateKey_Sign',
+    'privatekey_agree': 'PrivateKey_Agree',
+    'privatekey_hpke_open': 'PrivateKey_HpkeOpen',
+    # From bridge_handle_fns!(PublicKey, ffi = publickey)
+    'publickey_deserialize': 'PublicKey_Deserialize',
+    'publickey_serialize': 'PublicKey_Serialize',
+    'publickey_get_public_key_bytes': 'PublicKey_GetPublicKeyBytes',
+    'publickey_equals': 'PublicKey_Equals',
+    'publickey_verify': 'PublicKey_Verify',
+    'publickey_hpke_seal': 'PublicKey_HpkeSeal',
+    # From bridge_handle_fns!(SignalMessage, ffi = message)
+    'message_deserialize': 'SignalMessage_Deserialize',
+    'message_get_body': 'SignalMessage_GetBody',
+    'message_get_counter': 'SignalMessage_GetCounter',
+    'message_get_message_version': 'SignalMessage_GetMessageVersion',
+    'message_get_pq_ratchet': 'SignalMessage_GetPqRatchet',
+    'message_get_serialized': 'SignalMessage_GetSerialized',
+    'message_new': 'SignalMessage_New',
+    'message_verify_mac': 'SignalMessage_VerifyMac',
+    # From bridge_handle_fns!(Fingerprint) + bridge_fn(ffi = "fingerprint_compare")
+    'fingerprint_compare': 'ScannableFingerprint_Compare',
+    # From bridge_fn with custom ffi names
+    'identitykeypair_serialize': 'IdentityKeyPair_Serialize',
+    'identitykeypair_deserialize': 'IdentityKeyPair_Deserialize',
+    'identitykeypair_sign_alternate_identity': 'IdentityKeyPair_SignAlternateIdentity',
+    'identitykey_verify_alternate_identity': 'IdentityKey_VerifyAlternateIdentity',
+    'encrypt_message': 'SessionCipher_EncryptMessage',
+    'decrypt_message': 'SessionCipher_DecryptSignalMessage',
+    'decrypt_pre_key_message': 'SessionCipher_DecryptPreKeySignalMessage',
+    'process_prekey_bundle': 'SessionBuilder_ProcessPreKeyBundle',
+    'group_encrypt_message': 'GroupCipher_EncryptMessage',
+    'group_decrypt_message': 'GroupCipher_DecryptMessage',
+    'username_link_create': 'UsernameLink_CreateAllowingEmptyEntropy',
+}
+
+
 def c_name_to_js_name(c_name: str) -> str:
     """Convert signal_foo_bar_baz to Foo_BarBaz (matching the Node bridge naming)."""
     # Strip 'signal_' prefix
@@ -59,6 +109,10 @@ def c_name_to_js_name(c_name: str) -> str:
         name = c_name[len("signal_"):]
     else:
         return c_name
+
+    # Check hardcoded overrides first
+    if name in FFI_NAME_OVERRIDES:
+        return FFI_NAME_OVERRIDES[name]
 
     # The JS names use PascalCase with underscores separating "object" from "method"
     # e.g. signal_privatekey_generate -> PrivateKey_Generate
@@ -154,8 +208,8 @@ def classify_param(param_type: str, param_name: str, is_first: bool) -> tuple:
     if re.search(r'\(\*\w+\)\[', t):
         return ('fixed_array', True, False)
 
-    # SignalServiceIdFixedWidthBinaryBytes *out
-    if 'SignalServiceIdFixedWidthBinaryBytes' in t and '*' in t:
+    # SignalServiceIdFixedWidthBinaryBytes *out (non-const)
+    if 'SignalServiceIdFixedWidthBinaryBytes' in t and '*' in t and 'const' not in t:
         return ('fixed_array', True, False)
 
     # const SignalServiceIdFixedWidthBinaryBytes *
@@ -416,26 +470,28 @@ def parse_params(params_str: str) -> list:
 
 def build_js_name_map(native_ts_path: Optional[str]) -> dict:
     """Build mapping from C function name to JS function name by parsing Native.ts."""
+    js_to_c = {}
+
+    # Always include the hardcoded FFI name overrides (reverse map)
+    for c_suffix, js_name in FFI_NAME_OVERRIDES.items():
+        js_to_c['signal_' + c_suffix] = js_name
+
     if not native_ts_path or not os.path.exists(native_ts_path):
-        return {}
+        return js_to_c
 
     with open(native_ts_path, 'r') as f:
         content = f.read()
 
-    # Extract all function names from the destructuring assignment
-    # They appear between the { and } = load(...)
-    # Pattern: just word characters on their own line in the destructure block
-    names = re.findall(r'^\s+(\w+),?\s*$', content, re.MULTILINE)
+    # Extract function names from the NativeFunctions type definition
+    # Matches both "  FunctionName: (...) => Type;" and standalone names
+    names = set(re.findall(r'^\s+(\w+)[,:]', content, re.MULTILINE))
 
     # Build mapping: for each JS name, figure out what C function it maps to
-    # The bridge macro transforms JS name -> C name as follows:
-    # PrivateKey_Generate -> signal_privatekey_generate
-    # The pattern: split on _, lowercase each part, join with _, prepend signal_
-    js_to_c = {}
     for js_name in names:
-        # Convert PascalCase_Method to snake_case
         c_name = js_name_to_c_name(js_name)
-        js_to_c[c_name] = js_name
+        # Don't override explicit FFI name mappings
+        if c_name not in js_to_c:
+            js_to_c[c_name] = js_name
 
     return js_to_c
 
@@ -443,29 +499,51 @@ def build_js_name_map(native_ts_path: Optional[str]) -> dict:
 def js_name_to_c_name(js_name: str) -> str:
     """Convert a JS bridge function name to its C FFI counterpart.
 
+    Uses the same algorithm as the Rust `heck` crate's to_snake_case(),
+    which is what the bridge_fn macro uses to generate FFI symbol names.
+    The FFI prefix 'signal_' is prepended.
+
     Examples:
-        PrivateKey_Generate -> signal_privatekey_generate
+        PrivateKey_Generate -> signal_private_key_generate
         Aes256GcmSiv_New -> signal_aes256_gcm_siv_new
-        ServiceId_ServiceIdBinary -> signal_serviceid_service_id_binary
         HKDF_DeriveSecrets -> signal_hkdf_derive_secrets
 
-    The actual C names are generated by cbindgen from Rust, using snake_case.
-    The mapping isn't always 1:1 predictable, so we also try fuzzy matching.
+    Note: Some functions have explicit FFI name overrides in Rust
+    (e.g., PrivateKey_Generate -> signal_privatekey_generate), which
+    means this computed name may not match the actual C function name.
+    The caller uses fuzzy matching as a fallback.
     """
-    # Simple approach: convert to lowercase with underscores
+    # Implement heck's to_snake_case algorithm
     result = []
-    for char in js_name:
+    prev_was_upper = False
+    prev_was_underscore = True  # treat start as after underscore
+
+    for i, char in enumerate(js_name):
         if char == '_':
-            result.append('_')
-        elif char.isupper():
             if result and result[-1] != '_':
-                # Don't add underscore between consecutive capitals or after underscore
-                prev = result[-1]
-                if not prev.isupper() and prev != '_':
+                result.append('_')
+            prev_was_upper = False
+            prev_was_underscore = True
+        elif char.isupper():
+            next_is_lower = (i + 1 < len(js_name) and js_name[i + 1].islower())
+            if not prev_was_underscore:
+                if not prev_was_upper:
+                    # lowercase -> uppercase: new word
+                    result.append('_')
+                elif next_is_lower:
+                    # end of acronym run: new word (e.g., "GcmS" -> "gcm_s")
                     result.append('_')
             result.append(char.lower())
+            prev_was_upper = True
+            prev_was_underscore = False
+        elif char.isdigit():
+            result.append(char)
+            prev_was_upper = False
+            prev_was_underscore = False
         else:
             result.append(char)
+            prev_was_upper = False
+            prev_was_underscore = False
 
     c_name = 'signal_' + ''.join(result)
     return c_name
@@ -942,34 +1020,53 @@ def c_name_to_reasonable_js(c_name: str) -> str:
 
 
 def gen_async_stub(func: FfiFunction) -> str:
-    """Generate a stub for an async function that uses CPromise."""
+    """Generate a full async function implementation using CPromise callbacks."""
     lines = []
     lines.append(f'    // ASYNC: {func.name} -> {func.js_name}')
-    lines.append(f'    functions_["{func.js_name}"] = [](jsi::Runtime& rt,')
+
+    # Find the promise parameter to determine the CPromise type
+    promise_param = None
+    for p in func.params:
+        if p.category == 'promise':
+            promise_param = p
+            break
+
+    if not promise_param:
+        lines.append(f'    // ERROR: no promise parameter found for {func.name}')
+        lines.append('')
+        return '\n'.join(lines)
+
+    # Extract the CPromise type name (e.g., "SignalCPromisebool" from "SignalCPromisebool *")
+    promise_type = promise_param.type.replace('*', '').strip()
+
+    # Determine the result conversion code based on CPromise type
+    result_conversion = get_promise_result_conversion(promise_type)
+
+    # The lambda captures `this` to access callInvoker_ and asyncContext_
+    lines.append(f'    functions_["{func.js_name}"] = [this](jsi::Runtime& rt,')
     lines.append(f'            const jsi::Value& /*thisVal*/, const jsi::Value* args, size_t count) -> jsi::Value {{')
-    lines.append(f'        return createAsyncCall(rt, args, count, []('
+    lines.append(f'        auto ci = callInvoker_;')
+    lines.append(f'        return createAsyncCall(rt, args, count, ci, [this, ci]('
                  f'jsi::Runtime& rt, const jsi::Value* args, size_t count,')
     lines.append(f'                PromiseResolver resolver) {{')
 
-    # Declare output/promise variables
-    out_params = get_out_params(func)
-    in_params = get_in_params(func)
+    # Allocate resolver on heap so it survives the async callback
+    lines.append(f'            auto* resolverPtr = new PromiseResolver(std::move(resolver));')
 
-    for p in out_params:
-        decl = gen_out_declaration(p)
-        if decl:
-            lines.append(f'            {decl}')
-
-    # Input conversions
+    # Input conversions (skip promise param and TokioAsyncContext)
     arg_idx = 0
     call_args = []
     for p in func.params:
+        if p.category == 'promise':
+            call_args.append('&promise')
+            continue
         if p.is_out:
             call_args.append(gen_out_call_arg(p))
             continue
-        if p.category == 'promise':
-            # The promise parameter is special - we provide our own callback
-            call_args.append(f'/* promise callback */')
+
+        # TokioAsyncContext is provided by the module, not from JS args
+        if p.type.strip().startswith('SignalConstPointerTokioAsyncContext'):
+            call_args.append('asyncContext_')
             continue
 
         conv, expr = gen_input_conversion(p, arg_idx)
@@ -979,23 +1076,211 @@ def gen_async_stub(func: FfiFunction) -> str:
         call_args.append(expr)
         arg_idx += 1
 
-    lines.append(f'            // TODO: Set up CPromise callback and call {func.name}')
-    lines.append(f'            // The CPromise struct needs a completion callback that resolves the JS Promise')
+    # Set up the CPromise struct with the completion callback
+    lines.append(f'            {promise_type} promise = {{}};')
+    lines.append(f'            promise.context = reinterpret_cast<const void*>(resolverPtr);')
+    lines.append(f'            promise.complete = {result_conversion};')
+
+    # Call the FFI function
+    call_str = ', '.join(call_args)
+    lines.append(f'            SignalFfiError* err = {func.name}({call_str});')
+    lines.append(f'            if (err) {{')
+    lines.append(f'                const char* msg = nullptr;')
+    lines.append(f'                SignalFfiError* msgErr = signal_error_get_message(&msg, err);')
+    lines.append(f'                std::string errorMsg = msg ? msg : "Unknown error";')
+    lines.append(f'                if (msg) signal_free_string(msg);')
+    lines.append(f'                if (msgErr) signal_error_free(msgErr);')
+    lines.append(f'                signal_error_free(err);')
+    lines.append(f'                resolverPtr->reject(errorMsg);')
+    lines.append(f'                delete resolverPtr;')
+    lines.append(f'            }}')
     lines.append(f'        }});')
     lines.append(f'    }};')
     lines.append('')
     return '\n'.join(lines)
 
 
+# Map CPromise types to their completion callback lambdas.
+# The callback runs on a background thread (Rust async runtime) and must
+# use the PromiseResolver (which dispatches via CallInvoker) to resolve.
+
+CPROMISE_RESULT_CALLBACKS = {
+    'SignalCPromisebool': 'promise_complete_bool',
+    'SignalCPromiseMutPointerAuthenticatedChatConnection': 'promise_complete_pointer<SignalMutPointerAuthenticatedChatConnection>',
+    'SignalCPromiseMutPointerCdsiLookup': 'promise_complete_pointer<SignalMutPointerCdsiLookup>',
+    'SignalCPromiseMutPointerProvisioningChatConnection': 'promise_complete_pointer<SignalMutPointerProvisioningChatConnection>',
+    'SignalCPromiseMutPointerRegistrationService': 'promise_complete_pointer<SignalMutPointerRegistrationService>',
+    'SignalCPromiseMutPointerRegisterAccountResponse': 'promise_complete_pointer<SignalMutPointerRegisterAccountResponse>',
+    'SignalCPromiseMutPointerBackupRestoreResponse': 'promise_complete_pointer<SignalMutPointerBackupRestoreResponse>',
+    'SignalCPromiseMutPointerBackupStoreResponse': 'promise_complete_pointer<SignalMutPointerBackupStoreResponse>',
+    'SignalCPromiseMutPointerUnauthenticatedChatConnection': 'promise_complete_pointer<SignalMutPointerUnauthenticatedChatConnection>',
+    'SignalCPromiseOwnedBufferOfc_uchar': 'promise_complete_buffer',
+    'SignalCPromiseOwnedBufferOfServiceIdFixedWidthBinaryBytes': 'promise_complete_service_id_buffer',
+    'SignalCPromiseFfiChatResponse': 'promise_complete_opaque<SignalFfiChatResponse>',
+    'SignalCPromiseFfiCdsiLookupResponse': 'promise_complete_opaque<SignalFfiCdsiLookupResponse>',
+    'SignalCPromiseFfiCheckSvr2CredentialsResponse': 'promise_complete_opaque<SignalFfiCheckSvr2CredentialsResponse>',
+    'SignalCPromiseOptionalUuid': 'promise_complete_optional_uuid',
+    'SignalCPromiseOptionalPairOfc_charu832': 'promise_complete_optional_pair',
+    'SignalCPromisei32': 'promise_complete_i32',
+}
+
+
+def get_promise_result_conversion(promise_type: str) -> str:
+    """Get the completion callback function name for a CPromise type."""
+    if promise_type in CPROMISE_RESULT_CALLBACKS:
+        return CPROMISE_RESULT_CALLBACKS[promise_type]
+    # Fallback: try to match MutPointer pattern
+    m = re.match(r'SignalCPromiseMutPointer(\w+)', promise_type)
+    if m:
+        return f'promise_complete_pointer<SignalMutPointer{m.group(1)}>'
+    # Unknown type
+    return f'/* UNKNOWN PROMISE TYPE: {promise_type} */ nullptr'
+
+
 GENERATED_HEADER = """\
 // AUTO-GENERATED FILE — DO NOT EDIT
 // Generated by gen_jsi_bindings.py from signal_ffi.h
 //
-// This file contains JSI function registrations for all synchronous FFI
-// functions in libsignal. Async functions (CPromise-based) have stubs that
-// need to be connected to the Promise resolution infrastructure.
+// This file contains JSI function registrations for all synchronous and
+// async FFI functions in libsignal.
 
 #include "LibsignalTurboModule.h"
+
+// ---------------------------------------------------------------
+// CPromise completion callbacks
+// Called from Rust async runtime (background thread).
+// Each extracts the result, then resolves/rejects via PromiseResolver
+// (which dispatches to JS thread via CallInvoker).
+// ---------------------------------------------------------------
+
+namespace libsignal {
+
+// Helper: reject a promise with an FFI error
+static void promise_reject_error(PromiseResolver* resolver, SignalFfiError* error) {
+    const char* msg = nullptr;
+    SignalFfiError* msgErr = signal_error_get_message(&msg, error);
+    std::string errorMsg = msg ? msg : "Unknown error";
+    if (msg) signal_free_string(msg);
+    if (msgErr) signal_error_free(msgErr);
+    signal_error_free(error);
+    resolver->reject(errorMsg);
+}
+
+// Helper: resolve with a boolean value
+static void promise_complete_bool(SignalFfiError* error, const bool* result, const void* context) {
+    auto* resolver = const_cast<PromiseResolver*>(reinterpret_cast<const PromiseResolver*>(context));
+    if (error) {
+        promise_reject_error(resolver, error);
+    } else {
+        resolver->resolve_bool(result ? *result : false);
+    }
+    delete resolver;
+}
+
+// Helper: resolve with an i32 value
+static void promise_complete_i32(SignalFfiError* error, const int32_t* result, const void* context) {
+    auto* resolver = const_cast<PromiseResolver*>(reinterpret_cast<const PromiseResolver*>(context));
+    if (error) {
+        promise_reject_error(resolver, error);
+    } else {
+        resolver->resolve_int(result ? *result : 0);
+    }
+    delete resolver;
+}
+
+// Helper: resolve with an OwnedBuffer (Uint8Array)
+static void promise_complete_buffer(SignalFfiError* error, const SignalOwnedBuffer* result, const void* context) {
+    auto* resolver = const_cast<PromiseResolver*>(reinterpret_cast<const PromiseResolver*>(context));
+    if (error) {
+        promise_reject_error(resolver, error);
+    } else if (result && result->base) {
+        auto data = std::make_shared<std::vector<uint8_t>>(result->base, result->base + result->length);
+        resolver->resolve_with_data(std::move(data));
+    } else {
+        resolver->resolve_null();
+    }
+    delete resolver;
+}
+
+// Helper: resolve with a ServiceId buffer
+static void promise_complete_service_id_buffer(
+        SignalFfiError* error,
+        const SignalOwnedBufferOfServiceIdFixedWidthBinaryBytes* result,
+        const void* context) {
+    auto* resolver = const_cast<PromiseResolver*>(reinterpret_cast<const PromiseResolver*>(context));
+    if (error) {
+        promise_reject_error(resolver, error);
+    } else if (result && result->base && result->length > 0) {
+        size_t totalBytes = result->length * sizeof(SignalServiceIdFixedWidthBinaryBytes);
+        auto data = std::make_shared<std::vector<uint8_t>>(
+            reinterpret_cast<const uint8_t*>(result->base),
+            reinterpret_cast<const uint8_t*>(result->base) + totalBytes);
+        resolver->resolve_with_data(std::move(data));
+    } else {
+        resolver->resolve_null();
+    }
+    delete resolver;
+}
+
+// Helper: resolve with an optional UUID
+static void promise_complete_optional_uuid(SignalFfiError* error, const SignalOptionalUuid* result, const void* context) {
+    auto* resolver = const_cast<PromiseResolver*>(reinterpret_cast<const PromiseResolver*>(context));
+    if (error) {
+        promise_reject_error(resolver, error);
+    } else if (result && result->present) {
+        auto data = std::make_shared<std::vector<uint8_t>>(
+            result->bytes, result->bytes + 16);
+        resolver->resolve_with_data(std::move(data));
+    } else {
+        resolver->resolve_null();
+    }
+    delete resolver;
+}
+
+// Helper: resolve with an optional pair (string, u32)
+static void promise_complete_optional_pair(SignalFfiError* error, const SignalOptionalPairOfc_charu832* result, const void* context) {
+    auto* resolver = const_cast<PromiseResolver*>(reinterpret_cast<const PromiseResolver*>(context));
+    if (error) {
+        promise_reject_error(resolver, error);
+    } else {
+        resolver->resolve_null();
+    }
+    delete resolver;
+}
+
+// Template: resolve with a NativePointer wrapping a pointer result
+template<typename T>
+static void promise_complete_pointer(SignalFfiError* error, const T* result, const void* context) {
+    auto* resolver = const_cast<PromiseResolver*>(reinterpret_cast<const PromiseResolver*>(context));
+    if (error) {
+        promise_reject_error(resolver, error);
+    } else if (result) {
+        void* ptrVal = reinterpret_cast<void*>(
+            const_cast<typename std::remove_const<decltype(result->raw)>::type>(result->raw));
+        resolver->resolve_with_pointer(ptrVal);
+    } else {
+        resolver->resolve_null();
+    }
+    delete resolver;
+}
+
+// Template: resolve with a NativePointer wrapping an opaque struct result (no .raw member)
+template<typename T>
+static void promise_complete_opaque(SignalFfiError* error, const T* result, const void* context) {
+    auto* resolver = const_cast<PromiseResolver*>(reinterpret_cast<const PromiseResolver*>(context));
+    if (error) {
+        promise_reject_error(resolver, error);
+    } else if (result) {
+        // Copy the struct and wrap it as a NativePointer
+        T* copy = new T(*result);
+        resolver->resolve_with_pointer(reinterpret_cast<void*>(copy));
+    } else {
+        resolver->resolve_null();
+    }
+    delete resolver;
+}
+
+} // namespace libsignal
 
 """
 

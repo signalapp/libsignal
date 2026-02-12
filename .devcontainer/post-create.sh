@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 echo "=== libsignal React Native devcontainer setup ==="
 
 # Install Copilot CLI
-echo "Installing @github/copilot-cli..."
-npm install -g @github/copilot-cli
+#echo "Installing @github/copilot-cli..."
+#npm install -g @github/copilot-cli
 
 # Verify Rust toolchain
 echo "Rust: $(rustc --version)"

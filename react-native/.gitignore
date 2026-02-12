@@ -7,3 +7,8 @@ lib/
 cpp/signal_ffi.h
 cpp/signal_ffi_cpp.h
 android/jniLibs/
+example/node_modules/
+example/android/build/
+example/android/.gradle/
+example/android/app/build/
+example/android/.cxx/
