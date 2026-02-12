@@ -74,7 +74,7 @@ ENV ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}
 
 # Create default AVD for testing
 RUN echo "no" | ${ANDROID_HOME}/cmdline-tools/latest/bin/avdmanager create avd \
-    --name "test_device" \
+    --name "test_x86_64" \
     --package "system-images;android-35;google_apis;x86_64" \
     --device "pixel_6" \
     --force

@@ -7,9 +7,9 @@ technical decisions.
 ## Current Status: **Production-Ready Android Implementation** ✅
 
 The React Native libsignal module is feature-complete for Android:
-- **438 JSI-bound functions** (413 sync + 25 async) — full FFI coverage
-- **26 integration tests** all passing on Android emulator (API 35, x86_64)
-- **Async function support** via CPromise→JS Promise with CallInvoker
+- **440 JSI-bound functions** (413 sync + 25 async + 2 testing async) — full FFI coverage
+- **29 integration tests** all passing on Android emulator (API 35, x86_64)
+- **Async function support** verified end-to-end: Rust tokio → CPromise → CallInvoker → JS Promise
 - **Type-safe TypeScript API** with classes for keys, crypto, fingerprints
 - **AAR packaging** for distribution to other React Native apps
 - **Comprehensive README** with integration instructions
@@ -262,6 +262,22 @@ Tests 17-26: High-level TypeScript API tests
 - Package.json configured with `main`, `types`, `files`, `peerDependencies`
 - TypeScript compiles to `lib/` with declaration files
 
+### 18. End-to-End Async Testing — ✅ Done
+- Rebuilt `libsignal_ffi.so` with `--features libsignal-bridge-testing` to include test functions
+- Added hand-written JSI bindings for two testing async functions:
+  - `TESTING_TokioAsyncFuture(input: u8)` → returns `i32` (input × 3) via `SignalCPromisei32`
+  - `TESTING_TokioAsyncContextFutureSuccessBytes(count: i32)` → returns `Uint8Array` of `count` zero bytes
+- Used weak symbols (`__attribute__((weak))`) so module loads even without testing .so
+- Defined `SignalCPromisei32` struct (only in testing header, not main header)
+- Added 3 async tests to App.tsx (tests 13b-13d):
+  - `Async: TokioAsyncFuture returns i32` — verifies i32 result through CPromise→Promise
+  - `Async: FutureSuccessBytes returns buffer` — verifies buffer result through CPromise→Promise
+  - `Async: multiple sequential calls` — verifies three sequential async calls all resolve correctly
+- **Full async pipeline verified**: Rust tokio async runtime → CPromise `complete` callback on
+  background thread → `PromiseResolver` dispatches via `CallInvoker->invokeAsync()` → JS Promise
+  resolves on JS thread with correct value
+- **29/29 tests pass** on Android emulator
+
 ### High Priority (MVP)
 1. ~~**Fix function name matching**~~: ✅ Done — Added `FFI_NAME_OVERRIDES`
    dict to `gen_jsi_bindings.py` with 40+ explicit C→JS name mappings for
@@ -367,26 +383,32 @@ Tests 17-26: High-level TypeScript API tests
 
 ## Environment Requirements
 
-### Build Dependencies
-- Rust nightly (see `rust-toolchain` file)
-- Android NDK 27.x (via `ANDROID_HOME`)
-- `cargo-ndk`: `cargo install cargo-ndk`
-- Android targets: `rustup target add aarch64-linux-android x86_64-linux-android`
-- Python 3 (for codegen)
-- CMake 3.13+ (for tests)
-- `protobuf-compiler` + `libprotobuf-dev` (for Rust build — provides well-known .proto files)
+### Build Dependencies (all pre-installed in devcontainer)
+- **Rust**: nightly-2025-09-24 (see `rust-toolchain` file)
+- **Java**: OpenJDK 21 (`openjdk-21-jdk-headless`)
+- **Node.js**: 22.x (installed via devcontainer feature)
+- **Android SDK**: API 35, NDK 27.1.12297006, build-tools 35.0.0
+- **Android emulator**: x86_64 system image (API 35, google_apis)
+- **cargo-ndk**: 4.1.2
+- **Rust Android targets**: aarch64-linux-android, x86_64-linux-android, armv7-linux-androideabi, i686-linux-android
+- **Python 3**: 3.12 (for codegen)
+- **CMake**: 3.28+ with Ninja
+- **protobuf-compiler** + **libprotobuf-dev** (for Rust build)
 
 ### Devcontainer
 All build dependencies are pre-installed in `.devcontainer/Dockerfile`.
 The devcontainer also includes:
 - Android emulator + x86_64 system image (API 35)
 - KVM passthrough via `devices: ["/dev/kvm:/dev/kvm"]` in docker-compose.yml
-- X11/display libraries for headless emulator operation
+- WSLg volume mounts for X11/Wayland display (Windows+WSL2+Docker Desktop)
+- AVD `test_x86_64` (Pixel 6, API 35) pre-created in Dockerfile
+- `initializeCommand` loads KVM modules via `wsl -d docker-desktop`
+- `postCreateCommand` fixes KVM/target permissions and installs npm deps
 
-To rebuild the devcontainer after changes:
-```
-Ctrl+Shift+P → Dev Containers: Rebuild Container
-```
+Volume mounts (persist across container rebuilds):
+- `libsignal-cargo-cache` → `/usr/local/cargo/registry`
+- `libsignal-cargo-git` → `/usr/local/cargo/git`
+- `libsignal-target` → `${containerWorkspaceFolder}/target`
 
 ### Running Tests
 ```bash
@@ -402,6 +424,13 @@ cd react-native
 ./scripts/build_android.sh                          # Debug build, all ABIs
 ./scripts/build_android.sh --release --strip        # Release build, stripped
 ./scripts/build_android.sh --release --strip --abi arm64-v8a  # Single ABI
+
+# Build with testing functions (for async end-to-end tests):
+cd /home/user/code
+cargo ndk --target x86_64-linux-android --platform 21 \
+  -o react-native/android/jniLibs/ \
+  -- build -p libsignal-ffi --features libsignal-bridge-testing
+# This produces a ~357MB debug .so with 89 testing symbols
 ```
 
 ### Regenerating Bindings
@@ -419,11 +448,142 @@ python3 scripts/gen_jsi_bindings.py \
 ```bash
 cd react-native/example
 npm install                        # Install deps (links library via symlink)
+
+# Bundle JS (required for offline APK — no Metro needed)
+npx react-native bundle \
+  --platform android --dev false --entry-file index.js \
+  --bundle-output android/app/src/main/assets/index.android.bundle \
+  --assets-dest android/app/src/main/res/
+
+# Build APK
 cd android
-./gradlew assembleDebug --no-daemon  # Build APK (~1 min incremental, ~7 min clean)
-adb install app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n com.libsignaltestapp/.MainActivity
+./gradlew assembleDebug --no-daemon  # ~1 min incremental, ~7 min clean
+
+# Install and run
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell monkey -p com.libsignaltestapp -c android.intent.category.LAUNCHER 1
 ```
+
+---
+
+## Recovery After Devcontainer Rebuild
+
+After rebuilding the devcontainer (e.g., on a new machine), follow these steps:
+
+### Step 1: Fix permissions and verify tools
+The `post-create.sh` script handles this automatically, but verify:
+```bash
+sudo chmod 666 /dev/kvm           # Fix KVM permissions
+sudo chmod -R a+rwX target/       # Fix target/ volume ownership
+rustc --version                   # Should be nightly-2025-09-24
+java -version                     # Should be OpenJDK 21
+node --version                    # Should be 22.x
+```
+
+### Step 2: Start the emulator
+```bash
+# Start emulator in background (headless, no audio)
+$ANDROID_HOME/emulator/emulator -avd test_x86_64 \
+  -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim -no-snapshot &
+
+# Wait for boot (~30s with KVM)
+adb wait-for-device
+adb shell 'while [[ "$(getprop sys.boot_completed)" != "1" ]]; do sleep 2; done'
+echo "Emulator ready"
+```
+
+### Step 3: Build libsignal_ffi.so (if jniLibs are empty)
+The `jniLibs/` directory is gitignored. You must rebuild the native libraries:
+```bash
+# Production build (arm64 + x86_64, stripped, ~13-15MB each):
+cd /home/user/code/react-native
+./scripts/build_android.sh --release --strip
+
+# OR: Testing build (x86_64 only, debug, ~357MB, includes async test functions):
+cd /home/user/code
+cargo ndk --target x86_64-linux-android --platform 21 \
+  -o react-native/android/jniLibs/ \
+  -- build -p libsignal-ffi --features libsignal-bridge-testing
+```
+
+### Step 4: Generate C++ header
+```bash
+cd /home/user/code/react-native
+cp ../swift/Sources/SignalFfi/signal_ffi.h cpp/signal_ffi.h
+python3 scripts/patch_header_cpp.py cpp/signal_ffi.h cpp/signal_ffi_cpp.h
+```
+
+### Step 5: Install npm deps and build
+```bash
+cd /home/user/code/react-native
+npm install
+cd example && npm install && cd ..
+
+# Compile TypeScript
+npx tsc
+
+# Bundle JS
+cd example
+npx react-native bundle \
+  --platform android --dev false --entry-file index.js \
+  --bundle-output android/app/src/main/assets/index.android.bundle \
+  --assets-dest android/app/src/main/res/
+
+# Build APK
+cd android && ./gradlew assembleDebug --no-daemon
+
+# Install and test
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell monkey -p com.libsignaltestapp -c android.intent.category.LAUNCHER 1
+```
+
+### Step 6: Verify tests
+Take a screenshot or check logcat:
+```bash
+adb logcat -s ReactNativeJS:* | head -40
+# Should show 29/29 tests passing
+```
+
+### What is NOT persisted across rebuilds
+- `android/jniLibs/` — must rebuild `.so` files (Step 3)
+- `cpp/signal_ffi.h` and `cpp/signal_ffi_cpp.h` — must regenerate (Step 4)
+- `node_modules/` — must `npm install` (Step 5)
+- `lib/` — must `npx tsc` to recompile TypeScript (Step 5)
+- `example/android/app/build/` — must `./gradlew assembleDebug` (Step 5)
+- `example/android/app/src/main/assets/index.android.bundle` — must rebundle (Step 5)
+- `target/` — Docker volume persists, but may need permission fix
+
+### What IS persisted (committed to git)
+- All source code in `ts/`, `cpp/`, `android/src/`, `scripts/`, `tests/`
+- `example/` directory (App.tsx with 29 tests, package.json, metro.config.js, android configs)
+- `generated_jsi_bindings.cpp` (4727 lines, 438 functions)
+- `LibsignalTurboModule.cpp` (624 lines, includes testing async bindings)
+- `package.json`, `tsconfig.json`, `README.md`, `PROGRESS.md`
+
+---
+
+## jniLibs State
+
+The `android/jniLibs/` directory is **gitignored** and must be rebuilt.
+
+| ABI | Size | Build Type | Testing Symbols | Command |
+|-----|------|-----------|-----------------|---------|
+| arm64-v8a | ~13MB | Release, stripped | No | `./scripts/build_android.sh --release --strip --abi arm64-v8a` |
+| x86_64 | ~15MB (release) or ~357MB (debug) | Varies | Optional | See below |
+
+For emulator testing with async test functions, build x86_64 with testing:
+```bash
+cargo ndk --target x86_64-linux-android --platform 21 \
+  -o react-native/android/jniLibs/ \
+  -- build -p libsignal-ffi --features libsignal-bridge-testing
+```
+
+The testing build includes 89 extra functions from `swift/Sources/SignalFfi/signal_ffi_testing.h`.
+Key testing functions used by our tests:
+- `signal_testing_tokio_async_future` — async fn returning `input * 3` as i32
+- `signal_testing_tokio_async_context_future_success_bytes` — async fn returning zero-filled buffer
+- These are bound via weak symbols in `LibsignalTurboModule.cpp`, so the module
+  loads fine even without testing symbols (the functions just throw at runtime).
 
 ---
 
@@ -434,6 +594,7 @@ adb shell am start -n com.libsignaltestapp/.MainActivity
 - Without KVM, first boot takes 10+ minutes and may time out
 - ARM64 emulator is NOT supported on x86_64 hosts (rejected by QEMU2)
 - Solution: mount `/dev/kvm` into the container via docker-compose.yml
+- After container start: `sudo chmod 666 /dev/kvm`
 
 ### `Error resolving plugin [id: 'com.android.library']`
 - Occurs when library `build.gradle` uses `plugins { id '...' version '...' }`
@@ -443,19 +604,35 @@ adb shell am start -n com.libsignaltestapp/.MainActivity
 - Ensure `react-native/android/jniLibs/{abi}/libsignal_ffi.so` exists
 - Build with: `cd react-native && ./scripts/build_android.sh --release --strip`
 
+### target/ directory has root ownership
+- Docker volume mounts can have root ownership on fresh containers
+- Fix: `sudo chmod -R a+rwX target/` (done automatically by post-create.sh)
+
+### `adb shell am start` gives "Activity does not exist"
+- Package name is `com.libsignaltestapp` (NOT `com.libsignalexample`)
+- Use: `adb shell monkey -p com.libsignaltestapp -c android.intent.category.LAUNCHER 1`
+
+### Metro `export * as X` syntax error
+- `export * as Name from './Module'` requires `@babel/plugin-transform-export-namespace-from`
+- Workaround (already applied): `import * as _Name from './Module'; export { _Name as Name }`
+
+### Metro can't resolve `../ts/` imports from example app
+- `metro.config.js` must include `watchFolders: [path.resolve(__dirname, '..')]`
+- Already configured in `react-native/example/metro.config.js`
+
 ---
 
 ## File Inventory
 
 ```
 react-native/
-├── package.json                  # NPM package config (no codegenConfig)
+├── package.json                  # NPM package config (no codegenConfig!)
 ├── tsconfig.json                 # TypeScript config
 ├── README.md                     # Integration/usage documentation
 ├── PROGRESS.md                   # This file — implementation status
-├── .gitignore                    # Excludes build artifacts
+├── .gitignore                    # Excludes build artifacts, jniLibs, node_modules
 ├── ts/
-│   ├── index.ts                  # Public API: install() + re-exports
+│   ├── index.ts                  # Public API: install() + re-exports + Native namespace
 │   ├── Native.ts                 # Low-level JS function declarations (438 functions)
 │   ├── EcKeys.ts                 # PublicKey, PrivateKey, IdentityKeyPair classes
 │   ├── Address.ts                # ProtocolAddress class
@@ -463,38 +640,47 @@ react-native/
 │   ├── Crypto.ts                 # Aes256GcmSiv class, hkdf() function
 │   ├── AccountKeys.ts            # AccountEntropyPool, KEMPublicKey/SecretKey/KeyPair
 │   └── Errors.ts                 # LibSignalError, InvalidKeyError, etc.
-├── lib/                          # Compiled TypeScript output (declaration files)
+├── lib/                          # Compiled TypeScript output (gitignored, run npx tsc)
 ├── cpp/
 │   ├── LibsignalTurboModule.h    # JSI module header (PromiseResolver, CallInvoker)
-│   ├── LibsignalTurboModule.cpp  # JSI module implementation (async, TokioAsyncContext)
+│   ├── LibsignalTurboModule.cpp  # JSI module impl (async, TokioAsyncContext, testing fns)
 │   ├── generated_jsi_bindings.cpp # Auto-generated (413 sync + 25 async functions)
 │   ├── signal_ffi.h              # Copied from swift/Sources/SignalFfi/ (gitignored)
 │   └── signal_ffi_cpp.h          # C++-compatible version (generated, gitignored)
 ├── android/
 │   ├── build.gradle              # Android library (apply plugin, maven-publish)
-│   ├── CMakeLists.txt            # CMake for ReactAndroid + fbjni integration
+│   ├── CMakeLists.txt            # CMake: ReactAndroid + fbjni + libsignal_ffi linkage
 │   ├── settings.gradle           # Gradle settings (for standalone builds only)
 │   ├── gradlew                   # Gradle wrapper (from java/)
 │   ├── src/main/
 │   │   ├── AndroidManifest.xml
-│   │   ├── cpp/jni_install.cpp   # JNI → JSI bridge (CallInvoker extraction)
+│   │   ├── cpp/jni_install.cpp   # JNI → JSI bridge (CallInvokerHolder extraction)
 │   │   └── java/org/signal/libsignal/reactnative/
 │   │       ├── LibsignalModule.java    # Passes CallInvokerHolder to nativeInstall
 │   │       └── LibsignalPackage.java
-│   └── jniLibs/                  # Cross-compiled Rust .so files (gitignored)
-│       ├── arm64-v8a/libsignal_ffi.so
-│       └── x86_64/libsignal_ffi.so
-├── example/                      # Test React Native app
-│   ├── package.json              # Depends on file:../ (symlink to library)
-│   ├── App.tsx                   # 26 integration tests (sync + async + API)
-│   ├── metro.config.js           # Configured with watchFolders for parent ts/
+│   └── jniLibs/                  # Cross-compiled Rust .so files (gitignored, must rebuild)
+│       ├── arm64-v8a/libsignal_ffi.so  # ~13MB release stripped
+│       └── x86_64/libsignal_ffi.so     # ~15MB release or ~357MB debug+testing
+├── example/                      # Test React Native app (29 tests)
+│   ├── package.json              # Depends on "file:../" (symlink to library)
+│   ├── App.tsx                   # 29 integration tests (sync + async + API)
+│   ├── index.js                  # Entry point (registers AppRegistry)
+│   ├── metro.config.js           # watchFolders for parent ts/ directory
+│   ├── babel.config.js
+│   ├── tsconfig.json
 │   ├── android/
 │   │   ├── build.gradle          # Root Gradle (NDK 27, compileSdk 35)
-│   │   ├── settings.gradle       # Autolinking via RN Gradle plugin
-│   │   └── app/build.gradle      # App config (abiFilters arm64-v8a, x86_64)
+│   │   ├── settings.gradle       # Autolinking via @react-native/gradle-plugin
+│   │   ├── gradle.properties     # newArchEnabled=true, hermesEnabled=true
+│   │   └── app/
+│   │       ├── build.gradle      # App config (abiFilters arm64-v8a, x86_64)
+│   │       └── src/main/
+│   │           ├── AndroidManifest.xml
+│   │           ├── java/.../     # MainActivity + MainApplication
+│   │           └── assets/       # JS bundle output (gitignored)
 │   └── ...
 ├── scripts/
-│   ├── gen_jsi_bindings.py       # C header → C++ JSI codegen (async support)
+│   ├── gen_jsi_bindings.py       # C header → C++ JSI codegen (sync + async)
 │   ├── patch_header_cpp.py       # C → C++ header compatibility transform
 │   ├── build_android.sh          # Android cross-compilation script
 │   └── run_tests.sh              # Test runner
@@ -502,3 +688,42 @@ react-native/
     ├── CMakeLists.txt            # Test build config
     └── test_ffi_host.cpp         # Host FFI integration tests (12 tests)
 ```
+
+---
+
+## Test Inventory (29 tests in example/App.tsx)
+
+| # | Test Name | Type | What It Tests |
+|---|-----------|------|---------------|
+| 1 | Module install() | sync | `install()` loads the JSI module |
+| 2 | __libsignal_native global | sync | Global object exists after install |
+| 3 | PrivateKey_Generate | sync | Key generation returns HostObject |
+| 4 | PrivateKey → PublicKey | sync | Derives public key from private |
+| 5 | PublicKey serialize round-trip | sync | Serialization produces 33 bytes |
+| 6 | Hkdf_Derive | sync | HKDF key derivation, 42-byte output |
+| 7 | ProtocolAddress_New | sync | Address creation + name/deviceId |
+| 8 | AccountEntropyPool_Generate | sync | 64-char hex entropy pool |
+| 9 | TESTING_OnlyCheckFeatureFlag | sync | No-op function doesn't crash |
+| 10 | Fingerprint_New | sync | Fingerprint with PublicKey objects |
+| 11 | TokioAsyncContext_New | sync | Async context returns HostObject |
+| 12 | TokioAsyncContext_Cancel | sync | Cancel no-op doesn't crash |
+| 13 | Async returns Promise | async | Promise rejects on bad args |
+| 13b | Async: TokioAsyncFuture returns i32 | async | **E2E**: Rust tokio→Promise with i32 |
+| 13c | Async: FutureSuccessBytes returns buffer | async | **E2E**: Rust tokio→Promise with Uint8Array |
+| 13d | Async: multiple sequential calls | async | Three sequential async calls resolve |
+| 14 | PublicKey_Equals | sync | Same key equals, different doesn't |
+| 15 | Sign and Verify | sync | Ed25519 sign → verify round-trip |
+| 16 | Aes256GcmSiv encrypt/decrypt | sync | AES-GCM-SIV round-trip |
+| 17 | API: PrivateKey.generate() | sync | High-level key generation |
+| 18 | API: sign and verify | sync | High-level Ed25519 sign/verify |
+| 19 | API: key serialize/deserialize | sync | Round-trip through byte arrays |
+| 20 | API: ECDH key agreement | sync | Shared secret matches both ways |
+| 21 | API: IdentityKeyPair | sync | Serialize identity key pair |
+| 22 | API: ProtocolAddress | sync | Name + deviceId accessors |
+| 23 | API: Fingerprint | sync | 60-char displayable string |
+| 24 | API: Aes256GcmSiv | sync | High-level encrypt/decrypt |
+| 25 | API: hkdf() | sync | High-level HKDF derivation |
+| 26 | API: AccountEntropyPool | sync | Generate entropy pool |
+
+Tests 13b-13d require `libsignal_ffi.so` built with `--features libsignal-bridge-testing`.
+Without testing symbols, these tests will show an error but the rest still pass.

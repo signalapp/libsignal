@@ -12,3 +12,4 @@ example/android/build/
 example/android/.gradle/
 example/android/app/build/
 example/android/.cxx/
+example/android/app/src/main/assets/index.android.bundle

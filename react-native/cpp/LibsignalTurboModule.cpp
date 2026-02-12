@@ -7,6 +7,31 @@
 #include <cstdlib>
 #include <stdexcept>
 
+// Declare testing FFI functions (available when libsignal_ffi.so is built
+// with --features libsignal-bridge-testing). These are weak symbols so
+// the module loads even when testing is not available.
+extern "C" {
+
+// CPromise type for i32 results (only in testing header)
+typedef struct {
+  void (*complete)(SignalFfiError *error, const int32_t *result, const void *context);
+  const void *context;
+  uint64_t cancellation_id;
+} SignalCPromisei32;
+
+__attribute__((weak))
+SignalFfiError* signal_testing_tokio_async_future(
+    SignalCPromisei32* promise,
+    SignalConstPointerTokioAsyncContext async_runtime,
+    uint8_t input);
+
+__attribute__((weak))
+SignalFfiError* signal_testing_tokio_async_context_future_success_bytes(
+    SignalCPromiseOwnedBufferOfc_uchar* promise,
+    SignalConstPointerTokioAsyncContext async_runtime,
+    int32_t count);
+}
+
 namespace libsignal {
 
 // ---------------------------------------------------------------
@@ -402,6 +427,100 @@ void LibsignalModule::registerHandwrittenFunctions(jsi::Runtime& rt) {
     // - PreKeyStore operations
     // - SenderKeyStore operations
     // These require setting up C function pointer callbacks that invoke JSI functions.
+
+    // ---- Testing async functions (require libsignal_ffi.so built with testing feature) ----
+    // These use the TokioAsyncContext and return Promises, exercising the full async pipeline.
+    // Weak symbols: if libsignal_ffi.so was built without testing, these throw at runtime.
+
+    bool hasTestingSymbols = (signal_testing_tokio_async_future != nullptr);
+
+    // TESTING_TokioAsyncFuture: async fn that returns the input value as i32
+    // signal_testing_tokio_async_future(promise, async_runtime, input: u8) -> i32
+    functions_["TESTING_TokioAsyncFuture"] = [this, hasTestingSymbols](jsi::Runtime& rt,
+            const jsi::Value& /*thisVal*/, const jsi::Value* args, size_t count) -> jsi::Value {
+        if (!hasTestingSymbols) {
+            throw jsi::JSError(rt, "Testing functions not available (rebuild libsignal_ffi.so with --features libsignal-bridge-testing)");
+        }
+        auto ci = callInvoker_;
+        return createAsyncCall(rt, args, count, ci, [this](jsi::Runtime& rt, const jsi::Value* args, size_t count,
+                PromiseResolver resolver) {
+            auto* resolverPtr = new PromiseResolver(std::move(resolver));
+            uint8_t input = static_cast<uint8_t>(args[0].asNumber());
+            SignalCPromisei32 promise = {};
+            promise.context = reinterpret_cast<const void*>(resolverPtr);
+            promise.complete = [](SignalFfiError* err, const int32_t* result, const void* ctx) {
+                auto* resolver = const_cast<PromiseResolver*>(reinterpret_cast<const PromiseResolver*>(ctx));
+                if (err) {
+                    const char* msg = nullptr;
+                    signal_error_get_message(&msg, err);
+                    std::string errorMsg = msg ? msg : "Unknown error";
+                    if (msg) signal_free_string(msg);
+                    signal_error_free(err);
+                    resolver->reject(errorMsg);
+                } else if (result) {
+                    resolver->resolve_int(*result);
+                } else {
+                    resolver->resolve_null();
+                }
+                delete resolver;
+            };
+            SignalFfiError* err = signal_testing_tokio_async_future(&promise, asyncContext_, input);
+            if (err) {
+                const char* msg = nullptr;
+                signal_error_get_message(&msg, err);
+                std::string errorMsg = msg ? msg : "Unknown error";
+                if (msg) signal_free_string(msg);
+                signal_error_free(err);
+                resolverPtr->reject(errorMsg);
+                delete resolverPtr;
+            }
+        });
+    };
+
+    // TESTING_TokioAsyncContextFutureSuccessBytes: async fn that returns 'count' bytes
+    // signal_testing_tokio_async_context_future_success_bytes(promise, async_runtime, count: i32) -> OwnedBuffer
+    functions_["TESTING_TokioAsyncContextFutureSuccessBytes"] = [this, hasTestingSymbols](jsi::Runtime& rt,
+            const jsi::Value& /*thisVal*/, const jsi::Value* args, size_t count) -> jsi::Value {
+        if (!hasTestingSymbols) {
+            throw jsi::JSError(rt, "Testing functions not available (rebuild libsignal_ffi.so with --features libsignal-bridge-testing)");
+        }
+        auto ci = callInvoker_;
+        return createAsyncCall(rt, args, count, ci, [this](jsi::Runtime& rt, const jsi::Value* args, size_t count,
+                PromiseResolver resolver) {
+            auto* resolverPtr = new PromiseResolver(std::move(resolver));
+            int32_t byteCount = static_cast<int32_t>(args[0].asNumber());
+            SignalCPromiseOwnedBufferOfc_uchar promise = {};
+            promise.context = reinterpret_cast<const void*>(resolverPtr);
+            promise.complete = [](SignalFfiError* err, const SignalOwnedBuffer* result, const void* ctx) {
+                auto* resolver = const_cast<PromiseResolver*>(reinterpret_cast<const PromiseResolver*>(ctx));
+                if (err) {
+                    const char* msg = nullptr;
+                    signal_error_get_message(&msg, err);
+                    std::string errorMsg = msg ? msg : "Unknown error";
+                    if (msg) signal_free_string(msg);
+                    signal_error_free(err);
+                    resolver->reject(errorMsg);
+                } else if (result && result->base) {
+                    auto data = std::make_shared<std::vector<uint8_t>>(
+                        result->base, result->base + result->length);
+                    resolver->resolve_with_data(data);
+                } else {
+                    resolver->resolve_null();
+                }
+                delete resolver;
+            };
+            SignalFfiError* err = signal_testing_tokio_async_context_future_success_bytes(&promise, asyncContext_, byteCount);
+            if (err) {
+                const char* msg = nullptr;
+                signal_error_get_message(&msg, err);
+                std::string errorMsg = msg ? msg : "Unknown error";
+                if (msg) signal_free_string(msg);
+                signal_error_free(err);
+                resolverPtr->reject(errorMsg);
+                delete resolverPtr;
+            }
+        });
+    };
 }
 
 // ---------------------------------------------------------------
