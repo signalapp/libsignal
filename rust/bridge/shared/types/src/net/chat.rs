@@ -528,12 +528,8 @@ fn make_route_provider(
 
     let override_nagle_algorithm = connection_manager.tcp_nagle_override();
 
-    let chat_connect = choose_chat_connection_config(
-        env,
-        &proxy_mode,
-        chat_headers,
-        &connection_manager.remote_config,
-    );
+    let chat_connect =
+        choose_chat_connection_config(env, chat_headers, &connection_manager.remote_config);
 
     let inner = chat_connect.route_provider_with_options(
         enable_domain_fronting,
@@ -548,7 +544,6 @@ fn make_route_provider(
 
 fn choose_chat_connection_config<'a>(
     env: &'a Env<'_>,
-    proxy_mode: &DirectOrProxyMode,
     chat_headers: Option<&chat::ChatHeaders>,
     remote_config: &Mutex<RemoteConfig>,
 ) -> &'a ConnectionConfig {
@@ -571,19 +566,7 @@ fn choose_chat_connection_config<'a>(
         }
     }
 
-    // - We must not be connecting via Signal-TLS-Proxy.
-    match proxy_mode {
-        DirectOrProxyMode::ProxyOnly(connection_proxy_config)
-        | DirectOrProxyMode::ProxyThenDirect(connection_proxy_config)
-            if connection_proxy_config.is_signal_transparent_proxy() =>
-        {
-            // Transparent proxies won't understand the H2 domain.
-            default_config
-        }
-        DirectOrProxyMode::DirectOnly
-        | DirectOrProxyMode::ProxyOnly(_)
-        | DirectOrProxyMode::ProxyThenDirect(_) => &env.experimental_chat_h2_domain_config.connect,
-    }
+    &env.experimental_chat_h2_domain_config.connect
 }
 
 pub struct HttpRequest {
