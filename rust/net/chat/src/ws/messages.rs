@@ -12,7 +12,9 @@ use libsignal_core::{DeviceId, ServiceId};
 use libsignal_net::chat::{Request, Response};
 use libsignal_net_grpc::proto::chat::services;
 
-use super::{CustomError, OverWs, TryIntoResponse, WsConnection, parse_json_from_body};
+use super::{
+    CustomError, OverWs, TryIntoResponse, WsConnection, expect_empty_body, parse_json_from_body,
+};
 use crate::api::messages::{
     MismatchedDeviceError, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
     MultiRecipientSendFailure,
@@ -103,11 +105,7 @@ impl<T: WsConnection> crate::api::messages::UnauthenticatedChatApi<OverWs> for U
                     .as_u16()
                 {
                     401 => {
-                        if !response.body.as_deref().unwrap_or_default().is_empty() {
-                            log::warn!(
-                                "ignoring body for 401 result from send_multi_recipient_message"
-                            );
-                        }
+                        expect_empty_body(response, "/v1/messages/multi_recipient");
                         MultiRecipientSendFailure::Unauthorized.into()
                     }
                     409 | 410 => parse_multi_recipient_mismatched_devices_response(response),

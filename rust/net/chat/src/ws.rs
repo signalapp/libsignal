@@ -378,6 +378,16 @@ where
     })
 }
 
+fn expect_empty_body(response: &chat::Response, label: &'static str) {
+    if !response.body.as_deref().unwrap_or_default().is_empty() {
+        log::warn!(
+            "ignoring body for {} result from {}",
+            response.status.as_u16(),
+            label
+        );
+    }
+}
+
 #[cfg(test)]
 mod testutil {
     use super::*;

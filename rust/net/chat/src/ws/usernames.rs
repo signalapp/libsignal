@@ -13,7 +13,7 @@ use libsignal_net::chat::Request;
 use libsignal_net_grpc::proto::chat::services;
 use serde_with::serde_as;
 
-use super::{CustomError, OverWs, ResponseError, TryIntoResponse, WsConnection};
+use super::{CustomError, OverWs, ResponseError, TryIntoResponse, WsConnection, expect_empty_body};
 use crate::api::usernames::validate_username_from_link;
 use crate::api::{RequestError, Unauth};
 use crate::logging::{Redact, RedactBase64};
@@ -60,9 +60,7 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for 
             Err(ResponseError::UnrecognizedStatus { status, response })
                 if status.as_u16() == 404 =>
             {
-                if !response.body.unwrap_or_default().is_empty() {
-                    log::warn!("ignoring body for 404 result from look_up_username_hash");
-                }
+                expect_empty_body(&response, "/v1/accounts/username_hash/*");
                 return Ok(None);
             }
             Err(e) => {
@@ -122,9 +120,7 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for 
             Err(ResponseError::UnrecognizedStatus { status, response })
                 if status.as_u16() == 404 =>
             {
-                if !response.body.unwrap_or_default().is_empty() {
-                    log::warn!("ignoring body for 404 result from look_up_username_link");
-                }
+                expect_empty_body(&response, "/v1/accounts/username_link/*");
                 return Ok(None);
             }
             Err(e) => {
