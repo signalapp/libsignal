@@ -22,7 +22,7 @@ jobs:
   build-rust:
     name: Build libsignal_ffi (${{ matrix.target }})
 
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest
 
     strategy:
       matrix:
@@ -36,7 +36,7 @@ jobs:
           - target: i686-linux-android
             abi: x86
 
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
