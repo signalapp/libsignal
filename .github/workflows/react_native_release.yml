@@ -2,10 +2,6 @@ name: "Release - React Native"
 run-name: ${{ github.workflow }} (${{ github.ref_name }})
 
 on:
-  push:
-    branches: [react-native-ios-android]
-    paths:
-      - '.github/workflows/react_native_release.yml'
   workflow_dispatch:
     inputs:
       dry_run:
