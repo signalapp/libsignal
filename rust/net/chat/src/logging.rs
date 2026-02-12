@@ -130,6 +130,27 @@ impl std::fmt::Debug for DebugAsStrOrBytes<'_> {
     }
 }
 
+/// A wrapper type allowing an arbitrary function to be used with e.g.
+/// [`std::fmt::DebugStruct::field`].
+///
+/// This can go away if/when [`std::fmt::DebugStruct::field_with`] is stabilized.
+///
+/// Note the constraint on the wrapped type lives on the struct itself, rather than just its impls.
+/// This helps keep usage simple at the call site; without it, using `DebugByCalling` with a closure
+/// would require an explicit type for the closure's argument.
+pub struct DebugByCalling<T>(pub T)
+where
+    T: Fn(&mut std::fmt::Formatter<'_>) -> std::fmt::Result;
+
+impl<T> std::fmt::Debug for DebugByCalling<T>
+where
+    T: Fn(&mut std::fmt::Formatter<'_>) -> std::fmt::Result,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        (self.0)(f)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use test_case::test_case;

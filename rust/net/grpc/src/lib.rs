@@ -17,6 +17,9 @@ pub mod proto {
         pub mod account {
             tonic::include_proto!("org.signal.chat.account");
         }
+        pub mod backup {
+            tonic::include_proto!("org.signal.chat.backup");
+        }
         pub mod device {
             tonic::include_proto!("org.signal.chat.device");
         }

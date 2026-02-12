@@ -50,6 +50,7 @@ uuid = { workspace = true, features = ["serde"] }
 visibility = { workspace = true }
 
 [dev-dependencies]
+libsignal-account-keys = { workspace = true }
 libsignal-cli-utils = { workspace = true }
 libsignal-net = { workspace = true, features = ["test-util"] }
 
