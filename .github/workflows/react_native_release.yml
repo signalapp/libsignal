@@ -1,0 +1,184 @@
+name: "Release - React Native"
+run-name: ${{ github.workflow }} (${{ github.ref_name }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build only, don't create a GitHub release"
+        default: true
+        required: false
+        type: boolean
+
+env:
+  CARGO_TERM_COLOR: always
+  NDK_VERSION: 27.1.12297006
+
+jobs:
+  build-rust:
+    name: Build libsignal_ffi (${{ matrix.target }})
+
+    runs-on: ubuntu-latest-4-cores
+
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-linux-android
+            abi: arm64-v8a
+          - target: armv7-linux-androideabi
+            abi: armeabi-v7a
+          - target: x86_64-linux-android
+            abi: x86_64
+          - target: i686-linux-android
+            abi: x86
+
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
+
+    - run: 'echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"'
+
+    - name: Install Rust toolchain
+      run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal --target ${{ matrix.target }}
+
+    - name: Install cargo-ndk
+      run: cargo install cargo-ndk --locked
+
+    - name: Install Android NDK
+      run: |
+        "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;${NDK_VERSION}"
+        echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+    - name: Install protoc
+      run: |
+        curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v32.0/protoc-32.0-linux-x86_64.zip
+        sudo unzip -o protoc-32.0-linux-x86_64.zip -d /usr/local bin/protoc
+        sudo unzip -o protoc-32.0-linux-x86_64.zip -d /usr/local 'include/*'
+        rm protoc-32.0-linux-x86_64.zip
+
+    - name: Build libsignal_ffi.so (release, stripped)
+      run: |
+        cd react-native
+        bash scripts/build_android.sh --release --strip --abi ${{ matrix.abi }}
+
+    - name: Upload native library
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: libsignal_ffi-${{ matrix.abi }}
+        path: react-native/android/jniLibs/${{ matrix.abi }}/libsignal_ffi.so
+        retention-days: 7
+
+  package:
+    name: Package release zip
+
+    runs-on: ubuntu-latest
+
+    needs: build-rust
+
+    timeout-minutes: 15
+
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
+
+    - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+      with:
+        node-version: 22
+
+    - name: Download all native libraries
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+      with:
+        path: react-native/android/jniLibs
+        pattern: libsignal_ffi-*
+        merge-multiple: false
+
+    - name: Arrange jniLibs into ABI directories
+      run: |
+        cd react-native/android/jniLibs
+        for dir in libsignal_ffi-*; do
+          abi="${dir#libsignal_ffi-}"
+          mkdir -p "${abi}"
+          mv "${dir}/libsignal_ffi.so" "${abi}/libsignal_ffi.so"
+          rmdir "${dir}"
+        done
+        echo "=== jniLibs contents ==="
+        find . -type f -exec ls -lh {} \;
+
+    - name: Generate C++ headers
+      run: |
+        cd react-native
+        cp ../swift/Sources/SignalFfi/signal_ffi.h cpp/signal_ffi.h
+        python3 scripts/patch_header_cpp.py cpp/signal_ffi.h cpp/signal_ffi_cpp.h
+
+    - name: Install npm dependencies and compile TypeScript
+      run: |
+        cd react-native
+        npm install
+        npx tsc
+
+    - name: Assemble release zip
+      run: |
+        VERSION="${GITHUB_REF_NAME:-dev}"
+        STAGING="react-native-libsignal-${VERSION}"
+        mkdir -p "${STAGING}"
+
+        # Copy package metadata
+        cp react-native/package.json "${STAGING}/"
+        cp react-native/tsconfig.json "${STAGING}/"
+        cp react-native/README.md "${STAGING}/"
+        cp react-native/INTEGRATION.md "${STAGING}/"
+
+        # Compiled TypeScript (JS + declarations)
+        cp -r react-native/lib "${STAGING}/lib"
+
+        # TypeScript source (for source maps / reference)
+        cp -r react-native/ts "${STAGING}/ts"
+
+        # C++ native module source + generated headers
+        mkdir -p "${STAGING}/cpp"
+        cp react-native/cpp/*.h "${STAGING}/cpp/"
+        cp react-native/cpp/*.cpp "${STAGING}/cpp/"
+
+        # Android library (Gradle, CMake, Java, jniLibs with all ABIs)
+        cp -r react-native/android "${STAGING}/android"
+        # Remove build artifacts that shouldn't be shipped
+        rm -rf "${STAGING}/android/build" \
+               "${STAGING}/android/.cxx" \
+               "${STAGING}/android/.gradle"
+
+        # Scripts (for rebuilding from source if needed)
+        cp -r react-native/scripts "${STAGING}/scripts"
+
+        echo "=== Release contents ==="
+        find "${STAGING}" -type f | head -80
+        echo "..."
+        echo ""
+        echo "=== Native library sizes ==="
+        find "${STAGING}" -name "*.so" -exec ls -lh {} \;
+        echo ""
+
+        # Create zip
+        zip -r "react-native-libsignal-${VERSION}.zip" "${STAGING}/"
+
+        echo "=== Final zip ==="
+        ls -lh "react-native-libsignal-${VERSION}.zip"
+        echo "ZIP_NAME=react-native-libsignal-${VERSION}.zip" >> "$GITHUB_ENV"
+        echo "ZIP_PATH=react-native-libsignal-${VERSION}.zip" >> "$GITHUB_ENV"
+
+    - name: Upload release zip
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: react-native-libsignal-release
+        path: ${{ env.ZIP_PATH }}
+        retention-days: 30
+
+    - name: Create GitHub Release
+      if: ${{ !inputs.dry_run && github.ref_type == 'tag' }}
+      uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
+      with:
+        files: ${{ env.ZIP_PATH }}
+        generate_release_notes: true
