@@ -9,7 +9,9 @@ use uuid::Uuid;
 
 use super::*;
 use crate::ffi;
-use crate::protocol::storage::{FfiBridgePreKeyStoreStruct, FfiBridgeSignedPreKeyStoreStruct};
+use crate::protocol::storage::{
+    FfiBridgeKyberPreKeyStoreStruct, FfiBridgePreKeyStoreStruct, FfiBridgeSignedPreKeyStoreStruct,
+};
 use crate::support::{BridgedCallbacks, ResultLike, WithContext};
 
 /// A bridge-friendly version of [`IdentityKeyStore`].
@@ -104,61 +106,7 @@ impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedCallbacks<T> {
 // particular naming scheme; eventually we should be able to remove them.
 pub type FfiPreKeyStoreStruct = FfiBridgePreKeyStoreStruct;
 pub type FfiSignedPreKeyStoreStruct = FfiBridgeSignedPreKeyStoreStruct;
-
-/// A bridge-friendly version of [`KyberPreKeyStore`].
-#[bridge_callbacks(jni = false, node = false)]
-pub trait BridgeKyberPreKeyStore {
-    fn load_kyber_pre_key(&self, id: u32)
-    -> Result<Option<KyberPreKeyRecord>, SignalProtocolError>;
-    fn store_kyber_pre_key(
-        &self,
-        id: u32,
-        record: KyberPreKeyRecord,
-    ) -> Result<(), SignalProtocolError>;
-    fn mark_kyber_pre_key_used(
-        &self,
-        id: u32,
-        ec_prekey_id: u32,
-        base_key: PublicKey,
-    ) -> Result<(), SignalProtocolError>;
-}
-
-// TODO: This alias is because of the ffi_arg_type macro expecting all bridging structs to use a
-// particular naming scheme; eventually we should be able to remove it.
 pub type FfiKyberPreKeyStoreStruct = FfiBridgeKyberPreKeyStoreStruct;
-
-#[async_trait(?Send)]
-impl<T: BridgeKyberPreKeyStore> KyberPreKeyStore for BridgedCallbacks<T> {
-    async fn get_kyber_pre_key(
-        &self,
-        id: KyberPreKeyId,
-    ) -> Result<KyberPreKeyRecord, SignalProtocolError> {
-        BridgeKyberPreKeyStore::load_kyber_pre_key(&self.0, id.into())?
-            .ok_or(SignalProtocolError::InvalidKyberPreKeyId)
-    }
-
-    async fn save_kyber_pre_key(
-        &mut self,
-        id: KyberPreKeyId,
-        record: &KyberPreKeyRecord,
-    ) -> Result<(), SignalProtocolError> {
-        BridgeKyberPreKeyStore::store_kyber_pre_key(&self.0, id.into(), record.clone())
-    }
-
-    async fn mark_kyber_pre_key_used(
-        &mut self,
-        id: KyberPreKeyId,
-        ec_prekey_id: SignedPreKeyId,
-        base_key: &PublicKey,
-    ) -> Result<(), SignalProtocolError> {
-        BridgeKyberPreKeyStore::mark_kyber_pre_key_used(
-            &self.0,
-            id.into(),
-            ec_prekey_id.into(),
-            *base_key,
-        )
-    }
-}
 
 /// A bridge-friendly version of [`SessionStore`].
 #[bridge_callbacks(jni = false, node = false)]

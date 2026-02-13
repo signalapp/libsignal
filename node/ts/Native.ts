@@ -86,19 +86,7 @@ export type SessionStore = {
 // TODO: Resolve the different names here.
 export type PreKeyStore = BridgePreKeyStore;
 export type SignedPreKeyStore = BridgeSignedPreKeyStore;
-
-export type KyberPreKeyStore = {
-  _saveKyberPreKey: (
-    kyberPreKeyId: number,
-    record: KyberPreKeyRecord
-  ) => Promise<void>;
-  _getKyberPreKey: (kyberPreKeyId: number) => Promise<KyberPreKeyRecord>;
-  _markKyberPreKeyUsed: (
-    kyberPreKeyId: number,
-    signedPreKeyId: number,
-    baseKey: PublicKey
-  ) => Promise<void>;
-};
+export type KyberPreKeyStore = BridgeKyberPreKeyStore;
 
 export type SenderKeyStore = {
   _saveSenderKey: (
@@ -1885,6 +1873,11 @@ export /*trait*/ type BridgePreKeyStore = {
 export /*trait*/ type BridgeSignedPreKeyStore = {
   loadSignedPreKey: (id: number) => Promise<SignedPreKeyRecord | null>;
   storeSignedPreKey: (id: number, record: SignedPreKeyRecord) => Promise<void>;
+};
+export /*trait*/ type BridgeKyberPreKeyStore = {
+  loadKyberPreKey: (id: number) => Promise<KyberPreKeyRecord | null>;
+  storeKyberPreKey: (id: number, record: KyberPreKeyRecord) => Promise<void>;
+  markKyberPreKeyUsed: (id: number, ecPrekeyId: number, baseKey: PublicKey) => Promise<void>;
 };
 export interface CiphertextMessage { readonly __type: unique symbol; }
 export interface DecryptionErrorMessage { readonly __type: unique symbol; }

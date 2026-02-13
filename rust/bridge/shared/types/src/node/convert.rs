@@ -24,7 +24,9 @@ use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::{
     ChatListener, NodeChatListener, NodeProvisioningListener, ProvisioningListener,
 };
-use crate::protocol::storage::{NodeBridgePreKeyStore, NodeBridgeSignedPreKeyStore};
+use crate::protocol::storage::{
+    NodeBridgeKyberPreKeyStore, NodeBridgePreKeyStore, NodeBridgeSignedPreKeyStore,
+};
 use crate::support::{
     Array, AsType, BridgedCallbacks, FixedLengthBincodeSerializable, Serialized, extend_lifetime,
 };
@@ -409,6 +411,22 @@ impl CallbackResultTypeInfo for Option<SignedPreKeyRecord> {
             return Ok(None);
         }
         let non_optional_value: Handle<DefaultJsBox<JsBoxContentsFor<SignedPreKeyRecord>>> =
+            foreign.downcast_or_throw(cx)?;
+        Ok(Some(non_optional_value.as_inner().0.clone()))
+    }
+}
+
+impl CallbackResultTypeInfo for Option<KyberPreKeyRecord> {
+    type ResultType = JsValue;
+
+    fn convert_from_callback(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ResultType>,
+    ) -> NeonResult<Self> {
+        if foreign.downcast::<JsNull, _>(cx).is_ok() {
+            return Ok(None);
+        }
+        let non_optional_value: Handle<DefaultJsBox<JsBoxContentsFor<KyberPreKeyRecord>>> =
             foreign.downcast_or_throw(cx)?;
         Ok(Some(non_optional_value.as_inner().0.clone()))
     }
@@ -813,7 +831,7 @@ bridge_trait!(IdentityKeyStore);
 bridge_trait!(SenderKeyStore);
 bridge_trait!(SessionStore);
 // bridge_trait!(SignedPreKeyStore);
-bridge_trait!(KyberPreKeyStore);
+// bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
 
 impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn PreKeyStore {
@@ -838,6 +856,22 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn SignedPreKeyStore {
         foreign: Handle<Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
         Ok(BridgedCallbacks(NodeBridgeSignedPreKeyStore::new(
+            cx, foreign,
+        )?))
+    }
+    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
+        stored
+    }
+}
+
+impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn KyberPreKeyStore {
+    type ArgType = JsObject;
+    type StoredType = BridgedCallbacks<NodeBridgeKyberPreKeyStore>;
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        Ok(BridgedCallbacks(NodeBridgeKyberPreKeyStore::new(
             cx, foreign,
         )?))
     }

@@ -37,3 +37,22 @@ internal interface SignedPreKeyStore {
     rawSignedPreKey: ObjectHandle,
   )
 }
+
+@CalledFromNative
+internal interface KyberPreKeyStore {
+  @Throws(Exception::class)
+  public fun loadKyberPreKey(id: Int): NativeHandleGuard.Owner
+
+  @Throws(Exception::class)
+  public fun storeKyberPreKey(
+    id: Int,
+    rawKyberPreKey: ObjectHandle,
+  )
+
+  @Throws(Exception::class)
+  public fun markKyberPreKeyUsed(
+    id: Int,
+    ecPrekeyId: Int,
+    rawBaseKey: ObjectHandle,
+  )
+}

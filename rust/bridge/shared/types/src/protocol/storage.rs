@@ -6,8 +6,8 @@
 use async_trait::async_trait;
 use libsignal_bridge_macros::bridge_callbacks;
 use libsignal_protocol::{
-    PreKeyId, PreKeyRecord, PreKeyStore, SignalProtocolError, SignedPreKeyId, SignedPreKeyRecord,
-    SignedPreKeyStore,
+    KyberPreKeyId, KyberPreKeyRecord, KyberPreKeyStore, PreKeyId, PreKeyRecord, PreKeyStore,
+    PublicKey, SignalProtocolError, SignedPreKeyId, SignedPreKeyRecord, SignedPreKeyStore,
 };
 
 use crate::support::{BridgedCallbacks, ResultLike, WithContext};
@@ -82,5 +82,60 @@ impl<T: BridgeSignedPreKeyStore> SignedPreKeyStore for BridgedCallbacks<T> {
         self.0
             .store_signed_pre_key(signed_prekey_id.into(), record.clone())
             .await
+    }
+}
+
+/// A bridge-friendly version of [`KyberPreKeyStore`].
+#[bridge_callbacks(jni = "org.signal.libsignal.protocol.state.internal.KyberPreKeyStore")]
+pub(crate) trait BridgeKyberPreKeyStore {
+    async fn load_kyber_pre_key(
+        &self,
+        id: u32,
+    ) -> Result<Option<KyberPreKeyRecord>, SignalProtocolError>;
+    async fn store_kyber_pre_key(
+        &self,
+        id: u32,
+        record: KyberPreKeyRecord,
+    ) -> Result<(), SignalProtocolError>;
+    async fn mark_kyber_pre_key_used(
+        &self,
+        id: u32,
+        ec_prekey_id: u32,
+        base_key: PublicKey,
+    ) -> Result<(), SignalProtocolError>;
+}
+
+#[async_trait(?Send)]
+impl<T: BridgeKyberPreKeyStore> KyberPreKeyStore for BridgedCallbacks<T> {
+    async fn get_kyber_pre_key(
+        &self,
+        id: KyberPreKeyId,
+    ) -> Result<KyberPreKeyRecord, SignalProtocolError> {
+        BridgeKyberPreKeyStore::load_kyber_pre_key(&self.0, id.into())
+            .await?
+            .ok_or(SignalProtocolError::InvalidKyberPreKeyId)
+    }
+
+    async fn save_kyber_pre_key(
+        &mut self,
+        id: KyberPreKeyId,
+        record: &KyberPreKeyRecord,
+    ) -> Result<(), SignalProtocolError> {
+        BridgeKyberPreKeyStore::store_kyber_pre_key(&self.0, id.into(), record.clone()).await
+    }
+
+    async fn mark_kyber_pre_key_used(
+        &mut self,
+        id: KyberPreKeyId,
+        ec_prekey_id: SignedPreKeyId,
+        base_key: &PublicKey,
+    ) -> Result<(), SignalProtocolError> {
+        BridgeKyberPreKeyStore::mark_kyber_pre_key_used(
+            &self.0,
+            id.into(),
+            ec_prekey_id.into(),
+            *base_key,
+        )
+        .await
     }
 }

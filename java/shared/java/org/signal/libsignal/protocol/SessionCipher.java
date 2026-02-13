@@ -10,10 +10,12 @@ import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import java.time.Instant;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.message.PreKeySignalMessage;
 import org.signal.libsignal.protocol.message.SignalMessage;
 import org.signal.libsignal.protocol.state.IdentityKeyStore;
+import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
 import org.signal.libsignal.protocol.state.KyberPreKeyStore;
 import org.signal.libsignal.protocol.state.PreKeyRecord;
 import org.signal.libsignal.protocol.state.PreKeyStore;
@@ -166,7 +168,21 @@ public class SessionCipher {
                       signedPreKeyStore.storeSignedPreKey(id, new SignedPreKeyRecord(rawPreKey));
                     }
                   },
-                  kyberPreKeyStore));
+                  new org.signal.libsignal.protocol.state.internal.KyberPreKeyStore() {
+                    public NativeHandleGuard.Owner loadKyberPreKey(int id) throws Exception {
+                      return kyberPreKeyStore.loadKyberPreKey(id);
+                    }
+
+                    public void storeKyberPreKey(int id, long rawPreKey) throws Exception {
+                      kyberPreKeyStore.storeKyberPreKey(id, new KyberPreKeyRecord(rawPreKey));
+                    }
+
+                    public void markKyberPreKeyUsed(int id, int ecPrekeyId, long rawBaseKey)
+                        throws Exception {
+                      kyberPreKeyStore.markKyberPreKeyUsed(
+                          id, ecPrekeyId, new ECPublicKey(rawBaseKey));
+                    }
+                  }));
     }
   }
 
