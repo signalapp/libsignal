@@ -163,15 +163,7 @@ struct TestingRequestError<E>(RequestError<E>);
 impl<TestE> TestingRequestError<TestE> {
     fn map_into_error<E>(self, f: impl FnOnce(TestE) -> E) -> RequestError<E> {
         let TestingRequestError(inner) = self;
-        match inner {
-            RequestError::Timeout => RequestError::Timeout,
-            RequestError::Unexpected { log_safe } => RequestError::Unexpected { log_safe },
-            RequestError::Other(e) => RequestError::Other(f(e)),
-            RequestError::RetryLater(retry_later) => RequestError::RetryLater(retry_later),
-            RequestError::Challenge(challenge) => RequestError::Challenge(challenge),
-            RequestError::ServerSideError => RequestError::ServerSideError,
-            RequestError::Disconnected(d) => match d {},
-        }
+        inner.flat_map_other(|e| RequestError::Other(f(e)))
     }
 }
 

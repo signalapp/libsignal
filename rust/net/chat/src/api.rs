@@ -85,6 +85,27 @@ impl<E, D> From<Infallible> for RequestError<E, D> {
     }
 }
 
+impl<E, D> RequestError<E, D> {
+    /// Substitutes one `Other` error type for another.
+    ///
+    /// This is a *flat* map because the transformation is allowed to return a different
+    /// `RequestError` case (usually `Unexpected`).
+    pub fn flat_map_other<E2>(
+        self,
+        f: impl FnOnce(E) -> RequestError<E2, D>,
+    ) -> RequestError<E2, D> {
+        match self {
+            RequestError::Timeout => RequestError::Timeout,
+            RequestError::Disconnected(d) => RequestError::Disconnected(d),
+            RequestError::RetryLater(retry_later) => RequestError::RetryLater(retry_later),
+            RequestError::Challenge(challenge) => RequestError::Challenge(challenge),
+            RequestError::ServerSideError => RequestError::ServerSideError,
+            RequestError::Unexpected { log_safe } => RequestError::Unexpected { log_safe },
+            RequestError::Other(e) => f(e),
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(Clone))]
 #[ignore_extra_doc_attributes]
