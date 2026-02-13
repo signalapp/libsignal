@@ -164,10 +164,6 @@ def main(args: Optional[List[str]] = None) -> int:
     objcopy = None
 
     if node_os_name == 'win32':
-        # By default, Rust on Windows depends on an MSVC component for the C runtime.
-        # Link it statically to avoid propagating that dependency.
-        cargo_env['RUSTFLAGS'] += ' -C target-feature=+crt-static'
-
         # Hint to the Rust compiler that we're cross-compiling. This shouldn't be necessary
         # since the invoking build script (if any) should be doing that but it's needed
         # since Rust nightly-2024-10-03.
