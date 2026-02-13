@@ -219,6 +219,21 @@ impl<T: SimpleArgTypeInfo> CallbackResultTypeInfo for T {
     }
 }
 
+impl<T: CallbackResultTypeInfo> CallbackResultTypeInfo for Option<T> {
+    type ResultType = JsValue;
+
+    fn convert_from_callback(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ResultType>,
+    ) -> NeonResult<Self> {
+        if foreign.downcast::<JsNull, _>(cx).is_ok() {
+            return Ok(None);
+        }
+        let non_optional_value = foreign.downcast_or_throw::<T::ResultType, _>(cx)?;
+        T::convert_from_callback(cx, non_optional_value).map(Some)
+    }
+}
+
 // Implement AsyncArgTypeInfo for a slice of SessionRecords outside of
 // the node_bridge_as_handle macro since we don't want to use async for
 // the HsmEnclave module.
@@ -384,51 +399,36 @@ impl SimpleArgTypeInfo for libsignal_core::E164 {
     }
 }
 
-impl CallbackResultTypeInfo for Option<PreKeyRecord> {
-    type ResultType = JsValue;
+impl CallbackResultTypeInfo for PreKeyRecord {
+    type ResultType = DefaultJsBox<JsBoxContentsFor<PreKeyRecord>>;
 
     fn convert_from_callback(
-        cx: &mut FunctionContext,
+        _cx: &mut FunctionContext,
         foreign: Handle<Self::ResultType>,
     ) -> NeonResult<Self> {
-        if foreign.downcast::<JsNull, _>(cx).is_ok() {
-            return Ok(None);
-        }
-        let non_optional_value: Handle<DefaultJsBox<JsBoxContentsFor<PreKeyRecord>>> =
-            foreign.downcast_or_throw(cx)?;
-        Ok(Some(non_optional_value.as_inner().0.clone()))
+        Ok(foreign.as_inner().0.clone())
     }
 }
 
-impl CallbackResultTypeInfo for Option<SignedPreKeyRecord> {
-    type ResultType = JsValue;
+impl CallbackResultTypeInfo for SignedPreKeyRecord {
+    type ResultType = DefaultJsBox<JsBoxContentsFor<SignedPreKeyRecord>>;
 
     fn convert_from_callback(
-        cx: &mut FunctionContext,
+        _cx: &mut FunctionContext,
         foreign: Handle<Self::ResultType>,
     ) -> NeonResult<Self> {
-        if foreign.downcast::<JsNull, _>(cx).is_ok() {
-            return Ok(None);
-        }
-        let non_optional_value: Handle<DefaultJsBox<JsBoxContentsFor<SignedPreKeyRecord>>> =
-            foreign.downcast_or_throw(cx)?;
-        Ok(Some(non_optional_value.as_inner().0.clone()))
+        Ok(foreign.as_inner().0.clone())
     }
 }
 
-impl CallbackResultTypeInfo for Option<KyberPreKeyRecord> {
-    type ResultType = JsValue;
+impl CallbackResultTypeInfo for KyberPreKeyRecord {
+    type ResultType = DefaultJsBox<JsBoxContentsFor<KyberPreKeyRecord>>;
 
     fn convert_from_callback(
-        cx: &mut FunctionContext,
+        _cx: &mut FunctionContext,
         foreign: Handle<Self::ResultType>,
     ) -> NeonResult<Self> {
-        if foreign.downcast::<JsNull, _>(cx).is_ok() {
-            return Ok(None);
-        }
-        let non_optional_value: Handle<DefaultJsBox<JsBoxContentsFor<KyberPreKeyRecord>>> =
-            foreign.downcast_or_throw(cx)?;
-        Ok(Some(non_optional_value.as_inner().0.clone()))
+        Ok(foreign.as_inner().0.clone())
     }
 }
 
