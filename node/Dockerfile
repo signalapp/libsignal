@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
-FROM ubuntu:focal-20240530@sha256:fa17826afb526a9fc7250e0fbcbfd18d03fe7a54849472f86879d8bf562c629e
+FROM ubuntu:jammy-20260109@sha256:c7eb020043d8fc2ae0793fb35a37bff1cf33f156d4d4b12ccc7f3ef8706c38b1
 
 # Avoid getting prompted to configure things during installation.
 ENV DEBIAN_FRONTEND=noninteractive
@@ -22,7 +22,7 @@ RUN    apt-get update -oAcquire::https::Verify-Peer=false \
 
 # Install only what's needed to set up Rust and Node.
 # We'll install additional tools at the end to take advantage of Docker's caching of earlier steps.
-RUN apt-get update && apt-get install -y apt-transport-https xz-utils unzip
+RUN apt-get update && apt-get install -y xz-utils unzip
 
 # User-specific setup!
 

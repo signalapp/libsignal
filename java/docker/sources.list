@@ -1,3 +1,3 @@
-deb http://mirror.signalusers.org/ubuntu/1695223901/ jammy main universe
-deb http://mirror.signalusers.org/ubuntu/1695223901/ jammy-security main universe
-deb http://mirror.signalusers.org/ubuntu/1695223901/ jammy-updates main universe
+deb http://mirror.signalusers.org/ubuntu/1771004869/ jammy main universe
+deb http://mirror.signalusers.org/ubuntu/1771004869/ jammy-security main universe
+deb http://mirror.signalusers.org/ubuntu/1771004869/ jammy-updates main universe
