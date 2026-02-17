@@ -19,9 +19,9 @@ pub struct AdminDeletedMessage<Recipient> {
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum AdminDeletedMessageError {
-    /// admin id is not present
-    UnknownAdminId,
-    /// admin id is not self nor contact: {0:?}
+    /// unknown admin id {0:?}
+    UnknownAdminId(RecipientId),
+    /// admin id is not self nor contact: {0:?}(1:?)
     AdminNotSelfNotContact(RecipientId, DestinationKind),
 }
 
@@ -37,7 +37,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>>
         } = self;
         let admin_id = RecipientId(adminId);
         let Some((admin_data, admin)) = context.lookup_pair(&admin_id) else {
-            return Err(Self::Error::UnknownAdminId);
+            return Err(Self::Error::UnknownAdminId(admin_id));
         };
         match admin_data {
             MinimalRecipientData::Self_ | MinimalRecipientData::Contact { .. } => {}
@@ -86,24 +86,26 @@ mod test {
 
     #[test_case(|_| {} => Ok(()); "happy path")]
     #[test_case(|x| x.adminId = TestContext::NONEXISTENT_ID.0 =>
-        Err(AdminDeletedMessageError::UnknownAdminId); "missing admin")]
+        Err(AdminDeletedMessageError::UnknownAdminId(
+            RecipientId(TestContext::NONEXISTENT_ID.0)
+        )); "missing admin")]
     #[test_case(|x| x.adminId = TestContext::SELF_ID.0 => Ok(()); "admin is self")]
     #[test_case(|x| x.adminId = TestContext::CONTACT_ID.0 => Ok(()); "admin is contact")]
     #[test_case(|x| x.adminId = TestContext::GROUP_ID.0 =>
         Err(AdminDeletedMessageError::AdminNotSelfNotContact(
-                RecipientId(TestContext::GROUP_ID.0),
-                DestinationKind::Group
-            )); "admin is group")]
+            RecipientId(TestContext::GROUP_ID.0),
+            DestinationKind::Group
+        )); "admin is group")]
     #[test_case(|x| x.adminId = TestContext::CALL_LINK_ID.0 =>
         Err(AdminDeletedMessageError::AdminNotSelfNotContact(
-                RecipientId(TestContext::CALL_LINK_ID.0),
-                DestinationKind::CallLink
-            )); "admin is call link")]
+            RecipientId(TestContext::CALL_LINK_ID.0),
+            DestinationKind::CallLink
+        )); "admin is call link")]
     #[test_case(|x| x.adminId = TestContext::RELEASE_NOTES_ID.0 =>
         Err(AdminDeletedMessageError::AdminNotSelfNotContact(
-                RecipientId(TestContext::RELEASE_NOTES_ID.0),
-                DestinationKind::ReleaseNotes
-            )); "admin is release notes")]
+            RecipientId(TestContext::RELEASE_NOTES_ID.0),
+            DestinationKind::ReleaseNotes
+        )); "admin is release notes")]
     fn admin_deleted_message(
         modify: fn(&mut AdminDeletedMessageProto),
     ) -> Result<(), AdminDeletedMessageError> {
