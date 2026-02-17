@@ -830,6 +830,7 @@ impl Visit<Scrambler> for proto::ChatItem {
                 Item::ViewOnceMessage(item) => item.accept(visitor),
                 Item::DirectStoryReplyMessage(item) => item.accept(visitor),
                 Item::Poll(item) => item.accept(visitor),
+                Item::AdminDeletedMessage(item) => item.accept(visitor),
             }
         }
     }
@@ -2149,6 +2150,15 @@ impl Visit<Scrambler> for proto::PinMessageUpdate {
         let Self {
             targetSentTimestamp: _,
             authorId: _,
+            special_fields: _,
+        } = self;
+    }
+}
+
+impl Visit<Scrambler> for proto::AdminDeletedMessage {
+    fn accept(&mut self, _visitor: &mut Scrambler) {
+        let Self {
+            adminId: _,
             special_fields: _,
         } = self;
     }

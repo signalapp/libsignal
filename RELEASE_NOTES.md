@@ -7,3 +7,5 @@ v0.87.2
 - keytrans: Include search key and distinguished tree last update time in stored account data
 
 - Windows: build without `+crt-static`, i.e. we now use `/MD` to link the C stdlib instead of `/MT`.
+
+- backups: Support admin deleted messages

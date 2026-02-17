@@ -24,6 +24,9 @@ use crate::backup::{
 };
 use crate::proto::backup as proto;
 
+mod admin_deleted;
+use admin_deleted::*;
+
 mod contact_message;
 use contact_message::*;
 
@@ -259,6 +262,10 @@ pub enum ChatItemError {
     PinMessageToReleaseNotes,
     /// invalid pin message {0}
     InvalidPinMessage(#[from] PinMessageError),
+    /// admin deleted message: {0}
+    AdminDeletedMessage(#[from] AdminDeletedMessageError),
+    /// admin deleted message in non-group chat: {0:?}
+    AdminDeletedNotInGroup(DestinationKind),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -394,6 +401,7 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
     ViewOnce(ViewOnceMessage<M::RecipientReference>),
     DirectStoryReply(DirectStoryReplyMessage<M::RecipientReference>),
     Poll(Poll<M::RecipientReference>),
+    AdminDeleted(AdminDeletedMessage<M::RecipientReference>),
 }
 
 const CHAT_ITEM_MESSAGE_SIZE_LIMIT: usize = 200;
@@ -420,6 +428,9 @@ static_assertions::const_assert!(
 );
 static_assertions::const_assert!(
     std::mem::size_of::<ViewOnceMessage<RecipientId>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+);
+static_assertions::const_assert!(
+    std::mem::size_of::<AdminDeletedMessage<RecipientId>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
 );
 
 #[derive(Debug, serde::Serialize, strum::EnumDiscriminants)]
@@ -686,7 +697,8 @@ impl<
                 | ChatItemMessage::PaymentNotification(_)
                 | ChatItemMessage::GiftBadge(_)
                 | ChatItemMessage::ViewOnce(_)
-                | ChatItemMessage::Poll(_) => {
+                | ChatItemMessage::Poll(_)
+                | ChatItemMessage::AdminDeleted(_) => {
                     return Err(ChatItemError::NonStandardMessageHasRevisions);
                 }
             }
@@ -912,6 +924,14 @@ impl<M: Method + ReferencedTypes> ChatItemData<M> {
                     ));
                 }
             }
+            ChatItemMessage::AdminDeleted(_) => {
+                // Admin deleted messages can only appear in group chats
+                if !matches!(recipient_data, ChatRecipientKind::Group) {
+                    return Err(ChatItemError::AdminDeletedNotInGroup(
+                        (*recipient_data).into(),
+                    ));
+                }
+            }
         }
 
         Ok(())
@@ -1113,6 +1133,9 @@ impl<
                 ChatItemMessage::DirectStoryReply(message.try_into_with(context)?)
             }
             Item::Poll(poll) => ChatItemMessage::Poll(poll.try_into_with(context)?),
+            Item::AdminDeletedMessage(message) => {
+                ChatItemMessage::AdminDeleted(message.try_into_with(context)?)
+            }
         })
     }
 }
