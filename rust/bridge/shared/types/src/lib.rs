@@ -36,8 +36,6 @@ pub mod zkgroup;
 mod pin {
     use ::libsignal_account_keys::PinHash;
 
-    use crate::*;
-
     bridge_as_handle!(PinHash, node = false);
 }
 

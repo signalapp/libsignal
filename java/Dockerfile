@@ -61,11 +61,11 @@ RUN    ./gradlew --version
 # Rust setup...
 
 COPY rust-toolchain rust-toolchain
-ARG RUSTUP_SHA=ad1f8b5199b3b9e231472ed7aa08d2e5d1d539198a15c5b1e53c746aad81d27b
+ARG RUSTUP_SHA=20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c
 ENV PATH="/home/libsignal/.cargo/bin:${PATH}"
 
 ADD --chown=libsignal --chmod=755 --checksum=sha256:${RUSTUP_SHA} \
-    https://static.rust-lang.org/rustup/archive/1.21.1/x86_64-unknown-linux-gnu/rustup-init /tmp/rustup-init
+    https://static.rust-lang.org/rustup/archive/1.28.2/x86_64-unknown-linux-gnu/rustup-init /tmp/rustup-init
 
 RUN    /tmp/rustup-init -y --profile minimal --default-toolchain "$(cat rust-toolchain)" \
     && rm -rf /tmp/rustup-init

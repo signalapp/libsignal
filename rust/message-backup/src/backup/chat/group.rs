@@ -84,7 +84,8 @@ macro_rules! TryFromProto {
 
 /// Validated version of [`proto::group_change_chat_update::update::Update`].
 #[serde_as]
-#[expect(clippy::enum_variant_names, non_snake_case)] // names taken from proto message.
+// TODO: expect fails to see through the macros as of nightly-2026-02-11
+#[allow(clippy::enum_variant_names, non_snake_case)] // names taken from proto message.
 #[derive(Debug, serde::Serialize)]
 #[macro_rules_derive(TryFromProto)]
 #[cfg_attr(test, derive(PartialEq))]

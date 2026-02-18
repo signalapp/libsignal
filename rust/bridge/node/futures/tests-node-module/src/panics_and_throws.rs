@@ -6,7 +6,7 @@
 use neon::prelude::*;
 use signal_neon_futures::*;
 
-#[expect(unreachable_code, unused_variables)]
+#[expect(unreachable_code, unused_assignments, unused_variables)]
 pub fn panic_pre_await(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let promise = cx.argument::<JsObject>(0)?;
 
@@ -78,7 +78,7 @@ pub fn panic_during_settle(mut cx: FunctionContext) -> JsResult<JsPromise> {
     })
 }
 
-#[expect(unreachable_code, unused_variables)]
+#[expect(unreachable_code, unused_assignments, unused_variables)]
 pub fn throw_pre_await(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let promise = cx.argument::<JsObject>(0)?;
 
