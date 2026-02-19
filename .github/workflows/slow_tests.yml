@@ -473,6 +473,8 @@ jobs:
       run: cargo +stable test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures --no-fail-fast -- --include-ignored
       env:
         RUST_LOG: debug
+        CFLAGS: "-msse2" # for BoringSSL
+        CXXFLAGS: "-msse2" # for BoringSSL
 
     - name: Run libsignal-protocol cross-version tests
       run: cargo +stable test --no-fail-fast

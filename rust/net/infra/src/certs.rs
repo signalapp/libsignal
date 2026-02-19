@@ -90,7 +90,7 @@ impl RootCertificates {
         };
         let mut store_builder = X509StoreBuilder::new()?;
         for der in ders {
-            store_builder.add_cert(X509::from_der(der)?)?;
+            store_builder.add_cert(X509::from_der(der)?.as_ref())?;
         }
         connector.set_verify_cert_store(store_builder.build())?;
         Ok(())
@@ -417,7 +417,7 @@ mod test {
             .build()
             .expect("valid");
 
-        let mut ssl = SslConnector::builder(SslMethod::tls_client()).expect("valid");
+        let mut ssl = SslConnector::builder(SslMethod::tls()).expect("valid");
         let verifier = Arc::into_inner(verifier).expect("only one referent");
         let verifier = make_verifier(verifier);
         set_up_platform_verifier(&mut ssl, Host::Domain(SERVER_HOSTNAME), verifier).expect("valid");
@@ -455,7 +455,7 @@ mod test {
             .build()
             .expect("valid");
 
-        let mut ssl = SslConnector::builder(SslMethod::tls_client()).expect("valid");
+        let mut ssl = SslConnector::builder(SslMethod::tls()).expect("valid");
         let verifier = Arc::into_inner(verifier).expect("only one referent");
         let verifier = make_verifier(verifier);
         set_up_platform_verifier(&mut ssl, Host::Domain(SERVER_HOSTNAME), verifier).expect("valid");

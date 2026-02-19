@@ -8,7 +8,6 @@ accepted = [
     "ISC",
     "MPL-2.0",
     "AGPL-3.0-only",
-    "OpenSSL",
     "Unicode-3.0",
     "Unicode-DFS-2016",
 ]
@@ -70,7 +69,7 @@ checksum = "48e488ce333f8a1e86a68b2a1df454464037f1ff580b5bff926053c56dbadc2d"
 # and the similar configuration for 'ring' in https://github.com/EmbarkStudios/cargo-about/blob/3bcd3380f606fd468b2836e04cdcf7997d1f3ff8/src/licenses/workarounds/ring.rs
 
 [boring-sys.clarify]
-license = "MIT AND ISC AND OpenSSL"
+license = "MIT AND Apache-2.0"
 
 [[boring-sys.clarify.files]]
 # The MIT license of the Rust code
@@ -79,28 +78,10 @@ license = "MIT"
 checksum = "ad2e7bdef7c00b92eaf4f657a472c7d3f8b36aac3cdc270e65bb0c287eec0d4e"
 
 [[boring-sys.clarify.files]]
-# The original OpenSSL license
+# The Apache 2.0 license of BoringSSL
 path = "deps/boringssl/LICENSE"
-license = "OpenSSL"
-start = "/* ===================================================================="
-end = "*/"
-checksum = "53552a9b197cd0db29bd085d81253e67097eedd713706e8cd2a3cc6c29850ceb"
-
-[[boring-sys.clarify.files]]
-# The ISC license of the Google-written BoringSSL code
-path = "deps/boringssl/LICENSE"
-license = "ISC"
-start = "/* Copyright (c) 2015, Google Inc."
-end = "* CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */"
-checksum = "19c779f8bbc141fa15c14e0a15aacaee2da917f7043af883c90cbef3cd6f4847"
-
-[[boring-sys.clarify.files]]
-# The MIT license of the BoringSSL code in third_party/fiat
-path = "deps/boringssl/LICENSE"
-license = "MIT"
-start = "Copyright (c) 2015-2016 the fiat-crypto authors"
-end = "SOFTWARE."
-checksum = "7d5e1fb4bbd5e89a687f94c3d3826db50e26bd6f4ade136a025dc2080c5bdc85"
+license = "Apache-2.0"
+checksum = "827c8d8fc207c2392794eef9e00fe246f9f61fdcc132556c275be3dd8c3cd97f"
 
 
 # Newer versions of convert_case have a LICENSE file, we'll use that one

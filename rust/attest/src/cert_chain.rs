@@ -10,7 +10,7 @@ use boring_signal::pkey::Public;
 use boring_signal::stack::{Stack, Stackable};
 use boring_signal::x509::crl::X509CRLRef;
 use boring_signal::x509::store::X509StoreRef;
-use boring_signal::x509::{X509, X509StoreContext};
+use boring_signal::x509::{X509, X509StoreContext, X509VerifyError};
 
 use crate::error::ContextError;
 use crate::expireable::Expireable;
@@ -75,20 +75,17 @@ impl CertChain {
         let cert_stack = Self::stack(self.certs.iter().cloned())
             .map_err(|e| Error::from(e).context("cert stack"))?;
         let mut ctx = X509StoreContext::new().expect("can allocate a fresh X509StoreContext");
-        let verified = ctx
+
+        let verify_result = ctx
             .init(trust, self.leaf(), &cert_stack, |c| {
-                c.verify_cert_with_crls(crl_stack)
+                c.verify_cert_with_crls(crl_stack)?;
+                Ok(c.verify_result())
             })
-            .unwrap_or(false);
-        if !verified {
+            .unwrap_or(Err(X509VerifyError::UNSPECIFIED));
+
+        if let Err(e) = verify_result {
             #[cfg(not(fuzzing))]
-            return Err(Error::new(format!(
-                "invalid certificate: {:?}",
-                match ctx.verify_result() {
-                    Ok(()) => boring_signal::x509::X509VerifyError::UNSPECIFIED,
-                    Err(e) => e,
-                }
-            )));
+            return Err(Error::new(format!("invalid certificate: {e:?}")));
         }
 
         Ok(())
@@ -219,7 +216,7 @@ pub mod testutil {
 
             let mut builder = X509::builder().unwrap();
             let basic_constraints = BasicConstraints::new().critical().ca().build().unwrap();
-            builder.append_extension(basic_constraints).unwrap();
+            builder.append_extension(&basic_constraints).unwrap();
 
             builder.set_version(2).unwrap();
             builder.set_subject_name(&name).unwrap();
@@ -390,7 +387,7 @@ mod test {
             );
             store_bldr.add_crl(crl.to_owned()).unwrap();
         }
-        store_bldr.add_cert(root.to_owned()).unwrap();
+        store_bldr.add_cert(root).unwrap();
         store_bldr.build()
     }
 

@@ -215,7 +215,7 @@ pub(crate) mod testutil {
     impl TlsServer {
         pub(super) fn new(server: TcpServer, certificate: &CertifiedKey<rcgen::KeyPair>) -> Self {
             let ssl_acceptor = try_scoped(|| {
-                let mut builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls_server())?;
+                let mut builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls())?;
                 builder.set_certificate(X509::from_der(certificate.cert.der())?.as_ref())?;
                 builder.set_private_key(
                     PKey::private_key_from_der(certificate.signing_key.serialized_der())?.as_ref(),
@@ -315,7 +315,13 @@ pub(crate) mod testutil {
             let buffer = stream.fill_buf().await.expect("can read");
             match tls_parser::parse_tls_plaintext(buffer) {
                 Ok((_, record)) => break record,
-                Err(tls_parser::Err::Incomplete(_)) => continue,
+                Err(tls_parser::Err::Incomplete(needed)) => {
+                    assert!(
+                        buffer.len() < TCP_MIN_MSS,
+                        "buffer too small (did the ClientHello change?) - still need {needed:?}"
+                    );
+                    continue;
+                }
                 Err(e) => panic!("failed to parse TLS: {e}"),
             }
         };

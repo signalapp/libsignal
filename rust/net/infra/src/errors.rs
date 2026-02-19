@@ -49,12 +49,14 @@ pub struct SslErrorReasons(boring_signal::error::ErrorStack);
 impl Display for SslErrorReasons {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_list()
-            .entries(
-                self.0
-                    .errors()
-                    .iter()
-                    .flat_map::<Option<&'static str>, _>(boring_signal::error::Error::reason),
-            )
+            .entries(self.0.errors().iter().map(|e| {
+                // We'd like to use e.reason(), but that might have user data in it.
+                format!(
+                    "{} error {}",
+                    e.library().unwrap_or("unknown"),
+                    e.library_code(),
+                )
+            }))
             .finish()
     }
 }

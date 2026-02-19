@@ -15,7 +15,6 @@ Pod::Spec.new do |s|
 
   s.swift_version    = '5'
   s.platform         = :ios, '15.0'
-  s.libraries        = ['z']
 
   s.source_files = ['swift/Sources/**/*.swift', 'swift/Sources/**/*.m']
   s.preserve_paths = [

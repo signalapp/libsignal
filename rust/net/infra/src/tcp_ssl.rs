@@ -188,7 +188,7 @@ fn ssl_config(
     alpn: Option<Alpn>,
     min_required_tls_version: Option<boring_signal::ssl::SslVersion>,
 ) -> Result<ConnectConfiguration, TransportConnectError> {
-    let mut ssl = SslConnector::builder(SslMethod::tls_client())?;
+    let mut ssl = SslConnector::builder(SslMethod::tls())?;
     certs.apply_to_connector(&mut ssl, host)?;
     if let Some(alpn) = alpn {
         ssl.set_alpn_protos(alpn.length_prefixed())?;
@@ -210,6 +210,11 @@ fn ssl_config(
         SslSignatureAlgorithm::RSA_PSS_RSAE_SHA512,
         SslSignatureAlgorithm::RSA_PKCS1_SHA512,
     ])?;
+
+    // This is the BoringSSL kDefaultGroups list *before* boring-rs adds support for the combined
+    // X25519_MLKEM768 and P256_KYBER768_DRAFT00. chat-server doesn't support MLKEM in TLS yet.
+    // We can't be any more specific because of the fallback proxies.
+    ssl.set_curves_list("X25519:P-256:P-384")?;
 
     // Uncomment and build with the feature "dev-util" to enable NSS-standard
     //   debugging support for e.g. Wireshark.
@@ -326,7 +331,7 @@ pub(crate) mod testutil {
                     .expect("can accept an incoming connection");
 
                 let mut tls_acceptor = boring_signal::ssl::SslAcceptor::mozilla_modern(
-                    boring_signal::ssl::SslMethod::tls_server(),
+                    boring_signal::ssl::SslMethod::tls(),
                 )
                 .expect("can build");
                 tls_acceptor

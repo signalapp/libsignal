@@ -186,6 +186,17 @@ export CXXFLAGS="-DOPENSSL_SMALL -flto=full ${CXXFLAGS:-}"
 export CARGO_PROFILE_RELEASE_LTO=fat
 export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
 
+# Instruct boring-sys to autolink the *static* libc++, and to delay that linking until the final
+# build product (the -bundle part). This is consistent with Google's advice for Android JNI
+# libraries that are not part of the main app build[1], elaborated on in a GitHub thread[2]. It's
+# also what we're doing with WebRTC. The syntax comes from rustc[3] via Cargo's rustc-link-lib build
+# script feature.
+#
+# [1]: https://developer.android.com/ndk/guides/middleware-vendors#using_the_stl
+# [2]: https://github.com/android/ndk/issues/796
+# [3]: https://doc.rust-lang.org/rustc/command-line-arguments.html#-l-link-the-generated-crate-to-a-native-library
+export BORING_BSSL_RUST_CPPLIB="static:-bundle=c++"
+
 # Use the Android NDK's prebuilt Clang+lld as pqcrypto's compiler and Rust's linker.
 ANDROID_TOOLCHAIN_DIR=$(echo "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt"/*/bin/)
 ANDROID_MIN_SDK_VERSION=23

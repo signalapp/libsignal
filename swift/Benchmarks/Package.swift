@@ -30,6 +30,7 @@ let package = Package(
                 .product(name: "LibSignalClient", package: "swift" /* the folder name, sigh */),
             ],
             linkerSettings: [
+                .linkedLibrary("stdc++", .when(platforms: [.linux])),
                 .unsafeFlags(["-L\(rustReleaseBuildDir)"], .when(configuration: .release)),
                 .unsafeFlags(["-L\(rustDebugBuildDir)"], .when(configuration: .debug)),
             ]
