@@ -58,6 +58,7 @@ mod kyber768;
 #[cfg(feature = "mlkem1024")]
 mod mlkem1024;
 
+use std::fmt;
 use std::marker::PhantomData;
 
 use derive_where::derive_where;
@@ -301,6 +302,15 @@ impl<const SIZE: usize> From<libcrux_ml_kem::MlKemPrivateKey<SIZE>> for KeyMater
 pub struct Key<T: KeyKind> {
     key_type: KeyType,
     key_data: KeyMaterial<T>,
+}
+
+impl<T: KeyKind> fmt::Debug for Key<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Key")
+            .field("key_type", &self.key_type)
+            .field("bytes_len", &self.key_data.len())
+            .finish()
+    }
 }
 
 impl<T: KeyKind> Key<T> {

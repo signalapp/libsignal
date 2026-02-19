@@ -6,6 +6,7 @@
 //! The `ws` module and its submodules implement a chat server based on REST-like requests over a
 //! websocket, as implemented in [`libsignal_net::chat`].
 
+mod keys;
 mod keytrans;
 mod messages;
 mod profiles;
