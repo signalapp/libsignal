@@ -126,9 +126,9 @@ internal fun Throwable.toRequestResult(): RequestResult<Nothing, Nothing> =
  *
  * This extension function handles the case where the Future itself fails
  * (as opposed to the request returning an error result). Any exceptions
- * thrown while waiting for the Future are converted to [ApplicationError].
+ * thrown while waiting for the Future are converted to [ApplicationError][RequestResult.ApplicationError].
  *
- * @return The [RequestResult] from the Future, or [ApplicationError] if the
+ * @return The [RequestResult] from the Future, or [ApplicationError][RequestResult.ApplicationError] if the
  *         Future failed to complete normally
  */
 public fun <T, E : BadRequestError> CompletableFuture<RequestResult<T, E>>.getOrError(): RequestResult<T, E> =

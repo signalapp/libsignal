@@ -84,14 +84,14 @@ sourcesJar {
 }
 
 task dokkaHtmlJar(type: Jar) {
-    dependsOn(dokkaHtml)
-    from(dokkaHtml)
+    dependsOn(dokkaGeneratePublicationHtml)
+    from(dokkaGeneratePublicationHtml)
     archiveClassifier.set("dokka")
 }
 
 task dokkaJavadocJar(type: Jar) {
-    dependsOn(dokkaJavadoc)
-    from(dokkaJavadoc)
+    dependsOn(dokkaGeneratePublicationJavadoc)
+    from(dokkaGeneratePublicationJavadoc)
     archiveClassifier.set("javadoc")
 }
 

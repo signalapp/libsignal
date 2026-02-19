@@ -8,7 +8,8 @@ plugins {
     id "com.diffplug.spotless" version "7.2.1"
 
     id "org.jetbrains.kotlin.jvm" version "2.2.20" apply false
-    id "org.jetbrains.dokka" version "2.0.0" apply false
+    id "org.jetbrains.dokka" version "2.1.0" apply false
+    id "org.jetbrains.dokka-javadoc" version "2.1.0" apply false
 
     // These plugins need to be loaded together, so we must declare them up front.
     id 'com.android.library' version "8.13.2" apply false
@@ -42,6 +43,7 @@ allprojects {
     }
 
     apply plugin: "org.jetbrains.dokka"
+    apply plugin: "org.jetbrains.dokka-javadoc"
 }
 
 task makeJniLibrariesDesktop(type:Exec) {

@@ -73,7 +73,7 @@ import org.signal.libsignal.messagebackup.BackupKey
  * ```
  *
  * @see [BackupKey]
- * @see [MessageBackupKey](org.signal.libsignal.messagebackup.MessageBackupKey)
+ * @see [MessageBackupKey][org.signal.libsignal.messagebackup.MessageBackupKey]
  * @see [BackupForwardSecrecyToken]
  */
 public class SvrB internal constructor(
@@ -183,9 +183,9 @@ public class SvrB internal constructor(
    * - [Result.failure] containing
    *   [InvalidSvrBDataException](org.signal.libsignal.svr.InvalidSvrBDataException) if the backup
    *   metadata is malformed. In this case the user's data is **not recoverable**.
-   * - [Result.failure] containing [RestoreFailedException] if restoration fails (with remaining
+   * - [Result.failure] containing [RestoreFailedException](org.signal.libsignal.svr.RestoreFailedException) if restoration fails (with remaining
    *   tries count). This should never happen but if it does the user's data is **not recoverable**.
-   * - [Result.failure] containing [DataMissingException] if the backup data is not found on the
+   * - [Result.failure] containing [DataMissingException](org.signal.libsignal.svr.DataMissingException) if the backup data is not found on the
    *   server, indicating an **incorrect backup key** (which may in turn imply the user's data is
    *   not recoverable).
    * - [Result.failure] containing [RetryLaterException] if the server is rate limiting this client.
@@ -308,7 +308,7 @@ private class BackupRestoreResponse internal constructor(
  */
 public data class SvrBStoreResponse(
   /**
-   * The forward secrecy token used to derive [MessageBackupKey] instances.
+   * The forward secrecy token used to derive [MessageBackupKey][org.signal.libsignal.messagebackup.MessageBackupKey] instances.
    *
    * This token provides forward secrecy guarantees by ensuring that compromise of the backup key
    * alone is insufficient to decrypt backups. Each backup is protected by a value stored on
@@ -344,7 +344,7 @@ public data class SvrBStoreResponse(
  */
 public data class SvrBRestoreResponse(
   /**
-   * The forward secrecy token used to derive [MessageBackupKey] instances.
+   * The forward secrecy token used to derive [MessageBackupKey][org.signal.libsignal.messagebackup.MessageBackupKey] instances.
    *
    * This token provides forward secrecy guarantees by ensuring that compromise of the backup key
    * alone is insufficient to decrypt backups. Each backup is protected by a value stored on
