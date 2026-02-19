@@ -21,6 +21,7 @@ use base64::Engine as _;
 use base64::prelude::BASE64_STANDARD;
 use http::StatusCode;
 use libsignal_net::chat;
+use libsignal_net::chat::{Request, Response, SendError};
 use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net::infra::http_client::Http2Client;
 use libsignal_net::infra::{AsHttpHeader, extract_retry_later};
@@ -29,6 +30,7 @@ use serde_with::serde_as;
 use crate::api::{
     ChallengeOption, DisconnectedError, RateLimitChallenge, RequestError, UserBasedAuthorization,
 };
+use crate::grpc::GrpcServiceProvider;
 use crate::logging::DebugAsStrOrBytes;
 
 const ACCESS_KEY_HEADER_NAME: http::HeaderName =
@@ -68,9 +70,28 @@ pub trait WsConnection: Sync {
 
     fn grpc_service_to_use_instead(
         &self,
-        _message: &'static str,
+        message: &'static str,
     ) -> impl Future<Output = Option<impl crate::grpc::GrpcServiceProvider>> + Send {
+        let _ = message;
         std::future::ready(None::<Http2Client<chat::GrpcBody>>)
+    }
+}
+
+impl<T: WsConnection> WsConnection for &T {
+    fn send(
+        &self,
+        log_tag: &'static str,
+        log_safe_path: &str,
+        request: Request,
+    ) -> impl Future<Output = Result<Response, SendError>> + Send {
+        <T as WsConnection>::send(self, log_tag, log_safe_path, request)
+    }
+
+    fn grpc_service_to_use_instead(
+        &self,
+        message: &'static str,
+    ) -> impl Future<Output = Option<impl GrpcServiceProvider>> + Send {
+        <T as WsConnection>::grpc_service_to_use_instead(self, message)
     }
 }
 

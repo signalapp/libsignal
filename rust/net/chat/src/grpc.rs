@@ -320,9 +320,11 @@ fn matching_details<M: Default + prost::Name>(
 pub(crate) mod testutil {
     use futures_util::FutureExt as _;
     use http_body_util::BodyExt as _;
+    use libsignal_net::chat::{Request, Response, SendError};
     use tonic::Status;
 
     use super::*;
+    use crate::ws::WsConnection;
 
     pub(crate) fn req(uri: &str, body: impl prost::Message + 'static) -> http::Request<Vec<u8>> {
         let body = tonic::codec::EncodeBody::new_client(
@@ -369,6 +371,29 @@ pub(crate) mod testutil {
 
     pub(crate) fn err(code: tonic::Code) -> http::Response<Vec<u8>> {
         Status::new(code, "").into_http()
+    }
+
+    pub(crate) struct GrpcOverrideRequestValidator {
+        pub(crate) validator: RequestValidator,
+        pub(crate) message: &'static str,
+    }
+    impl WsConnection for GrpcOverrideRequestValidator {
+        async fn send(
+            &self,
+            _log_tag: &'static str,
+            _log_safe_path: &str,
+            _request: Request,
+        ) -> Result<Response, SendError> {
+            panic!("We should be only sending grpc here");
+        }
+
+        async fn grpc_service_to_use_instead(
+            &self,
+            message: &'static str,
+        ) -> Option<impl GrpcServiceProvider> {
+            assert_eq!(message, self.message);
+            Some(&self.validator)
+        }
     }
 
     pub(crate) struct RequestValidator {

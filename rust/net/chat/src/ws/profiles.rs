@@ -10,6 +10,7 @@ use http::HeaderMap;
 use libsignal_core::{Aci, ServiceId};
 use libsignal_net::chat::Request;
 use libsignal_net::infra::AsHttpHeader as _;
+use libsignal_net_grpc::proto::chat::services;
 use serde_with::serde_as;
 
 use super::{CustomError, OverWs, ResponseError, TryIntoResponse as _, WsConnection};
@@ -89,6 +90,12 @@ impl<T: WsConnection> crate::api::profiles::UnauthenticatedAccountExistenceApi<O
     for Unauth<T>
 {
     async fn account_exists(&self, account: ServiceId) -> Result<bool, RequestError<Infallible>> {
+        if let Some(grpc) = self
+            .grpc_service_to_use_instead(services::AccountsAnonymous::CheckAccountExistence.into())
+            .await
+        {
+            return Unauth(grpc).account_exists(account).await;
+        }
         let log_safe_path = format!("/v1/accounts/account/{}", Redact(&account));
         let response = self
             .send(

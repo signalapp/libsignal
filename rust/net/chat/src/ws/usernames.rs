@@ -143,6 +143,7 @@ mod test {
 
     use super::*;
     use crate::api::usernames::UnauthenticatedChatApi;
+    use crate::grpc::testutil::GrpcOverrideRequestValidator;
     use crate::ws::testutil::{RequestValidator, empty, json};
 
     const ACI_UUID: &str = "9d0652a3-dcc3-4d11-975f-74d61598733f";
@@ -270,30 +271,6 @@ mod test {
     #[test]
     fn test_grpc_override() {
         use libsignal_net_grpc::proto::chat as grpc_chat;
-
-        struct GrpcPreferringWsConnection(crate::grpc::testutil::RequestValidator);
-        impl WsConnection for GrpcPreferringWsConnection {
-            async fn send(
-                &self,
-                _log_tag: &'static str,
-                _log_safe_path: &str,
-                _request: chat::Request,
-            ) -> Result<chat::Response, chat::SendError> {
-                panic!("should have preferred gRPC");
-            }
-
-            async fn grpc_service_to_use_instead(
-                &self,
-                message: &'static str,
-            ) -> Option<impl crate::grpc::GrpcServiceProvider> {
-                assert_eq!(
-                    message,
-                    <&str>::from(grpc_chat::services::AccountsAnonymous::LookupUsernameHash)
-                );
-                Some(&self.0)
-            }
-        }
-
         // Not realistic, but includes bits that encode differently in base64 vs base64url.
         let hash = &[0x00, 0xff, 0xff, 0xff];
 
@@ -313,10 +290,13 @@ mod test {
                 ),
             }),
         };
-        let response = Unauth(GrpcPreferringWsConnection(validator))
-            .look_up_username_hash(hash)
-            .now_or_never()
-            .expect("sync");
+        let response = Unauth(GrpcOverrideRequestValidator {
+            validator,
+            message: grpc_chat::services::AccountsAnonymous::LookupUsernameHash.into(),
+        })
+        .look_up_username_hash(hash)
+        .now_or_never()
+        .expect("sync");
         assert_matches!(response, Ok(None));
     }
 }

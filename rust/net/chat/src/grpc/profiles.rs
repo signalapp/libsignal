@@ -54,12 +54,13 @@ impl<T: GrpcServiceProvider> crate::api::profiles::UnauthenticatedAccountExisten
 mod test_account_exists {
     use futures_util::FutureExt;
     use libsignal_core::{Aci, Pni};
+    use libsignal_net_grpc::proto::chat::services;
     use test_case::test_case;
     use uuid::{Uuid, uuid};
 
     use super::*;
     use crate::api::profiles::UnauthenticatedAccountExistenceApi;
-    use crate::grpc::testutil::{self, RequestValidator, req};
+    use crate::grpc::testutil::{self, GrpcOverrideRequestValidator, RequestValidator, req};
 
     const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
     const PNI_UUID: Uuid = uuid!("796abedb-ca4e-4f18-8803-1fde5b921f9f");
@@ -70,16 +71,19 @@ mod test_account_exists {
     #[test_case(Pni::from(PNI_UUID).into(), false)]
     #[tokio::test]
     async fn test_it(service_id: ServiceId, found: bool) {
-        let validator = RequestValidator {
-            expected: req(
-                "/org.signal.chat.account.AccountsAnonymous/CheckAccountExistence",
-                CheckAccountExistenceRequest {
-                    service_identifier: Some(service_id.into()),
-                },
-            ),
-            response: testutil::ok(CheckAccountExistenceResponse {
-                account_exists: found,
-            }),
+        let validator = GrpcOverrideRequestValidator {
+            message: services::AccountsAnonymous::CheckAccountExistence.into(),
+            validator: RequestValidator {
+                expected: req(
+                    "/org.signal.chat.account.AccountsAnonymous/CheckAccountExistence",
+                    CheckAccountExistenceRequest {
+                        service_identifier: Some(service_id.into()),
+                    },
+                ),
+                response: testutil::ok(CheckAccountExistenceResponse {
+                    account_exists: found,
+                }),
+            },
         };
         let result = Unauth(&validator)
             .account_exists(service_id)
@@ -91,14 +95,17 @@ mod test_account_exists {
 
     #[tokio::test]
     async fn test_invalid() {
-        let validator = RequestValidator {
-            expected: req(
-                "/org.signal.chat.account.AccountsAnonymous/CheckAccountExistence",
-                CheckAccountExistenceRequest {
-                    service_identifier: Some(Aci::from(ACI_UUID).into()),
-                },
-            ),
-            response: testutil::err(tonic::Code::DeadlineExceeded),
+        let validator = GrpcOverrideRequestValidator {
+            message: services::AccountsAnonymous::CheckAccountExistence.into(),
+            validator: RequestValidator {
+                expected: req(
+                    "/org.signal.chat.account.AccountsAnonymous/CheckAccountExistence",
+                    CheckAccountExistenceRequest {
+                        service_identifier: Some(Aci::from(ACI_UUID).into()),
+                    },
+                ),
+                response: testutil::err(tonic::Code::DeadlineExceeded),
+            },
         };
         let result = Unauth(&validator)
             .account_exists(Aci::from(ACI_UUID).into())
