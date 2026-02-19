@@ -847,14 +847,18 @@ pub const PROD: Env<'static> = Env {
                 ws_config: RECOMMENDED_WS_CONFIG,
                 params: ENDPOINT_PARAMS_SVRB_2026Q1_PROD,
             }),
+            None,
+            None,
+        ],
+        previous: [
             Some(EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_PROD,
                 ws_config: RECOMMENDED_WS_CONFIG,
                 params: ENDPOINT_PARAMS_SVRB_2025Q3_PROD,
             }),
             None,
+            None,
         ],
-        previous: [None, None, None],
     },
     keytrans_config: KEYTRANS_CONFIG_PROD,
 };
