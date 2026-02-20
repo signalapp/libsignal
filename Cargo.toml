@@ -86,7 +86,7 @@ signal-neon-futures = { path = "rust/bridge/node/futures" }
 
 boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v5.0.2", package = "boring", default-features = false }
 curve25519-dalek-signal = { git = 'https://github.com/signalapp/curve25519-dalek', package = "curve25519-dalek", tag = 'signal-curve25519-4.1.3' }
-spqr = { git = "https://github.com/signalapp/SparsePostQuantumRatchet.git", tag = "v1.4.0" }
+spqr = { git = "https://github.com/signalapp/SparsePostQuantumRatchet.git", tag = "v1.5.0" }
 tokio-boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v5.0.2", package = "tokio-boring" }
 
 aes = "0.8.3"
@@ -137,8 +137,8 @@ hex = "0.4.3"
 hickory-proto = "0.25"
 hkdf = "0.12"
 hmac = "0.12.0"
-hpke-rs = "0.5.0"
-hpke-rs-crypto = "0.4.0"
+hpke-rs = "0.6.0"
+hpke-rs-crypto = "0.6.0"
 http = "1.3.0"
 http-body = "1.0.1"
 http-body-util = "0.1.3"
@@ -149,7 +149,7 @@ intmap = "3.1.2"
 itertools = "0.14.0"
 jni = "0.21"
 libc = "0.2.175"
-libcrux-ml-kem = { version = "0.0.5", default-features = false }
+libcrux-ml-kem = { version = "0.0.7", default-features = false }
 linkme = "0.3.33"
 log = "0.4.21"
 log-panics = "2.1.0"
@@ -223,6 +223,7 @@ warp = "0.4.2"
 webpsan = { version = "0.5.3", default-features = false }
 x25519-dalek = "2.0.0"
 zerocopy = "0.8.24"
+zeroize = "1.8.2"
 
 [patch.crates-io]
 # When building libsignal, just use our forks so we don't end up with two different versions of the libraries.

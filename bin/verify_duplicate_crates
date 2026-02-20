@@ -13,14 +13,17 @@
 #
 # thiserror: minimal and highly inlinable, most of the code is synthesized at the use site
 # rand_core, getrandom: waiting to update all the RustCrypto crates together
-# libcrux-sha3: v0.0.4 is referenced by hpke-rs, but only needed if you use X-Wing KEM
+# libcrux-sha3: v0.0.6 is referenced by hpke-rs, but only needed if you use X-Wing KEM
+# libcrux-intrinsics and libcrux-traits duplicates are also due to hpke-rs lagging behind libcrux-ml-kem.
 EXPECTED="
 getrandom v0.2.16
 getrandom v0.3.4
-libcrux-platform v0.0.2
-libcrux-platform v0.0.3
-libcrux-sha3 v0.0.4
-libcrux-sha3 v0.0.5
+libcrux-intrinsics v0.0.5
+libcrux-intrinsics v0.0.6
+libcrux-sha3 v0.0.6
+libcrux-sha3 v0.0.7
+libcrux-traits v0.0.5
+libcrux-traits v0.0.6
 rand_core v0.6.4
 rand_core v0.9.3
 thiserror v1.0.69
@@ -38,7 +41,16 @@ check_cargo_tree() {
         "$@"
 }
 
-if [[ "$(check_cargo_tree --depth 0 | sort -u -V)" != "${EXPECTED}" ]]; then
+ACTUAL="$(check_cargo_tree --depth 0 | sort -u -V)"
+if [[ "${ACTUAL}" != "${EXPECTED}" ]]; then
+    cat <<EOF
+----- EXPECTED -----
+${EXPECTED}
+
+------ ACTUAL ------
+${ACTUAL}
+
+EOF
     check_cargo_tree
     exit 1
 fi

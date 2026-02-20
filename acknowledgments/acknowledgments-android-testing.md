@@ -2,7 +2,7 @@
 
 libsignal makes use of the following open source projects.
 
-## spqr 1.4.0, partial-default-derive 0.1.0, partial-default 0.1.0
+## spqr 1.5.0, partial-default-derive 0.1.0, partial-default 0.1.0
 
 ```
                     GNU AFFERO GENERAL PUBLIC LICENSE
@@ -1823,7 +1823,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-## hax-lib-macros 0.3.5, hax-lib 0.3.5
+## hax-lib-macros 0.3.6, hax-lib 0.3.6
 
 ```
 
@@ -2434,7 +2434,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-## libcrux-hacl-rs 0.0.4, libcrux-hmac 0.0.4, libcrux-intrinsics 0.0.4, libcrux-macros 0.0.3, libcrux-ml-kem 0.0.5, libcrux-platform 0.0.2, libcrux-platform 0.0.3, libcrux-secrets 0.0.4, libcrux-sha2 0.0.4, libcrux-sha3 0.0.4, libcrux-sha3 0.0.5, libcrux-traits 0.0.4
+## libcrux-hacl-rs 0.0.4, libcrux-hmac 0.0.6, libcrux-intrinsics 0.0.5, libcrux-intrinsics 0.0.6, libcrux-macros 0.0.3, libcrux-ml-kem 0.0.7, libcrux-platform 0.0.3, libcrux-secrets 0.0.5, libcrux-sha2 0.0.6, libcrux-sha3 0.0.6, libcrux-sha3 0.0.7, libcrux-traits 0.0.5, libcrux-traits 0.0.6
 
 ```
                                  Apache License
@@ -7287,7 +7287,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## hpke-rs-crypto 0.4.0, hpke-rs 0.5.0
+## hpke-rs-crypto 0.6.0, hpke-rs 0.6.0
 
 ```
 Mozilla Public License Version 2.0

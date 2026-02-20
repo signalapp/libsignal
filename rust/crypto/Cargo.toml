@@ -33,6 +33,7 @@ sha1 = { workspace = true }
 sha2 = { workspace = true }
 subtle = { workspace = true }
 thiserror = { workspace = true }
+zeroize = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }

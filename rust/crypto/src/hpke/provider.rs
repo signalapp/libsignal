@@ -179,11 +179,16 @@ impl HpkeCrypto for CryptoProvider {
     }
 }
 
-// Matching https://github.com/cryspen/hpke-rs/blob/v0.3.0/rust_crypto_provider/src/lib.rs#L38
+// Matching https://github.com/cryspen/hpke-rs/blob/v0.6.0/rust_crypto_provider/src/lib.rs#L40
 type RngImpl = rand_chacha::ChaCha20Rng;
 
 pub struct Rng {
     rng: RngImpl,
+}
+
+// Matching https://github.com/cryspen/hpke-rs/blob/v0.6.0/rust_crypto_provider/src/lib.rs#L46
+impl zeroize::Zeroize for Rng {
+    fn zeroize(&mut self) {}
 }
 
 impl Default for Rng {
