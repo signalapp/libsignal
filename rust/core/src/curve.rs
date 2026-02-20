@@ -272,7 +272,7 @@ impl PrivateKey {
         }
     }
 
-    pub fn calculate_signature<R: CryptoRng + Rng>(
+    pub fn calculate_signature<R: CryptoRng + Rng + ?Sized>(
         &self,
         message: &[u8],
         csprng: &mut R,
@@ -280,7 +280,7 @@ impl PrivateKey {
         self.calculate_signature_for_multipart_message(&[message], csprng)
     }
 
-    pub fn calculate_signature_for_multipart_message<R: CryptoRng + Rng>(
+    pub fn calculate_signature_for_multipart_message<R: CryptoRng + Rng + ?Sized>(
         &self,
         message: &[&[u8]],
         csprng: &mut R,
@@ -324,7 +324,7 @@ pub struct KeyPair {
 }
 
 impl KeyPair {
-    pub fn generate<R: Rng + CryptoRng>(csprng: &mut R) -> Self {
+    pub fn generate<R: Rng + CryptoRng + ?Sized>(csprng: &mut R) -> Self {
         let private_key = curve25519::PrivateKey::new(csprng);
 
         let public_key = PublicKey::from(PublicKeyData::DjbPublicKey(
@@ -359,7 +359,7 @@ impl KeyPair {
         })
     }
 
-    pub fn calculate_signature<R: CryptoRng + Rng>(
+    pub fn calculate_signature<R: CryptoRng + Rng + ?Sized>(
         &self,
         message: &[u8],
         csprng: &mut R,

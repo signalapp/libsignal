@@ -26,7 +26,7 @@ pub struct PrivateKey {
 impl PrivateKey {
     pub fn new<R>(csprng: &mut R) -> Self
     where
-        R: CryptoRng + Rng,
+        R: CryptoRng + Rng + ?Sized,
     {
         // This is essentially StaticSecret::random_from_rng only with clamping
         let mut bytes = [0u8; 32];
@@ -68,7 +68,7 @@ impl PrivateKey {
         message: &[&[u8]],
     ) -> [u8; SIGNATURE_LENGTH]
     where
-        R: CryptoRng + Rng,
+        R: CryptoRng + Rng + ?Sized,
     {
         let mut random_bytes = [0u8; 64];
         csprng.fill_bytes(&mut random_bytes);
