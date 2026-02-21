@@ -426,13 +426,147 @@ pub(crate) mod testutil {
             pretty_assertions::assert_eq!(self.expected.uri(), &parts.uri, "uri");
             pretty_assertions::assert_eq!(self.expected.method(), &parts.method, "method");
             pretty_assertions::assert_eq!(self.expected.headers(), &parts.headers, "headers");
-            pretty_assertions::assert_eq!(&self.expected.body()[..], &body, "body");
+
+            if self.expected.body()[..] != body {
+                let expected_body = DynMessage::decode_single_grpc_body(
+                    bytes::Bytes::copy_from_slice(self.expected.body()),
+                );
+                let actual_body = DynMessage::decode_single_grpc_body(body);
+                panic!("expected body: {expected_body:#?}\n\nactual body: {actual_body:#?}");
+            }
 
             std::future::ready(Ok(self.response.clone().map(|body| body.into())))
         }
     }
 
     static_assertions::assert_impl_all!(&'_ RequestValidator: GrpcService);
+
+    /// A protoscope-like helper type for decoding arbitrary protobuf messages.
+    ///
+    /// Always succeeds as long as the input is not malformed. Only intended for debugging.
+    #[derive(Default)]
+    pub(crate) struct DynMessage {
+        fields: Vec<(u32, DynField)>,
+    }
+
+    /// See [`DynMessage`].
+    enum DynField {
+        Varint(usize),
+        U32(u32),
+        U64(u64),
+        Bytes(bytes::Bytes),
+        Nested(DynMessage),
+    }
+
+    impl DynMessage {
+        /// Given a gRPC HTTP body, decode a single request message from it.
+        fn decode_single_grpc_body(
+            body: impl bytes::Buf + Send + 'static,
+        ) -> Result<Self, tonic::Status> {
+            let decoder = tonic_prost::ProstDecoder::<DynMessage>::default();
+            let mut streaming = tonic::codec::Streaming::new_request(
+                decoder,
+                http_body_util::Full::new(body),
+                None,
+                None,
+            );
+            streaming
+                .message()
+                .now_or_never()
+                .expect("ready")?
+                .ok_or_else(|| tonic::Status::data_loss("missing body"))
+        }
+    }
+
+    impl prost::Message for DynMessage {
+        // This requirement is hidden in prost::Message and thus should be considered unstable,
+        // which is why we only use this for debugging. The implementation is based on reading the
+        // source for prost-derive.
+        fn merge_field(
+            &mut self,
+            tag: u32,
+            wire_type: prost::encoding::wire_type::WireType,
+            mut buf: &mut impl bytes::Buf,
+            _ctx: prost::encoding::DecodeContext,
+        ) -> Result<(), prost::DecodeError>
+        where
+            Self: Sized,
+        {
+            use prost::encoding::wire_type::WireType;
+            let value = match wire_type {
+                WireType::Varint => DynField::Varint(prost::decode_length_delimiter(buf)?),
+                WireType::ThirtyTwoBit => DynField::U32(
+                    buf.try_get_u32_le()
+                        .map_err(|_| prost::DecodeError::new("eof"))?,
+                ),
+                WireType::SixtyFourBit => DynField::U64(
+                    buf.try_get_u64_le()
+                        .map_err(|_| prost::DecodeError::new("eof"))?,
+                ),
+                WireType::LengthDelimited => {
+                    let len = prost::decode_length_delimiter(&mut buf)?;
+                    if len > buf.remaining() {
+                        return Err(prost::DecodeError::new("eof"));
+                    }
+                    let bytes = buf.copy_to_bytes(len);
+                    if let Ok(inner) = DynMessage::decode(bytes.clone()) {
+                        DynField::Nested(inner)
+                    } else {
+                        DynField::Bytes(bytes)
+                    }
+                }
+                WireType::StartGroup | WireType::EndGroup => {
+                    return Err(prost::DecodeError::new("groups unsupported"));
+                }
+            };
+            self.fields.push((tag, value));
+            Ok(())
+        }
+
+        fn clear(&mut self) {
+            self.fields.clear();
+        }
+
+        fn encode_raw(&self, _buf: &mut impl bytes::BufMut)
+        where
+            Self: Sized,
+        {
+            unimplemented!("for decoding to debug only")
+        }
+
+        fn encoded_len(&self) -> usize {
+            unimplemented!("for decoding to debug only")
+        }
+    }
+
+    impl std::fmt::Debug for DynMessage {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let mut out = f.debug_struct("DynMessage");
+            for (tag, value) in &self.fields {
+                out.field(&tag.to_string(), &value);
+            }
+            out.finish()
+        }
+    }
+
+    impl std::fmt::Debug for DynField {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            // Use protoscope-like syntax.
+            match self {
+                Self::Varint(arg) => write!(f, "{arg}"),
+                Self::U32(arg) => write!(f, "{arg}u32"),
+                Self::U64(arg) => write!(f, "{arg}u64"),
+                Self::Bytes(arg) => {
+                    if arg.is_ascii() {
+                        write!(f, "\"{}\"", arg.escape_ascii())
+                    } else {
+                        write!(f, "`{}`", hex::encode(arg))
+                    }
+                }
+                Self::Nested(arg) => arg.fmt(f),
+            }
+        }
+    }
 }
 
 #[cfg(test)]
