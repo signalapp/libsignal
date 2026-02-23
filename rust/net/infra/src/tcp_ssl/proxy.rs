@@ -40,6 +40,7 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
     ) -> Result<Self::Connection, Self::Error> {
         match route {
             ConnectionProxyRoute::Tls { proxy } => {
+                log::info!("[{log_tag}] attempting connection over TLS proxy");
                 let TlsRoute {
                     fragment: tls_fragment,
                     inner,
