@@ -719,8 +719,13 @@ where
                 SignalErrorCode::RequestTimedOut,
                 self.to_string(),
             )),
-            Self::ServerSideError | Self::Unexpected { log_safe: _ } => {
+            Self::Unexpected { log_safe: _ } => {
                 SimpleError::new(SignalErrorCode::NetworkProtocol, self.to_string()).into()
+            }
+            Self::ServerSideError => {
+                // TODO: "IO error" isn't really apt at all, but it is an existing error code that
+                // the iOS app considers retryable.
+                SimpleError::new(SignalErrorCode::IoError, self.to_string()).into()
             }
             Self::Other(err) => err.into_ffi_error().into(),
             Self::RetryLater(retry_later) => retry_later.into(),

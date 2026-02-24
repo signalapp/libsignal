@@ -79,7 +79,7 @@ class UnauthUsernamesServiceTests: UnauthChatServiceTestBase<any UnauthUsernames
         do {
             _ = try await responseFuture
             XCTFail("should have failed")
-        } catch SignalError.networkProtocolError(_) {
+        } catch SignalError.ioError(_) {
         }
     }
 
@@ -174,7 +174,7 @@ class UnauthUsernamesServiceTests: UnauthChatServiceTestBase<any UnauthUsernames
         do {
             _ = try await responseFuture
             XCTFail("should have failed")
-        } catch SignalError.networkProtocolError(_) {
+        } catch SignalError.ioError(_) {
         }
     }
 

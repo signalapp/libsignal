@@ -144,7 +144,7 @@ class UnauthMessagesServiceTests: UnauthChatServiceTestBase<any UnauthMessagesSe
         do {
             _ = try await self.sendTestMultiRecipientMessage(response: ChatResponse(status: 500))
             XCTFail("should have thrown")
-        } catch SignalError.networkProtocolError(_:) {
+        } catch SignalError.ioError(_:) {
         }
     }
 }

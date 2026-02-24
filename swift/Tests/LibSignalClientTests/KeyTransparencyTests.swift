@@ -209,7 +209,7 @@ final class KeyTransparencyTests: TestCaseBase {
         do {
             try await customNetworkErrorTestImpl(status: 500)
             XCTFail("should have failed")
-        } catch SignalError.networkProtocolError(_) {
+        } catch SignalError.ioError(_) {
         } catch {
             XCTFail("Unexpected exception thrown: \(error)")
         }
