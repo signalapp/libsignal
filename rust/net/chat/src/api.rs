@@ -35,6 +35,12 @@ impl<'a, T> From<&'a T> for &'a Unauth<T> {
 #[derive(derive_more::Deref)]
 pub struct Registration<T>(pub T);
 
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub enum AllowRateLimitChallenges {
+    No,
+    Yes,
+}
+
 /// Authorization for requests on unauthenticated connections involving other users.
 ///
 /// For multi-recipient messages, see [messages::MultiRecipientSendAuthorization].

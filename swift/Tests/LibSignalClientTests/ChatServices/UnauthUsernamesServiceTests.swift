@@ -64,38 +64,6 @@ class UnauthUsernamesServiceTests: UnauthChatServiceTestBase<any UnauthUsernames
         XCTAssertNil(responseFromServer)
     }
 
-    func testUsernameHashChallengeError() async throws {
-        let api = self.api
-        async let responseFuture = api.lookUpUsernameHash(Data([1, 2, 3, 4]))
-
-        let (request, id) = try await fakeRemote.getNextIncomingRequest()
-        XCTAssertEqual(request.method, "GET")
-
-        try fakeRemote.sendResponse(
-            requestId: id,
-            ChatResponse(
-                status: 428,
-                headers: ["content-type": "application/json"],
-                body: Data(
-                    """
-                    {
-                        "token": "not-legal-tender",
-                        "options": ["pushChallenge"]
-                    }
-                    """.utf8
-                )
-            )
-        )
-
-        do {
-            _ = try await responseFuture
-            XCTFail("should have failed")
-        } catch SignalError.rateLimitChallengeError(let token, let options, _) {
-            XCTAssertEqual(token, "not-legal-tender")
-            XCTAssertEqual(options, [.pushChallenge])
-        }
-    }
-
     func testUsernameHashServerSideError() async throws {
         let api = self.api
         async let responseFuture = api.lookUpUsernameHash(Data([1, 2, 3, 4]))

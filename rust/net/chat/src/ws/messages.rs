@@ -86,7 +86,10 @@ impl<T: WsConnection> crate::api::messages::UnauthenticatedChatApi for Unauth<T>
 
         let RawMultiRecipientMessageResponse { uuids404 } =
             response.try_into_response().map_err(|e| {
-                e.into_request_error(|response| match response.status.as_u16() {
+                e.into_request_error(Self::ALLOW_RATE_LIMIT_CHALLENGES, |response| match response
+                    .status
+                    .as_u16()
+                {
                     401 => {
                         if !response.body.as_deref().unwrap_or_default().is_empty() {
                             log::warn!(

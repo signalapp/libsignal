@@ -127,10 +127,12 @@ impl<T: WsConnection> crate::api::keys::UnauthenticatedChatApi<OverWs> for Unaut
             .await?;
 
         let raw = response.try_into_response().map_err(|e| {
-            e.into_request_error(|res| match res.status.as_u16() {
-                401 => CustomError::Err(GetPreKeysFailure::Unauthorized),
-                404 => CustomError::Err(GetPreKeysFailure::NotFound),
-                _ => CustomError::NoCustomHandling,
+            e.into_request_error(Self::ALLOW_RATE_LIMIT_CHALLENGES, |res| {
+                match res.status.as_u16() {
+                    401 => CustomError::Err(GetPreKeysFailure::Unauthorized),
+                    404 => CustomError::Err(GetPreKeysFailure::NotFound),
+                    _ => CustomError::NoCustomHandling,
+                }
             })
         })?;
 

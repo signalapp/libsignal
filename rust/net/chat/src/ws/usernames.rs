@@ -65,7 +65,12 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for 
                 }
                 return Ok(None);
             }
-            Err(e) => return Err(e.into_request_error(CustomError::no_custom_handling)),
+            Err(e) => {
+                return Err(e.into_request_error(
+                    Self::ALLOW_RATE_LIMIT_CHALLENGES,
+                    CustomError::no_custom_handling,
+                ));
+            }
         };
 
         let aci = Aci::parse_from_service_id_string(&uuid_string).ok_or_else(|| {
@@ -122,7 +127,12 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for 
                 }
                 return Ok(None);
             }
-            Err(e) => return Err(e.into_request_error(CustomError::no_custom_handling)),
+            Err(e) => {
+                return Err(e.into_request_error(
+                    Self::ALLOW_RATE_LIMIT_CHALLENGES,
+                    CustomError::no_custom_handling,
+                ));
+            }
         };
 
         let plaintext_username = usernames::decrypt_username(entropy, &encrypted_username)

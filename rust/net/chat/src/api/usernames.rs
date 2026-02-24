@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use either::Either;
 use libsignal_core::Aci;
 
-use super::RequestError;
+use super::{AllowRateLimitChallenges, RequestError};
 
 /// High-level chat-server APIs for usernames
 ///
@@ -20,6 +20,9 @@ use super::RequestError;
 /// UnauthenticatedChatApi generically should accept an arbitrary `T` here.
 #[async_trait]
 pub trait UnauthenticatedChatApi<T> {
+    // Not intended to be overridden.
+    const ALLOW_RATE_LIMIT_CHALLENGES: AllowRateLimitChallenges = AllowRateLimitChallenges::No;
+
     async fn look_up_username_hash(
         &self,
         hash: &[u8],

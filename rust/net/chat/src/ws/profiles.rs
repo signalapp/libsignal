@@ -70,7 +70,7 @@ impl<T: WsConnection> crate::api::profiles::UnauthenticatedChatApi for Unauth<T>
         }
 
         let GetProfileResponse { credential } = response.try_into_response().map_err(|e| {
-            e.into_request_error(|response| {
+            e.into_request_error(Self::ALLOW_RATE_LIMIT_CHALLENGES, |response| {
                 CustomError::Err(match response.status.as_u16() {
                     401 => ProfileKeyCredentialRequestError::AuthFailed,
                     404 => ProfileKeyCredentialRequestError::VersionNotFound,
@@ -120,7 +120,10 @@ impl<T: WsConnection> crate::api::profiles::UnauthenticatedAccountExistenceApi<O
             http::status::StatusCode::OK => Ok(true),
             http::status::StatusCode::NOT_FOUND => Ok(false),
             status => Err(ResponseError::UnrecognizedStatus { status, response }
-                .into_request_error(CustomError::no_custom_handling)),
+                .into_request_error(
+                    Self::ALLOW_RATE_LIMIT_CHALLENGES,
+                    CustomError::no_custom_handling,
+                )),
         }
     }
 }

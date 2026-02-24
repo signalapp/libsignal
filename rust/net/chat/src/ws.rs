@@ -28,7 +28,8 @@ use libsignal_net::infra::{AsHttpHeader, extract_retry_later};
 use serde_with::serde_as;
 
 use crate::api::{
-    ChallengeOption, DisconnectedError, RateLimitChallenge, RequestError, UserBasedAuthorization,
+    AllowRateLimitChallenges, ChallengeOption, DisconnectedError, RateLimitChallenge, RequestError,
+    UserBasedAuthorization,
 };
 use crate::grpc::GrpcServiceProvider;
 use crate::logging::DebugAsStrOrBytes;
@@ -220,6 +221,7 @@ impl ResponseError {
     /// response codes (like 429 Too Many Requests).
     pub(crate) fn into_request_error<E, D>(
         self,
+        allow_rate_limit_errors: AllowRateLimitChallenges,
         map_unrecognized: impl FnOnce(&chat::Response) -> CustomError<E>,
     ) -> RequestError<E, D> {
         match self {
@@ -251,7 +253,9 @@ impl ResponseError {
                             return RequestError::RetryLater(retry_later);
                         }
                     }
-                    if status.as_u16() == 428 {
+                    if status.as_u16() == 428
+                        && allow_rate_limit_errors == AllowRateLimitChallenges::Yes
+                    {
                         #[serde_as]
                         #[derive(serde::Deserialize)]
                         struct ChallengeBody {
@@ -471,9 +475,28 @@ mod test {
     fn try_parse_empty(
         input: chat::Response,
     ) -> Result<Empty, RequestError<std::convert::Infallible>> {
-        input
-            .try_into_response()
-            .map_err(|e| e.into_request_error(CustomError::no_custom_handling))
+        input.try_into_response().map_err(|e| {
+            e.into_request_error(
+                AllowRateLimitChallenges::Yes,
+                CustomError::no_custom_handling,
+            )
+        })
+    }
+
+    #[test_case(empty(428) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
+    #[test_case(json(428, "{}") => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
+    #[test_case(json(
+        428, r#"{"token": "zzz", "options": ["captcha"]}"#
+    ) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
+    fn try_parse_empty_without_rate_limit_challenges(
+        input: chat::Response,
+    ) -> Result<Empty, RequestError<std::convert::Infallible>> {
+        input.try_into_response().map_err(|e| {
+            e.into_request_error(
+                AllowRateLimitChallenges::No,
+                CustomError::no_custom_handling,
+            )
+        })
     }
 
     #[derive(Debug, serde::Deserialize)]
@@ -496,8 +519,11 @@ mod test {
     fn try_parse_json(
         input: chat::Response,
     ) -> Result<Example, RequestError<std::convert::Infallible>> {
-        input
-            .try_into_response()
-            .map_err(|e| e.into_request_error(CustomError::no_custom_handling))
+        input.try_into_response().map_err(|e| {
+            e.into_request_error(
+                AllowRateLimitChallenges::Yes,
+                CustomError::no_custom_handling,
+            )
+        })
     }
 }

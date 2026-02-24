@@ -77,41 +77,6 @@ describe('UnauthUsernamesService', () => {
       assert.isNull(responseFromServer);
     });
 
-    it('can handle challenge errors', async () => {
-      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
-      const [chat, fakeRemote] = connectUnauth<UnauthUsernamesService>(tokio);
-
-      const hash = Uint8Array.of(1, 2, 3, 4);
-      const responseFuture = chat.lookUpUsernameHash({ hash });
-
-      const request = await fakeRemote.assertReceiveIncomingRequest();
-
-      expect(request.verb).to.eq('GET');
-      expect(request.path).to.eq(
-        `/v1/accounts/username_hash/${Buffer.from(hash).toString('base64url')}`
-      );
-
-      fakeRemote.sendReplyTo(request, {
-        status: 428,
-        message: 'Precondition Required',
-        headers: ['content-type: application/json'],
-        body: Buffer.from(
-          JSON.stringify({
-            token: 'not-legal-tender',
-            options: ['pushChallenge'],
-          })
-        ),
-      });
-
-      await expect(responseFuture)
-        .to.eventually.be.rejectedWith(LibSignalErrorBase)
-        .and.deep.include({
-          code: ErrorCode.RateLimitChallengeError,
-          token: 'not-legal-tender',
-          options: new Set(['pushChallenge']),
-        });
-    });
-
     it('can handle server errors', async () => {
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
       const [chat, fakeRemote] = connectUnauth<UnauthUsernamesService>(tokio);

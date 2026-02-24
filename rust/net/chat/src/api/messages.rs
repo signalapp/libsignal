@@ -8,7 +8,7 @@ use itertools::Itertools as _;
 use libsignal_core::{DeviceId, ServiceId};
 use libsignal_net::infra::errors::LogSafeDisplay;
 
-use super::RequestError;
+use super::{AllowRateLimitChallenges, RequestError};
 use crate::logging::Redact;
 
 #[derive(Debug)]
@@ -38,6 +38,8 @@ pub enum MultiRecipientSendAuthorization {
 
 #[async_trait]
 pub trait UnauthenticatedChatApi {
+    const ALLOW_RATE_LIMIT_CHALLENGES: AllowRateLimitChallenges = AllowRateLimitChallenges::No;
+
     async fn send_multi_recipient_message(
         &self,
         payload: bytes::Bytes,

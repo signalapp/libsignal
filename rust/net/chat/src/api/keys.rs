@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use libsignal_core::{DeviceId, ServiceId};
 use libsignal_protocol::{IdentityKey, PreKeyBundle};
 
-use super::{RequestError, UserBasedAuthorization};
+use super::{AllowRateLimitChallenges, RequestError, UserBasedAuthorization};
 
 /// Specifier to limit scope of pre-keys request to a specific device or all devices on the account.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -29,6 +29,9 @@ pub enum GetPreKeysFailure {
 
 #[async_trait]
 pub trait UnauthenticatedChatApi<T> {
+    // Not intended to be overridden.
+    const ALLOW_RATE_LIMIT_CHALLENGES: AllowRateLimitChallenges = AllowRateLimitChallenges::No;
+
     /// Fetch the identity key and pre-key bundles for `target`.
     async fn get_pre_keys(
         &self,

@@ -5,17 +5,20 @@
 
 use libsignal_net::chat::Response as ChatResponse;
 
-use crate::api::RequestError;
 use crate::api::registration::{
     CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationLock,
     RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError, UpdateSessionError,
     VerificationCodeNotDeliverable,
 };
+use crate::api::{AllowRateLimitChallenges, RequestError};
 use crate::ws::{CustomError, ResponseError};
+
+// Rate limit challenges are allowed for all registration requests.
+const ALLOW_RATE_LIMIT_CHALLENGES: AllowRateLimitChallenges = AllowRateLimitChallenges::Yes;
 
 impl<D> From<ResponseError> for RequestError<UpdateSessionError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error(|value| {
+        value.into_request_error(ALLOW_RATE_LIMIT_CHALLENGES, |value| {
             let ChatResponse { status, .. } = value;
             match status.as_u16() {
                 403 => CustomError::Err(UpdateSessionError::Rejected),
@@ -27,13 +30,13 @@ impl<D> From<ResponseError> for RequestError<UpdateSessionError, D> {
 
 impl<D> From<ResponseError> for RequestError<CreateSessionError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error(CustomError::no_custom_handling)
+        value.into_request_error(ALLOW_RATE_LIMIT_CHALLENGES, CustomError::no_custom_handling)
     }
 }
 
 impl<D> From<ResponseError> for RequestError<ResumeSessionError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error(|value| {
+        value.into_request_error(ALLOW_RATE_LIMIT_CHALLENGES, |value| {
             let ChatResponse { status, .. } = value;
             CustomError::Err(match status.as_u16() {
                 404 => ResumeSessionError::SessionNotFound,
@@ -48,7 +51,7 @@ impl<D> From<ResponseError> for RequestError<ResumeSessionError, D> {
 
 impl<D> From<ResponseError> for RequestError<RequestVerificationCodeError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error(|value| {
+        value.into_request_error(ALLOW_RATE_LIMIT_CHALLENGES, |value| {
             let ChatResponse {
                 status,
                 body,
@@ -78,7 +81,7 @@ impl<D> From<ResponseError> for RequestError<RequestVerificationCodeError, D> {
 
 impl<D> From<ResponseError> for RequestError<SubmitVerificationError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error(|value| {
+        value.into_request_error(ALLOW_RATE_LIMIT_CHALLENGES, |value| {
             let ChatResponse { status, .. } = value;
             CustomError::Err(match status.as_u16() {
                 400 => SubmitVerificationError::InvalidSessionId,
@@ -92,7 +95,7 @@ impl<D> From<ResponseError> for RequestError<SubmitVerificationError, D> {
 
 impl<D> From<ResponseError> for RequestError<CheckSvr2CredentialsError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error(|value| {
+        value.into_request_error(ALLOW_RATE_LIMIT_CHALLENGES, |value| {
             let ChatResponse { status, .. } = value;
             match status.as_u16() {
                 422 => CustomError::Err(CheckSvr2CredentialsError::CredentialsCouldNotBeParsed),
@@ -104,7 +107,7 @@ impl<D> From<ResponseError> for RequestError<CheckSvr2CredentialsError, D> {
 
 impl<D> From<ResponseError> for RequestError<RegisterAccountError, D> {
     fn from(value: ResponseError) -> Self {
-        value.into_request_error(|value| {
+        value.into_request_error(ALLOW_RATE_LIMIT_CHALLENGES, |value| {
             let ChatResponse {
                 headers,
                 status,
