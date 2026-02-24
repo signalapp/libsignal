@@ -139,6 +139,45 @@ class AsyncTests {
     }
 
   @Test
+  fun testMapWithCancellationOnSuccessException() =
+    runTest(timeout = 5.seconds) {
+      val baseFuture = CompletableFuture<String>()
+      val exception = RuntimeException("onSuccess error")
+      val mappedFuture =
+        baseFuture.mapWithCancellation(
+          onSuccess = { throw exception },
+          onError = { "error" },
+        )
+
+      baseFuture.complete("value")
+
+      // If mapWithCancellation doesn't handle exceptions from onSuccess,
+      // the outer future will never complete and this will time out.
+      val thrown = assertFailsWith<RuntimeException> { mappedFuture.await() }
+      assertEquals("onSuccess error", thrown.message)
+    }
+
+  @Test
+  fun testMapWithCancellationOnErrorException() =
+    runTest(timeout = 5.seconds) {
+      val baseFuture = CompletableFuture<String>()
+      val exception = RuntimeException("onError error")
+      val mappedFuture =
+        baseFuture.mapWithCancellation(
+          onSuccess = { "success" },
+          onError = { throw exception },
+        )
+
+      baseFuture.completeExceptionally(IllegalStateException("original"))
+
+      // Similar to above, if mapWithCancellation doesn't handle exceptions
+      // from onError, the outer future will never complete and this will
+      // time out.
+      val thrown = assertFailsWith<RuntimeException> { mappedFuture.await() }
+      assertEquals("onError error", thrown.message)
+    }
+
+  @Test
   fun testToResultFutureSuccessPath() =
     runTest {
       val baseFuture = CompletableFuture<String>()

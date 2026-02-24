@@ -60,9 +60,19 @@ public fun <T, R> CompletableFuture<T>.mapWithCancellation(
 
   this.whenComplete { value, err ->
     when (err) {
-      null -> outer.complete(onSuccess(value))
+      null ->
+        try {
+          outer.complete(onSuccess(value))
+        } catch (e: Exception) {
+          outer.completeExceptionally(e)
+        }
       is CancellationException -> outer.cancel(true)
-      else -> outer.complete(onError(err))
+      else ->
+        try {
+          outer.complete(onError(err))
+        } catch (e: Exception) {
+          outer.completeExceptionally(e)
+        }
     }
   }
 
