@@ -1071,9 +1071,10 @@ mod test {
                     // infra's tcp_ssl.rs has a test for when the server's *root* certificate is
                     // self-signed, but that's a different error code. Still, this is what we expect
                     // in practice (and is_possible_captive_network checks for both).
-                    TransportConnectError::SslFailedHandshake(FailedHandshakeReason::Cert(
-                        X509VerifyError::SELF_SIGNED_CERT_IN_CHAIN,
-                    ))
+                    TransportConnectError::SslFailedHandshake(FailedHandshakeReason::Cert {
+                        error: X509VerifyError::SELF_SIGNED_CERT_IN_CHAIN,
+                        cert_hashes: vec![],
+                    })
                 } else {
                     TransportConnectError::TcpConnectionFailed
                 },
@@ -1116,7 +1117,10 @@ mod test {
             Err(TimeoutOr::Other(ConnectError::FatalConnect(
                 WebSocketServiceConnectError::Connect(
                     WebSocketConnectError::Transport(TransportConnectError::SslFailedHandshake(
-                        FailedHandshakeReason::Cert(X509VerifyError::SELF_SIGNED_CERT_IN_CHAIN)
+                        FailedHandshakeReason::Cert {
+                            error: X509VerifyError::SELF_SIGNED_CERT_IN_CHAIN,
+                            cert_hashes: _,
+                        }
                     )),
                     NotRejectedByServer { .. }
                 )

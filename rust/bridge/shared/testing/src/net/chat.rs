@@ -317,9 +317,10 @@ fn TESTING_ChatConnectErrorConvert(
         TestingChatConnectError::PossibleCaptiveNetwork => {
             ConnectError::WebSocket(libsignal_net::infra::ws::WebSocketConnectError::Transport(
                 libsignal_net::infra::errors::TransportConnectError::SslFailedHandshake(
-                    libsignal_net::infra::errors::FailedHandshakeReason::Cert(
-                        boring_signal::x509::X509VerifyError::SELF_SIGNED_CERT_IN_CHAIN,
-                    ),
+                    libsignal_net::infra::errors::FailedHandshakeReason::Cert {
+                        error: boring_signal::x509::X509VerifyError::SELF_SIGNED_CERT_IN_CHAIN,
+                        cert_hashes: vec![],
+                    },
                 ),
             ))
         }

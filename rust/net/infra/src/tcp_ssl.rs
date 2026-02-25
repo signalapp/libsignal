@@ -536,9 +536,10 @@ mod test {
 
         assert_matches!(
             err,
-            TransportConnectError::SslFailedHandshake(FailedHandshakeReason::Cert(
-                X509VerifyError::DEPTH_ZERO_SELF_SIGNED_CERT
-            ))
+            TransportConnectError::SslFailedHandshake(FailedHandshakeReason::Cert {
+                error: X509VerifyError::DEPTH_ZERO_SELF_SIGNED_CERT,
+                cert_hashes: _,
+            })
         );
     }
 }

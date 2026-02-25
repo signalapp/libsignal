@@ -6,6 +6,9 @@
 use std::fmt::Display;
 use std::time::Duration;
 
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
+use boring_signal::ssl::SslRef;
 use http::{HeaderName, HeaderValue};
 use tokio_boring_signal::HandshakeError;
 
@@ -61,10 +64,15 @@ impl Display for SslErrorReasons {
     }
 }
 
+type X509CertSha256 = [u8; 32];
+
 #[derive(Debug, PartialEq)]
 pub enum FailedHandshakeReason {
     Io(std::io::ErrorKind),
-    Cert(boring_signal::x509::X509VerifyError),
+    Cert {
+        error: boring_signal::x509::X509VerifyError,
+        cert_hashes: Vec<X509CertSha256>,
+    },
     OtherBoring(boring_signal::ssl::ErrorCode),
 }
 
@@ -79,10 +87,11 @@ impl FailedHandshakeReason {
     pub fn is_possible_captive_network(&self) -> bool {
         matches!(
             self,
-            Self::Cert(
-                boring_signal::x509::X509VerifyError::SELF_SIGNED_CERT_IN_CHAIN
-                    | boring_signal::x509::X509VerifyError::DEPTH_ZERO_SELF_SIGNED_CERT
-            )
+            Self::Cert {
+                error: boring_signal::x509::X509VerifyError::SELF_SIGNED_CERT_IN_CHAIN
+                    | boring_signal::x509::X509VerifyError::DEPTH_ZERO_SELF_SIGNED_CERT,
+                cert_hashes: _,
+            }
         )
     }
 }
@@ -91,6 +100,27 @@ impl FailedHandshakeReason {
 #[derive(Debug, Clone, Copy, thiserror::Error)]
 #[error("TLS handshake timed out")]
 pub struct TlsHandshakeTimeout;
+
+/// Produce a `Vec` of SHA256 fingerprints of the cert chain
+///
+/// We only use this in logging, so errors just translate into an empty `Vec` (or an all zero hash).
+fn ssl_peer_cert_chain(ssl: &SslRef) -> Vec<X509CertSha256> {
+    ssl.peer_cert_chain()
+        .map(|chain| {
+            chain
+                .iter()
+                .map(|cert| {
+                    cert.digest(boring_signal::hash::MessageDigest::sha256())
+                        .ok()
+                        .map(|digest| {
+                            *<&X509CertSha256>::try_from(&*digest).expect("SHA-256 is 32 bytes")
+                        })
+                        .unwrap_or_default()
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
 
 impl<S> From<HandshakeError<S>> for FailedHandshakeReason {
     fn from(value: HandshakeError<S>) -> Self {
@@ -110,7 +140,11 @@ impl<S> From<HandshakeError<S>> for FailedHandshakeReason {
             && let Some(cert_error_code) = value.ssl().and_then(|ssl| ssl.verify_result().err())
             && cert_error_code != boring_signal::x509::X509VerifyError::INVALID_CALL
         {
-            return Self::Cert(cert_error_code);
+            // NB: peer_cert_chain() contains the server cert.
+            return Self::Cert {
+                error: cert_error_code,
+                cert_hashes: value.ssl().map(ssl_peer_cert_chain).unwrap_or_default(),
+            };
         }
 
         Self::OtherBoring(code)
@@ -123,12 +157,20 @@ impl Display for FailedHandshakeReason {
         match self {
             Self::OtherBoring(boring_signal::ssl::ErrorCode::NONE) => write!(f, "unknown error"),
             Self::Io(error_kind) => write!(f, "IO error: {error_kind}"),
-            Self::Cert(code) => write!(
-                f,
-                "boring X509 error code: {} {}",
-                code.as_raw(),
-                code.error_string()
-            ),
+            Self::Cert {
+                error: code,
+                cert_hashes,
+            } => {
+                write!(
+                    f,
+                    "boring X509 error code: {} {}, cert_chain: ",
+                    code.as_raw(),
+                    code.error_string()
+                )?;
+                f.debug_list()
+                    .entries(cert_hashes.iter().map(|hash| BASE64_STANDARD.encode(hash)))
+                    .finish()
+            }
             Self::OtherBoring(code) => write!(f, "boring SSL error code: {}", code.as_raw()),
         }
     }
@@ -186,5 +228,60 @@ impl From<TransportConnectError> for std::io::Error {
 impl From<TlsHandshakeTimeout> for TransportConnectError {
     fn from(TlsHandshakeTimeout: TlsHandshakeTimeout) -> Self {
         Self::SslFailedHandshake(FailedHandshakeReason::TIMED_OUT)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::borrow::Cow;
+    use std::num::NonZero;
+
+    use futures_util::future::Either;
+
+    use crate::OverrideNagleAlgorithm;
+    use crate::certs::RootCertificates;
+    use crate::host::Host;
+    use crate::route::{ComposedConnector, ConnectorExt, TcpRoute, TlsRoute, TlsRouteFragment};
+    use crate::tcp_ssl::testutil::{
+        SERVER_CERTIFICATE, SERVER_HOSTNAME, simple_localhost_https_server,
+    };
+    use crate::tcp_ssl::{StatelessTcp, StatelessTls};
+
+    #[test_log::test(tokio::test)]
+    async fn consistent_cert_hashes() {
+        let mut cert_hashes = Vec::new();
+        for _ in 0..2 {
+            let (addr, server) = simple_localhost_https_server();
+            let server = Box::pin(server);
+            type StatelessTlsConnector = ComposedConnector<StatelessTls, StatelessTcp>;
+            let connector = StatelessTlsConnector::default();
+            let client = Box::pin(
+                connector.connect(
+                    TlsRoute {
+                        fragment: TlsRouteFragment {
+                            root_certs: RootCertificates::FromDer(Cow::Borrowed(
+                                SERVER_CERTIFICATE.cert.der(),
+                            )),
+                            sni: Host::Domain(SERVER_HOSTNAME.into()),
+                            alpn: None,
+                            min_protocol_version: None,
+                        },
+                        inner: TcpRoute {
+                            address: addr.ip(),
+                            port: NonZero::new(addr.port())
+                                .expect("successful listener has a valid port"),
+                            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
+                        },
+                    },
+                    "transport",
+                ),
+            );
+            let (stream, _server) = match futures_util::future::select(client, server).await {
+                Either::Left((stream, server)) => (stream.expect("successful connection"), server),
+                Either::Right(_) => panic!("server exited unexpectedly"),
+            };
+            cert_hashes.push(super::ssl_peer_cert_chain(stream.ssl()));
+        }
+        assert_eq!(cert_hashes[0], cert_hashes[1]);
     }
 }
