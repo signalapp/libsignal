@@ -113,7 +113,7 @@ fn ssl_peer_cert_chain(ssl: &SslRef) -> Vec<X509CertSha256> {
                     cert.digest(boring_signal::hash::MessageDigest::sha256())
                         .ok()
                         .map(|digest| {
-                            *<&X509CertSha256>::try_from(&*digest).expect("SHA-256 is 32 bytes")
+                            X509CertSha256::try_from(&*digest).expect("SHA-256 is 32 bytes")
                         })
                         .unwrap_or_default()
                 })
