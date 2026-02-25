@@ -3,13 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-@file:Suppress("ktlint:standard:filename") // We'll have more interfaces added later.
+@file:Suppress("ktlint:standard:filename")
 
 package org.signal.libsignal.protocol.state.internal
 
 import org.signal.libsignal.internal.CalledFromNative
 import org.signal.libsignal.internal.NativeHandleGuard
 import org.signal.libsignal.internal.ObjectHandle
+import java.util.UUID
 
 @CalledFromNative
 internal interface PreKeyStore {
@@ -54,5 +55,24 @@ internal interface KyberPreKeyStore {
     id: Int,
     ecPrekeyId: Int,
     rawBaseKey: ObjectHandle,
+  )
+}
+
+// The non-internal version of this lives in org.signal.libsignal.protocol.**groups**.state, so
+// arguably this one should live near there. But it follows the pattern of the other
+// org.signal.libsignal.protocol stores, so it's simpler if it just lives here with them.
+@CalledFromNative
+internal interface SenderKeyStore {
+  @Throws(Exception::class)
+  public fun loadSenderKey(
+    rawSender: ObjectHandle,
+    distributionId: UUID,
+  ): NativeHandleGuard.Owner?
+
+  @Throws(Exception::class)
+  public fun storeSenderKey(
+    rawSender: ObjectHandle,
+    distributionId: UUID,
+    rawSenderKeyRecord: ObjectHandle,
   )
 }

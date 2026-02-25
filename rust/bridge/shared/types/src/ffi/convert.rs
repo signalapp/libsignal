@@ -26,7 +26,8 @@ use crate::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushToken,
 };
 use crate::protocol::storage::{
-    FfiBridgeKyberPreKeyStoreStruct, FfiBridgePreKeyStoreStruct, FfiBridgeSignedPreKeyStoreStruct,
+    FfiBridgeKyberPreKeyStoreStruct, FfiBridgePreKeyStoreStruct, FfiBridgeSenderKeyStoreStruct,
+    FfiBridgeSignedPreKeyStoreStruct,
 };
 use crate::support::{
     AsType, BridgedCallbacks, FixedLengthBincodeSerializable, IllegalArgumentError, Serialized,

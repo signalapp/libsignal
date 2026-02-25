@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use signal_neon_futures::*;
-use uuid::Uuid;
 
 use super::*;
 use crate::support::BridgedCallbacks;
@@ -332,118 +331,5 @@ impl IdentityKeyStore for NodeIdentityKeyStore {
         self.do_is_trusted(address.clone(), *identity.public_key(), direction)
             .await
             .map_err(|s| js_error_to_rust("isTrustedIdentity", s))
-    }
-}
-
-pub struct NodeSenderKeyStore {
-    js_channel: Channel,
-    store_object: Arc<Root<JsObject>>,
-}
-
-impl NodeSenderKeyStore {
-    pub(crate) fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
-        Self {
-            js_channel: cx.channel(),
-            store_object: Arc::new(store.root(cx)),
-        }
-    }
-
-    async fn do_get_sender_key(
-        &self,
-        sender: ProtocolAddress,
-        distribution_id: Uuid,
-    ) -> Result<Option<SenderKeyRecord>, String> {
-        let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_channel, move |cx| {
-            let store_object = store_object_shared.to_inner(cx);
-            let sender: Handle<JsValue> = sender.convert_into(cx)?;
-            let distribution_id: Handle<JsValue> = distribution_id.convert_into(cx)?.upcast();
-            let result = call_method(cx, store_object, "_getSenderKey", [sender, distribution_id])?;
-            let result = result.downcast_or_throw(cx)?;
-            store_object_shared.finalize(cx);
-            Ok(result)
-        })
-        .then(|cx, result| match result {
-            Ok(value) => match value.downcast::<DefaultJsBox<SenderKeyRecord>, _>(cx) {
-                Ok(obj) => Ok(Some((***obj).clone())),
-                Err(_) => {
-                    if value.is_a::<JsNull, _>(cx) {
-                        Ok(None)
-                    } else {
-                        Err("result must be an object".to_owned())
-                    }
-                }
-            },
-            Err(error) => Err(error
-                .to_string(cx)
-                .expect("can convert to string")
-                .value(cx)),
-        })
-        .await
-    }
-
-    async fn do_save_sender_key(
-        &self,
-        sender: ProtocolAddress,
-        distribution_id: Uuid,
-        record: SenderKeyRecord,
-    ) -> Result<(), String> {
-        let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_channel, move |cx| {
-            let store_object = store_object_shared.to_inner(cx);
-            let sender: Handle<JsValue> = sender.convert_into(cx)?;
-            let distribution_id: Handle<JsValue> = distribution_id.convert_into(cx)?.upcast();
-            let record: Handle<JsValue> = record.convert_into(cx)?;
-            let result = call_method(
-                cx,
-                store_object,
-                "_saveSenderKey",
-                [sender, distribution_id, record],
-            )?
-            .downcast_or_throw(cx)?;
-            store_object_shared.finalize(cx);
-            Ok(result)
-        })
-        .then(|cx, result| match result {
-            Ok(value) => match value.downcast::<JsUndefined, _>(cx) {
-                Ok(_) => Ok(()),
-                Err(_) => Err("unexpected result from _saveSenderKey".into()),
-            },
-            Err(error) => Err(error
-                .to_string(cx)
-                .expect("can convert to string")
-                .value(cx)),
-        })
-        .await
-    }
-}
-
-impl Finalize for NodeSenderKeyStore {
-    fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
-        self.store_object.finalize(cx)
-    }
-}
-
-#[async_trait(?Send)]
-impl SenderKeyStore for NodeSenderKeyStore {
-    async fn load_sender_key(
-        &mut self,
-        sender: &ProtocolAddress,
-        distribution_id: Uuid,
-    ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
-        self.do_get_sender_key(sender.clone(), distribution_id)
-            .await
-            .map_err(|s| js_error_to_rust("getSenderKey", s))
-    }
-
-    async fn store_sender_key(
-        &mut self,
-        sender: &ProtocolAddress,
-        distribution_id: Uuid,
-        record: &SenderKeyRecord,
-    ) -> Result<(), SignalProtocolError> {
-        self.do_save_sender_key(sender.clone(), distribution_id, record.clone())
-            .await
-            .map_err(|s| js_error_to_rust("saveSenderKey", s))
     }
 }

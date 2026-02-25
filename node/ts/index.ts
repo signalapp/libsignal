@@ -868,6 +868,34 @@ export class SenderCertificate {
   }
 }
 
+function bridgeSenderKeyStore(
+  store: SenderKeyStore
+): Native.BridgeSenderKeyStore {
+  return {
+    async storeSenderKey(
+      sender: Native.ProtocolAddress,
+      distributionId: Native.Uuid,
+      record: Native.SenderKeyRecord
+    ): Promise<void> {
+      return store.saveSenderKey(
+        ProtocolAddress._fromNativeHandle(sender),
+        uuid.stringify(distributionId),
+        SenderKeyRecord._fromNativeHandle(record)
+      );
+    },
+    async loadSenderKey(
+      sender: Native.ProtocolAddress,
+      distributionId: Native.Uuid
+    ): Promise<Native.SenderKeyRecord | null> {
+      const sk = await store.getSenderKey(
+        ProtocolAddress._fromNativeHandle(sender),
+        uuid.stringify(distributionId)
+      );
+      return sk ? sk._nativeHandle : null;
+    },
+  };
+}
+
 export class SenderKeyDistributionMessage {
   readonly _nativeHandle: Native.SenderKeyDistributionMessage;
 
@@ -883,7 +911,7 @@ export class SenderKeyDistributionMessage {
     const handle = await Native.SenderKeyDistributionMessage_Create(
       sender,
       uuid.parse(distributionId),
-      store
+      bridgeSenderKeyStore(store)
     );
     return new SenderKeyDistributionMessage(handle);
   }
@@ -942,7 +970,11 @@ export async function processSenderKeyDistributionMessage(
   message: SenderKeyDistributionMessage,
   store: SenderKeyStore
 ): Promise<void> {
-  await Native.SenderKeyDistributionMessage_Process(sender, message, store);
+  await Native.SenderKeyDistributionMessage_Process(
+    sender,
+    message,
+    bridgeSenderKeyStore(store)
+  );
 }
 
 export class SenderKeyMessage {
@@ -1183,33 +1215,7 @@ export abstract class KyberPreKeyStore {
   ): Promise<void>;
 }
 
-export abstract class SenderKeyStore implements Native.SenderKeyStore {
-  async _saveSenderKey(
-    sender: Native.ProtocolAddress,
-    distributionId: Native.Uuid,
-    record: Native.SenderKeyRecord
-  ): Promise<void> {
-    return this.saveSenderKey(
-      ProtocolAddress._fromNativeHandle(sender),
-      uuid.stringify(distributionId),
-      SenderKeyRecord._fromNativeHandle(record)
-    );
-  }
-  async _getSenderKey(
-    sender: Native.ProtocolAddress,
-    distributionId: Native.Uuid
-  ): Promise<Native.SenderKeyRecord | null> {
-    const skr = await this.getSenderKey(
-      ProtocolAddress._fromNativeHandle(sender),
-      uuid.stringify(distributionId)
-    );
-    if (skr == null) {
-      return null;
-    } else {
-      return skr._nativeHandle;
-    }
-  }
-
+export abstract class SenderKeyStore {
   abstract saveSenderKey(
     sender: ProtocolAddress,
     distributionId: Uuid,
@@ -1232,7 +1238,7 @@ export async function groupEncrypt(
       sender,
       uuid.parse(distributionId),
       message,
-      store
+      bridgeSenderKeyStore(store)
     )
   );
 }
@@ -1242,7 +1248,11 @@ export async function groupDecrypt(
   store: SenderKeyStore,
   message: Uint8Array
 ): Promise<Uint8Array> {
-  return Native.GroupCipher_DecryptMessage(sender, message, store);
+  return Native.GroupCipher_DecryptMessage(
+    sender,
+    message,
+    bridgeSenderKeyStore(store)
+  );
 }
 
 export class SealedSenderDecryptionResult {

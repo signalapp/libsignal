@@ -25,7 +25,8 @@ use crate::net::chat::{
     ChatListener, NodeChatListener, NodeProvisioningListener, ProvisioningListener,
 };
 use crate::protocol::storage::{
-    NodeBridgeKyberPreKeyStore, NodeBridgePreKeyStore, NodeBridgeSignedPreKeyStore,
+    NodeBridgeKyberPreKeyStore, NodeBridgePreKeyStore, NodeBridgeSenderKeyStore,
+    NodeBridgeSignedPreKeyStore,
 };
 use crate::support::{
     Array, AsType, BridgedCallbacks, FixedLengthBincodeSerializable, Serialized, extend_lifetime,
@@ -432,6 +433,17 @@ impl CallbackResultTypeInfo for KyberPreKeyRecord {
     }
 }
 
+impl CallbackResultTypeInfo for SenderKeyRecord {
+    type ResultType = DefaultJsBox<JsBoxContentsFor<SenderKeyRecord>>;
+
+    fn convert_from_callback(
+        _cx: &mut FunctionContext,
+        foreign: Handle<Self::ResultType>,
+    ) -> NeonResult<Self> {
+        Ok(foreign.as_inner().0.clone())
+    }
+}
+
 impl SimpleArgTypeInfo for AccountEntropyPool {
     type ArgType = <String as SimpleArgTypeInfo>::ArgType;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
@@ -828,7 +840,7 @@ macro_rules! bridge_trait {
 
 bridge_trait!(IdentityKeyStore);
 // bridge_trait!(PreKeyStore);
-bridge_trait!(SenderKeyStore);
+// bridge_trait!(SenderKeyStore);
 bridge_trait!(SessionStore);
 // bridge_trait!(SignedPreKeyStore);
 // bridge_trait!(KyberPreKeyStore);
@@ -872,6 +884,22 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn KyberPreKeyStore {
         foreign: Handle<Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
         Ok(BridgedCallbacks(NodeBridgeKyberPreKeyStore::new(
+            cx, foreign,
+        )?))
+    }
+    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
+        stored
+    }
+}
+
+impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn SenderKeyStore {
+    type ArgType = JsObject;
+    type StoredType = BridgedCallbacks<NodeBridgeSenderKeyStore>;
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        Ok(BridgedCallbacks(NodeBridgeSenderKeyStore::new(
             cx, foreign,
         )?))
     }

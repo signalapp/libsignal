@@ -87,18 +87,7 @@ export type SessionStore = {
 export type PreKeyStore = BridgePreKeyStore;
 export type SignedPreKeyStore = BridgeSignedPreKeyStore;
 export type KyberPreKeyStore = BridgeKyberPreKeyStore;
-
-export type SenderKeyStore = {
-  _saveSenderKey: (
-    sender: ProtocolAddress,
-    distributionId: Uuid,
-    record: SenderKeyRecord
-  ) => Promise<void>;
-  _getSenderKey: (
-    sender: ProtocolAddress,
-    distributionId: Uuid
-  ) => Promise<SenderKeyRecord | null>;
-};
+export type SenderKeyStore = BridgeSenderKeyStore;
 
 export type InputStream = {
   _read: (amount: number) => Promise<Uint8Array>;

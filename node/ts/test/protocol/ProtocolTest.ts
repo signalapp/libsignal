@@ -447,7 +447,7 @@ describe('SenderKeyDistributionMessage Store API', () => {
       distributionId,
       undefined as unknown as SignalClient.SenderKeyStore
     );
-    await assert.isRejected(messagePromise, TypeError);
+    await assert.isRejected(messagePromise, /callback error/);
 
     const messagePromise2 = SignalClient.SenderKeyDistributionMessage.create(
       {} as unknown as SignalClient.ProtocolAddress,

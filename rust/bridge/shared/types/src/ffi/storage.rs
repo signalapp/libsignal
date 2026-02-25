@@ -5,12 +5,12 @@
 
 use async_trait::async_trait;
 use libsignal_bridge_macros::bridge_callbacks;
-use uuid::Uuid;
 
 use super::*;
 use crate::ffi;
 use crate::protocol::storage::{
-    FfiBridgeKyberPreKeyStoreStruct, FfiBridgePreKeyStoreStruct, FfiBridgeSignedPreKeyStoreStruct,
+    FfiBridgeKyberPreKeyStoreStruct, FfiBridgePreKeyStoreStruct, FfiBridgeSenderKeyStoreStruct,
+    FfiBridgeSignedPreKeyStoreStruct,
 };
 use crate::support::{BridgedCallbacks, ResultLike, WithContext};
 
@@ -107,6 +107,7 @@ impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedCallbacks<T> {
 pub type FfiPreKeyStoreStruct = FfiBridgePreKeyStoreStruct;
 pub type FfiSignedPreKeyStoreStruct = FfiBridgeSignedPreKeyStoreStruct;
 pub type FfiKyberPreKeyStoreStruct = FfiBridgeKyberPreKeyStoreStruct;
+pub type FfiSenderKeyStoreStruct = FfiBridgeSenderKeyStoreStruct;
 
 /// A bridge-friendly version of [`SessionStore`].
 #[bridge_callbacks(jni = false, node = false)]
@@ -141,46 +142,5 @@ impl<T: BridgeSessionStore> SessionStore for BridgedCallbacks<T> {
         record: &SessionRecord,
     ) -> Result<(), SignalProtocolError> {
         self.0.store_session(address.clone(), record.clone())
-    }
-}
-
-/// A bridge-friendly version of [`SenderKeyStore`].
-#[bridge_callbacks(jni = false, node = false)]
-pub trait BridgeSenderKeyStore {
-    fn load_sender_key(
-        &self,
-        sender: ProtocolAddress,
-        distribution_id: Uuid,
-    ) -> Result<Option<SenderKeyRecord>, SignalProtocolError>;
-    fn store_sender_key(
-        &self,
-        sender: ProtocolAddress,
-        distribution_id: Uuid,
-        record: SenderKeyRecord,
-    ) -> Result<(), SignalProtocolError>;
-}
-
-// TODO: This alias is because of the ffi_arg_type macro expecting all bridging structs to use a
-// particular naming scheme; eventually we should be able to remove it.
-pub type FfiSenderKeyStoreStruct = FfiBridgeSenderKeyStoreStruct;
-
-#[async_trait(?Send)]
-impl<T: BridgeSenderKeyStore> SenderKeyStore for BridgedCallbacks<T> {
-    async fn store_sender_key(
-        &mut self,
-        sender: &ProtocolAddress,
-        distribution_id: Uuid,
-        record: &SenderKeyRecord,
-    ) -> Result<(), SignalProtocolError> {
-        self.0
-            .store_sender_key(sender.clone(), distribution_id, record.clone())
-    }
-
-    async fn load_sender_key(
-        &mut self,
-        sender: &ProtocolAddress,
-        distribution_id: Uuid,
-    ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
-        self.0.load_sender_key(sender.clone(), distribution_id)
     }
 }

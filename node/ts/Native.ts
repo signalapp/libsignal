@@ -87,18 +87,7 @@ export type SessionStore = {
 export type PreKeyStore = BridgePreKeyStore;
 export type SignedPreKeyStore = BridgeSignedPreKeyStore;
 export type KyberPreKeyStore = BridgeKyberPreKeyStore;
-
-export type SenderKeyStore = {
-  _saveSenderKey: (
-    sender: ProtocolAddress,
-    distributionId: Uuid,
-    record: SenderKeyRecord
-  ) => Promise<void>;
-  _getSenderKey: (
-    sender: ProtocolAddress,
-    distributionId: Uuid
-  ) => Promise<SenderKeyRecord | null>;
-};
+export type SenderKeyStore = BridgeSenderKeyStore;
 
 export type InputStream = {
   _read: (amount: number) => Promise<Uint8Array>;
@@ -1878,6 +1867,10 @@ export /*trait*/ type BridgeKyberPreKeyStore = {
   loadKyberPreKey: (id: number) => Promise<KyberPreKeyRecord | null>;
   storeKyberPreKey: (id: number, record: KyberPreKeyRecord) => Promise<void>;
   markKyberPreKeyUsed: (id: number, ecPrekeyId: number, baseKey: PublicKey) => Promise<void>;
+};
+export /*trait*/ type BridgeSenderKeyStore = {
+  loadSenderKey: (sender: ProtocolAddress, distributionId: Uuid) => Promise<SenderKeyRecord | null>;
+  storeSenderKey: (sender: ProtocolAddress, distributionId: Uuid, record: SenderKeyRecord) => Promise<void>;
 };
 export interface CiphertextMessage { readonly __type: unique symbol; }
 export interface DecryptionErrorMessage { readonly __type: unique symbol; }

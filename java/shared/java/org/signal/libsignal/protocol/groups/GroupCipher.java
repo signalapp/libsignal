@@ -15,6 +15,7 @@ import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.LegacyMessageException;
 import org.signal.libsignal.protocol.NoSessionException;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
+import org.signal.libsignal.protocol.groups.state.SenderKeyRecord;
 import org.signal.libsignal.protocol.groups.state.SenderKeyStore;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 
@@ -33,12 +34,28 @@ import org.signal.libsignal.protocol.message.CiphertextMessage;
  */
 public class GroupCipher {
 
-  private final SenderKeyStore senderKeyStore;
+  private final org.signal.libsignal.protocol.state.internal.SenderKeyStore senderKeyStore;
   private final SignalProtocolAddress sender;
 
   public GroupCipher(SenderKeyStore senderKeyStore, SignalProtocolAddress sender) {
-    this.senderKeyStore = senderKeyStore;
+    this.senderKeyStore = bridge(senderKeyStore);
     this.sender = sender;
+  }
+
+  /*package*/ static org.signal.libsignal.protocol.state.internal.SenderKeyStore bridge(
+      SenderKeyStore senderKeyStore) {
+    return new org.signal.libsignal.protocol.state.internal.SenderKeyStore() {
+      public NativeHandleGuard.Owner loadSenderKey(long rawSender, UUID distributionId)
+          throws Exception {
+        return senderKeyStore.loadSenderKey(new SignalProtocolAddress(rawSender), distributionId);
+      }
+
+      public void storeSenderKey(long rawSender, UUID distributionId, long rawRecord)
+          throws Exception {
+        senderKeyStore.storeSenderKey(
+            new SignalProtocolAddress(rawSender), distributionId, new SenderKeyRecord(rawRecord));
+      }
+    };
   }
 
   /**

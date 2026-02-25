@@ -6,7 +6,6 @@
 use std::cell::RefCell;
 
 use async_trait::async_trait;
-use uuid::Uuid;
 
 use super::*;
 // TODO: This re-export is because of the jni_arg_type macro expecting all bridging structs to
@@ -331,99 +330,6 @@ impl SessionStore for JniSessionStore<'_> {
     ) -> Result<(), SignalProtocolError> {
         Ok(self
             .do_store_session(address, record)
-            .map_err(BridgeOrProtocolError::from)?)
-    }
-}
-
-pub struct JniSenderKeyStore<'a> {
-    env: RefCell<EnvHandle<'a>>,
-    store: &'a JObject<'a>,
-}
-
-impl<'a> JniSenderKeyStore<'a> {
-    pub fn new<'context: 'a>(
-        env: &mut JNIEnv<'context>,
-        store: &'a JObject<'a>,
-    ) -> Result<Self, BridgeLayerError> {
-        check_jobject_type(
-            env,
-            store,
-            ClassName("org.signal.libsignal.protocol.groups.state.SenderKeyStore"),
-        )?;
-        Ok(Self {
-            env: EnvHandle::new(env).into(),
-            store,
-        })
-    }
-}
-
-impl JniSenderKeyStore<'_> {
-    fn do_store_sender_key(
-        &mut self,
-        sender: &ProtocolAddress,
-        distribution_id: Uuid,
-        record: &SenderKeyRecord,
-    ) -> Result<(), BridgeOrProtocolError> {
-        self.env
-            .borrow_mut()
-            .with_local_frame(8, "storeSenderKey", |env| {
-                let sender_jobject = protocol_address_to_jobject(env, sender)?;
-                let distribution_id_jobject = distribution_id.convert_into(env)?;
-                let record_handle = record.clone().convert_into(env)?;
-                let sender_key_record_jobject = jobject_from_native_handle(
-                    env,
-                    ClassName("org.signal.libsignal.protocol.groups.state.SenderKeyRecord"),
-                    record_handle,
-                )?;
-
-                let callback_args = jni_args!((
-                    sender_jobject => org.signal.libsignal.protocol.SignalProtocolAddress,
-                    distribution_id_jobject => java.util.UUID,
-                    sender_key_record_jobject => org.signal.libsignal.protocol.groups.state.SenderKeyRecord,
-                ) -> void);
-                call_method_checked(env, self.store, "storeSenderKey", callback_args)?;
-
-                Ok(())
-            })
-    }
-
-    fn do_load_sender_key(
-        &mut self,
-        sender: &ProtocolAddress,
-        distribution_id: Uuid,
-    ) -> Result<Option<SenderKeyRecord>, BridgeLayerError> {
-        self.env
-            .borrow_mut()
-            .with_local_frame(8, "loadSenderKey", |env| {
-                let sender_jobject = protocol_address_to_jobject(env, sender)?;
-                let distribution_id_jobject = distribution_id.convert_into(env)?;
-                let callback_args = jni_args!((
-                    sender_jobject => org.signal.libsignal.protocol.SignalProtocolAddress,
-                    distribution_id_jobject => java.util.UUID,
-                ) -> org.signal.libsignal.protocol.groups.state.SenderKeyRecord);
-                get_object_with_native_handle(env, self.store, callback_args, "loadSenderKey")
-            })
-    }
-}
-
-#[async_trait(? Send)]
-impl SenderKeyStore for JniSenderKeyStore<'_> {
-    async fn store_sender_key(
-        &mut self,
-        sender: &ProtocolAddress,
-        distribution_id: Uuid,
-        record: &SenderKeyRecord,
-    ) -> Result<(), SignalProtocolError> {
-        Ok(self.do_store_sender_key(sender, distribution_id, record)?)
-    }
-
-    async fn load_sender_key(
-        &mut self,
-        sender: &ProtocolAddress,
-        distribution_id: Uuid,
-    ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
-        Ok(self
-            .do_load_sender_key(sender, distribution_id)
             .map_err(BridgeOrProtocolError::from)?)
     }
 }
