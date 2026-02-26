@@ -169,12 +169,12 @@ Older builds were published to [Maven Central](https://central.sonatype.org) ins
 
 When building for Android you need *both* libsignal-android and libsignal-client, but the Windows
 and macOS libraries in libsignal-client won't automatically be excluded from your final app. You can
-explicitly exclude them using `packagingOptions`:
+explicitly exclude them using `packaging`:
 
 ```
 android {
   // ...
-  packagingOptions {
+  packaging {
     resources {
       excludes += setOf("libsignal_jni*.dylib", "signal_jni*.dll")
     }
