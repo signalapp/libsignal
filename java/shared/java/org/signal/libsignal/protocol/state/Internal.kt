@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-@file:Suppress("ktlint:standard:filename")
-
 package org.signal.libsignal.protocol.state.internal
 
 import org.signal.libsignal.internal.CalledFromNative
