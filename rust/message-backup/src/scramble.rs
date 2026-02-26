@@ -230,6 +230,7 @@ impl Visit<Scrambler> for proto::AccountData {
             bioEmoji,
             keyTransparencyData,
             androidSpecificSettings: _,
+            iosSpecificSettings: _,
             special_fields: _,
         } = self;
 

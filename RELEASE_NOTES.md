@@ -8,3 +8,4 @@ v0.87.5
 
 - Treat HTTP/2 transport errors disinct from gRPC status
 
+- backup: Support iOS specific settings in account data.

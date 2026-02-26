@@ -83,6 +83,9 @@
       "screenshot_security": false,
       "navigation_bar_size": "Compact"
     },
+    "ios_specific_settings": {
+      "is_system_call_log_enabled": true
+    },
     "bio_text": "",
     "bio_emoji": "",
     "key_transparency_data": null

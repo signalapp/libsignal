@@ -63,6 +63,7 @@
       "screenshot_security": true,
       "navigation_bar_size": "Normal"
     },
+    "ios_specific_settings": null,
     "bio_text": "",
     "bio_emoji": "",
     "key_transparency_data": null

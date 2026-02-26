@@ -30,6 +30,7 @@ use crate::proto::backup as proto;
     M::Value<Option<IapSubscriberData>>: PartialEq,
     AccountSettings<M>: PartialEq,
     M::Value<Option<AndroidSpecificSettings>>: PartialEq,
+    M::Value<Option<IosSpecificSettings>>: PartialEq,
     M::Value<Option<Vec<u8>>>: PartialEq
 ))]
 #[serde_as]
@@ -48,6 +49,7 @@ pub struct AccountData<M: Method + ReferencedTypes> {
     pub backup_subscription: M::Value<Option<IapSubscriberData>>,
     pub svr_pin: M::Value<String>,
     pub android_specific_settings: M::Value<Option<AndroidSpecificSettings>>,
+    pub ios_specific_settings: M::Value<Option<IosSpecificSettings>>,
     pub bio_text: M::Value<String>,
     pub bio_emoji: M::Value<String>,
     #[serde_as(as = "Option<Hex>")]
@@ -177,6 +179,12 @@ pub struct AndroidSpecificSettings {
     pub navigation_bar_size: NavigationBarSize,
 }
 
+#[derive(Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct IosSpecificSettings {
+    pub is_system_call_log_enabled: bool,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize)]
 pub enum AutoDownloadOption {
     Never,
@@ -277,6 +285,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             backupsSubscriberData,
             svrPin,
             androidSpecificSettings,
+            iosSpecificSettings,
             bioText,
             bioEmoji,
             keyTransparencyData,
@@ -318,6 +327,10 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             .map(AndroidSpecificSettings::try_from)
             .transpose()?;
 
+        let ios_specific_settings = iosSpecificSettings
+            .into_option()
+            .map(IosSpecificSettings::from);
+
         Ok(AccountData {
             profile_key: M::value(profile_key),
             username: M::value(username),
@@ -329,6 +342,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             backup_subscription: M::value(backup_subscription),
             svr_pin: M::value(svrPin),
             android_specific_settings: M::value(android_specific_settings),
+            ios_specific_settings: M::value(ios_specific_settings),
             bio_text: M::value(bioText),
             bio_emoji: M::value(bioEmoji),
             key_transparency_data: M::value(keyTransparencyData),
@@ -646,6 +660,18 @@ impl TryFrom<proto::account_data::AndroidSpecificSettings> for AndroidSpecificSe
     }
 }
 
+impl From<proto::account_data::IOSSpecificSettings> for IosSpecificSettings {
+    fn from(value: proto::account_data::IOSSpecificSettings) -> Self {
+        let proto::account_data::IOSSpecificSettings {
+            isSystemCallLogEnabled,
+            special_fields: _,
+        } = value;
+        Self {
+            is_system_call_log_enabled: isSystemCallLogEnabled,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::sync::{Arc, LazyLock};
@@ -680,6 +706,7 @@ mod test {
                     ..Default::default()
                 }).into(),
                 androidSpecificSettings: Some(proto::account_data::AndroidSpecificSettings::test_data()).into(),
+                iosSpecificSettings: Some(proto::account_data::IOSSpecificSettings::test_data()).into(),
                 ..Default::default()
             }
         }
@@ -752,6 +779,21 @@ mod test {
             proto::account_data::AndroidSpecificSettings::test_data()
                 .try_into()
                 .expect("valid data")
+        }
+    }
+
+    impl proto::account_data::IOSSpecificSettings {
+        fn test_data() -> Self {
+            Self {
+                isSystemCallLogEnabled: true,
+                ..Default::default()
+            }
+        }
+    }
+
+    impl IosSpecificSettings {
+        pub(crate) fn from_proto_test_data() -> Self {
+            proto::account_data::IOSSpecificSettings::test_data().into()
         }
     }
 
@@ -845,6 +887,7 @@ mod test {
                 donation_subscription: None,
                 svr_pin: "".to_string(),
                 android_specific_settings: Some(AndroidSpecificSettings::from_proto_test_data()),
+                ios_specific_settings: Some(IosSpecificSettings::from_proto_test_data()),
                 bio_text: "".to_string(),
                 bio_emoji: "".to_string(),
                 key_transparency_data: None,
@@ -965,6 +1008,34 @@ mod test {
         } =>
         Ok(());
         "optimize_storage_false_with_free_tier"
+    )]
+    #[test_case(
+        |x| {
+            x.iosSpecificSettings = None.into();
+        } =>
+        Ok(());
+        "ios_specific_settings_not_set"
+    )]
+    #[test_case(
+        |x| {
+            x.iosSpecificSettings = Some(proto::account_data::IOSSpecificSettings::test_data()).into();
+        } =>
+        Ok(());
+        "ios_specific_settings_set"
+    )]
+    #[test_case(
+        |x| {
+            x.androidSpecificSettings = None.into();
+        } =>
+        Ok(());
+        "android_specific_settings_not_set"
+    )]
+    #[test_case(
+        |x| {
+            x.androidSpecificSettings = Some(proto::account_data::AndroidSpecificSettings::test_data()).into();
+        } =>
+        Ok(());
+        "android_specific_settings_set"
     )]
     fn with(modifier: fn(&mut proto::AccountData)) -> Result<(), AccountDataError> {
         let mut data = proto::AccountData::test_data();
