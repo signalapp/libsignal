@@ -9,10 +9,12 @@
 mod profiles;
 mod usernames;
 
+use std::error::Error;
 use std::future::Future;
 
 use itertools::Itertools;
-use libsignal_net::infra::errors::RetryLater;
+use libsignal_net::infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_net::infra::http_client::{Http2TransportError, Http2TransportErrorKind};
 use libsignal_net_grpc::proto::google;
 use prost::Message as _;
 use tonic::codegen::StdError;
@@ -111,14 +113,40 @@ where
 
 impl<E> From<tonic::Status> for RequestError<E> {
     fn from(status: tonic::Status) -> Self {
+        if let Some(transport_error) = status
+            .source()
+            .and_then(|source| source.downcast_ref::<Http2TransportError>())
+        {
+            log::debug!("HTTP/2 transport error: {transport_error:?}");
+            log::info!(
+                "HTTP/2 transport error: {}",
+                transport_error.kind().log_safe_display()
+            );
+            // If hyper gives an error, we need to disconnect. Any higher-level issues would be
+            // handled at the HTTP/2 level. A hyper error means that there's something wrong with
+            // the HTTP/2 level.
+            return RequestError::Disconnected(match transport_error.kind() {
+                Http2TransportErrorKind::Closed => DisconnectedError::Closed,
+                e @ (Http2TransportErrorKind::Unknown
+                | Http2TransportErrorKind::BodyWriteAborted
+                | Http2TransportErrorKind::Canceled
+                | Http2TransportErrorKind::IncompleteMessage
+                | Http2TransportErrorKind::Shutdown
+                | Http2TransportErrorKind::Timeout
+                | Http2TransportErrorKind::ParseStatus
+                | Http2TransportErrorKind::Parse
+                | Http2TransportErrorKind::User) => DisconnectedError::Transport {
+                    log_safe: format!("HTTP/2 transport error: {}", e.log_safe_display()),
+                },
+            });
+        }
         if let Some((details, info)) = extract_server_side_error(&status) {
             return request_error_from_server_side_error_info(details, info);
         }
-
+        // Unfortunately we can't distinguish between server-side gRPC library errors and
+        // client-side gRPC library errors, so we need to pick a conservative interpretation of all
+        // of these codes. That being said, any hyper transport errors have been handled above.
         match status.code() {
-            // TODO: Unfortunately we can't distinguish between server-side gRPC library errors and
-            // client-side gRPC library errors, so we need to pick a conservative interpretation of all
-            // of these codes.
             tonic::Code::DeadlineExceeded => return RequestError::Timeout,
             tonic::Code::Unavailable => {
                 return RequestError::Disconnected(DisconnectedError::Closed);
@@ -571,7 +599,14 @@ pub(crate) mod testutil {
 
 #[cfg(test)]
 mod test {
+    use std::convert::Infallible;
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
+
     use assert_matches::assert_matches;
+    use futures_util::FutureExt;
+    use hyper::rt::ReadBufCursor;
+    use libsignal_net::infra::http_client::Http2Client;
     use test_case::test_case;
     use tonic::metadata::MetadataValue;
 
@@ -753,5 +788,69 @@ mod test {
         assert!(description.contains("fooField"));
         assert!(description.contains("barField"));
         assert!(!description.contains("POISON"));
+    }
+
+    #[test]
+    fn test_transport_errors() {
+        static_assertions::assert_type_eq_all!(
+            Http2TransportError,
+            <Http2Client<tonic::body::Body> as tower_service::Service<
+                http::Request<tonic::body::Body>,
+            >>::Error,
+        );
+        let hyper_err = {
+            // We want to return a hyper error, but one does not simply construct a hyper::Error
+            // There's no public API to do so! Instead, we come up with a situation that always
+            // fails.
+            struct Io;
+            impl hyper::rt::Read for Io {
+                fn poll_read(
+                    self: Pin<&mut Self>,
+                    _cx: &mut Context<'_>,
+                    _buf: ReadBufCursor<'_>,
+                ) -> Poll<Result<(), std::io::Error>> {
+                    Poll::Ready(Err(std::io::Error::other("error")))
+                }
+            }
+            impl hyper::rt::Write for Io {
+                fn poll_write(
+                    self: Pin<&mut Self>,
+                    _cx: &mut Context<'_>,
+                    _buf: &[u8],
+                ) -> Poll<Result<usize, std::io::Error>> {
+                    Poll::Ready(Err(std::io::Error::other("error")))
+                }
+
+                fn poll_flush(
+                    self: Pin<&mut Self>,
+                    _cx: &mut Context<'_>,
+                ) -> Poll<Result<(), std::io::Error>> {
+                    Poll::Ready(Err(std::io::Error::other("error")))
+                }
+
+                fn poll_shutdown(
+                    self: Pin<&mut Self>,
+                    _cx: &mut Context<'_>,
+                ) -> Poll<Result<(), std::io::Error>> {
+                    Poll::Ready(Err(std::io::Error::other("error")))
+                }
+            }
+            match hyper::client::conn::http1::handshake::<_, String>(Io)
+                .now_or_never()
+                .expect("Future should return immediately")
+            {
+                Err(e) => e,
+                Ok((_sender, conn)) => conn
+                    .now_or_never()
+                    .expect("future should return immediately")
+                    .expect_err("the connection shouldn't succeed"),
+            }
+        };
+        assert_matches!(
+            RequestError::<Infallible>::from(tonic::Status::from_error(Box::new(
+                Http2TransportError(hyper_err)
+            ))),
+            RequestError::Disconnected(DisconnectedError::Transport { log_safe: _ })
+        );
     }
 }

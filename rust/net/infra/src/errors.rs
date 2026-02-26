@@ -14,7 +14,15 @@ use tokio_boring_signal::HandshakeError;
 
 use crate::{AsStaticHttpHeader, certs};
 
-pub trait LogSafeDisplay: Display {}
+pub trait LogSafeDisplay: Display {
+    /// Assert that this type implements `LogSafeDisplay`
+    fn log_safe_display(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        self
+    }
+}
 
 /// Vacuous implementation since you can't actually [`Display::fmt`] a
 /// [`std::convert::Infallible`].

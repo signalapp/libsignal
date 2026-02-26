@@ -9,6 +9,8 @@ use std::str::FromStr as _;
 
 use bytes::Bytes;
 use derive_where::derive_where;
+use displaydoc::Display;
+use futures_util::TryFutureExt;
 use http::HeaderMap;
 use http::response::Parts;
 use http::uri::PathAndQuery;
@@ -92,23 +94,82 @@ impl<B: hyper::body::Body + 'static> Http2Client<B> {
     }
 }
 
+// hyper doesn't expose its error kind enum, so we re-create it here.
+#[derive(Debug, Display)]
+pub enum Http2TransportErrorKind {
+    /// An uncategorizable hyper error
+    Unknown,
+    /// A body write was aborted
+    BodyWriteAborted,
+    /// Request was canceled
+    Canceled,
+    /// Sender channel was closed
+    Closed,
+    /// Connection closed before a message could complete
+    IncompleteMessage,
+    /// Error caused while calling `AsyncWrite::shutdown()`
+    Shutdown,
+    /// Some timeout was hit
+    Timeout,
+    /// The HTTP status couldn't be parsed
+    ParseStatus,
+    /// Some generic parsing error occurred
+    Parse,
+    /// Some user code failed
+    User,
+}
+impl LogSafeDisplay for Http2TransportErrorKind {}
+
+#[derive(thiserror::Error, Debug)]
+#[error(transparent)]
+pub struct Http2TransportError(pub hyper::Error);
+
+impl Http2TransportError {
+    pub fn kind(&self) -> Http2TransportErrorKind {
+        let e = &self.0;
+        if e.is_body_write_aborted() {
+            Http2TransportErrorKind::BodyWriteAborted
+        } else if e.is_canceled() {
+            Http2TransportErrorKind::Canceled
+        } else if e.is_closed() {
+            Http2TransportErrorKind::Closed
+        } else if e.is_incomplete_message() {
+            Http2TransportErrorKind::IncompleteMessage
+        } else if e.is_shutdown() {
+            Http2TransportErrorKind::Shutdown
+        } else if e.is_timeout() {
+            Http2TransportErrorKind::Timeout
+        } else if e.is_parse_status() {
+            // Check this before e.is_parse() which subsumes it
+            Http2TransportErrorKind::ParseStatus
+        } else if e.is_parse() {
+            // We don't check e.is_parse_too_large() because that's http/1 only
+            Http2TransportErrorKind::Parse
+        } else if e.is_user() {
+            Http2TransportErrorKind::User
+        } else {
+            Http2TransportErrorKind::Unknown
+        }
+    }
+}
+
 #[cfg(feature = "tower-service")]
 impl<B: hyper::body::Body + Send + 'static> tower_service::Service<http::Request<B>>
     for Http2Client<B>
 {
     type Response = http::Response<hyper::body::Incoming>;
-    type Error = hyper::Error;
+    type Error = Http2TransportError;
     type Future = futures_util::future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(
         &mut self,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), Self::Error>> {
-        self.poll_ready(cx)
+        self.poll_ready(cx).map_err(Http2TransportError)
     }
 
     fn call(&mut self, req: http::Request<B>) -> Self::Future {
-        Box::pin(self.send_request(req))
+        Box::pin(self.send_request(req).map_err(Http2TransportError))
     }
 }
 

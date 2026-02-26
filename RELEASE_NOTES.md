@@ -6,3 +6,5 @@ v0.87.5
 
 - Log hashes of TLS certs on verification failure
 
+- Treat HTTP/2 transport errors disinct from gRPC status
+
