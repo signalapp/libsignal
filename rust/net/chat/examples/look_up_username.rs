@@ -7,8 +7,7 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use anyhow::anyhow;
-use base64::Engine as _;
-use base64::prelude::BASE64_URL_SAFE_NO_PAD;
+use base64::prelude::{BASE64_URL_SAFE_NO_PAD, Engine as _};
 use clap::{Parser, ValueEnum};
 use libsignal_net::certs::SIGNAL_ROOT_CERTIFICATES;
 use libsignal_net::chat::test_support::simple_chat_connection;

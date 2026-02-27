@@ -17,8 +17,7 @@ mod usernames;
 use std::future::Future;
 use std::time::Duration;
 
-use base64::Engine as _;
-use base64::prelude::BASE64_STANDARD;
+use base64::prelude::{BASE64_STANDARD, Engine as _};
 use http::StatusCode;
 use libsignal_net::chat;
 use libsignal_net::chat::{Request, Response, SendError};

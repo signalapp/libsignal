@@ -130,8 +130,7 @@ impl<T: WsConnection> crate::api::profiles::UnauthenticatedAccountExistenceApi<O
 
 #[cfg(test)]
 mod test_profile_key {
-    use base64::Engine as _;
-    use base64::prelude::BASE64_STANDARD;
+    use base64::prelude::{BASE64_STANDARD, Engine as _};
     use futures_util::FutureExt as _;
     use libsignal_net::chat;
     use test_case::test_case;

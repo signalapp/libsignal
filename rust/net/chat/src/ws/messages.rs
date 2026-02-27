@@ -5,8 +5,7 @@
 
 use assert_matches::debug_assert_matches;
 use async_trait::async_trait;
-use base64::Engine as _;
-use base64::prelude::BASE64_STANDARD;
+use base64::prelude::{BASE64_STANDARD, Engine as _};
 use itertools::Itertools as _;
 use libsignal_core::{DeviceId, ServiceId};
 use libsignal_net::chat::{Request, Response};

@@ -6,8 +6,7 @@
 use std::convert::Infallible;
 
 use async_trait::async_trait;
-use base64::Engine;
-use base64::prelude::BASE64_URL_SAFE_NO_PAD;
+use base64::prelude::{BASE64_URL_SAFE_NO_PAD, Engine as _};
 use libsignal_core::Aci;
 use libsignal_net::chat::Request;
 use libsignal_net_grpc::proto::chat::services;
