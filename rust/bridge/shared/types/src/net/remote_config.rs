@@ -115,6 +115,7 @@ pub enum RemoteConfigKey {
     AccountsAnonymousLookupUsernameHash => "grpc.AccountsAnonymousLookupUsernameHash",
     AccountsAnonymousLookupUsernameLink => "grpc.AccountsAnonymousLookupUsernameLink",
     AccountsAnonymousCheckAccountExistence => "grpc.AccountsAnonymousCheckAccountExistence",
+    MessagesAnonymousSendMultiRecipientMessage => "grpc.MessagesAnonymousSendMultiRecipientMessage",
 }
 }
 
@@ -242,6 +243,7 @@ mod tests {
         let all_known_grpc_keys: HashSet<&str> = std::iter::empty()
             .chain(services::AccountsAnonymous::iter().map(|x| x.into()))
             .chain(services::KeysAnonymous::iter().map(|x| x.into()))
+            .chain(services::MessagesAnonymous::iter().map(|x| x.into()))
             .collect();
 
         for key in super::RemoteConfigKey::KEYS

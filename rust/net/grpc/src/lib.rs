@@ -10,14 +10,18 @@ pub mod proto {
         pub mod common {
             tonic::include_proto!("org.signal.chat.common");
         }
+        pub mod errors {
+            tonic::include_proto!("org.signal.chat.errors");
+        }
+
         pub mod account {
             tonic::include_proto!("org.signal.chat.account");
         }
         pub mod device {
             tonic::include_proto!("org.signal.chat.device");
         }
-        pub mod errors {
-            tonic::include_proto!("org.signal.chat.errors");
+        pub mod messages {
+            tonic::include_proto!("org.signal.chat.messages");
         }
 
         // Not actually a proto, we just make sure to generate our helper file in the same place.

@@ -138,7 +138,7 @@ pub enum ChallengeOption {
 pub trait UnauthenticatedChatApi<T>:
     keys::UnauthenticatedChatApi<T>
     + keytrans::UnauthenticatedChatApi
-    + messages::UnauthenticatedChatApi
+    + messages::UnauthenticatedChatApi<T>
     + profiles::UnauthenticatedChatApi
     + usernames::UnauthenticatedChatApi<T>
 {
@@ -146,7 +146,7 @@ pub trait UnauthenticatedChatApi<T>:
 impl<T, U> UnauthenticatedChatApi<T> for U where
     U: keys::UnauthenticatedChatApi<T>
         + keytrans::UnauthenticatedChatApi
-        + messages::UnauthenticatedChatApi
+        + messages::UnauthenticatedChatApi<T>
         + profiles::UnauthenticatedChatApi
         + usernames::UnauthenticatedChatApi<T>
 {

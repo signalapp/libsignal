@@ -16,6 +16,7 @@ fn main() {
         "proto/org/signal/chat/credentials.proto",
         "proto/org/signal/chat/device.proto",
         "proto/org/signal/chat/keys.proto",
+        "proto/org/signal/chat/messages.proto",
         "proto/org/signal/chat/payments.proto",
         "proto/org/signal/chat/profile.proto",
     ];

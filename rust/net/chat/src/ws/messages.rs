@@ -10,8 +10,9 @@ use base64::prelude::BASE64_STANDARD;
 use itertools::Itertools as _;
 use libsignal_core::{DeviceId, ServiceId};
 use libsignal_net::chat::{Request, Response};
+use libsignal_net_grpc::proto::chat::services;
 
-use super::{CustomError, TryIntoResponse, WsConnection, parse_json_from_body};
+use super::{CustomError, OverWs, TryIntoResponse, WsConnection, parse_json_from_body};
 use crate::api::messages::{
     MismatchedDeviceError, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
     MultiRecipientSendFailure,
@@ -38,7 +39,7 @@ impl MultiRecipientSendAuthorization {
 }
 
 #[async_trait]
-impl<T: WsConnection> crate::api::messages::UnauthenticatedChatApi for Unauth<T> {
+impl<T: WsConnection> crate::api::messages::UnauthenticatedChatApi<OverWs> for Unauth<T> {
     async fn send_multi_recipient_message(
         &self,
         payload: bytes::Bytes,
@@ -47,6 +48,17 @@ impl<T: WsConnection> crate::api::messages::UnauthenticatedChatApi for Unauth<T>
         online_only: bool,
         urgent: bool,
     ) -> Result<MultiRecipientMessageResponse, RequestError<MultiRecipientSendFailure>> {
+        if let Some(grpc) = self
+            .grpc_service_to_use_instead(
+                services::MessagesAnonymous::SendMultiRecipientMessage.into(),
+            )
+            .await
+        {
+            return Unauth(grpc)
+                .send_multi_recipient_message(payload, timestamp, auth, online_only, urgent)
+                .await;
+        }
+
         let log_safe_path = format!(
             "/v1/messages/multi_recipient?ts={}&online={}&urgent={}{}",
             timestamp.epoch_millis(),

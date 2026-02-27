@@ -1850,7 +1850,7 @@ export interface RegisterAccountResponse { readonly __type: unique symbol; }
 export interface RegistrationAccountAttributes { readonly __type: unique symbol; }
 export interface BackupStoreResponse { readonly __type: unique symbol; }
 export interface BackupRestoreResponse { readonly __type: unique symbol; }
-export const NetRemoteConfigKeys = ['chatRequestConnectionCheckTimeoutMillis', 'disableNagleAlgorithm', 'useH2ForUnauthChat', 'grpc.AccountsAnonymousLookupUsernameHash', 'grpc.AccountsAnonymousLookupUsernameLink', 'grpc.AccountsAnonymousCheckAccountExistence', ] as const;
+export const NetRemoteConfigKeys = ['chatRequestConnectionCheckTimeoutMillis', 'disableNagleAlgorithm', 'useH2ForUnauthChat', 'grpc.AccountsAnonymousLookupUsernameHash', 'grpc.AccountsAnonymousLookupUsernameLink', 'grpc.AccountsAnonymousCheckAccountExistence', 'grpc.MessagesAnonymousSendMultiRecipientMessage', ] as const;
 export interface TokioAsyncContext { readonly __type: unique symbol; }
 export interface ConnectionManager { readonly __type: unique symbol; }
 export interface ConnectionProxyConfig { readonly __type: unique symbol; }
