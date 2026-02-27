@@ -163,4 +163,26 @@ mod test {
             let _ = root(start, n);
         });
     }
+
+    // These functions require `start < n`. Callers in `verify.rs` validate
+    // `tree_size` and `pos` against `MAX_TREE_SIZE` and each other before
+    // reaching this module.
+
+    #[test]
+    #[should_panic(expected = "leaf node has no children")]
+    fn precondition_frontier_panics_on_zero_n() {
+        let _ = frontier(0, 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "leaf node has no children")]
+    fn precondition_root_panics_when_start_equals_n() {
+        let _ = root(1, 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "leaf node has no children")]
+    fn precondition_root_panics_when_start_exceeds_n() {
+        let _ = root(10, 5);
+    }
 }
