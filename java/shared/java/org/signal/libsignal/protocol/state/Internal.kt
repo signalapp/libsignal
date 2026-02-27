@@ -13,7 +13,7 @@ import java.util.UUID
 @CalledFromNative
 internal interface PreKeyStore {
   @Throws(Exception::class)
-  public fun loadPreKey(id: Int): NativeHandleGuard.Owner
+  public fun loadPreKey(id: Int): NativeHandleGuard.Owner?
 
   @Throws(Exception::class)
   public fun storePreKey(
@@ -28,7 +28,7 @@ internal interface PreKeyStore {
 @CalledFromNative
 internal interface SignedPreKeyStore {
   @Throws(Exception::class)
-  public fun loadSignedPreKey(id: Int): NativeHandleGuard.Owner
+  public fun loadSignedPreKey(id: Int): NativeHandleGuard.Owner?
 
   @Throws(Exception::class)
   public fun storeSignedPreKey(
@@ -40,7 +40,7 @@ internal interface SignedPreKeyStore {
 @CalledFromNative
 internal interface KyberPreKeyStore {
   @Throws(Exception::class)
-  public fun loadKyberPreKey(id: Int): NativeHandleGuard.Owner
+  public fun loadKyberPreKey(id: Int): NativeHandleGuard.Owner?
 
   @Throws(Exception::class)
   public fun storeKyberPreKey(
