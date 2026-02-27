@@ -33,7 +33,7 @@ public class SessionRecord extends NativeHandleGuard.SimpleOwner {
   }
 
   @CalledFromNative
-  private SessionRecord(long nativeHandle) {
+  public SessionRecord(long nativeHandle) {
     super(nativeHandle);
   }
 

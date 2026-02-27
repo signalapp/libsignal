@@ -17,9 +17,9 @@ import org.signal.libsignal.protocol.message.CiphertextMessage
 import org.signal.libsignal.protocol.state.internal.KyberPreKeyStore
 import org.signal.libsignal.protocol.state.internal.PreKeyStore
 import org.signal.libsignal.protocol.state.internal.SenderKeyStore
+import org.signal.libsignal.protocol.state.internal.SessionStore
 import org.signal.libsignal.protocol.state.internal.SignedPreKeyStore
 import org.signal.libsignal.protocol.state.IdentityKeyStore
-import org.signal.libsignal.protocol.state.SessionStore
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException

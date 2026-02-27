@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::cell::RefCell;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -15,105 +14,6 @@ use crate::support::BridgedCallbacks;
 impl<T: Finalize> Finalize for BridgedCallbacks<T> {
     fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
         self.0.finalize(cx);
-    }
-}
-
-pub struct NodeSessionStore {
-    js_channel: Channel,
-    store_object: Arc<Root<JsObject>>,
-}
-
-impl NodeSessionStore {
-    pub(crate) fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
-        Self {
-            js_channel: cx.channel(),
-            store_object: Arc::new(store.root(cx)),
-        }
-    }
-
-    async fn do_get_session(&self, name: ProtocolAddress) -> Result<Option<SessionRecord>, String> {
-        let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_channel, move |cx| {
-            let store_object = store_object_shared.to_inner(cx);
-            let name: Handle<JsValue> = name.convert_into(cx)?;
-            let result = call_method(cx, store_object, "_getSession", [name])?;
-            let result = result.downcast_or_throw(cx)?;
-            store_object_shared.finalize(cx);
-            Ok(result)
-        })
-        .then(|cx, result| match result {
-            Ok(value) => match value.downcast::<DefaultJsBox<RefCell<SessionRecord>>, _>(cx) {
-                Ok(obj) => Ok(Some((***obj).borrow().clone())),
-                Err(_) => {
-                    if value.is_a::<JsNull, _>(cx) || value.is_a::<JsUndefined, _>(cx) {
-                        Ok(None)
-                    } else {
-                        Err("_getSession returned unexpected type".into())
-                    }
-                }
-            },
-            Err(error) => Err(error
-                .to_string(cx)
-                .expect("can convert to string")
-                .value(cx)),
-        })
-        .await
-    }
-
-    async fn do_save_session(
-        &self,
-        name: ProtocolAddress,
-        record: SessionRecord,
-    ) -> Result<(), String> {
-        let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_channel, move |cx| {
-            let store_object = store_object_shared.to_inner(cx);
-            let name = name.convert_into(cx)?;
-            let record = record.convert_into(cx)?;
-            let result = call_method(cx, store_object, "_saveSession", [name, record.upcast()])?
-                .downcast_or_throw(cx)?;
-            store_object_shared.finalize(cx);
-            Ok(result)
-        })
-        .then(|cx, result| match result {
-            Ok(value) => match value.downcast::<JsUndefined, _>(cx) {
-                Ok(_) => Ok(()),
-                Err(_) => Err("unexpected result from _saveSession".into()),
-            },
-            Err(error) => Err(error
-                .to_string(cx)
-                .expect("can convert to string")
-                .value(cx)),
-        })
-        .await
-    }
-}
-
-impl Finalize for NodeSessionStore {
-    fn finalize<'b, C: neon::prelude::Context<'b>>(self, cx: &mut C) {
-        self.store_object.finalize(cx)
-    }
-}
-
-#[async_trait(?Send)]
-impl SessionStore for NodeSessionStore {
-    async fn load_session(
-        &self,
-        name: &ProtocolAddress,
-    ) -> Result<Option<SessionRecord>, SignalProtocolError> {
-        self.do_get_session(name.clone())
-            .await
-            .map_err(|s| js_error_to_rust("getSession", s))
-    }
-
-    async fn store_session(
-        &mut self,
-        name: &ProtocolAddress,
-        record: &SessionRecord,
-    ) -> Result<(), SignalProtocolError> {
-        self.do_save_session(name.clone(), record.clone())
-            .await
-            .map_err(|s| js_error_to_rust("saveSession", s))
     }
 }
 

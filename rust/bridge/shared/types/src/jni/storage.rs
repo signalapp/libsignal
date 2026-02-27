@@ -10,14 +10,12 @@ use async_trait::async_trait;
 use super::*;
 // TODO: This re-export is because of the jni_arg_type macro expecting all bridging structs to
 // appear in the jni module.
-pub use crate::protocol::storage::JavaPreKeyStore;
+pub use crate::protocol::storage::{
+    JavaKyberPreKeyStore, JavaPreKeyStore, JavaSenderKeyStore, JavaSessionStore,
+    JavaSignedPreKeyStore,
+};
 
 pub type JavaIdentityKeyStore<'a> = JObject<'a>;
-// pub type JavaPreKeyStore<'a> = JObject<'a>;
-pub type JavaSignedPreKeyStore<'a> = JObject<'a>;
-pub type JavaKyberPreKeyStore<'a> = JObject<'a>;
-pub type JavaSessionStore<'a> = JObject<'a>;
-pub type JavaSenderKeyStore<'a> = JObject<'a>;
 
 pub struct JniIdentityKeyStore<'a> {
     env: RefCell<EnvHandle<'a>>,
@@ -244,92 +242,5 @@ impl IdentityKeyStore for JniIdentityKeyStore<'_> {
         address: &ProtocolAddress,
     ) -> Result<Option<IdentityKey>, SignalProtocolError> {
         Ok(self.do_get_identity(address)?)
-    }
-}
-
-pub struct JniSessionStore<'a> {
-    env: RefCell<EnvHandle<'a>>,
-    store: &'a JObject<'a>,
-}
-
-impl<'a> JniSessionStore<'a> {
-    pub fn new<'context: 'a>(
-        env: &mut JNIEnv<'context>,
-        store: &'a JObject<'a>,
-    ) -> Result<Self, BridgeLayerError> {
-        check_jobject_type(
-            env,
-            store,
-            ClassName("org.signal.libsignal.protocol.state.SessionStore"),
-        )?;
-        Ok(Self {
-            env: EnvHandle::new(env).into(),
-            store,
-        })
-    }
-}
-
-impl JniSessionStore<'_> {
-    fn do_load_session(
-        &self,
-        address: &ProtocolAddress,
-    ) -> Result<Option<SessionRecord>, BridgeLayerError> {
-        self.env
-            .borrow_mut()
-            .with_local_frame(8, "loadSession", |env| {
-                let address_jobject = protocol_address_to_jobject(env, address)?;
-
-                let callback_args = jni_args!((
-                    address_jobject => org.signal.libsignal.protocol.SignalProtocolAddress
-                ) -> org.signal.libsignal.protocol.state.SessionRecord);
-                get_object_with_native_handle(env, self.store, callback_args, "loadSession")
-            })
-    }
-
-    fn do_store_session(
-        &mut self,
-        address: &ProtocolAddress,
-        record: &SessionRecord,
-    ) -> Result<(), BridgeLayerError> {
-        self.env
-            .borrow_mut()
-            .with_local_frame(8, "storeSession", |env| {
-                let address_jobject = protocol_address_to_jobject(env, address)?;
-                let record_handle = record.clone().convert_into(env)?;
-                let session_jobject = jobject_from_native_handle(
-                    env,
-                    ClassName("org.signal.libsignal.protocol.state.SessionRecord"),
-                    record_handle,
-                )?;
-
-                let callback_args = jni_args!((
-                    address_jobject => org.signal.libsignal.protocol.SignalProtocolAddress,
-                    session_jobject => org.signal.libsignal.protocol.state.SessionRecord,
-                ) -> void);
-                call_method_checked(env, self.store, "storeSession", callback_args)?;
-                Ok(())
-            })
-    }
-}
-
-#[async_trait(? Send)]
-impl SessionStore for JniSessionStore<'_> {
-    async fn load_session(
-        &self,
-        address: &ProtocolAddress,
-    ) -> Result<Option<SessionRecord>, SignalProtocolError> {
-        Ok(self
-            .do_load_session(address)
-            .map_err(BridgeOrProtocolError::from)?)
-    }
-
-    async fn store_session(
-        &mut self,
-        address: &ProtocolAddress,
-        record: &SessionRecord,
-    ) -> Result<(), SignalProtocolError> {
-        Ok(self
-            .do_store_session(address, record)
-            .map_err(BridgeOrProtocolError::from)?)
     }
 }

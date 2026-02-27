@@ -27,7 +27,7 @@ use crate::net::registration::{
 };
 use crate::protocol::storage::{
     FfiBridgeKyberPreKeyStoreStruct, FfiBridgePreKeyStoreStruct, FfiBridgeSenderKeyStoreStruct,
-    FfiBridgeSignedPreKeyStoreStruct,
+    FfiBridgeSessionStoreStruct, FfiBridgeSignedPreKeyStoreStruct,
 };
 use crate::support::{
     AsType, BridgedCallbacks, FixedLengthBincodeSerializable, IllegalArgumentError, Serialized,

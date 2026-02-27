@@ -56,6 +56,18 @@ internal interface KyberPreKeyStore {
   )
 }
 
+@CalledFromNative
+internal interface SessionStore {
+  @Throws(Exception::class)
+  public fun loadSession(rawAddress: ObjectHandle): NativeHandleGuard.Owner?
+
+  @Throws(Exception::class)
+  public fun storeSession(
+    rawAddress: ObjectHandle,
+    rawSession: ObjectHandle,
+  )
+}
+
 // The non-internal version of this lives in org.signal.libsignal.protocol.**groups**.state, so
 // arguably this one should live near there. But it follows the pattern of the other
 // org.signal.libsignal.protocol stores, so it's simpler if it just lives here with them.

@@ -1095,27 +1095,7 @@ export class UnidentifiedSenderMessageContent {
   }
 }
 
-export abstract class SessionStore implements Native.SessionStore {
-  async _saveSession(
-    name: Native.ProtocolAddress,
-    record: Native.SessionRecord
-  ): Promise<void> {
-    return this.saveSession(
-      ProtocolAddress._fromNativeHandle(name),
-      SessionRecord._fromNativeHandle(record)
-    );
-  }
-  async _getSession(
-    name: Native.ProtocolAddress
-  ): Promise<Native.SessionRecord | null> {
-    const sess = await this.getSession(ProtocolAddress._fromNativeHandle(name));
-    if (sess == null) {
-      return null;
-    } else {
-      return sess._nativeHandle;
-    }
-  }
-
+export abstract class SessionStore {
   abstract saveSession(
     name: ProtocolAddress,
     record: SessionRecord
@@ -1423,6 +1403,28 @@ export class DecryptionErrorMessage {
   }
 }
 
+function bridgeSessionStore(store: SessionStore): Native.BridgeSessionStore {
+  return {
+    async storeSession(
+      rawAddress: Native.ProtocolAddress,
+      record: Native.SessionRecord
+    ): Promise<void> {
+      return store.saveSession(
+        ProtocolAddress._fromNativeHandle(rawAddress),
+        SessionRecord._fromNativeHandle(record)
+      );
+    },
+    async loadSession(
+      rawAddress: Native.ProtocolAddress
+    ): Promise<Native.SessionRecord | null> {
+      const pk = await store.getSession(
+        ProtocolAddress._fromNativeHandle(rawAddress)
+      );
+      return pk ? pk._nativeHandle : null;
+    },
+  };
+}
+
 export function processPreKeyBundle(
   bundle: PreKeyBundle,
   address: ProtocolAddress,
@@ -1433,7 +1435,7 @@ export function processPreKeyBundle(
   return Native.SessionBuilder_ProcessPreKeyBundle(
     bundle,
     address,
-    sessionStore,
+    bridgeSessionStore(sessionStore),
     identityStore,
     now.getTime()
   );
@@ -1450,7 +1452,7 @@ export async function signalEncrypt(
     await Native.SessionCipher_EncryptMessage(
       message,
       address,
-      sessionStore,
+      bridgeSessionStore(sessionStore),
       identityStore,
       now.getTime()
     )
@@ -1466,7 +1468,7 @@ export function signalDecrypt(
   return Native.SessionCipher_DecryptSignalMessage(
     message,
     address,
-    sessionStore,
+    bridgeSessionStore(sessionStore),
     identityStore
   );
 }
@@ -1549,7 +1551,7 @@ export function signalDecryptPreKey(
   return Native.SessionCipher_DecryptPreKeySignalMessage(
     message,
     address,
-    sessionStore,
+    bridgeSessionStore(sessionStore),
     identityStore,
     bridgePreKeyStore(prekeyStore),
     bridgeSignedPreKeyStore(signedPrekeyStore),
@@ -1665,7 +1667,7 @@ export async function sealedSenderDecryptMessage(
     localE164,
     localUuid,
     localDeviceId,
-    sessionStore,
+    bridgeSessionStore(sessionStore),
     identityStore,
     bridgePreKeyStore(prekeyStore),
     bridgeSignedPreKeyStore(signedPrekeyStore),

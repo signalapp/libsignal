@@ -26,7 +26,7 @@ use crate::net::chat::{
 };
 use crate::protocol::storage::{
     NodeBridgeKyberPreKeyStore, NodeBridgePreKeyStore, NodeBridgeSenderKeyStore,
-    NodeBridgeSignedPreKeyStore,
+    NodeBridgeSessionStore, NodeBridgeSignedPreKeyStore,
 };
 use crate::support::{
     Array, AsType, BridgedCallbacks, FixedLengthBincodeSerializable, Serialized, extend_lifetime,
@@ -430,6 +430,17 @@ impl CallbackResultTypeInfo for KyberPreKeyRecord {
         foreign: Handle<Self::ResultType>,
     ) -> NeonResult<Self> {
         Ok(foreign.as_inner().0.clone())
+    }
+}
+
+impl CallbackResultTypeInfo for SessionRecord {
+    type ResultType = DefaultJsBox<JsBoxContentsFor<SessionRecord>>;
+
+    fn convert_from_callback(
+        _cx: &mut FunctionContext,
+        foreign: Handle<Self::ResultType>,
+    ) -> NeonResult<Self> {
+        Ok(foreign.as_inner().borrow().clone())
     }
 }
 
@@ -841,7 +852,7 @@ macro_rules! bridge_trait {
 bridge_trait!(IdentityKeyStore);
 // bridge_trait!(PreKeyStore);
 // bridge_trait!(SenderKeyStore);
-bridge_trait!(SessionStore);
+// bridge_trait!(SessionStore);
 // bridge_trait!(SignedPreKeyStore);
 // bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
@@ -886,6 +897,20 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn KyberPreKeyStore {
         Ok(BridgedCallbacks(NodeBridgeKyberPreKeyStore::new(
             cx, foreign,
         )?))
+    }
+    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
+        stored
+    }
+}
+
+impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn SessionStore {
+    type ArgType = JsObject;
+    type StoredType = BridgedCallbacks<NodeBridgeSessionStore>;
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        Ok(BridgedCallbacks(NodeBridgeSessionStore::new(cx, foreign)?))
     }
     fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         stored

@@ -65,11 +65,24 @@ public class SessionCipher {
     this.remoteAddress = remoteAddress;
     this.signedPreKeyStore = signedPreKeyStore;
     this.kyberPreKeyStore = kyberPreKeyStore;
-    ;
   }
 
   public SessionCipher(SignalProtocolStore store, SignalProtocolAddress remoteAddress) {
     this(store, store, store, store, store, remoteAddress);
+  }
+
+  /*package*/ static org.signal.libsignal.protocol.state.internal.SessionStore bridge(
+      SessionStore sessionStore) {
+    return new org.signal.libsignal.protocol.state.internal.SessionStore() {
+      public NativeHandleGuard.Owner loadSession(long rawAddress) throws Exception {
+        return sessionStore.loadSession(new SignalProtocolAddress(rawAddress));
+      }
+
+      public void storeSession(long rawAddress, long rawSession) throws Exception {
+        sessionStore.storeSession(
+            new SignalProtocolAddress(rawAddress), new SessionRecord(rawSession));
+      }
+    };
   }
 
   /**
@@ -107,7 +120,7 @@ public class SessionCipher {
               Native.SessionCipher_EncryptMessage(
                   paddedMessage,
                   remoteAddress.nativeHandle(),
-                  sessionStore,
+                  bridge(sessionStore),
                   identityKeyStore,
                   now.toEpochMilli()));
     }
@@ -144,7 +157,7 @@ public class SessionCipher {
               Native.SessionCipher_DecryptPreKeySignalMessage(
                   ciphertextGuard.nativeHandle(),
                   remoteAddressGuard.nativeHandle(),
-                  sessionStore,
+                  bridge(sessionStore),
                   identityKeyStore,
                   new org.signal.libsignal.protocol.state.internal.PreKeyStore() {
                     public NativeHandleGuard.Owner loadPreKey(int id) throws Exception {
@@ -214,7 +227,7 @@ public class SessionCipher {
               Native.SessionCipher_DecryptSignalMessage(
                   ciphertextGuard.nativeHandle(),
                   remoteAddressGuard.nativeHandle(),
-                  sessionStore,
+                  bridge(sessionStore),
                   identityKeyStore));
     }
   }

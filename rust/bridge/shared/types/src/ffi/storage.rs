@@ -10,7 +10,7 @@ use super::*;
 use crate::ffi;
 use crate::protocol::storage::{
     FfiBridgeKyberPreKeyStoreStruct, FfiBridgePreKeyStoreStruct, FfiBridgeSenderKeyStoreStruct,
-    FfiBridgeSignedPreKeyStoreStruct,
+    FfiBridgeSessionStoreStruct, FfiBridgeSignedPreKeyStoreStruct,
 };
 use crate::support::{BridgedCallbacks, ResultLike, WithContext};
 
@@ -108,39 +108,4 @@ pub type FfiPreKeyStoreStruct = FfiBridgePreKeyStoreStruct;
 pub type FfiSignedPreKeyStoreStruct = FfiBridgeSignedPreKeyStoreStruct;
 pub type FfiKyberPreKeyStoreStruct = FfiBridgeKyberPreKeyStoreStruct;
 pub type FfiSenderKeyStoreStruct = FfiBridgeSenderKeyStoreStruct;
-
-/// A bridge-friendly version of [`SessionStore`].
-#[bridge_callbacks(jni = false, node = false)]
-pub trait BridgeSessionStore {
-    fn load_session(
-        &self,
-        address: ProtocolAddress,
-    ) -> Result<Option<SessionRecord>, SignalProtocolError>;
-    fn store_session(
-        &self,
-        address: ProtocolAddress,
-        record: SessionRecord,
-    ) -> Result<(), SignalProtocolError>;
-}
-
-// TODO: This alias is because of the ffi_arg_type macro expecting all bridging structs to use a
-// particular naming scheme; eventually we should be able to remove it.
 pub type FfiSessionStoreStruct = FfiBridgeSessionStoreStruct;
-
-#[async_trait(?Send)]
-impl<T: BridgeSessionStore> SessionStore for BridgedCallbacks<T> {
-    async fn load_session(
-        &self,
-        address: &ProtocolAddress,
-    ) -> Result<Option<SessionRecord>, SignalProtocolError> {
-        self.0.load_session(address.clone())
-    }
-
-    async fn store_session(
-        &mut self,
-        address: &ProtocolAddress,
-        record: &SessionRecord,
-    ) -> Result<(), SignalProtocolError> {
-        self.0.store_session(address.clone(), record.clone())
-    }
-}
