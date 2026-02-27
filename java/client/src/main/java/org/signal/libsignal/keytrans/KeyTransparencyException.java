@@ -5,8 +5,10 @@
 
 package org.signal.libsignal.keytrans;
 
+import org.signal.libsignal.net.BadRequestError;
+
 /** Key transparency operation failed. */
-public class KeyTransparencyException extends Exception {
+public class KeyTransparencyException extends Exception implements BadRequestError {
   public KeyTransparencyException(String message) {
     super(message);
   }

@@ -15,7 +15,6 @@ import org.signal.libsignal.net.KeyTransparency.MonitorMode
 import org.signal.libsignal.util.TestEnvironment
 import java.util.Deque
 import java.util.concurrent.ExecutionException
-import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
 private fun <T> retryImpl(
@@ -65,6 +64,9 @@ class KeyTransparencyClientTest {
         KeyTransparencyTest.TEST_USERNAME_HASH,
         store,
       ).get()
+      .also {
+        assertIs<RequestResult.Success<*>>(it)
+      }
 
     Assert.assertTrue(store.getLastDistinguishedTreeHead().isPresent)
     Assert.assertTrue(store.getAccountData(KeyTransparencyTest.TEST_ACI).isPresent)
@@ -79,7 +81,9 @@ class KeyTransparencyClientTest {
     val ktClient = connectAndGetClient(net).get()
 
     val store = TestStore()
-    ktClient.updateDistinguished(store).get()
+    ktClient.updateDistinguished(store).get().also {
+      assertIs<RequestResult.Success<*>>(it)
+    }
 
     Assert.assertTrue(store.getLastDistinguishedTreeHead().isPresent)
   }
@@ -103,6 +107,9 @@ class KeyTransparencyClientTest {
         KeyTransparencyTest.TEST_USERNAME_HASH,
         store,
       ).get()
+      .also {
+        assertIs<RequestResult.Success<*>>(it)
+      }
 
     val accountDataHistory: Deque<ByteArray?> = store.storage.get(KeyTransparencyTest.TEST_ACI)!!
 
@@ -119,6 +126,9 @@ class KeyTransparencyClientTest {
         KeyTransparencyTest.TEST_USERNAME_HASH,
         store,
       ).get()
+      .also {
+        assertIs<RequestResult.Success<*>>(it)
+      }
     // Another entry in the account history after a successful monitor request
     Assert.assertEquals(2, accountDataHistory.size.toLong())
   }
@@ -136,7 +146,7 @@ class KeyTransparencyClientTest {
     // Call to monitor before any data has been persisted in the store.
     // Distinguished tree will be requested from the server, but it will fail
     // due to account data missing.
-    try {
+    val result =
       ktClient
         .monitor(
           MonitorMode.SELF,
@@ -147,12 +157,12 @@ class KeyTransparencyClientTest {
           KeyTransparencyTest.TEST_USERNAME_HASH,
           store,
         ).get()
-    } catch (e: ExecutionException) {
-      Assert.assertTrue(e.cause is KeyTransparencyException)
-    }
+
+    val nonSuccess = assertIs<RequestResult.NonSuccess<KeyTransparencyException>>(result)
+    assertIs<KeyTransparencyException>(nonSuccess.error)
   }
 
-  inline fun <reified E> networkExceptionsTestImpl(
+  inline fun <reified E : Throwable> retryableNetworkExceptionsTestImpl(
     statusCode: Int,
     message: String = "",
     headers: Array<String> = arrayOf(),
@@ -171,17 +181,42 @@ class KeyTransparencyClientTest {
     val (_, requestId) = remote.getNextIncomingRequest().get()
     remote.sendResponse(requestId, statusCode, message, headers, byteArrayOf())
 
-    val exception = assertFailsWith<ExecutionException> { responseFuture.get() }
-    assertIs<E>(exception.cause)
+    val result = responseFuture.get()
+    val retryable = assertIs<RequestResult.RetryableNetworkError>(result)
+    assertIs<E>(retryable.networkError)
+  }
+
+  inline fun <reified E : Throwable> applicationErrorTestImpl(
+    statusCode: Int,
+    message: String = "",
+    headers: Array<String> = arrayOf(),
+  ) {
+    val tokio = TokioAsyncContext()
+    val (chat, remote) =
+      UnauthenticatedChatConnection.fakeConnect(
+        tokio,
+        NoOpListener(),
+        Network.Environment.STAGING,
+      )
+
+    val store = TestStore()
+    val responseFuture = chat.keyTransparencyClient().updateDistinguished(store)
+
+    val (_, requestId) = remote.getNextIncomingRequest().get()
+    remote.sendResponse(requestId, statusCode, message, headers, byteArrayOf())
+
+    val result = responseFuture.get()
+    val appError = assertIs<RequestResult.ApplicationError>(result)
+    assertIs<E>(appError.cause)
   }
 
   @Test
   @Throws(ExecutionException::class, InterruptedException::class)
   fun networkExceptions() {
-    networkExceptionsTestImpl<RetryLaterException>(429, headers = arrayOf("retry-after: 42"))
-    networkExceptionsTestImpl<ServerSideErrorException>(500)
+    retryableNetworkExceptionsTestImpl<RetryLaterException>(429, headers = arrayOf("retry-after: 42"))
+    retryableNetworkExceptionsTestImpl<ServerSideErrorException>(500)
     // 429 without the retry-after is unexpected
-    networkExceptionsTestImpl<UnexpectedResponseException>(429)
+    applicationErrorTestImpl<UnexpectedResponseException>(429)
   }
 
   companion object {

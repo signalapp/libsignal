@@ -1,2 +1,3 @@
-v0.87.6
+v0.88.0
 
+- java: KeyTransparencyClient now returns RequestResult types
