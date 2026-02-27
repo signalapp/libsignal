@@ -72,6 +72,7 @@ public class SealedSessionCipherTest extends TestCase {
       throws UntrustedIdentityException,
           InvalidKeyException,
           InvalidCertificateException,
+          NoSessionException,
           InvalidMetadataMessageException,
           ProtocolDuplicateMessageException,
           ProtocolUntrustedIdentityException,

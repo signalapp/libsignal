@@ -7,7 +7,6 @@ package org.signal.libsignal.metadata;
 
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
-import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -60,27 +59,16 @@ public class SealedSessionCipher {
       SignalProtocolAddress destinationAddress,
       SenderCertificate senderCertificate,
       byte[] paddedPlaintext)
-      throws InvalidKeyException, UntrustedIdentityException {
-    try (NativeHandleGuard addressGuard = new NativeHandleGuard(destinationAddress)) {
-      CiphertextMessage message =
-          filterExceptions(
-              InvalidKeyException.class,
-              UntrustedIdentityException.class,
-              () ->
-                  Native.SessionCipher_EncryptMessage(
-                      paddedPlaintext,
-                      addressGuard.nativeHandle(),
-                      this.signalProtocolStore,
-                      this.signalProtocolStore,
-                      Instant.now().toEpochMilli()));
-      UnidentifiedSenderMessageContent content =
-          new UnidentifiedSenderMessageContent(
-              message,
-              senderCertificate,
-              UnidentifiedSenderMessageContent.CONTENT_HINT_DEFAULT,
-              Optional.<byte[]>empty());
-      return encrypt(destinationAddress, content);
-    }
+      throws InvalidKeyException, NoSessionException, UntrustedIdentityException {
+    CiphertextMessage message =
+        new SessionCipher(signalProtocolStore, destinationAddress).encrypt(paddedPlaintext);
+    UnidentifiedSenderMessageContent content =
+        new UnidentifiedSenderMessageContent(
+            message,
+            senderCertificate,
+            UnidentifiedSenderMessageContent.CONTENT_HINT_DEFAULT,
+            Optional.<byte[]>empty());
+    return encrypt(destinationAddress, content);
   }
 
   public byte[] encrypt(
