@@ -206,6 +206,29 @@ mod math {
             assert_eq!(batch_copath(&[0, 2, 3, 4], 8), vec![2, 10, 13]);
             assert_eq!(batch_copath(&[0, 2, 3], 8), vec![2, 11]);
         }
+
+        // `node_width(n) = 2*(n-1)+1` overflows for `n > 2^63`. Callers in
+        // `verify.rs` bound `tree_size` by `MAX_TREE_SIZE` (`2^62`) before
+        // reaching this module.
+
+        #[test]
+        #[should_panic(expected = "attempt to multiply with overflow")]
+        fn precondition_node_width_panics_above_2_63() {
+            let _ = node_width((1u64 << 63) + 1);
+        }
+
+        #[test]
+        #[should_panic(expected = "attempt to multiply with overflow")]
+        fn precondition_root_panics_above_2_63() {
+            let _ = root((1u64 << 63) + 1);
+        }
+
+        #[test]
+        fn node_width_safe_at_max_tree_size() {
+            // MAX_TREE_SIZE = 2^62; node_width(2^62) = 2^63 - 1 fits in u64.
+            let _ = node_width(1u64 << 62);
+            let _ = root(1u64 << 62);
+        }
     }
 }
 
