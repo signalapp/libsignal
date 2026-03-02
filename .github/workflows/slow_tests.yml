@@ -546,10 +546,21 @@ jobs:
     - name: Build everything with no lockfile and -Zdirect-minimal-versions
       run: mkdir minimal-versions && bin/without_building_boring.sh cargo check --workspace --all-targets --all-features --verbose --keep-going -Zdirect-minimal-versions -Zunstable-options --lockfile-path minimal-versions/Cargo.lock
 
-  report_failures:
+  report-failures:
     name: Report Failures
     runs-on: ubuntu-latest
-    needs: [java-docker, java-reproducibility, android-emulator-tests, aarch64, node-docker, node-reproducibility, node-windows-arm64, swift-cocoapod, rust-stable-testing, rust-fuzzing]
+    needs:
+    - java-docker
+    - java-reproducibility
+    - java-extra-bridging-checks
+    - android-emulator-tests
+    - aarch64
+    - node-docker
+    - node-reproducibility
+    - node-windows-arm64
+    - swift-cocoapod
+    - rust-stable-testing
+    - rust-fuzzing
     if: ${{ failure() && github.event_name == 'schedule' }}
 
     permissions:
