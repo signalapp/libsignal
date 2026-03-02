@@ -139,7 +139,7 @@ jobs:
       if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
       run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
 
-    - run: sudo apt-get install protobuf-compiler
+    - run: sudo apt-get install -U protobuf-compiler
 
     - run: ./gradlew :client:test :server:test -PskipAndroid -PjniTypeTagging -PjniCheckAnnotations
       working-directory: java
@@ -258,7 +258,7 @@ jobs:
       if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
       run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
 
-    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+    - run: sudo apt-get install -U protobuf-compiler
 
     - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
@@ -433,7 +433,7 @@ jobs:
       if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
       run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
 
-    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
+    - run: sudo apt-get install -U gcc-multilib g++-multilib protobuf-compiler
 
     - run: rustup +stable target add i686-unknown-linux-gnu
 
@@ -507,7 +507,7 @@ jobs:
       with:
         submodules: recursive
 
-    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+    - run: sudo apt-get install -U protobuf-compiler
 
     - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 

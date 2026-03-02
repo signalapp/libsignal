@@ -224,7 +224,7 @@ jobs:
       with:
         submodules: recursive
 
-    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib
+    - run: sudo apt-get install -U gcc-multilib g++-multilib
 
     - name: Install protoc
       run: ./bin/install_protoc_linux
