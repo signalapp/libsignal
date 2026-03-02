@@ -11,11 +11,12 @@ default: java_build
 
 DOCKER_IMAGE := libsignal-builder
 DOCKER_TTY_FLAG := $$(test -t 0 && echo -it)
+DOCKER_PLATFORM ?= linux/amd64
 GRADLE_OPTIONS ?= --dependency-verification strict
 CROSS_COMPILE_SERVER ?= -PcrossCompileServer
 
 docker_image:
-	cd .. && $(DOCKER) build --build-arg UID=$$(id -u) --build-arg GID=$$(id -g) -t $(DOCKER_IMAGE) -f java/Dockerfile .
+	cd .. && $(DOCKER) build --platform=$(DOCKER_PLATFORM) --build-arg UID=$$(id -u) --build-arg GID=$$(id -g) -t $(DOCKER_IMAGE) -f java/Dockerfile .
 
 java_build: DOCKER_EXTRA=$(shell [ -L build ] && P=$$(readlink build) && echo -v $$P/:$$P )
 java_build: docker_image
