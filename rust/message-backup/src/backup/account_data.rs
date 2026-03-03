@@ -151,6 +151,7 @@ pub struct AccountSettings<M: Method + ReferencedTypes> {
     pub calls_use_less_data_setting: M::Value<CallsUseLessDataSetting>,
     pub allow_sealed_sender_from_anyone: M::Value<bool>,
     pub allow_automatic_key_verification: M::Value<bool>,
+    pub has_seen_admin_delete_education_dialog: M::Value<bool>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize)]
@@ -487,6 +488,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             callsUseLessDataSetting,
             allowSealedSenderFromAnyone,
             allowAutomaticKeyVerification,
+            hasSeenAdminDeleteEducationDialog,
             special_fields: _,
         } = self;
 
@@ -588,6 +590,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             calls_use_less_data_setting: M::value(calls_use_less_data_setting),
             allow_sealed_sender_from_anyone: M::value(allowSealedSenderFromAnyone),
             allow_automatic_key_verification: M::value(allowAutomaticKeyVerification),
+            has_seen_admin_delete_education_dialog: M::value(hasSeenAdminDeleteEducationDialog),
         })
     }
 }
@@ -878,6 +881,7 @@ mod test {
                     calls_use_less_data_setting: CallsUseLessDataSetting::MobileDataOnly,
                     allow_sealed_sender_from_anyone: false,
                     allow_automatic_key_verification: false,
+                    has_seen_admin_delete_education_dialog: false,
                 },
                 avatar_url_path: "".to_string(),
                 backup_subscription: Some(IapSubscriberData {

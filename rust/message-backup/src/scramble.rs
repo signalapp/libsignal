@@ -314,6 +314,7 @@ impl Visit<Scrambler> for proto::account_data::AccountSettings {
             pinReminders: _,
             allowSealedSenderFromAnyone: _,
             allowAutomaticKeyVerification: _,
+            hasSeenAdminDeleteEducationDialog: _,
             special_fields: _,
         } = self;
 
