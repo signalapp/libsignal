@@ -7,7 +7,9 @@ plugins {
     id 'signing'
 }
 
-archivesBaseName = "libsignal-android"
+base {
+    archivesName = "libsignal-android"
+}
 
 repositories {
     google()
@@ -16,15 +18,15 @@ repositories {
 }
 
 android {
-    namespace 'org.signal.libsignal'
+    namespace = 'org.signal.libsignal'
 
     compileSdk 34
-    ndkVersion '28.0.13004108'
+    ndkVersion = '28.0.13004108'
 
     defaultConfig {
         minSdkVersion 23
         targetSdkVersion 33
-        multiDexEnabled true
+        multiDexEnabled = true
         testInstrumentationRunner "org.signal.libsignal.util.AndroidJUnitRunner"
         // Automatically propagate matching environment variables into Java properties.
         // See the custom AndroidJUnitRunner and TestEnvironment classes for more details.
@@ -32,7 +34,7 @@ android {
     }
 
     compileOptions {
-        coreLibraryDesugaringEnabled true
+        coreLibraryDesugaringEnabled = true
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
@@ -135,8 +137,8 @@ String[] archsFromProperty(String prop) {
 }
 
 task makeJniLibraries(type:Exec) {
-    group 'Rust'
-    description 'Build the JNI libraries for Android'
+    group = 'Rust'
+    description = 'Build the JNI libraries for Android'
 
     def archs = archsFromProperty('androidArchs') ?: ['android']
     def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
@@ -163,13 +165,13 @@ afterEvaluate {
     publishing {
         publications {
             mavenJava(MavenPublication) {
-                artifactId = archivesBaseName
+                artifactId = base.archivesName.get()
                 from components.release
                 artifact dokkaHtmlJar
                 artifact dokkaJavadocJar
 
                 pom {
-                    name = archivesBaseName
+                    name = base.archivesName.get()
                     packaging = 'aar'
                     description = 'Signal Protocol cryptography library for Android'
                     url = 'https://github.com/signalapp/libsignal'
@@ -199,7 +201,7 @@ afterEvaluate {
 
     setUpSigningKey(signing)
     signing {
-        required { isReleaseBuild() && gradle.taskGraph.hasTask(":android:publish") }
+        required = { isReleaseBuild() && gradle.taskGraph.hasTask(":android:publish") }
         sign publishing.publications.mavenJava
     }
 }

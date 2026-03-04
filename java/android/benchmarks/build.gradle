@@ -15,7 +15,7 @@ android {
     defaultConfig {
         minSdkVersion 23
         targetSdkVersion 33
-        multiDexEnabled true
+        multiDexEnabled = true
 
         testInstrumentationRunner "androidx.benchmark.junit4.AndroidBenchmarkRunner"
 
@@ -27,15 +27,15 @@ android {
         // }
     }
 
-    testBuildType "release"
+    testBuildType = "release"
 
     compileOptions {
-        coreLibraryDesugaringEnabled true
+        coreLibraryDesugaringEnabled = true
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    namespace "org.signal.libsignal.benchmarks"
+    namespace = "org.signal.libsignal.benchmarks"
 
     packagingOptions {
         doNotStrip '**/*.so'

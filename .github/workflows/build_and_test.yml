@@ -442,7 +442,7 @@ jobs:
       with:
         job-name: java-android
 
-    - run: ./gradlew --dependency-verification strict :android:build :android:assembleAndroidTest :android:lintDebug :android:packaging-test:assembleDebugAndroidTest :android:benchmarks:assembleReleaseAndroidTest -PandroidArchs=arm,arm64 -x :makeJniLibrariesDesktop | tee ./gradle-output.txt
+    - run: ./gradlew --dependency-verification strict --warning-mode fail :android:build :android:assembleAndroidTest :android:lintDebug :android:packaging-test:assembleDebugAndroidTest :android:benchmarks:assembleReleaseAndroidTest -PandroidArchs=arm,arm64 -x :makeJniLibrariesDesktop | tee ./gradle-output.txt
       working-directory: java
       shell: bash # Explicitly setting the shell turns on pipefail in GitHub Actions
 
@@ -515,7 +515,7 @@ jobs:
     - name: Verify that the JNI bindings are up to date
       run: rust/bridge/jni/bin/gen_java_decl.py --verify
 
-    - run: ./gradlew --dependency-verification strict build -PskipAndroid
+    - run: ./gradlew --dependency-verification strict --warning-mode fail build -PskipAndroid
       working-directory: java
 
     - name: Save cargo cache

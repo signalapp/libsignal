@@ -49,10 +49,10 @@ test {
     testLogging {
         events 'passed','skipped','failed'
         showStandardStreams = true
-        showExceptions true
-        exceptionFormat 'full'
-        showCauses true
-        showStackTraces true
+        showExceptions = true
+        exceptionFormat = 'full'
+        showCauses = true
+        showStackTraces = true
     }
 }
 
@@ -124,6 +124,6 @@ publishing {
 
 setUpSigningKey(signing)
 signing {
-    required { isReleaseBuild() && gradle.taskGraph.hasTask(":server:publish") }
+    required = { isReleaseBuild() && gradle.taskGraph.hasTask(":server:publish") }
     sign publishing.publications.mavenJava
 }

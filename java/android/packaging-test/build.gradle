@@ -14,13 +14,13 @@ android {
     defaultConfig {
         minSdkVersion 23
         targetSdkVersion 33
-        multiDexEnabled true
+        multiDexEnabled = true
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
-        coreLibraryDesugaringEnabled true
+        coreLibraryDesugaringEnabled = true
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
@@ -29,7 +29,7 @@ android {
         jniLibs.excludes.add("**/libsignal_jni_testing.so")
     }
 
-    namespace "org.signal.libsignal.packagingtest"
+    namespace = "org.signal.libsignal.packagingtest"
 }
 
 dependencies {
