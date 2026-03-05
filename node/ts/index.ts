@@ -28,6 +28,13 @@ export * as WebpSanitizer from './WebpSanitizer.js';
 
 import * as Native from './Native.js';
 
+export function pvrfComputeZbDemo(context: Uint8Array, nonce: Uint8Array): Uint8Array {
+  return Native.PvrfDemo_ComputeZb(context, nonce);
+}
+
+export function pvrfComputeSasDemo(nonce16: Uint8Array, zb16: Uint8Array): Uint8Array {
+  return Native.PvrfDemo_ComputeSas(nonce16, zb16);
+}
 Native.registerErrors(Errors);
 
 // These enums must be kept in sync with their Rust counterparts.
@@ -695,6 +702,7 @@ export class SessionRecord {
     return sas;
   }
 }
+
 
 export class ServerCertificate {
   readonly _nativeHandle: Native.ServerCertificate;
