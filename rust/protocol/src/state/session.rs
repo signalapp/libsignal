@@ -569,6 +569,7 @@ impl SessionState {
             local_registration_id: _local_registration_id,
             alice_base_key: _alice_base_key,
             pq_ratchet_state: _pq_ratchet_state,
+            ..
         } = &self.session;
         // ####### IMPORTANT #######
         // Don't forget to clean up new pending fields.

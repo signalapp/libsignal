@@ -69,6 +69,27 @@ fn HKDF_DeriveSecrets(
     Ok(buffer)
 }
 
+#[bridge_fn]
+fn PvrfDemo_ComputeZb(context: Box<[u8]>, nonce: Box<[u8]>) -> Result<Vec<u8>> {
+    let zb = libsignal_protocol::pvrf_demo::compute_zb_demo(&context, &nonce); // [u8;16]
+    Ok(zb.to_vec())
+}
+
+#[bridge_fn]
+fn PvrfDemo_ComputeSas(nonce: Box<[u8]>, zb: Box<[u8]>) -> Result<Vec<u8>> {
+    // Slice/pad to 16 bytes (no error throwing)
+    let mut n = [0u8; 16];
+    let mut z = [0u8; 16];
+
+    let n_take = std::cmp::min(16, nonce.len());
+    let z_take = std::cmp::min(16, zb.len());
+    n[..n_take].copy_from_slice(&nonce[..n_take]);
+    z[..z_take].copy_from_slice(&zb[..z_take]);
+
+    let sas = libsignal_protocol::pvrf_demo::compute_sas_demo(&n, &z); // [u8;16]
+    Ok(sas.to_vec())
+}
+
 // Alternate implementation to fill an existing buffer.
 #[bridge_fn(jni = false, node = false)]
 fn HKDF_Derive(output: &mut [u8], ikm: &[u8], label: &[u8], salt: &[u8]) -> Result<()> {
