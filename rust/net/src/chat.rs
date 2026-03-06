@@ -191,6 +191,13 @@ pub struct PendingChatConnection {
     log_tag: Arc<str>,
 }
 
+/// Headers to include on connections and requests when communicating with chat-server
+/// authenticated.
+///
+/// Specifically: the headers will be included on the initial websocket connect request as well as
+/// separate H2 requests, with the exception of `receive_stories` (which is not relevant to every
+/// request). If you add a header here, consider whether it needs to be attached to every request or
+/// only the initial connection, and modify `start_connect_with_transport` appropriately.
 #[cfg_attr(test, derive(Clone))]
 pub struct AuthenticatedChatHeaders {
     pub auth: Auth,
@@ -198,10 +205,18 @@ pub struct AuthenticatedChatHeaders {
     pub languages: LanguageList,
 }
 
+/// Headers to include on connections and requests when communicating with chat-server
+/// unauthenticated.
+///
+/// Specifically: the headers will be included on the initial websocket connect request as well as
+/// separate H2 requests. If you add a header here, consider whether it needs to be attached to
+/// every request or only the initial connection, and modify `start_connect_with_transport`
+/// appropriately.
 pub struct UnauthenticatedChatHeaders {
     pub languages: LanguageList,
 }
 
+/// Headers to include on connections and requests when communicating with chat-server.
 #[derive(derive_more::From)]
 pub enum ChatHeaders {
     Auth(AuthenticatedChatHeaders),
@@ -270,14 +285,16 @@ impl ChatConnection {
         let network_change_event_for_established_connection =
             connection_resources.network_change_event.clone();
         let should_preconnect = matches!(headers, Some(ChatHeaders::Auth(_)));
-        let headers = headers
-            .into_iter()
-            .flat_map(ChatHeaders::iter_headers)
-            .chain([user_agent.as_header()]);
+        let headers = HeaderMap::from_iter(
+            headers
+                .into_iter()
+                .flat_map(ChatHeaders::iter_headers)
+                .chain([user_agent.as_header()]),
+        );
         let ws_fragment = WebSocketRouteFragment {
             ws_config: WebSocketConfig::default(),
             endpoint: PathAndQuery::from_static(endpoint_path),
-            headers: HeaderMap::from_iter(headers),
+            headers: headers.clone(),
         };
 
         let ws_routes = http_route_provider.map_routes(move |http| WebSocketRoute {
@@ -311,8 +328,17 @@ impl ChatConnection {
         let StreamWithResponseHeaders {
             stream,
             response_headers,
-            connection: shared_h2_connection,
+            connection: mut shared_h2_connection,
         } = connection.into_inner();
+
+        if let Some(connection) = shared_h2_connection.as_mut() {
+            // The headers for H2 requests are *nearly* the same as the headers for the websocket
+            // connection, but we omit the ReceiveStories header because that can be
+            // request-specific.
+            let mut headers_for_h2_requests = headers;
+            headers_for_h2_requests.remove(ReceiveStories::HEADER_NAME);
+            connection.set_default_per_request_headers(headers_for_h2_requests);
+        }
 
         Ok(PendingChatConnection {
             connection: stream,

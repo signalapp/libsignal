@@ -6,6 +6,7 @@
 use std::error::Error;
 use std::marker::PhantomData;
 use std::str::FromStr as _;
+use std::sync::Arc;
 
 use bytes::Bytes;
 use derive_where::derive_where;
@@ -55,6 +56,7 @@ pub struct Http2Client<B> {
     service: http2::SendRequest<B>,
     authority: http::uri::Authority,
     path_prefix: Option<http::uri::PathAndQuery>,
+    default_per_request_headers: Arc<http::HeaderMap>,
 }
 
 impl<B: hyper::body::Body + 'static> Http2Client<B> {
@@ -90,7 +92,37 @@ impl<B: hyper::body::Body + 'static> Http2Client<B> {
         }
         *req.uri_mut() = http::Uri::from_parts(uri).expect("valid parts");
 
+        add_default_headers(req.headers_mut(), &self.default_per_request_headers);
+
         self.service.send_request(req)
+    }
+
+    pub fn set_default_per_request_headers(&mut self, default_headers: http::HeaderMap) {
+        self.default_per_request_headers = Arc::new(default_headers);
+    }
+}
+
+/// Copy all headers from `default_headers` into `headers` *except* for those already present.
+///
+/// `HeaderMap` is a multimap, so we have to be careful how we do this.
+fn add_default_headers(headers: &mut http::HeaderMap, default_headers: &http::HeaderMap) {
+    for k in default_headers.keys() {
+        match headers.entry(k) {
+            http::header::Entry::Occupied(_) => {
+                // The request has overridden this header.
+            }
+            http::header::Entry::Vacant(vacant_entry) => {
+                let mut values = default_headers.get_all(k).into_iter().cloned();
+                let mut entry = vacant_entry.insert_entry(
+                    values
+                        .next()
+                        .expect("at least one value for a key we know is present"),
+                );
+                for v in values {
+                    entry.append(v);
+                }
+            }
+        }
     }
 }
 
@@ -358,6 +390,7 @@ where
             service: sender,
             authority,
             path_prefix,
+            default_per_request_headers: Default::default(),
         })
     }
 }
@@ -373,7 +406,7 @@ mod test {
 
     use assert_matches::assert_matches;
     use http::{HeaderName, HeaderValue, Method, StatusCode};
-    use test_case::test_matrix;
+    use test_case::{test_case, test_matrix};
     use warp::Filter as _;
 
     use super::*;
@@ -616,5 +649,39 @@ mod test {
         .expect_err("hostname checked here");
 
         assert_matches!(err, HttpError::FailedToCreateRequest);
+    }
+
+    #[test_case(&[], &[], &[])]
+    #[test_case(
+        &[],
+        &[("a", "a"), ("b", "b1"), ("c", "c"), ("b", "b2")],
+        &[("a", "a"), ("b", "b1"), ("c", "c"), ("b", "b2")]
+    )]
+    #[test_case(
+        &[("a", "A1"), ("b", "B1"), ("a", "A2")],
+        &[("a", "a"), ("c", "c1"), ("d", "d"), ("c", "c2")],
+        &[("a", "A1"), ("a", "A2"), ("b", "B1"), ("c", "c1"), ("c", "c2"), ("d", "d")]
+    )]
+    fn test_default_header_merging(
+        base: &[(&'static str, &'static str)],
+        defaults_to_add: &[(&'static str, &'static str)],
+        expected: &[(&'static str, &'static str)],
+    ) {
+        fn make_map(entries: &[(&'static str, &'static str)]) -> http::HeaderMap {
+            entries
+                .iter()
+                .map(|(k, v)| {
+                    (
+                        http::HeaderName::from_static(k),
+                        http::HeaderValue::from_static(v),
+                    )
+                })
+                .collect()
+        }
+
+        let mut base = make_map(base);
+        let defaults_to_add = make_map(defaults_to_add);
+        add_default_headers(&mut base, &defaults_to_add);
+        assert_eq!(base, make_map(expected));
     }
 }
