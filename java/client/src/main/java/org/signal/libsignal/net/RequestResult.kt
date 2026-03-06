@@ -54,6 +54,8 @@ public sealed interface RequestResult<out T, out E : BadRequestError> {
    *
    * Possible types for [networkError] include but are not limited to:
    * - [TimeoutException]: occurs when the request takes too long to complete.
+   * - [ChatServiceInactiveException]: occurs when the request is made on a closed chat
+   *   connection.
    * - [ConnectedElsewhereException]: occurs when a client connects elsewhere with
    *   same credentials before the request could complete
    * - [ConnectionInvalidatedException]: occurs when the connection to the server is
@@ -110,6 +112,7 @@ internal inline fun <reified E : BadRequestError> Throwable.toRequestResult(): R
 internal fun Throwable.toRequestResult(): RequestResult<Nothing, Nothing> =
   when (this) {
     is TimeoutException -> RequestResult.RetryableNetworkError(this, null)
+    is ChatServiceInactiveException -> RequestResult.RetryableNetworkError(this)
     is ConnectedElsewhereException -> RequestResult.RetryableNetworkError(this)
     // ConnectionInvalidated is mapped to a network error. Only one legacy API uses its
     // specific meaning; all other APIs treat it as a generic network error.

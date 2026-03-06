@@ -8,6 +8,7 @@ import org.junit.Assert
 import org.junit.Assume
 import org.junit.Test
 import org.signal.libsignal.internal.CompletableFuture
+import org.signal.libsignal.internal.NativeTesting
 import org.signal.libsignal.internal.TokioAsyncContext
 import org.signal.libsignal.keytrans.KeyTransparencyException
 import org.signal.libsignal.keytrans.TestStore
@@ -210,9 +211,30 @@ class KeyTransparencyClientTest {
     assertIs<E>(appError.cause)
   }
 
+  fun chatServiceInactiveIsRetryableNetworkErrorTestImpl() {
+    val tokio = TokioAsyncContext()
+    val (chat, remote) =
+      UnauthenticatedChatConnection.fakeConnect(
+        tokio,
+        NoOpListener(),
+        Network.Environment.STAGING,
+      )
+
+    val store = TestStore()
+    val responseFuture = chat.keyTransparencyClient().updateDistinguished(store)
+
+    remote.getNextIncomingRequest().get()
+    remote.guardedRun(NativeTesting::TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted)
+
+    val result = responseFuture.get()
+    val retryable = assertIs<RequestResult.RetryableNetworkError>(result)
+    assertIs<ChatServiceInactiveException>(retryable.networkError)
+  }
+
   @Test
   @Throws(ExecutionException::class, InterruptedException::class)
   fun networkExceptions() {
+    chatServiceInactiveIsRetryableNetworkErrorTestImpl()
     retryableNetworkExceptionsTestImpl<RetryLaterException>(429, headers = arrayOf("retry-after: 42"))
     retryableNetworkExceptionsTestImpl<ServerSideErrorException>(500)
     // 429 without the retry-after is unexpected
