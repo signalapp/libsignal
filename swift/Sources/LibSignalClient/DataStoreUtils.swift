@@ -11,16 +11,34 @@ internal func withIdentityKeyStore<Result>(
     _ context: StoreContext,
     _ body: (SignalConstPointerFfiIdentityKeyStoreStruct) throws -> Result
 ) throws -> Result {
-    func ffiShimGetIdentityPrivateKey(
+    func ffiShimGetLocalIdentityKeyPair(
         storeCtx: UnsafeMutableRawPointer?,
-        keyp: UnsafeMutablePointer<SignalMutPointerPrivateKey>?
+        out: UnsafeMutablePointer<SignalPairOfMutPointerPrivateKeyMutPointerPublicKey>?
     ) -> Int32 {
         let storeContext = storeCtx!.assumingMemoryBound(
             to: ErrorHandlingContext<(IdentityKeyStore, StoreContext)>.self
         )
         return storeContext.pointee.catchCallbackErrors { store, context in
-            var privateKey = try store.identityKeyPair(context: context).privateKey
-            keyp!.pointee = try cloneOrTakeHandle(from: &privateKey)
+            let keyPair = try store.identityKeyPair(context: context)
+            var privateKey = keyPair.privateKey
+            var publicKey = keyPair.publicKey
+            // Increase the chances of avoiding a clone.
+            _ = consume keyPair
+
+            // Zero out the output first.
+            out!.pointee = .init()
+            out!.pointee.first = try cloneOrTakeHandle(from: &privateKey)
+            do {
+                out!.pointee.second = try cloneOrTakeHandle(from: &publicKey)
+            } catch {
+                // Just in case cloning fails, destroy any fields already filled in.
+                // (If *this* fails, we're in a really bad state and recovery isn't worth it.)
+                if let first = NonNull(out!.pointee.first) {
+                    failOnError(PrivateKey.destroyNativeHandle(first))
+                }
+                out!.pointee = .init()
+                throw error
+            }
         }
     }
 
@@ -112,7 +130,7 @@ internal func withIdentityKeyStore<Result>(
     return try rethrowCallbackErrors((store, context)) {
         var ffiStore = SignalIdentityKeyStore(
             ctx: $0,
-            get_local_identity_private_key: ffiShimGetIdentityPrivateKey,
+            get_local_identity_key_pair: ffiShimGetLocalIdentityKeyPair,
             get_local_registration_id: ffiShimGetLocalRegistrationId,
             get_identity_key: ffiShimGetIdentity,
             save_identity_key: ffiShimSaveIdentity,

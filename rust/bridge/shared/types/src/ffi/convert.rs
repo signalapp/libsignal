@@ -1267,6 +1267,17 @@ optional_callback_result_type!(SenderKeyRecord);
 optional_callback_result_type!(SignedPreKeyRecord);
 optional_callback_result_type!(SessionRecord);
 
+impl<A: CallbackResultTypeInfo, B: CallbackResultTypeInfo> CallbackResultTypeInfo for (A, B) {
+    type ResultType = PairOf<A::ResultType, B::ResultType>;
+
+    fn convert_from_callback(foreign: Self::ResultType) -> SignalFfiResult<Self> {
+        Ok((
+            A::convert_from_callback(foreign.first)?,
+            B::convert_from_callback(foreign.second)?,
+        ))
+    }
+}
+
 macro_rules! trivial {
     ($typ:ty) => {
         impl SimpleArgTypeInfo for $typ {
@@ -1358,6 +1369,11 @@ macro_rules! ffi_arg_type {
     (Result<$typ:tt $(, $ignored:ty)?>) => (ffi_arg_type!($typ));
     (Result<$typ:tt<$($args:tt),+> $(, $ignored:ty)?>) => (ffi_arg_type!($typ<$($args),+>));
     (Option<$typ:ty>) => (ffi::MutPointer< $typ >);
+
+    // Like Result, we can't use `:ty` here because we need the resulting tokens to be matched
+    // recursively. We can at least match several tokens in the second component though.
+    (($a:tt, $($b:tt)+)) => (ffi::PairOf<ffi_arg_type!($a), ffi_arg_type!($($b)+)>);
+
     ($typ:ty) => (ffi::MutPointer< $typ >);
 }
 

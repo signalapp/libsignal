@@ -17,9 +17,7 @@ use crate::support::{BridgedCallbacks, ResultLike, WithContext};
 /// A bridge-friendly version of [`IdentityKeyStore`].
 #[bridge_callbacks(jni = false, node = false)]
 pub trait BridgeIdentityKeyStore {
-    // We ask for just the private key because IdentityKeyPair isn't a single bridge_handle; it's a
-    // pair of objects. This is easier to bridge.
-    fn get_local_identity_private_key(&self) -> Result<PrivateKey, SignalProtocolError>;
+    fn get_local_identity_key_pair(&self) -> Result<(PrivateKey, PublicKey), SignalProtocolError>;
     fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError>;
     fn get_identity_key(
         &self,
@@ -53,8 +51,7 @@ pub enum FfiDirection {
 #[async_trait(?Send)]
 impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedCallbacks<T> {
     async fn get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalProtocolError> {
-        let priv_key = self.0.get_local_identity_private_key()?;
-        let pub_key = priv_key.public_key()?;
+        let (priv_key, pub_key) = self.0.get_local_identity_key_pair()?;
         Ok(IdentityKeyPair::new(IdentityKey::new(pub_key), priv_key))
     }
 

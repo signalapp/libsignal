@@ -784,13 +784,18 @@ typedef struct {
   const SignalSessionStore *raw;
 } SignalConstPointerFfiSessionStoreStruct;
 
-typedef int (*SignalFfiBridgeIdentityKeyStoreGetLocalIdentityPrivateKey)(void *ctx, SignalMutPointerPrivateKey *out);
-
-typedef int (*SignalFfiBridgeIdentityKeyStoreGetLocalRegistrationId)(void *ctx, uint32_t *out);
-
 typedef struct {
   SignalPublicKey *raw;
 } SignalMutPointerPublicKey;
+
+typedef struct {
+  SignalMutPointerPrivateKey first;
+  SignalMutPointerPublicKey second;
+} SignalPairOfMutPointerPrivateKeyMutPointerPublicKey;
+
+typedef int (*SignalFfiBridgeIdentityKeyStoreGetLocalIdentityKeyPair)(void *ctx, SignalPairOfMutPointerPrivateKeyMutPointerPublicKey *out);
+
+typedef int (*SignalFfiBridgeIdentityKeyStoreGetLocalRegistrationId)(void *ctx, uint32_t *out);
 
 typedef int (*SignalFfiBridgeIdentityKeyStoreGetIdentityKey)(void *ctx, SignalMutPointerPublicKey *out, SignalMutPointerProtocolAddress address);
 
@@ -802,7 +807,7 @@ typedef void (*SignalFfiBridgeIdentityKeyStoreDestroy)(void *ctx);
 
 typedef struct {
   void *ctx;
-  SignalFfiBridgeIdentityKeyStoreGetLocalIdentityPrivateKey get_local_identity_private_key;
+  SignalFfiBridgeIdentityKeyStoreGetLocalIdentityKeyPair get_local_identity_key_pair;
   SignalFfiBridgeIdentityKeyStoreGetLocalRegistrationId get_local_registration_id;
   SignalFfiBridgeIdentityKeyStoreGetIdentityKey get_identity_key;
   SignalFfiBridgeIdentityKeyStoreSaveIdentityKey save_identity_key;
