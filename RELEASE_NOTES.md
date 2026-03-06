@@ -2,5 +2,6 @@ v0.88.1
 
 - backups: Add hasSeenAdminDeleteEducationDialog field support.
 
-- java: Classify `ChatServiceInactive` errors as `RequestResult.RetryableNetworkError`
+- backups: Support access control for member labels.
 
+- java: Classify `ChatServiceInactive` errors as `RequestResult.RetryableNetworkError`

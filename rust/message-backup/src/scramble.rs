@@ -643,6 +643,7 @@ impl Visit<Scrambler> for proto::group::AccessControl {
             attributes: _,
             members: _,
             addFromInviteLink: _,
+            memberLabel: _,
             special_fields: _,
         } = self;
     }
@@ -1310,6 +1311,7 @@ impl Visit<Scrambler> for proto::group_change_chat_update::Update {
                 Update::GroupAvatarUpdate(update) => update.accept(visitor),
                 Update::GroupDescriptionUpdate(update) => update.accept(visitor),
                 Update::GroupMembershipAccessLevelChangeUpdate(update) => update.accept(visitor),
+                Update::GroupMemberLabelAccessLevelChangeUpdate(update) => update.accept(visitor),
                 Update::GroupAttributesAccessLevelChangeUpdate(update) => update.accept(visitor),
                 Update::GroupAnnouncementOnlyChangeUpdate(update) => update.accept(visitor),
                 Update::GroupAdminStatusUpdate(update) => update.accept(visitor),
@@ -1409,6 +1411,19 @@ impl Visit<Scrambler> for proto::GroupDescriptionUpdate {
 }
 
 impl Visit<Scrambler> for proto::GroupMembershipAccessLevelChangeUpdate {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            updaterAci,
+            accessLevel: _,
+            special_fields: _,
+        } = self;
+        if let Some(updater) = updaterAci {
+            visitor.replace_service_id(updater);
+        }
+    }
+}
+
+impl Visit<Scrambler> for proto::GroupMemberLabelAccessLevelChangeUpdate {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
             updaterAci,

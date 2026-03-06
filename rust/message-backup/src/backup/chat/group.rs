@@ -22,13 +22,13 @@ use crate::proto::backup::{
     GroupInviteLinkAdminApprovalUpdate, GroupInviteLinkDisabledUpdate,
     GroupInviteLinkEnabledUpdate, GroupInviteLinkResetUpdate, GroupJoinRequestApprovalUpdate,
     GroupJoinRequestCanceledUpdate, GroupJoinRequestUpdate, GroupMemberAddedUpdate,
-    GroupMemberJoinedByLinkUpdate, GroupMemberJoinedUpdate, GroupMemberLeftUpdate,
-    GroupMemberRemovedUpdate, GroupMembershipAccessLevelChangeUpdate, GroupNameUpdate,
-    GroupSelfInvitationRevokedUpdate, GroupSequenceOfRequestsAndCancelsUpdate,
-    GroupUnknownInviteeUpdate, GroupV2MigrationDroppedMembersUpdate,
-    GroupV2MigrationInvitedMembersUpdate, GroupV2MigrationSelfInvitedUpdate,
-    GroupV2MigrationUpdate, SelfInvitedOtherUserToGroupUpdate, SelfInvitedToGroupUpdate,
-    group_invitation_revoked_update,
+    GroupMemberJoinedByLinkUpdate, GroupMemberJoinedUpdate,
+    GroupMemberLabelAccessLevelChangeUpdate, GroupMemberLeftUpdate, GroupMemberRemovedUpdate,
+    GroupMembershipAccessLevelChangeUpdate, GroupNameUpdate, GroupSelfInvitationRevokedUpdate,
+    GroupSequenceOfRequestsAndCancelsUpdate, GroupUnknownInviteeUpdate,
+    GroupV2MigrationDroppedMembersUpdate, GroupV2MigrationInvitedMembersUpdate,
+    GroupV2MigrationSelfInvitedUpdate, GroupV2MigrationUpdate, SelfInvitedOtherUserToGroupUpdate,
+    SelfInvitedToGroupUpdate, group_invitation_revoked_update,
 };
 
 /// Implements `TryFrom<$MESSAGE>` for [`GroupChatUpdate`].
@@ -114,6 +114,11 @@ pub enum GroupChatUpdate {
         newDescription: NoValidation<Option<String>>,
     },
     GroupMembershipAccessLevelChangeUpdate {
+        #[serde_as(as = "Option<serialize::ServiceIdAsString>")]
+        updaterAci: Option<Aci>,
+        accessLevel: AccessLevel,
+    },
+    GroupMemberLabelAccessLevelChangeUpdate {
         #[serde_as(as = "Option<serialize::ServiceIdAsString>")]
         updaterAci: Option<Aci>,
         accessLevel: AccessLevel,
@@ -442,6 +447,7 @@ impl TryFrom<proto::group_change_chat_update::update::Update> for GroupChatUpdat
             Update::GroupAvatarUpdate(m) => m.try_into(),
             Update::GroupDescriptionUpdate(m) => m.try_into(),
             Update::GroupMembershipAccessLevelChangeUpdate(m) => m.try_into(),
+            Update::GroupMemberLabelAccessLevelChangeUpdate(m) => m.try_into(),
             Update::GroupAttributesAccessLevelChangeUpdate(m) => m.try_into(),
             Update::GroupAnnouncementOnlyChangeUpdate(m) => m.try_into(),
             Update::GroupAdminStatusUpdate(m) => m.try_into(),

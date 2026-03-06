@@ -30,6 +30,8 @@ pub struct GroupSnapshot {
     pub access_control_members: proto::group::access_control::AccessRequired,
     #[serde_as(as = "serialize::EnumAsString")]
     pub access_control_add_from_invite_link: proto::group::access_control::AccessRequired,
+    #[serde_as(as = "serialize::EnumAsString")]
+    pub access_control_member_label: proto::group::access_control::AccessRequired,
     pub version: u32,
     pub members: UnorderedList<GroupMember>,
     pub members_pending_profile_key: UnorderedList<GroupMemberPendingProfileKey>,
@@ -187,6 +189,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::
             access_control_attributes,
             access_control_members,
             access_control_add_from_invite_link,
+            access_control_member_label,
         ) = {
             use proto::group::access_control::AccessRequired;
 
@@ -196,6 +199,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::
                 attributes,
                 members,
                 addFromInviteLink,
+                memberLabel,
                 special_fields: _,
             } = accessControl.unwrap_or_default();
 
@@ -236,7 +240,19 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::
                 }
             };
 
-            (attributes, members, add_from_invite_link)
+            let member_label = match memberLabel.enum_value_or_default() {
+                access @ (AccessRequired::UNKNOWN
+                | AccessRequired::MEMBER
+                | AccessRequired::ADMINISTRATOR) => access,
+                access @ (AccessRequired::ANY | AccessRequired::UNSATISFIABLE) => {
+                    return Err(GroupError::InvalidAccess {
+                        which: "memberLabel",
+                        access,
+                    });
+                }
+            };
+
+            (attributes, members, add_from_invite_link, member_label)
         };
 
         let invite_link_password = inviteLinkPassword;
@@ -266,6 +282,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::
             access_control_attributes,
             access_control_members,
             access_control_add_from_invite_link,
+            access_control_member_label,
             version,
             members,
             members_pending_profile_key,
@@ -387,6 +404,7 @@ mod test {
                         attributes: proto::group::access_control::AccessRequired::ADMINISTRATOR.into(),
                         members: proto::group::access_control::AccessRequired::MEMBER.into(),
                         addFromInviteLink: proto::group::access_control::AccessRequired::ANY.into(),
+                        memberLabel: proto::group::access_control::AccessRequired::ADMINISTRATOR.into(),
                         ..Default::default()
                     })
                     .into(),
@@ -424,6 +442,7 @@ mod test {
                     access_control_attributes: AccessRequired::ADMINISTRATOR,
                     access_control_members: AccessRequired::MEMBER,
                     access_control_add_from_invite_link: AccessRequired::ANY,
+                    access_control_member_label: AccessRequired::ADMINISTRATOR,
                     version: 5,
                     members: vec![GroupMember::from_proto_test_data()].into(),
                     members_pending_profile_key: vec![
@@ -477,6 +496,11 @@ mod test {
     #[test_case(|x| x.accessControl.as_mut().unwrap().attributes = AccessRequired::ANY.into() => Err(GroupError::InvalidAccess { which: "attributes", access: AccessRequired::ANY }); "bad attributes AccessRequired")]
     #[test_case(|x| x.accessControl.as_mut().unwrap().members = AccessRequired::ANY.into() => Err(GroupError::InvalidAccess { which: "members", access: AccessRequired::ANY }); "bad members AccessRequired")]
     #[test_case(|x| x.accessControl.as_mut().unwrap().addFromInviteLink = AccessRequired::MEMBER.into() => Err(GroupError::InvalidAccess { which: "addFromInviteLink", access: AccessRequired::MEMBER }); "bad addFromInviteLink AccessRequired")]
+    #[test_case(|x| x.accessControl.as_mut().unwrap().memberLabel = AccessRequired::ANY.into() => Err(GroupError::InvalidAccess { which: "memberLabel", access: AccessRequired::ANY }); "bad memberLabel ANY AccessRequired")]
+    #[test_case(|x| x.accessControl.as_mut().unwrap().memberLabel = AccessRequired::UNSATISFIABLE.into() => Err(GroupError::InvalidAccess { which: "memberLabel", access: AccessRequired::UNSATISFIABLE }); "bad memberLabel UNSATISFIABLE AccessRequired")]
+    #[test_case(|x| x.accessControl.as_mut().unwrap().memberLabel = AccessRequired::UNKNOWN.into() => Ok(()); "unset memberLabel")]
+    #[test_case(|x| x.accessControl.as_mut().unwrap().memberLabel = AccessRequired::MEMBER.into() => Ok(()); "valid memberLabel MEMBER")]
+    #[test_case(|x| x.accessControl.as_mut().unwrap().memberLabel = AccessRequired::ADMINISTRATOR.into() => Ok(()); "valid memberLabel ADMINISTRATOR")]
     #[test_case(|x| x.inviteLinkPassword = vec![] => Ok(()); "empty invite link password")]
     #[test_case(|x| x.members[0].user_id = vec![] => Err(GroupError::MemberInvalidServiceId { which: "member" }); "bad member")]
     fn group_snapshot(
