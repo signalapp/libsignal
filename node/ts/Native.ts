@@ -130,17 +130,10 @@ export type MessageBackupValidationOutcome = {
   unknownFieldMessages: Array<string>;
 };
 
-export type BackupJsonFrameError = {
-  message: string;
-  unknownFields: string[];
-};
-
-export type BackupJsonFrameResult = {
-  line?: string;
-  error?: BackupJsonFrameError;
-};
-
-export type JsonFrameExportResult = BackupJsonFrameResult;
+export type JsonFrameExportResult = [
+  line: string | null,
+  errorMessage: string | null
+];
 
 export type AccountEntropyPool = string;
 

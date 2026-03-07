@@ -338,7 +338,12 @@ export class BackupJsonExporter {
    * @throws Error if the input data cannot be parsed.
    */
   public exportFrames(frames: Uint8Array): BackupJsonFrameResult[] {
-    return Native.BackupJsonExporter_ExportFrames(this, frames);
+    return Native.BackupJsonExporter_ExportFrames(this, frames).map(
+      ([line, errorMessage]) => ({
+        ...(line !== null && { line }),
+        ...(errorMessage !== null && { errorMessage }),
+      })
+    );
   }
 
   /**

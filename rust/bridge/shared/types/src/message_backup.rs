@@ -102,23 +102,12 @@ pub struct MessageBackupValidationOutcome {
 }
 bridge_as_handle!(MessageBackupValidationOutcome, jni = false, node = false);
 
+/// A (line, error_message) pair for a single exported frame.
+pub type JsonFrameExportResult = (Option<String>, Option<String>);
+
 pub struct BackupJsonExporter {
     inner: libsignal_message_backup::json::exporter::JsonExporter,
     initial_chunk: String,
-}
-
-pub struct JsonFrameExportResult {
-    pub line: Option<String>,
-    pub validation_error: Option<libsignal_message_backup::Error>,
-}
-
-impl From<libsignal_message_backup::json::exporter::FrameExportResult> for JsonFrameExportResult {
-    fn from(value: libsignal_message_backup::json::exporter::FrameExportResult) -> Self {
-        Self {
-            line: value.line,
-            validation_error: value.validation_error,
-        }
-    }
 }
 
 impl BackupJsonExporter {
@@ -132,12 +121,23 @@ impl BackupJsonExporter {
         }
     }
 
-    pub fn inner_mut(&mut self) -> &mut libsignal_message_backup::json::exporter::JsonExporter {
-        &mut self.inner
+    pub fn initial_chunk(&self) -> &str {
+        &self.initial_chunk
     }
 
-    pub fn initial_chunk(&self) -> String {
-        self.initial_chunk.clone()
+    pub fn export_frames(
+        &mut self,
+        frames: &[u8],
+    ) -> Result<Vec<JsonFrameExportResult>, libsignal_message_backup::Error> {
+        let results = self.inner.export_frames(frames)?;
+        Ok(results
+            .into_iter()
+            .map(|r| (r.line, r.validation_error.map(|e| e.to_string())))
+            .collect())
+    }
+
+    pub fn finish(&mut self) -> Result<(), libsignal_message_backup::Error> {
+        self.inner.finish()
     }
 }
 

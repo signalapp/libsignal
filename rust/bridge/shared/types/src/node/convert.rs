@@ -12,7 +12,6 @@ use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
-use libsignal_message_backup::json::exporter::FrameExportResult as JsonFrameExportResult;
 use neon::prelude::*;
 use neon::types::JsBigInt;
 use paste::paste;
@@ -1256,6 +1255,13 @@ impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A
     }
 }
 
+impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Vec<(A, B)> {
+    type ResultType = JsArray;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        make_array(cx, self)
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
     type ResultType = JsObject;
 
@@ -1272,39 +1278,6 @@ impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
         obj.set(cx, "unknownFieldMessages", unknown_field_messages)?;
 
         Ok(obj)
-    }
-}
-
-impl<'a> ResultTypeInfo<'a> for JsonFrameExportResult {
-    type ResultType = JsObject;
-
-    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        let JsonFrameExportResult {
-            line,
-            validation_error,
-        } = self;
-
-        let js_result = JsObject::new(cx);
-
-        if let Some(line) = line {
-            let line_value = cx.string(&line);
-            js_result.set(cx, "line", line_value)?;
-        }
-
-        if let Some(error) = validation_error {
-            let message = cx.string(error.to_string());
-            js_result.set(cx, "errorMessage", message)?;
-        }
-
-        Ok(js_result)
-    }
-}
-
-impl<'a> ResultTypeInfo<'a> for Box<[JsonFrameExportResult]> {
-    type ResultType = JsArray;
-
-    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        make_array(cx, self.into_vec())
     }
 }
 
