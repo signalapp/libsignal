@@ -35,7 +35,7 @@ use libsignal_net::infra::route::{
     RouteProviderExt, TcpRoute, TlsRoute, UnresolvedHttpsServiceRoute,
 };
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
-use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls};
+use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagleAlgorithm};
 use libsignal_net_chat::api::Unauth;
 use libsignal_protocol::Timestamp;
 use static_assertions::assert_impl_all;
@@ -526,15 +526,13 @@ fn make_route_provider(
         .try_into()
         .map_err(|InvalidProxyConfig| ConnectError::InvalidConnectionConfiguration)?;
 
-    let override_nagle_algorithm = connection_manager.tcp_nagle_override();
-
     let chat_connect =
         choose_chat_connection_config(env, chat_headers, &connection_manager.remote_config);
 
     let inner = chat_connect.route_provider_with_options(
         enable_domain_fronting,
         enforce_minimum_tls,
-        override_nagle_algorithm,
+        OverrideNagleAlgorithm::OverrideToOff,
     );
     Ok(DirectOrProxyProvider {
         inner,

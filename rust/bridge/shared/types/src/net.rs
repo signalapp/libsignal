@@ -24,7 +24,7 @@ use libsignal_net::infra::{AsHttpHeader as _, EnableDomainFronting, OverrideNagl
 use rand::TryRngCore as _;
 
 pub use self::remote_config::BuildVariant;
-use self::remote_config::{RemoteConfig, RemoteConfigKey};
+use self::remote_config::RemoteConfig;
 use crate::net::remote_config::HasRawKey;
 use crate::*;
 
@@ -225,15 +225,6 @@ impl ConnectionManager {
             RemoteConfig::new(remote_config, build_variant);
     }
 
-    fn tcp_nagle_override(&self) -> OverrideNagleAlgorithm {
-        let guard = self.remote_config.lock().expect("not poisoned");
-        if guard.is_enabled(RemoteConfigKey::DisableNagleAlgorithm) {
-            OverrideNagleAlgorithm::OverrideToOff
-        } else {
-            OverrideNagleAlgorithm::UseSystemDefault
-        }
-    }
-
     fn chat_grpc_overrides(&self) -> HashMap<&'static str, libsignal_net::chat::GrpcOverride> {
         use libsignal_net::chat::GrpcOverride;
         let guard = self.remote_config.lock().expect("not poisoned");
@@ -296,12 +287,11 @@ impl ConnectionManager {
             let guard = self.endpoints.lock().expect("not poisoned");
             (guard.enable_fronting, guard.enforce_minimum_tls)
         };
-        let override_nagle_algorithm = self.tcp_nagle_override();
         let route_provider = enclave
             .enclave_websocket_provider_with_options(
                 enable_domain_fronting,
                 enforce_minimum_tls,
-                override_nagle_algorithm,
+                OverrideNagleAlgorithm::OverrideToOff,
             )
             .map_routes(|mut route| {
                 route.fragment.headers.extend([self.user_agent.as_header()]);
