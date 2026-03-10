@@ -548,23 +548,26 @@ fn choose_chat_connection_config<'a>(
     // At this time, in order to try the experimental H2 configuration:
     let default_config = &env.chat_domain_config.connect;
 
-    // - We must specifically be making an unauthenticated connection.
-    match chat_headers {
-        None | Some(chat::ChatHeaders::Auth(_)) => {
-            return default_config;
-        }
-        Some(chat::ChatHeaders::Unauth(_)) => {}
-    }
-
-    // - We must be opted in to the experiment.
-    {
-        let guard = remote_config.lock().expect("not poisoned");
-        if !guard.is_enabled(RemoteConfigKey::UseH2ForUnauthChat) {
-            return default_config;
-        }
+    if !should_use_h2(chat_headers, remote_config) {
+        return default_config;
     }
 
     &env.experimental_chat_h2_domain_config.connect
+}
+
+fn should_use_h2(
+    chat_headers: Option<&chat::ChatHeaders>,
+    remote_config: &Mutex<RemoteConfig>,
+) -> bool {
+    // We must be opted in to H2 for this connection type.
+    let required_flag = match chat_headers {
+        Some(chat::ChatHeaders::Unauth(_)) => RemoteConfigKey::UseH2ForUnauthChat,
+        // Preconnect calls `make_route_provider(..., None)`, so `None` should follow auth behavior.
+        None | Some(chat::ChatHeaders::Auth(_)) => RemoteConfigKey::UseH2ForAuthChat,
+    };
+
+    let guard = remote_config.lock().expect("not poisoned");
+    guard.is_enabled(required_flag)
 }
 
 pub struct HttpRequest {

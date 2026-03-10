@@ -105,8 +105,10 @@ pub enum RemoteConfigKey {
     /// How long to wait for a response to a chat request before checking whether the connection is
     /// still active.
     ChatRequestConnectionCheckTimeoutMilliseconds => "chatRequestConnectionCheckTimeoutMillis",
-    /// If set, unauth chat connections (only!) will connect over H2.
+    /// If set, unauth chat connections will connect over H2.
     UseH2ForUnauthChat => "useH2ForUnauthChat",
+    /// If set, auth chat connections will connect over H2.
+    UseH2ForAuthChat => "useH2ForAuthChat",
 
     // Typed API keys, based on gRPC request names.
     // These should all start with "grpc."

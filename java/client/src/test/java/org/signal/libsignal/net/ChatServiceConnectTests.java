@@ -104,6 +104,23 @@ public class ChatServiceConnectTests {
   }
 
   @Test
+  public void testConnectAuthH2FlagSmoke() throws Exception {
+    // Use the presence of the environment setting to know whether we should
+    // make network requests in our tests.
+    final String ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS");
+    Assume.assumeNotNull(ENABLE_TEST);
+
+    final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
+    net.setRemoteConfig(Map.of("useH2ForAuthChat", "true"), Network.BuildVariant.BETA);
+    final Listener listener = new Listener();
+
+    final var e =
+        assertThrows(
+            ExecutionException.class, () -> net.connectAuthChat("", "", false, listener).get());
+    assertTrue(e.getCause() instanceof DeviceDeregisteredException);
+  }
+
+  @Test
   public void testPreconnectAuth() throws Exception {
     // Use the presence of the environment setting to know whether we should
     // make network requests in our tests.
