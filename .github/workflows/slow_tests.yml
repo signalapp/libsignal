@@ -211,7 +211,7 @@ jobs:
           api-level: ${{ matrix.api_level }}
           ndk: ${{ env.ANDROID_NDK_VERSION }}
           force-avd-creation: false
-          disk-size: 2048M
+          disk-size: 4096M
           emulator-options: -no-window -noaudio -no-boot-anim -no-metrics
           script: echo "Generated AVD snapshot for caching."
 
@@ -221,7 +221,7 @@ jobs:
           arch: ${{ matrix.arch }}
           api-level: ${{ matrix.api_level }}
           ndk: ${{ env.ANDROID_NDK_VERSION }}
-          disk-size: 2048M
+          disk-size: 4096M
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim -no-metrics
           script: |
