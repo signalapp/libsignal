@@ -5,31 +5,33 @@
 
 package org.signal.libsignal.messagebackup
 
+import org.json.simple.JSONObject
+import org.json.simple.parser.JSONParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.signal.libsignal.messagebackup.VarintDelimitedTestUtil.chunkLengthDelimited
+import org.signal.libsignal.messagebackup.VarintDelimitedTestUtil.insertLengthPrefix
+import org.signal.libsignal.messagebackup.VarintDelimitedTestUtil.stripLengthPrefix
+import org.signal.libsignal.util.Base64
 import org.signal.libsignal.util.ResourceReader
 import java.io.ByteArrayOutputStream
 
 class BackupJsonExporterTest {
   companion object {
-    private fun chunkLengthDelimited(data: ByteArray) = VarintDelimitedTestUtil.chunkLengthDelimited(data)
-
-    private fun stripLengthPrefix(chunk: ByteArray) = VarintDelimitedTestUtil.stripLengthPrefix(chunk)
-
-    private fun insertLengthPrefix(data: ByteArray) = VarintDelimitedTestUtil.insertLengthPrefix(data)
-
     private fun concatFrames(frames: List<ByteArray>): ByteArray =
-      frames.fold(ByteArrayOutputStream()) { out, frame -> out.apply { write(frame) } }.toByteArray()
+      frames.fold(ByteArrayOutputStream()) { out, frame -> out.also { it.write(frame) } }.toByteArray()
 
     private val canonicalBackup: ByteArray by lazy {
       ResourceReader.readAll(
         BackupJsonExporterTest::class.java.getResourceAsStream("canonical-backup.binproto"),
       )
     }
+
+    // The canonical backup has 6 chunks: 1 BackupInfo + 5 frames.
     private val allChunks by lazy { chunkLengthDelimited(canonicalBackup) }
     private val backupInfo by lazy { stripLengthPrefix(allChunks.first()) }
     private val frameChunks by lazy { allChunks.drop(1) }
@@ -40,9 +42,7 @@ class BackupJsonExporterTest {
     // chatItem: { chatId: 1  authorId: 2  dateSent: 3  expiresInMs: 1 }
     // PROTO
     private val disappearingChatItemFrame: ByteArray =
-      java.util.Base64
-        .getDecoder()
-        .decode("IggIARACGAMoAQ==")
+      Base64.decode("IggIARACGAMoAQ==")
 
     // View-once chat item frame with revisions. Regenerate with:
     // % protoc rust/message-backup/src/proto/backup.proto \
@@ -55,17 +55,17 @@ class BackupJsonExporterTest {
     // }
     // PROTO
     private val viewOnceChatItemFrame: ByteArray =
-      java.util.Base64
-        .getDecoder()
-        .decode("IhwIChALGAwyDQgKEAsYCZIBBAoCGAGSAQQKAhgB")
+      Base64.decode("IhwIChALGAwyDQgKEAsYCZIBBAoCGAGSAQQKAhgB")
   }
+
+  // These tests verify basic streaming behavior and the Kotlin API surface.
+  // More thorough JSON output validation is done in the Node.js tests.
 
   @Test
   fun streamsJsonLinesForCanonicalBackup() {
     val (exporter, initialChunk) = BackupJsonExporter.start(backupInfo)
     exporter.use {
-      val chunkGroups =
-        listOf(frameChunks.take(2), frameChunks.drop(2)).filter { it.isNotEmpty() }
+      val chunkGroups = listOf(frameChunks.take(2), frameChunks.drop(2))
       val exportedLines =
         chunkGroups.flatMap { exporter.exportFrames(concatFrames(it)) }.map {
           assertNotNull("canonical backup should produce a line", it.line)
@@ -78,9 +78,9 @@ class BackupJsonExporterTest {
       assertEquals(frameChunks.size + 1, allLines.size)
       for (line in allLines) {
         assertFalse("each line should be a single line", line.contains('\n'))
+        assertTrue("each line should be JSON", line.startsWith("{"))
       }
 
-      assertTrue(allLines[0].startsWith("{"))
       assertTrue(allLines[0].contains("\"version\""))
       assertTrue(allLines[1].contains("\"account\""))
     }
@@ -130,9 +130,29 @@ class BackupJsonExporterTest {
       assertNotNull(results[0].line)
       assertNull(results[0].errorMessage)
 
-      val line = results[0].line!!
-      assertTrue("should contain viewOnceMessage", line.contains("\"viewOnceMessage\""))
-      assertFalse("attachment should be stripped", line.contains("\"wasDownloaded\""))
+      val json = JSONParser().parse(results[0].line!!) as JSONObject
+      val expected =
+        JSONParser().parse(
+          """
+          {
+            "chatItem": {
+              "chatId": "10",
+              "authorId": "11",
+              "dateSent": "12",
+              "viewOnceMessage": {},
+              "revisions": [
+                {
+                  "chatId": "10",
+                  "authorId": "11",
+                  "dateSent": "9",
+                  "viewOnceMessage": {}
+                }
+              ]
+            }
+          }
+          """.trimIndent(),
+        ) as JSONObject
+      assertEquals(expected, json)
       assertNull(exporter.finishExport())
     }
   }
@@ -141,7 +161,7 @@ class BackupJsonExporterTest {
   fun validatesFramesWhenRequested() {
     val (exporter, _) = BackupJsonExporter.start(backupInfo, validate = true)
     exporter.use {
-      for (group in listOf(frameChunks.take(1), frameChunks.drop(1)).filter { it.isNotEmpty() }) {
+      for (group in listOf(frameChunks.take(1), frameChunks.drop(1))) {
         for (result in exporter.exportFrames(concatFrames(group))) {
           assertNotNull(result.line)
           assertNull(result.errorMessage)

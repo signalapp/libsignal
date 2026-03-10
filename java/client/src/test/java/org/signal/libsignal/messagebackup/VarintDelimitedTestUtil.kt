@@ -23,7 +23,7 @@ object VarintDelimitedTestUtil {
     val second = input.read()
     assertFalse("unexpected EOF in middle of varint", second == -1)
     assertTrue("at most a two-byte varint", second < 0x80)
-    return (first - 0x80) or (second shl 7)
+    return (first - 0x80) + (second shl 7)
   }
 
   // Tiny varint parser, only supports two bytes.
@@ -33,7 +33,7 @@ object VarintDelimitedTestUtil {
     if (first < 0x80) return first
     val second = buf.get().toInt() and 0xFF
     assertTrue("at most a two-byte varint", second < 0x80)
-    return (first - 0x80) or (second shl 7)
+    return (first - 0x80) + (second shl 7)
   }
 
   @JvmStatic
