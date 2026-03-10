@@ -1505,6 +1505,15 @@ impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Op
     }
 }
 
+impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Vec<(A, B)> {
+    type ResultType = JObjectArray<'a>;
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let element_class = find_class(env, ClassName("kotlin.Pair"))
+            .check_exceptions(env, "Vec<(A, B)>::convert_into")?;
+        make_object_array(env, element_class, self)
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for ServiceId {
     type ResultType = JByteArray<'a>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
@@ -2672,6 +2681,9 @@ macro_rules! jni_result_type {
     };
     (Ignored<$typ:ty>) => {
         ::jni::objects::JObject<'local>
+    };
+    (Vec<JsonFrameExportResult>) => {
+        ::jni::objects::JObjectArray<'local>
     };
     ( $handle:ty ) => {
         $crate::jni::ObjectHandle

@@ -95,23 +95,13 @@ public class MessageBackupValidationTest {
   public void onlineValidation() throws IOException, ValidationError {
     final InputStream input = ComparableBackupTest.getCanonicalBackupInputStream();
 
-    final int backupInfoLength = input.read();
-    assertFalse("unexpected EOF", backupInfoLength == -1);
-    assertTrue("single-byte varint", backupInfoLength < 0x80);
+    final int backupInfoLength = VarintDelimitedTestUtil.readVarint(input);
     final byte[] backupInfo = new byte[backupInfoLength];
     assertEquals("unexpected EOF", backupInfoLength, input.read(backupInfo));
     final OnlineBackupValidator backup = new OnlineBackupValidator(backupInfo, BACKUP_PURPOSE);
 
     int frameLength;
-    while ((frameLength = input.read()) != -1) {
-      // Tiny varint parser, only supports two bytes.
-      if (frameLength >= 0x80) {
-        final int secondByte = input.read();
-        assertFalse("unexpected EOF", secondByte == -1);
-        assertTrue("at most a two-byte varint", secondByte < 0x80);
-        frameLength -= 0x80;
-        frameLength |= secondByte << 7;
-      }
+    while ((frameLength = VarintDelimitedTestUtil.readVarint(input)) != -1) {
       final byte[] frame = new byte[frameLength];
       assertEquals("unexpected EOF", frameLength, input.read(frame));
       backup.addFrame(frame);

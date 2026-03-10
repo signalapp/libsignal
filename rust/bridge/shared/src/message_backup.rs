@@ -117,7 +117,7 @@ async fn MessageBackupValidator_Validate(
 }
 
 bridge_handle_fns!(OnlineBackupValidator, clone = false);
-bridge_handle_fns!(BackupJsonExporter, clone = false, ffi = false, jni = false);
+bridge_handle_fns!(BackupJsonExporter, clone = false, ffi = false);
 
 #[bridge_fn]
 fn OnlineBackupValidator_New(
@@ -153,7 +153,7 @@ fn OnlineBackupValidator_Finalize(backup: &mut OnlineBackupValidator) -> Result<
     backup.finalize().map_err(ReadError::with_error_only)
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn BackupJsonExporter_New(
     backup_info: &[u8],
     should_validate: bool,
@@ -165,12 +165,12 @@ fn BackupJsonExporter_New(
     Ok(BackupJsonExporter::new(exporter, initial_chunk))
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn BackupJsonExporter_GetInitialChunk(exporter: &BackupJsonExporter) -> String {
     exporter.initial_chunk().to_owned()
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn BackupJsonExporter_ExportFrames(
     exporter: &mut BackupJsonExporter,
     frames: &[u8],
@@ -180,7 +180,7 @@ fn BackupJsonExporter_ExportFrames(
         .map_err(ReadError::with_error_only)
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn BackupJsonExporter_Finish(exporter: &mut BackupJsonExporter) -> Result<(), ReadError> {
     exporter.finish().map_err(ReadError::with_error_only)
 }

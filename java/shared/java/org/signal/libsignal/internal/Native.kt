@@ -253,6 +253,17 @@ internal object Native {
   public external fun BackupAuthCredential_PresentDeterministic(credentialBytes: ByteArray, serverParamsBytes: ByteArray, randomness: ByteArray): ByteArray
 
   @JvmStatic
+  public external fun BackupJsonExporter_Destroy(handle: ObjectHandle): Unit
+  @JvmStatic @Throws(Exception::class)
+  public external fun BackupJsonExporter_ExportFrames(exporter: ObjectHandle, frames: ByteArray): Array<Object>
+  @JvmStatic @Throws(Exception::class)
+  public external fun BackupJsonExporter_Finish(exporter: ObjectHandle): Unit
+  @JvmStatic
+  public external fun BackupJsonExporter_GetInitialChunk(exporter: ObjectHandle): String
+  @JvmStatic @Throws(Exception::class)
+  public external fun BackupJsonExporter_New(backupInfo: ByteArray, shouldValidate: Boolean): ObjectHandle
+
+  @JvmStatic
   public external fun BackupKey_DeriveBackupId(backupKey: ByteArray, aci: ByteArray): ByteArray
   @JvmStatic
   public external fun BackupKey_DeriveEcKey(backupKey: ByteArray, aci: ByteArray): ObjectHandle
