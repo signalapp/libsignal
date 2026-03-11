@@ -158,7 +158,7 @@ class BackupJsonExporterTest {
   }
 
   @Test
-  fun validatesFramesWhenRequested() {
+  fun validationPassesWithNoErrorsPresent() {
     val (exporter, _) = BackupJsonExporter.start(backupInfo, validate = true)
     exporter.use {
       for (group in listOf(frameChunks.take(1), frameChunks.drop(1))) {
