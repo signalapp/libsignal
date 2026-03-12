@@ -83,7 +83,7 @@ public class SealedSessionCipher {
               Native.SealedSessionCipher_Encrypt(
                   addressGuard.nativeHandle(),
                   contentGuard.nativeHandle(),
-                  this.signalProtocolStore));
+                  SessionCipher._bridge(this.signalProtocolStore)));
     }
   }
 
@@ -161,7 +161,7 @@ public class SealedSessionCipher {
                       recipientSessionHandles,
                       ServiceId.toConcatenatedFixedWidthBinary(excludedRecipients),
                       contentGuard.nativeHandle(),
-                      this.signalProtocolStore));
+                      SessionCipher._bridge(this.signalProtocolStore)));
       // Manually keep the lists of recipients and sessions from being garbage collected
       // while we're using their native handles.
       Native.keepAlive(recipients);
@@ -192,7 +192,8 @@ public class SealedSessionCipher {
     try {
       content =
           new UnidentifiedSenderMessageContent(
-              Native.SealedSessionCipher_DecryptToUsmc(ciphertext, this.signalProtocolStore));
+              Native.SealedSessionCipher_DecryptToUsmc(
+                  ciphertext, SessionCipher._bridge(this.signalProtocolStore)));
       validator.validate(content.getSenderCertificate(), timestamp);
     } catch (Exception e) {
       throw new InvalidMetadataMessageException(e);

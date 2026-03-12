@@ -11,6 +11,31 @@ import org.signal.libsignal.internal.ObjectHandle
 import java.util.UUID
 
 @CalledFromNative
+internal interface IdentityKeyStore {
+  @Throws(Exception::class)
+  public fun getLocalIdentityKeyPair(): Pair<NativeHandleGuard.Owner, NativeHandleGuard.Owner>
+
+  @Throws(Exception::class)
+  public fun getLocalRegistrationId(): Int
+
+  @Throws(Exception::class)
+  public fun getIdentityKey(rawAddress: ObjectHandle): NativeHandleGuard.Owner?
+
+  @Throws(Exception::class)
+  public fun saveIdentityKey(
+    rawAddress: ObjectHandle,
+    rawKey: ObjectHandle,
+  ): Int
+
+  @Throws(Exception::class)
+  public fun isTrustedIdentity(
+    rawAddress: ObjectHandle,
+    rawKey: ObjectHandle,
+    rawDirection: Int,
+  ): Boolean
+}
+
+@CalledFromNative
 internal interface PreKeyStore {
   @Throws(Exception::class)
   public fun loadPreKey(id: Int): NativeHandleGuard.Owner?

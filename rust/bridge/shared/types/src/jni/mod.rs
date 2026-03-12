@@ -133,6 +133,17 @@ impl<'a, A, B> From<JavaPair<'a, A, B>> for JObject<'a> {
     }
 }
 
+impl<'a, A, B> TryFrom<JValueOwned<'a>> for JavaPair<'a, A, B> {
+    type Error = BridgeLayerError;
+
+    fn try_from(value: JValueOwned<'a>) -> Result<Self, Self::Error> {
+        let type_name = value.type_name();
+        Ok(Self::from(value.l().map_err(|_| {
+            BridgeLayerError::UnexpectedJniResultType("method", type_name)
+        })?))
+    }
+}
+
 impl JniError for BridgeLayerError {
     fn to_throwable_impl<'a>(
         &self,

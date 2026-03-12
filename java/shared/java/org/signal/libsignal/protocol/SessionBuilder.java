@@ -120,7 +120,7 @@ public class SessionBuilder {
                   preKeyGuard.nativeHandle(),
                   remoteAddressGuard.nativeHandle(),
                   SessionCipher.bridge(sessionStore),
-                  identityKeyStore,
+                  SessionCipher._bridge(identityKeyStore),
                   now.toEpochMilli()));
     }
   }

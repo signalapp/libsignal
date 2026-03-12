@@ -25,8 +25,8 @@ use crate::net::chat::{
 };
 use crate::net::registration::{ConnectChatBridge, RegistrationPushToken};
 use crate::protocol::storage::{
-    JniBridgeKyberPreKeyStore, JniBridgePreKeyStore, JniBridgeSenderKeyStore,
-    JniBridgeSessionStore, JniBridgeSignedPreKeyStore,
+    JniBridgeIdentityKeyStore, JniBridgeKyberPreKeyStore, JniBridgePreKeyStore,
+    JniBridgeSenderKeyStore, JniBridgeSessionStore, JniBridgeSignedPreKeyStore,
 };
 use crate::support::{
     Array, AsType, BridgedCallbacks, FixedLengthBincodeSerializable, Serialized, extend_lifetime,
@@ -656,7 +656,7 @@ macro_rules! bridge_trait {
     };
 }
 
-bridge_trait!(IdentityKeyStore);
+// bridge_trait!(IdentityKeyStore);
 // bridge_trait!(PreKeyStore);
 // bridge_trait!(SenderKeyStore);
 // bridge_trait!(SessionStore);
@@ -664,6 +664,24 @@ bridge_trait!(IdentityKeyStore);
 // bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
 bridge_trait!(SyncInputStream);
+
+impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
+    for &'storage mut dyn IdentityKeyStore
+{
+    type ArgType = JObject<'context>;
+    type StoredType = BridgedCallbacks<JniBridgeIdentityKeyStore>;
+    fn borrow(
+        env: &mut JNIEnv<'context>,
+        store: &'param Self::ArgType,
+    ) -> Result<Self::StoredType, BridgeLayerError> {
+        Ok(BridgedCallbacks(JniBridgeIdentityKeyStore::new(
+            env, store,
+        )?))
+    }
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored
+    }
+}
 
 impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
     for &'storage mut dyn PreKeyStore
@@ -746,6 +764,68 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored
+    }
+}
+
+impl<'a> CallbackResultTypeInfo<'a> for PublicKey {
+    type ResultType = JObject<'a>;
+    const JNI_RESULT_SIGNATURE: &'static str =
+        jni_signature!(org.signal.libsignal.internal.NativeHandleGuard::Owner);
+
+    fn convert_from_callback(
+        env: &mut JNIEnv<'a>,
+        foreign: Self::ResultType,
+    ) -> Result<Self, BridgeLayerError> {
+        <Option<PublicKey>>::convert_from_callback(env, foreign)?
+            .ok_or(BridgeLayerError::NullPointer(Some("PublicKey")))
+    }
+}
+
+impl<'a> CallbackResultTypeInfo<'a> for Option<PublicKey> {
+    type ResultType = JObject<'a>;
+    const JNI_RESULT_SIGNATURE: &'static str =
+        jni_signature!(org.signal.libsignal.internal.NativeHandleGuard::Owner);
+
+    fn convert_from_callback(
+        env: &mut JNIEnv<'a>,
+        foreign: Self::ResultType,
+    ) -> Result<Self, BridgeLayerError> {
+        if foreign.is_null() {
+            Ok(None)
+        } else {
+            let handle: jlong = call_method_checked(
+                env,
+                foreign,
+                "unsafeNativeHandleWithoutGuard",
+                jni_args!(() -> long),
+            )?;
+            let object: &PublicKey = unsafe { BridgeHandle::native_handle_cast(handle)?.as_ref() };
+            Ok(Some(*object))
+        }
+    }
+}
+
+impl<'a> CallbackResultTypeInfo<'a> for PrivateKey {
+    type ResultType = JObject<'a>;
+    const JNI_RESULT_SIGNATURE: &'static str =
+        jni_signature!(org.signal.libsignal.internal.NativeHandleGuard::Owner);
+
+    fn convert_from_callback(
+        env: &mut JNIEnv<'a>,
+        foreign: Self::ResultType,
+    ) -> Result<Self, BridgeLayerError> {
+        if foreign.is_null() {
+            Err(BridgeLayerError::NullPointer(Some("PrivateKey")))
+        } else {
+            let handle: jlong = call_method_checked(
+                env,
+                foreign,
+                "unsafeNativeHandleWithoutGuard",
+                jni_args!(() -> long),
+            )?;
+            let object: &PrivateKey = unsafe { BridgeHandle::native_handle_cast(handle)?.as_ref() };
+            Ok(*object)
+        }
     }
 }
 
@@ -1041,6 +1121,7 @@ impl CallbackResultTypeInfo<'_> for () {
 
 impl ResultTypeInfo<'_> for bool {
     type ResultType = jboolean;
+    const JNI_SIGNATURE: &'static str = jni_signature!(boolean);
     fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         Ok(if self { JNI_TRUE } else { JNI_FALSE })
     }
@@ -1049,6 +1130,7 @@ impl ResultTypeInfo<'_> for bool {
 /// Supports all valid byte values `0..=255`.
 impl ResultTypeInfo<'_> for u8 {
     type ResultType = jint;
+    const JNI_SIGNATURE: &'static str = jni_signature!(int);
     fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         Ok(self as jint)
     }
@@ -1492,6 +1574,37 @@ impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A
             jni_args!((a => java.lang.Object, b => java.lang.Object) -> void),
         )?
         .into())
+    }
+}
+
+impl<'a, A: CallbackResultTypeInfo<'a>, B: CallbackResultTypeInfo<'a>> CallbackResultTypeInfo<'a>
+    for (A, B)
+where
+    A::ResultType: From<JObject<'a>>,
+    B::ResultType: From<JObject<'a>>,
+{
+    type ResultType = JavaPair<'a, A::ResultType, B::ResultType>;
+    const JNI_RESULT_SIGNATURE: &'static str = jni_signature!(kotlin.Pair);
+    fn convert_from_callback(
+        env: &mut JNIEnv<'a>,
+        foreign: Self::ResultType,
+    ) -> Result<Self, BridgeLayerError> {
+        let first = call_method_checked(
+            env,
+            &foreign.pair_object,
+            "getFirst",
+            jni_args!(() -> java.lang.Object),
+        )?;
+        let second = call_method_checked(
+            env,
+            &foreign.pair_object,
+            "getSecond",
+            jni_args!(() -> java.lang.Object),
+        )?;
+        Ok((
+            A::convert_from_callback(env, first.into())?,
+            B::convert_from_callback(env, second.into())?,
+        ))
     }
 }
 
@@ -2526,6 +2639,9 @@ macro_rules! jni_arg_type {
     (Result<$typ:tt<$($args:tt),+> $(, $ignored:ty)?>) => (jni_arg_type!($typ<$($args),+>));
     (Option<$typ:ty>) => ($crate::jni::Nullable<jni_arg_type!($typ)>);
     (()) => (());
+    (($a:tt, $b:tt)) => {
+        $crate::jni::JavaPair<'local, $crate::jni_arg_type!($a), $crate::jni_arg_type!($b)>
+    };
     ($typ:ty) => (::jni::objects::JObject<'local>);
 }
 

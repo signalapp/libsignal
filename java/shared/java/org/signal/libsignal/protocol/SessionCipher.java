@@ -8,6 +8,7 @@ package org.signal.libsignal.protocol;
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
 import java.time.Instant;
+import kotlin.Pair;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
@@ -71,6 +72,47 @@ public class SessionCipher {
     this(store, store, store, store, store, remoteAddress);
   }
 
+  /** Exposed as public for {@code SealedSessionCipher}, do not use directly. */
+  public static org.signal.libsignal.protocol.state.internal.IdentityKeyStore _bridge(
+      IdentityKeyStore identityKeyStore) {
+    return new org.signal.libsignal.protocol.state.internal.IdentityKeyStore() {
+      public Pair<NativeHandleGuard.Owner, NativeHandleGuard.Owner> getLocalIdentityKeyPair()
+          throws Exception {
+        var keyPair = identityKeyStore.getIdentityKeyPair();
+        return new Pair<>(keyPair.getPrivateKey(), keyPair.getPublicKey().getPublicKey());
+      }
+
+      public int getLocalRegistrationId() throws Exception {
+        return identityKeyStore.getLocalRegistrationId();
+      }
+
+      public int saveIdentityKey(long rawAddress, long rawKey) throws Exception {
+        return identityKeyStore
+            .saveIdentity(
+                new SignalProtocolAddress(rawAddress), new IdentityKey(new ECPublicKey(rawKey)))
+            .ordinal();
+      }
+
+      public boolean isTrustedIdentity(long rawAddress, long rawKey, int rawDirection)
+          throws Exception {
+        var direction =
+            switch (rawDirection) {
+              case 0 -> IdentityKeyStore.Direction.SENDING;
+              case 1 -> IdentityKeyStore.Direction.RECEIVING;
+              default -> throw new AssertionError("invalid Direction");
+            };
+        return identityKeyStore.isTrustedIdentity(
+            new SignalProtocolAddress(rawAddress),
+            new IdentityKey(new ECPublicKey(rawKey)),
+            direction);
+      }
+
+      public NativeHandleGuard.Owner getIdentityKey(long rawAddress) {
+        return identityKeyStore.getIdentity(new SignalProtocolAddress(rawAddress)).getPublicKey();
+      }
+    };
+  }
+
   /*package*/ static org.signal.libsignal.protocol.state.internal.SessionStore bridge(
       SessionStore sessionStore) {
     return new org.signal.libsignal.protocol.state.internal.SessionStore() {
@@ -121,7 +163,7 @@ public class SessionCipher {
                   paddedMessage,
                   remoteAddress.nativeHandle(),
                   bridge(sessionStore),
-                  identityKeyStore,
+                  _bridge(identityKeyStore),
                   now.toEpochMilli()));
     }
   }
@@ -158,7 +200,7 @@ public class SessionCipher {
                   ciphertextGuard.nativeHandle(),
                   remoteAddressGuard.nativeHandle(),
                   bridge(sessionStore),
-                  identityKeyStore,
+                  _bridge(identityKeyStore),
                   new org.signal.libsignal.protocol.state.internal.PreKeyStore() {
                     public NativeHandleGuard.Owner loadPreKey(int id) throws Exception {
                       return preKeyStore.loadPreKey(id);
@@ -228,7 +270,7 @@ public class SessionCipher {
                   ciphertextGuard.nativeHandle(),
                   remoteAddressGuard.nativeHandle(),
                   bridge(sessionStore),
-                  identityKeyStore));
+                  _bridge(identityKeyStore)));
     }
   }
 

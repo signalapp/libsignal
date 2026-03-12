@@ -14,12 +14,12 @@ import org.signal.libsignal.protocol.SignedPublicPreKey
 import org.signal.libsignal.protocol.logging.Log
 import org.signal.libsignal.protocol.logging.SignalProtocolLogger
 import org.signal.libsignal.protocol.message.CiphertextMessage
+import org.signal.libsignal.protocol.state.internal.IdentityKeyStore
 import org.signal.libsignal.protocol.state.internal.KyberPreKeyStore
 import org.signal.libsignal.protocol.state.internal.PreKeyStore
 import org.signal.libsignal.protocol.state.internal.SenderKeyStore
 import org.signal.libsignal.protocol.state.internal.SessionStore
 import org.signal.libsignal.protocol.state.internal.SignedPreKeyStore
-import org.signal.libsignal.protocol.state.IdentityKeyStore
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
