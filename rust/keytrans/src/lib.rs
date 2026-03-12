@@ -16,6 +16,7 @@ mod verify;
 mod vrf;
 
 use std::collections::HashMap;
+use std::fmt::{Debug, Formatter};
 use std::time::SystemTime;
 
 pub use ed25519_dalek::VerifyingKey;
@@ -87,10 +88,38 @@ impl DeploymentMode {
     }
 }
 
+impl Debug for Signature {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Signature")
+            .field("auditor_public_key", &hex::encode(&self.auditor_public_key))
+            .field("signature", &hex::encode(&self.signature))
+            .finish()
+    }
+}
+
+impl Debug for TreeHead {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TreeHead")
+            .field("tree_size", &self.tree_size)
+            .field("timestamp", &self.timestamp)
+            .field("signatures", &self.signatures.iter().collect::<Vec<_>>())
+            .finish()
+    }
+}
+
 pub type TreeRoot = [u8; 32];
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct LastTreeHead(pub TreeHead, pub TreeRoot);
+
+impl Debug for LastTreeHead {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("LastTreeHead")
+            .field(&self.0)
+            .field(&hex::encode(self.1))
+            .finish()
+    }
+}
 
 impl StoredTreeHead {
     pub fn into_last_tree_head(self) -> Option<LastTreeHead> {
@@ -271,7 +300,7 @@ impl KeyTransparency {
 
 /// MonitoringData is the structure retained for each key in the KT server being
 /// monitored.
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct MonitoringData {
     /// The VRF output on the search key.
     pub index: [u8; 32],
@@ -281,6 +310,37 @@ pub struct MonitoringData {
     pub ptrs: HashMap<u64, u32>,
     /// Whether this client owns the key.
     pub owned: bool,
+    /// Search key
+    pub search_key: Vec<u8>,
+}
+
+impl Debug for MonitoringData {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            index,
+            pos,
+            ptrs,
+            owned,
+            search_key,
+        } = self;
+
+        let redact_bytes = |bytes: &[u8]| {
+            let redacted = if let Some(last) = bytes.last_chunk::<3>() {
+                hex::encode(last)
+            } else {
+                "".to_owned()
+            };
+            ["[REDACTED]", &redacted].join(" ...")
+        };
+
+        f.debug_struct("MonitoringData")
+            .field("index", &redact_bytes(index))
+            .field("pos", &pos)
+            .field("ptrs", &ptrs)
+            .field("owned", &owned)
+            .field("search_key", &redact_bytes(search_key))
+            .finish()
+    }
 }
 
 impl MonitoringData {
@@ -329,11 +389,19 @@ impl MonitoringData {
 
 impl From<StoredMonitoringData> for MonitoringData {
     fn from(value: StoredMonitoringData) -> Self {
+        let StoredMonitoringData {
+            index,
+            pos,
+            ptrs,
+            owned,
+            search_key,
+        } = value;
         Self {
-            index: value.index.try_into().expect("must me the right size"),
-            pos: value.pos,
-            ptrs: value.ptrs,
-            owned: value.owned,
+            index: index.try_into().expect("must be the right size"),
+            pos,
+            ptrs,
+            owned,
+            search_key,
         }
     }
 }

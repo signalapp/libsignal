@@ -806,6 +806,7 @@ impl MonitoringDataWrapper {
                 pos: zero_pos,
                 ptrs: HashMap::from([(ver_pos, version)]),
                 owned,
+                search_key: vec![],
             });
         }
     }
@@ -1123,6 +1124,7 @@ mod test {
             // See test_stored_account_data in rust/net/chat/src/api/keytrans.rs
             ptrs: HashMap::from_iter([(16777215, 2)]),
             owned: true,
+            search_key: vec![],
         }));
         // These values were obtained by running the integration test in
         // rust/net/chat/src/api/keytrans.rs and extracting positions and versions
@@ -1202,6 +1204,7 @@ mod test {
             pos: 10, // The search key is introduced here
             ptrs: HashMap::from([(10, 1)]),
             owned: true,
+            search_key: vec![],
         }));
 
         let steps = proof_steps([(11, 1), (15, 2)]);
@@ -1219,6 +1222,7 @@ mod test {
             pos: 10, // The search key is introduced here
             ptrs: HashMap::from([(10, 1)]),
             owned: true,
+            search_key: vec![],
         }));
         // later position contains a smaller version
         let steps = proof_steps([(11, 0)]);
@@ -1234,6 +1238,7 @@ mod test {
             pos: 10, // The search key is introduced here
             ptrs: HashMap::from([(10, 1)]),
             owned: true,
+            search_key: vec![],
         }));
 
         let steps = HashMap::from_iter([
@@ -1253,6 +1258,7 @@ mod test {
             pos: 10, // The search key is introduced here
             ptrs: HashMap::from([(10, 1), (11, 2)]),
             owned: true,
+            search_key: vec![],
         }));
         let steps = proof_steps([(11, 3)]);
         let result = wrapper.update(16, &steps);

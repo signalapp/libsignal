@@ -2606,6 +2606,7 @@ dependencies = [
  "curve25519-dalek",
  "displaydoc",
  "ed25519-dalek",
+ "hex",
  "hmac",
  "itertools 0.14.0",
  "proptest",

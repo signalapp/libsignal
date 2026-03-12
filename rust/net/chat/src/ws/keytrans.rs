@@ -496,7 +496,7 @@ mod test_support {
         {
             let search_response = ChatSearchResponse::decode(response_bytes.as_ref())
                 .map_err(|_| Error::InvalidResponse("bad protobuf".to_string()))
-                .and_then(|r| TypedSearchResponse::from_untyped(true, true, r))
+                .and_then(TypedSearchResponse::from_untyped)
                 .expect("valid search response");
 
             let tree_size = search_response.full_tree_head.tree_head.unwrap().tree_size;
