@@ -9,7 +9,7 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
 # General
 
-- **The bridging layer is not API.** As noted in the [readme](README.md), the primary purpose of this library is to provide good Java, Swift, and TypeScript APIs. We also try to make the non-bridge crates have a nice API, both for our own maintainence, testing, and internal use; and for external users who want to use or fork our crate. However, the Rust APIs in rust/bridge/ and the raw C symbols / JNI entry points / Node module we build are not considered public-facing at all. Use that to keep everything else nice!
+- **The bridging layer is not API.** As noted in the [readme](README.md), the primary purpose of this library is to provide good Java, Swift, and TypeScript APIs. We also try to make the non-bridge crates have a nice API, both for our own maintenance, testing, and internal use; and for external users who want to use or fork our crate. However, the Rust APIs in rust/bridge/ and the raw C symbols / JNI entry points / Node module we build are not considered public-facing at all. Use that to keep everything else nice!
 
     (Not that you should be sloppy in the bridging layer. Maintainability is still a priority!)
 
