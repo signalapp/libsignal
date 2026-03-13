@@ -425,17 +425,6 @@ mod testutil {
         }
     }
 
-    /// Squeezes the whitespace out of a JSON string.
-    ///
-    /// Intended for writing nicer-looking test cases. Not actually JSON-aware -- if your content
-    /// contains a JSON string value, the whitespace will be removed from that too.
-    macro_rules! compress_json {
-        ($contents:expr) => {
-            ::const_str::replace!(::const_str::replace!($contents, ' ', ""), '\n', "")
-        };
-    }
-    pub(crate) use compress_json;
-
     pub(crate) struct RequestValidator {
         pub expected: chat::Request,
         pub response: chat::Response,
@@ -449,6 +438,44 @@ mod testutil {
             request: chat::Request,
         ) -> impl Future<Output = Result<chat::Response, chat::SendError>> + Send {
             pretty_assertions::assert_eq!(self.expected, request);
+            std::future::ready(Ok(self.response.clone()))
+        }
+    }
+
+    pub(crate) struct JsonRequestValidator {
+        pub expected: chat::Request,
+        pub body: serde_json::Value,
+        pub response: chat::Response,
+    }
+
+    impl WsConnection for JsonRequestValidator {
+        fn send(
+            &self,
+            _log_tag: &'static str,
+            _log_safe_path: &str,
+            request: chat::Request,
+        ) -> impl Future<Output = Result<chat::Response, chat::SendError>> + Send {
+            let chat::Request {
+                method,
+                path,
+                headers,
+                body: body_from_expected_request,
+            } = &self.expected;
+
+            assert!(
+                body_from_expected_request.is_none(),
+                "expected.body should be None; the body is instead compared against the provided serde_json::Value"
+            );
+
+            pretty_assertions::assert_eq!(method, request.method);
+            pretty_assertions::assert_eq!(*path, request.path);
+            pretty_assertions::assert_eq!(*headers, request.headers);
+
+            let request_body: serde_json::Value =
+                serde_json::from_slice(&request.body.unwrap_or_default())
+                    .expect("body should be JSON");
+            pretty_assertions::assert_eq!(self.body, request_body);
+
             std::future::ready(Ok(self.response.clone()))
         }
     }

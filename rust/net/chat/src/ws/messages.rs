@@ -403,6 +403,7 @@ mod test {
     use futures_util::FutureExt;
     use libsignal_core::{Aci, Pni};
     use libsignal_protocol::Timestamp;
+    use serde_json::json;
     use test_case::test_case;
     use uuid::Uuid;
 
@@ -411,7 +412,7 @@ mod test {
     use crate::api::messages::UnauthenticatedChatApi;
     use crate::api::testutil::{SERIALIZED_GROUP_SEND_TOKEN, structurally_valid_group_send_token};
     use crate::ws::ACCESS_KEY_HEADER_NAME;
-    use crate::ws::testutil::{RequestValidator, compress_json, empty, json};
+    use crate::ws::testutil::{JsonRequestValidator, RequestValidator, empty, json};
 
     const ACI_UUID: &str = "9d0652a3-dcc3-4d11-975f-74d61598733f";
     const PNI_UUID: &str = "796abedb-ca4e-4f18-8803-1fde5b921f9f";
@@ -466,7 +467,7 @@ mod test {
         410, r#"{"staleDevices":["4"]}"#
     ) => matches Err(RequestError::Unexpected { .. }))]
     fn test_sealed_send(response: Response) -> Result<(), RequestError<SealedSendFailure>> {
-        let validator = RequestValidator {
+        let validator = JsonRequestValidator {
             expected: Request {
                 method: http::Method::PUT,
                 path: http::uri::PathAndQuery::from_static(const_str::concat!(
@@ -480,31 +481,27 @@ mod test {
                         http::HeaderValue::from_static("AAAAAAAAAAAAAAAAAAAAAA=="),
                     ),
                 ]),
-                body: Some(
-                    compress_json!(
-                        r#"{
-                            "messages": [
-                                {
-                                    "type": 6,
-                                    "destinationDeviceId": 2,
-                                    "destinationRegistrationId": 22,
-                                    "content": "//8="
-                                },
-                                {
-                                    "type": 6,
-                                    "destinationDeviceId": 3,
-                                    "destinationRegistrationId": 33,
-                                    "content": "/v4="
-                                }
-                            ],
-                            "online": false,
-                            "urgent": true,
-                            "timestamp": 1700000000000
-                        }"#
-                    )
-                    .into(),
-                ),
+                body: None,
             },
+            body: json!({
+                "messages": [
+                    {
+                        "type": 6,
+                        "destinationDeviceId": 2,
+                        "destinationRegistrationId": 22,
+                        "content": "//8=",
+                    },
+                    {
+                        "type": 6,
+                        "destinationDeviceId": 3,
+                        "destinationRegistrationId": 33,
+                        "content": "/v4=",
+                    }
+                ],
+                "online": false,
+                "urgent": true,
+                "timestamp": 1700000000000u64,
+            }),
             response,
         };
 
@@ -534,7 +531,7 @@ mod test {
 
     #[test]
     fn test_sealed_send_using_group_token() {
-        let validator = RequestValidator {
+        let validator = JsonRequestValidator {
             expected: Request {
                 method: http::Method::PUT,
                 path: http::uri::PathAndQuery::from_static(const_str::concat!(
@@ -551,31 +548,27 @@ mod test {
                         .expect("valid"),
                     ),
                 ]),
-                body: Some(
-                    compress_json!(
-                        r#"{
-                            "messages": [
-                                {
-                                    "type": 6,
-                                    "destinationDeviceId": 2,
-                                    "destinationRegistrationId": 22,
-                                    "content": "//8="
-                                },
-                                {
-                                    "type": 6,
-                                    "destinationDeviceId": 3,
-                                    "destinationRegistrationId": 33,
-                                    "content": "/v4="
-                                }
-                            ],
-                            "online": true,
-                            "urgent": false,
-                            "timestamp": 1700000000000
-                        }"#
-                    )
-                    .into(),
-                ),
+                body: None,
             },
+            body: json!({
+                "messages": [
+                    {
+                        "type": 6,
+                        "destinationDeviceId": 2,
+                        "destinationRegistrationId": 22,
+                        "content": "//8=",
+                    },
+                    {
+                        "type": 6,
+                        "destinationDeviceId": 3,
+                        "destinationRegistrationId": 33,
+                        "content": "/v4=",
+                    }
+                ],
+                "online": true,
+                "urgent": false,
+                "timestamp": 1700000000000u64,
+            }),
             response: json(200, "{}"),
         };
 
@@ -608,7 +601,7 @@ mod test {
 
     #[test]
     fn test_individual_story_send() {
-        let validator = RequestValidator {
+        let validator = JsonRequestValidator {
             expected: Request {
                 method: http::Method::PUT,
                 path: http::uri::PathAndQuery::from_static(const_str::concat!(
@@ -617,31 +610,27 @@ mod test {
                     "?story=true",
                 )),
                 headers: http::HeaderMap::from_iter([CONTENT_TYPE_JSON]),
-                body: Some(
-                    compress_json!(
-                        r#"{
-                            "messages": [
-                                {
-                                    "type": 6,
-                                    "destinationDeviceId": 2,
-                                    "destinationRegistrationId": 22,
-                                    "content": "//8="
-                                },
-                                {
-                                    "type": 6,
-                                    "destinationDeviceId": 3,
-                                    "destinationRegistrationId": 33,
-                                    "content": "/v4="
-                                }
-                            ],
-                            "online": false,
-                            "urgent": true,
-                            "timestamp": 1700000000000
-                        }"#
-                    )
-                    .into(),
-                ),
+                body: None,
             },
+            body: json!({
+                "messages": [
+                    {
+                        "type": 6,
+                        "destinationDeviceId": 2,
+                        "destinationRegistrationId": 22,
+                        "content": "//8=",
+                    },
+                    {
+                        "type": 6,
+                        "destinationDeviceId": 3,
+                        "destinationRegistrationId": 33,
+                        "content": "/v4=",
+                    }
+                ],
+                "online": false,
+                "urgent": true,
+                "timestamp": 1700000000000u64,
+            }),
             response: json(200, "{}"),
         };
 
