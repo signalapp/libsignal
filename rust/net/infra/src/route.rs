@@ -337,7 +337,7 @@ where
     .await
 }
 
-/// Like [`connect`] but takes a collection of resolved routes.
+/// Like [`connect()`] but takes a collection of resolved routes.
 ///
 /// The resolved routes are assumed to all be the result of resolving a single
 /// unresolved route.

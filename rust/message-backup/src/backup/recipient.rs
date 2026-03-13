@@ -90,7 +90,7 @@ pub enum RecipientError {
     InvalidTimestamp(#[from] TimestampError),
 }
 
-/// Data kept in-memory from a [`proto::Recipient`] for [`ValidateOnly`] mode.
+/// Data kept in-memory from a [`proto::Recipient`] for [`ValidateOnly`](crate::ValidateOnly) mode.
 ///
 /// This is intentionally the minimal amount of data required to validate later frames.
 ///
@@ -227,7 +227,7 @@ impl AsRef<MinimalRecipientData> for MinimalRecipientData {
     }
 }
 
-/// Data kept in-memory from a [`proto::Recipient`] for [`Store`] mode.
+/// Data kept in-memory from a [`proto::Recipient`] for [`Store`](crate::Store) mode.
 ///
 /// This keeps the full data in memory behind a [`Arc`] so it can be cheaply
 /// cloned when referenced by later frames.

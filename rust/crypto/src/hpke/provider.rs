@@ -10,7 +10,7 @@ use hpke_rs_crypto::{CryptoRng, HpkeCrypto, HpkeTestRng, RngCore};
 use libsignal_core::curve::{PrivateKey, PublicKey};
 use rand_core::{SeedableRng, TryRngCore};
 
-/// An implementation of [`HpKeCrypto`] that only supports what we use, to save on code size.
+/// An implementation of [`HpkeCrypto`] that only supports what we use, to save on code size.
 #[derive(Debug, Default)]
 pub struct CryptoProvider;
 

@@ -57,7 +57,7 @@ pub struct Chat {
     /// that [`Chat::state`] reflects the current state.
     ///
     /// This is a [`TokioMutex`] to allow lock guards to be held across await
-    /// points. If it were a regular [`Mutex`] the futures produced by methods
+    /// points. If it were a regular [`std::sync::Mutex`] the futures produced by methods
     /// on `Chat` would not be `Send`.
     state: TokioMutex<TaskState>,
 }

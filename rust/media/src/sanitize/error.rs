@@ -3,7 +3,7 @@ use std::io;
 use mediasan_common::error::ReportableError;
 
 // cbindgen does not like this being called simply `Error`.
-/// Error type returned by [`sanitize_*`].
+/// Error type returned by `sanitize_*`.
 #[derive(Debug, thiserror::Error)]
 pub enum SanitizerError<E> {
     /// An IO error while reading the media.

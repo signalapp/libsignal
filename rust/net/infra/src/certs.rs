@@ -138,8 +138,8 @@ impl LimitedServerCertVerifier for &dyn LimitedServerCertVerifier {
 /// observed it doing network activity!)
 ///
 /// Note that `connector` will **depend on tokio** to verify certificates. Moreover, when using the
-/// resulting [`boring::ssl::Ssl`] object, you must call `set_task_waker`. This will be taken care
-/// of for you if you use tokio-boring (and always poll within a tokio context).
+/// resulting [`boring_signal::ssl::Ssl`] object, you must call `set_task_waker`. This will be taken
+/// care of for you if you use tokio-boring (and always poll within a tokio context).
 fn set_up_platform_verifier(
     connector: &mut SslConnectorBuilder,
     host: Host<&str>,

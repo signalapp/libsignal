@@ -23,10 +23,10 @@ pub struct Expiring<T> {
 pub enum ResourceType {
     /// An IPv4 host address type
     ///
-    /// https://datatracker.ietf.org/doc/html/rfc1035#section-3.2.2
+    /// <https://datatracker.ietf.org/doc/html/rfc1035#section-3.2.2>
     A = 1,
     /// An IPv6 host address type
     ///
-    /// https://datatracker.ietf.org/doc/html/rfc3596#section-2.1
+    /// <https://datatracker.ietf.org/doc/html/rfc3596#section-2.1>
     AAAA = 28,
 }

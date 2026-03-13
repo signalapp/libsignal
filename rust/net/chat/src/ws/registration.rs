@@ -253,9 +253,9 @@ where
 
 /// Sends a request for an established session.
 ///
-/// On success, the state of the session as reported by the server is saved
-/// (and accessible via [`Self::session_state`]). This method will retry
-/// internally if transient errors are encountered.
+/// On success, the state of the session as reported by the server is saved (and accessible via
+/// [`session_state`](crate::registration::RegistrationService::session_state)). This method will
+/// retry internally if transient errors are encountered.
 async fn submit_request<R, E, C>(
     connection: &C,
     request: RegistrationRequest<'_, R>,

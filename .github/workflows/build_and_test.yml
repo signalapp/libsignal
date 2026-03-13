@@ -180,7 +180,7 @@ jobs:
       if: matrix.version == 'nightly'
 
     - name: Rust docs
-      run: cargo +${{ matrix.toolchain }} doc --workspace --all-features --keep-going
+      run: cargo +${{ matrix.toolchain }} doc --workspace --all-features --no-deps --document-private-items --keep-going
       if: matrix.version == 'stable'
       env:
         RUSTDOCFLAGS: -D warnings
