@@ -5,7 +5,7 @@
 
 use async_trait::async_trait;
 use itertools::Itertools as _;
-use libsignal_core::DeviceId;
+use libsignal_core::{DeviceId, ServiceId};
 use libsignal_net_grpc::proto::chat::common::ServiceIdentifier;
 use libsignal_net_grpc::proto::chat::errors;
 use libsignal_net_grpc::proto::chat::messages::messages_anonymous_client::MessagesAnonymousClient;
@@ -18,13 +18,26 @@ use libsignal_net_grpc::proto::chat::messages::{
 use super::{GrpcServiceProvider, OverGrpc, log_and_send};
 use crate::api::messages::{
     MismatchedDeviceError, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
-    MultiRecipientSendFailure,
+    MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
+    UserBasedSendAuthorization,
 };
 use crate::api::{RequestError, Unauth};
 use crate::logging::Redact;
 
 #[async_trait]
 impl<T: GrpcServiceProvider> crate::api::messages::UnauthenticatedChatApi<OverGrpc> for Unauth<T> {
+    async fn send_message<'a>(
+        &self,
+        _destination: ServiceId,
+        _timestamp: libsignal_protocol::Timestamp,
+        _contents: Vec<SingleOutboundSealedSenderMessage<'a>>,
+        _auth: UserBasedSendAuthorization,
+        _online_only: bool,
+        _urgent: bool,
+    ) -> Result<(), RequestError<SealedSendFailure>> {
+        unimplemented!()
+    }
+
     async fn send_multi_recipient_message(
         &self,
         payload: bytes::Bytes,
@@ -197,8 +210,6 @@ impl std::fmt::Display for Redact<SendMultiRecipientMessageRequest> {
 
 #[cfg(test)]
 mod test {
-    use const_str::concat_bytes;
-    use data_encoding_macro::base64;
     use futures_util::FutureExt as _;
     use libsignal_core::{Aci, Pni, ServiceId};
     use libsignal_net_grpc::proto::chat::services;
@@ -208,6 +219,7 @@ mod test {
 
     use super::*;
     use crate::api::messages::UnauthenticatedChatApi as _;
+    use crate::api::testutil::{SERIALIZED_GROUP_SEND_TOKEN, structurally_valid_group_send_token};
     use crate::grpc::testutil::{GrpcOverrideRequestValidator, RequestValidator, err, ok, req};
 
     const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
@@ -419,8 +431,7 @@ mod test {
                             timestamp: 1700000000000,
                             payload: vec![1, 2, 3],
                         }),
-                        group_send_token: base64!("ABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABo5c+LAQAA")
-                            .to_vec(),
+                        group_send_token: SERIALIZED_GROUP_SEND_TOKEN.to_vec(),
                     },
                 ),
                 response: ok(SendMultiRecipientMessageResponse {
@@ -431,15 +442,7 @@ mod test {
             },
         };
 
-        // A full token is a version byte, a length-prefixed truncated hash, and a 64-bit
-        // day-aligned expiration timestamp in seconds.
-        let fake_token = zkgroup::deserialize(concat_bytes!(
-            0,
-            16u64.to_le_bytes(),
-            [0; 16],
-            1700000000000u64.to_le_bytes()
-        ))
-        .expect("valid (enough)");
+        let fake_token = structurally_valid_group_send_token();
 
         let MultiRecipientMessageResponse { unregistered_ids } = Unauth(&validator)
             .send_multi_recipient_message(

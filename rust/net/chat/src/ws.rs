@@ -425,6 +425,17 @@ mod testutil {
         }
     }
 
+    /// Squeezes the whitespace out of a JSON string.
+    ///
+    /// Intended for writing nicer-looking test cases. Not actually JSON-aware -- if your content
+    /// contains a JSON string value, the whitespace will be removed from that too.
+    macro_rules! compress_json {
+        ($contents:expr) => {
+            ::const_str::replace!(::const_str::replace!($contents, ' ', ""), '\n', "")
+        };
+    }
+    pub(crate) use compress_json;
+
     pub(crate) struct RequestValidator {
         pub expected: chat::Request,
         pub response: chat::Response,

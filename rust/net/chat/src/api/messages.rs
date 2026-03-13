@@ -3,18 +3,39 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::borrow::Cow;
+
 use async_trait::async_trait;
 use itertools::Itertools as _;
 use libsignal_core::{DeviceId, ServiceId};
 use libsignal_net::infra::errors::LogSafeDisplay;
 
-use super::{AllowRateLimitChallenges, RequestError};
+use super::{AllowRateLimitChallenges, RequestError, UserBasedAuthorization};
 use crate::logging::Redact;
+
+pub struct SingleOutboundMessage<T> {
+    pub device_id: DeviceId,
+    pub registration_id: u32,
+    pub contents: T,
+}
+
+pub type SingleOutboundSealedSenderMessage<'a> = SingleOutboundMessage<Cow<'a, [u8]>>;
 
 #[derive(Debug)]
 pub struct MultiRecipientMessageResponse {
     pub unregistered_ids: Vec<ServiceId>,
 }
+
+#[derive(Debug, displaydoc::Display)]
+pub enum SealedSendFailure {
+    /// Invalid authorization for send
+    Unauthorized,
+    /// The target account was not found
+    ServiceIdNotFound,
+    /// Mismatched devices for recipient
+    MismatchedDevices(MismatchedDeviceError),
+}
+impl LogSafeDisplay for SealedSendFailure {}
 
 #[derive(Debug)]
 pub enum MultiRecipientSendFailure {
@@ -29,6 +50,11 @@ pub struct MismatchedDeviceError {
     pub missing_devices: Vec<DeviceId>,
     pub extra_devices: Vec<DeviceId>,
     pub stale_devices: Vec<DeviceId>,
+}
+
+pub enum UserBasedSendAuthorization {
+    Story,
+    User(UserBasedAuthorization),
 }
 
 pub enum MultiRecipientSendAuthorization {
@@ -46,6 +72,16 @@ pub enum MultiRecipientSendAuthorization {
 #[async_trait]
 pub trait UnauthenticatedChatApi<T> {
     const ALLOW_RATE_LIMIT_CHALLENGES: AllowRateLimitChallenges = AllowRateLimitChallenges::No;
+
+    async fn send_message<'a>(
+        &self,
+        destination: ServiceId,
+        timestamp: libsignal_protocol::Timestamp,
+        contents: Vec<SingleOutboundSealedSenderMessage<'a>>,
+        auth: UserBasedSendAuthorization,
+        online_only: bool,
+        urgent: bool,
+    ) -> Result<(), RequestError<SealedSendFailure>>;
 
     async fn send_multi_recipient_message(
         &self,

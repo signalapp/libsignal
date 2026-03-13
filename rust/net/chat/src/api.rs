@@ -187,10 +187,38 @@ impl<T, U> UnauthenticatedChatApi<T> for U where
 
 #[cfg(test)]
 pub(crate) mod testutil {
+    use const_str::concat_bytes;
+    use data_encoding_macro::base64;
     use rand::SeedableRng as _;
 
     /// A standard RNG used for exact-match tests that (normally) depend on randomness.
     pub(crate) fn fixed_seed_test_rng() -> impl rand::CryptoRng + Send {
         rand_chacha::ChaCha20Rng::seed_from_u64(0)
+    }
+
+    /// A fake `GroupSendFullToken` with a known form for serialization
+    /// ([`SERIALIZED_GROUP_SEND_TOKEN`]).
+    pub(crate) fn structurally_valid_group_send_token() -> zkgroup::groups::GroupSendFullToken {
+        // A full token is a version byte, a length-prefixed truncated hash, and a 64-bit
+        // day-aligned expiration timestamp in seconds.
+        zkgroup::deserialize(concat_bytes!(
+            0,
+            16u64.to_le_bytes(),
+            [0; 16],
+            1700000000000u64.to_le_bytes()
+        ))
+        .expect("valid (enough)")
+    }
+
+    /// The serialized form of [`structurally_valid_group_send_token`].
+    pub(crate) const SERIALIZED_GROUP_SEND_TOKEN: &[u8] =
+        &base64!("ABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABo5c+LAQAA");
+
+    #[test]
+    fn serialized_group_send_token_is_correct() {
+        assert_eq!(
+            &zkgroup::serialize(&structurally_valid_group_send_token()),
+            SERIALIZED_GROUP_SEND_TOKEN,
+        );
     }
 }
