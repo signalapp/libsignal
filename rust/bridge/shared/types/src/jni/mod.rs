@@ -1387,7 +1387,7 @@ macro_rules! jni_bridge_handle_destroy {
                         ::std::sync::Arc::from_raw(
                             <$typ as $crate::jni::BridgeHandle>::native_handle_cast(handle)
                                 .expect("valid")
-                                .as_mut(),
+                                .as_ptr(),
                         )
                     };
                     drop(handle);
