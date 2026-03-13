@@ -9,7 +9,6 @@ use futures::executor::block_on;
 use futures::io::Cursor;
 use itertools::Itertools as _;
 use protobuf::Message as _;
-use serde_json::Value as JsonValue;
 
 use crate::backup::{self, Purpose};
 use crate::parse::VarintDelimitedReader;
@@ -40,17 +39,8 @@ impl JsonExporter {
             None
         };
 
-        let json = parse_backup_info_json(backup_info)?;
-
-        let output = render_json_lines(std::iter::once(&json))?;
-
-        match output.as_slice() {
-            [line] => Ok((Self { validator }, line.clone())),
-            _ => Err(Error::Parse(io::Error::new(
-                ErrorKind::InvalidData,
-                "expected exactly one line for backup info",
-            ))),
-        }
+        let line = parse_backup_info_json(backup_info)?;
+        Ok((Self { validator }, line))
     }
 
     /// Converts a batch of frames into JSON lines.
@@ -73,12 +63,8 @@ impl JsonExporter {
                         let sanitized_bytes =
                             frame.write_to_bytes().map_err(Error::InvalidProtobuf)?;
 
-                        let json_value = backup::frame_to_json_value(&sanitized_bytes)
+                        let line = backup::frame_to_json_string(&sanitized_bytes)
                             .map_err(convert_to_json_error_to_lib_error)?;
-                        let line = render_json_lines(std::iter::once(&json_value))?
-                            .into_iter()
-                            .next()
-                            .expect("render_json_lines returns exactly one line per input");
 
                         (Some(sanitized_bytes), Some(line))
                     }
@@ -128,32 +114,18 @@ impl JsonExporter {
 
 fn convert_to_json_error_to_lib_error(error: backup::ConvertToJsonError) -> Error {
     match error {
-        backup::ConvertToJsonError::ProtoEncode(err) => Error::InvalidProtobuf(err),
-        backup::ConvertToJsonError::Io(err) => Error::Parse(err),
-        backup::ConvertToJsonError::ProtoJsonPrint(err) => {
-            Error::Parse(io::Error::new(ErrorKind::InvalidData, err.to_string()))
+        backup::ConvertToJsonError::ProtoDecode(err) => {
+            Error::InvalidProtobuf(protobuf::Error::from(std::io::Error::from(err)))
         }
+        backup::ConvertToJsonError::Io(err) => Error::Parse(err),
         backup::ConvertToJsonError::Json(err) => {
             Error::Parse(io::Error::new(ErrorKind::InvalidData, err.to_string()))
         }
     }
 }
 
-fn parse_backup_info_json(bytes: &[u8]) -> Result<JsonValue, Error> {
-    backup::backup_info_to_json_value(bytes).map_err(convert_to_json_error_to_lib_error)
-}
-
-fn render_json_lines<'a>(
-    items: impl IntoIterator<Item = &'a JsonValue>,
-) -> Result<Vec<String>, Error> {
-    items
-        .into_iter()
-        .map(|value| {
-            serde_json::to_string(value).map_err(|err| {
-                Error::Parse(io::Error::new(ErrorKind::InvalidData, err.to_string()))
-            })
-        })
-        .collect()
+fn parse_backup_info_json(bytes: &[u8]) -> Result<String, Error> {
+    backup::backup_info_to_json_string(bytes).map_err(convert_to_json_error_to_lib_error)
 }
 
 fn sanitize_frame(mut frame: proto::Frame) -> Option<proto::Frame> {
@@ -197,7 +169,6 @@ mod tests {
 
     use assert_matches::assert_matches;
     use protobuf::{CodedInputStream, Message as _, MessageField};
-    use serde_json::json;
 
     use super::*;
     use crate::proto::backup as proto;
@@ -399,8 +370,13 @@ mod tests {
         let (mut exporter, _) =
             JsonExporter::new(&sample_backup_info_bytes(), true).expect("should succeed");
 
-        let mut call_link = proto::CallLink::test_data();
-        call_link.restrictions = protobuf::EnumOrUnknown::from_i32(50);
+        let call_link = proto::CallLink::test_data();
+        // Our previous library, protobuf-json-mapping, allowed this by printing the integer rather
+        // than the enum's name. However, our current one, pbjson, errors out. This is not an
+        // important use case for us at this time, but here's how we would test it if we switch
+        // libraries again.
+        //
+        // call_link.restrictions = protobuf::EnumOrUnknown::from_i32(50);
 
         let mut recipient = proto::Recipient::new();
         recipient.id = 10;
@@ -430,19 +406,15 @@ mod tests {
                 r#""callLink":{"#,
                 r#""rootKey":"UlJSUlJSUlJSUlJSUlJSUg==","#,
                 r#""adminKey":"QQ==","#,
-                // Note this integer here for the unknown enum...
-                r#""restrictions":50,"#,
+                r#""restrictions":"NONE","#,
                 r#""expirationMs":"1702944000000""#,
-                r#"}}}"# // ...and no representation at all of the top-level unknown field.
+                r#"}}}"# // Note no representation at all of the top-level unknown field (not ideal, but reasonable).
             )
         );
         let io_error = assert_matches!(validation_error, Some(Error::Parse(e)) => e);
         assert_eq!(
             io_error.to_string(),
-            concat!(
-                "in frame 0, item.recipient.destination.call_link.restrictions has unknown enum value 50; ",
-                "in frame 0, item.recipient has unknown field with tag 60"
-            )
+            "in frame 0, item.recipient has unknown field with tag 60"
         );
     }
 
@@ -464,16 +436,6 @@ mod tests {
             .expect_err("validation should fail without frames");
 
         assert_matches!(err, Error::BackupCompletion(_) | Error::NoFrames);
-    }
-
-    #[test]
-    fn render_json_lines_emits_single_line_per_value() {
-        let values = [json!({"a": 1}), json!({"b": 2})];
-        let output = render_json_lines(values.iter()).expect("format succeeds");
-
-        assert_eq!(output.len(), 2);
-        assert_eq!(output[0], r#"{"a":1}"#);
-        assert_eq!(output[1], r#"{"b":2}"#);
     }
 
     #[test]

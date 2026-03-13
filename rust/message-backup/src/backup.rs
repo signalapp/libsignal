@@ -12,6 +12,8 @@ use derive_where::derive_where;
 use intmap::IntMap;
 use libsignal_account_keys::BACKUP_KEY_LEN;
 use libsignal_core::{Aci, Pni};
+#[cfg(feature = "json")]
+use prost::Message as _;
 use serde_with::serde_as;
 
 pub(crate) use crate::backup::account_data::{AccountData, AccountDataError};
@@ -32,6 +34,8 @@ use crate::backup::time::{
 };
 use crate::proto::backup as proto;
 use crate::proto::backup::frame::Item as FrameItem;
+#[cfg(feature = "json")]
+use crate::proto::prost as prost_proto;
 
 mod account_data;
 mod call;
@@ -907,12 +911,10 @@ impl<M: Method + ReferencedTypes> ReportUnusualTimestamp for PartialBackup<M> {
 #[cfg(feature = "json")]
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum ConvertToJsonError {
-    /// failed to print proto as JSON: {0}
-    ProtoJsonPrint(#[from] protobuf_json_mapping::PrintError),
     /// JSON error: {0}
     Json(#[from] serde_json::Error),
     /// failed to decode binary protobuf: {0}
-    ProtoEncode(#[from] protobuf::Error),
+    ProtoDecode(#[from] prost::DecodeError),
     /// input/output error: {0}
     Io(#[from] std::io::Error),
 }
@@ -923,64 +925,42 @@ pub enum ConvertFromJsonError {
     /// input array was empty
     EmptyArray,
     /// failed to parse JSON as proto: {0}
-    ProtoJsonParse(#[from] protobuf_json_mapping::ParseError),
+    ProtoJsonParse(#[from] serde_json::Error),
     /// failed to encode binary protobuf: {0}
-    ProtoEncode(#[from] protobuf::Error),
+    ProtoEncode(#[from] prost::EncodeError),
 }
 
 #[cfg(feature = "json")]
-fn binary_proto_to_json<M: protobuf::MessageFull>(
+fn binary_proto_to_json<M: prost::Message + serde::Serialize + Default>(
     binary: &[u8],
-) -> Result<serde_json::Value, ConvertToJsonError> {
-    let proto = M::parse_from_bytes(binary)?;
-    let json_proto = protobuf_json_mapping::print_to_string(&proto)?;
-    Ok(serde_json::from_str(&json_proto)?)
+) -> Result<String, ConvertToJsonError> {
+    let proto = M::decode(binary)?;
+    Ok(serde_json::to_string(&proto)?)
 }
 
 #[cfg(feature = "json")]
-pub fn backup_info_to_json_value(binary: &[u8]) -> Result<serde_json::Value, ConvertToJsonError> {
-    binary_proto_to_json::<proto::BackupInfo>(binary)
+pub fn backup_info_to_json_string(binary: &[u8]) -> Result<String, ConvertToJsonError> {
+    binary_proto_to_json::<prost_proto::BackupInfo>(binary)
 }
 
 #[cfg(feature = "json")]
-pub fn frame_to_json_value(binary: &[u8]) -> Result<serde_json::Value, ConvertToJsonError> {
-    binary_proto_to_json::<proto::Frame>(binary)
-}
-
-#[cfg(feature = "json")]
-pub fn frames_to_json_values(
-    length_delimited_frames: &[u8],
-) -> Result<Vec<serde_json::Value>, ConvertToJsonError> {
-    use futures::io::Cursor;
-
-    let mut reader = crate::VarintDelimitedReader::new(Cursor::new(length_delimited_frames));
-
-    futures::executor::block_on(async {
-        let mut values = Vec::new();
-        while let Some(frame) = reader.read_next().await? {
-            values.push(frame_to_json_value(&frame)?);
-        }
-        Ok(values)
-    })
+pub fn frame_to_json_string(binary: &[u8]) -> Result<String, ConvertToJsonError> {
+    binary_proto_to_json::<prost_proto::Frame>(binary)
 }
 
 #[cfg(feature = "json")]
 pub fn convert_from_json(json: Vec<serde_json::Value>) -> Result<Box<[u8]>, ConvertFromJsonError> {
     let mut it = json.into_iter();
-
-    let backup_info = protobuf_json_mapping::parse_from_str::<proto::BackupInfo>(
-        &it.next()
-            .ok_or(ConvertFromJsonError::EmptyArray)?
-            .to_string(),
-    )?;
-
     let mut serialized = Vec::new();
-    protobuf::Message::write_length_delimited_to_vec(&backup_info, &mut serialized)?;
+
+    let backup_info = serde_json::from_value::<prost_proto::BackupInfo>(
+        it.next().ok_or(ConvertFromJsonError::EmptyArray)?,
+    )?;
+    backup_info.encode_length_delimited(&mut serialized)?;
 
     for json_frame in it {
-        let frame = protobuf_json_mapping::parse_from_str::<proto::Frame>(&json_frame.to_string())?;
-
-        protobuf::Message::write_length_delimited_to_vec(&frame, &mut serialized)?;
+        let frame = serde_json::from_value::<prost_proto::Frame>(json_frame)?;
+        frame.encode_length_delimited(&mut serialized)?;
     }
 
     Ok(serialized.into_boxed_slice())
@@ -989,7 +969,7 @@ pub fn convert_from_json(json: Vec<serde_json::Value>) -> Result<Box<[u8]>, Conv
 #[cfg(feature = "json")]
 pub async fn convert_to_json(
     length_delimited_binproto: impl futures::AsyncRead + Unpin,
-) -> Result<Vec<serde_json::Value>, ConvertToJsonError> {
+) -> Result<Vec<String>, ConvertToJsonError> {
     let mut reader = crate::VarintDelimitedReader::new(length_delimited_binproto);
 
     let mut array = Vec::new();
@@ -999,10 +979,12 @@ pub async fn convert_to_json(
             "empty array",
         ))
     })?;
-    array.push(binary_proto_to_json::<proto::BackupInfo>(&backup_info)?);
+    array.push(binary_proto_to_json::<prost_proto::BackupInfo>(
+        &backup_info,
+    )?);
 
     while let Some(frame) = reader.read_next().await? {
-        array.push(binary_proto_to_json::<proto::Frame>(&frame)?);
+        array.push(binary_proto_to_json::<prost_proto::Frame>(&frame)?);
     }
     Ok(array)
 }

@@ -15,7 +15,13 @@ workspace = true
 
 [features]
 # Enables code to allow conversion of backups to and from JSON.
-json = ["dep:serde_json", "dep:protobuf-json-mapping"]
+json = [
+    "dep:pbjson",
+    "dep:pbjson-build",
+    "dep:pbjson-types",
+    "dep:prost-build",
+    "dep:serde_json",
+]
 scramble = ["dep:rand"]
 cli = ["dep:clap", "dep:clap-stdin", "dep:env_logger"]
 test-util = []
@@ -74,9 +80,10 @@ itertools = { workspace = true }
 log = { workspace = true }
 macro_rules_attribute = { workspace = true }
 mediasan-common = { workspace = true }
+pbjson = { workspace = true, optional = true }
+pbjson-types = { workspace = true, optional = true }
 prost = { workspace = true }
 protobuf = { workspace = true }
-protobuf-json-mapping = { workspace = true, optional = true }
 rand = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive", "rc"] }
 serde_json = { workspace = true, optional = true, features = ["preserve_order"] }
@@ -110,6 +117,8 @@ test-log = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [build-dependencies]
+pbjson-build = { workspace = true, optional = true }
+prost-build = { workspace = true, optional = true }
 protobuf = { workspace = true }
 protobuf-codegen = { workspace = true }
 

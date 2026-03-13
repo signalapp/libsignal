@@ -5148,7 +5148,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## protobuf-codegen 3.7.2, protobuf-json-mapping 3.7.2, protobuf-support 3.7.2, protobuf 3.7.2
+## protobuf-codegen 3.7.2, protobuf-support 3.7.2, protobuf 3.7.2
 
 ```
 Copyright (c) 2019 Stepan Koltsov
@@ -6520,7 +6520,7 @@ SOFTWARE.
 
 ```
 
-## cesu8 1.1.0
+## cesu8 1.1.0, pbjson-build 0.9.0, pbjson-types 0.9.0, pbjson 0.9.0
 
 ```
 MIT License

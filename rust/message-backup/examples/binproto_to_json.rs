@@ -19,11 +19,15 @@ fn main() {
 
     eprintln!("reading from {:?}", input.filename());
 
-    let json_array =
-        futures::executor::block_on(libsignal_message_backup::backup::convert_to_json(
-            AllowStdIo::new(input.into_reader().expect("failed to open")),
-        ))
-        .expect("failed to convert");
+    let frames = futures::executor::block_on(libsignal_message_backup::backup::convert_to_json(
+        AllowStdIo::new(input.into_reader().expect("failed to open")),
+    ))
+    .expect("failed to convert");
 
-    print!("{:#}", serde_json::Value::Array(json_array));
+    // Convert *back* into JSON values so that we can pretty-print.
+    let frames = frames
+        .into_iter()
+        .map(|frame| serde_json::from_str(&frame).unwrap())
+        .collect();
+    print!("{:#}", serde_json::Value::Array(frames));
 }

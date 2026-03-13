@@ -42,5 +42,10 @@ fn main() {
             .await
             .unwrap()
     });
+    // Convert *back* into JSON values so that we can pretty-print.
+    let frames = frames
+        .into_iter()
+        .map(|frame| serde_json::from_str(&frame).unwrap())
+        .collect();
     println!("{:#}", serde_json::Value::Array(frames));
 }
