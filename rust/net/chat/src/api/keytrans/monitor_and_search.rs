@@ -378,10 +378,10 @@ impl<'a> PostMonitorAction<'a> {
         kt: &impl UnauthenticatedChatApi,
         aci_identity_key: &PublicKey,
         distinguished_tree_head: &LastTreeHead,
-        monitor_account_data: AccountData,
+        account_data: AccountData,
     ) -> Result<MaybePartial<AccountData>, RequestError<Error>> {
         match self {
-            PostMonitorAction::None => Ok(monitor_account_data.into()),
+            PostMonitorAction::None => Ok(account_data.into()),
             PostMonitorAction::Search {
                 parameters:
                     Parameters {
@@ -391,28 +391,19 @@ impl<'a> PostMonitorAction<'a> {
                     },
                 version_change_detected,
             } => {
-                // Search only needs the tree size, other fields don't matter.
-                // Prefer the latest tree size from the monitor we just performed to
-                // the one in stored_account_data, if only for efficiency of proofs.
-                let account_data_for_search = AccountData {
-                    aci: monitor_account_data.aci.clone(),
-                    e164: None,
-                    username_hash: None,
-                    last_tree_head: monitor_account_data.last_tree_head.clone(),
-                };
                 let mut search_account_data = kt
                     .search(
                         aci,
                         aci_identity_key,
                         e164.cloned(),
                         username_hash.cloned(),
-                        Some(account_data_for_search),
+                        Some(account_data.clone()),
                         distinguished_tree_head,
                     )
                     .await?
                     .map(|post_search_account_data| {
                         merge_account_data(
-                            monitor_account_data,
+                            account_data,
                             post_search_account_data,
                             // Preserving the ACI monitoring data only if no version changes detected
                             matches!(version_change_detected, VersionChanged::No),
@@ -526,12 +517,19 @@ async fn monitor_then_search<'a>(
         any_version_changed.into(),
     )?;
 
+    // Combine the stored account data and the one we just obtained from monitor.
+    // Not preserving ACI data here as we do need to prefer monitor's version.
+    // The effect of doing it is that the search will have the most recent
+    // monitoring data that we have for optional fields even if they were not
+    // included in the monitor call.
+    let combined_account_data =
+        merge_account_data(stored_account_data, monitor_account_data, false);
     post_monitor_plan
         .execute(
             kt,
             aci_identity_key,
             distinguished_tree_head,
-            monitor_account_data,
+            combined_account_data,
         )
         .await
 }
@@ -1391,6 +1389,7 @@ mod test {
             assert!(missing_fields.is_empty());
         });
     }
+
     #[tokio::test]
     async fn monitor_then_search_version_change_and_new_field() {
         let aci = test_account::aci();
@@ -1436,12 +1435,63 @@ mod test {
         let invocations = kt.search.take().invocations;
         let invocation = assert_matches!(&invocations[..], [inv] => inv);
 
-        // Core regression check:
         assert_eq!(&invocation.e164.as_ref(), &search_parameters.e164);
 
         assert_matches!(result, Ok(MaybePartial { inner, missing_fields }) => {
             assert!(inner.e164.is_some());
             assert!(missing_fields.is_empty());
+        });
+    }
+
+    #[tokio::test]
+    async fn monitor_then_search_passes_stored_account_data_to_search() {
+        let aci = test_account::aci();
+
+        let mut stored = test_account_data();
+        stored.aci.pos = 1111;
+        stored.e164.as_mut().unwrap().pos = 1111;
+        stored.username_hash.as_mut().unwrap().pos = 1111;
+        stored.last_tree_head.0.tree_size = 1111;
+
+        let mut monitor_result = stored.clone();
+        monitor_result.aci.pos = 2222;
+        monitor_result.e164 = None;
+        monitor_result.username_hash.as_mut().unwrap().pos = 2222;
+        monitor_result.last_tree_head.0.tree_size = 2222;
+
+        // The way the test is set up, it will not trigger search after monitor.
+        let kt = TestKt::for_monitor(Ok(monitor_result));
+
+        let monitor_parameters = Parameters {
+            aci: &aci,
+            e164: None,
+            username_hash: None,
+        };
+        let search_parameters = Parameters {
+            aci: &aci,
+            e164: None,
+            username_hash: None,
+        };
+
+        let result = monitor_then_search(
+            &kt,
+            monitor_parameters,
+            search_parameters.clone(),
+            stored,
+            &test_account::aci_identity_key(),
+            &test_distinguished_tree(),
+            MonitorMode::MonitorOther,
+        )
+        .await;
+
+        assert_matches!(result, Ok(MaybePartial { inner, missing_fields: _ }) => {
+            // ACI, username hash, and tree size should be taken from monitor result
+            assert_eq!(inner.aci.pos, 2222);
+            assert_eq!(inner.username_hash.expect("missing username hash").pos, 2222);
+            assert_eq!(inner.last_tree_head.0.tree_size, 2222);
+            // but the monitor did not return anything for E.164, therefore it
+            // should be inherited from the original stored account data.
+            assert_eq!(inner.e164.expect("missing E.164").pos, 1111);
         });
     }
 
