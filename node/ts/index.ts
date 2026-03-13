@@ -12,7 +12,7 @@ export * from './Errors.js';
 
 import { Aci, ProtocolAddress, ServiceId } from './Address.js';
 export * from './Address.js';
-import { PrivateKey, PublicKey } from './EcKeys.js';
+import { IdentityKeyPair, PrivateKey, PublicKey } from './EcKeys.js';
 export * from './EcKeys.js';
 import { Uuid } from './uuid.js';
 export * from './uuid.js';
@@ -1112,49 +1112,12 @@ export enum IdentityChange {
   ReplacedExisting = 1,
 }
 
-export abstract class IdentityKeyStore implements Native.IdentityKeyStore {
-  async _getIdentityKey(): Promise<Native.PrivateKey> {
-    const key = await this.getIdentityKey();
-    return key._nativeHandle;
-  }
-
-  async _getLocalRegistrationId(): Promise<number> {
-    return this.getLocalRegistrationId();
-  }
-  async _saveIdentity(
-    name: Native.ProtocolAddress,
-    key: Native.PublicKey
-  ): Promise<Native.IdentityChange> {
-    return this.saveIdentity(
-      ProtocolAddress._fromNativeHandle(name),
-      PublicKey._fromNativeHandle(key)
-    );
-  }
-  async _isTrustedIdentity(
-    name: Native.ProtocolAddress,
-    key: Native.PublicKey,
-    sending: boolean
-  ): Promise<boolean> {
-    const direction = sending ? Direction.Sending : Direction.Receiving;
-
-    return this.isTrustedIdentity(
-      ProtocolAddress._fromNativeHandle(name),
-      PublicKey._fromNativeHandle(key),
-      direction
-    );
-  }
-  async _getIdentity(
-    name: Native.ProtocolAddress
-  ): Promise<Native.PublicKey | null> {
-    const key = await this.getIdentity(ProtocolAddress._fromNativeHandle(name));
-    if (key == null) {
-      return Promise.resolve(null);
-    } else {
-      return key._nativeHandle;
-    }
-  }
-
+export abstract class IdentityKeyStore {
   abstract getIdentityKey(): Promise<PrivateKey>;
+  async getIdentityKeyPair(): Promise<IdentityKeyPair> {
+    const privKey = await this.getIdentityKey();
+    return new IdentityKeyPair(privKey.getPublicKey(), privKey);
+  }
   abstract getLocalRegistrationId(): Promise<number>;
   abstract saveIdentity(
     name: ProtocolAddress,
@@ -1425,6 +1388,53 @@ function bridgeSessionStore(store: SessionStore): Native.BridgeSessionStore {
   };
 }
 
+function bridgeIdentityKeyStore(
+  store: IdentityKeyStore
+): Native.BridgeIdentityKeyStore {
+  return {
+    async getLocalIdentityKeyPair(): Promise<
+      [Native.PrivateKey, Native.PublicKey]
+    > {
+      const keyPair = await store.getIdentityKeyPair();
+      return [
+        keyPair.privateKey._nativeHandle,
+        keyPair.publicKey._nativeHandle,
+      ];
+    },
+    async getLocalRegistrationId(): Promise<number> {
+      return store.getLocalRegistrationId();
+    },
+    async saveIdentityKey(
+      name: Native.ProtocolAddress,
+      key: Native.PublicKey
+    ): Promise<Native.IdentityChange> {
+      return store.saveIdentity(
+        ProtocolAddress._fromNativeHandle(name),
+        PublicKey._fromNativeHandle(key)
+      );
+    },
+    async isTrustedIdentity(
+      name: Native.ProtocolAddress,
+      key: Native.PublicKey,
+      direction: number
+    ): Promise<boolean> {
+      return store.isTrustedIdentity(
+        ProtocolAddress._fromNativeHandle(name),
+        PublicKey._fromNativeHandle(key),
+        direction as Direction
+      );
+    },
+    async getIdentityKey(
+      name: Native.ProtocolAddress
+    ): Promise<Native.PublicKey | null> {
+      const key = await store.getIdentity(
+        ProtocolAddress._fromNativeHandle(name)
+      );
+      return key ? key._nativeHandle : null;
+    },
+  };
+}
+
 export function processPreKeyBundle(
   bundle: PreKeyBundle,
   address: ProtocolAddress,
@@ -1436,7 +1446,7 @@ export function processPreKeyBundle(
     bundle,
     address,
     bridgeSessionStore(sessionStore),
-    identityStore,
+    bridgeIdentityKeyStore(identityStore),
     now.getTime()
   );
 }
@@ -1453,7 +1463,7 @@ export async function signalEncrypt(
       message,
       address,
       bridgeSessionStore(sessionStore),
-      identityStore,
+      bridgeIdentityKeyStore(identityStore),
       now.getTime()
     )
   );
@@ -1469,7 +1479,7 @@ export function signalDecrypt(
     message,
     address,
     bridgeSessionStore(sessionStore),
-    identityStore
+    bridgeIdentityKeyStore(identityStore)
   );
 }
 
@@ -1552,7 +1562,7 @@ export function signalDecryptPreKey(
     message,
     address,
     bridgeSessionStore(sessionStore),
-    identityStore,
+    bridgeIdentityKeyStore(identityStore),
     bridgePreKeyStore(prekeyStore),
     bridgeSignedPreKeyStore(signedPrekeyStore),
     bridgeKyberPreKeyStore(kyberPrekeyStore)
@@ -1586,7 +1596,11 @@ export function sealedSenderEncrypt(
   address: ProtocolAddress,
   identityStore: IdentityKeyStore
 ): Promise<Uint8Array> {
-  return Native.SealedSender_Encrypt(address, content, identityStore);
+  return Native.SealedSender_Encrypt(
+    address,
+    content,
+    bridgeIdentityKeyStore(identityStore)
+  );
 }
 
 export type SealedSenderMultiRecipientEncryptOptions = {
@@ -1636,7 +1650,7 @@ export async function sealedSenderMultiRecipientEncrypt(
     recipientSessions,
     ServiceId.toConcatenatedFixedWidthBinary(excludedRecipients ?? []),
     contentOrOptions,
-    identityStore
+    bridgeIdentityKeyStore(identityStore)
   );
 }
 
@@ -1668,7 +1682,7 @@ export async function sealedSenderDecryptMessage(
     localUuid,
     localDeviceId,
     bridgeSessionStore(sessionStore),
-    identityStore,
+    bridgeIdentityKeyStore(identityStore),
     bridgePreKeyStore(prekeyStore),
     bridgeSignedPreKeyStore(signedPrekeyStore),
     bridgeKyberPreKeyStore(kyberPrekeyStore)
@@ -1680,7 +1694,10 @@ export async function sealedSenderDecryptToUsmc(
   message: Uint8Array,
   identityStore: IdentityKeyStore
 ): Promise<UnidentifiedSenderMessageContent> {
-  const usmc = await Native.SealedSender_DecryptToUsmc(message, identityStore);
+  const usmc = await Native.SealedSender_DecryptToUsmc(
+    message,
+    bridgeIdentityKeyStore(identityStore)
+  );
   return UnidentifiedSenderMessageContent._fromNativeHandle(usmc);
 }
 

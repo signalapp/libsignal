@@ -44,11 +44,8 @@ mod io;
 pub use io::*;
 
 mod chat;
-mod storage;
 
-pub use storage::*;
-
-use crate::support::WithContext;
+use crate::support::{BridgedCallbacks, WithContext};
 
 /// A function pointer referring to a Neon-based Node entry point.
 #[doc(hidden)]
@@ -193,5 +190,11 @@ impl Finalize for RootAndChannel {
             root,
         } = self;
         root.finalize(cx);
+    }
+}
+
+impl<T: Finalize> Finalize for BridgedCallbacks<T> {
+    fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
+        self.0.finalize(cx);
     }
 }

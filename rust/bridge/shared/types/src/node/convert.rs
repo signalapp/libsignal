@@ -24,8 +24,8 @@ use crate::net::chat::{
     ChatListener, NodeChatListener, NodeProvisioningListener, ProvisioningListener,
 };
 use crate::protocol::storage::{
-    NodeBridgeKyberPreKeyStore, NodeBridgePreKeyStore, NodeBridgeSenderKeyStore,
-    NodeBridgeSessionStore, NodeBridgeSignedPreKeyStore,
+    NodeBridgeIdentityKeyStore, NodeBridgeKyberPreKeyStore, NodeBridgePreKeyStore,
+    NodeBridgeSenderKeyStore, NodeBridgeSessionStore, NodeBridgeSignedPreKeyStore,
 };
 use crate::support::{
     Array, AsType, BridgedCallbacks, FixedLengthBincodeSerializable, Serialized, extend_lifetime,
@@ -396,6 +396,28 @@ impl SimpleArgTypeInfo for libsignal_core::E164 {
         let e164 = String::convert_from(cx, e164)?;
         e164.parse()
             .or_else(|_: ParseIntError| cx.throw_type_error("not an E164"))
+    }
+}
+
+impl CallbackResultTypeInfo for PublicKey {
+    type ResultType = DefaultJsBox<JsBoxContentsFor<PublicKey>>;
+
+    fn convert_from_callback(
+        _cx: &mut FunctionContext,
+        foreign: Handle<Self::ResultType>,
+    ) -> NeonResult<Self> {
+        Ok(foreign.as_inner().0)
+    }
+}
+
+impl CallbackResultTypeInfo for PrivateKey {
+    type ResultType = DefaultJsBox<JsBoxContentsFor<PrivateKey>>;
+
+    fn convert_from_callback(
+        _cx: &mut FunctionContext,
+        foreign: Handle<Self::ResultType>,
+    ) -> NeonResult<Self> {
+        Ok(foreign.as_inner().0)
     }
 }
 
@@ -848,13 +870,29 @@ macro_rules! bridge_trait {
     };
 }
 
-bridge_trait!(IdentityKeyStore);
+// bridge_trait!(IdentityKeyStore);
 // bridge_trait!(PreKeyStore);
 // bridge_trait!(SenderKeyStore);
 // bridge_trait!(SessionStore);
 // bridge_trait!(SignedPreKeyStore);
 // bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
+
+impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn IdentityKeyStore {
+    type ArgType = JsObject;
+    type StoredType = BridgedCallbacks<NodeBridgeIdentityKeyStore>;
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        Ok(BridgedCallbacks(NodeBridgeIdentityKeyStore::new(
+            cx, foreign,
+        )?))
+    }
+    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
+        stored
+    }
+}
 
 impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn PreKeyStore {
     type ArgType = JsObject;
@@ -1252,6 +1290,20 @@ impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A
         result.set(cx, 0, a)?;
         result.set(cx, 1, b)?;
         Ok(result)
+    }
+}
+
+impl<A: CallbackResultTypeInfo, B: CallbackResultTypeInfo> CallbackResultTypeInfo for (A, B) {
+    type ResultType = JsArray;
+    fn convert_from_callback(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ResultType>,
+    ) -> NeonResult<Self> {
+        let a = foreign.get(cx, 0)?;
+        let b = foreign.get(cx, 1)?;
+        let a = A::convert_from_callback(cx, a)?;
+        let b = B::convert_from_callback(cx, b)?;
+        Ok((a, b))
     }
 }
 

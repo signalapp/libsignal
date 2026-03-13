@@ -63,22 +63,8 @@ export enum IdentityChange {
   ReplacedExisting = 1,
 }
 
-export type IdentityKeyStore = {
-  _getIdentityKey: () => Promise<PrivateKey>;
-  _getLocalRegistrationId: () => Promise<number>;
-  _saveIdentity: (
-    name: ProtocolAddress,
-    key: PublicKey
-  ) => Promise<IdentityChange>;
-  _isTrustedIdentity: (
-    name: ProtocolAddress,
-    key: PublicKey,
-    sending: boolean
-  ) => Promise<boolean>;
-  _getIdentity: (name: ProtocolAddress) => Promise<PublicKey | null>;
-};
-
 // TODO: Resolve the different names here.
+export type IdentityKeyStore = BridgeIdentityKeyStore;
 export type PreKeyStore = BridgePreKeyStore;
 export type SignedPreKeyStore = BridgeSignedPreKeyStore;
 export type KyberPreKeyStore = BridgeKyberPreKeyStore;
@@ -1843,6 +1829,13 @@ export const NetRemoteConfigKeys = ['chatRequestConnectionCheckTimeoutMillis', '
 export interface TokioAsyncContext { readonly __type: unique symbol; }
 export interface ConnectionManager { readonly __type: unique symbol; }
 export interface ConnectionProxyConfig { readonly __type: unique symbol; }
+export /*trait*/ type BridgeIdentityKeyStore = {
+  getLocalIdentityKeyPair: () => Promise<[PrivateKey, PublicKey]>;
+  getLocalRegistrationId: () => Promise<number>;
+  getIdentityKey: (address: ProtocolAddress) => Promise<PublicKey | null>;
+  saveIdentityKey: (address: ProtocolAddress, publicKey: PublicKey) => Promise<number>;
+  isTrustedIdentity: (address: ProtocolAddress, publicKey: PublicKey, direction: number) => Promise<boolean>;
+};
 export /*trait*/ type BridgePreKeyStore = {
   loadPreKey: (id: number) => Promise<PreKeyRecord | null>;
   storePreKey: (id: number, record: PreKeyRecord) => Promise<void>;

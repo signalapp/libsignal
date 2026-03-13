@@ -63,22 +63,8 @@ export enum IdentityChange {
   ReplacedExisting = 1,
 }
 
-export type IdentityKeyStore = {
-  _getIdentityKey: () => Promise<PrivateKey>;
-  _getLocalRegistrationId: () => Promise<number>;
-  _saveIdentity: (
-    name: ProtocolAddress,
-    key: PublicKey
-  ) => Promise<IdentityChange>;
-  _isTrustedIdentity: (
-    name: ProtocolAddress,
-    key: PublicKey,
-    sending: boolean
-  ) => Promise<boolean>;
-  _getIdentity: (name: ProtocolAddress) => Promise<PublicKey | null>;
-};
-
 // TODO: Resolve the different names here.
+export type IdentityKeyStore = BridgeIdentityKeyStore;
 export type PreKeyStore = BridgePreKeyStore;
 export type SignedPreKeyStore = BridgeSignedPreKeyStore;
 export type KyberPreKeyStore = BridgeKyberPreKeyStore;

@@ -18,24 +18,23 @@ use crate::support::{BridgedCallbacks, ResultLike, WithContext};
 use crate::*;
 
 /// A bridge-friendly version of [`IdentityKeyStore`].
-#[bridge_callbacks(
-    jni = "org.signal.libsignal.protocol.state.internal.IdentityKeyStore",
-    node = false
-)]
-pub trait BridgeIdentityKeyStore {
-    fn get_local_identity_key_pair(&self) -> Result<(PrivateKey, PublicKey), SignalProtocolError>;
-    fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError>;
-    fn get_identity_key(
+#[bridge_callbacks(jni = "org.signal.libsignal.protocol.state.internal.IdentityKeyStore")]
+trait BridgeIdentityKeyStore {
+    async fn get_local_identity_key_pair(
+        &self,
+    ) -> Result<(PrivateKey, PublicKey), SignalProtocolError>;
+    async fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError>;
+    async fn get_identity_key(
         &self,
         address: ProtocolAddress,
     ) -> Result<Option<PublicKey>, SignalProtocolError>;
     // TODO: Use AsType for stronger types on these raw integers.
-    fn save_identity_key(
+    async fn save_identity_key(
         &self,
         address: ProtocolAddress,
         public_key: PublicKey,
     ) -> Result</*IdentityChange*/ u8, SignalProtocolError>;
-    fn is_trusted_identity(
+    async fn is_trusted_identity(
         &self,
         address: ProtocolAddress,
         public_key: PublicKey,
@@ -53,12 +52,12 @@ pub enum FfiDirection {
 #[async_trait(?Send)]
 impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedCallbacks<T> {
     async fn get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalProtocolError> {
-        let (priv_key, pub_key) = self.0.get_local_identity_key_pair()?;
+        let (priv_key, pub_key) = self.0.get_local_identity_key_pair().await?;
         Ok(IdentityKeyPair::new(IdentityKey::new(pub_key), priv_key))
     }
 
     async fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError> {
-        self.0.get_local_registration_id()
+        self.0.get_local_registration_id().await
     }
 
     async fn save_identity(
@@ -68,7 +67,8 @@ impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedCallbacks<T> {
     ) -> Result<IdentityChange, SignalProtocolError> {
         let raw_result = self
             .0
-            .save_identity_key(address.clone(), *identity.public_key())?;
+            .save_identity_key(address.clone(), *identity.public_key())
+            .await?;
         IdentityChange::try_from(isize::from(raw_result)).map_err(|_| {
             SignalProtocolError::FfiBindingError(format!(
                 "invalid result for save_identity: {raw_result}"
@@ -88,6 +88,7 @@ impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedCallbacks<T> {
         };
         self.0
             .is_trusted_identity(address.clone(), *identity.public_key(), direction as u32)
+            .await
     }
 
     async fn get_identity(
@@ -96,7 +97,8 @@ impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedCallbacks<T> {
     ) -> Result<Option<IdentityKey>, SignalProtocolError> {
         Ok(self
             .0
-            .get_identity_key(address.clone())?
+            .get_identity_key(address.clone())
+            .await?
             .map(IdentityKey::new))
     }
 }
