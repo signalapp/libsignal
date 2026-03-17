@@ -70,6 +70,7 @@ pub(crate) fn bridge_fn(
             #async_runtime_if_needed
             #(#input_args),*
         ) -> #result_ty {
+            let _trace = libsignal_debug::trace_block!(concat!("bridge::", #name));
             #body
         }
     })
@@ -206,7 +207,7 @@ pub(crate) fn bridge_trait(
     let callbacks = trait_to_bridge
         .items
         .iter()
-        .map(bridge_callback_item)
+        .map(|item| bridge_callback_item(item, &wrapper_name))
         .collect::<Result<Vec<_>>>()?;
     let callback_impls = callbacks.iter().map(|c| &c.implementation);
 
@@ -238,7 +239,7 @@ struct Callback {
     implementation: TokenStream2,
 }
 
-fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
+fn bridge_callback_item(item: &TraitItem, wrapper_name: &Ident) -> Result<Callback> {
     let TraitItem::Fn(item) = item else {
         return Err(Error::new(item.span(), "only fns are supported"));
     };
@@ -309,6 +310,12 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
             // #sig carries everything from `fn` to the return type and possible where-clause.
             // All we provide is the body.
             #sig {
+                let _trace = libsignal_debug::trace_block!(concat!(
+                    "bridge_callbacks::",
+                    stringify!(#wrapper_name),
+                    "::",
+                    #java_operation_name,
+                ));
                 self.0.attach(#java_operation_name, move |env, __object| {
                     #(#arg_conversions;)*
                     let __result = jni::call_method_checked(
@@ -329,6 +336,12 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
     } else {
         quote! {
             #sig {
+                let _trace = libsignal_debug::trace_block!(concat!(
+                    "bridge_callbacks::",
+                    stringify!(#wrapper_name),
+                    "::",
+                    #java_operation_name,
+                ));
                 // Not implemented: callbacks that *do* have a return value but *don't* have a place for errors.
                 // We can handle those some if we need them.
                 self.0.attach_and_log_on_error(#java_operation_name, move |env, __object| {

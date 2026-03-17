@@ -602,6 +602,7 @@ impl SessionState {
         &mut self,
         msg: &spqr::SerializedMessage,
     ) -> Result<spqr::MessageKey, spqr::Error> {
+        let _trace = libsignal_debug::trace_block!("SessionState::pq_ratchet_recv");
         let spqr::Recv { state, key } = spqr::recv(&self.session.pq_ratchet_state, msg)?;
         self.session.pq_ratchet_state = state;
         Ok(key)
@@ -611,6 +612,7 @@ impl SessionState {
         &mut self,
         csprng: &mut R,
     ) -> Result<(spqr::SerializedMessage, spqr::MessageKey), spqr::Error> {
+        let _trace = libsignal_debug::trace_block!("SessionState::pq_ratchet_send");
         let spqr::Send { state, key, msg } = spqr::send(&self.session.pq_ratchet_state, csprng)?;
         self.session.pq_ratchet_state = state;
         Ok((msg, key))

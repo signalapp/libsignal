@@ -145,8 +145,9 @@ task makeJniLibraries(type:Exec) {
     def jniTypeTaggingFlag = project.hasProperty('jniTypeTagging') ? ['--jni-type-tagging'] : []
     def jniCheckAnnotationsFlag = project.hasProperty('jniCheckAnnotations') ? ['--jni-check-annotations'] : []
     def debugFlag = project.hasProperty('debugRust') ? ['--debug'] : []
+    def libsignalDebugFlag = project.hasProperty('libsignalDebug') ? ['--libsignal-debug'] : []
     // Explicitly specify 'bash' for Windows compatibility.
-    commandLine 'bash', '../build_jni.sh', *debugLevelLogsFlag, *jniTypeTaggingFlag, *jniCheckAnnotationsFlag, *debugFlag, *archs
+    commandLine 'bash', '../build_jni.sh', *libsignalDebugFlag, *debugLevelLogsFlag, *jniTypeTaggingFlag, *jniCheckAnnotationsFlag, *debugFlag, *archs
     environment 'ANDROID_NDK_HOME', android.ndkDirectory
 }
 

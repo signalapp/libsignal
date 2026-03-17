@@ -28,6 +28,7 @@ pub fn aes_256_cbc_encrypt(
     key: &[u8],
     iv: &[u8],
 ) -> Result<Vec<u8>, EncryptionError> {
+    let _trace = libsignal_debug::trace_block!("aes_256_cbc_encrypt");
     Ok(cbc::Encryptor::<Aes256>::new_from_slices(key, iv)
         .map_err(|_| EncryptionError::BadKeyOrIv)?
         .encrypt_padded_vec_mut::<Pkcs7>(ptext))
@@ -38,6 +39,7 @@ pub fn aes_256_cbc_decrypt(
     key: &[u8],
     iv: &[u8],
 ) -> Result<Vec<u8>, DecryptionError> {
+    let _trace = libsignal_debug::trace_block!("aes_256_cbc_decrypt");
     if ctext.is_empty() || ctext.len() % 16 != 0 {
         return Err(DecryptionError::BadCiphertext(
             "ciphertext length must be a non-zero multiple of 16",

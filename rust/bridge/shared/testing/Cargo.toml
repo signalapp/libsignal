@@ -19,6 +19,7 @@ attest = { workspace = true }
 libsignal-bridge-macros = { workspace = true }
 libsignal-bridge-types = { workspace = true }
 libsignal-core = { workspace = true }
+libsignal-debug = { workspace = true }
 libsignal-keytrans = { workspace = true }
 libsignal-message-backup = { workspace = true, features = ["json"] }
 libsignal-net = { workspace = true }

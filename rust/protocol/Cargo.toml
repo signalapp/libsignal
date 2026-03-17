@@ -16,6 +16,7 @@ workspace = true
 
 [dependencies]
 libsignal-core = { workspace = true }
+libsignal-debug = { workspace = true }
 signal-crypto = { workspace = true }
 
 aes = { workspace = true, features = ["zeroize"] }

@@ -19,3 +19,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 libsignal-jni-impl = { workspace = true }
+
+# Needed for feature selection to work
+libsignal-debug = { workspace = true }

@@ -92,6 +92,7 @@ impl MessageKeys {
         optional_salt: Option<&[u8]>,
         counter: u32,
     ) -> Self {
+        let _trace = libsignal_debug::trace_block!("MessageKeys::derive_keys");
         let (cipher_key, mac_key, iv) = derive_arrays(|okm| {
             hkdf::Hkdf::<sha2::Sha256>::new(optional_salt, input_key_material)
                 .expand(b"WhisperMessageKeys", okm)
@@ -166,6 +167,7 @@ impl ChainKey {
     }
 
     fn calculate_base_material(&self, seed: [u8; 1]) -> [u8; 32] {
+        let _trace = libsignal_debug::trace_block!("keys::calculate_base_material");
         crypto::hmac_sha256(&self.key, &seed)
     }
 }

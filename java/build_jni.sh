@@ -34,6 +34,10 @@ while [ "${1:-}" != "" ]; do
             DEBUG_LEVEL_LOGS=1
             shift
             ;;
+        --libsignal-debug )
+            LIBSIGNAL_DEBUG=1
+            shift
+            ;;
         --jni-type-tagging )
             JNI_TYPE_TAGGING=1
             shift
@@ -64,6 +68,9 @@ fi
 if [[ -n "${JNI_CHECK_ANNOTATIONS:-}" ]]; then
     FEATURES+=("libsignal-bridge-types/jni-invoke-annotated")
 fi
+if [[ -n "${LIBSIGNAL_DEBUG:-}" ]]; then
+    FEATURES+=("libsignal-debug/enabled")
+fi
 
 # usage: check_for_debug_level_logs_if_needed lib_dir
 check_for_debug_level_logs_if_needed () {
@@ -79,6 +86,18 @@ check_for_debug_level_logs_if_needed () {
         # but it's easier than figuring out prefixes and suffixes like copy_built_library does.
         if grep -q -- '-LEVEL LOGS ENABLED' "$1"/*; then
             echo 'error: debug-level logs found in build that should not have them!' >&2
+            exit 2
+        fi
+    fi
+    # See libsignal-debug for the strings matched by this pattern.
+    if grep -q -- 'LIBSIGNAL-DEBUG IS ENABLED' "$1"/*; then
+        if [[ -z "${LIBSIGNAL_DEBUG:-}" ]]; then
+            echo 'error: libsignal-debug found in build that should not have it!' >&2
+            exit 2
+        fi
+    else
+        if [[ -n "${LIBSIGNAL_DEBUG:-}" ]]; then
+            echo 'error: libsignal-debug NOT found in build that SHOULD have it!' >&2
             exit 2
         fi
     fi
@@ -236,6 +255,7 @@ target_for_abi() {
             ;;
     esac
 }
+
 
 for abi in "${android_abis[@]}"; do
     rust_target=$(target_for_abi "$abi")

@@ -3,6 +3,7 @@
 members = [
     "rust/attest",
     "rust/crypto",
+    "rust/debug",
     "rust/device-transfer",
     "rust/keytrans",
     "rust/media",
@@ -60,6 +61,7 @@ device-transfer = { path = "rust/device-transfer" }
 libsignal-account-keys = { path = "rust/account-keys" }
 libsignal-cli-utils = { path = "rust/cli-utils" }
 libsignal-core = { path = "rust/core" }
+libsignal-debug = { path = "rust/debug" }
 libsignal-keytrans = { path = "rust/keytrans" }
 libsignal-message-backup = { path = "rust/message-backup" }
 libsignal-net = { path = "rust/net" }

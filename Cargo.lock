@@ -2372,6 +2372,7 @@ dependencies = [
  "libsignal-bridge-macros",
  "libsignal-bridge-types",
  "libsignal-core",
+ "libsignal-debug",
  "libsignal-keytrans",
  "libsignal-message-backup",
  "libsignal-net",
@@ -2428,6 +2429,7 @@ dependencies = [
  "libsignal-bridge-macros",
  "libsignal-bridge-types",
  "libsignal-core",
+ "libsignal-debug",
  "libsignal-keytrans",
  "libsignal-message-backup",
  "libsignal-net",
@@ -2469,6 +2471,7 @@ dependencies = [
  "libsignal-account-keys",
  "libsignal-bridge-macros",
  "libsignal-core",
+ "libsignal-debug",
  "libsignal-keytrans",
  "libsignal-message-backup",
  "libsignal-net",
@@ -2529,6 +2532,7 @@ dependencies = [
  "derive_more 2.1.1",
  "displaydoc",
  "hex",
+ "libsignal-debug",
  "log",
  "proptest",
  "rand 0.9.2",
@@ -2538,6 +2542,13 @@ dependencies = [
  "uuid",
  "x25519-dalek",
  "zerocopy",
+]
+
+[[package]]
+name = "libsignal-debug"
+version = "0.89.1"
+dependencies = [
+ "cfg-if",
 ]
 
 [[package]]
@@ -2565,6 +2576,7 @@ dependencies = [
 name = "libsignal-jni"
 version = "0.89.1"
 dependencies = [
+ "libsignal-debug",
  "libsignal-jni-impl",
 ]
 
@@ -2943,6 +2955,7 @@ dependencies = [
  "itertools 0.14.0",
  "libcrux-ml-kem",
  "libsignal-core",
+ "libsignal-debug",
  "libsignal-protocol-test-support",
  "log",
  "proptest",
@@ -4657,6 +4670,7 @@ dependencies = [
  "hpke-rs",
  "hpke-rs-crypto",
  "libsignal-core",
+ "libsignal-debug",
  "rand 0.9.2",
  "rand_chacha",
  "rand_core 0.9.3",
