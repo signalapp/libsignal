@@ -49,7 +49,9 @@ export class AccountEntropyPool {
    * `accountEntropyPool` must be a **validated** account entropy pool;
    * passing an arbitrary string here is considered a programmer error.
    */
-  public static deriveSvrKey(accountEntropyPool: string): Uint8Array {
+  public static deriveSvrKey(
+    accountEntropyPool: string
+  ): Uint8Array<ArrayBuffer> {
     return Native.AccountEntropyPool_DeriveSvrKey(accountEntropyPool);
   }
 
@@ -79,7 +81,7 @@ export class BackupKey extends ByteArray {
   private readonly __type?: never;
   static SIZE = 32;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, BackupKey.checkLength(BackupKey.SIZE));
   }
 
@@ -100,7 +102,7 @@ export class BackupKey extends ByteArray {
    *
    * Used for both message and media backups.
    */
-  public deriveBackupId(aci: Aci): Uint8Array {
+  public deriveBackupId(aci: Aci): Uint8Array<ArrayBuffer> {
     return Native.BackupKey_DeriveBackupId(
       this.contents,
       aci.getServiceIdFixedWidthBinary()
@@ -126,7 +128,7 @@ export class BackupKey extends ByteArray {
    *
    * Only relevant for message backup keys.
    */
-  public deriveLocalBackupMetadataKey(): Uint8Array {
+  public deriveLocalBackupMetadataKey(): Uint8Array<ArrayBuffer> {
     return Native.BackupKey_DeriveLocalBackupMetadataKey(this.contents);
   }
 
@@ -135,7 +137,7 @@ export class BackupKey extends ByteArray {
    *
    * Only relevant for media backup keys.
    */
-  public deriveMediaId(mediaName: string): Uint8Array {
+  public deriveMediaId(mediaName: string): Uint8Array<ArrayBuffer> {
     return Native.BackupKey_DeriveMediaId(this.contents, mediaName);
   }
 
@@ -146,7 +148,9 @@ export class BackupKey extends ByteArray {
    *
    * Only relevant for media backup keys.
    */
-  public deriveMediaEncryptionKey(mediaId: Uint8Array): Uint8Array {
+  public deriveMediaEncryptionKey(
+    mediaId: Uint8Array<ArrayBuffer>
+  ): Uint8Array<ArrayBuffer> {
     return Native.BackupKey_DeriveMediaEncryptionKey(this.contents, mediaId);
   }
 
@@ -158,7 +162,9 @@ export class BackupKey extends ByteArray {
    *
    * Only relevant for media backup keys.
    */
-  public deriveThumbnailTransitEncryptionKey(mediaId: Uint8Array): Uint8Array {
+  public deriveThumbnailTransitEncryptionKey(
+    mediaId: Uint8Array<ArrayBuffer>
+  ): Uint8Array<ArrayBuffer> {
     return Native.BackupKey_DeriveThumbnailTransitEncryptionKey(
       this.contents,
       mediaId
@@ -176,7 +182,7 @@ export class BackupForwardSecrecyToken extends ByteArray {
   private readonly __type?: never;
   static SIZE = 32;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(
       contents,
       BackupForwardSecrecyToken.checkLength(BackupForwardSecrecyToken.SIZE)

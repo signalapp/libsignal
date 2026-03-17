@@ -62,14 +62,17 @@ export class CompletablePromise {
   }
 }
 
-export function assertByteArray(hex: string, actual: Uint8Array): void {
+export function assertByteArray(
+  hex: string,
+  actual: Uint8Array<ArrayBuffer>
+): void {
   const actualHex = Buffer.from(actual).toString('hex');
 
   assert.strictEqual(hex, actualHex);
 }
 export function assertArrayEquals(
-  expected: Uint8Array,
-  actual: Uint8Array
+  expected: Uint8Array<ArrayBuffer>,
+  actual: Uint8Array<ArrayBuffer>
 ): void {
   const expectedHex = Buffer.from(expected).toString('hex');
   const actualHex = Buffer.from(actual).toString('hex');
@@ -77,8 +80,8 @@ export function assertArrayEquals(
   assert.strictEqual(expectedHex, actualHex);
 }
 export function assertArrayNotEquals(
-  expected: Uint8Array,
-  actual: Uint8Array
+  expected: Uint8Array<ArrayBuffer>,
+  actual: Uint8Array<ArrayBuffer>
 ): void {
   const expectedHex = Buffer.from(expected).toString('hex');
   const actualHex = Buffer.from(actual).toString('hex');

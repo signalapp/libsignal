@@ -318,11 +318,11 @@ export class AccountAttributes {
     capabilities,
     discoverableByPhoneNumber,
   }: {
-    recoveryPassword: Uint8Array;
+    recoveryPassword: Uint8Array<ArrayBuffer>;
     aciRegistrationId: number;
     pniRegistrationId: number;
     registrationLock: string | null;
-    unidentifiedAccessKey: Uint8Array;
+    unidentifiedAccessKey: Uint8Array<ArrayBuffer>;
     unrestrictedUnidentifiedAccess: boolean;
     capabilities: Set<string>;
     discoverableByPhoneNumber: boolean;
@@ -361,10 +361,10 @@ export class RegisterAccountResponse {
     return Native.RegisterAccountResponse_GetNumber(this);
   }
 
-  public get usernameHash(): Uint8Array | null {
+  public get usernameHash(): Uint8Array<ArrayBuffer> | null {
     return Native.RegisterAccountResponse_GetUsernameHash(this);
   }
-  public get usernameLinkHandle(): Uint8Array | null {
+  public get usernameLinkHandle(): Uint8Array<ArrayBuffer> | null {
     return Native.RegisterAccountResponse_GetUsernameLinkHandle(this);
   }
 

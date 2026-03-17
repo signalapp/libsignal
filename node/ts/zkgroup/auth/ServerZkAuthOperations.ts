@@ -36,7 +36,7 @@ export default class ServerZkAuthOperations {
   }
 
   issueAuthCredentialWithPniZkcWithRandom(
-    random: Uint8Array,
+    random: Uint8Array<ArrayBuffer>,
     aci: Aci,
     pni: Pni,
     redemptionTime: number

@@ -1997,7 +1997,7 @@ macro_rules! node_bridge_as_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
     ( $typ:ty as $node_name:ident $(, mut = false)? ) => {
         ::paste::paste! {
-            #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
+            #[doc = "ts: `interface " $typ " { readonly __type: unique symbol; }`"]
             impl node::BridgeHandle for $typ {
                 type Strategy = node::Immutable<Self>;
             }
@@ -2038,7 +2038,7 @@ macro_rules! node_bridge_as_handle {
     };
     ( $typ:ty as $node_name:ident, mut = true ) => {
         ::paste::paste! {
-            #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
+            #[doc = "ts: `interface " $typ " { readonly __type: unique symbol; }`"]
             impl node::BridgeHandle for $typ {
                 type Strategy = node::Mutable<Self>;
             }

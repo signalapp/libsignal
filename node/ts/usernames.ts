@@ -10,8 +10,8 @@ import { RANDOM_LENGTH } from './zkgroup/internal/Constants.js';
 import * as Native from './Native.js';
 
 export type UsernameLink = {
-  entropy: Uint8Array;
-  encryptedUsername: Uint8Array;
+  entropy: Uint8Array<ArrayBuffer>;
+  encryptedUsername: Uint8Array<ArrayBuffer>;
 };
 
 export function generateCandidates(
@@ -31,7 +31,7 @@ export function fromParts(
   discriminator: string,
   minNicknameLength: number,
   maxNicknameLength: number
-): { username: string; hash: Uint8Array } {
+): { username: string; hash: Uint8Array<ArrayBuffer> } {
   const hash = Native.Username_HashFromParts(
     nickname,
     discriminator,
@@ -43,19 +43,19 @@ export function fromParts(
   return { username, hash };
 }
 
-export function hash(username: string): Uint8Array {
+export function hash(username: string): Uint8Array<ArrayBuffer> {
   return Native.Username_Hash(username);
 }
 
-export function generateProof(username: string): Uint8Array {
+export function generateProof(username: string): Uint8Array<ArrayBuffer> {
   const random = randomBytes(RANDOM_LENGTH);
   return generateProofWithRandom(username, random);
 }
 
 export function generateProofWithRandom(
   username: string,
-  random: Uint8Array
-): Uint8Array {
+  random: Uint8Array<ArrayBuffer>
+): Uint8Array<ArrayBuffer> {
   return Native.Username_Proof(username, random);
 }
 
@@ -68,7 +68,7 @@ export function decryptUsernameLink(usernameLink: UsernameLink): string {
 
 export function createUsernameLink(
   username: string,
-  previousEntropy?: Uint8Array
+  previousEntropy?: Uint8Array<ArrayBuffer>
 ): UsernameLink {
   const usernameLinkData = Native.UsernameLink_Create(
     username,
@@ -80,6 +80,9 @@ export function createUsernameLink(
 }
 
 // Only for testing. Will throw on failure.
-export function verifyProof(proof: Uint8Array, hash: Uint8Array): void {
+export function verifyProof(
+  proof: Uint8Array<ArrayBuffer>,
+  hash: Uint8Array<ArrayBuffer>
+): void {
   Native.Username_Verify(proof, hash);
 }

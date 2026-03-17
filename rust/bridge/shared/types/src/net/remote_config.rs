@@ -81,7 +81,7 @@ macro_rules! define_keys {
         }
 
         impl RemoteConfigKey {
-            #[doc = concat!("ts: export const NetRemoteConfigKeys = [", $("'", $key, "', "),* ,"] as const;")]
+            #[doc = concat!("ts: `export const NetRemoteConfigKeys = [", $("'", $key, "', "),* ,"] as const;`")]
             pub const KEYS: &[&str] = &[$($key),*];
             #[cfg(test)]
             const IDENTITIER_KEY_PAIRS: &[(&str, &str)] = &[

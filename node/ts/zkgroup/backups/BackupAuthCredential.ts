@@ -17,7 +17,7 @@ import BackupCredentialType from './BackupCredentialType.js';
 export default class BackupAuthCredential extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, Native.BackupAuthCredential_CheckValidContents);
   }
 
@@ -30,7 +30,7 @@ export default class BackupAuthCredential extends ByteArray {
 
   presentWithRandom(
     serverParams: GenericServerPublicParams,
-    random: Uint8Array
+    random: Uint8Array<ArrayBuffer>
   ): BackupAuthCredentialPresentation {
     return new BackupAuthCredentialPresentation(
       Native.BackupAuthCredential_PresentDeterministic(
@@ -41,7 +41,7 @@ export default class BackupAuthCredential extends ByteArray {
     );
   }
 
-  getBackupId(): Uint8Array {
+  getBackupId(): Uint8Array<ArrayBuffer> {
     return Native.BackupAuthCredential_GetBackupId(this.contents);
   }
 

@@ -132,8 +132,10 @@ describe('Incremental MAC', () => {
     // Use uneven chunk size to trigger buffering
     const CHUNK_SIZE = 13579;
 
-    function toChunkedReadable(buffer: Uint8Array): stream.Readable {
-      const chunked = new Array<Uint8Array>();
+    function toChunkedReadable(
+      buffer: Uint8Array<ArrayBuffer>
+    ): stream.Readable {
+      const chunked = new Array<Uint8Array<ArrayBuffer>>();
       for (let i = 0; i < buffer.byteLength; i += CHUNK_SIZE) {
         chunked.push(buffer.subarray(i, i + CHUNK_SIZE));
       }

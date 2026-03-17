@@ -36,7 +36,7 @@ export class InternalRequest implements Native.Wrapper<Native.HttpRequest> {
     );
   }
 
-  public get body(): Uint8Array {
+  public get body(): Uint8Array<ArrayBuffer> {
     return Native.TESTING_ChatRequestGetBody(this);
   }
 }
@@ -46,7 +46,7 @@ export type ServerResponse = {
   status: number;
   message?: string;
   headers?: string[];
-  body?: Uint8Array;
+  body?: Uint8Array<ArrayBuffer>;
 };
 
 export class FakeChatRemote {
@@ -98,11 +98,11 @@ export class FakeChatRemote {
     Native.TESTING_FakeChatRemoteEnd_SendServerResponse(this, nativeResponse);
   }
 
-  public sendRawServerResponse(bytes: Uint8Array): void {
+  public sendRawServerResponse(bytes: Uint8Array<ArrayBuffer>): void {
     Native.TESTING_FakeChatRemoteEnd_SendRawServerResponse(this, bytes);
   }
 
-  public sendRawServerRequest(bytes: Uint8Array): void {
+  public sendRawServerRequest(bytes: Uint8Array<ArrayBuffer>): void {
     Native.TESTING_FakeChatRemoteEnd_SendRawServerRequest(this, bytes);
   }
 

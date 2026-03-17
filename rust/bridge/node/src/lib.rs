@@ -62,7 +62,7 @@ impl<'a> From<ArrayBuilder<'a>> for Handle<'a, JsArray> {
     }
 }
 
-/// ts: export function SealedSenderMultiRecipientMessage_Parse(buffer: Uint8Array): SealedSenderMultiRecipientMessage
+/// ts: `export function SealedSenderMultiRecipientMessage_Parse(buffer: Uint8Array<ArrayBuffer>): SealedSenderMultiRecipientMessage`
 fn sealed_sender_multi_recipient_message_parse(mut cx: FunctionContext) -> JsResult<JsObject> {
     let buffer_arg = cx.argument::<JsUint8Array>(0)?;
     let buffer = AssumedImmutableBuffer::new(&cx, buffer_arg);
@@ -143,7 +143,7 @@ fn sealed_sender_multi_recipient_message_parse(mut cx: FunctionContext) -> JsRes
     Ok(result)
 }
 
-/// ts: export function MinidumpToJSONString(buffer: Uint8Array): string
+/// ts: `export function MinidumpToJSONString(buffer: Uint8Array<ArrayBuffer>): string`
 fn minidump_to_json_string(mut cx: FunctionContext) -> JsResult<JsString> {
     let buffer_arg = cx.argument::<JsUint8Array>(0)?;
     let dump = Minidump::read(buffer_arg.as_slice(&cx)).expect("Failed to parse minidump");

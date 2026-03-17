@@ -33,7 +33,7 @@ export default class ServerZkReceiptOperations {
   }
 
   issueReceiptCredentialWithRandom(
-    random: Uint8Array,
+    random: Uint8Array<ArrayBuffer>,
     receiptCredentialRequest: ReceiptCredentialRequest,
     receiptExpirationTime: number,
     receiptLevel: bigint

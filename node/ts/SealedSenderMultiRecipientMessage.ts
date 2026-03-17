@@ -25,14 +25,14 @@ export interface Recipient {
  * material.
  */
 export default class SealedSenderMultiRecipientMessage {
-  readonly _buffer: Uint8Array;
+  readonly _buffer: Uint8Array<ArrayBuffer>;
   readonly _recipientMap: {
     [serviceId: string]: Native.SealedSenderMultiRecipientMessageRecipient;
   };
   readonly _excludedRecipients: string[];
   readonly _offsetOfSharedData: number;
 
-  constructor(buffer: Uint8Array) {
+  constructor(buffer: Uint8Array<ArrayBuffer>) {
     const { recipientMap, excludedRecipients, offsetOfSharedData } =
       Native.SealedSenderMultiRecipientMessage_Parse(buffer);
     this._buffer = buffer;
@@ -68,7 +68,7 @@ export default class SealedSenderMultiRecipientMessage {
    * {@link #recipientsByServiceIdString}. The same payload should be sent to all of the recipient's
    * devices.
    */
-  messageForRecipient(recipient: Recipient): Uint8Array {
+  messageForRecipient(recipient: Recipient): Uint8Array<ArrayBuffer> {
     const nativeRecipient =
       recipient as Native.SealedSenderMultiRecipientMessageRecipient;
     // Use Buffer.concat for convenience, but return a proper Uint8Array, both for the correct type

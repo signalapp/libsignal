@@ -9,7 +9,7 @@ use std::sync::atomic::AtomicBool;
 use libsignal_bridge::node::SimpleArgTypeInfo;
 use neon::prelude::*;
 
-/// ts: export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
+/// ts: `export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }`
 #[derive(Clone, Copy)]
 enum LogLevel {
     Error = 1,
@@ -188,7 +188,7 @@ fn set_max_level_from_js_level(max_level: u32) {
     log::set_max_level(log::Level::from(level).to_level_filter());
 }
 
-/// ts: export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void
+/// ts: `export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void`
 pub(crate) fn init_logger(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let max_level_arg = cx.argument::<JsNumber>(0)?;
     let max_level = u32::convert_from(&mut cx, max_level_arg)?;

@@ -11,7 +11,7 @@ export default class ReceiptCredentialPresentation extends ByteArray {
   private readonly __type?: never;
   static SIZE = 329;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, Native.ReceiptCredentialPresentation_CheckValidContents);
   }
 

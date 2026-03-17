@@ -25,13 +25,16 @@ import {
  * used by the {@link Client}.
  */
 export interface Store {
-  getLastDistinguishedTreeHead: () => Promise<Uint8Array | null>;
+  getLastDistinguishedTreeHead: () => Promise<Uint8Array<ArrayBuffer> | null>;
   setLastDistinguishedTreeHead: (
-    bytes: Readonly<Uint8Array> | null
+    bytes: Readonly<Uint8Array<ArrayBuffer>> | null
   ) => Promise<void>;
 
-  getAccountData: (aci: Aci) => Promise<Uint8Array | null>;
-  setAccountData: (aci: Aci, bytes: Readonly<Uint8Array>) => Promise<void>;
+  getAccountData: (aci: Aci) => Promise<Uint8Array<ArrayBuffer> | null>;
+  setAccountData: (
+    aci: Aci,
+    bytes: Readonly<Uint8Array<ArrayBuffer>>
+  ) => Promise<void>;
 }
 
 /**
@@ -51,7 +54,7 @@ export type AciInfo = { aci: Aci; identityKey: PublicKey };
  */
 export type E164Info = {
   e164: string;
-  unidentifiedAccessKey: Readonly<Uint8Array>;
+  unidentifiedAccessKey: Readonly<Uint8Array<ArrayBuffer>>;
 };
 
 /**
@@ -64,7 +67,7 @@ export type Request = {
   /** Unidentified access key associated with the account. Optional. */
   e164Info?: E164Info;
   /* Hash of the username associated with the account. Optional. */
-  usernameHash?: Readonly<Uint8Array>;
+  usernameHash?: Readonly<Uint8Array<ArrayBuffer>>;
 };
 
 /**
@@ -280,7 +283,7 @@ export class ClientImpl implements Client {
   private async updateDistinguished(
     store: Store,
     { abortSignal }: Readonly<Options>
-  ): Promise<Uint8Array> {
+  ): Promise<Uint8Array<ArrayBuffer>> {
     const bytes = await this.asyncContext.makeCancellable(
       abortSignal,
       Native.KeyTransparency_Distinguished(
@@ -297,7 +300,7 @@ export class ClientImpl implements Client {
   async _getLatestDistinguished(
     store: Store,
     options: Readonly<Options>
-  ): Promise<Uint8Array> {
+  ): Promise<Uint8Array<ArrayBuffer>> {
     return (
       (await store.getLastDistinguishedTreeHead()) ??
       (await this.updateDistinguished(store, options))

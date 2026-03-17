@@ -10,7 +10,7 @@ import ProfileKeyCredentialRequest from './ProfileKeyCredentialRequest.js';
 export default class ProfileKeyCredentialRequestContext extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(
       contents,
       Native.ProfileKeyCredentialRequestContext_CheckValidContents

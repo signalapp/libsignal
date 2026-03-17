@@ -72,7 +72,7 @@ class ChatServer {
 let chatServer: ChatServer;
 let network: Net;
 
-function pemToDer(pem: string): Buffer {
+function pemToDer(pem: string): Buffer<ArrayBuffer> {
   const pemContent = pem
     .replace(/-----BEGIN [^-]+-----/, '')
     .replace(/-----END [^-]+-----/, '')
@@ -128,7 +128,7 @@ describe('chat connection to mock server', () => {
       async (listener: ConnectionEventsListener | ChatServiceListener) => {
         const serviceListener = {
           onIncomingMessage: (
-            _envelope: Uint8Array,
+            _envelope: Uint8Array<ArrayBuffer>,
             _timestamp: number,
             _ack: ChatServerMessageAck
           ) => {},
@@ -188,7 +188,7 @@ describe('chat connection to mock server', () => {
               void promisedAlerts.resolve(alerts);
             },
             onIncomingMessage: (
-              _envelope: Uint8Array,
+              _envelope: Uint8Array<ArrayBuffer>,
               _timestamp: number,
               _ack: ChatServerMessageAck
             ) => {},

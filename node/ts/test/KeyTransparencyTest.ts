@@ -190,32 +190,34 @@ describe('KeyTransparency Integration', function (this: Mocha.Suite) {
 });
 
 class InMemoryKtStore implements KT.Store {
-  storage: Map<Readonly<Aci>, Array<Readonly<Uint8Array>>>;
-  distinguished: Readonly<Uint8Array> | null;
+  storage: Map<Readonly<Aci>, Array<Readonly<Uint8Array<ArrayBuffer>>>>;
+  distinguished: Readonly<Uint8Array<ArrayBuffer>> | null;
 
   constructor() {
-    this.storage = new Map<Aci, Array<Readonly<Uint8Array>>>();
+    this.storage = new Map<Aci, Array<Readonly<Uint8Array<ArrayBuffer>>>>();
     this.distinguished = null;
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async getLastDistinguishedTreeHead(): Promise<Uint8Array | null> {
+  async getLastDistinguishedTreeHead(): Promise<Uint8Array<ArrayBuffer> | null> {
     return this.distinguished;
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async setLastDistinguishedTreeHead(bytes: Readonly<Uint8Array> | null) {
+  async setLastDistinguishedTreeHead(
+    bytes: Readonly<Uint8Array<ArrayBuffer>> | null
+  ) {
     this.distinguished = bytes;
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async getAccountData(aci: Aci): Promise<Uint8Array | null> {
+  async getAccountData(aci: Aci): Promise<Uint8Array<ArrayBuffer> | null> {
     const allVersions = this.storage.get(aci) ?? [];
     return allVersions.at(-1) ?? null;
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async setAccountData(aci: Aci, bytes: Readonly<Uint8Array>) {
+  async setAccountData(aci: Aci, bytes: Readonly<Uint8Array<ArrayBuffer>>) {
     const allVersions = this.storage.get(aci) ?? [];
     allVersions.push(bytes);
     this.storage.set(aci, allVersions);

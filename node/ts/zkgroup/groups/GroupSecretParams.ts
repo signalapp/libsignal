@@ -20,7 +20,9 @@ export default class GroupSecretParams extends ByteArray {
     return GroupSecretParams.generateWithRandom(random);
   }
 
-  static generateWithRandom(random: Uint8Array): GroupSecretParams {
+  static generateWithRandom(
+    random: Uint8Array<ArrayBuffer>
+  ): GroupSecretParams {
     return new GroupSecretParams(
       Native.GroupSecretParams_GenerateDeterministic(random)
     );
@@ -34,7 +36,7 @@ export default class GroupSecretParams extends ByteArray {
     );
   }
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, Native.GroupSecretParams_CheckValidContents);
   }
 

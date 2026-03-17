@@ -72,7 +72,7 @@ export enum ErrorCode {
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
-type ServiceIdFixedWidthBinary = Uint8Array;
+type ServiceIdFixedWidthBinary = Uint8Array<ArrayBuffer>;
 
 /**
  * A failure sending to a recipient on account of not being up to date on their devices.

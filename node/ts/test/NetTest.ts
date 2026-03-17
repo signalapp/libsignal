@@ -511,7 +511,7 @@ describe('chat service api', () => {
 
       // a helper function to check that the message has been passed to the listener
       async function check(
-        serverRequest: Uint8Array,
+        serverRequest: Uint8Array<ArrayBuffer>,
         expectedMethod: sinon.SinonStub,
         expectedArguments: unknown[]
       ) {
@@ -543,7 +543,7 @@ describe('chat service api', () => {
     it('messages arrive in order', async () => {
       const listener: ChatServiceListener = {
         onIncomingMessage(
-          _envelope: Uint8Array,
+          _envelope: Uint8Array<ArrayBuffer>,
           _timestamp: number,
           _ack: ChatServerMessageAck
         ): void {
@@ -566,7 +566,7 @@ describe('chat service api', () => {
       );
 
       const completable = new CompletablePromise();
-      const callsToMake: Buffer[] = [
+      const callsToMake: Buffer<ArrayBuffer>[] = [
         INCOMING_MESSAGE_1,
         EMPTY_QUEUE,
         INVALID_MESSAGE,
@@ -617,7 +617,7 @@ describe('chat service api', () => {
       const connectionInterruptedReasons: (object | null)[] = [];
       const listener: ChatServiceListener = {
         onIncomingMessage(
-          _envelope: Uint8Array,
+          _envelope: Uint8Array<ArrayBuffer>,
           _timestamp: number,
           _ack: ChatServerMessageAck
         ): void {
@@ -761,7 +761,7 @@ describe('chat service api', () => {
           ack.send(200);
         },
         onReceivedEnvelope(
-          envelope: Uint8Array,
+          envelope: Uint8Array<ArrayBuffer>,
           ack: ChatServerMessageAck
         ): void {
           recordCall('onReceivedEnvelope', envelope);
@@ -778,7 +778,7 @@ describe('chat service api', () => {
       );
 
       const completable = new CompletablePromise();
-      const callsToMake: Buffer[] = [
+      const callsToMake: Buffer<ArrayBuffer>[] = [
         PUT_ADDRESS,
         INVALID_MESSAGE,
         PUT_ENVELOPE,

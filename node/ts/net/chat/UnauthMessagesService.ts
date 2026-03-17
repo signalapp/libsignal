@@ -25,7 +25,7 @@ declare module '../Chat' {
 
 /** See {@link UnauthMessagesService#sendMultiRecipientMessage}. */
 export type MultiRecipientMessageRequest = Readonly<{
-  payload: Uint8Array;
+  payload: Uint8Array<ArrayBuffer>;
   timestamp: number;
   auth: 'story' | GroupSendFullToken;
   onlineOnly: boolean;

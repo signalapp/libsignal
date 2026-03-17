@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import * as uuid from 'uuid';
-
 import ByteArray from '../internal/ByteArray.js';
 import * as Native from '../../Native.js';
 
@@ -12,12 +10,12 @@ import BackupAuthCredentialRequest from './BackupAuthCredentialRequest.js';
 import BackupAuthCredentialResponse from './BackupAuthCredentialResponse.js';
 import BackupAuthCredential from './BackupAuthCredential.js';
 import GenericServerPublicParams from '../GenericServerPublicParams.js';
-import type { Uuid } from '../../index.js';
+import { parseUuid, type Uuid } from '../../index.js';
 
 export default class BackupAuthCredentialRequestContext extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(
       contents,
       Native.BackupAuthCredentialRequestContext_CheckValidContents
@@ -25,11 +23,11 @@ export default class BackupAuthCredentialRequestContext extends ByteArray {
   }
 
   static create(
-    backupKey: Uint8Array,
+    backupKey: Uint8Array<ArrayBuffer>,
     aci: Uuid
   ): BackupAuthCredentialRequestContext {
     return new BackupAuthCredentialRequestContext(
-      Native.BackupAuthCredentialRequestContext_New(backupKey, uuid.parse(aci))
+      Native.BackupAuthCredentialRequestContext_New(backupKey, parseUuid(aci))
     );
   }
 

@@ -55,8 +55,8 @@ export type MessageBackupKeyInput = Readonly<
       forwardSecrecyToken?: BackupForwardSecrecyToken;
     }
   | {
-      backupKey: BackupKey | Uint8Array;
-      backupId: Uint8Array;
+      backupKey: BackupKey | Uint8Array<ArrayBuffer>;
+      backupId: Uint8Array<ArrayBuffer>;
       forwardSecrecyToken?: BackupForwardSecrecyToken;
     }
 >;
@@ -101,12 +101,12 @@ export class MessageBackupKey {
   }
 
   /** An HMAC key used to sign a backup file. */
-  public get hmacKey(): Uint8Array {
+  public get hmacKey(): Uint8Array<ArrayBuffer> {
     return Native.MessageBackupKey_GetHmacKey(this);
   }
 
   /** An AES-256-CBC key used to encrypt a backup file. */
-  public get aesKey(): Uint8Array {
+  public get aesKey(): Uint8Array<ArrayBuffer> {
     return Native.MessageBackupKey_GetAesKey(this);
   }
 }
@@ -188,7 +188,7 @@ export class OnlineBackupValidator {
    *
    * @throws BackupValidationError on error
    */
-  constructor(backupInfo: Uint8Array, purpose: Purpose) {
+  constructor(backupInfo: Uint8Array<ArrayBuffer>, purpose: Purpose) {
     this._nativeHandle = Native.OnlineBackupValidator_New(backupInfo, purpose);
   }
 
@@ -199,7 +199,7 @@ export class OnlineBackupValidator {
    *
    * @throws BackupValidationError on error
    */
-  addFrame(frame: Uint8Array): void {
+  addFrame(frame: Uint8Array<ArrayBuffer>): void {
     Native.OnlineBackupValidator_AddFrame(this, frame);
   }
 
@@ -318,7 +318,7 @@ export class BackupJsonExporter {
    * @throws Error if the input is invalid.
    */
   public static start(
-    backupInfo: Uint8Array,
+    backupInfo: Uint8Array<ArrayBuffer>,
     options?: { validate?: boolean }
   ): { exporter: BackupJsonExporter; chunk: string } {
     const shouldValidate = options?.validate ?? true;
@@ -337,7 +337,9 @@ export class BackupJsonExporter {
    * aborting.
    * @throws Error if the input data cannot be parsed.
    */
-  public exportFrames(frames: Uint8Array): BackupJsonFrameResult[] {
+  public exportFrames(
+    frames: Uint8Array<ArrayBuffer>
+  ): BackupJsonFrameResult[] {
     return Native.BackupJsonExporter_ExportFrames(this, frames).map(
       ([line, errorMessage]) => ({
         ...(line !== null && { line }),

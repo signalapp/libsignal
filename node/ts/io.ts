@@ -10,7 +10,7 @@ import type { IoError } from './Errors.js';
  * An abstract class representing an input stream of bytes.
  */
 export abstract class InputStream implements Native.InputStream {
-  _read(amount: number): Promise<Uint8Array> {
+  _read(amount: number): Promise<Uint8Array<ArrayBuffer>> {
     return this.read(amount);
   }
 
@@ -37,7 +37,7 @@ export abstract class InputStream implements Native.InputStream {
    * @returns A promise yielding a {@link Uint8Array} containing the read bytes.
    * @throws {IoError} If an I/O error occurred while reading from the input.
    */
-  abstract read(amount: number): Promise<Uint8Array>;
+  abstract read(amount: number): Promise<Uint8Array<ArrayBuffer>>;
 
   /**
    * Skip an amount of bytes in the input stream.

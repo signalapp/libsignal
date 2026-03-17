@@ -101,7 +101,7 @@ describe('ZKGroup', () => {
 
   it('deserializationErrorType', () => {
     function assertDeserializeInvalidThrows<T>(
-      constructor: new (serialized: Uint8Array) => T
+      constructor: new (serialized: Uint8Array<ArrayBuffer>) => T
     ) {
       assert.throws(
         () => {

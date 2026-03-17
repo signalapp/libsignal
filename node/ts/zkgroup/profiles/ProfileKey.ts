@@ -13,7 +13,7 @@ export default class ProfileKey extends ByteArray {
   private readonly __type?: never;
   static SIZE = 32;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, ProfileKey.checkLength(ProfileKey.SIZE));
   }
 
@@ -35,7 +35,7 @@ export default class ProfileKey extends ByteArray {
     );
   }
 
-  deriveAccessKey(): Uint8Array {
+  deriveAccessKey(): Uint8Array<ArrayBuffer> {
     return Native.ProfileKey_DeriveAccessKey(this.contents);
   }
 }

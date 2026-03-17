@@ -240,7 +240,7 @@ fn generate_ts_signature_comment(
     let result_type_str = result_type_format(result_type(&sig.output));
 
     format!(
-        "ts: export function {}({}): {}",
+        "ts: `export function {}({}): {}`",
         name_without_prefix,
         ts_args.join(", "),
         result_type_str
@@ -269,7 +269,7 @@ pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait) -> Result<TokenStream2> 
     let callback_ts_decls = callbacks.iter().map(|c| &c.ts_decl);
 
     let ts_declaration_comment = format!(
-        "ts: export /*trait*/ type {trait_name} = {{\n{}\n}};",
+        "ts: `export /*trait*/ type {trait_name} = {{\n{}\n}};`",
         callback_ts_decls.format("\n")
     );
 

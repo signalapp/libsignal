@@ -64,7 +64,7 @@ def translate_to_ts(typ: str) -> str:
 
     type_map = {
         '()': 'void',
-        '&[u8]': 'Uint8Array',
+        '&[u8]': 'Uint8Array<ArrayBuffer>',
         'i32': 'number',
         'u8': 'number',
         'u16': 'number',
@@ -73,26 +73,26 @@ def translate_to_ts(typ: str) -> str:
         'bool': 'boolean',
         'String': 'string',
         '&str': 'string',
-        'Vec<u8>': 'Uint8Array',
-        'Box<[u8]>': 'Uint8Array',
-        'bytes::Bytes': 'Uint8Array',
-        'ServiceId': 'Uint8Array',
-        'Aci': 'Uint8Array',
-        'Pni': 'Uint8Array',
+        'Vec<u8>': 'Uint8Array<ArrayBuffer>',
+        'Box<[u8]>': 'Uint8Array<ArrayBuffer>',
+        'bytes::Bytes': 'Uint8Array<ArrayBuffer>',
+        'ServiceId': 'Uint8Array<ArrayBuffer>',
+        'Aci': 'Uint8Array<ArrayBuffer>',
+        'Pni': 'Uint8Array<ArrayBuffer>',
         'E164': 'string',
-        "ServiceIdSequence<'_>": 'Uint8Array',
+        "ServiceIdSequence<'_>": 'Uint8Array<ArrayBuffer>',
         'PathAndQuery': 'string',
         'LanguageList': 'string[]',
-        '&BackupKey': 'Uint8Array',
-        'MultiRecipientSendAuthorization': 'Uint8Array|null',
-        'DisconnectCause': 'Error|null',
+        '&BackupKey': 'Uint8Array<ArrayBuffer>',
+        'MultiRecipientSendAuthorization': 'Uint8Array<ArrayBuffer> | null',
+        'DisconnectCause': 'Error | null',
     }
 
     if typ in type_map:
         return type_map[typ]
 
     if typ.startswith('[u8;') or typ.startswith('&[u8;'):
-        return 'Uint8Array'
+        return 'Uint8Array<ArrayBuffer>'
 
     if typ.startswith('&mutdyn'):
         return typ[7:]
@@ -253,9 +253,9 @@ def collect_decls(crate_dir: str, features: Iterable[str] = ()) -> Iterator[str]
         print('Exiting with error')
         sys.exit(1)
 
-    comment_decl = re.compile(r'\s*///\s*ts: (.+)')
+    comment_decl = re.compile(r'\s*///\s*ts: `(.+)`')
     # Note that the doc attribute is sometimes wrapped onto two lines.
-    attr_decl = re.compile(r'\s*(?:#\[doc\s*=\s*)?"ts: (.+)"\]')
+    attr_decl = re.compile(r'\s*(?:#\[doc\s*=\s*)?"ts: `(.+)`"\]')
 
     # Make sure /not/ to match arguments with nested parentheses,
     # which won't survive textual splitting below.

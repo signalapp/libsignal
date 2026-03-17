@@ -8,7 +8,7 @@ import * as uuid from 'uuid';
 
 import * as Native from '../../Native.js';
 import { Aci } from '../../Address.js';
-import { Uuid } from '../../uuid.js';
+import { parseUuid, Uuid } from '../../uuid.js';
 import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
 
 // For documentation
@@ -35,7 +35,7 @@ export interface UnauthUsernamesService {
    */
   lookUpUsernameHash: (
     request: {
-      hash: Uint8Array;
+      hash: Uint8Array<ArrayBuffer>;
     },
     options?: RequestOptions
   ) => Promise<Aci | null>;
@@ -54,17 +54,17 @@ export interface UnauthUsernamesService {
   lookUpUsernameLink: (
     request: {
       uuid: Uuid;
-      entropy: Uint8Array;
+      entropy: Uint8Array<ArrayBuffer>;
     },
     options?: RequestOptions
-  ) => Promise<{ username: string; hash: Uint8Array } | null>;
+  ) => Promise<{ username: string; hash: Uint8Array<ArrayBuffer> } | null>;
 }
 
 UnauthenticatedChatConnection.prototype.lookUpUsernameHash = async function (
   {
     hash,
   }: {
-    hash: Uint8Array;
+    hash: Uint8Array<ArrayBuffer>;
   },
   options?: RequestOptions
 ): Promise<Aci | null> {
@@ -85,16 +85,16 @@ UnauthenticatedChatConnection.prototype.lookUpUsernameLink = async function (
     entropy,
   }: {
     uuid: Uuid;
-    entropy: Uint8Array;
+    entropy: Uint8Array<ArrayBuffer>;
   },
   options?: RequestOptions
-): Promise<{ username: string; hash: Uint8Array } | null> {
+): Promise<{ username: string; hash: Uint8Array<ArrayBuffer> } | null> {
   const response = await this._asyncContext.makeCancellable(
     options?.abortSignal,
     Native.UnauthenticatedChatConnection_look_up_username_link(
       this._asyncContext,
       this._chatService,
-      uuid.parse(linkUuid),
+      parseUuid(linkUuid),
       entropy
     )
   );

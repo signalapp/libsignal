@@ -34,7 +34,7 @@ macro_rules! bridge_as_fixed_length_serializable {
         ::paste::paste! {
             // Declare a marker type for TypeScript, the same as bridge_as_handle.
             // (This is harmless for the other bridges.)
-            #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
+            #[doc = "ts: `interface " $typ " { readonly __type: unique symbol; }`"]
             impl FixedLengthBincodeSerializable for $typ {
                 type Array = [u8; [<$typ:snake:upper _LEN>]];
             }
