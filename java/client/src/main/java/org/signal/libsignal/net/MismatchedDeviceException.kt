@@ -58,6 +58,7 @@ public class MismatchedDeviceException :
 
   public val entries: Array<Entry>
 
+  @CalledFromNative
   public constructor(message: String, entries: Array<Entry>) : super(message) {
     this.entries = entries
   }

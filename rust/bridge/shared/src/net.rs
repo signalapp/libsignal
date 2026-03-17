@@ -21,7 +21,6 @@ use crate::*;
 pub(crate) mod cdsi;
 pub(crate) mod chat;
 mod keytrans;
-mod profiles;
 mod registration;
 mod svrb;
 mod tokio;

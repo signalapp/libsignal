@@ -37,7 +37,7 @@ use libsignal_net::infra::route::{
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagleAlgorithm};
 use libsignal_net_chat::api::Unauth;
-use libsignal_protocol::Timestamp;
+use libsignal_protocol::{IdentityKey, PreKeyBundle, Timestamp};
 use static_assertions::assert_impl_all;
 
 use crate::net::ConnectionManager;
@@ -754,4 +754,9 @@ impl dyn ProvisioningListener {
             self.received_server_request(event);
         })
     }
+}
+
+pub struct PreKeysResponse {
+    pub identity_key: IdentityKey,
+    pub pre_key_bundles: Vec<PreKeyBundle>,
 }

@@ -121,6 +121,11 @@ export type JsonFrameExportResult = [
   errorMessage: string | null
 ];
 
+export type PreKeysResponse = {
+  identityKey: PublicKey;
+  preKeyBundles: PreKeyBundle[];
+};
+
 export type AccountEntropyPool = string;
 
 export type CancellablePromise<T> = Promise<T> & {

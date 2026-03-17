@@ -331,6 +331,12 @@ impl FfiMismatchedDevicesError {
     }
 }
 
+#[repr(C)]
+pub struct FfiPreKeysResponse {
+    identity_key: MutPointer<PublicKey>,
+    pre_key_bundles: OwnedBufferOf<MutPointer<PreKeyBundle>>,
+}
+
 #[cfg_attr(doc, visibility::make(pub))]
 struct UnexpectedPanic(Box<dyn std::any::Any + Send>);
 

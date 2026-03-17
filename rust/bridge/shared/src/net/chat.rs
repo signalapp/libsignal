@@ -6,6 +6,7 @@
 use std::convert::Infallible;
 use std::time::Duration;
 
+use ::zkgroup::groups::GroupSendFullToken;
 use http::uri::InvalidUri;
 use http::{HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
@@ -15,12 +16,14 @@ use libsignal_bridge_types::support::AsType;
 use libsignal_core::ServiceId;
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::{self, ConnectError, LanguageList, Response as ChatResponse, SendError};
-use libsignal_net_chat::api::RequestError;
+use libsignal_net_chat::api::keys::{DeviceSpecifier, GetPreKeysFailure, UnauthenticatedChatApi};
 use libsignal_net_chat::api::messages::{
     MultiRecipientMessageResponse, MultiRecipientSendAuthorization, MultiRecipientSendFailure,
     UnauthenticatedChatApi as _,
 };
+use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
+use libsignal_net_chat::api::{RequestError, UserBasedAuthorization};
 use libsignal_protocol::Timestamp;
 use uuid::Uuid;
 
@@ -277,4 +280,54 @@ fn ProvisioningChatConnection_info(chat: &ProvisioningChatConnection) -> ChatCon
 #[bridge_io(TokioAsyncContext)]
 async fn ProvisioningChatConnection_disconnect(chat: &ProvisioningChatConnection) {
     chat.disconnect().await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_get_pre_keys_access_key_auth(
+    chat: &UnauthenticatedChatConnection,
+    auth: [u8; 16],
+    target: ServiceId,
+    device: DeviceSpecifier,
+) -> Result<PreKeysResponse, RequestError<GetPreKeysFailure>> {
+    chat.as_typed(|chat| {
+        Box::pin(async move {
+            let (identity_key, pre_key_bundles) = chat
+                .get_pre_keys(UserBasedAuthorization::AccessKey(auth), target, device)
+                .await?;
+            Ok(PreKeysResponse {
+                identity_key,
+                pre_key_bundles,
+            })
+        })
+    })
+    .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_get_pre_keys_access_group_auth(
+    chat: &UnauthenticatedChatConnection,
+    auth: GroupSendFullToken,
+    target: ServiceId,
+    device: DeviceSpecifier,
+) -> Result<PreKeysResponse, RequestError<GetPreKeysFailure>> {
+    chat.as_typed(|chat| {
+        Box::pin(async move {
+            let (identity_key, pre_key_bundles) = chat
+                .get_pre_keys(UserBasedAuthorization::Group(auth), target, device)
+                .await?;
+            Ok(PreKeysResponse {
+                identity_key,
+                pre_key_bundles,
+            })
+        })
+    })
+    .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_account_exists(
+    chat: &UnauthenticatedChatConnection,
+    account: ServiceId,
+) -> Result<bool, RequestError<Infallible>> {
+    chat.as_typed(|chat| chat.account_exists(account)).await
 }

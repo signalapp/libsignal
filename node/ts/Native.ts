@@ -121,6 +121,11 @@ export type JsonFrameExportResult = [
   errorMessage: string | null
 ];
 
+export type PreKeysResponse = {
+  identityKey: PublicKey;
+  preKeyBundles: PreKeyBundle[];
+};
+
 export type AccountEntropyPool = string;
 
 export type CancellablePromise<T> = Promise<T> & {
@@ -488,13 +493,15 @@ type NativeFunctions = {
   ProvisioningChatConnection_init_listener: (chat: Wrapper<ProvisioningChatConnection>, listener: ProvisioningListener) => void;
   ProvisioningChatConnection_info: (chat: Wrapper<ProvisioningChatConnection>) => ChatConnectionInfo;
   ProvisioningChatConnection_disconnect: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<ProvisioningChatConnection>) => CancellablePromise<void>;
+  UnauthenticatedChatConnection_get_pre_keys_access_key_auth: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, auth: Uint8Array<ArrayBuffer>, target: Uint8Array<ArrayBuffer>, device: number) => CancellablePromise<PreKeysResponse>;
+  UnauthenticatedChatConnection_get_pre_keys_access_group_auth: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, auth: Uint8Array<ArrayBuffer>, target: Uint8Array<ArrayBuffer>, device: number) => CancellablePromise<PreKeysResponse>;
+  UnauthenticatedChatConnection_account_exists: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, account: Uint8Array<ArrayBuffer>) => CancellablePromise<boolean>;
   KeyTransparency_AciSearchKey: (aci: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
   KeyTransparency_E164SearchKey: (e164: string) => Uint8Array<ArrayBuffer>;
   KeyTransparency_UsernameHashSearchKey: (hash: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
   KeyTransparency_Search: (asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, aci: Uint8Array<ArrayBuffer>, aciIdentityKey: Wrapper<PublicKey>, e164: string | null, unidentifiedAccessKey: Uint8Array<ArrayBuffer> | null, usernameHash: Uint8Array<ArrayBuffer> | null, accountData: Uint8Array<ArrayBuffer> | null, lastDistinguishedTreeHead: Uint8Array<ArrayBuffer>) => CancellablePromise<Uint8Array<ArrayBuffer>>;
   KeyTransparency_Monitor: (asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, aci: Uint8Array<ArrayBuffer>, aciIdentityKey: Wrapper<PublicKey>, e164: string | null, unidentifiedAccessKey: Uint8Array<ArrayBuffer> | null, usernameHash: Uint8Array<ArrayBuffer> | null, accountData: Uint8Array<ArrayBuffer> | null, lastDistinguishedTreeHead: Uint8Array<ArrayBuffer>, isSelfMonitor: boolean) => CancellablePromise<Uint8Array<ArrayBuffer>>;
   KeyTransparency_Distinguished: (asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, lastDistinguishedTreeHead: Uint8Array<ArrayBuffer> | null) => CancellablePromise<Uint8Array<ArrayBuffer>>;
-  UnauthenticatedChatConnection_account_exists: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, account: Uint8Array<ArrayBuffer>) => CancellablePromise<boolean>;
   RegistrationService_CreateSession: (asyncRuntime: Wrapper<TokioAsyncContext>, createSession: RegistrationCreateSessionRequest, connectChat: ConnectChatBridge) => CancellablePromise<RegistrationService>;
   RegistrationService_ResumeSession: (asyncRuntime: Wrapper<TokioAsyncContext>, sessionId: string, number: string, connectChat: ConnectChatBridge) => CancellablePromise<RegistrationService>;
   RegistrationService_RequestVerificationCode: (asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, transport: string, client: string, languages: string[]) => CancellablePromise<void>;
@@ -1040,13 +1047,15 @@ const { registerErrors,
   ProvisioningChatConnection_init_listener,
   ProvisioningChatConnection_info,
   ProvisioningChatConnection_disconnect,
+  UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
+  UnauthenticatedChatConnection_get_pre_keys_access_group_auth,
+  UnauthenticatedChatConnection_account_exists,
   KeyTransparency_AciSearchKey,
   KeyTransparency_E164SearchKey,
   KeyTransparency_UsernameHashSearchKey,
   KeyTransparency_Search,
   KeyTransparency_Monitor,
   KeyTransparency_Distinguished,
-  UnauthenticatedChatConnection_account_exists,
   RegistrationService_CreateSession,
   RegistrationService_ResumeSession,
   RegistrationService_RequestVerificationCode,
@@ -1594,13 +1603,15 @@ export { registerErrors,
   ProvisioningChatConnection_init_listener,
   ProvisioningChatConnection_info,
   ProvisioningChatConnection_disconnect,
+  UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
+  UnauthenticatedChatConnection_get_pre_keys_access_group_auth,
+  UnauthenticatedChatConnection_account_exists,
   KeyTransparency_AciSearchKey,
   KeyTransparency_E164SearchKey,
   KeyTransparency_UsernameHashSearchKey,
   KeyTransparency_Search,
   KeyTransparency_Monitor,
   KeyTransparency_Distinguished,
-  UnauthenticatedChatConnection_account_exists,
   RegistrationService_CreateSession,
   RegistrationService_ResumeSession,
   RegistrationService_RequestVerificationCode,

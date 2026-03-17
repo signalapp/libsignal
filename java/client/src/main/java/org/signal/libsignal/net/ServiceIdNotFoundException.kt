@@ -1,5 +1,5 @@
 //
-// Copyright 2025 Signal Messenger, LLC.
+// Copyright 2026 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -9,14 +9,13 @@ import org.signal.libsignal.internal.CalledFromNative
 import java.io.IOException
 
 /**
- * A request requires authorization, but the provided authorization (if any) was incorrect or
- * insufficient.
+ * A request relating to a [org.signal.libsignal.protocol.ServiceId] could not be completed as the
+ * ServiceId, or its devices, could not be found.
  *
  * See the specific request docs for more information.
  */
-public class RequestUnauthorizedException :
+public class ServiceIdNotFoundException :
   IOException,
-  MultiRecipientSendFailure,
   GetPreKeysError {
   @CalledFromNative
   public constructor(message: String) : super(message) {

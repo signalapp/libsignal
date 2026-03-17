@@ -96,6 +96,10 @@ extension SignalCPromiseOptionalPairOfc_charu832: PromiseStruct {
     typealias Result = SignalOptionalPairOfc_charu832
 }
 
+extension SignalCPromiseFfiPreKeysResponse: PromiseStruct {
+    typealias Result = SignalFfiPreKeysResponse
+}
+
 /// A type-erased version of ``Completer``.
 ///
 /// Not for direct use, see Completer instead.

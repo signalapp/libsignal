@@ -1106,6 +1106,27 @@ impl JniError for libsignal_net_chat::api::messages::MultiRecipientSendFailure {
     }
 }
 
+impl JniError for libsignal_net_chat::api::keys::GetPreKeysFailure {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut JNIEnv<'a>,
+    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        let message = self.to_string();
+        match self {
+            Self::Unauthorized => make_single_message_throwable(
+                env,
+                &message,
+                ClassName("org.signal.libsignal.net.RequestUnauthorizedException"),
+            ),
+            Self::NotFound => make_single_message_throwable(
+                env,
+                &message,
+                ClassName("org.signal.libsignal.net.ServiceIdNotFoundException"),
+            ),
+        }
+    }
+}
+
 /// Translates errors into Java exceptions.
 ///
 /// Exceptions thrown in callbacks will be rethrown; all other errors will be mapped to an

@@ -36,6 +36,11 @@ impl IdentityKey {
         &self.public_key
     }
 
+    /// Return the public key representing this identity
+    pub fn into_public_key(self) -> PublicKey {
+        self.public_key
+    }
+
     /// Return an owned byte slice which can be deserialized with [`Self::decode`].
     #[inline]
     pub fn serialize(&self) -> Box<[u8]> {

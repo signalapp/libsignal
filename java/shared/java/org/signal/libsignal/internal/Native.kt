@@ -1284,6 +1284,10 @@ internal object Native {
   @JvmStatic
   public external fun UnauthenticatedChatConnection_disconnect(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Void?>
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_get_pre_keys_access_group_auth(asyncRuntime: ObjectHandle, chat: ObjectHandle, auth: ByteArray, target: ByteArray, device: Int): CompletableFuture<Object>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_get_pre_keys_access_key_auth(asyncRuntime: ObjectHandle, chat: ObjectHandle, auth: ByteArray, target: ByteArray, device: Int): CompletableFuture<Object>
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_info(chat: ObjectHandle): ObjectHandle
   @JvmStatic
   public external fun UnauthenticatedChatConnection_init_listener(chat: ObjectHandle, listener: BridgeChatListener): Unit

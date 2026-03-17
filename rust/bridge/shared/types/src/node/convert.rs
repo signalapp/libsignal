@@ -12,16 +12,18 @@ use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
+use libsignal_net_chat::api::keys::DeviceSpecifier;
 use neon::prelude::*;
 use neon::types::JsBigInt;
 use paste::paste;
 use zkgroup::ZkGroupDeserializationFailure;
+use zkgroup::groups::GroupSendFullToken;
 
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::{
-    ChatListener, NodeChatListener, NodeProvisioningListener, ProvisioningListener,
+    ChatListener, NodeChatListener, NodeProvisioningListener, PreKeysResponse, ProvisioningListener,
 };
 use crate::protocol::storage::{
     NodeBridgeIdentityKeyStore, NodeBridgeKyberPreKeyStore, NodeBridgePreKeyStore,
@@ -420,6 +422,40 @@ impl CallbackResultTypeInfo for PrivateKey {
         Ok(foreign.as_inner().0)
     }
 }
+impl SimpleArgTypeInfo for [u8; 16] {
+    type ArgType = JsUint8Array;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        foreign.as_slice(cx).try_into().ok().ok_or_else(|| {
+            cx.throw_type_error::<_, ()>("Expected 16 bytes")
+                .expect_err("throw_type_error always produces Err")
+        })
+    }
+}
+
+impl SimpleArgTypeInfo for DeviceSpecifier {
+    type ArgType = JsNumber;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let foreign_float = foreign.value(cx);
+        #[allow(clippy::cast_possible_truncation)]
+        let foreign = foreign_float as i32;
+        if foreign as f64 != foreign_float {
+            return cx.throw_range_error("DeviceSpecifier value wasn't an i32");
+        }
+        if foreign == -1 {
+            Ok(Self::AllDevices)
+        } else {
+            u8::try_from(foreign)
+                .ok()
+                .and_then(|id| DeviceId::new(id).ok())
+                .map(DeviceSpecifier::Specific)
+                .ok_or_else(|| {
+                    cx.throw_range_error::<_, ()>("Illegal DeviceSpecifier value")
+                        .expect_err("throw_range_error always produces Err")
+                })
+        }
+    }
+}
 
 impl CallbackResultTypeInfo for PreKeyRecord {
     type ResultType = DefaultJsBox<JsBoxContentsFor<PreKeyRecord>>;
@@ -502,6 +538,18 @@ impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSend
                 })?;
             Ok(Self::Group(token))
         }
+    }
+}
+
+impl SimpleArgTypeInfo for GroupSendFullToken {
+    type ArgType = JsUint8Array;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let elements = foreign.downcast_or_throw::<JsUint8Array, _>(cx)?;
+        let bytes = elements.as_slice(cx);
+        zkgroup::deserialize(bytes).or_else(|_: ZkGroupDeserializationFailure| {
+            cx.throw_type_error("bad GroupSendFullToken")
+        })
     }
 }
 
@@ -1257,6 +1305,27 @@ impl<'storage, const LEN: usize> AsyncArgTypeInfo<'storage> for &'storage [u8; L
     }
     fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
         (&**stored).try_into().expect("checked length already")
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for PreKeysResponse {
+    type ResultType = JsObject;
+
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let identity_key = self.identity_key.into_public_key().convert_into(cx)?;
+        let pre_key_bundles = cx.empty_array();
+        for (i, bundle) in self.pre_key_bundles.into_iter().enumerate() {
+            let bundle = bundle.convert_into(cx)?;
+            pre_key_bundles.set(
+                cx,
+                u32::try_from(i).expect("We don't have u32::MAX prekeys"),
+                bundle,
+            )?;
+        }
+        let obj = cx.empty_object();
+        obj.set(cx, "identityKey", identity_key)?;
+        obj.set(cx, "preKeyBundles", pre_key_bundles)?;
+        Ok(obj)
     }
 }
 

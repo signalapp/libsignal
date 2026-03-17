@@ -4,6 +4,7 @@
 //
 
 use async_trait::async_trait;
+use displaydoc::Display;
 use libsignal_core::{DeviceId, ServiceId};
 use libsignal_protocol::{IdentityKey, PreKeyBundle};
 
@@ -19,7 +20,7 @@ pub enum DeviceSpecifier {
 }
 
 /// Recoverable errors produced by [`UnauthenticatedChatApi::get_pre_keys`].
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub enum GetPreKeysFailure {
     /// The provided authorization is invalid for this fetch.
     Unauthorized,

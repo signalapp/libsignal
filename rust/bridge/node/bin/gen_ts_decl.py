@@ -83,6 +83,8 @@ def translate_to_ts(typ: str) -> str:
         "ServiceIdSequence<'_>": 'Uint8Array<ArrayBuffer>',
         'PathAndQuery': 'string',
         'LanguageList': 'string[]',
+        'GroupSendFullToken': 'Uint8Array<ArrayBuffer>',
+        'DeviceSpecifier': 'number',
         '&BackupKey': 'Uint8Array<ArrayBuffer>',
         'MultiRecipientSendAuthorization': 'Uint8Array<ArrayBuffer> | null',
         'DisconnectCause': 'Error | null',

@@ -73,6 +73,7 @@ public enum SignalError: Error {
     case keyTransparencyVerificationFailed(String)
     case requestUnauthorized(String)
     case mismatchedDevices(entries: [MismatchedDeviceEntry], message: String)
+    case serviceIdNotFound(String)
 
     case unknown(UInt32, String)
 }
@@ -332,6 +333,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
             entries: UnsafeBufferPointer(start: entries.base, count: entries.length).map { MismatchedDeviceEntry($0) },
             message: errStr
         )
+    case SignalErrorCodeServiceIdNotFound:
+        throw SignalError.serviceIdNotFound(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

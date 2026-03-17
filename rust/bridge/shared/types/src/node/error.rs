@@ -8,6 +8,7 @@ use std::fmt;
 
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::ws::WebSocketConnectError;
+use libsignal_net_chat::api::keys::GetPreKeysFailure;
 use neon::thread::LocalKey;
 #[cfg(feature = "signal-media")]
 use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError};
@@ -894,6 +895,27 @@ impl SignalNodeError for libsignal_net_chat::api::DisconnectedError {
             Self::ConnectionInvalidated => "ConnectionInvalidated",
             Self::Transport { .. } => IO_ERROR,
             Self::Closed => "ChatServiceInactive",
+        };
+        new_js_error(
+            cx,
+            Some(name),
+            &message,
+            operation_name,
+            no_extra_properties,
+        )
+    }
+}
+
+impl SignalNodeError for libsignal_net_chat::api::keys::GetPreKeysFailure {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        cx: &mut C,
+        operation_name: &str,
+    ) -> Handle<'a, JsError> {
+        let message = self.to_string();
+        let name = match self {
+            GetPreKeysFailure::Unauthorized => "RequestUnauthorized",
+            GetPreKeysFailure::NotFound => "ServiceIdNotFound",
         };
         new_js_error(
             cx,

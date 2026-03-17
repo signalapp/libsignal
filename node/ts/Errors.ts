@@ -69,6 +69,8 @@ export enum ErrorCode {
 
   RequestUnauthorized,
   MismatchedDevices,
+
+  ServiceIdNotFound,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -382,6 +384,10 @@ export type MismatchedDevicesError = LibSignalErrorCommon & {
   readonly entries: MismatchedDevicesEntry[];
 };
 
+export type ServiceIdNotFound = LibSignalErrorCommon & {
+  code: ErrorCode.ServiceIdNotFound;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -431,4 +437,5 @@ export type LibSignalError =
   | KeyTransparencyVerificationFailed
   | IncrementalMacVerificationFailed
   | RequestUnauthorizedError
-  | MismatchedDevicesError;
+  | MismatchedDevicesError
+  | ServiceIdNotFound;

@@ -11,16 +11,20 @@ use std::ops::Deref;
 use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net_chat::api::ChallengeOption;
+use libsignal_net_chat::api::keys::DeviceSpecifier;
 use libsignal_net_chat::api::registration::PushToken;
 use libsignal_protocol::*;
 use paste::paste;
 use uuid::Uuid;
 use zkgroup::ZkGroupDeserializationFailure;
+use zkgroup::groups::GroupSendFullToken;
 
 use super::*;
+use crate::ffi;
 use crate::io::{InputStream, SyncInputStream};
 use crate::net::chat::{
-    ChatListener, FfiChatListenerStruct, FfiProvisioningListenerStruct, ProvisioningListener,
+    ChatListener, FfiChatListenerStruct, FfiProvisioningListenerStruct, PreKeysResponse,
+    ProvisioningListener,
 };
 use crate::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushToken,
@@ -427,6 +431,18 @@ impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSend
     }
 }
 
+impl SimpleArgTypeInfo for GroupSendFullToken {
+    type ArgType = BorrowedSliceOf<c_uchar>;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let slice = unsafe { foreign.as_slice()? };
+        let token = zkgroup::deserialize(slice).map_err(|_: ZkGroupDeserializationFailure| {
+            IllegalArgumentError::new("bad GroupSendFullToken")
+        })?;
+        Ok(token)
+    }
+}
+
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;
 
@@ -441,6 +457,16 @@ impl<const LEN: usize> SimpleArgTypeInfo for &'_ [u8; LEN] {
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn convert_from(arg: *const [u8; LEN]) -> SignalFfiResult<Self> {
         unsafe { arg.as_ref() }.ok_or(NullPointerError.into())
+    }
+}
+
+impl<const LEN: usize> SimpleArgTypeInfo for [u8; LEN] {
+    type ArgType = *const [u8; LEN];
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn convert_from(arg: *const [u8; LEN]) -> SignalFfiResult<Self> {
+        unsafe { arg.as_ref() }
+            .ok_or(NullPointerError.into())
+            .copied()
     }
 }
 
@@ -661,6 +687,20 @@ impl SimpleArgTypeInfo for crate::net::registration::SignedPublicPreKey {
             public_key,
             signature,
         })
+    }
+}
+
+impl SimpleArgTypeInfo for DeviceSpecifier {
+    type ArgType = i32;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        if foreign == -1 {
+            Ok(DeviceSpecifier::AllDevices)
+        } else {
+            Ok(DeviceSpecifier::Specific(foreign.try_into().map_err(
+                |_| IllegalArgumentError::new("bad DeviceSpecifier"),
+            )?))
+        }
     }
 }
 
@@ -1112,6 +1152,23 @@ impl ResultTypeInfo for libsignal_net::cdsi::LookupResponse {
     }
 }
 
+impl ResultTypeInfo for PreKeysResponse {
+    type ResultType = ffi::FfiPreKeysResponse;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(ffi::FfiPreKeysResponse {
+            identity_key: Box::into_raw(Box::new(self.identity_key.into_public_key())).into(),
+            pre_key_bundles: OwnedBufferOf::from(
+                self.pre_key_bundles
+                    .into_iter()
+                    .map(|x| MutPointer::from(Box::into_raw(Box::new(x))))
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice(),
+            ),
+        })
+    }
+}
+
 impl ResultTypeInfo for libsignal_net::chat::Response {
     type ResultType = FfiChatResponse;
 
@@ -1341,6 +1398,7 @@ macro_rules! ffi_arg_type {
     (MultiRecipientSendAuthorization) => (ffi_arg_type!(&[u8]));
     (&SignalFfiError) => (ffi::UnwindSafeArg<*const SignalFfiError>);
     (&[u8; $len:expr]) => (*const [u8; $len]);
+    ([u8; $len:expr]) => (*const [u8; $len]);
     (Option<&[u8; $len:expr]>) => (*const [u8; $len]);
     (&[& $typ:ty]) => (ffi::BorrowedSliceOf<ffi::ConstPointer< $typ >>);
     (&mut dyn $typ:ty) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
@@ -1355,6 +1413,8 @@ macro_rules! ffi_arg_type {
     (Box<dyn $typ:ty >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
     (Option<Box<dyn $typ:ty> >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
     (Option<Box<[u8]> >) => (ffi::OptionalBorrowedSliceOf<std::ffi::c_uchar>);
+    (DeviceSpecifier) => (i32);
+    (GroupSendFullToken) => (ffi_arg_type!(&[u8]));
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
     (AsType<$typ:ident, $bridged:ident>) => (ffi_arg_type!($bridged));
@@ -1438,6 +1498,7 @@ macro_rules! ffi_result_type {
     (CheckSvr2CredentialsResponse) => (ffi::FfiCheckSvr2CredentialsResponse);
     (Box<[RegisterResponseBadge]>) => (ffi::OwnedBufferOf<ffi::FfiRegisterResponseBadge>);
     (DisconnectCause) => (*mut ffi::SignalFfiError);
+    (PreKeysResponse) => (ffi::FfiPreKeysResponse);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

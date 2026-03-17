@@ -98,6 +98,16 @@ pub unsafe extern "C" fn signal_free_list_of_mismatched_device_errors(
     // The for-in loop already consumed 'entries'; our work is done.
 }
 
+/// This frees a buffer of PreKeyBundle pointers, and _does not_ free the
+/// pointers within the buffer. This _only_ frees the buffer containing
+/// the pointers.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn signal_free_outer_buffer_list_of_prekey_bundles(
+    buffer: OwnedBufferOf<MutPointer<libsignal_protocol::PreKeyBundle>>,
+) {
+    std::mem::drop(unsafe { buffer.into_box() });
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn signal_error_free(err: *mut SignalFfiError) {
     if !err.is_null() {
