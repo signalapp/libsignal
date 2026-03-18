@@ -15,7 +15,7 @@ use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net_chat::api::keys::DeviceSpecifier;
 use neon::prelude::*;
 use neon::types::JsBigInt;
-// use paste::paste;
+use paste::paste;
 use zkgroup::ZkGroupDeserializationFailure;
 use zkgroup::groups::GroupSendFullToken;
 
@@ -898,139 +898,36 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Vec<&'sto
     }
 }
 
-// macro_rules! bridge_trait {
-//     ($name:ident) => {
-//         paste! {
-//             impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn $name {
-//                 type ArgType = JsObject;
-//                 type StoredType = [<Node $name>];
-//                 fn save_async_arg(
-//                     cx: &mut FunctionContext,
-//                     foreign: Handle<Self::ArgType>,
-//                 ) -> NeonResult<Self::StoredType> {
-//                     Ok(Self::StoredType::new(cx, foreign))
-//                 }
-//                 fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
-//                     stored
-//                 }
-//             }
-//         }
-//     };
-// }
-
-// bridge_trait!(IdentityKeyStore);
-// bridge_trait!(PreKeyStore);
-// bridge_trait!(SenderKeyStore);
-// bridge_trait!(SessionStore);
-// bridge_trait!(SignedPreKeyStore);
-// bridge_trait!(KyberPreKeyStore);
-// bridge_trait!(InputStream);
-
-impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn InputStream {
-    type ArgType = JsObject;
-    type StoredType = NodeBridgeInputStream;
-    fn save_async_arg(
-        cx: &mut FunctionContext,
-        foreign: Handle<Self::ArgType>,
-    ) -> NeonResult<Self::StoredType> {
-        NodeBridgeInputStream::new(cx, foreign)
-    }
-    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
-        &mut *stored
-    }
+macro_rules! bridge_trait {
+    ($name:ident, $load:expr) => {
+        paste! {
+            impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn $name {
+                type ArgType = JsObject;
+                type StoredType = BridgedCallbacks<[<NodeBridge $name>]>;
+                fn save_async_arg(
+                    cx: &mut FunctionContext,
+                    foreign: Handle<Self::ArgType>,
+                ) -> NeonResult<Self::StoredType> {
+                    Ok(BridgedCallbacks([<NodeBridge $name>]::new(cx, foreign)?))
+                }
+                fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
+                    ($load)(stored)
+                }
+            }
+        }
+    };
+    ($name:ident) => {
+        bridge_trait!($name, std::convert::identity);
+    };
 }
 
-impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn IdentityKeyStore {
-    type ArgType = JsObject;
-    type StoredType = BridgedCallbacks<NodeBridgeIdentityKeyStore>;
-    fn save_async_arg(
-        cx: &mut FunctionContext,
-        foreign: Handle<Self::ArgType>,
-    ) -> NeonResult<Self::StoredType> {
-        Ok(BridgedCallbacks(NodeBridgeIdentityKeyStore::new(
-            cx, foreign,
-        )?))
-    }
-    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
-        stored
-    }
-}
-
-impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn PreKeyStore {
-    type ArgType = JsObject;
-    type StoredType = BridgedCallbacks<NodeBridgePreKeyStore>;
-    fn save_async_arg(
-        cx: &mut FunctionContext,
-        foreign: Handle<Self::ArgType>,
-    ) -> NeonResult<Self::StoredType> {
-        Ok(BridgedCallbacks(NodeBridgePreKeyStore::new(cx, foreign)?))
-    }
-    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
-        stored
-    }
-}
-
-impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn SignedPreKeyStore {
-    type ArgType = JsObject;
-    type StoredType = BridgedCallbacks<NodeBridgeSignedPreKeyStore>;
-    fn save_async_arg(
-        cx: &mut FunctionContext,
-        foreign: Handle<Self::ArgType>,
-    ) -> NeonResult<Self::StoredType> {
-        Ok(BridgedCallbacks(NodeBridgeSignedPreKeyStore::new(
-            cx, foreign,
-        )?))
-    }
-    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
-        stored
-    }
-}
-
-impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn KyberPreKeyStore {
-    type ArgType = JsObject;
-    type StoredType = BridgedCallbacks<NodeBridgeKyberPreKeyStore>;
-    fn save_async_arg(
-        cx: &mut FunctionContext,
-        foreign: Handle<Self::ArgType>,
-    ) -> NeonResult<Self::StoredType> {
-        Ok(BridgedCallbacks(NodeBridgeKyberPreKeyStore::new(
-            cx, foreign,
-        )?))
-    }
-    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
-        stored
-    }
-}
-
-impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn SessionStore {
-    type ArgType = JsObject;
-    type StoredType = BridgedCallbacks<NodeBridgeSessionStore>;
-    fn save_async_arg(
-        cx: &mut FunctionContext,
-        foreign: Handle<Self::ArgType>,
-    ) -> NeonResult<Self::StoredType> {
-        Ok(BridgedCallbacks(NodeBridgeSessionStore::new(cx, foreign)?))
-    }
-    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
-        stored
-    }
-}
-
-impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn SenderKeyStore {
-    type ArgType = JsObject;
-    type StoredType = BridgedCallbacks<NodeBridgeSenderKeyStore>;
-    fn save_async_arg(
-        cx: &mut FunctionContext,
-        foreign: Handle<Self::ArgType>,
-    ) -> NeonResult<Self::StoredType> {
-        Ok(BridgedCallbacks(NodeBridgeSenderKeyStore::new(
-            cx, foreign,
-        )?))
-    }
-    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
-        stored
-    }
-}
+bridge_trait!(IdentityKeyStore);
+bridge_trait!(PreKeyStore);
+bridge_trait!(SenderKeyStore);
+bridge_trait!(SessionStore);
+bridge_trait!(SignedPreKeyStore);
+bridge_trait!(KyberPreKeyStore);
+bridge_trait!(InputStream, |x: &'a mut Self::StoredType| &mut x.0);
 
 impl SimpleArgTypeInfo for Box<dyn ChatListener> {
     type ArgType = JsObject;
