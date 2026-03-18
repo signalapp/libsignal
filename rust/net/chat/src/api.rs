@@ -32,6 +32,19 @@ impl<'a, T> From<&'a T> for &'a Unauth<T> {
     }
 }
 
+/// Marker wrapper for authenticated connections.
+///
+/// You can get `&Auth<Connection>` from `&Connection` using `Into`.
+#[derive(derive_more::Deref, ref_cast::RefCast)]
+#[repr(transparent)]
+pub struct Auth<T>(pub T);
+
+impl<'a, T> From<&'a T> for &'a Auth<T> {
+    fn from(value: &'a T) -> Self {
+        Auth::ref_cast(value)
+    }
+}
+
 /// Marker wrapper for registration connections.
 #[derive(derive_more::Deref)]
 pub struct Registration<T>(pub T);

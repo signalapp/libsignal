@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::convert::Infallible;
+
 use assert_matches::debug_assert_matches;
 use async_trait::async_trait;
 use base64::prelude::{BASE64_STANDARD, Engine as _};
@@ -14,15 +16,15 @@ use libsignal_net_grpc::proto::chat::services;
 use serde_with::serde_as;
 
 use super::{
-    CONTENT_TYPE_JSON, CustomError, OverWs, TryIntoResponse, WsConnection, expect_empty_body,
-    parse_json_from_body,
+    CONTENT_TYPE_JSON, CustomError, GetUploadFormResponse, OverWs, TryIntoResponse, WsConnection,
+    expect_empty_body, parse_json_from_body,
 };
 use crate::api::messages::{
     MismatchedDeviceError, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
     MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
     UserBasedSendAuthorization,
 };
-use crate::api::{RequestError, Unauth};
+use crate::api::{Auth, RequestError, Unauth, UploadForm};
 use crate::logging::Redact;
 
 const GROUP_SEND_TOKEN_HEADER: http::HeaderName = http::HeaderName::from_static("group-send-token");
@@ -274,6 +276,33 @@ impl<T: WsConnection> crate::api::messages::UnauthenticatedChatApi<OverWs> for U
     }
 }
 
+#[async_trait]
+impl<T: WsConnection> crate::api::messages::AuthenticatedChatApi<OverWs> for Auth<T> {
+    async fn get_upload_form(&self) -> Result<UploadForm, RequestError<Infallible>> {
+        let response = self
+            .send(
+                "auth",
+                "/v4/attachments/form/upload",
+                Request {
+                    method: http::Method::GET,
+                    path: http::uri::PathAndQuery::from_static("/v4/attachments/form/upload"),
+                    headers: http::HeaderMap::default(),
+                    body: None,
+                },
+            )
+            .await?;
+
+        let GetUploadFormResponse(upload_form) = response.try_into_response().map_err(|e| {
+            e.into_request_error(
+                Self::ALLOW_RATE_LIMIT_CHALLENGES,
+                CustomError::no_custom_handling,
+            )
+        })?;
+
+        Ok(upload_form)
+    }
+}
+
 #[derive(serde::Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 struct ParsedMismatchedDevices {
@@ -409,7 +438,7 @@ mod test {
 
     use super::*;
     use crate::api::UserBasedAuthorization;
-    use crate::api::messages::UnauthenticatedChatApi;
+    use crate::api::messages::{AuthenticatedChatApi as _, UnauthenticatedChatApi};
     use crate::api::testutil::{SERIALIZED_GROUP_SEND_TOKEN, structurally_valid_group_send_token};
     use crate::ws::ACCESS_KEY_HEADER_NAME;
     use crate::ws::testutil::{JsonRequestValidator, RequestValidator, empty, json};
@@ -797,5 +826,35 @@ mod test {
             .expect("sync")
             .expect("success");
         assert_eq!(unregistered_ids, &[] as &[ServiceId]);
+    }
+
+    #[test_case(json(200, r#"{
+        "cdn":123,
+        "key":"abcde",
+        "headers":{"one":"val1","two":"val2"},
+        "signedUploadLocation":"http://example.org/upload"
+    }"#) => matches Ok(form) if form == UploadForm {
+        cdn: 123,
+        key: "abcde".into(),
+        headers: vec![("one".into(), "val1".into()), ("two".into(), "val2".into())],
+        signed_upload_url: "http://example.org/upload".into(),
+    })]
+    #[test_case(empty(413) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(empty(500) => matches Err(RequestError::ServerSideError))]
+    fn test_get_upload_form(response: Response) -> Result<UploadForm, RequestError<Infallible>> {
+        let validator = RequestValidator {
+            expected: Request {
+                method: http::Method::GET,
+                path: http::uri::PathAndQuery::from_static("/v4/attachments/form/upload"),
+                headers: http::HeaderMap::default(),
+                body: None,
+            },
+            response,
+        };
+
+        Auth(validator)
+            .get_upload_form()
+            .now_or_never()
+            .expect("sync")
     }
 }

@@ -7,9 +7,10 @@ use async_trait::async_trait;
 use base64::prelude::{BASE64_STANDARD, Engine as _};
 use libsignal_net::chat::Request;
 use libsignal_net_grpc::proto::chat::services;
-use serde_with::serde_as;
 
-use super::{CustomError, OverWs, TryIntoResponse, WsConnection, expect_empty_body};
+use super::{
+    CustomError, GetUploadFormResponse, OverWs, TryIntoResponse, WsConnection, expect_empty_body,
+};
 use crate::api::backups::{
     BackupAuth, BackupAuthPresentation, GetMediaUploadFormFailure, GetUploadFormFailure,
 };
@@ -39,24 +40,6 @@ impl BackupAuthPresentation {
         ]
     }
 }
-
-/// A "remote" serde implementation to avoid putting serde traits on the public [`UploadForm`].
-///
-/// Use [`GetUploadFormResponse`] to receive [`UploadForm`]s using this implementation.
-#[serde_as]
-#[derive(serde::Deserialize)]
-#[serde(remote = "UploadForm")]
-struct UploadFormSerde {
-    cdn: u32,
-    key: String,
-    #[serde_as(as = "serde_with::Map<_, _>")]
-    headers: Vec<(String, String)>,
-    #[serde(rename = "signedUploadLocation")]
-    signed_upload_url: String,
-}
-
-#[derive(serde::Deserialize)]
-struct GetUploadFormResponse(#[serde(with = "UploadFormSerde")] UploadForm);
 
 #[async_trait]
 impl<T: WsConnection> crate::api::backups::UnauthenticatedChatApi<OverWs> for Unauth<T> {

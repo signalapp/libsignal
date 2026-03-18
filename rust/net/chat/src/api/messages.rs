@@ -4,13 +4,14 @@
 //
 
 use std::borrow::Cow;
+use std::convert::Infallible;
 
 use async_trait::async_trait;
 use itertools::Itertools as _;
 use libsignal_core::{DeviceId, ServiceId};
 use libsignal_net::infra::errors::LogSafeDisplay;
 
-use super::{AllowRateLimitChallenges, RequestError, UserBasedAuthorization};
+use super::{AllowRateLimitChallenges, RequestError, UploadForm, UserBasedAuthorization};
 use crate::logging::Redact;
 
 pub struct SingleOutboundMessage<T> {
@@ -91,6 +92,20 @@ pub trait UnauthenticatedChatApi<T> {
         online_only: bool,
         urgent: bool,
     ) -> Result<MultiRecipientMessageResponse, RequestError<MultiRecipientSendFailure>>;
+}
+
+/// High-level chat-server APIs for messaging
+///
+/// ### Generic?
+///
+/// The type parameter `T` is a marker to distinguish blanket impls that would otherwise overlap.
+/// Any concrete type will only impl this trait in one way; anywhere that needs to use
+/// AuthenticatedChatApi generically should accept an arbitrary `T` here.
+#[async_trait]
+pub trait AuthenticatedChatApi<T> {
+    const ALLOW_RATE_LIMIT_CHALLENGES: AllowRateLimitChallenges = AllowRateLimitChallenges::Yes;
+
+    async fn get_upload_form(&self) -> Result<UploadForm, RequestError<Infallible>>;
 }
 
 impl std::fmt::Display for MultiRecipientSendFailure {

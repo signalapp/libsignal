@@ -29,7 +29,7 @@ use serde_with::serde_as;
 
 use crate::api::{
     AllowRateLimitChallenges, ChallengeOption, DisconnectedError, RateLimitChallenge, RequestError,
-    UserBasedAuthorization,
+    UploadForm, UserBasedAuthorization,
 };
 use crate::grpc::GrpcServiceProvider;
 use crate::logging::DebugAsStrOrBytes;
@@ -56,6 +56,24 @@ impl AsHttpHeader for UserBasedAuthorization {
         }
     }
 }
+
+/// A "remote" serde implementation to avoid putting serde traits on the public [`UploadForm`].
+///
+/// Use [`GetUploadFormResponse`] to receive [`UploadForm`]s using this implementation.
+#[serde_as]
+#[derive(serde::Deserialize)]
+#[serde(remote = "UploadForm")]
+struct UploadFormSerde {
+    cdn: u32,
+    key: String,
+    #[serde_as(as = "serde_with::Map<_, _>")]
+    headers: Vec<(String, String)>,
+    #[serde(rename = "signedUploadLocation")]
+    signed_upload_url: String,
+}
+
+#[derive(serde::Deserialize)]
+struct GetUploadFormResponse(#[serde(with = "UploadFormSerde")] UploadForm);
 
 /// Marker type for use in [`crate::api`] traits.
 pub enum OverWs {}
