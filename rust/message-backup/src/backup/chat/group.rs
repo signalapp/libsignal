@@ -25,7 +25,7 @@ use crate::proto::backup::{
     GroupMemberJoinedByLinkUpdate, GroupMemberJoinedUpdate,
     GroupMemberLabelAccessLevelChangeUpdate, GroupMemberLeftUpdate, GroupMemberRemovedUpdate,
     GroupMembershipAccessLevelChangeUpdate, GroupNameUpdate, GroupSelfInvitationRevokedUpdate,
-    GroupSequenceOfRequestsAndCancelsUpdate, GroupUnknownInviteeUpdate,
+    GroupSequenceOfRequestsAndCancelsUpdate, GroupTerminateChangeUpdate, GroupUnknownInviteeUpdate,
     GroupV2MigrationDroppedMembersUpdate, GroupV2MigrationInvitedMembersUpdate,
     GroupV2MigrationSelfInvitedUpdate, GroupV2MigrationUpdate, SelfInvitedOtherUserToGroupUpdate,
     SelfInvitedToGroupUpdate, group_invitation_revoked_update,
@@ -254,6 +254,10 @@ pub enum GroupChatUpdate {
         #[serde_as(as = "Option<serialize::ServiceIdAsString>")]
         updaterAci: Option<Aci>,
         expiresInMs: Duration,
+    },
+    GroupTerminateChangeUpdate {
+        #[serde_as(as = "Option<serialize::ServiceIdAsString>")]
+        updaterAci: Option<Aci>,
     },
 }
 
@@ -498,6 +502,7 @@ impl TryFrom<proto::group_change_chat_update::update::Update> for GroupChatUpdat
             Update::GroupV2MigrationDroppedMembersUpdate(m) => m.try_into(),
             Update::GroupSequenceOfRequestsAndCancelsUpdate(m) => m.try_into(),
             Update::GroupExpirationTimerUpdate(m) => m.try_into(),
+            Update::GroupTerminateChangeUpdate(m) => m.try_into(),
         }
     }
 }
@@ -633,6 +638,26 @@ mod test {
                 newMemberAci: ACI_BYTES.to_vec(),
                 hadOpenInvitation: had_invitation,
                 inviterAci: inviter.map(|aci| aci.service_id_binary()),
+                ..Default::default()
+            },
+        );
+
+        let result = GroupChatUpdate::try_from(update)
+            .map(|_| ())
+            .map_err(|e| e.field_error);
+        assert_eq!(result, expected);
+    }
+
+    #[test_case(None, Ok(()); "updater absent")]
+    #[test_case(Some(ACI.service_id_binary()), Ok(()); "updater valid aci")]
+    #[test_case(Some(vec![]), Err(GroupUpdateFieldError::InvalidAci); "updater invalid aci")]
+    fn group_terminate_change_update(
+        updater_aci: Option<Vec<u8>>,
+        expected: Result<(), GroupUpdateFieldError>,
+    ) {
+        let update = group_change_chat_update::update::Update::GroupTerminateChangeUpdate(
+            GroupTerminateChangeUpdate {
+                updaterAci: updater_aci,
                 ..Default::default()
             },
         );

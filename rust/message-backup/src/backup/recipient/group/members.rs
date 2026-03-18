@@ -44,15 +44,15 @@ impl TryFrom<proto::group::Member> for GroupMember {
 
     fn try_from(value: proto::group::Member) -> Result<Self, Self::Error> {
         let proto::group::Member {
-            user_id,
+            userId,
             role,
             joinedAtVersion,
-            label_emoji,
-            label_string,
+            labelEmoji,
+            labelString,
             special_fields: _,
         } = value;
 
-        let user_id = ServiceId::parse_from_service_id_binary(&user_id)
+        let user_id = ServiceId::parse_from_service_id_binary(&userId)
             .ok_or(GroupError::MemberInvalidServiceId { which: "member" })?
             .try_into()
             .map_err(
@@ -67,15 +67,15 @@ impl TryFrom<proto::group::Member> for GroupMember {
             proto::group::member::Role::ADMINISTRATOR => Role::Administrator,
         };
         let joined_at_version = joinedAtVersion;
-        if !label_emoji.is_empty() && label_string.is_empty() {
+        if !labelEmoji.is_empty() && labelString.is_empty() {
             return Err(GroupError::MemberLabelEmojiWithoutString);
         }
         Ok(GroupMember {
             user_id,
             role,
             joined_at_version,
-            label_emoji,
-            label_string,
+            label_emoji: labelEmoji,
+            label_string: labelString,
             _limit_construction_to_module: (),
         })
     }
@@ -115,17 +115,17 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupMemberPendingProfileKey, C>
         } = self;
 
         let proto::group::Member {
-            user_id,
+            userId,
             role,
             joinedAtVersion,
-            label_emoji,
-            label_string,
+            labelEmoji,
+            labelString,
             special_fields: _,
         } = member
             .into_option()
             .ok_or(GroupError::MemberPendingProfileKeyMissingMember)?;
 
-        let user_id = ServiceId::parse_from_service_id_binary(&user_id).ok_or(
+        let user_id = ServiceId::parse_from_service_id_binary(&userId).ok_or(
             GroupError::MemberInvalidServiceId {
                 which: "invited member",
             },
@@ -153,7 +153,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupMemberPendingProfileKey, C>
 
         let timestamp = Timestamp::from_millis(timestamp, "MemberPendingProfileKey", context)?;
 
-        if !label_emoji.is_empty() || !label_string.is_empty() {
+        if !labelEmoji.is_empty() || !labelString.is_empty() {
             return Err(GroupError::MemberPendingProfileKeyHasLabel);
         }
 
@@ -191,12 +191,12 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupMemberPendingAdminApproval, C>
 
     fn try_into_with(self, context: &C) -> Result<GroupMemberPendingAdminApproval, Self::Error> {
         let proto::group::MemberPendingAdminApproval {
-            user_id,
+            userId,
             timestamp,
             special_fields: _,
         } = self;
 
-        let user_id = ServiceId::parse_from_service_id_binary(&user_id)
+        let user_id = ServiceId::parse_from_service_id_binary(&userId)
             .ok_or(GroupError::MemberInvalidServiceId {
                 which: "requesting member",
             })?
@@ -238,12 +238,12 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupMemberBanned, C> for proto::gro
 
     fn try_into_with(self, context: &C) -> Result<GroupMemberBanned, Self::Error> {
         let proto::group::MemberBanned {
-            user_id,
+            userId,
             timestamp,
             special_fields: _,
         } = self;
 
-        let user_id = ServiceId::parse_from_service_id_binary(&user_id).ok_or(
+        let user_id = ServiceId::parse_from_service_id_binary(&userId).ok_or(
             GroupError::MemberInvalidServiceId {
                 which: "banned member",
             },
@@ -271,7 +271,7 @@ mod tests {
     impl proto::group::Member {
         pub(crate) fn test_data() -> Self {
             Self {
-                user_id: proto::Contact::TEST_ACI.to_vec(),
+                userId: proto::Contact::TEST_ACI.to_vec(),
                 role: proto::group::member::Role::DEFAULT.into(),
                 joinedAtVersion: 1,
                 ..Default::default()
@@ -300,18 +300,18 @@ mod tests {
         );
     }
 
-    #[test_case(|x| x.user_id = Pni::from_uuid_bytes(proto::Contact::TEST_PNI).service_id_binary() => Err(GroupError::MemberInvalidAci { which: "member", found: ServiceIdKind::Pni }); "PNI userId"
+    #[test_case(|x| x.userId = Pni::from_uuid_bytes(proto::Contact::TEST_PNI).service_id_binary() => Err(GroupError::MemberInvalidAci { which: "member", found: ServiceIdKind::Pni }); "PNI userId"
     )]
-    #[test_case(|x| x.user_id = vec![] => Err(GroupError::MemberInvalidServiceId { which: "member" }); "empty userId"
+    #[test_case(|x| x.userId = vec![] => Err(GroupError::MemberInvalidServiceId { which: "member" }); "empty userId"
     )]
     #[test_case(|x| x.role = proto::group::member::Role::ADMINISTRATOR.into() => Ok(()); "administrator"
     )]
     #[test_case(|x| x.role = proto::group::member::Role::UNKNOWN.into() => Err(GroupError::MemberRoleUnknown); "role unknown"
     )]
-    #[test_case(|x| x.label_emoji = ":)".to_string() => Err(GroupError::MemberLabelEmojiWithoutString); "emoji set without string"
+    #[test_case(|x| x.labelEmoji = ":)".to_string() => Err(GroupError::MemberLabelEmojiWithoutString); "emoji set without string"
     )]
-    #[test_case(|x| x.label_string = "abc".to_string() => Ok(()); "just label string")]
-    #[test_case(|x| {x.label_string = "abc".to_string(); x.label_emoji = ":)".to_string();} => Ok(()); "label string and emoji"
+    #[test_case(|x| x.labelString = "abc".to_string() => Ok(()); "just label string")]
+    #[test_case(|x| {x.labelString = "abc".to_string(); x.labelEmoji = ":)".to_string();} => Ok(()); "label string and emoji"
     )]
     fn member(modifier: impl FnOnce(&mut proto::group::Member)) -> Result<(), GroupError> {
         let mut member = proto::group::Member::test_data();
@@ -359,9 +359,9 @@ mod tests {
 
     #[test_case(|x| x.member = None.into() => Err(GroupError::MemberPendingProfileKeyMissingMember); "missing member"
     )]
-    #[test_case(|x| x.member.as_mut().unwrap().user_id = Pni::from_uuid_bytes(proto::Contact::TEST_PNI).service_id_binary() => Ok(()); "PNI userId"
+    #[test_case(|x| x.member.as_mut().unwrap().userId = Pni::from_uuid_bytes(proto::Contact::TEST_PNI).service_id_binary() => Ok(()); "PNI userId"
     )]
-    #[test_case(|x| x.member.as_mut().unwrap().user_id = vec![] => Err(GroupError::MemberInvalidServiceId { which: "invited member" }); "empty userId"
+    #[test_case(|x| x.member.as_mut().unwrap().userId = vec![] => Err(GroupError::MemberInvalidServiceId { which: "invited member" }); "empty userId"
     )]
     #[test_case(|x| x.member.as_mut().unwrap().role = proto::group::member::Role::ADMINISTRATOR.into() => Ok(()); "administrator"
     )]
@@ -378,8 +378,8 @@ mod tests {
         Err(GroupError::InvalidTimestamp(TimestampError("MemberPendingProfileKey", MillisecondsSinceEpoch::FAR_FUTURE.0)));
         "invalid timestamp"
     )]
-    #[test_case(|x| x.member.as_mut().unwrap().label_string = "abc".to_string() => Err(GroupError::MemberPendingProfileKeyHasLabel); "pending profile with label")]
-    #[test_case(|x| x.member.as_mut().unwrap().label_emoji = ":(".to_string() => Err(GroupError::MemberPendingProfileKeyHasLabel); "pending profile with emoji")]
+    #[test_case(|x| x.member.as_mut().unwrap().labelString = "abc".to_string() => Err(GroupError::MemberPendingProfileKeyHasLabel); "pending profile with label")]
+    #[test_case(|x| x.member.as_mut().unwrap().labelEmoji = ":(".to_string() => Err(GroupError::MemberPendingProfileKeyHasLabel); "pending profile with emoji")]
     fn member_pending_profile_key(
         modifier: impl FnOnce(&mut proto::group::MemberPendingProfileKey),
     ) -> Result<(), GroupError> {
@@ -391,7 +391,7 @@ mod tests {
     impl proto::group::MemberPendingAdminApproval {
         pub(crate) fn test_data() -> Self {
             Self {
-                user_id: proto::Contact::TEST_ACI.to_vec(),
+                userId: proto::Contact::TEST_ACI.to_vec(),
                 timestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
                 ..Default::default()
             }
@@ -418,9 +418,9 @@ mod tests {
         );
     }
 
-    #[test_case(|x| x.user_id = Pni::from_uuid_bytes(proto::Contact::TEST_PNI).service_id_binary() => Err(GroupError::MemberInvalidAci { which: "requesting member", found: ServiceIdKind::Pni }); "PNI userId"
+    #[test_case(|x| x.userId = Pni::from_uuid_bytes(proto::Contact::TEST_PNI).service_id_binary() => Err(GroupError::MemberInvalidAci { which: "requesting member", found: ServiceIdKind::Pni }); "PNI userId"
     )]
-    #[test_case(|x| x.user_id = vec![] => Err(GroupError::MemberInvalidServiceId { which: "requesting member" }); "empty userId"
+    #[test_case(|x| x.userId = vec![] => Err(GroupError::MemberInvalidServiceId { which: "requesting member" }); "empty userId"
     )]
     #[test_case(
         |x| x.timestamp = MillisecondsSinceEpoch::FAR_FUTURE.0 =>
@@ -438,7 +438,7 @@ mod tests {
     impl proto::group::MemberBanned {
         pub(crate) fn test_data() -> Self {
             Self {
-                user_id: proto::Contact::TEST_ACI.to_vec(),
+                userId: proto::Contact::TEST_ACI.to_vec(),
                 timestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
                 ..Default::default()
             }
@@ -465,9 +465,9 @@ mod tests {
         );
     }
 
-    #[test_case(|x| x.user_id = Pni::from_uuid_bytes(proto::Contact::TEST_PNI).service_id_binary() => Ok(()); "PNI userId"
+    #[test_case(|x| x.userId = Pni::from_uuid_bytes(proto::Contact::TEST_PNI).service_id_binary() => Ok(()); "PNI userId"
     )]
-    #[test_case(|x| x.user_id = vec![] => Err(GroupError::MemberInvalidServiceId { which: "banned member" }); "empty userId"
+    #[test_case(|x| x.userId = vec![] => Err(GroupError::MemberInvalidServiceId { which: "banned member" }); "empty userId"
     )]
     #[test_case(
         |x| x.timestamp = MillisecondsSinceEpoch::FAR_FUTURE.0 =>

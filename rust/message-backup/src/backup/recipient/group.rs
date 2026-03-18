@@ -40,6 +40,7 @@ pub struct GroupSnapshot {
     pub invite_link_password: Vec<u8>,
     pub announcements_only: bool,
     pub members_banned: UnorderedList<GroupMemberBanned>,
+    pub terminated: bool,
     _limit_construction_to_module: (),
 }
 
@@ -115,8 +116,9 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::
             membersPendingProfileKey,
             membersPendingAdminApproval,
             inviteLinkPassword,
-            announcements_only,
-            members_banned,
+            announcementsOnly,
+            membersBanned,
+            terminated,
             special_fields: _,
         } = self;
 
@@ -270,7 +272,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::
             iter.map(|m| m.try_into_with(context)).try_collect()
         })?;
 
-        let members_banned = likely_empty(members_banned, |iter| {
+        let members_banned = likely_empty(membersBanned, |iter| {
             iter.map(|m| m.try_into_with(context)).try_collect()
         })?;
 
@@ -288,8 +290,9 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::
             members_pending_profile_key,
             members_pending_admin_approval,
             invite_link_password,
-            announcements_only,
+            announcements_only: announcementsOnly,
             members_banned,
+            terminated,
             _limit_construction_to_module: (),
         })
     }
@@ -417,8 +420,9 @@ mod test {
                         proto::group::MemberPendingAdminApproval::test_data(),
                     ],
                     inviteLinkPassword: vec![0x05; 5],
-                    announcements_only: true,
-                    members_banned: vec![proto::group::MemberBanned::test_data()],
+                    announcementsOnly: true,
+                    membersBanned: vec![proto::group::MemberBanned::test_data()],
+                    terminated: true,
                     ..Default::default()
                 })
                 .into(),
@@ -456,6 +460,7 @@ mod test {
                     invite_link_password: vec![0x05; 5],
                     announcements_only: true,
                     members_banned: vec![GroupMemberBanned::from_proto_test_data()].into(),
+                    terminated: true,
                     _limit_construction_to_module: (),
                 },
                 blocked: false,
@@ -502,7 +507,7 @@ mod test {
     #[test_case(|x| x.accessControl.as_mut().unwrap().memberLabel = AccessRequired::MEMBER.into() => Ok(()); "valid memberLabel MEMBER")]
     #[test_case(|x| x.accessControl.as_mut().unwrap().memberLabel = AccessRequired::ADMINISTRATOR.into() => Ok(()); "valid memberLabel ADMINISTRATOR")]
     #[test_case(|x| x.inviteLinkPassword = vec![] => Ok(()); "empty invite link password")]
-    #[test_case(|x| x.members[0].user_id = vec![] => Err(GroupError::MemberInvalidServiceId { which: "member" }); "bad member")]
+    #[test_case(|x| x.members[0].userId = vec![] => Err(GroupError::MemberInvalidServiceId { which: "member" }); "bad member")]
     fn group_snapshot(
         modifier: impl FnOnce(&mut proto::group::GroupSnapshot),
     ) -> Result<(), GroupError> {

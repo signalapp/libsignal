@@ -108,7 +108,7 @@
           "version": 12,
           "members": [],
           "inviteLinkPassword": "",
-          "announcements_only": false
+          "announcementsOnly": false
         }
       }
     }
