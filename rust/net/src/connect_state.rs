@@ -90,6 +90,13 @@ impl<F, Transport> WebSocketTransportConnectorFactory<Transport> for F where
 {
 }
 
+/// A newtype wrapper around a name used to identify a service for connection history / backoff
+/// purposes.
+///
+/// Related services may use the same name if they want to share service-wide backoff history.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ServiceName(pub &'static str);
+
 /// Endpoint-agnostic state for establishing a connection with
 /// [`crate::infra::route::connect`].
 ///
@@ -266,6 +273,7 @@ impl<TC> ConnectState<TC> {
 impl<TC> ConnectionResources<'_, TC> {
     pub async fn connect_ws<WC, UR, Transport>(
         mut self,
+        service: ServiceName,
         routes: impl RouteProvider<Route = UR>,
         ws_connector: WC,
         log_tag: &str,
@@ -299,6 +307,7 @@ impl<TC> ConnectionResources<'_, TC> {
     {
         let confirmation_header_name = self.confirmation_header_name.take();
         self.connect_over_transport(
+            service,
             routes,
             LoggingConnector::new(ws_connector, Duration::from_secs(3), "ws"),
             log_tag,
@@ -368,6 +377,7 @@ impl<TC> ConnectionResources<'_, TC> {
 
     pub(crate) async fn connect_attested_ws<E>(
         self,
+        service: ServiceName,
         routes: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         auth: &Auth,
         ws_config: libsignal_net_infra::ws::Config,
@@ -393,7 +403,7 @@ impl<TC> ConnectionResources<'_, TC> {
             ThrottlingConnector::new(crate::infra::ws::WithoutResponseHeaders::new(), 1);
 
         let (ws, route_info) = self
-            .connect_ws(ws_routes, ws_connector, &log_tag)
+            .connect_ws(service, ws_routes, ws_connector, &log_tag)
             .await
             .map_err(|e| match e {
                 TimeoutOr::Other(ConnectError::AllAttemptsFailed)
@@ -413,6 +423,7 @@ impl<TC> ConnectionResources<'_, TC> {
 
     pub async fn connect_h2<HC, UR, Transport>(
         self,
+        service: ServiceName,
         routes: impl RouteProvider<Route = UR>,
         h2_connector: HC,
         log_tag: &str,
@@ -439,6 +450,7 @@ impl<TC> ConnectionResources<'_, TC> {
             + Sync,
     {
         self.connect_over_transport(
+            service,
             routes,
             LoggingConnector::new(h2_connector, Duration::from_secs(3), "h2"),
             log_tag,
@@ -467,6 +479,7 @@ impl<TC> ConnectionResources<'_, TC> {
 
     async fn connect_over_transport<HC, UR, Transport, Fragment, FatalError>(
         self,
+        _service: ServiceName,
         routes: impl RouteProvider<Route = UR>,
         high_level_connector: HC,
         log_tag: &str,
@@ -632,6 +645,7 @@ where
 {
     pub async fn preconnect_and_save(
         self,
+        _service: ServiceName,
         routes: impl RouteProvider<Route = UnresolvedTransportRoute>,
         log_tag: &str,
     ) -> Result<(), TimeoutOr<ConnectError<TransportConnectError>>> {
@@ -925,6 +939,7 @@ mod test {
 
         let result = connection_resources
             .connect_ws(
+                ServiceName("test"),
                 vec![failing_route.clone(), succeeding_route.clone()],
                 ws_connector,
                 "test",
@@ -977,6 +992,7 @@ mod test {
         };
 
         let connect = connection_resources.connect_ws(
+            ServiceName("test"),
             vec![failing_route.clone(), succeeding_route.clone()],
             ws_connector,
             "test",
@@ -1036,6 +1052,7 @@ mod test {
         };
 
         let connect = connection_resources.connect_ws(
+            ServiceName("test"),
             vec![failing_route.clone(), succeeding_route.clone()],
             ws_connector,
             "test",
@@ -1102,6 +1119,7 @@ mod test {
         };
 
         let connect = connection_resources.connect_ws(
+            ServiceName("test"),
             vec![
                 generic_failure_route.clone(),
                 specific_failure_route.clone(),
@@ -1191,6 +1209,7 @@ mod test {
         };
 
         let mut connect = std::pin::pin!(connection_resources.connect_ws(
+            ServiceName("test"),
             vec![route.clone()],
             ws_connector,
             "test",
@@ -1251,6 +1270,7 @@ mod test {
 
         let result = connection_resources
             .connect_h2(
+                ServiceName("test"),
                 vec![failing_route.inner.clone(), succeeding_route.inner.clone()],
                 h2_connector,
                 "test",
@@ -1309,6 +1329,7 @@ mod test {
         };
 
         let connect = connection_resources.connect_h2(
+            ServiceName("test"),
             vec![failing_route.inner.clone(), succeeding_route.inner.clone()],
             h2_connector,
             "test",
@@ -1461,6 +1482,7 @@ mod test {
 
         connection_resources
             .preconnect_and_save(
+                ServiceName("test"),
                 vec![bad_transport_route.clone(), good_transport_route.clone()],
                 "preconnect",
             )
@@ -1484,6 +1506,7 @@ mod test {
 
         _ = connection_resources
             .connect_ws(
+                ServiceName("test"),
                 [bad_transport_route.clone(), good_transport_route.clone()]
                     .into_iter()
                     .map(|route| WebSocketRoute {

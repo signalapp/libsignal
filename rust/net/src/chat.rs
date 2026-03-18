@@ -28,7 +28,9 @@ use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::WebSocketConfig;
 
 use crate::auth::Auth;
-use crate::connect_state::{ConnectionResources, RouteInfo, WebSocketTransportConnectorFactory};
+use crate::connect_state::{
+    ConnectionResources, RouteInfo, ServiceName, WebSocketTransportConnectorFactory,
+};
 use crate::env::UserAgent;
 use crate::proto;
 
@@ -247,6 +249,7 @@ pub type ChatServiceRoute = UnresolvedWebsocketServiceRoute;
 impl ChatConnection {
     pub async fn start_connect_with<TC>(
         connection_resources: ConnectionResources<'_, TC>,
+        service: ServiceName,
         http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
         endpoint_path: &'static str,
         user_agent: &UserAgent,
@@ -259,6 +262,7 @@ impl ChatConnection {
     {
         Self::start_connect_with_transport(
             connection_resources,
+            service,
             http_route_provider,
             endpoint_path,
             user_agent,
@@ -272,6 +276,7 @@ impl ChatConnection {
     #[cfg_attr(feature = "test-util", visibility::make(pub))]
     async fn start_connect_with_transport<TC>(
         connection_resources: ConnectionResources<'_, TC>,
+        service: ServiceName,
         http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
         endpoint_path: &'static str,
         user_agent: &UserAgent,
@@ -311,6 +316,7 @@ impl ChatConnection {
         let log_tag: Arc<str> = log_tag.into();
         let (connection, route_info) = connection_resources
             .connect_ws(
+                service,
                 ws_routes,
                 // If we create multiple authenticated chat websocket connections at
                 // the same time, the server will terminate earlier ones as later
@@ -515,6 +521,7 @@ pub mod test_support {
 
         let pending = ChatConnection::start_connect_with(
             connection_resources,
+            env.chat_domain_config.connect.service,
             route_provider,
             CHAT_WEBSOCKET_PATH,
             &user_agent,
@@ -765,6 +772,7 @@ pub(crate) mod test {
 
         let err = ChatConnection::start_connect_with_transport(
             connection_resources,
+            ServiceName("chat"),
             vec![HttpsTlsRoute {
                 fragment: HttpRouteFragment {
                     host_header: CHAT_DOMAIN.into(),
@@ -863,6 +871,7 @@ pub(crate) mod test {
 
         make_connection_resources()
             .preconnect_and_save(
+                ServiceName("test"),
                 routes
                     .iter()
                     .cloned()
@@ -887,6 +896,7 @@ pub(crate) mod test {
 
         let err = ChatConnection::start_connect_with_transport(
             make_connection_resources(),
+            ServiceName("chat"),
             routes.clone(),
             CHAT_WEBSOCKET_PATH,
             &UserAgent::with_libsignal_version("test"),
@@ -909,6 +919,7 @@ pub(crate) mod test {
 
         let err = ChatConnection::start_connect_with_transport(
             make_connection_resources(),
+            ServiceName("test"),
             routes.clone(),
             CHAT_WEBSOCKET_PATH,
             &UserAgent::with_libsignal_version("test"),

@@ -201,7 +201,11 @@ impl AuthenticatedChatConnection {
 
         log::info!("preconnecting chat");
         connection_resources
-            .preconnect_and_save(route_provider, "preconnect")
+            .preconnect_and_save(
+                connection_manager.env.chat_domain_config.connect.service,
+                route_provider,
+                "preconnect",
+            )
             .await?;
         Ok(())
     }
@@ -467,6 +471,7 @@ async fn establish_chat_connection(
 
     ChatConnection::start_connect_with(
         connection_resources,
+        env.chat_domain_config.connect.service,
         route_provider,
         endpoint_path,
         user_agent,

@@ -8,6 +8,7 @@ use std::num::NonZeroU16;
 use attest::svr2::RaftConfig;
 use const_str::ip_addr;
 use libsignal_net::chat::RECOMMENDED_CHAT_WS_CONFIG;
+use libsignal_net::connect_state::ServiceName;
 use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
 use libsignal_net::env::{ConnectionConfig, DomainConfig, Env, KeyTransConfig, SvrBEnv};
 use libsignal_net::infra::RECOMMENDED_WS_CONFIG;
@@ -17,6 +18,7 @@ use libsignal_net::infra::route::HttpVersion;
 const ENCLAVE_ID_MOCK_SERVER: &[u8] = b"0.20240911.184407";
 
 fn localhost_test_domain_config_with_port_and_cert(
+    service: ServiceName,
     port: NonZeroU16,
     root_certificate_der: &[u8],
 ) -> DomainConfig {
@@ -25,6 +27,7 @@ fn localhost_test_domain_config_with_port_and_cert(
         ip_v4: &[LOCALHOST_IP_V4],
         ip_v6: &[],
         connect: ConnectionConfig {
+            service,
             hostname: "localhost",
             port,
             cert: RootCertificates::FromDer(std::borrow::Cow::Owned(root_certificate_der.to_vec())),
@@ -80,16 +83,19 @@ pub(crate) fn localhost_test_env_with_ports(
 ) -> Env<'static> {
     Env {
         chat_domain_config: localhost_test_domain_config_with_port_and_cert(
+            ServiceName("chat"),
             ports.chat_port,
             root_certificate_der,
         ),
         experimental_chat_h2_domain_config: localhost_test_domain_config_with_port_and_cert(
+            ServiceName("chat"),
             ports.chat_port,
             root_certificate_der,
         ),
         chat_ws_config: RECOMMENDED_CHAT_WS_CONFIG,
         cdsi: EnclaveEndpoint {
             domain_config: localhost_test_domain_config_with_port_and_cert(
+                ServiceName("cdsi"),
                 ports.cdsi_port,
                 root_certificate_der,
             ),
@@ -98,6 +104,7 @@ pub(crate) fn localhost_test_env_with_ports(
         },
         svr2: EnclaveEndpoint {
             domain_config: localhost_test_domain_config_with_port_and_cert(
+                ServiceName("svr2"),
                 ports.svr2_port,
                 root_certificate_der,
             ),
@@ -108,6 +115,7 @@ pub(crate) fn localhost_test_env_with_ports(
             [
                 Some(EnclaveEndpoint {
                     domain_config: localhost_test_domain_config_with_port_and_cert(
+                        ServiceName("svrb"),
                         ports.svrb_port,
                         root_certificate_der,
                     ),

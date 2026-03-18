@@ -52,6 +52,7 @@ impl SvrBConnect for SvrBConnectImpl<'_> {
 
         SvrConnection::connect(
             connection_resources.as_connection_resources(),
+            endpoint.domain_config.connect.service,
             route_provider,
             endpoint.ws_config,
             &endpoint.params,

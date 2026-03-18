@@ -16,7 +16,7 @@ use libsignal_net::chat::{
 };
 use libsignal_net::connect_state::{
     ConnectState, ConnectionResources, DefaultConnectorFactory, DefaultTransportConnector,
-    SUGGESTED_CONNECT_CONFIG,
+    SUGGESTED_CONNECT_CONFIG, ServiceName,
 };
 use libsignal_net::env::constants::CHAT_WEBSOCKET_PATH;
 use libsignal_net::env::{ConnectionConfig, DomainConfig, UserAgent};
@@ -60,8 +60,9 @@ pub fn only_direct_routes(
         ip_v6: _,
         connect:
             ConnectionConfig {
-                port,
+                service: _,
                 hostname,
+                port,
                 cert: _,
                 min_tls_version: _,
                 http_version: _,
@@ -106,8 +107,9 @@ pub fn allow_domain_fronting(
         ip_v6: _,
         connect:
             ConnectionConfig {
-                port: _,
+                service: _,
                 hostname: _,
+                port: _,
                 cert: _,
                 min_tls_version: _,
                 http_version: _,
@@ -216,6 +218,7 @@ impl FakeDeps {
 
         ChatConnection::start_connect_with_transport(
             connection_resources,
+            ServiceName("fake chat"),
             DirectOrProxyProvider::direct(chat_domain_config.connect.route_provider(
                 EnableDomainFronting::OneDomainPerProxy,
                 OverrideNagleAlgorithm::UseSystemDefault,

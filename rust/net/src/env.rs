@@ -30,6 +30,7 @@ use rand::{Rng, rng};
 
 use crate::certs::{PROXY_G_ROOT_CERTIFICATES, SIGNAL_ROOT_CERTIFICATES};
 use crate::chat::RECOMMENDED_CHAT_WS_CONFIG;
+use crate::connect_state::ServiceName;
 use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
@@ -48,6 +49,7 @@ const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
         ip_addr!(v6, "2600:9000:a61f:527c:d5eb:a431:5239:3232"),
     ],
     connect: ConnectionConfig {
+        service: ServiceName("chat"),
         hostname: "chat.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -65,6 +67,9 @@ const DOMAIN_CONFIG_EXPERIMENTAL_CHAT_H2: DomainConfig = DomainConfig {
     ip_v4: &[],
     ip_v6: &[],
     connect: ConnectionConfig {
+        // Keeping the service names in sync makes it so we don't have to carefully track which
+        // config we're using.
+        service: DOMAIN_CONFIG_CHAT.connect.service,
         hostname: "grpc.chat.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -86,6 +91,7 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
         ip_addr!(v6, "2600:9000:a61f:527c:2215:cd9:bac6:a2f8"),
     ],
     connect: ConnectionConfig {
+        service: ServiceName("chat"),
         hostname: "chat.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -103,6 +109,7 @@ const DOMAIN_CONFIG_EXPERIMENTAL_CHAT_H2_STAGING: DomainConfig = DomainConfig {
     ip_v4: &[],
     ip_v6: &[],
     connect: ConnectionConfig {
+        service: DOMAIN_CONFIG_CHAT_STAGING.connect.service,
         hostname: "grpc.chat.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -116,6 +123,7 @@ const DOMAIN_CONFIG_EXPERIMENTAL_CHAT_H2_STAGING: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
+        service: ServiceName("cdsi"),
         hostname: "cdsi.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -133,6 +141,7 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
+        service: ServiceName("cdsi"),
         hostname: "cdsi.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -150,6 +159,7 @@ const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
+        service: ServiceName("svr2"),
         hostname: "svr2.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -183,6 +193,7 @@ const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
+        service: ServiceName("svr2"),
         hostname: "svr2.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -212,6 +223,7 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_SVRB_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
+        service: ServiceName("svrb"),
         hostname: "svrb.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -241,6 +253,7 @@ const DOMAIN_CONFIG_SVRB_STAGING: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_SVRB_PROD: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
+        service: ServiceName("svrb"),
         hostname: "svrb.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -392,6 +405,8 @@ pub struct DomainConfig {
 
 #[derive(Clone)]
 pub struct ConnectionConfig {
+    /// The name for the resource, to track state across connection attempts.
+    pub service: ServiceName,
     /// The domain name of the resource.
     pub hostname: &'static str,
     /// The port for the resource.
@@ -516,6 +531,7 @@ impl ConnectionConfig {
         override_nagle_algorithm: OverrideNagleAlgorithm,
     ) -> HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>> {
         let Self {
+            service: _,
             hostname,
             port,
             cert,
@@ -934,6 +950,7 @@ mod test {
     ) {
         const PORT: NonZeroU16 = nonzero!(123u16);
         const CONNECT_CONFIG: ConnectionConfig = ConnectionConfig {
+            service: ServiceName("service"),
             hostname: "host",
             port: PORT,
             cert: RootCertificates::Native,

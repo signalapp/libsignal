@@ -12,6 +12,7 @@ use clap::{Parser, ValueEnum};
 use libsignal_net::certs::SIGNAL_ROOT_CERTIFICATES;
 use libsignal_net::chat::test_support::simple_chat_connection;
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
+use libsignal_net::env::Env;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::http_client::{Http2Client, Http2Connector};
@@ -67,27 +68,23 @@ async fn main() -> anyhow::Result<()> {
         Environment::Production => libsignal_net::env::PROD,
     };
 
+    if !host.is_empty() {
+        // This is cheating, but we're just using it for testing anyway.
+        env.chat_domain_config.connect.hostname = Box::leak(host.into_boxed_str());
+        env.chat_domain_config.ip_v4 = &[];
+        env.chat_domain_config.ip_v6 = &[];
+    }
+    if h2 {
+        env.chat_domain_config.connect.http_version = Some(HttpVersion::Http2);
+    }
+
     let grpc_connection;
     let ws_connection;
 
     if use_grpc {
-        let host = if host.is_empty() {
-            env.chat_domain_config.connect.hostname
-        } else {
-            &host
-        };
-        grpc_connection = Some(Unauth(make_grpc_connection(host).await?));
+        grpc_connection = Some(Unauth(make_grpc_connection(env).await?));
         ws_connection = None;
     } else {
-        if !host.is_empty() {
-            // This is cheating, but we're just using it for testing anyway.
-            env.chat_domain_config.connect.hostname = Box::leak(host.into_boxed_str());
-            env.chat_domain_config.ip_v4 = &[];
-            env.chat_domain_config.ip_v6 = &[];
-        }
-        if h2 {
-            env.chat_domain_config.connect.http_version = Some(HttpVersion::Http2);
-        }
         let chat_connection = simple_chat_connection(
             &env,
             EnableDomainFronting::No,
@@ -194,8 +191,8 @@ assert_impl_all!(Http2Client<tonic::body::Body>: tonic::client::GrpcService<toni
 ///
 /// Eventually this should be covered by a libsignal-net-level API like `simple_chat_connection`.
 /// We're not just making an *arbitrary* H2 connection; we're specifically talking to chat-server.
-async fn make_grpc_connection(host: &str) -> anyhow::Result<Http2Client<tonic::body::Body>> {
-    let host: Arc<str> = Arc::from(host);
+async fn make_grpc_connection(env: Env<'_>) -> anyhow::Result<Http2Client<tonic::body::Body>> {
+    let host: Arc<str> = Arc::from(env.chat_domain_config.connect.hostname);
     let connect_state = Arc::new(ConnectState::new(SUGGESTED_CONNECT_CONFIG));
     let resolver = DnsResolver::new(&no_network_change_events());
     let (client, _route_info) = ConnectionResources {
@@ -205,6 +202,7 @@ async fn make_grpc_connection(host: &str) -> anyhow::Result<Http2Client<tonic::b
         confirmation_header_name: None,
     }
     .connect_h2(
+        env.chat_domain_config.connect.service,
         HttpsProvider::new(
             host.clone(),
             HttpVersion::Http2,

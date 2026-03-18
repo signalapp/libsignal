@@ -20,7 +20,7 @@ use uuid::Uuid;
 use zerocopy::{FromBytes, Immutable, KnownLayout};
 
 use crate::auth::Auth;
-use crate::connect_state::{ConnectionResources, WebSocketTransportConnectorFactory};
+use crate::connect_state::{ConnectionResources, ServiceName, WebSocketTransportConnectorFactory};
 use crate::enclave::{Cdsi, EndpointParams};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 
@@ -302,13 +302,21 @@ pub struct ClientResponseCollector(CdsiConnection);
 impl CdsiConnection {
     pub async fn connect_with(
         connection_resources: ConnectionResources<'_, impl WebSocketTransportConnectorFactory>,
+        service: ServiceName,
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         ws_config: crate::infra::ws::Config,
         params: &EndpointParams<'_, Cdsi>,
         auth: &Auth,
     ) -> Result<Self, LookupError> {
         let (connection, _route_info) = connection_resources
-            .connect_attested_ws(route_provider, auth, ws_config, "cdsi".into(), params)
+            .connect_attested_ws(
+                service,
+                route_provider,
+                auth,
+                ws_config,
+                "cdsi".into(),
+                params,
+            )
             .await?;
         Ok(Self(connection))
     }
@@ -975,6 +983,7 @@ mod test {
                 network_change_event: &network_change_event,
                 confirmation_header_name: None,
             },
+            env.cdsi.domain_config.connect.service,
             DirectOrProxyProvider::direct(
                 env.cdsi
                     .enclave_websocket_provider(EnableDomainFronting::No),
