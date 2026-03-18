@@ -40,7 +40,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
     - name: Enable KT skip flag
@@ -51,19 +51,19 @@ jobs:
         echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=${LIBSIGNAL_TESTING_IGNORE_KT_TESTS:-<unset>}"
     - run: make -C java
     - name: Upload JNI libraries
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: jniLibs
         path: java/android/src/main/jniLibs/*
         retention-days: 2
     - name: Upload full JARs
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: jars
         path: java/*/build/libs/*
         retention-days: 2
     - name: Upload full AARs
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: aars
         path: java/android/build/outputs/aar/*
@@ -76,7 +76,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
     - name: Enable KT skip flag
@@ -84,13 +84,13 @@ jobs:
       run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
     - run: make -C java
     - name: Upload full JARs
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: jars-secondary
         path: java/*/build/libs/*
         retention-days: 2
     - name: Upload full AARs
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: aars-secondary
         path: java/android/build/outputs/aar/*
@@ -104,22 +104,22 @@ jobs:
 
     steps:
       - name: Download jars
-        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: jars
           path: a/jars/
       - name: Download jars (secondary)
-        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: jars-secondary
           path: b/jars/
       - name: Download aars
-        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: aars
           path: a/aars/
       - name: Download aars (secondary)
-        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: aars-secondary
           path: b/aars/
@@ -132,7 +132,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
     - name: Enable KT skip flag
@@ -182,20 +182,20 @@ jobs:
             sudo udevadm control --reload-rules
             sudo udevadm trigger --name-match=kvm
 
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: recursive
 
       - name: Download JNI libraries
         id: download
-        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: jniLibs
           path: java/android/src/main/jniLibs/
 
       # From reactivecircus/android-emulator-runner
       - name: AVD cache
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         id: avd-cache
         with:
           path: |
@@ -205,7 +205,7 @@ jobs:
 
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@62dbb605bba737720e10b196cb4220d374026a6d # v2.33.0
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
         with:
           arch: ${{ matrix.arch }}
           api-level: ${{ matrix.api_level }}
@@ -216,7 +216,7 @@ jobs:
           script: echo "Generated AVD snapshot for caching."
 
       - name: Run tests
-        uses: reactivecircus/android-emulator-runner@62dbb605bba737720e10b196cb4220d374026a6d # v2.33.0
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
         with:
           arch: ${{ matrix.arch }}
           api-level: ${{ matrix.api_level }}
@@ -238,7 +238,7 @@ jobs:
 
       - name: Upload logcat logs
         if: always()
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
             name: logcat-logs-api${{ matrix.api_level }}-${{ matrix.arch }}
             path: java/logcat.log
@@ -251,7 +251,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
     - name: Enable KT skip flag
@@ -278,7 +278,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
     - name: Enable KT skip flag
@@ -290,7 +290,7 @@ jobs:
       env:
         PREBUILDS_ONLY: 1
     - name: Upload prebuilds
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: node-prebuilds
         path: node/prebuilds
@@ -303,12 +303,12 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
     - run: node/docker-prebuildify.sh
     - name: Upload prebuilds
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: node-prebuilds-secondary
         path: node/prebuilds
@@ -322,12 +322,12 @@ jobs:
 
     steps:
     - name: Download prebuilds
-      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
       with:
         name: node-prebuilds
         path: a/prebuilds/
     - name: Download prebuilds (secondary)
-      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
       with:
         name: node-prebuilds-secondary
         path: b/prebuilds/
@@ -340,7 +340,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
     - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal --target aarch64-pc-windows-msvc
@@ -375,7 +375,7 @@ jobs:
     #   DEVELOPER_DIR: /Applications/Xcode_16.2.app
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: recursive
       - name: Enable KT skip flag
@@ -426,7 +426,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
     - name: Enable KT skip flag
@@ -503,7 +503,7 @@ jobs:
       FUZZ_JOBS: 4 # because this is a "4-cores" runner
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
 
@@ -512,7 +512,7 @@ jobs:
     - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
     - name: Cache cargo-fuzz
-      uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
         path: local-tools
         key: ${{ runner.os }}-fuzzing-local-tools-${{ env.CARGO_FUZZ_VERSION }}
@@ -536,7 +536,7 @@ jobs:
     - run: cargo fuzz build dcap && cargo fuzz run dcap -j${{ env.FUZZ_JOBS }} -- -max_total_time=${{ env.FUZZ_TIME_SECONDS }}
       working-directory: rust/attest
 
-    - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+    - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       if: failure()
       with:
         name: fuzzing-artifacts-${{ github.sha }}
@@ -569,7 +569,7 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+    - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
       with:
         script: |
           github.rest.repos.createCommitComment({

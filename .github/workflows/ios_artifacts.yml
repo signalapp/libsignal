@@ -27,19 +27,19 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
 
     - name: Checking run eligibility
-      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
       with:
         script: |
           const dryRun = ${{ inputs.dry_run }};
           const refType = '${{ github.ref_type }}';
           const refName = '${{ github.ref_name }}';
-          console.log(dryRun 
-            ? `Running in 'dry run' mode on '${refName}' ${refType}` 
+          console.log(dryRun
+            ? `Running in 'dry run' mode on '${refName}' ${refType}`
             : `Running on '${refName}' ${refType}`);
           if (refType !== 'tag' && !dryRun) {
             core.setFailed("the action should either be launched on a tag or with a 'dry run' switch");
@@ -75,18 +75,18 @@ jobs:
       shell: bash # Explicitly setting the shell turns on pipefail in GitHub Actions
 
     - name: Attach artifact to the run
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         path: ${{ steps.archive-name.outputs.name }}
         name: libsignal-client-ios
 
-    - uses: google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c # v2.1.2
+    - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
       if: ${{ !inputs.dry_run }}
       with:
         workload_identity_provider: 'projects/741367068918/locations/global/workloadIdentityPools/github/providers/github-actions'
         service_account: 'github-actions@signal-build-artifacts.iam.gserviceaccount.com'
 
-    - uses: google-github-actions/upload-cloud-storage@22121cd842b0d185e042e28d969925b538c33d77 # v2.1.0
+    - uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
       if: ${{ !inputs.dry_run }}
       with:
         path: ${{ steps.archive-name.outputs.name }}
@@ -94,7 +94,7 @@ jobs:
 
     # This step is expected to fail if not run on a tag.
     - name: Upload checksum to release
-      uses: ncipollo/release-action@66b1844f0b7ef940787c9d128846d5ac09b3881f # v1.14
+      uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b # v1.20
       if: ${{ !inputs.dry_run }}
       with:
         allowUpdates: true
