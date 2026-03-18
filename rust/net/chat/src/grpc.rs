@@ -196,19 +196,16 @@ impl<E> From<tonic::Status> for RequestError<E> {
     }
 }
 
-const GRPC_STATUS_DETAILS_METADATA_KEY: &str = "grpc-status-details-bin";
 const SIGNAL_ERRORINFO_DOMAIN: &str = "grpc.chat.signal.org";
 
 /// Extracts info from an error response if and only if it's from the chat server.
 fn extract_server_side_error(
     status: &tonic::Status,
 ) -> Option<(google::rpc::Status, google::rpc::ErrorInfo)> {
-    let details = status
-        .metadata()
-        .get_bin(GRPC_STATUS_DETAILS_METADATA_KEY)?
-        .to_bytes()
-        .inspect_err(|_e| log::warn!("invalid encoding for {GRPC_STATUS_DETAILS_METADATA_KEY}"))
-        .ok()?;
+    let details = status.details();
+    if details.is_empty() {
+        return None;
+    }
     let grpc_status = google::rpc::Status::decode(details)
         .inspect_err(|_e| log::warn!("invalid encoding of google::rpc::Status message"))
         .ok()?;
@@ -251,6 +248,7 @@ fn request_error_from_server_side_error_info<E>(
     info: google::rpc::ErrorInfo,
 ) -> RequestError<E> {
     debug_assert_eq!(info.domain, SIGNAL_ERRORINFO_DOMAIN);
+    log::debug!("identified as Signal-originated error...");
 
     match info.reason.as_str() {
         // TODO: These two need to be reported globally as well as for this specific request.
@@ -336,6 +334,7 @@ fn matching_details<M: Default + prost::Name>(
     details: &[prost_types::Any],
 ) -> impl Iterator<Item = M> {
     let expected_url = M::type_url();
+    log::debug!("looking for {expected_url} in error details...");
     details
         .iter()
         .filter(move |p| p.type_url == expected_url)
@@ -619,13 +618,18 @@ mod test {
     use std::task::{Context, Poll};
 
     use assert_matches::assert_matches;
+    use base64::Engine as _;
+    use base64::prelude::BASE64_STANDARD;
     use futures_util::FutureExt;
     use hyper::rt::ReadBufCursor;
     use libsignal_net::infra::http_client::Http2Client;
     use test_case::test_case;
-    use tonic::metadata::MetadataValue;
 
     use super::*;
+
+    const GRPC_STATUS_HEADER: http::HeaderName = http::HeaderName::from_static("grpc-status");
+    const GRPC_STATUS_DETAILS_HEADER: http::HeaderName =
+        http::HeaderName::from_static("grpc-status-details-bin");
 
     #[test]
     fn test_extract_server_side_error() {
@@ -652,11 +656,20 @@ mod test {
             ],
         };
 
-        let mut response = tonic::Status::invalid_argument("bad arg (outer)");
-        response.metadata_mut().insert_bin(
-            GRPC_STATUS_DETAILS_METADATA_KEY,
-            MetadataValue::from_bytes(&original_status.encode_to_vec()),
-        );
+        let response = tonic::Status::from_header_map(&http::HeaderMap::from_iter([
+            (
+                GRPC_STATUS_HEADER,
+                http::HeaderValue::from_static(tonic::Code::InvalidArgument.description()),
+            ),
+            (
+                GRPC_STATUS_DETAILS_HEADER,
+                http::HeaderValue::from_str(
+                    &BASE64_STANDARD.encode(original_status.encode_to_vec()),
+                )
+                .expect("valid"),
+            ),
+        ]))
+        .expect("valid");
         let (status, error_info) = extract_server_side_error(&response).expect("can extract");
         assert_eq!(status, original_status);
         assert_eq!(error_info, original_error_info);
@@ -664,7 +677,29 @@ mod test {
 
     #[test]
     fn test_extract_server_side_error_without_details() {
-        let mut response = tonic::Status::invalid_argument("bad arg (outer)");
+        fn make_response(status: Option<&google::rpc::Status>) -> tonic::Status {
+            tonic::Status::from_header_map(
+                &status
+                    .map(|status| {
+                        (
+                            GRPC_STATUS_DETAILS_HEADER,
+                            http::HeaderValue::from_str(
+                                &BASE64_STANDARD.encode(status.encode_to_vec()),
+                            )
+                            .expect("valid"),
+                        )
+                    })
+                    .into_iter()
+                    .chain([(
+                        GRPC_STATUS_HEADER,
+                        http::HeaderValue::from_static(tonic::Code::InvalidArgument.description()),
+                    )])
+                    .collect(),
+            )
+            .expect("valid")
+        }
+
+        let response = make_response(None);
         assert_matches!(extract_server_side_error(&response), None);
 
         let mut status = google::rpc::Status {
@@ -672,10 +707,7 @@ mod test {
             message: "bad arg (inner)".into(),
             details: vec![],
         };
-        response.metadata_mut().insert_bin(
-            GRPC_STATUS_DETAILS_METADATA_KEY,
-            MetadataValue::from_bytes(&status.encode_to_vec()),
-        );
+        let response = make_response(Some(&status));
         assert_matches!(extract_server_side_error(&response), None);
 
         let unrelated_error_info = google::rpc::ErrorInfo {
@@ -690,10 +722,7 @@ mod test {
             },
             prost_types::Any::from_msg(&unrelated_error_info).expect("can encode"),
         ];
-        response.metadata_mut().insert_bin(
-            GRPC_STATUS_DETAILS_METADATA_KEY,
-            MetadataValue::from_bytes(&status.encode_to_vec()),
-        );
+        let response = make_response(Some(&status));
         assert_matches!(extract_server_side_error(&response), None);
     }
 
