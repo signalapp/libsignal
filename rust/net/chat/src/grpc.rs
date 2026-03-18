@@ -22,7 +22,7 @@ use prost::Message as _;
 use tonic::codegen::StdError;
 
 use crate::api::{DisconnectedError, RequestError};
-use crate::logging::DebugAsStrOrBytes;
+use crate::logging::{DebugAsStrOrBytes, Redact, RedactHex};
 
 /// Marker type for use in [`crate::api`] traits.
 pub enum OverGrpc {}
@@ -344,6 +344,19 @@ fn matching_details<M: Default + prost::Name>(
                 .inspect_err(|_e| log::warn!("invalid encoding of {} message", M::full_name()))
                 .ok()
         })
+}
+
+impl std::fmt::Display for Redact<libsignal_net_grpc::proto::chat::common::ServiceIdentifier> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0.try_as_service_id() {
+            Some(id) => write!(f, "{}", Redact(id)),
+            None => f
+                .debug_struct("ServiceIdentifier")
+                .field("id", &self.0.identity_type)
+                .field("uuid", &RedactHex(&hex::encode(&self.0.uuid)))
+                .finish(),
+        }
+    }
 }
 
 #[cfg(test)]

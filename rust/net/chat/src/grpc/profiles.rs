@@ -22,9 +22,7 @@ impl std::fmt::Display for Redact<CheckAccountExistenceRequest> {
         f.debug_struct("CheckAccountExistenceRequest")
             .field(
                 "service_identifier",
-                &service_identifier.as_ref().and_then(|service_identifier| {
-                    service_identifier.try_as_service_id().map(Redact)
-                }),
+                &service_identifier.as_ref().map(Redact),
             )
             .finish()
     }
