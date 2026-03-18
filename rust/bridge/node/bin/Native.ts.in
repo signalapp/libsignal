@@ -70,11 +70,7 @@ export type SignedPreKeyStore = BridgeSignedPreKeyStore;
 export type KyberPreKeyStore = BridgeKyberPreKeyStore;
 export type SessionStore = BridgeSessionStore;
 export type SenderKeyStore = BridgeSenderKeyStore;
-
-export type InputStream = {
-  _read: (amount: number) => Promise<Uint8Array<ArrayBuffer>>;
-  _skip: (amount: number) => Promise<void>;
-};
+export type InputStream = BridgeInputStream;
 
 export type SyncInputStream = Uint8Array<ArrayBuffer>;
 

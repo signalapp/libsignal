@@ -954,3 +954,13 @@ impl From<WithContext<ThrownException>> for SignalProtocolError {
         SignalProtocolError::ApplicationCallbackError(operation, Box::new(inner))
     }
 }
+
+impl From<WithContext<ThrownException>> for std::io::Error {
+    fn from(value: WithContext<ThrownException>) -> Self {
+        let WithContext {
+            operation: _,
+            inner,
+        } = value;
+        Self::other(inner)
+    }
+}

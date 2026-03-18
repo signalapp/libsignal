@@ -70,11 +70,7 @@ export type SignedPreKeyStore = BridgeSignedPreKeyStore;
 export type KyberPreKeyStore = BridgeKyberPreKeyStore;
 export type SessionStore = BridgeSessionStore;
 export type SenderKeyStore = BridgeSenderKeyStore;
-
-export type InputStream = {
-  _read: (amount: number) => Promise<Uint8Array<ArrayBuffer>>;
-  _skip: (amount: number) => Promise<void>;
-};
+export type InputStream = BridgeInputStream;
 
 export type SyncInputStream = Uint8Array<ArrayBuffer>;
 
@@ -1807,6 +1803,10 @@ export { registerErrors,
 
 /* eslint-disable comma-dangle */
 export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
+export /*trait*/ type BridgeInputStream = {
+  read: (amount: number) => Promise<Uint8Array<ArrayBuffer>>;
+  skip: (amount: bigint) => Promise<void>;
+};
 export interface BridgedStringMap { readonly __type: unique symbol; }
 export interface Aes256GcmSiv { readonly __type: unique symbol; }
 export interface HsmEnclaveClient { readonly __type: unique symbol; }

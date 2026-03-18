@@ -8,6 +8,7 @@ import chaiAsPromised from 'chai-as-promised';
 import { Buffer } from 'node:buffer';
 
 import * as Native from '../Native.js';
+import { _bridgeInputStream } from '../io.js';
 import { Uint8ArrayInputStream } from './ioutil.js';
 import { assertArrayEquals } from './util.js';
 
@@ -19,7 +20,7 @@ describe('InputStream', () => {
   it('handles reads into empty buffers', async () => {
     const input = new Uint8ArrayInputStream(CAPS_ALPHABET_INPUT);
     const output = await Native.TESTING_InputStreamReadIntoZeroLengthSlice(
-      input
+      _bridgeInputStream(input)
     );
     assertArrayEquals(output, CAPS_ALPHABET_INPUT);
   });

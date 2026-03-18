@@ -9,15 +9,7 @@ import type { IoError } from './Errors.js';
 /**
  * An abstract class representing an input stream of bytes.
  */
-export abstract class InputStream implements Native.InputStream {
-  _read(amount: number): Promise<Uint8Array<ArrayBuffer>> {
-    return this.read(amount);
-  }
-
-  _skip(amount: number): Promise<void> {
-    return this.skip(amount);
-  }
-
+export abstract class InputStream {
   /**
    * Called to indicate the stream's resources should be released.
    *
@@ -49,4 +41,23 @@ export abstract class InputStream implements Native.InputStream {
    * @throws {IoError} If an I/O error occurred while skipping the bytes in the input.
    */
   abstract skip(amount: number): Promise<void>;
+}
+
+export function _bridgeInputStream(
+  inputStream: InputStream
+): Native.BridgeInputStream {
+  return {
+    read(amount: number): Promise<Uint8Array<ArrayBuffer>> {
+      return inputStream.read(amount);
+    },
+    skip(amount: bigint): Promise<void> {
+      if (
+        amount < BigInt(Number.MIN_SAFE_INTEGER) ||
+        amount > BigInt(Number.MAX_SAFE_INTEGER)
+      ) {
+        throw new RangeError('skip amount out of range');
+      }
+      return inputStream.skip(Number(amount));
+    },
+  };
 }

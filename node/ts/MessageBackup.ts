@@ -13,7 +13,7 @@ import * as Native from './Native.js';
 import { ErrorCode, LibSignalErrorBase } from './Errors.js';
 import { BackupForwardSecrecyToken, BackupKey } from './AccountKeys.js';
 import { Aci } from './Address.js';
-import { InputStream } from './io.js';
+import { _bridgeInputStream, InputStream } from './io.js';
 
 export type InputStreamFactory = () => InputStream;
 
@@ -144,8 +144,8 @@ export async function validate(
     return new ValidationOutcome(
       await Native.MessageBackupValidator_Validate(
         backupKey,
-        firstStream,
-        secondStream,
+        _bridgeInputStream(firstStream),
+        _bridgeInputStream(secondStream),
         length,
         purpose
       )
@@ -249,7 +249,7 @@ export class ComparableBackup {
     length: bigint
   ): Promise<ComparableBackup> {
     const handle = await Native.ComparableBackup_ReadUnencrypted(
-      input,
+      _bridgeInputStream(input),
       length,
       purpose
     );

@@ -37,7 +37,7 @@ import {
   InvalidMediaInputError,
   UnsupportedMediaInputError,
 } from './Errors.js';
-import { InputStream } from './io.js';
+import { _bridgeInputStream, InputStream } from './io.js';
 
 export class SanitizedMetadata {
   readonly _nativeHandle: Native.SanitizedMetadata;
@@ -96,7 +96,7 @@ export async function sanitize(
   len: bigint
 ): Promise<SanitizedMetadata> {
   const sanitizedMetadataNativeHandle = await Native.Mp4Sanitizer_Sanitize(
-    input,
+    _bridgeInputStream(input),
     len
   );
   return SanitizedMetadata._fromNativeHandle(sanitizedMetadataNativeHandle);
