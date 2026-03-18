@@ -4,3 +4,4 @@ v0.89.1
 
 - backups: Support group terminate update message.
 
+- Bumps the gRPC remote config keys for AccountsAnonymousLookupUsernameLink, AccountsAnonymousCheckAccountExistence, and MessagesAnonymousSendMultiRecipientMessage to have a ".2" suffix.

@@ -25,7 +25,6 @@ use rand::TryRngCore as _;
 
 pub use self::remote_config::BuildVariant;
 use self::remote_config::RemoteConfig;
-use crate::net::remote_config::HasRawKey;
 use crate::*;
 
 pub mod cdsi;
@@ -231,7 +230,7 @@ impl ConnectionManager {
         guard
             .iter_enabled()
             .filter_map(|(k, v)| {
-                k.raw().strip_prefix("grpc.").map(|k| {
+                k.as_grpc_request_name().map(|k| {
                     (
                         k,
                         if **v == *"ws" {

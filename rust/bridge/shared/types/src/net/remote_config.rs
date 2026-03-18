@@ -111,17 +111,54 @@ pub enum RemoteConfigKey {
     UseH2ForAuthChat => "useH2ForAuthChat",
 
     // Typed API keys, based on gRPC request names.
-    // These should all start with "grpc."
+    // These should all start with "grpc." and optionally end with ".{digit}"
     AccountsAnonymousLookupUsernameHash => "grpc.AccountsAnonymousLookupUsernameHash",
-    AccountsAnonymousLookupUsernameLink => "grpc.AccountsAnonymousLookupUsernameLink",
-    AccountsAnonymousCheckAccountExistence => "grpc.AccountsAnonymousCheckAccountExistence",
-    MessagesAnonymousSendMultiRecipientMessage => "grpc.MessagesAnonymousSendMultiRecipientMessage",
+    AccountsAnonymousLookupUsernameLink => "grpc.AccountsAnonymousLookupUsernameLink.2",
+    AccountsAnonymousCheckAccountExistence => "grpc.AccountsAnonymousCheckAccountExistence.2",
+    MessagesAnonymousSendMultiRecipientMessage => "grpc.MessagesAnonymousSendMultiRecipientMessage.2",
 }
 }
 
 pub enum RemoteConfigValue {
     Disabled,
     Enabled(Arc<str>),
+}
+
+impl RemoteConfigKey {
+    pub fn as_grpc_request_name(&self) -> Option<&'static str> {
+        Self::raw_as_grpc_request_name(self.raw())
+    }
+
+    /// Given a remote config raw key as input, derive the corresponding gRPC request name if it is
+    /// a gRPC key (starts with `"grpc."`).
+    ///
+    /// This function expects input to be of the form `"grpc.SomeRequestName"` or
+    /// `"grpc.SomeRequestName.123`. Behavior on other strings beginning with `"grpc."` is
+    /// unspecified.
+    fn raw_as_grpc_request_name(raw: &'static str) -> Option<&'static str> {
+        let grpc_key_maybe_with_suffix = raw.strip_prefix("grpc.")?;
+
+        // Walk backwards, attempting to match a suffix of the form ".123".
+        let mut grpc_key_without_trailing_version = grpc_key_maybe_with_suffix.as_bytes();
+        while let Some((last, all_but_last)) = grpc_key_without_trailing_version.split_last() {
+            if *last == b'.' {
+                // We've successfully stripped the suffix. Reslice to preserve str-ness.
+                // We know this is a safe place to slice because (a) ASCII bytes always represent
+                // ASCII in UTF-8, and (b) in practice our remote config keys are always ASCII
+                // anyway.
+                return Some(&grpc_key_maybe_with_suffix[..all_but_last.len()]);
+            }
+            if !last.is_ascii_digit() {
+                // Whoops, this is a message name that may happen to end in digits. Don't strip
+                // anything after all.
+                return Some(grpc_key_maybe_with_suffix);
+            }
+            grpc_key_without_trailing_version = all_but_last;
+        }
+
+        // This is a message name made up entirely of digits? Weird, but most consistent to allow it.
+        Some(grpc_key_maybe_with_suffix)
+    }
 }
 
 impl std::fmt::Display for RemoteConfigKey {
@@ -188,6 +225,7 @@ mod tests {
     use std::collections::HashSet;
 
     use itertools::Itertools as _;
+    use test_case::test_case;
 
     use super::*;
 
@@ -195,6 +233,7 @@ mod tests {
         #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, strum::EnumCount, strum::EnumIter)]
         pub enum RemoteConfigKey {
             TestKey => "testKey",
+            TestGrpcKeyWithSuffix => "grpc.testGrpcKey.2013",
         }
     }
 
@@ -203,6 +242,8 @@ mod tests {
         let m = HashMap::from_iter([
             ("testKey".to_string(), Arc::from("base")),
             ("testKey.beta".to_string(), Arc::from("beta")),
+            ("grpc.testGrpcKey.2013".to_string(), Arc::from("base")),
+            ("grpc.testGrpcKey.2013.beta".to_string(), Arc::from("beta")),
         ]);
 
         let prod = RemoteConfig::new(m.clone(), BuildVariant::Production);
@@ -214,6 +255,18 @@ mod tests {
         // Either way, should show as enabled.
         assert!(prod.is_enabled(RemoteConfigKey::TestKey));
         assert!(beta.is_enabled(RemoteConfigKey::TestKey));
+
+        // The gRPC key transform should never see the ".beta"
+        let prod_grpc_keys = prod
+            .iter_enabled()
+            .filter_map(|(k, _v)| super::RemoteConfigKey::raw_as_grpc_request_name(k.raw()))
+            .collect_vec();
+        assert_eq!(prod_grpc_keys, &["testGrpcKey"]);
+        let beta_grpc_keys = beta
+            .iter_enabled()
+            .filter_map(|(k, _v)| super::RemoteConfigKey::raw_as_grpc_request_name(k.raw()))
+            .collect_vec();
+        assert_eq!(beta_grpc_keys, &["testGrpcKey"]);
     }
 
     #[test]
@@ -248,7 +301,8 @@ mod tests {
 
         for key in super::RemoteConfigKey::KEYS
             .iter()
-            .filter_map(|k| k.strip_prefix("grpc."))
+            .copied()
+            .filter_map(super::RemoteConfigKey::raw_as_grpc_request_name)
         {
             assert!(
                 all_known_grpc_keys.contains(key),
@@ -257,9 +311,26 @@ mod tests {
             );
         }
         for (ident, key) in super::RemoteConfigKey::IDENTITIER_KEY_PAIRS {
-            if let Some(grpc_name) = key.strip_prefix("grpc.") {
+            if let Some(grpc_name) = super::RemoteConfigKey::raw_as_grpc_request_name(key) {
                 assert_eq!(*ident, grpc_name);
             }
         }
+    }
+
+    #[test_case("" => None)]
+    #[test_case("notGrpc" => None)]
+    #[test_case("grpc" => None)]
+    #[test_case("grpc.abc" => Some("abc"))]
+    #[test_case("grpc.abc.123" => Some("abc"))]
+    #[test_case("grpc.abc123" => Some("abc123"))]
+    #[test_case("grpc.abc123.456" => Some("abc123"))]
+    // Known weird behavior we won't subject ourselves to in practice.
+    #[test_case("grpc.trailingDot." => Some("trailingDot"))]
+    #[test_case("grpc.doubleDot..123" => Some("doubleDot."))]
+    #[test_case("grpc.@b$0lute Garbage^^.123" => Some("@b$0lute Garbage^^"))]
+    #[test_case("grpc.123" => Some("123"))]
+    #[test_case("grpc.123.456" => Some("123"))]
+    fn grpc_key_transform(input: &'static str) -> Option<&'static str> {
+        super::RemoteConfigKey::raw_as_grpc_request_name(input)
     }
 }
