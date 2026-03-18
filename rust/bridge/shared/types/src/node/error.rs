@@ -75,47 +75,35 @@ fn new_js_error<'a, C: Context<'a>>(
 }
 
 /// [`std::error::Error`] implementer that wraps a thrown value.
-#[derive(Debug)]
-pub(crate) enum ThrownException {
-    Error(Root<JsError>),
-    String(String),
+#[derive(Debug, Default)]
+pub struct ThrownException {
+    error: Option<Root<JsError>>,
+    message: String,
 }
 
 impl ThrownException {
-    pub(crate) fn from_value<'a>(cx: &mut FunctionContext<'a>, error: Handle<'a, JsValue>) -> Self {
-        if let Ok(e) = error.downcast::<JsError, _>(cx) {
-            ThrownException::Error(e.root(cx))
-        } else if let Ok(e) = error.downcast::<JsString, _>(cx) {
-            ThrownException::String(e.value(cx))
-        } else {
-            ThrownException::String(
-                error
-                    .to_string(cx)
-                    .map(|s| s.value(cx))
-                    .unwrap_or_else(|_: neon::result::Throw| "<unknown JavaScript error>".into()),
-            )
-        }
-    }
-}
-
-impl Default for ThrownException {
-    fn default() -> Self {
-        Self::String(String::default())
+    pub fn from_value<'a>(cx: &mut FunctionContext<'a>, error: Handle<'a, JsValue>) -> Self {
+        let message = error
+            .to_string(cx)
+            .map(|s| s.value(cx))
+            .unwrap_or_else(|_: neon::result::Throw| "<unknown JavaScript error>".into());
+        let error = error.downcast::<JsError, _>(cx).ok().map(|e| e.root(cx));
+        Self { error, message }
     }
 }
 
 impl From<&str> for ThrownException {
     fn from(value: &str) -> Self {
-        Self::String(value.to_string())
+        Self {
+            error: None,
+            message: value.to_owned(),
+        }
     }
 }
 
 impl std::fmt::Display for ThrownException {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Error(r) => write!(f, "{r:?}"),
-            Self::String(s) => write!(f, "{s}"),
-        }
+        write!(f, "{}", self.message)
     }
 }
 
@@ -428,8 +416,14 @@ impl SignalNodeError for std::io::Error {
             .map(std::mem::take);
 
         let error_string = match exception {
-            Some(ThrownException::Error(e)) => return e.into_inner(cx),
-            Some(ThrownException::String(s)) => s,
+            Some(ThrownException {
+                error: Some(e),
+                message: _,
+            }) => return e.into_inner(cx),
+            Some(ThrownException {
+                error: None,
+                message,
+            }) => message,
             None => self.to_string(),
         };
         JsError::error(cx, error_string).expect("JsError::error always returns Ok")
@@ -954,34 +948,9 @@ impl SignalNodeError for libsignal_net_chat::api::keytrans::Error {
     }
 }
 
-/// Represents an error returned by a callback.
-#[derive(Debug)]
-struct CallbackError {
-    message: String,
-}
-
-impl CallbackError {
-    fn new(message: String) -> CallbackError {
-        Self { message }
-    }
-}
-
-impl fmt::Display for CallbackError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "callback error {}", self.message)
-    }
-}
-
-impl std::error::Error for CallbackError {}
-
-/// Converts a JavaScript error message to a [`SignalProtocolError::ApplicationCallbackError`].
-pub fn js_error_to_rust(func: &'static str, err: String) -> SignalProtocolError {
-    SignalProtocolError::ApplicationCallbackError(func, Box::new(CallbackError::new(err)))
-}
-
-impl From<WithContext<String>> for SignalProtocolError {
-    fn from(value: WithContext<String>) -> Self {
+impl From<WithContext<ThrownException>> for SignalProtocolError {
+    fn from(value: WithContext<ThrownException>) -> Self {
         let WithContext { operation, inner } = value;
-        js_error_to_rust(operation, inner)
+        SignalProtocolError::ApplicationCallbackError(operation, Box::new(inner))
     }
 }

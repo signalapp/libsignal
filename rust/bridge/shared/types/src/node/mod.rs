@@ -106,7 +106,7 @@ impl RootAndChannel {
             + Send
             + 'static,
         T: CallbackResultTypeInfo + Send + 'static,
-        E: From<WithContext<String>> + Send,
+        E: From<WithContext<ThrownException>> + Send,
     {
         /// Generates a closure to convert the promise's result type back to Rust.
         ///
@@ -119,7 +119,7 @@ impl RootAndChannel {
         ) -> impl for<'a> FnOnce(&mut FunctionContext<'a>, JsPromiseResult<'a>) -> Result<T, E>
         where
             T: CallbackResultTypeInfo,
-            E: From<WithContext<String>>,
+            E: From<WithContext<ThrownException>>,
         {
             move |cx, result| {
                 result
@@ -130,12 +130,9 @@ impl RootAndChannel {
                         })
                     })
                     .map_err(|error| {
-                        let description = error.to_string(cx).map(|s| s.value(cx)).unwrap_or_else(
-                            |_: neon::result::Throw| "<unknown JavaScript error>".into(),
-                        );
                         WithContext {
                             operation: name,
-                            inner: description,
+                            inner: ThrownException::from_value(cx, error),
                         }
                         .into()
                     })
