@@ -22,11 +22,12 @@ use libsignal_net_infra::route::{
     ConnectionProxyConfig, Connector, ConnectorFactory, DelayBasedOnTransport, DescribeForLog,
     DescribedRouteConnector, DirectOrProxy, DirectOrProxyMode, DirectOrProxyRoute, ErrorHandling,
     HttpRouteFragment, HttpsServiceRoute, InterfaceChangedOr, InterfaceMonitor, LoggingConnector,
-    ResettingConnectionOutcomes, ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute,
-    RouteProvider, RouteProviderContext, RouteProviderExt as _, RouteResolver,
-    StaticTcpTimeoutConnector, ThrottlingConnector, TransportRoute, UnresolvedRouteDescription,
-    UnresolvedTransportRoute, UnresolvedWebsocketServiceRoute, UnsuccessfulOutcome, UsePreconnect,
-    UsesTransport, VariableTlsTimeoutConnector, WebSocketRouteFragment, WebSocketServiceRoute,
+    NoSoonerThan, ResettingConnectionOutcomes, ResolveHostnames, ResolveWithSavedDescription,
+    ResolvedRoute, RouteDelayPolicy, RouteProvider, RouteProviderContext, RouteProviderExt as _,
+    RouteResolver, StaticTcpTimeoutConnector, ThrottlingConnector, TransportRoute,
+    UnresolvedRouteDescription, UnresolvedTransportRoute, UnresolvedWebsocketServiceRoute,
+    UnsuccessfulOutcome, UsePreconnect, UsesTransport, VariableTlsTimeoutConnector,
+    WebSocketRouteFragment, WebSocketServiceRoute,
 };
 use libsignal_net_infra::tcp_ssl::{LONG_TCP_HANDSHAKE_THRESHOLD, LONG_TLS_HANDSHAKE_THRESHOLD};
 use libsignal_net_infra::timeouts::{
@@ -113,6 +114,8 @@ pub struct ConnectState<ConnectorFactory = DefaultConnectorFactory> {
     make_transport_connector: ConnectorFactory,
     /// Record of connection outcomes.
     attempts_record: ConnectionOutcomes<TransportRoute>,
+    /// Record of attempts classified across the entire service.
+    service_level_attempts_record: ConnectionOutcomes<ServiceName>,
     /// [`RouteProviderContext`] passed to route providers.
     route_provider_context: RouteProviderContextImpl,
 }
@@ -195,7 +198,8 @@ impl<ConnectorFactory> ConnectState<ConnectorFactory> {
             network_interface_poll_interval,
             post_route_change_connect_timeout,
             make_transport_connector,
-            attempts_record: ConnectionOutcomes::new(connect_params),
+            attempts_record: ConnectionOutcomes::new(connect_params.clone()),
+            service_level_attempts_record: ConnectionOutcomes::new(connect_params),
             route_provider_context: RouteProviderContextImpl::default(),
         }
         .into()
@@ -203,6 +207,8 @@ impl<ConnectorFactory> ConnectState<ConnectorFactory> {
 
     pub fn network_changed(&mut self, network_change_time: Instant) {
         self.attempts_record.reset(network_change_time);
+        // We don't reset service_level_attempts_record because we assume that tracks server-side
+        // issues rather than client network ones.
     }
 }
 
@@ -237,12 +243,16 @@ struct ConnectStateSnapshot<C> {
     network_interface_poll_interval: Duration,
     post_route_change_connect_timeout: Duration,
     transport_connector: C,
+    service_level_earliest_start_time: Instant,
     attempts_record: ConnectionOutcomes<TransportRoute>,
     route_provider_context: RouteProviderContextImpl,
 }
 
 impl<TC> ConnectState<TC> {
-    fn prepare_snapshot<Transport>(&mut self) -> ConnectStateSnapshot<TC::Connector>
+    fn prepare_snapshot<Transport>(
+        &mut self,
+        service: ServiceName,
+    ) -> ConnectStateSnapshot<TC::Connector>
     where
         TC: ConnectorFactory<Transport>,
     {
@@ -253,10 +263,17 @@ impl<TC> ConnectState<TC> {
             post_route_change_connect_timeout,
             make_transport_connector,
             attempts_record,
+            service_level_attempts_record,
             route_provider_context,
         } = self;
 
-        attempts_record.reset_if_system_has_probably_been_asleep(SystemTime::now());
+        let system_now = SystemTime::now();
+        attempts_record.reset_if_system_has_probably_been_asleep(system_now);
+        service_level_attempts_record.reset_if_system_has_probably_been_asleep(system_now);
+
+        let now = Instant::now();
+        let service_level_earliest_start_time =
+            now + service_level_attempts_record.compute_delay(&service, now);
 
         ConnectStateSnapshot {
             route_resolver: route_resolver.clone(),
@@ -264,6 +281,7 @@ impl<TC> ConnectState<TC> {
             network_interface_poll_interval: *network_interface_poll_interval,
             post_route_change_connect_timeout: *post_route_change_connect_timeout,
             transport_connector: make_transport_connector.make(),
+            service_level_earliest_start_time,
             attempts_record: attempts_record.clone(),
             route_provider_context: route_provider_context.clone(),
         }
@@ -479,7 +497,7 @@ impl<TC> ConnectionResources<'_, TC> {
 
     async fn connect_over_transport<HC, UR, Transport, Fragment, FatalError>(
         self,
-        _service: ServiceName,
+        service: ServiceName,
         routes: impl RouteProvider<Route = UR>,
         high_level_connector: HC,
         log_tag: &str,
@@ -518,12 +536,13 @@ impl<TC> ConnectionResources<'_, TC> {
             network_interface_poll_interval,
             post_route_change_connect_timeout,
             transport_connector,
+            service_level_earliest_start_time,
             attempts_record,
             mut route_provider_context,
         } = connect_state
             .lock()
             .expect("not poisoned")
-            .prepare_snapshot();
+            .prepare_snapshot(service);
 
         let routes = routes.routes(&mut route_provider_context).collect_vec();
 
@@ -542,10 +561,13 @@ impl<TC> ConnectionResources<'_, TC> {
             network_interface_poll_interval,
             post_route_change_connect_timeout,
         );
-        let delay_policy = DelayBasedOnTransport(ResettingConnectionOutcomes::new(
-            attempts_record,
-            network_change_event,
-        ));
+        let delay_policy = NoSoonerThan::new(
+            service_level_earliest_start_time,
+            DelayBasedOnTransport(ResettingConnectionOutcomes::new(
+                attempts_record,
+                network_change_event,
+            )),
+        );
 
         let start = Instant::now();
         let connect = crate::infra::route::connect(
@@ -645,7 +667,7 @@ where
 {
     pub async fn preconnect_and_save(
         self,
-        _service: ServiceName,
+        service: ServiceName,
         routes: impl RouteProvider<Route = UnresolvedTransportRoute>,
         log_tag: &str,
     ) -> Result<(), TimeoutOr<ConnectError<TransportConnectError>>> {
@@ -662,12 +684,13 @@ where
             network_interface_poll_interval,
             post_route_change_connect_timeout,
             transport_connector,
+            service_level_earliest_start_time,
             attempts_record,
             mut route_provider_context,
         } = connect_state
             .lock()
             .expect("not poisoned")
-            .prepare_snapshot::<UsePreconnect<_>>();
+            .prepare_snapshot::<UsePreconnect<_>>(service);
 
         let routes = routes
             .map_routes(|r| UsePreconnect {
@@ -712,7 +735,10 @@ where
             network_interface_poll_interval,
             post_route_change_connect_timeout,
         );
-        let delay_policy = DelayBasedOnTransport(attempts_record);
+        let delay_policy = NoSoonerThan::new(
+            service_level_earliest_start_time,
+            DelayBasedOnTransport(attempts_record),
+        );
 
         let start = Instant::now();
         let connect = crate::infra::route::connect(
@@ -925,6 +951,7 @@ mod test {
             post_route_change_connect_timeout: Duration::MAX,
             route_resolver: RouteResolver::default(),
             attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            service_level_attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
             make_transport_connector: fake_transport_connector,
             route_provider_context: Default::default(),
         }
@@ -977,6 +1004,7 @@ mod test {
             post_route_change_connect_timeout: Duration::MAX,
             route_resolver: RouteResolver::default(),
             attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            service_level_attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
             make_transport_connector: always_hangs_connector,
             route_provider_context: Default::default(),
         }
@@ -1037,6 +1065,7 @@ mod test {
             post_route_change_connect_timeout: Duration::MAX,
             route_resolver: RouteResolver::default(),
             attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            service_level_attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
             make_transport_connector: client_abort_connector,
             route_provider_context: Default::default(),
         }
@@ -1106,6 +1135,7 @@ mod test {
             post_route_change_connect_timeout: Duration::MAX,
             route_resolver: RouteResolver::default(),
             attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            service_level_attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
             make_transport_connector: transport_connector,
             route_provider_context: Default::default(),
         }
@@ -1176,6 +1206,7 @@ mod test {
             post_route_change_connect_timeout: Duration::MAX,
             route_resolver: RouteResolver::default(),
             attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            service_level_attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
             make_transport_connector: fake_transport_connector,
             route_provider_context: Default::default(),
         };
@@ -1229,6 +1260,218 @@ mod test {
     }
 
     #[tokio::test(start_paused = true)]
+    async fn service_level_cooldowns_are_applied_too() {
+        // This doesn't actually matter since we're using a fake connector, but
+        // using the real route type is easier than trying to add yet more
+        // generic parameters.
+        let route = FAKE_WEBSOCKET_ROUTES[0].clone();
+        let start = Instant::now();
+        let system_start = SystemTime::now();
+
+        let ws_connector = ConnectFn(|(), route| std::future::ready(Ok(route)));
+        let bad_ip = ip_addr!(v4, "192.0.2.1");
+        let good_ip = ip_addr!(v4, "192.0.2.2");
+        let resolver = DnsResolver::new_from_static_map(HashMap::from([(
+            FAKE_HOST_NAME,
+            // Note the order this time: we try the good one first.
+            LookupResult::new(vec![good_ip, bad_ip], vec![]),
+        )]));
+
+        let (attempted_routes_tx, mut attempted_routes_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let fake_transport_connector = ConnectFn(move |(), route: TransportRoute| {
+            attempted_routes_tx
+                .send((route, Instant::now()))
+                .expect("not disconnected");
+            std::future::ready(Err(TransportConnectError::TcpConnectionFailed))
+        });
+
+        let mut state = ConnectState {
+            connect_timeout: Duration::MAX,
+            network_interface_poll_interval: Duration::MAX,
+            post_route_change_connect_timeout: Duration::MAX,
+            route_resolver: RouteResolver::default(),
+            attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            service_level_attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            make_transport_connector: fake_transport_connector,
+            route_provider_context: Default::default(),
+        };
+
+        let past_failure = AttemptOutcome {
+            started: start,
+            result: Err(UnsuccessfulOutcome::default()),
+        };
+        state.attempts_record.apply_outcome_updates(
+            [
+                (
+                    route.transport_part().clone().resolve(|_| bad_ip.into()),
+                    past_failure,
+                ),
+                (
+                    route.transport_part().clone().resolve(|_| bad_ip.into()),
+                    past_failure,
+                ),
+                (
+                    route.transport_part().clone().resolve(|_| bad_ip.into()),
+                    past_failure,
+                ),
+            ],
+            start,
+            system_start,
+        );
+        state.service_level_attempts_record.apply_outcome_updates(
+            [(ServiceName("test"), past_failure)],
+            start,
+            system_start,
+        );
+
+        let connection_resources = ConnectionResources {
+            connect_state: &state.into(),
+            dns_resolver: &resolver,
+            network_change_event: &no_network_change_events(),
+            confirmation_header_name: None,
+        };
+
+        let result = connection_resources
+            .connect_ws(
+                ServiceName("test"),
+                vec![route.clone()],
+                ws_connector,
+                "test",
+            )
+            .await;
+
+        assert_matches!(
+            result,
+            Err(TimeoutOr::Other(ConnectError::AllAttemptsFailed))
+        );
+
+        assert_eq!(2, attempted_routes_rx.len());
+        let mut attempts: Vec<(TransportRoute, Instant)> = vec![];
+        attempted_routes_rx.recv_many(&mut attempts, 2).await;
+        let [
+            (first_route, first_timestamp),
+            (second_route, second_timestamp),
+        ] = &attempts[..]
+        else {
+            panic!("just checked");
+        };
+        assert_eq!(*first_route.immediate_target(), good_ip);
+        assert_eq!(*second_route.immediate_target(), bad_ip);
+        assert!(
+            start < *first_timestamp,
+            "first route was not delayed (start: {start:?}, first: {first_timestamp:?})"
+        );
+        assert!(
+            *first_timestamp + HAPPY_EYEBALLS_DELAY < *second_timestamp,
+            "second route was not *further* delayed (first: {first_timestamp:?}, second: {second_timestamp:?})"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn service_level_cooldowns_do_not_stack_with_route_cooldowns() {
+        // This doesn't actually matter since we're using a fake connector, but
+        // using the real route type is easier than trying to add yet more
+        // generic parameters.
+        let route = FAKE_WEBSOCKET_ROUTES[0].clone();
+        let start = Instant::now();
+        let system_start = SystemTime::now();
+
+        let ws_connector = ConnectFn(|(), route| std::future::ready(Ok(route)));
+        let bad_ip = ip_addr!(v4, "192.0.2.1");
+        let good_ip = ip_addr!(v4, "192.0.2.2");
+        let resolver = DnsResolver::new_from_static_map(HashMap::from([(
+            FAKE_HOST_NAME,
+            // Note the order this time: we try the good one first.
+            LookupResult::new(vec![good_ip, bad_ip], vec![]),
+        )]));
+
+        let (attempted_routes_tx, mut attempted_routes_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let fake_transport_connector = ConnectFn(move |(), route: TransportRoute| {
+            attempted_routes_tx
+                .send((route, Instant::now()))
+                .expect("not disconnected");
+            std::future::ready(Err(TransportConnectError::TcpConnectionFailed))
+        });
+
+        let mut state = ConnectState {
+            connect_timeout: Duration::MAX,
+            network_interface_poll_interval: Duration::MAX,
+            post_route_change_connect_timeout: Duration::MAX,
+            route_resolver: RouteResolver::default(),
+            attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            service_level_attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            make_transport_connector: fake_transport_connector,
+            route_provider_context: Default::default(),
+        };
+
+        let past_failure = AttemptOutcome {
+            started: start,
+            result: Err(UnsuccessfulOutcome::default()),
+        };
+        // We only record one failure for the route and one failure for the service.
+        // Since we're using the same parameters, this should mean the route's delay is resolved by
+        // the time its turn comes up.
+        state.attempts_record.apply_outcome_updates(
+            [(
+                route.transport_part().clone().resolve(|_| bad_ip.into()),
+                past_failure,
+            )],
+            start,
+            system_start,
+        );
+        state.service_level_attempts_record.apply_outcome_updates(
+            [(ServiceName("test"), past_failure)],
+            start,
+            system_start,
+        );
+
+        let connection_resources = ConnectionResources {
+            connect_state: &state.into(),
+            dns_resolver: &resolver,
+            network_change_event: &no_network_change_events(),
+            confirmation_header_name: None,
+        };
+
+        let result = connection_resources
+            .connect_ws(
+                ServiceName("test"),
+                vec![route.clone()],
+                ws_connector,
+                "test",
+            )
+            .await;
+
+        assert_matches!(
+            result,
+            Err(TimeoutOr::Other(ConnectError::AllAttemptsFailed))
+        );
+
+        assert_eq!(2, attempted_routes_rx.len());
+        let mut attempts: Vec<(TransportRoute, Instant)> = vec![];
+        attempted_routes_rx.recv_many(&mut attempts, 2).await;
+        let [
+            (first_route, first_timestamp),
+            (second_route, second_timestamp),
+        ] = &attempts[..]
+        else {
+            panic!("just checked");
+        };
+        assert_eq!(*first_route.immediate_target(), good_ip);
+        assert_eq!(*second_route.immediate_target(), bad_ip);
+        assert!(
+            start < *first_timestamp,
+            "first route was not delayed (start: {start:?}, first: {first_timestamp:?})"
+        );
+        assert_eq!(
+            *first_timestamp + HAPPY_EYEBALLS_DELAY,
+            *second_timestamp,
+            "second route was *further* delayed but should not have been (first: {first_timestamp:?}, second: {second_timestamp:?})"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
     async fn connect_h2_successful() {
         // This doesn't actually matter since we're using a fake connector, but
         // using the real route type is easier than trying to add yet more
@@ -1256,6 +1499,7 @@ mod test {
             post_route_change_connect_timeout: Duration::MAX,
             route_resolver: RouteResolver::default(),
             attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            service_level_attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
             make_transport_connector: fake_transport_connector,
             route_provider_context: Default::default(),
         }
@@ -1314,6 +1558,7 @@ mod test {
             post_route_change_connect_timeout: Duration::MAX,
             route_resolver: RouteResolver::default(),
             attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            service_level_attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
             make_transport_connector: client_abort_connector,
             route_provider_context: Default::default(),
         }
@@ -1464,6 +1709,7 @@ mod test {
             post_route_change_connect_timeout: Duration::MAX,
             route_resolver: RouteResolver::default(),
             attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            service_level_attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
             make_transport_connector,
             route_provider_context: Default::default(),
         }

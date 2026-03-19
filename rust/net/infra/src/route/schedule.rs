@@ -660,6 +660,36 @@ impl<R: Eq + Hash> RouteDelayPolicy<R> for ResettingConnectionOutcomes<R> {
     }
 }
 
+pub struct NoSoonerThan<T> {
+    earliest_start_time: Instant,
+    inner: T,
+}
+
+impl<T> NoSoonerThan<T> {
+    pub fn new(earliest_start_time: Instant, inner: T) -> Self {
+        Self {
+            earliest_start_time,
+            inner,
+        }
+    }
+}
+
+impl<T, R> RouteDelayPolicy<R> for NoSoonerThan<T>
+where
+    T: RouteDelayPolicy<R>,
+{
+    fn compute_delay(&self, route: &R, now: Instant) -> Duration {
+        std::cmp::max(
+            self.earliest_start_time.saturating_duration_since(now),
+            self.inner.compute_delay(route, now),
+        )
+    }
+
+    fn wants_recalculation(&mut self) -> impl Future<Output = ()> + '_ {
+        self.inner.wants_recalculation()
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct IndividualRouteKey {
     time: Instant,
