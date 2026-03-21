@@ -171,6 +171,7 @@ pub struct ChatConnection {
     inner: self::ws::Chat,
     connection_info: ConnectionInfo,
     grpc_overrides: HashMap<&'static str, GrpcOverride>,
+    self_aci: Option<libsignal_core::Aci>,
 }
 
 pub type GrpcBody = tonic::body::Body;
@@ -189,6 +190,7 @@ pub struct PendingChatConnection {
     connect_response_headers: http::HeaderMap,
     ws_config: ws::Config,
     route_info: RouteInfo,
+    self_aci: Option<libsignal_core::Aci>,
     network_change_event: NetworkChangeEvent,
     log_tag: Arc<str>,
 }
@@ -226,6 +228,26 @@ pub enum ChatHeaders {
 }
 
 impl ChatHeaders {
+    fn self_aci(&self) -> Option<libsignal_core::Aci> {
+        match self {
+            ChatHeaders::Auth(AuthenticatedChatHeaders {
+                auth: Auth { username, .. },
+                ..
+            }) => {
+                // chat-server auth usernames take the form "{aci}" or "{aci}.{device_id}".
+                // TODO: make this a strong type in AuthenticatedChatHeaders and all the way up to
+                // the app APIs.
+                libsignal_core::Aci::parse_from_service_id_string(
+                    username
+                        .rsplit_once('.')
+                        .map(|(aci_part, _device_id_part)| aci_part)
+                        .unwrap_or(username),
+                )
+            }
+            ChatHeaders::Unauth(_) => None,
+        }
+    }
+
     fn iter_headers(self) -> impl Iterator<Item = (HeaderName, HeaderValue)> {
         match self {
             ChatHeaders::Auth(AuthenticatedChatHeaders {
@@ -290,6 +312,7 @@ impl ChatConnection {
         let network_change_event_for_established_connection =
             connection_resources.network_change_event.clone();
         let should_preconnect = matches!(headers, Some(ChatHeaders::Auth(_)));
+        let self_aci = headers.as_ref().and_then(ChatHeaders::self_aci);
         let headers = HeaderMap::from_iter(
             headers
                 .into_iter()
@@ -351,6 +374,7 @@ impl ChatConnection {
             shared_h2_connection,
             connect_response_headers: response_headers,
             route_info,
+            self_aci,
             ws_config,
             network_change_event: network_change_event_for_established_connection,
             log_tag,
@@ -369,6 +393,7 @@ impl ChatConnection {
             connect_response_headers,
             ws_config,
             route_info,
+            self_aci,
             network_change_event,
             log_tag,
         } = pending;
@@ -395,6 +420,7 @@ impl ChatConnection {
                 listener,
             ),
             grpc_overrides,
+            self_aci,
         }
     }
 
@@ -419,6 +445,10 @@ impl ChatConnection {
 
     pub fn grpc_overrides(&self) -> &HashMap<&'static str, GrpcOverride> {
         &self.grpc_overrides
+    }
+
+    pub fn self_aci(&self) -> Option<libsignal_core::Aci> {
+        self.self_aci
     }
 }
 

@@ -103,6 +103,9 @@ impl ChatConnection {
             ),
             connection_info,
             grpc_overrides: Default::default(),
+            // This isn't perfect, but without it we can't test APIs that rely on knowing the self
+            // ACI, so it's better that we set it to *something*.
+            self_aci: Some(libsignal_core::Aci::from_uuid_bytes([0xff; 16])),
         };
         (chat, remote)
     }
