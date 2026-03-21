@@ -204,6 +204,9 @@ pub(crate) mod testutil {
     use data_encoding_macro::base64;
     use rand::SeedableRng as _;
 
+    pub const TEST_SELF_ACI: libsignal_core::Aci =
+        libsignal_core::Aci::from_uuid_bytes(const_str::hex!("659aa5f4a28dfcc11ea1b997537a3d95"));
+
     /// A standard RNG used for exact-match tests that (normally) depend on randomness.
     pub(crate) fn fixed_seed_test_rng() -> impl rand::CryptoRng + Send {
         rand_chacha::ChaCha20Rng::seed_from_u64(0)

@@ -182,6 +182,13 @@ pub trait AuthenticatedChatApi<T> {
         urgent: bool,
     ) -> Result<(), RequestError<UnsealedSendFailure>>;
 
+    async fn send_sync_message<'a>(
+        &self,
+        timestamp: libsignal_protocol::Timestamp,
+        contents: Vec<SingleOutboundUnsealedMessage<'a>>,
+        urgent: bool,
+    ) -> Result<(), RequestError<MismatchedDeviceError>>;
+
     async fn get_upload_form(&self) -> Result<UploadForm, RequestError<Infallible>>;
 }
 

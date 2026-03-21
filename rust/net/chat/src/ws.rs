@@ -94,6 +94,8 @@ pub trait WsConnection: Sync {
         let _ = message;
         std::future::ready(None::<Http2Client<chat::GrpcBody>>)
     }
+
+    fn self_aci(&self) -> Option<libsignal_core::Aci>;
 }
 
 impl<T: WsConnection> WsConnection for &T {
@@ -111,6 +113,10 @@ impl<T: WsConnection> WsConnection for &T {
         message: &'static str,
     ) -> impl Future<Output = Option<impl GrpcServiceProvider>> + Send {
         <T as WsConnection>::grpc_service_to_use_instead(self, message)
+    }
+
+    fn self_aci(&self) -> Option<libsignal_core::Aci> {
+        <T as WsConnection>::self_aci(self)
     }
 }
 
@@ -171,6 +177,10 @@ impl WsConnection for chat::ChatConnection {
             chat::GrpcOverride::UseGrpc => Either::Left(self.shared_h2_connection()),
             chat::GrpcOverride::UseWs => Either::Right(std::future::ready(None)),
         }
+    }
+
+    fn self_aci(&self) -> Option<libsignal_core::Aci> {
+        self.self_aci()
     }
 }
 
@@ -409,6 +419,7 @@ fn expect_empty_body(response: &chat::Response, label: &'static str) {
 #[cfg(test)]
 mod testutil {
     use super::*;
+    use crate::api::testutil::TEST_SELF_ACI;
 
     pub(crate) fn json(status: u16, body: impl AsRef<[u8]>) -> chat::Response {
         chat::Response {
@@ -458,6 +469,10 @@ mod testutil {
             pretty_assertions::assert_eq!(self.expected, request);
             std::future::ready(Ok(self.response.clone()))
         }
+
+        fn self_aci(&self) -> Option<libsignal_core::Aci> {
+            Some(TEST_SELF_ACI)
+        }
     }
 
     pub(crate) struct JsonRequestValidator {
@@ -496,6 +511,10 @@ mod testutil {
 
             std::future::ready(Ok(self.response.clone()))
         }
+
+        fn self_aci(&self) -> Option<libsignal_core::Aci> {
+            Some(TEST_SELF_ACI)
+        }
     }
 
     pub(crate) struct ProduceResponse(pub chat::Response);
@@ -508,6 +527,10 @@ mod testutil {
             _request: chat::Request,
         ) -> impl Future<Output = Result<chat::Response, chat::SendError>> + Send {
             std::future::ready(Ok(self.0.clone()))
+        }
+
+        fn self_aci(&self) -> Option<libsignal_core::Aci> {
+            Some(TEST_SELF_ACI)
         }
     }
 }

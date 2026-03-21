@@ -366,6 +366,7 @@ pub(crate) mod testutil {
     use tonic::Status;
 
     use super::*;
+    use crate::api::testutil::TEST_SELF_ACI;
     use crate::ws::WsConnection;
 
     pub(crate) fn req(uri: &str, body: impl prost::Message + 'static) -> http::Request<Vec<u8>> {
@@ -435,6 +436,10 @@ pub(crate) mod testutil {
         ) -> Option<impl GrpcServiceProvider> {
             assert_eq!(message, self.message);
             Some(&self.validator)
+        }
+
+        fn self_aci(&self) -> Option<libsignal_core::Aci> {
+            Some(TEST_SELF_ACI)
         }
     }
 

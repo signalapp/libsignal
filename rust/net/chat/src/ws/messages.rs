@@ -375,6 +375,31 @@ impl<T: WsConnection> crate::api::messages::AuthenticatedChatApi<OverWs> for Aut
         Ok(())
     }
 
+    async fn send_sync_message<'a>(
+        &self,
+        timestamp: libsignal_protocol::Timestamp,
+        contents: Vec<SingleOutboundUnsealedMessage<'a>>,
+        urgent: bool,
+    ) -> Result<(), RequestError<MismatchedDeviceError>> {
+        let self_aci = self
+            .self_aci()
+            .expect("cannot send sync message without getting self ACI from auth info");
+
+        // The WS sync message API is "just" the regular send message API.
+        self.send_message(self_aci.into(), timestamp, contents, false, urgent)
+            .await
+            .map_err(|e| {
+                e.flat_map_other(|e| match e {
+                    UnsealedSendFailure::ServiceIdNotFound => RequestError::Unexpected {
+                        log_safe: "ServiceIdNotFound for sync message".to_string(),
+                    },
+                    UnsealedSendFailure::MismatchedDevices(mismatched_device_error) => {
+                        RequestError::Other(mismatched_device_error)
+                    }
+                })
+            })
+    }
+
     async fn get_upload_form(&self) -> Result<UploadForm, RequestError<Infallible>> {
         let response = self
             .send(
@@ -535,7 +560,9 @@ mod test {
 
     use super::*;
     use crate::api::messages::{AuthenticatedChatApi as _, UnauthenticatedChatApi as _};
-    use crate::api::testutil::{SERIALIZED_GROUP_SEND_TOKEN, structurally_valid_group_send_token};
+    use crate::api::testutil::{
+        SERIALIZED_GROUP_SEND_TOKEN, TEST_SELF_ACI, structurally_valid_group_send_token,
+    };
     use crate::api::{ChallengeOption, RateLimitChallenge, UserBasedAuthorization};
     use crate::ws::ACCESS_KEY_HEADER_NAME;
     use crate::ws::testutil::{JsonRequestValidator, RequestValidator, empty, json};
@@ -895,6 +922,100 @@ mod test {
                     },
                 ],
                 false,
+                true,
+            )
+            .now_or_never()
+            .expect("sync")
+    }
+
+    #[test_case(json(200, r#"{}"#) => matches Ok(()))]
+    #[test_case(json(200, r#"{"needsSync":true}"#) => matches Ok(()))]
+    #[test_case(empty(200) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(empty(404) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(empty(500) => matches Err(RequestError::ServerSideError))]
+    #[test_case(empty(409) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(json(
+        409, r#"{"missingDevices":[50,60]}"#
+    ) => matches Err(RequestError::Other(error)) if error ==
+        MismatchedDeviceError {
+            account: TEST_SELF_ACI.into(),
+            missing_devices: vec![DeviceId::new(50).unwrap(), DeviceId::new(60).unwrap()],
+            extra_devices: vec![],
+            stale_devices: vec![],
+        }
+    )]
+    #[test_case(json(
+        410, r#"{"staleDevices":[4,5]}"#
+    ) => matches Err(RequestError::Other(error)) if error ==
+        MismatchedDeviceError {
+            account: TEST_SELF_ACI.into(),
+            missing_devices: vec![],
+            extra_devices: vec![],
+            stale_devices: vec![DeviceId::new(4).unwrap(), DeviceId::new(5).unwrap()],
+        }
+    )]
+    #[test_case(json(
+        428, r#"{"token": "zzz", "options": ["captcha"]}"#
+    ) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
+    fn test_sync_send(response: Response) -> Result<(), RequestError<MismatchedDeviceError>> {
+        let validator = JsonRequestValidator {
+            expected: Request {
+                method: http::Method::PUT,
+                path: http::uri::PathAndQuery::try_from(format!(
+                    "/v1/messages/{}",
+                    TEST_SELF_ACI.service_id_string()
+                ))
+                .expect("valid"),
+                headers: http::HeaderMap::from_iter([CONTENT_TYPE_JSON]),
+                body: None,
+            },
+            body: json!({
+                "messages": [
+                    {
+                        "type": 8,
+                        "destinationDeviceId": 2,
+                        "destinationRegistrationId": 22,
+                        "content": "wAECA4A="
+                    },
+                    {
+                        "type": 8,
+                        "destinationDeviceId": 3,
+                        "destinationRegistrationId": 33,
+                        "content": "wAQFBoA="
+                    }
+                ],
+                "online": false,
+                "urgent": true,
+                "timestamp": 1700000000000u64
+            }),
+            response,
+        };
+
+        Auth(validator)
+            .send_sync_message(
+                Timestamp::from_epoch_millis(1700000000000),
+                vec![
+                    SingleOutboundUnsealedMessage {
+                        device_id: DeviceId::new(2).expect("valid"),
+                        registration_id: 22,
+                        contents: Cow::Owned(CiphertextMessage::PlaintextContent(
+                            PlaintextContent::try_from(
+                                // A structurally valid PlaintextContent message starts with C0 and has
+                                // no other constraints; a realistic one will additionally end with
+                                // "padding" of 80 followed by any number of 00 bytes.
+                                &[0xC0, 1, 2, 3, 0x80][..],
+                            )
+                            .expect("valid"),
+                        )),
+                    },
+                    SingleOutboundUnsealedMessage {
+                        device_id: DeviceId::new(3).expect("valid"),
+                        registration_id: 33,
+                        contents: Cow::Owned(CiphertextMessage::PlaintextContent(
+                            PlaintextContent::try_from(&[0xC0, 4, 5, 6, 0x80][..]).expect("valid"),
+                        )),
+                    },
+                ],
                 true,
             )
             .now_or_never()
