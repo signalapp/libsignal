@@ -173,19 +173,22 @@ pub trait AuthenticatedChatApi<T> {
     ///
     /// `contents` should include one message for each device of `destination`. It must not be
     /// empty.
-    async fn send_message<'a>(
+    async fn send_message(
         &self,
         destination: ServiceId,
         timestamp: libsignal_protocol::Timestamp,
-        contents: Vec<SingleOutboundUnsealedMessage<'a>>,
+        contents: &[SingleOutboundUnsealedMessage<'_>],
         online_only: bool,
         urgent: bool,
     ) -> Result<(), RequestError<UnsealedSendFailure>>;
 
-    async fn send_sync_message<'a>(
+    /// Send an unsealed message to the current user's other devices.
+    ///
+    /// `contents` should include one message for each other device. It must not be empty.
+    async fn send_sync_message(
         &self,
         timestamp: libsignal_protocol::Timestamp,
-        contents: Vec<SingleOutboundUnsealedMessage<'a>>,
+        contents: &[SingleOutboundUnsealedMessage<'_>],
         urgent: bool,
     ) -> Result<(), RequestError<MismatchedDeviceError>>;
 

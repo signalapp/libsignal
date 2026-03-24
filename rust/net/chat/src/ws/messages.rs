@@ -299,11 +299,11 @@ impl<T: WsConnection> crate::api::messages::UnauthenticatedChatApi<OverWs> for U
 
 #[async_trait]
 impl<T: WsConnection> crate::api::messages::AuthenticatedChatApi<OverWs> for Auth<T> {
-    async fn send_message<'a>(
+    async fn send_message(
         &self,
         destination: ServiceId,
         timestamp: libsignal_protocol::Timestamp,
-        contents: Vec<SingleOutboundUnsealedMessage<'a>>,
+        contents: &[SingleOutboundUnsealedMessage<'_>],
         online_only: bool,
         urgent: bool,
     ) -> Result<(), RequestError<UnsealedSendFailure>> {
@@ -314,7 +314,7 @@ impl<T: WsConnection> crate::api::messages::AuthenticatedChatApi<OverWs> for Aut
             timestamp.epoch_millis()
         );
 
-        SingleOutboundUnsealedMessage::assert_valid_unsealed_message_types(&contents);
+        SingleOutboundUnsealedMessage::assert_valid_unsealed_message_types(contents);
 
         let request = SendMessageRequest {
             messages: contents
@@ -375,10 +375,10 @@ impl<T: WsConnection> crate::api::messages::AuthenticatedChatApi<OverWs> for Aut
         Ok(())
     }
 
-    async fn send_sync_message<'a>(
+    async fn send_sync_message(
         &self,
         timestamp: libsignal_protocol::Timestamp,
-        contents: Vec<SingleOutboundUnsealedMessage<'a>>,
+        contents: &[SingleOutboundUnsealedMessage<'_>],
         urgent: bool,
     ) -> Result<(), RequestError<MismatchedDeviceError>> {
         let self_aci = self
@@ -899,7 +899,7 @@ mod test {
             .send_message(
                 Pni::from(uuid::Uuid::try_parse(PNI_UUID).expect("valid")).into(),
                 Timestamp::from_epoch_millis(1700000000000),
-                vec![
+                &[
                     SingleOutboundUnsealedMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
@@ -994,7 +994,7 @@ mod test {
         Auth(validator)
             .send_sync_message(
                 Timestamp::from_epoch_millis(1700000000000),
-                vec![
+                &[
                     SingleOutboundUnsealedMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
