@@ -2387,11 +2387,8 @@ impl<'a> ResultTypeInfo<'a> for PreKeysResponse {
             ClassName("org.signal.libsignal.protocol.state.PreKeyBundle"),
         )
         .check_exceptions(env, "PreKeysResponse::convert_into")?;
-        let pre_key_bundles = make_object_array_mapped(
-            env,
-            &element_class,
-            self.pre_key_bundles.into_iter(),
-            |env, bundle| {
+        let pre_key_bundles =
+            make_object_array_mapped(env, &element_class, self.pre_key_bundles, |env, bundle| {
                 let handle = bundle.convert_into(env)?;
                 new_object(
                     env,
@@ -2401,8 +2398,7 @@ impl<'a> ResultTypeInfo<'a> for PreKeysResponse {
                     ) -> void),
                 )
                 .check_exceptions(env, "PreKeysResponse::convert_into")
-            },
-        )?;
+            })?;
         new_instance(
             env,
             ClassName("kotlin.Pair"),
