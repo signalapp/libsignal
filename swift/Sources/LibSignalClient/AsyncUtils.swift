@@ -76,6 +76,10 @@ extension SignalCPromiseOptionalUuid: PromiseStruct {
     typealias Result = SignalOptionalUuid
 }
 
+extension SignalCPromiseFfiUploadForm: PromiseStruct {
+    typealias Result = SignalFfiUploadForm
+}
+
 extension SignalCPromiseMutPointerBackupStoreResponse: PromiseStruct {
     typealias Result = SignalMutPointerBackupStoreResponse
 }

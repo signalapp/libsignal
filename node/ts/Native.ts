@@ -122,6 +122,13 @@ export type PreKeysResponse = {
   preKeyBundles: PreKeyBundle[];
 };
 
+export type UploadForm = {
+  cdn: number;
+  key: string;
+  headers: [string, string][];
+  signedUploadUrl: string;
+};
+
 export type AccountEntropyPool = string;
 
 export type CancellablePromise<T> = Promise<T> & {
@@ -492,6 +499,7 @@ type NativeFunctions = {
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, auth: Uint8Array<ArrayBuffer>, target: Uint8Array<ArrayBuffer>, device: number) => CancellablePromise<PreKeysResponse>;
   UnauthenticatedChatConnection_get_pre_keys_access_group_auth: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, auth: Uint8Array<ArrayBuffer>, target: Uint8Array<ArrayBuffer>, device: number) => CancellablePromise<PreKeysResponse>;
   UnauthenticatedChatConnection_account_exists: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, account: Uint8Array<ArrayBuffer>) => CancellablePromise<boolean>;
+  AuthenticatedChatConnection_get_upload_form: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>) => CancellablePromise<UploadForm>;
   KeyTransparency_AciSearchKey: (aci: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
   KeyTransparency_E164SearchKey: (e164: string) => Uint8Array<ArrayBuffer>;
   KeyTransparency_UsernameHashSearchKey: (hash: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
@@ -1046,6 +1054,7 @@ const { registerErrors,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_access_group_auth,
   UnauthenticatedChatConnection_account_exists,
+  AuthenticatedChatConnection_get_upload_form,
   KeyTransparency_AciSearchKey,
   KeyTransparency_E164SearchKey,
   KeyTransparency_UsernameHashSearchKey,
@@ -1602,6 +1611,7 @@ export { registerErrors,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_access_group_auth,
   UnauthenticatedChatConnection_account_exists,
+  AuthenticatedChatConnection_get_upload_form,
   KeyTransparency_AciSearchKey,
   KeyTransparency_E164SearchKey,
   KeyTransparency_UsernameHashSearchKey,

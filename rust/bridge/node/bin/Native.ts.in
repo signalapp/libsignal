@@ -122,6 +122,13 @@ export type PreKeysResponse = {
   preKeyBundles: PreKeyBundle[];
 };
 
+export type UploadForm = {
+  cdn: number;
+  key: string;
+  headers: [string, string][];
+  signedUploadUrl: string;
+};
+
 export type AccountEntropyPool = string;
 
 export type CancellablePromise<T> = Promise<T> & {

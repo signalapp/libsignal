@@ -12,6 +12,7 @@ use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
+use libsignal_net_chat::api::UploadForm;
 use libsignal_net_chat::api::keys::DeviceSpecifier;
 use neon::prelude::*;
 use neon::types::JsBigInt;
@@ -1216,6 +1217,40 @@ impl<'storage, const LEN: usize> AsyncArgTypeInfo<'storage> for &'storage [u8; L
     }
     fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
         (&**stored).try_into().expect("checked length already")
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for UploadForm {
+    type ResultType = JsObject;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let UploadForm {
+            cdn,
+            key,
+            headers,
+            signed_upload_url,
+        } = self;
+        let obj = cx.empty_object();
+        let cdn = cx.number(cdn as f64);
+        obj.set(cx, "cdn", cdn)?;
+        let key = cx.string(key);
+        obj.set(cx, "key", key)?;
+        let headers_arr = cx.empty_array();
+        for (i, (k, v)) in headers.iter().enumerate() {
+            let pair = cx.empty_array();
+            let k = cx.string(k);
+            let v = cx.string(v);
+            pair.set(cx, 0, k)?;
+            pair.set(cx, 1, v)?;
+            headers_arr.set(
+                cx,
+                u32::try_from(i).expect("We don't have u32::MAX headers"),
+                pair,
+            )?;
+        }
+        obj.set(cx, "headers", headers_arr)?;
+        let signed_upload_url = cx.string(signed_upload_url);
+        obj.set(cx, "signedUploadUrl", signed_upload_url)?;
+        Ok(obj)
     }
 }
 

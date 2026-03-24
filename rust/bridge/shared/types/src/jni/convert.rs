@@ -14,6 +14,7 @@ use jni::sys::{JNI_FALSE, JNI_TRUE, jbyte};
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_core::try_scoped;
 use libsignal_net::cdsi::LookupResponseEntry;
+use libsignal_net_chat::api::UploadForm;
 use libsignal_net_chat::api::keys::DeviceSpecifier;
 use libsignal_protocol::*;
 use paste::paste;
@@ -1618,6 +1619,41 @@ impl<T: BridgeHandle> ResultTypeInfo<'_> for Option<T> {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for UploadForm {
+    type ResultType = JObject<'a>;
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let UploadForm {
+            cdn,
+            key,
+            headers,
+            signed_upload_url,
+        } = self;
+        let cdn: jint = cdn as jint;
+        let key = env
+            .new_string(key)
+            .check_exceptions(env, "UploadForm::convert_into")?;
+        let signed_upload_url = env
+            .new_string(signed_upload_url)
+            .check_exceptions(env, "UploadForm::convert_into")?;
+        let headers = headers.convert_into(env)?;
+        let class = find_class(env, ClassName("org.signal.libsignal.net.UploadForm"))
+            .check_exceptions(env, "UploadForm::convert_into")?;
+        call_static_method_checked(
+            env,
+            &class,
+            "fromNative",
+            jni_args!(
+                (
+                    cdn => int,
+                    key => java.lang.String,
+                    headers => [java.lang.Object],
+                    signed_upload_url => java.lang.String,
+                ) -> org.signal.libsignal.net.UploadForm
+            ),
+        )
+    }
+}
+
 impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A, B) {
     type ResultType = JavaPair<'a, A::ResultType, B::ResultType>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
@@ -2930,6 +2966,9 @@ macro_rules! jni_result_type {
     };
     (Vec<JsonFrameExportResult>) => {
         ::jni::objects::JObjectArray<'local>
+    };
+    (UploadForm) => {
+        ::jni::objects::JObject<'local>
     };
     ( $handle:ty ) => {
         $crate::jni::ObjectHandle

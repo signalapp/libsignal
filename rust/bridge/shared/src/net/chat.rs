@@ -18,12 +18,12 @@ use libsignal_net::auth::Auth;
 use libsignal_net::chat::{self, ConnectError, LanguageList, Response as ChatResponse, SendError};
 use libsignal_net_chat::api::keys::{DeviceSpecifier, GetPreKeysFailure, UnauthenticatedChatApi};
 use libsignal_net_chat::api::messages::{
-    MultiRecipientMessageResponse, MultiRecipientSendAuthorization, MultiRecipientSendFailure,
-    UnauthenticatedChatApi as _,
+    AuthenticatedChatApi, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
+    MultiRecipientSendFailure, UnauthenticatedChatApi as _,
 };
 use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
-use libsignal_net_chat::api::{RequestError, UserBasedAuthorization};
+use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
 use libsignal_protocol::Timestamp;
 use uuid::Uuid;
 
@@ -330,4 +330,11 @@ async fn UnauthenticatedChatConnection_account_exists(
     account: ServiceId,
 ) -> Result<bool, RequestError<Infallible>> {
     chat.as_typed(|chat| chat.account_exists(account)).await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn AuthenticatedChatConnection_get_upload_form(
+    chat: &AuthenticatedChatConnection,
+) -> Result<UploadForm, RequestError<Infallible>> {
+    chat.as_typed(|chat| chat.get_upload_form()).await
 }

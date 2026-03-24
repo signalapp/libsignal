@@ -3,7 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { TokioAsyncContext, UnauthenticatedChatConnection } from '../../net.js';
+import {
+  AuthenticatedChatConnection,
+  TokioAsyncContext,
+  UnauthenticatedChatConnection,
+} from '../../net.js';
 import { FakeChatRemote } from '../../net/FakeChat';
 
 /**
@@ -35,6 +39,24 @@ export function connectUnauth<
   tokio: TokioAsyncContext
 ): [PickSubset<UnauthenticatedChatConnection, Api>, FakeChatRemote] {
   return UnauthenticatedChatConnection.fakeConnect(tokio, {
+    onConnectionInterrupted: () => {},
+    onIncomingMessage: () => {},
+    onQueueEmpty: () => {},
+  });
+}
+
+/**
+ * Makes an auth connection with a fake remote, but forces the caller to specify which APIs they
+ * need from the connection.
+ */
+export function connectAuth<
+  // The default of `object` forces the caller to provide a type explicitly to access any members of
+  // the result.
+  Api extends Subset<AuthenticatedChatConnection, Api> = object
+>(
+  tokio: TokioAsyncContext
+): [PickSubset<AuthenticatedChatConnection, Api>, FakeChatRemote] {
+  return AuthenticatedChatConnection.fakeConnect(tokio, {
     onConnectionInterrupted: () => {},
     onIncomingMessage: () => {},
     onQueueEmpty: () => {},

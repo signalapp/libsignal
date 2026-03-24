@@ -36,7 +36,7 @@ use libsignal_net::infra::route::{
 };
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagleAlgorithm};
-use libsignal_net_chat::api::Unauth;
+use libsignal_net_chat::api::{Auth as AuthConn, Unauth};
 use libsignal_protocol::{IdentityKey, PreKeyBundle, Timestamp};
 use static_assertions::assert_impl_all;
 
@@ -208,6 +208,27 @@ impl AuthenticatedChatConnection {
             )
             .await?;
         Ok(())
+    }
+
+    /// Provides access to the inner ChatConnection using the [`Auth`] wrapper of
+    /// libsignal-net-chat.
+    ///
+    /// This callback signature unfortunately requires boxing; there is not yet Rust syntax to say
+    /// "I return an unknown Future that might capture from its arguments" in closure position
+    /// specifically. It's also extra complicated to promise that the result doesn't have to outlive
+    /// &self; unfortunately there doesn't seem to be a simpler way to express this at this time!
+    /// (e.g. `for<'inner where 'outer: 'inner>`)
+    pub async fn as_typed<'outer, F, R>(&'outer self, callback: F) -> R
+    where
+        F: for<'inner> FnOnce(
+            LimitedLifetimeRef<'outer, 'inner, AuthConn<ChatConnection>>,
+        ) -> BoxFuture<'inner, R>,
+    {
+        let guard = self.as_ref().read().await;
+        let MaybeChatConnection::Running(inner) = &*guard else {
+            panic!("listener was not set")
+        };
+        callback(LimitedLifetimeRef::from(<&AuthConn<_>>::from(inner))).await
     }
 }
 

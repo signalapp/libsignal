@@ -337,6 +337,15 @@ pub struct FfiPreKeysResponse {
     pre_key_bundles: OwnedBufferOf<MutPointer<PreKeyBundle>>,
 }
 
+#[repr(C)]
+pub struct FfiUploadForm {
+    cdn: u32,
+    key: CStringPtr,
+    header_keys: OwnedBufferOf<CStringPtr>,
+    header_values: OwnedBufferOf<CStringPtr>,
+    signed_upload_url: CStringPtr,
+}
+
 #[cfg_attr(doc, visibility::make(pub))]
 struct UnexpectedPanic(Box<dyn std::any::Any + Send>);
 

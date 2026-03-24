@@ -10,9 +10,9 @@ use std::ops::Deref;
 
 use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
-use libsignal_net_chat::api::ChallengeOption;
 use libsignal_net_chat::api::keys::DeviceSpecifier;
 use libsignal_net_chat::api::registration::PushToken;
+use libsignal_net_chat::api::{ChallengeOption, UploadForm};
 use libsignal_protocol::*;
 use paste::paste;
 use uuid::Uuid;
@@ -1169,6 +1169,30 @@ impl ResultTypeInfo for PreKeysResponse {
     }
 }
 
+impl ResultTypeInfo for UploadForm {
+    type ResultType = FfiUploadForm;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let UploadForm {
+            cdn,
+            key,
+            headers,
+            signed_upload_url,
+        } = self;
+        let mut header_keys = Vec::with_capacity(headers.len());
+        let mut header_values = Vec::with_capacity(headers.len());
+        for (k, v) in headers.into_iter() {
+            header_keys.push(k.convert_into()?);
+            header_values.push(v.convert_into()?);
+        }
+        Ok(FfiUploadForm {
+            cdn,
+            key: key.convert_into()?,
+            header_keys: OwnedBufferOf::from(header_keys.into_boxed_slice()),
+            header_values: OwnedBufferOf::from(header_values.into_boxed_slice()),
+            signed_upload_url: signed_upload_url.convert_into()?,
+        })
+    }
+}
 impl ResultTypeInfo for libsignal_net::chat::Response {
     type ResultType = FfiChatResponse;
 
@@ -1499,6 +1523,7 @@ macro_rules! ffi_result_type {
     (Box<[RegisterResponseBadge]>) => (ffi::OwnedBufferOf<ffi::FfiRegisterResponseBadge>);
     (DisconnectCause) => (*mut ffi::SignalFfiError);
     (PreKeysResponse) => (ffi::FfiPreKeysResponse);
+    (UploadForm) => (ffi::FfiUploadForm);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

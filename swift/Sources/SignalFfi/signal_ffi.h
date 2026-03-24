@@ -519,6 +519,46 @@ typedef struct {
   const SignalAuthenticatedChatConnection *raw;
 } SignalConstPointerAuthenticatedChatConnection;
 
+/**
+ * A type alias to be used with [`OwnedBufferOf`], so that `OwnedBufferOf<c_char>` and
+ * `OwnedBufferOf<*const c_char>` get distinct names.
+ */
+typedef const char *SignalCStringPtr;
+
+/**
+ * A representation of a array allocated on the Rust heap for use in C code.
+ */
+typedef struct {
+  SignalCStringPtr *base;
+  /**
+   * The number of elements in the buffer (not necessarily the number of bytes).
+   */
+  size_t length;
+} SignalOwnedBufferOfCStringPtr;
+
+typedef struct {
+  uint32_t cdn;
+  SignalCStringPtr key;
+  SignalOwnedBufferOfCStringPtr header_keys;
+  SignalOwnedBufferOfCStringPtr header_values;
+  SignalCStringPtr signed_upload_url;
+} SignalFfiUploadForm;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalFfiUploadForm *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseFfiUploadForm;
+
 typedef SignalConnectionInfo SignalChatConnectionInfo;
 
 typedef struct {
@@ -569,23 +609,6 @@ typedef struct {
 typedef struct {
   const SignalFfiChatListenerStruct *raw;
 } SignalConstPointerFfiChatListenerStruct;
-
-/**
- * A type alias to be used with [`OwnedBufferOf`], so that `OwnedBufferOf<c_char>` and
- * `OwnedBufferOf<*const c_char>` get distinct names.
- */
-typedef const char *SignalCStringPtr;
-
-/**
- * A representation of a array allocated on the Rust heap for use in C code.
- */
-typedef struct {
-  SignalCStringPtr *base;
-  /**
-   * The number of elements in the buffer (not necessarily the number of bytes).
-   */
-  size_t length;
-} SignalOwnedBufferOfCStringPtr;
 
 typedef struct {
   uint16_t status;
@@ -1702,6 +1725,8 @@ SignalFfiError *signal_authenticated_chat_connection_connect(SignalCPromiseMutPo
 SignalFfiError *signal_authenticated_chat_connection_destroy(SignalMutPointerAuthenticatedChatConnection p);
 
 SignalFfiError *signal_authenticated_chat_connection_disconnect(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat);
+
+SignalFfiError *signal_authenticated_chat_connection_get_upload_form(SignalCPromiseFfiUploadForm *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat);
 
 SignalFfiError *signal_authenticated_chat_connection_info(SignalMutPointerChatConnectionInfo *out, SignalConstPointerAuthenticatedChatConnection chat);
 

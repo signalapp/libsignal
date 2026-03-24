@@ -207,6 +207,8 @@ internal object Native {
   @JvmStatic
   public external fun AuthenticatedChatConnection_disconnect(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Void?>
   @JvmStatic
+  public external fun AuthenticatedChatConnection_get_upload_form(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Object>
+  @JvmStatic
   public external fun AuthenticatedChatConnection_init_listener(chat: ObjectHandle, listener: BridgeChatListener): Unit
   @JvmStatic
   public external fun AuthenticatedChatConnection_preconnect(asyncRuntime: ObjectHandle, connectionManager: ObjectHandle): CompletableFuture<Void?>
