@@ -22,7 +22,7 @@ use super::{
 use crate::api::messages::{
     MismatchedDeviceError, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
     MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
-    UserBasedSendAuthorization,
+    SingleOutboundUnsealedMessage, UnsealedSendFailure, UserBasedSendAuthorization,
 };
 use crate::api::{Auth, RequestError, Unauth, UploadForm};
 use crate::logging::Redact;
@@ -65,6 +65,24 @@ impl From<EnvelopeType> for u8 {
     }
 }
 
+#[derive(Debug)]
+struct MessageTypeCannotBeSentUnsealed;
+
+impl TryFrom<libsignal_protocol::CiphertextMessageType> for EnvelopeType {
+    type Error = MessageTypeCannotBeSentUnsealed;
+
+    fn try_from(value: libsignal_protocol::CiphertextMessageType) -> Result<Self, Self::Error> {
+        match value {
+            libsignal_protocol::CiphertextMessageType::Whisper => Ok(Self::DoubleRatchet),
+            libsignal_protocol::CiphertextMessageType::PreKey => Ok(Self::PreKey),
+            libsignal_protocol::CiphertextMessageType::SenderKey => {
+                Err(MessageTypeCannotBeSentUnsealed)
+            }
+            libsignal_protocol::CiphertextMessageType::Plaintext => Ok(Self::PlaintextContent),
+        }
+    }
+}
+
 impl MultiRecipientSendAuthorization {
     fn to_header(&self) -> Option<(http::HeaderName, http::HeaderValue)> {
         match self {
@@ -80,6 +98,7 @@ impl MultiRecipientSendAuthorization {
     }
 }
 
+/// See [`SendMessageRequest`].
 #[serde_as]
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -103,11 +122,11 @@ struct SendMessageRequest<'a> {
 
 #[async_trait]
 impl<T: WsConnection> crate::api::messages::UnauthenticatedChatApi<OverWs> for Unauth<T> {
-    async fn send_message<'a>(
+    async fn send_message(
         &self,
         destination: ServiceId,
         timestamp: libsignal_protocol::Timestamp,
-        contents: Vec<SingleOutboundSealedSenderMessage<'a>>,
+        contents: &[SingleOutboundSealedSenderMessage<'_>],
         auth: UserBasedSendAuthorization,
         online_only: bool,
         urgent: bool,
@@ -128,6 +147,8 @@ impl<T: WsConnection> crate::api::messages::UnauthenticatedChatApi<OverWs> for U
             story_suffix,
             timestamp.epoch_millis()
         );
+
+        assert!(!contents.is_empty(), "cannot send messages to 0 devices");
 
         let request = SendMessageRequest {
             messages: contents
@@ -278,6 +299,82 @@ impl<T: WsConnection> crate::api::messages::UnauthenticatedChatApi<OverWs> for U
 
 #[async_trait]
 impl<T: WsConnection> crate::api::messages::AuthenticatedChatApi<OverWs> for Auth<T> {
+    async fn send_message<'a>(
+        &self,
+        destination: ServiceId,
+        timestamp: libsignal_protocol::Timestamp,
+        contents: Vec<SingleOutboundUnsealedMessage<'a>>,
+        online_only: bool,
+        urgent: bool,
+    ) -> Result<(), RequestError<UnsealedSendFailure>> {
+        let path = format!("/v1/messages/{}", destination.service_id_string());
+        let log_safe_path = format!(
+            "/v1/messages/{} (ts: {})",
+            Redact(destination),
+            timestamp.epoch_millis()
+        );
+
+        SingleOutboundUnsealedMessage::assert_valid_unsealed_message_types(&contents);
+
+        let request = SendMessageRequest {
+            messages: contents
+                .iter()
+                .map(|message| SingleOutboundMessageRepresentation {
+                    message_type: message
+                        .contents
+                        .message_type()
+                        .try_into()
+                        .expect("checked above"),
+                    destination_device_id: message.device_id.into(),
+                    destination_registration_id: message.registration_id,
+                    content: message.contents.serialize(),
+                })
+                .collect(),
+            online: online_only,
+            urgent,
+            timestamp: timestamp.epoch_millis(),
+        };
+
+        let response = self
+            .send(
+                "auth",
+                &log_safe_path,
+                Request {
+                    method: http::Method::PUT,
+                    path: path.parse().expect("valid"),
+                    headers: http::HeaderMap::from_iter([CONTENT_TYPE_JSON]),
+                    body: Some(
+                        serde_json::to_vec(&request)
+                            .expect("can serialize request")
+                            .into(),
+                    ),
+                },
+            )
+            .await?;
+
+        // The server response includes a field we don't read.
+        #[derive(serde::Deserialize)]
+        struct RawSendMessageResponse {}
+
+        let RawSendMessageResponse {} = response.try_into_response().map_err(|e| {
+            e.into_request_error(Self::ALLOW_RATE_LIMIT_CHALLENGES, |response| match response
+                .status
+                .as_u16()
+            {
+                404 => {
+                    expect_empty_body(response, "/v1/messages/*");
+                    UnsealedSendFailure::ServiceIdNotFound.into()
+                }
+                409 | 410 => {
+                    parse_single_recipient_mismatched_devices_response(destination, response)
+                }
+                _ => CustomError::NoCustomHandling,
+            })
+        })?;
+
+        Ok(())
+    }
+
     async fn get_upload_form(&self) -> Result<UploadForm, RequestError<Infallible>> {
         let response = self
             .send(
@@ -360,10 +457,10 @@ impl ParsedMismatchedDevices {
     }
 }
 
-fn parse_single_recipient_mismatched_devices_response(
+fn parse_single_recipient_mismatched_devices_response<E: From<MismatchedDeviceError>>(
     recipient: ServiceId,
     response: &Response,
-) -> CustomError<SealedSendFailure> {
+) -> CustomError<E> {
     debug_assert_matches!(response.status.as_u16(), 409 | 410);
 
     let parsed_devices: ParsedMismatchedDevices = match parse_json_from_body(response) {
@@ -376,7 +473,7 @@ fn parse_single_recipient_mismatched_devices_response(
     };
 
     match parsed_devices.try_into_error(recipient) {
-        Ok(converted) => SealedSendFailure::MismatchedDevices(converted).into(),
+        Ok(converted) => CustomError::Err(converted.into()),
         Err(e) => e,
     }
 }
@@ -431,15 +528,15 @@ mod test {
 
     use futures_util::FutureExt;
     use libsignal_core::{Aci, Pni};
-    use libsignal_protocol::Timestamp;
+    use libsignal_protocol::{CiphertextMessage, PlaintextContent, Timestamp};
     use serde_json::json;
     use test_case::test_case;
     use uuid::Uuid;
 
     use super::*;
-    use crate::api::UserBasedAuthorization;
-    use crate::api::messages::{AuthenticatedChatApi as _, UnauthenticatedChatApi};
+    use crate::api::messages::{AuthenticatedChatApi as _, UnauthenticatedChatApi as _};
     use crate::api::testutil::{SERIALIZED_GROUP_SEND_TOKEN, structurally_valid_group_send_token};
+    use crate::api::{ChallengeOption, RateLimitChallenge, UserBasedAuthorization};
     use crate::ws::ACCESS_KEY_HEADER_NAME;
     use crate::ws::testutil::{JsonRequestValidator, RequestValidator, empty, json};
 
@@ -538,7 +635,7 @@ mod test {
             .send_message(
                 Pni::from(uuid::Uuid::try_parse(PNI_UUID).expect("valid")).into(),
                 Timestamp::from_epoch_millis(1700000000000),
-                vec![
+                &[
                     SingleOutboundSealedSenderMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
@@ -607,7 +704,7 @@ mod test {
             .send_message(
                 Aci::from(uuid::Uuid::try_parse(ACI_UUID).expect("valid")).into(),
                 Timestamp::from_epoch_millis(1700000000000),
-                vec![
+                &[
                     SingleOutboundSealedSenderMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
@@ -667,7 +764,7 @@ mod test {
             .send_message(
                 Pni::from(uuid::Uuid::try_parse(PNI_UUID).expect("valid")).into(),
                 Timestamp::from_epoch_millis(1700000000000),
-                vec![
+                &[
                     SingleOutboundSealedSenderMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
@@ -686,6 +783,122 @@ mod test {
             .now_or_never()
             .expect("sync")
             .expect("success");
+    }
+
+    #[test_case(json(200, r#"{}"#) => matches Ok(()))]
+    #[test_case(json(200, r#"{"needsSync":true}"#) => matches Ok(()))]
+    #[test_case(empty(200) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(empty(404) => matches Err(RequestError::Other(UnsealedSendFailure::ServiceIdNotFound)))]
+    #[test_case(empty(500) => matches Err(RequestError::ServerSideError))]
+    #[test_case(empty(409) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(json(
+        409, r#"{"missingDevices":[50,60]}"#
+    ) => matches Err(RequestError::Other(UnsealedSendFailure::MismatchedDevices(error))) if error ==
+        MismatchedDeviceError {
+            account: Pni::from(Uuid::try_parse(PNI_UUID).unwrap()).into(),
+            missing_devices: vec![DeviceId::new(50).unwrap(), DeviceId::new(60).unwrap()],
+            extra_devices: vec![],
+            stale_devices: vec![],
+        }
+    )]
+    #[test_case(json(
+        409, r#"{"missingDevices":[],"extraDevices":[4,5]}"#
+    ) => matches Err(RequestError::Other(UnsealedSendFailure::MismatchedDevices(error))) if error ==
+        MismatchedDeviceError {
+            account: Pni::from(Uuid::try_parse(PNI_UUID).unwrap()).into(),
+            missing_devices: vec![],
+            extra_devices: vec![DeviceId::new(4).unwrap(), DeviceId::new(5).unwrap()],
+            stale_devices: vec![],
+        }
+    )]
+    #[test_case(json(
+        410, r#"{"staleDevices":[4,5]}"#
+    ) => matches Err(RequestError::Other(UnsealedSendFailure::MismatchedDevices(error))) if error ==
+        MismatchedDeviceError {
+            account: Pni::from(Uuid::try_parse(PNI_UUID).unwrap()).into(),
+            missing_devices: vec![],
+            extra_devices: vec![],
+            stale_devices: vec![DeviceId::new(4).unwrap(), DeviceId::new(5).unwrap()],
+        }
+    )]
+    #[test_case(json(
+        410, r#"["#
+    ) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(json(
+        410, r#"{"staleDevices":[200]}"#
+    ) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(json(
+        410, r#"{"staleDevices":["4"]}"#
+    ) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(empty(428) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
+    #[test_case(json(428, "{}") => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
+    #[test_case(json(
+        428, r#"{"token": "zzz", "options": ["captcha"]}"#
+    ) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
+    fn test_unsealed_send(response: Response) -> Result<(), RequestError<UnsealedSendFailure>> {
+        let validator = JsonRequestValidator {
+            expected: Request {
+                method: http::Method::PUT,
+                path: http::uri::PathAndQuery::from_static(const_str::concat!(
+                    "/v1/messages/PNI:",
+                    PNI_UUID
+                )),
+                headers: http::HeaderMap::from_iter([CONTENT_TYPE_JSON]),
+                body: None,
+            },
+            body: json!({
+                "messages": [
+                    {
+                        "type": 8,
+                        "destinationDeviceId": 2,
+                        "destinationRegistrationId": 22,
+                        "content": "wAECA4A="
+                    },
+                    {
+                        "type": 8,
+                        "destinationDeviceId": 3,
+                        "destinationRegistrationId": 33,
+                        "content": "wAQFBoA="
+                    }
+                ],
+                "online": false,
+                "urgent": true,
+                "timestamp": 1700000000000u64
+            }),
+            response,
+        };
+
+        Auth(validator)
+            .send_message(
+                Pni::from(uuid::Uuid::try_parse(PNI_UUID).expect("valid")).into(),
+                Timestamp::from_epoch_millis(1700000000000),
+                vec![
+                    SingleOutboundUnsealedMessage {
+                        device_id: DeviceId::new(2).expect("valid"),
+                        registration_id: 22,
+                        contents: Cow::Owned(CiphertextMessage::PlaintextContent(
+                            PlaintextContent::try_from(
+                                // A structurally valid PlaintextContent message starts with C0 and has
+                                // no other constraints; a realistic one will additionally end with
+                                // "padding" of 80 followed by any number of 00 bytes.
+                                &[0xC0, 1, 2, 3, 0x80][..],
+                            )
+                            .expect("valid"),
+                        )),
+                    },
+                    SingleOutboundUnsealedMessage {
+                        device_id: DeviceId::new(3).expect("valid"),
+                        registration_id: 33,
+                        contents: Cow::Owned(CiphertextMessage::PlaintextContent(
+                            PlaintextContent::try_from(&[0xC0, 4, 5, 6, 0x80][..]).expect("valid"),
+                        )),
+                    },
+                ],
+                false,
+                true,
+            )
+            .now_or_never()
+            .expect("sync")
     }
 
     #[test_case(json(200, "{}") => matches Ok(MrResponse { unregistered_ids }) if unregistered_ids.is_empty())]

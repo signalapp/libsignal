@@ -22,19 +22,71 @@ pub struct SingleOutboundMessage<T> {
 
 pub type SingleOutboundSealedSenderMessage<'a> = SingleOutboundMessage<Cow<'a, [u8]>>;
 
+pub type SingleOutboundUnsealedMessage<'a> =
+    SingleOutboundMessage<Cow<'a, libsignal_protocol::CiphertextMessage>>;
+
+impl SingleOutboundUnsealedMessage<'_> {
+    /// Asserts that the messages in a list are all compatible and use a ciphertext format
+    /// appropriate for unsealed sends.
+    ///
+    /// Examples:
+    /// - "all 1:1 messages" (`PreKey` or `Whisper`)
+    /// - "all plaintext messages" (decryption errors)
+    /// - but not sender key messages, which can't be sent unsealed
+    /// - and not a mix of the above
+    pub(crate) fn assert_valid_unsealed_message_types(messages: &[Self]) {
+        Self::assert_valid_unsealed_message_types_impl(
+            messages.iter().map(|m| m.contents.message_type()),
+        );
+    }
+
+    /// The implementation of [`Self::assert_valid_unsealed_message_types`], broken out for testing.
+    fn assert_valid_unsealed_message_types_impl(
+        mut types: impl Iterator<Item = libsignal_protocol::CiphertextMessageType>,
+    ) {
+        fn representative_message_type(
+            ty: libsignal_protocol::CiphertextMessageType,
+        ) -> libsignal_protocol::CiphertextMessageType {
+            match ty {
+                libsignal_protocol::CiphertextMessageType::PreKey
+                | libsignal_protocol::CiphertextMessageType::Whisper => {
+                    libsignal_protocol::CiphertextMessageType::Whisper
+                }
+
+                libsignal_protocol::CiphertextMessageType::Plaintext => ty,
+
+                libsignal_protocol::CiphertextMessageType::SenderKey => {
+                    panic!("cannot send SenderKey message unsealed")
+                }
+            }
+        }
+
+        let first_message_type = types.next().expect("cannot send messages to 0 devices");
+        let message_type_to_check_against = representative_message_type(first_message_type);
+        for next_message_type in types {
+            // Not using assert_eq! because we want to show the original message types in the error, not
+            // the representative ones.
+            assert!(
+                message_type_to_check_against == representative_message_type(next_message_type),
+                "cannot mix arbitrary outgoing message types ({first_message_type:?} and {next_message_type:?})"
+            );
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct MultiRecipientMessageResponse {
     pub unregistered_ids: Vec<ServiceId>,
 }
 
-#[derive(Debug, displaydoc::Display)]
+#[derive(Debug, displaydoc::Display, derive_more::From)]
 pub enum SealedSendFailure {
     /// Invalid authorization for send
     Unauthorized,
     /// The target account was not found
     ServiceIdNotFound,
     /// Mismatched devices for recipient
-    MismatchedDevices(MismatchedDeviceError),
+    MismatchedDevices(#[from] MismatchedDeviceError),
 }
 impl LogSafeDisplay for SealedSendFailure {}
 
@@ -42,6 +94,14 @@ impl LogSafeDisplay for SealedSendFailure {}
 pub enum MultiRecipientSendFailure {
     Unauthorized,
     MismatchedDevices(Vec<MismatchedDeviceError>),
+}
+
+#[derive(Debug, displaydoc::Display, derive_more::From)]
+pub enum UnsealedSendFailure {
+    /// The target account was not found
+    ServiceIdNotFound,
+    /// Mismatched devices for recipient
+    MismatchedDevices(#[from] MismatchedDeviceError),
 }
 
 #[derive(Debug)]
@@ -74,11 +134,15 @@ pub enum MultiRecipientSendAuthorization {
 pub trait UnauthenticatedChatApi<T> {
     const ALLOW_RATE_LIMIT_CHALLENGES: AllowRateLimitChallenges = AllowRateLimitChallenges::No;
 
-    async fn send_message<'a>(
+    /// Send a sealed 1:1 message.
+    ///
+    /// `contents` should include one message for each device of `destination`. It must not be
+    /// empty.
+    async fn send_message(
         &self,
         destination: ServiceId,
         timestamp: libsignal_protocol::Timestamp,
-        contents: Vec<SingleOutboundSealedSenderMessage<'a>>,
+        contents: &[SingleOutboundSealedSenderMessage<'_>],
         auth: UserBasedSendAuthorization,
         online_only: bool,
         urgent: bool,
@@ -105,6 +169,19 @@ pub trait UnauthenticatedChatApi<T> {
 pub trait AuthenticatedChatApi<T> {
     const ALLOW_RATE_LIMIT_CHALLENGES: AllowRateLimitChallenges = AllowRateLimitChallenges::Yes;
 
+    /// Send an unsealed 1:1 message.
+    ///
+    /// `contents` should include one message for each device of `destination`. It must not be
+    /// empty.
+    async fn send_message<'a>(
+        &self,
+        destination: ServiceId,
+        timestamp: libsignal_protocol::Timestamp,
+        contents: Vec<SingleOutboundUnsealedMessage<'a>>,
+        online_only: bool,
+        urgent: bool,
+    ) -> Result<(), RequestError<UnsealedSendFailure>>;
+
     async fn get_upload_form(&self) -> Result<UploadForm, RequestError<Infallible>>;
 }
 
@@ -128,3 +205,27 @@ impl std::fmt::Display for MultiRecipientSendFailure {
     }
 }
 impl LogSafeDisplay for MultiRecipientSendFailure {}
+
+#[cfg(test)]
+mod test {
+    use libsignal_protocol::CiphertextMessageType;
+    use test_case::test_case;
+
+    use super::*;
+
+    #[test_case(&[] => panics)]
+    #[test_case(&[CiphertextMessageType::Whisper])]
+    #[test_case(&[CiphertextMessageType::PreKey])]
+    #[test_case(&[CiphertextMessageType::Plaintext])]
+    #[test_case(&[CiphertextMessageType::SenderKey] => panics)]
+    #[test_case(&[CiphertextMessageType::Whisper, CiphertextMessageType::Whisper, CiphertextMessageType::PreKey, CiphertextMessageType::Whisper])]
+    #[test_case(&[CiphertextMessageType::PreKey, CiphertextMessageType::Whisper, CiphertextMessageType::Whisper])]
+    #[test_case(&[CiphertextMessageType::Plaintext, CiphertextMessageType::Plaintext, CiphertextMessageType::Plaintext])]
+    #[test_case(&[CiphertextMessageType::Plaintext, CiphertextMessageType::Whisper] => panics)]
+    #[test_case(&[CiphertextMessageType::PreKey, CiphertextMessageType::Plaintext] => panics)]
+    fn test_valid_unsealed_sender_message_types(types: &[CiphertextMessageType]) {
+        SingleOutboundUnsealedMessage::assert_valid_unsealed_message_types_impl(
+            types.iter().copied(),
+        )
+    }
+}

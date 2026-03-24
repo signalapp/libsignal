@@ -26,11 +26,11 @@ use crate::logging::Redact;
 
 #[async_trait]
 impl<T: GrpcServiceProvider> crate::api::messages::UnauthenticatedChatApi<OverGrpc> for Unauth<T> {
-    async fn send_message<'a>(
+    async fn send_message(
         &self,
         _destination: ServiceId,
         _timestamp: libsignal_protocol::Timestamp,
-        _contents: Vec<SingleOutboundSealedSenderMessage<'a>>,
+        _contents: &[SingleOutboundSealedSenderMessage<'_>],
         _auth: UserBasedSendAuthorization,
         _online_only: bool,
         _urgent: bool,

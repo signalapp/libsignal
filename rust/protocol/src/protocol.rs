@@ -20,7 +20,7 @@ pub(crate) const CIPHERTEXT_MESSAGE_CURRENT_VERSION: u8 = 4;
 pub(crate) const CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION: u8 = 3;
 pub(crate) const SENDERKEY_MESSAGE_CURRENT_VERSION: u8 = 3;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CiphertextMessage {
     SignalMessage(SignalMessage),
     PreKeySignalMessage(PreKeySignalMessage),
