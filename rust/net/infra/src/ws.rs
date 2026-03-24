@@ -17,7 +17,9 @@ use tungstenite::{Message, Utf8Bytes, http};
 
 use crate::AsyncDuplexStream;
 use crate::errors::LogSafeDisplay;
-use crate::http_client::{H2Body, Http2Client, Http2Connector};
+use crate::http_client::{
+    H2Body, Http2Client, Http2Connector, Http2TransportError, Http2TransportErrorKind,
+};
 use crate::route::{Connector, HttpRouteFragment, HttpVersion, WebSocketRouteFragment};
 use crate::stream::StreamWithFixedTransportInfo;
 use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError};
@@ -327,22 +329,27 @@ async fn connect_http2<Inner: WebSocketTransportStream, B: H2Body + Default>(
         client.send_request(request).await
     }
     .await
-    .map_err(|e: hyper::Error| {
+    .map_err(|e: Http2TransportError| {
         log::debug!("[{log_tag}] websocket upgrade failed: {e}");
-        // hyper::Error isn't an enum; we have to infer what to report this as.
-        if e.is_timeout() {
-            WebSocketError::Io(std::io::ErrorKind::TimedOut.into())
-        } else if e.is_canceled() || e.is_closed() || e.is_incomplete_message() {
-            WebSocketError::ChannelClosed
-        } else if e.is_parse() {
-            WebSocketError::Io(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "HTTP parse error",
-            ))
-        } else {
-            WebSocketError::Io(std::io::Error::other(
-                "failed to complete H2 websocket upgrade request",
-            ))
+        match e.kind() {
+            Http2TransportErrorKind::Timeout => {
+                WebSocketError::Io(std::io::ErrorKind::TimedOut.into())
+            }
+            Http2TransportErrorKind::Canceled
+            | Http2TransportErrorKind::Closed
+            | Http2TransportErrorKind::IncompleteMessage => WebSocketError::ChannelClosed,
+            Http2TransportErrorKind::Parse | Http2TransportErrorKind::ParseStatus => {
+                WebSocketError::Io(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "HTTP parse error",
+                ))
+            }
+            Http2TransportErrorKind::Shutdown
+            | Http2TransportErrorKind::User
+            | Http2TransportErrorKind::Unknown
+            | Http2TransportErrorKind::BodyWriteAborted => WebSocketError::Io(
+                std::io::Error::other("failed to complete H2 websocket upgrade request"),
+            ),
         }
     })?;
 

@@ -295,31 +295,7 @@ impl Chat {
     /// progress might succeed or fail, depending on the timing of sending and
     /// receiving requests and responses.
     pub async fn disconnect(&self) {
-        let mut guard = self.state.lock().await;
-        // Take the existing state and leave a cheap-to-construct temporary
-        // state there.
-        let state = std::mem::replace(
-            &mut *guard,
-            TaskState::Finished(Ok(FinishReason::LocalDisconnect)),
-        );
-
-        let new_state = match state {
-            TaskState::MaybeStillRunning {
-                request_tx,
-                response_tx,
-                task,
-                shared_h2_connection,
-            } => {
-                // Signal to the task, if it's still running, that it should
-                // quit. Do this by hanging up on it, at which point it will
-                // exit.
-                drop((request_tx, response_tx));
-                drop(shared_h2_connection);
-                TaskState::SignaledToEnd(task)
-            }
-            state @ (TaskState::SignaledToEnd(_) | TaskState::Finished(_)) => state,
-        };
-        *guard = new_state
+        self.state.lock().await.disconnect()
     }
 
     /// Returns `true` if the websocket is known to be connected.
@@ -429,6 +405,40 @@ impl Chat {
         Self {
             state: TokioMutex::new(state),
         }
+    }
+}
+
+impl TaskState {
+    fn disconnect(&mut self) {
+        // Take the existing state and leave a cheap-to-construct temporary
+        // state there.
+        let state = std::mem::replace(self, TaskState::Finished(Ok(FinishReason::LocalDisconnect)));
+        *self = match state {
+            TaskState::MaybeStillRunning {
+                request_tx,
+                response_tx,
+                task,
+                shared_h2_connection,
+            } => {
+                // Signal to the task, if it's still running, that it should
+                // quit. Do this by hanging up on it, at which point it will
+                // exit.
+                drop((request_tx, response_tx));
+                // Similarly, cancel any outstanding H2 requests, and let the connection exit
+                // naturally.
+                if let Some(h2) = shared_h2_connection {
+                    h2.disconnect_all();
+                }
+                TaskState::SignaledToEnd(task)
+            }
+            state @ (TaskState::SignaledToEnd(_) | TaskState::Finished(_)) => state,
+        };
+    }
+}
+
+impl Drop for Chat {
+    fn drop(&mut self) {
+        self.state.get_mut().disconnect();
     }
 }
 

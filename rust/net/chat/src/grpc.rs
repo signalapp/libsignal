@@ -892,7 +892,7 @@ mod test {
         };
         assert_matches!(
             RequestError::<Infallible>::from(tonic::Status::from_error(Box::new(
-                Http2TransportError(hyper_err)
+                Http2TransportError::Hyper(hyper_err)
             ))),
             RequestError::Disconnected(DisconnectedError::Transport { log_safe: _ })
         );

@@ -431,7 +431,11 @@ impl PendingChatConnection {
     }
 
     pub async fn disconnect(&mut self) {
-        _ = self.shared_h2_connection.take();
+        if let Some(h2) = self.shared_h2_connection.take() {
+            // There shouldn't have been any requests yet while the connection is still Pending, but
+            // just in case.
+            h2.disconnect_all();
+        }
         if let Err(error) = self.connection.close(None).await {
             log::warn!(
                 "[{}] pending chat connection disconnect failed with {error}",
