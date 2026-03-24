@@ -67,7 +67,7 @@ jobs:
     - run: brew install protobuf
       if: startsWith(matrix.os, 'macos')
 
-    - run: cargo +stable install dump_syms --no-default-features --features cli
+    - run: cargo +stable install dump_syms --locked --no-default-features --features cli
 
     - name: Get Node version from .nvmrc
       id: get-nvm-version
