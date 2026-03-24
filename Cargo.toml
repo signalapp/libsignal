@@ -213,7 +213,7 @@ tokio = "1.45"
 tokio-socks = "0.5.2"
 tokio-stream = "0.1.16"
 tokio-tungstenite = "0.28.0"
-tokio-util = "0.7.11"
+tokio-util = "0.7.18"
 tonic = { version = "0.14", default-features = false }
 tonic-prost = "0.14"
 tonic-prost-build = { version = "0.14", default-features = false }
