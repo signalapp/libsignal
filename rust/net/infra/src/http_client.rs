@@ -501,12 +501,14 @@ mod test {
                     );
                     ErrorHandling::Continue
                 }
-                HttpConnectError::HttpHandshake => {
-                    ErrorHandling::Fatal(HttpError::Http2HandshakeFailed)
-                }
-                HttpConnectError::InvalidConfig(_) => {
-                    ErrorHandling::Fatal(HttpError::FailedToCreateRequest)
-                }
+                HttpConnectError::HttpHandshake => ErrorHandling::Fatal {
+                    error: HttpError::Http2HandshakeFailed,
+                    failure_for_all_routes: None,
+                },
+                HttpConnectError::InvalidConfig(_) => ErrorHandling::Fatal {
+                    error: HttpError::FailedToCreateRequest,
+                    failure_for_all_routes: None,
+                },
             },
         )
         .await;
@@ -520,7 +522,7 @@ mod test {
         Ok(AggregatingHttp2Client::new(
             result.map_err(|e| match e {
                 ConnectError::AllAttemptsFailed => HttpError::SslHandshakeFailed,
-                ConnectError::FatalConnect(e) => e,
+                ConnectError::FatalConnect { error, .. } => error,
             })?,
             max_response_size,
         ))

@@ -225,7 +225,7 @@ async fn make_grpc_connection(env: Env<'_>) -> anyhow::Result<Http2Client<tonic:
     .map_err(|e| match e {
         TimeoutOr::Timeout { .. } => anyhow!("timed out"),
         TimeoutOr::Other(ConnectError::AllAttemptsFailed) => anyhow!("all attempts failed"),
-        TimeoutOr::Other(ConnectError::FatalConnect(e)) => e.into(),
+        TimeoutOr::Other(ConnectError::FatalConnect { error, .. }) => error.into(),
     })?;
     Ok(client)
 }

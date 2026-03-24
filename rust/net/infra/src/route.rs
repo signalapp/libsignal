@@ -257,13 +257,19 @@ pub enum ConnectError<E> {
     /// All attempts to connect failed, but none fatally.
     AllAttemptsFailed,
     /// An attempt to connect failed fatally.
-    FatalConnect(E),
+    FatalConnect {
+        error: E,
+        failure_for_all_routes: Option<UnsuccessfulOutcome>,
+    },
 }
 
 /// Used in [`connect()`]'s callback to decide what to do when a route fails with an error.
 pub enum ErrorHandling<E> {
     /// Don't try any more routes; exit with the given error.
-    Fatal(E),
+    Fatal {
+        error: E,
+        failure_for_all_routes: Option<UnsuccessfulOutcome>,
+    },
     /// Continue trying routes. If no routes end up succeeding, exit with this error instead of
     /// [`ConnectError::AllAttemptsFailed`].
     ///
@@ -448,7 +454,12 @@ where
         // also aren't gonna be any more, we've run out of possibilities.
         if poll_or_wait.is_none() && next_connect_in_progress.is_none() {
             break Err(
-                fallback_error.map_or(ConnectError::AllAttemptsFailed, ConnectError::FatalConnect)
+                fallback_error.map_or(ConnectError::AllAttemptsFailed, |error| {
+                    ConnectError::FatalConnect {
+                        error,
+                        failure_for_all_routes: None,
+                    }
+                }),
             );
         }
 
@@ -510,12 +521,18 @@ where
                             fallback_error_start = started;
                         }
                     }
-                    Err(ErrorHandling::Fatal(fatal_err)) => {
+                    Err(ErrorHandling::Fatal {
+                        error,
+                        failure_for_all_routes,
+                    }) => {
                         // This isn't a route-level error, it's a
                         // service-level error. It doesn't necessarily mean
                         // the route is bad, so don't record the
                         // unsuccessful attempt.
-                        break Err(ConnectError::FatalConnect(fatal_err));
+                        break Err(ConnectError::FatalConnect {
+                            error,
+                            failure_for_all_routes,
+                        });
                     }
                 }
 
@@ -552,7 +569,19 @@ impl<E: std::fmt::Display> std::fmt::Display for ConnectError<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ConnectError::AllAttemptsFailed => f.write_str("all connect attempts failed"),
-            ConnectError::FatalConnect(e) => write!(f, "fatal connect error: {e}"),
+            ConnectError::FatalConnect {
+                error,
+                failure_for_all_routes,
+            } => write!(
+                f,
+                "fatal connect error: {} {}",
+                error,
+                if failure_for_all_routes.is_some() {
+                    "(applies to all routes)"
+                } else {
+                    "(may not apply to all routes)"
+                }
+            ),
         }
     }
 }
@@ -1441,7 +1470,10 @@ mod test {
 
         assert_matches!(
             result,
-            Err(ConnectError::FatalConnect(LabeledConnectError("A")))
+            Err(ConnectError::FatalConnect {
+                error: LabeledConnectError("A"),
+                failure_for_all_routes: None
+            })
         );
         // No early exits!
         assert_eq!(updates.outcomes.len(), HOSTNAMES.len());
@@ -1492,7 +1524,10 @@ mod test {
             "test",
             |e: LabeledConnectError| {
                 if e.0 == "Fatal" {
-                    ErrorHandling::Fatal(e)
+                    ErrorHandling::Fatal {
+                        error: e,
+                        failure_for_all_routes: None,
+                    }
                 } else {
                     ErrorHandling::Fallback(e)
                 }
@@ -1502,7 +1537,10 @@ mod test {
 
         assert_matches!(
             result,
-            Err(ConnectError::FatalConnect(LabeledConnectError("Fatal")))
+            Err(ConnectError::FatalConnect {
+                error: LabeledConnectError("Fatal"),
+                failure_for_all_routes: None
+            })
         );
         // We *should* early exit this time.
         assert_eq!(
