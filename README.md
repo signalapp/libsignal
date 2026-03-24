@@ -1,5 +1,3 @@
-> **📣 If you were previously using libsignal from Maven or Gradle, our repository location has changed with the 0.86.6 release. See below for more information.**
-
 # Overview
 
 libsignal contains platform-agnostic APIs used by the official Signal clients and servers, exposed
