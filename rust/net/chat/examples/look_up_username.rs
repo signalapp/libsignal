@@ -92,7 +92,7 @@ async fn main() -> anyhow::Result<()> {
             |_route| true,
         )
         .await?;
-        grpc_connection = chat_connection.shared_h2_connection().await.map(Unauth);
+        grpc_connection = chat_connection.shared_h2_connection().map(Unauth);
         ws_connection = Some(Unauth(chat_connection));
     }
 

@@ -26,9 +26,8 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for 
         &self,
         hash: &[u8],
     ) -> Result<Option<Aci>, RequestError<Infallible>> {
-        if let Some(grpc) = self
-            .grpc_service_to_use_instead(services::AccountsAnonymous::LookupUsernameHash.into())
-            .await
+        if let Some(grpc) =
+            self.grpc_service_to_use_instead(services::AccountsAnonymous::LookupUsernameHash.into())
         {
             return Unauth(grpc).look_up_username_hash(hash).await;
         }
@@ -84,9 +83,8 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for 
         uuid: uuid::Uuid,
         entropy: &[u8; usernames::constants::USERNAME_LINK_ENTROPY_SIZE],
     ) -> Result<Option<usernames::Username>, RequestError<usernames::UsernameLinkError>> {
-        if let Some(grpc) = self
-            .grpc_service_to_use_instead(services::AccountsAnonymous::LookupUsernameLink.into())
-            .await
+        if let Some(grpc) =
+            self.grpc_service_to_use_instead(services::AccountsAnonymous::LookupUsernameLink.into())
         {
             return Unauth(grpc).look_up_username_link(uuid, entropy).await;
         }

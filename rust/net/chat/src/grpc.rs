@@ -430,7 +430,7 @@ pub(crate) mod testutil {
             panic!("We should be only sending grpc here");
         }
 
-        async fn grpc_service_to_use_instead(
+        fn grpc_service_to_use_instead(
             &self,
             message: &'static str,
         ) -> Option<impl GrpcServiceProvider> {

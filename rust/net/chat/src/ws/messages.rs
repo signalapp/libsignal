@@ -219,12 +219,9 @@ impl<T: WsConnection> crate::api::messages::UnauthenticatedChatApi<OverWs> for U
         online_only: bool,
         urgent: bool,
     ) -> Result<MultiRecipientMessageResponse, RequestError<MultiRecipientSendFailure>> {
-        if let Some(grpc) = self
-            .grpc_service_to_use_instead(
-                services::MessagesAnonymous::SendMultiRecipientMessage.into(),
-            )
-            .await
-        {
+        if let Some(grpc) = self.grpc_service_to_use_instead(
+            services::MessagesAnonymous::SendMultiRecipientMessage.into(),
+        ) {
             return Unauth(grpc)
                 .send_multi_recipient_message(payload, timestamp, auth, online_only, urgent)
                 .await;

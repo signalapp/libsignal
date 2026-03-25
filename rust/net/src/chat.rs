@@ -437,8 +437,8 @@ impl ChatConnection {
         &self.connection_info
     }
 
-    pub async fn shared_h2_connection(&self) -> Option<Http2Client<GrpcBody>> {
-        self.inner.shared_h2_connection().await
+    pub fn shared_h2_connection(&self) -> Option<Http2Client<GrpcBody>> {
+        self.inner.shared_h2_connection()
     }
 
     pub fn grpc_overrides(&self) -> &HashMap<&'static str, GrpcOverride> {

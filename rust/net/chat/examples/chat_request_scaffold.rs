@@ -66,7 +66,6 @@ async fn main() -> anyhow::Result<()> {
     let grpc_connection = Unauth(
         chat_connection
             .shared_h2_connection()
-            .await
             .expect("H2 connection available"),
     );
     #[allow(unused)]

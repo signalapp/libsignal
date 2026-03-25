@@ -44,7 +44,7 @@ use crate::env::{
 use crate::infra::ws::TextOrBinary;
 use crate::infra::ws::connection::{MessageEvent, NextEventError, TungsteniteSendError};
 
-/// Chat service avilable via a connected websocket.
+/// Chat service available via a connected websocket.
 ///
 /// This is backed by a [`tokio`] task that handles the actual interaction with
 /// the remote. Outgoing requests can be sent to the task via a [`mpsc::Sender`]
@@ -60,6 +60,9 @@ pub struct Chat {
     /// points. If it were a regular [`std::sync::Mutex`] the futures produced by methods
     /// on `Chat` would not be `Send`.
     state: TokioMutex<TaskState>,
+
+    /// If the connection is running over H2, additional requests can be sent via this client.
+    shared_h2_connection: Option<Http2Client<GrpcBody>>,
 }
 
 /// Instantiation-time configuration for a [`Chat`] instance.
@@ -246,18 +249,8 @@ impl Chat {
         listener(ListenerEvent::ReceivedAlerts(alerts))
     }
 
-    pub async fn shared_h2_connection(&self) -> Option<Http2Client<GrpcBody>> {
-        let state = self.state.lock().await;
-        match &*state {
-            TaskState::MaybeStillRunning {
-                request_tx: _,
-                response_tx: _,
-                task: _,
-                shared_h2_connection,
-            } => shared_h2_connection.clone(),
-            TaskState::SignaledToEnd(_) => None,
-            TaskState::Finished(_) => None,
-        }
+    pub fn shared_h2_connection(&self) -> Option<Http2Client<GrpcBody>> {
+        self.shared_h2_connection.clone()
     }
 
     /// Sends a request to the server and waits for the response.
@@ -265,7 +258,10 @@ impl Chat {
     /// If the request can't be sent or the response isn't received, this
     /// returns an error.
     pub async fn send(&self, request: Request) -> Result<Response, SendError> {
-        let Self { state } = self;
+        let Self {
+            state,
+            shared_h2_connection: _,
+        } = self;
 
         let Request {
             method,
@@ -308,7 +304,6 @@ impl Chat {
                 request_tx,
                 response_tx,
                 task,
-                shared_h2_connection: _,
             } => {
                 // Signal to the task, if it's still running, that it should
                 // quit. Do this by hanging up on it, at which point it will
@@ -334,7 +329,6 @@ impl Chat {
                 request_tx: _,
                 response_tx: _,
                 task,
-                shared_h2_connection: _,
             } => {
                 if !task.is_finished() {
                     return true;
@@ -422,11 +416,11 @@ impl Chat {
             request_tx,
             response_tx,
             task,
-            shared_h2_connection,
         };
 
         Self {
             state: TokioMutex::new(state),
+            shared_h2_connection,
         }
     }
 }
@@ -460,7 +454,6 @@ enum TaskState {
         request_tx: mpsc::Sender<OutgoingRequest>,
         response_tx: mpsc::UnboundedSender<OutgoingResponse>,
         task: JoinHandle<Result<FinishReason, TaskErrorState>>,
-        shared_h2_connection: Option<Http2Client<GrpcBody>>,
     },
     /// The task has been signalled to end and should be terminating soon, but
     /// not necessarily immediately.
@@ -802,7 +795,6 @@ async fn send_request(
                 request_tx,
                 response_tx: _,
                 task: _,
-                shared_h2_connection: _,
             } => request_tx.clone(),
             TaskState::SignaledToEnd(_) => {
                 return Err(SendError::Disconnected(DisconnectedReason::SocketClosed {
@@ -859,7 +851,6 @@ async fn wait_for_task_to_finish(state: &mut TaskState) -> &Result<FinishReason,
             task,
             request_tx: _,
             response_tx: _,
-            shared_h2_connection: _,
         } => {
             // The send can only fail if the task has ended since it owns the
             // other end of the channel.

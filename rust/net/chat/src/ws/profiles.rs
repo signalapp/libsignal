@@ -92,7 +92,6 @@ impl<T: WsConnection> crate::api::profiles::UnauthenticatedAccountExistenceApi<O
     async fn account_exists(&self, account: ServiceId) -> Result<bool, RequestError<Infallible>> {
         if let Some(grpc) = self
             .grpc_service_to_use_instead(services::AccountsAnonymous::CheckAccountExistence.into())
-            .await
         {
             return Unauth(grpc).account_exists(account).await;
         }

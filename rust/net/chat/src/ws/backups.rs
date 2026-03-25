@@ -88,9 +88,8 @@ impl<T: WsConnection> crate::api::backups::UnauthenticatedChatApi<OverWs> for Un
     ) -> Result<UploadForm, RequestError<GetMediaUploadFormFailure>> {
         // Note that we're using the same setting name as get_upload_form.
         // This is a single endpoint in gRPC, and having two settings for them wouldn't add much.
-        if let Some(grpc) = self
-            .grpc_service_to_use_instead(services::BackupsAnonymous::GetUploadForm.into())
-            .await
+        if let Some(grpc) =
+            self.grpc_service_to_use_instead(services::BackupsAnonymous::GetUploadForm.into())
         {
             return Unauth(grpc).get_media_upload_form(auth, rng).await;
         }

@@ -90,9 +90,9 @@ pub trait WsConnection: Sync {
     fn grpc_service_to_use_instead(
         &self,
         message: &'static str,
-    ) -> impl Future<Output = Option<impl crate::grpc::GrpcServiceProvider>> + Send {
+    ) -> Option<impl crate::grpc::GrpcServiceProvider> {
         let _ = message;
-        std::future::ready(None::<Http2Client<chat::GrpcBody>>)
+        None::<Http2Client<chat::GrpcBody>>
     }
 
     fn self_aci(&self) -> Option<libsignal_core::Aci>;
@@ -111,7 +111,7 @@ impl<T: WsConnection> WsConnection for &T {
     fn grpc_service_to_use_instead(
         &self,
         message: &'static str,
-    ) -> impl Future<Output = Option<impl GrpcServiceProvider>> + Send {
+    ) -> Option<impl GrpcServiceProvider> {
         <T as WsConnection>::grpc_service_to_use_instead(self, message)
     }
 
@@ -166,16 +166,14 @@ impl WsConnection for chat::ChatConnection {
     fn grpc_service_to_use_instead(
         &self,
         message: &'static str,
-    ) -> impl Future<Output = Option<impl crate::grpc::GrpcServiceProvider>> + Send {
-        use futures_util::future::Either;
-
+    ) -> Option<impl crate::grpc::GrpcServiceProvider> {
         match self
             .grpc_overrides()
             .get(message)
             .unwrap_or(&chat::GrpcOverride::UseWs)
         {
-            chat::GrpcOverride::UseGrpc => Either::Left(self.shared_h2_connection()),
-            chat::GrpcOverride::UseWs => Either::Right(std::future::ready(None)),
+            chat::GrpcOverride::UseGrpc => self.shared_h2_connection(),
+            chat::GrpcOverride::UseWs => None,
         }
     }
 
