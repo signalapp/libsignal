@@ -295,7 +295,29 @@ impl Chat {
     /// progress might succeed or fail, depending on the timing of sending and
     /// receiving requests and responses.
     pub async fn disconnect(&self) {
-        self.state.lock().await.disconnect()
+        let mut guard = self.state.lock().await;
+
+        // Take the existing state and leave a cheap-to-construct temporary
+        // state there.
+        let state = std::mem::replace(
+            &mut *guard,
+            TaskState::Finished(Ok(FinishReason::LocalDisconnect)),
+        );
+        *guard = match state {
+            TaskState::MaybeStillRunning {
+                request_tx,
+                response_tx,
+                task,
+                shared_h2_connection: _,
+            } => {
+                // Signal to the task, if it's still running, that it should
+                // quit. Do this by hanging up on it, at which point it will
+                // exit.
+                drop((request_tx, response_tx));
+                TaskState::SignaledToEnd(task)
+            }
+            state @ (TaskState::SignaledToEnd(_) | TaskState::Finished(_)) => state,
+        };
     }
 
     /// Returns `true` if the websocket is known to be connected.
@@ -406,35 +428,6 @@ impl Chat {
         Self {
             state: TokioMutex::new(state),
         }
-    }
-}
-
-impl TaskState {
-    fn disconnect(&mut self) {
-        // Take the existing state and leave a cheap-to-construct temporary
-        // state there.
-        let state = std::mem::replace(self, TaskState::Finished(Ok(FinishReason::LocalDisconnect)));
-        *self = match state {
-            TaskState::MaybeStillRunning {
-                request_tx,
-                response_tx,
-                task,
-                shared_h2_connection: _,
-            } => {
-                // Signal to the task, if it's still running, that it should
-                // quit. Do this by hanging up on it, at which point it will
-                // exit.
-                drop((request_tx, response_tx));
-                TaskState::SignaledToEnd(task)
-            }
-            state @ (TaskState::SignaledToEnd(_) | TaskState::Finished(_)) => state,
-        };
-    }
-}
-
-impl Drop for Chat {
-    fn drop(&mut self) {
-        self.state.get_mut().disconnect();
     }
 }
 
