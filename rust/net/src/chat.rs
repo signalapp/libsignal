@@ -204,7 +204,9 @@ pub struct PendingChatConnection {
 /// only the initial connection, and modify `start_connect_with_transport` appropriately.
 #[cfg_attr(test, derive(Clone))]
 pub struct AuthenticatedChatHeaders {
-    pub auth: Auth,
+    pub aci: libsignal_core::Aci,
+    pub device_id: libsignal_core::DeviceId,
+    pub password: String,
     pub receive_stories: ReceiveStories,
     pub languages: LanguageList,
 }
@@ -230,20 +232,7 @@ pub enum ChatHeaders {
 impl ChatHeaders {
     fn self_aci(&self) -> Option<libsignal_core::Aci> {
         match self {
-            ChatHeaders::Auth(AuthenticatedChatHeaders {
-                auth: Auth { username, .. },
-                ..
-            }) => {
-                // chat-server auth usernames take the form "{aci}" or "{aci}.{device_id}".
-                // TODO: make this a strong type in AuthenticatedChatHeaders and all the way up to
-                // the app APIs.
-                libsignal_core::Aci::parse_from_service_id_string(
-                    username
-                        .rsplit_once('.')
-                        .map(|(aci_part, _device_id_part)| aci_part)
-                        .unwrap_or(username),
-                )
-            }
+            ChatHeaders::Auth(AuthenticatedChatHeaders { aci, .. }) => Some(*aci),
             ChatHeaders::Unauth(_) => None,
         }
     }
@@ -251,13 +240,22 @@ impl ChatHeaders {
     fn iter_headers(self) -> impl Iterator<Item = (HeaderName, HeaderValue)> {
         match self {
             ChatHeaders::Auth(AuthenticatedChatHeaders {
-                auth,
+                aci,
+                device_id,
+                password,
                 receive_stories,
                 languages,
             }) => Either::Left(
-                [auth.as_header(), receive_stories.as_header()]
-                    .into_iter()
-                    .chain(languages.into_header()),
+                [
+                    Auth {
+                        username: format!("{}.{device_id}", aci.service_id_string()),
+                        password,
+                    }
+                    .as_header(),
+                    receive_stories.as_header(),
+                ]
+                .into_iter()
+                .chain(languages.into_header()),
             ),
             ChatHeaders::Unauth(UnauthenticatedChatHeaders { languages }) => {
                 Either::Right(languages.into_header().into_iter())
@@ -920,10 +918,9 @@ pub(crate) mod test {
 
         // ChatConnection only uses the preconnect for auth connections
         let auth_headers = AuthenticatedChatHeaders {
-            auth: Auth {
-                username: "user".into(),
-                password: "****".into(),
-            },
+            aci: libsignal_core::Aci::from_uuid_bytes([0; 16]),
+            device_id: libsignal_core::DeviceId::new(1).expect("valid"),
+            password: "****".into(),
             receive_stories: ReceiveStories(true),
             languages: LanguageList::default(),
         };
