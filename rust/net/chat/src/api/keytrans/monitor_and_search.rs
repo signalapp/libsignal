@@ -479,6 +479,15 @@ impl<'a> PostMonitorAction<'a> {
 }
 
 /// Removes monitoring data for the fields listed as missing.
+///
+/// Importantly, we do not clear the flag that the field is missing.
+/// If we did that, then on the next check the same field will be requested as
+/// previously unknown, and search will return the missing field eventually
+/// resulting in check failure.
+///
+/// Keeping the missing fields therefore avoids this inconsistency, by making
+/// both current and following check fail (provided the log itself does not
+/// change).
 fn remove_missing(partial_account_data: &mut MaybePartial<AccountData>) {
     let MaybePartial {
         inner,
@@ -491,7 +500,6 @@ fn remove_missing(partial_account_data: &mut MaybePartial<AccountData>) {
             AccountDataField::UsernameHash => inner.username_hash = None,
         }
     }
-    missing_fields.clear();
 }
 
 /// Merges two instances of AccountData.
@@ -801,7 +809,8 @@ mod test {
             .expect("search should succeed");
         assert!(result.inner.e164.is_none());
         assert!(result.inner.username_hash.is_none());
-        assert!(result.missing_fields.is_empty());
+
+        assert_eq!(result.missing_fields, search_returns.missing_fields);
     }
 
     #[tokio::test]
