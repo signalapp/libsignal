@@ -603,7 +603,12 @@ final class ChatConnectionTests: TestCaseBase {
             // you can check the log lines for: "[authenticated] using preconnection".
             // We have to use an authenticated connection because that's the only one that's allowed to
             // use preconnects.
-            _ = try await net.connectAuthenticatedChat(username: "", password: "", receiveStories: false)
+            // Use a syntactically valid but non-existent ACI so the server rejects the credentials.
+            _ = try await net.connectAuthenticatedChat(
+                username: "90c979fd-eab4-4a08-b6da-69dedeab9b29.1",
+                password: "password",
+                receiveStories: false
+            )
             XCTFail("should not have managed to authenticate")
         } catch SignalError.deviceDeregistered(_:) {
             // expected error, okay

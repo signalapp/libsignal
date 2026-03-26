@@ -371,11 +371,17 @@ describe('chat service api', () => {
         // you can check the log lines for: "[authenticated] using preconnection".
         // We have to use an authenticated connection because that's the only one that's allowed to
         // use preconnects.
-        await net.connectAuthenticatedChat('', '', true, {
-          onIncomingMessage: sinon.stub(),
-          onConnectionInterrupted: sinon.stub(),
-          onQueueEmpty: sinon.stub(),
-        });
+        // Use a syntactically valid but non-existent ACI so the server rejects the credentials.
+        await net.connectAuthenticatedChat(
+          '90c979fd-eab4-4a08-b6da-69dedeab9b29.1',
+          'password',
+          true,
+          {
+            onIncomingMessage: sinon.stub(),
+            onConnectionInterrupted: sinon.stub(),
+            onQueueEmpty: sinon.stub(),
+          }
+        );
         assert.fail('should not have managed to authenticate');
       } catch (e) {
         assert.instanceOf(e, LibSignalErrorBase);
