@@ -10,14 +10,8 @@ use libsignal_keytrans::{AccountData, LastTreeHead, MonitoringData};
 use crate::api::RequestError;
 use crate::api::keytrans::maybe_partial::MaybePartial;
 use crate::api::keytrans::{
-    AccountDataField, Error, SearchKey, UnauthenticatedChatApi, UsernameHash,
+    AccountDataField, CheckMode, Error, SearchKey, UnauthenticatedChatApi, UsernameHash,
 };
-
-#[derive(Eq, Debug, PartialEq, Clone, Copy)]
-pub enum MonitorMode {
-    MonitorSelf,
-    MonitorOther,
-}
 
 /// The main entry point to the module.
 pub async fn check(
@@ -26,9 +20,9 @@ pub async fn check(
     aci_identity_key: &PublicKey,
     e164: Option<(E164, Vec<u8>)>,
     username_hash: Option<UsernameHash<'_>>,
-    stored_account_data: AccountData,
+    stored_account_data: Option<AccountData>,
     distinguished_tree_head: &LastTreeHead,
-    mode: MonitorMode,
+    mode: CheckMode,
 ) -> Result<MaybePartial<AccountData>, RequestError<Error>> {
     let action = Action::plan(
         aci,
@@ -42,7 +36,64 @@ pub async fn check(
         .await
 }
 
-#[cfg_attr(test, derive(Debug, Clone))]
+/// A more ergonomic search for the clients.
+///
+/// The problem with search especially for self is PNP. Client always knows
+/// user's E.164 regardless of the PNP discoverability, however the chat server
+/// will only return the response for E.164 if it is discoverable, and we treat
+/// missing fields as an error (see keytrans bridging).
+///
+/// For contact-check it is fine, we cannot verify that the phone number
+/// client thinks is associated with the account is indeed associated with it,
+/// but for self-check it makes it unnecessarily more complicated for clients
+/// to conditionally provide the E.164 to the search API.
+///
+/// Note that we do not modify the stored account data in any way, it is
+/// important to keep it as is for when phone number discovery is on again.
+///
+/// Because local changes may take some time to be reflected in the key
+/// transparency log, it is possible that even though it is known locally that
+/// discoverability is off, search may still return a valid result for E.164.
+/// Therefore, the choice is made to request it and ignore the missing field
+/// afterward, as opposed to not requesting it in the first place.
+async fn modal_search(
+    kt: &impl UnauthenticatedChatApi,
+    aci: &Aci,
+    aci_identity_key: &PublicKey,
+    e164: Option<(E164, Vec<u8>)>,
+    username_hash: Option<UsernameHash<'_>>,
+    stored_account_data: Option<AccountData>,
+    distinguished_tree_head: &LastTreeHead,
+    mode: CheckMode,
+) -> Result<MaybePartial<AccountData>, RequestError<Error>> {
+    let mut maybe_partial = kt
+        .search(
+            aci,
+            aci_identity_key,
+            e164,
+            username_hash,
+            stored_account_data,
+            distinguished_tree_head,
+        )
+        .await?;
+
+    if matches!(
+        mode,
+        CheckMode::SelfCheck {
+            is_e164_discoverable: false
+        }
+    ) && maybe_partial
+        .missing_fields
+        .contains(&AccountDataField::E164)
+    {
+        // Phone number discoverability is off. We should not treat it as error.
+        maybe_partial.missing_fields.remove(&AccountDataField::E164);
+    }
+
+    Ok(maybe_partial)
+}
+
+#[cfg_attr(test, derive(Debug, Clone, PartialEq, Eq))]
 struct Parameters<'a> {
     pub aci: &'a Aci,
     pub e164: Option<&'a (E164, Vec<u8>)>,
@@ -63,7 +114,7 @@ impl<'a> Parameters<'a> {
     }
 }
 
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(test, derive(Debug, PartialEq))]
 enum Action<'a> {
     SearchOnly(Parameters<'a>),
     MonitorThenSearch {
@@ -73,7 +124,7 @@ enum Action<'a> {
     },
 }
 
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(test, derive(Debug, PartialEq))]
 enum PostMonitorAction<'a> {
     None,
     Search {
@@ -148,8 +199,8 @@ impl SearchVersions {
 impl<'a> Action<'a> {
     /// Plans the top-level, pre-monitor action for monitor_and_search main function (see `check`).
     ///
-    /// - If the stored ACI search key does not match the requested ACI, returns `SearchOnly`
-    ///   and ignores stored mappings.
+    /// - If the stored data is missing or stored ACI search key does not match the requested ACI,
+    ///   returns `SearchOnly` and ignores stored mappings.
     /// - Otherwise returns `MonitorThenSearch`, splitting optional keys between:
     ///   - `monitor_parameters` for mappings that are unchanged and should be monitored.
     ///   - `search_parameters` for mappings that are new, changed, or need re-fetch.
@@ -158,29 +209,29 @@ impl<'a> Action<'a> {
         aci: &'a Aci,
         e164: Option<&'a (E164, Vec<u8>)>,
         username_hash: Option<&'a UsernameHash<'a>>,
-        mut stored_account_data: AccountData,
+        stored_account_data: Option<AccountData>,
     ) -> Self {
+        let Some(mut stored_account_data) = stored_account_data.filter(|stored| {
+            // ACI is present in the stored data and is the same ACI being
+            // requested, meaning we can proceed with monitor.
+            stored.aci.search_key == aci.as_search_key()
+        }) else {
+            // Either there is no stored data meaning we should perform an
+            // initial search, or the requested ACI is different from the one
+            // stored, also resulting in a "fresh start".
+            return Action::SearchOnly(Parameters {
+                aci,
+                e164,
+                username_hash,
+            });
+        };
+
         let AccountData {
-            aci: stored_aci,
+            aci: _,
             e164: stored_e164,
             username_hash: stored_username_hash,
             last_tree_head: _,
         } = &mut stored_account_data;
-
-        // ACI
-        {
-            if stored_aci.search_key != aci.as_search_key() {
-                // This means the clients either passed a totally new ACI
-                // or we did not have the ACI search key stored to begin with.
-                // Either way, this is considered a dramatic enough scenario
-                // to warrant ignoring the stored data and starting from the search.
-                return Action::SearchOnly(Parameters {
-                    aci,
-                    e164,
-                    username_hash,
-                });
-            }
-        }
 
         // Past this line we need to keep monitoring for at least the ACI mapping.
 
@@ -222,7 +273,7 @@ impl<'a> Action<'a> {
         kt: &impl UnauthenticatedChatApi,
         aci_identity_key: &PublicKey,
         distinguished_tree_head: &LastTreeHead,
-        mode: MonitorMode,
+        mode: CheckMode,
     ) -> Result<MaybePartial<AccountData>, RequestError<Error>> {
         match self {
             Action::SearchOnly(Parameters {
@@ -230,14 +281,16 @@ impl<'a> Action<'a> {
                 e164,
                 username_hash,
             }) => {
-                kt.search(
+                modal_search(
+                    kt,
                     aci,
                     aci_identity_key,
                     e164.cloned(),
                     username_hash.cloned(),
-                    // Effectively wiping out stored account data
+                    // Intentionally ignoring the stored data even if it was available.
                     None,
                     distinguished_tree_head,
+                    mode,
                 )
                 .await
             }
@@ -299,7 +352,7 @@ fn select_monitor_or_search_for<'a, T: SearchKey>(
 }
 
 #[derive(Clone, Copy)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(test, derive(Debug, PartialEq))]
 enum VersionChanged {
     No,
     Yes,
@@ -330,7 +383,7 @@ impl<'a> PostMonitorAction<'a> {
     fn plan(
         monitor_parameters: Parameters<'a>,
         search_parameters: Parameters<'a>,
-        mode: MonitorMode,
+        mode: CheckMode,
         any_version_changed: VersionChanged,
     ) -> Result<Self, RequestError<Error>> {
         // Optional fields should either be monitored or searched for, never both.
@@ -341,7 +394,7 @@ impl<'a> PostMonitorAction<'a> {
         );
 
         match (mode, any_version_changed) {
-            (MonitorMode::MonitorSelf, VersionChanged::Yes) => Err(RequestError::Other(
+            (CheckMode::SelfCheck { .. }, VersionChanged::Yes) => Err(RequestError::Other(
                 libsignal_keytrans::Error::VerificationFailed(
                     "version change detected while self-monitoring".to_string(),
                 )
@@ -379,6 +432,7 @@ impl<'a> PostMonitorAction<'a> {
         aci_identity_key: &PublicKey,
         distinguished_tree_head: &LastTreeHead,
         account_data: AccountData,
+        mode: CheckMode,
     ) -> Result<MaybePartial<AccountData>, RequestError<Error>> {
         match self {
             PostMonitorAction::None => Ok(account_data.into()),
@@ -391,24 +445,25 @@ impl<'a> PostMonitorAction<'a> {
                     },
                 version_change_detected,
             } => {
-                let mut search_account_data = kt
-                    .search(
-                        aci,
-                        aci_identity_key,
-                        e164.cloned(),
-                        username_hash.cloned(),
-                        Some(account_data.clone()),
-                        distinguished_tree_head,
+                let mut search_account_data = modal_search(
+                    kt,
+                    aci,
+                    aci_identity_key,
+                    e164.cloned(),
+                    username_hash.cloned(),
+                    Some(account_data.clone()),
+                    distinguished_tree_head,
+                    mode,
+                )
+                .await?
+                .map(|post_search_account_data| {
+                    merge_account_data(
+                        account_data,
+                        post_search_account_data,
+                        // Preserving the ACI monitoring data only if no version changes detected
+                        matches!(version_change_detected, VersionChanged::No),
                     )
-                    .await?
-                    .map(|post_search_account_data| {
-                        merge_account_data(
-                            account_data,
-                            post_search_account_data,
-                            // Preserving the ACI monitoring data only if no version changes detected
-                            matches!(version_change_detected, VersionChanged::No),
-                        )
-                    });
+                });
 
                 // If the monitor detects a version change, but the following
                 // search does not return the field, it means monitor detected a
@@ -476,7 +531,7 @@ async fn monitor_then_search<'a>(
     stored_account_data: AccountData,
     aci_identity_key: &PublicKey,
     distinguished_tree_head: &LastTreeHead,
-    mode: MonitorMode,
+    mode: CheckMode,
 ) -> Result<MaybePartial<AccountData>, RequestError<Error>> {
     let monitor_account_data = {
         let Parameters {
@@ -530,6 +585,7 @@ async fn monitor_then_search<'a>(
             aci_identity_key,
             distinguished_tree_head,
             combined_account_data,
+            mode,
         )
         .await
 }
@@ -542,18 +598,28 @@ mod test {
     use nonzero_ext::nonzero;
     use test_case::{test_case, test_matrix};
 
+    use super::{
+        Action, Parameters, PostMonitorAction, VersionChanged, check, merge_account_data,
+        modal_search, monitor_then_search,
+    };
     use crate::api::RequestError;
-    use crate::api::keytrans::monitor_and_search::{
-        Action, Parameters, PostMonitorAction, VersionChanged, merge_account_data,
-        monitor_then_search,
-    };
     use crate::api::keytrans::test_support::{
-        TestKt, test_account, test_account_data, test_distinguished_tree,
+        OwnedParameters, TestKt, test_account, test_account_data, test_distinguished_tree,
     };
-    use crate::api::keytrans::{
-        AccountDataField, Error, MaybePartial, MonitorMode, SearchKey, UsernameHash,
-        monitor_and_search,
-    };
+    use crate::api::keytrans::{AccountDataField, CheckMode, Error, MaybePartial, UsernameHash};
+
+    impl<'a> PartialEq<Parameters<'a>> for OwnedParameters {
+        fn eq(&self, other: &Parameters<'a>) -> bool {
+            let Self {
+                aci,
+                e164,
+                username_hash_bytes,
+            } = self;
+            aci == other.aci
+                && e164.as_ref() == other.e164
+                && username_hash_bytes.as_deref() == other.username_hash.map(AsRef::as_ref)
+        }
+    }
 
     #[test]
     fn parameters_merge_with_prefers_other_optionals_and_self_aci() {
@@ -581,8 +647,8 @@ mod test {
         );
     }
 
-    #[test]
-    fn post_monitor_action_plan_self_version_change_is_error() {
+    #[test_matrix([true, false])]
+    fn post_monitor_action_plan_self_version_change_is_error(is_e164_discoverable: bool) {
         let aci = test_account::aci();
         let result = PostMonitorAction::plan(
             Parameters {
@@ -595,7 +661,9 @@ mod test {
                 e164: None,
                 username_hash: None,
             },
-            MonitorMode::MonitorSelf,
+            CheckMode::SelfCheck {
+                is_e164_discoverable,
+            },
             VersionChanged::Yes,
         );
 
@@ -624,7 +692,7 @@ mod test {
         let action = PostMonitorAction::plan(
             monitor_parameters,
             search_parameters,
-            MonitorMode::MonitorOther,
+            CheckMode::ContactCheck,
             VersionChanged::Yes,
         );
 
@@ -656,7 +724,7 @@ mod test {
                 e164: None,
                 username_hash: None,
             },
-            MonitorMode::MonitorOther,
+            CheckMode::ContactCheck,
             VersionChanged::No,
         );
         assert_matches!(action, Ok(PostMonitorAction::None));
@@ -678,18 +746,20 @@ mod test {
                 e164: Some(&e164),
                 username_hash: None,
             },
-            MonitorMode::MonitorOther,
+            CheckMode::ContactCheck,
             VersionChanged::No,
-        );
-        assert_matches!(
+        )
+        .expect("valid plan");
+
+        assert_eq!(
             search_action,
-            Ok(PostMonitorAction::Search {
-                parameters,
-                version_change_detected: VersionChanged::No,
-            }) => {
-                assert_eq!(parameters.aci, &aci);
-                assert_eq!(parameters.e164, Some(&e164));
-                assert!(parameters.username_hash.is_none());
+            PostMonitorAction::Search {
+                parameters: Parameters {
+                    aci: &aci,
+                    e164: Some(&e164),
+                    username_hash: None,
+                },
+                version_change_detected: VersionChanged::No
             }
         );
     }
@@ -725,14 +795,13 @@ mod test {
                 &test_account::aci_identity_key(),
                 &distinguished_tree,
                 monitor_returns.clone(),
+                CheckMode::ContactCheck,
             )
             .await
             .expect("search should succeed");
-        assert_matches!(result, MaybePartial {inner, missing_fields} => {
-            assert!(inner.e164.is_none());
-            assert!(inner.username_hash.is_none());
-            assert!(missing_fields.is_empty());
-        });
+        assert!(result.inner.e164.is_none());
+        assert!(result.inner.username_hash.is_none());
+        assert!(result.missing_fields.is_empty());
     }
 
     #[tokio::test]
@@ -758,6 +827,7 @@ mod test {
                 &test_account::aci_identity_key(),
                 &distinguished_tree,
                 monitor_returns.clone(),
+                CheckMode::ContactCheck,
             )
             .await;
 
@@ -793,6 +863,7 @@ mod test {
                 &test_account::aci_identity_key(),
                 &distinguished_tree,
                 monitor_returns.clone(),
+                CheckMode::ContactCheck,
             )
             .await
             .expect("search should succeed");
@@ -805,24 +876,24 @@ mod test {
     }
 
     #[tokio::test]
-    async fn monitor_and_search_monitor_error_is_returned() {
+    async fn check_monitor_error_is_returned() {
         let kt = TestKt::for_monitor(Err(TestKt::expected_error()));
-        let result = monitor_and_search(
+        let result = check(
             &kt,
             &test_account::aci(),
             &test_account::aci_identity_key(),
             None,
             None,
-            test_account_data(),
+            Some(test_account_data()),
             &test_distinguished_tree(),
-            MonitorMode::MonitorOther,
+            CheckMode::ContactCheck,
         )
         .await;
         TestKt::assert_expected_error(result);
     }
 
     #[tokio::test]
-    async fn monitor_and_search_no_version_change_search_error_is_returned() {
+    async fn check_no_version_change_search_error_is_returned() {
         // No username hash in the stored account data...
         let stored_account_data = AccountData {
             username_hash: None,
@@ -836,22 +907,22 @@ mod test {
 
         // ... but request to monitor username hash.
         // Should result in a call to search.
-        let result = monitor_and_search(
+        let result = check(
             &kt,
             &test_account::aci(),
             &test_account::aci_identity_key(),
             None,
             Some(test_account::username_hash()),
-            stored_account_data,
+            Some(stored_account_data),
             &test_distinguished_tree(),
-            MonitorMode::MonitorOther,
+            CheckMode::ContactCheck,
         )
         .await;
         TestKt::assert_expected_error(result);
     }
 
     #[tokio::test]
-    async fn monitor_and_search_with_version_change_search_error_is_returned() {
+    async fn check_with_version_change_search_error_is_returned() {
         let mut monitor_account_data_with_version_bump = test_account_data();
         // Bump the maximum available version of the first entry
         let entry = monitor_account_data_with_version_bump
@@ -868,35 +939,35 @@ mod test {
         );
 
         // Monitor will detect version change and invoke search.
-        let result = monitor_and_search(
+        let result = check(
             &kt,
             &test_account::aci(),
             &test_account::aci_identity_key(),
             None,
             None,
-            test_account_data(),
+            Some(test_account_data()),
             &test_distinguished_tree(),
-            MonitorMode::MonitorOther,
+            CheckMode::ContactCheck,
         )
         .await;
         TestKt::assert_expected_error(result);
     }
 
     #[tokio::test]
-    async fn monitor_and_search_no_search_needed() {
+    async fn check_no_search_needed() {
         let monitor_result = test_account_data();
         // TestKt constructed like this will panic if search is invoked
         let kt = TestKt::for_monitor(Ok(monitor_result.clone()));
 
-        let actual = monitor_and_search(
+        let actual = check(
             &kt,
             &test_account::aci(),
             &test_account::aci_identity_key(),
             None,
             None,
-            test_account_data(),
+            Some(test_account_data()),
             &test_distinguished_tree(),
-            MonitorMode::MonitorOther,
+            CheckMode::ContactCheck,
         )
         .await
         .expect("monitor should succeed");
@@ -914,24 +985,28 @@ mod test {
             &aci,
             Some(&e164),
             Some(&username_hash),
-            account_data.clone(),
+            Some(account_data.clone()),
         );
-        assert_matches!(action, Action::MonitorThenSearch{ monitor_parameters, search_parameters, account_data: actual_account_data} => {
-            // Monitor parameters should contain all three keys
-            assert_eq!(monitor_parameters.aci, &aci);
-            assert_eq!(monitor_parameters.e164, Some(&e164));
-            assert_eq!(monitor_parameters.username_hash.map(|x| x.as_ref()), Some(username_hash.as_ref()));
-
-            // Search parameters should only contain the ACI (because it is required)
-            // but no E.164 or username hash
-            assert_eq!(search_parameters.aci, &aci);
-            assert_matches!(search_parameters.e164, None);
-            assert_matches!(search_parameters.username_hash, None);
-
-            // Account data must not have been changed
-            assert_eq!(*actual_account_data, account_data);
-
-        });
+        assert_eq!(
+            action,
+            Action::MonitorThenSearch {
+                // Monitor parameters should contain all three keys
+                monitor_parameters: Parameters {
+                    aci: &aci,
+                    e164: Some(&e164),
+                    username_hash: Some(&username_hash),
+                },
+                // Search parameters should only contain the ACI (because it is required)
+                // but no E.164 or username hash
+                search_parameters: Parameters {
+                    aci: &aci,
+                    e164: None,
+                    username_hash: None,
+                },
+                // Account data must not have been changed
+                account_data: Box::new(account_data),
+            }
+        );
     }
 
     #[test]
@@ -947,8 +1022,34 @@ mod test {
             data
         };
 
-        let action = Action::plan(&aci, Some(&e164), Some(&username_hash), account_data);
-        assert_matches!(action, Action::SearchOnly(_));
+        let action = Action::plan(&aci, Some(&e164), Some(&username_hash), Some(account_data));
+
+        assert_eq!(
+            action,
+            Action::SearchOnly(Parameters {
+                aci: &aci,
+                e164: Some(&e164),
+                username_hash: Some(&username_hash),
+            })
+        );
+    }
+
+    #[test]
+    fn action_plan_no_stored_account_data() {
+        let aci = test_account::aci();
+        let e164 = test_account::e164_pair();
+        let username_hash = test_account::username_hash();
+
+        let action = Action::plan(&aci, Some(&e164), Some(&username_hash), None);
+
+        assert_eq!(
+            action,
+            Action::SearchOnly(Parameters {
+                aci: &aci,
+                e164: Some(&e164),
+                username_hash: Some(&username_hash),
+            })
+        );
     }
 
     enum FieldUpdate {
@@ -974,6 +1075,7 @@ mod test {
         let updated_e164 = E164::new(nonzero!(18005550199u64));
         // make sure the new E.164 is actually different
         assert_ne!(updated_e164, e164.0);
+        let updated_e164_pair = (updated_e164, test_account::e164_pair().1);
         let username_hash = test_account::username_hash();
         let updated_username_hash = UsernameHash::from_slice(&[42]);
 
@@ -1021,92 +1123,73 @@ mod test {
             &aci,
             e164_parameter.as_ref(),
             username_hash_parameter.as_ref(),
-            account_data,
+            Some(account_data),
         );
-        assert_matches!(action, Action::MonitorThenSearch{ monitor_parameters, search_parameters, account_data } => {
-            {
-                let AccountData {
-                    aci: data_aci,
-                    e164: data_e164,
-                    username_hash: data_username_hash,
-                    last_tree_head: _,
-                } = *account_data;
-                let Parameters {
-                    aci: monitor_aci,
-                    e164: monitor_e164,
-                    username_hash: monitor_username_hash,
-                } = monitor_parameters;
-                assert_eq!(&aci, monitor_aci);
-                assert_eq!(&aci.as_search_key(), &data_aci.search_key);
 
-                // E.164 and username hash should only be present in monitor request
-                // and account data if our knowledge of them hasn't changed.
-                // Every other update requires a new search.
-                match e164_update {
-                    FieldUpdate::Unset |
-                    FieldUpdate::Introduced |
-                    FieldUpdate::Dropped |
-                    FieldUpdate::Changed => {
-                        assert_eq!(monitor_e164, None);
-                        assert_eq!(data_e164.as_ref(), None);
-                    }
-                    FieldUpdate::Unchanged => {
-                        assert_matches!(monitor_e164, Some(x) => assert_eq!(x, &e164));
-                        assert_matches!(&data_e164, Some(x) => assert_eq!(&e164.0.as_search_key(), &x.search_key));
-                    }
-                }
-                match username_hash_update {
-                    FieldUpdate::Unset |
-                    FieldUpdate::Introduced |
-                    FieldUpdate::Dropped |
-                    FieldUpdate::Changed => {
-                        assert_matches!(monitor_username_hash, None);
-                        assert_eq!(data_username_hash, None);
-                    }
-                    FieldUpdate::Unchanged => {
-                        assert_eq!(monitor_username_hash.map(AsRef::as_ref), Some(username_hash.as_ref()));
-                        assert_matches!(&data_username_hash, Some(x) => assert_eq!(&username_hash.as_search_key(), &x.search_key));
-                    }
-                }
-            }
-            {
-                let Parameters {
-                    aci: search_aci,
-                    e164: search_e164,
-                    username_hash: search_username_hash,
-                } = search_parameters;
-                assert_eq!(&aci, search_aci);
+        // We start with fully populated parameters and account data
+        // and then trim it down to what is actually expected to be present.
+        let mut expected_monitor = Parameters {
+            aci: &aci,
+            e164: Some(&e164),
+            username_hash: Some(&username_hash),
+        };
+        let mut expected_search = Parameters {
+            aci: &aci,
+            e164: Some(&e164),
+            username_hash: Some(&username_hash),
+        };
+        let mut expected_account_data = test_account_data();
 
-                // Search only uses the tree size field from account data,
-                // so we don't need to check what keys are present.
-                match e164_update {
-                    FieldUpdate::Unset |
-                    FieldUpdate::Dropped |
-                    FieldUpdate::Unchanged => {
-                        assert_eq!(search_e164, None);
-                    }
-                    FieldUpdate::Introduced => {
-                        assert_eq!(search_e164.map(|x| &x.0), Some(&e164.0));
-                    }
-                    FieldUpdate::Changed => {
-                        assert_eq!(search_e164.map(|x| &x.0), Some(&updated_e164));
-                    }
-                }
-                match username_hash_update {
-                    FieldUpdate::Unset |
-                    FieldUpdate::Dropped |
-                    FieldUpdate::Unchanged => {
-                        assert_eq!(search_username_hash.map(AsRef::as_ref), None);
-                    }
-                    FieldUpdate::Introduced => {
-                        assert_eq!(search_username_hash.map(AsRef::as_ref), Some(username_hash.as_ref()));
-                    }
-                    FieldUpdate::Changed => {
-                        assert_eq!(search_username_hash.map(AsRef::as_ref), Some(updated_username_hash.as_ref()));
-                    }
-                }
+        // E.164 and username hash should only be present in monitor request
+        // and account data if our knowledge of them hasn't changed.
+        // Every other update requires a new search.
+        match e164_update {
+            FieldUpdate::Unset
+            | FieldUpdate::Introduced
+            | FieldUpdate::Dropped
+            | FieldUpdate::Changed => {
+                expected_monitor.e164 = None;
+                expected_account_data.e164 = None;
             }
-        });
+            FieldUpdate::Unchanged => {}
+        }
+        match username_hash_update {
+            FieldUpdate::Unset
+            | FieldUpdate::Introduced
+            | FieldUpdate::Dropped
+            | FieldUpdate::Changed => {
+                expected_monitor.username_hash = None;
+                expected_account_data.username_hash = None;
+            }
+            FieldUpdate::Unchanged => {}
+        }
+
+        // Now setting the expected parameters for search.
+        match e164_update {
+            FieldUpdate::Unset | FieldUpdate::Dropped | FieldUpdate::Unchanged => {
+                expected_search.e164 = None;
+            }
+            FieldUpdate::Changed => {
+                expected_search.e164 = Some(&updated_e164_pair);
+            }
+            FieldUpdate::Introduced => {}
+        }
+        match username_hash_update {
+            FieldUpdate::Unset | FieldUpdate::Dropped | FieldUpdate::Unchanged => {
+                expected_search.username_hash = None;
+            }
+            FieldUpdate::Changed => {
+                expected_search.username_hash = Some(&updated_username_hash);
+            }
+            FieldUpdate::Introduced => {}
+        }
+
+        let expected_action = Action::MonitorThenSearch {
+            monitor_parameters: expected_monitor,
+            search_parameters: expected_search,
+            account_data: Box::new(expected_account_data),
+        };
+        assert_eq!(action, expected_action);
     }
 
     #[tokio::test]
@@ -1130,7 +1213,7 @@ mod test {
                 &kt,
                 &test_account::aci_identity_key(),
                 &test_distinguished_tree(),
-                MonitorMode::MonitorOther,
+                CheckMode::ContactCheck,
             )
             .await;
         assert_eq!(result.is_ok(), success);
@@ -1164,15 +1247,15 @@ mod test {
             account_data: Box::new(test_account_data()),
         };
 
-        let result = action
+        action
             .execute(
                 &kt,
                 &test_account::aci_identity_key(),
                 &test_distinguished_tree(),
-                MonitorMode::MonitorOther,
+                CheckMode::ContactCheck,
             )
-            .await;
-        assert_matches!(result, Ok(_));
+            .await
+            .expect("should not fail");
     }
 
     #[tokio::test]
@@ -1200,7 +1283,7 @@ mod test {
             test_account_data(),
             &test_account::aci_identity_key(),
             &test_distinguished_tree(),
-            MonitorMode::MonitorOther,
+            CheckMode::ContactCheck,
         )
         .await;
 
@@ -1267,27 +1350,17 @@ mod test {
             test_account_data(),
             &test_account::aci_identity_key(),
             &test_distinguished_tree(),
-            MonitorMode::MonitorOther,
+            CheckMode::ContactCheck,
         )
-        .await;
+        .await
+        .expect("should succeed");
 
-        assert_matches!(
-            result,
-            Ok(MaybePartial {inner, missing_fields: _}) if inner == test_account_data()
-        );
+        assert_eq!(result.inner, test_account_data());
 
-        let invocations = kt.search.take().invocations;
-        let invocation = assert_matches!(&invocations[..], [invocation] => invocation);
+        let invocation = &kt.take_searches()[0];
 
         // In case of version change we perform a single search using monitor parameters
-        assert_eq!(&invocation.aci, monitor_parameters.aci);
-        assert_eq!(&invocation.e164.as_ref(), &monitor_parameters.e164);
-        assert_eq!(
-            &invocation.username_hash_bytes,
-            &monitor_parameters
-                .username_hash
-                .map(|x| x.as_ref().to_vec())
-        );
+        assert_eq!(*invocation, monitor_parameters);
     }
 
     #[tokio::test]
@@ -1320,7 +1393,9 @@ mod test {
             test_account_data(),
             &test_account::aci_identity_key(),
             &test_distinguished_tree(),
-            MonitorMode::MonitorSelf,
+            CheckMode::SelfCheck {
+                is_e164_discoverable: true,
+            },
         )
         .await;
 
@@ -1331,8 +1406,8 @@ mod test {
     }
 
     #[tokio::test]
-    #[test_matrix([MonitorMode::MonitorSelf, MonitorMode::MonitorOther])]
-    async fn monitor_then_search_updated_e164(mode: MonitorMode) {
+    #[test_matrix([CheckMode::SelfCheck { is_e164_discoverable: true }, CheckMode::ContactCheck])]
+    async fn monitor_then_search_updated_e164(mode: CheckMode) {
         let aci = test_account::aci();
         let e164 = test_account::e164_pair();
 
@@ -1373,21 +1448,17 @@ mod test {
             &test_distinguished_tree(),
             mode,
         )
-        .await;
+        .await
+        .expect("succeeds");
 
-        let invocations = kt.search.take().invocations;
-        let invocation = assert_matches!(&invocations[..], [invocation] => invocation);
+        let invocation = &kt.take_searches()[0];
 
-        assert_eq!(&invocation.aci, search_parameters.aci);
-        assert_eq!(&invocation.e164.as_ref(), &search_parameters.e164);
-        assert!(invocation.username_hash_bytes.is_none());
+        assert_eq!(*invocation, search_parameters);
 
-        assert_matches!(result, Ok(MaybePartial { inner, missing_fields }) => {
-            // Importantly, despite having done a new search for ACI as well
-            // we should have retained the ACI result from an earlier monitor.
-            assert_eq!(inner.aci, monitor_returns.aci);
-            assert!(missing_fields.is_empty());
-        });
+        // Importantly, despite having done a new search for ACI as well
+        // we should have retained the ACI result from an earlier monitor.
+        assert_eq!(result.inner.aci, monitor_returns.aci);
+        assert!(result.missing_fields.is_empty());
     }
 
     #[tokio::test]
@@ -1428,19 +1499,17 @@ mod test {
             stored,
             &test_account::aci_identity_key(),
             &test_distinguished_tree(),
-            MonitorMode::MonitorOther,
+            CheckMode::ContactCheck,
         )
-        .await;
+        .await
+        .expect("succeeds");
 
-        let invocations = kt.search.take().invocations;
-        let invocation = assert_matches!(&invocations[..], [inv] => inv);
+        let invocation = &kt.take_searches()[0];
 
-        assert_eq!(&invocation.e164.as_ref(), &search_parameters.e164);
+        assert_eq!(*invocation, search_parameters);
 
-        assert_matches!(result, Ok(MaybePartial { inner, missing_fields }) => {
-            assert!(inner.e164.is_some());
-            assert!(missing_fields.is_empty());
-        });
+        assert!(result.inner.e164.is_some());
+        assert!(result.missing_fields.is_empty());
     }
 
     #[tokio::test]
@@ -1480,19 +1549,25 @@ mod test {
             stored,
             &test_account::aci_identity_key(),
             &test_distinguished_tree(),
-            MonitorMode::MonitorOther,
+            CheckMode::ContactCheck,
         )
-        .await;
+        .await
+        .expect("succeeds");
 
-        assert_matches!(result, Ok(MaybePartial { inner, missing_fields: _ }) => {
-            // ACI, username hash, and tree size should be taken from monitor result
-            assert_eq!(inner.aci.pos, 2222);
-            assert_eq!(inner.username_hash.expect("missing username hash").pos, 2222);
-            assert_eq!(inner.last_tree_head.0.tree_size, 2222);
-            // but the monitor did not return anything for E.164, therefore it
-            // should be inherited from the original stored account data.
-            assert_eq!(inner.e164.expect("missing E.164").pos, 1111);
-        });
+        // ACI, username hash, and tree size should be taken from monitor result
+        assert_eq!(result.inner.aci.pos, 2222);
+        assert_eq!(
+            result
+                .inner
+                .username_hash
+                .expect("missing username hash")
+                .pos,
+            2222
+        );
+        assert_eq!(result.inner.last_tree_head.0.tree_size, 2222);
+        // but the monitor did not return anything for E.164, therefore it
+        // should be inherited from the original stored account data.
+        assert_eq!(result.inner.e164.expect("missing E.164").pos, 1111);
     }
 
     #[tokio::test]
@@ -1534,22 +1609,18 @@ mod test {
             stored,
             &test_account::aci_identity_key(),
             &test_distinguished_tree(),
-            MonitorMode::MonitorOther,
+            CheckMode::ContactCheck,
         )
-        .await;
+        .await
+        .expect("succeeds");
 
-        let invocations = kt.search.take().invocations;
-        let invocation = assert_matches!(&invocations[..], [inv] => inv);
-        assert!(invocation.e164.is_none());
-        assert_eq!(
-            invocation.username_hash_bytes.as_deref(),
-            search_parameters.username_hash.map(AsRef::as_ref)
-        );
-        assert_matches!(result, Ok(MaybePartial {inner, missing_fields }) => {
-            assert_eq!(&inner.e164, &monitor_result.e164);
-            assert_eq!(&inner.username_hash, &search_result.username_hash);
-            assert!(missing_fields.is_empty());
-        });
+        let invocation = &kt.take_searches()[0];
+
+        assert_eq!(*invocation, search_parameters);
+
+        assert!(result.missing_fields.is_empty());
+        assert_eq!(&result.inner.e164, &monitor_result.e164);
+        assert_eq!(&result.inner.username_hash, &search_result.username_hash);
     }
 
     #[test_matrix([true, false])]
@@ -1600,5 +1671,59 @@ mod test {
 
         let merged = merge_account_data(earlier, later.clone(), true);
         assert_eq!(merged.username_hash, later.username_hash);
+    }
+
+    #[tokio::test]
+    #[test_matrix([
+        CheckMode::SelfCheck { is_e164_discoverable: false },
+        CheckMode::SelfCheck { is_e164_discoverable: true },
+        CheckMode::ContactCheck,
+    ])]
+    async fn modal_search_missing_e164(mode: CheckMode) {
+        let aci = test_account::aci();
+        let e164 = test_account::e164_pair();
+
+        let mut search_result = MaybePartial::from(test_account_data());
+        search_result.missing_fields.insert(AccountDataField::E164);
+
+        let kt = TestKt::for_search(Ok(search_result.clone()));
+
+        let result = modal_search(
+            &kt,
+            &aci,
+            &test_account::aci_identity_key(),
+            Some(e164.clone()),
+            None,
+            None,
+            &test_distinguished_tree(),
+            mode,
+        )
+        .await
+        .expect("succeeds");
+
+        let invocation = &kt.take_searches()[0];
+
+        assert_eq!(
+            *invocation,
+            Parameters {
+                aci: &aci,
+                e164: Some(&e164),
+                username_hash: None,
+            }
+        );
+
+        match mode {
+            CheckMode::SelfCheck {
+                is_e164_discoverable: false,
+            } => {
+                assert!(result.missing_fields.is_empty());
+            }
+            CheckMode::SelfCheck {
+                is_e164_discoverable: true,
+            }
+            | CheckMode::ContactCheck => {
+                assert!(result.missing_fields.contains(&AccountDataField::E164));
+            }
+        }
     }
 }

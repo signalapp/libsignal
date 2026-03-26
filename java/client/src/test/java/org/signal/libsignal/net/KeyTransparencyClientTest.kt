@@ -10,9 +10,8 @@ import org.junit.Test
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeTesting
 import org.signal.libsignal.internal.TokioAsyncContext
-import org.signal.libsignal.keytrans.KeyTransparencyException
 import org.signal.libsignal.keytrans.TestStore
-import org.signal.libsignal.net.KeyTransparency.MonitorMode
+import org.signal.libsignal.net.KeyTransparency.CheckMode
 import org.signal.libsignal.util.TestEnvironment
 import java.util.Deque
 import java.util.concurrent.ExecutionException
@@ -51,13 +50,15 @@ class KeyTransparencyClientTest {
   fun searchInStagingIntegration() {
     Assume.assumeTrue(INTEGRATION_TESTS_ENABLED)
 
-    val net = Network(Network.Environment.STAGING, USER_AGENT)
+    val net = Network(Network.Environment.STAGING, USER_AGENT, mapOf(), Network.BuildVariant.BETA)
     val ktClient = connectAndGetClient(net).get()
 
     val store = TestStore()
 
+    // No data in store will trigger a search
     ktClient
-      .search(
+      .check(
+        CheckMode.Contact,
         KeyTransparencyTest.TEST_ACI,
         KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
         KeyTransparencyTest.TEST_E164,
@@ -78,7 +79,7 @@ class KeyTransparencyClientTest {
   fun updateDistinguishedStagingIntegration() {
     Assume.assumeTrue(INTEGRATION_TESTS_ENABLED)
 
-    val net = Network(Network.Environment.STAGING, USER_AGENT)
+    val net = Network(Network.Environment.STAGING, USER_AGENT, mapOf(), Network.BuildVariant.BETA)
     val ktClient = connectAndGetClient(net).get()
 
     val store = TestStore()
@@ -94,13 +95,14 @@ class KeyTransparencyClientTest {
   fun monitorInStagingIntegration() {
     Assume.assumeTrue(INTEGRATION_TESTS_ENABLED)
 
-    val net = Network(Network.Environment.STAGING, USER_AGENT)
+    val net = Network(Network.Environment.STAGING, USER_AGENT, mapOf(), Network.BuildVariant.BETA)
     val ktClient = connectAndGetClient(net).get()
 
     val store = TestStore()
 
     ktClient
-      .search(
+      .check(
+        CheckMode.Contact,
         KeyTransparencyTest.TEST_ACI,
         KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
         KeyTransparencyTest.TEST_E164,
@@ -118,8 +120,8 @@ class KeyTransparencyClientTest {
     Assert.assertEquals(1, accountDataHistory.size.toLong())
 
     ktClient
-      .monitor(
-        MonitorMode.SELF,
+      .check(
+        CheckMode.Contact,
         KeyTransparencyTest.TEST_ACI,
         KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
         KeyTransparencyTest.TEST_E164,
@@ -132,35 +134,6 @@ class KeyTransparencyClientTest {
       }
     // Another entry in the account history after a successful monitor request
     Assert.assertEquals(2, accountDataHistory.size.toLong())
-  }
-
-  @Test
-  @Throws(Exception::class)
-  fun monitorNoDataInStore() {
-    Assume.assumeTrue(INTEGRATION_TESTS_ENABLED)
-
-    val net = Network(Network.Environment.STAGING, USER_AGENT)
-    val ktClient = connectAndGetClient(net).get()
-
-    val store = TestStore()
-
-    // Call to monitor before any data has been persisted in the store.
-    // Distinguished tree will be requested from the server, but it will fail
-    // due to account data missing.
-    val result =
-      ktClient
-        .monitor(
-          MonitorMode.SELF,
-          KeyTransparencyTest.TEST_ACI,
-          KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
-          KeyTransparencyTest.TEST_E164,
-          KeyTransparencyTest.TEST_UNIDENTIFIED_ACCESS_KEY,
-          KeyTransparencyTest.TEST_USERNAME_HASH,
-          store,
-        ).get()
-
-    val nonSuccess = assertIs<RequestResult.NonSuccess<KeyTransparencyException>>(result)
-    assertIs<KeyTransparencyException>(nonSuccess.error)
   }
 
   inline fun <reified E : Throwable> retryableNetworkExceptionsTestImpl(

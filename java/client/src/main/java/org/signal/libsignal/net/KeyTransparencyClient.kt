@@ -13,7 +13,7 @@ import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.keytrans.KeyTransparencyException
 import org.signal.libsignal.keytrans.Store
 import org.signal.libsignal.keytrans.VerificationFailedException
-import org.signal.libsignal.net.KeyTransparency.MonitorMode
+import org.signal.libsignal.net.KeyTransparency.CheckMode
 import org.signal.libsignal.protocol.IdentityKey
 import org.signal.libsignal.protocol.ServiceId
 
@@ -41,7 +41,7 @@ import org.signal.libsignal.protocol.ServiceId
  *
  * val client = chat.keyTransparencyClient()
  *
- * val result = client.search(aci, identityKey, null, null, null, KT_DATA_STORE).get()
+ * val result = client.check(CheckMode.Contact, aci, identityKey, null, null, null, KT_DATA_STORE).get()
  * ```
  */
 public class KeyTransparencyClient internal constructor(
@@ -49,102 +49,6 @@ public class KeyTransparencyClient internal constructor(
   private val tokioAsyncContext: TokioAsyncContext,
   private val environment: Network.Environment,
 ) {
-  /**
-   * Search for account information in the key transparency tree.
-   *
-   * Only ACI and ACI identity key are required to identify the account.
-   *
-   * If the latest distinguished tree head is not present in the store, it will be requested from
-   * the server prior to performing the search via [updateDistinguished].
-   *
-   * Possible non-success results include:
-   * - [RequestResult.RetryableNetworkError] for errors related to communication with the server,
-   *   including [RetryLaterException] when the client is being throttled,
-   *   [ServerSideErrorException], [NetworkException], [NetworkProtocolException], and
-   *   [TimeoutException].
-   * - [RequestResult.NonSuccess] with [KeyTransparencyException] for errors related to key
-   *   transparency logic, which includes missing required fields in the serialized data.
-   *   Retrying the search without changing any of the arguments (including the state of the
-   *   store) is unlikely to yield a different result.
-   * - [RequestResult.NonSuccess] with [VerificationFailedException] (a subclass of
-   *   [KeyTransparencyException]) indicating a failure to verify the data in key transparency
-   *   server response, such as an incorrect proof or a wrong signature.
-   * - [RequestResult.ApplicationError] for invalid arguments or other caller errors that could have
-   *   been avoided, such as providing an [unidentifiedAccessKey] without an [e164].
-   *
-   * @param aci the ACI of the account to be searched for. Required.
-   * @param aciIdentityKey [IdentityKey] associated with the ACI. Required.
-   * @param e164 string representation of an E.164 number associated with the account. Optional.
-   * @param unidentifiedAccessKey unidentified access key for the account. This parameter has the
-   *   same optionality as the E.164 parameter.
-   * @param usernameHash hash of the username associated with the account. Optional.
-   * @param store local persistent storage for key transparency-related data, such as the latest
-   *   tree heads and account monitoring data. It will be queried for data before performing the
-   *   server request and updated with the latest information from the server response if it
-   *   succeeds.
-   * @return an instance of [CompletableFuture] that completes with a [RequestResult] indicating
-   *   success or containing the error details.
-   */
-  public fun search(
-    aci: ServiceId.Aci,
-    aciIdentityKey: IdentityKey,
-    e164: String?,
-    unidentifiedAccessKey: ByteArray?,
-    usernameHash: ByteArray?,
-    store: Store,
-  ): CompletableFuture<RequestResult<Unit, KeyTransparencyException>> {
-    val lastDistinguishedTreeHead =
-      try {
-        store.lastDistinguishedTreeHead
-      } catch (t: Throwable) {
-        return CompletableFuture.completedFuture(RequestResult.ApplicationError(t))
-      }
-
-    if (lastDistinguishedTreeHead.isEmpty) {
-      return updateDistinguished(store).thenCompose { result ->
-        when (result) {
-          is RequestResult.Success ->
-            search(aci, aciIdentityKey, e164, unidentifiedAccessKey, usernameHash, store)
-          else -> CompletableFuture.completedFuture(result)
-        }
-      }
-    }
-
-    return try {
-      NativeHandleGuard(tokioAsyncContext).use { tokioContextGuard ->
-        NativeHandleGuard(aciIdentityKey.publicKey).use { identityKeyGuard ->
-          NativeHandleGuard(chatConnection).use { chatConnectionGuard ->
-            Native
-              .KeyTransparency_Search(
-                tokioContextGuard.nativeHandle(),
-                environment.value,
-                chatConnectionGuard.nativeHandle(),
-                aci.toServiceIdFixedWidthBinary(),
-                identityKeyGuard.nativeHandle(),
-                e164,
-                unidentifiedAccessKey,
-                usernameHash,
-                store.getAccountData(aci).orElse(null),
-                lastDistinguishedTreeHead.get(),
-              ).mapWithCancellation(
-                onSuccess = { accountData ->
-                  try {
-                    store.setAccountData(aci, accountData)
-                    RequestResult.Success(Unit)
-                  } catch (t: Throwable) {
-                    RequestResult.ApplicationError(t)
-                  }
-                },
-                onError = { err -> err.toRequestResult<KeyTransparencyException>() },
-              )
-          }
-        }
-      }
-    } catch (t: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(t))
-    }
-  }
-
   /**
    * Request the latest distinguished tree head from the server and update it in the local store.
    *
@@ -205,16 +109,19 @@ public class KeyTransparencyClient internal constructor(
   }
 
   /**
-   * Issue a monitor request to the key transparency service.
+   * A unified key transparency operation that performs a search, a monitor, or both.
    *
-   * Store must contain data associated with the account being requested prior to making this call.
-   * Another way of putting this is: monitor cannot be called before [search].
+   * Caller should pass latest known values of all identifiers (ACI, E.164, username hash) associated
+   * with the account, along with a correct value of [CheckMode].
    *
-   * If any of the monitored fields in the server response contain a version that is higher than
-   * the one currently in the store, the behavior depends on the mode parameter value.
-   * - [MonitorMode.SELF] - A [KeyTransparencyException] will be returned, no search request will
+   * If there is no data in the store for the account, the search operation will be performed. Following
+   * this initial search, the monitor operation will be used.
+   *
+   * If any of the fields in the monitor response contain a version that is higher than the one
+   * currently in the store, the behavior depends on the mode parameter value.
+   * - [CheckMode.Self] - A [KeyTransparencyException] will be returned, no search request will
    *   be issued.
-   * - [MonitorMode.OTHER] - A search request will be performed automatically and, if it succeeds,
+   * - [CheckMode.Contact] - Another search request will be performed automatically and, if it succeeds,
    *   the updated account data will be stored.
    *
    * If the latest distinguished tree head is not present in the store, it will be requested from
@@ -235,8 +142,8 @@ public class KeyTransparencyClient internal constructor(
    * - [RequestResult.ApplicationError] for invalid arguments or other caller errors that could have
    *   been avoided, such as providing an [unidentifiedAccessKey] without an [e164].
    *
-   * @param mode Mode of the monitor operation. See [MonitorMode].
-   * @param aci the ACI of the account to be searched for. Required.
+   * @param mode Mode of the key transparency operation being performed. See [CheckMode].
+   * @param aci the ACI of the account to be checked. Required.
    * @param aciIdentityKey [IdentityKey] associated with the ACI. Required.
    * @param e164 string representation of an E.164 number associated with the account. Optional.
    * @param unidentifiedAccessKey unidentified access key for the account. This parameter has the
@@ -249,8 +156,8 @@ public class KeyTransparencyClient internal constructor(
    * @return an instance of [CompletableFuture] that completes with a [RequestResult] indicating
    *   success or containing the error details.
    */
-  public fun monitor(
-    mode: MonitorMode,
+  public fun check(
+    mode: CheckMode,
     aci: ServiceId.Aci,
     aciIdentityKey: IdentityKey,
     e164: String?,
@@ -269,7 +176,7 @@ public class KeyTransparencyClient internal constructor(
       return updateDistinguished(store).thenCompose { result ->
         when (result) {
           is RequestResult.Success ->
-            monitor(mode, aci, aciIdentityKey, e164, unidentifiedAccessKey, usernameHash, store)
+            check(mode, aci, aciIdentityKey, e164, unidentifiedAccessKey, usernameHash, store)
           else -> CompletableFuture.completedFuture(result)
         }
       }
@@ -280,7 +187,7 @@ public class KeyTransparencyClient internal constructor(
         NativeHandleGuard(aciIdentityKey.publicKey).use { identityKeyGuard ->
           NativeHandleGuard(chatConnection).use { chatConnectionGuard ->
             Native
-              .KeyTransparency_Monitor(
+              .KeyTransparency_Check(
                 tokioContextGuard.nativeHandle(),
                 environment.value,
                 chatConnectionGuard.nativeHandle(),
@@ -293,7 +200,8 @@ public class KeyTransparencyClient internal constructor(
                 // to generate the error on the Rust side.
                 store.getAccountData(aci).orElse(null),
                 lastDistinguishedTreeHead.get(),
-                mode == MonitorMode.SELF,
+                mode.isSelf(),
+                mode.isE164Discoverable() ?: true,
               ).mapWithCancellation(
                 onSuccess = { updatedAccountData ->
                   try {

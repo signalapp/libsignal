@@ -16,8 +16,8 @@ use libsignal_keytrans::{
 };
 use libsignal_net_chat::api::RequestError;
 use libsignal_net_chat::api::keytrans::{
-    Error, KeyTransparencyClient, MaybePartial, MonitorMode, SearchKey,
-    UnauthenticatedChatApi as _, UsernameHash, monitor_and_search,
+    CheckMode, Error, KeyTransparencyClient, MaybePartial, SearchKey, UnauthenticatedChatApi as _,
+    UsernameHash, check,
 };
 use libsignal_protocol::PublicKey;
 use prost::{DecodeError, Message};
@@ -42,7 +42,7 @@ fn KeyTransparency_UsernameHashSearchKey(hash: &[u8]) -> Vec<u8> {
 
 #[bridge_io(TokioAsyncContext)]
 #[expect(clippy::too_many_arguments)]
-async fn KeyTransparency_Search(
+async fn KeyTransparency_Check(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,
     chat_connection: &UnauthenticatedChatConnection,
@@ -53,77 +53,24 @@ async fn KeyTransparency_Search(
     username_hash: Option<Box<[u8]>>,
     account_data: Option<Box<[u8]>>,
     last_distinguished_tree_head: Box<[u8]>,
+    is_self_check: bool,
+    is_e164_discoverable: bool,
 ) -> Result<Vec<u8>, RequestError<Error>> {
-    let username_hash = username_hash.map(UsernameHash::from);
-    let maybe_hash_search_key = username_hash.as_ref().map(|x| x.as_search_key());
-
     let config = environment.into_inner().env().keytrans_config;
 
-    let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
+    let username_hash = username_hash.map(UsernameHash::from);
+    let maybe_hash_search_key = username_hash.as_ref().map(|x| x.as_search_key());
 
     let account_data = account_data.map(try_decode_account_data).transpose()?;
 
     let last_distinguished_tree_head = try_decode_distinguished(last_distinguished_tree_head)?;
 
-    let maybe_partial_result = chat_connection
-        .as_typed(|chat| {
-            Box::pin(async move {
-                let kt = KeyTransparencyClient::new(*chat, config);
-                kt.search(
-                    &aci,
-                    aci_identity_key,
-                    e164_pair,
-                    username_hash,
-                    account_data,
-                    &last_distinguished_tree_head,
-                )
-                .await
-            })
-        })
-        .await?;
-
-    maybe_partial_result.into_serialized_account_data(
-        aci.as_search_key(),
-        e164.map(|x| x.as_search_key()),
-        maybe_hash_search_key,
-        SystemTime::now(),
-    )
-}
-
-#[bridge_io(TokioAsyncContext)]
-#[expect(clippy::too_many_arguments)]
-async fn KeyTransparency_Monitor(
-    // TODO: it is currently possible to pass an env that does not match chat
-    environment: AsType<Environment, u8>,
-    chat_connection: &UnauthenticatedChatConnection,
-    aci: Aci,
-    aci_identity_key: &PublicKey,
-    e164: Option<E164>,
-    unidentified_access_key: Option<Box<[u8]>>,
-    username_hash: Option<Box<[u8]>>,
-    // Bridging this as optional even though it is required because it is
-    // simpler to produce an error once here than on all platforms.
-    account_data: Option<Box<[u8]>>,
-    last_distinguished_tree_head: Box<[u8]>,
-    is_self_monitor: bool,
-) -> Result<Vec<u8>, RequestError<Error>> {
-    let username_hash = username_hash.map(UsernameHash::from);
-    let maybe_hash_search_key = username_hash.as_ref().map(|x| x.as_search_key());
-
-    let Some(account_data) = account_data else {
-        return Err(invalid_request("account data not found in store"));
-    };
-
-    let account_data = try_decode_account_data(account_data)?;
-
-    let last_distinguished_tree_head = try_decode_distinguished(last_distinguished_tree_head)?;
-
-    let config = environment.into_inner().env().keytrans_config;
-
-    let mode = if is_self_monitor {
-        MonitorMode::MonitorSelf
+    let mode = if is_self_check {
+        CheckMode::SelfCheck {
+            is_e164_discoverable,
+        }
     } else {
-        MonitorMode::MonitorOther
+        CheckMode::ContactCheck
     };
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
@@ -132,7 +79,7 @@ async fn KeyTransparency_Monitor(
         .as_typed(|chat| {
             Box::pin(async move {
                 let kt = KeyTransparencyClient::new(*chat, config);
-                monitor_and_search(
+                check(
                     &kt,
                     &aci,
                     aci_identity_key,

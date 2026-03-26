@@ -503,8 +503,7 @@ type NativeFunctions = {
   KeyTransparency_AciSearchKey: (aci: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
   KeyTransparency_E164SearchKey: (e164: string) => Uint8Array<ArrayBuffer>;
   KeyTransparency_UsernameHashSearchKey: (hash: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
-  KeyTransparency_Search: (asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, aci: Uint8Array<ArrayBuffer>, aciIdentityKey: Wrapper<PublicKey>, e164: string | null, unidentifiedAccessKey: Uint8Array<ArrayBuffer> | null, usernameHash: Uint8Array<ArrayBuffer> | null, accountData: Uint8Array<ArrayBuffer> | null, lastDistinguishedTreeHead: Uint8Array<ArrayBuffer>) => CancellablePromise<Uint8Array<ArrayBuffer>>;
-  KeyTransparency_Monitor: (asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, aci: Uint8Array<ArrayBuffer>, aciIdentityKey: Wrapper<PublicKey>, e164: string | null, unidentifiedAccessKey: Uint8Array<ArrayBuffer> | null, usernameHash: Uint8Array<ArrayBuffer> | null, accountData: Uint8Array<ArrayBuffer> | null, lastDistinguishedTreeHead: Uint8Array<ArrayBuffer>, isSelfMonitor: boolean) => CancellablePromise<Uint8Array<ArrayBuffer>>;
+  KeyTransparency_Check: (asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, aci: Uint8Array<ArrayBuffer>, aciIdentityKey: Wrapper<PublicKey>, e164: string | null, unidentifiedAccessKey: Uint8Array<ArrayBuffer> | null, usernameHash: Uint8Array<ArrayBuffer> | null, accountData: Uint8Array<ArrayBuffer> | null, lastDistinguishedTreeHead: Uint8Array<ArrayBuffer>, isSelfCheck: boolean, isE164Discoverable: boolean) => CancellablePromise<Uint8Array<ArrayBuffer>>;
   KeyTransparency_Distinguished: (asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, lastDistinguishedTreeHead: Uint8Array<ArrayBuffer> | null) => CancellablePromise<Uint8Array<ArrayBuffer>>;
   RegistrationService_CreateSession: (asyncRuntime: Wrapper<TokioAsyncContext>, createSession: RegistrationCreateSessionRequest, connectChat: ConnectChatBridge) => CancellablePromise<RegistrationService>;
   RegistrationService_ResumeSession: (asyncRuntime: Wrapper<TokioAsyncContext>, sessionId: string, number: string, connectChat: ConnectChatBridge) => CancellablePromise<RegistrationService>;
@@ -1058,8 +1057,7 @@ const { registerErrors,
   KeyTransparency_AciSearchKey,
   KeyTransparency_E164SearchKey,
   KeyTransparency_UsernameHashSearchKey,
-  KeyTransparency_Search,
-  KeyTransparency_Monitor,
+  KeyTransparency_Check,
   KeyTransparency_Distinguished,
   RegistrationService_CreateSession,
   RegistrationService_ResumeSession,
@@ -1615,8 +1613,7 @@ export { registerErrors,
   KeyTransparency_AciSearchKey,
   KeyTransparency_E164SearchKey,
   KeyTransparency_UsernameHashSearchKey,
-  KeyTransparency_Search,
-  KeyTransparency_Monitor,
+  KeyTransparency_Check,
   KeyTransparency_Distinguished,
   RegistrationService_CreateSession,
   RegistrationService_ResumeSession,

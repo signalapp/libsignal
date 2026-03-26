@@ -24,7 +24,6 @@ import {
   LibSignalErrorBase,
 } from '../Errors.js';
 import * as KT from '../net/KeyTransparency.js';
-import { MonitorMode } from '../net/KeyTransparency.js';
 
 use(chaiAsPromised);
 
@@ -60,7 +59,7 @@ const testRequest = {
     unidentifiedAccessKey: testUnidentifiedAccessKey,
   },
   usernameHash: testUsernameHash,
-  mode: MonitorMode.Other,
+  mode: 'contact' as const,
 };
 
 describe('KeyTransparency bridging', () => {
@@ -166,16 +165,16 @@ describe('KeyTransparency Integration', function (this: Mocha.Suite) {
     await chat.disconnect();
   });
 
-  it('can search for a test account', async () => {
+  it('check account (initial search)', async () => {
     const store = new InMemoryKtStore();
-    await kt.search(testRequest, store, {});
+    await kt.check(testRequest, store, {});
   });
 
-  it('can monitor the test account', async () => {
+  it('check account (monitor)', async () => {
     const store = new InMemoryKtStore();
 
-    // Search first to populate the store with account data
-    await kt.search(testRequest, store, {});
+    // Initial search first to populate the store with account data
+    await kt.check(testRequest, store, {});
 
     const accountDataHistory = store.storage.get(testAci) ?? null;
     if (accountDataHistory === null) {
@@ -184,7 +183,7 @@ describe('KeyTransparency Integration', function (this: Mocha.Suite) {
 
     expect(accountDataHistory.length).to.equal(1);
 
-    await kt.monitor(testRequest, store, {});
+    await kt.check(testRequest, store, {});
     expect(accountDataHistory.length).to.equal(2);
   });
 });

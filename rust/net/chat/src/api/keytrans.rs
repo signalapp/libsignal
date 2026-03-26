@@ -24,7 +24,7 @@ use libsignal_keytrans::{
 use libsignal_net::env::KeyTransConfig;
 use libsignal_protocol::PublicKey;
 pub use maybe_partial::{AccountDataField, MaybePartial};
-pub use monitor_and_search::{MonitorMode, check as monitor_and_search};
+pub use monitor_and_search::check;
 use verify_ext::KeyTransparencyVerifyExt as _;
 
 use super::RequestError;
@@ -32,6 +32,12 @@ use super::RequestError;
 const SEARCH_KEY_PREFIX_ACI: &[u8] = b"a";
 const SEARCH_KEY_PREFIX_E164: &[u8] = b"n";
 const SEARCH_KEY_PREFIX_USERNAME_HASH: &[u8] = b"u";
+
+#[derive(Eq, Debug, PartialEq, Clone, Copy)]
+pub enum CheckMode {
+    SelfCheck { is_e164_discoverable: bool },
+    ContactCheck,
+}
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(Clone))]
@@ -173,6 +179,7 @@ impl SearchKey for E164 {
 
 /// Type-safe wrapper for a byte slice representing username hash.
 #[derive(Clone)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct UsernameHash<'a>(Cow<'a, [u8]>);
 
 impl AsRef<[u8]> for UsernameHash<'_> {
@@ -695,6 +702,10 @@ pub(crate) mod test_support {
 
         pub fn assert_expected_error<T: Debug>(result: Result<T, RequestError<Error>>) {
             assert_matches!(result, Err(RequestError::Unexpected { log_safe }) if log_safe == "test error")
+        }
+
+        pub fn take_searches(&self) -> Vec<OwnedParameters> {
+            self.search.take().invocations
         }
     }
 

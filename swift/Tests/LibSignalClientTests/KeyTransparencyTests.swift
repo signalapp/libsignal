@@ -91,7 +91,7 @@ final class KeyTransparencyTests: TestCaseBase {
         XCTAssertNoThrow { try await chat.keyTransparencyClient.getDistinguished() }
     }
 
-    func testSearch() async throws {
+    func testCheck() async throws {
         try self.nonHermeticTest()
 
         let net = Net(env: .staging, userAgent: userAgent, buildVariant: .production)
@@ -99,40 +99,23 @@ final class KeyTransparencyTests: TestCaseBase {
         chat.start(listener: NoOpListener())
         let store = TestStore()
 
-        let before = await store.getAccountData(for: self.testAccount.aci)
-        XCTAssertNil(before)
-        try await chat.keyTransparencyClient.search(
-            account: self.testAccount.aciInfo,
-            e164: self.testAccount.e164Info,
-            store: store
-        )
-        let after = await store.getAccountData(for: self.testAccount.aci)
-        XCTAssertNotNil(after)
-    }
-
-    func testMonitor() async throws {
-        try self.nonHermeticTest()
-
-        let net = Net(env: .staging, userAgent: userAgent, buildVariant: .production)
-        let chat = try await net.connectUnauthenticatedChat()
-        chat.start(listener: NoOpListener())
-        let store = TestStore()
-
-        // Initial search is required prior to monitor to populate
-        // the account data in the store
-        try await chat.keyTransparencyClient.search(
+        // First check will perform the initial search is required prior to
+        // monitor to populate the account data in the store
+        try await chat.keyTransparencyClient.check(
+            for: .contact,
             account: self.testAccount.aciInfo,
             e164: self.testAccount.e164Info,
             store: store
         )
         XCTAssertEqual(1, store.accountData[self.testAccount.aci]!.count)
-        try await chat.keyTransparencyClient.monitor(
-            for: .self,
+        try await chat.keyTransparencyClient.check(
+            for: .contact,
             account: self.testAccount.aciInfo,
             e164: self.testAccount.e164Info,
             store: store
         )
-        // Successful monitor request should update account data in store
+        // Second check will send a monitor request, and should update account
+        // data in store
         XCTAssertEqual(2, store.accountData[self.testAccount.aci]!.count)
     }
 
