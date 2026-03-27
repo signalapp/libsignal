@@ -307,6 +307,7 @@ export type RateLimitChallengeError = LibSignalErrorBase & {
   code: ErrorCode.RateLimitChallengeError;
   readonly token: string;
   readonly options: Set<'pushChallenge' | 'captcha'>;
+  readonly retryAfterSecs: number | null;
 };
 
 export type ChatServiceInactive = LibSignalErrorBase & {

@@ -266,11 +266,18 @@ public class RegistrationServiceTest {
   }
 
   private static void assertIsPushChallengeError(ThrowingConsumer<String> throwError) {
-    RateLimitChallengeException e =
+    final RateLimitChallengeException e =
         assertRegistrationSessionErrorIs(
             "PushChallenge", RateLimitChallengeException.class, throwError);
     assertEquals(e.getToken(), "token");
     assertEquals(e.getOptions(), EnumSet.of(ChallengeOption.PUSH_CHALLENGE));
+    assertEquals(e.getRetryLater(), null);
+    final RateLimitChallengeException e2 =
+        assertRegistrationSessionErrorIs(
+            "PushChallengeRetryAfter42Seconds", RateLimitChallengeException.class, throwError);
+    assertEquals(e2.getToken(), "token42");
+    assertEquals(e2.getOptions(), EnumSet.of(ChallengeOption.PUSH_CHALLENGE));
+    assertEquals(e2.getRetryLater(), Duration.ofSeconds(42));
   }
 
   @Test

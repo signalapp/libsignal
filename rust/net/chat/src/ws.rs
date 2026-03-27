@@ -293,7 +293,11 @@ impl ResponseError {
                         if let Ok(ChallengeBody { token, options }) =
                             parse_json_from_body(&response)
                         {
-                            return RequestError::Challenge(RateLimitChallenge { token, options });
+                            return RequestError::Challenge(RateLimitChallenge {
+                                token,
+                                options,
+                                retry_later: extract_retry_later(headers),
+                            });
                         }
                     }
                     if status.as_u16() == 422 {
@@ -452,6 +456,18 @@ mod testutil {
         }
     }
 
+    pub(crate) fn with_headers(
+        headers: &[(http::HeaderName, &'static str)],
+        mut response: chat::Response,
+    ) -> chat::Response {
+        response.headers.extend(
+            headers
+                .iter()
+                .map(|(k, v)| (k.clone(), http::HeaderValue::from_static(v))),
+        );
+        response
+    }
+
     pub(crate) struct RequestValidator {
         pub expected: chat::Request,
         pub response: chat::Response,
@@ -556,7 +572,12 @@ mod test {
     #[test_case(json(428, "{}") => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
     #[test_case(json(
         428, r#"{"token": "zzz", "options": ["captcha"]}"#
-    ) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
+    ) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options, retry_later: None })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
+    #[test_case(with_headers(&[(http::header::RETRY_AFTER, "42")], json(
+        428, r#"{"token": "zzz", "options": ["captcha"]}"#
+    )) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options, retry_later: Some(
+        RetryLater { retry_after_seconds: 42 }
+    ) })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
     #[test_case(empty(422) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("server validation"))]
     #[test_case(empty(419) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("419"))]
     fn try_parse_empty(

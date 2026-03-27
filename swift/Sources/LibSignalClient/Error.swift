@@ -58,7 +58,12 @@ public enum SignalError: Error {
     case networkProtocolError(String)
     case cdsiInvalidToken(String)
     case rateLimitedError(retryAfter: TimeInterval, message: String)
-    case rateLimitChallengeError(token: String, options: Set<ChallengeOption>, message: String)
+    case rateLimitChallengeError(
+        token: String,
+        options: Set<ChallengeOption>,
+        retryAfter: TimeInterval?,
+        message: String
+    )
     case svrDataMissing(String)
     case svrRestoreFailed(triesRemaining: UInt32, message: String)
     case svrRotationMachineTooManySteps(String)
@@ -230,9 +235,11 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         }
         throw SignalError.rateLimitedError(retryAfter: TimeInterval(retryAfterSeconds), message: errStr)
     case SignalErrorCodeRateLimitChallenge:
-        let pair = try invokeFnReturningValueByPointer(.init()) {
+        let outer_pair = try invokeFnReturningValueByPointer(.init()) {
             signal_error_get_rate_limit_challenge($0, error)
         }
+        let pair = outer_pair.first
+        let retryAfterRaw = outer_pair.second
         defer {
             signal_free_string(pair.first)
             signal_free_buffer(pair.second.base, pair.second.length)
@@ -242,7 +249,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.rateLimitChallengeError(
             token: token,
             options: Set(try options.lazy.map { try ChallengeOption(fromNative: $0) }),
-            message: errStr
+            retryAfter: (retryAfterRaw < 0) ? nil : TimeInterval(retryAfterRaw),
+            message: errStr,
         )
     case SignalErrorCodeSvrDataMissing:
         throw SignalError.svrDataMissing(errStr)

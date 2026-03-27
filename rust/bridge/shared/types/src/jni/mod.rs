@@ -1031,18 +1031,32 @@ impl JniError for RateLimitChallenge {
         &self,
         env: &mut JNIEnv<'a>,
     ) -> Result<JThrowable<'a>, BridgeLayerError> {
-        let Self { token, options } = self;
+        let Self {
+            token,
+            options,
+            retry_later,
+        } = self;
         let (message, token) =
             try_scoped(|| Ok((env.new_string(self.to_string())?, env.new_string(token)?)))
                 .check_exceptions(env, "RateLimitChallenge")?;
         let options = options.as_slice().convert_into(env)?;
+        let retry_later = retry_later
+            .as_ref()
+            .map(
+                |RetryLater {
+                     retry_after_seconds,
+                 }| i64::from(*retry_after_seconds),
+            )
+            .unwrap_or(-1);
         new_instance(
             env,
             ClassName("org.signal.libsignal.net.RateLimitChallengeException"),
             jni_args!((
                 message => java.lang.String,
                 token => java.lang.String,
-                options => [org.signal.libsignal.net.ChallengeOption]) -> void),
+                options => [org.signal.libsignal.net.ChallengeOption],
+                retry_later => long,
+            ) -> void),
         )
         .map(Into::into)
     }

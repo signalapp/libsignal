@@ -977,6 +977,11 @@ typedef struct {
 } SignalPairOfc_charOwnedBufferOfc_uchar;
 
 typedef struct {
+  SignalPairOfc_charOwnedBufferOfc_uchar first;
+  int64_t second;
+} SignalPairOfPairOfc_charOwnedBufferOfc_uchari64;
+
+typedef struct {
   const char *first;
   bool second;
 } SignalPairOfc_charbool;
@@ -1938,7 +1943,7 @@ SignalFfiError *signal_error_get_mismatched_device_errors(SignalOwnedBufferOfFfi
 
 SignalFfiError *signal_error_get_our_fingerprint_version(uint32_t *out, SignalUnwindSafeArgSignalFfiError err);
 
-SignalFfiError *signal_error_get_rate_limit_challenge(SignalPairOfc_charOwnedBufferOfc_uchar *out, SignalUnwindSafeArgSignalFfiError err);
+SignalFfiError *signal_error_get_rate_limit_challenge(SignalPairOfPairOfc_charOwnedBufferOfc_uchari64 *out, SignalUnwindSafeArgSignalFfiError err);
 
 SignalFfiError *signal_error_get_registration_error_not_deliverable(SignalPairOfc_charbool *out, SignalUnwindSafeArgSignalFfiError err);
 

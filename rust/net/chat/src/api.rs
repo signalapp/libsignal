@@ -7,8 +7,9 @@
 //! chat-server".
 
 use std::convert::Infallible;
+use std::fmt::Formatter;
 
-use libsignal_net::infra::errors::LogSafeDisplay;
+use libsignal_net::infra::errors::{LogSafeDisplay, RetryLater};
 use ref_cast::RefCast as _;
 
 pub mod backups;
@@ -142,12 +143,25 @@ impl<E> From<DisconnectedError> for RequestError<E> {
     }
 }
 
-#[derive(Debug, thiserror::Error, displaydoc::Display)]
+#[derive(Debug, thiserror::Error)]
 #[cfg_attr(test, derive(Clone))]
-/// retry after completing a rate limit challenge {options:?}
 pub struct RateLimitChallenge {
     pub token: String,
     pub options: Vec<ChallengeOption>,
+    pub retry_later: Option<RetryLater>,
+}
+impl std::fmt::Display for RateLimitChallenge {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "retry after completing a rate limit challenge {:?}",
+            self.options
+        )?;
+        if let Some(retry_later) = &self.retry_later {
+            write!(f, " (or {retry_later})")?;
+        }
+        Ok(())
+    }
 }
 impl LogSafeDisplay for RateLimitChallenge {}
 

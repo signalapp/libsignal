@@ -1381,6 +1381,7 @@ trivial!(u8);
 trivial!(u16);
 trivial!(u32);
 trivial!(u64);
+trivial!(i64);
 trivial!(usize);
 trivial!(bool);
 
@@ -1493,6 +1494,7 @@ macro_rules! ffi_result_type {
     (u32) => (u32);
     (Option<u32>) => (u32);
     (u64) => (u64);
+    (i64) => (i64);
     (Option<u64>) => (u64);
     (bool) => (bool);
     (&str) => (*const std::ffi::c_char);

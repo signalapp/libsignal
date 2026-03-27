@@ -550,6 +550,7 @@ mod test {
 
     use futures_util::FutureExt;
     use libsignal_core::{Aci, Pni};
+    use libsignal_net::infra::errors::RetryLater;
     use libsignal_protocol::{CiphertextMessage, PlaintextContent, Timestamp};
     use serde_json::json;
     use test_case::test_case;
@@ -562,7 +563,7 @@ mod test {
     };
     use crate::api::{ChallengeOption, RateLimitChallenge, UserBasedAuthorization};
     use crate::ws::ACCESS_KEY_HEADER_NAME;
-    use crate::ws::testutil::{JsonRequestValidator, RequestValidator, empty, json};
+    use crate::ws::testutil::{JsonRequestValidator, RequestValidator, empty, json, with_headers};
 
     const ACI_UUID: &str = "9d0652a3-dcc3-4d11-975f-74d61598733f";
     const PNI_UUID: &str = "796abedb-ca4e-4f18-8803-1fde5b921f9f";
@@ -858,7 +859,12 @@ mod test {
     #[test_case(json(428, "{}") => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
     #[test_case(json(
         428, r#"{"token": "zzz", "options": ["captcha"]}"#
-    ) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
+    ) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options, retry_later: None })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
+    #[test_case(with_headers(&[(http::header::RETRY_AFTER, "42")], json(
+        428, r#"{"token": "zzz", "options": ["captcha"]}"#
+    )) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options, retry_later: Some(
+        RetryLater { retry_after_seconds: 42 }
+    ) })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
     fn test_unsealed_send(response: Response) -> Result<(), RequestError<UnsealedSendFailure>> {
         let validator = JsonRequestValidator {
             expected: Request {
@@ -953,7 +959,7 @@ mod test {
     )]
     #[test_case(json(
         428, r#"{"token": "zzz", "options": ["captcha"]}"#
-    ) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
+    ) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options, retry_later: None })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
     fn test_sync_send(response: Response) -> Result<(), RequestError<MismatchedDeviceError>> {
         let validator = JsonRequestValidator {
             expected: Request {

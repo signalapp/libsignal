@@ -6,7 +6,7 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use libsignal_net::infra::errors::TransportConnectError;
+use libsignal_net::infra::errors::{RetryLater, TransportConnectError};
 use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net_chat::api::keys::GetPreKeysFailure;
 use neon::thread::LocalKey;
@@ -521,15 +521,28 @@ impl SignalNodeError for libsignal_net_chat::api::RateLimitChallenge {
         operation_name: &str,
     ) -> Handle<'a, JsError> {
         let message = self.to_string();
-        let Self { token, options } = self;
+        let Self {
+            token,
+            options,
+            retry_later,
+        } = self;
         let properties = move |cx: &mut C| {
             let token = cx.string(token);
             let options = options.into_boxed_slice().convert_into(cx)?.upcast();
             let set_constructor: Handle<'_, JsFunction> = cx.global("Set")?;
             let options = set_constructor.construct(cx, [options])?;
             let props = cx.empty_object();
+            let retry_later = retry_later
+                .map(
+                    |RetryLater {
+                         retry_after_seconds,
+                     }| cx.number(retry_after_seconds),
+                )
+                .map(|x| x.as_value(cx))
+                .unwrap_or_else(|| cx.null().as_value(cx));
             props.set(cx, "token", token)?;
             props.set(cx, "options", options)?;
+            props.set(cx, "retryAfterSecs", retry_later)?;
             Ok(props.upcast())
         };
         new_js_error(

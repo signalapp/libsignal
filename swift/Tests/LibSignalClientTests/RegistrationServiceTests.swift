@@ -72,7 +72,8 @@ class RegistrationServiceConversionTests {
         let timeoutCase = ("Timeout", { (e: Error) in if case SignalError.requestTimeoutError("the request timed out") = e { true } else { false }})
         let requestNotValidCase = ("RequestWasNotValid", { (e: Error) in if case RegistrationError.unknown("the request did not pass server validation") = e { true } else { false }})
         let serverErrorCase = ("ServerSideError", { (e: Error) in if case RegistrationError.unknown("server-side error, retryable with backoff") = e { true } else { false }})
-        let pushChallengeCase = ("PushChallenge", { (e: Error) in if case SignalError.rateLimitChallengeError(token: "token", options: [.pushChallenge], message: "retry after completing a rate limit challenge [PushChallenge]") = e { true } else { false }})
+        let pushChallengeCase = ("PushChallenge", { (e: Error) in if case SignalError.rateLimitChallengeError(token: "token", options: [.pushChallenge], retryAfter: nil, message: "retry after completing a rate limit challenge [PushChallenge]") = e { true } else { false }})
+        let pushChallengeRetryCase = ("PushChallengeRetryAfter42Seconds", { (e: Error) in if case SignalError.rateLimitChallengeError(token: "token42", options: [.pushChallenge], retryAfter: 42, message: "retry after completing a rate limit challenge [PushChallenge] (or retry after 42s)") = e { true } else { false }})
 
         let cases = [
             ErrorTest("CreateSession", signal_testing_registration_service_create_session_error_convert, [
@@ -83,6 +84,7 @@ class RegistrationServiceConversionTests {
                 requestNotValidCase,
                 serverErrorCase,
                 pushChallengeCase,
+                pushChallengeRetryCase,
             ]),
             ErrorTest("ResumeSession", signal_testing_registration_service_resume_session_error_convert, [
                 ("InvalidSessionId", { if case RegistrationError.invalidSessionId("invalid session ID value") = $0 { true } else { false }}),
@@ -92,6 +94,7 @@ class RegistrationServiceConversionTests {
                 requestNotValidCase,
                 serverErrorCase,
                 pushChallengeCase,
+                pushChallengeRetryCase,
             ]),
             ErrorTest(
                 "UpdateSession",

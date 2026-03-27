@@ -189,6 +189,12 @@ impl<TestE: for<'a> TryFrom<&'a str, Error = strum::ParseError>> TryFrom<String>
             "PushChallenge" => RequestError::Challenge(RateLimitChallenge {
                 token: "token".to_owned(),
                 options: vec![ChallengeOption::PushChallenge],
+                retry_later: None,
+            }),
+            "PushChallengeRetryAfter42Seconds" => RequestError::Challenge(RateLimitChallenge {
+                token: "token42".to_owned(),
+                options: vec![ChallengeOption::PushChallenge],
+                retry_later: Some(RETRY_AFTER_42_SECONDS),
             }),
             "ServerSideError" => RequestError::ServerSideError,
             _ => TestE::try_from(&value)
