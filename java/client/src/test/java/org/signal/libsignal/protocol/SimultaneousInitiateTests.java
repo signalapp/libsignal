@@ -79,9 +79,10 @@ public class SimultaneousInitiateTests {
     assertSessionIdNotEquals(aliceStore, bobStore);
 
     byte[] alicePlaintext =
-        aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
+        aliceSessionCipher.decrypt(
+            new PreKeySignalMessage(messageForAlice.serialize()), ALICE_ADDRESS);
     byte[] bobPlaintext =
-        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
+        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()), BOB_ADDRESS);
 
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -145,7 +146,7 @@ public class SimultaneousInitiateTests {
     assertSessionIdNotEquals(aliceStore, bobStore);
 
     byte[] bobPlaintext =
-        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
+        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()), BOB_ADDRESS);
 
     assertTrue(new String(bobPlaintext).equals("hey there"));
     assertEquals(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion(), expectedVersion);
@@ -155,7 +156,7 @@ public class SimultaneousInitiateTests {
     assertEquals(aliceResponse.getType(), CiphertextMessage.PREKEY_TYPE);
 
     byte[] responsePlaintext =
-        bobSessionCipher.decrypt(new PreKeySignalMessage(aliceResponse.serialize()));
+        bobSessionCipher.decrypt(new PreKeySignalMessage(aliceResponse.serialize()), BOB_ADDRESS);
 
     assertTrue(new String(responsePlaintext).equals("second message"));
     assertSessionIdEquals(aliceStore, bobStore);
@@ -204,9 +205,10 @@ public class SimultaneousInitiateTests {
     assertSessionIdNotEquals(aliceStore, bobStore);
 
     byte[] alicePlaintext =
-        aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
+        aliceSessionCipher.decrypt(
+            new PreKeySignalMessage(messageForAlice.serialize()), ALICE_ADDRESS);
     byte[] bobPlaintext =
-        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
+        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()), BOB_ADDRESS);
 
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -266,9 +268,10 @@ public class SimultaneousInitiateTests {
     assertSessionIdNotEquals(aliceStore, bobStore);
 
     byte[] alicePlaintext =
-        aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
+        aliceSessionCipher.decrypt(
+            new PreKeySignalMessage(messageForAlice.serialize()), ALICE_ADDRESS);
     byte[] bobPlaintext =
-        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
+        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()), BOB_ADDRESS);
 
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -354,9 +357,10 @@ public class SimultaneousInitiateTests {
       assertSessionIdNotEquals(aliceStore, bobStore);
 
       byte[] alicePlaintext =
-          aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
+          aliceSessionCipher.decrypt(
+              new PreKeySignalMessage(messageForAlice.serialize()), ALICE_ADDRESS);
       byte[] bobPlaintext =
-          bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
+          bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()), BOB_ADDRESS);
 
       assertTrue(new String(alicePlaintext).equals("sample message"));
       assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -449,9 +453,10 @@ public class SimultaneousInitiateTests {
       assertFalse(isSessionIdEqual(aliceStore, bobStore));
 
       byte[] alicePlaintext =
-          aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
+          aliceSessionCipher.decrypt(
+              new PreKeySignalMessage(messageForAlice.serialize()), ALICE_ADDRESS);
       byte[] bobPlaintext =
-          bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
+          bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()), BOB_ADDRESS);
 
       assertTrue(new String(alicePlaintext).equals("sample message"));
       assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -503,7 +508,8 @@ public class SimultaneousInitiateTests {
     assertTrue(isSessionIdEqual(aliceStore, bobStore));
 
     byte[] lostMessagePlaintext =
-        bobSessionCipher.decrypt(new PreKeySignalMessage(lostMessageForBob.serialize()));
+        bobSessionCipher.decrypt(
+            new PreKeySignalMessage(lostMessageForBob.serialize()), BOB_ADDRESS);
     assertTrue(new String(lostMessagePlaintext).equals("hey there"));
 
     assertFalse(isSessionIdEqual(aliceStore, bobStore));

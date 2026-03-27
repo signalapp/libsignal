@@ -43,6 +43,7 @@ class SessionTests: TestCaseBase {
             let ptext_b = try! signalDecryptPreKey(
                 message: ctext_b,
                 from: alice_address,
+                localAddress: bob_address,
                 sessionStore: bob_store,
                 identityStore: bob_store,
                 preKeyStore: bob_store,
@@ -111,6 +112,7 @@ class SessionTests: TestCaseBase {
                 try signalDecryptPreKey(
                     message: ctext_b,
                     from: alice_address,
+                    localAddress: bob_address,
                     sessionStore: bob_store,
                     identityStore: bob_store,
                     preKeyStore: bob_store,
@@ -299,6 +301,7 @@ class SessionTests: TestCaseBase {
         _ = try! signalDecryptPreKey(
             message: ctext_b,
             from: alice_address,
+            localAddress: bob_address,
             sessionStore: bob_store,
             identityStore: bob_store,
             preKeyStore: bob_store,
@@ -311,6 +314,7 @@ class SessionTests: TestCaseBase {
             _ = try signalDecryptPreKey(
                 message: ctext_b,
                 from: mallory_address,
+                localAddress: bob_address,
                 sessionStore: bob_store,
                 identityStore: bob_store,
                 preKeyStore: bob_store,
@@ -419,6 +423,7 @@ class SessionTests: TestCaseBase {
         let plaintext = try signalDecryptPreKey(
             message: try! PreKeySignalMessage(bytes: usmc.contents),
             from: alice_address,
+            localAddress: bob_address,
             sessionStore: bob_store,
             identityStore: bob_store,
             preKeyStore: bob_store,
@@ -769,6 +774,7 @@ class SessionTests: TestCaseBase {
         _ = try signalDecryptPreKey(
             message: PreKeySignalMessage(bytes: bob_first_message),
             from: bob_address,
+            localAddress: alice_address,
             sessionStore: alice_store,
             identityStore: alice_store,
             preKeyStore: alice_store,

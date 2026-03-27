@@ -756,6 +756,7 @@ for (const testCase of sessionVersionTestCases) {
       const bDPlaintext = await SignalClient.signalDecryptPreKey(
         aCiphertextR,
         aAddress,
+        bAddress,
         bobStores.session,
         bobStores.identity,
         bobStores.prekey,
@@ -852,6 +853,7 @@ for (const testCase of sessionVersionTestCases) {
       const bDPlaintext = await SignalClient.signalDecryptPreKey(
         aCiphertextR,
         aAddress,
+        bAddress,
         bobStores.session,
         bobStores.identity,
         bobStores.prekey,
@@ -864,6 +866,7 @@ for (const testCase of sessionVersionTestCases) {
         await SignalClient.signalDecryptPreKey(
           aCiphertextR,
           aAddress,
+          bAddress,
           bobStores.session,
           bobStores.identity,
           bobStores.prekey,
@@ -1020,6 +1023,7 @@ for (const testCase of sessionVersionTestCases) {
       void (await SignalClient.signalDecryptPreKey(
         aCiphertextR,
         aAddress,
+        bAddress,
         bobStores.session,
         bobStores.identity,
         bobStores.prekey,
@@ -1031,6 +1035,7 @@ for (const testCase of sessionVersionTestCases) {
         SignalClient.signalDecryptPreKey(
           aCiphertextR,
           mAddress,
+          bAddress,
           bobStores.session,
           bobStores.identity,
           bobStores.prekey,

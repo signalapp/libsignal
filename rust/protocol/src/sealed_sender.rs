@@ -2027,6 +2027,7 @@ pub async fn sealed_sender_decrypt(
         usmc.sender()?.sender_uuid()?.to_string(),
         usmc.sender()?.sender_device_id()?,
     );
+    let local_address = ProtocolAddress::new(local_uuid, local_device_id);
 
     let message = match usmc.msg_type()? {
         CiphertextMessageType::Whisper => {
@@ -2045,6 +2046,7 @@ pub async fn sealed_sender_decrypt(
             session_cipher::message_decrypt_prekey(
                 &ctext,
                 &remote_address,
+                &local_address,
                 session_store,
                 identity_store,
                 pre_key_store,

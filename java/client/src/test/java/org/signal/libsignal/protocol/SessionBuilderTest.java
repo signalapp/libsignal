@@ -86,7 +86,7 @@ public class SessionBuilderTest {
         PreKeySignalMessage incomingMessage = new PreKeySignalMessage(outgoingMessage.serialize());
 
         SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
-        byte[] plaintext = bobSessionCipher.decrypt(incomingMessage);
+        byte[] plaintext = bobSessionCipher.decrypt(incomingMessage, BOB_ADDRESS);
 
         assertTrue(bobStore.containsSession(ALICE_ADDRESS));
         assertEquals(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion(), expectedVersion);
@@ -142,7 +142,7 @@ public class SessionBuilderTest {
 
       var bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
       try {
-        bobSessionCipher.decrypt(new PreKeySignalMessage(outgoingMessage.serialize()));
+        bobSessionCipher.decrypt(new PreKeySignalMessage(outgoingMessage.serialize()), BOB_ADDRESS);
         fail("shouldn't be trusted!");
       } catch (UntrustedIdentityException uie) {
         bobStore.saveIdentity(
@@ -150,7 +150,8 @@ public class SessionBuilderTest {
       }
 
       var plaintext =
-          bobSessionCipher.decrypt(new PreKeySignalMessage(outgoingMessage.serialize()));
+          bobSessionCipher.decrypt(
+              new PreKeySignalMessage(outgoingMessage.serialize()), BOB_ADDRESS);
       assertTrue(new String(plaintext).equals(originalMessage));
 
       Random random = new Random();
@@ -206,7 +207,7 @@ public class SessionBuilderTest {
 
       SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
-      byte[] plaintext = bobSessionCipher.decrypt(incomingMessage);
+      byte[] plaintext = bobSessionCipher.decrypt(incomingMessage, BOB_ADDRESS);
       assertTrue(originalMessage.equals(new String(plaintext)));
 
       CiphertextMessage bobOutgoingMessage = bobSessionCipher.encrypt(originalMessage.getBytes());
@@ -220,7 +221,9 @@ public class SessionBuilderTest {
       PreKeySignalMessage incomingMessageTwo =
           new PreKeySignalMessage(outgoingMessageTwo.serialize());
 
-      plaintext = bobSessionCipher.decrypt(new PreKeySignalMessage(incomingMessageTwo.serialize()));
+      plaintext =
+          bobSessionCipher.decrypt(
+              new PreKeySignalMessage(incomingMessageTwo.serialize()), BOB_ADDRESS);
       assertTrue(originalMessage.equals(new String(plaintext)));
 
       bobOutgoingMessage = bobSessionCipher.encrypt(originalMessage.getBytes());
@@ -267,7 +270,7 @@ public class SessionBuilderTest {
       assertTrue(!incomingMessage.getPreKeyId().isPresent());
 
       SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
-      byte[] plaintext = bobSessionCipher.decrypt(incomingMessage);
+      byte[] plaintext = bobSessionCipher.decrypt(incomingMessage, BOB_ADDRESS);
 
       assertTrue(bobStore.containsSession(ALICE_ADDRESS));
       assertEquals(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion(), expectedVersion);
@@ -356,14 +359,15 @@ public class SessionBuilderTest {
       assertTrue(!incomingMessage.getPreKeyId().isPresent());
 
       SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
-      bobSessionCipher.decrypt(incomingMessage);
+      bobSessionCipher.decrypt(incomingMessage, BOB_ADDRESS);
 
       assertTrue(bobStore.containsSession(ALICE_ADDRESS));
       assertEquals(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion(), expectedVersion);
 
       SessionCipher bobSessionCipherForMallory = new SessionCipher(bobStore, MALLORY_ADDRESS);
       assertThrows(
-          ReusedBaseKeyException.class, () -> bobSessionCipherForMallory.decrypt(incomingMessage));
+          ReusedBaseKeyException.class,
+          () -> bobSessionCipherForMallory.decrypt(incomingMessage, BOB_ADDRESS));
     }
   }
 
@@ -504,7 +508,7 @@ public class SessionBuilderTest {
       byte[] plaintext = new byte[0];
 
       try {
-        plaintext = bobSessionCipher.decrypt(incomingMessage);
+        plaintext = bobSessionCipher.decrypt(incomingMessage, BOB_ADDRESS);
         fail("Decrypt should have failed!");
       } catch (InvalidMessageException e) {
         // good.
@@ -512,7 +516,7 @@ public class SessionBuilderTest {
 
       assertTrue(bobStore.containsPreKey(bobPreKey.getPreKeyId()));
 
-      plaintext = bobSessionCipher.decrypt(new PreKeySignalMessage(goodMessage));
+      plaintext = bobSessionCipher.decrypt(new PreKeySignalMessage(goodMessage), BOB_ADDRESS);
 
       assertTrue(originalMessage.equals(new String(plaintext)));
       assertFalse(bobStore.containsPreKey(bobPreKey.getPreKeyId()));
@@ -546,7 +550,7 @@ public class SessionBuilderTest {
       SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
       try {
-        bobSessionCipher.decrypt(incomingMessage);
+        bobSessionCipher.decrypt(incomingMessage, BOB_ADDRESS);
         fail("Decrypt should have failed!");
       } catch (InvalidKeyIdException e) {
         assertEquals(
@@ -583,7 +587,7 @@ public class SessionBuilderTest {
       SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
       try {
-        bobSessionCipher.decrypt(incomingMessage);
+        bobSessionCipher.decrypt(incomingMessage, BOB_ADDRESS);
         fail("Decrypt should have failed!");
       } catch (InvalidKeyIdException e) {
         fail("libsignal swallowed the exception");

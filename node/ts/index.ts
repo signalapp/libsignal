@@ -1390,6 +1390,7 @@ function bridgeKyberPreKeyStore(
 export function signalDecryptPreKey(
   message: PreKeySignalMessage,
   address: ProtocolAddress,
+  localAddress: ProtocolAddress,
   sessionStore: SessionStore,
   identityStore: IdentityKeyStore,
   prekeyStore: PreKeyStore,
@@ -1399,6 +1400,7 @@ export function signalDecryptPreKey(
   return Native.SessionCipher_DecryptPreKeySignalMessage(
     message,
     address,
+    localAddress,
     bridgeSessionStore(sessionStore),
     bridgeIdentityKeyStore(identityStore),
     bridgePreKeyStore(prekeyStore),

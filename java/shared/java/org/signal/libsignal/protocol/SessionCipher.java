@@ -181,14 +181,15 @@ public class SessionCipher {
    * @throws InvalidKeyException when the message is formatted incorrectly.
    * @throws UntrustedIdentityException when the {@link IdentityKey} of the sender is untrusted.
    */
-  public byte[] decrypt(PreKeySignalMessage ciphertext)
+  public byte[] decrypt(PreKeySignalMessage ciphertext, SignalProtocolAddress localAddress)
       throws DuplicateMessageException,
           InvalidMessageException,
           InvalidKeyIdException,
           InvalidKeyException,
           UntrustedIdentityException {
     try (NativeHandleGuard ciphertextGuard = new NativeHandleGuard(ciphertext);
-        NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress); ) {
+        NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress);
+        NativeHandleGuard localAddressGuard = new NativeHandleGuard(localAddress); ) {
       return filterExceptions(
           DuplicateMessageException.class,
           InvalidMessageException.class,
@@ -199,6 +200,7 @@ public class SessionCipher {
               Native.SessionCipher_DecryptPreKeySignalMessage(
                   ciphertextGuard.nativeHandle(),
                   remoteAddressGuard.nativeHandle(),
+                  localAddressGuard.nativeHandle(),
                   bridge(sessionStore),
                   _bridge(identityKeyStore),
                   new org.signal.libsignal.protocol.state.internal.PreKeyStore() {

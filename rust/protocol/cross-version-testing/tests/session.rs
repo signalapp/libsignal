@@ -24,14 +24,20 @@ fn test_basic_prekey() {
             alice_store.encrypt(bob_name, original_message);
         assert_eq!(outgoing_message_type, CiphertextMessageType::PreKey);
 
-        let ptext = bob_store.decrypt(alice_name, &outgoing_message, outgoing_message_type);
+        let ptext = bob_store.decrypt(
+            alice_name,
+            bob_name,
+            &outgoing_message,
+            outgoing_message_type,
+        );
         assert_eq!(&ptext, original_message);
 
         let bobs_response = "Who watches the watchers?".as_bytes();
         let (bob_outgoing, bob_outgoing_type) = bob_store.encrypt(alice_name, bobs_response);
         assert_eq!(bob_outgoing_type, CiphertextMessageType::Whisper);
 
-        let alice_decrypts = alice_store.decrypt(bob_name, &bob_outgoing, bob_outgoing_type);
+        let alice_decrypts =
+            alice_store.decrypt(bob_name, alice_name, &bob_outgoing, bob_outgoing_type);
         assert_eq!(&alice_decrypts, bobs_response);
 
         run_interaction(alice_store, alice_name, bob_store, bob_name);
@@ -49,7 +55,7 @@ fn run_interaction(
     let (alice_message, alice_message_type) = alice_store.encrypt(bob_name, alice_ptext);
     assert_eq!(alice_message_type, CiphertextMessageType::Whisper);
     assert_eq!(
-        &bob_store.decrypt(alice_name, &alice_message, alice_message_type),
+        &bob_store.decrypt(alice_name, bob_name, &alice_message, alice_message_type),
         alice_ptext
     );
 
@@ -58,7 +64,7 @@ fn run_interaction(
     let (bob_message, bob_message_type) = bob_store.encrypt(alice_name, bob_ptext);
     assert_eq!(bob_message_type, CiphertextMessageType::Whisper);
     assert_eq!(
-        &alice_store.decrypt(bob_name, &bob_message, bob_message_type),
+        &alice_store.decrypt(bob_name, alice_name, &bob_message, bob_message_type),
         bob_ptext
     );
 
@@ -68,7 +74,7 @@ fn run_interaction(
             alice_store.encrypt(bob_name, alice_ptext.as_bytes());
         assert_eq!(alice_message_type, CiphertextMessageType::Whisper);
         assert_eq!(
-            &bob_store.decrypt(alice_name, &alice_message, alice_message_type),
+            &bob_store.decrypt(alice_name, bob_name, &alice_message, alice_message_type),
             alice_ptext.as_bytes()
         );
     }
@@ -78,7 +84,7 @@ fn run_interaction(
         let (bob_message, bob_message_type) = bob_store.encrypt(alice_name, bob_ptext.as_bytes());
         assert_eq!(bob_message_type, CiphertextMessageType::Whisper);
         assert_eq!(
-            &alice_store.decrypt(bob_name, &bob_message, bob_message_type),
+            &alice_store.decrypt(bob_name, alice_name, &bob_message, bob_message_type),
             bob_ptext.as_bytes()
         );
     }
@@ -95,7 +101,12 @@ fn run_interaction(
         let alice_ptext = format!("A->B post-OOO message {}", i);
         let (alice_message, _) = alice_store.encrypt(bob_name, alice_ptext.as_bytes());
         assert_eq!(
-            &bob_store.decrypt(alice_name, &alice_message, CiphertextMessageType::Whisper),
+            &bob_store.decrypt(
+                alice_name,
+                bob_name,
+                &alice_message,
+                CiphertextMessageType::Whisper
+            ),
             alice_ptext.as_bytes()
         );
     }
@@ -104,14 +115,19 @@ fn run_interaction(
         let bob_ptext = format!("B->A message post-OOO {}", i);
         let (bob_message, _) = bob_store.encrypt(alice_name, bob_ptext.as_bytes());
         assert_eq!(
-            &alice_store.decrypt(bob_name, &bob_message, CiphertextMessageType::Whisper),
+            &alice_store.decrypt(
+                bob_name,
+                alice_name,
+                &bob_message,
+                CiphertextMessageType::Whisper
+            ),
             bob_ptext.as_bytes()
         );
     }
 
     for (ptext, ctext) in alice_ooo_messages {
         assert_eq!(
-            &bob_store.decrypt(alice_name, &ctext, CiphertextMessageType::Whisper),
+            &bob_store.decrypt(alice_name, bob_name, &ctext, CiphertextMessageType::Whisper),
             ptext.as_bytes()
         );
     }

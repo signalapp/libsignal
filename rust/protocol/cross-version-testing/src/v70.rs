@@ -190,6 +190,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
     fn decrypt(
         &mut self,
         remote: &str,
+        _local: &str,
         msg: &[u8],
         msg_type: super::CiphertextMessageType,
     ) -> Vec<u8> {

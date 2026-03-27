@@ -48,12 +48,14 @@ pub async fn encrypt(
 pub async fn decrypt(
     store: &mut InMemSignalProtocolStore,
     remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     msg: &CiphertextMessage,
 ) -> Result<Vec<u8>, SignalProtocolError> {
     let mut csprng = OsRng.unwrap_err();
     message_decrypt(
         msg,
         remote_address,
+        local_address,
         &mut store.session_store,
         &mut store.identity_store,
         &mut store.pre_key_store,

@@ -264,7 +264,9 @@ public class SealedSessionCipher {
             .decrypt(new SignalMessage(message.getContent()));
       case CiphertextMessage.PREKEY_TYPE:
         return new SessionCipher(signalProtocolStore, sender)
-            .decrypt(new PreKeySignalMessage(message.getContent()));
+            .decrypt(
+                new PreKeySignalMessage(message.getContent()),
+                new SignalProtocolAddress(localUuidAddress, localDeviceId));
       case CiphertextMessage.SENDERKEY_TYPE:
         return new GroupCipher(signalProtocolStore, sender).decrypt(message.getContent());
       case CiphertextMessage.PLAINTEXT_CONTENT_TYPE:

@@ -271,6 +271,7 @@ impl Participant {
                     match message_decrypt(
                         &incoming_message,
                         &them.address,
+                        &self.address,
                         &mut self.state.store.session_store,
                         &mut self.state.store.identity_store,
                         &mut self.state.store.pre_key_store,

@@ -936,6 +936,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
         message_decrypt(
             &bob_first_message,
             &bob_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &mut alice_store.pre_key_store,

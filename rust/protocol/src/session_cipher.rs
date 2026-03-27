@@ -92,6 +92,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
         let message = SignalMessage::new(
             session_version,
             message_keys.mac_key(),
+            Some(remote_address),
             sender_ephemeral,
             chain_key.index(),
             previous_counter,
@@ -120,6 +121,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
         CiphertextMessage::SignalMessage(SignalMessage::new(
             session_version,
             message_keys.mac_key(),
+            None,
             sender_ephemeral,
             chain_key.index(),
             previous_counter,
@@ -162,6 +164,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
 pub async fn message_decrypt<R: Rng + CryptoRng>(
     ciphertext: &CiphertextMessage,
     remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_store: &mut dyn IdentityKeyStore,
     pre_key_store: &mut dyn PreKeyStore,
@@ -171,12 +174,14 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
 ) -> Result<Vec<u8>> {
     match ciphertext {
         CiphertextMessage::SignalMessage(m) => {
+            let _ = local_address;
             message_decrypt_signal(m, remote_address, session_store, identity_store, csprng).await
         }
         CiphertextMessage::PreKeySignalMessage(m) => {
             message_decrypt_prekey(
                 m,
                 remote_address,
+                local_address,
                 session_store,
                 identity_store,
                 pre_key_store,
@@ -197,6 +202,7 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
 pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     ciphertext: &PreKeySignalMessage,
     remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_store: &mut dyn IdentityKeyStore,
     pre_key_store: &mut dyn PreKeyStore,
@@ -241,6 +247,7 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
 
     let ptext = decrypt_message_with_record(
         remote_address,
+        Some(local_address),
         &mut session_record,
         ciphertext.message(),
         CiphertextMessageType::PreKey,
@@ -291,6 +298,7 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
 
     let ptext = decrypt_message_with_record(
         remote_address,
+        None,
         &mut session_record,
         ciphertext,
         CiphertextMessageType::Whisper,
@@ -423,6 +431,7 @@ fn create_decryption_failure_log(
 
 fn decrypt_message_with_record<R: Rng + CryptoRng>(
     remote_address: &ProtocolAddress,
+    local_address: Option<&ProtocolAddress>,
     record: &mut SessionRecord,
     ciphertext: &SignalMessage,
     original_message_type: CiphertextMessageType,
@@ -459,6 +468,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             ciphertext,
             original_message_type,
             remote_address,
+            local_address,
             csprng,
         );
 
@@ -522,6 +532,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             ciphertext,
             original_message_type,
             remote_address,
+            local_address,
             csprng,
         );
 
@@ -602,6 +613,7 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     ciphertext: &SignalMessage,
     original_message_type: CiphertextMessageType,
     remote_address: &ProtocolAddress,
+    local_address: Option<&ProtocolAddress>,
     csprng: &mut R,
 ) -> Result<Vec<u8>> {
     // Check for a completely empty or invalid session state before we do anything else.
@@ -654,11 +666,19 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
                 "cannot decrypt without remote identity key",
             ))?;
 
-    let mac_valid = ciphertext.verify_mac(
-        &their_identity_key,
-        &state.local_identity_key()?,
-        message_keys.mac_key(),
-    )?;
+    let mac_valid = match local_address {
+        Some(local_address) => ciphertext.verify_mac_with_recipient_address(
+            local_address,
+            &their_identity_key,
+            &state.local_identity_key()?,
+            message_keys.mac_key(),
+        )?,
+        None => ciphertext.verify_mac(
+            &their_identity_key,
+            &state.local_identity_key()?,
+            message_keys.mac_key(),
+        )?,
+    };
 
     if !mac_valid {
         return Err(SignalProtocolError::InvalidMessage(

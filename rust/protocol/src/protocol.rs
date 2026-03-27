@@ -12,7 +12,8 @@ use uuid::Uuid;
 
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
 use crate::{
-    IdentityKey, PrivateKey, PublicKey, Result, SignalProtocolError, Timestamp, kem, proto,
+    IdentityKey, PrivateKey, ProtocolAddress, PublicKey, Result, ServiceId, SignalProtocolError,
+    Timestamp, kem, proto,
 };
 
 pub(crate) const CIPHERTEXT_MESSAGE_CURRENT_VERSION: u8 = 4;
@@ -67,6 +68,7 @@ pub struct SignalMessage {
     previous_counter: u32,
     ciphertext: Box<[u8]>,
     pq_ratchet: spqr::SerializedState,
+    recipient_address: Option<Box<[u8]>>,
     serialized: Box<[u8]>,
 }
 
@@ -77,6 +79,7 @@ impl SignalMessage {
     pub fn new(
         message_version: u8,
         mac_key: &[u8],
+        recipient_address: Option<&ProtocolAddress>,
         sender_ratchet_key: PublicKey,
         counter: u32,
         previous_counter: u32,
@@ -95,6 +98,7 @@ impl SignalMessage {
             } else {
                 Some(pq_ratchet.to_vec())
             },
+            recipient_address: recipient_address.and_then(Self::serialize_recipient_address),
         };
         let mut serialized = Vec::with_capacity(1 + message.encoded_len() + Self::MAC_LENGTH);
         serialized.push(((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION);
@@ -116,6 +120,7 @@ impl SignalMessage {
             previous_counter,
             ciphertext: ciphertext.into(),
             pq_ratchet: pq_ratchet.to_vec(),
+            recipient_address: message.recipient_address.map(Into::into),
             serialized,
         })
     }
@@ -170,8 +175,41 @@ impl SignalMessage {
                 hex::encode(their_mac),
                 hex::encode(our_mac)
             );
+            return Ok(false);
         }
-        Ok(result)
+
+        Ok(true)
+    }
+
+    pub fn verify_mac_with_recipient_address(
+        &self,
+        recipient_address: &ProtocolAddress,
+        sender_identity_key: &IdentityKey,
+        receiver_identity_key: &IdentityKey,
+        mac_key: &[u8],
+    ) -> Result<bool> {
+        if !self.verify_mac(sender_identity_key, receiver_identity_key, mac_key)? {
+            return Ok(false);
+        }
+
+        // If the sender didn't include a recipient address, accept the message for
+        // backward compatibility with older clients.
+        let Some(encoded_recipient_address) = &self.recipient_address else {
+            return Ok(true);
+        };
+
+        // Only match valid Service IDs.
+        let Some(expected) = Self::serialize_recipient_address(recipient_address) else {
+            log::warn!("Local address not a valid Service ID {}", recipient_address);
+            return Ok(false);
+        };
+
+        if bool::from(expected.ct_eq(encoded_recipient_address.as_ref())) {
+            Ok(true)
+        } else {
+            log::warn!("Recipient address mismatch for {}", recipient_address);
+            Ok(false)
+        }
     }
 
     fn compute_mac(
@@ -195,6 +233,15 @@ impl SignalMessage {
             .first_chunk()
             .expect("enough bytes");
         Ok(result)
+    }
+
+    /// Serializes the recipient address to Service-Id-Fixed-Width-Binary (17 bytes) + device ID
+    /// (1 byte). Returns `None` if the address name is not a valid ServiceId.
+    fn serialize_recipient_address(recipient_address: &ProtocolAddress) -> Option<Vec<u8>> {
+        let service_id = ServiceId::parse_from_service_id_string(recipient_address.name())?;
+        let mut bytes = service_id.service_id_fixed_width_binary().to_vec();
+        bytes.push(recipient_address.device_id().into());
+        Some(bytes)
     }
 }
 
@@ -247,6 +294,7 @@ impl TryFrom<&[u8]> for SignalMessage {
             previous_counter,
             ciphertext,
             pq_ratchet: proto_structure.pq_ratchet.unwrap_or(vec![]),
+            recipient_address: proto_structure.recipient_address.map(Into::into),
             serialized: Box::from(value),
         })
     }
@@ -918,10 +966,10 @@ pub fn extract_decryption_error_message_from_serialized_content(
 #[cfg(test)]
 mod tests {
     use rand::rngs::OsRng;
-    use rand::{CryptoRng, Rng, TryRngCore as _};
+    use rand::{CryptoRng, Rng, RngCore, TryRngCore as _};
 
     use super::*;
-    use crate::KeyPair;
+    use crate::{DeviceId, KeyPair};
 
     fn create_signal_message<T>(csprng: &mut T) -> Result<SignalMessage>
     where
@@ -938,10 +986,13 @@ mod tests {
         let sender_ratchet_key_pair = KeyPair::generate(csprng);
         let sender_identity_key_pair = KeyPair::generate(csprng);
         let receiver_identity_key_pair = KeyPair::generate(csprng);
+        let recipient_address =
+            ProtocolAddress::new("recipient".to_owned(), DeviceId::new(1).unwrap());
 
         SignalMessage::new(
             4,
             &mac_key,
+            Some(&recipient_address),
             sender_ratchet_key_pair.public_key,
             42,
             41,
@@ -958,6 +1009,7 @@ mod tests {
         assert_eq!(m1.counter, m2.counter);
         assert_eq!(m1.previous_counter, m2.previous_counter);
         assert_eq!(m1.ciphertext, m2.ciphertext);
+        assert_eq!(m1.recipient_address, m2.recipient_address);
         assert_eq!(m1.serialized, m2.serialized);
     }
 
@@ -1022,6 +1074,109 @@ mod tests {
             pre_key_signal_message.serialized,
             deser_pre_key_signal_message.serialized
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_signal_message_verify_mac_accepts_legacy_message_without_recipient_address()
+    -> Result<()> {
+        let mut csprng = OsRng.unwrap_err();
+        let mut mac_key = [0u8; 32];
+        csprng.fill_bytes(&mut mac_key);
+
+        let mut ciphertext = [0u8; 20];
+        csprng.fill_bytes(&mut ciphertext);
+
+        let sender_ratchet_key_pair = KeyPair::generate(&mut csprng);
+        let sender_identity_key_pair = KeyPair::generate(&mut csprng);
+        let receiver_identity_key_pair = KeyPair::generate(&mut csprng);
+        let recipient_address = ProtocolAddress::new(
+            "9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
+
+        let message = SignalMessage::new(
+            4,
+            &mac_key,
+            Some(&recipient_address),
+            sender_ratchet_key_pair.public_key,
+            42,
+            41,
+            &ciphertext,
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            b"",
+        )?;
+
+        let mut proto_structure = proto::wire::SignalMessage::decode(
+            &message.serialized()[1..message.serialized().len() - SignalMessage::MAC_LENGTH],
+        )
+        .expect("valid protobuf");
+        proto_structure.recipient_address = None;
+
+        let mut serialized =
+            vec![((message.message_version() & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION];
+        proto_structure.encode(&mut serialized).expect("encodes");
+        let mac = SignalMessage::compute_mac(
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            &mac_key,
+            &serialized,
+        )?;
+        serialized.extend_from_slice(&mac);
+
+        let legacy_message = SignalMessage::try_from(serialized.as_slice())?;
+        assert!(legacy_message.verify_mac_with_recipient_address(
+            &recipient_address,
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            &mac_key,
+        )?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_signal_message_verify_mac_rejects_wrong_recipient_address() -> Result<()> {
+        let mut csprng = OsRng.unwrap_err();
+        let mut mac_key = [0u8; 32];
+        csprng.fill_bytes(&mut mac_key);
+
+        let mut ciphertext = [0u8; 20];
+        csprng.fill_bytes(&mut ciphertext);
+
+        let sender_ratchet_key_pair = KeyPair::generate(&mut csprng);
+        let sender_identity_key_pair = KeyPair::generate(&mut csprng);
+        let receiver_identity_key_pair = KeyPair::generate(&mut csprng);
+        let recipient_address = ProtocolAddress::new(
+            "9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
+        let wrong_recipient_address = ProtocolAddress::new(
+            "a5e2f8d1-4b3c-4e7a-8f9d-1c2b3d4e5f6a".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
+
+        let message = SignalMessage::new(
+            4,
+            &mac_key,
+            Some(&recipient_address),
+            sender_ratchet_key_pair.public_key,
+            42,
+            41,
+            &ciphertext,
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            b"",
+        )?;
+
+        assert!(!message.verify_mac_with_recipient_address(
+            &wrong_recipient_address,
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            &mac_key,
+        )?);
+
         Ok(())
     }
 
