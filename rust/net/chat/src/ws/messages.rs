@@ -22,7 +22,8 @@ use super::{
 use crate::api::messages::{
     MismatchedDeviceError, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
     MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
-    SingleOutboundUnsealedMessage, UnsealedSendFailure, UserBasedSendAuthorization,
+    SingleOutboundUnsealedMessage, UnauthenticatedChatApi, UnsealedSendFailure,
+    UserBasedSendAuthorization,
 };
 use crate::api::{Auth, RequestError, Unauth, UploadForm};
 use crate::logging::Redact;
@@ -121,7 +122,7 @@ struct SendMessageRequest<'a> {
 }
 
 #[async_trait]
-impl<T: WsConnection> crate::api::messages::UnauthenticatedChatApi<OverWs> for Unauth<T> {
+impl<T: WsConnection> UnauthenticatedChatApi<OverWs> for Unauth<T> {
     async fn send_message(
         &self,
         destination: ServiceId,
@@ -398,6 +399,11 @@ impl<T: WsConnection> crate::api::messages::AuthenticatedChatApi<OverWs> for Aut
     }
 
     async fn get_upload_form(&self) -> Result<UploadForm, RequestError<Infallible>> {
+        if let Some(grpc) =
+            self.grpc_service_to_use_instead(services::Attachments::GetUploadForm.into())
+        {
+            return Auth(grpc).get_upload_form().await;
+        }
         let response = self
             .send(
                 "auth",
@@ -557,7 +563,7 @@ mod test {
     use uuid::Uuid;
 
     use super::*;
-    use crate::api::messages::{AuthenticatedChatApi as _, UnauthenticatedChatApi as _};
+    use crate::api::messages::AuthenticatedChatApi as _;
     use crate::api::testutil::{
         SERIALIZED_GROUP_SEND_TOKEN, TEST_SELF_ACI, structurally_valid_group_send_token,
     };

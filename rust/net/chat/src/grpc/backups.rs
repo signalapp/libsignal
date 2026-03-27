@@ -11,6 +11,7 @@ use libsignal_net_grpc::proto::chat::backup::get_upload_form_request::{
 use libsignal_net_grpc::proto::chat::backup::{
     GetUploadFormRequest, GetUploadFormResponse, SignedPresentation, get_upload_form_response,
 };
+use libsignal_net_grpc::proto::chat::common;
 use libsignal_net_grpc::proto::chat::errors::{FailedPrecondition, FailedZkAuthentication};
 
 use super::{GrpcServiceProvider, OverGrpc, log_and_send};
@@ -105,7 +106,7 @@ impl TryFrom<GetUploadFormResponse> for UploadForm {
         })?;
 
         match outcome {
-            Outcome::UploadForm(get_upload_form_response::UploadForm {
+            Outcome::UploadForm(common::UploadForm {
                 cdn,
                 key,
                 headers,
@@ -189,7 +190,7 @@ mod test {
     }
 
     #[test_case(ok(GetUploadFormResponse {
-        outcome: Some(get_upload_form_response::Outcome::UploadForm(get_upload_form_response::UploadForm {
+        outcome: Some(get_upload_form_response::Outcome::UploadForm(common::UploadForm {
             cdn: 123,
             key: "abcde".to_owned(),
             headers: HashMap::from_iter([
@@ -251,7 +252,7 @@ mod test {
     }
 
     #[test_case(ok(GetUploadFormResponse {
-        outcome: Some(get_upload_form_response::Outcome::UploadForm(get_upload_form_response::UploadForm {
+        outcome: Some(get_upload_form_response::Outcome::UploadForm(common::UploadForm {
             cdn: 123,
             key: "abcde".to_owned(),
             headers: HashMap::from_iter([

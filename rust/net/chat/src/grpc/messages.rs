@@ -3,25 +3,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::convert::Infallible;
+use std::fmt::Formatter;
+
 use async_trait::async_trait;
 use itertools::Itertools as _;
 use libsignal_core::{DeviceId, ServiceId};
+use libsignal_net_grpc::proto::chat::attachments::attachments_client::AttachmentsClient;
 use libsignal_net_grpc::proto::chat::common::ServiceIdentifier;
-use libsignal_net_grpc::proto::chat::errors;
 use libsignal_net_grpc::proto::chat::messages::messages_anonymous_client::MessagesAnonymousClient;
 use libsignal_net_grpc::proto::chat::messages::{
     MismatchedDevices, MultiRecipientMessage, MultiRecipientMismatchedDevices,
     MultiRecipientSuccess, SendMultiRecipientMessageRequest, SendMultiRecipientMessageResponse,
     SendMultiRecipientStoryRequest, send_multi_recipient_message_response,
 };
+use libsignal_net_grpc::proto::chat::{attachments, common, errors};
+use libsignal_protocol::Timestamp;
 
 use super::{GrpcServiceProvider, OverGrpc, log_and_send};
 use crate::api::messages::{
     MismatchedDeviceError, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
     MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
-    UserBasedSendAuthorization,
+    SingleOutboundUnsealedMessage, UnsealedSendFailure, UserBasedSendAuthorization,
 };
-use crate::api::{RequestError, Unauth};
+use crate::api::{Auth, RequestError, Unauth, UploadForm};
 use crate::logging::Redact;
 
 #[async_trait]
@@ -208,8 +213,66 @@ impl std::fmt::Display for Redact<SendMultiRecipientMessageRequest> {
     }
 }
 
+impl std::fmt::Display for Redact<attachments::GetUploadFormRequest> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let Self(attachments::GetUploadFormRequest {}) = self;
+        f.debug_struct("attachments::GetUploadFormRequest").finish()
+    }
+}
+
+#[async_trait]
+impl<T: GrpcServiceProvider> crate::api::messages::AuthenticatedChatApi<OverGrpc> for Auth<T> {
+    async fn send_message(
+        &self,
+        _destination: ServiceId,
+        _timestamp: Timestamp,
+        _contents: &[SingleOutboundUnsealedMessage<'_>],
+        _online_only: bool,
+        _urgent: bool,
+    ) -> Result<(), RequestError<UnsealedSendFailure>> {
+        unimplemented!()
+    }
+
+    async fn send_sync_message(
+        &self,
+        _timestamp: Timestamp,
+        _contents: &[SingleOutboundUnsealedMessage<'_>],
+        _urgent: bool,
+    ) -> Result<(), RequestError<MismatchedDeviceError>> {
+        unimplemented!()
+    }
+
+    async fn get_upload_form(&self) -> Result<UploadForm, RequestError<Infallible>> {
+        let mut attachments_service = AttachmentsClient::new(self.0.service());
+        let request = attachments::GetUploadFormRequest {};
+        let log_safe_description = Redact(&request).to_string();
+        let attachments::GetUploadFormResponse { upload_form } =
+            log_and_send("auth", &log_safe_description, || {
+                attachments_service.get_upload_form(request)
+            })
+            .await?
+            .into_inner();
+        let common::UploadForm {
+            cdn,
+            key,
+            headers,
+            signed_upload_location,
+        } = upload_form.ok_or_else(|| RequestError::Unexpected {
+            log_safe: "GetUploadFormResponse missing upload form".to_string(),
+        })?;
+        Ok(UploadForm {
+            cdn,
+            key,
+            headers: headers.into_iter().collect(),
+            signed_upload_url: signed_upload_location,
+        })
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+
     use futures_util::FutureExt as _;
     use libsignal_core::{Aci, Pni, ServiceId};
     use libsignal_net_grpc::proto::chat::services;
@@ -218,7 +281,7 @@ mod test {
     use uuid::{Uuid, uuid};
 
     use super::*;
-    use crate::api::messages::UnauthenticatedChatApi as _;
+    use crate::api::messages::{AuthenticatedChatApi, UnauthenticatedChatApi as _};
     use crate::api::testutil::{SERIALIZED_GROUP_SEND_TOKEN, structurally_valid_group_send_token};
     use crate::grpc::testutil::{GrpcOverrideRequestValidator, RequestValidator, err, ok, req};
 
@@ -456,5 +519,47 @@ mod test {
             .expect("sync")
             .expect("success");
         assert_eq!(unregistered_ids, &[] as &[ServiceId]);
+    }
+
+    #[test]
+    fn test_attachment_get_upload_form() {
+        let validator = GrpcOverrideRequestValidator {
+            message: services::Attachments::GetUploadForm.into(),
+            validator: RequestValidator {
+                expected: req(
+                    "/org.signal.chat.attachments.Attachments/GetUploadForm",
+                    attachments::GetUploadFormRequest {},
+                ),
+                response: ok(attachments::GetUploadFormResponse {
+                    upload_form: Some(common::UploadForm {
+                        cdn: 2,
+                        key: "my key".to_string(),
+                        headers: HashMap::from_iter([
+                            ("one".to_string(), "val1".to_string()),
+                            ("two".to_string(), "val2".to_string()),
+                        ]),
+                        signed_upload_location: "location".to_string(),
+                    }),
+                }),
+            },
+        };
+        let mut upload_form = Auth(&validator)
+            .get_upload_form()
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
+        upload_form.headers.sort(); // HashMap is non-deterministic
+        assert_eq!(
+            upload_form,
+            UploadForm {
+                cdn: 2,
+                key: "my key".to_string(),
+                headers: vec![
+                    ("one".to_string(), "val1".to_string()),
+                    ("two".to_string(), "val2".to_string()),
+                ],
+                signed_upload_url: "location".to_string(),
+            }
+        );
     }
 }

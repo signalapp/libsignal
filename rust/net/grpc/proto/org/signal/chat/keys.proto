@@ -9,8 +9,12 @@ option java_multiple_files = true;
 
 package org.signal.chat.keys;
 
+import "google/protobuf/empty.proto";
+
 import "org/signal/chat/common.proto";
 import "org/signal/chat/errors.proto";
+import "org/signal/chat/require.proto";
+import "org/signal/chat/tag.proto";
 
 // Provides methods for working with pre-keys.
 service Keys {
@@ -111,6 +115,9 @@ message GetPreKeysAnonymousRequest {
 
     // A group send endorsement token for the targeted account.
     bytes group_send_token = 3;
+
+    // The destination account allows unrestricted unidentified access
+    google.protobuf.Empty unrestricted_access = 4;
   }
 }
 
@@ -146,7 +153,7 @@ message GetPreKeysResponse {
 
     // Either the target account was not found, no active device with the given
     // ID (if specified) was found on the target account.
-    errors.NotFound target_not_found = 2;
+    errors.NotFound target_not_found = 2 [(tag.reason) = "not_found"];
   }
 }
 
@@ -157,10 +164,10 @@ message GetPreKeysAnonymousResponse {
 
     // Either the target account was not found, no active device with the given
     // ID (if specified) was found on the target account.
-    errors.NotFound target_not_found = 2;
+    errors.NotFound target_not_found = 2 [(tag.reason) = "not_found"];
 
     // The provided unidentified authorization credential was invalid
-    errors.FailedUnidentifiedAuthorization failed_unidentified_authorization = 3;
+    errors.FailedUnidentifiedAuthorization failed_unidentified_authorization = 3 [(tag.reason) = "failed_unidentified_authorization"];
   }
 }
 
@@ -170,7 +177,7 @@ message SetOneTimeEcPreKeysRequest {
   common.IdentityType identity_type = 1;
 
   // The unsigned EC pre-keys to be stored.
-  repeated common.EcPreKey pre_keys = 2;
+  repeated common.EcPreKey pre_keys = 2 [(require.size) = {min: 1, max: 100}];
 }
 
 message SetOneTimeKemSignedPreKeysRequest {
@@ -179,7 +186,7 @@ message SetOneTimeKemSignedPreKeysRequest {
   common.IdentityType identity_type = 1;
 
   // The KEM pre-keys to be stored.
-  repeated common.KemSignedPreKey pre_keys = 2;
+  repeated common.KemSignedPreKey pre_keys = 2 [(require.size) = {min: 1, max: 100}];
 }
 
 message SetEcSignedPreKeyRequest {
@@ -187,7 +194,7 @@ message SetEcSignedPreKeyRequest {
   common.IdentityType identity_type = 1;
 
   // The signed EC pre-key itself.
-  common.EcSignedPreKey signed_pre_key = 2;
+  common.EcSignedPreKey signed_pre_key = 2 [(require.present) = true];
 }
 
 message SetKemLastResortPreKeyRequest {
@@ -195,7 +202,7 @@ message SetKemLastResortPreKeyRequest {
   common.IdentityType identity_type = 1;
 
   // The signed KEM pre-key itself.
-  common.KemSignedPreKey signed_pre_key = 2;
+  common.KemSignedPreKey signed_pre_key = 2 [(require.present) = true];
 }
 
 message SetPreKeyResponse {
@@ -205,7 +212,7 @@ message CheckIdentityKeyRequest {
   // The service identifier of the account for which we want to check the associated identity key fingerprint.
   common.ServiceIdentifier target_identifier = 1;
   // The most significant 4 bytes of the SHA-256 hash of the identity key associated with the target account/identity type.
-  bytes fingerprint = 2;
+  bytes fingerprint = 2 [(require.exactlySize) = 4];
 }
 
 message CheckIdentityKeyResponse {

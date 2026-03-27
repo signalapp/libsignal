@@ -13,9 +13,11 @@ pub mod proto {
         pub mod errors {
             tonic::include_proto!("org.signal.chat.errors");
         }
-
         pub mod account {
             tonic::include_proto!("org.signal.chat.account");
+        }
+        pub mod attachments {
+            tonic::include_proto!("org.signal.chat.attachments");
         }
         pub mod backup {
             tonic::include_proto!("org.signal.chat.backup");

@@ -10,6 +10,7 @@ fn main() {
         "proto/google/rpc/error_details.proto",
         "proto/google/rpc/status.proto",
         "proto/org/signal/chat/account.proto",
+        "proto/org/signal/chat/attachments.proto",
         "proto/org/signal/chat/backups.proto",
         "proto/org/signal/chat/calling.proto",
         "proto/org/signal/chat/call_quality.proto",

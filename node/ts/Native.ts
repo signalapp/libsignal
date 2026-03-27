@@ -1843,7 +1843,7 @@ export interface RegisterAccountResponse { readonly __type: unique symbol; }
 export interface RegistrationAccountAttributes { readonly __type: unique symbol; }
 export interface BackupStoreResponse { readonly __type: unique symbol; }
 export interface BackupRestoreResponse { readonly __type: unique symbol; }
-export const NetRemoteConfigKeys = ['chatRequestConnectionCheckTimeoutMillis', 'useH2ForUnauthChat', 'useH2ForAuthChat', 'grpc.AccountsAnonymousLookupUsernameHash', 'grpc.AccountsAnonymousLookupUsernameLink.2', 'grpc.AccountsAnonymousCheckAccountExistence.2', 'grpc.MessagesAnonymousSendMultiRecipientMessage.2', ] as const;
+export const NetRemoteConfigKeys = ['chatRequestConnectionCheckTimeoutMillis', 'useH2ForUnauthChat', 'useH2ForAuthChat', 'grpc.AccountsAnonymousLookupUsernameHash', 'grpc.AccountsAnonymousLookupUsernameLink.2', 'grpc.AccountsAnonymousCheckAccountExistence.2', 'grpc.MessagesAnonymousSendMultiRecipientMessage.2', 'grpc.AttachmentsGetUploadForm', ] as const;
 export interface TokioAsyncContext { readonly __type: unique symbol; }
 export interface ConnectionManager { readonly __type: unique symbol; }
 export interface ConnectionProxyConfig { readonly __type: unique symbol; }
