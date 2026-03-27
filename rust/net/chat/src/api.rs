@@ -121,6 +121,16 @@ impl<E, D> RequestError<E, D> {
     }
 }
 
+impl<D> RequestError<Infallible, D> {
+    /// Replaces [`Infallible`] with an actual `Other` error type (which `self` must not be using).
+    ///
+    /// Unfortunately we can't `impl From<RequestError<Infallible, D>> for RequestError<E, D>`
+    /// because that overlaps when `E = Infallible`. So we need a helper instead.
+    pub fn with_other<E2>(self) -> RequestError<E2, D> {
+        self.flat_map_other(|e| match e {})
+    }
+}
+
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(Clone))]
 #[ignore_extra_doc_attributes]

@@ -305,6 +305,13 @@ impl<T: WsConnection> crate::api::messages::AuthenticatedChatApi<OverWs> for Aut
         online_only: bool,
         urgent: bool,
     ) -> Result<(), RequestError<UnsealedSendFailure>> {
+        if let Some(grpc) = self.grpc_service_to_use_instead(services::Messages::SendMessage.into())
+        {
+            return Auth(grpc)
+                .send_message(destination, timestamp, contents, online_only, urgent)
+                .await;
+        }
+
         let path = format!("/v1/messages/{}", destination.service_id_string());
         let log_safe_path = format!(
             "/v1/messages/{} (ts: {})",
@@ -379,6 +386,17 @@ impl<T: WsConnection> crate::api::messages::AuthenticatedChatApi<OverWs> for Aut
         contents: &[SingleOutboundUnsealedMessage<'_>],
         urgent: bool,
     ) -> Result<(), RequestError<MismatchedDeviceError>> {
+        // Note that we check SendMessage here, not SendSyncMessage. We could change sync messages
+        // to gRPC but leave unsealed non-sync messages as WS-based, but the other way around is not
+        // supported (because of the way we've implemented this method to forward to send_message,
+        // below). So to prevent any mistakes, we just use the same condition for both.
+        if let Some(grpc) = self.grpc_service_to_use_instead(services::Messages::SendMessage.into())
+        {
+            return Auth(grpc)
+                .send_sync_message(timestamp, contents, urgent)
+                .await;
+        }
+
         let self_aci = self
             .self_aci()
             .expect("cannot send sync message without getting self ACI from auth info");
