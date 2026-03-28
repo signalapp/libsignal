@@ -1509,6 +1509,7 @@ macro_rules! ffi_result_type {
     (Option<String>) => (*const std::ffi::c_char);
     (Option<&str>) => (*const std::ffi::c_char);
     (Timestamp) => (u64);
+    (LogLevel) => (LogLevel);
     (Uuid) => (ffi::Uuid);
     (Option<Uuid>) => (ffi::OptionalUuid);
     (ServiceId) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);

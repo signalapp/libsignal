@@ -68,20 +68,26 @@ extension LibsignalLogger {
         let opaqueBridge = Unmanaged.passRetained(bridge)
         let success = signal_init_logger(
             level.asFFI,
-            SignalFfiLogger(
+            SignalFfiLoggerStruct(
                 ctx: opaqueBridge.toOpaque(),
                 log: { ctx, ffiLevel, file, line, message in
+                    defer { signal_free_string(file) }
+                    defer { signal_free_string(message) }
+
                     let bridge: LoggerBridge = Unmanaged.fromOpaque(ctx!).takeUnretainedValue()
                     // Unknown log levels might have personal info in them, so map them to something low.
                     let level = LibsignalLogLevel(ffiLevel) ?? .debug
                     "".withCString { emptyStringPtr in
                         bridge.logger.log(level: level, file: file, line: line, message: message ?? emptyStringPtr)
                     }
+                    return 0
                 },
                 flush: { ctx in
                     let bridge: LoggerBridge = Unmanaged.fromOpaque(ctx!).takeUnretainedValue()
                     bridge.logger.flush()
-                }
+                    return 0
+                },
+                destroy: { ctx in Unmanaged<LoggerBridge>.fromOpaque(ctx!).release() }
             )
         )
         if success {

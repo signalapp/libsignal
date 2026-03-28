@@ -1111,15 +1111,18 @@ typedef struct {
   SignalIncrementalMac *raw;
 } SignalMutPointerIncrementalMac;
 
-typedef void (*SignalLogCallback)(void *ctx, SignalLogLevel level, const char *file, uint32_t line, const char *message);
+typedef int (*SignalFfiLoggerLog)(void *ctx, SignalLogLevel level, const char *file, uint32_t line, const char *message);
 
-typedef void (*SignalLogFlushCallback)(void *ctx);
+typedef int (*SignalFfiLoggerFlush)(void *ctx);
+
+typedef void (*SignalFfiLoggerDestroy)(void *ctx);
 
 typedef struct {
   void *ctx;
-  SignalLogCallback log;
-  SignalLogFlushCallback flush;
-} SignalFfiLogger;
+  SignalFfiLoggerLog log;
+  SignalFfiLoggerFlush flush;
+  SignalFfiLoggerDestroy destroy;
+} SignalFfiLoggerStruct;
 
 /**
  * A C callback used to report the results of Rust futures.
@@ -2118,7 +2121,7 @@ SignalFfiError *signal_incremental_mac_initialize(SignalMutPointerIncrementalMac
 
 SignalFfiError *signal_incremental_mac_update(SignalOwnedBuffer *out, SignalMutPointerIncrementalMac mac, SignalBorrowedBuffer bytes, uint32_t offset, uint32_t length);
 
-bool signal_init_logger(SignalLogLevel max_level, SignalFfiLogger logger);
+bool signal_init_logger(SignalLogLevel max_level, SignalFfiLoggerStruct logger);
 
 SignalFfiError *signal_key_transparency_aci_search_key(SignalOwnedBuffer *out, const SignalServiceIdFixedWidthBinaryBytes *aci);
 
