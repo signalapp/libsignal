@@ -132,6 +132,14 @@ impl<T: WsConnection> UnauthenticatedChatApi<OverWs> for Unauth<T> {
         online_only: bool,
         urgent: bool,
     ) -> Result<(), RequestError<SealedSendFailure>> {
+        if let Some(grpc) = self.grpc_service_to_use_instead(
+            services::MessagesAnonymous::SendSingleRecipientMessage.into(),
+        ) {
+            return Unauth(grpc)
+                .send_message(destination, timestamp, contents, auth, online_only, urgent)
+                .await;
+        }
+
         let story_suffix = if matches!(auth, UserBasedSendAuthorization::Story) {
             "?story=true"
         } else {

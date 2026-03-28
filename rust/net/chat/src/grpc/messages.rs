@@ -16,10 +16,12 @@ use libsignal_net_grpc::proto::chat::messages::messages_client::MessagesClient;
 use libsignal_net_grpc::proto::chat::messages::{
     IndividualRecipientMessageBundle, MismatchedDevices, MultiRecipientMessage,
     MultiRecipientMismatchedDevices, MultiRecipientSuccess, SendAuthenticatedSenderMessageRequest,
-    SendMessageAuthenticatedSenderResponse, SendMessageType, SendMultiRecipientMessageRequest,
-    SendMultiRecipientMessageResponse, SendMultiRecipientStoryRequest, SendSyncMessageRequest,
-    individual_recipient_message_bundle, send_message_authenticated_sender_response,
-    send_multi_recipient_message_response,
+    SendMessageAuthenticatedSenderResponse, SendMessageResponse, SendMessageType,
+    SendMultiRecipientMessageRequest, SendMultiRecipientMessageResponse,
+    SendMultiRecipientStoryRequest, SendSealedSenderMessageRequest, SendStoryMessageRequest,
+    SendSyncMessageRequest, individual_recipient_message_bundle,
+    send_message_authenticated_sender_response, send_message_response,
+    send_multi_recipient_message_response, send_sealed_sender_message_request,
 };
 use libsignal_net_grpc::proto::chat::{attachments, common, errors};
 use libsignal_protocol::Timestamp;
@@ -30,8 +32,19 @@ use crate::api::messages::{
     MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
     SingleOutboundUnsealedMessage, UnsealedSendFailure, UserBasedSendAuthorization,
 };
-use crate::api::{Auth, RequestError, Unauth, UploadForm};
+use crate::api::{Auth, RequestError, Unauth, UploadForm, UserBasedAuthorization};
 use crate::logging::Redact;
+
+impl From<UserBasedAuthorization> for send_sealed_sender_message_request::Authorization {
+    fn from(value: UserBasedAuthorization) -> Self {
+        match value {
+            UserBasedAuthorization::AccessKey(uak) => Self::UnidentifiedAccessKey(uak.to_vec()),
+            UserBasedAuthorization::Group(token) => {
+                Self::GroupSendToken(zkgroup::serialize(&token))
+            }
+        }
+    }
+}
 
 #[derive(Debug)]
 struct MessageTypeCannotBeSentUnsealed;
@@ -112,14 +125,90 @@ impl TryFrom<MismatchedDevices> for MismatchedDeviceError {
 impl<T: GrpcServiceProvider> crate::api::messages::UnauthenticatedChatApi<OverGrpc> for Unauth<T> {
     async fn send_message(
         &self,
-        _destination: ServiceId,
-        _timestamp: Timestamp,
-        _contents: &[SingleOutboundSealedSenderMessage<'_>],
-        _auth: UserBasedSendAuthorization,
-        _online_only: bool,
-        _urgent: bool,
+        destination: ServiceId,
+        timestamp: Timestamp,
+        contents: &[SingleOutboundSealedSenderMessage<'_>],
+        auth: UserBasedSendAuthorization,
+        online_only: bool,
+        urgent: bool,
     ) -> Result<(), RequestError<SealedSendFailure>> {
-        unimplemented!()
+        let mut service = MessagesAnonymousClient::new(self.0.service());
+
+        assert!(!contents.is_empty(), "cannot send messages to 0 devices");
+
+        let messages = Some(IndividualRecipientMessageBundle {
+            timestamp: timestamp.epoch_millis(),
+            messages: contents
+                .iter()
+                .map(|message| {
+                    (
+                        message.device_id.into(),
+                        individual_recipient_message_bundle::Message {
+                            registration_id: message.registration_id,
+                            payload: message.contents.to_vec(),
+                            r#type: SendMessageType::UnidentifiedSender.into(),
+                        },
+                    )
+                })
+                .collect(),
+        });
+
+        let SendMessageResponse { response } = match auth {
+            UserBasedSendAuthorization::Story => {
+                assert!(!online_only, "stories should never be sent online-only");
+                let request = SendStoryMessageRequest {
+                    destination: Some(destination.into()),
+                    urgent,
+                    messages,
+                };
+
+                let log_safe_description = Redact(&request).to_string();
+                log_and_send("auth", &log_safe_description, || {
+                    service.send_story(request)
+                })
+                .await?
+                .into_inner()
+            }
+            UserBasedSendAuthorization::User(auth) => {
+                let request = SendSealedSenderMessageRequest {
+                    destination: Some(destination.into()),
+                    ephemeral: online_only,
+                    urgent,
+                    messages,
+                    authorization: Some(auth.into()),
+                };
+                let log_safe_description = Redact(&request).to_string();
+                log_and_send("auth", &log_safe_description, || {
+                    service.send_single_recipient_message(request)
+                })
+                .await?
+                .into_inner()
+            }
+        };
+
+        let response = response.ok_or_else(|| RequestError::Unexpected {
+            log_safe: "missing response".to_owned(),
+        })?;
+
+        match response {
+            send_message_response::Response::Success(()) => Ok(()),
+            send_message_response::Response::FailedUnidentifiedAuthorization(
+                errors::FailedUnidentifiedAuthorization { description },
+            ) => {
+                log::warn!("failed auth: {description}");
+                Err(RequestError::Other(SealedSendFailure::Unauthorized))
+            }
+            send_message_response::Response::MismatchedDevices(mismatched_devices) => {
+                Err(RequestError::Other(
+                    MismatchedDeviceError::try_from(mismatched_devices)
+                        .map_err(RequestError::with_other)?
+                        .into(),
+                ))
+            }
+            send_message_response::Response::DestinationNotFound(errors::NotFound {}) => {
+                Err(RequestError::Other(SealedSendFailure::ServiceIdNotFound))
+            }
+        }
     }
 
     async fn send_multi_recipient_message(
@@ -406,6 +495,39 @@ impl std::fmt::Display for Redact<SendMultiRecipientMessageRequest> {
     }
 }
 
+impl std::fmt::Display for Redact<SendStoryMessageRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(SendStoryMessageRequest {
+            destination,
+            urgent,
+            messages,
+        }) = self;
+        f.debug_struct("SendStoryMessageRequest")
+            .field("timestamp", &messages.as_ref().map_or(0, |m| m.timestamp))
+            .field("destination", &destination.as_ref().map(Redact))
+            .field("urgent", urgent)
+            .finish()
+    }
+}
+
+impl std::fmt::Display for Redact<SendSealedSenderMessageRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(SendSealedSenderMessageRequest {
+            destination,
+            ephemeral,
+            urgent,
+            messages,
+            authorization: _,
+        }) = self;
+        f.debug_struct("SendSealedSenderMessageRequest")
+            .field("timestamp", &messages.as_ref().map_or(0, |m| m.timestamp))
+            .field("destination", &destination.as_ref().map(Redact))
+            .field("ephemeral", ephemeral)
+            .field("urgent", urgent)
+            .finish()
+    }
+}
+
 impl std::fmt::Display for Redact<SendAuthenticatedSenderMessageRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(SendAuthenticatedSenderMessageRequest {
@@ -450,6 +572,7 @@ mod test {
     use libsignal_core::{Aci, Pni, ServiceId};
     use libsignal_net::infra::errors::RetryLater;
     use libsignal_net_grpc::proto::chat::messages::ChallengeRequired as ChallengeRequiredProto;
+    use libsignal_net_grpc::proto::chat::messages::send_sealed_sender_message_request::Authorization as SealedSenderAuthorization;
     use libsignal_net_grpc::proto::chat::services;
     use libsignal_protocol::{CiphertextMessage, PlaintextContent, Timestamp};
     use test_case::test_case;
@@ -698,6 +821,282 @@ mod test {
             .expect("sync")
             .expect("success");
         assert_eq!(unregistered_ids, &[] as &[ServiceId]);
+    }
+
+    #[test_case(ok(SendMessageResponse {
+        response: Some(send_message_response::Response::Success(()))
+    }) => matches Ok(()))]
+    #[test_case(ok(SendMessageResponse {
+        response: None
+    }) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(ok(SendMessageResponse {
+        response: Some(send_message_response::Response::DestinationNotFound(Default::default())),
+    }) => matches Err(RequestError::Other(SealedSendFailure::ServiceIdNotFound)))]
+    #[test_case(ok(SendMessageResponse {
+        response: Some(send_message_response::Response::MismatchedDevices(
+            MismatchedDevices {
+                service_identifier: Some(Pni::from(PNI_UUID).into()),
+                missing_devices: vec![2, 3],
+                extra_devices: vec![4, 5],
+                stale_devices: vec![6, 7],
+            }
+        )),
+    }) => matches Err(RequestError::Other(SealedSendFailure::MismatchedDevices(error))) if error ==
+        MismatchedDeviceError {
+            account: Pni::from(PNI_UUID).into(),
+            missing_devices: vec![DeviceId::new(2).unwrap(), DeviceId::new(3).unwrap()],
+            extra_devices: vec![DeviceId::new(4).unwrap(), DeviceId::new(5).unwrap()],
+            stale_devices: vec![DeviceId::new(6).unwrap(), DeviceId::new(7).unwrap()],
+        }
+    )]
+    #[test_case(ok(SendMessageResponse {
+        response: Some(send_message_response::Response::MismatchedDevices(
+            MismatchedDevices {
+                service_identifier: Some(Pni::from(PNI_UUID).into()),
+                missing_devices: vec![],
+                extra_devices: vec![],
+                stale_devices: vec![],
+            }
+        )),
+    }) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(ok(SendMessageResponse {
+        response: Some(send_message_response::Response::FailedUnidentifiedAuthorization(
+            errors::FailedUnidentifiedAuthorization {
+                description: "too bad".to_owned(),
+            },
+        )),
+    }) => matches Err(RequestError::Other(SealedSendFailure::Unauthorized)))]
+    fn test_sealed_send(
+        response: http::Response<Vec<u8>>,
+    ) -> Result<(), RequestError<SealedSendFailure>> {
+        let validator = GrpcOverrideRequestValidator {
+            message: services::MessagesAnonymous::SendSingleRecipientMessage.into(),
+            validator: TypedRequestValidator {
+                expected: req_typed(
+                    "/org.signal.chat.messages.MessagesAnonymous/SendSingleRecipientMessage",
+                    SendSealedSenderMessageRequest {
+                        destination: Some(Pni::from(PNI_UUID).into()),
+                        ephemeral: false,
+                        urgent: true,
+                        authorization: Some(SealedSenderAuthorization::UnidentifiedAccessKey(
+                            vec![0xa0; 16],
+                        )),
+                        messages: Some(IndividualRecipientMessageBundle {
+                            timestamp: 1700000000000,
+                            messages: HashMap::from_iter([
+                                (
+                                    2,
+                                    individual_recipient_message_bundle::Message {
+                                        registration_id: 22,
+                                        payload: vec![1, 2, 3],
+                                        r#type: SendMessageType::UnidentifiedSender.into(),
+                                    },
+                                ),
+                                (
+                                    3,
+                                    individual_recipient_message_bundle::Message {
+                                        registration_id: 33,
+                                        payload: vec![4, 5, 6],
+                                        r#type: SendMessageType::UnidentifiedSender.into(),
+                                    },
+                                ),
+                            ]),
+                        }),
+                    },
+                ),
+                response,
+            },
+        };
+
+        Unauth(&validator)
+            .send_message(
+                Pni::from(PNI_UUID).into(),
+                Timestamp::from_epoch_millis(1700000000000),
+                &[
+                    SingleOutboundSealedSenderMessage {
+                        device_id: DeviceId::new(2).expect("valid"),
+                        registration_id: 22,
+                        contents: Cow::Borrowed(&[1, 2, 3]),
+                    },
+                    SingleOutboundSealedSenderMessage {
+                        device_id: DeviceId::new(3).expect("valid"),
+                        registration_id: 33,
+                        contents: Cow::Borrowed(&[4, 5, 6]),
+                    },
+                ],
+                UserBasedAuthorization::AccessKey([0xa0; 16]).into(),
+                false,
+                true,
+            )
+            .now_or_never()
+            .expect("sync")
+    }
+
+    #[test]
+    fn test_sealed_send_using_group_token() {
+        let validator = GrpcOverrideRequestValidator {
+            message: services::MessagesAnonymous::SendSingleRecipientMessage.into(),
+            validator: TypedRequestValidator {
+                expected: req_typed(
+                    "/org.signal.chat.messages.MessagesAnonymous/SendSingleRecipientMessage",
+                    SendSealedSenderMessageRequest {
+                        destination: Some(Aci::from(ACI_UUID).into()),
+                        ephemeral: false,
+                        urgent: true,
+                        authorization: Some(SealedSenderAuthorization::GroupSendToken(
+                            SERIALIZED_GROUP_SEND_TOKEN.to_vec(),
+                        )),
+                        messages: Some(IndividualRecipientMessageBundle {
+                            timestamp: 1700000000000,
+                            messages: HashMap::from_iter([
+                                (
+                                    2,
+                                    individual_recipient_message_bundle::Message {
+                                        registration_id: 22,
+                                        payload: vec![1, 2, 3],
+                                        r#type: SendMessageType::UnidentifiedSender.into(),
+                                    },
+                                ),
+                                (
+                                    3,
+                                    individual_recipient_message_bundle::Message {
+                                        registration_id: 33,
+                                        payload: vec![4, 5, 6],
+                                        r#type: SendMessageType::UnidentifiedSender.into(),
+                                    },
+                                ),
+                            ]),
+                        }),
+                    },
+                ),
+                response: ok(SendMessageResponse {
+                    response: Some(send_message_response::Response::Success(())),
+                }),
+            },
+        };
+
+        Unauth(&validator)
+            .send_message(
+                Aci::from(ACI_UUID).into(),
+                Timestamp::from_epoch_millis(1700000000000),
+                &[
+                    SingleOutboundSealedSenderMessage {
+                        device_id: DeviceId::new(2).expect("valid"),
+                        registration_id: 22,
+                        contents: Cow::Borrowed(&[1, 2, 3]),
+                    },
+                    SingleOutboundSealedSenderMessage {
+                        device_id: DeviceId::new(3).expect("valid"),
+                        registration_id: 33,
+                        contents: Cow::Borrowed(&[4, 5, 6]),
+                    },
+                ],
+                UserBasedAuthorization::Group(structurally_valid_group_send_token()).into(),
+                false,
+                true,
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
+    }
+
+    #[test]
+    fn test_story_single_recipient() {
+        let validator = GrpcOverrideRequestValidator {
+            message: services::MessagesAnonymous::SendSingleRecipientMessage.into(),
+            validator: TypedRequestValidator {
+                expected: req_typed(
+                    "/org.signal.chat.messages.MessagesAnonymous/SendStory",
+                    SendStoryMessageRequest {
+                        destination: Some(Pni::from(PNI_UUID).into()),
+                        urgent: true,
+                        messages: Some(IndividualRecipientMessageBundle {
+                            timestamp: 1700000000000,
+                            messages: HashMap::from_iter([
+                                (
+                                    2,
+                                    individual_recipient_message_bundle::Message {
+                                        registration_id: 22,
+                                        payload: vec![1, 2, 3],
+                                        r#type: SendMessageType::UnidentifiedSender.into(),
+                                    },
+                                ),
+                                (
+                                    3,
+                                    individual_recipient_message_bundle::Message {
+                                        registration_id: 33,
+                                        payload: vec![4, 5, 6],
+                                        r#type: SendMessageType::UnidentifiedSender.into(),
+                                    },
+                                ),
+                            ]),
+                        }),
+                    },
+                ),
+                response: ok(SendMessageResponse {
+                    response: Some(send_message_response::Response::Success(())),
+                }),
+            },
+        };
+
+        Unauth(&validator)
+            .send_message(
+                Pni::from(PNI_UUID).into(),
+                Timestamp::from_epoch_millis(1700000000000),
+                &[
+                    SingleOutboundSealedSenderMessage {
+                        device_id: DeviceId::new(2).expect("valid"),
+                        registration_id: 22,
+                        contents: Cow::Borrowed(&[1, 2, 3]),
+                    },
+                    SingleOutboundSealedSenderMessage {
+                        device_id: DeviceId::new(3).expect("valid"),
+                        registration_id: 33,
+                        contents: Cow::Borrowed(&[4, 5, 6]),
+                    },
+                ],
+                UserBasedSendAuthorization::Story,
+                false,
+                true,
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
+    }
+
+    #[test]
+    #[should_panic(expected = "online-only")]
+    fn ephemeral_story_is_not_allowed_single_recipient() {
+        let validator = RequestValidator {
+            expected: req(
+                "/org.signal.chat.messages.MessagesAnonymous/SendStory",
+                SendMultiRecipientStoryRequest::default(),
+            ),
+            response: err(tonic::Code::FailedPrecondition),
+        };
+
+        _ = Unauth(&validator)
+            .send_message(
+                Pni::from(PNI_UUID).into(),
+                Timestamp::from_epoch_millis(1700000000000),
+                &[
+                    SingleOutboundSealedSenderMessage {
+                        device_id: DeviceId::new(2).expect("valid"),
+                        registration_id: 22,
+                        contents: Cow::Borrowed(&[1, 2, 3]),
+                    },
+                    SingleOutboundSealedSenderMessage {
+                        device_id: DeviceId::new(3).expect("valid"),
+                        registration_id: 33,
+                        contents: Cow::Borrowed(&[4, 5, 6]),
+                    },
+                ],
+                UserBasedSendAuthorization::Story,
+                true,
+                true,
+            )
+            .now_or_never()
+            .expect("sync");
     }
 
     #[test]

@@ -113,9 +113,10 @@ pub struct MismatchedDeviceError {
     pub stale_devices: Vec<DeviceId>,
 }
 
+#[derive(derive_more::From)]
 pub enum UserBasedSendAuthorization {
     Story,
-    User(UserBasedAuthorization),
+    User(#[from] UserBasedAuthorization),
 }
 
 pub enum MultiRecipientSendAuthorization {
