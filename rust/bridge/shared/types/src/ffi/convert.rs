@@ -718,7 +718,11 @@ where
 impl ResultTypeInfo for String {
     type ResultType = *const std::ffi::c_char;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        self.deref().convert_into()
+        let mut buf = Vec::from(self);
+        buf.push(0);
+        Ok(CString::from_vec_with_nul(buf)
+            .expect("No NULL characters in string being returned to C")
+            .into_raw())
     }
 }
 
@@ -726,7 +730,10 @@ impl ResultTypeInfo for String {
 impl ResultTypeInfo for Option<String> {
     type ResultType = *const std::ffi::c_char;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        self.as_deref().convert_into()
+        match self {
+            Some(s) => s.convert_into(),
+            None => Ok(std::ptr::null()),
+        }
     }
 }
 
