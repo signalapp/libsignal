@@ -701,6 +701,11 @@ export class SessionRecord {
     const sas = Native.SessionRecord_GetSAS(this);
     return sas;
   }
+
+  getVTS(): any {
+    const vts = Native.SessionRecord_GetVTS(this);
+    return vts;
+  }
 }
 
 
@@ -1486,6 +1491,7 @@ export function processPreKeyBundle(
   identityStore: IdentityKeyStore,
   now: Date = new Date()
 ): Promise<void> {
+  console.log("test logging processPreKeyBundle")
   return Native.SessionBuilder_ProcessPreKeyBundle(
     bundle,
     address,

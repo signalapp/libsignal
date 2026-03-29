@@ -218,6 +218,8 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         pre_key_store,
         signed_pre_key_store,
         kyber_pre_key_store,
+        csprng,
+        decrypt_message_with_record_wrapper,
     )
     .await;
 
@@ -246,6 +248,9 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         CiphertextMessageType::PreKey,
         csprng,
     )?;
+
+    // we may have to do bob eval here if we store message as messagetext
+    // that would mean forwarding the transcript secret which is probably bad
 
     identity_store
         .save_identity(
@@ -419,6 +424,28 @@ fn create_decryption_failure_log(
     }
 
     Ok(lines.join("\n"))
+}
+
+
+fn decrypt_message_with_record_wrapper<R: Rng + CryptoRng>(
+    remote_address: &ProtocolAddress,
+    record: &mut SessionRecord,
+    ciphertext: &SignalMessage,
+    original_message_type: u8,
+    csprng: &mut R,
+) -> Result<Vec<u8>> {
+    let real_message = CiphertextMessageType::try_from(original_message_type)
+        .map_err(|_| SignalProtocolError::InvalidSessionStructure("cannot decrypt without remote identity key"));
+    let real_message_type = match real_message {
+        Ok(t) => t,
+        Err(e) => {
+            log::error!(
+                "Invalid message type {original_message_type} for message from {remote_address}: {e}"
+            );
+            return Err(e);
+        }
+    };
+    return decrypt_message_with_record(remote_address, record, ciphertext, real_message_type, csprng);
 }
 
 fn decrypt_message_with_record<R: Rng + CryptoRng>(

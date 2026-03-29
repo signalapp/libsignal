@@ -64,6 +64,94 @@ fn spqr_chain_params(self_connection: bool) -> spqr::ChainParams {
         ..Default::default()
     }
 }
+// trait SampleSource {
+//     fn sample(&self) -> &[u8];
+// }
+
+// impl SampleSource for &PublicKey {
+//     fn sample(&self) -> &[u8] {
+//         self.public_key_bytes()
+//     }
+// }
+
+// impl SampleSource for &Vec<u8> {
+//     fn sample(&self) -> &[u8] {
+//         self.as_slice()
+//     }
+// }
+
+// impl SampleSource for Vec<u8> {
+//     fn sample(&self) -> &[u8] {
+//         self.as_slice()
+//     }
+// }
+
+
+// fn sample_from<T: SampleSource>(input: T) ->  {
+//     input.sample()
+// }
+
+use curve25519_dalek::{
+    ristretto::RistrettoPoint,
+    scalar::Scalar,
+    constants::RISTRETTO_BASEPOINT_POINT,
+};
+use sha2::{Sha256, Sha512, Digest};
+
+
+fn encode(vk: &[u8], x: &[u8]) -> Vec<u8> {
+    [vk.len().to_le_bytes().as_slice(), vk, x].concat()
+}
+
+
+pub fn generator_g() -> RistrettoPoint {
+    RISTRETTO_BASEPOINT_POINT
+}
+
+pub fn hash_generic_zp(input: &[u8]) -> Scalar {
+    let hash = Sha512::digest(input);
+    Scalar::from_bytes_mod_order_wide(&hash.into())
+}
+
+pub fn hash_fs(vk: &[u8], x: &[u8], h: &RistrettoPoint, h_prime: &RistrettoPoint, eta: &RistrettoPoint, eta_prime: &RistrettoPoint) -> Scalar {
+    let mut bytes = Vec::new();
+    bytes.extend(&(vk.len() as u64).to_le_bytes());
+    bytes.extend(vk);
+    bytes.extend(&(x.len() as u64).to_le_bytes());
+    bytes.extend(x);
+    bytes.extend(h.compress().as_bytes());
+    bytes.extend(h_prime.compress().as_bytes());
+    bytes.extend(eta.compress().as_bytes());
+    bytes.extend(eta_prime.compress().as_bytes());
+
+    let hash = Sha512::digest(&bytes);
+    Scalar::from_bytes_mod_order_wide(&hash.into())
+}
+
+fn hash_to_G(domain_sep: &[u8], input: &[u8]) -> RistrettoPoint {
+    let mut hasher = Sha512::new();
+    hasher.update(domain_sep);
+    hasher.update(input);
+    RistrettoPoint::from_hash(hasher)
+}
+
+pub fn hash_i(vk: &[u8], x: &[u8]) -> RistrettoPoint {
+    hash_to_G(b"hash_i", &encode(vk, x))
+}
+
+pub fn hash_a(vk: &[u8], x: &[u8]) -> RistrettoPoint {
+    hash_to_G(b"hash_a", &encode(vk, x))
+}
+
+pub fn hash_b(vk: &[u8], x: &[u8]) -> RistrettoPoint {
+    hash_to_G(b"hash_b", &encode(vk, x))
+}
+
+pub fn hash_o(input: &[u8]) -> u64 {
+    let hash = Sha256::digest(input);
+    u64::from_le_bytes(hash[..8].try_into().unwrap())
+}
+
 
 // ***X3DH Key Agreement for Alice***
 pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
@@ -97,10 +185,17 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
         &our_base_private_key.calculate_agreement(parameters.their_signed_pre_key())?,
     );
 
+    //step 0: parameters
+    let vk; //otpk_bob,i 
+    let g = generator_g();
+
     // Optional Alice's eph key * Bob's otpk
     if let Some(their_one_time_prekey) = parameters.their_one_time_pre_key() {
         secrets
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
+        vk = their_one_time_prekey.public_key_bytes();
+    } else {
+        vk = parameters.their_signed_pre_key().public_key_bytes();
     }
 
     // Uses Bob's Kyber prekey to perform key encapsulation (KEM)
@@ -110,6 +205,34 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
         secrets.extend_from_slice(ss.as_ref());
         ct
     };
+
+
+    //step 0.5, parameters
+    //x = secrets 
+    
+
+    //sample alpha, beta from the set of real integers
+    //step 1, page 11, preverify
+    let alpha = hash_generic_zp(b"alpha");
+    let beta = hash_generic_zp(b"beta");
+    let h = alpha * g + beta * hash_i(vk, &secrets);    
+    let hprime = alpha * hash_a(vk, &secrets) + beta * hash_b(vk, &secrets);
+
+    //step 2
+    let r1 = hash_generic_zp(b"r1");
+    let r2 = hash_generic_zp(b"r2");
+    let eta = (g * r1) + (hash_i(vk, &secrets) * r2);
+    let etaprime = (hash_a(vk, &secrets) * r1) + (hash_b(vk, &secrets) * r2);
+    let c = hash_fs(vk, &secrets, &h, &hprime, &eta, &etaprime);
+    let s = (r1 - c * alpha, r2 - c * beta);
+    let tau = (c,s);
+
+    //step 3
+    let vt = (h, hprime, tau);
+    let vts = (vt, vk, &secrets, alpha, beta);
+    //output vt, store vts
+
+
 
     let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
 
@@ -149,7 +272,9 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
         &sending_chain_root_key,
         &parameters.our_base_key_pair().public_key,
         pqr_state,
-        32 //dummy sas
+        32, //dummy sas
+        Some(bincode::serialize(&vts).unwrap()),
+        None,
     )
     .with_receiver_chain(parameters.their_ratchet_key(), &chain_key)
     .with_sender_chain(&sending_ratchet_key, &sending_chain_chain_key);
@@ -200,6 +325,20 @@ pub(crate) fn initialize_bob_session(
             .private_key
             .calculate_agreement(parameters.their_base_key())?,
     );
+    
+    // we need to be able to extract vt from the message to do it here
+    // we SHOULD do it here, but we need to figure out how to decrypt the cipher
+    // at this point (kyber could do it so it should be possible)
+    //step 0: "retrieve" parameters k, vk
+    // fresh genning them for speed right now
+    let g = generator_g();
+    let k = hash_generic_zp(b"placeholder fresh k for vk");
+    let vk = g * k;
+    let kptr;
+    let x;
+    let vt;
+
+
 
     // Optional Bob's otpk * Alice's eph key
     if let Some(our_one_time_pre_key_pair) = parameters.our_one_time_pre_key_pair() {
@@ -208,6 +347,9 @@ pub(crate) fn initialize_bob_session(
                 .private_key
                 .calculate_agreement(parameters.their_base_key())?,
         );
+        kptr = our_one_time_pre_key_pair;
+    } else {
+        kptr = parameters.our_signed_pre_key_pair();
     }
 
     // Bob's Kyber secret key recovers shared PQ secret from Alice's ciphertext
@@ -217,6 +359,9 @@ pub(crate) fn initialize_bob_session(
             .secret_key
             .decapsulate(parameters.their_kyber_ciphertext())?,
     );
+
+    x = &secrets;
+
 
     let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
 
@@ -249,12 +394,24 @@ pub(crate) fn initialize_bob_session(
         &root_key,
         parameters.their_base_key(),
         pqr_state,
-        32 //dummy sas
+        32, //dummy sas
+        None, //dummy vts
+        None,
     )
     .with_sender_chain(parameters.our_ratchet_key_pair(), &chain_key);
 
+    let session_record = SessionRecord::new(initialize_bob_session(parameters)?);
+    let mut csprng_2 = parameters.csprng();
+    let ptext = parameters.decrypt_message_with_record(
+        parameters.remote_address(),
+        &mut session_record,
+        parameters.ciphertext.message(),
+        3,
+    )?;
+
     Ok(session)
 }
+
 
 // Wrappers
 pub fn initialize_alice_session_record<R: Rng + CryptoRng>(
