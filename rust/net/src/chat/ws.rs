@@ -853,8 +853,12 @@ async fn wait_for_task_to_finish(state: &mut TaskState) -> &Result<FinishReason,
             response_tx: _,
         } => {
             // The send can only fail if the task has ended since it owns the
-            // other end of the channel.
-            assert!(task.is_finished());
+            // other end of the channel. However, the task might still be exiting.
+            if !task.is_finished() {
+                log::warn!(
+                    "waiting on live websocket task to exit (it should be in the process of shutting down)"
+                );
+            }
             task
         }
         TaskState::SignaledToEnd(task) => {
@@ -863,6 +867,7 @@ async fn wait_for_task_to_finish(state: &mut TaskState) -> &Result<FinishReason,
             // That's not an error, but it means the task is exiting
             // soon. We can wait for that and then use the error status
             // if there is one.
+            log::info!("waiting on live websocket task to exit (it has been signalled to end)");
             task
         }
         TaskState::Finished(finish_state) => return finish_state,
