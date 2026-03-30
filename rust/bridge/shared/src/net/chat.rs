@@ -309,7 +309,7 @@ async fn UnauthenticatedChatConnection_get_pre_keys_access_key_auth(
 }
 
 #[bridge_io(TokioAsyncContext)]
-async fn UnauthenticatedChatConnection_get_pre_keys_access_group_auth(
+async fn UnauthenticatedChatConnection_get_pre_keys_group_auth(
     chat: &UnauthenticatedChatConnection,
     auth: GroupSendFullToken,
     target: ServiceId,
@@ -319,6 +319,30 @@ async fn UnauthenticatedChatConnection_get_pre_keys_access_group_auth(
         Box::pin(async move {
             let (identity_key, pre_key_bundles) = chat
                 .get_pre_keys(UserBasedAuthorization::Group(auth), target, device)
+                .await?;
+            Ok(PreKeysResponse {
+                identity_key,
+                pre_key_bundles,
+            })
+        })
+    })
+    .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth(
+    chat: &UnauthenticatedChatConnection,
+    target: ServiceId,
+    device: DeviceSpecifier,
+) -> Result<PreKeysResponse, RequestError<GetPreKeysFailure>> {
+    chat.as_typed(|chat| {
+        Box::pin(async move {
+            let (identity_key, pre_key_bundles) = chat
+                .get_pre_keys(
+                    UserBasedAuthorization::UnrestrictedUnauthenticatedAccess,
+                    target,
+                    device,
+                )
                 .await?;
             Ok(PreKeysResponse {
                 identity_key,

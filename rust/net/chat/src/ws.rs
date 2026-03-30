@@ -46,6 +46,13 @@ impl AsHttpHeader for UserBasedAuthorization {
                 ACCESS_KEY_HEADER_NAME,
                 BASE64_STANDARD.encode(key).parse().expect("valid"),
             ),
+            UserBasedAuthorization::UnrestrictedUnauthenticatedAccess => (
+                ACCESS_KEY_HEADER_NAME,
+                BASE64_STANDARD
+                    .encode([0; zkgroup::ACCESS_KEY_LEN])
+                    .parse()
+                    .expect("valid"),
+            ),
             UserBasedAuthorization::Group(token) => (
                 GROUP_SEND_TOKEN_HEADER_NAME,
                 BASE64_STANDARD

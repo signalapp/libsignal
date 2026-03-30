@@ -497,7 +497,8 @@ type NativeFunctions = {
   ProvisioningChatConnection_info: (chat: Wrapper<ProvisioningChatConnection>) => ChatConnectionInfo;
   ProvisioningChatConnection_disconnect: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<ProvisioningChatConnection>) => CancellablePromise<void>;
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, auth: Uint8Array<ArrayBuffer>, target: Uint8Array<ArrayBuffer>, device: number) => CancellablePromise<PreKeysResponse>;
-  UnauthenticatedChatConnection_get_pre_keys_access_group_auth: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, auth: Uint8Array<ArrayBuffer>, target: Uint8Array<ArrayBuffer>, device: number) => CancellablePromise<PreKeysResponse>;
+  UnauthenticatedChatConnection_get_pre_keys_group_auth: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, auth: Uint8Array<ArrayBuffer>, target: Uint8Array<ArrayBuffer>, device: number) => CancellablePromise<PreKeysResponse>;
+  UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, target: Uint8Array<ArrayBuffer>, device: number) => CancellablePromise<PreKeysResponse>;
   UnauthenticatedChatConnection_account_exists: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, account: Uint8Array<ArrayBuffer>) => CancellablePromise<boolean>;
   AuthenticatedChatConnection_get_upload_form: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>) => CancellablePromise<UploadForm>;
   KeyTransparency_AciSearchKey: (aci: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
@@ -1051,7 +1052,8 @@ const { registerErrors,
   ProvisioningChatConnection_info,
   ProvisioningChatConnection_disconnect,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
-  UnauthenticatedChatConnection_get_pre_keys_access_group_auth,
+  UnauthenticatedChatConnection_get_pre_keys_group_auth,
+  UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,
   UnauthenticatedChatConnection_account_exists,
   AuthenticatedChatConnection_get_upload_form,
   KeyTransparency_AciSearchKey,
@@ -1607,7 +1609,8 @@ export { registerErrors,
   ProvisioningChatConnection_info,
   ProvisioningChatConnection_disconnect,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
-  UnauthenticatedChatConnection_get_pre_keys_access_group_auth,
+  UnauthenticatedChatConnection_get_pre_keys_group_auth,
+  UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,
   UnauthenticatedChatConnection_account_exists,
   AuthenticatedChatConnection_get_upload_form,
   KeyTransparency_AciSearchKey,

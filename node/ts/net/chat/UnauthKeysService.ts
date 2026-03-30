@@ -31,7 +31,10 @@ export interface UnauthKeysService {
     request: {
       target: ServiceId;
       device: 'all' | { deviceId: number };
-      auth: { accessKey: Uint8Array<ArrayBuffer> } | GroupSendFullToken;
+      auth:
+        | { accessKey: Uint8Array<ArrayBuffer> }
+        | GroupSendFullToken
+        | 'unrestricted';
     },
     options?: RequestOptions
   ) => Promise<{
@@ -42,7 +45,10 @@ export interface UnauthKeysService {
 
 UnauthenticatedChatConnection.prototype.getPreKeys = async function (
   request: {
-    auth: { accessKey: Uint8Array<ArrayBuffer> } | GroupSendFullToken;
+    auth:
+      | { accessKey: Uint8Array<ArrayBuffer> }
+      | GroupSendFullToken
+      | 'unrestricted';
     target: ServiceId;
     device: 'all' | { deviceId: number };
   },
@@ -55,8 +61,15 @@ UnauthenticatedChatConnection.prototype.getPreKeys = async function (
   const { identityKey, preKeyBundles } =
     await this._asyncContext.makeCancellable(
       options?.abortSignal,
-      request.auth instanceof GroupSendFullToken
-        ? Native.UnauthenticatedChatConnection_get_pre_keys_access_group_auth(
+      request.auth === 'unrestricted'
+        ? Native.UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth(
+            this._asyncContext,
+            this._chatService,
+            request.target.getServiceIdFixedWidthBinary(),
+            device
+          )
+        : request.auth instanceof GroupSendFullToken
+        ? Native.UnauthenticatedChatConnection_get_pre_keys_group_auth(
             this._asyncContext,
             this._chatService,
             request.auth.serialize(),

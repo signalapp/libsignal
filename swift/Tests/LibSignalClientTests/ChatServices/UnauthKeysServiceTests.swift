@@ -87,6 +87,10 @@ class UnauthKeysServiceTests: UnauthChatServiceTestBase<any UnauthKeysService> {
                     ],
                     UserBasedAuthorization.groupSend(Self.TEST_GROUP_SEND_TOKEN),
                 ),
+                (
+                    ["unidentified-access-key": Data(count: 16).base64EncodedString()],
+                    UserBasedAuthorization.unrestrictedUnauthenticatedAccess
+                ),
             ] {
                 let api = self.api
                 async let responseFuture = api.getPreKeys(

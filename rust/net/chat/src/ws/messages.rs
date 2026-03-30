@@ -783,6 +783,72 @@ mod test {
     }
 
     #[test]
+    fn test_sealed_send_unrestricted_access() {
+        let validator = JsonRequestValidator {
+            expected: Request {
+                method: http::Method::PUT,
+                path: http::uri::PathAndQuery::from_static(const_str::concat!(
+                    "/v1/messages/",
+                    ACI_UUID,
+                )),
+                headers: http::HeaderMap::from_iter([
+                    CONTENT_TYPE_JSON,
+                    (
+                        ACCESS_KEY_HEADER_NAME,
+                        http::HeaderValue::from_maybe_shared(BASE64_STANDARD.encode([0; 16]))
+                            .expect("valid"),
+                    ),
+                ]),
+                body: None,
+            },
+            body: json!({
+                "messages": [
+                    {
+                        "type": 6,
+                        "destinationDeviceId": 2,
+                        "destinationRegistrationId": 22,
+                        "content": "//8=",
+                    },
+                    {
+                        "type": 6,
+                        "destinationDeviceId": 3,
+                        "destinationRegistrationId": 33,
+                        "content": "/v4=",
+                    }
+                ],
+                "online": true,
+                "urgent": false,
+                "timestamp": 1700000000000u64,
+            }),
+            response: json(200, "{}"),
+        };
+
+        Unauth(validator)
+            .send_message(
+                Aci::from(uuid::Uuid::try_parse(ACI_UUID).expect("valid")).into(),
+                Timestamp::from_epoch_millis(1700000000000),
+                &[
+                    SingleOutboundSealedSenderMessage {
+                        device_id: DeviceId::new(2).expect("valid"),
+                        registration_id: 22,
+                        contents: Cow::Borrowed(&[0xff, 0xff]),
+                    },
+                    SingleOutboundSealedSenderMessage {
+                        device_id: DeviceId::new(3).expect("valid"),
+                        registration_id: 33,
+                        contents: Cow::Borrowed(&[0xfe, 0xfe]),
+                    },
+                ],
+                UserBasedAuthorization::UnrestrictedUnauthenticatedAccess.into(),
+                true,
+                false,
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
+    }
+
+    #[test]
     fn test_individual_story_send() {
         let validator = JsonRequestValidator {
             expected: Request {

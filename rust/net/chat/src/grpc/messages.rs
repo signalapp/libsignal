@@ -42,6 +42,9 @@ impl From<UserBasedAuthorization> for send_sealed_sender_message_request::Author
             UserBasedAuthorization::Group(token) => {
                 Self::GroupSendToken(zkgroup::serialize(&token))
             }
+            UserBasedAuthorization::UnrestrictedUnauthenticatedAccess => {
+                Self::UnrestrictedAccess(())
+            }
         }
     }
 }
@@ -992,6 +995,72 @@ mod test {
                     },
                 ],
                 UserBasedAuthorization::Group(structurally_valid_group_send_token()).into(),
+                false,
+                true,
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
+    }
+
+    #[test]
+    fn test_sealed_send_unrestricted_access() {
+        let validator = GrpcOverrideRequestValidator {
+            message: services::MessagesAnonymous::SendSingleRecipientMessage.into(),
+            validator: TypedRequestValidator {
+                expected: req_typed(
+                    "/org.signal.chat.messages.MessagesAnonymous/SendSingleRecipientMessage",
+                    SendSealedSenderMessageRequest {
+                        destination: Some(Aci::from(ACI_UUID).into()),
+                        ephemeral: false,
+                        urgent: true,
+                        authorization: Some(SealedSenderAuthorization::UnrestrictedAccess(())),
+                        messages: Some(IndividualRecipientMessageBundle {
+                            timestamp: 1700000000000,
+                            messages: HashMap::from_iter([
+                                (
+                                    2,
+                                    individual_recipient_message_bundle::Message {
+                                        registration_id: 22,
+                                        payload: vec![1, 2, 3],
+                                        r#type: SendMessageType::UnidentifiedSender.into(),
+                                    },
+                                ),
+                                (
+                                    3,
+                                    individual_recipient_message_bundle::Message {
+                                        registration_id: 33,
+                                        payload: vec![4, 5, 6],
+                                        r#type: SendMessageType::UnidentifiedSender.into(),
+                                    },
+                                ),
+                            ]),
+                        }),
+                    },
+                ),
+                response: ok(SendMessageResponse {
+                    response: Some(send_message_response::Response::Success(())),
+                }),
+            },
+        };
+
+        Unauth(&validator)
+            .send_message(
+                Aci::from(ACI_UUID).into(),
+                Timestamp::from_epoch_millis(1700000000000),
+                &[
+                    SingleOutboundSealedSenderMessage {
+                        device_id: DeviceId::new(2).expect("valid"),
+                        registration_id: 22,
+                        contents: Cow::Borrowed(&[1, 2, 3]),
+                    },
+                    SingleOutboundSealedSenderMessage {
+                        device_id: DeviceId::new(3).expect("valid"),
+                        registration_id: 33,
+                        contents: Cow::Borrowed(&[4, 5, 6]),
+                    },
+                ],
+                UserBasedAuthorization::UnrestrictedUnauthenticatedAccess.into(),
                 false,
                 true,
             )

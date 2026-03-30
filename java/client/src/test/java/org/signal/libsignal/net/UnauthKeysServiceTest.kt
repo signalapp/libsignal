@@ -166,6 +166,15 @@ class UnauthKeysServiceTest {
     )
 
   @Test
+  fun testSingleKeyWithPreKey_allDevices_unrestricted() =
+    doTestSingleKeyWithPreKey(
+      "*",
+      DeviceSpecifier.AllDevices,
+      mapOf("unidentified-access-key" to Base64.encode(ByteArray(16))),
+      UserBasedAuthorization.UnrestrictedUnauthenticatedAccess,
+    )
+
+  @Test
   fun testSingleKeyWithPreKey_specificDevice_accessKey() =
     doTestSingleKeyWithPreKey(
       deviceId.toString(),
@@ -187,6 +196,15 @@ class UnauthKeysServiceTest {
     )
 
   @Test
+  fun testSingleKeyWithPreKey_specificDevice_unrestricted() =
+    doTestSingleKeyWithPreKey(
+      deviceId.toString(),
+      DeviceSpecifier.SpecificDevice(deviceId),
+      mapOf("unidentified-access-key" to Base64.encode(ByteArray(16))),
+      UserBasedAuthorization.UnrestrictedUnauthenticatedAccess,
+    )
+
+  @Test
   fun testSingleKeyNoPreKey() {
     for ((specifierString, specifier) in listOf(
       Pair("*", DeviceSpecifier.AllDevices),
@@ -200,6 +218,10 @@ class UnauthKeysServiceTest {
         Pair(
           mapOf("group-send-token" to Base64.encode(testGroupSendToken.serialize())),
           UserBasedAuthorization.GroupSend(testGroupSendToken),
+        ),
+        Pair(
+          mapOf("unidentified-access-key" to Base64.encode(ByteArray(16))),
+          UserBasedAuthorization.UnrestrictedUnauthenticatedAccess,
         ),
       )) {
         val tokioAsyncContext = TokioAsyncContext()

@@ -36,6 +36,8 @@ public sealed class UserBasedAuthorization {
   public data class GroupSend(
     val token: GroupSendFullToken,
   ) : UserBasedAuthorization()
+
+  public object UnrestrictedUnauthenticatedAccess : UserBasedAuthorization()
 }
 
 public sealed class DeviceSpecifier {
@@ -90,10 +92,19 @@ public class UnauthKeysService(
           }
 
           is UserBasedAuthorization.GroupSend -> {
-            Native.UnauthenticatedChatConnection_get_pre_keys_access_group_auth(
+            Native.UnauthenticatedChatConnection_get_pre_keys_group_auth(
               asyncCtx,
               conn,
               auth.token.serialize(),
+              target.toServiceIdFixedWidthBinary(),
+              device,
+            )
+          }
+
+          is UserBasedAuthorization.UnrestrictedUnauthenticatedAccess -> {
+            Native.UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth(
+              asyncCtx,
+              conn,
               target.toServiceIdFixedWidthBinary(),
               device,
             )

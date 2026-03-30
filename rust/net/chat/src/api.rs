@@ -60,8 +60,9 @@ pub enum AllowRateLimitChallenges {
 ///
 /// For multi-recipient messages, see [messages::MultiRecipientSendAuthorization].
 pub enum UserBasedAuthorization {
-    AccessKey([u8; 16]),
+    AccessKey([u8; zkgroup::ACCESS_KEY_LEN]),
     Group(zkgroup::groups::GroupSendFullToken),
+    UnrestrictedUnauthenticatedAccess,
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
