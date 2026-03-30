@@ -11,6 +11,7 @@ mod messages;
 mod profiles;
 mod usernames;
 
+use std::convert::Infallible;
 use std::error::Error;
 use std::future::Future;
 
@@ -77,20 +78,22 @@ impl<T: GrpcService + Clone + Sync> GrpcServiceProvider for T {
     }
 }
 
-async fn log_and_send<F, R>(
+async fn log_and_send<F, R, E>(
     log_tag: &'static str,
     log_safe_description: &str,
     operation: impl FnOnce() -> F,
-) -> tonic::Result<R>
+) -> Result<R, RequestError<E>>
 where
     F: Future<Output = tonic::Result<R>>,
 {
     let request_id = rand::random::<u16>();
     log::info!("[{log_tag} {request_id:04x}] {log_safe_description}");
 
-    let result = operation().await;
-    match &result {
-        Ok(_) => log::info!("[{log_tag} {request_id:04x}] {log_safe_description} OK"),
+    match operation().await {
+        Ok(x) => {
+            log::info!("[{log_tag} {request_id:04x}] {log_safe_description} OK");
+            Ok(x)
+        }
         Err(status) => {
             // Use the Debug implementation to print the status code's name, which is easier to
             // identify than the human-readable description.
@@ -98,10 +101,7 @@ where
             // it's still Copy. The full check for this is the exhaustive match in
             // into_default_request_error.)
             static_assertions::assert_impl_all!(tonic::Code: Copy);
-            log::warn!(
-                "[{log_tag} {request_id:04x}] {log_safe_description} {:?}",
-                status.code()
-            );
+            let code = status.code();
             log::debug!(
                 "[{log_tag} {request_id:04x}] {:?} {} ({:?}): {:?}",
                 status.code(),
@@ -109,9 +109,15 @@ where
                 status.metadata(),
                 DebugAsStrOrBytes(status.details())
             );
+            let err = RequestError::<Infallible>::from(status);
+            log::warn!(
+                "[{log_tag} {request_id:04x}] {log_safe_description} {:?}: {}",
+                code,
+                err.log_safe_display()
+            );
+            Err(err.with_other())
         }
     }
-    result
 }
 
 impl<E> From<tonic::Status> for RequestError<E> {
