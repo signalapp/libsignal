@@ -336,7 +336,7 @@ pub(crate) fn initialize_bob_session(
     let vk = g * k;
     let kptr;
     let x;
-    let vt;
+    //let vt;
 
 
 
@@ -361,6 +361,7 @@ pub(crate) fn initialize_bob_session(
     );
 
     x = &secrets;
+    //let pvrf_ciphertext = parameters.their_pvrf();
 
 
     let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
@@ -399,15 +400,6 @@ pub(crate) fn initialize_bob_session(
         None,
     )
     .with_sender_chain(parameters.our_ratchet_key_pair(), &chain_key);
-
-    let session_record = SessionRecord::new(initialize_bob_session(parameters)?);
-    let mut csprng_2 = parameters.csprng();
-    let ptext = parameters.decrypt_message_with_record(
-        parameters.remote_address(),
-        &mut session_record,
-        parameters.ciphertext.message(),
-        3,
-    )?;
 
     Ok(session)
 }

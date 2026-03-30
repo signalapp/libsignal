@@ -3,10 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_core::ProtocolAddress;
 
-use crate::{IdentityKey, IdentityKeyPair, KeyPair, PublicKey, kem, SessionRecord, SignalMessage, Result};
-use rand::rand_core::{CryptoRng};
+use crate::{IdentityKey, IdentityKeyPair, KeyPair, PublicKey, kem};
 
 pub struct AliceSignalProtocolParameters {
     our_identity_key_pair: IdentityKeyPair,
@@ -94,15 +92,6 @@ pub struct BobSignalProtocolParameters<'a> {
     their_identity_key: IdentityKey,
     their_base_key: PublicKey,
     their_kyber_ciphertext: &'a kem::SerializedCiphertext,
-    remote_address: &'a ProtocolAddress,
-    csprng: &'a dyn CryptoRng,
-    decrypt_message_with_record: &'a dyn Fn(
-        &ProtocolAddress,
-        &mut SessionRecord,
-        &SignalMessage,
-        u8,
-        &'a dyn CryptoRng,
-    ) -> Result<Vec<u8>>,
 }
 
 impl<'a> BobSignalProtocolParameters<'a> {
@@ -116,15 +105,6 @@ impl<'a> BobSignalProtocolParameters<'a> {
         their_identity_key: IdentityKey,
         their_base_key: PublicKey,
         their_kyber_ciphertext: &'a kem::SerializedCiphertext,
-        remote_address: &'a ProtocolAddress,
-        csprng: &'a dyn CryptoRng,
-        decrypt_message_with_record: &'a dyn Fn(
-            &ProtocolAddress,
-            &mut SessionRecord,
-            &SignalMessage,
-            u8,
-            &'a dyn CryptoRng,
-        ) -> Result<Vec<u8>>,
     ) -> Self {
         Self {
             our_identity_key_pair,
@@ -135,37 +115,7 @@ impl<'a> BobSignalProtocolParameters<'a> {
             their_identity_key,
             their_base_key,
             their_kyber_ciphertext,
-            remote_address,
-            csprng,
-            decrypt_message_with_record: decrypt_message_with_record,
         }
-    }
-
-    #[inline]
-    pub fn decrypt_message_with_record(
-        &self,
-        remote_address: &ProtocolAddress,
-        session_record: &mut SessionRecord,
-        ciphertext: &SignalMessage,
-        message_version: u8,
-    ) -> Result<Vec<u8>> {
-        (self.decrypt_message_with_record)(
-            remote_address,
-            session_record,
-            ciphertext,
-            message_version,
-            self.csprng,
-        )
-    }
-
-    #[inline]
-    pub fn remote_address(&self) -> &ProtocolAddress {
-        &self.remote_address
-    }
-
-    #[inline]
-    pub fn csprng(&self) -> &dyn CryptoRng {
-        self.csprng
     }
 
     #[inline]

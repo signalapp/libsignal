@@ -58,15 +58,7 @@ pub async fn process_prekey<'a>(
     signed_prekey_store: &dyn SignedPreKeyStore,    // Holds Bob's signed EC prekeys (SPK)
     kyber_prekey_store: &dyn KyberPreKeyStore,      // Holds Bob's PQ Kyber prekeys
                                                     // Defined across state/, storage/, kem.rs
-                                                    // Paper: iskr, str
-    csprng: &mut (impl Rng + CryptoRng),          
-    decrypt_message_with_record: impl Fn(
-        &ProtocolAddress,
-        &mut SessionRecord,
-        &SignalMessage,
-        u8,
-        dyn CryptoRng,
-    ) -> Result<Vec<u8>>,   
+                                                    // Paper: iskr, str     
 ) -> Result<(Option<PreKeysUsed>, IdentityToSave<'a>)> {
     let their_identity_key = message.identity_key();    // Extract Alice's identity public key ipks
 
@@ -87,8 +79,6 @@ pub async fn process_prekey<'a>(
         kyber_prekey_store,
         pre_key_store,
         identity_store,
-        csprng,
-        decrypt_message_with_record,
     )
     .await?;
 
@@ -111,14 +101,6 @@ async fn process_prekey_impl(
     pre_key_store: &dyn PreKeyStore,
     
     identity_store: &dyn IdentityKeyStore,  // Bob's long-term identity keys
-    csprng: &mut (impl Rng + CryptoRng),         
-    decrypt_message_with_record: impl Fn(
-        &ProtocolAddress,
-        &mut SessionRecord,
-        &SignalMessage,
-        u8,
-        dyn CryptoRng,
-    ) -> Result<Vec<u8>>,       
 ) -> Result<Option<PreKeysUsed>> {
     if session_record.promote_matching_session(
         message.message_version() as u32,
@@ -188,9 +170,6 @@ async fn process_prekey_impl(
         *message.identity_key(), // Alice's ipks
         *message.base_key(),     // Alice's ephemeral base key
         kyber_ciphertext,        // Alice's Kyber ciphertext  
-        remote_address,
-        csprng,
-        &decrypt_message_with_record,
     );
 
     let mut new_session = ratchet::initialize_bob_session(&parameters)?;    // Defined in ratchet.rs
