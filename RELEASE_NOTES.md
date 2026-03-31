@@ -8,3 +8,5 @@ v0.91.0
 - Log more details on gRPC failure
 
 - Log backtraces on panic
+
+- Node: Support H2 when using `localTestServer` mode for Net connections.
