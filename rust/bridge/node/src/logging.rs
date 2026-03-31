@@ -72,7 +72,7 @@ impl NodeLogger {
     }
 }
 
-const GLOBAL_LOG_FN_KEY: &str = "__libsignal_log_fn";
+static LOG_FUNCTION_KEY: neon::thread::LocalKey<Root<JsFunction>> = neon::thread::LocalKey::new();
 
 impl log::Log for NodeLogger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
@@ -123,7 +123,13 @@ impl log::Log for NodeLogger {
         // Drop any error; it's not like we can log it!
         // Most likely the Node event loop has already shut down.
         let _ = self.channel.try_send(move |mut cx| {
-            let log_fn: Handle<JsFunction> = cx.global(GLOBAL_LOG_FN_KEY)?;
+            let Some(log_fn) = LOG_FUNCTION_KEY
+                .get(&mut cx)
+                .map(|root| root.to_inner(&mut cx))
+            else {
+                // If we never set up logging, exit early.
+                return Ok(());
+            };
             let undef = cx.undefined();
 
             let args =
@@ -192,10 +198,9 @@ fn set_max_level_from_js_level(max_level: u32) {
 pub(crate) fn init_logger(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let max_level_arg = cx.argument::<JsNumber>(0)?;
     let max_level = u32::convert_from(&mut cx, max_level_arg)?;
-    let callback = cx.argument::<JsFunction>(1)?;
+    let callback = cx.argument::<JsFunction>(1)?.root(&mut cx);
 
-    let global = cx.global_object();
-    global.set(&mut cx, GLOBAL_LOG_FN_KEY, callback)?;
+    _ = LOG_FUNCTION_KEY.get_or_init(&mut cx, move || callback);
 
     let logger = NodeLogger::new(&mut cx);
     match log::set_logger(Box::leak(Box::new(logger))) {
