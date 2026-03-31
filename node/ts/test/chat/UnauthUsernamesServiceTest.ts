@@ -6,7 +6,6 @@
 import { assert, config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { Buffer } from 'node:buffer';
-import * as uuid from 'uuid';
 
 import * as Native from '../../Native.js';
 import * as util from '../util.js';
@@ -14,6 +13,7 @@ import { TokioAsyncContext, UnauthUsernamesService } from '../../net.js';
 import { connectUnauth } from './ServiceTestUtils.js';
 import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
 import { Aci } from '../../Address.js';
+import * as uuid from '../../uuid.js';
 
 use(chaiAsPromised);
 

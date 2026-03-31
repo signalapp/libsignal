@@ -34,8 +34,7 @@
   },
   "dependencies": {
     "node-gyp-build": "^4.8.0",
-    "type-fest": "^4.26.0",
-    "uuid": "^11"
+    "type-fest": "^4.26.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",

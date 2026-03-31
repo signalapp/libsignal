@@ -8,9 +8,8 @@ import * as util from '../util.js';
 
 import { assert, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import * as uuid from 'uuid';
 import { Buffer } from 'node:buffer';
-import { parseUuid } from '../../uuid.js';
+import * as uuid from '../../uuid.js';
 
 use(chaiAsPromised);
 util.initLogger();
@@ -23,8 +22,8 @@ describe('ProtocolAddress', () => {
   });
   it('can round-trip ServiceIds', () => {
     const newUuid = uuid.v4();
-    const aci = SignalClient.Aci.fromUuid(newUuid);
-    const pni = SignalClient.Pni.fromUuid(newUuid);
+    const aci = SignalClient.Aci.fromUuidBytes(newUuid);
+    const pni = SignalClient.Pni.fromUuidBytes(newUuid);
 
     const aciAddr = SignalClient.ProtocolAddress.new(aci, 1);
     const pniAddr = SignalClient.ProtocolAddress.new(pni, 1);
@@ -48,14 +47,14 @@ describe('ServiceId', () => {
     const aci = SignalClient.Aci.fromUuid(testingUuid);
     assert.instanceOf(aci, SignalClient.Aci);
     assert.isTrue(
-      aci.isEqual(SignalClient.Aci.fromUuidBytes(parseUuid(testingUuid)))
+      aci.isEqual(SignalClient.Aci.fromUuidBytes(uuid.parse(testingUuid)))
     );
     assert.isFalse(aci.isEqual(SignalClient.Pni.fromUuid(testingUuid)));
 
     assert.deepEqual(testingUuid, aci.getRawUuid());
-    assert.deepEqual(parseUuid(testingUuid), aci.getRawUuidBytes());
+    assert.deepEqual(uuid.parse(testingUuid), aci.getRawUuidBytes());
     assert.deepEqual(testingUuid, aci.getServiceIdString());
-    assert.deepEqual(parseUuid(testingUuid), aci.getServiceIdBinary());
+    assert.deepEqual(uuid.parse(testingUuid), aci.getServiceIdBinary());
     assert.deepEqual(`<ACI:${testingUuid}>`, `${aci}`);
 
     {
@@ -86,12 +85,12 @@ describe('ServiceId', () => {
     const pni = SignalClient.Pni.fromUuid(testingUuid);
     assert.instanceOf(pni, SignalClient.Pni);
     assert.isTrue(
-      pni.isEqual(SignalClient.Pni.fromUuidBytes(parseUuid(testingUuid)))
+      pni.isEqual(SignalClient.Pni.fromUuidBytes(uuid.parse(testingUuid)))
     );
     assert.isFalse(pni.isEqual(SignalClient.Aci.fromUuid(testingUuid)));
 
     assert.deepEqual(testingUuid, pni.getRawUuid());
-    assert.deepEqual(parseUuid(testingUuid), pni.getRawUuidBytes());
+    assert.deepEqual(uuid.parse(testingUuid), pni.getRawUuidBytes());
     assert.deepEqual(`PNI:${testingUuid}`, pni.getServiceIdString());
     assert.deepEqual(
       Buffer.concat([Buffer.of(0x01), pni.getRawUuidBytes()]),

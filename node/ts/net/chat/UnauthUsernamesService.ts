@@ -4,11 +4,10 @@
 //
 
 import { Buffer } from 'node:buffer';
-import * as uuid from 'uuid';
 
 import * as Native from '../../Native.js';
 import { Aci } from '../../Address.js';
-import { parseUuid, Uuid } from '../../uuid.js';
+import * as uuid from '../../uuid.js';
 import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
 
 // For documentation
@@ -22,6 +21,8 @@ declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface UnauthenticatedChatConnection extends UnauthUsernamesService {}
 }
+
+type Uuid = uuid.Uuid;
 
 export interface UnauthUsernamesService {
   /**
@@ -94,7 +95,7 @@ UnauthenticatedChatConnection.prototype.lookUpUsernameLink = async function (
     Native.UnauthenticatedChatConnection_look_up_username_link(
       this._asyncContext,
       this._chatService,
-      parseUuid(linkUuid),
+      uuid.parse(linkUuid),
       entropy
     )
   );

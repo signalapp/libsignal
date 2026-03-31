@@ -148,6 +148,9 @@ type NativeFunctions = {
   initLogger: (maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void) => void
   SealedSenderMultiRecipientMessage_Parse: (buffer: Uint8Array<ArrayBuffer>) => SealedSenderMultiRecipientMessage;
   MinidumpToJSONString: (buffer: Uint8Array<ArrayBuffer>) => string;
+  uuid_to_string: (uuid: Uuid) => string;
+  uuid_from_string: (string: string) => Uuid | null;
+  uuid_new_v4: () => Uuid;
   Aes256GcmSiv_New: (key: Uint8Array<ArrayBuffer>) => Aes256GcmSiv;
   Aes256GcmSiv_Encrypt: (aesGcmSivObj: Wrapper<Aes256GcmSiv>, ptext: Uint8Array<ArrayBuffer>, nonce: Uint8Array<ArrayBuffer>, associatedData: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
   Aes256GcmSiv_Decrypt: (aesGcmSiv: Wrapper<Aes256GcmSiv>, ctext: Uint8Array<ArrayBuffer>, nonce: Uint8Array<ArrayBuffer>, associatedData: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
@@ -703,6 +706,9 @@ const { registerErrors,
   initLogger,
   SealedSenderMultiRecipientMessage_Parse,
   MinidumpToJSONString,
+  uuid_to_string,
+  uuid_from_string,
+  uuid_new_v4,
   Aes256GcmSiv_New,
   Aes256GcmSiv_Encrypt,
   Aes256GcmSiv_Decrypt,
@@ -1260,6 +1266,9 @@ export { registerErrors,
   initLogger,
   SealedSenderMultiRecipientMessage_Parse,
   MinidumpToJSONString,
+  uuid_to_string,
+  uuid_from_string,
+  uuid_new_v4,
   Aes256GcmSiv_New,
   Aes256GcmSiv_Encrypt,
   Aes256GcmSiv_Decrypt,

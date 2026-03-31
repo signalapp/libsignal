@@ -4,13 +4,13 @@
 //
 
 import { assert } from 'chai';
-import * as uuid from 'uuid';
 import { Buffer } from 'node:buffer';
 
 import * as AccountKeys from '../AccountKeys.js';
 import * as util from './util.js';
 import { Aci } from '../Address.js';
 import { assertArrayNotEquals } from './util.js';
+import * as uuid from '../uuid.js';
 
 util.initLogger();
 
@@ -67,7 +67,7 @@ describe('BackupKey', () => {
     const pool = AccountKeys.AccountEntropyPool.generate();
     const backupKey = AccountKeys.AccountEntropyPool.deriveBackupKey(pool);
     const randomKey = AccountKeys.BackupKey.generateRandom();
-    const otherAci = Aci.fromUuid(uuid.v4());
+    const otherAci = Aci.fromUuidBytes(uuid.v4());
 
     const backupId = backupKey.deriveBackupId(aci);
     assert.equal(16, backupId.length);

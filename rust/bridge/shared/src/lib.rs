@@ -51,4 +51,4 @@ pub mod usernames;
 #[cfg(feature = "signal-media")]
 pub mod media;
 
-pub(crate) mod support;
+pub mod support;

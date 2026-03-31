@@ -7,7 +7,7 @@ import { assert, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import * as Native from '../Native.js';
 import { BridgedStringMap } from '../internal.js';
-import { parseUuid } from '../uuid.js';
+import * as uuid from '../uuid.js';
 
 use(chaiAsPromised);
 
@@ -195,7 +195,7 @@ describe('bridge_fn', () => {
     const present = Native.TESTING_ConvertOptionalUuid(true);
     assert.deepEqual(
       present,
-      parseUuid('abababab-1212-8989-baba-565656565656')
+      uuid.parse('abababab-1212-8989-baba-565656565656')
     );
 
     const absent = Native.TESTING_ConvertOptionalUuid(false);

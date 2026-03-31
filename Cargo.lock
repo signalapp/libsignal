@@ -2886,14 +2886,19 @@ version = "0.91.0"
 dependencies = [
  "futures",
  "libsignal-bridge",
+ "libsignal-bridge-macros",
  "libsignal-bridge-testing",
  "libsignal-protocol",
+ "linkme",
  "log",
  "log-panics",
  "minidump",
  "minidump-processor",
  "minidump-unwind",
  "neon",
+ "paste",
+ "rand 0.9.2",
+ "uuid",
 ]
 
 [[package]]

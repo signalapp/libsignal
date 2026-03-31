@@ -5,9 +5,8 @@
 
 import * as Native from './Native.js';
 
-import * as uuid from 'uuid';
 import { Buffer } from 'node:buffer';
-import { parseUuid } from './uuid.js';
+import * as uuid from './uuid.js';
 
 export enum ServiceIdKind {
   Aci = 0,
@@ -116,7 +115,7 @@ export abstract class ServiceId extends Object {
   }
 
   getRawUuid(): string {
-    return uuid.stringify(this.serviceIdFixedWidthBinary, 1);
+    return uuid.stringify(this.getRawUuidBytes());
   }
 
   getRawUuidBytes(): Uint8Array<ArrayBuffer> {
@@ -158,7 +157,7 @@ export class Aci extends ServiceId {
   private readonly __type?: never;
 
   static fromUuid(uuidString: string): Aci {
-    return this.fromUuidBytes(parseUuid(uuidString));
+    return this.fromUuidBytes(uuid.parse(uuidString));
   }
 
   static fromUuidBytes(uuidBytes: ArrayLike<number>): Aci {
@@ -170,7 +169,7 @@ export class Pni extends ServiceId {
   private readonly __type?: never;
 
   static fromUuid(uuidString: string): Pni {
-    return this.fromUuidBytes(parseUuid(uuidString));
+    return this.fromUuidBytes(uuid.parse(uuidString));
   }
 
   static fromUuidBytes(uuidBytes: ArrayLike<number>): Pni {

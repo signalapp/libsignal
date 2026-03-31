@@ -5,8 +5,6 @@
 
 import { Buffer } from 'node:buffer';
 
-import * as uuid from 'uuid';
-
 import * as Errors from './Errors.js';
 export * from './Errors.js';
 
@@ -20,8 +18,7 @@ import {
   SignedPreKeyRecord,
 } from './ProtocolTypes.js';
 export * from './ProtocolTypes.js';
-import { parseUuid, Uuid } from './uuid.js';
-export * from './uuid.js';
+import * as uuid from './uuid.js';
 
 export * as usernames from './usernames.js';
 
@@ -35,6 +32,8 @@ export * as WebpSanitizer from './WebpSanitizer.js';
 import * as Native from './Native.js';
 
 Native.registerErrors(Errors);
+
+export type Uuid = uuid.Uuid;
 
 // These enums must be kept in sync with their Rust counterparts.
 
@@ -742,7 +741,7 @@ export class SenderKeyDistributionMessage {
   ): Promise<SenderKeyDistributionMessage> {
     const handle = await Native.SenderKeyDistributionMessage_Create(
       sender,
-      parseUuid(distributionId),
+      uuid.parse(distributionId),
       bridgeSenderKeyStore(store)
     );
     return new SenderKeyDistributionMessage(handle);
@@ -759,7 +758,7 @@ export class SenderKeyDistributionMessage {
     return new SenderKeyDistributionMessage(
       Native.SenderKeyDistributionMessage_New(
         messageVersion,
-        parseUuid(distributionId),
+        uuid.parse(distributionId),
         chainId,
         iteration,
         chainKey,
@@ -829,7 +828,7 @@ export class SenderKeyMessage {
     return new SenderKeyMessage(
       Native.SenderKeyMessage_New(
         messageVersion,
-        parseUuid(distributionId),
+        uuid.parse(distributionId),
         chainId,
         iteration,
         ciphertext,
@@ -1015,7 +1014,7 @@ export async function groupEncrypt(
   return CiphertextMessage._fromNativeHandle(
     await Native.GroupCipher_EncryptMessage(
       sender,
-      parseUuid(distributionId),
+      uuid.parse(distributionId),
       message,
       bridgeSenderKeyStore(store)
     )

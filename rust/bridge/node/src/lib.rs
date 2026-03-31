@@ -7,6 +7,9 @@
 
 use futures::executor;
 use libsignal_bridge::node::{AssumedImmutableBuffer, ResultTypeInfo, SignalNodeError};
+use libsignal_bridge::node_register;
+use libsignal_bridge::support::*;
+use libsignal_bridge_macros::bridge_fn;
 use libsignal_protocol::SealedSenderV2SentMessage;
 use minidump::Minidump;
 use minidump_processor::ProcessorOptions;
@@ -14,6 +17,8 @@ use minidump_unwind::Symbolizer;
 use minidump_unwind::symbols::string_symbol_supplier;
 use neon::prelude::*;
 use neon::types::buffer::TypedArray;
+use rand::TryRngCore;
+use uuid::Uuid;
 
 mod logging;
 
@@ -161,4 +166,23 @@ fn minidump_to_json_string(mut cx: FunctionContext) -> JsResult<JsString> {
         .expect("Failed to print json");
 
     Ok(cx.string(std::str::from_utf8(&json).expect("Failed to convert JSON to utf8")))
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn uuid_to_string(uuid: Uuid) -> String {
+    uuid.as_hyphenated().to_string()
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn uuid_from_string(string: String) -> Option<Uuid> {
+    Uuid::try_parse(&string).ok()
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn uuid_new_v4() -> Uuid {
+    let mut bytes = [0; 16];
+    rand::rngs::OsRng
+        .try_fill_bytes(&mut bytes)
+        .expect("system RNG should always be available");
+    uuid::Builder::from_random_bytes(bytes).into_uuid()
 }

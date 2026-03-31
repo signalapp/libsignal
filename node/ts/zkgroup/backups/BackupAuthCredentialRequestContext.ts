@@ -10,7 +10,9 @@ import BackupAuthCredentialRequest from './BackupAuthCredentialRequest.js';
 import BackupAuthCredentialResponse from './BackupAuthCredentialResponse.js';
 import BackupAuthCredential from './BackupAuthCredential.js';
 import GenericServerPublicParams from '../GenericServerPublicParams.js';
-import { parseUuid, type Uuid } from '../../index.js';
+import * as uuid from '../../uuid.js';
+
+type Uuid = uuid.Uuid;
 
 export default class BackupAuthCredentialRequestContext extends ByteArray {
   private readonly __type?: never;
@@ -27,7 +29,7 @@ export default class BackupAuthCredentialRequestContext extends ByteArray {
     aci: Uuid
   ): BackupAuthCredentialRequestContext {
     return new BackupAuthCredentialRequestContext(
-      Native.BackupAuthCredentialRequestContext_New(backupKey, parseUuid(aci))
+      Native.BackupAuthCredentialRequestContext_New(backupKey, uuid.parse(aci))
     );
   }
 

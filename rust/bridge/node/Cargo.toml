@@ -17,15 +17,25 @@ workspace = true
 name = "signal_node"
 crate-type = ["cdylib"]
 
+[features]
+# Here for bridge_fn uniformity
+node = []
+default = ["node"]
+
 [dependencies]
 libsignal-bridge = { workspace = true, features = ["node", "signal-media"] }
+libsignal-bridge-macros = { workspace = true }
 libsignal-bridge-testing = { workspace = true, features = ["node", "signal-media"] }
 libsignal-protocol = { workspace = true }
 
 futures = { workspace = true }
+linkme = { workspace = true }
 log = { workspace = true }
 log-panics = { workspace = true, features = ["with-backtrace"] }
 minidump = { workspace = true }
 minidump-processor = { workspace = true }
 minidump-unwind = { workspace = true }
 neon = { workspace = true, features = ["napi-6"] }
+paste = { workspace = true }
+rand = { workspace = true }
+uuid = { workspace = true }
