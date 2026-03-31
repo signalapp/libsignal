@@ -1,0 +1,18 @@
+name = "Libsignal"
+version = "0.1.0"
+defaultTargets = ["Libsignal"]
+
+[leanOptions]
+autoImplicit = false
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+maxRecDepth = 10000
+
+[[require]]
+name = "aeneas"
+git = "https://github.com/AeneasVerif/aeneas.git"
+subDir = "backends/lean"
+rev = "1180be60"
+
+[[lean_lib]]
+name = "Libsignal"

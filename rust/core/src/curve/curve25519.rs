@@ -63,6 +63,7 @@ impl PrivateKey {
     /// fixed to 0, but rather passed back in the most significant bit of the signature which would
     /// otherwise always be 0. This is for compatibility with the implementation found in
     /// libsignal-protocol-java.
+    #[charon::opaque]
     pub fn calculate_signature<R>(
         &self,
         csprng: &mut R,
@@ -116,6 +117,7 @@ impl PrivateKey {
         result
     }
 
+    #[charon::opaque]
     pub fn verify_signature(
         their_public_key: &[u8; PUBLIC_KEY_LENGTH],
         message: &[&[u8]],

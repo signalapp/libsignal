@@ -8,33 +8,34 @@ use std::num::{NonZeroU64, ParseIntError};
 use std::str::FromStr;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, derive_more::Into)]
-pub struct E164(NonZeroU64);
+pub struct E164 { inner: NonZeroU64 }
 
 impl E164 {
     pub const fn new(number: NonZeroU64) -> Self {
-        Self(number)
+        Self { inner: number }
     }
 
     pub fn to_be_bytes(&self) -> [u8; std::mem::size_of::<u64>()] {
-        self.0.get().to_be_bytes()
+        self.inner.get().to_be_bytes()
     }
 
     pub fn from_be_bytes(bytes: [u8; std::mem::size_of::<u64>()]) -> Option<Self> {
-        NonZeroU64::new(u64::from_be_bytes(bytes)).map(Self)
+        NonZeroU64::new(u64::from_be_bytes(bytes)).map(|inner| Self { inner })
     }
 }
 
 impl FromStr for E164 {
     type Err = ParseIntError;
+    #[charon::opaque]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.strip_prefix('+').unwrap_or(s);
-        NonZeroU64::from_str(s).map(Self)
+        NonZeroU64::from_str(s).map(|inner| Self { inner })
     }
 }
 
 impl Display for E164 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "+{}", self.0)
+        write!(f, "+{}", self.inner)
     }
 }
 

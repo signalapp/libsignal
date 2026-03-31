@@ -81,6 +81,7 @@ impl PublicKey {
         Self { key }
     }
 
+    #[charon::opaque]
     pub fn deserialize(value: &[u8]) -> Result<Self, CurveError> {
         let (key_type, value) = value.split_first().ok_or(CurveError::NoKeyTypeIdentifier)?;
         let key_type = KeyType::try_from(*key_type)?;
@@ -135,6 +136,7 @@ impl PublicKey {
         self.verify_signature_for_multipart_message(&[message], signature)
     }
 
+    #[charon::opaque]
     pub fn verify_signature_for_multipart_message(
         &self,
         message: &[&[u8]],
@@ -162,6 +164,7 @@ impl PublicKey {
         }
     }
 
+    #[charon::opaque]
     fn is_torsion_free(&self) -> bool {
         match &self.key {
             PublicKeyData::DjbPublicKey(k) => {
@@ -239,6 +242,7 @@ pub struct PrivateKey {
 }
 
 impl PrivateKey {
+    #[charon::opaque]
     pub fn deserialize(value: &[u8]) -> Result<Self, CurveError> {
         let mut key: [u8; curve25519::PRIVATE_KEY_LENGTH] = value
             .try_into()
@@ -256,6 +260,7 @@ impl PrivateKey {
         }
     }
 
+    #[charon::opaque]
     pub fn public_key(&self) -> Result<PublicKey, CurveError> {
         match &self.key {
             PrivateKeyData::DjbPrivateKey(private_key) => {
@@ -272,6 +277,7 @@ impl PrivateKey {
         }
     }
 
+    #[charon::opaque]
     pub fn calculate_signature<R: CryptoRng + Rng + ?Sized>(
         &self,
         message: &[u8],
@@ -280,6 +286,7 @@ impl PrivateKey {
         self.calculate_signature_for_multipart_message(&[message], csprng)
     }
 
+    #[charon::opaque]
     pub fn calculate_signature_for_multipart_message<R: CryptoRng + Rng + ?Sized>(
         &self,
         message: &[&[u8]],
@@ -293,6 +300,7 @@ impl PrivateKey {
         }
     }
 
+    #[charon::opaque]
     pub fn calculate_agreement(&self, their_key: &PublicKey) -> Result<Box<[u8]>, CurveError> {
         match (self.key, their_key.key) {
             (PrivateKeyData::DjbPrivateKey(priv_key), PublicKeyData::DjbPublicKey(pub_key)) => {
@@ -324,6 +332,7 @@ pub struct KeyPair {
 }
 
 impl KeyPair {
+    #[charon::opaque]
     pub fn generate<R: Rng + CryptoRng + ?Sized>(csprng: &mut R) -> Self {
         let private_key = curve25519::PrivateKey::new(csprng);
 
@@ -359,6 +368,7 @@ impl KeyPair {
         })
     }
 
+    #[charon::opaque]
     pub fn calculate_signature<R: CryptoRng + Rng + ?Sized>(
         &self,
         message: &[u8],
@@ -367,6 +377,7 @@ impl KeyPair {
         self.private_key.calculate_signature(message, csprng)
     }
 
+    #[charon::opaque]
     pub fn calculate_agreement(&self, their_key: &PublicKey) -> Result<Box<[u8]>, CurveError> {
         self.private_key.calculate_agreement(their_key)
     }
@@ -375,6 +386,7 @@ impl KeyPair {
 impl TryFrom<PrivateKey> for KeyPair {
     type Error = CurveError;
 
+    #[charon::opaque]
     fn try_from(value: PrivateKey) -> Result<Self, CurveError> {
         let public_key = value.public_key()?;
         Ok(Self::new(public_key, value))

@@ -35,3 +35,13 @@ java/server/src/main/resources/*.dll
 Brewfile.lock.json
 
 __pycache__
+
+# Aeneas extraction
+*.llbc
+.logs/
+.aeneas/
+.lake/
+node_modules/
+dist/
+FunsExternal_Template.lean
+TypesExternal_Template.lean

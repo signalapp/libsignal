@@ -1,0 +1,22 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "aeneas-install": "tsx scripts/aeneas-install.ts",
+    "aeneas-extract": "tsx scripts/aeneas-extract.ts",
+    "src-diff": "tsx scripts/src-diff.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "chalk": "^5.4.0",
+    "execa": "^9.5.0",
+    "js-yaml": "^4.1.0",
+    "ora": "^8.2.0"
+  }
+}
