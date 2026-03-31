@@ -6,3 +6,5 @@ v0.91.0
 - Add `UserBasedAuthorization.UnrestrictedUnauthenticatedAccess` / `unrestrictedUnauthenticatedAccess` / `'unrestricted'` for `UnauthKeysService.getPreKeys` (and for 1:1 sealed sender messages in the future).
 
 - Log more details on gRPC failure
+
+- Log backtraces on panic

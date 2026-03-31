@@ -30,7 +30,9 @@ pub fn log_enabled_in_apps(metadata: &log::Metadata) -> bool {
         // Other libsignal crates:
         b'a' => check("attest"),
         b'd' => check("device_transfer"),
-        b'p' => check("poksho"),
+        // target == "panic" isn't a libsignal crate, it's the log_panics crate
+        // In log_panics, they manually override the log target to be "panic" rather than log_panics
+        b'p' => check("poksho") || target == "panic",
         b'u' => check("usernames"),
         b'z' => check("zkgroup") || check("zkcredential"),
 
@@ -48,6 +50,16 @@ mod tests {
     use test_case::test_matrix;
 
     use super::*;
+
+    #[test]
+    fn test_panic() {
+        assert!(log_enabled_in_apps(
+            &log::Metadata::builder()
+                .target("panic")
+                .level(log::Level::Error)
+                .build()
+        ));
+    }
 
     #[test_matrix([
         "libsignal_foo",

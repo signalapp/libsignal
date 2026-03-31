@@ -27,7 +27,7 @@ public class TestLogger extends ExternalResource {
     }
 
     SignalProtocolLoggerProvider.initializeLogging(SignalProtocolLogger.VERBOSE);
-    SignalProtocolLoggerProvider.setProvider(new StderrLogger());
+    SignalProtocolLoggerProvider.setProvider(new TestLoggerDecorator(new StderrLogger()));
   }
 
   @Override

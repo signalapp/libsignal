@@ -42,12 +42,13 @@ sourceSets {
 
 dependencies {
     testImplementation 'junit:junit:4.13'
+    testImplementation 'org.jetbrains.kotlin:kotlin-test:2.1.0'
 }
 
 test {
     jvmArgs '-Xcheck:jni'
     testLogging {
-        events 'passed','skipped','failed'
+        events 'passed', 'skipped', 'failed'
         showStandardStreams = true
         showExceptions = true
         exceptionFormat = 'full'
