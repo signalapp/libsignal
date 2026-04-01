@@ -1031,6 +1031,7 @@ async fn SessionBuilder_ProcessPreKeyBundle(
 async fn SessionCipher_EncryptMessage(
     ptext: &[u8],
     protocol_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_key_store: &mut dyn IdentityKeyStore,
     now: Timestamp,
@@ -1039,6 +1040,7 @@ async fn SessionCipher_EncryptMessage(
     message_encrypt(
         ptext,
         protocol_address,
+        local_address,
         session_store,
         identity_key_store,
         now.into(),

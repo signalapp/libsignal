@@ -32,9 +32,14 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         .now_or_never()
         .expect("sync")?;
 
-    let message_to_decrypt = support::encrypt(&mut alice_store, &bob_address, "a short message")
-        .now_or_never()
-        .expect("sync")?;
+    let message_to_decrypt = support::encrypt(
+        &mut alice_store,
+        &bob_address,
+        &alice_address,
+        "a short message",
+    )
+    .now_or_never()
+    .expect("sync")?;
     assert_eq!(
         message_to_decrypt.message_type(),
         CiphertextMessageType::Whisper
@@ -64,9 +69,14 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     .now_or_never()
     .expect("sync")?;
 
-    let message_to_decrypt = support::encrypt(&mut alice_store, &bob_address, "a short message")
-        .now_or_never()
-        .expect("sync")?;
+    let message_to_decrypt = support::encrypt(
+        &mut alice_store,
+        &bob_address,
+        &alice_address,
+        "a short message",
+    )
+    .now_or_never()
+    .expect("sync")?;
     assert_eq!(
         message_to_decrypt.message_type(),
         CiphertextMessageType::Whisper
@@ -74,10 +84,15 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
 
     c.bench_function("encrypting on an existing chain", |b| {
         b.iter(|| {
-            support::encrypt(&mut alice_store, &bob_address, "a short message")
-                .now_or_never()
-                .expect("sync")
-                .expect("success");
+            support::encrypt(
+                &mut alice_store,
+                &bob_address,
+                &alice_address,
+                "a short message",
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
         })
     });
     c.bench_function("decrypting on an existing chain", |b| {
@@ -213,9 +228,14 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     let original_message_to_decrypt = message_to_decrypt;
 
     // ...send another message to archive on Bob's side...
-    let message_to_decrypt = support::encrypt(&mut alice_store, &bob_address, "a short message")
-        .now_or_never()
-        .expect("sync")?;
+    let message_to_decrypt = support::encrypt(
+        &mut alice_store,
+        &bob_address,
+        &alice_address,
+        "a short message",
+    )
+    .now_or_never()
+    .expect("sync")?;
     assert_eq!(
         message_to_decrypt.message_type(),
         CiphertextMessageType::PreKey,
@@ -248,9 +268,14 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     .now_or_never()
     .expect("sync")?;
     // ...and prepare another message to benchmark decrypting.
-    let message_to_decrypt = support::encrypt(&mut alice_store, &bob_address, "a short message")
-        .now_or_never()
-        .expect("sync")?;
+    let message_to_decrypt = support::encrypt(
+        &mut alice_store,
+        &bob_address,
+        &alice_address,
+        "a short message",
+    )
+    .now_or_never()
+    .expect("sync")?;
     assert_eq!(
         message_to_decrypt.message_type(),
         CiphertextMessageType::PreKey,
@@ -318,10 +343,15 @@ pub fn session_encrypt_decrypt_result(c: &mut Criterion) -> Result<(), SignalPro
         .expect("sync")?;
 
     // Get the pre-key message out of the way.
-    let ctext = support::encrypt(&mut alice_store, &bob_address, "a short message")
-        .now_or_never()
-        .expect("sync")
-        .expect("success");
+    let ctext = support::encrypt(
+        &mut alice_store,
+        &bob_address,
+        &alice_address,
+        "a short message",
+    )
+    .now_or_never()
+    .expect("sync")
+    .expect("success");
     let _ptext = support::decrypt(&mut bob_store, &alice_address, &bob_address, &ctext)
         .now_or_never()
         .expect("sync")
@@ -329,10 +359,15 @@ pub fn session_encrypt_decrypt_result(c: &mut Criterion) -> Result<(), SignalPro
 
     c.bench_function("session encrypt+decrypt 1 way", |b| {
         b.iter(|| {
-            let ctext = support::encrypt(&mut alice_store, &bob_address, "a short message")
-                .now_or_never()
-                .expect("sync")
-                .expect("success");
+            let ctext = support::encrypt(
+                &mut alice_store,
+                &bob_address,
+                &alice_address,
+                "a short message",
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
             let _ptext = support::decrypt(&mut bob_store, &alice_address, &bob_address, &ctext)
                 .now_or_never()
                 .expect("sync")
@@ -342,19 +377,29 @@ pub fn session_encrypt_decrypt_result(c: &mut Criterion) -> Result<(), SignalPro
 
     c.bench_function("session encrypt+decrypt ping pong", |b| {
         b.iter(|| {
-            let ctext = support::encrypt(&mut alice_store, &bob_address, "a short message")
-                .now_or_never()
-                .expect("sync")
-                .expect("success");
+            let ctext = support::encrypt(
+                &mut alice_store,
+                &bob_address,
+                &alice_address,
+                "a short message",
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
             let _ptext = support::decrypt(&mut bob_store, &alice_address, &bob_address, &ctext)
                 .now_or_never()
                 .expect("sync")
                 .expect("success");
 
-            let ctext = support::encrypt(&mut bob_store, &alice_address, "a short message")
-                .now_or_never()
-                .expect("sync")
-                .expect("success");
+            let ctext = support::encrypt(
+                &mut bob_store,
+                &alice_address,
+                &bob_address,
+                "a short message",
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
             let _ptext = support::decrypt(&mut alice_store, &bob_address, &alice_address, &ctext)
                 .now_or_never()
                 .expect("sync")

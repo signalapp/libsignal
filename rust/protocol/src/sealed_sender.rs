@@ -894,8 +894,20 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
     now: SystemTime,
     rng: &mut R,
 ) -> Result<Vec<u8>> {
-    let message =
-        message_encrypt(ptext, destination, session_store, identity_store, now, rng).await?;
+    let sender_address = ProtocolAddress::new(
+        sender_cert.sender_uuid()?.to_owned(),
+        sender_cert.sender_device_id()?,
+    );
+    let message = message_encrypt(
+        ptext,
+        destination,
+        &sender_address,
+        session_store,
+        identity_store,
+        now,
+        rng,
+    )
+    .await?;
     let usmc = UnidentifiedSenderMessageContent::new(
         message.message_type(),
         sender_cert.clone(),

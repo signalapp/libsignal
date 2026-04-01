@@ -68,7 +68,7 @@ pub struct SignalMessage {
     previous_counter: u32,
     ciphertext: Box<[u8]>,
     pq_ratchet: spqr::SerializedState,
-    recipient_address: Option<Box<[u8]>>,
+    addresses: Option<Box<[u8]>>,
     serialized: Box<[u8]>,
 }
 
@@ -79,7 +79,7 @@ impl SignalMessage {
     pub fn new(
         message_version: u8,
         mac_key: &[u8],
-        recipient_address: Option<&ProtocolAddress>,
+        addresses: Option<(&ProtocolAddress, &ProtocolAddress)>,
         sender_ratchet_key: PublicKey,
         counter: u32,
         previous_counter: u32,
@@ -88,6 +88,8 @@ impl SignalMessage {
         receiver_identity_key: &IdentityKey,
         pq_ratchet: &[u8],
     ) -> Result<Self> {
+        let addresses =
+            addresses.and_then(|(sender, recipient)| Self::serialize_addresses(sender, recipient));
         let message = proto::wire::SignalMessage {
             ratchet_key: Some(sender_ratchet_key.serialize().into_vec()),
             counter: Some(counter),
@@ -98,7 +100,7 @@ impl SignalMessage {
             } else {
                 Some(pq_ratchet.to_vec())
             },
-            recipient_address: recipient_address.and_then(Self::serialize_recipient_address),
+            addresses,
         };
         let mut serialized = Vec::with_capacity(1 + message.encoded_len() + Self::MAC_LENGTH);
         serialized.push(((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION);
@@ -120,7 +122,7 @@ impl SignalMessage {
             previous_counter,
             ciphertext: ciphertext.into(),
             pq_ratchet: pq_ratchet.to_vec(),
-            recipient_address: message.recipient_address.map(Into::into),
+            addresses: message.addresses.map(Into::into),
             serialized,
         })
     }
@@ -181,8 +183,9 @@ impl SignalMessage {
         Ok(true)
     }
 
-    pub fn verify_mac_with_recipient_address(
+    pub fn verify_mac_with_addresses(
         &self,
+        sender_address: &ProtocolAddress,
         recipient_address: &ProtocolAddress,
         sender_identity_key: &IdentityKey,
         receiver_identity_key: &IdentityKey,
@@ -192,22 +195,29 @@ impl SignalMessage {
             return Ok(false);
         }
 
-        // If the sender didn't include a recipient address, accept the message for
+        // If the sender didn't include addresses, accept the message for
         // backward compatibility with older clients.
-        let Some(encoded_recipient_address) = &self.recipient_address else {
+        let Some(encoded_addresses) = &self.addresses else {
             return Ok(true);
         };
 
-        // Only match valid Service IDs.
-        let Some(expected) = Self::serialize_recipient_address(recipient_address) else {
-            log::warn!("Local address not a valid Service ID {}", recipient_address);
+        let Some(expected) = Self::serialize_addresses(sender_address, recipient_address) else {
+            log::warn!(
+                "Local addresses not valid Service IDs: sender={}, recipient={}",
+                sender_address,
+                recipient_address,
+            );
             return Ok(false);
         };
 
-        if bool::from(expected.ct_eq(encoded_recipient_address.as_ref())) {
+        if bool::from(expected.ct_eq(encoded_addresses.as_ref())) {
             Ok(true)
         } else {
-            log::warn!("Recipient address mismatch for {}", recipient_address);
+            log::warn!(
+                "Address mismatch: sender={}, recipient={}",
+                sender_address,
+                recipient_address,
+            );
             Ok(false)
         }
     }
@@ -235,12 +245,20 @@ impl SignalMessage {
         Ok(result)
     }
 
-    /// Serializes the recipient address to Service-Id-Fixed-Width-Binary (17 bytes) + device ID
-    /// (1 byte). Returns `None` if the address name is not a valid ServiceId.
-    fn serialize_recipient_address(recipient_address: &ProtocolAddress) -> Option<Vec<u8>> {
-        let service_id = ServiceId::parse_from_service_id_string(recipient_address.name())?;
-        let mut bytes = service_id.service_id_fixed_width_binary().to_vec();
-        bytes.push(recipient_address.device_id().into());
+    /// Serializes sender and recipient addresses into a single byte vector.
+    /// Returns `None` if either address name is not a valid ServiceId.
+    fn serialize_addresses(
+        sender: &ProtocolAddress,
+        recipient: &ProtocolAddress,
+    ) -> Option<Vec<u8>> {
+        let sender_service_id = ServiceId::parse_from_service_id_string(sender.name())?;
+        let recipient_service_id = ServiceId::parse_from_service_id_string(recipient.name())?;
+
+        let mut bytes = Vec::with_capacity(36);
+        bytes.extend_from_slice(&sender_service_id.service_id_fixed_width_binary());
+        bytes.push(sender.device_id().into());
+        bytes.extend_from_slice(&recipient_service_id.service_id_fixed_width_binary());
+        bytes.push(recipient.device_id().into());
         Some(bytes)
     }
 }
@@ -294,7 +312,7 @@ impl TryFrom<&[u8]> for SignalMessage {
             previous_counter,
             ciphertext,
             pq_ratchet: proto_structure.pq_ratchet.unwrap_or(vec![]),
-            recipient_address: proto_structure.recipient_address.map(Into::into),
+            addresses: proto_structure.addresses.map(Into::into),
             serialized: Box::from(value),
         })
     }
@@ -986,13 +1004,19 @@ mod tests {
         let sender_ratchet_key_pair = KeyPair::generate(csprng);
         let sender_identity_key_pair = KeyPair::generate(csprng);
         let receiver_identity_key_pair = KeyPair::generate(csprng);
-        let recipient_address =
-            ProtocolAddress::new("recipient".to_owned(), DeviceId::new(1).unwrap());
+        let sender_address = ProtocolAddress::new(
+            "31415926-5358-9793-2384-626433827950".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
+        let recipient_address = ProtocolAddress::new(
+            "27182818-2845-9045-2353-602874713526".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
 
         SignalMessage::new(
             4,
             &mac_key,
-            Some(&recipient_address),
+            Some((&sender_address, &recipient_address)),
             sender_ratchet_key_pair.public_key,
             42,
             41,
@@ -1009,7 +1033,7 @@ mod tests {
         assert_eq!(m1.counter, m2.counter);
         assert_eq!(m1.previous_counter, m2.previous_counter);
         assert_eq!(m1.ciphertext, m2.ciphertext);
-        assert_eq!(m1.recipient_address, m2.recipient_address);
+        assert_eq!(m1.addresses, m2.addresses);
         assert_eq!(m1.serialized, m2.serialized);
     }
 
@@ -1078,8 +1102,7 @@ mod tests {
     }
 
     #[test]
-    fn test_signal_message_verify_mac_accepts_legacy_message_without_recipient_address()
-    -> Result<()> {
+    fn test_signal_message_verify_mac_accepts_legacy_message_without_addresses() -> Result<()> {
         let mut csprng = OsRng.unwrap_err();
         let mut mac_key = [0u8; 32];
         csprng.fill_bytes(&mut mac_key);
@@ -1090,15 +1113,19 @@ mod tests {
         let sender_ratchet_key_pair = KeyPair::generate(&mut csprng);
         let sender_identity_key_pair = KeyPair::generate(&mut csprng);
         let receiver_identity_key_pair = KeyPair::generate(&mut csprng);
+        let sender_address = ProtocolAddress::new(
+            "16180339-8874-9894-8482-045868343656".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
         let recipient_address = ProtocolAddress::new(
-            "9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(),
+            "14142135-6237-3095-0488-016887242096".to_owned(),
             DeviceId::new(1).unwrap(),
         );
 
         let message = SignalMessage::new(
             4,
             &mac_key,
-            Some(&recipient_address),
+            Some((&sender_address, &recipient_address)),
             sender_ratchet_key_pair.public_key,
             42,
             41,
@@ -1112,7 +1139,7 @@ mod tests {
             &message.serialized()[1..message.serialized().len() - SignalMessage::MAC_LENGTH],
         )
         .expect("valid protobuf");
-        proto_structure.recipient_address = None;
+        proto_structure.addresses = None;
 
         let mut serialized =
             vec![((message.message_version() & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION];
@@ -1126,7 +1153,8 @@ mod tests {
         serialized.extend_from_slice(&mac);
 
         let legacy_message = SignalMessage::try_from(serialized.as_slice())?;
-        assert!(legacy_message.verify_mac_with_recipient_address(
+        assert!(legacy_message.verify_mac_with_addresses(
+            &sender_address,
             &recipient_address,
             &sender_identity_key_pair.public_key.into(),
             &receiver_identity_key_pair.public_key.into(),
@@ -1137,7 +1165,7 @@ mod tests {
     }
 
     #[test]
-    fn test_signal_message_verify_mac_rejects_wrong_recipient_address() -> Result<()> {
+    fn test_signal_message_verify_mac_rejects_wrong_address() -> Result<()> {
         let mut csprng = OsRng.unwrap_err();
         let mut mac_key = [0u8; 32];
         csprng.fill_bytes(&mut mac_key);
@@ -1148,19 +1176,23 @@ mod tests {
         let sender_ratchet_key_pair = KeyPair::generate(&mut csprng);
         let sender_identity_key_pair = KeyPair::generate(&mut csprng);
         let receiver_identity_key_pair = KeyPair::generate(&mut csprng);
-        let recipient_address = ProtocolAddress::new(
-            "9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(),
+        let sender_address = ProtocolAddress::new(
+            "deadbeef-cafe-babe-feed-faceb00c0ffe".to_owned(),
             DeviceId::new(1).unwrap(),
         );
-        let wrong_recipient_address = ProtocolAddress::new(
-            "a5e2f8d1-4b3c-4e7a-8f9d-1c2b3d4e5f6a".to_owned(),
+        let recipient_address = ProtocolAddress::new(
+            "01120358-1321-3455-0891-44233377610a".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
+        let wrong_address = ProtocolAddress::new(
+            "02030507-1113-1719-2329-313741434753".to_owned(),
             DeviceId::new(1).unwrap(),
         );
 
         let message = SignalMessage::new(
             4,
             &mac_key,
-            Some(&recipient_address),
+            Some((&sender_address, &recipient_address)),
             sender_ratchet_key_pair.public_key,
             42,
             41,
@@ -1170,8 +1202,28 @@ mod tests {
             b"",
         )?;
 
-        assert!(!message.verify_mac_with_recipient_address(
-            &wrong_recipient_address,
+        // Wrong sender address should be rejected.
+        assert!(!message.verify_mac_with_addresses(
+            &wrong_address,
+            &recipient_address,
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            &mac_key,
+        )?);
+
+        // Wrong recipient address should be rejected.
+        assert!(!message.verify_mac_with_addresses(
+            &sender_address,
+            &wrong_address,
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            &mac_key,
+        )?);
+
+        // Correct addresses should be accepted.
+        assert!(message.verify_mac_with_addresses(
+            &sender_address,
+            &recipient_address,
             &sender_identity_key_pair.public_key.into(),
             &receiver_identity_key_pair.public_key.into(),
             &mac_key,

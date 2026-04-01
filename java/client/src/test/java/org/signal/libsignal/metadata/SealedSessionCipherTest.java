@@ -882,7 +882,9 @@ public class SealedSessionCipherTest extends TestCase {
     // Pretend Bob's reply fails to decrypt.
     SignalProtocolAddress aliceAddress =
         new SignalProtocolAddress("9d0652a3-dcc3-4d11-975f-74d61598733f", 1);
-    SessionCipher bobUnsealedCipher = new SessionCipher(bobStore, aliceAddress);
+    SignalProtocolAddress bobAddressForReply =
+        new SignalProtocolAddress("e80f7bbe-5b94-471e-bd8c-2173654ea3d1", 1);
+    SessionCipher bobUnsealedCipher = new SessionCipher(bobStore, bobAddressForReply, aliceAddress);
     CiphertextMessage bobMessage = bobUnsealedCipher.encrypt("reply".getBytes());
 
     DecryptionErrorMessage errorMessage =

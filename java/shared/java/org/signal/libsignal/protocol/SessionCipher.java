@@ -43,6 +43,7 @@ public class SessionCipher {
   private final PreKeyStore preKeyStore;
   private final SignedPreKeyStore signedPreKeyStore;
   private final KyberPreKeyStore kyberPreKeyStore;
+  private final SignalProtocolAddress localAddress;
   private final SignalProtocolAddress remoteAddress;
 
   /**
@@ -59,17 +60,22 @@ public class SessionCipher {
       SignedPreKeyStore signedPreKeyStore,
       KyberPreKeyStore kyberPreKeyStore,
       IdentityKeyStore identityKeyStore,
+      SignalProtocolAddress localAddress,
       SignalProtocolAddress remoteAddress) {
     this.sessionStore = sessionStore;
     this.preKeyStore = preKeyStore;
     this.identityKeyStore = identityKeyStore;
+    this.localAddress = localAddress;
     this.remoteAddress = remoteAddress;
     this.signedPreKeyStore = signedPreKeyStore;
     this.kyberPreKeyStore = kyberPreKeyStore;
   }
 
-  public SessionCipher(SignalProtocolStore store, SignalProtocolAddress remoteAddress) {
-    this(store, store, store, store, store, remoteAddress);
+  public SessionCipher(
+      SignalProtocolStore store,
+      SignalProtocolAddress localAddress,
+      SignalProtocolAddress remoteAddress) {
+    this(store, store, store, store, store, localAddress, remoteAddress);
   }
 
   /** Exposed as public for {@code SealedSessionCipher}, do not use directly. */
@@ -154,7 +160,8 @@ public class SessionCipher {
    */
   public CiphertextMessage encrypt(byte[] paddedMessage, Instant now)
       throws NoSessionException, UntrustedIdentityException {
-    try (NativeHandleGuard remoteAddress = new NativeHandleGuard(this.remoteAddress)) {
+    try (NativeHandleGuard remoteAddress = new NativeHandleGuard(this.remoteAddress);
+        NativeHandleGuard localAddressGuard = new NativeHandleGuard(this.localAddress); ) {
       return filterExceptions(
           NoSessionException.class,
           UntrustedIdentityException.class,
@@ -162,6 +169,7 @@ public class SessionCipher {
               Native.SessionCipher_EncryptMessage(
                   paddedMessage,
                   remoteAddress.nativeHandle(),
+                  localAddressGuard.nativeHandle(),
                   bridge(sessionStore),
                   _bridge(identityKeyStore),
                   now.toEpochMilli()));
@@ -181,7 +189,7 @@ public class SessionCipher {
    * @throws InvalidKeyException when the message is formatted incorrectly.
    * @throws UntrustedIdentityException when the {@link IdentityKey} of the sender is untrusted.
    */
-  public byte[] decrypt(PreKeySignalMessage ciphertext, SignalProtocolAddress localAddress)
+  public byte[] decrypt(PreKeySignalMessage ciphertext)
       throws DuplicateMessageException,
           InvalidMessageException,
           InvalidKeyIdException,
@@ -189,7 +197,7 @@ public class SessionCipher {
           UntrustedIdentityException {
     try (NativeHandleGuard ciphertextGuard = new NativeHandleGuard(ciphertext);
         NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress);
-        NativeHandleGuard localAddressGuard = new NativeHandleGuard(localAddress); ) {
+        NativeHandleGuard localAddressGuard = new NativeHandleGuard(this.localAddress); ) {
       return filterExceptions(
           DuplicateMessageException.class,
           InvalidMessageException.class,

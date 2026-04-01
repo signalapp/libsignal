@@ -13,7 +13,12 @@ pub trait LibSignalProtocolStore {
     fn version(&self) -> &'static str;
     fn create_pre_key_bundle(&mut self) -> PreKeyBundle;
     fn process_pre_key_bundle(&mut self, remote: &str, pre_key_bundle: PreKeyBundle);
-    fn encrypt(&mut self, remote: &str, msg: &[u8]) -> (Vec<u8>, CiphertextMessageType);
+    fn encrypt(
+        &mut self,
+        remote: &str,
+        local: &str,
+        msg: &[u8],
+    ) -> (Vec<u8>, CiphertextMessageType);
     fn decrypt(
         &mut self,
         remote: &str,

@@ -31,12 +31,14 @@ pub fn test_in_memory_protocol_store() -> Result<InMemSignalProtocolStore, Signa
 pub async fn encrypt(
     store: &mut InMemSignalProtocolStore,
     remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     msg: &str,
 ) -> Result<CiphertextMessage, SignalProtocolError> {
     let mut csprng = OsRng.unwrap_err();
     message_encrypt(
         msg.as_bytes(),
         remote_address,
+        local_address,
         &mut store.session_store,
         &mut store.identity_store,
         SystemTime::now(),

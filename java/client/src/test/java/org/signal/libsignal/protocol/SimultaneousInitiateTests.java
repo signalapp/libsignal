@@ -63,8 +63,8 @@ public class SimultaneousInitiateTests {
     SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
     SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS);
 
-    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-    SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+    SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
 
     aliceSessionBuilder.process(bobPreKeyBundle);
     bobSessionBuilder.process(alicePreKeyBundle);
@@ -79,10 +79,9 @@ public class SimultaneousInitiateTests {
     assertSessionIdNotEquals(aliceStore, bobStore);
 
     byte[] alicePlaintext =
-        aliceSessionCipher.decrypt(
-            new PreKeySignalMessage(messageForAlice.serialize()), ALICE_ADDRESS);
+        aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
     byte[] bobPlaintext =
-        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()), BOB_ADDRESS);
+        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -131,8 +130,8 @@ public class SimultaneousInitiateTests {
     SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
     SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS);
 
-    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-    SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+    SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
 
     aliceSessionBuilder.process(bobPreKeyBundle);
     bobSessionBuilder.process(alicePreKeyBundle);
@@ -146,7 +145,7 @@ public class SimultaneousInitiateTests {
     assertSessionIdNotEquals(aliceStore, bobStore);
 
     byte[] bobPlaintext =
-        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()), BOB_ADDRESS);
+        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
     assertTrue(new String(bobPlaintext).equals("hey there"));
     assertEquals(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion(), expectedVersion);
@@ -156,7 +155,7 @@ public class SimultaneousInitiateTests {
     assertEquals(aliceResponse.getType(), CiphertextMessage.PREKEY_TYPE);
 
     byte[] responsePlaintext =
-        bobSessionCipher.decrypt(new PreKeySignalMessage(aliceResponse.serialize()), BOB_ADDRESS);
+        bobSessionCipher.decrypt(new PreKeySignalMessage(aliceResponse.serialize()));
 
     assertTrue(new String(responsePlaintext).equals("second message"));
     assertSessionIdEquals(aliceStore, bobStore);
@@ -190,8 +189,8 @@ public class SimultaneousInitiateTests {
     SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
     SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS);
 
-    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-    SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+    SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
 
     aliceSessionBuilder.process(bobPreKeyBundle);
     bobSessionBuilder.process(alicePreKeyBundle);
@@ -205,10 +204,9 @@ public class SimultaneousInitiateTests {
     assertSessionIdNotEquals(aliceStore, bobStore);
 
     byte[] alicePlaintext =
-        aliceSessionCipher.decrypt(
-            new PreKeySignalMessage(messageForAlice.serialize()), ALICE_ADDRESS);
+        aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
     byte[] bobPlaintext =
-        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()), BOB_ADDRESS);
+        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -253,8 +251,8 @@ public class SimultaneousInitiateTests {
     SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
     SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS);
 
-    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-    SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+    SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
 
     aliceSessionBuilder.process(bobPreKeyBundle);
     bobSessionBuilder.process(alicePreKeyBundle);
@@ -268,10 +266,9 @@ public class SimultaneousInitiateTests {
     assertSessionIdNotEquals(aliceStore, bobStore);
 
     byte[] alicePlaintext =
-        aliceSessionCipher.decrypt(
-            new PreKeySignalMessage(messageForAlice.serialize()), ALICE_ADDRESS);
+        aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
     byte[] bobPlaintext =
-        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()), BOB_ADDRESS);
+        bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -338,8 +335,8 @@ public class SimultaneousInitiateTests {
     SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
     SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS);
 
-    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-    SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+    SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
 
     for (int i = 0; i < 15; i++) {
       PreKeyBundle alicePreKeyBundle = bundleFactory.createBundle(aliceStore);
@@ -357,10 +354,9 @@ public class SimultaneousInitiateTests {
       assertSessionIdNotEquals(aliceStore, bobStore);
 
       byte[] alicePlaintext =
-          aliceSessionCipher.decrypt(
-              new PreKeySignalMessage(messageForAlice.serialize()), ALICE_ADDRESS);
+          aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
       byte[] bobPlaintext =
-          bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()), BOB_ADDRESS);
+          bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
       assertTrue(new String(alicePlaintext).equals("sample message"));
       assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -428,8 +424,8 @@ public class SimultaneousInitiateTests {
     SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
     SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS);
 
-    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-    SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+    SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
 
     PreKeyBundle bobLostPreKeyBundle = bundleFactory.createBundle(bobStore);
 
@@ -453,10 +449,9 @@ public class SimultaneousInitiateTests {
       assertFalse(isSessionIdEqual(aliceStore, bobStore));
 
       byte[] alicePlaintext =
-          aliceSessionCipher.decrypt(
-              new PreKeySignalMessage(messageForAlice.serialize()), ALICE_ADDRESS);
+          aliceSessionCipher.decrypt(new PreKeySignalMessage(messageForAlice.serialize()));
       byte[] bobPlaintext =
-          bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()), BOB_ADDRESS);
+          bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
       assertTrue(new String(alicePlaintext).equals("sample message"));
       assertTrue(new String(bobPlaintext).equals("hey there"));
@@ -508,8 +503,7 @@ public class SimultaneousInitiateTests {
     assertTrue(isSessionIdEqual(aliceStore, bobStore));
 
     byte[] lostMessagePlaintext =
-        bobSessionCipher.decrypt(
-            new PreKeySignalMessage(lostMessageForBob.serialize()), BOB_ADDRESS);
+        bobSessionCipher.decrypt(new PreKeySignalMessage(lostMessageForBob.serialize()));
     assertTrue(new String(lostMessagePlaintext).equals("hey there"));
 
     assertFalse(isSessionIdEqual(aliceStore, bobStore));

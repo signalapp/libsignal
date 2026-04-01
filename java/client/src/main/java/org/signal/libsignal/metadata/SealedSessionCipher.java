@@ -60,8 +60,11 @@ public class SealedSessionCipher {
       SenderCertificate senderCertificate,
       byte[] paddedPlaintext)
       throws InvalidKeyException, NoSessionException, UntrustedIdentityException {
+    SignalProtocolAddress localAddress =
+        new SignalProtocolAddress(this.localUuidAddress, this.localDeviceId);
     CiphertextMessage message =
-        new SessionCipher(signalProtocolStore, destinationAddress).encrypt(paddedPlaintext);
+        new SessionCipher(signalProtocolStore, localAddress, destinationAddress)
+            .encrypt(paddedPlaintext);
     UnidentifiedSenderMessageContent content =
         new UnidentifiedSenderMessageContent(
             message,
@@ -237,11 +240,13 @@ public class SealedSessionCipher {
   }
 
   public int getSessionVersion(SignalProtocolAddress remoteAddress) {
-    return new SessionCipher(signalProtocolStore, remoteAddress).getSessionVersion();
+    return new SessionCipher(signalProtocolStore, localAddress(), remoteAddress)
+        .getSessionVersion();
   }
 
   public int getRemoteRegistrationId(SignalProtocolAddress remoteAddress) {
-    return new SessionCipher(signalProtocolStore, remoteAddress).getRemoteRegistrationId();
+    return new SessionCipher(signalProtocolStore, localAddress(), remoteAddress)
+        .getRemoteRegistrationId();
   }
 
   private byte[] decrypt(UnidentifiedSenderMessageContent message)
@@ -260,13 +265,11 @@ public class SealedSessionCipher {
 
     switch (message.getType()) {
       case CiphertextMessage.WHISPER_TYPE:
-        return new SessionCipher(signalProtocolStore, sender)
+        return new SessionCipher(signalProtocolStore, localAddress(), sender)
             .decrypt(new SignalMessage(message.getContent()));
       case CiphertextMessage.PREKEY_TYPE:
-        return new SessionCipher(signalProtocolStore, sender)
-            .decrypt(
-                new PreKeySignalMessage(message.getContent()),
-                new SignalProtocolAddress(localUuidAddress, localDeviceId));
+        return new SessionCipher(signalProtocolStore, localAddress(), sender)
+            .decrypt(new PreKeySignalMessage(message.getContent()));
       case CiphertextMessage.SENDERKEY_TYPE:
         return new GroupCipher(signalProtocolStore, sender).decrypt(message.getContent());
       case CiphertextMessage.PLAINTEXT_CONTENT_TYPE:
@@ -338,5 +341,9 @@ public class SealedSessionCipher {
     public Optional<byte[]> getGroupId() {
       return groupId;
     }
+  }
+
+  private SignalProtocolAddress localAddress() {
+    return new SignalProtocolAddress(this.localUuidAddress, this.localDeviceId);
   }
 }

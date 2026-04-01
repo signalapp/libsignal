@@ -121,6 +121,7 @@ describe('SealedSender', () => {
     );
     await bKyberStore.saveKyberPreKey(bKyberPrekeyId, bKyberPreKeyRecord);
 
+    const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
     const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
     await SignalClient.processPreKeyBundle(
       bPreKeyBundle,
@@ -179,6 +180,7 @@ describe('SealedSender', () => {
     const innerMessage = await SignalClient.signalEncrypt(
       aPlaintext,
       bAddress,
+      aAddress,
       aSess,
       aKeys
     );

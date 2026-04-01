@@ -451,6 +451,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         let alice_uuid = "9d0652a3-dcc3-4d11-975f-74d61598733f".to_string();
         let bob_uuid = "796abedb-ca4e-4f18-8803-1fde5b921f9f".to_string();
 
+        let alice_uuid_address = ProtocolAddress::new(alice_uuid.clone(), alice_device_id);
         let bob_uuid_address = ProtocolAddress::new(bob_uuid.clone(), bob_device_id);
 
         let mut alice_store = support::test_in_memory_protocol_store()?;
@@ -493,6 +494,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         let alice_message = message_encrypt(
             &alice_ptext,
             &bob_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             SystemTime::now(),
@@ -561,6 +563,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         let alice_message = message_encrypt(
             &alice_ptext,
             &bob_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             SystemTime::now(),
@@ -621,6 +624,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         let alice_message = message_encrypt(
             &alice_ptext,
             &bob_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             SystemTime::now(),
@@ -698,6 +702,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session()
         let alice_uuid = "9d0652a3-dcc3-4d11-975f-74d61598733f".to_string();
         let bob_uuid = "796abedb-ca4e-4f18-8803-1fde5b921f9f".to_string();
 
+        let alice_uuid_address = ProtocolAddress::new(alice_uuid.clone(), alice_device_id);
         let bob_uuid_address = ProtocolAddress::new(bob_uuid.clone(), bob_device_id);
 
         let mut alice_store = support::test_in_memory_protocol_store()?;
@@ -740,6 +745,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session()
         let alice_message = message_encrypt(
             &alice_ptext,
             &bob_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             SystemTime::now(),
@@ -803,6 +809,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id()
         let alice_uuid = "9d0652a3-dcc3-4d11-975f-74d61598733f".to_string();
         let bob_uuid = "796abedb-ca4e-4f18-8803-1fde5b921f9f".to_string();
 
+        let alice_uuid_address = ProtocolAddress::new(alice_uuid.clone(), alice_device_id);
         let bob_uuid_address = ProtocolAddress::new(bob_uuid.clone(), bob_device_id);
 
         let mut alice_store = support::test_in_memory_protocol_store()?;
@@ -846,6 +853,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id()
         let alice_message = message_encrypt(
             &alice_ptext,
             &bob_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             SystemTime::now(),
@@ -926,6 +934,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
         let bob_first_message = message_encrypt(
             b"swim camp",
             &alice_uuid_address,
+            &bob_uuid_address,
             &mut bob_store.session_store,
             &mut bob_store.identity_store,
             SystemTime::now(),
@@ -951,6 +960,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
         let bob_message = message_encrypt(
             b"space camp",
             &alice_uuid_address,
+            &bob_uuid_address,
             &mut bob_store.session_store,
             &mut bob_store.identity_store,
             SystemTime::now(),

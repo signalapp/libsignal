@@ -143,10 +143,16 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
         .expect("can process pre-key bundles")
     }
 
-    fn encrypt(&mut self, remote: &str, msg: &[u8]) -> (Vec<u8>, CiphertextMessageType) {
+    fn encrypt(
+        &mut self,
+        remote: &str,
+        local: &str,
+        msg: &[u8],
+    ) -> (Vec<u8>, CiphertextMessageType) {
         let encrypted = message_encrypt(
             msg,
             &address(remote),
+            &address(local),
             &mut self.0.session_store,
             &mut self.0.identity_store,
             SystemTime::now(),

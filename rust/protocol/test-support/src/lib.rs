@@ -241,6 +241,7 @@ impl Participant {
         let outgoing_message = message_encrypt(
             &buffer,
             &them.address,
+            &self.address,
             &mut self.state.store.session_store,
             &mut self.state.store.identity_store,
             SystemTime::UNIX_EPOCH,

@@ -1184,7 +1184,7 @@ internal object Native {
   @JvmStatic @Throws(Exception::class)
   public external fun SessionCipher_DecryptSignalMessage(message: ObjectHandle, protocolAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore): ByteArray
   @JvmStatic @Throws(Exception::class)
-  public external fun SessionCipher_EncryptMessage(ptext: ByteArray, protocolAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, now: Long): CiphertextMessage
+  public external fun SessionCipher_EncryptMessage(ptext: ByteArray, protocolAddress: ObjectHandle, localAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, now: Long): CiphertextMessage
 
   @JvmStatic @Throws(Exception::class)
   public external fun SessionRecord_ArchiveCurrentState(sessionRecord: ObjectHandle): Unit

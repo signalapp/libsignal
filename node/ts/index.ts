@@ -1291,6 +1291,7 @@ export function processPreKeyBundle(
 export async function signalEncrypt(
   message: Uint8Array<ArrayBuffer>,
   address: ProtocolAddress,
+  localAddress: ProtocolAddress,
   sessionStore: SessionStore,
   identityStore: IdentityKeyStore,
   now: Date = new Date()
@@ -1299,6 +1300,7 @@ export async function signalEncrypt(
     await Native.SessionCipher_EncryptMessage(
       message,
       address,
+      localAddress,
       bridgeSessionStore(sessionStore),
       bridgeIdentityKeyStore(identityStore),
       now.getTime()
@@ -1415,9 +1417,14 @@ export async function sealedSenderEncryptMessage(
   sessionStore: SessionStore,
   identityStore: IdentityKeyStore
 ): Promise<Uint8Array<ArrayBuffer>> {
+  const localAddress = ProtocolAddress.new(
+    senderCert.senderUuid(),
+    senderCert.senderDeviceId()
+  );
   const ciphertext = await signalEncrypt(
     message,
     address,
+    localAddress,
     sessionStore,
     identityStore
   );

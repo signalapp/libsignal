@@ -19,6 +19,7 @@ use crate::{
 pub async fn message_encrypt<R: Rng + CryptoRng>(
     ptext: &[u8],
     remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_store: &mut dyn IdentityKeyStore,
     now: SystemTime,
@@ -92,7 +93,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
         let message = SignalMessage::new(
             session_version,
             message_keys.mac_key(),
-            Some(remote_address),
+            Some((local_address, remote_address)),
             sender_ephemeral,
             chain_key.index(),
             previous_counter,
@@ -667,7 +668,8 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
             ))?;
 
     let mac_valid = match local_address {
-        Some(local_address) => ciphertext.verify_mac_with_recipient_address(
+        Some(local_address) => ciphertext.verify_mac_with_addresses(
+            remote_address,
             local_address,
             &their_identity_key,
             &state.local_identity_key()?,
