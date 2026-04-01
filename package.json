@@ -4,9 +4,6 @@
   "scripts": {
     "aeneas-install": "tsx scripts/aeneas-install.ts",
     "aeneas-extract": "tsx scripts/aeneas-extract.ts",
-    "extract-core": "AENEAS_CONFIG=aeneas-config-core.yml tsx scripts/aeneas-extract.ts",
-    "extract-crypto": "AENEAS_CONFIG=aeneas-config-crypto.yml tsx scripts/aeneas-extract.ts",
-    "extract-all": "npm run extract-core && npm run extract-crypto",
     "src-diff": "tsx scripts/src-diff.ts",
     "typecheck": "tsc --noEmit"
   },

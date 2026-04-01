@@ -51,6 +51,9 @@ async function main(): Promise<void> {
   if (config.charon.extract_opaque_bodies) {
     charonArgs.push("--extract-opaque-bodies");
   }
+  if (config.charon.start_from_pub) {
+    charonArgs.push("--start-from-pub");
+  }
   for (const item of config.charon.start_from) {
     charonArgs.push("--start-from", item);
   }

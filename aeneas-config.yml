@@ -1,0 +1,71 @@
+# Aeneas extraction configuration — combined (signal-crypto + libsignal-core)
+#
+# Extracts signal-crypto as the target crate, with libsignal-core fully
+# transparent (bodies extracted) rather than opaque signatures only.
+
+aeneas:
+  commit: "1180be60"
+  repo: "https://github.com/AeneasVerif/aeneas.git"
+
+upstream:
+  repo: "https://github.com/signalapp/libsignal"
+  commit: "0a58e80b"
+
+crate:
+  dir: "rust"
+  name: "signal_crypto"
+
+charon:
+  preset: "aeneas"
+  hide_marker_traits: true
+  cargo_args: ["-p", "signal-crypto", "--features", "extraction"]
+  start_from_pub: true
+  start_from:
+    - "libsignal_core"
+  include:
+    - "libsignal_core"
+  exclude:
+    # Debug/Display/Error impls
+    - "signal_crypto::{impl core::fmt::Debug for _}"
+    - "signal_crypto::{impl core::fmt::Display for _}"
+    - "signal_crypto::_::{impl core::fmt::Debug for _}"
+    - "signal_crypto::_::{impl core::fmt::Display for _}"
+    - "signal_crypto::_::_::{impl core::fmt::Debug for _}"
+    - "signal_crypto::_::_::{impl core::fmt::Display for _}"
+    - "signal_crypto::{impl core::error::Error for _}"
+    - "signal_crypto::_::{impl core::error::Error for _}"
+    - "libsignal_core::{impl core::fmt::Debug for _}"
+    - "libsignal_core::{impl core::fmt::Display for _}"
+    - "libsignal_core::_::{impl core::fmt::Debug for _}"
+    - "libsignal_core::_::{impl core::fmt::Display for _}"
+    - "libsignal_core::_::_::{impl core::fmt::Debug for _}"
+    - "libsignal_core::_::_::{impl core::fmt::Display for _}"
+    - "libsignal_core::{impl core::error::Error for _}"
+    - "libsignal_core::_::{impl core::error::Error for _}"
+    # libsignal-core specific excludes
+    - "libsignal_core::address::ServiceId::parse_from_service_id_string"
+    - "libsignal_core::address::SpecificServiceId::parse_from_service_id_string"
+    - "libsignal_core::address::ServiceId::service_id_string"
+    - "libsignal_core::address::SpecificServiceId::service_id_string"
+    - "libsignal_core::address::{impl rand::distr::Distribution for _}"
+    - "libsignal_core::address::ServiceId::to_protocol_address"
+    - "libsignal_core::curve::curve25519" # Charon panic in curve25519_dalek
+    # signal-crypto specific excludes
+    - "signal_crypto::hpke" # complex external crypto
+    # External crate internals
+    - "core::str::pattern"
+    - "core::str::_::{impl core::str::pattern::Pattern for _}"
+    - "rand::distr::uniform"
+    - "zerocopy"
+    - "log"
+  opaque: []
+
+aeneas_args:
+  options:
+    - split-files
+  dest: "."
+  subdir: "Libsignal/Code"
+
+tweaks:
+  files: []
+  substitutions: []

@@ -1,11 +1,4 @@
--- libsignal-core
-import Libsignal.Core.Funs
-import Libsignal.Core.FunsExternal
-import Libsignal.Core.Types
-import Libsignal.Core.TypesExternal
-
--- signal-crypto
-import Libsignal.Crypto.Funs
-import Libsignal.Crypto.FunsExternal
-import Libsignal.Crypto.Types
-import Libsignal.Crypto.TypesExternal
+import Libsignal.Code.Funs
+import Libsignal.Code.FunsExternal
+import Libsignal.Code.Types
+import Libsignal.Code.TypesExternal
