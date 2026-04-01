@@ -2093,6 +2093,7 @@ fn prekey_message_failed_decryption_does_not_update_stores() -> TestResult {
                     .kyber_pre_key_id()
                     .zip(message.kyber_ciphertext())
                     .map(|(id, ciphertext)| KyberPayload::new(id, ciphertext.clone())),
+                None,
                 *message.base_key(),
                 *message.identity_key(),
                 (&*signal_message).try_into().unwrap(),
@@ -2232,6 +2233,7 @@ fn prekey_message_failed_decryption_does_not_update_stores_even_when_previously_
                     .kyber_pre_key_id()
                     .zip(message.kyber_ciphertext())
                     .map(|(id, ciphertext)| KyberPayload::new(id, ciphertext.clone())),
+                None,
                 *message.base_key(),
                 *message.identity_key(),
                 (&*signal_message).try_into().unwrap(),
@@ -2676,6 +2678,7 @@ fn test_signedprekey_not_saved() -> TestResult {
                 None, // we don't bother with a one time prekey
                 pksm_og2.signed_pre_key_id(),
                 kyber_payload,
+                None,
                 arbitrary_other_base_key.public_key,
                 *pksm_og2.identity_key(),
                 pksm_og2.message().clone(), // but we keep the originally computed ciphertext
@@ -3113,6 +3116,7 @@ fn x3dh_prekey_rejected_as_invalid_message_specifically() {
             original.registration_id(),
             original.pre_key_id(),
             original.signed_pre_key_id(),
+            None,
             None,
             *original.base_key(),
             *original.identity_key(),

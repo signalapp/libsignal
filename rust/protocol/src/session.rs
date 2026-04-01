@@ -161,6 +161,8 @@ async fn process_prekey_impl(
         None
     };
 
+    let pvrf_ciphertext = message.pvrf_ciphertext();
+
     let parameters = BobSignalProtocolParameters::new(
         identity_store.get_identity_key_pair().await?,  // ipkr
         our_signed_pre_key_pair, // signed pre key
@@ -169,7 +171,8 @@ async fn process_prekey_impl(
         our_kyber_pre_key_pair,
         *message.identity_key(), // Alice's ipks
         *message.base_key(),     // Alice's ephemeral base key
-        kyber_ciphertext,        // Alice's Kyber ciphertext  
+        kyber_ciphertext,        // Alice's Kyber ciphertext 
+        pvrf_ciphertext
     );
 
     let mut new_session = ratchet::initialize_bob_session(&parameters)?;    // Defined in ratchet.rs

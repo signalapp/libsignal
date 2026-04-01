@@ -291,6 +291,22 @@ impl KyberPayload {
     }
 }
 
+
+#[derive(Debug, Clone)]
+pub struct PvrfPayload {
+    pre_key_id: KyberPreKeyId, 
+    ciphertext: kem::SerializedCiphertext,  
+}
+
+impl PvrfPayload {
+    pub fn new(id: KyberPreKeyId, ciphertext: kem::SerializedCiphertext) -> Self {
+        Self {
+            pre_key_id: id,
+            ciphertext,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 // First message Alice sends to Bob
 pub struct PreKeySignalMessage {
@@ -301,6 +317,7 @@ pub struct PreKeySignalMessage {
     // While we reject messages without Kyber payloads, we still for now allow constructing the
     // struct without one so that we can provide a better error message when we try to process it.
     kyber_payload: Option<KyberPayload>,
+    pvrf_payload: Option<PvrfPayload>,
     base_key: PublicKey,
     identity_key: IdentityKey,
     message: SignalMessage,
@@ -316,8 +333,8 @@ impl PreKeySignalMessage {
         // Bob's prekeys
         pre_key_id: Option<PreKeyId>,  
         signed_pre_key_id: SignedPreKeyId,
-
         kyber_payload: Option<KyberPayload>,
+        pvrf_payload: Option<PvrfPayload>,
         base_key: PublicKey,    // Ephemeral keys
         identity_key: IdentityKey, 
         message: SignalMessage, // Encrypted payload + MAC
@@ -332,6 +349,10 @@ impl PreKeySignalMessage {
             kyber_ciphertext: kyber_payload
                 .as_ref()
                 .map(|kyber| kyber.ciphertext.to_vec()),
+            pvrf_pre_key_id: pvrf_payload.as_ref().map(|pvrf| pvrf.pre_key_id.into()),
+            pvrf_ciphertext: pvrf_payload
+                .as_ref()
+                .map(|pvrf| pvrf.ciphertext.to_vec()),
             base_key: Some(base_key.serialize().into_vec()),
             identity_key: Some(identity_key.serialize().into_vec()),
             message: Some(Vec::from(message.as_ref())),
@@ -347,6 +368,7 @@ impl PreKeySignalMessage {
             registration_id,
             pre_key_id,
             signed_pre_key_id,
+            pvrf_payload,
             kyber_payload,
             base_key,
             identity_key,
@@ -374,6 +396,16 @@ impl PreKeySignalMessage {
     #[inline]
     pub fn signed_pre_key_id(&self) -> SignedPreKeyId {
         self.signed_pre_key_id
+    }
+
+    #[inline]
+    pub fn pvrf_pre_key_id(&self) -> Option<KyberPreKeyId> {
+        self.pvrf_payload.as_ref().map(|pvrf| pvrf.pre_key_id)
+    }
+
+    #[inline]
+    pub fn pvrf_ciphertext(&self) -> Option<&kem::SerializedCiphertext> {
+        self.pvrf_payload.as_ref().map(|pvrf| &pvrf.ciphertext)
     }
 
     #[inline]
@@ -476,12 +508,36 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {   // Received raw bytes from netwo
             }
         };
 
+        let pvrf_payload = match (
+            proto_structure.pvrf_pre_key_id,
+            proto_structure.pvrf_ciphertext,
+        ) {
+            // Normal PQ case: PVRF prekey ID & ciphertext present
+            (Some(id), Some(ct)) => Some(PvrfPayload::new(id.into(), ct.into_boxed_slice())),
+            // Backward compatibility
+            (None, None) if message_version <= CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION => None,
+            // Require PVRF, can't have partial PVRF payload
+            (None, None) => {
+                return Err(SignalProtocolError::InvalidMessage(
+                    CiphertextMessageType::PreKey,
+                    "PVRF pre key must be present for this session version",
+                ));
+            }
+            _ => {
+                return Err(SignalProtocolError::InvalidMessage(
+                    CiphertextMessageType::PreKey,
+                    "Both or neither pvrf pre_key_id and pvrf_ciphertext can be present",
+                ));
+            }
+        };
+
         Ok(PreKeySignalMessage {
             message_version,
             registration_id: proto_structure.registration_id.unwrap_or(0),
             pre_key_id: proto_structure.pre_key_id.map(|id| id.into()),
             signed_pre_key_id: signed_pre_key_id.into(),
             kyber_payload,
+            pvrf_payload,
             base_key,
             identity_key: IdentityKey::try_from(identity_key.as_ref())?,
             message: SignalMessage::try_from(message.as_ref())?,    // Validates ciphertext format & internal structure
@@ -1023,6 +1079,7 @@ mod tests {
             None,
             97.into(),
             None, // TODO: add kyber prekeys
+            None,
             base_key_pair.public_key,
             identity_key_pair.public_key.into(),
             message,
@@ -1134,6 +1191,7 @@ mod tests {
             None,
             97.into(),
             None, // TODO: add kyber prekeys
+            None,
             base_key_pair.public_key,
             identity_key_pair.public_key.into(),
             message,

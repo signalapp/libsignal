@@ -43,6 +43,8 @@ pub(crate) struct UnacknowledgedPreKeyMessageItems<'a> {
     // so we leave these optional for now.
     kyber_pre_key_id: Option<KyberPreKeyId>,
     kyber_ciphertext: Option<&'a [u8]>,
+    pvrf_pre_key_id: Option<KyberPreKeyId>,
+    pvrf_ciphertext: Option<&'a [u8]>,
     timestamp: SystemTime,
 }
 
@@ -52,9 +54,13 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
         signed_pre_key_id: SignedPreKeyId,
         base_key: PublicKey,
         pending_kyber_pre_key: Option<&'a session_structure::PendingKyberPreKey>,
+        pending_pvrf_pre_key: Option<&'a session_structure::PendingPvrfPreKey>,
         timestamp: SystemTime,
     ) -> Self {
         let (kyber_pre_key_id, kyber_ciphertext) = pending_kyber_pre_key
+            .map(|pending| (pending.pre_key_id.into(), pending.ciphertext.as_slice()))
+            .unzip();
+        let (pvrf_pre_key_id, pvrf_ciphertext) = pending_pvrf_pre_key
             .map(|pending| (pending.pre_key_id.into(), pending.ciphertext.as_slice()))
             .unzip();
         Self {
@@ -63,6 +69,8 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
             base_key,
             kyber_pre_key_id,
             kyber_ciphertext,
+            pvrf_pre_key_id,
+            pvrf_ciphertext,
             timestamp,
         }
     }
@@ -85,6 +93,14 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
 
     pub(crate) fn kyber_ciphertext(&self) -> Option<&'a [u8]> {
         self.kyber_ciphertext
+    }
+
+    pub(crate) fn pvrf_pre_key_id(&self) -> Option<KyberPreKeyId> {
+        self.pvrf_pre_key_id
+    }
+
+    pub(crate) fn pvrf_ciphertext(&self) -> Option<&'a [u8]> {
+        self.pvrf_ciphertext
     }
 
     pub(crate) fn timestamp(&self) -> SystemTime {
@@ -170,6 +186,7 @@ impl SessionState {
                 receiver_chains: vec![],
                 pending_pre_key: None,
                 pending_kyber_pre_key: None,
+                pending_pvrf_pre_key: None,
                 remote_registration_id: 0,
                 local_registration_id: 0,
                 alice_base_key: alice_base_key.serialize().into_vec(),
@@ -529,6 +546,14 @@ impl SessionState {
         self.session.pending_pre_key = Some(pending);
     }
 
+    pub(crate) fn set_pvrf_ciphertext(&mut self, ciphertext: kem::SerializedCiphertext) {
+        let pending = session_structure::PendingPvrfPreKey {
+            pre_key_id: u32::MAX, // has to be set to the actual value separately
+            ciphertext: ciphertext.into_vec(),
+        };
+        self.session.pending_pvrf_pre_key = Some(pending);
+    }
+
     pub(crate) fn set_kyber_ciphertext(&mut self, ciphertext: kem::SerializedCiphertext) {
         let pending = session_structure::PendingKyberPreKey {
             pre_key_id: u32::MAX, // has to be set to the actual value separately
@@ -559,6 +584,7 @@ impl SessionState {
                 PublicKey::deserialize(&pending_pre_key.base_key)
                     .map_err(|_| InvalidSessionError("invalid pending PreKey message base key"))?,
                 self.session.pending_kyber_pre_key.as_ref(),
+                self.session.pending_pvrf_pre_key.as_ref(),
                 SystemTime::UNIX_EPOCH + Duration::from_secs(pending_pre_key.timestamp),
             )))
         } else {
@@ -938,14 +964,14 @@ impl SessionRecord {
     ///realfunc
     pub fn get_bob_response(
             &self,
-    ) -> Result<(RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar)), Vec<u8>, Vec<u8>, Scalar, Scalar), SignalProtocolError> {    
+    ) -> Result<(Vec<u8>, Vec<u8>, (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))), Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar), SignalProtocolError> {    
         Ok(
             bincode::deserialize(
         &self
                 .session_state()
                 .ok_or_else(|| {
                     SignalProtocolError::InvalidState(
-                        "get_vts",
+                        "get_bob_response",
                         "No current session".into(),
                     )
                 })?

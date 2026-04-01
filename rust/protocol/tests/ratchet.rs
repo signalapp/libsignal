@@ -56,6 +56,7 @@ fn test_alice_and_bob_agree_on_chain_keys_with_kyber() -> Result<(), SignalProto
         *alice_identity_key_pair.identity_key(),
         alice_base_key_pair.public_key,
         &kyber_ciphertext,
+        None,
     );
     let bob_record = initialize_bob_session_record(&bob_parameters)?;
 
@@ -137,6 +138,7 @@ fn test_bob_rejects_torsioned_basekey() -> Result<(), SignalProtocolError> {
         *alice_identity_key_pair.identity_key(),
         tweaked_alice_base_key,
         &kyber_ciphertext,
+        None,
     );
 
     assert!(initialize_bob_session_record(&bob_parameters).is_err());
@@ -199,6 +201,7 @@ fn test_bob_rejects_highbit_basekey() -> Result<(), SignalProtocolError> {
         *alice_identity_key_pair.identity_key(),
         tweaked_alice_base_key,
         &kyber_ciphertext,
+        None,
     );
 
     assert!(initialize_bob_session_record(&bob_parameters).is_err());

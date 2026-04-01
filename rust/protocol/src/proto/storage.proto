@@ -44,6 +44,11 @@ message SessionStructure {
     bytes  ciphertext = 2;
   }
 
+  message PendingPvrfPreKey {
+    uint32 pre_key_id = 1;
+    bytes  ciphertext = 2;
+  }
+
   uint32         session_version           = 1;
   bytes          local_identity_public     = 2;
   bytes          remote_identity_public    = 3;
@@ -57,6 +62,7 @@ message SessionStructure {
 
   PendingPreKey  pending_pre_key           = 9;
   PendingKyberPreKey pending_kyber_pre_key = 14;
+  PendingPvrfPreKey pending_pvrf_pre_key = 19;
 
   uint32         remote_registration_id    = 10;
   uint32         local_registration_id     = 11;

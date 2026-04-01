@@ -99,7 +99,7 @@ use curve25519_dalek::{
 use sha2::{Sha256, Sha512, Digest};
 
 
-fn encode(vk: &[u8], x: &[u8]) -> Vec<u8> {
+fn encode(vk: &Vec<u8>, x: &[u8]) -> Vec<u8> {
     [vk.len().to_le_bytes().as_slice(), vk, x].concat()
 }
 
@@ -113,7 +113,7 @@ pub fn hash_generic_zp(input: &[u8]) -> Scalar {
     Scalar::from_bytes_mod_order_wide(&hash.into())
 }
 
-pub fn hash_fs(vk: &[u8], x: &[u8], h: &RistrettoPoint, h_prime: &RistrettoPoint, eta: &RistrettoPoint, eta_prime: &RistrettoPoint) -> Scalar {
+pub fn hash_fs(vk: &Vec<u8>, x: &[u8], h: &RistrettoPoint, h_prime: &RistrettoPoint, eta: &RistrettoPoint, eta_prime: &RistrettoPoint) -> Scalar {
     let mut bytes = Vec::new();
     bytes.extend(&(vk.len() as u64).to_le_bytes());
     bytes.extend(vk);
@@ -135,23 +135,29 @@ fn hash_to_G(domain_sep: &[u8], input: &[u8]) -> RistrettoPoint {
     RistrettoPoint::from_hash(hasher)
 }
 
-pub fn hash_i(vk: &[u8], x: &[u8]) -> RistrettoPoint {
+pub fn hash_i(vk: &Vec<u8>, x: &[u8]) -> RistrettoPoint {
     hash_to_G(b"hash_i", &encode(vk, x))
 }
 
-pub fn hash_a(vk: &[u8], x: &[u8]) -> RistrettoPoint {
+pub fn hash_a(vk: &Vec<u8>, x: &[u8]) -> RistrettoPoint {
     hash_to_G(b"hash_a", &encode(vk, x))
 }
 
-pub fn hash_b(vk: &[u8], x: &[u8]) -> RistrettoPoint {
+pub fn hash_b(vk: &Vec<u8>, x: &[u8]) -> RistrettoPoint {
     hash_to_G(b"hash_b", &encode(vk, x))
 }
 
-pub fn hash_o(input: &[u8]) -> u64 {
-    let hash = Sha256::digest(input);
-    u64::from_le_bytes(hash[..8].try_into().unwrap())
+pub fn hash_o(point: &RistrettoPoint) -> Vec<u8> {
+    // Compress the RistrettoPoint to a canonical 32-byte representation
+    let compressed = point.compress();
+
+    let hash = Sha256::digest(compressed.as_bytes());
+    hash[..3].to_vec()
 }
 
+pub fn point_to_bytes(point: &RistrettoPoint) -> Vec<u8> {
+    point.compress().as_bytes().to_vec()
+}
 
 // ***X3DH Key Agreement for Alice***
 pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
@@ -193,9 +199,9 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     if let Some(their_one_time_prekey) = parameters.their_one_time_pre_key() {
         secrets
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
-        vk = their_one_time_prekey.public_key_bytes();
+        vk = their_one_time_prekey.public_key_bytes().to_vec();
     } else {
-        vk = parameters.their_signed_pre_key().public_key_bytes();
+        vk = parameters.their_signed_pre_key().public_key_bytes().to_vec();
     }
 
     // Uses Bob's Kyber prekey to perform key encapsulation (KEM)
@@ -215,21 +221,23 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     //step 1, page 11, preverify
     let alpha = hash_generic_zp(b"alpha");
     let beta = hash_generic_zp(b"beta");
-    let h = alpha * g + beta * hash_i(vk, &secrets);    
-    let hprime = alpha * hash_a(vk, &secrets) + beta * hash_b(vk, &secrets);
+    let h = alpha * g + beta * hash_i(&vk, &secrets);    
+    let hprime = alpha * hash_a(&vk, &secrets) + beta * hash_b(&vk, &secrets);
 
     //step 2
     let r1 = hash_generic_zp(b"r1");
     let r2 = hash_generic_zp(b"r2");
-    let eta = (g * r1) + (hash_i(vk, &secrets) * r2);
-    let etaprime = (hash_a(vk, &secrets) * r1) + (hash_b(vk, &secrets) * r2);
-    let c = hash_fs(vk, &secrets, &h, &hprime, &eta, &etaprime);
+    let eta = (g * r1) + (hash_i(&vk, &secrets) * r2);
+    let etaprime = (hash_a(&vk, &secrets) * r1) + (hash_b(&vk, &secrets) * r2);
+    let c = hash_fs(&vk, &secrets, &h, &hprime, &eta, &etaprime);
     let s = (r1 - c * alpha, r2 - c * beta);
     let tau = (c,s);
 
     //step 3
     let vt = (h, hprime, tau);
-    let vts = (vt, vk, &secrets, alpha, beta);
+    let vts = (vt, vk, secrets.clone(), alpha, beta);
+
+    let pvrf_ciphertext =  bincode::serialize(&vts).unwrap().into_boxed_slice();
     //output vt, store vts
 
 
@@ -279,7 +287,11 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     .with_receiver_chain(parameters.their_ratchet_key(), &chain_key)
     .with_sender_chain(&sending_ratchet_key, &sending_chain_chain_key);
 
+    
+
     session.set_kyber_ciphertext(kyber_ciphertext); // Ciphertext to send to Bob
+
+    session.set_pvrf_ciphertext(pvrf_ciphertext); // Ciphertext to send to Bob
 
     Ok(session) // Alice's session ready for messaging
 }
@@ -329,13 +341,17 @@ pub(crate) fn initialize_bob_session(
     // we need to be able to extract vt from the message to do it here
     // we SHOULD do it here, but we need to figure out how to decrypt the cipher
     // at this point (kyber could do it so it should be possible)
+
     //step 0: "retrieve" parameters k, vk
-    // fresh genning them for speed right now
+    // fresh genning them for rapid dev right now
     let g = generator_g();
-    let k = hash_generic_zp(b"placeholder fresh k for vk");
-    let vk = g * k;
+    let k ;//= hash_generic_zp(b"placeholder fresh k for vk");
+    let vk ;//= point_to_bytes(&(g * k));
     let kptr;
     let x;
+    let their_vts;
+    let vts_response;
+    let bob_response;
     //let vt;
 
 
@@ -348,8 +364,17 @@ pub(crate) fn initialize_bob_session(
                 .calculate_agreement(parameters.their_base_key())?,
         );
         kptr = our_one_time_pre_key_pair;
+        vk = our_one_time_pre_key_pair.public_key.public_key_bytes().to_vec();
+        k = hash_generic_zp(our_one_time_pre_key_pair.private_key.serialize().as_ref());
     } else {
         kptr = parameters.our_signed_pre_key_pair();
+        vk = parameters.our_signed_pre_key_pair().public_key.public_key_bytes().to_vec();
+        k = hash_generic_zp(parameters.our_signed_pre_key_pair().private_key.serialize().as_ref());
+
+
+    //      vk = their_one_time_prekey.public_key_bytes().to_vec();
+    // } else {
+    //     vk = parameters.their_signed_pre_key().public_key_bytes().to_vec();
     }
 
     // Bob's Kyber secret key recovers shared PQ secret from Alice's ciphertext
@@ -361,7 +386,57 @@ pub(crate) fn initialize_bob_session(
     );
 
     x = &secrets;
-    //let pvrf_ciphertext = parameters.their_pvrf();
+    let their_pvrf_ciphertext = parameters.their_pvrf_ciphertext().as_ref().map(|b| b.to_vec());
+    if let Some(bytes) = their_pvrf_ciphertext {
+        let (
+            (h, hprime, (c, (s1, s2))),
+            their_vk, //should be null or unset in real
+            their_secrets, //should be null or unset in real
+            their_alpha, //should be null or unset in real
+            their_beta //should be null or unset in real
+        ): (
+            (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))),
+            Vec<u8>,
+            Vec<u8>,
+            Scalar,
+            Scalar
+        ) = bincode::deserialize(&bytes).unwrap();
+        // Step 1, parse vars
+        let tau = (c, (s1, s2));
+        let vt = (h, hprime, tau);
+        their_vts = (vt, their_vk, their_secrets, their_alpha, their_beta);
+        vts_response = Some(bincode::serialize(&their_vts).unwrap());
+
+        // Step 2
+        let hi = hash_i(&vk, x);
+        let ha = hash_a(&vk, x);
+        let hb = hash_b(&vk, x);
+
+        // η = g^s1 * Hi(vk,x)^s2 * h^c
+        // η' = Ha(vk,x)^s1 * Hb(vk,x)^s2 * h'^c
+        let eta = g * (s1) + hi * (s2) + h * (c);
+        let etaprime = ha * (s1) + hb * (s2) + hprime * (c);
+
+        let computed_c = hash_fs(&vk, x, &h, &hprime, &eta, &etaprime);
+
+        // abort if mismatch
+        // if c != computed_c {
+        //     panic!("abort");
+        // }
+
+        // Step 3
+        let w = hi*(k);
+        let z = hash_o(&w); //the sas?
+        let v = h * (k);
+        let pi = (w, v);
+
+        // Step 4
+        let response =  (vk, x.clone(), vt, z, pi, c, computed_c); //(vk, x, vt, z, pi);
+        bob_response = Some(bincode::serialize(&response).unwrap());
+    } else {
+        vts_response = None;
+        bob_response = None;
+    }
 
 
     let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
@@ -396,8 +471,8 @@ pub(crate) fn initialize_bob_session(
         parameters.their_base_key(),
         pqr_state,
         32, //dummy sas
-        None, //dummy vts
-        None,
+        vts_response, //should be None in real, using for logging now
+        bob_response,
     )
     .with_sender_chain(parameters.our_ratchet_key_pair(), &chain_key);
 

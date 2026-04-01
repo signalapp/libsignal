@@ -704,7 +704,99 @@ export class SessionRecord {
 
   getVTS(): any {
     const vts = Native.SessionRecord_GetVTS(this);
-    return vts;
+    let offset = 0;
+
+    function readBytes(len: number) {
+        const slice = vts.slice(offset, offset + len);
+        offset += len;
+        return slice;
+    }
+
+    function readScalar() {
+        const bytes = readBytes(32);
+        // Convert little-endian bytes to bigint
+        let n = 0n;
+        for (let i = 0; i < 32; i++) {
+            n += BigInt(bytes[i]) << BigInt(8 * i);
+        }
+        return n;
+    }
+
+    function readLengthPrefixedBytes() {
+        const lenBytes = readBytes(4);
+        const len = lenBytes[0] + (lenBytes[1] << 8) + (lenBytes[2] << 16) + (lenBytes[3] << 24);
+        return readBytes(len);
+    }
+
+    const h = { compressed: readBytes(32) }; // RistrettoPoint compressed
+    const hprime = { compressed: readBytes(32) }; // RistrettoPoint compressed
+    const s1 = readScalar();
+    const s2_1 = readScalar();
+    const s2_2 = readScalar();
+
+    const vk = readLengthPrefixedBytes();
+    const x = readLengthPrefixedBytes();
+
+    const r1 = readScalar();
+    const r2 = readScalar();
+
+    return {
+        vt: {
+          h,
+          hprime,
+          tau: [s1, [s2_1, s2_2]],
+        },
+        vk,
+        x,
+        r1,
+        r2
+    };
+  }
+
+  getBobResponse(): any {
+    const data = Native.SessionRecord_GetBobResponse(this);
+    let offset = 0;
+
+    function readBytes(len: number) {
+        const slice = data.slice(offset, offset + len);
+        offset += len;
+        return slice;
+    }
+
+    function readScalar() {
+        const bytes = readBytes(32);
+        let n = 0n;
+        for (let i = 0; i < 32; i++) {
+            n += BigInt(bytes[i]) << BigInt(8 * i);
+        }
+        return n;
+    }
+
+    // Assuming vk and x are fixed length; if variable, replace with readLengthPrefixedBytes
+    const vk = readBytes(32); 
+    const x = readBytes(32);
+
+    const h = { compressed: readBytes(32) };
+    const hprime = { compressed: readBytes(32) };
+    const s1 = readScalar();
+    const s2_1 = readScalar();
+    const s2_2 = readScalar();
+
+    const z = readBytes(32); // assuming fixed length; adjust if variable
+    const w = { compressed: readBytes(32) };
+    const v = { compressed: readBytes(32) };
+    const c = readScalar();
+    const computed_c = readScalar();
+
+    return {
+        vk,
+        x,
+        vt: { h: h, hprime: hprime, tau: [s1, [s2_1, s2_2]] },
+        z,
+        pi: { w: w, v: v },
+        c,
+        computed_c
+    };
   }
 }
 
@@ -1508,7 +1600,8 @@ export async function signalEncrypt(
   identityStore: IdentityKeyStore,
   now: Date = new Date()
 ): Promise<CiphertextMessage> {
-  return CiphertextMessage._fromNativeHandle(
+  console.log('test signal encrypt', message, address, sessionStore, identityStore);
+  let temp = CiphertextMessage._fromNativeHandle(
     await Native.SessionCipher_EncryptMessage(
       message,
       address,
@@ -1517,6 +1610,10 @@ export async function signalEncrypt(
       now.getTime()
     )
   );
+  console.log('test signal encrypt result', temp);
+  console.log(temp.serialize());
+  console.log(JSON.stringify(temp));
+  return temp;
 }
 
 export function signalDecrypt(
@@ -1525,12 +1622,13 @@ export function signalDecrypt(
   sessionStore: SessionStore,
   identityStore: IdentityKeyStore
 ): Promise<Uint8Array> {
-  return Native.SessionCipher_DecryptSignalMessage(
-    message,
-    address,
-    sessionStore,
-    identityStore
-  );
+  console.log('test log signaldecrypt', message, address, sessionStore, identityStore);
+  let temp = Native.SessionCipher_DecryptSignalMessage(message, address, sessionStore, identityStore);
+  console.log('test log signaldecrypt result', temp);
+  temp.then((result) => {
+    console.log('test log signaldecrypt resolved', result);
+  });
+  return temp;
 }
 
 export function signalDecryptPreKey(
@@ -1542,15 +1640,13 @@ export function signalDecryptPreKey(
   signedPrekeyStore: SignedPreKeyStore,
   kyberPrekeyStore: KyberPreKeyStore
 ): Promise<Uint8Array> {
-  return Native.SessionCipher_DecryptPreKeySignalMessage(
-    message,
-    address,
-    sessionStore,
-    identityStore,
-    prekeyStore,
-    signedPrekeyStore,
-    kyberPrekeyStore
-  );
+  console.log('test log decrypt prekey', message, address, sessionStore, identityStore, prekeyStore, signedPrekeyStore, kyberPrekeyStore);
+  let temp = Native.SessionCipher_DecryptPreKeySignalMessage(message, address, sessionStore, identityStore, prekeyStore, signedPrekeyStore, kyberPrekeyStore);
+  console.log('test log decrypt prekey result', temp);
+  temp.then((result) => {
+    console.log('test log decrypt prekey resolved', result);
+  });
+  return temp;
 }
 
 export async function sealedSenderEncryptMessage(

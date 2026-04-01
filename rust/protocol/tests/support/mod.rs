@@ -178,6 +178,7 @@ pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), Signal
         *alice_identity.identity_key(),
         alice_base_key.public_key,
         &kyber_ciphertext,
+        None,
     );
 
     let bob_session = initialize_bob_session_record(&bob_params)?;

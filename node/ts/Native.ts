@@ -354,6 +354,7 @@ type NativeFunctions = {
   SessionRecord_CurrentRatchetKeyMatches: (s: Wrapper<SessionRecord>, key: Wrapper<PublicKey>) => boolean;
   SessionRecord_GetSAS: (s: Wrapper<SessionRecord>) => number;
   SessionRecord_GetVTS: (s: Wrapper<SessionRecord>) => any;
+  SessionRecord_GetBobResponse: (s: Wrapper<SessionRecord>) => any;
   PvrfDemo_ComputeZb: (context: Uint8Array, nonce: Uint8Array) => Uint8Array;
   PvrfDemo_ComputeSas: (nonce16: Uint8Array, zb16: Uint8Array) => Uint8Array;
   SessionRecord_Deserialize: (data: Uint8Array) => SessionRecord;
@@ -910,6 +911,7 @@ const { registerErrors,
   SessionRecord_CurrentRatchetKeyMatches,
   SessionRecord_GetSAS,
   SessionRecord_GetVTS,
+  SessionRecord_GetBobResponse,
   PvrfDemo_ComputeZb,
   PvrfDemo_ComputeSas,
   SessionRecord_Deserialize,
@@ -1468,6 +1470,7 @@ export { registerErrors,
   SessionRecord_CurrentRatchetKeyMatches,
   SessionRecord_GetSAS,
   SessionRecord_GetVTS,
+  SessionRecord_GetBobResponse,
   PvrfDemo_ComputeZb,
   PvrfDemo_ComputeSas,
   SessionRecord_Deserialize,

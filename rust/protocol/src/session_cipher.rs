@@ -8,6 +8,7 @@ use std::time::SystemTime;
 use rand::{CryptoRng, Rng};
 
 use crate::consts::{MAX_FORWARD_JUMPS, MAX_UNACKNOWLEDGED_SESSION_AGE};
+use crate::protocol::PvrfPayload;
 use crate::ratchet::{ChainKey, MessageKeyGenerator};
 use crate::state::{InvalidSessionError, SessionState};
 use crate::{
@@ -106,12 +107,18 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
             .zip(items.kyber_ciphertext())
             .map(|(id, ciphertext)| KyberPayload::new(id, ciphertext.into()));
 
+        let pvrf_payload = items
+            .pvrf_pre_key_id()
+            .zip(items.pvrf_ciphertext())
+            .map(|(id, ciphertext)| PvrfPayload::new(id, ciphertext.into()));
+
         CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::new(
             session_version,
             local_registration_id,
             items.pre_key_id(),
             items.signed_pre_key_id(),
             kyber_payload,
+            pvrf_payload,
             *items.base_key(),
             local_identity_key,
             message,

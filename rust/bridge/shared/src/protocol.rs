@@ -438,6 +438,7 @@ fn PreKeySignalMessage_New(
         pre_key_id.map(|id| id.into()),
         signed_pre_key_id.into(),
         None, // TODO: accept kyber payload
+        None,
         *base_key,
         IdentityKey::new(*identity_key),
         signal_message.clone(),
@@ -1021,21 +1022,22 @@ fn SessionRecord_GetSAS(s: &SessionRecord) -> Result<u32> {
 
 #[bridge_fn]
 fn SessionRecord_GetVTS(s: &SessionRecord) -> Result<Vec<u8>> {
-    let (A, B, (s1, (s2_1, s2_2)), bytes1, bytes2, r1, r2) = s.get_vts()?;
+    //get_vts returns Result<(RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar)), Vec<u8>, Vec<u8>, Scalar, Scalar), SignalProtocolError>
+    let (h, hprime, (s1, (s2_1, s2_2)), vk, x, r1, r2) = s.get_vts()?;
 
     // serialize each element into bytes
     let mut out = Vec::new();
-    out.extend(A.compress().as_bytes());      // 32 bytes
-    out.extend(B.compress().as_bytes());      // 32 bytes
-    out.extend(s1.to_bytes());                // 32 bytes
-    out.extend(s2_1.to_bytes());              // 32 bytes
-    out.extend(s2_2.to_bytes());              // 32 bytes
+    out.extend(h.compress().as_bytes());
+    out.extend(hprime.compress().as_bytes());
+    out.extend(s1.to_bytes());
+    out.extend(s2_1.to_bytes());
+    out.extend(s2_2.to_bytes());
 
     // lengths for variable-length byte arrays
-    out.extend(&(bytes1.len() as u32).to_le_bytes());
-    out.extend(&bytes1);
-    out.extend(&(bytes2.len() as u32).to_le_bytes());
-    out.extend(&bytes2);
+    out.extend(&(vk.len() as u32).to_le_bytes());
+    out.extend(&vk);
+    out.extend(&(x.len() as u32).to_le_bytes());
+    out.extend(&x);
 
     out.extend(r1.to_bytes());
     out.extend(r2.to_bytes());
@@ -1044,25 +1046,25 @@ fn SessionRecord_GetVTS(s: &SessionRecord) -> Result<Vec<u8>> {
 }
 
 #[bridge_fn]
-fn SessionRecord_GetBob_Response(s: &SessionRecord) -> Result<Vec<u8>> {
-    let (A, B, (s1, (s2_1, s2_2)), bytes1, bytes2, r1, r2) = s.get_bob_response()?;
+fn SessionRecord_GetBobResponse(s: &SessionRecord) -> Result<Vec<u8>> {
+    //Result<(Vec<u8>, Vec<u8>, (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))), Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar), SignalProtocolError>
+    let (vk, x, (h, hprime, (s1, (s2_1, s2_2))), z, (w, v), c, computed_c) = s.get_bob_response()?;
 
-    // serialize each element into bytes
     let mut out = Vec::new();
-    out.extend(A.compress().as_bytes());      // 32 bytes
-    out.extend(B.compress().as_bytes());      // 32 bytes
-    out.extend(s1.to_bytes());                // 32 bytes
-    out.extend(s2_1.to_bytes());              // 32 bytes
-    out.extend(s2_2.to_bytes());              // 32 bytes
+    out.extend(vk);
+    out.extend(x);
+    out.extend(h.compress().as_bytes());
+    out.extend(hprime.compress().as_bytes());
+    out.extend(s1.to_bytes());
+    out.extend(s2_1.to_bytes());
+    out.extend(s2_2.to_bytes());
 
-    // lengths for variable-length byte arrays
-    out.extend(&(bytes1.len() as u32).to_le_bytes());
-    out.extend(&bytes1);
-    out.extend(&(bytes2.len() as u32).to_le_bytes());
-    out.extend(&bytes2);
+    out.extend(z);
+    out.extend(w.compress().as_bytes());
+    out.extend(v.compress().as_bytes());
+    out.extend(c.to_bytes());
+    out.extend(computed_c.to_bytes());
 
-    out.extend(r1.to_bytes());
-    out.extend(r2.to_bytes());
 
     Ok(out)
 }
