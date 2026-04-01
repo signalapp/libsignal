@@ -269,6 +269,7 @@ typedef enum {
   SignalErrorCodeRequestUnauthorized = 220,
   SignalErrorCodeMismatchedDevices = 221,
   SignalErrorCodeServiceIdNotFound = 222,
+  SignalErrorCodeUploadTooLarge = 223,
 } SignalErrorCode;
 
 enum SignalSvr2CredentialsResult {
@@ -1734,7 +1735,7 @@ SignalFfiError *signal_authenticated_chat_connection_destroy(SignalMutPointerAut
 
 SignalFfiError *signal_authenticated_chat_connection_disconnect(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat);
 
-SignalFfiError *signal_authenticated_chat_connection_get_upload_form(SignalCPromiseFfiUploadForm *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat);
+SignalFfiError *signal_authenticated_chat_connection_get_upload_form(SignalCPromiseFfiUploadForm *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, uint64_t upload_length);
 
 SignalFfiError *signal_authenticated_chat_connection_info(SignalMutPointerChatConnectionInfo *out, SignalConstPointerAuthenticatedChatConnection chat);
 

@@ -79,6 +79,7 @@ public enum SignalError: Error {
     case requestUnauthorized(String)
     case mismatchedDevices(entries: [MismatchedDeviceEntry], message: String)
     case serviceIdNotFound(String)
+    case uploadTooLarge(String)
 
     case unknown(UInt32, String)
 }
@@ -343,6 +344,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         )
     case SignalErrorCodeServiceIdNotFound:
         throw SignalError.serviceIdNotFound(errStr)
+    case SignalErrorCodeUploadTooLarge:
+        throw SignalError.uploadTooLarge(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

@@ -9,12 +9,14 @@ import SignalFfi
 public protocol AuthMessagesService: Sendable {
     /// Get an attachment upload form
     ///
-    /// Throws only if the request cannot be completed.
-    func getUploadForm() async throws -> UploadForm
+    /// - Throws:
+    ///   - ``SignalError/uploadTooLarge(_:)`` if ``uploadSize`` is too large
+    ///   - the standard Signal network errors
+    func getUploadForm(uploadSize: UInt64) async throws -> UploadForm
 }
 
 extension AuthenticatedChatConnection: AuthMessagesService {
-    public func getUploadForm() async throws -> UploadForm {
+    public func getUploadForm(uploadSize: UInt64) async throws -> UploadForm {
         return try UploadForm(
             consuming: try await self.tokioAsyncContext
                 .invokeAsyncFunction { promise, tokioAsyncContext in
@@ -23,6 +25,7 @@ extension AuthenticatedChatConnection: AuthMessagesService {
                             promise,
                             tokioAsyncContext.const(),
                             chatService.const(),
+                            uploadSize,
                         )
                     }
                 }

@@ -6,6 +6,7 @@
 use std::borrow::Cow;
 
 use async_trait::async_trait;
+use displaydoc::Display;
 use rand::Rng;
 
 use super::{AllowRateLimitChallenges, RequestError, UploadForm};
@@ -54,15 +55,12 @@ impl<'a> BackupAuth<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub enum GetUploadFormFailure {
+    /// The upload form credential was rejected
     Unauthorized,
-    FileTooLarge,
-}
-
-#[derive(Debug)]
-pub enum GetMediaUploadFormFailure {
-    Unauthorized,
+    /// The provided uploadLength is larger than the maximum supported upload size.
+    UploadTooLarge,
 }
 
 /// High-level chat-server APIs for backups
@@ -87,8 +85,9 @@ pub trait UnauthenticatedChatApi<T> {
     async fn get_media_upload_form(
         &self,
         auth: &BackupAuth,
+        upload_size: u64,
         rng: &mut (dyn rand::CryptoRng + Send),
-    ) -> Result<UploadForm, RequestError<GetMediaUploadFormFailure>>;
+    ) -> Result<UploadForm, RequestError<GetUploadFormFailure>>;
 }
 
 #[cfg(test)]

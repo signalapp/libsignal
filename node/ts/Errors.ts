@@ -71,6 +71,8 @@ export enum ErrorCode {
   MismatchedDevices,
 
   ServiceIdNotFound,
+
+  UploadTooLarge,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -389,6 +391,10 @@ export type ServiceIdNotFound = LibSignalErrorCommon & {
   code: ErrorCode.ServiceIdNotFound;
 };
 
+export type UploadTooLarge = LibSignalErrorCommon & {
+  code: ErrorCode.UploadTooLarge;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -439,4 +445,5 @@ export type LibSignalError =
   | IncrementalMacVerificationFailed
   | RequestUnauthorizedError
   | MismatchedDevicesError
-  | ServiceIdNotFound;
+  | ServiceIdNotFound
+  | UploadTooLarge;

@@ -61,6 +61,7 @@ pub use futures::*;
 
 mod io;
 pub use io::*;
+use libsignal_net_chat::api::messages::UploadTooLarge;
 
 mod storage;
 pub use storage::*;
@@ -194,6 +195,19 @@ impl JniError for IllegalArgumentError {
             env,
             &self.0,
             ClassName("java.lang.IllegalArgumentException"),
+        )
+    }
+}
+
+impl JniError for UploadTooLarge {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut JNIEnv<'a>,
+    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        make_single_message_throwable(
+            env,
+            &self.to_string(),
+            ClassName("org.signal.libsignal.net.UploadTooLargeException"),
         )
     }
 }

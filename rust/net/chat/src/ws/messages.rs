@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::convert::Infallible;
-
 use assert_matches::debug_assert_matches;
 use async_trait::async_trait;
 use base64::prelude::{BASE64_STANDARD, Engine as _};
@@ -22,7 +20,7 @@ use super::{
 use crate::api::messages::{
     MismatchedDeviceError, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
     MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
-    SingleOutboundUnsealedMessage, UnauthenticatedChatApi, UnsealedSendFailure,
+    SingleOutboundUnsealedMessage, UnauthenticatedChatApi, UnsealedSendFailure, UploadTooLarge,
     UserBasedSendAuthorization,
 };
 use crate::api::{Auth, RequestError, Unauth, UploadForm};
@@ -424,19 +422,23 @@ impl<T: WsConnection> crate::api::messages::AuthenticatedChatApi<OverWs> for Aut
             })
     }
 
-    async fn get_upload_form(&self) -> Result<UploadForm, RequestError<Infallible>> {
+    async fn get_upload_form(
+        &self,
+        upload_length: u64,
+    ) -> Result<UploadForm, RequestError<UploadTooLarge>> {
         if let Some(grpc) =
             self.grpc_service_to_use_instead(services::Attachments::GetUploadForm.into())
         {
-            return Auth(grpc).get_upload_form().await;
+            return Auth(grpc).get_upload_form(upload_length).await;
         }
+        let path = format!("/v4/attachments/form/upload?uploadLength={upload_length}");
         let response = self
             .send(
                 "auth",
-                "/v4/attachments/form/upload",
+                &path,
                 Request {
                     method: http::Method::GET,
-                    path: http::uri::PathAndQuery::from_static("/v4/attachments/form/upload"),
+                    path: path.parse().expect("path should parse"),
                     headers: http::HeaderMap::default(),
                     body: None,
                 },
@@ -444,10 +446,14 @@ impl<T: WsConnection> crate::api::messages::AuthenticatedChatApi<OverWs> for Aut
             .await?;
 
         let GetUploadFormResponse(upload_form) = response.try_into_response().map_err(|e| {
-            e.into_request_error(
-                Self::ALLOW_RATE_LIMIT_CHALLENGES,
-                CustomError::no_custom_handling,
-            )
+            e.into_request_error(Self::ALLOW_RATE_LIMIT_CHALLENGES, |response| {
+                if response.status.as_u16() == 413 {
+                    expect_empty_body(response, "/v4/attachments/form/upload");
+                    CustomError::Err(UploadTooLarge)
+                } else {
+                    CustomError::NoCustomHandling
+                }
+            })
         })?;
 
         Ok(upload_form)
@@ -1274,13 +1280,17 @@ mod test {
         headers: vec![("one".into(), "val1".into()), ("two".into(), "val2".into())],
         signed_upload_url: "http://example.org/upload".into(),
     })]
-    #[test_case(empty(413) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(empty(413) => matches Err(RequestError::Other(UploadTooLarge)))]
     #[test_case(empty(500) => matches Err(RequestError::ServerSideError))]
-    fn test_get_upload_form(response: Response) -> Result<UploadForm, RequestError<Infallible>> {
+    fn test_get_upload_form(
+        response: Response,
+    ) -> Result<UploadForm, RequestError<UploadTooLarge>> {
         let validator = RequestValidator {
             expected: Request {
                 method: http::Method::GET,
-                path: http::uri::PathAndQuery::from_static("/v4/attachments/form/upload"),
+                path: http::uri::PathAndQuery::from_static(
+                    "/v4/attachments/form/upload?uploadLength=12345",
+                ),
                 headers: http::HeaderMap::default(),
                 body: None,
             },
@@ -1288,7 +1298,7 @@ mod test {
         };
 
         Auth(validator)
-            .get_upload_form()
+            .get_upload_form(12345)
             .now_or_never()
             .expect("sync")
     }

@@ -10,3 +10,5 @@ v0.91.0
 - Log backtraces on panic
 
 - Node: Support H2 when using `localTestServer` mode for Net connections.
+
+- Support upload sizes on getUploadForm()

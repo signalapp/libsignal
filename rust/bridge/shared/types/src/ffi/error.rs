@@ -16,7 +16,7 @@ use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net_chat::api::RateLimitChallenge;
 use libsignal_net_chat::api::keys::GetPreKeysFailure;
 use libsignal_net_chat::api::keytrans::Error as KeyTransError;
-use libsignal_net_chat::api::messages::MismatchedDeviceError;
+use libsignal_net_chat::api::messages::{MismatchedDeviceError, UploadTooLarge};
 use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -135,6 +135,7 @@ pub enum SignalErrorCode {
     MismatchedDevices = 221,
 
     ServiceIdNotFound = 222,
+    UploadTooLarge = 223,
 }
 
 pub trait UpcastAsAny {
@@ -755,6 +756,12 @@ impl FfiError for libsignal_net_chat::api::messages::MultiRecipientSendFailure {
             Self::Unauthorized => Err(WrongErrorKind),
             Self::MismatchedDevices(mismatched_device_errors) => Ok(mismatched_device_errors),
         }
+    }
+}
+
+impl IntoFfiError for UploadTooLarge {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(SignalErrorCode::UploadTooLarge, self.to_string())
     }
 }
 

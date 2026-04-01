@@ -15,9 +15,7 @@ use libsignal_net_grpc::proto::chat::common;
 use libsignal_net_grpc::proto::chat::errors::{FailedPrecondition, FailedZkAuthentication};
 
 use super::{GrpcServiceProvider, OverGrpc, log_and_send};
-use crate::api::backups::{
-    BackupAuth, BackupAuthPresentation, GetMediaUploadFormFailure, GetUploadFormFailure,
-};
+use crate::api::backups::{BackupAuth, BackupAuthPresentation, GetUploadFormFailure};
 use crate::api::{RequestError, Unauth, UploadForm};
 use crate::logging::{DebugByCalling, Redact};
 
@@ -44,9 +42,8 @@ impl<T: GrpcServiceProvider> crate::api::backups::UnauthenticatedChatApi<OverGrp
 
         let request = GetUploadFormRequest {
             signed_presentation: Some(auth.into()),
-            upload_type: Some(UploadType::Messages(MessagesUploadType {
-                upload_length: upload_size,
-            })),
+            upload_length: upload_size,
+            upload_type: Some(UploadType::Messages(MessagesUploadType {})),
         };
         let log_safe_description = Redact(&request).to_string();
         let response: GetUploadFormResponse = log_and_send("unauth", &log_safe_description, || {
@@ -61,14 +58,16 @@ impl<T: GrpcServiceProvider> crate::api::backups::UnauthenticatedChatApi<OverGrp
     async fn get_media_upload_form(
         &self,
         auth: &BackupAuth,
+        upload_size: u64,
         rng: &mut (dyn rand::CryptoRng + Send),
-    ) -> Result<UploadForm, RequestError<GetMediaUploadFormFailure>> {
+    ) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
         let mut backup_service = BackupsAnonymousClient::new(self.0.service());
 
         let auth = auth.present(rng)?;
 
         let request = GetUploadFormRequest {
             signed_presentation: Some(auth.into()),
+            upload_length: upload_size,
             upload_type: Some(UploadType::Media(MediaUploadType {})),
         };
         let log_safe_description = Redact(&request).to_string();
@@ -78,19 +77,7 @@ impl<T: GrpcServiceProvider> crate::api::backups::UnauthenticatedChatApi<OverGrp
         .await?
         .into_inner();
 
-        response
-            .try_into()
-            .map_err(|e: RequestError<GetUploadFormFailure>| {
-                e.flat_map_other(|e| match e {
-                    GetUploadFormFailure::Unauthorized => {
-                        RequestError::Other(GetMediaUploadFormFailure::Unauthorized)
-                    }
-                    GetUploadFormFailure::FileTooLarge => RequestError::Unexpected {
-                        log_safe: "unexpected oversize_upload for media upload form request"
-                            .to_owned(),
-                    },
-                })
-            })
+        response.try_into()
     }
 }
 
@@ -99,14 +86,12 @@ impl TryFrom<GetUploadFormResponse> for UploadForm {
     type Error = RequestError<GetUploadFormFailure>;
 
     fn try_from(value: GetUploadFormResponse) -> Result<Self, Self::Error> {
-        use get_upload_form_response::Outcome;
-
-        let outcome = value.outcome.ok_or_else(|| RequestError::Unexpected {
-            log_safe: "missing outcome".to_owned(),
+        let response = value.response.ok_or_else(|| RequestError::Unexpected {
+            log_safe: "missing response".to_owned(),
         })?;
 
-        match outcome {
-            Outcome::UploadForm(common::UploadForm {
+        match response {
+            get_upload_form_response::Response::UploadForm(common::UploadForm {
                 cdn,
                 key,
                 headers,
@@ -118,14 +103,18 @@ impl TryFrom<GetUploadFormResponse> for UploadForm {
                 signed_upload_url: signed_upload_location,
             }),
 
-            Outcome::FailedAuthentication(FailedZkAuthentication { description }) => {
+            get_upload_form_response::Response::FailedAuthentication(FailedZkAuthentication {
+                description,
+            }) => {
                 log::warn!("failed zk auth: {description}");
                 Err(RequestError::Other(GetUploadFormFailure::Unauthorized))
             }
 
-            Outcome::ExceedsMaxUploadLength(FailedPrecondition { description }) => {
+            get_upload_form_response::Response::ExceedsMaxUploadLength(FailedPrecondition {
+                description,
+            }) => {
                 log::warn!("exceeded max upload length: {description}");
-                Err(RequestError::Other(GetUploadFormFailure::FileTooLarge))
+                Err(RequestError::Other(GetUploadFormFailure::UploadTooLarge))
             }
         }
     }
@@ -136,6 +125,7 @@ impl std::fmt::Display for Redact<GetUploadFormRequest> {
         let Self(GetUploadFormRequest {
             // Omit the presentation, in line with WS logs only showing the URL and not headers.
             signed_presentation: _,
+            upload_length,
             upload_type,
         }) = self;
 
@@ -143,14 +133,14 @@ impl std::fmt::Display for Redact<GetUploadFormRequest> {
             .field(
                 "type",
                 &DebugByCalling(|f| match upload_type {
-                    Some(UploadType::Messages(MessagesUploadType { upload_length })) => f
-                        .debug_struct("Messages")
-                        .field("length", upload_length)
-                        .finish(),
+                    Some(UploadType::Messages(MessagesUploadType {})) => {
+                        f.debug_struct("Messages").finish()
+                    }
                     Some(UploadType::Media(MediaUploadType {})) => f.debug_struct("Media").finish(),
                     None => f.write_str("<none>"),
                 }),
             )
+            .field("upload_length", upload_length)
             .finish()
     }
 }
@@ -190,7 +180,7 @@ mod test {
     }
 
     #[test_case(ok(GetUploadFormResponse {
-        outcome: Some(get_upload_form_response::Outcome::UploadForm(common::UploadForm {
+        response: Some(get_upload_form_response::Response::UploadForm(common::UploadForm {
             cdn: 123,
             key: "abcde".to_owned(),
             headers: HashMap::from_iter([
@@ -206,17 +196,17 @@ mod test {
         signed_upload_url: "http://example.org/upload".into(),
     }))]
     #[test_case(ok(GetUploadFormResponse {
-        outcome: Some(get_upload_form_response::Outcome::FailedAuthentication(FailedZkAuthentication {
+        response: Some(get_upload_form_response::Response::FailedAuthentication(FailedZkAuthentication {
             description: "bad!".to_owned()
         }))
     }) => matches Err(RequestError::Other(GetUploadFormFailure::Unauthorized)))]
     #[test_case(ok(GetUploadFormResponse {
-        outcome: Some(get_upload_form_response::Outcome::ExceedsMaxUploadLength(FailedPrecondition {
+        response: Some(get_upload_form_response::Response::ExceedsMaxUploadLength(FailedPrecondition {
             description: "bad!".to_owned()
         }))
-    }) => matches Err(RequestError::Other(GetUploadFormFailure::FileTooLarge)))]
+    }) => matches Err(RequestError::Other(GetUploadFormFailure::UploadTooLarge)))]
     #[test_case(ok(GetUploadFormResponse {
-        outcome: None,
+        response: None,
     }) => matches Err(RequestError::Unexpected { .. }))]
     #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
     fn test_get_upload_form(
@@ -230,9 +220,8 @@ mod test {
                         presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
                         presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
                     }),
-                    upload_type: Some(UploadType::Messages(MessagesUploadType {
-                        upload_length: 12345,
-                    })),
+                    upload_type: Some(UploadType::Messages(MessagesUploadType {})),
+                    upload_length: 12345,
                 },
             ),
             response,
@@ -252,7 +241,7 @@ mod test {
     }
 
     #[test_case(ok(GetUploadFormResponse {
-        outcome: Some(get_upload_form_response::Outcome::UploadForm(common::UploadForm {
+        response: Some(get_upload_form_response::Response::UploadForm(common::UploadForm {
             cdn: 123,
             key: "abcde".to_owned(),
             headers: HashMap::from_iter([
@@ -268,22 +257,22 @@ mod test {
         signed_upload_url: "http://example.org/upload".into(),
     }))]
     #[test_case(ok(GetUploadFormResponse {
-        outcome: Some(get_upload_form_response::Outcome::FailedAuthentication(FailedZkAuthentication {
+        response: Some(get_upload_form_response::Response::FailedAuthentication(FailedZkAuthentication {
             description: "bad!".to_owned()
         }))
-    }) => matches Err(RequestError::Other(GetMediaUploadFormFailure::Unauthorized)))]
+    }) => matches Err(RequestError::Other(GetUploadFormFailure::Unauthorized)))]
     #[test_case(ok(GetUploadFormResponse {
-        outcome: Some(get_upload_form_response::Outcome::ExceedsMaxUploadLength(FailedPrecondition {
+        response: Some(get_upload_form_response::Response::ExceedsMaxUploadLength(FailedPrecondition {
             description: "bad!".to_owned()
         }))
-    }) => matches Err(RequestError::Unexpected { .. }))]
+    }) => matches Err(RequestError::Other(GetUploadFormFailure::UploadTooLarge)))]
     #[test_case(ok(GetUploadFormResponse {
-        outcome: None,
+        response: None,
     }) => matches Err(RequestError::Unexpected { .. }))]
     #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
     fn test_get_media_upload_form(
         response: http::Response<Vec<u8>>,
-    ) -> Result<UploadForm, RequestError<GetMediaUploadFormFailure>> {
+    ) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
         let validator = RequestValidator {
             expected: req(
                 "/org.signal.chat.backup.BackupsAnonymous/GetUploadForm",
@@ -292,6 +281,7 @@ mod test {
                         presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
                         presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
                     }),
+                    upload_length: 12345,
                     upload_type: Some(UploadType::Media(MediaUploadType {})),
                 },
             ),
@@ -304,6 +294,7 @@ mod test {
                     zkgroup::backups::BackupCredentialType::Media,
                     &mut fixed_seed_test_rng(),
                 ),
+                12345,
                 &mut fixed_seed_test_rng(),
             )
             .now_or_never()

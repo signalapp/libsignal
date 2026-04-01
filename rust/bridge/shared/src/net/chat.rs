@@ -18,7 +18,7 @@ use libsignal_net::chat::{self, ConnectError, LanguageList, Response as ChatResp
 use libsignal_net_chat::api::keys::{DeviceSpecifier, GetPreKeysFailure, UnauthenticatedChatApi};
 use libsignal_net_chat::api::messages::{
     AuthenticatedChatApi, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
-    MultiRecipientSendFailure, UnauthenticatedChatApi as _,
+    MultiRecipientSendFailure, UnauthenticatedChatApi as _, UploadTooLarge,
 };
 use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
@@ -364,6 +364,8 @@ async fn UnauthenticatedChatConnection_account_exists(
 #[bridge_io(TokioAsyncContext)]
 async fn AuthenticatedChatConnection_get_upload_form(
     chat: &AuthenticatedChatConnection,
-) -> Result<UploadForm, RequestError<Infallible>> {
-    chat.as_typed(|chat| chat.get_upload_form()).await
+    upload_length: u64,
+) -> Result<UploadForm, RequestError<UploadTooLarge>> {
+    chat.as_typed(|chat| chat.get_upload_form(upload_length))
+        .await
 }

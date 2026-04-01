@@ -24,10 +24,10 @@ class AuthMessagesServiceTest {
       )
 
     val service = AuthMessagesService(chat)
-    val responseFuture = service.getUploadForm()
+    val responseFuture = service.getUploadForm(42)
     val (request, requestId) = fakeRemote.getNextIncomingRequest().get(1, TimeUnit.SECONDS)
     assertEquals("GET", request.method)
-    assertEquals("/v4/attachments/form/upload", request.pathAndQuery)
+    assertEquals("/v4/attachments/form/upload?uploadLength=42", request.pathAndQuery)
     assertEquals(0, request.headers.size)
     assertEquals(0, request.body.size)
     fakeRemote.sendResponse(
@@ -45,7 +45,6 @@ class AuthMessagesServiceTest {
       """.encodeToByteArray(),
     )
     val result = responseFuture.get()
-    println(result)
     val successResult = assertIs<RequestResult.Success<UploadForm>>(result)
     assertEquals(
       UploadForm(
@@ -56,5 +55,32 @@ class AuthMessagesServiceTest {
       ),
       successResult.result,
     )
+  }
+
+  @Test
+  fun testGetUploadFormTooLarge() {
+    val tokioAsyncContext = TokioAsyncContext()
+    val (chat, fakeRemote) =
+      AuthenticatedChatConnection.fakeConnect(
+        tokioAsyncContext,
+        NoOpListener(),
+      )
+
+    val service = AuthMessagesService(chat)
+    val responseFuture = service.getUploadForm(42)
+    val (request, requestId) = fakeRemote.getNextIncomingRequest().get(1, TimeUnit.SECONDS)
+    assertEquals("GET", request.method)
+    assertEquals("/v4/attachments/form/upload?uploadLength=42", request.pathAndQuery)
+    assertEquals(0, request.headers.size)
+    assertEquals(0, request.body.size)
+    fakeRemote.sendResponse(
+      requestId,
+      413,
+      "Content Too Large",
+      arrayOf(),
+      byteArrayOf(),
+    )
+    val error = assertIs<RequestResult.NonSuccess<UploadTooLargeException>>(responseFuture.get()).error
+    assertIs<UploadTooLargeException>(error)
   }
 }

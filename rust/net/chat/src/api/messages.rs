@@ -4,9 +4,9 @@
 //
 
 use std::borrow::Cow;
-use std::convert::Infallible;
 
 use async_trait::async_trait;
+use displaydoc::Display;
 use itertools::Itertools as _;
 use libsignal_core::{DeviceId, ServiceId};
 use libsignal_net::infra::errors::LogSafeDisplay;
@@ -159,6 +159,10 @@ pub trait UnauthenticatedChatApi<T> {
     ) -> Result<MultiRecipientMessageResponse, RequestError<MultiRecipientSendFailure>>;
 }
 
+/// The request size was larger than the maximum supported upload size
+#[derive(Debug, Display)]
+pub struct UploadTooLarge;
+
 /// High-level chat-server APIs for messaging
 ///
 /// ### Generic?
@@ -193,7 +197,10 @@ pub trait AuthenticatedChatApi<T> {
         urgent: bool,
     ) -> Result<(), RequestError<MismatchedDeviceError>>;
 
-    async fn get_upload_form(&self) -> Result<UploadForm, RequestError<Infallible>>;
+    async fn get_upload_form(
+        &self,
+        upload_size: u64,
+    ) -> Result<UploadForm, RequestError<UploadTooLarge>>;
 }
 
 impl std::fmt::Display for MultiRecipientSendFailure {

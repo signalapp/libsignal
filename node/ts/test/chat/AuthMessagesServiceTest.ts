@@ -8,8 +8,9 @@ import chaiAsPromised from 'chai-as-promised';
 
 import * as Native from '../../Native.js';
 import * as util from '../util.js';
-import { TokioAsyncContext, AuthMessagesService } from '../../net.js';
+import { AuthMessagesService, TokioAsyncContext } from '../../net.js';
 import { connectAuth } from './ServiceTestUtils.js';
+import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
 
 use(chaiAsPromised);
 
@@ -21,10 +22,10 @@ describe('AuthMessagesService', () => {
     it('works correctly', async () => {
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
       const [chat, fakeRemote] = connectAuth<AuthMessagesService>(tokio);
-      const responseFuture = chat.getUploadForm();
+      const responseFuture = chat.getUploadForm({ uploadSize: 42n });
       const request = await fakeRemote.assertReceiveIncomingRequest();
       expect(request.verb).to.eq('GET');
-      expect(request.path).to.eq('/v4/attachments/form/upload');
+      expect(request.path).to.eq('/v4/attachments/form/upload?uploadLength=42');
       expect(request.headers.size).to.eq(0);
       expect(request.body.length).to.eq(0);
       fakeRemote.sendReplyTo(request, {
@@ -40,7 +41,8 @@ describe('AuthMessagesService', () => {
           })
         ),
       });
-      expect(await responseFuture).to.deep.eq({
+      const response = await responseFuture;
+      expect(response).to.deep.eq({
         cdn: 123,
         key: 'abcde',
         headers: new Map([
@@ -49,6 +51,25 @@ describe('AuthMessagesService', () => {
         ]),
         signedUploadUrl: new URL('http://example.org/upload'),
       });
+    });
+    it('throws on upload too large', async () => {
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+      const [chat, fakeRemote] = connectAuth<AuthMessagesService>(tokio);
+      const responseFuture = chat.getUploadForm({ uploadSize: 42n });
+      const request = await fakeRemote.assertReceiveIncomingRequest();
+      expect(request.verb).to.eq('GET');
+      expect(request.path).to.eq('/v4/attachments/form/upload?uploadLength=42');
+      expect(request.headers.size).to.eq(0);
+      expect(request.body.length).to.eq(0);
+      fakeRemote.sendReplyTo(request, {
+        status: 413,
+        message: 'Content Too Large',
+      });
+      await expect(responseFuture)
+        .to.eventually.be.rejectedWith(LibSignalErrorBase)
+        .and.deep.include({
+          code: ErrorCode.UploadTooLarge,
+        });
     });
   });
 });

@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::convert::Infallible;
 use std::fmt::Formatter;
 
 use async_trait::async_trait;
 use itertools::Itertools as _;
 use libsignal_core::{DeviceId, ServiceId};
 use libsignal_net_grpc::proto::chat::attachments::attachments_client::AttachmentsClient;
+use libsignal_net_grpc::proto::chat::attachments::get_upload_form_response::Outcome;
 use libsignal_net_grpc::proto::chat::common::ServiceIdentifier;
 use libsignal_net_grpc::proto::chat::messages::messages_anonymous_client::MessagesAnonymousClient;
 use libsignal_net_grpc::proto::chat::messages::messages_client::MessagesClient;
@@ -30,7 +30,7 @@ use super::{GrpcServiceProvider, OverGrpc, log_and_send};
 use crate::api::messages::{
     MismatchedDeviceError, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
     MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
-    SingleOutboundUnsealedMessage, UnsealedSendFailure, UserBasedSendAuthorization,
+    SingleOutboundUnsealedMessage, UnsealedSendFailure, UploadTooLarge, UserBasedSendAuthorization,
 };
 use crate::api::{Auth, RequestError, Unauth, UploadForm, UserBasedAuthorization};
 use crate::logging::Redact;
@@ -445,30 +445,39 @@ impl<T: GrpcServiceProvider> crate::api::messages::AuthenticatedChatApi<OverGrpc
         }
     }
 
-    async fn get_upload_form(&self) -> Result<UploadForm, RequestError<Infallible>> {
+    async fn get_upload_form(
+        &self,
+        upload_length: u64,
+    ) -> Result<UploadForm, RequestError<UploadTooLarge>> {
         let mut attachments_service = AttachmentsClient::new(self.0.service());
-        let request = attachments::GetUploadFormRequest {};
+        let request = attachments::GetUploadFormRequest { upload_length };
         let log_safe_description = Redact(&request).to_string();
-        let attachments::GetUploadFormResponse { upload_form } =
-            log_and_send("auth", &log_safe_description, || {
-                attachments_service.get_upload_form(request)
-            })
-            .await?
-            .into_inner();
-        let common::UploadForm {
-            cdn,
-            key,
-            headers,
-            signed_upload_location,
-        } = upload_form.ok_or_else(|| RequestError::Unexpected {
-            log_safe: "GetUploadFormResponse missing upload form".to_string(),
-        })?;
-        Ok(UploadForm {
-            cdn,
-            key,
-            headers: headers.into_iter().collect(),
-            signed_upload_url: signed_upload_location,
+        let response = log_and_send("auth", &log_safe_description, || {
+            attachments_service.get_upload_form(request)
         })
+        .await?
+        .into_inner();
+        let Some(response) = response.outcome else {
+            return Err(RequestError::Unexpected {
+                log_safe: "Response outcome is empty".to_string(),
+            });
+        };
+        match response {
+            Outcome::UploadForm(common::UploadForm {
+                cdn,
+                key,
+                headers,
+                signed_upload_location,
+            }) => Ok(UploadForm {
+                cdn,
+                key,
+                headers: headers.into_iter().collect(),
+                signed_upload_url: signed_upload_location,
+            }),
+            Outcome::ExceedsMaxUploadLength(errors::FailedPrecondition { description: _ }) => {
+                Err(RequestError::Other(UploadTooLarge))
+            }
+        }
     }
 }
 
@@ -560,8 +569,10 @@ impl std::fmt::Display for Redact<SendSyncMessageRequest> {
 
 impl std::fmt::Display for Redact<attachments::GetUploadFormRequest> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let Self(attachments::GetUploadFormRequest {}) = self;
-        f.debug_struct("attachments::GetUploadFormRequest").finish()
+        let Self(attachments::GetUploadFormRequest { upload_length }) = self;
+        f.debug_struct("attachments::GetUploadFormRequest")
+            .field("upload_length", upload_length)
+            .finish()
     }
 }
 
@@ -574,6 +585,7 @@ mod test {
     use futures_util::FutureExt as _;
     use libsignal_core::{Aci, Pni, ServiceId};
     use libsignal_net::infra::errors::RetryLater;
+    use libsignal_net_grpc::proto::chat::attachments::get_upload_form_response;
     use libsignal_net_grpc::proto::chat::messages::ChallengeRequired as ChallengeRequiredProto;
     use libsignal_net_grpc::proto::chat::messages::send_sealed_sender_message_request::Authorization as SealedSenderAuthorization;
     use libsignal_net_grpc::proto::chat::services;
@@ -1169,29 +1181,64 @@ mod test {
     }
 
     #[test]
+    fn test_attachment_get_upload_form_too_large() {
+        let validator = GrpcOverrideRequestValidator {
+            message: services::Attachments::GetUploadForm.into(),
+            validator: RequestValidator {
+                expected: req(
+                    "/org.signal.chat.attachments.Attachments/GetUploadForm",
+                    attachments::GetUploadFormRequest {
+                        upload_length: 12345,
+                    },
+                ),
+                response: ok(attachments::GetUploadFormResponse {
+                    outcome: Some(get_upload_form_response::Outcome::ExceedsMaxUploadLength(
+                        errors::FailedPrecondition {
+                            description: Default::default(),
+                        },
+                    )),
+                }),
+            },
+        };
+        let err = Auth(&validator)
+            .get_upload_form(12345)
+            .now_or_never()
+            .expect("sync")
+            .expect_err("failure");
+        assert!(
+            matches!(err, RequestError::Other(UploadTooLarge)),
+            "{err:?}"
+        );
+    }
+
+    #[test]
     fn test_attachment_get_upload_form() {
         let validator = GrpcOverrideRequestValidator {
             message: services::Attachments::GetUploadForm.into(),
             validator: RequestValidator {
                 expected: req(
                     "/org.signal.chat.attachments.Attachments/GetUploadForm",
-                    attachments::GetUploadFormRequest {},
+                    attachments::GetUploadFormRequest {
+                        upload_length: 12345,
+                    },
                 ),
                 response: ok(attachments::GetUploadFormResponse {
-                    upload_form: Some(common::UploadForm {
-                        cdn: 2,
-                        key: "my key".to_string(),
-                        headers: HashMap::from_iter([
-                            ("one".to_string(), "val1".to_string()),
-                            ("two".to_string(), "val2".to_string()),
-                        ]),
-                        signed_upload_location: "location".to_string(),
-                    }),
+                    outcome: Some(get_upload_form_response::Outcome::UploadForm(
+                        common::UploadForm {
+                            cdn: 2,
+                            key: "my key".to_string(),
+                            headers: HashMap::from_iter([
+                                ("one".to_string(), "val1".to_string()),
+                                ("two".to_string(), "val2".to_string()),
+                            ]),
+                            signed_upload_location: "location".to_string(),
+                        },
+                    )),
                 }),
             },
         };
         let mut upload_form = Auth(&validator)
-            .get_upload_form()
+            .get_upload_form(12345)
             .now_or_never()
             .expect("sync")
             .expect("success");

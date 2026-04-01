@@ -15,10 +15,10 @@ class AuthMessagesServiceTests: AuthChatServiceTestBase<any AuthMessagesService>
 
     func testGetUploadForm() async throws {
         let api = self.api
-        async let responseFuture = api.getUploadForm()
+        async let responseFuture = api.getUploadForm(uploadSize: 42)
         let (request, id) = try await fakeRemote.getNextIncomingRequest()
         XCTAssertEqual(request.method, "GET")
-        XCTAssertEqual(request.pathAndQuery, "/v4/attachments/form/upload")
+        XCTAssertEqual(request.pathAndQuery, "/v4/attachments/form/upload?uploadLength=42")
         XCTAssertEqual(request.headers.count, 0)
         XCTAssertEqual(request.body.count, 0)
         try fakeRemote.sendResponse(
@@ -49,6 +49,26 @@ class AuthMessagesServiceTests: AuthChatServiceTestBase<any AuthMessagesService>
                 signedUploadUrl: URL(string: "http://example.org/upload")!,
             )
         )
+    }
+    func testGetUploadFormTooLarge() async throws {
+        let api = self.api
+        async let responseFuture = api.getUploadForm(uploadSize: 42)
+        let (request, id) = try await fakeRemote.getNextIncomingRequest()
+        XCTAssertEqual(request.method, "GET")
+        XCTAssertEqual(request.pathAndQuery, "/v4/attachments/form/upload?uploadLength=42")
+        XCTAssertEqual(request.headers.count, 0)
+        XCTAssertEqual(request.body.count, 0)
+        try fakeRemote.sendResponse(
+            requestId: id,
+            ChatResponse(
+                status: 413,
+                message: "Content Too Large",
+            )
+        )
+        do {
+            _ = try await responseFuture
+            XCTFail("Failed to throw")
+        } catch SignalError.uploadTooLarge(_) {}
     }
 }
 

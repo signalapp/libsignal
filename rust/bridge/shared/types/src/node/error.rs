@@ -9,6 +9,7 @@ use std::fmt;
 use libsignal_net::infra::errors::{RetryLater, TransportConnectError};
 use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net_chat::api::keys::GetPreKeysFailure;
+use libsignal_net_chat::api::messages::UploadTooLarge;
 use neon::thread::LocalKey;
 #[cfg(feature = "signal-media")]
 use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError};
@@ -633,6 +634,22 @@ impl SignalNodeError for std::convert::Infallible {
         _operation_name: &str,
     ) -> Handle<'a, JsError> {
         match self {}
+    }
+}
+
+impl SignalNodeError for UploadTooLarge {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        cx: &mut C,
+        operation_name: &str,
+    ) -> Handle<'a, JsError> {
+        new_js_error(
+            cx,
+            Some("UploadTooLarge"),
+            &self.to_string(),
+            operation_name,
+            no_extra_properties,
+        )
     }
 }
 

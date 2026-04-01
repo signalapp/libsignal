@@ -5,7 +5,7 @@
 
 import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
 import * as Native from '../../Native.js';
-import { LibSignalErrorBase } from '../../Errors.js';
+import { LibSignalErrorBase, type UploadTooLarge } from '../../Errors.js';
 
 declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -23,12 +23,16 @@ export interface AuthMessagesService {
   /**
    * Get an attachment upload form
    *
-   * Throws / completes with failure only if the request can't be completed.
+   * @throws {UploadTooLarge} if `uploadSize` is too large
    */
-  getUploadForm: (options?: RequestOptions) => Promise<UploadForm>;
+  getUploadForm: (
+    request: { uploadSize: bigint },
+    options?: RequestOptions
+  ) => Promise<UploadForm>;
 }
 
 AuthenticatedChatConnection.prototype.getUploadForm = async function (
+  { uploadSize }: { uploadSize: bigint },
   options?: RequestOptions
 ): Promise<UploadForm> {
   const { cdn, key, headers, signedUploadUrl } =
@@ -36,7 +40,8 @@ AuthenticatedChatConnection.prototype.getUploadForm = async function (
       options?.abortSignal,
       Native.AuthenticatedChatConnection_get_upload_form(
         this.asyncContext,
-        this.chatService
+        this.chatService,
+        uploadSize
       )
     );
   let signedUploadUrlConverted;

@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::str::FromStr;
+
 use async_trait::async_trait;
 use base64::prelude::{BASE64_STANDARD, Engine as _};
 use libsignal_net::chat::Request;
@@ -11,9 +13,7 @@ use libsignal_net_grpc::proto::chat::services;
 use super::{
     CustomError, GetUploadFormResponse, OverWs, TryIntoResponse, WsConnection, expect_empty_body,
 };
-use crate::api::backups::{
-    BackupAuth, BackupAuthPresentation, GetMediaUploadFormFailure, GetUploadFormFailure,
-};
+use crate::api::backups::{BackupAuth, BackupAuthPresentation, GetUploadFormFailure};
 use crate::api::{RequestError, Unauth, UploadForm};
 
 impl BackupAuthPresentation {
@@ -70,7 +70,7 @@ impl<T: WsConnection> crate::api::backups::UnauthenticatedChatApi<OverWs> for Un
             e.into_request_error(Self::ALLOW_RATE_LIMIT_CHALLENGES, |response| {
                 let high_level_error = match response.status.as_u16() {
                     401 | 403 => GetUploadFormFailure::Unauthorized,
-                    413 => GetUploadFormFailure::FileTooLarge,
+                    413 => GetUploadFormFailure::UploadTooLarge,
                     _ => return CustomError::NoCustomHandling,
                 };
                 expect_empty_body(response, "/v1/archives/upload/form");
@@ -84,25 +84,28 @@ impl<T: WsConnection> crate::api::backups::UnauthenticatedChatApi<OverWs> for Un
     async fn get_media_upload_form(
         &self,
         auth: &BackupAuth,
+        upload_size: u64,
         rng: &mut (dyn rand::CryptoRng + Send),
-    ) -> Result<UploadForm, RequestError<GetMediaUploadFormFailure>> {
+    ) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
         // Note that we're using the same setting name as get_upload_form.
         // This is a single endpoint in gRPC, and having two settings for them wouldn't add much.
         if let Some(grpc) =
             self.grpc_service_to_use_instead(services::BackupsAnonymous::GetUploadForm.into())
         {
-            return Unauth(grpc).get_media_upload_form(auth, rng).await;
+            return Unauth(grpc)
+                .get_media_upload_form(auth, upload_size, rng)
+                .await;
         }
 
         let auth = auth.present(rng)?;
-
+        let path = format!("/v1/archives/media/upload/form?uploadLength={upload_size}");
         let response = self
             .send(
                 "unauth",
-                "/v1/archives/media/upload/form",
+                &path,
                 Request {
                     method: http::Method::GET,
-                    path: http::uri::PathAndQuery::from_static("/v1/archives/media/upload/form"),
+                    path: http::uri::PathAndQuery::from_str(&path).expect("Path should parse"),
                     headers: http::HeaderMap::from_iter(auth.to_headers()),
                     body: None,
                 },
@@ -112,7 +115,8 @@ impl<T: WsConnection> crate::api::backups::UnauthenticatedChatApi<OverWs> for Un
         let GetUploadFormResponse(upload_form) = response.try_into_response().map_err(|e| {
             e.into_request_error(Self::ALLOW_RATE_LIMIT_CHALLENGES, |response| {
                 let high_level_error = match response.status.as_u16() {
-                    401 | 403 => GetMediaUploadFormFailure::Unauthorized,
+                    401 | 403 => GetUploadFormFailure::Unauthorized,
+                    413 => GetUploadFormFailure::UploadTooLarge,
                     _ => return CustomError::NoCustomHandling,
                 };
                 expect_empty_body(response, "/v1/archives/media/upload/form");
@@ -148,7 +152,7 @@ mod test {
     })]
     #[test_case(empty(401) => matches Err(RequestError::Other(GetUploadFormFailure::Unauthorized)))]
     #[test_case(empty(403) => matches Err(RequestError::Other(GetUploadFormFailure::Unauthorized)))]
-    #[test_case(empty(413) => matches Err(RequestError::Other(GetUploadFormFailure::FileTooLarge)))]
+    #[test_case(empty(413) => matches Err(RequestError::Other(GetUploadFormFailure::UploadTooLarge)))]
     #[test_case(empty(500) => matches Err(RequestError::ServerSideError))]
     fn test_get_upload_form(
         response: chat::Response,
@@ -204,17 +208,19 @@ mod test {
         headers: vec![("one".into(), "val1".into()), ("two".into(), "val2".into())],
         signed_upload_url: "http://example.org/upload".into(),
     })]
-    #[test_case(empty(401) => matches Err(RequestError::Other(GetMediaUploadFormFailure::Unauthorized)))]
-    #[test_case(empty(403) => matches Err(RequestError::Other(GetMediaUploadFormFailure::Unauthorized)))]
-    #[test_case(empty(413) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(empty(401) => matches Err(RequestError::Other(GetUploadFormFailure::Unauthorized)))]
+    #[test_case(empty(403) => matches Err(RequestError::Other(GetUploadFormFailure::Unauthorized)))]
+    #[test_case(empty(413) => matches Err(RequestError::Other(GetUploadFormFailure::UploadTooLarge)))]
     #[test_case(empty(500) => matches Err(RequestError::ServerSideError))]
     fn test_get_media_upload_form(
         response: chat::Response,
-    ) -> Result<UploadForm, RequestError<GetMediaUploadFormFailure>> {
+    ) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
         let validator = RequestValidator {
             expected: Request {
                 method: http::Method::GET,
-                path: http::uri::PathAndQuery::from_static("/v1/archives/media/upload/form"),
+                path: http::uri::PathAndQuery::from_static(
+                    "/v1/archives/media/upload/form?uploadLength=12345",
+                ),
                 headers: http::HeaderMap::from_iter([
                     (
                         BackupAuthPresentation::AUTH_HEADER_NAME,
@@ -242,6 +248,7 @@ mod test {
                     zkgroup::backups::BackupCredentialType::Media,
                     &mut fixed_seed_test_rng(),
                 ),
+                12345,
                 &mut fixed_seed_test_rng(),
             )
             .now_or_never()
