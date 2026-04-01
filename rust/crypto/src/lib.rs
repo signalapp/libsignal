@@ -4,6 +4,8 @@
 //
 
 #![deny(clippy::unwrap_used)]
+#![feature(register_tool)]
+#![register_tool(charon)]
 
 mod error;
 mod hash;

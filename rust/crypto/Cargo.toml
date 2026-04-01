@@ -11,6 +11,9 @@ license.workspace = true
 edition = "2024"
 rust-version = "1.85"
 
+[features]
+extraction = []
+
 [lints]
 workspace = true
 

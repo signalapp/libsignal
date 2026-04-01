@@ -20,8 +20,10 @@ export interface AeneasConfig {
   charon: {
     preset: string;
     hide_marker_traits: boolean;
+    extract_opaque_bodies: boolean;
     cargo_args: string[];
     start_from: string[];
+    include: string[];
     exclude: string[];
     opaque: string[];
   };
@@ -41,28 +43,36 @@ export interface AeneasConfig {
 }
 
 /**
- * Walk up from `from` to find the directory containing `aeneas-config.yml`.
+ * The default config file name, overridable via AENEAS_CONFIG env var.
+ */
+function configFileName(): string {
+  return process.env.AENEAS_CONFIG ?? "aeneas-config.yml";
+}
+
+/**
+ * Walk up from `from` to find the directory containing the config file.
  */
 export function findProjectRoot(from?: string): string {
+  const configFile = configFileName();
   let dir = from ?? process.cwd();
   while (true) {
-    if (fs.existsSync(path.join(dir, "aeneas-config.yml"))) {
+    if (fs.existsSync(path.join(dir, configFile))) {
       return dir;
     }
     const parent = path.dirname(dir);
     if (parent === dir) {
-      throw new Error("Could not find aeneas-config.yml in any parent directory");
+      throw new Error(`Could not find ${configFile} in any parent directory`);
     }
     dir = parent;
   }
 }
 
 /**
- * Load and validate aeneas-config.yml.
+ * Load and validate aeneas config file.
  */
 export function loadConfig(root?: string): { config: AeneasConfig; root: string } {
   const projectRoot = root ?? findProjectRoot();
-  const filePath = path.join(projectRoot, "aeneas-config.yml");
+  const filePath = path.join(projectRoot, configFileName());
 
   if (!fs.existsSync(filePath)) {
     throw new Error(`Config file not found: ${filePath}`);
@@ -85,8 +95,10 @@ export function loadConfig(root?: string): { config: AeneasConfig; root: string 
   config.charon = config.charon ?? {} as AeneasConfig["charon"];
   config.charon.preset = config.charon.preset ?? "aeneas";
   config.charon.hide_marker_traits = config.charon.hide_marker_traits ?? false;
+  config.charon.extract_opaque_bodies = config.charon.extract_opaque_bodies ?? false;
   config.charon.cargo_args = config.charon.cargo_args ?? [];
   config.charon.start_from = config.charon.start_from ?? [];
+  config.charon.include = config.charon.include ?? [];
   config.charon.exclude = config.charon.exclude ?? [];
   config.charon.opaque = config.charon.opaque ?? [];
   config.aeneas_args = config.aeneas_args ?? {} as AeneasConfig["aeneas_args"];

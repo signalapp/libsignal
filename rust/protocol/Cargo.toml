@@ -49,6 +49,7 @@ uuid = { workspace = true }
 zerocopy = { workspace = true, features = ["derive"] }
 
 [features]
+extraction = []
 kyber768 = ["libcrux-ml-kem/kyber", "libcrux-ml-kem/mlkem768"]
 # ML-KEM matches the NIST standard version of Kyber. It may still change
 # incompatibly until the final version of the standard is published and

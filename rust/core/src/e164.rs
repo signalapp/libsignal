@@ -7,7 +7,8 @@ use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::str::FromStr;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, derive_more::Into)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(not(feature = "extraction"), derive(derive_more::Into))]
 pub struct E164 { inner: NonZeroU64 }
 
 impl E164 {

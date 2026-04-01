@@ -15,7 +15,8 @@ use crate::{Aes256Ctr32, Error, Result};
 pub const TAG_SIZE: usize = 16;
 pub const NONCE_SIZE: usize = 12;
 
-#[derive(Clone)]
+#[cfg_attr(not(feature = "extraction"), derive(Clone))]
+#[charon::opaque]
 struct GcmGhash {
     ghash: GHash,
     ghash_pad: [u8; TAG_SIZE],
@@ -26,6 +27,7 @@ struct GcmGhash {
 }
 
 impl GcmGhash {
+    #[charon::opaque]
     fn new(h: &[u8; TAG_SIZE], ghash_pad: [u8; TAG_SIZE], associated_data: &[u8]) -> Result<Self> {
         let mut ghash = GHash::new(h.into());
 
@@ -41,6 +43,7 @@ impl GcmGhash {
         })
     }
 
+    #[charon::opaque]
     fn update(&mut self, msg: &[u8]) {
         if self.msg_buf_offset > 0 {
             let taking = std::cmp::min(msg.len(), TAG_SIZE - self.msg_buf_offset);
@@ -87,6 +90,7 @@ impl GcmGhash {
         assert!(self.msg_buf_offset < TAG_SIZE);
     }
 
+    #[charon::opaque]
     fn finalize(mut self) -> [u8; TAG_SIZE] {
         if self.msg_buf_offset > 0 {
             self.ghash
@@ -108,6 +112,7 @@ impl GcmGhash {
     }
 }
 
+#[charon::opaque]
 fn setup_gcm(key: &[u8], nonce: &[u8], associated_data: &[u8]) -> Result<(Aes256Ctr32, GcmGhash)> {
     /*
     GCM supports other sizes but 12 bytes is standard and other

@@ -23,6 +23,7 @@ pub enum DecryptionError {
     BadCiphertext(&'static str),
 }
 
+#[charon::opaque]
 pub fn aes_256_cbc_encrypt(
     ptext: &[u8],
     key: &[u8],
@@ -34,6 +35,7 @@ pub fn aes_256_cbc_encrypt(
         .encrypt_padded_vec_mut::<Pkcs7>(ptext))
 }
 
+#[charon::opaque]
 pub fn aes_256_cbc_decrypt(
     ctext: &[u8],
     key: &[u8],

@@ -48,8 +48,14 @@ async function main(): Promise<void> {
   if (config.charon.hide_marker_traits) {
     charonArgs.push("--hide-marker-traits");
   }
+  if (config.charon.extract_opaque_bodies) {
+    charonArgs.push("--extract-opaque-bodies");
+  }
   for (const item of config.charon.start_from) {
     charonArgs.push("--start-from", item);
+  }
+  for (const item of config.charon.include) {
+    charonArgs.push("--include", item);
   }
   for (const item of config.charon.exclude) {
     charonArgs.push("--exclude", item);
