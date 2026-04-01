@@ -1,9 +1,9 @@
 /**
- * Generate diff between upstream SparsePostQuantumRatchet source and local modified version.
+ * Generate diff between upstream libsignal source and local modified version.
  *
  * 1. Clones the upstream repo as a bare repository
- * 2. Extracts src/ at the pinned commit via git archive
- * 3. Diffs against local src/
+ * 2. Extracts rust/ at the pinned commit via git archive
+ * 3. Diffs against local rust/
  * 4. Saves to src-modifications.diff with metadata header
  */
 
@@ -37,7 +37,7 @@ function ensureUpstreamRepo(tmpDir: string, upstreamRepo: string, cloneDir: stri
   console.log(chalk.green("  Cloned successfully"));
 }
 
-function extractUpstreamSource(cloneDir: string, commit: string, extractDir: string): string {
+function extractUpstreamSource(cloneDir: string, commit: string, extractDir: string, sourceDir: string): string {
   console.log(chalk.bold(`\nExtracting source at commit ${commit.substring(0, 8)}...`));
 
   if (fs.existsSync(extractDir)) {
@@ -45,12 +45,12 @@ function extractUpstreamSource(cloneDir: string, commit: string, extractDir: str
   }
   fs.mkdirSync(extractDir, { recursive: true });
 
-  exec(`git -C "${cloneDir}" archive ${commit} src | tar -x -C "${extractDir}"`);
+  exec(`git -C "${cloneDir}" archive ${commit} ${sourceDir} | tar -x -C "${extractDir}"`);
   console.log(chalk.green("  Extracted successfully"));
-  return path.join(extractDir, "src");
+  return path.join(extractDir, sourceDir);
 }
 
-function generateDiff(upstreamSrc: string, localSrc: string, upstreamRepo: string, upstreamCommit: string): string | null {
+function generateDiff(upstreamSrc: string, localSrc: string, sourceDir: string, upstreamRepo: string, upstreamCommit: string): string | null {
   console.log(chalk.bold("\nGenerating diff..."));
 
   const escapedUpstream = upstreamSrc.replace(/[/&]/g, "\\$&");
@@ -58,7 +58,7 @@ function generateDiff(upstreamSrc: string, localSrc: string, upstreamRepo: strin
 
   // Generate unified diff with normalized paths and no timestamps
   const diffOutput = exec(
-    `diff -Naur --no-dereference "${upstreamSrc}" "${localSrc}" | sed -e 's/\\t[0-9][0-9][0-9][0-9]-.*//g' -e 's|${escapedUpstream}|a/src|g' -e 's|${escapedLocal}|b/src|g'`,
+    `diff -Naur --no-dereference "${upstreamSrc}" "${localSrc}" | sed -e 's/\\t[0-9][0-9][0-9][0-9]-.*//g' -e 's|${escapedUpstream}|a/${sourceDir}|g' -e 's|${escapedLocal}|b/${sourceDir}|g'`,
     { allowFail: true },
   );
 
@@ -67,7 +67,7 @@ function generateDiff(upstreamSrc: string, localSrc: string, upstreamRepo: strin
     return null;
   }
 
-  const header = `# Modifications to SparsePostQuantumRatchet source code
+  const header = `# Modifications to libsignal source code
 
 This file contains the diff between the original upstream source
 and the modified version used in this verification project.
@@ -88,7 +88,7 @@ function saveDiff(diff: string | null, outputPath: string, upstreamCommit: strin
 
     const note = `# No Modifications
 
-The src/ directory matches the upstream source exactly.
+The source directory matches the upstream source exactly.
 
 Upstream Commit: ${upstreamCommit}
 `;
@@ -117,7 +117,7 @@ function cleanup(extractDir: string): void {
 }
 
 function main(): void {
-  console.log(chalk.bold("SparsePostQuantumRatchet Source Modification Diff Generator"));
+  console.log(chalk.bold("Source Modification Diff Generator"));
 
   const { config, root } = loadConfig();
 
@@ -127,10 +127,11 @@ function main(): void {
 
   const upstreamRepo = config.upstream.repo;
   const upstreamCommit = config.upstream.commit;
-  const localSrc = path.join(root, "src");
+  const sourceDir = config.crate.dir;
+  const localSrc = path.join(root, sourceDir);
 
   if (!fs.existsSync(localSrc)) {
-    throw new Error(`Local src/ directory not found at ${localSrc}`);
+    throw new Error(`Local ${sourceDir}/ directory not found at ${localSrc}`);
   }
 
   const tmpDir = path.join(root, ".tmp");
@@ -140,8 +141,8 @@ function main(): void {
 
   try {
     ensureUpstreamRepo(tmpDir, upstreamRepo, cloneDir);
-    const upstreamSrc = extractUpstreamSource(cloneDir, upstreamCommit, extractDir);
-    const diff = generateDiff(upstreamSrc, localSrc, upstreamRepo, upstreamCommit);
+    const upstreamSrc = extractUpstreamSource(cloneDir, upstreamCommit, extractDir, sourceDir);
+    const diff = generateDiff(upstreamSrc, localSrc, sourceDir, upstreamRepo, upstreamCommit);
     saveDiff(diff, outputPath, upstreamCommit);
     cleanup(extractDir);
 
