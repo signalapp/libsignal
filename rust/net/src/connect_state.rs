@@ -354,15 +354,30 @@ impl<TC> ConnectionResources<'_, TC> {
                         }
 
                         // Retry-After takes precedence over everything else.
-                        // And if we're rejected based on the request (4xx), there's no point in
-                        // continuing (though this shouldn't really happen for most of our
-                        // services).
-                        if libsignal_net_infra::extract_retry_later(response.headers()).is_some()
-                            || response.status().is_client_error()
-                        {
+                        let status = response.status();
+                        if libsignal_net_infra::extract_retry_later(response.headers()).is_some() {
                             return ErrorHandling::Fatal {
                                 error,
-                                failure_for_all_routes: None,
+                                failure_for_all_routes: Some(UnsuccessfulOutcome::ShortTerm),
+                            };
+                        }
+                        // If we're rejected based on the request (4xx), there's no point in
+                        // continuing (though this shouldn't really happen for most of our
+                        // services).
+                        if status.is_client_error() {
+                            let backoff = match status.as_u16() {
+                                // We don't apply a back off on these, because the client could
+                                // change their request headers later.
+                                401 | 403 => None,
+                                // These should be the same regardless of any client-set headers.
+                                429 | 499 => Some(UnsuccessfulOutcome::ShortTerm),
+                                // These are probably just random errors from a proxy, don't treat
+                                // them with any special weight.
+                                _ => None,
+                            };
+                            return ErrorHandling::Fatal {
+                                error,
+                                failure_for_all_routes: backoff,
                             };
                         }
                     }
@@ -924,6 +939,7 @@ mod test {
     use libsignal_net_infra::utils::no_network_change_events;
     use libsignal_net_infra::{Alpn, OverrideNagleAlgorithm, RouteType};
     use nonzero_ext::nonzero;
+    use test_case::test_case;
 
     use super::*;
     use crate::ws::NotRejectedByServer;
@@ -1196,8 +1212,16 @@ mod test {
         );
     }
 
-    #[tokio::test(start_paused = true)]
-    async fn ws_508_is_a_service_wide_error() {
+    #[test_case(508, Some(UnsuccessfulOutcome::ShortTerm); "508")]
+    #[test_case(429, Some(UnsuccessfulOutcome::ShortTerm); "429")]
+    #[test_case(400, None; "400")]
+    #[test_case(401, None; "401")]
+    #[test_case(403, None; "403")]
+    #[test_log::test(tokio::test(start_paused = true))]
+    async fn ws_rejected_status_controls_service_wide_backoff(
+        status: u16,
+        expected_failure_for_all_routes: Option<UnsuccessfulOutcome>,
+    ) {
         let service = ServiceName("test");
         let start = Instant::now();
 
@@ -1212,7 +1236,7 @@ mod test {
                 WebSocketConnectError::WebSocketError(
                     libsignal_net_infra::ws::WebSocketError::Http(
                         http::Response::builder()
-                            .status(508)
+                            .status(status)
                             .header("confirmation-header", "")
                             .body(None)
                             .expect("valid")
@@ -1265,25 +1289,38 @@ mod test {
                     response,
                     received_at,
                 },
-                failure_for_all_routes: Some(UnsuccessfulOutcome::ShortTerm)
+                failure_for_all_routes,
             }))
-            if received_at == start && response.status().as_u16() == 508
+            if received_at == start
+                && response.status().as_u16() == status
+                && failure_for_all_routes == expected_failure_for_all_routes
         );
 
         let state = state.lock().expect("not poisoned");
-        assert_ne!(
-            state
-                .service_level_attempts_record
-                .compute_delay(&service, start),
-            Duration::ZERO
-        );
-        assert_eq!(
-            state.service_level_attempts_record.compute_delay(
-                &service,
-                start + SUGGESTED_CONNECT_PARAMS.short_term_age_cutoff
+        match expected_failure_for_all_routes {
+            Some(UnsuccessfulOutcome::ShortTerm) => {
+                assert_ne!(
+                    state
+                        .service_level_attempts_record
+                        .compute_delay(&service, start),
+                    Duration::ZERO
+                );
+                assert_eq!(
+                    state.service_level_attempts_record.compute_delay(
+                        &service,
+                        start + SUGGESTED_CONNECT_PARAMS.short_term_age_cutoff
+                    ),
+                    Duration::ZERO
+                );
+            }
+            None => assert_eq!(
+                state
+                    .service_level_attempts_record
+                    .compute_delay(&service, start),
+                Duration::ZERO
             ),
-            Duration::ZERO
-        );
+            Some(other) => panic!("unexpected outcome under test: {other:?}"),
+        }
     }
 
     #[tokio::test(start_paused = true)]
