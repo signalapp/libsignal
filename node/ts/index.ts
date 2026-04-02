@@ -772,9 +772,14 @@ export class SessionRecord {
         return n;
     }
 
-    // Assuming vk and x are fixed length; if variable, replace with readLengthPrefixedBytes
-    const vk = readBytes(32); 
-    const x = readBytes(32);
+    function readLengthPrefixedBytes() {
+        const lenBytes = readBytes(4);
+        const len = lenBytes[0] + (lenBytes[1] << 8) + (lenBytes[2] << 16) + (lenBytes[3] << 24);
+        return readBytes(len);
+    }
+
+    const vk = readLengthPrefixedBytes();
+    const x = readLengthPrefixedBytes();
 
     const h = { compressed: readBytes(32) };
     const hprime = { compressed: readBytes(32) };
@@ -782,7 +787,7 @@ export class SessionRecord {
     const s2_1 = readScalar();
     const s2_2 = readScalar();
 
-    const z = readBytes(32); // assuming fixed length; adjust if variable
+    const z = readLengthPrefixedBytes();
     const w = { compressed: readBytes(32) };
     const v = { compressed: readBytes(32) };
     const c = readScalar();

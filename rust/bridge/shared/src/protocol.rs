@@ -1051,7 +1051,9 @@ fn SessionRecord_GetBobResponse(s: &SessionRecord) -> Result<Vec<u8>> {
     let (vk, x, (h, hprime, (s1, (s2_1, s2_2))), z, (w, v), c, computed_c) = s.get_bob_response()?;
 
     let mut out = Vec::new();
+    out.extend(&(vk.len() as u32).to_le_bytes());
     out.extend(vk);
+    out.extend(&(x.len() as u32).to_le_bytes());
     out.extend(x);
     out.extend(h.compress().as_bytes());
     out.extend(hprime.compress().as_bytes());
@@ -1059,6 +1061,7 @@ fn SessionRecord_GetBobResponse(s: &SessionRecord) -> Result<Vec<u8>> {
     out.extend(s2_1.to_bytes());
     out.extend(s2_2.to_bytes());
 
+    out.extend(&(z.len() as u32).to_le_bytes());
     out.extend(z);
     out.extend(w.compress().as_bytes());
     out.extend(v.compress().as_bytes());
