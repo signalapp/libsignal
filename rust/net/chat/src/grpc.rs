@@ -91,7 +91,7 @@ where
 
     match operation().await {
         Ok(x) => {
-            log::info!("[{log_tag} {request_id:04x}] {log_safe_description} OK");
+            log::info!("[{log_tag} {request_id:04x}] {log_safe_description} done");
             Ok(x)
         }
         Err(status) => {
