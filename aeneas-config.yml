@@ -21,7 +21,43 @@ charon:
   cargo_args: ["-p", "signal-crypto", "--features", "extraction"]
   start_from_pub: true
   start_from:
-    - "libsignal_core"
+    # Core free functions
+    - "libsignal_core::try_scoped"
+    - "libsignal_core::derive_arrays"
+    - "libsignal_core::try_derive_arrays"
+    - "libsignal_core::version::VERSION"
+    # Core inherent methods (using _::method workaround for impl blocks)
+    - "libsignal_core::e164::_::new"
+    - "libsignal_core::e164::_::to_be_bytes"
+    - "libsignal_core::e164::_::from_be_bytes"
+    - "libsignal_core::address::_::new"
+    - "libsignal_core::address::_::kind"
+    - "libsignal_core::address::_::service_id_binary"
+    - "libsignal_core::address::_::service_id_fixed_width_binary"
+    - "libsignal_core::address::_::parse_from_service_id_binary"
+    - "libsignal_core::address::_::raw_uuid"
+    - "libsignal_core::address::_::name"
+    - "libsignal_core::address::_::device_id"
+    - "libsignal_core::address::_::new_nonzero"
+    - "libsignal_core::address::_::from_uuid_bytes"
+    - "libsignal_core::address::_::from_uuid"
+    # Curve: PublicKey
+    - "libsignal_core::curve::_::deserialize"
+    - "libsignal_core::curve::_::serialize"
+    - "libsignal_core::curve::_::key_type"
+    - "libsignal_core::curve::_::public_key"
+    - "libsignal_core::curve::_::public_key_bytes"
+    - "libsignal_core::curve::_::from_djb_public_key_bytes"
+    - "libsignal_core::curve::_::verify_signature"
+    - "libsignal_core::curve::_::verify_signature_for_multipart_message"
+    - "libsignal_core::curve::_::is_canonical"
+    # Curve: PrivateKey
+    - "libsignal_core::curve::_::calculate_signature"
+    - "libsignal_core::curve::_::calculate_signature_for_multipart_message"
+    - "libsignal_core::curve::_::calculate_agreement"
+    # Curve: KeyPair
+    - "libsignal_core::curve::_::generate"
+    - "libsignal_core::curve::_::from_public_and_private"
   include:
     - "libsignal_core"
   exclude:

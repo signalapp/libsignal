@@ -76,14 +76,6 @@ structure core.ops.bit.Shl (Self : Type) (Rhs : Type) (Self_Output : Type)
   where
   shl : Self → Rhs → Result Self_Output
 
-/-- Trait declaration: [core::str::traits::FromStr]
-    Source: '/rustc/library/core/src/str/traits.rs', lines 830:0-830:30
-    Name pattern: [core::str::traits::FromStr]
-    Visibility: public -/
-@[rust_trait "core::str::traits::FromStr"]
-structure core.str.traits.FromStr (Self : Type) (Self_Err : Type) where
-  from_str : Str → Result (core.result.Result Self Self_Err)
-
 /-- [typenum::uint::UTerm]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 50:0-50:16
     Name pattern: [typenum::uint::UTerm]
@@ -413,12 +405,13 @@ structure typenum.type_operators.PartialDiv (Self : Type) (Rhs : Type)
   (Self_Output : Type) where
   partial_div : Self → Rhs → Result Self_Output
 
-/-- [curve25519_dalek::montgomery::MontgomeryPoint]
-    Source: '/cargo/git/checkouts/curve25519-dalek-09642e883e3ebd5f/7c6d347/curve25519-dalek/src/montgomery.rs', lines 75:0-75:26
-    Name pattern: [curve25519_dalek::montgomery::MontgomeryPoint]
+/-- [derive_more::convert::try_from::TryFromReprError]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-2.1.1/src/convert.rs', lines 17:4-17:34
+    Name pattern: [derive_more::convert::try_from::TryFromReprError]
     Visibility: public -/
-@[reducible, rust_type "curve25519_dalek::montgomery::MontgomeryPoint"]
-def curve25519_dalek.montgomery.MontgomeryPoint := Array Std.U8 32#usize
+@[rust_type "derive_more::convert::try_from::TryFromReprError"]
+structure derive_more.convert.try_from.TryFromReprError (T : Type) where
+  input : T
 
 /-- [libsignal_core::address::ServiceIdKind]
     Source: 'rust/core/src/address.rs', lines 19:0-19:22
@@ -428,15 +421,6 @@ def curve25519_dalek.montgomery.MontgomeryPoint := Array Std.U8 32#usize
 inductive libsignal_core.address.ServiceIdKind where
 | Aci : libsignal_core.address.ServiceIdKind
 | Pni : libsignal_core.address.ServiceIdKind
-
-/-- [libsignal_core::address::WrongKindOfServiceIdError]
-    Source: 'rust/core/src/address.rs', lines 50:0-50:36
-    Name pattern: [libsignal_core::address::WrongKindOfServiceIdError]
-    Visibility: public -/
-@[rust_type "libsignal_core::address::WrongKindOfServiceIdError"]
-structure libsignal_core.address.WrongKindOfServiceIdError where
-  expected : libsignal_core.address.ServiceIdKind
-  actual : libsignal_core.address.ServiceIdKind
 
 /-- [libsignal_core::address::SpecificServiceId]
     Source: 'rust/core/src/address.rs', lines 61:0-61:48
@@ -536,6 +520,32 @@ inductive libsignal_core.curve.PrivateKeyData where
 structure libsignal_core.curve.PrivateKey where
   key : libsignal_core.curve.PrivateKeyData
 
+/-- Trait declaration: [rand_core::RngCore]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand_core-0.9.3/src/lib.rs', lines 130:0-130:17
+    Name pattern: [rand_core::RngCore]
+    Visibility: public -/
+@[rust_trait "rand_core::RngCore"]
+structure rand_core.RngCore (Self : Type) where
+  next_u32 : Self → Result (Std.U32 × Self)
+  next_u64 : Self → Result (Std.U64 × Self)
+  fill_bytes : Self → Slice Std.U8 → Result (Self × (Slice Std.U8))
+
+/-- Trait declaration: [rand_core::CryptoRng]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand_core-0.9.3/src/lib.rs', lines 204:0-204:28
+    Name pattern: [rand_core::CryptoRng]
+    Visibility: public -/
+@[rust_trait "rand_core::CryptoRng" (parentClauses := ["RngCoreInst"])]
+structure rand_core.CryptoRng (Self : Type) where
+  RngCoreInst : rand_core.RngCore Self
+
+/-- Trait declaration: [rand::rng::Rng]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.9.2/src/rng.rs', lines 58:0-58:22
+    Name pattern: [rand::rng::Rng]
+    Visibility: public -/
+@[rust_trait "rand::rng::Rng" (parentClauses := ["rand_coreRngCoreInst"])]
+structure rand.rng.Rng (Self : Type) where
+  rand_coreRngCoreInst : rand_core.RngCore Self
+
 /-- [libsignal_core::curve::KeyPair]
     Source: 'rust/core/src/curve.rs', lines 329:0-329:18
     Name pattern: [libsignal_core::curve::KeyPair]
@@ -554,23 +564,12 @@ structure libsignal_core.e164.E164 where
   inner : core.num.nonzero.NonZero
     U64.Insts.CoreNumNonzeroZeroablePrimitiveNonZeroU64Inner
 
-/-- Trait declaration: [rand_core::RngCore]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand_core-0.9.3/src/lib.rs', lines 130:0-130:17
-    Name pattern: [rand_core::RngCore]
-    Visibility: public -/
-@[rust_trait "rand_core::RngCore"]
-structure rand_core.RngCore (Self : Type) where
-  next_u32 : Self → Result (Std.U32 × Self)
-  next_u64 : Self → Result (Std.U64 × Self)
-  fill_bytes : Self → Slice Std.U8 → Result (Self × (Slice Std.U8))
-
-/-- Trait declaration: [rand::rng::Rng]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.9.2/src/rng.rs', lines 58:0-58:22
-    Name pattern: [rand::rng::Rng]
-    Visibility: public -/
-@[rust_trait "rand::rng::Rng" (parentClauses := ["rand_coreRngCoreInst"])]
-structure rand.rng.Rng (Self : Type) where
-  rand_coreRngCoreInst : rand_core.RngCore Self
+/-- [libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure]
+    Source: 'rust/core/src/e164.rs', lines 24:55-24:62
+    Name pattern: [libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure] -/
+@[reducible, rust_type
+  "libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure"]
+def libsignal_core.e164.E164.from_be_bytes.closure := Unit
 
 /-- Trait declaration: [rand::distr::distribution::Distribution]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.9.2/src/distr/distribution.rs', lines 35:0-35:25
@@ -596,14 +595,6 @@ def rand.distr.StandardUniform := Unit
 structure rand.rng.Fill (Self : Type) where
   fill : forall {R : Type} (RngInst : rand.rng.Rng R), Self → R → Result
     (Self × R)
-
-/-- Trait declaration: [rand_core::CryptoRng]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand_core-0.9.3/src/lib.rs', lines 204:0-204:28
-    Name pattern: [rand_core::CryptoRng]
-    Visibility: public -/
-@[rust_trait "rand_core::CryptoRng" (parentClauses := ["RngCoreInst"])]
-structure rand_core.CryptoRng (Self : Type) where
-  RngCoreInst : rand_core.RngCore Self
 
 /-- Trait declaration: [subtle::ConstantTimeEq]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/subtle-2.6.1/src/lib.rs', lines 262:0-262:24
