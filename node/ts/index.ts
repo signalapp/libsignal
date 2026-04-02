@@ -788,6 +788,7 @@ export class SessionRecord {
     const s2_2 = readScalar();
 
     const z = readLengthPrefixedBytes();
+    const z_decoded = String.fromCharCode(...readLengthPrefixedBytes());
     const w = { compressed: readBytes(32) };
     const v = { compressed: readBytes(32) };
     const c = readScalar();
@@ -798,6 +799,7 @@ export class SessionRecord {
         x,
         vt: { h: h, hprime: hprime, tau: [s1, [s2_1, s2_2]] },
         z,
+        z_decoded,
         pi: { w: w, v: v },
         c,
         computed_c
