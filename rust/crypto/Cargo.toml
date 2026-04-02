@@ -16,6 +16,7 @@ workspace = true
 
 [dependencies]
 libsignal-core = { workspace = true }
+libcrux-ml-kem = { workspace = true, features = ["mlkem1024"] }
 libsignal-debug = { workspace = true }
 
 aes = { workspace = true, features = ["zeroize"] }
@@ -28,6 +29,7 @@ hkdf = { workspace = true }
 hmac = { workspace = true, features = ["reset"] }
 hpke-rs = { workspace = true }
 hpke-rs-crypto = { workspace = true }
+rand = { workspace = true }
 rand_chacha = { workspace = true }
 rand_core = { workspace = true }
 sha1 = { workspace = true }
