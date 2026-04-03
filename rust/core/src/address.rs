@@ -57,6 +57,8 @@ pub struct WrongKindOfServiceIdError {
 /// A service ID with a known type.
 ///
 /// `RAW_KIND` is a raw [ServiceIdKind] (eventually Rust will allow enums as generic parameters).
+// Modified for Aeneas: tuple struct → named field.
+// https://github.com/AeneasVerif/aeneas/issues/767
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SpecificServiceId<const RAW_KIND: u8> { uuid: Uuid }
 
@@ -674,6 +676,8 @@ mod service_id_tests {
 /// represents some user.
 ///
 /// Used in [ProtocolAddress].
+// Modified for Aeneas: tuple struct → named field.
+// https://github.com/AeneasVerif/aeneas/issues/767
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub struct DeviceId { id: NonZeroU8 }
 

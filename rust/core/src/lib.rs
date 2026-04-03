@@ -38,7 +38,6 @@ pub fn try_scoped<T, E>(f: impl FnOnce() -> Result<T, E>) -> Result<T, E> {
 /// need all three arrays, you can pattern-match the last one as `[]` to both discard it and infer
 /// its length as 0.
 #[inline]
-#[charon::opaque]
 pub fn derive_arrays<const N1: usize, const N2: usize, const N3: usize>(
     derive: impl FnOnce(&mut [u8]),
 ) -> ([u8; N1], [u8; N2], [u8; N3]) {
@@ -52,7 +51,6 @@ pub fn derive_arrays<const N1: usize, const N2: usize, const N3: usize>(
 /// Like [`derive_arrays`], but the callback is permitted to fail.
 #[inline]
 #[allow(clippy::type_complexity)]
-#[charon::opaque]
 pub fn try_derive_arrays<const N1: usize, const N2: usize, const N3: usize, E>(
     derive: impl FnOnce(&mut [u8]) -> Result<(), E>,
 ) -> Result<([u8; N1], [u8; N2], [u8; N3]), E> {

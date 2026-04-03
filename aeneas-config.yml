@@ -96,7 +96,33 @@ charon:
     - "rand::distr::uniform"              # mutually recursive traits
     - "zerocopy"                          # raw pointer ops, GATs
     - "log"
-  opaque: []
+  opaque:
+    # libsignal-core functions using zerocopy internals
+    - "libsignal_core::derive_arrays"
+    - "libsignal_core::try_derive_arrays"
+    # curve functions that call into curve25519_dalek or use log::warn!
+    - "libsignal_core::curve::_::deserialize"
+    - "libsignal_core::curve::_::verify_signature_for_multipart_message"
+    - "libsignal_core::curve::_::is_torsion_free"
+    - "libsignal_core::curve::_::public_key"
+    - "libsignal_core::curve::_::calculate_signature"
+    - "libsignal_core::curve::_::calculate_signature_for_multipart_message"
+    - "libsignal_core::curve::_::calculate_agreement"
+    - "libsignal_core::curve::_::generate"
+    - "libsignal_core::curve::_::try_from"
+    # crypto functions calling external crypto primitives
+    - "signal_crypto::aes_cbc::aes_256_cbc_encrypt"
+    - "signal_crypto::aes_cbc::aes_256_cbc_decrypt"
+    - "signal_crypto::aes_ctr::_::new"
+    - "signal_crypto::aes_ctr::_::from_key"
+    - "signal_crypto::aes_ctr::_::process"
+    - "signal_crypto::aes_gcm::_::new"
+    - "signal_crypto::aes_gcm::_::update"
+    - "signal_crypto::aes_gcm::_::finalize"
+    - "signal_crypto::aes_gcm::setup_gcm"
+    - "signal_crypto::hash::_::new"
+    - "signal_crypto::hash::_::update"
+    - "signal_crypto::hash::_::finalize"
 
 aeneas_args:
   options:

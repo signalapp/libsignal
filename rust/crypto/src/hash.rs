@@ -17,7 +17,6 @@ pub enum CryptographicMac {
 }
 
 impl CryptographicMac {
-    #[charon::opaque]
     pub fn new(algo: &str, key: &[u8]) -> Result<Self> {
         match algo {
             "HMACSha1" | "HmacSha1" => Ok(Self::HmacSha1(
@@ -30,7 +29,6 @@ impl CryptographicMac {
         }
     }
 
-    #[charon::opaque]
     pub fn update(&mut self, input: &[u8]) {
         match self {
             Self::HmacSha1(sha1) => sha1.update(input),
@@ -43,7 +41,6 @@ impl CryptographicMac {
         self
     }
 
-    #[charon::opaque]
     pub fn finalize(&mut self) -> Vec<u8> {
         match self {
             Self::HmacSha1(sha1) => sha1.finalize_reset().into_bytes().to_vec(),
@@ -61,7 +58,6 @@ pub enum CryptographicHash {
 }
 
 impl CryptographicHash {
-    #[charon::opaque]
     pub fn new(algo: &str) -> Result<Self> {
         match algo {
             "SHA-1" | "SHA1" | "Sha1" => Ok(Self::Sha1(Sha1::new())),
@@ -71,7 +67,6 @@ impl CryptographicHash {
         }
     }
 
-    #[charon::opaque]
     pub fn update(&mut self, input: &[u8]) {
         match self {
             Self::Sha1(sha1) => sha1.update(input),
@@ -80,7 +75,6 @@ impl CryptographicHash {
         }
     }
 
-    #[charon::opaque]
     pub fn finalize(&mut self) -> Vec<u8> {
         match self {
             Self::Sha1(sha1) => sha1.finalize_reset().to_vec(),

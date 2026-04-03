@@ -7,6 +7,8 @@ use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::str::FromStr;
 
+// Modified for Aeneas: tuple struct → named field.
+// https://github.com/AeneasVerif/aeneas/issues/767
 #[derive(Copy, Clone, Debug, PartialEq, Eq, derive_more::Into)]
 pub struct E164 { inner: NonZeroU64 }
 

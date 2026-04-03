@@ -11,16 +11,19 @@ Upstream Commit: 0a58e80b
 diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.rs
 --- a/rust/core/src/address.rs
 +++ b/rust/core/src/address.rs
-@@ -58,7 +58,7 @@
+@@ -57,8 +57,10 @@
+ /// A service ID with a known type.
  ///
  /// `RAW_KIND` is a raw [ServiceIdKind] (eventually Rust will allow enums as generic parameters).
++// Modified for Aeneas: tuple struct → named field.
++// https://github.com/AeneasVerif/aeneas/issues/767
  #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 -pub struct SpecificServiceId<const RAW_KIND: u8>(Uuid);
 +pub struct SpecificServiceId<const RAW_KIND: u8> { uuid: Uuid }
  
  impl<const KIND: u8> SpecificServiceId<KIND> {
      /// Convenience function to go directly from bytes to a specific kind of service ID.
-@@ -71,7 +71,7 @@
+@@ -71,7 +73,7 @@
  
      #[inline]
      const fn from_uuid(uuid: Uuid) -> Self {
@@ -29,7 +32,7 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
      }
  }
  
-@@ -79,7 +79,7 @@
+@@ -79,7 +81,7 @@
  // https://github.com/uuid-rs/uuid/issues/775
  impl<const KIND: u8> std::hash::Hash for SpecificServiceId<KIND> {
      fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -38,7 +41,7 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
      }
  }
  
-@@ -145,7 +145,7 @@
+@@ -145,7 +147,7 @@
  impl<const KIND: u8> From<SpecificServiceId<KIND>> for Uuid {
      #[inline]
      fn from(value: SpecificServiceId<KIND>) -> Self {
@@ -47,7 +50,7 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
      }
  }
  
-@@ -201,7 +201,7 @@
+@@ -201,7 +203,7 @@
      #[inline]
      pub fn service_id_binary(&self) -> Vec<u8> {
          if let Self::Aci(aci) = self {
@@ -56,7 +59,7 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
          } else {
              self.service_id_fixed_width_binary().to_vec()
          }
-@@ -219,7 +219,7 @@
+@@ -219,7 +221,7 @@
      /// The standard string representation for a Signal service ID.
      pub fn service_id_string(&self) -> String {
          if let Self::Aci(aci) = self {
@@ -65,16 +68,19 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
          } else {
              format!("{}:{}", self.kind(), self.raw_uuid())
          }
-@@ -675,7 +675,7 @@
+@@ -674,8 +676,10 @@
+ /// represents some user.
  ///
  /// Used in [ProtocolAddress].
++// Modified for Aeneas: tuple struct → named field.
++// https://github.com/AeneasVerif/aeneas/issues/767
  #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
 -pub struct DeviceId(NonZeroU8);
 +pub struct DeviceId { id: NonZeroU8 }
  
  #[derive(Copy, Clone, Debug, Eq, PartialEq, thiserror::Error)]
  #[error("device ID is out of range")]
-@@ -701,7 +701,7 @@
+@@ -701,7 +705,7 @@
      /// returned instead.
      pub const fn new_nonzero(id: NonZeroU8) -> Result<Self, InvalidDeviceId> {
          if id.get() <= MAX_VALID_DEVICE_ID {
@@ -83,7 +89,7 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
          } else {
              Err(InvalidDeviceId)
          }
-@@ -712,19 +712,19 @@
+@@ -712,19 +716,19 @@
  
  impl From<DeviceId> for u32 {
      fn from(value: DeviceId) -> Self {
@@ -106,7 +112,7 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
      }
  }
  
-@@ -751,16 +751,16 @@
+@@ -751,16 +755,16 @@
  
  impl fmt::Display for DeviceId {
      fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -127,130 +133,15 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
      }
  }
  
-diff -Naur --no-dereference a/rust/core/src/curve/curve25519.rs b/rust/core/src/curve/curve25519.rs
---- a/rust/core/src/curve/curve25519.rs
-+++ b/rust/core/src/curve/curve25519.rs
-@@ -63,6 +63,7 @@
-     /// fixed to 0, but rather passed back in the most significant bit of the signature which would
-     /// otherwise always be 0. This is for compatibility with the implementation found in
-     /// libsignal-protocol-java.
-+    #[charon::opaque]
-     pub fn calculate_signature<R>(
-         &self,
-         csprng: &mut R,
-@@ -116,6 +117,7 @@
-         result
-     }
- 
-+    #[charon::opaque]
-     pub fn verify_signature(
-         their_public_key: &[u8; PUBLIC_KEY_LENGTH],
-         message: &[&[u8]],
-diff -Naur --no-dereference a/rust/core/src/curve.rs b/rust/core/src/curve.rs
---- a/rust/core/src/curve.rs
-+++ b/rust/core/src/curve.rs
-@@ -81,6 +81,7 @@
-         Self { key }
-     }
- 
-+    #[charon::opaque]
-     pub fn deserialize(value: &[u8]) -> Result<Self, CurveError> {
-         let (key_type, value) = value.split_first().ok_or(CurveError::NoKeyTypeIdentifier)?;
-         let key_type = KeyType::try_from(*key_type)?;
-@@ -135,6 +136,7 @@
-         self.verify_signature_for_multipart_message(&[message], signature)
-     }
- 
-+    #[charon::opaque]
-     pub fn verify_signature_for_multipart_message(
-         &self,
-         message: &[&[u8]],
-@@ -162,6 +164,7 @@
-         }
-     }
- 
-+    #[charon::opaque]
-     fn is_torsion_free(&self) -> bool {
-         match &self.key {
-             PublicKeyData::DjbPublicKey(k) => {
-@@ -239,6 +242,7 @@
- }
- 
- impl PrivateKey {
-+    #[charon::opaque]
-     pub fn deserialize(value: &[u8]) -> Result<Self, CurveError> {
-         let mut key: [u8; curve25519::PRIVATE_KEY_LENGTH] = value
-             .try_into()
-@@ -256,6 +260,7 @@
-         }
-     }
- 
-+    #[charon::opaque]
-     pub fn public_key(&self) -> Result<PublicKey, CurveError> {
-         match &self.key {
-             PrivateKeyData::DjbPrivateKey(private_key) => {
-@@ -272,6 +277,7 @@
-         }
-     }
- 
-+    #[charon::opaque]
-     pub fn calculate_signature<R: CryptoRng + Rng + ?Sized>(
-         &self,
-         message: &[u8],
-@@ -280,6 +286,7 @@
-         self.calculate_signature_for_multipart_message(&[message], csprng)
-     }
- 
-+    #[charon::opaque]
-     pub fn calculate_signature_for_multipart_message<R: CryptoRng + Rng + ?Sized>(
-         &self,
-         message: &[&[u8]],
-@@ -293,6 +300,7 @@
-         }
-     }
- 
-+    #[charon::opaque]
-     pub fn calculate_agreement(&self, their_key: &PublicKey) -> Result<Box<[u8]>, CurveError> {
-         match (self.key, their_key.key) {
-             (PrivateKeyData::DjbPrivateKey(priv_key), PublicKeyData::DjbPublicKey(pub_key)) => {
-@@ -324,6 +332,7 @@
- }
- 
- impl KeyPair {
-+    #[charon::opaque]
-     pub fn generate<R: Rng + CryptoRng + ?Sized>(csprng: &mut R) -> Self {
-         let private_key = curve25519::PrivateKey::new(csprng);
- 
-@@ -359,6 +368,7 @@
-         })
-     }
- 
-+    #[charon::opaque]
-     pub fn calculate_signature<R: CryptoRng + Rng + ?Sized>(
-         &self,
-         message: &[u8],
-@@ -367,6 +377,7 @@
-         self.private_key.calculate_signature(message, csprng)
-     }
- 
-+    #[charon::opaque]
-     pub fn calculate_agreement(&self, their_key: &PublicKey) -> Result<Box<[u8]>, CurveError> {
-         self.private_key.calculate_agreement(their_key)
-     }
-@@ -375,6 +386,7 @@
- impl TryFrom<PrivateKey> for KeyPair {
-     type Error = CurveError;
- 
-+    #[charon::opaque]
-     fn try_from(value: PrivateKey) -> Result<Self, CurveError> {
-         let public_key = value.public_key()?;
-         Ok(Self::new(public_key, value))
 diff -Naur --no-dereference a/rust/core/src/e164.rs b/rust/core/src/e164.rs
 --- a/rust/core/src/e164.rs
 +++ b/rust/core/src/e164.rs
-@@ -8,19 +8,19 @@
+@@ -7,20 +7,22 @@
+ use std::num::{NonZeroU64, ParseIntError};
  use std::str::FromStr;
  
++// Modified for Aeneas: tuple struct → named field.
++// https://github.com/AeneasVerif/aeneas/issues/767
  #[derive(Copy, Clone, Debug, PartialEq, Eq, derive_more::Into)]
 -pub struct E164(NonZeroU64);
 +pub struct E164 { inner: NonZeroU64 }
@@ -272,7 +163,7 @@ diff -Naur --no-dereference a/rust/core/src/e164.rs b/rust/core/src/e164.rs
      }
  }
  
-@@ -28,13 +28,13 @@
+@@ -28,13 +30,13 @@
      type Err = ParseIntError;
      fn from_str(s: &str) -> Result<Self, Self::Err> {
          let s = s.strip_prefix('+').unwrap_or(s);
@@ -300,22 +191,6 @@ diff -Naur --no-dereference a/rust/core/src/lib.rs b/rust/core/src/lib.rs
  
  mod address;
  // Not exporting the members because they have overly-generic names.
-@@ -36,6 +38,7 @@
- /// need all three arrays, you can pattern-match the last one as `[]` to both discard it and infer
- /// its length as 0.
- #[inline]
-+#[charon::opaque]
- pub fn derive_arrays<const N1: usize, const N2: usize, const N3: usize>(
-     derive: impl FnOnce(&mut [u8]),
- ) -> ([u8; N1], [u8; N2], [u8; N3]) {
-@@ -49,6 +52,7 @@
- /// Like [`derive_arrays`], but the callback is permitted to fail.
- #[inline]
- #[allow(clippy::type_complexity)]
-+#[charon::opaque]
- pub fn try_derive_arrays<const N1: usize, const N2: usize, const N3: usize, E>(
-     derive: impl FnOnce(&mut [u8]) -> Result<(), E>,
- ) -> Result<([u8; N1], [u8; N2], [u8; N3]), E> {
 diff -Naur --no-dereference a/rust/crypto/Cargo.toml b/rust/crypto/Cargo.toml
 --- a/rust/crypto/Cargo.toml
 +++ b/rust/crypto/Cargo.toml
@@ -329,44 +204,22 @@ diff -Naur --no-dereference a/rust/crypto/Cargo.toml b/rust/crypto/Cargo.toml
  [lints]
  workspace = true
  
-diff -Naur --no-dereference a/rust/crypto/src/aes_cbc.rs b/rust/crypto/src/aes_cbc.rs
---- a/rust/crypto/src/aes_cbc.rs
-+++ b/rust/crypto/src/aes_cbc.rs
-@@ -23,6 +23,7 @@
-     BadCiphertext(&'static str),
- }
- 
-+#[charon::opaque]
- pub fn aes_256_cbc_encrypt(
-     ptext: &[u8],
-     key: &[u8],
-@@ -34,6 +35,7 @@
-         .encrypt_padded_vec_mut::<Pkcs7>(ptext))
- }
- 
-+#[charon::opaque]
- pub fn aes_256_cbc_decrypt(
-     ctext: &[u8],
-     key: &[u8],
 diff -Naur --no-dereference a/rust/crypto/src/aes_ctr.rs b/rust/crypto/src/aes_ctr.rs
 --- a/rust/crypto/src/aes_ctr.rs
 +++ b/rust/crypto/src/aes_ctr.rs
-@@ -10,11 +10,13 @@
+@@ -10,7 +10,10 @@
  use crate::error::{Error, Result};
  
  /// A wrapper around [`ctr::Ctr32BE`] that uses a smaller nonce and supports an initial counter.
 -pub struct Aes256Ctr32(ctr::Ctr32BE<Aes256>);
++// Modified for Aeneas: tuple struct → named field.
++// https://github.com/AeneasVerif/aeneas/issues/767
 +#[charon::opaque]
 +pub struct Aes256Ctr32 { inner: ctr::Ctr32BE<Aes256> }
  
  impl Aes256Ctr32 {
      pub const NONCE_SIZE: usize = <Aes256 as aes::cipher::BlockSizeUser>::BlockSize::USIZE - 4;
- 
-+    #[charon::opaque]
-     pub fn new(aes256: Aes256, nonce: &[u8], init_ctr: u32) -> Result<Self> {
-         if nonce.len() != Self::NONCE_SIZE {
-             return Err(Error::InvalidNonceSize);
-@@ -29,9 +31,10 @@
+@@ -29,7 +32,7 @@
              (<Aes256 as aes::cipher::BlockSizeUser>::BlockSize::USIZE as u64) * (init_ctr as u64),
          );
  
@@ -374,15 +227,10 @@ diff -Naur --no-dereference a/rust/crypto/src/aes_ctr.rs b/rust/crypto/src/aes_c
 +        Ok(Self { inner: ctr })
      }
  
-+    #[charon::opaque]
      pub fn from_key(key: &[u8], nonce: &[u8], init_ctr: u32) -> Result<Self> {
-         Self::new(
-             Aes256::new_from_slice(key).map_err(|_| Error::InvalidKeySize)?,
-@@ -40,7 +43,8 @@
-         )
+@@ -41,6 +44,6 @@
      }
  
-+    #[charon::opaque]
      pub fn process(&mut self, buf: &mut [u8]) {
 -        self.0.apply_keystream(buf);
 +        self.inner.apply_keystream(buf);
@@ -401,42 +249,10 @@ diff -Naur --no-dereference a/rust/crypto/src/aes_gcm.rs b/rust/crypto/src/aes_g
  struct GcmGhash {
      ghash: GHash,
      ghash_pad: [u8; TAG_SIZE],
-@@ -26,6 +27,7 @@
- }
- 
- impl GcmGhash {
-+    #[charon::opaque]
-     fn new(h: &[u8; TAG_SIZE], ghash_pad: [u8; TAG_SIZE], associated_data: &[u8]) -> Result<Self> {
-         let mut ghash = GHash::new(h.into());
- 
-@@ -41,6 +43,7 @@
-         })
-     }
- 
-+    #[charon::opaque]
-     fn update(&mut self, msg: &[u8]) {
-         if self.msg_buf_offset > 0 {
-             let taking = std::cmp::min(msg.len(), TAG_SIZE - self.msg_buf_offset);
-@@ -87,6 +90,7 @@
-         assert!(self.msg_buf_offset < TAG_SIZE);
-     }
- 
-+    #[charon::opaque]
-     fn finalize(mut self) -> [u8; TAG_SIZE] {
-         if self.msg_buf_offset > 0 {
-             self.ghash
-@@ -108,6 +112,7 @@
-     }
- }
- 
-+#[charon::opaque]
- fn setup_gcm(key: &[u8], nonce: &[u8], associated_data: &[u8]) -> Result<(Aes256Ctr32, GcmGhash)> {
-     /*
-     GCM supports other sizes but 12 bytes is standard and other
 diff -Naur --no-dereference a/rust/crypto/src/hash.rs b/rust/crypto/src/hash.rs
 --- a/rust/crypto/src/hash.rs
 +++ b/rust/crypto/src/hash.rs
-@@ -9,13 +9,15 @@
+@@ -9,7 +9,8 @@
  
  use crate::{Error, Result};
  
@@ -446,30 +262,7 @@ diff -Naur --no-dereference a/rust/crypto/src/hash.rs b/rust/crypto/src/hash.rs
  pub enum CryptographicMac {
      HmacSha256(Hmac<Sha256>),
      HmacSha1(Hmac<Sha1>),
- }
- 
- impl CryptographicMac {
-+    #[charon::opaque]
-     pub fn new(algo: &str, key: &[u8]) -> Result<Self> {
-         match algo {
-             "HMACSha1" | "HmacSha1" => Ok(Self::HmacSha1(
-@@ -28,6 +30,7 @@
-         }
-     }
- 
-+    #[charon::opaque]
-     pub fn update(&mut self, input: &[u8]) {
-         match self {
-             Self::HmacSha1(sha1) => sha1.update(input),
-@@ -40,6 +43,7 @@
-         self
-     }
- 
-+    #[charon::opaque]
-     pub fn finalize(&mut self) -> Vec<u8> {
-         match self {
-             Self::HmacSha1(sha1) => sha1.finalize_reset().into_bytes().to_vec(),
-@@ -48,7 +52,8 @@
+@@ -48,7 +49,8 @@
      }
  }
  
@@ -479,30 +272,6 @@ diff -Naur --no-dereference a/rust/crypto/src/hash.rs b/rust/crypto/src/hash.rs
  pub enum CryptographicHash {
      Sha1(Sha1),
      Sha256(Sha256),
-@@ -56,6 +61,7 @@
- }
- 
- impl CryptographicHash {
-+    #[charon::opaque]
-     pub fn new(algo: &str) -> Result<Self> {
-         match algo {
-             "SHA-1" | "SHA1" | "Sha1" => Ok(Self::Sha1(Sha1::new())),
-@@ -65,6 +71,7 @@
-         }
-     }
- 
-+    #[charon::opaque]
-     pub fn update(&mut self, input: &[u8]) {
-         match self {
-             Self::Sha1(sha1) => sha1.update(input),
-@@ -73,6 +80,7 @@
-         }
-     }
- 
-+    #[charon::opaque]
-     pub fn finalize(&mut self) -> Vec<u8> {
-         match self {
-             Self::Sha1(sha1) => sha1.finalize_reset().to_vec(),
 diff -Naur --no-dereference a/rust/crypto/src/lib.rs b/rust/crypto/src/lib.rs
 --- a/rust/crypto/src/lib.rs
 +++ b/rust/crypto/src/lib.rs

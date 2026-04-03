@@ -156,7 +156,7 @@ def U8.Insts.CoreConvertFromServiceIdKind : core.convert.From Std.U8
 }
 
 /-- [libsignal_core::address::{libsignal_core::address::SpecificServiceId<KIND>}::from_uuid]:
-    Source: 'rust/core/src/address.rs', lines 73:4-73:42
+    Source: 'rust/core/src/address.rs', lines 75:4-75:42
     Name pattern: [libsignal_core::address::{libsignal_core::address::SpecificServiceId<@KIND>}::from_uuid] -/
 @[rust_fun
   "libsignal_core::address::{libsignal_core::address::SpecificServiceId<@KIND>}::from_uuid"]
@@ -167,7 +167,7 @@ def libsignal_core.address.SpecificServiceId.from_uuid
   ok { uuid }
 
 /-- [libsignal_core::address::{core::convert::From<libsignal_core::address::SpecificServiceId<KIND>> for uuid::Uuid}::from]:
-    Source: 'rust/core/src/address.rs', lines 147:4-147:51
+    Source: 'rust/core/src/address.rs', lines 149:4-149:51
     Name pattern: [libsignal_core::address::{core::convert::From<uuid::Uuid, libsignal_core::address::SpecificServiceId<@KIND>>}::from]
     Visibility: public -/
 @[rust_fun
@@ -179,7 +179,7 @@ def uuid.Uuid.Insts.CoreConvertFromSpecificServiceId.from
   ok value.uuid
 
 /-- Trait implementation: [libsignal_core::address::{core::convert::From<libsignal_core::address::SpecificServiceId<KIND>> for uuid::Uuid}]
-    Source: 'rust/core/src/address.rs', lines 145:0-145:59
+    Source: 'rust/core/src/address.rs', lines 147:0-147:59
     Name pattern: [core::convert::From<uuid::Uuid, libsignal_core::address::SpecificServiceId<@KIND>>] -/
 @[reducible, rust_trait_impl
   "core::convert::From<uuid::Uuid, libsignal_core::address::SpecificServiceId<@KIND>>"]
@@ -190,7 +190,7 @@ def uuid.Uuid.Insts.CoreConvertFromSpecificServiceId (KIND : Std.U8) :
 }
 
 /-- [libsignal_core::address::{libsignal_core::address::ServiceId}::raw_uuid]:
-    Source: 'rust/core/src/address.rs', lines 284:4-284:33
+    Source: 'rust/core/src/address.rs', lines 286:4-286:33
     Name pattern: [libsignal_core::address::{libsignal_core::address::ServiceId}::raw_uuid]
     Visibility: public -/
 @[rust_fun
@@ -206,7 +206,7 @@ def libsignal_core.address.ServiceId.raw_uuid
       (uuid.Uuid.Insts.CoreConvertFromSpecificServiceId 1#u8) pni
 
 /-- [libsignal_core::address::{libsignal_core::address::ServiceId}::kind]:
-    Source: 'rust/core/src/address.rs', lines 191:4-191:39
+    Source: 'rust/core/src/address.rs', lines 193:4-193:39
     Name pattern: [libsignal_core::address::{libsignal_core::address::ServiceId}::kind]
     Visibility: public -/
 @[rust_fun
@@ -222,7 +222,7 @@ def libsignal_core.address.ServiceId.kind
     ok libsignal_core.address.ServiceIdKind.Pni
 
 /-- [libsignal_core::address::{libsignal_core::address::ServiceId}::service_id_fixed_width_binary]:
-    Source: 'rust/core/src/address.rs', lines 212:4-212:81
+    Source: 'rust/core/src/address.rs', lines 214:4-214:81
     Name pattern: [libsignal_core::address::{libsignal_core::address::ServiceId}::service_id_fixed_width_binary]
     Visibility: public -/
 @[rust_fun
@@ -247,7 +247,7 @@ def libsignal_core.address.ServiceId.service_id_fixed_width_binary
   ok (index_mut_back s2)
 
 /-- [libsignal_core::address::{libsignal_core::address::ServiceId}::service_id_binary]:
-    Source: 'rust/core/src/address.rs', lines 202:4-202:46
+    Source: 'rust/core/src/address.rs', lines 204:4-204:46
     Name pattern: [libsignal_core::address::{libsignal_core::address::ServiceId}::service_id_binary]
     Visibility: public -/
 @[rust_fun
@@ -268,7 +268,7 @@ def libsignal_core.address.ServiceId.service_id_binary
     alloc.slice.Slice.to_vec core.clone.CloneU8 s
 
 /-- [libsignal_core::address::{core::convert::From<uuid::Uuid> for libsignal_core::address::SpecificServiceId<KIND>}::from]:
-    Source: 'rust/core/src/address.rs', lines 140:4-140:32
+    Source: 'rust/core/src/address.rs', lines 142:4-142:32
     Name pattern: [libsignal_core::address::{core::convert::From<libsignal_core::address::SpecificServiceId<@KIND>, uuid::Uuid>}::from]
     Visibility: public -/
 @[rust_fun
@@ -280,7 +280,7 @@ def libsignal_core.address.SpecificServiceId.Insts.CoreConvertFromUuid.from
   libsignal_core.address.SpecificServiceId.from_uuid KIND value
 
 /-- Trait implementation: [libsignal_core::address::{core::convert::From<uuid::Uuid> for libsignal_core::address::SpecificServiceId<KIND>}]
-    Source: 'rust/core/src/address.rs', lines 138:0-138:59
+    Source: 'rust/core/src/address.rs', lines 140:0-140:59
     Name pattern: [core::convert::From<libsignal_core::address::SpecificServiceId<@KIND>, uuid::Uuid>] -/
 @[reducible, rust_trait_impl
   "core::convert::From<libsignal_core::address::SpecificServiceId<@KIND>, uuid::Uuid>"]
@@ -293,7 +293,7 @@ def libsignal_core.address.SpecificServiceId.Insts.CoreConvertFromUuid (KIND :
 }
 
 /-- [libsignal_core::address::{libsignal_core::address::ServiceId}::parse_from_service_id_fixed_width_binary]:
-    Source: 'rust/core/src/address.rs', lines 250:4-252:21
+    Source: 'rust/core/src/address.rs', lines 252:4-254:21
     Name pattern: [libsignal_core::address::{libsignal_core::address::ServiceId}::parse_from_service_id_fixed_width_binary]
     Visibility: public -/
 @[rust_fun
@@ -342,7 +342,7 @@ def libsignal_core.address.ServiceId.parse_from_service_id_fixed_width_binary
       libsignal_core.address.ServiceId residual
 
 /-- [libsignal_core::address::{libsignal_core::address::ServiceId}::parse_from_service_id_binary]:
-    Source: 'rust/core/src/address.rs', lines 230:4-230:69
+    Source: 'rust/core/src/address.rs', lines 232:4-232:69
     Name pattern: [libsignal_core::address::{libsignal_core::address::ServiceId}::parse_from_service_id_binary]
     Visibility: public -/
 @[rust_fun
@@ -393,14 +393,14 @@ def libsignal_core.address.ServiceId.parse_from_service_id_binary
   | _ => ok none
 
 /-- [libsignal_core::address::MAX_VALID_DEVICE_ID]
-    Source: 'rust/core/src/address.rs', lines 711:0-711:29
+    Source: 'rust/core/src/address.rs', lines 715:0-715:29
     Name pattern: [libsignal_core::address::MAX_VALID_DEVICE_ID] -/
 @[global_simps, irreducible, rust_const
   "libsignal_core::address::MAX_VALID_DEVICE_ID"]
 def libsignal_core.address.MAX_VALID_DEVICE_ID : Std.U8 := 127#u8
 
 /-- [libsignal_core::address::{libsignal_core::address::DeviceId}::new_nonzero]:
-    Source: 'rust/core/src/address.rs', lines 702:4-702:76
+    Source: 'rust/core/src/address.rs', lines 706:4-706:76
     Name pattern: [libsignal_core::address::{libsignal_core::address::DeviceId}::new_nonzero]
     Visibility: public -/
 @[rust_fun
@@ -427,7 +427,7 @@ def libsignal_core.curve.KeyType.value
   ok 5#u8
 
 /-- [libsignal_core::curve::{libsignal_core::curve::PublicKey}::key_type]:
-    Source: 'rust/core/src/curve.rs', lines 161:4-161:37
+    Source: 'rust/core/src/curve.rs', lines 159:4-159:37
     Name pattern: [libsignal_core::curve::{libsignal_core::curve::PublicKey}::key_type]
     Visibility: public -/
 @[rust_fun
@@ -439,7 +439,7 @@ def libsignal_core.curve.PublicKey.key_type
   ok libsignal_core.curve.KeyType.Djb
 
 /-- [libsignal_core::curve::{libsignal_core::curve::PublicKey}::scalar_is_in_range]:
-    Source: 'rust/core/src/curve.rs', lines 179:4-179:40
+    Source: 'rust/core/src/curve.rs', lines 176:4-176:40
     Name pattern: [libsignal_core::curve::{libsignal_core::curve::PublicKey}::scalar_is_in_range] -/
 @[rust_fun
   "libsignal_core::curve::{libsignal_core::curve::PublicKey}::scalar_is_in_range"]
@@ -469,36 +469,8 @@ def libsignal_core.curve.PublicKey.scalar_is_in_range
       else ok false
   ok (¬ b)
 
-/-- [libsignal_core::curve::{core::convert::TryFrom<&0 ([u8]), libsignal_core::curve::CurveError> for libsignal_core::curve::PublicKey}::try_from]:
-    Source: 'rust/core/src/curve.rs', lines 199:4-199:57
-    Name pattern: [libsignal_core::curve::{core::convert::TryFrom<libsignal_core::curve::PublicKey, &'0 [u8], libsignal_core::curve::CurveError>}::try_from]
-    Visibility: public -/
-@[rust_fun
-  "libsignal_core::curve::{core::convert::TryFrom<libsignal_core::curve::PublicKey, &'0 [u8], libsignal_core::curve::CurveError>}::try_from"]
-def
-  libsignal_core.curve.PublicKey.Insts.CoreConvertTryFromShared0SliceU8CurveError.try_from
-  (value : Slice Std.U8) :
-  Result (core.result.Result libsignal_core.curve.PublicKey
-    libsignal_core.curve.CurveError)
-  := do
-  libsignal_core.curve.PublicKey.deserialize value
-
-/-- [libsignal_core::curve::{core::convert::TryFrom<&0 ([u8]), libsignal_core::curve::CurveError> for libsignal_core::curve::PrivateKey}::try_from]:
-    Source: 'rust/core/src/curve.rs', lines 323:4-323:57
-    Name pattern: [libsignal_core::curve::{core::convert::TryFrom<libsignal_core::curve::PrivateKey, &'0 [u8], libsignal_core::curve::CurveError>}::try_from]
-    Visibility: public -/
-@[rust_fun
-  "libsignal_core::curve::{core::convert::TryFrom<libsignal_core::curve::PrivateKey, &'0 [u8], libsignal_core::curve::CurveError>}::try_from"]
-def
-  libsignal_core.curve.PrivateKey.Insts.CoreConvertTryFromShared0SliceU8CurveError.try_from
-  (value : Slice Std.U8) :
-  Result (core.result.Result libsignal_core.curve.PrivateKey
-    libsignal_core.curve.CurveError)
-  := do
-  libsignal_core.curve.PrivateKey.deserialize value
-
 /-- [libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::{core::ops::function::FnOnce<(core::num::nonzero::NonZero<u64, core::num::niche_types::NonZeroU64Inner>[core::num::nonzero::{core::num::nonzero::ZeroablePrimitive<core::num::niche_types::NonZeroU64Inner> for u64}]), libsignal_core::e164::E164> for libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure}::call_once]:
-    Source: 'rust/core/src/e164.rs', lines 23:55-23:62
+    Source: 'rust/core/src/e164.rs', lines 25:55-25:62
     Name pattern: [libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::{core::ops::function::FnOnce<libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure, (core::num::nonzero::NonZero<u64, core::num::niche_types::NonZeroU64Inner>), libsignal_core::e164::E164>}::call_once] -/
 @[rust_fun
   "libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::{core::ops::function::FnOnce<libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure, (core::num::nonzero::NonZero<u64, core::num::niche_types::NonZeroU64Inner>), libsignal_core::e164::E164>}::call_once"]
@@ -512,7 +484,7 @@ def
   ok { inner := tupled_args }
 
 /-- Trait implementation: [libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::{core::ops::function::FnOnce<(core::num::nonzero::NonZero<u64, core::num::niche_types::NonZeroU64Inner>[core::num::nonzero::{core::num::nonzero::ZeroablePrimitive<core::num::niche_types::NonZeroU64Inner> for u64}]), libsignal_core::e164::E164> for libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure}]
-    Source: 'rust/core/src/e164.rs', lines 23:55-23:62
+    Source: 'rust/core/src/e164.rs', lines 25:55-25:62
     Name pattern: [core::ops::function::FnOnce<libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure, (core::num::nonzero::NonZero<u64, core::num::niche_types::NonZeroU64Inner>), libsignal_core::e164::E164>] -/
 @[reducible, rust_trait_impl
   "core::ops::function::FnOnce<libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure, (core::num::nonzero::NonZero<u64, core::num::niche_types::NonZeroU64Inner>), libsignal_core::e164::E164>"]
@@ -811,7 +783,7 @@ def typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned {U : Type} {B : Type}
 }
 
 /-- [signal_crypto::aes_ctr::{signal_crypto::aes_ctr::Aes256Ctr32}::NONCE_SIZE]
-    Source: 'rust/crypto/src/aes_ctr.rs', lines 17:4-17:95
+    Source: 'rust/crypto/src/aes_ctr.rs', lines 19:4-19:95
     Visibility: public -/
 @[global_simps, irreducible]
 def aes_ctr.Aes256Ctr32.NONCE_SIZE : Result Std.Usize := do
@@ -840,38 +812,19 @@ def aes_ctr.Aes256Ctr32.NONCE_SIZE : Result Std.Usize := do
 @[global_simps, irreducible] def aes_gcm.NONCE_SIZE : Std.Usize := 12#usize
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmEncryption}::TAG_SIZE]
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 144:4-144:41
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 140:4-140:41
     Visibility: public -/
 @[global_simps, irreducible]
 def aes_gcm.Aes256GcmEncryption.TAG_SIZE : Std.Usize := aes_gcm.TAG_SIZE
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmEncryption}::NONCE_SIZE]
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 145:4-145:45
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 141:4-141:45
     Visibility: public -/
 @[global_simps, irreducible]
 def aes_gcm.Aes256GcmEncryption.NONCE_SIZE : Std.Usize := aes_gcm.NONCE_SIZE
 
-/-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmEncryption}::new]:
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 147:4-150:5
-    Visibility: public -/
-def aes_gcm.Aes256GcmEncryption.new
-  (key : Slice Std.U8) (nonce : Slice Std.U8) (associated_data : Slice Std.U8)
-  :
-  Result (core.result.Result aes_gcm.Aes256GcmEncryption error.Error)
-  := do
-  let r ← aes_gcm.setup_gcm key nonce associated_data
-  let cf ←
-    core.result.Result.Insts.CoreOpsTry_traitTryTResultInfallibleE.branch r
-  match cf with
-  | core.ops.control_flow.ControlFlow.Continue val =>
-    let (ctr, ghash) := val
-    ok (core.result.Result.Ok { ctr, ghash })
-  | core.ops.control_flow.ControlFlow.Break residual =>
-    core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
-      aes_gcm.Aes256GcmEncryption (core.convert.FromSame error.Error) residual
-
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmEncryption}::encrypt]:
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 152:4-155:5
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 148:4-151:5
     Visibility: public -/
 def aes_gcm.Aes256GcmEncryption.encrypt
   (self : aes_gcm.Aes256GcmEncryption) (buf : Slice Std.U8) :
@@ -882,45 +835,26 @@ def aes_gcm.Aes256GcmEncryption.encrypt
   ok ({ ctr := ac, ghash := gg }, buf1)
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmEncryption}::compute_tag]:
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 157:4-159:5
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 153:4-155:5
     Visibility: public -/
 def aes_gcm.Aes256GcmEncryption.compute_tag
   (self : aes_gcm.Aes256GcmEncryption) : Result (Array Std.U8 16#usize) := do
   aes_gcm.GcmGhash.finalize self.ghash
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmDecryption}::TAG_SIZE]
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 168:4-168:41
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 164:4-164:41
     Visibility: public -/
 @[global_simps, irreducible]
 def aes_gcm.Aes256GcmDecryption.TAG_SIZE : Std.Usize := aes_gcm.TAG_SIZE
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmDecryption}::NONCE_SIZE]
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 169:4-169:45
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 165:4-165:45
     Visibility: public -/
 @[global_simps, irreducible]
 def aes_gcm.Aes256GcmDecryption.NONCE_SIZE : Std.Usize := aes_gcm.NONCE_SIZE
 
-/-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmDecryption}::new]:
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 171:4-174:5
-    Visibility: public -/
-def aes_gcm.Aes256GcmDecryption.new
-  (key : Slice Std.U8) (nonce : Slice Std.U8) (associated_data : Slice Std.U8)
-  :
-  Result (core.result.Result aes_gcm.Aes256GcmDecryption error.Error)
-  := do
-  let r ← aes_gcm.setup_gcm key nonce associated_data
-  let cf ←
-    core.result.Result.Insts.CoreOpsTry_traitTryTResultInfallibleE.branch r
-  match cf with
-  | core.ops.control_flow.ControlFlow.Continue val =>
-    let (ctr, ghash) := val
-    ok (core.result.Result.Ok { ctr, ghash })
-  | core.ops.control_flow.ControlFlow.Break residual =>
-    core.result.Result.Insts.CoreOpsTry_traitFromResidualResultInfallibleE.from_residual
-      aes_gcm.Aes256GcmDecryption (core.convert.FromSame error.Error) residual
-
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmDecryption}::decrypt]:
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 176:4-179:5
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 172:4-175:5
     Visibility: public -/
 def aes_gcm.Aes256GcmDecryption.decrypt
   (self : aes_gcm.Aes256GcmDecryption) (buf : Slice Std.U8) :
@@ -931,7 +865,7 @@ def aes_gcm.Aes256GcmDecryption.decrypt
   ok ({ ctr := ac, ghash := gg }, buf1)
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmDecryption}::verify_tag]:
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 181:4-195:5
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 177:4-191:5
     Visibility: public -/
 def aes_gcm.Aes256GcmDecryption.verify_tag
   (self : aes_gcm.Aes256GcmDecryption) (tag : Slice Std.U8) :
@@ -952,7 +886,7 @@ def aes_gcm.Aes256GcmDecryption.verify_tag
     else ok (core.result.Result.Err error.Error.InvalidTag)
 
 /-- [signal_crypto::hash::{signal_crypto::hash::CryptographicMac}::update_and_get]:
-    Source: 'rust/crypto/src/hash.rs', lines 41:4-44:5
+    Source: 'rust/crypto/src/hash.rs', lines 39:4-42:5
     Visibility: public -/
 def hash.CryptographicMac.update_and_get
   (self : hash.CryptographicMac) (input : Slice Std.U8) :

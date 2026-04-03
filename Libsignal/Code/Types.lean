@@ -423,7 +423,7 @@ inductive libsignal_core.address.ServiceIdKind where
 | Pni : libsignal_core.address.ServiceIdKind
 
 /-- [libsignal_core::address::SpecificServiceId]
-    Source: 'rust/core/src/address.rs', lines 61:0-61:48
+    Source: 'rust/core/src/address.rs', lines 63:0-63:48
     Name pattern: [libsignal_core::address::SpecificServiceId]
     Visibility: public -/
 @[rust_type "libsignal_core::address::SpecificServiceId"]
@@ -431,7 +431,7 @@ structure libsignal_core.address.SpecificServiceId (RAW_KIND : Std.U8) where
   uuid : uuid.Uuid
 
 /-- [libsignal_core::address::ServiceId]
-    Source: 'rust/core/src/address.rs', lines 181:0-181:18
+    Source: 'rust/core/src/address.rs', lines 183:0-183:18
     Name pattern: [libsignal_core::address::ServiceId]
     Visibility: public -/
 @[discriminant isize, rust_type "libsignal_core::address::ServiceId"]
@@ -444,7 +444,7 @@ inductive libsignal_core.address.ServiceId where
   libsignal_core.address.ServiceId
 
 /-- [libsignal_core::address::DeviceId]
-    Source: 'rust/core/src/address.rs', lines 678:0-678:19
+    Source: 'rust/core/src/address.rs', lines 682:0-682:19
     Name pattern: [libsignal_core::address::DeviceId]
     Visibility: public -/
 @[rust_type "libsignal_core::address::DeviceId"]
@@ -453,14 +453,14 @@ structure libsignal_core.address.DeviceId where
     U8.Insts.CoreNumNonzeroZeroablePrimitiveNonZeroU8Inner
 
 /-- [libsignal_core::address::InvalidDeviceId]
-    Source: 'rust/core/src/address.rs', lines 683:0-683:26
+    Source: 'rust/core/src/address.rs', lines 687:0-687:26
     Name pattern: [libsignal_core::address::InvalidDeviceId]
     Visibility: public -/
 @[reducible, rust_type "libsignal_core::address::InvalidDeviceId"]
 def libsignal_core.address.InvalidDeviceId := Unit
 
 /-- [libsignal_core::address::ProtocolAddress]
-    Source: 'rust/core/src/address.rs', lines 769:0-769:26
+    Source: 'rust/core/src/address.rs', lines 773:0-773:26
     Name pattern: [libsignal_core::address::ProtocolAddress]
     Visibility: public -/
 @[rust_type "libsignal_core::address::ProtocolAddress"]
@@ -506,14 +506,14 @@ structure libsignal_core.curve.PublicKey where
   key : libsignal_core.curve.PublicKeyData
 
 /-- [libsignal_core::curve::PrivateKeyData]
-    Source: 'rust/core/src/curve.rs', lines 235:0-235:19
+    Source: 'rust/core/src/curve.rs', lines 232:0-232:19
     Name pattern: [libsignal_core::curve::PrivateKeyData] -/
 @[discriminant isize, rust_type "libsignal_core::curve::PrivateKeyData"]
 inductive libsignal_core.curve.PrivateKeyData where
 | DjbPrivateKey : Array Std.U8 32#usize → libsignal_core.curve.PrivateKeyData
 
 /-- [libsignal_core::curve::PrivateKey]
-    Source: 'rust/core/src/curve.rs', lines 240:0-240:21
+    Source: 'rust/core/src/curve.rs', lines 237:0-237:21
     Name pattern: [libsignal_core::curve::PrivateKey]
     Visibility: public -/
 @[rust_type "libsignal_core::curve::PrivateKey"]
@@ -547,7 +547,7 @@ structure rand.rng.Rng (Self : Type) where
   rand_coreRngCoreInst : rand_core.RngCore Self
 
 /-- [libsignal_core::curve::KeyPair]
-    Source: 'rust/core/src/curve.rs', lines 329:0-329:18
+    Source: 'rust/core/src/curve.rs', lines 321:0-321:18
     Name pattern: [libsignal_core::curve::KeyPair]
     Visibility: public -/
 @[rust_type "libsignal_core::curve::KeyPair"]
@@ -556,7 +556,7 @@ structure libsignal_core.curve.KeyPair where
   private_key : libsignal_core.curve.PrivateKey
 
 /-- [libsignal_core::e164::E164]
-    Source: 'rust/core/src/e164.rs', lines 11:0-11:15
+    Source: 'rust/core/src/e164.rs', lines 13:0-13:15
     Name pattern: [libsignal_core::e164::E164]
     Visibility: public -/
 @[rust_type "libsignal_core::e164::E164"]
@@ -565,7 +565,7 @@ structure libsignal_core.e164.E164 where
     U64.Insts.CoreNumNonzeroZeroablePrimitiveNonZeroU64Inner
 
 /-- [libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure]
-    Source: 'rust/core/src/e164.rs', lines 23:55-23:62
+    Source: 'rust/core/src/e164.rs', lines 25:55-25:62
     Name pattern: [libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure] -/
 @[reducible, rust_type
   "libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure"]
@@ -813,14 +813,14 @@ inductive error.Error where
 | InvalidTag : error.Error
 
 /-- [signal_crypto::aes_gcm::Aes256GcmEncryption]
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 138:0-141:1
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 134:0-137:1
     Visibility: public -/
 structure aes_gcm.Aes256GcmEncryption where
   ctr : aes_ctr.Aes256Ctr32
   ghash : aes_gcm.GcmGhash
 
 /-- [signal_crypto::aes_gcm::Aes256GcmDecryption]
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 162:0-165:1
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 158:0-161:1
     Visibility: public -/
 structure aes_gcm.Aes256GcmDecryption where
   ctr : aes_ctr.Aes256Ctr32
