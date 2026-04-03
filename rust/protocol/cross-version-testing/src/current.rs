@@ -170,7 +170,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
         local: &str,
         msg: &[u8],
         msg_type: CiphertextMessageType,
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         match msg_type {
             CiphertextMessageType::Whisper => message_decrypt_signal(
                 &SignalMessage::try_from(msg).expect("valid"),
@@ -181,7 +181,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
             )
             .now_or_never()
             .expect("synchronous")
-            .expect("can decrypt messages"),
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>),
             CiphertextMessageType::PreKey => message_decrypt_prekey(
                 &PreKeySignalMessage::try_from(msg).expect("valid"),
                 &address(remote),
@@ -195,7 +195,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
             )
             .now_or_never()
             .expect("synchronous")
-            .expect("can decrypt messages"),
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>),
             _ => panic!("unexpected 1:1 message type"),
         }
     }

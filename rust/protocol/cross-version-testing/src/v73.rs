@@ -1,23 +1,23 @@
 //
-// Copyright 2023 Signal Messenger, LLC.
+// Copyright 2026 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 use std::time::SystemTime;
 
 use futures_util::FutureExt;
-use libsignal_protocol_v70::*;
-use rand_v8::{Rng, thread_rng};
+use libsignal_protocol_v73::*;
+use rand::{Rng, rng};
 
 fn address(id: &str) -> ProtocolAddress {
     ProtocolAddress::new(id.into(), 1.into())
 }
 
-pub struct LibSignalProtocolV70(InMemSignalProtocolStore);
+pub struct LibSignalProtocolV73(InMemSignalProtocolStore);
 
-impl LibSignalProtocolV70 {
+impl LibSignalProtocolV73 {
     pub fn new() -> Self {
-        let mut csprng = thread_rng();
+        let mut csprng = rng();
         let identity_key = IdentityKeyPair::generate(&mut csprng);
         // Valid registration IDs fit in 14 bits.
         let registration_id: u8 = csprng.r#gen();
@@ -29,16 +29,16 @@ impl LibSignalProtocolV70 {
     }
 }
 
-impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
+impl super::LibSignalProtocolStore for LibSignalProtocolV73 {
     fn version(&self) -> &'static str {
-        "v70"
+        "v73"
     }
 
     fn create_pre_key_bundle(&mut self) -> super::PreKeyBundle {
-        let mut csprng = thread_rng();
+        let mut csprng = rng();
         let pre_key_pair = KeyPair::generate(&mut csprng);
         let signed_pre_key_pair = KeyPair::generate(&mut csprng);
-        let signed_pq_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024);
+        let signed_pq_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024, &mut csprng);
 
         let identity_key = self
             .0
@@ -163,7 +163,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
             &mut self.0.identity_store,
             &pre_key_bundle,
             SystemTime::now(),
-            &mut thread_rng(),
+            &mut rng(),
         )
         .now_or_never()
         .expect("synchronous")
@@ -198,18 +198,18 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
         _local: &str,
         msg: &[u8],
         msg_type: super::CiphertextMessageType,
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         match ConvertVersion::from_current(msg_type) {
             CiphertextMessageType::Whisper => message_decrypt_signal(
                 &SignalMessage::try_from(msg).expect("valid"),
                 &address(remote),
                 &mut self.0.session_store,
                 &mut self.0.identity_store,
-                &mut thread_rng(),
+                &mut rng(),
             )
             .now_or_never()
             .expect("synchronous")
-            .expect("can decrypt messages"),
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>),
             CiphertextMessageType::PreKey => message_decrypt_prekey(
                 &PreKeySignalMessage::try_from(msg).expect("valid"),
                 &address(remote),
@@ -218,11 +218,11 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
                 &mut self.0.pre_key_store,
                 &self.0.signed_pre_key_store,
                 &mut self.0.kyber_pre_key_store,
-                &mut thread_rng(),
+                &mut rng(),
             )
             .now_or_never()
             .expect("synchronous")
-            .expect("can decrypt messages"),
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>),
             _ => panic!("unexpected 1:1 message type"),
         }
     }
@@ -238,7 +238,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
             msg.serialized().expect("can re-serialize"),
         )
         .expect("compatible serialization");
-        sealed_sender_encrypt_from_usmc(&address(remote), &msg, &self.0, &mut thread_rng())
+        sealed_sender_encrypt_from_usmc(&address(remote), &msg, &self.0, &mut rng())
             .now_or_never()
             .expect("synchronous")
             .expect("can encrypt messages")
@@ -266,7 +266,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV70 {
             [],
             &msg,
             &self.0,
-            &mut thread_rng(),
+            &mut rng(),
         )
         .now_or_never()
         .expect("synchronous")

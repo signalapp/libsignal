@@ -25,7 +25,7 @@ pub trait LibSignalProtocolStore {
         local: &str,
         msg: &[u8],
         msg_type: CiphertextMessageType,
-    ) -> Vec<u8>;
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>>;
 
     fn encrypt_sealed_sender_v1(
         &self,
@@ -43,8 +43,10 @@ pub trait LibSignalProtocolStore {
 mod current;
 pub use current::LibSignalProtocolCurrent;
 
-mod v70;
-pub use v70::LibSignalProtocolV70;
+mod v73;
+pub use v73::LibSignalProtocolV73;
+mod v74;
+pub use v74::LibSignalProtocolV74;
 
 // Use this function to debug tests
 pub fn init_test_logger() {

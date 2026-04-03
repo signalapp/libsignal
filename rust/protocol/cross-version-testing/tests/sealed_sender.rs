@@ -83,7 +83,7 @@ fn assert_eq_usmc(
 
 #[test]
 fn ssv1() {
-    try_all_combinations(run, &[|| Box::new(LibSignalProtocolV70::new())]);
+    try_all_combinations(run, &[|| Box::new(LibSignalProtocolV74::new())]);
 
     fn run(
         alice_store: &mut dyn LibSignalProtocolStore,
@@ -110,7 +110,7 @@ fn ssv1() {
 
 #[test]
 fn ssv2() {
-    try_all_combinations(run, &[|| Box::new(LibSignalProtocolV70::new())]);
+    try_all_combinations(run, &[|| Box::new(LibSignalProtocolV74::new())]);
 
     fn run(
         alice_store: &mut dyn LibSignalProtocolStore,

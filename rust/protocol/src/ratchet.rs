@@ -102,11 +102,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
         auth_key: &pqr_key,
         version: spqr::Version::V1,
         direction: spqr::Direction::A2B,
-        // Set min_version to V0 (allow fallback to no PQR at all) while
-        // there are clients that don't speak PQR.  Once all clients speak
-        // PQR, we can up this to V1 to require that all subsequent sessions
-        // use at least V1.
-        min_version: spqr::Version::V0,
+        min_version: spqr::Version::V1, // Require that all clients speak SPQR
         chain_params: spqr_chain_params(self_session),
     })
     .map_err(|e| {
@@ -193,11 +189,7 @@ pub(crate) fn initialize_bob_session(
         auth_key: &pqr_key,
         version: spqr::Version::V1,
         direction: spqr::Direction::B2A,
-        // Set min_version to V0 (allow fallback to no PQR at all) while
-        // there are clients that don't speak PQR.  Once all clients speak
-        // PQR, we can up this to V1 to require that all subsequent sessions
-        // use at least V1.
-        min_version: spqr::Version::V0,
+        min_version: spqr::Version::V1, // Require that all clients speak SPQR
         chain_params: spqr_chain_params(self_session),
     })
     .map_err(|e| {
