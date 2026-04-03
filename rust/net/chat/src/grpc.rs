@@ -173,7 +173,7 @@ impl<E> From<tonic::Status> for RequestError<E> {
                     }
                     .into();
                 }
-                // TODO: also handle challenges here?
+                // Fall through to the "unexpected" case.
             }
             tonic::Code::Ok => {
                 return RequestError::Unexpected {
