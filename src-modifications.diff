@@ -236,19 +236,6 @@ diff -Naur --no-dereference a/rust/crypto/src/aes_ctr.rs b/rust/crypto/src/aes_c
 +        self.inner.apply_keystream(buf);
      }
  }
-diff -Naur --no-dereference a/rust/crypto/src/aes_gcm.rs b/rust/crypto/src/aes_gcm.rs
---- a/rust/crypto/src/aes_gcm.rs
-+++ b/rust/crypto/src/aes_gcm.rs
-@@ -15,7 +15,8 @@
- pub const TAG_SIZE: usize = 16;
- pub const NONCE_SIZE: usize = 12;
- 
--#[derive(Clone)]
-+#[cfg_attr(not(feature = "extraction"), derive(Clone))]
-+#[charon::opaque]
- struct GcmGhash {
-     ghash: GHash,
-     ghash_pad: [u8; TAG_SIZE],
 diff -Naur --no-dereference a/rust/crypto/src/hash.rs b/rust/crypto/src/hash.rs
 --- a/rust/crypto/src/hash.rs
 +++ b/rust/crypto/src/hash.rs

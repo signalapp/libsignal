@@ -811,20 +811,41 @@ def aes_ctr.Aes256Ctr32.NONCE_SIZE : Result Std.Usize := do
     Visibility: public -/
 @[global_simps, irreducible] def aes_gcm.NONCE_SIZE : Std.Usize := 12#usize
 
+/-- [signal_crypto::aes_gcm::{core::clone::Clone for signal_crypto::aes_gcm::GcmGhash}::clone]:
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 18:9-18:14
+    Visibility: public -/
+def aes_gcm.GcmGhash.Insts.CoreCloneClone.clone
+  (self : aes_gcm.GcmGhash) : Result aes_gcm.GcmGhash := do
+  let g ← ghash.GHash.Insts.CoreCloneClone.clone self.ghash
+  let a ← core.array.CloneArray.clone core.clone.CloneU8 self.ghash_pad
+  let a1 ← core.array.CloneArray.clone core.clone.CloneU8 self.msg_buf
+  let i ← lift (core.clone.impls.CloneUsize.clone self.msg_buf_offset)
+  let i1 ← lift (core.clone.impls.CloneUsize.clone self.ad_len)
+  let i2 ← lift (core.clone.impls.CloneUsize.clone self.msg_len)
+  ok
+    {
+      ghash := g,
+      ghash_pad := a,
+      msg_buf := a1,
+      msg_buf_offset := i,
+      ad_len := i1,
+      msg_len := i2
+    }
+
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmEncryption}::TAG_SIZE]
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 140:4-140:41
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 139:4-139:41
     Visibility: public -/
 @[global_simps, irreducible]
 def aes_gcm.Aes256GcmEncryption.TAG_SIZE : Std.Usize := aes_gcm.TAG_SIZE
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmEncryption}::NONCE_SIZE]
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 141:4-141:45
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 140:4-140:45
     Visibility: public -/
 @[global_simps, irreducible]
 def aes_gcm.Aes256GcmEncryption.NONCE_SIZE : Std.Usize := aes_gcm.NONCE_SIZE
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmEncryption}::encrypt]:
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 148:4-151:5
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 147:4-150:5
     Visibility: public -/
 def aes_gcm.Aes256GcmEncryption.encrypt
   (self : aes_gcm.Aes256GcmEncryption) (buf : Slice Std.U8) :
@@ -835,26 +856,26 @@ def aes_gcm.Aes256GcmEncryption.encrypt
   ok ({ ctr := ac, ghash := gg }, buf1)
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmEncryption}::compute_tag]:
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 153:4-155:5
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 152:4-154:5
     Visibility: public -/
 def aes_gcm.Aes256GcmEncryption.compute_tag
   (self : aes_gcm.Aes256GcmEncryption) : Result (Array Std.U8 16#usize) := do
   aes_gcm.GcmGhash.finalize self.ghash
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmDecryption}::TAG_SIZE]
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 164:4-164:41
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 163:4-163:41
     Visibility: public -/
 @[global_simps, irreducible]
 def aes_gcm.Aes256GcmDecryption.TAG_SIZE : Std.Usize := aes_gcm.TAG_SIZE
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmDecryption}::NONCE_SIZE]
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 165:4-165:45
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 164:4-164:45
     Visibility: public -/
 @[global_simps, irreducible]
 def aes_gcm.Aes256GcmDecryption.NONCE_SIZE : Std.Usize := aes_gcm.NONCE_SIZE
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmDecryption}::decrypt]:
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 172:4-175:5
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 171:4-174:5
     Visibility: public -/
 def aes_gcm.Aes256GcmDecryption.decrypt
   (self : aes_gcm.Aes256GcmDecryption) (buf : Slice Std.U8) :
@@ -865,7 +886,7 @@ def aes_gcm.Aes256GcmDecryption.decrypt
   ok ({ ctr := ac, ghash := gg }, buf1)
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmDecryption}::verify_tag]:
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 177:4-191:5
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 176:4-190:5
     Visibility: public -/
 def aes_gcm.Aes256GcmDecryption.verify_tag
   (self : aes_gcm.Aes256GcmDecryption) (tag : Slice Std.U8) :

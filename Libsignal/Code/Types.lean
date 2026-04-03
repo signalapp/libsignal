@@ -812,15 +812,25 @@ inductive error.Error where
 | InvalidInputSize : error.Error
 | InvalidTag : error.Error
 
+/-- [signal_crypto::aes_gcm::GcmGhash]
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 19:0-26:1 -/
+structure aes_gcm.GcmGhash where
+  ghash : ghash.GHash
+  ghash_pad : Array Std.U8 16#usize
+  msg_buf : Array Std.U8 16#usize
+  msg_buf_offset : Std.Usize
+  ad_len : Std.Usize
+  msg_len : Std.Usize
+
 /-- [signal_crypto::aes_gcm::Aes256GcmEncryption]
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 134:0-137:1
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 133:0-136:1
     Visibility: public -/
 structure aes_gcm.Aes256GcmEncryption where
   ctr : aes_ctr.Aes256Ctr32
   ghash : aes_gcm.GcmGhash
 
 /-- [signal_crypto::aes_gcm::Aes256GcmDecryption]
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 158:0-161:1
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 157:0-160:1
     Visibility: public -/
 structure aes_gcm.Aes256GcmDecryption where
   ctr : aes_ctr.Aes256Ctr32

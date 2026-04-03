@@ -15,8 +15,7 @@ use crate::{Aes256Ctr32, Error, Result};
 pub const TAG_SIZE: usize = 16;
 pub const NONCE_SIZE: usize = 12;
 
-#[cfg_attr(not(feature = "extraction"), derive(Clone))]
-#[charon::opaque]
+#[derive(Clone)]
 struct GcmGhash {
     ghash: GHash,
     ghash_pad: [u8; TAG_SIZE],
