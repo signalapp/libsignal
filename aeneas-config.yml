@@ -1,7 +1,14 @@
 # Aeneas extraction configuration — combined (signal-crypto + libsignal-core)
 #
-# Extracts signal-crypto as the target crate, with libsignal-core fully
-# transparent (bodies extracted) rather than opaque signatures only.
+# Extracts signal-crypto as the target crate, with libsignal-core as a
+# transparent dependency (`--include libsignal_core`).
+#
+# start_from_pub covers all pub items of signal-crypto (the target crate).
+# The start_from list below manually adds pub functions from libsignal-core
+# that aren't pulled in as dependencies of signal-crypto. Charon only
+# discovers foreign-crate items that are referenced from the target crate's
+# code, so core's inherent methods must be listed explicitly. We use the
+# `_::method` pattern to match methods across impl blocks.
 
 aeneas:
   commit: "1180be60"
@@ -21,27 +28,29 @@ charon:
   cargo_args: ["-p", "signal-crypto", "--features", "extraction"]
   start_from_pub: true
   start_from:
-    # Core free functions
+    # libsignal-core free functions and constants
     - "libsignal_core::try_scoped"
     - "libsignal_core::derive_arrays"
     - "libsignal_core::try_derive_arrays"
     - "libsignal_core::version::VERSION"
-    # Core inherent methods (using _::method workaround for impl blocks)
+    # libsignal-core::e164 (E164)
     - "libsignal_core::e164::_::new"
     - "libsignal_core::e164::_::to_be_bytes"
     - "libsignal_core::e164::_::from_be_bytes"
+    # libsignal-core::address (DeviceId, ServiceId, SpecificServiceId, ProtocolAddress)
     - "libsignal_core::address::_::new"
+    - "libsignal_core::address::_::new_nonzero"
     - "libsignal_core::address::_::kind"
     - "libsignal_core::address::_::service_id_binary"
     - "libsignal_core::address::_::service_id_fixed_width_binary"
     - "libsignal_core::address::_::parse_from_service_id_binary"
+    - "libsignal_core::address::_::parse_from_service_id_fixed_width_binary"
     - "libsignal_core::address::_::raw_uuid"
-    - "libsignal_core::address::_::name"
-    - "libsignal_core::address::_::device_id"
-    - "libsignal_core::address::_::new_nonzero"
     - "libsignal_core::address::_::from_uuid_bytes"
     - "libsignal_core::address::_::from_uuid"
-    # Curve: PublicKey
+    - "libsignal_core::address::_::name"
+    - "libsignal_core::address::_::device_id"
+    # libsignal-core::curve (PublicKey, PrivateKey, KeyPair)
     - "libsignal_core::curve::_::deserialize"
     - "libsignal_core::curve::_::serialize"
     - "libsignal_core::curve::_::key_type"
@@ -51,17 +60,15 @@ charon:
     - "libsignal_core::curve::_::verify_signature"
     - "libsignal_core::curve::_::verify_signature_for_multipart_message"
     - "libsignal_core::curve::_::is_canonical"
-    # Curve: PrivateKey
     - "libsignal_core::curve::_::calculate_signature"
     - "libsignal_core::curve::_::calculate_signature_for_multipart_message"
     - "libsignal_core::curve::_::calculate_agreement"
-    # Curve: KeyPair
     - "libsignal_core::curve::_::generate"
     - "libsignal_core::curve::_::from_public_and_private"
   include:
     - "libsignal_core"
   exclude:
-    # Debug/Display/Error impls
+    # Formatting and error trait impls (not needed for verification)
     - "signal_crypto::{impl core::fmt::Debug for _}"
     - "signal_crypto::{impl core::fmt::Display for _}"
     - "signal_crypto::_::{impl core::fmt::Debug for _}"
@@ -78,21 +85,16 @@ charon:
     - "libsignal_core::_::_::{impl core::fmt::Display for _}"
     - "libsignal_core::{impl core::error::Error for _}"
     - "libsignal_core::_::{impl core::error::Error for _}"
-    # libsignal-core specific excludes
-    - "libsignal_core::address::ServiceId::parse_from_service_id_string"
-    - "libsignal_core::address::SpecificServiceId::parse_from_service_id_string"
-    - "libsignal_core::address::ServiceId::service_id_string"
-    - "libsignal_core::address::SpecificServiceId::service_id_string"
-    - "libsignal_core::address::{impl rand::distr::Distribution for _}"
-    - "libsignal_core::address::ServiceId::to_protocol_address"
+    # libsignal-core functions that use unsupported features
+    - "libsignal_core::address::_::service_id_string"       # uses format! macro
+    - "libsignal_core::address::_::parse_from_service_id_string" # uses str::Pattern (GAT)
+    - "libsignal_core::address::_::to_protocol_address"      # calls service_id_string
+    # Crate-level excludes
     - "libsignal_core::curve::curve25519" # Charon panic in curve25519_dalek
-    # signal-crypto specific excludes
-    - "signal_crypto::hpke" # complex external crypto
-    # External crate internals
-    - "core::str::pattern"
-    - "core::str::_::{impl core::str::pattern::Pattern for _}"
-    - "rand::distr::uniform"
-    - "zerocopy"
+    - "signal_crypto::hpke"               # complex external crypto (hpke-rs)
+    - "core::str::pattern"                # GATs unsupported by Aeneas
+    - "rand::distr::uniform"              # mutually recursive traits
+    - "zerocopy"                          # raw pointer ops, GATs
     - "log"
   opaque: []
 

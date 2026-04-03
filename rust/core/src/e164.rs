@@ -7,8 +7,7 @@ use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::str::FromStr;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(not(feature = "extraction"), derive(derive_more::Into))]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, derive_more::Into)]
 pub struct E164 { inner: NonZeroU64 }
 
 impl E164 {
@@ -27,7 +26,6 @@ impl E164 {
 
 impl FromStr for E164 {
     type Err = ParseIntError;
-    #[charon::opaque]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.strip_prefix('+').unwrap_or(s);
         NonZeroU64::from_str(s).map(|inner| Self { inner })

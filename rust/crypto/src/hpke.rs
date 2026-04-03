@@ -25,7 +25,6 @@ impl From<SignalHpkeCiphertextType> for u8 {
 }
 
 impl SignalHpkeCiphertextType {
-    #[charon::opaque]
     fn set_up(self) -> Hpke<provider::CryptoProvider> {
         Hpke::new(
             self.mode(),
@@ -80,7 +79,6 @@ pub trait SimpleHpkeSender {
 }
 
 impl SimpleHpkeSender for libsignal_core::curve::PublicKey {
-    #[charon::opaque]
     fn seal(&self, info: &[u8], aad: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, HpkeError> {
         let ciphertext_type = match self.key_type() {
             libsignal_core::curve::KeyType::Djb => {
@@ -128,7 +126,6 @@ pub trait SimpleHpkeReceiver {
 }
 
 impl SimpleHpkeReceiver for libsignal_core::curve::PrivateKey {
-    #[charon::opaque]
     fn open(&self, info: &[u8], aad: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>, HpkeError> {
         let (ciphertext_type, ciphertext) = ciphertext
             .split_at_checked(1)

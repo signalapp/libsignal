@@ -10,9 +10,6 @@ authors.workspace = true
 license.workspace = true
 edition = "2024"
 
-[features]
-extraction = []
-
 [lints]
 workspace = true
 

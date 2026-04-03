@@ -217,7 +217,6 @@ impl ServiceId {
     }
 
     /// The standard string representation for a Signal service ID.
-    #[charon::opaque]
     pub fn service_id_string(&self) -> String {
         if let Self::Aci(aci) = self {
             aci.uuid.to_string()
@@ -261,7 +260,6 @@ impl ServiceId {
     /// Parses from the standard String representation, returning `None` if invalid.
     ///
     /// The UUID parsing is case-insensitive.
-    #[charon::opaque]
     pub fn parse_from_service_id_string(input: &str) -> Option<Self> {
         fn try_parse_hyphenated(input: &str) -> Option<Uuid> {
             // uuid::Uuid supports multiple UUID formats; we only want to support the "hyphenated"
@@ -757,7 +755,6 @@ impl fmt::Display for DeviceId {
     }
 }
 
-#[cfg(not(feature = "extraction"))]
 impl rand::distr::Distribution<DeviceId> for rand::distr::StandardUniform {
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> DeviceId {
         DeviceId {

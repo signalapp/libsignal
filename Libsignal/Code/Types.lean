@@ -444,7 +444,7 @@ inductive libsignal_core.address.ServiceId where
   libsignal_core.address.ServiceId
 
 /-- [libsignal_core::address::DeviceId]
-    Source: 'rust/core/src/address.rs', lines 680:0-680:19
+    Source: 'rust/core/src/address.rs', lines 678:0-678:19
     Name pattern: [libsignal_core::address::DeviceId]
     Visibility: public -/
 @[rust_type "libsignal_core::address::DeviceId"]
@@ -453,14 +453,14 @@ structure libsignal_core.address.DeviceId where
     U8.Insts.CoreNumNonzeroZeroablePrimitiveNonZeroU8Inner
 
 /-- [libsignal_core::address::InvalidDeviceId]
-    Source: 'rust/core/src/address.rs', lines 685:0-685:26
+    Source: 'rust/core/src/address.rs', lines 683:0-683:26
     Name pattern: [libsignal_core::address::InvalidDeviceId]
     Visibility: public -/
 @[reducible, rust_type "libsignal_core::address::InvalidDeviceId"]
 def libsignal_core.address.InvalidDeviceId := Unit
 
 /-- [libsignal_core::address::ProtocolAddress]
-    Source: 'rust/core/src/address.rs', lines 772:0-772:26
+    Source: 'rust/core/src/address.rs', lines 769:0-769:26
     Name pattern: [libsignal_core::address::ProtocolAddress]
     Visibility: public -/
 @[rust_type "libsignal_core::address::ProtocolAddress"]
@@ -556,7 +556,7 @@ structure libsignal_core.curve.KeyPair where
   private_key : libsignal_core.curve.PrivateKey
 
 /-- [libsignal_core::e164::E164]
-    Source: 'rust/core/src/e164.rs', lines 12:0-12:15
+    Source: 'rust/core/src/e164.rs', lines 11:0-11:15
     Name pattern: [libsignal_core::e164::E164]
     Visibility: public -/
 @[rust_type "libsignal_core::e164::E164"]
@@ -565,7 +565,7 @@ structure libsignal_core.e164.E164 where
     U64.Insts.CoreNumNonzeroZeroablePrimitiveNonZeroU64Inner
 
 /-- [libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure]
-    Source: 'rust/core/src/e164.rs', lines 24:55-24:62
+    Source: 'rust/core/src/e164.rs', lines 23:55-23:62
     Name pattern: [libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure] -/
 @[reducible, rust_type
   "libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure"]

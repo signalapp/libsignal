@@ -8,19 +8,6 @@ Upstream Commit: 0a58e80b
 
 ---
 
-diff -Naur --no-dereference a/rust/core/Cargo.toml b/rust/core/Cargo.toml
---- a/rust/core/Cargo.toml
-+++ b/rust/core/Cargo.toml
-@@ -10,6 +10,9 @@
- license.workspace = true
- edition = "2024"
- 
-+[features]
-+extraction = []
-+
- [lints]
- workspace = true
- 
 diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.rs
 --- a/rust/core/src/address.rs
 +++ b/rust/core/src/address.rs
@@ -69,11 +56,8 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
          } else {
              self.service_id_fixed_width_binary().to_vec()
          }
-@@ -217,9 +217,10 @@
-     }
- 
+@@ -219,7 +219,7 @@
      /// The standard string representation for a Signal service ID.
-+    #[charon::opaque]
      pub fn service_id_string(&self) -> String {
          if let Self::Aci(aci) = self {
 -            aci.0.to_string()
@@ -81,15 +65,7 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
          } else {
              format!("{}:{}", self.kind(), self.raw_uuid())
          }
-@@ -260,6 +261,7 @@
-     /// Parses from the standard String representation, returning `None` if invalid.
-     ///
-     /// The UUID parsing is case-insensitive.
-+    #[charon::opaque]
-     pub fn parse_from_service_id_string(input: &str) -> Option<Self> {
-         fn try_parse_hyphenated(input: &str) -> Option<Uuid> {
-             // uuid::Uuid supports multiple UUID formats; we only want to support the "hyphenated"
-@@ -675,7 +677,7 @@
+@@ -675,7 +675,7 @@
  ///
  /// Used in [ProtocolAddress].
  #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
@@ -98,7 +74,7 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
  
  #[derive(Copy, Clone, Debug, Eq, PartialEq, thiserror::Error)]
  #[error("device ID is out of range")]
-@@ -701,7 +703,7 @@
+@@ -701,7 +701,7 @@
      /// returned instead.
      pub const fn new_nonzero(id: NonZeroU8) -> Result<Self, InvalidDeviceId> {
          if id.get() <= MAX_VALID_DEVICE_ID {
@@ -107,7 +83,7 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
          } else {
              Err(InvalidDeviceId)
          }
-@@ -712,19 +714,19 @@
+@@ -712,19 +712,19 @@
  
  impl From<DeviceId> for u32 {
      fn from(value: DeviceId) -> Self {
@@ -130,7 +106,7 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
      }
  }
  
-@@ -751,16 +753,17 @@
+@@ -751,16 +751,16 @@
  
  impl fmt::Display for DeviceId {
      fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -139,7 +115,6 @@ diff -Naur --no-dereference a/rust/core/src/address.rs b/rust/core/src/address.r
      }
  }
  
-+#[cfg(not(feature = "extraction"))]
  impl rand::distr::Distribution<DeviceId> for rand::distr::StandardUniform {
      fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> DeviceId {
 -        DeviceId(
@@ -273,14 +248,11 @@ diff -Naur --no-dereference a/rust/core/src/curve.rs b/rust/core/src/curve.rs
 diff -Naur --no-dereference a/rust/core/src/e164.rs b/rust/core/src/e164.rs
 --- a/rust/core/src/e164.rs
 +++ b/rust/core/src/e164.rs
-@@ -7,34 +7,36 @@
- use std::num::{NonZeroU64, ParseIntError};
+@@ -8,19 +8,19 @@
  use std::str::FromStr;
  
--#[derive(Copy, Clone, Debug, PartialEq, Eq, derive_more::Into)]
+ #[derive(Copy, Clone, Debug, PartialEq, Eq, derive_more::Into)]
 -pub struct E164(NonZeroU64);
-+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-+#[cfg_attr(not(feature = "extraction"), derive(derive_more::Into))]
 +pub struct E164 { inner: NonZeroU64 }
  
  impl E164 {
@@ -300,9 +272,8 @@ diff -Naur --no-dereference a/rust/core/src/e164.rs b/rust/core/src/e164.rs
      }
  }
  
- impl FromStr for E164 {
+@@ -28,13 +28,13 @@
      type Err = ParseIntError;
-+    #[charon::opaque]
      fn from_str(s: &str) -> Result<Self, Self::Err> {
          let s = s.strip_prefix('+').unwrap_or(s);
 -        NonZeroU64::from_str(s).map(Self)
@@ -532,33 +503,6 @@ diff -Naur --no-dereference a/rust/crypto/src/hash.rs b/rust/crypto/src/hash.rs
      pub fn finalize(&mut self) -> Vec<u8> {
          match self {
              Self::Sha1(sha1) => sha1.finalize_reset().to_vec(),
-diff -Naur --no-dereference a/rust/crypto/src/hpke.rs b/rust/crypto/src/hpke.rs
---- a/rust/crypto/src/hpke.rs
-+++ b/rust/crypto/src/hpke.rs
-@@ -25,6 +25,7 @@
- }
- 
- impl SignalHpkeCiphertextType {
-+    #[charon::opaque]
-     fn set_up(self) -> Hpke<provider::CryptoProvider> {
-         Hpke::new(
-             self.mode(),
-@@ -79,6 +80,7 @@
- }
- 
- impl SimpleHpkeSender for libsignal_core::curve::PublicKey {
-+    #[charon::opaque]
-     fn seal(&self, info: &[u8], aad: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, HpkeError> {
-         let ciphertext_type = match self.key_type() {
-             libsignal_core::curve::KeyType::Djb => {
-@@ -126,6 +128,7 @@
- }
- 
- impl SimpleHpkeReceiver for libsignal_core::curve::PrivateKey {
-+    #[charon::opaque]
-     fn open(&self, info: &[u8], aad: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>, HpkeError> {
-         let (ciphertext_type, ciphertext) = ciphertext
-             .split_at_checked(1)
 diff -Naur --no-dereference a/rust/crypto/src/lib.rs b/rust/crypto/src/lib.rs
 --- a/rust/crypto/src/lib.rs
 +++ b/rust/crypto/src/lib.rs
@@ -571,25 +515,11 @@ diff -Naur --no-dereference a/rust/crypto/src/lib.rs b/rust/crypto/src/lib.rs
  
  mod error;
  mod hash;
-@@ -19,3 +21,18 @@
+@@ -19,3 +21,4 @@
  pub use error::{Error, Result};
  pub use hash::{CryptographicHash, CryptographicMac};
  pub use hpke::{HpkeError, SimpleHpkeReceiver, SimpleHpkeSender};
 +
-+// Workaround for Aeneas bug: trait impl names for ZeroablePrimitive are only
-+// registered when seen in function bodies. These dummy functions ensure the
-+// impls for NonZeroU8 and NonZeroU64 (used by DeviceId and E164 in
-+// libsignal-core) get their names registered.
-+// See: https://github.com/AeneasVerif/aeneas/issues/XXX
-+#[cfg(feature = "extraction")]
-+pub mod _aeneas_workaround {
-+    pub fn _force_nonzero_u8() -> Option<std::num::NonZeroU8> {
-+        std::num::NonZeroU8::new(1)
-+    }
-+    pub fn _force_nonzero_u64() -> Option<std::num::NonZeroU64> {
-+        std::num::NonZeroU64::new(1)
-+    }
-+}
 diff -Naur --no-dereference a/rust/protocol/Cargo.toml b/rust/protocol/Cargo.toml
 --- a/rust/protocol/Cargo.toml
 +++ b/rust/protocol/Cargo.toml

@@ -190,7 +190,7 @@ def uuid.Uuid.Insts.CoreConvertFromSpecificServiceId (KIND : Std.U8) :
 }
 
 /-- [libsignal_core::address::{libsignal_core::address::ServiceId}::raw_uuid]:
-    Source: 'rust/core/src/address.rs', lines 286:4-286:33
+    Source: 'rust/core/src/address.rs', lines 284:4-284:33
     Name pattern: [libsignal_core::address::{libsignal_core::address::ServiceId}::raw_uuid]
     Visibility: public -/
 @[rust_fun
@@ -293,7 +293,7 @@ def libsignal_core.address.SpecificServiceId.Insts.CoreConvertFromUuid (KIND :
 }
 
 /-- [libsignal_core::address::{libsignal_core::address::ServiceId}::parse_from_service_id_fixed_width_binary]:
-    Source: 'rust/core/src/address.rs', lines 251:4-253:21
+    Source: 'rust/core/src/address.rs', lines 250:4-252:21
     Name pattern: [libsignal_core::address::{libsignal_core::address::ServiceId}::parse_from_service_id_fixed_width_binary]
     Visibility: public -/
 @[rust_fun
@@ -342,7 +342,7 @@ def libsignal_core.address.ServiceId.parse_from_service_id_fixed_width_binary
       libsignal_core.address.ServiceId residual
 
 /-- [libsignal_core::address::{libsignal_core::address::ServiceId}::parse_from_service_id_binary]:
-    Source: 'rust/core/src/address.rs', lines 231:4-231:69
+    Source: 'rust/core/src/address.rs', lines 230:4-230:69
     Name pattern: [libsignal_core::address::{libsignal_core::address::ServiceId}::parse_from_service_id_binary]
     Visibility: public -/
 @[rust_fun
@@ -393,14 +393,14 @@ def libsignal_core.address.ServiceId.parse_from_service_id_binary
   | _ => ok none
 
 /-- [libsignal_core::address::MAX_VALID_DEVICE_ID]
-    Source: 'rust/core/src/address.rs', lines 713:0-713:29
+    Source: 'rust/core/src/address.rs', lines 711:0-711:29
     Name pattern: [libsignal_core::address::MAX_VALID_DEVICE_ID] -/
 @[global_simps, irreducible, rust_const
   "libsignal_core::address::MAX_VALID_DEVICE_ID"]
 def libsignal_core.address.MAX_VALID_DEVICE_ID : Std.U8 := 127#u8
 
 /-- [libsignal_core::address::{libsignal_core::address::DeviceId}::new_nonzero]:
-    Source: 'rust/core/src/address.rs', lines 704:4-704:76
+    Source: 'rust/core/src/address.rs', lines 702:4-702:76
     Name pattern: [libsignal_core::address::{libsignal_core::address::DeviceId}::new_nonzero]
     Visibility: public -/
 @[rust_fun
@@ -498,7 +498,7 @@ def
   libsignal_core.curve.PrivateKey.deserialize value
 
 /-- [libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::{core::ops::function::FnOnce<(core::num::nonzero::NonZero<u64, core::num::niche_types::NonZeroU64Inner>[core::num::nonzero::{core::num::nonzero::ZeroablePrimitive<core::num::niche_types::NonZeroU64Inner> for u64}]), libsignal_core::e164::E164> for libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure}::call_once]:
-    Source: 'rust/core/src/e164.rs', lines 24:55-24:62
+    Source: 'rust/core/src/e164.rs', lines 23:55-23:62
     Name pattern: [libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::{core::ops::function::FnOnce<libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure, (core::num::nonzero::NonZero<u64, core::num::niche_types::NonZeroU64Inner>), libsignal_core::e164::E164>}::call_once] -/
 @[rust_fun
   "libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::{core::ops::function::FnOnce<libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure, (core::num::nonzero::NonZero<u64, core::num::niche_types::NonZeroU64Inner>), libsignal_core::e164::E164>}::call_once"]
@@ -512,7 +512,7 @@ def
   ok { inner := tupled_args }
 
 /-- Trait implementation: [libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::{core::ops::function::FnOnce<(core::num::nonzero::NonZero<u64, core::num::niche_types::NonZeroU64Inner>[core::num::nonzero::{core::num::nonzero::ZeroablePrimitive<core::num::niche_types::NonZeroU64Inner> for u64}]), libsignal_core::e164::E164> for libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure}]
-    Source: 'rust/core/src/e164.rs', lines 24:55-24:62
+    Source: 'rust/core/src/e164.rs', lines 23:55-23:62
     Name pattern: [core::ops::function::FnOnce<libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure, (core::num::nonzero::NonZero<u64, core::num::niche_types::NonZeroU64Inner>), libsignal_core::e164::E164>] -/
 @[reducible, rust_trait_impl
   "core::ops::function::FnOnce<libsignal_core::e164::{libsignal_core::e164::E164}::from_be_bytes::closure, (core::num::nonzero::NonZero<u64, core::num::niche_types::NonZeroU64Inner>), libsignal_core::e164::E164>"]
