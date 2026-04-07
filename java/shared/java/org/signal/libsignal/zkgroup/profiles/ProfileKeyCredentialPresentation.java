@@ -19,6 +19,7 @@ public final class ProfileKeyCredentialPresentation extends ByteArray {
     V1,
     V2,
     V3,
+    V4,
     UNKNOWN
   };
 
@@ -62,6 +63,8 @@ public final class ProfileKeyCredentialPresentation extends ByteArray {
         return Version.V2;
       case 2:
         return Version.V3;
+      case 3:
+        return Version.V4;
       default:
         return Version.UNKNOWN;
     }

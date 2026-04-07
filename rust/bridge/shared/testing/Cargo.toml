@@ -25,6 +25,7 @@ libsignal-message-backup = { workspace = true, features = ["json"] }
 libsignal-net = { workspace = true }
 libsignal-net-chat = { workspace = true }
 libsignal-protocol = { workspace = true }
+zkgroup = { workspace = true }
 
 base64 = { workspace = true }
 boring-signal = { workspace = true }

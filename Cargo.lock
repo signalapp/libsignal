@@ -2414,6 +2414,7 @@ dependencies = [
  "strum",
  "tokio",
  "uuid",
+ "zkgroup",
 ]
 
 [[package]]
