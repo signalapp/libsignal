@@ -62,15 +62,19 @@ impl ProfileKeyCredentialPresentationV2 {
 }
 
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
-pub struct ExpiringProfileKeyCredentialPresentation {
-    pub(crate) version: VersionByte<PRESENTATION_VERSION_3>,
+pub struct ExpiringProfileKeyCredentialPresentation<const V: u8 = PRESENTATION_VERSION_3> {
+    pub(crate) version: VersionByte<V>,
     pub(crate) proof: crypto::proofs::ExpiringProfileKeyCredentialPresentationProof,
     pub(crate) uid_enc_ciphertext: crypto::uid_encryption::Ciphertext,
     pub(crate) profile_key_enc_ciphertext: crypto::profile_key_encryption::Ciphertext,
     pub(crate) credential_expiration_time: Timestamp,
 }
 
-impl ExpiringProfileKeyCredentialPresentation {
+// The only thing that changes in V2 is the proof contents, so we can reuse the same structure.
+pub type ExpiringProfileKeyCredentialPresentationV2 =
+    ExpiringProfileKeyCredentialPresentation<PRESENTATION_VERSION_4>;
+
+impl<const V: u8> ExpiringProfileKeyCredentialPresentation<V> {
     pub fn get_uuid_ciphertext(&self) -> api::groups::UuidCiphertext {
         api::groups::UuidCiphertext {
             reserved: Default::default(),
@@ -95,6 +99,7 @@ pub enum AnyProfileKeyCredentialPresentation {
     V1(ProfileKeyCredentialPresentationV1),
     V2(ProfileKeyCredentialPresentationV2),
     V3(ExpiringProfileKeyCredentialPresentation),
+    V4(ExpiringProfileKeyCredentialPresentationV2),
 }
 
 impl AnyProfileKeyCredentialPresentation {
@@ -112,6 +117,10 @@ impl AnyProfileKeyCredentialPresentation {
                 crate::deserialize::<ExpiringProfileKeyCredentialPresentation>(presentation_bytes)
                     .map(AnyProfileKeyCredentialPresentation::V3)
             }
+            PRESENTATION_VERSION_4 => {
+                crate::deserialize::<ExpiringProfileKeyCredentialPresentationV2>(presentation_bytes)
+                    .map(AnyProfileKeyCredentialPresentation::V4)
+            }
             _ => Err(ZkGroupDeserializationFailure::new::<Self>()),
         }
     }
@@ -127,6 +136,9 @@ impl AnyProfileKeyCredentialPresentation {
             AnyProfileKeyCredentialPresentation::V3(presentation) => {
                 presentation.get_uuid_ciphertext()
             }
+            AnyProfileKeyCredentialPresentation::V4(presentation) => {
+                presentation.get_uuid_ciphertext()
+            }
         }
     }
 
@@ -139,6 +151,9 @@ impl AnyProfileKeyCredentialPresentation {
                 presentation.get_profile_key_ciphertext()
             }
             AnyProfileKeyCredentialPresentation::V3(presentation) => {
+                presentation.get_profile_key_ciphertext()
+            }
+            AnyProfileKeyCredentialPresentation::V4(presentation) => {
                 presentation.get_profile_key_ciphertext()
             }
         }
@@ -173,6 +188,9 @@ impl Serialize for AnyProfileKeyCredentialPresentation {
                 presentation.serialize(serializer)
             }
             AnyProfileKeyCredentialPresentation::V3(presentation) => {
+                presentation.serialize(serializer)
+            }
+            AnyProfileKeyCredentialPresentation::V4(presentation) => {
                 presentation.serialize(serializer)
             }
         }

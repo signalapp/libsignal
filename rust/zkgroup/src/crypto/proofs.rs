@@ -448,7 +448,7 @@ impl ProfileKeyCredentialPresentationProofV1 {
 }
 
 impl ExpiringProfileKeyCredentialPresentationProof {
-    pub fn get_poksho_statement() -> poksho::Statement {
+    pub fn get_poksho_statement(full_checking: bool) -> poksho::Statement {
         let mut st = poksho::Statement::new();
         st.add("Z", &[("z", "I")]);
         st.add("C_x1", &[("t", "C_x0"), ("z0", "G_x0"), ("z", "G_x1")]);
@@ -467,6 +467,9 @@ impl ExpiringProfileKeyCredentialPresentationProof {
         st.add("E_B1", &[("b1", "C_y3"), ("z2", "G_y3")]);
         st.add("0", &[("z1", "I"), ("a1", "Z")]);
         st.add("0", &[("z2", "I"), ("b1", "Z")]);
+        if full_checking {
+            st.add("C_y5", &[("z", "G_y5")]);
+        }
         st
     }
 
@@ -480,6 +483,7 @@ impl ExpiringProfileKeyCredentialPresentationProof {
         profile_key_ciphertext: profile_key_encryption::Ciphertext,
         aci_bytes: UidBytes,
         profile_key_bytes: ProfileKeyBytes,
+        full_checking: bool,
         sho: &mut Sho,
     ) -> Self {
         let credentials_system = credentials::SystemParams::get_hardcoded();
@@ -557,7 +561,12 @@ impl ExpiringProfileKeyCredentialPresentationProof {
         point_args.add("G_y3", credentials_system.G_y[3]);
         point_args.add("0", RistrettoPoint::identity());
 
-        let poksho_proof = Self::get_poksho_statement()
+        if full_checking {
+            point_args.add("C_y5", C_y5);
+            point_args.add("G_y5", credentials_system.G_y[5]);
+        }
+
+        let poksho_proof = Self::get_poksho_statement(full_checking)
             .prove(
                 &scalar_args,
                 &point_args,
@@ -587,6 +596,7 @@ impl ExpiringProfileKeyCredentialPresentationProof {
         profile_key_ciphertext: profile_key_encryption::Ciphertext,
         profile_key_enc_public_key: profile_key_encryption::PublicKey,
         credential_expiration_time: Timestamp,
+        full_checking: bool,
     ) -> Result<(), ZkGroupVerificationFailure> {
         let uid_enc_system = uid_encryption::SystemParams::get_hardcoded();
         let profile_key_enc_system = profile_key_encryption::SystemParams::get_hardcoded();
@@ -604,8 +614,8 @@ impl ExpiringProfileKeyCredentialPresentationProof {
             poksho_proof,
         } = self;
 
-        let (C_x0, C_x1, C_y1, C_y2, C_y3, C_y4, C_V) =
-            (*C_x0, *C_x1, *C_y1, *C_y2, *C_y3, *C_y4, *C_V);
+        let (C_x0, C_x1, C_y1, C_y2, C_y3, C_y4, C_y5, C_V) =
+            (*C_x0, *C_x1, *C_y1, *C_y2, *C_y3, *C_y4, *C_y5, *C_V);
 
         let credentials::KeyPair {
             W,
@@ -661,7 +671,13 @@ impl ExpiringProfileKeyCredentialPresentationProof {
         point_args.add("G_y3", credentials_system.G_y[3]);
         point_args.add("0", RistrettoPoint::identity());
 
-        match Self::get_poksho_statement().verify_proof(poksho_proof, &point_args, &[]) {
+        if full_checking {
+            point_args.add("C_y5", C_y5);
+            point_args.add("G_y5", credentials_system.G_y[5]);
+        }
+
+        match Self::get_poksho_statement(full_checking).verify_proof(poksho_proof, &point_args, &[])
+        {
             Err(_) => Err(ZkGroupVerificationFailure),
             Ok(_) => Ok(()),
         }
