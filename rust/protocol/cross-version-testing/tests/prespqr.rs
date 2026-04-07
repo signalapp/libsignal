@@ -3,10 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::assert_matches;
-use std::time::SystemTime;
-
-use futures_util::FutureExt;
+use assert_matches::assert_matches;
 use libsignal_protocol_cross_version_testing::*;
 
 #[test]
