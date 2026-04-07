@@ -14,9 +14,9 @@ import org.signal.libsignal.protocol.util.Hex
 import org.signal.libsignal.usernames.Username
 import org.signal.libsignal.usernames.UsernameLinkInvalidEntropyDataLength
 import org.signal.libsignal.usernames.UsernameLinkInvalidLinkData
-import org.signal.libsignal.util.Base64
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import kotlin.io.encoding.Base64
 import kotlin.test.assertIs
 
 class UnauthUsernamesServiceTest {
@@ -48,7 +48,8 @@ class UnauthUsernamesServiceTest {
     val (request, requestId) = fakeRemote.getNextIncomingRequest().get()
 
     assertEquals("GET", request.method)
-    val expectedPath = "/v1/accounts/username_hash/" + Base64.encodeToStringUrl(testHash)
+    val expectedPath =
+      "/v1/accounts/username_hash/" + Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL).encode(testHash)
     assertEquals(expectedPath, request.pathAndQuery)
 
     // Send successful response with UUID
@@ -92,7 +93,8 @@ class UnauthUsernamesServiceTest {
     val (request, requestId) = fakeRemote.getNextIncomingRequest().get()
 
     assertEquals("GET", request.method)
-    val expectedPath = "/v1/accounts/username_hash/" + Base64.encodeToStringUrl(testHash)
+    val expectedPath =
+      "/v1/accounts/username_hash/" + Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL).encode(testHash)
     assertEquals(expectedPath, request.pathAndQuery)
 
     // Send fake 404 response (user not found)

@@ -16,9 +16,9 @@ import org.junit.Test
 import org.signal.libsignal.messagebackup.VarintDelimitedTestUtil.chunkLengthDelimited
 import org.signal.libsignal.messagebackup.VarintDelimitedTestUtil.insertLengthPrefix
 import org.signal.libsignal.messagebackup.VarintDelimitedTestUtil.stripLengthPrefix
-import org.signal.libsignal.util.Base64
 import org.signal.libsignal.util.ResourceReader
 import java.io.ByteArrayOutputStream
+import kotlin.io.encoding.Base64
 
 class BackupJsonExporterTest {
   companion object {

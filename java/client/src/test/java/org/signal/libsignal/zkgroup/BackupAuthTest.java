@@ -8,14 +8,17 @@ package org.signal.libsignal.zkgroup;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+import kotlin.io.encoding.Base64;
 import org.junit.Assert;
 import org.junit.Test;
 import org.signal.libsignal.protocol.util.Hex;
-import org.signal.libsignal.util.Base64;
 import org.signal.libsignal.zkgroup.backups.*;
 
 /** Tests the BackupAuthCredential */
 public final class BackupAuthTest extends SecureRandomTest {
+  private static byte[] decodeBase64(String input) {
+    return Base64.Default.decode(input, 0, input.length());
+  }
 
   // Chosen randomly
   private static final UUID TEST_USER_ID = UUID.fromString("e74beed0-e70f-4cfd-abbb-7e3eb333bbac");
@@ -41,7 +44,7 @@ public final class BackupAuthTest extends SecureRandomTest {
   private static final byte[] SERIALIZED_BACKUP_ID =
       Hex.fromStringCondensedAssert("a28962c7f9ac910f66e4bcb33f2cef06");
   private static final byte[] SERIALIZED_REQUEST_CREDENTIAL =
-      Base64.decode(
+      decodeBase64(
           "AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB399rN6N8Dv5DAwvY4N36Uj0qGf0cV5a/8rf5nkxLeVNnF3ojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ==");
 
   @Test
