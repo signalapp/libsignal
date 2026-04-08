@@ -3,11 +3,15 @@
 -- This is a template file: rename it to "TypesExternal.lean" and fill the holes.
 import Aeneas
 import Libsignal.Code.TypesPre
+import Libsignal.Code.TypesExternalPre
 open signal_crypto
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
 set_option linter.hashCommand false
 set_option linter.unusedVariables false
+set_option linter.style.longLine false
+set_option linter.style.setOption false
+set_option linter.style.whitespace false
 
 /- You can set the `maxHeartbeats` value with the `-max-heartbeats` CLI option -/
 set_option maxHeartbeats 1000000
@@ -49,6 +53,13 @@ axiom core.num.nonzero.NonZero {T : Type} {Clause0_NonZeroInner : Type}
     Visibility: public -/
 @[rust_type "aes::autodetect::Aes256"]
 axiom aes.autodetect.Aes256 : Type
+
+/-- [typenum::uint::UInt]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 148:0-148:21
+    Name pattern: [typenum::uint::UInt]
+    Visibility: public -/
+@[rust_type "typenum::uint::UInt"]
+axiom typenum.uint.UInt (U : Type) (B : Type) : Type
 
 /-- [cipher::stream_wrapper::StreamCipherCoreWrapper]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cipher-0.4.4/src/stream_wrapper.rs', lines 17:0-17:52

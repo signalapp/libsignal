@@ -1,3 +1,5 @@
+import Libsignal.Code.TypesPreBase
+import Libsignal.Code.TypesExternalPre
 import Libsignal.Code.TypesPre
 import Libsignal.Code.TypesExternal
 import Libsignal.Code.FunsPre

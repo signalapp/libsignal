@@ -128,11 +128,23 @@ aeneas_args:
   dest: "."
   subdir: "Libsignal/Code"
 
-# Declarations to move from Types.lean / TypesExternal_Template.lean into
-# TypesPre.lean (imported by TypesExternal to break circular dependency).
-# Order matters — dependencies must come before dependents.
-types_pre:
-  # core traits
+# File splitting to break circular dependencies between Types and TypesExternal.
+#
+# Aeneas generates Types.lean (defs) and TypesExternal_Template.lean (axioms).
+# Types imports TypesExternal, but some axioms reference defs from Types —
+# creating a circular dependency. We break this by splitting into layers:
+#
+#   TypesPreBase ← TypesExternalPre_Template ← TypesPre ← TypesExternal_Template
+#       ↑             (axioms needed             (defs that        ↑
+#   (defs with         by TypesPre)              need axioms)   (remaining
+#    no axiom deps)                                              axioms)
+#
+# Full import chain:
+#   TypesPreBase ← TypesExternalPre ← TypesPre ← TypesExternal
+#     ← FunsPre ← Types ← FunsExternal ← Funs
+
+# Layer 1: Defs from Types.lean with no axiom dependencies.
+types_pre_base:
   - "core.num.nonzero.private.Sealed"
   - "core.num.nonzero.ZeroablePrimitive"
   - "core.ops.arith.Add"
@@ -140,7 +152,6 @@ types_pre:
   - "core.ops.arith.Div"
   - "core.ops.arith.Rem"
   - "core.ops.bit.Shl"
-  # typenum
   - "typenum.uint.UTerm"
   - "typenum.bit.B1"
   - "typenum.bit.B0"
@@ -170,41 +181,22 @@ types_pre:
   - "typenum.type_operators.Len"
   - "typenum.uint.GetBit"
   - "typenum.uint.SetBit"
-  # generic_array
   - "generic_array.ArrayLength"
-  - "generic_array.GenericArray"
-  # TypesExternal axioms (simple, no deps beyond TypesPre)
-  - "inout.inout.InOut"
-  - "typenum.uint.UInt"
-  # crypto_common
   - "crypto_common.BlockSizeUser"
-  # block_padding
   - "block_padding.PadType"
   - "block_padding.UnpadError"
-  - "block_padding.Padding"
-  # cipher (order: BlockCipher, ParBlocksSizeUser, BlockBackend, BlockClosure, BlockEncrypt, BlockEncryptMut)
   - "cipher.block.BlockCipher"
-  - "crypto_common.ParBlocksSizeUser"
-  - "cipher.block.BlockBackend"
-  - "cipher.block.BlockClosure"
-  - "cipher.block.BlockEncrypt"
-  - "cipher.block.BlockEncryptMut"
   - "cipher.stream_core.Counter"
-  - "ctr.flavors.CtrFlavor"
-  # rand
   - "rand_core.RngCore"
   - "rand_core.CryptoRng"
   - "rand.rng.Rng"
   - "rand.distr.distribution.Distribution"
   - "rand.distr.StandardUniform"
   - "rand.rng.Fill"
-  # derive_more
   - "derive_more.convert.try_from.TryFromReprError"
-  # signal-crypto errors
   - "aes_cbc.EncryptionError"
   - "aes_cbc.DecryptionError"
   - "error.Error"
-  # libsignal-core types
   - "libsignal_core.address.InvalidDeviceId"
   - "libsignal_core.curve.KeyType"
   - "libsignal_core.curve.CurveError"
@@ -214,10 +206,25 @@ types_pre:
   - "libsignal_core.curve.PrivateKey"
   - "libsignal_core.curve.KeyPair"
 
+# Layer 2: Axioms from TypesExternal_Template.lean needed by TypesPre defs.
+types_external_pre:
+  - "generic_array.GenericArray"
+  - "inout.inout.InOut"
+
+# Layer 3: Defs from Types.lean that reference axioms from TypesExternalPre.
+types_pre:
+  - "block_padding.Padding"
+  - "crypto_common.ParBlocksSizeUser"
+  - "cipher.block.BlockBackend"
+  - "cipher.block.BlockClosure"
+  - "cipher.block.BlockEncrypt"
+  - "cipher.block.BlockEncryptMut"
+  - "ctr.flavors.CtrFlavor"
+
 # Declarations to move from Funs.lean into FunsPre.lean (imported by Types.lean).
 # These are trait instances needed by type definitions in Types.lean.
 funs_pre:
-  # Opaque clone axioms (from FunsExternal, needed by Clone instances below)
+  # Clone function axioms (must come before Clone instances that reference them)
   - "core.num.niche_types.NonZeroU64Inner.Insts.CoreCloneClone.clone"
   - "core.num.niche_types.NonZeroU8Inner.Insts.CoreCloneClone.clone"
   # NonZeroU64Inner instances (needed by E164)
@@ -232,8 +239,17 @@ funs_pre:
   - "U8.Insts.CoreNumNonzeroZeroablePrimitiveNonZeroU8Inner"
 
 tweaks:
-  files: ["Funs.lean"]
+  files: ["TypesPreBase.lean", "TypesExternalPre_Template.lean", "TypesPre.lean", "TypesExternal_Template.lean", "FunsPre.lean", "Types.lean", "FunsExternal_Template.lean", "Funs.lean"]
   substitutions:
+    # Disable linters for auto-generated files
+    - find: |
+        set_option linter.unusedVariables false
+      replace: |
+        set_option linter.unusedVariables false
+        set_option linter.style.longLine false
+        set_option linter.style.setOption false
+        set_option linter.style.whitespace false
+
     # Fix Aeneas codegen: Prop instead of Bool in scalar_is_in_range
     - find: "then ok (i = 127#u8)"
       replace: "then ok (i == 127#u8)"

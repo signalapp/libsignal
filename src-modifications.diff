@@ -249,6 +249,16 @@ diff -Naur --no-dereference a/rust/crypto/src/hash.rs b/rust/crypto/src/hash.rs
  pub enum CryptographicMac {
      HmacSha256(Hmac<Sha256>),
      HmacSha1(Hmac<Sha1>),
+@@ -48,7 +49,8 @@
+     }
+ }
+ 
+-#[derive(Clone)]
++#[cfg_attr(not(feature = "extraction"), derive(Clone))]
++#[charon::opaque]
+ pub enum CryptographicHash {
+     Sha1(Sha1),
+     Sha256(Sha256),
 diff -Naur --no-dereference a/rust/crypto/src/lib.rs b/rust/crypto/src/lib.rs
 --- a/rust/crypto/src/lib.rs
 +++ b/rust/crypto/src/lib.rs
