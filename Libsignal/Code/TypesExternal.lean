@@ -2,6 +2,8 @@
 -- [signal_crypto]: external types.
 -- This is a template file: rename it to "TypesExternal.lean" and fill the holes.
 import Aeneas
+import Libsignal.Code.TypesPre
+open signal_crypto
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
 set_option linter.hashCommand false
@@ -9,6 +11,7 @@ set_option linter.unusedVariables false
 
 /- You can set the `maxHeartbeats` value with the `-max-heartbeats` CLI option -/
 set_option maxHeartbeats 1000000
+
 
 /-- [core::num::error::TryFromIntError]
     Source: '/rustc/library/core/src/num/error.rs', lines 10:0-10:26
@@ -46,48 +49,6 @@ axiom core.num.nonzero.NonZero {T : Type} {Clause0_NonZeroInner : Type}
     Visibility: public -/
 @[rust_type "aes::autodetect::Aes256"]
 axiom aes.autodetect.Aes256 : Type
-
-/-- [typenum::uint::UInt]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 148:0-148:21
-    Name pattern: [typenum::uint::UInt]
-    Visibility: public -/
-@[rust_type "typenum::uint::UInt"]
-axiom typenum.uint.UInt (U : Type) (B : Type) : Type
-
-/-- [inout::inout::InOut]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inout-0.1.4/src/inout.rs', lines 7:0-7:31
-    Name pattern: [inout::inout::InOut]
-    Visibility: public -/
-@[rust_type "inout::inout::InOut"]
-axiom inout.inout.InOut (T : Type) : Type
-
-/-- [generic_array::GenericArray]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/lib.rs', lines 179:0-179:45
-    Name pattern: [generic_array::GenericArray]
-    Visibility: public -/
-@[rust_type "generic_array::GenericArray"]
-axiom generic_array.GenericArray {T : Type} {U : Type} {Clause0_ArrayType :
-  Type} (ArrayLengthInst : generic_array.ArrayLength U T Clause0_ArrayType) :
-  Type
-
-/-- [block_buffer::BlockBuffer]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-buffer-0.10.4/src/lib.rs', lines 55:0-55:39
-    Name pattern: [block_buffer::BlockBuffer]
-    Visibility: public -/
-@[rust_type "block_buffer::BlockBuffer"]
-axiom block_buffer.BlockBuffer {BlockSize : Type} {Kind : Type}
-  {Clause0_ArrayType : Type} {Clause1_Output : Type}
-  (generic_arrayArrayLengthBlockSizeU8Clause0_ArrayTypeInst :
-  generic_array.ArrayLength BlockSize Std.U8 Clause0_ArrayType)
-  (typenumtype_operatorsIsLessBlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Clause1_OutputInst
-  : typenum.type_operators.IsLess BlockSize (typenum.uint.UInt
-  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
-  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
-  typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0) typenum.bit.B0)
-  typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
-  typenum.bit.B0) typenum.bit.B0) Clause1_Output)
-  (typenummarker_traitsNonZeroInst : typenum.marker_traits.NonZero
-  Clause1_Output) (BufferKindInst : block_buffer.BufferKind Kind) : Type
 
 /-- [cipher::stream_wrapper::StreamCipherCoreWrapper]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cipher-0.4.4/src/stream_wrapper.rs', lines 17:0-17:52
@@ -278,4 +239,3 @@ axiom aes_ctr.Aes256Ctr32 : Type
     Source: 'rust/crypto/src/hash.rs', lines 14:0-17:1
     Visibility: public -/
 axiom hash.CryptographicMac : Type
-

@@ -106,9 +106,16 @@ async function main(): Promise<void> {
 
   console.log(chalk.green(`  Lean files generated in ${config.aeneas_args.dest}/\n`));
 
-  // ── Step 3: Tweaks ──────────────────────────────────────────────────
+  // ── Step 3: Split Types.lean ───────────────────────────────────────
+  // Move declarations that don't reference TypesExternal axioms into
+  // TypesPre.lean to break the circular dependency.
+  const { execSync } = await import("node:child_process");
+  execSync("npx tsx scripts/split-types.ts", { cwd: root, stdio: "inherit" });
+  console.log();
+
+  // ── Step 4: Tweaks ──────────────────────────────────────────────────
   if (config.tweaks.substitutions.length > 0 && config.tweaks.files.length > 0) {
-    console.log(chalk.bold("Step 3: Applying tweaks..."));
+    console.log(chalk.bold("Step 4: Applying tweaks..."));
 
     const matchedPerFile: Set<number>[] = [];
     for (const file of config.tweaks.files) {
@@ -125,7 +132,7 @@ async function main(): Promise<void> {
     console.log();
   }
 
-  // ── Step 4: Lean toolchain sync ─────────────────────────────────────
+  // ── Step 5: Lean toolchain sync ─────────────────────────────────────
   syncLeanToolchain(root);
 
   console.log(chalk.green("Done."));

@@ -128,6 +128,109 @@ aeneas_args:
   dest: "."
   subdir: "Libsignal/Code"
 
+# Declarations to move from Types.lean / TypesExternal_Template.lean into
+# TypesPre.lean (imported by TypesExternal to break circular dependency).
+# Order matters — dependencies must come before dependents.
+types_pre:
+  # core traits
+  - "core.num.nonzero.private.Sealed"
+  - "core.num.nonzero.ZeroablePrimitive"
+  - "core.ops.arith.Add"
+  - "core.ops.arith.Sub"
+  - "core.ops.arith.Div"
+  - "core.ops.arith.Rem"
+  - "core.ops.bit.Shl"
+  # typenum
+  - "typenum.uint.UTerm"
+  - "typenum.bit.B1"
+  - "typenum.bit.B0"
+  - "typenum.sealed.Sealed"
+  - "typenum.marker_traits.Unsigned"
+  - "typenum.marker_traits.Bit"
+  - "typenum.type_operators.IsLess"
+  - "typenum.marker_traits.NonZero"
+  - "typenum.type_operators.PartialDiv"
+  - "typenum.type_operators.IsLessOrEqual"
+  - "typenum.marker_traits.Ord"
+  - "typenum.Less"
+  - "typenum.Greater"
+  - "typenum.Equal"
+  - "typenum.private.PrivateCmp"
+  - "typenum.private.InternalMarker"
+  - "typenum.type_operators.Cmp"
+  - "typenum.private.IsLessPrivate"
+  - "typenum.private.Trim"
+  - "typenum.private.TrimTrailingZeros"
+  - "typenum.private.Invert"
+  - "typenum.private.PrivateInvert"
+  - "typenum.private.InvertedUTerm"
+  - "typenum.private.InvertedUnsigned"
+  - "typenum.private.PrivateSetBit"
+  - "typenum.private.PrivateDiv"
+  - "typenum.private.PrivateDivIf"
+  - "typenum.private.IsLessOrEqualPrivate"
+  - "typenum.type_operators.Len"
+  - "typenum.uint.GetBit"
+  - "typenum.uint.SetBit"
+  # generic_array
+  - "generic_array.ArrayLength"
+  - "generic_array.GenericArray"
+  # TypesExternal axioms (simple, no deps beyond TypesPre)
+  - "inout.inout.InOut"
+  - "typenum.uint.UInt"
+  # block_buffer (sealed.Sealed needs GenericArray)
+  - "block_buffer.sealed.Sealed"
+  - "block_buffer.BufferKind"
+  - "block_buffer.Eager"
+  - "block_buffer.BlockBuffer"
+  # crypto_common
+  - "crypto_common.BlockSizeUser"
+  - "crypto_common.OutputSizeUser"
+  # block_padding
+  - "block_padding.PadType"
+  - "block_padding.UnpadError"
+  - "block_padding.Padding"
+  # cipher (order: BlockCipher, ParBlocksSizeUser, BlockBackend, BlockClosure, BlockEncrypt, BlockEncryptMut)
+  - "cipher.block.BlockCipher"
+  - "crypto_common.ParBlocksSizeUser"
+  - "cipher.block.BlockBackend"
+  - "cipher.block.BlockClosure"
+  - "cipher.block.BlockEncrypt"
+  - "cipher.block.BlockEncryptMut"
+  - "cipher.stream_core.Counter"
+  - "ctr.flavors.CtrFlavor"
+  # digest
+  - "digest.InvalidOutputSize"
+  - "digest.core_api.TruncSide"
+  - "digest.core_api.BufferKindUser"
+  - "digest.core_api.UpdateCore"
+  - "digest.core_api.VariableOutputCore"
+  # sha
+  - "sha2.OidSha512"
+  - "sha2.OidSha256"
+  # rand
+  - "rand_core.RngCore"
+  - "rand_core.CryptoRng"
+  - "rand.rng.Rng"
+  - "rand.distr.distribution.Distribution"
+  - "rand.distr.StandardUniform"
+  - "rand.rng.Fill"
+  # derive_more
+  - "derive_more.convert.try_from.TryFromReprError"
+  # signal-crypto errors
+  - "aes_cbc.EncryptionError"
+  - "aes_cbc.DecryptionError"
+  - "error.Error"
+  # libsignal-core types
+  - "libsignal_core.address.InvalidDeviceId"
+  - "libsignal_core.curve.KeyType"
+  - "libsignal_core.curve.CurveError"
+  - "libsignal_core.curve.PublicKeyData"
+  - "libsignal_core.curve.PublicKey"
+  - "libsignal_core.curve.PrivateKeyData"
+  - "libsignal_core.curve.PrivateKey"
+  - "libsignal_core.curve.KeyPair"
+
 tweaks:
   files: []
   substitutions: []
