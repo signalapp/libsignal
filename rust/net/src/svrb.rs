@@ -69,8 +69,8 @@ pub enum Error {
     AllConnectionAttemptsFailed,
     /// Invalid data from previous backup
     PreviousBackupDataInvalid,
-    /// Invalid metadata from backup
-    MetadataInvalid,
+    /// Invalid metadata from backup: {0}
+    MetadataInvalid(&'static str),
     /// Decryption error: {0}
     DecryptionError(#[from] signal_crypto::DecryptionError),
 }
@@ -124,7 +124,7 @@ impl Error {
             (e @ Self::PreviousBackupDataInvalid, _) | (_, e @ Self::PreviousBackupDataInvalid) => {
                 e
             }
-            (e @ Self::MetadataInvalid, _) | (_, e @ Self::MetadataInvalid) => e,
+            (e @ Self::MetadataInvalid(_), _) | (_, e @ Self::MetadataInvalid(_)) => e,
 
             // Then errors where we successfully fetched data from the enclave, but it didn't work.
             // This indicates a messed up backup (or a logic error), since the enclave is validating
@@ -454,11 +454,17 @@ pub async fn restore_backup<R: traits::Restore>(
         current_and_previous_svrbs.len()
     );
     let metadata = backup_metadata::MetadataPb::parse_from_bytes(metadata.0)
-        .map_err(|_| Error::MetadataInvalid)?;
+        .map_err(|_| Error::MetadataInvalid("unable to parse"))?;
     if metadata.pair.is_empty() {
-        return Err(Error::MetadataInvalid);
+        return Err(Error::MetadataInvalid("no pairs"));
+    } else if metadata.pair.len() > 2 {
+        // This stops us from exhausting SVRB attempts based on bogus data.
+        return Err(Error::MetadataInvalid("too many pairs"));
     }
-    let iv: [u8; IV_SIZE] = metadata.iv.try_into().map_err(|_| Error::MetadataInvalid)?;
+    let iv: [u8; IV_SIZE] = metadata
+        .iv
+        .try_into()
+        .map_err(|_| Error::MetadataInvalid("iv failure"))?;
 
     let describe_enclave = |i| -> Cow<'static, str> {
         format!("enclave {i} of {}", current_and_previous_svrbs.len()).into()
@@ -998,6 +1004,43 @@ mod test {
         .await
         .expect("should store");
         assert_eq!(BACKUP_DELETES_PREVIOUS_ALL_CALLED.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn restore_invalid_metadata_too_many_pairs() {
+        let svrb = TestSvrBClient {
+            prepare_fn: || Backup4 {
+                requests: vec![],
+                output: [1u8; 32],
+            },
+            finalize_fn: || Ok(()),
+            restore_fn: || Err(Error::RestoreFailed(11111)),
+            ..TestSvrBClient::default()
+        };
+        let aep = AccountEntropyPool::from_str(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        )
+        .expect("should create AEP");
+        let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
+        let bad_pb = backup_metadata::MetadataPb {
+            iv: vec![0u8; 12],
+            pair: vec![
+                backup_metadata::metadata_pb::Pair::default(),
+                backup_metadata::metadata_pb::Pair::default(),
+                backup_metadata::metadata_pb::Pair::default(),
+                backup_metadata::metadata_pb::Pair::default(),
+            ],
+            ..Default::default()
+        }
+        .write_to_bytes()
+        .expect("can serialize");
+        assert_matches!(
+            restore_backup(&[svrb], &backup_key, BackupFileMetadataRef(&bad_pb))
+                .await
+                .map(|_| ()) // Avoid having to implement Debug on actual value
+                .unwrap_err(),
+            Error::MetadataInvalid("too many pairs")
+        );
     }
 
     struct Scenario {

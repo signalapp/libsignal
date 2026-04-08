@@ -1156,7 +1156,7 @@ where
                 SimpleError::new(SignalErrorCode::SvrDataMissing, e.to_string()).into()
             }
             e @ (Self::PreviousBackupDataInvalid
-            | Self::MetadataInvalid
+            | Self::MetadataInvalid(_)
             | Self::DecryptionError(_)) => {
                 SimpleError::new(SignalErrorCode::InvalidArgument, e.to_string()).into()
             }

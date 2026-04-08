@@ -972,7 +972,7 @@ impl JniError for SvrbError {
             ),
             SvrbError::RateLimited(inner) => inner.to_throwable_impl(env),
             SvrbError::PreviousBackupDataInvalid
-            | SvrbError::MetadataInvalid
+            | SvrbError::MetadataInvalid(_)
             | SvrbError::DecryptionError(_) => make_single_message_throwable(
                 env,
                 &self.to_string(),
