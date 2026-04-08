@@ -13,7 +13,9 @@ use crate::error::{Error, Result};
 // Modified for Aeneas: tuple struct → named field.
 // https://github.com/AeneasVerif/aeneas/issues/767
 #[charon::opaque]
-pub struct Aes256Ctr32 { inner: ctr::Ctr32BE<Aes256> }
+pub struct Aes256Ctr32 {
+    inner: ctr::Ctr32BE<Aes256>,
+}
 
 impl Aes256Ctr32 {
     pub const NONCE_SIZE: usize = <Aes256 as aes::cipher::BlockSizeUser>::BlockSize::USIZE - 4;

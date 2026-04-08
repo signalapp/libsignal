@@ -60,7 +60,9 @@ pub struct WrongKindOfServiceIdError {
 // Modified for Aeneas: tuple struct → named field.
 // https://github.com/AeneasVerif/aeneas/issues/767
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct SpecificServiceId<const RAW_KIND: u8> { uuid: Uuid }
+pub struct SpecificServiceId<const RAW_KIND: u8> {
+    uuid: Uuid,
+}
 
 impl<const KIND: u8> SpecificServiceId<KIND> {
     /// Convenience function to go directly from bytes to a specific kind of service ID.
@@ -679,7 +681,9 @@ mod service_id_tests {
 // Modified for Aeneas: tuple struct → named field.
 // https://github.com/AeneasVerif/aeneas/issues/767
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
-pub struct DeviceId { id: NonZeroU8 }
+pub struct DeviceId {
+    id: NonZeroU8,
+}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, thiserror::Error)]
 #[error("device ID is out of range")]

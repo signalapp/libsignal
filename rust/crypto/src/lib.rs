@@ -21,4 +21,3 @@ pub use aes_gcm::{Aes256GcmDecryption, Aes256GcmEncryption};
 pub use error::{Error, Result};
 pub use hash::{CryptographicHash, CryptographicMac};
 pub use hpke::{HpkeError, SimpleHpkeReceiver, SimpleHpkeSender};
-

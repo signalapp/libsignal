@@ -10,7 +10,9 @@ use std::str::FromStr;
 // Modified for Aeneas: tuple struct → named field.
 // https://github.com/AeneasVerif/aeneas/issues/767
 #[derive(Copy, Clone, Debug, PartialEq, Eq, derive_more::Into)]
-pub struct E164 { inner: NonZeroU64 }
+pub struct E164 {
+    inner: NonZeroU64,
+}
 
 impl E164 {
     pub const fn new(number: NonZeroU64) -> Self {
