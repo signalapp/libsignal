@@ -1,0 +1,83 @@
+# Confirm Aeneas extraction succeeds
+
+name: Aeneas extraction
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+  workflow_dispatch:
+
+jobs:
+  extract:
+    name: Check Aeneas Extraction
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git curl opam pkg-config libgmp-dev
+
+      - name: Initialize opam
+        run: opam init --disable-sandboxing -y -a
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache OCaml environment
+        uses: actions/cache@v5
+        with:
+          path: ~/.opam
+          key: ${{ runner.os }}-opam-v1
+          restore-keys: |
+            ${{ runner.os }}-opam-
+
+      - name: Cache Rust build artifacts
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Cache Aeneas build
+        uses: actions/cache@v5
+        with:
+          path: .aeneas
+          key: ${{ runner.os }}-aeneas-${{ hashFiles('aeneas-config.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-aeneas-
+
+      - name: Install Aeneas
+        run: npm run aeneas-install
+
+      - name: Extract to Lean
+        run: npm run aeneas-extract
+
+      - name: Check for modifications in generated files
+        run: |
+          if git diff --exit-code; then
+            echo "Generated files match committed versions"
+          else
+            echo "Generated files differ from committed versions"
+            echo ""
+            echo "Run 'npm run aeneas-extract' locally and commit the results."
+            exit 1
+          fi

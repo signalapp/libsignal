@@ -1,0 +1,41 @@
+# Verify src-modifications.diff is up to date with upstream comparison
+
+name: Source modifications check
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+  workflow_dispatch:
+
+jobs:
+  src-diff:
+    name: Check src-modifications.diff
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate source diff
+        run: npm run src-diff
+
+      - name: Check diff is up to date
+        run: |
+          if git diff --exit-code src-modifications.diff; then
+            echo "src-modifications.diff is up to date"
+          else
+            echo "src-modifications.diff is out of date"
+            echo ""
+            echo "Run 'npm run src-diff' locally and commit the result."
+            exit 1
+          fi
