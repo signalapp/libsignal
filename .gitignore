@@ -45,4 +45,5 @@ node_modules/
 dist/
 FunsExternal_Template.lean
 TypesExternal_Template.lean
+TypesExternalPre_Template.lean
 .tmp
