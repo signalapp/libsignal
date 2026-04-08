@@ -150,7 +150,6 @@ types_pre:
   - "typenum.type_operators.IsLess"
   - "typenum.marker_traits.NonZero"
   - "typenum.type_operators.PartialDiv"
-  - "typenum.type_operators.IsLessOrEqual"
   - "typenum.marker_traits.Ord"
   - "typenum.Less"
   - "typenum.Greater"
@@ -168,7 +167,6 @@ types_pre:
   - "typenum.private.PrivateSetBit"
   - "typenum.private.PrivateDiv"
   - "typenum.private.PrivateDivIf"
-  - "typenum.private.IsLessOrEqualPrivate"
   - "typenum.type_operators.Len"
   - "typenum.uint.GetBit"
   - "typenum.uint.SetBit"
@@ -178,14 +176,8 @@ types_pre:
   # TypesExternal axioms (simple, no deps beyond TypesPre)
   - "inout.inout.InOut"
   - "typenum.uint.UInt"
-  # block_buffer (sealed.Sealed needs GenericArray)
-  - "block_buffer.sealed.Sealed"
-  - "block_buffer.BufferKind"
-  - "block_buffer.Eager"
-  - "block_buffer.BlockBuffer"
   # crypto_common
   - "crypto_common.BlockSizeUser"
-  - "crypto_common.OutputSizeUser"
   # block_padding
   - "block_padding.PadType"
   - "block_padding.UnpadError"
@@ -199,15 +191,6 @@ types_pre:
   - "cipher.block.BlockEncryptMut"
   - "cipher.stream_core.Counter"
   - "ctr.flavors.CtrFlavor"
-  # digest
-  - "digest.InvalidOutputSize"
-  - "digest.core_api.TruncSide"
-  - "digest.core_api.BufferKindUser"
-  - "digest.core_api.UpdateCore"
-  - "digest.core_api.VariableOutputCore"
-  # sha
-  - "sha2.OidSha512"
-  - "sha2.OidSha256"
   # rand
   - "rand_core.RngCore"
   - "rand_core.CryptoRng"
@@ -249,5 +232,8 @@ funs_pre:
   - "U8.Insts.CoreNumNonzeroZeroablePrimitiveNonZeroU8Inner"
 
 tweaks:
-  files: []
-  substitutions: []
+  files: ["Funs.lean"]
+  substitutions:
+    # Fix Aeneas codegen: Prop instead of Bool in scalar_is_in_range
+    - find: "then ok (i = 127#u8)"
+      replace: "then ok (i == 127#u8)"

@@ -183,17 +183,6 @@ structure typenum.type_operators.PartialDiv (Self : Type) (Rhs : Type)
   (Self_Output : Type) where
   partial_div : Self → Rhs → Result Self_Output
 
-/-- Trait declaration: [typenum::type_operators::IsLessOrEqual]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/type_operators.rs', lines 443:0-443:35
-    Name pattern: [typenum::type_operators::IsLessOrEqual]
-    Visibility: public -/
-@[rust_trait "typenum::type_operators::IsLessOrEqual"
-  (parentClauses := ["marker_traitsBitInst"])]
-structure typenum.type_operators.IsLessOrEqual (Self : Type) (Rhs : Type)
-  (Self_Output : Type) where
-  marker_traitsBitInst : typenum.marker_traits.Bit Self_Output
-  is_less_or_equal : Self → Rhs → Result Self_Output
-
 /-- Trait declaration: [typenum::marker_traits::Ord]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/marker_traits.rs', lines 29:0-29:21
     Name pattern: [typenum::marker_traits::Ord]
@@ -346,17 +335,6 @@ structure typenum.private.PrivateDivIf (Self : Type) (N : Type) (D : Type) (Q :
   private_div_if_remainder : Self → N → D → Q → R → I → RcmpD →
     Result Self_Remainder
 
-/-- Trait declaration: [typenum::private::IsLessOrEqualPrivate]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/private.rs', lines 490:0-490:40
-    Name pattern: [typenum::private::IsLessOrEqualPrivate]
-    Visibility: public -/
-@[rust_trait "typenum::private::IsLessOrEqualPrivate"
-  (parentClauses := ["marker_traitsBitInst"])]
-structure typenum.private.IsLessOrEqualPrivate (Self : Type) (Rhs : Type) (Cmp
-  : Type) (Self_Output : Type) where
-  marker_traitsBitInst : typenum.marker_traits.Bit Self_Output
-  is_less_or_equal_private : Self → Rhs → Cmp → Result Self_Output
-
 /-- Trait declaration: [typenum::type_operators::Len]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/type_operators.rs', lines 320:0-320:13
     Name pattern: [typenum::type_operators::Len]
@@ -420,54 +398,6 @@ axiom inout.inout.InOut (T : Type) : Type
 @[rust_type "typenum::uint::UInt"]
 axiom typenum.uint.UInt (U : Type) (B : Type) : Type
 
-/-- Trait declaration: [block_buffer::sealed::Sealed]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-buffer-0.10.4/src/sealed.rs', lines 5:0-5:16
-    Name pattern: [block_buffer::sealed::Sealed]
-    Visibility: public -/
-@[rust_trait "block_buffer::sealed::Sealed"]
-structure block_buffer.sealed.Sealed (Self : Type) where
-  invariant : Std.Usize → Std.Usize → Result Bool
-  split_blocks : forall {N : Type} {Clause0_ArrayType : Type}
-    (generic_arrayArrayLengthPU8PInst : generic_array.ArrayLength N Std.U8
-    Clause0_ArrayType), Slice Std.U8 → Result ((Slice
-    (generic_array.GenericArray generic_arrayArrayLengthPU8PInst)) × (Slice
-    Std.U8))
-
-/-- Trait declaration: [block_buffer::BufferKind]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-buffer-0.10.4/src/lib.rs', lines 23:0-23:36
-    Name pattern: [block_buffer::BufferKind]
-    Visibility: public -/
-@[rust_trait "block_buffer::BufferKind"
-  (parentClauses := ["sealedSealedInst"])]
-structure block_buffer.BufferKind (Self : Type) where
-  sealedSealedInst : block_buffer.sealed.Sealed Self
-
-/-- [block_buffer::Eager]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-buffer-0.10.4/src/lib.rs', lines 28:0-28:16
-    Name pattern: [block_buffer::Eager]
-    Visibility: public -/
-@[reducible, rust_type "block_buffer::Eager"]
-def block_buffer.Eager := Unit
-
-/-- [block_buffer::BlockBuffer]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-buffer-0.10.4/src/lib.rs', lines 55:0-55:39
-    Name pattern: [block_buffer::BlockBuffer]
-    Visibility: public -/
-@[rust_type "block_buffer::BlockBuffer"]
-axiom block_buffer.BlockBuffer {BlockSize : Type} {Kind : Type}
-  {Clause0_ArrayType : Type} {Clause1_Output : Type}
-  (generic_arrayArrayLengthBlockSizeU8Clause0_ArrayTypeInst :
-  generic_array.ArrayLength BlockSize Std.U8 Clause0_ArrayType)
-  (typenumtype_operatorsIsLessBlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Clause1_OutputInst
-  : typenum.type_operators.IsLess BlockSize (typenum.uint.UInt
-  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
-  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
-  typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0) typenum.bit.B0)
-  typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
-  typenum.bit.B0) typenum.bit.B0) Clause1_Output)
-  (typenummarker_traitsNonZeroInst : typenum.marker_traits.NonZero
-  Clause1_Output) (BufferKindInst : block_buffer.BufferKind Kind) : Type
-
 /-- Trait declaration: [crypto_common::BlockSizeUser]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crypto-common-0.1.7/src/lib.rs', lines 42:0-42:23
     Name pattern: [crypto_common::BlockSizeUser]
@@ -478,17 +408,6 @@ structure crypto_common.BlockSizeUser (Self : Type) (Self_BlockSize : Type)
   (Self_Clause0_ArrayType : Type) where
   generic_arrayArrayLengthSelf_BlockSizeU8Self_Clause0_ArrayTypeInst :
     generic_array.ArrayLength Self_BlockSize Std.U8 Self_Clause0_ArrayType
-
-/-- Trait declaration: [crypto_common::OutputSizeUser]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crypto-common-0.1.7/src/lib.rs', lines 67:0-67:24
-    Name pattern: [crypto_common::OutputSizeUser]
-    Visibility: public -/
-@[rust_trait "crypto_common::OutputSizeUser"
-  (parentClauses := ["generic_arrayArrayLengthSelf_OutputSizeU8Self_Clause0_ArrayTypeInst"])]
-structure crypto_common.OutputSizeUser (Self : Type) (Self_OutputSize : Type)
-  (Self_Clause0_ArrayType : Type) where
-  generic_arrayArrayLengthSelf_OutputSizeU8Self_Clause0_ArrayTypeInst :
-    generic_array.ArrayLength Self_OutputSize Std.U8 Self_Clause0_ArrayType
 
 /-- [block_padding::PadType]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-padding-0.3.3/src/lib.rs', lines 23:0-23:16
@@ -684,109 +603,6 @@ structure ctr.flavors.CtrFlavor (Self : Type) (B : Type) (Self_CtrNonce : Type)
     Self_CtrNonce
   set_from_backend : Self_CtrNonce → Self_Backend → Result Self_CtrNonce
   as_backend : Self_CtrNonce → Result Self_Backend
-
-/-- [digest::InvalidOutputSize]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/lib.rs', lines 278:0-278:28
-    Name pattern: [digest::InvalidOutputSize]
-    Visibility: public -/
-@[reducible, rust_type "digest::InvalidOutputSize"]
-def digest.InvalidOutputSize := Unit
-
-/-- [digest::core_api::TruncSide]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api.rs', lines 114:0-114:18
-    Name pattern: [digest::core_api::TruncSide]
-    Visibility: public -/
-@[discriminant isize, rust_type "digest::core_api::TruncSide"]
-inductive digest.core_api.TruncSide where
-| Left : digest.core_api.TruncSide
-| Right : digest.core_api.TruncSide
-
-/-- Trait declaration: [digest::core_api::BufferKindUser]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api.rs', lines 37:0-37:39
-    Name pattern: [digest::core_api::BufferKindUser]
-    Visibility: public -/
-@[rust_trait "digest::core_api::BufferKindUser"
-  (parentClauses := ["crypto_commonBlockSizeUserInst", "block_bufferBufferKindInst"])]
-structure digest.core_api.BufferKindUser (Self : Type) (Self_BufferKind : Type)
-  (Self_Clause0_BlockSize : Type) (Self_Clause0_Clause0_ArrayType : Type) where
-  crypto_commonBlockSizeUserInst : crypto_common.BlockSizeUser Self
-    Self_Clause0_BlockSize Self_Clause0_Clause0_ArrayType
-  block_bufferBufferKindInst : block_buffer.BufferKind Self_BufferKind
-
-/-- Trait declaration: [digest::core_api::UpdateCore]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api.rs', lines 31:0-31:35
-    Name pattern: [digest::core_api::UpdateCore]
-    Visibility: public -/
-@[rust_trait "digest::core_api::UpdateCore"
-  (parentClauses := ["crypto_commonBlockSizeUserInst"])]
-structure digest.core_api.UpdateCore (Self : Type) (Self_Clause0_BlockSize :
-  Type) (Self_Clause0_Clause0_ArrayType : Type) where
-  crypto_commonBlockSizeUserInst : crypto_common.BlockSizeUser Self
-    Self_Clause0_BlockSize Self_Clause0_Clause0_ArrayType
-  update_blocks : Self → Slice (generic_array.GenericArray
-    crypto_commonBlockSizeUserInst.generic_arrayArrayLengthSelf_BlockSizeU8Self_Clause0_ArrayTypeInst)
-    → Result Self
-
-/-- Trait declaration: [digest::core_api::VariableOutputCore]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api.rs', lines 84:0-84:82
-    Name pattern: [digest::core_api::VariableOutputCore]
-    Visibility: public -/
-@[rust_trait "digest::core_api::VariableOutputCore"
-  (parentClauses := ["UpdateCoreInst", "crypto_commonOutputSizeUserInst", "BufferKindUserInst", "typenumtype_operatorsIsLessSelf_Clause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Self_Clause3_OutputInst", "typenummarker_traitsNonZeroInst"])
-  (consts := ["TRUNC_SIDE"])]
-structure digest.core_api.VariableOutputCore (Self : Type)
-  (Self_Clause0_Clause0_BlockSize : Type)
-  (Self_Clause0_Clause0_Clause0_ArrayType : Type) (Self_Clause1_OutputSize :
-  Type) (Self_Clause1_Clause0_ArrayType : Type) (Self_Clause2_BufferKind :
-  Type) (Self_Clause2_Clause0_BlockSize : Type)
-  (Self_Clause2_Clause0_Clause0_ArrayType : Type) (Self_Clause3_Output : Type)
-  where
-  TRUNC_SIDE : Result digest.core_api.TruncSide
-  UpdateCoreInst : digest.core_api.UpdateCore Self
-    Self_Clause0_Clause0_BlockSize Self_Clause0_Clause0_Clause0_ArrayType
-  crypto_commonOutputSizeUserInst : crypto_common.OutputSizeUser Self
-    Self_Clause1_OutputSize Self_Clause1_Clause0_ArrayType
-  BufferKindUserInst : digest.core_api.BufferKindUser Self
-    Self_Clause2_BufferKind Self_Clause2_Clause0_BlockSize
-    Self_Clause2_Clause0_Clause0_ArrayType
-  typenumtype_operatorsIsLessSelf_Clause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Self_Clause3_OutputInst
-    : typenum.type_operators.IsLess Self_Clause0_Clause0_BlockSize
-    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
-    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
-    (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0)
-    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
-    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) Self_Clause3_Output
-  typenummarker_traitsNonZeroInst : typenum.marker_traits.NonZero
-    Self_Clause3_Output
-  new : Std.Usize → Result (core.result.Result Self digest.InvalidOutputSize)
-  finalize_variable_core : Self → block_buffer.BlockBuffer
-    UpdateCoreInst.crypto_commonBlockSizeUserInst.generic_arrayArrayLengthSelf_BlockSizeU8Self_Clause0_ArrayTypeInst
-    typenumtype_operatorsIsLessSelf_Clause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Self_Clause3_OutputInst
-    typenummarker_traitsNonZeroInst
-    BufferKindUserInst.block_bufferBufferKindInst →
-    generic_array.GenericArray
-    crypto_commonOutputSizeUserInst.generic_arrayArrayLengthSelf_OutputSizeU8Self_Clause0_ArrayTypeInst
-    → Result (Self × (block_buffer.BlockBuffer
-    UpdateCoreInst.crypto_commonBlockSizeUserInst.generic_arrayArrayLengthSelf_BlockSizeU8Self_Clause0_ArrayTypeInst
-    typenumtype_operatorsIsLessSelf_Clause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Self_Clause3_OutputInst
-    typenummarker_traitsNonZeroInst
-    BufferKindUserInst.block_bufferBufferKindInst) ×
-    (generic_array.GenericArray
-    crypto_commonOutputSizeUserInst.generic_arrayArrayLengthSelf_OutputSizeU8Self_Clause0_ArrayTypeInst))
-
-/-- [sha2::OidSha512]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api/ct_variable.rs', lines 197:8-197:25
-    Name pattern: [sha2::OidSha512]
-    Visibility: public -/
-@[reducible, rust_type "sha2::OidSha512"]
-def sha2.OidSha512 := Unit
-
-/-- [sha2::OidSha256]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api/ct_variable.rs', lines 197:8-197:25
-    Name pattern: [sha2::OidSha256]
-    Visibility: public -/
-@[reducible, rust_type "sha2::OidSha256"]
-def sha2.OidSha256 := Unit
 
 /-- Trait declaration: [rand_core::RngCore]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand_core-0.9.3/src/lib.rs', lines 130:0-130:17

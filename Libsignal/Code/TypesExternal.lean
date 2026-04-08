@@ -104,60 +104,6 @@ axiom ctr.flavors.ctr32.CtrNonce32 {N : Type} {Clause0_ArrayType : Type}
   (generic_arrayArrayLengthNU32Clause0_ArrayTypeInst :
   generic_array.ArrayLength N Std.U32 Clause0_ArrayType) : Type
 
-/-- [digest::core_api::ct_variable::CtVariableCoreWrapper]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api/ct_variable.rs', lines 25:0-25:55
-    Name pattern: [digest::core_api::ct_variable::CtVariableCoreWrapper]
-    Visibility: public -/
-@[rust_type "digest::core_api::ct_variable::CtVariableCoreWrapper"]
-axiom digest.core_api.ct_variable.CtVariableCoreWrapper {T : Type} {OutSize :
-  Type} (O : Type) {Clause0_Clause0_Clause0_BlockSize : Type}
-  {Clause0_Clause0_Clause0_Clause0_ArrayType : Type}
-  {Clause0_Clause1_OutputSize : Type} {Clause0_Clause1_Clause0_ArrayType :
-  Type} {Clause0_Clause2_BufferKind : Type} {Clause0_Clause2_Clause0_BlockSize
-  : Type} {Clause0_Clause2_Clause0_Clause0_ArrayType : Type}
-  {Clause0_Clause3_Output : Type} {Clause1_ArrayType : Type} {Clause2_Output :
-  Type} {Clause4_Output : Type} (VariableOutputCoreInst :
-  digest.core_api.VariableOutputCore T Clause0_Clause0_Clause0_BlockSize
-  Clause0_Clause0_Clause0_Clause0_ArrayType Clause0_Clause1_OutputSize
-  Clause0_Clause1_Clause0_ArrayType Clause0_Clause2_BufferKind
-  Clause0_Clause2_Clause0_BlockSize Clause0_Clause2_Clause0_Clause0_ArrayType
-  Clause0_Clause3_Output)
-  (generic_arrayArrayLengthOutSizeU8Clause1_ArrayTypeInst :
-  generic_array.ArrayLength OutSize Std.U8 Clause1_ArrayType)
-  (typenumtype_operatorsIsLessOrEqualInst :
-  typenum.type_operators.IsLessOrEqual OutSize Clause0_Clause1_OutputSize
-  Clause2_Output) (typenummarker_traitsNonZeroInst :
-  typenum.marker_traits.NonZero Clause2_Output)
-  (typenumtype_operatorsIsLessClause0_Clause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Clause4_OutputInst
-  : typenum.type_operators.IsLess Clause0_Clause0_Clause0_BlockSize
-  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
-  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
-  (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0)
-  typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
-  typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) Clause4_Output)
-  (typenummarker_traitsNonZeroInst1 : typenum.marker_traits.NonZero
-  Clause4_Output) : Type
-
-/-- [digest::core_api::wrapper::CoreWrapper]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api/wrapper.rs', lines 24:0-24:25
-    Name pattern: [digest::core_api::wrapper::CoreWrapper]
-    Visibility: public -/
-@[rust_type "digest::core_api::wrapper::CoreWrapper"]
-axiom digest.core_api.wrapper.CoreWrapper {T : Type} {Clause0_BufferKind :
-  Type} {Clause0_Clause0_BlockSize : Type} {Clause0_Clause0_Clause0_ArrayType :
-  Type} {Clause1_Output : Type} (BufferKindUserInst :
-  digest.core_api.BufferKindUser T Clause0_BufferKind Clause0_Clause0_BlockSize
-  Clause0_Clause0_Clause0_ArrayType)
-  (typenumtype_operatorsIsLessClause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Clause1_OutputInst
-  : typenum.type_operators.IsLess Clause0_Clause0_BlockSize (typenum.uint.UInt
-  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
-  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
-  typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0) typenum.bit.B0)
-  typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
-  typenum.bit.B0) typenum.bit.B0) Clause1_Output)
-  (typenummarker_traitsNonZeroInst : typenum.marker_traits.NonZero
-  Clause1_Output) : Type
-
 /-- [generic_array::GenericArrayImplEven]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/lib.rs', lines 126:0-126:37
     Name pattern: [generic_array::GenericArrayImplEven]
@@ -193,27 +139,6 @@ axiom uuid.Uuid : Type
 @[rust_type "uuid::error::Error"]
 axiom uuid.error.Error : Type
 
-/-- [sha1::Sha1Core]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha1-0.10.6/src/lib.rs', lines 77:0-77:19
-    Name pattern: [sha1::Sha1Core]
-    Visibility: public -/
-@[rust_type "sha1::Sha1Core"]
-axiom sha1.Sha1Core : Type
-
-/-- [sha2::core_api::Sha256VarCore]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 18:0-18:24
-    Name pattern: [sha2::core_api::Sha256VarCore]
-    Visibility: public -/
-@[rust_type "sha2::core_api::Sha256VarCore"]
-axiom sha2.core_api.Sha256VarCore : Type
-
-/-- [sha2::core_api::Sha512VarCore]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 90:0-90:24
-    Name pattern: [sha2::core_api::Sha512VarCore]
-    Visibility: public -/
-@[rust_type "sha2::core_api::Sha512VarCore"]
-axiom sha2.core_api.Sha512VarCore : Type
-
 /-- [subtle::Choice]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/subtle-2.6.1/src/lib.rs', lines 120:0-120:17
     Name pattern: [subtle::Choice]
@@ -239,3 +164,8 @@ axiom aes_ctr.Aes256Ctr32 : Type
     Source: 'rust/crypto/src/hash.rs', lines 14:0-17:1
     Visibility: public -/
 axiom hash.CryptographicMac : Type
+
+/-- [signal_crypto::hash::CryptographicHash]
+    Source: 'rust/crypto/src/hash.rs', lines 54:0-58:1
+    Visibility: public -/
+axiom hash.CryptographicHash : Type
