@@ -129,6 +129,7 @@ aeneas_args:
   subdir: "Libsignal/Code"
 
 # File splitting to break circular dependencies between Types and TypesExternal.
+# https://github.com/AeneasVerif/aeneas/issues/902
 #
 # Aeneas generates Types.lean (defs) and TypesExternal_Template.lean (axioms).
 # Types imports TypesExternal, but some axioms reference defs from Types —
@@ -250,6 +251,7 @@ tweaks:
         set_option linter.style.setOption false
         set_option linter.style.whitespace false
 
-    # Fix Aeneas codegen: Prop instead of Bool in scalar_is_in_range
+    # Fix Aeneas codegen: scalar Eq generates = (Prop) instead of == (Bool)
+    # https://github.com/AeneasVerif/aeneas/issues/920
     - find: "then ok (i = 127#u8)"
       replace: "then ok (i == 127#u8)"
