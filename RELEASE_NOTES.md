@@ -1,3 +1,2 @@
-v0.92.0
+v0.92.1
 
-- Force use of SPQR v1 for all newly initiated sessions.
