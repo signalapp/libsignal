@@ -23,8 +23,6 @@ crate:
   name: "signal_crypto"
 
 charon:
-  preset: "aeneas"
-  hide_marker_traits: true
   cargo_args: ["-p", "signal-crypto", "--features", "extraction"]
   start_from_pub: true
   start_from:

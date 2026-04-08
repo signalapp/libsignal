@@ -42,12 +42,7 @@ async function main(): Promise<void> {
 
   const charonArgs: string[] = ["cargo"];
 
-  if (config.charon.preset) {
-    charonArgs.push(`--preset=${config.charon.preset}`);
-  }
-  if (config.charon.hide_marker_traits) {
-    charonArgs.push("--hide-marker-traits");
-  }
+  charonArgs.push("--preset=aeneas");
   if (config.charon.extract_opaque_bodies) {
     charonArgs.push("--extract-opaque-bodies");
   }

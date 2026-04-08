@@ -18,8 +18,6 @@ export interface AeneasConfig {
     commit: string;
   };
   charon: {
-    preset: string;
-    hide_marker_traits: boolean;
     extract_opaque_bodies: boolean;
     start_from_pub: boolean;
     cargo_args: string[];
@@ -94,8 +92,6 @@ export function loadConfig(root?: string): { config: AeneasConfig; root: string 
   // Apply defaults
   config.upstream = config.upstream ?? { repo: "", commit: "" };
   config.charon = config.charon ?? {} as AeneasConfig["charon"];
-  config.charon.preset = config.charon.preset ?? "aeneas";
-  config.charon.hide_marker_traits = config.charon.hide_marker_traits ?? false;
   config.charon.extract_opaque_bodies = config.charon.extract_opaque_bodies ?? false;
   config.charon.start_from_pub = config.charon.start_from_pub ?? false;
   config.charon.cargo_args = config.charon.cargo_args ?? [];

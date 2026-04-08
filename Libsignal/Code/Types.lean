@@ -207,6 +207,72 @@ structure cipher.block.BlockClosure (Self : Type) (Self_Clause0_BlockSize :
     Self_Clause0_BlockSize Clause0_Clause0_Clause0_Clause0_ArrayType
     Clause0_Clause0_Clause1_ArrayType), Self → B → Result B
 
+/-- Trait declaration: [block_buffer::sealed::Sealed]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-buffer-0.10.4/src/sealed.rs', lines 5:0-5:16
+    Name pattern: [block_buffer::sealed::Sealed]
+    Visibility: public -/
+@[rust_trait "block_buffer::sealed::Sealed"]
+structure block_buffer.sealed.Sealed (Self : Type) where
+  invariant : Std.Usize → Std.Usize → Result Bool
+  split_blocks : forall {N : Type} {Clause0_ArrayType : Type}
+    (generic_arrayArrayLengthPU8PInst : generic_array.ArrayLength N Std.U8
+    Clause0_ArrayType), Slice Std.U8 → Result ((Slice
+    (generic_array.GenericArray generic_arrayArrayLengthPU8PInst)) × (Slice
+    Std.U8))
+
+/-- Trait declaration: [block_buffer::BufferKind]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-buffer-0.10.4/src/lib.rs', lines 23:0-23:36
+    Name pattern: [block_buffer::BufferKind]
+    Visibility: public -/
+@[rust_trait "block_buffer::BufferKind"
+  (parentClauses := ["sealedSealedInst"])]
+structure block_buffer.BufferKind (Self : Type) where
+  sealedSealedInst : block_buffer.sealed.Sealed Self
+
+/-- [block_buffer::Eager]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-buffer-0.10.4/src/lib.rs', lines 28:0-28:16
+    Name pattern: [block_buffer::Eager]
+    Visibility: public -/
+@[reducible, rust_type "block_buffer::Eager"]
+def block_buffer.Eager := Unit
+
+/-- Trait declaration: [typenum::marker_traits::Bit]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/marker_traits.rs', lines 35:0-35:48
+    Name pattern: [typenum::marker_traits::Bit]
+    Visibility: public -/
+@[rust_trait "typenum::marker_traits::Bit"
+  (parentClauses := ["sealedSealedInst", "coremarkerCopyInst", "coredefaultDefaultInst"])
+  (consts := ["U8", "BOOL"])]
+structure typenum.marker_traits.Bit (Self : Type) where
+  U8 : Result Std.U8
+  BOOL : Result Bool
+  sealedSealedInst : typenum.sealed.Sealed Self
+  coremarkerCopyInst : core.marker.Copy Self
+  coredefaultDefaultInst : core.default.Default Self
+  new : Result Self
+  to_u8 : Result Std.U8
+  to_bool : Result Bool
+
+/-- Trait declaration: [typenum::type_operators::IsLess]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/type_operators.rs', lines 374:0-374:28
+    Name pattern: [typenum::type_operators::IsLess]
+    Visibility: public -/
+@[rust_trait "typenum::type_operators::IsLess"
+  (parentClauses := ["marker_traitsBitInst"])]
+structure typenum.type_operators.IsLess (Self : Type) (Rhs : Type) (Self_Output
+  : Type) where
+  marker_traitsBitInst : typenum.marker_traits.Bit Self_Output
+  is_less : Self → Rhs → Result Self_Output
+
+/-- Trait declaration: [typenum::marker_traits::NonZero]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/marker_traits.rs', lines 22:0-22:25
+    Name pattern: [typenum::marker_traits::NonZero]
+    Visibility: public -/
+@[rust_trait "typenum::marker_traits::NonZero"
+  (parentClauses := ["sealedSealedInst"])]
+structure typenum.marker_traits.NonZero (Self : Type) where
+  sealedSealedInst : typenum.sealed.Sealed Self
+
 /-- [block_padding::PadType]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-padding-0.3.3/src/lib.rs', lines 23:0-23:16
     Name pattern: [block_padding::PadType]
@@ -317,42 +383,16 @@ structure cipher.stream_core.Counter (Self : Type) (Self_Clause0_Error : Type)
   coreconvertTryIntoSelfUsizeSelf_Clause9_ErrorInst : core.convert.TryInto Self
     Std.Usize Self_Clause9_Error
 
-/-- Trait declaration: [typenum::marker_traits::Bit]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/marker_traits.rs', lines 35:0-35:48
-    Name pattern: [typenum::marker_traits::Bit]
+/-- Trait declaration: [crypto_common::OutputSizeUser]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crypto-common-0.1.7/src/lib.rs', lines 67:0-67:24
+    Name pattern: [crypto_common::OutputSizeUser]
     Visibility: public -/
-@[rust_trait "typenum::marker_traits::Bit"
-  (parentClauses := ["sealedSealedInst", "coremarkerCopyInst", "coredefaultDefaultInst"])
-  (consts := ["U8", "BOOL"])]
-structure typenum.marker_traits.Bit (Self : Type) where
-  U8 : Result Std.U8
-  BOOL : Result Bool
-  sealedSealedInst : typenum.sealed.Sealed Self
-  coremarkerCopyInst : core.marker.Copy Self
-  coredefaultDefaultInst : core.default.Default Self
-  new : Result Self
-  to_u8 : Result Std.U8
-  to_bool : Result Bool
-
-/-- Trait declaration: [typenum::type_operators::IsLess]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/type_operators.rs', lines 374:0-374:28
-    Name pattern: [typenum::type_operators::IsLess]
-    Visibility: public -/
-@[rust_trait "typenum::type_operators::IsLess"
-  (parentClauses := ["marker_traitsBitInst"])]
-structure typenum.type_operators.IsLess (Self : Type) (Rhs : Type) (Self_Output
-  : Type) where
-  marker_traitsBitInst : typenum.marker_traits.Bit Self_Output
-  is_less : Self → Rhs → Result Self_Output
-
-/-- Trait declaration: [typenum::marker_traits::NonZero]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/marker_traits.rs', lines 22:0-22:25
-    Name pattern: [typenum::marker_traits::NonZero]
-    Visibility: public -/
-@[rust_trait "typenum::marker_traits::NonZero"
-  (parentClauses := ["sealedSealedInst"])]
-structure typenum.marker_traits.NonZero (Self : Type) where
-  sealedSealedInst : typenum.sealed.Sealed Self
+@[rust_trait "crypto_common::OutputSizeUser"
+  (parentClauses := ["generic_arrayArrayLengthSelf_OutputSizeU8Self_Clause0_ArrayTypeInst"])]
+structure crypto_common.OutputSizeUser (Self : Type) (Self_OutputSize : Type)
+  (Self_Clause0_ArrayType : Type) where
+  generic_arrayArrayLengthSelf_OutputSizeU8Self_Clause0_ArrayTypeInst :
+    generic_array.ArrayLength Self_OutputSize Std.U8 Self_Clause0_ArrayType
 
 /-- Trait declaration: [ctr::flavors::CtrFlavor]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ctr-0.9.2/src/flavors.rs', lines 17:0-17:39
@@ -412,6 +452,120 @@ structure typenum.type_operators.PartialDiv (Self : Type) (Rhs : Type)
 @[rust_type "derive_more::convert::try_from::TryFromReprError"]
 structure derive_more.convert.try_from.TryFromReprError (T : Type) where
   input : T
+
+/-- Trait declaration: [typenum::type_operators::IsLessOrEqual]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/type_operators.rs', lines 443:0-443:35
+    Name pattern: [typenum::type_operators::IsLessOrEqual]
+    Visibility: public -/
+@[rust_trait "typenum::type_operators::IsLessOrEqual"
+  (parentClauses := ["marker_traitsBitInst"])]
+structure typenum.type_operators.IsLessOrEqual (Self : Type) (Rhs : Type)
+  (Self_Output : Type) where
+  marker_traitsBitInst : typenum.marker_traits.Bit Self_Output
+  is_less_or_equal : Self → Rhs → Result Self_Output
+
+/-- [digest::InvalidOutputSize]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/lib.rs', lines 278:0-278:28
+    Name pattern: [digest::InvalidOutputSize]
+    Visibility: public -/
+@[reducible, rust_type "digest::InvalidOutputSize"]
+def digest.InvalidOutputSize := Unit
+
+/-- [digest::core_api::TruncSide]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api.rs', lines 114:0-114:18
+    Name pattern: [digest::core_api::TruncSide]
+    Visibility: public -/
+@[discriminant isize, rust_type "digest::core_api::TruncSide"]
+inductive digest.core_api.TruncSide where
+| Left : digest.core_api.TruncSide
+| Right : digest.core_api.TruncSide
+
+/-- Trait declaration: [digest::core_api::BufferKindUser]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api.rs', lines 37:0-37:39
+    Name pattern: [digest::core_api::BufferKindUser]
+    Visibility: public -/
+@[rust_trait "digest::core_api::BufferKindUser"
+  (parentClauses := ["crypto_commonBlockSizeUserInst", "block_bufferBufferKindInst"])]
+structure digest.core_api.BufferKindUser (Self : Type) (Self_BufferKind : Type)
+  (Self_Clause0_BlockSize : Type) (Self_Clause0_Clause0_ArrayType : Type) where
+  crypto_commonBlockSizeUserInst : crypto_common.BlockSizeUser Self
+    Self_Clause0_BlockSize Self_Clause0_Clause0_ArrayType
+  block_bufferBufferKindInst : block_buffer.BufferKind Self_BufferKind
+
+/-- Trait declaration: [digest::core_api::UpdateCore]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api.rs', lines 31:0-31:35
+    Name pattern: [digest::core_api::UpdateCore]
+    Visibility: public -/
+@[rust_trait "digest::core_api::UpdateCore"
+  (parentClauses := ["crypto_commonBlockSizeUserInst"])]
+structure digest.core_api.UpdateCore (Self : Type) (Self_Clause0_BlockSize :
+  Type) (Self_Clause0_Clause0_ArrayType : Type) where
+  crypto_commonBlockSizeUserInst : crypto_common.BlockSizeUser Self
+    Self_Clause0_BlockSize Self_Clause0_Clause0_ArrayType
+  update_blocks : Self → Slice (generic_array.GenericArray
+    crypto_commonBlockSizeUserInst.generic_arrayArrayLengthSelf_BlockSizeU8Self_Clause0_ArrayTypeInst)
+    → Result Self
+
+/-- Trait declaration: [digest::core_api::VariableOutputCore]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api.rs', lines 84:0-84:82
+    Name pattern: [digest::core_api::VariableOutputCore]
+    Visibility: public -/
+@[rust_trait "digest::core_api::VariableOutputCore"
+  (parentClauses := ["UpdateCoreInst", "crypto_commonOutputSizeUserInst", "BufferKindUserInst", "typenumtype_operatorsIsLessSelf_Clause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Self_Clause3_OutputInst", "typenummarker_traitsNonZeroInst"])
+  (consts := ["TRUNC_SIDE"])]
+structure digest.core_api.VariableOutputCore (Self : Type)
+  (Self_Clause0_Clause0_BlockSize : Type)
+  (Self_Clause0_Clause0_Clause0_ArrayType : Type) (Self_Clause1_OutputSize :
+  Type) (Self_Clause1_Clause0_ArrayType : Type) (Self_Clause2_BufferKind :
+  Type) (Self_Clause2_Clause0_BlockSize : Type)
+  (Self_Clause2_Clause0_Clause0_ArrayType : Type) (Self_Clause3_Output : Type)
+  where
+  TRUNC_SIDE : Result digest.core_api.TruncSide
+  UpdateCoreInst : digest.core_api.UpdateCore Self
+    Self_Clause0_Clause0_BlockSize Self_Clause0_Clause0_Clause0_ArrayType
+  crypto_commonOutputSizeUserInst : crypto_common.OutputSizeUser Self
+    Self_Clause1_OutputSize Self_Clause1_Clause0_ArrayType
+  BufferKindUserInst : digest.core_api.BufferKindUser Self
+    Self_Clause2_BufferKind Self_Clause2_Clause0_BlockSize
+    Self_Clause2_Clause0_Clause0_ArrayType
+  typenumtype_operatorsIsLessSelf_Clause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Self_Clause3_OutputInst
+    : typenum.type_operators.IsLess Self_Clause0_Clause0_BlockSize
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) Self_Clause3_Output
+  typenummarker_traitsNonZeroInst : typenum.marker_traits.NonZero
+    Self_Clause3_Output
+  new : Std.Usize → Result (core.result.Result Self digest.InvalidOutputSize)
+  finalize_variable_core : Self → block_buffer.BlockBuffer
+    UpdateCoreInst.crypto_commonBlockSizeUserInst.generic_arrayArrayLengthSelf_BlockSizeU8Self_Clause0_ArrayTypeInst
+    typenumtype_operatorsIsLessSelf_Clause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Self_Clause3_OutputInst
+    typenummarker_traitsNonZeroInst
+    BufferKindUserInst.block_bufferBufferKindInst →
+    generic_array.GenericArray
+    crypto_commonOutputSizeUserInst.generic_arrayArrayLengthSelf_OutputSizeU8Self_Clause0_ArrayTypeInst
+    → Result (Self × (block_buffer.BlockBuffer
+    UpdateCoreInst.crypto_commonBlockSizeUserInst.generic_arrayArrayLengthSelf_BlockSizeU8Self_Clause0_ArrayTypeInst
+    typenumtype_operatorsIsLessSelf_Clause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Self_Clause3_OutputInst
+    typenummarker_traitsNonZeroInst
+    BufferKindUserInst.block_bufferBufferKindInst) ×
+    (generic_array.GenericArray
+    crypto_commonOutputSizeUserInst.generic_arrayArrayLengthSelf_OutputSizeU8Self_Clause0_ArrayTypeInst))
+
+/-- [sha2::OidSha512]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api/ct_variable.rs', lines 197:8-197:25
+    Name pattern: [sha2::OidSha512]
+    Visibility: public -/
+@[reducible, rust_type "sha2::OidSha512"]
+def sha2.OidSha512 := Unit
+
+/-- [sha2::OidSha256]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api/ct_variable.rs', lines 197:8-197:25
+    Name pattern: [sha2::OidSha256]
+    Visibility: public -/
+@[reducible, rust_type "sha2::OidSha256"]
+def sha2.OidSha256 := Unit
 
 /-- [libsignal_core::address::ServiceIdKind]
     Source: 'rust/core/src/address.rs', lines 19:0-19:22
@@ -596,35 +750,6 @@ structure rand.rng.Fill (Self : Type) where
   fill : forall {R : Type} (RngInst : rand.rng.Rng R), Self → R → Result
     (Self × R)
 
-/-- Trait declaration: [subtle::ConstantTimeEq]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/subtle-2.6.1/src/lib.rs', lines 262:0-262:24
-    Name pattern: [subtle::ConstantTimeEq]
-    Visibility: public -/
-@[rust_trait "subtle::ConstantTimeEq"]
-structure subtle.ConstantTimeEq (Self : Type) where
-  ct_eq : Self → Self → Result subtle.Choice
-
-/-- [typenum::Greater]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/lib.rs', lines 92:0-92:18
-    Name pattern: [typenum::Greater]
-    Visibility: public -/
-@[reducible, rust_type "typenum::Greater"]
-def typenum.Greater := Unit
-
-/-- [typenum::Less]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/lib.rs', lines 98:0-98:15
-    Name pattern: [typenum::Less]
-    Visibility: public -/
-@[reducible, rust_type "typenum::Less"]
-def typenum.Less := Unit
-
-/-- [typenum::Equal]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/lib.rs', lines 104:0-104:16
-    Name pattern: [typenum::Equal]
-    Visibility: public -/
-@[reducible, rust_type "typenum::Equal"]
-def typenum.Equal := Unit
-
 /-- Trait declaration: [typenum::marker_traits::Ord]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/marker_traits.rs', lines 29:0-29:21
     Name pattern: [typenum::marker_traits::Ord]
@@ -635,12 +760,71 @@ structure typenum.marker_traits.Ord (Self : Type) where
   sealedSealedInst : typenum.sealed.Sealed Self
   to_ordering : Result Ordering
 
+/-- [typenum::Less]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/lib.rs', lines 98:0-98:15
+    Name pattern: [typenum::Less]
+    Visibility: public -/
+@[reducible, rust_type "typenum::Less"]
+def typenum.Less := Unit
+
+/-- Trait declaration: [typenum::private::PrivateCmp]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/private.rs', lines 320:0-320:32
+    Name pattern: [typenum::private::PrivateCmp]
+    Visibility: public -/
+@[rust_trait "typenum::private::PrivateCmp"]
+structure typenum.private.PrivateCmp (Self : Type) (Rhs : Type) (SoFar : Type)
+  (Self_Output : Type) where
+  private_cmp : Self → Rhs → SoFar → Result Self_Output
+
+/-- [typenum::Greater]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/lib.rs', lines 92:0-92:18
+    Name pattern: [typenum::Greater]
+    Visibility: public -/
+@[reducible, rust_type "typenum::Greater"]
+def typenum.Greater := Unit
+
 /-- Trait declaration: [typenum::private::InternalMarker]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/private.rs', lines 31:0-31:24
     Name pattern: [typenum::private::InternalMarker]
     Visibility: public -/
 @[rust_trait "typenum::private::InternalMarker"]
 structure typenum.private.InternalMarker (Self : Type) where
+
+/-- [typenum::Equal]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/lib.rs', lines 104:0-104:16
+    Name pattern: [typenum::Equal]
+    Visibility: public -/
+@[reducible, rust_type "typenum::Equal"]
+def typenum.Equal := Unit
+
+/-- Trait declaration: [typenum::type_operators::Cmp]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/type_operators.rs', lines 310:0-310:25
+    Name pattern: [typenum::type_operators::Cmp]
+    Visibility: public -/
+@[rust_trait "typenum::type_operators::Cmp"]
+structure typenum.type_operators.Cmp (Self : Type) (Rhs : Type) (Self_Output :
+  Type) where
+  compare : forall {IM : Type} (privateInternalMarkerInst :
+    typenum.private.InternalMarker IM), Self → Rhs → Result Self_Output
+
+/-- Trait declaration: [typenum::private::IsLessPrivate]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/private.rs', lines 394:0-394:33
+    Name pattern: [typenum::private::IsLessPrivate]
+    Visibility: public -/
+@[rust_trait "typenum::private::IsLessPrivate"
+  (parentClauses := ["marker_traitsBitInst"])]
+structure typenum.private.IsLessPrivate (Self : Type) (Rhs : Type) (Cmp : Type)
+  (Self_Output : Type) where
+  marker_traitsBitInst : typenum.marker_traits.Bit Self_Output
+  is_less_private : Self → Rhs → Cmp → Result Self_Output
+
+/-- Trait declaration: [subtle::ConstantTimeEq]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/subtle-2.6.1/src/lib.rs', lines 262:0-262:24
+    Name pattern: [subtle::ConstantTimeEq]
+    Visibility: public -/
+@[rust_trait "subtle::ConstantTimeEq"]
+structure subtle.ConstantTimeEq (Self : Type) where
+  ct_eq : Self → Self → Result subtle.Choice
 
 /-- Trait declaration: [typenum::private::Trim]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/private.rs', lines 36:0-36:14
@@ -691,15 +875,6 @@ def typenum.private.InvertedUTerm := Unit
 structure typenum.private.InvertedUnsigned (Self : Type) where
   to_u64 : Result Std.U64
 
-/-- Trait declaration: [typenum::private::PrivateCmp]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/private.rs', lines 320:0-320:32
-    Name pattern: [typenum::private::PrivateCmp]
-    Visibility: public -/
-@[rust_trait "typenum::private::PrivateCmp"]
-structure typenum.private.PrivateCmp (Self : Type) (Rhs : Type) (SoFar : Type)
-  (Self_Output : Type) where
-  private_cmp : Self → Rhs → SoFar → Result Self_Output
-
 /-- Trait declaration: [typenum::private::PrivateSetBit]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/private.rs', lines 328:0-328:29
     Name pattern: [typenum::private::PrivateSetBit]
@@ -735,26 +910,16 @@ structure typenum.private.PrivateDivIf (Self : Type) (N : Type) (D : Type) (Q :
   private_div_if_remainder : Self → N → D → Q → R → I → RcmpD →
     Result Self_Remainder
 
-/-- Trait declaration: [typenum::private::IsLessPrivate]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/private.rs', lines 394:0-394:33
-    Name pattern: [typenum::private::IsLessPrivate]
+/-- Trait declaration: [typenum::private::IsLessOrEqualPrivate]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/private.rs', lines 490:0-490:40
+    Name pattern: [typenum::private::IsLessOrEqualPrivate]
     Visibility: public -/
-@[rust_trait "typenum::private::IsLessPrivate"
+@[rust_trait "typenum::private::IsLessOrEqualPrivate"
   (parentClauses := ["marker_traitsBitInst"])]
-structure typenum.private.IsLessPrivate (Self : Type) (Rhs : Type) (Cmp : Type)
-  (Self_Output : Type) where
+structure typenum.private.IsLessOrEqualPrivate (Self : Type) (Rhs : Type) (Cmp
+  : Type) (Self_Output : Type) where
   marker_traitsBitInst : typenum.marker_traits.Bit Self_Output
-  is_less_private : Self → Rhs → Cmp → Result Self_Output
-
-/-- Trait declaration: [typenum::type_operators::Cmp]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/type_operators.rs', lines 310:0-310:25
-    Name pattern: [typenum::type_operators::Cmp]
-    Visibility: public -/
-@[rust_trait "typenum::type_operators::Cmp"]
-structure typenum.type_operators.Cmp (Self : Type) (Rhs : Type) (Self_Output :
-  Type) where
-  compare : forall {IM : Type} (privateInternalMarkerInst :
-    typenum.private.InternalMarker IM), Self → Rhs → Result Self_Output
+  is_less_or_equal_private : Self → Rhs → Cmp → Result Self_Output
 
 /-- Trait declaration: [typenum::type_operators::Len]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/type_operators.rs', lines 320:0-320:13
@@ -835,5 +1000,1077 @@ structure aes_gcm.Aes256GcmEncryption where
 structure aes_gcm.Aes256GcmDecryption where
   ctr : aes_ctr.Aes256Ctr32
   ghash : aes_gcm.GcmGhash
+
+/-- [signal_crypto::hash::CryptographicHash]
+    Source: 'rust/crypto/src/hash.rs', lines 53:0-57:1
+    Visibility: public -/
+@[discriminant isize]
+inductive hash.CryptographicHash where
+| Sha1 :
+  digest.core_api.wrapper.CoreWrapper
+    sha1.Sha1Core.Insts.DigestCore_apiBufferKindUserEagerUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80
+    (typenum.type_operators.IsLess.Blanket
+    (typenum.uint.UIntUlB0.Insts.TypenumType_operatorsCmpUIntUrB0Clause2_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB1.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UTerm.Insts.TypenumPrivatePrivateCmpUIntSoFarLess
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit
+    typenum.Greater.Insts.TypenumMarker_traitsOrd))))))))
+    (typenum.private.IsLessPrivateABLessB1.Blanket (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm
+    typenum.bit.B1) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0))) typenum.bit.B1.Insts.TypenumMarker_traitsNonZero →
+  hash.CryptographicHash
+| Sha256 :
+  digest.core_api.wrapper.CoreWrapper
+    (digest.core_api.ct_variable.CtVariableCoreWrapper.Insts.DigestCore_apiBufferKindUser
+    sha2.OidSha256
+    sha2.core_api.Sha256VarCore.Insts.DigestCore_apiVariableOutputCoreUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80UIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80EagerUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80B1
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB1.Insts.Generic_arrayArrayLengthTGenericArrayImplOdd
+    (typenum.uint.UTerm.Insts.Generic_arrayArrayLengthTArrayT0 Std.U8)))))))
+    (typenum.type_operators.IsLessOrEqual.Blanket
+    (typenum.uint.UIntUlB0.Insts.TypenumType_operatorsCmpUIntUrB0Clause2_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB1.Insts.TypenumPrivatePrivateCmpUIntUrB1SoFarClause3_Output
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UTerm.Insts.TypenumPrivatePrivateCmpUTermSoFarSoFar
+    typenum.Equal.Insts.TypenumMarker_traitsOrd)))))))
+    (typenum.private.IsLessOrEqualPrivateABEqualB1.Blanket (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0))) typenum.bit.B1.Insts.TypenumMarker_traitsNonZero
+    (typenum.type_operators.IsLess.Blanket
+    (typenum.uint.UIntUlB0.Insts.TypenumType_operatorsCmpUIntUrB0Clause2_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB1.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UTerm.Insts.TypenumPrivatePrivateCmpUIntSoFarLess
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit
+    typenum.Greater.Insts.TypenumMarker_traitsOrd))))))))
+    (typenum.private.IsLessPrivateABLessB1.Blanket (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm
+    typenum.bit.B1) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0))) typenum.bit.B1.Insts.TypenumMarker_traitsNonZero)
+    (typenum.type_operators.IsLess.Blanket
+    (typenum.uint.UIntUlB0.Insts.TypenumType_operatorsCmpUIntUrB0Clause2_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB1.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UTerm.Insts.TypenumPrivatePrivateCmpUIntSoFarLess
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit
+    typenum.Greater.Insts.TypenumMarker_traitsOrd))))))))
+    (typenum.private.IsLessPrivateABLessB1.Blanket (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm
+    typenum.bit.B1) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0))) typenum.bit.B1.Insts.TypenumMarker_traitsNonZero →
+  hash.CryptographicHash
+| Sha512 :
+  digest.core_api.wrapper.CoreWrapper
+    (digest.core_api.ct_variable.CtVariableCoreWrapper.Insts.DigestCore_apiBufferKindUser
+    sha2.OidSha512
+    sha2.core_api.Sha512VarCore.Insts.DigestCore_apiVariableOutputCoreUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80UIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80EagerUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80B1
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB1.Insts.Generic_arrayArrayLengthTGenericArrayImplOdd
+    (typenum.uint.UTerm.Insts.Generic_arrayArrayLengthTArrayT0 Std.U8))))))))
+    (typenum.type_operators.IsLessOrEqual.Blanket
+    (typenum.uint.UIntUlB0.Insts.TypenumType_operatorsCmpUIntUrB0Clause2_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB1.Insts.TypenumPrivatePrivateCmpUIntUrB1SoFarClause3_Output
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UTerm.Insts.TypenumPrivatePrivateCmpUTermSoFarSoFar
+    typenum.Equal.Insts.TypenumMarker_traitsOrd))))))))
+    (typenum.private.IsLessOrEqualPrivateABEqualB1.Blanket (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0))) typenum.bit.B1.Insts.TypenumMarker_traitsNonZero
+    (typenum.type_operators.IsLess.Blanket
+    (typenum.uint.UIntUlB0.Insts.TypenumType_operatorsCmpUIntUrB0Clause2_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB1.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UTerm.Insts.TypenumPrivatePrivateCmpUIntSoFarLess
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit
+    typenum.Greater.Insts.TypenumMarker_traitsOrd)))))))))
+    (typenum.private.IsLessPrivateABLessB1.Blanket (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm
+    typenum.bit.B1) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)))
+    typenum.bit.B1.Insts.TypenumMarker_traitsNonZero)
+    (typenum.type_operators.IsLess.Blanket
+    (typenum.uint.UIntUlB0.Insts.TypenumType_operatorsCmpUIntUrB0Clause2_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB1.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UTerm.Insts.TypenumPrivatePrivateCmpUIntSoFarLess
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit
+    typenum.Greater.Insts.TypenumMarker_traitsOrd)))))))))
+    (typenum.private.IsLessPrivateABLessB1.Blanket (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm
+    typenum.bit.B1) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)))
+    typenum.bit.B1.Insts.TypenumMarker_traitsNonZero →
+  hash.CryptographicHash
 
 end signal_crypto

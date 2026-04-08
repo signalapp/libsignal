@@ -178,3 +178,15 @@ Contains:
 ### Workspace root
 
 - `Cargo.toml` — added `exclude = [".aeneas"]`
+
+## Known warnings
+
+### `inout::inout::InOut` — region parameter warning
+
+Aeneas warns: "Found an unknown type declaration with region parameters: as we can not know whether the regions are used in mutable borrows or not the extracted code may be incorrect."
+
+`InOut<'inp, 'out, T>` is from the RustCrypto `inout` crate, used by the `cipher` crate for in-place block cipher operations. It appears in the LLBC because `ctr::Ctr32BE<Aes256>` (wrapped by our `Aes256Ctr32`) implements `cipher::BlockBackend`, whose `proc_block` method signature references `InOut`.
+
+Currently all functions that use `InOut` are opaque, so the warning is harmless — Aeneas never needs to model its borrow semantics. It cannot be excluded from the LLBC without breaking the cipher trait chain.
+
+When we later want transparent functions that use `InOut`, this will need to be resolved upstream in Aeneas (either by supporting region analysis for foreign types, or by allowing manual annotation of region usage).

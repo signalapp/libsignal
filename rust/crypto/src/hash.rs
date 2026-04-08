@@ -49,8 +49,7 @@ impl CryptographicMac {
     }
 }
 
-#[cfg_attr(not(feature = "extraction"), derive(Clone))]
-#[charon::opaque]
+#[derive(Clone)]
 pub enum CryptographicHash {
     Sha1(Sha1),
     Sha256(Sha256),
