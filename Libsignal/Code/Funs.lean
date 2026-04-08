@@ -2,6 +2,7 @@
 -- [signal_crypto]: function definitions
 import Aeneas
 import Libsignal.Code.Types
+import Libsignal.Code.FunsPre
 import Libsignal.Code.FunsExternal
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
@@ -16,87 +17,6 @@ noncomputable section
 
 namespace signal_crypto
 
-/-- Trait implementation: [core::num::niche_types::{core::clone::Clone for core::num::niche_types::NonZeroU64Inner}]
-    Source: '/rustc/library/core/src/num/niche_types.rs', lines 17:17-17:22
-    Name pattern: [core::clone::Clone<core::num::niche_types::NonZeroU64Inner>] -/
-@[reducible, rust_trait_impl
-  "core::clone::Clone<core::num::niche_types::NonZeroU64Inner>"]
-def core.num.niche_types.NonZeroU64Inner.Insts.CoreCloneClone :
-  core.clone.Clone core.num.niche_types.NonZeroU64Inner := {
-  clone := core.num.niche_types.NonZeroU64Inner.Insts.CoreCloneClone.clone
-}
-
-/-- Trait implementation: [core::num::niche_types::{core::clone::Clone for core::num::niche_types::NonZeroU8Inner}]
-    Source: '/rustc/library/core/src/num/niche_types.rs', lines 17:17-17:22
-    Name pattern: [core::clone::Clone<core::num::niche_types::NonZeroU8Inner>] -/
-@[reducible, rust_trait_impl
-  "core::clone::Clone<core::num::niche_types::NonZeroU8Inner>"]
-def core.num.niche_types.NonZeroU8Inner.Insts.CoreCloneClone : core.clone.Clone
-  core.num.niche_types.NonZeroU8Inner := {
-  clone := core.num.niche_types.NonZeroU8Inner.Insts.CoreCloneClone.clone
-}
-
-/-- Trait implementation: [core::num::niche_types::{core::marker::Copy for core::num::niche_types::NonZeroU64Inner}]
-    Source: '/rustc/library/core/src/num/niche_types.rs', lines 17:24-17:28
-    Name pattern: [core::marker::Copy<core::num::niche_types::NonZeroU64Inner>] -/
-@[reducible, rust_trait_impl
-  "core::marker::Copy<core::num::niche_types::NonZeroU64Inner>"]
-def core.num.niche_types.NonZeroU64Inner.Insts.CoreMarkerCopy :
-  core.marker.Copy core.num.niche_types.NonZeroU64Inner := {
-  cloneInst := core.num.niche_types.NonZeroU64Inner.Insts.CoreCloneClone
-}
-
-/-- Trait implementation: [core::num::niche_types::{core::marker::Copy for core::num::niche_types::NonZeroU8Inner}]
-    Source: '/rustc/library/core/src/num/niche_types.rs', lines 17:24-17:28
-    Name pattern: [core::marker::Copy<core::num::niche_types::NonZeroU8Inner>] -/
-@[reducible, rust_trait_impl
-  "core::marker::Copy<core::num::niche_types::NonZeroU8Inner>"]
-def core.num.niche_types.NonZeroU8Inner.Insts.CoreMarkerCopy : core.marker.Copy
-  core.num.niche_types.NonZeroU8Inner := {
-  cloneInst := core.num.niche_types.NonZeroU8Inner.Insts.CoreCloneClone
-}
-
-/-- Trait implementation: [core::num::nonzero::{core::num::nonzero::private::Sealed for u64}]
-    Source: '/rustc/library/core/src/num/nonzero.rs', lines 55:12-55:47
-    Name pattern: [core::num::nonzero::private::Sealed<u64>] -/
-@[reducible, rust_trait_impl "core::num::nonzero::private::Sealed<u64>"]
-def U64.Insts.CoreNumNonzeroPrivateSealed : core.num.nonzero.private.Sealed
-  Std.U64 := {
-}
-
-/-- Trait implementation: [core::num::nonzero::{core::num::nonzero::private::Sealed for u8}]
-    Source: '/rustc/library/core/src/num/nonzero.rs', lines 55:12-55:47
-    Name pattern: [core::num::nonzero::private::Sealed<u8>] -/
-@[reducible, rust_trait_impl "core::num::nonzero::private::Sealed<u8>"]
-def U8.Insts.CoreNumNonzeroPrivateSealed : core.num.nonzero.private.Sealed
-  Std.U8 := {
-}
-
-/-- Trait implementation: [core::num::nonzero::{core::num::nonzero::ZeroablePrimitive<core::num::niche_types::NonZeroU64Inner> for u64}]
-    Source: '/rustc/library/core/src/num/nonzero.rs', lines 62:12-62:56
-    Name pattern: [core::num::nonzero::ZeroablePrimitive<u64, core::num::niche_types::NonZeroU64Inner>] -/
-@[reducible, rust_trait_impl
-  "core::num::nonzero::ZeroablePrimitive<u64, core::num::niche_types::NonZeroU64Inner>"]
-def U64.Insts.CoreNumNonzeroZeroablePrimitiveNonZeroU64Inner :
-  core.num.nonzero.ZeroablePrimitive Std.U64
-  core.num.niche_types.NonZeroU64Inner := {
-  markerCopyInst := core.marker.CopyU64
-  privateSealedInst := U64.Insts.CoreNumNonzeroPrivateSealed
-  markerCopyInst := core.num.niche_types.NonZeroU64Inner.Insts.CoreMarkerCopy
-}
-
-/-- Trait implementation: [core::num::nonzero::{core::num::nonzero::ZeroablePrimitive<core::num::niche_types::NonZeroU8Inner> for u8}]
-    Source: '/rustc/library/core/src/num/nonzero.rs', lines 62:12-62:56
-    Name pattern: [core::num::nonzero::ZeroablePrimitive<u8, core::num::niche_types::NonZeroU8Inner>] -/
-@[reducible, rust_trait_impl
-  "core::num::nonzero::ZeroablePrimitive<u8, core::num::niche_types::NonZeroU8Inner>"]
-def U8.Insts.CoreNumNonzeroZeroablePrimitiveNonZeroU8Inner :
-  core.num.nonzero.ZeroablePrimitive Std.U8 core.num.niche_types.NonZeroU8Inner
-  := {
-  markerCopyInst := core.marker.CopyU8
-  privateSealedInst := U8.Insts.CoreNumNonzeroPrivateSealed
-  markerCopyInst := core.num.niche_types.NonZeroU8Inner.Insts.CoreMarkerCopy
-}
 
 /-- Trait implementation: [block_buffer::{core::clone::Clone for block_buffer::Eager}]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-buffer-0.10.4/src/lib.rs', lines 27:15-27:20
@@ -3856,4 +3776,6 @@ def hash.CryptographicHash.Insts.CoreCloneClone.clone
         block_buffer.Eager.Insts.CoreCloneClone __self_0
     ok (hash.CryptographicHash.Sha512 cw)
 
+
 end signal_crypto
+

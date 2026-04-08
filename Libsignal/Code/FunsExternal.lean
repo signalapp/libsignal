@@ -12,6 +12,7 @@ set_option linter.unusedVariables false
 set_option maxHeartbeats 1000000
 open signal_crypto
 
+
 /-- [core::array::equality::{core::cmp::PartialEq<[U; N]> for [T]}::eq]:
     Source: '/rustc/library/core/src/array/equality.rs', lines 48:4-48:40
     Name pattern: [core::array::equality::{core::cmp::PartialEq<[@T], [@U; @N]>}::eq]
@@ -21,28 +22,6 @@ axiom Slice.Insts.CoreCmpPartialEqArray.eq
   {T : Type} {U : Type} {N : Std.Usize} (cmpPartialEqInst : core.cmp.PartialEq
   T U) :
   Slice T → Array U N → Result Bool
-
-/-- [core::num::niche_types::{core::clone::Clone for core::num::niche_types::NonZeroU64Inner}::clone]:
-    Source: '/rustc/library/core/src/num/niche_types.rs', lines 17:17-17:22
-    Name pattern: [core::num::niche_types::{core::clone::Clone<core::num::niche_types::NonZeroU64Inner>}::clone]
-    Visibility: public -/
-@[rust_fun
-  "core::num::niche_types::{core::clone::Clone<core::num::niche_types::NonZeroU64Inner>}::clone"]
-axiom core.num.niche_types.NonZeroU64Inner.Insts.CoreCloneClone.clone
-  :
-  core.num.niche_types.NonZeroU64Inner → Result
-    core.num.niche_types.NonZeroU64Inner
-
-/-- [core::num::niche_types::{core::clone::Clone for core::num::niche_types::NonZeroU8Inner}::clone]:
-    Source: '/rustc/library/core/src/num/niche_types.rs', lines 17:17-17:22
-    Name pattern: [core::num::niche_types::{core::clone::Clone<core::num::niche_types::NonZeroU8Inner>}::clone]
-    Visibility: public -/
-@[rust_fun
-  "core::num::niche_types::{core::clone::Clone<core::num::niche_types::NonZeroU8Inner>}::clone"]
-axiom core.num.niche_types.NonZeroU8Inner.Insts.CoreCloneClone.clone
-  :
-  core.num.niche_types.NonZeroU8Inner → Result
-    core.num.niche_types.NonZeroU8Inner
 
 /-- [core::num::nonzero::{core::num::nonzero::NonZero<T, Clause0_NonZeroInner>[TraitClause@0]}::new]:
     Source: '/rustc/library/core/src/num/nonzero.rs', lines 401:4-401:42
@@ -2073,4 +2052,5 @@ axiom hash.CryptographicHash.finalize
   :
   hash.CryptographicHash → Result ((alloc.vec.Vec Std.U8) ×
     hash.CryptographicHash)
+
 

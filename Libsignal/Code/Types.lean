@@ -3,6 +3,7 @@
 import Aeneas
 import Libsignal.Code.TypesPre
 import Libsignal.Code.TypesExternal
+import Libsignal.Code.FunsPre
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
 set_option linter.hashCommand false

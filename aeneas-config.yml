@@ -231,6 +231,23 @@ types_pre:
   - "libsignal_core.curve.PrivateKey"
   - "libsignal_core.curve.KeyPair"
 
+# Declarations to move from Funs.lean into FunsPre.lean (imported by Types.lean).
+# These are trait instances needed by type definitions in Types.lean.
+funs_pre:
+  # Opaque clone axioms (from FunsExternal, needed by Clone instances below)
+  - "core.num.niche_types.NonZeroU64Inner.Insts.CoreCloneClone.clone"
+  - "core.num.niche_types.NonZeroU8Inner.Insts.CoreCloneClone.clone"
+  # NonZeroU64Inner instances (needed by E164)
+  - "core.num.niche_types.NonZeroU64Inner.Insts.CoreCloneClone"
+  - "core.num.niche_types.NonZeroU64Inner.Insts.CoreMarkerCopy"
+  - "U64.Insts.CoreNumNonzeroPrivateSealed"
+  - "U64.Insts.CoreNumNonzeroZeroablePrimitiveNonZeroU64Inner"
+  # NonZeroU8Inner instances (needed by DeviceId)
+  - "core.num.niche_types.NonZeroU8Inner.Insts.CoreCloneClone"
+  - "core.num.niche_types.NonZeroU8Inner.Insts.CoreMarkerCopy"
+  - "U8.Insts.CoreNumNonzeroPrivateSealed"
+  - "U8.Insts.CoreNumNonzeroZeroablePrimitiveNonZeroU8Inner"
+
 tweaks:
   files: []
   substitutions: []
