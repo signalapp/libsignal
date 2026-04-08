@@ -481,7 +481,7 @@ describe('ZKGroup', () => {
     const request = context.getRequest();
 
     // issuance server
-    const receiptExpirationTime = 31337;
+    const receiptExpirationTime = 31337 * 86400;
     const receiptLevel = 3n;
     const response = serverOps.issueReceiptCredential(
       request,

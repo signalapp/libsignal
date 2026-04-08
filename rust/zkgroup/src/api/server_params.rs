@@ -511,6 +511,10 @@ impl ServerPublicParams {
         context: &api::receipts::ReceiptCredentialRequestContext,
         response: &api::receipts::ReceiptCredentialResponse,
     ) -> Result<api::receipts::ReceiptCredential, ZkGroupVerificationFailure> {
+        if !response.receipt_expiration_time.is_day_aligned() {
+            return Err(ZkGroupVerificationFailure);
+        }
+
         let receipt_struct = crypto::receipt_struct::ReceiptStruct::new(
             context.receipt_serial_bytes,
             response.receipt_expiration_time,

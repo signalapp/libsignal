@@ -10,7 +10,7 @@ use zkgroup::crypto::receipt_struct::ReceiptStruct;
 use zkgroup::crypto::{credentials, receipt_credential_request};
 use zkgroup::{
     RANDOMNESS_LEN, RECEIPT_SERIAL_LEN, RandomnessBytes, ReceiptLevel, ReceiptSerialBytes,
-    ServerSecretParams, Timestamp,
+    SECONDS_PER_DAY, ServerSecretParams, Timestamp,
 };
 
 #[test]
@@ -18,7 +18,7 @@ fn test_request_response() {
     let mut sho = Sho::new(b"Test_Receipt_Credential_Request", b"");
 
     // client receives in response to initial request
-    let receipt_expiration_time: Timestamp = Timestamp::from_epoch_seconds(42);
+    let receipt_expiration_time: Timestamp = Timestamp::from_epoch_seconds(42 * SECONDS_PER_DAY);
     let receipt_level: ReceiptLevel = 3;
 
     // known to client and redemption server
@@ -97,7 +97,7 @@ fn test_api() {
     let request = context.get_request();
 
     // issuance server
-    let receipt_expiration_time: Timestamp = Timestamp::from_epoch_seconds(31337);
+    let receipt_expiration_time: Timestamp = Timestamp::from_epoch_seconds(31337 * SECONDS_PER_DAY);
     let receipt_level: ReceiptLevel = 3;
     let response = server_secret_params.issue_receipt_credential(
         randomness2,
@@ -148,4 +148,34 @@ fn test_api() {
     server_secret_params
         .verify_receipt_credential_presentation(&bad_presentation)
         .expect_err("This Presentation Should Be Bad");
+}
+
+#[test]
+fn test_api_rejects_non_day_aligned_receipt_expiration_time() {
+    let randomness0: RandomnessBytes = [0x52u8; RANDOMNESS_LEN];
+    let randomness1: RandomnessBytes = [0x53u8; RANDOMNESS_LEN];
+    let randomness2: RandomnessBytes = [0x54u8; RANDOMNESS_LEN];
+    let receipt_serial_bytes: ReceiptSerialBytes = [0x94u8; RECEIPT_SERIAL_LEN];
+    let server_secret_params = ServerSecretParams::generate(randomness0);
+    let server_public_params = server_secret_params.get_public_params();
+
+    let context = server_public_params
+        .create_receipt_credential_request_context(randomness1, receipt_serial_bytes);
+    let request = context.get_request();
+
+    let receipt_expiration_time: Timestamp = Timestamp::from_epoch_seconds(42);
+    let receipt_level: ReceiptLevel = 3;
+    let response = server_secret_params.issue_receipt_credential(
+        randomness2,
+        &request,
+        receipt_expiration_time,
+        receipt_level,
+    );
+
+    assert!(
+        server_public_params
+            .receive_receipt_credential(&context, &response)
+            .is_err(),
+        "client should reject non-day-aligned receipt expiration time"
+    );
 }
