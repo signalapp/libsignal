@@ -12,16 +12,15 @@ set_option linter.unusedVariables false
 set_option maxHeartbeats 1000000
 open signal_crypto
 
-/-- [core::num::niche_types::{core::clone::Clone for core::num::niche_types::NonZeroU8Inner}::clone]:
-    Source: '/rustc/library/core/src/num/niche_types.rs', lines 17:17-17:22
-    Name pattern: [core::num::niche_types::{core::clone::Clone<core::num::niche_types::NonZeroU8Inner>}::clone]
+/-- [core::array::equality::{core::cmp::PartialEq<[U; N]> for [T]}::eq]:
+    Source: '/rustc/library/core/src/array/equality.rs', lines 48:4-48:40
+    Name pattern: [core::array::equality::{core::cmp::PartialEq<[@T], [@U; @N]>}::eq]
     Visibility: public -/
-@[rust_fun
-  "core::num::niche_types::{core::clone::Clone<core::num::niche_types::NonZeroU8Inner>}::clone"]
-axiom core.num.niche_types.NonZeroU8Inner.Insts.CoreCloneClone.clone
-  :
-  core.num.niche_types.NonZeroU8Inner → Result
-    core.num.niche_types.NonZeroU8Inner
+@[rust_fun "core::array::equality::{core::cmp::PartialEq<[@T], [@U; @N]>}::eq"]
+axiom Slice.Insts.CoreCmpPartialEqArray.eq
+  {T : Type} {U : Type} {N : Std.Usize} (cmpPartialEqInst : core.cmp.PartialEq
+  T U) :
+  Slice T → Array U N → Result Bool
 
 /-- [core::num::niche_types::{core::clone::Clone for core::num::niche_types::NonZeroU64Inner}::clone]:
     Source: '/rustc/library/core/src/num/niche_types.rs', lines 17:17-17:22
@@ -33,6 +32,17 @@ axiom core.num.niche_types.NonZeroU64Inner.Insts.CoreCloneClone.clone
   :
   core.num.niche_types.NonZeroU64Inner → Result
     core.num.niche_types.NonZeroU64Inner
+
+/-- [core::num::niche_types::{core::clone::Clone for core::num::niche_types::NonZeroU8Inner}::clone]:
+    Source: '/rustc/library/core/src/num/niche_types.rs', lines 17:17-17:22
+    Name pattern: [core::num::niche_types::{core::clone::Clone<core::num::niche_types::NonZeroU8Inner>}::clone]
+    Visibility: public -/
+@[rust_fun
+  "core::num::niche_types::{core::clone::Clone<core::num::niche_types::NonZeroU8Inner>}::clone"]
+axiom core.num.niche_types.NonZeroU8Inner.Insts.CoreCloneClone.clone
+  :
+  core.num.niche_types.NonZeroU8Inner → Result
+    core.num.niche_types.NonZeroU8Inner
 
 /-- [core::num::nonzero::{core::num::nonzero::NonZero<T, Clause0_NonZeroInner>[TraitClause@0]}::new]:
     Source: '/rustc/library/core/src/num/nonzero.rs', lines 401:4-401:42
@@ -135,6 +145,36 @@ axiom alloc.string.String.Insts.CoreOpsDerefDerefStr.deref
 axiom alloc.vec.Vec.into_boxed_slice
   {T : Type} (A : Type) : alloc.vec.Vec T → Result (Slice T)
 
+/-- [block_buffer::{core::clone::Clone for block_buffer::Eager}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-buffer-0.10.4/src/lib.rs', lines 27:15-27:20
+    Name pattern: [block_buffer::{core::clone::Clone<block_buffer::Eager>}::clone]
+    Visibility: public -/
+@[rust_fun "block_buffer::{core::clone::Clone<block_buffer::Eager>}::clone"]
+axiom block_buffer.Eager.Insts.CoreCloneClone.clone
+  : block_buffer.Eager → Result block_buffer.Eager
+
+/-- [block_buffer::sealed::{block_buffer::sealed::Sealed for block_buffer::Eager}::split_blocks]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-buffer-0.10.4/src/sealed.rs', lines 21:4-21:76
+    Name pattern: [block_buffer::sealed::{block_buffer::sealed::Sealed<block_buffer::Eager>}::split_blocks]
+    Visibility: public -/
+@[rust_fun
+  "block_buffer::sealed::{block_buffer::sealed::Sealed<block_buffer::Eager>}::split_blocks"]
+axiom block_buffer.Eager.Insts.Block_bufferSealedSealed.split_blocks
+  {N : Type} {Clause0_ArrayType : Type}
+  (generic_arrayArrayLengthNU8Clause0_ArrayTypeInst : generic_array.ArrayLength
+  N Std.U8 Clause0_ArrayType) :
+  Slice Std.U8 → Result ((Slice (generic_array.GenericArray
+    generic_arrayArrayLengthNU8Clause0_ArrayTypeInst)) × (Slice Std.U8))
+
+/-- [block_buffer::sealed::{block_buffer::sealed::Sealed for block_buffer::Eager}::invariant]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-buffer-0.10.4/src/sealed.rs', lines 16:4-16:55
+    Name pattern: [block_buffer::sealed::{block_buffer::sealed::Sealed<block_buffer::Eager>}::invariant]
+    Visibility: public -/
+@[rust_fun
+  "block_buffer::sealed::{block_buffer::sealed::Sealed<block_buffer::Eager>}::invariant"]
+axiom block_buffer.Eager.Insts.Block_bufferSealedSealed.invariant
+  : Std.Usize → Std.Usize → Result Bool
+
 /-- [ctr::flavors::ctr32::{ctr::flavors::CtrFlavor<B, ctr::flavors::ctr32::CtrNonce32<Clause1_Output, Clause2_ArrayType>[TraitClause@2], u32, Clause0_ArrayType, core::num::error::TryFromIntError, core::convert::Infallible, core::num::error::TryFromIntError, core::num::error::TryFromIntError, core::num::error::TryFromIntError, core::num::error::TryFromIntError, core::convert::Infallible, core::convert::Infallible, core::convert::Infallible, core::num::error::TryFromIntError> for ctr::flavors::ctr32::Ctr32BE}::NAME]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ctr-0.9.2/src/flavors/ctr32.rs', lines 42:4-42:28
     Name pattern: [ctr::flavors::ctr32::{ctr::flavors::CtrFlavor<ctr::flavors::ctr32::Ctr32BE, @B, ctr::flavors::ctr32::CtrNonce32<@Clause1_Output, @Clause2_ArrayType>, u32, @Clause0_ArrayType, core::num::error::TryFromIntError, core::convert::Infallible, core::num::error::TryFromIntError, core::num::error::TryFromIntError, core::num::error::TryFromIntError, core::num::error::TryFromIntError, core::convert::Infallible, core::convert::Infallible, core::convert::Infallible, core::num::error::TryFromIntError>}::NAME]
@@ -163,204 +203,99 @@ axiom
 axiom derive_more.convert.try_from.TryFromReprError.new
   {T : Type} : T → Result (derive_more.convert.try_from.TryFromReprError T)
 
-/-- [uuid::{uuid::Uuid}::as_bytes]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.19.0/src/lib.rs', lines 790:4-790:42
-    Name pattern: [uuid::{uuid::Uuid}::as_bytes]
-    Visibility: public -/
-@[rust_fun "uuid::{uuid::Uuid}::as_bytes"]
-axiom uuid.Uuid.as_bytes : uuid.Uuid → Result (Array Std.U8 16#usize)
-
-/-- [uuid::builder::{uuid::Uuid}::from_slice]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.19.0/src/builder.rs', lines 287:4-287:54
-    Name pattern: [uuid::builder::{uuid::Uuid}::from_slice]
-    Visibility: public -/
-@[rust_fun "uuid::builder::{uuid::Uuid}::from_slice"]
-axiom uuid.builder.Uuid.from_slice
-  : Slice Std.U8 → Result (core.result.Result uuid.Uuid uuid.error.Error)
-
-/-- [libsignal_core::curve::{libsignal_core::curve::PublicKey}::deserialize]:
-    Source: 'rust/core/src/curve.rs', lines 85:4-85:64
-    Name pattern: [libsignal_core::curve::{libsignal_core::curve::PublicKey}::deserialize]
+/-- [digest::core_api::ct_variable::{core::clone::Clone for digest::core_api::ct_variable::CtVariableCoreWrapper<T, OutSize, O, Clause3_Clause0_Clause0_BlockSize, Clause3_Clause0_Clause0_Clause0_ArrayType, Clause3_Clause1_OutputSize, Clause3_Clause1_Clause0_ArrayType, Clause3_Clause2_BufferKind, Clause3_Clause2_Clause0_BlockSize, Clause3_Clause2_Clause0_Clause0_ArrayType, Clause3_Clause3_Output, Clause4_ArrayType, Clause5_Output, Clause7_Output>[TraitClause@3, TraitClause@4, TraitClause@5, TraitClause@6, TraitClause@7, TraitClause@8]}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api/ct_variable.rs', lines 24:9-24:14
+    Name pattern: [digest::core_api::ct_variable::{core::clone::Clone<digest::core_api::ct_variable::CtVariableCoreWrapper<@T, @OutSize, @O, @Clause3_Clause0_Clause0_BlockSize, @Clause3_Clause0_Clause0_Clause0_ArrayType, @Clause3_Clause1_OutputSize, @Clause3_Clause1_Clause0_ArrayType, @Clause3_Clause2_BufferKind, @Clause3_Clause2_Clause0_BlockSize, @Clause3_Clause2_Clause0_Clause0_ArrayType, @Clause3_Clause3_Output, @Clause4_ArrayType, @Clause5_Output, @Clause7_Output>>}::clone]
     Visibility: public -/
 @[rust_fun
-  "libsignal_core::curve::{libsignal_core::curve::PublicKey}::deserialize"]
-axiom libsignal_core.curve.PublicKey.deserialize
-  :
-  Slice Std.U8 → Result (core.result.Result libsignal_core.curve.PublicKey
-    libsignal_core.curve.CurveError)
+  "digest::core_api::ct_variable::{core::clone::Clone<digest::core_api::ct_variable::CtVariableCoreWrapper<@T, @OutSize, @O, @Clause3_Clause0_Clause0_BlockSize, @Clause3_Clause0_Clause0_Clause0_ArrayType, @Clause3_Clause1_OutputSize, @Clause3_Clause1_Clause0_ArrayType, @Clause3_Clause2_BufferKind, @Clause3_Clause2_Clause0_BlockSize, @Clause3_Clause2_Clause0_Clause0_ArrayType, @Clause3_Clause3_Output, @Clause4_ArrayType, @Clause5_Output, @Clause7_Output>>}::clone"]
+axiom
+  digest.core_api.ct_variable.CtVariableCoreWrapper.Insts.CoreCloneClone.clone
+  {T : Type} {OutSize : Type} {O : Type} {Clause3_Clause0_Clause0_BlockSize :
+  Type} {Clause3_Clause0_Clause0_Clause0_ArrayType : Type}
+  {Clause3_Clause1_OutputSize : Type} {Clause3_Clause1_Clause0_ArrayType :
+  Type} {Clause3_Clause2_BufferKind : Type} {Clause3_Clause2_Clause0_BlockSize
+  : Type} {Clause3_Clause2_Clause0_Clause0_ArrayType : Type}
+  {Clause3_Clause3_Output : Type} {Clause4_ArrayType : Type} {Clause5_Output :
+  Type} {Clause7_Output : Type} (corecloneCloneInst : core.clone.Clone T)
+  (corecloneCloneInst1 : core.clone.Clone OutSize) (corecloneCloneInst2 :
+  core.clone.Clone O) (VariableOutputCoreInst :
+  digest.core_api.VariableOutputCore T Clause3_Clause0_Clause0_BlockSize
+  Clause3_Clause0_Clause0_Clause0_ArrayType Clause3_Clause1_OutputSize
+  Clause3_Clause1_Clause0_ArrayType Clause3_Clause2_BufferKind
+  Clause3_Clause2_Clause0_BlockSize Clause3_Clause2_Clause0_Clause0_ArrayType
+  Clause3_Clause3_Output)
+  (generic_arrayArrayLengthOutSizeU8Clause4_ArrayTypeInst :
+  generic_array.ArrayLength OutSize Std.U8 Clause4_ArrayType)
+  (typenumtype_operatorsIsLessOrEqualInst :
+  typenum.type_operators.IsLessOrEqual OutSize Clause3_Clause1_OutputSize
+  Clause5_Output) (typenummarker_traitsNonZeroInst :
+  typenum.marker_traits.NonZero Clause5_Output)
+  (typenumtype_operatorsIsLessClause3_Clause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Clause7_OutputInst
+  : typenum.type_operators.IsLess Clause3_Clause0_Clause0_BlockSize
+  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+  (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0)
+  typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+  typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) Clause7_Output)
+  (typenummarker_traitsNonZeroInst1 : typenum.marker_traits.NonZero
+  Clause7_Output) :
+  digest.core_api.ct_variable.CtVariableCoreWrapper O VariableOutputCoreInst
+    generic_arrayArrayLengthOutSizeU8Clause4_ArrayTypeInst
+    typenumtype_operatorsIsLessOrEqualInst typenummarker_traitsNonZeroInst
+    typenumtype_operatorsIsLessClause3_Clause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Clause7_OutputInst
+    typenummarker_traitsNonZeroInst1 → Result
+    (digest.core_api.ct_variable.CtVariableCoreWrapper O VariableOutputCoreInst
+    generic_arrayArrayLengthOutSizeU8Clause4_ArrayTypeInst
+    typenumtype_operatorsIsLessOrEqualInst typenummarker_traitsNonZeroInst
+    typenumtype_operatorsIsLessClause3_Clause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Clause7_OutputInst
+    typenummarker_traitsNonZeroInst1)
 
-/-- [libsignal_core::curve::{libsignal_core::curve::PrivateKey}::deserialize]:
-    Source: 'rust/core/src/curve.rs', lines 246:4-246:64
-    Name pattern: [libsignal_core::curve::{libsignal_core::curve::PrivateKey}::deserialize]
+/-- [sha2::{core::clone::Clone for sha2::OidSha512}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api/ct_variable.rs', lines 196:23-196:28
+    Name pattern: [sha2::{core::clone::Clone<sha2::OidSha512>}::clone]
+    Visibility: public -/
+@[rust_fun "sha2::{core::clone::Clone<sha2::OidSha512>}::clone"]
+axiom sha2.OidSha512.Insts.CoreCloneClone.clone
+  : sha2.OidSha512 → Result sha2.OidSha512
+
+/-- [sha2::{core::clone::Clone for sha2::OidSha256}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api/ct_variable.rs', lines 196:23-196:28
+    Name pattern: [sha2::{core::clone::Clone<sha2::OidSha256>}::clone]
+    Visibility: public -/
+@[rust_fun "sha2::{core::clone::Clone<sha2::OidSha256>}::clone"]
+axiom sha2.OidSha256.Insts.CoreCloneClone.clone
+  : sha2.OidSha256 → Result sha2.OidSha256
+
+/-- [digest::core_api::wrapper::{core::clone::Clone for digest::core_api::wrapper::CoreWrapper<T, Clause1_BufferKind, Clause1_Clause0_BlockSize, Clause1_Clause0_Clause0_ArrayType, Clause2_Output>[TraitClause@1, TraitClause@2, TraitClause@3]}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api/wrapper.rs', lines 23:9-23:14
+    Name pattern: [digest::core_api::wrapper::{core::clone::Clone<digest::core_api::wrapper::CoreWrapper<@T, @Clause1_BufferKind, @Clause1_Clause0_BlockSize, @Clause1_Clause0_Clause0_ArrayType, @Clause2_Output>>}::clone]
     Visibility: public -/
 @[rust_fun
-  "libsignal_core::curve::{libsignal_core::curve::PrivateKey}::deserialize"]
-axiom libsignal_core.curve.PrivateKey.deserialize
-  :
-  Slice Std.U8 → Result (core.result.Result libsignal_core.curve.PrivateKey
-    libsignal_core.curve.CurveError)
-
-/-- [libsignal_core::curve::{libsignal_core::curve::PrivateKey}::public_key]:
-    Source: 'rust/core/src/curve.rs', lines 264:4-264:61
-    Name pattern: [libsignal_core::curve::{libsignal_core::curve::PrivateKey}::public_key]
-    Visibility: public -/
-@[rust_fun
-  "libsignal_core::curve::{libsignal_core::curve::PrivateKey}::public_key"]
-axiom libsignal_core.curve.PrivateKey.public_key
-  :
-  libsignal_core.curve.PrivateKey → Result (core.result.Result
-    libsignal_core.curve.PublicKey libsignal_core.curve.CurveError)
-
-/-- [subtle::{core::convert::From<subtle::Choice> for bool}::from]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/subtle-2.6.1/src/lib.rs', lines 153:4-153:35
-    Name pattern: [subtle::{core::convert::From<bool, subtle::Choice>}::from]
-    Visibility: public -/
-@[rust_fun "subtle::{core::convert::From<bool, subtle::Choice>}::from"]
-axiom Bool.Insts.CoreConvertFromChoice.from : subtle.Choice → Result Bool
-
-/-- [subtle::{subtle::ConstantTimeEq for [T]}::ct_eq]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/subtle-2.6.1/src/lib.rs', lines 313:4-313:41
-    Name pattern: [subtle::{subtle::ConstantTimeEq<[@T]>}::ct_eq]
-    Visibility: public -/
-@[rust_fun "subtle::{subtle::ConstantTimeEq<[@T]>}::ct_eq"]
-axiom Slice.Insts.SubtleConstantTimeEq.ct_eq
-  {T : Type} (ConstantTimeEqInst : subtle.ConstantTimeEq T) :
-  Slice T → Slice T → Result subtle.Choice
-
-/-- [subtle::{subtle::ConstantTimeEq for u8}::ct_eq]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/subtle-2.6.1/src/lib.rs', lines 348:12-348:51
-    Name pattern: [subtle::{subtle::ConstantTimeEq<u8>}::ct_eq]
-    Visibility: public -/
-@[rust_fun "subtle::{subtle::ConstantTimeEq<u8>}::ct_eq"]
-axiom U8.Insts.SubtleConstantTimeEq.ct_eq
-  : Std.U8 → Std.U8 → Result subtle.Choice
-
-/-- [typenum::bit::{core::clone::Clone for typenum::bit::B0}::clone]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 18:41-18:46
-    Name pattern: [typenum::bit::{core::clone::Clone<typenum::bit::B0>}::clone]
-    Visibility: public -/
-@[rust_fun "typenum::bit::{core::clone::Clone<typenum::bit::B0>}::clone"]
-axiom typenum.bit.B0.Insts.CoreCloneClone.clone
-  : typenum.bit.B0 → Result typenum.bit.B0
-
-/-- [typenum::bit::{core::default::Default for typenum::bit::B0}::default]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 18:67-18:74
-    Name pattern: [typenum::bit::{core::default::Default<typenum::bit::B0>}::default]
-    Visibility: public -/
-@[rust_fun "typenum::bit::{core::default::Default<typenum::bit::B0>}::default"]
-axiom typenum.bit.B0.Insts.CoreDefaultDefault.default : Result typenum.bit.B0
-
-/-- [typenum::bit::{core::clone::Clone for typenum::bit::B1}::clone]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 31:41-31:46
-    Name pattern: [typenum::bit::{core::clone::Clone<typenum::bit::B1>}::clone]
-    Visibility: public -/
-@[rust_fun "typenum::bit::{core::clone::Clone<typenum::bit::B1>}::clone"]
-axiom typenum.bit.B1.Insts.CoreCloneClone.clone
-  : typenum.bit.B1 → Result typenum.bit.B1
-
-/-- [typenum::bit::{core::default::Default for typenum::bit::B1}::default]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 31:67-31:74
-    Name pattern: [typenum::bit::{core::default::Default<typenum::bit::B1>}::default]
-    Visibility: public -/
-@[rust_fun "typenum::bit::{core::default::Default<typenum::bit::B1>}::default"]
-axiom typenum.bit.B1.Insts.CoreDefaultDefault.default : Result typenum.bit.B1
-
-/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B0}::to_bool]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 56:4-56:24
-    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::to_bool]
-    Visibility: public -/
-@[rust_fun
-  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::to_bool"]
-axiom typenum.bit.B0.Insts.TypenumMarker_traitsBit.to_bool : Result Bool
-
-/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B0}::to_u8]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 52:4-52:20
-    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::to_u8]
-    Visibility: public -/
-@[rust_fun
-  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::to_u8"]
-axiom typenum.bit.B0.Insts.TypenumMarker_traitsBit.to_u8 : Result Std.U8
-
-/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B0}::new]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 48:4-48:20
-    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::new]
-    Visibility: public -/
-@[rust_fun
-  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::new"]
-axiom typenum.bit.B0.Insts.TypenumMarker_traitsBit.new : Result typenum.bit.B0
-
-/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B0}::BOOL]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 45:4-45:20
-    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::BOOL]
-    Visibility: public -/
-@[rust_const
-  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::BOOL"]
-axiom typenum.bit.B0.Insts.TypenumMarker_traitsBit.BOOL : Result Bool
-
-/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B0}::U8]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 44:4-44:16
-    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::U8]
-    Visibility: public -/
-@[rust_const
-  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::U8"]
-axiom typenum.bit.B0.Insts.TypenumMarker_traitsBit.U8 : Result Std.U8
-
-/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B1}::to_bool]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 74:4-74:24
-    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::to_bool]
-    Visibility: public -/
-@[rust_fun
-  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::to_bool"]
-axiom typenum.bit.B1.Insts.TypenumMarker_traitsBit.to_bool : Result Bool
-
-/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B1}::to_u8]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 70:4-70:20
-    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::to_u8]
-    Visibility: public -/
-@[rust_fun
-  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::to_u8"]
-axiom typenum.bit.B1.Insts.TypenumMarker_traitsBit.to_u8 : Result Std.U8
-
-/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B1}::new]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 66:4-66:20
-    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::new]
-    Visibility: public -/
-@[rust_fun
-  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::new"]
-axiom typenum.bit.B1.Insts.TypenumMarker_traitsBit.new : Result typenum.bit.B1
-
-/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B1}::BOOL]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 63:4-63:20
-    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::BOOL]
-    Visibility: public -/
-@[rust_const
-  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::BOOL"]
-axiom typenum.bit.B1.Insts.TypenumMarker_traitsBit.BOOL : Result Bool
-
-/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B1}::U8]
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 62:4-62:16
-    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::U8]
-    Visibility: public -/
-@[rust_const
-  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::U8"]
-axiom typenum.bit.B1.Insts.TypenumMarker_traitsBit.U8 : Result Std.U8
-
-/-- [typenum::uint::{core::clone::Clone for typenum::uint::UTerm}::clone]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 48:41-48:46
-    Name pattern: [typenum::uint::{core::clone::Clone<typenum::uint::UTerm>}::clone]
-    Visibility: public -/
-@[rust_fun "typenum::uint::{core::clone::Clone<typenum::uint::UTerm>}::clone"]
-axiom typenum.uint.UTerm.Insts.CoreCloneClone.clone
-  : typenum.uint.UTerm → Result typenum.uint.UTerm
-
-/-- [typenum::uint::{core::default::Default for typenum::uint::UTerm}::default]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 48:67-48:74
-    Name pattern: [typenum::uint::{core::default::Default<typenum::uint::UTerm>}::default]
-    Visibility: public -/
-@[rust_fun
-  "typenum::uint::{core::default::Default<typenum::uint::UTerm>}::default"]
-axiom typenum.uint.UTerm.Insts.CoreDefaultDefault.default
-  : Result typenum.uint.UTerm
+  "digest::core_api::wrapper::{core::clone::Clone<digest::core_api::wrapper::CoreWrapper<@T, @Clause1_BufferKind, @Clause1_Clause0_BlockSize, @Clause1_Clause0_Clause0_ArrayType, @Clause2_Output>>}::clone"]
+axiom digest.core_api.wrapper.CoreWrapper.Insts.CoreCloneClone.clone
+  {T : Type} {Clause1_BufferKind : Type} {Clause1_Clause0_BlockSize : Type}
+  {Clause1_Clause0_Clause0_ArrayType : Type} {Clause2_Output : Type}
+  (corecloneCloneInst : core.clone.Clone T) (BufferKindUserInst :
+  digest.core_api.BufferKindUser T Clause1_BufferKind Clause1_Clause0_BlockSize
+  Clause1_Clause0_Clause0_ArrayType)
+  (typenumtype_operatorsIsLessClause1_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Clause2_OutputInst
+  : typenum.type_operators.IsLess Clause1_Clause0_BlockSize (typenum.uint.UInt
+  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+  typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0) typenum.bit.B0)
+  typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+  typenum.bit.B0) typenum.bit.B0) Clause2_Output)
+  (typenummarker_traitsNonZeroInst : typenum.marker_traits.NonZero
+  Clause2_Output) (corecloneCloneInst1 : core.clone.Clone
+  Clause1_Clause0_BlockSize) (corecloneCloneInst2 : core.clone.Clone
+  Clause1_BufferKind) :
+  digest.core_api.wrapper.CoreWrapper BufferKindUserInst
+    typenumtype_operatorsIsLessClause1_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Clause2_OutputInst
+    typenummarker_traitsNonZeroInst → Result
+    (digest.core_api.wrapper.CoreWrapper BufferKindUserInst
+    typenumtype_operatorsIsLessClause1_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Clause2_OutputInst
+    typenummarker_traitsNonZeroInst)
 
 /-- [typenum::uint::{typenum::marker_traits::Unsigned for typenum::uint::UTerm}::to_isize]:
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 125:4-125:26
@@ -540,27 +475,22 @@ axiom typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned.U16
   "typenum::uint::{typenum::marker_traits::Unsigned<typenum::uint::UTerm>}::U8"]
 axiom typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned.U8 : Result Std.U8
 
-/-- [typenum::uint::{core::clone::Clone for typenum::uint::UInt<U, B>}::clone]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 146:41-146:46
-    Name pattern: [typenum::uint::{core::clone::Clone<typenum::uint::UInt<@U, @B>>}::clone]
+/-- [typenum::uint::{core::default::Default for typenum::uint::UTerm}::default]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 48:67-48:74
+    Name pattern: [typenum::uint::{core::default::Default<typenum::uint::UTerm>}::default]
     Visibility: public -/
 @[rust_fun
-  "typenum::uint::{core::clone::Clone<typenum::uint::UInt<@U, @B>>}::clone"]
-axiom typenum.uint.UInt.Insts.CoreCloneClone.clone
-  {U : Type} {B : Type} (corecloneCloneInst : core.clone.Clone U)
-  (corecloneCloneInst1 : core.clone.Clone B) :
-  typenum.uint.UInt U B → Result (typenum.uint.UInt U B)
+  "typenum::uint::{core::default::Default<typenum::uint::UTerm>}::default"]
+axiom typenum.uint.UTerm.Insts.CoreDefaultDefault.default
+  : Result typenum.uint.UTerm
 
-/-- [typenum::uint::{core::default::Default for typenum::uint::UInt<U, B>}::default]:
-    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 146:67-146:74
-    Name pattern: [typenum::uint::{core::default::Default<typenum::uint::UInt<@U, @B>>}::default]
+/-- [typenum::uint::{core::clone::Clone for typenum::uint::UTerm}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 48:41-48:46
+    Name pattern: [typenum::uint::{core::clone::Clone<typenum::uint::UTerm>}::clone]
     Visibility: public -/
-@[rust_fun
-  "typenum::uint::{core::default::Default<typenum::uint::UInt<@U, @B>>}::default"]
-axiom typenum.uint.UInt.Insts.CoreDefaultDefault.default
-  {U : Type} {B : Type} (coredefaultDefaultInst : core.default.Default U)
-  (coredefaultDefaultInst1 : core.default.Default B) :
-  Result (typenum.uint.UInt U B)
+@[rust_fun "typenum::uint::{core::clone::Clone<typenum::uint::UTerm>}::clone"]
+axiom typenum.uint.UTerm.Insts.CoreCloneClone.clone
+  : typenum.uint.UTerm → Result typenum.uint.UTerm
 
 /-- [typenum::uint::{typenum::marker_traits::Unsigned for typenum::uint::UInt<U, B>}::to_isize]:
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 228:4-228:26
@@ -782,8 +712,1262 @@ axiom typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned.U8 {U : Type} {B :
   Type} (marker_traitsUnsignedInst : typenum.marker_traits.Unsigned U)
   (marker_traitsBitInst : typenum.marker_traits.Bit B) : Result Std.U8
 
+/-- [typenum::uint::{core::default::Default for typenum::uint::UInt<U, B>}::default]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 146:67-146:74
+    Name pattern: [typenum::uint::{core::default::Default<typenum::uint::UInt<@U, @B>>}::default]
+    Visibility: public -/
+@[rust_fun
+  "typenum::uint::{core::default::Default<typenum::uint::UInt<@U, @B>>}::default"]
+axiom typenum.uint.UInt.Insts.CoreDefaultDefault.default
+  {U : Type} {B : Type} (coredefaultDefaultInst : core.default.Default U)
+  (coredefaultDefaultInst1 : core.default.Default B) :
+  Result (typenum.uint.UInt U B)
+
+/-- [typenum::uint::{core::clone::Clone for typenum::uint::UInt<U, B>}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 146:41-146:46
+    Name pattern: [typenum::uint::{core::clone::Clone<typenum::uint::UInt<@U, @B>>}::clone]
+    Visibility: public -/
+@[rust_fun
+  "typenum::uint::{core::clone::Clone<typenum::uint::UInt<@U, @B>>}::clone"]
+axiom typenum.uint.UInt.Insts.CoreCloneClone.clone
+  {U : Type} {B : Type} (corecloneCloneInst : core.clone.Clone U)
+  (corecloneCloneInst1 : core.clone.Clone B) :
+  typenum.uint.UInt U B → Result (typenum.uint.UInt U B)
+
+/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B0}::to_bool]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 56:4-56:24
+    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::to_bool]
+    Visibility: public -/
+@[rust_fun
+  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::to_bool"]
+axiom typenum.bit.B0.Insts.TypenumMarker_traitsBit.to_bool : Result Bool
+
+/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B0}::to_u8]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 52:4-52:20
+    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::to_u8]
+    Visibility: public -/
+@[rust_fun
+  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::to_u8"]
+axiom typenum.bit.B0.Insts.TypenumMarker_traitsBit.to_u8 : Result Std.U8
+
+/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B0}::new]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 48:4-48:20
+    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::new]
+    Visibility: public -/
+@[rust_fun
+  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::new"]
+axiom typenum.bit.B0.Insts.TypenumMarker_traitsBit.new : Result typenum.bit.B0
+
+/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B0}::BOOL]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 45:4-45:20
+    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::BOOL]
+    Visibility: public -/
+@[rust_const
+  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::BOOL"]
+axiom typenum.bit.B0.Insts.TypenumMarker_traitsBit.BOOL : Result Bool
+
+/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B0}::U8]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 44:4-44:16
+    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::U8]
+    Visibility: public -/
+@[rust_const
+  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B0>}::U8"]
+axiom typenum.bit.B0.Insts.TypenumMarker_traitsBit.U8 : Result Std.U8
+
+/-- [typenum::bit::{core::default::Default for typenum::bit::B0}::default]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 18:67-18:74
+    Name pattern: [typenum::bit::{core::default::Default<typenum::bit::B0>}::default]
+    Visibility: public -/
+@[rust_fun "typenum::bit::{core::default::Default<typenum::bit::B0>}::default"]
+axiom typenum.bit.B0.Insts.CoreDefaultDefault.default : Result typenum.bit.B0
+
+/-- [typenum::bit::{core::clone::Clone for typenum::bit::B0}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 18:41-18:46
+    Name pattern: [typenum::bit::{core::clone::Clone<typenum::bit::B0>}::clone]
+    Visibility: public -/
+@[rust_fun "typenum::bit::{core::clone::Clone<typenum::bit::B0>}::clone"]
+axiom typenum.bit.B0.Insts.CoreCloneClone.clone
+  : typenum.bit.B0 → Result typenum.bit.B0
+
+/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B1}::to_bool]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 74:4-74:24
+    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::to_bool]
+    Visibility: public -/
+@[rust_fun
+  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::to_bool"]
+axiom typenum.bit.B1.Insts.TypenumMarker_traitsBit.to_bool : Result Bool
+
+/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B1}::to_u8]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 70:4-70:20
+    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::to_u8]
+    Visibility: public -/
+@[rust_fun
+  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::to_u8"]
+axiom typenum.bit.B1.Insts.TypenumMarker_traitsBit.to_u8 : Result Std.U8
+
+/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B1}::new]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 66:4-66:20
+    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::new]
+    Visibility: public -/
+@[rust_fun
+  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::new"]
+axiom typenum.bit.B1.Insts.TypenumMarker_traitsBit.new : Result typenum.bit.B1
+
+/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B1}::BOOL]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 63:4-63:20
+    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::BOOL]
+    Visibility: public -/
+@[rust_const
+  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::BOOL"]
+axiom typenum.bit.B1.Insts.TypenumMarker_traitsBit.BOOL : Result Bool
+
+/-- [typenum::bit::{typenum::marker_traits::Bit for typenum::bit::B1}::U8]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 62:4-62:16
+    Name pattern: [typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::U8]
+    Visibility: public -/
+@[rust_const
+  "typenum::bit::{typenum::marker_traits::Bit<typenum::bit::B1>}::U8"]
+axiom typenum.bit.B1.Insts.TypenumMarker_traitsBit.U8 : Result Std.U8
+
+/-- [typenum::bit::{core::default::Default for typenum::bit::B1}::default]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 31:67-31:74
+    Name pattern: [typenum::bit::{core::default::Default<typenum::bit::B1>}::default]
+    Visibility: public -/
+@[rust_fun "typenum::bit::{core::default::Default<typenum::bit::B1>}::default"]
+axiom typenum.bit.B1.Insts.CoreDefaultDefault.default : Result typenum.bit.B1
+
+/-- [typenum::bit::{core::clone::Clone for typenum::bit::B1}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/bit.rs', lines 31:41-31:46
+    Name pattern: [typenum::bit::{core::clone::Clone<typenum::bit::B1>}::clone]
+    Visibility: public -/
+@[rust_fun "typenum::bit::{core::clone::Clone<typenum::bit::B1>}::clone"]
+axiom typenum.bit.B1.Insts.CoreCloneClone.clone
+  : typenum.bit.B1 → Result typenum.bit.B1
+
+/-- [ghash::{core::clone::Clone for ghash::GHash}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ghash-0.5.1/src/lib.rs', lines 57:9-57:14
+    Name pattern: [ghash::{core::clone::Clone<ghash::GHash>}::clone]
+    Visibility: public -/
+@[rust_fun "ghash::{core::clone::Clone<ghash::GHash>}::clone"]
+axiom ghash.GHash.Insts.CoreCloneClone.clone
+  : ghash.GHash → Result ghash.GHash
+
+/-- [uuid::builder::{uuid::Uuid}::from_bytes]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.19.0/src/builder.rs', lines 364:4-364:49
+    Name pattern: [uuid::builder::{uuid::Uuid}::from_bytes]
+    Visibility: public -/
+@[rust_fun "uuid::builder::{uuid::Uuid}::from_bytes"]
+axiom uuid.builder.Uuid.from_bytes : Array Std.U8 16#usize → Result uuid.Uuid
+
+/-- [uuid::{uuid::Uuid}::as_bytes]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.19.0/src/lib.rs', lines 790:4-790:42
+    Name pattern: [uuid::{uuid::Uuid}::as_bytes]
+    Visibility: public -/
+@[rust_fun "uuid::{uuid::Uuid}::as_bytes"]
+axiom uuid.Uuid.as_bytes : uuid.Uuid → Result (Array Std.U8 16#usize)
+
+/-- [uuid::builder::{uuid::Uuid}::from_slice]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.19.0/src/builder.rs', lines 287:4-287:54
+    Name pattern: [uuid::builder::{uuid::Uuid}::from_slice]
+    Visibility: public -/
+@[rust_fun "uuid::builder::{uuid::Uuid}::from_slice"]
+axiom uuid.builder.Uuid.from_slice
+  : Slice Std.U8 → Result (core.result.Result uuid.Uuid uuid.error.Error)
+
+/-- [libsignal_core::curve::{libsignal_core::curve::PublicKey}::verify_signature_for_multipart_message]:
+    Source: 'rust/core/src/curve.rs', lines 138:4-142:13
+    Name pattern: [libsignal_core::curve::{libsignal_core::curve::PublicKey}::verify_signature_for_multipart_message]
+    Visibility: public -/
+@[rust_fun
+  "libsignal_core::curve::{libsignal_core::curve::PublicKey}::verify_signature_for_multipart_message"]
+axiom libsignal_core.curve.PublicKey.verify_signature_for_multipart_message
+  :
+  libsignal_core.curve.PublicKey → Slice (Slice Std.U8) → Slice Std.U8 →
+    Result Bool
+
+/-- [libsignal_core::curve::{libsignal_core::curve::PublicKey}::is_torsion_free]:
+    Source: 'rust/core/src/curve.rs', lines 165:4-165:37
+    Name pattern: [libsignal_core::curve::{libsignal_core::curve::PublicKey}::is_torsion_free] -/
+@[rust_fun
+  "libsignal_core::curve::{libsignal_core::curve::PublicKey}::is_torsion_free"]
+axiom libsignal_core.curve.PublicKey.is_torsion_free
+  : libsignal_core.curve.PublicKey → Result Bool
+
+/-- [libsignal_core::curve::{core::convert::TryFrom<&0 ([u8]), libsignal_core::curve::CurveError> for libsignal_core::curve::PublicKey}::try_from]:
+    Source: 'rust/core/src/curve.rs', lines 196:4-196:57
+    Name pattern: [libsignal_core::curve::{core::convert::TryFrom<libsignal_core::curve::PublicKey, &'0 [u8], libsignal_core::curve::CurveError>}::try_from]
+    Visibility: public -/
+@[rust_fun
+  "libsignal_core::curve::{core::convert::TryFrom<libsignal_core::curve::PublicKey, &'0 [u8], libsignal_core::curve::CurveError>}::try_from"]
+axiom
+  libsignal_core.curve.PublicKey.Insts.CoreConvertTryFromShared0SliceU8CurveError.try_from
+  :
+  Slice Std.U8 → Result (core.result.Result libsignal_core.curve.PublicKey
+    libsignal_core.curve.CurveError)
+
+/-- [libsignal_core::curve::{core::convert::TryFrom<&0 ([u8]), libsignal_core::curve::CurveError> for libsignal_core::curve::PrivateKey}::try_from]:
+    Source: 'rust/core/src/curve.rs', lines 315:4-315:57
+    Name pattern: [libsignal_core::curve::{core::convert::TryFrom<libsignal_core::curve::PrivateKey, &'0 [u8], libsignal_core::curve::CurveError>}::try_from]
+    Visibility: public -/
+@[rust_fun
+  "libsignal_core::curve::{core::convert::TryFrom<libsignal_core::curve::PrivateKey, &'0 [u8], libsignal_core::curve::CurveError>}::try_from"]
+axiom
+  libsignal_core.curve.PrivateKey.Insts.CoreConvertTryFromShared0SliceU8CurveError.try_from
+  :
+  Slice Std.U8 → Result (core.result.Result libsignal_core.curve.PrivateKey
+    libsignal_core.curve.CurveError)
+
+/-- [sha1::{core::clone::Clone for sha1::Sha1Core}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha1-0.10.6/src/lib.rs', lines 76:9-76:14
+    Name pattern: [sha1::{core::clone::Clone<sha1::Sha1Core>}::clone]
+    Visibility: public -/
+@[rust_fun "sha1::{core::clone::Clone<sha1::Sha1Core>}::clone"]
+axiom sha1.Sha1Core.Insts.CoreCloneClone.clone
+  : sha1.Sha1Core → Result sha1.Sha1Core
+
+/-- [sha2::core_api::{core::clone::Clone for sha2::core_api::Sha256VarCore}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 17:9-17:14
+    Name pattern: [sha2::core_api::{core::clone::Clone<sha2::core_api::Sha256VarCore>}::clone]
+    Visibility: public -/
+@[rust_fun
+  "sha2::core_api::{core::clone::Clone<sha2::core_api::Sha256VarCore>}::clone"]
+axiom sha2.core_api.Sha256VarCore.Insts.CoreCloneClone.clone
+  : sha2.core_api.Sha256VarCore → Result sha2.core_api.Sha256VarCore
+
+/-- [sha2::core_api::{digest::core_api::UpdateCore<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>> for sha2::core_api::Sha256VarCore}::update_blocks]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 35:4-35:55
+    Name pattern: [sha2::core_api::{digest::core_api::UpdateCore<sha2::core_api::Sha256VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>}::update_blocks]
+    Visibility: public -/
+@[rust_fun
+  "sha2::core_api::{digest::core_api::UpdateCore<sha2::core_api::Sha256VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>}::update_blocks"]
+axiom
+  sha2.core_api.Sha256VarCore.Insts.DigestCore_apiUpdateCoreUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80.update_blocks
+  :
+  sha2.core_api.Sha256VarCore → Slice (generic_array.GenericArray
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB1.Insts.Generic_arrayArrayLengthTGenericArrayImplOdd
+    (typenum.uint.UTerm.Insts.Generic_arrayArrayLengthTArrayT0 Std.U8)))))))))
+    → Result sha2.core_api.Sha256VarCore
+
+/-- [typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UInt<U, B>, SoFar, typenum::Less> for typenum::uint::UTerm}::private_cmp]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 1335:4-1335:67
+    Name pattern: [typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UTerm, typenum::uint::UInt<@U, @B>, @SoFar, typenum::Less>}::private_cmp]
+    Visibility: public -/
+@[rust_fun
+  "typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UTerm, typenum::uint::UInt<@U, @B>, @SoFar, typenum::Less>}::private_cmp"]
+axiom
+  typenum.uint.UTerm.Insts.TypenumPrivatePrivateCmpUIntSoFarLess.private_cmp
+  {U : Type} {B : Type} {SoFar : Type} (marker_traitsUnsignedInst :
+  typenum.marker_traits.Unsigned U) (marker_traitsBitInst :
+  typenum.marker_traits.Bit B) (marker_traitsOrdInst :
+  typenum.marker_traits.Ord SoFar) :
+  typenum.uint.UTerm → typenum.uint.UInt U B → SoFar → Result
+    typenum.Less
+
+/-- [typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UInt<Ur, typenum::bit::B0>, SoFar, Clause3_Output> for typenum::uint::UInt<Ul, typenum::bit::B1>}::private_cmp]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 1325:4-1325:71
+    Name pattern: [typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UInt<@Ul, typenum::bit::B1>, typenum::uint::UInt<@Ur, typenum::bit::B0>, @SoFar, @Clause3_Output>}::private_cmp]
+    Visibility: public -/
+@[rust_fun
+  "typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UInt<@Ul, typenum::bit::B1>, typenum::uint::UInt<@Ur, typenum::bit::B0>, @SoFar, @Clause3_Output>}::private_cmp"]
+axiom
+  typenum.uint.UIntUlB1.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output.private_cmp
+  {Ul : Type} {Ur : Type} {SoFar : Type} {Clause3_Output : Type}
+  (marker_traitsUnsignedInst : typenum.marker_traits.Unsigned Ul)
+  (marker_traitsUnsignedInst1 : typenum.marker_traits.Unsigned Ur)
+  (marker_traitsOrdInst : typenum.marker_traits.Ord SoFar)
+  (privatePrivateCmpUlUrGreaterClause3_OutputInst : typenum.private.PrivateCmp
+  Ul Ur typenum.Greater Clause3_Output) :
+  typenum.uint.UInt Ul typenum.bit.B1 → typenum.uint.UInt Ur typenum.bit.B0
+    → SoFar → Result Clause3_Output
+
+/-- [typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UInt<Ur, typenum::bit::B0>, SoFar, Clause3_Output> for typenum::uint::UInt<Ul, typenum::bit::B0>}::private_cmp]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 1274:4-1274:76
+    Name pattern: [typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UInt<@Ul, typenum::bit::B0>, typenum::uint::UInt<@Ur, typenum::bit::B0>, @SoFar, @Clause3_Output>}::private_cmp]
+    Visibility: public -/
+@[rust_fun
+  "typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UInt<@Ul, typenum::bit::B0>, typenum::uint::UInt<@Ur, typenum::bit::B0>, @SoFar, @Clause3_Output>}::private_cmp"]
+axiom
+  typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output.private_cmp
+  {Ul : Type} {Ur : Type} {SoFar : Type} {Clause3_Output : Type}
+  (marker_traitsUnsignedInst : typenum.marker_traits.Unsigned Ul)
+  (marker_traitsUnsignedInst1 : typenum.marker_traits.Unsigned Ur)
+  (marker_traitsOrdInst : typenum.marker_traits.Ord SoFar)
+  (privatePrivateCmpInst : typenum.private.PrivateCmp Ul Ur SoFar
+  Clause3_Output) :
+  typenum.uint.UInt Ul typenum.bit.B0 → typenum.uint.UInt Ur typenum.bit.B0
+    → SoFar → Result Clause3_Output
+
+/-- [typenum::uint::{typenum::type_operators::Cmp<typenum::uint::UInt<Ur, typenum::bit::B0>, Clause2_Output> for typenum::uint::UInt<Ul, typenum::bit::B0>}::compare]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 1218:4-1218:77
+    Name pattern: [typenum::uint::{typenum::type_operators::Cmp<typenum::uint::UInt<@Ul, typenum::bit::B0>, typenum::uint::UInt<@Ur, typenum::bit::B0>, @Clause2_Output>}::compare]
+    Visibility: public -/
+@[rust_fun
+  "typenum::uint::{typenum::type_operators::Cmp<typenum::uint::UInt<@Ul, typenum::bit::B0>, typenum::uint::UInt<@Ur, typenum::bit::B0>, @Clause2_Output>}::compare"]
+axiom
+  typenum.uint.UIntUlB0.Insts.TypenumType_operatorsCmpUIntUrB0Clause2_Output.compare
+  {Ul : Type} {Ur : Type} {IM : Type} {Clause2_Output : Type}
+  (marker_traitsUnsignedInst : typenum.marker_traits.Unsigned Ul)
+  (marker_traitsUnsignedInst1 : typenum.marker_traits.Unsigned Ur)
+  (privatePrivateCmpUlUrEqualClause2_OutputInst : typenum.private.PrivateCmp Ul
+  Ur typenum.Equal Clause2_Output) (privateInternalMarkerInst :
+  typenum.private.InternalMarker IM) :
+  typenum.uint.UInt Ul typenum.bit.B0 → typenum.uint.UInt Ur typenum.bit.B0
+    → Result Clause2_Output
+
+/-- [typenum::type_operators::{typenum::type_operators::IsLess<B, Clause1_Output> for A}::is_less]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/type_operators.rs', lines 390:4-390:44
+    Name pattern: [typenum::type_operators::{typenum::type_operators::IsLess<@A, @B, @Clause1_Output>}::is_less]
+    Visibility: public -/
+@[rust_fun
+  "typenum::type_operators::{typenum::type_operators::IsLess<@A, @B, @Clause1_Output>}::is_less"]
+axiom typenum.type_operators.IsLess.Blanket.is_less
+  {A : Type} {B : Type} {Clause0_Output : Type} {Clause1_Output : Type}
+  (CmpInst : typenum.type_operators.Cmp A B Clause0_Output)
+  (privateIsLessPrivateInst : typenum.private.IsLessPrivate A B Clause0_Output
+  Clause1_Output) :
+  A → B → Result Clause1_Output
+
+/-- [typenum::private::{typenum::private::IsLessPrivate<B, typenum::Less, typenum::bit::B1> for A}::is_less_private]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/private.rs', lines 405:4-405:59
+    Name pattern: [typenum::private::{typenum::private::IsLessPrivate<@A, @B, typenum::Less, typenum::bit::B1>}::is_less_private]
+    Visibility: public -/
+@[rust_fun
+  "typenum::private::{typenum::private::IsLessPrivate<@A, @B, typenum::Less, typenum::bit::B1>}::is_less_private"]
+axiom typenum.private.IsLessPrivateABLessB1.Blanket.is_less_private
+  {A : Type} {B : Type} : A → B → typenum.Less → Result typenum.bit.B1
+
+/-- [typenum::{typenum::marker_traits::Ord for typenum::Equal}::to_ordering]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/lib.rs', lines 125:4-125:32
+    Name pattern: [typenum::{typenum::marker_traits::Ord<typenum::Equal>}::to_ordering]
+    Visibility: public -/
+@[rust_fun
+  "typenum::{typenum::marker_traits::Ord<typenum::Equal>}::to_ordering"]
+axiom typenum.Equal.Insts.TypenumMarker_traitsOrd.to_ordering : Result Ordering
+
+/-- [typenum::{typenum::marker_traits::Ord for typenum::Greater}::to_ordering]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/lib.rs', lines 109:4-109:32
+    Name pattern: [typenum::{typenum::marker_traits::Ord<typenum::Greater>}::to_ordering]
+    Visibility: public -/
+@[rust_fun
+  "typenum::{typenum::marker_traits::Ord<typenum::Greater>}::to_ordering"]
+axiom typenum.Greater.Insts.TypenumMarker_traitsOrd.to_ordering
+  : Result Ordering
+
+/-- [sha2::core_api::{digest::core_api::VariableOutputCore<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>, typenum::bit::B1> for sha2::core_api::Sha256VarCore}::finalize_variable_core]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 60:4-60:91
+    Name pattern: [sha2::core_api::{digest::core_api::VariableOutputCore<sha2::core_api::Sha256VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, typenum::bit::B1>}::finalize_variable_core]
+    Visibility: public -/
+@[rust_fun
+  "sha2::core_api::{digest::core_api::VariableOutputCore<sha2::core_api::Sha256VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, typenum::bit::B1>}::finalize_variable_core"]
+axiom
+  sha2.core_api.Sha256VarCore.Insts.DigestCore_apiVariableOutputCoreUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80UIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80EagerUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80B1.finalize_variable_core
+  :
+  sha2.core_api.Sha256VarCore → block_buffer.BlockBuffer
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB1.Insts.Generic_arrayArrayLengthTGenericArrayImplOdd
+    (typenum.uint.UTerm.Insts.Generic_arrayArrayLengthTArrayT0 Std.U8))))))))
+    (typenum.type_operators.IsLess.Blanket
+    (typenum.uint.UIntUlB0.Insts.TypenumType_operatorsCmpUIntUrB0Clause2_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB1.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UTerm.Insts.TypenumPrivatePrivateCmpUIntSoFarLess
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit
+    typenum.Greater.Insts.TypenumMarker_traitsOrd))))))))
+    (typenum.private.IsLessPrivateABLessB1.Blanket (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm
+    typenum.bit.B1) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0))) typenum.bit.B1.Insts.TypenumMarker_traitsNonZero
+    block_buffer.Eager.Insts.Block_bufferBufferKind →
+    generic_array.GenericArray
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB1.Insts.Generic_arrayArrayLengthTGenericArrayImplOdd
+    (typenum.uint.UTerm.Insts.Generic_arrayArrayLengthTArrayT0 Std.U8)))))))
+    → Result (sha2.core_api.Sha256VarCore × (block_buffer.BlockBuffer
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB1.Insts.Generic_arrayArrayLengthTGenericArrayImplOdd
+    (typenum.uint.UTerm.Insts.Generic_arrayArrayLengthTArrayT0 Std.U8))))))))
+    (typenum.type_operators.IsLess.Blanket
+    (typenum.uint.UIntUlB0.Insts.TypenumType_operatorsCmpUIntUrB0Clause2_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB1.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UTerm.Insts.TypenumPrivatePrivateCmpUIntSoFarLess
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit
+    typenum.Greater.Insts.TypenumMarker_traitsOrd))))))))
+    (typenum.private.IsLessPrivateABLessB1.Blanket (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm
+    typenum.bit.B1) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0))) typenum.bit.B1.Insts.TypenumMarker_traitsNonZero
+    block_buffer.Eager.Insts.Block_bufferBufferKind) ×
+    (generic_array.GenericArray
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB1.Insts.Generic_arrayArrayLengthTGenericArrayImplOdd
+    (typenum.uint.UTerm.Insts.Generic_arrayArrayLengthTArrayT0 Std.U8)))))))))
+
+/-- [sha2::core_api::{digest::core_api::VariableOutputCore<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>, typenum::bit::B1> for sha2::core_api::Sha256VarCore}::new]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 49:4-49:65
+    Name pattern: [sha2::core_api::{digest::core_api::VariableOutputCore<sha2::core_api::Sha256VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, typenum::bit::B1>}::new]
+    Visibility: public -/
+@[rust_fun
+  "sha2::core_api::{digest::core_api::VariableOutputCore<sha2::core_api::Sha256VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, typenum::bit::B1>}::new"]
+axiom
+  sha2.core_api.Sha256VarCore.Insts.DigestCore_apiVariableOutputCoreUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80UIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80EagerUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80B1.new
+  :
+  Std.Usize → Result (core.result.Result sha2.core_api.Sha256VarCore
+    digest.InvalidOutputSize)
+
+/-- [sha2::core_api::{digest::core_api::VariableOutputCore<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>, typenum::bit::B1> for sha2::core_api::Sha256VarCore}::TRUNC_SIDE]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 46:4-46:31
+    Name pattern: [sha2::core_api::{digest::core_api::VariableOutputCore<sha2::core_api::Sha256VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, typenum::bit::B1>}::TRUNC_SIDE]
+    Visibility: public -/
+@[rust_const
+  "sha2::core_api::{digest::core_api::VariableOutputCore<sha2::core_api::Sha256VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, typenum::bit::B1>}::TRUNC_SIDE"]
+axiom
+  sha2.core_api.Sha256VarCore.Insts.DigestCore_apiVariableOutputCoreUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80UIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80EagerUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80B1.TRUNC_SIDE
+  : Result digest.core_api.TruncSide
+
+/-- [sha2::core_api::{core::clone::Clone for sha2::core_api::Sha512VarCore}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 89:9-89:14
+    Name pattern: [sha2::core_api::{core::clone::Clone<sha2::core_api::Sha512VarCore>}::clone]
+    Visibility: public -/
+@[rust_fun
+  "sha2::core_api::{core::clone::Clone<sha2::core_api::Sha512VarCore>}::clone"]
+axiom sha2.core_api.Sha512VarCore.Insts.CoreCloneClone.clone
+  : sha2.core_api.Sha512VarCore → Result sha2.core_api.Sha512VarCore
+
+/-- [sha2::core_api::{digest::core_api::UpdateCore<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>>> for sha2::core_api::Sha512VarCore}::update_blocks]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 107:4-107:55
+    Name pattern: [sha2::core_api::{digest::core_api::UpdateCore<sha2::core_api::Sha512VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>>}::update_blocks]
+    Visibility: public -/
+@[rust_fun
+  "sha2::core_api::{digest::core_api::UpdateCore<sha2::core_api::Sha512VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>>}::update_blocks"]
+axiom
+  sha2.core_api.Sha512VarCore.Insts.DigestCore_apiUpdateCoreUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80.update_blocks
+  :
+  sha2.core_api.Sha512VarCore → Slice (generic_array.GenericArray
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB1.Insts.Generic_arrayArrayLengthTGenericArrayImplOdd
+    (typenum.uint.UTerm.Insts.Generic_arrayArrayLengthTArrayT0 Std.U8))))))))))
+    → Result sha2.core_api.Sha512VarCore
+
+/-- [sha2::core_api::{digest::core_api::VariableOutputCore<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>>, typenum::bit::B1> for sha2::core_api::Sha512VarCore}::finalize_variable_core]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 134:4-134:91
+    Name pattern: [sha2::core_api::{digest::core_api::VariableOutputCore<sha2::core_api::Sha512VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>, typenum::bit::B1>}::finalize_variable_core]
+    Visibility: public -/
+@[rust_fun
+  "sha2::core_api::{digest::core_api::VariableOutputCore<sha2::core_api::Sha512VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>, typenum::bit::B1>}::finalize_variable_core"]
+axiom
+  sha2.core_api.Sha512VarCore.Insts.DigestCore_apiVariableOutputCoreUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80UIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80EagerUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80B1.finalize_variable_core
+  :
+  sha2.core_api.Sha512VarCore → block_buffer.BlockBuffer
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB1.Insts.Generic_arrayArrayLengthTGenericArrayImplOdd
+    (typenum.uint.UTerm.Insts.Generic_arrayArrayLengthTArrayT0 Std.U8)))))))))
+    (typenum.type_operators.IsLess.Blanket
+    (typenum.uint.UIntUlB0.Insts.TypenumType_operatorsCmpUIntUrB0Clause2_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB1.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UTerm.Insts.TypenumPrivatePrivateCmpUIntSoFarLess
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit
+    typenum.Greater.Insts.TypenumMarker_traitsOrd)))))))))
+    (typenum.private.IsLessPrivateABLessB1.Blanket (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm
+    typenum.bit.B1) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)))
+    typenum.bit.B1.Insts.TypenumMarker_traitsNonZero
+    block_buffer.Eager.Insts.Block_bufferBufferKind →
+    generic_array.GenericArray
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB1.Insts.Generic_arrayArrayLengthTGenericArrayImplOdd
+    (typenum.uint.UTerm.Insts.Generic_arrayArrayLengthTArrayT0 Std.U8))))))))
+    → Result (sha2.core_api.Sha512VarCore × (block_buffer.BlockBuffer
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB1.Insts.Generic_arrayArrayLengthTGenericArrayImplOdd
+    (typenum.uint.UTerm.Insts.Generic_arrayArrayLengthTArrayT0 Std.U8)))))))))
+    (typenum.type_operators.IsLess.Blanket
+    (typenum.uint.UIntUlB0.Insts.TypenumType_operatorsCmpUIntUrB0Clause2_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB0.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.bit.B0.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UIntUlB1.Insts.TypenumPrivatePrivateCmpUIntUrB0SoFarClause3_Output
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    (typenum.uint.UInt.Insts.TypenumMarker_traitsUnsigned
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit)
+    typenum.Equal.Insts.TypenumMarker_traitsOrd
+    (typenum.uint.UTerm.Insts.TypenumPrivatePrivateCmpUIntSoFarLess
+    typenum.uint.UTerm.Insts.TypenumMarker_traitsUnsigned
+    typenum.bit.B1.Insts.TypenumMarker_traitsBit
+    typenum.Greater.Insts.TypenumMarker_traitsOrd)))))))))
+    (typenum.private.IsLessPrivateABLessB1.Blanket (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt typenum.uint.UTerm
+    typenum.bit.B1) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+    (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+    typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)))
+    typenum.bit.B1.Insts.TypenumMarker_traitsNonZero
+    block_buffer.Eager.Insts.Block_bufferBufferKind) ×
+    (generic_array.GenericArray
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB0.Insts.Generic_arrayArrayLengthTGenericArrayImplEven
+    (typenum.uint.UIntNB1.Insts.Generic_arrayArrayLengthTGenericArrayImplOdd
+    (typenum.uint.UTerm.Insts.Generic_arrayArrayLengthTArrayT0 Std.U8))))))))))
+
+/-- [sha2::core_api::{digest::core_api::VariableOutputCore<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>>, typenum::bit::B1> for sha2::core_api::Sha512VarCore}::new]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 121:4-121:65
+    Name pattern: [sha2::core_api::{digest::core_api::VariableOutputCore<sha2::core_api::Sha512VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>, typenum::bit::B1>}::new]
+    Visibility: public -/
+@[rust_fun
+  "sha2::core_api::{digest::core_api::VariableOutputCore<sha2::core_api::Sha512VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>, typenum::bit::B1>}::new"]
+axiom
+  sha2.core_api.Sha512VarCore.Insts.DigestCore_apiVariableOutputCoreUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80UIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80EagerUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80B1.new
+  :
+  Std.Usize → Result (core.result.Result sha2.core_api.Sha512VarCore
+    digest.InvalidOutputSize)
+
+/-- [sha2::core_api::{digest::core_api::VariableOutputCore<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0usize]>>>>>>>>, typenum::bit::B1> for sha2::core_api::Sha512VarCore}::TRUNC_SIDE]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 118:4-118:31
+    Name pattern: [sha2::core_api::{digest::core_api::VariableOutputCore<sha2::core_api::Sha512VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>, typenum::bit::B1>}::TRUNC_SIDE]
+    Visibility: public -/
+@[rust_const
+  "sha2::core_api::{digest::core_api::VariableOutputCore<sha2::core_api::Sha512VarCore, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>, block_buffer::Eager, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, typenum::bit::B0>, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplEven<u8, generic_array::GenericArrayImplOdd<u8, [u8; 0]>>>>>>>>, typenum::bit::B1>}::TRUNC_SIDE"]
+axiom
+  sha2.core_api.Sha512VarCore.Insts.DigestCore_apiVariableOutputCoreUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80UIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80EagerUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplEvenU8GenericArrayImplOddU8ArrayU80B1.TRUNC_SIDE
+  : Result digest.core_api.TruncSide
+
+/-- [subtle::{core::convert::From<subtle::Choice> for bool}::from]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/subtle-2.6.1/src/lib.rs', lines 153:4-153:35
+    Name pattern: [subtle::{core::convert::From<bool, subtle::Choice>}::from]
+    Visibility: public -/
+@[rust_fun "subtle::{core::convert::From<bool, subtle::Choice>}::from"]
+axiom Bool.Insts.CoreConvertFromChoice.from : subtle.Choice → Result Bool
+
+/-- [subtle::{subtle::ConstantTimeEq for [T]}::ct_eq]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/subtle-2.6.1/src/lib.rs', lines 313:4-313:41
+    Name pattern: [subtle::{subtle::ConstantTimeEq<[@T]>}::ct_eq]
+    Visibility: public -/
+@[rust_fun "subtle::{subtle::ConstantTimeEq<[@T]>}::ct_eq"]
+axiom Slice.Insts.SubtleConstantTimeEq.ct_eq
+  {T : Type} (ConstantTimeEqInst : subtle.ConstantTimeEq T) :
+  Slice T → Slice T → Result subtle.Choice
+
+/-- [subtle::{subtle::ConstantTimeEq for u8}::ct_eq]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/subtle-2.6.1/src/lib.rs', lines 348:12-348:51
+    Name pattern: [subtle::{subtle::ConstantTimeEq<u8>}::ct_eq]
+    Visibility: public -/
+@[rust_fun "subtle::{subtle::ConstantTimeEq<u8>}::ct_eq"]
+axiom U8.Insts.SubtleConstantTimeEq.ct_eq
+  : Std.U8 → Std.U8 → Result subtle.Choice
+
+/-- [typenum::private::{typenum::private::IsLessOrEqualPrivate<B, typenum::Equal, typenum::bit::B1> for A}::is_less_or_equal_private]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/private.rs', lines 509:4-509:69
+    Name pattern: [typenum::private::{typenum::private::IsLessOrEqualPrivate<@A, @B, typenum::Equal, typenum::bit::B1>}::is_less_or_equal_private]
+    Visibility: public -/
+@[rust_fun
+  "typenum::private::{typenum::private::IsLessOrEqualPrivate<@A, @B, typenum::Equal, typenum::bit::B1>}::is_less_or_equal_private"]
+axiom
+  typenum.private.IsLessOrEqualPrivateABEqualB1.Blanket.is_less_or_equal_private
+  {A : Type} {B : Type} : A → B → typenum.Equal → Result typenum.bit.B1
+
+/-- [typenum::type_operators::{typenum::type_operators::IsLessOrEqual<B, Clause1_Output> for A}::is_less_or_equal]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/type_operators.rs', lines 459:4-459:53
+    Name pattern: [typenum::type_operators::{typenum::type_operators::IsLessOrEqual<@A, @B, @Clause1_Output>}::is_less_or_equal]
+    Visibility: public -/
+@[rust_fun
+  "typenum::type_operators::{typenum::type_operators::IsLessOrEqual<@A, @B, @Clause1_Output>}::is_less_or_equal"]
+axiom typenum.type_operators.IsLessOrEqual.Blanket.is_less_or_equal
+  {A : Type} {B : Type} {Clause0_Output : Type} {Clause1_Output : Type}
+  (CmpInst : typenum.type_operators.Cmp A B Clause0_Output)
+  (privateIsLessOrEqualPrivateInst : typenum.private.IsLessOrEqualPrivate A B
+  Clause0_Output Clause1_Output) :
+  A → B → Result Clause1_Output
+
+/-- [typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UInt<Ur, typenum::bit::B1>, SoFar, Clause3_Output> for typenum::uint::UInt<Ul, typenum::bit::B1>}::private_cmp]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 1291:4-1291:76
+    Name pattern: [typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UInt<@Ul, typenum::bit::B1>, typenum::uint::UInt<@Ur, typenum::bit::B1>, @SoFar, @Clause3_Output>}::private_cmp]
+    Visibility: public -/
+@[rust_fun
+  "typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UInt<@Ul, typenum::bit::B1>, typenum::uint::UInt<@Ur, typenum::bit::B1>, @SoFar, @Clause3_Output>}::private_cmp"]
+axiom
+  typenum.uint.UIntUlB1.Insts.TypenumPrivatePrivateCmpUIntUrB1SoFarClause3_Output.private_cmp
+  {Ul : Type} {Ur : Type} {SoFar : Type} {Clause3_Output : Type}
+  (marker_traitsUnsignedInst : typenum.marker_traits.Unsigned Ul)
+  (marker_traitsUnsignedInst1 : typenum.marker_traits.Unsigned Ur)
+  (marker_traitsOrdInst : typenum.marker_traits.Ord SoFar)
+  (privatePrivateCmpInst : typenum.private.PrivateCmp Ul Ur SoFar
+  Clause3_Output) :
+  typenum.uint.UInt Ul typenum.bit.B1 → typenum.uint.UInt Ur typenum.bit.B1
+    → SoFar → Result Clause3_Output
+
+/-- [typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UTerm, SoFar, SoFar> for typenum::uint::UTerm}::private_cmp]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/uint.rs', lines 1355:4-1355:67
+    Name pattern: [typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UTerm, typenum::uint::UTerm, @SoFar, @SoFar>}::private_cmp]
+    Visibility: public -/
+@[rust_fun
+  "typenum::uint::{typenum::private::PrivateCmp<typenum::uint::UTerm, typenum::uint::UTerm, @SoFar, @SoFar>}::private_cmp"]
+axiom
+  typenum.uint.UTerm.Insts.TypenumPrivatePrivateCmpUTermSoFarSoFar.private_cmp
+  {SoFar : Type} (marker_traitsOrdInst : typenum.marker_traits.Ord SoFar) :
+  typenum.uint.UTerm → typenum.uint.UTerm → SoFar → Result SoFar
+
 /-- [signal_crypto::aes_cbc::aes_256_cbc_encrypt]:
-    Source: 'rust/crypto/src/aes_cbc.rs', lines 27:0-36:1
+    Source: 'rust/crypto/src/aes_cbc.rs', lines 26:0-35:1
     Visibility: public -/
 axiom aes_cbc.aes_256_cbc_encrypt
   :
@@ -791,7 +1975,7 @@ axiom aes_cbc.aes_256_cbc_encrypt
     (alloc.vec.Vec Std.U8) aes_cbc.EncryptionError)
 
 /-- [signal_crypto::aes_cbc::aes_256_cbc_decrypt]:
-    Source: 'rust/crypto/src/aes_cbc.rs', lines 39:0-55:1
+    Source: 'rust/crypto/src/aes_cbc.rs', lines 37:0-53:1
     Visibility: public -/
 axiom aes_cbc.aes_256_cbc_decrypt
   :
@@ -799,7 +1983,7 @@ axiom aes_cbc.aes_256_cbc_decrypt
     (alloc.vec.Vec Std.U8) aes_cbc.DecryptionError)
 
 /-- [signal_crypto::aes_ctr::{signal_crypto::aes_ctr::Aes256Ctr32}::new]:
-    Source: 'rust/crypto/src/aes_ctr.rs', lines 20:4-35:5
+    Source: 'rust/crypto/src/aes_ctr.rs', lines 21:4-36:5
     Visibility: public -/
 axiom aes_ctr.Aes256Ctr32.new
   :
@@ -815,7 +1999,7 @@ axiom aes_ctr.Aes256Ctr32.from_key
     aes_ctr.Aes256Ctr32 error.Error)
 
 /-- [signal_crypto::aes_ctr::{signal_crypto::aes_ctr::Aes256Ctr32}::process]:
-    Source: 'rust/crypto/src/aes_ctr.rs', lines 47:4-49:5
+    Source: 'rust/crypto/src/aes_ctr.rs', lines 46:4-48:5
     Visibility: public -/
 axiom aes_ctr.Aes256Ctr32.process
   :
@@ -823,24 +2007,33 @@ axiom aes_ctr.Aes256Ctr32.process
     (Slice Std.U8))
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::GcmGhash}::update]:
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 47:4-91:5 -/
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 44:4-88:5 -/
 axiom aes_gcm.GcmGhash.update
   : aes_gcm.GcmGhash → Slice Std.U8 → Result aes_gcm.GcmGhash
 
 /-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::GcmGhash}::finalize]:
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 94:4-112:5 -/
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 90:4-108:5 -/
 axiom aes_gcm.GcmGhash.finalize
   : aes_gcm.GcmGhash → Result (Array Std.U8 16#usize)
 
-/-- [signal_crypto::aes_gcm::setup_gcm]:
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 116:0-136:1 -/
-axiom aes_gcm.setup_gcm
+/-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmEncryption}::new]:
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 142:4-145:5
+    Visibility: public -/
+axiom aes_gcm.Aes256GcmEncryption.new
   :
   Slice Std.U8 → Slice Std.U8 → Slice Std.U8 → Result (core.result.Result
-    (aes_ctr.Aes256Ctr32 × aes_gcm.GcmGhash) error.Error)
+    aes_gcm.Aes256GcmEncryption error.Error)
+
+/-- [signal_crypto::aes_gcm::{signal_crypto::aes_gcm::Aes256GcmDecryption}::new]:
+    Source: 'rust/crypto/src/aes_gcm.rs', lines 166:4-169:5
+    Visibility: public -/
+axiom aes_gcm.Aes256GcmDecryption.new
+  :
+  Slice Std.U8 → Slice Std.U8 → Slice Std.U8 → Result (core.result.Result
+    aes_gcm.Aes256GcmDecryption error.Error)
 
 /-- [signal_crypto::hash::{signal_crypto::hash::CryptographicMac}::new]:
-    Source: 'rust/crypto/src/hash.rs', lines 21:4-31:5
+    Source: 'rust/crypto/src/hash.rs', lines 20:4-30:5
     Visibility: public -/
 axiom hash.CryptographicMac.new
   :
@@ -848,13 +2041,13 @@ axiom hash.CryptographicMac.new
     error.Error)
 
 /-- [signal_crypto::hash::{signal_crypto::hash::CryptographicMac}::update]:
-    Source: 'rust/crypto/src/hash.rs', lines 34:4-39:5
+    Source: 'rust/crypto/src/hash.rs', lines 32:4-37:5
     Visibility: public -/
 axiom hash.CryptographicMac.update
   : hash.CryptographicMac → Slice Std.U8 → Result hash.CryptographicMac
 
 /-- [signal_crypto::hash::{signal_crypto::hash::CryptographicMac}::finalize]:
-    Source: 'rust/crypto/src/hash.rs', lines 47:4-52:5
+    Source: 'rust/crypto/src/hash.rs', lines 44:4-49:5
     Visibility: public -/
 axiom hash.CryptographicMac.finalize
   :
@@ -862,19 +2055,19 @@ axiom hash.CryptographicMac.finalize
     hash.CryptographicMac)
 
 /-- [signal_crypto::hash::{signal_crypto::hash::CryptographicHash}::new]:
-    Source: 'rust/crypto/src/hash.rs', lines 65:4-72:5
+    Source: 'rust/crypto/src/hash.rs', lines 60:4-67:5
     Visibility: public -/
 axiom hash.CryptographicHash.new
   : Str → Result (core.result.Result hash.CryptographicHash error.Error)
 
 /-- [signal_crypto::hash::{signal_crypto::hash::CryptographicHash}::update]:
-    Source: 'rust/crypto/src/hash.rs', lines 75:4-81:5
+    Source: 'rust/crypto/src/hash.rs', lines 69:4-75:5
     Visibility: public -/
 axiom hash.CryptographicHash.update
   : hash.CryptographicHash → Slice Std.U8 → Result hash.CryptographicHash
 
 /-- [signal_crypto::hash::{signal_crypto::hash::CryptographicHash}::finalize]:
-    Source: 'rust/crypto/src/hash.rs', lines 84:4-90:5
+    Source: 'rust/crypto/src/hash.rs', lines 77:4-83:5
     Visibility: public -/
 axiom hash.CryptographicHash.finalize
   :

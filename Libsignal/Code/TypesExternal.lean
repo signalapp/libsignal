@@ -17,19 +17,19 @@ set_option maxHeartbeats 1000000
 @[rust_type "core::num::error::TryFromIntError"]
 axiom core.num.error.TryFromIntError : Type
 
-/-- [core::num::niche_types::NonZeroU8Inner]
-    Source: '/rustc/library/core/src/num/niche_types.rs', lines 22:8-22:32
-    Name pattern: [core::num::niche_types::NonZeroU8Inner]
-    Visibility: public -/
-@[rust_type "core::num::niche_types::NonZeroU8Inner"]
-axiom core.num.niche_types.NonZeroU8Inner : Type
-
 /-- [core::num::niche_types::NonZeroU64Inner]
     Source: '/rustc/library/core/src/num/niche_types.rs', lines 22:8-22:32
     Name pattern: [core::num::niche_types::NonZeroU64Inner]
     Visibility: public -/
 @[rust_type "core::num::niche_types::NonZeroU64Inner"]
 axiom core.num.niche_types.NonZeroU64Inner : Type
+
+/-- [core::num::niche_types::NonZeroU8Inner]
+    Source: '/rustc/library/core/src/num/niche_types.rs', lines 22:8-22:32
+    Name pattern: [core::num::niche_types::NonZeroU8Inner]
+    Visibility: public -/
+@[rust_type "core::num::niche_types::NonZeroU8Inner"]
+axiom core.num.niche_types.NonZeroU8Inner : Type
 
 /-- [core::num::nonzero::NonZero]
     Source: '/rustc/library/core/src/num/nonzero.rs', lines 127:0-127:40
@@ -69,6 +69,25 @@ axiom inout.inout.InOut (T : Type) : Type
 axiom generic_array.GenericArray {T : Type} {U : Type} {Clause0_ArrayType :
   Type} (ArrayLengthInst : generic_array.ArrayLength U T Clause0_ArrayType) :
   Type
+
+/-- [block_buffer::BlockBuffer]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-buffer-0.10.4/src/lib.rs', lines 55:0-55:39
+    Name pattern: [block_buffer::BlockBuffer]
+    Visibility: public -/
+@[rust_type "block_buffer::BlockBuffer"]
+axiom block_buffer.BlockBuffer {BlockSize : Type} {Kind : Type}
+  {Clause0_ArrayType : Type} {Clause1_Output : Type}
+  (generic_arrayArrayLengthBlockSizeU8Clause0_ArrayTypeInst :
+  generic_array.ArrayLength BlockSize Std.U8 Clause0_ArrayType)
+  (typenumtype_operatorsIsLessBlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Clause1_OutputInst
+  : typenum.type_operators.IsLess BlockSize (typenum.uint.UInt
+  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+  typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0) typenum.bit.B0)
+  typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+  typenum.bit.B0) typenum.bit.B0) Clause1_Output)
+  (typenummarker_traitsNonZeroInst : typenum.marker_traits.NonZero
+  Clause1_Output) (BufferKindInst : block_buffer.BufferKind Kind) : Type
 
 /-- [cipher::stream_wrapper::StreamCipherCoreWrapper]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cipher-0.4.4/src/stream_wrapper.rs', lines 17:0-17:52
@@ -124,6 +143,60 @@ axiom ctr.flavors.ctr32.CtrNonce32 {N : Type} {Clause0_ArrayType : Type}
   (generic_arrayArrayLengthNU32Clause0_ArrayTypeInst :
   generic_array.ArrayLength N Std.U32 Clause0_ArrayType) : Type
 
+/-- [digest::core_api::ct_variable::CtVariableCoreWrapper]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api/ct_variable.rs', lines 25:0-25:55
+    Name pattern: [digest::core_api::ct_variable::CtVariableCoreWrapper]
+    Visibility: public -/
+@[rust_type "digest::core_api::ct_variable::CtVariableCoreWrapper"]
+axiom digest.core_api.ct_variable.CtVariableCoreWrapper {T : Type} {OutSize :
+  Type} (O : Type) {Clause0_Clause0_Clause0_BlockSize : Type}
+  {Clause0_Clause0_Clause0_Clause0_ArrayType : Type}
+  {Clause0_Clause1_OutputSize : Type} {Clause0_Clause1_Clause0_ArrayType :
+  Type} {Clause0_Clause2_BufferKind : Type} {Clause0_Clause2_Clause0_BlockSize
+  : Type} {Clause0_Clause2_Clause0_Clause0_ArrayType : Type}
+  {Clause0_Clause3_Output : Type} {Clause1_ArrayType : Type} {Clause2_Output :
+  Type} {Clause4_Output : Type} (VariableOutputCoreInst :
+  digest.core_api.VariableOutputCore T Clause0_Clause0_Clause0_BlockSize
+  Clause0_Clause0_Clause0_Clause0_ArrayType Clause0_Clause1_OutputSize
+  Clause0_Clause1_Clause0_ArrayType Clause0_Clause2_BufferKind
+  Clause0_Clause2_Clause0_BlockSize Clause0_Clause2_Clause0_Clause0_ArrayType
+  Clause0_Clause3_Output)
+  (generic_arrayArrayLengthOutSizeU8Clause1_ArrayTypeInst :
+  generic_array.ArrayLength OutSize Std.U8 Clause1_ArrayType)
+  (typenumtype_operatorsIsLessOrEqualInst :
+  typenum.type_operators.IsLessOrEqual OutSize Clause0_Clause1_OutputSize
+  Clause2_Output) (typenummarker_traitsNonZeroInst :
+  typenum.marker_traits.NonZero Clause2_Output)
+  (typenumtype_operatorsIsLessClause0_Clause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Clause4_OutputInst
+  : typenum.type_operators.IsLess Clause0_Clause0_Clause0_BlockSize
+  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+  (typenum.uint.UInt typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0)
+  typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+  typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) Clause4_Output)
+  (typenummarker_traitsNonZeroInst1 : typenum.marker_traits.NonZero
+  Clause4_Output) : Type
+
+/-- [digest::core_api::wrapper::CoreWrapper]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/digest-0.10.7/src/core_api/wrapper.rs', lines 24:0-24:25
+    Name pattern: [digest::core_api::wrapper::CoreWrapper]
+    Visibility: public -/
+@[rust_type "digest::core_api::wrapper::CoreWrapper"]
+axiom digest.core_api.wrapper.CoreWrapper {T : Type} {Clause0_BufferKind :
+  Type} {Clause0_Clause0_BlockSize : Type} {Clause0_Clause0_Clause0_ArrayType :
+  Type} {Clause1_Output : Type} (BufferKindUserInst :
+  digest.core_api.BufferKindUser T Clause0_BufferKind Clause0_Clause0_BlockSize
+  Clause0_Clause0_Clause0_ArrayType)
+  (typenumtype_operatorsIsLessClause0_Clause0_BlockSizeUIntUIntUIntUIntUIntUIntUIntUIntUIntUTermB1B0B0B0B0B0B0B0B0Clause1_OutputInst
+  : typenum.type_operators.IsLess Clause0_Clause0_BlockSize (typenum.uint.UInt
+  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+  (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt (typenum.uint.UInt
+  typenum.uint.UTerm typenum.bit.B1) typenum.bit.B0) typenum.bit.B0)
+  typenum.bit.B0) typenum.bit.B0) typenum.bit.B0) typenum.bit.B0)
+  typenum.bit.B0) typenum.bit.B0) Clause1_Output)
+  (typenummarker_traitsNonZeroInst : typenum.marker_traits.NonZero
+  Clause1_Output) : Type
+
 /-- [generic_array::GenericArrayImplEven]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/lib.rs', lines 126:0-126:37
     Name pattern: [generic_array::GenericArrayImplEven]
@@ -137,6 +210,13 @@ axiom generic_array.GenericArrayImplEven (T : Type) (U : Type) : Type
     Visibility: public -/
 @[rust_type "generic_array::GenericArrayImplOdd"]
 axiom generic_array.GenericArrayImplOdd (T : Type) (U : Type) : Type
+
+/-- [ghash::GHash]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ghash-0.5.1/src/lib.rs', lines 58:0-58:16
+    Name pattern: [ghash::GHash]
+    Visibility: public -/
+@[rust_type "ghash::GHash"]
+axiom ghash.GHash : Type
 
 /-- [uuid::Uuid]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.19.0/src/lib.rs', lines 457:0-457:15
@@ -152,6 +232,27 @@ axiom uuid.Uuid : Type
 @[rust_type "uuid::error::Error"]
 axiom uuid.error.Error : Type
 
+/-- [sha1::Sha1Core]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha1-0.10.6/src/lib.rs', lines 77:0-77:19
+    Name pattern: [sha1::Sha1Core]
+    Visibility: public -/
+@[rust_type "sha1::Sha1Core"]
+axiom sha1.Sha1Core : Type
+
+/-- [sha2::core_api::Sha256VarCore]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 18:0-18:24
+    Name pattern: [sha2::core_api::Sha256VarCore]
+    Visibility: public -/
+@[rust_type "sha2::core_api::Sha256VarCore"]
+axiom sha2.core_api.Sha256VarCore : Type
+
+/-- [sha2::core_api::Sha512VarCore]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha2-0.10.9/src/core_api.rs', lines 90:0-90:24
+    Name pattern: [sha2::core_api::Sha512VarCore]
+    Visibility: public -/
+@[rust_type "sha2::core_api::Sha512VarCore"]
+axiom sha2.core_api.Sha512VarCore : Type
+
 /-- [subtle::Choice]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/subtle-2.6.1/src/lib.rs', lines 120:0-120:17
     Name pattern: [subtle::Choice]
@@ -159,27 +260,22 @@ axiom uuid.error.Error : Type
 @[rust_type "subtle::Choice"]
 axiom subtle.Choice : Type
 
--- [typenum::private::InvertedUInt]: simplified to break circular import
--- (original references typenum traits defined in Types.lean)
+/-- [typenum::private::InvertedUInt]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.19.0/src/private.rs', lines 74:0-74:53
+    Name pattern: [typenum::private::InvertedUInt]
+    Visibility: public -/
 @[rust_type "typenum::private::InvertedUInt"]
-axiom typenum.private.InvertedUInt (IU : Type) (B : Type) : Type
+axiom typenum.private.InvertedUInt {IU : Type} {B : Type} (InvertedUnsignedInst
+  : typenum.private.InvertedUnsigned IU) (marker_traitsBitInst :
+  typenum.marker_traits.Bit B) : Type
 
 /-- [signal_crypto::aes_ctr::Aes256Ctr32]
-    Source: 'rust/crypto/src/aes_ctr.rs', lines 14:0-14:54
+    Source: 'rust/crypto/src/aes_ctr.rs', lines 16:0-16:54
     Visibility: public -/
 axiom aes_ctr.Aes256Ctr32 : Type
-
-/-- [signal_crypto::aes_gcm::GcmGhash]
-    Source: 'rust/crypto/src/aes_gcm.rs', lines 20:0-27:1 -/
-axiom aes_gcm.GcmGhash : Type
 
 /-- [signal_crypto::hash::CryptographicMac]
     Source: 'rust/crypto/src/hash.rs', lines 14:0-17:1
     Visibility: public -/
 axiom hash.CryptographicMac : Type
-
-/-- [signal_crypto::hash::CryptographicHash]
-    Source: 'rust/crypto/src/hash.rs', lines 57:0-61:1
-    Visibility: public -/
-axiom hash.CryptographicHash : Type
 
