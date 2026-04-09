@@ -444,8 +444,8 @@ public final class ZkGroupTest extends SecureRandomTest {
             createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, profileKeyCredential);
     assertEquals(
         presentation.serialize()[0],
-        2); // Check V3 (versions start from 1 but are encoded starting from 0)
-    assertEquals(presentation.getVersion(), ProfileKeyCredentialPresentation.Version.V3);
+        3); // Check V4 (versions start from 1 but are encoded starting from 0)
+    assertEquals(presentation.getVersion(), ProfileKeyCredentialPresentation.Version.V4);
 
     // Verify presentation
     serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentation);

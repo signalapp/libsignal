@@ -217,7 +217,7 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
     // Create presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
 
-    let presentation: zkgroup::profiles::ExpiringProfileKeyCredentialPresentation =
+    let presentation: zkgroup::profiles::ExpiringProfileKeyCredentialPresentationV2 =
         server_public_params.create_expiring_profile_key_credential_presentation(
             randomness,
             group_secret_params,
@@ -230,7 +230,7 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
                 randomness,
                 group_secret_params,
                 profile_key_credential,
-            ) as zkgroup::profiles::ExpiringProfileKeyCredentialPresentation
+            ) as zkgroup::profiles::ExpiringProfileKeyCredentialPresentationV2
         })
     });
 

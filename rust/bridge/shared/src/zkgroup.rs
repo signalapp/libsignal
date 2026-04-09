@@ -258,7 +258,7 @@ fn ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministi
             *randomness,
             group_secret_params.into_inner(),
             profile_key_credential.into_inner(),
-        ) as &zkgroup::profiles::ExpiringProfileKeyCredentialPresentation,
+        ) as &zkgroup::profiles::ExpiringProfileKeyCredentialPresentationV2,
     )
 }
 
