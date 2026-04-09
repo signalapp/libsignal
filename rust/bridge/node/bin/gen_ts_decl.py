@@ -88,6 +88,8 @@ def translate_to_ts(typ: str) -> str:
         '&BackupKey': 'Uint8Array<ArrayBuffer>',
         'MultiRecipientSendAuthorization': 'Uint8Array<ArrayBuffer> | null',
         'DisconnectCause': 'Error | null',
+        '::zkgroup::backups::BackupAuthCredential': 'Uint8Array<ArrayBuffer>',
+        '::zkgroup::generic_server_params::GenericServerPublicParams': 'Uint8Array<ArrayBuffer>',
     }
 
     if typ in type_map:

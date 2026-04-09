@@ -17,7 +17,8 @@ import java.io.IOException
 public class RequestUnauthorizedException :
   IOException,
   MultiRecipientSendFailure,
-  GetPreKeysError {
+  GetPreKeysError,
+  GetUploadFormError {
   @CalledFromNative
   public constructor(message: String) : super(message) {
   }

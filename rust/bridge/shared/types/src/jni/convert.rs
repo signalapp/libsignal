@@ -21,6 +21,7 @@ use paste::paste;
 use zkgroup::groups::GroupSendFullToken;
 
 use super::*;
+use crate::crypto::RandomNumberGenerator;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::{
@@ -254,6 +255,16 @@ impl SimpleArgTypeInfo<'_> for crate::protocol::Timestamp {
     }
 }
 
+impl SimpleArgTypeInfo<'_> for RandomNumberGenerator {
+    type ArgType = jlong;
+    fn convert_from(
+        _env: &mut JNIEnv<'_>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        Ok((*foreign).into())
+    }
+}
+
 /// Supports values `0..=Long.MAX_VALUE`.
 ///
 /// Negative `long` values are *not* reinterpreted as large `u64` values.
@@ -414,20 +425,27 @@ impl<'a> SimpleArgTypeInfo<'a>
     }
 }
 
-impl<'a> SimpleArgTypeInfo<'a> for GroupSendFullToken {
-    type ArgType = JByteArray<'a>;
-    fn convert_from(
-        env: &mut JNIEnv<'a>,
-        foreign: &Self::ArgType,
-    ) -> Result<Self, BridgeLayerError> {
-        let mut elements_guard = <&[u8]>::borrow(env, foreign)?;
-        let bytes = <&[u8]>::load_from(&mut elements_guard);
-        let token = zkgroup::deserialize(bytes).map_err(|_: ZkGroupDeserializationFailure| {
-            BridgeLayerError::BadArgument("bad GroupSendFullToken".into())
-        })?;
-        Ok(token)
-    }
+macro_rules! zkgroup_serialize_type {
+    ($($ty:ty),*$(,)?) => {$(
+        impl<'a> SimpleArgTypeInfo<'a> for $ty {
+            type ArgType = JByteArray<'a>;
+            fn convert_from(
+                env: &mut JNIEnv<'a>,
+                foreign: &Self::ArgType,
+            ) -> Result<Self, BridgeLayerError> {
+                let mut elements_guard = <&[u8]>::borrow(env, foreign)?;
+                let bytes = <&[u8]>::load_from(&mut elements_guard);
+                let token = zkgroup::deserialize(bytes).map_err(|_: ZkGroupDeserializationFailure| {
+                    BridgeLayerError::BadArgument(concat!("bad ", stringify!($ty)).into())
+                })?;
+                Ok(token)
+            }
+        }
+    )*};
 }
+zkgroup_serialize_type!(GroupSendFullToken);
+zkgroup_serialize_type!(zkgroup::backups::BackupAuthCredential);
+zkgroup_serialize_type!(zkgroup::generic_server_params::GenericServerPublicParams);
 
 impl<'a> SimpleArgTypeInfo<'a> for Box<[u8]> {
     type ArgType = JByteArray<'a>;
@@ -2738,10 +2756,19 @@ macro_rules! jni_arg_type {
     (ServiceIdSequence<'_>) => {
         ::jni::objects::JByteArray<'local>
     };
+    (::zkgroup::backups::BackupAuthCredential) => {
+        ::jni::objects::JByteArray<'local>
+    };
+    (::zkgroup::generic_server_params::GenericServerPublicParams) => {
+        ::jni::objects::JByteArray<'local>
+    };
     (Vec<&[u8]>) => {
         jni::JavaByteBufferArray<'local>
     };
     (Timestamp) => {
+        ::jni::sys::jlong
+    };
+    (RandomNumberGenerator) => {
         ::jni::sys::jlong
     };
     (Uuid) => {

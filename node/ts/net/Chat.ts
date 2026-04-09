@@ -24,6 +24,13 @@ export type RequestOptions = {
   abortSignal?: AbortSignal;
 };
 
+export type UploadForm = {
+  cdn: number;
+  key: string;
+  headers: Map<string, string>;
+  signedUploadUrl: URL;
+};
+
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
 
 export class ChatServerMessageAck {

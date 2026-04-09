@@ -6,7 +6,6 @@
 import { config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 
-import { Buffer } from 'node:buffer';
 import * as Native from '../../Native.js';
 import * as util from '../util.js';
 import { TokioAsyncContext, UnauthKeysService } from '../../net.js';
@@ -15,6 +14,7 @@ import { Aci } from '../../Address.js';
 import { GroupSendFullToken } from '../../zkgroup/index.js';
 import { PublicKey } from '../../EcKeys.js';
 import { ErrorCode, KEMPublicKey, LibSignalErrorBase } from '../../index.js';
+import { fromBase64, toBase64 } from '../util.js';
 
 use(chaiAsPromised);
 
@@ -54,14 +54,6 @@ describe('UnauthKeysService', () => {
     const TEST_GROUP_SEND_TOKEN = new GroupSendFullToken(
       fromBase64('ABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABo5c+LAQAA')
     );
-
-    function fromBase64(base64: string): Uint8Array<ArrayBuffer> {
-      return Uint8Array.from(Buffer.from(base64, 'base64'));
-    }
-
-    function toBase64(buffer: Uint8Array<ArrayBuffer>): string {
-      return Buffer.from(buffer).toString('base64');
-    }
 
     function repeatedBytes(
       fill: number,

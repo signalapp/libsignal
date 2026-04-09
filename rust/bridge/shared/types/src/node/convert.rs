@@ -21,6 +21,7 @@ use zkgroup::ZkGroupDeserializationFailure;
 use zkgroup::groups::GroupSendFullToken;
 
 use super::*;
+use crate::crypto::RandomNumberGenerator;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::{
@@ -305,6 +306,7 @@ fn can_convert_js_number_to_int(value: f64, valid_range: RangeInclusive<f64>) ->
 // 2**53 - 1, the maximum "safe" integer representable in an f64.
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
 pub(super) const MAX_SAFE_JS_INTEGER: f64 = 9007199254740991.0;
+pub(super) const MIN_SAFE_JS_INTEGER: f64 = -9007199254740991.0;
 
 /// Converts non-negative numbers up to [`Number.MAX_SAFE_INTEGER`][].
 ///
@@ -318,6 +320,18 @@ impl SimpleArgTypeInfo for crate::protocol::Timestamp {
         }
         #[expect(clippy::cast_possible_truncation)]
         Ok(Self::from_epoch_millis(value as u64))
+    }
+}
+
+impl SimpleArgTypeInfo for RandomNumberGenerator {
+    type ArgType = JsNumber;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let value = foreign.value(cx);
+        if !can_convert_js_number_to_int(value, MIN_SAFE_JS_INTEGER..=MAX_SAFE_JS_INTEGER) {
+            return cx.throw_range_error(format!("cannot convert {value} to RNG seed (u64)"));
+        }
+        #[expect(clippy::cast_possible_truncation)]
+        Ok(Self::from(value as i64))
     }
 }
 
@@ -542,17 +556,24 @@ impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSend
     }
 }
 
-impl SimpleArgTypeInfo for GroupSendFullToken {
-    type ArgType = JsUint8Array;
+macro_rules! zkgroup_serialize_type {
+    ($($ty:ty),*$(,)?) => {$(
+        impl SimpleArgTypeInfo for $ty {
+            type ArgType = JsUint8Array;
 
-    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
-        let elements = foreign.downcast_or_throw::<JsUint8Array, _>(cx)?;
-        let bytes = elements.as_slice(cx);
-        zkgroup::deserialize(bytes).or_else(|_: ZkGroupDeserializationFailure| {
-            cx.throw_type_error("bad GroupSendFullToken")
-        })
-    }
+            fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+                let elements = foreign.downcast_or_throw::<JsUint8Array, _>(cx)?;
+                let bytes = elements.as_slice(cx);
+                zkgroup::deserialize(bytes).or_else(|_: ZkGroupDeserializationFailure| {
+                    cx.throw_type_error(concat!("bad ", stringify!($ty)))
+                })
+            }
+        }
+    )*};
 }
+zkgroup_serialize_type!(GroupSendFullToken);
+zkgroup_serialize_type!(zkgroup::backups::BackupAuthCredential);
+zkgroup_serialize_type!(zkgroup::generic_server_params::GenericServerPublicParams);
 
 // Used for callback results.
 impl SimpleArgTypeInfo for () {

@@ -14,6 +14,7 @@ use libsignal_account_keys::Error as PinError;
 use libsignal_net::infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net_chat::api::RateLimitChallenge;
+use libsignal_net_chat::api::backups::GetUploadFormFailure;
 use libsignal_net_chat::api::keys::GetPreKeysFailure;
 use libsignal_net_chat::api::keytrans::Error as KeyTransError;
 use libsignal_net_chat::api::messages::{MismatchedDeviceError, UploadTooLarge};
@@ -762,6 +763,18 @@ impl FfiError for libsignal_net_chat::api::messages::MultiRecipientSendFailure {
 impl IntoFfiError for UploadTooLarge {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         SimpleError::new(SignalErrorCode::UploadTooLarge, self.to_string())
+    }
+}
+
+impl IntoFfiError for GetUploadFormFailure {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(
+            match self {
+                GetUploadFormFailure::Unauthorized => SignalErrorCode::RequestUnauthorized,
+                GetUploadFormFailure::UploadTooLarge => SignalErrorCode::UploadTooLarge,
+            },
+            self.to_string(),
+        )
     }
 }
 

@@ -131,6 +131,8 @@ export type UploadForm = {
 
 export type AccountEntropyPool = string;
 
+export type RandomNumberGenerator = number;
+
 export type CancellablePromise<T> = Promise<T> & {
   _cancellationToken: bigint;
 };
@@ -504,6 +506,8 @@ type NativeFunctions = {
   UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, target: Uint8Array<ArrayBuffer>, device: number) => CancellablePromise<PreKeysResponse>;
   UnauthenticatedChatConnection_account_exists: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, account: Uint8Array<ArrayBuffer>) => CancellablePromise<boolean>;
   AuthenticatedChatConnection_get_upload_form: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>, uploadLength: bigint) => CancellablePromise<UploadForm>;
+  UnauthenticatedChatConnection_backup_get_upload_form: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, credential: Uint8Array<ArrayBuffer>, serverKeys: Uint8Array<ArrayBuffer>, signingKey: Wrapper<PrivateKey>, uploadSize: bigint, rng: RandomNumberGenerator) => CancellablePromise<UploadForm>;
+  UnauthenticatedChatConnection_backup_get_media_upload_form: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, credential: Uint8Array<ArrayBuffer>, serverKeys: Uint8Array<ArrayBuffer>, signingKey: Wrapper<PrivateKey>, uploadSize: bigint, rng: RandomNumberGenerator) => CancellablePromise<UploadForm>;
   KeyTransparency_AciSearchKey: (aci: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
   KeyTransparency_E164SearchKey: (e164: string) => Uint8Array<ArrayBuffer>;
   KeyTransparency_UsernameHashSearchKey: (hash: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
@@ -645,6 +649,7 @@ type NativeFunctions = {
   TESTING_RoundTripU64: (input: bigint) => bigint;
   TESTING_ConvertOptionalUuid: (present: boolean) => Uuid | null;
   TESTING_InputStreamReadIntoZeroLengthSlice: (capsAlphabetInput: InputStream) => Promise<Uint8Array<ArrayBuffer>>;
+  TESTING_EnableDeterministicRngForTesting: () => void;
   ComparableBackup_ReadUnencrypted: (stream: InputStream, len: bigint, purpose: number) => Promise<ComparableBackup>;
   ComparableBackup_GetComparableString: (backup: Wrapper<ComparableBackup>) => string;
   ComparableBackup_GetUnknownFields: (backup: Wrapper<ComparableBackup>) => string[];
@@ -1062,6 +1067,8 @@ const { registerErrors,
   UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,
   UnauthenticatedChatConnection_account_exists,
   AuthenticatedChatConnection_get_upload_form,
+  UnauthenticatedChatConnection_backup_get_upload_form,
+  UnauthenticatedChatConnection_backup_get_media_upload_form,
   KeyTransparency_AciSearchKey,
   KeyTransparency_E164SearchKey,
   KeyTransparency_UsernameHashSearchKey,
@@ -1203,6 +1210,7 @@ const { registerErrors,
   TESTING_RoundTripU64,
   TESTING_ConvertOptionalUuid,
   TESTING_InputStreamReadIntoZeroLengthSlice,
+  TESTING_EnableDeterministicRngForTesting,
   ComparableBackup_ReadUnencrypted,
   ComparableBackup_GetComparableString,
   ComparableBackup_GetUnknownFields,
@@ -1622,6 +1630,8 @@ export { registerErrors,
   UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,
   UnauthenticatedChatConnection_account_exists,
   AuthenticatedChatConnection_get_upload_form,
+  UnauthenticatedChatConnection_backup_get_upload_form,
+  UnauthenticatedChatConnection_backup_get_media_upload_form,
   KeyTransparency_AciSearchKey,
   KeyTransparency_E164SearchKey,
   KeyTransparency_UsernameHashSearchKey,
@@ -1763,6 +1773,7 @@ export { registerErrors,
   TESTING_RoundTripU64,
   TESTING_ConvertOptionalUuid,
   TESTING_InputStreamReadIntoZeroLengthSlice,
+  TESTING_EnableDeterministicRngForTesting,
   ComparableBackup_ReadUnencrypted,
   ComparableBackup_GetComparableString,
   ComparableBackup_GetUnknownFields,

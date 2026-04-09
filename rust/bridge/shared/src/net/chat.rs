@@ -10,11 +10,15 @@ use ::zkgroup::groups::GroupSendFullToken;
 use http::uri::InvalidUri;
 use http::{HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
+use libsignal_bridge_types::crypto::RandomNumberGenerator;
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_core::ServiceId;
+use libsignal_core::curve::PrivateKey;
 use libsignal_net::chat::{self, ConnectError, LanguageList, Response as ChatResponse, SendError};
+use libsignal_net_chat::api;
+use libsignal_net_chat::api::backups::{BackupAuth, GetUploadFormFailure};
 use libsignal_net_chat::api::keys::{DeviceSpecifier, GetPreKeysFailure, UnauthenticatedChatApi};
 use libsignal_net_chat::api::messages::{
     AuthenticatedChatApi, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
@@ -23,6 +27,7 @@ use libsignal_net_chat::api::messages::{
 use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
+use libsignal_net_chat::ws::OverWs;
 use libsignal_protocol::Timestamp;
 use uuid::Uuid;
 
@@ -368,4 +373,48 @@ async fn AuthenticatedChatConnection_get_upload_form(
 ) -> Result<UploadForm, RequestError<UploadTooLarge>> {
     chat.as_typed(|chat| chat.get_upload_form(upload_length))
         .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_backup_get_upload_form(
+    chat: &UnauthenticatedChatConnection,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: &PrivateKey,
+    upload_size: u64,
+    rng: RandomNumberGenerator,
+) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, signing_key);
+    chat.as_typed(|chat| {
+        <api::Unauth<_> as api::backups::UnauthenticatedChatApi<OverWs>>::get_upload_form(
+            *chat,
+            &backup_auth,
+            upload_size,
+            &mut rng,
+        )
+    })
+    .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_backup_get_media_upload_form(
+    chat: &UnauthenticatedChatConnection,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: &PrivateKey,
+    upload_size: u64,
+    rng: RandomNumberGenerator,
+) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, signing_key);
+    chat.as_typed(|chat| {
+        <api::Unauth<_> as api::backups::UnauthenticatedChatApi<OverWs>>::get_media_upload_form(
+            *chat,
+            &backup_auth,
+            upload_size,
+            &mut rng,
+        )
+    })
+    .await
 }

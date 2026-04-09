@@ -1,3 +1,4 @@
 v0.92.1
 
-- Move receipt credential expiration check into libsignal
+- Expose getUploadForm() (backups edition!) to clients
+

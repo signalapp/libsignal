@@ -151,11 +151,27 @@ pub(crate) mod testutil {
         pub(crate) const EXPECTED_SIGNATURE: &[u8] = &base64!(
             "TUmhLTMN7LLUOphZiAF8WZekmWzYDWlDiqNm3LirWwcSotw+yUd+MOizCpwVD+Wp9dLHjqU00xUwm+KnxtiKiA=="
         );
+
+        // The base-64 encoded properties of
+        // BackupAuth::generate_for_testing(
+        //     zkgroup::backups::BackupCredentialType::Media,
+        //     &mut fixed_seed_test_rng(),
+        // )
+        pub(crate) const TEST_SIGNING_KEY: &[u8] =
+            &base64!("KMhdmPEusAwoT3C2LzIbmGX6z+3HMbhgbrXmUwRfGF0=");
+        pub(crate) const TEST_SERVER_KEYS: &[u8] = &base64!(
+            "AIRCHmMrkZXZ9ZuwKJkA0GeMOaDSdVsU26AghADhY3l5XBYwf0UCtm2tvvYsbnPgh9uIUyERm0Wg3v7pFtg+OEfsM6fwjdBFqAgfeqs1pT9nwp2Wp6oGdAfCTrGcqraXJoyAiwAh3vogu7ltucNKh25zKiOkIeIEJNrjbx2eEwkFnqLYuk/noxaOi2Zl7R5d7+vn0Me0d2AZhu0Uuk1vpTIuYf+X4UJXV/N5TYYxwOe/OQHu4zZmdaPjtPN1EHFJC5ALV+8BY9dN5ddS7iTL1uq1ksURAA9hAZzC9/aTr7J7"
+        );
+        pub(crate) const TEST_CREDENTIAL: &[u8] = &base64!(
+            "AACkl2kAAAAAyQAAAAAAAAACAAAAAAAAAMUH8mZNP0qDpXFbK2e3dKL04Zw1UhyJ5ab+RlRLhAYELu5/fvwOhxzvxcnNGpqppkGOWc7SSN0kEU0MMIslejR+FDPRx0BWeRTeMmr2ngFVaHUjmazUmgCAPkr0BuLjShTidN9UW8r2M6FjodEtF/8="
+        );
     }
 }
 
 #[cfg(test)]
 mod test {
+    use base64::prelude::*;
+
     use super::*;
     use crate::api::testutil::fixed_seed_test_rng;
 
@@ -164,6 +180,18 @@ mod test {
         let auth = BackupAuth::generate_for_testing(
             zkgroup::backups::BackupCredentialType::Media,
             &mut fixed_seed_test_rng(),
+        );
+        assert_eq!(
+            BASE64_STANDARD.encode(BackupAuth::TEST_SIGNING_KEY),
+            BASE64_STANDARD.encode(auth.signing_key.serialize()),
+        );
+        assert_eq!(
+            BASE64_STANDARD.encode(BackupAuth::TEST_SERVER_KEYS),
+            BASE64_STANDARD.encode(zkgroup::serialize(&auth.server_keys)),
+        );
+        assert_eq!(
+            BASE64_STANDARD.encode(BackupAuth::TEST_CREDENTIAL),
+            BASE64_STANDARD.encode(zkgroup::serialize(&auth.credential)),
         );
         let presentation = auth
             .present::<std::convert::Infallible>(&mut fixed_seed_test_rng())

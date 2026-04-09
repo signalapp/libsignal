@@ -20,6 +20,7 @@ use zkgroup::ZkGroupDeserializationFailure;
 use zkgroup::groups::GroupSendFullToken;
 
 use super::*;
+use crate::crypto::RandomNumberGenerator;
 use crate::ffi;
 use crate::io::{InputStream, SyncInputStream};
 use crate::net::chat::{
@@ -431,17 +432,24 @@ impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSend
     }
 }
 
-impl SimpleArgTypeInfo for GroupSendFullToken {
-    type ArgType = BorrowedSliceOf<c_uchar>;
+macro_rules! zkgroup_serialize_type {
+    ($($ty:ty),*$(,)?) => {$(
+        impl SimpleArgTypeInfo for $ty {
+            type ArgType = BorrowedSliceOf<c_uchar>;
 
-    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
-        let slice = unsafe { foreign.as_slice()? };
-        let token = zkgroup::deserialize(slice).map_err(|_: ZkGroupDeserializationFailure| {
-            IllegalArgumentError::new("bad GroupSendFullToken")
-        })?;
-        Ok(token)
-    }
+            fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+                let slice = unsafe { foreign.as_slice()? };
+                let token = zkgroup::deserialize(slice).map_err(|_: ZkGroupDeserializationFailure| {
+                    IllegalArgumentError::new(concat!("bad ", stringify!($ty)))
+                })?;
+                Ok(token)
+            }
+        }
+    )*};
 }
+zkgroup_serialize_type!(GroupSendFullToken);
+zkgroup_serialize_type!(zkgroup::backups::BackupAuthCredential);
+zkgroup_serialize_type!(zkgroup::generic_server_params::GenericServerPublicParams);
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;
@@ -832,6 +840,13 @@ impl SimpleArgTypeInfo for crate::protocol::Timestamp {
     type ArgType = u64;
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         Ok(Self::from_epoch_millis(foreign))
+    }
+}
+
+impl SimpleArgTypeInfo for RandomNumberGenerator {
+    type ArgType = i64;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        Ok(foreign.into())
     }
 }
 
@@ -1417,6 +1432,7 @@ macro_rules! ffi_arg_type {
     (Option<String>) => (*const std::ffi::c_char);
     (Option<&str>) => (*const std::ffi::c_char);
     (Timestamp) => (u64);
+    (RandomNumberGenerator) => (i64);
     (Uuid) => (ffi::Uuid);
     (ServiceId) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Aci) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
@@ -1447,6 +1463,8 @@ macro_rules! ffi_arg_type {
     (Option<Box<[u8]> >) => (ffi::OptionalBorrowedSliceOf<std::ffi::c_uchar>);
     (DeviceSpecifier) => (i32);
     (GroupSendFullToken) => (ffi_arg_type!(&[u8]));
+    (::zkgroup::backups::BackupAuthCredential) => (ffi_arg_type!(&[u8]));
+    (::zkgroup::generic_server_params::GenericServerPublicParams) => (ffi_arg_type!(&[u8]));
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
     (AsType<$typ:ident, $bridged:ident>) => (ffi_arg_type!($bridged));

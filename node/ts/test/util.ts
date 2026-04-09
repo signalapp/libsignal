@@ -88,3 +88,10 @@ export function assertArrayNotEquals(
 
   assert.notEqual(expectedHex, actualHex);
 }
+
+export function fromBase64(base64: string): Uint8Array<ArrayBuffer> {
+  return Uint8Array.from(Buffer.from(base64, 'base64'));
+}
+export function toBase64(buffer: Uint8Array<ArrayBuffer>): string {
+  return Buffer.from(buffer).toString('base64');
+}

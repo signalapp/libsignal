@@ -131,6 +131,8 @@ export type UploadForm = {
 
 export type AccountEntropyPool = string;
 
+export type RandomNumberGenerator = number;
+
 export type CancellablePromise<T> = Promise<T> & {
   _cancellationToken: bigint;
 };

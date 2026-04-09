@@ -298,6 +298,8 @@ SignalFfiError *signal_testing_create_otp(const char **out, const char *username
 
 SignalFfiError *signal_testing_create_otp_from_base64(const char **out, const char *username, const char *secret);
 
+SignalFfiError *signal_testing_enable_deterministic_rng_for_testing(void);
+
 SignalFfiError *signal_testing_error_on_borrow_async(const void *_input);
 
 SignalFfiError *signal_testing_error_on_borrow_io(SignalCPromisebool *promise, SignalConstPointerNonSuspendingBackgroundThreadRuntime async_runtime, const void *_input);

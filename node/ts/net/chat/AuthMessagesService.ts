@@ -3,7 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
+import {
+  RequestOptions,
+  AuthenticatedChatConnection,
+  type UploadForm,
+} from '../Chat.js';
 import * as Native from '../../Native.js';
 import { LibSignalErrorBase, type UploadTooLarge } from '../../Errors.js';
 
@@ -11,13 +15,6 @@ declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface AuthenticatedChatConnection extends AuthMessagesService {}
 }
-
-export type UploadForm = {
-  cdn: number;
-  key: string;
-  headers: Map<string, string>;
-  signedUploadUrl: URL;
-};
 
 export interface AuthMessagesService {
   /**

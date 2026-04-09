@@ -15,7 +15,8 @@ import java.io.IOException
  */
 public class UploadTooLargeException :
   IOException,
-  BadRequestError {
+  BadRequestError,
+  GetUploadFormError {
   @CalledFromNative
   public constructor(message: String) : super(message) {
   }

@@ -18,6 +18,7 @@ use libsignal_bridge_types::*;
 use crate::types::Ignored;
 
 pub mod convert;
+pub mod crypto;
 pub mod message_backup;
 pub mod net;
 #[cfg(feature = "node")]
