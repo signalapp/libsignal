@@ -310,6 +310,7 @@ impl UnauthenticatedChatApi for KeyTransparencyClient<'_> {
             .inner
             .verify_chat_search_response(
                 aci,
+                aci_identity_key,
                 e164.map(|(e164, _)| e164),
                 username_hash,
                 stored_account_data,
@@ -803,6 +804,7 @@ mod test {
 
         let result = kt.verify_chat_search_response(
             &aci,
+            &test_account::aci_identity_key(),
             e164,
             username_hash,
             Some(account_data),
@@ -844,6 +846,7 @@ mod test {
 
         let result = kt.verify_chat_search_response(
             &aci,
+            &test_account::aci_identity_key(),
             Some(e164),
             Some(username_hash),
             Some(account_data),

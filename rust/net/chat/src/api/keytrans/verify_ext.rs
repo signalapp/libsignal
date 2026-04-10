@@ -5,19 +5,23 @@
 
 use std::time::SystemTime;
 
+use libsignal_core::curve::PublicKey;
 use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{
     AccountData, CondensedTreeSearchResponse, FullSearchResponse, FullTreeHead, KeyTransparency,
     LastTreeHead, LocalStateUpdate, MonitoringData, SearchContext, SlimSearchRequest,
     VerifiedSearchResult,
 };
+use subtle::ConstantTimeEq as _;
 
 use super::{AccountDataField, Error, MaybePartial, SearchKey, TypedSearchResponse, UsernameHash};
 
 pub(super) trait KeyTransparencyVerifyExt {
+    #[expect(clippy::too_many_arguments)]
     fn verify_single_search_response(
         &self,
         search_key: Vec<u8>,
+        expected_value: &[u8],
         response: CondensedTreeSearchResponse,
         monitoring_data: Option<MonitoringData>,
         full_tree_head: &FullTreeHead,
@@ -26,9 +30,11 @@ pub(super) trait KeyTransparencyVerifyExt {
         now: SystemTime,
     ) -> Result<VerifiedSearchResult, Error>;
 
+    #[expect(clippy::too_many_arguments)]
     fn verify_chat_search_response(
         &self,
         aci: &Aci,
+        aci_identity_key: &PublicKey,
         e164: Option<E164>,
         username_hash: Option<UsernameHash>,
         stored_account_data: Option<AccountData>,
@@ -42,6 +48,7 @@ impl KeyTransparencyVerifyExt for KeyTransparency {
     fn verify_single_search_response(
         &self,
         search_key: Vec<u8>,
+        expected_value: &[u8],
         response: CondensedTreeSearchResponse,
         monitoring_data: Option<MonitoringData>,
         full_tree_head: &FullTreeHead,
@@ -63,12 +70,14 @@ impl KeyTransparencyVerifyExt for KeyTransparency {
             true,
             now,
         )?;
+        SearchValue(&result.value).check_equal(expected_value)?;
         Ok(result)
     }
 
     fn verify_chat_search_response(
         &self,
         aci: &Aci,
+        aci_identity_key: &PublicKey,
         e164: Option<E164>,
         username_hash: Option<UsernameHash>,
         stored_account_data: Option<AccountData>,
@@ -103,6 +112,7 @@ impl KeyTransparencyVerifyExt for KeyTransparency {
 
         let aci_result = self.verify_single_search_response(
             aci.as_search_key(),
+            aci_identity_key.serialize().as_ref(),
             aci_search_response,
             aci_monitoring_data,
             &full_tree_head,
@@ -118,6 +128,7 @@ impl KeyTransparencyVerifyExt for KeyTransparency {
                         .map(|(e164, e164_search_response)| {
                             self.verify_single_search_response(
                                 e164.as_search_key(),
+                                aci.service_id_binary().as_slice(),
                                 e164_search_response,
                                 e164_monitoring_data,
                                 &full_tree_head,
@@ -140,6 +151,7 @@ impl KeyTransparencyVerifyExt for KeyTransparency {
                 .map(|(username_hash, username_hash_response)| {
                     self.verify_single_search_response(
                         username_hash.as_search_key(),
+                        aci.service_id_binary().as_slice(),
                         username_hash_response,
                         username_hash_monitoring_data,
                         &full_tree_head,
@@ -211,5 +223,29 @@ fn match_optional_fields<T, U>(
             &field
         ))),
         (Some(_), None) => Ok(MaybePartial::new(None, vec![field])),
+    }
+}
+
+struct SearchValue<T>(T);
+
+impl<T: AsRef<[u8]>> SearchValue<T> {
+    const VERSION: u8 = 0;
+
+    fn as_bytes(&self) -> Option<&[u8]> {
+        self.0
+            .as_ref()
+            .split_first()
+            .filter(|(version, _)| **version == Self::VERSION)
+            .map(|(_, value)| value)
+    }
+
+    pub fn check_equal(self, expected: &[u8]) -> Result<(), Error> {
+        self.as_bytes()
+            .filter(|returned| bool::from(returned.ct_eq(expected)))
+            .map(|_| ())
+            .ok_or_else(|| {
+                libsignal_keytrans::Error::VerificationFailed("unexpected search value".to_string())
+                    .into()
+            })
     }
 }

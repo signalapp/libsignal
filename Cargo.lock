@@ -2793,6 +2793,7 @@ dependencies = [
  "serde_with",
  "static_assertions",
  "strum",
+ "subtle",
  "test-case",
  "test-log",
  "thiserror 2.0.17",
