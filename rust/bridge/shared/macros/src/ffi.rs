@@ -196,20 +196,20 @@ pub(crate) fn name_from_ident(ident: &Ident) -> String {
 /// Generates a struct of C functions and a context pointer to serve as the bridged representation
 /// of a trait.
 ///
-/// The struct will be named "Ffi{MyTrait}Struct", and will have helper types for each callback
-/// function as "Ffi{MyTrait}{OperationCamelCase}", plus one extra callback "Ffi{MyTrait}Destroy".
+/// The struct will be named "{MyTrait}Struct", and will have helper types for each callback
+/// function as "{MyTrait}{OperationCamelCase}", plus one extra callback "{MyTrait}Destroy".
 /// The struct will implement the original trait as well as `ffi::FfiDestroyable`. The original
-/// trait will also be implemented for `ffi::OwnedCallbackStruct<Ffi{MyTrait}Struct>`, so that
+/// trait will also be implemented for `ffi::OwnedCallbackStruct<{MyTrait}Struct>`, so that
 /// `Box<dyn {MyTrait}>` handles cleanup properly.
-pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait) -> Result<TokenStream2> {
+pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait, name: &str) -> Result<TokenStream2> {
     let trait_name = &trait_to_bridge.ident;
-    let struct_name = format_ident!("Ffi{}Struct", trait_to_bridge.ident);
-    let destroy_name = format_ident!("Ffi{}Destroy", trait_to_bridge.ident);
+    let struct_name = format_ident!("{name}Struct", span = trait_to_bridge.ident.span());
+    let destroy_name = format_ident!("{name}Destroy", span = trait_to_bridge.ident.span());
 
     let callbacks = trait_to_bridge
         .items
         .iter()
-        .map(|item| bridge_callback_item(trait_name, item))
+        .map(|item| bridge_callback_item(name, item))
         .collect::<Result<Vec<_>>>()?;
     let callback_aliases = callbacks.iter().map(|c| &c.alias);
     let callback_fields = callbacks.iter().map(|c| &c.field);
@@ -264,7 +264,7 @@ struct Callback {
     forwarding_impl: TokenStream2,
 }
 
-fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback> {
+fn bridge_callback_item(bridge_name: &str, item: &TraitItem) -> Result<Callback> {
     let TraitItem::Fn(item) = item else {
         return Err(Error::new(item.span(), "only fns are supported"));
     };
@@ -276,8 +276,8 @@ fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback
 
     // type FfiMyTraitOperation = extern "C" fn(ctx: *mut c_void, foo: ffi_result_type!(u32)) -> c_int
     let callback_ty_name = format_ident!(
-        "Ffi{}{}",
-        trait_name,
+        "{}{}",
+        bridge_name,
         req_name.to_string().to_upper_camel_case(),
         span = req_name.span()
     );

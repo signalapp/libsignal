@@ -790,20 +790,18 @@ typedef struct {
   SignalSessionRecord *raw;
 } SignalMutPointerSessionRecord;
 
-typedef int (*SignalFfiBridgeSessionStoreLoadSession)(void *ctx, SignalMutPointerSessionRecord *out, SignalMutPointerProtocolAddress address);
+typedef int (*SignalFfiSessionStoreLoadSession)(void *ctx, SignalMutPointerSessionRecord *out, SignalMutPointerProtocolAddress address);
 
-typedef int (*SignalFfiBridgeSessionStoreStoreSession)(void *ctx, SignalMutPointerProtocolAddress address, SignalMutPointerSessionRecord record);
+typedef int (*SignalFfiSessionStoreStoreSession)(void *ctx, SignalMutPointerProtocolAddress address, SignalMutPointerSessionRecord record);
 
-typedef void (*SignalFfiBridgeSessionStoreDestroy)(void *ctx);
+typedef void (*SignalFfiSessionStoreDestroy)(void *ctx);
 
 typedef struct {
   void *ctx;
-  SignalFfiBridgeSessionStoreLoadSession load_session;
-  SignalFfiBridgeSessionStoreStoreSession store_session;
-  SignalFfiBridgeSessionStoreDestroy destroy;
-} SignalFfiBridgeSessionStoreStruct;
-
-typedef SignalFfiBridgeSessionStoreStruct SignalSessionStore;
+  SignalFfiSessionStoreLoadSession load_session;
+  SignalFfiSessionStoreStoreSession store_session;
+  SignalFfiSessionStoreDestroy destroy;
+} SignalSessionStore;
 
 typedef struct {
   const SignalSessionStore *raw;
@@ -818,29 +816,27 @@ typedef struct {
   SignalMutPointerPublicKey second;
 } SignalPairOfMutPointerPrivateKeyMutPointerPublicKey;
 
-typedef int (*SignalFfiBridgeIdentityKeyStoreGetLocalIdentityKeyPair)(void *ctx, SignalPairOfMutPointerPrivateKeyMutPointerPublicKey *out);
+typedef int (*SignalFfiIdentityKeyStoreGetLocalIdentityKeyPair)(void *ctx, SignalPairOfMutPointerPrivateKeyMutPointerPublicKey *out);
 
-typedef int (*SignalFfiBridgeIdentityKeyStoreGetLocalRegistrationId)(void *ctx, uint32_t *out);
+typedef int (*SignalFfiIdentityKeyStoreGetLocalRegistrationId)(void *ctx, uint32_t *out);
 
-typedef int (*SignalFfiBridgeIdentityKeyStoreGetIdentityKey)(void *ctx, SignalMutPointerPublicKey *out, SignalMutPointerProtocolAddress address);
+typedef int (*SignalFfiIdentityKeyStoreGetIdentityKey)(void *ctx, SignalMutPointerPublicKey *out, SignalMutPointerProtocolAddress address);
 
-typedef int (*SignalFfiBridgeIdentityKeyStoreSaveIdentityKey)(void *ctx, uint8_t *out, SignalMutPointerProtocolAddress address, SignalMutPointerPublicKey public_key);
+typedef int (*SignalFfiIdentityKeyStoreSaveIdentityKey)(void *ctx, uint8_t *out, SignalMutPointerProtocolAddress address, SignalMutPointerPublicKey public_key);
 
-typedef int (*SignalFfiBridgeIdentityKeyStoreIsTrustedIdentity)(void *ctx, bool *out, SignalMutPointerProtocolAddress address, SignalMutPointerPublicKey public_key, uint32_t direction);
+typedef int (*SignalFfiIdentityKeyStoreIsTrustedIdentity)(void *ctx, bool *out, SignalMutPointerProtocolAddress address, SignalMutPointerPublicKey public_key, uint32_t direction);
 
-typedef void (*SignalFfiBridgeIdentityKeyStoreDestroy)(void *ctx);
+typedef void (*SignalFfiIdentityKeyStoreDestroy)(void *ctx);
 
 typedef struct {
   void *ctx;
-  SignalFfiBridgeIdentityKeyStoreGetLocalIdentityKeyPair get_local_identity_key_pair;
-  SignalFfiBridgeIdentityKeyStoreGetLocalRegistrationId get_local_registration_id;
-  SignalFfiBridgeIdentityKeyStoreGetIdentityKey get_identity_key;
-  SignalFfiBridgeIdentityKeyStoreSaveIdentityKey save_identity_key;
-  SignalFfiBridgeIdentityKeyStoreIsTrustedIdentity is_trusted_identity;
-  SignalFfiBridgeIdentityKeyStoreDestroy destroy;
-} SignalFfiBridgeIdentityKeyStoreStruct;
-
-typedef SignalFfiBridgeIdentityKeyStoreStruct SignalIdentityKeyStore;
+  SignalFfiIdentityKeyStoreGetLocalIdentityKeyPair get_local_identity_key_pair;
+  SignalFfiIdentityKeyStoreGetLocalRegistrationId get_local_registration_id;
+  SignalFfiIdentityKeyStoreGetIdentityKey get_identity_key;
+  SignalFfiIdentityKeyStoreSaveIdentityKey save_identity_key;
+  SignalFfiIdentityKeyStoreIsTrustedIdentity is_trusted_identity;
+  SignalFfiIdentityKeyStoreDestroy destroy;
+} SignalIdentityKeyStore;
 
 typedef struct {
   const SignalIdentityKeyStore *raw;
@@ -854,23 +850,21 @@ typedef struct {
   SignalPreKeyRecord *raw;
 } SignalMutPointerPreKeyRecord;
 
-typedef int (*SignalFfiBridgePreKeyStoreLoadPreKey)(void *ctx, SignalMutPointerPreKeyRecord *out, uint32_t id);
+typedef int (*SignalFfiPreKeyStoreLoadPreKey)(void *ctx, SignalMutPointerPreKeyRecord *out, uint32_t id);
 
-typedef int (*SignalFfiBridgePreKeyStoreStorePreKey)(void *ctx, uint32_t id, SignalMutPointerPreKeyRecord record);
+typedef int (*SignalFfiPreKeyStoreStorePreKey)(void *ctx, uint32_t id, SignalMutPointerPreKeyRecord record);
 
-typedef int (*SignalFfiBridgePreKeyStoreRemovePreKey)(void *ctx, uint32_t id);
+typedef int (*SignalFfiPreKeyStoreRemovePreKey)(void *ctx, uint32_t id);
 
-typedef void (*SignalFfiBridgePreKeyStoreDestroy)(void *ctx);
+typedef void (*SignalFfiPreKeyStoreDestroy)(void *ctx);
 
 typedef struct {
   void *ctx;
-  SignalFfiBridgePreKeyStoreLoadPreKey load_pre_key;
-  SignalFfiBridgePreKeyStoreStorePreKey store_pre_key;
-  SignalFfiBridgePreKeyStoreRemovePreKey remove_pre_key;
-  SignalFfiBridgePreKeyStoreDestroy destroy;
-} SignalFfiBridgePreKeyStoreStruct;
-
-typedef SignalFfiBridgePreKeyStoreStruct SignalPreKeyStore;
+  SignalFfiPreKeyStoreLoadPreKey load_pre_key;
+  SignalFfiPreKeyStoreStorePreKey store_pre_key;
+  SignalFfiPreKeyStoreRemovePreKey remove_pre_key;
+  SignalFfiPreKeyStoreDestroy destroy;
+} SignalPreKeyStore;
 
 typedef struct {
   const SignalPreKeyStore *raw;
@@ -880,20 +874,18 @@ typedef struct {
   SignalSignedPreKeyRecord *raw;
 } SignalMutPointerSignedPreKeyRecord;
 
-typedef int (*SignalFfiBridgeSignedPreKeyStoreLoadSignedPreKey)(void *ctx, SignalMutPointerSignedPreKeyRecord *out, uint32_t id);
+typedef int (*SignalFfiSignedPreKeyStoreLoadSignedPreKey)(void *ctx, SignalMutPointerSignedPreKeyRecord *out, uint32_t id);
 
-typedef int (*SignalFfiBridgeSignedPreKeyStoreStoreSignedPreKey)(void *ctx, uint32_t id, SignalMutPointerSignedPreKeyRecord record);
+typedef int (*SignalFfiSignedPreKeyStoreStoreSignedPreKey)(void *ctx, uint32_t id, SignalMutPointerSignedPreKeyRecord record);
 
-typedef void (*SignalFfiBridgeSignedPreKeyStoreDestroy)(void *ctx);
+typedef void (*SignalFfiSignedPreKeyStoreDestroy)(void *ctx);
 
 typedef struct {
   void *ctx;
-  SignalFfiBridgeSignedPreKeyStoreLoadSignedPreKey load_signed_pre_key;
-  SignalFfiBridgeSignedPreKeyStoreStoreSignedPreKey store_signed_pre_key;
-  SignalFfiBridgeSignedPreKeyStoreDestroy destroy;
-} SignalFfiBridgeSignedPreKeyStoreStruct;
-
-typedef SignalFfiBridgeSignedPreKeyStoreStruct SignalSignedPreKeyStore;
+  SignalFfiSignedPreKeyStoreLoadSignedPreKey load_signed_pre_key;
+  SignalFfiSignedPreKeyStoreStoreSignedPreKey store_signed_pre_key;
+  SignalFfiSignedPreKeyStoreDestroy destroy;
+} SignalSignedPreKeyStore;
 
 typedef struct {
   const SignalSignedPreKeyStore *raw;
@@ -903,23 +895,21 @@ typedef struct {
   SignalKyberPreKeyRecord *raw;
 } SignalMutPointerKyberPreKeyRecord;
 
-typedef int (*SignalFfiBridgeKyberPreKeyStoreLoadKyberPreKey)(void *ctx, SignalMutPointerKyberPreKeyRecord *out, uint32_t id);
+typedef int (*SignalFfiKyberPreKeyStoreLoadKyberPreKey)(void *ctx, SignalMutPointerKyberPreKeyRecord *out, uint32_t id);
 
-typedef int (*SignalFfiBridgeKyberPreKeyStoreStoreKyberPreKey)(void *ctx, uint32_t id, SignalMutPointerKyberPreKeyRecord record);
+typedef int (*SignalFfiKyberPreKeyStoreStoreKyberPreKey)(void *ctx, uint32_t id, SignalMutPointerKyberPreKeyRecord record);
 
-typedef int (*SignalFfiBridgeKyberPreKeyStoreMarkKyberPreKeyUsed)(void *ctx, uint32_t id, uint32_t ec_prekey_id, SignalMutPointerPublicKey base_key);
+typedef int (*SignalFfiKyberPreKeyStoreMarkKyberPreKeyUsed)(void *ctx, uint32_t id, uint32_t ec_prekey_id, SignalMutPointerPublicKey base_key);
 
-typedef void (*SignalFfiBridgeKyberPreKeyStoreDestroy)(void *ctx);
+typedef void (*SignalFfiKyberPreKeyStoreDestroy)(void *ctx);
 
 typedef struct {
   void *ctx;
-  SignalFfiBridgeKyberPreKeyStoreLoadKyberPreKey load_kyber_pre_key;
-  SignalFfiBridgeKyberPreKeyStoreStoreKyberPreKey store_kyber_pre_key;
-  SignalFfiBridgeKyberPreKeyStoreMarkKyberPreKeyUsed mark_kyber_pre_key_used;
-  SignalFfiBridgeKyberPreKeyStoreDestroy destroy;
-} SignalFfiBridgeKyberPreKeyStoreStruct;
-
-typedef SignalFfiBridgeKyberPreKeyStoreStruct SignalKyberPreKeyStore;
+  SignalFfiKyberPreKeyStoreLoadKyberPreKey load_kyber_pre_key;
+  SignalFfiKyberPreKeyStoreStoreKyberPreKey store_kyber_pre_key;
+  SignalFfiKyberPreKeyStoreMarkKyberPreKeyUsed mark_kyber_pre_key_used;
+  SignalFfiKyberPreKeyStoreDestroy destroy;
+} SignalKyberPreKeyStore;
 
 typedef struct {
   const SignalKyberPreKeyStore *raw;
@@ -1055,20 +1045,18 @@ typedef struct {
   SignalSenderKeyRecord *raw;
 } SignalMutPointerSenderKeyRecord;
 
-typedef int (*SignalFfiBridgeSenderKeyStoreLoadSenderKey)(void *ctx, SignalMutPointerSenderKeyRecord *out, SignalMutPointerProtocolAddress sender, SignalUuid distribution_id);
+typedef int (*SignalFfiSenderKeyStoreLoadSenderKey)(void *ctx, SignalMutPointerSenderKeyRecord *out, SignalMutPointerProtocolAddress sender, SignalUuid distribution_id);
 
-typedef int (*SignalFfiBridgeSenderKeyStoreStoreSenderKey)(void *ctx, SignalMutPointerProtocolAddress sender, SignalUuid distribution_id, SignalMutPointerSenderKeyRecord record);
+typedef int (*SignalFfiSenderKeyStoreStoreSenderKey)(void *ctx, SignalMutPointerProtocolAddress sender, SignalUuid distribution_id, SignalMutPointerSenderKeyRecord record);
 
-typedef void (*SignalFfiBridgeSenderKeyStoreDestroy)(void *ctx);
+typedef void (*SignalFfiSenderKeyStoreDestroy)(void *ctx);
 
 typedef struct {
   void *ctx;
-  SignalFfiBridgeSenderKeyStoreLoadSenderKey load_sender_key;
-  SignalFfiBridgeSenderKeyStoreStoreSenderKey store_sender_key;
-  SignalFfiBridgeSenderKeyStoreDestroy destroy;
-} SignalFfiBridgeSenderKeyStoreStruct;
-
-typedef SignalFfiBridgeSenderKeyStoreStruct SignalSenderKeyStore;
+  SignalFfiSenderKeyStoreLoadSenderKey load_sender_key;
+  SignalFfiSenderKeyStoreStoreSenderKey store_sender_key;
+  SignalFfiSenderKeyStoreDestroy destroy;
+} SignalSenderKeyStore;
 
 typedef struct {
   const SignalSenderKeyStore *raw;
@@ -1213,20 +1201,18 @@ typedef struct {
   const SignalMessageBackupValidationOutcome *raw;
 } SignalConstPointerMessageBackupValidationOutcome;
 
-typedef int (*SignalFfiBridgeInputStreamRead)(void *ctx, size_t *out, SignalBorrowedMutableBuffer buf);
+typedef int (*SignalFfiInputStreamRead)(void *ctx, size_t *out, SignalBorrowedMutableBuffer buf);
 
-typedef int (*SignalFfiBridgeInputStreamSkip)(void *ctx, uint64_t amount);
+typedef int (*SignalFfiInputStreamSkip)(void *ctx, uint64_t amount);
 
-typedef void (*SignalFfiBridgeInputStreamDestroy)(void *ctx);
+typedef void (*SignalFfiInputStreamDestroy)(void *ctx);
 
 typedef struct {
   void *ctx;
-  SignalFfiBridgeInputStreamRead read;
-  SignalFfiBridgeInputStreamSkip skip;
-  SignalFfiBridgeInputStreamDestroy destroy;
-} SignalFfiBridgeInputStreamStruct;
-
-typedef SignalFfiBridgeInputStreamStruct SignalInputStream;
+  SignalFfiInputStreamRead read;
+  SignalFfiInputStreamSkip skip;
+  SignalFfiInputStreamDestroy destroy;
+} SignalInputStream;
 
 typedef struct {
   const SignalInputStream *raw;
@@ -1660,9 +1646,7 @@ typedef struct {
   SignalValidatingMac *raw;
 } SignalMutPointerValidatingMac;
 
-typedef SignalFfiBridgeInputStreamStruct SignalFfiBridgeSyncInputStreamStruct;
-
-typedef SignalFfiBridgeSyncInputStreamStruct SignalSyncInputStream;
+typedef SignalInputStream SignalSyncInputStream;
 
 typedef struct {
   const SignalSyncInputStream *raw;

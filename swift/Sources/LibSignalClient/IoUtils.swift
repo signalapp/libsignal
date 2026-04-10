@@ -33,8 +33,8 @@ internal func withInputStream<Result>(
     return try rethrowCallbackErrors(stream) {
         var ffiStream = SignalFfi.SignalInputStream(
             ctx: $0,
-            read: ffiShimRead as SignalFfiBridgeInputStreamRead,
-            skip: ffiShimSkip as SignalFfiBridgeInputStreamSkip,
+            read: ffiShimRead as SignalFfiInputStreamRead,
+            skip: ffiShimSkip as SignalFfiInputStreamSkip,
             destroy: { _ in }
         )
         return try withUnsafePointer(to: &ffiStream) {

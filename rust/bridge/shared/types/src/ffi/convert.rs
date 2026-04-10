@@ -31,8 +31,8 @@ use crate::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushToken,
 };
 use crate::protocol::storage::{
-    FfiBridgeIdentityKeyStoreStruct, FfiBridgeKyberPreKeyStoreStruct, FfiBridgePreKeyStoreStruct,
-    FfiBridgeSenderKeyStoreStruct, FfiBridgeSessionStoreStruct, FfiBridgeSignedPreKeyStoreStruct,
+    FfiIdentityKeyStoreStruct, FfiKyberPreKeyStoreStruct, FfiPreKeyStoreStruct,
+    FfiSenderKeyStoreStruct, FfiSessionStoreStruct, FfiSignedPreKeyStoreStruct,
 };
 use crate::support::{
     AsType, BridgedCallbacks, FixedLengthBincodeSerializable, IllegalArgumentError, Serialized,
@@ -545,8 +545,8 @@ macro_rules! bridge_trait {
     ($name:ident) => {
         paste! {
             impl<'a> ArgTypeInfo<'a> for &'a mut dyn $name {
-                type ArgType = crate::ffi::ConstPointer< [<FfiBridge $name Struct >] >;
-                type StoredType = BridgedCallbacks<OwnedCallbackStruct< [<FfiBridge $name Struct >] >>;
+                type ArgType = crate::ffi::ConstPointer< [<Ffi $name Struct >] >;
+                type StoredType = BridgedCallbacks<OwnedCallbackStruct< [<Ffi $name Struct >] >>;
                 #[allow(clippy::not_unsafe_ptr_arg_deref)]
                 fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
                     match unsafe { foreign.into_inner().as_ref() } {

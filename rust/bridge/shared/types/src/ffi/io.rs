@@ -12,18 +12,13 @@ use crate::ffi;
 use crate::io::{InputStream, InputStreamRead, SyncInputStream};
 use crate::support::{BridgedCallbacks, ResultLike, WithContext};
 
-#[bridge_callbacks(jni = false, node = false)]
+#[bridge_callbacks(ffi = "FfiInputStream", jni = false, node = false)]
 trait BridgeInputStream {
     fn read(&self, buf: &mut [u8]) -> Result<usize, io::Error>;
     fn skip(&self, amount: u64) -> Result<(), io::Error>;
 }
 
-pub type FfiBridgeSyncInputStreamStruct = FfiBridgeInputStreamStruct;
-
-// TODO: These aliases are because of the ffi_arg_type macro expecting all bridging structs to use a
-// particular naming scheme; eventually we should be able to remove it.
-pub type FfiInputStreamStruct = FfiBridgeInputStreamStruct;
-pub type FfiSyncInputStreamStruct = FfiBridgeSyncInputStreamStruct;
+pub type FfiSyncInputStreamStruct = FfiInputStreamStruct;
 
 #[async_trait(?Send)]
 impl<T: BridgeInputStream> InputStream for BridgedCallbacks<T> {
