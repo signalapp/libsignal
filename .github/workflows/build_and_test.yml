@@ -744,6 +744,8 @@ jobs:
 
       - name: Run pod lint
         run: pod lib lint --verbose --platforms=ios --skip-tests
+        env:
+          LIBSIGNAL_TESTING_DISABLE_EXPLICIT_MODULES: 1
 
       - name: Save cargo cache
         if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}

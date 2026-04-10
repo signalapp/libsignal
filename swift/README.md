@@ -14,7 +14,9 @@ This is a binding to the Signal client code in rust/, implemented on top of the 
 
 3. Use `pod install` or `pod update` to build the Rust library for all targets. You may be prompted to install Rust dependencies (`cbindgen`, `rust-src`).
 
-4. Build as usual. The Rust library will automatically be linked into the built LibSignalClient.framework.
+4. Either disable "Swift Compiler - General - Explicitly Built Modules" (`SWIFT_ENABLE_EXPLICIT_MODULES`), or add a (non-recursive) header search path to `$(PODS_ROOT)/LibSignalClient/swift/Sources/SignalFfi`. (Sorry.)
+
+5. Build as usual. The Rust library will automatically be linked into the built LibSignalClient.framework.
 
 [GitHub Releases]: https://github.com/signalapp/libsignal/releases
 
@@ -27,7 +29,7 @@ Instead of a git-based dependency, use a path-based dependency to treat LibSigna
     CARGO_BUILD_TARGET=aarch64-apple-ios-sim swift/build_ffi.sh --release
     CARGO_BUILD_TARGET=aarch64-apple-ios swift/build_ffi.sh --release
 
-The CocoaPod is configured to use the release build of the Rust library. Use `pod lib lint` to validate locally. You can pass `--debug-level-logs` to `build_ffi.sh` to turn on debug- and verbose-level logs.
+The CocoaPod is configured to use the release build of the Rust library. Use `LIBSIGNAL_TESTING_DISABLE_EXPLICIT_MODULES=1 pod lib lint` to validate locally. You can pass `--debug-level-logs` to `build_ffi.sh` to turn on debug- and verbose-level logs.
 
 When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag to your
 `build_ffi.sh` invocation.

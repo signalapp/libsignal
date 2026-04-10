@@ -405,6 +405,8 @@ jobs:
       # We run this for the non-hermetic tests; it's otherwise the same as regular CI.
       - name: Run pod lint
         run: pod lib lint --verbose --platforms=ios
+        env:
+          LIBSIGNAL_TESTING_DISABLE_EXPLICIT_MODULES: 1
 
       # Make sure we can build for device, just for completeness.
       - name: Set up testing workspace

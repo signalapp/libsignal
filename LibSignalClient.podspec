@@ -57,14 +57,20 @@ Pod::Spec.new do |s|
       'ARCHS[sdk=iphonesimulator*]' => 'x86_64 arm64',
       'ARCHS[sdk=iphoneos*]' => 'arm64',
   }
+  user_target_xcconfig = {}
 
   if ENV['LIBSIGNAL_TESTING_ONLY_ACTIVE_ARCH']
     pod_target_xcconfig['ONLY_ACTIVE_ARCH'] = 'YES'
-
-    s.user_target_xcconfig = { 'ONLY_ACTIVE_ARCH' => 'YES' }
+    user_target_xcconfig['ONLY_ACTIVE_ARCH'] = 'YES'
+  end
+  # This pod does not currently support explicit modules, but clients should specify that explicitly.
+  # `pod lib lint` doesn't provide that opportunity though.
+  if ENV['LIBSIGNAL_TESTING_DISABLE_EXPLICIT_MODULES']
+    user_target_xcconfig['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
   end
 
   s.pod_target_xcconfig = pod_target_xcconfig
+  s.user_target_xcconfig = user_target_xcconfig
 
   s.script_phases = [
     { name: 'Download libsignal-ffi if not in cache',
