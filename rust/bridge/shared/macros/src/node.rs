@@ -315,7 +315,6 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
     let sig = &item.sig;
     let req_name = &item.sig.ident;
     let js_operation_name = req_name.to_string().to_lower_camel_case();
-    let result_ty = result_type(&sig.output);
 
     // fn operation(foo: u32) {
     //     self.0.send_and_log_on_error("operation", move |cx, object| {
@@ -409,9 +408,16 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
     });
 
     let result_string = if sig.asyncness.is_some() {
+        let result_ty = result_type(&sig.output);
         format!("Promise<{result_ty}>")
     } else {
-        result_ty.to_string()
+        if !matches!(sig.output, ReturnType::Default) {
+            return Err(Error::new(
+                item.span(),
+                "non-async callbacks with results are not supported for Node",
+            ));
+        }
+        "void".to_owned()
     };
     let ts_decl = format!(
         "{}({}): {};",
