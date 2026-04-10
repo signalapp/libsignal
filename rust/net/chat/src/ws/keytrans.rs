@@ -691,7 +691,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn search_with_wrong_identity_key() {
+    async fn search_with_wrong_identity_key_integration() {
         if !kt_integration_enabled() {
             println!("SKIPPED: running integration tests is not enabled");
             return;

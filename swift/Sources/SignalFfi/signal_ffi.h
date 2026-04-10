@@ -1125,6 +1125,11 @@ typedef struct {
   SignalFfiLoggerDestroy destroy;
 } SignalFfiLoggerStruct;
 
+typedef struct {
+  SignalOwnedBuffer first;
+  SignalOwnedBuffer second;
+} SignalPairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar;
+
 /**
  * A C callback used to report the results of Rust futures.
  *
@@ -1135,10 +1140,10 @@ typedef struct {
  * completed once.
  */
 typedef struct {
-  void (*complete)(SignalFfiError *error, const SignalOwnedBuffer *result, const void *context);
+  void (*complete)(SignalFfiError *error, const SignalPairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar *result, const void *context);
   const void *context;
   SignalCancellationId cancellation_id;
-} SignalCPromiseOwnedBufferOfc_uchar;
+} SignalCPromisePairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar;
 
 typedef struct {
   const SignalUnauthenticatedChatConnection *raw;
@@ -2126,9 +2131,7 @@ bool signal_init_logger(SignalLogLevel max_level, SignalFfiLoggerStruct logger);
 
 SignalFfiError *signal_key_transparency_aci_search_key(SignalOwnedBuffer *out, const SignalServiceIdFixedWidthBinaryBytes *aci);
 
-SignalFfiError *signal_key_transparency_check(SignalCPromiseOwnedBufferOfc_uchar *promise, SignalConstPointerTokioAsyncContext async_runtime, uint8_t environment, SignalConstPointerUnauthenticatedChatConnection chat_connection, const SignalServiceIdFixedWidthBinaryBytes *aci, SignalConstPointerPublicKey aci_identity_key, const char *e164, SignalOptionalBorrowedSliceOfc_uchar unidentified_access_key, SignalOptionalBorrowedSliceOfc_uchar username_hash, SignalOptionalBorrowedSliceOfc_uchar account_data, SignalBorrowedBuffer last_distinguished_tree_head, bool is_self_check, bool is_e164_discoverable);
-
-SignalFfiError *signal_key_transparency_distinguished(SignalCPromiseOwnedBufferOfc_uchar *promise, SignalConstPointerTokioAsyncContext async_runtime, uint8_t environment, SignalConstPointerUnauthenticatedChatConnection chat_connection, SignalOptionalBorrowedSliceOfc_uchar last_distinguished_tree_head);
+SignalFfiError *signal_key_transparency_check(SignalCPromisePairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar *promise, SignalConstPointerTokioAsyncContext async_runtime, uint8_t environment, SignalConstPointerUnauthenticatedChatConnection chat_connection, const SignalServiceIdFixedWidthBinaryBytes *aci, SignalConstPointerPublicKey aci_identity_key, const char *e164, SignalOptionalBorrowedSliceOfc_uchar unidentified_access_key, SignalOptionalBorrowedSliceOfc_uchar username_hash, SignalOptionalBorrowedSliceOfc_uchar account_data, SignalOptionalBorrowedSliceOfc_uchar last_distinguished_tree_head, bool is_self_check, bool is_e164_discoverable);
 
 SignalFfiError *signal_key_transparency_e164_search_key(SignalOwnedBuffer *out, const char *e164);
 

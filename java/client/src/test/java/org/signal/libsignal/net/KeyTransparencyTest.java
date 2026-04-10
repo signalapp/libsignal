@@ -18,14 +18,14 @@ import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.util.Hex;
 
 public class KeyTransparencyTest {
-  static final ServiceId.Aci TEST_ACI =
+  public static final ServiceId.Aci TEST_ACI =
       new ServiceId.Aci(UUID.fromString("90c979fd-eab4-4a08-b6da-69dedeab9b29"));
-  static final IdentityKey TEST_ACI_IDENTITY_KEY;
-  static final String TEST_E164 = "+18005550100";
-  static final byte[] TEST_USERNAME_HASH =
+  public static final IdentityKey TEST_ACI_IDENTITY_KEY;
+  public static final String TEST_E164 = "+18005550100";
+  public static final byte[] TEST_USERNAME_HASH =
       Hex.fromStringCondensedAssert(
           "dc711808c2cf66d5e6a33ce41f27d69d942d2e1ff4db22d39b42d2eff8d09746");
-  static final byte[] TEST_UNIDENTIFIED_ACCESS_KEY =
+  public static final byte[] TEST_UNIDENTIFIED_ACCESS_KEY =
       Hex.fromStringCondensedAssert("108d84b71be307bdf101e380a1d7f2a2");
 
   static {

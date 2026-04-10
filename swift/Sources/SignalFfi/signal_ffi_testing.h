@@ -236,6 +236,21 @@ typedef struct {
   SignalTestingSemaphore *raw;
 } SignalMutPointerTestingSemaphore;
 
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalOwnedBuffer *result, const void *context);
+  const void *context;
+  SignalRawCancellationId cancellation_id;
+} SignalCPromiseOwnedBufferOfc_uchar;
+
 typedef struct {
   SignalTestingValueHolder *raw;
 } SignalMutPointerTestingValueHolder;

@@ -11,16 +11,16 @@ import org.signal.libsignal.protocol.ServiceId;
 public class TestStore implements Store {
 
   public HashMap<ServiceId.Aci, Deque<byte[]>> storage = new HashMap<>();
-  public byte[] lastDistinguishedTreeHead;
+  public Deque<byte[]> distinguishedTreeHeads = new ArrayDeque<>();
 
   @Override
   public Optional<byte[]> getLastDistinguishedTreeHead() {
-    return Optional.ofNullable(lastDistinguishedTreeHead);
+    return Optional.ofNullable(this.distinguishedTreeHeads.peekLast());
   }
 
   @Override
   public void setLastDistinguishedTreeHead(byte[] lastDistinguishedTreeHead) {
-    this.lastDistinguishedTreeHead = lastDistinguishedTreeHead;
+    this.distinguishedTreeHeads.push(lastDistinguishedTreeHead);
   }
 
   @Override

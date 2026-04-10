@@ -1511,6 +1511,10 @@ macro_rules! ffi_result_type {
     // Like Result, we can't use `:ty` here because we need the resulting tokens to be matched
     // recursively. We can at least match several tokens in the second component though.
     (($a:tt, $($b:tt)+)) => (ffi::PairOf<ffi_result_type!($a), ffi_result_type!($($b)+)>);
+    (($a:tt<$($aargs:tt),+>, $b:tt<$($bargs:tt),+>)) => (ffi::PairOf<
+        ffi_result_type!($a<$($aargs),+>),
+        ffi_result_type!($b<$($bargs),+>)
+    >);
     (Option<($a:tt, $($b:tt)+)>) => (ffi::OptionalPairOf<ffi_result_type!($a), ffi_result_type!($($b)+)>);
 
     (u8) => (u8);

@@ -87,7 +87,8 @@ async fn update_distinguished_if_needed(
     Ok(LastTreeHead(tree_head, tree_root))
 }
 
-#[cfg_attr(test, derive(Clone, PartialEq))]
+#[cfg_attr(test, derive(PartialEq))]
+#[derive(Clone)]
 pub struct TreeHeadWithTimestamp {
     pub tree_head: LastTreeHead,
     pub stored_at_ms: u64,

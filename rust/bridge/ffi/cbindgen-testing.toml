@@ -43,7 +43,6 @@ exclude = [
     "CPromisebool",
     "CPromiseFfiCdsiLookupResponse",
     "CPromiseMutPointerRegistrationService",
-    "CPromiseOwnedBufferOfc_uchar",
     "FfiCdsiLookupResponse",
     "FfiCdsiLookupResponseEntry",
     "FfiChatListenerStruct",

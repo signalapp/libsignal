@@ -70,24 +70,8 @@ class KeyTransparencyClientTest {
         assertIs<RequestResult.Success<*>>(it)
       }
 
-    Assert.assertTrue(store.getLastDistinguishedTreeHead().isPresent)
+    Assert.assertTrue(store.lastDistinguishedTreeHead.isPresent)
     Assert.assertTrue(store.getAccountData(KeyTransparencyTest.TEST_ACI).isPresent)
-  }
-
-  @Test
-  @Throws(Exception::class)
-  fun updateDistinguishedStagingIntegration() {
-    Assume.assumeTrue(INTEGRATION_TESTS_ENABLED)
-
-    val net = Network(Network.Environment.STAGING, USER_AGENT, mapOf(), Network.BuildVariant.BETA)
-    val ktClient = connectAndGetClient(net).get()
-
-    val store = TestStore()
-    ktClient.updateDistinguished(store).get().also {
-      assertIs<RequestResult.Success<*>>(it)
-    }
-
-    Assert.assertTrue(store.getLastDistinguishedTreeHead().isPresent)
   }
 
   @Test
@@ -118,6 +102,8 @@ class KeyTransparencyClientTest {
 
     // Following search there should be a single entry in the account history
     Assert.assertEquals(1, accountDataHistory.size.toLong())
+    // Should have requested and stored the latest distinguished tree head
+    Assert.assertEquals(1, store.distinguishedTreeHeads.size)
 
     ktClient
       .check(
@@ -134,6 +120,8 @@ class KeyTransparencyClientTest {
       }
     // Another entry in the account history after a successful monitor request
     Assert.assertEquals(2, accountDataHistory.size.toLong())
+    // Should not have updated the distinguished tree head, as the last one was reused
+    Assert.assertEquals(1, store.distinguishedTreeHeads.size)
   }
 
   inline fun <reified E : Throwable> retryableNetworkExceptionsTestImpl(
@@ -150,9 +138,20 @@ class KeyTransparencyClientTest {
       )
 
     val store = TestStore()
-    val responseFuture = chat.keyTransparencyClient().updateDistinguished(store)
+    val responseFuture =
+      chat
+        .keyTransparencyClient()
+        .check(
+          CheckMode.Contact,
+          KeyTransparencyTest.TEST_ACI,
+          KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
+          null,
+          null,
+          null,
+          store,
+        )
 
-    val (_, requestId) = remote.getNextIncomingRequest().get()
+    val (_, requestId) = remote.nextIncomingRequest.get()
     remote.sendResponse(requestId, statusCode, message, headers, byteArrayOf())
 
     val result = responseFuture.get()
@@ -174,9 +173,20 @@ class KeyTransparencyClientTest {
       )
 
     val store = TestStore()
-    val responseFuture = chat.keyTransparencyClient().updateDistinguished(store)
+    val responseFuture =
+      chat
+        .keyTransparencyClient()
+        .check(
+          CheckMode.Contact,
+          KeyTransparencyTest.TEST_ACI,
+          KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
+          null,
+          null,
+          null,
+          store,
+        )
 
-    val (_, requestId) = remote.getNextIncomingRequest().get()
+    val (_, requestId) = remote.nextIncomingRequest.get()
     remote.sendResponse(requestId, statusCode, message, headers, byteArrayOf())
 
     val result = responseFuture.get()
@@ -194,9 +204,20 @@ class KeyTransparencyClientTest {
       )
 
     val store = TestStore()
-    val responseFuture = chat.keyTransparencyClient().updateDistinguished(store)
+    val responseFuture =
+      chat
+        .keyTransparencyClient()
+        .check(
+          CheckMode.Contact,
+          KeyTransparencyTest.TEST_ACI,
+          KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
+          null,
+          null,
+          null,
+          store,
+        )
 
-    remote.getNextIncomingRequest().get()
+    remote.nextIncomingRequest.get()
     remote.guardedRun(NativeTesting::TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted)
 
     val result = responseFuture.get()

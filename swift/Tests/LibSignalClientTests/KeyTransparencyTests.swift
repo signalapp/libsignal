@@ -81,16 +81,6 @@ final class KeyTransparencyTests: TestCaseBase {
         func connectionWasInterrupted(_: UnauthenticatedChatConnection, error: Error?) {}
     }
 
-    func testUnknownDistinguished() async throws {
-        try self.nonHermeticTest()
-
-        let net = Net(env: .staging, userAgent: userAgent, buildVariant: .production)
-        let chat = try await net.connectUnauthenticatedChat()
-        chat.start(listener: NoOpListener())
-
-        XCTAssertNoThrow { try await chat.keyTransparencyClient.getDistinguished() }
-    }
-
     func testCheck() async throws {
         try self.nonHermeticTest()
 
@@ -108,6 +98,8 @@ final class KeyTransparencyTests: TestCaseBase {
             store: store
         )
         XCTAssertEqual(1, store.accountData[self.testAccount.aci]!.count)
+        XCTAssertEqual(1, store.distinguishedTreeHeads.count)
+
         try await chat.keyTransparencyClient.check(
             for: .contact,
             account: self.testAccount.aciInfo,
@@ -115,8 +107,10 @@ final class KeyTransparencyTests: TestCaseBase {
             store: store
         )
         // Second check will send a monitor request, and should update account
-        // data in store
+        // data in store, but the distinguished tree should have been reused
+        // and not updated
         XCTAssertEqual(2, store.accountData[self.testAccount.aci]!.count)
+        XCTAssertEqual(1, store.distinguishedTreeHeads.count)
     }
 
     // These testing endpoints aren't generated in device builds, to save on code size.
@@ -159,7 +153,13 @@ final class KeyTransparencyTests: TestCaseBase {
         )
         defer { withExtendedLifetime(chat) {} }
 
-        async let future = chat.keyTransparencyClient.getDistinguished()
+        let store = TestStore()
+        let aciInfo = self.testAccount.aciInfo
+        async let future: () = chat.keyTransparencyClient.check(
+            for: .contact,
+            account: aciInfo,
+            store: store
+        )
 
         let (_, id) = try await remote.getNextIncomingRequest()
 

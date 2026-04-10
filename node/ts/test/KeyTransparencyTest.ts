@@ -108,7 +108,7 @@ describe('KeyTransparency network errors', () => {
         unauth._chatService,
         Environment.Staging
       );
-      const promise = client._getLatestDistinguished(new InMemoryKtStore(), {});
+      const promise = client.check(testRequest, new InMemoryKtStore(), {});
 
       const request = await remote.assertReceiveIncomingRequest();
 
@@ -182,31 +182,36 @@ describe('KeyTransparency Integration', function (this: Mocha.Suite) {
     }
 
     expect(accountDataHistory.length).to.equal(1);
+    expect(store.distinguished.length).to.equal(1);
 
     await kt.check(testRequest, store, {});
     expect(accountDataHistory.length).to.equal(2);
+    // Distinguished tree should not have been updated
+    expect(store.distinguished.length).to.equal(1);
   });
 });
 
 class InMemoryKtStore implements KT.Store {
   storage: Map<Readonly<Aci>, Array<Readonly<Uint8Array<ArrayBuffer>>>>;
-  distinguished: Readonly<Uint8Array<ArrayBuffer>> | null;
+  distinguished: Array<Readonly<Uint8Array<ArrayBuffer>>>;
 
   constructor() {
     this.storage = new Map<Aci, Array<Readonly<Uint8Array<ArrayBuffer>>>>();
-    this.distinguished = null;
+    this.distinguished = new Array<Uint8Array<ArrayBuffer>>();
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async getLastDistinguishedTreeHead(): Promise<Uint8Array<ArrayBuffer> | null> {
-    return this.distinguished;
+    return this.distinguished.at(-1) ?? null;
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async setLastDistinguishedTreeHead(
     bytes: Readonly<Uint8Array<ArrayBuffer>> | null
   ) {
-    this.distinguished = bytes;
+    if (bytes !== null) {
+      this.distinguished.push(bytes);
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await

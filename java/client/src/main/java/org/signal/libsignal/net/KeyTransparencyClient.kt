@@ -50,65 +50,6 @@ public class KeyTransparencyClient internal constructor(
   private val environment: Network.Environment,
 ) {
   /**
-   * Request the latest distinguished tree head from the server and update it in the local store.
-   *
-   * Possible non-success results include:
-   * - [RequestResult.RetryableNetworkError] for errors related to communication with the server,
-   *   including [RetryLaterException] when the client is being throttled,
-   *   [ServerSideErrorException], [NetworkException], [NetworkProtocolException], and
-   *   [TimeoutException].
-   * - [RequestResult.NonSuccess] with [KeyTransparencyException] for errors related to key
-   *   transparency logic. Retrying without changing any of the arguments (including the state of
-   *   the store) is unlikely to yield a different result.
-   * - [RequestResult.NonSuccess] with [VerificationFailedException] (a subclass of
-   *   [KeyTransparencyException]) indicating a failure to verify the data in key transparency
-   *   server response, such as an incorrect proof or a wrong signature.
-   * - [RequestResult.ApplicationError] for invalid arguments or other caller errors that could have
-   *   been avoided.
-   *
-   * @param store local persistent storage for key transparency related data, such as the latest
-   *   tree heads and account monitoring data. It will be queried for the latest distinguished tree
-   *   head before performing the server request and updated with data from the server response if
-   *   it succeeds. Distinguished tree does not have to be present in the store prior to the call.
-   * @return an instance of [CompletableFuture] that completes with a [RequestResult] indicating
-   *   success or containing the error details.
-   */
-  public fun updateDistinguished(store: Store): CompletableFuture<RequestResult<Unit, KeyTransparencyException>> {
-    val lastDistinguished =
-      try {
-        store.lastDistinguishedTreeHead.orElse(null)
-      } catch (t: Throwable) {
-        return CompletableFuture.completedFuture(RequestResult.ApplicationError(t))
-      }
-
-    return try {
-      NativeHandleGuard(tokioAsyncContext).use { tokioContextGuard ->
-        NativeHandleGuard(chatConnection).use { chatConnectionGuard ->
-          Native
-            .KeyTransparency_Distinguished(
-              tokioContextGuard.nativeHandle(),
-              environment.value,
-              chatConnectionGuard.nativeHandle(),
-              lastDistinguished,
-            ).mapWithCancellation(
-              onSuccess = { distinguished ->
-                try {
-                  store.setLastDistinguishedTreeHead(distinguished)
-                  RequestResult.Success(Unit)
-                } catch (t: Throwable) {
-                  RequestResult.ApplicationError(t)
-                }
-              },
-              onError = { err -> err.toRequestResult<KeyTransparencyException>() },
-            )
-        }
-      }
-    } catch (t: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(t))
-    }
-  }
-
-  /**
    * A unified key transparency operation that performs a search, a monitor, or both.
    *
    * Caller should pass latest known values of all identifiers (ACI, E.164, username hash) associated
@@ -123,9 +64,6 @@ public class KeyTransparencyClient internal constructor(
    *   be issued.
    * - [CheckMode.Contact] - Another search request will be performed automatically and, if it succeeds,
    *   the updated account data will be stored.
-   *
-   * If the latest distinguished tree head is not present in the store, it will be requested from
-   * the server prior to performing the monitor via [updateDistinguished].
    *
    * Possible non-success results include:
    * - [RequestResult.RetryableNetworkError] for errors related to communication with the server,
@@ -172,16 +110,6 @@ public class KeyTransparencyClient internal constructor(
         return CompletableFuture.completedFuture(RequestResult.ApplicationError(t))
       }
 
-    if (lastDistinguishedTreeHead.isEmpty) {
-      return updateDistinguished(store).thenCompose { result ->
-        when (result) {
-          is RequestResult.Success ->
-            check(mode, aci, aciIdentityKey, e164, unidentifiedAccessKey, usernameHash, store)
-          else -> CompletableFuture.completedFuture(result)
-        }
-      }
-    }
-
     return try {
       NativeHandleGuard(tokioAsyncContext).use { tokioContextGuard ->
         NativeHandleGuard(aciIdentityKey.publicKey).use { identityKeyGuard ->
@@ -199,13 +127,16 @@ public class KeyTransparencyClient internal constructor(
                 // Technically this is a required parameter, but passing null
                 // to generate the error on the Rust side.
                 store.getAccountData(aci).orElse(null),
-                lastDistinguishedTreeHead.get(),
+                lastDistinguishedTreeHead.orElse(null),
                 mode.isSelf(),
                 mode.isE164Discoverable() ?: true,
               ).mapWithCancellation(
-                onSuccess = { updatedAccountData ->
+                onSuccess = { (updatedAccountData, distinguished) ->
                   try {
                     store.setAccountData(aci, updatedAccountData)
+                    if (distinguished.isNotEmpty()) {
+                      store.setLastDistinguishedTreeHead(distinguished)
+                    }
                     RequestResult.Success(Unit)
                   } catch (t: Throwable) {
                     RequestResult.ApplicationError(t)

@@ -100,6 +100,10 @@ extension SignalCPromiseOptionalPairOfc_charu832: PromiseStruct {
     typealias Result = SignalOptionalPairOfc_charu832
 }
 
+extension SignalCPromisePairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar: PromiseStruct {
+    typealias Result = SignalPairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar
+}
+
 extension SignalCPromiseFfiPreKeysResponse: PromiseStruct {
     typealias Result = SignalFfiPreKeysResponse
 }

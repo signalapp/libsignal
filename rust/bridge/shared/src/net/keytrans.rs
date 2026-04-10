@@ -11,13 +11,11 @@ use libsignal_bridge_types::net::chat::UnauthenticatedChatConnection;
 pub use libsignal_bridge_types::net::{Environment, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_core::{Aci, E164};
-use libsignal_keytrans::{
-    AccountData, LastTreeHead, LocalStateUpdate, StoredAccountData, StoredTreeHead,
-};
+use libsignal_keytrans::{AccountData, StoredAccountData};
 use libsignal_net_chat::api::RequestError;
 use libsignal_net_chat::api::keytrans::{
     CheckMode, Error, KeyTransparencyClient, MaybePartial, SearchKey, TreeHeadWithTimestamp,
-    UnauthenticatedChatApi as _, UsernameHash, check,
+    UsernameHash, check,
 };
 use libsignal_protocol::PublicKey;
 use prost::{DecodeError, Message};
@@ -52,10 +50,14 @@ async fn KeyTransparency_Check(
     unidentified_access_key: Option<Box<[u8]>>,
     username_hash: Option<Box<[u8]>>,
     account_data: Option<Box<[u8]>>,
-    last_distinguished_tree_head: Box<[u8]>,
+    last_distinguished_tree_head: Option<Box<[u8]>>,
     is_self_check: bool,
     is_e164_discoverable: bool,
-) -> Result<Vec<u8>, RequestError<Error>> {
+    // Return a pair of (serialized account data, serialized distinguished)
+    // If the last_distinguished_tree_head was reused, serialized distinguished will be empty.
+    // Could have been an Option<Vec<u8>>, but that would be another layer of <> to handle in
+    // the bridging macro to the same effect.
+) -> Result<(Vec<u8>, Vec<u8>), RequestError<Error>> {
     let config = environment.into_inner().env().keytrans_config;
 
     let username_hash = username_hash.map(UsernameHash::from);
@@ -73,9 +75,12 @@ async fn KeyTransparency_Check(
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
 
-    let last_distinguished_tree_head = try_decode_distinguished(last_distinguished_tree_head);
+    let last_distinguished_tree_head =
+        last_distinguished_tree_head.and_then(try_decode_distinguished);
 
-    let (maybe_partial_result, _updated_distinguished) = chat_connection
+    let previously_stored_distinguished = last_distinguished_tree_head.clone();
+
+    let (maybe_partial_result, updated_distinguished) = chat_connection
         .as_typed(|chat| {
             Box::pin(async move {
                 let kt = KeyTransparencyClient::new(*chat, config);
@@ -102,41 +107,15 @@ async fn KeyTransparency_Check(
         maybe_hash_search_key,
         now,
     )?;
-    // let serialized_distinguished = updated_distinguished.into_stored(now).encode_to_vec();
-    Ok(serialized_account_data)
-}
-
-#[bridge_io(TokioAsyncContext)]
-async fn KeyTransparency_Distinguished(
-    // TODO: it is currently possible to pass an env that does not match chat
-    environment: AsType<Environment, u8>,
-    chat_connection: &UnauthenticatedChatConnection,
-    last_distinguished_tree_head: Option<Box<[u8]>>,
-) -> Result<Vec<u8>, RequestError<Error>> {
-    let config = environment.into_inner().env().keytrans_config;
-
-    let known_distinguished = last_distinguished_tree_head
-        .map(try_decode)
-        .transpose()
-        .map_err(|_| invalid_request("could not decode account data"))?
-        .and_then(|stored: StoredTreeHead| stored.into_last_tree_head());
-
-    let LocalStateUpdate {
-        tree_head,
-        tree_root,
-        monitoring_data: _,
-    } = chat_connection
-        .as_typed(|chat| {
-            Box::pin(async move {
-                let kt = KeyTransparencyClient::new(*chat, config);
-                kt.distinguished(known_distinguished).await
-            })
-        })
-        .await?;
-
-    let updated_distinguished = LastTreeHead(tree_head, tree_root).into_stored(SystemTime::now());
-    let serialized = updated_distinguished.encode_to_vec();
-    Ok(serialized)
+    let distinguished_to_be_stored = if let Some(known) = previously_stored_distinguished
+        && known.tree_head == updated_distinguished
+    {
+        // Distinguished has not been updated, we must keep its stored_at
+        vec![]
+    } else {
+        updated_distinguished.into_stored(now).encode_to_vec()
+    };
+    Ok((serialized_account_data, distinguished_to_be_stored))
 }
 
 fn invalid_request(msg: &'static str) -> RequestError<Error> {

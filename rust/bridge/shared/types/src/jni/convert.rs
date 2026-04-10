@@ -2865,6 +2865,12 @@ macro_rules! jni_result_type {
     (Result<$typ:tt<$($args:tt),+> $(, $_:ty)?>) => {
         $crate::jni::Throwing<jni_result_type!($typ<$($args),+>)>
     };
+    (Result<($a:tt, $b:tt>)) => {
+        $crate::jni::Throwing<jni_result_type!(($a, $b))>
+    };
+    (Result<($a:tt<$($aargs:tt),+>, $b:tt<$($bargs:tt),+>) $(, $_:ty)?>) => {
+        $crate::jni::Throwing<jni_result_type!(($a<$($aargs),+>, $b<$($bargs),+>))>
+    };
     (Option<u32>) => {
         ::jni::sys::jint
     };
@@ -2885,6 +2891,9 @@ macro_rules! jni_result_type {
     };
     (($a:tt, $b:tt)) => {
         $crate::jni::JavaPair<'local, $crate::jni_result_type!($a), $crate::jni_result_type!($b)>
+    };
+    (($a:tt<$($aargs:tt),+>, $b:tt<$($bargs:tt),+>)) => {
+        $crate::jni::JavaPair<'local, $crate::jni_result_type!($a<$($aargs),+>), $crate::jni_result_type!($b<$($bargs),+>)>
     };
     (bool) => {
         ::jni::sys::jboolean

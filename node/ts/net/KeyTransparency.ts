@@ -140,16 +140,15 @@ export interface Client {
    *
    * @param request - Key transparency client {@link Request}.
    * @param store - Local key transparency storage. It will be queried for both
-   * the account data and the latest distinguished tree head before sending the
-   * server request and, if the request succeeds, will be updated with the
-   * search operation results.
+   * the account data before sending the server request and, if the request
+   * succeeds, will be updated with the operation results.
    * @param options - options for the asynchronous operation. Optional.
    *
    * @returns A promise that resolves if the check succeeds and the local state has been updated
    * to reflect the latest changes.
    *
    * @throws {KeyTransparencyError} for errors related to key transparency logic, which
-   * includes missing required fields in the serialized data. Retrying the search without
+   * includes missing required fields in the serialized data. Retrying the check without
    * changing any of the arguments (including the state of the store) is unlikely to yield a
    * different result.
    * @throws {KeyTransparencyVerificationFailed} when it fails to
@@ -181,10 +180,6 @@ export class ClientImpl implements Client {
     store: Store,
     options?: Readonly<Options>
   ): Promise<void> {
-    const distinguished = await this._getLatestDistinguished(
-      store,
-      options ?? {}
-    );
     const { abortSignal } = options ?? {};
     const {
       aciInfo: { aci, identityKey: aciIdentityKey },
@@ -196,50 +191,27 @@ export class ClientImpl implements Client {
       e164: null,
       unidentifiedAccessKey: null,
     };
-    const accountData = await this.asyncContext.makeCancellable(
-      abortSignal,
-      Native.KeyTransparency_Check(
-        this.asyncContext,
-        this.env,
-        this.chatService,
-        aci.getServiceIdFixedWidthBinary(),
-        aciIdentityKey,
-        e164,
-        unidentifiedAccessKey,
-        usernameHash ?? null,
-        await store.getAccountData(aci),
-        distinguished,
-        mode === 'self',
-        mode === 'self' ? request.isE164Discoverable : true
-      )
-    );
+    const [accountData, newDistinguished] =
+      await this.asyncContext.makeCancellable(
+        abortSignal,
+        Native.KeyTransparency_Check(
+          this.asyncContext,
+          this.env,
+          this.chatService,
+          aci.getServiceIdFixedWidthBinary(),
+          aciIdentityKey,
+          e164,
+          unidentifiedAccessKey,
+          usernameHash ?? null,
+          await store.getAccountData(aci),
+          await store.getLastDistinguishedTreeHead(),
+          mode === 'self',
+          mode === 'self' ? request.isE164Discoverable : true
+        )
+      );
     await store.setAccountData(aci, accountData);
-  }
-
-  private async updateDistinguished(
-    store: Store,
-    { abortSignal }: Readonly<Options>
-  ): Promise<Uint8Array<ArrayBuffer>> {
-    const bytes = await this.asyncContext.makeCancellable(
-      abortSignal,
-      Native.KeyTransparency_Distinguished(
-        this.asyncContext,
-        this.env,
-        this.chatService,
-        await store.getLastDistinguishedTreeHead()
-      )
-    );
-    await store.setLastDistinguishedTreeHead(bytes);
-    return bytes;
-  }
-
-  async _getLatestDistinguished(
-    store: Store,
-    options: Readonly<Options>
-  ): Promise<Uint8Array<ArrayBuffer>> {
-    return (
-      (await store.getLastDistinguishedTreeHead()) ??
-      (await this.updateDistinguished(store, options))
-    );
+    if (newDistinguished.length > 0) {
+      await store.setLastDistinguishedTreeHead(newDistinguished);
+    }
   }
 }

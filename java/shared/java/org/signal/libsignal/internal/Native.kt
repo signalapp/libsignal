@@ -619,9 +619,7 @@ internal object Native {
   @JvmStatic
   public external fun KeyTransparency_AciSearchKey(aci: ByteArray): ByteArray
   @JvmStatic
-  public external fun KeyTransparency_Check(asyncRuntime: ObjectHandle, environment: Int, chatConnection: ObjectHandle, aci: ByteArray, aciIdentityKey: ObjectHandle, e164: String?, unidentifiedAccessKey: ByteArray?, usernameHash: ByteArray?, accountData: ByteArray?, lastDistinguishedTreeHead: ByteArray, isSelfCheck: Boolean, isE164Discoverable: Boolean): CompletableFuture<ByteArray>
-  @JvmStatic
-  public external fun KeyTransparency_Distinguished(asyncRuntime: ObjectHandle, environment: Int, chatConnection: ObjectHandle, lastDistinguishedTreeHead: ByteArray?): CompletableFuture<ByteArray>
+  public external fun KeyTransparency_Check(asyncRuntime: ObjectHandle, environment: Int, chatConnection: ObjectHandle, aci: ByteArray, aciIdentityKey: ObjectHandle, e164: String?, unidentifiedAccessKey: ByteArray?, usernameHash: ByteArray?, accountData: ByteArray?, lastDistinguishedTreeHead: ByteArray?, isSelfCheck: Boolean, isE164Discoverable: Boolean): CompletableFuture<Pair<ByteArray, ByteArray>>
   @JvmStatic
   public external fun KeyTransparency_E164SearchKey(e164: String): ByteArray
   @JvmStatic

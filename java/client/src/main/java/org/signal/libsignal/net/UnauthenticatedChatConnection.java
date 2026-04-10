@@ -33,7 +33,7 @@ public class UnauthenticatedChatConnection extends ChatConnection {
     this.keyTransparencyClient = new KeyTransparencyClient(this, tokioAsyncContext, ktEnvironment);
   }
 
-  private KeyTransparencyClient keyTransparencyClient;
+  private final KeyTransparencyClient keyTransparencyClient;
 
   static CompletableFuture<UnauthenticatedChatConnection> connect(
       final TokioAsyncContext tokioAsyncContext,
