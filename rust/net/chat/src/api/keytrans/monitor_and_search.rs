@@ -3,15 +3,23 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::ops::ControlFlow;
+use std::time::{Duration, SystemTime};
+
 use libsignal_core::curve::PublicKey;
 use libsignal_core::{Aci, E164};
-use libsignal_keytrans::{AccountData, LastTreeHead, MonitoringData};
+use libsignal_keytrans::{
+    AccountData, LastTreeHead, LocalStateUpdate, MonitoringData, StoredTreeHead,
+};
 
 use crate::api::RequestError;
 use crate::api::keytrans::maybe_partial::MaybePartial;
 use crate::api::keytrans::{
     AccountDataField, CheckMode, Error, SearchKey, UnauthenticatedChatApi, UsernameHash,
 };
+
+const MAX_DISTINGUISHED_TREE_AGE: Duration =
+    Duration::from_secs(7 * 24 * 60 * 60 /* one week */);
 
 /// The main entry point to the module.
 pub async fn check(
@@ -21,9 +29,11 @@ pub async fn check(
     e164: Option<(E164, Vec<u8>)>,
     username_hash: Option<UsernameHash<'_>>,
     stored_account_data: Option<AccountData>,
-    distinguished_tree_head: &LastTreeHead,
+    distinguished_tree_head: Option<TreeHeadWithTimestamp>,
     mode: CheckMode,
-) -> Result<MaybePartial<AccountData>, RequestError<Error>> {
+) -> Result<(MaybePartial<AccountData>, LastTreeHead), RequestError<Error>> {
+    let distinguished_tree_head =
+        update_distinguished_if_needed(kt, distinguished_tree_head).await?;
     let action = Action::plan(
         aci,
         e164.as_ref(),
@@ -31,9 +41,65 @@ pub async fn check(
         stored_account_data,
     );
 
-    action
-        .execute(kt, aci_identity_key, distinguished_tree_head, mode)
-        .await
+    let result = action
+        .execute(kt, aci_identity_key, &distinguished_tree_head, mode)
+        .await?;
+
+    Ok((result, distinguished_tree_head))
+}
+
+fn is_too_old(stored_at_ms: u64) -> bool {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("valid SystemTime")
+        .saturating_sub(Duration::from_millis(stored_at_ms))
+        > MAX_DISTINGUISHED_TREE_AGE
+}
+
+fn select_baseline_tree_head(
+    tree_head: Option<TreeHeadWithTimestamp>,
+) -> ControlFlow<LastTreeHead, Option<LastTreeHead>> {
+    match tree_head {
+        None => ControlFlow::Continue(None),
+        // Not recent enough to be used for search/monitor but a fine
+        // baseline for refresh.
+        Some(timed_head) if is_too_old(timed_head.stored_at_ms) => {
+            ControlFlow::Continue(Some(timed_head.tree_head))
+        }
+        Some(timed_head) => ControlFlow::Break(timed_head.tree_head),
+    }
+}
+
+async fn update_distinguished_if_needed(
+    kt: &impl UnauthenticatedChatApi,
+    tree_head: Option<TreeHeadWithTimestamp>,
+) -> Result<LastTreeHead, RequestError<Error>> {
+    let tree_head = match select_baseline_tree_head(tree_head) {
+        ControlFlow::Break(tree_head) => return Ok(tree_head),
+        ControlFlow::Continue(baseline) => baseline,
+    };
+    let LocalStateUpdate {
+        tree_head,
+        tree_root,
+        monitoring_data: _,
+    } = kt.distinguished(tree_head).await?;
+
+    Ok(LastTreeHead(tree_head, tree_root))
+}
+
+#[cfg_attr(test, derive(Clone, PartialEq))]
+pub struct TreeHeadWithTimestamp {
+    pub tree_head: LastTreeHead,
+    pub stored_at_ms: u64,
+}
+
+impl TreeHeadWithTimestamp {
+    pub fn from_stored(stored: StoredTreeHead) -> Option<Self> {
+        Some(Self {
+            stored_at_ms: stored.stored_at_ms,
+            tree_head: stored.into_last_tree_head()?,
+        })
+    }
 }
 
 /// A more ergonomic search for the clients.
@@ -600,15 +666,20 @@ async fn monitor_then_search<'a>(
 
 #[cfg(test)]
 mod test {
+    use std::ops::ControlFlow;
+    use std::time::SystemTime;
+
     use assert_matches::assert_matches;
+    use futures_util::FutureExt;
     use libsignal_core::E164;
     use libsignal_keytrans::AccountData;
     use nonzero_ext::nonzero;
     use test_case::{test_case, test_matrix};
 
     use super::{
-        Action, Parameters, PostMonitorAction, VersionChanged, check, merge_account_data,
-        modal_search, monitor_then_search,
+        Action, Parameters, PostMonitorAction, TreeHeadWithTimestamp, VersionChanged, check,
+        is_too_old, merge_account_data, modal_search, monitor_then_search,
+        select_baseline_tree_head,
     };
     use crate::api::RequestError;
     use crate::api::keytrans::test_support::{
@@ -626,6 +697,19 @@ mod test {
             aci == other.aci
                 && e164.as_ref() == other.e164
                 && username_hash_bytes.as_deref() == other.username_hash.map(AsRef::as_ref)
+        }
+    }
+
+    fn recent_distinguished_tree() -> TreeHeadWithTimestamp {
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("valid time")
+            .as_millis()
+            .try_into()
+            .expect("fits in u64");
+        TreeHeadWithTimestamp {
+            tree_head: test_distinguished_tree(),
+            stored_at_ms: now,
         }
     }
 
@@ -894,7 +978,7 @@ mod test {
             None,
             None,
             Some(test_account_data()),
-            &test_distinguished_tree(),
+            Some(recent_distinguished_tree()),
             CheckMode::ContactCheck,
         )
         .await;
@@ -923,7 +1007,7 @@ mod test {
             None,
             Some(test_account::username_hash()),
             Some(stored_account_data),
-            &test_distinguished_tree(),
+            Some(recent_distinguished_tree()),
             CheckMode::ContactCheck,
         )
         .await;
@@ -955,7 +1039,7 @@ mod test {
             None,
             None,
             Some(test_account_data()),
-            &test_distinguished_tree(),
+            Some(recent_distinguished_tree()),
             CheckMode::ContactCheck,
         )
         .await;
@@ -975,12 +1059,12 @@ mod test {
             None,
             None,
             Some(test_account_data()),
-            &test_distinguished_tree(),
+            Some(recent_distinguished_tree()),
             CheckMode::ContactCheck,
         )
         .await
         .expect("monitor should succeed");
-        assert_eq!(actual, monitor_result.into());
+        assert_eq!(actual.0, monitor_result.into());
     }
 
     #[test]
@@ -1366,10 +1450,10 @@ mod test {
 
         assert_eq!(result.inner, test_account_data());
 
-        let invocation = &kt.take_searches()[0];
+        let invocation = kt.search_invocation().expect("search is invoked");
 
         // In case of version change we perform a single search using monitor parameters
-        assert_eq!(*invocation, monitor_parameters);
+        assert_eq!(invocation, monitor_parameters);
     }
 
     #[tokio::test]
@@ -1460,9 +1544,9 @@ mod test {
         .await
         .expect("succeeds");
 
-        let invocation = &kt.take_searches()[0];
+        let invocation = kt.search_invocation().expect("search is invoked");
 
-        assert_eq!(*invocation, search_parameters);
+        assert_eq!(invocation, search_parameters);
 
         // Importantly, despite having done a new search for ACI as well
         // we should have retained the ACI result from an earlier monitor.
@@ -1513,9 +1597,9 @@ mod test {
         .await
         .expect("succeeds");
 
-        let invocation = &kt.take_searches()[0];
+        let invocation = kt.search_invocation().expect("search is invoked");
 
-        assert_eq!(*invocation, search_parameters);
+        assert_eq!(invocation, search_parameters);
 
         assert!(result.inner.e164.is_some());
         assert!(result.missing_fields.is_empty());
@@ -1623,9 +1707,9 @@ mod test {
         .await
         .expect("succeeds");
 
-        let invocation = &kt.take_searches()[0];
+        let invocation = kt.search_invocation().expect("search is invoked");
 
-        assert_eq!(*invocation, search_parameters);
+        assert_eq!(invocation, search_parameters);
 
         assert!(result.missing_fields.is_empty());
         assert_eq!(&result.inner.e164, &monitor_result.e164);
@@ -1710,10 +1794,10 @@ mod test {
         .await
         .expect("succeeds");
 
-        let invocation = &kt.take_searches()[0];
+        let invocation = kt.search_invocation().expect("search is invoked");
 
         assert_eq!(
-            *invocation,
+            invocation,
             Parameters {
                 aci: &aci,
                 e164: Some(&e164),
@@ -1734,5 +1818,134 @@ mod test {
                 assert!(result.missing_fields.contains(&AccountDataField::E164));
             }
         }
+    }
+
+    #[test]
+    fn check_updates_distinguished_when_its_unknown() {
+        let mut expected = test_distinguished_tree();
+        expected.1 = [42; 32];
+        let kt = TestKt::for_search(Ok(test_account_data().into()))
+            .with_distinguished(Ok(expected.clone()));
+
+        let result = check(
+            &kt,
+            &test_account::aci(),
+            &test_account::aci_identity_key(),
+            None,
+            None,
+            None,
+            None,
+            CheckMode::ContactCheck,
+        )
+        .now_or_never()
+        .expect("sync")
+        .expect("check succeeds");
+
+        // Distinguished stub has been consumed
+        assert!(kt.distinguished.take().is_none());
+        // Should return the most recent distinguished tree
+        assert_eq!(expected, result.1);
+    }
+
+    #[test]
+    fn check_does_not_update_distinguished_when_its_recent() {
+        let stored_distinguished = TreeHeadWithTimestamp {
+            tree_head: test_distinguished_tree(),
+            stored_at_ms: now_ms() - 60 * 1000,
+        };
+
+        let mut updated_distinguished = test_distinguished_tree();
+        updated_distinguished.1 = [42; 32];
+        let kt = TestKt::for_search(Ok(test_account_data().into()))
+            .with_distinguished(Ok(updated_distinguished));
+
+        let result = check(
+            &kt,
+            &test_account::aci(),
+            &test_account::aci_identity_key(),
+            None,
+            None,
+            None,
+            Some(stored_distinguished.clone()),
+            CheckMode::ContactCheck,
+        )
+        .now_or_never()
+        .expect("sync")
+        .expect("check succeeds");
+
+        // Distinguished stub has not been consumed
+        assert!(kt.distinguished.take().is_some());
+        // Should return the most recent distinguished tree
+        assert_eq!(stored_distinguished.tree_head, result.1);
+    }
+
+    #[test]
+    fn check_propagates_distinguished_update_failure() {
+        let kt = TestKt::for_search(Ok(test_account_data().into()))
+            .with_distinguished(Err(TestKt::expected_error()));
+
+        let result = check(
+            &kt,
+            &test_account::aci(),
+            &test_account::aci_identity_key(),
+            None,
+            None,
+            None,
+            None,
+            CheckMode::ContactCheck,
+        )
+        .now_or_never()
+        .expect("sync");
+
+        TestKt::assert_expected_error(result);
+    }
+
+    fn now_ms() -> u64 {
+        SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("valid time")
+            .as_millis()
+            .try_into()
+            .expect("fits in u64")
+    }
+
+    #[test_case(0 => false; "now")]
+    #[test_case(6 * 24 * 60 * 60 * 1000 => false; "not quite a week ago")]
+    #[test_case(2 * 7 * 24 * 60 * 60 * 1000 => true; "two weeks ago")]
+    fn is_too_old_for_values_in_the_past(ms_in_the_past: u64) -> bool {
+        is_too_old(now_ms() - ms_in_the_past)
+    }
+
+    #[test]
+    fn is_too_old_value_in_the_future() {
+        assert!(!is_too_old(now_ms() + 1));
+    }
+
+    #[test]
+    fn select_baseline_tree_head_no_stored_head_continues_with_none() {
+        assert_matches!(select_baseline_tree_head(None), ControlFlow::Continue(None));
+    }
+
+    #[test]
+    fn select_baseline_tree_head_too_old_continues_with_tree_head() {
+        let tree_head = test_distinguished_tree();
+        let stored = TreeHeadWithTimestamp {
+            tree_head: tree_head.clone(),
+            stored_at_ms: 0,
+        };
+        assert_eq!(
+            select_baseline_tree_head(Some(stored)),
+            ControlFlow::Continue(Some(tree_head)),
+        );
+    }
+
+    #[test]
+    fn select_baseline_tree_head_recent_breaks_with_tree_head() {
+        let recent = recent_distinguished_tree();
+        let expected = recent.tree_head.clone();
+        assert_eq!(
+            select_baseline_tree_head(Some(recent)),
+            ControlFlow::Break(expected),
+        );
     }
 }

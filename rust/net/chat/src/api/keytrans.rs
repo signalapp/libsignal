@@ -24,7 +24,7 @@ use libsignal_keytrans::{
 use libsignal_net::env::KeyTransConfig;
 use libsignal_protocol::PublicKey;
 pub use maybe_partial::{AccountDataField, MaybePartial};
-pub use monitor_and_search::check;
+pub use monitor_and_search::{TreeHeadWithTimestamp, check};
 use verify_ext::KeyTransparencyVerifyExt as _;
 
 use super::RequestError;
@@ -654,24 +654,11 @@ pub(crate) mod test_support {
         pub username_hash_bytes: Option<Vec<u8>>,
     }
 
-    #[derive(Default)]
-    pub struct SearchStub {
-        pub result: Option<Result<MaybePartial<AccountData>, RequestError<Error>>>,
-        pub invocations: Vec<OwnedParameters>,
-    }
-
-    impl SearchStub {
-        fn new(res: Option<Result<MaybePartial<AccountData>, RequestError<Error>>>) -> Self {
-            Self {
-                result: res,
-                invocations: vec![],
-            }
-        }
-    }
-
     pub struct TestKt {
         pub monitor: Cell<Option<Result<AccountData, RequestError<Error>>>>,
-        pub search: Cell<SearchStub>,
+        pub search: Cell<Option<Result<MaybePartial<AccountData>, RequestError<Error>>>>,
+        pub distinguished: Cell<Option<Result<LastTreeHead, RequestError<Error>>>>,
+        search_invocation: Cell<Option<OwnedParameters>>,
     }
 
     impl TestKt {
@@ -683,13 +670,21 @@ pub(crate) mod test_support {
             Self::new(None, Some(search))
         }
 
+        #[must_use]
+        pub fn with_distinguished(self, result: Result<LastTreeHead, RequestError<Error>>) -> Self {
+            self.distinguished.set(Some(result));
+            self
+        }
+
         pub fn new(
             monitor: Option<Result<AccountData, RequestError<Error>>>,
             search: Option<Result<MaybePartial<AccountData>, RequestError<Error>>>,
         ) -> Self {
             Self {
                 monitor: Cell::new(monitor),
-                search: Cell::new(SearchStub::new(search)),
+                search: Cell::new(search),
+                distinguished: Cell::new(Some(Ok(test_distinguished_tree()))),
+                search_invocation: Cell::new(None),
             }
         }
 
@@ -703,8 +698,8 @@ pub(crate) mod test_support {
             assert_matches!(result, Err(RequestError::Unexpected { log_safe }) if log_safe == "test error")
         }
 
-        pub fn take_searches(&self) -> Vec<OwnedParameters> {
-            self.search.take().invocations
+        pub fn search_invocation(self) -> Option<OwnedParameters> {
+            self.search_invocation.into_inner()
         }
     }
 
@@ -719,31 +714,30 @@ pub(crate) mod test_support {
             _distinguished_tree_head: &LastTreeHead,
         ) -> impl Future<Output = Result<MaybePartial<AccountData>, RequestError<Error>>> + Send
         {
-            let mut search_stub = self.search.take();
-
-            search_stub.invocations.push(OwnedParameters {
+            self.search_invocation.set(Some(OwnedParameters {
                 aci: *aci,
                 e164,
                 username_hash_bytes: username_hash.map(|x| x.as_ref().to_vec()),
-            });
+            }));
 
-            let result = search_stub
-                .result
-                .as_ref()
-                .expect("unexpected call to search")
-                .clone();
-            self.search.set(search_stub);
-            std::future::ready(result.clone())
+            let result = self.search.take().expect("unexpected call to search");
+            std::future::ready(result)
         }
 
         fn distinguished(
             &self,
             _: Option<LastTreeHead>,
         ) -> impl Future<Output = Result<SearchStateUpdate, RequestError<Error>>> {
-            // not used in the tests
-            unreachable!();
-            #[allow(unreachable_code)] // without this, `impl Future` gets confused
-            std::future::pending()
+            let tree_head = self
+                .distinguished
+                .take()
+                .expect("unexpected call to distinguished");
+            let state_update = tree_head.map(|tree_head| SearchStateUpdate {
+                tree_head: tree_head.0,
+                tree_root: tree_head.1,
+                monitoring_data: None,
+            });
+            std::future::ready(state_update)
         }
 
         fn monitor(

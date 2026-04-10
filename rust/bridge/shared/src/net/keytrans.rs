@@ -16,8 +16,8 @@ use libsignal_keytrans::{
 };
 use libsignal_net_chat::api::RequestError;
 use libsignal_net_chat::api::keytrans::{
-    CheckMode, Error, KeyTransparencyClient, MaybePartial, SearchKey, UnauthenticatedChatApi as _,
-    UsernameHash, check,
+    CheckMode, Error, KeyTransparencyClient, MaybePartial, SearchKey, TreeHeadWithTimestamp,
+    UnauthenticatedChatApi as _, UsernameHash, check,
 };
 use libsignal_protocol::PublicKey;
 use prost::{DecodeError, Message};
@@ -63,8 +63,6 @@ async fn KeyTransparency_Check(
 
     let account_data = account_data.map(try_decode_account_data).transpose()?;
 
-    let last_distinguished_tree_head = try_decode_distinguished(last_distinguished_tree_head)?;
-
     let mode = if is_self_check {
         CheckMode::SelfCheck {
             is_e164_discoverable,
@@ -75,10 +73,13 @@ async fn KeyTransparency_Check(
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
 
-    let maybe_partial_result = chat_connection
+    let last_distinguished_tree_head = try_decode_distinguished(last_distinguished_tree_head);
+
+    let (maybe_partial_result, _updated_distinguished) = chat_connection
         .as_typed(|chat| {
             Box::pin(async move {
                 let kt = KeyTransparencyClient::new(*chat, config);
+
                 check(
                     &kt,
                     &aci,
@@ -86,7 +87,7 @@ async fn KeyTransparency_Check(
                     e164_pair,
                     username_hash,
                     account_data,
-                    &last_distinguished_tree_head,
+                    last_distinguished_tree_head,
                     mode,
                 )
                 .await
@@ -94,12 +95,15 @@ async fn KeyTransparency_Check(
         })
         .await?;
 
-    maybe_partial_result.into_serialized_account_data(
+    let now = SystemTime::now();
+    let serialized_account_data = maybe_partial_result.into_serialized_account_data(
         aci.as_search_key(),
         e164.map(|x| x.as_search_key()),
         maybe_hash_search_key,
-        SystemTime::now(),
-    )
+        now,
+    )?;
+    // let serialized_distinguished = updated_distinguished.into_stored(now).encode_to_vec();
+    Ok(serialized_account_data)
 }
 
 #[bridge_io(TokioAsyncContext)]
@@ -169,11 +173,10 @@ fn try_decode_account_data(bytes: Box<[u8]>) -> Result<AccountData, RequestError
     AccountData::try_from(stored).map_err(|err| RequestError::Other(Error::from(err)))
 }
 
-fn try_decode_distinguished(bytes: Box<[u8]>) -> Result<LastTreeHead, RequestError<Error>> {
+fn try_decode_distinguished(bytes: Box<[u8]>) -> Option<TreeHeadWithTimestamp> {
     try_decode(bytes)
-        .map(|stored: StoredTreeHead| stored.into_last_tree_head())
-        .map_err(|_| invalid_request("could not decode last distinguished tree head"))?
-        .ok_or(invalid_request("last distinguished tree is required"))
+        .ok()
+        .and_then(TreeHeadWithTimestamp::from_stored)
 }
 
 trait MaybePartialExt {
