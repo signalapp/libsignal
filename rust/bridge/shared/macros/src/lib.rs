@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-//! Generates C, Java, and Node entry points for Rust functions.
+//! Generates C, JVM, and Node entry points for Rust functions and traits.
 //!
-//! The goal of the `bridge_fn` family of macros is to define a cross-language glue layer using
-//! strongly-typed Rust code. You can write a normal top-level Rust function exposing a particular
-//! operation, and additional functions will be generated for FFI, JNI, and Node bindings, mapping
-//! types automatically.
+//! The goal of the [`macro@bridge_fn`] family of macros is to define a cross-language glue layer
+//! using strongly-typed Rust code. You can write a normal top-level Rust function exposing a
+//! particular operation, and additional functions will be generated for FFI, JNI, and Node
+//! bindings, mapping types automatically.
 //!
 //! It is explicitly *not* a goal for this layer to generate perfect C, Java, or TypeScript APIs.
 //! Rather, it should generate safe interfaces to *Rust* APIs, on top of which idiomatic Swift,
@@ -57,18 +57,36 @@
 //! ): SenderKeyMessage;
 //! ```
 //!
-//! # Async support for Node
+//! # Async support
+//!
+//! There are two forms of async support: one to make up for JavaScript being a single-threaded
+//! environment, and one to integrate with truly async operations on the Rust side.
+//!
+//! ## Async support for Node in `bridge_fn`
 //!
 //! For the Node bridge, if a `bridge_fn` is declared as `async`, it will return a JavaScript
-//! Promise and run the function on the JavaScript event loop using the `signal-neon-futures`
-//! crate. Interaction with JavaScript can be done through async callbacks, including trait objects
-//! defined using the [`async-trait`][] crate. Like the synchronous implementations of all three
-//! bridges, **panics will be caught** and translated to JavaScript exceptions.
+//! Promise and run the function on the JavaScript event loop using the `signal-neon-futures` crate.
+//! Interaction with JavaScript can be done through async callbacks, including trait objects defined
+//! using the [`async-trait`][] crate (see [`macro@bridge_callbacks`]). Like the synchronous
+//! implementations of all three bridges, **panics will be caught** and translated to JavaScript
+//! exceptions.
 //!
-//! The FFI and JNI bridges do not support asynchronous execution; an `async` function is invoked
-//! and `expect`ed to complete immediately without blocking.
+//! The FFI and JNI bridges do not support asynchronous execution; an `async` `bridge_fn` is invoked
+//! and `expect`ed to complete immediately without blocking. Use a separate thread/task in the
+//! caller if the operation needs to run in the background.
 //!
 //! [`async-trait`]: https://crates.io/crates/async-trait
+//!
+//! ## Async support using `bridge_io`
+//!
+//! For truly async operations (usually those performing I/O), the [`macro@bridge_io`] variant of
+//! `bridge_fn` allows specifying an additional hidden argument that implements the `AsyncRuntime`
+//! trait, providing a `run_future` method on which the body of the function will be invoked. This
+//! applies to all three bridges, with the C bridge ultimately calling a completion function, the
+//! Java bridge producing a `CompletableFuture`, and the Node bridge producing a `Promise`. (The
+//! Swift bridge uses the C completion callback to implement a Swift `async` interface.) Note that
+//! in each case the completion will not necessarily happen on the thread the work was originally
+//! scheduled on.
 //!
 //! # Naming conventions
 //!
@@ -97,7 +115,8 @@
 //! A replaced name does not undergo any transformation, but is still prefixed with the required
 //! "namespace" for FFI and JNI.
 //!
-//! [JNI spec]: https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/design.html#resolving_native_method_names
+//! [JNI spec]:
+//!     https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/design.html#resolving_native_method_names
 //!
 //! # Limiting to certain bridges
 //!
@@ -108,8 +127,8 @@
 //!
 //! # Adding new argument and result types
 //!
-//! If your argument or result type is a Rust value being wrapped in an opaque box, declare it
-//! using the `bridge_as_handle` macro alongside other such types. Otherwise, there are two steps:
+//! If your argument or result type is a Rust value being wrapped in an opaque box, declare it using
+//! the `bridge_as_handle` macro alongside other such types. Otherwise, there are two steps:
 //!
 //! 1. Argument and result types for FFI and JNI are determined by macros `ffi_arg_type`,
 //!    `ffi_result_type`, `jni_arg_type`, and `jni_result_type`. You may need to add your new type
@@ -131,10 +150,10 @@
 //!    These traits define how to convert between the bridge type and the Rust type used in the
 //!    function as written. See each individual trait for more info on how to add a new type.
 //!
-//! # Limitations
+//! # Callbacks
 //!
-//! - There is no support for multiple return values, even though some of the FFI entry points
-//!   use multiple output parameters. These functions must be implemented manually.
+//! There is support for exposing callback traits to C, JNI, and Node using the
+//! [`macro@bridge_callbacks`] macro; see there for more information.
 
 use proc_macro::TokenStream;
 use quote::*;
@@ -371,7 +390,7 @@ fn bridge_fn_impl(
     .into()
 }
 
-/// Generates C, Java, and Node entry points for a Rust function that returns a value.
+/// Generates C, Java, and Node entry points for a Rust function.
 ///
 /// See the [crate-level documentation](crate) for more information.
 ///
@@ -392,6 +411,22 @@ pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
     bridge_fn_impl(attr, item, BridgingKind::Regular)
 }
 
+/// Generates C, Java, and Node entry points for a Rust function that runs on an async runtime.
+///
+/// See the [crate-level documentation](crate) for more information.
+///
+/// # Example
+///
+/// ```ignore
+/// // Produces a C function named "signal_upload_profile_photo"
+/// // and a TypeScript function manually named "ProfilePhoto_Upload",
+/// // with the Java entry point disabled.
+/// # #[cfg(ignore_even_when_running_all_tests)]
+/// #[bridge_io(TokioAsyncContext, jni = false, node = "ProfilePhoto_Upload")]
+/// async fn UploadProfilePhoto(buffer: Vec<u8>) {
+///   // ...
+/// }
+/// ```
 #[proc_macro_attribute]
 pub fn bridge_io(attr: TokenStream, item: TokenStream) -> TokenStream {
     bridge_fn_impl(attr, item, BridgingKind::Io { runtime: () })
@@ -399,11 +434,65 @@ pub fn bridge_io(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Generates C, Java, and Node bridging for the callbacks in a Rust trait.
 ///
-/// Arguments to callbacks use the same handling as result types as described in the [crate-level
+/// This is done by producing helper types that can be easily bridged as arguments, under the names
+/// `FfiBridge{MyTrait}Struct`, `JniBridge{MyTrait}`, and `NodeBridge{MyTrait}`. These types all
+/// implement the trait.
+///
+/// Arguments to callbacks use the same handling as *result* types as described in the [crate-level
 /// documentation](crate). Argument conversion is assumed to be generally infallible under normal
 /// circumstances and will only produce logs on failure.
 ///
-/// TODO: more docs
+/// Results are handled using the `ffi::CallbackResultTypeInfo`, `jni::CallbackResultTypeInfo`, and
+/// `node::CallbackResultTypeInfo` traits. These are all set up to behave the same as any type that
+/// can provide `SimpleArgTypeInfo` behavior---that is, arguments that do not need to be borrowed
+/// from their foreign state. However, some types are not simple (or are not valid arguments at all)
+/// and using them as callback results needs to be specified explicitly.
+///
+/// All callbacks that return a result are expected to specifically return a `Result` of some kind,
+/// whose error type must also be able to represent bridge layer errors (by stringifying them if
+/// nothing else).
+///
+/// # Example
+///
+/// ```ignore
+/// # #[cfg(ignore_even_when_running_all_tests)]
+/// // Expects a C struct of callbacks named "SignalFfiExampleStoreStruct"
+/// // and a Java interface manually named `org.signal.libsignal.internal.ExampleStore` (this is required),
+/// // with Node bridging disabled.
+/// #[bridge_callbacks(jni = "org.signal.libsignal.internal.ExampleStore", node = false)]
+/// trait ExampleStore {
+///     async fn load_state(
+///         &self,
+///         peer_id: String,
+///     ) -> Result<Vec<u8>, SignalProtocolError>;
+///     async fn store_state(
+///         &self,
+///         peer_id: String,
+///         new_state: Vec<u8>,
+///     ) -> Result<(), SignalProtocolError>;
+/// }
+/// ```
+///
+/// # JVM signatures
+///
+/// Because the Java bridge invokes methods by reflection, it needs a proper overload signature. It
+/// gets these signatures from the `jni::ResultTypeInfo` trait; if you get an error about
+/// `jni_signature_for` or `jni_signature_for_result` failing, you may need to add the signature to
+/// the implementation of `jni::ResultTypeInfo`.
+///
+/// # Async behavior
+///
+/// Like `bridge_fn` (but unlike `bridge_io`), `async` is only treated as actually delayed for the
+/// Node bridge. For C and JNI, async methods are expected to complete synchronously. (It is
+/// recommended that the callbacks therefore only be invoked on the thread that originally passed
+/// down the callbacks object.)
+///
+/// Note that due to <del>JavaScript's single-threaded behavior</del> the limitations of [Neon][],
+/// even non-`async` callbacks will be dispatched asynchronously for the Node bridge, and thus must
+/// not return anything---the call completing only covers the dispatching, not the full execution of
+/// the callback.
+///
+/// [Neon]: https://crates.io/crates/neon
 #[proc_macro_attribute]
 pub fn bridge_callbacks(attr: TokenStream, item: TokenStream) -> TokenStream {
     let trait_item = parse_macro_input!(item as ItemTrait);
