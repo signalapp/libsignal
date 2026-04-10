@@ -244,17 +244,18 @@ def main(args: Optional[List[str]] = None) -> int:
         dst_path = os.path.join(out_dir, dst_base + '.node')
         print('Copying %s to %s' % (src_path, dst_path))
         os.makedirs(out_dir, exist_ok=True)
-        if objcopy:
+        if objcopy and configuration_name != 'Debug':
             subprocess.check_call([objcopy, '-S', src_path, dst_path])
         else:
             shutil.copyfile(src_path, dst_path)
 
-        maybe_dump_debug_symbols(
-            src_path=os.path.join(libs_in, debug_format.format('signal_node')),
-            src_checksum_path=os.path.join(libs_in, debug_format_for_checksum.format('signal_node')),
-            dst_path=os.path.join(out_dir, dst_base + '-debuginfo.sym'),
-            dst_checksum_path=os.path.join(out_dir, dst_base + '-debuginfo.sha256'),
-        )
+        if configuration_name != 'Debug':
+            maybe_dump_debug_symbols(
+                src_path=os.path.join(libs_in, debug_format.format('signal_node')),
+                src_checksum_path=os.path.join(libs_in, debug_format_for_checksum.format('signal_node')),
+                dst_path=os.path.join(out_dir, dst_base + '-debuginfo.sym'),
+                dst_checksum_path=os.path.join(out_dir, dst_base + '-debuginfo.sha256'),
+            )
 
         if options.copy_to_prebuilds:
             prebuild_dir = os.path.join('prebuilds', f'{node_os_name}-{node_arch}')
