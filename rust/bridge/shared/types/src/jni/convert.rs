@@ -714,161 +714,48 @@ impl<'a> SimpleArgTypeInfo<'a> for Vec<Vec<u8>> {
 }
 
 macro_rules! bridge_trait {
-    ($name:ident) => {
+    ($name:ident $(<$life:lifetime>)?, $load:expr) => {
         paste! {
             impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
                 for &'storage mut dyn $name
             {
                 type ArgType = JObject<'context>;
-                type StoredType = [<Jni $name>]<'storage>;
+                type StoredType = BridgedCallbacks<[<JniBridge $name>]$(<$life>)?>;
                 fn borrow(
                     env: &mut JNIEnv<'context>,
                     store: &'param Self::ArgType,
                 ) -> Result<Self::StoredType, BridgeLayerError> {
-                    Self::StoredType::new(env, store)
+                    Ok(BridgedCallbacks([<JniBridge $name>]::new(
+                        env, store,
+                    )?))
                 }
                 fn load_from(
                     stored: &'storage mut Self::StoredType,
                 ) -> Self {
-                    stored
-                }
-            }
-
-            impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
-                for Option<&'storage dyn $name>
-            {
-                type ArgType = JObject<'context>;
-                type StoredType = Option<[<Jni $name>]<'storage>>;
-                fn borrow(
-                    env: &mut JNIEnv<'context>,
-                    store: &'param Self::ArgType,
-                ) -> Result<Self::StoredType, BridgeLayerError> {
-                    if store.is_null() {
-                        Ok(None)
-                    } else {
-                        Ok(Some([<Jni $name>]::new(env, store)?))
-                    }
-                }
-                fn load_from(
-                    stored: &'storage mut Self::StoredType,
-                ) -> Self {
-                    stored.as_ref().map(|x| x as &'storage dyn $name)
+                    ($load)(stored)
                 }
             }
         }
     };
+    ($name:ident) => {
+        bridge_trait!($name, std::convert::identity);
+    };
 }
 
-// bridge_trait!(IdentityKeyStore);
-// bridge_trait!(PreKeyStore);
-// bridge_trait!(SenderKeyStore);
-// bridge_trait!(SessionStore);
-// bridge_trait!(SignedPreKeyStore);
-// bridge_trait!(KyberPreKeyStore);
-bridge_trait!(InputStream);
-bridge_trait!(SyncInputStream);
-
-impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
-    for &'storage mut dyn IdentityKeyStore
-{
-    type ArgType = JObject<'context>;
-    type StoredType = BridgedCallbacks<JniBridgeIdentityKeyStore>;
-    fn borrow(
-        env: &mut JNIEnv<'context>,
-        store: &'param Self::ArgType,
-    ) -> Result<Self::StoredType, BridgeLayerError> {
-        Ok(BridgedCallbacks(JniBridgeIdentityKeyStore::new(
-            env, store,
-        )?))
-    }
-    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
-        stored
-    }
-}
-
-impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
-    for &'storage mut dyn PreKeyStore
-{
-    type ArgType = JObject<'context>;
-    type StoredType = BridgedCallbacks<JniBridgePreKeyStore>;
-    fn borrow(
-        env: &mut JNIEnv<'context>,
-        store: &'param Self::ArgType,
-    ) -> Result<Self::StoredType, BridgeLayerError> {
-        Ok(BridgedCallbacks(JniBridgePreKeyStore::new(env, store)?))
-    }
-    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
-        stored
-    }
-}
-
-impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
-    for &'storage mut dyn SignedPreKeyStore
-{
-    type ArgType = JObject<'context>;
-    type StoredType = BridgedCallbacks<JniBridgeSignedPreKeyStore>;
-    fn borrow(
-        env: &mut JNIEnv<'context>,
-        store: &'param Self::ArgType,
-    ) -> Result<Self::StoredType, BridgeLayerError> {
-        Ok(BridgedCallbacks(JniBridgeSignedPreKeyStore::new(
-            env, store,
-        )?))
-    }
-    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
-        stored
-    }
-}
-
-impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
-    for &'storage mut dyn KyberPreKeyStore
-{
-    type ArgType = JObject<'context>;
-    type StoredType = BridgedCallbacks<JniBridgeKyberPreKeyStore>;
-    fn borrow(
-        env: &mut JNIEnv<'context>,
-        store: &'param Self::ArgType,
-    ) -> Result<Self::StoredType, BridgeLayerError> {
-        Ok(BridgedCallbacks(JniBridgeKyberPreKeyStore::new(
-            env, store,
-        )?))
-    }
-    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
-        stored
-    }
-}
-
-impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
-    for &'storage mut dyn SessionStore
-{
-    type ArgType = JObject<'context>;
-    type StoredType = BridgedCallbacks<JniBridgeSessionStore>;
-    fn borrow(
-        env: &mut JNIEnv<'context>,
-        store: &'param Self::ArgType,
-    ) -> Result<Self::StoredType, BridgeLayerError> {
-        Ok(BridgedCallbacks(JniBridgeSessionStore::new(env, store)?))
-    }
-    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
-        stored
-    }
-}
-
-impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
-    for &'storage mut dyn SenderKeyStore
-{
-    type ArgType = JObject<'context>;
-    type StoredType = BridgedCallbacks<JniBridgeSenderKeyStore>;
-    fn borrow(
-        env: &mut JNIEnv<'context>,
-        store: &'param Self::ArgType,
-    ) -> Result<Self::StoredType, BridgeLayerError> {
-        Ok(BridgedCallbacks(JniBridgeSenderKeyStore::new(env, store)?))
-    }
-    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
-        stored
-    }
-}
+bridge_trait!(IdentityKeyStore);
+bridge_trait!(PreKeyStore);
+bridge_trait!(SenderKeyStore);
+bridge_trait!(SessionStore);
+bridge_trait!(SignedPreKeyStore);
+bridge_trait!(KyberPreKeyStore);
+bridge_trait!(
+    InputStream<'storage>,
+    |x: &'storage mut Self::StoredType| &mut x.0
+);
+bridge_trait!(
+    SyncInputStream<'storage>,
+    |x: &'storage mut Self::StoredType| &mut x.0
+);
 
 impl<'a> CallbackResultTypeInfo<'a> for PublicKey {
     type ResultType = JObject<'a>;

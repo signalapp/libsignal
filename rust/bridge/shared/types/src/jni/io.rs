@@ -15,13 +15,13 @@ pub type JavaInputStream<'a> = JObject<'a>;
 pub type JavaSyncInputStream<'a> = JObject<'a>;
 
 /// Implementation of [`InputStream`] for an argument to a bridge function.
-pub struct JniInputStream<'a> {
+pub struct JniBridgeInputStream<'a> {
     env: RefCell<EnvHandle<'a>>,
     stream: &'a JObject<'a>,
 }
 
 /// Implementation of [`SyncInputStream`].
-pub type JniSyncInputStream<'a> = JniInputStream<'a>;
+pub type JniBridgeSyncInputStream<'a> = JniBridgeInputStream<'a>;
 
 #[derive(Debug, derive_more::From)]
 enum BridgeOrIoError {
@@ -29,7 +29,7 @@ enum BridgeOrIoError {
     Io(IoError),
 }
 
-impl<'a> JniInputStream<'a> {
+impl<'a> JniBridgeInputStream<'a> {
     pub fn new<'context: 'a>(
         env: &mut JNIEnv<'context>,
         stream: &'a JObject<'a>,
@@ -112,7 +112,7 @@ impl From<BridgeOrIoError> for IoError {
 }
 
 #[async_trait(?Send)]
-impl InputStream for JniInputStream<'_> {
+impl InputStream for JniBridgeInputStream<'_> {
     fn read<'out, 'a: 'out>(&'a self, buf: &mut [u8]) -> io::Result<InputStreamRead<'out>> {
         let amount_read = self.do_read(buf)?;
         Ok(InputStreamRead::Ready { amount_read })
@@ -124,7 +124,7 @@ impl InputStream for JniInputStream<'_> {
     }
 }
 
-impl SyncInputStream for JniInputStream<'_> {
+impl SyncInputStream for JniBridgeInputStream<'_> {
     fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         Ok(self.do_read(buf)?)
     }
