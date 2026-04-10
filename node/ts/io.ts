@@ -45,7 +45,7 @@ export abstract class InputStream {
 
 export function _bridgeInputStream(
   inputStream: InputStream
-): Native.BridgeInputStream {
+): Native.InputStream {
   return {
     read(amount: number): Promise<Uint8Array<ArrayBuffer>> {
       return inputStream.read(amount);

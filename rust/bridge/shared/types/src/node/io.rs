@@ -14,7 +14,7 @@ use super::*;
 use crate::io::{InputStream, InputStreamRead, SyncInputStream};
 use crate::node;
 
-#[bridge_callbacks(ffi = false, jni = false)]
+#[bridge_callbacks(ffi = false, jni = false, node = "InputStream")]
 trait BridgeInputStream {
     async fn read(&self, amount: u32) -> Result<Box<[u8]>, IoError>;
     async fn skip(&self, amount: u64) -> Result<(), IoError>;

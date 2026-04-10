@@ -256,7 +256,7 @@ pub(crate) fn name_from_ident(ident: &Ident) -> String {
 ///
 /// The wrapper will be named "Node{MyTrait}" and will implement the original trait, as well as
 /// `neon::types::Finalize`.
-pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait) -> Result<TokenStream2> {
+pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait, js_name: &str) -> Result<TokenStream2> {
     let trait_name = &trait_to_bridge.ident;
     let wrapper_name = format_ident!("Node{}", trait_to_bridge.ident);
 
@@ -269,7 +269,7 @@ pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait) -> Result<TokenStream2> 
     let callback_ts_decls = callbacks.iter().map(|c| &c.ts_decl);
 
     let ts_declaration_comment = format!(
-        "ts: `export /*trait*/ type {trait_name} = {{\n{}\n}};`",
+        "ts: `export /*trait*/ type {js_name} = {{\n{}\n}};`",
         callback_ts_decls.format("\n")
     );
 

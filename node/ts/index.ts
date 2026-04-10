@@ -699,9 +699,7 @@ export class SenderCertificate {
   }
 }
 
-function bridgeSenderKeyStore(
-  store: SenderKeyStore
-): Native.BridgeSenderKeyStore {
+function bridgeSenderKeyStore(store: SenderKeyStore): Native.SenderKeyStore {
   return {
     async storeSenderKey(
       sender: Native.ProtocolAddress,
@@ -1203,7 +1201,7 @@ export class DecryptionErrorMessage {
   }
 }
 
-function bridgeSessionStore(store: SessionStore): Native.BridgeSessionStore {
+function bridgeSessionStore(store: SessionStore): Native.SessionStore {
   return {
     async storeSession(
       rawAddress: Native.ProtocolAddress,
@@ -1227,7 +1225,7 @@ function bridgeSessionStore(store: SessionStore): Native.BridgeSessionStore {
 
 function bridgeIdentityKeyStore(
   store: IdentityKeyStore
-): Native.BridgeIdentityKeyStore {
+): Native.IdentityKeyStore {
   return {
     async getLocalIdentityKeyPair(): Promise<
       [Native.PrivateKey, Native.PublicKey]
@@ -1322,7 +1320,7 @@ export function signalDecrypt(
   );
 }
 
-function bridgePreKeyStore(store: PreKeyStore): Native.BridgePreKeyStore {
+function bridgePreKeyStore(store: PreKeyStore): Native.PreKeyStore {
   return {
     async storePreKey(id: number, record: Native.PreKeyRecord): Promise<void> {
       return store.savePreKey(id, PreKeyRecord._fromNativeHandle(record));
@@ -1339,7 +1337,7 @@ function bridgePreKeyStore(store: PreKeyStore): Native.BridgePreKeyStore {
 
 function bridgeSignedPreKeyStore(
   store: SignedPreKeyStore
-): Native.BridgeSignedPreKeyStore {
+): Native.SignedPreKeyStore {
   return {
     async storeSignedPreKey(
       id: number,
@@ -1359,7 +1357,7 @@ function bridgeSignedPreKeyStore(
 
 function bridgeKyberPreKeyStore(
   store: KyberPreKeyStore
-): Native.BridgeKyberPreKeyStore {
+): Native.KyberPreKeyStore {
   return {
     async storeKyberPreKey(
       id: number,

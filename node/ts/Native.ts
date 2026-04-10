@@ -63,15 +63,6 @@ export enum IdentityChange {
   ReplacedExisting = 1,
 }
 
-// TODO: Resolve the different names here.
-export type IdentityKeyStore = BridgeIdentityKeyStore;
-export type PreKeyStore = BridgePreKeyStore;
-export type SignedPreKeyStore = BridgeSignedPreKeyStore;
-export type KyberPreKeyStore = BridgeKyberPreKeyStore;
-export type SessionStore = BridgeSessionStore;
-export type SenderKeyStore = BridgeSenderKeyStore;
-export type InputStream = BridgeInputStream;
-
 export type SyncInputStream = Uint8Array<ArrayBuffer>;
 
 export type ChallengeOption = 'pushChallenge' | 'captcha';
@@ -1830,7 +1821,7 @@ export { registerErrors,
 
 /* eslint-disable comma-dangle */
 export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
-export /*trait*/ type BridgeInputStream = {
+export /*trait*/ type InputStream = {
   read: (amount: number) => Promise<Uint8Array<ArrayBuffer>>;
   skip: (amount: bigint) => Promise<void>;
 };
@@ -1867,32 +1858,32 @@ export const NetRemoteConfigKeys = ['chatRequestConnectionCheckTimeoutMillis', '
 export interface TokioAsyncContext { readonly __type: unique symbol; }
 export interface ConnectionManager { readonly __type: unique symbol; }
 export interface ConnectionProxyConfig { readonly __type: unique symbol; }
-export /*trait*/ type BridgeIdentityKeyStore = {
+export /*trait*/ type IdentityKeyStore = {
   getLocalIdentityKeyPair: () => Promise<[PrivateKey, PublicKey]>;
   getLocalRegistrationId: () => Promise<number>;
   getIdentityKey: (address: ProtocolAddress) => Promise<PublicKey | null>;
   saveIdentityKey: (address: ProtocolAddress, publicKey: PublicKey) => Promise<number>;
   isTrustedIdentity: (address: ProtocolAddress, publicKey: PublicKey, direction: number) => Promise<boolean>;
 };
-export /*trait*/ type BridgePreKeyStore = {
+export /*trait*/ type PreKeyStore = {
   loadPreKey: (id: number) => Promise<PreKeyRecord | null>;
   storePreKey: (id: number, record: PreKeyRecord) => Promise<void>;
   removePreKey: (id: number) => Promise<void>;
 };
-export /*trait*/ type BridgeSignedPreKeyStore = {
+export /*trait*/ type SignedPreKeyStore = {
   loadSignedPreKey: (id: number) => Promise<SignedPreKeyRecord | null>;
   storeSignedPreKey: (id: number, record: SignedPreKeyRecord) => Promise<void>;
 };
-export /*trait*/ type BridgeKyberPreKeyStore = {
+export /*trait*/ type KyberPreKeyStore = {
   loadKyberPreKey: (id: number) => Promise<KyberPreKeyRecord | null>;
   storeKyberPreKey: (id: number, record: KyberPreKeyRecord) => Promise<void>;
   markKyberPreKeyUsed: (id: number, ecPrekeyId: number, baseKey: PublicKey) => Promise<void>;
 };
-export /*trait*/ type BridgeSessionStore = {
+export /*trait*/ type SessionStore = {
   loadSession: (address: ProtocolAddress) => Promise<SessionRecord | null>;
   storeSession: (address: ProtocolAddress, record: SessionRecord) => Promise<void>;
 };
-export /*trait*/ type BridgeSenderKeyStore = {
+export /*trait*/ type SenderKeyStore = {
   loadSenderKey: (sender: ProtocolAddress, distributionId: Uuid) => Promise<SenderKeyRecord | null>;
   storeSenderKey: (sender: ProtocolAddress, distributionId: Uuid, record: SenderKeyRecord) => Promise<void>;
 };

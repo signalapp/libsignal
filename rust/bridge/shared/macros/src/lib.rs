@@ -522,8 +522,9 @@ pub fn bridge_callbacks(attr: TokenStream, item: TokenStream) -> TokenStream {
     let jni_items = jni_name.map(|name| {
         jni::bridge_trait(&trait_item, &name).unwrap_or_else(Error::into_compile_error)
     });
-    let node_items = node_name
-        .map(|_name| node::bridge_trait(&trait_item).unwrap_or_else(Error::into_compile_error));
+    let node_items = node_name.map(|name| {
+        node::bridge_trait(&trait_item, &name).unwrap_or_else(Error::into_compile_error)
+    });
 
     quote! {
         // Unlike bridge_fn, we still declare the trait even when the bridging synthesis is
