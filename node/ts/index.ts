@@ -788,7 +788,7 @@ export class SessionRecord {
     const s2_2 = readScalar();
 
     const z = readLengthPrefixedBytes();
-    const z_decoded = String.fromCharCode(...readLengthPrefixedBytes());
+    const z_decoded = String.fromCharCode(...z);
     const w = { compressed: readBytes(32) };
     const v = { compressed: readBytes(32) };
     const c = readScalar();
