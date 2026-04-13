@@ -5983,7 +5983,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## rand 0.9.2, rand_chacha 0.9.0, rand_core 0.6.4, rand_core 0.9.3
+## rand 0.9.4, rand_chacha 0.9.0, rand_core 0.6.4, rand_core 0.9.3
 
 ```
 Copyright 2018 Developers of the Rand project
