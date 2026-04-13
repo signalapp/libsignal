@@ -10,9 +10,19 @@ use libsignal_core::derive_arrays;
 use crate::proto::storage::session_structure;
 use crate::{PrivateKey, PublicKey, Result, crypto};
 
+#[derive(Clone)]
 pub(crate) enum MessageKeyGenerator {
     Keys(MessageKeys),
     Seed((Vec<u8>, u32)),
+}
+
+impl fmt::Debug for MessageKeyGenerator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Keys(k) => f.debug_tuple("Keys").field(&k.counter()).finish(),
+            Self::Seed((_, idx)) => f.debug_tuple("Seed").field(idx).finish(),
+        }
+    }
 }
 
 impl MessageKeyGenerator {

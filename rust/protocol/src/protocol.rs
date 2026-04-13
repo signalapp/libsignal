@@ -203,7 +203,7 @@ impl SignalMessage {
 
         let Some(expected) = Self::serialize_addresses(sender_address, recipient_address) else {
             log::warn!(
-                "Local addresses not valid Service IDs: sender={}, recipient={}",
+                "Locally supplied addresses not valid Service IDs: sender={}, recipient={}",
                 sender_address,
                 recipient_address,
             );

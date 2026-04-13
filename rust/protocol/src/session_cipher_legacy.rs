@@ -1,7 +1,16 @@
 //
-// Copyright 2020-2022 Signal Messenger, LLC.
+// Copyright 2020-2026 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+// Frozen snapshot of session_cipher.rs taken before the protocol refactoring.
+// Used exclusively for interoperability tests: the legacy encrypt/decrypt paths
+// must be able to exchange messages with the new implementation.
+//
+// DO NOT modify the crypto logic in this file. The point is to have an
+// immutable reference implementation to test against.
+
+#![cfg(test)]
+#![allow(dead_code)]
 
 use std::time::SystemTime;
 
@@ -16,7 +25,7 @@ use crate::{
     SessionRecord, SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore, session,
 };
 
-pub async fn message_encrypt<R: Rng + CryptoRng>(
+pub async fn legacy_message_encrypt<R: Rng + CryptoRng>(
     ptext: &[u8],
     remote_address: &ProtocolAddress,
     local_address: &ProtocolAddress,
@@ -162,7 +171,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn message_decrypt<R: Rng + CryptoRng>(
+pub async fn legacy_message_decrypt<R: Rng + CryptoRng>(
     ciphertext: &CiphertextMessage,
     remote_address: &ProtocolAddress,
     local_address: &ProtocolAddress,
@@ -175,11 +184,11 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
 ) -> Result<Vec<u8>> {
     match ciphertext {
         CiphertextMessage::SignalMessage(m) => {
-            let _ = local_address;
-            message_decrypt_signal(m, remote_address, session_store, identity_store, csprng).await
+            legacy_message_decrypt_signal(m, remote_address, session_store, identity_store, csprng)
+                .await
         }
         CiphertextMessage::PreKeySignalMessage(m) => {
-            message_decrypt_prekey(
+            legacy_message_decrypt_prekey(
                 m,
                 remote_address,
                 local_address,
@@ -200,7 +209,7 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
+pub async fn legacy_message_decrypt_prekey<R: Rng + CryptoRng>(
     ciphertext: &PreKeySignalMessage,
     remote_address: &ProtocolAddress,
     local_address: &ProtocolAddress,
@@ -285,7 +294,7 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     Ok(ptext)
 }
 
-pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
+pub async fn legacy_message_decrypt_signal<R: Rng + CryptoRng>(
     ciphertext: &SignalMessage,
     remote_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,

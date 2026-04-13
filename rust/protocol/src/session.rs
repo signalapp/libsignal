@@ -145,16 +145,16 @@ async fn process_prekey_impl(
 
     let parameters = BobSignalProtocolParameters::new(
         identity_store.get_identity_key_pair().await?,
-        our_signed_pre_key_pair, // signed pre key
+        our_signed_pre_key_pair,
         our_one_time_pre_key_pair,
-        our_signed_pre_key_pair, // ratchet key
         our_kyber_pre_key_pair,
         *message.identity_key(),
         *message.base_key(),
         kyber_ciphertext,
     );
 
-    let mut new_session = ratchet::initialize_bob_session(&parameters)?;
+    // The recipient's initial ratchet key is the signed pre-key.
+    let mut new_session = ratchet::initialize_bob_session(&parameters, &our_signed_pre_key_pair)?;
 
     new_session.set_local_registration_id(identity_store.get_local_registration_id().await?);
     new_session.set_remote_registration_id(message.registration_id());

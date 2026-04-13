@@ -177,14 +177,13 @@ pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), Signal
         bob_identity,
         bob_base_key,
         None,
-        bob_ephemeral_key,
         bob_kyber_key,
         *alice_identity.identity_key(),
         alice_base_key.public_key,
         &kyber_ciphertext,
     );
 
-    let bob_session = initialize_bob_session_record(&bob_params)?;
+    let bob_session = initialize_bob_session_record(&bob_params, &bob_ephemeral_key)?;
 
     Ok((alice_session, bob_session))
 }

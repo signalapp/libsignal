@@ -23,7 +23,7 @@ use crate::{
     IdentityKeyStore, KeyPair, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, PrivateKey,
     ProtocolAddress, PublicKey, Result, ServiceId, ServiceIdFixedWidthBinaryBytes, SessionRecord,
     SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore, Timestamp, crypto,
-    message_encrypt, proto, session_cipher,
+    message_encrypt, proto, session_management,
 };
 
 #[derive(Debug, Clone)]
@@ -2044,7 +2044,7 @@ pub async fn sealed_sender_decrypt(
     let message = match usmc.msg_type()? {
         CiphertextMessageType::Whisper => {
             let ctext = SignalMessage::try_from(usmc.contents()?)?;
-            session_cipher::message_decrypt_signal(
+            session_management::message_decrypt_signal(
                 &ctext,
                 &remote_address,
                 session_store,
@@ -2055,7 +2055,7 @@ pub async fn sealed_sender_decrypt(
         }
         CiphertextMessageType::PreKey => {
             let ctext = PreKeySignalMessage::try_from(usmc.contents()?)?;
-            session_cipher::message_decrypt_prekey(
+            session_management::message_decrypt_prekey(
                 &ctext,
                 &remote_address,
                 &local_address,
