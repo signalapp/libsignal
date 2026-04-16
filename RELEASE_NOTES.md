@@ -1,4 +1,2 @@
-v0.92.2
+v0.92.3
 
-
-- keytrans: Periodically update distinguished tree head inside libsignal
