@@ -16,6 +16,8 @@ as a Java, Swift, or TypeScript library. The underlying implementations are writ
 - usernames: Functionality for username generation, hashing, and proofs.
 - media: Utilities for manipulating media.
 
+A crate [dependency graph][] exists.
+
 This repository is used by the Signal client apps ([Android][], [iOS][], and [Desktop][]) as well as
 server-side. Use outside of Signal is unsupported. In particular, the products of this repository
 are the Java, Swift, and TypeScript libraries that wrap the underlying Rust implementations. All
@@ -37,6 +39,7 @@ increases to the minimum supported tools versions.
 [Android]: https://github.com/signalapp/Signal-Android
 [iOS]: https://github.com/signalapp/Signal-iOS
 [Desktop]: https://github.com/signalapp/Signal-Desktop
+[dependency graph]: https://github.com/signalapp/libsignal/blob/main/doc/src/overview/README.md
 
 
 # Building
