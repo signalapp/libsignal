@@ -719,7 +719,7 @@ export class SessionRecord {
         for (let i = 0; i < 32; i++) {
             n += BigInt(bytes[i]) << BigInt(8 * i);
         }
-        return n;
+        return n.toString();
     }
 
     function readLengthPrefixedBytes() {
@@ -754,10 +754,13 @@ export class SessionRecord {
   }
 
   getBobResponse(): any {
+    console.log('getting bob response');
     const data = Native.SessionRecord_GetBobResponse(this);
+    console.log('got bob response', data);
     let offset = 0;
 
     function readBytes(len: number) {
+        console.log('readBytes', len, offset, data, data.length);
         const slice = data.slice(offset, offset + len);
         offset += len;
         return slice;
@@ -769,7 +772,7 @@ export class SessionRecord {
         for (let i = 0; i < 32; i++) {
             n += BigInt(bytes[i]) << BigInt(8 * i);
         }
-        return n;
+        return n.toString();
     }
 
     function readLengthPrefixedBytes() {
@@ -779,6 +782,7 @@ export class SessionRecord {
     }
 
     const vk = readLengthPrefixedBytes();
+    console.log('vk', vk);
     const x = readLengthPrefixedBytes();
 
     const h = { compressed: readBytes(32) };
@@ -786,6 +790,7 @@ export class SessionRecord {
     const s1 = readScalar();
     const s2_1 = readScalar();
     const s2_2 = readScalar();
+    console.log('h, hprime, s1, s2_1, s2_2', h, hprime, s1, s2_1, s2_2);
 
     const z = readLengthPrefixedBytes();
     const z_decoded = String.fromCharCode(...z);
