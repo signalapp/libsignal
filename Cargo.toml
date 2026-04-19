@@ -1,7 +1,13 @@
 [workspace]
 # When adding new members, consider updating the log filter in rust/bridge/shared/src/logging.rs.
 members = [
+    "rust/account-keys",
     "rust/attest",
+    "rust/bridge/ffi",
+    "rust/bridge/jni",
+    "rust/bridge/jni/impl",
+    "rust/bridge/jni/testing",
+    "rust/bridge/node",
     "rust/crypto",
     "rust/debug",
     "rust/device-transfer",
@@ -11,17 +17,11 @@ members = [
     "rust/net",
     "rust/net/chat",
     "rust/net/infra",
-    "rust/account-keys",
     "rust/poksho",
     "rust/protocol",
     "rust/usernames",
     "rust/zkcredential",
     "rust/zkgroup",
-    "rust/bridge/ffi",
-    "rust/bridge/jni",
-    "rust/bridge/jni/impl",
-    "rust/bridge/jni/testing",
-    "rust/bridge/node",
 ]
 default-members = [
     "rust/crypto",
