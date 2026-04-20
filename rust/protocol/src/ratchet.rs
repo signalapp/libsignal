@@ -227,9 +227,11 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     //step 2
     let r1 = hash_generic_zp(b"r1");
     let r2 = hash_generic_zp(b"r2");
+    // scalar * point = point to the power of scaler in paper
     let eta = (g * r1) + (hash_i(&vk, &secrets) * r2);
     let etaprime = (hash_a(&vk, &secrets) * r1) + (hash_b(&vk, &secrets) * r2);
     let c = hash_fs(&vk, &secrets, &h, &hprime, &eta, &etaprime);
+    //s values should be mod p
     let s = (r1 - c * alpha, r2 - c * beta);
     let tau = (c,s);
 
@@ -387,7 +389,15 @@ pub(crate) fn initialize_bob_session(
 
     x = &secrets;
     let their_pvrf_ciphertext = parameters.their_pvrf_ciphertext().as_ref().map(|b| b.to_vec());
+    log::info!(
+        "PVRF ciphertext in PreKey message as Bob: {}",
+        their_pvrf_ciphertext
+            .as_ref()
+            .map(|_| "present")
+            .unwrap_or("not present")
+    );
     if let Some(bytes) = their_pvrf_ciphertext {
+        log::info!("PVRF ciphertext bytes: {:?}", bytes);
         let (
             (h, hprime, (c, (s1, s2))),
             their_vk, //should be null or unset in real
@@ -414,15 +424,18 @@ pub(crate) fn initialize_bob_session(
 
         // η = g^s1 * Hi(vk,x)^s2 * h^c
         // η' = Ha(vk,x)^s1 * Hb(vk,x)^s2 * h'^c
-        let eta = g * (s1) + hi * (s2) + h * (c);
-        let etaprime = ha * (s1) + hb * (s2) + hprime * (c);
+        let eta = (g * (s1)) + (hi * (s2)) + h * (c);
+        let etaprime = (ha * (s1)) + (hb * (s2)) + (hprime * (c));
 
         let computed_c = hash_fs(&vk, x, &h, &hprime, &eta, &etaprime);
 
         // abort if mismatch
-        // if c != computed_c {
-        //     panic!("abort");
-        // }
+        if c != computed_c {
+            //panic!("abort");
+            log::info!("THE C'S DIDNT MATCH FOR BOB, SHOULD HAVE ABORTED");
+        } else {
+            log::info!("THE C'S MATCHED FOR BOB'S SIDE");
+        }
 
         // Step 3
         let w = hi*(k);
@@ -433,7 +446,15 @@ pub(crate) fn initialize_bob_session(
         // Step 4
         let response =  (vk, x.clone(), vt, z, pi, c, computed_c); //(vk, x, vt, z, pi);
         bob_response = Some(bincode::serialize(&response).unwrap());
+        log::info!("Bob's PVRF response: {:?}", bob_response);
+        let example_decoded_bob_response: (Vec<u8>, Vec<u8>, (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))), Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar)
+         =   bincode::deserialize(
+            bob_response.as_ref().unwrap()
+            )
+        .unwrap();
+        log::info!("Decoded Bob's PVRF response: {:?}", example_decoded_bob_response);
     } else {
+        log::info!("No PVRF ciphertext provided in PreKey message; skipping PVRF processing");
         vts_response = None;
         bob_response = None;
     }
