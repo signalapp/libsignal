@@ -363,7 +363,7 @@ jobs:
       run: rustup toolchain install "${{ steps.rust-fmt-toolchain.outputs.pinned-nightly-toolchain }}" --profile minimal --component rustfmt
 
     - name: Cache locally-built tools
-      uses: runs-on/cache@3a15256b3556fbc5ae15f7f04598e4c7680e9c25 # v4
+      uses: runs-on/cache@575425708ccb521bfce731e8d8a67f7f337b8954 # main as of 2026-04-10
       with:
         path: local-tools
         key: local-tools-${{ runner.os }}-infra-${{ hashFiles('acknowledgments/cargo-about-version', '.taplo-cli-version') }}
