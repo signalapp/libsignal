@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::fmt::{Debug, Display, Formatter};
 use std::ops::ControlFlow;
 use std::time::{Duration, SystemTime};
 
@@ -11,12 +12,14 @@ use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{
     AccountData, LastTreeHead, LocalStateUpdate, MonitoringData, StoredTreeHead,
 };
+use libsignal_net::infra::errors::LogSafeDisplay;
 
 use crate::api::RequestError;
 use crate::api::keytrans::maybe_partial::MaybePartial;
 use crate::api::keytrans::{
     AccountDataField, CheckMode, Error, SearchKey, UnauthenticatedChatApi, UsernameHash,
 };
+use crate::logging::{DebugByCalling, Redact, RedactBytesAsHex};
 
 const MAX_DISTINGUISHED_TREE_AGE: Duration =
     Duration::from_secs(7 * 24 * 60 * 60 /* one week */);
@@ -40,6 +43,7 @@ pub async fn check(
         username_hash.as_ref(),
         stored_account_data,
     );
+    log::info!("Action: {}", &action);
 
     let result = action
         .execute(kt, aci_identity_key, &distinguished_tree_head, mode)
@@ -78,6 +82,14 @@ async fn update_distinguished_if_needed(
         ControlFlow::Break(tree_head) => return Ok(tree_head),
         ControlFlow::Continue(baseline) => baseline,
     };
+    log::info!(
+        "Updating distinguished tree head ({})",
+        if tree_head.is_none() {
+            "unavailable"
+        } else {
+            "stale"
+        }
+    );
     let LocalStateUpdate {
         tree_head,
         tree_root,
@@ -153,6 +165,7 @@ async fn modal_search(
         .missing_fields
         .contains(&AccountDataField::E164)
     {
+        log::info!("Self check with E.164 discoverability off");
         // Phone number discoverability is off. We should not treat it as error.
         maybe_partial.missing_fields.remove(&AccountDataField::E164);
     }
@@ -165,6 +178,32 @@ struct Parameters<'a> {
     pub aci: &'a Aci,
     pub e164: Option<&'a (E164, Vec<u8>)>,
     pub username_hash: Option<&'a UsernameHash<'a>>,
+}
+
+impl<'a> LogSafeDisplay for Parameters<'a> {}
+impl<'a> Display for Parameters<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Parameters")
+            .field("aci", &Redact(self.aci))
+            .field(
+                "e164",
+                &DebugByCalling(|f| match self.e164 {
+                    None => f.write_str("None"),
+                    Some((e164, uak)) => {
+                        f.write_str("(")?;
+                        Display::fmt(&Redact(e164), f)?;
+                        f.write_str(", ")?;
+                        Display::fmt(&RedactBytesAsHex(uak), f)?;
+                        f.write_str(")")
+                    }
+                }),
+            )
+            .field(
+                "username_hash",
+                &self.username_hash.map(AsRef::as_ref).map(RedactBytesAsHex),
+            )
+            .finish()
+    }
 }
 
 impl<'a> Parameters<'a> {
@@ -191,6 +230,34 @@ enum Action<'a> {
     },
 }
 
+impl<'a> LogSafeDisplay for Action<'a> {}
+
+impl<'a> Display for Action<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Action::SearchOnly(params) => {
+                write!(f, "SearchOnly({params})")
+            }
+            Action::MonitorThenSearch {
+                monitor_parameters,
+                search_parameters,
+                account_data: _,
+            } => f
+                .debug_struct("MonitorThenSearch")
+                .field(
+                    "monitor_parameters",
+                    &DebugByCalling(|f| write!(f, "{monitor_parameters}")),
+                )
+                .field(
+                    "search_parameters",
+                    &DebugByCalling(|f| write!(f, "{search_parameters}")),
+                )
+                .field("account_data", &"[REDACTED]")
+                .finish(),
+        }
+    }
+}
+
 #[cfg_attr(test, derive(Debug, PartialEq))]
 enum PostMonitorAction<'a> {
     None,
@@ -203,6 +270,24 @@ enum PostMonitorAction<'a> {
         // it was successfully monitored and the value version did not change.
         version_change_detected: VersionChanged,
     },
+}
+
+impl<'a> LogSafeDisplay for PostMonitorAction<'a> {}
+
+impl<'a> Display for PostMonitorAction<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PostMonitorAction::None => write!(f, "None"),
+            PostMonitorAction::Search {
+                parameters,
+                version_change_detected,
+            } => f
+                .debug_struct("Search")
+                .field("parameters", &DebugByCalling(|f| write!(f, "{parameters}")))
+                .field("version_change_detected", version_change_detected)
+                .finish(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -418,8 +503,8 @@ fn select_monitor_or_search_for<'a, T: SearchKey>(
     }
 }
 
-#[derive(Clone, Copy)]
-#[cfg_attr(test, derive(Debug, PartialEq))]
+#[derive(Clone, Copy, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 enum VersionChanged {
     No,
     Yes,
@@ -561,7 +646,7 @@ fn remove_missing(partial_account_data: &mut MaybePartial<AccountData>) {
         missing_fields,
     } = partial_account_data;
     for field in missing_fields.iter() {
-        log::debug!("Version change: untracking {:?}", &field);
+        log::info!("Version change: untracking {:?}", &field);
         match field {
             AccountDataField::E164 => inner.e164 = None,
             AccountDataField::UsernameHash => inner.username_hash = None,
@@ -646,6 +731,8 @@ async fn monitor_then_search<'a>(
         mode,
         any_version_changed.into(),
     )?;
+
+    log::info!("PostMonitorAction: {post_monitor_plan}");
 
     // Combine the stored account data and the one we just obtained from monitor.
     // Not preserving ACI data here as we do need to prefer monitor's version.
