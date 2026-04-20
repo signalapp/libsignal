@@ -17,7 +17,8 @@ DESKTOP_LIB_DIR=java/client/src/main/resources
 SERVER_LIB_DIR=java/server/src/main/resources
 
 # Fetch dependencies first, so we can use them in computing later options.
-cargo fetch
+# But allow this to fail in case we're offline.
+cargo fetch || true
 
 export CARGO_PROFILE_RELEASE_DEBUG=1 # Enable line tables
 RUSTFLAGS="--cfg aes_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
