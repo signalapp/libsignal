@@ -3,5 +3,4 @@ ignore = [
     "RUSTSEC-2024-0370", # proc-macro-error is unmaintained, used by libcrux
     "RUSTSEC-2024-0436", # paste is unmaintained, used by libsignal-bridge
     "RUSTSEC-2025-0141", # bincode is unmaintained, used by zkgroup
-    "RUSTSEC-2026-0097", # The older version of rand is only used as a dev-dependency
 ]
