@@ -6,6 +6,7 @@
 use std::future::Future;
 
 use futures_util::{FutureExt, TryFutureExt};
+use libsignal_debug::trace_block;
 
 use super::*;
 use crate::support::{AsyncRuntime, CancellationId, ResultReporter};
@@ -62,6 +63,7 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe> FutureCompleter<T> 
     fn get_current_thread_stack_trace<'a>(
         env: &mut JNIEnv<'a>,
     ) -> Result<JObject<'a>, BridgeLayerError> {
+        let _guard = trace_block!("get_current_thread_stack_trace");
         let thread_class = find_class(env, ClassName("java.lang.Thread")).expect_no_exceptions()?;
         let thread = call_static_method_checked(
             env,
