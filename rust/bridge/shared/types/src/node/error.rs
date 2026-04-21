@@ -680,6 +680,38 @@ impl SignalNodeError for GetUploadFormFailure {
     }
 }
 
+/// Returns a function that produces the extra properties for a `MismatchedDevices`
+/// `LibSignalError`.
+///
+/// See [`new_js_error`].
+fn extra_props_for_mismatched_devices<'a, C: Context<'a>>(
+    mismatched_device_errors: impl IntoIterator<
+        Item = libsignal_net_chat::api::messages::MismatchedDeviceError,
+    >,
+) -> impl FnOnce(&mut C) -> JsResult<'a, JsValue> {
+    move |cx| {
+        let errors_module: Handle<JsObject> = match ERRORS_MODULE.get(cx) {
+            Some(root) => root.to_inner(cx),
+            None => cx.throw_error("registerErrors not called")?,
+        };
+        // We want to use the actual class so it can have a real ServiceId object as a
+        // field, which isn't currently accessible to the Rust side of the bridge.
+        let mismatched_device_entry_cls: Handle<JsFunction> =
+            errors_module.get(cx, "MismatchedDevicesEntry")?;
+        let mismatched_device_entry_array = cx.empty_array();
+        for (error, i) in mismatched_device_errors.into_iter().zip(0..) {
+            let js_entry = error.convert_into(cx)?;
+            let js_entry_with_strong_type =
+                mismatched_device_entry_cls.construct(cx, [js_entry.upcast()])?;
+            mismatched_device_entry_array.set(cx, i, js_entry_with_strong_type)?;
+        }
+
+        let props = JsObject::new(cx);
+        props.set(cx, "entries", mismatched_device_entry_array)?;
+        Ok(props.upcast())
+    }
+}
+
 impl SignalNodeError for libsignal_net_chat::api::messages::MultiRecipientSendFailure {
     fn into_throwable<'a, C: Context<'a>>(
         self,
@@ -695,29 +727,13 @@ impl SignalNodeError for libsignal_net_chat::api::messages::MultiRecipientSendFa
                 operation_name,
                 no_extra_properties,
             ),
-            Self::MismatchedDevices(mismatched_device_errors) => {
-                new_js_error(cx, Some("MismatchedDevices"), &msg, operation_name, |cx| {
-                    let errors_module: Handle<JsObject> = match ERRORS_MODULE.get(cx) {
-                        Some(root) => root.to_inner(cx),
-                        None => cx.throw_error("registerErrors not called")?,
-                    };
-                    // We want to use the actual class so it can have a real ServiceId object as a
-                    // field, which isn't currently accessible to the Rust side of the bridge.
-                    let mismatched_device_entry_cls: Handle<JsFunction> =
-                        errors_module.get(cx, "MismatchedDevicesEntry")?;
-                    let mismatched_device_entry_array = cx.empty_array();
-                    for (error, i) in mismatched_device_errors.into_iter().zip(0..) {
-                        let js_entry = error.convert_into(cx)?;
-                        let js_entry_with_strong_type =
-                            mismatched_device_entry_cls.construct(cx, [js_entry.upcast()])?;
-                        mismatched_device_entry_array.set(cx, i, js_entry_with_strong_type)?;
-                    }
-
-                    let props = JsObject::new(cx);
-                    props.set(cx, "entries", mismatched_device_entry_array)?;
-                    Ok(props.upcast())
-                })
-            }
+            Self::MismatchedDevices(mismatched_device_errors) => new_js_error(
+                cx,
+                Some("MismatchedDevices"),
+                &msg,
+                operation_name,
+                extra_props_for_mismatched_devices(mismatched_device_errors),
+            ),
         }
     }
 }
@@ -744,27 +760,39 @@ impl SignalNodeError for libsignal_net_chat::api::messages::SealedSendFailure {
                 operation_name,
                 no_extra_properties,
             ),
-            Self::MismatchedDevices(mismatched_device_error) => {
-                new_js_error(cx, Some("MismatchedDevices"), &msg, operation_name, |cx| {
-                    let errors_module: Handle<JsObject> = match ERRORS_MODULE.get(cx) {
-                        Some(root) => root.to_inner(cx),
-                        None => cx.throw_error("registerErrors not called")?,
-                    };
-                    // We want to use the actual class so it can have a real ServiceId object as a
-                    // field, which isn't currently accessible to the Rust side of the bridge.
-                    let mismatched_device_entry_cls: Handle<JsFunction> =
-                        errors_module.get(cx, "MismatchedDevicesEntry")?;
-                    let mismatched_device_entry_array = cx.empty_array();
-                    let js_entry = mismatched_device_error.convert_into(cx)?;
-                    let js_entry_with_strong_type =
-                        mismatched_device_entry_cls.construct(cx, [js_entry.upcast()])?;
-                    mismatched_device_entry_array.set(cx, 0, js_entry_with_strong_type)?;
+            Self::MismatchedDevices(mismatched_device_error) => new_js_error(
+                cx,
+                Some("MismatchedDevices"),
+                &msg,
+                operation_name,
+                extra_props_for_mismatched_devices([mismatched_device_error]),
+            ),
+        }
+    }
+}
 
-                    let props = JsObject::new(cx);
-                    props.set(cx, "entries", mismatched_device_entry_array)?;
-                    Ok(props.upcast())
-                })
-            }
+impl SignalNodeError for libsignal_net_chat::api::messages::UnsealedSendFailure {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        cx: &mut C,
+        operation_name: &str,
+    ) -> Handle<'a, JsError> {
+        let msg = self.to_string();
+        match self {
+            Self::ServiceIdNotFound => new_js_error(
+                cx,
+                Some("ServiceIdNotFound"),
+                &msg,
+                operation_name,
+                no_extra_properties,
+            ),
+            Self::MismatchedDevices(mismatched_device_error) => new_js_error(
+                cx,
+                Some("MismatchedDevices"),
+                &msg,
+                operation_name,
+                extra_props_for_mismatched_devices([mismatched_device_error]),
+            ),
         }
     }
 }

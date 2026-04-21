@@ -55,6 +55,9 @@ impl<T> BorrowedSliceOf<T> {
     }
 }
 
+unsafe impl<T> Send for BorrowedSliceOf<T> where for<'a> &'a [T]: Send {}
+unsafe impl<T> Sync for BorrowedSliceOf<T> where for<'a> &'a [T]: Sync {}
+
 #[repr(C)]
 pub struct BorrowedMutableSliceOf<T> {
     base: *mut T,

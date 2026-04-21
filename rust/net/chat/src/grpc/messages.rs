@@ -30,7 +30,8 @@ use super::{GrpcServiceProvider, OverGrpc, log_and_send};
 use crate::api::messages::{
     MismatchedDeviceError, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
     MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
-    SingleOutboundUnsealedMessage, UnsealedSendFailure, UploadTooLarge, UserBasedSendAuthorization,
+    SingleOutboundUnsealedMessage, UnsealedMessageContents, UnsealedSendFailure, UploadTooLarge,
+    UserBasedSendAuthorization,
 };
 use crate::api::{Auth, RequestError, Unauth, UploadForm, UserBasedAuthorization};
 use crate::logging::Redact;
@@ -52,7 +53,7 @@ impl From<UserBasedAuthorization> for send_sealed_sender_message_request::Author
 #[derive(Debug)]
 struct MessageTypeCannotBeSentUnsealed;
 
-impl SingleOutboundUnsealedMessage<'_> {
+impl<T: UnsealedMessageContents> SingleOutboundUnsealedMessage<T> {
     fn grpc_unsealed_message_type(
         &self,
     ) -> Result<SendMessageType, MessageTypeCannotBeSentUnsealed> {
@@ -312,7 +313,7 @@ impl<T: GrpcServiceProvider> crate::api::messages::AuthenticatedChatApi<OverGrpc
         &self,
         destination: ServiceId,
         timestamp: Timestamp,
-        contents: &[SingleOutboundUnsealedMessage<'_>],
+        contents: &[SingleOutboundUnsealedMessage<impl UnsealedMessageContents>],
         online_only: bool,
         urgent: bool,
     ) -> Result<(), RequestError<UnsealedSendFailure>> {
@@ -381,7 +382,7 @@ impl<T: GrpcServiceProvider> crate::api::messages::AuthenticatedChatApi<OverGrpc
     async fn send_sync_message(
         &self,
         timestamp: Timestamp,
-        contents: &[SingleOutboundUnsealedMessage<'_>],
+        contents: &[SingleOutboundUnsealedMessage<impl UnsealedMessageContents>],
         urgent: bool,
     ) -> Result<(), RequestError<MismatchedDeviceError>> {
         SingleOutboundUnsealedMessage::assert_valid_unsealed_message_types(contents);
@@ -1361,7 +1362,7 @@ mod test {
                     SingleOutboundUnsealedMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
-                        contents: Cow::Owned(CiphertextMessage::PlaintextContent(
+                        contents: CiphertextMessage::PlaintextContent(
                             PlaintextContent::try_from(
                                 // A structurally valid PlaintextContent message starts with C0 and has
                                 // no other constraints; a realistic one will additionally end with
@@ -1369,14 +1370,14 @@ mod test {
                                 &[0xC0, 1, 2, 3, 0x80][..],
                             )
                             .expect("valid"),
-                        )),
+                        ),
                     },
                     SingleOutboundUnsealedMessage {
                         device_id: DeviceId::new(3).expect("valid"),
                         registration_id: 33,
-                        contents: Cow::Owned(CiphertextMessage::PlaintextContent(
+                        contents: CiphertextMessage::PlaintextContent(
                             PlaintextContent::try_from(&[0xC0, 4, 5, 6, 0x80][..]).expect("valid"),
-                        )),
+                        ),
                     },
                 ],
                 false,
@@ -1487,7 +1488,7 @@ mod test {
                     SingleOutboundUnsealedMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
-                        contents: Cow::Owned(CiphertextMessage::PlaintextContent(
+                        contents: CiphertextMessage::PlaintextContent(
                             PlaintextContent::try_from(
                                 // A structurally valid PlaintextContent message starts with C0 and has
                                 // no other constraints; a realistic one will additionally end with
@@ -1495,14 +1496,14 @@ mod test {
                                 &[0xC0, 1, 2, 3, 0x80][..],
                             )
                             .expect("valid"),
-                        )),
+                        ),
                     },
                     SingleOutboundUnsealedMessage {
                         device_id: DeviceId::new(3).expect("valid"),
                         registration_id: 33,
-                        contents: Cow::Owned(CiphertextMessage::PlaintextContent(
+                        contents: CiphertextMessage::PlaintextContent(
                             PlaintextContent::try_from(&[0xC0, 4, 5, 6, 0x80][..]).expect("valid"),
-                        )),
+                        ),
                     },
                 ],
                 true,

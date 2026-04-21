@@ -783,6 +783,28 @@ impl FfiError for libsignal_net_chat::api::messages::SealedSendFailure {
     }
 }
 
+impl FfiError for libsignal_net_chat::api::messages::UnsealedSendFailure {
+    fn describe(&self) -> Cow<'_, str> {
+        self.to_string().into()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::ServiceIdNotFound => SignalErrorCode::ServiceIdNotFound,
+            Self::MismatchedDevices(_) => SignalErrorCode::MismatchedDevices,
+        }
+    }
+
+    fn provide_mismatched_device_errors(&self) -> Result<&[MismatchedDeviceError], WrongErrorKind> {
+        match self {
+            Self::ServiceIdNotFound => Err(WrongErrorKind),
+            Self::MismatchedDevices(mismatched_device_error) => {
+                Ok(std::slice::from_ref(mismatched_device_error))
+            }
+        }
+    }
+}
+
 impl IntoFfiError for UploadTooLarge {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         SimpleError::new(SignalErrorCode::UploadTooLarge, self.to_string())

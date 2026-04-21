@@ -202,6 +202,10 @@ private class SetConnectionLaterProvisioningListenerBridge: ProvisioningListener
 }
 
 internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteEnd> {
+    internal static let FAKE_AUTH_CONNECT_SELF_UUID = UUID(
+        uuid: (0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff)
+    )
+
     private let tokioAsyncContext: TokioAsyncContext
 
     required init(owned: NonNull<SignalMutPointerFakeChatRemoteEnd>) {

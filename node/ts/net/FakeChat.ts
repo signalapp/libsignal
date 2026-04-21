@@ -50,6 +50,9 @@ export type ServerResponse = {
 };
 
 export class FakeChatRemote {
+  public static FAKE_AUTH_CONNECT_SELF_UUID: string =
+    'ffffffff-ffff-ffff-ffff-ffffffffffff';
+
   constructor(
     private asyncContext: TokioAsyncContext,
     readonly _nativeHandle: FakeChatRemoteEnd

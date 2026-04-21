@@ -22,10 +22,34 @@ pub struct SingleOutboundMessage<T> {
 
 pub type SingleOutboundSealedSenderMessage<'a> = SingleOutboundMessage<Cow<'a, [u8]>>;
 
-pub type SingleOutboundUnsealedMessage<'a> =
-    SingleOutboundMessage<Cow<'a, libsignal_protocol::CiphertextMessage>>;
+pub type SingleOutboundUnsealedMessage<T> = SingleOutboundMessage<T>;
 
-impl SingleOutboundUnsealedMessage<'_> {
+/// A trait representing a [`CiphertextMessage`](libsignal_protocol::CiphertextMessage)-like value,
+/// for the purpose of avoiding unnecessary copies.
+pub trait UnsealedMessageContents: Sync {
+    fn message_type(&self) -> libsignal_protocol::CiphertextMessageType;
+    fn serialize(&self) -> &[u8];
+}
+
+impl UnsealedMessageContents for libsignal_protocol::CiphertextMessage {
+    fn message_type(&self) -> libsignal_protocol::CiphertextMessageType {
+        self.message_type()
+    }
+    fn serialize(&self) -> &[u8] {
+        self.serialize()
+    }
+}
+
+impl UnsealedMessageContents for &'_ libsignal_protocol::CiphertextMessage {
+    fn message_type(&self) -> libsignal_protocol::CiphertextMessageType {
+        (**self).message_type()
+    }
+    fn serialize(&self) -> &[u8] {
+        (**self).serialize()
+    }
+}
+
+impl<T: UnsealedMessageContents> SingleOutboundUnsealedMessage<T> {
     /// Asserts that the messages in a list are all compatible and use a ciphertext format
     /// appropriate for unsealed sends.
     ///
@@ -35,15 +59,6 @@ impl SingleOutboundUnsealedMessage<'_> {
     /// - but not sender key messages, which can't be sent unsealed
     /// - and not a mix of the above
     pub(crate) fn assert_valid_unsealed_message_types(messages: &[Self]) {
-        Self::assert_valid_unsealed_message_types_impl(
-            messages.iter().map(|m| m.contents.message_type()),
-        );
-    }
-
-    /// The implementation of [`Self::assert_valid_unsealed_message_types`], broken out for testing.
-    fn assert_valid_unsealed_message_types_impl(
-        mut types: impl Iterator<Item = libsignal_protocol::CiphertextMessageType>,
-    ) {
         fn representative_message_type(
             ty: libsignal_protocol::CiphertextMessageType,
         ) -> libsignal_protocol::CiphertextMessageType {
@@ -61,6 +76,7 @@ impl SingleOutboundUnsealedMessage<'_> {
             }
         }
 
+        let mut types = messages.iter().map(|m| m.contents.message_type());
         let first_message_type = types.next().expect("cannot send messages to 0 devices");
         let message_type_to_check_against = representative_message_type(first_message_type);
         for next_message_type in types {
@@ -182,7 +198,7 @@ pub trait AuthenticatedChatApi<T> {
         &self,
         destination: ServiceId,
         timestamp: libsignal_protocol::Timestamp,
-        contents: &[SingleOutboundUnsealedMessage<'_>],
+        contents: &[SingleOutboundUnsealedMessage<impl UnsealedMessageContents>],
         online_only: bool,
         urgent: bool,
     ) -> Result<(), RequestError<UnsealedSendFailure>>;
@@ -193,7 +209,7 @@ pub trait AuthenticatedChatApi<T> {
     async fn send_sync_message(
         &self,
         timestamp: libsignal_protocol::Timestamp,
-        contents: &[SingleOutboundUnsealedMessage<'_>],
+        contents: &[SingleOutboundUnsealedMessage<impl UnsealedMessageContents>],
         urgent: bool,
     ) -> Result<(), RequestError<MismatchedDeviceError>>;
 
@@ -242,8 +258,25 @@ mod test {
     #[test_case(&[CiphertextMessageType::Plaintext, CiphertextMessageType::Whisper] => panics)]
     #[test_case(&[CiphertextMessageType::PreKey, CiphertextMessageType::Plaintext] => panics)]
     fn test_valid_unsealed_sender_message_types(types: &[CiphertextMessageType]) {
-        SingleOutboundUnsealedMessage::assert_valid_unsealed_message_types_impl(
-            types.iter().copied(),
+        struct FakeCiphertextMessage(CiphertextMessageType);
+        impl UnsealedMessageContents for FakeCiphertextMessage {
+            fn message_type(&self) -> CiphertextMessageType {
+                self.0
+            }
+            fn serialize(&self) -> &[u8] {
+                unimplemented!()
+            }
+        }
+
+        SingleOutboundUnsealedMessage::assert_valid_unsealed_message_types(
+            &types
+                .iter()
+                .map(|&ty| SingleOutboundUnsealedMessage {
+                    device_id: DeviceId::new(1).expect("valid"),
+                    registration_id: 1,
+                    contents: FakeCiphertextMessage(ty),
+                })
+                .collect_vec(),
         )
     }
 }

@@ -15,7 +15,11 @@ import java.util.EnumSet
  * <p>When the websocket transport is in use, this corresponds to a {@code HTTP 428} response to
  * requests to a number of endpoints.
  */
-public class RateLimitChallengeException : ChatServiceException {
+public class RateLimitChallengeException :
+  ChatServiceException,
+  BadRequestError,
+  SyncSendFailure,
+  UnsealedSendFailure {
   public val token: String
   public val options: Set<ChallengeOption>
   public val retryLater: Duration?

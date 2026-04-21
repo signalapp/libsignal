@@ -1663,6 +1663,76 @@ where
     }
 }
 
+// Based on the `&'storage [&'storage T]` implementation above.
+impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
+    for &'storage [CiphertextMessageRef<'storage>]
+{
+    type ArgType = JObjectArray<'context>;
+    // Stored in this order so the references get dropped before the owners.
+    // https://doc.rust-lang.org/reference/destructors.html#r-destructors.operation
+    type StoredType = (
+        Vec<CiphertextMessageRef<'static>>,
+        Vec<Arc<dyn Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe + 'static>>,
+    );
+    fn borrow(
+        env: &mut JNIEnv<'context>,
+        foreign: &'param Self::ArgType,
+    ) -> Result<Self::StoredType, BridgeLayerError> {
+        type StoredGuarantees =
+            dyn Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe + 'static;
+
+        let len = env
+            .get_array_length(foreign)
+            .check_exceptions(env, "<&[CiphertextMessageRef]>::borrow")?;
+        let mut result_arcs = Vec::with_capacity(len.try_into().expect("fits in usize"));
+        let mut result_refs = Vec::with_capacity(len.try_into().expect("fits in usize"));
+        for i in 0..len {
+            let java_object = AutoLocal::new(
+                env.get_object_array_element(foreign, i)
+                    .check_exceptions(env, "<&[CiphertextMessageRef]>::borrow")?,
+                env,
+            );
+            let some_ref =
+                CiphertextMessageRef::borrow(env, &java_object)?.expect("always borrowed as Some");
+            // SAFETY: These references are all *currently* alive, so we should be able to get to
+            // their owning Arc.
+            let arc = match some_ref {
+                CiphertextMessageRef::SignalMessage(m) => unsafe {
+                    BridgeHandle::from_raw_without_consuming(NonNull::from(m))
+                        as Arc<StoredGuarantees>
+                },
+                CiphertextMessageRef::PreKeySignalMessage(m) => unsafe {
+                    BridgeHandle::from_raw_without_consuming(NonNull::from(m))
+                        as Arc<StoredGuarantees>
+                },
+                CiphertextMessageRef::SenderKeyMessage(m) => unsafe {
+                    BridgeHandle::from_raw_without_consuming(NonNull::from(m))
+                        as Arc<StoredGuarantees>
+                },
+                CiphertextMessageRef::PlaintextContent(m) => unsafe {
+                    BridgeHandle::from_raw_without_consuming(NonNull::from(m))
+                        as Arc<StoredGuarantees>
+                },
+            };
+            // SAFETY: The plain references inside the CiphertextMessageRef will be kept alive as
+            // long as any of the Arcs are kept alive, which they will be.
+            result_refs.push(unsafe {
+                std::mem::transmute::<CiphertextMessageRef<'_>, CiphertextMessageRef<'static>>(
+                    some_ref,
+                )
+            });
+            result_arcs.push(arc);
+        }
+        Ok((result_refs, result_arcs))
+    }
+
+    fn load_from(
+        stored: &'storage mut Self::StoredType,
+    ) -> &'storage [CiphertextMessageRef<'storage>] {
+        &stored.0
+    }
+}
+
 impl<T: BridgeHandle> ResultTypeInfo<'_> for T {
     type ResultType = ObjectHandle;
     const JNI_SIGNATURE: &'static str = jni_signature!(long);
@@ -2836,6 +2906,9 @@ macro_rules! jni_arg_type {
     };
     (jni::CiphertextMessageRef) => {
         $crate::jni::JavaCiphertextMessage<'local>
+    };
+    (&[jni::CiphertextMessageRef<'_>]) => {
+        ::jni::objects::JObjectArray<'local>
     };
     (& [& $typ:ty]) => {
         ::jni::objects::JLongArray<'local>

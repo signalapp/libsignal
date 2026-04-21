@@ -242,6 +242,12 @@ extension SignalBorrowedSliceOfConstPointerPublicKey: FfiBorrowedSlice {
     }
 }
 
+extension SignalBorrowedSliceOfConstPointerCiphertextMessage: FfiBorrowedSlice {
+    init(_ buffer: UnsafeBufferPointer<SignalConstPointerCiphertextMessage>) {
+        self.init(base: buffer.baseAddress, length: buffer.count)
+    }
+}
+
 extension SignalBorrowedSliceOfu32: FfiBorrowedSlice {
     init(_ buffer: UnsafeBufferPointer<UInt32>) {
         self.init(base: buffer.baseAddress, length: buffer.count)

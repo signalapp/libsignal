@@ -21,7 +21,9 @@ import java.io.IOException
 public class MismatchedDeviceException :
   IOException,
   MultiRecipientSendFailure,
-  SealedSendFailure {
+  SealedSendFailure,
+  SyncSendFailure,
+  UnsealedSendFailure {
   public data class Entry(
     public val account: ServiceId,
     public val missingDevices: IntArray = intArrayOf(),

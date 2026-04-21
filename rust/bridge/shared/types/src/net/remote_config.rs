@@ -118,6 +118,7 @@ pub enum RemoteConfigKey {
     MessagesAnonymousSendMultiRecipientMessage => "grpc.MessagesAnonymousSendMultiRecipientMessage.2",
     MessagesAnonymousSendSingleRecipientMessage => "grpc.MessagesAnonymousSendSingleRecipientMessage",
     AttachmentsGetUploadForm => "grpc.AttachmentsGetUploadForm",
+    MessagesSendMessage => "grpc.MessagesSendMessage",
 }
 }
 
@@ -300,6 +301,7 @@ mod tests {
             .chain(services::Attachments::iter().map(|x| x.into()))
             .chain(services::KeysAnonymous::iter().map(|x| x.into()))
             .chain(services::MessagesAnonymous::iter().map(|x| x.into()))
+            .chain(services::Messages::iter().map(|x| x.into()))
             .collect();
 
         for key in super::RemoteConfigKey::KEYS

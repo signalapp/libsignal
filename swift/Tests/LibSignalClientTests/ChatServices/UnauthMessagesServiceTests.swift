@@ -196,6 +196,7 @@ class UnauthMessagesServiceTests: UnauthChatServiceTestBase<any UnauthMessagesSe
         guard let requestBody = try JSONSerialization.jsonObject(with: request.body) as? NSDictionary else {
             fatalError("request was not a JSON dictionary")
         }
+        // swift-format-ignore: GroupNumericLiterals
         XCTAssertEqual(
             requestBody,
             [
@@ -215,8 +216,7 @@ class UnauthMessagesServiceTests: UnauthChatServiceTestBase<any UnauthMessagesSe
                 ],
                 "online": false,
                 "urgent": true,
-                // swift-format-ignore: GroupNumericLiterals
-                "timestamp": 1_700_000_000_000,
+                "timestamp": 1700000000000,
             ] as NSDictionary
         )
 

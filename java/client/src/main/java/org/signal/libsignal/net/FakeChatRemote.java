@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.net;
 
+import java.util.UUID;
 import kotlin.Pair;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -13,6 +14,8 @@ import org.signal.libsignal.internal.TokioAsyncContext;
 import org.signal.libsignal.net.ChatConnection.InternalRequest;
 
 class FakeChatRemote extends NativeHandleGuard.SimpleOwner {
+  public static UUID FAKE_AUTH_CONNECT_SELF_UUID = new UUID(~0, ~0);
+
   private TokioAsyncContext tokioContext;
 
   FakeChatRemote(TokioAsyncContext tokioContext, long nativeHandle) {

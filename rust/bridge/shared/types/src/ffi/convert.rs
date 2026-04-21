@@ -1019,7 +1019,9 @@ impl<T: BridgeHandle> SimpleArgTypeInfo for &mut T {
 
 impl<'a, T: BridgeHandle> ArgTypeInfo<'a> for &'a [&'a T] {
     type ArgType = BorrowedSliceOf<ConstPointer<T>>;
-    type StoredType = Self::ArgType;
+    // SAFETY: This `'static` depends entirely on the original argument outliving the uses.
+    // That's the intent for `BorrowedSliceOf`, but it's a subtle requirement for async code!
+    type StoredType = BorrowedSliceOf<&'static T>;
     fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
         // Check preconditions up front.
         let slice_of_pointers = unsafe { foreign.as_slice() }?;
@@ -1029,18 +1031,15 @@ impl<'a, T: BridgeHandle> ArgTypeInfo<'a> for &'a [&'a T] {
             return Err(NullPointerError.into());
         }
 
-        Ok(foreign)
+        let base_ptr_for_slice_of_refs = foreign.base.cast::<&'static T>();
+
+        Ok(BorrowedSliceOf {
+            base: base_ptr_for_slice_of_refs,
+            length: foreign.length,
+        })
     }
-    fn load_from(input: &'a mut Self::ArgType) -> Self {
-        if input.base.is_null() {
-            // Early-exit so that we don't construct a slice with a NULL base later.
-            // Note that we already checked that the length is 0 by using slice_of_pointers above.
-            return &[];
-        }
-
-        let base_ptr_for_slice_of_refs = input.base as *const &T;
-
-        unsafe { std::slice::from_raw_parts(base_ptr_for_slice_of_refs, input.length) }
+    fn load_from(input: &'a mut Self::StoredType) -> Self {
+        unsafe { input.as_slice() }.expect("already checked")
     }
 }
 

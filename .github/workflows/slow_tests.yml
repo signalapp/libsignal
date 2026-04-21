@@ -368,11 +368,12 @@ jobs:
     if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
     timeout-minutes: 45
 
-    # Uncomment this to select a specific version of Xcode to build and test with. Check the runner
+    # Selects a specific version of Xcode to build and test with. Check the runner
     # image (in https://github.com/actions/runner-images/) to see which ones are available. You can
     # also set this on specific steps if necessary.
-    # env:
-    #   DEVELOPER_DIR: /Applications/Xcode_16.2.app
+    env:
+      # For Swift 6.2. Can be commented out again when the default runner moves to macos-26.
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

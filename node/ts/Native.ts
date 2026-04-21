@@ -500,6 +500,8 @@ type NativeFunctions = {
   AuthenticatedChatConnection_get_upload_form: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>, uploadLength: bigint) => CancellablePromise<UploadForm>;
   UnauthenticatedChatConnection_backup_get_upload_form: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, credential: Uint8Array<ArrayBuffer>, serverKeys: Uint8Array<ArrayBuffer>, signingKey: Wrapper<PrivateKey>, uploadSize: bigint, rng: RandomNumberGenerator) => CancellablePromise<UploadForm>;
   UnauthenticatedChatConnection_backup_get_media_upload_form: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, credential: Uint8Array<ArrayBuffer>, serverKeys: Uint8Array<ArrayBuffer>, signingKey: Wrapper<PrivateKey>, uploadSize: bigint, rng: RandomNumberGenerator) => CancellablePromise<UploadForm>;
+  AuthenticatedChatConnection_send_message: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>, destination: Uint8Array<ArrayBuffer>, timestamp: Timestamp, deviceIds: Uint32Array<ArrayBuffer>, registrationIds: Uint32Array<ArrayBuffer>, contents: Wrapper<CiphertextMessage>[], onlineOnly: boolean, isUrgent: boolean) => CancellablePromise<void>;
+  AuthenticatedChatConnection_send_sync_message: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>, timestamp: Timestamp, deviceIds: Uint32Array<ArrayBuffer>, registrationIds: Uint32Array<ArrayBuffer>, contents: Wrapper<CiphertextMessage>[], isUrgent: boolean) => CancellablePromise<void>;
   KeyTransparency_AciSearchKey: (aci: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
   KeyTransparency_E164SearchKey: (e164: string) => Uint8Array<ArrayBuffer>;
   KeyTransparency_UsernameHashSearchKey: (hash: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
@@ -1061,6 +1063,8 @@ const { registerErrors,
   AuthenticatedChatConnection_get_upload_form,
   UnauthenticatedChatConnection_backup_get_upload_form,
   UnauthenticatedChatConnection_backup_get_media_upload_form,
+  AuthenticatedChatConnection_send_message,
+  AuthenticatedChatConnection_send_sync_message,
   KeyTransparency_AciSearchKey,
   KeyTransparency_E164SearchKey,
   KeyTransparency_UsernameHashSearchKey,
@@ -1624,6 +1628,8 @@ export { registerErrors,
   AuthenticatedChatConnection_get_upload_form,
   UnauthenticatedChatConnection_backup_get_upload_form,
   UnauthenticatedChatConnection_backup_get_media_upload_form,
+  AuthenticatedChatConnection_send_message,
+  AuthenticatedChatConnection_send_sync_message,
   KeyTransparency_AciSearchKey,
   KeyTransparency_E164SearchKey,
   KeyTransparency_UsernameHashSearchKey,
@@ -1857,7 +1863,7 @@ export interface RegisterAccountResponse { readonly __type: unique symbol; }
 export interface RegistrationAccountAttributes { readonly __type: unique symbol; }
 export interface BackupStoreResponse { readonly __type: unique symbol; }
 export interface BackupRestoreResponse { readonly __type: unique symbol; }
-export const NetRemoteConfigKeys = ['chatRequestConnectionCheckTimeoutMillis', 'useH2ForUnauthChat', 'useH2ForAuthChat', 'grpc.AccountsAnonymousLookupUsernameHash', 'grpc.AccountsAnonymousLookupUsernameLink.2', 'grpc.AccountsAnonymousCheckAccountExistence.2', 'grpc.MessagesAnonymousSendMultiRecipientMessage.2', 'grpc.MessagesAnonymousSendSingleRecipientMessage', 'grpc.AttachmentsGetUploadForm', ] as const;
+export const NetRemoteConfigKeys = ['chatRequestConnectionCheckTimeoutMillis', 'useH2ForUnauthChat', 'useH2ForAuthChat', 'grpc.AccountsAnonymousLookupUsernameHash', 'grpc.AccountsAnonymousLookupUsernameLink.2', 'grpc.AccountsAnonymousCheckAccountExistence.2', 'grpc.MessagesAnonymousSendMultiRecipientMessage.2', 'grpc.MessagesAnonymousSendSingleRecipientMessage', 'grpc.AttachmentsGetUploadForm', 'grpc.MessagesSendMessage', ] as const;
 export interface TokioAsyncContext { readonly __type: unique symbol; }
 export interface ConnectionManager { readonly __type: unique symbol; }
 export interface ConnectionProxyConfig { readonly __type: unique symbol; }

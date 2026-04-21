@@ -20,8 +20,8 @@ use super::{
 use crate::api::messages::{
     MismatchedDeviceError, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
     MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
-    SingleOutboundUnsealedMessage, UnauthenticatedChatApi, UnsealedSendFailure, UploadTooLarge,
-    UserBasedSendAuthorization,
+    SingleOutboundUnsealedMessage, UnauthenticatedChatApi, UnsealedMessageContents,
+    UnsealedSendFailure, UploadTooLarge, UserBasedSendAuthorization,
 };
 use crate::api::{Auth, RequestError, Unauth, UploadForm};
 use crate::logging::Redact;
@@ -307,7 +307,7 @@ impl<T: WsConnection> crate::api::messages::AuthenticatedChatApi<OverWs> for Aut
         &self,
         destination: ServiceId,
         timestamp: libsignal_protocol::Timestamp,
-        contents: &[SingleOutboundUnsealedMessage<'_>],
+        contents: &[SingleOutboundUnsealedMessage<impl UnsealedMessageContents>],
         online_only: bool,
         urgent: bool,
     ) -> Result<(), RequestError<UnsealedSendFailure>> {
@@ -389,7 +389,7 @@ impl<T: WsConnection> crate::api::messages::AuthenticatedChatApi<OverWs> for Aut
     async fn send_sync_message(
         &self,
         timestamp: libsignal_protocol::Timestamp,
-        contents: &[SingleOutboundUnsealedMessage<'_>],
+        contents: &[SingleOutboundUnsealedMessage<impl UnsealedMessageContents>],
         urgent: bool,
     ) -> Result<(), RequestError<MismatchedDeviceError>> {
         // Note that we check SendMessage here, not SendSyncMessage. We could change sync messages
@@ -1010,7 +1010,7 @@ mod test {
                     SingleOutboundUnsealedMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
-                        contents: Cow::Owned(CiphertextMessage::PlaintextContent(
+                        contents: CiphertextMessage::PlaintextContent(
                             PlaintextContent::try_from(
                                 // A structurally valid PlaintextContent message starts with C0 and has
                                 // no other constraints; a realistic one will additionally end with
@@ -1018,14 +1018,14 @@ mod test {
                                 &[0xC0, 1, 2, 3, 0x80][..],
                             )
                             .expect("valid"),
-                        )),
+                        ),
                     },
                     SingleOutboundUnsealedMessage {
                         device_id: DeviceId::new(3).expect("valid"),
                         registration_id: 33,
-                        contents: Cow::Owned(CiphertextMessage::PlaintextContent(
+                        contents: CiphertextMessage::PlaintextContent(
                             PlaintextContent::try_from(&[0xC0, 4, 5, 6, 0x80][..]).expect("valid"),
-                        )),
+                        ),
                     },
                 ],
                 false,
@@ -1105,7 +1105,7 @@ mod test {
                     SingleOutboundUnsealedMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
-                        contents: Cow::Owned(CiphertextMessage::PlaintextContent(
+                        contents: CiphertextMessage::PlaintextContent(
                             PlaintextContent::try_from(
                                 // A structurally valid PlaintextContent message starts with C0 and has
                                 // no other constraints; a realistic one will additionally end with
@@ -1113,14 +1113,14 @@ mod test {
                                 &[0xC0, 1, 2, 3, 0x80][..],
                             )
                             .expect("valid"),
-                        )),
+                        ),
                     },
                     SingleOutboundUnsealedMessage {
                         device_id: DeviceId::new(3).expect("valid"),
                         registration_id: 33,
-                        contents: Cow::Owned(CiphertextMessage::PlaintextContent(
+                        contents: CiphertextMessage::PlaintextContent(
                             PlaintextContent::try_from(&[0xC0, 4, 5, 6, 0x80][..]).expect("valid"),
-                        )),
+                        ),
                     },
                 ],
                 true,

@@ -638,18 +638,32 @@ typedef struct {
 } SignalConstPointerHttpRequest;
 
 /**
- * A wrapper type for raw UUIDs, because C treats arrays specially in argument position.
- */
-typedef struct {
-  uint8_t bytes[16];
-} SignalUuid;
-
-/**
  * The fixed-width binary representation of a ServiceId.
  *
  * Rarely used. The variable-width format that privileges ACIs is preferred.
  */
 typedef uint8_t SignalServiceIdFixedWidthBinaryBytes[17];
+
+typedef struct {
+  const uint32_t *base;
+  size_t length;
+} SignalBorrowedSliceOfu32;
+
+typedef struct {
+  const SignalCiphertextMessage *raw;
+} SignalConstPointerCiphertextMessage;
+
+typedef struct {
+  const SignalConstPointerCiphertextMessage *base;
+  size_t length;
+} SignalBorrowedSliceOfConstPointerCiphertextMessage;
+
+/**
+ * A wrapper type for raw UUIDs, because C treats arrays specially in argument position.
+ */
+typedef struct {
+  uint8_t bytes[16];
+} SignalUuid;
 
 typedef struct {
   SignalPrivateKey *raw;
@@ -761,10 +775,6 @@ typedef struct {
 typedef struct {
   const SignalPlaintextContent *raw;
 } SignalConstPointerPlaintextContent;
-
-typedef struct {
-  const SignalCiphertextMessage *raw;
-} SignalConstPointerCiphertextMessage;
 
 typedef struct {
   SignalConnectionInfo *raw;
@@ -1627,11 +1637,6 @@ typedef struct {
   SignalCancellationId cancellation_id;
 } SignalCPromiseOptionalPairOfc_charu832;
 
-typedef struct {
-  const uint32_t *base;
-  size_t length;
-} SignalBorrowedSliceOfu32;
-
 /**
  * A C callback used to report the results of Rust futures.
  *
@@ -1738,6 +1743,10 @@ SignalFfiError *signal_authenticated_chat_connection_init_listener(SignalConstPo
 SignalFfiError *signal_authenticated_chat_connection_preconnect(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerConnectionManager connection_manager);
 
 SignalFfiError *signal_authenticated_chat_connection_send(SignalCPromiseFfiChatResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, SignalConstPointerHttpRequest http_request, uint32_t timeout_millis);
+
+SignalFfiError *signal_authenticated_chat_connection_send_message(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, const SignalServiceIdFixedWidthBinaryBytes *destination, uint64_t timestamp, SignalBorrowedSliceOfu32 device_ids, SignalBorrowedSliceOfu32 registration_ids, SignalBorrowedSliceOfConstPointerCiphertextMessage contents, bool online_only, bool is_urgent);
+
+SignalFfiError *signal_authenticated_chat_connection_send_sync_message(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, uint64_t timestamp, SignalBorrowedSliceOfu32 device_ids, SignalBorrowedSliceOfu32 registration_ids, SignalBorrowedSliceOfConstPointerCiphertextMessage contents, bool is_urgent);
 
 SignalFfiError *signal_backup_auth_credential_check_valid_contents(SignalBorrowedBuffer params_bytes);
 

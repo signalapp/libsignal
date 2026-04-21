@@ -21,3 +21,4 @@ public struct SingleOutboundMessage<Contents> {
 }
 
 public typealias SingleOutboundSealedSenderMessage = SingleOutboundMessage<Data>
+public typealias SingleOutboundUnsealedMessage = SingleOutboundMessage<CiphertextMessage>

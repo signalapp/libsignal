@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.net
 
+import org.signal.libsignal.protocol.message.CiphertextMessage
+
 /**
  * A message to send to a single device of a peer.
  *
@@ -17,3 +19,4 @@ public data class SingleOutboundMessage<T>(
 )
 
 public typealias SingleOutboundSealedSenderMessage = SingleOutboundMessage<ByteArray>
+public typealias SingleOutboundUnsealedMessage = SingleOutboundMessage<CiphertextMessage>

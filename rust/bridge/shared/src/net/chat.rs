@@ -24,13 +24,14 @@ use libsignal_net_chat::api::keys::{DeviceSpecifier, GetPreKeysFailure, Unauthen
 use libsignal_net_chat::api::messages::{
     AuthenticatedChatApi, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
     MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
-    UnauthenticatedChatApi as _, UploadTooLarge, UserBasedSendAuthorization,
+    SingleOutboundUnsealedMessage, UnauthenticatedChatApi as _, UnsealedSendFailure,
+    UploadTooLarge, UserBasedSendAuthorization,
 };
 use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
 use libsignal_net_chat::ws::OverWs;
-use libsignal_protocol::Timestamp;
+use libsignal_protocol::{CiphertextMessage, Timestamp};
 use uuid::Uuid;
 
 use crate::support::*;
@@ -482,4 +483,140 @@ async fn UnauthenticatedChatConnection_backup_get_media_upload_form(
         )
     })
     .await
+}
+
+#[allow(clippy::too_many_arguments)]
+#[bridge_io(TokioAsyncContext, jni = false)]
+async fn AuthenticatedChatConnection_send_message(
+    chat: &AuthenticatedChatConnection,
+    destination: ServiceId,
+    timestamp: Timestamp,
+    device_ids: Box<[u32]>,
+    registration_ids: Box<[u32]>,
+    contents: &[&CiphertextMessage],
+    online_only: bool,
+    is_urgent: bool,
+) -> Result<(), RequestError<UnsealedSendFailure>> {
+    assert_eq!(contents.len(), device_ids.len());
+    assert_eq!(contents.len(), registration_ids.len());
+
+    let messages: Vec<_> = contents
+        .iter()
+        .zip(device_ids)
+        .zip(registration_ids)
+        .map(
+            |((&contents, device_id), registration_id)| SingleOutboundUnsealedMessage {
+                device_id: device_id.try_into().expect("valid device ID"),
+                registration_id,
+                contents,
+            },
+        )
+        .collect();
+
+    chat.as_typed(|chat| {
+        chat.send_message(destination, timestamp, &messages, online_only, is_urgent)
+    })
+    .await
+}
+
+// Alternate version for Java since CiphertextMessage isn't opaque in Java.
+#[allow(clippy::too_many_arguments)]
+#[bridge_io(TokioAsyncContext, ffi = false, node = false)]
+async fn AuthenticatedChatConnection_send_message_java(
+    chat: &AuthenticatedChatConnection,
+    destination: ServiceId,
+    timestamp: Timestamp,
+    device_ids: Box<[u32]>,
+    registration_ids: Box<[u32]>,
+    contents: &[jni::CiphertextMessageRef<'_>],
+    online_only: bool,
+    is_urgent: bool,
+) -> Result<(), RequestError<UnsealedSendFailure>> {
+    assert_eq!(contents.len(), device_ids.len());
+    assert_eq!(contents.len(), registration_ids.len());
+
+    let messages: Vec<_> = contents
+        .iter()
+        .zip(device_ids)
+        .zip(registration_ids)
+        .map(
+            |((&contents, device_id), registration_id)| SingleOutboundUnsealedMessage {
+                device_id: device_id.try_into().expect("valid device ID"),
+                registration_id,
+                contents,
+            },
+        )
+        .collect();
+
+    chat.as_typed(|chat| {
+        chat.send_message(destination, timestamp, &messages, online_only, is_urgent)
+    })
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+#[bridge_io(TokioAsyncContext, jni = false)]
+async fn AuthenticatedChatConnection_send_sync_message(
+    chat: &AuthenticatedChatConnection,
+    timestamp: Timestamp,
+    device_ids: Box<[u32]>,
+    registration_ids: Box<[u32]>,
+    contents: &[&CiphertextMessage],
+    is_urgent: bool,
+) -> Result<(), RequestError<UnsealedSendFailure>> {
+    assert_eq!(contents.len(), device_ids.len());
+    assert_eq!(contents.len(), registration_ids.len());
+
+    let messages: Vec<_> = contents
+        .iter()
+        .zip(device_ids)
+        .zip(registration_ids)
+        .map(
+            |((&contents, device_id), registration_id)| SingleOutboundUnsealedMessage {
+                device_id: device_id.try_into().expect("valid device ID"),
+                registration_id,
+                contents,
+            },
+        )
+        .collect();
+
+    chat.as_typed(|chat| chat.send_sync_message(timestamp, &messages, is_urgent))
+        .await
+        .map_err(|e| {
+            e.flat_map_other(|e| RequestError::Other(UnsealedSendFailure::MismatchedDevices(e)))
+        })
+}
+
+// Alternate version for Java since CiphertextMessage isn't opaque in Java.
+#[allow(clippy::too_many_arguments)]
+#[bridge_io(TokioAsyncContext, ffi = false, node = false)]
+async fn AuthenticatedChatConnection_send_sync_message_java(
+    chat: &AuthenticatedChatConnection,
+    timestamp: Timestamp,
+    device_ids: Box<[u32]>,
+    registration_ids: Box<[u32]>,
+    contents: &[jni::CiphertextMessageRef<'_>],
+    is_urgent: bool,
+) -> Result<(), RequestError<UnsealedSendFailure>> {
+    assert_eq!(contents.len(), device_ids.len());
+    assert_eq!(contents.len(), registration_ids.len());
+
+    let messages: Vec<_> = contents
+        .iter()
+        .zip(device_ids)
+        .zip(registration_ids)
+        .map(
+            |((&contents, device_id), registration_id)| SingleOutboundUnsealedMessage {
+                device_id: device_id.try_into().expect("valid device ID"),
+                registration_id,
+                contents,
+            },
+        )
+        .collect();
+
+    chat.as_typed(|chat| chat.send_sync_message(timestamp, &messages, is_urgent))
+        .await
+        .map_err(|e| {
+            e.flat_map_other(|e| RequestError::Other(UnsealedSendFailure::MismatchedDevices(e)))
+        })
 }

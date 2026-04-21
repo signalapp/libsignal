@@ -10,6 +10,11 @@ export * from './Errors.js';
 
 import { Aci, ProtocolAddress, ServiceId } from './Address.js';
 export * from './Address.js';
+import {
+  CiphertextMessage,
+  CiphertextMessageConvertible,
+} from './CiphertextMessage.js';
+export * from './CiphertextMessage.js';
 import { IdentityKeyPair, PrivateKey, PublicKey } from './EcKeys.js';
 export * from './EcKeys.js';
 import {
@@ -1071,36 +1076,6 @@ export class SealedSenderDecryptionResult {
 
   deviceId(): number {
     return Native.SealedSenderDecryptionResult_GetDeviceId(this);
-  }
-}
-
-export interface CiphertextMessageConvertible {
-  asCiphertextMessage: () => CiphertextMessage;
-}
-
-export class CiphertextMessage {
-  readonly _nativeHandle: Native.CiphertextMessage;
-
-  private constructor(nativeHandle: Native.CiphertextMessage) {
-    this._nativeHandle = nativeHandle;
-  }
-
-  static _fromNativeHandle(
-    nativeHandle: Native.CiphertextMessage
-  ): CiphertextMessage {
-    return new CiphertextMessage(nativeHandle);
-  }
-
-  static from(message: CiphertextMessageConvertible): CiphertextMessage {
-    return message.asCiphertextMessage();
-  }
-
-  serialize(): Uint8Array<ArrayBuffer> {
-    return Native.CiphertextMessage_Serialize(this);
-  }
-
-  type(): number {
-    return Native.CiphertextMessage_Type(this);
   }
 }
 
