@@ -1155,6 +1155,41 @@ impl JniError for libsignal_net_chat::api::messages::MultiRecipientSendFailure {
     }
 }
 
+impl JniError for libsignal_net_chat::api::messages::SealedSendFailure {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut JNIEnv<'a>,
+    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        let message = self.to_string();
+        match self {
+            Self::ServiceIdNotFound => make_single_message_throwable(
+                env,
+                &message,
+                ClassName("org.signal.libsignal.net.ServiceIdNotFoundException"),
+            ),
+            Self::Unauthorized => make_single_message_throwable(
+                env,
+                &message,
+                ClassName("org.signal.libsignal.net.RequestUnauthorizedException"),
+            ),
+            Self::MismatchedDevices(mismatched_device_error) => {
+                let java_error_entries =
+                    std::slice::from_ref(mismatched_device_error).convert_into(env)?;
+                let message = message.convert_into(env)?;
+                new_instance(
+                    env,
+                    ClassName("org.signal.libsignal.net.MismatchedDeviceException"),
+                    jni_args!((
+                        message => java.lang.String,
+                        java_error_entries => [org.signal.libsignal.net.MismatchedDeviceException::Entry]
+                    ) -> void),
+                )
+                .map(Into::into)
+            }
+        }
+    }
+}
+
 impl JniError for libsignal_net_chat::api::keys::GetPreKeysFailure {
     fn to_throwable_impl<'a>(
         &self,

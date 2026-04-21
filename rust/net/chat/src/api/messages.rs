@@ -143,7 +143,7 @@ pub trait UnauthenticatedChatApi<T> {
         &self,
         destination: ServiceId,
         timestamp: libsignal_protocol::Timestamp,
-        contents: &[SingleOutboundSealedSenderMessage<'_>],
+        contents: Vec<SingleOutboundSealedSenderMessage<'_>>,
         auth: UserBasedSendAuthorization,
         online_only: bool,
         urgent: bool,

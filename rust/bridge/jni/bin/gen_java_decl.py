@@ -87,6 +87,7 @@ def translate_to_java(typ: str) -> Tuple[str, bool]:
         'JClass': 'Class<*>',
         'JString': 'String',
         'JByteArray': 'ByteArray',
+        'JIntArray': 'IntArray',
         'JLongArray': 'LongArray',
         'JObjectArray': 'Array<Object>',
         'JavaArrayOfByteArray': 'Array<ByteArray>',

@@ -461,6 +461,28 @@ impl<'a> SimpleArgTypeInfo<'a> for Box<[u8]> {
     }
 }
 
+/// Copies from `int[]` into `Box<[u32]>`, reinterpreting negative values as large positive values.
+///
+/// Note that this is different from the implementation of [`ArgTypeInfo`] for plain `u32`.
+impl<'a> SimpleArgTypeInfo<'a> for Box<[u32]> {
+    type ArgType = JIntArray<'a>;
+
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        let len = env
+            .get_array_length(foreign)
+            .check_exceptions(env, "Box<[u32]>::convert_from")?
+            .try_into()
+            .expect("length fits in a usize");
+        let mut vec = vec![0; len];
+        env.get_int_array_region(foreign, 0, zerocopy::transmute_mut!(&mut vec[..]))
+            .check_exceptions(env, "Box<[u32]>::convert_from")?;
+        Ok(vec.into_boxed_slice())
+    }
+}
+
 impl<'a> SimpleArgTypeInfo<'a> for Box<[String]> {
     type ArgType = JObjectArray<'a>;
 
@@ -665,6 +687,29 @@ impl<'a> SimpleArgTypeInfo<'a> for Vec<&'a [u8]> {
             }
             JniErrorOrNull::Null(message) => Err(BridgeLayerError::NullPointer(Some(message))),
         })
+    }
+}
+
+impl<'a> SimpleArgTypeInfo<'a> for Vec<Vec<u8>> {
+    type ArgType = JObjectArray<'a>;
+
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        try_scoped(|| {
+            let len = env.get_array_length(foreign)?;
+            (0..len)
+                .map(|i| {
+                    let next = AutoLocal::new(
+                        JByteArray::from(env.get_object_array_element(foreign, i)?),
+                        env,
+                    );
+                    env.convert_byte_array(&next)
+                })
+                .collect()
+        })
+        .check_exceptions(env, "Vec<Vec<u8>>::convert_from")
     }
 }
 
@@ -2723,6 +2768,9 @@ macro_rules! jni_arg_type {
     (Box<[u8]>) => {
         ::jni::objects::JByteArray<'local>
     };
+    (Box<[u32]>) => {
+        ::jni::objects::JIntArray<'local>
+    };
     (Box<[String]>) => {
         ::jni::objects::JObjectArray<'local>
     };
@@ -2764,6 +2812,9 @@ macro_rules! jni_arg_type {
     };
     (Vec<&[u8]>) => {
         jni::JavaByteBufferArray<'local>
+    };
+    (Vec<Vec<u8> >) => {
+        jni::JavaArrayOfByteArray<'local>
     };
     (Timestamp) => {
         ::jni::sys::jlong

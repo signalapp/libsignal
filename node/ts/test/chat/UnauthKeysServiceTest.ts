@@ -40,31 +40,20 @@ describe('UnauthKeysService', () => {
     const IDENTITY_KEY = dummyEcPublicKey(0x12);
 
     const SIGNED_PRE_KEY_PUBLIC = dummyEcPublicKey(0x34);
-    const SIGNED_PRE_KEY_SIGNATURE = repeatedBytes(0x56, 64);
+    const SIGNED_PRE_KEY_SIGNATURE = util.repeatedBytes(0x56, 64);
     const KYBER_PRE_KEY_PUBLIC = dummyKemPublicKey(0x78);
-    const KYBER_PRE_KEY_SIGNATURE = repeatedBytes(0x9a, 64);
+    const KYBER_PRE_KEY_SIGNATURE = util.repeatedBytes(0x9a, 64);
     const PRE_KEY_PUBLIC = dummyEcPublicKey(0x43);
 
     const SECOND_PRE_KEY_PUBLIC = dummyEcPublicKey(0xd4);
     const SECOND_SIGNED_PRE_KEY_PUBLIC = dummyEcPublicKey(0x21);
-    const SECOND_SIGNED_PRE_KEY_SIGNATURE = repeatedBytes(0x32, 64);
+    const SECOND_SIGNED_PRE_KEY_SIGNATURE = util.repeatedBytes(0x32, 64);
     const SECOND_KYBER_PRE_KEY_PUBLIC = dummyKemPublicKey(0x64);
-    const SECOND_KYBER_PRE_KEY_SIGNATURE = repeatedBytes(0x64, 64);
+    const SECOND_KYBER_PRE_KEY_SIGNATURE = util.repeatedBytes(0x64, 64);
 
     const TEST_GROUP_SEND_TOKEN = new GroupSendFullToken(
       fromBase64('ABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABo5c+LAQAA')
     );
-
-    function repeatedBytes(
-      fill: number,
-      count: number
-    ): Uint8Array<ArrayBuffer> {
-      const out = new Uint8Array<ArrayBuffer>(new ArrayBuffer(count));
-      for (let i = 0; i < count; i++) {
-        out[i] = fill;
-      }
-      return out;
-    }
 
     function bytePrefix(
       prefixByte: number,
@@ -77,13 +66,15 @@ describe('UnauthKeysService', () => {
     }
 
     function dummyEcPublicKey(fill: number): PublicKey {
-      return PublicKey.deserialize(bytePrefix(0x05, repeatedBytes(fill, 32)));
+      return PublicKey.deserialize(
+        bytePrefix(0x05, util.repeatedBytes(fill, 32))
+      );
     }
 
     function dummyKemPublicKey(fill: number): KEMPublicKey {
       return KEMPublicKey.deserialize(
         // 1568 is kyber1024::Parameters::PUBLIC_KEY_LENGTH
-        bytePrefix(0x08, repeatedBytes(fill, 1568))
+        bytePrefix(0x08, util.repeatedBytes(fill, 1568))
       );
     }
 

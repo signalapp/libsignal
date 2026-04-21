@@ -6,12 +6,6 @@
 import Foundation
 import SignalFfi
 
-public enum UserBasedAuthorization: Sendable {
-    case accessKey(Data)
-    case groupSend(GroupSendFullToken)
-    case unrestrictedUnauthenticatedAccess
-}
-
 public enum DeviceSpecifier: Sendable {
     case allDevices
     case specificDevice(DeviceId)

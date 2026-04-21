@@ -242,6 +242,12 @@ extension SignalBorrowedSliceOfConstPointerPublicKey: FfiBorrowedSlice {
     }
 }
 
+extension SignalBorrowedSliceOfu32: FfiBorrowedSlice {
+    init(_ buffer: UnsafeBufferPointer<UInt32>) {
+        self.init(base: buffer.baseAddress, length: buffer.count)
+    }
+}
+
 internal struct ElementsWrapper<FfiType: FfiBorrowedSlice>: BorrowForFfi {
     var inner: [FfiType.Element]
 
@@ -256,6 +262,35 @@ internal struct ElementsWrapper<FfiType: FfiBorrowedSlice>: BorrowForFfi {
 extension BorrowForFfi {
     static func slice<FfiType: FfiBorrowedSlice>(_ input: [FfiType.Element]) -> Self
     where Self == ElementsWrapper<FfiType> {
+        .init(inner: input)
+    }
+}
+
+internal struct SliceOfBuffers: BorrowForFfi {
+    var inner: [Data]
+
+    typealias Borrowed = SignalBorrowedSliceOfBuffers
+    func withBorrowed<Result>(_ callback: (SignalBorrowedSliceOfBuffers) throws -> Result) throws -> Result {
+        // Data doesn't promise its data has a stable address. But NSData does.
+        // Bridging from Data to NSData has a chance of copying the data,
+        // but will usually be able to avoid it if it already has a stable address (the common case for long buffers).
+        // So most of the time this should just be two allocations - the two outer arrays.
+        let stableInputs = inner as [NSData]
+        let addresses = stableInputs.map {
+            SignalBorrowedBuffer(
+                base: $0.bytes.assumingMemoryBound(to: UInt8.self),
+                length: $0.count
+            )
+        }
+        return try addresses.withUnsafeBufferPointer { addresses in
+            try callback(SignalBorrowedSliceOfBuffers(base: addresses.baseAddress, length: addresses.count))
+        }
+    }
+}
+
+extension BorrowForFfi {
+    static func sliceOfBuffers(_ input: [Data]) -> Self
+    where Self == SliceOfBuffers {
         .init(inner: input)
     }
 }

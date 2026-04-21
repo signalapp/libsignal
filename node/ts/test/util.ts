@@ -89,6 +89,17 @@ export function assertArrayNotEquals(
   assert.notEqual(expectedHex, actualHex);
 }
 
+export function repeatedBytes(
+  fill: number,
+  count: number
+): Uint8Array<ArrayBuffer> {
+  const out = new Uint8Array<ArrayBuffer>(new ArrayBuffer(count));
+  for (let i = 0; i < count; i++) {
+    out[i] = fill;
+  }
+  return out;
+}
+
 export function fromBase64(base64: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(Buffer.from(base64, 'base64'));
 }

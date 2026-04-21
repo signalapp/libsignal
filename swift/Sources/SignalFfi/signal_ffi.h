@@ -1627,6 +1627,11 @@ typedef struct {
   SignalCancellationId cancellation_id;
 } SignalCPromiseOptionalPairOfc_charu832;
 
+typedef struct {
+  const uint32_t *base;
+  size_t length;
+} SignalBorrowedSliceOfu32;
+
 /**
  * A C callback used to report the results of Rust futures.
  *
@@ -2776,6 +2781,8 @@ SignalFfiError *signal_unauthenticated_chat_connection_look_up_username_hash(Sig
 SignalFfiError *signal_unauthenticated_chat_connection_look_up_username_link(SignalCPromiseOptionalPairOfc_charu832 *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, SignalUuid uuid, SignalBorrowedBuffer entropy);
 
 SignalFfiError *signal_unauthenticated_chat_connection_send(SignalCPromiseFfiChatResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, SignalConstPointerHttpRequest http_request, uint32_t timeout_millis);
+
+SignalFfiError *signal_unauthenticated_chat_connection_send_message(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, const SignalServiceIdFixedWidthBinaryBytes *destination, uint64_t timestamp, SignalBorrowedSliceOfu32 device_ids, SignalBorrowedSliceOfu32 registration_ids, SignalBorrowedSliceOfBuffers contents, uint8_t auth_kind, SignalOptionalBorrowedSliceOfc_uchar auth_buffer, bool online_only, bool is_urgent);
 
 SignalFfiError *signal_unauthenticated_chat_connection_send_multi_recipient_message(SignalCPromiseOwnedBufferOfServiceIdFixedWidthBinaryBytes *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, SignalBorrowedBuffer payload, uint64_t timestamp, SignalBorrowedBuffer auth, bool online_only, bool is_urgent);
 

@@ -12,7 +12,6 @@ disabled_rules:
 - trailing_comma
 - type_body_length
 opt_in_rules:
-- attributes
 - file_header
 file_header:
   required_pattern: |

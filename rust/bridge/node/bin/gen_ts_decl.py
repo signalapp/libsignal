@@ -75,6 +75,7 @@ def translate_to_ts(typ: str) -> str:
         '&str': 'string',
         'Vec<u8>': 'Uint8Array<ArrayBuffer>',
         'Box<[u8]>': 'Uint8Array<ArrayBuffer>',
+        'Box<[u32]>': 'Uint32Array<ArrayBuffer>',
         'bytes::Bytes': 'Uint8Array<ArrayBuffer>',
         'ServiceId': 'Uint8Array<ArrayBuffer>',
         'Aci': 'Uint8Array<ArrayBuffer>',

@@ -251,6 +251,18 @@ impl<'a> ArgTypeInfo<'a> for Vec<&'a [u8]> {
     }
 }
 
+impl SimpleArgTypeInfo for Vec<Vec<u8>> {
+    type ArgType = BorrowedSliceOf<BorrowedSliceOf<u8>>;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let slices = unsafe { foreign.as_slice()? };
+        slices
+            .iter()
+            .map(|next| Ok(unsafe { next.as_slice()? }.to_vec()))
+            .collect()
+    }
+}
+
 impl<const LEN: usize> SimpleArgTypeInfo for &mut [u8; LEN] {
     type ArgType = *mut [u8; LEN];
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -453,6 +465,15 @@ zkgroup_serialize_type!(zkgroup::generic_server_params::GenericServerPublicParam
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let slice = unsafe { foreign.as_slice()? };
+        Ok(slice.into())
+    }
+}
+
+impl SimpleArgTypeInfo for Box<[u32]> {
+    type ArgType = BorrowedSliceOf<u32>;
 
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         let slice = unsafe { foreign.as_slice()? };
@@ -1428,6 +1449,7 @@ macro_rules! ffi_arg_type {
     (&mut [u8]) => (ffi::BorrowedMutableSliceOf<std::ffi::c_uchar>);
     (ServiceIdSequence<'_>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
     (Vec<&[u8]>) => (ffi::BorrowedSliceOf<ffi_arg_type!(&[u8])>);
+    (Vec<Vec<u8> >) => (ffi::BorrowedSliceOf<ffi_arg_type!(&[u8])>);
     (String) => (*const std::ffi::c_char);
     (Option<String>) => (*const std::ffi::c_char);
     (Option<&str>) => (*const std::ffi::c_char);
@@ -1458,6 +1480,7 @@ macro_rules! ffi_arg_type {
     (Box<[String]>) => (ffi::BorrowedBytestringArray);
     (LanguageList) => (ffi::BorrowedBytestringArray);
     (Box<[u8]>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
+    (Box<[u32]>) => (ffi::BorrowedSliceOf<u32>);
     (Box<dyn $typ:ty >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
     (Option<Box<dyn $typ:ty> >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
     (Option<Box<[u8]> >) => (ffi::OptionalBorrowedSliceOf<std::ffi::c_uchar>);

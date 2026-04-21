@@ -116,6 +116,7 @@ pub enum RemoteConfigKey {
     AccountsAnonymousLookupUsernameLink => "grpc.AccountsAnonymousLookupUsernameLink.2",
     AccountsAnonymousCheckAccountExistence => "grpc.AccountsAnonymousCheckAccountExistence.2",
     MessagesAnonymousSendMultiRecipientMessage => "grpc.MessagesAnonymousSendMultiRecipientMessage.2",
+    MessagesAnonymousSendSingleRecipientMessage => "grpc.MessagesAnonymousSendSingleRecipientMessage",
     AttachmentsGetUploadForm => "grpc.AttachmentsGetUploadForm",
 }
 }

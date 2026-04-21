@@ -125,7 +125,7 @@ impl<T: WsConnection> UnauthenticatedChatApi<OverWs> for Unauth<T> {
         &self,
         destination: ServiceId,
         timestamp: libsignal_protocol::Timestamp,
-        contents: &[SingleOutboundSealedSenderMessage<'_>],
+        contents: Vec<SingleOutboundSealedSenderMessage<'_>>,
         auth: UserBasedSendAuthorization,
         online_only: bool,
         urgent: bool,
@@ -698,7 +698,7 @@ mod test {
             .send_message(
                 Pni::from(uuid::Uuid::try_parse(PNI_UUID).expect("valid")).into(),
                 Timestamp::from_epoch_millis(1700000000000),
-                &[
+                vec![
                     SingleOutboundSealedSenderMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
@@ -767,7 +767,7 @@ mod test {
             .send_message(
                 Aci::from(uuid::Uuid::try_parse(ACI_UUID).expect("valid")).into(),
                 Timestamp::from_epoch_millis(1700000000000),
-                &[
+                vec![
                     SingleOutboundSealedSenderMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
@@ -833,7 +833,7 @@ mod test {
             .send_message(
                 Aci::from(uuid::Uuid::try_parse(ACI_UUID).expect("valid")).into(),
                 Timestamp::from_epoch_millis(1700000000000),
-                &[
+                vec![
                     SingleOutboundSealedSenderMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
@@ -893,7 +893,7 @@ mod test {
             .send_message(
                 Pni::from(uuid::Uuid::try_parse(PNI_UUID).expect("valid")).into(),
                 Timestamp::from_epoch_millis(1700000000000),
-                &[
+                vec![
                     SingleOutboundSealedSenderMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,

@@ -813,6 +813,17 @@ pub struct PreKeysResponse {
     pub pre_key_bundles: Vec<PreKeyBundle>,
 }
 
+// Must be kept in sync with the app languages.
+#[repr(u8)]
+#[derive(derive_more::TryFrom)]
+#[try_from(repr)]
+pub enum UserBasedSendAuthorizationKind {
+    Story,
+    AccessKey,
+    Group,
+    UnrestrictedUnauthenticatedAccess,
+}
+
 #[cfg(test)]
 mod test {
     use test_case::test_case;

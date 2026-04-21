@@ -601,6 +601,14 @@ impl SimpleArgTypeInfo for Box<[u8]> {
     }
 }
 
+impl SimpleArgTypeInfo for Box<[u32]> {
+    type ArgType = JsUint32Array;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        Ok(foreign.as_slice(cx).to_vec().into())
+    }
+}
+
 impl SimpleArgTypeInfo for Box<[String]> {
     type ArgType = JsArray;
 
@@ -917,6 +925,20 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Vec<&'sto
         // This effectively makes a copy of the storage with the hashes dropped. That's not very
         // efficient, but it's not likely to be a performance bottleneck either.
         stored.iter().map(|buffer| buffer as &[u8]).collect()
+    }
+}
+
+impl SimpleArgTypeInfo for Vec<Vec<u8>> {
+    type ArgType = JsArray;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let count = foreign.len(cx);
+        (0..count)
+            .map(|i| {
+                let next: Handle<JsUint8Array> = foreign.get(cx, i)?;
+                Ok(next.as_slice(cx).to_vec())
+            })
+            .collect()
     }
 }
 

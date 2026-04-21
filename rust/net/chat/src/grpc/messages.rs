@@ -130,7 +130,7 @@ impl<T: GrpcServiceProvider> crate::api::messages::UnauthenticatedChatApi<OverGr
         &self,
         destination: ServiceId,
         timestamp: Timestamp,
-        contents: &[SingleOutboundSealedSenderMessage<'_>],
+        contents: Vec<SingleOutboundSealedSenderMessage<'_>>,
         auth: UserBasedSendAuthorization,
         online_only: bool,
         urgent: bool,
@@ -142,13 +142,13 @@ impl<T: GrpcServiceProvider> crate::api::messages::UnauthenticatedChatApi<OverGr
         let messages = Some(IndividualRecipientMessageBundle {
             timestamp: timestamp.epoch_millis(),
             messages: contents
-                .iter()
+                .into_iter()
                 .map(|message| {
                     (
                         message.device_id.into(),
                         individual_recipient_message_bundle::Message {
                             registration_id: message.registration_id,
-                            payload: message.contents.to_vec(),
+                            payload: message.contents.into_owned(),
                             r#type: SendMessageType::UnidentifiedSender.into(),
                         },
                     )
@@ -927,7 +927,7 @@ mod test {
             .send_message(
                 Pni::from(PNI_UUID).into(),
                 Timestamp::from_epoch_millis(1700000000000),
-                &[
+                vec![
                     SingleOutboundSealedSenderMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
@@ -994,7 +994,7 @@ mod test {
             .send_message(
                 Aci::from(ACI_UUID).into(),
                 Timestamp::from_epoch_millis(1700000000000),
-                &[
+                vec![
                     SingleOutboundSealedSenderMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
@@ -1060,7 +1060,7 @@ mod test {
             .send_message(
                 Aci::from(ACI_UUID).into(),
                 Timestamp::from_epoch_millis(1700000000000),
-                &[
+                vec![
                     SingleOutboundSealedSenderMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
@@ -1124,7 +1124,7 @@ mod test {
             .send_message(
                 Pni::from(PNI_UUID).into(),
                 Timestamp::from_epoch_millis(1700000000000),
-                &[
+                vec![
                     SingleOutboundSealedSenderMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,
@@ -1160,7 +1160,7 @@ mod test {
             .send_message(
                 Pni::from(PNI_UUID).into(),
                 Timestamp::from_epoch_millis(1700000000000),
-                &[
+                vec![
                     SingleOutboundSealedSenderMessage {
                         device_id: DeviceId::new(2).expect("valid"),
                         registration_id: 22,

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::borrow::Cow;
 use std::convert::Infallible;
 use std::time::Duration;
 
@@ -22,7 +23,8 @@ use libsignal_net_chat::api::backups::{BackupAuth, GetUploadFormFailure};
 use libsignal_net_chat::api::keys::{DeviceSpecifier, GetPreKeysFailure, UnauthenticatedChatApi};
 use libsignal_net_chat::api::messages::{
     AuthenticatedChatApi, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
-    MultiRecipientSendFailure, UnauthenticatedChatApi as _, UploadTooLarge,
+    MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
+    UnauthenticatedChatApi as _, UploadTooLarge, UserBasedSendAuthorization,
 };
 use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
@@ -183,6 +185,69 @@ async fn UnauthenticatedChatConnection_send_multi_recipient_message(
         })
         .await?;
     Ok(unregistered_ids)
+}
+
+#[allow(clippy::too_many_arguments)]
+#[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_send_message(
+    chat: &UnauthenticatedChatConnection,
+    destination: ServiceId,
+    timestamp: Timestamp,
+    device_ids: Box<[u32]>,
+    registration_ids: Box<[u32]>,
+    contents: Vec<Vec<u8>>,
+    auth_kind: AsType<UserBasedSendAuthorizationKind, u8>,
+    auth_buffer: Option<Box<[u8]>>,
+    online_only: bool,
+    is_urgent: bool,
+) -> Result<(), RequestError<SealedSendFailure>> {
+    let auth = match auth_kind.into_inner() {
+        UserBasedSendAuthorizationKind::Story => UserBasedSendAuthorization::Story,
+        UserBasedSendAuthorizationKind::AccessKey => UserBasedAuthorization::AccessKey(
+            auth_buffer
+                .as_deref()
+                .unwrap_or_default()
+                .try_into()
+                .expect("valid UAK"),
+        )
+        .into(),
+        UserBasedSendAuthorizationKind::Group => UserBasedAuthorization::Group(
+            ::zkgroup::deserialize(auth_buffer.as_deref().unwrap_or_default())
+                .expect("valid GroupSendFullToken"),
+        )
+        .into(),
+        UserBasedSendAuthorizationKind::UnrestrictedUnauthenticatedAccess => {
+            UserBasedAuthorization::UnrestrictedUnauthenticatedAccess.into()
+        }
+    };
+
+    assert_eq!(contents.len(), device_ids.len());
+    assert_eq!(contents.len(), registration_ids.len());
+
+    let messages = contents
+        .into_iter()
+        .zip(device_ids)
+        .zip(registration_ids)
+        .map(
+            |((contents, device_id), registration_id)| SingleOutboundSealedSenderMessage {
+                device_id: device_id.try_into().expect("valid device ID"),
+                registration_id,
+                contents: Cow::Owned(contents),
+            },
+        )
+        .collect();
+
+    chat.as_typed(|chat| {
+        chat.send_message(
+            destination,
+            timestamp,
+            messages,
+            auth,
+            online_only,
+            is_urgent,
+        )
+    })
+    .await
 }
 
 #[bridge_io(TokioAsyncContext)]

@@ -481,6 +481,7 @@ type NativeFunctions = {
   UnauthenticatedChatConnection_look_up_username_hash: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, hash: Uint8Array<ArrayBuffer>) => CancellablePromise<Uuid | null>;
   UnauthenticatedChatConnection_look_up_username_link: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, uuid: Uuid, entropy: Uint8Array<ArrayBuffer>) => CancellablePromise<[string, Uint8Array<ArrayBuffer>] | null>;
   UnauthenticatedChatConnection_send_multi_recipient_message: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, payload: Uint8Array<ArrayBuffer>, timestamp: Timestamp, auth: Uint8Array<ArrayBuffer> | null, onlineOnly: boolean, isUrgent: boolean) => CancellablePromise<Uint8Array<ArrayBuffer>[]>;
+  UnauthenticatedChatConnection_send_message: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, destination: Uint8Array<ArrayBuffer>, timestamp: Timestamp, deviceIds: Uint32Array<ArrayBuffer>, registrationIds: Uint32Array<ArrayBuffer>, contents: Uint8Array<ArrayBuffer>[], authKind: number, authBuffer: Uint8Array<ArrayBuffer> | null, onlineOnly: boolean, isUrgent: boolean) => CancellablePromise<void>;
   AuthenticatedChatConnection_preconnect: (asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>) => CancellablePromise<void>;
   AuthenticatedChatConnection_connect: (asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, receiveStories: boolean, languages: string[]) => CancellablePromise<AuthenticatedChatConnection>;
   AuthenticatedChatConnection_init_listener: (chat: Wrapper<AuthenticatedChatConnection>, listener: ChatListener) => void;
@@ -1041,6 +1042,7 @@ const { registerErrors,
   UnauthenticatedChatConnection_look_up_username_hash,
   UnauthenticatedChatConnection_look_up_username_link,
   UnauthenticatedChatConnection_send_multi_recipient_message,
+  UnauthenticatedChatConnection_send_message,
   AuthenticatedChatConnection_preconnect,
   AuthenticatedChatConnection_connect,
   AuthenticatedChatConnection_init_listener,
@@ -1603,6 +1605,7 @@ export { registerErrors,
   UnauthenticatedChatConnection_look_up_username_hash,
   UnauthenticatedChatConnection_look_up_username_link,
   UnauthenticatedChatConnection_send_multi_recipient_message,
+  UnauthenticatedChatConnection_send_message,
   AuthenticatedChatConnection_preconnect,
   AuthenticatedChatConnection_connect,
   AuthenticatedChatConnection_init_listener,
@@ -1854,7 +1857,7 @@ export interface RegisterAccountResponse { readonly __type: unique symbol; }
 export interface RegistrationAccountAttributes { readonly __type: unique symbol; }
 export interface BackupStoreResponse { readonly __type: unique symbol; }
 export interface BackupRestoreResponse { readonly __type: unique symbol; }
-export const NetRemoteConfigKeys = ['chatRequestConnectionCheckTimeoutMillis', 'useH2ForUnauthChat', 'useH2ForAuthChat', 'grpc.AccountsAnonymousLookupUsernameHash', 'grpc.AccountsAnonymousLookupUsernameLink.2', 'grpc.AccountsAnonymousCheckAccountExistence.2', 'grpc.MessagesAnonymousSendMultiRecipientMessage.2', 'grpc.AttachmentsGetUploadForm', ] as const;
+export const NetRemoteConfigKeys = ['chatRequestConnectionCheckTimeoutMillis', 'useH2ForUnauthChat', 'useH2ForAuthChat', 'grpc.AccountsAnonymousLookupUsernameHash', 'grpc.AccountsAnonymousLookupUsernameLink.2', 'grpc.AccountsAnonymousCheckAccountExistence.2', 'grpc.MessagesAnonymousSendMultiRecipientMessage.2', 'grpc.MessagesAnonymousSendSingleRecipientMessage', 'grpc.AttachmentsGetUploadForm', ] as const;
 export interface TokioAsyncContext { readonly __type: unique symbol; }
 export interface ConnectionManager { readonly __type: unique symbol; }
 export interface ConnectionProxyConfig { readonly __type: unique symbol; }

@@ -1302,6 +1302,8 @@ internal object Native {
   @JvmStatic
   public external fun UnauthenticatedChatConnection_send(asyncRuntime: ObjectHandle, chat: ObjectHandle, httpRequest: ObjectHandle, timeoutMillis: Int): CompletableFuture<Object>
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_send_message(asyncRuntime: ObjectHandle, chat: ObjectHandle, destination: ByteArray, timestamp: Long, deviceIds: IntArray, registrationIds: IntArray, contents: Array<ByteArray>, authKind: Int, authBuffer: ByteArray?, onlineOnly: Boolean, isUrgent: Boolean): CompletableFuture<Void?>
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_send_multi_recipient_message(asyncRuntime: ObjectHandle, chat: ObjectHandle, payload: ByteArray, timestamp: Long, auth: ByteArray?, onlineOnly: Boolean, isUrgent: Boolean): CompletableFuture<Array<Object>>
 
   @JvmStatic @Throws(Exception::class)

@@ -122,6 +122,7 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'com.googlecode.json-simple:json-simple:1.1'
     androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
+    androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
     androidTestImplementation 'org.jetbrains.kotlin:kotlin-test:2.1.0'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.6'
     api project(':client')
