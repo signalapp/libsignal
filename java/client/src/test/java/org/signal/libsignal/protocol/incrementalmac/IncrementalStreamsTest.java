@@ -184,11 +184,14 @@ public class IncrementalStreamsTest {
   @Test
   public void testValidationEmptyInput() throws IOException {
     byte[] digest = fullIncrementalDigest(new ByteArrayOutputStream(), TEST_INPUT_PARTS);
-    try (IncrementalMacInputStream incrementalIn =
-        makeIncrementalInputStream(new byte[0], digest)) {
-      byte[] read = ResourceReader.readAll(incrementalIn);
-      assertEquals(0, read.length);
-    }
+    assertThrows(
+        InvalidMacException.class,
+        () -> {
+          try (IncrementalMacInputStream incrementalIn =
+              makeIncrementalInputStream(new byte[0], digest)) {
+            ResourceReader.readAll(incrementalIn);
+          }
+        });
   }
 
   @Test

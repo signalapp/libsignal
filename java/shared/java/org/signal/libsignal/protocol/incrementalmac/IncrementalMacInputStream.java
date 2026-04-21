@@ -121,13 +121,6 @@ public final class IncrementalMacInputStream extends InputStream {
 
     if (bytesRead == -1) {
       this.eof = true;
-      if (!this.channel.hasAtLeastOneByteBeenRead) {
-        // This is special case for validating empty inputs.
-        // It does not matter what byte[] we pass in since both offset and length are 0.
-        this.handleOwner.guardedRun(
-            (handle) -> Native.ValidatingMac_Update(handle, this.singleByteBuffer, 0, 0));
-        return ReadChunkResult.EOF;
-      }
     }
 
     // We have reached the chunk boundary or end of input, and it is now safe to validate/finalize
