@@ -37,6 +37,21 @@ export function pvrfComputeSasDemo(nonce16: Uint8Array, zb16: Uint8Array): Uint8
 }
 Native.registerErrors(Errors);
 
+export function pvrfVerify(vts: Uint8Array, bob: Uint8Array) {
+  const raw = Native.Pvrf_Verify(vts, bob);
+
+  const ok = raw[0] === 1;
+  const len =
+    raw[1] |
+    (raw[2] << 8) |
+    (raw[3] << 16) |
+    (raw[4] << 24);
+
+  const z = raw.slice(5, 5 + len);
+
+  return { ok, z };
+}
+
 // These enums must be kept in sync with their Rust counterparts.
 
 export enum CiphertextMessageType {
@@ -1935,3 +1950,4 @@ export function initLogger(
     }
   );
 }
+

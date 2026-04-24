@@ -516,3 +516,137 @@ pub fn initialize_bob_session_record(
 ) -> Result<SessionRecord> {
     Ok(SessionRecord::new(initialize_bob_session(parameters)?))
 }
+
+use curve25519_dalek::ristretto::CompressedRistretto;
+
+fn read_u32_le(input: &[u8], offset: &mut usize) -> Result<u32> {
+    if *offset + 4 > input.len() {
+        return Err(SignalProtocolError::InvalidArgument(
+            "buffer too short reading u32".to_string(),
+        ));
+    }
+    let mut arr = [0u8; 4];
+    arr.copy_from_slice(&input[*offset..*offset + 4]);
+    *offset += 4;
+    Ok(u32::from_le_bytes(arr))
+}
+
+fn read_bytes<'a>(input: &'a [u8], offset: &mut usize, len: usize) -> Result<&'a [u8]> {
+    if *offset + len > input.len() {
+        return Err(SignalProtocolError::InvalidArgument(
+            "buffer too short reading bytes".to_string(),
+        ));
+    }
+    let out = &input[*offset..*offset + len];
+    *offset += len;
+    Ok(out)
+}
+
+fn read_scalar(input: &[u8], offset: &mut usize) -> Result<Scalar> {
+    let bytes = read_bytes(input, offset, 32)?;
+    let mut arr = [0u8; 32];
+    arr.copy_from_slice(bytes);
+
+    Option::<Scalar>::from(Scalar::from_canonical_bytes(arr)).ok_or_else(|| {
+        SignalProtocolError::InvalidArgument("invalid scalar".to_string())
+    })
+}
+
+fn read_point(input: &[u8], offset: &mut usize) -> Result<RistrettoPoint> {
+    let bytes = read_bytes(input, offset, 32)?;
+    let mut arr = [0u8; 32];
+    arr.copy_from_slice(bytes);
+
+    CompressedRistretto(arr).decompress().ok_or_else(|| {
+        SignalProtocolError::InvalidArgument("invalid ristretto point".to_string())
+    })
+}
+
+pub fn pvrf_verify_from_session_data(
+    vts_bytes: &[u8],
+    bob_response_bytes: &[u8],
+) -> Result<(bool, Vec<u8>)> {
+
+    // ------------------ Parse VTS ------------------
+    let mut off = 0;
+
+    let _h = read_point(vts_bytes, &mut off)?;
+    let _hprime = read_point(vts_bytes, &mut off)?;
+    let _s1 = read_scalar(vts_bytes, &mut off)?;
+    let _s2_1 = read_scalar(vts_bytes, &mut off)?;
+    let _s2_2 = read_scalar(vts_bytes, &mut off)?;
+
+    let vk_len = read_u32_le(vts_bytes, &mut off)? as usize;
+    let vk_bytes = read_bytes(vts_bytes, &mut off, vk_len)?.to_vec();
+
+    let x_len = read_u32_le(vts_bytes, &mut off)? as usize;
+    let x_bytes = read_bytes(vts_bytes, &mut off, x_len)?.to_vec();
+
+    let alpha = read_scalar(vts_bytes, &mut off)?;
+    let beta = read_scalar(vts_bytes, &mut off)?;
+
+    // ------------------ Parse Bob Response ------------------
+    let mut off_b = 0;
+
+    let bob_vk_len = read_u32_le(bob_response_bytes, &mut off_b)? as usize;
+    let bob_vk_bytes = read_bytes(bob_response_bytes, &mut off_b, bob_vk_len)?.to_vec();
+
+    let bob_x_len = read_u32_le(bob_response_bytes, &mut off_b)? as usize;
+    let bob_x_bytes = read_bytes(bob_response_bytes, &mut off_b, bob_x_len)?.to_vec();
+
+    let _ = read_point(bob_response_bytes, &mut off_b)?;
+    let _ = read_point(bob_response_bytes, &mut off_b)?;
+    let _ = read_scalar(bob_response_bytes, &mut off_b)?;
+    let _ = read_scalar(bob_response_bytes, &mut off_b)?;
+    let _ = read_scalar(bob_response_bytes, &mut off_b)?;
+
+    let z_len = read_u32_le(bob_response_bytes, &mut off_b)? as usize;
+    let z = read_bytes(bob_response_bytes, &mut off_b, z_len)?.to_vec();
+
+    let w = read_point(bob_response_bytes, &mut off_b)?;
+    let v = read_point(bob_response_bytes, &mut off_b)?;
+
+    let _c = read_scalar(bob_response_bytes, &mut off_b)?;
+    let _computed_c = read_scalar(bob_response_bytes, &mut off_b)?;
+
+    // ------------------ Debug checks ------------------
+    if vk_bytes != bob_vk_bytes {
+        log::error!("vk mismatch");
+        return Ok((false, z));
+    }
+
+    if x_bytes != bob_x_bytes {
+        log::error!("x mismatch");
+        return Ok((false, z));
+    }
+
+    // ------------------ Convert vk ------------------
+    if vk_bytes.len() != 32 {
+        return Err(SignalProtocolError::InvalidArgument("vk not 32 bytes".into()));
+    }
+
+    let mut arr = [0u8; 32];
+    arr.copy_from_slice(&vk_bytes);
+
+    let vk_point = CompressedRistretto(arr)
+        .decompress()
+        .ok_or_else(|| SignalProtocolError::InvalidArgument("bad vk".into()))?;
+
+    // ------------------ VERIFY ------------------
+    let expected_z = hash_o(&w);
+    let ok_z = z == expected_z;
+
+    let expected_v = (vk_point * alpha) + (w * beta);
+    let ok_v = v == expected_v;
+
+    let ok = ok_z && ok_v;
+
+    if ok {
+        log::info!("PVRF VERIFY SUCCESS");
+    } else {
+        log::error!("PVRF VERIFY FAILED");
+        log::error!("ok_z={}, ok_v={}", ok_z, ok_v);
+    }
+
+    Ok((ok, z))
+}

@@ -63,7 +63,7 @@ pub use protocol::{
 };
 pub use ratchet::{
     AliceSignalProtocolParameters, BobSignalProtocolParameters, initialize_alice_session_record,
-    initialize_bob_session_record,
+    initialize_bob_session_record,pvrf_verify_from_session_data,
 };
 pub use sealed_sender::{
     ContentHint, SealedSenderDecryptionResult, SealedSenderV2SentMessage,

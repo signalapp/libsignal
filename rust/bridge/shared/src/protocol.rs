@@ -1331,3 +1331,14 @@ async fn GroupCipher_DecryptMessage(
 ) -> Result<Vec<u8>> {
     group_decrypt(message, store, sender).await
 }
+
+#[bridge_fn]
+fn Pvrf_Verify(vts: Box<[u8]>, bob_response: Box<[u8]>) -> Result<Vec<u8>> {
+    let (ok, z) = pvrf_verify_from_session_data(&vts, &bob_response)?;
+
+    let mut out = Vec::new();
+    out.push(if ok { 1 } else { 0 });
+    out.extend(&(z.len() as u32).to_le_bytes());
+    out.extend(&z);
+    Ok(out)
+}

@@ -357,6 +357,7 @@ type NativeFunctions = {
   SessionRecord_GetBobResponse: (s: Wrapper<SessionRecord>) => any;
   PvrfDemo_ComputeZb: (context: Uint8Array, nonce: Uint8Array) => Uint8Array;
   PvrfDemo_ComputeSas: (nonce16: Uint8Array, zb16: Uint8Array) => Uint8Array;
+  Pvrf_Verify: (vts: Uint8Array, bob_response: Uint8Array) => Uint8Array;
   SessionRecord_Deserialize: (data: Uint8Array) => SessionRecord;
   SessionRecord_Serialize: (obj: Wrapper<SessionRecord>) => Uint8Array;
   SessionRecord_GetLocalRegistrationId: (obj: Wrapper<SessionRecord>) => number;
@@ -914,6 +915,7 @@ const { registerErrors,
   SessionRecord_GetBobResponse,
   PvrfDemo_ComputeZb,
   PvrfDemo_ComputeSas,
+  Pvrf_Verify,
   SessionRecord_Deserialize,
   SessionRecord_Serialize,
   SessionRecord_GetLocalRegistrationId,
@@ -1473,6 +1475,7 @@ export { registerErrors,
   SessionRecord_GetBobResponse,
   PvrfDemo_ComputeZb,
   PvrfDemo_ComputeSas,
+  Pvrf_Verify,
   SessionRecord_Deserialize,
   SessionRecord_Serialize,
   SessionRecord_GetLocalRegistrationId,
