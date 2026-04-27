@@ -46,6 +46,7 @@ free standing.
 pub async fn process_prekey<'a>(
     message: &'a PreKeySignalMessage,
     remote_address: &'a ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_record: &mut SessionRecord,
     identity_store: &dyn IdentityKeyStore,
     pre_key_store: &dyn PreKeyStore,
@@ -66,6 +67,7 @@ pub async fn process_prekey<'a>(
     let pre_keys_used = process_prekey_impl(
         message,
         remote_address,
+        local_address,
         session_record,
         signed_prekey_store,
         kyber_prekey_store,
@@ -85,6 +87,7 @@ pub async fn process_prekey<'a>(
 async fn process_prekey_impl(
     message: &PreKeySignalMessage,
     remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_record: &mut SessionRecord,
     signed_prekey_store: &dyn SignedPreKeyStore,
     kyber_prekey_store: &dyn KyberPreKeyStore,
@@ -143,14 +146,20 @@ async fn process_prekey_impl(
         None
     };
 
+    let our_identity_key_pair = identity_store.get_identity_key_pair().await?;
     let parameters = BobSignalProtocolParameters::new(
-        identity_store.get_identity_key_pair().await?,
+        our_identity_key_pair,
         our_signed_pre_key_pair,
         our_one_time_pre_key_pair,
         our_kyber_pre_key_pair,
         *message.identity_key(),
         *message.base_key(),
         kyber_ciphertext,
+        our_identity_key_pair.identity_key().is_same_account(
+            local_address,
+            message.identity_key(),
+            remote_address,
+        ),
     );
 
     // The recipient's initial ratchet key is the signed pre-key.
@@ -171,6 +180,7 @@ async fn process_prekey_impl(
 
 pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
     remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_store: &mut dyn IdentityKeyStore,
     bundle: &PreKeyBundle,
@@ -222,6 +232,11 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
         their_signed_prekey,
         their_signed_prekey,
         their_kyber_prekey.clone(),
+        our_identity_key_pair.identity_key().is_same_account(
+            local_address,
+            their_identity_key,
+            remote_address,
+        ),
     );
     if let Some(key) = bundle.pre_key_public()? {
         parameters.set_their_one_time_pre_key(key);

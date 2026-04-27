@@ -29,7 +29,7 @@ import org.signal.libsignal.protocol.state.SignedPreKeyStore;
  *   <li>A {@link org.signal.libsignal.protocol.message.PreKeySignalMessage} received from a client.
  * </ol>
  *
- * Only the first, however, is handled by SessionBuilder.
+ * <p>Only the first, however, is handled by SessionBuilder.
  *
  * <p>Sessions are constructed per recipientId + deviceId tuple. Remote logical users are identified
  * by their recipientId, and each logical recipientId can have multiple physical devices.
@@ -46,6 +46,7 @@ public class SessionBuilder {
   private final SignedPreKeyStore signedPreKeyStore;
   private final IdentityKeyStore identityKeyStore;
   private final SignalProtocolAddress remoteAddress;
+  private final SignalProtocolAddress localAddress;
 
   /**
    * Constructs a SessionBuilder.
@@ -63,12 +64,14 @@ public class SessionBuilder {
       PreKeyStore preKeyStore,
       SignedPreKeyStore signedPreKeyStore,
       IdentityKeyStore identityKeyStore,
-      SignalProtocolAddress remoteAddress) {
+      SignalProtocolAddress remoteAddress,
+      SignalProtocolAddress localAddress) {
     this.sessionStore = sessionStore;
     this.preKeyStore = preKeyStore;
     this.signedPreKeyStore = signedPreKeyStore;
     this.identityKeyStore = identityKeyStore;
     this.remoteAddress = remoteAddress;
+    this.localAddress = localAddress;
   }
 
   /**
@@ -77,8 +80,11 @@ public class SessionBuilder {
    * @param store The {@link SignalProtocolStore} to store all state information in.
    * @param remoteAddress The address of the remote user to build a session with.
    */
-  public SessionBuilder(SignalProtocolStore store, SignalProtocolAddress remoteAddress) {
-    this(store, store, store, store, remoteAddress);
+  public SessionBuilder(
+      SignalProtocolStore store,
+      SignalProtocolAddress remoteAddress,
+      SignalProtocolAddress localAddress) {
+    this(store, store, store, store, remoteAddress, localAddress);
   }
 
   /**
@@ -111,7 +117,8 @@ public class SessionBuilder {
   public void process(PreKeyBundle preKey, Instant now)
       throws InvalidKeyException, UntrustedIdentityException {
     try (NativeHandleGuard preKeyGuard = new NativeHandleGuard(preKey);
-        NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress)) {
+        NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress);
+        NativeHandleGuard localAddressGuard = new NativeHandleGuard(this.localAddress)) {
       filterExceptions(
           InvalidKeyException.class,
           UntrustedIdentityException.class,
@@ -119,6 +126,7 @@ public class SessionBuilder {
               Native.SessionBuilder_ProcessPreKeyBundle(
                   preKeyGuard.nativeHandle(),
                   remoteAddressGuard.nativeHandle(),
+                  localAddressGuard.nativeHandle(),
                   SessionCipher.bridge(sessionStore),
                   SessionCipher._bridge(identityKeyStore),
                   now.toEpochMilli()));

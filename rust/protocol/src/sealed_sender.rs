@@ -2047,6 +2047,7 @@ pub async fn sealed_sender_decrypt(
             session_management::message_decrypt_signal(
                 &ctext,
                 &remote_address,
+                &local_address,
                 session_store,
                 identity_store,
                 &mut rng,

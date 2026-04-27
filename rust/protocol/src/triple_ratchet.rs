@@ -173,8 +173,7 @@ impl TripleRatchet {
     /// Fails if the session is missing required fields (root key, identity
     /// keys, etc.). The caller should map the error appropriately for the
     /// context (e.g., "no session available to decrypt").
-    pub(crate) fn from_session_state(state: &mut SessionState) -> Result<Self> {
-        let self_session = state.session_with_self()?;
+    pub(crate) fn from_session_state(state: &mut SessionState, self_session: bool) -> Result<Self> {
         let ratchet = state.take_ratchet_state(self_session)?;
         let pqr_state = state.take_pq_ratchet_state();
         let local_identity_key = state.local_identity_key()?;
@@ -216,7 +215,7 @@ impl TripleRatchet {
     pub(crate) fn decrypt<R: Rng + CryptoRng>(
         &mut self,
         sender_address: &ProtocolAddress,
-        recipient_address: Option<&ProtocolAddress>,
+        recipient_address: &ProtocolAddress,
         ciphertext: &SignalMessage,
         original_message_type: CiphertextMessageType,
         current_or_previous_for_logging: CurrentOrPrevious,
@@ -258,20 +257,13 @@ impl TripleRatchet {
         let message_keys = message_key_gen.generate_keys(pqr_key);
 
         // MAC verification
-        let mac_valid = match recipient_address {
-            Some(recipient_address) => ciphertext.verify_mac_with_addresses(
-                sender_address,
-                recipient_address,
-                &self.remote_identity_key,
-                &self.local_identity_key,
-                message_keys.mac_key(),
-            )?,
-            None => ciphertext.verify_mac(
-                &self.remote_identity_key,
-                &self.local_identity_key,
-                message_keys.mac_key(),
-            )?,
-        };
+        let mac_valid = ciphertext.verify_mac_with_addresses(
+            sender_address,
+            recipient_address,
+            &self.remote_identity_key,
+            &self.local_identity_key,
+            message_keys.mac_key(),
+        )?;
         if !mac_valid {
             return Err(SignalProtocolError::InvalidMessage(
                 original_message_type,

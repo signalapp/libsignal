@@ -123,6 +123,7 @@ impl Participant {
 
         process_prekey_bundle(
             &them.address,
+            &self.address,
             &mut self.store.session_store,
             &mut self.store.identity_store,
             &their_pre_key_bundle,

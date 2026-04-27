@@ -7,6 +7,7 @@
 
 #![warn(missing_docs)]
 
+use libsignal_core::{ProtocolAddress, ServiceId};
 use prost::Message;
 use rand::{CryptoRng, Rng};
 
@@ -66,6 +67,32 @@ impl IdentityKey {
             ],
             signature,
         ))
+    }
+
+    /// Do two (identity key, protocol address) pairs map to the same account
+    ///
+    /// This function will always return false if the names in the protocol addresses aren't valid
+    /// service IDs.
+    pub fn is_same_account(
+        &self,
+        self_protocol_address: &ProtocolAddress,
+        other_key: &IdentityKey,
+        other_protocol_address: &ProtocolAddress,
+    ) -> bool {
+        if self.public_key() != other_key.public_key() {
+            return false;
+        }
+        let Some(self_service_id) =
+            ServiceId::parse_from_service_id_string(self_protocol_address.name())
+        else {
+            return false;
+        };
+        let Some(other_service_id) =
+            ServiceId::parse_from_service_id_string(other_protocol_address.name())
+        else {
+            return false;
+        };
+        self_service_id == other_service_id
     }
 }
 

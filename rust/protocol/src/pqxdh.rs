@@ -116,6 +116,8 @@ pub struct InitiatorParameters {
     their_one_time_pre_key: Option<PublicKey>,
     their_ratchet_key: PublicKey,
     their_kyber_pre_key: kem::PublicKey,
+
+    self_session: bool,
 }
 
 impl InitiatorParameters {
@@ -126,6 +128,7 @@ impl InitiatorParameters {
         their_signed_pre_key: PublicKey,
         their_ratchet_key: PublicKey,
         their_kyber_pre_key: kem::PublicKey,
+        self_session: bool,
     ) -> Self {
         Self {
             our_identity_key_pair,
@@ -135,6 +138,7 @@ impl InitiatorParameters {
             their_signed_pre_key,
             their_ratchet_key,
             their_kyber_pre_key,
+            self_session,
         }
     }
 
@@ -175,6 +179,11 @@ impl InitiatorParameters {
     #[inline]
     pub fn their_ratchet_key(&self) -> &PublicKey {
         &self.their_ratchet_key
+    }
+
+    #[inline]
+    pub fn self_session(&self) -> bool {
+        self.self_session
     }
 }
 
@@ -242,6 +251,8 @@ pub struct RecipientParameters<'a> {
     their_identity_key: IdentityKey,
     their_ephemeral_key: PublicKey,
     their_kyber_ciphertext: &'a kem::SerializedCiphertext,
+
+    self_session: bool,
 }
 
 impl<'a> RecipientParameters<'a> {
@@ -253,6 +264,7 @@ impl<'a> RecipientParameters<'a> {
         their_identity_key: IdentityKey,
         their_ephemeral_key: PublicKey,
         their_kyber_ciphertext: &'a kem::SerializedCiphertext,
+        self_session: bool,
     ) -> Self {
         Self {
             our_identity_key_pair,
@@ -262,6 +274,7 @@ impl<'a> RecipientParameters<'a> {
             their_identity_key,
             their_ephemeral_key,
             their_kyber_ciphertext,
+            self_session,
         }
     }
 
@@ -298,6 +311,11 @@ impl<'a> RecipientParameters<'a> {
     #[inline]
     pub fn their_kyber_ciphertext(&self) -> &kem::SerializedCiphertext {
         self.their_kyber_ciphertext
+    }
+
+    #[inline]
+    pub fn self_session(&self) -> bool {
+        self.self_session
     }
 }
 

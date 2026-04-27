@@ -162,6 +162,8 @@ pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), Signal
         bob_base_key.public_key,
         bob_ephemeral_key.public_key,
         bob_kyber_key.public_key.clone(),
+        // Alice and Bob identities won't be equal (with high probability)
+        false,
     );
 
     let alice_session = initialize_alice_session_record(&alice_params, &mut csprng)?;
@@ -181,6 +183,7 @@ pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), Signal
         *alice_identity.identity_key(),
         alice_base_key.public_key,
         &kyber_ciphertext,
+        false,
     );
 
     let bob_session = initialize_bob_session_record(&bob_params, &bob_ephemeral_key)?;

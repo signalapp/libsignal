@@ -119,7 +119,8 @@ public class SessionCipher {
     };
   }
 
-  /*package*/ static org.signal.libsignal.protocol.state.internal.SessionStore bridge(
+  /*package*/
+  static org.signal.libsignal.protocol.state.internal.SessionStore bridge(
       SessionStore sessionStore) {
     return new org.signal.libsignal.protocol.state.internal.SessionStore() {
       public NativeHandleGuard.Owner loadSession(long rawAddress) throws Exception {
@@ -268,7 +269,8 @@ public class SessionCipher {
           NoSessionException,
           UntrustedIdentityException {
     try (NativeHandleGuard ciphertextGuard = new NativeHandleGuard(ciphertext);
-        NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress); ) {
+        NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress);
+        NativeHandleGuard localAddressGuard = new NativeHandleGuard(this.localAddress); ) {
       return filterExceptions(
           InvalidMessageException.class,
           InvalidVersionException.class,
@@ -279,6 +281,7 @@ public class SessionCipher {
               Native.SessionCipher_DecryptSignalMessage(
                   ciphertextGuard.nativeHandle(),
                   remoteAddressGuard.nativeHandle(),
+                  localAddressGuard.nativeHandle(),
                   bridge(sessionStore),
                   _bridge(identityKeyStore)));
     }

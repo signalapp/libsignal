@@ -1011,6 +1011,7 @@ bridge_get!(
 async fn SessionBuilder_ProcessPreKeyBundle(
     bundle: &PreKeyBundle,
     protocol_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_key_store: &mut dyn IdentityKeyStore,
     now: Timestamp,
@@ -1018,6 +1019,7 @@ async fn SessionBuilder_ProcessPreKeyBundle(
     let mut csprng = rand::rngs::OsRng.unwrap_err();
     process_prekey_bundle(
         protocol_address,
+        local_address,
         session_store,
         identity_key_store,
         bundle,
@@ -1053,6 +1055,7 @@ async fn SessionCipher_EncryptMessage(
 async fn SessionCipher_DecryptSignalMessage(
     message: &SignalMessage,
     protocol_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_key_store: &mut dyn IdentityKeyStore,
 ) -> Result<Vec<u8>> {
@@ -1060,6 +1063,7 @@ async fn SessionCipher_DecryptSignalMessage(
     message_decrypt_signal(
         message,
         protocol_address,
+        local_address,
         session_store,
         identity_key_store,
         &mut csprng,

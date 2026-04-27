@@ -1248,6 +1248,7 @@ function bridgeIdentityKeyStore(
 export function processPreKeyBundle(
   bundle: PreKeyBundle,
   address: ProtocolAddress,
+  localAddress: ProtocolAddress,
   sessionStore: SessionStore,
   identityStore: IdentityKeyStore,
   now: Date = new Date()
@@ -1255,6 +1256,7 @@ export function processPreKeyBundle(
   return Native.SessionBuilder_ProcessPreKeyBundle(
     bundle,
     address,
+    localAddress,
     bridgeSessionStore(sessionStore),
     bridgeIdentityKeyStore(identityStore),
     now.getTime()
@@ -1284,12 +1286,14 @@ export async function signalEncrypt(
 export function signalDecrypt(
   message: SignalMessage,
   address: ProtocolAddress,
+  localAddress: ProtocolAddress,
   sessionStore: SessionStore,
   identityStore: IdentityKeyStore
 ): Promise<Uint8Array<ArrayBuffer>> {
   return Native.SessionCipher_DecryptSignalMessage(
     message,
     address,
+    localAddress,
     bridgeSessionStore(sessionStore),
     bridgeIdentityKeyStore(identityStore)
   );

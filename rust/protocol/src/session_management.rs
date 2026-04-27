@@ -22,6 +22,7 @@
 use std::time::SystemTime;
 
 use displaydoc::Display;
+use libsignal_core::try_scoped;
 use rand::{CryptoRng, Rng};
 
 use crate::consts::MAX_UNACKNOWLEDGED_SESSION_AGE;
@@ -162,7 +163,15 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
 ) -> Result<Vec<u8>> {
     match ciphertext {
         CiphertextMessage::SignalMessage(m) => {
-            message_decrypt_signal(m, remote_address, session_store, identity_store, csprng).await
+            message_decrypt_signal(
+                m,
+                remote_address,
+                local_address,
+                session_store,
+                identity_store,
+                csprng,
+            )
+            .await
         }
         CiphertextMessage::PreKeySignalMessage(m) => {
             message_decrypt_prekey(
@@ -210,6 +219,7 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     let process_prekey_result = session::process_prekey(
         ciphertext,
         remote_address,
+        local_address,
         &mut session_record,
         identity_store,
         pre_key_store,
@@ -239,7 +249,7 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     let ptext = try_decrypt_from_record(
         &mut session_record,
         remote_address,
-        Some(local_address),
+        local_address,
         ciphertext.message(),
         CiphertextMessageType::PreKey,
         csprng,
@@ -282,6 +292,7 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
 pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
     ciphertext: &SignalMessage,
     remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_store: &mut dyn IdentityKeyStore,
     csprng: &mut R,
@@ -294,7 +305,7 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
     let ptext = try_decrypt_from_record(
         &mut session_record,
         remote_address,
-        None,
+        local_address,
         ciphertext,
         CiphertextMessageType::Whisper,
         csprng,
@@ -347,7 +358,7 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
 pub(crate) fn try_decrypt_from_record<R: Rng + CryptoRng>(
     record: &mut SessionRecord,
     remote_address: &ProtocolAddress,
-    local_address: Option<&ProtocolAddress>,
+    local_address: &ProtocolAddress,
     ciphertext: &SignalMessage,
     original_message_type: CiphertextMessageType,
     csprng: &mut R,
@@ -545,7 +556,7 @@ pub(crate) fn try_decrypt_from_record<R: Rng + CryptoRng>(
 pub(crate) fn try_decrypt_with_state<R: Rng + CryptoRng>(
     state: &mut SessionState,
     remote_address: &ProtocolAddress,
-    local_address: Option<&ProtocolAddress>,
+    local_address: &ProtocolAddress,
     ciphertext: &SignalMessage,
     original_message_type: CiphertextMessageType,
     curr_or_prev_for_logging: CurrentOrPrevious,
@@ -556,7 +567,18 @@ pub(crate) fn try_decrypt_with_state<R: Rng + CryptoRng>(
         ciphertext.message_version() as u32
     );
 
-    let mut session = TripleRatchet::from_session_state(state)?;
+    let self_session = try_scoped::<bool, InvalidSessionError>(|| {
+        Ok(state.local_identity_key()?.is_same_account(
+            local_address,
+            &state
+                .remote_identity_key()?
+                .ok_or(InvalidSessionError("missing remote identity key"))?,
+            remote_address,
+        ))
+    })
+    .inspect_err(|e| log::warn!("Failed to determine self_session: {}", e))
+    .unwrap_or_default();
+    let mut session = TripleRatchet::from_session_state(state, self_session)?;
 
     let ptext = session.decrypt(
         remote_address,
@@ -756,6 +778,7 @@ mod legacy_interop_tests {
             bob_signed_pre_key.public_key,
             bob_signed_pre_key.public_key,
             bob_kyber_key.public_key.clone(),
+            false,
         );
 
         let alice_record =
@@ -775,6 +798,7 @@ mod legacy_interop_tests {
             *alice_identity.identity_key(),
             alice_base_key.public_key,
             &kyber_ct,
+            false,
         );
 
         let bob_record = initialize_bob_session_record(&bob_params, &bob_signed_pre_key)
@@ -1093,6 +1117,7 @@ mod legacy_interop_tests {
         let bundle = create_bob_bundle(&mut bob_store, 1, 1, 1, &mut rng);
         process_prekey_bundle(
             &bob_address,
+            &alice_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &bundle,
@@ -1154,6 +1179,7 @@ mod legacy_interop_tests {
         message_decrypt_signal(
             session_b_ack_signal,
             &bob_address,
+            &alice_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &mut rng,
@@ -1189,6 +1215,7 @@ mod legacy_interop_tests {
         let ptext = message_decrypt_signal(
             &delayed_signal_msg,
             &alice_address,
+            &bob_address,
             &mut bob_store.session_store,
             &mut bob_store.identity_store,
             &mut rng,
@@ -1254,6 +1281,7 @@ mod legacy_interop_tests {
         message_decrypt_signal(
             &trigger_signal_msg,
             &alice_address,
+            &bob_address,
             &mut bob_store.session_store,
             &mut bob_store.identity_store,
             rng,
@@ -1284,6 +1312,7 @@ mod legacy_interop_tests {
         message_decrypt_signal(
             &bob_reply_signal_msg,
             &bob_address,
+            &alice_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             rng,
@@ -1314,6 +1343,7 @@ mod legacy_interop_tests {
         message_decrypt_signal(
             &alice_new_chain_signal_msg,
             &alice_address,
+            &bob_address,
             &mut bob_store.session_store,
             &mut bob_store.identity_store,
             rng,
@@ -1334,7 +1364,7 @@ mod legacy_interop_tests {
     #[test]
     fn decrypt_ignores_corrupt_unmatched_receiver_chain() {
         let mut rng = ChaCha8Rng::seed_from_u64(0xD311A9);
-        let (_alice_store, mut bob_store, alice_address, _bob_address, delayed_signal_msg) =
+        let (_alice_store, mut bob_store, alice_address, bob_address, delayed_signal_msg) =
             setup_two_alice_receiver_chains_on_bob(&mut rng);
 
         let bob_record = bob_store
@@ -1376,6 +1406,7 @@ mod legacy_interop_tests {
         let ptext = message_decrypt_signal(
             &delayed_signal_msg,
             &alice_address,
+            &bob_address,
             &mut bob_store.session_store,
             &mut bob_store.identity_store,
             &mut rng,
@@ -1390,7 +1421,7 @@ mod legacy_interop_tests {
     #[test]
     fn decrypt_fails_on_corrupt_matched_receiver_chain() {
         let mut rng = ChaCha8Rng::seed_from_u64(0xD311AA);
-        let (_alice_store, mut bob_store, alice_address, _bob_address, delayed_signal_msg) =
+        let (_alice_store, mut bob_store, alice_address, bob_address, delayed_signal_msg) =
             setup_two_alice_receiver_chains_on_bob(&mut rng);
 
         let bob_record = bob_store
@@ -1428,6 +1459,7 @@ mod legacy_interop_tests {
         let err = message_decrypt_signal(
             &delayed_signal_msg,
             &alice_address,
+            &bob_address,
             &mut bob_store.session_store,
             &mut bob_store.identity_store,
             &mut rng,
@@ -1619,6 +1651,7 @@ mod legacy_interop_tests {
     fn dual_decrypt(
         msg: &SignalMessage,
         sender_addr: &ProtocolAddress,
+        recv_addr: &ProtocolAddress,
         new_receiver: &mut InMemSignalProtocolStore,
         leg_receiver: &mut InMemSignalProtocolStore,
         rng: &mut ChaCha8Rng,
@@ -1628,6 +1661,7 @@ mod legacy_interop_tests {
         let new_pt = message_decrypt_signal(
             msg,
             sender_addr,
+            recv_addr,
             &mut new_receiver.session_store,
             &mut new_receiver.identity_store,
             rng,
@@ -1771,6 +1805,7 @@ mod legacy_interop_tests {
     fn dual_decrypt_expect_err(
         msg: &SignalMessage,
         sender_addr: &ProtocolAddress,
+        recv_addr: &ProtocolAddress,
         new_receiver: &mut InMemSignalProtocolStore,
         leg_receiver: &mut InMemSignalProtocolStore,
         rng: &mut ChaCha8Rng,
@@ -1780,6 +1815,7 @@ mod legacy_interop_tests {
         let new_err = message_decrypt_signal(
             msg,
             sender_addr,
+            recv_addr,
             &mut new_receiver.session_store,
             &mut new_receiver.identity_store,
             rng,
@@ -1863,20 +1899,48 @@ mod legacy_interop_tests {
         }
 
         fn bob_receives(&mut self, msg: &SignalMessage) -> Vec<u8> {
-            dual_decrypt(msg, &self.alice, &mut self.nb, &mut self.lb, &mut self.rng)
+            dual_decrypt(
+                msg,
+                &self.alice,
+                &self.bob,
+                &mut self.nb,
+                &mut self.lb,
+                &mut self.rng,
+            )
         }
 
         fn alice_receives(&mut self, msg: &SignalMessage) -> Vec<u8> {
-            dual_decrypt(msg, &self.bob, &mut self.na, &mut self.la, &mut self.rng)
+            dual_decrypt(
+                msg,
+                &self.bob,
+                &self.alice,
+                &mut self.na,
+                &mut self.la,
+                &mut self.rng,
+            )
         }
 
         fn bob_receives_err(&mut self, msg: &SignalMessage) -> SignalProtocolError {
-            dual_decrypt_expect_err(msg, &self.alice, &mut self.nb, &mut self.lb, &mut self.rng)
+            dual_decrypt_expect_err(
+                msg,
+                &self.alice,
+                &self.bob,
+                &mut self.nb,
+                &mut self.lb,
+                &mut self.rng,
+            )
         }
 
         #[allow(dead_code)]
         fn alice_receives_err(&mut self, msg: &SignalMessage) -> SignalProtocolError {
-            dual_decrypt_expect_err(msg, &self.bob, &mut self.na, &mut self.la, &mut self.rng)
+            dual_decrypt_expect_err(
+                msg,
+                &self.bob,
+                &self.alice,
+                &mut self.na,
+                &mut self.la,
+                &mut self.rng,
+            )
         }
     }
 
@@ -2019,6 +2083,7 @@ mod legacy_interop_tests {
             let mut legacy_rng = rng.clone();
             process_prekey_bundle(
                 &them.address,
+                &self.address,
                 &mut self.state.new_store.session_store,
                 &mut self.state.new_store.identity_store,
                 &their_pre_key_bundle,
@@ -2029,6 +2094,7 @@ mod legacy_interop_tests {
             .unwrap();
             process_prekey_bundle(
                 &them.address,
+                &self.address,
                 &mut self.state.legacy_store.session_store,
                 &mut self.state.legacy_store.identity_store,
                 &their_pre_key_bundle,
@@ -2346,6 +2412,7 @@ mod legacy_interop_tests {
         let new_err = message_decrypt_signal(
             &msg,
             &alice,
+            &bob,
             &mut nb.session_store,
             &mut nb.identity_store,
             &mut rng,
@@ -2404,6 +2471,7 @@ mod legacy_interop_tests {
         let mut legacy_rng = rng.clone();
         process_prekey_bundle(
             &bob,
+            &alice,
             &mut alice_new.session_store,
             &mut alice_new.identity_store,
             &bundle,
@@ -2415,6 +2483,7 @@ mod legacy_interop_tests {
         .expect("new process_prekey_bundle");
         process_prekey_bundle(
             &bob,
+            &alice,
             &mut alice_legacy.session_store,
             &mut alice_legacy.identity_store,
             &bundle,
@@ -2712,6 +2781,7 @@ mod legacy_interop_tests {
                 let ptext = message_decrypt_signal(
                     signal_msg,
                     send_addr,
+                    recv_addr,
                     &mut receiver.session_store,
                     &mut receiver.identity_store,
                     &mut rng,
@@ -2836,6 +2906,7 @@ mod legacy_interop_tests {
             let bundle = create_bob_bundle(&mut bob_store, 1, 1, 1, &mut rng);
             process_prekey_bundle(
                 &bob_address,
+                &alice_address,
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bundle,
@@ -2905,6 +2976,7 @@ mod legacy_interop_tests {
             message_decrypt_signal(
                 session_b_ack_signal,
                 &bob_address,
+                &alice_address,
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &mut rng,
@@ -2947,6 +3019,7 @@ mod legacy_interop_tests {
                 let ptext = message_decrypt_signal(
                     signal_msg,
                     send_addr,
+                    recv_addr,
                     &mut receiver.session_store,
                     &mut receiver.identity_store,
                     &mut rng,
@@ -2968,6 +3041,7 @@ mod legacy_interop_tests {
             let ptext = message_decrypt_signal(
                 &delayed_signal_msg,
                 &alice_address,
+                &bob_address,
                 &mut bob_store.session_store,
                 &mut bob_store.identity_store,
                 &mut rng,
@@ -3089,6 +3163,7 @@ mod legacy_interop_tests {
                 let _ = message_decrypt_signal(
                     new_msg,
                     sender_addr,
+                    receiver_addr,
                     &mut receiver_new.session_store,
                     &mut receiver_new.identity_store,
                     &mut rng,

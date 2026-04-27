@@ -193,7 +193,14 @@ it('DecryptionErrorMessage', async () => {
   // Set up the session with a message from A to B.
 
   const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
-  await SignalClient.processPreKeyBundle(bPreKeyBundle, bAddress, aSess, aKeys);
+  const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
+  await SignalClient.processPreKeyBundle(
+    bPreKeyBundle,
+    bAddress,
+    aAddress,
+    aSess,
+    aKeys
+  );
 
   const aPlaintext = Buffer.from('hi there', 'utf8');
 
@@ -220,7 +227,6 @@ it('DecryptionErrorMessage', async () => {
   );
 
   // Pretend to send a message from B back to A that "fails".
-  const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
   const bCiphertext = await SignalClient.signalEncrypt(
     Buffer.from('reply', 'utf8'),
     aAddress,
@@ -733,6 +739,7 @@ for (const testCase of sessionVersionTestCases) {
       await SignalClient.processPreKeyBundle(
         bPreKeyBundle,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity
       );
@@ -792,6 +799,7 @@ for (const testCase of sessionVersionTestCases) {
       const aDPlaintext = await SignalClient.signalDecrypt(
         bCiphertextR,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity
       );
@@ -832,6 +840,7 @@ for (const testCase of sessionVersionTestCases) {
       await SignalClient.processPreKeyBundle(
         bPreKeyBundle,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity
       );
@@ -913,6 +922,7 @@ for (const testCase of sessionVersionTestCases) {
       const aDPlaintext = await SignalClient.signalDecrypt(
         bCiphertextR,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity
       );
@@ -923,6 +933,7 @@ for (const testCase of sessionVersionTestCases) {
         await SignalClient.signalDecrypt(
           bCiphertextR,
           bAddress,
+          aAddress,
           aliceStores.session,
           aliceStores.identity
         );
@@ -950,6 +961,7 @@ for (const testCase of sessionVersionTestCases) {
       await SignalClient.processPreKeyBundle(
         bPreKeyBundle,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity,
         new Date('2020-01-01')
@@ -1007,6 +1019,7 @@ for (const testCase of sessionVersionTestCases) {
       await SignalClient.processPreKeyBundle(
         bPreKeyBundle,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity
       );

@@ -202,6 +202,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
             let mut alice_store = alice_store.clone();
             process_prekey_bundle(
                 &bob_address,
+                &alice_address,
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
@@ -216,6 +217,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
 
     process_prekey_bundle(
         &bob_address,
+        &alice_address,
         &mut alice_store.session_store,
         &mut alice_store.identity_store,
         &bob_pre_key_bundle,

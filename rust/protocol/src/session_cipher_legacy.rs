@@ -11,6 +11,7 @@
 
 #![cfg(test)]
 #![allow(dead_code)]
+#![allow(deprecated)]
 
 use std::time::SystemTime;
 
@@ -229,6 +230,7 @@ pub async fn legacy_message_decrypt_prekey<R: Rng + CryptoRng>(
     let process_prekey_result = session::process_prekey(
         ciphertext,
         remote_address,
+        local_address,
         &mut session_record,
         identity_store,
         pre_key_store,

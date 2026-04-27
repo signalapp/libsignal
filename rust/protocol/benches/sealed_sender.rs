@@ -38,6 +38,7 @@ pub fn v1(c: &mut Criterion) {
 
     process_prekey_bundle(
         &bob_address,
+        &alice_address,
         &mut alice_store.session_store,
         &mut alice_store.identity_store,
         &bob_pre_key_bundle,
@@ -135,6 +136,7 @@ pub fn v2(c: &mut Criterion) {
 
     process_prekey_bundle(
         &bob_address,
+        &alice_address,
         &mut alice_store.session_store,
         &mut alice_store.identity_store,
         &bob_pre_key_bundle,
@@ -242,6 +244,7 @@ pub fn v2(c: &mut Criterion) {
 
         process_prekey_bundle(
             &next_address,
+            &alice_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &next_pre_key_bundle,

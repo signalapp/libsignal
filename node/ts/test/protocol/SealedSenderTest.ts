@@ -126,6 +126,7 @@ describe('SealedSender', () => {
     await SignalClient.processPreKeyBundle(
       bPreKeyBundle,
       bAddress,
+      aAddress,
       aSess,
       aKeys
     );
@@ -310,6 +311,7 @@ describe('SealedSender', () => {
     await SignalClient.processPreKeyBundle(
       bPreKeyBundle,
       sharedAddress,
+      sharedAddress,
       aSess,
       sharedKeys
     );
@@ -447,14 +449,14 @@ describe('SealedSender', () => {
     await bKyberStore.saveKyberPreKey(bKyberPrekeyId, bKyberPreKeyRecord);
 
     const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
+    const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
     await SignalClient.processPreKeyBundle(
       bPreKeyBundle,
       bAddress,
+      aAddress,
       aSess,
       aKeys
     );
-
-    const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
 
     const distributionId = 'd1d1d1d1-7000-11eb-b32a-33b8a8a487a6';
     const aSenderKeyStore = new InMemorySenderKeyStore();
@@ -609,14 +611,14 @@ describe('SealedSender', () => {
     );
 
     const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
+    const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
     await SignalClient.processPreKeyBundle(
       bPreKeyBundle,
       bAddress,
+      aAddress,
       aSess,
       aKeys
     );
-
-    const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
 
     const distributionId = 'd1d1d1d1-7000-11eb-b32a-33b8a8a487a6';
     const aSenderKeyStore = new InMemorySenderKeyStore();
@@ -746,14 +748,14 @@ describe('SealedSender', () => {
     );
 
     const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
+    const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
     await SignalClient.processPreKeyBundle(
       bPreKeyBundle,
       bAddress,
+      aAddress,
       aSess,
       aKeys
     );
-
-    const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
 
     const distributionId = 'd1d1d1d1-7000-11eb-b32a-33b8a8a487a6';
     const aSenderKeyStore = new InMemorySenderKeyStore();

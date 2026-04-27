@@ -80,13 +80,12 @@ fn initialize_initiator_session<R: Rng + CryptoRng>(
         &sending_ratchet_key.private_key,
     )?;
 
-    let self_session = local_identity == parameters.their_identity_key();
     let pqr_state = spqr::initial_state(spqr::Params {
         auth_key: &pqr_key,
         version: spqr::Version::V1,
         direction: spqr::Direction::A2B,
         min_version: spqr::Version::V1, // Require that all clients speak SPQR
-        chain_params: spqr_chain_params(self_session),
+        chain_params: spqr_chain_params(parameters.self_session()),
     })
     .map_err(|e| {
         // Since this is an error associated with the initial creation of the state,
@@ -144,13 +143,12 @@ fn initialize_recipient_session(
 ) -> Result<SessionState> {
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
-    let self_session = local_identity == parameters.their_identity_key();
     let pqr_state = spqr::initial_state(spqr::Params {
         auth_key: &pqr_key,
         version: spqr::Version::V1,
         direction: spqr::Direction::B2A,
         min_version: spqr::Version::V1, // Require that all clients speak SPQR
-        chain_params: spqr_chain_params(self_session),
+        chain_params: spqr_chain_params(parameters.self_session()),
     })
     .map_err(|e| {
         // Since this is an error associated with the initial creation of the state,

@@ -203,6 +203,8 @@ impl SessionState {
         Ok(self.local_identity_key()?.serialize().to_vec())
     }
 
+    #[deprecated]
+    #[allow(unused)]
     pub(crate) fn session_with_self(&self) -> Result<bool, InvalidSessionError> {
         if let Some(remote_id) = self.remote_identity_key_bytes()? {
             let local_id = self.local_identity_key_bytes()?;
