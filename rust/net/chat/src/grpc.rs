@@ -152,9 +152,16 @@ impl<E> From<tonic::Status> for RequestError<E> {
         if let Some((details, info)) = extract_server_side_error(&status) {
             return request_error_from_server_side_error_info(details, info);
         }
-        // Unfortunately we can't distinguish between server-side gRPC library errors and
-        // client-side gRPC library errors, so we need to pick a conservative interpretation of all
-        // of these codes. That being said, any hyper transport errors have been handled above.
+
+        // At this point, the error must be in the gRPC layer. Unfortunately we can't distinguish
+        // between server-side gRPC library errors and client-side gRPC library errors, and neither
+        // do we trust that they're log-safe, so we need to pick a conservative interpretation of
+        // all of these codes. That being said, any hyper transport errors have been handled above.
+        log::debug!(
+            "request failed with status {:?}: {}",
+            status.code(),
+            status.message(),
+        );
         match status.code() {
             tonic::Code::DeadlineExceeded => return RequestError::Timeout,
             tonic::Code::Unavailable => {
