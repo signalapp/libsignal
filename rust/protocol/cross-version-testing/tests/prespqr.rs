@@ -14,7 +14,7 @@ fn test_alice_lacks_spqr() {
     let mut bob_store = Box::new(LibSignalProtocolCurrent::new());
 
     let bob_pre_key_bundle = bob_store.create_pre_key_bundle();
-    alice_store.process_pre_key_bundle(bob_name, bob_pre_key_bundle);
+    alice_store.process_pre_key_bundle(bob_name, alice_name, bob_pre_key_bundle);
 
     let original_message = "L'homme est condamné à être libre".as_bytes();
     let (outgoing_message, outgoing_message_type) =
@@ -46,7 +46,7 @@ fn test_bob_lacks_spqr() {
     let mut bob_store = Box::new(LibSignalProtocolV73::new());
 
     let bob_pre_key_bundle = bob_store.create_pre_key_bundle();
-    alice_store.process_pre_key_bundle(bob_name, bob_pre_key_bundle);
+    alice_store.process_pre_key_bundle(bob_name, alice_name, bob_pre_key_bundle);
 
     let original_message = "L'homme est condamné à être libre".as_bytes();
     let (outgoing_message, outgoing_message_type) =

@@ -129,9 +129,10 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
         pre_key_bundle
     }
 
-    fn process_pre_key_bundle(&mut self, remote: &str, pre_key_bundle: PreKeyBundle) {
+    fn process_pre_key_bundle(&mut self, remote: &str, local: &str, pre_key_bundle: PreKeyBundle) {
         process_prekey_bundle(
             &address(remote),
+            &address(local),
             &mut self.0.session_store,
             &mut self.0.identity_store,
             &pre_key_bundle,
@@ -175,6 +176,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
             CiphertextMessageType::Whisper => message_decrypt_signal(
                 &SignalMessage::try_from(msg).expect("valid"),
                 &address(remote),
+                &address(local),
                 &mut self.0.session_store,
                 &mut self.0.identity_store,
                 &mut rng(),

@@ -129,7 +129,12 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
         pre_key_bundle
     }
 
-    fn process_pre_key_bundle(&mut self, remote: &str, pre_key_bundle: super::PreKeyBundle) {
+    fn process_pre_key_bundle(
+        &mut self,
+        remote: &str,
+        _local: &str,
+        pre_key_bundle: super::PreKeyBundle,
+    ) {
         let pre_key_bundle = (|| {
             let bundle = PreKeyBundle::new(
                 pre_key_bundle.registration_id()?,

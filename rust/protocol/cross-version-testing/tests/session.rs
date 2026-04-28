@@ -17,7 +17,7 @@ fn test_basic_prekey() {
         let bob_name = "bob";
 
         let bob_pre_key_bundle = bob_store.create_pre_key_bundle();
-        alice_store.process_pre_key_bundle(bob_name, bob_pre_key_bundle);
+        alice_store.process_pre_key_bundle(bob_name, alice_name, bob_pre_key_bundle);
 
         let original_message = "L'homme est condamné à être libre".as_bytes();
         let (outgoing_message, outgoing_message_type) =
