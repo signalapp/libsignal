@@ -3152,7 +3152,7 @@ THIS SOFTWARE.
 
 ```
 
-## rustls-webpki 0.103.12
+## rustls-webpki 0.103.13
 
 ```
 Except as otherwise noted, this project is licensed under the following

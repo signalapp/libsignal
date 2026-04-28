@@ -180,7 +180,7 @@ prost-build = "0.14"
 prost-types = "0.14"
 protobuf = "3.7.2"
 protobuf-codegen = "3.7.2"
-quote = "1.0.38"
+quote = "1.0.40"
 rand = "0.9.4"
 rand_chacha = "0.9"
 rand_core = "0.9"
@@ -226,7 +226,7 @@ visibility = "0.1.1"
 warp = "0.4.2"
 webpsan = { version = "0.5.3", default-features = false }
 x25519-dalek = "2.0.0"
-zerocopy = "0.8.24"
+zerocopy = "0.8.33"
 zeroize = "1.8.2"
 
 [patch.crates-io]
