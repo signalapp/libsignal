@@ -25,6 +25,7 @@ const POINTER_MASK: u8 = 0xC0;
 pub(crate) const MAX_DNS_LABEL_LEN: usize = 63;
 pub(crate) const MAX_DNS_NAME_LEN: usize = 255;
 pub(crate) const MAX_DNS_UDP_MESSAGE_LEN: usize = 512;
+const MAX_DNS_ANSWERS_TO_PARSE: u16 = 1024;
 
 #[derive(displaydoc::Display, Debug, thiserror::Error, Clone)]
 pub enum Error {
@@ -153,9 +154,15 @@ pub fn parse_response<T>(
     let _data_type = reader.read_to::<u16>()?;
     let _data_class = reader.read_to::<u16>()?;
 
-    let mut results = Vec::with_capacity(answers_count.into());
+    let answers_to_parse = answers_count.min(MAX_DNS_ANSWERS_TO_PARSE);
+    if answers_count > MAX_DNS_ANSWERS_TO_PARSE {
+        log::warn!(
+            "DNS response ANCOUNT {answers_count} exceeds limit {MAX_DNS_ANSWERS_TO_PARSE}; truncating"
+        );
+    }
+    let mut results = Vec::with_capacity(answers_to_parse.into());
     let mut min_ttl = u32::MAX;
-    for _ in 0..answers_count {
+    for _ in 0..answers_to_parse {
         let _name = read_name(&mut reader, message)?;
         let data_type = reader.read_to::<u16>()?;
         let _data_class = reader.read_to::<u16>()?;
