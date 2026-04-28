@@ -169,5 +169,8 @@ extension AuthenticatedChatConnection: AuthMessagesService {
 }
 
 extension AuthServiceSelector where Self == AuthServiceSelectorHelper<any AuthMessagesService> {
+    public static var messages: Self { .init() }
+
+    /// Soft-deprecated, use ``messages`` instead.
     public static var attachments: Self { .init() }
 }

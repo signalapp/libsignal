@@ -13,7 +13,7 @@ import XCTest
 private let recipientUuid = UUID(uuidString: "4FCFE887-A600-40CD-9AB7-FD2A695E9981")!
 
 class AuthMessagesServiceTests: AuthChatServiceTestBase<any AuthMessagesService> {
-    override class var selector: SelectorCheck { .attachments }
+    override class var selector: SelectorCheck { .messages }
 
     func testGetUploadForm() async throws {
         let api = self.api
