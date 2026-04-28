@@ -281,15 +281,16 @@ internal struct SliceOfBuffers: BorrowForFfi {
         // Bridging from Data to NSData has a chance of copying the data,
         // but will usually be able to avoid it if it already has a stable address (the common case for long buffers).
         // So most of the time this should just be two allocations - the two outer arrays.
-        let stableInputs = inner as [NSData]
-        let addresses = stableInputs.map {
-            SignalBorrowedBuffer(
-                base: $0.bytes.assumingMemoryBound(to: UInt8.self),
-                length: $0.count
-            )
-        }
-        return try addresses.withUnsafeBufferPointer { addresses in
-            try callback(SignalBorrowedSliceOfBuffers(base: addresses.baseAddress, length: addresses.count))
+        return try withExtendedLifetime(inner as [NSData]) { stableInputs in
+            let addresses = stableInputs.map {
+                SignalBorrowedBuffer(
+                    base: $0.bytes.assumingMemoryBound(to: UInt8.self),
+                    length: $0.count
+                )
+            }
+            return try addresses.withUnsafeBufferPointer { addresses in
+                try callback(SignalBorrowedSliceOfBuffers(base: addresses.baseAddress, length: addresses.count))
+            }
         }
     }
 }
