@@ -123,12 +123,13 @@ mod test {
     use data_encoding_macro::base64url_nopad;
     use futures_util::FutureExt as _;
     use libsignal_net_grpc::proto::chat::common::{IdentityType, ServiceIdentifier};
+    use libsignal_net_grpc::proto::chat::services;
     use test_case::test_case;
     use uuid::{Uuid, uuid};
 
     use super::*;
     use crate::api::usernames::UnauthenticatedChatApi;
-    use crate::grpc::testutil::{RequestValidator, err, ok, req};
+    use crate::grpc::testutil::{GrpcOverrideRequestValidator, RequestValidator, err, ok, req};
 
     const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
 
@@ -169,14 +170,17 @@ mod test {
         // Not realistic, but not likely to show up by accident.
         let hash = &[0x00, 0xff, 0xff, 0xff];
 
-        let validator = RequestValidator {
-            expected: req(
-                "/org.signal.chat.account.AccountsAnonymous/LookupUsernameHash",
-                LookupUsernameHashRequest {
-                    username_hash: hash.to_vec(),
-                },
-            ),
-            response,
+        let validator = GrpcOverrideRequestValidator {
+            message: services::AccountsAnonymous::LookupUsernameHash.into(),
+            validator: RequestValidator {
+                expected: req(
+                    "/org.signal.chat.account.AccountsAnonymous/LookupUsernameHash",
+                    LookupUsernameHashRequest {
+                        username_hash: hash.to_vec(),
+                    },
+                ),
+                response,
+            },
         };
 
         Unauth(&validator)
@@ -205,14 +209,17 @@ mod test {
     fn test_link_lookup(
         response: http::Response<Vec<u8>>,
     ) -> Result<Option<String>, RequestError<usernames::UsernameLinkError>> {
-        let validator = RequestValidator {
-            expected: req(
-                "/org.signal.chat.account.AccountsAnonymous/LookupUsernameLink",
-                LookupUsernameLinkRequest {
-                    username_link_handle: uuid::Uuid::nil().as_bytes().to_vec(),
-                },
-            ),
-            response,
+        let validator = GrpcOverrideRequestValidator {
+            message: services::AccountsAnonymous::LookupUsernameLink.into(),
+            validator: RequestValidator {
+                expected: req(
+                    "/org.signal.chat.account.AccountsAnonymous/LookupUsernameLink",
+                    LookupUsernameLinkRequest {
+                        username_link_handle: uuid::Uuid::nil().as_bytes().to_vec(),
+                    },
+                ),
+                response,
+            },
         };
 
         Unauth(&validator)

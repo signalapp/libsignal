@@ -49,26 +49,23 @@ impl<T: GrpcServiceProvider> crate::api::profiles::UnauthenticatedAccountExisten
 }
 
 #[cfg(test)]
-mod test_account_exists {
+mod test {
+    use assert_matches::assert_matches;
     use futures_util::FutureExt;
     use libsignal_core::{Aci, Pni};
     use libsignal_net_grpc::proto::chat::services;
-    use test_case::test_case;
+    use test_case::test_matrix;
     use uuid::{Uuid, uuid};
 
     use super::*;
     use crate::api::profiles::UnauthenticatedAccountExistenceApi;
-    use crate::grpc::testutil::{self, GrpcOverrideRequestValidator, RequestValidator, req};
+    use crate::grpc::testutil::{GrpcOverrideRequestValidator, RequestValidator, err, ok, req};
 
     const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
     const PNI_UUID: Uuid = uuid!("796abedb-ca4e-4f18-8803-1fde5b921f9f");
 
-    #[test_case(Aci::from(ACI_UUID).into(), true)]
-    #[test_case(Pni::from(PNI_UUID).into(), true)]
-    #[test_case(Aci::from(ACI_UUID).into(), false)]
-    #[test_case(Pni::from(PNI_UUID).into(), false)]
-    #[tokio::test]
-    async fn test_it(service_id: ServiceId, found: bool) {
+    #[test_matrix([Aci::from(ACI_UUID).into(), Pni::from(PNI_UUID).into()], [false, true])]
+    fn test_account_exists(service_id: ServiceId, found: bool) {
         let validator = GrpcOverrideRequestValidator {
             message: services::AccountsAnonymous::CheckAccountExistence.into(),
             validator: RequestValidator {
@@ -78,7 +75,7 @@ mod test_account_exists {
                         service_identifier: Some(service_id.into()),
                     },
                 ),
-                response: testutil::ok(CheckAccountExistenceResponse {
+                response: ok(CheckAccountExistenceResponse {
                     account_exists: found,
                 }),
             },
@@ -91,8 +88,8 @@ mod test_account_exists {
         assert_eq!(result, found);
     }
 
-    #[tokio::test]
-    async fn test_invalid() {
+    #[test]
+    fn test_account_exists_invalid() {
         let validator = GrpcOverrideRequestValidator {
             message: services::AccountsAnonymous::CheckAccountExistence.into(),
             validator: RequestValidator {
@@ -102,7 +99,7 @@ mod test_account_exists {
                         service_identifier: Some(Aci::from(ACI_UUID).into()),
                     },
                 ),
-                response: testutil::err(tonic::Code::DeadlineExceeded),
+                response: err(tonic::Code::DeadlineExceeded),
             },
         };
         let result = Unauth(&validator)
@@ -110,6 +107,6 @@ mod test_account_exists {
             .now_or_never()
             .expect("sync")
             .expect_err("should fail");
-        assert!(matches!(result, RequestError::Timeout));
+        assert_matches!(result, RequestError::Timeout);
     }
 }

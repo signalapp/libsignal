@@ -495,6 +495,10 @@ pub(crate) mod testutil {
         Status::new(code, "").into_http()
     }
 
+    /// Validates that the [`WsConnection`] implementation of an API defers to the gRPC
+    /// implementation when the `message` override is provided.
+    ///
+    /// Then defers to the inner validator for further checking and producing a response.
     pub(crate) struct GrpcOverrideRequestValidator<V> {
         pub(crate) validator: V,
         pub(crate) message: &'static str,
@@ -526,6 +530,13 @@ pub(crate) mod testutil {
         }
     }
 
+    /// Validates that a gRPC request matches in all parts of the underlying HTTP request, checking
+    /// the body byte-for-byte.
+    ///
+    /// Prefer a [`GrpcOverrideRequestValidator`] containing a `RequestValidator` if the request has
+    /// a corresponding config to switch between WS and gRPC implementations. Replace the
+    /// `RequestValidator` with `TypedRequestValidator` if comparing the bodies using protobuf
+    /// semantics (rather than bytewise) is important---it usually isn't.
     pub(crate) struct RequestValidator {
         pub expected: http::Request<Vec<u8>>,
         pub response: http::Response<Vec<u8>>,
@@ -574,7 +585,10 @@ pub(crate) mod testutil {
     /// Like `RequestValidator`, but compares the decoded protobuf of the incoming request instead
     /// of the serialized bytes.
     ///
-    /// Prefer `RequestValidator`
+    /// Prefer `RequestValidator` if the protobuf does not contain any `map` fields, because it also
+    /// checks that there are no extraneous fields in the body. (While protobuf permits fields to
+    /// appear in any order, our prost implementation is consistent within a build, if not
+    /// necessarily across versions. `map` is only a problem because it uses Rust's HashMap.)
     pub(crate) struct TypedRequestValidator<T> {
         pub expected: http::Request<T>,
         pub response: http::Response<Vec<u8>>,
@@ -615,6 +629,29 @@ pub(crate) mod testutil {
             pretty_assertions::assert_eq!(self.expected.body(), &actual_body, "body");
 
             std::future::ready(Ok(self.response.clone().map(|body| body.into())))
+        }
+    }
+
+    /// Use to check that no gRPC calls happen at all (e.g. for a `should_panic` test, but don't
+    /// forget to check the panic message in that case!).
+    pub(crate) struct UnreachableValidator;
+
+    impl tower_service::Service<http::Request<tonic::body::Body>> for &'_ UnreachableValidator {
+        type Response = http::Response<http_body_util::Full<bytes::Bytes>>;
+
+        type Error = hyper::Error;
+
+        type Future = std::future::Pending<Result<Self::Response, Self::Error>>;
+
+        fn poll_ready(
+            &mut self,
+            _cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<Result<(), Self::Error>> {
+            unreachable!("should not attempt to send");
+        }
+
+        fn call(&mut self, _req: http::Request<tonic::body::Body>) -> Self::Future {
+            unreachable!("should not attempt to send");
         }
     }
 

@@ -599,8 +599,8 @@ mod test {
     use crate::api::testutil::{SERIALIZED_GROUP_SEND_TOKEN, structurally_valid_group_send_token};
     use crate::api::{ChallengeOption, RateLimitChallenge};
     use crate::grpc::testutil::{
-        GrpcOverrideRequestValidator, RequestValidator, TypedRequestValidator, err, ok, req,
-        req_typed,
+        GrpcOverrideRequestValidator, RequestValidator, TypedRequestValidator,
+        UnreachableValidator, err, ok, req, req_typed,
     };
 
     const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
@@ -778,14 +778,7 @@ mod test {
     #[test]
     #[should_panic(expected = "online-only")]
     fn ephemeral_story_is_not_allowed() {
-        let validator = RequestValidator {
-            expected: req(
-                "/org.signal.chat.messages.MessagesAnonymous/SendMultiRecipientStory",
-                SendMultiRecipientStoryRequest::default(),
-            ),
-            response: err(tonic::Code::FailedPrecondition),
-        };
-
+        let validator = UnreachableValidator;
         _ = Unauth(&validator)
             .send_multi_recipient_message(
                 vec![1, 2, 3].into(),
@@ -1149,14 +1142,7 @@ mod test {
     #[test]
     #[should_panic(expected = "online-only")]
     fn ephemeral_story_is_not_allowed_single_recipient() {
-        let validator = RequestValidator {
-            expected: req(
-                "/org.signal.chat.messages.MessagesAnonymous/SendStory",
-                SendMultiRecipientStoryRequest::default(),
-            ),
-            response: err(tonic::Code::FailedPrecondition),
-        };
-
+        let validator = UnreachableValidator;
         _ = Unauth(&validator)
             .send_message(
                 Pni::from(PNI_UUID).into(),
