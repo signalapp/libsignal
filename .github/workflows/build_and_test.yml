@@ -390,7 +390,7 @@ jobs:
       working-directory: rust/protocol/cross-version-testing
 
     - name: Check acknowledgments
-      run: PATH="$PATH:$PWD/local-tools/bin" ./bin/regenerate_acknowledgments.sh && git diff --exit-code acknowledgments
+      run: PATH="$PATH:$PWD/local-tools/bin" ./bin/regenerate_acknowledgments.sh --check
 
   java_android:
     name: Java Android
