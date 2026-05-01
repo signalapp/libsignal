@@ -60,6 +60,11 @@ def_enclaves! {
     ENCLAVE_ID_SVR2_2026Q1_PROD => ("1240acbd4aa26974184844c8a46b1022d3957ac8a76c1fd8f5b1a15141ee0708", common),
     ENCLAVE_ID_SVRB_2026Q1_STAGING => ("97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535", common),
     ENCLAVE_ID_SVRB_2026Q1_PROD => ("bee62050df1072e3d9fdf7660bfaf4e4b71f5622db9de8b30fc5f4b9852d8359", common),
+    ENCLAVE_ID_SVR2_2026Q2_STAGING => ("3c699f4975aaa3d172c0aad042f94f031b2b03e10b9c19a45116a01693d83302", common),
+    ENCLAVE_ID_SVR2_2026Q2_PROD => ("ced8217b26228e4b210c985786999d095c4958a94faf37b14acaf25c4cbb02a4", common),
+    ENCLAVE_ID_SVRB_2026Q2_STAGING => ("3c699f4975aaa3d172c0aad042f94f031b2b03e10b9c19a45116a01693d83302", common),
+    ENCLAVE_ID_SVRB_2026Q2_PROD => ("2048e20fcd07d0992c4907e8e04c5a85f1f993d195004c7342675343ca2e524b", common),
+
     ENCLAVE_ID_CDSI_STAGING => ("6d9b9649fa3a337754a98059c66d48ac77aaca5299d3b27d6ed1e646c7c81c0a", common),
     ENCLAVE_ID_CDSI_PROD => ("15637fa1e54fe655176d3df1a9f94b87c01ed377acaa570682dc5d72c95ef07b", common),
 }
@@ -128,9 +133,49 @@ pub const RAFT_CONFIG_SVRB_2026Q1_PROD: &RaftConfig = &RaftConfig {
     simulated: false,
 };
 
+pub const RAFT_CONFIG_SVR2_2026Q2_STAGING: &RaftConfig = &RaftConfig {
+    min_voting_replicas: 3,
+    max_voting_replicas: 9,
+    super_majority: 0,
+    group_id: 5138641357881452604,
+    db_version: 2,
+    attestation_timeout: 604800,
+    simulated: false,
+};
+
+pub const RAFT_CONFIG_SVR2_2026Q2_PROD: &RaftConfig = &RaftConfig {
+    min_voting_replicas: 4,
+    max_voting_replicas: 13,
+    super_majority: 2,
+    group_id: 11311619198250676136,
+    db_version: 2,
+    attestation_timeout: 604800,
+    simulated: false,
+};
+
+pub const RAFT_CONFIG_SVRB_2026Q2_STAGING: &RaftConfig = &RaftConfig {
+    min_voting_replicas: 3,
+    max_voting_replicas: 9,
+    super_majority: 0,
+    group_id: 11614651745041226414,
+    db_version: 4,
+    attestation_timeout: 604800,
+    simulated: false,
+};
+
+pub const RAFT_CONFIG_SVRB_2026Q2_PROD: &RaftConfig = &RaftConfig {
+    min_voting_replicas: 4,
+    max_voting_replicas: 13,
+    super_majority: 2,
+    group_id: 15457520608692442134,
+    db_version: 4,
+    attestation_timeout: 604800,
+    simulated: false,
+};
+
 // This is left here primarily to support SVR2 bridging code that does
 // not expose the notion of environment to the clients.
-pub(crate) static EXPECTED_RAFT_CONFIG_SVR2: SmallMap<&'static [u8], &'static RaftConfig, 3> =
+pub(crate) static EXPECTED_RAFT_CONFIG_SVR2: SmallMap<&'static [u8], &'static RaftConfig, 5> =
     SmallMap::new([
         (ENCLAVE_ID_SVR2_2025Q3_PROD, RAFT_CONFIG_SVR2_2025Q3_PROD),
         (
@@ -138,4 +183,9 @@ pub(crate) static EXPECTED_RAFT_CONFIG_SVR2: SmallMap<&'static [u8], &'static Ra
             RAFT_CONFIG_SVR2_2026Q1_STAGING,
         ),
         (ENCLAVE_ID_SVR2_2026Q1_PROD, RAFT_CONFIG_SVR2_2026Q1_PROD),
+        (
+            ENCLAVE_ID_SVR2_2026Q2_STAGING,
+            RAFT_CONFIG_SVR2_2026Q2_STAGING,
+        ),
+        (ENCLAVE_ID_SVR2_2026Q2_PROD, RAFT_CONFIG_SVR2_2026Q2_PROD),
     ]);
