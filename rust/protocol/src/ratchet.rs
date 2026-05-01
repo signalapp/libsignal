@@ -518,135 +518,171 @@ pub fn initialize_bob_session_record(
 }
 
 use curve25519_dalek::ristretto::CompressedRistretto;
-
-fn read_u32_le(input: &[u8], offset: &mut usize) -> Result<u32> {
-    if *offset + 4 > input.len() {
+fn read_u32_le(buf: &[u8], offset: &mut usize) -> Result<usize> {
+    if *offset + 4 > buf.len() {
         return Err(SignalProtocolError::InvalidArgument(
             "buffer too short reading u32".to_string(),
         ));
     }
-    let mut arr = [0u8; 4];
-    arr.copy_from_slice(&input[*offset..*offset + 4]);
+    let val = u32::from_le_bytes(buf[*offset..*offset + 4].try_into().unwrap()) as usize;
     *offset += 4;
-    Ok(u32::from_le_bytes(arr))
+    Ok(val)
 }
-
-fn read_bytes<'a>(input: &'a [u8], offset: &mut usize, len: usize) -> Result<&'a [u8]> {
-    if *offset + len > input.len() {
+ 
+fn read_bytes<'a>(buf: &'a [u8], offset: &mut usize, n: usize) -> Result<&'a [u8]> {
+    if *offset + n > buf.len() {
         return Err(SignalProtocolError::InvalidArgument(
             "buffer too short reading bytes".to_string(),
         ));
     }
-    let out = &input[*offset..*offset + len];
-    *offset += len;
-    Ok(out)
+    let slice = &buf[*offset..*offset + n];
+    *offset += n;
+    Ok(slice)
 }
-
-fn read_scalar(input: &[u8], offset: &mut usize) -> Result<Scalar> {
-    let bytes = read_bytes(input, offset, 32)?;
-    let mut arr = [0u8; 32];
-    arr.copy_from_slice(bytes);
-
-    Option::<Scalar>::from(Scalar::from_canonical_bytes(arr)).ok_or_else(|| {
-        SignalProtocolError::InvalidArgument("invalid scalar".to_string())
-    })
+fn read_point(buf: &[u8], offset: &mut usize) -> Result<RistrettoPoint> {
+    let bytes = read_bytes(buf, offset, 32)?;
+    // CompressedRistretto::from_slice returns a Result in newer dalek versions,
+    // or a plain CompressedRistretto in older ones. Adjust the unwrap style to
+    // match whichever dalek version your workspace uses.
+    CompressedRistretto::from_slice(bytes)
+        .map_err(|_| SignalProtocolError::InvalidArgument(
+            "invalid compressed ristretto slice length".to_string(),
+        ))?
+        .decompress()
+        .ok_or_else(|| SignalProtocolError::InvalidArgument(
+            "ristretto point decompression failed".to_string(),
+        ))
 }
-
-fn read_point(input: &[u8], offset: &mut usize) -> Result<RistrettoPoint> {
-    let bytes = read_bytes(input, offset, 32)?;
-    let mut arr = [0u8; 32];
-    arr.copy_from_slice(bytes);
-
-    CompressedRistretto(arr).decompress().ok_or_else(|| {
-        SignalProtocolError::InvalidArgument("invalid ristretto point".to_string())
-    })
+ 
+// Reconstruct a Scalar from 32 bytes — same as the snippet:
+//   let temp_c_from_bytes = Scalar::from_canonical_bytes(temp_c).unwrap();
+fn read_scalar(buf: &[u8], offset: &mut usize) -> Result<Scalar> {
+    let bytes = read_bytes(buf, offset, 32)?;
+    let arr: [u8; 32] = bytes.try_into().unwrap();
+    // from_canonical_bytes returns CtOption; use unwrap_or_else for a proper error.
+    Option::<Scalar>::from(Scalar::from_canonical_bytes(arr))
+        .ok_or_else(|| SignalProtocolError::InvalidArgument(
+            "invalid canonical scalar bytes".to_string(),
+        ))
 }
 
 pub fn pvrf_verify_from_session_data(
     vts_bytes: &[u8],
     bob_response_bytes: &[u8],
 ) -> Result<(bool, Vec<u8>)> {
-
-    // ------------------ Parse VTS ------------------
-    let mut off = 0;
-
-    let _h = read_point(vts_bytes, &mut off)?;
-    let _hprime = read_point(vts_bytes, &mut off)?;
-    let _s1 = read_scalar(vts_bytes, &mut off)?;
-    let _s2_1 = read_scalar(vts_bytes, &mut off)?;
-    let _s2_2 = read_scalar(vts_bytes, &mut off)?;
-
-    let vk_len = read_u32_le(vts_bytes, &mut off)? as usize;
-    let vk_bytes = read_bytes(vts_bytes, &mut off, vk_len)?.to_vec();
-
-    let x_len = read_u32_le(vts_bytes, &mut off)? as usize;
-    let x_bytes = read_bytes(vts_bytes, &mut off, x_len)?.to_vec();
-
-    let alpha = read_scalar(vts_bytes, &mut off)?;
-    let beta = read_scalar(vts_bytes, &mut off)?;
-
-    // ------------------ Parse Bob Response ------------------
-    let mut off_b = 0;
-
-    let bob_vk_len = read_u32_le(bob_response_bytes, &mut off_b)? as usize;
-    let bob_vk_bytes = read_bytes(bob_response_bytes, &mut off_b, bob_vk_len)?.to_vec();
-
-    let bob_x_len = read_u32_le(bob_response_bytes, &mut off_b)? as usize;
-    let bob_x_bytes = read_bytes(bob_response_bytes, &mut off_b, bob_x_len)?.to_vec();
-
-    let _ = read_point(bob_response_bytes, &mut off_b)?;
-    let _ = read_point(bob_response_bytes, &mut off_b)?;
-    let _ = read_scalar(bob_response_bytes, &mut off_b)?;
-    let _ = read_scalar(bob_response_bytes, &mut off_b)?;
-    let _ = read_scalar(bob_response_bytes, &mut off_b)?;
-
-    let z_len = read_u32_le(bob_response_bytes, &mut off_b)? as usize;
-    let z = read_bytes(bob_response_bytes, &mut off_b, z_len)?.to_vec();
-
-    let w = read_point(bob_response_bytes, &mut off_b)?;
-    let v = read_point(bob_response_bytes, &mut off_b)?;
-
-    let _c = read_scalar(bob_response_bytes, &mut off_b)?;
-    let _computed_c = read_scalar(bob_response_bytes, &mut off_b)?;
-
-    // ------------------ Debug checks ------------------
-    if vk_bytes != bob_vk_bytes {
-        log::error!("vk mismatch");
+ 
+    let mut vo = 0usize; // vts offset
+ 
+    let h      = read_point(vts_bytes, &mut vo)?;
+    let hprime = read_point(vts_bytes, &mut vo)?;
+    let c      = read_scalar(vts_bytes, &mut vo)?; // tau.c  == s1 in bridge naming
+    let s1     = read_scalar(vts_bytes, &mut vo)?; // tau.s.0
+    let s2     = read_scalar(vts_bytes, &mut vo)?; // tau.s.1
+ 
+    let vk_len = read_u32_le(vts_bytes, &mut vo)?;
+    let vk     = read_bytes(vts_bytes, &mut vo, vk_len)?.to_vec();
+ 
+    let x_len  = read_u32_le(vts_bytes, &mut vo)?;
+    let x      = read_bytes(vts_bytes, &mut vo, x_len)?.to_vec();
+ 
+    let alpha  = read_scalar(vts_bytes, &mut vo)?; // r1
+    let beta   = read_scalar(vts_bytes, &mut vo)?; // r2
+ 
+    // ── Parse Bob's response (from SessionRecord_GetBobResponse) ───────────
+    //
+    // Layout written by SessionRecord_GetBobResponse in bridge.rs:
+    //    4  vk.len()
+    //   ... vk
+    //    4  x.len()
+    //   ... x
+    //   32  h      (compressed ristretto)
+    //   32  hprime (compressed ristretto)
+    //   32  s1     (scalar)   — bob's tau.c
+    //   32  s2_1   (scalar)   — bob's tau.s.0
+    //   32  s2_2   (scalar)   — bob's tau.s.1
+    //    4  z.len()
+    //   ... z      (bytes, the SAS = hash_o output, 3 bytes normally)
+    //   32  w      (compressed ristretto)
+    //   32  v      (compressed ristretto)
+    //   32  c      (scalar)   — bob_c_sent
+    //   32  computed_c (scalar)
+ 
+    let mut bo = 0usize; // bob offset
+ 
+    let bob_vk_len  = read_u32_le(bob_response_bytes, &mut bo)?;
+    let bob_vk      = read_bytes(bob_response_bytes, &mut bo, bob_vk_len)?.to_vec();
+ 
+    let bob_x_len   = read_u32_le(bob_response_bytes, &mut bo)?;
+    let bob_x       = read_bytes(bob_response_bytes, &mut bo, bob_x_len)?.to_vec();
+ 
+    let bob_h       = read_point(bob_response_bytes, &mut bo)?;
+    let bob_hprime  = read_point(bob_response_bytes, &mut bo)?;
+    let bob_s1      = read_scalar(bob_response_bytes, &mut bo)?;
+    let bob_s2_1    = read_scalar(bob_response_bytes, &mut bo)?;
+    let bob_s2_2    = read_scalar(bob_response_bytes, &mut bo)?;
+ 
+    let z_len       = read_u32_le(bob_response_bytes, &mut bo)?;
+    let z           = read_bytes(bob_response_bytes, &mut bo, z_len)?.to_vec();
+ 
+    let w           = read_point(bob_response_bytes, &mut bo)?;
+    let v           = read_point(bob_response_bytes, &mut bo)?;
+    let bob_c_sent  = read_scalar(bob_response_bytes, &mut bo)?;
+    let bob_comp_c  = read_scalar(bob_response_bytes, &mut bo)?;
+ 
+    // ── Checks ───────────────────────────────────────────────────────────────
+ 
+    // 1. vk and x must match between Alice's stored VTS and Bob's response
+    if vk != bob_vk {
+        log::error!("PVRF VERIFY FAILED: vk mismatch");
         return Ok((false, z));
     }
-
-    if x_bytes != bob_x_bytes {
-        log::error!("x mismatch");
+    if x != bob_x {
+        log::error!("PVRF VERIFY FAILED: x mismatch");
         return Ok((false, z));
     }
-
-    // ------------------ Convert vk ------------------
-    if vk_bytes.len() != 32 {
-        return Err(SignalProtocolError::InvalidArgument("vk not 32 bytes".into()));
+ 
+    // 2. The vt tuple (h, hprime, tau) Alice stored must equal what Bob echoed back
+    //    NOTE: the original code had a missing `}` here which made check 3 unreachable.
+    if h != bob_h || hprime != bob_hprime || c != bob_s1 || s1 != bob_s2_1 || s2 != bob_s2_2 {
+        log::error!("PVRF VERIFY FAILED: vt mismatch");
+        return Ok((false, z));
+    }  // <— this brace was missing in the original, fixed here
+ 
+    // 3. Bob's own c check (ensures Bob didn't cheat in his step 2)
+    if bob_c_sent != bob_comp_c {
+        log::error!("PVRF VERIFY FAILED: Bob's c_sent != computed_c");
+        return Ok((false, z));
     }
-
-    let mut arr = [0u8; 32];
-    arr.copy_from_slice(&vk_bytes);
-
-    let vk_point = CompressedRistretto(arr)
-        .decompress()
-        .ok_or_else(|| SignalProtocolError::InvalidArgument("bad vk".into()))?;
-
-    // ------------------ VERIFY ------------------
+ 
+    // 4. z = Ho(w)  — Alice recomputes hash_o(w) and checks it matches Bob's z
     let expected_z = hash_o(&w);
     let ok_z = z == expected_z;
-
+ 
+    // 5. v = vk^alpha * w^beta  — the SPHF verification (paper Fig 2, Verify step)
+    //    vk is stored as 32 compressed bytes, reconstruct it as a RistrettoPoint
+    let vk_point = CompressedRistretto::from_slice(&vk)
+        .map_err(|_| SignalProtocolError::InvalidArgument(
+            "vk slice length invalid".to_string(),
+        ))?
+        .decompress()
+        .ok_or_else(|| SignalProtocolError::InvalidArgument(
+            "vk decompression failed".to_string(),
+        ))?;
+ 
+    // v = vk^alpha * w^beta  (additive notation: alpha*vk_point + beta*w)
     let expected_v = (vk_point * alpha) + (w * beta);
     let ok_v = v == expected_v;
-
+ 
     let ok = ok_z && ok_v;
-
+ 
     if ok {
-        log::info!("PVRF VERIFY SUCCESS");
+        log::info!("✅ PVRF VERIFY SUCCESS — SAS z: {:?}", z);
     } else {
-        log::error!("PVRF VERIFY FAILED");
-        log::error!("ok_z={}, ok_v={}", ok_z, ok_v);
+        log::error!(
+            "❌ PVRF VERIFY FAILED — ok_z={}, ok_v={}", ok_z, ok_v
+        );
+        log::error!("  expected_z={:?}  actual_z={:?}", expected_z, z);
     }
-
+ 
     Ok((ok, z))
 }
