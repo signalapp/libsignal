@@ -276,7 +276,7 @@ mod test {
 
     use assert_matches::assert_matches;
     use const_str::{concat_bytes, ip_addr};
-    use hickory_proto::op::{MessageType, ResponseCode};
+    use hickory_proto::op::{Message, MessageType, OpCode, ResponseCode};
     use hickory_proto::rr::rdata::{A, CNAME};
     use hickory_proto::rr::{Name, RecordType};
     use hickory_proto::serialize::binary::BinEncodable;
@@ -292,17 +292,13 @@ mod test {
     #[test]
     fn valid_requests_identical() {
         // build a query using a 3rd-party crate
-        let mut header = hickory_proto::op::Header::new();
-        header
-            .set_message_type(MessageType::Query)
-            .set_id(REQUEST_ID)
-            .set_recursion_desired(true);
+        let mut hickory_message = Message::new(REQUEST_ID, MessageType::Query, OpCode::Query);
+        hickory_message.metadata.recursion_desired = true;
         let mut query = hickory_proto::op::Query::new();
         query
             .set_name(Name::from_str(VALID_DOMAIN).expect("valid name"))
             .set_query_type(RecordType::A);
-        let mut hickory_message = hickory_proto::op::message::Message::new();
-        hickory_message.set_header(header).add_query(query);
+        hickory_message.add_query(query);
         let hickory_message = hickory_message.to_bytes().expect("valid message");
 
         // build our own query
@@ -460,7 +456,7 @@ mod test {
     fn error_response_code_handled_correctly() {
         let expected_response_code = 2;
         let response_message = response_bytes(RecordType::A, |message| {
-            message.set_response_code(ResponseCode::from_low(expected_response_code));
+            message.metadata.response_code = ResponseCode::from_low(expected_response_code);
         });
 
         // parsing response message
@@ -552,20 +548,16 @@ mod test {
 
     fn response_bytes<F>(record_type: RecordType, builder: F) -> Vec<u8>
     where
-        F: FnOnce(&mut hickory_proto::op::message::Message),
+        F: FnOnce(&mut Message),
     {
-        let mut header = hickory_proto::op::Header::new();
-        header
-            .set_message_type(MessageType::Response)
-            .set_id(REQUEST_ID)
-            .set_recursion_desired(true);
+        let mut hickory_message = Message::new(REQUEST_ID, MessageType::Response, OpCode::Query);
+        hickory_message.metadata.recursion_desired = true;
 
         let name = Name::from_str(VALID_DOMAIN).expect("valid name");
         let mut query = hickory_proto::op::Query::new();
         query.set_name(name.clone()).set_query_type(record_type);
 
-        let mut hickory_message = hickory_proto::op::message::Message::new();
-        hickory_message.set_header(header).add_query(query);
+        hickory_message.add_query(query);
 
         builder(&mut hickory_message);
 
