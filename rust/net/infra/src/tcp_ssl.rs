@@ -282,18 +282,13 @@ pub(crate) mod testutil {
     /// `supported_alpn_encoded` should be a concatenation ([`concat_bytes!`]) of
     /// [`Alpn::length_prefixed`] values. The complicated generics come from hyper's
     /// `serve_connection` APIs.
-    pub(crate) fn localhost_https_server_with_custom_service<T, B>(
+    pub(crate) fn localhost_https_server_with_custom_service<T>(
         supported_alpn_encoded: &'static [u8],
         service: T,
     ) -> (SocketAddr, impl Future<Output = ()>)
     where
-        T: hyper::service::Service<
-                http::Request<hyper::body::Incoming>,
-                Response = http::Response<B>,
-                Future: Send + 'static,
-                Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-            > + Clone,
-        B: hyper::body::Body<Data: Send, Error: Into<Box<dyn std::error::Error + Send + Sync>>>
+        T: hyper::service::HttpService<hyper::body::Incoming, Future: Send + 'static> + Clone,
+        T::ResBody: hyper::body::Body<Data: Send, Error: Into<Box<dyn std::error::Error + Send + Sync>>>
             + Send
             + 'static,
     {

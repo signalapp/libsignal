@@ -608,6 +608,7 @@ mod test {
     use http::uri::PathAndQuery;
     use tokio::sync::mpsc;
     use tokio_boring_signal::SslStream;
+    use tokio_util::sync::CancellationToken;
 
     use super::testutil::*;
     use super::*;
@@ -641,6 +642,7 @@ mod test {
         extra_expected_headers: http::HeaderMap,
         extra_response_headers: http::HeaderMap,
         expected_path_and_query: PathAndQuery,
+        should_let_client_close: bool,
     }
 
     impl Default for LocalH2WebSocketOptions {
@@ -649,6 +651,7 @@ mod test {
                 extra_expected_headers: Default::default(),
                 extra_response_headers: Default::default(),
                 expected_path_and_query: PathAndQuery::from_static("/"),
+                should_let_client_close: false,
             }
         }
     }
@@ -664,96 +667,9 @@ mod test {
         SslStream<impl AsyncDuplexStream + Connection + Debug>,
         BoxFuture<'static, ()>,
     ) {
-        let LocalH2WebSocketOptions {
-            extra_expected_headers: mut expected_headers,
-            extra_response_headers,
-            expected_path_and_query,
-        } = options;
-
-        expected_headers.append(http::header::SEC_WEBSOCKET_VERSION, WEBSOCKET_VERSION_VALUE);
-        let expected_headers = Arc::new(expected_headers);
-
         let (addr, server) = localhost_https_server_with_custom_service(
             Alpn::Http2.length_prefixed(),
-            hyper::service::service_fn(move |mut req| {
-                let upgrade_failure_tx = upgrade_failure_tx.clone();
-                let expected_headers = expected_headers.clone();
-                let extra_response_headers = extra_response_headers.clone();
-                let expected_path_and_query = expected_path_and_query.clone();
-                async move {
-                    if req.method() != http::Method::CONNECT {
-                        return Ok(http::Response::builder()
-                            .status(http::StatusCode::METHOD_NOT_ALLOWED)
-                            .body(format!("wrong method '{}'", req.method()))
-                            .expect("valid"));
-                    }
-
-                    match req.extensions().get::<hyper::ext::Protocol>() {
-                        Some(protocol) if protocol.as_str() == "websocket" => {}
-                        Some(protocol) => {
-                            return Ok(http::Response::builder()
-                                .status(http::StatusCode::BAD_REQUEST)
-                                .body(format!("wrong protocol '{}'", protocol.as_str()))
-                                .expect("valid"));
-                        }
-                        None => {
-                            return Ok(http::Response::builder()
-                                .status(http::StatusCode::BAD_REQUEST)
-                                .body("missing protocol".to_owned())
-                                .expect("valid"));
-                        }
-                    }
-
-                    if req.uri().path_and_query() != Some(&expected_path_and_query) {
-                        return Ok(http::Response::builder()
-                            .status(http::StatusCode::BAD_REQUEST)
-                            .body(format!(
-                                "incorrect path\nexpected: {}\nactual: {:?}",
-                                expected_path_and_query,
-                                req.uri()
-                                    .path_and_query()
-                                    .map(|p| p.as_str())
-                                    .unwrap_or_default()
-                            ))
-                            .expect("valid"));
-                    }
-
-                    if *expected_headers != *req.headers() {
-                        return Ok(http::Response::builder()
-                            .status(400)
-                            .body(format!(
-                                "incorrect headers\nexpected: {:#?}\nactual: {:#?}",
-                                expected_headers,
-                                req.headers()
-                            ))
-                            .expect("valid"));
-                    }
-
-                    tokio::spawn(async move {
-                        match hyper::upgrade::on(&mut req).await {
-                            Ok(upgraded) => {
-                                // Immediately close the connection, we're only testing establishment.
-                                let mut ws = tokio_tungstenite::WebSocketStream::from_raw_socket(
-                                    hyper_util::rt::TokioIo::new(upgraded),
-                                    tungstenite::protocol::Role::Server,
-                                    None,
-                                )
-                                .await;
-                                ws.close(None).await.expect("can close");
-                                // Let the client ack the close, so they can exit cleanly.
-                                while ws.next().await.is_some() {}
-                            }
-                            Err(e) => {
-                                _ = upgrade_failure_tx.send(e).await;
-                            }
-                        }
-                    });
-
-                    let mut response = http::Response::builder();
-                    *response.headers_mut().expect("valid") = extra_response_headers;
-                    Ok::<_, std::convert::Infallible>(response.body(String::new()).expect("valid"))
-                }
-            }),
+            ws_service(upgrade_failure_tx, options),
         );
         let server = Box::pin(server);
 
@@ -784,6 +700,118 @@ mod test {
             }
             Either::Right(_) => panic!("server exited unexpectedly"),
         }
+    }
+
+    fn ws_service(
+        upgrade_failure_tx: mpsc::Sender<hyper::Error>,
+        options: LocalH2WebSocketOptions,
+    ) -> impl hyper::service::HttpService<
+        hyper::body::Incoming,
+        ResBody: hyper::body::Body<
+            Data: Send,
+            Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+        > + Send,
+        Future: Send,
+    > + Clone {
+        let LocalH2WebSocketOptions {
+            extra_expected_headers: mut expected_headers,
+            extra_response_headers,
+            expected_path_and_query,
+            should_let_client_close,
+        } = options;
+
+        expected_headers.append(http::header::SEC_WEBSOCKET_VERSION, WEBSOCKET_VERSION_VALUE);
+        let expected_headers = Arc::new(expected_headers);
+
+        hyper::service::service_fn(move |mut req| {
+            let upgrade_failure_tx = upgrade_failure_tx.clone();
+            let expected_headers = expected_headers.clone();
+            let extra_response_headers = extra_response_headers.clone();
+            let expected_path_and_query = expected_path_and_query.clone();
+            async move {
+                if req.method() != http::Method::CONNECT {
+                    return Ok(http::Response::builder()
+                        .status(http::StatusCode::METHOD_NOT_ALLOWED)
+                        .body(format!("wrong method '{}'", req.method()))
+                        .expect("valid"));
+                }
+
+                match req.extensions().get::<hyper::ext::Protocol>() {
+                    Some(protocol) if protocol.as_str() == "websocket" => {}
+                    Some(protocol) => {
+                        return Ok(http::Response::builder()
+                            .status(http::StatusCode::BAD_REQUEST)
+                            .body(format!("wrong protocol '{}'", protocol.as_str()))
+                            .expect("valid"));
+                    }
+                    None => {
+                        return Ok(http::Response::builder()
+                            .status(http::StatusCode::BAD_REQUEST)
+                            .body("missing protocol".to_owned())
+                            .expect("valid"));
+                    }
+                }
+
+                if req.uri().path_and_query() != Some(&expected_path_and_query) {
+                    return Ok(http::Response::builder()
+                        .status(http::StatusCode::BAD_REQUEST)
+                        .body(format!(
+                            "incorrect path\nexpected: {}\nactual: {:?}",
+                            expected_path_and_query,
+                            req.uri()
+                                .path_and_query()
+                                .map(|p| p.as_str())
+                                .unwrap_or_default()
+                        ))
+                        .expect("valid"));
+                }
+
+                if *expected_headers != *req.headers() {
+                    return Ok(http::Response::builder()
+                        .status(400)
+                        .body(format!(
+                            "incorrect headers\nexpected: {:#?}\nactual: {:#?}",
+                            expected_headers,
+                            req.headers()
+                        ))
+                        .expect("valid"));
+                }
+
+                tokio::spawn(async move {
+                    match hyper::upgrade::on(&mut req).await {
+                        Ok(upgraded) => {
+                            let mut ws = tokio_tungstenite::WebSocketStream::from_raw_socket(
+                                hyper_util::rt::TokioIo::new(upgraded),
+                                tungstenite::protocol::Role::Server,
+                                None,
+                            )
+                            .await;
+                            if !should_let_client_close {
+                                // Immediately close the connection, we're only testing establishment.
+                                ws.close(None).await.expect("can close");
+                            }
+                            // Whether we send a Close or not, we let the client exit cleanly if possible.
+                            while ws.next().await.is_some() {}
+                            // And then yield before dropping the websocket entirely, so the client
+                            // doesn't get an interrupted send for their final frame. (This only
+                            // happens using `tokio::io::duplex` and not a real TCP stream;
+                            // something about the immediate feedback of closing the stream causes
+                            // hyper/tungstenite to think the last message didn't complete
+                            // successfully. Think of the yield like a context switch that could
+                            // happen anyway.)
+                            tokio::task::yield_now().await;
+                        }
+                        Err(e) => {
+                            _ = upgrade_failure_tx.send(e).await;
+                        }
+                    }
+                });
+
+                let mut response = http::Response::builder();
+                *response.headers_mut().expect("valid") = extra_response_headers;
+                Ok::<_, std::convert::Infallible>(response.body(String::new()).expect("valid"))
+            }
+        })
     }
 
     #[test_log::test(tokio::test)]
@@ -1004,6 +1032,135 @@ mod test {
             .expect("no error");
         assert_matches!(frame, tungstenite::Message::Close(None));
         assert_matches!(ws.stream.next().await, None, "should be closed now");
+
+        server_task.abort();
+        assert_matches!(upgrade_failure_rx.recv().await, None);
+    }
+
+    async fn shut_down_on_cancel(
+        shutdown_token: CancellationToken,
+        conn: impl hyper_util::server::graceful::GracefulConnection<Error: std::fmt::Debug>,
+    ) {
+        let conn = pin!(conn);
+        let shutdown_signal = pin!(shutdown_token.cancelled_owned());
+        match futures_util::future::select(conn, shutdown_signal).await {
+            Either::Left((conn_result, _shutdown_signal)) => {
+                conn_result.expect("connection completes without error")
+            }
+            Either::Right(((), mut conn)) => {
+                conn.as_mut().graceful_shutdown();
+                conn.await
+                    .expect("connection completes without error after shutdown")
+            }
+        }
+    }
+
+    #[test_log::test(tokio::test)]
+    async fn ws_over_h2_with_graceful_shutdown() {
+        // Unfortunately we can't use localhost_h2_ws for this test; in order for packet delivery to
+        // be deterministic, we can't go through an actual TCP connection. Set up just the H2 server
+        // instead.
+        let (upgrade_failure_tx, mut upgrade_failure_rx) = mpsc::channel(1);
+        let (client_stream, server_stream) = tokio::io::duplex(4096);
+        let shutdown_token = CancellationToken::new();
+
+        let server = shut_down_on_cancel(
+            shutdown_token.clone(),
+            hyper::server::conn::http2::Builder::new(hyper_util::rt::TokioExecutor::new())
+                .enable_connect_protocol()
+                .serve_connection(
+                    hyper_util::rt::TokioIo::new(server_stream),
+                    ws_service(
+                        upgrade_failure_tx,
+                        LocalH2WebSocketOptions {
+                            should_let_client_close: true,
+                            ..Default::default()
+                        },
+                    ),
+                ),
+        );
+        let server_task = tokio::spawn(server);
+
+        let mut ws = <Stateless>::default()
+            .connect_over(
+                client_stream,
+                (
+                    WebSocketRouteFragment {
+                        ws_config: Default::default(),
+                        endpoint: PathAndQuery::from_static("/"),
+                        headers: Default::default(),
+                    },
+                    HttpRouteFragment {
+                        host_header: "test.local".into(),
+                        path_prefix: "".into(),
+                        http_version: Some(HttpVersion::Http2),
+                        front_name: None,
+                    },
+                ),
+                "ws",
+            )
+            .await
+            .expect("can connect");
+
+        let mut conn = ws.connection.expect("has H2 client");
+        conn.ready().await.expect("ready");
+        // The actual response here is unimportant; what matters is that we got one.
+        _ = conn
+            .send_request(
+                http::Request::get("/fake")
+                    .body(Default::default())
+                    .expect("valid"),
+            )
+            .await
+            .expect("success");
+
+        ws.stream
+            .send(tungstenite::Message::Binary(bytes::Bytes::new()))
+            .await
+            .expect("can send frame");
+
+        conn.ready().await.expect("ready");
+
+        // Signal shutdown, and yield to the server task to make sure it gets acknowledged.
+        shutdown_token.cancel();
+        tokio::task::yield_now().await;
+
+        // The client side probably hasn't learned of the shutdown yet, but that could change with a
+        // future version of hyper (or even tokio). So if this starts failing, it's okay to remove
+        // this extra request (but then please update this comment for the opposite direction).
+        conn.ready().await.expect("haven't learned of shutdown yet");
+        _ = conn
+            .send_request(
+                http::Request::get("/fake")
+                    .body(Default::default())
+                    .expect("valid"),
+            )
+            .await
+            .expect_err("connection closed to new streams");
+
+        // By now we've definitely learned of the H2 shutdown...but the websocket should still be
+        // open.
+        conn.ready().await.expect_err("no longer ready");
+        ws.stream
+            .send(tungstenite::Message::Binary(bytes::Bytes::new()))
+            .await
+            .expect("can still send frames");
+
+        ws.stream
+            .close(None)
+            .await
+            .expect("can close from the client side");
+
+        let frame = ws
+            .stream
+            .next()
+            .await
+            .expect("has close frame")
+            .expect("no error");
+        assert_matches!(frame, tungstenite::Message::Close(None));
+        assert_matches!(ws.stream.next().await, None, "should be closed now");
+
+        conn.ready().await.expect_err("still not ready anymore");
 
         server_task.abort();
         assert_matches!(upgrade_failure_rx.recv().await, None);
