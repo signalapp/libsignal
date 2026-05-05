@@ -944,7 +944,7 @@ impl SessionRecord {
     ///realfunc
     pub fn get_vts(
             &self,
-    ) -> Result<(RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar)), Vec<u8>, Vec<u8>, Scalar, Scalar), SignalProtocolError> {    
+    ) -> Result<(RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar)), RistrettoPoint, Vec<u8>, Scalar, Scalar), SignalProtocolError> {    
         Ok(
             bincode::deserialize(
         &self
@@ -964,7 +964,7 @@ impl SessionRecord {
     ///realfunc
     pub fn get_bob_response(
             &self,
-    ) -> Result<(Vec<u8>, Vec<u8>, (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))), Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar), SignalProtocolError> {    
+    ) -> Result<(RistrettoPoint, Vec<u8>, (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))), Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar), SignalProtocolError> {    
         Ok(
             bincode::deserialize(
         &self

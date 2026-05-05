@@ -749,7 +749,7 @@ export class SessionRecord {
     const s2_1 = readScalar();
     const s2_2 = readScalar();
 
-    const vk = readLengthPrefixedBytes();
+    const vk = readBytes(32);
     const x = readLengthPrefixedBytes();
 
     const r1 = readScalar();
@@ -796,7 +796,7 @@ export class SessionRecord {
         return readBytes(len);
     }
 
-    const vk = readLengthPrefixedBytes();
+    const vk = readBytes(32);
     console.log('vk', vk);
     const x = readLengthPrefixedBytes();
 

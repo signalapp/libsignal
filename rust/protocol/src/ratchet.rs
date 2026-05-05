@@ -113,10 +113,10 @@ pub fn hash_generic_zp(input: &[u8]) -> Scalar {
     Scalar::from_bytes_mod_order_wide(&hash.into())
 }
 
-pub fn hash_fs(vk: &Vec<u8>, x: &[u8], h: &RistrettoPoint, h_prime: &RistrettoPoint, eta: &RistrettoPoint, eta_prime: &RistrettoPoint) -> Scalar {
+pub fn hash_fs(vk: &RistrettoPoint, x: &[u8], h: &RistrettoPoint, h_prime: &RistrettoPoint, eta: &RistrettoPoint, eta_prime: &RistrettoPoint) -> Scalar {
     let mut bytes = Vec::new();
-    bytes.extend(&(vk.len() as u64).to_le_bytes());
-    bytes.extend(vk);
+    //bytes.extend(&(vk.len() as u64).to_le_bytes());
+    bytes.extend(vk.compress().as_bytes());
     bytes.extend(&(x.len() as u64).to_le_bytes());
     bytes.extend(x);
     bytes.extend(h.compress().as_bytes());
@@ -135,16 +135,22 @@ fn hash_to_G(domain_sep: &[u8], input: &[u8]) -> RistrettoPoint {
     RistrettoPoint::from_hash(hasher)
 }
 
-pub fn hash_i(vk: &Vec<u8>, x: &[u8]) -> RistrettoPoint {
-    hash_to_G(b"hash_i", &encode(vk, x))
+pub fn hash_i(vk: &RistrettoPoint , x: &[u8]) -> RistrettoPoint {
+    let compressed = vk.compress();
+    let compressed_vecu8 = compressed.as_bytes().to_vec();
+    hash_to_G(b"hash_i", &encode(&compressed_vecu8, x))
 }
 
-pub fn hash_a(vk: &Vec<u8>, x: &[u8]) -> RistrettoPoint {
-    hash_to_G(b"hash_a", &encode(vk, x))
+pub fn hash_a(vk: &RistrettoPoint, x: &[u8]) -> RistrettoPoint {
+    let compressed = vk.compress();
+    let compressed_vecu8 = compressed.as_bytes().to_vec();
+    hash_to_G(b"hash_a", &encode(&compressed_vecu8, x))
 }
 
-pub fn hash_b(vk: &Vec<u8>, x: &[u8]) -> RistrettoPoint {
-    hash_to_G(b"hash_b", &encode(vk, x))
+pub fn hash_b(vk: &RistrettoPoint, x: &[u8]) -> RistrettoPoint {
+    let compressed = vk.compress();
+    let compressed_vecu8 = compressed.as_bytes().to_vec();
+    hash_to_G(b"hash_b", &encode(&compressed_vecu8, x))
 }
 
 pub fn hash_o(point: &RistrettoPoint) -> Vec<u8> {
@@ -199,9 +205,11 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     if let Some(their_one_time_prekey) = parameters.their_one_time_pre_key() {
         secrets
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
-        vk = their_one_time_prekey.public_key_bytes().to_vec();
+        let mut bytes = their_one_time_prekey.public_key_bytes().to_vec();
+        vk = RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
     } else {
-        vk = parameters.their_signed_pre_key().public_key_bytes().to_vec();
+        let mut bytes = parameters.their_signed_pre_key().public_key_bytes().to_vec();
+        vk = RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
     }
 
     // Uses Bob's Kyber prekey to perform key encapsulation (KEM)
@@ -366,11 +374,12 @@ pub(crate) fn initialize_bob_session(
                 .calculate_agreement(parameters.their_base_key())?,
         );
         kptr = our_one_time_pre_key_pair;
-        vk = our_one_time_pre_key_pair.public_key.public_key_bytes().to_vec();
+        let mut bytes = our_one_time_pre_key_pair.public_key.public_key_bytes().to_vec();
+        vk = RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
         k = hash_generic_zp(our_one_time_pre_key_pair.private_key.serialize().as_ref());
     } else {
-        kptr = parameters.our_signed_pre_key_pair();
-        vk = parameters.our_signed_pre_key_pair().public_key.public_key_bytes().to_vec();
+        let mut bytes = parameters.our_signed_pre_key_pair().public_key.public_key_bytes().to_vec();
+        vk = RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
         k = hash_generic_zp(parameters.our_signed_pre_key_pair().private_key.serialize().as_ref());
 
 
@@ -596,7 +605,7 @@ pub fn pvrf_verify_from_session_data(
         .map_err(|_| SignalProtocolError::InvalidArgument("invalid v slice".to_string()))?
         .decompress()
         .ok_or_else(|| SignalProtocolError::InvalidArgument("v decompression failed".to_string()))?;
-
+    log::info!("the v bytes is {:?}", v_bytes);
     let vk = vk_bytes.to_vec();
     let x = x_bytes.to_vec();
 
@@ -608,6 +617,8 @@ pub fn pvrf_verify_from_session_data(
         .map_err(|_| SignalProtocolError::InvalidArgument("invalid vk slice".to_string()))?
         .decompress()
         .ok_or_else(|| SignalProtocolError::InvalidArgument("vk decompression failed".to_string()))?;
+
+
 
     // v = vk^alpha * w^beta
     let expected_v = (vk_point * alpha) + (w * beta);
