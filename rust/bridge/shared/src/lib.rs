@@ -40,8 +40,6 @@ pub mod net;
 
 mod account_keys;
 
-// Desktop does not use SVR
-#[cfg(any(feature = "jni", feature = "ffi"))]
 mod svr2;
 
 pub mod incremental_mac;

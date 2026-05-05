@@ -558,6 +558,12 @@ type NativeFunctions = {
   ConnectionManager_set_censorship_circumvention_enabled: (connectionManager: Wrapper<ConnectionManager>, enabled: boolean) => void;
   ConnectionManager_set_remote_config: (connectionManager: Wrapper<ConnectionManager>, remoteConfig: Wrapper<BridgedStringMap>, buildVariant: number) => void;
   ConnectionManager_on_network_change: (connectionManager: Wrapper<ConnectionManager>) => void;
+  PinHash_EncryptionKey: (ph: Wrapper<PinHash>) => Uint8Array<ArrayBuffer>;
+  PinHash_AccessKey: (ph: Wrapper<PinHash>) => Uint8Array<ArrayBuffer>;
+  PinHash_FromSalt: (pin: Uint8Array<ArrayBuffer>, salt: Uint8Array<ArrayBuffer>) => PinHash;
+  PinHash_FromUsernameMrenclave: (pin: Uint8Array<ArrayBuffer>, username: string, mrenclave: Uint8Array<ArrayBuffer>) => PinHash;
+  Pin_LocalHash: (pin: Uint8Array<ArrayBuffer>) => string;
+  Pin_VerifyLocalHash: (encodedHash: string, pin: Uint8Array<ArrayBuffer>) => boolean;
   AccountEntropyPool_Generate: () => string;
   AccountEntropyPool_IsValid: (accountEntropy: string) => boolean;
   AccountEntropyPool_DeriveSvrKey: (accountEntropy: AccountEntropyPool) => Uint8Array<ArrayBuffer>;
@@ -568,6 +574,7 @@ type NativeFunctions = {
   BackupKey_DeriveMediaId: (backupKey: Uint8Array<ArrayBuffer>, mediaName: string) => Uint8Array<ArrayBuffer>;
   BackupKey_DeriveMediaEncryptionKey: (backupKey: Uint8Array<ArrayBuffer>, mediaId: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
   BackupKey_DeriveThumbnailTransitEncryptionKey: (backupKey: Uint8Array<ArrayBuffer>, mediaId: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
+  Svr2Client_New: (mrenclave: Uint8Array<ArrayBuffer>, attestationMsg: Uint8Array<ArrayBuffer>, currentTimestamp: Timestamp) => SgxClientState;
   IncrementalMac_CalculateChunkSize: (dataSize: number) => number;
   IncrementalMac_Initialize: (key: Uint8Array<ArrayBuffer>, chunkSize: number) => IncrementalMac;
   IncrementalMac_Update: (mac: Wrapper<IncrementalMac>, bytes: Uint8Array<ArrayBuffer>, offset: number, length: number) => Uint8Array<ArrayBuffer>;
@@ -1121,6 +1128,12 @@ const { registerErrors,
   ConnectionManager_set_censorship_circumvention_enabled,
   ConnectionManager_set_remote_config,
   ConnectionManager_on_network_change,
+  PinHash_EncryptionKey,
+  PinHash_AccessKey,
+  PinHash_FromSalt,
+  PinHash_FromUsernameMrenclave,
+  Pin_LocalHash,
+  Pin_VerifyLocalHash,
   AccountEntropyPool_Generate,
   AccountEntropyPool_IsValid,
   AccountEntropyPool_DeriveSvrKey,
@@ -1131,6 +1144,7 @@ const { registerErrors,
   BackupKey_DeriveMediaId,
   BackupKey_DeriveMediaEncryptionKey,
   BackupKey_DeriveThumbnailTransitEncryptionKey,
+  Svr2Client_New,
   IncrementalMac_CalculateChunkSize,
   IncrementalMac_Initialize,
   IncrementalMac_Update,
@@ -1686,6 +1700,12 @@ export { registerErrors,
   ConnectionManager_set_censorship_circumvention_enabled,
   ConnectionManager_set_remote_config,
   ConnectionManager_on_network_change,
+  PinHash_EncryptionKey,
+  PinHash_AccessKey,
+  PinHash_FromSalt,
+  PinHash_FromUsernameMrenclave,
+  Pin_LocalHash,
+  Pin_VerifyLocalHash,
   AccountEntropyPool_Generate,
   AccountEntropyPool_IsValid,
   AccountEntropyPool_DeriveSvrKey,
@@ -1696,6 +1716,7 @@ export { registerErrors,
   BackupKey_DeriveMediaId,
   BackupKey_DeriveMediaEncryptionKey,
   BackupKey_DeriveThumbnailTransitEncryptionKey,
+  Svr2Client_New,
   IncrementalMac_CalculateChunkSize,
   IncrementalMac_Initialize,
   IncrementalMac_Update,
@@ -1939,6 +1960,7 @@ export interface ReceiptCredentialResponse { readonly __type: unique symbol; }
 export interface UuidCiphertext { readonly __type: unique symbol; }
 export interface ServerPublicParams { readonly __type: unique symbol; }
 export interface ServerSecretParams { readonly __type: unique symbol; }
+export interface PinHash { readonly __type: unique symbol; }
 export interface IncrementalMac { readonly __type: unique symbol; }
 export interface ValidatingMac { readonly __type: unique symbol; }
 export interface MessageBackupKey { readonly __type: unique symbol; }

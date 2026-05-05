@@ -250,6 +250,8 @@ impl DefaultSignalNodeError for attest::enclave::Error {}
 
 impl DefaultSignalNodeError for signal_crypto::Error {}
 
+impl DefaultSignalNodeError for libsignal_account_keys::Error {}
+
 impl SignalNodeError for libsignal_net::svrb::Error {
     fn into_throwable<'a, C: Context<'a>>(
         self,

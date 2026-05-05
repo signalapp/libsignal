@@ -6,8 +6,6 @@
 /**
  * Cryptographic hashing, randomness generation, etc. related to SVR/Backup Keys.
  *
- * Currently only the Account Entropy Pool is exposed, because no other functionality is used on Desktop.
- *
  * @module AccountKeys
  */
 
@@ -171,6 +169,99 @@ export class BackupKey extends ByteArray {
     );
   }
 }
+
+/**
+ * A hash of the pin that can be used to interact with a Secure Value Recovery service.
+ *
+ * Holds an opaque native handle. Use {@link PinHash.fromSalt} or
+ * {@link PinHash.fromUsernameMrenclave} to construct.
+ */
+export class PinHash {
+  readonly _nativeHandle: Native.PinHash;
+
+  private constructor(nativeHandle: Native.PinHash) {
+    this._nativeHandle = nativeHandle;
+  }
+
+  /**
+   * Hash a pin using an explicit salt.
+   *
+   * @param normalizedPin A normalized, UTF-8 encoded byte representation of the pin
+   * @param salt A 32 byte salt
+   */
+  static fromSalt(
+    normalizedPin: Uint8Array<ArrayBuffer>,
+    salt: Uint8Array<ArrayBuffer>
+  ): PinHash {
+    return new PinHash(Native.PinHash_FromSalt(normalizedPin, salt));
+  }
+
+  /**
+   * Hash a pin for use with SVR2, deriving the salt from the username and mrenclave.
+   *
+   * @param normalizedPin A normalized, UTF-8 encoded byte representation of the pin
+   * @param username The Basic Auth username used to authenticate with SVR2
+   * @param mrenclave The mrenclave where the hashed pin will be stored
+   */
+  static fromUsernameMrenclave(
+    normalizedPin: Uint8Array<ArrayBuffer>,
+    username: string,
+    mrenclave: Uint8Array<ArrayBuffer>
+  ): PinHash {
+    return new PinHash(
+      Native.PinHash_FromUsernameMrenclave(normalizedPin, username, mrenclave)
+    );
+  }
+
+  /** A 32 byte encryption key that can be used to encrypt or decrypt values before uploading them to a secure store. */
+  get encryptionKey(): Uint8Array<ArrayBuffer> {
+    return Native.PinHash_EncryptionKey(this);
+  }
+
+  /** A 32 byte secret that can be used to access a value in a secure store. */
+  get accessKey(): Uint8Array<ArrayBuffer> {
+    return Native.PinHash_AccessKey(this);
+  }
+}
+
+/**
+ * Supports operations on pins for Secure Value Recovery.
+ *
+ * Provides hashing pins for local verification and for use with the remote SVR
+ * service. In either case, all pins are UTF-8 encoded bytes that must be
+ * normalized *before* being provided. Normalizing a string pin requires the
+ * following steps:
+ *
+ *  1. The string should be trimmed for leading and trailing whitespace.
+ *  2. If the whole string consists of digits, then non-arabic digits must be replaced with their
+ *     arabic 0-9 equivalents.
+ *  3. The string must then be NKFD normalized.
+ */
+export const Pin = {
+  /**
+   * Create an encoded password hash string for local pin verification only.
+   *
+   * @param normalizedPin A normalized, UTF-8 encoded byte representation of the pin
+   * @returns A hashed pin string that can be verified later
+   */
+  localHash(normalizedPin: Uint8Array<ArrayBuffer>): string {
+    return Native.Pin_LocalHash(normalizedPin);
+  },
+
+  /**
+   * Verify an encoded password hash against a pin.
+   *
+   * @param encodedHash An encoded string of the hash, as returned by {@link Pin.localHash}
+   * @param normalizedPin A normalized, UTF-8 encoded byte representation of the pin to verify
+   * @returns true if the pin matches the hash, false otherwise
+   */
+  verifyLocalHash(
+    encodedHash: string,
+    normalizedPin: Uint8Array<ArrayBuffer>
+  ): boolean {
+    return Native.Pin_VerifyLocalHash(encodedHash, normalizedPin);
+  },
+};
 
 /**
  * A forward secrecy token used for deriving message backup keys.

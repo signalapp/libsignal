@@ -13,25 +13,15 @@ use crate::protocol::Timestamp;
 use crate::support::*;
 use crate::*;
 
-/// Builds an SGX client for the svr2 service
-#[cfg(any(feature = "jni", feature = "ffi"))]
-fn new_client(
-    mrenclave: &[u8],
-    attestation_msg: &[u8],
-    current_time: std::time::SystemTime,
-) -> Result<SgxClientState> {
-    SgxClientState::new(svr2::new_handshake_with_raft_config_lookup(
-        mrenclave,
-        attestation_msg,
-        current_time,
-    )?)
-}
-
-#[bridge_fn(node = false)]
+#[bridge_fn]
 fn Svr2Client_New(
     mrenclave: &[u8],
     attestation_msg: &[u8],
     current_timestamp: Timestamp,
 ) -> Result<SgxClientState> {
-    new_client(mrenclave, attestation_msg, current_timestamp.into())
+    SgxClientState::new(svr2::new_handshake_with_raft_config_lookup(
+        mrenclave,
+        attestation_msg,
+        current_timestamp.into(),
+    )?)
 }

@@ -1602,6 +1602,85 @@ export class HsmEnclaveClient {
   }
 }
 
+/**
+ * Svr2Client provides functions that manage data sent over the network when
+ * comminicating with SVR2 service.
+ *
+ * Holds an opaque native handle. Use {@link Svr2Client.new} to construct.
+ *
+ * Interaction with the service is done over a websocket, which is handled by
+ * the client. Once the websocket has been initiated, the client establishes a
+ * connection in the following manner:
+ *
+ * 1. Connect to the service websocket, read service attestation message
+ * 2. Instantiate the client using {@link Svr2Client.new} with the attestation
+ *    message
+ * 3. Send the result of {@link Svr2Client.initialRequest}
+ * 4. Receive a response and pass it to {@link Svr2Client.completeHandshake}
+ *
+ * After a connection has been established, a client may send or receive
+ * messages. To send a message, they formulate the plaintext, then pass it to
+ * {@link Svr2Client.establishedSend} to get the ciphertext message to pass
+ * along. When a message is received (as ciphertext), it is passed to
+ * {@link Svr2Client.establishedRecv}, which decrypts and verifies it, passing
+ * the plaintext back to the client for processing.
+ */
+export class Svr2Client {
+  readonly _nativeHandle: Native.SgxClientState;
+
+  private constructor(nativeHandle: Native.SgxClientState) {
+    this._nativeHandle = nativeHandle;
+  }
+
+  /**
+   * Creates a new instance of the client using the attestation message
+   */
+  static new(
+    mrenclave: Uint8Array<ArrayBuffer>,
+    attestationMsg: Uint8Array<ArrayBuffer>,
+    currentTimestamp: Date
+  ): Svr2Client {
+    return new Svr2Client(
+      Native.Svr2Client_New(
+        mrenclave,
+        attestationMsg,
+        currentTimestamp.getTime()
+      )
+    );
+  }
+
+  /** Initial request to send to SVR2, which begins post-attestation handshake. */
+  initialRequest(): Uint8Array<ArrayBuffer> {
+    return Native.SgxClientState_InitialRequest(this);
+  }
+
+  /**
+   * Called by client upon receipt of first non-attestation message from
+   * service, to complete handshake.
+   */
+  completeHandshake(buffer: Uint8Array<ArrayBuffer>): void {
+    return Native.SgxClientState_CompleteHandshake(this, buffer);
+  }
+
+  /**
+   * Encrypts a plaintext message for SVR2
+   *
+   * Must be called after successfully completing the handshake.
+   */
+  establishedSend(buffer: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+    return Native.SgxClientState_EstablishedSend(this, buffer);
+  }
+
+  /**
+   * Decrypts message received from SVR2
+   *
+   * Must be called after successfully completing the handshake.
+   */
+  establishedRecv(buffer: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+    return Native.SgxClientState_EstablishedRecv(this, buffer);
+  }
+}
+
 export enum LogLevel {
   Error = 1,
   Warn,
