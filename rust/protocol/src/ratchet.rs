@@ -606,17 +606,20 @@ pub fn pvrf_verify_from_session_data(
         .decompress()
         .ok_or_else(|| SignalProtocolError::InvalidArgument("v decompression failed".to_string()))?;
     log::info!("the v bytes is {:?}", v_bytes);
-    let vk = vk_bytes.to_vec();
-    let x = x_bytes.to_vec();
+    //let vk = vk_bytes.to_vec();
+    //let x = x_bytes.to_vec();
 
     // z = Ho(w)
     let z = hash_o(&w);
 
     // Reconstruct vk as a RistrettoPoint
-    let vk_point = CompressedRistretto::from_slice(&vk)
+    log::info!("what is vk {:?} bytes", vk_bytes);
+    log::info!("what is v {:?} bytes", v_bytes);
+    let vk_point = CompressedRistretto::from_slice(vk_bytes)
         .map_err(|_| SignalProtocolError::InvalidArgument("invalid vk slice".to_string()))?
         .decompress()
         .ok_or_else(|| SignalProtocolError::InvalidArgument("vk decompression failed".to_string()))?;
+    log::info!("whyyyy");
 
 
 
