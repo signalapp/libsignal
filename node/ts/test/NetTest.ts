@@ -261,6 +261,28 @@ describe('chat service api', () => {
       port: undefined,
     });
 
+    // Non-ASCII username and password
+    expect(
+      Net.proxyOptionsFromUrl('schm://ユーザ:パス@host.example')
+    ).deep.equals({
+      scheme: 'schm',
+      host: 'host.example',
+      username: 'ユーザ',
+      password: 'パス',
+      port: undefined,
+    });
+    expect(
+      Net.proxyOptionsFromUrl(
+        'schm://%E3%83%A6%E3%83%BC%E3%82%B6:%E3%83%91%E3%82%B9@host.example'
+      )
+    ).deep.equals({
+      scheme: 'schm',
+      host: 'host.example',
+      username: 'ユーザ',
+      password: 'パス',
+      port: undefined,
+    });
+
     // Empty "fields" get dropped by Node's URL parser.
     expect(Net.proxyOptionsFromUrl('schm://host.example:')).deep.equals({
       scheme: 'schm',

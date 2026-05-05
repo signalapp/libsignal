@@ -449,8 +449,10 @@ export class Net {
     // This does not distinguish between "https://proxy.example" and "https://@proxy.example".
     // This could be done by manually checking `url.href`.
     // But until someone complains about it, let's not worry about it.
-    const username = url.username != '' ? url.username : undefined;
-    const password = url.password != '' ? url.password : undefined;
+    const username =
+      url.username != '' ? decodeURIComponent(url.username) : undefined;
+    const password =
+      url.password != '' ? decodeURIComponent(url.password) : undefined;
 
     const host = url.hostname;
     const port = url.port != '' ? Number.parseInt(url.port, 10) : undefined;
