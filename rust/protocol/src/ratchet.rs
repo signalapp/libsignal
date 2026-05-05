@@ -415,7 +415,7 @@ pub(crate) fn initialize_bob_session(
             their_beta //should be null or unset in real
         ): (
             (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))),
-            Vec<u8>,
+            RistrettoPoint,
             Vec<u8>,
             Scalar,
             Scalar
@@ -456,7 +456,7 @@ pub(crate) fn initialize_bob_session(
         let response =  (vk, x.clone(), vt, z, pi, c, computed_c); //(vk, x, vt, z, pi);
         bob_response = Some(bincode::serialize(&response).unwrap());
         log::info!("Bob's PVRF response: {:?}", bob_response);
-        let example_decoded_bob_response: (Vec<u8>, Vec<u8>, (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))), Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar)
+        let example_decoded_bob_response: (RistrettoPoint, Vec<u8>, (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))), Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar)
          =   bincode::deserialize(
             bob_response.as_ref().unwrap()
             )
