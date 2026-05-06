@@ -1522,6 +1522,7 @@ impl From<SendError> for super::SendError {
 
 #[cfg(test)]
 mod test {
+    use std::error::Error;
     use std::io::Error as IoError;
     use std::net::Ipv4Addr;
     use std::sync::atomic::AtomicUsize;
@@ -1531,6 +1532,8 @@ mod test {
     use futures::stream::FusedStream as _;
     use futures_util::stream::FuturesUnordered;
     use http::HeaderMap;
+    use libsignal_net_infra::http_client::Http2Connector;
+    use libsignal_net_infra::route::{Connector, HttpRouteFragment, HttpVersion};
     use rand::seq::IndexedRandom;
     use rand::{Rng as _, SeedableRng};
     use test_case::test_case;
@@ -1584,6 +1587,7 @@ mod test {
             pub initial_request_id: u64,
             pub post_request_interface_check_timeout: Duration,
             pub network_change_event: NetworkChangeEvent,
+            pub h2_connection: Option<Http2Client<GrpcBody>>,
         }
 
         impl Default for FakeConfig {
@@ -1592,6 +1596,7 @@ mod test {
                     initial_request_id: INITIAL_REQUEST_ID,
                     post_request_interface_check_timeout: POST_REQUEST_TIMEOUT,
                     network_change_event: no_network_change_events(),
+                    h2_connection: None,
                 }
             }
         }
@@ -1615,6 +1620,7 @@ mod test {
                 initial_request_id,
                 post_request_interface_check_timeout,
                 network_change_event,
+                h2_connection,
             } = config;
             let (outgoing_events_tx, outgoing_events_rx) = mpsc::unbounded_channel();
             let (incoming_events_tx, incoming_events_rx) = mpsc::unbounded_channel();
@@ -1632,7 +1638,7 @@ mod test {
                     },
                     get_current_interface,
                 },
-                None,
+                h2_connection,
                 network_change_event,
                 initial_request_id,
                 listener,
@@ -3280,5 +3286,127 @@ mod test {
             other_events,
         )
         .await;
+    }
+
+    #[test_case(futures_util::stream::empty())]
+    #[test_case(stream_of_events_other_than_responses())]
+    #[test_log::test(tokio::test(start_paused = true))]
+    async fn h2_shutdown_results_in_ws_shutdown(other_events: impl Stream<Item = WsEvent>) {
+        // In order to continue using the fake streams used to test the WS event handling elsewhere,
+        // we make a legitimate H2 connection but then don't run anything over it. This is still
+        // sufficient for the WS event handling to track whether the connection has exited.
+
+        let (h2_client_io, h2_server_io) = tokio::io::duplex(1024);
+
+        let h2_server =
+            hyper::server::conn::http2::Builder::new(hyper_util::rt::TokioExecutor::new());
+        let shutdown_helper = hyper_util::server::graceful::GracefulShutdown::new();
+        let server_task = tokio::spawn(shutdown_helper.watch(h2_server.serve_connection(
+            hyper_util::rt::TokioIo::new(h2_server_io),
+            hyper::service::service_fn(|_| {
+                std::future::pending::<hyper::Result<http::Response<String>>>()
+            }),
+        )));
+
+        let h2_connection = Http2Connector::new()
+            .connect_over(
+                h2_client_io,
+                HttpRouteFragment {
+                    host_header: "fake.signal.org".into(),
+                    path_prefix: "".into(),
+                    http_version: Some(HttpVersion::Http2),
+                    front_name: None,
+                },
+                "h2",
+            )
+            .await
+            .expect("can connect");
+
+        let (listener_tx, listener_rx) = mpsc::unbounded_channel();
+        let (chat, (mut chat_events, inner_responses)) = fake::new_chat_with_config(
+            fake::FakeConfig {
+                h2_connection: Some(h2_connection.clone()),
+                ..Default::default()
+            },
+            |_| std::future::ready(Ipv4Addr::LOCALHOST.into()),
+            Box::new(move |evt| {
+                let _ = listener_tx.send(evt);
+            }),
+        );
+
+        // Send a request and receive a response just to demonstrate that things are working.
+        // Note that the WS is not connected over the H2 channel.
+
+        let request = Request {
+            method: Method::GET,
+            path: PathAndQuery::from_static("/request"),
+            headers: HeaderMap::default(),
+            body: None,
+        };
+        let mut send_request = std::pin::pin!(chat.send(request));
+
+        let receive_outbound_request = async {
+            let fake::OutgoingMessage(_message, meta) =
+                chat_events.recv().await.expect("not ended");
+            let request_id = assert_matches!(&meta, OutgoingMeta::SentRequest(id, _) => *id);
+            inner_responses
+                .send(Outcome::Continue(MessageEvent::SentMessage(meta)).into())
+                .expect("not closed");
+            request_id
+        };
+
+        // Start polling the client sending future and the server receive end.
+        // The client sends won't finish until the response to the request is
+        // received, so do't use `join!`. The server receive will complete,
+        // though.
+        let sent_request_id = select! {
+            biased;
+            response = &mut send_request => unreachable!("send finished before responses were sent: {response:?}"),
+            req = receive_outbound_request => req,
+        };
+
+        let response = ResponseProto {
+            id: Some(sent_request_id.0),
+            status: Some(200),
+            message: None,
+            headers: vec!["resp-header: value".to_string()],
+            body: None,
+        };
+
+        inner_responses
+            .send(
+                Outcome::Continue(MessageEvent::ReceivedMessage(TextOrBinary::Binary(
+                    MessageProto::from(ChatMessageProto::Response(response))
+                        .encode_to_vec()
+                        .into(),
+                )))
+                .into(),
+            )
+            .expect("can send response");
+
+        let _response = send_request.await.expect("request succeeded");
+
+        // Now we disconnect the H2 channel.
+
+        shutdown_helper.shutdown().await;
+        expect_connection_closed(
+            Duration::ZERO,
+            listener_rx,
+            (chat_events, inner_responses),
+            other_events,
+        )
+        .await;
+
+        // The specific error for an unclean exit doesn't matter too much, and in fact hyper says
+        // it's not guaranteed, but it's still worth noticing when it changes.
+        let server_side_error = server_task
+            .await
+            .expect("no panics")
+            .expect_err("H2 disconnected abruptly");
+        let underlying_io_error = server_side_error
+            .source()
+            .and_then(|s| s.downcast_ref::<std::io::Error>())
+            .expect("underlying error is an IO error");
+        assert_eq!(underlying_io_error.kind(), std::io::ErrorKind::BrokenPipe);
     }
 }
