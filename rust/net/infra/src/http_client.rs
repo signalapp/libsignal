@@ -58,6 +58,7 @@ pub struct Http2Client<B> {
     authority: http::uri::Authority,
     path_prefix: Option<http::uri::PathAndQuery>,
     default_per_request_headers: Arc<http::HeaderMap>,
+    h2_connection_cancellation_token: tokio_util::sync::CancellationToken,
 }
 
 impl<B: hyper::body::Body + 'static> Http2Client<B> {
@@ -115,6 +116,16 @@ impl<B: hyper::body::Body + 'static> Http2Client<B> {
     /// This allows the underlying H2 connection to gracefully terminate.
     pub fn disconnect_all(self) {
         self.cancellation_token.cancel();
+    }
+
+    /// Awaits a graceful shutdown of the H2 connection.
+    ///
+    /// This is not a full disconnection, but no new requests will be accepted after this future
+    /// completes.
+    pub fn wait_for_h2_shutdown(&self) -> impl Future<Output = ()> + Send + 'static {
+        self.h2_connection_cancellation_token
+            .clone()
+            .cancelled_owned()
     }
 }
 
@@ -390,7 +401,11 @@ where
         // or if all clients are dropped.
         let log_tag = log_tag.to_owned();
         let ip_version = info.ip_version();
-        tokio::spawn(async move {
+        let h2_connection_cancellation_token = tokio_util::sync::CancellationToken::new();
+        let h2_connection_cancellation_token_guard =
+            h2_connection_cancellation_token.clone().drop_guard();
+        _ = tokio::spawn(async move {
+            let _guard = h2_connection_cancellation_token_guard;
             match connection.await {
                 Ok(_) => log::info!("[{log_tag}] HTTP2 connection [{ip_version}] closed"),
                 Err(err) => {
@@ -416,6 +431,7 @@ where
             authority,
             path_prefix,
             default_per_request_headers: Default::default(),
+            h2_connection_cancellation_token,
         })
     }
 }

@@ -398,12 +398,18 @@ impl Chat {
             tokio_stream::wrappers::WatchStream::from_changes(network_change_event)
                 .chain(futures_util::stream::pending());
 
+        let h2_shutdown_rx = shared_h2_connection.as_ref().map_or_else(
+            || Box::pin(std::future::pending()) as futures_util::future::BoxFuture<'static, ()>,
+            |c| Box::pin(c.wait_for_h2_shutdown()),
+        );
+
         let connection = ConnectionImpl {
             inner: inner_connection,
             requests_in_flight,
             network_change_event,
             config: connection_config,
             outgoing_request_tx: request_tx.downgrade(),
+            h2_shutdown_rx,
         };
 
         let task = tokio_runtime.spawn(spawned_task_body(
@@ -615,6 +621,7 @@ struct ConnectionImpl<I, GCI> {
         futures_util::stream::Pending<()>,
     >,
     outgoing_request_tx: WeakSender<OutgoingRequest>,
+    h2_shutdown_rx: futures_util::future::BoxFuture<'static, ()>,
     config: ConnectionConfig<GCI>,
 }
 
@@ -1005,6 +1012,7 @@ impl<I: InnerConnection, GCI: GetCurrentInterface<Representation = IpAddr>> Conn
             network_change_event,
             config,
             outgoing_request_tx,
+            mut h2_shutdown_rx,
         } = self.project();
 
         let mut event_fut = std::pin::pin!(inner.as_mut().handle_next_event());
@@ -1045,6 +1053,11 @@ impl<I: InnerConnection, GCI: GetCurrentInterface<Representation = IpAddr>> Conn
 
             tokio::select! {
                 inner_event = &mut event_fut => break inner_event,
+                () = &mut h2_shutdown_rx => {
+                    // Treat H2 graceful shutdown as a connection failure immediately even if the
+                    // websocket is still open.
+                    break Outcome::Finished(Err(NextEventError::UnexpectedConnectionClose))
+                }
                 interruption = interruption_fut => match Self::handle_interruption(
                     config,
                     requests_in_flight,

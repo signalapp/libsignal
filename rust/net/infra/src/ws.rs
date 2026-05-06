@@ -604,7 +604,7 @@ mod test {
 
     use assert_matches::assert_matches;
     use futures_util::future::BoxFuture;
-    use futures_util::{SinkExt as _, StreamExt as _};
+    use futures_util::{FutureExt as _, SinkExt as _, StreamExt as _};
     use http::uri::PathAndQuery;
     use tokio::sync::mpsc;
     use tokio_boring_signal::SslStream;
@@ -1120,6 +1120,10 @@ mod test {
             .expect("can send frame");
 
         conn.ready().await.expect("ready");
+        assert!(
+            conn.wait_for_h2_shutdown().now_or_never().is_none(),
+            "not shut down yet"
+        );
 
         // Signal shutdown, and yield to the server task to make sure it gets acknowledged.
         shutdown_token.cancel();
@@ -1141,6 +1145,10 @@ mod test {
         // By now we've definitely learned of the H2 shutdown...but the websocket should still be
         // open.
         conn.ready().await.expect_err("no longer ready");
+        assert!(
+            conn.wait_for_h2_shutdown().now_or_never().is_some(),
+            "shut down by now"
+        );
         ws.stream
             .send(tungstenite::Message::Binary(bytes::Bytes::new()))
             .await
