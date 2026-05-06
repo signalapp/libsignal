@@ -1211,18 +1211,20 @@ typedef struct {
   const SignalMessageBackupValidationOutcome *raw;
 } SignalConstPointerMessageBackupValidationOutcome;
 
-typedef int (*SignalFfiInputStreamRead)(void *ctx, size_t *out, SignalBorrowedMutableBuffer buf);
+typedef int (*SignalFfiSyncInputStreamRead)(void *ctx, size_t *out, SignalBorrowedMutableBuffer buf);
 
-typedef int (*SignalFfiInputStreamSkip)(void *ctx, uint64_t amount);
+typedef int (*SignalFfiSyncInputStreamSkip)(void *ctx, uint64_t amount);
 
-typedef void (*SignalFfiInputStreamDestroy)(void *ctx);
+typedef void (*SignalFfiSyncInputStreamDestroy)(void *ctx);
 
 typedef struct {
   void *ctx;
-  SignalFfiInputStreamRead read;
-  SignalFfiInputStreamSkip skip;
-  SignalFfiInputStreamDestroy destroy;
-} SignalInputStream;
+  SignalFfiSyncInputStreamRead read;
+  SignalFfiSyncInputStreamSkip skip;
+  SignalFfiSyncInputStreamDestroy destroy;
+} SignalSyncInputStream;
+
+typedef SignalSyncInputStream SignalInputStream;
 
 typedef struct {
   const SignalInputStream *raw;
@@ -1655,8 +1657,6 @@ typedef struct {
 typedef struct {
   SignalValidatingMac *raw;
 } SignalMutPointerValidatingMac;
-
-typedef SignalInputStream SignalSyncInputStream;
 
 typedef struct {
   const SignalSyncInputStream *raw;

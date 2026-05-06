@@ -8,6 +8,8 @@ use std::ffi::CString;
 use derive_where::derive_where;
 use libsignal_protocol::*;
 
+use crate::support::describe_panic;
+
 #[macro_use]
 mod convert;
 pub use convert::*;
@@ -21,16 +23,15 @@ pub use error::*;
 mod futures;
 pub use futures::*;
 
-mod io;
-pub use io::*;
-
-// TODO: This re-export is because of the ffi_arg_type macro expecting all bridging structs to be
+// TODO: These re-exports are because of the ffi_arg_type macro expecting all bridging structs to be
 // under the ffi module; eventually we should be able to remove it.
+pub use crate::io::FfiSyncInputStreamStruct;
 pub use crate::protocol::storage::{
     FfiIdentityKeyStoreStruct, FfiKyberPreKeyStoreStruct, FfiPreKeyStoreStruct,
     FfiSenderKeyStoreStruct, FfiSessionStoreStruct, FfiSignedPreKeyStoreStruct,
 };
-use crate::support::describe_panic;
+
+pub type FfiInputStreamStruct = FfiSyncInputStreamStruct;
 
 #[derive(Debug)]
 pub struct NullPointerError;

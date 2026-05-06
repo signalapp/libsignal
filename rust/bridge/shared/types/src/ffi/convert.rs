@@ -563,7 +563,7 @@ impl SimpleArgTypeInfo for &libsignal_account_keys::BackupKey {
 }
 
 macro_rules! bridge_trait {
-    ($name:ident) => {
+    ($name:ident, $load:expr) => {
         paste! {
             impl<'a> ArgTypeInfo<'a> for &'a mut dyn $name {
                 type ArgType = crate::ffi::ConstPointer< [<Ffi $name Struct >] >;
@@ -576,10 +576,13 @@ macro_rules! bridge_trait {
                     }
                 }
                 fn load_from(stored: &'a mut Self::StoredType) -> Self {
-                    stored
+                    ($load)(stored)
                 }
             }
         }
+    };
+    ($name:ident) => {
+        bridge_trait!($name, std::convert::identity);
     };
 }
 
@@ -589,8 +592,8 @@ bridge_trait!(SenderKeyStore);
 bridge_trait!(SessionStore);
 bridge_trait!(SignedPreKeyStore);
 bridge_trait!(KyberPreKeyStore);
-bridge_trait!(InputStream);
-bridge_trait!(SyncInputStream);
+bridge_trait!(InputStream, |x: &'a mut Self::StoredType| &mut x.0);
+bridge_trait!(SyncInputStream, |x: &'a mut Self::StoredType| &mut x.0);
 
 impl<'a> ArgTypeInfo<'a> for Box<dyn ChatListener> {
     type ArgType = crate::ffi::ConstPointer<FfiChatListenerStruct>;

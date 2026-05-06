@@ -209,7 +209,7 @@ pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait, name: &str) -> Result<To
     let callbacks = trait_to_bridge
         .items
         .iter()
-        .map(|item| bridge_callback_item(name, item))
+        .map(|item| bridge_callback_item(trait_name, name, item))
         .collect::<Result<Vec<_>>>()?;
     let callback_aliases = callbacks.iter().map(|c| &c.alias);
     let callback_fields = callbacks.iter().map(|c| &c.field);
@@ -264,7 +264,11 @@ struct Callback {
     forwarding_impl: TokenStream2,
 }
 
-fn bridge_callback_item(bridge_name: &str, item: &TraitItem) -> Result<Callback> {
+fn bridge_callback_item(
+    trait_name: &Ident,
+    bridge_name: &str,
+    item: &TraitItem,
+) -> Result<Callback> {
     let TraitItem::Fn(item) = item else {
         return Err(Error::new(item.span(), "only fns are supported"));
     };
@@ -281,6 +285,12 @@ fn bridge_callback_item(bridge_name: &str, item: &TraitItem) -> Result<Callback>
         req_name.to_string().to_upper_camel_case(),
         span = req_name.span()
     );
+
+    let mut_keyword = item.sig.inputs.first().and_then(|input| match input {
+        FnArg::Receiver(receiver) => receiver.mutability.as_ref(),
+        FnArg::Typed(_) => None,
+    });
+
     let callback_args = item.sig.inputs.iter().filter_map(|arg| match arg {
         FnArg::Receiver(_) => match result_info.kind {
             ResultKind::Regular => Some(quote!(out: *mut ffi_arg_type!(#result_ty))),
@@ -384,7 +394,7 @@ fn bridge_callback_item(bridge_name: &str, item: &TraitItem) -> Result<Callback>
     let forwarding_impl = quote! {
         #[inline]
         #sig {
-            self.0.#req_name(#(#arg_names),*) #await_if_needed
+            #trait_name::#req_name(& #mut_keyword self.0, #(#arg_names),*) #await_if_needed
         }
     };
 

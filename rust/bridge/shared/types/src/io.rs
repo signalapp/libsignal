@@ -10,7 +10,11 @@ use std::task::{Context, Poll};
 use async_trait::async_trait;
 use futures_util::future::LocalBoxFuture;
 use futures_util::{AsyncRead, FutureExt as _};
+use libsignal_bridge_macros::bridge_callbacks;
 use mediasan_common::{AsyncSkip, Skip};
+
+use crate::support::{ResultLike, WithContext};
+use crate::*;
 
 /// The result of a [`InputStream::read`].
 ///
@@ -61,6 +65,7 @@ pub trait InputStream {
 }
 
 /// An input stream of bytes.
+#[bridge_callbacks(jni = false, node = false)]
 pub trait SyncInputStream {
     /// Read an amount of bytes from the input stream.
     ///
@@ -74,7 +79,7 @@ pub trait SyncInputStream {
     /// # Errors
     ///
     /// If an I/O error occurred while reading from the input, an [`io::Error`] is returned.
-    fn read(&self, buf: &mut [u8]) -> io::Result<usize>;
+    fn read(&self, buf: &mut [u8]) -> Result<usize, io::Error>;
 
     /// Skip an amount of bytes in the input stream.
     ///
@@ -82,7 +87,20 @@ pub trait SyncInputStream {
     ///
     /// If the requested number of bytes could not be skipped for any reason, including if the end of stream was
     /// reached, an error must be returned.
-    fn skip(&self, amount: u64) -> io::Result<()>;
+    fn skip(&self, amount: u64) -> Result<(), io::Error>;
+}
+
+/// Any SyncInputStream is a valid "async" InputStream.
+#[async_trait(?Send)]
+impl<T: SyncInputStream> InputStream for T {
+    fn read<'out, 'a: 'out>(&'a self, buf: &mut [u8]) -> io::Result<InputStreamRead<'out>> {
+        let amount_read = self.read(buf)?;
+        Ok(InputStreamRead::Ready { amount_read })
+    }
+
+    async fn skip(&self, amount: u64) -> io::Result<()> {
+        self.skip(amount)
+    }
 }
 
 pub struct SyncInput<'a> {

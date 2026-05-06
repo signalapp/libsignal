@@ -6,15 +6,13 @@
 use std::cell::RefCell;
 use std::io;
 
-use async_trait::async_trait;
-
 use super::*;
-use crate::io::{InputStream, InputStreamRead, SyncInputStream};
+use crate::io::SyncInputStream;
 
 pub type JavaInputStream<'a> = JObject<'a>;
 pub type JavaSyncInputStream<'a> = JObject<'a>;
 
-/// Implementation of [`InputStream`] for an argument to a bridge function.
+/// Implementation of [`InputStream`](crate::io::InputStream) for an argument to a bridge function.
 pub struct JniBridgeInputStream<'a> {
     env: RefCell<EnvHandle<'a>>,
     stream: &'a JObject<'a>,
@@ -108,19 +106,6 @@ impl From<BridgeOrIoError> for IoError {
                 e => IoError::other(e.to_string()),
             },
         }
-    }
-}
-
-#[async_trait(?Send)]
-impl InputStream for JniBridgeInputStream<'_> {
-    fn read<'out, 'a: 'out>(&'a self, buf: &mut [u8]) -> io::Result<InputStreamRead<'out>> {
-        let amount_read = self.do_read(buf)?;
-        Ok(InputStreamRead::Ready { amount_read })
-    }
-
-    async fn skip(&self, amount: u64) -> io::Result<()> {
-        self.do_skip(amount)?;
-        Ok(())
     }
 }
 
