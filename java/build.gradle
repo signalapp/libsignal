@@ -23,7 +23,7 @@ repositories {
 }
 
 allprojects {
-    version = "0.93.2"
+    version = "0.93.3"
     group   = "org.signal"
 
     tasks.withType(JavaCompile) {
