@@ -49,6 +49,12 @@ impl<T: WsConnection> crate::api::backups::UnauthenticatedChatApi<OverWs> for Un
         upload_size: u64,
         rng: &mut (dyn rand::CryptoRng + Send),
     ) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
+        if let Some(grpc) =
+            self.grpc_service_to_use_instead(services::BackupsAnonymous::GetUploadForm.into())
+        {
+            return Unauth(grpc).get_upload_form(auth, upload_size, rng).await;
+        }
+
         let auth = auth.present(rng)?;
 
         let response = self

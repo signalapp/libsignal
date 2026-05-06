@@ -151,12 +151,13 @@ mod test {
     use std::fmt::Debug;
 
     use futures_util::FutureExt as _;
+    use libsignal_net_grpc::proto::chat::services;
     use test_case::test_case;
 
     use super::*;
     use crate::api::backups::UnauthenticatedChatApi;
     use crate::api::testutil::fixed_seed_test_rng;
-    use crate::grpc::testutil::{RequestValidator, err, ok, req};
+    use crate::grpc::testutil::{GrpcOverrideRequestValidator, RequestValidator, err, ok, req};
 
     /// A variation of `==` that ignores header order, since the gRPC encoding of this type uses a
     /// protobuf map for the headers, which is not guaranteed to preserve order.
@@ -212,19 +213,22 @@ mod test {
     fn test_get_upload_form(
         response: http::Response<Vec<u8>>,
     ) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
-        let validator = RequestValidator {
-            expected: req(
-                "/org.signal.chat.backup.BackupsAnonymous/GetUploadForm",
-                GetUploadFormRequest {
-                    signed_presentation: Some(SignedPresentation {
-                        presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
-                        presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
-                    }),
-                    upload_type: Some(UploadType::Messages(MessagesUploadType {})),
-                    upload_length: 12345,
-                },
-            ),
-            response,
+        let validator = GrpcOverrideRequestValidator {
+            message: services::BackupsAnonymous::GetUploadForm.into(),
+            validator: RequestValidator {
+                expected: req(
+                    "/org.signal.chat.backup.BackupsAnonymous/GetUploadForm",
+                    GetUploadFormRequest {
+                        signed_presentation: Some(SignedPresentation {
+                            presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
+                            presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
+                        }),
+                        upload_type: Some(UploadType::Messages(MessagesUploadType {})),
+                        upload_length: 12345,
+                    },
+                ),
+                response,
+            },
         };
 
         Unauth(&validator)
@@ -273,19 +277,22 @@ mod test {
     fn test_get_media_upload_form(
         response: http::Response<Vec<u8>>,
     ) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
-        let validator = RequestValidator {
-            expected: req(
-                "/org.signal.chat.backup.BackupsAnonymous/GetUploadForm",
-                GetUploadFormRequest {
-                    signed_presentation: Some(SignedPresentation {
-                        presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
-                        presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
-                    }),
-                    upload_length: 12345,
-                    upload_type: Some(UploadType::Media(MediaUploadType {})),
-                },
-            ),
-            response,
+        let validator = GrpcOverrideRequestValidator {
+            message: services::BackupsAnonymous::GetUploadForm.into(),
+            validator: RequestValidator {
+                expected: req(
+                    "/org.signal.chat.backup.BackupsAnonymous/GetUploadForm",
+                    GetUploadFormRequest {
+                        signed_presentation: Some(SignedPresentation {
+                            presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
+                            presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
+                        }),
+                        upload_length: 12345,
+                        upload_type: Some(UploadType::Media(MediaUploadType {})),
+                    },
+                ),
+                response,
+            },
         };
 
         Unauth(&validator)
