@@ -9,6 +9,9 @@ license.workspace = true
 [lints]
 workspace = true
 
+[features]
+json-grpc-codec = ["libsignal-net-grpc/json-grpc-codec"]
+
 [dependencies]
 libsignal-core = { workspace = true }
 libsignal-keytrans = { workspace = true }
@@ -68,6 +71,7 @@ nonzero_ext = { workspace = true }
 pretty_assertions = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
+scopeguard = { workspace = true }
 test-case = { workspace = true }
 test-log = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "test-util"] }

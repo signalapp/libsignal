@@ -314,7 +314,7 @@ fn request_error_from_server_side_error_info<E>(
         }
         "RESOURCE_EXHAUSTED" | "UNAVAILABLE" => {
             // UNAVAILABLE is unlikely to have RetryInfo, but it doesn't really hurt to check.
-            if let Some(mut retry_delay) =
+            if let Some(retry_delay) =
                 matching_details::<google::rpc::RetryInfo>(&grpc_status.details)
                     .at_most_one()
                     .unwrap_or_else(|mut e| {
@@ -325,10 +325,23 @@ fn request_error_from_server_side_error_info<E>(
                     })
                     .and_then(|info| info.retry_delay)
             {
-                retry_delay.normalize();
+                // TODO: Use i32::div_ceil when that's stabilized.
+                // https://github.com/rust-lang/rust/issues/88581
+                fn nanos_to_secs_ceil(dividend: i32) -> i32 {
+                    const DIVISOR: i32 = 1_000_000_000;
+                    // Normal Div rounds towards 0.
+                    let result = dividend / DIVISOR;
+                    if dividend > 0 && dividend % DIVISOR != 0 {
+                        result + 1
+                    } else {
+                        result
+                    }
+                }
+
                 // Round up so that we're guaranteed to wait *at least* this long.
-                let retry_after_seconds =
-                    retry_delay.seconds + i64::from(retry_delay.nanos.clamp(0, 1));
+                let retry_after_seconds = retry_delay
+                    .seconds
+                    .saturating_add(nanos_to_secs_ceil(retry_delay.nanos).into());
                 return RequestError::RetryLater(RetryLater {
                     retry_after_seconds: u32::try_from(
                         retry_after_seconds.clamp(0, u32::MAX.into()),
@@ -424,10 +437,14 @@ pub(crate) mod testutil {
     use crate::api::testutil::TEST_SELF_ACI;
     use crate::ws::WsConnection;
 
-    pub(crate) fn req(uri: &str, body: impl prost::Message + 'static) -> http::Request<Vec<u8>> {
-        let body = tonic::codec::EncodeBody::new_client(
-            tonic_prost::ProstEncoder::new(Default::default()),
-            futures_util::stream::iter([Ok(body)]),
+    pub(crate) fn encode_for_grpc<C: tonic::codec::Encoder<Error = Status>>(
+        encoder: C,
+        item: C::Item,
+    ) -> Vec<u8> {
+        // The difference between client and server only seems to matter when using compression.
+        tonic::codec::EncodeBody::new_client(
+            encoder,
+            futures_util::stream::iter([Ok(item)]),
             None,
             None,
         )
@@ -436,8 +453,11 @@ pub(crate) mod testutil {
         .expect("non-blocking encoding")
         .expect("can read entire message")
         .to_bytes()
-        .into();
+        .into()
+    }
 
+    pub(crate) fn req(uri: &str, body: impl prost::Message + 'static) -> http::Request<Vec<u8>> {
+        let body = encode_for_grpc(tonic_prost::ProstEncoder::new(Default::default()), body);
         req_typed(uri, body)
     }
 
@@ -887,13 +907,13 @@ mod test {
     fn test_retry_later(reason: &str) {
         let info = vec![
             google::rpc::RetryInfo {
-                retry_delay: Some(prost_types::Duration {
+                retry_delay: Some(libsignal_net_grpc::Duration {
                     seconds: 10,
                     nanos: 2,
                 }),
             },
             google::rpc::RetryInfo {
-                retry_delay: Some(prost_types::Duration {
+                retry_delay: Some(libsignal_net_grpc::Duration {
                     seconds: 20,
                     nanos: 5,
                 }),
@@ -1053,5 +1073,94 @@ mod test {
         input: ChallengeRequiredProto,
     ) -> Result<RateLimitChallenge, RequestError<Infallible>> {
         RateLimitChallenge::try_from(input)
+    }
+
+    #[cfg(feature = "json-grpc-codec")]
+    #[tokio::test]
+    async fn test_json_mode() {
+        use uuid::{Uuid, uuid};
+
+        use crate::api::Unauth;
+        use crate::api::usernames::UnauthenticatedChatApi as _;
+
+        let rt = tokio::runtime::Handle::current();
+        libsignal_net_grpc::json::set_json_mode_for_tokio_runtime(&rt, true);
+        scopeguard::defer! {
+            libsignal_net_grpc::json::set_json_mode_for_tokio_runtime(
+                &rt,
+                false,
+            );
+        }
+
+        /// A tonic encoder and decoder that passes byte buffers through unchanged, letting tonic
+        /// add the gRPC framing and nothing else.
+        struct PassthroughCodec;
+
+        impl tonic::codec::Encoder for PassthroughCodec {
+            type Item = Vec<u8>;
+            type Error = tonic::Status;
+            fn encode(
+                &mut self,
+                item: Self::Item,
+                dst: &mut tonic::codec::EncodeBuf<'_>,
+            ) -> Result<(), Self::Error> {
+                use bytes::BufMut;
+                dst.put(&item[..]);
+                Ok(())
+            }
+        }
+
+        impl tonic::codec::Decoder for PassthroughCodec {
+            type Item = Vec<u8>;
+            type Error = tonic::Status;
+            fn decode(
+                &mut self,
+                src: &mut tonic::codec::DecodeBuf<'_>,
+            ) -> Result<Option<Self::Item>, Self::Error> {
+                use bytes::Buf;
+                Ok(Some(src.copy_to_bytes(src.remaining()).into()))
+            }
+        }
+
+        // Not realistic, but not likely to show up by accident.
+        let hash = &[0x00, 0xff, 0xff, 0xff];
+        const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
+
+        let validator = testutil::RequestValidator {
+            expected: testutil::req_typed(
+                "/org.signal.chat.account.AccountsAnonymous/LookupUsernameHash",
+                testutil::encode_for_grpc(
+                    PassthroughCodec,
+                    serde_json::to_vec(
+                        &libsignal_net_grpc::proto::chat::account::LookupUsernameHashRequest {
+                            username_hash: hash.to_vec(),
+                        },
+                    )
+                    .expect("can serialize expected request"),
+                ),
+            ),
+            response: http::Response::new(testutil::encode_for_grpc(
+                PassthroughCodec,
+                serde_json::to_vec(&libsignal_net_grpc::proto::chat::account::LookupUsernameHashResponse {
+                    response: Some(
+                        libsignal_net_grpc::proto::chat::account::lookup_username_hash_response::Response::ServiceIdentifier(
+                            libsignal_net_grpc::proto::chat::common::ServiceIdentifier {
+                                identity_type:
+                                    libsignal_net_grpc::proto::chat::common::IdentityType::Aci
+                                        .into(),
+                                uuid: ACI_UUID.as_bytes().to_vec(),
+                            },
+                        ),
+                    ),
+                })
+                .expect("can serialize response"),
+            )),
+        };
+
+        let result = Unauth(&validator)
+            .look_up_username_hash(hash)
+            .await
+            .expect("success");
+        assert_eq!(result, Some(libsignal_core::Aci::from(ACI_UUID)));
     }
 }
