@@ -6,13 +6,12 @@ authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 
 [features]
-json-grpc-codec = [
+json = [
     "dep:pbjson",
     "dep:pbjson-build",
     "dep:pbjson-types",
     "dep:serde",
     "dep:serde_json",
-    "dep:tokio",
 ]
 
 [dependencies]
@@ -27,7 +26,6 @@ prost-types = { workspace = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 strum = { workspace = true, features = ["derive"] }
-tokio = { workspace = true, optional = true }
 tonic = { workspace = true, default-features = false, features = ["codegen"] }
 tonic-prost = { workspace = true }
 

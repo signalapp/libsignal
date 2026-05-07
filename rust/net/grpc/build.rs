@@ -35,7 +35,7 @@ fn main() {
     service_method_file.push("service_methods.rs");
     std::fs::write(service_method_file, service_method_contents).expect("can write to OUT_DIR");
 
-    #[cfg(feature = "json-grpc-codec")]
+    #[cfg(feature = "json")]
     {
         let mut json_build = pbjson_build::Builder::new();
         for fd in &fds.file {
@@ -49,9 +49,8 @@ fn main() {
     let mut tonic_build = tonic_prost_build::configure()
         .build_server(false)
         .build_transport(false);
-    if cfg!(feature = "json-grpc-codec") {
+    if cfg!(feature = "json") {
         tonic_build = tonic_build
-            .codec_path("crate::json::JsonOrProstCodec")
             .compile_well_known_types(true)
             .extern_path(".google.protobuf", "::pbjson_types")
             // Note that this diverges from proper protobuf JSON in the interest of simplicity and
