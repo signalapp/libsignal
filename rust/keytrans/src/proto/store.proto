@@ -21,6 +21,7 @@ message StoredMonitoringData {
   map<uint64, uint32> ptrs = 3;
   bool owned = 4;
   bytes search_key = 5;
+  uint32 max_observed_version = 6;
 }
 
 message StoredAccountData {

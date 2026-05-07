@@ -312,6 +312,20 @@ pub struct MonitoringData {
     pub owned: bool,
     /// Search key
     pub search_key: Vec<u8>,
+    /// Greatest counter observed in any proof step received for this search
+    /// key.
+    ///
+    /// It includes counter values only present in frontier nodes that
+    /// are _not_ used in the monitoring path (only covers the ancestor nodes)
+    /// Tracked separately from `ptrs` to keep the monitoring algorithm
+    /// unmodified and following the spec precisely.
+    ///
+    /// Max observed version is only used for the early version change
+    /// detection in `libsignal_net_chat::api::keytrans::monitor_and_search`.
+    /// Without it the version change will only be detected by monitor after
+    /// the tree root has moved to a node that includes the update, which
+    /// requires the log to grow by a lot.
+    pub max_observed_version: u32,
 }
 
 impl Debug for MonitoringData {
@@ -322,6 +336,7 @@ impl Debug for MonitoringData {
             ptrs,
             owned,
             search_key,
+            max_observed_version,
         } = self;
 
         let redact_bytes = |bytes: &[u8]| {
@@ -339,6 +354,7 @@ impl Debug for MonitoringData {
             .field("ptrs", &ptrs)
             .field("owned", &owned)
             .field("search_key", &redact_bytes(search_key))
+            .field("max_observed_version", &max_observed_version)
             .finish()
     }
 }
@@ -367,22 +383,33 @@ impl MonitoringData {
 
     /// The greatest known version of the search key.
     pub fn greatest_version(&self) -> u32 {
-        self.ptrs
+        *self
+            .ptrs
             .values()
+            .chain([&self.max_observed_version])
             .max()
-            .copied()
             .expect("at least one version must be present")
     }
 }
 
 impl MonitoringData {
     fn into_stored(self, search_key: Vec<u8>) -> StoredMonitoringData {
+        let Self {
+            index,
+            pos,
+            ptrs,
+            owned,
+            // Prefer the search key provided as argument.
+            search_key: _,
+            max_observed_version,
+        } = self;
         StoredMonitoringData {
-            index: self.index.into(),
-            pos: self.pos,
-            ptrs: self.ptrs,
-            owned: self.owned,
+            index: index.into(),
+            pos,
+            ptrs,
+            owned,
             search_key,
+            max_observed_version,
         }
     }
 }
@@ -395,6 +422,7 @@ impl From<StoredMonitoringData> for MonitoringData {
             ptrs,
             owned,
             search_key,
+            max_observed_version,
         } = value;
         Self {
             index: index.try_into().expect("must be the right size"),
@@ -402,6 +430,7 @@ impl From<StoredMonitoringData> for MonitoringData {
             ptrs,
             owned,
             search_key,
+            max_observed_version,
         }
     }
 }
