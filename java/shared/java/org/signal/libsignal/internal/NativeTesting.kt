@@ -138,11 +138,15 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_NextGrpcMessage(input: ByteArray, offset: Int): Pair<Int, Int>
   @JvmStatic
+  public external fun TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Pair<ObjectHandle, Long>?>
+  @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Pair<ObjectHandle, Long>?>
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_SendRawServerRequest(chat: ObjectHandle, bytes: ByteArray): Unit
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_SendRawServerResponse(chat: ObjectHandle, bytes: ByteArray): Unit
+  @JvmStatic
+  public external fun TESTING_FakeChatRemoteEnd_SendServerGrpcResponse(asyncRuntime: ObjectHandle, chat: ObjectHandle, response: ObjectHandle): CompletableFuture<Void?>
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_SendServerResponse(chat: ObjectHandle, response: ObjectHandle): Unit
   @JvmStatic

@@ -165,6 +165,37 @@ fn TESTING_FakeChatRemoteEnd_SendServerResponse(
         .expect("chat task finished")
 }
 
+#[bridge_io(TokioAsyncContext)]
+async fn TESTING_FakeChatRemoteEnd_SendServerGrpcResponse(
+    chat: &FakeChatRemoteEnd,
+    response: &FakeChatResponse,
+) {
+    let FakeChatResponse(ResponseProto {
+        id,
+        status,
+        message,
+        headers,
+        body,
+    }) = response;
+
+    assert!(
+        message.as_deref().unwrap_or_default().is_empty(),
+        "messages not supported for gRPC"
+    );
+    assert!(headers.is_empty(), "headers not yet implemented for gRPC");
+
+    let http_response = http::Response::builder()
+        .status(u16::try_from(status.unwrap_or_default()).unwrap_or(u16::MAX))
+        .body(body.as_ref().cloned().unwrap_or_default())
+        .expect("valid");
+
+    chat.0
+        .grpc()
+        .await
+        .send_response(id.unwrap_or_default(), http_response)
+        .expect("chat task finished");
+}
+
 #[bridge_fn]
 fn TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: &FakeChatRemoteEnd) {
     chat.0
@@ -207,6 +238,40 @@ async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
     };
 
     Some((http_request, id.unwrap()))
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest(
+    chat: &FakeChatRemoteEnd,
+) -> Option<(HttpRequest, u64)> {
+    let (id, request) = chat
+        .0
+        .grpc()
+        .await
+        .receive_request()
+        .await
+        .expect("message was invalid")?;
+    let (
+        http::request::Parts {
+            method,
+            uri,
+            headers,
+            ..
+        },
+        body,
+    ) = request.into_parts();
+
+    let http_request = HttpRequest {
+        method,
+        path: uri
+            .into_parts()
+            .path_and_query
+            .unwrap_or(http::uri::PathAndQuery::from_static("")),
+        body: Some(body),
+        headers: headers.into(),
+    };
+
+    Some((http_request, id))
 }
 
 #[bridge_fn]

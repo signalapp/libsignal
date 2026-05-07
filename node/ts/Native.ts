@@ -663,8 +663,10 @@ type NativeFunctions = {
   TESTING_FakeChatRemoteEnd_SendRawServerRequest: (chat: Wrapper<FakeChatRemoteEnd>, bytes: Uint8Array<ArrayBuffer>) => void;
   TESTING_FakeChatRemoteEnd_SendRawServerResponse: (chat: Wrapper<FakeChatRemoteEnd>, bytes: Uint8Array<ArrayBuffer>) => void;
   TESTING_FakeChatRemoteEnd_SendServerResponse: (chat: Wrapper<FakeChatRemoteEnd>, response: Wrapper<FakeChatResponse>) => void;
+  TESTING_FakeChatRemoteEnd_SendServerGrpcResponse: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<FakeChatRemoteEnd>, response: Wrapper<FakeChatResponse>) => CancellablePromise<void>;
   TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted: (chat: Wrapper<FakeChatRemoteEnd>) => void;
   TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<FakeChatRemoteEnd>) => CancellablePromise<[HttpRequest, bigint] | null>;
+  TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<FakeChatRemoteEnd>) => CancellablePromise<[HttpRequest, bigint] | null>;
   TESTING_ChatResponseConvert: (bodyPresent: boolean) => ChatResponse;
   TESTING_ChatRequestGetMethod: (request: Wrapper<HttpRequest>) => string;
   TESTING_ChatRequestGetPath: (request: Wrapper<HttpRequest>) => string;
@@ -1236,8 +1238,10 @@ const { registerErrors,
   TESTING_FakeChatRemoteEnd_SendRawServerRequest,
   TESTING_FakeChatRemoteEnd_SendRawServerResponse,
   TESTING_FakeChatRemoteEnd_SendServerResponse,
+  TESTING_FakeChatRemoteEnd_SendServerGrpcResponse,
   TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted,
   TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest,
+  TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest,
   TESTING_ChatResponseConvert,
   TESTING_ChatRequestGetMethod,
   TESTING_ChatRequestGetPath,
@@ -1811,8 +1815,10 @@ export { registerErrors,
   TESTING_FakeChatRemoteEnd_SendRawServerRequest,
   TESTING_FakeChatRemoteEnd_SendRawServerResponse,
   TESTING_FakeChatRemoteEnd_SendServerResponse,
+  TESTING_FakeChatRemoteEnd_SendServerGrpcResponse,
   TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted,
   TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest,
+  TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest,
   TESTING_ChatResponseConvert,
   TESTING_ChatRequestGetMethod,
   TESTING_ChatRequestGetPath,
