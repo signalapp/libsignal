@@ -2795,6 +2795,7 @@ dependencies = [
  "hkdf",
  "hmac",
  "http",
+ "http-body-util",
  "hyper",
  "hyper-util",
  "itertools 0.14.0",
