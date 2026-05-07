@@ -1085,12 +1085,9 @@ mod test {
 
         let rt = tokio::runtime::Handle::current();
         libsignal_net_grpc::json::set_json_mode_for_tokio_runtime(&rt, true);
-        scopeguard::defer! {
-            libsignal_net_grpc::json::set_json_mode_for_tokio_runtime(
-                &rt,
-                false,
-            );
-        }
+        scopeguard::defer!({
+            libsignal_net_grpc::json::set_json_mode_for_tokio_runtime(&rt, false);
+        });
 
         /// A tonic encoder and decoder that passes byte buffers through unchanged, letting tonic
         /// add the gRPC framing and nothing else.
