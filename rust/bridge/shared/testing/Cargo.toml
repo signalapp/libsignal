@@ -24,6 +24,7 @@ libsignal-keytrans = { workspace = true }
 libsignal-message-backup = { workspace = true, features = ["json"] }
 libsignal-net = { workspace = true }
 libsignal-net-chat = { workspace = true }
+libsignal-net-grpc = { workspace = true, features = ["json"] }
 libsignal-protocol = { workspace = true }
 zkgroup = { workspace = true }
 

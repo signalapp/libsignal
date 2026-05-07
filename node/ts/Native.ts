@@ -672,6 +672,10 @@ type NativeFunctions = {
   TESTING_ChatRequestGetHeaderValue: (request: Wrapper<HttpRequest>, headerName: string) => string;
   TESTING_ChatRequestGetBody: (request: Wrapper<HttpRequest>) => Uint8Array<ArrayBuffer>;
   TESTING_FakeChatResponse_Create: (id: bigint, status: number, message: string, headers: string[], body: Uint8Array<ArrayBuffer> | null) => FakeChatResponse;
+  TESTING_FakeChatRemoteEnd_NextGrpcMessage: (input: Uint8Array<ArrayBuffer>, offset: number) => [number, number];
+  TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength: (len: number) => Uint8Array<ArrayBuffer>;
+  TESTING_FakeChatRemoteEnd_BinprotoToJson: (name: string, input: Uint8Array<ArrayBuffer>) => string;
+  TESTING_FakeChatRemoteEnd_JsonToBinproto: (name: string, input: string) => Uint8Array<ArrayBuffer>;
   TESTING_ChatConnectErrorConvert: (errorDescription: string) => void;
   TESTING_ChatSendErrorConvert: (errorDescription: string) => void;
   TESTING_KeyTransFatalVerificationFailure: () => void;
@@ -1241,6 +1245,10 @@ const { registerErrors,
   TESTING_ChatRequestGetHeaderValue,
   TESTING_ChatRequestGetBody,
   TESTING_FakeChatResponse_Create,
+  TESTING_FakeChatRemoteEnd_NextGrpcMessage,
+  TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength,
+  TESTING_FakeChatRemoteEnd_BinprotoToJson,
+  TESTING_FakeChatRemoteEnd_JsonToBinproto,
   TESTING_ChatConnectErrorConvert,
   TESTING_ChatSendErrorConvert,
   TESTING_KeyTransFatalVerificationFailure,
@@ -1812,6 +1820,10 @@ export { registerErrors,
   TESTING_ChatRequestGetHeaderValue,
   TESTING_ChatRequestGetBody,
   TESTING_FakeChatResponse_Create,
+  TESTING_FakeChatRemoteEnd_NextGrpcMessage,
+  TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength,
+  TESTING_FakeChatRemoteEnd_BinprotoToJson,
+  TESTING_FakeChatRemoteEnd_JsonToBinproto,
   TESTING_ChatConnectErrorConvert,
   TESTING_ChatSendErrorConvert,
   TESTING_KeyTransFatalVerificationFailure,

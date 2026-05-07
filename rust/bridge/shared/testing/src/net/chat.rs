@@ -285,6 +285,52 @@ fn TESTING_FakeChatResponse_Create(
     })
 }
 
+#[bridge_fn]
+fn TESTING_FakeChatRemoteEnd_NextGrpcMessage(input: &[u8], offset: u32) -> (u32, u32) {
+    // Taking an offset avoids extra copies in the streaming input case.
+    let input = &input[offset.try_into().expect("valid offset for buffer")..];
+    let message_slice = libsignal_net_grpc::expect_next_grpc_message_for_testing(input);
+    // We return a (start, end) pair for the app language to slice.
+    // Unfortunately, getting that back out takes a bit of work.
+    let message_offset = if let Some(first_elem) = message_slice.first() {
+        // TODO: replace with slice::element_offset at MSRV 1.94.
+        let first_elem = std::ptr::from_ref(first_elem);
+        let slice_range = input.as_ptr_range();
+        assert!(
+            slice_range.contains(&first_elem),
+            "result should be a subslice"
+        );
+        // Note: subtracting raw addresses only works because the elements are bytes.
+        first_elem.addr() - slice_range.start.addr()
+    } else {
+        // If the message is empty, the header must have been the entire rest of the input.
+        input.len()
+    };
+    let full_offset = offset + u32::try_from(message_offset).expect("input will never be >1GB");
+    (
+        full_offset,
+        full_offset + u32::try_from(message_slice.len()).expect("input will never be >1GB"),
+    )
+}
+
+#[bridge_fn]
+fn TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength(len: u32) -> Vec<u8> {
+    let mut result = Vec::with_capacity(5);
+    result.push(0);
+    result.extend_from_slice(&len.to_be_bytes());
+    result
+}
+
+#[bridge_fn]
+fn TESTING_FakeChatRemoteEnd_BinprotoToJson(name: String, input: &[u8]) -> String {
+    libsignal_net_grpc::json::expect_binproto_to_json_by_name(&name, input)
+}
+
+#[bridge_fn]
+fn TESTING_FakeChatRemoteEnd_JsonToBinproto(name: String, input: String) -> Vec<u8> {
+    libsignal_net_grpc::json::expect_json_to_binproto_by_name(&name, &input)
+}
+
 make_error_testing_enum! {
     enum TestingChatConnectError for ConnectError {
         WebSocket => WebSocketConnectionFailed,

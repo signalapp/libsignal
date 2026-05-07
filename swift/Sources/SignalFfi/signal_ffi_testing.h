@@ -119,6 +119,11 @@ typedef struct {
 } SignalConstPointerFakeChatRemoteEnd;
 
 typedef struct {
+  uint32_t first;
+  uint32_t second;
+} SignalPairOfu32u32;
+
+typedef struct {
   bool present;
   SignalMutPointerHttpRequest first;
   uint64_t second;
@@ -339,7 +344,15 @@ SignalFfiError *signal_testing_fake_chat_connection_take_remote(SignalMutPointer
 
 SignalFfiError *signal_testing_fake_chat_connection_take_unauthenticated_chat(SignalMutPointerUnauthenticatedChatConnection *out, SignalConstPointerFakeChatConnection chat);
 
+SignalFfiError *signal_testing_fake_chat_remote_end_binproto_to_json(const char **out, const char *name, SignalBorrowedBuffer input);
+
+SignalFfiError *signal_testing_fake_chat_remote_end_grpc_frame_for_message_length(SignalOwnedBuffer *out, uint32_t len);
+
 SignalFfiError *signal_testing_fake_chat_remote_end_inject_connection_interrupted(SignalConstPointerFakeChatRemoteEnd chat);
+
+SignalFfiError *signal_testing_fake_chat_remote_end_json_to_binproto(SignalOwnedBuffer *out, const char *name, const char *input);
+
+SignalFfiError *signal_testing_fake_chat_remote_end_next_grpc_message(SignalPairOfu32u32 *out, SignalBorrowedBuffer input, uint32_t offset);
 
 SignalFfiError *signal_testing_fake_chat_remote_end_receive_incoming_request(SignalCPromiseOptionalPairOfMutPointerHttpRequestu64 *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerFakeChatRemoteEnd chat);
 

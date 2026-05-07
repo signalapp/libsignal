@@ -161,3 +161,23 @@ impl prost::Name for proto::google::rpc::RetryInfo {
         .to_owned()
     }
 }
+
+/// Manual implementation of the gRPC framing format (Length-Prefixed-Message).
+///
+/// tonic normally takes care of this for us on the Rust side, but app-level tests (using e.g.
+/// `FakeChatRemote`) have to deal with the raw HTTP bodies.
+///
+/// See <https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md>.
+pub fn expect_next_grpc_message_for_testing(input: &[u8]) -> &[u8] {
+    const HEADER_LEN: usize = 5;
+    assert!(input.len() >= HEADER_LEN, "unexpected EOF");
+    assert_eq!(input[0], 0, "compression not supported");
+    let message_length =
+        u32::from_be_bytes(*input[1..].first_chunk().expect("already checked length"));
+    let message_length = usize::try_from(message_length).expect("at least 32-bit usize");
+    assert!(
+        message_length + HEADER_LEN <= input.len(),
+        "message length exceeds remaining input"
+    );
+    &input[HEADER_LEN..][..message_length]
+}
