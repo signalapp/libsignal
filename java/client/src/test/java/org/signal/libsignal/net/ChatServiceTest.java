@@ -263,7 +263,7 @@ public class ChatServiceTest {
     final Listener listener = new Listener();
     final Pair<AuthenticatedChatConnection, FakeChatRemote> chatAndFakeRemote =
         AuthenticatedChatConnection.fakeConnect(
-            tokioAsyncContext, listener, new String[] {"UPPERcase", "lowercase"});
+            tokioAsyncContext, listener, new String[0], new String[] {"UPPERcase", "lowercase"});
     final AuthenticatedChatConnection chat = chatAndFakeRemote.getFirst();
     final FakeChatRemote fakeRemote = chatAndFakeRemote.getSecond();
 

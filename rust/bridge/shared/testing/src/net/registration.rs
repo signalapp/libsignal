@@ -82,7 +82,7 @@ impl ConnectUnauthChat for ConnectFakeChat {
             | libsignal_net::chat::ws::ListenerEvent::ReceivedMessage(_, _) => (),
         };
 
-        let (chat, remote) = ChatConnection::new_fake(self.0.clone(), Box::new(listener), []);
+        let (chat, remote) = ChatConnection::new_fake(self.0.clone(), Box::new(listener), [], []);
 
         std::future::ready(
             self.1

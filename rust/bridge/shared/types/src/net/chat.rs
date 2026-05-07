@@ -423,9 +423,11 @@ impl FakeChatConnection {
     pub fn new<'a>(
         tokio_runtime: tokio::runtime::Handle,
         listener: chat::ws::EventListener,
+        grpc_overrides: impl IntoIterator<Item = &'static str>,
         alerts: impl IntoIterator<Item = &'a str>,
     ) -> (Self, FakeChatRemote) {
-        let (inner, remote) = ChatConnection::new_fake(tokio_runtime, listener, alerts);
+        let (inner, remote) =
+            ChatConnection::new_fake(tokio_runtime, listener, grpc_overrides, alerts);
         (Self(inner), remote)
     }
 

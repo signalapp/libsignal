@@ -116,7 +116,7 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_ErrorOnReturnSync(needsCleanup: Object): Object
   @JvmStatic
-  public external fun TESTING_FakeChatConnection_Create(tokio: ObjectHandle, listener: BridgeChatListener, alertsJoinedByNewlines: String): ObjectHandle
+  public external fun TESTING_FakeChatConnection_Create(tokio: ObjectHandle, listener: BridgeChatListener, grpcOverridesJoinedByNewlines: String, alertsJoinedByNewlines: String): ObjectHandle
   @JvmStatic
   public external fun TESTING_FakeChatConnection_CreateProvisioning(tokio: ObjectHandle, listener: BridgeProvisioningListener): ObjectHandle
   @JvmStatic

@@ -529,6 +529,7 @@ describe('chat service api', () => {
       const [_chat, fakeRemote] = AuthenticatedChatConnection.fakeConnect(
         tokio,
         listener,
+        [],
         ['UPPERcase', 'lowercase']
       );
 

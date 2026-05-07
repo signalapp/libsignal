@@ -169,7 +169,6 @@ class AuthMessagesServiceTest {
       AuthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
-        emptyArray(),
       )
 
     listOf(
@@ -199,7 +198,6 @@ class AuthMessagesServiceTest {
       AuthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
-        emptyArray(),
       )
 
     val (responseFuture, requestId) = sendTestMessage(chat, syncMessage = false, fakeRemote)
@@ -224,7 +222,6 @@ class AuthMessagesServiceTest {
       AuthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
-        emptyArray(),
       )
 
     val (responseFuture, requestId) = sendTestMessage(chat, syncMessage = false, fakeRemote)
@@ -268,7 +265,6 @@ class AuthMessagesServiceTest {
       AuthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
-        emptyArray(),
       )
 
     val (responseFuture, requestId) = sendTestMessage(chat, syncMessage = false, fakeRemote)
@@ -310,7 +306,6 @@ class AuthMessagesServiceTest {
       AuthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
-        emptyArray(),
       )
 
     val (responseFuture, requestId) = sendTestMessage(chat, syncMessage = false, fakeRemote)

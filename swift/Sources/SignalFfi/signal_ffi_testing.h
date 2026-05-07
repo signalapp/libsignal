@@ -327,7 +327,7 @@ SignalFfiError *signal_testing_error_on_return_io(SignalCPromiseRawPointer *prom
 
 SignalFfiError *signal_testing_error_on_return_sync(const void **out, const void *_needs_cleanup);
 
-SignalFfiError *signal_testing_fake_chat_connection_create(SignalMutPointerFakeChatConnection *out, SignalConstPointerTokioAsyncContext tokio, SignalConstPointerFfiChatListenerStruct listener, const char *alerts_joined_by_newlines);
+SignalFfiError *signal_testing_fake_chat_connection_create(SignalMutPointerFakeChatConnection *out, SignalConstPointerTokioAsyncContext tokio, SignalConstPointerFfiChatListenerStruct listener, const char *grpc_overrides_joined_by_newlines, const char *alerts_joined_by_newlines);
 
 SignalFfiError *signal_testing_fake_chat_connection_create_provisioning(SignalMutPointerFakeChatConnection *out, SignalConstPointerTokioAsyncContext tokio, SignalConstPointerFfiProvisioningListenerStruct listener);
 

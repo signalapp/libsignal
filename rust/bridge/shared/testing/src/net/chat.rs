@@ -73,13 +73,18 @@ async fn TESTING_FakeChatServer_GetNextRemote(server: &FakeChatServer) -> FakeCh
 fn TESTING_FakeChatConnection_Create(
     tokio: &TokioAsyncContext,
     listener: Box<dyn ChatListener>,
+    grpc_overrides_joined_by_newlines: String,
     alerts_joined_by_newlines: String,
 ) -> FakeChatConnection {
     // "".split_terminator(...) produces [], while normal split() produces [""].
+    // Leaking is unfortunate, but more expedient than mapping to remote config keys or similar.
+    let grpc_overrides = String::leak(grpc_overrides_joined_by_newlines).split_terminator('\n');
     let alerts = alerts_joined_by_newlines.split_terminator('\n');
+
     let (chat, remote) = libsignal_bridge_types::net::chat::FakeChatConnection::new(
         tokio.handle(),
         listener.into_event_listener(),
+        grpc_overrides,
         alerts,
     );
     FakeChatConnection {
@@ -96,7 +101,8 @@ fn TESTING_FakeChatConnection_CreateProvisioning(
     let (chat, remote) = libsignal_bridge_types::net::chat::FakeChatConnection::new(
         tokio.handle(),
         listener.into_event_listener(),
-        vec![],
+        [],
+        [],
     );
     FakeChatConnection {
         chat: Some(chat).into(),

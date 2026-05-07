@@ -554,6 +554,7 @@ mod test {
                     tokio::runtime::Handle::current(),
                     DropOnDisconnect::new(on_disconnect).into_listener(),
                     [],
+                    [],
                 );
                 fake_chat_tx.send(fake_remote).unwrap();
                 Ok(Unauth(fake_chat))

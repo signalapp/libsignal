@@ -203,12 +203,15 @@ export class UnauthenticatedChatConnection implements ChatConnection {
    *
    * @param asyncContext the async runtime to use
    * @param listener the listener to send events to
+   * @param grpcOverrides gRPC method names to prefer for typed APIs that have both WS and gRPC
+   * implementations.
    * @returns an {@link UnauthenticatedChatConnection} and handle for the remote
    * end of the fake connection.
    */
   public static fakeConnect(
     asyncContext: TokioAsyncContext,
-    listener: ChatServiceListener
+    listener: ChatServiceListener,
+    grpcOverrides?: ReadonlyArray<string>
   ): [UnauthenticatedChatConnection, FakeChatRemote] {
     const nativeChatListener = makeNativeChatListener(asyncContext, listener);
 
@@ -216,6 +219,7 @@ export class UnauthenticatedChatConnection implements ChatConnection {
       Native.TESTING_FakeChatConnection_Create(
         asyncContext,
         new WeakListenerWrapper(nativeChatListener),
+        grpcOverrides?.join('\n') ?? '',
         ''
       )
     );
@@ -319,13 +323,16 @@ export class AuthenticatedChatConnection implements ChatConnection {
    *
    * @param asyncContext the async runtime to use
    * @param listener the listener to send events to
+   * @param grpcOverrides gRPC method names to prefer for typed APIs that have both WS and gRPC
+   * implementations.
    * @param alerts alerts to send immediately upon connect
-   * @returns an {@link AuthenticatedChatConnection} and handle for the remote
-   * end of the fake connection.
+   * @returns an {@link AuthenticatedChatConnection} and handle for the remote end of the fake
+   * connection.
    */
   public static fakeConnect(
     asyncContext: TokioAsyncContext,
     listener: ChatServiceListener,
+    grpcOverrides?: ReadonlyArray<string>,
     alerts?: ReadonlyArray<string>
   ): [AuthenticatedChatConnection, FakeChatRemote] {
     const nativeChatListener = makeNativeChatListener(asyncContext, listener);
@@ -334,6 +341,7 @@ export class AuthenticatedChatConnection implements ChatConnection {
       Native.TESTING_FakeChatConnection_Create(
         asyncContext,
         new WeakListenerWrapper(nativeChatListener),
+        grpcOverrides?.join('\n') ?? '',
         alerts?.join('\n') ?? ''
       )
     );

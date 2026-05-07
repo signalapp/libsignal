@@ -2,6 +2,8 @@
 // Copyright 2025 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::future::Future;
 use std::marker::PhantomData;
@@ -16,7 +18,9 @@ use pin_project::pin_project;
 use prost::Message;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::chat::{ChatConnection, ConnectionInfo, MessageProto, RequestProto, ResponseProto, ws};
+use crate::chat::{
+    ChatConnection, ConnectionInfo, GrpcOverride, MessageProto, RequestProto, ResponseProto, ws,
+};
 use crate::connect_state::RouteInfo;
 use crate::env::ALERT_HEADER_NAME;
 
@@ -44,6 +48,7 @@ impl ChatConnection {
     pub fn new_fake<'a>(
         tokio_runtime: tokio::runtime::Handle,
         listener: ws::EventListener,
+        grpc_overrides: impl IntoIterator<Item = &'static str>,
         alerts: impl IntoIterator<Item = &'a str>,
     ) -> (Self, FakeChatRemote) {
         let (tx_to_local, rx_from_remote) = tokio::sync::mpsc::unbounded_channel();
@@ -102,7 +107,11 @@ impl ChatConnection {
                 listener,
             ),
             connection_info,
-            grpc_overrides: Default::default(),
+            grpc_overrides: HashMap::from_iter(
+                grpc_overrides
+                    .into_iter()
+                    .map(|api| (api, GrpcOverride::UseGrpc)),
+            ),
             // This isn't perfect, but without it we can't test APIs that rely on knowing the self
             // ACI, so it's better that we set it to *something*.
             self_aci: Some(libsignal_core::Aci::from_uuid_bytes([0xff; 16])),
