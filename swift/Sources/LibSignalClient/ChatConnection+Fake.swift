@@ -274,6 +274,67 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
         }
     }
 
+    func getNextIncomingGrpcRequest() async throws -> (ChatRequest.InternalRequest, UInt64) {
+        while true {
+            let request = try await self.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
+                withNativeHandle { handle in
+                    signal_testing_fake_chat_remote_end_receive_incoming_grpc_request(
+                        promise,
+                        asyncContext.const(),
+                        handle.const()
+                    )
+                }
+            }
+            guard request.present else {
+                continue
+            }
+
+            let httpRequest = ChatRequest.InternalRequest(owned: NonNull(request.first)!)
+            let requestId = request.second
+
+            return (httpRequest, requestId)
+        }
+    }
+
+    func sendGrpcResponse(requestId: UInt64, _ response: ChatResponse) async throws {
+        let fakeResponse = FakeChatResponse(requestId: requestId, response)
+        _ = try await self.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
+            self.withNativeHandle { nativeHandle in
+                fakeResponse.withNativeHandle { response in
+                    signal_testing_fake_chat_remote_end_send_server_grpc_response(
+                        promise,
+                        asyncContext.const(),
+                        nativeHandle.const(),
+                        response.const()
+                    )
+                }
+            }
+        }
+    }
+
+    static func encodeSingleGrpcMessage(_ name: String, json: NSDictionary) -> Data {
+        let message = String(data: try! JSONSerialization.data(withJSONObject: json), encoding: .utf8)
+        var result = failOnError {
+            try invokeFnReturningData {
+                signal_testing_fake_chat_remote_end_json_to_binproto($0, name, message)
+            }
+        }
+        let header = failOnError {
+            try invokeFnReturningData {
+                signal_testing_fake_chat_remote_end_grpc_frame_for_message_length($0, UInt32(result.count))
+            }
+        }
+        result.insert(contentsOf: header, at: 0)
+        return result
+    }
+
+    func sendGrpcResponse(requestId: UInt64, name: String, json: NSDictionary) async throws {
+        try await sendGrpcResponse(
+            requestId: requestId,
+            ChatResponse(status: 200, body: Self.encodeSingleGrpcMessage(name, json: json))
+        )
+    }
+
     func injectServerResponse(base64: String) {
         self.injectServerResponse(Data(base64Encoded: base64)!)
     }
