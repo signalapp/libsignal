@@ -1245,8 +1245,6 @@ internal object Native {
   public external fun SignalMessage_GetSerialized(obj: ObjectHandle): ByteArray
   @JvmStatic @Throws(Exception::class)
   public external fun SignalMessage_New(messageVersion: Int, macKey: ByteArray, senderRatchetKey: ObjectHandle, counter: Int, previousCounter: Int, ciphertext: ByteArray, senderIdentityKey: ObjectHandle, receiverIdentityKey: ObjectHandle, pqRatchet: ByteArray): ObjectHandle
-  @JvmStatic @Throws(Exception::class)
-  public external fun SignalMessage_VerifyMac(msg: ObjectHandle, senderIdentityKey: ObjectHandle, receiverIdentityKey: ObjectHandle, macKey: ByteArray): Boolean
 
   @JvmStatic @Throws(Exception::class)
   public external fun SignedPreKeyRecord_Deserialize(data: ByteArray): ObjectHandle

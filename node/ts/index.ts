@@ -411,19 +411,6 @@ export class SignalMessage {
   serialize(): Uint8Array<ArrayBuffer> {
     return Native.SignalMessage_GetSerialized(this);
   }
-
-  verifyMac(
-    senderIdentityKey: PublicKey,
-    recevierIdentityKey: PublicKey,
-    macKey: Uint8Array<ArrayBuffer>
-  ): boolean {
-    return Native.SignalMessage_VerifyMac(
-      this,
-      senderIdentityKey,
-      recevierIdentityKey,
-      macKey
-    );
-  }
 }
 
 export class PreKeySignalMessage {

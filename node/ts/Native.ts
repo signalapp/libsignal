@@ -192,7 +192,6 @@ type NativeFunctions = {
   SignalMessage_GetMessageVersion: (obj: Wrapper<SignalMessage>) => number;
   SignalMessage_GetPqRatchet: (msg: Wrapper<SignalMessage>) => Uint8Array<ArrayBuffer>;
   SignalMessage_New: (messageVersion: number, macKey: Uint8Array<ArrayBuffer>, senderRatchetKey: Wrapper<PublicKey>, counter: number, previousCounter: number, ciphertext: Uint8Array<ArrayBuffer>, senderIdentityKey: Wrapper<PublicKey>, receiverIdentityKey: Wrapper<PublicKey>, pqRatchet: Uint8Array<ArrayBuffer>) => SignalMessage;
-  SignalMessage_VerifyMac: (msg: Wrapper<SignalMessage>, senderIdentityKey: Wrapper<PublicKey>, receiverIdentityKey: Wrapper<PublicKey>, macKey: Uint8Array<ArrayBuffer>) => boolean;
   PreKeySignalMessage_New: (messageVersion: number, registrationId: number, preKeyId: number | null, signedPreKeyId: number, baseKey: Wrapper<PublicKey>, identityKey: Wrapper<PublicKey>, signalMessage: Wrapper<SignalMessage>) => PreKeySignalMessage;
   PreKeySignalMessage_Deserialize: (data: Uint8Array<ArrayBuffer>) => PreKeySignalMessage;
   PreKeySignalMessage_Serialize: (obj: Wrapper<PreKeySignalMessage>) => Uint8Array<ArrayBuffer>;
@@ -762,7 +761,6 @@ const { registerErrors,
   SignalMessage_GetMessageVersion,
   SignalMessage_GetPqRatchet,
   SignalMessage_New,
-  SignalMessage_VerifyMac,
   PreKeySignalMessage_New,
   PreKeySignalMessage_Deserialize,
   PreKeySignalMessage_Serialize,
@@ -1334,7 +1332,6 @@ export { registerErrors,
   SignalMessage_GetMessageVersion,
   SignalMessage_GetPqRatchet,
   SignalMessage_New,
-  SignalMessage_VerifyMac,
   PreKeySignalMessage_New,
   PreKeySignalMessage_Deserialize,
   PreKeySignalMessage_Serialize,

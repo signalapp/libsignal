@@ -157,7 +157,7 @@ impl SignalMessage {
         &self.ciphertext
     }
 
-    pub fn verify_mac(
+    pub(crate) fn verify_mac(
         &self,
         sender_identity_key: &IdentityKey,
         receiver_identity_key: &IdentityKey,

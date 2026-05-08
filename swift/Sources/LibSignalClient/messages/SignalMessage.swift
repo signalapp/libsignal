@@ -71,29 +71,6 @@ public class SignalMessage: NativeHandleOwner<SignalMutPointerSignalMessage> {
             }
         }
     }
-
-    public func verifyMac<Bytes: ContiguousBytes>(
-        sender: PublicKey,
-        receiver: PublicKey,
-        macKey: Bytes
-    ) throws -> Bool {
-        return try withAllBorrowed(
-            self,
-            sender,
-            receiver,
-            .bytes(macKey)
-        ) { messageHandle, senderHandle, receiverHandle, macKey in
-            try invokeFnReturningBool {
-                signal_message_verify_mac(
-                    $0,
-                    messageHandle.const(),
-                    senderHandle.const(),
-                    receiverHandle.const(),
-                    macKey
-                )
-            }
-        }
-    }
 }
 
 extension SignalMutPointerSignalMessage: SignalMutPointer {

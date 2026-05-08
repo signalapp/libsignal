@@ -372,20 +372,6 @@ fn SignalMessage_New(
     )
 }
 
-#[bridge_fn(ffi = "message_verify_mac")]
-fn SignalMessage_VerifyMac(
-    msg: &SignalMessage,
-    sender_identity_key: &PublicKey,
-    receiver_identity_key: &PublicKey,
-    mac_key: &[u8],
-) -> Result<bool> {
-    msg.verify_mac(
-        &IdentityKey::new(*sender_identity_key),
-        &IdentityKey::new(*receiver_identity_key),
-        mac_key,
-    )
-}
-
 #[bridge_fn(ffi = "message_get_sender_ratchet_key", node = false)]
 fn SignalMessage_GetSenderRatchetKey(m: &SignalMessage) -> PublicKey {
     *m.sender_ratchet_key()
