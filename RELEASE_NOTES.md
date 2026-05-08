@@ -1,5 +1,2 @@
-v0.94.0
+v0.94.1
 
-- keytrans: Detect version changes sooner
-- Expose PQ session archiving ratio API
-- Remove unused SignalMessage.verifyMac function
