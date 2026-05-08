@@ -659,6 +659,21 @@ typedef struct {
 } SignalBorrowedSliceOfConstPointerCiphertextMessage;
 
 /**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalOwnedBuffer *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseOwnedBufferOfc_uchar;
+
+/**
  * A wrapper type for raw UUIDs, because C treats arrays specially in argument position.
  */
 typedef struct {
@@ -1746,6 +1761,8 @@ SignalFfiError *signal_authenticated_chat_connection_send(SignalCPromiseFfiChatR
 
 SignalFfiError *signal_authenticated_chat_connection_send_message(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, const SignalServiceIdFixedWidthBinaryBytes *destination, uint64_t timestamp, SignalBorrowedSliceOfu32 device_ids, SignalBorrowedSliceOfu32 registration_ids, SignalBorrowedSliceOfConstPointerCiphertextMessage contents, bool online_only, bool is_urgent);
 
+SignalFfiError *signal_authenticated_chat_connection_send_raw_grpc(SignalCPromiseOwnedBufferOfc_uchar *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, const char *service, const char *method, SignalBorrowedBuffer payload);
+
 SignalFfiError *signal_authenticated_chat_connection_send_sync_message(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, uint64_t timestamp, SignalBorrowedSliceOfu32 device_ids, SignalBorrowedSliceOfu32 registration_ids, SignalBorrowedSliceOfConstPointerCiphertextMessage contents, bool is_urgent);
 
 SignalFfiError *signal_backup_auth_credential_check_valid_contents(SignalBorrowedBuffer params_bytes);
@@ -2792,6 +2809,8 @@ SignalFfiError *signal_unauthenticated_chat_connection_send(SignalCPromiseFfiCha
 SignalFfiError *signal_unauthenticated_chat_connection_send_message(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, const SignalServiceIdFixedWidthBinaryBytes *destination, uint64_t timestamp, SignalBorrowedSliceOfu32 device_ids, SignalBorrowedSliceOfu32 registration_ids, SignalBorrowedSliceOfBuffers contents, uint8_t auth_kind, SignalOptionalBorrowedSliceOfc_uchar auth_buffer, bool online_only, bool is_urgent);
 
 SignalFfiError *signal_unauthenticated_chat_connection_send_multi_recipient_message(SignalCPromiseOwnedBufferOfServiceIdFixedWidthBinaryBytes *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, SignalBorrowedBuffer payload, uint64_t timestamp, SignalBorrowedBuffer auth, bool online_only, bool is_urgent);
+
+SignalFfiError *signal_unauthenticated_chat_connection_send_raw_grpc(SignalCPromiseOwnedBufferOfc_uchar *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat, const char *service, const char *method, SignalBorrowedBuffer payload);
 
 SignalFfiError *signal_unidentified_sender_message_content_deserialize(SignalMutPointerUnidentifiedSenderMessageContent *out, SignalBorrowedBuffer data);
 

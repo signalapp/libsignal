@@ -126,6 +126,27 @@ async fn UnauthenticatedChatConnection_send(
 }
 
 #[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_send_raw_grpc(
+    chat: &UnauthenticatedChatConnection,
+    service: String,
+    method: String,
+    payload: Box<[u8]>,
+) -> Result<Vec<u8>, RequestError<Infallible>> {
+    chat.as_typed(|chat| {
+        Box::pin(libsignal_net_chat::grpc::raw_grpc(
+            "unauth",
+            chat.0
+                .shared_h2_connection()
+                .expect("requires an H2 connection"),
+            &service,
+            &method,
+            payload.into_vec(),
+        ))
+    })
+    .await
+}
+
+#[bridge_io(TokioAsyncContext)]
 async fn UnauthenticatedChatConnection_disconnect(chat: &UnauthenticatedChatConnection) {
     chat.disconnect().await
 }
@@ -304,6 +325,27 @@ async fn AuthenticatedChatConnection_send(
     };
     chat.send(request, Duration::from_millis(timeout_millis.into()))
         .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn AuthenticatedChatConnection_send_raw_grpc(
+    chat: &AuthenticatedChatConnection,
+    service: String,
+    method: String,
+    payload: Box<[u8]>,
+) -> Result<Vec<u8>, RequestError<Infallible>> {
+    chat.as_typed(|chat| {
+        Box::pin(libsignal_net_chat::grpc::raw_grpc(
+            "auth",
+            chat.0
+                .shared_h2_connection()
+                .expect("requires an H2 connection"),
+            &service,
+            &method,
+            payload.into_vec(),
+        ))
+    })
+    .await
 }
 
 #[bridge_io(TokioAsyncContext)]

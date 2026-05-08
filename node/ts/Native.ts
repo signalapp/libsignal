@@ -475,6 +475,7 @@ type NativeFunctions = {
   UnauthenticatedChatConnection_connect: (asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, languages: string[]) => CancellablePromise<UnauthenticatedChatConnection>;
   UnauthenticatedChatConnection_init_listener: (chat: Wrapper<UnauthenticatedChatConnection>, listener: ChatListener) => void;
   UnauthenticatedChatConnection_send: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number) => CancellablePromise<ChatResponse>;
+  UnauthenticatedChatConnection_send_raw_grpc: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, service: string, method: string, payload: Uint8Array<ArrayBuffer>) => CancellablePromise<Uint8Array<ArrayBuffer>>;
   UnauthenticatedChatConnection_disconnect: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>) => CancellablePromise<void>;
   UnauthenticatedChatConnection_info: (chat: Wrapper<UnauthenticatedChatConnection>) => ChatConnectionInfo;
   UnauthenticatedChatConnection_look_up_username_hash: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, hash: Uint8Array<ArrayBuffer>) => CancellablePromise<Uuid | null>;
@@ -485,6 +486,7 @@ type NativeFunctions = {
   AuthenticatedChatConnection_connect: (asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, receiveStories: boolean, languages: string[]) => CancellablePromise<AuthenticatedChatConnection>;
   AuthenticatedChatConnection_init_listener: (chat: Wrapper<AuthenticatedChatConnection>, listener: ChatListener) => void;
   AuthenticatedChatConnection_send: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number) => CancellablePromise<ChatResponse>;
+  AuthenticatedChatConnection_send_raw_grpc: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>, service: string, method: string, payload: Uint8Array<ArrayBuffer>) => CancellablePromise<Uint8Array<ArrayBuffer>>;
   AuthenticatedChatConnection_disconnect: (asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>) => CancellablePromise<void>;
   AuthenticatedChatConnection_info: (chat: Wrapper<AuthenticatedChatConnection>) => ChatConnectionInfo;
   ServerMessageAck_SendStatus: (ack: Wrapper<ServerMessageAck>, status: number) => void;
@@ -1050,6 +1052,7 @@ const { registerErrors,
   UnauthenticatedChatConnection_connect,
   UnauthenticatedChatConnection_init_listener,
   UnauthenticatedChatConnection_send,
+  UnauthenticatedChatConnection_send_raw_grpc,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_info,
   UnauthenticatedChatConnection_look_up_username_hash,
@@ -1060,6 +1063,7 @@ const { registerErrors,
   AuthenticatedChatConnection_connect,
   AuthenticatedChatConnection_init_listener,
   AuthenticatedChatConnection_send,
+  AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_disconnect,
   AuthenticatedChatConnection_info,
   ServerMessageAck_SendStatus,
@@ -1627,6 +1631,7 @@ export { registerErrors,
   UnauthenticatedChatConnection_connect,
   UnauthenticatedChatConnection_init_listener,
   UnauthenticatedChatConnection_send,
+  UnauthenticatedChatConnection_send_raw_grpc,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_info,
   UnauthenticatedChatConnection_look_up_username_hash,
@@ -1637,6 +1642,7 @@ export { registerErrors,
   AuthenticatedChatConnection_connect,
   AuthenticatedChatConnection_init_listener,
   AuthenticatedChatConnection_send,
+  AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_disconnect,
   AuthenticatedChatConnection_info,
   ServerMessageAck_SendStatus,

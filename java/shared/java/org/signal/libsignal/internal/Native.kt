@@ -217,6 +217,8 @@ internal object Native {
   @JvmStatic
   public external fun AuthenticatedChatConnection_send_message_java(asyncRuntime: ObjectHandle, chat: ObjectHandle, destination: ByteArray, timestamp: Long, deviceIds: IntArray, registrationIds: IntArray, contents: Array<Object>, onlineOnly: Boolean, isUrgent: Boolean): CompletableFuture<Void?>
   @JvmStatic
+  public external fun AuthenticatedChatConnection_send_raw_grpc(asyncRuntime: ObjectHandle, chat: ObjectHandle, service: String, method: String, payload: ByteArray): CompletableFuture<ByteArray>
+  @JvmStatic
   public external fun AuthenticatedChatConnection_send_sync_message_java(asyncRuntime: ObjectHandle, chat: ObjectHandle, timestamp: Long, deviceIds: IntArray, registrationIds: IntArray, contents: Array<Object>, isUrgent: Boolean): CompletableFuture<Void?>
 
   @JvmStatic @Throws(Exception::class)
@@ -1307,6 +1309,8 @@ internal object Native {
   public external fun UnauthenticatedChatConnection_send_message(asyncRuntime: ObjectHandle, chat: ObjectHandle, destination: ByteArray, timestamp: Long, deviceIds: IntArray, registrationIds: IntArray, contents: Array<ByteArray>, authKind: Int, authBuffer: ByteArray?, onlineOnly: Boolean, isUrgent: Boolean): CompletableFuture<Void?>
   @JvmStatic
   public external fun UnauthenticatedChatConnection_send_multi_recipient_message(asyncRuntime: ObjectHandle, chat: ObjectHandle, payload: ByteArray, timestamp: Long, auth: ByteArray?, onlineOnly: Boolean, isUrgent: Boolean): CompletableFuture<Array<Object>>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_send_raw_grpc(asyncRuntime: ObjectHandle, chat: ObjectHandle, service: String, method: String, payload: ByteArray): CompletableFuture<ByteArray>
 
   @JvmStatic @Throws(Exception::class)
   public external fun UnidentifiedSenderMessageContent_Deserialize(data: ByteArray): ObjectHandle
