@@ -812,7 +812,7 @@ for (const testCase of sessionVersionTestCases) {
       assert(session.serialize().length > 0);
       assert.deepEqual(session.localRegistrationId(), 5);
       assert.deepEqual(session.remoteRegistrationId(), 5);
-      assert(session.hasCurrentState());
+      assert(session.hasCurrentState(1.0));
       assert(
         !session.currentRatchetKeyMatches(
           SignalClient.PrivateKey.generate().getPublicKey()
@@ -820,7 +820,7 @@ for (const testCase of sessionVersionTestCases) {
       );
 
       session.archiveCurrentState();
-      assert(!session.hasCurrentState());
+      assert(!session.hasCurrentState(1.0));
       assert(
         !session.currentRatchetKeyMatches(
           SignalClient.PrivateKey.generate().getPublicKey()
@@ -968,8 +968,12 @@ for (const testCase of sessionVersionTestCases) {
       );
 
       const initialSession = await aliceStores.session.getSession(bAddress);
-      assert.isTrue(initialSession?.hasCurrentState(new Date('2020-01-01')));
-      assert.isFalse(initialSession?.hasCurrentState(new Date('2023-01-01')));
+      assert.isTrue(
+        initialSession?.hasCurrentState(1.0, new Date('2020-01-01'))
+      );
+      assert.isFalse(
+        initialSession?.hasCurrentState(1.0, new Date('2023-01-01'))
+      );
 
       const aMessage = Buffer.from('Greetings hoo-man', 'utf8');
       const aCiphertext = await SignalClient.signalEncrypt(
@@ -987,8 +991,12 @@ for (const testCase of sessionVersionTestCases) {
       );
 
       const updatedSession = await aliceStores.session.getSession(bAddress);
-      assert.isTrue(updatedSession?.hasCurrentState(new Date('2020-01-01')));
-      assert.isFalse(updatedSession?.hasCurrentState(new Date('2023-01-01')));
+      assert.isTrue(
+        updatedSession?.hasCurrentState(1.0, new Date('2020-01-01'))
+      );
+      assert.isFalse(
+        updatedSession?.hasCurrentState(1.0, new Date('2023-01-01'))
+      );
 
       await assert.isRejected(
         SignalClient.signalEncrypt(

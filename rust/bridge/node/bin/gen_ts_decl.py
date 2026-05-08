@@ -70,6 +70,7 @@ def translate_to_ts(typ: str) -> str:
         'u16': 'number',
         'u32': 'number',
         'u64': 'bigint',
+        'f64': 'number',
         'bool': 'boolean',
         'String': 'string',
         '&str': 'string',

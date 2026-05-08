@@ -518,8 +518,12 @@ export class SessionRecord {
    *
    * If there is no current session, returns false.
    */
-  hasCurrentState(now: Date = new Date()): boolean {
-    return Native.SessionRecord_HasUsableSenderChain(this, now.getTime());
+  hasCurrentState(requirePqRatio: number, now: Date = new Date()): boolean {
+    return Native.SessionRecord_HasUsableSenderChain(
+      this,
+      requirePqRatio,
+      now.getTime()
+    );
   }
 
   currentRatchetKeyMatches(key: PublicKey): boolean {

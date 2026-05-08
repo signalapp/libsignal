@@ -20,7 +20,7 @@ pub use jni::objects::{
     JValueOwned, ReleaseMode,
 };
 use jni::objects::{GlobalRef, JThrowable};
-pub use jni::sys::{jboolean, jint, jlong};
+pub use jni::sys::{jboolean, jdouble, jint, jlong};
 use libsignal_account_keys::Error as PinError;
 use libsignal_core::try_scoped;
 use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSendError};

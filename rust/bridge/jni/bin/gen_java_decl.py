@@ -82,6 +82,7 @@ def translate_to_java(typ: str) -> Tuple[str, bool]:
         'Nullable<ObjectHandle>': 'ObjectHandle',
         'jint': 'Int',
         'jlong': 'Long',
+        'jdouble': 'Double',
         'jboolean': 'Boolean',
         'JObject': 'Object',
         'JClass': 'Class<*>',

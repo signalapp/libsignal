@@ -359,6 +359,13 @@ impl SimpleArgTypeInfo for u64 {
     }
 }
 
+impl SimpleArgTypeInfo for f64 {
+    type ArgType = JsNumber;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        Ok(foreign.value(cx))
+    }
+}
+
 impl SimpleArgTypeInfo for String {
     type ArgType = JsString;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {

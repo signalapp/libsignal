@@ -239,6 +239,13 @@ impl SimpleArgTypeInfo<'_> for u64 {
     }
 }
 
+impl SimpleArgTypeInfo<'_> for f64 {
+    type ArgType = jdouble;
+    fn convert_from(_env: &mut JNIEnv, foreign: &jdouble) -> Result<Self, BridgeLayerError> {
+        Ok(*foreign)
+    }
+}
+
 /// Supports values `0..=Long.MAX_VALUE`.
 ///
 /// Negative `long` values are *not* reinterpreted as large `u64` values.
@@ -2676,6 +2683,9 @@ macro_rules! jni_arg_type {
     };
     (u64) => {
         ::jni::sys::jlong
+    };
+    (f64) => {
+        ::jni::sys::jdouble
     };
     (bool) => {
         ::jni::sys::jboolean

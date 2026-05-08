@@ -981,6 +981,39 @@ pub fn extract_decryption_error_message_from_serialized_content(
         .and_then(DecryptionErrorMessage::try_from)
 }
 
+/// A consistent way to determine, given a session that is not PQ
+/// and a ratio of sessions which if not PQ should be archived,
+/// which sessions to use (returning true) and which to archive
+/// (returning false).  The session key's first 4 bytes are used as
+/// a uniformly random big-endian integer as part of this calculation,
+/// which works well for a session's `alice_base_key()`.
+pub fn should_use_nonpq_session(require_pq_ratio: f64, session_key: &[u8]) -> bool {
+    assert!(session_key.len() >= 4);
+    if require_pq_ratio >= 1.0 {
+        return false;
+    } else if require_pq_ratio <= 0.0 {
+        return true;
+    }
+    // We have a chain, but it's not a PQ chain.
+    // We want to deterministically decide whether a session should be used
+    // based on a ratio between 0 and 1.  We also want the decision as to
+    // whether to use the session to be the same for Alice and Bob.
+    // The session key is a x25519 key, from which we pull out 4 bytes
+    // we expect to be relatively uniform.
+    let sess_u32 = u32::from_be_bytes(
+        (&session_key[..4])
+            .try_into()
+            .expect("should have 32 bytes"),
+    );
+    // We then convert the require_pq_ratio to a u32 that is 0xFF... for 1,
+    // 0x00... for 0, and uniform in between for other values.
+    #[allow(clippy::cast_possible_truncation)]
+    let ratio_u32 = ((u32::MAX as f64) * require_pq_ratio) as u32;
+    // Finally, we compare the two, and we only expire the existing session if
+    // its key is smaller than the ratio key.
+    ratio_u32 <= sess_u32
+}
+
 #[cfg(test)]
 mod tests {
     use rand::rngs::OsRng;
@@ -1359,5 +1392,24 @@ mod tests {
             ),
             Err(SignalProtocolError::InvalidArgument(_))
         ));
+    }
+
+    #[test]
+    fn test_should_use_nonpq_session() {
+        let max = b"\xff\xff\xff\xff";
+        let min = b"\x00\x00\x00\x00";
+        let mid = b"\x7f\xff\xff\xff";
+        assert!(!should_use_nonpq_session(1.0, max));
+        assert!(!should_use_nonpq_session(1.0, min));
+        assert!(should_use_nonpq_session(0.0, max));
+        assert!(should_use_nonpq_session(0.0, min));
+
+        assert!(!should_use_nonpq_session(0.75, min));
+        assert!(!should_use_nonpq_session(0.75, mid));
+        assert!(should_use_nonpq_session(0.75, max));
+
+        assert!(!should_use_nonpq_session(0.25, min));
+        assert!(should_use_nonpq_session(0.25, mid));
+        assert!(should_use_nonpq_session(0.25, max));
     }
 }

@@ -1429,6 +1429,7 @@ trivial!(u64);
 trivial!(i64);
 trivial!(usize);
 trivial!(bool);
+trivial!(f64);
 
 /// Syntactically translates `bridge_fn` argument types (and callback result types) to FFI types for
 /// `cbindgen`.
@@ -1444,6 +1445,7 @@ macro_rules! ffi_arg_type {
     (i32) => (i32);
     (u32) => (u32);
     (u64) => (u64);
+    (f64) => (f64);
     (Option<u32>) => (u32);
     (usize) => (usize);
     (bool) => (bool);
@@ -1549,6 +1551,7 @@ macro_rules! ffi_result_type {
     (Option<u32>) => (u32);
     (u64) => (u64);
     (i64) => (i64);
+    (f64) => (f64);
     (Option<u64>) => (u64);
     (bool) => (bool);
     (&str) => (*const std::ffi::c_char);

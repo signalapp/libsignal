@@ -2,6 +2,7 @@ disabled_rules:
 - closure_parameter_position  # swift-format takes precedence here
 - cyclomatic_complexity
 - empty_enum_arguments
+- file_length
 - force_try
 - function_body_length
 - function_parameter_count

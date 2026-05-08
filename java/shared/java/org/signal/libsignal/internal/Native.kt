@@ -1207,7 +1207,7 @@ internal object Native {
   @JvmStatic @Throws(Exception::class)
   public external fun SessionRecord_GetSessionVersion(s: ObjectHandle): Int
   @JvmStatic @Throws(Exception::class)
-  public external fun SessionRecord_HasUsableSenderChain(s: ObjectHandle, now: Long): Boolean
+  public external fun SessionRecord_HasUsableSenderChain(s: ObjectHandle, requirePqRatio: Double, now: Long): Boolean
   @JvmStatic
   public external fun SessionRecord_NewFresh(): ObjectHandle
   @JvmStatic @Throws(Exception::class)

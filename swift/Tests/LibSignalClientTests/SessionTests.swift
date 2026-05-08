@@ -188,8 +188,15 @@ class SessionTests: TestCaseBase {
         )
 
         let initial_session = try! alice_store.loadSession(for: bob_address, context: NullContext())!
-        XCTAssertTrue(initial_session.hasCurrentState(now: Date(timeIntervalSinceReferenceDate: 0)))
-        XCTAssertFalse(initial_session.hasCurrentState(now: Date(timeIntervalSinceReferenceDate: 60 * 60 * 24 * 90)))
+        XCTAssertTrue(
+            initial_session.hasCurrentState(requirePqRatio: 1.0, now: Date(timeIntervalSinceReferenceDate: 0))
+        )
+        XCTAssertFalse(
+            initial_session.hasCurrentState(
+                requirePqRatio: 1.0,
+                now: Date(timeIntervalSinceReferenceDate: 60 * 60 * 24 * 90)
+            )
+        )
 
         // Alice sends a message:
         let ptext_a: [UInt8] = [8, 6, 7, 5, 3, 0, 9]
@@ -207,8 +214,15 @@ class SessionTests: TestCaseBase {
         XCTAssertEqual(ctext_a.messageType, .preKey)
 
         let updated_session = try! alice_store.loadSession(for: bob_address, context: NullContext())!
-        XCTAssertTrue(updated_session.hasCurrentState(now: Date(timeIntervalSinceReferenceDate: 0)))
-        XCTAssertFalse(updated_session.hasCurrentState(now: Date(timeIntervalSinceReferenceDate: 60 * 60 * 24 * 90)))
+        XCTAssertTrue(
+            updated_session.hasCurrentState(requirePqRatio: 1.0, now: Date(timeIntervalSinceReferenceDate: 0))
+        )
+        XCTAssertFalse(
+            updated_session.hasCurrentState(
+                requirePqRatio: 1.0,
+                now: Date(timeIntervalSinceReferenceDate: 60 * 60 * 24 * 90)
+            )
+        )
 
         XCTAssertThrowsError(
             try signalEncrypt(
@@ -502,14 +516,14 @@ class SessionTests: TestCaseBase {
 
         let session: SessionRecord! = try! alice_store.loadSession(for: bob_address, context: NullContext())
         XCTAssertNotNil(session)
-        XCTAssertTrue(session.hasCurrentState)
+        XCTAssertTrue(session.hasCurrentState(requirePqRatio: 1.0))
         XCTAssertFalse(try! session.currentRatchetKeyMatches(IdentityKeyPair.generate().publicKey))
         session.archiveCurrentState()
-        XCTAssertFalse(session.hasCurrentState)
+        XCTAssertFalse(session.hasCurrentState(requirePqRatio: 1.0))
         XCTAssertFalse(try! session.currentRatchetKeyMatches(IdentityKeyPair.generate().publicKey))
         // A redundant archive shouldn't break anything.
         session.archiveCurrentState()
-        XCTAssertFalse(session.hasCurrentState)
+        XCTAssertFalse(session.hasCurrentState(requirePqRatio: 1.0))
     }
 
     func testSealedSenderGroupCipher() throws {
@@ -953,7 +967,10 @@ private func initializeSessionsV4(
         context: NullContext()
     )
 
-    XCTAssertEqual(try! alice_store.loadSession(for: bob_address, context: NullContext())?.hasCurrentState, true)
+    XCTAssertEqual(
+        try! alice_store.loadSession(for: bob_address, context: NullContext())?.hasCurrentState(requirePqRatio: 1.0),
+        true
+    )
     XCTAssertEqual(
         try! alice_store.loadSession(for: bob_address, context: NullContext())?.remoteRegistrationId(),
         try! bob_store.localRegistrationId(context: NullContext())

@@ -2719,7 +2719,7 @@ SignalFfiError *signal_session_record_get_local_registration_id(uint32_t *out, S
 
 SignalFfiError *signal_session_record_get_remote_registration_id(uint32_t *out, SignalConstPointerSessionRecord obj);
 
-SignalFfiError *signal_session_record_has_usable_sender_chain(bool *out, SignalConstPointerSessionRecord s, uint64_t now);
+SignalFfiError *signal_session_record_has_usable_sender_chain(bool *out, SignalConstPointerSessionRecord s, double require_pq_ratio, uint64_t now);
 
 SignalFfiError *signal_session_record_serialize(SignalOwnedBuffer *out, SignalConstPointerSessionRecord obj);
 

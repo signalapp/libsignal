@@ -300,8 +300,8 @@ public class SessionBuilderTest {
       aliceSessionBuilder.process(bobPreKey, Instant.EPOCH);
 
       SessionRecord initialSession = aliceStore.loadSession(BOB_ADDRESS);
-      assertTrue(initialSession.hasSenderChain(Instant.EPOCH));
-      assertFalse(initialSession.hasSenderChain(Instant.EPOCH.plus(90, ChronoUnit.DAYS)));
+      assertTrue(initialSession.hasSenderChain(1.0, Instant.EPOCH));
+      assertFalse(initialSession.hasSenderChain(1.0, Instant.EPOCH.plus(90, ChronoUnit.DAYS)));
 
       String originalMessage = "Good, fast, cheap: pick two";
       SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
@@ -311,8 +311,8 @@ public class SessionBuilderTest {
       assertTrue(outgoingMessage.getType() == CiphertextMessage.PREKEY_TYPE);
 
       SessionRecord updatedSession = aliceStore.loadSession(BOB_ADDRESS);
-      assertTrue(updatedSession.hasSenderChain(Instant.EPOCH));
-      assertFalse(updatedSession.hasSenderChain(Instant.EPOCH.plus(90, ChronoUnit.DAYS)));
+      assertTrue(updatedSession.hasSenderChain(1.0, Instant.EPOCH));
+      assertFalse(updatedSession.hasSenderChain(1.0, Instant.EPOCH.plus(90, ChronoUnit.DAYS)));
 
       try {
         aliceSessionCipher.encrypt(
