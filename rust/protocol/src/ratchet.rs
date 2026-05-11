@@ -200,16 +200,19 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     //step 0: parameters
     let vk; //otpk_bob,i 
     let g = generator_g();
+    let k;
 
     // Optional Alice's eph key * Bob's otpk
     if let Some(their_one_time_prekey) = parameters.their_one_time_pre_key() {
         secrets
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
         let mut bytes = their_one_time_prekey.public_key_bytes().to_vec();
-        vk = RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
+        k = hash_generic_zp(their_one_time_prekey.public_key_bytes());
+        vk = g * k; //RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
     } else {
         let mut bytes = parameters.their_signed_pre_key().public_key_bytes().to_vec();
-        vk = RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
+        k = hash_generic_zp(parameters.their_signed_pre_key().public_key_bytes());
+        vk = g * k;//RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
     }
 
     // Uses Bob's Kyber prekey to perform key encapsulation (KEM)
@@ -374,14 +377,13 @@ pub(crate) fn initialize_bob_session(
                 .calculate_agreement(parameters.their_base_key())?,
         );
         kptr = our_one_time_pre_key_pair;
-        let mut bytes = our_one_time_pre_key_pair.public_key.public_key_bytes().to_vec();
-        vk = RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
-        k = hash_generic_zp(our_one_time_pre_key_pair.private_key.serialize().as_ref());
+        //let mut bytes = our_one_time_pre_key_pair.public_key.public_key_bytes().to_vec();
+        k = hash_generic_zp(our_one_time_pre_key_pair.public_key.public_key_bytes());
+        vk = g * k;
     } else {
-        let mut bytes = parameters.our_signed_pre_key_pair().public_key.public_key_bytes().to_vec();
-        vk = RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
-        k = hash_generic_zp(parameters.our_signed_pre_key_pair().private_key.serialize().as_ref());
-
+        //let mut bytes = parameters.our_signed_pre_key_pair().public_key.public_key_bytes().to_vec();
+        k = hash_generic_zp(parameters.our_signed_pre_key_pair().public_key.public_key_bytes());
+        vk = g * k; //is bob meant to use his private? but how will alice know?
 
     //      vk = their_one_time_prekey.public_key_bytes().to_vec();
     // } else {
@@ -439,6 +441,7 @@ pub(crate) fn initialize_bob_session(
         let computed_c = hash_fs(&vk, x, &h, &hprime, &eta, &etaprime);
 
         // abort if mismatch
+        log::info!("Bob computes c: {:?}, Alice's c: {:?}", computed_c, c);
         if c != computed_c {
             //panic!("abort");
             log::info!("THE C'S DIDNT MATCH FOR BOB, SHOULD HAVE ABORTED");
@@ -456,6 +459,20 @@ pub(crate) fn initialize_bob_session(
         let response =  (vk, x.clone(), vt, z, pi, c, computed_c); //(vk, x, vt, z, pi);
         bob_response = Some(bincode::serialize(&response).unwrap());
         log::info!("Bob's PVRF response: {:?}", bob_response);
+        log::info!("Bob's v {:?}", (v.compress().to_bytes()));
+        log::info!("Bob computes using Alice's illegal values: {:?}", ((their_vk * their_alpha) + (w * their_beta)).compress().to_bytes());
+        // g ^ a ^ k * Hi(g ^ k, x) ^ b ^ k
+        let v_from_raw_test = g * their_alpha * k + hash_i(&(g * k), x) * their_beta * k;
+        let v_from_higher_test = their_vk * their_alpha + w * their_beta;
+        log::info!("Bob computes using v from raw: {:?}", v_from_raw_test);
+        log::info!("compressed bob's v from raw: {:?}", v_from_raw_test.compress());
+        log::info!("bytes of bob's v from raw: {:?}", v_from_raw_test.compress().to_bytes());
+        log::info!("Bob computes using v using high level values: {:?}", v_from_higher_test);
+        log::info!("compressed bob's v from higher level: {:?}", v_from_higher_test.compress());
+        log::info!("bytes of bob's v from higher level: {:?}", v_from_higher_test.compress().to_bytes());
+
+        //turn their_secrets into a u8 arrray
+        //log::info!("Bob computes using Alice's illegal values but from raw: {:?}", ((g * their_alpha * k + hash_i(&temp_ref, their_secrets.) * their_beta * k)).compress().to_bytes());
         let example_decoded_bob_response: (RistrettoPoint, Vec<u8>, (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))), Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar)
          =   bincode::deserialize(
             bob_response.as_ref().unwrap()
