@@ -18,7 +18,8 @@ public data class UploadForm(
   public companion object {
     @JvmStatic
     @CalledFromNative
-    public fun fromNative(
+    @Suppress("UNCHECKED_CAST")
+    private fun fromNative(
       cdn: Int,
       key: String,
       headers: Array<*>,
