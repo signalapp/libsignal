@@ -146,14 +146,6 @@ bitflags! {
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 
-// pub struct VtsType {
-//     points: (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))),
-//     bytes_slice: Vec<u8>,
-//     bytes_vec: Vec<u8>,
-//     scalar1: Scalar,
-//     scalar2: Scalar,
-// }
-
 #[derive(Clone, Debug)]
 pub(crate) struct SessionState {
     session: SessionStructure,
@@ -171,7 +163,7 @@ impl SessionState {
         root_key: &RootKey,
         alice_base_key: &PublicKey,
         pq_ratchet_state: spqr::SerializedState,
-        sas: u32,
+        sas: Option<Vec<u8>>,
         vts: Option<Vec<u8>>,
         bob_response: Option<Vec<u8>>,
     ) -> Self {
@@ -191,7 +183,7 @@ impl SessionState {
                 local_registration_id: 0,
                 alice_base_key: alice_base_key.serialize().into_vec(),
                 pq_ratchet_state,
-                sas,
+                sas: sas.unwrap_or_default(),
                 vts: vts.unwrap_or_default(),
                 bob_response: bob_response.unwrap_or_default(),
             },
@@ -944,7 +936,7 @@ impl SessionRecord {
     ///realfunc
     pub fn get_vts(
             &self,
-    ) -> Result<(RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar)), RistrettoPoint, Vec<u8>, Scalar, Scalar), SignalProtocolError> {    
+    ) -> Result<(RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar)), RistrettoPoint, Vec<u8>, Scalar, Scalar, Vec<u8>), SignalProtocolError> {    
         Ok(
             bincode::deserialize(
         &self
@@ -964,7 +956,7 @@ impl SessionRecord {
     ///realfunc
     pub fn get_bob_response(
             &self,
-    ) -> Result<(RistrettoPoint, Vec<u8>, (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))), Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar), SignalProtocolError> {    
+    ) -> Result<(Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar), SignalProtocolError> {    
         Ok(
             bincode::deserialize(
         &self
@@ -984,7 +976,7 @@ impl SessionRecord {
     ///dummy func for now
     pub fn get_sas(
             &self,
-    ) -> Result<u32, SignalProtocolError> {
+    ) -> Result<Vec<u8>, SignalProtocolError> {
         Ok(self
             .session_state()
             .ok_or_else(|| {
@@ -993,7 +985,7 @@ impl SessionRecord {
                     "No current session".into(),
                 )
             })?
-            .session.sas)
+            .session.sas.clone())
     }
 
     pub fn get_kyber_ciphertext(&self) -> Result<Option<&Vec<u8>>, SignalProtocolError> {

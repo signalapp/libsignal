@@ -226,12 +226,12 @@ fn test_pvrf_mitm_sender_receive_step_resealing() -> TestResult {
 
 
             // prevent mitm using pvrf logic
-            let (_, _, (_, _, (_, (_, _))), bob_sas_bytes, (bob_w, bob_v), bob_c, bob_computed_c) = bobs_session_with_eve.get_bob_response()?;
+            let (bob_sas_bytes, (bob_w, bob_v), bob_c, bob_computed_c) = bobs_session_with_eve.get_bob_response()?;
 
-            let (_, _, (_, _, (_, (_, _))), eve_with_alice_sas_bytes, (w, v), c, computed_c) = eves_session_with_alice.get_bob_response()?;
+            let (eve_with_alice_sas_bytes, (w, v), c, computed_c) = eves_session_with_alice.get_bob_response()?;
 
             let alice_session_with_eve = alice_store.load_session(&eve_address).await?.expect("session found");
-            let (_, _, (_, (_, _)), vk, x, r1, r2) = alice_session_with_eve.get_vts()?;
+            let (_, _, (_, (_, _)), vk, x, r1, r2, a2e_contrib_salt) = alice_session_with_eve.get_vts()?;
             let (vk_compressed, w_compressed, v_compressed) = (vk.compress(), w.compress(), v.compress());
             let vk_bytes = vk_compressed.as_bytes();
             let x_bytes = x.as_slice();
@@ -248,7 +248,7 @@ fn test_pvrf_mitm_sender_receive_step_resealing() -> TestResult {
 
             //...but it must be true that alice matches with eve->alice and eve->bob matches with bob
             let eve_session_with_bob = eve_store.load_session(&bob_address).await?.expect("session found");
-            let (_, _, (_, (_, _)), vk, x, r1, r2) = eve_session_with_bob.get_vts()?;
+            let (_, _, (_, (_, _)), vk, x, r1, r2, e2b_contrib_salt) = eve_session_with_bob.get_vts()?;
             let (vk_compressed, w_compressed, v_compressed) = (vk.compress(), bob_w.compress(), bob_v.compress());
             let vk_bytes = vk_compressed.as_bytes();
             let x_bytes = x.as_slice();
@@ -485,11 +485,11 @@ fn test_pvrf_mitm_verify_step_forwarding() -> TestResult {
 
 
             // prevent mitm using pvrf logic
-            let (_, _, (_, _, (_, (_, _))), z, (w, v), c, computed_c) = bobs_session_with_eve.get_bob_response()?;
+            let (z, (w, v), c, computed_c) = bobs_session_with_eve.get_bob_response()?;
             let bob_sas_bytes = z;
 
             let alice_session_with_eve = alice_store.load_session(&eve_address).await?.expect("session found");
-            let (_, _, (_, (_, _)), vk, x, r1, r2) = alice_session_with_eve.get_vts()?;
+            let (_, _, (_, (_, _)), vk, x, r1, r2, a2e_contrib_salt) = alice_session_with_eve.get_vts()?;
             let (vk_compressed, w_compressed, v_compressed) = (vk.compress(), w.compress(), v.compress());
             let vk_bytes = vk_compressed.as_bytes();
             let x_bytes = x.as_slice();
@@ -672,7 +672,7 @@ fn test_pvrf_mitm_eval_step_forwarding() -> TestResult {
 
 
             // prevent mitm using pvrf logic
-            let (_, _, (_, _, (_, (_, _))), _, (_, _), c, computed_c) = bobs_session_with_eve.get_bob_response()?;
+            let (_, (_, _), c, computed_c) = bobs_session_with_eve.get_bob_response()?;
 
             //should mismatch because the person that generated the pvrf data is not the same as the person bob is talking to in transcript
             assert_ne!(c, computed_c); //not nonsense, a real message attempt is simulated or being made to bob 

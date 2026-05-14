@@ -71,27 +71,6 @@ fn HKDF_DeriveSecrets(
     Ok(buffer)
 }
 
-#[bridge_fn]
-fn PvrfDemo_ComputeZb(context: Box<[u8]>, nonce: Box<[u8]>) -> Result<Vec<u8>> {
-    let zb = libsignal_protocol::pvrf_demo::compute_zb_demo(&context, &nonce); // [u8;16]
-    Ok(zb.to_vec())
-}
-
-#[bridge_fn]
-fn PvrfDemo_ComputeSas(nonce: Box<[u8]>, zb: Box<[u8]>) -> Result<Vec<u8>> {
-    // Slice/pad to 16 bytes (no error throwing)
-    let mut n = [0u8; 16];
-    let mut z = [0u8; 16];
-
-    let n_take = std::cmp::min(16, nonce.len());
-    let z_take = std::cmp::min(16, zb.len());
-    n[..n_take].copy_from_slice(&nonce[..n_take]);
-    z[..z_take].copy_from_slice(&zb[..z_take]);
-
-    let sas = libsignal_protocol::pvrf_demo::compute_sas_demo(&n, &z); // [u8;16]
-    Ok(sas.to_vec())
-}
-
 // Alternate implementation to fill an existing buffer.
 #[bridge_fn(jni = false, node = false)]
 fn HKDF_Derive(output: &mut [u8], ikm: &[u8], label: &[u8], salt: &[u8]) -> Result<()> {
@@ -1016,14 +995,14 @@ fn SessionRecord_CurrentRatchetKeyMatches(s: &SessionRecord, key: &PublicKey) ->
 }
 
 #[bridge_fn]
-fn SessionRecord_GetSAS(s: &SessionRecord) -> Result<u32> {
+fn SessionRecord_GetSAS(s: &SessionRecord) -> Result<Vec<u8>> {
     s.get_sas()
 }
 
 #[bridge_fn]
 fn SessionRecord_GetVTS(s: &SessionRecord) -> Result<Vec<u8>> {
-    //get_vts returns Result<(RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar)), RistrettoPoint, Vec<u8>, Scalar, Scalar), SignalProtocolError>
-    let (h, hprime, (s1, (s2_1, s2_2)), vk, x, r1, r2) = s.get_vts()?;
+    //get_vts returns Result<(RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar)), RistrettoPoint, Vec<u8>, Scalar, Scalar, Vec<u8>), SignalProtocolError>
+    let (h, hprime, (s1, (s2_1, s2_2)), vk, x, r1, r2, contrib_salt) = s.get_vts()?;
 
     // serialize each element into bytes
     let mut out = Vec::new();
@@ -1040,6 +1019,8 @@ fn SessionRecord_GetVTS(s: &SessionRecord) -> Result<Vec<u8>> {
 
     out.extend(r1.to_bytes());
     out.extend(r2.to_bytes());
+    out.extend(&(contrib_salt.len() as u32).to_le_bytes());
+    out.extend(&contrib_salt);
 
     Ok(out)
 }
@@ -1047,17 +1028,9 @@ fn SessionRecord_GetVTS(s: &SessionRecord) -> Result<Vec<u8>> {
 #[bridge_fn]
 fn SessionRecord_GetBobResponse(s: &SessionRecord) -> Result<Vec<u8>> {
     //Result<(RistrettoPoint, Vec<u8>, (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))), Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar), SignalProtocolError>
-    let (vk, x, (h, hprime, (s1, (s2_1, s2_2))), z, (w, v), c, computed_c) = s.get_bob_response()?;
+    let (z, (w, v), c, computed_c) = s.get_bob_response()?;
 
     let mut out = Vec::new();
-    out.extend(vk.compress().as_bytes());
-    out.extend(&(x.len() as u32).to_le_bytes());
-    out.extend(x);
-    out.extend(h.compress().as_bytes());
-    out.extend(hprime.compress().as_bytes());
-    out.extend(s1.to_bytes());
-    out.extend(s2_1.to_bytes());
-    out.extend(s2_2.to_bytes());
 
     out.extend(&(z.len() as u32).to_le_bytes());
     out.extend(z);

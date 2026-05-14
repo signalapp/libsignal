@@ -108,6 +108,12 @@ pub fn generator_g() -> RistrettoPoint {
     RISTRETTO_BASEPOINT_POINT
 }
 
+pub fn sample_random_zp<R: Rng + CryptoRng>(csprng: &mut R) -> Scalar {
+    let mut bytes = [0u8; 64];
+    csprng.fill(&mut bytes);
+    Scalar::from_bytes_mod_order_wide(&bytes)
+}
+
 pub fn hash_generic_zp(input: &[u8]) -> Scalar {
     let hash = Sha512::digest(input);
     Scalar::from_bytes_mod_order_wide(&hash.into())
@@ -210,7 +216,9 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
         vk = g * k;//RistrettoPoint::hash_from_bytes::<Sha512>(&bytes)
         //vk = RistrettoPoint::from_uniform_bytes(bytes);
     }
-    //let salt = hash_generic_zp(b"generic_salt"); 
+    let mut alice_sas_contribution_salt = [0u8; 3];
+    csprng.fill(&mut alice_sas_contribution_salt);
+    let alice_sas_contribution_salt = alice_sas_contribution_salt.to_vec();
 
     // Uses Bob's Kyber prekey to perform key encapsulation (KEM)
     // ss = shared secret from Kyber, ct = ciphertext sent to Bob
@@ -227,14 +235,14 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
 
     //sample alpha, beta from the set of real integers
     //step 1, page 11, preverify
-    let alpha = hash_generic_zp(b"alpha");
-    let beta = hash_generic_zp(b"beta");
+    let alpha = sample_random_zp(csprng);
+    let beta = sample_random_zp(csprng);
     let h = alpha * g + beta * hash_i(&vk, &secrets);    
     let hprime = alpha * hash_a(&vk, &secrets) + beta * hash_b(&vk, &secrets);
 
     //step 2
-    let r1 = hash_generic_zp(b"r1");
-    let r2 = hash_generic_zp(b"r2");
+    let r1 = sample_random_zp(csprng);
+    let r2 = sample_random_zp(csprng);
     // scalar * point = point to the power of scaler in paper
     let eta = (g * r1) + (hash_i(&vk, &secrets) * r2);
     let etaprime = (hash_a(&vk, &secrets) * r1) + (hash_b(&vk, &secrets) * r2);
@@ -245,9 +253,10 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
 
     //step 3
     let vt = (h, hprime, tau);
-    let vts = (vt, vk, secrets.clone(), alpha, beta);
+    let vts = (vt, vk, secrets.clone(), alpha, beta, alice_sas_contribution_salt.clone());
+    let redacted_vts_for_bob = (vt, alice_sas_contribution_salt.clone());
 
-    let pvrf_ciphertext =  bincode::serialize(&vts).unwrap().into_boxed_slice();
+    let pvrf_ciphertext =  bincode::serialize(&redacted_vts_for_bob).unwrap().into_boxed_slice();
     //output vt, store vts
 
 
@@ -290,7 +299,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
         &sending_chain_root_key,
         &parameters.our_base_key_pair().public_key,
         pqr_state,
-        32, //dummy sas
+        None,
         Some(bincode::serialize(&vts).unwrap()),
         None,
     )
@@ -355,12 +364,11 @@ pub(crate) fn initialize_bob_session(
     //step 0: "retrieve" parameters k, vk
     // fresh genning them for rapid dev right now
     let g = generator_g();
-    let k ;//= hash_generic_zp(b"placeholder fresh k for vk");
+    let k ;
     let vk ;
     let x;
-    let their_vts;
-    let vts_response;
     let bob_response;
+    let true_sas: Option<Vec<u8>>;
     //let vt;
 
 
@@ -406,22 +414,14 @@ pub(crate) fn initialize_bob_session(
         log::info!("PVRF ciphertext bytes: {:?}", bytes);
         let (
             (h, hprime, (c, (s1, s2))),
-            their_vk, //should be null or unset in real
-            their_secrets, //should be null or unset in real
-            their_alpha, //should be null or unset in real
-            their_beta //should be null or unset in real
+            their_contrib_salt
         ): (
             (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))),
-            RistrettoPoint,
-            Vec<u8>,
-            Scalar,
-            Scalar
+            Vec<u8>
         ) = bincode::deserialize(&bytes).unwrap();
         // Step 1, parse vars
         let tau = (c, (s1, s2));
         let vt = (h, hprime, tau);
-        their_vts = (vt, their_vk, their_secrets, their_alpha, their_beta);
-        vts_response = Some(bincode::serialize(&their_vts).unwrap());
 
         // Step 2
         let hi = hash_i(&vk, x);
@@ -438,11 +438,8 @@ pub(crate) fn initialize_bob_session(
         // abort if mismatch
         log::info!("Bob computes c: {:?}, Alice's c: {:?}", computed_c, c);
         if c != computed_c {
-            //panic!("abort");
-            log::info!("THE C'S DIDNT MATCH FOR BOB, SHOULD HAVE ABORTED");
-        } else {
-            log::info!("THE C'S MATCHED FOR BOB'S SIDE");
-        }
+            log::info!("PVRF SAS-MA ERROR: Bob can't confirm Alice really generated this data");
+        } 
 
         // Step 3
         let w = hi*(k);
@@ -451,36 +448,20 @@ pub(crate) fn initialize_bob_session(
         let pi = (w, v);
 
         // Step 4
-        let response =  (vk, x.clone(), vt, z, pi, c, computed_c); //(vk, x, vt, z, pi);
+        let response =  (z.clone(), pi, c, computed_c); //(vk, x, vt, z, pi);
         bob_response = Some(bincode::serialize(&response).unwrap());
         log::info!("Bob's PVRF response: {:?}", bob_response);
         log::info!("Bob's v {:?}", (v.compress().to_bytes()));
-        log::info!("Bob computes using Alice's illegal values: {:?}", ((their_vk * their_alpha) + (w * their_beta)).compress().to_bytes());
-        // g ^ a ^ k * Hi(g ^ k, x) ^ b ^ k
-        let v_from_raw_test = g * their_alpha * k + hash_i(&(g * k), x) * their_beta * k;
-        let v_from_higher_test = their_vk * their_alpha + w * their_beta;
-        log::info!("Bob computes using v from raw: {:?}", v_from_raw_test);
-        log::info!("compressed bob's v from raw: {:?}", v_from_raw_test.compress());
-        log::info!("bytes of bob's v from raw: {:?}", v_from_raw_test.compress().to_bytes());
-        log::info!("Bob computes using v using high level values: {:?}", v_from_higher_test);
-        log::info!("compressed bob's v from higher level: {:?}", v_from_higher_test.compress());
-        log::info!("bytes of bob's v from higher level: {:?}", v_from_higher_test.compress().to_bytes());
-        log::info!("bob's vk actual {:?}", vk);
-        log::info!("bob's compressed vk actual {:?}", vk.compress());
-        log::info!("bob's bytes vk actual {:?}", vk.compress().to_bytes());
-
-        //turn their_secrets into a u8 arrray
-        //log::info!("Bob computes using Alice's illegal values but from raw: {:?}", ((g * their_alpha * k + hash_i(&temp_ref, their_secrets.) * their_beta * k)).compress().to_bytes());
-        let example_decoded_bob_response: (RistrettoPoint, Vec<u8>, (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))), Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar)
-         =   bincode::deserialize(
-            bob_response.as_ref().unwrap()
-            )
-        .unwrap();
-        log::info!("Decoded Bob's PVRF response: {:?}", example_decoded_bob_response);
+        true_sas = Some(
+            z.clone().iter()
+            .zip(their_contrib_salt.iter())
+            .map(|(x, y)| x ^ y)
+            .collect()
+        );
     } else {
         log::info!("No PVRF ciphertext provided in PreKey message; skipping PVRF processing");
-        vts_response = None;
         bob_response = None;
+        true_sas = None;
     }
 
 
@@ -507,6 +488,8 @@ pub(crate) fn initialize_bob_session(
         ))
     })?;
 
+ 
+
     // Bob's session object
     let session = SessionState::new(
         CIPHERTEXT_MESSAGE_CURRENT_VERSION,
@@ -515,8 +498,8 @@ pub(crate) fn initialize_bob_session(
         &root_key,
         parameters.their_base_key(),
         pqr_state,
-        32, //dummy sas
-        vts_response, //should be None in real, using for logging now
+        true_sas,
+        None, 
         bob_response,
     )
     .with_sender_chain(parameters.our_ratchet_key_pair(), &chain_key);

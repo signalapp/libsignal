@@ -28,13 +28,6 @@ export * as WebpSanitizer from './WebpSanitizer.js';
 
 import * as Native from './Native.js';
 
-export function pvrfComputeZbDemo(context: Uint8Array, nonce: Uint8Array): Uint8Array {
-  return Native.PvrfDemo_ComputeZb(context, nonce);
-}
-
-export function pvrfComputeSasDemo(nonce16: Uint8Array, zb16: Uint8Array): Uint8Array {
-  return Native.PvrfDemo_ComputeSas(nonce16, zb16);
-}
 Native.registerErrors(Errors);
 
 export function pvrfVerify(
@@ -712,7 +705,7 @@ export class SessionRecord {
     return Native.SessionRecord_CurrentRatchetKeyMatches(this, key);
   }
 
-  getSAS(): number {
+  getSAS(): any {
     const sas = Native.SessionRecord_GetSAS(this);
     return sas;
   }
@@ -755,6 +748,8 @@ export class SessionRecord {
     const r1 = readScalar();
     const r2 = readScalar();
 
+    const contrib_salt = readLengthPrefixedBytes();
+
     return {
         vt: {
           h,
@@ -764,7 +759,8 @@ export class SessionRecord {
         vk,
         x,
         r1,
-        r2
+        r2,
+        contrib_salt
     };
   }
 
@@ -796,16 +792,6 @@ export class SessionRecord {
         return readBytes(len);
     }
 
-    const vk = readBytes(32);
-    console.log('vk', vk);
-    const x = readLengthPrefixedBytes();
-
-    const h = { compressed: readBytes(32) };
-    const hprime = { compressed: readBytes(32) };
-    const s1 = readScalar();
-    const s2_1 = readScalar();
-    const s2_2 = readScalar();
-    console.log('h, hprime, s1, s2_1, s2_2', h, hprime, s1, s2_1, s2_2);
 
     const z = readLengthPrefixedBytes();
     const z_decoded = String.fromCharCode(...z);
@@ -815,9 +801,6 @@ export class SessionRecord {
     const computed_c = readScalar();
 
     return {
-        vk,
-        x,
-        vt: { h: h, hprime: hprime, tau: [s1, [s2_1, s2_2]] },
         z,
         z_decoded,
         pi: { w: w, v: v },

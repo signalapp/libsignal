@@ -352,11 +352,9 @@ type NativeFunctions = {
   SessionRecord_ArchiveCurrentState: (sessionRecord: Wrapper<SessionRecord>) => void;
   SessionRecord_HasUsableSenderChain: (s: Wrapper<SessionRecord>, now: Timestamp) => boolean;
   SessionRecord_CurrentRatchetKeyMatches: (s: Wrapper<SessionRecord>, key: Wrapper<PublicKey>) => boolean;
-  SessionRecord_GetSAS: (s: Wrapper<SessionRecord>) => number;
+  SessionRecord_GetSAS: (s: Wrapper<SessionRecord>) => Uint8Array;
   SessionRecord_GetVTS: (s: Wrapper<SessionRecord>) => any;
   SessionRecord_GetBobResponse: (s: Wrapper<SessionRecord>) => any;
-  PvrfDemo_ComputeZb: (context: Uint8Array, nonce: Uint8Array) => Uint8Array;
-  PvrfDemo_ComputeSas: (nonce16: Uint8Array, zb16: Uint8Array) => Uint8Array;
   Pvrf_Verify: (vk: Uint8Array, x: Uint8Array, alpha: Uint8Array, beta: Uint8Array, w: Uint8Array, v: Uint8Array) => Uint8Array;
   SessionRecord_Deserialize: (data: Uint8Array) => SessionRecord;
   SessionRecord_Serialize: (obj: Wrapper<SessionRecord>) => Uint8Array;
@@ -913,8 +911,6 @@ const { registerErrors,
   SessionRecord_GetSAS,
   SessionRecord_GetVTS,
   SessionRecord_GetBobResponse,
-  PvrfDemo_ComputeZb,
-  PvrfDemo_ComputeSas,
   Pvrf_Verify,
   SessionRecord_Deserialize,
   SessionRecord_Serialize,
@@ -1473,8 +1469,6 @@ export { registerErrors,
   SessionRecord_GetSAS,
   SessionRecord_GetVTS,
   SessionRecord_GetBobResponse,
-  PvrfDemo_ComputeZb,
-  PvrfDemo_ComputeSas,
   Pvrf_Verify,
   SessionRecord_Deserialize,
   SessionRecord_Serialize,
