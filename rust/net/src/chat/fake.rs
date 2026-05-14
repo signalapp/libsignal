@@ -245,9 +245,12 @@ impl FakeChatRemote {
 
     pub async fn receive_request(&self) -> Result<Option<RequestProto>, ReceiveRequestError> {
         log::debug!("waiting for next request");
-        let Some(message) = self.rx.lock().await.recv().await else {
-            return Ok(None);
-        };
+        let message =
+            match tokio::time::timeout(Duration::from_secs(3), self.rx.lock().await.recv()).await {
+                Ok(Some(message)) => message,
+                Ok(None) => return Ok(None),
+                Err(_) => panic!("receive_request timed out, did you actually send a WS request?"),
+            };
         let proto = match message {
             tungstenite::Message::Close(None)
             | tungstenite::Message::Close(Some(tungstenite::protocol::CloseFrame {
@@ -285,9 +288,15 @@ impl FakeGrpcRemote {
         &mut self,
     ) -> Result<Option<(u64, http::Request<bytes::Bytes>)>, ReceiveRequestError> {
         log::debug!("waiting for next request");
-        let Some((req, response_tx)) = self.incoming.recv().await else {
-            return Ok(None);
-        };
+        let (req, response_tx) =
+            match tokio::time::timeout(Duration::from_secs(3), self.incoming.recv()).await {
+                Ok(Some(next)) => next,
+                Ok(None) => return Ok(None),
+                Err(_) => {
+                    panic!("receive_request timed out, did you actually send a gRPC request?")
+                }
+            };
+
         let id = self.next_id;
         self.response_map.insert(id, response_tx);
         self.next_id += 1;

@@ -635,7 +635,7 @@ mod test {
             remote: fake_chat_remote_tx,
         };
 
-        let (request_sender, _join_handle) = spawn_connected_chat(&fake_connect)
+        let (request_sender, join_handle) = spawn_connected_chat(&fake_connect)
             .await
             .expect("can connect");
         let fake_chat_remote = fake_chat_remote_rx.recv().await.unwrap();
@@ -687,6 +687,7 @@ mod test {
         let _response = first_send_fut.await;
 
         // The task should reach its inactivity timeout and disconnect.
+        join_handle.await.expect("no panic");
         assert_matches!(fake_chat_remote.receive_request().await, Ok(None));
     }
 }
