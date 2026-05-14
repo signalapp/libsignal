@@ -535,8 +535,10 @@ async fn establish_chat_connection(
                 proxy_mode,
             ) {
                 (None, DirectOrProxyModeDiscriminants::DirectOnly)
+                | (None, DirectOrProxyModeDiscriminants::DirectThenProxy)
                 | (Some(_), DirectOrProxyModeDiscriminants::ProxyOnly)
-                | (Some(_), DirectOrProxyModeDiscriminants::ProxyThenDirect) => {
+                | (Some(_), DirectOrProxyModeDiscriminants::ProxyThenDirect)
+                | (Some(_), DirectOrProxyModeDiscriminants::DirectThenProxy) => {
                     log::info!("successfully connected {kind} chat")
                 }
                 (None, DirectOrProxyModeDiscriminants::ProxyThenDirect) => log::warn!(

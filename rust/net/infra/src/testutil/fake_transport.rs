@@ -61,6 +61,10 @@ impl FakeTransportTarget {
                 }),
                 port: *target_port,
             },
+            ConnectionProxyRoute::Reflector(reflector) => Self::TcpThroughProxy {
+                host: Some(Host::Domain(reflector.target_host.clone())),
+                port: DEFAULT_HTTPS_PORT,
+            },
         }
     }
 }

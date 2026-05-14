@@ -14,8 +14,8 @@ use crate::certs::RootCertificates;
 use crate::errors::LogSafeDisplay;
 use crate::host::Host;
 use crate::route::{
-    ReplaceFragment, RouteProvider, RouteProviderContext, SimpleRoute, TcpRoute, TlsRoute,
-    TlsRouteFragment, UnresolvedHost,
+    HttpsTlsRoute, ReplaceFragment, RouteProvider, RouteProviderContext, SimpleRoute, TcpRoute,
+    TlsRoute, TlsRouteFragment, UnresolvedHost, WebSocketRoute,
 };
 use crate::tcp_ssl::proxy::socks;
 use crate::{Alpn, OverrideNagleAlgorithm};
@@ -53,6 +53,12 @@ pub struct HttpProxyAuth {
     pub password: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ReflectorProxyRoute<Addr> {
+    pub outer: WebSocketRoute<HttpsTlsRoute<TlsRoute<TcpRoute<Addr>>>>,
+    pub target_host: Arc<str>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash, strum::EnumDiscriminants)]
 #[strum_discriminants(name(ConnectionProxyKind))]
 pub enum ConnectionProxyRoute<Addr> {
@@ -66,6 +72,8 @@ pub enum ConnectionProxyRoute<Addr> {
     },
     Socks(SocksRoute<Addr>),
     Https(HttpsProxyRoute<Addr>),
+    // Boxed because it's much larger than the other variants.
+    Reflector(Box<ReflectorProxyRoute<Addr>>),
 }
 
 /// Target address for proxy protocols that support remote resolution.
@@ -95,6 +103,7 @@ pub enum DirectOrProxyMode {
     DirectOnly,
     ProxyOnly(ConnectionProxyConfig),
     ProxyThenDirect(ConnectionProxyConfig),
+    DirectThenProxy(ConnectionProxyConfig),
 }
 
 /// [`RouteProvider`] implementation that returns [`DirectOrProxyRoute`]s.
@@ -137,6 +146,9 @@ pub struct HttpProxy {
     pub resolve_hostname_locally: bool,
 }
 
+#[derive(Debug)]
+pub struct ReflectorProviderConfig;
+
 #[derive(Debug, Clone, derive_more::From)]
 pub enum ConnectionProxyConfig {
     Tls(TlsProxy),
@@ -144,6 +156,10 @@ pub enum ConnectionProxyConfig {
     Tcp(TcpProxy),
     Socks(SocksProxy),
     Http(HttpProxy),
+    /// Reflector tunnel providers to try. The caller is expected to take this
+    /// slice from the surrounding environment/domain config so prod and staging
+    /// can't be mispaired.
+    Reflector(&'static [ReflectorProviderConfig]),
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
@@ -258,11 +274,14 @@ impl ConnectionProxyConfig {
     }
 
     pub fn is_signal_transparent_proxy(&self) -> bool {
+        // Here, a "signal_transparent_proxy" is one we don't want to fall back
+        // from on connect failure. Currently that's just `Self::Tls`.
+        // TODO(reflector): clean up this method naming.
         match self {
             Self::Tls(_) => true,
             #[cfg(feature = "dev-util")]
             Self::Tcp(_) => true,
-            Self::Socks(_) | Self::Http(_) => false,
+            Self::Socks(_) | Self::Http(_) | Self::Reflector(_) => false,
         }
     }
 }
@@ -322,7 +341,9 @@ where
                 let replacer = move |r: D::Route| replacer(r).replace(DirectOrProxyRoute::Proxy);
                 Either::Right(Either::Left(original_routes.map(replacer)))
             }
-            DirectOrProxyMode::ProxyThenDirect(proxy) => {
+            DirectOrProxyMode::ProxyThenDirect(proxy)
+            | DirectOrProxyMode::DirectThenProxy(proxy) => {
+                let direct_first = matches!(mode, DirectOrProxyMode::DirectThenProxy(_));
                 let original_routes = original_routes.collect_vec();
                 let direct_routes = original_routes
                     .iter()
@@ -330,18 +351,22 @@ where
                     .map(|r| r.replace(DirectOrProxyRoute::Direct))
                     .collect_vec();
                 let replacer = proxy.as_replacer();
-                let replacer = move |r: D::Route| replacer(r).replace(DirectOrProxyRoute::Proxy);
-                Either::Right(Either::Right(
-                    original_routes
-                        .into_iter()
-                        .map(replacer)
-                        .chain(direct_routes),
-                ))
+                let proxied_routes = original_routes
+                    .into_iter()
+                    .map(move |r: D::Route| replacer(r).replace(DirectOrProxyRoute::Proxy))
+                    .collect_vec();
+                let (first, second) = if direct_first {
+                    (direct_routes, proxied_routes)
+                } else {
+                    (proxied_routes, direct_routes)
+                };
+                Either::Right(Either::Right(first.into_iter().chain(second)))
             }
         }
     }
 }
 
+// TODO(reflector): deep nesting of `Either` can be optimized away later.
 trait AsReplacer {
     fn as_replacer<R: ReplaceFragment<TcpRoute<UnresolvedHost>>>(
         &self,
@@ -354,26 +379,32 @@ impl AsReplacer for ConnectionProxyConfig {
     ) -> impl Fn(R) -> R::Replacement<ConnectionProxyRoute<Host<UnresolvedHost>>> {
         let replacer = match self {
             ConnectionProxyConfig::Tls(tls_proxy) => {
-                Either::Left(Either::Left(tls_proxy.as_replacer()))
+                Either::Left(Either::Left(Either::Left(tls_proxy.as_replacer())))
             }
             #[cfg(feature = "dev-util")]
             ConnectionProxyConfig::Tcp(tcp_proxy) => {
-                Either::Right(Either::Left(tcp_proxy.as_replacer()))
+                Either::Left(Either::Right(Either::Left(tcp_proxy.as_replacer())))
             }
             ConnectionProxyConfig::Socks(socks_proxy) => {
                 let replacer = socks_proxy.as_replacer();
                 #[cfg(feature = "dev-util")]
                 let replacer = Either::Right(replacer);
-                Either::Right(replacer)
+                Either::Left(Either::Right(replacer))
             }
             ConnectionProxyConfig::Http(http_proxy) => {
-                Either::Left(Either::Right(http_proxy.as_replacer()))
+                Either::Left(Either::Left(Either::Right(http_proxy.as_replacer())))
             }
+            // TODO(reflector): reshape replacement API to handle reflectors expansion.
+            ConnectionProxyConfig::Reflector(_providers) => Either::Right(
+                |_route: R| -> R::Replacement<ConnectionProxyRoute<Host<UnresolvedHost>>> {
+                    unimplemented!("reflector route expansion not yet implemented")
+                },
+            ),
         };
         move |route| match &replacer {
-            Either::Left(Either::Left(f)) => f(route),
-            Either::Left(Either::Right(f)) => f(route),
-            Either::Right(f) => match f {
+            Either::Left(Either::Left(Either::Left(f))) => f(route),
+            Either::Left(Either::Left(Either::Right(f))) => f(route),
+            Either::Left(Either::Right(f)) => match f {
                 #[cfg(feature = "dev-util")]
                 Either::Left(f) => f(route),
                 #[cfg(feature = "dev-util")]
@@ -381,6 +412,7 @@ impl AsReplacer for ConnectionProxyConfig {
                 #[cfg(not(feature = "dev-util"))]
                 f => f(route),
             },
+            Either::Right(f) => f(route),
         }
     }
 }

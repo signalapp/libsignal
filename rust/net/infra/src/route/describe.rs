@@ -209,6 +209,10 @@ impl<Transport: UsesTransport<UnresolvedTransportRoute>> DescribeForLog
                         },
                     inner: _,
                 }) => (target_host.as_informational_host(), *target_port),
+                ConnectionProxyRoute::Reflector(reflector) => (
+                    Host::Domain(reflector.target_host.clone()),
+                    DEFAULT_HTTPS_PORT,
+                ),
             },
         };
 

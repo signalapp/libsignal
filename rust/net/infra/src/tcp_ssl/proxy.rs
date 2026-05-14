@@ -16,6 +16,7 @@ use crate::route::{
 };
 
 pub mod https;
+pub mod reflector;
 pub mod socks;
 
 mod stream;
@@ -93,6 +94,12 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
                 .connect(route, log_tag)
                 .map_ok(Into::into)
                 .await
+            }
+            ConnectionProxyRoute::Reflector(route) => {
+                LoggingConnector::new(self, reflector::LONG_FULL_CONNECT_THRESHOLD, "Reflector")
+                    .connect(route, log_tag)
+                    .map_ok(|stream| ProxyStream::Reflector(Box::new(stream)))
+                    .await
             }
         }
     }
