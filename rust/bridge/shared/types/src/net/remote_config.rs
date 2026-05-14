@@ -119,6 +119,7 @@ pub enum RemoteConfigKey {
     MessagesAnonymousSendSingleRecipientMessage => "grpc.MessagesAnonymousSendSingleRecipientMessage",
     AttachmentsGetUploadForm => "grpc.AttachmentsGetUploadForm",
     MessagesSendMessage => "grpc.MessagesSendMessage",
+    BackupsAnonymousGetUploadForm => "grpc.BackupsAnonymousGetUploadForm",
 }
 }
 
@@ -299,6 +300,7 @@ mod tests {
         let all_known_grpc_keys: HashSet<&str> = std::iter::empty()
             .chain(services::AccountsAnonymous::iter().map(|x| x.into()))
             .chain(services::Attachments::iter().map(|x| x.into()))
+            .chain(services::BackupsAnonymous::iter().map(|x| x.into()))
             .chain(services::KeysAnonymous::iter().map(|x| x.into()))
             .chain(services::MessagesAnonymous::iter().map(|x| x.into()))
             .chain(services::Messages::iter().map(|x| x.into()))
