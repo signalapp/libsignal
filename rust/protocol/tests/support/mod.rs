@@ -19,6 +19,8 @@ use rand::{CryptoRng, Rng, TryRngCore as _};
 pub(crate) const PRE_KYBER_MESSAGE_VERSION: u32 = 3;
 pub(crate) const KYBER_AWARE_MESSAGE_VERSION: u32 = 4;
 
+pub(crate) const PVRF_AWARE_MESSAGE_VERSION: u32 = 4;
+
 pub fn test_in_memory_protocol_store() -> Result<InMemSignalProtocolStore, SignalProtocolError> {
     let mut csprng = OsRng.unwrap_err();
     let identity_key = IdentityKeyPair::generate(&mut csprng);

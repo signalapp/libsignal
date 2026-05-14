@@ -14,7 +14,7 @@ use crate::{
     CiphertextMessageType, Direction, IdentityKey, IdentityKeyStore, KeyPair, KyberPreKeyId,
     KyberPreKeyStore, PreKeyBundle, PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress,
     Result, SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyId, SignedPreKeyStore,
-    ratchet, SignalMessage
+    ratchet
 };
 
 pub struct PreKeysUsed {

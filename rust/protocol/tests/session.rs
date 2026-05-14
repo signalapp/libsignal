@@ -25,58 +25,327 @@ fn init_logger() {
         .try_init();
 }
 
+// trivially, if eve impersonates alice/bob and does not forward to the other,
+// then the other of bob/alice could never possibly generate a SAS and the attack fails
+// Test: what happens if attacker eve forces everyone to x3dh with eve, 
+// and eve reseals Alice's text w/ Eve's PVRF data to Bob
+// and eve reseals Bob's response w/ Eve's pvrf data back to Alice?
+// Expectation: SAS will not match for alice or bob, both parties are aware of the attack
 #[test]
-fn test_basic_prekey() -> TestResult {
+fn test_pvrf_mitm_sender_receive_step_resealing() -> TestResult {
+    // trivially, if eve impersonates alice/bob and does not forward to the other,
+    // then the other of bob/alice could never possibly generate a SAS and the attack fails
     run(
         |builder| {
             builder.add_pre_key(IdChoice::Next);
             builder.add_signed_pre_key(IdChoice::Next);
             builder.add_kyber_pre_key(IdChoice::Next);
         },
-        KYBER_AWARE_MESSAGE_VERSION,
+        |builder| {
+            builder.add_pre_key(IdChoice::Next);
+            builder.add_signed_pre_key(IdChoice::Next);
+            builder.add_kyber_pre_key(IdChoice::Next);
+        },
+        PVRF_AWARE_MESSAGE_VERSION,
     )?;
 
-    fn run<F>(bob_add_keys: F, expected_session_version: u32) -> TestResult
+    fn run<F, G>(bob_add_keys: F, eve_add_keys: G, expected_session_version: u32) -> TestResult
     where
         F: Fn(&mut TestStoreBuilder),
+        G: Fn(&mut TestStoreBuilder),
     {
         async {
             let mut csprng = OsRng.unwrap_err();
             let established_session_requirements = SessionUsabilityRequirements::all();
 
             let bob_device_id = DeviceId::new(1).unwrap();
+            let eve_device_id = DeviceId::new(1).unwrap();
 
-            let alice_address =
-                ProtocolAddress::new("+14151111111".to_owned(), DeviceId::new(1).unwrap());
+            let alice_address = ProtocolAddress::new("+14151111111".to_owned(), DeviceId::new(1).unwrap());
             let bob_address = ProtocolAddress::new("+14151111112".to_owned(), bob_device_id);
+            let eve_address = ProtocolAddress::new("+14151111113".to_owned(), eve_device_id);
 
             let mut bob_store_builder = TestStoreBuilder::new();
             bob_add_keys(&mut bob_store_builder);
+
+            let mut eve_store_builder = TestStoreBuilder::new();
+            eve_add_keys(&mut eve_store_builder);
 
             let mut alice_store_builder = TestStoreBuilder::new();
             let alice_store = &mut alice_store_builder.store;
 
             let bob_pre_key_bundle = bob_store_builder.make_bundle_with_latest_keys(bob_device_id);
+            let eve_pre_key_bundle = eve_store_builder.make_bundle_with_latest_keys(eve_device_id);
 
+            let bob_identity = bob_pre_key_bundle.identity_key().expect("has identity key");
+            let eve_identity = eve_pre_key_bundle.identity_key().expect("has identity key");
+            assert_ne!(*bob_identity, *eve_identity); //sanity check that bob and eve are different entities
+            let eve_store = &mut eve_store_builder.store;
+
+            //alice talks to eve, but believes they are talking to bob
             process_prekey_bundle(
-                &bob_address,
+                &eve_address,
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
-                &bob_pre_key_bundle,
+                &eve_pre_key_bundle,
                 SystemTime::now(),
                 &mut csprng,
             )
             .await?;
 
-            assert!(alice_store.load_session(&bob_address).await?.is_some());
+            assert!(alice_store.load_session(&eve_address).await?.is_some());
             assert_eq!(
-                alice_store.session_version(&bob_address)?,
+                alice_store.session_version(&eve_address)?,
                 expected_session_version
             );
 
             let original_message = "L'homme est condamné à être libre";
 
-            let outgoing_message = encrypt(alice_store, &bob_address, original_message).await?;
+            let outgoing_message = encrypt(alice_store, &eve_address, original_message).await?;
+
+            assert_eq!(outgoing_message.message_type(), CiphertextMessageType::PreKey);
+
+            let incoming_message = CiphertextMessage::PreKeySignalMessage(
+                PreKeySignalMessage::try_from(outgoing_message.serialize())?,
+            );
+
+            let ptext = decrypt(
+                eve_store,
+                &alice_address,
+                &incoming_message,
+            )
+            .await?;
+
+            assert_eq!(String::from_utf8(ptext).expect("valid utf8"), original_message);
+
+
+            //eve forwards the message to bob to execute MITM attack
+            process_prekey_bundle(
+                &bob_address,
+                &mut eve_store.session_store,
+                &mut eve_store.identity_store,
+                &bob_pre_key_bundle,
+                SystemTime::now(),
+                &mut csprng,
+            )
+            .await?;
+            
+            assert!(eve_store.load_session(&bob_address).await?.is_some());
+            assert_eq!(eve_store.session_version(&bob_address)?, expected_session_version);
+
+            let eve_forwarded_outgoing = encrypt(eve_store, &bob_address, original_message).await?;
+
+            assert_eq!(eve_forwarded_outgoing.message_type(), CiphertextMessageType::PreKey);
+
+            let eve_forwarded_incoming = CiphertextMessage::PreKeySignalMessage(
+                PreKeySignalMessage::try_from(eve_forwarded_outgoing.serialize())?,
+            );
+            
+            let eve_forwarded_ptext = decrypt(
+                &mut bob_store_builder.store,
+                &eve_address,
+                &eve_forwarded_incoming,
+            )
+            .await?;
+
+            assert_eq!(String::from_utf8(eve_forwarded_ptext).expect("valid utf8"), original_message);
+
+
+            
+            //bob responds to eve believing they are talking to alice
+            let bobs_response = "Who watches the watchers?";
+
+            assert!(
+                bob_store_builder
+                    .store
+                    .load_session(&eve_address)
+                    .await?
+                    .is_some()
+            );
+            let bobs_session_with_eve = bob_store_builder
+                .store
+                .load_session(&eve_address)
+                .await?
+                .expect("session found");
+            assert!(
+                bobs_session_with_eve
+                    .has_usable_sender_chain(SystemTime::now(), established_session_requirements)
+                    .expect("can check usability")
+            );
+            assert_eq!(
+                bobs_session_with_eve.session_version()?,
+                expected_session_version
+            );
+            assert_eq!(bobs_session_with_eve.alice_base_key()?.len(), 32 + 1);
+
+            let bob_outgoing =
+                encrypt(&mut bob_store_builder.store, &eve_address, bobs_response).await?;
+
+            assert_eq!(bob_outgoing.message_type(), CiphertextMessageType::Whisper);
+
+            let eve_decrypts = decrypt(eve_store, &bob_address, &bob_outgoing).await?;
+
+            assert_eq!(
+                String::from_utf8(eve_decrypts).expect("valid utf8"),
+                bobs_response
+            );
+
+            //eve forwards bob's response to alice successfully executing mitm
+            assert!(
+                eve_store
+                    .load_session(&alice_address)
+                    .await?
+                    .is_some()
+            );
+            let eves_session_with_alice = eve_store
+                .load_session(&alice_address)
+                .await?
+                .expect("session found");
+            assert!(
+                eves_session_with_alice
+                    .has_usable_sender_chain(SystemTime::now(), established_session_requirements)
+                    .expect("can check usability")
+            );
+            assert_eq!(
+                eves_session_with_alice.session_version()?,
+                expected_session_version
+            );
+            assert_eq!(eves_session_with_alice.alice_base_key()?.len(), 32 + 1);
+
+            let eve_outgoing =
+                encrypt(eve_store, &alice_address, bobs_response).await?;
+
+            assert_eq!(eve_outgoing.message_type(), CiphertextMessageType::Whisper);
+
+            let alice_decrypts = decrypt(alice_store, &eve_address, &eve_outgoing).await?;
+
+            assert_eq!(
+                String::from_utf8(alice_decrypts).expect("valid utf8"),
+                bobs_response
+            );
+
+
+            // prevent mitm using pvrf logic
+            let (_, _, (_, _, (_, (_, _))), bob_sas_bytes, (bob_w, bob_v), bob_c, bob_computed_c) = bobs_session_with_eve.get_bob_response()?;
+
+            let (_, _, (_, _, (_, (_, _))), eve_with_alice_sas_bytes, (w, v), c, computed_c) = eves_session_with_alice.get_bob_response()?;
+
+            let alice_session_with_eve = alice_store.load_session(&eve_address).await?.expect("session found");
+            let (_, _, (_, (_, _)), vk, x, r1, r2) = alice_session_with_eve.get_vts()?;
+            let (vk_compressed, w_compressed, v_compressed) = (vk.compress(), w.compress(), v.compress());
+            let vk_bytes = vk_compressed.as_bytes();
+            let x_bytes = x.as_slice();
+            let alpha_bytes: &[u8] = &r1.to_bytes()[..];
+            let beta_bytes: &[u8] = &r2.to_bytes()[..];
+            let w_bytes = w_compressed.as_bytes();
+            let v_bytes = v_compressed.as_bytes();
+            let (pvrf_verified, alice_sas_bytes) = pvrf_verify_from_session_data(vk_bytes, x_bytes, alpha_bytes, beta_bytes, w_bytes, v_bytes)?;
+
+            assert_eq!(c, computed_c); //not nonsense, a real message attempt is simulated or being made to bob 
+            assert!(pvrf_verified); //real message response simulated or made to alice
+            //next should be false, neither alice nor bob ever really talked to each other
+            assert_ne!(alice_sas_bytes, bob_sas_bytes); //sas won't match
+
+            //...but it must be true that alice matches with eve->alice and eve->bob matches with bob
+            let eve_session_with_bob = eve_store.load_session(&bob_address).await?.expect("session found");
+            let (_, _, (_, (_, _)), vk, x, r1, r2) = eve_session_with_bob.get_vts()?;
+            let (vk_compressed, w_compressed, v_compressed) = (vk.compress(), bob_w.compress(), bob_v.compress());
+            let vk_bytes = vk_compressed.as_bytes();
+            let x_bytes = x.as_slice();
+            let alpha_bytes: &[u8] = &r1.to_bytes()[..];
+            let beta_bytes: &[u8] = &r2.to_bytes()[..];
+            let w_bytes = w_compressed.as_bytes();
+            let v_bytes = v_compressed.as_bytes();
+            let (pvrf_verified, eve_with_bob_sas_bytes) = pvrf_verify_from_session_data(vk_bytes, x_bytes, alpha_bytes, beta_bytes, w_bytes, v_bytes)?;
+
+            assert_eq!(bob_c, bob_computed_c); 
+            assert_eq!(alice_sas_bytes, eve_with_alice_sas_bytes);
+            assert_eq!(bob_sas_bytes, eve_with_bob_sas_bytes);
+            assert!(pvrf_verified);
+            Ok(())
+        }
+        .now_or_never()
+        .expect("sync")
+    }
+    Ok(())
+}
+
+
+// Test: what happens if attacker eve forces everyone to x3dh with eve, 
+// and eve reseals Alice's text w/ Eve's PVRF data to Bob
+// and eve reseals Bob's response BUT forwards Bob's pvrf data back to Alice?
+// Expectation: Alice should become aware of the attack
+#[test]
+fn test_pvrf_mitm_verify_step_forwarding() -> TestResult {
+    // trivially, if eve impersonates alice/bob and does not forward to the other,
+    // then the other of bob/alice could never possibly generate a SAS and the attack fails
+    run(
+        |builder| {
+            builder.add_pre_key(IdChoice::Next);
+            builder.add_signed_pre_key(IdChoice::Next);
+            builder.add_kyber_pre_key(IdChoice::Next);
+        },
+        |builder| {
+            builder.add_pre_key(IdChoice::Next);
+            builder.add_signed_pre_key(IdChoice::Next);
+            builder.add_kyber_pre_key(IdChoice::Next);
+        },
+        PVRF_AWARE_MESSAGE_VERSION,
+    )?;
+
+    fn run<F, G>(bob_add_keys: F, eve_add_keys: G, expected_session_version: u32) -> TestResult
+    where
+        F: Fn(&mut TestStoreBuilder),
+        G: Fn(&mut TestStoreBuilder),
+    {
+        async {
+            let mut csprng = OsRng.unwrap_err();
+            let established_session_requirements = SessionUsabilityRequirements::all();
+
+            let bob_device_id = DeviceId::new(1).unwrap();
+            let eve_device_id = DeviceId::new(1).unwrap();
+
+            let alice_address = ProtocolAddress::new("+14151111111".to_owned(), DeviceId::new(1).unwrap());
+            let bob_address = ProtocolAddress::new("+14151111112".to_owned(), bob_device_id);
+            let eve_address = ProtocolAddress::new("+14151111113".to_owned(), eve_device_id);
+
+            let mut bob_store_builder = TestStoreBuilder::new();
+            bob_add_keys(&mut bob_store_builder);
+
+            let mut eve_store_builder = TestStoreBuilder::new();
+            eve_add_keys(&mut eve_store_builder);
+
+            let mut alice_store_builder = TestStoreBuilder::new();
+            let alice_store = &mut alice_store_builder.store;
+
+            let bob_pre_key_bundle = bob_store_builder.make_bundle_with_latest_keys(bob_device_id);
+            let eve_pre_key_bundle = eve_store_builder.make_bundle_with_latest_keys(eve_device_id);
+
+            let bob_identity = bob_pre_key_bundle.identity_key().expect("has identity key");
+            let eve_identity = eve_pre_key_bundle.identity_key().expect("has identity key");
+            assert_ne!(*bob_identity, *eve_identity); //sanity check that bob and eve are different entities
+            let eve_store = &mut eve_store_builder.store;
+
+            //alice talks to eve, but believes they are talking to bob
+            process_prekey_bundle(
+                &eve_address,
+                &mut alice_store.session_store,
+                &mut alice_store.identity_store,
+                &eve_pre_key_bundle,
+                SystemTime::now(),
+                &mut csprng,
+            )
+            .await?;
+
+            assert!(alice_store.load_session(&eve_address).await?.is_some());
+            assert_eq!(
+                alice_store.session_version(&eve_address)?,
+                expected_session_version
+            );
+
+            let original_message = "L'homme est condamné à être libre";
+
+            let outgoing_message = encrypt(alice_store, &eve_address, original_message).await?;
 
             assert_eq!(
                 outgoing_message.message_type(),
@@ -88,7 +357,7 @@ fn test_basic_prekey() -> TestResult {
             );
 
             let ptext = decrypt(
-                &mut bob_store_builder.store,
+                eve_store,
                 &alice_address,
                 &incoming_message,
             )
@@ -99,135 +368,314 @@ fn test_basic_prekey() -> TestResult {
                 original_message
             );
 
-            let bobs_response = "Who watches the watchers?";
 
-            assert!(
-                bob_store_builder
-                    .store
-                    .load_session(&alice_address)
-                    .await?
-                    .is_some()
-            );
-            let bobs_session_with_alice = bob_store_builder
-                .store
-                .load_session(&alice_address)
-                .await?
-                .expect("session found");
-            assert!(
-                bobs_session_with_alice
-                    .has_usable_sender_chain(SystemTime::now(), established_session_requirements)
-                    .expect("can check usability")
-            );
-            assert_eq!(
-                bobs_session_with_alice.session_version()?,
-                expected_session_version
-            );
-            assert_eq!(bobs_session_with_alice.alice_base_key()?.len(), 32 + 1);
-
-            let bob_outgoing =
-                encrypt(&mut bob_store_builder.store, &alice_address, bobs_response).await?;
-
-            assert_eq!(bob_outgoing.message_type(), CiphertextMessageType::Whisper);
-
-            let alice_decrypts = decrypt(alice_store, &bob_address, &bob_outgoing).await?;
-
-            assert_eq!(
-                String::from_utf8(alice_decrypts).expect("valid utf8"),
-                bobs_response
-            );
-            assert!(
-                alice_store
-                    .load_session(&bob_address)
-                    .await?
-                    .expect("session found")
-                    .has_usable_sender_chain(SystemTime::now(), established_session_requirements)
-                    .expect("can check usability")
-            );
-
-            run_interaction(
-                alice_store,
-                &alice_address,
-                &mut bob_store_builder.store,
-                &bob_address,
-            )
-            .await?;
-
-            let mut alter_alice_store = TestStoreBuilder::new().store;
-
-            bob_add_keys(&mut bob_store_builder);
-
-            let bob_pre_key_bundle = bob_store_builder.make_bundle_with_latest_keys(bob_device_id);
+            //eve forwards the message to bob to execute MITM attack
             process_prekey_bundle(
                 &bob_address,
-                &mut alter_alice_store.session_store,
-                &mut alter_alice_store.identity_store,
+                &mut eve_store.session_store,
+                &mut eve_store.identity_store,
                 &bob_pre_key_bundle,
                 SystemTime::now(),
                 &mut csprng,
             )
             .await?;
-
-            let outgoing_message =
-                encrypt(&mut alter_alice_store, &bob_address, original_message).await?;
-
-            assert!(matches!(
-                decrypt(&mut bob_store_builder.store, &alice_address, &outgoing_message)
-                    .await
-                    .unwrap_err(),
-                SignalProtocolError::UntrustedIdentity(a) if a == alice_address
-            ));
-
+            
+            assert!(eve_store.load_session(&bob_address).await?.is_some());
             assert_eq!(
-                bob_store_builder
-                    .store
-                    .save_identity(
-                        &alice_address,
-                        alter_alice_store
-                            .get_identity_key_pair()
-                            .await?
-                            .identity_key(),
-                    )
-                    .await?,
-                IdentityChange::ReplacedExisting
+                eve_store.session_version(&bob_address)?,
+                expected_session_version
             );
 
-            let decrypted = decrypt(
+            let eve_forwarded_outgoing = encrypt(eve_store, &bob_address, original_message).await?;
+
+            assert_eq!(
+                eve_forwarded_outgoing.message_type(),
+                CiphertextMessageType::PreKey
+            );
+
+            let eve_forwarded_incoming = CiphertextMessage::PreKeySignalMessage(
+                PreKeySignalMessage::try_from(eve_forwarded_outgoing.serialize())?,
+            );
+            
+            let eve_forwarded_ptext = decrypt(
                 &mut bob_store_builder.store,
-                &alice_address,
-                &outgoing_message,
+                &eve_address,
+                &eve_forwarded_incoming,
             )
             .await?;
+
             assert_eq!(
-                String::from_utf8(decrypted).expect("valid utf8"),
+                String::from_utf8(eve_forwarded_ptext).expect("valid utf8"),
                 original_message
             );
 
-            // Sign pre-key with wrong key:
-            let bad_bob_pre_key_bundle = bob_store_builder
-                .make_bundle_with_latest_keys(bob_device_id)
-                .modify(|content| {
-                    let wrong_identity = alter_alice_store
-                        .get_identity_key_pair()
-                        .now_or_never()
-                        .expect("sync")
-                        .expect("has identity key");
-                    content.identity_key = Some(*wrong_identity.identity_key());
-                })
-                .expect("can reconstruct the bundle");
+
+            
+            //bob responds to eve believing they are talking to alice
+            let bobs_response = "Who watches the watchers?";
 
             assert!(
-                process_prekey_bundle(
-                    &bob_address,
-                    &mut alter_alice_store.session_store,
-                    &mut alter_alice_store.identity_store,
-                    &bad_bob_pre_key_bundle,
-                    SystemTime::now(),
-                    &mut csprng,
-                )
-                .await
-                .is_err()
+                bob_store_builder
+                    .store
+                    .load_session(&eve_address)
+                    .await?
+                    .is_some()
+            );
+            let bobs_session_with_eve = bob_store_builder
+                .store
+                .load_session(&eve_address)
+                .await?
+                .expect("session found");
+            assert!(
+                bobs_session_with_eve
+                    .has_usable_sender_chain(SystemTime::now(), established_session_requirements)
+                    .expect("can check usability")
+            );
+            assert_eq!(
+                bobs_session_with_eve.session_version()?,
+                expected_session_version
+            );
+            assert_eq!(bobs_session_with_eve.alice_base_key()?.len(), 32 + 1);
+
+            let bob_outgoing =
+                encrypt(&mut bob_store_builder.store, &eve_address, bobs_response).await?;
+
+            assert_eq!(bob_outgoing.message_type(), CiphertextMessageType::Whisper);
+
+            let eve_decrypts = decrypt(eve_store, &bob_address, &bob_outgoing).await?;
+
+            assert_eq!(
+                String::from_utf8(eve_decrypts).expect("valid utf8"),
+                bobs_response
             );
 
+            //eve forwards bob's response to alice successfully executing mitm
+            assert!(
+                eve_store
+                    .load_session(&alice_address)
+                    .await?
+                    .is_some()
+            );
+            let eves_session_with_alice = eve_store
+                .load_session(&alice_address)
+                .await?
+                .expect("session found");
+            assert!(
+                eves_session_with_alice
+                    .has_usable_sender_chain(SystemTime::now(), established_session_requirements)
+                    .expect("can check usability")
+            );
+            assert_eq!(
+                eves_session_with_alice.session_version()?,
+                expected_session_version
+            );
+            assert_eq!(eves_session_with_alice.alice_base_key()?.len(), 32 + 1);
+
+            let eve_outgoing =
+                encrypt(eve_store, &alice_address, bobs_response).await?;
+
+            assert_eq!(eve_outgoing.message_type(), CiphertextMessageType::Whisper);
+
+            let alice_decrypts = decrypt(alice_store, &eve_address, &eve_outgoing).await?;
+
+            assert_eq!(
+                String::from_utf8(alice_decrypts).expect("valid utf8"),
+                bobs_response
+            );
+
+
+            // prevent mitm using pvrf logic
+            let (_, _, (_, _, (_, (_, _))), z, (w, v), c, computed_c) = bobs_session_with_eve.get_bob_response()?;
+            let bob_sas_bytes = z;
+
+            let alice_session_with_eve = alice_store.load_session(&eve_address).await?.expect("session found");
+            let (_, _, (_, (_, _)), vk, x, r1, r2) = alice_session_with_eve.get_vts()?;
+            let (vk_compressed, w_compressed, v_compressed) = (vk.compress(), w.compress(), v.compress());
+            let vk_bytes = vk_compressed.as_bytes();
+            let x_bytes = x.as_slice();
+            //turn u8; 32 into u8
+            let alpha_bytes: &[u8] = &r1.to_bytes()[..];
+            let beta_bytes: &[u8] = &r2.to_bytes()[..];
+            let w_bytes = w_compressed.as_bytes();
+            let v_bytes = v_compressed.as_bytes();
+            let (pvrf_verified, alice_sas_bytes) = pvrf_verify_from_session_data(vk_bytes, x_bytes, alpha_bytes, beta_bytes, w_bytes, v_bytes)?;
+
+            assert_eq!(c, computed_c); //not nonsense, a real message attempt is simulated or being made to bob 
+            assert_eq!(alice_sas_bytes, bob_sas_bytes); //sas matches despite mitm because eve manipulated bob into responding
+            //next should be false because the responder for w,v is NOT the same person vk, x were generated for. (z was not randomly generated!)
+            assert!(!pvrf_verified); //real message response simulated or made to alice, alice knows about the attack
+        
+            Ok(())
+        }
+        .now_or_never()
+        .expect("sync")
+    }
+    Ok(())
+}
+
+// Test: what happens if attacker eve forces everyone to x3dh with eve,
+// and eve reseals Alice's text BUT forwards Alice's pvrf data using eve's keys to the intended recipient Bob?
+// Expectation: Bob should become aware of the attack
+#[test]
+fn test_pvrf_mitm_eval_step_forwarding() -> TestResult {
+    
+    run(
+        |builder| {
+            builder.add_pre_key(IdChoice::Next);
+            builder.add_signed_pre_key(IdChoice::Next);
+            builder.add_kyber_pre_key(IdChoice::Next);
+        },
+        |builder| {
+            builder.add_pre_key(IdChoice::Next);
+            builder.add_signed_pre_key(IdChoice::Next);
+            builder.add_kyber_pre_key(IdChoice::Next);
+        },
+        PVRF_AWARE_MESSAGE_VERSION,
+    )?;
+
+    fn run<F, G>(bob_add_keys: F, eve_add_keys: G, expected_session_version: u32) -> TestResult
+    where
+        F: Fn(&mut TestStoreBuilder),
+        G: Fn(&mut TestStoreBuilder),
+    {
+        async {
+            let mut csprng = OsRng.unwrap_err();
+
+            let bob_device_id = DeviceId::new(1).unwrap();
+            let eve_device_id = DeviceId::new(1).unwrap();
+
+            let alice_address = ProtocolAddress::new("+14151111111".to_owned(), DeviceId::new(1).unwrap());
+            let bob_address = ProtocolAddress::new("+14151111112".to_owned(), bob_device_id);
+            let eve_address = ProtocolAddress::new("+14151111113".to_owned(), eve_device_id);
+
+            let mut bob_store_builder = TestStoreBuilder::new();
+            bob_add_keys(&mut bob_store_builder);
+
+            let mut eve_store_builder = TestStoreBuilder::new();
+            eve_add_keys(&mut eve_store_builder);
+
+            let mut alice_store_builder = TestStoreBuilder::new();
+            let alice_store = &mut alice_store_builder.store;
+
+            let bob_pre_key_bundle = bob_store_builder.make_bundle_with_latest_keys(bob_device_id);
+            let eve_pre_key_bundle = eve_store_builder.make_bundle_with_latest_keys(eve_device_id);
+
+            let bob_identity = bob_pre_key_bundle.identity_key().expect("has identity key");
+            let eve_identity = eve_pre_key_bundle.identity_key().expect("has identity key");
+            assert_ne!(*bob_identity, *eve_identity); //sanity check that bob and eve are different entities
+            let eve_store = &mut eve_store_builder.store;
+
+            //alice talks to eve, but believes they are talking to bob
+            process_prekey_bundle(
+                &eve_address,
+                &mut alice_store.session_store,
+                &mut alice_store.identity_store,
+                &eve_pre_key_bundle,
+                SystemTime::now(),
+                &mut csprng,
+            )
+            .await?;
+
+            assert!(alice_store.load_session(&eve_address).await?.is_some());
+            assert_eq!(
+                alice_store.session_version(&eve_address)?,
+                expected_session_version
+            );
+
+            let original_message = "L'homme est condamné à être libre";
+
+            let outgoing_message = encrypt(alice_store, &eve_address, original_message).await?;
+
+            assert_eq!(
+                outgoing_message.message_type(),
+                CiphertextMessageType::PreKey
+            );
+
+            let incoming_message = CiphertextMessage::PreKeySignalMessage(
+                PreKeySignalMessage::try_from(outgoing_message.serialize())?,
+            );
+
+            let ptext = decrypt(
+                eve_store,
+                &alice_address,
+                &incoming_message,
+            )
+            .await?;
+
+            assert_eq!(
+                String::from_utf8(ptext).expect("valid utf8"),
+                original_message
+            );
+
+
+            //eve forwards the message to bob to execute MITM attack
+            process_prekey_bundle(
+                &bob_address,
+                &mut eve_store.session_store,
+                &mut eve_store.identity_store,
+                &bob_pre_key_bundle,
+                SystemTime::now(),
+                &mut csprng,
+            )
+            .await?;
+            
+            assert!(eve_store.load_session(&bob_address).await?.is_some());
+            assert_eq!(
+                eve_store.session_version(&bob_address)?,
+                expected_session_version
+            );
+
+            let eve_forwarded_outgoing = encrypt(eve_store, &bob_address, original_message).await?;
+
+            assert_eq!(
+                eve_forwarded_outgoing.message_type(),
+                CiphertextMessageType::PreKey
+            );
+
+            let alice_prekey_msg = PreKeySignalMessage::try_from(outgoing_message.serialize())?;
+            let eve_prekey_msg =  PreKeySignalMessage::try_from(eve_forwarded_outgoing.serialize())?;
+             
+
+            //eve attempts to use alice's pvrf data to bob...
+            let eve_doctored_prekey_msg = PreKeySignalMessage::new(
+                eve_prekey_msg.message_version(),
+                eve_prekey_msg.registration_id(),
+                eve_prekey_msg.pre_key_id(),
+                eve_prekey_msg.signed_pre_key_id(),
+                Some(KyberPayload::new(eve_prekey_msg.kyber_pre_key_id().expect("should have kyber prekey"), eve_prekey_msg.kyber_ciphertext().expect("should have kyber ciphertext").clone())),
+                Some(PvrfPayload::new(alice_prekey_msg.pvrf_pre_key_id().expect("should have pvrf prekey"), alice_prekey_msg.pvrf_ciphertext().expect("should have pvrf ciphertext").clone())),
+                *eve_prekey_msg.base_key(),
+                *eve_prekey_msg.identity_key(),
+                eve_prekey_msg.message().clone()
+            )
+            .expect("can create prekey message");
+            let eve_forwarded_incoming = CiphertextMessage::PreKeySignalMessage(eve_doctored_prekey_msg);
+            
+            let eve_forwarded_ptext = decrypt(
+                &mut bob_store_builder.store,
+                &eve_address,
+                &eve_forwarded_incoming,
+            )
+            .await?;
+
+            assert_eq!(
+                String::from_utf8(eve_forwarded_ptext).expect("valid utf8"),
+                original_message
+            );
+
+
+            let bobs_session_with_eve = bob_store_builder
+                .store
+                .load_session(&eve_address)
+                .await?
+                .expect("session found");
+
+
+            // prevent mitm using pvrf logic
+            let (_, _, (_, _, (_, (_, _))), _, (_, _), c, computed_c) = bobs_session_with_eve.get_bob_response()?;
+
+            //should mismatch because the person that generated the pvrf data is not the same as the person bob is talking to in transcript
+            assert_ne!(c, computed_c); //not nonsense, a real message attempt is simulated or being made to bob 
             Ok(())
         }
         .now_or_never()
@@ -3308,3 +3756,216 @@ fn prekey_message_sent_from_different_user_is_rejected() {
     .now_or_never()
     .expect("sync")
 }
+
+#[test]
+fn test_basic_prekey() -> TestResult {
+    run(
+        |builder| {
+            builder.add_pre_key(IdChoice::Next);
+            builder.add_signed_pre_key(IdChoice::Next);
+            builder.add_kyber_pre_key(IdChoice::Next);
+        },
+        PVRF_AWARE_MESSAGE_VERSION,
+    )?;
+
+    fn run<F>(bob_add_keys: F, expected_session_version: u32) -> TestResult
+    where
+        F: Fn(&mut TestStoreBuilder),
+    {
+        async {
+            let mut csprng = OsRng.unwrap_err();
+            let established_session_requirements = SessionUsabilityRequirements::all();
+
+            let bob_device_id = DeviceId::new(1).unwrap();
+
+            let alice_address =
+                ProtocolAddress::new("+14151111111".to_owned(), DeviceId::new(1).unwrap());
+            let bob_address = ProtocolAddress::new("+14151111112".to_owned(), bob_device_id);
+
+            let mut bob_store_builder = TestStoreBuilder::new();
+            bob_add_keys(&mut bob_store_builder);
+
+            let mut alice_store_builder = TestStoreBuilder::new();
+            let alice_store = &mut alice_store_builder.store;
+
+            let bob_pre_key_bundle = bob_store_builder.make_bundle_with_latest_keys(bob_device_id);
+
+            process_prekey_bundle(
+                &bob_address,
+                &mut alice_store.session_store,
+                &mut alice_store.identity_store,
+                &bob_pre_key_bundle,
+                SystemTime::now(),
+                &mut csprng,
+            )
+            .await?;
+
+            assert!(alice_store.load_session(&bob_address).await?.is_some());
+            assert_eq!(
+                alice_store.session_version(&bob_address)?,
+                expected_session_version
+            );
+
+            let original_message = "L'homme est condamné à être libre";
+
+            let outgoing_message = encrypt(alice_store, &bob_address, original_message).await?;
+
+            assert_eq!(
+                outgoing_message.message_type(),
+                CiphertextMessageType::PreKey
+            );
+
+            let incoming_message = CiphertextMessage::PreKeySignalMessage(
+                PreKeySignalMessage::try_from(outgoing_message.serialize())?,
+            );
+
+            let ptext = decrypt(
+                &mut bob_store_builder.store,
+                &alice_address,
+                &incoming_message,
+            )
+            .await?;
+
+            assert_eq!(
+                String::from_utf8(ptext).expect("valid utf8"),
+                original_message
+            );
+
+            let bobs_response = "Who watches the watchers?";
+
+            assert!(
+                bob_store_builder
+                    .store
+                    .load_session(&alice_address)
+                    .await?
+                    .is_some()
+            );
+            let bobs_session_with_alice = bob_store_builder
+                .store
+                .load_session(&alice_address)
+                .await?
+                .expect("session found");
+            assert!(
+                bobs_session_with_alice
+                    .has_usable_sender_chain(SystemTime::now(), established_session_requirements)
+                    .expect("can check usability")
+            );
+            assert_eq!(
+                bobs_session_with_alice.session_version()?,
+                expected_session_version
+            );
+            assert_eq!(bobs_session_with_alice.alice_base_key()?.len(), 32 + 1);
+
+            let bob_outgoing =
+                encrypt(&mut bob_store_builder.store, &alice_address, bobs_response).await?;
+
+            assert_eq!(bob_outgoing.message_type(), CiphertextMessageType::Whisper);
+
+            let alice_decrypts = decrypt(alice_store, &bob_address, &bob_outgoing).await?;
+
+            assert_eq!(
+                String::from_utf8(alice_decrypts).expect("valid utf8"),
+                bobs_response
+            );
+                
+            assert!(
+                alice_store
+                    .load_session(&bob_address)
+                    .await?
+                    .expect("session found")
+                    .has_usable_sender_chain(SystemTime::now(), established_session_requirements)
+                    .expect("can check usability")
+            );
+
+            run_interaction(
+                alice_store,
+                &alice_address,
+                &mut bob_store_builder.store,
+                &bob_address,
+            )
+            .await?;
+
+            let mut alter_alice_store = TestStoreBuilder::new().store;
+
+            bob_add_keys(&mut bob_store_builder);
+
+            let bob_pre_key_bundle = bob_store_builder.make_bundle_with_latest_keys(bob_device_id);
+            process_prekey_bundle(
+                &bob_address,
+                &mut alter_alice_store.session_store,
+                &mut alter_alice_store.identity_store,
+                &bob_pre_key_bundle,
+                SystemTime::now(),
+                &mut csprng,
+            )
+            .await?;
+
+            let outgoing_message =
+                encrypt(&mut alter_alice_store, &bob_address, original_message).await?;
+
+            assert!(matches!(
+                decrypt(&mut bob_store_builder.store, &alice_address, &outgoing_message)
+                    .await
+                    .unwrap_err(),
+                SignalProtocolError::UntrustedIdentity(a) if a == alice_address
+            ));
+
+            assert_eq!(
+                bob_store_builder
+                    .store
+                    .save_identity(
+                        &alice_address,
+                        alter_alice_store
+                            .get_identity_key_pair()
+                            .await?
+                            .identity_key(),
+                    )
+                    .await?,
+                IdentityChange::ReplacedExisting
+            );
+
+            let decrypted = decrypt(
+                &mut bob_store_builder.store,
+                &alice_address,
+                &outgoing_message,
+            )
+            .await?;
+            assert_eq!(
+                String::from_utf8(decrypted).expect("valid utf8"),
+                original_message
+            );
+
+            // Sign pre-key with wrong key:
+            let bad_bob_pre_key_bundle = bob_store_builder
+                .make_bundle_with_latest_keys(bob_device_id)
+                .modify(|content| {
+                    let wrong_identity = alter_alice_store
+                        .get_identity_key_pair()
+                        .now_or_never()
+                        .expect("sync")
+                        .expect("has identity key");
+                    content.identity_key = Some(*wrong_identity.identity_key());
+                })
+                .expect("can reconstruct the bundle");
+
+            assert!(
+                process_prekey_bundle(
+                    &bob_address,
+                    &mut alter_alice_store.session_store,
+                    &mut alter_alice_store.identity_store,
+                    &bad_bob_pre_key_bundle,
+                    SystemTime::now(),
+                    &mut csprng,
+                )
+                .await
+                .is_err()
+            );
+
+            Ok(())
+        }
+        .now_or_never()
+        .expect("sync")
+    }
+    Ok(())
+}
+

@@ -128,7 +128,7 @@ pub fn hash_fs(vk: &RistrettoPoint, x: &[u8], h: &RistrettoPoint, h_prime: &Rist
     Scalar::from_bytes_mod_order_wide(&hash.into())
 }
 
-fn hash_to_G(domain_sep: &[u8], input: &[u8]) -> RistrettoPoint {
+fn hash_to_g(domain_sep: &[u8], input: &[u8]) -> RistrettoPoint {
     let mut hasher = Sha512::new();
     hasher.update(domain_sep);
     hasher.update(input);
@@ -138,19 +138,19 @@ fn hash_to_G(domain_sep: &[u8], input: &[u8]) -> RistrettoPoint {
 pub fn hash_i(vk: &RistrettoPoint , x: &[u8]) -> RistrettoPoint {
     let compressed = vk.compress();
     let compressed_vecu8 = compressed.as_bytes().to_vec();
-    hash_to_G(b"hash_i", &encode(&compressed_vecu8, x))
+    hash_to_g(b"hash_i", &encode(&compressed_vecu8, x))
 }
 
 pub fn hash_a(vk: &RistrettoPoint, x: &[u8]) -> RistrettoPoint {
     let compressed = vk.compress();
     let compressed_vecu8 = compressed.as_bytes().to_vec();
-    hash_to_G(b"hash_a", &encode(&compressed_vecu8, x))
+    hash_to_g(b"hash_a", &encode(&compressed_vecu8, x))
 }
 
 pub fn hash_b(vk: &RistrettoPoint, x: &[u8]) -> RistrettoPoint {
     let compressed = vk.compress();
     let compressed_vecu8 = compressed.as_bytes().to_vec();
-    hash_to_G(b"hash_b", &encode(&compressed_vecu8, x))
+    hash_to_g(b"hash_b", &encode(&compressed_vecu8, x))
 }
 
 pub fn hash_o(point: &RistrettoPoint) -> Vec<u8> {
@@ -159,10 +159,6 @@ pub fn hash_o(point: &RistrettoPoint) -> Vec<u8> {
 
     let hash = Sha256::digest(compressed.as_bytes());
     hash[..3].to_vec()
-}
-
-pub fn point_to_bytes(point: &RistrettoPoint) -> Vec<u8> {
-    point.compress().as_bytes().to_vec()
 }
 
 // ***X3DH Key Agreement for Alice***
@@ -206,14 +202,15 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     if let Some(their_one_time_prekey) = parameters.their_one_time_pre_key() {
         secrets
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
-        let mut bytes = their_one_time_prekey.public_key_bytes().to_vec();
         k = hash_generic_zp(their_one_time_prekey.public_key_bytes());
-        vk = g * k; //RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
+        vk = g * k; 
+        //vk = RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
     } else {
-        let mut bytes = parameters.their_signed_pre_key().public_key_bytes().to_vec();
         k = hash_generic_zp(parameters.their_signed_pre_key().public_key_bytes());
-        vk = g * k;//RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
+        vk = g * k;//RistrettoPoint::hash_from_bytes::<Sha512>(&bytes)
+        //vk = RistrettoPoint::from_uniform_bytes(bytes);
     }
+    //let salt = hash_generic_zp(b"generic_salt"); 
 
     // Uses Bob's Kyber prekey to perform key encapsulation (KEM)
     // ss = shared secret from Kyber, ct = ciphertext sent to Bob
@@ -359,8 +356,7 @@ pub(crate) fn initialize_bob_session(
     // fresh genning them for rapid dev right now
     let g = generator_g();
     let k ;//= hash_generic_zp(b"placeholder fresh k for vk");
-    let vk ;//= point_to_bytes(&(g * k));
-    let kptr;
+    let vk ;
     let x;
     let their_vts;
     let vts_response;
@@ -376,7 +372,6 @@ pub(crate) fn initialize_bob_session(
                 .private_key
                 .calculate_agreement(parameters.their_base_key())?,
         );
-        kptr = our_one_time_pre_key_pair;
         //let mut bytes = our_one_time_pre_key_pair.public_key.public_key_bytes().to_vec();
         k = hash_generic_zp(our_one_time_pre_key_pair.public_key.public_key_bytes());
         vk = g * k;
@@ -470,6 +465,9 @@ pub(crate) fn initialize_bob_session(
         log::info!("Bob computes using v using high level values: {:?}", v_from_higher_test);
         log::info!("compressed bob's v from higher level: {:?}", v_from_higher_test.compress());
         log::info!("bytes of bob's v from higher level: {:?}", v_from_higher_test.compress().to_bytes());
+        log::info!("bob's vk actual {:?}", vk);
+        log::info!("bob's compressed vk actual {:?}", vk.compress());
+        log::info!("bob's bytes vk actual {:?}", vk.compress().to_bytes());
 
         //turn their_secrets into a u8 arrray
         //log::info!("Bob computes using Alice's illegal values but from raw: {:?}", ((g * their_alpha * k + hash_i(&temp_ref, their_secrets.) * their_beta * k)).compress().to_bytes());
@@ -544,54 +542,6 @@ pub fn initialize_bob_session_record(
 }
 
 use curve25519_dalek::ristretto::CompressedRistretto;
-fn read_u32_le(buf: &[u8], offset: &mut usize) -> Result<usize> {
-    if *offset + 4 > buf.len() {
-        return Err(SignalProtocolError::InvalidArgument(
-            "buffer too short reading u32".to_string(),
-        ));
-    }
-    let val = u32::from_le_bytes(buf[*offset..*offset + 4].try_into().unwrap()) as usize;
-    *offset += 4;
-    Ok(val)
-}
- 
-fn read_bytes<'a>(buf: &'a [u8], offset: &mut usize, n: usize) -> Result<&'a [u8]> {
-    if *offset + n > buf.len() {
-        return Err(SignalProtocolError::InvalidArgument(
-            "buffer too short reading bytes".to_string(),
-        ));
-    }
-    let slice = &buf[*offset..*offset + n];
-    *offset += n;
-    Ok(slice)
-}
-fn read_point(buf: &[u8], offset: &mut usize) -> Result<RistrettoPoint> {
-    let bytes = read_bytes(buf, offset, 32)?;
-    // CompressedRistretto::from_slice returns a Result in newer dalek versions,
-    // or a plain CompressedRistretto in older ones. Adjust the unwrap style to
-    // match whichever dalek version your workspace uses.
-    CompressedRistretto::from_slice(bytes)
-        .map_err(|_| SignalProtocolError::InvalidArgument(
-            "invalid compressed ristretto slice length".to_string(),
-        ))?
-        .decompress()
-        .ok_or_else(|| SignalProtocolError::InvalidArgument(
-            "ristretto point decompression failed".to_string(),
-        ))
-}
- 
-// Reconstruct a Scalar from 32 bytes — same as the snippet:
-//   let temp_c_from_bytes = Scalar::from_canonical_bytes(temp_c).unwrap();
-fn read_scalar(buf: &[u8], offset: &mut usize) -> Result<Scalar> {
-    let bytes = read_bytes(buf, offset, 32)?;
-    let arr: [u8; 32] = bytes.try_into().unwrap();
-    // from_canonical_bytes returns CtOption; use unwrap_or_else for a proper error.
-    Option::<Scalar>::from(Scalar::from_canonical_bytes(arr))
-        .ok_or_else(|| SignalProtocolError::InvalidArgument(
-            "invalid canonical scalar bytes".to_string(),
-        ))
-}
-
 pub fn pvrf_verify_from_session_data(
     vk_bytes: &[u8],
     x_bytes: &[u8],
@@ -637,6 +587,8 @@ pub fn pvrf_verify_from_session_data(
         .decompress()
         .ok_or_else(|| SignalProtocolError::InvalidArgument("vk decompression failed".to_string()))?;
     log::info!("whyyyy");
+
+
 
 
 
