@@ -27,6 +27,9 @@ use crate::protocol::CIPHERTEXT_MESSAGE_CURRENT_VERSION;
 use crate::state::SessionState;
 use crate::{KeyPair, Result, SessionRecord, SignalProtocolError, consts};
 
+use std::fs;
+use std::path::PathBuf;
+
 type InitialPQRKey = [u8; 32]; // Initial key for PQ Ratchet
 
 fn derive_keys(secret_input: &[u8]) -> (RootKey, ChainKey, InitialPQRKey) {
@@ -259,6 +262,20 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     let pvrf_ciphertext =  bincode::serialize(&redacted_vts_for_bob).unwrap().into_boxed_slice();
     //output vt, store vts
 
+
+
+    // FOR MCS DEMO PURPOSES ONLY
+    // Get Desktop path (works on most systems)
+    let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
+
+    path.push("mcs_stored_pvrf.txt");
+    let pvrf_ciphertext = if path.exists() {
+        log::info!("it existed on desktop");
+        Some(fs::read(&path).unwrap().into_boxed_slice())
+    } else {
+        Some(pvrf_ciphertext)
+    };
+    let pvrf_ciphertext = pvrf_ciphertext.expect("");
 
 
     let (root_key, chain_key, pqr_key) = derive_keys(&secrets);

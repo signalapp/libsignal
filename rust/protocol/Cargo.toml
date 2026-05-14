@@ -30,6 +30,7 @@ curve25519-dalek = { workspace = true }
 data-encoding-macro = { workspace = true }
 derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["deref", "from", "into", "try_from"] }
+dirs = "5"
 displaydoc = { workspace = true }
 hex = { workspace = true }
 hkdf = { workspace = true }
