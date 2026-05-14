@@ -25,7 +25,6 @@
 mod consts;
 mod crypto;
 pub mod error;
-pub mod pvrf_demo;
 mod fingerprint;
 mod group_cipher;
 mod identity_key;
