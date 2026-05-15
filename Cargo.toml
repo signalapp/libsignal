@@ -22,6 +22,7 @@ members = [
     "rust/bridge/jni/impl",
     "rust/bridge/jni/testing",
     "rust/bridge/node",
+    "rust/bridge/node/native_ts",
 ]
 default-members = [
     "rust/crypto",
@@ -67,6 +68,7 @@ libsignal-message-backup = { path = "rust/message-backup" }
 libsignal-net = { path = "rust/net" }
 libsignal-net-chat = { path = "rust/net/chat" }
 libsignal-net-grpc = { path = "rust/net/grpc" }
+libsignal-node = { path = "rust/bridge/node" }
 libsignal-protocol = { path = "rust/protocol" }
 libsignal-svrb = { path = "rust/svrb" }
 poksho = { path = "rust/poksho" }
@@ -160,6 +162,7 @@ mediasan-common = "0.5.3"
 minidump = { version = "0.22.1", default-features = false }
 minidump-processor = { version = "0.22.1", default-features = false }
 minidump-unwind = { version = "0.22.1", default-features = false }
+minijinja = "2.19.0"
 mp4san = "0.5.3"
 neon = { version = "1.1.0", default-features = false }
 nonzero_ext = "0.3.0"

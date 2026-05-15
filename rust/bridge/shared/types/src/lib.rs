@@ -6,6 +6,9 @@
 #![allow(clippy::missing_safety_doc)]
 #![deny(clippy::unwrap_used)]
 
+#[cfg(feature = "metadata")]
+pub mod metadata;
+
 #[cfg(feature = "ffi")]
 #[macro_use]
 pub mod ffi;

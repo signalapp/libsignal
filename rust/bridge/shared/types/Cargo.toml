@@ -84,6 +84,7 @@ jni-type-tagging = []
 jni-invoke-annotated = []
 extra-jni-checks = ["jni-type-tagging", "jni-invoke-annotated"]
 node = ["neon", "linkme", "signal-neon-futures"]
+metadata = ["linkme", "serde/derive"]
 
 [target.'cfg(not(any(windows, target_arch = "x86")))'.dependencies]
 # sha2's asm implementation uses standalone .S files that aren't compiled correctly on Windows,

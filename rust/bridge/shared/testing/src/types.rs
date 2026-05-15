@@ -105,6 +105,10 @@ impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context> for Nee
     fn load_from(_stored: &'storage mut Self::StoredType) -> Self {
         Self::None
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
+    }
 }
 
 #[cfg(feature = "node")]
@@ -122,6 +126,10 @@ impl<'storage> node::AsyncArgTypeInfo<'storage> for NeedsCleanup {
     fn load_async_arg(_stored: &'storage mut Self::StoredType) -> Self {
         // We only want to test that the storage is cleaned up, not the value passed into the wrapped function.
         Self::None
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
     }
 }
 
@@ -162,6 +170,10 @@ impl node::SimpleArgTypeInfo for ErrorOnBorrow {
     ) -> node::NeonResult<Self> {
         node::Context::throw_type_error(cx, "deliberate error")
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
+    }
 }
 
 /// A type that implements ArgTypeInfo but panics as it is "borrowed" from the app-provided
@@ -198,6 +210,11 @@ impl node::SimpleArgTypeInfo for PanicOnBorrow {
         _foreign: node::Handle<Self::ArgType>,
     ) -> node::NeonResult<Self> {
         panic!("deliberate panic")
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
     }
 }
 
@@ -258,6 +275,11 @@ impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context> for Pan
     fn load_from(_stored: &'storage mut Self::StoredType) -> Self {
         panic!("deliberate panic")
     }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
+    }
 }
 
 #[cfg(feature = "node")]
@@ -275,6 +297,11 @@ impl<'storage> node::AsyncArgTypeInfo<'storage> for PanicOnLoad {
 
     fn load_async_arg(_stored: &'storage mut Self::StoredType) -> Self {
         panic!("deliberate panic")
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
     }
 }
 
@@ -311,6 +338,11 @@ impl<'a> node::ResultTypeInfo<'a> for ErrorOnReturn {
     fn convert_into(self, cx: &mut impl node::Context<'a>) -> node::JsResult<'a, Self::ResultType> {
         cx.throw_type_error("deliberate error")
     }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
+    }
 }
 
 /// A type that implements ResultTypeInfo but always panics when producing a result.
@@ -346,6 +378,11 @@ impl<'a> node::ResultTypeInfo<'a> for PanicOnReturn {
         _cx: &mut impl node::Context<'a>,
     ) -> node::JsResult<'a, Self::ResultType> {
         panic!("deliberate panic");
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
     }
 }
 
@@ -429,6 +466,11 @@ impl<'storage> node::AsyncArgTypeInfo<'storage> for TestingFutureCancellationGua
     }
     fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
         stored.take().unwrap().0
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "TestingFutureCancellationGuard".into()
     }
 }
 

@@ -154,7 +154,7 @@ jobs:
     - run: sudo apt-get install -U protobuf-compiler
 
     - name: Verify that the Node bindings are up to date
-      run: rust/bridge/node/bin/gen_ts_decl.py --verify
+      run: cargo run -p libsignal-node-native_ts -- --verify
 
   publish:
     name: Publish

@@ -15,17 +15,23 @@ workspace = true
 
 [lib]
 name = "signal_node"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
 
 [features]
 # Here for bridge_fn uniformity
 node = []
 default = ["node"]
+metadata = [
+    "libsignal-bridge/metadata",
+    "libsignal-bridge-testing/metadata",
+    "libsignal-bridge-types/metadata",
+]
 
 [dependencies]
 libsignal-bridge = { workspace = true, features = ["node", "signal-media"] }
 libsignal-bridge-macros = { workspace = true }
 libsignal-bridge-testing = { workspace = true, features = ["node", "signal-media"] }
+libsignal-bridge-types = { workspace = true, features = ["node"] }
 libsignal-protocol = { workspace = true }
 
 futures = { workspace = true }

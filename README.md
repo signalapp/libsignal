@@ -214,7 +214,7 @@ $ npm run test
 
 When testing changes locally, you can use `npm run build` to do an incremental rebuild of the Rust library. Alternately, `npm run build-with-debug-level-logs` will rebuild without filtering out debug- and verbose-level logs.
 
-When exposing new APIs to Node, you will need to run `rust/bridge/node/bin/gen_ts_decl.py` in
+When exposing new APIs to Node, you will need to run `just generate-node` in
 addition to rebuilding.
 
 [nvm]: https://github.com/nvm-sh/nvm

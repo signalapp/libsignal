@@ -14,7 +14,7 @@ generate-ffi:
     swift/build_ffi.sh --generate-ffi
 
 generate-node:
-    rust/bridge/node/bin/gen_ts_decl.py
+    cargo run -p libsignal-node-native_ts
 
 alias generate-java := generate-jni
 alias generate-swift := generate-ffi

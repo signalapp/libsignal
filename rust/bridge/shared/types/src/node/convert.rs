@@ -35,6 +35,27 @@ use crate::support::{
     Array, AsType, BridgedCallbacks, FixedLengthBincodeSerializable, Serialized, extend_lifetime,
 };
 
+#[cfg(feature = "metadata")]
+mod metadata {
+    use super::*;
+    pub use crate::metadata::node::TsMetadataContext;
+
+    pub fn make_array_type<'a, T: ResultTypeInfo<'a>>(ctx: &mut TsMetadataContext) -> String {
+        format!("Array<{}>", T::register_ts_ffi_type(ctx))
+    }
+}
+#[cfg(feature = "metadata")]
+use metadata::*;
+/// Shorthand to implement `register_ts_ffi_type()`
+macro_rules! register_ts_ffi_type {
+    ($text:expr) => {
+        #[cfg(feature = "metadata")]
+        fn register_ts_ffi_type(_: &mut TsMetadataContext) -> String {
+            $text.into()
+        }
+    };
+}
+
 /// Converts arguments from their JavaScript form to their Rust form.
 ///
 /// `ArgTypeInfo` has two required methods: `borrow` and `load_from`. The use site looks like this:
@@ -47,6 +68,10 @@ use crate::support::{
 /// #     type ArgType = JsObject;
 /// #     fn convert_from(cx: &mut FunctionContext, _: Handle<JsObject>) -> NeonResult<Self> {
 /// #         Ok(Foo)
+/// #     }
+/// #     #[cfg(feature = "metadata")]
+/// #     fn register_ts_ffi_type(ctx: &mut libsignal_bridge_types::metadata::node::TsMetadataContext) -> String {
+/// #         unimplemented!()
 /// #     }
 /// # }
 /// # fn test<'a>(cx: &mut FunctionContext<'a>, js_arg: Handle<'a, JsObject>) -> NeonResult<()> {
@@ -75,6 +100,10 @@ pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
     ) -> NeonResult<Self::StoredType>;
     /// Loads the Rust value from the data that's been `stored` by [`borrow()`](Self::borrow()).
     fn load_from(stored: &'storage mut Self::StoredType) -> Self;
+
+    #[cfg(feature = "metadata")]
+    /// What TypeScript type represents the values that can be successfully converted by this impl?
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String;
 }
 
 /// Converts arguments from their JavaScript form and saves them for use in an `async` function.
@@ -95,6 +124,10 @@ pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
 /// #     type ArgType = JsObject;
 /// #     fn convert_from(cx: &mut FunctionContext, _: Handle<JsObject>) -> NeonResult<Self> {
 /// #         Ok(Foo)
+/// #     }
+/// #     #[cfg(feature = "metadata")]
+/// #     fn register_ts_ffi_type(ctx: &mut libsignal_bridge_types::metadata::node::TsMetadataContext) -> String {
+/// #         unimplemented!()
 /// #     }
 /// # }
 /// # fn test<'a>(mut cx: FunctionContext<'a>, js_arg: Handle<'a, JsObject>) -> NeonResult<()> {
@@ -131,6 +164,9 @@ pub trait AsyncArgTypeInfo<'storage>: Sized {
     /// Loads the Rust value from the data that's been `stored` by
     /// [`save_async_arg()`](Self::save_async_arg()).
     fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self;
+    #[cfg(feature = "metadata")]
+    /// What TypeScript type represents the values that can be successfully converted by this impl?
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String;
 }
 
 /// A simpler interface for [`ArgTypeInfo`] and [`AsyncArgTypeInfo`] for when no separate local
@@ -148,6 +184,11 @@ pub trait AsyncArgTypeInfo<'storage>: Sized {
 ///         // ...
 ///         # Ok(Foo)
 ///     }
+///     // You can also use register_ts_ffi_type!() to simplify this declaration.
+///     #[cfg(feature = "metadata")]
+///     fn register_ts_ffi_type(ctx: &mut libsignal_bridge_types::metadata::node::TsMetadataContext) -> String {
+///         "FooTypescriptType".into()
+///     }
 /// }
 ///
 /// # fn test<'a>(mut cx: FunctionContext<'a>, js_arg: Handle<'a, JsObject>) -> NeonResult<()> {
@@ -162,6 +203,9 @@ pub trait SimpleArgTypeInfo: Sized + 'static {
     type ArgType: neon::types::Value;
     /// Converts the data in `foreign` to the Rust type.
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self>;
+    #[cfg(feature = "metadata")]
+    /// What TypeScript type represents the values that can be successfully converted by this impl?
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String;
 }
 
 impl<'a, T> ArgTypeInfo<'a, 'a> for T
@@ -178,6 +222,10 @@ where
     }
     fn load_from(stored: &'a mut Self::StoredType) -> Self {
         stored.take().expect("should only be loaded once")
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <T as SimpleArgTypeInfo>::register_ts_ffi_type(ctx)
     }
 }
 
@@ -196,6 +244,10 @@ where
     fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         stored.0.take().expect("should only be loaded once")
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <T as SimpleArgTypeInfo>::register_ts_ffi_type(ctx)
+    }
 }
 
 /// A variation of [`ArgTypeInfo`] for callback results.
@@ -210,6 +262,9 @@ pub trait CallbackResultTypeInfo: Sized {
         cx: &mut FunctionContext,
         foreign: Handle<Self::ResultType>,
     ) -> NeonResult<Self>;
+    #[cfg(feature = "metadata")]
+    /// What TypeScript type represents the values that can be successfully converted by this impl?
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String;
 }
 
 impl<T: SimpleArgTypeInfo> CallbackResultTypeInfo for T {
@@ -220,6 +275,10 @@ impl<T: SimpleArgTypeInfo> CallbackResultTypeInfo for T {
         foreign: Handle<Self::ResultType>,
     ) -> NeonResult<Self> {
         Self::convert_from(cx, foreign)
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <T as SimpleArgTypeInfo>::register_ts_ffi_type(ctx)
     }
 }
 
@@ -235,6 +294,10 @@ impl<T: CallbackResultTypeInfo> CallbackResultTypeInfo for Option<T> {
         }
         let non_optional_value = foreign.downcast_or_throw::<T::ResultType, _>(cx)?;
         T::convert_from_callback(cx, non_optional_value).map(Some)
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        format!("({} | null)", T::register_ts_ffi_type(ctx))
     }
 }
 
@@ -266,6 +329,10 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [SessionRecord] {
     fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         &stored.0
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        format!("Array<{}>", <&SessionRecord>::register_ts_ffi_type(ctx))
+    }
 }
 
 /// Converts result values from their Rust form to their JavaScript form.
@@ -282,6 +349,10 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [SessionRecord] {
 /// #     fn convert_into(self, _cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
 /// #         unimplemented!()
 /// #     }
+/// #     #[cfg(feature = "metadata")]
+/// #     fn register_ts_ffi_type(ctx: &mut libsignal_bridge_types::metadata::node::TsMetadataContext) -> String {
+/// #         unimplemented!()
+/// #     }
 /// # }
 /// # fn test(mut cx: FunctionContext) -> NeonResult<()> {
 /// #     let rust_result = Foo;
@@ -296,6 +367,9 @@ pub trait ResultTypeInfo<'a>: Sized {
     type ResultType: neon::types::Value;
     /// Converts the data in `self` to the JavaScript type, similar to `try_into()`.
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType>;
+    #[cfg(feature = "metadata")]
+    /// What TypeScript type represents this return type?
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String;
 }
 
 /// Returns `true` if `value` represents an integer within the given range.
@@ -321,6 +395,7 @@ impl SimpleArgTypeInfo for crate::protocol::Timestamp {
         #[expect(clippy::cast_possible_truncation)]
         Ok(Self::from_epoch_millis(value as u64))
     }
+    register_ts_ffi_type!("Timestamp");
 }
 
 impl SimpleArgTypeInfo for RandomNumberGenerator {
@@ -333,6 +408,7 @@ impl SimpleArgTypeInfo for RandomNumberGenerator {
         #[expect(clippy::cast_possible_truncation)]
         Ok(Self::from(value as i64))
     }
+    register_ts_ffi_type!("RandomNumberGenerator");
 }
 
 /// Converts non-negative numbers up to [`Number.MAX_SAFE_INTEGER`][].
@@ -348,6 +424,7 @@ impl SimpleArgTypeInfo for crate::zkgroup::Timestamp {
         #[expect(clippy::cast_possible_truncation)]
         Ok(Self::from_epoch_seconds(value as u64))
     }
+    register_ts_ffi_type!("Timestamp");
 }
 
 impl SimpleArgTypeInfo for u64 {
@@ -357,6 +434,7 @@ impl SimpleArgTypeInfo for u64 {
             .to_u64(cx)
             .or_else(|_| cx.throw_range_error("value out of range for Rust u64"))
     }
+    register_ts_ffi_type!("bigint");
 }
 
 impl SimpleArgTypeInfo for f64 {
@@ -364,6 +442,7 @@ impl SimpleArgTypeInfo for f64 {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         Ok(foreign.value(cx))
     }
+    register_ts_ffi_type!("number");
 }
 
 impl SimpleArgTypeInfo for String {
@@ -371,6 +450,7 @@ impl SimpleArgTypeInfo for String {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         Ok(foreign.value(cx))
     }
+    register_ts_ffi_type!("string");
 }
 
 impl SimpleArgTypeInfo for uuid::Uuid {
@@ -379,6 +459,7 @@ impl SimpleArgTypeInfo for uuid::Uuid {
         uuid::Uuid::from_slice(foreign.as_slice(cx))
             .or_else(|_| cx.throw_type_error("UUIDs have 16 bytes"))
     }
+    register_ts_ffi_type!("Uuid");
 }
 
 impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
@@ -394,6 +475,7 @@ impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
                     .expect_err("throw_type_error always produces Err")
             })
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl SimpleArgTypeInfo for libsignal_protocol::Aci {
@@ -403,6 +485,7 @@ impl SimpleArgTypeInfo for libsignal_protocol::Aci {
             .try_into()
             .or_else(|_| cx.throw_type_error("not an ACI"))
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl SimpleArgTypeInfo for libsignal_protocol::Pni {
@@ -412,6 +495,7 @@ impl SimpleArgTypeInfo for libsignal_protocol::Pni {
             .try_into()
             .or_else(|_| cx.throw_type_error("not a PNI"))
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl SimpleArgTypeInfo for libsignal_core::E164 {
@@ -421,6 +505,7 @@ impl SimpleArgTypeInfo for libsignal_core::E164 {
         e164.parse()
             .or_else(|_: ParseIntError| cx.throw_type_error("not an E164"))
     }
+    register_ts_ffi_type!("string");
 }
 
 impl CallbackResultTypeInfo for PublicKey {
@@ -431,6 +516,10 @@ impl CallbackResultTypeInfo for PublicKey {
         foreign: Handle<Self::ResultType>,
     ) -> NeonResult<Self> {
         Ok(foreign.as_inner().0)
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <Self as ResultTypeInfo>::register_ts_ffi_type(ctx)
     }
 }
 
@@ -443,6 +532,10 @@ impl CallbackResultTypeInfo for PrivateKey {
     ) -> NeonResult<Self> {
         Ok(foreign.as_inner().0)
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <Self as ResultTypeInfo>::register_ts_ffi_type(ctx)
+    }
 }
 impl SimpleArgTypeInfo for [u8; 16] {
     type ArgType = JsUint8Array;
@@ -452,6 +545,7 @@ impl SimpleArgTypeInfo for [u8; 16] {
                 .expect_err("throw_type_error always produces Err")
         })
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl SimpleArgTypeInfo for DeviceSpecifier {
@@ -477,6 +571,7 @@ impl SimpleArgTypeInfo for DeviceSpecifier {
                 })
         }
     }
+    register_ts_ffi_type!("number");
 }
 
 impl CallbackResultTypeInfo for PreKeyRecord {
@@ -487,6 +582,10 @@ impl CallbackResultTypeInfo for PreKeyRecord {
         foreign: Handle<Self::ResultType>,
     ) -> NeonResult<Self> {
         Ok(foreign.as_inner().0.clone())
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <Self as ResultTypeInfo>::register_ts_ffi_type(ctx)
     }
 }
 
@@ -499,6 +598,10 @@ impl CallbackResultTypeInfo for SignedPreKeyRecord {
     ) -> NeonResult<Self> {
         Ok(foreign.as_inner().0.clone())
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <Self as ResultTypeInfo>::register_ts_ffi_type(ctx)
+    }
 }
 
 impl CallbackResultTypeInfo for KyberPreKeyRecord {
@@ -509,6 +612,10 @@ impl CallbackResultTypeInfo for KyberPreKeyRecord {
         foreign: Handle<Self::ResultType>,
     ) -> NeonResult<Self> {
         Ok(foreign.as_inner().0.clone())
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <Self as ResultTypeInfo>::register_ts_ffi_type(ctx)
     }
 }
 
@@ -521,6 +628,10 @@ impl CallbackResultTypeInfo for SessionRecord {
     ) -> NeonResult<Self> {
         Ok(foreign.as_inner().borrow().clone())
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <Self as ResultTypeInfo>::register_ts_ffi_type(ctx)
+    }
 }
 
 impl CallbackResultTypeInfo for SenderKeyRecord {
@@ -532,6 +643,10 @@ impl CallbackResultTypeInfo for SenderKeyRecord {
     ) -> NeonResult<Self> {
         Ok(foreign.as_inner().0.clone())
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <Self as ResultTypeInfo>::register_ts_ffi_type(ctx)
+    }
 }
 
 impl SimpleArgTypeInfo for AccountEntropyPool {
@@ -542,6 +657,7 @@ impl SimpleArgTypeInfo for AccountEntropyPool {
             cx.throw_type_error(format!("bad account entropy pool: {e}"))
         })
     }
+    register_ts_ffi_type!("AccountEntropyPool");
 }
 
 impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSendAuthorization {
@@ -561,6 +677,7 @@ impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSend
             Ok(Self::Group(token))
         }
     }
+    register_ts_ffi_type!("(Uint8Array<ArrayBuffer> | null)");
 }
 
 macro_rules! zkgroup_serialize_type {
@@ -575,6 +692,7 @@ macro_rules! zkgroup_serialize_type {
                     cx.throw_type_error(concat!("bad ", stringify!($ty)))
                 })
             }
+            register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
         }
     )*};
 }
@@ -591,6 +709,7 @@ impl SimpleArgTypeInfo for () {
     ) -> NeonResult<Self> {
         Ok(())
     }
+    register_ts_ffi_type!("void");
 }
 
 impl SimpleArgTypeInfo for bool {
@@ -598,6 +717,7 @@ impl SimpleArgTypeInfo for bool {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         Ok(foreign.value(cx))
     }
+    register_ts_ffi_type!("boolean");
 }
 
 impl SimpleArgTypeInfo for Box<[u8]> {
@@ -606,6 +726,7 @@ impl SimpleArgTypeInfo for Box<[u8]> {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         Ok(foreign.as_slice(cx).to_vec().into())
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl SimpleArgTypeInfo for Box<[u32]> {
@@ -614,6 +735,7 @@ impl SimpleArgTypeInfo for Box<[u32]> {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         Ok(foreign.as_slice(cx).to_vec().into())
     }
+    register_ts_ffi_type!("Uint32Array<ArrayBuffer>");
 }
 
 impl SimpleArgTypeInfo for Box<[String]> {
@@ -628,6 +750,7 @@ impl SimpleArgTypeInfo for Box<[String]> {
             })
             .collect()
     }
+    register_ts_ffi_type!("Array<string>");
 }
 
 impl SimpleArgTypeInfo for libsignal_net::chat::LanguageList {
@@ -638,6 +761,7 @@ impl SimpleArgTypeInfo for libsignal_net::chat::LanguageList {
         libsignal_net::chat::LanguageList::parse(&entries)
             .or_else(|_| cx.throw_error("invalid language in list"))
     }
+    register_ts_ffi_type!("Array<string>");
 }
 
 impl SimpleArgTypeInfo for libsignal_net_chat::api::registration::CreateSession {
@@ -659,6 +783,7 @@ impl SimpleArgTypeInfo for libsignal_net_chat::api::registration::CreateSession 
             mnc,
         })
     }
+    register_ts_ffi_type!("RegistrationCreateSessionRequest");
 }
 
 impl SimpleArgTypeInfo for libsignal_net_chat::api::registration::SignedPreKeyBody<Box<[u8]>> {
@@ -678,6 +803,7 @@ impl SimpleArgTypeInfo for libsignal_net_chat::api::registration::SignedPreKeyBo
             signature,
         })
     }
+    register_ts_ffi_type!("SignedPublicPreKey");
 }
 
 /// Converts `null` to `None`, passing through all other values.
@@ -700,6 +826,10 @@ where
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.as_mut().map(T::load_from)
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        format!("({} | null)", T::register_ts_ffi_type(ctx))
+    }
 }
 
 /// Converts `null` to `None`, passing through all other values.
@@ -721,6 +851,10 @@ where
     }
     fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
         stored.as_mut().map(T::load_async_arg)
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        format!("({} | null)", T::register_ts_ffi_type(ctx))
     }
 }
 
@@ -794,6 +928,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.buffer
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 /// A wrapper around a persisted JavaScript buffer and a pointer/length pair.
@@ -877,6 +1012,7 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [u8] {
     fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         &*stored
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 /// See [`AssumedImmutableBuffer`].
@@ -894,6 +1030,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         Self::parse(&*stored)
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 /// See [`PersistentAssumedImmutableBuffer`].
@@ -909,6 +1046,7 @@ impl<'a> AsyncArgTypeInfo<'a> for crate::support::ServiceIdSequence<'a> {
     fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         Self::parse(&*stored)
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Vec<&'storage [u8]> {
@@ -933,6 +1071,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Vec<&'sto
         // efficient, but it's not likely to be a performance bottleneck either.
         stored.iter().map(|buffer| buffer as &[u8]).collect()
     }
+    register_ts_ffi_type!("Array<Uint8Array<ArrayBuffer>>");
 }
 
 impl SimpleArgTypeInfo for Vec<Vec<u8>> {
@@ -947,6 +1086,7 @@ impl SimpleArgTypeInfo for Vec<Vec<u8>> {
             })
             .collect()
     }
+    register_ts_ffi_type!("Array<Uint8Array<ArrayBuffer>>");
 }
 
 macro_rules! bridge_trait {
@@ -963,6 +1103,10 @@ macro_rules! bridge_trait {
                 }
                 fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
                     ($load)(stored)
+                }
+                #[cfg(feature = "metadata")]
+                fn register_ts_ffi_type(_ctx: &mut TsMetadataContext) -> String {
+                    stringify!($name).into()
                 }
             }
         }
@@ -986,6 +1130,7 @@ impl SimpleArgTypeInfo for Box<dyn ChatListener> {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         Ok(Box::new(NodeChatListener::new(cx, foreign)?))
     }
+    register_ts_ffi_type!("ChatListener");
 }
 
 impl SimpleArgTypeInfo for Box<dyn ProvisioningListener> {
@@ -994,6 +1139,7 @@ impl SimpleArgTypeInfo for Box<dyn ProvisioningListener> {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         Ok(Box::new(NodeProvisioningListener::new(cx, foreign)?))
     }
+    register_ts_ffi_type!("ProvisioningListener");
 }
 
 impl<'a> AsyncArgTypeInfo<'a> for Box<dyn crate::net::registration::ConnectChatBridge> {
@@ -1011,6 +1157,7 @@ impl<'a> AsyncArgTypeInfo<'a> for Box<dyn crate::net::registration::ConnectChatB
     fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         Box::new(stored.take().expect("only loaded once"))
     }
+    register_ts_ffi_type!("ConnectChatBridge");
 }
 
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
@@ -1031,6 +1178,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored
     }
+    register_ts_ffi_type!("SyncInputStream");
 }
 
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
@@ -1047,6 +1195,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         <&[u8; libsignal_account_keys::BACKUP_KEY_LEN]>::load_from(stored).into()
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl<'storage> AsyncArgTypeInfo<'storage> for &'storage libsignal_account_keys::BackupKey {
@@ -1061,6 +1210,7 @@ impl<'storage> AsyncArgTypeInfo<'storage> for &'storage libsignal_account_keys::
     fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
         <&[u8; libsignal_account_keys::BACKUP_KEY_LEN]>::load_async_arg(stored).into()
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl<'a> ResultTypeInfo<'a> for bool {
@@ -1068,6 +1218,7 @@ impl<'a> ResultTypeInfo<'a> for bool {
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.boolean(self))
     }
+    register_ts_ffi_type!("boolean");
 }
 
 /// Converts non-negative values up to [`Number.MAX_SAFE_INTEGER`][].
@@ -1085,6 +1236,7 @@ impl<'a> ResultTypeInfo<'a> for crate::protocol::Timestamp {
         }
         Ok(cx.number(result))
     }
+    register_ts_ffi_type!("Timestamp");
 }
 
 /// Converts non-negative values up to [`Number.MAX_SAFE_INTEGER`][].
@@ -1102,6 +1254,7 @@ impl<'a> ResultTypeInfo<'a> for crate::zkgroup::Timestamp {
         }
         Ok(cx.number(result))
     }
+    register_ts_ffi_type!("Timestamp");
 }
 
 impl<'a> ResultTypeInfo<'a> for u64 {
@@ -1110,6 +1263,7 @@ impl<'a> ResultTypeInfo<'a> for u64 {
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         Ok(JsBigInt::from_u64(cx, self))
     }
+    register_ts_ffi_type!("bigint");
 }
 
 impl<'a> ResultTypeInfo<'a> for String {
@@ -1117,6 +1271,7 @@ impl<'a> ResultTypeInfo<'a> for String {
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         self.deref().convert_into(cx)
     }
+    register_ts_ffi_type!("string");
 }
 
 impl<'a> ResultTypeInfo<'a> for &str {
@@ -1124,6 +1279,7 @@ impl<'a> ResultTypeInfo<'a> for &str {
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.string(self))
     }
+    register_ts_ffi_type!("string");
 }
 
 impl<'a> ResultTypeInfo<'a> for &[u8] {
@@ -1131,6 +1287,7 @@ impl<'a> ResultTypeInfo<'a> for &[u8] {
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         JsUint8Array::from_slice(cx, self)
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
@@ -1138,6 +1295,7 @@ impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         JsUint8Array::from_slice(cx, self.as_bytes())
     }
+    register_ts_ffi_type!("Uuid");
 }
 
 impl<'a> ResultTypeInfo<'a> for libsignal_protocol::ServiceId {
@@ -1145,6 +1303,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_protocol::ServiceId {
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         JsUint8Array::from_slice(cx, &self.service_id_fixed_width_binary())
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl<'a> ResultTypeInfo<'a> for libsignal_protocol::Aci {
@@ -1152,6 +1311,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_protocol::Aci {
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         libsignal_protocol::ServiceId::from(self).convert_into(cx)
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl<'a> ResultTypeInfo<'a> for libsignal_protocol::Pni {
@@ -1159,6 +1319,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_protocol::Pni {
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         libsignal_protocol::ServiceId::from(self).convert_into(cx)
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 /// Converts `None` to `null`, passing through all other values.
@@ -1170,6 +1331,10 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {
             None => Ok(cx.null().upcast()),
         }
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        format!("({} | null)", T::register_ts_ffi_type(ctx))
+    }
 }
 
 impl<'a> ResultTypeInfo<'a> for Vec<u8> {
@@ -1177,6 +1342,7 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         JsUint8Array::from_slice(cx, &self)
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl<'a> ResultTypeInfo<'a> for bytes::Bytes {
@@ -1184,12 +1350,17 @@ impl<'a> ResultTypeInfo<'a> for bytes::Bytes {
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         JsUint8Array::from_slice(cx, &self)
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl<'a> ResultTypeInfo<'a> for &[&str] {
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self.iter().copied())
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        make_array_type::<&str>(ctx)
     }
 }
 
@@ -1198,12 +1369,20 @@ impl<'a> ResultTypeInfo<'a> for Box<[String]> {
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self)
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        make_array_type::<String>(ctx)
+    }
 }
 
 impl<'a> ResultTypeInfo<'a> for Box<[Vec<u8>]> {
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self)
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        make_array_type::<Vec<u8>>(ctx)
     }
 }
 
@@ -1244,6 +1423,7 @@ impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'cont
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.buffer.try_into().expect("checked length already")
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 /// Loads from a JsUint8Array, assuming it won't be mutated while in use.
@@ -1251,6 +1431,7 @@ impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'cont
 impl<'storage, const LEN: usize> AsyncArgTypeInfo<'storage> for &'storage [u8; LEN] {
     type ArgType = JsUint8Array;
     type StoredType = PersistentAssumedImmutableBuffer;
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
     fn save_async_arg(
         cx: &mut FunctionContext,
         foreign: Handle<Self::ArgType>,
@@ -1302,6 +1483,7 @@ impl<'a> ResultTypeInfo<'a> for UploadForm {
         obj.set(cx, "signedUploadUrl", signed_upload_url)?;
         Ok(obj)
     }
+    register_ts_ffi_type!("UploadForm");
 }
 
 impl<'a> ResultTypeInfo<'a> for PreKeysResponse {
@@ -1323,6 +1505,7 @@ impl<'a> ResultTypeInfo<'a> for PreKeysResponse {
         obj.set(cx, "preKeyBundles", pre_key_bundles)?;
         Ok(obj)
     }
+    register_ts_ffi_type!("PreKeysResponse");
 }
 
 impl<'a, const LEN: usize> ResultTypeInfo<'a> for [u8; LEN] {
@@ -1330,12 +1513,17 @@ impl<'a, const LEN: usize> ResultTypeInfo<'a> for [u8; LEN] {
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         self.as_ref().convert_into(cx)
     }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for NeonResult<T> {
     type ResultType = T::ResultType;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         self?.convert_into(cx)
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        T::register_ts_ffi_type(ctx)
     }
 }
 
@@ -1344,6 +1532,7 @@ impl<'a> ResultTypeInfo<'a> for () {
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.undefined())
     }
+    register_ts_ffi_type!("void");
 }
 
 impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A, B) {
@@ -1355,6 +1544,12 @@ impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A
         result.set(cx, 0, a)?;
         result.set(cx, 1, b)?;
         Ok(result)
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        let a = A::register_ts_ffi_type(ctx);
+        let b = B::register_ts_ffi_type(ctx);
+        format!("[{a}, {b}]")
     }
 }
 
@@ -1370,12 +1565,22 @@ impl<A: CallbackResultTypeInfo, B: CallbackResultTypeInfo> CallbackResultTypeInf
         let b = B::convert_from_callback(cx, b)?;
         Ok((a, b))
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        let a = A::register_ts_ffi_type(ctx);
+        let b = B::register_ts_ffi_type(ctx);
+        format!("[{a}, {b}]")
+    }
 }
 
 impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Vec<(A, B)> {
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self)
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        make_array_type::<(A, B)>(ctx)
     }
 }
 
@@ -1396,6 +1601,7 @@ impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
 
         Ok(obj)
     }
+    register_ts_ffi_type!("MessageBackupValidationOutcome");
 }
 
 impl<'a> ResultTypeInfo<'a> for &[libsignal_message_backup::FoundUnknownField] {
@@ -1404,13 +1610,7 @@ impl<'a> ResultTypeInfo<'a> for &[libsignal_message_backup::FoundUnknownField] {
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self.iter().map(ToString::to_string))
     }
-}
-
-impl<'a, T: Value> ResultTypeInfo<'a> for Handle<'a, T> {
-    type ResultType = T;
-    fn convert_into(self, _cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
-        Ok(self)
-    }
+    register_ts_ffi_type!("Array<string>");
 }
 
 trait OrUndefined<'a> {
@@ -1462,6 +1662,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::Response {
 
         Ok(obj)
     }
+    register_ts_ffi_type!("ChatResponse");
 }
 
 impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
@@ -1514,6 +1715,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
         output.set(cx, "debugPermitsUsed", debug_permits_used)?;
         Ok(output)
     }
+    register_ts_ffi_type!("LookupResponse");
 }
 
 impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::ChallengeOption {
@@ -1524,12 +1726,17 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::ChallengeOption {
             Self::Captcha => "captcha",
         }))
     }
+    register_ts_ffi_type!("ChallengeOption");
 }
 
 impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net_chat::api::ChallengeOption]> {
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self)
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        make_array_type::<libsignal_net_chat::api::ChallengeOption>(ctx)
     }
 }
 
@@ -1548,12 +1755,17 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::messages::MismatchedDev
         result.set(cx, "staleDevices", js_stale_devices)?;
         Ok(result)
     }
+    register_ts_ffi_type!("MismatchedDeviceError");
 }
 
 impl<'a> ResultTypeInfo<'a> for Vec<ServiceId> {
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self)
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        make_array_type::<ServiceId>(ctx)
     }
 }
 
@@ -1563,6 +1775,10 @@ impl<'a> ResultTypeInfo<'a>
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self)
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        make_array_type::<libsignal_net_chat::api::registration::RegisterResponseBadge>(ctx)
     }
 }
 
@@ -1587,6 +1803,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::registration::RegisterR
 
         Ok(obj)
     }
+    register_ts_ffi_type!("RegisterResponseBadge");
 }
 
 impl<'a> ResultTypeInfo<'a>
@@ -1615,6 +1832,7 @@ impl<'a> ResultTypeInfo<'a>
 
         map_constructor.construct(cx, [entries])
     }
+    register_ts_ffi_type!("CheckSvr2CredentialsResponse");
 }
 
 impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::server_requests::DisconnectCause {
@@ -1626,6 +1844,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::server_requests::Disconnect
             Self::Error(err) => Ok(err.into_throwable(cx, "DisconnectCause").upcast()),
         }
     }
+    register_ts_ffi_type!("(Error | null)");
 }
 
 macro_rules! full_range_integer {
@@ -1648,6 +1867,7 @@ macro_rules! full_range_integer {
                 #[allow(clippy::cast_possible_truncation)]
                 Ok(value as $typ)
             }
+            register_ts_ffi_type!("number");
         }
         #[doc = "Converts all valid integer values for the type."]
         impl<'a> ResultTypeInfo<'a> for $typ {
@@ -1658,6 +1878,7 @@ macro_rules! full_range_integer {
             ) -> NeonResult<Handle<'a, Self::ResultType>> {
                 Ok(cx.number(self as f64))
             }
+            register_ts_ffi_type!("number");
         }
     };
 }
@@ -1680,6 +1901,10 @@ where
             Ok(t) => Ok(AsType::from(t)),
             Err(e) => cx.throw_type_error(format!("invalid {}: {e}", std::any::type_name::<T>())),
         }
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        P::register_ts_ffi_type(ctx)
     }
 }
 
@@ -1706,6 +1931,13 @@ where
         });
         Ok(Serialized::from(result))
     }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        let name = T::name();
+        ctx.opaque_types.insert(name.clone());
+        format!("Serialized<{name}>")
+    }
 }
 
 impl<'a, T> crate::node::ResultTypeInfo<'a> for Serialized<T>
@@ -1717,6 +1949,12 @@ where
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         let result = zkgroup::serialize(self.deref());
         result.convert_into(cx)
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        let name = T::name();
+        ctx.opaque_types.insert(name.clone());
+        format!("Serialized<{name}>")
     }
 }
 
@@ -1732,6 +1970,9 @@ pub(crate) const NATIVE_HANDLE_PROPERTY: &str = "_nativeHandle";
 pub trait BridgeHandle: Send + Sized + 'static {
     /// Factors out operations that differ between mutable and immutable bridge handles.
     type Strategy: BridgeHandleStrategy<Self>;
+    #[cfg(feature = "metadata")]
+    /// What TypeScript type represents the raw (i.e. un`Wrapped<>`) FFI handle?
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String;
 }
 
 /// Factors out operations that differ between mutable and immutable bridge handles.
@@ -1775,6 +2016,10 @@ impl<'a, T: BridgeHandle> ResultTypeInfo<'a> for T {
             .boxed(DefaultFinalize(JsBoxContentsFor::<T>::from(self)))
             .upcast())
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        T::register_ts_ffi_type(ctx)
+    }
 }
 /// Used to access a boxed Rust value.
 ///
@@ -1797,7 +2042,13 @@ impl<'a, T: BridgeHandle> ResultTypeInfo<'a> for T {
 /// #
 /// struct Counter(usize);
 /// # impl Counter { fn increment(&mut self) { self.0 += 1 } }
-/// # impl BridgeHandle for Counter { type Strategy = Mutable<Counter>; };
+/// # impl BridgeHandle for Counter {
+/// #     type Strategy = Mutable<Counter>;
+/// #     #[cfg(feature = "metadata")]
+/// #     fn register_ts_ffi_type(ctx: &mut libsignal_bridge_types::metadata::node::TsMetadataContext) -> String {
+/// #         unimplemented!()
+/// #     }
+/// # }
 ///
 /// # fn test<'a>(cx: &mut impl Context<'a>, wrapper: Handle<'a, JsObject>) -> NeonResult<()> {
 /// let mut borrowed_handle: BorrowedJsBoxedBridgeHandle<RefMut<Counter>> =
@@ -2007,6 +2258,10 @@ impl<'storage, T: BridgeHandle<Strategy = Immutable<T>> + Sync> AsyncArgTypeInfo
     fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
         stored.value_refs()
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        format!("Array<Wrapper<{}>>", T::register_ts_ffi_type(ctx))
+    }
 }
 
 impl<'storage, 'context: 'storage, T: BridgeHandle<Strategy = Immutable<T>> + Sync>
@@ -2024,6 +2279,11 @@ impl<'storage, 'context: 'storage, T: BridgeHandle<Strategy = Immutable<T>> + Sy
 
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.value_refs()
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        format!("Array<Wrapper<{}>>", T::register_ts_ffi_type(ctx))
     }
 }
 
@@ -2062,9 +2322,13 @@ macro_rules! node_bridge_as_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
     ( $typ:ty as $node_name:ident $(, mut = false)? ) => {
         ::paste::paste! {
-            #[doc = "ts: `interface " $typ " { readonly __type: unique symbol; }`"]
             impl node::BridgeHandle for $typ {
                 type Strategy = node::Immutable<Self>;
+                #[cfg(feature = "metadata")]
+                fn register_ts_ffi_type(ctx: &mut $crate::metadata::node::TsMetadataContext) -> String {
+                    ctx.opaque_types.insert(stringify!($typ).into());
+                    stringify!($typ).into()
+                }
             }
         }
 
@@ -2084,6 +2348,10 @@ macro_rules! node_bridge_as_handle {
             fn load_from(stored: &'storage mut Self::StoredType) -> Self {
                 &*stored
             }
+            #[cfg(feature = "metadata")]
+            fn register_ts_ffi_type(ctx: &mut $crate::metadata::node::TsMetadataContext) -> String {
+                format!("Wrapper<{}>", <$typ as $crate::node::BridgeHandle>::register_ts_ffi_type(ctx))
+            }
         }
 
         // And likewise for AsyncArgTypeInfo.
@@ -2099,13 +2367,22 @@ macro_rules! node_bridge_as_handle {
             fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
                 &*stored
             }
+            #[cfg(feature = "metadata")]
+            fn register_ts_ffi_type(ctx: &mut $crate::metadata::node::TsMetadataContext) -> String {
+                format!("Wrapper<{}>", <$typ as $crate::node::BridgeHandle>::register_ts_ffi_type(ctx))
+            }
         }
     };
     ( $typ:ty as $node_name:ident, mut = true ) => {
         ::paste::paste! {
-            #[doc = "ts: `interface " $typ " { readonly __type: unique symbol; }`"]
             impl node::BridgeHandle for $typ {
                 type Strategy = node::Mutable<Self>;
+
+                #[cfg(feature = "metadata")]
+                fn register_ts_ffi_type(ctx: &mut $crate::metadata::node::TsMetadataContext) -> String {
+                    ctx.opaque_types.insert(stringify!($typ).into());
+                    stringify!($typ).into()
+                }
             }
         }
 
@@ -2126,6 +2403,10 @@ macro_rules! node_bridge_as_handle {
             fn load_from(stored: &'storage mut Self::StoredType) -> Self {
                 &*stored
             }
+            #[cfg(feature = "metadata")]
+            fn register_ts_ffi_type(ctx: &mut $crate::metadata::node::TsMetadataContext) -> String {
+                format!("Wrapper<{}>", <$typ as $crate::node::BridgeHandle>::register_ts_ffi_type(ctx))
+            }
         }
         impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context>
             for &'storage mut $typ
@@ -2141,6 +2422,10 @@ macro_rules! node_bridge_as_handle {
             }
             fn load_from(stored: &'storage mut Self::StoredType) -> Self {
                 &mut *stored
+            }
+            #[cfg(feature = "metadata")]
+            fn register_ts_ffi_type(ctx: &mut $crate::metadata::node::TsMetadataContext) -> String {
+                format!("Wrapper<{}>", <$typ as $crate::node::BridgeHandle>::register_ts_ffi_type(ctx))
             }
         }
     };

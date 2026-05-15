@@ -12,7 +12,7 @@ use syn::*;
 use syn_mid::Signature;
 
 use crate::BridgingKind;
-use crate::util::{extract_arg_names_and_types, result_type};
+use crate::util::{crates, extract_arg_names_and_types, result_type};
 
 fn bridge_fn_body(orig_name: &Ident, input_args: &[(&Ident, &Type)]) -> TokenStream2 {
     // Scroll down to the end of the function to see the quote template.
@@ -182,9 +182,14 @@ pub(crate) fn bridge_fn(
     let name_with_prefix = format_ident!("node_{}", name);
     let name_without_prefix = Ident::new(name, Span::call_site());
 
-    let ts_signature_comment = generate_ts_signature_comment(name, sig, bridging_kind);
-
     let input_args = extract_arg_names_and_types(sig)?;
+    let ts_metadata = generate_ts_metadata(
+        name,
+        sig.asyncness.is_some(),
+        &input_args,
+        result_type(&sig.output),
+        bridging_kind,
+    );
 
     let body = match (sig.asyncness, bridging_kind) {
         (Some(_), _) => bridge_fn_async_body(&sig.ident, name, bridging_kind, &input_args),
@@ -200,51 +205,83 @@ pub(crate) fn bridge_fn(
     Ok(quote! {
         #[cfg(feature = "node")]
         #[allow(non_snake_case)]
-        #[doc = #ts_signature_comment]
         pub fn #name_with_prefix(
             mut cx: node::FunctionContext,
         ) -> node::JsResult<node::JsValue> {
             #body
         }
+        #[cfg(all(feature = "metadata", feature = "node"))]
+        #ts_metadata
 
         #[cfg(feature = "node")]
         node_register!(#name_without_prefix);
     })
 }
 
-/// Generates a string, containing the *Rust* signature of a bridged function, that gen_ts_decl.py
-/// can use to generate Native.d.ts.
-fn generate_ts_signature_comment(
+/// Generates the code to embed `libsignal_bridge_types::metadata` metadata
+fn generate_ts_metadata(
     name_without_prefix: &str,
-    sig: &Signature,
+    asyncness: bool,
+    input_args: &[(&Ident, &Type)],
+    result_type: TokenStream2,
     bridging_kind: &BridgingKind,
-) -> String {
-    let mut ts_args = vec![];
+) -> TokenStream2 {
+    let krate = crates::libsignal_bridge_types();
+    let mut input_args: Vec<_> = input_args
+        .iter()
+        .map(|(name, ty)| (name.to_string(), ty.to_token_stream()))
+        .collect();
     match bridging_kind {
         BridgingKind::Regular => {}
         BridgingKind::Io { runtime } => {
-            ts_args.push(format!("async_runtime: &{}", runtime.to_token_stream()))
+            let runtime = runtime.to_token_stream();
+            input_args.insert(0, ("async_runtime".to_string(), quote!(&#runtime)))
         }
     }
-    ts_args.extend(
-        sig.inputs
-            .iter()
-            .map(|arg| arg.to_token_stream().to_string().replace('\n', " ")),
-    );
-
-    let result_type_format = match (sig.asyncness, bridging_kind) {
-        (Some(_), BridgingKind::Io { .. }) => |ty| format!("CancellablePromise<{ty}>"),
-        (Some(_), _) => |ty| format!("Promise<{ty}>"),
-        (None, _) => |ty| format!("{ty}"),
+    let argument_names = input_args
+        .iter()
+        .map(|(x, _)| to_lower_camel_case_preserve_underscores(x))
+        .collect_vec();
+    let argument_types = input_args.iter().map(|(_, x)| x).collect_vec();
+    let return_type_format = match (asyncness, bridging_kind) {
+        (true, BridgingKind::Io { .. }) => "CancellablePromise<{return_type}>",
+        (true, _) => "Promise<{return_type}>",
+        (false, _) => "{return_type}",
     };
-    let result_type_str = result_type_format(result_type(&sig.output));
+    let md = quote!(#krate::metadata);
+    let metadata_name = format_ident!("_BRIDGE_NODE_METADATA_{name_without_prefix}");
+    let type_info_trait = if asyncness {
+        quote!(AsyncArgTypeInfo)
+    } else {
+        quote!(ArgTypeInfo)
+    };
+    quote! {
+        #[#md::linkme::distributed_slice(#md::node::NODE_ITEMS)]
+        #[linkme(crate = #md::linkme)]
+        static #metadata_name: #md::FnWithModule<#md::node::TsMetadataContext> = #md::FnWithModule {
+            module_path: module_path!(),
+            apply: |ctx| {
+                use #md::node::result_type_helper::*;
+                let return_type: ResultMetadataTransformHelper<#result_type> = Default::default();
+                let return_type = return_type.register_ts_ffi_type(ctx);
+                let mut arguments = Vec::new();
+                #(arguments.push((
+                    #argument_names.into(),
+                    <#argument_types as #krate::node::#type_info_trait>::register_ts_ffi_type(ctx)
+                ));)*
+                ctx.native_functions.insert(
+                    #name_without_prefix.into(),
+                    #md::node::NativeFunction { arguments, return_type: format!(#return_type_format) },
+                );
+            },
+        };
+    }
+}
 
-    format!(
-        "ts: `export function {}({}): {}`",
-        name_without_prefix,
-        ts_args.join(", "),
-        result_type_str
-    )
+fn to_lower_camel_case_preserve_underscores(x: &str) -> String {
+    let x_sans_underscore = x.trim_start_matches('_');
+    let core = x_sans_underscore.to_lower_camel_case();
+    format!("{}{core}", &x[0..(x.len() - x_sans_underscore.len())])
 }
 
 pub(crate) fn name_from_ident(ident: &Ident) -> String {
@@ -259,23 +296,20 @@ pub(crate) fn name_from_ident(ident: &Ident) -> String {
 pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait, js_name: &str) -> Result<TokenStream2> {
     let trait_name = &trait_to_bridge.ident;
     let wrapper_name = format_ident!("Node{}", trait_to_bridge.ident);
+    let krate = crates::libsignal_bridge_types();
 
     let callbacks = trait_to_bridge
         .items
         .iter()
-        .map(bridge_callback_item)
+        .map(|x| bridge_callback_item(x, &krate))
         .collect::<Result<Vec<_>>>()?;
     let callback_impls = callbacks.iter().map(|c| &c.implementation);
-    let callback_ts_decls = callbacks.iter().map(|c| &c.ts_decl);
-
-    let ts_declaration_comment = format!(
-        "ts: `export /*trait*/ type {js_name} = {{\n{}\n}};`",
-        callback_ts_decls.format("\n")
-    );
+    let callback_bridge_trait_functions = callbacks.iter().map(|c| &c.bridge_trait_function);
+    let md = quote!(#krate::metadata);
+    let metadata_name = format_ident!("_BRIDGE_NODE_METADATA_{trait_name}");
 
     Ok(quote! {
         #[cfg(feature = "node")]
-        #[doc = #ts_declaration_comment]
         pub struct #wrapper_name(node::RootAndChannel);
 
         #[cfg(feature = "node")]
@@ -299,15 +333,29 @@ pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait, js_name: &str) -> Result
         impl #trait_name for #wrapper_name {
             #(#callback_impls)*
         }
+
+        #[cfg(all(feature = "node", feature = "metadata"))]
+        #[#md::linkme::distributed_slice(#md::node::NODE_ITEMS)]
+        #[linkme(crate = #md::linkme)]
+        static #metadata_name: #md::FnWithModule<#md::node::TsMetadataContext> = #md::FnWithModule {
+            module_path: module_path!(),
+            apply: |ctx| {
+                let mut functions = Vec::new();
+                #(#callback_bridge_trait_functions)*
+                ctx.bridge_traits.insert(#js_name.to_string(), functions);
+            },
+        };
     })
 }
 
 struct Callback {
     implementation: TokenStream2,
-    ts_decl: String,
+    /// Push a `node::BridgeTraitFunction` onto the local `functions` Vec
+    /// `ctx: &mut TsMetadataContext` is in scope
+    bridge_trait_function: TokenStream2,
 }
 
-fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
+fn bridge_callback_item(item: &TraitItem, krate: &TokenStream2) -> Result<Callback> {
     let TraitItem::Fn(item) = item else {
         return Err(Error::new(item.span(), "only fns are supported"));
     };
@@ -395,21 +443,35 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
         }
     };
 
-    // operation(foo: number): void;
-    let js_arg_decls = item.sig.inputs.iter().filter_map(|arg| match arg {
-        FnArg::Receiver(_) => None,
-        FnArg::Typed(arg) => {
-            let Pat::Ident(arg_name) = &*arg.pat else {
-                // Diagnosed elsewhere.
-                return None;
-            };
-            Some(format!("{}: {}", arg_name.ident, arg.ty.to_token_stream()))
-        }
-    });
+    let args = item
+        .sig
+        .inputs
+        .iter()
+        .filter_map(|arg| match arg {
+            FnArg::Receiver(_) => None,
+            FnArg::Typed(arg) => {
+                let Pat::Ident(arg_name) = &*arg.pat else {
+                    // Diagnosed elsewhere.
+                    return None;
+                };
+                Some((&arg_name.ident, &arg.ty))
+            }
+        })
+        .collect_vec();
+    let arg_names = args
+        .iter()
+        .map(|(x, _)| to_lower_camel_case_preserve_underscores(&x.to_string()))
+        .collect_vec();
+    let arg_types = args.iter().map(|(_, x)| x).collect_vec();
+    let result_ty = result_type(&sig.output);
 
-    let result_string = if sig.asyncness.is_some() {
-        let result_ty = result_type(&sig.output);
-        format!("Promise<{result_ty}>")
+    let return_type = if sig.asyncness.is_some() {
+        quote! {{
+            use #krate::metadata::node::result_type_helper::*;
+            let return_type: CallbackResultMetadataTransformHelper<#result_ty> = Default::default();
+            let return_type = return_type.register_ts_ffi_type(ctx);
+            format!("Promise<{return_type}>")
+        }}
     } else {
         if !matches!(sig.output, ReturnType::Default) {
             return Err(Error::new(
@@ -417,17 +479,25 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
                 "non-async callbacks with results are not supported for Node",
             ));
         }
-        "void".to_owned()
+        quote!("void".to_string())
     };
-    let ts_decl = format!(
-        "{}({}): {};",
-        js_operation_name,
-        js_arg_decls.format(", "),
-        result_string
-    );
 
     Ok(Callback {
         implementation,
-        ts_decl,
+        bridge_trait_function: quote! {
+            let mut arguments = Vec::new();
+            #(arguments.push((
+                #arg_names.to_string(),
+                <#arg_types as #krate::node::ResultTypeInfo>::register_ts_ffi_type(ctx),
+            ));)*
+            let return_type = #return_type;
+            functions.push(#krate::metadata::node::BridgeTraitFunction {
+                name: #js_operation_name.to_string(),
+                body: #krate::metadata::node::NativeFunction {
+                    arguments,
+                    return_type,
+                },
+            });
+        },
     })
 }

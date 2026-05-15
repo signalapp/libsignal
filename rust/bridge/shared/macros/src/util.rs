@@ -9,6 +9,20 @@ use syn::spanned::Spanned;
 use syn::*;
 use syn_mid::{FnArg, Pat, PatType, Signature};
 
+pub(crate) mod crates {
+    use super::*;
+    fn pkg_name() -> String {
+        std::env::var("CARGO_PKG_NAME").expect("Missing CARGO_PKG_NAME")
+    }
+    pub(crate) fn libsignal_bridge_types() -> TokenStream2 {
+        if pkg_name() == "libsignal-bridge-types" {
+            quote!(crate)
+        } else {
+            quote!(::libsignal_bridge_types)
+        }
+    }
+}
+
 /// Returns the tokens of the type in `output_as_written`, or `()` if no return type was written.
 pub(crate) fn result_type(output_as_written: &ReturnType) -> TokenStream2 {
     match output_as_written {

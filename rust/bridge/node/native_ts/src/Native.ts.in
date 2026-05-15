@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2026 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -134,18 +134,60 @@ export type Serialized<T> = Uint8Array<ArrayBuffer>;
 type ConnectChatBridge = Wrapper<ConnectionManager>;
 type TestingFutureCancellationGuard = Wrapper<TestingFutureCancellationCounter>;
 
+// Keep in sync with rust/bridge/node/src/logging.rs
+export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
+
+/* eslint-disable comma-dangle */
+export const NetRemoteConfigKeys = [
+  {%- for key in remote_config_keys -%}
+    '{{ key }}',
+  {%- endfor -%}
+] as const;
+
 import load from 'node-gyp-build';
 
 type NativeFunctions = {
   registerErrors: (errorsModule: Record<string, unknown>) => void;
-  NATIVE_FNS;
+  initLogger: (maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void) => void;
+  {%- for (name, f) in ctx.native_functions|items %}
+  {{ name }}: (
+    {%- for (name, ty) in f.arguments -%}
+      {{ name }}: {{ ty }},
+    {%- endfor -%}
+  ) => {{ f.return_type }};
+  {%- endfor %}
 };
 
-const { registerErrors, NATIVE_FN_NAMES } = load(
+{% macro native_fn_names(ctx) %}
+  {%- for (name, f) in ctx.native_functions|items %}
+  {{ name }},
+  {%- endfor %}
+{% endmacro %}
+
+const { registerErrors,
+  initLogger,
+{{ native_fn_names(ctx) }}
+} = load(
   `${import.meta.dirname}/../`
 ) as NativeFunctions;
 
-export { registerErrors, NATIVE_FN_NAMES };
+export { registerErrors,
+  initLogger,
+{{ native_fn_names(ctx)
+}} };
 
-/* eslint-disable comma-dangle */
-NATIVE_TYPES;
+{% for (name, fns) in ctx.bridge_traits|items %}
+export /*trait*/ type {{ name }} = {
+  {%- for fn in fns %}
+  {{ fn.name }}: (
+    {%- for (arg, ty) in fn.body.arguments -%}
+      {{ arg }}: {{ ty }},
+    {%- endfor -%}
+  ) => {{ fn.body.return_type }};
+  {%- endfor %}
+};
+{% endfor %}
+
+{% for ty in ctx.opaque_types -%}
+  export interface {{ ty }} { readonly __type: unique symbol; }
+{% endfor -%}

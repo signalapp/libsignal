@@ -52,7 +52,7 @@
 //! export function SenderKeyMessage_New(
 //!     keyId: number,
 //!     iteration: number,
-//!     ciphertext: Buffer,
+//!     ciphertext: Uint8Array<ArrayBuffer>,
 //!     pk: Wrapper<PrivateKey>
 //! ): SenderKeyMessage;
 //! ```
@@ -132,8 +132,9 @@
 //!
 //! 1. Argument and result types for FFI and JNI are determined by macros `ffi_arg_type`,
 //!    `ffi_result_type`, `jni_arg_type`, and `jni_result_type`. You may need to add your new type
-//!    there. JNI and Node types also undergo some additional transformation in the scripts
-//!    `gen_java_decl.py` and `gen_ts_decl.py`, which you may need to tweak as well.
+//!    there. JNI types also undergo some additional transformation in the scripts
+//!    `gen_java_decl.py`, which you may need to tweak as well. Node types are generated as Strings
+//!    via the `gen_ts_ffi()` methods on `node::{AsyncArg, Arg, Result}TypeInfo`.
 //!
 //! 2. Argument types conform to one or more of the following bridge-specific traits:
 //!

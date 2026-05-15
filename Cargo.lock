@@ -2992,6 +2992,7 @@ dependencies = [
  "libsignal-bridge",
  "libsignal-bridge-macros",
  "libsignal-bridge-testing",
+ "libsignal-bridge-types",
  "libsignal-protocol",
  "linkme",
  "log",
@@ -3003,6 +3004,19 @@ dependencies = [
  "paste",
  "rand 0.9.4",
  "uuid",
+]
+
+[[package]]
+name = "libsignal-node-native_ts"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "libsignal-bridge",
+ "libsignal-bridge-testing",
+ "libsignal-bridge-types",
+ "libsignal-node",
+ "minijinja",
 ]
 
 [[package]]
@@ -3207,6 +3221,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "memo-map"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38d1115007560874e373613744c6fba374c17688327a71c1476d1a5954cc857b"
+
+[[package]]
 name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3289,6 +3309,17 @@ dependencies = [
  "minidump-common",
  "scroll",
  "tracing",
+]
+
+[[package]]
+name = "minijinja"
+version = "2.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "805bfd7352166bae857ee569628b52bcd85a1cecf7810861ebceb1686b72b75d"
+dependencies = [
+ "indexmap 2.13.0",
+ "memo-map",
+ "serde",
 ]
 
 [[package]]

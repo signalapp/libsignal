@@ -589,7 +589,7 @@ jobs:
         node-version-file: '.nvmrc'
 
     - name: Verify that the Node bindings are up to date
-      run: rust/bridge/node/bin/gen_ts_decl.py --verify
+      run: cargo run -p libsignal-node-native_ts -- --verify
       if: startsWith(matrix.os, 'ubuntu-')
 
     - run: npm ci
