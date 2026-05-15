@@ -346,6 +346,25 @@ impl SearchVersions {
             .flatten()
             .max()
     }
+
+    fn short_description(&self) -> String {
+        fn opt(x: &Option<impl ToString>) -> String {
+            x.as_ref()
+                .map(ToString::to_string)
+                .unwrap_or("_".to_string())
+        }
+        let Self {
+            aci,
+            e164,
+            username_hash,
+        } = self;
+        format!(
+            "[aci: {}, e164: {}, username_hash: {}]",
+            opt(aci),
+            opt(e164),
+            opt(username_hash)
+        )
+    }
 }
 
 impl<'a> Action<'a> {
@@ -693,6 +712,8 @@ async fn monitor_then_search<'a>(
     distinguished_tree_head: &LastTreeHead,
     mode: CheckMode,
 ) -> Result<MaybePartial<AccountData>, RequestError<Error>> {
+    let stored_versions = SearchVersions::from_account_data(&stored_account_data);
+    log::info!("Stored versions: {}", stored_versions.short_description());
     let monitor_account_data = {
         let Parameters {
             aci,
@@ -711,8 +732,8 @@ async fn monitor_then_search<'a>(
     // Call to `monitor` guarantees that the optionality of E.164 and username hash data
     // will match between `stored_account_data` and `monitor_account_data`. Meaning, they will
     // either both be Some() or both None.
-    let stored_versions = SearchVersions::from_account_data(&stored_account_data);
     let updated_versions = SearchVersions::from_account_data(&monitor_account_data);
+    log::info!("Updated versions: {}", stored_versions.short_description());
     let version_delta = updated_versions
         .try_subtract(&stored_versions)
         .map_err(|_| {
@@ -765,8 +786,8 @@ mod test {
     use test_case::{test_case, test_matrix};
 
     use super::{
-        Action, Parameters, PostMonitorAction, TreeHeadWithTimestamp, VersionChanged, check,
-        is_too_old, merge_account_data, modal_search, monitor_then_search,
+        Action, Parameters, PostMonitorAction, SearchVersions, TreeHeadWithTimestamp,
+        VersionChanged, check, is_too_old, merge_account_data, modal_search, monitor_then_search,
         select_baseline_tree_head,
     };
     use crate::api::RequestError;
@@ -2035,5 +2056,18 @@ mod test {
             select_baseline_tree_head(Some(recent)),
             ControlFlow::Break(expected),
         );
+    }
+
+    #[test]
+    fn search_versions_as_short_string() {
+        assert_eq!(
+            "[aci: 42, e164: _, username_hash: 73]",
+            SearchVersions {
+                aci: Some(42),
+                e164: None,
+                username_hash: Some(73),
+            }
+            .short_description()
+        )
     }
 }
