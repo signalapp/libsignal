@@ -178,8 +178,14 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     let local_identity = parameters.our_identity_key_pair().identity_key(); // Alice's ipk
 
     let mut secrets = Vec::with_capacity(32 * 6);
-
     secrets.extend_from_slice(&[0xFFu8; 32]); // "discontinuity bytes"
+
+    let mut x = Vec::with_capacity(32 * 6);
+    x.extend_from_slice(parameters.our_identity_key_pair().public_key().public_key_bytes());
+    x.extend_from_slice(parameters.their_identity_key().public_key().public_key_bytes());
+    x.extend_from_slice(parameters.our_base_key_pair().public_key.public_key_bytes());
+    
+
 
     // Below are the DH operations for X3DH
     let our_base_private_key = parameters.our_base_key_pair().private_key;
@@ -213,12 +219,12 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
         k = hash_generic_zp(their_one_time_prekey.public_key_bytes());
         vk = g * k; 
-        //vk = RistrettoPoint::hash_from_bytes::<Sha512>(&bytes);
+        x.extend_from_slice(their_one_time_prekey.public_key_bytes());
     } else {
         k = hash_generic_zp(parameters.their_signed_pre_key().public_key_bytes());
-        vk = g * k;//RistrettoPoint::hash_from_bytes::<Sha512>(&bytes)
-        //vk = RistrettoPoint::from_uniform_bytes(bytes);
+        vk = g * k;
     }
+    x.extend_from_slice(parameters.their_signed_pre_key().public_key_bytes());
     let mut alice_sas_contribution_salt = [0u8; 3];
     csprng.fill(&mut alice_sas_contribution_salt);
     let alice_sas_contribution_salt = alice_sas_contribution_salt.to_vec();
@@ -231,25 +237,22 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
         ct
     };
 
-
-    //step 0.5, parameters
-    //x = secrets 
     
 
     //sample alpha, beta from the set of real integers
     //step 1, page 11, preverify
     let alpha = sample_random_zp(csprng);
     let beta = sample_random_zp(csprng);
-    let h = alpha * g + beta * hash_i(&vk, &secrets);    
-    let hprime = alpha * hash_a(&vk, &secrets) + beta * hash_b(&vk, &secrets);
+    let h = alpha * g + beta * hash_i(&vk, &x);    
+    let hprime = alpha * hash_a(&vk, &x) + beta * hash_b(&vk, &x);
 
     //step 2
     let r1 = sample_random_zp(csprng);
     let r2 = sample_random_zp(csprng);
     // scalar * point = point to the power of scaler in paper
-    let eta = (g * r1) + (hash_i(&vk, &secrets) * r2);
-    let etaprime = (hash_a(&vk, &secrets) * r1) + (hash_b(&vk, &secrets) * r2);
-    let c = hash_fs(&vk, &secrets, &h, &hprime, &eta, &etaprime);
+    let eta = (g * r1) + (hash_i(&vk, &x) * r2);
+    let etaprime = (hash_a(&vk, &x) * r1) + (hash_b(&vk, &x) * r2);
+    let c = hash_fs(&vk, &x, &h, &hprime, &eta, &etaprime);
     //s values should be mod p
     let s = (r1 - c * alpha, r2 - c * beta);
     let tau = (c,s);
@@ -265,17 +268,16 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
 
 
     // FOR MCS DEMO PURPOSES ONLY
-    // Get Desktop path (works on most systems)
-    let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
+    // let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
 
-    path.push("mcs_stored_pvrf.txt");
-    let pvrf_ciphertext = if path.exists() {
-        log::info!("it existed on desktop");
-        Some(fs::read(&path).unwrap().into_boxed_slice())
-    } else {
-        Some(pvrf_ciphertext)
-    };
-    let pvrf_ciphertext = pvrf_ciphertext.expect("");
+    // path.push("mcs_stored_pvrf.txt");
+    // let pvrf_ciphertext = if path.exists() {
+    //     log::info!("it existed on desktop");
+    //     Some(fs::read(&path).unwrap().into_boxed_slice())
+    // } else {
+    //     Some(pvrf_ciphertext)
+    // };
+    // let pvrf_ciphertext = pvrf_ciphertext.expect("");
 
 
     let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
@@ -349,7 +351,7 @@ pub(crate) fn initialize_bob_session(
 
     secrets.extend_from_slice(&[0xFFu8; 32]); // "discontinuity bytes"
 
-    // DH agreement computations
+    // concatenation for transcript
     // Bob's spk * Alice's ik
     secrets.extend_from_slice(
         &parameters
@@ -383,10 +385,14 @@ pub(crate) fn initialize_bob_session(
     let g = generator_g();
     let k ;
     let vk ;
-    let x;
+    let mut x = Vec::with_capacity(32 * 6);
     let bob_response;
     let true_sas: Option<Vec<u8>>;
     //let vt;
+
+    x.extend_from_slice(parameters.their_identity_key().public_key().public_key_bytes());
+    x.extend_from_slice(parameters.our_identity_key_pair().public_key().public_key_bytes());
+    x.extend_from_slice(parameters.their_base_key().public_key_bytes());
 
 
 
@@ -397,18 +403,15 @@ pub(crate) fn initialize_bob_session(
                 .private_key
                 .calculate_agreement(parameters.their_base_key())?,
         );
-        //let mut bytes = our_one_time_pre_key_pair.public_key.public_key_bytes().to_vec();
         k = hash_generic_zp(our_one_time_pre_key_pair.public_key.public_key_bytes());
         vk = g * k;
+        x.extend_from_slice(our_one_time_pre_key_pair.public_key.public_key_bytes());
     } else {
-        //let mut bytes = parameters.our_signed_pre_key_pair().public_key.public_key_bytes().to_vec();
         k = hash_generic_zp(parameters.our_signed_pre_key_pair().public_key.public_key_bytes());
-        vk = g * k; //is bob meant to use his private? but how will alice know?
-
-    //      vk = their_one_time_prekey.public_key_bytes().to_vec();
-    // } else {
-    //     vk = parameters.their_signed_pre_key().public_key_bytes().to_vec();
+        vk = g * k; 
     }
+
+    x.extend_from_slice(parameters.our_signed_pre_key_pair().public_key.public_key_bytes());
 
     // Bob's Kyber secret key recovers shared PQ secret from Alice's ciphertext
     secrets.extend_from_slice(
@@ -418,7 +421,6 @@ pub(crate) fn initialize_bob_session(
             .decapsulate(parameters.their_kyber_ciphertext())?,
     );
 
-    x = &secrets;
     let their_pvrf_ciphertext = parameters.their_pvrf_ciphertext().as_ref().map(|b| b.to_vec());
     log::info!(
         "PVRF ciphertext in PreKey message as Bob: {}",
@@ -441,16 +443,16 @@ pub(crate) fn initialize_bob_session(
         let vt = (h, hprime, tau);
 
         // Step 2
-        let hi = hash_i(&vk, x);
-        let ha = hash_a(&vk, x);
-        let hb = hash_b(&vk, x);
+        let hi = hash_i(&vk, &x);
+        let ha = hash_a(&vk, &x);
+        let hb = hash_b(&vk, &x);
 
         // η = g^s1 * Hi(vk,x)^s2 * h^c
         // η' = Ha(vk,x)^s1 * Hb(vk,x)^s2 * h'^c
         let eta = (g * (s1)) + (hi * (s2)) + h * (c);
         let etaprime = (ha * (s1)) + (hb * (s2)) + (hprime * (c));
 
-        let computed_c = hash_fs(&vk, x, &h, &hprime, &eta, &etaprime);
+        let computed_c = hash_fs(&vk, &x, &h, &hprime, &eta, &etaprime);
 
         // abort if mismatch
         log::info!("Bob computes c: {:?}, Alice's c: {:?}", computed_c, c);

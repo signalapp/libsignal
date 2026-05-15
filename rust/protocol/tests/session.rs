@@ -31,6 +31,7 @@ fn init_logger() {
 // and eve reseals Alice's text w/ Eve's PVRF data to Bob
 // and eve reseals Bob's response w/ Eve's pvrf data back to Alice?
 // Expectation: SAS will not match for alice or bob, both parties are aware of the attack
+// this also tests that SAS matches up in normal messaging (between alice <-> eve and bob <-> alice)
 #[test]
 fn test_pvrf_mitm_sender_receive_step_resealing() -> TestResult {
     // trivially, if eve impersonates alice/bob and does not forward to the other,
