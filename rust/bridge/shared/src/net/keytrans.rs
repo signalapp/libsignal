@@ -14,8 +14,8 @@ use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{AccountData, StoredAccountData};
 use libsignal_net_chat::api::RequestError;
 use libsignal_net_chat::api::keytrans::{
-    CheckMode, Error, KeyTransparencyClient, MaybePartial, SearchKey, TreeHeadWithTimestamp,
-    UsernameHash, check,
+    AccountDataField, AccountDataFieldReset as _, CheckMode, Error, KeyTransparencyClient,
+    MaybePartial, SearchKey, TreeHeadWithTimestamp, UsernameHash, check,
 };
 use libsignal_protocol::PublicKey;
 use prost::{DecodeError, Message};
@@ -36,6 +36,20 @@ fn KeyTransparency_E164SearchKey(e164: E164) -> Vec<u8> {
 #[bridge_fn]
 fn KeyTransparency_UsernameHashSearchKey(hash: &[u8]) -> Vec<u8> {
     UsernameHash::from_slice(hash).as_search_key()
+}
+
+#[bridge_fn]
+fn KeyTransparency_ResetDataField(
+    account_data: Box<[u8]>,
+    field: AsType<AccountDataField, u8>,
+) -> Vec<u8> {
+    // The only failure is decoding error, we'll use empty vec for that.
+    let decoded: Result<StoredAccountData, _> = try_decode(account_data);
+    let Ok(account_data) = decoded else {
+        log::warn!("Failed to decode stored account data");
+        return vec![];
+    };
+    account_data.reset(field.into_inner()).encode_to_vec()
 }
 
 #[bridge_io(TokioAsyncContext)]

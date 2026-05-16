@@ -19,7 +19,7 @@ use libsignal_keytrans::{
     AccountData, ChatDistinguishedResponse, ChatMonitorResponse, ChatSearchResponse,
     CondensedTreeSearchResponse, FullSearchResponse, FullTreeHead, KeyTransparency, LastTreeHead,
     LocalStateUpdate, MonitorContext, MonitorKey, MonitorProof, MonitorRequest, MonitorResponse,
-    SearchContext, SearchStateUpdate, SlimSearchRequest,
+    SearchContext, SearchStateUpdate, SlimSearchRequest, StoredAccountData,
 };
 use libsignal_net::env::KeyTransConfig;
 use libsignal_protocol::PublicKey;
@@ -538,6 +538,20 @@ impl UnauthenticatedChatApi for KeyTransparencyClient<'_> {
     }
 }
 
+pub trait AccountDataFieldReset {
+    fn reset(self, field: AccountDataField) -> Self;
+}
+
+impl AccountDataFieldReset for StoredAccountData {
+    fn reset(mut self, field: AccountDataField) -> Self {
+        match field {
+            AccountDataField::E164 => self.e164 = None,
+            AccountDataField::UsernameHash => self.username_hash = None,
+        }
+        self
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod test_support {
     use std::cell::Cell;
@@ -758,8 +772,9 @@ pub(crate) mod test_support {
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;
+    use libsignal_keytrans::StoredMonitoringData;
     use prost::Message as _;
-    use test_case::test_case;
+    use test_case::{test_case, test_matrix};
 
     use super::test_support::{
         CHAT_SEARCH_RESPONSE, CHAT_SEARCH_RESPONSE_VALID_AT, KEYTRANS_CONFIG_STAGING, test_account,
@@ -858,5 +873,38 @@ mod test {
         assert_matches!(result, Ok(MaybePartial {missing_fields, ..}) =>
             assert_eq!(skip.to_vec(), missing_fields.into_iter().collect::<Vec<_>>())
         );
+    }
+
+    #[test_matrix([AccountDataField::E164, AccountDataField::UsernameHash])]
+    fn reset_account_data_field(field: AccountDataField) {
+        let field_data = StoredMonitoringData::default();
+        let data = StoredAccountData {
+            aci: None,
+            e164: Some(StoredMonitoringData {
+                pos: 1,
+                ..field_data.clone()
+            }),
+            username_hash: Some(StoredMonitoringData {
+                pos: 2,
+                ..field_data
+            }),
+            last_tree_head: None,
+        };
+
+        let updated = data.clone().reset(field);
+
+        match field {
+            AccountDataField::E164 => {
+                assert!(updated.e164.is_none());
+                assert_matches!(
+                    updated.username_hash,
+                    Some(StoredMonitoringData { pos: 2, .. })
+                );
+            }
+            AccountDataField::UsernameHash => {
+                assert_matches!(updated.e164, Some(StoredMonitoringData { pos: 1, .. }));
+                assert!(updated.username_hash.is_none());
+            }
+        }
     }
 }

@@ -113,6 +113,32 @@ final class KeyTransparencyTests: TestCaseBase {
         XCTAssertEqual(1, store.distinguishedTreeHeads.count)
     }
 
+    func testResetFieldThrowsOnCorruptData() async throws {
+        let store = TestStore()
+        await store.setAccountData(Data([1, 2, 3]), for: self.testAccount.aci)
+        do {
+            try await KeyTransparency.resetField(
+                .e164,
+                for: self.testAccount.aci,
+                store: store
+            )
+            XCTFail("should have failed")
+        } catch SignalError.invalidArgument(_) {
+        } catch {
+            XCTFail("unexpected exception thrown: \(error)")
+        }
+    }
+
+    func testResetFieldIsNoopWhenDataIsMissing() async throws {
+        let store = TestStore()
+        try await KeyTransparency.resetField(
+            .e164,
+            for: self.testAccount.aci,
+            store: store
+        )
+        XCTAssertNil(store.accountData[self.testAccount.aci])
+    }
+
     // These testing endpoints aren't generated in device builds, to save on code size.
     #if !os(iOS) || targetEnvironment(simulator)
     func testNonFatalErrorBridging() throws {
@@ -143,6 +169,23 @@ final class KeyTransparencyTests: TestCaseBase {
         } catch {
             XCTFail("unexpected exception thrown: \(error)")
         }
+    }
+
+    func testResetFieldUpdatesStoreOnSuccess() async throws {
+        let store = TestStore()
+        let storedAccountData = failOnError {
+            try invokeFnReturningData {
+                signal_testing_key_trans_stored_account_data($0)
+            }
+        }
+        await store.setAccountData(storedAccountData, for: self.testAccount.aci)
+        XCTAssertEqual(1, store.accountData[self.testAccount.aci]!.count)
+        try await KeyTransparency.resetField(
+            .e164,
+            for: self.testAccount.aci,
+            store: store
+        )
+        XCTAssertEqual(2, store.accountData[self.testAccount.aci]!.count)
     }
 
     func customNetworkErrorTestImpl(status: UInt16, headers: [String: String] = [:]) async throws {

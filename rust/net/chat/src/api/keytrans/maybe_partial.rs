@@ -6,12 +6,16 @@
 use std::collections::BTreeSet;
 
 /// A tag identifying an optional field in [`libsignal_keytrans::AccountData`]
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, displaydoc::Display)]
+#[repr(u8)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, displaydoc::Display, derive_more::TryFrom,
+)]
+#[try_from(repr)]
 pub enum AccountDataField {
     /// E.164
-    E164,
+    E164 = 0,
     /// Username hash
-    UsernameHash,
+    UsernameHash = 1,
 }
 
 /// This struct adds to its type parameter a (potentially empty) list of

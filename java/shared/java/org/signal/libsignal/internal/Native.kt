@@ -629,6 +629,8 @@ internal object Native {
   @JvmStatic
   public external fun KeyTransparency_E164SearchKey(e164: String): ByteArray
   @JvmStatic
+  public external fun KeyTransparency_ResetDataField(accountData: ByteArray, field: Int): ByteArray
+  @JvmStatic
   public external fun KeyTransparency_UsernameHashSearchKey(hash: ByteArray): ByteArray
 
   @JvmStatic

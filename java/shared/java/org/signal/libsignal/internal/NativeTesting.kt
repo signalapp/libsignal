@@ -186,6 +186,8 @@ public object NativeTesting {
   @JvmStatic @Throws(Exception::class)
   public external fun TESTING_KeyTransNonFatalVerificationFailure(): Unit
   @JvmStatic
+  public external fun TESTING_KeyTransStoredAccountData(): ByteArray
+  @JvmStatic
   public external fun TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(handle: ObjectHandle): Unit
   @JvmStatic
   public external fun TESTING_NonSuspendingBackgroundThreadRuntime_New(): ObjectHandle

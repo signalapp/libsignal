@@ -11,6 +11,7 @@ import java.util.UUID;
 import org.junit.Test;
 import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.keytrans.KeyTransparencyException;
+import org.signal.libsignal.keytrans.TestStore;
 import org.signal.libsignal.keytrans.VerificationFailedException;
 import org.signal.libsignal.protocol.IdentityKey;
 import org.signal.libsignal.protocol.InvalidKeyException;
@@ -59,5 +60,30 @@ public class KeyTransparencyTest {
   @Test
   public void canBridgeChatSendError() {
     assertThrows(TimeoutException.class, NativeTesting::TESTING_KeyTransChatSendError);
+  }
+
+  @Test
+  public void resetFieldThrowsOnCorruptData() {
+    var store = new TestStore();
+    store.setAccountData(TEST_ACI, new byte[] {1, 2, 3});
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> KeyTransparency.resetField(TEST_ACI, KeyTransparency.AccountDataField.E164, store));
+  }
+
+  @Test
+  public void resetFieldIsNoopWhenDataIsMissing() {
+    var store = new TestStore();
+    KeyTransparency.resetField(TEST_ACI, KeyTransparency.AccountDataField.E164, store);
+    assert (store.storage.get(TEST_ACI).isEmpty());
+  }
+
+  @Test
+  public void resetFieldUpdatesStoreOnSuccess() {
+    var store = new TestStore();
+    store.setAccountData(TEST_ACI, NativeTesting.TESTING_KeyTransStoredAccountData());
+    assertEquals(1, store.storage.get(TEST_ACI).size());
+    KeyTransparency.resetField(TEST_ACI, KeyTransparency.AccountDataField.E164, store);
+    assertEquals(2, store.storage.get(TEST_ACI).size());
   }
 }

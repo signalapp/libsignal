@@ -4,7 +4,11 @@
 //
 package org.signal.libsignal.net
 
-public abstract class KeyTransparency {
+import org.signal.libsignal.internal.Native
+import org.signal.libsignal.keytrans.Store
+import org.signal.libsignal.protocol.ServiceId
+
+public object KeyTransparency {
   /**
    * Mode of the key transparency operation.
    *
@@ -31,5 +35,45 @@ public abstract class KeyTransparency {
       }
 
     public fun isSelf(): Boolean = this is Self
+  }
+
+  /**
+   * A tag identifying an optional field of the account data.
+   *
+   * (Must be in sync with the Rust counterpart)
+   */
+  public enum class AccountDataField(
+    public val value: Int,
+  ) {
+    E164(0),
+    USERNAME_HASH(1),
+  }
+
+  /**
+   * Resets a particular field in the data associated with given ACI.
+   *
+   * Must only be called for the "self" account when either E.164 or username change is performed.
+   *
+   * Upon successful completion the data associated with the account will be updated in the store, if it
+   * was present to begin with, noop if it was not.
+   *
+   * @param aci An ACI of "self" account.
+   * @param field Account data field to be reset (E.164 or username hash)
+   * @param store local persistent storage for key transparency-related data.
+   * @throws IllegalArgumentException if the stored data cannot be decoded correctly, which means data corruption.
+   */
+  @JvmStatic
+  public fun resetField(
+    aci: ServiceId.Aci,
+    field: AccountDataField,
+    store: Store,
+  ) {
+    store.getAccountData(aci).map {
+      val updated = Native.KeyTransparency_ResetDataField(it, field.value)
+      if (updated.isEmpty()) {
+        throw IllegalArgumentException("failed to decode account data")
+      }
+      store.setAccountData(aci, updated)
+    }
   }
 }

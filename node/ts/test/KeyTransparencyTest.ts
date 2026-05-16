@@ -90,6 +90,33 @@ describe('KeyTransparency bridging', () => {
   });
 });
 
+describe('KeyTransparency.resetField', () => {
+  it('throws on corrupt data', async () => {
+    const store = new InMemoryKtStore();
+    await store.setAccountData(testAci, new Uint8Array([1, 2, 3]));
+    await expect(
+      KT.resetField(testAci, KT.AccountDataField.E164, store)
+    ).to.be.rejectedWith(TypeError);
+  });
+
+  it('is a noop when data is missing', async () => {
+    const store = new InMemoryKtStore();
+    await KT.resetField(testAci, KT.AccountDataField.E164, store);
+    expect(store.storage.get(testAci)).to.equal(undefined);
+  });
+
+  it('updates store on success', async () => {
+    const store = new InMemoryKtStore();
+    await store.setAccountData(
+      testAci,
+      Native.TESTING_KeyTransStoredAccountData()
+    );
+    expect(store.storage.get(testAci)).to.have.lengthOf(1);
+    await KT.resetField(testAci, KT.AccountDataField.E164, store);
+    expect(store.storage.get(testAci)).to.have.lengthOf(2);
+  });
+});
+
 describe('KeyTransparency network errors', () => {
   it('can bridge network errors', async () => {
     async function run(statusCode: number, headers: string[] = []) {

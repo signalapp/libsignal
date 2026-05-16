@@ -318,6 +318,7 @@ type NativeFunctions = {
   KeyTransparency_AciSearchKey: (aci: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
   KeyTransparency_Check: (asyncRuntime: Wrapper<TokioAsyncContext>,environment: number,chatConnection: Wrapper<UnauthenticatedChatConnection>,aci: Uint8Array<ArrayBuffer>,aciIdentityKey: Wrapper<PublicKey>,e164: (string | null),unidentifiedAccessKey: (Uint8Array<ArrayBuffer> | null),usernameHash: (Uint8Array<ArrayBuffer> | null),accountData: (Uint8Array<ArrayBuffer> | null),lastDistinguishedTreeHead: (Uint8Array<ArrayBuffer> | null),isSelfCheck: boolean,isE164Discoverable: boolean,) => CancellablePromise<[Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>]>;
   KeyTransparency_E164SearchKey: (e164: string,) => Uint8Array<ArrayBuffer>;
+  KeyTransparency_ResetDataField: (accountData: Uint8Array<ArrayBuffer>,field: number,) => Uint8Array<ArrayBuffer>;
   KeyTransparency_UsernameHashSearchKey: (hash: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
   KyberKeyPair_Generate: () => KyberKeyPair;
   KyberKeyPair_GetPublicKey: (keyPair: Wrapper<KyberKeyPair>,) => KyberPublicKey;
@@ -634,6 +635,7 @@ type NativeFunctions = {
   TESTING_KeyTransChatSendError: () => void;
   TESTING_KeyTransFatalVerificationFailure: () => void;
   TESTING_KeyTransNonFatalVerificationFailure: () => void;
+  TESTING_KeyTransStoredAccountData: () => Uint8Array<ArrayBuffer>;
   TESTING_NonSuspendingBackgroundThreadRuntime_New: () => NonSuspendingBackgroundThreadRuntime;
   TESTING_OtherTestingHandleType_getValue: (handle: Wrapper<OtherTestingHandleType>,) => string;
   TESTING_PanicInBodyAsync: (_input: null,) => Promise<void>;
@@ -898,6 +900,7 @@ const { registerErrors,
   KeyTransparency_AciSearchKey,
   KeyTransparency_Check,
   KeyTransparency_E164SearchKey,
+  KeyTransparency_ResetDataField,
   KeyTransparency_UsernameHashSearchKey,
   KyberKeyPair_Generate,
   KyberKeyPair_GetPublicKey,
@@ -1214,6 +1217,7 @@ const { registerErrors,
   TESTING_KeyTransChatSendError,
   TESTING_KeyTransFatalVerificationFailure,
   TESTING_KeyTransNonFatalVerificationFailure,
+  TESTING_KeyTransStoredAccountData,
   TESTING_NonSuspendingBackgroundThreadRuntime_New,
   TESTING_OtherTestingHandleType_getValue,
   TESTING_PanicInBodyAsync,
@@ -1479,6 +1483,7 @@ export { registerErrors,
   KeyTransparency_AciSearchKey,
   KeyTransparency_Check,
   KeyTransparency_E164SearchKey,
+  KeyTransparency_ResetDataField,
   KeyTransparency_UsernameHashSearchKey,
   KyberKeyPair_Generate,
   KyberKeyPair_GetPublicKey,
@@ -1795,6 +1800,7 @@ export { registerErrors,
   TESTING_KeyTransChatSendError,
   TESTING_KeyTransFatalVerificationFailure,
   TESTING_KeyTransNonFatalVerificationFailure,
+  TESTING_KeyTransStoredAccountData,
   TESTING_NonSuspendingBackgroundThreadRuntime_New,
   TESTING_OtherTestingHandleType_getValue,
   TESTING_PanicInBodyAsync,

@@ -168,6 +168,46 @@ export interface Client {
   ) => Promise<void>;
 }
 
+/**
+ * A tag identifying an optional field of the account data.
+ *
+ * (Must be in sync with the Rust counterpart)
+ */
+export enum AccountDataField {
+  E164 = 0,
+  UsernameHash = 1,
+}
+
+/**
+ * Resets a particular field in the data associated with given ACI.
+ *
+ * Must only be called for the "self" account when either E.164 or username
+ * change is performed.
+ *
+ * Upon successful completion the data associated with the account will be
+ * updated in the store, if it was present to begin with, noop if it was not.
+ *
+ * @param aci - An ACI of "self" account.
+ * @param field - Account data field to be reset (E.164 or username hash).
+ * @param store - local persistent storage for key transparency-related data.
+ * @throws {TypeError} if the stored data cannot be decoded correctly, which means data corruption.
+ */
+export async function resetField(
+  aci: Aci,
+  field: AccountDataField,
+  store: Store
+): Promise<void> {
+  const accountData = await store.getAccountData(aci);
+  if (accountData === null) {
+    return;
+  }
+  const updated = Native.KeyTransparency_ResetDataField(accountData, field);
+  if (updated.length === 0) {
+    throw new TypeError('failed to decode account data');
+  }
+  await store.setAccountData(aci, updated);
+}
+
 export class ClientImpl implements Client {
   constructor(
     private readonly asyncContext: TokioAsyncContext,

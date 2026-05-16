@@ -2150,6 +2150,8 @@ SignalFfiError *signal_key_transparency_check(SignalCPromisePairOfOwnedBufferOfc
 
 SignalFfiError *signal_key_transparency_e164_search_key(SignalOwnedBuffer *out, const char *e164);
 
+SignalFfiError *signal_key_transparency_reset_data_field(SignalOwnedBuffer *out, SignalBorrowedBuffer account_data, uint8_t field);
+
 SignalFfiError *signal_key_transparency_username_hash_search_key(SignalOwnedBuffer *out, SignalBorrowedBuffer hash);
 
 SignalFfiError *signal_kyber_key_pair_clone(SignalMutPointerKyberKeyPair *new_obj, SignalConstPointerKyberKeyPair obj);

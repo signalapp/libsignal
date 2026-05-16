@@ -63,6 +63,45 @@ public enum KeyTransparency {
         }
     }
 
+    /// A tag identifying an optional field of the account data.
+    ///
+    /// (Must be in sync with the Rust counterpart)
+    public enum AccountDataField: UInt8 {
+        case e164 = 0
+        case usernameHash = 1
+    }
+
+    /// Resets a particular field in the data associated with given ACI.
+    ///
+    /// Must only be called for the "self" account when either E.164 or username
+    /// change is performed.
+    ///
+    /// Upon successful completion the data associated with the account will be
+    /// updated in the store, if it was present to begin with, noop if it was not.
+    ///
+    /// - Parameters:
+    ///   - field: Account data field to be reset (E.164 or username hash).
+    ///   - aci: An ACI of "self" account.
+    ///   - store: local persistent storage for key transparency-related data.
+    /// - Throws: ``SignalError/invalidArgument(_:)`` if the stored data cannot
+    ///   be decoded correctly, which means data corruption.
+    public static func resetField(
+        _ field: AccountDataField,
+        for aci: Aci,
+        store: some Store
+    ) async throws {
+        guard let accountData = await store.getAccountData(for: aci) else { return }
+        let updated = try accountData.withUnsafeBorrowedBuffer { accountDataBuffer in
+            try invokeFnReturningData {
+                signal_key_transparency_reset_data_field($0, accountDataBuffer, field.rawValue)
+            }
+        }
+        if updated.isEmpty {
+            throw SignalError.invalidArgument("failed to decode account data")
+        }
+        await store.setAccountData(updated, for: aci)
+    }
+
     /// Typed API to access the key transparency subsystem using an existing
     /// unauthenticated chat connection.
     ///

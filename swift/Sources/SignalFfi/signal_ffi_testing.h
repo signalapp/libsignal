@@ -389,6 +389,8 @@ SignalFfiError *signal_testing_key_trans_fatal_verification_failure(void);
 
 SignalFfiError *signal_testing_key_trans_non_fatal_verification_failure(void);
 
+SignalFfiError *signal_testing_key_trans_stored_account_data(SignalOwnedBuffer *out);
+
 SignalFfiError *signal_testing_other_testing_handle_type_get_value(const char **out, SignalConstPointerOtherTestingHandleType handle);
 
 SignalFfiError *signal_testing_panic_in_body_async(const void *_input);
