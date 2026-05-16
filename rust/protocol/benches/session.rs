@@ -244,6 +244,36 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
             })
         },
     );
+    
+    let alice_state = &mut alice_store
+        .load_session(&bob_address)
+        .now_or_never()
+        .expect("sync")?
+        .expect("already decrypted successfully");
+    let bob_state = &mut bob_store
+        .load_session(&alice_address)
+        .now_or_never()
+        .expect("sync")?
+        .expect("already decrypted successfully");
+
+    let (_, _, (_, (_, _)), vk, x, r1, r2, _) = alice_state.get_vts()?;
+    let (_, (w, v), _, _) = bob_state.get_bob_response()?;
+
+    let (vk_compressed, w_compressed, v_compressed) = (vk.compress(), w.compress(), v.compress());
+    let vk_bytes = vk_compressed.as_bytes();
+    let x_bytes = x.as_slice();
+    let alpha_bytes: &[u8] = &r1.to_bytes()[..];
+    let beta_bytes: &[u8] = &r2.to_bytes()[..];
+    let w_bytes = w_compressed.as_bytes();
+    let v_bytes = v_compressed.as_bytes();
+    c.bench_function(
+        "pvrf_verify",
+        |b| {
+            b.iter(|| {
+                pvrf_verify_from_session_data(vk_bytes, x_bytes, alpha_bytes, beta_bytes, w_bytes, v_bytes)
+            })
+        },
+    );
 
     // Reset once more to go back to the original message.
     bob_store.identity_store.reset();
