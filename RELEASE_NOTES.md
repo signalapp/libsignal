@@ -1,5 +1,2 @@
-v0.94.1
+v0.94.2
 
-- Add `grpc.BackupsAnonymousGetUploadForm` remote config, for both backup and backup media uploads. This is separate from the `grpc.AttachmentsGetUploadForm` config added previously, which applies to regular attachment uploads.
-
-- keytrans: Add reset account data field functionality for all platforms.
