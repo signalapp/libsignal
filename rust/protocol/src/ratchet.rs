@@ -268,16 +268,16 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
 
 
     // FOR MCS DEMO PURPOSES ONLY
-    // let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
+    let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
 
-    // path.push("mcs_stored_pvrf.txt");
-    // let pvrf_ciphertext = if path.exists() {
-    //     log::info!("it existed on desktop");
-    //     Some(fs::read(&path).unwrap().into_boxed_slice())
-    // } else {
-    //     Some(pvrf_ciphertext)
-    // };
-    // let pvrf_ciphertext = pvrf_ciphertext.expect("");
+    path.push("mcs_stored_pvrf.txt");
+    let pvrf_ciphertext_from_file = if path.exists() {
+        log::info!("it existed on desktop");
+        Some(fs::read(&path).unwrap().into_boxed_slice())
+    } else {
+        Some(pvrf_ciphertext)
+    };
+    let pvrf_ciphertext = pvrf_ciphertext_from_file.expect("");
 
 
     let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
