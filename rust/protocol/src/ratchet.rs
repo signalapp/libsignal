@@ -485,6 +485,13 @@ pub(crate) fn initialize_bob_session(
         } else {
             bob_response
         };
+
+
+        log::info!("going to try writing to desktop");
+        let unoptioned = bincode::serialize(&response).unwrap();
+        let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
+        path.push("mcs_stored_bob_response.txt");
+        let _ = fs::write(&path, unoptioned);
         bob_response = Some(bob_response_from_file.expect(""));
     } else {
         log::info!("No PVRF ciphertext provided in PreKey message; skipping PVRF processing");

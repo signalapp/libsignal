@@ -10,7 +10,7 @@ use bitflags::bitflags;
 use prost::Message;
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
-use std::fs;
+// use std::fs;
 
 use crate::proto::storage::{RecordStructure, SessionStructure, session_structure};
 use crate::protocol::CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION;
@@ -958,20 +958,6 @@ impl SessionRecord {
     pub fn get_bob_response(
             &self,
     ) -> Result<(Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar), SignalProtocolError> {   
-        log::info!("going to try writing to desktop");
-        let bob_response = self
-            .session_state()
-            .ok_or_else(|| {
-                SignalProtocolError::InvalidState(
-                    "get_bob_response",
-                    "No current session".into(),
-                )
-            })?
-            .session.bob_response.clone();
-        let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
-        path.push("mcs_stored_bob_response.txt");
-        let _ = fs::write(&path, bob_response);
-
         Ok(
             bincode::deserialize(
         &self
