@@ -228,7 +228,6 @@ impl Visit<Scrambler> for proto::AccountData {
             svrPin,
             bioText,
             bioEmoji,
-            keyTransparencyData,
             androidSpecificSettings: _,
             iosSpecificSettings: _,
             special_fields: _,
@@ -252,7 +251,6 @@ impl Visit<Scrambler> for proto::AccountData {
         if !bioEmoji.is_empty() {
             *bioEmoji = REPLACEMENT_EMOJI.to_string();
         }
-        keyTransparencyData.randomize(&mut visitor.rng);
     }
 }
 
