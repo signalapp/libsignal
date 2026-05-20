@@ -64,7 +64,7 @@ pub(crate) fn bridge_fn(
         #[unsafe(export_name = concat!(env!("LIBSIGNAL_BRIDGE_FN_PREFIX_JNI"), #name))]
         #[allow(non_snake_case)]
         pub unsafe extern "C" fn #wrapper_name<'local>(
-            mut env: ::jni::JNIEnv<'local>,
+            mut env: ::jni::EnvUnowned<'local>,
             // We only generate static methods.
             _class: ::jni::objects::JClass,
             #async_runtime_if_needed
@@ -221,7 +221,7 @@ pub(crate) fn bridge_trait(
         #[cfg(feature = "jni")]
         impl #wrapper_name {
             pub fn new(
-                env: &mut jni::JNIEnv<'_>,
+                env: &mut ::jni::Env<'_>,
                 object: &#object_alias_name<'_>,
             ) -> Result<Self, jni::BridgeLayerError> {
                 Ok(Self(jni::GlobalAndVM::new(env, object, jni::ClassName(#java_class_path))?))
@@ -318,12 +318,15 @@ fn bridge_callback_item(item: &TraitItem, wrapper_name: &Ident) -> Result<Callba
                 ));
                 self.0.attach(#java_operation_name, move |env, __object| {
                     #(#arg_conversions;)*
+                    let __signature = ::jni::signature::RuntimeMethodSignature::from_str(
+                        const_str::concat!("(", #(#arg_signatures,)* ")", jni::jni_signature_for_result::<#result_ty>()),
+                    ).expect("valid jni signature");
                     let __result = jni::call_method_checked(
                         env,
                         __object,
                         #java_operation_name,
                         jni::JniArgs {
-                            sig: const_str::concat!("(", #(#arg_signatures,)* ")", jni::jni_signature_for_result::<#result_ty>()),
+                            sig: __signature.method_signature(),
                             args: [#(jni::JValue::from(&#converted_args)),*],
                             // Some result types have 'local in them, so we have to provide that lifetime here.
                             _return: std::marker::PhantomData::<for<'local> fn(&'local ()) -> jni_arg_type!(#result_ty)>,
@@ -346,12 +349,15 @@ fn bridge_callback_item(item: &TraitItem, wrapper_name: &Ident) -> Result<Callba
                 // We can handle those some if we need them.
                 self.0.attach_and_log_on_error(#java_operation_name, move |env, __object| {
                     #(#arg_conversions;)*
+                    let __signature = ::jni::signature::RuntimeMethodSignature::from_str(
+                        const_str::concat!("(", #(#arg_signatures,)* ")V"),
+                    ).expect("valid jni signature");
                     jni::call_method_checked(
                         env,
                         __object,
                         #java_operation_name,
                         jni::JniArgs {
-                            sig: const_str::concat!("(", #(#arg_signatures,)* ")V"),
+                            sig: __signature.method_signature(),
                             args: [#(jni::JValue::from(&#converted_args)),*],
                             _return: std::marker::PhantomData::<fn(&())>,
                         }

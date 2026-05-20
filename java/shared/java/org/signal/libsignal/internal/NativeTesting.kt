@@ -224,7 +224,7 @@ public object NativeTesting {
   @JvmStatic @Throws(Exception::class)
   public external fun TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert(errorDescription: String): Unit
   @JvmStatic
-  public external fun TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert(): Object
+  public external fun TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert(): Map<*, *>
   @JvmStatic @Throws(Exception::class)
   public external fun TESTING_RegistrationService_CreateSessionErrorConvert(errorDescription: String): Unit
   @JvmStatic @Throws(Exception::class)

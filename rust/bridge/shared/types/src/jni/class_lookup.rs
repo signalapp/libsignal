@@ -2,8 +2,12 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use jni::JNIEnv;
-use jni::objects::{GlobalRef, JClass, JMethodID, JObject, JValue};
+
+use std::ffi::CString;
+
+use jni::objects::{Global, JClass, JMethodID, JObject, JValue};
+use jni::strings::JNIStr;
+use jni::{jni_sig, jni_str};
 use libsignal_core::try_scoped;
 use once_cell::sync::OnceCell;
 
@@ -13,7 +17,7 @@ static CACHED_CLASS_LOADER: OnceCell<CachedLoader> = OnceCell::new();
 
 struct CachedLoader {
     /// A `java.lang.ClassLoader`.
-    class_loader: GlobalRef,
+    class_loader: Global<JObject<'static>>,
     /// JNI reference to `ClassLoader.loadClass`.
     load_class_method: JMethodID,
 }
@@ -26,7 +30,7 @@ struct CachedLoader {
 ///
 /// [`ClassLoader`]: https://docs.oracle.com/javase/8/docs/api/java/lang/ClassLoader.html
 pub fn save_class_loader(
-    env: &mut JNIEnv<'_>,
+    env: &mut jni::Env<'_>,
     native_class: &JClass<'_>,
 ) -> Result<(), BridgeLayerError> {
     let _saved = CACHED_CLASS_LOADER.get_or_try_init(|| {
@@ -41,8 +45,8 @@ pub fn save_class_loader(
             let loader_class = env.get_object_class(&loader)?;
             let load_class_method = env.get_method_id(
                 loader_class,
-                "loadClass",
-                jni_signature!((java.lang.String) -> java.lang.Class),
+                jni_str!("loadClass"),
+                jni_sig!((java.lang.String) -> java.lang.Class),
             )?;
             let class_loader = env.new_global_ref(loader)?;
             Ok(CachedLoader {
@@ -69,19 +73,21 @@ impl std::fmt::Display for ClassName<'_> {
 
 /// Looks up a class by name.
 ///
-/// Uses the cached class loader, if there is one, or the provided `JNIEnv`. Use
-/// this instead of [`JNIEnv::find_class`].
+/// Uses the cached class loader, if there is one, or the provided `jni::Env`. Use
+/// this instead of [`jni::Env::find_class`].
 pub fn find_class<'output>(
-    env: &mut JNIEnv<'output>,
+    env: &mut jni::Env<'output>,
     class_name: ClassName<'_>,
 ) -> jni::errors::Result<JClass<'output>> {
+    // TODO: replace this with jni::refs::LoaderContext,
+    // which handles the cached loader and "default" modes more uniformly.
     let Some(class_loader) = CACHED_CLASS_LOADER.get() else {
         let jni_name = jni_name_from_binary_name(class_name);
-        return real_jni_find_class(env, &jni_name);
+        return real_jni_find_class(env, JNIStr::from_cstr(&jni_name).expect("ASCII"));
     };
 
-    let ClassName(name) = class_name;
-    let binary_name = env.new_string(name)?;
+    // TODO: replace this with a (validated) JNI string.
+    let binary_name = jni::objects::JString::from_str(env, class_name.0)?;
 
     let CachedLoader {
         class_loader,
@@ -104,10 +110,10 @@ pub fn find_class<'output>(
     }?
     .l()?;
 
-    Ok(class.into())
+    env.cast_local::<JClass>(class)
 }
 
-/// Equivalent to [`JNIEnv::find_class`].
+/// Equivalent to [`jni::Env::find_class`].
 ///
 /// That function is marked as disallowed because its behavior is different on
 /// Android depending on what thread it is called from. In most cases, the
@@ -116,27 +122,34 @@ pub fn find_class<'output>(
 /// exists to provide a narrowly-scoped `#[allow]`ed exception to the rule.
 #[expect(clippy::disallowed_methods)]
 fn real_jni_find_class<'output>(
-    env: &mut JNIEnv<'output>,
-    name: &str,
+    env: &mut jni::Env<'output>,
+    name: &JNIStr,
 ) -> Result<JClass<'output>, jni::errors::Error> {
     env.find_class(name)
 }
 
-/// Equivalent to [`JNIEnv::find_class`], but only intended for use with primitive arrays (specified
-/// using [`jni_signature`]).
+/// Equivalent to [`jni::Env::find_class`], but only intended for use with primitive arrays (specified
+/// using [`jni_sig`]).
 ///
 /// Use [`find_class`] for actual classes, and, uh, nothing has been built yet for arrays of
 /// classes.
 #[inline]
 pub fn find_primitive_array_class<'output>(
-    env: &mut JNIEnv<'output>,
-    name: &str,
+    env: &mut jni::Env<'output>,
+    name: &JNIStr,
 ) -> Result<JClass<'output>, jni::errors::Error> {
     real_jni_find_class(env, name)
 }
 
-fn jni_name_from_binary_name(ClassName(name): ClassName<'_>) -> String {
-    name.replace('.', "/")
+fn jni_name_from_binary_name(name: ClassName<'_>) -> CString {
+    let mut name_bytes = name.0.as_bytes().to_vec();
+    for next in &mut name_bytes[..] {
+        if *next == b'.' {
+            *next = b'/'
+        }
+    }
+    name_bytes.push(0);
+    CString::from_vec_with_nul(name_bytes).expect("no embedded NUL")
 }
 
 #[cfg(test)]
@@ -146,12 +159,12 @@ mod test {
     #[test]
     fn binary_name_conversion() {
         assert_eq!(
-            &jni_name_from_binary_name(ClassName("org.signal.libsignal.Native")),
-            "org/signal/libsignal/Native"
+            &jni_name_from_binary_name(ClassName("org.signal.libsignal.Native"))[..],
+            c"org/signal/libsignal/Native"
         );
         assert_eq!(
-            &jni_name_from_binary_name(ClassName("org.signal.libsignal.CdsiResponse$Entry")),
-            "org/signal/libsignal/CdsiResponse$Entry"
+            &jni_name_from_binary_name(ClassName("org.signal.libsignal.CdsiResponse$Entry"))[..],
+            c"org/signal/libsignal/CdsiResponse$Entry"
         );
     }
 }

@@ -13,9 +13,14 @@
 #
 # thiserror: minimal and highly inlinable, most of the code is synthesized at the use site
 # rand_core, getrandom: waiting to update all the RustCrypto crates together
+# jni: used directly by us but also by rustls-platform-verifier on Android (update available)
 EXPECTED="
 getrandom v0.2.16
 getrandom v0.3.4
+jni v0.21.1
+jni v0.22.4
+jni-sys v0.3.0
+jni-sys v0.4.1
 rand_core v0.6.4
 rand_core v0.9.3
 thiserror v1.0.69

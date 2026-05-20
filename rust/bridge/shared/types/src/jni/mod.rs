@@ -13,14 +13,13 @@ use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use http::uri::InvalidUri;
-pub use jni::JNIEnv;
-use jni::JavaVM;
 pub use jni::objects::{
     AutoElements, JByteArray, JClass, JLongArray, JObject, JObjectArray, JString, JValue,
     JValueOwned, ReleaseMode,
 };
-use jni::objects::{GlobalRef, JThrowable};
+use jni::objects::{Global, JThrowable};
 pub use jni::sys::{jboolean, jdouble, jint, jlong};
+use jni::{JavaVM, bind_java_type};
 use libsignal_account_keys::Error as PinError;
 use libsignal_core::try_scoped;
 use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSendError};
@@ -77,7 +76,7 @@ pub type JavaObject<'a> = JObject<'a>;
 pub type JavaUUID<'a> = JObject<'a>;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;
 pub type JavaSignedPublicPreKey<'a> = JObject<'a>;
-pub type JavaMap<'a> = JObject<'a>;
+pub type JavaMap<'a> = JMap<'a>;
 
 /// Return type marker for `bridge_fn`s that return Result, which gen_java_decl.py will pick out
 /// when generating Native.java.
@@ -146,17 +145,27 @@ impl<'a, A, B> TryFrom<JValueOwned<'a>> for JavaPair<'a, A, B> {
     }
 }
 
+bind_java_type! {
+    /// A stripped-down version of [`jni::objects::JMap`] for Android 23 compatibility.
+    ///
+    /// We may be able to remove this in the future: <https://github.com/jni-rs/jni-rs/issues/824>
+    pub JMap => java.util.Map,
+    methods {
+        fn put(key: JObject, value: JObject) -> JObject,
+    }
+}
+
 impl JniError for BridgeLayerError {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         let class_name = match self {
             BridgeLayerError::CallbackException(_callback, exception) => {
                 return env
                     .new_local_ref(exception.as_obj())
                     .expect_no_exceptions()
-                    .map(JThrowable::from);
+                    .map(Into::into);
             }
 
             BridgeLayerError::UnexpectedPanic(_)
@@ -170,8 +179,7 @@ impl JniError for BridgeLayerError {
                     env,
                     ClassName("java.lang.AssertionError"),
                     jni_args!((message => java.lang.Object) -> void),
-                )
-                .map(Into::into);
+                );
             }
 
             BridgeLayerError::NullPointer(_) => ClassName("java.lang.NullPointerException"),
@@ -181,6 +189,9 @@ impl JniError for BridgeLayerError {
                 ClassName("java.lang.IllegalArgumentException")
             }
 
+            BridgeLayerError::Jni(jni::errors::Error::NoClassDefFound { .. }) => {
+                ClassName("java.lang.NoClassDefFoundError")
+            }
             BridgeLayerError::Jni(_) => ClassName("java.lang.RuntimeException"),
         };
         make_single_message_throwable(env, &self.to_string(), class_name)
@@ -190,8 +201,8 @@ impl JniError for BridgeLayerError {
 impl JniError for IllegalArgumentError {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         make_single_message_throwable(
             env,
             &self.0,
@@ -203,8 +214,8 @@ impl JniError for IllegalArgumentError {
 impl JniError for GetUploadFormFailure {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         make_single_message_throwable(
             env,
             &self.to_string(),
@@ -223,8 +234,8 @@ impl JniError for GetUploadFormFailure {
 impl JniError for UploadTooLarge {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         make_single_message_throwable(
             env,
             &self.to_string(),
@@ -236,11 +247,11 @@ impl JniError for UploadTooLarge {
 impl JniError for SignalProtocolError {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         fn to_java_string<'env>(
-            env: &mut JNIEnv<'env>,
-            s: impl Into<jni::strings::JNIString>,
+            env: &mut jni::Env<'env>,
+            s: impl AsRef<str>,
         ) -> Result<JString<'env>, BridgeLayerError> {
             env.new_string(s)
                 .check_exceptions(env, "JniError::into_throwable")
@@ -253,7 +264,7 @@ impl JniError for SignalProtocolError {
                     return env
                         .new_local_ref(exception.as_obj())
                         .expect_no_exceptions()
-                        .map(JThrowable::from);
+                        .map(Into::into);
                 }
 
                 ClassName("java.lang.RuntimeException")
@@ -265,8 +276,7 @@ impl JniError for SignalProtocolError {
                     env,
                     ClassName("org.signal.libsignal.protocol.UntrustedIdentityException"),
                     jni_args!((addr_name => java.lang.String) -> void),
-                )
-                .map(Into::into);
+                );
             }
             SignalProtocolError::SessionNotFound(addr) => {
                 let addr_object = protocol_address_to_jobject(env, addr)?;
@@ -278,8 +288,7 @@ impl JniError for SignalProtocolError {
                         addr_object => org.signal.libsignal.protocol.SignalProtocolAddress,
                         message => java.lang.String,
                     ) -> void),
-                )
-                .map(Into::into);
+                );
             }
 
             SignalProtocolError::InvalidRegistrationId(addr, _value) => {
@@ -292,8 +301,7 @@ impl JniError for SignalProtocolError {
                         addr_object => org.signal.libsignal.protocol.SignalProtocolAddress,
                         message => java.lang.String,
                     ) -> void),
-                )
-                .map(Into::into);
+                );
             }
             SignalProtocolError::InvalidSenderKeySession { distribution_id } => {
                 let distribution_id = distribution_id.convert_into(env)?;
@@ -307,8 +315,7 @@ impl JniError for SignalProtocolError {
                         distribution_id => java.util.UUID,
                         message => java.lang.String,
                     ) -> void),
-                )
-                .map(Into::into);
+                );
             }
 
             SignalProtocolError::SealedSenderSelfSend => {
@@ -316,8 +323,7 @@ impl JniError for SignalProtocolError {
                     env,
                     ClassName("org.signal.libsignal.metadata.SelfSendException"),
                     jni_args!(() -> void),
-                )
-                .map(Into::into);
+                );
             }
 
             SignalProtocolError::InvalidState(_, _) => ClassName("java.lang.IllegalStateException"),
@@ -387,17 +393,18 @@ impl JniError for SignalProtocolError {
 impl JniError for libsignal_protocol::FingerprintError {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         let class_name = match self {
-            Self::VersionMismatch { theirs, ours } => return new_instance(
-                env,
-                ClassName(
-                    "org.signal.libsignal.protocol.fingerprint.FingerprintVersionMismatchException",
-                ),
-                jni_args!((*theirs as jint => int, *ours as jint => int) -> void),
-            )
-            .map(Into::into),
+            Self::VersionMismatch { theirs, ours } => {
+                return new_instance(
+                    env,
+                    ClassName(
+                        "org.signal.libsignal.protocol.fingerprint.FingerprintVersionMismatchException",
+                    ),
+                    jni_args!((*theirs as jint => int, *ours as jint => int) -> void),
+                );
+            }
             Self::ParsingError(_) => {
                 ClassName("org.signal.libsignal.protocol.fingerprint.FingerprintParsingException")
             }
@@ -414,21 +421,21 @@ impl MessageOnlyExceptionJniError for AllConnectionAttemptsFailed {
 }
 
 fn make_single_message_throwable<'a>(
-    env: &mut JNIEnv<'a>,
+    env: &mut jni::Env<'a>,
     message: &str,
     class: ClassName<'static>,
-) -> Result<JThrowable<'a>, BridgeLayerError> {
+) -> Result<JObject<'a>, BridgeLayerError> {
     let message = env
         .new_string(message)
         .check_exceptions(env, "JniError::into_throwable")?;
-    new_instance(env, class, jni_args!((message => java.lang.String) -> void)).map(Into::into)
+    new_instance(env, class, jni_args!((message => java.lang.String) -> void))
 }
 
 impl JniError for IoError {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         if self.kind() == std::io::ErrorKind::Other {
             let thrown_exception = self
                 .get_ref()
@@ -438,8 +445,7 @@ impl JniError for IoError {
             if let Some(exception) = thrown_exception {
                 return env
                     .new_local_ref::<&JObject>(exception.as_ref())
-                    .expect_no_exceptions()
-                    .map(Into::into);
+                    .expect_no_exceptions();
             }
         }
 
@@ -450,8 +456,8 @@ impl JniError for IoError {
 impl JniError for libsignal_message_backup::ReadError {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         let Self {
             error,
             found_unknown_fields,
@@ -468,7 +474,7 @@ impl JniError for libsignal_message_backup::ReadError {
             env,
             ClassName("org.signal.libsignal.messagebackup.ValidationError"),
             jni_args!((message => java.lang.String, found_unknown_fields => [java.lang.String]) -> void),
-        ).map(Into::into)
+        )
     }
 }
 
@@ -650,8 +656,8 @@ mod registration {
     impl<E: JniError> JniError for RequestError<E> {
         fn to_throwable_impl<'a>(
             &self,
-            env: &mut JNIEnv<'a>,
-        ) -> Result<JThrowable<'a>, BridgeLayerError> {
+            env: &mut jni::Env<'a>,
+        ) -> Result<JObject<'a>, BridgeLayerError> {
             let message = match self {
                 RequestError::Other(inner) => return inner.to_throwable_impl(env),
                 RequestError::Timeout => {
@@ -680,9 +686,9 @@ mod registration {
     }
 
     fn session_not_found<'a>(
-        env: &mut JNIEnv<'a>,
+        env: &mut jni::Env<'a>,
         message: &str,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         make_single_message_throwable(
             env,
             message,
@@ -690,9 +696,9 @@ mod registration {
         )
     }
     fn not_ready_for_verification<'a>(
-        env: &mut JNIEnv<'a>,
+        env: &mut jni::Env<'a>,
         message: &str,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         make_single_message_throwable(
             env,
             message,
@@ -703,8 +709,8 @@ mod registration {
     impl JniError for CreateSessionError {
         fn to_throwable_impl<'a>(
             &self,
-            env: &mut JNIEnv<'a>,
-        ) -> Result<JThrowable<'a>, BridgeLayerError> {
+            env: &mut jni::Env<'a>,
+        ) -> Result<JObject<'a>, BridgeLayerError> {
             match self {
                 CreateSessionError::InvalidSessionId => InvalidSessionId.to_throwable_impl(env),
             }
@@ -714,8 +720,8 @@ mod registration {
     impl JniError for ResumeSessionError {
         fn to_throwable_impl<'a>(
             &self,
-            env: &mut JNIEnv<'a>,
-        ) -> Result<JThrowable<'a>, BridgeLayerError> {
+            env: &mut jni::Env<'a>,
+        ) -> Result<JObject<'a>, BridgeLayerError> {
             match self {
                 ResumeSessionError::InvalidSessionId => InvalidSessionId.to_throwable_impl(env),
                 ResumeSessionError::SessionNotFound => session_not_found(env, &self.to_string()),
@@ -726,8 +732,8 @@ mod registration {
     impl JniError for UpdateSessionError {
         fn to_throwable_impl<'a>(
             &self,
-            env: &mut JNIEnv<'a>,
-        ) -> Result<JThrowable<'a>, BridgeLayerError> {
+            env: &mut jni::Env<'a>,
+        ) -> Result<JObject<'a>, BridgeLayerError> {
             match self {
                 UpdateSessionError::Rejected => make_single_message_throwable(
                     env,
@@ -741,8 +747,8 @@ mod registration {
     impl JniError for RequestVerificationCodeError {
         fn to_throwable_impl<'a>(
             &self,
-            env: &mut JNIEnv<'a>,
-        ) -> Result<JThrowable<'a>, BridgeLayerError> {
+            env: &mut jni::Env<'a>,
+        ) -> Result<JObject<'a>, BridgeLayerError> {
             match self {
                 RequestVerificationCodeError::InvalidSessionId => {
                     InvalidSessionId.to_throwable_impl(env)
@@ -776,7 +782,6 @@ mod registration {
                         ),
                         args,
                     )
-                    .map(Into::into)
                 }
             }
         }
@@ -785,8 +790,8 @@ mod registration {
     impl JniError for SubmitVerificationError {
         fn to_throwable_impl<'a>(
             &self,
-            env: &mut JNIEnv<'a>,
-        ) -> Result<JThrowable<'a>, BridgeLayerError> {
+            env: &mut jni::Env<'a>,
+        ) -> Result<JObject<'a>, BridgeLayerError> {
             match self {
                 SubmitVerificationError::InvalidSessionId => {
                     InvalidSessionId.to_throwable_impl(env)
@@ -814,8 +819,8 @@ mod registration {
     impl JniError for RegisterAccountError {
         fn to_throwable_impl<'a>(
             &self,
-            env: &mut JNIEnv<'a>,
-        ) -> Result<JThrowable<'a>, BridgeLayerError> {
+            env: &mut jni::Env<'a>,
+        ) -> Result<JObject<'a>, BridgeLayerError> {
             let class_name = match self {
                 RegisterAccountError::RegistrationLock(registration_lock) => {
                     let class_name =
@@ -839,8 +844,7 @@ mod registration {
                         env,
                         class_name,
                         jni_args!((time_remaining_seconds => long, svr2_username => java.lang.String, svr2_password => java.lang.String) -> void),
-                    )
-                    .map(Into::into);
+                    );
                 }
                 RegisterAccountError::DeviceTransferIsPossibleButNotSkipped => {
                     ClassName("org.signal.libsignal.net.DeviceTransferPossibleException")
@@ -858,8 +862,8 @@ mod registration {
 impl JniError for CdsiError {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         let class = match *self {
             CdsiError::RateLimited(retry_later) => {
                 return retry_later.to_throwable_impl(env);
@@ -901,8 +905,8 @@ impl MessageOnlyExceptionJniError for InvalidUri {
 impl JniError for ChatConnectError {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         let class = match *self {
             ChatConnectError::RetryLater(retry_later) => return retry_later.to_throwable_impl(env),
             ChatConnectError::AppExpired => {
@@ -956,8 +960,8 @@ impl MessageOnlyExceptionJniError for ChatSendError {
 impl JniError for SvrbError {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         match self {
             SvrbError::RestoreFailed(tries_remaining) => {
                 let message = env
@@ -971,7 +975,6 @@ impl JniError for SvrbError {
                     ClassName("org.signal.libsignal.svr.RestoreFailedException"),
                     jni_args!((message => java.lang.String, tries_remaining_int => int) -> void),
                 )
-                .map(Into::into)
             }
             SvrbError::DataMissing => make_single_message_throwable(
                 env,
@@ -1038,8 +1041,8 @@ impl MessageOnlyExceptionJniError for TestingError {
 impl JniError for Infallible {
     fn to_throwable_impl<'a>(
         &self,
-        _env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        _env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         match *self {}
     }
 }
@@ -1047,8 +1050,8 @@ impl JniError for Infallible {
 impl JniError for RetryLater {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         let Self {
             retry_after_seconds,
         } = self;
@@ -1057,15 +1060,14 @@ impl JniError for RetryLater {
             ClassName("org.signal.libsignal.net.RetryLaterException"),
             jni_args!(((*retry_after_seconds).into() => long) -> void),
         )
-        .map(Into::into)
     }
 }
 
 impl JniError for RateLimitChallenge {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         let Self {
             token,
             options,
@@ -1093,15 +1095,14 @@ impl JniError for RateLimitChallenge {
                 retry_later => long,
             ) -> void),
         )
-        .map(Into::into)
     }
 }
 
 impl<E: JniError> JniError for ChatRequestError<E> {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         match self {
             ChatRequestError::Timeout => make_single_message_throwable(
                 env,
@@ -1129,8 +1130,8 @@ impl<E: JniError> JniError for ChatRequestError<E> {
 impl JniError for libsignal_net_chat::api::messages::MultiRecipientSendFailure {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         let message = self.to_string();
         match self {
             Self::Unauthorized => make_single_message_throwable(
@@ -1149,7 +1150,6 @@ impl JniError for libsignal_net_chat::api::messages::MultiRecipientSendFailure {
                         java_error_entries => [org.signal.libsignal.net.MismatchedDeviceException::Entry]
                     ) -> void),
                 )
-                .map(Into::into)
             }
         }
     }
@@ -1158,8 +1158,8 @@ impl JniError for libsignal_net_chat::api::messages::MultiRecipientSendFailure {
 impl JniError for libsignal_net_chat::api::messages::SealedSendFailure {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         let message = self.to_string();
         match self {
             Self::ServiceIdNotFound => make_single_message_throwable(
@@ -1184,7 +1184,6 @@ impl JniError for libsignal_net_chat::api::messages::SealedSendFailure {
                         java_error_entries => [org.signal.libsignal.net.MismatchedDeviceException::Entry]
                     ) -> void),
                 )
-                .map(Into::into)
             }
         }
     }
@@ -1193,8 +1192,8 @@ impl JniError for libsignal_net_chat::api::messages::SealedSendFailure {
 impl JniError for libsignal_net_chat::api::messages::UnsealedSendFailure {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         let message = self.to_string();
         match self {
             Self::ServiceIdNotFound => make_single_message_throwable(
@@ -1214,7 +1213,6 @@ impl JniError for libsignal_net_chat::api::messages::UnsealedSendFailure {
                         java_error_entries => [org.signal.libsignal.net.MismatchedDeviceException::Entry]
                     ) -> void),
                 )
-                .map(Into::into)
             }
         }
     }
@@ -1223,8 +1221,8 @@ impl JniError for libsignal_net_chat::api::messages::UnsealedSendFailure {
 impl JniError for libsignal_net_chat::api::keys::GetPreKeysFailure {
     fn to_throwable_impl<'a>(
         &self,
-        env: &mut JNIEnv<'a>,
-    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
         let message = self.to_string();
         match self {
             Self::Unauthorized => make_single_message_throwable(
@@ -1246,44 +1244,66 @@ impl JniError for libsignal_net_chat::api::keys::GetPreKeysFailure {
 /// Exceptions thrown in callbacks will be rethrown; all other errors will be mapped to an
 /// appropriate Java exception class and thrown.
 #[cold]
-fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
+fn throw_error(env: &mut jni::Env, error: SignalJniError) {
     match error.to_throwable(env) {
         Err(failure) => log::error!("failed to create exception for {error}: {failure}"),
         Ok(throwable) => {
             let result = env.throw(throwable);
-            if let Err(failure) = result {
+            if let Err(failure) = result
+                && !matches!(failure, jni::errors::Error::JavaException)
+            {
                 log::error!("failed to throw exception for {error}: {failure}");
             }
         }
     }
 }
 
+/// Like [`jni::errors::ThrowRuntimeExAndDefault`], but with our custom handling for panics and JNI errors.
+struct ThrowAsBridgeLayerErrorAndDefault;
+
+impl<T: Default> jni::errors::ErrorPolicy<T, jni::errors::Error>
+    for ThrowAsBridgeLayerErrorAndDefault
+{
+    type Captures<'unowned_env_local: 'native_method, 'native_method> = ();
+
+    fn on_panic<'unowned_env_local: 'native_method, 'native_method>(
+        env: &mut jni::Env<'unowned_env_local>,
+        _captures: &mut Self::Captures<'unowned_env_local, 'native_method>,
+        payload: Box<dyn std::any::Any + Send + 'static>,
+    ) -> jni::errors::Result<T> {
+        throw_error(env, BridgeLayerError::UnexpectedPanic(payload).into());
+        Ok(T::default())
+    }
+
+    fn on_error<'unowned_env_local: 'native_method, 'native_method>(
+        env: &mut jni::Env<'unowned_env_local>,
+        _cap: &mut Self::Captures<'unowned_env_local, 'native_method>,
+        err: jni::errors::Error,
+    ) -> jni::errors::Result<T> {
+        throw_error(env, BridgeLayerError::Jni(err).into());
+        Ok(T::default())
+    }
+}
+
 #[inline(always)]
-pub fn run_ffi_safe<'local, F, R>(env: &mut JNIEnv<'local>, f: F) -> R
+pub fn run_ffi_safe<'local, F, R>(env: &mut jni::EnvUnowned<'local>, f: F) -> R
 where
-    F: for<'a> FnOnce(&'a mut JNIEnv<'local>) -> Result<R, SignalJniError> + std::panic::UnwindSafe,
+    F: for<'a> FnOnce(&'a mut jni::Env<'local>) -> Result<R, SignalJniError>
+        + std::panic::UnwindSafe,
     R: Default,
 {
-    // This AssertUnwindSafe is not technically safe.
-    // If we get a panic downstream, it is entirely possible the Java environment won't be usable anymore.
-    // But if that's the case, we've got bigger problems!
-    // So if we want to catch panics, we have to allow this.
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(env))) {
-        Ok(Ok(r)) => r,
-        Ok(Err(e)) => {
+    env.with_env(|env| {
+        Ok(f(env).unwrap_or_else(|e| {
             throw_error(env, e);
             R::default()
-        }
-        Err(r) => {
-            throw_error(env, BridgeLayerError::UnexpectedPanic(r).into());
-            R::default()
-        }
-    }
+        }))
+    })
+    .resolve::<ThrowAsBridgeLayerErrorAndDefault>()
 }
 
 /// Looks up a class by name and constructs a new instance using [`new_object`].
 pub fn new_instance<'output, const LEN: usize>(
-    env: &mut JNIEnv<'output>,
+    env: &mut jni::Env<'output>,
     class_name: ClassName<'static>,
     args: JniArgs<(), LEN>,
 ) -> Result<JObject<'output>, BridgeLayerError> {
@@ -1298,7 +1318,7 @@ pub fn new_instance<'output, const LEN: usize>(
 ///
 /// Assumes there's a corresponding constructor that takes a single `long` to represent the address.
 pub fn jobject_from_native_handle<'a>(
-    env: &mut JNIEnv<'a>,
+    env: &mut jni::Env<'a>,
     class_name: ClassName<'static>,
     boxed_handle: ObjectHandle,
 ) -> Result<JObject<'a>, BridgeLayerError> {
@@ -1309,7 +1329,7 @@ pub fn jobject_from_native_handle<'a>(
 ///
 /// A convenience wrapper around `jobject_from_native_handle` for SignalProtocolAddress.
 fn protocol_address_to_jobject<'a>(
-    env: &mut JNIEnv<'a>,
+    env: &mut jni::Env<'a>,
     address: &ProtocolAddress,
 ) -> Result<JObject<'a>, BridgeLayerError> {
     let handle = address.clone().convert_into(env)?;
@@ -1322,7 +1342,7 @@ fn protocol_address_to_jobject<'a>(
 
 /// Verifies that a Java object is a non-`null` instance of the given class.
 pub fn check_jobject_type(
-    env: &mut JNIEnv,
+    env: &mut jni::Env,
     obj: &JObject,
     class_name: ClassName<'static>,
 ) -> Result<(), BridgeLayerError> {
@@ -1340,7 +1360,7 @@ pub fn check_jobject_type(
 }
 
 pub fn map_native_handle_if_matching_jobject<'a, T: BridgeHandle, U>(
-    env: &mut JNIEnv,
+    env: &mut jni::Env,
     foreign: &JObject<'a>,
     class_name: ClassName<'static>,
     make_result: impl FnOnce(&'a T) -> U,
@@ -1364,14 +1384,14 @@ pub fn map_native_handle_if_matching_jobject<'a, T: BridgeHandle, U>(
     }
 }
 
-/// Wraps [`JNIEnv::with_local_frame`] to check exceptions thrown by `with_local_frame` itself.
+/// Wraps [`jni::Env::with_local_frame`] to check exceptions thrown by `with_local_frame` itself.
 pub fn with_local_frame<T, E: From<BridgeLayerError>>(
-    env: &mut JNIEnv<'_>,
-    capacity: i32,
+    env: &mut jni::Env<'_>,
+    capacity: usize,
     context: &'static str,
-    body: impl FnOnce(&mut JNIEnv<'_>) -> Result<T, E>,
+    body: impl FnOnce(&mut jni::Env<'_>) -> Result<T, E>,
 ) -> Result<T, E> {
-    // JNIEnv::with_local_frame requires that the return error type be From<jni::errors::Error>.
+    // jni::Env::with_local_frame requires that the return error type be From<jni::errors::Error>.
     // We don't want to provide that, so we have to manually save *our* error (or success) into a
     // local instead.
     let mut result = None;
@@ -1384,21 +1404,21 @@ pub fn with_local_frame<T, E: From<BridgeLayerError>>(
     result.expect("successful exit from with_local_frame")
 }
 
-/// Wraps [`JNIEnv::with_local_frame_returning_local`] to check exceptions thrown by
+/// Wraps [`jni::Env::with_local_frame_returning_local`] to check exceptions thrown by
 /// `with_local_frame_returning_local` itself.
 pub fn with_local_frame_returning_local<'env>(
-    env: &mut JNIEnv<'env>,
-    capacity: i32,
+    env: &mut jni::Env<'env>,
+    capacity: usize,
     context: &'static str,
-    body: impl for<'local> FnOnce(&mut JNIEnv<'local>) -> SignalJniResult<JObject<'local>>,
+    body: impl for<'local> FnOnce(&mut jni::Env<'local>) -> SignalJniResult<JObject<'local>>,
 ) -> SignalJniResult<JObject<'env>> {
-    // JNIEnv::with_local_frame_returning_local requires that the return error type be
+    // jni::Env::with_local_frame_returning_local requires that the return error type be
     // From<jni::errors::Error>. We don't want to provide that, so we have to manually save *our*
     // error into a local instead.
     let mut maybe_error = None;
     let error_for_callback = &mut maybe_error;
     let result = env
-        .with_local_frame_returning_local(capacity, move |env| {
+        .with_local_frame_returning_local::<_, JObject<'_>, _>(capacity, move |env| {
             body(env).or_else(|e| {
                 *error_for_callback = Some(e);
                 Ok(JObject::null())
@@ -1416,7 +1436,7 @@ pub fn with_local_frame_returning_local<'env>(
 /// The Java method is assumed to return a type that implements the
 /// `NativeHandleGuard.Owner` interface.
 pub fn get_object_with_native_handle<T: BridgeHandle + Clone, const LEN: usize>(
-    env: &mut JNIEnv,
+    env: &mut jni::Env,
     store_obj: &JObject,
     callback_args: JniArgs<JObject<'_>, LEN>,
     callback_fn: &'static str,
@@ -1451,7 +1471,7 @@ pub fn get_object_with_native_handle<T: BridgeHandle + Clone, const LEN: usize>(
 ///
 /// The method is assumed to return a type with a `byte[] serialize()` method.
 pub fn get_object_with_serialization<const LEN: usize>(
-    env: &mut JNIEnv,
+    env: &mut jni::Env,
     store_obj: &JObject,
     callback_args: JniArgs<JObject<'_>, LEN>,
     callback_fn: &'static str,
@@ -1468,8 +1488,8 @@ pub fn get_object_with_serialization<const LEN: usize>(
             return Ok(None);
         }
 
-        let bytes: JByteArray =
-            call_method_checked(env, obj, "serialize", jni_args!(() -> [byte]))?.into();
+        let bytes = call_method_checked(env, obj, "serialize", jni_args!(() -> [byte]))?;
+        let bytes: JByteArray = env.cast_local::<JByteArray>(bytes).expect_no_exceptions()?;
 
         Ok(Some(
             env.convert_byte_array(bytes)
@@ -1534,7 +1554,7 @@ macro_rules! jni_bridge_handle_destroy {
             ))]
             #[allow(non_snake_case)]
             pub unsafe extern "C" fn [<__bridge_handle_jni_ $jni_name _destroy>](
-                _env: ::jni::JNIEnv,
+                _env: ::jni::EnvUnowned,
                 _class: ::jni::objects::JClass,
                 handle: $crate::jni::ObjectHandle,
             ) {
@@ -1585,42 +1605,48 @@ pub const fn hash_location_for_type_tag(file: &'static str, line: u32) -> u8 {
     (hash & 0xFF) as u8
 }
 
-/// A wrapper around a cloned [`JNIEnv`] that forces scoped use.
+/// A wrapper around a [`JavaVM`] that forces scoped use.
 ///
-/// This sidesteps the safety issues with [`JNIEnv::unsafe_clone`] as long as an environment from an
-/// outer frame is not used within an inner frame. (Really, this same condition makes `unsafe_clone`
-/// safe as well, but using `EnvHandle` is a good reminder since it *only* allows scoped access.)
+/// Intended for getting back to [`jni::Env`] on the current thread without needing exclusive access
+/// to the original `Env` instance. Don't use the original `Env` or other `EnvHandle`s while within
+/// [`Self::with_local_frame`].
 struct EnvHandle<'a> {
-    env: JNIEnv<'a>,
+    vm: JavaVM,
+    local: PhantomData<jni::Env<'a>>,
 }
 
 impl<'a> EnvHandle<'a> {
-    fn new(env: &JNIEnv<'a>) -> Self {
+    fn new(env: &jni::Env<'a>) -> Self {
         Self {
-            env: unsafe { env.unsafe_clone() },
+            vm: env.get_java_vm().expect("can get VM"),
+            local: PhantomData,
         }
     }
 
     /// See [`with_local_frame`].
     fn with_local_frame<T, E: From<BridgeLayerError>>(
         &mut self,
-        capacity: i32,
+        capacity: usize,
         context: &'static str,
-        body: impl FnOnce(&mut JNIEnv<'_>) -> Result<T, E>,
+        body: impl FnOnce(&mut jni::Env<'_>) -> Result<T, E>,
     ) -> Result<T, E> {
-        with_local_frame(&mut self.env, capacity, context, body)
+        self.vm
+            .with_top_local_frame(|env| {
+                Ok::<_, jni::errors::Error>(with_local_frame(env, capacity, context, body))
+            })
+            .unwrap_or_else(|e| Err(BridgeLayerError::Jni(e).into()))
     }
 }
 
 /// A standard idiom for a callback object usable from any thread, used by `bridge_callbacks`.
 pub struct GlobalAndVM {
     vm: JavaVM,
-    object: GlobalRef,
+    object: Global<JObject<'static>>,
 }
 
 impl GlobalAndVM {
     pub fn new(
-        env: &mut JNIEnv<'_>,
+        env: &mut jni::Env<'_>,
         object: &JObject,
         expected_class: ClassName<'static>,
     ) -> Result<Self, BridgeLayerError> {
@@ -1634,34 +1660,34 @@ impl GlobalAndVM {
     pub fn attach<T, E>(
         &self,
         name: &'static str,
-        operation: impl FnOnce(&mut JNIEnv<'_>, &JObject<'_>) -> Result<T, BridgeLayerError>,
+        operation: impl FnOnce(&mut jni::Env<'_>, &JObject<'_>) -> Result<T, BridgeLayerError>,
     ) -> Result<T, E>
     where
         E: From<WithContext<BridgeLayerError>>,
     {
-        let mut env = self.vm.attach_current_thread().expect("can attach thread");
-        env.with_local_frame(REASONABLE_JNI_BACKGROUND_THREAD_FRAME_SIZE, |env| {
-            // with_local_frame wants an error type convertible from jni::error::Error, but we use
-            // check_exceptions to do that. So we'll wrap in an extra layer of Ok here, and unwrap
-            // it afterwards.
-            // TODO: Use flatten() instead (below) when our MSRV is 1.89.
-            Ok(operation(env, self.object.as_ref()))
-        })
-        .check_exceptions(&mut env, name)
-        .unwrap_or_else(Err)
-        .map_err(|e| {
-            WithContext {
-                operation: name,
-                inner: e,
-            }
-            .into()
-        })
+        self.vm
+            .attach_current_thread_for_scope(|env| -> jni::errors::Result<_> {
+                Ok(operation(env, self.object.as_ref()).map_err(|e| {
+                    WithContext {
+                        operation: name,
+                        inner: e,
+                    }
+                    .into()
+                }))
+            })
+            .unwrap_or_else(|e| {
+                Err(WithContext {
+                    operation: name,
+                    inner: BridgeLayerError::Jni(e),
+                }
+                .into())
+            })
     }
 
     pub fn attach_and_log_on_error(
         &self,
         name: &'static str,
-        operation: impl FnOnce(&mut JNIEnv<'_>, &JObject<'_>) -> Result<(), BridgeLayerError>,
+        operation: impl FnOnce(&mut jni::Env<'_>, &JObject<'_>) -> Result<(), BridgeLayerError>,
     ) {
         self.attach(name, operation)
             .unwrap_or_else(|e: WithContext<BridgeLayerError>| {
@@ -1675,7 +1701,7 @@ impl GlobalAndVM {
 /// A value that's already an object will be unchanged. A `void` "value" will be converted to
 /// `null`.
 fn box_primitive_if_needed<'a>(
-    env: &mut JNIEnv<'a>,
+    env: &mut jni::Env<'a>,
     value: JValueOwned<'a>,
 ) -> Result<JObject<'a>, BridgeLayerError> {
     match value {
@@ -1708,7 +1734,7 @@ fn box_primitive_if_needed<'a>(
         JValueOwned::Bool(v) => new_instance(
             env,
             ClassName("java.lang.Boolean"),
-            jni_args!((v != 0 => boolean) -> void),
+            jni_args!((v => boolean) -> void),
         ),
         JValueOwned::Float(v) => new_instance(
             env,

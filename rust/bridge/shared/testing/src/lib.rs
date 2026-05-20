@@ -53,7 +53,8 @@ pub fn TESTING_TokioAsyncContext_AttachBlockingThreadToJVMPermanently(
     // block_on undoes that by waiting until it's complete.
     tokio_handle
         .block_on(tokio_handle.spawn_blocking(move || {
-            jvm.attach_current_thread_permanently().expect("no error");
+            jvm.attach_current_thread(|_env| Ok::<_, ::jni::errors::Error>(()))
+                .expect("no error");
         }))
         .expect("no panic");
 }

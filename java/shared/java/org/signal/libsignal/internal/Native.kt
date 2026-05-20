@@ -951,7 +951,7 @@ internal object Native {
   public external fun RegistrationAccountAttributes_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic
-  public external fun RegistrationService_CheckSvr2Credentials(asyncRuntime: ObjectHandle, service: ObjectHandle, svrTokens: Array<Object>): CompletableFuture<Object>
+  public external fun RegistrationService_CheckSvr2Credentials(asyncRuntime: ObjectHandle, service: ObjectHandle, svrTokens: Array<Object>): CompletableFuture<Map<*, *>>
   @JvmStatic
   public external fun RegistrationService_CreateSession(asyncRuntime: ObjectHandle, createSession: Object, connectChat: ConnectChatBridge): CompletableFuture<ObjectHandle>
   @JvmStatic

@@ -6,97 +6,7 @@
 use std::marker::PhantomData;
 
 use jni::objects::{JObject, JValue};
-
-/// Converts a function or type signature to a JNI signature string.
-///
-/// This macro uses Rust function syntax `(Foo, Bar) -> Baz`, and uses Rust syntax for Java arrays
-/// `[Foo]`, but otherwise uses Java names for types: `boolean`, `byte`, `void`. Inner classes are
-/// indicated with `::` rather than `.`.
-#[macro_export]
-macro_rules! jni_signature {
-    ( boolean ) => ("Z");
-    ( bool ) => (compile_error!("use Java type 'boolean'"));
-    ( byte ) => ("B");
-    ( char ) => ("C");
-    ( short ) => ("S");
-    ( int ) => ("I");
-    ( long ) => ("J");
-    ( float ) => ("F");
-    ( double ) => ("D");
-    ( void ) => ("V");
-
-    // Escape hatch: provide a literal string.
-    ( $x:literal ) => ($x);
-
-    // Arrays
-    ( [$($contents:tt)+] ) => {
-        concat!("[", $crate::jni_signature!($($contents)+))
-    };
-
-    // Classes
-    ( $arg_base:tt $(. $arg_rest:ident)+ $(:: $nested:ident)* ) => {
-        concat!(
-            "L",
-            stringify!($arg_base),
-            $("/", stringify!($arg_rest),)+
-            $("$", stringify!($nested),)*
-            ";"
-        )
-    };
-
-    // Functions
-    (
-        (
-            $( $arg_base:tt $(. $arg_rest:ident)* $(:: $arg_nested:ident)* ),* $(,)?
-        ) -> $ret_base:tt $(. $ret_rest:ident)* $(:: $ret_nested:ident)*
-    ) => {
-        concat!(
-            "(",
-            $( $crate::jni_signature!($arg_base $(. $arg_rest)* $(:: $arg_nested)*), )*
-            ")",
-            $crate::jni_signature!($ret_base $(. $ret_rest)* $(:: $ret_nested)*)
-        )
-    };
-}
-
-#[test]
-fn test_jni_signature() {
-    // Literals
-    {
-        assert_eq!(jni_signature!("Lfoo/bar;"), "Lfoo/bar;");
-    }
-
-    // Classes
-    assert_eq!(jni_signature!(foo.bar), "Lfoo/bar;");
-    assert_eq!(jni_signature!(foo.bar.baz), "Lfoo/bar/baz;");
-    assert_eq!(jni_signature!(foo.bar.baz::garply), "Lfoo/bar/baz$garply;");
-    assert_eq!(
-        jni_signature!(foo.bar.baz::garply::qux),
-        "Lfoo/bar/baz$garply$qux;"
-    );
-
-    // Arrays
-    assert_eq!(jni_signature!([byte]), "[B");
-    assert_eq!(jni_signature!([[byte]]), "[[B");
-    assert_eq!(jni_signature!([foo.bar]), "[Lfoo/bar;");
-    assert_eq!(
-        jni_signature!([foo.bar.baz::garply::qux]),
-        "[Lfoo/bar/baz$garply$qux;"
-    );
-
-    // Functions
-    assert_eq!(jni_signature!(() -> void), "()V");
-    assert_eq!(jni_signature!((byte, int) -> float), "(BI)F");
-    assert_eq!(
-        jni_signature!(([byte], foo.bar, foo.bar.baz::garply::qux) -> [byte]),
-        "([BLfoo/bar;Lfoo/bar/baz$garply$qux;)[B"
-    );
-    assert_eq!(jni_signature!(() -> foo.bar), "()Lfoo/bar;");
-    assert_eq!(
-        jni_signature!(() -> foo.bar.baz::garply::qux),
-        "()Lfoo/bar/baz$garply$qux;"
-    );
-}
+use jni::signature::MethodSignature;
 
 #[macro_export]
 macro_rules! jni_arg {
@@ -136,7 +46,7 @@ macro_rules! jni_arg {
 
 #[test]
 fn test_jni_arg() {
-    assert!(matches!(jni_arg!(true => boolean), JValue::Bool(1)));
+    assert!(matches!(jni_arg!(true => boolean), JValue::Bool(true)));
     assert!(matches!(jni_arg!(0x8000 => char), JValue::Char(0x8000)));
     assert!(matches!(jni_arg!(-80 => byte), JValue::Byte(-80)));
     assert!(matches!(jni_arg!(-80 => short), JValue::Short(-80)));
@@ -152,13 +62,12 @@ fn test_jni_arg() {
 
 #[macro_export]
 macro_rules! jni_return_type {
-    // Unfortunately there's not a conversion directly from JValue to bool, only jboolean.
     (boolean) => {
-        u8
+        bool
     };
     // jni_signature will reject this, but having it do something reasonable avoids multiple errors.
     (bool) => {
-        u8
+        bool
     };
     (byte) => {
         i8,
@@ -199,21 +108,23 @@ macro_rules! jni_return_type {
 pub type PhantomReturnType<'local, R> = PhantomData<fn(&'local ()) -> R>;
 
 /// A JNI argument list, type-checked with its signature.
-#[derive(Debug, Clone, Copy)]
-pub struct JniArgs<'local, 'obj_ref, R, const LEN: usize> {
-    pub sig: &'static str,
-    pub args: [JValue<'local, 'obj_ref>; LEN],
-    pub _return: PhantomReturnType<'local, R>,
+#[derive(Debug, Clone)]
+pub struct JniArgs<'sig, 'input, 'output, R, const LEN: usize> {
+    pub sig: MethodSignature<'sig, 'sig>,
+    pub args: [JValue<'input>; LEN],
+    pub _return: PhantomReturnType<'output, R>,
 }
 
-impl<'local, 'obj_ref, 'output, const LEN: usize> JniArgs<'local, 'obj_ref, JObject<'output>, LEN> {
+impl<'sig, 'input, 'output_env, 'output_obj, const LEN: usize>
+    JniArgs<'sig, 'input, 'output_env, JObject<'output_obj>, LEN>
+{
     /// Updates the lifetime of the return type.
     ///
     /// May be necessary when passing JniArgs into a "local frame"
-    /// ([`jni::JNIEnv::with_local_frame`]).
-    pub fn for_nested_frame<'new_output: 'output>(
+    /// ([`jni::Env::with_local_frame`]).
+    pub fn for_nested_frame<'new_output: 'output_obj>(
         self,
-    ) -> JniArgs<'local, 'obj_ref, JObject<'new_output>, LEN> {
+    ) -> JniArgs<'sig, 'input, 'new_output, JObject<'new_output>, LEN> {
         JniArgs {
             sig: self.sig,
             args: self.args,
@@ -231,7 +142,7 @@ impl<'local, 'obj_ref, 'output, const LEN: usize> JniArgs<'local, 'obj_ref, JObj
 /// # use jni::objects::JValue;
 /// # let name = jni::objects::JObject::null();
 /// let args = jni_args!((name => java.lang.String, 0x3FFF => short) -> void);
-/// assert_eq!(args.sig, "(Ljava/lang/String;S)V");
+/// assert_eq!(args.sig.sig().as_cstr(), c"(Ljava/lang/String;S)V");
 /// assert_eq!(args.args.len(), 2);
 /// ```
 #[macro_export]
@@ -242,7 +153,7 @@ macro_rules! jni_args {
         ) -> $ret_base:tt $(. $ret_rest:ident)* $(:: $ret_nested:ident)*
     ) => {
         $crate::jni::JniArgs {
-            sig: $crate::jni_signature!(
+            sig: ::jni::jni_sig!(
                 (
                     $( $arg_base $(. $arg_rest)* $(:: $arg_nested)* ),*
                 ) -> $ret_base $(. $ret_rest)* $(:: $ret_nested)*

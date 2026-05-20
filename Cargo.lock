@@ -2427,7 +2427,7 @@ dependencies = [
  "hmac",
  "http",
  "itertools 0.14.0",
- "jni 0.21.1",
+ "jni 0.22.4",
  "libsignal-account-keys",
  "libsignal-bridge-macros",
  "libsignal-bridge-types",
@@ -2485,7 +2485,7 @@ dependencies = [
  "futures-util",
  "hex",
  "http",
- "jni 0.21.1",
+ "jni 0.22.4",
  "libsignal-bridge-macros",
  "libsignal-bridge-types",
  "libsignal-core",
@@ -2529,7 +2529,7 @@ dependencies = [
  "hmac",
  "http",
  "itertools 0.14.0",
- "jni 0.21.1",
+ "jni 0.22.4",
  "libsignal-account-keys",
  "libsignal-bridge-macros",
  "libsignal-core",
@@ -2651,6 +2651,7 @@ dependencies = [
  "cpufeatures 0.2.17",
  "flate2",
  "jni 0.21.1",
+ "jni 0.22.4",
  "libsignal-bridge",
  "libsignal-core",
  "libsignal-protocol",
@@ -2658,13 +2659,14 @@ dependencies = [
  "log-panics",
  "rustls-platform-verifier",
  "signal-crypto",
+ "zerocopy",
 ]
 
 [[package]]
 name = "libsignal-jni-testing"
 version = "0.94.2"
 dependencies = [
- "jni 0.21.1",
+ "jni 0.22.4",
  "libsignal-bridge-testing",
  "libsignal-bridge-types",
  "libsignal-jni-impl",

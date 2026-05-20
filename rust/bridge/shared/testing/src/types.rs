@@ -37,7 +37,10 @@ impl Drop for NeedsCleanup {
             Self::None => {}
             #[cfg(feature = "jni")]
             Self::AttachedToJVM(jvm) => {
-                assert!(jvm.get_env().is_ok());
+                assert!(
+                    jvm.with_top_local_frame(|_env| Ok::<_, ::jni::errors::Error>(()))
+                        .is_ok()
+                );
             }
             #[cfg(feature = "node")]
             Self::FinalizedByNeon => {
@@ -73,7 +76,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> jni::ArgTypeInfo<'storage, 'p
     type StoredType = Self;
 
     fn borrow(
-        env: &mut jni::JNIEnv<'context>,
+        env: &mut ::jni::Env<'context>,
         _foreign: &'param Self::ArgType,
     ) -> Result<Self::StoredType, jni::BridgeLayerError> {
         Ok(Self::AttachedToJVM(
@@ -151,7 +154,7 @@ impl<'a> jni::SimpleArgTypeInfo<'a> for ErrorOnBorrow {
     type ArgType = jni::JObject<'a>;
 
     fn convert_from(
-        _env: &mut jni::JNIEnv<'a>,
+        _env: &mut ::jni::Env<'a>,
         _foreign: &Self::ArgType,
     ) -> Result<Self, jni::BridgeLayerError> {
         Err(jni::BridgeLayerError::BadArgument(
@@ -194,7 +197,7 @@ impl<'a> jni::SimpleArgTypeInfo<'a> for PanicOnBorrow {
     type ArgType = jni::JObject<'a>;
 
     fn convert_from(
-        _env: &mut jni::JNIEnv<'a>,
+        _env: &mut ::jni::Env<'a>,
         _foreign: &Self::ArgType,
     ) -> Result<Self, jni::BridgeLayerError> {
         panic!("deliberate panic");
@@ -248,7 +251,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> jni::ArgTypeInfo<'storage, 'p
     type StoredType = NeedsCleanup;
 
     fn borrow(
-        env: &mut ::jni::JNIEnv<'context>,
+        env: &mut ::jni::Env<'context>,
         _foreign: &'param Self::ArgType,
     ) -> Result<Self::StoredType, jni::BridgeLayerError> {
         <NeedsCleanup as jni::ArgTypeInfo>::borrow(env, _foreign)
@@ -323,7 +326,7 @@ impl<'a> jni::ResultTypeInfo<'a> for ErrorOnReturn {
 
     fn convert_into(
         self,
-        _env: &mut jni::JNIEnv<'a>,
+        _env: &mut ::jni::Env<'a>,
     ) -> Result<Self::ResultType, jni::BridgeLayerError> {
         Err(jni::BridgeLayerError::BadArgument(
             "deliberate error".to_string(),
@@ -363,7 +366,7 @@ impl<'a> jni::ResultTypeInfo<'a> for PanicOnReturn {
 
     fn convert_into(
         self,
-        _env: &mut jni::JNIEnv<'a>,
+        _env: &mut ::jni::Env<'a>,
     ) -> Result<Self::ResultType, jni::BridgeLayerError> {
         panic!("deliberate panic");
     }
@@ -438,7 +441,7 @@ impl<'a> jni::SimpleArgTypeInfo<'a> for TestingFutureCancellationGuard {
     type ArgType = jni::ObjectHandle;
 
     fn convert_from(
-        env: &mut jni::JNIEnv<'a>,
+        env: &mut ::jni::Env<'a>,
         foreign: &Self::ArgType,
     ) -> Result<Self, jni::BridgeLayerError> {
         <&TestingFutureCancellationCounter as jni::ArgTypeInfo>::borrow(env, foreign).map(
