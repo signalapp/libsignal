@@ -2557,6 +2557,7 @@ dependencies = [
  "signal-crypto",
  "signal-media",
  "signal-neon-futures",
+ "simd_cesu8",
  "static_assertions",
  "strum",
  "subtle",

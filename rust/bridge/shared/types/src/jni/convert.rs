@@ -1307,7 +1307,7 @@ impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JString<'a>;
     const JNI_SIGNATURE: &'static str = jni_sig_str!(java.lang.String);
     fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        self.deref().convert_into(env)
+        new_jstring_from_owned_utf8(env, self)
     }
 }
 nice_identity_result_converter!(String, "String");
@@ -1315,7 +1315,10 @@ nice_identity_result_converter!(String, "String");
 impl<'a> ResultTypeInfo<'a> for Option<String> {
     type ResultType = JString<'a>;
     fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        self.as_deref().convert_into(env)
+        match self {
+            Some(s) => s.convert_into(env),
+            None => Ok(JString::null()),
+        }
     }
 }
 
@@ -1762,12 +1765,8 @@ impl<'a> ResultTypeInfo<'a> for UploadForm {
             signed_upload_url,
         } = self;
         let cdn: jint = cdn as jint;
-        let key = env
-            .new_string(key)
-            .check_exceptions(env, "UploadForm::convert_into")?;
-        let signed_upload_url = env
-            .new_string(signed_upload_url)
-            .check_exceptions(env, "UploadForm::convert_into")?;
+        let key = new_jstring_from_owned_utf8(env, key)?;
+        let signed_upload_url = new_jstring_from_owned_utf8(env, signed_upload_url)?;
         let headers = headers.convert_into(env)?;
         let class = find_class(env, ClassName("org.signal.libsignal.net.UploadForm"))
             .check_exceptions(env, "UploadForm::convert_into")?;
@@ -2240,10 +2239,10 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
                     .transpose()?
                     .unwrap_or_default(),
             );
-            let e164 = Auto::new(JObject::from(
-                env.new_string(e164.to_string())
-                    .check_exceptions(env, "LookupResponse::convert_into")?,
-            ));
+            let e164 = Auto::new(JObject::from(new_jstring_from_owned_utf8(
+                env,
+                e164.to_string(),
+            )?));
 
             let entry = Auto::new(
                 new_object(
@@ -2285,9 +2284,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::Response {
             .check_exceptions(env, "Response::convert_into")?;
 
         // message
-        let message_local = env
-            .new_string(message.as_deref().unwrap_or(""))
-            .check_exceptions(env, "Response::convert_into")?;
+        let message_local = new_jstring_from_owned_utf8(env, message.unwrap_or_default())?;
 
         // headers
         let headers_map = new_instance(env, ClassName("java.util.HashMap"), jni_args!(() -> void))?;
@@ -2445,19 +2442,16 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::registration::RegisterR
         } = self;
 
         let expiration_seconds = expiration.as_secs().convert_into(env)?;
-        try_scoped(|| {
-            let id = env.new_string(id)?;
-
-            new_object(
-                env,
-                class,
-                jni_args!((
+        let id = new_jstring_from_owned_utf8(env, id)?;
+        new_object(
+            env,
+            class,
+            jni_args!((
                     id => java.lang.String,
                     visible => boolean,
                     expiration_seconds => long
                 ) -> void),
-            )
-        })
+        )
         .check_exceptions(env, "RegisterResponseBadge::convert_into")
     }
 }

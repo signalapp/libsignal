@@ -71,6 +71,7 @@ jni = { workspace = true, optional = true }
 linkme = { workspace = true, optional = true }
 neon = { workspace = true, optional = true, default-features = false, features = ["napi-6"] }
 signal-neon-futures = { workspace = true, optional = true }
+simd_cesu8 = { workspace = true, optional = true }
 
 [dev-dependencies]
 libsignal-net-grpc = { workspace = true }
@@ -80,7 +81,7 @@ tokio = { workspace = true, features = ["test-util", "time", "macros"] }
 
 [features]
 ffi = []
-jni = ["dep:jni"]
+jni = ["dep:jni", "dep:simd_cesu8"]
 jni-type-tagging = []
 jni-invoke-annotated = []
 extra-jni-checks = ["jni-type-tagging", "jni-invoke-annotated"]

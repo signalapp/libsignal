@@ -4,6 +4,7 @@
 //
 use std::convert::Infallible;
 use std::error::Error;
+use std::ffi::CString;
 use std::fmt::{Debug, Display};
 use std::io::Error as IoError;
 use std::marker::PhantomData;
@@ -18,6 +19,7 @@ pub use jni::objects::{
     JValueOwned, ReleaseMode,
 };
 use jni::objects::{Global, JThrowable};
+use jni::strings::JNIString;
 pub use jni::sys::{jboolean, jdouble, jint, jlong};
 use jni::{JavaVM, bind_java_type};
 use libsignal_account_keys::Error as PinError;
@@ -173,9 +175,7 @@ impl JniError for BridgeLayerError {
             | BridgeLayerError::BadJniParameter(_)
             | BridgeLayerError::UnexpectedJniResultType(_, _) => {
                 // java.lang.AssertionError has a slightly different signature.
-                let message = env
-                    .new_string(self.to_string())
-                    .check_exceptions(env, "JniError::into_throwable")?;
+                let message = new_jstring_from_owned_utf8(env, self.to_string())?;
                 return new_instance(
                     env,
                     ClassName("java.lang.AssertionError"),
@@ -195,7 +195,7 @@ impl JniError for BridgeLayerError {
             }
             BridgeLayerError::Jni(_) => ClassName("java.lang.RuntimeException"),
         };
-        make_single_message_throwable(env, &self.to_string(), class_name)
+        make_single_message_throwable(env, self.to_string(), class_name)
     }
 }
 
@@ -206,7 +206,7 @@ impl JniError for IllegalArgumentError {
     ) -> Result<JObject<'a>, BridgeLayerError> {
         make_single_message_throwable(
             env,
-            &self.0,
+            self.0.clone().into_owned(),
             ClassName("java.lang.IllegalArgumentException"),
         )
     }
@@ -219,7 +219,7 @@ impl JniError for GetUploadFormFailure {
     ) -> Result<JObject<'a>, BridgeLayerError> {
         make_single_message_throwable(
             env,
-            &self.to_string(),
+            self.to_string(),
             match self {
                 GetUploadFormFailure::Unauthorized => {
                     ClassName("org.signal.libsignal.net.RequestUnauthorizedException")
@@ -239,7 +239,7 @@ impl JniError for UploadTooLarge {
     ) -> Result<JObject<'a>, BridgeLayerError> {
         make_single_message_throwable(
             env,
-            &self.to_string(),
+            self.to_string(),
             ClassName("org.signal.libsignal.net.UploadTooLargeException"),
         )
     }
@@ -250,14 +250,6 @@ impl JniError for SignalProtocolError {
         &self,
         env: &mut jni::Env<'a>,
     ) -> Result<JObject<'a>, BridgeLayerError> {
-        fn to_java_string<'env>(
-            env: &mut jni::Env<'env>,
-            s: impl AsRef<str>,
-        ) -> Result<JString<'env>, BridgeLayerError> {
-            env.new_string(s)
-                .check_exceptions(env, "JniError::into_throwable")
-        }
-
         let class_name = match self {
             SignalProtocolError::ApplicationCallbackError(_callback, exception) => {
                 if let Some(exception) = <dyn Error>::downcast_ref::<ThrownException>(&**exception)
@@ -272,7 +264,9 @@ impl JniError for SignalProtocolError {
             }
 
             SignalProtocolError::UntrustedIdentity(addr) => {
-                let addr_name = to_java_string(env, addr.name())?;
+                let addr_name = env
+                    .new_string(addr.name())
+                    .check_exceptions(env, "SignalProtocolError::to_throwable")?;
                 return new_instance(
                     env,
                     ClassName("org.signal.libsignal.protocol.UntrustedIdentityException"),
@@ -281,7 +275,7 @@ impl JniError for SignalProtocolError {
             }
             SignalProtocolError::SessionNotFound(addr) => {
                 let addr_object = protocol_address_to_jobject(env, addr)?;
-                let message = to_java_string(env, self.to_string())?;
+                let message = new_jstring_from_owned_utf8(env, self.to_string())?;
                 return new_instance(
                     env,
                     ClassName("org.signal.libsignal.protocol.NoSessionException"),
@@ -294,7 +288,7 @@ impl JniError for SignalProtocolError {
 
             SignalProtocolError::InvalidRegistrationId(addr, _value) => {
                 let addr_object = protocol_address_to_jobject(env, addr)?;
-                let message = to_java_string(env, self.to_string())?;
+                let message = new_jstring_from_owned_utf8(env, self.to_string())?;
                 return new_instance(
                     env,
                     ClassName("org.signal.libsignal.protocol.InvalidRegistrationIdException"),
@@ -306,7 +300,7 @@ impl JniError for SignalProtocolError {
             }
             SignalProtocolError::InvalidSenderKeySession { distribution_id } => {
                 let distribution_id = distribution_id.convert_into(env)?;
-                let message = to_java_string(env, self.to_string())?;
+                let message = new_jstring_from_owned_utf8(env, self.to_string())?;
                 return new_instance(
                     env,
                     ClassName(
@@ -387,7 +381,7 @@ impl JniError for SignalProtocolError {
             }
         };
 
-        make_single_message_throwable(env, &self.to_string(), class_name)
+        make_single_message_throwable(env, self.to_string(), class_name)
     }
 }
 
@@ -411,7 +405,7 @@ impl JniError for libsignal_protocol::FingerprintError {
             }
             Self::InvalidIterationCount(_) => ClassName("java.lang.IllegalArgumentException"),
         };
-        make_single_message_throwable(env, &self.to_string(), class_name)
+        make_single_message_throwable(env, self.to_string(), class_name)
     }
 }
 
@@ -423,12 +417,10 @@ impl MessageOnlyExceptionJniError for AllConnectionAttemptsFailed {
 
 fn make_single_message_throwable<'a>(
     env: &mut jni::Env<'a>,
-    message: &str,
+    message: String,
     class: ClassName<'static>,
 ) -> Result<JObject<'a>, BridgeLayerError> {
-    let message = env
-        .new_string(message)
-        .check_exceptions(env, "JniError::into_throwable")?;
+    let message = new_jstring_from_owned_utf8(env, message)?;
     new_instance(env, class, jni_args!((message => java.lang.String) -> void))
 }
 
@@ -450,7 +442,7 @@ impl JniError for IoError {
             }
         }
 
-        make_single_message_throwable(env, &self.to_string(), ClassName("java.io.IOException"))
+        make_single_message_throwable(env, self.to_string(), ClassName("java.io.IOException"))
     }
 }
 
@@ -665,11 +657,11 @@ mod registration {
                     return libsignal_net::chat::SendError::RequestTimedOut.to_throwable_impl(env);
                 }
                 RequestError::RetryLater(retry_later) => return retry_later.to_throwable_impl(env),
-                RequestError::Unexpected { log_safe } => log_safe,
+                RequestError::Unexpected { log_safe } => log_safe.to_owned(),
                 RequestError::Challenge(rate_limit_challenge) => {
                     return rate_limit_challenge.to_throwable_impl(env);
                 }
-                RequestError::ServerSideError => &self.to_string(),
+                RequestError::ServerSideError => self.to_string(),
                 RequestError::Disconnected(d) => match *d {},
             };
             make_single_message_throwable(
@@ -688,7 +680,7 @@ mod registration {
 
     fn session_not_found<'a>(
         env: &mut jni::Env<'a>,
-        message: &str,
+        message: String,
     ) -> Result<JObject<'a>, BridgeLayerError> {
         make_single_message_throwable(
             env,
@@ -698,7 +690,7 @@ mod registration {
     }
     fn not_ready_for_verification<'a>(
         env: &mut jni::Env<'a>,
-        message: &str,
+        message: String,
     ) -> Result<JObject<'a>, BridgeLayerError> {
         make_single_message_throwable(
             env,
@@ -725,7 +717,7 @@ mod registration {
         ) -> Result<JObject<'a>, BridgeLayerError> {
             match self {
                 ResumeSessionError::InvalidSessionId => InvalidSessionId.to_throwable_impl(env),
-                ResumeSessionError::SessionNotFound => session_not_found(env, &self.to_string()),
+                ResumeSessionError::SessionNotFound => session_not_found(env, self.to_string()),
             }
         }
     }
@@ -738,7 +730,7 @@ mod registration {
             match self {
                 UpdateSessionError::Rejected => make_single_message_throwable(
                     env,
-                    &self.to_string(),
+                    self.to_string(),
                     ClassName("org.signal.libsignal.net.RegistrationException"),
                 ),
             }
@@ -755,14 +747,14 @@ mod registration {
                     InvalidSessionId.to_throwable_impl(env)
                 }
                 RequestVerificationCodeError::SessionNotFound => {
-                    session_not_found(env, &self.to_string())
+                    session_not_found(env, self.to_string())
                 }
                 RequestVerificationCodeError::NotReadyForVerification => {
-                    not_ready_for_verification(env, &self.to_string())
+                    not_ready_for_verification(env, self.to_string())
                 }
                 RequestVerificationCodeError::SendFailed => make_single_message_throwable(
                     env,
-                    &self.to_string(),
+                    self.to_string(),
                     ClassName("org.signal.libsignal.net.RegistrationSessionSendCodeException"),
                 ),
                 RequestVerificationCodeError::CodeNotDeliverable(
@@ -771,10 +763,10 @@ mod registration {
                         permanent_failure,
                     },
                 ) => {
-                    let (message, reason) = try_scoped(|| {
-                        Ok((env.new_string(self.to_string())?, env.new_string(reason)?))
-                    })
-                    .check_exceptions(env, "RequestVerificationCodeError::to_throwable")?;
+                    let message = new_jstring_from_owned_utf8(env, self.to_string())?;
+                    let reason = env
+                        .new_string(reason)
+                        .check_exceptions(env, "RequestVerificationCodeError::to_throwable")?;
                     let args = jni_args!((message => java.lang.String, reason => java.lang.String, *permanent_failure => boolean) -> void);
                     new_instance(
                         env,
@@ -798,10 +790,10 @@ mod registration {
                     InvalidSessionId.to_throwable_impl(env)
                 }
                 SubmitVerificationError::SessionNotFound => {
-                    session_not_found(env, &self.to_string())
+                    session_not_found(env, self.to_string())
                 }
                 SubmitVerificationError::NotReadyForVerification => {
-                    not_ready_for_verification(env, &self.to_string())
+                    not_ready_for_verification(env, self.to_string())
                 }
             }
         }
@@ -855,7 +847,7 @@ mod registration {
                 }
             };
 
-            make_single_message_throwable(env, &self.to_string(), class_name)
+            make_single_message_throwable(env, self.to_string(), class_name)
         }
     }
 }
@@ -876,7 +868,7 @@ impl JniError for CdsiError {
                 ClassName("org.signal.libsignal.net.CdsiProtocolException")
             }
         };
-        make_single_message_throwable(env, &self.to_string(), class)
+        make_single_message_throwable(env, self.to_string(), class)
     }
 }
 
@@ -930,7 +922,7 @@ impl JniError for ChatConnectError {
                 ClassName("org.signal.libsignal.net.ChatServiceException")
             }
         };
-        make_single_message_throwable(env, &self.to_string(), class)
+        make_single_message_throwable(env, self.to_string(), class)
     }
 }
 
@@ -965,9 +957,7 @@ impl JniError for SvrbError {
     ) -> Result<JObject<'a>, BridgeLayerError> {
         match self {
             SvrbError::RestoreFailed(tries_remaining) => {
-                let message = env
-                    .new_string(self.to_string())
-                    .check_exceptions(env, "SvrbError::to_throwable")?;
+                let message = new_jstring_from_owned_utf8(env, self.to_string())?;
                 let tries_remaining_int: i32 = (*tries_remaining).try_into().map_err(|_| {
                     BridgeLayerError::IntegerOverflow("tries_remaining too large".to_owned())
                 })?;
@@ -979,20 +969,20 @@ impl JniError for SvrbError {
             }
             SvrbError::DataMissing => make_single_message_throwable(
                 env,
-                &self.to_string(),
+                self.to_string(),
                 ClassName("org.signal.libsignal.svr.DataMissingException"),
             ),
             SvrbError::AttestationError(inner) => inner.to_throwable_impl(env),
             SvrbError::Protocol(_) => make_single_message_throwable(
                 env,
-                &self.to_string(),
+                self.to_string(),
                 ClassName("org.signal.libsignal.net.NetworkProtocolException"),
             ),
             SvrbError::Connect(_)
             | SvrbError::Service(_)
             | SvrbError::AllConnectionAttemptsFailed => make_single_message_throwable(
                 env,
-                &self.to_string(),
+                self.to_string(),
                 ClassName("org.signal.libsignal.net.NetworkException"),
             ),
             SvrbError::RateLimited(inner) => inner.to_throwable_impl(env),
@@ -1000,7 +990,7 @@ impl JniError for SvrbError {
             | SvrbError::MetadataInvalid(_)
             | SvrbError::DecryptionError(_) => make_single_message_throwable(
                 env,
-                &self.to_string(),
+                self.to_string(),
                 ClassName("org.signal.libsignal.svr.InvalidSvrBDataException"),
             ),
         }
@@ -1074,9 +1064,10 @@ impl JniError for RateLimitChallenge {
             options,
             retry_later,
         } = self;
-        let (message, token) =
-            try_scoped(|| Ok((env.new_string(self.to_string())?, env.new_string(token)?)))
-                .check_exceptions(env, "RateLimitChallenge")?;
+        let message = new_jstring_from_owned_utf8(env, self.to_string())?;
+        let token = env
+            .new_string(token)
+            .check_exceptions(env, "RateLimitChallenge")?;
         let options = options.as_slice().convert_into(env)?;
         let retry_later = retry_later
             .as_ref()
@@ -1107,7 +1098,7 @@ impl<E: JniError> JniError for ChatRequestError<E> {
         match self {
             ChatRequestError::Timeout => make_single_message_throwable(
                 env,
-                "Request timed out",
+                "Request timed out".to_owned(),
                 ClassName("org.signal.libsignal.net.TimeoutException"),
             ),
             ChatRequestError::Disconnected(disconnected) => disconnected.to_throwable_impl(env),
@@ -1115,12 +1106,12 @@ impl<E: JniError> JniError for ChatRequestError<E> {
             ChatRequestError::Challenge(challenge) => challenge.to_throwable_impl(env),
             ChatRequestError::ServerSideError => make_single_message_throwable(
                 env,
-                "Server-side error",
+                "Server-side error".to_owned(),
                 ClassName("org.signal.libsignal.net.ServerSideErrorException"),
             ),
             ChatRequestError::Unexpected { log_safe } => make_single_message_throwable(
                 env,
-                &format!("Unexpected error: {}", log_safe),
+                format!("Unexpected error: {}", log_safe),
                 ClassName("org.signal.libsignal.net.UnexpectedResponseException"),
             ),
             ChatRequestError::Other(inner) => inner.to_throwable_impl(env),
@@ -1137,7 +1128,7 @@ impl JniError for libsignal_net_chat::api::messages::MultiRecipientSendFailure {
         match self {
             Self::Unauthorized => make_single_message_throwable(
                 env,
-                &message,
+                message,
                 ClassName("org.signal.libsignal.net.RequestUnauthorizedException"),
             ),
             Self::MismatchedDevices(mismatched_device_errors) => {
@@ -1165,12 +1156,12 @@ impl JniError for libsignal_net_chat::api::messages::SealedSendFailure {
         match self {
             Self::ServiceIdNotFound => make_single_message_throwable(
                 env,
-                &message,
+                message,
                 ClassName("org.signal.libsignal.net.ServiceIdNotFoundException"),
             ),
             Self::Unauthorized => make_single_message_throwable(
                 env,
-                &message,
+                message,
                 ClassName("org.signal.libsignal.net.RequestUnauthorizedException"),
             ),
             Self::MismatchedDevices(mismatched_device_error) => {
@@ -1199,7 +1190,7 @@ impl JniError for libsignal_net_chat::api::messages::UnsealedSendFailure {
         match self {
             Self::ServiceIdNotFound => make_single_message_throwable(
                 env,
-                &message,
+                message,
                 ClassName("org.signal.libsignal.net.ServiceIdNotFoundException"),
             ),
             Self::MismatchedDevices(mismatched_device_error) => {
@@ -1228,12 +1219,12 @@ impl JniError for libsignal_net_chat::api::keys::GetPreKeysFailure {
         match self {
             Self::Unauthorized => make_single_message_throwable(
                 env,
-                &message,
+                message,
                 ClassName("org.signal.libsignal.net.RequestUnauthorizedException"),
             ),
             Self::NotFound => make_single_message_throwable(
                 env,
-                &message,
+                message,
                 ClassName("org.signal.libsignal.net.ServiceIdNotFoundException"),
             ),
         }
@@ -1313,6 +1304,32 @@ pub fn new_instance<'output, const LEN: usize>(
         new_object(env, class, args)
     })
     .check_exceptions(env, class_name.0)
+}
+
+/// Reuses the buffer of `contents` to create a `java.lang.String`.
+///
+/// This still requires O(N) work to verify that the string is free of NUL bytes and also characters
+/// outside the Unicode BMP, which are represented differently in Java's Modified UTF-8. But it will
+/// save a copy and re-encoding loop if those checks pass, which is the vast majority of our
+/// Strings.
+///
+/// Produces a `BridgeLayerError` that never represents an exception, per the documentation of the
+/// [`JString`] creation APIs.
+pub fn new_jstring_from_owned_utf8<'output>(
+    env: &mut jni::Env<'output>,
+    contents: String,
+) -> Result<JString<'output>, BridgeLayerError> {
+    // This is the same crate used by jni 0.22 to manipulate MUTF-8.
+    if simd_cesu8::mutf8::needs_encoded(&contents) {
+        return JString::new(env, contents.as_str()).expect_no_exceptions();
+    }
+
+    // SAFETY: Both preconditions are checked by `needs_encoded` (embedded NULs are not valid
+    // MUTF-8).
+    let contents = unsafe { CString::from_vec_unchecked(contents.into()) };
+    let contents_jni = unsafe { JNIString::from_cstring(contents) };
+
+    JString::from_jni_str(env, contents_jni.borrowed()).expect_no_exceptions()
 }
 
 /// Constructs a Java object from the given boxed Rust value.

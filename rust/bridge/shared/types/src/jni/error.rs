@@ -42,11 +42,10 @@ impl SignalJniError {
                 // for Futures, which will otherwise hang. However, if this fails, give up and return the
                 // *original* BridgeLayerError.
                 try_scoped(|| {
-                    let message = env
-                        .new_string(format!(
-                            "failed to convert error \"{self}\": {convert_error}"
-                        ))
-                        .check_exceptions(env, "JniError::into_throwable")?;
+                    let message = new_jstring_from_owned_utf8(
+                        env,
+                        format!("failed to convert error \"{self}\": {convert_error}"),
+                    )?;
                     let error_obj = new_instance(
                         env,
                         ClassName("java.lang.AssertionError"),
@@ -86,11 +85,9 @@ impl<M: MessageOnlyExceptionJniError> JniError for M {
         env: &mut jni::Env<'a>,
     ) -> Result<JObject<'a>, BridgeLayerError> {
         let class = self.exception_class();
-        env.new_string(self.to_string())
-            .check_exceptions(env, "JniError::into_throwable")
-            .and_then(|message| {
-                new_instance(env, class, jni_args!((message => java.lang.String) -> void))
-            })
+        new_jstring_from_owned_utf8(env, self.to_string()).and_then(|message| {
+            new_instance(env, class, jni_args!((message => java.lang.String) -> void))
+        })
     }
 }
 
