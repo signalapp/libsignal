@@ -267,10 +267,15 @@ impl<A: ResolveHostnames> ResolveHostnames for ConnectionProxyRoute<A> {
             }
             ConnectionProxyRoute::Https(http) => ConnectionProxyRoute::Https(http.resolve(lookup)),
             ConnectionProxyRoute::Reflector(reflector) => {
-                let ReflectorProxyRoute { outer, target_host } = *reflector;
+                let ReflectorProxyRoute {
+                    outer,
+                    target_host,
+                    target_port,
+                } = *reflector;
                 ConnectionProxyRoute::Reflector(Box::new(ReflectorProxyRoute {
                     outer: outer.resolve(lookup),
                     target_host,
+                    target_port,
                 }))
             }
         }
