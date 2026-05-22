@@ -274,8 +274,8 @@ impl<R> UpdateMessage<R> {
                 }
             }
             UpdateMessage::ThreadMerge { .. } => {
-                if !author.is_contact_with_aci() {
-                    Err(ChatItemError::ThreadMergeNotFromAci)
+                if !(author.is_contact_with_aci() || matches!(author, ChatItemAuthorKind::Self_)) {
+                    Err(ChatItemError::ThreadMergeNotFromAciOrSelf)
                 } else {
                     Ok(())
                 }
