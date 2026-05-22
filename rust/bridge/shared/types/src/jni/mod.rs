@@ -76,6 +76,7 @@ pub type JavaObject<'a> = JObject<'a>;
 pub type JavaUUID<'a> = JObject<'a>;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;
 pub type JavaSignedPublicPreKey<'a> = JObject<'a>;
+pub type JavaSimpleOwner<'a> = JObject<'a>;
 pub type JavaMap<'a> = JMap<'a>;
 
 /// Return type marker for `bridge_fn`s that return Result, which gen_java_decl.py will pick out

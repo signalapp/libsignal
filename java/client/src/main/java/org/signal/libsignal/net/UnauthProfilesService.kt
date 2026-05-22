@@ -6,7 +6,7 @@
 package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
-import org.signal.libsignal.internal.Native
+import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.protocol.ServiceId
 
@@ -21,17 +21,15 @@ public class UnauthProfilesService(
    */
   public fun accountExists(account: ServiceId): CompletableFuture<RequestResult<Boolean, Nothing>> =
     try {
-      connection.runWithContextAndConnectionHandles { asyncCtx, conn ->
-        Native
-          .UnauthenticatedChatConnection_account_exists(
-            asyncCtx,
-            conn,
-            account.toServiceIdFixedWidthBinary(),
-          ).mapWithCancellation(
-            onSuccess = { RequestResult.Success(it) },
-            onError = { err -> err.toRequestResult() },
-          )
-      }
+      NativeNice
+        .UnauthenticatedChatConnection_account_exists(
+          asyncCtx = this.connection.tokioAsyncContext,
+          chat = this.connection,
+          account = account,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(it) },
+          onError = { err -> err.toRequestResult() },
+        )
     } catch (e: Throwable) {
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }

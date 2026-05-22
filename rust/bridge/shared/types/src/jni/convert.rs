@@ -34,8 +34,51 @@ use crate::protocol::storage::{
     JniBridgeSenderKeyStore, JniBridgeSessionStore, JniBridgeSignedPreKeyStore,
 };
 use crate::support::{
-    Array, AsType, BridgedCallbacks, FixedLengthBincodeSerializable, Serialized, extend_lifetime,
+    Array, AsType, BridgeHandleRef, BridgedCallbacks, FixedLengthBincodeSerializable, Serialized,
+    extend_lifetime,
 };
+
+#[cfg(feature = "metadata")]
+mod metadata {
+    pub use crate::metadata::jni::*;
+
+    pub trait NiceArgConverter {
+        fn register_kt_arg_converter(ctx: &mut KtMetadataContext) -> KtArgConverter;
+    }
+    pub trait NiceResultConverter {
+        fn register_kt_result_converter(ctx: &mut KtMetadataContext) -> KtReturnConverter;
+    }
+}
+#[cfg(feature = "metadata")]
+pub use metadata::*;
+macro_rules! nice_identity_arg_converter {
+    ($typ:ty, $kt:expr) => {
+        #[cfg(feature = "metadata")]
+        impl NiceArgConverter for $typ {
+            fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
+                KtArgConverter {
+                    nice_type: $kt.into(),
+                    ffi_type: $kt.into(),
+                    converter_function: "identity".to_string(),
+                }
+            }
+        }
+    };
+}
+macro_rules! nice_identity_result_converter {
+    ($typ:ty, $kt:expr) => {
+        #[cfg(feature = "metadata")]
+        impl NiceResultConverter for $typ {
+            fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+                KtReturnConverter {
+                    nice_type: $kt.into(),
+                    ffi_type: $kt.into(),
+                    converter_function: "identity".to_string(),
+                }
+            }
+        }
+    };
+}
 
 /// Converts arguments from their JNI form to their Rust form.
 ///
@@ -316,6 +359,7 @@ impl SimpleArgTypeInfo<'_> for u8 {
             .map_err(|_| BridgeLayerError::IntegerOverflow(format!("{foreign} to u8")))
     }
 }
+nice_identity_arg_converter!(u8, "Int");
 
 /// Supports all valid u16 values `0..=65536`.
 impl SimpleArgTypeInfo<'_> for u16 {
@@ -325,6 +369,7 @@ impl SimpleArgTypeInfo<'_> for u16 {
             .map_err(|_| BridgeLayerError::IntegerOverflow(format!("{foreign} to u16")))
     }
 }
+nice_identity_arg_converter!(u16, "Int");
 
 impl<'a> SimpleArgTypeInfo<'a> for String {
     type ArgType = JString<'a>;
@@ -337,6 +382,7 @@ impl<'a> SimpleArgTypeInfo<'a> for String {
             .check_exceptions(env, "String::convert_from")
     }
 }
+nice_identity_arg_converter!(String, "String");
 
 impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
     type ArgType = JString<'a>;
@@ -720,6 +766,48 @@ impl<'a> SimpleArgTypeInfo<'a> for Vec<Vec<u8>> {
                 .collect()
         })
         .check_exceptions(env, "Vec<Vec<u8>>::convert_from")
+    }
+}
+
+impl<
+    'storage,
+    'param: 'storage,
+    'context: 'param,
+    T: BridgeHandleWrapperClass + 'static + Send + Sync,
+> ArgTypeInfo<'storage, 'param, 'context> for BridgeHandleRef<'storage, T>
+{
+    type ArgType = JavaSimpleOwner<'context>;
+    type StoredType = Arc<T>;
+
+    fn borrow(
+        env: &mut jni::Env<'context>,
+        foreign: &'param Self::ArgType,
+    ) -> Result<Self::StoredType, BridgeLayerError> {
+        check_jobject_type(env, foreign, ClassName(T::WRAPPER_CLASS))?;
+        let foreign: ObjectHandle = env
+            .get_field(foreign, jni_str!("nativeHandle"), jni_sig!(long))
+            .and_then(JValueOwned::j)
+            .check_exceptions(env, "BridgeHandleRef::load_from")?;
+        let addr = unsafe { T::native_handle_cast(foreign)? };
+        let owned = unsafe { T::from_raw_without_consuming(addr) };
+        Ok(owned)
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        let stored: &T = &*stored;
+        BridgeHandleRef::from(stored)
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T: 'static + Send + Sync + BridgeHandleWrapperClass> NiceArgConverter
+    for BridgeHandleRef<'_, T>
+{
+    fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
+        KtArgConverter {
+            nice_type: T::WRAPPER_CLASS.into(),
+            ffi_type: T::WRAPPER_CLASS.into(),
+            converter_function: "identity".to_string(),
+        }
     }
 }
 
@@ -1127,6 +1215,8 @@ impl ResultTypeInfo<'_> for bool {
         Ok(if self { JNI_TRUE } else { JNI_FALSE })
     }
 }
+nice_identity_result_converter!(bool, "Boolean");
+nice_identity_arg_converter!(bool, "Boolean");
 
 /// Supports all valid byte values `0..=255`.
 impl ResultTypeInfo<'_> for u8 {
@@ -1136,6 +1226,7 @@ impl ResultTypeInfo<'_> for u8 {
         Ok(self as jint)
     }
 }
+nice_identity_result_converter!(u8, "Int");
 
 /// Supports all valid byte values `0..=65536`.
 impl ResultTypeInfo<'_> for u16 {
@@ -1144,6 +1235,7 @@ impl ResultTypeInfo<'_> for u16 {
         Ok(self as jint)
     }
 }
+nice_identity_result_converter!(u16, "Int");
 
 /// Reinterprets the bits of the `u32` as a Java `int`.
 ///
@@ -1218,6 +1310,7 @@ impl<'a> ResultTypeInfo<'a> for String {
         self.deref().convert_into(env)
     }
 }
+nice_identity_result_converter!(String, "String");
 
 impl<'a> ResultTypeInfo<'a> for Option<String> {
     type ResultType = JString<'a>;
@@ -1532,6 +1625,10 @@ where
         stored.as_deref()
     }
 }
+pub trait BridgeHandleWrapperClass: BridgeHandle {
+    // TODO: when we upgrade to jni 0.22, replace this with bind_java_type!
+    const WRAPPER_CLASS: &'static str;
+}
 
 impl<'storage, 'param: 'storage, 'context: 'param, T> ArgTypeInfo<'storage, 'param, 'context>
     for &'storage [&'storage T]
@@ -1763,6 +1860,17 @@ impl<'a> ResultTypeInfo<'a> for ServiceId {
             .check_exceptions(env, "ServiceId::convert_into")
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for ServiceId {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        KtReturnConverter {
+            nice_type: "org.signal.libsignal.protocol.ServiceId".to_string(),
+            ffi_type: "ByteArray".to_string(),
+            converter_function: "org.signal.libsignal.protocol.ServiceId.parseFromFixedWidthBinary"
+                .to_string(),
+        }
+    }
+}
 
 impl<'a> ResultTypeInfo<'a> for Aci {
     type ResultType = JByteArray<'a>;
@@ -1864,6 +1972,17 @@ impl<'a> SimpleArgTypeInfo<'a> for ServiceId {
             .ok_or_else(|| {
                 BridgeLayerError::BadArgument("invalid Service-Id-FixedWidthBinary".to_string())
             })
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for ServiceId {
+    fn register_kt_arg_converter(_: &mut KtMetadataContext) -> KtArgConverter {
+        KtArgConverter {
+            nice_type: "org.signal.libsignal.protocol.ServiceId".to_string(),
+            ffi_type: "ByteArray".to_string(),
+            converter_function:
+                "(org.signal.libsignal.protocol.ServiceId::toServiceIdFixedWidthBinary)".to_string(),
+        }
     }
 }
 
@@ -2557,7 +2676,10 @@ impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
 #[macro_export]
 macro_rules! jni_bridge_as_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
-    ( $typ:ty as $jni_name:ident ) => {
+    ( $typ:ty as $jni_name:ident $(, jni_class=$jni_class:expr)? ) => {
+        $(impl $crate::jni::BridgeHandleWrapperClass for $typ {
+            const WRAPPER_CLASS: &str = $jni_class;
+        })?
         impl $crate::jni::BridgeHandle for $typ {
             const TYPE_TAG: u8 = $crate::jni::hash_location_for_type_tag(file!(), line!());
         }
@@ -2629,12 +2751,12 @@ macro_rules! jni_bridge_as_handle {
             }
         }
     };
-    ( $typ:ty ) => {
+    ( $typ:ty $(, jni_class = $jni_class:expr)? ) => {
         // `paste!` turns the type back into an identifier.
         // We can't specify an identifier here because the main `bridge_as_handle!` accepts any type
         // and just passes it down.
         ::paste::paste! {
-            $crate::jni_bridge_as_handle!($typ as $typ);
+            $crate::jni_bridge_as_handle!($typ as $typ$(, jni_class=$jni_class)?);
         }
     };
 }
@@ -2667,6 +2789,8 @@ impl ResultTypeInfo<'_> for i32 {
         Ok(self)
     }
 }
+nice_identity_result_converter!(i32, "Int");
+nice_identity_arg_converter!(i32, "Int");
 
 /// Syntactically translates `bridge_fn` argument types to JNI types for `cbindgen` and
 /// `gen_java_decl.py`.
@@ -2829,6 +2953,9 @@ macro_rules! jni_arg_type {
     };
     (Option<&dyn $typ:ty>) => {
         ::paste::paste!($crate::jni::Nullable<jni::[<Java $typ>]<'local>>)
+    };
+    (BridgeHandleRef<$lt:lifetime, $typ:ty>) => {
+        $crate::jni::JavaSimpleOwner<'local>
     };
     (& $typ:ty) => {
         $crate::jni::ObjectHandle

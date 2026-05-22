@@ -35,8 +35,8 @@ use crate::protocol::storage::{
     FfiSenderKeyStoreStruct, FfiSessionStoreStruct, FfiSignedPreKeyStoreStruct,
 };
 use crate::support::{
-    AsType, BridgedCallbacks, FixedLengthBincodeSerializable, IllegalArgumentError, Serialized,
-    extend_lifetime,
+    AsType, BridgeHandleRef, BridgedCallbacks, FixedLengthBincodeSerializable,
+    IllegalArgumentError, Serialized, extend_lifetime,
 };
 
 /// Converts arguments from their FFI form to their Rust form.
@@ -1001,6 +1001,13 @@ impl<T: BridgeHandle> SimpleArgTypeInfo for &T {
     }
 }
 
+impl<'a, T: BridgeHandle + 'static + Send + Sync> SimpleArgTypeInfo for BridgeHandleRef<'a, T> {
+    type ArgType = <&'a T as SimpleArgTypeInfo>::ArgType;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        <&T as SimpleArgTypeInfo>::convert_from(foreign).map(From::from)
+    }
+}
+
 impl<T: BridgeHandle> SimpleArgTypeInfo for Option<&T> {
     type ArgType = ConstPointer<T>;
     fn convert_from(foreign: ConstPointer<T>) -> SignalFfiResult<Self> {
@@ -1490,6 +1497,7 @@ macro_rules! ffi_arg_type {
     (Option<Box<[u8]> >) => (ffi::OptionalBorrowedSliceOf<std::ffi::c_uchar>);
     (DeviceSpecifier) => (i32);
     (GroupSendFullToken) => (ffi_arg_type!(&[u8]));
+    (BridgeHandleRef<$lt:lifetime, $typ:ty>) => (ffi_arg_type!(&$typ));
     (::zkgroup::backups::BackupAuthCredential) => (ffi_arg_type!(&[u8]));
     (::zkgroup::generic_server_params::GenericServerPublicParams) => (ffi_arg_type!(&[u8]));
 

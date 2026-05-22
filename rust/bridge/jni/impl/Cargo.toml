@@ -25,6 +25,9 @@ log = { workspace = true }
 log-panics = { workspace = true, features = ["with-backtrace"] }
 zerocopy = { workspace = true }
 
+[features]
+metadata = ["libsignal-bridge/metadata"]
+
 [target.aarch64-linux-android.dependencies]
 cpufeatures = "0.2.6" # Make sure 64-bit Android gets optimized crypto
 

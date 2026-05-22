@@ -20,6 +20,7 @@ members = [
     "rust/bridge/ffi",
     "rust/bridge/jni",
     "rust/bridge/jni/impl",
+    "rust/bridge/jni/native_kt",
     "rust/bridge/jni/testing",
     "rust/bridge/node",
     "rust/bridge/node/native_ts",

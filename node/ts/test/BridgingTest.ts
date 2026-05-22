@@ -6,8 +6,10 @@
 import { assert, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import * as Native from '../Native.js';
+import * as NativeNice from '../NativeNice.js';
 import { BridgedStringMap } from '../internal.js';
 import * as uuid from '../uuid.js';
+import { Aci, Pni } from '../Address.js';
 
 use(chaiAsPromised);
 
@@ -207,6 +209,20 @@ describe('bridge_fn', () => {
     assert.equal(num, 1);
     assert.equal(str, 'libsignal');
   });
+
+  it('handles BridgeHandleRef', () => {
+    const handle = Native.TESTING_TestingIntBox_New(17);
+    assert.equal(
+      Native.TESTING_TestingIntBox_Get({ _nativeHandle: handle }),
+      17
+    );
+    assert.equal(
+      NativeNice.TESTING_TestingIntBox_Get({
+        myIntBox: { _nativeHandle: handle },
+      }),
+      17
+    );
+  });
 });
 
 describe('BridgedStringMap', () => {
@@ -230,5 +246,98 @@ describe('BridgedStringMap', () => {
   "c": "ccc"
 }`
     );
+  });
+});
+
+describe('NativeTestingNice', () => {
+  function testConversion<T>({
+    item,
+    toString,
+    nativeToString,
+    nativeIdentity,
+  }: {
+    item: T;
+    toString: (t: T) => string;
+    nativeToString: (t: T) => string;
+    nativeIdentity: (t: T) => T;
+  }) {
+    assert.strictEqual(toString(item), nativeToString(item));
+    assert.deepEqual(item, nativeIdentity(item));
+  }
+  it('string', () => {
+    for (const item of ['', 'abc', 'îüéè']) {
+      testConversion({
+        item,
+        toString: (x) => x,
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_string_identity({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_string_identity({ x }),
+      });
+    }
+  });
+  it('bool', () => {
+    for (const item of [true, false]) {
+      testConversion({
+        item,
+        toString: (x) => `${x}`,
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_bool_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_bool_identity({ x }),
+      });
+    }
+  });
+  it('u8', () => {
+    for (let item = 0; item <= 255; item++) {
+      testConversion({
+        item,
+        toString: (x) => `${x}`,
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_u8_to_string({ x }),
+        nativeIdentity: (x) => NativeNice.TESTING_conversion_u8_identity({ x }),
+      });
+    }
+  });
+  it('u16', () => {
+    for (let item = 0; item <= 65535; item++) {
+      testConversion({
+        item,
+        toString: (x) => `${x}`,
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_u16_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_u16_identity({ x }),
+      });
+    }
+  });
+  it('i32', () => {
+    for (let item = -1024; item <= 1024; item++) {
+      testConversion({
+        item,
+        toString: (x) => `${x}`,
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_i32_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_i32_identity({ x }),
+      });
+    }
+  });
+  it('ServiceId', () => {
+    for (let i = 0; i <= 4; i++) {
+      for (const item of [
+        Aci.fromUuid(uuid.stringify(uuid.v4())),
+        Pni.fromUuid(uuid.stringify(uuid.v4())),
+      ]) {
+        testConversion({
+          item,
+          toString: (x) => x.getServiceIdString(),
+          nativeToString: (x) =>
+            NativeNice.TESTING_conversion_ServiceId_to_string({ x }),
+          nativeIdentity: (x) =>
+            NativeNice.TESTING_conversion_ServiceId_identity({ x }),
+        });
+      }
+    }
   });
 });

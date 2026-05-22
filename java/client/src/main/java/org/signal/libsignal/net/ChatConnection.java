@@ -26,7 +26,7 @@ import org.signal.libsignal.net.internal.BridgeChatListener;
  * registered listener will not receive any events until {@link #start()} is called.
  */
 public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
-  private final TokioAsyncContext tokioAsyncContext;
+  final TokioAsyncContext tokioAsyncContext;
   private final ChatConnectionListener chatListener;
 
   protected ChatConnection(

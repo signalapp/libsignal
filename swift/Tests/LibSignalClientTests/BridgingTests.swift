@@ -274,6 +274,19 @@ final class BridgingTests: XCTestCase {
         XCTAssertEqual(pair.first, 1 as Int32)
         XCTAssertEqual(String(cString: pair.second), "libsignal")
     }
+
+    func testBridgeHandleRef() throws {
+        let ptr = try invokeFnReturningValueByPointer(.init()) {
+            signal_testing_testing_int_box_new($0, 17)
+        }
+        defer { signal_testing_int_box_destroy(ptr) }
+        XCTAssertEqual(
+            17,
+            try invokeFnReturningInteger {
+                signal_testing_testing_int_box_get($0, SignalConstPointerTestingIntBox(raw: ptr.raw))
+            }
+        )
+    }
 }
 
 #endif

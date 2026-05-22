@@ -32,26 +32,66 @@ use crate::protocol::storage::{
     NodeBridgeSenderKeyStore, NodeBridgeSessionStore, NodeBridgeSignedPreKeyStore,
 };
 use crate::support::{
-    Array, AsType, BridgedCallbacks, FixedLengthBincodeSerializable, Serialized, extend_lifetime,
+    Array, AsType, BridgeHandleRef, BridgedCallbacks, FixedLengthBincodeSerializable, Serialized,
+    extend_lifetime,
 };
 
 #[cfg(feature = "metadata")]
 mod metadata {
     use super::*;
-    pub use crate::metadata::node::TsMetadataContext;
+    pub use crate::metadata::node::*;
+
+    pub trait NiceArgConverter {
+        fn register_ts_arg_converter(ctx: &mut TsMetadataContext) -> TsArgConverter;
+    }
+    pub trait NiceResultConverter {
+        fn register_ts_result_converter(ctx: &mut TsMetadataContext) -> TsReturnConverter;
+    }
 
     pub fn make_array_type<'a, T: ResultTypeInfo<'a>>(ctx: &mut TsMetadataContext) -> String {
         format!("Array<{}>", T::register_ts_ffi_type(ctx))
     }
 }
 #[cfg(feature = "metadata")]
-use metadata::*;
+pub use metadata::*;
+
 /// Shorthand to implement `register_ts_ffi_type()`
 macro_rules! register_ts_ffi_type {
     ($text:expr) => {
         #[cfg(feature = "metadata")]
         fn register_ts_ffi_type(_: &mut TsMetadataContext) -> String {
             $text.into()
+        }
+    };
+}
+
+macro_rules! nice_identity_arg_converter {
+    ($typ:ty) => {
+        #[cfg(feature = "metadata")]
+        impl NiceArgConverter for $typ {
+            fn register_ts_arg_converter(ctx: &mut TsMetadataContext) -> TsArgConverter {
+                let ty = <$typ as ArgTypeInfo>::register_ts_ffi_type(ctx);
+                TsArgConverter {
+                    nice_type: ty.clone(),
+                    ffi_type: ty.clone(),
+                    converter_function: "identity".into(),
+                }
+            }
+        }
+    };
+}
+macro_rules! nice_identity_result_converter {
+    ($typ:ty) => {
+        #[cfg(feature = "metadata")]
+        impl NiceResultConverter for $typ {
+            fn register_ts_result_converter(ctx: &mut TsMetadataContext) -> TsReturnConverter {
+                let ty = <$typ as ResultTypeInfo>::register_ts_ffi_type(ctx);
+                TsReturnConverter {
+                    nice_type: ty.clone(),
+                    ffi_type: ty.clone(),
+                    converter_function: "identity".into(),
+                }
+            }
         }
     };
 }
@@ -452,6 +492,7 @@ impl SimpleArgTypeInfo for String {
     }
     register_ts_ffi_type!("string");
 }
+nice_identity_arg_converter!(String);
 
 impl SimpleArgTypeInfo for uuid::Uuid {
     type ArgType = JsUint8Array;
@@ -476,6 +517,16 @@ impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
             })
     }
     register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for ServiceId {
+    fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
+        TsArgConverter {
+            nice_type: "ServiceId".to_string(),
+            ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+            converter_function: "serviceIdArgConverter".to_string(),
+        }
+    }
 }
 
 impl SimpleArgTypeInfo for libsignal_protocol::Aci {
@@ -719,6 +770,7 @@ impl SimpleArgTypeInfo for bool {
     }
     register_ts_ffi_type!("boolean");
 }
+nice_identity_arg_converter!(bool);
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = JsUint8Array;
@@ -728,6 +780,7 @@ impl SimpleArgTypeInfo for Box<[u8]> {
     }
     register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
+nice_identity_arg_converter!(Box<[u8]>);
 
 impl SimpleArgTypeInfo for Box<[u32]> {
     type ArgType = JsUint32Array;
@@ -1220,6 +1273,7 @@ impl<'a> ResultTypeInfo<'a> for bool {
     }
     register_ts_ffi_type!("boolean");
 }
+nice_identity_result_converter!(bool);
 
 /// Converts non-negative values up to [`Number.MAX_SAFE_INTEGER`][].
 ///
@@ -1273,6 +1327,7 @@ impl<'a> ResultTypeInfo<'a> for String {
     }
     register_ts_ffi_type!("string");
 }
+nice_identity_result_converter!(String);
 
 impl<'a> ResultTypeInfo<'a> for &str {
     type ResultType = JsString;
@@ -1304,6 +1359,16 @@ impl<'a> ResultTypeInfo<'a> for libsignal_protocol::ServiceId {
         JsUint8Array::from_slice(cx, &self.service_id_fixed_width_binary())
     }
     register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for ServiceId {
+    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        TsReturnConverter {
+            nice_type: "ServiceId".to_string(),
+            ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+            converter_function: "ServiceId.parseFromServiceIdFixedWidthBinary".to_string(),
+        }
+    }
 }
 
 impl<'a> ResultTypeInfo<'a> for libsignal_protocol::Aci {
@@ -1880,6 +1945,26 @@ macro_rules! full_range_integer {
             }
             register_ts_ffi_type!("number");
         }
+        #[cfg(feature = "metadata")]
+        impl NiceArgConverter for $typ {
+            fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
+                TsArgConverter {
+                    nice_type: "number".to_string(),
+                    ffi_type: "number".to_string(),
+                    converter_function: "identity".to_string(),
+                }
+            }
+        }
+        #[cfg(feature = "metadata")]
+        impl NiceResultConverter for $typ {
+            fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+                TsReturnConverter {
+                    nice_type: "number".to_string(),
+                    ffi_type: "number".to_string(),
+                    converter_function: "identity".to_string(),
+                }
+            }
+        }
     };
 }
 
@@ -2244,6 +2329,60 @@ impl<T: Send + Sync + 'static> Finalize for PersistentArrayOfBorrowedJsBoxedBrid
     }
 }
 
+impl<'storage, 'context: 'storage, T: 'static + Send + Sync> ArgTypeInfo<'storage, 'context>
+    for BridgeHandleRef<'storage, T>
+where
+    &'storage T: ArgTypeInfo<'storage, 'context>,
+{
+    type ArgType = <&'storage T as ArgTypeInfo<'storage, 'context>>::ArgType;
+    type StoredType = <&'storage T as ArgTypeInfo<'storage, 'context>>::StoredType;
+    fn borrow(
+        cx: &mut FunctionContext<'context>,
+        foreign: Handle<'context, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        <&'storage T>::borrow(cx, foreign)
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        <&'storage T>::load_from(stored).into()
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <&'storage T>::register_ts_ffi_type(ctx)
+    }
+}
+impl<'storage, T: 'static + Send + Sync> AsyncArgTypeInfo<'storage> for BridgeHandleRef<'storage, T>
+where
+    &'storage T: AsyncArgTypeInfo<'storage>,
+{
+    type ArgType = <&'storage T as AsyncArgTypeInfo<'storage>>::ArgType;
+    type StoredType = <&'storage T as AsyncArgTypeInfo<'storage>>::StoredType;
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        <&'storage T as AsyncArgTypeInfo<'storage>>::save_async_arg(cx, foreign)
+    }
+
+    fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
+        <&'storage T as AsyncArgTypeInfo<'storage>>::load_async_arg(stored).into()
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <&'storage T as AsyncArgTypeInfo<'storage>>::register_ts_ffi_type(ctx)
+    }
+}
+#[cfg(feature = "metadata")]
+impl<'a, T: 'static + Send + Sync> NiceArgConverter for BridgeHandleRef<'a, T>
+where
+    &'a T: NiceArgConverter,
+{
+    fn register_ts_arg_converter(ctx: &mut TsMetadataContext) -> TsArgConverter {
+        <&'a T>::register_ts_arg_converter(ctx)
+    }
+}
+
 impl<'storage, T: BridgeHandle<Strategy = Immutable<T>> + Sync> AsyncArgTypeInfo<'storage>
     for &'storage [&'storage T]
 {
@@ -2351,6 +2490,20 @@ macro_rules! node_bridge_as_handle {
             #[cfg(feature = "metadata")]
             fn register_ts_ffi_type(ctx: &mut $crate::metadata::node::TsMetadataContext) -> String {
                 format!("Wrapper<{}>", <$typ as $crate::node::BridgeHandle>::register_ts_ffi_type(ctx))
+            }
+        }
+
+        #[cfg(feature = "metadata")]
+        impl $crate::node::NiceArgConverter for &$typ {
+            fn register_ts_arg_converter(
+                ctx: &mut $crate::metadata::node::TsMetadataContext
+            ) -> $crate::metadata::node::TsArgConverter {
+                let ty = format!("Native.Wrapper<Native.{}>", <$typ as $crate::node::BridgeHandle>::register_ts_ffi_type(ctx));
+                $crate::metadata::node::TsArgConverter {
+                    nice_type: ty.clone(),
+                    ffi_type: ty.clone(),
+                    converter_function: "identity".to_string(),
+                }
             }
         }
 

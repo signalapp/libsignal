@@ -370,3 +370,66 @@ fn TESTING_FingerprintVersionMismatchError(
 ) -> Result<(), libsignal_protocol::FingerprintError> {
     Err(libsignal_protocol::FingerprintError::VersionMismatch { theirs, ours })
 }
+
+pub mod test_conversions {
+    //! We test (primitive) conversions via:
+    //! ```ignore
+    //! #[bridge_fn(nice=true)]
+    //! fn to_string(x: T) -> String;
+    //! #[bridge_fn(nice=true)]
+    //! fn identity(x: T) -> T;
+    //! ```
+    //!
+    //! `to_string` checks that argument parsing is working propery, and `identity` checks that
+    //! return types are working properly.
+
+    use libsignal_core::ServiceId;
+
+    use super::*;
+
+    // to_string for String would just be identity
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_string_identity(x: String) -> String {
+        x
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_bool_to_string(x: bool) -> String {
+        x.to_string()
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_bool_identity(x: bool) -> bool {
+        x
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_u8_to_string(x: u8) -> String {
+        x.to_string()
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_u8_identity(x: u8) -> u8 {
+        x
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_u16_to_string(x: u16) -> String {
+        x.to_string()
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_u16_identity(x: u16) -> u16 {
+        x
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_i32_to_string(x: i32) -> String {
+        x.to_string()
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_i32_identity(x: i32) -> i32 {
+        x
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_ServiceId_to_string(x: ServiceId) -> String {
+        x.service_id_string()
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_ServiceId_identity(x: ServiceId) -> ServiceId {
+        x
+    }
+}

@@ -466,9 +466,9 @@ async fn UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth(
     .await
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn UnauthenticatedChatConnection_account_exists(
-    chat: &UnauthenticatedChatConnection,
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
     account: ServiceId,
 ) -> Result<bool, RequestError<Infallible>> {
     chat.as_typed(|chat| chat.account_exists(account)).await

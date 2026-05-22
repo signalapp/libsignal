@@ -241,6 +241,10 @@ def main() -> None:
         out_path=os.path.join(repo_root, 'java', 'shared', 'java', 'org', 'signal', 'libsignal', 'internal', 'NativeTesting.kt'),
         verify=args.verify,
     )
+    subprocess.check_call(
+        ['cargo', 'run', '-p', 'libsignal-jni-native_kt', '--'] + (['--verify'] if args.verify else []),
+        cwd=repo_root,
+    )
 
 
 if __name__ == '__main__':

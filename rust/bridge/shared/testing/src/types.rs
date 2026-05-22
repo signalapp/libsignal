@@ -505,3 +505,19 @@ fn TestingValueHolder_Get(holder: &TestingValueHolder) -> i32 {
 fn TESTING_ReturnPair() -> (i32, String) {
     (1, "libsignal".into())
 }
+
+pub struct TestingIntBox(pub i32);
+bridge_as_handle!(
+    TestingIntBox,
+    jni_class = "org.signal.libsignal.internal.TestingIntBox"
+);
+bridge_handle_fns!(TestingIntBox, clone = false);
+
+#[bridge_fn]
+fn TESTING_TestingIntBox_New(value: i32) -> TestingIntBox {
+    TestingIntBox(value)
+}
+#[bridge_fn(nice = true)]
+fn TESTING_TestingIntBox_Get(my_int_box: BridgeHandleRef<'_, TestingIntBox>) -> i32 {
+    my_int_box.0
+}

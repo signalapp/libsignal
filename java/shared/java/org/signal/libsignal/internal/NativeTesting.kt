@@ -7,6 +7,7 @@
 
 package org.signal.libsignal.internal
 
+import org.signal.libsignal.internal.NativeHandleGuard.SimpleOwner
 import org.signal.libsignal.net.internal.BridgeChatListener
 import org.signal.libsignal.net.internal.BridgeProvisioningListener
 import org.signal.libsignal.net.internal.ConnectChatBridge
@@ -260,6 +261,10 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_TestingHandleType_getValue(handle: ObjectHandle): Int
   @JvmStatic
+  public external fun TESTING_TestingIntBox_Get(myIntBox: SimpleOwner): Int
+  @JvmStatic
+  public external fun TESTING_TestingIntBox_New(value: Int): ObjectHandle
+  @JvmStatic
   public external fun TESTING_TokioAsyncContext_AttachBlockingThreadToJVMPermanently(context: ObjectHandle, jvm: Object): Unit
   @JvmStatic
   public external fun TESTING_TokioAsyncContext_FutureSuccessBytes(asyncRuntime: ObjectHandle, count: Int): CompletableFuture<ByteArray>
@@ -267,12 +272,37 @@ public object NativeTesting {
   public external fun TESTING_TokioAsyncContext_NewSingleThreaded(): ObjectHandle
   @JvmStatic
   public external fun TESTING_TokioAsyncFuture(asyncRuntime: ObjectHandle, input: Int): CompletableFuture<Int>
+  @JvmStatic
+  public external fun TESTING_conversion_ServiceId_identity(x: ByteArray): ByteArray
+  @JvmStatic
+  public external fun TESTING_conversion_ServiceId_to_string(x: ByteArray): String
+  @JvmStatic
+  public external fun TESTING_conversion_bool_identity(x: Boolean): Boolean
+  @JvmStatic
+  public external fun TESTING_conversion_bool_to_string(x: Boolean): String
+  @JvmStatic
+  public external fun TESTING_conversion_i32_identity(x: Int): Int
+  @JvmStatic
+  public external fun TESTING_conversion_i32_to_string(x: Int): String
+  @JvmStatic
+  public external fun TESTING_conversion_string_identity(x: String): String
+  @JvmStatic
+  public external fun TESTING_conversion_u16_identity(x: Int): Int
+  @JvmStatic
+  public external fun TESTING_conversion_u16_to_string(x: Int): String
+  @JvmStatic
+  public external fun TESTING_conversion_u8_identity(x: Int): Int
+  @JvmStatic
+  public external fun TESTING_conversion_u8_to_string(x: Int): String
 
   @JvmStatic
   public external fun TestingFutureCancellationCounter_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic
   public external fun TestingHandleType_Destroy(handle: ObjectHandle): Unit
+
+  @JvmStatic
+  public external fun TestingIntBox_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic
   public external fun TestingSemaphore_AddPermits(semaphore: ObjectHandle, permits: Int): Unit

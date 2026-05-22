@@ -135,596 +135,2115 @@ type ConnectChatBridge = Wrapper<ConnectionManager>;
 type TestingFutureCancellationGuard = Wrapper<TestingFutureCancellationCounter>;
 
 // Keep in sync with rust/bridge/node/src/logging.rs
-export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
+export const enum LogLevel {
+  Error = 1,
+  Warn,
+  Info,
+  Debug,
+  Trace,
+}
 
 /* eslint-disable comma-dangle */
-export const NetRemoteConfigKeys = ['chatRequestConnectionCheckTimeoutMillis','useH2ForUnauthChat','useH2ForAuthChat','grpc.AccountsAnonymousLookupUsernameHash','grpc.AccountsAnonymousLookupUsernameLink.2','grpc.AccountsAnonymousCheckAccountExistence.2','grpc.MessagesAnonymousSendMultiRecipientMessage.2','grpc.MessagesAnonymousSendSingleRecipientMessage','grpc.AttachmentsGetUploadForm','grpc.MessagesSendMessage','grpc.BackupsAnonymousGetUploadForm',] as const;
+export const NetRemoteConfigKeys = [
+  'chatRequestConnectionCheckTimeoutMillis',
+  'useH2ForUnauthChat',
+  'useH2ForAuthChat',
+  'grpc.AccountsAnonymousLookupUsernameHash',
+  'grpc.AccountsAnonymousLookupUsernameLink.2',
+  'grpc.AccountsAnonymousCheckAccountExistence.2',
+  'grpc.MessagesAnonymousSendMultiRecipientMessage.2',
+  'grpc.MessagesAnonymousSendSingleRecipientMessage',
+  'grpc.AttachmentsGetUploadForm',
+  'grpc.MessagesSendMessage',
+  'grpc.BackupsAnonymousGetUploadForm',
+] as const;
 
 import load from 'node-gyp-build';
 
 type NativeFunctions = {
   registerErrors: (errorsModule: Record<string, unknown>) => void;
-  initLogger: (maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void) => void;
-  AccountEntropyPool_DeriveBackupKey: (accountEntropy: AccountEntropyPool,) => Uint8Array<ArrayBuffer>;
-  AccountEntropyPool_DeriveSvrKey: (accountEntropy: AccountEntropyPool,) => Uint8Array<ArrayBuffer>;
+  initLogger: (
+    maxLevel: LogLevel,
+    callback: (
+      level: LogLevel,
+      target: string,
+      file: string | null,
+      line: number | null,
+      message: string
+    ) => void
+  ) => void;
+  AccountEntropyPool_DeriveBackupKey: (
+    account_entropy: AccountEntropyPool
+  ) => Uint8Array<ArrayBuffer>;
+  AccountEntropyPool_DeriveSvrKey: (
+    account_entropy: AccountEntropyPool
+  ) => Uint8Array<ArrayBuffer>;
   AccountEntropyPool_Generate: () => string;
-  AccountEntropyPool_IsValid: (accountEntropy: string,) => boolean;
-  Aes256GcmSiv_Decrypt: (aesGcmSiv: Wrapper<Aes256GcmSiv>,ctext: Uint8Array<ArrayBuffer>,nonce: Uint8Array<ArrayBuffer>,associatedData: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  Aes256GcmSiv_Encrypt: (aesGcmSivObj: Wrapper<Aes256GcmSiv>,ptext: Uint8Array<ArrayBuffer>,nonce: Uint8Array<ArrayBuffer>,associatedData: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  Aes256GcmSiv_New: (key: Uint8Array<ArrayBuffer>,) => Aes256GcmSiv;
-  AuthCredentialPresentation_CheckValidContents: (presentationBytes: Uint8Array<ArrayBuffer>,) => void;
-  AuthCredentialPresentation_GetPniCiphertext: (presentationBytes: Uint8Array<ArrayBuffer>,) => Serialized<UuidCiphertext>;
-  AuthCredentialPresentation_GetRedemptionTime: (presentationBytes: Uint8Array<ArrayBuffer>,) => Timestamp;
-  AuthCredentialPresentation_GetUuidCiphertext: (presentationBytes: Uint8Array<ArrayBuffer>,) => Serialized<UuidCiphertext>;
-  AuthCredentialWithPniResponse_CheckValidContents: (bytes: Uint8Array<ArrayBuffer>,) => void;
-  AuthCredentialWithPni_CheckValidContents: (bytes: Uint8Array<ArrayBuffer>,) => void;
-  AuthenticatedChatConnection_connect: (asyncRuntime: Wrapper<TokioAsyncContext>,connectionManager: Wrapper<ConnectionManager>,username: string,password: string,receiveStories: boolean,languages: Array<string>,) => CancellablePromise<AuthenticatedChatConnection>;
-  AuthenticatedChatConnection_disconnect: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<AuthenticatedChatConnection>,) => CancellablePromise<void>;
-  AuthenticatedChatConnection_get_upload_form: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<AuthenticatedChatConnection>,uploadLength: bigint,) => CancellablePromise<UploadForm>;
-  AuthenticatedChatConnection_info: (chat: Wrapper<AuthenticatedChatConnection>,) => ChatConnectionInfo;
-  AuthenticatedChatConnection_init_listener: (chat: Wrapper<AuthenticatedChatConnection>,listener: ChatListener,) => void;
-  AuthenticatedChatConnection_preconnect: (asyncRuntime: Wrapper<TokioAsyncContext>,connectionManager: Wrapper<ConnectionManager>,) => CancellablePromise<void>;
-  AuthenticatedChatConnection_send: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<AuthenticatedChatConnection>,httpRequest: Wrapper<HttpRequest>,timeoutMillis: number,) => CancellablePromise<ChatResponse>;
-  AuthenticatedChatConnection_send_message: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<AuthenticatedChatConnection>,destination: Uint8Array<ArrayBuffer>,timestamp: Timestamp,deviceIds: Uint32Array<ArrayBuffer>,registrationIds: Uint32Array<ArrayBuffer>,contents: Array<Wrapper<CiphertextMessage>>,onlineOnly: boolean,isUrgent: boolean,) => CancellablePromise<void>;
-  AuthenticatedChatConnection_send_raw_grpc: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<AuthenticatedChatConnection>,service: string,method: string,payload: Uint8Array<ArrayBuffer>,) => CancellablePromise<Uint8Array<ArrayBuffer>>;
-  AuthenticatedChatConnection_send_sync_message: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<AuthenticatedChatConnection>,timestamp: Timestamp,deviceIds: Uint32Array<ArrayBuffer>,registrationIds: Uint32Array<ArrayBuffer>,contents: Array<Wrapper<CiphertextMessage>>,isUrgent: boolean,) => CancellablePromise<void>;
-  BackupAuthCredentialPresentation_CheckValidContents: (presentationBytes: Uint8Array<ArrayBuffer>,) => void;
-  BackupAuthCredentialPresentation_GetBackupId: (presentationBytes: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  BackupAuthCredentialPresentation_GetBackupLevel: (presentationBytes: Uint8Array<ArrayBuffer>,) => number;
-  BackupAuthCredentialPresentation_GetType: (presentationBytes: Uint8Array<ArrayBuffer>,) => number;
-  BackupAuthCredentialPresentation_Verify: (presentationBytes: Uint8Array<ArrayBuffer>,now: Timestamp,serverParamsBytes: Uint8Array<ArrayBuffer>,) => void;
-  BackupAuthCredentialRequestContext_CheckValidContents: (contextBytes: Uint8Array<ArrayBuffer>,) => void;
-  BackupAuthCredentialRequestContext_GetRequest: (contextBytes: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  BackupAuthCredentialRequestContext_New: (backupKey: Uint8Array<ArrayBuffer>,uuid: Uuid,) => Uint8Array<ArrayBuffer>;
-  BackupAuthCredentialRequestContext_ReceiveResponse: (contextBytes: Uint8Array<ArrayBuffer>,responseBytes: Uint8Array<ArrayBuffer>,expectedRedemptionTime: Timestamp,paramsBytes: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  BackupAuthCredentialRequest_CheckValidContents: (requestBytes: Uint8Array<ArrayBuffer>,) => void;
-  BackupAuthCredentialRequest_IssueDeterministic: (requestBytes: Uint8Array<ArrayBuffer>,redemptionTime: Timestamp,backupLevel: number,credentialType: number,paramsBytes: Uint8Array<ArrayBuffer>,randomness: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  BackupAuthCredentialResponse_CheckValidContents: (responseBytes: Uint8Array<ArrayBuffer>,) => void;
-  BackupAuthCredential_CheckValidContents: (paramsBytes: Uint8Array<ArrayBuffer>,) => void;
-  BackupAuthCredential_GetBackupId: (credentialBytes: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  BackupAuthCredential_GetBackupLevel: (credentialBytes: Uint8Array<ArrayBuffer>,) => number;
-  BackupAuthCredential_GetType: (credentialBytes: Uint8Array<ArrayBuffer>,) => number;
-  BackupAuthCredential_PresentDeterministic: (credentialBytes: Uint8Array<ArrayBuffer>,serverParamsBytes: Uint8Array<ArrayBuffer>,randomness: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  BackupJsonExporter_ExportFrames: (exporter: Wrapper<BackupJsonExporter>,frames: Uint8Array<ArrayBuffer>,) => Array<[(string | null), (string | null)]>;
-  BackupJsonExporter_Finish: (exporter: Wrapper<BackupJsonExporter>,) => void;
-  BackupJsonExporter_GetInitialChunk: (exporter: Wrapper<BackupJsonExporter>,) => string;
-  BackupJsonExporter_New: (backupInfo: Uint8Array<ArrayBuffer>,shouldValidate: boolean,) => BackupJsonExporter;
-  BackupKey_DeriveBackupId: (backupKey: Uint8Array<ArrayBuffer>,aci: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  BackupKey_DeriveEcKey: (backupKey: Uint8Array<ArrayBuffer>,aci: Uint8Array<ArrayBuffer>,) => PrivateKey;
-  BackupKey_DeriveLocalBackupMetadataKey: (backupKey: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  BackupKey_DeriveMediaEncryptionKey: (backupKey: Uint8Array<ArrayBuffer>,mediaId: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  BackupKey_DeriveMediaId: (backupKey: Uint8Array<ArrayBuffer>,mediaName: string,) => Uint8Array<ArrayBuffer>;
-  BackupKey_DeriveThumbnailTransitEncryptionKey: (backupKey: Uint8Array<ArrayBuffer>,mediaId: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  BackupRestoreResponse_GetForwardSecrecyToken: (response: Wrapper<BackupRestoreResponse>,) => Uint8Array<ArrayBuffer>;
-  BackupRestoreResponse_GetNextBackupSecretData: (response: Wrapper<BackupRestoreResponse>,) => Uint8Array<ArrayBuffer>;
-  BackupStoreResponse_GetForwardSecrecyToken: (response: Wrapper<BackupStoreResponse>,) => Uint8Array<ArrayBuffer>;
-  BackupStoreResponse_GetNextBackupSecretData: (response: Wrapper<BackupStoreResponse>,) => Uint8Array<ArrayBuffer>;
-  BackupStoreResponse_GetOpaqueMetadata: (response: Wrapper<BackupStoreResponse>,) => Uint8Array<ArrayBuffer>;
-  BridgedStringMap_insert: (map: Wrapper<BridgedStringMap>,key: string,value: string,) => void;
-  BridgedStringMap_new: (initialCapacity: number,) => BridgedStringMap;
-  CallLinkAuthCredentialPresentation_CheckValidContents: (presentationBytes: Uint8Array<ArrayBuffer>,) => void;
-  CallLinkAuthCredentialPresentation_GetUserId: (presentationBytes: Uint8Array<ArrayBuffer>,) => Serialized<UuidCiphertext>;
-  CallLinkAuthCredentialPresentation_Verify: (presentationBytes: Uint8Array<ArrayBuffer>,now: Timestamp,serverParamsBytes: Uint8Array<ArrayBuffer>,callLinkParamsBytes: Uint8Array<ArrayBuffer>,) => void;
-  CallLinkAuthCredentialResponse_CheckValidContents: (responseBytes: Uint8Array<ArrayBuffer>,) => void;
-  CallLinkAuthCredentialResponse_IssueDeterministic: (userId: Uint8Array<ArrayBuffer>,redemptionTime: Timestamp,paramsBytes: Uint8Array<ArrayBuffer>,randomness: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  CallLinkAuthCredentialResponse_Receive: (responseBytes: Uint8Array<ArrayBuffer>,userId: Uint8Array<ArrayBuffer>,redemptionTime: Timestamp,paramsBytes: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  CallLinkAuthCredential_CheckValidContents: (credentialBytes: Uint8Array<ArrayBuffer>,) => void;
-  CallLinkAuthCredential_PresentDeterministic: (credentialBytes: Uint8Array<ArrayBuffer>,userId: Uint8Array<ArrayBuffer>,redemptionTime: Timestamp,serverParamsBytes: Uint8Array<ArrayBuffer>,callLinkParamsBytes: Uint8Array<ArrayBuffer>,randomness: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  CallLinkPublicParams_CheckValidContents: (paramsBytes: Uint8Array<ArrayBuffer>,) => void;
-  CallLinkSecretParams_CheckValidContents: (paramsBytes: Uint8Array<ArrayBuffer>,) => void;
-  CallLinkSecretParams_DecryptUserId: (paramsBytes: Uint8Array<ArrayBuffer>,userId: Serialized<UuidCiphertext>,) => Uint8Array<ArrayBuffer>;
-  CallLinkSecretParams_DeriveFromRootKey: (rootKey: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  CallLinkSecretParams_EncryptUserId: (paramsBytes: Uint8Array<ArrayBuffer>,userId: Uint8Array<ArrayBuffer>,) => Serialized<UuidCiphertext>;
-  CallLinkSecretParams_GetPublicParams: (paramsBytes: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  Cds2ClientState_New: (mrenclave: Uint8Array<ArrayBuffer>,attestationMsg: Uint8Array<ArrayBuffer>,currentTimestamp: Timestamp,) => SgxClientState;
-  CdsiLookup_complete: (asyncRuntime: Wrapper<TokioAsyncContext>,lookup: Wrapper<CdsiLookup>,) => CancellablePromise<LookupResponse>;
-  CdsiLookup_new: (asyncRuntime: Wrapper<TokioAsyncContext>,connectionManager: Wrapper<ConnectionManager>,username: string,password: string,request: Wrapper<LookupRequest>,) => CancellablePromise<CdsiLookup>;
-  CdsiLookup_token: (lookup: Wrapper<CdsiLookup>,) => Uint8Array<ArrayBuffer>;
-  ChatConnectionInfo_description: (connectionInfo: Wrapper<ChatConnectionInfo>,) => string;
-  ChatConnectionInfo_ip_version: (connectionInfo: Wrapper<ChatConnectionInfo>,) => number;
-  ChatConnectionInfo_local_port: (connectionInfo: Wrapper<ChatConnectionInfo>,) => number;
-  CiphertextMessage_FromPlaintextContent: (m: Wrapper<PlaintextContent>,) => CiphertextMessage;
-  CiphertextMessage_Serialize: (obj: Wrapper<CiphertextMessage>,) => Uint8Array<ArrayBuffer>;
-  CiphertextMessage_Type: (msg: Wrapper<CiphertextMessage>,) => number;
-  ComparableBackup_GetComparableString: (backup: Wrapper<ComparableBackup>,) => string;
-  ComparableBackup_GetUnknownFields: (backup: Wrapper<ComparableBackup>,) => Array<string>;
-  ComparableBackup_ReadUnencrypted: (stream: InputStream,len: bigint,purpose: number,) => Promise<ComparableBackup>;
-  ConnectionManager_clear_proxy: (connectionManager: Wrapper<ConnectionManager>,) => void;
-  ConnectionManager_new: (environment: number,userAgent: string,remoteConfig: Wrapper<BridgedStringMap>,buildVariant: number,) => ConnectionManager;
-  ConnectionManager_on_network_change: (connectionManager: Wrapper<ConnectionManager>,) => void;
-  ConnectionManager_set_censorship_circumvention_enabled: (connectionManager: Wrapper<ConnectionManager>,enabled: boolean,) => void;
-  ConnectionManager_set_invalid_proxy: (connectionManager: Wrapper<ConnectionManager>,) => void;
-  ConnectionManager_set_ipv6_enabled: (connectionManager: Wrapper<ConnectionManager>,ipv6Enabled: boolean,) => void;
-  ConnectionManager_set_proxy: (connectionManager: Wrapper<ConnectionManager>,proxy: Wrapper<ConnectionProxyConfig>,) => void;
-  ConnectionManager_set_remote_config: (connectionManager: Wrapper<ConnectionManager>,remoteConfig: Wrapper<BridgedStringMap>,buildVariant: number,) => void;
-  ConnectionProxyConfig_new: (scheme: string,host: string,port: number,username: (string | null),password: (string | null),) => ConnectionProxyConfig;
-  CreateCallLinkCredentialPresentation_CheckValidContents: (presentationBytes: Uint8Array<ArrayBuffer>,) => void;
-  CreateCallLinkCredentialPresentation_Verify: (presentationBytes: Uint8Array<ArrayBuffer>,roomId: Uint8Array<ArrayBuffer>,now: Timestamp,serverParamsBytes: Uint8Array<ArrayBuffer>,callLinkParamsBytes: Uint8Array<ArrayBuffer>,) => void;
-  CreateCallLinkCredentialRequestContext_CheckValidContents: (contextBytes: Uint8Array<ArrayBuffer>,) => void;
-  CreateCallLinkCredentialRequestContext_GetRequest: (contextBytes: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  CreateCallLinkCredentialRequestContext_NewDeterministic: (roomId: Uint8Array<ArrayBuffer>,randomness: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  CreateCallLinkCredentialRequestContext_ReceiveResponse: (contextBytes: Uint8Array<ArrayBuffer>,responseBytes: Uint8Array<ArrayBuffer>,userId: Uint8Array<ArrayBuffer>,paramsBytes: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  CreateCallLinkCredentialRequest_CheckValidContents: (requestBytes: Uint8Array<ArrayBuffer>,) => void;
-  CreateCallLinkCredentialRequest_IssueDeterministic: (requestBytes: Uint8Array<ArrayBuffer>,userId: Uint8Array<ArrayBuffer>,timestamp: Timestamp,paramsBytes: Uint8Array<ArrayBuffer>,randomness: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  CreateCallLinkCredentialResponse_CheckValidContents: (responseBytes: Uint8Array<ArrayBuffer>,) => void;
-  CreateCallLinkCredential_CheckValidContents: (paramsBytes: Uint8Array<ArrayBuffer>,) => void;
-  CreateCallLinkCredential_PresentDeterministic: (credentialBytes: Uint8Array<ArrayBuffer>,roomId: Uint8Array<ArrayBuffer>,userId: Uint8Array<ArrayBuffer>,serverParamsBytes: Uint8Array<ArrayBuffer>,callLinkParamsBytes: Uint8Array<ArrayBuffer>,randomness: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  DecryptionErrorMessage_Deserialize: (data: Uint8Array<ArrayBuffer>,) => DecryptionErrorMessage;
-  DecryptionErrorMessage_ExtractFromSerializedContent: (bytes: Uint8Array<ArrayBuffer>,) => DecryptionErrorMessage;
-  DecryptionErrorMessage_ForOriginalMessage: (originalBytes: Uint8Array<ArrayBuffer>,originalType: number,originalTimestamp: Timestamp,originalSenderDeviceId: number,) => DecryptionErrorMessage;
-  DecryptionErrorMessage_GetDeviceId: (obj: Wrapper<DecryptionErrorMessage>,) => number;
-  DecryptionErrorMessage_GetRatchetKey: (m: Wrapper<DecryptionErrorMessage>,) => (PublicKey | null);
-  DecryptionErrorMessage_GetTimestamp: (obj: Wrapper<DecryptionErrorMessage>,) => Timestamp;
-  DecryptionErrorMessage_Serialize: (obj: Wrapper<DecryptionErrorMessage>,) => Uint8Array<ArrayBuffer>;
-  ExpiringProfileKeyCredentialResponse_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  ExpiringProfileKeyCredential_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  ExpiringProfileKeyCredential_GetExpirationTime: (credential: Serialized<ExpiringProfileKeyCredential>,) => Timestamp;
-  Fingerprint_DisplayString: (obj: Wrapper<Fingerprint>,) => string;
-  Fingerprint_New: (iterations: number,version: number,localIdentifier: Uint8Array<ArrayBuffer>,localKey: Wrapper<PublicKey>,remoteIdentifier: Uint8Array<ArrayBuffer>,remoteKey: Wrapper<PublicKey>,) => Fingerprint;
-  Fingerprint_ScannableEncoding: (obj: Wrapper<Fingerprint>,) => Uint8Array<ArrayBuffer>;
-  GenericServerPublicParams_CheckValidContents: (paramsBytes: Uint8Array<ArrayBuffer>,) => void;
-  GenericServerSecretParams_CheckValidContents: (paramsBytes: Uint8Array<ArrayBuffer>,) => void;
-  GenericServerSecretParams_GenerateDeterministic: (randomness: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  GenericServerSecretParams_GetPublicParams: (paramsBytes: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  GroupCipher_DecryptMessage: (sender: Wrapper<ProtocolAddress>,message: Uint8Array<ArrayBuffer>,store: SenderKeyStore,) => Promise<Uint8Array<ArrayBuffer>>;
-  GroupCipher_EncryptMessage: (sender: Wrapper<ProtocolAddress>,distributionId: Uuid,message: Uint8Array<ArrayBuffer>,store: SenderKeyStore,) => Promise<CiphertextMessage>;
-  GroupMasterKey_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  GroupPublicParams_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  GroupPublicParams_GetGroupIdentifier: (groupPublicParams: Serialized<GroupPublicParams>,) => Uint8Array<ArrayBuffer>;
-  GroupSecretParams_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  GroupSecretParams_DecryptBlobWithPadding: (params: Serialized<GroupSecretParams>,ciphertext: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  GroupSecretParams_DecryptProfileKey: (params: Serialized<GroupSecretParams>,profileKey: Serialized<ProfileKeyCiphertext>,userId: Uint8Array<ArrayBuffer>,) => Serialized<ProfileKey>;
-  GroupSecretParams_DecryptServiceId: (params: Serialized<GroupSecretParams>,ciphertext: Serialized<UuidCiphertext>,) => Uint8Array<ArrayBuffer>;
-  GroupSecretParams_DeriveFromMasterKey: (masterKey: Serialized<GroupMasterKey>,) => Serialized<GroupSecretParams>;
-  GroupSecretParams_EncryptBlobWithPaddingDeterministic: (params: Serialized<GroupSecretParams>,randomness: Uint8Array<ArrayBuffer>,plaintext: Uint8Array<ArrayBuffer>,paddingLen: number,) => Uint8Array<ArrayBuffer>;
-  GroupSecretParams_EncryptProfileKey: (params: Serialized<GroupSecretParams>,profileKey: Serialized<ProfileKey>,userId: Uint8Array<ArrayBuffer>,) => Serialized<ProfileKeyCiphertext>;
-  GroupSecretParams_EncryptServiceId: (params: Serialized<GroupSecretParams>,serviceId: Uint8Array<ArrayBuffer>,) => Serialized<UuidCiphertext>;
-  GroupSecretParams_GenerateDeterministic: (randomness: Uint8Array<ArrayBuffer>,) => Serialized<GroupSecretParams>;
-  GroupSecretParams_GetMasterKey: (params: Serialized<GroupSecretParams>,) => Serialized<GroupMasterKey>;
-  GroupSecretParams_GetPublicParams: (params: Serialized<GroupSecretParams>,) => Serialized<GroupPublicParams>;
-  GroupSendDerivedKeyPair_CheckValidContents: (bytes: Uint8Array<ArrayBuffer>,) => void;
-  GroupSendDerivedKeyPair_ForExpiration: (expiration: Timestamp,serverParams: Wrapper<ServerSecretParams>,) => Uint8Array<ArrayBuffer>;
-  GroupSendEndorsement_CallLinkParams_ToToken: (endorsement: Uint8Array<ArrayBuffer>,callLinkSecretParamsSerialized: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  GroupSendEndorsement_CheckValidContents: (bytes: Uint8Array<ArrayBuffer>,) => void;
-  GroupSendEndorsement_Combine: (endorsements: Array<Uint8Array<ArrayBuffer>>,) => Uint8Array<ArrayBuffer>;
-  GroupSendEndorsement_Remove: (endorsement: Uint8Array<ArrayBuffer>,toRemove: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  GroupSendEndorsement_ToToken: (endorsement: Uint8Array<ArrayBuffer>,groupParams: Serialized<GroupSecretParams>,) => Uint8Array<ArrayBuffer>;
-  GroupSendEndorsementsResponse_CheckValidContents: (bytes: Uint8Array<ArrayBuffer>,) => void;
-  GroupSendEndorsementsResponse_GetExpiration: (responseBytes: Uint8Array<ArrayBuffer>,) => Timestamp;
-  GroupSendEndorsementsResponse_IssueDeterministic: (concatenatedGroupMemberCiphertexts: Uint8Array<ArrayBuffer>,keyPair: Uint8Array<ArrayBuffer>,randomness: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts: (responseBytes: Uint8Array<ArrayBuffer>,concatenatedGroupMemberCiphertexts: Uint8Array<ArrayBuffer>,localUserCiphertext: Uint8Array<ArrayBuffer>,now: Timestamp,serverParams: Wrapper<ServerPublicParams>,) => Array<Uint8Array<ArrayBuffer>>;
-  GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds: (responseBytes: Uint8Array<ArrayBuffer>,groupMembers: Uint8Array<ArrayBuffer>,localUser: Uint8Array<ArrayBuffer>,now: Timestamp,groupParams: Serialized<GroupSecretParams>,serverParams: Wrapper<ServerPublicParams>,) => Array<Uint8Array<ArrayBuffer>>;
-  GroupSendFullToken_CheckValidContents: (bytes: Uint8Array<ArrayBuffer>,) => void;
-  GroupSendFullToken_GetExpiration: (token: Uint8Array<ArrayBuffer>,) => Timestamp;
-  GroupSendFullToken_Verify: (token: Uint8Array<ArrayBuffer>,userIds: Uint8Array<ArrayBuffer>,now: Timestamp,keyPair: Uint8Array<ArrayBuffer>,) => void;
-  GroupSendToken_CheckValidContents: (bytes: Uint8Array<ArrayBuffer>,) => void;
-  GroupSendToken_ToFullToken: (token: Uint8Array<ArrayBuffer>,expiration: Timestamp,) => Uint8Array<ArrayBuffer>;
-  HKDF_DeriveSecrets: (outputLength: number,ikm: Uint8Array<ArrayBuffer>,label: (Uint8Array<ArrayBuffer> | null),salt: (Uint8Array<ArrayBuffer> | null),) => Uint8Array<ArrayBuffer>;
-  HsmEnclaveClient_CompleteHandshake: (cli: Wrapper<HsmEnclaveClient>,handshakeReceived: Uint8Array<ArrayBuffer>,) => void;
-  HsmEnclaveClient_EstablishedRecv: (cli: Wrapper<HsmEnclaveClient>,receivedCiphertext: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  HsmEnclaveClient_EstablishedSend: (cli: Wrapper<HsmEnclaveClient>,plaintextToSend: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  HsmEnclaveClient_InitialRequest: (obj: Wrapper<HsmEnclaveClient>,) => Uint8Array<ArrayBuffer>;
-  HsmEnclaveClient_New: (trustedPublicKey: Uint8Array<ArrayBuffer>,trustedCodeHashes: Uint8Array<ArrayBuffer>,) => HsmEnclaveClient;
-  HttpRequest_add_header: (request: Wrapper<HttpRequest>,name: string,value: string,) => void;
-  HttpRequest_new: (method: string,path: string,bodyAsSlice: (Uint8Array<ArrayBuffer> | null),) => HttpRequest;
-  IdentityKeyPair_Deserialize: (input: Uint8Array<ArrayBuffer>,) => [PublicKey, PrivateKey];
-  IdentityKeyPair_Serialize: (publicKey: Wrapper<PublicKey>,privateKey: Wrapper<PrivateKey>,) => Uint8Array<ArrayBuffer>;
-  IdentityKeyPair_SignAlternateIdentity: (publicKey: Wrapper<PublicKey>,privateKey: Wrapper<PrivateKey>,otherIdentity: Wrapper<PublicKey>,) => Uint8Array<ArrayBuffer>;
-  IdentityKey_VerifyAlternateIdentity: (publicKey: Wrapper<PublicKey>,otherIdentity: Wrapper<PublicKey>,signature: Uint8Array<ArrayBuffer>,) => boolean;
-  IncrementalMac_CalculateChunkSize: (dataSize: number,) => number;
-  IncrementalMac_Finalize: (mac: Wrapper<IncrementalMac>,) => Uint8Array<ArrayBuffer>;
-  IncrementalMac_Initialize: (key: Uint8Array<ArrayBuffer>,chunkSize: number,) => IncrementalMac;
-  IncrementalMac_Update: (mac: Wrapper<IncrementalMac>,bytes: Uint8Array<ArrayBuffer>,offset: number,length: number,) => Uint8Array<ArrayBuffer>;
-  KeyTransparency_AciSearchKey: (aci: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  KeyTransparency_Check: (asyncRuntime: Wrapper<TokioAsyncContext>,environment: number,chatConnection: Wrapper<UnauthenticatedChatConnection>,aci: Uint8Array<ArrayBuffer>,aciIdentityKey: Wrapper<PublicKey>,e164: (string | null),unidentifiedAccessKey: (Uint8Array<ArrayBuffer> | null),usernameHash: (Uint8Array<ArrayBuffer> | null),accountData: (Uint8Array<ArrayBuffer> | null),lastDistinguishedTreeHead: (Uint8Array<ArrayBuffer> | null),isSelfCheck: boolean,isE164Discoverable: boolean,) => CancellablePromise<[Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>]>;
-  KeyTransparency_E164SearchKey: (e164: string,) => Uint8Array<ArrayBuffer>;
-  KeyTransparency_ResetDataField: (accountData: Uint8Array<ArrayBuffer>,field: number,) => Uint8Array<ArrayBuffer>;
-  KeyTransparency_UsernameHashSearchKey: (hash: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
+  AccountEntropyPool_IsValid: (account_entropy: string) => boolean;
+  Aes256GcmSiv_Decrypt: (
+    aes_gcm_siv: Wrapper<Aes256GcmSiv>,
+    ctext: Uint8Array<ArrayBuffer>,
+    nonce: Uint8Array<ArrayBuffer>,
+    associated_data: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  Aes256GcmSiv_Encrypt: (
+    aes_gcm_siv_obj: Wrapper<Aes256GcmSiv>,
+    ptext: Uint8Array<ArrayBuffer>,
+    nonce: Uint8Array<ArrayBuffer>,
+    associated_data: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  Aes256GcmSiv_New: (key: Uint8Array<ArrayBuffer>) => Aes256GcmSiv;
+  AuthCredentialPresentation_CheckValidContents: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  AuthCredentialPresentation_GetPniCiphertext: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => Serialized<UuidCiphertext>;
+  AuthCredentialPresentation_GetRedemptionTime: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => Timestamp;
+  AuthCredentialPresentation_GetUuidCiphertext: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => Serialized<UuidCiphertext>;
+  AuthCredentialWithPniResponse_CheckValidContents: (
+    bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  AuthCredentialWithPni_CheckValidContents: (
+    bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  AuthenticatedChatConnection_connect: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string,
+    receive_stories: boolean,
+    languages: Array<string>
+  ) => CancellablePromise<AuthenticatedChatConnection>;
+  AuthenticatedChatConnection_disconnect: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_get_upload_form: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    upload_length: bigint
+  ) => CancellablePromise<UploadForm>;
+  AuthenticatedChatConnection_info: (
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => ChatConnectionInfo;
+  AuthenticatedChatConnection_init_listener: (
+    chat: Wrapper<AuthenticatedChatConnection>,
+    listener: ChatListener
+  ) => void;
+  AuthenticatedChatConnection_preconnect: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    connection_manager: Wrapper<ConnectionManager>
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_send: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    http_request: Wrapper<HttpRequest>,
+    timeout_millis: number
+  ) => CancellablePromise<ChatResponse>;
+  AuthenticatedChatConnection_send_message: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    destination: Uint8Array<ArrayBuffer>,
+    timestamp: Timestamp,
+    device_ids: Uint32Array<ArrayBuffer>,
+    registration_ids: Uint32Array<ArrayBuffer>,
+    contents: Array<Wrapper<CiphertextMessage>>,
+    online_only: boolean,
+    is_urgent: boolean
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_send_raw_grpc: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    service: string,
+    method: string,
+    payload: Uint8Array<ArrayBuffer>
+  ) => CancellablePromise<Uint8Array<ArrayBuffer>>;
+  AuthenticatedChatConnection_send_sync_message: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    timestamp: Timestamp,
+    device_ids: Uint32Array<ArrayBuffer>,
+    registration_ids: Uint32Array<ArrayBuffer>,
+    contents: Array<Wrapper<CiphertextMessage>>,
+    is_urgent: boolean
+  ) => CancellablePromise<void>;
+  BackupAuthCredentialPresentation_CheckValidContents: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  BackupAuthCredentialPresentation_GetBackupId: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupAuthCredentialPresentation_GetBackupLevel: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => number;
+  BackupAuthCredentialPresentation_GetType: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => number;
+  BackupAuthCredentialPresentation_Verify: (
+    presentation_bytes: Uint8Array<ArrayBuffer>,
+    now: Timestamp,
+    server_params_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  BackupAuthCredentialRequestContext_CheckValidContents: (
+    context_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  BackupAuthCredentialRequestContext_GetRequest: (
+    context_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupAuthCredentialRequestContext_New: (
+    backup_key: Uint8Array<ArrayBuffer>,
+    uuid: Uuid
+  ) => Uint8Array<ArrayBuffer>;
+  BackupAuthCredentialRequestContext_ReceiveResponse: (
+    context_bytes: Uint8Array<ArrayBuffer>,
+    response_bytes: Uint8Array<ArrayBuffer>,
+    expected_redemption_time: Timestamp,
+    params_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupAuthCredentialRequest_CheckValidContents: (
+    request_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  BackupAuthCredentialRequest_IssueDeterministic: (
+    request_bytes: Uint8Array<ArrayBuffer>,
+    redemption_time: Timestamp,
+    backup_level: number,
+    credential_type: number,
+    params_bytes: Uint8Array<ArrayBuffer>,
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupAuthCredentialResponse_CheckValidContents: (
+    response_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  BackupAuthCredential_CheckValidContents: (
+    params_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  BackupAuthCredential_GetBackupId: (
+    credential_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupAuthCredential_GetBackupLevel: (
+    credential_bytes: Uint8Array<ArrayBuffer>
+  ) => number;
+  BackupAuthCredential_GetType: (
+    credential_bytes: Uint8Array<ArrayBuffer>
+  ) => number;
+  BackupAuthCredential_PresentDeterministic: (
+    credential_bytes: Uint8Array<ArrayBuffer>,
+    server_params_bytes: Uint8Array<ArrayBuffer>,
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupJsonExporter_ExportFrames: (
+    exporter: Wrapper<BackupJsonExporter>,
+    frames: Uint8Array<ArrayBuffer>
+  ) => Array<[string | null, string | null]>;
+  BackupJsonExporter_Finish: (exporter: Wrapper<BackupJsonExporter>) => void;
+  BackupJsonExporter_GetInitialChunk: (
+    exporter: Wrapper<BackupJsonExporter>
+  ) => string;
+  BackupJsonExporter_New: (
+    backup_info: Uint8Array<ArrayBuffer>,
+    should_validate: boolean
+  ) => BackupJsonExporter;
+  BackupKey_DeriveBackupId: (
+    backup_key: Uint8Array<ArrayBuffer>,
+    aci: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupKey_DeriveEcKey: (
+    backup_key: Uint8Array<ArrayBuffer>,
+    aci: Uint8Array<ArrayBuffer>
+  ) => PrivateKey;
+  BackupKey_DeriveLocalBackupMetadataKey: (
+    backup_key: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupKey_DeriveMediaEncryptionKey: (
+    backup_key: Uint8Array<ArrayBuffer>,
+    media_id: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupKey_DeriveMediaId: (
+    backup_key: Uint8Array<ArrayBuffer>,
+    media_name: string
+  ) => Uint8Array<ArrayBuffer>;
+  BackupKey_DeriveThumbnailTransitEncryptionKey: (
+    backup_key: Uint8Array<ArrayBuffer>,
+    media_id: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupRestoreResponse_GetForwardSecrecyToken: (
+    response: Wrapper<BackupRestoreResponse>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupRestoreResponse_GetNextBackupSecretData: (
+    response: Wrapper<BackupRestoreResponse>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupStoreResponse_GetForwardSecrecyToken: (
+    response: Wrapper<BackupStoreResponse>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupStoreResponse_GetNextBackupSecretData: (
+    response: Wrapper<BackupStoreResponse>
+  ) => Uint8Array<ArrayBuffer>;
+  BackupStoreResponse_GetOpaqueMetadata: (
+    response: Wrapper<BackupStoreResponse>
+  ) => Uint8Array<ArrayBuffer>;
+  BridgedStringMap_insert: (
+    map: Wrapper<BridgedStringMap>,
+    key: string,
+    value: string
+  ) => void;
+  BridgedStringMap_new: (initial_capacity: number) => BridgedStringMap;
+  CallLinkAuthCredentialPresentation_CheckValidContents: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  CallLinkAuthCredentialPresentation_GetUserId: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => Serialized<UuidCiphertext>;
+  CallLinkAuthCredentialPresentation_Verify: (
+    presentation_bytes: Uint8Array<ArrayBuffer>,
+    now: Timestamp,
+    server_params_bytes: Uint8Array<ArrayBuffer>,
+    call_link_params_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  CallLinkAuthCredentialResponse_CheckValidContents: (
+    response_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  CallLinkAuthCredentialResponse_IssueDeterministic: (
+    user_id: Uint8Array<ArrayBuffer>,
+    redemption_time: Timestamp,
+    params_bytes: Uint8Array<ArrayBuffer>,
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  CallLinkAuthCredentialResponse_Receive: (
+    response_bytes: Uint8Array<ArrayBuffer>,
+    user_id: Uint8Array<ArrayBuffer>,
+    redemption_time: Timestamp,
+    params_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  CallLinkAuthCredential_CheckValidContents: (
+    credential_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  CallLinkAuthCredential_PresentDeterministic: (
+    credential_bytes: Uint8Array<ArrayBuffer>,
+    user_id: Uint8Array<ArrayBuffer>,
+    redemption_time: Timestamp,
+    server_params_bytes: Uint8Array<ArrayBuffer>,
+    call_link_params_bytes: Uint8Array<ArrayBuffer>,
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  CallLinkPublicParams_CheckValidContents: (
+    params_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  CallLinkSecretParams_CheckValidContents: (
+    params_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  CallLinkSecretParams_DecryptUserId: (
+    params_bytes: Uint8Array<ArrayBuffer>,
+    user_id: Serialized<UuidCiphertext>
+  ) => Uint8Array<ArrayBuffer>;
+  CallLinkSecretParams_DeriveFromRootKey: (
+    root_key: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  CallLinkSecretParams_EncryptUserId: (
+    params_bytes: Uint8Array<ArrayBuffer>,
+    user_id: Uint8Array<ArrayBuffer>
+  ) => Serialized<UuidCiphertext>;
+  CallLinkSecretParams_GetPublicParams: (
+    params_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  Cds2ClientState_New: (
+    mrenclave: Uint8Array<ArrayBuffer>,
+    attestation_msg: Uint8Array<ArrayBuffer>,
+    current_timestamp: Timestamp
+  ) => SgxClientState;
+  CdsiLookup_complete: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    lookup: Wrapper<CdsiLookup>
+  ) => CancellablePromise<LookupResponse>;
+  CdsiLookup_new: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string,
+    request: Wrapper<LookupRequest>
+  ) => CancellablePromise<CdsiLookup>;
+  CdsiLookup_token: (lookup: Wrapper<CdsiLookup>) => Uint8Array<ArrayBuffer>;
+  ChatConnectionInfo_description: (
+    connection_info: Wrapper<ChatConnectionInfo>
+  ) => string;
+  ChatConnectionInfo_ip_version: (
+    connection_info: Wrapper<ChatConnectionInfo>
+  ) => number;
+  ChatConnectionInfo_local_port: (
+    connection_info: Wrapper<ChatConnectionInfo>
+  ) => number;
+  CiphertextMessage_FromPlaintextContent: (
+    m: Wrapper<PlaintextContent>
+  ) => CiphertextMessage;
+  CiphertextMessage_Serialize: (
+    obj: Wrapper<CiphertextMessage>
+  ) => Uint8Array<ArrayBuffer>;
+  CiphertextMessage_Type: (msg: Wrapper<CiphertextMessage>) => number;
+  ComparableBackup_GetComparableString: (
+    backup: Wrapper<ComparableBackup>
+  ) => string;
+  ComparableBackup_GetUnknownFields: (
+    backup: Wrapper<ComparableBackup>
+  ) => Array<string>;
+  ComparableBackup_ReadUnencrypted: (
+    stream: InputStream,
+    len: bigint,
+    purpose: number
+  ) => Promise<ComparableBackup>;
+  ConnectionManager_clear_proxy: (
+    connection_manager: Wrapper<ConnectionManager>
+  ) => void;
+  ConnectionManager_new: (
+    environment: number,
+    user_agent: string,
+    remote_config: Wrapper<BridgedStringMap>,
+    build_variant: number
+  ) => ConnectionManager;
+  ConnectionManager_on_network_change: (
+    connection_manager: Wrapper<ConnectionManager>
+  ) => void;
+  ConnectionManager_set_censorship_circumvention_enabled: (
+    connection_manager: Wrapper<ConnectionManager>,
+    enabled: boolean
+  ) => void;
+  ConnectionManager_set_invalid_proxy: (
+    connection_manager: Wrapper<ConnectionManager>
+  ) => void;
+  ConnectionManager_set_ipv6_enabled: (
+    connection_manager: Wrapper<ConnectionManager>,
+    ipv6_enabled: boolean
+  ) => void;
+  ConnectionManager_set_proxy: (
+    connection_manager: Wrapper<ConnectionManager>,
+    proxy: Wrapper<ConnectionProxyConfig>
+  ) => void;
+  ConnectionManager_set_remote_config: (
+    connection_manager: Wrapper<ConnectionManager>,
+    remote_config: Wrapper<BridgedStringMap>,
+    build_variant: number
+  ) => void;
+  ConnectionProxyConfig_new: (
+    scheme: string,
+    host: string,
+    port: number,
+    username: string | null,
+    password: string | null
+  ) => ConnectionProxyConfig;
+  CreateCallLinkCredentialPresentation_CheckValidContents: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  CreateCallLinkCredentialPresentation_Verify: (
+    presentation_bytes: Uint8Array<ArrayBuffer>,
+    room_id: Uint8Array<ArrayBuffer>,
+    now: Timestamp,
+    server_params_bytes: Uint8Array<ArrayBuffer>,
+    call_link_params_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  CreateCallLinkCredentialRequestContext_CheckValidContents: (
+    context_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  CreateCallLinkCredentialRequestContext_GetRequest: (
+    context_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  CreateCallLinkCredentialRequestContext_NewDeterministic: (
+    room_id: Uint8Array<ArrayBuffer>,
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  CreateCallLinkCredentialRequestContext_ReceiveResponse: (
+    context_bytes: Uint8Array<ArrayBuffer>,
+    response_bytes: Uint8Array<ArrayBuffer>,
+    user_id: Uint8Array<ArrayBuffer>,
+    params_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  CreateCallLinkCredentialRequest_CheckValidContents: (
+    request_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  CreateCallLinkCredentialRequest_IssueDeterministic: (
+    request_bytes: Uint8Array<ArrayBuffer>,
+    user_id: Uint8Array<ArrayBuffer>,
+    timestamp: Timestamp,
+    params_bytes: Uint8Array<ArrayBuffer>,
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  CreateCallLinkCredentialResponse_CheckValidContents: (
+    response_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  CreateCallLinkCredential_CheckValidContents: (
+    params_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  CreateCallLinkCredential_PresentDeterministic: (
+    credential_bytes: Uint8Array<ArrayBuffer>,
+    room_id: Uint8Array<ArrayBuffer>,
+    user_id: Uint8Array<ArrayBuffer>,
+    server_params_bytes: Uint8Array<ArrayBuffer>,
+    call_link_params_bytes: Uint8Array<ArrayBuffer>,
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  DecryptionErrorMessage_Deserialize: (
+    data: Uint8Array<ArrayBuffer>
+  ) => DecryptionErrorMessage;
+  DecryptionErrorMessage_ExtractFromSerializedContent: (
+    bytes: Uint8Array<ArrayBuffer>
+  ) => DecryptionErrorMessage;
+  DecryptionErrorMessage_ForOriginalMessage: (
+    original_bytes: Uint8Array<ArrayBuffer>,
+    original_type: number,
+    original_timestamp: Timestamp,
+    original_sender_device_id: number
+  ) => DecryptionErrorMessage;
+  DecryptionErrorMessage_GetDeviceId: (
+    obj: Wrapper<DecryptionErrorMessage>
+  ) => number;
+  DecryptionErrorMessage_GetRatchetKey: (
+    m: Wrapper<DecryptionErrorMessage>
+  ) => PublicKey | null;
+  DecryptionErrorMessage_GetTimestamp: (
+    obj: Wrapper<DecryptionErrorMessage>
+  ) => Timestamp;
+  DecryptionErrorMessage_Serialize: (
+    obj: Wrapper<DecryptionErrorMessage>
+  ) => Uint8Array<ArrayBuffer>;
+  ExpiringProfileKeyCredentialResponse_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  ExpiringProfileKeyCredential_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  ExpiringProfileKeyCredential_GetExpirationTime: (
+    credential: Serialized<ExpiringProfileKeyCredential>
+  ) => Timestamp;
+  Fingerprint_DisplayString: (obj: Wrapper<Fingerprint>) => string;
+  Fingerprint_New: (
+    iterations: number,
+    version: number,
+    local_identifier: Uint8Array<ArrayBuffer>,
+    local_key: Wrapper<PublicKey>,
+    remote_identifier: Uint8Array<ArrayBuffer>,
+    remote_key: Wrapper<PublicKey>
+  ) => Fingerprint;
+  Fingerprint_ScannableEncoding: (
+    obj: Wrapper<Fingerprint>
+  ) => Uint8Array<ArrayBuffer>;
+  GenericServerPublicParams_CheckValidContents: (
+    params_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  GenericServerSecretParams_CheckValidContents: (
+    params_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  GenericServerSecretParams_GenerateDeterministic: (
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  GenericServerSecretParams_GetPublicParams: (
+    params_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  GroupCipher_DecryptMessage: (
+    sender: Wrapper<ProtocolAddress>,
+    message: Uint8Array<ArrayBuffer>,
+    store: SenderKeyStore
+  ) => Promise<Uint8Array<ArrayBuffer>>;
+  GroupCipher_EncryptMessage: (
+    sender: Wrapper<ProtocolAddress>,
+    distribution_id: Uuid,
+    message: Uint8Array<ArrayBuffer>,
+    store: SenderKeyStore
+  ) => Promise<CiphertextMessage>;
+  GroupMasterKey_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>) => void;
+  GroupPublicParams_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  GroupPublicParams_GetGroupIdentifier: (
+    group_public_params: Serialized<GroupPublicParams>
+  ) => Uint8Array<ArrayBuffer>;
+  GroupSecretParams_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  GroupSecretParams_DecryptBlobWithPadding: (
+    params: Serialized<GroupSecretParams>,
+    ciphertext: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  GroupSecretParams_DecryptProfileKey: (
+    params: Serialized<GroupSecretParams>,
+    profile_key: Serialized<ProfileKeyCiphertext>,
+    user_id: Uint8Array<ArrayBuffer>
+  ) => Serialized<ProfileKey>;
+  GroupSecretParams_DecryptServiceId: (
+    params: Serialized<GroupSecretParams>,
+    ciphertext: Serialized<UuidCiphertext>
+  ) => Uint8Array<ArrayBuffer>;
+  GroupSecretParams_DeriveFromMasterKey: (
+    master_key: Serialized<GroupMasterKey>
+  ) => Serialized<GroupSecretParams>;
+  GroupSecretParams_EncryptBlobWithPaddingDeterministic: (
+    params: Serialized<GroupSecretParams>,
+    randomness: Uint8Array<ArrayBuffer>,
+    plaintext: Uint8Array<ArrayBuffer>,
+    padding_len: number
+  ) => Uint8Array<ArrayBuffer>;
+  GroupSecretParams_EncryptProfileKey: (
+    params: Serialized<GroupSecretParams>,
+    profile_key: Serialized<ProfileKey>,
+    user_id: Uint8Array<ArrayBuffer>
+  ) => Serialized<ProfileKeyCiphertext>;
+  GroupSecretParams_EncryptServiceId: (
+    params: Serialized<GroupSecretParams>,
+    service_id: Uint8Array<ArrayBuffer>
+  ) => Serialized<UuidCiphertext>;
+  GroupSecretParams_GenerateDeterministic: (
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Serialized<GroupSecretParams>;
+  GroupSecretParams_GetMasterKey: (
+    params: Serialized<GroupSecretParams>
+  ) => Serialized<GroupMasterKey>;
+  GroupSecretParams_GetPublicParams: (
+    params: Serialized<GroupSecretParams>
+  ) => Serialized<GroupPublicParams>;
+  GroupSendDerivedKeyPair_CheckValidContents: (
+    bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  GroupSendDerivedKeyPair_ForExpiration: (
+    expiration: Timestamp,
+    server_params: Wrapper<ServerSecretParams>
+  ) => Uint8Array<ArrayBuffer>;
+  GroupSendEndorsement_CallLinkParams_ToToken: (
+    endorsement: Uint8Array<ArrayBuffer>,
+    call_link_secret_params_serialized: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  GroupSendEndorsement_CheckValidContents: (
+    bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  GroupSendEndorsement_Combine: (
+    endorsements: Array<Uint8Array<ArrayBuffer>>
+  ) => Uint8Array<ArrayBuffer>;
+  GroupSendEndorsement_Remove: (
+    endorsement: Uint8Array<ArrayBuffer>,
+    to_remove: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  GroupSendEndorsement_ToToken: (
+    endorsement: Uint8Array<ArrayBuffer>,
+    group_params: Serialized<GroupSecretParams>
+  ) => Uint8Array<ArrayBuffer>;
+  GroupSendEndorsementsResponse_CheckValidContents: (
+    bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  GroupSendEndorsementsResponse_GetExpiration: (
+    response_bytes: Uint8Array<ArrayBuffer>
+  ) => Timestamp;
+  GroupSendEndorsementsResponse_IssueDeterministic: (
+    concatenated_group_member_ciphertexts: Uint8Array<ArrayBuffer>,
+    key_pair: Uint8Array<ArrayBuffer>,
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts: (
+    response_bytes: Uint8Array<ArrayBuffer>,
+    concatenated_group_member_ciphertexts: Uint8Array<ArrayBuffer>,
+    local_user_ciphertext: Uint8Array<ArrayBuffer>,
+    now: Timestamp,
+    server_params: Wrapper<ServerPublicParams>
+  ) => Array<Uint8Array<ArrayBuffer>>;
+  GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds: (
+    response_bytes: Uint8Array<ArrayBuffer>,
+    group_members: Uint8Array<ArrayBuffer>,
+    local_user: Uint8Array<ArrayBuffer>,
+    now: Timestamp,
+    group_params: Serialized<GroupSecretParams>,
+    server_params: Wrapper<ServerPublicParams>
+  ) => Array<Uint8Array<ArrayBuffer>>;
+  GroupSendFullToken_CheckValidContents: (
+    bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  GroupSendFullToken_GetExpiration: (
+    token: Uint8Array<ArrayBuffer>
+  ) => Timestamp;
+  GroupSendFullToken_Verify: (
+    token: Uint8Array<ArrayBuffer>,
+    user_ids: Uint8Array<ArrayBuffer>,
+    now: Timestamp,
+    key_pair: Uint8Array<ArrayBuffer>
+  ) => void;
+  GroupSendToken_CheckValidContents: (bytes: Uint8Array<ArrayBuffer>) => void;
+  GroupSendToken_ToFullToken: (
+    token: Uint8Array<ArrayBuffer>,
+    expiration: Timestamp
+  ) => Uint8Array<ArrayBuffer>;
+  HKDF_DeriveSecrets: (
+    output_length: number,
+    ikm: Uint8Array<ArrayBuffer>,
+    label: Uint8Array<ArrayBuffer> | null,
+    salt: Uint8Array<ArrayBuffer> | null
+  ) => Uint8Array<ArrayBuffer>;
+  HsmEnclaveClient_CompleteHandshake: (
+    cli: Wrapper<HsmEnclaveClient>,
+    handshake_received: Uint8Array<ArrayBuffer>
+  ) => void;
+  HsmEnclaveClient_EstablishedRecv: (
+    cli: Wrapper<HsmEnclaveClient>,
+    received_ciphertext: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  HsmEnclaveClient_EstablishedSend: (
+    cli: Wrapper<HsmEnclaveClient>,
+    plaintext_to_send: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  HsmEnclaveClient_InitialRequest: (
+    obj: Wrapper<HsmEnclaveClient>
+  ) => Uint8Array<ArrayBuffer>;
+  HsmEnclaveClient_New: (
+    trusted_public_key: Uint8Array<ArrayBuffer>,
+    trusted_code_hashes: Uint8Array<ArrayBuffer>
+  ) => HsmEnclaveClient;
+  HttpRequest_add_header: (
+    request: Wrapper<HttpRequest>,
+    name: string,
+    value: string
+  ) => void;
+  HttpRequest_new: (
+    method: string,
+    path: string,
+    body_as_slice: Uint8Array<ArrayBuffer> | null
+  ) => HttpRequest;
+  IdentityKeyPair_Deserialize: (
+    input: Uint8Array<ArrayBuffer>
+  ) => [PublicKey, PrivateKey];
+  IdentityKeyPair_Serialize: (
+    public_key: Wrapper<PublicKey>,
+    private_key: Wrapper<PrivateKey>
+  ) => Uint8Array<ArrayBuffer>;
+  IdentityKeyPair_SignAlternateIdentity: (
+    public_key: Wrapper<PublicKey>,
+    private_key: Wrapper<PrivateKey>,
+    other_identity: Wrapper<PublicKey>
+  ) => Uint8Array<ArrayBuffer>;
+  IdentityKey_VerifyAlternateIdentity: (
+    public_key: Wrapper<PublicKey>,
+    other_identity: Wrapper<PublicKey>,
+    signature: Uint8Array<ArrayBuffer>
+  ) => boolean;
+  IncrementalMac_CalculateChunkSize: (data_size: number) => number;
+  IncrementalMac_Finalize: (
+    mac: Wrapper<IncrementalMac>
+  ) => Uint8Array<ArrayBuffer>;
+  IncrementalMac_Initialize: (
+    key: Uint8Array<ArrayBuffer>,
+    chunk_size: number
+  ) => IncrementalMac;
+  IncrementalMac_Update: (
+    mac: Wrapper<IncrementalMac>,
+    bytes: Uint8Array<ArrayBuffer>,
+    offset: number,
+    length: number
+  ) => Uint8Array<ArrayBuffer>;
+  KeyTransparency_AciSearchKey: (
+    aci: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  KeyTransparency_Check: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    environment: number,
+    chat_connection: Wrapper<UnauthenticatedChatConnection>,
+    aci: Uint8Array<ArrayBuffer>,
+    aci_identity_key: Wrapper<PublicKey>,
+    e164: string | null,
+    unidentified_access_key: Uint8Array<ArrayBuffer> | null,
+    username_hash: Uint8Array<ArrayBuffer> | null,
+    account_data: Uint8Array<ArrayBuffer> | null,
+    last_distinguished_tree_head: Uint8Array<ArrayBuffer> | null,
+    is_self_check: boolean,
+    is_e164_discoverable: boolean
+  ) => CancellablePromise<[Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>]>;
+  KeyTransparency_E164SearchKey: (e164: string) => Uint8Array<ArrayBuffer>;
+  KeyTransparency_ResetDataField: (
+    account_data: Uint8Array<ArrayBuffer>,
+    field: number
+  ) => Uint8Array<ArrayBuffer>;
+  KeyTransparency_UsernameHashSearchKey: (
+    hash: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
   KyberKeyPair_Generate: () => KyberKeyPair;
-  KyberKeyPair_GetPublicKey: (keyPair: Wrapper<KyberKeyPair>,) => KyberPublicKey;
-  KyberKeyPair_GetSecretKey: (keyPair: Wrapper<KyberKeyPair>,) => KyberSecretKey;
-  KyberPreKeyRecord_Deserialize: (data: Uint8Array<ArrayBuffer>,) => KyberPreKeyRecord;
-  KyberPreKeyRecord_GetId: (obj: Wrapper<KyberPreKeyRecord>,) => number;
-  KyberPreKeyRecord_GetKeyPair: (obj: Wrapper<KyberPreKeyRecord>,) => KyberKeyPair;
-  KyberPreKeyRecord_GetPublicKey: (obj: Wrapper<KyberPreKeyRecord>,) => KyberPublicKey;
-  KyberPreKeyRecord_GetSecretKey: (obj: Wrapper<KyberPreKeyRecord>,) => KyberSecretKey;
-  KyberPreKeyRecord_GetSignature: (obj: Wrapper<KyberPreKeyRecord>,) => Uint8Array<ArrayBuffer>;
-  KyberPreKeyRecord_GetTimestamp: (obj: Wrapper<KyberPreKeyRecord>,) => Timestamp;
-  KyberPreKeyRecord_New: (id: number,timestamp: Timestamp,keyPair: Wrapper<KyberKeyPair>,signature: Uint8Array<ArrayBuffer>,) => KyberPreKeyRecord;
-  KyberPreKeyRecord_Serialize: (obj: Wrapper<KyberPreKeyRecord>,) => Uint8Array<ArrayBuffer>;
-  KyberPublicKey_Deserialize: (data: Uint8Array<ArrayBuffer>,) => KyberPublicKey;
-  KyberPublicKey_Equals: (lhs: Wrapper<KyberPublicKey>,rhs: Wrapper<KyberPublicKey>,) => boolean;
-  KyberPublicKey_Serialize: (obj: Wrapper<KyberPublicKey>,) => Uint8Array<ArrayBuffer>;
-  KyberSecretKey_Deserialize: (data: Uint8Array<ArrayBuffer>,) => KyberSecretKey;
-  KyberSecretKey_Serialize: (obj: Wrapper<KyberSecretKey>,) => Uint8Array<ArrayBuffer>;
-  LookupRequest_addAciAndAccessKey: (request: Wrapper<LookupRequest>,aci: Uint8Array<ArrayBuffer>,accessKey: Uint8Array<ArrayBuffer>,) => void;
-  LookupRequest_addE164: (request: Wrapper<LookupRequest>,e164: string,) => void;
-  LookupRequest_addPreviousE164: (request: Wrapper<LookupRequest>,e164: string,) => void;
+  KyberKeyPair_GetPublicKey: (
+    key_pair: Wrapper<KyberKeyPair>
+  ) => KyberPublicKey;
+  KyberKeyPair_GetSecretKey: (
+    key_pair: Wrapper<KyberKeyPair>
+  ) => KyberSecretKey;
+  KyberPreKeyRecord_Deserialize: (
+    data: Uint8Array<ArrayBuffer>
+  ) => KyberPreKeyRecord;
+  KyberPreKeyRecord_GetId: (obj: Wrapper<KyberPreKeyRecord>) => number;
+  KyberPreKeyRecord_GetKeyPair: (
+    obj: Wrapper<KyberPreKeyRecord>
+  ) => KyberKeyPair;
+  KyberPreKeyRecord_GetPublicKey: (
+    obj: Wrapper<KyberPreKeyRecord>
+  ) => KyberPublicKey;
+  KyberPreKeyRecord_GetSecretKey: (
+    obj: Wrapper<KyberPreKeyRecord>
+  ) => KyberSecretKey;
+  KyberPreKeyRecord_GetSignature: (
+    obj: Wrapper<KyberPreKeyRecord>
+  ) => Uint8Array<ArrayBuffer>;
+  KyberPreKeyRecord_GetTimestamp: (
+    obj: Wrapper<KyberPreKeyRecord>
+  ) => Timestamp;
+  KyberPreKeyRecord_New: (
+    id: number,
+    timestamp: Timestamp,
+    key_pair: Wrapper<KyberKeyPair>,
+    signature: Uint8Array<ArrayBuffer>
+  ) => KyberPreKeyRecord;
+  KyberPreKeyRecord_Serialize: (
+    obj: Wrapper<KyberPreKeyRecord>
+  ) => Uint8Array<ArrayBuffer>;
+  KyberPublicKey_Deserialize: (data: Uint8Array<ArrayBuffer>) => KyberPublicKey;
+  KyberPublicKey_Equals: (
+    lhs: Wrapper<KyberPublicKey>,
+    rhs: Wrapper<KyberPublicKey>
+  ) => boolean;
+  KyberPublicKey_Serialize: (
+    obj: Wrapper<KyberPublicKey>
+  ) => Uint8Array<ArrayBuffer>;
+  KyberSecretKey_Deserialize: (data: Uint8Array<ArrayBuffer>) => KyberSecretKey;
+  KyberSecretKey_Serialize: (
+    obj: Wrapper<KyberSecretKey>
+  ) => Uint8Array<ArrayBuffer>;
+  LookupRequest_addAciAndAccessKey: (
+    request: Wrapper<LookupRequest>,
+    aci: Uint8Array<ArrayBuffer>,
+    access_key: Uint8Array<ArrayBuffer>
+  ) => void;
+  LookupRequest_addE164: (
+    request: Wrapper<LookupRequest>,
+    e164: string
+  ) => void;
+  LookupRequest_addPreviousE164: (
+    request: Wrapper<LookupRequest>,
+    e164: string
+  ) => void;
   LookupRequest_new: () => LookupRequest;
-  LookupRequest_setToken: (request: Wrapper<LookupRequest>,token: Uint8Array<ArrayBuffer>,) => void;
-  MessageBackupKey_FromAccountEntropyPool: (accountEntropy: AccountEntropyPool,aci: Uint8Array<ArrayBuffer>,forwardSecrecyToken: (Uint8Array<ArrayBuffer> | null),) => MessageBackupKey;
-  MessageBackupKey_FromBackupKeyAndBackupId: (backupKey: Uint8Array<ArrayBuffer>,backupId: Uint8Array<ArrayBuffer>,forwardSecrecyToken: (Uint8Array<ArrayBuffer> | null),) => MessageBackupKey;
-  MessageBackupKey_GetAesKey: (key: Wrapper<MessageBackupKey>,) => Uint8Array<ArrayBuffer>;
-  MessageBackupKey_GetHmacKey: (key: Wrapper<MessageBackupKey>,) => Uint8Array<ArrayBuffer>;
-  MessageBackupValidator_Validate: (key: Wrapper<MessageBackupKey>,firstStream: InputStream,secondStream: InputStream,len: bigint,purpose: number,) => Promise<MessageBackupValidationOutcome>;
-  MinidumpToJSONString: (buffer: Uint8Array<ArrayBuffer>,) => string;
-  Mp4Sanitizer_Sanitize: (input: InputStream,len: bigint,) => Promise<SanitizedMetadata>;
-  OnlineBackupValidator_AddFrame: (backup: Wrapper<OnlineBackupValidator>,frame: Uint8Array<ArrayBuffer>,) => void;
-  OnlineBackupValidator_Finalize: (backup: Wrapper<OnlineBackupValidator>,) => void;
-  OnlineBackupValidator_New: (backupInfoFrame: Uint8Array<ArrayBuffer>,purpose: number,) => OnlineBackupValidator;
-  PinHash_AccessKey: (ph: Wrapper<PinHash>,) => Uint8Array<ArrayBuffer>;
-  PinHash_EncryptionKey: (ph: Wrapper<PinHash>,) => Uint8Array<ArrayBuffer>;
-  PinHash_FromSalt: (pin: Uint8Array<ArrayBuffer>,salt: Uint8Array<ArrayBuffer>,) => PinHash;
-  PinHash_FromUsernameMrenclave: (pin: Uint8Array<ArrayBuffer>,username: string,mrenclave: Uint8Array<ArrayBuffer>,) => PinHash;
-  Pin_LocalHash: (pin: Uint8Array<ArrayBuffer>,) => string;
-  Pin_VerifyLocalHash: (encodedHash: string,pin: Uint8Array<ArrayBuffer>,) => boolean;
-  PlaintextContent_Deserialize: (data: Uint8Array<ArrayBuffer>,) => PlaintextContent;
-  PlaintextContent_FromDecryptionErrorMessage: (m: Wrapper<DecryptionErrorMessage>,) => PlaintextContent;
-  PlaintextContent_GetBody: (obj: Wrapper<PlaintextContent>,) => Uint8Array<ArrayBuffer>;
-  PlaintextContent_Serialize: (obj: Wrapper<PlaintextContent>,) => Uint8Array<ArrayBuffer>;
-  PreKeyBundle_GetDeviceId: (obj: Wrapper<PreKeyBundle>,) => number;
-  PreKeyBundle_GetIdentityKey: (p: Wrapper<PreKeyBundle>,) => PublicKey;
-  PreKeyBundle_GetKyberPreKeyId: (obj: Wrapper<PreKeyBundle>,) => number;
-  PreKeyBundle_GetKyberPreKeyPublic: (bundle: Wrapper<PreKeyBundle>,) => KyberPublicKey;
-  PreKeyBundle_GetKyberPreKeySignature: (obj: Wrapper<PreKeyBundle>,) => Uint8Array<ArrayBuffer>;
-  PreKeyBundle_GetPreKeyId: (obj: Wrapper<PreKeyBundle>,) => (number | null);
-  PreKeyBundle_GetPreKeyPublic: (obj: Wrapper<PreKeyBundle>,) => (PublicKey | null);
-  PreKeyBundle_GetRegistrationId: (obj: Wrapper<PreKeyBundle>,) => number;
-  PreKeyBundle_GetSignedPreKeyId: (obj: Wrapper<PreKeyBundle>,) => number;
-  PreKeyBundle_GetSignedPreKeyPublic: (obj: Wrapper<PreKeyBundle>,) => PublicKey;
-  PreKeyBundle_GetSignedPreKeySignature: (obj: Wrapper<PreKeyBundle>,) => Uint8Array<ArrayBuffer>;
-  PreKeyBundle_New: (registrationId: number,deviceId: number,prekeyId: (number | null),prekey: (Wrapper<PublicKey> | null),signedPrekeyId: number,signedPrekey: Wrapper<PublicKey>,signedPrekeySignature: Uint8Array<ArrayBuffer>,identityKey: Wrapper<PublicKey>,kyberPrekeyId: number,kyberPrekey: Wrapper<KyberPublicKey>,kyberPrekeySignature: Uint8Array<ArrayBuffer>,) => PreKeyBundle;
-  PreKeyRecord_Deserialize: (data: Uint8Array<ArrayBuffer>,) => PreKeyRecord;
-  PreKeyRecord_GetId: (obj: Wrapper<PreKeyRecord>,) => number;
-  PreKeyRecord_GetPrivateKey: (obj: Wrapper<PreKeyRecord>,) => PrivateKey;
-  PreKeyRecord_GetPublicKey: (obj: Wrapper<PreKeyRecord>,) => PublicKey;
-  PreKeyRecord_New: (id: number,pubKey: Wrapper<PublicKey>,privKey: Wrapper<PrivateKey>,) => PreKeyRecord;
-  PreKeyRecord_Serialize: (obj: Wrapper<PreKeyRecord>,) => Uint8Array<ArrayBuffer>;
-  PreKeySignalMessage_Deserialize: (data: Uint8Array<ArrayBuffer>,) => PreKeySignalMessage;
-  PreKeySignalMessage_GetPreKeyId: (obj: Wrapper<PreKeySignalMessage>,) => (number | null);
-  PreKeySignalMessage_GetRegistrationId: (obj: Wrapper<PreKeySignalMessage>,) => number;
-  PreKeySignalMessage_GetSignedPreKeyId: (obj: Wrapper<PreKeySignalMessage>,) => number;
-  PreKeySignalMessage_GetVersion: (obj: Wrapper<PreKeySignalMessage>,) => number;
-  PreKeySignalMessage_New: (messageVersion: number,registrationId: number,preKeyId: (number | null),signedPreKeyId: number,baseKey: Wrapper<PublicKey>,identityKey: Wrapper<PublicKey>,signalMessage: Wrapper<SignalMessage>,) => PreKeySignalMessage;
-  PreKeySignalMessage_Serialize: (obj: Wrapper<PreKeySignalMessage>,) => Uint8Array<ArrayBuffer>;
-  PrivateKey_Agree: (privateKey: Wrapper<PrivateKey>,publicKey: Wrapper<PublicKey>,) => Uint8Array<ArrayBuffer>;
-  PrivateKey_Deserialize: (data: Uint8Array<ArrayBuffer>,) => PrivateKey;
+  LookupRequest_setToken: (
+    request: Wrapper<LookupRequest>,
+    token: Uint8Array<ArrayBuffer>
+  ) => void;
+  MessageBackupKey_FromAccountEntropyPool: (
+    account_entropy: AccountEntropyPool,
+    aci: Uint8Array<ArrayBuffer>,
+    forward_secrecy_token: Uint8Array<ArrayBuffer> | null
+  ) => MessageBackupKey;
+  MessageBackupKey_FromBackupKeyAndBackupId: (
+    backup_key: Uint8Array<ArrayBuffer>,
+    backup_id: Uint8Array<ArrayBuffer>,
+    forward_secrecy_token: Uint8Array<ArrayBuffer> | null
+  ) => MessageBackupKey;
+  MessageBackupKey_GetAesKey: (
+    key: Wrapper<MessageBackupKey>
+  ) => Uint8Array<ArrayBuffer>;
+  MessageBackupKey_GetHmacKey: (
+    key: Wrapper<MessageBackupKey>
+  ) => Uint8Array<ArrayBuffer>;
+  MessageBackupValidator_Validate: (
+    key: Wrapper<MessageBackupKey>,
+    first_stream: InputStream,
+    second_stream: InputStream,
+    len: bigint,
+    purpose: number
+  ) => Promise<MessageBackupValidationOutcome>;
+  MinidumpToJSONString: (buffer: Uint8Array<ArrayBuffer>) => string;
+  Mp4Sanitizer_Sanitize: (
+    input: InputStream,
+    len: bigint
+  ) => Promise<SanitizedMetadata>;
+  OnlineBackupValidator_AddFrame: (
+    backup: Wrapper<OnlineBackupValidator>,
+    frame: Uint8Array<ArrayBuffer>
+  ) => void;
+  OnlineBackupValidator_Finalize: (
+    backup: Wrapper<OnlineBackupValidator>
+  ) => void;
+  OnlineBackupValidator_New: (
+    backup_info_frame: Uint8Array<ArrayBuffer>,
+    purpose: number
+  ) => OnlineBackupValidator;
+  PinHash_AccessKey: (ph: Wrapper<PinHash>) => Uint8Array<ArrayBuffer>;
+  PinHash_EncryptionKey: (ph: Wrapper<PinHash>) => Uint8Array<ArrayBuffer>;
+  PinHash_FromSalt: (
+    pin: Uint8Array<ArrayBuffer>,
+    salt: Uint8Array<ArrayBuffer>
+  ) => PinHash;
+  PinHash_FromUsernameMrenclave: (
+    pin: Uint8Array<ArrayBuffer>,
+    username: string,
+    mrenclave: Uint8Array<ArrayBuffer>
+  ) => PinHash;
+  Pin_LocalHash: (pin: Uint8Array<ArrayBuffer>) => string;
+  Pin_VerifyLocalHash: (
+    encoded_hash: string,
+    pin: Uint8Array<ArrayBuffer>
+  ) => boolean;
+  PlaintextContent_Deserialize: (
+    data: Uint8Array<ArrayBuffer>
+  ) => PlaintextContent;
+  PlaintextContent_FromDecryptionErrorMessage: (
+    m: Wrapper<DecryptionErrorMessage>
+  ) => PlaintextContent;
+  PlaintextContent_GetBody: (
+    obj: Wrapper<PlaintextContent>
+  ) => Uint8Array<ArrayBuffer>;
+  PlaintextContent_Serialize: (
+    obj: Wrapper<PlaintextContent>
+  ) => Uint8Array<ArrayBuffer>;
+  PreKeyBundle_GetDeviceId: (obj: Wrapper<PreKeyBundle>) => number;
+  PreKeyBundle_GetIdentityKey: (p: Wrapper<PreKeyBundle>) => PublicKey;
+  PreKeyBundle_GetKyberPreKeyId: (obj: Wrapper<PreKeyBundle>) => number;
+  PreKeyBundle_GetKyberPreKeyPublic: (
+    bundle: Wrapper<PreKeyBundle>
+  ) => KyberPublicKey;
+  PreKeyBundle_GetKyberPreKeySignature: (
+    obj: Wrapper<PreKeyBundle>
+  ) => Uint8Array<ArrayBuffer>;
+  PreKeyBundle_GetPreKeyId: (obj: Wrapper<PreKeyBundle>) => number | null;
+  PreKeyBundle_GetPreKeyPublic: (
+    obj: Wrapper<PreKeyBundle>
+  ) => PublicKey | null;
+  PreKeyBundle_GetRegistrationId: (obj: Wrapper<PreKeyBundle>) => number;
+  PreKeyBundle_GetSignedPreKeyId: (obj: Wrapper<PreKeyBundle>) => number;
+  PreKeyBundle_GetSignedPreKeyPublic: (obj: Wrapper<PreKeyBundle>) => PublicKey;
+  PreKeyBundle_GetSignedPreKeySignature: (
+    obj: Wrapper<PreKeyBundle>
+  ) => Uint8Array<ArrayBuffer>;
+  PreKeyBundle_New: (
+    registration_id: number,
+    device_id: number,
+    prekey_id: number | null,
+    prekey: Wrapper<PublicKey> | null,
+    signed_prekey_id: number,
+    signed_prekey: Wrapper<PublicKey>,
+    signed_prekey_signature: Uint8Array<ArrayBuffer>,
+    identity_key: Wrapper<PublicKey>,
+    kyber_prekey_id: number,
+    kyber_prekey: Wrapper<KyberPublicKey>,
+    kyber_prekey_signature: Uint8Array<ArrayBuffer>
+  ) => PreKeyBundle;
+  PreKeyRecord_Deserialize: (data: Uint8Array<ArrayBuffer>) => PreKeyRecord;
+  PreKeyRecord_GetId: (obj: Wrapper<PreKeyRecord>) => number;
+  PreKeyRecord_GetPrivateKey: (obj: Wrapper<PreKeyRecord>) => PrivateKey;
+  PreKeyRecord_GetPublicKey: (obj: Wrapper<PreKeyRecord>) => PublicKey;
+  PreKeyRecord_New: (
+    id: number,
+    pub_key: Wrapper<PublicKey>,
+    priv_key: Wrapper<PrivateKey>
+  ) => PreKeyRecord;
+  PreKeyRecord_Serialize: (
+    obj: Wrapper<PreKeyRecord>
+  ) => Uint8Array<ArrayBuffer>;
+  PreKeySignalMessage_Deserialize: (
+    data: Uint8Array<ArrayBuffer>
+  ) => PreKeySignalMessage;
+  PreKeySignalMessage_GetPreKeyId: (
+    obj: Wrapper<PreKeySignalMessage>
+  ) => number | null;
+  PreKeySignalMessage_GetRegistrationId: (
+    obj: Wrapper<PreKeySignalMessage>
+  ) => number;
+  PreKeySignalMessage_GetSignedPreKeyId: (
+    obj: Wrapper<PreKeySignalMessage>
+  ) => number;
+  PreKeySignalMessage_GetVersion: (obj: Wrapper<PreKeySignalMessage>) => number;
+  PreKeySignalMessage_New: (
+    message_version: number,
+    registration_id: number,
+    pre_key_id: number | null,
+    signed_pre_key_id: number,
+    base_key: Wrapper<PublicKey>,
+    identity_key: Wrapper<PublicKey>,
+    signal_message: Wrapper<SignalMessage>
+  ) => PreKeySignalMessage;
+  PreKeySignalMessage_Serialize: (
+    obj: Wrapper<PreKeySignalMessage>
+  ) => Uint8Array<ArrayBuffer>;
+  PrivateKey_Agree: (
+    private_key: Wrapper<PrivateKey>,
+    public_key: Wrapper<PublicKey>
+  ) => Uint8Array<ArrayBuffer>;
+  PrivateKey_Deserialize: (data: Uint8Array<ArrayBuffer>) => PrivateKey;
   PrivateKey_Generate: () => PrivateKey;
-  PrivateKey_GetPublicKey: (k: Wrapper<PrivateKey>,) => PublicKey;
-  PrivateKey_HpkeOpen: (sk: Wrapper<PrivateKey>,ciphertext: Uint8Array<ArrayBuffer>,info: Uint8Array<ArrayBuffer>,associatedData: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  PrivateKey_Serialize: (obj: Wrapper<PrivateKey>,) => Uint8Array<ArrayBuffer>;
-  PrivateKey_Sign: (key: Wrapper<PrivateKey>,message: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  ProfileKeyCiphertext_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  ProfileKeyCommitment_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  ProfileKeyCredentialPresentation_CheckValidContents: (presentationBytes: Uint8Array<ArrayBuffer>,) => void;
-  ProfileKeyCredentialPresentation_GetProfileKeyCiphertext: (presentationBytes: Uint8Array<ArrayBuffer>,) => Serialized<ProfileKeyCiphertext>;
-  ProfileKeyCredentialPresentation_GetUuidCiphertext: (presentationBytes: Uint8Array<ArrayBuffer>,) => Serialized<UuidCiphertext>;
-  ProfileKeyCredentialRequestContext_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  ProfileKeyCredentialRequestContext_GetRequest: (context: Serialized<ProfileKeyCredentialRequestContext>,) => Serialized<ProfileKeyCredentialRequest>;
-  ProfileKeyCredentialRequest_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  ProfileKey_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  ProfileKey_DeriveAccessKey: (profileKey: Serialized<ProfileKey>,) => Uint8Array<ArrayBuffer>;
-  ProfileKey_GetCommitment: (profileKey: Serialized<ProfileKey>,userId: Uint8Array<ArrayBuffer>,) => Serialized<ProfileKeyCommitment>;
-  ProfileKey_GetProfileKeyVersion: (profileKey: Serialized<ProfileKey>,userId: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  ProtocolAddress_DeviceId: (obj: Wrapper<ProtocolAddress>,) => number;
-  ProtocolAddress_Name: (obj: Wrapper<ProtocolAddress>,) => string;
-  ProtocolAddress_New: (name: string,deviceId: number,) => ProtocolAddress;
-  ProvisioningChatConnection_connect: (asyncRuntime: Wrapper<TokioAsyncContext>,connectionManager: Wrapper<ConnectionManager>,) => CancellablePromise<ProvisioningChatConnection>;
-  ProvisioningChatConnection_disconnect: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<ProvisioningChatConnection>,) => CancellablePromise<void>;
-  ProvisioningChatConnection_info: (chat: Wrapper<ProvisioningChatConnection>,) => ChatConnectionInfo;
-  ProvisioningChatConnection_init_listener: (chat: Wrapper<ProvisioningChatConnection>,listener: ProvisioningListener,) => void;
-  PublicKey_Deserialize: (data: Uint8Array<ArrayBuffer>,) => PublicKey;
-  PublicKey_Equals: (lhs: Wrapper<PublicKey>,rhs: Wrapper<PublicKey>,) => boolean;
-  PublicKey_GetPublicKeyBytes: (obj: Wrapper<PublicKey>,) => Uint8Array<ArrayBuffer>;
-  PublicKey_HpkeSeal: (pk: Wrapper<PublicKey>,plaintext: Uint8Array<ArrayBuffer>,info: Uint8Array<ArrayBuffer>,associatedData: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  PublicKey_Serialize: (obj: Wrapper<PublicKey>,) => Uint8Array<ArrayBuffer>;
-  PublicKey_Verify: (key: Wrapper<PublicKey>,message: Uint8Array<ArrayBuffer>,signature: Uint8Array<ArrayBuffer>,) => boolean;
-  ReceiptCredentialPresentation_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  ReceiptCredentialPresentation_GetReceiptExpirationTime: (presentation: Serialized<ReceiptCredentialPresentation>,) => Timestamp;
-  ReceiptCredentialPresentation_GetReceiptLevel: (presentation: Serialized<ReceiptCredentialPresentation>,) => bigint;
-  ReceiptCredentialPresentation_GetReceiptSerial: (presentation: Serialized<ReceiptCredentialPresentation>,) => Uint8Array<ArrayBuffer>;
-  ReceiptCredentialRequestContext_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  ReceiptCredentialRequestContext_GetRequest: (requestContext: Serialized<ReceiptCredentialRequestContext>,) => Serialized<ReceiptCredentialRequest>;
-  ReceiptCredentialRequest_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  ReceiptCredentialResponse_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  ReceiptCredential_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  ReceiptCredential_GetReceiptExpirationTime: (receiptCredential: Serialized<ReceiptCredential>,) => Timestamp;
-  ReceiptCredential_GetReceiptLevel: (receiptCredential: Serialized<ReceiptCredential>,) => bigint;
+  PrivateKey_GetPublicKey: (k: Wrapper<PrivateKey>) => PublicKey;
+  PrivateKey_HpkeOpen: (
+    sk: Wrapper<PrivateKey>,
+    ciphertext: Uint8Array<ArrayBuffer>,
+    info: Uint8Array<ArrayBuffer>,
+    associated_data: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  PrivateKey_Serialize: (obj: Wrapper<PrivateKey>) => Uint8Array<ArrayBuffer>;
+  PrivateKey_Sign: (
+    key: Wrapper<PrivateKey>,
+    message: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  ProfileKeyCiphertext_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  ProfileKeyCommitment_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  ProfileKeyCredentialPresentation_CheckValidContents: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  ProfileKeyCredentialPresentation_GetProfileKeyCiphertext: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => Serialized<ProfileKeyCiphertext>;
+  ProfileKeyCredentialPresentation_GetUuidCiphertext: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => Serialized<UuidCiphertext>;
+  ProfileKeyCredentialRequestContext_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  ProfileKeyCredentialRequestContext_GetRequest: (
+    context: Serialized<ProfileKeyCredentialRequestContext>
+  ) => Serialized<ProfileKeyCredentialRequest>;
+  ProfileKeyCredentialRequest_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  ProfileKey_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>) => void;
+  ProfileKey_DeriveAccessKey: (
+    profile_key: Serialized<ProfileKey>
+  ) => Uint8Array<ArrayBuffer>;
+  ProfileKey_GetCommitment: (
+    profile_key: Serialized<ProfileKey>,
+    user_id: Uint8Array<ArrayBuffer>
+  ) => Serialized<ProfileKeyCommitment>;
+  ProfileKey_GetProfileKeyVersion: (
+    profile_key: Serialized<ProfileKey>,
+    user_id: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  ProtocolAddress_DeviceId: (obj: Wrapper<ProtocolAddress>) => number;
+  ProtocolAddress_Name: (obj: Wrapper<ProtocolAddress>) => string;
+  ProtocolAddress_New: (name: string, device_id: number) => ProtocolAddress;
+  ProvisioningChatConnection_connect: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    connection_manager: Wrapper<ConnectionManager>
+  ) => CancellablePromise<ProvisioningChatConnection>;
+  ProvisioningChatConnection_disconnect: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<ProvisioningChatConnection>
+  ) => CancellablePromise<void>;
+  ProvisioningChatConnection_info: (
+    chat: Wrapper<ProvisioningChatConnection>
+  ) => ChatConnectionInfo;
+  ProvisioningChatConnection_init_listener: (
+    chat: Wrapper<ProvisioningChatConnection>,
+    listener: ProvisioningListener
+  ) => void;
+  PublicKey_Deserialize: (data: Uint8Array<ArrayBuffer>) => PublicKey;
+  PublicKey_Equals: (
+    lhs: Wrapper<PublicKey>,
+    rhs: Wrapper<PublicKey>
+  ) => boolean;
+  PublicKey_GetPublicKeyBytes: (
+    obj: Wrapper<PublicKey>
+  ) => Uint8Array<ArrayBuffer>;
+  PublicKey_HpkeSeal: (
+    pk: Wrapper<PublicKey>,
+    plaintext: Uint8Array<ArrayBuffer>,
+    info: Uint8Array<ArrayBuffer>,
+    associated_data: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  PublicKey_Serialize: (obj: Wrapper<PublicKey>) => Uint8Array<ArrayBuffer>;
+  PublicKey_Verify: (
+    key: Wrapper<PublicKey>,
+    message: Uint8Array<ArrayBuffer>,
+    signature: Uint8Array<ArrayBuffer>
+  ) => boolean;
+  ReceiptCredentialPresentation_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  ReceiptCredentialPresentation_GetReceiptExpirationTime: (
+    presentation: Serialized<ReceiptCredentialPresentation>
+  ) => Timestamp;
+  ReceiptCredentialPresentation_GetReceiptLevel: (
+    presentation: Serialized<ReceiptCredentialPresentation>
+  ) => bigint;
+  ReceiptCredentialPresentation_GetReceiptSerial: (
+    presentation: Serialized<ReceiptCredentialPresentation>
+  ) => Uint8Array<ArrayBuffer>;
+  ReceiptCredentialRequestContext_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  ReceiptCredentialRequestContext_GetRequest: (
+    request_context: Serialized<ReceiptCredentialRequestContext>
+  ) => Serialized<ReceiptCredentialRequest>;
+  ReceiptCredentialRequest_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  ReceiptCredentialResponse_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  ReceiptCredential_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  ReceiptCredential_GetReceiptExpirationTime: (
+    receipt_credential: Serialized<ReceiptCredential>
+  ) => Timestamp;
+  ReceiptCredential_GetReceiptLevel: (
+    receipt_credential: Serialized<ReceiptCredential>
+  ) => bigint;
   RegisterAccountRequest_Create: () => RegisterAccountRequest;
-  RegisterAccountRequest_SetAccountPassword: (registerAccount: Wrapper<RegisterAccountRequest>,accountPassword: string,) => void;
-  RegisterAccountRequest_SetIdentityPqLastResortPreKey: (registerAccount: Wrapper<RegisterAccountRequest>,identityType: number,pqLastResortPreKey: SignedPublicPreKey,) => void;
-  RegisterAccountRequest_SetIdentityPublicKey: (registerAccount: Wrapper<RegisterAccountRequest>,identityType: number,identityKey: Wrapper<PublicKey>,) => void;
-  RegisterAccountRequest_SetIdentitySignedPreKey: (registerAccount: Wrapper<RegisterAccountRequest>,identityType: number,signedPreKey: SignedPublicPreKey,) => void;
-  RegisterAccountRequest_SetSkipDeviceTransfer: (registerAccount: Wrapper<RegisterAccountRequest>,) => void;
-  RegisterAccountResponse_GetEntitlementBackupExpirationSeconds: (response: Wrapper<RegisterAccountResponse>,) => (bigint | null);
-  RegisterAccountResponse_GetEntitlementBackupLevel: (response: Wrapper<RegisterAccountResponse>,) => (bigint | null);
-  RegisterAccountResponse_GetEntitlementBadges: (response: Wrapper<RegisterAccountResponse>,) => Array<RegisterResponseBadge>;
-  RegisterAccountResponse_GetIdentity: (response: Wrapper<RegisterAccountResponse>,identityType: number,) => Uint8Array<ArrayBuffer>;
-  RegisterAccountResponse_GetNumber: (response: Wrapper<RegisterAccountResponse>,) => string;
-  RegisterAccountResponse_GetReregistration: (response: Wrapper<RegisterAccountResponse>,) => boolean;
-  RegisterAccountResponse_GetStorageCapable: (response: Wrapper<RegisterAccountResponse>,) => boolean;
-  RegisterAccountResponse_GetUsernameHash: (response: Wrapper<RegisterAccountResponse>,) => (Uint8Array<ArrayBuffer> | null);
-  RegisterAccountResponse_GetUsernameLinkHandle: (response: Wrapper<RegisterAccountResponse>,) => (Uuid | null);
-  RegistrationAccountAttributes_Create: (recoveryPassword: Uint8Array<ArrayBuffer>,aciRegistrationId: number,pniRegistrationId: number,registrationLock: (string | null),unidentifiedAccessKey: Uint8Array<ArrayBuffer>,unrestrictedUnidentifiedAccess: boolean,capabilities: Array<string>,discoverableByPhoneNumber: boolean,) => RegistrationAccountAttributes;
-  RegistrationService_CheckSvr2Credentials: (asyncRuntime: Wrapper<TokioAsyncContext>,service: Wrapper<RegistrationService>,svrTokens: Array<string>,) => CancellablePromise<CheckSvr2CredentialsResponse>;
-  RegistrationService_CreateSession: (asyncRuntime: Wrapper<TokioAsyncContext>,createSession: RegistrationCreateSessionRequest,connectChat: ConnectChatBridge,) => CancellablePromise<RegistrationService>;
-  RegistrationService_RegisterAccount: (asyncRuntime: Wrapper<TokioAsyncContext>,service: Wrapper<RegistrationService>,registerAccount: Wrapper<RegisterAccountRequest>,accountAttributes: Wrapper<RegistrationAccountAttributes>,) => CancellablePromise<RegisterAccountResponse>;
-  RegistrationService_RegistrationSession: (service: Wrapper<RegistrationService>,) => RegistrationSession;
-  RegistrationService_RequestVerificationCode: (asyncRuntime: Wrapper<TokioAsyncContext>,service: Wrapper<RegistrationService>,transport: string,client: string,languages: Array<string>,) => CancellablePromise<void>;
-  RegistrationService_ReregisterAccount: (asyncRuntime: Wrapper<TokioAsyncContext>,connectChat: ConnectChatBridge,number: string,registerAccount: Wrapper<RegisterAccountRequest>,accountAttributes: Wrapper<RegistrationAccountAttributes>,) => CancellablePromise<RegisterAccountResponse>;
-  RegistrationService_ResumeSession: (asyncRuntime: Wrapper<TokioAsyncContext>,sessionId: string,number: string,connectChat: ConnectChatBridge,) => CancellablePromise<RegistrationService>;
-  RegistrationService_SessionId: (service: Wrapper<RegistrationService>,) => string;
-  RegistrationService_SubmitCaptcha: (asyncRuntime: Wrapper<TokioAsyncContext>,service: Wrapper<RegistrationService>,captchaValue: string,) => CancellablePromise<void>;
-  RegistrationService_SubmitVerificationCode: (asyncRuntime: Wrapper<TokioAsyncContext>,service: Wrapper<RegistrationService>,code: string,) => CancellablePromise<void>;
-  RegistrationSession_GetAllowedToRequestCode: (session: Wrapper<RegistrationSession>,) => boolean;
-  RegistrationSession_GetNextCallSeconds: (session: Wrapper<RegistrationSession>,) => (number | null);
-  RegistrationSession_GetNextSmsSeconds: (session: Wrapper<RegistrationSession>,) => (number | null);
-  RegistrationSession_GetNextVerificationAttemptSeconds: (session: Wrapper<RegistrationSession>,) => (number | null);
-  RegistrationSession_GetRequestedInformation: (session: Wrapper<RegistrationSession>,) => Array<ChallengeOption>;
-  RegistrationSession_GetVerified: (session: Wrapper<RegistrationSession>,) => boolean;
-  SanitizedMetadata_GetDataLen: (sanitized: Wrapper<SanitizedMetadata>,) => bigint;
-  SanitizedMetadata_GetDataOffset: (sanitized: Wrapper<SanitizedMetadata>,) => bigint;
-  SanitizedMetadata_GetMetadata: (sanitized: Wrapper<SanitizedMetadata>,) => Uint8Array<ArrayBuffer>;
-  ScannableFingerprint_Compare: (fprint1: Uint8Array<ArrayBuffer>,fprint2: Uint8Array<ArrayBuffer>,) => boolean;
-  SealedSenderDecryptionResult_GetDeviceId: (obj: Wrapper<SealedSenderDecryptionResult>,) => number;
-  SealedSenderDecryptionResult_GetSenderE164: (obj: Wrapper<SealedSenderDecryptionResult>,) => (string | null);
-  SealedSenderDecryptionResult_GetSenderUuid: (obj: Wrapper<SealedSenderDecryptionResult>,) => string;
-  SealedSenderDecryptionResult_Message: (obj: Wrapper<SealedSenderDecryptionResult>,) => Uint8Array<ArrayBuffer>;
-  SealedSenderMultiRecipientMessage_Parse: (buffer: Uint8Array<ArrayBuffer>,) => SealedSenderMultiRecipientMessage;
-  SealedSender_DecryptMessage: (message: Uint8Array<ArrayBuffer>,trustRoot: Wrapper<PublicKey>,timestamp: Timestamp,localE164: (string | null),localUuid: string,localDeviceId: number,sessionStore: SessionStore,identityStore: IdentityKeyStore,prekeyStore: PreKeyStore,signedPrekeyStore: SignedPreKeyStore,kyberPrekeyStore: KyberPreKeyStore,) => Promise<SealedSenderDecryptionResult>;
-  SealedSender_DecryptToUsmc: (ctext: Uint8Array<ArrayBuffer>,identityStore: IdentityKeyStore,) => Promise<UnidentifiedSenderMessageContent>;
-  SealedSender_Encrypt: (destination: Wrapper<ProtocolAddress>,content: Wrapper<UnidentifiedSenderMessageContent>,identityKeyStore: IdentityKeyStore,) => Promise<Uint8Array<ArrayBuffer>>;
-  SealedSender_MultiRecipientEncrypt: (recipients: Array<Wrapper<ProtocolAddress>>,recipientSessions: Array<Wrapper<SessionRecord>>,excludedRecipients: Uint8Array<ArrayBuffer>,content: Wrapper<UnidentifiedSenderMessageContent>,identityKeyStore: IdentityKeyStore,) => Promise<Uint8Array<ArrayBuffer>>;
-  SealedSender_MultiRecipientMessageForSingleRecipient: (encodedMultiRecipientMessage: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  SecureValueRecoveryForBackups_CreateNewBackupChain: (environment: number,backupKey: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  SecureValueRecoveryForBackups_RemoveBackup: (asyncRuntime: Wrapper<TokioAsyncContext>,connectionManager: Wrapper<ConnectionManager>,username: string,password: string,) => CancellablePromise<void>;
-  SecureValueRecoveryForBackups_RestoreBackupFromServer: (asyncRuntime: Wrapper<TokioAsyncContext>,backupKey: Uint8Array<ArrayBuffer>,metadata: Uint8Array<ArrayBuffer>,connectionManager: Wrapper<ConnectionManager>,username: string,password: string,) => CancellablePromise<BackupRestoreResponse>;
-  SecureValueRecoveryForBackups_StoreBackup: (asyncRuntime: Wrapper<TokioAsyncContext>,backupKey: Uint8Array<ArrayBuffer>,previousSecretData: Uint8Array<ArrayBuffer>,connectionManager: Wrapper<ConnectionManager>,username: string,password: string,) => CancellablePromise<BackupStoreResponse>;
-  SenderCertificate_Deserialize: (data: Uint8Array<ArrayBuffer>,) => SenderCertificate;
-  SenderCertificate_GetCertificate: (obj: Wrapper<SenderCertificate>,) => Uint8Array<ArrayBuffer>;
-  SenderCertificate_GetDeviceId: (obj: Wrapper<SenderCertificate>,) => number;
-  SenderCertificate_GetExpiration: (obj: Wrapper<SenderCertificate>,) => Timestamp;
-  SenderCertificate_GetKey: (obj: Wrapper<SenderCertificate>,) => PublicKey;
-  SenderCertificate_GetSenderE164: (obj: Wrapper<SenderCertificate>,) => (string | null);
-  SenderCertificate_GetSenderUuid: (obj: Wrapper<SenderCertificate>,) => string;
-  SenderCertificate_GetSerialized: (obj: Wrapper<SenderCertificate>,) => Uint8Array<ArrayBuffer>;
-  SenderCertificate_GetServerCertificate: (cert: Wrapper<SenderCertificate>,) => ServerCertificate;
-  SenderCertificate_GetSignature: (obj: Wrapper<SenderCertificate>,) => Uint8Array<ArrayBuffer>;
-  SenderCertificate_New: (senderUuid: string,senderE164: (string | null),senderDeviceId: number,senderKey: Wrapper<PublicKey>,expiration: Timestamp,signerCert: Wrapper<ServerCertificate>,signerKey: Wrapper<PrivateKey>,) => SenderCertificate;
-  SenderCertificate_Validate: (cert: Wrapper<SenderCertificate>,trustRoots: Array<Wrapper<PublicKey>>,time: Timestamp,) => boolean;
-  SenderKeyDistributionMessage_Create: (sender: Wrapper<ProtocolAddress>,distributionId: Uuid,store: SenderKeyStore,) => Promise<SenderKeyDistributionMessage>;
-  SenderKeyDistributionMessage_Deserialize: (data: Uint8Array<ArrayBuffer>,) => SenderKeyDistributionMessage;
-  SenderKeyDistributionMessage_GetChainId: (obj: Wrapper<SenderKeyDistributionMessage>,) => number;
-  SenderKeyDistributionMessage_GetChainKey: (obj: Wrapper<SenderKeyDistributionMessage>,) => Uint8Array<ArrayBuffer>;
-  SenderKeyDistributionMessage_GetDistributionId: (obj: Wrapper<SenderKeyDistributionMessage>,) => Uuid;
-  SenderKeyDistributionMessage_GetIteration: (obj: Wrapper<SenderKeyDistributionMessage>,) => number;
-  SenderKeyDistributionMessage_New: (messageVersion: number,distributionId: Uuid,chainId: number,iteration: number,chainkey: Uint8Array<ArrayBuffer>,pk: Wrapper<PublicKey>,) => SenderKeyDistributionMessage;
-  SenderKeyDistributionMessage_Process: (sender: Wrapper<ProtocolAddress>,senderKeyDistributionMessage: Wrapper<SenderKeyDistributionMessage>,store: SenderKeyStore,) => Promise<void>;
-  SenderKeyDistributionMessage_Serialize: (obj: Wrapper<SenderKeyDistributionMessage>,) => Uint8Array<ArrayBuffer>;
-  SenderKeyMessage_Deserialize: (data: Uint8Array<ArrayBuffer>,) => SenderKeyMessage;
-  SenderKeyMessage_GetChainId: (obj: Wrapper<SenderKeyMessage>,) => number;
-  SenderKeyMessage_GetCipherText: (obj: Wrapper<SenderKeyMessage>,) => Uint8Array<ArrayBuffer>;
-  SenderKeyMessage_GetDistributionId: (obj: Wrapper<SenderKeyMessage>,) => Uuid;
-  SenderKeyMessage_GetIteration: (obj: Wrapper<SenderKeyMessage>,) => number;
-  SenderKeyMessage_New: (messageVersion: number,distributionId: Uuid,chainId: number,iteration: number,ciphertext: Uint8Array<ArrayBuffer>,pk: Wrapper<PrivateKey>,) => SenderKeyMessage;
-  SenderKeyMessage_Serialize: (obj: Wrapper<SenderKeyMessage>,) => Uint8Array<ArrayBuffer>;
-  SenderKeyMessage_VerifySignature: (skm: Wrapper<SenderKeyMessage>,pubkey: Wrapper<PublicKey>,) => boolean;
-  SenderKeyRecord_Deserialize: (data: Uint8Array<ArrayBuffer>,) => SenderKeyRecord;
-  SenderKeyRecord_Serialize: (obj: Wrapper<SenderKeyRecord>,) => Uint8Array<ArrayBuffer>;
-  ServerCertificate_Deserialize: (data: Uint8Array<ArrayBuffer>,) => ServerCertificate;
-  ServerCertificate_GetCertificate: (obj: Wrapper<ServerCertificate>,) => Uint8Array<ArrayBuffer>;
-  ServerCertificate_GetKey: (obj: Wrapper<ServerCertificate>,) => PublicKey;
-  ServerCertificate_GetKeyId: (obj: Wrapper<ServerCertificate>,) => number;
-  ServerCertificate_GetSerialized: (obj: Wrapper<ServerCertificate>,) => Uint8Array<ArrayBuffer>;
-  ServerCertificate_GetSignature: (obj: Wrapper<ServerCertificate>,) => Uint8Array<ArrayBuffer>;
-  ServerCertificate_New: (keyId: number,serverKey: Wrapper<PublicKey>,trustRoot: Wrapper<PrivateKey>,) => ServerCertificate;
-  ServerMessageAck_SendStatus: (ack: Wrapper<ServerMessageAck>,status: number,) => void;
-  ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic: (serverPublicParams: Wrapper<ServerPublicParams>,randomness: Uint8Array<ArrayBuffer>,groupSecretParams: Serialized<GroupSecretParams>,authCredentialWithPniBytes: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic: (serverPublicParams: Wrapper<ServerPublicParams>,randomness: Uint8Array<ArrayBuffer>,groupSecretParams: Serialized<GroupSecretParams>,profileKeyCredential: Serialized<ExpiringProfileKeyCredential>,) => Uint8Array<ArrayBuffer>;
-  ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic: (serverPublicParams: Wrapper<ServerPublicParams>,randomness: Uint8Array<ArrayBuffer>,userId: Uint8Array<ArrayBuffer>,profileKey: Serialized<ProfileKey>,) => Serialized<ProfileKeyCredentialRequestContext>;
-  ServerPublicParams_CreateReceiptCredentialPresentationDeterministic: (serverPublicParams: Wrapper<ServerPublicParams>,randomness: Uint8Array<ArrayBuffer>,receiptCredential: Serialized<ReceiptCredential>,) => Serialized<ReceiptCredentialPresentation>;
-  ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic: (serverPublicParams: Wrapper<ServerPublicParams>,randomness: Uint8Array<ArrayBuffer>,receiptSerial: Uint8Array<ArrayBuffer>,) => Serialized<ReceiptCredentialRequestContext>;
-  ServerPublicParams_Deserialize: (buffer: Uint8Array<ArrayBuffer>,) => ServerPublicParams;
-  ServerPublicParams_GetEndorsementPublicKey: (params: Wrapper<ServerPublicParams>,) => Uint8Array<ArrayBuffer>;
-  ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId: (params: Wrapper<ServerPublicParams>,aci: Uint8Array<ArrayBuffer>,pni: Uint8Array<ArrayBuffer>,redemptionTime: Timestamp,authCredentialWithPniResponseBytes: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  ServerPublicParams_ReceiveExpiringProfileKeyCredential: (serverPublicParams: Wrapper<ServerPublicParams>,requestContext: Serialized<ProfileKeyCredentialRequestContext>,response: Serialized<ExpiringProfileKeyCredentialResponse>,currentTimeInSeconds: Timestamp,) => Serialized<ExpiringProfileKeyCredential>;
-  ServerPublicParams_ReceiveReceiptCredential: (serverPublicParams: Wrapper<ServerPublicParams>,requestContext: Serialized<ReceiptCredentialRequestContext>,response: Serialized<ReceiptCredentialResponse>,) => Serialized<ReceiptCredential>;
-  ServerPublicParams_Serialize: (handle: Wrapper<ServerPublicParams>,) => Uint8Array<ArrayBuffer>;
-  ServerPublicParams_VerifySignature: (serverPublicParams: Wrapper<ServerPublicParams>,message: Uint8Array<ArrayBuffer>,notarySignature: Uint8Array<ArrayBuffer>,) => void;
-  ServerSecretParams_Deserialize: (buffer: Uint8Array<ArrayBuffer>,) => ServerSecretParams;
-  ServerSecretParams_GenerateDeterministic: (randomness: Uint8Array<ArrayBuffer>,) => ServerSecretParams;
-  ServerSecretParams_GetPublicParams: (params: Wrapper<ServerSecretParams>,) => ServerPublicParams;
-  ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic: (serverSecretParams: Wrapper<ServerSecretParams>,randomness: Uint8Array<ArrayBuffer>,aci: Uint8Array<ArrayBuffer>,pni: Uint8Array<ArrayBuffer>,redemptionTime: Timestamp,) => Uint8Array<ArrayBuffer>;
-  ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic: (serverSecretParams: Wrapper<ServerSecretParams>,randomness: Uint8Array<ArrayBuffer>,request: Serialized<ProfileKeyCredentialRequest>,userId: Uint8Array<ArrayBuffer>,commitment: Serialized<ProfileKeyCommitment>,expirationInSeconds: Timestamp,) => Serialized<ExpiringProfileKeyCredentialResponse>;
-  ServerSecretParams_IssueReceiptCredentialDeterministic: (serverSecretParams: Wrapper<ServerSecretParams>,randomness: Uint8Array<ArrayBuffer>,request: Serialized<ReceiptCredentialRequest>,receiptExpirationTime: Timestamp,receiptLevel: bigint,) => Serialized<ReceiptCredentialResponse>;
-  ServerSecretParams_Serialize: (handle: Wrapper<ServerSecretParams>,) => Uint8Array<ArrayBuffer>;
-  ServerSecretParams_SignDeterministic: (params: Wrapper<ServerSecretParams>,randomness: Uint8Array<ArrayBuffer>,message: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  ServerSecretParams_VerifyAuthCredentialPresentation: (serverSecretParams: Wrapper<ServerSecretParams>,groupPublicParams: Serialized<GroupPublicParams>,presentationBytes: Uint8Array<ArrayBuffer>,currentTimeInSeconds: Timestamp,) => void;
-  ServerSecretParams_VerifyProfileKeyCredentialPresentation: (serverSecretParams: Wrapper<ServerSecretParams>,groupPublicParams: Serialized<GroupPublicParams>,presentationBytes: Uint8Array<ArrayBuffer>,currentTimeInSeconds: Timestamp,) => void;
-  ServerSecretParams_VerifyReceiptCredentialPresentation: (serverSecretParams: Wrapper<ServerSecretParams>,presentation: Serialized<ReceiptCredentialPresentation>,) => void;
-  ServiceId_ParseFromServiceIdBinary: (input: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  ServiceId_ParseFromServiceIdString: (input: string,) => Uint8Array<ArrayBuffer>;
-  ServiceId_ServiceIdBinary: (value: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  ServiceId_ServiceIdLog: (value: Uint8Array<ArrayBuffer>,) => string;
-  ServiceId_ServiceIdString: (value: Uint8Array<ArrayBuffer>,) => string;
-  SessionBuilder_ProcessPreKeyBundle: (bundle: Wrapper<PreKeyBundle>,protocolAddress: Wrapper<ProtocolAddress>,localAddress: Wrapper<ProtocolAddress>,sessionStore: SessionStore,identityKeyStore: IdentityKeyStore,now: Timestamp,) => Promise<void>;
-  SessionCipher_DecryptPreKeySignalMessage: (message: Wrapper<PreKeySignalMessage>,protocolAddress: Wrapper<ProtocolAddress>,localAddress: Wrapper<ProtocolAddress>,sessionStore: SessionStore,identityKeyStore: IdentityKeyStore,prekeyStore: PreKeyStore,signedPrekeyStore: SignedPreKeyStore,kyberPrekeyStore: KyberPreKeyStore,) => Promise<Uint8Array<ArrayBuffer>>;
-  SessionCipher_DecryptSignalMessage: (message: Wrapper<SignalMessage>,protocolAddress: Wrapper<ProtocolAddress>,localAddress: Wrapper<ProtocolAddress>,sessionStore: SessionStore,identityKeyStore: IdentityKeyStore,) => Promise<Uint8Array<ArrayBuffer>>;
-  SessionCipher_EncryptMessage: (ptext: Uint8Array<ArrayBuffer>,protocolAddress: Wrapper<ProtocolAddress>,localAddress: Wrapper<ProtocolAddress>,sessionStore: SessionStore,identityKeyStore: IdentityKeyStore,now: Timestamp,) => Promise<CiphertextMessage>;
-  SessionRecord_ArchiveCurrentState: (sessionRecord: Wrapper<SessionRecord>,) => void;
-  SessionRecord_CurrentRatchetKeyMatches: (s: Wrapper<SessionRecord>,key: Wrapper<PublicKey>,) => boolean;
-  SessionRecord_Deserialize: (data: Uint8Array<ArrayBuffer>,) => SessionRecord;
-  SessionRecord_GetLocalRegistrationId: (obj: Wrapper<SessionRecord>,) => number;
-  SessionRecord_GetRemoteRegistrationId: (obj: Wrapper<SessionRecord>,) => number;
-  SessionRecord_HasUsableSenderChain: (s: Wrapper<SessionRecord>,requirePqRatio: number,now: Timestamp,) => boolean;
-  SessionRecord_Serialize: (obj: Wrapper<SessionRecord>,) => Uint8Array<ArrayBuffer>;
-  SgxClientState_CompleteHandshake: (cli: Wrapper<SgxClientState>,handshakeReceived: Uint8Array<ArrayBuffer>,) => void;
-  SgxClientState_EstablishedRecv: (cli: Wrapper<SgxClientState>,receivedCiphertext: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  SgxClientState_EstablishedSend: (cli: Wrapper<SgxClientState>,plaintextToSend: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  SgxClientState_InitialRequest: (obj: Wrapper<SgxClientState>,) => Uint8Array<ArrayBuffer>;
+  RegisterAccountRequest_SetAccountPassword: (
+    register_account: Wrapper<RegisterAccountRequest>,
+    account_password: string
+  ) => void;
+  RegisterAccountRequest_SetIdentityPqLastResortPreKey: (
+    register_account: Wrapper<RegisterAccountRequest>,
+    identity_type: number,
+    pq_last_resort_pre_key: SignedPublicPreKey
+  ) => void;
+  RegisterAccountRequest_SetIdentityPublicKey: (
+    register_account: Wrapper<RegisterAccountRequest>,
+    identity_type: number,
+    identity_key: Wrapper<PublicKey>
+  ) => void;
+  RegisterAccountRequest_SetIdentitySignedPreKey: (
+    register_account: Wrapper<RegisterAccountRequest>,
+    identity_type: number,
+    signed_pre_key: SignedPublicPreKey
+  ) => void;
+  RegisterAccountRequest_SetSkipDeviceTransfer: (
+    register_account: Wrapper<RegisterAccountRequest>
+  ) => void;
+  RegisterAccountResponse_GetEntitlementBackupExpirationSeconds: (
+    response: Wrapper<RegisterAccountResponse>
+  ) => bigint | null;
+  RegisterAccountResponse_GetEntitlementBackupLevel: (
+    response: Wrapper<RegisterAccountResponse>
+  ) => bigint | null;
+  RegisterAccountResponse_GetEntitlementBadges: (
+    response: Wrapper<RegisterAccountResponse>
+  ) => Array<RegisterResponseBadge>;
+  RegisterAccountResponse_GetIdentity: (
+    response: Wrapper<RegisterAccountResponse>,
+    identity_type: number
+  ) => Uint8Array<ArrayBuffer>;
+  RegisterAccountResponse_GetNumber: (
+    response: Wrapper<RegisterAccountResponse>
+  ) => string;
+  RegisterAccountResponse_GetReregistration: (
+    response: Wrapper<RegisterAccountResponse>
+  ) => boolean;
+  RegisterAccountResponse_GetStorageCapable: (
+    response: Wrapper<RegisterAccountResponse>
+  ) => boolean;
+  RegisterAccountResponse_GetUsernameHash: (
+    response: Wrapper<RegisterAccountResponse>
+  ) => Uint8Array<ArrayBuffer> | null;
+  RegisterAccountResponse_GetUsernameLinkHandle: (
+    response: Wrapper<RegisterAccountResponse>
+  ) => Uuid | null;
+  RegistrationAccountAttributes_Create: (
+    recovery_password: Uint8Array<ArrayBuffer>,
+    aci_registration_id: number,
+    pni_registration_id: number,
+    registration_lock: string | null,
+    unidentified_access_key: Uint8Array<ArrayBuffer>,
+    unrestricted_unidentified_access: boolean,
+    capabilities: Array<string>,
+    discoverable_by_phone_number: boolean
+  ) => RegistrationAccountAttributes;
+  RegistrationService_CheckSvr2Credentials: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    service: Wrapper<RegistrationService>,
+    svr_tokens: Array<string>
+  ) => CancellablePromise<CheckSvr2CredentialsResponse>;
+  RegistrationService_CreateSession: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    create_session: RegistrationCreateSessionRequest,
+    connect_chat: ConnectChatBridge
+  ) => CancellablePromise<RegistrationService>;
+  RegistrationService_RegisterAccount: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    service: Wrapper<RegistrationService>,
+    register_account: Wrapper<RegisterAccountRequest>,
+    account_attributes: Wrapper<RegistrationAccountAttributes>
+  ) => CancellablePromise<RegisterAccountResponse>;
+  RegistrationService_RegistrationSession: (
+    service: Wrapper<RegistrationService>
+  ) => RegistrationSession;
+  RegistrationService_RequestVerificationCode: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    service: Wrapper<RegistrationService>,
+    transport: string,
+    client: string,
+    languages: Array<string>
+  ) => CancellablePromise<void>;
+  RegistrationService_ReregisterAccount: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    connect_chat: ConnectChatBridge,
+    number: string,
+    register_account: Wrapper<RegisterAccountRequest>,
+    account_attributes: Wrapper<RegistrationAccountAttributes>
+  ) => CancellablePromise<RegisterAccountResponse>;
+  RegistrationService_ResumeSession: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    session_id: string,
+    number: string,
+    connect_chat: ConnectChatBridge
+  ) => CancellablePromise<RegistrationService>;
+  RegistrationService_SessionId: (
+    service: Wrapper<RegistrationService>
+  ) => string;
+  RegistrationService_SubmitCaptcha: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    service: Wrapper<RegistrationService>,
+    captcha_value: string
+  ) => CancellablePromise<void>;
+  RegistrationService_SubmitVerificationCode: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    service: Wrapper<RegistrationService>,
+    code: string
+  ) => CancellablePromise<void>;
+  RegistrationSession_GetAllowedToRequestCode: (
+    session: Wrapper<RegistrationSession>
+  ) => boolean;
+  RegistrationSession_GetNextCallSeconds: (
+    session: Wrapper<RegistrationSession>
+  ) => number | null;
+  RegistrationSession_GetNextSmsSeconds: (
+    session: Wrapper<RegistrationSession>
+  ) => number | null;
+  RegistrationSession_GetNextVerificationAttemptSeconds: (
+    session: Wrapper<RegistrationSession>
+  ) => number | null;
+  RegistrationSession_GetRequestedInformation: (
+    session: Wrapper<RegistrationSession>
+  ) => Array<ChallengeOption>;
+  RegistrationSession_GetVerified: (
+    session: Wrapper<RegistrationSession>
+  ) => boolean;
+  SanitizedMetadata_GetDataLen: (
+    sanitized: Wrapper<SanitizedMetadata>
+  ) => bigint;
+  SanitizedMetadata_GetDataOffset: (
+    sanitized: Wrapper<SanitizedMetadata>
+  ) => bigint;
+  SanitizedMetadata_GetMetadata: (
+    sanitized: Wrapper<SanitizedMetadata>
+  ) => Uint8Array<ArrayBuffer>;
+  ScannableFingerprint_Compare: (
+    fprint1: Uint8Array<ArrayBuffer>,
+    fprint2: Uint8Array<ArrayBuffer>
+  ) => boolean;
+  SealedSenderDecryptionResult_GetDeviceId: (
+    obj: Wrapper<SealedSenderDecryptionResult>
+  ) => number;
+  SealedSenderDecryptionResult_GetSenderE164: (
+    obj: Wrapper<SealedSenderDecryptionResult>
+  ) => string | null;
+  SealedSenderDecryptionResult_GetSenderUuid: (
+    obj: Wrapper<SealedSenderDecryptionResult>
+  ) => string;
+  SealedSenderDecryptionResult_Message: (
+    obj: Wrapper<SealedSenderDecryptionResult>
+  ) => Uint8Array<ArrayBuffer>;
+  SealedSenderMultiRecipientMessage_Parse: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => SealedSenderMultiRecipientMessage;
+  SealedSender_DecryptMessage: (
+    message: Uint8Array<ArrayBuffer>,
+    trust_root: Wrapper<PublicKey>,
+    timestamp: Timestamp,
+    local_e164: string | null,
+    local_uuid: string,
+    local_device_id: number,
+    session_store: SessionStore,
+    identity_store: IdentityKeyStore,
+    prekey_store: PreKeyStore,
+    signed_prekey_store: SignedPreKeyStore,
+    kyber_prekey_store: KyberPreKeyStore
+  ) => Promise<SealedSenderDecryptionResult>;
+  SealedSender_DecryptToUsmc: (
+    ctext: Uint8Array<ArrayBuffer>,
+    identity_store: IdentityKeyStore
+  ) => Promise<UnidentifiedSenderMessageContent>;
+  SealedSender_Encrypt: (
+    destination: Wrapper<ProtocolAddress>,
+    content: Wrapper<UnidentifiedSenderMessageContent>,
+    identity_key_store: IdentityKeyStore
+  ) => Promise<Uint8Array<ArrayBuffer>>;
+  SealedSender_MultiRecipientEncrypt: (
+    recipients: Array<Wrapper<ProtocolAddress>>,
+    recipient_sessions: Array<Wrapper<SessionRecord>>,
+    excluded_recipients: Uint8Array<ArrayBuffer>,
+    content: Wrapper<UnidentifiedSenderMessageContent>,
+    identity_key_store: IdentityKeyStore
+  ) => Promise<Uint8Array<ArrayBuffer>>;
+  SealedSender_MultiRecipientMessageForSingleRecipient: (
+    encoded_multi_recipient_message: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  SecureValueRecoveryForBackups_CreateNewBackupChain: (
+    environment: number,
+    backup_key: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  SecureValueRecoveryForBackups_RemoveBackup: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string
+  ) => CancellablePromise<void>;
+  SecureValueRecoveryForBackups_RestoreBackupFromServer: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    backup_key: Uint8Array<ArrayBuffer>,
+    metadata: Uint8Array<ArrayBuffer>,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string
+  ) => CancellablePromise<BackupRestoreResponse>;
+  SecureValueRecoveryForBackups_StoreBackup: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    backup_key: Uint8Array<ArrayBuffer>,
+    previous_secret_data: Uint8Array<ArrayBuffer>,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string
+  ) => CancellablePromise<BackupStoreResponse>;
+  SenderCertificate_Deserialize: (
+    data: Uint8Array<ArrayBuffer>
+  ) => SenderCertificate;
+  SenderCertificate_GetCertificate: (
+    obj: Wrapper<SenderCertificate>
+  ) => Uint8Array<ArrayBuffer>;
+  SenderCertificate_GetDeviceId: (obj: Wrapper<SenderCertificate>) => number;
+  SenderCertificate_GetExpiration: (
+    obj: Wrapper<SenderCertificate>
+  ) => Timestamp;
+  SenderCertificate_GetKey: (obj: Wrapper<SenderCertificate>) => PublicKey;
+  SenderCertificate_GetSenderE164: (
+    obj: Wrapper<SenderCertificate>
+  ) => string | null;
+  SenderCertificate_GetSenderUuid: (obj: Wrapper<SenderCertificate>) => string;
+  SenderCertificate_GetSerialized: (
+    obj: Wrapper<SenderCertificate>
+  ) => Uint8Array<ArrayBuffer>;
+  SenderCertificate_GetServerCertificate: (
+    cert: Wrapper<SenderCertificate>
+  ) => ServerCertificate;
+  SenderCertificate_GetSignature: (
+    obj: Wrapper<SenderCertificate>
+  ) => Uint8Array<ArrayBuffer>;
+  SenderCertificate_New: (
+    sender_uuid: string,
+    sender_e164: string | null,
+    sender_device_id: number,
+    sender_key: Wrapper<PublicKey>,
+    expiration: Timestamp,
+    signer_cert: Wrapper<ServerCertificate>,
+    signer_key: Wrapper<PrivateKey>
+  ) => SenderCertificate;
+  SenderCertificate_Validate: (
+    cert: Wrapper<SenderCertificate>,
+    trust_roots: Array<Wrapper<PublicKey>>,
+    time: Timestamp
+  ) => boolean;
+  SenderKeyDistributionMessage_Create: (
+    sender: Wrapper<ProtocolAddress>,
+    distribution_id: Uuid,
+    store: SenderKeyStore
+  ) => Promise<SenderKeyDistributionMessage>;
+  SenderKeyDistributionMessage_Deserialize: (
+    data: Uint8Array<ArrayBuffer>
+  ) => SenderKeyDistributionMessage;
+  SenderKeyDistributionMessage_GetChainId: (
+    obj: Wrapper<SenderKeyDistributionMessage>
+  ) => number;
+  SenderKeyDistributionMessage_GetChainKey: (
+    obj: Wrapper<SenderKeyDistributionMessage>
+  ) => Uint8Array<ArrayBuffer>;
+  SenderKeyDistributionMessage_GetDistributionId: (
+    obj: Wrapper<SenderKeyDistributionMessage>
+  ) => Uuid;
+  SenderKeyDistributionMessage_GetIteration: (
+    obj: Wrapper<SenderKeyDistributionMessage>
+  ) => number;
+  SenderKeyDistributionMessage_New: (
+    message_version: number,
+    distribution_id: Uuid,
+    chain_id: number,
+    iteration: number,
+    chainkey: Uint8Array<ArrayBuffer>,
+    pk: Wrapper<PublicKey>
+  ) => SenderKeyDistributionMessage;
+  SenderKeyDistributionMessage_Process: (
+    sender: Wrapper<ProtocolAddress>,
+    sender_key_distribution_message: Wrapper<SenderKeyDistributionMessage>,
+    store: SenderKeyStore
+  ) => Promise<void>;
+  SenderKeyDistributionMessage_Serialize: (
+    obj: Wrapper<SenderKeyDistributionMessage>
+  ) => Uint8Array<ArrayBuffer>;
+  SenderKeyMessage_Deserialize: (
+    data: Uint8Array<ArrayBuffer>
+  ) => SenderKeyMessage;
+  SenderKeyMessage_GetChainId: (obj: Wrapper<SenderKeyMessage>) => number;
+  SenderKeyMessage_GetCipherText: (
+    obj: Wrapper<SenderKeyMessage>
+  ) => Uint8Array<ArrayBuffer>;
+  SenderKeyMessage_GetDistributionId: (obj: Wrapper<SenderKeyMessage>) => Uuid;
+  SenderKeyMessage_GetIteration: (obj: Wrapper<SenderKeyMessage>) => number;
+  SenderKeyMessage_New: (
+    message_version: number,
+    distribution_id: Uuid,
+    chain_id: number,
+    iteration: number,
+    ciphertext: Uint8Array<ArrayBuffer>,
+    pk: Wrapper<PrivateKey>
+  ) => SenderKeyMessage;
+  SenderKeyMessage_Serialize: (
+    obj: Wrapper<SenderKeyMessage>
+  ) => Uint8Array<ArrayBuffer>;
+  SenderKeyMessage_VerifySignature: (
+    skm: Wrapper<SenderKeyMessage>,
+    pubkey: Wrapper<PublicKey>
+  ) => boolean;
+  SenderKeyRecord_Deserialize: (
+    data: Uint8Array<ArrayBuffer>
+  ) => SenderKeyRecord;
+  SenderKeyRecord_Serialize: (
+    obj: Wrapper<SenderKeyRecord>
+  ) => Uint8Array<ArrayBuffer>;
+  ServerCertificate_Deserialize: (
+    data: Uint8Array<ArrayBuffer>
+  ) => ServerCertificate;
+  ServerCertificate_GetCertificate: (
+    obj: Wrapper<ServerCertificate>
+  ) => Uint8Array<ArrayBuffer>;
+  ServerCertificate_GetKey: (obj: Wrapper<ServerCertificate>) => PublicKey;
+  ServerCertificate_GetKeyId: (obj: Wrapper<ServerCertificate>) => number;
+  ServerCertificate_GetSerialized: (
+    obj: Wrapper<ServerCertificate>
+  ) => Uint8Array<ArrayBuffer>;
+  ServerCertificate_GetSignature: (
+    obj: Wrapper<ServerCertificate>
+  ) => Uint8Array<ArrayBuffer>;
+  ServerCertificate_New: (
+    key_id: number,
+    server_key: Wrapper<PublicKey>,
+    trust_root: Wrapper<PrivateKey>
+  ) => ServerCertificate;
+  ServerMessageAck_SendStatus: (
+    ack: Wrapper<ServerMessageAck>,
+    status: number
+  ) => void;
+  ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic: (
+    server_public_params: Wrapper<ServerPublicParams>,
+    randomness: Uint8Array<ArrayBuffer>,
+    group_secret_params: Serialized<GroupSecretParams>,
+    auth_credential_with_pni_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic: (
+    server_public_params: Wrapper<ServerPublicParams>,
+    randomness: Uint8Array<ArrayBuffer>,
+    group_secret_params: Serialized<GroupSecretParams>,
+    profile_key_credential: Serialized<ExpiringProfileKeyCredential>
+  ) => Uint8Array<ArrayBuffer>;
+  ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic: (
+    server_public_params: Wrapper<ServerPublicParams>,
+    randomness: Uint8Array<ArrayBuffer>,
+    user_id: Uint8Array<ArrayBuffer>,
+    profile_key: Serialized<ProfileKey>
+  ) => Serialized<ProfileKeyCredentialRequestContext>;
+  ServerPublicParams_CreateReceiptCredentialPresentationDeterministic: (
+    server_public_params: Wrapper<ServerPublicParams>,
+    randomness: Uint8Array<ArrayBuffer>,
+    receipt_credential: Serialized<ReceiptCredential>
+  ) => Serialized<ReceiptCredentialPresentation>;
+  ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic: (
+    server_public_params: Wrapper<ServerPublicParams>,
+    randomness: Uint8Array<ArrayBuffer>,
+    receipt_serial: Uint8Array<ArrayBuffer>
+  ) => Serialized<ReceiptCredentialRequestContext>;
+  ServerPublicParams_Deserialize: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => ServerPublicParams;
+  ServerPublicParams_GetEndorsementPublicKey: (
+    params: Wrapper<ServerPublicParams>
+  ) => Uint8Array<ArrayBuffer>;
+  ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId: (
+    params: Wrapper<ServerPublicParams>,
+    aci: Uint8Array<ArrayBuffer>,
+    pni: Uint8Array<ArrayBuffer>,
+    redemption_time: Timestamp,
+    auth_credential_with_pni_response_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  ServerPublicParams_ReceiveExpiringProfileKeyCredential: (
+    server_public_params: Wrapper<ServerPublicParams>,
+    request_context: Serialized<ProfileKeyCredentialRequestContext>,
+    response: Serialized<ExpiringProfileKeyCredentialResponse>,
+    current_time_in_seconds: Timestamp
+  ) => Serialized<ExpiringProfileKeyCredential>;
+  ServerPublicParams_ReceiveReceiptCredential: (
+    server_public_params: Wrapper<ServerPublicParams>,
+    request_context: Serialized<ReceiptCredentialRequestContext>,
+    response: Serialized<ReceiptCredentialResponse>
+  ) => Serialized<ReceiptCredential>;
+  ServerPublicParams_Serialize: (
+    handle: Wrapper<ServerPublicParams>
+  ) => Uint8Array<ArrayBuffer>;
+  ServerPublicParams_VerifySignature: (
+    server_public_params: Wrapper<ServerPublicParams>,
+    message: Uint8Array<ArrayBuffer>,
+    notary_signature: Uint8Array<ArrayBuffer>
+  ) => void;
+  ServerSecretParams_Deserialize: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => ServerSecretParams;
+  ServerSecretParams_GenerateDeterministic: (
+    randomness: Uint8Array<ArrayBuffer>
+  ) => ServerSecretParams;
+  ServerSecretParams_GetPublicParams: (
+    params: Wrapper<ServerSecretParams>
+  ) => ServerPublicParams;
+  ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic: (
+    server_secret_params: Wrapper<ServerSecretParams>,
+    randomness: Uint8Array<ArrayBuffer>,
+    aci: Uint8Array<ArrayBuffer>,
+    pni: Uint8Array<ArrayBuffer>,
+    redemption_time: Timestamp
+  ) => Uint8Array<ArrayBuffer>;
+  ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic: (
+    server_secret_params: Wrapper<ServerSecretParams>,
+    randomness: Uint8Array<ArrayBuffer>,
+    request: Serialized<ProfileKeyCredentialRequest>,
+    user_id: Uint8Array<ArrayBuffer>,
+    commitment: Serialized<ProfileKeyCommitment>,
+    expiration_in_seconds: Timestamp
+  ) => Serialized<ExpiringProfileKeyCredentialResponse>;
+  ServerSecretParams_IssueReceiptCredentialDeterministic: (
+    server_secret_params: Wrapper<ServerSecretParams>,
+    randomness: Uint8Array<ArrayBuffer>,
+    request: Serialized<ReceiptCredentialRequest>,
+    receipt_expiration_time: Timestamp,
+    receipt_level: bigint
+  ) => Serialized<ReceiptCredentialResponse>;
+  ServerSecretParams_Serialize: (
+    handle: Wrapper<ServerSecretParams>
+  ) => Uint8Array<ArrayBuffer>;
+  ServerSecretParams_SignDeterministic: (
+    params: Wrapper<ServerSecretParams>,
+    randomness: Uint8Array<ArrayBuffer>,
+    message: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  ServerSecretParams_VerifyAuthCredentialPresentation: (
+    server_secret_params: Wrapper<ServerSecretParams>,
+    group_public_params: Serialized<GroupPublicParams>,
+    presentation_bytes: Uint8Array<ArrayBuffer>,
+    current_time_in_seconds: Timestamp
+  ) => void;
+  ServerSecretParams_VerifyProfileKeyCredentialPresentation: (
+    server_secret_params: Wrapper<ServerSecretParams>,
+    group_public_params: Serialized<GroupPublicParams>,
+    presentation_bytes: Uint8Array<ArrayBuffer>,
+    current_time_in_seconds: Timestamp
+  ) => void;
+  ServerSecretParams_VerifyReceiptCredentialPresentation: (
+    server_secret_params: Wrapper<ServerSecretParams>,
+    presentation: Serialized<ReceiptCredentialPresentation>
+  ) => void;
+  ServiceId_ParseFromServiceIdBinary: (
+    input: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  ServiceId_ParseFromServiceIdString: (
+    input: string
+  ) => Uint8Array<ArrayBuffer>;
+  ServiceId_ServiceIdBinary: (
+    value: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  ServiceId_ServiceIdLog: (value: Uint8Array<ArrayBuffer>) => string;
+  ServiceId_ServiceIdString: (value: Uint8Array<ArrayBuffer>) => string;
+  SessionBuilder_ProcessPreKeyBundle: (
+    bundle: Wrapper<PreKeyBundle>,
+    protocol_address: Wrapper<ProtocolAddress>,
+    local_address: Wrapper<ProtocolAddress>,
+    session_store: SessionStore,
+    identity_key_store: IdentityKeyStore,
+    now: Timestamp
+  ) => Promise<void>;
+  SessionCipher_DecryptPreKeySignalMessage: (
+    message: Wrapper<PreKeySignalMessage>,
+    protocol_address: Wrapper<ProtocolAddress>,
+    local_address: Wrapper<ProtocolAddress>,
+    session_store: SessionStore,
+    identity_key_store: IdentityKeyStore,
+    prekey_store: PreKeyStore,
+    signed_prekey_store: SignedPreKeyStore,
+    kyber_prekey_store: KyberPreKeyStore
+  ) => Promise<Uint8Array<ArrayBuffer>>;
+  SessionCipher_DecryptSignalMessage: (
+    message: Wrapper<SignalMessage>,
+    protocol_address: Wrapper<ProtocolAddress>,
+    local_address: Wrapper<ProtocolAddress>,
+    session_store: SessionStore,
+    identity_key_store: IdentityKeyStore
+  ) => Promise<Uint8Array<ArrayBuffer>>;
+  SessionCipher_EncryptMessage: (
+    ptext: Uint8Array<ArrayBuffer>,
+    protocol_address: Wrapper<ProtocolAddress>,
+    local_address: Wrapper<ProtocolAddress>,
+    session_store: SessionStore,
+    identity_key_store: IdentityKeyStore,
+    now: Timestamp
+  ) => Promise<CiphertextMessage>;
+  SessionRecord_ArchiveCurrentState: (
+    session_record: Wrapper<SessionRecord>
+  ) => void;
+  SessionRecord_CurrentRatchetKeyMatches: (
+    s: Wrapper<SessionRecord>,
+    key: Wrapper<PublicKey>
+  ) => boolean;
+  SessionRecord_Deserialize: (data: Uint8Array<ArrayBuffer>) => SessionRecord;
+  SessionRecord_GetLocalRegistrationId: (obj: Wrapper<SessionRecord>) => number;
+  SessionRecord_GetRemoteRegistrationId: (
+    obj: Wrapper<SessionRecord>
+  ) => number;
+  SessionRecord_HasUsableSenderChain: (
+    s: Wrapper<SessionRecord>,
+    require_pq_ratio: number,
+    now: Timestamp
+  ) => boolean;
+  SessionRecord_Serialize: (
+    obj: Wrapper<SessionRecord>
+  ) => Uint8Array<ArrayBuffer>;
+  SgxClientState_CompleteHandshake: (
+    cli: Wrapper<SgxClientState>,
+    handshake_received: Uint8Array<ArrayBuffer>
+  ) => void;
+  SgxClientState_EstablishedRecv: (
+    cli: Wrapper<SgxClientState>,
+    received_ciphertext: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  SgxClientState_EstablishedSend: (
+    cli: Wrapper<SgxClientState>,
+    plaintext_to_send: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  SgxClientState_InitialRequest: (
+    obj: Wrapper<SgxClientState>
+  ) => Uint8Array<ArrayBuffer>;
   SignalMedia_CheckAvailable: () => void;
-  SignalMessage_Deserialize: (data: Uint8Array<ArrayBuffer>,) => SignalMessage;
-  SignalMessage_GetBody: (obj: Wrapper<SignalMessage>,) => Uint8Array<ArrayBuffer>;
-  SignalMessage_GetCounter: (obj: Wrapper<SignalMessage>,) => number;
-  SignalMessage_GetMessageVersion: (obj: Wrapper<SignalMessage>,) => number;
-  SignalMessage_GetPqRatchet: (msg: Wrapper<SignalMessage>,) => Uint8Array<ArrayBuffer>;
-  SignalMessage_GetSerialized: (obj: Wrapper<SignalMessage>,) => Uint8Array<ArrayBuffer>;
-  SignalMessage_New: (messageVersion: number,macKey: Uint8Array<ArrayBuffer>,senderRatchetKey: Wrapper<PublicKey>,counter: number,previousCounter: number,ciphertext: Uint8Array<ArrayBuffer>,senderIdentityKey: Wrapper<PublicKey>,receiverIdentityKey: Wrapper<PublicKey>,pqRatchet: Uint8Array<ArrayBuffer>,) => SignalMessage;
-  SignedPreKeyRecord_Deserialize: (data: Uint8Array<ArrayBuffer>,) => SignedPreKeyRecord;
-  SignedPreKeyRecord_GetId: (obj: Wrapper<SignedPreKeyRecord>,) => number;
-  SignedPreKeyRecord_GetPrivateKey: (obj: Wrapper<SignedPreKeyRecord>,) => PrivateKey;
-  SignedPreKeyRecord_GetPublicKey: (obj: Wrapper<SignedPreKeyRecord>,) => PublicKey;
-  SignedPreKeyRecord_GetSignature: (obj: Wrapper<SignedPreKeyRecord>,) => Uint8Array<ArrayBuffer>;
-  SignedPreKeyRecord_GetTimestamp: (obj: Wrapper<SignedPreKeyRecord>,) => Timestamp;
-  SignedPreKeyRecord_New: (id: number,timestamp: Timestamp,pubKey: Wrapper<PublicKey>,privKey: Wrapper<PrivateKey>,signature: Uint8Array<ArrayBuffer>,) => SignedPreKeyRecord;
-  SignedPreKeyRecord_Serialize: (obj: Wrapper<SignedPreKeyRecord>,) => Uint8Array<ArrayBuffer>;
-  Svr2Client_New: (mrenclave: Uint8Array<ArrayBuffer>,attestationMsg: Uint8Array<ArrayBuffer>,currentTimestamp: Timestamp,) => SgxClientState;
-  TESTING_BridgedStringMap_dump_to_json: (map: Wrapper<BridgedStringMap>,) => string;
-  TESTING_CdsiLookupErrorConvert: (errorDescription: string,) => void;
-  TESTING_CdsiLookupResponseConvert: (asyncRuntime: Wrapper<TokioAsyncContext>,) => CancellablePromise<LookupResponse>;
-  TESTING_ChatConnectErrorConvert: (errorDescription: string,) => void;
-  TESTING_ChatRequestGetBody: (request: Wrapper<HttpRequest>,) => Uint8Array<ArrayBuffer>;
-  TESTING_ChatRequestGetHeaderNames: (request: Wrapper<HttpRequest>,) => Array<string>;
-  TESTING_ChatRequestGetHeaderValue: (request: Wrapper<HttpRequest>,headerName: string,) => string;
-  TESTING_ChatRequestGetMethod: (request: Wrapper<HttpRequest>,) => string;
-  TESTING_ChatRequestGetPath: (request: Wrapper<HttpRequest>,) => string;
-  TESTING_ChatResponseConvert: (bodyPresent: boolean,) => ChatResponse;
-  TESTING_ChatSendErrorConvert: (errorDescription: string,) => void;
-  TESTING_ConnectionManager_isUsingProxy: (manager: Wrapper<ConnectionManager>,) => number;
-  TESTING_ConnectionManager_newLocalOverride: (userAgent: string,chatPort: number,cdsiPort: number,svr2Port: number,svrBPort: number,rootCertificateDer: Uint8Array<ArrayBuffer>,httpVersion: number,) => ConnectionManager;
-  TESTING_ConvertOptionalUuid: (present: boolean,) => (Uuid | null);
-  TESTING_CreateOTP: (username: string,secret: Uint8Array<ArrayBuffer>,) => string;
-  TESTING_CreateOTPFromBase64: (username: string,secret: string,) => string;
+  SignalMessage_Deserialize: (data: Uint8Array<ArrayBuffer>) => SignalMessage;
+  SignalMessage_GetBody: (
+    obj: Wrapper<SignalMessage>
+  ) => Uint8Array<ArrayBuffer>;
+  SignalMessage_GetCounter: (obj: Wrapper<SignalMessage>) => number;
+  SignalMessage_GetMessageVersion: (obj: Wrapper<SignalMessage>) => number;
+  SignalMessage_GetPqRatchet: (
+    msg: Wrapper<SignalMessage>
+  ) => Uint8Array<ArrayBuffer>;
+  SignalMessage_GetSerialized: (
+    obj: Wrapper<SignalMessage>
+  ) => Uint8Array<ArrayBuffer>;
+  SignalMessage_New: (
+    message_version: number,
+    mac_key: Uint8Array<ArrayBuffer>,
+    sender_ratchet_key: Wrapper<PublicKey>,
+    counter: number,
+    previous_counter: number,
+    ciphertext: Uint8Array<ArrayBuffer>,
+    sender_identity_key: Wrapper<PublicKey>,
+    receiver_identity_key: Wrapper<PublicKey>,
+    pq_ratchet: Uint8Array<ArrayBuffer>
+  ) => SignalMessage;
+  SignedPreKeyRecord_Deserialize: (
+    data: Uint8Array<ArrayBuffer>
+  ) => SignedPreKeyRecord;
+  SignedPreKeyRecord_GetId: (obj: Wrapper<SignedPreKeyRecord>) => number;
+  SignedPreKeyRecord_GetPrivateKey: (
+    obj: Wrapper<SignedPreKeyRecord>
+  ) => PrivateKey;
+  SignedPreKeyRecord_GetPublicKey: (
+    obj: Wrapper<SignedPreKeyRecord>
+  ) => PublicKey;
+  SignedPreKeyRecord_GetSignature: (
+    obj: Wrapper<SignedPreKeyRecord>
+  ) => Uint8Array<ArrayBuffer>;
+  SignedPreKeyRecord_GetTimestamp: (
+    obj: Wrapper<SignedPreKeyRecord>
+  ) => Timestamp;
+  SignedPreKeyRecord_New: (
+    id: number,
+    timestamp: Timestamp,
+    pub_key: Wrapper<PublicKey>,
+    priv_key: Wrapper<PrivateKey>,
+    signature: Uint8Array<ArrayBuffer>
+  ) => SignedPreKeyRecord;
+  SignedPreKeyRecord_Serialize: (
+    obj: Wrapper<SignedPreKeyRecord>
+  ) => Uint8Array<ArrayBuffer>;
+  Svr2Client_New: (
+    mrenclave: Uint8Array<ArrayBuffer>,
+    attestation_msg: Uint8Array<ArrayBuffer>,
+    current_timestamp: Timestamp
+  ) => SgxClientState;
+  TESTING_BridgedStringMap_dump_to_json: (
+    map: Wrapper<BridgedStringMap>
+  ) => string;
+  TESTING_CdsiLookupErrorConvert: (error_description: string) => void;
+  TESTING_CdsiLookupResponseConvert: (
+    asyncRuntime: Wrapper<TokioAsyncContext>
+  ) => CancellablePromise<LookupResponse>;
+  TESTING_ChatConnectErrorConvert: (error_description: string) => void;
+  TESTING_ChatRequestGetBody: (
+    request: Wrapper<HttpRequest>
+  ) => Uint8Array<ArrayBuffer>;
+  TESTING_ChatRequestGetHeaderNames: (
+    request: Wrapper<HttpRequest>
+  ) => Array<string>;
+  TESTING_ChatRequestGetHeaderValue: (
+    request: Wrapper<HttpRequest>,
+    header_name: string
+  ) => string;
+  TESTING_ChatRequestGetMethod: (request: Wrapper<HttpRequest>) => string;
+  TESTING_ChatRequestGetPath: (request: Wrapper<HttpRequest>) => string;
+  TESTING_ChatResponseConvert: (body_present: boolean) => ChatResponse;
+  TESTING_ChatSendErrorConvert: (error_description: string) => void;
+  TESTING_ConnectionManager_isUsingProxy: (
+    manager: Wrapper<ConnectionManager>
+  ) => number;
+  TESTING_ConnectionManager_newLocalOverride: (
+    userAgent: string,
+    chatPort: number,
+    cdsiPort: number,
+    svr2Port: number,
+    svrBPort: number,
+    rootCertificateDer: Uint8Array<ArrayBuffer>,
+    http_version: number
+  ) => ConnectionManager;
+  TESTING_ConvertOptionalUuid: (present: boolean) => Uuid | null;
+  TESTING_CreateOTP: (
+    username: string,
+    secret: Uint8Array<ArrayBuffer>
+  ) => string;
+  TESTING_CreateOTPFromBase64: (username: string, secret: string) => string;
   TESTING_EnableDeterministicRngForTesting: () => void;
-  TESTING_ErrorOnBorrowAsync: (_input: null,) => Promise<void>;
-  TESTING_ErrorOnBorrowIo: (asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,_input: null,) => CancellablePromise<void>;
-  TESTING_ErrorOnBorrowSync: (_input: null,) => void;
-  TESTING_ErrorOnReturnAsync: (_needsCleanup: null,) => Promise<null>;
-  TESTING_ErrorOnReturnIo: (asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,_needsCleanup: null,) => CancellablePromise<null>;
-  TESTING_ErrorOnReturnSync: (_needsCleanup: null,) => null;
-  TESTING_FakeChatConnection_Create: (tokio: Wrapper<TokioAsyncContext>,listener: ChatListener,grpcOverridesJoinedByNewlines: string,alertsJoinedByNewlines: string,) => FakeChatConnection;
-  TESTING_FakeChatConnection_CreateProvisioning: (tokio: Wrapper<TokioAsyncContext>,listener: ProvisioningListener,) => FakeChatConnection;
-  TESTING_FakeChatConnection_TakeAuthenticatedChat: (chat: Wrapper<FakeChatConnection>,) => AuthenticatedChatConnection;
-  TESTING_FakeChatConnection_TakeProvisioningChat: (chat: Wrapper<FakeChatConnection>,) => ProvisioningChatConnection;
-  TESTING_FakeChatConnection_TakeRemote: (chat: Wrapper<FakeChatConnection>,) => FakeChatRemoteEnd;
-  TESTING_FakeChatConnection_TakeUnauthenticatedChat: (chat: Wrapper<FakeChatConnection>,) => UnauthenticatedChatConnection;
-  TESTING_FakeChatRemoteEnd_BinprotoToJson: (name: string,input: Uint8Array<ArrayBuffer>,) => string;
-  TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength: (len: number,) => Uint8Array<ArrayBuffer>;
-  TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted: (chat: Wrapper<FakeChatRemoteEnd>,) => void;
-  TESTING_FakeChatRemoteEnd_JsonToBinproto: (name: string,input: string,) => Uint8Array<ArrayBuffer>;
-  TESTING_FakeChatRemoteEnd_NextGrpcMessage: (input: Uint8Array<ArrayBuffer>,offset: number,) => [number, number];
-  TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<FakeChatRemoteEnd>,) => CancellablePromise<([HttpRequest, bigint] | null)>;
-  TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<FakeChatRemoteEnd>,) => CancellablePromise<([HttpRequest, bigint] | null)>;
-  TESTING_FakeChatRemoteEnd_SendRawServerRequest: (chat: Wrapper<FakeChatRemoteEnd>,bytes: Uint8Array<ArrayBuffer>,) => void;
-  TESTING_FakeChatRemoteEnd_SendRawServerResponse: (chat: Wrapper<FakeChatRemoteEnd>,bytes: Uint8Array<ArrayBuffer>,) => void;
-  TESTING_FakeChatRemoteEnd_SendServerGrpcResponse: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<FakeChatRemoteEnd>,response: Wrapper<FakeChatResponse>,) => CancellablePromise<void>;
-  TESTING_FakeChatRemoteEnd_SendServerResponse: (chat: Wrapper<FakeChatRemoteEnd>,response: Wrapper<FakeChatResponse>,) => void;
-  TESTING_FakeChatResponse_Create: (id: bigint,status: number,message: string,headers: Array<string>,body: (Uint8Array<ArrayBuffer> | null),) => FakeChatResponse;
+  TESTING_ErrorOnBorrowAsync: (_input: null) => Promise<void>;
+  TESTING_ErrorOnBorrowIo: (
+    asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,
+    _input: null
+  ) => CancellablePromise<void>;
+  TESTING_ErrorOnBorrowSync: (_input: null) => void;
+  TESTING_ErrorOnReturnAsync: (_needs_cleanup: null) => Promise<null>;
+  TESTING_ErrorOnReturnIo: (
+    asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,
+    _needs_cleanup: null
+  ) => CancellablePromise<null>;
+  TESTING_ErrorOnReturnSync: (_needs_cleanup: null) => null;
+  TESTING_FakeChatConnection_Create: (
+    tokio: Wrapper<TokioAsyncContext>,
+    listener: ChatListener,
+    grpc_overrides_joined_by_newlines: string,
+    alerts_joined_by_newlines: string
+  ) => FakeChatConnection;
+  TESTING_FakeChatConnection_CreateProvisioning: (
+    tokio: Wrapper<TokioAsyncContext>,
+    listener: ProvisioningListener
+  ) => FakeChatConnection;
+  TESTING_FakeChatConnection_TakeAuthenticatedChat: (
+    chat: Wrapper<FakeChatConnection>
+  ) => AuthenticatedChatConnection;
+  TESTING_FakeChatConnection_TakeProvisioningChat: (
+    chat: Wrapper<FakeChatConnection>
+  ) => ProvisioningChatConnection;
+  TESTING_FakeChatConnection_TakeRemote: (
+    chat: Wrapper<FakeChatConnection>
+  ) => FakeChatRemoteEnd;
+  TESTING_FakeChatConnection_TakeUnauthenticatedChat: (
+    chat: Wrapper<FakeChatConnection>
+  ) => UnauthenticatedChatConnection;
+  TESTING_FakeChatRemoteEnd_BinprotoToJson: (
+    name: string,
+    input: Uint8Array<ArrayBuffer>
+  ) => string;
+  TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength: (
+    len: number
+  ) => Uint8Array<ArrayBuffer>;
+  TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted: (
+    chat: Wrapper<FakeChatRemoteEnd>
+  ) => void;
+  TESTING_FakeChatRemoteEnd_JsonToBinproto: (
+    name: string,
+    input: string
+  ) => Uint8Array<ArrayBuffer>;
+  TESTING_FakeChatRemoteEnd_NextGrpcMessage: (
+    input: Uint8Array<ArrayBuffer>,
+    offset: number
+  ) => [number, number];
+  TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<FakeChatRemoteEnd>
+  ) => CancellablePromise<[HttpRequest, bigint] | null>;
+  TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<FakeChatRemoteEnd>
+  ) => CancellablePromise<[HttpRequest, bigint] | null>;
+  TESTING_FakeChatRemoteEnd_SendRawServerRequest: (
+    chat: Wrapper<FakeChatRemoteEnd>,
+    bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  TESTING_FakeChatRemoteEnd_SendRawServerResponse: (
+    chat: Wrapper<FakeChatRemoteEnd>,
+    bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  TESTING_FakeChatRemoteEnd_SendServerGrpcResponse: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<FakeChatRemoteEnd>,
+    response: Wrapper<FakeChatResponse>
+  ) => CancellablePromise<void>;
+  TESTING_FakeChatRemoteEnd_SendServerResponse: (
+    chat: Wrapper<FakeChatRemoteEnd>,
+    response: Wrapper<FakeChatResponse>
+  ) => void;
+  TESTING_FakeChatResponse_Create: (
+    id: bigint,
+    status: number,
+    message: string,
+    headers: Array<string>,
+    body: Uint8Array<ArrayBuffer> | null
+  ) => FakeChatResponse;
   TESTING_FakeChatServer_Create: () => FakeChatServer;
-  TESTING_FakeChatServer_GetNextRemote: (asyncRuntime: Wrapper<TokioAsyncContext>,server: Wrapper<FakeChatServer>,) => CancellablePromise<FakeChatRemoteEnd>;
-  TESTING_FakeRegistrationSession_CreateSession: (asyncRuntime: Wrapper<TokioAsyncContext>,createSession: RegistrationCreateSessionRequest,chat: Wrapper<FakeChatServer>,) => CancellablePromise<RegistrationService>;
-  TESTING_FutureCancellationCounter_Create: (initialValue: number,) => TestingFutureCancellationCounter;
-  TESTING_FutureCancellationCounter_WaitForCount: (asyncRuntime: Wrapper<TokioAsyncContext>,count: Wrapper<TestingFutureCancellationCounter>,target: number,) => CancellablePromise<void>;
-  TESTING_FutureFailure: (asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,_input: number,) => CancellablePromise<number>;
-  TESTING_FutureIncrementOnCancel: (asyncRuntime: Wrapper<TokioAsyncContext>,_guard: TestingFutureCancellationGuard,) => CancellablePromise<void>;
-  TESTING_FutureProducesOtherPointerType: (asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,input: string,) => CancellablePromise<OtherTestingHandleType>;
-  TESTING_FutureProducesPointerType: (asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,input: number,) => CancellablePromise<TestingHandleType>;
-  TESTING_FutureSuccess: (asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,input: number,) => CancellablePromise<number>;
-  TESTING_InputStreamReadIntoZeroLengthSlice: (capsAlphabetInput: InputStream,) => Promise<Uint8Array<ArrayBuffer>>;
-  TESTING_JoinStringArray: (array: Array<string>,joinWith: string,) => string;
+  TESTING_FakeChatServer_GetNextRemote: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    server: Wrapper<FakeChatServer>
+  ) => CancellablePromise<FakeChatRemoteEnd>;
+  TESTING_FakeRegistrationSession_CreateSession: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    create_session: RegistrationCreateSessionRequest,
+    chat: Wrapper<FakeChatServer>
+  ) => CancellablePromise<RegistrationService>;
+  TESTING_FutureCancellationCounter_Create: (
+    initial_value: number
+  ) => TestingFutureCancellationCounter;
+  TESTING_FutureCancellationCounter_WaitForCount: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    count: Wrapper<TestingFutureCancellationCounter>,
+    target: number
+  ) => CancellablePromise<void>;
+  TESTING_FutureFailure: (
+    asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,
+    _input: number
+  ) => CancellablePromise<number>;
+  TESTING_FutureIncrementOnCancel: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    _guard: TestingFutureCancellationGuard
+  ) => CancellablePromise<void>;
+  TESTING_FutureProducesOtherPointerType: (
+    asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,
+    input: string
+  ) => CancellablePromise<OtherTestingHandleType>;
+  TESTING_FutureProducesPointerType: (
+    asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,
+    input: number
+  ) => CancellablePromise<TestingHandleType>;
+  TESTING_FutureSuccess: (
+    asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,
+    input: number
+  ) => CancellablePromise<number>;
+  TESTING_InputStreamReadIntoZeroLengthSlice: (
+    caps_alphabet_input: InputStream
+  ) => Promise<Uint8Array<ArrayBuffer>>;
+  TESTING_JoinStringArray: (array: Array<string>, join_with: string) => string;
   TESTING_KeyTransChatSendError: () => void;
   TESTING_KeyTransFatalVerificationFailure: () => void;
   TESTING_KeyTransNonFatalVerificationFailure: () => void;
   TESTING_KeyTransStoredAccountData: () => Uint8Array<ArrayBuffer>;
   TESTING_NonSuspendingBackgroundThreadRuntime_New: () => NonSuspendingBackgroundThreadRuntime;
-  TESTING_OtherTestingHandleType_getValue: (handle: Wrapper<OtherTestingHandleType>,) => string;
-  TESTING_PanicInBodyAsync: (_input: null,) => Promise<void>;
-  TESTING_PanicInBodyIo: (asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,_input: null,) => CancellablePromise<void>;
-  TESTING_PanicInBodySync: (_input: null,) => void;
-  TESTING_PanicOnBorrowAsync: (_input: null,) => Promise<void>;
-  TESTING_PanicOnBorrowIo: (asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,_input: null,) => CancellablePromise<void>;
-  TESTING_PanicOnBorrowSync: (_input: null,) => void;
-  TESTING_PanicOnLoadAsync: (_needsCleanup: null,_input: null,) => Promise<void>;
-  TESTING_PanicOnLoadIo: (asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,_needsCleanup: null,_input: null,) => CancellablePromise<void>;
-  TESTING_PanicOnLoadSync: (_needsCleanup: null,_input: null,) => void;
-  TESTING_PanicOnReturnAsync: (_needsCleanup: null,) => Promise<null>;
-  TESTING_PanicOnReturnIo: (asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,_needsCleanup: null,) => CancellablePromise<null>;
-  TESTING_PanicOnReturnSync: (_needsCleanup: null,) => null;
-  TESTING_ProcessBytestringArray: (input: Array<Uint8Array<ArrayBuffer>>,) => Array<Uint8Array<ArrayBuffer>>;
+  TESTING_OtherTestingHandleType_getValue: (
+    handle: Wrapper<OtherTestingHandleType>
+  ) => string;
+  TESTING_PanicInBodyAsync: (_input: null) => Promise<void>;
+  TESTING_PanicInBodyIo: (
+    asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,
+    _input: null
+  ) => CancellablePromise<void>;
+  TESTING_PanicInBodySync: (_input: null) => void;
+  TESTING_PanicOnBorrowAsync: (_input: null) => Promise<void>;
+  TESTING_PanicOnBorrowIo: (
+    asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,
+    _input: null
+  ) => CancellablePromise<void>;
+  TESTING_PanicOnBorrowSync: (_input: null) => void;
+  TESTING_PanicOnLoadAsync: (
+    _needs_cleanup: null,
+    _input: null
+  ) => Promise<void>;
+  TESTING_PanicOnLoadIo: (
+    asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,
+    _needs_cleanup: null,
+    _input: null
+  ) => CancellablePromise<void>;
+  TESTING_PanicOnLoadSync: (_needs_cleanup: null, _input: null) => void;
+  TESTING_PanicOnReturnAsync: (_needs_cleanup: null) => Promise<null>;
+  TESTING_PanicOnReturnIo: (
+    asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,
+    _needs_cleanup: null
+  ) => CancellablePromise<null>;
+  TESTING_PanicOnReturnSync: (_needs_cleanup: null) => null;
+  TESTING_ProcessBytestringArray: (
+    input: Array<Uint8Array<ArrayBuffer>>
+  ) => Array<Uint8Array<ArrayBuffer>>;
   TESTING_RegisterAccountResponse_CreateTestValue: () => RegisterAccountResponse;
-  TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert: (errorDescription: string,) => void;
+  TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert: (
+    error_description: string
+  ) => void;
   TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert: () => CheckSvr2CredentialsResponse;
-  TESTING_RegistrationService_CreateSessionErrorConvert: (errorDescription: string,) => void;
-  TESTING_RegistrationService_RegisterAccountErrorConvert: (errorDescription: string,) => void;
-  TESTING_RegistrationService_RequestVerificationCodeErrorConvert: (errorDescription: string,) => void;
-  TESTING_RegistrationService_ResumeSessionErrorConvert: (errorDescription: string,) => void;
-  TESTING_RegistrationService_SubmitVerificationErrorConvert: (errorDescription: string,) => void;
-  TESTING_RegistrationService_UpdateSessionErrorConvert: (errorDescription: string,) => void;
+  TESTING_RegistrationService_CreateSessionErrorConvert: (
+    error_description: string
+  ) => void;
+  TESTING_RegistrationService_RegisterAccountErrorConvert: (
+    error_description: string
+  ) => void;
+  TESTING_RegistrationService_RequestVerificationCodeErrorConvert: (
+    error_description: string
+  ) => void;
+  TESTING_RegistrationService_ResumeSessionErrorConvert: (
+    error_description: string
+  ) => void;
+  TESTING_RegistrationService_SubmitVerificationErrorConvert: (
+    error_description: string
+  ) => void;
+  TESTING_RegistrationService_UpdateSessionErrorConvert: (
+    error_description: string
+  ) => void;
   TESTING_RegistrationSessionInfoConvert: () => RegistrationSession;
   TESTING_ReturnPair: () => [number, string];
   TESTING_ReturnStringArray: () => Array<string>;
-  TESTING_RoundTripI32: (input: number,) => number;
-  TESTING_RoundTripU16: (input: number,) => number;
-  TESTING_RoundTripU32: (input: number,) => number;
-  TESTING_RoundTripU64: (input: bigint,) => bigint;
-  TESTING_RoundTripU8: (input: number,) => number;
+  TESTING_RoundTripI32: (input: number) => number;
+  TESTING_RoundTripU16: (input: number) => number;
+  TESTING_RoundTripU32: (input: number) => number;
+  TESTING_RoundTripU64: (input: bigint) => bigint;
+  TESTING_RoundTripU8: (input: number) => number;
   TESTING_ServerMessageAck_Create: () => ServerMessageAck;
-  TESTING_SignedPublicPreKey_CheckBridgesCorrectly: (sourcePublicKey: Wrapper<PublicKey>,signedPreKey: SignedPublicPreKey,) => void;
-  TESTING_TestingHandleType_getValue: (handle: Wrapper<TestingHandleType>,) => number;
-  TESTING_TokioAsyncContext_FutureSuccessBytes: (asyncRuntime: Wrapper<TokioAsyncContext>,count: number,) => CancellablePromise<Uint8Array<ArrayBuffer>>;
+  TESTING_SignedPublicPreKey_CheckBridgesCorrectly: (
+    source_public_key: Wrapper<PublicKey>,
+    signed_pre_key: SignedPublicPreKey
+  ) => void;
+  TESTING_TestingHandleType_getValue: (
+    handle: Wrapper<TestingHandleType>
+  ) => number;
+  TESTING_TestingIntBox_Get: (my_int_box: Wrapper<TestingIntBox>) => number;
+  TESTING_TestingIntBox_New: (value: number) => TestingIntBox;
+  TESTING_TokioAsyncContext_FutureSuccessBytes: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    count: number
+  ) => CancellablePromise<Uint8Array<ArrayBuffer>>;
   TESTING_TokioAsyncContext_NewSingleThreaded: () => TokioAsyncContext;
-  TESTING_TokioAsyncFuture: (asyncRuntime: Wrapper<TokioAsyncContext>,input: number,) => CancellablePromise<number>;
-  TestingSemaphore_AddPermits: (semaphore: Wrapper<TestingSemaphore>,permits: number,) => void;
-  TestingSemaphore_New: (initial: number,) => TestingSemaphore;
-  TestingValueHolder_Get: (holder: Wrapper<TestingValueHolder>,) => number;
-  TestingValueHolder_New: (value: number,) => TestingValueHolder;
-  TokioAsyncContext_cancel: (context: Wrapper<TokioAsyncContext>,rawCancellationId: bigint,) => void;
+  TESTING_TokioAsyncFuture: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    input: number
+  ) => CancellablePromise<number>;
+  TESTING_conversion_ServiceId_identity: (
+    x: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  TESTING_conversion_ServiceId_to_string: (
+    x: Uint8Array<ArrayBuffer>
+  ) => string;
+  TESTING_conversion_bool_identity: (x: boolean) => boolean;
+  TESTING_conversion_bool_to_string: (x: boolean) => string;
+  TESTING_conversion_i32_identity: (x: number) => number;
+  TESTING_conversion_i32_to_string: (x: number) => string;
+  TESTING_conversion_string_identity: (x: string) => string;
+  TESTING_conversion_u16_identity: (x: number) => number;
+  TESTING_conversion_u16_to_string: (x: number) => string;
+  TESTING_conversion_u8_identity: (x: number) => number;
+  TESTING_conversion_u8_to_string: (x: number) => string;
+  TestingSemaphore_AddPermits: (
+    semaphore: Wrapper<TestingSemaphore>,
+    permits: number
+  ) => void;
+  TestingSemaphore_New: (initial: number) => TestingSemaphore;
+  TestingValueHolder_Get: (holder: Wrapper<TestingValueHolder>) => number;
+  TestingValueHolder_New: (value: number) => TestingValueHolder;
+  TokioAsyncContext_cancel: (
+    context: Wrapper<TokioAsyncContext>,
+    raw_cancellation_id: bigint
+  ) => void;
   TokioAsyncContext_new: () => TokioAsyncContext;
-  UnauthenticatedChatConnection_account_exists: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<UnauthenticatedChatConnection>,account: Uint8Array<ArrayBuffer>,) => CancellablePromise<boolean>;
-  UnauthenticatedChatConnection_backup_get_media_upload_form: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<UnauthenticatedChatConnection>,credential: Uint8Array<ArrayBuffer>,serverKeys: Uint8Array<ArrayBuffer>,signingKey: Wrapper<PrivateKey>,uploadSize: bigint,rng: RandomNumberGenerator,) => CancellablePromise<UploadForm>;
-  UnauthenticatedChatConnection_backup_get_upload_form: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<UnauthenticatedChatConnection>,credential: Uint8Array<ArrayBuffer>,serverKeys: Uint8Array<ArrayBuffer>,signingKey: Wrapper<PrivateKey>,uploadSize: bigint,rng: RandomNumberGenerator,) => CancellablePromise<UploadForm>;
-  UnauthenticatedChatConnection_connect: (asyncRuntime: Wrapper<TokioAsyncContext>,connectionManager: Wrapper<ConnectionManager>,languages: Array<string>,) => CancellablePromise<UnauthenticatedChatConnection>;
-  UnauthenticatedChatConnection_disconnect: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<UnauthenticatedChatConnection>,) => CancellablePromise<void>;
-  UnauthenticatedChatConnection_get_pre_keys_access_key_auth: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<UnauthenticatedChatConnection>,auth: Uint8Array<ArrayBuffer>,target: Uint8Array<ArrayBuffer>,device: number,) => CancellablePromise<PreKeysResponse>;
-  UnauthenticatedChatConnection_get_pre_keys_group_auth: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<UnauthenticatedChatConnection>,auth: Uint8Array<ArrayBuffer>,target: Uint8Array<ArrayBuffer>,device: number,) => CancellablePromise<PreKeysResponse>;
-  UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<UnauthenticatedChatConnection>,target: Uint8Array<ArrayBuffer>,device: number,) => CancellablePromise<PreKeysResponse>;
-  UnauthenticatedChatConnection_info: (chat: Wrapper<UnauthenticatedChatConnection>,) => ChatConnectionInfo;
-  UnauthenticatedChatConnection_init_listener: (chat: Wrapper<UnauthenticatedChatConnection>,listener: ChatListener,) => void;
-  UnauthenticatedChatConnection_look_up_username_hash: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<UnauthenticatedChatConnection>,hash: Uint8Array<ArrayBuffer>,) => CancellablePromise<(Uuid | null)>;
-  UnauthenticatedChatConnection_look_up_username_link: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<UnauthenticatedChatConnection>,uuid: Uuid,entropy: Uint8Array<ArrayBuffer>,) => CancellablePromise<([string, Uint8Array<ArrayBuffer>] | null)>;
-  UnauthenticatedChatConnection_send: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<UnauthenticatedChatConnection>,httpRequest: Wrapper<HttpRequest>,timeoutMillis: number,) => CancellablePromise<ChatResponse>;
-  UnauthenticatedChatConnection_send_message: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<UnauthenticatedChatConnection>,destination: Uint8Array<ArrayBuffer>,timestamp: Timestamp,deviceIds: Uint32Array<ArrayBuffer>,registrationIds: Uint32Array<ArrayBuffer>,contents: Array<Uint8Array<ArrayBuffer>>,authKind: number,authBuffer: (Uint8Array<ArrayBuffer> | null),onlineOnly: boolean,isUrgent: boolean,) => CancellablePromise<void>;
-  UnauthenticatedChatConnection_send_multi_recipient_message: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<UnauthenticatedChatConnection>,payload: Uint8Array<ArrayBuffer>,timestamp: Timestamp,auth: (Uint8Array<ArrayBuffer> | null),onlineOnly: boolean,isUrgent: boolean,) => CancellablePromise<Array<Uint8Array<ArrayBuffer>>>;
-  UnauthenticatedChatConnection_send_raw_grpc: (asyncRuntime: Wrapper<TokioAsyncContext>,chat: Wrapper<UnauthenticatedChatConnection>,service: string,method: string,payload: Uint8Array<ArrayBuffer>,) => CancellablePromise<Uint8Array<ArrayBuffer>>;
-  UnidentifiedSenderMessageContent_Deserialize: (data: Uint8Array<ArrayBuffer>,) => UnidentifiedSenderMessageContent;
-  UnidentifiedSenderMessageContent_GetContentHint: (m: Wrapper<UnidentifiedSenderMessageContent>,) => number;
-  UnidentifiedSenderMessageContent_GetContents: (obj: Wrapper<UnidentifiedSenderMessageContent>,) => Uint8Array<ArrayBuffer>;
-  UnidentifiedSenderMessageContent_GetGroupId: (obj: Wrapper<UnidentifiedSenderMessageContent>,) => (Uint8Array<ArrayBuffer> | null);
-  UnidentifiedSenderMessageContent_GetMsgType: (m: Wrapper<UnidentifiedSenderMessageContent>,) => number;
-  UnidentifiedSenderMessageContent_GetSenderCert: (m: Wrapper<UnidentifiedSenderMessageContent>,) => SenderCertificate;
-  UnidentifiedSenderMessageContent_New: (message: Wrapper<CiphertextMessage>,sender: Wrapper<SenderCertificate>,contentHint: number,groupId: (Uint8Array<ArrayBuffer> | null),) => UnidentifiedSenderMessageContent;
-  UnidentifiedSenderMessageContent_Serialize: (obj: Wrapper<UnidentifiedSenderMessageContent>,) => Uint8Array<ArrayBuffer>;
-  UsernameLink_Create: (username: string,entropy: (Uint8Array<ArrayBuffer> | null),) => Uint8Array<ArrayBuffer>;
-  UsernameLink_DecryptUsername: (entropy: Uint8Array<ArrayBuffer>,encryptedUsername: Uint8Array<ArrayBuffer>,) => string;
-  Username_CandidatesFrom: (nickname: string,minLen: number,maxLen: number,) => Array<string>;
-  Username_Hash: (username: string,) => Uint8Array<ArrayBuffer>;
-  Username_HashFromParts: (nickname: string,discriminator: string,minLen: number,maxLen: number,) => Uint8Array<ArrayBuffer>;
-  Username_Proof: (username: string,randomness: Uint8Array<ArrayBuffer>,) => Uint8Array<ArrayBuffer>;
-  Username_Verify: (proof: Uint8Array<ArrayBuffer>,hash: Uint8Array<ArrayBuffer>,) => void;
-  UuidCiphertext_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>,) => void;
-  ValidatingMac_Finalize: (mac: Wrapper<ValidatingMac>,) => number;
-  ValidatingMac_Initialize: (key: Uint8Array<ArrayBuffer>,chunkSize: number,digests: Uint8Array<ArrayBuffer>,) => (ValidatingMac | null);
-  ValidatingMac_Update: (mac: Wrapper<ValidatingMac>,bytes: Uint8Array<ArrayBuffer>,offset: number,length: number,) => number;
-  WebpSanitizer_Sanitize: (input: SyncInputStream,) => void;
+  UnauthenticatedChatConnection_account_exists: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    account: Uint8Array<ArrayBuffer>
+  ) => CancellablePromise<boolean>;
+  UnauthenticatedChatConnection_backup_get_media_upload_form: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Uint8Array<ArrayBuffer>,
+    server_keys: Uint8Array<ArrayBuffer>,
+    signing_key: Wrapper<PrivateKey>,
+    upload_size: bigint,
+    rng: RandomNumberGenerator
+  ) => CancellablePromise<UploadForm>;
+  UnauthenticatedChatConnection_backup_get_upload_form: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Uint8Array<ArrayBuffer>,
+    server_keys: Uint8Array<ArrayBuffer>,
+    signing_key: Wrapper<PrivateKey>,
+    upload_size: bigint,
+    rng: RandomNumberGenerator
+  ) => CancellablePromise<UploadForm>;
+  UnauthenticatedChatConnection_connect: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    connection_manager: Wrapper<ConnectionManager>,
+    languages: Array<string>
+  ) => CancellablePromise<UnauthenticatedChatConnection>;
+  UnauthenticatedChatConnection_disconnect: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>
+  ) => CancellablePromise<void>;
+  UnauthenticatedChatConnection_get_pre_keys_access_key_auth: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    auth: Uint8Array<ArrayBuffer>,
+    target: Uint8Array<ArrayBuffer>,
+    device: number
+  ) => CancellablePromise<PreKeysResponse>;
+  UnauthenticatedChatConnection_get_pre_keys_group_auth: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    auth: Uint8Array<ArrayBuffer>,
+    target: Uint8Array<ArrayBuffer>,
+    device: number
+  ) => CancellablePromise<PreKeysResponse>;
+  UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    target: Uint8Array<ArrayBuffer>,
+    device: number
+  ) => CancellablePromise<PreKeysResponse>;
+  UnauthenticatedChatConnection_info: (
+    chat: Wrapper<UnauthenticatedChatConnection>
+  ) => ChatConnectionInfo;
+  UnauthenticatedChatConnection_init_listener: (
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    listener: ChatListener
+  ) => void;
+  UnauthenticatedChatConnection_look_up_username_hash: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    hash: Uint8Array<ArrayBuffer>
+  ) => CancellablePromise<Uuid | null>;
+  UnauthenticatedChatConnection_look_up_username_link: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    uuid: Uuid,
+    entropy: Uint8Array<ArrayBuffer>
+  ) => CancellablePromise<[string, Uint8Array<ArrayBuffer>] | null>;
+  UnauthenticatedChatConnection_send: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    http_request: Wrapper<HttpRequest>,
+    timeout_millis: number
+  ) => CancellablePromise<ChatResponse>;
+  UnauthenticatedChatConnection_send_message: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    destination: Uint8Array<ArrayBuffer>,
+    timestamp: Timestamp,
+    device_ids: Uint32Array<ArrayBuffer>,
+    registration_ids: Uint32Array<ArrayBuffer>,
+    contents: Array<Uint8Array<ArrayBuffer>>,
+    auth_kind: number,
+    auth_buffer: Uint8Array<ArrayBuffer> | null,
+    online_only: boolean,
+    is_urgent: boolean
+  ) => CancellablePromise<void>;
+  UnauthenticatedChatConnection_send_multi_recipient_message: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    payload: Uint8Array<ArrayBuffer>,
+    timestamp: Timestamp,
+    auth: Uint8Array<ArrayBuffer> | null,
+    online_only: boolean,
+    is_urgent: boolean
+  ) => CancellablePromise<Array<Uint8Array<ArrayBuffer>>>;
+  UnauthenticatedChatConnection_send_raw_grpc: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    service: string,
+    method: string,
+    payload: Uint8Array<ArrayBuffer>
+  ) => CancellablePromise<Uint8Array<ArrayBuffer>>;
+  UnidentifiedSenderMessageContent_Deserialize: (
+    data: Uint8Array<ArrayBuffer>
+  ) => UnidentifiedSenderMessageContent;
+  UnidentifiedSenderMessageContent_GetContentHint: (
+    m: Wrapper<UnidentifiedSenderMessageContent>
+  ) => number;
+  UnidentifiedSenderMessageContent_GetContents: (
+    obj: Wrapper<UnidentifiedSenderMessageContent>
+  ) => Uint8Array<ArrayBuffer>;
+  UnidentifiedSenderMessageContent_GetGroupId: (
+    obj: Wrapper<UnidentifiedSenderMessageContent>
+  ) => Uint8Array<ArrayBuffer> | null;
+  UnidentifiedSenderMessageContent_GetMsgType: (
+    m: Wrapper<UnidentifiedSenderMessageContent>
+  ) => number;
+  UnidentifiedSenderMessageContent_GetSenderCert: (
+    m: Wrapper<UnidentifiedSenderMessageContent>
+  ) => SenderCertificate;
+  UnidentifiedSenderMessageContent_New: (
+    message: Wrapper<CiphertextMessage>,
+    sender: Wrapper<SenderCertificate>,
+    content_hint: number,
+    group_id: Uint8Array<ArrayBuffer> | null
+  ) => UnidentifiedSenderMessageContent;
+  UnidentifiedSenderMessageContent_Serialize: (
+    obj: Wrapper<UnidentifiedSenderMessageContent>
+  ) => Uint8Array<ArrayBuffer>;
+  UsernameLink_Create: (
+    username: string,
+    entropy: Uint8Array<ArrayBuffer> | null
+  ) => Uint8Array<ArrayBuffer>;
+  UsernameLink_DecryptUsername: (
+    entropy: Uint8Array<ArrayBuffer>,
+    encrypted_username: Uint8Array<ArrayBuffer>
+  ) => string;
+  Username_CandidatesFrom: (
+    nickname: string,
+    min_len: number,
+    max_len: number
+  ) => Array<string>;
+  Username_Hash: (username: string) => Uint8Array<ArrayBuffer>;
+  Username_HashFromParts: (
+    nickname: string,
+    discriminator: string,
+    min_len: number,
+    max_len: number
+  ) => Uint8Array<ArrayBuffer>;
+  Username_Proof: (
+    username: string,
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  Username_Verify: (
+    proof: Uint8Array<ArrayBuffer>,
+    hash: Uint8Array<ArrayBuffer>
+  ) => void;
+  UuidCiphertext_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>) => void;
+  ValidatingMac_Finalize: (mac: Wrapper<ValidatingMac>) => number;
+  ValidatingMac_Initialize: (
+    key: Uint8Array<ArrayBuffer>,
+    chunk_size: number,
+    digests: Uint8Array<ArrayBuffer>
+  ) => ValidatingMac | null;
+  ValidatingMac_Update: (
+    mac: Wrapper<ValidatingMac>,
+    bytes: Uint8Array<ArrayBuffer>,
+    offset: number,
+    length: number
+  ) => number;
+  WebpSanitizer_Sanitize: (input: SyncInputStream) => void;
   test_only_fn_returns_123: () => number;
-  uuid_from_string: (string: string,) => (Uuid | null);
+  uuid_from_string: (string: string) => Uuid | null;
   uuid_new_v4: () => Uuid;
-  uuid_to_string: (uuid: Uuid,) => string;
+  uuid_to_string: (uuid: Uuid) => string;
 };
 
-
-
-const { registerErrors,
+const {
+  registerErrors,
   initLogger,
 
   AccountEntropyPool_DeriveBackupKey,
@@ -1253,9 +2772,22 @@ const { registerErrors,
   TESTING_ServerMessageAck_Create,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
   TESTING_TestingHandleType_getValue,
+  TESTING_TestingIntBox_Get,
+  TESTING_TestingIntBox_New,
   TESTING_TokioAsyncContext_FutureSuccessBytes,
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
+  TESTING_conversion_ServiceId_identity,
+  TESTING_conversion_ServiceId_to_string,
+  TESTING_conversion_bool_identity,
+  TESTING_conversion_bool_to_string,
+  TESTING_conversion_i32_identity,
+  TESTING_conversion_i32_to_string,
+  TESTING_conversion_string_identity,
+  TESTING_conversion_u16_identity,
+  TESTING_conversion_u16_to_string,
+  TESTING_conversion_u8_identity,
+  TESTING_conversion_u8_to_string,
   TestingSemaphore_AddPermits,
   TestingSemaphore_New,
   TestingValueHolder_Get,
@@ -1302,14 +2834,11 @@ const { registerErrors,
   uuid_from_string,
   uuid_new_v4,
   uuid_to_string,
+} = load(`${import.meta.dirname}/../`) as NativeFunctions;
 
-} = load(
-  `${import.meta.dirname}/../`
-) as NativeFunctions;
-
-export { registerErrors,
+export {
+  registerErrors,
   initLogger,
-
   AccountEntropyPool_DeriveBackupKey,
   AccountEntropyPool_DeriveSvrKey,
   AccountEntropyPool_Generate,
@@ -1836,9 +3365,22 @@ export { registerErrors,
   TESTING_ServerMessageAck_Create,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
   TESTING_TestingHandleType_getValue,
+  TESTING_TestingIntBox_Get,
+  TESTING_TestingIntBox_New,
   TESTING_TokioAsyncContext_FutureSuccessBytes,
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
+  TESTING_conversion_ServiceId_identity,
+  TESTING_conversion_ServiceId_to_string,
+  TESTING_conversion_bool_identity,
+  TESTING_conversion_bool_to_string,
+  TESTING_conversion_i32_identity,
+  TESTING_conversion_i32_to_string,
+  TESTING_conversion_string_identity,
+  TESTING_conversion_u16_identity,
+  TESTING_conversion_u16_to_string,
+  TESTING_conversion_u8_identity,
+  TESTING_conversion_u8_to_string,
   TestingSemaphore_AddPermits,
   TestingSemaphore_New,
   TestingValueHolder_Get,
@@ -1885,142 +3427,335 @@ export { registerErrors,
   uuid_from_string,
   uuid_new_v4,
   uuid_to_string,
- };
-
+};
 
 export /*trait*/ type ChatListener = {
-  receivedIncomingMessage: (envelope: Uint8Array<ArrayBuffer>,timestamp: Timestamp,ack: ServerMessageAck,) => void;
+  receivedIncomingMessage: (
+    envelope: Uint8Array<ArrayBuffer>,
+    timestamp: Timestamp,
+    ack: ServerMessageAck
+  ) => void;
   receivedQueueEmpty: () => void;
-  receivedAlerts: (alerts: Array<string>,) => void;
-  connectionInterrupted: (disconnectCause: (Error | null),) => void;
+  receivedAlerts: (alerts: Array<string>) => void;
+  connectionInterrupted: (disconnectCause: Error | null) => void;
 };
 
 export /*trait*/ type IdentityKeyStore = {
   getLocalIdentityKeyPair: () => Promise<[PrivateKey, PublicKey]>;
   getLocalRegistrationId: () => Promise<number>;
-  getIdentityKey: (address: ProtocolAddress,) => Promise<(PublicKey | null)>;
-  saveIdentityKey: (address: ProtocolAddress,publicKey: PublicKey,) => Promise<number>;
-  isTrustedIdentity: (address: ProtocolAddress,publicKey: PublicKey,direction: number,) => Promise<boolean>;
+  getIdentityKey: (address: ProtocolAddress) => Promise<PublicKey | null>;
+  saveIdentityKey: (
+    address: ProtocolAddress,
+    publicKey: PublicKey
+  ) => Promise<number>;
+  isTrustedIdentity: (
+    address: ProtocolAddress,
+    publicKey: PublicKey,
+    direction: number
+  ) => Promise<boolean>;
 };
 
 export /*trait*/ type InputStream = {
-  read: (amount: number,) => Promise<Uint8Array<ArrayBuffer>>;
-  skip: (amount: bigint,) => Promise<void>;
+  read: (amount: number) => Promise<Uint8Array<ArrayBuffer>>;
+  skip: (amount: bigint) => Promise<void>;
 };
 
 export /*trait*/ type KyberPreKeyStore = {
-  loadKyberPreKey: (id: number,) => Promise<(KyberPreKeyRecord | null)>;
-  storeKyberPreKey: (id: number,record: KyberPreKeyRecord,) => Promise<void>;
-  markKyberPreKeyUsed: (id: number,ecPrekeyId: number,baseKey: PublicKey,) => Promise<void>;
+  loadKyberPreKey: (id: number) => Promise<KyberPreKeyRecord | null>;
+  storeKyberPreKey: (id: number, record: KyberPreKeyRecord) => Promise<void>;
+  markKyberPreKeyUsed: (
+    id: number,
+    ecPrekeyId: number,
+    baseKey: PublicKey
+  ) => Promise<void>;
 };
 
 export /*trait*/ type PreKeyStore = {
-  loadPreKey: (id: number,) => Promise<(PreKeyRecord | null)>;
-  storePreKey: (id: number,record: PreKeyRecord,) => Promise<void>;
-  removePreKey: (id: number,) => Promise<void>;
+  loadPreKey: (id: number) => Promise<PreKeyRecord | null>;
+  storePreKey: (id: number, record: PreKeyRecord) => Promise<void>;
+  removePreKey: (id: number) => Promise<void>;
 };
 
 export /*trait*/ type ProvisioningListener = {
-  receivedAddress: (address: string,sendAck: ServerMessageAck,) => void;
-  receivedEnvelope: (envelope: Uint8Array<ArrayBuffer>,sendAck: ServerMessageAck,) => void;
-  connectionInterrupted: (disconnectCause: (Error | null),) => void;
+  receivedAddress: (address: string, sendAck: ServerMessageAck) => void;
+  receivedEnvelope: (
+    envelope: Uint8Array<ArrayBuffer>,
+    sendAck: ServerMessageAck
+  ) => void;
+  connectionInterrupted: (disconnectCause: Error | null) => void;
 };
 
 export /*trait*/ type SenderKeyStore = {
-  loadSenderKey: (sender: ProtocolAddress,distributionId: Uuid,) => Promise<(SenderKeyRecord | null)>;
-  storeSenderKey: (sender: ProtocolAddress,distributionId: Uuid,record: SenderKeyRecord,) => Promise<void>;
+  loadSenderKey: (
+    sender: ProtocolAddress,
+    distributionId: Uuid
+  ) => Promise<SenderKeyRecord | null>;
+  storeSenderKey: (
+    sender: ProtocolAddress,
+    distributionId: Uuid,
+    record: SenderKeyRecord
+  ) => Promise<void>;
 };
 
 export /*trait*/ type SessionStore = {
-  loadSession: (address: ProtocolAddress,) => Promise<(SessionRecord | null)>;
-  storeSession: (address: ProtocolAddress,record: SessionRecord,) => Promise<void>;
+  loadSession: (address: ProtocolAddress) => Promise<SessionRecord | null>;
+  storeSession: (
+    address: ProtocolAddress,
+    record: SessionRecord
+  ) => Promise<void>;
 };
 
 export /*trait*/ type SignedPreKeyStore = {
-  loadSignedPreKey: (id: number,) => Promise<(SignedPreKeyRecord | null)>;
-  storeSignedPreKey: (id: number,record: SignedPreKeyRecord,) => Promise<void>;
+  loadSignedPreKey: (id: number) => Promise<SignedPreKeyRecord | null>;
+  storeSignedPreKey: (id: number, record: SignedPreKeyRecord) => Promise<void>;
 };
 
-
-export interface Aes256GcmSiv { readonly __type: unique symbol; }
-export interface AuthenticatedChatConnection { readonly __type: unique symbol; }
-export interface BackupJsonExporter { readonly __type: unique symbol; }
-export interface BackupRestoreResponse { readonly __type: unique symbol; }
-export interface BackupStoreResponse { readonly __type: unique symbol; }
-export interface BridgedStringMap { readonly __type: unique symbol; }
-export interface CdsiLookup { readonly __type: unique symbol; }
-export interface ChatConnectionInfo { readonly __type: unique symbol; }
-export interface CiphertextMessage { readonly __type: unique symbol; }
-export interface ComparableBackup { readonly __type: unique symbol; }
-export interface ConnectionManager { readonly __type: unique symbol; }
-export interface ConnectionProxyConfig { readonly __type: unique symbol; }
-export interface DecryptionErrorMessage { readonly __type: unique symbol; }
-export interface ExpiringProfileKeyCredential { readonly __type: unique symbol; }
-export interface ExpiringProfileKeyCredentialResponse { readonly __type: unique symbol; }
-export interface FakeChatConnection { readonly __type: unique symbol; }
-export interface FakeChatRemoteEnd { readonly __type: unique symbol; }
-export interface FakeChatResponse { readonly __type: unique symbol; }
-export interface FakeChatServer { readonly __type: unique symbol; }
-export interface Fingerprint { readonly __type: unique symbol; }
-export interface GroupMasterKey { readonly __type: unique symbol; }
-export interface GroupPublicParams { readonly __type: unique symbol; }
-export interface GroupSecretParams { readonly __type: unique symbol; }
-export interface HsmEnclaveClient { readonly __type: unique symbol; }
-export interface HttpRequest { readonly __type: unique symbol; }
-export interface IncrementalMac { readonly __type: unique symbol; }
-export interface KyberKeyPair { readonly __type: unique symbol; }
-export interface KyberPreKeyRecord { readonly __type: unique symbol; }
-export interface KyberPublicKey { readonly __type: unique symbol; }
-export interface KyberSecretKey { readonly __type: unique symbol; }
-export interface LookupRequest { readonly __type: unique symbol; }
-export interface MessageBackupKey { readonly __type: unique symbol; }
-export interface NonSuspendingBackgroundThreadRuntime { readonly __type: unique symbol; }
-export interface OnlineBackupValidator { readonly __type: unique symbol; }
-export interface OtherTestingHandleType { readonly __type: unique symbol; }
-export interface PinHash { readonly __type: unique symbol; }
-export interface PlaintextContent { readonly __type: unique symbol; }
-export interface PreKeyBundle { readonly __type: unique symbol; }
-export interface PreKeyRecord { readonly __type: unique symbol; }
-export interface PreKeySignalMessage { readonly __type: unique symbol; }
-export interface PrivateKey { readonly __type: unique symbol; }
-export interface ProfileKey { readonly __type: unique symbol; }
-export interface ProfileKeyCiphertext { readonly __type: unique symbol; }
-export interface ProfileKeyCommitment { readonly __type: unique symbol; }
-export interface ProfileKeyCredentialRequest { readonly __type: unique symbol; }
-export interface ProfileKeyCredentialRequestContext { readonly __type: unique symbol; }
-export interface ProtocolAddress { readonly __type: unique symbol; }
-export interface ProvisioningChatConnection { readonly __type: unique symbol; }
-export interface PublicKey { readonly __type: unique symbol; }
-export interface ReceiptCredential { readonly __type: unique symbol; }
-export interface ReceiptCredentialPresentation { readonly __type: unique symbol; }
-export interface ReceiptCredentialRequest { readonly __type: unique symbol; }
-export interface ReceiptCredentialRequestContext { readonly __type: unique symbol; }
-export interface ReceiptCredentialResponse { readonly __type: unique symbol; }
-export interface RegisterAccountRequest { readonly __type: unique symbol; }
-export interface RegisterAccountResponse { readonly __type: unique symbol; }
-export interface RegistrationAccountAttributes { readonly __type: unique symbol; }
-export interface RegistrationService { readonly __type: unique symbol; }
-export interface RegistrationSession { readonly __type: unique symbol; }
-export interface SanitizedMetadata { readonly __type: unique symbol; }
-export interface SealedSenderDecryptionResult { readonly __type: unique symbol; }
-export interface SenderCertificate { readonly __type: unique symbol; }
-export interface SenderKeyDistributionMessage { readonly __type: unique symbol; }
-export interface SenderKeyMessage { readonly __type: unique symbol; }
-export interface SenderKeyRecord { readonly __type: unique symbol; }
-export interface ServerCertificate { readonly __type: unique symbol; }
-export interface ServerMessageAck { readonly __type: unique symbol; }
-export interface ServerPublicParams { readonly __type: unique symbol; }
-export interface ServerSecretParams { readonly __type: unique symbol; }
-export interface SessionRecord { readonly __type: unique symbol; }
-export interface SgxClientState { readonly __type: unique symbol; }
-export interface SignalMessage { readonly __type: unique symbol; }
-export interface SignedPreKeyRecord { readonly __type: unique symbol; }
-export interface TestingFutureCancellationCounter { readonly __type: unique symbol; }
-export interface TestingHandleType { readonly __type: unique symbol; }
-export interface TestingSemaphore { readonly __type: unique symbol; }
-export interface TestingValueHolder { readonly __type: unique symbol; }
-export interface TokioAsyncContext { readonly __type: unique symbol; }
-export interface UnauthenticatedChatConnection { readonly __type: unique symbol; }
-export interface UnidentifiedSenderMessageContent { readonly __type: unique symbol; }
-export interface UuidCiphertext { readonly __type: unique symbol; }
-export interface ValidatingMac { readonly __type: unique symbol; }
+export interface Aes256GcmSiv {
+  readonly __type: unique symbol;
+}
+export interface AuthenticatedChatConnection {
+  readonly __type: unique symbol;
+}
+export interface BackupJsonExporter {
+  readonly __type: unique symbol;
+}
+export interface BackupRestoreResponse {
+  readonly __type: unique symbol;
+}
+export interface BackupStoreResponse {
+  readonly __type: unique symbol;
+}
+export interface BridgedStringMap {
+  readonly __type: unique symbol;
+}
+export interface CdsiLookup {
+  readonly __type: unique symbol;
+}
+export interface ChatConnectionInfo {
+  readonly __type: unique symbol;
+}
+export interface CiphertextMessage {
+  readonly __type: unique symbol;
+}
+export interface ComparableBackup {
+  readonly __type: unique symbol;
+}
+export interface ConnectionManager {
+  readonly __type: unique symbol;
+}
+export interface ConnectionProxyConfig {
+  readonly __type: unique symbol;
+}
+export interface DecryptionErrorMessage {
+  readonly __type: unique symbol;
+}
+export interface ExpiringProfileKeyCredential {
+  readonly __type: unique symbol;
+}
+export interface ExpiringProfileKeyCredentialResponse {
+  readonly __type: unique symbol;
+}
+export interface FakeChatConnection {
+  readonly __type: unique symbol;
+}
+export interface FakeChatRemoteEnd {
+  readonly __type: unique symbol;
+}
+export interface FakeChatResponse {
+  readonly __type: unique symbol;
+}
+export interface FakeChatServer {
+  readonly __type: unique symbol;
+}
+export interface Fingerprint {
+  readonly __type: unique symbol;
+}
+export interface GroupMasterKey {
+  readonly __type: unique symbol;
+}
+export interface GroupPublicParams {
+  readonly __type: unique symbol;
+}
+export interface GroupSecretParams {
+  readonly __type: unique symbol;
+}
+export interface HsmEnclaveClient {
+  readonly __type: unique symbol;
+}
+export interface HttpRequest {
+  readonly __type: unique symbol;
+}
+export interface IncrementalMac {
+  readonly __type: unique symbol;
+}
+export interface KyberKeyPair {
+  readonly __type: unique symbol;
+}
+export interface KyberPreKeyRecord {
+  readonly __type: unique symbol;
+}
+export interface KyberPublicKey {
+  readonly __type: unique symbol;
+}
+export interface KyberSecretKey {
+  readonly __type: unique symbol;
+}
+export interface LookupRequest {
+  readonly __type: unique symbol;
+}
+export interface MessageBackupKey {
+  readonly __type: unique symbol;
+}
+export interface NonSuspendingBackgroundThreadRuntime {
+  readonly __type: unique symbol;
+}
+export interface OnlineBackupValidator {
+  readonly __type: unique symbol;
+}
+export interface OtherTestingHandleType {
+  readonly __type: unique symbol;
+}
+export interface PinHash {
+  readonly __type: unique symbol;
+}
+export interface PlaintextContent {
+  readonly __type: unique symbol;
+}
+export interface PreKeyBundle {
+  readonly __type: unique symbol;
+}
+export interface PreKeyRecord {
+  readonly __type: unique symbol;
+}
+export interface PreKeySignalMessage {
+  readonly __type: unique symbol;
+}
+export interface PrivateKey {
+  readonly __type: unique symbol;
+}
+export interface ProfileKey {
+  readonly __type: unique symbol;
+}
+export interface ProfileKeyCiphertext {
+  readonly __type: unique symbol;
+}
+export interface ProfileKeyCommitment {
+  readonly __type: unique symbol;
+}
+export interface ProfileKeyCredentialRequest {
+  readonly __type: unique symbol;
+}
+export interface ProfileKeyCredentialRequestContext {
+  readonly __type: unique symbol;
+}
+export interface ProtocolAddress {
+  readonly __type: unique symbol;
+}
+export interface ProvisioningChatConnection {
+  readonly __type: unique symbol;
+}
+export interface PublicKey {
+  readonly __type: unique symbol;
+}
+export interface ReceiptCredential {
+  readonly __type: unique symbol;
+}
+export interface ReceiptCredentialPresentation {
+  readonly __type: unique symbol;
+}
+export interface ReceiptCredentialRequest {
+  readonly __type: unique symbol;
+}
+export interface ReceiptCredentialRequestContext {
+  readonly __type: unique symbol;
+}
+export interface ReceiptCredentialResponse {
+  readonly __type: unique symbol;
+}
+export interface RegisterAccountRequest {
+  readonly __type: unique symbol;
+}
+export interface RegisterAccountResponse {
+  readonly __type: unique symbol;
+}
+export interface RegistrationAccountAttributes {
+  readonly __type: unique symbol;
+}
+export interface RegistrationService {
+  readonly __type: unique symbol;
+}
+export interface RegistrationSession {
+  readonly __type: unique symbol;
+}
+export interface SanitizedMetadata {
+  readonly __type: unique symbol;
+}
+export interface SealedSenderDecryptionResult {
+  readonly __type: unique symbol;
+}
+export interface SenderCertificate {
+  readonly __type: unique symbol;
+}
+export interface SenderKeyDistributionMessage {
+  readonly __type: unique symbol;
+}
+export interface SenderKeyMessage {
+  readonly __type: unique symbol;
+}
+export interface SenderKeyRecord {
+  readonly __type: unique symbol;
+}
+export interface ServerCertificate {
+  readonly __type: unique symbol;
+}
+export interface ServerMessageAck {
+  readonly __type: unique symbol;
+}
+export interface ServerPublicParams {
+  readonly __type: unique symbol;
+}
+export interface ServerSecretParams {
+  readonly __type: unique symbol;
+}
+export interface SessionRecord {
+  readonly __type: unique symbol;
+}
+export interface SgxClientState {
+  readonly __type: unique symbol;
+}
+export interface SignalMessage {
+  readonly __type: unique symbol;
+}
+export interface SignedPreKeyRecord {
+  readonly __type: unique symbol;
+}
+export interface TestingFutureCancellationCounter {
+  readonly __type: unique symbol;
+}
+export interface TestingHandleType {
+  readonly __type: unique symbol;
+}
+export interface TestingIntBox {
+  readonly __type: unique symbol;
+}
+export interface TestingSemaphore {
+  readonly __type: unique symbol;
+}
+export interface TestingValueHolder {
+  readonly __type: unique symbol;
+}
+export interface TokioAsyncContext {
+  readonly __type: unique symbol;
+}
+export interface UnauthenticatedChatConnection {
+  readonly __type: unique symbol;
+}
+export interface UnidentifiedSenderMessageContent {
+  readonly __type: unique symbol;
+}
+export interface UuidCiphertext {
+  readonly __type: unique symbol;
+}
+export interface ValidatingMac {
+  readonly __type: unique symbol;
+}

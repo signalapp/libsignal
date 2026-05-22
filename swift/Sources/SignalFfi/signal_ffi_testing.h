@@ -47,6 +47,8 @@ typedef struct SignalTestingFutureCancellationCounter SignalTestingFutureCancell
 
 typedef struct SignalTestingHandleType SignalTestingHandleType;
 
+typedef struct SignalTestingIntBox SignalTestingIntBox;
+
 typedef struct SignalTestingSemaphore SignalTestingSemaphore;
 
 typedef struct SignalTestingValueHolder SignalTestingValueHolder;
@@ -229,6 +231,10 @@ typedef struct {
 } SignalConstPointerTestingHandleType;
 
 typedef struct {
+  SignalTestingIntBox *raw;
+} SignalMutPointerTestingIntBox;
+
+typedef struct {
   int32_t first;
   const char *second;
 } SignalPairOfi32c_char;
@@ -240,6 +246,10 @@ typedef struct {
 typedef struct {
   SignalTestingSemaphore *raw;
 } SignalMutPointerTestingSemaphore;
+
+typedef struct {
+  const SignalTestingIntBox *raw;
+} SignalConstPointerTestingIntBox;
 
 typedef struct {
   SignalTestingValueHolder *raw;
@@ -296,6 +306,28 @@ SignalFfiError *signal_testing_chat_response_convert(SignalFfiChatResponse *out,
 SignalFfiError *signal_testing_chat_send_error_convert(const char *error_description);
 
 SignalFfiError *signal_testing_connection_manager_is_using_proxy(int32_t *out, SignalConstPointerConnectionManager manager);
+
+SignalFfiError *signal_testing_conversion_bool_identity(bool *out, bool x);
+
+SignalFfiError *signal_testing_conversion_bool_to_string(const char **out, bool x);
+
+SignalFfiError *signal_testing_conversion_i32_identity(int32_t *out, int32_t x);
+
+SignalFfiError *signal_testing_conversion_i32_to_string(const char **out, int32_t x);
+
+SignalFfiError *signal_testing_conversion_service_id_identity(SignalServiceIdFixedWidthBinaryBytes *out, const SignalServiceIdFixedWidthBinaryBytes *x);
+
+SignalFfiError *signal_testing_conversion_service_id_to_string(const char **out, const SignalServiceIdFixedWidthBinaryBytes *x);
+
+SignalFfiError *signal_testing_conversion_string_identity(const char **out, const char *x);
+
+SignalFfiError *signal_testing_conversion_u16_identity(uint16_t *out, uint16_t x);
+
+SignalFfiError *signal_testing_conversion_u16_to_string(const char **out, uint16_t x);
+
+SignalFfiError *signal_testing_conversion_u8_identity(uint8_t *out, uint8_t x);
+
+SignalFfiError *signal_testing_conversion_u8_to_string(const char **out, uint8_t x);
 
 SignalFfiError *signal_testing_convert_optional_uuid(SignalOptionalUuid *out, bool present);
 
@@ -383,6 +415,8 @@ SignalFfiError *signal_testing_handle_type_destroy(SignalMutPointerTestingHandle
 
 SignalFfiError *signal_testing_input_stream_read_into_zero_length_slice(SignalOwnedBuffer *out, SignalConstPointerFfiInputStreamStruct caps_alphabet_input);
 
+SignalFfiError *signal_testing_int_box_destroy(SignalMutPointerTestingIntBox p);
+
 SignalFfiError *signal_testing_key_trans_chat_send_error(void);
 
 SignalFfiError *signal_testing_key_trans_fatal_verification_failure(void);
@@ -452,6 +486,10 @@ SignalFfiError *signal_testing_semaphore_new(SignalMutPointerTestingSemaphore *o
 SignalFfiError *signal_testing_signed_public_pre_key_check_bridges_correctly(SignalConstPointerPublicKey source_public_key, SignalFfiSignedPublicPreKey signed_pre_key);
 
 SignalFfiError *signal_testing_testing_handle_type_get_value(uint8_t *out, SignalConstPointerTestingHandleType handle);
+
+SignalFfiError *signal_testing_testing_int_box_get(int32_t *out, SignalConstPointerTestingIntBox my_int_box);
+
+SignalFfiError *signal_testing_testing_int_box_new(SignalMutPointerTestingIntBox *out, int32_t value);
 
 SignalFfiError *signal_testing_tokio_async_context_future_success_bytes(SignalCPromiseOwnedBufferOfc_uchar *promise, SignalConstPointerTokioAsyncContext async_runtime, int32_t count);
 

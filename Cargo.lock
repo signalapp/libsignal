@@ -2551,6 +2551,7 @@ dependencies = [
  "rand 0.9.4",
  "rand_chacha",
  "rayon",
+ "ref-cast",
  "serde",
  "sha2",
  "signal-crypto",
@@ -2660,6 +2661,20 @@ dependencies = [
  "rustls-platform-verifier",
  "signal-crypto",
  "zerocopy",
+]
+
+[[package]]
+name = "libsignal-jni-native_kt"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "heck",
+ "libsignal-bridge",
+ "libsignal-bridge-testing",
+ "libsignal-bridge-types",
+ "libsignal-jni-impl",
+ "minijinja",
 ]
 
 [[package]]
@@ -3014,6 +3029,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "heck",
  "libsignal-bridge",
  "libsignal-bridge-testing",
  "libsignal-bridge-types",

@@ -53,6 +53,7 @@ paste = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
 rayon = { workspace = true }
+ref-cast = { workspace = true }
 serde = { workspace = true }
 sha2 = { workspace = true }
 static_assertions = { workspace = true }

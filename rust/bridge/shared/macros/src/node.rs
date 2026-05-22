@@ -175,6 +175,7 @@ pub(crate) fn bridge_fn(
     name: &str,
     sig: &Signature,
     bridging_kind: &BridgingKind,
+    nice: bool,
 ) -> Result<TokenStream2> {
     // Scroll down to the end of the function to see the quote template.
     // This is the best way to understand what we're trying to produce.
@@ -189,6 +190,7 @@ pub(crate) fn bridge_fn(
         &input_args,
         result_type(&sig.output),
         bridging_kind,
+        nice,
     );
 
     let body = match (sig.asyncness, bridging_kind) {
@@ -225,24 +227,13 @@ fn generate_ts_metadata(
     input_args: &[(&Ident, &Type)],
     result_type: TokenStream2,
     bridging_kind: &BridgingKind,
+    nice: bool,
 ) -> TokenStream2 {
     let krate = crates::libsignal_bridge_types();
-    let mut input_args: Vec<_> = input_args
+    let (argument_names, argument_types): (Vec<_>, Vec<_>) = input_args
         .iter()
         .map(|(name, ty)| (name.to_string(), ty.to_token_stream()))
-        .collect();
-    match bridging_kind {
-        BridgingKind::Regular => {}
-        BridgingKind::Io { runtime } => {
-            let runtime = runtime.to_token_stream();
-            input_args.insert(0, ("async_runtime".to_string(), quote!(&#runtime)))
-        }
-    }
-    let argument_names = input_args
-        .iter()
-        .map(|(x, _)| to_lower_camel_case_preserve_underscores(x))
-        .collect_vec();
-    let argument_types = input_args.iter().map(|(_, x)| x).collect_vec();
+        .unzip();
     let return_type_format = match (asyncness, bridging_kind) {
         (true, BridgingKind::Io { .. }) => "CancellablePromise<{return_type}>",
         (true, _) => "Promise<{return_type}>",
@@ -255,6 +246,36 @@ fn generate_ts_metadata(
     } else {
         quote!(ArgTypeInfo)
     };
+    let nice_metadata = if nice {
+        quote! {
+            let mut arguments = Vec::new();
+            #(arguments.push((
+                #argument_names.into(),
+                <#argument_types as #krate::node::NiceArgConverter>::register_ts_arg_converter(ctx)
+            ));)*
+            let return_type: ResultMetadataTransformHelper<#result_type> = Default::default();
+            let return_type = return_type.register_ts_result_converter(ctx);
+            ctx.nice_functions.insert(
+                #name_without_prefix.into(),
+                #md::node::NiceFunction {
+                    is_tokio_async: #asyncness,
+                    arguments,
+                    return_type,
+                },
+            );
+        }
+    } else {
+        quote!()
+    };
+    let async_runtime_argument = match bridging_kind {
+        BridgingKind::Regular => quote!(),
+        BridgingKind::Io { runtime } => quote! {
+            arguments.push((
+                "asyncRuntime".into(),
+                <&#runtime as #krate::node::#type_info_trait>::register_ts_ffi_type(ctx)
+            ));
+        },
+    };
     quote! {
         #[#md::linkme::distributed_slice(#md::node::NODE_ITEMS)]
         #[linkme(crate = #md::linkme)]
@@ -265,6 +286,7 @@ fn generate_ts_metadata(
                 let return_type: ResultMetadataTransformHelper<#result_type> = Default::default();
                 let return_type = return_type.register_ts_ffi_type(ctx);
                 let mut arguments = Vec::new();
+                #async_runtime_argument
                 #(arguments.push((
                     #argument_names.into(),
                     <#argument_types as #krate::node::#type_info_trait>::register_ts_ffi_type(ctx)
@@ -273,6 +295,7 @@ fn generate_ts_metadata(
                     #name_without_prefix.into(),
                     #md::node::NativeFunction { arguments, return_type: format!(#return_type_format) },
                 );
+                #nice_metadata
             },
         };
     }

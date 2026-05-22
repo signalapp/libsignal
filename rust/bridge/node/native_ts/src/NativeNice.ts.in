@@ -1,0 +1,59 @@
+//
+// Copyright 2026 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+// WARNING: this file was automatically generated
+
+import * as Native from './Native.js';
+import { ServiceId } from './Address.js';
+import { TokioAsyncContext } from './net.js';
+import { identity, serviceIdArgConverter } from './NiceConverters.js';
+
+{% for (name, f) in ctx.nice_functions|items %}
+{%- if f.is_tokio_async -%}
+export async
+{%- else %}
+export
+{%- endif %} function {{ name }}(
+  {
+    {% if f.is_tokio_async %}
+    asyncContext, abortSignal,
+    {% endif %}
+    {%- for (arg, ty) in f.arguments -%}
+    {{ arg|to_lower_camel_case }}: {{ arg }},
+    {%- endfor -%}
+  }: {
+    {% if f.is_tokio_async -%}
+    asyncContext: TokioAsyncContext;
+    abortSignal?: AbortSignal;
+    {% endif %}
+    {%- for (arg, ty) in f.arguments -%}
+    {{ arg|to_lower_camel_case }}: {{ ty.nice_type }};
+    {% endfor %}
+  }
+): {% if f.is_tokio_async -%}
+    Promise<{{ f.return_type.nice_type }}>
+  {%- else -%}
+    {{ f.return_type.nice_type }}
+  {%- endif -%}
+{
+  {%- if f.is_tokio_async %}
+    return ({{ f.return_type.converter_function }})(await asyncContext.makeCancellable(
+      abortSignal,
+      Native.{{ name }}(
+        asyncContext,
+        {%- for (arg, ty) in f.arguments -%}
+        ({{ ty.converter_function }})({{ arg }}),
+        {% endfor %}
+      )
+    ));
+  {%- else %}
+    return ({{ f.return_type.converter_function }})(Native.{{ name }}(
+      {% for (arg, ty) in f.arguments %}
+        ({{ ty.converter_function }})({{ arg }}),
+      {%- endfor %}
+    ));
+  {%- endif %}
+}
+{% endfor %}

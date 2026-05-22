@@ -7,6 +7,7 @@
 
 package org.signal.libsignal.internal
 
+import org.signal.libsignal.internal.NativeHandleGuard.SimpleOwner
 import org.signal.libsignal.net.internal.BridgeChatListener
 import org.signal.libsignal.net.internal.BridgeProvisioningListener
 import org.signal.libsignal.net.internal.ConnectChatBridge
@@ -1282,7 +1283,7 @@ internal object Native {
   @JvmStatic
   public external fun UnauthenticatedChatConnection_Destroy(handle: ObjectHandle): Unit
   @JvmStatic
-  public external fun UnauthenticatedChatConnection_account_exists(asyncRuntime: ObjectHandle, chat: ObjectHandle, account: ByteArray): CompletableFuture<Boolean>
+  public external fun UnauthenticatedChatConnection_account_exists(asyncRuntime: ObjectHandle, chat: SimpleOwner, account: ByteArray): CompletableFuture<Boolean>
   @JvmStatic
   public external fun UnauthenticatedChatConnection_backup_get_media_upload_form(asyncRuntime: ObjectHandle, chat: ObjectHandle, credential: ByteArray, serverKeys: ByteArray, signingKey: ObjectHandle, uploadSize: Long, rng: Long): CompletableFuture<Object>
   @JvmStatic

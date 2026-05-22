@@ -55,7 +55,10 @@ pub struct UnauthenticatedChatConnection {
     /// reader/writer contention.
     inner: tokio::sync::RwLock<MaybeChatConnection>,
 }
-bridge_as_handle!(UnauthenticatedChatConnection);
+bridge_as_handle!(
+    UnauthenticatedChatConnection,
+    jni_class = "org.signal.libsignal.net.UnauthenticatedChatConnection"
+);
 impl UnwindSafe for UnauthenticatedChatConnection {}
 impl RefUnwindSafe for UnauthenticatedChatConnection {}
 
