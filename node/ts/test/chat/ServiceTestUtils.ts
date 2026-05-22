@@ -36,13 +36,18 @@ export function connectUnauth<
   // the result.
   Api extends Subset<UnauthenticatedChatConnection, Api> = object
 >(
-  tokio: TokioAsyncContext
+  tokio: TokioAsyncContext,
+  grpcOverrides?: [string]
 ): [PickSubset<UnauthenticatedChatConnection, Api>, FakeChatRemote] {
-  return UnauthenticatedChatConnection.fakeConnect(tokio, {
-    onConnectionInterrupted: () => {},
-    onIncomingMessage: () => {},
-    onQueueEmpty: () => {},
-  });
+  return UnauthenticatedChatConnection.fakeConnect(
+    tokio,
+    {
+      onConnectionInterrupted: () => {},
+      onIncomingMessage: () => {},
+      onQueueEmpty: () => {},
+    },
+    grpcOverrides
+  );
 }
 
 /**
