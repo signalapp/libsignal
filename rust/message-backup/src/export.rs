@@ -10,7 +10,7 @@
 use aes::cipher::{BlockEncryptMut as _, BlockSizeUser as _, KeyIvInit as _};
 use async_compression::futures::bufread::GzipEncoder;
 use futures::{AsyncBufRead, AsyncReadExt as _};
-use hmac::Mac as _;
+use hmac::{KeyInit, Mac as _};
 use sha2::Sha256;
 
 use crate::frame::{AES_IV_SIZE, AES_KEY_SIZE};

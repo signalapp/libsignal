@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use futures::io::{BufReader, Take};
 use futures::{AsyncRead, AsyncReadExt};
 use hmac::digest::OutputSizeUser;
-use hmac::{Hmac, Mac as _};
+use hmac::{Hmac, KeyInit};
 use mediasan_common::{AsyncSkip, AsyncSkipExt as _};
 use sha2::Sha256;
 use subtle::ConstantTimeEq as _;

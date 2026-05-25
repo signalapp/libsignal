@@ -2,7 +2,7 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use hmac::{Hmac, Mac as _};
+use hmac::{Hmac, KeyInit, Mac as _};
 use sha2::Sha256;
 
 type HmacSha256 = Hmac<Sha256>;

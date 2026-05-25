@@ -6,7 +6,7 @@ use std::borrow::Cow;
 use std::time::Duration;
 
 use futures_util::StreamExt as _;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use libsignal_account_keys::{
     BackupForwardSecrecyEncryptionKey, BackupForwardSecrecyToken, BackupKey,
 };

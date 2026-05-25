@@ -36,7 +36,7 @@ zerocopy = { workspace = true, features = ["derive"] }
 assert_matches = { workspace = true }
 const-str = { workspace = true }
 criterion = { workspace = true }
-hmac = { workspace = true, features = ["reset"] }
+hmac = { workspace = true }
 proptest = { workspace = true }
 
 [build-dependencies]
