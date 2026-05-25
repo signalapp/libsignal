@@ -21,7 +21,7 @@ libsignal-core = { workspace = true }
 poksho = { workspace = true }
 zkcredential = { workspace = true, features = ["rayon"] }
 
-curve25519-dalek = { workspace = true, features = ["lizard", "serde"] }
+curve25519-dalek = { workspace = true, features = ["lizard"] }
 aes = { workspace = true }
 aes-gcm-siv = { workspace = true }
 bincode = { workspace = true }

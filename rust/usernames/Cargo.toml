@@ -19,7 +19,7 @@ workspace = true
 poksho = { workspace = true }
 signal-crypto = { workspace = true }
 
-curve25519-dalek = { workspace = true, features = ["digest"] }
+curve25519-dalek = { workspace = true }
 displaydoc = { workspace = true }
 hkdf = { workspace = true }
 hmac = { workspace = true }

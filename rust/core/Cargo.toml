@@ -16,7 +16,7 @@ workspace = true
 [dependencies]
 libsignal-debug = { workspace = true }
 
-curve25519-dalek = { workspace = true, features = ["digest"] }
+curve25519-dalek = { workspace = true }
 derive_more = { workspace = true, features = ["from", "into", "try_from"] }
 displaydoc = { workspace = true }
 log = { workspace = true }
