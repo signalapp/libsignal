@@ -125,14 +125,14 @@ pub fn verify_local_pin_hash(encoded_hash: &str, pin: &[u8]) -> Result<bool> {
 #[cfg(test)]
 mod test {
     use const_str::hex;
-    use hmac::{Hmac, Mac};
+    use hmac::{HmacReset, KeyInit, Mac};
     use sha2::Sha256;
 
     use super::*;
     use crate::hash::{PinHash, local_pin_hash, verify_local_pin_hash};
 
     fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
-        type HmacSha256 = Hmac<Sha256>;
+        type HmacSha256 = HmacReset<Sha256>;
         let mut hmac = HmacSha256::new_from_slice(key).expect("should construct");
         hmac.update(data);
         hmac.finalize_reset().into_bytes().into()

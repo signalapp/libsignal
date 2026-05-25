@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use curve25519_dalek_signal::scalar::Scalar;
+use curve25519_dalek::scalar::Scalar;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use zkcredential::attributes::PublicAttribute;

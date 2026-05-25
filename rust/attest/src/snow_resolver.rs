@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use blake2::digest::Digest as _;
 use blake2::{Blake2b, Blake2b512};
 use chacha20poly1305::{AeadInPlace, ChaCha20Poly1305, KeyInit};
 use libcrux_ml_kem::mlkem1024;
 use rand_core::TryRngCore as _;
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 use snow::error::Error as SnowError;
 use snow::params::{CipherChoice, DHChoice, HashChoice, KemChoice};
 use snow::resolvers::CryptoResolver;

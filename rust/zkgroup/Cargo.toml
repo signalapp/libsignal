@@ -21,9 +21,7 @@ libsignal-core = { workspace = true }
 poksho = { workspace = true }
 zkcredential = { workspace = true, features = ["rayon"] }
 
-# Use our fork of curve25519-dalek for zkgroup support.
-curve25519-dalek-signal = { workspace = true, features = ["serde"] }
-
+curve25519-dalek = { workspace = true, features = ["lizard"] }
 aes = { workspace = true }
 aes-gcm-siv = { workspace = true }
 bincode = { workspace = true }

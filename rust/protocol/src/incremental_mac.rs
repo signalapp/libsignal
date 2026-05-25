@@ -5,7 +5,7 @@
 
 use aes::cipher::Unsigned;
 use hmac::Mac;
-use hmac::digest::generic_array::{ArrayLength, GenericArray};
+use hmac::digest::array::{Array, ArraySize};
 use sha2::digest::{FixedOutput, MacError, Output};
 
 #[derive(Clone)]
@@ -29,7 +29,7 @@ const TARGET_TOTAL_DIGEST_SIZE: usize = 8 * 1024;
 pub const fn calculate_chunk_size<D>(data_size: usize) -> usize
 where
     D: FixedOutput,
-    D::OutputSize: ArrayLength<u8>,
+    D::OutputSize: ArraySize,
 {
     assert!(
         0 == TARGET_TOTAL_DIGEST_SIZE % D::OutputSize::USIZE,
@@ -61,7 +61,7 @@ impl<M: Mac + Clone> Incremental<M> {
         // feature(generic_const_exprs). The Sized requirement is because the older version of
         // generic-array we're using (via the digest crate) provides From<&[u8]>; it was removed in
         // generic-array 1.0.
-        A: Into<&'a GenericArray<u8, M::OutputSize>> + std::ops::Deref<Target: Sized>,
+        A: Into<&'a Array<u8, M::OutputSize>> + std::ops::Deref<Target: Sized>,
         I: IntoIterator<Item = A, IntoIter: DoubleEndedIterator>,
     {
         let expected = macs
@@ -140,7 +140,7 @@ impl<M: Mac + Clone> Validating<M> {
 #[cfg(test)]
 mod test {
     use const_str::hex;
-    use hmac::Hmac;
+    use hmac::{Hmac, KeyInit};
     use proptest::prelude::*;
     use rand::distr::uniform::{UniformSampler as _, UniformUsize};
     use rand::prelude::{Rng, ThreadRng};

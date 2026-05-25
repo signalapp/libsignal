@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use hmac::{Hmac, Mac};
+use hmac::{HmacReset, KeyInit, Mac};
 use sha1::Sha1;
 use sha2::{Digest, Sha256, Sha512};
 
@@ -11,18 +11,18 @@ use crate::{Error, Result};
 
 #[derive(Clone)]
 pub enum CryptographicMac {
-    HmacSha256(Hmac<Sha256>),
-    HmacSha1(Hmac<Sha1>),
+    HmacSha256(HmacReset<Sha256>),
+    HmacSha1(HmacReset<Sha1>),
 }
 
 impl CryptographicMac {
     pub fn new(algo: &str, key: &[u8]) -> Result<Self> {
         match algo {
             "HMACSha1" | "HmacSha1" => Ok(Self::HmacSha1(
-                Hmac::<Sha1>::new_from_slice(key).expect("HMAC accepts any key length"),
+                HmacReset::<Sha1>::new_from_slice(key).expect("HMAC accepts any key length"),
             )),
             "HMACSha256" | "HmacSha256" => Ok(Self::HmacSha256(
-                Hmac::<Sha256>::new_from_slice(key).expect("HMAC accepts any key length"),
+                HmacReset::<Sha256>::new_from_slice(key).expect("HMAC accepts any key length"),
             )),
             _ => Err(Error::UnknownAlgorithm("MAC", algo.to_string())),
         }

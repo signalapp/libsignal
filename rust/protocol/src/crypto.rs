@@ -7,7 +7,7 @@ use std::result::Result;
 
 use aes::Aes256;
 use aes::cipher::{KeyIvInit, StreamCipher};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
 
