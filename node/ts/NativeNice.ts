@@ -17,6 +17,41 @@ export function TESTING_TestingIntBox_Get({
 }): number {
   return identity(Native.TESTING_TestingIntBox_Get(identity(my_int_box)));
 }
+export async function TESTING_TokioAsyncContext_FutureSuccessBytes({
+  asyncContext,
+  abortSignal,
+  count: count,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  count: number;
+}): Promise<Uint8Array<ArrayBuffer>> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_TokioAsyncContext_FutureSuccessBytes(
+        asyncContext,
+        identity(count)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_Data_identity({
+  x: x,
+}: {
+  x: Uint8Array<ArrayBuffer>;
+}): Uint8Array<ArrayBuffer> {
+  return identity(Native.TESTING_conversion_Data_identity(identity(x)));
+}
+
+export function TESTING_conversion_Data_to_string({
+  x: x,
+}: {
+  x: Uint8Array<ArrayBuffer>;
+}): string {
+  return identity(Native.TESTING_conversion_Data_to_string(identity(x)));
+}
 
 export function TESTING_conversion_ServiceId_identity({
   x: x,

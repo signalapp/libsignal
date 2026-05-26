@@ -4,7 +4,7 @@
 //
 
 use proc_macro2::TokenStream as TokenStream2;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::spanned::Spanned;
 use syn::*;
 use syn_mid::{FnArg, Pat, PatType, Signature};
@@ -58,4 +58,62 @@ pub(crate) fn extract_arg_names_and_types(sig: &Signature) -> Result<Vec<(&Ident
             }
         })
         .collect()
+}
+
+pub(crate) struct NiceMetadataNames {
+    pub(crate) backend_name: Ident,
+    pub(crate) metadata_context: Ident,
+    pub(crate) register_arg_converter: Ident,
+    pub(crate) register_result_converter: Ident,
+}
+
+pub(crate) fn nice_metadata(
+    name_without_prefix: &str,
+    asyncness: bool,
+    input_args: &[(&Ident, &Type)],
+    result_type: &TokenStream2,
+    nice: bool,
+    NiceMetadataNames {
+        backend_name,
+        metadata_context,
+        register_arg_converter,
+        register_result_converter,
+    }: &NiceMetadataNames,
+) -> TokenStream2 {
+    let krate = crates::libsignal_bridge_types();
+    let md = quote!(#krate::metadata);
+    let metadata_name = format_ident!("_BRIDGE_{backend_name}_METADATA_{name_without_prefix}");
+    let (arg_names, arg_types) = input_args.iter().copied().unzip::<_, _, Vec<_>, Vec<_>>();
+    let linkme_name = format_ident!("{}_ITEMS", backend_name.to_string().to_ascii_uppercase());
+    let backend_name_str = backend_name.to_string();
+    if nice {
+        quote! {
+            #[cfg(all(feature = #backend_name_str, feature = "metadata"))]
+            #[#md::linkme::distributed_slice(#md::#backend_name::#linkme_name)]
+            #[linkme(crate = #md::linkme)]
+            static #metadata_name: #md::FnWithModule<#md::#backend_name::#metadata_context> = #md::FnWithModule {
+                module_path: module_path!(),
+                apply: |ctx| {
+                    use #md::#backend_name::result_type_helper::*;
+                    let mut arguments = Vec::new();
+                    #(arguments.push((
+                        stringify!(#arg_names).into(),
+                        <#arg_types as #krate::#backend_name::NiceArgConverter>::#register_arg_converter(ctx),
+                    ));)*
+                    let return_type: ResultMetadataTransformHelper<#result_type> = Default::default();
+                    let return_type = return_type.#register_result_converter(ctx);
+                    ctx.nice_functions.insert(
+                        #name_without_prefix.into(),
+                        #md::#backend_name::NiceFunction {
+                            is_tokio_async: #asyncness,
+                            arguments,
+                            return_type,
+                        },
+                    );
+                }
+            };
+        }
+    } else {
+        quote!()
+    }
 }

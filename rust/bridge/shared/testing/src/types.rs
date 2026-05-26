@@ -509,7 +509,8 @@ fn TESTING_ReturnPair() -> (i32, String) {
 pub struct TestingIntBox(pub i32);
 bridge_as_handle!(
     TestingIntBox,
-    jni_class = "org.signal.libsignal.internal.TestingIntBox"
+    swift_type = "TestingIntBox",
+    jni_class = "org.signal.libsignal.internal.TestingIntBox",
 );
 bridge_handle_fns!(TestingIntBox, clone = false);
 

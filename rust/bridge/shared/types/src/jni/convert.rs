@@ -639,6 +639,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
         zerocopy::IntoBytes::as_bytes(&**stored)
     }
 }
+nice_identity_arg_converter!(&[u8], "ByteArray");
 
 impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
     for Option<&'storage [u8]>
@@ -1367,6 +1368,7 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
         self.deref().convert_into(env)
     }
 }
+nice_identity_result_converter!(Vec<u8>, "ByteArray");
 
 impl<'a> ResultTypeInfo<'a> for bytes::Bytes {
     type ResultType = JByteArray<'a>;

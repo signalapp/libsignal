@@ -25,6 +25,7 @@ signal-media = ["libsignal-bridge/signal-media"]
 # Here for bridge_fn uniformity
 ffi = []
 default = ["ffi"]
+metadata = ["libsignal-bridge/metadata", "libsignal-bridge-testing/metadata"]
 
 [dependencies]
 libsignal-bridge = { workspace = true, features = ["ffi"] }

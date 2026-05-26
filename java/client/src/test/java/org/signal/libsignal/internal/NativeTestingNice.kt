@@ -30,6 +30,41 @@ internal object NativeTestingNice {
     return identity(ffiOut)
   }
 
+  public fun TESTING_TokioAsyncContext_FutureSuccessBytes(
+    asyncCtx: TokioAsyncContext,
+    count: Int,
+  ): CompletableFuture<ByteArray> {
+    val ffi_count = identity(count)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        NativeTesting.TESTING_TokioAsyncContext_FutureSuccessBytes(
+          asyncCtxHandle.nativeHandle(),
+          ffi_count,
+        )
+      }
+    return ffiOut.thenApply { identity(it) }
+  }
+
+  public fun TESTING_conversion_Data_identity(x: ByteArray): ByteArray {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_Data_identity(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_Data_to_string(x: ByteArray): String {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_Data_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
   public fun TESTING_conversion_ServiceId_identity(
     x: org.signal.libsignal.protocol.ServiceId,
   ): org.signal.libsignal.protocol.ServiceId {

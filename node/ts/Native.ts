@@ -2035,6 +2035,10 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     input: number
   ) => CancellablePromise<number>;
+  TESTING_conversion_Data_identity: (
+    x: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  TESTING_conversion_Data_to_string: (x: Uint8Array<ArrayBuffer>) => string;
   TESTING_conversion_ServiceId_identity: (
     x: Uint8Array<ArrayBuffer>
   ) => Uint8Array<ArrayBuffer>;
@@ -2777,6 +2781,8 @@ const {
   TESTING_TokioAsyncContext_FutureSuccessBytes,
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
+  TESTING_conversion_Data_identity,
+  TESTING_conversion_Data_to_string,
   TESTING_conversion_ServiceId_identity,
   TESTING_conversion_ServiceId_to_string,
   TESTING_conversion_bool_identity,
@@ -3370,6 +3376,8 @@ export {
   TESTING_TokioAsyncContext_FutureSuccessBytes,
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
+  TESTING_conversion_Data_identity,
+  TESTING_conversion_Data_to_string,
   TESTING_conversion_ServiceId_identity,
   TESTING_conversion_ServiceId_to_string,
   TESTING_conversion_bool_identity,

@@ -153,9 +153,9 @@ impl std::fmt::Display for IllegalArgumentError {
 /// [`node::AsyncArgTypeInfo`]: crate::node::AsyncArgTypeInfo
 #[macro_export]
 macro_rules! bridge_as_handle {
-    ($typ:ty $(, mut = $_mut:tt)? $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, jni_class = $jni_class:expr)? $(, node = $node_name:ident)?) => {
+    ($typ:ty $(, mut = $_mut:tt)? $(, ffi = $ffi_name:ident)? $(, swift_type = $swift_type:expr)? $(, jni = $jni_name:ident)? $(, jni_class = $jni_class:expr)? $(, node = $node_name:ident)? $(,)?) => {
         #[cfg(feature = "ffi")]
-        $crate::ffi_bridge_as_handle!($typ $(as $ffi_name)?);
+        $crate::ffi_bridge_as_handle!($typ $(as $ffi_name)? $(, swift_type = $swift_type)?);
         #[cfg(feature = "jni")]
         $crate::jni_bridge_as_handle!($typ $(as $jni_name)? $(, jni_class = $jni_class)?);
         #[cfg(feature = "node")]

@@ -10,6 +10,8 @@ import * as NativeNice from '../NativeNice.js';
 import { BridgedStringMap } from '../internal.js';
 import * as uuid from '../uuid.js';
 import { Aci, Pni } from '../Address.js';
+import { toBase64 } from './util.js';
+import { TokioAsyncContext } from '../net.js';
 
 use(chaiAsPromised);
 
@@ -338,6 +340,29 @@ describe('NativeTestingNice', () => {
             NativeNice.TESTING_conversion_ServiceId_identity({ x }),
         });
       }
+    }
+  });
+  it('Data', () => {
+    for (let i = 0; i < 10; i++) {
+      testConversion({
+        item: crypto.getRandomValues(new Uint8Array(1 << i)),
+        toString: toBase64,
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_Data_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_Data_identity({ x }),
+      });
+    }
+  });
+  it('should handle async', async () => {
+    const asyncContext = new TokioAsyncContext(Native.TokioAsyncContext_new());
+    for (const count of [0, 1, 2, 4, 8, 16, 32, 64, 128, 256]) {
+      const data =
+        await NativeNice.TESTING_TokioAsyncContext_FutureSuccessBytes({
+          asyncContext,
+          count,
+        });
+      assert.equal(data.length, count);
     }
   });
 });

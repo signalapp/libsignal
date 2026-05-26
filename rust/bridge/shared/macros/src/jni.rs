@@ -10,7 +10,7 @@ use syn::spanned::Spanned as _;
 use syn::*;
 use syn_mid::Signature;
 
-use crate::util::{crates, extract_arg_names_and_types, result_type};
+use crate::util::{NiceMetadataNames, extract_arg_names_and_types, nice_metadata, result_type};
 use crate::{BridgingKind, ResultInfo};
 
 pub(crate) fn bridge_fn(
@@ -59,14 +59,19 @@ pub(crate) fn bridge_fn(
         }
         BridgingKind::Io { runtime } => bridge_io_body(orig_name, &input_names_and_types, runtime),
     };
-    let metadata = kt_metadata(
+    let metadata = nice_metadata(
         &orig_name.to_string(),
         sig.asyncness.is_some(),
         &input_names_and_types,
         &output,
         nice,
+        &NiceMetadataNames {
+            backend_name: format_ident!("jni"),
+            metadata_context: format_ident!("KtMetadataContext"),
+            register_arg_converter: format_ident!("register_kt_arg_converter"),
+            register_result_converter: format_ident!("register_kt_result_converter"),
+        },
     );
-
     Ok(quote! {
         #[cfg(feature = "jni")]
         #[unsafe(export_name = concat!(env!("LIBSIGNAL_BRIDGE_FN_PREFIX_JNI"), #name))]
@@ -83,49 +88,6 @@ pub(crate) fn bridge_fn(
         }
         #metadata
     })
-}
-
-fn kt_metadata(
-    name_without_prefix: &str,
-    asyncness: bool,
-    input_args: &[(&Ident, &Type)],
-    result_type: &TokenStream2,
-    nice: bool,
-) -> TokenStream2 {
-    let krate = crates::libsignal_bridge_types();
-    let md = quote!(#krate::metadata);
-    let metadata_name = format_ident!("_BRIDGE_JNI_METADATA_{name_without_prefix}");
-    let (arg_names, arg_types) = input_args.iter().copied().unzip::<_, _, Vec<_>, Vec<_>>();
-    if nice {
-        quote! {
-            #[cfg(all(feature = "jni", feature = "metadata"))]
-            #[#md::linkme::distributed_slice(#md::jni::JNI_ITEMS)]
-            #[linkme(crate = #md::linkme)]
-            static #metadata_name: #md::FnWithModule<#md::jni::KtMetadataContext> = #md::FnWithModule {
-                module_path: module_path!(),
-                apply: |ctx| {
-                    use #md::jni::result_type_helper::*;
-                    let mut arguments = Vec::new();
-                    #(arguments.push((
-                        stringify!(#arg_names).into(),
-                        <#arg_types as #krate::jni::NiceArgConverter>::register_kt_arg_converter(ctx),
-                    ));)*
-                    let return_type: ResultMetadataTransformHelper<#result_type> = Default::default();
-                    let return_type = return_type.register_kt_result_converter(ctx);
-                    ctx.nice_functions.insert(
-                        #name_without_prefix.into(),
-                        #md::jni::NiceFunction {
-                            is_tokio_async: #asyncness,
-                            arguments,
-                            return_type,
-                        },
-                    );
-                }
-            };
-        }
-    } else {
-        quote!()
-    }
 }
 
 fn generate_code_to_load_input(name: impl IdentFragment, ty: impl ToTokens) -> TokenStream2 {

@@ -18,6 +18,7 @@ members = [
     "rust/zkcredential",
     "rust/zkgroup",
     "rust/bridge/ffi",
+    "rust/bridge/ffi/native_swift",
     "rust/bridge/jni",
     "rust/bridge/jni/impl",
     "rust/bridge/jni/native_kt",

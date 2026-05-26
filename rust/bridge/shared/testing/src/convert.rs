@@ -69,7 +69,7 @@ async fn TESTING_FutureSuccess(input: u8) -> i32 {
     i32::from(input) * 2
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn TESTING_TokioAsyncContext_FutureSuccessBytes(count: i32) -> Vec<u8> {
     vec![0; usize::try_from(count).unwrap()]
 }
@@ -431,5 +431,14 @@ pub mod test_conversions {
     #[bridge_fn(nice = true)]
     fn TESTING_conversion_ServiceId_identity(x: ServiceId) -> ServiceId {
         x
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_Data_to_string(x: &[u8]) -> String {
+        use base64::prelude::*;
+        BASE64_STANDARD.encode(x)
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_Data_identity(x: &[u8]) -> Vec<u8> {
+        x.to_vec()
     }
 }

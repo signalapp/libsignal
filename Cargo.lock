@@ -2638,6 +2638,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "libsignal-ffi-native_swift"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "heck",
+ "libsignal-bridge",
+ "libsignal-bridge-testing",
+ "libsignal-bridge-types",
+ "minijinja",
+]
+
+[[package]]
 name = "libsignal-jni"
 version = "0.94.2"
 dependencies = [

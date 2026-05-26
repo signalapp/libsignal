@@ -179,6 +179,7 @@ if [[ -n "${SHOULD_CBINDGEN}" ]]; then
       echo 'error: signal_ffi_testing.h not up to date; run' "$0" '--generate-ffi' >&2
       exit 1
     fi
+    cargo run -p libsignal-ffi-native_swift -- --verify
   else
     echo cbindgen ${RELEASE_BUILD:+--profile release} -o "${FFI_HEADER_PATH}" rust/bridge/ffi
     # Use sed to ignore irrelevant cbindgen warnings.
@@ -191,5 +192,6 @@ if [[ -n "${SHOULD_CBINDGEN}" ]]; then
     # shellcheck disable=SC2016
     cbindgen ${RELEASE_BUILD:+--profile release} -o "${FFI_TESTING_HEADER_PATH}" rust/bridge/shared/testing --config rust/bridge/ffi/cbindgen-testing.toml 2>&1 |
       sed '/WARN: Missing `\[defines\]` entry for `feature = "ffi"` in cbindgen config\./ d' >&2
+    cargo run -p libsignal-ffi-native_swift
   fi
 fi

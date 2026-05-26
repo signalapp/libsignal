@@ -4,7 +4,6 @@
 //
 
 import Foundation
-import SignalFfi
 
 public protocol UnauthProfilesService: Sendable {
     /// Does an account with the given ACI or PNI exist?
@@ -15,19 +14,11 @@ public protocol UnauthProfilesService: Sendable {
 
 extension UnauthenticatedChatConnection: UnauthProfilesService {
     public func accountExists(_ account: ServiceId) async throws -> Bool {
-        return try await self.tokioAsyncContext
-            .invokeAsyncFunction { promise, tokioAsyncContext in
-                withNativeHandle { chatService in
-                    account.withPointerToFixedWidthBinary { account in
-                        signal_unauthenticated_chat_connection_account_exists(
-                            promise,
-                            tokioAsyncContext.const(),
-                            chatService.const(),
-                            account
-                        )
-                    }
-                }
-            }
+        return try await NativeNice.UnauthenticatedChatConnection_account_exists(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            account: account
+        )
     }
 }
 

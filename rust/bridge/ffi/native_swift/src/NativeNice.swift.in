@@ -1,0 +1,72 @@
+//
+// Copyright 2026 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+// WARNING: this file was automatically generated
+
+{% if testing %}
+#if !os(iOS) || targetEnvironment(simulator)
+{% endif %}
+
+import Foundation
+import SignalFfi
+{% if testing %}@testable import LibSignalClient{% endif %}
+
+{% set ctx = testing_ctx if testing else non_testing_ctx %}
+
+internal enum Native{% if testing %}Testing{% endif %}Nice {
+    {% for (name, f) in ctx.nice_functions|items -%}
+        internal static func {{ name }}(
+            {%- if f.is_tokio_async -%}
+                asyncContext: TokioAsyncContext,
+            {%- endif -%}
+            {% for (arg, ty) in f.arguments -%}
+                {{ arg|to_lower_camel_case }}
+                {%- if arg != arg|to_lower_camel_case %} {{ arg }}{% endif -%}
+                : {{ ty.nice_type}},
+            {%- endfor %}
+        )
+        {%- if f.is_tokio_async %} async {% endif -%}
+        throws -> {{ f.return_type.nice_type }}
+        {
+            {%- if f.is_tokio_async %}
+                let rawOutput: {{ f.return_type.converter_type }}.FfiReturn =
+                    try await asyncContext.invokeAsyncFunction {
+                        promiseFfi, asyncContextFfi in
+                        {% for (arg, ty) in f.arguments -%}
+                            {{ ty.converter_type }}.convertArgBorrowed({{ arg }}) { {{ arg }}Ffi in
+                        {% endfor -%}
+                        SignalFfi.signal_{{ name|to_snake_case }}(
+                            promiseFfi,
+                            asyncContextFfi.const(),
+                            {% for (arg, ty) in f.arguments -%}
+                                {{ arg }}Ffi,
+                            {% endfor -%}
+                        )
+                        {%- for (arg, ty) in f.arguments -%}
+                            } {# Closing braces #}
+                        {%- endfor %}
+                    }
+                return try {{ f.return_type.converter_type }}.convertReturn(consuming: rawOutput)
+            {% else %}
+                {%- for (arg, ty) in f.arguments -%}
+                    try {{ ty.converter_type }}.convertArgBorrowed({{ arg }}) { {{ arg }}Ffi in
+                {% endfor -%}
+                var rawOutput = {{ f.return_type.converter_type }}.emptyFfiReturn()
+                try checkError(SignalFfi.signal_{{ name|to_snake_case }}(
+                    &rawOutput,
+                    {% for (arg, ty) in f.arguments -%}
+                        {{ arg }}Ffi,
+                    {% endfor -%}
+                ))
+                return try {{ f.return_type.converter_type }}.convertReturn(consuming: rawOutput)
+                {%- for (arg, ty) in f.arguments -%}
+                    } {# Closing braces #}
+                {%- endfor %}
+            {% endif %}
+        }
+    {% endfor -%}
+}
+
+{% if testing %}#endif{% endif %}

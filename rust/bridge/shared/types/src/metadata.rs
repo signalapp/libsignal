@@ -243,6 +243,84 @@ pub mod jni {
     }
 }
 
+#[cfg(feature = "ffi")]
+pub mod ffi {
+    use std::collections::BTreeMap;
+
+    use linkme::distributed_slice;
+    use serde::Serialize;
+
+    use super::*;
+
+    #[derive(Debug, Clone, Serialize)]
+    pub struct SwiftArgConverter {
+        /// What's the high-level swift type?
+        pub nice_type: String,
+        /// What's the type which implements the Swift `ArgConverter` protocol
+        pub converter_type: String,
+    }
+    #[derive(Debug, Clone, Serialize)]
+    pub struct SwiftReturnConverter {
+        /// What's the high-level swift type?
+        pub nice_type: String,
+        /// What's the type which implements the Swift `ResultConverter` protocol
+        pub converter_type: String,
+    }
+
+    #[derive(Debug, Clone, Serialize)]
+    pub struct NiceFunction {
+        pub is_tokio_async: bool,
+        /// (name, type)
+        pub arguments: Vec<(String, SwiftArgConverter)>,
+        pub return_type: SwiftReturnConverter,
+    }
+
+    #[derive(Debug, Clone, Serialize, Default)]
+    pub struct SwiftMetadataContext {
+        pub nice_functions: BTreeMap<String, NiceFunction>,
+    }
+
+    /// These functions should mutate the attached [SwiftMetadataContext] to register their item.
+    #[distributed_slice]
+    pub static FFI_ITEMS: [FnWithModule<SwiftMetadataContext>];
+
+    pub mod result_type_helper {
+        use std::marker::PhantomData;
+
+        use derive_where::derive_where;
+
+        use super::*;
+        use crate::ffi::NiceResultConverter;
+
+        #[derive_where(Default)]
+        pub struct ResultMetadataTransformHelper<T>(PhantomData<T>);
+        impl<T: NiceResultConverter> ResultMetadataTransformHelper<T> {
+            pub fn register_swift_result_converter(
+                &self,
+                ctx: &mut SwiftMetadataContext,
+            ) -> SwiftReturnConverter {
+                T::register_swift_result_converter(ctx)
+            }
+        }
+        pub trait ResultMetadataTransformHelperTraitConverter {
+            fn register_swift_result_converter(
+                &self,
+                ctx: &mut SwiftMetadataContext,
+            ) -> SwiftReturnConverter;
+        }
+        impl<T: NiceResultConverter, E> ResultMetadataTransformHelperTraitConverter
+            for ResultMetadataTransformHelper<Result<T, E>>
+        {
+            fn register_swift_result_converter(
+                &self,
+                ctx: &mut SwiftMetadataContext,
+            ) -> SwiftReturnConverter {
+                T::register_swift_result_converter(ctx)
+            }
+        }
+    }
+}
+
 pub struct FnWithModule<Ctx> {
     /// The module the function is defined in
     pub module_path: &'static str,

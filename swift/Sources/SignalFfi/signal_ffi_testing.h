@@ -311,6 +311,10 @@ SignalFfiError *signal_testing_conversion_bool_identity(bool *out, bool x);
 
 SignalFfiError *signal_testing_conversion_bool_to_string(const char **out, bool x);
 
+SignalFfiError *signal_testing_conversion_data_identity(SignalOwnedBuffer *out, SignalBorrowedBuffer x);
+
+SignalFfiError *signal_testing_conversion_data_to_string(const char **out, SignalBorrowedBuffer x);
+
 SignalFfiError *signal_testing_conversion_i32_identity(int32_t *out, int32_t x);
 
 SignalFfiError *signal_testing_conversion_i32_to_string(const char **out, int32_t x);

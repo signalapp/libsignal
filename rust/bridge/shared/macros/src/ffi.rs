@@ -10,7 +10,7 @@ use syn::spanned::Spanned;
 use syn::*;
 use syn_mid::Signature;
 
-use crate::util::{extract_arg_names_and_types, result_type};
+use crate::util::{NiceMetadataNames, extract_arg_names_and_types, nice_metadata, result_type};
 use crate::{BridgingKind, ResultInfo, ResultKind};
 
 pub(crate) fn bridge_fn(
@@ -18,6 +18,7 @@ pub(crate) fn bridge_fn(
     sig: &Signature,
     result_info: ResultInfo,
     bridging_kind: &BridgingKind,
+    nice: bool,
 ) -> Result<TokenStream2> {
     // Scroll down to the end of the function to see the quote template.
     // This is the best way to understand what we're trying to produce.
@@ -56,6 +57,19 @@ pub(crate) fn bridge_fn(
         BridgingKind::Regular => bridge_fn_body(sig, &input_names_and_types, result_info.kind),
         BridgingKind::Io { runtime } => bridge_io_body(&sig.ident, &input_names_and_types, runtime),
     };
+    let metadata = nice_metadata(
+        &sig.ident.to_string(),
+        sig.asyncness.is_some(),
+        &input_names_and_types,
+        &result_type(&sig.output),
+        nice,
+        &NiceMetadataNames {
+            backend_name: format_ident!("ffi"),
+            metadata_context: format_ident!("SwiftMetadataContext"),
+            register_arg_converter: format_ident!("register_swift_arg_converter"),
+            register_result_converter: format_ident!("register_swift_result_converter"),
+        },
+    );
 
     Ok(quote! {
         #[cfg(feature = "ffi")]
@@ -66,6 +80,7 @@ pub(crate) fn bridge_fn(
         ) -> *mut ffi::SignalFfiError {
             #body
         }
+        #metadata
     })
 }
 

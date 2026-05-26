@@ -983,6 +983,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage
     }
     register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
+nice_identity_arg_converter!(&[u8]);
 
 /// A wrapper around a persisted JavaScript buffer and a pointer/length pair.
 ///
@@ -1409,6 +1410,7 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     }
     register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
+nice_identity_result_converter!(Vec<u8>);
 
 impl<'a> ResultTypeInfo<'a> for bytes::Bytes {
     type ResultType = JsUint8Array;
