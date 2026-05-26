@@ -41,11 +41,13 @@ jobs:
 
     - name: Checking run eligibility
       uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      env:
+        REF_NAME: ${{ github.ref_name }}
       with:
         script: |
           const dryRun = ${{ inputs.dry_run }};
           const refType = '${{ github.ref_type }}';
-          const refName = '${{ github.ref_name }}';
+          const refName = process.env.REF_NAME;
           console.log(dryRun
             ? `Running in 'dry run' mode on '${refName}' ${refType}`
             : `Running on '${refName}' ${refType}`);
