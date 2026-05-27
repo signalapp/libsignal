@@ -166,10 +166,10 @@ async fn process_prekey_impl(
     log::info!("going to try writing to desktop");
     let pvrf_ciphertext = message.pvrf_ciphertext();
     
-    let unoptioned = pvrf_ciphertext.expect("no pvrf cipherest").clone();
-    let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
-    path.push("mcs_stored_alice_pvrf.txt");
-    let _ = fs::write(&path, unoptioned);
+    // let unoptioned = pvrf_ciphertext.expect("no pvrf cipherest").clone();
+    // let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
+    // path.push("mcs_stored_alice_pvrf.txt");
+    // let _ = fs::write(&path, unoptioned);
 
     let parameters = BobSignalProtocolParameters::new(
         identity_store.get_identity_key_pair().await?,  // ipkr

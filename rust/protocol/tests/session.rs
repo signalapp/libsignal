@@ -34,6 +34,7 @@ fn init_logger() {
 // this also tests that SAS matches up in normal messaging (between alice <-> eve and bob <-> alice)
 #[test]
 fn test_pvrf_mitm_sender_receive_step_resealing() -> TestResult {
+    // env_logger::try_init();
     // trivially, if eve impersonates alice/bob and does not forward to the other,
     // then the other of bob/alice could never possibly generate a SAS and the attack fails
     run(
@@ -232,7 +233,7 @@ fn test_pvrf_mitm_sender_receive_step_resealing() -> TestResult {
             let (eve_with_alice_sas_bytes, (w, v), c, computed_c) = eves_session_with_alice.get_bob_response()?;
 
             let alice_session_with_eve = alice_store.load_session(&eve_address).await?.expect("session found");
-            let (_, _, (_, (_, _)), vk, x, r1, r2, a2e_contrib_salt) = alice_session_with_eve.get_vts()?;
+            let (_, _, (_, (_, _)), vk, alt_vk, x, r1, r2, a2e_contrib_salt) = alice_session_with_eve.get_vts()?;
             let (vk_compressed, w_compressed, v_compressed) = (vk.compress(), w.compress(), v.compress());
             let vk_bytes = vk_compressed.as_bytes();
             let x_bytes = x.as_slice();
@@ -240,24 +241,25 @@ fn test_pvrf_mitm_sender_receive_step_resealing() -> TestResult {
             let beta_bytes: &[u8] = &r2.to_bytes()[..];
             let w_bytes = w_compressed.as_bytes();
             let v_bytes = v_compressed.as_bytes();
-            let (pvrf_verified, alice_sas_bytes) = pvrf_verify_from_session_data(vk_bytes, x_bytes, alpha_bytes, beta_bytes, w_bytes, v_bytes)?;
 
-            assert_eq!(c, computed_c); //not nonsense, a real message attempt is simulated or being made to bob 
+            let (pvrf_verified, alice_sas_bytes) = pvrf_verify_raw_alt(vk, alt_vk, x_bytes, alpha_bytes, beta_bytes, w, v)?;
+
+            assert_eq!(c, computed_c);
             assert!(pvrf_verified); //real message response simulated or made to alice
             //next should be false, neither alice nor bob ever really talked to each other
             assert_ne!(alice_sas_bytes, bob_sas_bytes); //sas won't match
 
             //...but it must be true that alice matches with eve->alice and eve->bob matches with bob
             let eve_session_with_bob = eve_store.load_session(&bob_address).await?.expect("session found");
-            let (_, _, (_, (_, _)), vk, x, r1, r2, e2b_contrib_salt) = eve_session_with_bob.get_vts()?;
-            let (vk_compressed, w_compressed, v_compressed) = (vk.compress(), bob_w.compress(), bob_v.compress());
+            let (_, _, (_, (_, _)), bob_vk, bob_alt_vk, x, r1, r2, e2b_contrib_salt) = eve_session_with_bob.get_vts()?;
+            let (vk_compressed, w_compressed, v_compressed) = (bob_vk.compress(), bob_w.compress(), bob_v.compress());
             let vk_bytes = vk_compressed.as_bytes();
             let x_bytes = x.as_slice();
             let alpha_bytes: &[u8] = &r1.to_bytes()[..];
             let beta_bytes: &[u8] = &r2.to_bytes()[..];
             let w_bytes = w_compressed.as_bytes();
             let v_bytes = v_compressed.as_bytes();
-            let (pvrf_verified, eve_with_bob_sas_bytes) = pvrf_verify_from_session_data(vk_bytes, x_bytes, alpha_bytes, beta_bytes, w_bytes, v_bytes)?;
+            let (pvrf_verified, eve_with_bob_sas_bytes) = pvrf_verify_raw_alt(bob_vk, bob_alt_vk, x_bytes, alpha_bytes, beta_bytes, bob_w, bob_v)?;
 
             assert_eq!(bob_c, bob_computed_c); 
             assert_eq!(alice_sas_bytes, eve_with_alice_sas_bytes);
@@ -278,6 +280,7 @@ fn test_pvrf_mitm_sender_receive_step_resealing() -> TestResult {
 // Expectation: Alice should become aware of the attack
 #[test]
 fn test_pvrf_mitm_verify_step_forwarding() -> TestResult {
+    //env_logger::try_init();
     // trivially, if eve impersonates alice/bob and does not forward to the other,
     // then the other of bob/alice could never possibly generate a SAS and the attack fails
     run(
@@ -490,7 +493,7 @@ fn test_pvrf_mitm_verify_step_forwarding() -> TestResult {
             let bob_sas_bytes = z;
 
             let alice_session_with_eve = alice_store.load_session(&eve_address).await?.expect("session found");
-            let (_, _, (_, (_, _)), vk, x, r1, r2, a2e_contrib_salt) = alice_session_with_eve.get_vts()?;
+            let (_, _, (_, (_, _)), vk, alt_vk, x, r1, r2, a2e_contrib_salt) = alice_session_with_eve.get_vts()?;
             let (vk_compressed, w_compressed, v_compressed) = (vk.compress(), w.compress(), v.compress());
             let vk_bytes = vk_compressed.as_bytes();
             let x_bytes = x.as_slice();
@@ -519,6 +522,7 @@ fn test_pvrf_mitm_verify_step_forwarding() -> TestResult {
 // Expectation: Bob should become aware of the attack
 #[test]
 fn test_pvrf_mitm_eval_step_forwarding() -> TestResult {
+    //env_logger::try_init();
     
     run(
         |builder| {
@@ -676,6 +680,7 @@ fn test_pvrf_mitm_eval_step_forwarding() -> TestResult {
             let (_, (_, _), c, computed_c) = bobs_session_with_eve.get_bob_response()?;
 
             //should mismatch because the person that generated the pvrf data is not the same as the person bob is talking to in transcript
+            //will match at 1/2^32
             assert_ne!(c, computed_c); //not nonsense, a real message attempt is simulated or being made to bob 
             Ok(())
         }

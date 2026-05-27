@@ -256,7 +256,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         .expect("sync")?
         .expect("already decrypted successfully");
 
-    let (_, _, (_, (_, _)), vk, x, r1, r2, _) = alice_state.get_vts()?;
+    let (_, _, (_, (_, _)), vk, alt_vk, x, r1, r2, _) = alice_state.get_vts()?;
     let (_, (w, v), _, _) = bob_state.get_bob_response()?;
 
     let (vk_compressed, w_compressed, v_compressed) = (vk.compress(), w.compress(), v.compress());

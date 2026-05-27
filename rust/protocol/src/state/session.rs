@@ -145,6 +145,7 @@ bitflags! {
     }
 }
 use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::EdwardsPoint;
 use curve25519_dalek::scalar::Scalar;
 
 #[derive(Clone, Debug)]
@@ -937,7 +938,7 @@ impl SessionRecord {
     ///realfunc
     pub fn get_vts(
             &self,
-    ) -> Result<(RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar)), RistrettoPoint, Vec<u8>, Scalar, Scalar, Vec<u8>), SignalProtocolError> {    
+    ) -> Result<(EdwardsPoint, RistrettoPoint, (Scalar, (Scalar, Scalar)), EdwardsPoint, EdwardsPoint, Vec<u8>, Scalar, Scalar, Vec<u8>), SignalProtocolError> {    
         Ok(
             bincode::deserialize(
         &self
@@ -957,7 +958,7 @@ impl SessionRecord {
     ///realfunc
     pub fn get_bob_response(
             &self,
-    ) -> Result<(Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar), SignalProtocolError> {   
+    ) -> Result<(Vec<u8>, (EdwardsPoint, EdwardsPoint), Scalar, Scalar), SignalProtocolError> {   
         Ok(
             bincode::deserialize(
         &self
