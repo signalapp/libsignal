@@ -1000,7 +1000,7 @@ fn SessionRecord_GetSAS(s: &SessionRecord) -> Result<Vec<u8>> {
 #[bridge_fn]
 fn SessionRecord_GetVTS(s: &SessionRecord) -> Result<Vec<u8>> {
     //get_vts returns Result<(RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar)), RistrettoPoint, Vec<u8>, Scalar, Scalar, Vec<u8>), SignalProtocolError>
-    let (h, hprime, (s1, (s2_1, s2_2)), vk, alt_vk, x, r1, r2, contrib_salt) = s.get_vts()?;
+    let (h, hprime, (s1, (s2_1, s2_2)), vk, x, r1, r2, contrib_salt) = s.get_vts()?;
 
     // serialize each element into bytes
     let mut out = Vec::new();

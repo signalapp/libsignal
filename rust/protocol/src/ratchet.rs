@@ -94,11 +94,6 @@ pub fn sample_random_zp<R: Rng + CryptoRng>(csprng: &mut R) -> Scalar {
     Scalar::from_bytes_mod_order_wide(&bytes)
 }
 
-pub fn hash_generic_zp(input: &[u8]) -> Scalar {
-    let hash = Sha512::digest(input);
-    Scalar::from_bytes_mod_order_wide(&hash.into())
-}
-
 pub fn hash_fs(vk: &EdwardsPoint, x: &[u8], h: &EdwardsPoint, h_prime: &RistrettoPoint, eta: &EdwardsPoint, eta_prime: &RistrettoPoint) -> Scalar {
     let mut bytes = Vec::new();
     //bytes.extend(&(vk.len() as u64).to_le_bytes());
@@ -196,7 +191,6 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
 
     //step 0: parameters
     let vk; //otpk_bob,i 
-    let alt_vk;
     let g = generator_g();
 
     // Optional Alice's eph key * Bob's otpk
@@ -205,12 +199,10 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
         let bytes: [u8; 32] = their_one_time_prekey.public_key_bytes().try_into().unwrap();
         vk = MontgomeryPoint(bytes).to_edwards(0).unwrap();
-        alt_vk = MontgomeryPoint(bytes).to_edwards(1).unwrap();
         x.extend_from_slice(their_one_time_prekey.public_key_bytes());
     } else {
         let bytes: [u8; 32] = parameters.their_signed_pre_key().public_key_bytes().try_into().unwrap();
         vk = MontgomeryPoint(bytes).to_edwards(0).unwrap();
-        alt_vk = MontgomeryPoint(bytes).to_edwards(1).unwrap();
     }
     x.extend_from_slice(parameters.their_signed_pre_key().public_key_bytes());
     let mut alice_sas_contribution_salt = [0u8; 3];
@@ -231,7 +223,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     //step 1, page 11, preverify
     let alpha = sample_random_zp(csprng);
     let beta = sample_random_zp(csprng);
-    let h = (alpha * g) + (beta * hash_i(&vk, &x));    
+    let h = ((alpha * g) + (beta * hash_i(&vk, &x)));
     let hprime = alpha * hash_a(&vk, &x) + beta * hash_b(&vk, &x);
 
     //step 2
@@ -247,7 +239,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
 
     //step 3
     let vt = (h, hprime, tau);
-    let vts = (vt, vk, alt_vk, x.clone(), alpha, beta, alice_sas_contribution_salt.clone());
+    let vts = (vt, vk, x.clone(), alpha, beta, alice_sas_contribution_salt.clone());
     let redacted_vts_for_bob = (vt, alice_sas_contribution_salt.clone());
 
     let pvrf_ciphertext =  bincode::serialize(&redacted_vts_for_bob).unwrap().into_boxed_slice();
@@ -456,7 +448,7 @@ pub(crate) fn initialize_bob_session(
         } 
 
         // Step 3
-        let w = hi * k;
+        let w = (hi * k);
         let z = hash_o(&w); //the sas?
         let v = h * k;
         let pi = (w, v);
@@ -559,10 +551,9 @@ pub fn pvrf_verify_from_session_data(
     x_bytes: &[u8],
     alpha_bytes: &[u8],  // 32-byte LE scalar
     beta_bytes: &[u8],   // 32-byte LE scalar
-    w_bytes: &[u8],      // 32-byte compressed ristretto
-    v_bytes: &[u8],      // 32-byte compressed ristretto
+    w_bytes: &[u8],      // 32-byte edwards
+    v_bytes: &[u8],      // 32-byte edwards
 ) -> Result<(bool, Vec<u8>)> {
-    let alt_vk_bytes = vk_bytes;
 
     // Parse alpha and beta scalars
     let alpha_arr: [u8; 32] = alpha_bytes.try_into().map_err(|_|
@@ -584,89 +575,54 @@ pub fn pvrf_verify_from_session_data(
     let v = CompressedEdwardsY::from_slice(v_bytes)
         .map_err(|_| SignalProtocolError::InvalidArgument("invalid v slice".to_string()))?
         .decompress()
-        .ok_or_else(|| SignalProtocolError::InvalidArgument("v decompression failed".to_string()))?;
+        .ok_or_else(|| SignalProtocolError::InvalidArgument("v decompression failed".to_string()))?
+        ;//.to_montgomery().to_edwards(0).unwrap();
     log::info!("the v bytes is {:?}", v_bytes);
 
     // z = Ho(w)
     let z = hash_o(&w);
 
-    // Reconstruct vk as a RistrettoPoint
+    // Reconstruct vk
     log::info!("what is vk {:?} bytes", vk_bytes);
     log::info!("what is v {:?} bytes", v_bytes);
-    log::info!("what is alt vk {:?} bytes", alt_vk_bytes);
     let vk_point = CompressedEdwardsY::from_slice(vk_bytes)
         .map_err(|_| SignalProtocolError::InvalidArgument("invalid vk slice".to_string()))?
         .decompress()
         .ok_or_else(|| SignalProtocolError::InvalidArgument("vk decompression failed".to_string()))?;
     log::info!("whyyyy {:?} bytes", vk_point.compress().as_bytes());
 
-    let alt_vk_point = CompressedEdwardsY::from_slice(alt_vk_bytes)
-        .map_err(|_| SignalProtocolError::InvalidArgument("invalid vk slice".to_string()))?
-        .decompress()
-        .ok_or_else(|| SignalProtocolError::InvalidArgument("vk decompression failed".to_string()))?;
-    log::info!("alt whyyyy {:?} bytes", alt_vk_point.compress().as_bytes());
+    // log::info!("actual vk {:?} bytes", vk_point.compress().as_bytes());
+    // let vk_backforth = vk_point.to_montgomery().to_edwards(0).unwrap();
+    // log::info!("vk back and forth {:?} bytes", vk_backforth.compress().as_bytes());
+    
+
+    // log::info!("w is {:?} bytes", w.compress().as_bytes());
+    // let w_backforth = w.to_montgomery().to_edwards(0).unwrap();
+    // log::info!("w back and forth {:?} bytes", w_backforth.compress().as_bytes());
+    
+    // log::info!("real v is {:?} bytes", v.compress().as_bytes());
+    // let v_backforth = v.to_montgomery().to_edwards(0).unwrap();
+    // log::info!("real v back and forth {:?} bytes", v_backforth.compress().as_bytes());
+    
+
+
+
+
 
 
     // v = vk^alpha * w^beta
-    let expected_v = (vk_point * alpha) + (w * beta);
-    let alt_expected_v = (alt_vk_point * alpha) + (w * beta);
-    let ok = v.compress().as_bytes() == expected_v.compress().as_bytes()  || v.compress().as_bytes() == alt_expected_v.compress().as_bytes();
+    let calculated_v = ((vk_point * alpha) + (w * beta));
+    let alt_calculated_v = (-vk_point * alpha) + (w * beta);
+
+    let ok = v.compress().as_bytes() == calculated_v.compress().as_bytes() || v.compress().as_bytes() == alt_calculated_v.compress().as_bytes();
     log::info!("what v is {:?} bytes", v.compress().as_bytes());
-    log::info!("what calculated v is {:?} bytes", expected_v.compress().as_bytes());
-    log::info!("what calculated alt_vk v is {:?} bytes", alt_expected_v.compress().as_bytes());
+    log::info!("trying to achieve v is {:?} bytes", calculated_v.compress().as_bytes());
+    log::info!("what alt calculated v is {:?} bytes", alt_calculated_v.compress().as_bytes());
+    log::info!("is alt equal to v? {}", v.compress().as_bytes() == alt_calculated_v.compress().as_bytes());
     if ok {
         log::info!("PVRF VERIFY SUCCESS z: {:?}", z);
     } else {
-        log::error!("PVRF VERIFY FAILED: v != expected_v");
-    }
-
-    Ok((ok, z))
-}
-
-
-pub fn pvrf_verify_raw_alt(
-    vk: EdwardsPoint,
-    alt_vk: EdwardsPoint,
-    x_bytes: &[u8],
-    alpha_bytes: &[u8],  // 32-byte LE scalar
-    beta_bytes: &[u8],   // 32-byte LE scalar
-    w: EdwardsPoint,
-    v: EdwardsPoint
-) -> Result<(bool, Vec<u8>)> {
-
-    // Parse alpha and beta scalars
-    let alpha_arr: [u8; 32] = alpha_bytes.try_into().map_err(|_|
-        SignalProtocolError::InvalidArgument("alpha must be 32 bytes".to_string()))?;
-    let beta_arr: [u8; 32] = beta_bytes.try_into().map_err(|_|
-        SignalProtocolError::InvalidArgument("beta must be 32 bytes".to_string()))?;
-
-    let alpha = Option::<Scalar>::from(Scalar::from_canonical_bytes(alpha_arr))
-        .ok_or_else(|| SignalProtocolError::InvalidArgument("invalid alpha scalar".to_string()))?;
-    let beta = Option::<Scalar>::from(Scalar::from_canonical_bytes(beta_arr))
-        .ok_or_else(|| SignalProtocolError::InvalidArgument("invalid beta scalar".to_string()))?;
-    log::info!("the v bytes is {:?}", v);
-
-    // z = Ho(w)
-    let z = hash_o(&w);
-
-    // Reconstruct vk as a RistrettoPoint
-    log::info!("what is vk {:?} bytes", vk);
-    let vk_point = vk;
-    log::info!("whyyyy {:?} bytes", vk_point.compress().as_bytes());
-
-
-    // v = vk^alpha * w^beta
-    let expected_v = (vk_point * alpha) + (w * beta);
-    let alt_expected_v = (alt_vk * alpha) + (w * beta);
-    let v = v;
-    let ok = v.compress().as_bytes() == expected_v.compress().as_bytes() || v.compress().as_bytes() == alt_expected_v.compress().as_bytes();
-    log::info!("what is v {:?} bytes", v.compress().as_bytes());
-    log::info!("what alice calculated v is {:?} bytes", expected_v.compress().as_bytes());
-    log::info!("what alice calculated alt_vk v is {:?} bytes", alt_expected_v.compress().as_bytes());
-    if ok {
-        log::info!("PVRF VERIFY SUCCESS z: {:?}", z);
-    } else {
-        log::error!("PVRF VERIFY FAILED: v != expected_v");
+        log::error!("PVRF VERIFY FAILED: v != calculated_v");
     }
 
     Ok((ok, z))
