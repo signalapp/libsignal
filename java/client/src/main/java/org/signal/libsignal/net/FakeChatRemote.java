@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.net;
 
+import java.util.Arrays;
 import java.util.UUID;
 import kotlin.Pair;
 import org.signal.libsignal.internal.CompletableFuture;
@@ -39,16 +40,22 @@ class FakeChatRemote extends NativeHandleGuard.SimpleOwner {
             });
   }
 
+  private class FakeChatResponse extends NativeHandleGuard.SimpleOwner {
+    FakeChatResponse(long handle) {
+      super(handle);
+    }
+
+    protected void release(long nativeHandle) {
+      NativeTesting.FakeChatResponse_Destroy(nativeHandle);
+    }
+  }
+
   public void sendResponse(
       long requestId, int status, String message, String[] headers, byte[] body) {
     var fakeResponse =
-        new NativeHandleGuard.SimpleOwner(
+        new FakeChatResponse(
             NativeTesting.TESTING_FakeChatResponse_Create(
-                requestId, status, message, headers, body)) {
-          protected void release(long nativeHandle) {
-            NativeTesting.FakeChatResponse_Destroy(nativeHandle);
-          }
-        };
+                requestId, status, message, headers, body));
 
     guardedRun(
         fakeRemote ->
@@ -56,6 +63,51 @@ class FakeChatRemote extends NativeHandleGuard.SimpleOwner {
                 response ->
                     NativeTesting.TESTING_FakeChatRemoteEnd_SendServerResponse(
                         fakeRemote, response)));
+  }
+
+  @SuppressWarnings("unchecked")
+  public CompletableFuture<Pair<InternalRequest, Long>> getNextIncomingGrpcRequest() {
+    return tokioContext
+        .guardedMap(
+            asyncContextHandle ->
+                this.guardedMap(
+                    fakeRemote ->
+                        NativeTesting.TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest(
+                            asyncContextHandle, fakeRemote)))
+        .thenApply(
+            rawRequest -> {
+              var sentRequest = (Pair<Long, Long>) rawRequest;
+              return new Pair(new InternalRequest(sentRequest.getFirst()), sentRequest.getSecond());
+            });
+  }
+
+  public CompletableFuture<Void> sendGrpcResponse(long requestId, byte[] fullResponse) {
+    var fakeResponse =
+        new FakeChatResponse(
+            NativeTesting.TESTING_FakeChatResponse_Create(
+                requestId, 200, "", new Object[0], fullResponse));
+
+    return tokioContext.guardedMap(
+        asyncContextHandle ->
+            guardedMap(
+                fakeRemote ->
+                    fakeResponse.guardedMap(
+                        response ->
+                            NativeTesting.TESTING_FakeChatRemoteEnd_SendServerGrpcResponse(
+                                asyncContextHandle, fakeRemote, response))));
+  }
+
+  static byte[] encodeSingleGrpcMessage(String name, kotlinx.serialization.json.JsonElement json) {
+    var binproto = NativeTesting.TESTING_FakeChatRemoteEnd_JsonToBinproto(name, json.toString());
+    var header = NativeTesting.TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength(binproto.length);
+    var result = Arrays.copyOf(header, header.length + binproto.length);
+    System.arraycopy(binproto, 0, result, header.length, binproto.length);
+    return result;
+  }
+
+  public CompletableFuture<Void> sendGrpcResponse(
+      long requestId, String name, kotlinx.serialization.json.JsonElement json) {
+    return sendGrpcResponse(requestId, encodeSingleGrpcMessage(name, json));
   }
 
   @Override
