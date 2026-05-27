@@ -28,6 +28,9 @@ Pod::Spec.new do |s|
       # Duplicate this here to make sure the search path is passed on to Swift dependencies.
       'SWIFT_INCLUDE_PATHS' => '$(HEADER_SEARCH_PATHS)',
 
+      # Setting this allows the tests to be considered part of the same package.
+      'SWIFT_PACKAGE_NAME' => 'LibSignalClient',
+
       'LIBSIGNAL_FFI_BUILD_PATH' => 'target/$(CARGO_BUILD_TARGET)/release',
       # Store libsignal_ffi.a builds in a project-wide directory
       # because we keep simulator and device builds next to each other.
