@@ -594,10 +594,9 @@ impl ConcreteProxyConfig<'_> {
 }
 
 fn proxy_host_as_unresolved(proxy_host: &Host<Arc<str>>) -> Host<UnresolvedHost> {
-    match proxy_host {
-        Host::Ip(ip) => Host::Ip(*ip),
-        Host::Domain(domain) => Host::Domain(UnresolvedHost(Arc::clone(domain))),
-    }
+    proxy_host
+        .as_ref()
+        .map_domain(|domain| UnresolvedHost(domain.clone()))
 }
 
 impl<R> ReplaceFragment<ConnectionProxyRoute<R>> for ConnectionProxyRoute<R> {
