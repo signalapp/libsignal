@@ -3781,7 +3781,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## jni-sys 0.3.0, jni-sys 0.4.1
+## jni-sys-macros 0.4.1, jni-sys 0.3.0, jni-sys 0.4.1
 
 ```
 Copyright (c) 2015 The rust-jni-sys Developers
@@ -5602,6 +5602,37 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
+## pbjson-build 0.9.0, pbjson-types 0.9.0, pbjson 0.9.0
+
+```
+Copyright (c) 2020 InfluxData
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+```
+
 ## sha2-asm 0.6.4
 
 ```
@@ -6545,7 +6576,7 @@ SOFTWARE.
 
 ```
 
-## cesu8 1.1.0, jni-macros 0.22.4, jni-sys-macros 0.4.1, jni 0.22.4, pbjson-build 0.9.0, pbjson-types 0.9.0, pbjson 0.9.0
+## cesu8 1.1.0
 
 ```
 MIT License
@@ -7056,7 +7087,7 @@ SOFTWARE.
 
 ```
 
-## jni 0.21.1
+## jni-macros 0.22.4, jni 0.21.1, jni 0.22.4
 
 ```
 The MIT License (MIT)

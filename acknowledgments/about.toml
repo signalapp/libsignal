@@ -149,6 +149,29 @@ path = "LICENSE"
 checksum = "9a50bad5a51e0ad726ea3a7f4b7b758e1b4d1784e6abefe1367f5bf01e972725"
 
 
+# The jni crates are embedded in larger repos
+[jni.clarify]
+license = "MIT"
+
+[[jni.clarify.git]]
+path = "LICENSE-MIT"
+checksum = "fea1d5bf3dd71605ce5d7d2ff695c1837e914c77195e523a86b5391716477960"
+
+[jni-macros.clarify]
+license = "MIT"
+
+[[jni-macros.clarify.git]]
+path = "LICENSE-MIT"
+checksum = "fea1d5bf3dd71605ce5d7d2ff695c1837e914c77195e523a86b5391716477960"
+
+[jni-sys-macros.clarify]
+license = "MIT"
+
+[[jni-sys-macros.clarify.git]]
+path = "LICENSE-MIT"
+checksum = "1d85bd754b04ceec93e98e890edd1fa3c6a22e81bcb32135806beeccefa51cd1"
+
+
 # The libcrux crates are embedded in a larger repo.
 [libcrux-hacl-rs.clarify]
 license = "Apache-2.0"
@@ -275,6 +298,29 @@ license = "AGPL-3.0-only"
 [[partial-default-derive.clarify.git]]
 path = "LICENSE"
 checksum = "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
+
+
+# The pbjson crates are embedded in a larger repo
+[pbjson.clarify]
+license = "MIT"
+
+[[pbjson.clarify.git]]
+path = "LICENSE"
+checksum = "791a00933f2ea7e512856361e026998362241c3918d7be948c24d29441033b55"
+
+[pbjson-build.clarify]
+license = "MIT"
+
+[[pbjson-build.clarify.git]]
+path = "LICENSE"
+checksum = "791a00933f2ea7e512856361e026998362241c3918d7be948c24d29441033b55"
+
+[pbjson-types.clarify]
+license = "MIT"
+
+[[pbjson-types.clarify.git]]
+path = "LICENSE"
+checksum = "791a00933f2ea7e512856361e026998362241c3918d7be948c24d29441033b55"
 
 
 # protobuf-parse has an addendum for the standard Google protobufs
