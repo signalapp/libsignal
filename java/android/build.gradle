@@ -2,7 +2,6 @@ import groovy.json.JsonSlurper
 
 plugins {
     id 'com.android.library'
-    id 'kotlin-android'
     id 'maven-publish'
     id 'signing'
 }
@@ -123,7 +122,7 @@ dependencies {
     androidTestImplementation 'com.googlecode.json-simple:json-simple:1.1'
     androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
     androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
-    androidTestImplementation 'org.jetbrains.kotlin:kotlin-test:2.1.0'
+    androidTestImplementation 'org.jetbrains.kotlin:kotlin-test-junit:2.1.0'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.6'
     api project(':client')
 }
@@ -149,7 +148,7 @@ task makeJniLibraries(type:Exec) {
     def libsignalDebugFlag = project.hasProperty('libsignalDebug') ? ['--libsignal-debug'] : []
     // Explicitly specify 'bash' for Windows compatibility.
     commandLine 'bash', '../build_jni.sh', *libsignalDebugFlag, *debugLevelLogsFlag, *jniTypeTaggingFlag, *jniCheckAnnotationsFlag, *debugFlag, *archs
-    environment 'ANDROID_NDK_HOME', android.ndkDirectory
+    environment 'ANDROID_NDK_HOME', androidComponents.sdkComponents.ndkDirectory.get().asFile.absolutePath
 }
 
 task collectAssets(type:Copy) {
