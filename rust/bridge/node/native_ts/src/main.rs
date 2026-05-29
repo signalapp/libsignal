@@ -31,6 +31,18 @@ fn main() -> anyhow::Result<()> {
     let mut env = minijinja::Environment::new();
     env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
     env.add_filter("to_lower_camel_case", |x: String| x.to_lower_camel_case());
+    env.add_filter("return_ffi_type", |x: String| {
+        libsignal_bridge_types::metadata::node::names::return_ffi_type(&x)
+    });
+    env.add_filter("return_converter_function", |x: String| {
+        libsignal_bridge_types::metadata::node::names::return_converter_function(&x)
+    });
+    env.add_filter("arg_ffi_type", |x: String| {
+        libsignal_bridge_types::metadata::node::names::arg_ffi_type(&x)
+    });
+    env.add_filter("arg_converter_function", |x: String| {
+        libsignal_bridge_types::metadata::node::names::arg_converter_function(&x)
+    });
     env.add_template("Native.ts.in", include_str!("Native.ts.in"))?;
     env.add_template("NativeNice.ts.in", include_str!("NativeNice.ts.in"))?;
     let mut ctx = TsMetadataContext::default();

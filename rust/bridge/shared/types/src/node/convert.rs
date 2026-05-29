@@ -39,13 +39,20 @@ use crate::support::{
 #[cfg(feature = "metadata")]
 mod metadata {
     use super::*;
+    use crate::metadata::NiceType;
     pub use crate::metadata::node::*;
 
     pub trait NiceArgConverter {
         fn register_ts_arg_converter(ctx: &mut TsMetadataContext) -> TsArgConverter;
+        fn register_ts_nice_type(ctx: &mut TsMetadataContext) -> NiceType {
+            Self::register_ts_arg_converter(ctx).nice_type
+        }
     }
     pub trait NiceResultConverter {
         fn register_ts_result_converter(ctx: &mut TsMetadataContext) -> TsReturnConverter;
+        fn register_ts_nice_type(ctx: &mut TsMetadataContext) -> NiceType {
+            Self::register_ts_result_converter(ctx).nice_type
+        }
     }
 
     pub fn make_array_type<'a, T: ResultTypeInfo<'a>>(ctx: &mut TsMetadataContext) -> String {

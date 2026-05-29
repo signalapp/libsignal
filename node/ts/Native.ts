@@ -143,6 +143,76 @@ export const enum LogLevel {
   Trace,
 }
 
+export type ReturnFfiMyTestEnum =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+      _0: number;
+    }
+  | {
+      __type: 2;
+      x: number;
+    }
+  | {
+      __type: 3;
+      _0: number;
+      _1: number;
+    }
+  | {
+      __type: 4;
+      person_name: string;
+      person_age: number;
+      position: ReturnFfiMyTestPoint;
+      fun_struct: ReturnFfiMyTestStruct;
+    };
+
+export type ReturnFfiMyTestPoint = {
+  _0: number;
+  _1: number;
+};
+
+export type ReturnFfiMyTestStruct = {
+  my_numeric_field: number;
+  my_string_field: string;
+};
+
+export type ArgFfiMyTestEnum =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+      _0: number;
+    }
+  | {
+      __type: 2;
+      x: number;
+    }
+  | {
+      __type: 3;
+      _0: number;
+      _1: number;
+    }
+  | {
+      __type: 4;
+      person_name: string;
+      person_age: number;
+      position: ArgFfiMyTestPoint;
+      fun_struct: ArgFfiMyTestStruct;
+    };
+
+export type ArgFfiMyTestPoint = {
+  _0: number;
+  _1: number;
+};
+
+export type ArgFfiMyTestStruct = {
+  my_numeric_field: number;
+  my_string_field: string;
+};
+
 /* eslint-disable comma-dangle */
 export const NetRemoteConfigKeys = [
   'chatRequestConnectionCheckTimeoutMillis',
@@ -1955,6 +2025,26 @@ type NativeFunctions = {
   TESTING_KeyTransFatalVerificationFailure: () => void;
   TESTING_KeyTransNonFatalVerificationFailure: () => void;
   TESTING_KeyTransStoredAccountData: () => Uint8Array<ArrayBuffer>;
+  TESTING_MyTestEnum_identity: (x: ArgFfiMyTestEnum) => ReturnFfiMyTestEnum;
+  TESTING_MyTestEnum_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: ArgFfiMyTestEnum
+  ) => CancellablePromise<ReturnFfiMyTestEnum>;
+  TESTING_MyTestEnum_to_string: (x: ArgFfiMyTestEnum) => string;
+  TESTING_MyTestPoint_identity: (x: ArgFfiMyTestPoint) => ReturnFfiMyTestPoint;
+  TESTING_MyTestPoint_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: ArgFfiMyTestPoint
+  ) => CancellablePromise<ReturnFfiMyTestPoint>;
+  TESTING_MyTestPoint_to_string: (x: ArgFfiMyTestPoint) => string;
+  TESTING_MyTestStruct_identity: (
+    x: ArgFfiMyTestStruct
+  ) => ReturnFfiMyTestStruct;
+  TESTING_MyTestStruct_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: ArgFfiMyTestStruct
+  ) => CancellablePromise<ReturnFfiMyTestStruct>;
+  TESTING_MyTestStruct_to_string: (x: ArgFfiMyTestStruct) => string;
   TESTING_NonSuspendingBackgroundThreadRuntime_New: () => NonSuspendingBackgroundThreadRuntime;
   TESTING_OtherTestingHandleType_getValue: (
     handle: Wrapper<OtherTestingHandleType>
@@ -2043,21 +2133,49 @@ type NativeFunctions = {
   TESTING_conversion_Data_identity: (
     x: Uint8Array<ArrayBuffer>
   ) => Uint8Array<ArrayBuffer>;
+  TESTING_conversion_Data_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: Uint8Array<ArrayBuffer>
+  ) => CancellablePromise<Uint8Array<ArrayBuffer>>;
   TESTING_conversion_Data_to_string: (x: Uint8Array<ArrayBuffer>) => string;
   TESTING_conversion_ServiceId_identity: (
     x: Uint8Array<ArrayBuffer>
   ) => Uint8Array<ArrayBuffer>;
+  TESTING_conversion_ServiceId_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: Uint8Array<ArrayBuffer>
+  ) => CancellablePromise<Uint8Array<ArrayBuffer>>;
   TESTING_conversion_ServiceId_to_string: (
     x: Uint8Array<ArrayBuffer>
   ) => string;
   TESTING_conversion_bool_identity: (x: boolean) => boolean;
+  TESTING_conversion_bool_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: boolean
+  ) => CancellablePromise<boolean>;
   TESTING_conversion_bool_to_string: (x: boolean) => string;
   TESTING_conversion_i32_identity: (x: number) => number;
+  TESTING_conversion_i32_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: number
+  ) => CancellablePromise<number>;
   TESTING_conversion_i32_to_string: (x: number) => string;
   TESTING_conversion_string_identity: (x: string) => string;
+  TESTING_conversion_string_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: string
+  ) => CancellablePromise<string>;
   TESTING_conversion_u16_identity: (x: number) => number;
+  TESTING_conversion_u16_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: number
+  ) => CancellablePromise<number>;
   TESTING_conversion_u16_to_string: (x: number) => string;
   TESTING_conversion_u8_identity: (x: number) => number;
+  TESTING_conversion_u8_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: number
+  ) => CancellablePromise<number>;
   TESTING_conversion_u8_to_string: (x: number) => string;
   TestingSemaphore_AddPermits: (
     semaphore: Wrapper<TestingSemaphore>,
@@ -2747,6 +2865,15 @@ const {
   TESTING_KeyTransFatalVerificationFailure,
   TESTING_KeyTransNonFatalVerificationFailure,
   TESTING_KeyTransStoredAccountData,
+  TESTING_MyTestEnum_identity,
+  TESTING_MyTestEnum_identity_async,
+  TESTING_MyTestEnum_to_string,
+  TESTING_MyTestPoint_identity,
+  TESTING_MyTestPoint_identity_async,
+  TESTING_MyTestPoint_to_string,
+  TESTING_MyTestStruct_identity,
+  TESTING_MyTestStruct_identity_async,
+  TESTING_MyTestStruct_to_string,
   TESTING_NonSuspendingBackgroundThreadRuntime_New,
   TESTING_OtherTestingHandleType_getValue,
   TESTING_PanicInBodyAsync,
@@ -2788,17 +2915,24 @@ const {
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
   TESTING_conversion_Data_identity,
+  TESTING_conversion_Data_identity_async,
   TESTING_conversion_Data_to_string,
   TESTING_conversion_ServiceId_identity,
+  TESTING_conversion_ServiceId_identity_async,
   TESTING_conversion_ServiceId_to_string,
   TESTING_conversion_bool_identity,
+  TESTING_conversion_bool_identity_async,
   TESTING_conversion_bool_to_string,
   TESTING_conversion_i32_identity,
+  TESTING_conversion_i32_identity_async,
   TESTING_conversion_i32_to_string,
   TESTING_conversion_string_identity,
+  TESTING_conversion_string_identity_async,
   TESTING_conversion_u16_identity,
+  TESTING_conversion_u16_identity_async,
   TESTING_conversion_u16_to_string,
   TESTING_conversion_u8_identity,
+  TESTING_conversion_u8_identity_async,
   TESTING_conversion_u8_to_string,
   TestingSemaphore_AddPermits,
   TestingSemaphore_New,
@@ -3343,6 +3477,15 @@ export {
   TESTING_KeyTransFatalVerificationFailure,
   TESTING_KeyTransNonFatalVerificationFailure,
   TESTING_KeyTransStoredAccountData,
+  TESTING_MyTestEnum_identity,
+  TESTING_MyTestEnum_identity_async,
+  TESTING_MyTestEnum_to_string,
+  TESTING_MyTestPoint_identity,
+  TESTING_MyTestPoint_identity_async,
+  TESTING_MyTestPoint_to_string,
+  TESTING_MyTestStruct_identity,
+  TESTING_MyTestStruct_identity_async,
+  TESTING_MyTestStruct_to_string,
   TESTING_NonSuspendingBackgroundThreadRuntime_New,
   TESTING_OtherTestingHandleType_getValue,
   TESTING_PanicInBodyAsync,
@@ -3384,17 +3527,24 @@ export {
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
   TESTING_conversion_Data_identity,
+  TESTING_conversion_Data_identity_async,
   TESTING_conversion_Data_to_string,
   TESTING_conversion_ServiceId_identity,
+  TESTING_conversion_ServiceId_identity_async,
   TESTING_conversion_ServiceId_to_string,
   TESTING_conversion_bool_identity,
+  TESTING_conversion_bool_identity_async,
   TESTING_conversion_bool_to_string,
   TESTING_conversion_i32_identity,
+  TESTING_conversion_i32_identity_async,
   TESTING_conversion_i32_to_string,
   TESTING_conversion_string_identity,
+  TESTING_conversion_string_identity_async,
   TESTING_conversion_u16_identity,
+  TESTING_conversion_u16_identity_async,
   TESTING_conversion_u16_to_string,
   TESTING_conversion_u8_identity,
+  TESTING_conversion_u8_identity_async,
   TESTING_conversion_u8_to_string,
   TestingSemaphore_AddPermits,
   TestingSemaphore_New,

@@ -169,7 +169,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::*;
-use syn::parse::Parse;
+use syn::parse::{Parse, Parser};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::*;
@@ -603,6 +603,37 @@ pub fn bridge_callbacks(attr: TokenStream, item: TokenStream) -> TokenStream {
         #node_items
     }
     .into()
+}
+
+fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+    let mut node = true;
+    for attr in &item.attrs {
+        if attr
+            .path()
+            .is_ident(&Ident::new("bridge", Span::call_site()))
+        {
+            let contents = Punctuated::<MetaNameValue, Token![,]>::parse_terminated
+                .parse2(attr.meta.require_list()?.tokens.clone())?;
+            node = bool_for_meta_key(&contents, "node")?.unwrap_or(true);
+        }
+    }
+    let node = if node {
+        Some(node::derive_bridged_as_value(&item)?)
+    } else {
+        None
+    };
+    Ok(quote! {
+        #node
+    })
+}
+
+#[proc_macro_derive(BridgedAsValue, attributes(bridge))]
+pub fn derive_bridged_as_value(item: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(item as DeriveInput);
+    match derive_bridged_as_value_inner(item) {
+        Ok(x) => x.into(),
+        Err(e) => e.into_compile_error().into(),
+    }
 }
 
 #[cfg(test)]

@@ -2503,6 +2503,7 @@ dependencies = [
  "prost",
  "rand 0.9.4",
  "scopeguard",
+ "serde",
  "serde_json",
  "strum",
  "tokio",

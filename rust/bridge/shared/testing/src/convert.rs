@@ -378,10 +378,15 @@ pub mod test_conversions {
     //! fn to_string(x: T) -> String;
     //! #[bridge_fn(nice=true)]
     //! fn identity(x: T) -> T;
+    //! #[bridge_fn(nice=true, ffi=false, jni=false)]
+    //! async fn identity_async(x: T) -> T;
     //! ```
     //!
     //! `to_string` checks that argument parsing is working propery, and `identity` checks that
     //! return types are working properly.
+    //!
+    //! Node async arguments are handled differently than Node sync arguments, so we make sure to
+    //! test async specially.
 
     use libsignal_core::ServiceId;
 
@@ -392,12 +397,20 @@ pub mod test_conversions {
     fn TESTING_conversion_string_identity(x: String) -> String {
         x
     }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_string_identity_async(x: String) -> String {
+        x
+    }
     #[bridge_fn(nice = true)]
     fn TESTING_conversion_bool_to_string(x: bool) -> String {
         x.to_string()
     }
     #[bridge_fn(nice = true)]
     fn TESTING_conversion_bool_identity(x: bool) -> bool {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_bool_identity_async(x: bool) -> bool {
         x
     }
     #[bridge_fn(nice = true)]
@@ -408,12 +421,20 @@ pub mod test_conversions {
     fn TESTING_conversion_u8_identity(x: u8) -> u8 {
         x
     }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_u8_identity_async(x: u8) -> u8 {
+        x
+    }
     #[bridge_fn(nice = true)]
     fn TESTING_conversion_u16_to_string(x: u16) -> String {
         x.to_string()
     }
     #[bridge_fn(nice = true)]
     fn TESTING_conversion_u16_identity(x: u16) -> u16 {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_u16_identity_async(x: u16) -> u16 {
         x
     }
     #[bridge_fn(nice = true)]
@@ -424,12 +445,20 @@ pub mod test_conversions {
     fn TESTING_conversion_i32_identity(x: i32) -> i32 {
         x
     }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_i32_identity_async(x: i32) -> i32 {
+        x
+    }
     #[bridge_fn(nice = true)]
     fn TESTING_conversion_ServiceId_to_string(x: ServiceId) -> String {
         x.service_id_string()
     }
     #[bridge_fn(nice = true)]
     fn TESTING_conversion_ServiceId_identity(x: ServiceId) -> ServiceId {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_ServiceId_identity_async(x: ServiceId) -> ServiceId {
         x
     }
     #[bridge_fn(nice = true)]
@@ -439,6 +468,10 @@ pub mod test_conversions {
     }
     #[bridge_fn(nice = true)]
     fn TESTING_conversion_Data_identity(x: &[u8]) -> Vec<u8> {
+        x.to_vec()
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_Data_identity_async(x: &[u8]) -> Vec<u8> {
         x.to_vec()
     }
 }

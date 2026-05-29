@@ -10,6 +10,266 @@ import { ServiceId } from './Address.js';
 import { TokioAsyncContext } from './net.js';
 import { identity, serviceIdArgConverter } from './NiceConverters.js';
 
+export type MyTestEnum =
+  | 'unit'
+  | {
+      single: number;
+    }
+  | {
+      singleNamed: number;
+    }
+  | {
+      double: [number, number];
+    }
+  | {
+      record: {
+        personName: string;
+        personAge: number;
+        position: MyTestPoint;
+        funStruct: MyTestStruct;
+      };
+    };
+
+export type MyTestPoint = [number, number];
+
+export type MyTestStruct = {
+  myNumericField: number;
+  myStringField: string;
+};
+
+function returnConverterMyTestEnum(
+  ffiInput: Native.ReturnFfiMyTestEnum
+): MyTestEnum {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'unit';
+    case 1:
+      return {
+        single: identity(ffiInput._0),
+      };
+    case 2:
+      return {
+        singleNamed: identity(ffiInput.x),
+      };
+    case 3:
+      return {
+        double: [identity(ffiInput._0), identity(ffiInput._1)],
+      };
+    case 4:
+      return {
+        record: {
+          personName: identity(ffiInput.person_name),
+          personAge: identity(ffiInput.person_age),
+          position: returnConverterMyTestPoint(ffiInput.position),
+          funStruct: returnConverterMyTestStruct(ffiInput.fun_struct),
+        },
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for MyTestEnum');
+  }
+}
+
+function returnConverterMyTestPoint(
+  ffiInput: Native.ReturnFfiMyTestPoint
+): MyTestPoint {
+  return [identity(ffiInput._0), identity(ffiInput._1)];
+}
+
+function returnConverterMyTestStruct(
+  ffiInput: Native.ReturnFfiMyTestStruct
+): MyTestStruct {
+  return {
+    myNumericField: identity(ffiInput.my_numeric_field),
+    myStringField: identity(ffiInput.my_string_field),
+  };
+}
+
+function argConverterMyTestEnum(
+  niceInput: MyTestEnum
+): Native.ArgFfiMyTestEnum {
+  if (niceInput === 'unit') {
+    return { __type: 0 };
+  }
+
+  if ('single' in niceInput) {
+    return {
+      __type: 1,
+      _0: identity(niceInput.single),
+    };
+  }
+
+  if ('singleNamed' in niceInput) {
+    return {
+      __type: 2,
+      x: identity(niceInput.singleNamed),
+    };
+  }
+
+  if ('double' in niceInput) {
+    const [_0, _1] = niceInput.double;
+    return {
+      __type: 3,
+      _0: identity(_0),
+      _1: identity(_1),
+    };
+  }
+
+  if ('record' in niceInput) {
+    const {
+      personName: person_name,
+      personAge: person_age,
+      position: position,
+      funStruct: fun_struct,
+    } = niceInput.record;
+    return {
+      __type: 4,
+      person_name: identity(person_name),
+      person_age: identity(person_age),
+      position: argConverterMyTestPoint(position),
+      fun_struct: argConverterMyTestStruct(fun_struct),
+    };
+  }
+
+  niceInput satisfies never;
+  throw new Error('Cannot match on MyTestEnum argument');
+}
+
+function argConverterMyTestPoint(
+  niceInput: MyTestPoint
+): Native.ArgFfiMyTestPoint {
+  const [_0, _1] = niceInput;
+  return { _0: identity(_0), _1: identity(_1) };
+}
+
+function argConverterMyTestStruct(
+  niceInput: MyTestStruct
+): Native.ArgFfiMyTestStruct {
+  const { myNumericField: my_numeric_field, myStringField: my_string_field } =
+    niceInput;
+  return {
+    my_numeric_field: identity(my_numeric_field),
+    my_string_field: identity(my_string_field),
+  };
+}
+
+export function TESTING_MyTestEnum_identity({
+  x: x,
+}: {
+  x: MyTestEnum;
+}): MyTestEnum {
+  return returnConverterMyTestEnum(
+    Native.TESTING_MyTestEnum_identity(argConverterMyTestEnum(x))
+  );
+}
+export async function TESTING_MyTestEnum_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: MyTestEnum;
+}): Promise<MyTestEnum> {
+  return returnConverterMyTestEnum(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_MyTestEnum_identity_async(
+        asyncContext,
+        argConverterMyTestEnum(x)
+      )
+    )
+  );
+}
+
+export function TESTING_MyTestEnum_to_string({
+  x: x,
+}: {
+  x: MyTestEnum;
+}): string {
+  return identity(
+    Native.TESTING_MyTestEnum_to_string(argConverterMyTestEnum(x))
+  );
+}
+
+export function TESTING_MyTestPoint_identity({
+  x: x,
+}: {
+  x: MyTestPoint;
+}): MyTestPoint {
+  return returnConverterMyTestPoint(
+    Native.TESTING_MyTestPoint_identity(argConverterMyTestPoint(x))
+  );
+}
+export async function TESTING_MyTestPoint_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: MyTestPoint;
+}): Promise<MyTestPoint> {
+  return returnConverterMyTestPoint(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_MyTestPoint_identity_async(
+        asyncContext,
+        argConverterMyTestPoint(x)
+      )
+    )
+  );
+}
+
+export function TESTING_MyTestPoint_to_string({
+  x: x,
+}: {
+  x: MyTestPoint;
+}): string {
+  return identity(
+    Native.TESTING_MyTestPoint_to_string(argConverterMyTestPoint(x))
+  );
+}
+
+export function TESTING_MyTestStruct_identity({
+  x: x,
+}: {
+  x: MyTestStruct;
+}): MyTestStruct {
+  return returnConverterMyTestStruct(
+    Native.TESTING_MyTestStruct_identity(argConverterMyTestStruct(x))
+  );
+}
+export async function TESTING_MyTestStruct_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: MyTestStruct;
+}): Promise<MyTestStruct> {
+  return returnConverterMyTestStruct(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_MyTestStruct_identity_async(
+        asyncContext,
+        argConverterMyTestStruct(x)
+      )
+    )
+  );
+}
+
+export function TESTING_MyTestStruct_to_string({
+  x: x,
+}: {
+  x: MyTestStruct;
+}): string {
+  return identity(
+    Native.TESTING_MyTestStruct_to_string(argConverterMyTestStruct(x))
+  );
+}
+
 export function TESTING_TestingIntBox_Get({
   myIntBox: my_int_box,
 }: {
@@ -44,6 +304,22 @@ export function TESTING_conversion_Data_identity({
 }): Uint8Array<ArrayBuffer> {
   return identity(Native.TESTING_conversion_Data_identity(identity(x)));
 }
+export async function TESTING_conversion_Data_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: Uint8Array<ArrayBuffer>;
+}): Promise<Uint8Array<ArrayBuffer>> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_Data_identity_async(asyncContext, identity(x))
+    )
+  );
+}
 
 export function TESTING_conversion_Data_to_string({
   x: x,
@@ -60,6 +336,25 @@ export function TESTING_conversion_ServiceId_identity({
 }): ServiceId {
   return ServiceId.parseFromServiceIdFixedWidthBinary(
     Native.TESTING_conversion_ServiceId_identity(serviceIdArgConverter(x))
+  );
+}
+export async function TESTING_conversion_ServiceId_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: ServiceId;
+}): Promise<ServiceId> {
+  return ServiceId.parseFromServiceIdFixedWidthBinary(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_ServiceId_identity_async(
+        asyncContext,
+        serviceIdArgConverter(x)
+      )
+    )
   );
 }
 
@@ -80,6 +375,22 @@ export function TESTING_conversion_bool_identity({
 }): boolean {
   return identity(Native.TESTING_conversion_bool_identity(identity(x)));
 }
+export async function TESTING_conversion_bool_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: boolean;
+}): Promise<boolean> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_bool_identity_async(asyncContext, identity(x))
+    )
+  );
+}
 
 export function TESTING_conversion_bool_to_string({
   x: x,
@@ -95,6 +406,22 @@ export function TESTING_conversion_i32_identity({
   x: number;
 }): number {
   return identity(Native.TESTING_conversion_i32_identity(identity(x)));
+}
+export async function TESTING_conversion_i32_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: number;
+}): Promise<number> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_i32_identity_async(asyncContext, identity(x))
+    )
+  );
 }
 
 export function TESTING_conversion_i32_to_string({
@@ -112,6 +439,22 @@ export function TESTING_conversion_string_identity({
 }): string {
   return identity(Native.TESTING_conversion_string_identity(identity(x)));
 }
+export async function TESTING_conversion_string_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: string;
+}): Promise<string> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_string_identity_async(asyncContext, identity(x))
+    )
+  );
+}
 
 export function TESTING_conversion_u16_identity({
   x: x,
@@ -119,6 +462,22 @@ export function TESTING_conversion_u16_identity({
   x: number;
 }): number {
   return identity(Native.TESTING_conversion_u16_identity(identity(x)));
+}
+export async function TESTING_conversion_u16_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: number;
+}): Promise<number> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_u16_identity_async(asyncContext, identity(x))
+    )
+  );
 }
 
 export function TESTING_conversion_u16_to_string({
@@ -135,6 +494,22 @@ export function TESTING_conversion_u8_identity({
   x: number;
 }): number {
   return identity(Native.TESTING_conversion_u8_identity(identity(x)));
+}
+export async function TESTING_conversion_u8_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: number;
+}): Promise<number> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_u8_identity_async(asyncContext, identity(x))
+    )
+  );
 }
 
 export function TESTING_conversion_u8_to_string({

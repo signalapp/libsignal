@@ -6,6 +6,8 @@
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::sync::Arc;
 
+use libsignal_bridge_macros::{BridgedAsValue, bridge_io};
+
 #[cfg(feature = "jni")]
 use crate::jni::HandleJniError;
 use crate::*;
@@ -521,4 +523,77 @@ fn TESTING_TestingIntBox_New(value: i32) -> TestingIntBox {
 #[bridge_fn(nice = true)]
 fn TESTING_TestingIntBox_Get(my_int_box: BridgeHandleRef<'_, TestingIntBox>) -> i32 {
     my_int_box.0
+}
+
+#[derive(BridgedAsValue, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MyTestStruct {
+    my_numeric_field: i32,
+    my_string_field: String,
+}
+#[derive(BridgedAsValue, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MyTestPoint(i32, i32);
+
+#[derive(BridgedAsValue, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MyTestEnum {
+    Unit,
+    Single(i32),
+    SingleNamed {
+        x: i32,
+    },
+    Double(i32, i32),
+    #[serde(rename_all = "camelCase")]
+    Record {
+        person_name: String,
+        person_age: i32,
+        position: MyTestPoint,
+        fun_struct: MyTestStruct,
+    },
+}
+
+#[bridge_fn(nice = true, jni = false, ffi = false)]
+pub fn TESTING_MyTestPoint_identity(x: MyTestPoint) -> MyTestPoint {
+    x
+}
+
+#[bridge_fn(nice = true, jni = false, ffi = false)]
+pub fn TESTING_MyTestStruct_identity(x: MyTestStruct) -> MyTestStruct {
+    x
+}
+
+#[bridge_fn(nice = true, jni = false, ffi = false)]
+pub fn TESTING_MyTestEnum_identity(x: MyTestEnum) -> MyTestEnum {
+    x
+}
+
+#[bridge_io(TokioAsyncContext, nice = true, jni = false, ffi = false)]
+pub async fn TESTING_MyTestPoint_identity_async(x: MyTestPoint) -> MyTestPoint {
+    x
+}
+
+#[bridge_io(TokioAsyncContext, nice = true, jni = false, ffi = false)]
+pub async fn TESTING_MyTestStruct_identity_async(x: MyTestStruct) -> MyTestStruct {
+    x
+}
+
+#[bridge_io(TokioAsyncContext, nice = true, jni = false, ffi = false)]
+pub async fn TESTING_MyTestEnum_identity_async(x: MyTestEnum) -> MyTestEnum {
+    x
+}
+
+#[bridge_fn(nice = true, jni = false, ffi = false)]
+pub fn TESTING_MyTestPoint_to_string(x: MyTestPoint) -> String {
+    serde_json::to_string(&x).expect("JSON succeeds")
+}
+
+#[bridge_fn(nice = true, jni = false, ffi = false)]
+pub fn TESTING_MyTestStruct_to_string(x: MyTestStruct) -> String {
+    serde_json::to_string(&x).expect("JSON succeeds")
+}
+
+#[bridge_fn(nice = true, jni = false, ffi = false)]
+pub fn TESTING_MyTestEnum_to_string(x: MyTestEnum) -> String {
+    serde_json::to_string(&x).expect("JSON succeeds")
 }
