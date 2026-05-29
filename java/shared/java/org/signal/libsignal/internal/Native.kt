@@ -223,6 +223,41 @@ internal object Native {
   public external fun AuthenticatedChatConnection_send_sync_message_java(asyncRuntime: ObjectHandle, chat: ObjectHandle, timestamp: Long, deviceIds: IntArray, registrationIds: IntArray, contents: Array<Object>, isUrgent: Boolean): CompletableFuture<Void?>
 
   @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialPresentation_CheckValidContents(presentationBytes: ByteArray): Unit
+  @JvmStatic
+  public external fun AvatarUploadCredentialPresentation_GetCm(presentationBytes: ByteArray): ByteArray
+  @JvmStatic
+  public external fun AvatarUploadCredentialPresentation_GetRedemptionTime(presentationBytes: ByteArray): Long
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialPresentation_Verify(presentationBytes: ByteArray, currentTime: Long, serverParamsBytes: ByteArray): Unit
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialRequestContext_CheckValidContents(contextBytes: ByteArray): Unit
+  @JvmStatic
+  public external fun AvatarUploadCredentialRequestContext_GetRequest(contextBytes: ByteArray): ByteArray
+  @JvmStatic
+  public external fun AvatarUploadCredentialRequestContext_New(aci: ByteArray, zkCredentialKeyPairBytes: ByteArray, rotationId: Long, randomness: ByteArray): ByteArray
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialRequestContext_ReceiveResponse(contextBytes: ByteArray, responseBytes: ByteArray, currentTime: Long, paramsBytes: ByteArray): ByteArray
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialRequest_CheckValidContents(requestBytes: ByteArray): Unit
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialRequest_IssueDeterministic(requestBytes: ByteArray, aci: ByteArray, zkCredentialKeyPubBytes: ByteArray, rotationId: Long, redemptionTime: Long, paramsBytes: ByteArray, randomness: ByteArray): ByteArray
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialResponse_CheckValidContents(responseBytes: ByteArray): Unit
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredential_CheckValidContents(credentialBytes: ByteArray): Unit
+  @JvmStatic
+  public external fun AvatarUploadCredential_GetCm(credentialBytes: ByteArray): ByteArray
+  @JvmStatic
+  public external fun AvatarUploadCredential_GetRedemptionTime(credentialBytes: ByteArray): Long
+  @JvmStatic
+  public external fun AvatarUploadCredential_PresentDeterministic(credentialBytes: ByteArray, serverParamsBytes: ByteArray, randomness: ByteArray): ByteArray
+
+  @JvmStatic @Throws(Exception::class)
   public external fun BackupAuthCredentialPresentation_CheckValidContents(presentationBytes: ByteArray): Unit
   @JvmStatic
   public external fun BackupAuthCredentialPresentation_GetBackupId(presentationBytes: ByteArray): ByteArray
@@ -1366,6 +1401,16 @@ internal object Native {
 
   @JvmStatic @Throws(Exception::class)
   public external fun WebpSanitizer_Sanitize(input: InputStream): Unit
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun ZkCredentialKeyPair_CheckValidContents(keyPairBytes: ByteArray): Unit
+  @JvmStatic
+  public external fun ZkCredentialKeyPair_GenerateDeterministic(randomness: ByteArray): ByteArray
+  @JvmStatic
+  public external fun ZkCredentialKeyPair_GetPublicKey(keyPairBytes: ByteArray): ByteArray
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun ZkCredentialPublicKey_CheckValidContents(publicKeyBytes: ByteArray): Unit
 
   @JvmStatic
   public external fun initializeLibrary(): Unit
