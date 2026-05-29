@@ -7,8 +7,12 @@
 
 import * as Native from './Native.js';
 import { ServiceId } from './Address.js';
+import * as zkgroup from './zkgroup/index.js';
+import ByteArray from './zkgroup/internal/ByteArray.js';
 import { TokioAsyncContext } from './net.js';
-import { identity, serviceIdArgConverter } from './NiceConverters.js';
+import { CdnCredentials } from './net/chat/CdnCredentials.js';
+import { cdnCredentialReturnConverter, identity, serviceIdArgConverter } from './NiceConverters.js';
+import { Rng } from './RngForTesting.js';
 
 {% macro struct_type(struct) %}
     {%- if struct.is_tuple -%}

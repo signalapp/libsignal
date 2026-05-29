@@ -9,7 +9,7 @@ import chaiAsPromised from 'chai-as-promised';
 import * as Native from '../../Native.js';
 import * as util from '../util.js';
 import { TokioAsyncContext, UnauthBackupsService } from '../../net.js';
-import { connectUnauth } from './ServiceTestUtils.js';
+import { connectUnauth, testSimpleGrpcRequest } from './ServiceTestUtils.js';
 import {
   BackupAuthCredential,
   GenericServerPublicParams,
@@ -33,6 +33,9 @@ describe('UnauthBackupsService', () => {
   );
   const TEST_SIGNING_KEY = fromBase64(
     'KMhdmPEusAwoT3C2LzIbmGX6z+3HMbhgbrXmUwRfGF0='
+  );
+  const TEST_SIGNING_KEY_PUB = fromBase64(
+    'BWp7eOx6q6IlijMPozln1bY34JoLFZhGu3PLDnn7hO9t'
   );
   const EXPECTED_PRESENTATION = fromBase64(
     'AMkAAAAAAAAAAgAAAAAAAAAApJdpAAAAAIoiVNK2DtZIRFCtQxRiSokkSiQEKrUm86QgMg+qyZZjLuJipcWuggZt6au2i4MOhslTP4qafDZUYWZnKdX7zV4MKW1+FqHVi9kns3+gGaHRCrUEqKcTBzZj/C79ZRJObwIAAAAAAAAA7vpvGr5uokinX1GRCgDr5au1ajuE2naAsAUXPXXpxTyKZo+S3m3OdyDUusIM3sIyUFwM1OeMtmHLgDcuGAqKdYAAAAAAAAAAcqkJSxGNgTB4ERB7Qcg8tp+IZnEhGxCzuvY3KqrjgwA1LniEMcZCO9kjcSL2Q5JS5yZYrv7Kkn0p3hY4vIrKBlgb0zycYLKRrUj+ndkHKJtWV/2xC42jehDUc1P2ufIEJfu4ScD+sUt9fgAV7uDsKI/ktXnhUPT7/ZxtCCp88gEU4nTfVFvK9jOhY6HRLRf/'
@@ -137,4 +140,187 @@ describe('UnauthBackupsService', () => {
       });
     });
   }
+
+  async function testSimpleBackupRequestUnauthorized<T>(
+    requestName: string,
+    expectedRequest: Record<string, unknown>,
+    responseName: string,
+    sendRequest: (chat: UnauthBackupsService) => Promise<T>
+  ) {
+    const responseFuture = testSimpleGrpcRequest(
+      requestName,
+      expectedRequest,
+      responseName,
+      {
+        // There's no rule that says all the failed authentication responses HAVE to have the same oneof field name.
+        // But in practice they do.
+        failedAuthentication: {
+          description: 'bad auth',
+        },
+      },
+      sendRequest
+    );
+    await expect(responseFuture)
+      .to.eventually.be.rejectedWith(LibSignalErrorBase)
+      .and.deep.include({
+        code: ErrorCode.RequestUnauthorized,
+      });
+  }
+
+  const BACKUP_REQUEST_TEMPLATE: Record<string, unknown> = {
+    signedPresentation: {
+      presentation: toBase64(EXPECTED_PRESENTATION),
+      presentationSignature: toBase64(EXPECTED_SIGNATURE),
+    },
+  };
+
+  it('setPublicKey', async () => {
+    await testSimpleGrpcRequest(
+      'org.signal.chat.backup.SetPublicKeyRequest',
+      { publicKey: toBase64(TEST_SIGNING_KEY_PUB), ...BACKUP_REQUEST_TEMPLATE },
+      'org.signal.chat.backup.SetPublicKeyResponse',
+      { success: {} },
+      (chat) =>
+        chat.setPublicKey({
+          auth: TEST_AUTH,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        })
+    );
+    await testSimpleBackupRequestUnauthorized(
+      'org.signal.chat.backup.SetPublicKeyRequest',
+      { publicKey: toBase64(TEST_SIGNING_KEY_PUB), ...BACKUP_REQUEST_TEMPLATE },
+      'org.signal.chat.backup.SetPublicKeyResponse',
+      (chat) =>
+        chat.setPublicKey({
+          auth: TEST_AUTH,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        })
+    );
+  });
+
+  it('getCdnCredentials', async () => {
+    const credentials = await testSimpleGrpcRequest(
+      'org.signal.chat.backup.GetCdnCredentialsRequest',
+      { cdn: 40, ...BACKUP_REQUEST_TEMPLATE },
+      'org.signal.chat.backup.GetCdnCredentialsResponse',
+      {
+        cdnCredentials: {
+          headers: {
+            b: 'bbb',
+            a: 'aaa',
+          },
+        },
+      },
+      (chat) =>
+        chat.getCdnCredentials({
+          auth: TEST_AUTH,
+          cdn: 40,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        })
+    );
+    expect(credentials).to.deep.equal({
+      headers: new Map([
+        ['a', 'aaa'],
+        ['b', 'bbb'],
+      ]),
+    });
+
+    await testSimpleBackupRequestUnauthorized(
+      'org.signal.chat.backup.GetCdnCredentialsRequest',
+      { cdn: 40, ...BACKUP_REQUEST_TEMPLATE },
+      'org.signal.chat.backup.GetCdnCredentialsResponse',
+      (chat) =>
+        chat.getCdnCredentials({
+          auth: TEST_AUTH,
+          cdn: 40,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        })
+    );
+  });
+
+  it('getSvrBCredentials', async () => {
+    const credentials = await testSimpleGrpcRequest(
+      'org.signal.chat.backup.GetSvrBCredentialsRequest',
+      BACKUP_REQUEST_TEMPLATE,
+      'org.signal.chat.backup.GetSvrBCredentialsResponse',
+      {
+        svrbCredentials: {
+          username: 'user',
+          password: 'pass',
+        },
+      },
+      (chat) =>
+        chat.getSvrBCredentials({
+          auth: TEST_AUTH,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        })
+    );
+    expect(credentials).to.deep.equal({
+      username: 'user',
+      password: 'pass',
+    });
+
+    await testSimpleBackupRequestUnauthorized(
+      'org.signal.chat.backup.GetSvrBCredentialsRequest',
+      BACKUP_REQUEST_TEMPLATE,
+      'org.signal.chat.backup.GetSvrBCredentialsResponse',
+      (chat) =>
+        chat.getSvrBCredentials({
+          auth: TEST_AUTH,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        })
+    );
+  });
+
+  it('refresh', async () => {
+    await testSimpleGrpcRequest(
+      'org.signal.chat.backup.RefreshRequest',
+      BACKUP_REQUEST_TEMPLATE,
+      'org.signal.chat.backup.RefreshResponse',
+      {
+        success: {},
+      },
+      (chat) =>
+        chat.refresh({
+          auth: TEST_AUTH,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        })
+    );
+    await testSimpleBackupRequestUnauthorized(
+      'org.signal.chat.backup.RefreshRequest',
+      BACKUP_REQUEST_TEMPLATE,
+      'org.signal.chat.backup.RefreshResponse',
+      (chat) =>
+        chat.refresh({
+          auth: TEST_AUTH,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        })
+    );
+  });
+
+  it('deleteAll', async () => {
+    await testSimpleGrpcRequest(
+      'org.signal.chat.backup.DeleteAllRequest',
+      BACKUP_REQUEST_TEMPLATE,
+      'org.signal.chat.backup.DeleteAllResponse',
+      {
+        success: {},
+      },
+      (chat) =>
+        chat.deleteAll({
+          auth: TEST_AUTH,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        })
+    );
+    await testSimpleBackupRequestUnauthorized(
+      'org.signal.chat.backup.DeleteAllRequest',
+      BACKUP_REQUEST_TEMPLATE,
+      'org.signal.chat.backup.DeleteAllResponse',
+      (chat) =>
+        chat.deleteAll({
+          auth: TEST_AUTH,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        })
+    );
+  });
 });

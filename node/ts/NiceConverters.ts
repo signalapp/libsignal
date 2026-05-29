@@ -4,6 +4,11 @@
 //
 
 import { ServiceId } from './Address.js';
+import { type CdnCredentials } from './net/chat/CdnCredentials.js';
+
+export function identity<T>(t: T): T {
+  return t;
+}
 
 export function serviceIdArgConverter(
   account: ServiceId
@@ -11,6 +16,10 @@ export function serviceIdArgConverter(
   return account.getServiceIdFixedWidthBinary();
 }
 
-export function identity<T>(t: T): T {
-  return t;
+export function cdnCredentialReturnConverter(
+  headers: [[string, string]]
+): CdnCredentials {
+  return {
+    headers: new Map(headers),
+  };
 }

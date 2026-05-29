@@ -7,8 +7,16 @@
 
 import * as Native from './Native.js';
 import { ServiceId } from './Address.js';
+import * as zkgroup from './zkgroup/index.js';
+import ByteArray from './zkgroup/internal/ByteArray.js';
 import { TokioAsyncContext } from './net.js';
-import { identity, serviceIdArgConverter } from './NiceConverters.js';
+import { CdnCredentials } from './net/chat/CdnCredentials.js';
+import {
+  cdnCredentialReturnConverter,
+  identity,
+  serviceIdArgConverter,
+} from './NiceConverters.js';
+import { Rng } from './RngForTesting.js';
 
 export type MyTestEnum =
   | 'unit'
@@ -537,6 +545,164 @@ export async function UnauthenticatedChatConnection_account_exists({
         asyncContext,
         identity(chat),
         serviceIdArgConverter(account)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_backup_delete_all({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+  serverKeys: server_keys,
+  signingKey: signing_key,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.BackupAuthCredential;
+  serverKeys: zkgroup.GenericServerPublicParams;
+  signingKey: Native.Wrapper<Native.PrivateKey>;
+  rng: Rng | undefined;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_backup_delete_all(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential),
+        ByteArray.prototype.getContents.call(server_keys),
+        identity(signing_key),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_backup_get_cdn_credentials({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+  serverKeys: server_keys,
+  signingKey: signing_key,
+  cdn: cdn,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.BackupAuthCredential;
+  serverKeys: zkgroup.GenericServerPublicParams;
+  signingKey: Native.Wrapper<Native.PrivateKey>;
+  cdn: number;
+  rng: Rng | undefined;
+}): Promise<CdnCredentials> {
+  return cdnCredentialReturnConverter(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_backup_get_cdn_credentials(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential),
+        ByteArray.prototype.getContents.call(server_keys),
+        identity(signing_key),
+        identity(cdn),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_backup_get_svrb_credentials({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+  serverKeys: server_keys,
+  signingKey: signing_key,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.BackupAuthCredential;
+  serverKeys: zkgroup.GenericServerPublicParams;
+  signingKey: Native.Wrapper<Native.PrivateKey>;
+  rng: Rng | undefined;
+}): Promise<[string, string]> {
+  return (([a, b]) => [identity(a), identity(b)])(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_backup_get_svrb_credentials(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential),
+        ByteArray.prototype.getContents.call(server_keys),
+        identity(signing_key),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_backup_refresh({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+  serverKeys: server_keys,
+  signingKey: signing_key,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.BackupAuthCredential;
+  serverKeys: zkgroup.GenericServerPublicParams;
+  signingKey: Native.Wrapper<Native.PrivateKey>;
+  rng: Rng | undefined;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_backup_refresh(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential),
+        ByteArray.prototype.getContents.call(server_keys),
+        identity(signing_key),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_backup_set_public_key({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+  serverKeys: server_keys,
+  signingKey: signing_key,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.BackupAuthCredential;
+  serverKeys: zkgroup.GenericServerPublicParams;
+  signingKey: Native.Wrapper<Native.PrivateKey>;
+  rng: Rng | undefined;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_backup_set_public_key(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential),
+        ByteArray.prototype.getContents.call(server_keys),
+        identity(signing_key),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
       )
     )
   );

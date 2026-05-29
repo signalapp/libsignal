@@ -9,16 +9,21 @@ import {
   type UploadForm,
 } from '../Chat.js';
 import * as Native from '../../Native.js';
+import * as NativeNice from '../../NativeNice.js';
 import {
   type BackupAuthCredential,
   type GenericServerPublicParams,
 } from '../../zkgroup/index.js';
+import { type CdnCredentials } from './CdnCredentials.js';
 import { type PrivateKey } from '../../EcKeys.js';
+import { type Rng } from '../../RngForTesting.js';
 import {
   type UploadTooLarge,
   type RequestUnauthorizedError,
   type StandardNetworkError,
 } from '../../Errors.js';
+
+export { type CdnCredentials } from './CdnCredentials.js';
 
 declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -29,10 +34,6 @@ export type BackupAuth = {
   credential: BackupAuthCredential;
   serverKeys: GenericServerPublicParams;
   signingKey: PrivateKey;
-};
-
-export type Rng = {
-  __deterministicRngSeedForTesting: number;
 };
 
 export interface UnauthBackupsService {
@@ -68,6 +69,46 @@ export interface UnauthBackupsService {
     },
     options?: RequestOptions
   ) => Promise<UploadForm>;
+
+  /**
+   * @deprecated requires every connection to support H2
+   */
+  setPublicKey: (
+    request: { auth: BackupAuth; rng?: Rng },
+    options?: RequestOptions
+  ) => Promise<void>;
+
+  /**
+   * @deprecated requires every connection to support H2
+   */
+  getCdnCredentials: (
+    request: { auth: BackupAuth; cdn: number; rng?: Rng },
+    options?: RequestOptions
+  ) => Promise<CdnCredentials>;
+
+  /**
+   * @deprecated requires every connection to support H2
+   */
+  getSvrBCredentials: (
+    request: { auth: BackupAuth; rng?: Rng },
+    options?: RequestOptions
+  ) => Promise<{ username: string; password: string }>;
+
+  /**
+   * @deprecated requires every connection to support H2
+   */
+  refresh: (
+    request: { auth: BackupAuth; rng?: Rng },
+    options?: RequestOptions
+  ) => Promise<void>;
+
+  /**
+   * @deprecated requires every connection to support H2
+   */
+  deleteAll: (
+    request: { auth: BackupAuth; rng?: Rng },
+    options?: RequestOptions
+  ) => Promise<void>;
 }
 
 UnauthenticatedChatConnection.prototype.getUploadForm = async function (
@@ -134,4 +175,84 @@ UnauthenticatedChatConnection.prototype.getMediaUploadForm = async function (
     headers: new Map(headers),
     signedUploadUrl: new URL(signedUploadUrl),
   };
+};
+
+UnauthenticatedChatConnection.prototype.setPublicKey = async function (
+  { auth: { credential, serverKeys, signingKey }, rng },
+  options
+) {
+  await NativeNice.UnauthenticatedChatConnection_backup_set_public_key({
+    asyncContext: this._asyncContext,
+    chat: this._chatService,
+    credential,
+    serverKeys,
+    signingKey,
+    rng,
+    abortSignal: options?.abortSignal,
+  });
+};
+
+UnauthenticatedChatConnection.prototype.getCdnCredentials = async function (
+  { auth: { credential, serverKeys, signingKey }, cdn, rng },
+  options
+) {
+  return await NativeNice.UnauthenticatedChatConnection_backup_get_cdn_credentials(
+    {
+      asyncContext: this._asyncContext,
+      chat: this._chatService,
+      cdn,
+      credential,
+      serverKeys,
+      signingKey,
+      rng,
+      abortSignal: options?.abortSignal,
+    }
+  );
+};
+
+UnauthenticatedChatConnection.prototype.getSvrBCredentials = async function (
+  { auth: { credential, serverKeys, signingKey }, rng },
+  options
+) {
+  const [username, password] =
+    await NativeNice.UnauthenticatedChatConnection_backup_get_svrb_credentials({
+      asyncContext: this._asyncContext,
+      chat: this._chatService,
+      credential,
+      serverKeys,
+      signingKey,
+      rng,
+      abortSignal: options?.abortSignal,
+    });
+  return { username, password };
+};
+
+UnauthenticatedChatConnection.prototype.refresh = async function (
+  { auth: { credential, serverKeys, signingKey }, rng },
+  options
+) {
+  await NativeNice.UnauthenticatedChatConnection_backup_refresh({
+    asyncContext: this._asyncContext,
+    chat: this._chatService,
+    credential,
+    serverKeys,
+    signingKey,
+    rng,
+    abortSignal: options?.abortSignal,
+  });
+};
+
+UnauthenticatedChatConnection.prototype.deleteAll = async function (
+  { auth: { credential, serverKeys, signingKey }, rng },
+  options
+) {
+  await NativeNice.UnauthenticatedChatConnection_backup_delete_all({
+    asyncContext: this._asyncContext,
+    chat: this._chatService,
+    credential,
+    serverKeys,
+    signingKey,
+    rng,
+    abortSignal: options?.abortSignal,
+  });
 };

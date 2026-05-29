@@ -3,12 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import { expect } from 'chai';
+
 import {
   AuthenticatedChatConnection,
   TokioAsyncContext,
   UnauthenticatedChatConnection,
 } from '../../net.js';
 import { FakeChatRemote } from '../../net/FakeChat';
+import * as Native from '../../Native.js';
 
 /**
  * A requirement that `Sub` not contain any properties that aren't in `Super`, or properties with
@@ -66,4 +69,28 @@ export function connectAuth<
     onIncomingMessage: () => {},
     onQueueEmpty: () => {},
   });
+}
+
+export async function testSimpleGrpcRequest<
+  T,
+  S extends Subset<UnauthenticatedChatConnection, S>
+>(
+  requestName: string,
+  expectedRequest: Record<string, unknown>,
+  responseName: string,
+  response: Record<string, unknown>,
+  sendRequest: (
+    service: PickSubset<UnauthenticatedChatConnection, S>
+  ) => Promise<T>
+): Promise<T> {
+  Native.TESTING_EnableDeterministicRngForTesting();
+  const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+  const [chat, fakeRemote] = connectUnauth<S>(tokio);
+  const responseFuture = sendRequest(chat);
+
+  const request = await fakeRemote.assertReceiveIncomingGrpcRequest();
+  expect(request.getSingleGrpcMessage(requestName)).to.deep.eq(expectedRequest);
+  await fakeRemote.sendGrpcReplyTo(request, responseName, response);
+
+  return await responseFuture;
 }
