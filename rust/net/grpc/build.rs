@@ -53,10 +53,6 @@ fn main() {
         tonic_build = tonic_build
             .compile_well_known_types(true)
             .extern_path(".google.protobuf", "::pbjson_types")
-            // Note that this diverges from proper protobuf JSON in the interest of simplicity and
-            // prost_types compatibility. (Empty would normally be encoded as `{}`, but `()` is
-            // encoded as `null`.)
-            .extern_path(".google.protobuf.Empty", "()")
             // These are only used for generic errors, not requests and responses.
             .extern_path(".google.protobuf.Any", "::prost_types::Any");
     }

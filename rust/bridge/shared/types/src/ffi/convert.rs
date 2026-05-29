@@ -1350,6 +1350,25 @@ impl ResultTypeInfo for UploadForm {
         })
     }
 }
+
+impl ResultTypeInfo for libsignal_net_chat::api::backups::CdnCredentials {
+    type ResultType = PairOf<OwnedBufferOf<*const c_char>, OwnedBufferOf<*const c_char>>;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let Self { headers } = self;
+        let mut header_keys = Vec::with_capacity(headers.len());
+        let mut header_values = Vec::with_capacity(headers.len());
+        for (k, v) in headers.into_iter() {
+            header_keys.push(k.convert_into()?);
+            header_values.push(v.convert_into()?);
+        }
+        Ok(PairOf {
+            first: header_keys.into_boxed_slice().into(),
+            second: header_values.into_boxed_slice().into(),
+        })
+    }
+}
+
 impl ResultTypeInfo for libsignal_net::chat::Response {
     type ResultType = FfiChatResponse;
 
@@ -1714,6 +1733,7 @@ macro_rules! ffi_result_type {
     (DisconnectCause) => (*mut ffi::SignalFfiError);
     (PreKeysResponse) => (ffi::FfiPreKeysResponse);
     (UploadForm) => (ffi::FfiUploadForm);
+    (CdnCredentials) => (ffi::PairOf<ffi::OwnedBufferOf<*const std::ffi::c_char>, ffi::OwnedBufferOf<*const std::ffi::c_char> >);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

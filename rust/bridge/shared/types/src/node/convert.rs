@@ -1540,17 +1540,9 @@ impl<'a> ResultTypeInfo<'a> for UploadForm {
         let key = cx.string(key);
         obj.set(cx, "key", key)?;
         let headers_arr = cx.empty_array();
-        for (i, (k, v)) in headers.iter().enumerate() {
-            let pair = cx.empty_array();
-            let k = cx.string(k);
-            let v = cx.string(v);
-            pair.set(cx, 0, k)?;
-            pair.set(cx, 1, v)?;
-            headers_arr.set(
-                cx,
-                u32::try_from(i).expect("We don't have u32::MAX headers"),
-                pair,
-            )?;
+        for ((k, v), i) in headers.into_iter().zip(0..) {
+            let pair = (k, v).convert_into(cx)?;
+            headers_arr.set(cx, i, pair)?;
         }
         obj.set(cx, "headers", headers_arr)?;
         let signed_upload_url = cx.string(signed_upload_url);
@@ -1558,6 +1550,22 @@ impl<'a> ResultTypeInfo<'a> for UploadForm {
         Ok(obj)
     }
     register_ts_ffi_type!("UploadForm");
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::backups::CdnCredentials {
+    type ResultType = JsArray;
+
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let Self { headers } = self;
+        let headers_arr = cx.empty_array();
+        for ((k, v), i) in headers.into_iter().zip(0..) {
+            let pair = (k, v).convert_into(cx)?;
+            headers_arr.set(cx, i, pair)?;
+        }
+        Ok(headers_arr)
+    }
+
+    register_ts_ffi_type!("[[string, string]]");
 }
 
 impl<'a> ResultTypeInfo<'a> for PreKeysResponse {

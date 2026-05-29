@@ -44,7 +44,7 @@ impl From<UserBasedAuthorization> for send_sealed_sender_message_request::Author
                 Self::GroupSendToken(zkgroup::serialize(&token))
             }
             UserBasedAuthorization::UnrestrictedUnauthenticatedAccess => {
-                Self::UnrestrictedAccess(())
+                Self::UnrestrictedAccess(Default::default())
             }
         }
     }
@@ -195,7 +195,7 @@ impl<T: GrpcServiceProvider> crate::api::messages::UnauthenticatedChatApi<OverGr
         })?;
 
         match response {
-            send_message_response::Response::Success(()) => Ok(()),
+            send_message_response::Response::Success(_) => Ok(()),
             send_message_response::Response::FailedUnidentifiedAuthorization(
                 errors::FailedUnidentifiedAuthorization { description },
             ) => {
@@ -358,7 +358,7 @@ impl<T: GrpcServiceProvider> crate::api::messages::AuthenticatedChatApi<OverGrpc
         })?;
 
         match response {
-            send_message_authenticated_sender_response::Response::Success(()) => Ok(()),
+            send_message_authenticated_sender_response::Response::Success(_) => Ok(()),
             send_message_authenticated_sender_response::Response::MismatchedDevices(
                 mismatched_devices,
             ) => Err(RequestError::Other(
@@ -424,7 +424,7 @@ impl<T: GrpcServiceProvider> crate::api::messages::AuthenticatedChatApi<OverGrpc
         })?;
 
         match response {
-            send_message_authenticated_sender_response::Response::Success(()) => Ok(()),
+            send_message_authenticated_sender_response::Response::Success(_) => Ok(()),
             send_message_authenticated_sender_response::Response::MismatchedDevices(
                 mismatched_devices,
             ) => Err(RequestError::Other(
@@ -833,7 +833,7 @@ mod test {
     }
 
     #[test_case(ok(SendMessageResponse {
-        response: Some(send_message_response::Response::Success(()))
+        response: Some(send_message_response::Response::Success(Default::default()))
     }) => matches Ok(()))]
     #[test_case(ok(SendMessageResponse {
         response: None
@@ -979,7 +979,7 @@ mod test {
                     },
                 ),
                 response: ok(SendMessageResponse {
-                    response: Some(send_message_response::Response::Success(())),
+                    response: Some(send_message_response::Response::Success(Default::default())),
                 }),
             },
         };
@@ -1020,7 +1020,9 @@ mod test {
                         destination: Some(Aci::from(ACI_UUID).into()),
                         ephemeral: false,
                         urgent: true,
-                        authorization: Some(SealedSenderAuthorization::UnrestrictedAccess(())),
+                        authorization: Some(SealedSenderAuthorization::UnrestrictedAccess(
+                            Default::default(),
+                        )),
                         messages: Some(IndividualRecipientMessageBundle {
                             timestamp: 1700000000000,
                             messages: HashMap::from_iter([
@@ -1045,7 +1047,7 @@ mod test {
                     },
                 ),
                 response: ok(SendMessageResponse {
-                    response: Some(send_message_response::Response::Success(())),
+                    response: Some(send_message_response::Response::Success(Default::default())),
                 }),
             },
         };
@@ -1109,7 +1111,7 @@ mod test {
                     },
                 ),
                 response: ok(SendMessageResponse {
-                    response: Some(send_message_response::Response::Success(())),
+                    response: Some(send_message_response::Response::Success(Default::default())),
                 }),
             },
         };
@@ -1245,7 +1247,7 @@ mod test {
     }
 
     #[test_case(ok(SendMessageAuthenticatedSenderResponse {
-        response: Some(send_message_authenticated_sender_response::Response::Success(()))
+        response: Some(send_message_authenticated_sender_response::Response::Success(Default::default()))
     }) => matches Ok(()))]
     #[test_case(ok(SendMessageAuthenticatedSenderResponse {
         response: None
@@ -1374,7 +1376,7 @@ mod test {
     }
 
     #[test_case(ok(SendMessageAuthenticatedSenderResponse {
-        response: Some(send_message_authenticated_sender_response::Response::Success(()))
+        response: Some(send_message_authenticated_sender_response::Response::Success(Default::default()))
     }) => matches Ok(()))]
     #[test_case(ok(SendMessageAuthenticatedSenderResponse {
         response: None

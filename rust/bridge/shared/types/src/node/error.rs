@@ -8,7 +8,7 @@ use std::fmt;
 
 use libsignal_net::infra::errors::{RetryLater, TransportConnectError};
 use libsignal_net::infra::ws::WebSocketConnectError;
-use libsignal_net_chat::api::backups::GetUploadFormFailure;
+use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFormFailure};
 use libsignal_net_chat::api::keys::GetPreKeysFailure;
 use libsignal_net_chat::api::messages::UploadTooLarge;
 use neon::thread::LocalKey;
@@ -679,6 +679,22 @@ impl SignalNodeError for GetUploadFormFailure {
                 no_extra_properties,
             ),
         }
+    }
+}
+
+impl SignalNodeError for BackupAuthCredentialRejected {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        cx: &mut C,
+        operation_name: &str,
+    ) -> Handle<'a, JsError> {
+        new_js_error(
+            cx,
+            Some("RequestUnauthorized"),
+            &self.to_string(),
+            operation_name,
+            no_extra_properties,
+        )
     }
 }
 

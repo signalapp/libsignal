@@ -1788,6 +1788,15 @@ impl<'a> ResultTypeInfo<'a> for UploadForm {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::backups::CdnCredentials {
+    type ResultType = JObjectArray<'a>;
+
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let Self { headers } = self;
+        headers.convert_into(env)
+    }
+}
+
 impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A, B) {
     type ResultType = JavaPair<'a, A::ResultType, B::ResultType>;
     fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
@@ -3159,6 +3168,9 @@ macro_rules! jni_result_type {
     };
     (UploadForm) => {
         ::jni::objects::JObject<'local>
+    };
+    (CdnCredentials) => {
+        ::jni::objects::JObjectArray<'local>
     };
     ( $handle:ty ) => {
         $crate::jni::ObjectHandle

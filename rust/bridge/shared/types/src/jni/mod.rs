@@ -28,6 +28,8 @@ use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSen
 use libsignal_net::infra::errors::{RetryLater, TransportConnectError};
 use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketError};
 use libsignal_net::svrb::Error as SvrbError;
+use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFormFailure};
+use libsignal_net_chat::api::messages::UploadTooLarge;
 use libsignal_net_chat::api::{RateLimitChallenge, RequestError as ChatRequestError};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -62,8 +64,6 @@ pub use futures::*;
 
 mod io;
 pub use io::*;
-use libsignal_net_chat::api::backups::GetUploadFormFailure;
-use libsignal_net_chat::api::messages::UploadTooLarge;
 
 mod storage;
 pub use storage::*;
@@ -241,6 +241,19 @@ impl JniError for UploadTooLarge {
             env,
             self.to_string(),
             ClassName("org.signal.libsignal.net.UploadTooLargeException"),
+        )
+    }
+}
+
+impl JniError for BackupAuthCredentialRejected {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
+        make_single_message_throwable(
+            env,
+            self.to_string(),
+            ClassName("org.signal.libsignal.net.RequestUnauthorizedException"),
         )
     }
 }

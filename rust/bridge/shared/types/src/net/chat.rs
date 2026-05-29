@@ -146,6 +146,18 @@ impl UnauthenticatedChatConnection {
         };
         callback(LimitedLifetimeRef::from(<&Unauth<_>>::from(inner))).await
     }
+
+    pub async fn require_grpc(&self) -> Unauth<impl libsignal_net_chat::grpc::GrpcServiceProvider> {
+        let guard = self.as_ref().read().await;
+        let MaybeChatConnection::Running(inner) = &*guard else {
+            panic!("listener was not set")
+        };
+        Unauth(
+            inner
+                .shared_h2_connection()
+                .expect("requires an H2 connection"),
+        )
+    }
 }
 
 impl AuthenticatedChatConnection {
