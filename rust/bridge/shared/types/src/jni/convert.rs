@@ -9,9 +9,9 @@ use std::sync::Arc;
 
 use itertools::Itertools as _;
 use jni::objects::{JByteBuffer, JIntArray, JObjectArray};
-use jni::refs::{Auto, IntoAuto as _};
+use jni::refs::{Auto, IntoAuto as _, Reference};
 use jni::sys::{JNI_FALSE, JNI_TRUE, jbyte};
-use jni::{jni_sig, jni_sig_jstr, jni_sig_str, jni_str};
+use jni::{jni_sig, jni_sig_str, jni_str};
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_core::try_scoped;
 use libsignal_net::cdsi::LookupResponseEntry;
@@ -2436,7 +2436,8 @@ impl<'a> ResultTypeInfo<'a> for Vec<ServiceId> {
     type ResultType = JObjectArray<'a>;
 
     fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        let element_class = find_primitive_array_class(env, jni_sig_jstr!([byte]))
+        let element_class = JByteArray::lookup_class(env, &loader_context().unwrap_or_default())
+            .and_then(|cls| env.new_local_ref(&*cls))
             .check_exceptions(env, "Vec<ServiceId>::convert_into")?;
         make_object_array(env, element_class, self)
     }
@@ -2711,8 +2712,9 @@ impl<'a> ResultTypeInfo<'a> for Box<[String]> {
 impl<'a> ResultTypeInfo<'a> for Box<[Vec<u8>]> {
     type ResultType = JObjectArray<'a>;
     fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        let element_class = find_primitive_array_class(env, jni_sig_jstr!([byte]))
-            .check_exceptions(env, "Box<[Vec<u8>]>::convert_into")?;
+        let element_class = JByteArray::lookup_class(env, &loader_context().unwrap_or_default())
+            .and_then(|cls| env.new_local_ref(&*cls))
+            .check_exceptions(env, "Vec<ServiceId>::convert_into")?;
         make_object_array(env, element_class, self)
     }
 }

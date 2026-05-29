@@ -2547,7 +2547,6 @@ dependencies = [
  "mediasan-common",
  "neon",
  "nonzero_ext",
- "once_cell",
  "partial-default",
  "paste",
  "rand 0.9.4",
