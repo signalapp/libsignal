@@ -21,6 +21,13 @@ internal object {{ "NativeTestingNice" if testing else "NativeNice" }} {
     @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
     private fun convertToObject(x: Any): Object = x as Object
 
+    private inline fun <InA, InB, OutA, OutB> mapPair(
+        crossinline transformA: (InA) -> OutA,
+        crossinline transformB: (InB) -> OutB,
+    ): (Pair<InA, InB>) -> Pair<OutA, OutB> = {
+        Pair(transformA(it.first), transformB(it.second))
+    }
+
     {% for (name, f) in ctx.nice_functions|items %}
         public fun {{ name }}(
             {% if f.is_tokio_async -%}

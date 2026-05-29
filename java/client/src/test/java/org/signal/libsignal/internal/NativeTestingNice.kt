@@ -20,6 +20,14 @@ internal object NativeTestingNice {
   @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
   private fun convertToObject(x: Any): Object = x as Object
 
+  private inline fun <InA, InB, OutA, OutB> mapPair(
+    crossinline transformA: (InA) -> OutA,
+    crossinline transformB: (InB) -> OutB,
+  ): (Pair<InA, InB>) -> Pair<OutA, OutB> =
+    {
+      Pair(transformA(it.first), transformB(it.second))
+    }
+
   public fun TESTING_TestingIntBox_Get(myIntBox: org.signal.libsignal.internal.TestingIntBox): Int {
     val ffi_my_int_box = identity(myIntBox)
     val ffiOut =

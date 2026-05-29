@@ -2194,23 +2194,6 @@ type NativeFunctions = {
     chat: Wrapper<UnauthenticatedChatConnection>,
     account: Uint8Array<ArrayBuffer>
   ) => CancellablePromise<boolean>;
-  UnauthenticatedChatConnection_backup_delete_all: (
-    asyncRuntime: Wrapper<TokioAsyncContext>,
-    chat: Wrapper<UnauthenticatedChatConnection>,
-    credential: Uint8Array<ArrayBuffer>,
-    server_keys: Uint8Array<ArrayBuffer>,
-    signing_key: Wrapper<PrivateKey>,
-    rng: RandomNumberGenerator
-  ) => CancellablePromise<void>;
-  UnauthenticatedChatConnection_backup_get_cdn_credentials: (
-    asyncRuntime: Wrapper<TokioAsyncContext>,
-    chat: Wrapper<UnauthenticatedChatConnection>,
-    credential: Uint8Array<ArrayBuffer>,
-    server_keys: Uint8Array<ArrayBuffer>,
-    signing_key: Wrapper<PrivateKey>,
-    cdn: number,
-    rng: RandomNumberGenerator
-  ) => CancellablePromise<[[string, string]]>;
   UnauthenticatedChatConnection_backup_get_media_upload_form: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -2220,14 +2203,6 @@ type NativeFunctions = {
     upload_size: bigint,
     rng: RandomNumberGenerator
   ) => CancellablePromise<UploadForm>;
-  UnauthenticatedChatConnection_backup_get_svrb_credentials: (
-    asyncRuntime: Wrapper<TokioAsyncContext>,
-    chat: Wrapper<UnauthenticatedChatConnection>,
-    credential: Uint8Array<ArrayBuffer>,
-    server_keys: Uint8Array<ArrayBuffer>,
-    signing_key: Wrapper<PrivateKey>,
-    rng: RandomNumberGenerator
-  ) => CancellablePromise<[string, string]>;
   UnauthenticatedChatConnection_backup_get_upload_form: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -2237,22 +2212,6 @@ type NativeFunctions = {
     upload_size: bigint,
     rng: RandomNumberGenerator
   ) => CancellablePromise<UploadForm>;
-  UnauthenticatedChatConnection_backup_refresh: (
-    asyncRuntime: Wrapper<TokioAsyncContext>,
-    chat: Wrapper<UnauthenticatedChatConnection>,
-    credential: Uint8Array<ArrayBuffer>,
-    server_keys: Uint8Array<ArrayBuffer>,
-    signing_key: Wrapper<PrivateKey>,
-    rng: RandomNumberGenerator
-  ) => CancellablePromise<void>;
-  UnauthenticatedChatConnection_backup_set_public_key: (
-    asyncRuntime: Wrapper<TokioAsyncContext>,
-    chat: Wrapper<UnauthenticatedChatConnection>,
-    credential: Uint8Array<ArrayBuffer>,
-    server_keys: Uint8Array<ArrayBuffer>,
-    signing_key: Wrapper<PrivateKey>,
-    rng: RandomNumberGenerator
-  ) => CancellablePromise<void>;
   UnauthenticatedChatConnection_connect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     connection_manager: Wrapper<ConnectionManager>,
@@ -2982,13 +2941,8 @@ const {
   TokioAsyncContext_cancel,
   TokioAsyncContext_new,
   UnauthenticatedChatConnection_account_exists,
-  UnauthenticatedChatConnection_backup_delete_all,
-  UnauthenticatedChatConnection_backup_get_cdn_credentials,
   UnauthenticatedChatConnection_backup_get_media_upload_form,
-  UnauthenticatedChatConnection_backup_get_svrb_credentials,
   UnauthenticatedChatConnection_backup_get_upload_form,
-  UnauthenticatedChatConnection_backup_refresh,
-  UnauthenticatedChatConnection_backup_set_public_key,
   UnauthenticatedChatConnection_connect,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
@@ -3599,13 +3553,8 @@ export {
   TokioAsyncContext_cancel,
   TokioAsyncContext_new,
   UnauthenticatedChatConnection_account_exists,
-  UnauthenticatedChatConnection_backup_delete_all,
-  UnauthenticatedChatConnection_backup_get_cdn_credentials,
   UnauthenticatedChatConnection_backup_get_media_upload_form,
-  UnauthenticatedChatConnection_backup_get_svrb_credentials,
   UnauthenticatedChatConnection_backup_get_upload_form,
-  UnauthenticatedChatConnection_backup_refresh,
-  UnauthenticatedChatConnection_backup_set_public_key,
   UnauthenticatedChatConnection_connect,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,

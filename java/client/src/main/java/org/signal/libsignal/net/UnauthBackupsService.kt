@@ -7,6 +7,7 @@ package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.Native
+import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.protocol.ecc.ECPrivateKey
 import org.signal.libsignal.zkgroup.GenericServerPublicParams
@@ -23,9 +24,27 @@ public data class BackupAuth(
   val signingKey: ECPrivateKey,
 )
 
+public data class BackupCdnCredentials(
+  val headers: Map<String, String>,
+) {
+  public companion object {
+    @Suppress("UNCHECKED_CAST")
+    internal fun fromFfiHeaders(headers: Array<Object>): BackupCdnCredentials =
+      BackupCdnCredentials((headers as Array<Pair<String, String>>).toMap())
+  }
+}
+
 public data class DeterministicRandomSeedUseOnlyForTesting(
   val seed: Long,
-)
+) {
+  init {
+    require(seed >= 0)
+  }
+
+  public companion object {
+    public fun toFfi(seed: DeterministicRandomSeedUseOnlyForTesting?): Long = seed?.seed ?: -1
+  }
+}
 
 public class UnauthBackupsService(
   private val connection: UnauthenticatedChatConnection,
@@ -96,6 +115,118 @@ public class UnauthBackupsService(
             )
         }
       }
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  @Deprecated(message = "requires every connection to support H2")
+  public fun setPublicKey(
+    auth: BackupAuth,
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): CompletableFuture<RequestResult<Unit, RequestUnauthorizedException>> =
+    try {
+      NativeNice
+        .UnauthenticatedChatConnection_backup_set_public_key(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          credential = auth.credential,
+          serverKeys = auth.serverKeys,
+          signingKey = auth.signingKey,
+          rng = rngSeedForTesting,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { it.toRequestResult<RequestUnauthorizedException>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  @Deprecated(message = "requires every connection to support H2")
+  public fun getCdnCredentials(
+    auth: BackupAuth,
+    cdn: Int,
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): CompletableFuture<RequestResult<BackupCdnCredentials, RequestUnauthorizedException>> =
+    try {
+      NativeNice
+        .UnauthenticatedChatConnection_backup_get_cdn_credentials(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          credential = auth.credential,
+          serverKeys = auth.serverKeys,
+          signingKey = auth.signingKey,
+          cdn = cdn,
+          rng = rngSeedForTesting,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(it) },
+          onError = { it.toRequestResult<RequestUnauthorizedException>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  @Deprecated(message = "requires every connection to support H2")
+  public fun getSvrBCredentials(
+    auth: BackupAuth,
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): CompletableFuture<RequestResult<Pair<String, String>, RequestUnauthorizedException>> =
+    try {
+      NativeNice
+        .UnauthenticatedChatConnection_backup_get_svrb_credentials(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          credential = auth.credential,
+          serverKeys = auth.serverKeys,
+          signingKey = auth.signingKey,
+          rng = rngSeedForTesting,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(it) },
+          onError = { it.toRequestResult<RequestUnauthorizedException>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  @Deprecated(message = "requires every connection to support H2")
+  public fun refresh(
+    auth: BackupAuth,
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): CompletableFuture<RequestResult<Unit, RequestUnauthorizedException>> =
+    try {
+      NativeNice
+        .UnauthenticatedChatConnection_backup_refresh(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          credential = auth.credential,
+          serverKeys = auth.serverKeys,
+          signingKey = auth.signingKey,
+          rng = rngSeedForTesting,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { it.toRequestResult<RequestUnauthorizedException>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  @Deprecated(message = "requires every connection to support H2")
+  public fun deleteAll(
+    auth: BackupAuth,
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): CompletableFuture<RequestResult<Unit, RequestUnauthorizedException>> =
+    try {
+      NativeNice
+        .UnauthenticatedChatConnection_backup_delete_all(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          credential = auth.credential,
+          serverKeys = auth.serverKeys,
+          signingKey = auth.signingKey,
+          rng = rngSeedForTesting,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { it.toRequestResult<RequestUnauthorizedException>() },
+        )
     } catch (e: Throwable) {
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }

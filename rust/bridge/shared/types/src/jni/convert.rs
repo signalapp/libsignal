@@ -312,6 +312,19 @@ impl SimpleArgTypeInfo<'_> for RandomNumberGenerator {
         Ok((*foreign).into())
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for RandomNumberGenerator {
+    fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
+        KtArgConverter {
+            nice_type: "org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?"
+                .to_string(),
+            ffi_type: "Long".to_string(),
+            converter_function:
+                "org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting.toFfi"
+                    .to_string(),
+        }
+    }
+}
 
 /// Supports values `0..=Long.MAX_VALUE`.
 ///
@@ -479,7 +492,7 @@ impl<'a> SimpleArgTypeInfo<'a>
 }
 
 macro_rules! zkgroup_serialize_type {
-    ($($ty:ty),*$(,)?) => {$(
+    ($ty:ty, $cls:expr) => {
         impl<'a> SimpleArgTypeInfo<'a> for $ty {
             type ArgType = JByteArray<'a>;
             fn convert_from(
@@ -488,17 +501,38 @@ macro_rules! zkgroup_serialize_type {
             ) -> Result<Self, BridgeLayerError> {
                 let mut elements_guard = <&[u8]>::borrow(env, foreign)?;
                 let bytes = <&[u8]>::load_from(&mut elements_guard);
-                let token = zkgroup::deserialize(bytes).map_err(|_: ZkGroupDeserializationFailure| {
-                    BridgeLayerError::BadArgument(concat!("bad ", stringify!($ty)).into())
-                })?;
+                let token =
+                    zkgroup::deserialize(bytes).map_err(|_: ZkGroupDeserializationFailure| {
+                        BridgeLayerError::BadArgument(concat!("bad ", stringify!($ty)).into())
+                    })?;
                 Ok(token)
             }
         }
-    )*};
+
+        #[cfg(feature = "metadata")]
+        impl NiceArgConverter for $ty {
+            fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
+                KtArgConverter {
+                    nice_type: $cls.to_string(),
+                    ffi_type: "ByteArray".to_string(),
+                    converter_function: format!("({}::getInternalContentsForJNI)", $cls),
+                }
+            }
+        }
+    };
 }
-zkgroup_serialize_type!(GroupSendFullToken);
-zkgroup_serialize_type!(zkgroup::backups::BackupAuthCredential);
-zkgroup_serialize_type!(zkgroup::generic_server_params::GenericServerPublicParams);
+zkgroup_serialize_type!(
+    GroupSendFullToken,
+    "org.signal.libsignal.zkgroup.groupsend.GroupSendFullToken"
+);
+zkgroup_serialize_type!(
+    zkgroup::backups::BackupAuthCredential,
+    "org.signal.libsignal.zkgroup.backups.BackupAuthCredential"
+);
+zkgroup_serialize_type!(
+    zkgroup::generic_server_params::GenericServerPublicParams,
+    "org.signal.libsignal.zkgroup.GenericServerPublicParams"
+);
 
 impl<'a> SimpleArgTypeInfo<'a> for Box<[u8]> {
     type ArgType = JByteArray<'a>;
@@ -1196,6 +1230,7 @@ impl ResultTypeInfo<'_> for () {
         Ok(self)
     }
 }
+nice_identity_result_converter!((), "Void?");
 
 impl CallbackResultTypeInfo<'_> for () {
     type ResultType = ();
@@ -1796,6 +1831,17 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::backups::CdnCredentials
         headers.convert_into(env)
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for libsignal_net_chat::api::backups::CdnCredentials {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        KtReturnConverter {
+            nice_type: "org.signal.libsignal.net.BackupCdnCredentials".to_owned(),
+            ffi_type: "Array<Pair<String, String>>".to_owned(),
+            converter_function: "org.signal.libsignal.net.BackupCdnCredentials.fromFfiHeaders"
+                .to_owned(),
+        }
+    }
+}
 
 impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A, B) {
     type ResultType = JavaPair<'a, A::ResultType, B::ResultType>;
@@ -1810,6 +1856,26 @@ impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A
             jni_args!((a => java.lang.Object, b => java.lang.Object) -> void),
         )?
         .into())
+    }
+}
+#[cfg(feature = "metadata")]
+impl<A: NiceResultConverter, B: NiceResultConverter> NiceResultConverter for (A, B) {
+    fn register_kt_result_converter(ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        let a = A::register_kt_result_converter(ctx);
+        let b = B::register_kt_result_converter(ctx);
+        KtReturnConverter {
+            nice_type: format!("Pair<{}, {}>", a.nice_type, b.nice_type),
+            ffi_type: format!("Pair<{}, {}>", a.ffi_type, b.ffi_type),
+            converter_function: format!(
+                "mapPair<{}, {}, {}, {}>({{ {}(it) }}, {{ {}(it) }})",
+                a.ffi_type,
+                b.ffi_type,
+                a.nice_type,
+                b.nice_type,
+                a.converter_function,
+                b.converter_function
+            ),
+        }
     }
 }
 
