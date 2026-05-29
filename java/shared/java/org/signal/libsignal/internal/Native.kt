@@ -359,6 +359,8 @@ internal object Native {
   @JvmStatic
   public external fun ConnectionManager_Destroy(handle: ObjectHandle): Unit
   @JvmStatic
+  public external fun ConnectionManager_INTERNAL_TESTING_set_reflector_proxy(connectionManager: ObjectHandle, enabled: Boolean): Unit
+  @JvmStatic
   public external fun ConnectionManager_clear_proxy(connectionManager: ObjectHandle): Unit
   @JvmStatic
   public external fun ConnectionManager_new(environment: Int, userAgent: String, remoteConfig: ObjectHandle, buildVariant: Int): ObjectHandle

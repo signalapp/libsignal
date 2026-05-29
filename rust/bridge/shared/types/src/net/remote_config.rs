@@ -108,6 +108,8 @@ pub enum RemoteConfigKey {
     UseH2ForUnauthChat => "useH2ForUnauthChat",
     /// If set, auth chat connections will connect over H2.
     UseH2ForAuthChat => "useH2ForAuthChat",
+    /// If set, only connects via reflector (no direct fallback). Internal testing only.
+    ForceReflectorsProxyOnlyForTesting => "forceReflectorsProxyOnlyForTesting",
 
     // Typed API keys, based on gRPC request names.
     // These should all start with "grpc." and optionally end with ".{digit}"

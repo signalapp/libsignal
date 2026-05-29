@@ -18,7 +18,7 @@ use libsignal_net_infra::dns::lookup_result::LookupResult;
 use libsignal_net_infra::host::Host;
 use libsignal_net_infra::route::{
     DirectTcpRouteProvider, DomainFrontConfig, DomainFrontRouteProvider, HttpVersion,
-    HttpsProvider, TlsRouteProvider,
+    HttpsProvider, ReflectorProviderConfig, TlsRouteProvider,
 };
 use libsignal_net_infra::{
     AsStaticHttpHeader, ConnectionParams, EnableDomainFronting, EnforceMinimumTls,
@@ -319,6 +319,28 @@ pub const PROXY_CONFIG_G: ProxyConfig = ProxyConfig {
     ],
     certs: PROXY_G_ROOT_CERTIFICATES,
 };
+
+pub static REFLECTOR_PROVIDERS_STAGING: std::sync::LazyLock<[ReflectorProviderConfig; 2]> =
+    std::sync::LazyLock::new(|| {
+        [
+            PROXY_CONFIG_F_STAGING.reflector_provider_config(http::uri::PathAndQuery::from_static(
+                "/tls-tunnel-staging",
+            )),
+            PROXY_CONFIG_G.reflector_provider_config(http::uri::PathAndQuery::from_static(
+                "/tls-tunnel-staging",
+            )),
+        ]
+    });
+
+pub static REFLECTOR_PROVIDERS_PROD: std::sync::LazyLock<[ReflectorProviderConfig; 2]> =
+    std::sync::LazyLock::new(|| {
+        [
+            PROXY_CONFIG_F_PROD
+                .reflector_provider_config(http::uri::PathAndQuery::from_static("/tls-tunnel")),
+            PROXY_CONFIG_G
+                .reflector_provider_config(http::uri::PathAndQuery::from_static("/tls-tunnel")),
+        ]
+    });
 
 pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = EndpointParams {
     mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_STAGING),
@@ -670,6 +692,19 @@ pub struct ProxyConfig {
 }
 
 impl ProxyConfig {
+    pub fn reflector_provider_config(
+        &self,
+        endpoint: http::uri::PathAndQuery,
+    ) -> ReflectorProviderConfig {
+        ReflectorProviderConfig {
+            route_type: self.route_type,
+            http_host: self.http_host,
+            sni_list: self.sni_list,
+            certs: self.certs.clone(),
+            endpoint,
+        }
+    }
+
     pub fn shuffled_connection_params<R>(
         &self,
         proxy_path: &'static str,
@@ -784,6 +819,7 @@ pub struct Env<'a> {
     pub experimental_chat_h2_domain_config: DomainConfig,
     pub chat_ws_config: crate::chat::ws::Config,
     pub keytrans_config: KeyTransConfig,
+    pub reflector_providers: fn() -> &'static [ReflectorProviderConfig],
 }
 
 impl<'a> Env<'a> {
@@ -802,6 +838,7 @@ impl<'a> Env<'a> {
             svr_b,
             chat_ws_config: _,
             keytrans_config: _,
+            reflector_providers: _,
         } = self;
 
         let mut result = HashMap::from_iter([
@@ -850,6 +887,7 @@ pub const STAGING: Env<'static> = Env {
         previous: [None, None, None],
     },
     keytrans_config: KEYTRANS_CONFIG_STAGING,
+    reflector_providers: || &*REFLECTOR_PROVIDERS_STAGING,
 };
 
 pub const PROD: Env<'static> = Env {
@@ -887,6 +925,7 @@ pub const PROD: Env<'static> = Env {
         ],
     },
     keytrans_config: KEYTRANS_CONFIG_PROD,
+    reflector_providers: || &*REFLECTOR_PROVIDERS_PROD,
 };
 
 pub mod constants {

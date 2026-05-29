@@ -1885,6 +1885,8 @@ SignalFfiError *signal_connection_manager_clear_proxy(SignalConstPointerConnecti
 
 SignalFfiError *signal_connection_manager_destroy(SignalMutPointerConnectionManager p);
 
+SignalFfiError *signal_connection_manager_internal_testing_set_reflector_proxy(SignalConstPointerConnectionManager connection_manager, bool enabled);
+
 SignalFfiError *signal_connection_manager_new(SignalMutPointerConnectionManager *out, uint8_t environment, const char *user_agent, SignalMutPointerBridgedStringMap remote_config, uint8_t build_variant);
 
 SignalFfiError *signal_connection_manager_on_network_change(SignalConstPointerConnectionManager connection_manager);

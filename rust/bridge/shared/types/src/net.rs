@@ -24,7 +24,7 @@ use libsignal_net::infra::{AsHttpHeader as _, EnableDomainFronting, OverrideNagl
 use rand::TryRngCore as _;
 
 pub use self::remote_config::BuildVariant;
-use self::remote_config::RemoteConfig;
+use self::remote_config::{RemoteConfig, RemoteConfigKey};
 use crate::*;
 
 pub mod cdsi;
@@ -189,6 +189,46 @@ impl ConnectionManager {
         guard.set_invalid();
     }
 
+    #[allow(non_snake_case)]
+    pub fn INTERNAL_TESTING_set_reflector_proxy(&self, enable: bool) {
+        let mut guard = self.transport_connector.lock().expect("not poisoned");
+        let current = guard.proxy();
+        let current_is_direct = matches!(current, Ok(DirectOrProxyMode::DirectOnly));
+        let current_is_reflector = current.is_ok_and(DirectOrProxyMode::is_reflector_proxy);
+
+        if (enable && !current_is_direct) || (!enable && !current_is_reflector) {
+            log::info!(
+                "INTERNAL_TESTING_set_reflector_proxy({enable}): another proxy mode is set; leaving it in place"
+            );
+            return;
+        }
+
+        if !enable {
+            // Reflector proxy can only be enabled from DirectOnly, so disabling
+            // always returns to DirectOnly.
+            guard.set_proxy_mode(DirectOrProxyMode::DirectOnly);
+            return;
+        }
+
+        let providers = (self.env.reflector_providers)();
+        if providers.is_empty() {
+            log::error!("reflector providers unavailable; marking proxy invalid");
+            guard.set_invalid();
+            return;
+        }
+        let force_cc = self
+            .remote_config
+            .lock()
+            .expect("not poisoned")
+            .is_enabled(RemoteConfigKey::ForceReflectorsProxyOnlyForTesting);
+        let proxy = ConnectionProxyConfig::Reflector(providers);
+        guard.set_proxy_mode(if force_cc {
+            DirectOrProxyMode::ProxyOnly(proxy)
+        } else {
+            DirectOrProxyMode::DirectThenProxy(proxy)
+        });
+    }
+
     pub fn is_using_proxy(&self) -> Result<bool, InvalidProxyConfig> {
         let guard = self.transport_connector.lock().expect("not poisoned");
         guard
@@ -324,7 +364,7 @@ mod test {
     use ::tokio; // otherwise ambiguous with the tokio submodule
     use assert_matches::assert_matches;
     use libsignal_net::chat::ConnectError;
-    use test_case::test_case;
+    use test_case::{test_case, test_matrix};
 
     use super::*;
     use crate::net::chat::UnauthenticatedChatConnection;
@@ -338,6 +378,103 @@ mod test {
             Default::default(),
             BuildVariant::Production,
         );
+    }
+
+    #[test_case(
+        Environment::Staging,
+        "/tls-tunnel-staging",
+        "reflector-staging-signal.global.ssl.fastly.net"
+        ; "staging"
+    )]
+    #[test_case(
+        Environment::Prod,
+        "/tls-tunnel",
+        "reflector-signal.global.ssl.fastly.net"
+        ; "prod"
+    )]
+    fn reflector_proxy_uses_environment_specific_routes(
+        env: Environment,
+        expected_endpoint: &str,
+        expected_http_host: &str,
+    ) {
+        let cm = ConnectionManager::new(
+            env,
+            "test-user-agent",
+            Default::default(),
+            BuildVariant::Production,
+        );
+        cm.INTERNAL_TESTING_set_reflector_proxy(true);
+
+        let guard = cm.transport_connector.lock().expect("not poisoned");
+        let proxy_mode = guard.proxy().expect("valid proxy config");
+        assert_matches!(
+            proxy_mode,
+            DirectOrProxyMode::DirectThenProxy(ConnectionProxyConfig::Reflector(providers))
+                if providers.iter().all(|p| p.endpoint.as_str() == expected_endpoint)
+                    && providers[0].http_host == expected_http_host
+        );
+    }
+
+    #[test_matrix((true, false))]
+    fn reflector_proxy_toggle_does_not_disturb_existing_http_proxy(enable: bool) {
+        use libsignal_net::infra::host::Host;
+        use libsignal_net::infra::route::HttpProxy;
+        use nonzero_ext::nonzero;
+
+        let cm = ConnectionManager::new(
+            Environment::Prod,
+            "test-user-agent",
+            Default::default(),
+            BuildVariant::Production,
+        );
+
+        let http_proxy = ConnectionProxyConfig::Http(HttpProxy {
+            proxy_host: Host::Domain(Arc::from("proxy.example.com")),
+            proxy_port: nonzero!(8080_u16),
+            proxy_tls: None,
+            proxy_authorization: None,
+            resolve_hostname_locally: false,
+        });
+        cm.set_proxy_mode(DirectOrProxyMode::DirectThenProxy(http_proxy));
+
+        cm.INTERNAL_TESTING_set_reflector_proxy(enable);
+        let guard = cm.transport_connector.lock().expect("not poisoned");
+        assert_matches!(
+            guard.proxy().expect("valid proxy config"),
+            DirectOrProxyMode::DirectThenProxy(ConnectionProxyConfig::Http(_))
+        );
+    }
+
+    #[test_matrix([true, false])]
+    fn reflector_proxy_toggle_does_not_disturb_invalid_proxy_state(enable: bool) {
+        let cm = ConnectionManager::new(
+            Environment::Prod,
+            "test-user-agent",
+            Default::default(),
+            BuildVariant::Production,
+        );
+        cm.set_invalid_proxy();
+
+        cm.INTERNAL_TESTING_set_reflector_proxy(enable);
+        assert_matches!(
+            cm.transport_connector.lock().expect("not poisoned").proxy(),
+            Err(_)
+        );
+    }
+
+    #[test]
+    fn reflector_proxy_disable_sets_direct_only() {
+        let cm = ConnectionManager::new(
+            Environment::Prod,
+            "test-user-agent",
+            Default::default(),
+            BuildVariant::Production,
+        );
+        cm.INTERNAL_TESTING_set_reflector_proxy(true);
+        cm.INTERNAL_TESTING_set_reflector_proxy(false);
+
+        let guard = cm.transport_connector.lock().expect("not poisoned");
+        assert_matches!(guard.proxy(), Ok(DirectOrProxyMode::DirectOnly));
     }
 
     // Normally we would write this test in the app languages, but it depends on timeouts.

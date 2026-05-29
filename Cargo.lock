@@ -2545,6 +2545,7 @@ dependencies = [
  "log",
  "mediasan-common",
  "neon",
+ "nonzero_ext",
  "once_cell",
  "partial-default",
  "paste",

@@ -135,5 +135,6 @@ pub(crate) fn localhost_test_env_with_ports(
             [None, None, None],
         ),
         keytrans_config: DUMMY_KEYTRANS_CONFIG,
+        reflector_providers: || &[],
     }
 }
