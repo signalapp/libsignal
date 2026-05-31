@@ -771,7 +771,7 @@ export class SessionRecord {
     let offset = 0;
 
     function readBytes(len: number) {
-        console.log('readBytes', len, offset, data, data.length);
+        //console.log('readBytes', len, offset, data, data.length);
         const slice = data.slice(offset, offset + len);
         offset += len;
         return slice;
@@ -1593,7 +1593,7 @@ export function processPreKeyBundle(
   identityStore: IdentityKeyStore,
   now: Date = new Date()
 ): Promise<void> {
-  console.log("test logging processPreKeyBundle")
+  //console.log("test logging processPreKeyBundle")
   return Native.SessionBuilder_ProcessPreKeyBundle(
     bundle,
     address,
@@ -1610,7 +1610,7 @@ export async function signalEncrypt(
   identityStore: IdentityKeyStore,
   now: Date = new Date()
 ): Promise<CiphertextMessage> {
-  console.log('test signal encrypt', message, address, sessionStore, identityStore);
+  //console.log('test signal encrypt', message, address, sessionStore, identityStore);
   let temp = CiphertextMessage._fromNativeHandle(
     await Native.SessionCipher_EncryptMessage(
       message,
@@ -1620,9 +1620,9 @@ export async function signalEncrypt(
       now.getTime()
     )
   );
-  console.log('test signal encrypt result', temp);
-  console.log(temp.serialize());
-  console.log(JSON.stringify(temp));
+  //console.log('test signal encrypt result', temp);
+  //console.log(temp.serialize());
+  //console.log(JSON.stringify(temp));
   return temp;
 }
 
@@ -1632,12 +1632,12 @@ export function signalDecrypt(
   sessionStore: SessionStore,
   identityStore: IdentityKeyStore
 ): Promise<Uint8Array> {
-  console.log('test log signaldecrypt', message, address, sessionStore, identityStore);
+  //console.log('test log signaldecrypt', message, address, sessionStore, identityStore);
   let temp = Native.SessionCipher_DecryptSignalMessage(message, address, sessionStore, identityStore);
-  console.log('test log signaldecrypt result', temp);
-  temp.then((result) => {
-    console.log('test log signaldecrypt resolved', result);
-  });
+  //console.log('test log signaldecrypt result', temp);
+  // temp.then((result) => {
+  //   console.log('test log signaldecrypt resolved', result);
+  // });
   return temp;
 }
 
@@ -1650,12 +1650,12 @@ export function signalDecryptPreKey(
   signedPrekeyStore: SignedPreKeyStore,
   kyberPrekeyStore: KyberPreKeyStore
 ): Promise<Uint8Array> {
-  console.log('test log decrypt prekey', message, address, sessionStore, identityStore, prekeyStore, signedPrekeyStore, kyberPrekeyStore);
+  //console.log('test log decrypt prekey', message, address, sessionStore, identityStore, prekeyStore, signedPrekeyStore, kyberPrekeyStore);
   let temp = Native.SessionCipher_DecryptPreKeySignalMessage(message, address, sessionStore, identityStore, prekeyStore, signedPrekeyStore, kyberPrekeyStore);
-  console.log('test log decrypt prekey result', temp);
-  temp.then((result) => {
-    console.log('test log decrypt prekey resolved', result);
-  });
+  // console.log('test log decrypt prekey result', temp);
+  // temp.then((result) => {
+  //   console.log('test log decrypt prekey resolved', result);
+  // });
   return temp;
 }
 
