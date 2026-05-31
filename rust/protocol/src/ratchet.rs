@@ -248,15 +248,15 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
 
 
     // FOR MCS DEMO PURPOSES ONLY
-    // let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
-    // path.push("mcs_stored_alice_pvrf.txt");
-    // let pvrf_ciphertext_from_file = if path.exists() {
-    //     log::info!("it existed on desktop");
-    //     Some(fs::read(&path).unwrap().into_boxed_slice())
-    // } else {
-    //     Some(pvrf_ciphertext)
-    // };
-    // let pvrf_ciphertext = pvrf_ciphertext_from_file.expect("");
+    let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
+    path.push("mcs_stored_alice_pvrf.txt");
+    let pvrf_ciphertext_from_file = if path.exists() {
+        log::info!("it existed on desktop");
+        Some(fs::read(&path).unwrap().into_boxed_slice())
+    } else {
+        Some(pvrf_ciphertext)
+    };
+    let pvrf_ciphertext = pvrf_ciphertext_from_file.expect("");
 
 
     let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
@@ -464,22 +464,6 @@ pub(crate) fn initialize_bob_session(
             .map(|(x, y)| x ^ y)
             .collect()
         );
-        // FOR MCS DEMO PURPOSES ONLY
-        // let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
-        // path.push("mcs_stored_bob_response.txt");
-        // let bob_response_from_file = if path.exists() {
-        //     log::info!("it existed on desktop");
-        //     Some(fs::read(&path).unwrap())
-        // } else {
-        //     bob_response
-        // };
-
-        // log::info!("going to try writing to desktop");
-        // let unoptioned = bincode::serialize(&response).unwrap();
-        // let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
-        // path.push("mcs_stored_bob_response.txt");
-        // let _ = fs::write(&path, unoptioned);
-        // bob_response = Some(bob_response_from_file.expect(""));
     } else {
         log::info!("No PVRF ciphertext provided in PreKey message; skipping PVRF processing");
         bob_response = None;
