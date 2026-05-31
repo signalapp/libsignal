@@ -251,7 +251,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
     path.push("mcs_stored_alice_pvrf.txt");
     let pvrf_ciphertext_from_file = if path.exists() {
-        log::info!("it existed on desktop");
+        log::info!("file existed on desktop");
         Some(fs::read(&path).unwrap().into_boxed_slice())
     } else {
         Some(pvrf_ciphertext)
