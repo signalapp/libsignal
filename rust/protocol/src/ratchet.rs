@@ -247,6 +247,16 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
 
 
 
+    // FOR MCS DEMO PURPOSES ONLY
+    let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
+    path.push("mcs_stored_alice_pvrf.txt");
+    let pvrf_ciphertext_from_file = if path.exists() {
+        log::info!("file existed on desktop");
+        Some(fs::read(&path).unwrap().into_boxed_slice())
+    } else {
+        Some(pvrf_ciphertext)
+    };
+    let pvrf_ciphertext = pvrf_ciphertext_from_file.expect("");
 
 
     let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
@@ -397,7 +407,6 @@ pub(crate) fn initialize_bob_session(
             .decapsulate(parameters.their_kyber_ciphertext())?,
     );
 
-    let vts;
     let their_pvrf_ciphertext = parameters.their_pvrf_ciphertext().as_ref().map(|b| b.to_vec());
     log::info!(
         "PVRF ciphertext in PreKey message as Bob: {}",
@@ -416,8 +425,8 @@ pub(crate) fn initialize_bob_session(
             Vec<u8>
         ) = bincode::deserialize(&bytes).unwrap();
         // Step 1, parse vars
-        let tau = (c, (s1, s2));
-        let vt = (h, hprime, tau);
+        //let tau = (c, (s1, s2));
+        //let vt = (h, hprime, tau);
 
         // Step 2
         let hi = hash_i(&vk, &x);
@@ -455,18 +464,10 @@ pub(crate) fn initialize_bob_session(
             .map(|(x, y)| x ^ y)
             .collect()
         );
-        //bob doesnt have a vts, but storing it here is useful for MCS demo
-        let fake_sas_contribution_salt = [0u8; 3];
-        let fake_alpha = Scalar::default();
-        let fake_beta = Scalar::default();
-        let fake_bob_vts = (vt, vk, x.clone(), fake_alpha, fake_beta, fake_sas_contribution_salt.clone());
-        vts = Some(bincode::serialize(&fake_bob_vts).unwrap());
-
     } else {
         log::info!("No PVRF ciphertext provided in PreKey message; skipping PVRF processing");
         bob_response = None;
         true_sas = None;
-        vts = None;
     }
 
 
@@ -504,7 +505,7 @@ pub(crate) fn initialize_bob_session(
         parameters.their_base_key(),
         pqr_state,
         true_sas,
-        vts, 
+        None, 
         bob_response,
     )
     .with_sender_chain(parameters.our_ratchet_key_pair(), &chain_key);
