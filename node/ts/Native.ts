@@ -42,7 +42,6 @@ export type ResponseAndDebugInfo = {
   debugInfo: ChatServiceDebugInfo;
 };
 
-
 export type SealedSenderMultiRecipientMessageRecipient = {
   deviceIds: number[];
   registrationIds: number[];

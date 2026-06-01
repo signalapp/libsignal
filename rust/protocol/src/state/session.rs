@@ -44,7 +44,6 @@ pub(crate) struct UnacknowledgedPreKeyMessageItems<'a> {
     // so we leave these optional for now.
     kyber_pre_key_id: Option<KyberPreKeyId>,
     kyber_ciphertext: Option<&'a [u8]>,
-    pvrf_pre_key_id: Option<KyberPreKeyId>,
     pvrf_ciphertext: Option<&'a [u8]>,
     timestamp: SystemTime,
 }
@@ -61,16 +60,14 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
         let (kyber_pre_key_id, kyber_ciphertext) = pending_kyber_pre_key
             .map(|pending| (pending.pre_key_id.into(), pending.ciphertext.as_slice()))
             .unzip();
-        let (pvrf_pre_key_id, pvrf_ciphertext) = pending_pvrf_pre_key
-            .map(|pending| (pending.pre_key_id.into(), pending.ciphertext.as_slice()))
-            .unzip();
+        let pvrf_ciphertext = pending_pvrf_pre_key
+            .map(|pending| pending.ciphertext.as_slice());
         Self {
             pre_key_id,
             signed_pre_key_id,
             base_key,
             kyber_pre_key_id,
             kyber_ciphertext,
-            pvrf_pre_key_id,
             pvrf_ciphertext,
             timestamp,
         }
@@ -94,10 +91,6 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
 
     pub(crate) fn kyber_ciphertext(&self) -> Option<&'a [u8]> {
         self.kyber_ciphertext
-    }
-
-    pub(crate) fn pvrf_pre_key_id(&self) -> Option<KyberPreKeyId> {
-        self.pvrf_pre_key_id
     }
 
     pub(crate) fn pvrf_ciphertext(&self) -> Option<&'a [u8]> {

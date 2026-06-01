@@ -648,7 +648,7 @@ fn test_pvrf_mitm_eval_step_forwarding() -> TestResult {
                 eve_prekey_msg.pre_key_id(),
                 eve_prekey_msg.signed_pre_key_id(),
                 Some(KyberPayload::new(eve_prekey_msg.kyber_pre_key_id().expect("should have kyber prekey"), eve_prekey_msg.kyber_ciphertext().expect("should have kyber ciphertext").clone())),
-                Some(PvrfPayload::new(alice_prekey_msg.pvrf_pre_key_id().expect("should have pvrf prekey"), alice_prekey_msg.pvrf_ciphertext().expect("should have pvrf ciphertext").clone())),
+                Some(PvrfPayload::new(alice_prekey_msg.pvrf_ciphertext().expect("should have pvrf ciphertext").clone())),
                 *eve_prekey_msg.base_key(),
                 *eve_prekey_msg.identity_key(),
                 eve_prekey_msg.message().clone()

@@ -294,14 +294,12 @@ impl KyberPayload {
 
 #[derive(Debug, Clone)]
 pub struct PvrfPayload {
-    pre_key_id: KyberPreKeyId, 
     ciphertext: kem::SerializedCiphertext,  
 }
 
 impl PvrfPayload {
-    pub fn new(id: KyberPreKeyId, ciphertext: kem::SerializedCiphertext) -> Self {
+    pub fn new(ciphertext: kem::SerializedCiphertext) -> Self {
         Self {
-            pre_key_id: id,
             ciphertext,
         }
     }
@@ -349,7 +347,6 @@ impl PreKeySignalMessage {
             kyber_ciphertext: kyber_payload
                 .as_ref()
                 .map(|kyber| kyber.ciphertext.to_vec()),
-            pvrf_pre_key_id: pvrf_payload.as_ref().map(|pvrf| pvrf.pre_key_id.into()),
             pvrf_ciphertext: pvrf_payload
                 .as_ref()
                 .map(|pvrf| pvrf.ciphertext.to_vec()),
@@ -396,11 +393,6 @@ impl PreKeySignalMessage {
     #[inline]
     pub fn signed_pre_key_id(&self) -> SignedPreKeyId {
         self.signed_pre_key_id
-    }
-
-    #[inline]
-    pub fn pvrf_pre_key_id(&self) -> Option<KyberPreKeyId> {
-        self.pvrf_payload.as_ref().map(|pvrf| pvrf.pre_key_id)
     }
 
     #[inline]
@@ -509,7 +501,6 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {   // Received raw bytes from netwo
         };
 
         let pvrf_payload = match (
-            proto_structure.pvrf_pre_key_id,
             proto_structure.pvrf_ciphertext,
         ) {
             // Normal PQ case: PVRF prekey ID & ciphertext present
