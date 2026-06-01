@@ -75,7 +75,11 @@ public class FutureTest {
             || e.getCause()
                 .getMessage()
                 .contains(
-                    "Didn't find class \"org.signal.libsignal.internal.GuaranteedNonexistentException\""));
+                    "Didn't find class \"org.signal.libsignal.internal.GuaranteedNonexistentException\"")
+            || e.getCause()
+                .getMessage()
+                .contains(
+                    "JNI error failed to resolve Java class 'org.signal.libsignal.internal.GuaranteedNonexistentException'"));
   }
 
   @Test
