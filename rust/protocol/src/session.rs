@@ -50,21 +50,16 @@ free standing.
 // Paper: Receive(iskr, str, ipks, t, p)
 pub async fn process_prekey<'a>(
     message: &'a PreKeySignalMessage,       // Alice's first message, params defined in protocol.rs
-                                            // Paper: corresponds to message with (ipks, t, p)
-                                            // Defined in protocol.rs
     remote_address: &'a ProtocolAddress,    // Logical identifier for Alice
     session_record: &mut SessionRecord,     // Bob's local session state w/ Alice. Defined in state.session.rs
     identity_store: &dyn IdentityKeyStore,  
-    
     pre_key_store: &dyn PreKeyStore,                // Holds Bob's one-time EC prekeys (OPK)
     signed_prekey_store: &dyn SignedPreKeyStore,    // Holds Bob's signed EC prekeys (SPK)
-    kyber_prekey_store: &dyn KyberPreKeyStore,      // Holds Bob's PQ Kyber prekeys
-                                                    // Defined across state/, storage/, kem.rs
-                                                    // Paper: iskr, str     
+    kyber_prekey_store: &dyn KyberPreKeyStore,      // Holds Bob's PQ Kyber prekeys   
 ) -> Result<(Option<PreKeysUsed>, IdentityToSave<'a>)> {
     let their_identity_key = message.identity_key();    // Extract Alice's identity public key ipks
 
-    if !identity_store  // TOFU stuff
+    if !identity_store
         .is_trusted_identity(remote_address, their_identity_key, Direction::Receiving)
         .await?
     {
@@ -96,9 +91,9 @@ pub async fn process_prekey<'a>(
 async fn process_prekey_impl(
     message: &PreKeySignalMessage,  // Alice's initial prekey message (ephemeral keys, signed prekey IDs, etc.)
     remote_address: &ProtocolAddress,   // Alice's address
-    session_record: &mut SessionRecord, // Bob's session storage for this contact
+    session_record: &mut SessionRecord,
     
-    signed_prekey_store: &dyn SignedPreKeyStore,    // Same as prev function
+    signed_prekey_store: &dyn SignedPreKeyStore,
     kyber_prekey_store: &dyn KyberPreKeyStore,
     pre_key_store: &dyn PreKeyStore,
     
@@ -106,7 +101,7 @@ async fn process_prekey_impl(
 ) -> Result<Option<PreKeysUsed>> {
     if session_record.promote_matching_session(
         message.message_version() as u32,
-        &message.base_key().serialize(),    // base_key = Alice's DH key
+        &message.base_key().serialize(), 
     )? {
         // We've already set up a session for this message, we can exit early.
         return Ok(None);
@@ -145,7 +140,6 @@ async fn process_prekey_impl(
     
     // Extract Kyber ciphertext from Alice
     // Alice encrypted a secret w/ Bob's Kyber public prekey
-    // Paper: PQ equivalent of DH key exchange
     let kyber_ciphertext =
         message
             .kyber_ciphertext()
@@ -197,7 +191,7 @@ async fn process_prekey_impl(
         signed_ec_pre_key_id: message.signed_pre_key_id(),
         kyber_pre_key_id: message.kyber_pre_key_id(),
     };
-    Ok(Some(pre_keys_used)) // Return IDs of prekeys consumed this session (remove one-times after use)
+    Ok(Some(pre_keys_used))
 }
 
 // Alice receives Bob's prekey bundle and sets up session for first message
@@ -211,7 +205,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
 ) -> Result<()> {
     let their_identity_key = bundle.identity_key()?; // Retrive Bob's long-term identity key (ipkr)
 
-    if !identity_store  // Check if Bob's identity is trustworthy (MITM protection)
+    if !identity_store
         .is_trusted_identity(remote_address, their_identity_key, Direction::Sending)
         .await?
     {
