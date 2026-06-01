@@ -168,7 +168,7 @@ async fn process_prekey_impl(
     
     let unoptioned = pvrf_ciphertext.expect("no pvrf cipherest").clone();
     let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
-    path.push("mcs_stored_alice_pvrf.txt");
+    path.push("mcs_alice_demo.txt");
     let _ = fs::write(&path, unoptioned);
 
     let parameters = BobSignalProtocolParameters::new(
