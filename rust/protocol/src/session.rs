@@ -45,7 +45,6 @@ free standing.
 
 
 // Bob's X3DH Receive function for Alice's first message
-// Paper: Receive(iskr, str, ipks, t, p)
 pub async fn process_prekey<'a>(
     message: &'a PreKeySignalMessage,       // Alice's first message, params defined in protocol.rs
     remote_address: &'a ProtocolAddress,    // Logical identifier for Alice
@@ -66,7 +65,7 @@ pub async fn process_prekey<'a>(
         ));
     }
 
-    let pre_keys_used = process_prekey_impl(    // Splits up logic to avoid errors?
+    let pre_keys_used = process_prekey_impl(
         message,
         remote_address,
         session_record,
@@ -118,7 +117,6 @@ async fn process_prekey_impl(
     }
 
     let our_signed_pre_key_pair = signed_prekey_store   // Retrieve Bob's signed prekey
-                                                        // Paper: prekr (?) 
         .get_signed_pre_key(message.signed_pre_key_id())
         .await?
         .key_pair()?;
