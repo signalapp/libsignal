@@ -457,7 +457,6 @@ pub(crate) fn initialize_bob_session(
         );
         //bob doesnt have a vts, but storing it here is useful for MCS demo
         let fake_sas_contribution_salt = [0u8; 3];
-        let fake_sas_contribution_salt = fake_sas_contribution_salt.to_vec();
         let fake_alpha = Scalar::default();
         let fake_beta = Scalar::default();
         let fake_bob_vts = (vt, vk, x.clone(), fake_alpha, fake_beta, fake_sas_contribution_salt.clone());
