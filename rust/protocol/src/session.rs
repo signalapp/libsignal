@@ -17,8 +17,6 @@ use crate::{
     ratchet
 };
 
-use std::fs;
-
 pub struct PreKeysUsed {
     pub one_time_ec_pre_key_id: Option<PreKeyId>,
     pub signed_ec_pre_key_id: SignedPreKeyId,
@@ -157,13 +155,7 @@ async fn process_prekey_impl(
         None
     };
 
-    log::info!("going to try writing to desktop");
     let pvrf_ciphertext = message.pvrf_ciphertext();
-    
-    let unoptioned = pvrf_ciphertext.expect("no pvrf cipherest").clone();
-    let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
-    path.push("mcs_alice_demo.txt");
-    let _ = fs::write(&path, unoptioned);
 
     let parameters = BobSignalProtocolParameters::new(
         identity_store.get_identity_key_pair().await?,  // ipkr
