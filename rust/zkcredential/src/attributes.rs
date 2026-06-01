@@ -111,8 +111,6 @@ impl Attribute for [RistrettoPoint; 2] {
 ///   }
 /// }
 /// ```
-
-//sas g generator domains(?)
 pub trait Domain {
     /// The attribute type used in this encryption domain.
     type Attribute: Attribute;
