@@ -252,9 +252,6 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         csprng,
     )?;
 
-    // we may have to do bob eval here if we store message as messagetext
-    // that would mean forwarding the transcript secret which is probably bad
-
     identity_store
         .save_identity(
             identity_to_save.remote_address,
@@ -428,7 +425,6 @@ fn create_decryption_failure_log(
 
     Ok(lines.join("\n"))
 }
-
 
 fn decrypt_message_with_record<R: Rng + CryptoRng>(
     remote_address: &ProtocolAddress,
