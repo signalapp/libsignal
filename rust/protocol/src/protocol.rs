@@ -479,12 +479,6 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
                     "PVRF ciphertext must be present for this session version",
                 ));
             }
-            _ => {
-                return Err(SignalProtocolError::InvalidMessage(
-                    CiphertextMessageType::PreKey,
-                    "PVRF ciphertext must be present for this session version",
-                ));
-            }
         };
 
         Ok(PreKeySignalMessage {

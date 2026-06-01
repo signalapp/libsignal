@@ -108,7 +108,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
             .map(|(id, ciphertext)| KyberPayload::new(id, ciphertext.into()));
 
         let pvrf_payload = items.pvrf_ciphertext()
-            .map(|(ciphertext)| PvrfPayload::new(ciphertext.into()));
+            .map(|ciphertext| PvrfPayload::new(ciphertext.into()));
 
         CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::new(
             session_version,

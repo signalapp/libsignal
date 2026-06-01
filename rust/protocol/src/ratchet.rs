@@ -512,7 +512,7 @@ pub fn initialize_bob_session_record(
 
 pub fn pvrf_verify_from_session_data(
     vk_bytes: &[u8],
-    x_bytes: &[u8],
+    _x_bytes: &[u8],
     alpha_bytes: &[u8],  // 32-byte LE scalar
     beta_bytes: &[u8],   // 32-byte LE scalar
     w_bytes: &[u8],      // 32-byte edwards
@@ -569,5 +569,5 @@ pub fn pvrf_verify_from_session_data(
         log::error!("PVRF VERIFY FAILED: v != calculated_v");
     }
 
-    Ok(ok, z)
+    Ok((ok, z))
 }
