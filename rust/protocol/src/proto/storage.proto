@@ -45,8 +45,7 @@ message SessionStructure {
   }
 
   message PendingPvrfPreKey {
-    uint32 pre_key_id = 1;
-    bytes  ciphertext = 2;
+    bytes  ciphertext = 1;
   }
 
   uint32         session_version           = 1;
