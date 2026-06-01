@@ -10,14 +10,15 @@ use bitflags::bitflags;
 use prost::Message;
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
-// use std::fs;
 
 use crate::proto::storage::{RecordStructure, SessionStructure, session_structure};
 use crate::protocol::CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION;
 use crate::ratchet::{ChainKey, MessageKeyGenerator, RootKey};
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
 use crate::{IdentityKey, KeyPair, PrivateKey, PublicKey, SignalProtocolError, consts, kem};
-
+use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::EdwardsPoint;
+use curve25519_dalek::scalar::Scalar;
 /// A distinct error type to keep from accidentally propagating deserialization errors.
 #[derive(Debug)]
 pub(crate) struct InvalidSessionError(&'static str);
@@ -137,9 +138,6 @@ bitflags! {
         const Spqr = 1 << 2;
     }
 }
-use curve25519_dalek::ristretto::RistrettoPoint;
-use curve25519_dalek::EdwardsPoint;
-use curve25519_dalek::scalar::Scalar;
 
 #[derive(Clone, Debug)]
 pub(crate) struct SessionState {
@@ -535,7 +533,6 @@ impl SessionState {
 
     pub(crate) fn set_pvrf_ciphertext(&mut self, ciphertext: kem::SerializedCiphertext) {
         let pending = session_structure::PendingPvrfPreKey {
-            pre_key_id: u32::MAX, // has to be set to the actual value separately
             ciphertext: ciphertext.into_vec(),
         };
         self.session.pending_pvrf_pre_key = Some(pending);
@@ -968,7 +965,6 @@ impl SessionRecord {
         )
     }
 
-    ///dummy func for now
     pub fn get_sas(
             &self,
     ) -> Result<Vec<u8>, SignalProtocolError> {

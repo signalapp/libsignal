@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-
 use crate::{IdentityKey, IdentityKeyPair, KeyPair, PublicKey, kem};
 
 pub struct AliceSignalProtocolParameters {
@@ -26,7 +25,6 @@ impl AliceSignalProtocolParameters {
         their_signed_pre_key: PublicKey,
         their_ratchet_key: PublicKey,
         their_kyber_pre_key: kem::PublicKey,
-        
     ) -> Self {
         Self {
             our_identity_key_pair,
