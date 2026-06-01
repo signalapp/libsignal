@@ -29,9 +29,6 @@ use crate::protocol::CIPHERTEXT_MESSAGE_CURRENT_VERSION;
 use crate::state::SessionState;
 use crate::{KeyPair, Result, SessionRecord, SignalProtocolError, consts};
 
-use std::fs;
-use std::path::PathBuf;
-
 type InitialPQRKey = [u8; 32]; // Initial key for PQ Ratchet
 
 fn derive_keys(secret_input: &[u8]) -> (RootKey, ChainKey, InitialPQRKey) {
@@ -144,9 +141,7 @@ pub fn hash_b(vk: &EdwardsPoint, x: &[u8]) -> RistrettoPoint {
 }
 
 pub fn hash_o(point: &EdwardsPoint) -> Vec<u8> {
-    // Compress the RistrettoPoint to a canonical 32-byte representation
     let compressed = point.compress();
-
     let hash = Sha256::digest(compressed.as_bytes());
     hash[..3].to_vec()
 }
@@ -223,7 +218,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     //step 1, page 11, preverify
     let alpha = sample_random_zp(csprng);
     let beta = sample_random_zp(csprng);
-    let h = ((alpha * g) + (beta * hash_i(&vk, &x)));
+    let h = (alpha * g) + (beta * hash_i(&vk, &x));
     let hprime = alpha * hash_a(&vk, &x) + beta * hash_b(&vk, &x);
 
     //step 2
@@ -244,19 +239,6 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
 
     let pvrf_ciphertext =  bincode::serialize(&redacted_vts_for_bob).unwrap().into_boxed_slice();
     //output vt, store vts
-
-
-
-    // FOR MCS DEMO PURPOSES ONLY
-    let mut path = dirs::desktop_dir().expect("Could not find Desktop directory");
-    path.push("mcs_alice_demo.txt");
-    let pvrf_ciphertext_from_file = if path.exists() {
-        log::info!("file existed on desktop");
-        Some(fs::read(&path).unwrap().into_boxed_slice())
-    } else {
-        Some(pvrf_ciphertext)
-    };
-    let pvrf_ciphertext = pvrf_ciphertext_from_file.expect("");
 
 
     let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
@@ -361,7 +343,7 @@ pub(crate) fn initialize_bob_session(
     let k ;
     let vk ;
     let mut x = Vec::with_capacity(32 * 6);
-    let mut bob_response;
+    let bob_response;
     let true_sas: Option<Vec<u8>>;
     //let vt;
 
@@ -435,8 +417,8 @@ pub(crate) fn initialize_bob_session(
 
         // η = g^s1 * Hi(vk,x)^s2 * h^c
         // η' = Ha(vk,x)^s1 * Hb(vk,x)^s2 * h'^c
-        let eta = ((g * (s1)) + (hi * (s2))) + (h * (c));
-        let etaprime = (ha * (s1)) + (hb * (s2)) + (hprime * (c));
+        let eta = (g * s1) + (hi * s2) + (h * c);
+        let etaprime = (ha * s1) + (hb * s2) + (hprime * c);
 
         let computed_c = hash_fs(&vk, &x, &h, &hprime, &eta, &etaprime);
 
@@ -448,7 +430,7 @@ pub(crate) fn initialize_bob_session(
         } 
 
         // Step 3
-        let w = (hi * k);
+        let w = hi * k;
         let z = hash_o(&w); //the sas?
         let v = h * k;
         let pi = (w, v);
@@ -493,8 +475,6 @@ pub(crate) fn initialize_bob_session(
             "post-quantum ratchet: error creating initial B2A state: {e}"
         ))
     })?;
-
- 
 
     // Bob's session object
     let session = SessionState::new(
@@ -559,8 +539,7 @@ pub fn pvrf_verify_from_session_data(
     let v = CompressedEdwardsY::from_slice(v_bytes)
         .map_err(|_| SignalProtocolError::InvalidArgument("invalid v slice".to_string()))?
         .decompress()
-        .ok_or_else(|| SignalProtocolError::InvalidArgument("v decompression failed".to_string()))?
-        ;//.to_montgomery().to_edwards(0).unwrap();
+        .ok_or_else(|| SignalProtocolError::InvalidArgument("v decompression failed".to_string()))?;
     log::info!("the v bytes is {:?}", v_bytes);
 
     // z = Ho(w)
@@ -573,29 +552,10 @@ pub fn pvrf_verify_from_session_data(
         .map_err(|_| SignalProtocolError::InvalidArgument("invalid vk slice".to_string()))?
         .decompress()
         .ok_or_else(|| SignalProtocolError::InvalidArgument("vk decompression failed".to_string()))?;
-    log::info!("whyyyy {:?} bytes", vk_point.compress().as_bytes());
-
-    // log::info!("actual vk {:?} bytes", vk_point.compress().as_bytes());
-    // let vk_backforth = vk_point.to_montgomery().to_edwards(0).unwrap();
-    // log::info!("vk back and forth {:?} bytes", vk_backforth.compress().as_bytes());
-    
-
-    // log::info!("w is {:?} bytes", w.compress().as_bytes());
-    // let w_backforth = w.to_montgomery().to_edwards(0).unwrap();
-    // log::info!("w back and forth {:?} bytes", w_backforth.compress().as_bytes());
-    
-    // log::info!("real v is {:?} bytes", v.compress().as_bytes());
-    // let v_backforth = v.to_montgomery().to_edwards(0).unwrap();
-    // log::info!("real v back and forth {:?} bytes", v_backforth.compress().as_bytes());
-    
-
-
-
-
 
 
     // v = vk^alpha * w^beta
-    let calculated_v = ((vk_point * alpha) + (w * beta));
+    let calculated_v = (vk_point * alpha) + (w * beta);
     let alt_calculated_v = (-vk_point * alpha) + (w * beta);
 
     let ok = v.compress().as_bytes() == calculated_v.compress().as_bytes() || v.compress().as_bytes() == alt_calculated_v.compress().as_bytes();
@@ -609,5 +569,5 @@ pub fn pvrf_verify_from_session_data(
         log::error!("PVRF VERIFY FAILED: v != calculated_v");
     }
 
-    Ok((ok, z))
+    Ok(ok, z)
 }
