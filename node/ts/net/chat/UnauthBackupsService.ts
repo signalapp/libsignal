@@ -73,7 +73,7 @@ export interface UnauthBackupsService {
   /**
    * @deprecated requires every connection to support H2
    */
-  setPublicKey: (
+  setBackupPublicKey: (
     request: { auth: BackupAuth; rng?: Rng },
     options?: RequestOptions
   ) => Promise<void>;
@@ -81,7 +81,7 @@ export interface UnauthBackupsService {
   /**
    * @deprecated requires every connection to support H2
    */
-  getCdnCredentials: (
+  getBackupCdnCredentials: (
     request: { auth: BackupAuth; cdn: number; rng?: Rng },
     options?: RequestOptions
   ) => Promise<CdnCredentials>;
@@ -89,7 +89,7 @@ export interface UnauthBackupsService {
   /**
    * @deprecated requires every connection to support H2
    */
-  getSvrBCredentials: (
+  getBackupSvrBCredentials: (
     request: { auth: BackupAuth; rng?: Rng },
     options?: RequestOptions
   ) => Promise<{ username: string; password: string }>;
@@ -97,7 +97,7 @@ export interface UnauthBackupsService {
   /**
    * @deprecated requires every connection to support H2
    */
-  refresh: (
+  refreshBackup: (
     request: { auth: BackupAuth; rng?: Rng },
     options?: RequestOptions
   ) => Promise<void>;
@@ -105,7 +105,7 @@ export interface UnauthBackupsService {
   /**
    * @deprecated requires every connection to support H2
    */
-  deleteAll: (
+  backupDeleteAll: (
     request: { auth: BackupAuth; rng?: Rng },
     options?: RequestOptions
   ) => Promise<void>;
@@ -177,7 +177,7 @@ UnauthenticatedChatConnection.prototype.getMediaUploadForm = async function (
   };
 };
 
-UnauthenticatedChatConnection.prototype.setPublicKey = async function (
+UnauthenticatedChatConnection.prototype.setBackupPublicKey = async function (
   { auth: { credential, serverKeys, signingKey }, rng },
   options
 ) {
@@ -192,42 +192,46 @@ UnauthenticatedChatConnection.prototype.setPublicKey = async function (
   });
 };
 
-UnauthenticatedChatConnection.prototype.getCdnCredentials = async function (
-  { auth: { credential, serverKeys, signingKey }, cdn, rng },
-  options
-) {
-  return await NativeNice.UnauthenticatedChatConnection_backup_get_cdn_credentials(
-    {
-      asyncContext: this._asyncContext,
-      chat: this._chatService,
-      cdn,
-      credential,
-      serverKeys,
-      signingKey,
-      rng,
-      abortSignal: options?.abortSignal,
-    }
-  );
-};
+UnauthenticatedChatConnection.prototype.getBackupCdnCredentials =
+  async function (
+    { auth: { credential, serverKeys, signingKey }, cdn, rng },
+    options
+  ) {
+    return await NativeNice.UnauthenticatedChatConnection_backup_get_cdn_credentials(
+      {
+        asyncContext: this._asyncContext,
+        chat: this._chatService,
+        cdn,
+        credential,
+        serverKeys,
+        signingKey,
+        rng,
+        abortSignal: options?.abortSignal,
+      }
+    );
+  };
 
-UnauthenticatedChatConnection.prototype.getSvrBCredentials = async function (
-  { auth: { credential, serverKeys, signingKey }, rng },
-  options
-) {
-  const [username, password] =
-    await NativeNice.UnauthenticatedChatConnection_backup_get_svrb_credentials({
-      asyncContext: this._asyncContext,
-      chat: this._chatService,
-      credential,
-      serverKeys,
-      signingKey,
-      rng,
-      abortSignal: options?.abortSignal,
-    });
-  return { username, password };
-};
+UnauthenticatedChatConnection.prototype.getBackupSvrBCredentials =
+  async function (
+    { auth: { credential, serverKeys, signingKey }, rng },
+    options
+  ) {
+    const [username, password] =
+      await NativeNice.UnauthenticatedChatConnection_backup_get_svrb_credentials(
+        {
+          asyncContext: this._asyncContext,
+          chat: this._chatService,
+          credential,
+          serverKeys,
+          signingKey,
+          rng,
+          abortSignal: options?.abortSignal,
+        }
+      );
+    return { username, password };
+  };
 
-UnauthenticatedChatConnection.prototype.refresh = async function (
+UnauthenticatedChatConnection.prototype.refreshBackup = async function (
   { auth: { credential, serverKeys, signingKey }, rng },
   options
 ) {
@@ -242,7 +246,7 @@ UnauthenticatedChatConnection.prototype.refresh = async function (
   });
 };
 
-UnauthenticatedChatConnection.prototype.deleteAll = async function (
+UnauthenticatedChatConnection.prototype.backupDeleteAll = async function (
   { auth: { credential, serverKeys, signingKey }, rng },
   options
 ) {

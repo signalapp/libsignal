@@ -181,7 +181,7 @@ describe('UnauthBackupsService', () => {
       'org.signal.chat.backup.SetPublicKeyResponse',
       { success: {} },
       (chat) =>
-        chat.setPublicKey({
+        chat.setBackupPublicKey({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
         })
@@ -191,7 +191,7 @@ describe('UnauthBackupsService', () => {
       { publicKey: toBase64(TEST_SIGNING_KEY_PUB), ...BACKUP_REQUEST_TEMPLATE },
       'org.signal.chat.backup.SetPublicKeyResponse',
       (chat) =>
-        chat.setPublicKey({
+        chat.setBackupPublicKey({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
         })
@@ -212,7 +212,7 @@ describe('UnauthBackupsService', () => {
         },
       },
       (chat) =>
-        chat.getCdnCredentials({
+        chat.getBackupCdnCredentials({
           auth: TEST_AUTH,
           cdn: 40,
           rng: { __deterministicRngSeedForTesting: 0 },
@@ -230,7 +230,7 @@ describe('UnauthBackupsService', () => {
       { cdn: 40, ...BACKUP_REQUEST_TEMPLATE },
       'org.signal.chat.backup.GetCdnCredentialsResponse',
       (chat) =>
-        chat.getCdnCredentials({
+        chat.getBackupCdnCredentials({
           auth: TEST_AUTH,
           cdn: 40,
           rng: { __deterministicRngSeedForTesting: 0 },
@@ -250,7 +250,7 @@ describe('UnauthBackupsService', () => {
         },
       },
       (chat) =>
-        chat.getSvrBCredentials({
+        chat.getBackupSvrBCredentials({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
         })
@@ -265,7 +265,7 @@ describe('UnauthBackupsService', () => {
       BACKUP_REQUEST_TEMPLATE,
       'org.signal.chat.backup.GetSvrBCredentialsResponse',
       (chat) =>
-        chat.getSvrBCredentials({
+        chat.getBackupSvrBCredentials({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
         })
@@ -281,7 +281,7 @@ describe('UnauthBackupsService', () => {
         success: {},
       },
       (chat) =>
-        chat.refresh({
+        chat.refreshBackup({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
         })
@@ -291,7 +291,7 @@ describe('UnauthBackupsService', () => {
       BACKUP_REQUEST_TEMPLATE,
       'org.signal.chat.backup.RefreshResponse',
       (chat) =>
-        chat.refresh({
+        chat.refreshBackup({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
         })
@@ -307,7 +307,7 @@ describe('UnauthBackupsService', () => {
         success: {},
       },
       (chat) =>
-        chat.deleteAll({
+        chat.backupDeleteAll({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
         })
@@ -317,7 +317,7 @@ describe('UnauthBackupsService', () => {
       BACKUP_REQUEST_TEMPLATE,
       'org.signal.chat.backup.DeleteAllResponse',
       (chat) =>
-        chat.deleteAll({
+        chat.backupDeleteAll({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
         })
