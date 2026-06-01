@@ -5,9 +5,12 @@
 
 package org.signal.libsignal.protocol;
 
-import junit.framework.TestCase;
+import static org.junit.Assert.assertTrue;
 
-public class IdentityKeyTest extends TestCase {
+import org.junit.Test;
+
+public class IdentityKeyTest {
+  @Test
   public void testSignAlternateKey() {
     IdentityKeyPair primary = IdentityKeyPair.generate();
     IdentityKeyPair secondary = IdentityKeyPair.generate();

@@ -5,31 +5,28 @@
 
 package org.signal.libsignal.cds2;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Map;
-import junit.framework.TestCase;
-import org.signal.libsignal.attest.AttestationDataException;
+import org.junit.Test;
 
-public class Cds2MetricsTest extends TestCase {
-  private byte[] attestationMsg;
-
-  protected void setUp() throws Exception {
-    super.setUp();
-
+public class Cds2MetricsTest {
+  @Test
+  public void testValidMetrics() throws Exception {
+    // First, the setup
     // Test data should be ~14k
-    attestationMsg = new byte[15_000];
+    byte[] attestationMsg = new byte[15_000];
 
     try (InputStream stream = getClass().getResourceAsStream("clienthandshakestart.data")) {
       assert stream != null;
       int read = stream.read(attestationMsg);
       // should be empty
-      assert (stream.read() == -1);
+      assertEquals(-1, stream.read());
       attestationMsg = Arrays.copyOf(attestationMsg, read);
     }
-  }
 
-  public void testValidMetrics() throws AttestationDataException {
     Map<String, Long> metrics = Cds2Metrics.extract(attestationMsg);
     // 2022-08-14 02:31:29 UTC
     assertEquals(metrics.get("tcb_info_expiration_ts").longValue(), 1658440468);

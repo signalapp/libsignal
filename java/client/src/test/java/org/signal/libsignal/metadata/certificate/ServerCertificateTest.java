@@ -5,12 +5,14 @@
 
 package org.signal.libsignal.metadata.certificate;
 
-import junit.framework.TestCase;
+import static org.junit.Assert.fail;
+
+import org.junit.Test;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 
-public class ServerCertificateTest extends TestCase {
-
+public class ServerCertificateTest {
+  @Test
   public void testSignature() throws InvalidKeyException, InvalidCertificateException {
     ECKeyPair trustRoot = ECKeyPair.generate();
     ECKeyPair keyPair = ECKeyPair.generate();
@@ -23,6 +25,7 @@ public class ServerCertificateTest extends TestCase {
     new CertificateValidator(trustRoot.getPublicKey()).validate(new ServerCertificate(serialized));
   }
 
+  @Test
   public void testBadSignature() throws Exception {
     ECKeyPair trustRoot = ECKeyPair.generate();
     ECKeyPair keyPair = ECKeyPair.generate();

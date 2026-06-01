@@ -5,13 +5,16 @@
 
 package org.signal.libsignal.metadata;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.UUID;
-import junit.framework.TestCase;
+import org.junit.Test;
 import org.signal.libsignal.metadata.SealedSessionCipher.DecryptionResult;
 import org.signal.libsignal.metadata.certificate.CertificateValidator;
 import org.signal.libsignal.metadata.certificate.InvalidCertificateException;
@@ -48,7 +51,7 @@ import org.signal.libsignal.protocol.state.SessionRecord;
 import org.signal.libsignal.protocol.state.SignedPreKeyRecord;
 import org.signal.libsignal.protocol.util.Hex;
 
-public class SealedSessionCipherTest extends TestCase {
+public class SealedSessionCipherTest {
 
   private static SignedPreKeyRecord generateSignedPreKey(
       IdentityKeyPair identityKeyPair, int signedPreKeyId) throws InvalidKeyException {
@@ -68,6 +71,7 @@ public class SealedSessionCipherTest extends TestCase {
     return new KyberPreKeyRecord(kyberPreKeyId, System.currentTimeMillis(), keyPair, signature);
   }
 
+  @Test
   public void testEncryptDecrypt()
       throws UntrustedIdentityException,
           InvalidKeyException,
@@ -140,6 +144,7 @@ public class SealedSessionCipherTest extends TestCase {
     }
   }
 
+  @Test
   public void testEncryptDecryptUntrusted() throws Exception {
     TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     TestInMemorySignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
@@ -179,6 +184,7 @@ public class SealedSessionCipherTest extends TestCase {
     }
   }
 
+  @Test
   public void testEncryptDecryptExpired() throws Exception {
     TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     TestInMemorySignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
@@ -217,6 +223,7 @@ public class SealedSessionCipherTest extends TestCase {
     }
   }
 
+  @Test
   public void testEncryptFromWrongIdentity() throws Exception {
     TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     TestInMemorySignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
@@ -254,6 +261,7 @@ public class SealedSessionCipherTest extends TestCase {
     }
   }
 
+  @Test
   public void testEncryptDecryptGroup()
       throws UntrustedIdentityException,
           InvalidKeyException,
@@ -340,6 +348,7 @@ public class SealedSessionCipherTest extends TestCase {
     assertTrue(Arrays.equals(plaintext.getGroupId().get(), new byte[] {42, 43}));
   }
 
+  @Test
   public void testEncryptGroupWithBadRegistrationId()
       throws UntrustedIdentityException,
           InvalidKeyException,
@@ -428,6 +437,7 @@ public class SealedSessionCipherTest extends TestCase {
     }
   }
 
+  @Test
   public void testEncryptGroupWithManyRecipients()
       throws UntrustedIdentityException,
           InvalidKeyException,
@@ -544,6 +554,7 @@ public class SealedSessionCipherTest extends TestCase {
     byte[] aliceMessage = aliceCipher.multiRecipientEncrypt(addresses, usmcFromAlice);
   }
 
+  @Test
   public void testEncryptGroupWithMissingSession()
       throws UntrustedIdentityException,
           InvalidKeyException,
@@ -641,6 +652,7 @@ public class SealedSessionCipherTest extends TestCase {
     }
   }
 
+  @Test
   public void testEncryptGroupWithExcludedRecipients()
       throws UntrustedIdentityException,
           InvalidKeyException,
@@ -773,6 +785,7 @@ public class SealedSessionCipherTest extends TestCase {
     assertEquals(0, aliceMessage[indexOfM / 2 + 17]);
   }
 
+  @Test
   public void testProtocolException()
       throws UntrustedIdentityException,
           InvalidKeyException,
@@ -857,6 +870,7 @@ public class SealedSessionCipherTest extends TestCase {
     }
   }
 
+  @Test
   public void testDecryptionErrorMessage()
       throws InvalidCertificateException,
           InvalidKeyException,

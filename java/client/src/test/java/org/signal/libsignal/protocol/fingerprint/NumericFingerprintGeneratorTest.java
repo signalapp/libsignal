@@ -5,13 +5,17 @@
 
 package org.signal.libsignal.protocol.fingerprint;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.util.Arrays;
-import junit.framework.TestCase;
+import org.junit.Test;
 import org.signal.libsignal.protocol.IdentityKey;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.util.Hex;
 
-public class NumericFingerprintGeneratorTest extends TestCase {
+public class NumericFingerprintGeneratorTest {
 
   private static final byte[] ALICE_IDENTITY =
       Hex.fromStringCondensedAssert(
@@ -37,6 +41,7 @@ public class NumericFingerprintGeneratorTest extends TestCase {
       Hex.fromStringCondensedAssert(
           "080212220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d1a220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df");
 
+  @Test
   public void testVectorsVersion1() throws Exception {
     IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY, 0);
     IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY, 0);
@@ -68,6 +73,7 @@ public class NumericFingerprintGeneratorTest extends TestCase {
             BOB_SCANNABLE_FINGERPRINT_V1));
   }
 
+  @Test
   public void testVectorsVersion2() throws Exception {
     IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY, 0);
     IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY, 0);
@@ -99,6 +105,7 @@ public class NumericFingerprintGeneratorTest extends TestCase {
             BOB_SCANNABLE_FINGERPRINT_V2));
   }
 
+  @Test
   public void testMatchingFingerprints()
       throws FingerprintVersionMismatchException, FingerprintParsingException {
     ECKeyPair aliceKeyPair = ECKeyPair.generate();
@@ -140,6 +147,7 @@ public class NumericFingerprintGeneratorTest extends TestCase {
     assertEquals(aliceFingerprint.getDisplayableFingerprint().getDisplayText().length(), 60);
   }
 
+  @Test
   public void testMismatchingFingerprints()
       throws FingerprintVersionMismatchException, FingerprintParsingException {
     ECKeyPair aliceKeyPair = ECKeyPair.generate();
@@ -183,6 +191,7 @@ public class NumericFingerprintGeneratorTest extends TestCase {
             .compareTo(aliceFingerprint.getScannableFingerprint().getSerialized()));
   }
 
+  @Test
   public void testMismatchingIdentifiers()
       throws FingerprintVersionMismatchException, FingerprintParsingException {
     ECKeyPair aliceKeyPair = ECKeyPair.generate();
@@ -224,6 +233,7 @@ public class NumericFingerprintGeneratorTest extends TestCase {
             .compareTo(aliceFingerprint.getScannableFingerprint().getSerialized()));
   }
 
+  @Test
   public void testDifferentVersionsMakeSameFingerPrintsButDifferentScannable() throws Exception {
     IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY, 0);
     IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY, 0);
@@ -252,6 +262,7 @@ public class NumericFingerprintGeneratorTest extends TestCase {
             aliceFingerprintV2.getScannableFingerprint().getSerialized()));
   }
 
+  @Test
   public void testDifferentVersionsThrowExpected() throws Exception {
     IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY, 0);
     IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY, 0);
@@ -289,6 +300,7 @@ public class NumericFingerprintGeneratorTest extends TestCase {
     }
   }
 
+  @Test
   public void testFingerprintParsingFail() throws Exception {
     IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY, 0);
     IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY, 0);

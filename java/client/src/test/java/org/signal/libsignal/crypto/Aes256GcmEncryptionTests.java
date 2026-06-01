@@ -5,13 +5,15 @@
 
 package org.signal.libsignal.crypto;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
-import junit.framework.TestCase;
+import org.junit.Test;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.util.Hex;
 
-public class Aes256GcmEncryptionTests extends TestCase {
-
+public class Aes256GcmEncryptionTests {
+  @Test
   public void testAesGcmKats() throws Exception {
     testAesGcmKat(
         "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308",
