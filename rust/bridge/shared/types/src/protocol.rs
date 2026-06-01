@@ -27,6 +27,7 @@ bridge_as_handle!(PreKeySignalMessage);
 bridge_as_handle!(
     PrivateKey,
     ffi = privatekey,
+    swift_type = "PrivateKey",
     jni = ECPrivateKey,
     jni_class = "org.signal.libsignal.protocol.ecc.ECPrivateKey"
 );

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import SignalFfi
 import XCTest
 
 @testable import LibSignalClient
@@ -107,6 +108,27 @@ extension AuthenticatedChatConnection: ChatServiceTestSetup {
             listener: NoOpListener(),
             grpcOverrides: grpcOverrides,
         )
+    }
+}
+
+extension ChatServiceTestBase {
+    func testSimpleGrpcRequest<Result>(
+        requestName: String,
+        expectedRequest: NSDictionary,
+        responseName: String,
+        response: NSDictionary,
+        sendRequest: @Sendable (Selector.Api) async throws -> Result,
+    ) async throws -> Result {
+        signal_testing_enable_deterministic_rng_for_testing()
+
+        let api = self.api
+        async let result = sendRequest(api)
+
+        let (request, id) = try await fakeRemote.getNextIncomingGrpcRequest()
+        XCTAssertEqual(request.getSingleGrpcMessage(requestName), expectedRequest)
+        try await fakeRemote.sendGrpcResponse(requestId: id, name: responseName, json: response)
+
+        return try await result
     }
 }
 

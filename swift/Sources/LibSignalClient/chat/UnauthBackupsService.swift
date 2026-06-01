@@ -18,6 +18,13 @@ public struct BackupAuth: Sendable {
     public let signingKey: PrivateKey
 }
 
+public struct BackupCdnCredentials: Sendable {
+    public var headers: [String: String]
+    public init(headers: [String: String]) {
+        self.headers = headers
+    }
+}
+
 public protocol UnauthBackupsService: Sendable {
     /// Get a messages backup upload form
     ///
@@ -76,6 +83,21 @@ internal protocol UnauthBackupsServiceImpl: Sendable {
         uploadSize: UInt64,
         rngForTesting: Int64,
     ) async throws -> UploadForm
+
+    @available(*, deprecated, message: "requires every connection to support H2")
+    func setBackupPublicKey(auth: BackupAuth, rngForTesting: Int64) async throws
+    @available(*, deprecated, message: "requires every connection to support H2")
+    func getBackupCdnCredentials(
+        auth: BackupAuth,
+        cdn: Int32,
+        rngForTesting: Int64
+    ) async throws -> BackupCdnCredentials
+    @available(*, deprecated, message: "requires every connection to support H2")
+    func getBackupSvrBCredentials(auth: BackupAuth, rngForTesting: Int64) async throws -> Auth
+    @available(*, deprecated, message: "requires every connection to support H2")
+    func refreshBackup(auth: BackupAuth, rngForTesting: Int64) async throws
+    @available(*, deprecated, message: "requires every connection to support H2")
+    func backupDeleteAll(auth: BackupAuth, rngForTesting: Int64) async throws
 }
 
 extension UnauthenticatedChatConnection: UnauthBackupsServiceImpl {
@@ -142,6 +164,76 @@ extension UnauthenticatedChatConnection: UnauthBackupsServiceImpl {
                 }
             }
         )
+    }
+
+    @available(*, deprecated, message: "requires every connection to support H2")
+    func setBackupPublicKey(auth: BackupAuth, rngForTesting: Int64) async throws {
+        try await NativeNice
+            .UnauthenticatedChatConnection_backup_set_public_key(
+                asyncContext: self.tokioAsyncContext,
+                chat: self,
+                credential: auth.credential,
+                serverKeys: auth.serverKeys,
+                signingKey: auth.signingKey,
+                rng: rngForTesting
+            )
+    }
+
+    @available(*, deprecated, message: "requires every connection to support H2")
+    func getBackupCdnCredentials(
+        auth: BackupAuth,
+        cdn: Int32,
+        rngForTesting: Int64
+    ) async throws -> BackupCdnCredentials {
+        try await NativeNice
+            .UnauthenticatedChatConnection_backup_get_cdn_credentials(
+                asyncContext: self.tokioAsyncContext,
+                chat: self,
+                credential: auth.credential,
+                serverKeys: auth.serverKeys,
+                signingKey: auth.signingKey,
+                cdn: cdn,
+                rng: rngForTesting
+            )
+    }
+
+    @available(*, deprecated, message: "requires every connection to support H2")
+    func getBackupSvrBCredentials(auth: BackupAuth, rngForTesting: Int64) async throws -> Auth {
+        let (username, password) = try await NativeNice.UnauthenticatedChatConnection_backup_get_svrb_credentials(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            credential: auth.credential,
+            serverKeys: auth.serverKeys,
+            signingKey: auth.signingKey,
+            rng: rngForTesting
+        )
+        return Auth(username: username, password: password)
+    }
+
+    @available(*, deprecated, message: "requires every connection to support H2")
+    func refreshBackup(auth: BackupAuth, rngForTesting: Int64) async throws {
+        try await NativeNice
+            .UnauthenticatedChatConnection_backup_refresh(
+                asyncContext: self.tokioAsyncContext,
+                chat: self,
+                credential: auth.credential,
+                serverKeys: auth.serverKeys,
+                signingKey: auth.signingKey,
+                rng: rngForTesting
+            )
+    }
+
+    @available(*, deprecated, message: "requires every connection to support H2")
+    func backupDeleteAll(auth: BackupAuth, rngForTesting: Int64) async throws {
+        try await NativeNice
+            .UnauthenticatedChatConnection_backup_delete_all(
+                asyncContext: self.tokioAsyncContext,
+                chat: self,
+                credential: auth.credential,
+                serverKeys: auth.serverKeys,
+                signingKey: auth.signingKey,
+                rng: rngForTesting
+            )
     }
 }
 

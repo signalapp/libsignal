@@ -529,7 +529,7 @@ async fn UnauthenticatedChatConnection_backup_get_media_upload_form(
     .await
 }
 
-#[bridge_io(TokioAsyncContext, nice = true, ffi = false)]
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn UnauthenticatedChatConnection_backup_set_public_key(
     chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
     credential: ::zkgroup::backups::BackupAuthCredential,
@@ -545,7 +545,7 @@ async fn UnauthenticatedChatConnection_backup_set_public_key(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, nice = true, ffi = false)]
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn UnauthenticatedChatConnection_backup_get_cdn_credentials(
     chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
     credential: ::zkgroup::backups::BackupAuthCredential,
@@ -565,7 +565,7 @@ async fn UnauthenticatedChatConnection_backup_get_cdn_credentials(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, nice = true, ffi = false)]
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn UnauthenticatedChatConnection_backup_get_svrb_credentials(
     chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
     credential: ::zkgroup::backups::BackupAuthCredential,
@@ -582,7 +582,7 @@ async fn UnauthenticatedChatConnection_backup_get_svrb_credentials(
         .map(|libsignal_net::auth::Auth { username, password }| (username, password))
 }
 
-#[bridge_io(TokioAsyncContext, nice = true, ffi = false)]
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn UnauthenticatedChatConnection_backup_refresh(
     chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
     credential: ::zkgroup::backups::BackupAuthCredential,
@@ -598,7 +598,7 @@ async fn UnauthenticatedChatConnection_backup_refresh(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, nice = true, ffi = false)]
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn UnauthenticatedChatConnection_backup_delete_all(
     chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
     credential: ::zkgroup::backups::BackupAuthCredential,

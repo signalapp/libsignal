@@ -39,6 +39,19 @@ internal protocol NiceReturnConverter {
     static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn
 }
 
+/// This is only used for Promises, which can't actually return `void` in C.
+internal struct VoidConverter: NiceReturnConverter {
+    typealias NiceReturn = Void
+    typealias FfiReturn = Bool
+
+    static func emptyFfiReturn() -> Bool {
+        false
+    }
+    static func convertReturn(consuming value: Bool) throws {
+        _ = value
+    }
+}
+
 internal struct DataConverter: NiceArgConverter, NiceReturnConverter {
     typealias NiceArg = Data
     typealias FfiArg = SignalBorrowedBuffer
@@ -179,5 +192,72 @@ internal struct BridgeHandleRefConverter<Ptr: SignalMutPointer, T: NativeHandleO
         return try arg.withNativeHandle {
             try thunk($0.const())
         }
+    }
+}
+
+internal struct ByteArrayConverter<T: ByteArray>: NiceArgConverter {
+    typealias NiceArg = T
+    typealias FfiArg = SignalBorrowedBuffer
+    typealias KeepAlive = NSData
+
+    static func convertArg(_ arg: T) -> (FfiArg, KeepAlive?) {
+        return DataConverter.convertArg(arg.serialize())
+    }
+    static func convertArgBorrowed<Result>(
+        _ arg: T,
+        _ thunk: (SignalBorrowedBuffer) throws -> Result
+    ) rethrows -> Result {
+        try arg.serialize().withBorrowed(thunk)
+    }
+}
+
+internal struct BackupCdnCredentialsConverter: NiceReturnConverter {
+    typealias NiceReturn = BackupCdnCredentials
+    typealias FfiReturn = SignalPairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr
+
+    static func emptyFfiReturn() -> FfiReturn {
+        .init()
+    }
+    static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
+        defer {
+            signal_free_list_of_strings(value.first)
+            signal_free_list_of_strings(value.second)
+        }
+
+        if value.first.length != value.second.length {
+            throw SignalError.internalError(
+                "BackupCdnCredentials headers do not have the same number of names and values"
+            )
+        }
+
+        let names = UnsafeBufferPointer(start: value.first.base, count: value.first.length)
+        let values = UnsafeBufferPointer(start: value.second.base, count: value.second.length)
+        var headers: [String: String] = .init(minimumCapacity: names.count)
+        for (nextName, nextValue) in zip(names, values) {
+            guard let nextName, let nextValue else {
+                throw SignalError.internalError("null pointer in BackupCdnCredentials headers")
+            }
+            // Note that we don't free the Rust-allocated strings here;
+            // signal_free_list_of_strings will take care of that.
+            headers[String(cString: nextName)] = String(cString: nextValue)
+        }
+
+        return BackupCdnCredentials(headers: headers)
+    }
+}
+
+// swiftlint:disable:next todo
+// TODO: Get to the point where we can make this generic.
+internal struct PairOfStringConverterAndStringConverter: NiceReturnConverter {
+    typealias NiceReturn = (String, String)
+    typealias FfiReturn = SignalPairOfCStringPtrCStringPtr
+
+    static func emptyFfiReturn() -> SignalPairOfCStringPtrCStringPtr {
+        .init()
+    }
+    static func convertReturn(consuming value: SignalPairOfCStringPtrCStringPtr) throws -> (String, String) {
+        let first = Result { try StringConverter.convertReturn(consuming: value.first) }
+        let second = Result { try StringConverter.convertReturn(consuming: value.second) }
+        return (try first.get(), try second.get())
     }
 }

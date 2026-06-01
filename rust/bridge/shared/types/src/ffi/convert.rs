@@ -523,23 +523,39 @@ impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSend
 }
 
 macro_rules! zkgroup_serialize_type {
-    ($($ty:ty),*$(,)?) => {$(
+    ($ty:ty, $swift_ty:expr) => {
         impl SimpleArgTypeInfo for $ty {
             type ArgType = BorrowedSliceOf<c_uchar>;
 
             fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
                 let slice = unsafe { foreign.as_slice()? };
-                let token = zkgroup::deserialize(slice).map_err(|_: ZkGroupDeserializationFailure| {
-                    IllegalArgumentError::new(concat!("bad ", stringify!($ty)))
-                })?;
+                let token =
+                    zkgroup::deserialize(slice).map_err(|_: ZkGroupDeserializationFailure| {
+                        IllegalArgumentError::new(concat!("bad ", stringify!($ty)))
+                    })?;
                 Ok(token)
             }
         }
-    )*};
+        #[cfg(feature = "metadata")]
+        impl NiceArgConverter for $ty {
+            fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+                SwiftArgConverter {
+                    nice_type: $swift_ty.to_string(),
+                    converter_type: format!("ByteArrayConverter<{}>", $swift_ty),
+                }
+            }
+        }
+    };
 }
-zkgroup_serialize_type!(GroupSendFullToken);
-zkgroup_serialize_type!(zkgroup::backups::BackupAuthCredential);
-zkgroup_serialize_type!(zkgroup::generic_server_params::GenericServerPublicParams);
+zkgroup_serialize_type!(GroupSendFullToken, "GroupSendFullToken");
+zkgroup_serialize_type!(
+    zkgroup::backups::BackupAuthCredential,
+    "BackupAuthCredential"
+);
+zkgroup_serialize_type!(
+    zkgroup::generic_server_params::GenericServerPublicParams,
+    "GenericServerPublicParams"
+);
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;
@@ -969,6 +985,15 @@ impl SimpleArgTypeInfo for RandomNumberGenerator {
         Ok(foreign.into())
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for RandomNumberGenerator {
+    fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        SwiftArgConverter {
+            nice_type: "Int64".to_owned(),
+            converter_type: "IdentityConverter".to_owned(),
+        }
+    }
+}
 
 impl ResultTypeInfo for crate::protocol::Timestamp {
     type ResultType = u64;
@@ -1252,6 +1277,15 @@ impl ResultTypeInfo for () {
         Ok(false)
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for () {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "Void".to_owned(),
+            converter_type: "VoidConverter".to_owned(),
+        }
+    }
+}
 
 impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for (A, B) {
     type ResultType = PairOf<A::ResultType, B::ResultType>;
@@ -1261,6 +1295,20 @@ impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for (A, B) {
             first: self.0.convert_into()?,
             second: self.1.convert_into()?,
         })
+    }
+}
+#[cfg(feature = "metadata")]
+impl<A: NiceResultConverter, B: NiceResultConverter> NiceResultConverter for (A, B) {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let a = A::register_swift_result_converter(ctx);
+        let b = B::register_swift_result_converter(ctx);
+        SwiftReturnConverter {
+            nice_type: format!("({}, {})", a.nice_type, b.nice_type),
+            // TODO: Keep track of cbindgen-monomorphized pair types, generate conformances to a
+            // Pair protocol, and then replace all these bespoke converters with a single generic
+            // PairConverter.
+            converter_type: format!("PairOf{}And{}", a.converter_type, b.converter_type),
+        }
     }
 }
 
@@ -1352,7 +1400,7 @@ impl ResultTypeInfo for UploadForm {
 }
 
 impl ResultTypeInfo for libsignal_net_chat::api::backups::CdnCredentials {
-    type ResultType = PairOf<OwnedBufferOf<*const c_char>, OwnedBufferOf<*const c_char>>;
+    type ResultType = PairOf<OwnedBufferOf<CStringPtr>, OwnedBufferOf<CStringPtr>>;
 
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         let Self { headers } = self;
@@ -1366,6 +1414,15 @@ impl ResultTypeInfo for libsignal_net_chat::api::backups::CdnCredentials {
             first: header_keys.into_boxed_slice().into(),
             second: header_values.into_boxed_slice().into(),
         })
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for libsignal_net_chat::api::backups::CdnCredentials {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "BackupCdnCredentials".to_owned(),
+            converter_type: "BackupCdnCredentialsConverter".to_owned(),
+        }
     }
 }
 
@@ -1703,10 +1760,10 @@ macro_rules! ffi_result_type {
     (f64) => (f64);
     (Option<u64>) => (u64);
     (bool) => (bool);
-    (&str) => (*const std::ffi::c_char);
-    (String) => (*const std::ffi::c_char);
-    (Option<String>) => (*const std::ffi::c_char);
-    (Option<&str>) => (*const std::ffi::c_char);
+    (&str) => (ffi::CStringPtr);
+    (String) => (ffi::CStringPtr);
+    (Option<String>) => (ffi::CStringPtr);
+    (Option<&str>) => (ffi::CStringPtr);
     (Timestamp) => (u64);
     (LogLevel) => (LogLevel);
     (Uuid) => (ffi::Uuid);
@@ -1733,7 +1790,7 @@ macro_rules! ffi_result_type {
     (DisconnectCause) => (*mut ffi::SignalFfiError);
     (PreKeysResponse) => (ffi::FfiPreKeysResponse);
     (UploadForm) => (ffi::FfiUploadForm);
-    (CdnCredentials) => (ffi::PairOf<ffi::OwnedBufferOf<*const std::ffi::c_char>, ffi::OwnedBufferOf<*const std::ffi::c_char> >);
+    (CdnCredentials) => (ffi::PairOf<ffi::OwnedBufferOf<ffi::CStringPtr>, ffi::OwnedBufferOf<ffi::CStringPtr> >);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
