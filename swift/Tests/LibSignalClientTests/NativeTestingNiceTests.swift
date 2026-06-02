@@ -11,58 +11,29 @@ import Foundation
 import SignalFfi
 import Testing
 
-extension NiceArgConverter {
-    fileprivate static func testConversion(
-        items: any Sequence<NiceArg>,
-        toString: (NiceArg) throws -> String,
-        nativeToString: (NiceArg) throws -> String,
-        rawNativeToString: (UnsafeMutablePointer<UnsafePointer<CChar>?>?, FfiArg) -> SignalFfiErrorRef?,
-        nativeIdentity: (NiceArg) throws -> NiceArg,
+struct NativeTestingNiceTests {
+    private func testConversion<Item: Equatable>(
+        items: any Sequence<Item>,
+        toString: (Item) throws -> String,
+        nativeToString: (Item) throws -> String,
+        nativeIdentity: (Item) throws -> Item,
     ) throws {
         for item in items {
             let swiftString = try toString(item)
             let nativeString = try nativeToString(item)
             #expect(swiftString == nativeString)
             let actualIdentity = try nativeIdentity(item)
-            let actualIdentityString = try toString(actualIdentity)
-            #expect(actualIdentityString == nativeString)
-            // Manually check both the borrowed and keep alive forms
-            let rawBorrowedNativeString = try self.convertArgBorrowed(item) { itemFfi in
-                var rawOutput = StringConverter.emptyFfiReturn()
-                try checkError(
-                    rawNativeToString(
-                        &rawOutput,
-                        itemFfi,
-                    )
-                )
-                return try StringConverter.convertReturn(consuming: rawOutput)
-            }
-            #expect(swiftString == rawBorrowedNativeString)
-            let rawKeepAliveNativeString = try self.genericArgBorrowed(item) { itemFfi in
-                var rawOutput = StringConverter.emptyFfiReturn()
-                try checkError(
-                    rawNativeToString(
-                        &rawOutput,
-                        itemFfi,
-                    )
-                )
-                return try StringConverter.convertReturn(consuming: rawOutput)
-            }
-            #expect(swiftString == rawKeepAliveNativeString)
+            #expect(item == actualIdentity)
         }
     }
-}
-
-struct NativeTestingNiceTests {
     @Test
     func testString() throws {
-        try StringConverter.testConversion(
+        try testConversion(
             items: ["", "abc", "îüéè"],
             toString: { $0 },
             nativeToString: {
                 try NativeTestingNice.TESTING_conversion_string_identity(x: $0)
             },
-            rawNativeToString: SignalFfi.signal_testing_conversion_string_identity,
             nativeIdentity: {
                 try NativeTestingNice.TESTING_conversion_string_identity(x: $0)
             },
@@ -70,47 +41,43 @@ struct NativeTestingNiceTests {
     }
     @Test
     func testBool() throws {
-        try IdentityConverter<Bool>.testConversion(
+        try testConversion(
             items: [true, false],
             toString: { "\($0)" },
             nativeToString: { try NativeTestingNice.TESTING_conversion_bool_to_string(x: $0) },
-            rawNativeToString: SignalFfi.signal_testing_conversion_bool_to_string,
             nativeIdentity: { try NativeTestingNice.TESTING_conversion_bool_identity(x: $0) }
         )
     }
     @Test
     func testU8() throws {
-        try IdentityConverter<UInt8>.testConversion(
+        try testConversion(
             items: UInt8.min...UInt8.max,
             toString: { "\($0)" },
             nativeToString: { try NativeTestingNice.TESTING_conversion_u8_to_string(x: $0) },
-            rawNativeToString: SignalFfi.signal_testing_conversion_u8_to_string,
             nativeIdentity: { try NativeTestingNice.TESTING_conversion_u8_identity(x: $0) }
         )
     }
     @Test
     func testU16() throws {
-        try IdentityConverter<UInt16>.testConversion(
+        try testConversion(
             items: UInt16.min...UInt16.max,
             toString: { "\($0)" },
             nativeToString: { try NativeTestingNice.TESTING_conversion_u16_to_string(x: $0) },
-            rawNativeToString: SignalFfi.signal_testing_conversion_u16_to_string,
             nativeIdentity: { try NativeTestingNice.TESTING_conversion_u16_identity(x: $0) }
         )
     }
     @Test
     func testI32() throws {
-        try IdentityConverter<Int32>.testConversion(
+        try testConversion(
             items: -1024...1024,
             toString: { "\($0)" },
             nativeToString: { try NativeTestingNice.TESTING_conversion_i32_to_string(x: $0) },
-            rawNativeToString: SignalFfi.signal_testing_conversion_i32_to_string,
             nativeIdentity: { try NativeTestingNice.TESTING_conversion_i32_identity(x: $0) }
         )
     }
     @Test
     func testServiceId() throws {
-        try ServiceIdConverter.testConversion(
+        try testConversion(
             items: [
                 Aci(fromUUID: UUID()),
                 Pni(fromUUID: UUID()),
@@ -119,71 +86,16 @@ struct NativeTestingNiceTests {
             ],
             toString: { $0.serviceIdString },
             nativeToString: { try NativeTestingNice.TESTING_conversion_ServiceId_to_string(x: $0) },
-            rawNativeToString: SignalFfi.signal_testing_conversion_service_id_to_string,
             nativeIdentity: { try NativeTestingNice.TESTING_conversion_ServiceId_identity(x: $0) }
         )
     }
     @Test
     func testData() throws {
-        try DataConverter.testConversion(
+        try testConversion(
             items: (0..<10).lazy.map { count in Data((0..<(1 << count)).map { _ in UInt8.random(in: 0...255) }) },
             toString: { $0.base64EncodedString() },
             nativeToString: { try NativeTestingNice.TESTING_conversion_Data_to_string(x: $0) },
-            rawNativeToString: SignalFfi.signal_testing_conversion_data_to_string,
             nativeIdentity: { try NativeTestingNice.TESTING_conversion_Data_identity(x: $0) }
-        )
-    }
-    @Test
-    func testMyTestPoint() throws {
-        try DerivedArgConverterMyTestPoint.testConversion(
-            items: [MyTestPoint(1, 2)],
-            toString: { "[\($0._0),\($0._1)]" },
-            nativeToString: { try NativeTestingNice.TESTING_MyTestPoint_to_string(x: $0) },
-            rawNativeToString: SignalFfi.signal_testing_my_test_point_to_string,
-            nativeIdentity: { try NativeTestingNice.TESTING_MyTestPoint_identity(x: $0) },
-        )
-    }
-    @Test
-    func testMyTestStruct() throws {
-        try DerivedArgConverterMyTestStruct.testConversion(
-            items: [MyTestStruct(myNumericField: 123, myStringField: "string!")],
-            toString: { "{\"myNumericField\":\($0.myNumericField),\"myStringField\":\"\($0.myStringField)\"}" },
-            nativeToString: { try NativeTestingNice.TESTING_MyTestStruct_to_string(x: $0) },
-            rawNativeToString: SignalFfi.signal_testing_my_test_struct_to_string,
-            nativeIdentity: { try NativeTestingNice.TESTING_MyTestStruct_identity(x: $0) },
-        )
-    }
-    @Test
-    func testMyTestEnum() throws {
-        try DerivedArgConverterMyTestEnum.testConversion(
-            items: [
-                .unit,
-                .single(73),
-                .record(
-                    personName: "Person!",
-                    personAge: 101,
-                    position: MyTestPoint(3, 4),
-                    funStruct: MyTestStruct(myNumericField: 847, myStringField: "string!")
-                ),
-                .singleNamed(x: 847),
-                .double(8, 9),
-            ],
-            toString: { value in
-                return switch value {
-                case .double(let x, let y): #"{"double":[\#(x),\#(y)]}"#
-                case .record(let personName, let personAge, let position, let funStruct):
-                    #"{"record":{"personName":"\#(personName)","personAge":\#(personAge),"#
-                        + #""position":[\#(position._0),\#(position._1)],"#
-                        + #""funStruct":{"myNumericField":\#(funStruct.myNumericField),"#
-                        + #""myStringField":"\#(funStruct.myStringField)"}}}"#
-                case .single(let x): #"{"single":\#(x)}"#
-                case .singleNamed(let x): #"{"singleNamed":{"x":\#(x)}}"#
-                case .unit: #""unit""#
-                }
-            },
-            nativeToString: { try NativeTestingNice.TESTING_MyTestEnum_to_string(x: $0) },
-            rawNativeToString: SignalFfi.signal_testing_my_test_enum_to_string,
-            nativeIdentity: { try NativeTestingNice.TESTING_MyTestEnum_identity(x: $0) },
         )
     }
     @Test

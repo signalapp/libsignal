@@ -241,112 +241,6 @@ typedef struct {
 } SignalMutPointerTestingIntBox;
 
 typedef struct {
-  int32_t _0;
-  int32_t _1;
-} SignalMyTestPointFfiResult;
-
-typedef struct {
-  int32_t my_numeric_field;
-  SignalCStringPtr my_string_field;
-} SignalMyTestStructFfiResult;
-
-typedef enum {
-  SignalMyTestEnumFfiResultUnit,
-  SignalMyTestEnumFfiResultSingle,
-  SignalMyTestEnumFfiResultSingleNamed,
-  SignalMyTestEnumFfiResultDouble,
-  SignalMyTestEnumFfiResultRecord,
-} SignalMyTestEnumFfiResult_Tag;
-
-typedef struct {
-
-} SignalMyTestEnumFfiResultSignalUnit_Body;
-
-typedef struct {
-  int32_t _0;
-} SignalMyTestEnumFfiResultSignalSingle_Body;
-
-typedef struct {
-  int32_t x;
-} SignalMyTestEnumFfiResultSignalSingleNamed_Body;
-
-typedef struct {
-  int32_t _0;
-  int32_t _1;
-} SignalMyTestEnumFfiResultSignalDouble_Body;
-
-typedef struct {
-  SignalCStringPtr person_name;
-  int32_t person_age;
-  SignalMyTestPointFfiResult position;
-  SignalMyTestStructFfiResult fun_struct;
-} SignalMyTestEnumFfiResultSignalRecord_Body;
-
-typedef struct {
-  SignalMyTestEnumFfiResult_Tag tag;
-  union {
-    SignalMyTestEnumFfiResultSignalUnit_Body unit;
-    SignalMyTestEnumFfiResultSignalSingle_Body single;
-    SignalMyTestEnumFfiResultSignalSingleNamed_Body single_named;
-    SignalMyTestEnumFfiResultSignalDouble_Body double_;
-    SignalMyTestEnumFfiResultSignalRecord_Body record;
-  };
-} SignalMyTestEnumFfiResult;
-
-typedef struct {
-  int32_t _0;
-  int32_t _1;
-} SignalMyTestPointFfiArg;
-
-typedef struct {
-  int32_t my_numeric_field;
-  const char *my_string_field;
-} SignalMyTestStructFfiArg;
-
-typedef enum {
-  SignalMyTestEnumFfiArgUnit,
-  SignalMyTestEnumFfiArgSingle,
-  SignalMyTestEnumFfiArgSingleNamed,
-  SignalMyTestEnumFfiArgDouble,
-  SignalMyTestEnumFfiArgRecord,
-} SignalMyTestEnumFfiArg_Tag;
-
-typedef struct {
-
-} SignalMyTestEnumFfiArgSignalUnit_Body;
-
-typedef struct {
-  int32_t _0;
-} SignalMyTestEnumFfiArgSignalSingle_Body;
-
-typedef struct {
-  int32_t x;
-} SignalMyTestEnumFfiArgSignalSingleNamed_Body;
-
-typedef struct {
-  int32_t _0;
-  int32_t _1;
-} SignalMyTestEnumFfiArgSignalDouble_Body;
-
-typedef struct {
-  const char *person_name;
-  int32_t person_age;
-  SignalMyTestPointFfiArg position;
-  SignalMyTestStructFfiArg fun_struct;
-} SignalMyTestEnumFfiArgSignalRecord_Body;
-
-typedef struct {
-  SignalMyTestEnumFfiArg_Tag tag;
-  union {
-    SignalMyTestEnumFfiArgSignalUnit_Body unit;
-    SignalMyTestEnumFfiArgSignalSingle_Body single;
-    SignalMyTestEnumFfiArgSignalSingleNamed_Body single_named;
-    SignalMyTestEnumFfiArgSignalDouble_Body double_;
-    SignalMyTestEnumFfiArgSignalRecord_Body record;
-  };
-} SignalMyTestEnumFfiArg;
-
-typedef struct {
   int32_t first;
   SignalCStringPtr second;
 } SignalPairOfi32CStringPtr;
@@ -540,18 +434,6 @@ SignalFfiError *signal_testing_key_trans_fatal_verification_failure(void);
 SignalFfiError *signal_testing_key_trans_non_fatal_verification_failure(void);
 
 SignalFfiError *signal_testing_key_trans_stored_account_data(SignalOwnedBuffer *out);
-
-SignalFfiError *signal_testing_my_test_enum_identity(SignalMyTestEnumFfiResult *out, SignalMyTestEnumFfiArg x);
-
-SignalFfiError *signal_testing_my_test_enum_to_string(SignalCStringPtr *out, SignalMyTestEnumFfiArg x);
-
-SignalFfiError *signal_testing_my_test_point_identity(SignalMyTestPointFfiResult *out, SignalMyTestPointFfiArg x);
-
-SignalFfiError *signal_testing_my_test_point_to_string(SignalCStringPtr *out, SignalMyTestPointFfiArg x);
-
-SignalFfiError *signal_testing_my_test_struct_identity(SignalMyTestStructFfiResult *out, SignalMyTestStructFfiArg x);
-
-SignalFfiError *signal_testing_my_test_struct_to_string(SignalCStringPtr *out, SignalMyTestStructFfiArg x);
 
 SignalFfiError *signal_testing_other_testing_handle_type_get_value(SignalCStringPtr *out, SignalConstPointerOtherTestingHandleType handle);
 

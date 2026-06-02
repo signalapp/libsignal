@@ -20,12 +20,9 @@ internal protocol NiceArgConverter {
 }
 
 extension NiceArgConverter {
-    static internal func genericArgBorrowed<Result>(
-        _ arg: NiceArg,
-        _ thunk: (FfiArg) throws -> Result
-    ) rethrows -> Result {
+    static func convertArgBorrowed<Result>(_ arg: NiceArg, _ thunk: (FfiArg) throws -> Result) rethrows -> Result {
         return try withExtendedLifetime(arg) {
-            let (ffi, ka) = convertArg(arg)
+            let (ffi, ka) = self.convertArg(arg)
             return try withExtendedLifetime(ka) {
                 return try thunk(ffi)
             }

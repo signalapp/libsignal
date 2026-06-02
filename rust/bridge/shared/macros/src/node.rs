@@ -13,8 +13,7 @@ use syn_mid::Signature;
 
 use crate::BridgingKind;
 use crate::util::{
-    DeriveInputInfo, Impl, arg_type_info_storage_decl, crates, extract_arg_names_and_types,
-    nice_type_metadata, result_type,
+    DeriveInputInfo, Impl, crates, extract_arg_names_and_types, nice_type_metadata, result_type,
 };
 
 fn bridge_fn_body(orig_name: &Ident, input_args: &[(&Ident, &Type)]) -> TokenStream2 {
@@ -339,6 +338,21 @@ fn derive_bridged_as_value_arg(input: &DeriveInput) -> syn::Result<TokenStream2>
     impl_async_arg_type_info
         .extra_params
         .push(parse_quote!('storage));
+    // Because the arg impl requires intermediate storage, we introduce the ArgStoredType.
+    //
+    // For structs, it looks like:
+    // enum Foo<T> { Foo(T) } (with a matching Finalize impl)
+    // For enums, it looks like:
+    // enum Foo<A, B, ...> { A(A), B(B), ... } (again, with a matching finalize impl)
+    //
+    // We need a custom type because:
+    // 1. For enums, the intermediate data is distinct for each variant
+    // 2. We could avoid declaring a fresh type, and just use nested Eithers, but that'd be more
+    //    annoying than just declaring this type.
+    //
+    // We use one generic type per variant (each containing a tuple), because it's easier to work
+    // with in our macros than it'd be to have one generic type for each field.
+    let stored_decl_name = format_ident!("{ident}NodeArgStoredType");
     let DeriveInputInfo {
         patterns: field_patterns,
         field_names,
@@ -384,11 +398,12 @@ fn derive_bridged_as_value_arg(input: &DeriveInput) -> syn::Result<TokenStream2>
         &parse_quote!(register_ts_arg_converter),
         &mut impl_nice_arg_converter.extra_where,
     )?;
-    let stored_decl_name = format_ident!("{ident}NodeArgStoredType");
-    let stored_decl = arg_type_info_storage_decl(&stored_decl_name, input);
     Ok(quote! {
         #[cfg(feature = "node")]
-        #stored_decl
+        #[doc(hidden)]
+        pub enum #stored_decl_name<#(#variant_names),*> {
+            #(#variant_names(#variant_names)),*
+        }
         #[cfg(feature = "node")]
         impl<
             #(#variant_names: ::neon::types::Finalize),*

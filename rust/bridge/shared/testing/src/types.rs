@@ -553,17 +553,17 @@ pub enum MyTestEnum {
     },
 }
 
-#[bridge_fn(nice = true, jni = false)]
+#[bridge_fn(nice = true, jni = false, ffi = false)]
 pub fn TESTING_MyTestPoint_identity(x: MyTestPoint) -> MyTestPoint {
     x
 }
 
-#[bridge_fn(nice = true, jni = false)]
+#[bridge_fn(nice = true, jni = false, ffi = false)]
 pub fn TESTING_MyTestStruct_identity(x: MyTestStruct) -> MyTestStruct {
     x
 }
 
-#[bridge_fn(nice = true, jni = false)]
+#[bridge_fn(nice = true, jni = false, ffi = false)]
 pub fn TESTING_MyTestEnum_identity(x: MyTestEnum) -> MyTestEnum {
     x
 }
@@ -583,17 +583,17 @@ pub async fn TESTING_MyTestEnum_identity_async(x: MyTestEnum) -> MyTestEnum {
     x
 }
 
-#[bridge_fn(nice = true, jni = false)]
+#[bridge_fn(nice = true, jni = false, ffi = false)]
 pub fn TESTING_MyTestPoint_to_string(x: MyTestPoint) -> String {
     serde_json::to_string(&x).expect("JSON succeeds")
 }
 
-#[bridge_fn(nice = true, jni = false)]
+#[bridge_fn(nice = true, jni = false, ffi = false)]
 pub fn TESTING_MyTestStruct_to_string(x: MyTestStruct) -> String {
     serde_json::to_string(&x).expect("JSON succeeds")
 }
 
-#[bridge_fn(nice = true, jni = false)]
+#[bridge_fn(nice = true, jni = false, ffi = false)]
 pub fn TESTING_MyTestEnum_to_string(x: MyTestEnum) -> String {
     serde_json::to_string(&x).expect("JSON succeeds")
 }

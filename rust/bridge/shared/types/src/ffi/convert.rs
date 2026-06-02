@@ -41,20 +41,13 @@ use crate::support::{
 
 #[cfg(feature = "metadata")]
 mod metadata {
-    use crate::metadata::NiceType;
     pub use crate::metadata::ffi::*;
 
     pub trait NiceArgConverter {
         fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter;
-        fn register_swift_nice_type(ctx: &mut SwiftMetadataContext) -> NiceType {
-            Self::register_swift_arg_converter(ctx).nice_type
-        }
     }
     pub trait NiceResultConverter {
         fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter;
-        fn register_swift_nice_type(ctx: &mut SwiftMetadataContext) -> NiceType {
-            Self::register_swift_result_converter(ctx).nice_type
-        }
     }
 }
 #[cfg(feature = "metadata")]
@@ -1300,7 +1293,6 @@ impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for (A, B) {
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(PairOf {
             first: self.0.convert_into()?,
-            // TODO: if self.1.convert_into() fails, we may leak memory
             second: self.1.convert_into()?,
         })
     }
@@ -1334,7 +1326,6 @@ where
         Ok(OptionalPairOf {
             present: true,
             first: value.0.convert_into()?,
-            // TODO: if self.1.convert_into() fails, we may leak memory
             second: value.1.convert_into()?,
         })
     }
@@ -1713,11 +1704,6 @@ macro_rules! ffi_arg_type {
 
     (TestingFutureCancellationGuard) => (ffi_arg_type!(&TestingFutureCancellationCounter));
 
-    // Derived types
-    (MyTestStruct) => (MyTestStructFfiArg);
-    (MyTestPoint) => (MyTestPointFfiArg);
-    (MyTestEnum) => (MyTestEnumFfiArg);
-
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
     (Serialized<$typ:ident>) => (*const [std::ffi::c_uchar; ::paste::paste!([<$typ:snake:upper _LEN>])]);
@@ -1805,11 +1791,6 @@ macro_rules! ffi_result_type {
     (PreKeysResponse) => (ffi::FfiPreKeysResponse);
     (UploadForm) => (ffi::FfiUploadForm);
     (CdnCredentials) => (ffi::PairOf<ffi::OwnedBufferOf<ffi::CStringPtr>, ffi::OwnedBufferOf<ffi::CStringPtr> >);
-
-    // Derived types
-    (MyTestStruct) => (MyTestStructFfiResult);
-    (MyTestPoint) => (MyTestPointFfiResult);
-    (MyTestEnum) => (MyTestEnumFfiResult);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

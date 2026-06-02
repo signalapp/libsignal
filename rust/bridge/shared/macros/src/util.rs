@@ -386,27 +386,3 @@ pub(crate) fn nice_type_metadata(
         Data::Union(_) => unreachable!("checked earlier"),
     })
 }
-
-/// Because the arg impl requires intermediate storage, we introduce the ArgStoredType.
-///
-/// For structs, it looks like:
-/// `enum Foo<T> { Foo(T) }`
-/// For enums, it looks like:
-/// `enum Foo<A, B, ...> { A(A), B(B), ... }`
-///
-/// We need a custom type because:
-/// 1. For enums, the intermediate data is distinct for each variant
-/// 2. We could avoid declaring a fresh type, and just use nested Eithers, but that'd be more
-///    annoying than just declaring this type.
-///
-/// We use one generic type per variant (each containing a tuple), because it's easier to work
-/// with in our macros than it'd be to have one generic type for each field.
-pub(crate) fn arg_type_info_storage_decl(name: &Ident, input: &DeriveInput) -> TokenStream2 {
-    let DeriveInputInfo { variant_names, .. } = input.into();
-    quote! {
-        #[doc(hidden)]
-        pub enum #name<#(#variant_names),*> {
-            #(#variant_names(#variant_names)),*
-        }
-    }
-}

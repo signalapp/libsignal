@@ -1,5 +1,4 @@
 disabled_rules:
-- blanket_disable_command
 - closure_parameter_position  # swift-format takes precedence here
 - cyclomatic_complexity
 - empty_enum_arguments
