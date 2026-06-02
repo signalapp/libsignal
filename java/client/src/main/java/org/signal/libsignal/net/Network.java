@@ -195,26 +195,6 @@ public class Network {
   }
 
   /**
-   * Enables or disables built-in reflector proxy mode for all new connections (until changed).
-   *
-   * <p>If enabled, <em>new</em> connections may be routed through Signal's built-in reflector
-   * tunnels. If another proxy is already configured (via {@link #setProxy} or {@link
-   * #setInvalidProxy}), this method has no effect; the existing proxy configuration takes
-   * precedence. Existing connections and services will continue with the setting they were created
-   * with. (In particular, changing this setting will not affect any existing {@link ChatConnection
-   * ChatConnections}.)
-   *
-   * <p>Reflector proxy mode is off by default.
-   *
-   * <p>This is a temporary entry point intended for internal dogfooding before the reflector path
-   * is folded into {@link #setCensorshipCircumventionEnabled}; it is expected to be removed in a
-   * future release.
-   */
-  public void INTERNAL_TESTING_setReflectorProxy(boolean enabled) {
-    this.connectionManager.INTERNAL_TESTING_setReflectorProxy(enabled);
-  }
-
-  /**
    * Updates libsignal's remote configuration settings with the specified build variant.
    *
    * <p>The provided configuration map must conform to the following requirements:
@@ -468,10 +448,6 @@ public class Network {
 
     private void setCensorshipCircumventionEnabled(boolean enabled) {
       guardedRun(h -> Native.ConnectionManager_set_censorship_circumvention_enabled(h, enabled));
-    }
-
-    private void INTERNAL_TESTING_setReflectorProxy(boolean enabled) {
-      guardedRun(h -> Native.ConnectionManager_INTERNAL_TESTING_set_reflector_proxy(h, enabled));
     }
 
     private void setRemoteConfig(Map<String, String> remoteConfig, BuildVariant buildVariant) {

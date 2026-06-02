@@ -164,23 +164,6 @@ public class Net {
         self.connectionManager.setCensorshipCircumventionEnabled(enabled)
     }
 
-    /// Enables or disables built-in reflector proxy mode for all new connections (until changed).
-    ///
-    /// If enabled, *new* connections may be routed through Signal's built-in reflector tunnels.
-    /// If another proxy is already configured (via ``Net/setProxy(host:port:)`` or
-    /// ``Net/setInvalidProxy()``), this method has no effect; the existing proxy configuration
-    /// takes precedence. Existing connections and services will continue with the setting they were
-    /// created with. (In particular, changing this setting will not affect any existing
-    /// ``ChatConnection``s.)
-    ///
-    /// Reflector proxy mode is off by default.
-    ///
-    /// Temporary entry point for internal dogfooding before the reflector path is folded into
-    /// ``Net/setCensorshipCircumventionEnabled(_:)``; expected to be removed in a future release.
-    public func INTERNAL_TESTING_setReflectorProxy(_ enabled: Bool) {
-        self.connectionManager.INTERNAL_TESTING_setReflectorProxy(enabled)
-    }
-
     /// Updates the remote configuration settings used by libsignal with the specified build variant.
     ///
     /// The provided dictionary should be preprocessed as follows:
@@ -535,12 +518,6 @@ internal class ConnectionManager: NativeHandleOwner<SignalMutPointerConnectionMa
     internal func setCensorshipCircumventionEnabled(_ enabled: Bool) {
         self.withNativeHandle {
             failOnError(signal_connection_manager_set_censorship_circumvention_enabled($0.const(), enabled))
-        }
-    }
-
-    internal func INTERNAL_TESTING_setReflectorProxy(_ enabled: Bool) {
-        self.withNativeHandle {
-            failOnError(signal_connection_manager_internal_testing_set_reflector_proxy($0.const(), enabled))
         }
     }
 

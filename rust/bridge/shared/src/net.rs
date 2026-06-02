@@ -116,14 +116,6 @@ fn ConnectionManager_set_proxy(
 }
 
 #[bridge_fn]
-fn ConnectionManager_INTERNAL_TESTING_set_reflector_proxy(
-    connection_manager: &ConnectionManager,
-    enabled: bool,
-) {
-    connection_manager.INTERNAL_TESTING_set_reflector_proxy(enabled)
-}
-
-#[bridge_fn]
 fn ConnectionManager_set_invalid_proxy(connection_manager: &ConnectionManager) {
     connection_manager.set_invalid_proxy()
 }

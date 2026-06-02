@@ -218,7 +218,6 @@ export const NetRemoteConfigKeys = [
   'chatRequestConnectionCheckTimeoutMillis',
   'useH2ForUnauthChat',
   'useH2ForAuthChat',
-  'forceReflectorsProxyOnlyForTesting',
   'grpc.AccountsAnonymousLookupUsernameHash',
   'grpc.AccountsAnonymousLookupUsernameLink.2',
   'grpc.AccountsAnonymousCheckAccountExistence.2',
@@ -565,10 +564,6 @@ type NativeFunctions = {
     len: bigint,
     purpose: number
   ) => Promise<ComparableBackup>;
-  ConnectionManager_INTERNAL_TESTING_set_reflector_proxy: (
-    connection_manager: Wrapper<ConnectionManager>,
-    enabled: boolean
-  ) => void;
   ConnectionManager_clear_proxy: (
     connection_manager: Wrapper<ConnectionManager>
   ) => void;
@@ -2498,7 +2493,6 @@ const {
   ComparableBackup_GetComparableString,
   ComparableBackup_GetUnknownFields,
   ComparableBackup_ReadUnencrypted,
-  ConnectionManager_INTERNAL_TESTING_set_reflector_proxy,
   ConnectionManager_clear_proxy,
   ConnectionManager_new,
   ConnectionManager_on_network_change,
@@ -3115,7 +3109,6 @@ export {
   ComparableBackup_GetComparableString,
   ComparableBackup_GetUnknownFields,
   ComparableBackup_ReadUnencrypted,
-  ConnectionManager_INTERNAL_TESTING_set_reflector_proxy,
   ConnectionManager_clear_proxy,
   ConnectionManager_new,
   ConnectionManager_on_network_change,

@@ -346,27 +346,6 @@ export class Net {
   }
 
   /**
-   * Enables or disables built-in reflector proxy mode for all new connections (until changed).
-   *
-   * If enabled, *new* connections may be routed through Signal's built-in reflector tunnels. If
-   * another proxy is already configured (via {@link Net#setProxy} or {@link Net#setInvalidProxy}),
-   * this method has no effect; the existing proxy configuration takes precedence. Existing
-   * connections and services will continue with the setting they were created with. (In particular,
-   * changing this setting will not affect any existing {@link ChatConnection ChatConnections}.)
-   *
-   * Reflector proxy mode is off by default.
-   *
-   * Temporary entry point for internal dogfooding before the reflector path is folded into
-   * {@link Net#setCensorshipCircumventionEnabled}; expected to be removed in a future release.
-   */
-  public INTERNAL_TESTING_setReflectorProxy(enabled: boolean): void {
-    Native.ConnectionManager_INTERNAL_TESTING_set_reflector_proxy(
-      this._connectionManager,
-      enabled
-    );
-  }
-
-  /**
    * Sets the proxy host to be used for all new connections (until overridden).
    *
    * Sets a server to be used to proxy all new outgoing connections. The proxy can be overridden by
