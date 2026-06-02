@@ -232,7 +232,10 @@ impl Connector<Box<ReflectorProxyRoute<IpAddr>>, ()> for super::StatelessProxied
             ws::WithoutResponseHeaders::new(),
             StatelessTlsConnector::default(),
         );
-        log::info!("[{log_tag}] attempting connection over reflector proxy");
+        let https_route = &outer.inner;
+        let http_fragment = &https_route.fragment;
+        let proxy_name = http_fragment.front_name.unwrap_or("unknown");
+        log::info!("[{log_tag}] attempting connection over reflector proxy ({proxy_name})");
         match connector.connect(outer, log_tag).await {
             Ok(websocket) => Ok(ReflectorStream::new(websocket)),
             Err(WebSocketConnectError::Transport(error)) => Err(error),

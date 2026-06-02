@@ -220,7 +220,12 @@ impl<Transport: UsesTransport<UnresolvedTransportRoute>> DescribeForLog
             DirectOrProxyRoute::Direct(_) => None,
             DirectOrProxyRoute::Proxy(proxy) => Some(ConnectionProxyKind::from(proxy)),
         };
-        let front = http_fragment.front_name;
+        let front = match direct_or_proxy {
+            DirectOrProxyRoute::Proxy(ConnectionProxyRoute::Reflector(reflector)) => {
+                reflector.outer.inner.fragment.front_name
+            }
+            _ => http_fragment.front_name,
+        };
 
         UnresolvedRouteDescription {
             front,
