@@ -214,7 +214,6 @@ pub mod node {
 pub mod jni {
     use std::collections::BTreeMap;
 
-    use linkme::distributed_slice;
     use serde::Serialize;
 
     use super::*;
@@ -304,19 +303,18 @@ pub mod jni {
 pub mod ffi {
     use std::collections::BTreeMap;
 
-    use linkme::distributed_slice;
     use serde::Serialize;
 
     use super::*;
 
-    #[derive(Debug, Clone, Serialize)]
+    #[derive(Debug, Clone, Serialize, PartialEq, PartialOrd, Ord, Eq, Hash)]
     pub struct SwiftArgConverter {
         /// What's the high-level swift type?
         pub nice_type: String,
         /// What's the type which implements the Swift `ArgConverter` protocol
         pub converter_type: String,
     }
-    #[derive(Debug, Clone, Serialize)]
+    #[derive(Debug, Clone, Serialize, PartialEq, PartialOrd, Ord, Eq, Hash)]
     pub struct SwiftReturnConverter {
         /// What's the high-level swift type?
         pub nice_type: String,
@@ -335,6 +333,10 @@ pub mod ffi {
     #[derive(Debug, Clone, Serialize, Default)]
     pub struct SwiftMetadataContext {
         pub nice_functions: BTreeMap<String, NiceFunction>,
+
+        pub derived_types: BTreeMap<String, StructOrEnum<NiceType>>,
+        pub derived_return_converters: BTreeMap<String, StructOrEnum<SwiftReturnConverter>>,
+        pub derived_arg_converters: BTreeMap<String, StructOrEnum<SwiftArgConverter>>,
     }
 
     /// These functions should mutate the attached [SwiftMetadataContext] to register their item.
@@ -374,6 +376,14 @@ pub mod ffi {
             ) -> SwiftReturnConverter {
                 T::register_swift_result_converter(ctx)
             }
+        }
+    }
+    pub mod names {
+        pub fn return_converter(ty: &str) -> String {
+            format!("DerivedReturnConverter{ty}")
+        }
+        pub fn arg_converter(ty: &str) -> String {
+            format!("DerivedArgConverter{ty}")
         }
     }
 }

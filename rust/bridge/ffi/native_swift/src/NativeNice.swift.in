@@ -5,6 +5,11 @@
 
 // WARNING: this file was automatically generated
 
+// swiftlint:disable superfluous_disable_command
+// swiftlint and swift-format disagree on some comma formatting
+// swiftlint:disable comma
+// swiftlint:disable large_tuple
+
 {% if testing %}
 #if !os(iOS) || targetEnvironment(simulator)
 {% endif %}
@@ -14,6 +19,219 @@ import SignalFfi
 {% if testing %}@testable import LibSignalClient{% endif %}
 
 {% set ctx = testing_ctx if testing else non_testing_ctx %}
+
+{% for (name, struct_or_enum) in ctx.derived_types|items %}
+    {% if struct_or_enum.kind == "Struct" %}
+        {% set struct = struct_or_enum %}
+        internal struct {{ name }} {
+            {%- for (field, ty) in struct.fields -%}
+                var {{ field|to_lower_camel_case }}: {{ ty }}
+            {% endfor -%}
+            {% if struct.is_tuple and struct.fields|count > 0 %}
+                init({% for (field, ty) in struct.fields %}_ {{field}}: {{ty}},{% endfor %}) {
+                    {% for (field, ty) in struct.fields -%}
+                        self.{{ field|to_lower_camel_case }} = {{ field|to_lower_camel_case }}
+                    {% endfor %}
+                }
+                init({% for (field, ty) in struct.fields %}{{field|to_lower_camel_case}}: {{ty}},{% endfor %}) {
+                    {% for (field, ty) in struct.fields -%}
+                        self.{{ field|to_lower_camel_case }} = {{ field|to_lower_camel_case }}
+                    {% endfor %}
+                }
+            {% endif %}
+        }
+    {% else %}
+        {% set enum = struct_or_enum %}
+        internal enum {{ name }} {
+            {% for (variant, struct) in enum.variants -%}
+                case {{ variant|to_lower_camel_case }} {% if struct.fields|count > 0 %}(
+                    {%- for (field, ty) in struct.fields -%}
+                        {% if not struct.is_tuple %}{{ field|to_lower_camel_case }}: {% endif -%}
+                        {{ ty }} {% if not loop.last %},{% endif -%}
+                    {%- endfor -%}
+                )
+                {%- endif %}
+            {% endfor -%}
+        }
+    {% endif %}
+{% endfor %}
+
+
+{% for (name, struct_or_enum) in ctx.derived_return_converters|items %}
+    internal enum {{ name|return_converter }}: NiceReturnConverter {
+        typealias NiceReturn = {{ name }}
+        typealias FfiReturn = Signal{{ name }}FfiResult
+        static func emptyFfiReturn() -> FfiReturn {
+            Signal{{ name }}FfiResult()
+        }
+        static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+            {#- Don't leak memory if one conversion fails. -#}
+            {%- if struct_or_enum.kind == "Struct" %}
+                {% set struct = struct_or_enum %}
+                {% for (field, ty) in struct.fields -%}
+                    let {{ field }} = Result { try {{ ty.converter_type }}.convertReturn(consuming: ffiValue.{{ field }}) }
+                {% endfor %}
+                return {{ name }}(
+                    {%- for (field, ty) in struct.fields -%}
+                        {{ field|to_lower_camel_case }}: try {{ field }}.get()
+                        {%- if not loop.last %},{% endif -%}
+                    {%- endfor -%}
+                )
+            {% else %}
+                {%- set enum = struct_or_enum -%}
+                switch ffiValue.tag {
+                    {% for (variant, struct) in enum.variants -%}
+                    case Signal{{name}}FfiResult{{variant}}:
+                        {% for (field, ty) in struct.fields -%}
+                            let {{ field }} = Result {
+                                try {{ ty.converter_type }}.convertReturn(
+                                    consuming: ffiValue.{{ variant|to_snake_case }}.{{ field }}
+                                )
+                            }
+                        {% endfor -%}
+                        return {{ name }}.{{ variant|to_lower_camel_case }}{% if struct.fields|count > 0 %}(
+                            {%- for (field, ty) in struct.fields -%}
+                                {% if not struct.is_tuple %}{{ field|to_lower_camel_case }}:{% endif %} try {{ field }}.get()
+                                {%- if not loop.last %},{% endif -%}
+                            {%- endfor -%}
+                        ){% endif %}
+                    {% endfor -%}
+                    default:
+                        throw SignalError.internalError("Unexpected enum tag for {{ name }}: \(ffiValue.tag)")
+                }
+            {% endif -%}
+        }
+    }
+{% endfor %}
+
+{% macro convertArg_struct(struct, constructor) %}
+    {% for (field, ty) in struct.fields -%}
+        let ({{ field }}_ffi, {{ field }}_keepalive): (
+            {{ ty.converter_type }}.FfiArg,
+            {{ ty.converter_type }}.KeepAlive?,
+        ) = {{ ty.converter_type }}.convertArg({{ field }})
+    {% endfor %}
+    let ffiStructArg = {{ constructor }}(
+            {%- for (field, ty) in struct.fields -%}
+                {{ field|to_snake_case }}: {{field}}_ffi,
+            {%- endfor -%}
+        )
+    let ffiStructKeepAlive: (
+        {%- for (field, ty) in struct.fields %}{{ty.converter_type}}.KeepAlive?,{% endfor -%}
+    )? =
+        (
+            {%- for (field, ty) in struct.fields %} {{ field }}_keepalive != nil || {% endfor -%} false
+        ) ? (
+            {%- for (field, ty) in struct.fields %} {{ field }}_keepalive, {% endfor -%}
+        ) : nil
+{% endmacro %}
+
+{% macro convertArgBorrowed_struct(struct, constructor) %}
+    {% for (field, ty) in struct.fields -%}
+        return try {{ ty.converter_type }}.convertArgBorrowed({{ field }}) {
+            ffi_{{ field }} in
+    {% endfor %}
+        {% set body %}
+            {{ constructor }}(
+                {% for (field, ty) in struct.fields -%}
+                    {{ field|to_snake_case }}: ffi_{{ field }},
+                {%- endfor %}
+            )
+        {% endset %}
+        {{ caller(body) }}
+    {% for (field, ty) in struct.fields -%}
+        }
+    {%- endfor %}
+{% endmacro %}
+
+{% for (name, struct_or_enum) in ctx.derived_arg_converters|items %}
+    {% if struct_or_enum.kind == "Enum" %}
+        {%- set enum = struct_or_enum -%}
+        internal enum {{ name }}ArgConverterKeepAlive {
+            {% for (variant, struct) in enum.variants -%}
+                case {{ variant|to_lower_camel_case }}((
+                    {%- for (field, ty) in struct.fields -%}
+                        {{ ty.converter_type }}.KeepAlive?,
+                    {%- endfor -%}
+                ))
+            {% endfor -%}
+        }
+    {% endif %}
+    internal enum {{ name|arg_converter }}: NiceArgConverter {
+        typealias NiceArg = {{ name }}
+        typealias FfiArg = Signal{{ name }}FfiArg
+        {% if struct_or_enum.kind == "Struct" %}
+            {% set struct = struct_or_enum %}
+            typealias KeepAlive = (
+                {%- for (field, ty) in struct.fields %}{{ ty.converter_type }}.KeepAlive?,{% endfor -%}
+            )
+            static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+                {% for (field, ty) in struct.fields -%}
+                    let {{ field }} = niceArg.{{ field|to_lower_camel_case }}
+                {% endfor -%}
+                {{ convertArg_struct(struct, constructor="FfiArg") }}
+                return (ffiStructArg, ffiStructKeepAlive)
+            }
+            static func convertArgBorrowed<Result>(
+              _ niceArg: NiceArg,
+              _ niceThunk: (FfiArg) throws -> Result,
+            ) rethrows -> Result {
+                {% for (field, ty) in struct.fields -%}
+                    let {{ field }} = niceArg.{{ field|to_lower_camel_case }}
+                {% endfor -%}
+                {% call(result) convertArgBorrowed_struct(struct, constructor="FfiArg") %}
+                    return try niceThunk({{ result }})
+                {% endcall %}
+            }
+        {% else %}
+            {%- set enum = struct_or_enum -%}
+            typealias KeepAlive = {{ name }}ArgConverterKeepAlive
+            static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+                switch niceArg {
+                    {% for (variant, struct) in enum.variants %}
+                        {%- set cons = "Signal" ~ name ~ "FfiArgSignal" ~ variant ~ "_Body" -%}
+                        case .{{ variant | to_lower_camel_case }}{% if struct.fields|count > 0 %}(
+                            {% for (field, ty) in struct.fields -%}
+                                {% if not struct.is_tuple %}{{ field|to_lower_camel_case }}:{% endif -%}
+                                let {{ field }},
+                            {%- endfor %}
+                        ){% endif %}:
+                            {{ convertArg_struct(struct, constructor=cons) }}
+                            return (
+                                Signal{{ name }}FfiArg.init(
+                                    tag: Signal{{name}}FfiArg{{variant}},
+                                    .init({{ variant|to_snake_case }}: ffiStructArg),
+                                ),
+                                ffiStructKeepAlive.map {.{{ variant|to_lower_camel_case }}($0)},
+                            )
+                    {% endfor %}
+                }
+            }
+            static func convertArgBorrowed<Result>(
+              _ niceArg: NiceArg,
+              _ niceThunk: (FfiArg) throws -> Result,
+            ) rethrows -> Result {
+                switch niceArg {
+                    {% for (variant, struct) in enum.variants %}
+                        {%- set cons = "Signal" ~ name ~ "FfiArgSignal" ~ variant ~ "_Body" -%}
+                        case .{{ variant | to_lower_camel_case }}{% if struct.fields|count > 0 %}(
+                            {% for (field, ty) in struct.fields -%}
+                                {% if not struct.is_tuple %}{{ field|to_lower_camel_case }}:{% endif -%}
+                                let {{ field }},
+                            {%- endfor %}
+                        ){% endif %}:
+                            {% call(result) convertArgBorrowed_struct(struct, constructor=cons) %}
+                                return try niceThunk(Signal{{name}}FfiArg.init(
+                                    tag: Signal{{name}}FfiArg{{variant}},
+                                    .init({{ variant|to_snake_case }}: {{ result }}),
+                                ))
+                            {% endcall %}
+                    {% endfor %}
+                }
+            }
+        {% endif -%}
+    }
+{% endfor %}
 
 internal enum Native{% if testing %}Testing{% endif %}Nice {
     {% for (name, f) in ctx.nice_functions|items -%}

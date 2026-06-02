@@ -5,13 +5,622 @@
 
 // WARNING: this file was automatically generated
 
+// swiftlint:disable superfluous_disable_command
+// swiftlint and swift-format disagree on some comma formatting
+// swiftlint:disable comma
+// swiftlint:disable large_tuple
+
 #if !os(iOS) || targetEnvironment(simulator)
 
 import Foundation
 import SignalFfi
 @testable import LibSignalClient
 
+internal enum MyTestEnum {
+    case unit
+    case single(Int32)
+    case singleNamed(x: Int32)
+    case double(Int32, Int32)
+    case record(personName: String, personAge: Int32, position: MyTestPoint, funStruct: MyTestStruct)
+}
+
+internal struct MyTestPoint {
+    var _0: Int32
+    var _1: Int32
+
+    init(_ _0: Int32, _ _1: Int32, ) {
+        self._0 = _0
+        self._1 = _1
+
+    }
+    init(_0: Int32, _1: Int32, ) {
+        self._0 = _0
+        self._1 = _1
+
+    }
+
+}
+
+internal struct MyTestStruct {
+    var myNumericField: Int32
+    var myStringField: String
+
+}
+
+internal enum DerivedReturnConverterMyTestEnum: NiceReturnConverter {
+    typealias NiceReturn = MyTestEnum
+    typealias FfiReturn = SignalMyTestEnumFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalMyTestEnumFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        switch ffiValue.tag {
+        case SignalMyTestEnumFfiResultUnit:
+            return MyTestEnum.unit
+        case SignalMyTestEnumFfiResultSingle:
+            let _0 = Result {
+                try IdentityConverter<Int32>.convertReturn(
+                    consuming: ffiValue.single._0
+                )
+            }
+            return MyTestEnum.single(try _0.get())
+        case SignalMyTestEnumFfiResultSingleNamed:
+            let x = Result {
+                try IdentityConverter<Int32>.convertReturn(
+                    consuming: ffiValue.single_named.x
+                )
+            }
+            return MyTestEnum.singleNamed(x: try x.get())
+        case SignalMyTestEnumFfiResultDouble:
+            let _0 = Result {
+                try IdentityConverter<Int32>.convertReturn(
+                    consuming: ffiValue.double_._0
+                )
+            }
+            let _1 = Result {
+                try IdentityConverter<Int32>.convertReturn(
+                    consuming: ffiValue.double_._1
+                )
+            }
+            return MyTestEnum.double(try _0.get(), try _1.get())
+        case SignalMyTestEnumFfiResultRecord:
+            let person_name = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.record.person_name
+                )
+            }
+            let person_age = Result {
+                try IdentityConverter<Int32>.convertReturn(
+                    consuming: ffiValue.record.person_age
+                )
+            }
+            let position = Result {
+                try DerivedReturnConverterMyTestPoint.convertReturn(
+                    consuming: ffiValue.record.position
+                )
+            }
+            let fun_struct = Result {
+                try DerivedReturnConverterMyTestStruct.convertReturn(
+                    consuming: ffiValue.record.fun_struct
+                )
+            }
+            return MyTestEnum.record(
+                personName: try person_name.get(),
+                personAge: try person_age.get(),
+                position: try position.get(),
+                funStruct: try fun_struct.get()
+            )
+        default:
+            throw SignalError.internalError("Unexpected enum tag for MyTestEnum: \(ffiValue.tag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterMyTestPoint: NiceReturnConverter {
+    typealias NiceReturn = MyTestPoint
+    typealias FfiReturn = SignalMyTestPointFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalMyTestPointFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let _0 = Result { try IdentityConverter<Int32>.convertReturn(consuming: ffiValue._0) }
+        let _1 = Result { try IdentityConverter<Int32>.convertReturn(consuming: ffiValue._1) }
+
+        return MyTestPoint(_0: try _0.get(), _1: try _1.get())
+    }
+}
+
+internal enum DerivedReturnConverterMyTestStruct: NiceReturnConverter {
+    typealias NiceReturn = MyTestStruct
+    typealias FfiReturn = SignalMyTestStructFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalMyTestStructFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let my_numeric_field = Result {
+            try IdentityConverter<Int32>.convertReturn(consuming: ffiValue.my_numeric_field)
+        }
+        let my_string_field = Result { try StringConverter.convertReturn(consuming: ffiValue.my_string_field) }
+
+        return MyTestStruct(myNumericField: try my_numeric_field.get(), myStringField: try my_string_field.get())
+    }
+}
+
+internal enum MyTestEnumArgConverterKeepAlive {
+    case unit(())
+    case single((IdentityConverter<Int32>.KeepAlive?, ))
+    case singleNamed((IdentityConverter<Int32>.KeepAlive?, ))
+    case double((IdentityConverter<Int32>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, ))
+    case record(
+        (
+            StringConverter.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, DerivedArgConverterMyTestPoint.KeepAlive?,
+            DerivedArgConverterMyTestStruct.KeepAlive?,
+        )
+    )
+}
+
+internal enum DerivedArgConverterMyTestEnum: NiceArgConverter {
+    typealias NiceArg = MyTestEnum
+    typealias FfiArg = SignalMyTestEnumFfiArg
+    typealias KeepAlive = MyTestEnumArgConverterKeepAlive
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        switch niceArg {
+        case .unit:
+
+            let ffiStructArg = SignalMyTestEnumFfiArgSignalUnit_Body()
+            let ffiStructKeepAlive: ()? =
+                (false) ? () : nil
+
+            return (
+                SignalMyTestEnumFfiArg.init(
+                    tag: SignalMyTestEnumFfiArgUnit,
+                    .init(unit: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .unit($0) },
+            )
+        case .single(
+            let _0,
+        ):
+
+            let (_0_ffi, _0_keepalive):
+                (
+                    IdentityConverter<Int32>.FfiArg,
+                    IdentityConverter<Int32>.KeepAlive?,
+                ) = IdentityConverter<Int32>.convertArg(_0)
+
+            let ffiStructArg = SignalMyTestEnumFfiArgSignalSingle_Body(_0: _0_ffi, )
+            let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, )? =
+                (_0_keepalive != nil || false) ? (_0_keepalive,) : nil
+
+            return (
+                SignalMyTestEnumFfiArg.init(
+                    tag: SignalMyTestEnumFfiArgSingle,
+                    .init(single: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .single($0) },
+            )
+        case .singleNamed(
+            let x,
+        ):
+
+            let (x_ffi, x_keepalive):
+                (
+                    IdentityConverter<Int32>.FfiArg,
+                    IdentityConverter<Int32>.KeepAlive?,
+                ) = IdentityConverter<Int32>.convertArg(x)
+
+            let ffiStructArg = SignalMyTestEnumFfiArgSignalSingleNamed_Body(x: x_ffi, )
+            let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, )? =
+                (x_keepalive != nil || false) ? (x_keepalive,) : nil
+
+            return (
+                SignalMyTestEnumFfiArg.init(
+                    tag: SignalMyTestEnumFfiArgSingleNamed,
+                    .init(single_named: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .singleNamed($0) },
+            )
+        case .double(
+            let _0,
+            let _1,
+        ):
+
+            let (_0_ffi, _0_keepalive):
+                (
+                    IdentityConverter<Int32>.FfiArg,
+                    IdentityConverter<Int32>.KeepAlive?,
+                ) = IdentityConverter<Int32>.convertArg(_0)
+            let (_1_ffi, _1_keepalive):
+                (
+                    IdentityConverter<Int32>.FfiArg,
+                    IdentityConverter<Int32>.KeepAlive?,
+                ) = IdentityConverter<Int32>.convertArg(_1)
+
+            let ffiStructArg = SignalMyTestEnumFfiArgSignalDouble_Body(_0: _0_ffi, _1: _1_ffi, )
+            let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, )? =
+                (_0_keepalive != nil || _1_keepalive != nil || false) ? (_0_keepalive, _1_keepalive,) : nil
+
+            return (
+                SignalMyTestEnumFfiArg.init(
+                    tag: SignalMyTestEnumFfiArgDouble,
+                    .init(double_: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .double($0) },
+            )
+        case .record(
+            personName: let person_name,
+            personAge: let person_age,
+            let position,
+            funStruct: let fun_struct,
+        ):
+
+            let (person_name_ffi, person_name_keepalive):
+                (
+                    StringConverter.FfiArg,
+                    StringConverter.KeepAlive?,
+                ) = StringConverter.convertArg(person_name)
+            let (person_age_ffi, person_age_keepalive):
+                (
+                    IdentityConverter<Int32>.FfiArg,
+                    IdentityConverter<Int32>.KeepAlive?,
+                ) = IdentityConverter<Int32>.convertArg(person_age)
+            let (position_ffi, position_keepalive):
+                (
+                    DerivedArgConverterMyTestPoint.FfiArg,
+                    DerivedArgConverterMyTestPoint.KeepAlive?,
+                ) = DerivedArgConverterMyTestPoint.convertArg(position)
+            let (fun_struct_ffi, fun_struct_keepalive):
+                (
+                    DerivedArgConverterMyTestStruct.FfiArg,
+                    DerivedArgConverterMyTestStruct.KeepAlive?,
+                ) = DerivedArgConverterMyTestStruct.convertArg(fun_struct)
+
+            let ffiStructArg = SignalMyTestEnumFfiArgSignalRecord_Body(
+                person_name: person_name_ffi,
+                person_age: person_age_ffi,
+                position: position_ffi,
+                fun_struct: fun_struct_ffi,
+            )
+            let ffiStructKeepAlive:
+                (
+                    StringConverter.KeepAlive?, IdentityConverter<Int32>.KeepAlive?,
+                    DerivedArgConverterMyTestPoint.KeepAlive?, DerivedArgConverterMyTestStruct.KeepAlive?,
+                )? =
+                    (person_name_keepalive != nil || person_age_keepalive != nil || position_keepalive != nil
+                        || fun_struct_keepalive != nil || false)
+                    ? (person_name_keepalive, person_age_keepalive, position_keepalive, fun_struct_keepalive,) : nil
+
+            return (
+                SignalMyTestEnumFfiArg.init(
+                    tag: SignalMyTestEnumFfiArgRecord,
+                    .init(record: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .record($0) },
+            )
+
+        }
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        switch niceArg {
+        case .unit:
+
+            return try niceThunk(
+                SignalMyTestEnumFfiArg.init(
+                    tag: SignalMyTestEnumFfiArgUnit,
+                    .init(
+                        unit:
+                            SignalMyTestEnumFfiArgSignalUnit_Body()
+                    ),
+                )
+            )
+
+        case .single(
+            let _0,
+        ):
+
+            return try IdentityConverter<Int32>.convertArgBorrowed(_0) {
+                ffi__0 in
+
+                return try niceThunk(
+                    SignalMyTestEnumFfiArg.init(
+                        tag: SignalMyTestEnumFfiArgSingle,
+                        .init(
+                            single:
+                                SignalMyTestEnumFfiArgSignalSingle_Body(
+                                    _0: ffi__0,
+                                )
+                        ),
+                    )
+                )
+
+            }
+
+        case .singleNamed(
+            let x,
+        ):
+
+            return try IdentityConverter<Int32>.convertArgBorrowed(x) {
+                ffi_x in
+
+                return try niceThunk(
+                    SignalMyTestEnumFfiArg.init(
+                        tag: SignalMyTestEnumFfiArgSingleNamed,
+                        .init(
+                            single_named:
+                                SignalMyTestEnumFfiArgSignalSingleNamed_Body(
+                                    x: ffi_x,
+                                )
+                        ),
+                    )
+                )
+
+            }
+
+        case .double(
+            let _0,
+            let _1,
+        ):
+
+            return try IdentityConverter<Int32>.convertArgBorrowed(_0) {
+                ffi__0 in
+                return try IdentityConverter<Int32>.convertArgBorrowed(_1) {
+                    ffi__1 in
+
+                    return try niceThunk(
+                        SignalMyTestEnumFfiArg.init(
+                            tag: SignalMyTestEnumFfiArgDouble,
+                            .init(
+                                double_:
+                                    SignalMyTestEnumFfiArgSignalDouble_Body(
+                                        _0: ffi__0,
+                                        _1: ffi__1,
+                                    )
+                            ),
+                        )
+                    )
+
+                }
+            }
+
+        case .record(
+            personName: let person_name,
+            personAge: let person_age,
+            let position,
+            funStruct: let fun_struct,
+        ):
+
+            return try StringConverter.convertArgBorrowed(person_name) {
+                ffi_person_name in
+                return try IdentityConverter<Int32>.convertArgBorrowed(person_age) {
+                    ffi_person_age in
+                    return try DerivedArgConverterMyTestPoint.convertArgBorrowed(position) {
+                        ffi_position in
+                        return try DerivedArgConverterMyTestStruct.convertArgBorrowed(fun_struct) {
+                            ffi_fun_struct in
+
+                            return try niceThunk(
+                                SignalMyTestEnumFfiArg.init(
+                                    tag: SignalMyTestEnumFfiArgRecord,
+                                    .init(
+                                        record:
+                                            SignalMyTestEnumFfiArgSignalRecord_Body(
+                                                person_name: ffi_person_name,
+                                                person_age: ffi_person_age,
+                                                position: ffi_position,
+                                                fun_struct: ffi_fun_struct,
+                                            )
+                                    ),
+                                )
+                            )
+
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+}
+
+internal enum DerivedArgConverterMyTestPoint: NiceArgConverter {
+    typealias NiceArg = MyTestPoint
+    typealias FfiArg = SignalMyTestPointFfiArg
+
+    typealias KeepAlive = (IdentityConverter<Int32>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, )
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        let _0 = niceArg._0
+        let _1 = niceArg._1
+
+        let (_0_ffi, _0_keepalive):
+            (
+                IdentityConverter<Int32>.FfiArg,
+                IdentityConverter<Int32>.KeepAlive?,
+            ) = IdentityConverter<Int32>.convertArg(_0)
+        let (_1_ffi, _1_keepalive):
+            (
+                IdentityConverter<Int32>.FfiArg,
+                IdentityConverter<Int32>.KeepAlive?,
+            ) = IdentityConverter<Int32>.convertArg(_1)
+
+        let ffiStructArg = FfiArg(_0: _0_ffi, _1: _1_ffi, )
+        let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, )? =
+            (_0_keepalive != nil || _1_keepalive != nil || false) ? (_0_keepalive, _1_keepalive,) : nil
+
+        return (ffiStructArg, ffiStructKeepAlive)
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        let _0 = niceArg._0
+        let _1 = niceArg._1
+
+        return try IdentityConverter<Int32>.convertArgBorrowed(_0) {
+            ffi__0 in
+            return try IdentityConverter<Int32>.convertArgBorrowed(_1) {
+                ffi__1 in
+
+                return try niceThunk(
+                    FfiArg(
+                        _0: ffi__0,
+                        _1: ffi__1,
+                    )
+                )
+
+            }
+        }
+
+    }
+}
+
+internal enum DerivedArgConverterMyTestStruct: NiceArgConverter {
+    typealias NiceArg = MyTestStruct
+    typealias FfiArg = SignalMyTestStructFfiArg
+
+    typealias KeepAlive = (IdentityConverter<Int32>.KeepAlive?, StringConverter.KeepAlive?, )
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        let my_numeric_field = niceArg.myNumericField
+        let my_string_field = niceArg.myStringField
+
+        let (my_numeric_field_ffi, my_numeric_field_keepalive):
+            (
+                IdentityConverter<Int32>.FfiArg,
+                IdentityConverter<Int32>.KeepAlive?,
+            ) = IdentityConverter<Int32>.convertArg(my_numeric_field)
+        let (my_string_field_ffi, my_string_field_keepalive):
+            (
+                StringConverter.FfiArg,
+                StringConverter.KeepAlive?,
+            ) = StringConverter.convertArg(my_string_field)
+
+        let ffiStructArg = FfiArg(my_numeric_field: my_numeric_field_ffi, my_string_field: my_string_field_ffi, )
+        let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, StringConverter.KeepAlive?, )? =
+            (my_numeric_field_keepalive != nil || my_string_field_keepalive != nil || false)
+            ? (my_numeric_field_keepalive, my_string_field_keepalive,) : nil
+
+        return (ffiStructArg, ffiStructKeepAlive)
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        let my_numeric_field = niceArg.myNumericField
+        let my_string_field = niceArg.myStringField
+
+        return try IdentityConverter<Int32>.convertArgBorrowed(my_numeric_field) {
+            ffi_my_numeric_field in
+            return try StringConverter.convertArgBorrowed(my_string_field) {
+                ffi_my_string_field in
+
+                return try niceThunk(
+                    FfiArg(
+                        my_numeric_field: ffi_my_numeric_field,
+                        my_string_field: ffi_my_string_field,
+                    )
+                )
+
+            }
+        }
+
+    }
+}
+
 internal enum NativeTestingNice {
+    internal static func TESTING_MyTestEnum_identity(
+        x: MyTestEnum,
+    ) throws -> MyTestEnum {
+        try DerivedArgConverterMyTestEnum.convertArgBorrowed(x) { xFfi in
+            var rawOutput = DerivedReturnConverterMyTestEnum.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_test_enum_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try DerivedReturnConverterMyTestEnum.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_MyTestEnum_to_string(
+        x: MyTestEnum,
+    ) throws -> String {
+        try DerivedArgConverterMyTestEnum.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_test_enum_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_MyTestPoint_identity(
+        x: MyTestPoint,
+    ) throws -> MyTestPoint {
+        try DerivedArgConverterMyTestPoint.convertArgBorrowed(x) { xFfi in
+            var rawOutput = DerivedReturnConverterMyTestPoint.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_test_point_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try DerivedReturnConverterMyTestPoint.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_MyTestPoint_to_string(
+        x: MyTestPoint,
+    ) throws -> String {
+        try DerivedArgConverterMyTestPoint.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_test_point_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_MyTestStruct_identity(
+        x: MyTestStruct,
+    ) throws -> MyTestStruct {
+        try DerivedArgConverterMyTestStruct.convertArgBorrowed(x) { xFfi in
+            var rawOutput = DerivedReturnConverterMyTestStruct.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_test_struct_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try DerivedReturnConverterMyTestStruct.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_MyTestStruct_to_string(
+        x: MyTestStruct,
+    ) throws -> String {
+        try DerivedArgConverterMyTestStruct.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_test_struct_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
     internal static func TESTING_TestingIntBox_Get(
         myIntBox my_int_box: TestingIntBox,
     ) throws -> Int32 {

@@ -607,6 +607,7 @@ pub fn bridge_callbacks(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let mut node = true;
+    let mut ffi = true;
     for attr in &item.attrs {
         if attr
             .path()
@@ -615,6 +616,7 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
             let contents = Punctuated::<MetaNameValue, Token![,]>::parse_terminated
                 .parse2(attr.meta.require_list()?.tokens.clone())?;
             node = bool_for_meta_key(&contents, "node")?.unwrap_or(true);
+            ffi = bool_for_meta_key(&contents, "ffi")?.unwrap_or(true);
         }
     }
     let node = if node {
@@ -622,8 +624,14 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
     } else {
         None
     };
+    let ffi = if ffi {
+        Some(ffi::derive_bridged_as_value(&item)?)
+    } else {
+        None
+    };
     Ok(quote! {
         #node
+        #ffi
     })
 }
 
