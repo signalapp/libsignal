@@ -151,7 +151,7 @@ import SignalFfi
             {% for (variant, struct) in enum.variants -%}
                 case {{ variant|to_lower_camel_case }}((
                     {%- for (field, ty) in struct.fields -%}
-                        {{ ty.converter_type }}.KeepAlive?,
+                        {{ ty.converter_type }}.KeepAlive?{% if not loop.last %},{% endif %}
                     {%- endfor -%}
                 ))
             {% endfor -%}

@@ -150,13 +150,13 @@ internal enum DerivedReturnConverterMyTestStruct: NiceReturnConverter {
 
 internal enum MyTestEnumArgConverterKeepAlive {
     case unit(())
-    case single((IdentityConverter<Int32>.KeepAlive?, ))
-    case singleNamed((IdentityConverter<Int32>.KeepAlive?, ))
-    case double((IdentityConverter<Int32>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, ))
+    case single((IdentityConverter<Int32>.KeepAlive?))
+    case singleNamed((IdentityConverter<Int32>.KeepAlive?))
+    case double((IdentityConverter<Int32>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?))
     case record(
         (
             StringConverter.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, DerivedArgConverterMyTestPoint.KeepAlive?,
-            DerivedArgConverterMyTestStruct.KeepAlive?,
+            DerivedArgConverterMyTestStruct.KeepAlive?
         )
     )
 }
