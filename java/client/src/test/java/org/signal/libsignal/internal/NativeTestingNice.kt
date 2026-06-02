@@ -50,7 +50,9 @@ internal object NativeTestingNice {
           ffi_count,
         )
       }
-    return ffiOut.thenApply { identity(it) }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { identity(it) }
   }
 
   public fun TESTING_conversion_Data_identity(x: ByteArray): ByteArray {

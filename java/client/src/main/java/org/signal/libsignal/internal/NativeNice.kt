@@ -43,7 +43,9 @@ internal object NativeNice {
           ffi_account,
         )
       }
-    return ffiOut.thenApply { identity(it) }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { identity(it) }
   }
 
   public fun UnauthenticatedChatConnection_backup_delete_all(
@@ -74,7 +76,9 @@ internal object NativeNice {
           ffi_rng,
         )
       }
-    return ffiOut.thenApply { identity(it) }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { identity(it) }
   }
 
   public fun UnauthenticatedChatConnection_backup_get_cdn_credentials(
@@ -108,10 +112,12 @@ internal object NativeNice {
           ffi_rng,
         )
       }
-    return ffiOut.thenApply {
-      org.signal.libsignal.net.BackupCdnCredentials
-        .fromFfiHeaders(it)
-    }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply {
+        org.signal.libsignal.net.BackupCdnCredentials
+          .fromFfiHeaders(it)
+      }
   }
 
   public fun UnauthenticatedChatConnection_backup_get_svrb_credentials(
@@ -142,7 +148,9 @@ internal object NativeNice {
           ffi_rng,
         )
       }
-    return ffiOut.thenApply { mapPair<String, String, String, String>({ identity(it) }, { identity(it) })(it) }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { mapPair<String, String, String, String>({ identity(it) }, { identity(it) })(it) }
   }
 
   public fun UnauthenticatedChatConnection_backup_refresh(
@@ -173,7 +181,9 @@ internal object NativeNice {
           ffi_rng,
         )
       }
-    return ffiOut.thenApply { identity(it) }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { identity(it) }
   }
 
   public fun UnauthenticatedChatConnection_backup_set_public_key(
@@ -204,6 +214,8 @@ internal object NativeNice {
           ffi_rng,
         )
       }
-    return ffiOut.thenApply { identity(it) }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { identity(it) }
   }
 }
