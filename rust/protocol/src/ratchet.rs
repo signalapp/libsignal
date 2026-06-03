@@ -344,13 +344,6 @@ pub(crate) fn initialize_bob_session(
     x.extend_from_slice(parameters.our_signed_pre_key_pair().public_key.public_key_bytes());
 
     let their_pvrf_ciphertext = parameters.their_pvrf_ciphertext().as_ref().map(|b| b.to_vec());
-    log::info!(
-        "PVRF ciphertext in PreKey message as Bob: {}",
-        their_pvrf_ciphertext
-            .as_ref()
-            .map(|_| "present")
-            .unwrap_or("not present")
-    );
     if let Some(bytes) = their_pvrf_ciphertext {
         let (
             (h, hprime, (c, (s1, s2))),
@@ -404,7 +397,7 @@ pub(crate) fn initialize_bob_session(
             .collect()
         );
     } else {
-        log::info!("No PVRF ciphertext provided in PreKey message; skipping PVRF processing");
+        //log::info!("No PVRF ciphertext provided in PreKey message; skipping PVRF processing");
         bob_response = None;
         true_sas = None;
     }
@@ -523,14 +516,11 @@ pub fn pvrf_verify_from_session_data(
         .map_err(|_| SignalProtocolError::InvalidArgument("invalid v slice".to_string()))?
         .decompress()
         .ok_or_else(|| SignalProtocolError::InvalidArgument("v decompression failed".to_string()))?;
-    log::info!("the v bytes is {:?}", v_bytes);
 
     // z = Ho(w)
     let z = hash_o(&w);
 
     // Reconstruct vk
-    log::info!("what is vk {:?} bytes", vk_bytes);
-    log::info!("what is v {:?} bytes", v_bytes);
     let vk_point = CompressedEdwardsY::from_slice(vk_bytes)
         .map_err(|_| SignalProtocolError::InvalidArgument("invalid vk slice".to_string()))?
         .decompress()
@@ -542,14 +532,8 @@ pub fn pvrf_verify_from_session_data(
     let alt_calculated_v = (-vk_point * alpha) + (w * beta);
 
     let ok = v.compress().as_bytes() == calculated_v.compress().as_bytes() || v.compress().as_bytes() == alt_calculated_v.compress().as_bytes();
-    log::info!("what v is {:?} bytes", v.compress().as_bytes());
-    log::info!("trying to achieve v is {:?} bytes", calculated_v.compress().as_bytes());
-    log::info!("what alt calculated v is {:?} bytes", alt_calculated_v.compress().as_bytes());
-    log::info!("is alt equal to v? {}", v.compress().as_bytes() == alt_calculated_v.compress().as_bytes());
-    if ok {
-        log::info!("PVRF VERIFY SUCCESS z: {:?}", z);
-    } else {
-        log::error!("PVRF VERIFY FAILED: v != calculated_v");
+    if !ok {
+        log::error!("PVRF VERIFY FAILED: v != calculated_v, RAISE ERROR IN FRONTEND");
     }
 
     Ok((ok, z))
