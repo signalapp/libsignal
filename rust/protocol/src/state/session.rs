@@ -928,7 +928,7 @@ impl SessionRecord {
     ///realfunc
     pub fn get_vts(
             &self,
-    ) -> Result<(EdwardsPoint, RistrettoPoint, (Scalar, (Scalar, Scalar)), EdwardsPoint, Vec<u8>, Scalar, Scalar, Vec<u8>), SignalProtocolError> {    
+    ) -> Result<(EdwardsPoint, EdwardsPoint, (Scalar, (Scalar, Scalar)), EdwardsPoint, Vec<u8>, Scalar, Scalar, Vec<u8>), SignalProtocolError> {    
         Ok(
             bincode::deserialize(
         &self

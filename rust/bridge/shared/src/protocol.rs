@@ -999,7 +999,7 @@ fn SessionRecord_GetSAS(s: &SessionRecord) -> Result<Vec<u8>> {
 
 #[bridge_fn]
 fn SessionRecord_GetVTS(s: &SessionRecord) -> Result<Vec<u8>> {
-    //get_vts returns Result<(RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar)), RistrettoPoint, Vec<u8>, Scalar, Scalar, Vec<u8>), SignalProtocolError>
+    //get_vts returns Result<(EdwardsPoint, EdwardsPoint, (Scalar, (Scalar, Scalar)), EdwardsPoint, Vec<u8>, Scalar, Scalar, Vec<u8>), SignalProtocolError>
     let (h, hprime, (s1, (s2_1, s2_2)), vk, x, r1, r2, contrib_salt) = s.get_vts()?;
 
     // serialize each element into bytes
@@ -1025,7 +1025,7 @@ fn SessionRecord_GetVTS(s: &SessionRecord) -> Result<Vec<u8>> {
 
 #[bridge_fn]
 fn SessionRecord_GetBobResponse(s: &SessionRecord) -> Result<Vec<u8>> {
-    //Result<(RistrettoPoint, Vec<u8>, (RistrettoPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))), Vec<u8>, (RistrettoPoint, RistrettoPoint), Scalar, Scalar), SignalProtocolError>
+    //Result<(EdwardsPoint, Vec<u8>, (EdwardsPoint, EdwardsPoint, (Scalar, (Scalar, Scalar))), Vec<u8>, (EdwardsPoint, EdwardsPoint), Scalar, Scalar), SignalProtocolError>
     let (z, (w, v), c, computed_c) = s.get_bob_response()?;
 
     let mut out = Vec::new();

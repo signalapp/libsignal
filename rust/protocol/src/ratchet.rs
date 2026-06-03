@@ -91,7 +91,7 @@ pub fn sample_random_zp<R: Rng + CryptoRng>(csprng: &mut R) -> Scalar {
     Scalar::from_bytes_mod_order_wide(&bytes)
 }
 
-pub fn hash_fs(vk: &EdwardsPoint, x: &[u8], h: &EdwardsPoint, h_prime: &RistrettoPoint, eta: &EdwardsPoint, eta_prime: &RistrettoPoint) -> Scalar {
+pub fn hash_fs(vk: &EdwardsPoint, x: &[u8], h: &EdwardsPoint, h_prime: &EdwardsPoint, eta: &EdwardsPoint, eta_prime: &EdwardsPoint) -> Scalar {
     let mut bytes = Vec::new();
     //bytes.extend(&(vk.len() as u64).to_le_bytes());
     bytes.extend(vk.compress().as_bytes());
@@ -106,45 +106,32 @@ pub fn hash_fs(vk: &EdwardsPoint, x: &[u8], h: &EdwardsPoint, h_prime: &Ristrett
     Scalar::from_bytes_mod_order_wide(&hash.into())
 }
 
-fn hash_to_g(domain_sep: &[u8], input: &[u8]) -> RistrettoPoint {
-    let mut hasher = Sha512::new();
-    hasher.update(domain_sep);
-    hasher.update(input);
-    RistrettoPoint::from_hash(hasher)
-}
-
 fn hash_to_g_edwards(domain_sep: &[u8], input: &[u8]) -> EdwardsPoint {
-    // let mut bytes = Vec::new();
-    // bytes.extend(domain_sep);
-    // bytes.extend(input);
-
-    // let bytes: [u8; 32] = Sha512::digest(&bytes).as_slice()[..32].try_into().unwrap();
-    // EdwardsPoint::mul_base_clamped(bytes)
     let mut hasher = Sha512::new();
     hasher.update(domain_sep);
     hasher.update(input);
     let ris = RistrettoPoint::from_hash(hasher);
     let xcoset = ris.xcoset4();
     let first = xcoset.first().unwrap();
-    *first
+    first.mul_by_cofactor()
 }
 
-pub fn hash_i(vk: &EdwardsPoint , x: &[u8]) -> EdwardsPoint {
+pub fn hash_i(vk: &EdwardsPoint, x: &[u8]) -> EdwardsPoint {
     let compressed = vk.compress();
     let compressed_vecu8 = compressed.as_bytes().to_vec();
     hash_to_g_edwards(b"hash_i", &encode(&compressed_vecu8, x))
 }
 
-pub fn hash_a(vk: &EdwardsPoint, x: &[u8]) -> RistrettoPoint {
+pub fn hash_a(vk: &EdwardsPoint, x: &[u8]) -> EdwardsPoint {
     let compressed = vk.compress();
     let compressed_vecu8 = compressed.as_bytes().to_vec();
-    hash_to_g(b"hash_a", &encode(&compressed_vecu8, x))
+    hash_to_g_edwards(b"hash_a", &encode(&compressed_vecu8, x))
 }
 
-pub fn hash_b(vk: &EdwardsPoint, x: &[u8]) -> RistrettoPoint {
+pub fn hash_b(vk: &EdwardsPoint, x: &[u8]) -> EdwardsPoint {
     let compressed = vk.compress();
     let compressed_vecu8 = compressed.as_bytes().to_vec();
-    hash_to_g(b"hash_b", &encode(&compressed_vecu8, x))
+    hash_to_g_edwards(b"hash_b", &encode(&compressed_vecu8, x))
 }
 
 pub fn hash_o(point: &EdwardsPoint) -> Vec<u8> {
@@ -410,7 +397,7 @@ pub(crate) fn initialize_bob_session(
             (h, hprime, (c, (s1, s2))),
             their_contrib_salt
         ): (
-            (EdwardsPoint, RistrettoPoint, (Scalar, (Scalar, Scalar))),
+            (EdwardsPoint, EdwardsPoint, (Scalar, (Scalar, Scalar))),
             Vec<u8>
         ) = bincode::deserialize(&bytes).unwrap();
         // Step 1, parse vars
