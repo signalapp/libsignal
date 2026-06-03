@@ -5,6 +5,10 @@
 
 package org.signal.libsignal.protocol;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,14 +16,14 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
-import junit.framework.TestCase;
+import org.junit.Test;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.message.SignalMessage;
 import org.signal.libsignal.protocol.state.SessionRecord;
 import org.signal.libsignal.protocol.state.SignalProtocolStore;
 
-public class SessionCipherTest extends TestCase {
+public class SessionCipherTest {
 
   public class PairOfSessions {
     public PairOfSessions(SessionRecord a, SessionRecord b) {
@@ -31,6 +35,7 @@ public class SessionCipherTest extends TestCase {
     public SessionRecord bobSession;
   }
 
+  @Test
   public void testBasicSessionV3()
       throws InvalidKeyException,
           DuplicateMessageException,
@@ -44,19 +49,20 @@ public class SessionCipherTest extends TestCase {
     runInteraction(sessions.aliceSession, sessions.bobSession);
   }
 
+  @Test
   public void testMessageKeyLimits() throws Exception {
     PairOfSessions sessions = initializeSessionsV4();
 
     SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
+    SignalProtocolAddress bobAddress = new SignalProtocolAddress("+14159999999", 1);
+    SignalProtocolAddress aliceAddress = new SignalProtocolAddress("+14158888888", 1);
 
-    aliceStore.storeSession(new SignalProtocolAddress("+14159999999", 1), sessions.aliceSession);
-    bobStore.storeSession(new SignalProtocolAddress("+14158888888", 1), sessions.bobSession);
+    aliceStore.storeSession(bobAddress, sessions.aliceSession);
+    bobStore.storeSession(aliceAddress, sessions.bobSession);
 
-    SessionCipher aliceCipher =
-        new SessionCipher(aliceStore, new SignalProtocolAddress("+14159999999", 1));
-    SessionCipher bobCipher =
-        new SessionCipher(bobStore, new SignalProtocolAddress("+14158888888", 1));
+    SessionCipher aliceCipher = new SessionCipher(aliceStore, aliceAddress, bobAddress);
+    SessionCipher bobCipher = new SessionCipher(bobStore, bobAddress, aliceAddress);
 
     List<CiphertextMessage> inflight = new LinkedList<>();
 
@@ -76,6 +82,7 @@ public class SessionCipherTest extends TestCase {
     }
   }
 
+  @Test
   public void testDecryptAfterReset() throws Exception {
     PairOfSessions sessions = initializeSessionsV4();
 
@@ -88,8 +95,8 @@ public class SessionCipherTest extends TestCase {
     aliceStore.storeSession(bobAddress, sessions.aliceSession);
     bobStore.storeSession(aliceAddress, sessions.bobSession);
 
-    SessionCipher aliceCipher = new SessionCipher(aliceStore, bobAddress);
-    SessionCipher bobCipher = new SessionCipher(bobStore, aliceAddress);
+    SessionCipher aliceCipher = new SessionCipher(aliceStore, aliceAddress, bobAddress);
+    SessionCipher bobCipher = new SessionCipher(bobStore, bobAddress, aliceAddress);
 
     byte[] alicePlaintext = "This is a plaintext message.".getBytes();
     CiphertextMessage message = aliceCipher.encrypt(alicePlaintext);
@@ -109,6 +116,7 @@ public class SessionCipherTest extends TestCase {
     assertTrue(Arrays.equals(alicePlaintext, bobPlaintext2));
   }
 
+  @Test
   public void testDecryptAfterDelete() throws Exception {
     PairOfSessions sessions = initializeSessionsV4();
 
@@ -121,8 +129,8 @@ public class SessionCipherTest extends TestCase {
     aliceStore.storeSession(bobAddress, sessions.aliceSession);
     bobStore.storeSession(aliceAddress, sessions.bobSession);
 
-    SessionCipher aliceCipher = new SessionCipher(aliceStore, bobAddress);
-    SessionCipher bobCipher = new SessionCipher(bobStore, aliceAddress);
+    SessionCipher aliceCipher = new SessionCipher(aliceStore, aliceAddress, bobAddress);
+    SessionCipher bobCipher = new SessionCipher(bobStore, bobAddress, aliceAddress);
 
     byte[] alicePlaintext = "This is a plaintext message.".getBytes();
     CiphertextMessage message = aliceCipher.encrypt(alicePlaintext);
@@ -151,14 +159,14 @@ public class SessionCipherTest extends TestCase {
           UntrustedIdentityException {
     SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
+    SignalProtocolAddress bobAddress = new SignalProtocolAddress("+14159999999", 1);
+    SignalProtocolAddress aliceAddress = new SignalProtocolAddress("+14158888888", 1);
 
-    aliceStore.storeSession(new SignalProtocolAddress("+14159999999", 1), aliceSessionRecord);
-    bobStore.storeSession(new SignalProtocolAddress("+14158888888", 1), bobSessionRecord);
+    aliceStore.storeSession(bobAddress, aliceSessionRecord);
+    bobStore.storeSession(aliceAddress, bobSessionRecord);
 
-    SessionCipher aliceCipher =
-        new SessionCipher(aliceStore, new SignalProtocolAddress("+14159999999", 1));
-    SessionCipher bobCipher =
-        new SessionCipher(bobStore, new SignalProtocolAddress("+14158888888", 1));
+    SessionCipher aliceCipher = new SessionCipher(aliceStore, aliceAddress, bobAddress);
+    SessionCipher bobCipher = new SessionCipher(bobStore, bobAddress, aliceAddress);
 
     byte[] alicePlaintext = "This is a plaintext message.".getBytes();
     CiphertextMessage message = aliceCipher.encrypt(alicePlaintext);

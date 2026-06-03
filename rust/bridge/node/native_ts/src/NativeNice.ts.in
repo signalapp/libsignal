@@ -1,0 +1,212 @@
+//
+// Copyright 2026 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+// WARNING: this file was automatically generated
+
+import * as Native from './Native.js';
+import { ServiceId } from './Address.js';
+import * as zkgroup from './zkgroup/index.js';
+import ByteArray from './zkgroup/internal/ByteArray.js';
+import { TokioAsyncContext } from './net.js';
+import { CdnCredentials } from './net/chat/CdnCredentials.js';
+import { cdnCredentialReturnConverter, identity, serviceIdArgConverter } from './NiceConverters.js';
+import { Rng } from './RngForTesting.js';
+
+{% macro struct_type(struct) %}
+    {%- if struct.is_tuple -%}
+        [
+            {% for (field, ty) in struct.fields -%}
+                {{ ty }},
+            {%- endfor %}
+        ]
+    {%- else -%}
+        {
+            {% for (field, ty) in struct.fields -%}
+                {{ field|to_lower_camel_case }}: {{ ty }};
+            {%- endfor %}
+        }
+    {%- endif -%}
+{% endmacro %}
+
+{% for (name, struct_or_enum) in ctx.derived_types|items -%}
+    {% if struct_or_enum.kind == "Struct" %}
+        {% set struct = struct_or_enum %}
+        export type {{ name }} = {{ struct_type(struct) }};
+    {% else %}
+        {% set enum = struct_or_enum %}
+        export type {{ name }} = {% for (variant, struct) in enum.variants -%}
+            | {%- if struct.fields|count == 0 -%}
+                '{{ variant|to_lower_camel_case }}'
+            {%- else -%}
+                {
+                    {{ variant|to_lower_camel_case }}: {%- if struct.fields|count == 1 -%}
+                        {{ struct.fields[0][1] }}
+                    {%- else -%}
+                        {{ struct_type(struct) }}
+                    {%- endif -%}
+                }
+            {%- endif -%}
+        {%- endfor %};
+    {% endif %}
+{%- endfor %}
+
+{% macro struct_return_converter(struct) %}
+    {%- if struct.is_tuple -%}
+        [
+            {% for (field, converter) in struct.fields -%}
+                {{ converter.converter_function }}(ffiInput.{{ field }}),
+            {%- endfor %}
+        ]
+    {%- else -%}
+        {
+            {% for (field, converter) in struct.fields -%}
+                {{ field|to_lower_camel_case }}: {{ converter.converter_function }}(ffiInput.{{ field }}),
+            {%- endfor %}
+        }
+    {%- endif -%}
+{% endmacro %}
+{% for (name, struct_or_enum) in ctx.derived_return_converters|items -%}
+    {% if struct_or_enum.kind == "Struct" %}
+        {% set struct = struct_or_enum %}
+        function {{ name|return_converter_function }}(ffiInput: Native.{{ name|return_ffi_type }}): {{ name }} {
+            return {{ struct_return_converter(struct) }};
+        }
+    {% else %}
+        {% set enum = struct_or_enum %}
+        function {{ name|return_converter_function }}(ffiInput: Native.{{ name|return_ffi_type }}): {{ name }} {
+            switch (ffiInput.__type) {
+            {% for (variant, struct) in enum.variants -%}
+                case {{ loop.index0 }}:
+                    {% if struct.fields|count == 0 -%}
+                        return '{{ variant|to_lower_camel_case }}';
+                    {% else %}
+                        return {
+                            {{ variant|to_lower_camel_case }}: {% if struct.fields|count == 1 %}
+                                {{ struct.fields[0][1].converter_function }}(ffiInput.{{ struct.fields[0][0] }})
+                            {%- else -%}
+                                {{ struct_return_converter(struct) }}
+                            {%- endif -%}
+                        };
+                    {%- endif %}
+            {%- endfor %}
+            default:
+                ffiInput satisfies never;
+                throw new Error('Unknown FFI return enum type for {{ name }}');
+            }
+        }
+    {% endif %}
+{%- endfor %}
+{% macro destructure_struct(struct, value) %}
+    {%- if struct.is_tuple -%}
+        const [
+            {%- for (arg, converter) in struct.fields -%}
+                {{ arg }},
+            {%- endfor -%}
+        ] = {{ value }};
+    {%- else -%}
+        const {
+            {%- for (arg, converter) in struct.fields -%}
+                {{ arg|to_lower_camel_case }}: {{ arg }},
+            {%- endfor -%}
+        } = {{ value }};
+    {%- endif -%}
+{% endmacro %}
+{% for (name, struct_or_enum) in ctx.derived_arg_converters|items -%}
+    {% if struct_or_enum.kind == "Struct" %}
+        {% set struct = struct_or_enum %}
+        function {{ name|arg_converter_function }}(niceInput: {{ name }}): Native.{{ name|arg_ffi_type }} {
+            {{ destructure_struct(struct, "niceInput") }}
+            return {
+                {%- for (arg, converter) in struct.fields -%}
+                    {{ arg }}: {{ converter.converter_function }}({{ arg }}),
+                {%- endfor -%}
+            };
+        }
+    {% else %}
+        {% set enum = struct_or_enum %}
+        function {{ name|arg_converter_function }}(niceInput: {{ name }}): Native.{{ name|arg_ffi_type }} {
+            {#- TypeScript demands that we check the strings/units first. -#}
+            {% for (variant, struct) in enum.variants %}
+                {% if struct.fields|count == 0 %}
+                    if (niceInput === '{{ variant|to_lower_camel_case }}') {
+                        return { __type: {{ loop.index0 }} };
+                    }
+                {% endif %}
+            {% endfor %}
+            {% for (variant, struct) in enum.variants %}
+                {% if struct.fields|count == 1 %}
+                    if ('{{ variant|to_lower_camel_case }}' in niceInput) {
+                        return {
+                            __type: {{ loop.index0 }},
+                            {{ struct.fields[0][0] }}: {{ struct.fields[0][1].converter_function }}(niceInput.{{ variant|to_lower_camel_case }}),
+                        };
+                    }
+                {% elif struct.fields|count > 1 %}
+                    if ('{{ variant|to_lower_camel_case }}' in niceInput) {
+                        {{ destructure_struct(struct, "niceInput." ~ (variant|to_lower_camel_case)) }}
+                        return {
+                            __type: {{ loop.index0 }},
+                            {%- for (arg, converter) in struct.fields -%}
+                                {{ arg }}: {{ converter.converter_function }}({{ arg }}),
+                            {%- endfor -%}
+                        };
+                    }
+                {% endif %}
+            {% endfor %}
+            niceInput satisfies never;
+            throw new Error('Cannot match on {{ name }} argument');
+        }
+    {% endif %}
+{%- endfor %}
+
+{% for (name, f) in ctx.nice_functions|items %}
+{%- if f.is_tokio_async -%}
+export async
+{%- else %}
+export
+{%- endif %} function {{ name }}(
+  {%- if f.is_tokio_async or f.arguments|count > 0 -%}
+  {
+    {% if f.is_tokio_async %}
+    asyncContext, abortSignal,
+    {% endif %}
+    {%- for (arg, ty) in f.arguments -%}
+    {{ arg|to_lower_camel_case }}: {{ arg }},
+    {%- endfor -%}
+  }: {
+    {% if f.is_tokio_async -%}
+    asyncContext: TokioAsyncContext;
+    abortSignal?: AbortSignal;
+    {% endif %}
+    {%- for (arg, ty) in f.arguments -%}
+    {{ arg|to_lower_camel_case }}: {{ ty.nice_type }};
+    {% endfor %}
+  }
+  {%- endif -%}
+): {% if f.is_tokio_async -%}
+    Promise<{{ f.return_type.nice_type }}>
+  {%- else -%}
+    {{ f.return_type.nice_type }}
+  {%- endif -%}
+{
+  {%- if f.is_tokio_async %}
+    return ({{ f.return_type.converter_function }})(await asyncContext.makeCancellable(
+      abortSignal,
+      Native.{{ name }}(
+        asyncContext,
+        {%- for (arg, ty) in f.arguments -%}
+        ({{ ty.converter_function }})({{ arg }}),
+        {% endfor %}
+      )
+    ));
+  {%- else %}
+    return ({{ f.return_type.converter_function }})(Native.{{ name }}(
+      {% for (arg, ty) in f.arguments %}
+        ({{ ty.converter_function }})({{ arg }}),
+      {%- endfor %}
+    ));
+  {%- endif %}
+}
+{% endfor %}

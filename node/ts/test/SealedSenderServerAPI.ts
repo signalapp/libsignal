@@ -15,7 +15,7 @@ import { assertArrayEquals } from './util.js';
 
 util.initLogger();
 
-function bufferFromHexStrings(...input: string[]): Buffer {
+function bufferFromHexStrings(...input: string[]): Buffer<ArrayBuffer> {
   return Buffer.concat(input.map((s) => Buffer.from(s, 'hex')));
 }
 

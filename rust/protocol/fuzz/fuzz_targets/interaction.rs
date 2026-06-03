@@ -123,6 +123,7 @@ impl Participant {
 
         process_prekey_bundle(
             &them.address,
+            &self.address,
             &mut self.store.session_store,
             &mut self.store.identity_store,
             &their_pre_key_bundle,
@@ -173,6 +174,7 @@ impl Participant {
         let outgoing_message = message_encrypt(
             &buffer,
             &them.address,
+            &self.address,
             &mut self.store.session_store,
             &mut self.store.identity_store,
             SystemTime::UNIX_EPOCH,
@@ -205,6 +207,7 @@ impl Participant {
             let decrypted = message_decrypt(
                 &incoming_message,
                 their_address,
+                &self.address,
                 &mut self.store.session_store,
                 &mut self.store.identity_store,
                 &mut self.store.pre_key_store,

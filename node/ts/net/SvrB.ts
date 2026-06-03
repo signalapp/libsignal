@@ -45,7 +45,7 @@ export type StoreBackupResponse = {
    * to fetch the forward secrecy token from SVR-B. This is currently stored in the header of
    * the backup file.
    */
-  metadata: Uint8Array;
+  metadata: Uint8Array<ArrayBuffer>;
 
   /**
    * Opaque value that must be persisted and provided to the next call to {@link SvrB#store}.
@@ -53,7 +53,7 @@ export type StoreBackupResponse = {
    * See the {@link SvrB} documentation for lifecycle and persistence handling
    * for this value.
    */
-  nextBackupSecretData: Uint8Array;
+  nextBackupSecretData: Uint8Array<ArrayBuffer>;
 };
 
 class StoreBackupResponseImpl implements StoreBackupResponse {
@@ -66,11 +66,11 @@ class StoreBackupResponseImpl implements StoreBackupResponse {
     return new BackupForwardSecrecyToken(tokenBytes);
   }
 
-  get metadata(): Uint8Array {
+  get metadata(): Uint8Array<ArrayBuffer> {
     return Native.BackupStoreResponse_GetOpaqueMetadata(this);
   }
 
-  get nextBackupSecretData(): Uint8Array {
+  get nextBackupSecretData(): Uint8Array<ArrayBuffer> {
     return Native.BackupStoreResponse_GetNextBackupSecretData(this);
   }
 }
@@ -100,7 +100,7 @@ export type RestoreBackupResponse = {
    * See the {@link SvrB} documentation for lifecycle and persistence handling
    * for this value.
    */
-  nextBackupSecretData: Uint8Array;
+  nextBackupSecretData: Uint8Array<ArrayBuffer>;
 };
 
 class RestoreBackupResponseImpl implements RestoreBackupResponse {
@@ -114,7 +114,7 @@ class RestoreBackupResponseImpl implements RestoreBackupResponse {
     return new BackupForwardSecrecyToken(tokenBytes);
   }
 
-  get nextBackupSecretData(): Uint8Array {
+  get nextBackupSecretData(): Uint8Array<ArrayBuffer> {
     return Native.BackupRestoreResponse_GetNextBackupSecretData(this);
   }
 }
@@ -197,7 +197,7 @@ export class SvrB {
    * Should not be used if any previous backups exist for this `backupKey`, whether uploaded or
    * restored by the local device. See {@link SvrB} for more information.
    */
-  createNewBackupChain(backupKey: BackupKey): Uint8Array {
+  createNewBackupChain(backupKey: BackupKey): Uint8Array<ArrayBuffer> {
     return Native.SecureValueRecoveryForBackups_CreateNewBackupChain(
       this.environment,
       backupKey.serialize()
@@ -235,7 +235,7 @@ export class SvrB {
    */
   async store(
     backupKey: BackupKey,
-    previousSecretData: Uint8Array,
+    previousSecretData: Uint8Array<ArrayBuffer>,
     options?: { abortSignal?: AbortSignal }
   ): Promise<StoreBackupResponse> {
     const promise = Native.SecureValueRecoveryForBackups_StoreBackup(
@@ -289,7 +289,7 @@ export class SvrB {
    */
   async restore(
     backupKey: BackupKey,
-    metadata: Uint8Array,
+    metadata: Uint8Array<ArrayBuffer>,
     options?: { abortSignal?: AbortSignal }
   ): Promise<RestoreBackupResponse> {
     const promise =

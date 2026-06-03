@@ -35,11 +35,15 @@ derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["debug", "from", "try_from"] }
 displaydoc = { workspace = true }
 either = { workspace = true }
+futures = { workspace = true }
 futures-util = { workspace = true }
 hex = { workspace = true }
 hkdf = { workspace = true }
 hmac = { workspace = true }
 http = { workspace = true }
+http-body-util = { workspace = true }
+hyper = { workspace = true, features = ["server"] } # for FakeChatRemote
+hyper-util = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 nonzero_ext = { workspace = true }
@@ -77,9 +81,6 @@ libsignal-net = { path = ".", features = ["test-util"] }
 clap = { workspace = true, features = ["derive", "env"] }
 either = { workspace = true }
 env_logger = { workspace = true }
-futures = { workspace = true }
-hyper = { workspace = true }
-hyper-util = { workspace = true }
 proptest = { workspace = true }
 rand_chacha = { workspace = true }
 test-case = { workspace = true }

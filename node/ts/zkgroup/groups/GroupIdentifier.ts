@@ -10,7 +10,7 @@ export default class GroupIdentifier extends ByteArray {
   private readonly __type?: never;
   static SIZE = 32;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, GroupIdentifier.checkLength(GroupIdentifier.SIZE));
   }
 

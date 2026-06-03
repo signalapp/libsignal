@@ -6,10 +6,12 @@
 import Foundation
 import SignalFfi
 
+// swiftlint:disable:next explicit_init_for_public_struct
 public struct DisplayableFingerprint: Sendable {
     public let formatted: String
 }
 
+// swiftlint:disable:next explicit_init_for_public_struct
 public struct ScannableFingerprint: Sendable {
     public let encoding: Data
 

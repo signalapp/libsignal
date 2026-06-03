@@ -30,6 +30,8 @@ pub struct GroupSnapshot {
     pub access_control_members: proto::group::access_control::AccessRequired,
     #[serde_as(as = "serialize::EnumAsString")]
     pub access_control_add_from_invite_link: proto::group::access_control::AccessRequired,
+    #[serde_as(as = "serialize::EnumAsString")]
+    pub access_control_member_label: proto::group::access_control::AccessRequired,
     pub version: u32,
     pub members: UnorderedList<GroupMember>,
     pub members_pending_profile_key: UnorderedList<GroupMemberPendingProfileKey>,
@@ -38,6 +40,7 @@ pub struct GroupSnapshot {
     pub invite_link_password: Vec<u8>,
     pub announcements_only: bool,
     pub members_banned: UnorderedList<GroupMemberBanned>,
+    pub terminated: bool,
     _limit_construction_to_module: (),
 }
 
@@ -113,8 +116,9 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::
             membersPendingProfileKey,
             membersPendingAdminApproval,
             inviteLinkPassword,
-            announcements_only,
-            members_banned,
+            announcementsOnly,
+            membersBanned,
+            terminated,
             special_fields: _,
         } = self;
 
@@ -187,6 +191,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::
             access_control_attributes,
             access_control_members,
             access_control_add_from_invite_link,
+            access_control_member_label,
         ) = {
             use proto::group::access_control::AccessRequired;
 
@@ -196,6 +201,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::
                 attributes,
                 members,
                 addFromInviteLink,
+                memberLabel,
                 special_fields: _,
             } = accessControl.unwrap_or_default();
 
@@ -236,7 +242,19 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::
                 }
             };
 
-            (attributes, members, add_from_invite_link)
+            let member_label = match memberLabel.enum_value_or_default() {
+                access @ (AccessRequired::UNKNOWN
+                | AccessRequired::MEMBER
+                | AccessRequired::ADMINISTRATOR) => access,
+                access @ (AccessRequired::ANY | AccessRequired::UNSATISFIABLE) => {
+                    return Err(GroupError::InvalidAccess {
+                        which: "memberLabel",
+                        access,
+                    });
+                }
+            };
+
+            (attributes, members, add_from_invite_link, member_label)
         };
 
         let invite_link_password = inviteLinkPassword;
@@ -254,7 +272,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::
             iter.map(|m| m.try_into_with(context)).try_collect()
         })?;
 
-        let members_banned = likely_empty(members_banned, |iter| {
+        let members_banned = likely_empty(membersBanned, |iter| {
             iter.map(|m| m.try_into_with(context)).try_collect()
         })?;
 
@@ -266,13 +284,15 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::
             access_control_attributes,
             access_control_members,
             access_control_add_from_invite_link,
+            access_control_member_label,
             version,
             members,
             members_pending_profile_key,
             members_pending_admin_approval,
             invite_link_password,
-            announcements_only,
+            announcements_only: announcementsOnly,
             members_banned,
+            terminated,
             _limit_construction_to_module: (),
         })
     }
@@ -387,6 +407,7 @@ mod test {
                         attributes: proto::group::access_control::AccessRequired::ADMINISTRATOR.into(),
                         members: proto::group::access_control::AccessRequired::MEMBER.into(),
                         addFromInviteLink: proto::group::access_control::AccessRequired::ANY.into(),
+                        memberLabel: proto::group::access_control::AccessRequired::ADMINISTRATOR.into(),
                         ..Default::default()
                     })
                     .into(),
@@ -399,8 +420,9 @@ mod test {
                         proto::group::MemberPendingAdminApproval::test_data(),
                     ],
                     inviteLinkPassword: vec![0x05; 5],
-                    announcements_only: true,
-                    members_banned: vec![proto::group::MemberBanned::test_data()],
+                    announcementsOnly: true,
+                    membersBanned: vec![proto::group::MemberBanned::test_data()],
+                    terminated: true,
                     ..Default::default()
                 })
                 .into(),
@@ -424,6 +446,7 @@ mod test {
                     access_control_attributes: AccessRequired::ADMINISTRATOR,
                     access_control_members: AccessRequired::MEMBER,
                     access_control_add_from_invite_link: AccessRequired::ANY,
+                    access_control_member_label: AccessRequired::ADMINISTRATOR,
                     version: 5,
                     members: vec![GroupMember::from_proto_test_data()].into(),
                     members_pending_profile_key: vec![
@@ -437,6 +460,7 @@ mod test {
                     invite_link_password: vec![0x05; 5],
                     announcements_only: true,
                     members_banned: vec![GroupMemberBanned::from_proto_test_data()].into(),
+                    terminated: true,
                     _limit_construction_to_module: (),
                 },
                 blocked: false,
@@ -477,8 +501,13 @@ mod test {
     #[test_case(|x| x.accessControl.as_mut().unwrap().attributes = AccessRequired::ANY.into() => Err(GroupError::InvalidAccess { which: "attributes", access: AccessRequired::ANY }); "bad attributes AccessRequired")]
     #[test_case(|x| x.accessControl.as_mut().unwrap().members = AccessRequired::ANY.into() => Err(GroupError::InvalidAccess { which: "members", access: AccessRequired::ANY }); "bad members AccessRequired")]
     #[test_case(|x| x.accessControl.as_mut().unwrap().addFromInviteLink = AccessRequired::MEMBER.into() => Err(GroupError::InvalidAccess { which: "addFromInviteLink", access: AccessRequired::MEMBER }); "bad addFromInviteLink AccessRequired")]
+    #[test_case(|x| x.accessControl.as_mut().unwrap().memberLabel = AccessRequired::ANY.into() => Err(GroupError::InvalidAccess { which: "memberLabel", access: AccessRequired::ANY }); "bad memberLabel ANY AccessRequired")]
+    #[test_case(|x| x.accessControl.as_mut().unwrap().memberLabel = AccessRequired::UNSATISFIABLE.into() => Err(GroupError::InvalidAccess { which: "memberLabel", access: AccessRequired::UNSATISFIABLE }); "bad memberLabel UNSATISFIABLE AccessRequired")]
+    #[test_case(|x| x.accessControl.as_mut().unwrap().memberLabel = AccessRequired::UNKNOWN.into() => Ok(()); "unset memberLabel")]
+    #[test_case(|x| x.accessControl.as_mut().unwrap().memberLabel = AccessRequired::MEMBER.into() => Ok(()); "valid memberLabel MEMBER")]
+    #[test_case(|x| x.accessControl.as_mut().unwrap().memberLabel = AccessRequired::ADMINISTRATOR.into() => Ok(()); "valid memberLabel ADMINISTRATOR")]
     #[test_case(|x| x.inviteLinkPassword = vec![] => Ok(()); "empty invite link password")]
-    #[test_case(|x| x.members[0].user_id = vec![] => Err(GroupError::MemberInvalidServiceId { which: "member" }); "bad member")]
+    #[test_case(|x| x.members[0].userId = vec![] => Err(GroupError::MemberInvalidServiceId { which: "member" }); "bad member")]
     fn group_snapshot(
         modifier: impl FnOnce(&mut proto::group::GroupSnapshot),
     ) -> Result<(), GroupError> {

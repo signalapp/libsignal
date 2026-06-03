@@ -24,7 +24,6 @@ import {
   LibSignalErrorBase,
 } from '../Errors.js';
 import * as KT from '../net/KeyTransparency.js';
-import { MonitorMode } from '../net/KeyTransparency.js';
 
 use(chaiAsPromised);
 
@@ -60,7 +59,7 @@ const testRequest = {
     unidentifiedAccessKey: testUnidentifiedAccessKey,
   },
   usernameHash: testUsernameHash,
-  mode: MonitorMode.Other,
+  mode: 'contact' as const,
 };
 
 describe('KeyTransparency bridging', () => {
@@ -91,6 +90,33 @@ describe('KeyTransparency bridging', () => {
   });
 });
 
+describe('KeyTransparency.resetField', () => {
+  it('throws on corrupt data', async () => {
+    const store = new InMemoryKtStore();
+    await store.setAccountData(testAci, new Uint8Array([1, 2, 3]));
+    await expect(
+      KT.resetField(testAci, KT.AccountDataField.E164, store)
+    ).to.be.rejectedWith(TypeError);
+  });
+
+  it('is a noop when data is missing', async () => {
+    const store = new InMemoryKtStore();
+    await KT.resetField(testAci, KT.AccountDataField.E164, store);
+    expect(store.storage.get(testAci)).to.equal(undefined);
+  });
+
+  it('updates store on success', async () => {
+    const store = new InMemoryKtStore();
+    await store.setAccountData(
+      testAci,
+      Native.TESTING_KeyTransStoredAccountData()
+    );
+    expect(store.storage.get(testAci)).to.have.lengthOf(1);
+    await KT.resetField(testAci, KT.AccountDataField.E164, store);
+    expect(store.storage.get(testAci)).to.have.lengthOf(2);
+  });
+});
+
 describe('KeyTransparency network errors', () => {
   it('can bridge network errors', async () => {
     async function run(statusCode: number, headers: string[] = []) {
@@ -109,7 +135,7 @@ describe('KeyTransparency network errors', () => {
         unauth._chatService,
         Environment.Staging
       );
-      const promise = client._getLatestDistinguished(new InMemoryKtStore(), {});
+      const promise = client.check(testRequest, new InMemoryKtStore(), {});
 
       const request = await remote.assertReceiveIncomingRequest();
 
@@ -166,16 +192,16 @@ describe('KeyTransparency Integration', function (this: Mocha.Suite) {
     await chat.disconnect();
   });
 
-  it('can search for a test account', async () => {
+  it('check account (initial search)', async () => {
     const store = new InMemoryKtStore();
-    await kt.search(testRequest, store, {});
+    await kt.check(testRequest, store, {});
   });
 
-  it('can monitor the test account', async () => {
+  it('check account (monitor)', async () => {
     const store = new InMemoryKtStore();
 
-    // Search first to populate the store with account data
-    await kt.search(testRequest, store, {});
+    // Initial search first to populate the store with account data
+    await kt.check(testRequest, store, {});
 
     const accountDataHistory = store.storage.get(testAci) ?? null;
     if (accountDataHistory === null) {
@@ -183,39 +209,46 @@ describe('KeyTransparency Integration', function (this: Mocha.Suite) {
     }
 
     expect(accountDataHistory.length).to.equal(1);
+    expect(store.distinguished.length).to.equal(1);
 
-    await kt.monitor(testRequest, store, {});
+    await kt.check(testRequest, store, {});
     expect(accountDataHistory.length).to.equal(2);
+    // Distinguished tree should not have been updated
+    expect(store.distinguished.length).to.equal(1);
   });
 });
 
 class InMemoryKtStore implements KT.Store {
-  storage: Map<Readonly<Aci>, Array<Readonly<Uint8Array>>>;
-  distinguished: Readonly<Uint8Array> | null;
+  storage: Map<Readonly<Aci>, Array<Readonly<Uint8Array<ArrayBuffer>>>>;
+  distinguished: Array<Readonly<Uint8Array<ArrayBuffer>>>;
 
   constructor() {
-    this.storage = new Map<Aci, Array<Readonly<Uint8Array>>>();
-    this.distinguished = null;
+    this.storage = new Map<Aci, Array<Readonly<Uint8Array<ArrayBuffer>>>>();
+    this.distinguished = new Array<Uint8Array<ArrayBuffer>>();
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async getLastDistinguishedTreeHead(): Promise<Uint8Array | null> {
-    return this.distinguished;
+  async getLastDistinguishedTreeHead(): Promise<Uint8Array<ArrayBuffer> | null> {
+    return this.distinguished.at(-1) ?? null;
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async setLastDistinguishedTreeHead(bytes: Readonly<Uint8Array> | null) {
-    this.distinguished = bytes;
+  async setLastDistinguishedTreeHead(
+    bytes: Readonly<Uint8Array<ArrayBuffer>> | null
+  ) {
+    if (bytes !== null) {
+      this.distinguished.push(bytes);
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async getAccountData(aci: Aci): Promise<Uint8Array | null> {
+  async getAccountData(aci: Aci): Promise<Uint8Array<ArrayBuffer> | null> {
     const allVersions = this.storage.get(aci) ?? [];
     return allVersions.at(-1) ?? null;
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async setAccountData(aci: Aci, bytes: Readonly<Uint8Array>) {
+  async setAccountData(aci: Aci, bytes: Readonly<Uint8Array<ArrayBuffer>>) {
     const allVersions = this.storage.get(aci) ?? [];
     allVersions.push(bytes);
     this.storage.set(aci, allVersions);

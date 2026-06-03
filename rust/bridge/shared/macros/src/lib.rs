@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-//! Generates C, Java, and Node entry points for Rust functions.
+//! Generates C, JVM, and Node entry points for Rust functions and traits.
 //!
-//! The goal of the `bridge_fn` family of macros is to define a cross-language glue layer using
-//! strongly-typed Rust code. You can write a normal top-level Rust function exposing a particular
-//! operation, and additional functions will be generated for FFI, JNI, and Node bindings, mapping
-//! types automatically.
+//! The goal of the [`macro@bridge_fn`] family of macros is to define a cross-language glue layer
+//! using strongly-typed Rust code. You can write a normal top-level Rust function exposing a
+//! particular operation, and additional functions will be generated for FFI, JNI, and Node
+//! bindings, mapping types automatically.
 //!
 //! It is explicitly *not* a goal for this layer to generate perfect C, Java, or TypeScript APIs.
 //! Rather, it should generate safe interfaces to *Rust* APIs, on top of which idiomatic Swift,
@@ -52,23 +52,41 @@
 //! export function SenderKeyMessage_New(
 //!     keyId: number,
 //!     iteration: number,
-//!     ciphertext: Buffer,
+//!     ciphertext: Uint8Array<ArrayBuffer>,
 //!     pk: Wrapper<PrivateKey>
 //! ): SenderKeyMessage;
 //! ```
 //!
-//! # Async support for Node
+//! # Async support
+//!
+//! There are two forms of async support: one to make up for JavaScript being a single-threaded
+//! environment, and one to integrate with truly async operations on the Rust side.
+//!
+//! ## Async support for Node in `bridge_fn`
 //!
 //! For the Node bridge, if a `bridge_fn` is declared as `async`, it will return a JavaScript
-//! Promise and run the function on the JavaScript event loop using the `signal-neon-futures`
-//! crate. Interaction with JavaScript can be done through async callbacks, including trait objects
-//! defined using the [`async-trait`][] crate. Like the synchronous implementations of all three
-//! bridges, **panics will be caught** and translated to JavaScript exceptions.
+//! Promise and run the function on the JavaScript event loop using the `signal-neon-futures` crate.
+//! Interaction with JavaScript can be done through async callbacks, including trait objects defined
+//! using the [`async-trait`][] crate (see [`macro@bridge_callbacks`]). Like the synchronous
+//! implementations of all three bridges, **panics will be caught** and translated to JavaScript
+//! exceptions.
 //!
-//! The FFI and JNI bridges do not support asynchronous execution; an `async` function is invoked
-//! and `expect`ed to complete immediately without blocking.
+//! The FFI and JNI bridges do not support asynchronous execution; an `async` `bridge_fn` is invoked
+//! and `expect`ed to complete immediately without blocking. Use a separate thread/task in the
+//! caller if the operation needs to run in the background.
 //!
 //! [`async-trait`]: https://crates.io/crates/async-trait
+//!
+//! ## Async support using `bridge_io`
+//!
+//! For truly async operations (usually those performing I/O), the [`macro@bridge_io`] variant of
+//! `bridge_fn` allows specifying an additional hidden argument that implements the `AsyncRuntime`
+//! trait, providing a `run_future` method on which the body of the function will be invoked. This
+//! applies to all three bridges, with the C bridge ultimately calling a completion function, the
+//! Java bridge producing a `CompletableFuture`, and the Node bridge producing a `Promise`. (The
+//! Swift bridge uses the C completion callback to implement a Swift `async` interface.) Note that
+//! in each case the completion will not necessarily happen on the thread the work was originally
+//! scheduled on.
 //!
 //! # Naming conventions
 //!
@@ -97,7 +115,8 @@
 //! A replaced name does not undergo any transformation, but is still prefixed with the required
 //! "namespace" for FFI and JNI.
 //!
-//! [JNI spec]: https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/design.html#resolving_native_method_names
+//! [JNI spec]:
+//!     https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/design.html#resolving_native_method_names
 //!
 //! # Limiting to certain bridges
 //!
@@ -106,15 +125,26 @@
 //! validate all packages by enabling all three bridges at once. Instead, you can write e.g.
 //! `bridge_fn(jni = false)` to keep from exposing a particular function to Java.
 //!
+//!
+//! # "Nice" Bridging
+//! By specifying `#[bridge_fn(nice = true)]` or (e.g. `#[bridge_fn(nice_node = true)]` to override
+//! for a specific client language), a higher-level, "nice" bridge function will be generated. This
+//! higher-level bridge function is the client-language mirror to `bridge_fn`. Just like, on the
+//! Rust side, writers of `bridge_fn`s don't need to concern themselves with pointers or other
+//! such details, so too do nice functions allow code written in client languages to also avoid this
+//! concern. See `metadata.rs` for more details on "converters," which are the client-langauge
+//! analog of the `ResultTypeInfo` and `ArgTypeInfo` traits that enable this conversion.
+//!
 //! # Adding new argument and result types
 //!
-//! If your argument or result type is a Rust value being wrapped in an opaque box, declare it
-//! using the `bridge_as_handle` macro alongside other such types. Otherwise, there are two steps:
+//! If your argument or result type is a Rust value being wrapped in an opaque box, declare it using
+//! the `bridge_as_handle` macro alongside other such types. Otherwise, there are two steps:
 //!
 //! 1. Argument and result types for FFI and JNI are determined by macros `ffi_arg_type`,
 //!    `ffi_result_type`, `jni_arg_type`, and `jni_result_type`. You may need to add your new type
-//!    there. JNI and Node types also undergo some additional transformation in the scripts
-//!    `gen_java_decl.py` and `gen_ts_decl.py`, which you may need to tweak as well.
+//!    there. JNI types also undergo some additional transformation in the scripts
+//!    `gen_java_decl.py`, which you may need to tweak as well. Node types are generated as Strings
+//!    via the `gen_ts_ffi()` methods on `node::{AsyncArg, Arg, Result}TypeInfo`.
 //!
 //! 2. Argument types conform to one or more of the following bridge-specific traits:
 //!
@@ -131,14 +161,15 @@
 //!    These traits define how to convert between the bridge type and the Rust type used in the
 //!    function as written. See each individual trait for more info on how to add a new type.
 //!
-//! # Limitations
+//! # Callbacks
 //!
-//! - There is no support for multiple return values, even though some of the FFI entry points
-//!   use multiple output parameters. These functions must be implemented manually.
+//! There is support for exposing callback traits to C, JNI, and Node using the
+//! [`macro@bridge_callbacks`] macro; see there for more information.
 
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::*;
-use syn::parse::Parse;
+use syn::parse::{Parse, Parser};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::*;
@@ -157,6 +188,20 @@ fn value_for_meta_key<'a>(
         .iter()
         .find(|meta| meta.path.get_ident().is_some_and(|ident| ident == key))
         .map(|meta| &meta.value)
+}
+
+fn bool_for_meta_key(
+    meta_values: &Punctuated<MetaNameValue, Token![,]>,
+    key: &str,
+) -> Result<Option<bool>> {
+    match value_for_meta_key(meta_values, key) {
+        Some(Expr::Lit(ExprLit {
+            lit: Lit::Bool(value),
+            ..
+        })) => Ok(Some(value.value)),
+        None => Ok(None),
+        Some(value) => Err(syn::Error::new(value.span(), "Expected bool value")),
+    }
 }
 
 fn name_for_meta_key(
@@ -292,6 +337,25 @@ impl Parse for BridgeIoParams {
     }
 }
 
+struct NiceFunctions {
+    node: bool,
+    jni: bool,
+    swift: bool,
+}
+impl NiceFunctions {
+    fn parse(meta_values: &Punctuated<MetaNameValue, Token![,]>) -> syn::Result<Self> {
+        let default = bool_for_meta_key(meta_values, "nice")?.unwrap_or_default();
+        Ok(NiceFunctions {
+            node: bool_for_meta_key(meta_values, "nice_node")?.unwrap_or(default),
+            jni: bool_for_meta_key(meta_values, "nice_jni")?.unwrap_or(default),
+            swift: bool_for_meta_key(meta_values, "nice_swift")?.unwrap_or(default),
+        })
+    }
+    fn any(&self) -> bool {
+        self.node || self.jni || self.swift
+    }
+}
+
 fn bridge_fn_impl(
     attr: TokenStream,
     item: TokenStream,
@@ -334,6 +398,20 @@ fn bridge_fn_impl(
         Ok(name) => name,
         Err(error) => return error.to_compile_error().into(),
     };
+    let nice = match NiceFunctions::parse(&item_names) {
+        Ok(nice) => nice,
+        Err(error) => return error.to_compile_error().into(),
+    };
+    if nice.any()
+        && matches!(&bridging_kind, BridgingKind::Io {runtime} if runtime.to_token_stream().to_string().trim() != "TokioAsyncContext")
+    {
+        return syn::Error::new(
+            Span::call_site(),
+            "nice async functions require TokioAsyncContext",
+        )
+        .to_compile_error()
+        .into();
+    }
 
     let ffi_feature = ffi_name.as_ref().map(|_| quote!(feature = "ffi"));
     let jni_feature = jni_name.as_ref().map(|_| quote!(feature = "jni"));
@@ -344,15 +422,21 @@ fn bridge_fn_impl(
     // We could early-exit on the Errors returned from generating each wrapper,
     // but since they could be for unrelated issues, it's better to show all of them to the user.
     let ffi_fn = ffi_name.map(|name| {
-        ffi::bridge_fn(&name, &function.sig, result_info, &bridging_kind)
-            .unwrap_or_else(Error::into_compile_error)
+        ffi::bridge_fn(
+            &name,
+            &function.sig,
+            result_info,
+            &bridging_kind,
+            nice.swift,
+        )
+        .unwrap_or_else(Error::into_compile_error)
     });
     let jni_fn = jni_name.map(|name| {
-        jni::bridge_fn(&name, &function.sig, &bridging_kind)
+        jni::bridge_fn(&name, &function.sig, &bridging_kind, nice.jni)
             .unwrap_or_else(Error::into_compile_error)
     });
     let node_fn = node_name.map(|name| {
-        node::bridge_fn(&name, &function.sig, &bridging_kind)
+        node::bridge_fn(&name, &function.sig, &bridging_kind, nice.node)
             .unwrap_or_else(Error::into_compile_error)
     });
 
@@ -371,7 +455,7 @@ fn bridge_fn_impl(
     .into()
 }
 
-/// Generates C, Java, and Node entry points for a Rust function that returns a value.
+/// Generates C, Java, and Node entry points for a Rust function.
 ///
 /// See the [crate-level documentation](crate) for more information.
 ///
@@ -392,6 +476,22 @@ pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
     bridge_fn_impl(attr, item, BridgingKind::Regular)
 }
 
+/// Generates C, Java, and Node entry points for a Rust function that runs on an async runtime.
+///
+/// See the [crate-level documentation](crate) for more information.
+///
+/// # Example
+///
+/// ```ignore
+/// // Produces a C function named "signal_upload_profile_photo"
+/// // and a TypeScript function manually named "ProfilePhoto_Upload",
+/// // with the Java entry point disabled.
+/// # #[cfg(ignore_even_when_running_all_tests)]
+/// #[bridge_io(TokioAsyncContext, jni = false, node = "ProfilePhoto_Upload")]
+/// async fn UploadProfilePhoto(buffer: Vec<u8>) {
+///   // ...
+/// }
+/// ```
 #[proc_macro_attribute]
 pub fn bridge_io(attr: TokenStream, item: TokenStream) -> TokenStream {
     bridge_fn_impl(attr, item, BridgingKind::Io { runtime: () })
@@ -399,21 +499,77 @@ pub fn bridge_io(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Generates C, Java, and Node bridging for the callbacks in a Rust trait.
 ///
-/// Arguments to callbacks use the same handling as result types as described in the [crate-level
+/// This is done by producing helper types that can be easily bridged as arguments, under the names
+/// `Ffi{MyTrait}Struct`\*, `Jni{MyTrait}`, and `Node{MyTrait}`. These types all implement the
+/// trait. (Due to the way C struct bridging works, overriding the `ffi` name will affect both the
+/// name of the struct in C and in Rust.)
+///
+/// Arguments to callbacks use the same handling as *result* types as described in the [crate-level
 /// documentation](crate). Argument conversion is assumed to be generally infallible under normal
 /// circumstances and will only produce logs on failure.
 ///
-/// TODO: more docs
+/// Results are handled using the `ffi::CallbackResultTypeInfo`, `jni::CallbackResultTypeInfo`, and
+/// `node::CallbackResultTypeInfo` traits. These are all set up to behave the same as any type that
+/// can provide `SimpleArgTypeInfo` behavior---that is, arguments that do not need to be borrowed
+/// from their foreign state. However, some types are not simple (or are not valid arguments at all)
+/// and using them as callback results needs to be specified explicitly.
+///
+/// All callbacks that return a result are expected to specifically return a `Result` of some kind,
+/// whose error type must also be able to represent bridge layer errors (by stringifying them if
+/// nothing else).
+///
+/// # Example
+///
+/// ```ignore
+/// # #[cfg(ignore_even_when_running_all_tests)]
+/// // Expects a C struct of callbacks named "SignalFfiExampleStoreStruct"
+/// // and a Java interface manually named `org.signal.libsignal.internal.ExampleStore` (this is required),
+/// // with Node bridging disabled.
+/// #[bridge_callbacks(jni = "org.signal.libsignal.internal.ExampleStore", node = false)]
+/// trait ExampleStore {
+///     async fn load_state(
+///         &self,
+///         peer_id: String,
+///     ) -> Result<Vec<u8>, SignalProtocolError>;
+///     async fn store_state(
+///         &self,
+///         peer_id: String,
+///         new_state: Vec<u8>,
+///     ) -> Result<(), SignalProtocolError>;
+/// }
+/// ```
+///
+/// # JVM signatures
+///
+/// Because the Java bridge invokes methods by reflection, it needs a proper overload signature. It
+/// gets these signatures from the `jni::ResultTypeInfo` trait; if you get an error about
+/// `jni_signature_for` or `jni_signature_for_result` failing, you may need to add the signature to
+/// the implementation of `jni::ResultTypeInfo`.
+///
+/// # Async behavior
+///
+/// Like `bridge_fn` (but unlike `bridge_io`), `async` is only treated as actually delayed for the
+/// Node bridge. For C and JNI, async methods are expected to complete synchronously. (It is
+/// recommended that the callbacks therefore only be invoked on the thread that originally passed
+/// down the callbacks object.)
+///
+/// Note that due to <del>JavaScript's single-threaded behavior</del> the limitations of [Neon][],
+/// even non-`async` callbacks will be dispatched asynchronously for the Node bridge, and thus must
+/// not return anything---the call completing only covers the dispatching, not the full execution of
+/// the callback.
+///
+/// [Neon]: https://crates.io/crates/neon
 #[proc_macro_attribute]
 pub fn bridge_callbacks(attr: TokenStream, item: TokenStream) -> TokenStream {
     let trait_item = parse_macro_input!(item as ItemTrait);
     let item_names =
         parse_macro_input!(attr with Punctuated<MetaNameValue, Token![,]>::parse_terminated);
 
-    let ffi_name = match name_for_meta_key(&item_names, "ffi", || trait_item.ident.to_string()) {
-        Ok(name) => name,
-        Err(error) => return error.to_compile_error().into(),
-    };
+    let ffi_name =
+        match name_for_meta_key(&item_names, "ffi", || format!("Ffi{}", trait_item.ident)) {
+            Ok(name) => name,
+            Err(error) => return error.to_compile_error().into(),
+        };
     let jni_name = match name_for_meta_key(&item_names, "jni", || trait_item.ident.to_string()) {
         Ok(name) => name,
         Err(error) => return error.to_compile_error().into(),
@@ -423,24 +579,21 @@ pub fn bridge_callbacks(attr: TokenStream, item: TokenStream) -> TokenStream {
         Err(error) => return error.to_compile_error().into(),
     };
 
-    let ffi_feature = ffi_name.as_ref().map(|_| quote!(feature = "ffi"));
-    let jni_feature = jni_name.as_ref().map(|_| quote!(feature = "jni"));
-    let node_feature = node_name.as_ref().map(|_| quote!(feature = "node"));
-    let maybe_features = [ffi_feature, jni_feature, node_feature];
-    let feature_list = maybe_features.iter().flatten();
-
     // We could early-exit on the Errors returned from generating each wrapper,
     // but since they could be for unrelated issues, it's better to show all of them to the user.
-    let ffi_items = ffi_name
-        .map(|_name| ffi::bridge_trait(&trait_item).unwrap_or_else(Error::into_compile_error));
+    let ffi_items = ffi_name.map(|name| {
+        ffi::bridge_trait(&trait_item, &name).unwrap_or_else(Error::into_compile_error)
+    });
     let jni_items = jni_name.map(|name| {
         jni::bridge_trait(&trait_item, &name).unwrap_or_else(Error::into_compile_error)
     });
-    let node_items = node_name
-        .map(|_name| node::bridge_trait(&trait_item).unwrap_or_else(Error::into_compile_error));
+    let node_items = node_name.map(|name| {
+        node::bridge_trait(&trait_item, &name).unwrap_or_else(Error::into_compile_error)
+    });
 
     quote! {
-        #[cfg(any(#(#feature_list,)*))]
+        // Unlike bridge_fn, we still declare the trait even when the bridging synthesis is
+        // disabled. This allows for manual implementations.
         #trait_item
 
         #ffi_items
@@ -450,6 +603,37 @@ pub fn bridge_callbacks(attr: TokenStream, item: TokenStream) -> TokenStream {
         #node_items
     }
     .into()
+}
+
+fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+    let mut node = true;
+    for attr in &item.attrs {
+        if attr
+            .path()
+            .is_ident(&Ident::new("bridge", Span::call_site()))
+        {
+            let contents = Punctuated::<MetaNameValue, Token![,]>::parse_terminated
+                .parse2(attr.meta.require_list()?.tokens.clone())?;
+            node = bool_for_meta_key(&contents, "node")?.unwrap_or(true);
+        }
+    }
+    let node = if node {
+        Some(node::derive_bridged_as_value(&item)?)
+    } else {
+        None
+    };
+    Ok(quote! {
+        #node
+    })
+}
+
+#[proc_macro_derive(BridgedAsValue, attributes(bridge))]
+pub fn derive_bridged_as_value(item: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(item as DeriveInput);
+    match derive_bridged_as_value_inner(item) {
+        Ok(x) => x.into(),
+        Err(e) => e.into_compile_error().into(),
+    }
 }
 
 #[cfg(test)]

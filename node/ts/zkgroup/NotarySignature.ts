@@ -9,7 +9,7 @@ export default class NotarySignature extends ByteArray {
   private readonly __type?: never;
   static SIZE = 64;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, NotarySignature.checkLength(NotarySignature.SIZE));
   }
 }

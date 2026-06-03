@@ -41,7 +41,7 @@ export type ReceivedEndorsements = {
  * perspective.
  */
 export default class GroupSendEndorsementsResponse extends ByteArray {
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, Native.GroupSendEndorsementsResponse_CheckValidContents);
   }
 
@@ -69,7 +69,7 @@ export default class GroupSendEndorsementsResponse extends ByteArray {
   public static issueWithRandom(
     groupMembers: UuidCiphertext[],
     keyPair: GroupSendDerivedKeyPair,
-    random: Uint8Array
+    random: Uint8Array<ArrayBuffer>
   ): GroupSendEndorsementsResponse {
     return new GroupSendEndorsementsResponse(
       Native.GroupSendEndorsementsResponse_IssueDeterministic(

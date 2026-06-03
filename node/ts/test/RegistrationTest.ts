@@ -133,6 +133,16 @@ describe('Registration types', () => {
         code: ErrorCode.RateLimitChallengeError,
         token: 'token',
         options: new Set(['pushChallenge']),
+        retryAfterSecs: null,
+      },
+    ];
+    const rateLimitRetryChallengeCase: [string, object] = [
+      'PushChallengeRetryAfter42Seconds',
+      {
+        code: ErrorCode.RateLimitChallengeError,
+        token: 'token42',
+        options: new Set(['pushChallenge']),
+        retryAfterSecs: 42,
       },
     ];
     const cases: Array<{
@@ -150,6 +160,7 @@ describe('Registration types', () => {
           timeoutCase,
           serverSideErrorCase,
           rateLimitChallengeCase,
+          rateLimitRetryChallengeCase,
         ],
       },
       {
@@ -162,6 +173,7 @@ describe('Registration types', () => {
           timeoutCase,
           serverSideErrorCase,
           rateLimitChallengeCase,
+          rateLimitRetryChallengeCase,
         ],
       },
       {

@@ -15,6 +15,10 @@ public enum KeyFormat: UInt8, CaseIterable, Sendable {
 public struct DeviceTransferKey: Sendable {
     public let privateKey: Data
 
+    private init(privateKey: Data) {
+        self.privateKey = privateKey
+    }
+
     public static func generate(formattedAs keyFormat: KeyFormat = .pkcs8) -> Self {
         let privateKey = failOnError {
             try invokeFnReturningData {

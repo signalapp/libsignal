@@ -32,11 +32,13 @@ pub fn validate_serialization<'a, T: Deserialize<'a> + PartialDefault>(
 macro_rules! bridge_as_fixed_length_serializable {
     ($typ:ident) => {
         ::paste::paste! {
-            // Declare a marker type for TypeScript, the same as bridge_as_handle.
-            // (This is harmless for the other bridges.)
-            #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
             impl FixedLengthBincodeSerializable for $typ {
                 type Array = [u8; [<$typ:snake:upper _LEN>]];
+                #[cfg(feature = "metadata")]
+                fn name() -> String {
+                    let name = stringify!($typ);
+                    name.rsplit_once("::").map(|(_, x)| x).unwrap_or(name).into()
+                }
             }
         }
     };

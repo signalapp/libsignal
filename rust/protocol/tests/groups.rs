@@ -176,6 +176,7 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
 
         process_prekey_bundle(
             &bob_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
@@ -186,6 +187,7 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
 
         process_prekey_bundle(
             &carol_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &carol_pre_key_bundle,
@@ -388,6 +390,7 @@ fn group_sealed_sender_multiple_devices() -> Result<(), SignalProtocolError> {
 
         process_prekey_bundle(
             &bob_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
@@ -398,6 +401,7 @@ fn group_sealed_sender_multiple_devices() -> Result<(), SignalProtocolError> {
 
         process_prekey_bundle(
             &carol_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &carol_pre_key_bundle,
@@ -408,6 +412,7 @@ fn group_sealed_sender_multiple_devices() -> Result<(), SignalProtocolError> {
 
         process_prekey_bundle(
             &carol2_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &carol2_pre_key_bundle,
@@ -623,6 +628,7 @@ fn group_sealed_sender_multiple_devices_and_excluded_recipients() -> Result<(), 
 
         process_prekey_bundle(
             &bob_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
@@ -633,6 +639,7 @@ fn group_sealed_sender_multiple_devices_and_excluded_recipients() -> Result<(), 
 
         process_prekey_bundle(
             &carol_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &carol_pre_key_bundle,
@@ -643,6 +650,7 @@ fn group_sealed_sender_multiple_devices_and_excluded_recipients() -> Result<(), 
 
         process_prekey_bundle(
             &carol2_uuid_address,
+            &alice_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &carol2_pre_key_bundle,

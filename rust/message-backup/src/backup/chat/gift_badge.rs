@@ -132,7 +132,7 @@ mod test {
             let response = server_params.issue_receipt_credential(
                 RANDOMNESS,
                 &request,
-                zkgroup::Timestamp::from_epoch_seconds(123456789),
+                zkgroup::Timestamp::from_epoch_seconds(123456789 * zkgroup::SECONDS_PER_DAY),
                 6,
             );
             let credential = server_public_params

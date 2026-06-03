@@ -6,24 +6,16 @@
 use std::future::Future;
 
 use futures_util::{FutureExt, TryFutureExt};
+use libsignal_debug::trace_block;
 
 use super::*;
 use crate::support::{AsyncRuntime, CancellationId, ResultReporter};
 
-/// A baseline number of local references to allow on a background thread attaching to the JVM.
-///
-/// 16 is the default guaranteed number of local references for a JNI frame created by calling
-/// *from* Java into a `native` function; if we can usually do a synchronous function's full work
-/// with that, we should be able to do just the return value part as well.
-///
-/// cbindgen:ignore
-pub const REASONABLE_JNI_BACKGROUND_THREAD_FRAME_SIZE: jint = 16;
-
 /// Used to complete a Java CompletableFuture from any thread.
 pub struct FutureCompleter<T> {
     jvm: JavaVM,
-    future: GlobalRef,
-    future_creation_stack_trace_elements: GlobalRef,
+    future: Global<JObject<'static>>,
+    future_creation_stack_trace_elements: Global<JObject<'static>>,
     complete_signature: PhantomData<fn(T)>,
 }
 
@@ -46,7 +38,7 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe> FutureCompleter<T> 
     ///
     /// `future` is expected to refer to a CompletableFuture instance, and will
     /// have methods called on it that match the signatures on CompletableFuture.
-    pub fn new(env: &mut JNIEnv, future: &JObject) -> Result<Self, BridgeLayerError> {
+    pub fn new(env: &mut jni::Env, future: &JObject) -> Result<Self, BridgeLayerError> {
         let future_creation_stack_trace_elements = Self::get_current_thread_stack_trace(env)?;
 
         Ok(Self {
@@ -60,8 +52,9 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe> FutureCompleter<T> 
     }
 
     fn get_current_thread_stack_trace<'a>(
-        env: &mut JNIEnv<'a>,
+        env: &mut jni::Env<'a>,
     ) -> Result<JObject<'a>, BridgeLayerError> {
+        let _guard = trace_block!("get_current_thread_stack_trace");
         let thread_class = find_class(env, ClassName("java.lang.Thread")).expect_no_exceptions()?;
         let thread = call_static_method_checked(
             env,
@@ -98,18 +91,7 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
             complete_signature: _,
         } = receiver;
 
-        let mut env = match jvm.attach_current_thread() {
-            Ok(attach_guard) => attach_guard,
-            Err(e) => {
-                // Most likely this log will fail too,
-                // but really we don't expect attach_current_thread to fail at all.
-                log::error!("failed to attach to JVM: {e}");
-                return;
-            }
-        };
-
-        let result = env.with_local_frame(
-            REASONABLE_JNI_BACKGROUND_THREAD_FRAME_SIZE,
+        jvm.attach_current_thread_for_scope(
             move |mut env| -> jni::errors::Result<()> {
                 // Catch panics while converting successful results to Java values.
                 // (We have no *expected* panics, but we don't want to bring down the process for a
@@ -117,7 +99,7 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
                 let maybe_error: SignalJniResult<()> = {
                     // This AssertUnwindSafe isn't totally justified, but if we get a panic talking to the
                     // JVM, we have bigger problems.
-                    // Note that we need an extra &mut even though `env` is already `&mut JNIEnv`,
+                    // Note that we need an extra &mut even though `env` is already `&mut jni::Env`,
                     // so we can *release* it once this block is over.
                     let env_for_catch_unwind = std::panic::AssertUnwindSafe(&mut env);
                     let future_for_catch_unwind = &future;
@@ -181,17 +163,12 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
                 drop(extra_args_to_drop);
 
                 Ok(())
-            });
-
-        match result {
-            Ok(()) => {}
-            Err(e) => {
-                // Most likely this log will fail too,
-                // but really we don't expect with_local_frame's block to fail either.
-                // We try to handle all errors within it explicitly.
-                log::error!("failed to report result while attached to the JVM: {e}");
             }
-        }
+        ).unwrap_or_else(|e: jni::errors::Error| {
+            // Most likely this log will fail too,
+            // but really we don't expect attach_current_thread to fail at all.
+            log::error!("failed to attach to JVM: {e}");
+        });
     }
 }
 
@@ -205,10 +182,9 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
 /// ## Example
 ///
 /// ```no_run
-/// # use jni::JNIEnv;
 /// # use libsignal_bridge_types::jni::*;
 /// # use libsignal_bridge_types::support::NoOpAsyncRuntime;
-/// # fn test(env: &mut JNIEnv, async_runtime: &NoOpAsyncRuntime) -> SignalJniResult<()> {
+/// # fn test(env: &mut jni::Env, async_runtime: &NoOpAsyncRuntime) -> SignalJniResult<()> {
 /// let java_future = run_future_on_runtime(env, async_runtime, "task", |_cancel| async {
 ///     let result: i32 = 1 + 2;
 ///     // Do some complicated awaiting here.
@@ -217,7 +193,7 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
 /// # Ok(())
 /// # }
 pub fn run_future_on_runtime<'local, R, F, O>(
-    env: &mut JNIEnv<'local>,
+    env: &mut jni::Env<'local>,
     runtime: &R,
     label: &'static str,
     future: impl FnOnce(R::Cancellation) -> F,

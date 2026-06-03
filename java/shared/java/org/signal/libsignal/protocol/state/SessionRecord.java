@@ -33,7 +33,7 @@ public class SessionRecord extends NativeHandleGuard.SimpleOwner {
   }
 
   @CalledFromNative
-  private SessionRecord(long nativeHandle) {
+  public SessionRecord(long nativeHandle) {
     super(nativeHandle);
   }
 
@@ -98,8 +98,8 @@ public class SessionRecord extends NativeHandleGuard.SimpleOwner {
    *
    * <p>If there is no current session, returns {@code false}.
    */
-  public boolean hasSenderChain() {
-    return hasSenderChain(Instant.now());
+  public boolean hasSenderChain(double requirePqRatio) {
+    return hasSenderChain(requirePqRatio, Instant.now());
   }
 
   /**
@@ -109,12 +109,13 @@ public class SessionRecord extends NativeHandleGuard.SimpleOwner {
    *
    * <p>You should only use this overload if you need to test session expiration.
    */
-  public boolean hasSenderChain(Instant now) {
+  public boolean hasSenderChain(double requirePqRatio, Instant now) {
     return filterExceptions(
         () ->
             guardedMapChecked(
                 (nativeHandle) ->
-                    Native.SessionRecord_HasUsableSenderChain(nativeHandle, now.toEpochMilli())));
+                    Native.SessionRecord_HasUsableSenderChain(
+                        nativeHandle, requirePqRatio, now.toEpochMilli())));
   }
 
   public boolean currentRatchetKeyMatches(ECPublicKey key) {

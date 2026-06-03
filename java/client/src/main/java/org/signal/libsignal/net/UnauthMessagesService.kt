@@ -60,6 +60,61 @@ public class UnauthMessagesService(
     } catch (e: Throwable) {
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }
+
+  /**
+   * Sends a 1:1 message encrypted with Sealed Sender.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. A [RequestUnauthorizedException] means `auth` is not valid
+   * for `destination`; this cannot happen when `auth` is
+   * [UserBasedSendAuthorization.Story]. A [MismatchedDeviceException] indicates the recipient
+   * devices specified in `contents` are out of date in some way. (This is not a "partial success"
+   * result; the message has not been sent to anybody.) A [ServiceIdNotFoundException] indicates the
+   * destination account has been unregistered.
+   *
+   * @see [SealedSessionCipher.encrypt]
+   */
+  public fun sendMessage(
+    destination: ServiceId,
+    timestamp: Long,
+    contents: List<SingleOutboundSealedSenderMessage>,
+    auth: UserBasedSendAuthorization,
+    onlineOnly: Boolean,
+    urgent: Boolean,
+  ): CompletableFuture<RequestResult<Unit, SealedSendFailure>> =
+    try {
+      val deviceIds = IntArray(contents.size)
+      val registrationIds = IntArray(contents.size)
+      val messages = arrayOfNulls<ByteArray>(contents.size)
+
+      contents.forEachIndexed { i, next ->
+        deviceIds[i] = next.deviceId
+        registrationIds[i] = next.registrationId
+        messages[i] = next.message
+      }
+
+      connection
+        .runWithContextAndConnectionHandles { asyncCtx, conn ->
+          Native.UnauthenticatedChatConnection_send_message(
+            asyncCtx,
+            conn,
+            destination.toServiceIdFixedWidthBinary(),
+            timestamp,
+            deviceIds,
+            registrationIds,
+            messages.requireNoNulls(),
+            auth.rawKind(),
+            auth.payloadBytesOrNull(),
+            onlineOnly,
+            urgent,
+          )
+        }.mapWithCancellation(
+          onSuccess = { _ -> RequestResult.Success(Unit) },
+          onError = { err -> err.toRequestResult<SealedSendFailure>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
 }
 
 public sealed interface MultiRecipientSendAuthorization {
@@ -93,3 +148,28 @@ public class MultiRecipientMessageResponse(
     rawUnregisteredIds: Array<ByteArray>,
   ) : this(rawUnregisteredIds.map(ServiceId::parseFromFixedWidthBinary)) {}
 }
+
+/** Either [UserBasedAuthorization], or `UserBasedSendAuthorization.Story`. */
+public sealed interface UserBasedSendAuthorization {
+  public object Story : UserBasedSendAuthorization
+}
+
+// Must be kept in sync with `UserBasedSendAuthorizationKind` in Rust.
+private fun UserBasedSendAuthorization.rawKind(): Int =
+  when (this) {
+    is UserBasedSendAuthorization.Story -> 0
+    is UserBasedAuthorization.AccessKey -> 1
+    is UserBasedAuthorization.GroupSend -> 2
+    is UserBasedAuthorization.UnrestrictedUnauthenticatedAccess -> 3
+  }
+
+private fun UserBasedSendAuthorization.payloadBytesOrNull(): ByteArray? =
+  when (this) {
+    is UserBasedSendAuthorization.Story -> null
+    is UserBasedAuthorization.AccessKey -> bytes
+    is UserBasedAuthorization.GroupSend -> token.serialize()
+    is UserBasedAuthorization.UnrestrictedUnauthenticatedAccess -> null
+  }
+
+/** Either [ServiceIdNotFoundException], [RequestUnauthorizedException] or [MismatchedDeviceException]. */
+public sealed interface SealedSendFailure : BadRequestError

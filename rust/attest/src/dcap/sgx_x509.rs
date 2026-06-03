@@ -3,6 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+// TODO: asn1::ParseError is at least 136 bytes as of 0.23.0
+// Applied at the module level because of the derive macro interference
+#![allow(clippy::result_large_err)]
+
 use std::collections::HashMap;
 
 use asn1::{ObjectIdentifier, SequenceOf, oid};

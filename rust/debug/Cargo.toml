@@ -1,0 +1,16 @@
+[package]
+name = "libsignal-debug"
+edition = "2024"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cfg-if = { workspace = true }
+
+[lints]
+workspace = true
+
+[features]
+enabled = []

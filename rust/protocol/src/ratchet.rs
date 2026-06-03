@@ -16,7 +16,6 @@
 //
 
 mod keys;
-mod params;
 
 use curve25519_dalek::constants::ED25519_BASEPOINT_POINT;
 use curve25519_dalek::edwards::CompressedEdwardsY;
@@ -24,7 +23,11 @@ use libsignal_core::derive_arrays;
 use rand::{CryptoRng, Rng};
 
 pub(crate) use self::keys::{ChainKey, MessageKeyGenerator, RootKey};
-pub use self::params::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
+use crate::handshake::Handshake;
+use crate::pqxdh::{HandshakeKeys, Pqxdh};
+// Re-export the parameter types for backward compatibility.
+// Callers (session.rs, tests) use these via `ratchet::`.
+pub use crate::pqxdh::{InitiatorParameters, RecipientParameters};
 use crate::protocol::CIPHERTEXT_MESSAGE_CURRENT_VERSION;
 use crate::state::SessionState;
 use crate::{KeyPair, Result, SessionRecord, SignalProtocolError, consts};
@@ -52,6 +55,12 @@ fn derive_keys_with_label(label: &[u8], secret_input: &[u8]) -> (RootKey, ChainK
 
     (root_key, chain_key, pqr_key)
 }
+// Backward-compatible aliases for the old names. These keep existing
+// external callers (tests, bridge code) compiling during the transition.
+#[doc(hidden)]
+pub type AliceSignalProtocolParameters = InitiatorParameters;
+#[doc(hidden)]
+pub type BobSignalProtocolParameters<'a> = RecipientParameters<'a>;
 
 // PQ ratchet parameters
 fn spqr_chain_params(self_connection: bool) -> spqr::ChainParams {
@@ -140,52 +149,56 @@ pub fn hash_o(point: &EdwardsPoint) -> Vec<u8> {
     hash[..3].to_vec()
 }
 
-// ***X3DH Key Agreement for Alice***
+/// Initialize a session from the initiator's side.
+///
+/// Performs the PQXDH key agreement and then sets up the Double Ratchet
+/// and SPQR state.
 pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
-    parameters: &AliceSignalProtocolParameters, // Contains Alice's ik and eph keys, Bob's ik, signed prekey, otpk, PQ prekey
-    mut csprng: &mut R,
+    parameters: &InitiatorParameters,
+    csprng: &mut R,
+) -> Result<SessionState> {
+    let (
+        kyber_ciphertext,
+        HandshakeKeys {
+            root_key,
+            chain_key,
+            pqr_key,
+        },
+    ) = Pqxdh::initiate(parameters, csprng)?;
+
+    initialize_initiator_session(
+        parameters,
+        root_key,
+        chain_key,
+        pqr_key,
+        kyber_ciphertext,
+        csprng,
+    )
+}
+
+fn initialize_initiator_session<R: Rng + CryptoRng>(
+    parameters: &InitiatorParameters,
+    root_key: RootKey,
+    chain_key: ChainKey,
+    pqr_key: [u8; 32],
+    kyber_ciphertext: crate::kem::SerializedCiphertext,
+    csprng: &mut R,
 ) -> Result<SessionState> {
     let local_identity = parameters.our_identity_key_pair().identity_key(); // Alice's ipk
-
-    let mut secrets = Vec::with_capacity(32 * 6);
-    secrets.extend_from_slice(&[0xFFu8; 32]); // "discontinuity bytes"
 
     let mut x = Vec::with_capacity(32 * 6);
     x.extend_from_slice(parameters.our_identity_key_pair().public_key().public_key_bytes());
     x.extend_from_slice(parameters.their_identity_key().public_key().public_key_bytes());
-    x.extend_from_slice(parameters.our_base_key_pair().public_key.public_key_bytes());
+    x.extend_from_slice(parameters.our_ephemeral_key_pair().public_key.public_key_bytes());
     
 
-
-    // Below are the DH operations for X3DH
-    let our_base_private_key = parameters.our_base_key_pair().private_key;
-
-    // Alice's private ik * Bob's signed prekey
-    secrets.extend_from_slice(
-        &parameters
-            .our_identity_key_pair()
-            .private_key()
-            .calculate_agreement(parameters.their_signed_pre_key())?,
-    );
-
-    // Alice's eph key * Bob's ik
-    secrets.extend_from_slice(
-        &our_base_private_key.calculate_agreement(parameters.their_identity_key().public_key())?,
-    );
-
-    // Alice's eph key * Bob's signed prekey
-    secrets.extend_from_slice(
-        &our_base_private_key.calculate_agreement(parameters.their_signed_pre_key())?,
-    );
-
+    
     //step 0: parameters
     let vk; //otpk_bob,i 
     let g = generator_g();
 
     // Optional Alice's eph key * Bob's otpk
     if let Some(their_one_time_prekey) = parameters.their_one_time_pre_key() {
-        secrets
-            .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
         let bytes: [u8; 32] = their_one_time_prekey.public_key_bytes().try_into().unwrap();
         vk = MontgomeryPoint(bytes).to_edwards(0).unwrap();
         x.extend_from_slice(their_one_time_prekey.public_key_bytes());
@@ -198,13 +211,6 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     csprng.fill(&mut alice_sas_contribution_salt);
     let alice_sas_contribution_salt = alice_sas_contribution_salt.to_vec();
 
-    // Uses Bob's Kyber prekey to perform key encapsulation (KEM)
-    // ss = shared secret from Kyber, ct = ciphertext sent to Bob
-    let kyber_ciphertext = {
-        let (ss, ct) = parameters.their_kyber_pre_key().encapsulate(&mut csprng)?;
-        secrets.extend_from_slice(ss.as_ref());
-        ct
-    };
 
     
 
@@ -235,27 +241,21 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     //output vt, store vts
 
 
-    let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
 
     // Alice generates eph sending ratchet key
     // Perform DH with Bob's ratchet key
-    let sending_ratchet_key = KeyPair::generate(&mut csprng);
+    let sending_ratchet_key = KeyPair::generate(csprng);
     let (sending_chain_root_key, sending_chain_chain_key) = root_key.create_chain(
         parameters.their_ratchet_key(),
         &sending_ratchet_key.private_key,
     )?;
 
-    let self_session = local_identity == parameters.their_identity_key();
     let pqr_state = spqr::initial_state(spqr::Params {
         auth_key: &pqr_key,
         version: spqr::Version::V1,
         direction: spqr::Direction::A2B,
-        // Set min_version to V0 (allow fallback to no PQR at all) while
-        // there are clients that don't speak PQR.  Once all clients speak
-        // PQR, we can up this to V1 to require that all subsequent sessions
-        // use at least V1.
-        min_version: spqr::Version::V0,
-        chain_params: spqr_chain_params(self_session),
+        min_version: spqr::Version::V1, // Require that all clients speak SPQR
+        chain_params: spqr_chain_params(parameters.self_session()),
     })
     .map_err(|e| {
         // Since this is an error associated with the initial creation of the state,
@@ -271,7 +271,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
         local_identity,
         parameters.their_identity_key(),
         &sending_chain_root_key,
-        &parameters.our_base_key_pair().public_key,
+        &parameters.our_ephemeral_key_pair().public_key,
         pqr_state,
         None,
         Some(bincode::serialize(&vts).unwrap()),
@@ -289,50 +289,24 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     Ok(session) // Alice's session ready for messaging
 }
 
+/// Initialize a session from the recipient's side.
+///
+/// Performs the PQXDH key agreement and then sets up the Double Ratchet
+/// and SPQR state.
 pub(crate) fn initialize_bob_session(
-    parameters: &BobSignalProtocolParameters,
+    parameters: &RecipientParameters,
+    our_ratchet_key_pair: &KeyPair,
 ) -> Result<SessionState> {
     // validate Alice's (ephemeral) base key
-    if !parameters.their_base_key().is_canonical() {
+    if !parameters.their_ephemeral_key().is_canonical() {
         return Err(SignalProtocolError::InvalidMessage(
             crate::CiphertextMessageType::PreKey,
             "incoming base key is invalid",
         ));
     }
 
-    let local_identity = parameters.our_identity_key_pair().identity_key(); // Bob's ipk
-
-    let mut secrets = Vec::with_capacity(32 * 6);
-
-    secrets.extend_from_slice(&[0xFFu8; 32]); // "discontinuity bytes"
-
-    // concatenation for transcript
-    // Bob's spk * Alice's ik
-    secrets.extend_from_slice(
-        &parameters
-            .our_signed_pre_key_pair()
-            .private_key
-            .calculate_agreement(parameters.their_identity_key().public_key())?,
-    );
-
-    // Bob's ik * Alice's eph key
-    secrets.extend_from_slice(
-        &parameters
-            .our_identity_key_pair()
-            .private_key()
-            .calculate_agreement(parameters.their_base_key())?,
-    );
-
-    // Bob's spk * Alice's eph key
-    secrets.extend_from_slice(
-        &parameters
-            .our_signed_pre_key_pair()
-            .private_key
-            .calculate_agreement(parameters.their_base_key())?,
-    );
 
     //step 0: "retrieve" parameters k, vk
-    // fresh genning them for rapid dev right now
     let g = generator_g();
     let k ;
     let vk ;
@@ -343,18 +317,12 @@ pub(crate) fn initialize_bob_session(
 
     x.extend_from_slice(parameters.their_identity_key().public_key().public_key_bytes());
     x.extend_from_slice(parameters.our_identity_key_pair().public_key().public_key_bytes());
-    x.extend_from_slice(parameters.their_base_key().public_key_bytes());
+    x.extend_from_slice(parameters.their_ephemeral_key().public_key_bytes());
 
 
 
     // Optional Bob's otpk * Alice's eph key
     if let Some(our_one_time_pre_key_pair) = parameters.our_one_time_pre_key_pair() {
-        secrets.extend_from_slice(
-            &our_one_time_pre_key_pair
-                .private_key
-                .calculate_agreement(parameters.their_base_key())?,
-        );
-        
         let arr: [u8; 32] = our_one_time_pre_key_pair.private_key.serialize()
             .try_into()
             .expect("at least 32 bytes required");
@@ -375,14 +343,6 @@ pub(crate) fn initialize_bob_session(
 
     x.extend_from_slice(parameters.our_signed_pre_key_pair().public_key.public_key_bytes());
 
-    // Bob's Kyber secret key recovers shared PQ secret from Alice's ciphertext
-    secrets.extend_from_slice(
-        &parameters
-            .our_kyber_pre_key_pair()
-            .secret_key
-            .decapsulate(parameters.their_kyber_ciphertext())?,
-    );
-
     let their_pvrf_ciphertext = parameters.their_pvrf_ciphertext().as_ref().map(|b| b.to_vec());
     log::info!(
         "PVRF ciphertext in PreKey message as Bob: {}",
@@ -392,14 +352,20 @@ pub(crate) fn initialize_bob_session(
             .unwrap_or("not present")
     );
     if let Some(bytes) = their_pvrf_ciphertext {
-        log::info!("PVRF ciphertext bytes: {:?}", bytes);
         let (
             (h, hprime, (c, (s1, s2))),
             their_contrib_salt
         ): (
             (EdwardsPoint, EdwardsPoint, (Scalar, (Scalar, Scalar))),
             Vec<u8>
-        ) = bincode::deserialize(&bytes).unwrap();
+        ) = match bincode::deserialize(&bytes) {
+            Ok(v) => v,
+            Err(e) => {
+                return Err(SignalProtocolError::InvalidArgument(format!(
+                    "pvrf sas-ma: error parsing initiator pvrf {e}"
+                )))
+            }
+        };
         // Step 1, parse vars
         //let tau = (c, (s1, s2));
         //let vt = (h, hprime, tau);
@@ -417,7 +383,6 @@ pub(crate) fn initialize_bob_session(
         let computed_c = hash_fs(&vk, &x, &h, &hprime, &eta, &etaprime);
 
         // abort if mismatch
-        log::info!("Bob computes c: {:?}, Alice's c: {:?}", computed_c, c);
         if c != computed_c {
             log::info!("PVRF SAS-MA ERROR: Bob can't confirm Alice really generated this data");
             log::error!("should raise an error in the frontend");
@@ -432,8 +397,6 @@ pub(crate) fn initialize_bob_session(
         // Step 4
         let response =  (z.clone(), pi, c, computed_c); //(vk, x, vt, z, pi);
         bob_response = Some(bincode::serialize(&response).unwrap());
-        log::info!("Bob's PVRF response: {:?}", bob_response);
-        log::info!("Bob's v {:?}", (v.compress().to_bytes()));
         true_sas = Some(
             z.clone().iter()
             .zip(their_contrib_salt.iter())
@@ -447,20 +410,42 @@ pub(crate) fn initialize_bob_session(
     }
 
 
-    let (root_key, chain_key, pqr_key) = derive_keys(&secrets);
 
     // PQ ratchet from Bob to Alice
-    let self_session = local_identity == parameters.their_identity_key();
+    let HandshakeKeys {
+        root_key,
+        chain_key,
+        pqr_key,
+    } = Pqxdh::accept(parameters)?;
+
+    initialize_recipient_session(
+        parameters,
+        our_ratchet_key_pair,
+        root_key,
+        chain_key,
+        pqr_key,
+        true_sas,
+        bob_response
+    )
+}
+
+fn initialize_recipient_session(
+    parameters: &RecipientParameters,
+    our_ratchet_key_pair: &KeyPair,
+    root_key: RootKey,
+    chain_key: ChainKey,
+    pqr_key: [u8; 32],
+    true_sas: Option<Vec<u8>>,
+    bob_response: Option<Vec<u8>>,
+) -> Result<SessionState> {
+    let local_identity = parameters.our_identity_key_pair().identity_key();
+
     let pqr_state = spqr::initial_state(spqr::Params {
         auth_key: &pqr_key,
         version: spqr::Version::V1,
         direction: spqr::Direction::B2A,
-        // Set min_version to V0 (allow fallback to no PQR at all) while
-        // there are clients that don't speak PQR.  Once all clients speak
-        // PQR, we can up this to V1 to require that all subsequent sessions
-        // use at least V1.
-        min_version: spqr::Version::V0,
-        chain_params: spqr_chain_params(self_session),
+        min_version: spqr::Version::V1, // Require that all clients speak SPQR
+        chain_params: spqr_chain_params(parameters.self_session()),
     })
     .map_err(|e| {
         // Since this is an error associated with the initial creation of the state,
@@ -476,13 +461,13 @@ pub(crate) fn initialize_bob_session(
         local_identity,
         parameters.their_identity_key(),
         &root_key,
-        parameters.their_base_key(),
+        parameters.their_ephemeral_key(),
         pqr_state,
         true_sas,
         None, 
         bob_response,
     )
-    .with_sender_chain(parameters.our_ratchet_key_pair(), &chain_key);
+    .with_sender_chain(our_ratchet_key_pair, &chain_key);
 
     Ok(session)
 }
@@ -490,7 +475,7 @@ pub(crate) fn initialize_bob_session(
 
 // Wrappers
 pub fn initialize_alice_session_record<R: Rng + CryptoRng>(
-    parameters: &AliceSignalProtocolParameters,
+    parameters: &InitiatorParameters,
     csprng: &mut R,
 ) -> Result<SessionRecord> {
     Ok(SessionRecord::new(initialize_alice_session(
@@ -499,9 +484,13 @@ pub fn initialize_alice_session_record<R: Rng + CryptoRng>(
 }
 
 pub fn initialize_bob_session_record(
-    parameters: &BobSignalProtocolParameters,
+    parameters: &RecipientParameters,
+    our_ratchet_key_pair: &KeyPair,
 ) -> Result<SessionRecord> {
-    Ok(SessionRecord::new(initialize_bob_session(parameters)?))
+    Ok(SessionRecord::new(initialize_bob_session(
+        parameters,
+        our_ratchet_key_pair,
+    )?))
 }
 
 pub fn pvrf_verify_from_session_data(

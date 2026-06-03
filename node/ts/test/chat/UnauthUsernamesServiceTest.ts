@@ -6,7 +6,6 @@
 import { assert, config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { Buffer } from 'node:buffer';
-import * as uuid from 'uuid';
 
 import * as Native from '../../Native.js';
 import * as util from '../util.js';
@@ -14,11 +13,20 @@ import { TokioAsyncContext, UnauthUsernamesService } from '../../net.js';
 import { connectUnauth } from './ServiceTestUtils.js';
 import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
 import { Aci } from '../../Address.js';
+import * as uuid from '../../uuid.js';
 
 use(chaiAsPromised);
 
 util.initLogger();
 config.truncateThreshold = 0;
+
+const EXPECTED_USERNAME = 'moxie.01';
+const ENCRYPTED_USERNAME =
+  'kj5ah-VbEgjpfJsNt-Wto2H626DRmJSVpYPy0yPOXA8kiSFkBCD8ysFlJ-Z3MhiAnt_R3Nm7ZY0W5fiRDLVbhaE2z-KO2xdf5NcVbkewCzhvveecS3hHskDp1aSfbvwTZNNGPmAuKWvJ1MPdHzsF0w';
+const ENCRYPTED_USERNAME_ENTROPY = Buffer.from(
+  '4302c613c092a51c5394becffeb6f697300a605348e93f03c3db95e0b03d28f1',
+  'hex'
+);
 
 describe('UnauthUsernamesService', () => {
   describe('lookUpUsernameHash', () => {
@@ -77,41 +85,6 @@ describe('UnauthUsernamesService', () => {
       assert.isNull(responseFromServer);
     });
 
-    it('can handle challenge errors', async () => {
-      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
-      const [chat, fakeRemote] = connectUnauth<UnauthUsernamesService>(tokio);
-
-      const hash = Uint8Array.of(1, 2, 3, 4);
-      const responseFuture = chat.lookUpUsernameHash({ hash });
-
-      const request = await fakeRemote.assertReceiveIncomingRequest();
-
-      expect(request.verb).to.eq('GET');
-      expect(request.path).to.eq(
-        `/v1/accounts/username_hash/${Buffer.from(hash).toString('base64url')}`
-      );
-
-      fakeRemote.sendReplyTo(request, {
-        status: 428,
-        message: 'Precondition Required',
-        headers: ['content-type: application/json'],
-        body: Buffer.from(
-          JSON.stringify({
-            token: 'not-legal-tender',
-            options: ['pushChallenge'],
-          })
-        ),
-      });
-
-      await expect(responseFuture)
-        .to.eventually.be.rejectedWith(LibSignalErrorBase)
-        .and.deep.include({
-          code: ErrorCode.RateLimitChallengeError,
-          token: 'not-legal-tender',
-          options: new Set(['pushChallenge']),
-        });
-    });
-
     it('can handle server errors', async () => {
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
       const [chat, fakeRemote] = connectUnauth<UnauthUsernamesService>(tokio);
@@ -140,14 +113,6 @@ describe('UnauthUsernamesService', () => {
   });
 
   describe('lookUpUsernameLink', () => {
-    const EXPECTED_USERNAME = 'moxie.01';
-    const ENCRYPTED_USERNAME =
-      'kj5ah-VbEgjpfJsNt-Wto2H626DRmJSVpYPy0yPOXA8kiSFkBCD8ysFlJ-Z3MhiAnt_R3Nm7ZY0W5fiRDLVbhaE2z-KO2xdf5NcVbkewCzhvveecS3hHskDp1aSfbvwTZNNGPmAuKWvJ1MPdHzsF0w';
-    const ENCRYPTED_USERNAME_ENTROPY = Buffer.from(
-      '4302c613c092a51c5394becffeb6f697300a605348e93f03c3db95e0b03d28f1',
-      'hex'
-    );
-
     it('can look up links', async () => {
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
       const [chat, fakeRemote] = connectUnauth<UnauthUsernamesService>(tokio);
@@ -295,6 +260,43 @@ describe('UnauthUsernamesService', () => {
         .and.deep.include({
           code: ErrorCode.InvalidEntropyDataLength,
         });
+    });
+  });
+});
+
+describe('UnauthUsernamesServiceGrpc', () => {
+  describe('lookUpUsernameLink', () => {
+    it('can look up links', async () => {
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+      const [chat, fakeRemote] = connectUnauth<UnauthUsernamesService>(tokio, [
+        'AccountsAnonymousLookupUsernameLink',
+      ]);
+
+      const responseFuture = chat.lookUpUsernameLink({
+        uuid: uuid.NIL,
+        entropy: ENCRYPTED_USERNAME_ENTROPY,
+      });
+
+      const request = await fakeRemote.assertReceiveIncomingGrpcRequest();
+
+      expect(
+        request.getSingleGrpcMessage(
+          'org.signal.chat.account.LookupUsernameLinkRequest'
+        )
+      ).to.deep.eq({ usernameLinkHandle: 'AAAAAAAAAAAAAAAAAAAAAA==' });
+
+      await fakeRemote.sendGrpcReplyTo(
+        request,
+        'org.signal.chat.account.LookupUsernameLinkResponse',
+        {
+          usernameCiphertext: ENCRYPTED_USERNAME,
+        }
+      );
+
+      const responseFromServer = await responseFuture;
+      assert.isNotNull(responseFromServer);
+      assert.equal(responseFromServer.username, EXPECTED_USERNAME);
+      assert.isNotEmpty(responseFromServer.hash);
     });
   });
 });

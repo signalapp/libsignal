@@ -15,12 +15,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import kotlin.Pair;
+import kotlin.io.encoding.Base64;
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.internal.TokioAsyncContext;
-import org.signal.libsignal.util.Base64;
 
 public class ChatServiceTest {
 
@@ -157,14 +157,14 @@ public class ChatServiceTest {
     fakeRemote.guardedRun(
         chatHandle ->
             NativeTesting.TESTING_FakeChatRemoteEnd_SendRawServerRequest(
-                chatHandle, Base64.decode(requestBase64)));
+                chatHandle, Base64.Default.decode(requestBase64, 0, requestBase64.length())));
   }
 
   private void injectServerResponse(FakeChatRemote fakeRemote, String requestBase64) {
     fakeRemote.guardedRun(
         chatHandle ->
             NativeTesting.TESTING_FakeChatRemoteEnd_SendRawServerResponse(
-                chatHandle, Base64.decode(requestBase64)));
+                chatHandle, Base64.Default.decode(requestBase64, 0, requestBase64.length())));
   }
 
   private void injectConnectionInterrupted(FakeChatRemote fakeRemote) {
@@ -263,7 +263,7 @@ public class ChatServiceTest {
     final Listener listener = new Listener();
     final Pair<AuthenticatedChatConnection, FakeChatRemote> chatAndFakeRemote =
         AuthenticatedChatConnection.fakeConnect(
-            tokioAsyncContext, listener, new String[] {"UPPERcase", "lowercase"});
+            tokioAsyncContext, listener, new String[0], new String[] {"UPPERcase", "lowercase"});
     final AuthenticatedChatConnection chat = chatAndFakeRemote.getFirst();
     final FakeChatRemote fakeRemote = chatAndFakeRemote.getSecond();
 

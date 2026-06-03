@@ -7,6 +7,7 @@
 
 package org.signal.libsignal.internal
 
+import org.signal.libsignal.internal.NativeHandleGuard.SimpleOwner
 import org.signal.libsignal.net.internal.BridgeChatListener
 import org.signal.libsignal.net.internal.BridgeProvisioningListener
 import org.signal.libsignal.net.internal.ConnectChatBridge
@@ -102,6 +103,8 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_CreateOTPFromBase64(username: String, secret: String): String
   @JvmStatic
+  public external fun TESTING_EnableDeterministicRngForTesting(): Unit
+  @JvmStatic
   public external fun TESTING_ErrorOnBorrowAsync(input: Object): Unit
   @JvmStatic
   public external fun TESTING_ErrorOnBorrowIo(asyncRuntime: ObjectHandle, input: Object): CompletableFuture<Void?>
@@ -114,7 +117,7 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_ErrorOnReturnSync(needsCleanup: Object): Object
   @JvmStatic
-  public external fun TESTING_FakeChatConnection_Create(tokio: ObjectHandle, listener: BridgeChatListener, alertsJoinedByNewlines: String): ObjectHandle
+  public external fun TESTING_FakeChatConnection_Create(tokio: ObjectHandle, listener: BridgeChatListener, grpcOverridesJoinedByNewlines: String, alertsJoinedByNewlines: String): ObjectHandle
   @JvmStatic
   public external fun TESTING_FakeChatConnection_CreateProvisioning(tokio: ObjectHandle, listener: BridgeProvisioningListener): ObjectHandle
   @JvmStatic
@@ -126,13 +129,25 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_FakeChatConnection_TakeUnauthenticatedChat(chat: ObjectHandle): ObjectHandle
   @JvmStatic
+  public external fun TESTING_FakeChatRemoteEnd_BinprotoToJson(name: String, input: ByteArray): String
+  @JvmStatic
+  public external fun TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength(len: Int): ByteArray
+  @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: ObjectHandle): Unit
+  @JvmStatic
+  public external fun TESTING_FakeChatRemoteEnd_JsonToBinproto(name: String, input: String): ByteArray
+  @JvmStatic
+  public external fun TESTING_FakeChatRemoteEnd_NextGrpcMessage(input: ByteArray, offset: Int): Pair<Int, Int>
+  @JvmStatic
+  public external fun TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Pair<ObjectHandle, Long>?>
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Pair<ObjectHandle, Long>?>
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_SendRawServerRequest(chat: ObjectHandle, bytes: ByteArray): Unit
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_SendRawServerResponse(chat: ObjectHandle, bytes: ByteArray): Unit
+  @JvmStatic
+  public external fun TESTING_FakeChatRemoteEnd_SendServerGrpcResponse(asyncRuntime: ObjectHandle, chat: ObjectHandle, response: ObjectHandle): CompletableFuture<Void?>
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_SendServerResponse(chat: ObjectHandle, response: ObjectHandle): Unit
   @JvmStatic
@@ -172,6 +187,8 @@ public object NativeTesting {
   @JvmStatic @Throws(Exception::class)
   public external fun TESTING_KeyTransNonFatalVerificationFailure(): Unit
   @JvmStatic
+  public external fun TESTING_KeyTransStoredAccountData(): ByteArray
+  @JvmStatic
   public external fun TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(handle: ObjectHandle): Unit
   @JvmStatic
   public external fun TESTING_NonSuspendingBackgroundThreadRuntime_New(): ObjectHandle
@@ -208,7 +225,7 @@ public object NativeTesting {
   @JvmStatic @Throws(Exception::class)
   public external fun TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert(errorDescription: String): Unit
   @JvmStatic
-  public external fun TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert(): Object
+  public external fun TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert(): Map<*, *>
   @JvmStatic @Throws(Exception::class)
   public external fun TESTING_RegistrationService_CreateSessionErrorConvert(errorDescription: String): Unit
   @JvmStatic @Throws(Exception::class)
@@ -238,9 +255,15 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_RoundTripU8(input: Int): Int
   @JvmStatic
+  public external fun TESTING_ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationVersionedDeterministic(serverPublicParams: ObjectHandle, randomness: ByteArray, groupSecretParams: ByteArray, profileKeyCredential: ByteArray, newVersion: Boolean): ByteArray
+  @JvmStatic
   public external fun TESTING_SignedPublicPreKey_CheckBridgesCorrectly(sourcePublicKey: ObjectHandle, signedPreKey: SignedPublicPreKey<*>): Unit
   @JvmStatic
   public external fun TESTING_TestingHandleType_getValue(handle: ObjectHandle): Int
+  @JvmStatic
+  public external fun TESTING_TestingIntBox_Get(myIntBox: SimpleOwner): Int
+  @JvmStatic
+  public external fun TESTING_TestingIntBox_New(value: Int): ObjectHandle
   @JvmStatic
   public external fun TESTING_TokioAsyncContext_AttachBlockingThreadToJVMPermanently(context: ObjectHandle, jvm: Object): Unit
   @JvmStatic
@@ -249,12 +272,41 @@ public object NativeTesting {
   public external fun TESTING_TokioAsyncContext_NewSingleThreaded(): ObjectHandle
   @JvmStatic
   public external fun TESTING_TokioAsyncFuture(asyncRuntime: ObjectHandle, input: Int): CompletableFuture<Int>
+  @JvmStatic
+  public external fun TESTING_conversion_Data_identity(x: ByteArray): ByteArray
+  @JvmStatic
+  public external fun TESTING_conversion_Data_to_string(x: ByteArray): String
+  @JvmStatic
+  public external fun TESTING_conversion_ServiceId_identity(x: ByteArray): ByteArray
+  @JvmStatic
+  public external fun TESTING_conversion_ServiceId_to_string(x: ByteArray): String
+  @JvmStatic
+  public external fun TESTING_conversion_bool_identity(x: Boolean): Boolean
+  @JvmStatic
+  public external fun TESTING_conversion_bool_to_string(x: Boolean): String
+  @JvmStatic
+  public external fun TESTING_conversion_i32_identity(x: Int): Int
+  @JvmStatic
+  public external fun TESTING_conversion_i32_to_string(x: Int): String
+  @JvmStatic
+  public external fun TESTING_conversion_string_identity(x: String): String
+  @JvmStatic
+  public external fun TESTING_conversion_u16_identity(x: Int): Int
+  @JvmStatic
+  public external fun TESTING_conversion_u16_to_string(x: Int): String
+  @JvmStatic
+  public external fun TESTING_conversion_u8_identity(x: Int): Int
+  @JvmStatic
+  public external fun TESTING_conversion_u8_to_string(x: Int): String
 
   @JvmStatic
   public external fun TestingFutureCancellationCounter_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic
   public external fun TestingHandleType_Destroy(handle: ObjectHandle): Unit
+
+  @JvmStatic
+  public external fun TestingIntBox_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic
   public external fun TestingSemaphore_AddPermits(semaphore: ObjectHandle, permits: Int): Unit

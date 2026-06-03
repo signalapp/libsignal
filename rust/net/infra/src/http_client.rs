@@ -6,9 +6,12 @@
 use std::error::Error;
 use std::marker::PhantomData;
 use std::str::FromStr as _;
+use std::sync::Arc;
 
 use bytes::Bytes;
 use derive_where::derive_where;
+use displaydoc::Display;
+use futures_util::FutureExt as _;
 use http::HeaderMap;
 use http::response::Parts;
 use http::uri::PathAndQuery;
@@ -51,8 +54,11 @@ pub enum HttpError {
 #[derive_where(Clone)]
 pub struct Http2Client<B> {
     service: http2::SendRequest<B>,
+    cancellation_token: tokio_util::sync::CancellationToken,
     authority: http::uri::Authority,
     path_prefix: Option<http::uri::PathAndQuery>,
+    default_per_request_headers: Arc<http::HeaderMap>,
+    h2_connection_cancellation_token: tokio_util::sync::CancellationToken,
 }
 
 impl<B: hyper::body::Body + 'static> Http2Client<B> {
@@ -71,7 +77,7 @@ impl<B: hyper::body::Body + 'static> Http2Client<B> {
     pub fn send_request(
         &mut self,
         mut req: http::Request<B>,
-    ) -> impl Future<Output = Result<http::Response<hyper::body::Incoming>, hyper::Error>> + 'static
+    ) -> impl Future<Output = Result<http::Response<hyper::body::Incoming>, Http2TransportError>> + 'static
     {
         let mut uri = std::mem::take(req.uri_mut()).into_parts();
         uri.authority = Some(self.authority.clone());
@@ -88,7 +94,129 @@ impl<B: hyper::body::Body + 'static> Http2Client<B> {
         }
         *req.uri_mut() = http::Uri::from_parts(uri).expect("valid parts");
 
-        self.service.send_request(req)
+        add_default_headers(req.headers_mut(), &self.default_per_request_headers);
+
+        let req_fut = self.service.send_request(req);
+        self.cancellation_token
+            .clone()
+            .run_until_cancelled_owned(req_fut)
+            .map(|result| match result {
+                Some(completed) => completed.map_err(Http2TransportError::Hyper),
+                None => Err(Http2TransportError::LocalDisconnect),
+            })
+    }
+
+    pub fn set_default_per_request_headers(&mut self, default_headers: http::HeaderMap) {
+        self.default_per_request_headers = Arc::new(default_headers);
+    }
+
+    /// Cancels all existing and future requests sent on this H2 connection, no matter which
+    /// `Http2Client` clone they were sent from.
+    ///
+    /// This allows the underlying H2 connection to gracefully terminate.
+    pub fn disconnect_all(self) {
+        self.cancellation_token.cancel();
+    }
+
+    /// Awaits a graceful shutdown of the H2 connection.
+    ///
+    /// This is not a full disconnection, but no new requests will be accepted after this future
+    /// completes.
+    pub fn wait_for_h2_shutdown(&self) -> impl Future<Output = ()> + Send + 'static {
+        self.h2_connection_cancellation_token
+            .clone()
+            .cancelled_owned()
+    }
+}
+
+/// Copy all headers from `default_headers` into `headers` *except* for those already present.
+///
+/// `HeaderMap` is a multimap, so we have to be careful how we do this.
+fn add_default_headers(headers: &mut http::HeaderMap, default_headers: &http::HeaderMap) {
+    for k in default_headers.keys() {
+        match headers.entry(k) {
+            http::header::Entry::Occupied(_) => {
+                // The request has overridden this header.
+            }
+            http::header::Entry::Vacant(vacant_entry) => {
+                let mut values = default_headers.get_all(k).into_iter().cloned();
+                let mut entry = vacant_entry.insert_entry(
+                    values
+                        .next()
+                        .expect("at least one value for a key we know is present"),
+                );
+                for v in values {
+                    entry.append(v);
+                }
+            }
+        }
+    }
+}
+
+// hyper doesn't expose its error kind enum, so we re-create it here.
+#[derive(Debug, Display)]
+pub enum Http2TransportErrorKind {
+    /// An uncategorizable hyper error
+    Unknown,
+    /// A body write was aborted
+    BodyWriteAborted,
+    /// Request was canceled
+    Canceled,
+    /// Sender channel was closed
+    Closed,
+    /// Connection closed before a message could complete
+    IncompleteMessage,
+    /// Error caused while calling `AsyncWrite::shutdown()`
+    Shutdown,
+    /// Some timeout was hit
+    Timeout,
+    /// The HTTP status couldn't be parsed
+    ParseStatus,
+    /// Some generic parsing error occurred
+    Parse,
+    /// Some user code failed
+    User,
+}
+impl LogSafeDisplay for Http2TransportErrorKind {}
+
+#[derive(thiserror::Error, Debug, displaydoc::Display)]
+pub enum Http2TransportError {
+    /// Locally disconnected
+    LocalDisconnect,
+    /// {0}
+    Hyper(#[from] hyper::Error),
+}
+
+impl Http2TransportError {
+    pub fn kind(&self) -> Http2TransportErrorKind {
+        match self {
+            Self::LocalDisconnect => Http2TransportErrorKind::Closed,
+            Self::Hyper(e) => {
+                if e.is_body_write_aborted() {
+                    Http2TransportErrorKind::BodyWriteAborted
+                } else if e.is_canceled() {
+                    Http2TransportErrorKind::Canceled
+                } else if e.is_closed() {
+                    Http2TransportErrorKind::Closed
+                } else if e.is_incomplete_message() {
+                    Http2TransportErrorKind::IncompleteMessage
+                } else if e.is_shutdown() {
+                    Http2TransportErrorKind::Shutdown
+                } else if e.is_timeout() {
+                    Http2TransportErrorKind::Timeout
+                } else if e.is_parse_status() {
+                    // Check this before e.is_parse() which subsumes it
+                    Http2TransportErrorKind::ParseStatus
+                } else if e.is_parse() {
+                    // We don't check e.is_parse_too_large() because that's http/1 only
+                    Http2TransportErrorKind::Parse
+                } else if e.is_user() {
+                    Http2TransportErrorKind::User
+                } else {
+                    Http2TransportErrorKind::Unknown
+                }
+            }
+        }
     }
 }
 
@@ -97,14 +225,14 @@ impl<B: hyper::body::Body + Send + 'static> tower_service::Service<http::Request
     for Http2Client<B>
 {
     type Response = http::Response<hyper::body::Incoming>;
-    type Error = hyper::Error;
+    type Error = Http2TransportError;
     type Future = futures_util::future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(
         &mut self,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), Self::Error>> {
-        self.poll_ready(cx)
+        self.poll_ready(cx).map_err(Http2TransportError::Hyper)
     }
 
     fn call(&mut self, req: http::Request<B>) -> Self::Future {
@@ -273,7 +401,11 @@ where
         // or if all clients are dropped.
         let log_tag = log_tag.to_owned();
         let ip_version = info.ip_version();
-        tokio::spawn(async move {
+        let h2_connection_cancellation_token = tokio_util::sync::CancellationToken::new();
+        let h2_connection_cancellation_token_guard =
+            h2_connection_cancellation_token.clone().drop_guard();
+        _ = tokio::spawn(async move {
+            let _guard = h2_connection_cancellation_token_guard;
             match connection.await {
                 Ok(_) => log::info!("[{log_tag}] HTTP2 connection [{ip_version}] closed"),
                 Err(err) => {
@@ -295,8 +427,11 @@ where
 
         Ok(Http2Client {
             service: sender,
+            cancellation_token: tokio_util::sync::CancellationToken::new(),
             authority,
             path_prefix,
+            default_per_request_headers: Default::default(),
+            h2_connection_cancellation_token,
         })
     }
 }
@@ -304,15 +439,19 @@ where
 #[cfg(test)]
 mod test {
     use std::borrow::Cow;
+    use std::convert::Infallible;
     use std::future::Future;
     use std::net::{IpAddr, Ipv6Addr, SocketAddr};
     use std::num::NonZeroU16;
+    use std::pin::pin;
     use std::sync::Arc;
     use std::time::{Duration, SystemTime};
 
     use assert_matches::assert_matches;
+    use futures_util::StreamExt as _;
+    use futures_util::stream::FuturesUnordered;
     use http::{HeaderName, HeaderValue, Method, StatusCode};
-    use test_case::test_matrix;
+    use test_case::{test_case, test_matrix};
     use warp::Filter as _;
 
     use super::*;
@@ -407,12 +546,14 @@ mod test {
                     );
                     ErrorHandling::Continue
                 }
-                HttpConnectError::HttpHandshake => {
-                    ErrorHandling::Fatal(HttpError::Http2HandshakeFailed)
-                }
-                HttpConnectError::InvalidConfig(_) => {
-                    ErrorHandling::Fatal(HttpError::FailedToCreateRequest)
-                }
+                HttpConnectError::HttpHandshake => ErrorHandling::Fatal {
+                    error: HttpError::Http2HandshakeFailed,
+                    failure_for_all_routes: None,
+                },
+                HttpConnectError::InvalidConfig(_) => ErrorHandling::Fatal {
+                    error: HttpError::FailedToCreateRequest,
+                    failure_for_all_routes: None,
+                },
             },
         )
         .await;
@@ -426,7 +567,7 @@ mod test {
         Ok(AggregatingHttp2Client::new(
             result.map_err(|e| match e {
                 ConnectError::AllAttemptsFailed => HttpError::SslHandshakeFailed,
-                ConnectError::FatalConnect(e) => e,
+                ConnectError::FatalConnect { error, .. } => error,
             })?,
             max_response_size,
         ))
@@ -510,6 +651,107 @@ mod test {
         assert_eq!(response_body, FAKE_RESPONSE);
     }
 
+    #[tokio::test]
+    async fn pending_requests_cancelled_on_explicit_disconnect() {
+        let _ = env_logger::try_init();
+
+        let (server_addr, server) =
+            localhost_https_server(warp::path("ready").map(|| "response").or(
+                warp::path("pending").and_then(std::future::pending::<Result<&str, Infallible>>),
+            ));
+        tokio::spawn(server);
+
+        const FAKE_HOSTNAME: &str = "different-from-sni.test-hostname";
+
+        let host = FAKE_HOSTNAME.into();
+        let client = http2_client(
+            [HttpsTlsRoute {
+                fragment: HttpRouteFragment {
+                    host_header: Arc::clone(&host),
+                    path_prefix: "".into(),
+                    http_version: Some(HttpVersion::Http2),
+                    front_name: None,
+                },
+                inner: TlsRoute {
+                    fragment: TlsRouteFragment {
+                        sni: Host::Domain(SERVER_HOSTNAME.into()),
+                        root_certs: crate::certs::RootCertificates::FromDer(Cow::Borrowed(
+                            SERVER_CERTIFICATE.cert.der(),
+                        )),
+                        alpn: Some(crate::Alpn::Http2),
+                        min_protocol_version: None,
+                    },
+                    inner: TcpRoute {
+                        address: Ipv6Addr::LOCALHOST.into(),
+                        port: NonZeroU16::new(server_addr.port()).unwrap(),
+                        override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
+                    },
+                },
+            }],
+            &outcome_record_for_testing(),
+            MAX_RESPONSE_SIZE,
+            "test",
+        )
+        .await
+        .expect("can connect");
+
+        // We can test the underlying Http2Client behavior more precisely.
+        let mut client = client.service;
+        let _cloned_client_to_demonstrate_the_behavior_does_not_depend_on_drop = client.clone();
+
+        client.ready().await.expect("ready");
+        let mut pending_req = pin!(
+            client.send_request(
+                http::Request::get("/pending")
+                    .body(Default::default())
+                    .expect("valid"),
+            )
+        );
+        assert_matches!(
+            futures_util::poll!(&mut pending_req),
+            std::task::Poll::Pending
+        );
+        tokio::task::yield_now().await;
+        assert_matches!(
+            futures_util::poll!(&mut pending_req),
+            std::task::Poll::Pending
+        );
+
+        // We can send other requests in the mean time.
+        client.ready().await.expect("ready");
+        let mut ready_req = pin!(
+            client.send_request(
+                http::Request::get("/ready")
+                    .body(Default::default())
+                    .expect("valid"),
+            )
+        );
+
+        let mut requests = FuturesUnordered::from_iter([&mut pending_req, &mut ready_req]);
+        let first_response = requests
+            .next()
+            .await
+            .expect("at least one completion")
+            .expect("successful request");
+        let response_body = first_response
+            .collect()
+            .await
+            .expect("can receive body")
+            .to_bytes();
+        assert_eq!(response_body, b"response"[..]);
+        drop(requests);
+
+        // The pending request is still pending.
+        assert_matches!(
+            futures_util::poll!(&mut pending_req),
+            std::task::Poll::Pending
+        );
+
+        client.disconnect_all();
+        let pending_response = pending_req.await.expect_err("should have failed");
+        assert_matches!(pending_response, Http2TransportError::LocalDisconnect);
+    }
+
     /// Make sure that the code doesn't crash if a client passes in an invalid
     /// hostname.
     #[tokio::test]
@@ -555,5 +797,39 @@ mod test {
         .expect_err("hostname checked here");
 
         assert_matches!(err, HttpError::FailedToCreateRequest);
+    }
+
+    #[test_case(&[], &[], &[])]
+    #[test_case(
+        &[],
+        &[("a", "a"), ("b", "b1"), ("c", "c"), ("b", "b2")],
+        &[("a", "a"), ("b", "b1"), ("c", "c"), ("b", "b2")]
+    )]
+    #[test_case(
+        &[("a", "A1"), ("b", "B1"), ("a", "A2")],
+        &[("a", "a"), ("c", "c1"), ("d", "d"), ("c", "c2")],
+        &[("a", "A1"), ("a", "A2"), ("b", "B1"), ("c", "c1"), ("c", "c2"), ("d", "d")]
+    )]
+    fn test_default_header_merging(
+        base: &[(&'static str, &'static str)],
+        defaults_to_add: &[(&'static str, &'static str)],
+        expected: &[(&'static str, &'static str)],
+    ) {
+        fn make_map(entries: &[(&'static str, &'static str)]) -> http::HeaderMap {
+            entries
+                .iter()
+                .map(|(k, v)| {
+                    (
+                        http::HeaderName::from_static(k),
+                        http::HeaderValue::from_static(v),
+                    )
+                })
+                .collect()
+        }
+
+        let mut base = make_map(base);
+        let defaults_to_add = make_map(defaults_to_add);
+        add_default_headers(&mut base, &defaults_to_add);
+        assert_eq!(base, make_map(expected));
     }
 }

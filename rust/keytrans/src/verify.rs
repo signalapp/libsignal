@@ -38,6 +38,13 @@ const ALLOWED_AUDITOR_TIMESTAMP_RANGE: &TimestampRange = &TimestampRange {
 };
 const ENTRIES_MAX_BEHIND: u64 = 10_000_000;
 
+/// Upper bound on `tree_size` accepted from the server.
+///
+/// Tree math in [`crate::implicit`] and [`crate::log`] performs arithmetic
+/// like `2*(n-1)+1` that would overflow for `n > 2^63`. Bounding `tree_size`
+/// at `2^62` keeps all such arithmetic safely within `u64`.
+const MAX_TREE_SIZE: u64 = 1u64 << 62;
+
 #[derive(Clone, Debug, displaydoc::Display)]
 pub enum Error {
     /// Required field '{0}' not found
@@ -257,7 +264,7 @@ fn verify_full_tree_head(
         }
     }
 
-    Ok((tree_head.clone(), root))
+    Ok(LastTreeHead(tree_head.clone(), root))
 }
 
 /// Checks if the consistency proof against the baseline tree head needs to be
@@ -288,7 +295,7 @@ fn check_consistency_metadata<'a>(
             };
             Ok(None)
         }
-        Some((last, last_root)) if last.tree_size == current_head.tree_size => {
+        Some(LastTreeHead(last, last_root)) if last.tree_size == current_head.tree_size => {
             if current_root != last_root {
                 return Err(Error::BadData(
                     "root is different but tree size is same".to_string(),
@@ -306,7 +313,7 @@ fn check_consistency_metadata<'a>(
             }
             Ok(None)
         }
-        Some((last_head, last_root)) => {
+        Some(LastTreeHead(last_head, last_root)) => {
             if current_head.tree_size < last_head.tree_size {
                 return Err(Error::BadData(
                     "current tree size is less than previous tree size".to_string(),
@@ -386,7 +393,7 @@ pub fn verify_distinguished(
         return Ok(());
     }
     let root = match last_tree_head {
-        Some((tree_head, root)) if tree_head.tree_size == tree_size => root,
+        Some(LastTreeHead(tree_head, root)) if tree_head.tree_size == tree_size => root,
         _ => {
             return Err(Error::BadData(
                 "expected tree head not found in storage".to_string(),
@@ -394,7 +401,7 @@ pub fn verify_distinguished(
         }
     };
 
-    let (
+    let LastTreeHead(
         TreeHead {
             tree_size: distinguished_size,
             timestamp: _,
@@ -465,6 +472,19 @@ fn verify_search_internal(
         tree_head.tree_size
     };
     let search_proof = get_proto_field(&search, "search")?;
+
+    // Validate server-controlled tree parameters before any tree math, which
+    // would otherwise panic on out-of-range values.
+    if tree_size == 0 || tree_size > MAX_TREE_SIZE {
+        return Err(Error::VerificationFailed(
+            "tree_size out of range".to_string(),
+        ));
+    }
+    if search_proof.pos >= tree_size {
+        return Err(Error::VerificationFailed(
+            "search proof pos must be less than tree_size".to_string(),
+        ));
+    }
 
     let guide = ProofGuide::new(version, search_proof.pos, tree_size);
 
@@ -600,6 +620,14 @@ pub fn verify_monitor<'a>(
     let full_tree_head = get_proto_field(&res.tree_head, "tree_head")?;
     let tree_head = get_proto_field(&full_tree_head.tree_head, "tree_head")?;
     let tree_size = tree_head.tree_size;
+
+    // Validate server-controlled tree_size before any tree math, which would
+    // otherwise panic on out-of-range values.
+    if tree_size == 0 || tree_size > MAX_TREE_SIZE {
+        return Err(Error::VerificationFailed(
+            "tree_size out of range".to_string(),
+        ));
+    }
 
     let MonitorContext {
         last_tree_head,
@@ -778,6 +806,8 @@ impl MonitoringDataWrapper {
                 pos: zero_pos,
                 ptrs: HashMap::from([(ver_pos, version)]),
                 owned,
+                search_key: vec![],
+                max_observed_version: version,
             });
         }
     }
@@ -831,6 +861,10 @@ impl MonitoringDataWrapper {
             }
         }
 
+        if version > data.max_observed_version {
+            data.max_observed_version = version;
+        }
+
         if !data.owned && owned {
             data.owned = true;
         }
@@ -868,6 +902,15 @@ impl MonitoringDataWrapper {
             })??;
 
         data.ptrs = ptrs;
+
+        // Keep the max_observed_version up to date and tracking the maximum
+        // version across _all_ nodes, not just the ancestor ones used for
+        // `ptrs`.
+        if let Some(max_version) = tree_mapping.versions().flatten().max()
+            && max_version > data.max_observed_version
+        {
+            data.max_observed_version = max_version;
+        }
 
         Ok(())
     }
@@ -934,6 +977,14 @@ impl VersionExtractor<'_> {
             .get(&key)
             .map(|step| Ok(get_proto_field(&step.prefix, "prefix")?.counter))
             .transpose()
+    }
+
+    pub fn versions(&self) -> impl Iterator<Item = Option<u32>> {
+        self.0.values().map(|step| {
+            get_proto_field(&step.prefix, "prefix")
+                .ok()
+                .map(|x| x.counter)
+        })
     }
 }
 
@@ -1029,7 +1080,7 @@ mod test {
         let baseline = {
             let head = current_head.clone();
             let root = [0u8; 32];
-            let mut baseline = Some((head, root));
+            let mut baseline = Some(LastTreeHead(head, root));
 
             for baseline_mod in baseline_mods {
                 let Some(result) = baseline.as_mut() else {
@@ -1095,6 +1146,8 @@ mod test {
             // See test_stored_account_data in rust/net/chat/src/api/keytrans.rs
             ptrs: HashMap::from_iter([(16777215, 2)]),
             owned: true,
+            search_key: vec![],
+            max_observed_version: 2,
         }));
         // These values were obtained by running the integration test in
         // rust/net/chat/src/api/keytrans.rs and extracting positions and versions
@@ -1174,6 +1227,8 @@ mod test {
             pos: 10, // The search key is introduced here
             ptrs: HashMap::from([(10, 1)]),
             owned: true,
+            search_key: vec![],
+            max_observed_version: 1,
         }));
 
         let steps = proof_steps([(11, 1), (15, 2)]);
@@ -1191,6 +1246,8 @@ mod test {
             pos: 10, // The search key is introduced here
             ptrs: HashMap::from([(10, 1)]),
             owned: true,
+            search_key: vec![],
+            max_observed_version: 1,
         }));
         // later position contains a smaller version
         let steps = proof_steps([(11, 0)]);
@@ -1206,6 +1263,8 @@ mod test {
             pos: 10, // The search key is introduced here
             ptrs: HashMap::from([(10, 1)]),
             owned: true,
+            search_key: vec![],
+            max_observed_version: 1,
         }));
 
         let steps = HashMap::from_iter([
@@ -1225,6 +1284,8 @@ mod test {
             pos: 10, // The search key is introduced here
             ptrs: HashMap::from([(10, 1), (11, 2)]),
             owned: true,
+            search_key: vec![],
+            max_observed_version: 2,
         }));
         let steps = proof_steps([(11, 3)]);
         let result = wrapper.update(16, &steps);
@@ -1295,5 +1356,49 @@ mod test {
 
         let result = extractor.get(1);
         assert_matches!(result, Err(Error::RequiredFieldMissing(s)) => assert!(s.contains("prefix")));
+    }
+
+    // A counter increment that's only visible at a frontier proof (e.g. a
+    // recent tombstone for a contact's old E.164) must still be reflected in
+    // `MonitoringData::greatest_version`, so that the version-change detector
+    // in `monitor_then_search` triggers a follow-up search.
+    //
+    // For a tree of size 20 with `first_pos = 0`:
+    // ```text
+    //   root(0, 20)                = 15
+    //   monitoring_path(10, 0, 20) = [11, 15]      (ancestors > 10)
+    //   full_monitoring_path       = [11, 15, 19]  (adds frontier node 19)
+    // ```
+    // A tombstone at log position 17 is not yet in the prefix tree at sizes
+    // 12 or 16, so the ancestor proofs at positions 11 and 15 report the
+    // stored counter (0). It _is_ in the prefix tree at size 20, so the
+    // frontier proof at position 19 reports the updated counter (1). The
+    // ancestor-only walk in `find_updated_mapping` never visits the frontier
+    // node, so `ptrs` does not change. The greatest known version of
+    // the search key, however, should reflect the higher counter so that
+    // version change detection still works.
+    #[test]
+    fn frontier_only_version_increment_is_detected() {
+        let mut wrapper = MonitoringDataWrapper::new(Some(MonitoringData {
+            index: [0; 32],
+            pos: 0,
+            ptrs: HashMap::from([(10, 0)]),
+            owned: false,
+            search_key: vec![],
+            max_observed_version: 0,
+        }));
+
+        let steps = proof_steps([
+            // Ancestor nodes
+            (11, 0),
+            (15, 0),
+            // Frontier node with updated version counter
+            (19, 1),
+        ]);
+
+        wrapper.update(20, &steps).expect("valid test data");
+        let data = wrapper.inner.expect("valid test data");
+
+        assert_eq!(1, data.greatest_version(),);
     }
 }

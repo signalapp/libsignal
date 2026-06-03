@@ -17,7 +17,7 @@ pub use libsignal_bridge_types::{
 #[cfg(feature = "ffi")]
 pub use libsignal_bridge_types::{ffi, ffi_arg_type, ffi_result_type};
 #[cfg(feature = "jni")]
-pub use libsignal_bridge_types::{jni, jni_arg_type, jni_args, jni_result_type, jni_signature};
+pub use libsignal_bridge_types::{jni, jni_arg_type, jni_args, jni_result_type};
 #[cfg(feature = "node")]
 pub use libsignal_bridge_types::{node, node_register};
 
@@ -40,8 +40,6 @@ pub mod net;
 
 mod account_keys;
 
-// Desktop does not use SVR
-#[cfg(any(feature = "jni", feature = "ffi"))]
 mod svr2;
 
 pub mod incremental_mac;
@@ -51,4 +49,4 @@ pub mod usernames;
 #[cfg(feature = "signal-media")]
 pub mod media;
 
-pub(crate) mod support;
+pub mod support;

@@ -131,7 +131,7 @@
             },
           ],
           "inviteLinkPassword": "",
-          "announcements_only": false
+          "announcementsOnly": false
         }
       }
     }

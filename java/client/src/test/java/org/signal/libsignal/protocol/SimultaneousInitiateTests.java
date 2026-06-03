@@ -60,11 +60,11 @@ public class SimultaneousInitiateTests {
     PreKeyBundle alicePreKeyBundle = bundleFactory.createBundle(aliceStore);
     PreKeyBundle bobPreKeyBundle = bundleFactory.createBundle(bobStore);
 
-    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-    SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS);
+    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS, ALICE_ADDRESS);
+    SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS, BOB_ADDRESS);
 
-    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-    SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+    SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
 
     aliceSessionBuilder.process(bobPreKeyBundle);
     bobSessionBuilder.process(alicePreKeyBundle);
@@ -127,11 +127,11 @@ public class SimultaneousInitiateTests {
     PreKeyBundle alicePreKeyBundle = bundleFactory.createBundle(aliceStore);
     PreKeyBundle bobPreKeyBundle = bundleFactory.createBundle(bobStore);
 
-    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-    SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS);
+    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS, ALICE_ADDRESS);
+    SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS, BOB_ADDRESS);
 
-    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-    SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+    SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
 
     aliceSessionBuilder.process(bobPreKeyBundle);
     bobSessionBuilder.process(alicePreKeyBundle);
@@ -186,11 +186,11 @@ public class SimultaneousInitiateTests {
     PreKeyBundle alicePreKeyBundle = bundleFactory.createBundle(aliceStore);
     PreKeyBundle bobPreKeyBundle = bundleFactory.createBundle(bobStore);
 
-    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-    SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS);
+    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS, ALICE_ADDRESS);
+    SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS, BOB_ADDRESS);
 
-    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-    SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+    SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
 
     aliceSessionBuilder.process(bobPreKeyBundle);
     bobSessionBuilder.process(alicePreKeyBundle);
@@ -248,11 +248,11 @@ public class SimultaneousInitiateTests {
     PreKeyBundle alicePreKeyBundle = bundleFactory.createBundle(aliceStore);
     PreKeyBundle bobPreKeyBundle = bundleFactory.createBundle(bobStore);
 
-    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-    SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS);
+    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS, ALICE_ADDRESS);
+    SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS, BOB_ADDRESS);
 
-    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-    SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+    SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
 
     aliceSessionBuilder.process(bobPreKeyBundle);
     bobSessionBuilder.process(alicePreKeyBundle);
@@ -332,11 +332,11 @@ public class SimultaneousInitiateTests {
     SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
 
-    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-    SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS);
+    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS, ALICE_ADDRESS);
+    SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS, BOB_ADDRESS);
 
-    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-    SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+    SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
 
     for (int i = 0; i < 15; i++) {
       PreKeyBundle alicePreKeyBundle = bundleFactory.createBundle(aliceStore);
@@ -421,11 +421,11 @@ public class SimultaneousInitiateTests {
     SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
 
-    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-    SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS);
+    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS, ALICE_ADDRESS);
+    SessionBuilder bobSessionBuilder = new SessionBuilder(bobStore, ALICE_ADDRESS, BOB_ADDRESS);
 
-    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-    SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+    SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+    SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
 
     PreKeyBundle bobLostPreKeyBundle = bundleFactory.createBundle(bobStore);
 

@@ -40,6 +40,9 @@ pub enum SignalProtocolError {
     /// bad key length <{1}> for key with type <{0}>
     BadKeyLength(KeyType, usize),
 
+    /// invalid key agreement
+    InvalidKeyAgreement,
+
     /// invalid signature detected
     SignatureValidationFailed,
 
@@ -118,6 +121,7 @@ impl From<CurveError> for SignalProtocolError {
             CurveError::NoKeyTypeIdentifier => Self::NoKeyTypeIdentifier,
             CurveError::BadKeyType(raw) => Self::BadKeyType(raw),
             CurveError::BadKeyLength(key_type, len) => Self::BadKeyLength(key_type, len),
+            CurveError::InvalidKeyAgreement => Self::InvalidKeyAgreement,
         }
     }
 }

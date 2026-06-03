@@ -188,7 +188,7 @@ fn ssl_config(
     alpn: Option<Alpn>,
     min_required_tls_version: Option<boring_signal::ssl::SslVersion>,
 ) -> Result<ConnectConfiguration, TransportConnectError> {
-    let mut ssl = SslConnector::builder(SslMethod::tls_client())?;
+    let mut ssl = SslConnector::builder(SslMethod::tls())?;
     certs.apply_to_connector(&mut ssl, host)?;
     if let Some(alpn) = alpn {
         ssl.set_alpn_protos(alpn.length_prefixed())?;
@@ -210,6 +210,11 @@ fn ssl_config(
         SslSignatureAlgorithm::RSA_PSS_RSAE_SHA512,
         SslSignatureAlgorithm::RSA_PKCS1_SHA512,
     ])?;
+
+    // This is the BoringSSL kDefaultGroups list *before* boring-rs adds support for the combined
+    // X25519_MLKEM768 and P256_KYBER768_DRAFT00. chat-server doesn't support MLKEM in TLS yet.
+    // We can't be any more specific because of the fallback proxies.
+    ssl.set_curves_list("X25519:P-256:P-384")?;
 
     // Uncomment and build with the feature "dev-util" to enable NSS-standard
     //   debugging support for e.g. Wireshark.
@@ -277,18 +282,13 @@ pub(crate) mod testutil {
     /// `supported_alpn_encoded` should be a concatenation ([`concat_bytes!`]) of
     /// [`Alpn::length_prefixed`] values. The complicated generics come from hyper's
     /// `serve_connection` APIs.
-    pub(crate) fn localhost_https_server_with_custom_service<T, B>(
+    pub(crate) fn localhost_https_server_with_custom_service<T>(
         supported_alpn_encoded: &'static [u8],
         service: T,
     ) -> (SocketAddr, impl Future<Output = ()>)
     where
-        T: hyper::service::Service<
-                http::Request<hyper::body::Incoming>,
-                Response = http::Response<B>,
-                Future: Send + 'static,
-                Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-            > + Clone,
-        B: hyper::body::Body<Data: Send, Error: Into<Box<dyn std::error::Error + Send + Sync>>>
+        T: hyper::service::HttpService<hyper::body::Incoming, Future: Send + 'static> + Clone,
+        T::ResBody: hyper::body::Body<Data: Send, Error: Into<Box<dyn std::error::Error + Send + Sync>>>
             + Send
             + 'static,
     {
@@ -326,7 +326,7 @@ pub(crate) mod testutil {
                     .expect("can accept an incoming connection");
 
                 let mut tls_acceptor = boring_signal::ssl::SslAcceptor::mozilla_modern(
-                    boring_signal::ssl::SslMethod::tls_server(),
+                    boring_signal::ssl::SslMethod::tls(),
                 )
                 .expect("can build");
                 tls_acceptor
@@ -531,9 +531,10 @@ mod test {
 
         assert_matches!(
             err,
-            TransportConnectError::SslFailedHandshake(FailedHandshakeReason::Cert(
-                X509VerifyError::DEPTH_ZERO_SELF_SIGNED_CERT
-            ))
+            TransportConnectError::SslFailedHandshake(FailedHandshakeReason::Cert {
+                error: X509VerifyError::DEPTH_ZERO_SELF_SIGNED_CERT,
+                cert_hashes: _,
+            })
         );
     }
 }

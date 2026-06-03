@@ -54,6 +54,7 @@ async fn can_connect_to_cdsi_staging() {
 
     CdsiConnection::connect_with(
         connection_resources,
+        cdsi_env.domain_config.connect.service,
         DirectOrProxyProvider::direct(
             cdsi_env.enclave_websocket_provider(EnableDomainFronting::No),
         ),

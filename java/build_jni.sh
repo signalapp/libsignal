@@ -17,7 +17,8 @@ DESKTOP_LIB_DIR=java/client/src/main/resources
 SERVER_LIB_DIR=java/server/src/main/resources
 
 # Fetch dependencies first, so we can use them in computing later options.
-cargo fetch
+# But allow this to fail in case we're offline.
+cargo fetch || true
 
 export CARGO_PROFILE_RELEASE_DEBUG=1 # Enable line tables
 RUSTFLAGS="--cfg aes_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
@@ -32,6 +33,10 @@ while [ "${1:-}" != "" ]; do
     case "${1:-}" in
         --debug-level-logs )
             DEBUG_LEVEL_LOGS=1
+            shift
+            ;;
+        --libsignal-debug )
+            LIBSIGNAL_DEBUG=1
             shift
             ;;
         --jni-type-tagging )
@@ -64,6 +69,9 @@ fi
 if [[ -n "${JNI_CHECK_ANNOTATIONS:-}" ]]; then
     FEATURES+=("libsignal-bridge-types/jni-invoke-annotated")
 fi
+if [[ -n "${LIBSIGNAL_DEBUG:-}" ]]; then
+    FEATURES+=("libsignal-debug/enabled")
+fi
 
 # usage: check_for_debug_level_logs_if_needed lib_dir
 check_for_debug_level_logs_if_needed () {
@@ -79,6 +87,18 @@ check_for_debug_level_logs_if_needed () {
         # but it's easier than figuring out prefixes and suffixes like copy_built_library does.
         if grep -q -- '-LEVEL LOGS ENABLED' "$1"/*; then
             echo 'error: debug-level logs found in build that should not have them!' >&2
+            exit 2
+        fi
+    fi
+    # See libsignal-debug for the strings matched by this pattern.
+    if grep -q -- 'LIBSIGNAL-DEBUG IS ENABLED' "$1"/*; then
+        if [[ -z "${LIBSIGNAL_DEBUG:-}" ]]; then
+            echo 'error: libsignal-debug found in build that should not have it!' >&2
+            exit 2
+        fi
+    else
+        if [[ -n "${LIBSIGNAL_DEBUG:-}" ]]; then
+            echo 'error: libsignal-debug NOT found in build that SHOULD have it!' >&2
             exit 2
         fi
     fi
@@ -186,6 +206,17 @@ export CXXFLAGS="-DOPENSSL_SMALL -flto=full ${CXXFLAGS:-}"
 export CARGO_PROFILE_RELEASE_LTO=fat
 export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
 
+# Instruct boring-sys to autolink the *static* libc++, and to delay that linking until the final
+# build product (the -bundle part). This is consistent with Google's advice for Android JNI
+# libraries that are not part of the main app build[1], elaborated on in a GitHub thread[2]. It's
+# also what we're doing with WebRTC. The syntax comes from rustc[3] via Cargo's rustc-link-lib build
+# script feature.
+#
+# [1]: https://developer.android.com/ndk/guides/middleware-vendors#using_the_stl
+# [2]: https://github.com/android/ndk/issues/796
+# [3]: https://doc.rust-lang.org/rustc/command-line-arguments.html#-l-link-the-generated-crate-to-a-native-library
+export BORING_BSSL_RUST_CPPLIB="static:-bundle=c++"
+
 # Use the Android NDK's prebuilt Clang+lld as pqcrypto's compiler and Rust's linker.
 ANDROID_TOOLCHAIN_DIR=$(echo "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt"/*/bin/)
 ANDROID_MIN_SDK_VERSION=23
@@ -225,6 +256,7 @@ target_for_abi() {
             ;;
     esac
 }
+
 
 for abi in "${android_abis[@]}"; do
     rust_target=$(target_for_abi "$abi")

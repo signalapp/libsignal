@@ -1,0 +1,34 @@
+/*
+ * Copyright 2025 Signal Messenger, LLC
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.signal.chat.errors;
+
+// Response message that indicates a particular resource was not found.
+message NotFound {}
+
+// Response message that indicates that some precondition of the request was not
+// met. For example, if there was a request to update foo, but foo had not been
+// set, this would be an appropriate error.
+message FailedPrecondition {
+  // An optional description indicating what precondition failed.
+  string description = 1;
+}
+
+// Response message that authentication via an anonymous credential failed.
+message FailedZkAuthentication {
+  // An optional description with additional information about the failure.
+  string description = 1;
+}
+
+// Response message that indicates authorization to perform an unidentified
+// operation via an endorsement or access key failed
+message FailedUnidentifiedAuthorization {
+  // An optional description with additional information about the failure.
+  string description = 1;
+}

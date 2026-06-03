@@ -10,7 +10,7 @@ use syn::spanned::Spanned;
 use syn::*;
 use syn_mid::Signature;
 
-use crate::util::{extract_arg_names_and_types, result_type};
+use crate::util::{NiceMetadataNames, extract_arg_names_and_types, nice_metadata, result_type};
 use crate::{BridgingKind, ResultInfo, ResultKind};
 
 pub(crate) fn bridge_fn(
@@ -18,6 +18,7 @@ pub(crate) fn bridge_fn(
     sig: &Signature,
     result_info: ResultInfo,
     bridging_kind: &BridgingKind,
+    nice: bool,
 ) -> Result<TokenStream2> {
     // Scroll down to the end of the function to see the quote template.
     // This is the best way to understand what we're trying to produce.
@@ -56,6 +57,19 @@ pub(crate) fn bridge_fn(
         BridgingKind::Regular => bridge_fn_body(sig, &input_names_and_types, result_info.kind),
         BridgingKind::Io { runtime } => bridge_io_body(&sig.ident, &input_names_and_types, runtime),
     };
+    let metadata = nice_metadata(
+        &sig.ident.to_string(),
+        sig.asyncness.is_some(),
+        &input_names_and_types,
+        &result_type(&sig.output),
+        nice,
+        &NiceMetadataNames {
+            backend_name: format_ident!("ffi"),
+            metadata_context: format_ident!("SwiftMetadataContext"),
+            register_arg_converter: format_ident!("register_swift_arg_converter"),
+            register_result_converter: format_ident!("register_swift_result_converter"),
+        },
+    );
 
     Ok(quote! {
         #[cfg(feature = "ffi")]
@@ -66,6 +80,7 @@ pub(crate) fn bridge_fn(
         ) -> *mut ffi::SignalFfiError {
             #body
         }
+        #metadata
     })
 }
 
@@ -196,20 +211,20 @@ pub(crate) fn name_from_ident(ident: &Ident) -> String {
 /// Generates a struct of C functions and a context pointer to serve as the bridged representation
 /// of a trait.
 ///
-/// The struct will be named "Ffi{MyTrait}Struct", and will have helper types for each callback
-/// function as "Ffi{MyTrait}{OperationCamelCase}", plus one extra callback "Ffi{MyTrait}Destroy".
+/// The struct will be named "{MyTrait}Struct", and will have helper types for each callback
+/// function as "{MyTrait}{OperationCamelCase}", plus one extra callback "{MyTrait}Destroy".
 /// The struct will implement the original trait as well as `ffi::FfiDestroyable`. The original
-/// trait will also be implemented for `ffi::OwnedCallbackStruct<Ffi{MyTrait}Struct>`, so that
+/// trait will also be implemented for `ffi::OwnedCallbackStruct<{MyTrait}Struct>`, so that
 /// `Box<dyn {MyTrait}>` handles cleanup properly.
-pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait) -> Result<TokenStream2> {
+pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait, name: &str) -> Result<TokenStream2> {
     let trait_name = &trait_to_bridge.ident;
-    let struct_name = format_ident!("Ffi{}Struct", trait_to_bridge.ident);
-    let destroy_name = format_ident!("Ffi{}Destroy", trait_to_bridge.ident);
+    let struct_name = format_ident!("{name}Struct", span = trait_to_bridge.ident.span());
+    let destroy_name = format_ident!("{name}Destroy", span = trait_to_bridge.ident.span());
 
     let callbacks = trait_to_bridge
         .items
         .iter()
-        .map(|item| bridge_callback_item(trait_name, item))
+        .map(|item| bridge_callback_item(trait_name, name, item))
         .collect::<Result<Vec<_>>>()?;
     let callback_aliases = callbacks.iter().map(|c| &c.alias);
     let callback_fields = callbacks.iter().map(|c| &c.field);
@@ -264,7 +279,11 @@ struct Callback {
     forwarding_impl: TokenStream2,
 }
 
-fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback> {
+fn bridge_callback_item(
+    trait_name: &Ident,
+    bridge_name: &str,
+    item: &TraitItem,
+) -> Result<Callback> {
     let TraitItem::Fn(item) = item else {
         return Err(Error::new(item.span(), "only fns are supported"));
     };
@@ -276,11 +295,17 @@ fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback
 
     // type FfiMyTraitOperation = extern "C" fn(ctx: *mut c_void, foo: ffi_result_type!(u32)) -> c_int
     let callback_ty_name = format_ident!(
-        "Ffi{}{}",
-        trait_name,
+        "{}{}",
+        bridge_name,
         req_name.to_string().to_upper_camel_case(),
         span = req_name.span()
     );
+
+    let mut_keyword = item.sig.inputs.first().and_then(|input| match input {
+        FnArg::Receiver(receiver) => receiver.mutability.as_ref(),
+        FnArg::Typed(_) => None,
+    });
+
     let callback_args = item.sig.inputs.iter().filter_map(|arg| match arg {
         FnArg::Receiver(_) => match result_info.kind {
             ResultKind::Regular => Some(quote!(out: *mut ffi_arg_type!(#result_ty))),
@@ -380,10 +405,11 @@ fn bridge_callback_item(trait_name: &Ident, item: &TraitItem) -> Result<Callback
             Some(arg_name)
         }
     });
+    let await_if_needed = sig.asyncness.map(|_| quote!(.await));
     let forwarding_impl = quote! {
         #[inline]
         #sig {
-            self.0.#req_name(#(#arg_names),*)
+            #trait_name::#req_name(& #mut_keyword self.0, #(#arg_names),*) #await_if_needed
         }
     };
 

@@ -11,7 +11,7 @@ import ProfileKeyCiphertext from '../groups/ProfileKeyCiphertext.js';
 export default class ProfileKeyCredentialPresentation extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, Native.ProfileKeyCredentialPresentation_CheckValidContents);
   }
 

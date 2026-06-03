@@ -8,8 +8,10 @@ package org.signal.libsignal.protocol;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
+import java.time.Instant;
 import org.junit.Test;
 import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
@@ -29,7 +31,7 @@ public class SessionRecordTest {
   public void testUninitAccess() {
     SessionRecord empty_record = new SessionRecord();
 
-    assertFalse(empty_record.hasSenderChain());
+    assertFalse(empty_record.hasSenderChain(1.0));
 
     assertEquals(empty_record.getSessionVersion(), 0);
   }
@@ -75,5 +77,26 @@ public class SessionRecordTest {
               Hex.fromStringCondensedAssert("082a12001a002200290000000000000000"));
       assertThrows(InvalidKeyException.class, () -> record.getKeyPair());
     }
+  }
+
+  @Test
+  public void testHasUsablePQRatio() throws Exception {
+    // Record with key "\x7f\x7f\x7f\x7f....", so it's around a ratio of 0.5
+    SessionRecord recordNoPqRatchet =
+        new SessionRecord(
+            Hex.fromStringCondensedAssert(
+                "0a29080332006a207f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7a0101"));
+    assertTrue(recordNoPqRatchet.hasSenderChain(0.0, Instant.EPOCH));
+    assertTrue(recordNoPqRatchet.hasSenderChain(0.25, Instant.EPOCH));
+    assertFalse(recordNoPqRatchet.hasSenderChain(0.75, Instant.EPOCH));
+    assertFalse(recordNoPqRatchet.hasSenderChain(1.0, Instant.EPOCH));
+    SessionRecord recordWithPq =
+        new SessionRecord(
+            Hex.fromStringCondensedAssert(
+                "0a29080432006a207f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7a0101"));
+    assertTrue(recordWithPq.hasSenderChain(0.0, Instant.EPOCH));
+    assertTrue(recordWithPq.hasSenderChain(0.25, Instant.EPOCH));
+    assertTrue(recordWithPq.hasSenderChain(0.75, Instant.EPOCH));
+    assertTrue(recordWithPq.hasSenderChain(1.0, Instant.EPOCH));
   }
 }

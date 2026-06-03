@@ -46,13 +46,14 @@ free standing.
 
 // Bob's X3DH Receive function for Alice's first message
 pub async fn process_prekey<'a>(
-    message: &'a PreKeySignalMessage,       // Alice's first message, params defined in protocol.rs
-    remote_address: &'a ProtocolAddress,    // Logical identifier for Alice
-    session_record: &mut SessionRecord,     // Bob's local session state w/ Alice. Defined in state.session.rs
-    identity_store: &dyn IdentityKeyStore,  
-    pre_key_store: &dyn PreKeyStore,                // Holds Bob's one-time EC prekeys (OPK)
-    signed_prekey_store: &dyn SignedPreKeyStore,    // Holds Bob's signed EC prekeys (SPK)
-    kyber_prekey_store: &dyn KyberPreKeyStore,      // Holds Bob's PQ Kyber prekeys   
+    message: &'a PreKeySignalMessage,
+    remote_address: &'a ProtocolAddress,
+    local_address: &ProtocolAddress,
+    session_record: &mut SessionRecord,
+    identity_store: &dyn IdentityKeyStore,
+    pre_key_store: &dyn PreKeyStore,
+    signed_prekey_store: &dyn SignedPreKeyStore,
+    kyber_prekey_store: &dyn KyberPreKeyStore,
 ) -> Result<(Option<PreKeysUsed>, IdentityToSave<'a>)> {
     let their_identity_key = message.identity_key();    // Extract Alice's identity public key ipks
 
@@ -68,6 +69,7 @@ pub async fn process_prekey<'a>(
     let pre_keys_used = process_prekey_impl(
         message,
         remote_address,
+        local_address,
         session_record,
         signed_prekey_store,
         kyber_prekey_store,
@@ -88,6 +90,7 @@ pub async fn process_prekey<'a>(
 async fn process_prekey_impl(
     message: &PreKeySignalMessage,  // Alice's initial prekey message (ephemeral keys, signed prekey IDs, etc.)
     remote_address: &ProtocolAddress,   // Alice's address
+    local_address: &ProtocolAddress,
     session_record: &mut SessionRecord,
     
     signed_prekey_store: &dyn SignedPreKeyStore,
@@ -155,19 +158,25 @@ async fn process_prekey_impl(
 
     let pvrf_ciphertext = message.pvrf_ciphertext();
 
+    let our_identity_key_pair = identity_store.get_identity_key_pair().await?;
     let parameters = BobSignalProtocolParameters::new(
-        identity_store.get_identity_key_pair().await?,  // ipkr
-        our_signed_pre_key_pair, // signed pre key
+        our_identity_key_pair,
+        our_signed_pre_key_pair,
         our_one_time_pre_key_pair,
-        our_signed_pre_key_pair, // ratchet key (for DH ratchet)
         our_kyber_pre_key_pair,
-        *message.identity_key(), // Alice's ipks
-        *message.base_key(),     // Alice's ephemeral base key
-        kyber_ciphertext,        // Alice's Kyber ciphertext 
-        pvrf_ciphertext
+        *message.identity_key(),
+        *message.base_key(),
+        kyber_ciphertext,
+        our_identity_key_pair.identity_key().is_same_account(
+            local_address,
+            message.identity_key(),
+            remote_address,
+        ),
+        pvrf_ciphertext,
     );
 
-    let mut new_session = ratchet::initialize_bob_session(&parameters)?;    // Defined in ratchet.rs
+    // The recipient's initial ratchet key is the signed pre-key.
+    let mut new_session = ratchet::initialize_bob_session(&parameters, &our_signed_pre_key_pair)?;
 
     // Bob & Alice's device IDs
     new_session.set_local_registration_id(identity_store.get_local_registration_id().await?);
@@ -186,10 +195,11 @@ async fn process_prekey_impl(
 
 // Alice receives Bob's prekey bundle and sets up session for first message
 pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
-    remote_address: &ProtocolAddress,   // Bob's address
-    session_store: &mut dyn SessionStore,   // Alice's session storafe
-    identity_store: &mut dyn IdentityKeyStore,  // Alice's identity keys
-    bundle: &PreKeyBundle,  // Bob's prekey bundle (SPK, OPK, PQ PK)
+    remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_store: &mut dyn IdentityKeyStore,
+    bundle: &PreKeyBundle,
     now: SystemTime,
     mut csprng: &mut R, // Cryptographically secure RNG for ephemeral key generation
 ) -> Result<()> {
@@ -241,6 +251,11 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
         their_signed_prekey,
         their_signed_prekey,
         their_kyber_prekey.clone(),
+        our_identity_key_pair.identity_key().is_same_account(
+            local_address,
+            their_identity_key,
+            remote_address,
+        ),
     );
     if let Some(key) = bundle.pre_key_public()? {
         parameters.set_their_one_time_pre_key(key);

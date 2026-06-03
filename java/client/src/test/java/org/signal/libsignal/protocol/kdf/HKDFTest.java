@@ -5,12 +5,14 @@
 
 package org.signal.libsignal.protocol.kdf;
 
+import static org.junit.Assert.assertTrue;
+
 import java.util.Arrays;
-import junit.framework.TestCase;
+import org.junit.Test;
 import org.signal.libsignal.protocol.util.Hex;
 
-public class HKDFTest extends TestCase {
-
+public class HKDFTest {
+  @Test
   public void testVectorV3() {
     byte[] ikm = Hex.fromStringCondensedAssert("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
 
@@ -27,6 +29,7 @@ public class HKDFTest extends TestCase {
     assertTrue(Arrays.equals(okm, actualOutput));
   }
 
+  @Test
   public void testVectorLongV3() {
     byte[] ikm =
         Hex.fromStringCondensedAssert(
@@ -48,6 +51,7 @@ public class HKDFTest extends TestCase {
     assertTrue(Arrays.equals(okm, actualOutput));
   }
 
+  @Test
   public void testNullInfo() {
     byte[] ikm = Hex.fromStringCondensedAssert("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
 

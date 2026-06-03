@@ -228,8 +228,9 @@ impl Visit<Scrambler> for proto::AccountData {
             svrPin,
             bioText,
             bioEmoji,
-            special_fields: _,
             androidSpecificSettings: _,
+            iosSpecificSettings: _,
+            special_fields: _,
         } = self;
 
         profileKey.randomize(&mut visitor.rng);
@@ -310,6 +311,8 @@ impl Visit<Scrambler> for proto::account_data::AccountSettings {
             screenLockTimeoutMinutes: _,
             pinReminders: _,
             allowSealedSenderFromAnyone: _,
+            allowAutomaticKeyVerification: _,
+            hasSeenAdminDeleteEducationDialog: _,
             special_fields: _,
         } = self;
 
@@ -481,6 +484,7 @@ impl Visit<Scrambler> for proto::Contact {
             hideStory: _,
             identityKey,
             identityState: _,
+            keyTransparencyData,
             registration,
             nickname,
             systemGivenName,
@@ -530,6 +534,7 @@ impl Visit<Scrambler> for proto::Contact {
         systemFamilyName.randomize(&mut visitor.rng);
         systemNickname.randomize(&mut visitor.rng);
         note.randomize(&mut visitor.rng);
+        keyTransparencyData.randomize(&mut visitor.rng);
     }
 }
 
@@ -592,8 +597,9 @@ impl Visit<Scrambler> for proto::group::GroupSnapshot {
             membersPendingProfileKey,
             membersPendingAdminApproval,
             inviteLinkPassword,
-            announcements_only: _,
-            members_banned,
+            announcementsOnly: _,
+            membersBanned,
+            terminated: _,
             special_fields: _,
         } = self;
         title.accept(visitor);
@@ -607,7 +613,7 @@ impl Visit<Scrambler> for proto::group::GroupSnapshot {
         membersPendingProfileKey.accept(visitor);
         membersPendingAdminApproval.accept(visitor);
         inviteLinkPassword.randomize(&mut visitor.rng);
-        members_banned.accept(visitor);
+        membersBanned.accept(visitor);
     }
 }
 
@@ -636,6 +642,7 @@ impl Visit<Scrambler> for proto::group::AccessControl {
             attributes: _,
             members: _,
             addFromInviteLink: _,
+            memberLabel: _,
             special_fields: _,
         } = self;
     }
@@ -644,19 +651,19 @@ impl Visit<Scrambler> for proto::group::AccessControl {
 impl Visit<Scrambler> for proto::group::Member {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
-            user_id,
+            userId,
             role: _,
             joinedAtVersion: _,
-            label_emoji,
-            label_string,
+            labelEmoji,
+            labelString,
             special_fields: _,
         } = self;
-        visitor.replace_service_id(user_id);
-        if !label_emoji.is_empty() {
-            *label_emoji = REPLACEMENT_EMOJI.to_string();
+        visitor.replace_service_id(userId);
+        if !labelEmoji.is_empty() {
+            *labelEmoji = REPLACEMENT_EMOJI.to_string();
         }
-        if !label_string.is_empty() {
-            label_string.randomize(&mut visitor.rng);
+        if !labelString.is_empty() {
+            labelString.randomize(&mut visitor.rng);
         }
     }
 }
@@ -677,22 +684,22 @@ impl Visit<Scrambler> for proto::group::MemberPendingProfileKey {
 impl Visit<Scrambler> for proto::group::MemberPendingAdminApproval {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
-            user_id,
+            userId,
             timestamp: _,
             special_fields: _,
         } = self;
-        visitor.replace_service_id(user_id);
+        visitor.replace_service_id(userId);
     }
 }
 
 impl Visit<Scrambler> for proto::group::MemberBanned {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
-            user_id,
+            userId,
             timestamp: _,
             special_fields: _,
         } = self;
-        visitor.replace_service_id(user_id);
+        visitor.replace_service_id(userId);
     }
 }
 
@@ -749,7 +756,6 @@ impl Visit<Scrambler> for proto::CallLink {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
             rootKey,
-            epoch,
             adminKey,
             name,
             restrictions: _,
@@ -757,7 +763,6 @@ impl Visit<Scrambler> for proto::CallLink {
             special_fields: _,
         } = self;
         rootKey.randomize(&mut visitor.rng);
-        epoch.randomize(&mut visitor.rng);
         adminKey.randomize(&mut visitor.rng);
         name.randomize(&mut visitor.rng);
     }
@@ -827,6 +832,7 @@ impl Visit<Scrambler> for proto::ChatItem {
                 Item::ViewOnceMessage(item) => item.accept(visitor),
                 Item::DirectStoryReplyMessage(item) => item.accept(visitor),
                 Item::Poll(item) => item.accept(visitor),
+                Item::AdminDeletedMessage(item) => item.accept(visitor),
             }
         }
     }
@@ -1304,6 +1310,7 @@ impl Visit<Scrambler> for proto::group_change_chat_update::Update {
                 Update::GroupAvatarUpdate(update) => update.accept(visitor),
                 Update::GroupDescriptionUpdate(update) => update.accept(visitor),
                 Update::GroupMembershipAccessLevelChangeUpdate(update) => update.accept(visitor),
+                Update::GroupMemberLabelAccessLevelChangeUpdate(update) => update.accept(visitor),
                 Update::GroupAttributesAccessLevelChangeUpdate(update) => update.accept(visitor),
                 Update::GroupAnnouncementOnlyChangeUpdate(update) => update.accept(visitor),
                 Update::GroupAdminStatusUpdate(update) => update.accept(visitor),
@@ -1332,6 +1339,7 @@ impl Visit<Scrambler> for proto::group_change_chat_update::Update {
                 Update::GroupV2MigrationDroppedMembersUpdate(update) => update.accept(visitor),
                 Update::GroupSequenceOfRequestsAndCancelsUpdate(update) => update.accept(visitor),
                 Update::GroupExpirationTimerUpdate(update) => update.accept(visitor),
+                Update::GroupTerminateChangeUpdate(update) => update.accept(visitor),
             }
         }
     }
@@ -1403,6 +1411,19 @@ impl Visit<Scrambler> for proto::GroupDescriptionUpdate {
 }
 
 impl Visit<Scrambler> for proto::GroupMembershipAccessLevelChangeUpdate {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            updaterAci,
+            accessLevel: _,
+            special_fields: _,
+        } = self;
+        if let Some(updater) = updaterAci {
+            visitor.replace_service_id(updater);
+        }
+    }
+}
+
+impl Visit<Scrambler> for proto::GroupMemberLabelAccessLevelChangeUpdate {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
             updaterAci,
@@ -1760,6 +1781,18 @@ impl Visit<Scrambler> for proto::GroupExpirationTimerUpdate {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
             expiresInMs: _,
+            updaterAci,
+            special_fields: _,
+        } = self;
+        if let Some(updater) = updaterAci {
+            visitor.replace_service_id(updater);
+        }
+    }
+}
+
+impl Visit<Scrambler> for proto::GroupTerminateChangeUpdate {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
             updaterAci,
             special_fields: _,
         } = self;
@@ -2146,6 +2179,15 @@ impl Visit<Scrambler> for proto::PinMessageUpdate {
         let Self {
             targetSentTimestamp: _,
             authorId: _,
+            special_fields: _,
+        } = self;
+    }
+}
+
+impl Visit<Scrambler> for proto::AdminDeletedMessage {
+    fn accept(&mut self, _visitor: &mut Scrambler) {
+        let Self {
+            adminId: _,
             special_fields: _,
         } = self;
     }

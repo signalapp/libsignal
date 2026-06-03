@@ -193,7 +193,14 @@ it('DecryptionErrorMessage', async () => {
   // Set up the session with a message from A to B.
 
   const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
-  await SignalClient.processPreKeyBundle(bPreKeyBundle, bAddress, aSess, aKeys);
+  const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
+  await SignalClient.processPreKeyBundle(
+    bPreKeyBundle,
+    bAddress,
+    aAddress,
+    aSess,
+    aKeys
+  );
 
   const aPlaintext = Buffer.from('hi there', 'utf8');
 
@@ -220,10 +227,10 @@ it('DecryptionErrorMessage', async () => {
   );
 
   // Pretend to send a message from B back to A that "fails".
-  const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
   const bCiphertext = await SignalClient.signalEncrypt(
     Buffer.from('reply', 'utf8'),
     aAddress,
+    bAddress,
     bSess,
     bKeys
   );
@@ -447,7 +454,10 @@ describe('SenderKeyDistributionMessage Store API', () => {
       distributionId,
       undefined as unknown as SignalClient.SenderKeyStore
     );
-    await assert.isRejected(messagePromise, TypeError);
+    await assert.isRejected(
+      messagePromise,
+      /Cannot read properties of undefined/
+    );
 
     const messagePromise2 = SignalClient.SenderKeyDistributionMessage.create(
       {} as unknown as SignalClient.ProtocolAddress,
@@ -729,6 +739,7 @@ for (const testCase of sessionVersionTestCases) {
       await SignalClient.processPreKeyBundle(
         bPreKeyBundle,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity
       );
@@ -737,6 +748,7 @@ for (const testCase of sessionVersionTestCases) {
       const aCiphertext = await SignalClient.signalEncrypt(
         aMessage,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity
       );
@@ -753,6 +765,7 @@ for (const testCase of sessionVersionTestCases) {
       const bDPlaintext = await SignalClient.signalDecryptPreKey(
         aCiphertextR,
         aAddress,
+        bAddress,
         bobStores.session,
         bobStores.identity,
         bobStores.prekey,
@@ -769,6 +782,7 @@ for (const testCase of sessionVersionTestCases) {
       const bCiphertext = await SignalClient.signalEncrypt(
         bMessage,
         aAddress,
+        bAddress,
         bobStores.session,
         bobStores.identity
       );
@@ -785,6 +799,7 @@ for (const testCase of sessionVersionTestCases) {
       const aDPlaintext = await SignalClient.signalDecrypt(
         bCiphertextR,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity
       );
@@ -797,7 +812,7 @@ for (const testCase of sessionVersionTestCases) {
       assert(session.serialize().length > 0);
       assert.deepEqual(session.localRegistrationId(), 5);
       assert.deepEqual(session.remoteRegistrationId(), 5);
-      assert(session.hasCurrentState());
+      assert(session.hasCurrentState(1.0));
       assert(
         !session.currentRatchetKeyMatches(
           SignalClient.PrivateKey.generate().getPublicKey()
@@ -805,7 +820,7 @@ for (const testCase of sessionVersionTestCases) {
       );
 
       session.archiveCurrentState();
-      assert(!session.hasCurrentState());
+      assert(!session.hasCurrentState(1.0));
       assert(
         !session.currentRatchetKeyMatches(
           SignalClient.PrivateKey.generate().getPublicKey()
@@ -825,6 +840,7 @@ for (const testCase of sessionVersionTestCases) {
       await SignalClient.processPreKeyBundle(
         bPreKeyBundle,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity
       );
@@ -833,6 +849,7 @@ for (const testCase of sessionVersionTestCases) {
       const aCiphertext = await SignalClient.signalEncrypt(
         aMessage,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity
       );
@@ -849,6 +866,7 @@ for (const testCase of sessionVersionTestCases) {
       const bDPlaintext = await SignalClient.signalDecryptPreKey(
         aCiphertextR,
         aAddress,
+        bAddress,
         bobStores.session,
         bobStores.identity,
         bobStores.prekey,
@@ -861,6 +879,7 @@ for (const testCase of sessionVersionTestCases) {
         await SignalClient.signalDecryptPreKey(
           aCiphertextR,
           aAddress,
+          bAddress,
           bobStores.session,
           bobStores.identity,
           bobStores.prekey,
@@ -886,6 +905,7 @@ for (const testCase of sessionVersionTestCases) {
       const bCiphertext = await SignalClient.signalEncrypt(
         bMessage,
         aAddress,
+        bAddress,
         bobStores.session,
         bobStores.identity
       );
@@ -902,6 +922,7 @@ for (const testCase of sessionVersionTestCases) {
       const aDPlaintext = await SignalClient.signalDecrypt(
         bCiphertextR,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity
       );
@@ -912,6 +933,7 @@ for (const testCase of sessionVersionTestCases) {
         await SignalClient.signalDecrypt(
           bCiphertextR,
           bAddress,
+          aAddress,
           aliceStores.session,
           aliceStores.identity
         );
@@ -931,6 +953,7 @@ for (const testCase of sessionVersionTestCases) {
       const aliceStores = new TestStores();
       const bobStores = new TestStores();
 
+      const aAddress = SignalClient.ProtocolAddress.new('+14151111111', 1);
       const bAddress = SignalClient.ProtocolAddress.new('+19192222222', 1);
 
       const bPreKeyBundle = await testCase.makeBundle(bAddress, bobStores);
@@ -938,19 +961,25 @@ for (const testCase of sessionVersionTestCases) {
       await SignalClient.processPreKeyBundle(
         bPreKeyBundle,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity,
         new Date('2020-01-01')
       );
 
       const initialSession = await aliceStores.session.getSession(bAddress);
-      assert.isTrue(initialSession?.hasCurrentState(new Date('2020-01-01')));
-      assert.isFalse(initialSession?.hasCurrentState(new Date('2023-01-01')));
+      assert.isTrue(
+        initialSession?.hasCurrentState(1.0, new Date('2020-01-01'))
+      );
+      assert.isFalse(
+        initialSession?.hasCurrentState(1.0, new Date('2023-01-01'))
+      );
 
       const aMessage = Buffer.from('Greetings hoo-man', 'utf8');
       const aCiphertext = await SignalClient.signalEncrypt(
         aMessage,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity,
         new Date('2020-01-01')
@@ -962,13 +991,18 @@ for (const testCase of sessionVersionTestCases) {
       );
 
       const updatedSession = await aliceStores.session.getSession(bAddress);
-      assert.isTrue(updatedSession?.hasCurrentState(new Date('2020-01-01')));
-      assert.isFalse(updatedSession?.hasCurrentState(new Date('2023-01-01')));
+      assert.isTrue(
+        updatedSession?.hasCurrentState(1.0, new Date('2020-01-01'))
+      );
+      assert.isFalse(
+        updatedSession?.hasCurrentState(1.0, new Date('2023-01-01'))
+      );
 
       await assert.isRejected(
         SignalClient.signalEncrypt(
           aMessage,
           bAddress,
+          aAddress,
           aliceStores.session,
           aliceStores.identity,
           new Date('2023-01-01')
@@ -993,6 +1027,7 @@ for (const testCase of sessionVersionTestCases) {
       await SignalClient.processPreKeyBundle(
         bPreKeyBundle,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity
       );
@@ -1001,6 +1036,7 @@ for (const testCase of sessionVersionTestCases) {
       const aCiphertext = await SignalClient.signalEncrypt(
         aMessage,
         bAddress,
+        aAddress,
         aliceStores.session,
         aliceStores.identity
       );
@@ -1017,6 +1053,7 @@ for (const testCase of sessionVersionTestCases) {
       void (await SignalClient.signalDecryptPreKey(
         aCiphertextR,
         aAddress,
+        bAddress,
         bobStores.session,
         bobStores.identity,
         bobStores.prekey,
@@ -1028,6 +1065,7 @@ for (const testCase of sessionVersionTestCases) {
         SignalClient.signalDecryptPreKey(
           aCiphertextR,
           mAddress,
+          bAddress,
           bobStores.session,
           bobStores.identity,
           bobStores.prekey,

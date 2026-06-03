@@ -1,6 +1,9 @@
 plugins {
-    id 'com.android.library' version '8.10.1'
-    id 'androidx.benchmark' version '1.1.1'
+    id 'com.android.library'
+    // Required for AGP/R8 9.1 compatibility.
+    // See: https://android.googlesource.com/platform/frameworks/support/+/3329fd0ecc6d78d889de6db21dfa4b58e23ea6e3
+    // TODO: Update to 1.5.0 stable once it ships.
+    id 'androidx.benchmark' version '1.5.0-alpha06'
 }
 
 repositories {
@@ -15,7 +18,7 @@ android {
     defaultConfig {
         minSdkVersion 23
         targetSdkVersion 33
-        multiDexEnabled true
+        multiDexEnabled = true
 
         testInstrumentationRunner "androidx.benchmark.junit4.AndroidBenchmarkRunner"
 
@@ -27,15 +30,15 @@ android {
         // }
     }
 
-    testBuildType "release"
+    testBuildType = "release"
 
     compileOptions {
-        coreLibraryDesugaringEnabled true
+        coreLibraryDesugaringEnabled = true
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    namespace "org.signal.libsignal.benchmarks"
+    namespace = "org.signal.libsignal.benchmarks"
 
     packagingOptions {
         doNotStrip '**/*.so'
@@ -45,7 +48,10 @@ android {
 dependencies {
     androidTestImplementation "androidx.test:runner:1.5.2"
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.benchmark:benchmark-junit4:1.2.3'
+    // Required for AGP/R8 9.1 compatibility.
+    // See: https://android.googlesource.com/platform/frameworks/support/+/3329fd0ecc6d78d889de6db21dfa4b58e23ea6e3
+    // TODO: Update to 1.5.0 stable once it ships.
+    androidTestImplementation 'androidx.benchmark:benchmark-junit4:1.5.0-alpha06'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.6'
     androidTestImplementation project(':android')
 }

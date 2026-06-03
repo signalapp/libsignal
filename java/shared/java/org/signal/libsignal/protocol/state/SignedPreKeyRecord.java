@@ -43,6 +43,10 @@ public class SignedPreKeyRecord extends NativeHandleGuard.SimpleOwner {
             () -> Native.SignedPreKeyRecord_Deserialize(serialized)));
   }
 
+  public SignedPreKeyRecord(long nativeHandle) {
+    super(nativeHandle);
+  }
+
   public int getId() {
     return filterExceptions(() -> guardedMapChecked(Native::SignedPreKeyRecord_GetId));
   }

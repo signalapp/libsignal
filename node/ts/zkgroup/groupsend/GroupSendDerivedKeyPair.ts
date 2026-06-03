@@ -22,7 +22,7 @@ import type GroupSendEndorsementsResponse from './GroupSendEndorsementsResponse.
  * @see {@link GroupSendFullToken#verify}
  */
 export default class GroupSendDerivedKeyPair extends ByteArray {
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, Native.GroupSendDerivedKeyPair_CheckValidContents);
   }
 

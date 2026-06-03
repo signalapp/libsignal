@@ -5,6 +5,6 @@
 
 import * as Native from './Native.js';
 
-export function toJSONString(buffer: Uint8Array): string {
+export function toJSONString(buffer: Uint8Array<ArrayBuffer>): string {
   return Native.MinidumpToJSONString(buffer);
 }

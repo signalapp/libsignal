@@ -20,7 +20,10 @@ import java.io.IOException
  */
 public class MismatchedDeviceException :
   IOException,
-  MultiRecipientSendFailure {
+  MultiRecipientSendFailure,
+  SealedSendFailure,
+  SyncSendFailure,
+  UnsealedSendFailure {
   public data class Entry(
     public val account: ServiceId,
     public val missingDevices: IntArray = intArrayOf(),
@@ -58,6 +61,7 @@ public class MismatchedDeviceException :
 
   public val entries: Array<Entry>
 
+  @CalledFromNative
   public constructor(message: String, entries: Array<Entry>) : super(message) {
     this.entries = entries
   }

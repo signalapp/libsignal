@@ -6,9 +6,7 @@
 #![warn(clippy::unwrap_used)]
 
 pub mod api;
+pub mod grpc;
 mod logging;
 pub mod registration;
 pub mod ws;
-
-#[cfg(feature = "grpc")]
-pub mod grpc;

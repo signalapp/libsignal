@@ -24,7 +24,11 @@ import { SvrB } from './net/SvrB.js';
 import { BridgedStringMap, newNativeHandle } from './internal.js';
 export * from './net/CDSI.js';
 export * from './net/Chat.js';
+export * from './net/chat/AuthMessagesService.js';
+export * from './net/chat/UnauthBackupsService.js';
+export * from './net/chat/UnauthKeysService.js';
 export * from './net/chat/UnauthMessagesService.js';
+export * from './net/chat/UnauthProfilesService.js';
 export * from './net/chat/UnauthUsernamesService.js';
 export * from './net/Registration.js';
 export * from './net/SvrB.js';
@@ -58,7 +62,7 @@ export type ChatRequest = Readonly<{
   verb: string;
   path: string;
   headers: ReadonlyArray<[string, string]>;
-  body?: Uint8Array;
+  body?: Uint8Array<ArrayBuffer>;
   timeoutMillis?: number;
 }>;
 
@@ -107,7 +111,8 @@ export type NetConstructorOptions = Readonly<
       TESTING_localServer_cdsiPort: number;
       TESTING_localServer_svr2Port: number;
       TESTING_localServer_svrBPort: number;
-      TESTING_localServer_rootCertificateDer: Uint8Array;
+      TESTING_localServer_rootCertificateDer: Uint8Array<ArrayBuffer>;
+      TESTING_localServer_httpVersion?: 1 | 2;
     }
 >;
 
@@ -161,7 +166,8 @@ export class Net {
           options.TESTING_localServer_cdsiPort,
           options.TESTING_localServer_svr2Port,
           options.TESTING_localServer_svrBPort,
-          options.TESTING_localServer_rootCertificateDer
+          options.TESTING_localServer_rootCertificateDer,
+          options.TESTING_localServer_httpVersion ?? 1
         )
       );
     } else {
@@ -443,8 +449,10 @@ export class Net {
     // This does not distinguish between "https://proxy.example" and "https://@proxy.example".
     // This could be done by manually checking `url.href`.
     // But until someone complains about it, let's not worry about it.
-    const username = url.username != '' ? url.username : undefined;
-    const password = url.password != '' ? url.password : undefined;
+    const username =
+      url.username != '' ? decodeURIComponent(url.username) : undefined;
+    const password =
+      url.password != '' ? decodeURIComponent(url.password) : undefined;
 
     const host = url.hostname;
     const port = url.port != '' ? Number.parseInt(url.port, 10) : undefined;

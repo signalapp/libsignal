@@ -371,7 +371,7 @@ pub(crate) fn from_trusted(
                 .expect("haven't yet overflowed time_t"),
         );
         for &cert in trusted_certs {
-            store_builder.add_cert(cert.to_owned())?;
+            store_builder.add_cert(cert)?;
         }
         for &crl in trusted_crls {
             store_builder.add_crl(crl.to_owned())?;

@@ -90,7 +90,7 @@ impl RootCertificates {
         };
         let mut store_builder = X509StoreBuilder::new()?;
         for der in ders {
-            store_builder.add_cert(X509::from_der(der)?)?;
+            store_builder.add_cert(X509::from_der(der)?.as_ref())?;
         }
         connector.set_verify_cert_store(store_builder.build())?;
         Ok(())
@@ -138,8 +138,8 @@ impl LimitedServerCertVerifier for &dyn LimitedServerCertVerifier {
 /// observed it doing network activity!)
 ///
 /// Note that `connector` will **depend on tokio** to verify certificates. Moreover, when using the
-/// resulting [`boring::ssl::Ssl`] object, you must call `set_task_waker`. This will be taken care
-/// of for you if you use tokio-boring (and always poll within a tokio context).
+/// resulting [`boring_signal::ssl::Ssl`] object, you must call `set_task_waker`. This will be taken
+/// care of for you if you use tokio-boring (and always poll within a tokio context).
 fn set_up_platform_verifier(
     connector: &mut SslConnectorBuilder,
     host: Host<&str>,
@@ -417,7 +417,7 @@ mod test {
             .build()
             .expect("valid");
 
-        let mut ssl = SslConnector::builder(SslMethod::tls_client()).expect("valid");
+        let mut ssl = SslConnector::builder(SslMethod::tls()).expect("valid");
         let verifier = Arc::into_inner(verifier).expect("only one referent");
         let verifier = make_verifier(verifier);
         set_up_platform_verifier(&mut ssl, Host::Domain(SERVER_HOSTNAME), verifier).expect("valid");
@@ -455,7 +455,7 @@ mod test {
             .build()
             .expect("valid");
 
-        let mut ssl = SslConnector::builder(SslMethod::tls_client()).expect("valid");
+        let mut ssl = SslConnector::builder(SslMethod::tls()).expect("valid");
         let verifier = Arc::into_inner(verifier).expect("only one referent");
         let verifier = make_verifier(verifier);
         set_up_platform_verifier(&mut ssl, Host::Domain(SERVER_HOSTNAME), verifier).expect("valid");

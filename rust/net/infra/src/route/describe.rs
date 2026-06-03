@@ -209,6 +209,10 @@ impl<Transport: UsesTransport<UnresolvedTransportRoute>> DescribeForLog
                         },
                     inner: _,
                 }) => (target_host.as_informational_host(), *target_port),
+                ConnectionProxyRoute::Reflector(reflector) => (
+                    Host::Domain(reflector.target_host.clone()),
+                    reflector.target_port,
+                ),
             },
         };
 
@@ -216,7 +220,12 @@ impl<Transport: UsesTransport<UnresolvedTransportRoute>> DescribeForLog
             DirectOrProxyRoute::Direct(_) => None,
             DirectOrProxyRoute::Proxy(proxy) => Some(ConnectionProxyKind::from(proxy)),
         };
-        let front = http_fragment.front_name;
+        let front = match direct_or_proxy {
+            DirectOrProxyRoute::Proxy(ConnectionProxyRoute::Reflector(reflector)) => {
+                reflector.outer.inner.fragment.front_name
+            }
+            _ => http_fragment.front_name,
+        };
 
         UnresolvedRouteDescription {
             front,

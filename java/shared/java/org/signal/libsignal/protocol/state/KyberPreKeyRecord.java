@@ -33,6 +33,10 @@ public class KyberPreKeyRecord extends NativeHandleGuard.SimpleOwner {
             InvalidMessageException.class, () -> Native.KyberPreKeyRecord_Deserialize(serialized)));
   }
 
+  public KyberPreKeyRecord(long nativeHandle) {
+    super(nativeHandle);
+  }
+
   public int getId() {
     return filterExceptions(() -> guardedMapChecked(Native::KyberPreKeyRecord_GetId));
   }

@@ -63,6 +63,7 @@ impl CdsiLookup {
 
         let connected = CdsiConnection::connect_with(
             connection_resources.as_connection_resources(),
+            env_cdsi.domain_config.connect.service,
             route_provider,
             env_cdsi.ws_config,
             &env_cdsi.params,

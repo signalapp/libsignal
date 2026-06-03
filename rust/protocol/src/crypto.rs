@@ -28,6 +28,7 @@ pub(crate) enum DecryptionError {
 }
 
 fn aes_256_ctr_encrypt(ptext: &[u8], key: &[u8]) -> Result<Vec<u8>, EncryptionError> {
+    let _trace = libsignal_debug::trace_block!("aes256_ctr_encrypt");
     let key: [u8; 32] = key.try_into().map_err(|_| EncryptionError::BadKeyOrIv)?;
 
     let zero_nonce = [0u8; 16];
@@ -45,6 +46,7 @@ fn aes_256_ctr_decrypt(ctext: &[u8], key: &[u8]) -> Result<Vec<u8>, DecryptionEr
 }
 
 pub(crate) fn hmac_sha256(key: &[u8], input: &[u8]) -> [u8; 32] {
+    let _trace = libsignal_debug::trace_block!("hmac_sha256");
     let mut hmac =
         Hmac::<Sha256>::new_from_slice(key).expect("HMAC-SHA256 should accept any size key");
     hmac.update(input);

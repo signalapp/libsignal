@@ -67,19 +67,18 @@ def current_origin_main_entry() -> Optional[Mapping[str, Any]]:
         runs_info = subprocess.run(['gh', 'api', '--method=GET', f'repos/{repo_path}/actions/runs', '-f', f'head_sha={most_recent_commit}'], capture_output=True, check=True).stdout
         runs_json = json.loads(runs_info)
 
-        run_id = [run['id'] for run in runs_json['workflow_runs'] if run['name'] == 'Build and Test'][0]
+        run_id = [run['id'] for run in runs_json['workflow_runs'] if 'Build and Test' in run['name']][0]
 
         run_jobs = subprocess.run(['gh', 'run', 'view', '-R', repo_path, f'{run_id}', '--json', 'jobs'], capture_output=True, check=True).stdout
         jobs_json = json.loads(run_jobs)
 
-        job_id = [job['databaseId'] for job in jobs_json['jobs'] if job['name'] == 'Java'][0]
+        job_id = [job['databaseId'] for job in jobs_json['jobs'] if job['name'] == 'Java Android'][0]
 
         job_logs = subprocess.run(['gh', 'run', 'view', '-R', repo_path, '--job', f'{job_id}', '--log'], capture_output=True, check=True).stdout.decode()
 
         for line in job_logs.splitlines():
-            if 'check_code_size.py' in line and 'current: *' in line:
-                (_, after) = line.split('(', maxsplit=1)
-                (bytes_count, _) = after.split(' bytes)', maxsplit=1)
+            if 'update code_size.json with' in line:
+                (_, bytes_count) = line.rsplit(' ', maxsplit=1)
                 return {'size': int(bytes_count), 'version': f'{most_recent_commit[:6]} ({base_ref})'}
 
         print(f'skipping checking current {base_ref} (most recent run did not include check_code_size.py)', file=sys.stderr)

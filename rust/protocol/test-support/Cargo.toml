@@ -1,0 +1,22 @@
+#
+# Copyright (C) 2026 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "libsignal-protocol-test-support"
+version = "0.1.0"
+edition = "2024"
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+libsignal-protocol = { path = ".." }
+
+arbitrary = { workspace = true, features = ["derive"] }
+log = { workspace = true }
+rand = { workspace = true }

@@ -162,15 +162,6 @@ fn ECPublicKey_Equals(lhs: &PublicKey, rhs: &PublicKey) -> bool {
     lhs == rhs
 }
 
-#[bridge_fn(ffi = "publickey_compare", node = "PublicKey_Compare")]
-fn ECPublicKey_Compare(key1: &PublicKey, key2: &PublicKey) -> i32 {
-    match key1.cmp(key2) {
-        std::cmp::Ordering::Less => -1,
-        std::cmp::Ordering::Equal => 0,
-        std::cmp::Ordering::Greater => 1,
-    }
-}
-
 #[bridge_fn(ffi = "publickey_verify", node = "PublicKey_Verify")]
 fn ECPublicKey_Verify(key: &PublicKey, message: &[u8], signature: &[u8]) -> bool {
     key.verify_signature(message, signature)
@@ -370,6 +361,7 @@ fn SignalMessage_New(
     SignalMessage::new(
         message_version,
         mac_key,
+        None,
         *sender_ratchet_key,
         counter,
         previous_counter,
@@ -377,20 +369,6 @@ fn SignalMessage_New(
         &IdentityKey::new(*sender_identity_key),
         &IdentityKey::new(*receiver_identity_key),
         pq_ratchet,
-    )
-}
-
-#[bridge_fn(ffi = "message_verify_mac")]
-fn SignalMessage_VerifyMac(
-    msg: &SignalMessage,
-    sender_identity_key: &PublicKey,
-    receiver_identity_key: &PublicKey,
-    mac_key: &[u8],
-) -> Result<bool> {
-    msg.verify_mac(
-        &IdentityKey::new(*sender_identity_key),
-        &IdentityKey::new(*receiver_identity_key),
-        mac_key,
     )
 }
 
@@ -983,8 +961,35 @@ fn SessionRecord_ArchiveCurrentState(session_record: &mut SessionRecord) -> Resu
 }
 
 #[bridge_fn]
-fn SessionRecord_HasUsableSenderChain(s: &SessionRecord, now: Timestamp) -> Result<bool> {
-    s.has_usable_sender_chain(now.into(), SessionUsabilityRequirements::NotStale)
+fn SessionRecord_HasUsableSenderChain(
+    s: &SessionRecord,
+    require_pq_ratio: f64,
+    now: Timestamp,
+) -> Result<bool> {
+    let has_chain =
+        s.has_usable_sender_chain(now.into(), SessionUsabilityRequirements::NotStale)?;
+    if !has_chain {
+        return Ok(false);
+    }
+    let has_pq_chain = s.has_usable_sender_chain(
+        now.into(),
+        SessionUsabilityRequirements::NotStale
+            | SessionUsabilityRequirements::EstablishedWithPqxdh
+            | SessionUsabilityRequirements::Spqr,
+    )?;
+    if has_pq_chain || require_pq_ratio == 0.0 {
+        return Ok(true);
+    }
+    let require_pq_ratio = if require_pq_ratio > 1.0 {
+        log::warn!("pinning overly high PQ ratio {require_pq_ratio} to 1.0");
+        1.0
+    } else if require_pq_ratio < 0.0 {
+        log::warn!("pinning overly low PQ ratio {require_pq_ratio} to 0.0");
+        0.0
+    } else {
+        require_pq_ratio
+    };
+    Ok(should_use_nonpq_session(require_pq_ratio, s.alice_base_key().expect("we should have a current session, since has_usable_sender_chain returned a non-error value")))
 }
 
 #[bridge_fn]
@@ -1069,6 +1074,7 @@ bridge_get!(
 async fn SessionBuilder_ProcessPreKeyBundle(
     bundle: &PreKeyBundle,
     protocol_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_key_store: &mut dyn IdentityKeyStore,
     now: Timestamp,
@@ -1076,6 +1082,7 @@ async fn SessionBuilder_ProcessPreKeyBundle(
     let mut csprng = rand::rngs::OsRng.unwrap_err();
     process_prekey_bundle(
         protocol_address,
+        local_address,
         session_store,
         identity_key_store,
         bundle,
@@ -1089,6 +1096,7 @@ async fn SessionBuilder_ProcessPreKeyBundle(
 async fn SessionCipher_EncryptMessage(
     ptext: &[u8],
     protocol_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_key_store: &mut dyn IdentityKeyStore,
     now: Timestamp,
@@ -1097,6 +1105,7 @@ async fn SessionCipher_EncryptMessage(
     message_encrypt(
         ptext,
         protocol_address,
+        local_address,
         session_store,
         identity_key_store,
         now.into(),
@@ -1109,6 +1118,7 @@ async fn SessionCipher_EncryptMessage(
 async fn SessionCipher_DecryptSignalMessage(
     message: &SignalMessage,
     protocol_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_key_store: &mut dyn IdentityKeyStore,
 ) -> Result<Vec<u8>> {
@@ -1116,6 +1126,7 @@ async fn SessionCipher_DecryptSignalMessage(
     message_decrypt_signal(
         message,
         protocol_address,
+        local_address,
         session_store,
         identity_key_store,
         &mut csprng,
@@ -1127,6 +1138,7 @@ async fn SessionCipher_DecryptSignalMessage(
 async fn SessionCipher_DecryptPreKeySignalMessage(
     message: &PreKeySignalMessage,
     protocol_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_key_store: &mut dyn IdentityKeyStore,
     prekey_store: &mut dyn PreKeyStore,
@@ -1137,6 +1149,7 @@ async fn SessionCipher_DecryptPreKeySignalMessage(
     message_decrypt_prekey(
         message,
         protocol_address,
+        local_address,
         session_store,
         identity_key_store,
         prekey_store,

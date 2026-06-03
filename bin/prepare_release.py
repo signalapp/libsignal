@@ -422,6 +422,8 @@ def check_workflow_success(repo_name: str, workflow_name: str, head_sha: str) ->
         if workflow_name == 'Slow Tests':
             print('Note that Slow Tests do not run automatically.')
             print(f'You must kick them off automatically at: https://github.com/signalapp/{repo_name}/actions/workflows/slow_tests.yml')
+            print('Or by running')
+            print(f'\tgh workflow run "{workflow_name}" --repo signalapp/{repo_name} --ref main')
         print('If tests have actually passed, you can skip this check by re-running with --skip-ci-tests-pass-check')
         raise ReleaseFailedException
 
@@ -447,6 +449,8 @@ def check_workflow_success(repo_name: str, workflow_name: str, head_sha: str) ->
     if status != 'completed' or conclusion != 'success':
         print(f"Error: '{workflow_name}' did not succeed (status={status}, conclusion={conclusion}).")
         print('Please ensure all CI checks have passed before releasing.')
+        print('You can watch the run using:')
+        print(f'\tgh run watch {selected_run_id}')
         raise ReleaseFailedException
 
     return selected_run_id

@@ -30,7 +30,10 @@ use crate::proto::backup as proto;
     M::Value<Option<IapSubscriberData>>: PartialEq,
     AccountSettings<M>: PartialEq,
     M::Value<Option<AndroidSpecificSettings>>: PartialEq,
+    M::Value<Option<IosSpecificSettings>>: PartialEq,
+    M::Value<Option<Vec<u8>>>: PartialEq
 ))]
+#[serde_as]
 pub struct AccountData<M: Method + ReferencedTypes> {
     #[serde(
         with = "hex",
@@ -46,6 +49,7 @@ pub struct AccountData<M: Method + ReferencedTypes> {
     pub backup_subscription: M::Value<Option<IapSubscriberData>>,
     pub svr_pin: M::Value<String>,
     pub android_specific_settings: M::Value<Option<AndroidSpecificSettings>>,
+    pub ios_specific_settings: M::Value<Option<IosSpecificSettings>>,
     pub bio_text: M::Value<String>,
     pub bio_emoji: M::Value<String>,
 }
@@ -144,6 +148,8 @@ pub struct AccountSettings<M: Method + ReferencedTypes> {
     pub app_theme: M::Value<AppTheme>,
     pub calls_use_less_data_setting: M::Value<CallsUseLessDataSetting>,
     pub allow_sealed_sender_from_anyone: M::Value<bool>,
+    pub allow_automatic_key_verification: M::Value<bool>,
+    pub has_seen_admin_delete_education_dialog: M::Value<bool>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize)]
@@ -170,6 +176,12 @@ pub struct AndroidSpecificSettings {
     pub use_system_emoji: bool,
     pub screenshot_security: bool,
     pub navigation_bar_size: NavigationBarSize,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct IosSpecificSettings {
+    pub is_system_call_log_enabled: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize)]
@@ -272,6 +284,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             backupsSubscriberData,
             svrPin,
             androidSpecificSettings,
+            iosSpecificSettings,
             bioText,
             bioEmoji,
             special_fields: _,
@@ -312,6 +325,10 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             .map(AndroidSpecificSettings::try_from)
             .transpose()?;
 
+        let ios_specific_settings = iosSpecificSettings
+            .into_option()
+            .map(IosSpecificSettings::from);
+
         Ok(AccountData {
             profile_key: M::value(profile_key),
             username: M::value(username),
@@ -323,6 +340,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             backup_subscription: M::value(backup_subscription),
             svr_pin: M::value(svrPin),
             android_specific_settings: M::value(android_specific_settings),
+            ios_specific_settings: M::value(ios_specific_settings),
             bio_text: M::value(bioText),
             bio_emoji: M::value(bioEmoji),
         })
@@ -465,6 +483,8 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             appTheme,
             callsUseLessDataSetting,
             allowSealedSenderFromAnyone,
+            allowAutomaticKeyVerification,
+            hasSeenAdminDeleteEducationDialog,
             special_fields: _,
         } = self;
 
@@ -565,6 +585,8 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             app_theme: M::value(app_theme),
             calls_use_less_data_setting: M::value(calls_use_less_data_setting),
             allow_sealed_sender_from_anyone: M::value(allowSealedSenderFromAnyone),
+            allow_automatic_key_verification: M::value(allowAutomaticKeyVerification),
+            has_seen_admin_delete_education_dialog: M::value(hasSeenAdminDeleteEducationDialog),
         })
     }
 }
@@ -637,6 +659,18 @@ impl TryFrom<proto::account_data::AndroidSpecificSettings> for AndroidSpecificSe
     }
 }
 
+impl From<proto::account_data::IOSSpecificSettings> for IosSpecificSettings {
+    fn from(value: proto::account_data::IOSSpecificSettings) -> Self {
+        let proto::account_data::IOSSpecificSettings {
+            isSystemCallLogEnabled,
+            special_fields: _,
+        } = value;
+        Self {
+            is_system_call_log_enabled: isSystemCallLogEnabled,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::sync::{Arc, LazyLock};
@@ -671,6 +705,7 @@ mod test {
                     ..Default::default()
                 }).into(),
                 androidSpecificSettings: Some(proto::account_data::AndroidSpecificSettings::test_data()).into(),
+                iosSpecificSettings: Some(proto::account_data::IOSSpecificSettings::test_data()).into(),
                 ..Default::default()
             }
         }
@@ -743,6 +778,21 @@ mod test {
             proto::account_data::AndroidSpecificSettings::test_data()
                 .try_into()
                 .expect("valid data")
+        }
+    }
+
+    impl proto::account_data::IOSSpecificSettings {
+        fn test_data() -> Self {
+            Self {
+                isSystemCallLogEnabled: true,
+                ..Default::default()
+            }
+        }
+    }
+
+    impl IosSpecificSettings {
+        pub(crate) fn from_proto_test_data() -> Self {
+            proto::account_data::IOSSpecificSettings::test_data().into()
         }
     }
 
@@ -826,6 +876,8 @@ mod test {
                     app_theme: AppTheme::System,
                     calls_use_less_data_setting: CallsUseLessDataSetting::MobileDataOnly,
                     allow_sealed_sender_from_anyone: false,
+                    allow_automatic_key_verification: false,
+                    has_seen_admin_delete_education_dialog: false,
                 },
                 avatar_url_path: "".to_string(),
                 backup_subscription: Some(IapSubscriberData {
@@ -835,6 +887,7 @@ mod test {
                 donation_subscription: None,
                 svr_pin: "".to_string(),
                 android_specific_settings: Some(AndroidSpecificSettings::from_proto_test_data()),
+                ios_specific_settings: Some(IosSpecificSettings::from_proto_test_data()),
                 bio_text: "".to_string(),
                 bio_emoji: "".to_string(),
             }
@@ -954,6 +1007,34 @@ mod test {
         } =>
         Ok(());
         "optimize_storage_false_with_free_tier"
+    )]
+    #[test_case(
+        |x| {
+            x.iosSpecificSettings = None.into();
+        } =>
+        Ok(());
+        "ios_specific_settings_not_set"
+    )]
+    #[test_case(
+        |x| {
+            x.iosSpecificSettings = Some(proto::account_data::IOSSpecificSettings::test_data()).into();
+        } =>
+        Ok(());
+        "ios_specific_settings_set"
+    )]
+    #[test_case(
+        |x| {
+            x.androidSpecificSettings = None.into();
+        } =>
+        Ok(());
+        "android_specific_settings_not_set"
+    )]
+    #[test_case(
+        |x| {
+            x.androidSpecificSettings = Some(proto::account_data::AndroidSpecificSettings::test_data()).into();
+        } =>
+        Ok(());
+        "android_specific_settings_set"
     )]
     fn with(modifier: fn(&mut proto::AccountData)) -> Result<(), AccountDataError> {
         let mut data = proto::AccountData::test_data();

@@ -117,7 +117,11 @@ import Foundation
 /// ``UnauthServiceSelectorHelper``, though a client should never need to interact with it directly.
 ///
 /// [SE-0299]: https://github.com/swiftlang/swift-evolution/blob/main/proposals/0299-extend-generic-static-member-lookup.md
-public protocol UnauthServiceSelector {
+public protocol UnauthServiceSelector: ServiceSelector where Connection == UnauthenticatedChatConnection {
+}
+
+public protocol ServiceSelector {
+    associatedtype Connection: ChatConnection
     associatedtype Api
 }
 
@@ -125,6 +129,8 @@ public protocol UnauthServiceSelector {
 ///
 /// See ``UnauthServiceSelector/usernames`` for an example of how this is used.
 public struct UnauthServiceSelectorHelper<Api>: UnauthServiceSelector {
+    // swiftlint:disable:previous explicit_init_for_public_struct
+
     /// An escape hatch in case libsignal adds a new service protocol but forgets to add a selector
     /// for it.
     ///
@@ -138,5 +144,14 @@ public struct UnauthServiceSelectorHelper<Api>: UnauthServiceSelector {
     ///
     /// (We could just make `init` public as well, but this way it's more obvious that the
     /// workaround is meant to be temporary.)
+    public static func workaroundBecauseLibsignalForgotToExposeASelector() -> Self { .init() }
+}
+
+public protocol AuthServiceSelector: ServiceSelector where Connection == AuthenticatedChatConnection {
+}
+
+public struct AuthServiceSelectorHelper<Api>: AuthServiceSelector {
+    // swiftlint:disable:previous explicit_init_for_public_struct
+
     public static func workaroundBecauseLibsignalForgotToExposeASelector() -> Self { .init() }
 }

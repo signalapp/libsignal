@@ -52,6 +52,10 @@ const PROFILE_KEY_CREDENTIAL_PRESENTATION_V3_RESULT: &[u8] = &hex!(
     "02fc58a4f2c9bd736238abfc28890c8b2363d084bee430692f05ee559bd37dea3378949e72b271fe0d815b6d908035106cd670b45892df40780c62c37fae106c41be38371fe042a4d4f697db112972d79204b3d48d1253d3231c22926e107f661d40897cb7fdb4777c1680a57008655db71efaac1f69cd9ddf8cda33b226662d7ba443416281508fcdbb026d63f83168470a83e12803a6d2ee2c907343f2f6b063fe6bf0f17a032fabe61e77e904dfe7d3042125728c1984c86a094a0e3991ba554c1ebf604c14a8b13c384c5c01909656c114b24f9d3615d3b14bde7ce9cf126aca3e073e804b2016f7c5affa158a3a68ed9024c6880ecb441a346e7e91aedd6240010000000000002e70f27fb3f4c58cb40dfe58ce1d122312969426abb0bbb820bfbc5ff61d400a419d5ddb7c30c546427273d4fca3096ee4dd2fd03ccbbd26304ffcfe54fef50db8538177ebc61117a222253b4d4189f795abbde3b3d8a0a72d97b7750e0394010a01b474c3e942ef1ee807e17421689c6ca793c4f30b09c989b8a9679aee130eb034f64a34dbcaf12616970d2c8d58ca715bf5c4d42475fa6a1b82ba31574e072506652253e86cd783e30e1c06d2e861ba864a5373759472b31c5b26a8e46d062b8b5da2ec0a3ba499648e80f307728b7815aa60d167a0a9d01c2d2cbfb0a60ddc9dfc5343564b5f021fd1adba6d2a389e7c331bfffeed2a5d1887634323840574e49255a62d9e00ffc21f56afbb12fb9660e185f979223ec714c01e403a3a0a3276d0ef78182f12c092f5237befe3f0afea7693370788f854ec697e44c9bd02765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547448c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a7468069160000000000"
 );
 
+const PROFILE_KEY_CREDENTIAL_PRESENTATION_V4_RESULT: &[u8] = &hex!(
+    "03fc58a4f2c9bd736238abfc28890c8b2363d084bee430692f05ee559bd37dea3378949e72b271fe0d815b6d908035106cd670b45892df40780c62c37fae106c41be38371fe042a4d4f697db112972d79204b3d48d1253d3231c22926e107f661d40897cb7fdb4777c1680a57008655db71efaac1f69cd9ddf8cda33b226662d7ba443416281508fcdbb026d63f83168470a83e12803a6d2ee2c907343f2f6b063fe6bf0f17a032fabe61e77e904dfe7d3042125728c1984c86a094a0e3991ba554c1ebf604c14a8b13c384c5c01909656c114b24f9d3615d3b14bde7ce9cf126aca3e073e804b2016f7c5affa158a3a68ed9024c6880ecb441a346e7e91aedd6240010000000000006b4403e6adc3322acd34eea13fcc1ae971aab14386fa9b4d85ba0490dfca2f0d21de78e92719ad40a6a49d7549551a4bc6f7e4e4f0da81e9d6cc054da9529e053d1360b9d83e3ab9d3c8a9b7d3b07e2bab0979f3912c4bb41f621bf7685ee607fc147670196e009a9cd92b0fb525ca9b8e8fdf4c332732c02ccbcf57b5c19f001df37a5104d367f0f3f5cc0d9a2bd299e1f37872d7580b05596eadd5dec3e80366ab47357205c407bbcac49540a1fd69f36d308d0fdb72d0273f0c7a0d92220fe25daba5885a162bf238495463971c61b380084b7f79ad817d6f343e254722019da9ad32e72f2d864074023096cb8dd615b6fbbb47c6bef0926290a68403340e0a4dfb961e5b9002fc104e480823f12178cb91fafd51eb5dc9eb9fec4e6f7c0a130f31eb84cc70be9e5fd0bfb7d279590bdb49e7a4fe3b156a922fc73f78a50e765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547448c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a7468069160000000000"
+);
+
 #[test]
 fn test_auth_credential_presentation_v1_is_rejected() {
     assert!(
@@ -160,8 +164,11 @@ fn test_integration_auth_zkc() {
     auth_credential_bytes.copy_from_slice(&bincode::serialize(&auth_credential).unwrap());
 }
 
-#[test]
-fn test_integration_expiring_profile() {
+fn test_integration_expiring_profile<const V: u8>()
+where
+    zkgroup::profiles::AnyProfileKeyCredentialPresentation:
+        From<zkgroup::profiles::ExpiringProfileKeyCredentialPresentation<V>>,
+{
     // SERVER
     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);
     let server_public_params = server_secret_params.get_public_params();
@@ -226,11 +233,12 @@ fn test_integration_expiring_profile() {
     // Create presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
 
-    let presentation = server_public_params.create_expiring_profile_key_credential_presentation(
-        randomness,
-        group_secret_params,
-        profile_key_credential,
-    );
+    let presentation: zkgroup::profiles::ExpiringProfileKeyCredentialPresentation<V> =
+        server_public_params.create_expiring_profile_key_credential_presentation(
+            randomness,
+            group_secret_params,
+            profile_key_credential,
+        );
     assert_eq!(expiration, presentation.get_expiration_time());
     let presentation_bytes = &bincode::serialize(&presentation).unwrap();
 
@@ -238,15 +246,14 @@ fn test_integration_expiring_profile() {
         presentation.into();
     let presentation_any_bytes = &bincode::serialize(&presentation_any).unwrap();
 
-    assert_hex_eq!(
-        PROFILE_KEY_CREDENTIAL_PRESENTATION_V3_RESULT[..],
-        presentation_bytes[..]
-    );
+    let expected_hex = match V {
+        zkgroup::PRESENTATION_VERSION_3 => PROFILE_KEY_CREDENTIAL_PRESENTATION_V3_RESULT,
+        zkgroup::PRESENTATION_VERSION_4 => PROFILE_KEY_CREDENTIAL_PRESENTATION_V4_RESULT,
+        _ => panic!("unexpected ExpiringProfileKeyCredentialPresentation version {V}"),
+    };
 
-    assert_hex_eq!(
-        PROFILE_KEY_CREDENTIAL_PRESENTATION_V3_RESULT[..],
-        presentation_any_bytes[..]
-    );
+    assert_hex_eq!(expected_hex, &presentation_bytes[..]);
+    assert_hex_eq!(expected_hex, &presentation_any_bytes[..]);
 
     server_secret_params
         .verify_profile_key_credential_presentation(
@@ -308,6 +315,16 @@ fn test_integration_expiring_profile() {
     profile_key_credential_request_context_bytes
         .copy_from_slice(&bincode::serialize(&context).unwrap());
     profile_key_credential_response_bytes.copy_from_slice(&bincode::serialize(&response).unwrap());
+}
+
+#[test]
+fn test_integration_expiring_profile_v1() {
+    test_integration_expiring_profile::<{ zkgroup::PRESENTATION_VERSION_3 }>();
+}
+
+#[test]
+fn test_integration_expiring_profile_v2() {
+    test_integration_expiring_profile::<{ zkgroup::PRESENTATION_VERSION_4 }>();
 }
 
 #[test]

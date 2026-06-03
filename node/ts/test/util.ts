@@ -62,14 +62,17 @@ export class CompletablePromise {
   }
 }
 
-export function assertByteArray(hex: string, actual: Uint8Array): void {
+export function assertByteArray(
+  hex: string,
+  actual: Uint8Array<ArrayBuffer>
+): void {
   const actualHex = Buffer.from(actual).toString('hex');
 
   assert.strictEqual(hex, actualHex);
 }
 export function assertArrayEquals(
-  expected: Uint8Array,
-  actual: Uint8Array
+  expected: Uint8Array<ArrayBuffer>,
+  actual: Uint8Array<ArrayBuffer>
 ): void {
   const expectedHex = Buffer.from(expected).toString('hex');
   const actualHex = Buffer.from(actual).toString('hex');
@@ -77,11 +80,29 @@ export function assertArrayEquals(
   assert.strictEqual(expectedHex, actualHex);
 }
 export function assertArrayNotEquals(
-  expected: Uint8Array,
-  actual: Uint8Array
+  expected: Uint8Array<ArrayBuffer>,
+  actual: Uint8Array<ArrayBuffer>
 ): void {
   const expectedHex = Buffer.from(expected).toString('hex');
   const actualHex = Buffer.from(actual).toString('hex');
 
   assert.notEqual(expectedHex, actualHex);
+}
+
+export function repeatedBytes(
+  fill: number,
+  count: number
+): Uint8Array<ArrayBuffer> {
+  const out = new Uint8Array<ArrayBuffer>(new ArrayBuffer(count));
+  for (let i = 0; i < count; i++) {
+    out[i] = fill;
+  }
+  return out;
+}
+
+export function fromBase64(base64: string): Uint8Array<ArrayBuffer> {
+  return Uint8Array.from(Buffer.from(base64, 'base64'));
+}
+export function toBase64(buffer: Uint8Array<ArrayBuffer>): string {
+  return Buffer.from(buffer).toString('base64');
 }

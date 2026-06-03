@@ -156,8 +156,8 @@ impl DnsResolver {
 
     /// Creates a DNS resolver that will only use a provided static map
     /// to resolve DNS lookups
-    #[cfg_attr(feature = "test-util", visibility::make(pub))]
-    fn new_from_static_map(static_map: HashMap<&'static str, LookupResult>) -> Self {
+    #[cfg(feature = "test-util")]
+    pub fn new_from_static_map(static_map: HashMap<&'static str, LookupResult>) -> Self {
         DnsResolver {
             lookup_options: Arc::new([LookupOption {
                 lookup: Box::new(StaticDnsMap(static_map)),

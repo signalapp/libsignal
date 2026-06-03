@@ -5,7 +5,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'LibSignalClient'
-  s.version          = '0.86.14'
+  s.version          = '0.94.4'
   s.summary          = 'A Swift wrapper library for communicating with the Signal messaging service.'
 
   s.homepage         = 'https://github.com/signalapp/libsignal'
@@ -15,7 +15,6 @@ Pod::Spec.new do |s|
 
   s.swift_version    = '5'
   s.platform         = :ios, '15.0'
-  s.libraries        = ['z']
 
   s.source_files = ['swift/Sources/**/*.swift', 'swift/Sources/**/*.m']
   s.preserve_paths = [
@@ -28,6 +27,9 @@ Pod::Spec.new do |s|
       'HEADER_SEARCH_PATHS' => '$(PODS_TARGET_SRCROOT)/swift/Sources/SignalFfi',
       # Duplicate this here to make sure the search path is passed on to Swift dependencies.
       'SWIFT_INCLUDE_PATHS' => '$(HEADER_SEARCH_PATHS)',
+
+      # Setting this allows the tests to be considered part of the same package.
+      'SWIFT_PACKAGE_NAME' => 'LibSignalClient',
 
       'LIBSIGNAL_FFI_BUILD_PATH' => 'target/$(CARGO_BUILD_TARGET)/release',
       # Store libsignal_ffi.a builds in a project-wide directory
@@ -58,14 +60,20 @@ Pod::Spec.new do |s|
       'ARCHS[sdk=iphonesimulator*]' => 'x86_64 arm64',
       'ARCHS[sdk=iphoneos*]' => 'arm64',
   }
+  user_target_xcconfig = {}
 
   if ENV['LIBSIGNAL_TESTING_ONLY_ACTIVE_ARCH']
     pod_target_xcconfig['ONLY_ACTIVE_ARCH'] = 'YES'
-
-    s.user_target_xcconfig = { 'ONLY_ACTIVE_ARCH' => 'YES' }
+    user_target_xcconfig['ONLY_ACTIVE_ARCH'] = 'YES'
+  end
+  # This pod does not currently support explicit modules, but clients should specify that explicitly.
+  # `pod lib lint` doesn't provide that opportunity though.
+  if ENV['LIBSIGNAL_TESTING_DISABLE_EXPLICIT_MODULES']
+    user_target_xcconfig['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
   end
 
   s.pod_target_xcconfig = pod_target_xcconfig
+  s.user_target_xcconfig = user_target_xcconfig
 
   s.script_phases = [
     { name: 'Download libsignal-ffi if not in cache',

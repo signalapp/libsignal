@@ -82,7 +82,7 @@ impl ConnectUnauthChat for ConnectFakeChat {
             | libsignal_net::chat::ws::ListenerEvent::ReceivedMessage(_, _) => (),
         };
 
-        let (chat, remote) = ChatConnection::new_fake(self.0.clone(), Box::new(listener), []);
+        let (chat, remote) = ChatConnection::new_fake(self.0.clone(), Box::new(listener), [], []);
 
         std::future::ready(
             self.1
@@ -163,15 +163,7 @@ struct TestingRequestError<E>(RequestError<E>);
 impl<TestE> TestingRequestError<TestE> {
     fn map_into_error<E>(self, f: impl FnOnce(TestE) -> E) -> RequestError<E> {
         let TestingRequestError(inner) = self;
-        match inner {
-            RequestError::Timeout => RequestError::Timeout,
-            RequestError::Unexpected { log_safe } => RequestError::Unexpected { log_safe },
-            RequestError::Other(e) => RequestError::Other(f(e)),
-            RequestError::RetryLater(retry_later) => RequestError::RetryLater(retry_later),
-            RequestError::Challenge(challenge) => RequestError::Challenge(challenge),
-            RequestError::ServerSideError => RequestError::ServerSideError,
-            RequestError::Disconnected(d) => match d {},
-        }
+        inner.flat_map_other(|e| RequestError::Other(f(e)))
     }
 }
 
@@ -197,6 +189,12 @@ impl<TestE: for<'a> TryFrom<&'a str, Error = strum::ParseError>> TryFrom<String>
             "PushChallenge" => RequestError::Challenge(RateLimitChallenge {
                 token: "token".to_owned(),
                 options: vec![ChallengeOption::PushChallenge],
+                retry_later: None,
+            }),
+            "PushChallengeRetryAfter42Seconds" => RequestError::Challenge(RateLimitChallenge {
+                token: "token42".to_owned(),
+                options: vec![ChallengeOption::PushChallenge],
+                retry_later: Some(RETRY_AFTER_42_SECONDS),
             }),
             "ServerSideError" => RequestError::ServerSideError,
             _ => TestE::try_from(&value)

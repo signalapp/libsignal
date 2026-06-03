@@ -17,7 +17,8 @@ public class AndroidJUnitRunner extends androidx.test.runner.AndroidJUnitRunner 
     super.onCreate(bundle);
 
     // Make sure libsignal logs get caught correctly.
-    SignalProtocolLoggerProvider.setProvider(new AndroidSignalProtocolLogger());
+    SignalProtocolLoggerProvider.setProvider(
+        new TestLoggerDecorator(new AndroidSignalProtocolLogger()));
     SignalProtocolLoggerProvider.initializeLogging(SignalProtocolLogger.VERBOSE);
 
     // Propagate any "environment variables" the test might need into System properties.

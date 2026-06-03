@@ -8,14 +8,13 @@ import org.junit.Assert
 import org.junit.Assume
 import org.junit.Test
 import org.signal.libsignal.internal.CompletableFuture
+import org.signal.libsignal.internal.NativeTesting
 import org.signal.libsignal.internal.TokioAsyncContext
-import org.signal.libsignal.keytrans.KeyTransparencyException
 import org.signal.libsignal.keytrans.TestStore
-import org.signal.libsignal.net.KeyTransparency.MonitorMode
+import org.signal.libsignal.net.KeyTransparency.CheckMode
 import org.signal.libsignal.util.TestEnvironment
 import java.util.Deque
 import java.util.concurrent.ExecutionException
-import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
 private fun <T> retryImpl(
@@ -51,13 +50,15 @@ class KeyTransparencyClientTest {
   fun searchInStagingIntegration() {
     Assume.assumeTrue(INTEGRATION_TESTS_ENABLED)
 
-    val net = Network(Network.Environment.STAGING, USER_AGENT)
+    val net = Network(Network.Environment.STAGING, USER_AGENT, mapOf(), Network.BuildVariant.BETA)
     val ktClient = connectAndGetClient(net).get()
 
     val store = TestStore()
 
+    // No data in store will trigger a search
     ktClient
-      .search(
+      .check(
+        CheckMode.Contact,
         KeyTransparencyTest.TEST_ACI,
         KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
         KeyTransparencyTest.TEST_E164,
@@ -65,23 +66,12 @@ class KeyTransparencyClientTest {
         KeyTransparencyTest.TEST_USERNAME_HASH,
         store,
       ).get()
+      .also {
+        assertIs<RequestResult.Success<*>>(it)
+      }
 
-    Assert.assertTrue(store.getLastDistinguishedTreeHead().isPresent)
+    Assert.assertTrue(store.lastDistinguishedTreeHead.isPresent)
     Assert.assertTrue(store.getAccountData(KeyTransparencyTest.TEST_ACI).isPresent)
-  }
-
-  @Test
-  @Throws(Exception::class)
-  fun updateDistinguishedStagingIntegration() {
-    Assume.assumeTrue(INTEGRATION_TESTS_ENABLED)
-
-    val net = Network(Network.Environment.STAGING, USER_AGENT)
-    val ktClient = connectAndGetClient(net).get()
-
-    val store = TestStore()
-    ktClient.updateDistinguished(store).get()
-
-    Assert.assertTrue(store.getLastDistinguishedTreeHead().isPresent)
   }
 
   @Test
@@ -89,13 +79,14 @@ class KeyTransparencyClientTest {
   fun monitorInStagingIntegration() {
     Assume.assumeTrue(INTEGRATION_TESTS_ENABLED)
 
-    val net = Network(Network.Environment.STAGING, USER_AGENT)
+    val net = Network(Network.Environment.STAGING, USER_AGENT, mapOf(), Network.BuildVariant.BETA)
     val ktClient = connectAndGetClient(net).get()
 
     val store = TestStore()
 
     ktClient
-      .search(
+      .check(
+        CheckMode.Contact,
         KeyTransparencyTest.TEST_ACI,
         KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
         KeyTransparencyTest.TEST_E164,
@@ -103,15 +94,20 @@ class KeyTransparencyClientTest {
         KeyTransparencyTest.TEST_USERNAME_HASH,
         store,
       ).get()
+      .also {
+        assertIs<RequestResult.Success<*>>(it)
+      }
 
     val accountDataHistory: Deque<ByteArray?> = store.storage.get(KeyTransparencyTest.TEST_ACI)!!
 
     // Following search there should be a single entry in the account history
     Assert.assertEquals(1, accountDataHistory.size.toLong())
+    // Should have requested and stored the latest distinguished tree head
+    Assert.assertEquals(1, store.distinguishedTreeHeads.size)
 
     ktClient
-      .monitor(
-        MonitorMode.SELF,
+      .check(
+        CheckMode.Contact,
         KeyTransparencyTest.TEST_ACI,
         KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
         KeyTransparencyTest.TEST_E164,
@@ -119,40 +115,16 @@ class KeyTransparencyClientTest {
         KeyTransparencyTest.TEST_USERNAME_HASH,
         store,
       ).get()
+      .also {
+        assertIs<RequestResult.Success<*>>(it)
+      }
     // Another entry in the account history after a successful monitor request
     Assert.assertEquals(2, accountDataHistory.size.toLong())
+    // Should not have updated the distinguished tree head, as the last one was reused
+    Assert.assertEquals(1, store.distinguishedTreeHeads.size)
   }
 
-  @Test
-  @Throws(Exception::class)
-  fun monitorNoDataInStore() {
-    Assume.assumeTrue(INTEGRATION_TESTS_ENABLED)
-
-    val net = Network(Network.Environment.STAGING, USER_AGENT)
-    val ktClient = connectAndGetClient(net).get()
-
-    val store = TestStore()
-
-    // Call to monitor before any data has been persisted in the store.
-    // Distinguished tree will be requested from the server, but it will fail
-    // due to account data missing.
-    try {
-      ktClient
-        .monitor(
-          MonitorMode.SELF,
-          KeyTransparencyTest.TEST_ACI,
-          KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
-          KeyTransparencyTest.TEST_E164,
-          KeyTransparencyTest.TEST_UNIDENTIFIED_ACCESS_KEY,
-          KeyTransparencyTest.TEST_USERNAME_HASH,
-          store,
-        ).get()
-    } catch (e: ExecutionException) {
-      Assert.assertTrue(e.cause is KeyTransparencyException)
-    }
-  }
-
-  inline fun <reified E> networkExceptionsTestImpl(
+  inline fun <reified E : Throwable> retryableNetworkExceptionsTestImpl(
     statusCode: Int,
     message: String = "",
     headers: Array<String> = arrayOf(),
@@ -166,22 +138,101 @@ class KeyTransparencyClientTest {
       )
 
     val store = TestStore()
-    val responseFuture = chat.keyTransparencyClient().updateDistinguished(store)
+    val responseFuture =
+      chat
+        .keyTransparencyClient()
+        .check(
+          CheckMode.Contact,
+          KeyTransparencyTest.TEST_ACI,
+          KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
+          null,
+          null,
+          null,
+          store,
+        )
 
-    val (_, requestId) = remote.getNextIncomingRequest().get()
+    val (_, requestId) = remote.nextIncomingRequest.get()
     remote.sendResponse(requestId, statusCode, message, headers, byteArrayOf())
 
-    val exception = assertFailsWith<ExecutionException> { responseFuture.get() }
-    assertIs<E>(exception.cause)
+    val result = responseFuture.get()
+    val retryable = assertIs<RequestResult.RetryableNetworkError>(result)
+    assertIs<E>(retryable.networkError)
+  }
+
+  inline fun <reified E : Throwable> applicationErrorTestImpl(
+    statusCode: Int,
+    message: String = "",
+    headers: Array<String> = arrayOf(),
+  ) {
+    val tokio = TokioAsyncContext()
+    val (chat, remote) =
+      UnauthenticatedChatConnection.fakeConnect(
+        tokio,
+        NoOpListener(),
+        Network.Environment.STAGING,
+      )
+
+    val store = TestStore()
+    val responseFuture =
+      chat
+        .keyTransparencyClient()
+        .check(
+          CheckMode.Contact,
+          KeyTransparencyTest.TEST_ACI,
+          KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
+          null,
+          null,
+          null,
+          store,
+        )
+
+    val (_, requestId) = remote.nextIncomingRequest.get()
+    remote.sendResponse(requestId, statusCode, message, headers, byteArrayOf())
+
+    val result = responseFuture.get()
+    val appError = assertIs<RequestResult.ApplicationError>(result)
+    assertIs<E>(appError.cause)
+  }
+
+  fun chatServiceInactiveIsRetryableNetworkErrorTestImpl() {
+    val tokio = TokioAsyncContext()
+    val (chat, remote) =
+      UnauthenticatedChatConnection.fakeConnect(
+        tokio,
+        NoOpListener(),
+        Network.Environment.STAGING,
+      )
+
+    val store = TestStore()
+    val responseFuture =
+      chat
+        .keyTransparencyClient()
+        .check(
+          CheckMode.Contact,
+          KeyTransparencyTest.TEST_ACI,
+          KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
+          null,
+          null,
+          null,
+          store,
+        )
+
+    remote.nextIncomingRequest.get()
+    remote.guardedRun(NativeTesting::TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted)
+
+    val result = responseFuture.get()
+    val retryable = assertIs<RequestResult.RetryableNetworkError>(result)
+    assertIs<ChatServiceInactiveException>(retryable.networkError)
   }
 
   @Test
   @Throws(ExecutionException::class, InterruptedException::class)
   fun networkExceptions() {
-    networkExceptionsTestImpl<RetryLaterException>(429, headers = arrayOf("retry-after: 42"))
-    networkExceptionsTestImpl<ServerSideErrorException>(500)
+    chatServiceInactiveIsRetryableNetworkErrorTestImpl()
+    retryableNetworkExceptionsTestImpl<RetryLaterException>(429, headers = arrayOf("retry-after: 42"))
+    retryableNetworkExceptionsTestImpl<ServerSideErrorException>(500)
     // 429 without the retry-after is unexpected
-    networkExceptionsTestImpl<UnexpectedResponseException>(429)
+    applicationErrorTestImpl<UnexpectedResponseException>(429)
   }
 
   companion object {

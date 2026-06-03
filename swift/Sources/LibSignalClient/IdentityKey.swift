@@ -42,10 +42,9 @@ public struct IdentityKeyPair: Sendable {
     public let publicKey: PublicKey
     public let privateKey: PrivateKey
 
-    public static func generate() -> IdentityKeyPair {
-        let privateKey = PrivateKey.generate()
-        let publicKey = privateKey.publicKey
-        return IdentityKeyPair(publicKey: publicKey, privateKey: privateKey)
+    public init(publicKey: PublicKey, privateKey: PrivateKey) {
+        self.publicKey = publicKey
+        self.privateKey = privateKey
     }
 
     public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
@@ -59,9 +58,10 @@ public struct IdentityKeyPair: Sendable {
         self.privateKey = PrivateKey(owned: NonNull(out.second)!)
     }
 
-    public init(publicKey: PublicKey, privateKey: PrivateKey) {
-        self.publicKey = publicKey
-        self.privateKey = privateKey
+    public static func generate() -> IdentityKeyPair {
+        let privateKey = PrivateKey.generate()
+        let publicKey = privateKey.publicKey
+        return IdentityKeyPair(publicKey: publicKey, privateKey: privateKey)
     }
 
     public func serialize() -> Data {

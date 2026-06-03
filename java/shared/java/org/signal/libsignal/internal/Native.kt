@@ -7,19 +7,20 @@
 
 package org.signal.libsignal.internal
 
+import org.signal.libsignal.internal.NativeHandleGuard.SimpleOwner
 import org.signal.libsignal.net.internal.BridgeChatListener
 import org.signal.libsignal.net.internal.BridgeProvisioningListener
 import org.signal.libsignal.net.internal.ConnectChatBridge
 import org.signal.libsignal.protocol.SignedPublicPreKey
-import org.signal.libsignal.protocol.groups.state.SenderKeyStore
 import org.signal.libsignal.protocol.logging.Log
 import org.signal.libsignal.protocol.logging.SignalProtocolLogger
 import org.signal.libsignal.protocol.message.CiphertextMessage
-import org.signal.libsignal.protocol.state.IdentityKeyStore
-import org.signal.libsignal.protocol.state.KyberPreKeyStore
-import org.signal.libsignal.protocol.state.PreKeyStore
-import org.signal.libsignal.protocol.state.SessionStore
-import org.signal.libsignal.protocol.state.SignedPreKeyStore
+import org.signal.libsignal.protocol.state.internal.IdentityKeyStore
+import org.signal.libsignal.protocol.state.internal.KyberPreKeyStore
+import org.signal.libsignal.protocol.state.internal.PreKeyStore
+import org.signal.libsignal.protocol.state.internal.SenderKeyStore
+import org.signal.libsignal.protocol.state.internal.SessionStore
+import org.signal.libsignal.protocol.state.internal.SignedPreKeyStore
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -207,11 +208,54 @@ internal object Native {
   @JvmStatic
   public external fun AuthenticatedChatConnection_disconnect(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Void?>
   @JvmStatic
+  public external fun AuthenticatedChatConnection_get_upload_form(asyncRuntime: ObjectHandle, chat: ObjectHandle, uploadLength: Long): CompletableFuture<Object>
+  @JvmStatic
   public external fun AuthenticatedChatConnection_init_listener(chat: ObjectHandle, listener: BridgeChatListener): Unit
   @JvmStatic
   public external fun AuthenticatedChatConnection_preconnect(asyncRuntime: ObjectHandle, connectionManager: ObjectHandle): CompletableFuture<Void?>
   @JvmStatic
   public external fun AuthenticatedChatConnection_send(asyncRuntime: ObjectHandle, chat: ObjectHandle, httpRequest: ObjectHandle, timeoutMillis: Int): CompletableFuture<Object>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_send_message_java(asyncRuntime: ObjectHandle, chat: ObjectHandle, destination: ByteArray, timestamp: Long, deviceIds: IntArray, registrationIds: IntArray, contents: Array<Object>, onlineOnly: Boolean, isUrgent: Boolean): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_send_raw_grpc(asyncRuntime: ObjectHandle, chat: ObjectHandle, service: String, method: String, payload: ByteArray): CompletableFuture<ByteArray>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_send_sync_message_java(asyncRuntime: ObjectHandle, chat: ObjectHandle, timestamp: Long, deviceIds: IntArray, registrationIds: IntArray, contents: Array<Object>, isUrgent: Boolean): CompletableFuture<Void?>
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialPresentation_CheckValidContents(presentationBytes: ByteArray): Unit
+  @JvmStatic
+  public external fun AvatarUploadCredentialPresentation_GetCm(presentationBytes: ByteArray): ByteArray
+  @JvmStatic
+  public external fun AvatarUploadCredentialPresentation_GetRedemptionTime(presentationBytes: ByteArray): Long
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialPresentation_Verify(presentationBytes: ByteArray, currentTime: Long, serverParamsBytes: ByteArray): Unit
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialRequestContext_CheckValidContents(contextBytes: ByteArray): Unit
+  @JvmStatic
+  public external fun AvatarUploadCredentialRequestContext_GetRequest(contextBytes: ByteArray): ByteArray
+  @JvmStatic
+  public external fun AvatarUploadCredentialRequestContext_New(aci: ByteArray, zkCredentialKeyPairBytes: ByteArray, rotationId: Long, randomness: ByteArray): ByteArray
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialRequestContext_ReceiveResponse(contextBytes: ByteArray, responseBytes: ByteArray, currentTime: Long, paramsBytes: ByteArray): ByteArray
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialRequest_CheckValidContents(requestBytes: ByteArray): Unit
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialRequest_IssueDeterministic(requestBytes: ByteArray, aci: ByteArray, zkCredentialKeyPubBytes: ByteArray, rotationId: Long, redemptionTime: Long, paramsBytes: ByteArray, randomness: ByteArray): ByteArray
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredentialResponse_CheckValidContents(responseBytes: ByteArray): Unit
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun AvatarUploadCredential_CheckValidContents(credentialBytes: ByteArray): Unit
+  @JvmStatic
+  public external fun AvatarUploadCredential_GetCm(credentialBytes: ByteArray): ByteArray
+  @JvmStatic
+  public external fun AvatarUploadCredential_GetRedemptionTime(credentialBytes: ByteArray): Long
+  @JvmStatic
+  public external fun AvatarUploadCredential_PresentDeterministic(credentialBytes: ByteArray, serverParamsBytes: ByteArray, randomness: ByteArray): ByteArray
 
   @JvmStatic @Throws(Exception::class)
   public external fun BackupAuthCredentialPresentation_CheckValidContents(presentationBytes: ByteArray): Unit
@@ -251,6 +295,17 @@ internal object Native {
   public external fun BackupAuthCredential_GetType(credentialBytes: ByteArray): Int
   @JvmStatic @Throws(Exception::class)
   public external fun BackupAuthCredential_PresentDeterministic(credentialBytes: ByteArray, serverParamsBytes: ByteArray, randomness: ByteArray): ByteArray
+
+  @JvmStatic
+  public external fun BackupJsonExporter_Destroy(handle: ObjectHandle): Unit
+  @JvmStatic @Throws(Exception::class)
+  public external fun BackupJsonExporter_ExportFrames(exporter: ObjectHandle, frames: ByteArray): Array<Object>
+  @JvmStatic @Throws(Exception::class)
+  public external fun BackupJsonExporter_Finish(exporter: ObjectHandle): Unit
+  @JvmStatic
+  public external fun BackupJsonExporter_GetInitialChunk(exporter: ObjectHandle): String
+  @JvmStatic @Throws(Exception::class)
+  public external fun BackupJsonExporter_New(backupInfo: ByteArray, shouldValidate: Boolean): ObjectHandle
 
   @JvmStatic
   public external fun BackupKey_DeriveBackupId(backupKey: ByteArray, aci: ByteArray): ByteArray
@@ -446,8 +501,6 @@ internal object Native {
   @JvmStatic @Throws(Exception::class)
   public external fun ECPrivateKey_Sign(key: ObjectHandle, message: ByteArray): ByteArray
 
-  @JvmStatic
-  public external fun ECPublicKey_Compare(key1: ObjectHandle, key2: ObjectHandle): Int
   @JvmStatic @Throws(Exception::class)
   public external fun ECPublicKey_Deserialize(data: ByteArray, offset: Int, length: Int): ObjectHandle
   @JvmStatic
@@ -608,13 +661,11 @@ internal object Native {
   @JvmStatic
   public external fun KeyTransparency_AciSearchKey(aci: ByteArray): ByteArray
   @JvmStatic
-  public external fun KeyTransparency_Distinguished(asyncRuntime: ObjectHandle, environment: Int, chatConnection: ObjectHandle, lastDistinguishedTreeHead: ByteArray?): CompletableFuture<ByteArray>
+  public external fun KeyTransparency_Check(asyncRuntime: ObjectHandle, environment: Int, chatConnection: ObjectHandle, aci: ByteArray, aciIdentityKey: ObjectHandle, e164: String?, unidentifiedAccessKey: ByteArray?, usernameHash: ByteArray?, accountData: ByteArray?, lastDistinguishedTreeHead: ByteArray?, isSelfCheck: Boolean, isE164Discoverable: Boolean): CompletableFuture<Pair<ByteArray, ByteArray>>
   @JvmStatic
   public external fun KeyTransparency_E164SearchKey(e164: String): ByteArray
   @JvmStatic
-  public external fun KeyTransparency_Monitor(asyncRuntime: ObjectHandle, environment: Int, chatConnection: ObjectHandle, aci: ByteArray, aciIdentityKey: ObjectHandle, e164: String?, unidentifiedAccessKey: ByteArray?, usernameHash: ByteArray?, accountData: ByteArray?, lastDistinguishedTreeHead: ByteArray, isSelfMonitor: Boolean): CompletableFuture<ByteArray>
-  @JvmStatic
-  public external fun KeyTransparency_Search(asyncRuntime: ObjectHandle, environment: Int, chatConnection: ObjectHandle, aci: ByteArray, aciIdentityKey: ObjectHandle, e164: String?, unidentifiedAccessKey: ByteArray?, usernameHash: ByteArray?, accountData: ByteArray?, lastDistinguishedTreeHead: ByteArray): CompletableFuture<ByteArray>
+  public external fun KeyTransparency_ResetDataField(accountData: ByteArray, field: Int): ByteArray
   @JvmStatic
   public external fun KeyTransparency_UsernameHashSearchKey(hash: ByteArray): ByteArray
 
@@ -936,7 +987,7 @@ internal object Native {
   public external fun RegistrationAccountAttributes_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic
-  public external fun RegistrationService_CheckSvr2Credentials(asyncRuntime: ObjectHandle, service: ObjectHandle, svrTokens: Array<Object>): CompletableFuture<Object>
+  public external fun RegistrationService_CheckSvr2Credentials(asyncRuntime: ObjectHandle, service: ObjectHandle, svrTokens: Array<Object>): CompletableFuture<Map<*, *>>
   @JvmStatic
   public external fun RegistrationService_CreateSession(asyncRuntime: ObjectHandle, createSession: Object, connectChat: ConnectChatBridge): CompletableFuture<ObjectHandle>
   @JvmStatic
@@ -1168,14 +1219,14 @@ internal object Native {
   public external fun ServiceId_ServiceIdString(value: ByteArray): String
 
   @JvmStatic @Throws(Exception::class)
-  public external fun SessionBuilder_ProcessPreKeyBundle(bundle: ObjectHandle, protocolAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, now: Long): Unit
+  public external fun SessionBuilder_ProcessPreKeyBundle(bundle: ObjectHandle, protocolAddress: ObjectHandle, localAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, now: Long): Unit
 
   @JvmStatic @Throws(Exception::class)
-  public external fun SessionCipher_DecryptPreKeySignalMessage(message: ObjectHandle, protocolAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore, kyberPrekeyStore: KyberPreKeyStore): ByteArray
+  public external fun SessionCipher_DecryptPreKeySignalMessage(message: ObjectHandle, protocolAddress: ObjectHandle, localAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore, kyberPrekeyStore: KyberPreKeyStore): ByteArray
   @JvmStatic @Throws(Exception::class)
-  public external fun SessionCipher_DecryptSignalMessage(message: ObjectHandle, protocolAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore): ByteArray
+  public external fun SessionCipher_DecryptSignalMessage(message: ObjectHandle, protocolAddress: ObjectHandle, localAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore): ByteArray
   @JvmStatic @Throws(Exception::class)
-  public external fun SessionCipher_EncryptMessage(ptext: ByteArray, protocolAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, now: Long): CiphertextMessage
+  public external fun SessionCipher_EncryptMessage(ptext: ByteArray, protocolAddress: ObjectHandle, localAddress: ObjectHandle, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, now: Long): CiphertextMessage
 
   @JvmStatic @Throws(Exception::class)
   public external fun SessionRecord_ArchiveCurrentState(sessionRecord: ObjectHandle): Unit
@@ -1196,7 +1247,7 @@ internal object Native {
   @JvmStatic @Throws(Exception::class)
   public external fun SessionRecord_GetSessionVersion(s: ObjectHandle): Int
   @JvmStatic @Throws(Exception::class)
-  public external fun SessionRecord_HasUsableSenderChain(s: ObjectHandle, now: Long): Boolean
+  public external fun SessionRecord_HasUsableSenderChain(s: ObjectHandle, requirePqRatio: Double, now: Long): Boolean
   @JvmStatic
   public external fun SessionRecord_NewFresh(): ObjectHandle
   @JvmStatic @Throws(Exception::class)
@@ -1234,8 +1285,6 @@ internal object Native {
   public external fun SignalMessage_GetSerialized(obj: ObjectHandle): ByteArray
   @JvmStatic @Throws(Exception::class)
   public external fun SignalMessage_New(messageVersion: Int, macKey: ByteArray, senderRatchetKey: ObjectHandle, counter: Int, previousCounter: Int, ciphertext: ByteArray, senderIdentityKey: ObjectHandle, receiverIdentityKey: ObjectHandle, pqRatchet: ByteArray): ObjectHandle
-  @JvmStatic @Throws(Exception::class)
-  public external fun SignalMessage_VerifyMac(msg: ObjectHandle, senderIdentityKey: ObjectHandle, receiverIdentityKey: ObjectHandle, macKey: ByteArray): Boolean
 
   @JvmStatic @Throws(Exception::class)
   public external fun SignedPreKeyRecord_Deserialize(data: ByteArray): ObjectHandle
@@ -1269,9 +1318,31 @@ internal object Native {
   @JvmStatic
   public external fun UnauthenticatedChatConnection_Destroy(handle: ObjectHandle): Unit
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_account_exists(asyncRuntime: ObjectHandle, chat: SimpleOwner, account: ByteArray): CompletableFuture<Boolean>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_delete_all(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, rng: Long): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_get_cdn_credentials(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, cdn: Int, rng: Long): CompletableFuture<Array<Object>>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_get_media_upload_form(asyncRuntime: ObjectHandle, chat: ObjectHandle, credential: ByteArray, serverKeys: ByteArray, signingKey: ObjectHandle, uploadSize: Long, rng: Long): CompletableFuture<Object>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_get_svrb_credentials(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, rng: Long): CompletableFuture<Pair<String, String>>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_get_upload_form(asyncRuntime: ObjectHandle, chat: ObjectHandle, credential: ByteArray, serverKeys: ByteArray, signingKey: ObjectHandle, uploadSize: Long, rng: Long): CompletableFuture<Object>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_refresh(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, rng: Long): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_set_public_key(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, rng: Long): CompletableFuture<Void?>
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_connect(asyncRuntime: ObjectHandle, connectionManager: ObjectHandle, languages: Array<Object>): CompletableFuture<ObjectHandle>
   @JvmStatic
   public external fun UnauthenticatedChatConnection_disconnect(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_get_pre_keys_access_key_auth(asyncRuntime: ObjectHandle, chat: ObjectHandle, auth: ByteArray, target: ByteArray, device: Int): CompletableFuture<Object>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_get_pre_keys_group_auth(asyncRuntime: ObjectHandle, chat: ObjectHandle, auth: ByteArray, target: ByteArray, device: Int): CompletableFuture<Object>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth(asyncRuntime: ObjectHandle, chat: ObjectHandle, target: ByteArray, device: Int): CompletableFuture<Object>
   @JvmStatic
   public external fun UnauthenticatedChatConnection_info(chat: ObjectHandle): ObjectHandle
   @JvmStatic
@@ -1283,7 +1354,11 @@ internal object Native {
   @JvmStatic
   public external fun UnauthenticatedChatConnection_send(asyncRuntime: ObjectHandle, chat: ObjectHandle, httpRequest: ObjectHandle, timeoutMillis: Int): CompletableFuture<Object>
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_send_message(asyncRuntime: ObjectHandle, chat: ObjectHandle, destination: ByteArray, timestamp: Long, deviceIds: IntArray, registrationIds: IntArray, contents: Array<ByteArray>, authKind: Int, authBuffer: ByteArray?, onlineOnly: Boolean, isUrgent: Boolean): CompletableFuture<Void?>
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_send_multi_recipient_message(asyncRuntime: ObjectHandle, chat: ObjectHandle, payload: ByteArray, timestamp: Long, auth: ByteArray?, onlineOnly: Boolean, isUrgent: Boolean): CompletableFuture<Array<Object>>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_send_raw_grpc(asyncRuntime: ObjectHandle, chat: ObjectHandle, service: String, method: String, payload: ByteArray): CompletableFuture<ByteArray>
 
   @JvmStatic @Throws(Exception::class)
   public external fun UnidentifiedSenderMessageContent_Deserialize(data: ByteArray): ObjectHandle
@@ -1334,6 +1409,16 @@ internal object Native {
 
   @JvmStatic @Throws(Exception::class)
   public external fun WebpSanitizer_Sanitize(input: InputStream): Unit
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun ZkCredentialKeyPair_CheckValidContents(keyPairBytes: ByteArray): Unit
+  @JvmStatic
+  public external fun ZkCredentialKeyPair_GenerateDeterministic(randomness: ByteArray): ByteArray
+  @JvmStatic
+  public external fun ZkCredentialKeyPair_GetPublicKey(keyPairBytes: ByteArray): ByteArray
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun ZkCredentialPublicKey_CheckValidContents(publicKeyBytes: ByteArray): Unit
 
   @JvmStatic
   public external fun initializeLibrary(): Unit

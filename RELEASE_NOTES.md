@@ -1,5 +1,7 @@
-v0.86.14
+v0.94.4
 
-- TypeScript: Fix accidentally-lax typing for the non-deprecated overload of `Net.setRemoteConfig`.
-- Upgrade MSRV to 1.88
-- Backup validator: validate group member labels
+- Internal: libsignal now uses Android Gradle Plugin 9.1.1
+
+- zkgroup: Add AvatarUploadCredential, an anonymous credential used to rate-limit avatar uploads.
+
+- Several new requests have been added to UnauthBackupsService; however, they are only usable when an H2 connection is guaranteed, and should not be adopted otherwise.

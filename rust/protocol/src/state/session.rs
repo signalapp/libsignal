@@ -8,12 +8,15 @@ use std::time::{Duration, SystemTime};
 
 use bitflags::bitflags;
 use prost::Message;
+#[cfg(test)]
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
 
 use crate::proto::storage::{RecordStructure, SessionStructure, session_structure};
 use crate::protocol::CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION;
-use crate::ratchet::{ChainKey, MessageKeyGenerator, RootKey};
+#[cfg(test)]
+use crate::ratchet::MessageKeyGenerator;
+use crate::ratchet::{ChainKey, RootKey};
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
 use crate::{IdentityKey, KeyPair, PrivateKey, PublicKey, SignalProtocolError, consts, kem};
 use curve25519_dalek::ristretto::RistrettoPoint;
@@ -21,7 +24,7 @@ use curve25519_dalek::EdwardsPoint;
 use curve25519_dalek::scalar::Scalar;
 /// A distinct error type to keep from accidentally propagating deserialization errors.
 #[derive(Debug)]
-pub(crate) struct InvalidSessionError(&'static str);
+pub(crate) struct InvalidSessionError(pub(crate) &'static str);
 
 impl std::fmt::Display for InvalidSessionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -218,6 +221,8 @@ impl SessionState {
         Ok(self.local_identity_key()?.serialize().to_vec())
     }
 
+    #[deprecated]
+    #[allow(unused)]
     pub(crate) fn session_with_self(&self) -> Result<bool, InvalidSessionError> {
         if let Some(remote_id) = self.remote_identity_key_bytes()? {
             let local_id = self.local_identity_key_bytes()?;
@@ -232,10 +237,12 @@ impl SessionState {
         self.session.previous_counter
     }
 
+    #[cfg(test)]
     pub(crate) fn set_previous_counter(&mut self, ctr: u32) {
         self.session.previous_counter = ctr;
     }
 
+    #[cfg(test)]
     pub(crate) fn root_key(&self) -> Result<RootKey, InvalidSessionError> {
         let root_key_bytes = self.session.root_key[..]
             .try_into()
@@ -243,6 +250,7 @@ impl SessionState {
         Ok(RootKey::new(root_key_bytes))
     }
 
+    #[cfg(test)]
     pub(crate) fn set_root_key(&mut self, root_key: &RootKey) {
         self.session.root_key = root_key.key().to_vec();
     }
@@ -446,6 +454,7 @@ impl SessionState {
         self.session.sender_chain = Some(new_chain);
     }
 
+    #[cfg(test)]
     pub(crate) fn get_message_keys(
         &mut self,
         sender: &PublicKey,
@@ -472,6 +481,7 @@ impl SessionState {
         Ok(None)
     }
 
+    #[cfg(test)]
     pub(crate) fn set_message_keys(
         &mut self,
         sender: &PublicKey,
@@ -492,6 +502,7 @@ impl SessionState {
         Ok(())
     }
 
+    #[cfg(test)]
     pub(crate) fn set_receiver_chain_key(
         &mut self,
         sender: &PublicKey,
@@ -625,19 +636,55 @@ impl SessionState {
             .map(|pending| &pending.ciphertext)
     }
 
+    /// Extract the Double Ratchet state from this session.
+    ///
+    /// This **moves** the receiver chains out of the session protobuf,
+    /// leaving them empty. The caller must either apply the ratchet state
+    /// back via [`apply_ratchet_state`](Self::apply_ratchet_state) or
+    /// discard this `SessionState` entirely. Reading receiver chains from
+    /// a taken session is invalid and will produce incorrect results.
+    ///
+    /// The caller must supply `self_session` (whether this is a note-to-self
+    /// session) since it requires identity key comparison, which is above the
+    /// ratchet layer.
+    pub(crate) fn take_ratchet_state(
+        &mut self,
+        self_session: bool,
+    ) -> crate::error::Result<crate::double_ratchet::RatchetState> {
+        let receiver_chains = std::mem::take(&mut self.session.receiver_chains);
+        Ok(crate::double_ratchet::RatchetState::from_pb(
+            &self.session,
+            self_session,
+            receiver_chains,
+        )?)
+    }
+
+    /// Write modified Double Ratchet state back into this session.
+    ///
+    /// Only the ratchet-relevant fields are updated; all other session
+    /// fields (identity keys, pending pre-key, SPQR state, etc.) are
+    /// left unchanged.
+    pub(crate) fn apply_ratchet_state(&mut self, ratchet: crate::double_ratchet::RatchetState) {
+        ratchet.apply_to_pb(&mut self.session);
+    }
+
+    #[cfg(test)]
     pub(crate) fn pq_ratchet_recv(
         &mut self,
         msg: &spqr::SerializedMessage,
     ) -> Result<spqr::MessageKey, spqr::Error> {
+        let _trace = libsignal_debug::trace_block!("SessionState::pq_ratchet_recv");
         let spqr::Recv { state, key } = spqr::recv(&self.session.pq_ratchet_state, msg)?;
         self.session.pq_ratchet_state = state;
         Ok(key)
     }
 
+    #[cfg(test)]
     pub(crate) fn pq_ratchet_send<R: Rng + CryptoRng>(
         &mut self,
         csprng: &mut R,
     ) -> Result<(spqr::SerializedMessage, spqr::MessageKey), spqr::Error> {
+        let _trace = libsignal_debug::trace_block!("SessionState::pq_ratchet_send");
         let spqr::Send { state, key, msg } = spqr::send(&self.session.pq_ratchet_state, csprng)?;
         self.session.pq_ratchet_state = state;
         Ok((msg, key))
@@ -645,6 +692,19 @@ impl SessionState {
 
     pub(crate) fn pq_ratchet_state(&self) -> &spqr::SerializedState {
         &self.session.pq_ratchet_state
+    }
+
+    /// Move the PQ ratchet state out, leaving an empty vec in its place.
+    ///
+    /// The caller must either write a new PQ ratchet state back via
+    /// [`set_pq_ratchet_state`](Self::set_pq_ratchet_state) or discard
+    /// this `SessionState` entirely.
+    pub(crate) fn take_pq_ratchet_state(&mut self) -> spqr::SerializedState {
+        std::mem::take(&mut self.session.pq_ratchet_state)
+    }
+
+    pub(crate) fn set_pq_ratchet_state(&mut self, state: spqr::SerializedState) {
+        self.session.pq_ratchet_state = state;
     }
 }
 

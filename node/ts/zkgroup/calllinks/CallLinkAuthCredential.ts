@@ -17,7 +17,7 @@ import { Aci } from '../../Address.js';
 export default class CallLinkAuthCredential extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, Native.CallLinkAuthCredential_CheckValidContents);
   }
 
@@ -42,7 +42,7 @@ export default class CallLinkAuthCredential extends ByteArray {
     redemptionTime: number,
     serverParams: GenericServerPublicParams,
     callLinkParams: CallLinkSecretParams,
-    random: Uint8Array
+    random: Uint8Array<ArrayBuffer>
   ): CallLinkAuthCredentialPresentation {
     return new CallLinkAuthCredentialPresentation(
       Native.CallLinkAuthCredential_PresentDeterministic(

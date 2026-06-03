@@ -5,8 +5,9 @@ plugins {
     id 'org.jetbrains.kotlin.jvm'
 }
 
-sourceCompatibility = 17
-archivesBaseName = "libsignal-server"
+base {
+    archivesName = "libsignal-server"
+}
 
 repositories {
     mavenCentral()
@@ -41,21 +42,23 @@ sourceSets {
 
 dependencies {
     testImplementation 'junit:junit:4.13'
+    testImplementation 'org.jetbrains.kotlin:kotlin-test:2.1.0'
 }
 
 test {
     jvmArgs '-Xcheck:jni'
     testLogging {
-        events 'passed','skipped','failed'
+        events 'passed', 'skipped', 'failed'
         showStandardStreams = true
-        showExceptions true
-        exceptionFormat 'full'
-        showCauses true
-        showStackTraces true
+        showExceptions = true
+        exceptionFormat = 'full'
+        showCauses = true
+        showStackTraces = true
     }
 }
 
 java {
+    sourceCompatibility = JavaVersion.VERSION_17
     withSourcesJar()
 }
 
@@ -67,14 +70,14 @@ sourcesJar {
 }
 
 task dokkaHtmlJar(type: Jar) {
-    dependsOn(dokkaHtml)
-    from(dokkaHtml)
+    dependsOn(dokkaGeneratePublicationHtml)
+    from(dokkaGeneratePublicationHtml)
     archiveClassifier.set("dokka")
 }
 
 task dokkaJavadocJar(type: Jar) {
-    dependsOn(dokkaJavadoc)
-    from(dokkaJavadoc)
+    dependsOn(dokkaGeneratePublicationJavadoc)
+    from(dokkaGeneratePublicationJavadoc)
     archiveClassifier.set("javadoc")
 }
 
@@ -87,13 +90,13 @@ processResources {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifactId = archivesBaseName
+            artifactId = base.archivesName.get()
             from components.java
             artifact dokkaHtmlJar
             artifact dokkaJavadocJar
 
             pom {
-                name = archivesBaseName
+                name = base.archivesName.get()
                 description = 'Signal Protocol cryptography library for Java (server-side)'
                 url = 'https://github.com/signalapp/libsignal'
 
@@ -122,6 +125,6 @@ publishing {
 
 setUpSigningKey(signing)
 signing {
-    required { isReleaseBuild() && gradle.taskGraph.hasTask(":server:publish") }
+    required = { isReleaseBuild() && gradle.taskGraph.hasTask(":server:publish") }
     sign publishing.publications.mavenJava
 }

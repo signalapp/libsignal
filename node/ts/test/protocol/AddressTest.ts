@@ -8,8 +8,8 @@ import * as util from '../util.js';
 
 import { assert, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import * as uuid from 'uuid';
 import { Buffer } from 'node:buffer';
+import * as uuid from '../../uuid.js';
 
 use(chaiAsPromised);
 util.initLogger();
@@ -22,8 +22,8 @@ describe('ProtocolAddress', () => {
   });
   it('can round-trip ServiceIds', () => {
     const newUuid = uuid.v4();
-    const aci = SignalClient.Aci.fromUuid(newUuid);
-    const pni = SignalClient.Pni.fromUuid(newUuid);
+    const aci = SignalClient.Aci.fromUuidBytes(newUuid);
+    const pni = SignalClient.Pni.fromUuidBytes(newUuid);
 
     const aciAddr = SignalClient.ProtocolAddress.new(aci, 1);
     const pniAddr = SignalClient.ProtocolAddress.new(pni, 1);

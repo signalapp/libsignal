@@ -33,7 +33,7 @@ public class UnauthenticatedChatConnection extends ChatConnection {
     this.keyTransparencyClient = new KeyTransparencyClient(this, tokioAsyncContext, ktEnvironment);
   }
 
-  private KeyTransparencyClient keyTransparencyClient;
+  private final KeyTransparencyClient keyTransparencyClient;
 
   static CompletableFuture<UnauthenticatedChatConnection> connect(
       final TokioAsyncContext tokioAsyncContext,
@@ -77,13 +77,26 @@ public class UnauthenticatedChatConnection extends ChatConnection {
       final TokioAsyncContext tokioAsyncContext,
       ChatConnectionListener listener,
       Network.Environment ktEnvironment) {
+    return fakeConnect(tokioAsyncContext, listener, new String[0], ktEnvironment);
+  }
+
+  /**
+   * Test-only method to create a {@code UnauthenticatedChatConnection} connected to a fake remote.
+   *
+   * <p>The returned {@link FakeChatRemote} can be used to send messages to the connection.
+   */
+  public static Pair<UnauthenticatedChatConnection, FakeChatRemote> fakeConnect(
+      final TokioAsyncContext tokioAsyncContext,
+      ChatConnectionListener listener,
+      String[] grpcOverrides,
+      Network.Environment ktEnvironment) {
 
     return tokioAsyncContext.guardedMap(
         asyncContextHandle -> {
           SetChatLaterListenerBridge bridgeListener = new SetChatLaterListenerBridge();
           long fakeChatConnection =
               NativeTesting.TESTING_FakeChatConnection_Create(
-                  asyncContextHandle, bridgeListener, "");
+                  asyncContextHandle, bridgeListener, String.join("\n", grpcOverrides), "");
           UnauthenticatedChatConnection chat =
               new UnauthenticatedChatConnection(
                   tokioAsyncContext,

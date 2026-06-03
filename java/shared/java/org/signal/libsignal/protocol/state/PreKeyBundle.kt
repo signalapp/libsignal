@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.protocol.state
 
+import org.signal.libsignal.internal.CalledFromNative
 import org.signal.libsignal.internal.Native
 import org.signal.libsignal.internal.NativeHandleGuard
 import org.signal.libsignal.protocol.IdentityKey
@@ -16,19 +17,25 @@ import org.signal.libsignal.protocol.kem.KEMPublicKey
  *
  * @author Moxie Marlinspike
  */
-public class PreKeyBundle(
-  registrationId: Int,
-  deviceId: Int,
-  preKeyId: Int,
-  preKeyPublic: ECPublicKey?,
-  signedPreKeyId: Int,
-  signedPreKeyPublic: ECPublicKey,
-  signedPreKeySignature: ByteArray,
-  identityKey: IdentityKey,
-  kyberPreKeyId: Int,
-  kyberPreKeyPublic: KEMPublicKey,
-  kyberPreKeySignature: ByteArray,
-) : NativeHandleGuard.SimpleOwner(
+public class PreKeyBundle : NativeHandleGuard.SimpleOwner {
+  public companion object {
+    // -1 is treated as Option<u32>::None by the bridging layer
+    public const val NULL_PRE_KEY_ID: Int = -1
+  }
+
+  public constructor(
+    registrationId: Int,
+    deviceId: Int,
+    preKeyId: Int,
+    preKeyPublic: ECPublicKey?,
+    signedPreKeyId: Int,
+    signedPreKeyPublic: ECPublicKey,
+    signedPreKeySignature: ByteArray,
+    identityKey: IdentityKey,
+    kyberPreKeyId: Int,
+    kyberPreKeyPublic: KEMPublicKey,
+    kyberPreKeySignature: ByteArray,
+  ) : this(
     createNativeFrom(
       registrationId,
       deviceId,
@@ -43,9 +50,11 @@ public class PreKeyBundle(
       kyberPreKeySignature,
     ),
   ) {
-  public companion object {
-    // -1 is treated as Option<u32>::None by the bridging layer
-    public const val NULL_PRE_KEY_ID: Int = -1
+  }
+
+  // Native calls this through reflection, so this doesn't need to be public
+  @CalledFromNative
+  internal constructor(handle: Long) : super(handle) {
   }
 
   protected override fun release(nativeHandle: Long) {

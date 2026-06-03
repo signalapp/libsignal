@@ -11,6 +11,24 @@ SCRIPT_DIR=$(dirname "$0")
 cd "${SCRIPT_DIR}"/..
 . bin/build_helpers.sh
 
+CHECK=0
+case "${1:-}" in
+--check)
+	CHECK=1
+	shift
+	;;
+esac
+
+if [ "$#" -ne 0 ]; then
+	echo "usage: $0 [--check]" >&2
+	exit 2
+fi
+
+if [ "$CHECK" -eq 1 ]; then
+	OUTPUT_DIR=$(mktemp -d)
+	trap 'rm -rf "$OUTPUT_DIR"' EXIT
+fi
+
 echo "Checking cargo-about version"
 VERSION=$(cargo about --version)
 echo "Found $VERSION"
@@ -32,6 +50,20 @@ generate() {
 		"$@"
 }
 
+generate_and_maybe_check() {
+	template="$1"
+	tracked_output="$2"
+	shift 2
+
+	if [ "$CHECK" -eq 1 ]; then
+		generated_output="${OUTPUT_DIR}/$(basename "$tracked_output")"
+		generate "$template" "$generated_output" "$@"
+		diff -u "$tracked_output" "$generated_output"
+	else
+		generate "$template" "$tracked_output" "$@"
+	fi
+}
+
 # List every target we ship, just in case some dependencies are platform-gated.
 ANDROID_TARGETS=(
 	aarch64-linux-android
@@ -50,12 +82,12 @@ DESKTOP_TARGETS=(
 IOS_TARGETS=(aarch64-apple-ios)
 
 # shellcheck disable=SC2068  # We want "--target" to end up as a separate argument.
-generate acknowledgments/acknowledgments{.html.hbs,.html} ${DESKTOP_TARGETS[@]/#/--target } ${IOS_TARGETS[@]/#/--target } ${ANDROID_TARGETS[@]/#/--target } --workspace
+generate_and_maybe_check acknowledgments/acknowledgments{.html.hbs,.html} ${DESKTOP_TARGETS[@]/#/--target } ${IOS_TARGETS[@]/#/--target } ${ANDROID_TARGETS[@]/#/--target } --workspace
 # shellcheck disable=SC2068
-generate acknowledgments/acknowledgments{.md.hbs,-android.md} ${ANDROID_TARGETS[@]/#/--target } --manifest-path rust/bridge/jni/Cargo.toml
+generate_and_maybe_check acknowledgments/acknowledgments{.md.hbs,-android.md} ${ANDROID_TARGETS[@]/#/--target } --manifest-path rust/bridge/jni/Cargo.toml
 # shellcheck disable=SC2068
-generate acknowledgments/acknowledgments{.md.hbs,-android-testing.md} ${ANDROID_TARGETS[@]/#/--target } --manifest-path rust/bridge/jni/testing/Cargo.toml
+generate_and_maybe_check acknowledgments/acknowledgments{.md.hbs,-android-testing.md} ${ANDROID_TARGETS[@]/#/--target } --manifest-path rust/bridge/jni/testing/Cargo.toml
 # shellcheck disable=SC2068
-generate acknowledgments/acknowledgments{.md.hbs,-desktop.md} ${DESKTOP_TARGETS[@]/#/--target } --manifest-path rust/bridge/node/Cargo.toml
+generate_and_maybe_check acknowledgments/acknowledgments{.md.hbs,-desktop.md} ${DESKTOP_TARGETS[@]/#/--target } --manifest-path rust/bridge/node/Cargo.toml
 # shellcheck disable=SC2068
-generate acknowledgments/acknowledgments{.plist.hbs,-ios.plist} ${IOS_TARGETS[@]/#/--target } --manifest-path rust/bridge/ffi/Cargo.toml
+generate_and_maybe_check acknowledgments/acknowledgments{.plist.hbs,-ios.plist} ${IOS_TARGETS[@]/#/--target } --manifest-path rust/bridge/ffi/Cargo.toml

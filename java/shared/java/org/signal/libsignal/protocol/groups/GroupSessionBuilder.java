@@ -32,10 +32,10 @@ import org.signal.libsignal.protocol.message.SenderKeyDistributionMessage;
  * @author Moxie Marlinspike
  */
 public class GroupSessionBuilder {
-  private final SenderKeyStore senderKeyStore;
+  private final org.signal.libsignal.protocol.state.internal.SenderKeyStore senderKeyStore;
 
   public GroupSessionBuilder(SenderKeyStore senderKeyStore) {
-    this.senderKeyStore = senderKeyStore;
+    this.senderKeyStore = GroupCipher.bridge(senderKeyStore);
   }
 
   /**

@@ -12,6 +12,7 @@ use libsignal_bridge_types::net::{BuildVariant, ConnectionManager, TokioAsyncCon
 use libsignal_core::E164;
 use libsignal_net::cdsi::{CdsiProtocolError, LookupError, LookupResponse, LookupResponseEntry};
 use libsignal_net::infra::errors::RetryLater;
+use libsignal_net::infra::route::HttpVersion;
 use libsignal_net::infra::ws::attested::AttestedProtocolError;
 use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
@@ -150,6 +151,7 @@ fn TESTING_ConnectionManager_newLocalOverride(
     svr2Port: AsType<NonZeroU16, u16>,
     svrBPort: AsType<NonZeroU16, u16>,
     rootCertificateDer: &[u8],
+    http_version: u8,
 ) -> ConnectionManager {
     let ports = net_env::LocalhostEnvPortConfig {
         chat_port: chatPort.into_inner(),
@@ -157,8 +159,13 @@ fn TESTING_ConnectionManager_newLocalOverride(
         svr2_port: svr2Port.into_inner(),
         svrb_port: svrBPort.into_inner(),
     };
+    let http_version = match http_version {
+        1 => HttpVersion::Http1_1,
+        2 => HttpVersion::Http2,
+        _ => panic!("invalid HTTP version {http_version}"),
+    };
 
-    let env = net_env::localhost_test_env_with_ports(ports, rootCertificateDer);
+    let env = net_env::localhost_test_env_with_ports(ports, rootCertificateDer, http_version);
     ConnectionManager::new_from_static_environment(
         env,
         userAgent.as_str(),

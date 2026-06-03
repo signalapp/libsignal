@@ -6,13 +6,14 @@
 use std::convert::Infallible;
 
 use async_trait::async_trait;
-use base64::Engine;
-use base64::prelude::BASE64_URL_SAFE_NO_PAD;
+use base64::prelude::{BASE64_URL_SAFE_NO_PAD, Engine as _};
 use libsignal_core::Aci;
 use libsignal_net::chat::Request;
+use libsignal_net_grpc::proto::chat::services;
 use serde_with::serde_as;
 
-use super::{CustomError, OverWs, ResponseError, TryIntoResponse, WsConnection};
+use super::{CustomError, OverWs, ResponseError, TryIntoResponse, WsConnection, expect_empty_body};
+use crate::api::usernames::validate_username_from_link;
 use crate::api::{RequestError, Unauth};
 use crate::logging::{Redact, RedactBase64};
 
@@ -25,6 +26,12 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for 
         &self,
         hash: &[u8],
     ) -> Result<Option<Aci>, RequestError<Infallible>> {
+        if let Some(grpc) =
+            self.grpc_service_to_use_instead(services::AccountsAnonymous::LookupUsernameHash.into())
+        {
+            return Unauth(grpc).look_up_username_hash(hash).await;
+        }
+
         let encoded_hash = BASE64_URL_SAFE_NO_PAD.encode(hash);
         let response = self
             .send(
@@ -51,12 +58,15 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for 
             Err(ResponseError::UnrecognizedStatus { status, response })
                 if status.as_u16() == 404 =>
             {
-                if !response.body.unwrap_or_default().is_empty() {
-                    log::warn!("ignoring body for 404 result from look_up_username_hash");
-                }
+                expect_empty_body(&response, "/v1/accounts/username_hash/*");
                 return Ok(None);
             }
-            Err(e) => return Err(e.into_request_error(CustomError::no_custom_handling)),
+            Err(e) => {
+                return Err(e.into_request_error(
+                    Self::ALLOW_RATE_LIMIT_CHALLENGES,
+                    CustomError::no_custom_handling,
+                ));
+            }
         };
 
         let aci = Aci::parse_from_service_id_string(&uuid_string).ok_or_else(|| {
@@ -73,6 +83,12 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for 
         uuid: uuid::Uuid,
         entropy: &[u8; usernames::constants::USERNAME_LINK_ENTROPY_SIZE],
     ) -> Result<Option<usernames::Username>, RequestError<usernames::UsernameLinkError>> {
+        if let Some(grpc) =
+            self.grpc_service_to_use_instead(services::AccountsAnonymous::LookupUsernameLink.into())
+        {
+            return Unauth(grpc).look_up_username_link(uuid, entropy).await;
+        }
+
         let response = self
             .send(
                 "unauth",
@@ -101,42 +117,21 @@ impl<T: WsConnection> crate::api::usernames::UnauthenticatedChatApi<OverWs> for 
             Err(ResponseError::UnrecognizedStatus { status, response })
                 if status.as_u16() == 404 =>
             {
-                if !response.body.unwrap_or_default().is_empty() {
-                    log::warn!("ignoring body for 404 result from look_up_username_link");
-                }
+                expect_empty_body(&response, "/v1/accounts/username_link/*");
                 return Ok(None);
             }
-            Err(e) => return Err(e.into_request_error(CustomError::no_custom_handling)),
+            Err(e) => {
+                return Err(e.into_request_error(
+                    Self::ALLOW_RATE_LIMIT_CHALLENGES,
+                    CustomError::no_custom_handling,
+                ));
+            }
         };
 
         let plaintext_username = usernames::decrypt_username(entropy, &encrypted_username)
             .map_err(RequestError::Other)?;
 
-        let validated_username = usernames::Username::new(&plaintext_username).map_err(|e| {
-            // Exhaustively match UsernameError to make sure there's nothing we shouldn't log.
-            let _username_error_carries_no_information_that_would_be_bad_to_log = match e {
-                usernames::UsernameError::MissingSeparator
-                | usernames::UsernameError::NicknameCannotBeEmpty
-                | usernames::UsernameError::NicknameCannotStartWithDigit
-                | usernames::UsernameError::BadNicknameCharacter
-                | usernames::UsernameError::NicknameTooShort
-                | usernames::UsernameError::NicknameTooLong
-                | usernames::UsernameError::DiscriminatorCannotBeEmpty
-                | usernames::UsernameError::DiscriminatorCannotBeZero
-                | usernames::UsernameError::DiscriminatorCannotBeSingleDigit
-                | usernames::UsernameError::DiscriminatorCannotHaveLeadingZeros
-                | usernames::UsernameError::BadDiscriminatorCharacter
-                | usernames::UsernameError::DiscriminatorTooLarge => {}
-            };
-            log::warn!("username link decrypted to an invalid username: {e}");
-            log::debug!(
-                "username link decrypted to '{plaintext_username}', which is not valid: {e}"
-            );
-            // The user didn't ever type this username, so the precise way in which it's invalid
-            // isn't important. Treat this equivalent to having found garbage data in the link. This
-            // simplifies error handling for callers.
-            RequestError::Other(usernames::UsernameLinkError::InvalidDecryptedDataStructure)
-        })?;
+        let validated_username = validate_username_from_link(&plaintext_username)?;
 
         Ok(Some(validated_username))
     }
@@ -151,6 +146,7 @@ mod test {
 
     use super::*;
     use crate::api::usernames::UnauthenticatedChatApi;
+    use crate::grpc::testutil::GrpcOverrideRequestValidator;
     use crate::ws::testutil::{RequestValidator, empty, json};
 
     const ACI_UUID: &str = "9d0652a3-dcc3-4d11-975f-74d61598733f";
@@ -273,5 +269,37 @@ mod test {
             err,
             RequestError::Other(usernames::UsernameLinkError::InvalidDecryptedDataStructure)
         );
+    }
+
+    #[test]
+    fn test_grpc_override() {
+        use libsignal_net_grpc::proto::chat as grpc_chat;
+        // Not realistic, but includes bits that encode differently in base64 vs base64url.
+        let hash = &[0x00, 0xff, 0xff, 0xff];
+
+        // Basically a simplified test from grpc/usernames.rs.
+        let validator = crate::grpc::testutil::RequestValidator {
+            expected: crate::grpc::testutil::req(
+                "/org.signal.chat.account.AccountsAnonymous/LookupUsernameHash",
+                grpc_chat::account::LookupUsernameHashRequest {
+                    username_hash: hash.to_vec(),
+                },
+            ),
+            response: crate::grpc::testutil::ok(grpc_chat::account::LookupUsernameHashResponse {
+                response: Some(
+                    grpc_chat::account::lookup_username_hash_response::Response::NotFound(
+                        Default::default(),
+                    ),
+                ),
+            }),
+        };
+        let response = Unauth(GrpcOverrideRequestValidator {
+            validator,
+            message: grpc_chat::services::AccountsAnonymous::LookupUsernameHash.into(),
+        })
+        .look_up_username_hash(hash)
+        .now_or_never()
+        .expect("sync");
+        assert_matches!(response, Ok(None));
     }
 }

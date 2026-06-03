@@ -8,17 +8,22 @@ package org.signal.libsignal.protocol;
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
 import java.time.Instant;
+import kotlin.Pair;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.message.PreKeySignalMessage;
 import org.signal.libsignal.protocol.message.SignalMessage;
 import org.signal.libsignal.protocol.state.IdentityKeyStore;
+import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
 import org.signal.libsignal.protocol.state.KyberPreKeyStore;
+import org.signal.libsignal.protocol.state.PreKeyRecord;
 import org.signal.libsignal.protocol.state.PreKeyStore;
 import org.signal.libsignal.protocol.state.SessionRecord;
 import org.signal.libsignal.protocol.state.SessionStore;
 import org.signal.libsignal.protocol.state.SignalProtocolStore;
+import org.signal.libsignal.protocol.state.SignedPreKeyRecord;
 import org.signal.libsignal.protocol.state.SignedPreKeyStore;
 
 /**
@@ -38,6 +43,7 @@ public class SessionCipher {
   private final PreKeyStore preKeyStore;
   private final SignedPreKeyStore signedPreKeyStore;
   private final KyberPreKeyStore kyberPreKeyStore;
+  private final SignalProtocolAddress localAddress;
   private final SignalProtocolAddress remoteAddress;
 
   /**
@@ -54,18 +60,78 @@ public class SessionCipher {
       SignedPreKeyStore signedPreKeyStore,
       KyberPreKeyStore kyberPreKeyStore,
       IdentityKeyStore identityKeyStore,
+      SignalProtocolAddress localAddress,
       SignalProtocolAddress remoteAddress) {
     this.sessionStore = sessionStore;
     this.preKeyStore = preKeyStore;
     this.identityKeyStore = identityKeyStore;
+    this.localAddress = localAddress;
     this.remoteAddress = remoteAddress;
     this.signedPreKeyStore = signedPreKeyStore;
     this.kyberPreKeyStore = kyberPreKeyStore;
-    ;
   }
 
-  public SessionCipher(SignalProtocolStore store, SignalProtocolAddress remoteAddress) {
-    this(store, store, store, store, store, remoteAddress);
+  public SessionCipher(
+      SignalProtocolStore store,
+      SignalProtocolAddress localAddress,
+      SignalProtocolAddress remoteAddress) {
+    this(store, store, store, store, store, localAddress, remoteAddress);
+  }
+
+  /** Exposed as public for {@code SealedSessionCipher}, do not use directly. */
+  public static org.signal.libsignal.protocol.state.internal.IdentityKeyStore _bridge(
+      IdentityKeyStore identityKeyStore) {
+    return new org.signal.libsignal.protocol.state.internal.IdentityKeyStore() {
+      public Pair<NativeHandleGuard.Owner, NativeHandleGuard.Owner> getLocalIdentityKeyPair()
+          throws Exception {
+        var keyPair = identityKeyStore.getIdentityKeyPair();
+        return new Pair<>(keyPair.getPrivateKey(), keyPair.getPublicKey().getPublicKey());
+      }
+
+      public int getLocalRegistrationId() throws Exception {
+        return identityKeyStore.getLocalRegistrationId();
+      }
+
+      public int saveIdentityKey(long rawAddress, long rawKey) throws Exception {
+        return identityKeyStore
+            .saveIdentity(
+                new SignalProtocolAddress(rawAddress), new IdentityKey(new ECPublicKey(rawKey)))
+            .ordinal();
+      }
+
+      public boolean isTrustedIdentity(long rawAddress, long rawKey, int rawDirection)
+          throws Exception {
+        var direction =
+            switch (rawDirection) {
+              case 0 -> IdentityKeyStore.Direction.SENDING;
+              case 1 -> IdentityKeyStore.Direction.RECEIVING;
+              default -> throw new AssertionError("invalid Direction");
+            };
+        return identityKeyStore.isTrustedIdentity(
+            new SignalProtocolAddress(rawAddress),
+            new IdentityKey(new ECPublicKey(rawKey)),
+            direction);
+      }
+
+      public NativeHandleGuard.Owner getIdentityKey(long rawAddress) {
+        return identityKeyStore.getIdentity(new SignalProtocolAddress(rawAddress)).getPublicKey();
+      }
+    };
+  }
+
+  /*package*/
+  static org.signal.libsignal.protocol.state.internal.SessionStore bridge(
+      SessionStore sessionStore) {
+    return new org.signal.libsignal.protocol.state.internal.SessionStore() {
+      public NativeHandleGuard.Owner loadSession(long rawAddress) throws Exception {
+        return sessionStore.loadSession(new SignalProtocolAddress(rawAddress));
+      }
+
+      public void storeSession(long rawAddress, long rawSession) throws Exception {
+        sessionStore.storeSession(
+            new SignalProtocolAddress(rawAddress), new SessionRecord(rawSession));
+      }
+    };
   }
 
   /**
@@ -95,7 +161,8 @@ public class SessionCipher {
    */
   public CiphertextMessage encrypt(byte[] paddedMessage, Instant now)
       throws NoSessionException, UntrustedIdentityException {
-    try (NativeHandleGuard remoteAddress = new NativeHandleGuard(this.remoteAddress)) {
+    try (NativeHandleGuard remoteAddress = new NativeHandleGuard(this.remoteAddress);
+        NativeHandleGuard localAddressGuard = new NativeHandleGuard(this.localAddress); ) {
       return filterExceptions(
           NoSessionException.class,
           UntrustedIdentityException.class,
@@ -103,8 +170,9 @@ public class SessionCipher {
               Native.SessionCipher_EncryptMessage(
                   paddedMessage,
                   remoteAddress.nativeHandle(),
-                  sessionStore,
-                  identityKeyStore,
+                  localAddressGuard.nativeHandle(),
+                  bridge(sessionStore),
+                  _bridge(identityKeyStore),
                   now.toEpochMilli()));
     }
   }
@@ -129,7 +197,8 @@ public class SessionCipher {
           InvalidKeyException,
           UntrustedIdentityException {
     try (NativeHandleGuard ciphertextGuard = new NativeHandleGuard(ciphertext);
-        NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress); ) {
+        NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress);
+        NativeHandleGuard localAddressGuard = new NativeHandleGuard(this.localAddress); ) {
       return filterExceptions(
           DuplicateMessageException.class,
           InvalidMessageException.class,
@@ -140,11 +209,46 @@ public class SessionCipher {
               Native.SessionCipher_DecryptPreKeySignalMessage(
                   ciphertextGuard.nativeHandle(),
                   remoteAddressGuard.nativeHandle(),
-                  sessionStore,
-                  identityKeyStore,
-                  preKeyStore,
-                  signedPreKeyStore,
-                  kyberPreKeyStore));
+                  localAddressGuard.nativeHandle(),
+                  bridge(sessionStore),
+                  _bridge(identityKeyStore),
+                  new org.signal.libsignal.protocol.state.internal.PreKeyStore() {
+                    public NativeHandleGuard.Owner loadPreKey(int id) throws Exception {
+                      return preKeyStore.loadPreKey(id);
+                    }
+
+                    public void storePreKey(int id, long rawPreKey) throws Exception {
+                      preKeyStore.storePreKey(id, new PreKeyRecord(rawPreKey));
+                    }
+
+                    public void removePreKey(int id) throws Exception {
+                      preKeyStore.removePreKey(id);
+                    }
+                  },
+                  new org.signal.libsignal.protocol.state.internal.SignedPreKeyStore() {
+                    public NativeHandleGuard.Owner loadSignedPreKey(int id) throws Exception {
+                      return signedPreKeyStore.loadSignedPreKey(id);
+                    }
+
+                    public void storeSignedPreKey(int id, long rawPreKey) throws Exception {
+                      signedPreKeyStore.storeSignedPreKey(id, new SignedPreKeyRecord(rawPreKey));
+                    }
+                  },
+                  new org.signal.libsignal.protocol.state.internal.KyberPreKeyStore() {
+                    public NativeHandleGuard.Owner loadKyberPreKey(int id) throws Exception {
+                      return kyberPreKeyStore.loadKyberPreKey(id);
+                    }
+
+                    public void storeKyberPreKey(int id, long rawPreKey) throws Exception {
+                      kyberPreKeyStore.storeKyberPreKey(id, new KyberPreKeyRecord(rawPreKey));
+                    }
+
+                    public void markKyberPreKeyUsed(int id, int ecPrekeyId, long rawBaseKey)
+                        throws Exception {
+                      kyberPreKeyStore.markKyberPreKeyUsed(
+                          id, ecPrekeyId, new ECPublicKey(rawBaseKey));
+                    }
+                  }));
     }
   }
 
@@ -165,7 +269,8 @@ public class SessionCipher {
           NoSessionException,
           UntrustedIdentityException {
     try (NativeHandleGuard ciphertextGuard = new NativeHandleGuard(ciphertext);
-        NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress); ) {
+        NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress);
+        NativeHandleGuard localAddressGuard = new NativeHandleGuard(this.localAddress); ) {
       return filterExceptions(
           InvalidMessageException.class,
           InvalidVersionException.class,
@@ -176,8 +281,9 @@ public class SessionCipher {
               Native.SessionCipher_DecryptSignalMessage(
                   ciphertextGuard.nativeHandle(),
                   remoteAddressGuard.nativeHandle(),
-                  sessionStore,
-                  identityKeyStore));
+                  localAddressGuard.nativeHandle(),
+                  bridge(sessionStore),
+                  _bridge(identityKeyStore)));
     }
   }
 

@@ -13,12 +13,14 @@ extension AuthenticatedChatConnection {
     internal static func fakeConnect(
         tokioAsyncContext: TokioAsyncContext,
         listener: any ChatConnectionListener,
+        grpcOverrides: [String] = [],
         alerts: [String] = []
     ) -> (AuthenticatedChatConnection, FakeChatRemote) {
         let (fakeChatConnection, listenerBridge) = failOnError {
             try FakeChatConnection.create(
                 tokioAsyncContext: tokioAsyncContext,
                 listener: listener,
+                grpcOverrides: grpcOverrides,
                 alerts: alerts
             )
         }
@@ -59,12 +61,14 @@ extension AuthenticatedChatConnection {
 extension UnauthenticatedChatConnection {
     internal static func fakeConnect(
         tokioAsyncContext: TokioAsyncContext,
-        listener: any ConnectionEventsListener<UnauthenticatedChatConnection>
+        listener: any ConnectionEventsListener<UnauthenticatedChatConnection>,
+        grpcOverrides: [String] = [],
     ) -> (UnauthenticatedChatConnection, FakeChatRemote) {
         let (fakeChatConnection, listenerBridge) = failOnError {
             try FakeChatConnection.create(
                 tokioAsyncContext: tokioAsyncContext,
                 listener: listener,
+                grpcOverrides: grpcOverrides,
                 alerts: []
             )
         }
@@ -202,6 +206,10 @@ private class SetConnectionLaterProvisioningListenerBridge: ProvisioningListener
 }
 
 internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteEnd> {
+    internal static let FAKE_AUTH_CONNECT_SELF_UUID = UUID(
+        uuid: (0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff)
+    )
+
     private let tokioAsyncContext: TokioAsyncContext
 
     required init(owned: NonNull<SignalMutPointerFakeChatRemoteEnd>) {
@@ -264,6 +272,67 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
                 )
             }
         }
+    }
+
+    func getNextIncomingGrpcRequest() async throws -> (ChatRequest.InternalRequest, UInt64) {
+        while true {
+            let request = try await self.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
+                withNativeHandle { handle in
+                    signal_testing_fake_chat_remote_end_receive_incoming_grpc_request(
+                        promise,
+                        asyncContext.const(),
+                        handle.const()
+                    )
+                }
+            }
+            guard request.present else {
+                continue
+            }
+
+            let httpRequest = ChatRequest.InternalRequest(owned: NonNull(request.first)!)
+            let requestId = request.second
+
+            return (httpRequest, requestId)
+        }
+    }
+
+    func sendGrpcResponse(requestId: UInt64, _ response: ChatResponse) async throws {
+        let fakeResponse = FakeChatResponse(requestId: requestId, response)
+        _ = try await self.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
+            self.withNativeHandle { nativeHandle in
+                fakeResponse.withNativeHandle { response in
+                    signal_testing_fake_chat_remote_end_send_server_grpc_response(
+                        promise,
+                        asyncContext.const(),
+                        nativeHandle.const(),
+                        response.const()
+                    )
+                }
+            }
+        }
+    }
+
+    static func encodeSingleGrpcMessage(_ name: String, json: NSDictionary) -> Data {
+        let message = String(data: try! JSONSerialization.data(withJSONObject: json), encoding: .utf8)
+        var result = failOnError {
+            try invokeFnReturningData {
+                signal_testing_fake_chat_remote_end_json_to_binproto($0, name, message)
+            }
+        }
+        let header = failOnError {
+            try invokeFnReturningData {
+                signal_testing_fake_chat_remote_end_grpc_frame_for_message_length($0, UInt32(result.count))
+            }
+        }
+        result.insert(contentsOf: header, at: 0)
+        return result
+    }
+
+    func sendGrpcResponse(requestId: UInt64, name: String, json: NSDictionary) async throws {
+        try await sendGrpcResponse(
+            requestId: requestId,
+            ChatResponse(status: 200, body: Self.encodeSingleGrpcMessage(name, json: json))
+        )
     }
 
     func injectServerResponse(base64: String) {
@@ -373,26 +442,28 @@ private class FakeChatConnection: NativeHandleOwner<SignalMutPointerFakeChatConn
     static func create(
         tokioAsyncContext: TokioAsyncContext,
         listener: any ChatConnectionListener,
+        grpcOverrides: [String] = [],
         alerts: [String]
     ) throws -> (FakeChatConnection, SetChatLaterListenerBridge) {
         let listenerBridge = SetChatLaterListenerBridge(
             chatConnectionListenerForTesting: listener
         )
         var listenerStruct = listenerBridge.makeListenerStruct()
-        let chat = try FakeChatConnection.internalCreate(tokioAsyncContext, &listenerStruct, alerts)
+        let chat = try FakeChatConnection.internalCreate(tokioAsyncContext, &listenerStruct, grpcOverrides, alerts)
         return (chat, listenerBridge)
     }
 
     static func create(
         tokioAsyncContext: TokioAsyncContext,
         listener: any ConnectionEventsListener<UnauthenticatedChatConnection>,
+        grpcOverrides: [String] = [],
         alerts: [String]
     ) throws -> (FakeChatConnection, SetChatLaterUnauthListenerBridge) {
         let listenerBridge = SetChatLaterUnauthListenerBridge(
             chatConnectionEventsListenerForTesting: listener
         )
         var listenerStruct = listenerBridge.makeListenerStruct()
-        let chat = try FakeChatConnection.internalCreate(tokioAsyncContext, &listenerStruct, alerts)
+        let chat = try FakeChatConnection.internalCreate(tokioAsyncContext, &listenerStruct, grpcOverrides, alerts)
         return (chat, listenerBridge)
     }
 
@@ -421,6 +492,7 @@ private class FakeChatConnection: NativeHandleOwner<SignalMutPointerFakeChatConn
     private static func internalCreate(
         _ tokioAsyncContext: TokioAsyncContext,
         _ listenerStruct: inout SignalFfiChatListenerStruct,
+        _ grpcOverrides: [String],
         _ alerts: [String]
     ) throws -> FakeChatConnection {
         let connection: FakeChatConnection = try withUnsafePointer(to: &listenerStruct) { listener in
@@ -430,6 +502,7 @@ private class FakeChatConnection: NativeHandleOwner<SignalMutPointerFakeChatConn
                         $0,
                         asyncContext.const(),
                         SignalConstPointerFfiChatListenerStruct(raw: listener),
+                        grpcOverrides.joined(separator: "\n"),
                         alerts.joined(separator: "\n")
                     )
                 }

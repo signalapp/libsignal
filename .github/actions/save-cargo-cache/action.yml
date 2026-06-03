@@ -9,7 +9,7 @@ runs:
   steps:
     - name: Save cargo cache
       if: ${{ env.DO_CLEAN_BUILD_AND_POPULATE_CACHE == 'true' }}
-      uses: runs-on/cache/save@3a15256b3556fbc5ae15f7f04598e4c7680e9c25 # v4
+      uses: runs-on/cache/save@575425708ccb521bfce731e8d8a67f7f337b8954 # main as of 2026-04-10
       with:
         # Keep this path list in sync with restore-cargo-cache/action.yml.
         path: |

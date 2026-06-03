@@ -17,7 +17,7 @@ import BackupCredentialType from './BackupCredentialType.js';
 export default class BackupAuthCredentialRequest extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, Native.BackupAuthCredentialRequest_CheckValidContents);
   }
 
@@ -42,7 +42,7 @@ export default class BackupAuthCredentialRequest extends ByteArray {
     backupLevel: BackupLevel,
     type: BackupCredentialType,
     params: GenericServerSecretParams,
-    random: Uint8Array
+    random: Uint8Array<ArrayBuffer>
   ): BackupAuthCredentialResponse {
     return new BackupAuthCredentialResponse(
       Native.BackupAuthCredentialRequest_IssueDeterministic(

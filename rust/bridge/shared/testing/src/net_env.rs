@@ -8,6 +8,7 @@ use std::num::NonZeroU16;
 use attest::svr2::RaftConfig;
 use const_str::ip_addr;
 use libsignal_net::chat::RECOMMENDED_CHAT_WS_CONFIG;
+use libsignal_net::connect_state::ServiceName;
 use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
 use libsignal_net::env::{ConnectionConfig, DomainConfig, Env, KeyTransConfig, SvrBEnv};
 use libsignal_net::infra::RECOMMENDED_WS_CONFIG;
@@ -17,18 +18,21 @@ use libsignal_net::infra::route::HttpVersion;
 const ENCLAVE_ID_MOCK_SERVER: &[u8] = b"0.20240911.184407";
 
 fn localhost_test_domain_config_with_port_and_cert(
+    service: ServiceName,
     port: NonZeroU16,
     root_certificate_der: &[u8],
+    http_version: HttpVersion,
 ) -> DomainConfig {
     const LOCALHOST_IP_V4: Ipv4Addr = ip_addr!(v4, "127.0.0.1");
     DomainConfig {
         ip_v4: &[LOCALHOST_IP_V4],
         ip_v6: &[],
         connect: ConnectionConfig {
+            service,
             hostname: "localhost",
             port,
             cert: RootCertificates::FromDer(std::borrow::Cow::Owned(root_certificate_der.to_vec())),
-            http_version: Some(HttpVersion::Http1_1),
+            http_version: Some(http_version),
             min_tls_version: None,
             confirmation_header_name: None,
             proxy: None,
@@ -77,29 +81,38 @@ const DUMMY_KEYTRANS_CONFIG: KeyTransConfig = KeyTransConfig {
 pub(crate) fn localhost_test_env_with_ports(
     ports: LocalhostEnvPortConfig,
     root_certificate_der: &[u8],
+    http_version: HttpVersion,
 ) -> Env<'static> {
     Env {
         chat_domain_config: localhost_test_domain_config_with_port_and_cert(
+            ServiceName("chat"),
             ports.chat_port,
             root_certificate_der,
+            http_version,
         ),
         experimental_chat_h2_domain_config: localhost_test_domain_config_with_port_and_cert(
+            ServiceName("chat"),
             ports.chat_port,
             root_certificate_der,
+            http_version,
         ),
         chat_ws_config: RECOMMENDED_CHAT_WS_CONFIG,
         cdsi: EnclaveEndpoint {
             domain_config: localhost_test_domain_config_with_port_and_cert(
+                ServiceName("cdsi"),
                 ports.cdsi_port,
                 root_certificate_der,
+                http_version,
             ),
             ws_config: RECOMMENDED_WS_CONFIG,
             params: DUMMY_CDSI_ENDPOINT_PARAMS,
         },
         svr2: EnclaveEndpoint {
             domain_config: localhost_test_domain_config_with_port_and_cert(
+                ServiceName("svr2"),
                 ports.svr2_port,
                 root_certificate_der,
+                http_version,
             ),
             ws_config: RECOMMENDED_WS_CONFIG,
             params: DUMMY_SVR2_ENDPOINT_PARAMS,
@@ -108,8 +121,10 @@ pub(crate) fn localhost_test_env_with_ports(
             [
                 Some(EnclaveEndpoint {
                     domain_config: localhost_test_domain_config_with_port_and_cert(
+                        ServiceName("svrb"),
                         ports.svrb_port,
                         root_certificate_der,
+                        http_version,
                     ),
                     ws_config: RECOMMENDED_WS_CONFIG,
                     params: DUMMY_SVRB_ENDPOINT_PARAMS,
@@ -120,5 +135,6 @@ pub(crate) fn localhost_test_env_with_ports(
             [None, None, None],
         ),
         keytrans_config: DUMMY_KEYTRANS_CONFIG,
+        reflector_providers: || &[],
     }
 }

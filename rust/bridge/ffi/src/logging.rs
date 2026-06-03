@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::ffi::{CString, c_char, c_void};
+use libsignal_bridge::{ffi, ffi_result_type};
+use libsignal_bridge_macros::bridge_callbacks;
 
 #[repr(C)]
 pub enum LogLevel {
@@ -40,29 +41,24 @@ impl From<LogLevel> for log::Level {
     }
 }
 
-pub type LogCallback = extern "C" fn(
-    ctx: *mut c_void,
-    level: LogLevel,
-    file: *const c_char,
-    line: u32,
-    message: *const c_char,
-);
+impl ffi::ResultTypeInfo for LogLevel {
+    type ResultType = Self;
+    fn convert_into(self) -> ffi::SignalFfiResult<Self::ResultType> {
+        Ok(self)
+    }
+}
 
-pub type LogFlushCallback = extern "C" fn(ctx: *mut c_void);
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct FfiLogger {
-    ctx: *mut c_void,
-    log: LogCallback,
-    flush: LogFlushCallback,
+#[bridge_callbacks(jni = false, node = false)]
+trait Logger {
+    fn log(&self, level: LogLevel, file: Option<&str>, line: u32, message: String);
+    fn flush(&self);
 }
 
 // It's up to the other side of the bridge to provide a Sync-friendly context.
-unsafe impl Send for FfiLogger {}
-unsafe impl Sync for FfiLogger {}
+unsafe impl Send for FfiLoggerStruct {}
+unsafe impl Sync for FfiLoggerStruct {}
 
-impl log::Log for FfiLogger {
+impl log::Log for FfiLoggerStruct {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
         libsignal_bridge::logging::log_enabled_in_apps(metadata)
     }
@@ -72,31 +68,30 @@ impl log::Log for FfiLogger {
             return;
         }
 
-        let file = record
-            .file()
-            .map(|file| CString::new(file).expect("no 0 bytes in file"));
-        let message = CString::new(record.args().to_string()).unwrap_or_else(|_| {
-            CString::new(record.args().to_string().replace('\0', "\\0"))
-                .expect("We escaped any NULLs")
-        });
-        (self.log)(
-            self.ctx,
+        let message = record.args().to_string();
+        let message = if message.contains('\0') {
+            // This should be rare, so we won't especially optimize it. But just in case.
+            message.replace('\0', "\\0")
+        } else {
+            message
+        };
+
+        Logger::log(
+            self,
             record.level().into(),
-            file.as_ref()
-                .map(|file| file.as_ptr())
-                .unwrap_or(std::ptr::null()),
+            record.file(),
             record.line().unwrap_or(0),
-            message.as_ptr(),
+            message,
         );
     }
 
     fn flush(&self) {
-        (self.flush)(self.ctx)
+        Logger::flush(self);
     }
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn signal_init_logger(max_level: LogLevel, logger: FfiLogger) -> bool {
+pub unsafe extern "C" fn signal_init_logger(max_level: LogLevel, logger: FfiLoggerStruct) -> bool {
     match log::set_logger(Box::leak(Box::new(logger))) {
         Ok(_) => {
             log::set_max_level(log::Level::from(max_level).to_level_filter());

@@ -5,11 +5,15 @@
 
 package org.signal.libsignal.hsmenclave;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import java.util.ArrayList;
 import java.util.List;
-import junit.framework.TestCase;
+import org.junit.Test;
 
-public class HsmEnclaveClientTest extends TestCase {
+public class HsmEnclaveClientTest {
+  @Test
   public void testCreateClient() throws Exception {
     byte[] validKey = new byte[32];
     List<byte[]> hashes = new ArrayList<>();
@@ -28,6 +32,7 @@ public class HsmEnclaveClientTest extends TestCase {
     assertEquals(112, initialMessage.length);
   }
 
+  @Test
   public void testCreateClientFailsWithInvalidPublicKey() {
     byte[] invalidKey = new byte[31];
     List<byte[]> hashes = new ArrayList<>();
@@ -49,6 +54,7 @@ public class HsmEnclaveClientTest extends TestCase {
     fail();
   }
 
+  @Test
   public void testCreateClientFailsWithInvalidHash() {
     byte[] validKey = new byte[32];
     List<byte[]> hashes = new ArrayList<>();
@@ -69,6 +75,7 @@ public class HsmEnclaveClientTest extends TestCase {
     fail();
   }
 
+  @Test
   public void testCreateClientFailsWithNoHashes() {
     byte[] validKey = new byte[32];
     List<byte[]> hashes = new ArrayList<>();
@@ -80,6 +87,7 @@ public class HsmEnclaveClientTest extends TestCase {
     fail();
   }
 
+  @Test
   public void testEstablishedSendFailsPriorToEstablishment() throws Exception {
     byte[] validKey = new byte[32];
     List<byte[]> hashes = new ArrayList<>();
@@ -97,6 +105,7 @@ public class HsmEnclaveClientTest extends TestCase {
     fail();
   }
 
+  @Test
   public void testEstablishedRecvFailsPriorToEstablishment() throws Exception {
     byte[] validKey = new byte[32];
     List<byte[]> hashes = new ArrayList<>();

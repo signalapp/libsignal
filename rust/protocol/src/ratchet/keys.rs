@@ -10,9 +10,19 @@ use libsignal_core::derive_arrays;
 use crate::proto::storage::session_structure;
 use crate::{PrivateKey, PublicKey, Result, crypto};
 
+#[derive(Clone)]
 pub(crate) enum MessageKeyGenerator {
     Keys(MessageKeys),
     Seed((Vec<u8>, u32)),
+}
+
+impl fmt::Debug for MessageKeyGenerator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Keys(k) => f.debug_tuple("Keys").field(&k.counter()).finish(),
+            Self::Seed((_, idx)) => f.debug_tuple("Seed").field(idx).finish(),
+        }
+    }
 }
 
 impl MessageKeyGenerator {
@@ -92,6 +102,7 @@ impl MessageKeys {
         optional_salt: Option<&[u8]>,
         counter: u32,
     ) -> Self {
+        let _trace = libsignal_debug::trace_block!("MessageKeys::derive_keys");
         let (cipher_key, mac_key, iv) = derive_arrays(|okm| {
             hkdf::Hkdf::<sha2::Sha256>::new(optional_salt, input_key_material)
                 .expand(b"WhisperMessageKeys", okm)
@@ -166,6 +177,7 @@ impl ChainKey {
     }
 
     fn calculate_base_material(&self, seed: [u8; 1]) -> [u8; 32] {
+        let _trace = libsignal_debug::trace_block!("keys::calculate_base_material");
         crypto::hmac_sha256(&self.key, &seed)
     }
 }

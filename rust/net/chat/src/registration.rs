@@ -356,6 +356,7 @@ mod testutil {
                 tokio::runtime::Handle::current(),
                 DropOnDisconnect::new(on_disconnect).into_listener(),
                 [],
+                [],
             );
             async {
                 let _ignore_failure = self.remote.send(fake_remote);

@@ -18,11 +18,19 @@ import { connectUnauth } from './ServiceTestUtils.js';
 import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
 import { Aci } from '../../Address.js';
 import { FakeChatRemote, InternalRequest } from '../../net/FakeChat.js';
+import { GroupSendFullToken } from '../../zkgroup/index.js';
 
 use(chaiAsPromised);
 
 util.initLogger();
 config.truncateThreshold = 0;
+
+const recipientUuid = '4fcfe887-a600-40cd-9ab7-fd2a695e9981';
+
+// From `SERIALIZED_GROUP_SEND_TOKEN` in Rust.
+const testGroupSendToken = new GroupSendFullToken(
+  Buffer.from('ABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABo5c+LAQAA', 'base64')
+);
 
 describe('UnauthMessagesService', () => {
   describe('multi-recipient messages', () => {
@@ -64,15 +72,13 @@ describe('UnauthMessagesService', () => {
         fakeRemote
       );
 
-      const uuid = '4fcfe887-a600-40cd-9ab7-fd2a695e9981';
-
       fakeRemote.sendReplyTo(request, {
         status: 200,
         message: 'OK',
         headers: ['content-type: application/json'],
         body: Buffer.from(
           JSON.stringify({
-            uuids404: [uuid],
+            uuids404: [recipientUuid],
           })
         ),
       });
@@ -80,7 +86,7 @@ describe('UnauthMessagesService', () => {
       const responseFromServer = await responseFuture;
       assert(responseFromServer !== null);
       expect(responseFromServer.unregisteredIds).to.deep.equal([
-        Aci.fromUuid(uuid),
+        Aci.fromUuid(recipientUuid),
       ]);
     });
 
@@ -114,8 +120,6 @@ describe('UnauthMessagesService', () => {
         fakeRemote
       );
 
-      const uuid = '4fcfe887-a600-40cd-9ab7-fd2a695e9981';
-
       fakeRemote.sendReplyTo(request, {
         status: 409,
         message: 'Conflict',
@@ -123,7 +127,7 @@ describe('UnauthMessagesService', () => {
         body: Buffer.from(
           JSON.stringify([
             {
-              uuid,
+              uuid: recipientUuid,
               devices: {
                 missingDevices: [4, 5],
                 extraDevices: [40, 50],
@@ -139,7 +143,7 @@ describe('UnauthMessagesService', () => {
           code: ErrorCode.MismatchedDevices,
           entries: [
             {
-              account: Aci.fromUuid(uuid),
+              account: Aci.fromUuid(recipientUuid),
               missingDevices: [4, 5],
               extraDevices: [40, 50],
               staleDevices: [],
@@ -157,8 +161,6 @@ describe('UnauthMessagesService', () => {
         fakeRemote
       );
 
-      const uuid = '4fcfe887-a600-40cd-9ab7-fd2a695e9981';
-
       fakeRemote.sendReplyTo(request, {
         status: 410,
         message: 'Gone',
@@ -166,7 +168,7 @@ describe('UnauthMessagesService', () => {
         body: Buffer.from(
           JSON.stringify([
             {
-              uuid,
+              uuid: recipientUuid,
               devices: {
                 staleDevices: [4, 5],
               },
@@ -181,7 +183,7 @@ describe('UnauthMessagesService', () => {
           code: ErrorCode.MismatchedDevices,
           entries: [
             {
-              account: Aci.fromUuid(uuid),
+              account: Aci.fromUuid(recipientUuid),
               missingDevices: [],
               extraDevices: [],
               staleDevices: [4, 5],
@@ -208,6 +210,205 @@ describe('UnauthMessagesService', () => {
         .to.eventually.be.rejectedWith(LibSignalErrorBase)
         .and.deep.include({
           code: ErrorCode.IoError,
+        });
+    });
+  });
+
+  describe('1:1 messages', () => {
+    async function sendTestSealedMessage(
+      chat: UnauthMessagesService,
+      auth:
+        | 'story'
+        | { accessKey: Uint8Array<ArrayBuffer> }
+        | GroupSendFullToken
+        | 'unrestricted',
+      expectedAuthHeader: Readonly<[string, string]> | null,
+      fakeRemote: FakeChatRemote
+    ): Promise<[Promise<void>, InternalRequest]> {
+      const timestamp = 1700000000000;
+      const responseFuture = chat.sendMessage({
+        destination: Aci.fromUuid(recipientUuid),
+        timestamp,
+        auth,
+        contents: [
+          { deviceId: 1, registrationId: 11, contents: Uint8Array.of(1, 2, 3) },
+          { deviceId: 2, registrationId: 22, contents: Uint8Array.of(4, 5, 6) },
+        ],
+        onlineOnly: false,
+        urgent: true,
+      });
+
+      // Get the incoming request from the fake remote
+      const request = await fakeRemote.assertReceiveIncomingRequest();
+
+      expect(request.verb).to.eq('PUT');
+      expect(request.path).to.eq(
+        `/v1/messages/${recipientUuid}${auth === 'story' ? '?story=true' : ''}`
+      );
+      expect(request.headers).to.deep.eq(
+        new Map([
+          ['content-type', 'application/json'],
+          ...(expectedAuthHeader ? [expectedAuthHeader] : []),
+        ])
+      );
+      expect(JSON.parse(new TextDecoder().decode(request.body))).to.deep.eq({
+        messages: [
+          {
+            type: 6,
+            destinationDeviceId: 1,
+            destinationRegistrationId: 11,
+            content: 'AQID',
+          },
+          {
+            type: 6,
+            destinationDeviceId: 2,
+            destinationRegistrationId: 22,
+            content: 'BAUG',
+          },
+        ],
+        online: false,
+        urgent: true,
+        timestamp: 1700000000000,
+      });
+
+      return [responseFuture, request];
+    }
+
+    it('can send', async () => {
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+      const [chat, fakeRemote] = connectUnauth<UnauthMessagesService>(tokio);
+
+      for (const [auth, expectedAuthHeader] of [
+        ['story', null] as const,
+        [
+          { accessKey: util.repeatedBytes(0x0a, 16) },
+          ['unidentified-access-key', 'CgoKCgoKCgoKCgoKCgoKCg=='],
+        ] as const,
+        [
+          testGroupSendToken,
+          [
+            'group-send-token',
+            Buffer.from(testGroupSendToken.serialize()).toString('base64'),
+          ],
+        ] as const,
+        [
+          'unrestricted',
+          ['unidentified-access-key', 'AAAAAAAAAAAAAAAAAAAAAA=='],
+        ] as const,
+      ]) {
+        const [responseFuture, request] = await sendTestSealedMessage(
+          chat,
+          auth,
+          expectedAuthHeader,
+          fakeRemote
+        );
+
+        fakeRemote.sendReplyTo(request, {
+          status: 200,
+          message: 'OK',
+          headers: ['content-type: application/json'],
+          body: Buffer.from('{}'),
+        });
+
+        await responseFuture;
+      }
+    });
+
+    it('can handle RequestUnauthorized', async () => {
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+      const [chat, fakeRemote] = connectUnauth<UnauthMessagesService>(tokio);
+
+      const [responseFuture, request] = await sendTestSealedMessage(
+        chat,
+        'story',
+        null,
+        fakeRemote
+      );
+
+      fakeRemote.sendReplyTo(request, {
+        status: 401,
+        message: 'Unauthorized',
+      });
+
+      await expect(responseFuture)
+        .to.eventually.be.rejectedWith(LibSignalErrorBase)
+        .and.deep.include({
+          code: ErrorCode.RequestUnauthorized,
+        });
+    });
+
+    it('can handle a mismatched device error', async () => {
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+      const [chat, fakeRemote] = connectUnauth<UnauthMessagesService>(tokio);
+
+      const [responseFuture, request] = await sendTestSealedMessage(
+        chat,
+        'story',
+        null,
+        fakeRemote
+      );
+
+      fakeRemote.sendReplyTo(request, {
+        status: 409,
+        message: 'Conflict',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            missingDevices: [4, 5],
+            extraDevices: [40, 50],
+          })
+        ),
+      });
+
+      await expect(responseFuture)
+        .to.eventually.be.rejectedWith(LibSignalErrorBase)
+        .and.deep.include({
+          code: ErrorCode.MismatchedDevices,
+          entries: [
+            {
+              account: Aci.fromUuid(recipientUuid),
+              missingDevices: [4, 5],
+              extraDevices: [40, 50],
+              staleDevices: [],
+            },
+          ],
+        });
+    });
+
+    it('can handle a stale device error', async () => {
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+      const [chat, fakeRemote] = connectUnauth<UnauthMessagesService>(tokio);
+
+      const [responseFuture, request] = await sendTestSealedMessage(
+        chat,
+        'story',
+        null,
+        fakeRemote
+      );
+
+      fakeRemote.sendReplyTo(request, {
+        status: 410,
+        message: 'Gone',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            staleDevices: [4, 5],
+          })
+        ),
+      });
+
+      await expect(responseFuture)
+        .to.eventually.be.rejectedWith(LibSignalErrorBase)
+        .and.deep.include({
+          code: ErrorCode.MismatchedDevices,
+          entries: [
+            {
+              account: Aci.fromUuid(recipientUuid),
+              missingDevices: [],
+              extraDevices: [],
+              staleDevices: [4, 5],
+            },
+          ],
         });
     });
   });

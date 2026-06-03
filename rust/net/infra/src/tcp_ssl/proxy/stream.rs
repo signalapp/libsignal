@@ -9,6 +9,7 @@ use tokio_boring_signal::SslStream;
 use crate::Connection;
 use crate::tcp_ssl::TcpStream;
 use crate::tcp_ssl::proxy::https::HttpProxyStream;
+use crate::tcp_ssl::proxy::reflector::ReflectorStream;
 use crate::tcp_ssl::proxy::socks::SocksStream;
 
 #[derive(Debug, derive_more::From)]
@@ -18,6 +19,7 @@ pub enum ProxyStream {
     Tcp(TcpStream),
     Socks(SocksStream<TcpStream>),
     Http(HttpProxyStream),
+    Reflector(Box<ReflectorStream>),
 }
 
 impl Connection for ProxyStream {
@@ -27,6 +29,7 @@ impl Connection for ProxyStream {
             ProxyStream::Tcp(tcp_stream) => tcp_stream.transport_info(),
             ProxyStream::Socks(either) => either.transport_info(),
             ProxyStream::Http(http) => http.transport_info(),
+            ProxyStream::Reflector(reflector) => reflector.transport_info(),
         }
     }
 }

@@ -12,7 +12,9 @@ use syn::*;
 use syn_mid::Signature;
 
 use crate::BridgingKind;
-use crate::util::{extract_arg_names_and_types, result_type};
+use crate::util::{
+    DeriveInputInfo, Impl, crates, extract_arg_names_and_types, nice_type_metadata, result_type,
+};
 
 fn bridge_fn_body(orig_name: &Ident, input_args: &[(&Ident, &Type)]) -> TokenStream2 {
     // Scroll down to the end of the function to see the quote template.
@@ -175,6 +177,7 @@ pub(crate) fn bridge_fn(
     name: &str,
     sig: &Signature,
     bridging_kind: &BridgingKind,
+    nice: bool,
 ) -> Result<TokenStream2> {
     // Scroll down to the end of the function to see the quote template.
     // This is the best way to understand what we're trying to produce.
@@ -182,9 +185,15 @@ pub(crate) fn bridge_fn(
     let name_with_prefix = format_ident!("node_{}", name);
     let name_without_prefix = Ident::new(name, Span::call_site());
 
-    let ts_signature_comment = generate_ts_signature_comment(name, sig, bridging_kind);
-
     let input_args = extract_arg_names_and_types(sig)?;
+    let ts_metadata = generate_ts_metadata(
+        name,
+        sig.asyncness.is_some(),
+        &input_args,
+        result_type(&sig.output),
+        bridging_kind,
+        nice,
+    );
 
     let body = match (sig.asyncness, bridging_kind) {
         (Some(_), _) => bridge_fn_async_body(&sig.ident, name, bridging_kind, &input_args),
@@ -200,51 +209,388 @@ pub(crate) fn bridge_fn(
     Ok(quote! {
         #[cfg(feature = "node")]
         #[allow(non_snake_case)]
-        #[doc = #ts_signature_comment]
         pub fn #name_with_prefix(
             mut cx: node::FunctionContext,
         ) -> node::JsResult<node::JsValue> {
             #body
         }
+        #[cfg(all(feature = "metadata", feature = "node"))]
+        #ts_metadata
 
         #[cfg(feature = "node")]
         node_register!(#name_without_prefix);
     })
 }
 
-/// Generates a string, containing the *Rust* signature of a bridged function, that gen_ts_decl.py
-/// can use to generate Native.d.ts.
-fn generate_ts_signature_comment(
+/// Generates the code to embed `libsignal_bridge_types::metadata` metadata
+fn generate_ts_metadata(
     name_without_prefix: &str,
-    sig: &Signature,
+    asyncness: bool,
+    input_args: &[(&Ident, &Type)],
+    result_type: TokenStream2,
     bridging_kind: &BridgingKind,
-) -> String {
-    let mut ts_args = vec![];
-    match bridging_kind {
-        BridgingKind::Regular => {}
-        BridgingKind::Io { runtime } => {
-            ts_args.push(format!("async_runtime: &{}", runtime.to_token_stream()))
-        }
-    }
-    ts_args.extend(
-        sig.inputs
-            .iter()
-            .map(|arg| arg.to_token_stream().to_string().replace('\n', " ")),
-    );
-
-    let result_type_format = match (sig.asyncness, bridging_kind) {
-        (Some(_), BridgingKind::Io { .. }) => |ty| format!("CancellablePromise<{ty}>"),
-        (Some(_), _) => |ty| format!("Promise<{ty}>"),
-        (None, _) => |ty| format!("{ty}"),
+    nice: bool,
+) -> TokenStream2 {
+    let krate = crates::libsignal_bridge_types();
+    let (argument_names, argument_types): (Vec<_>, Vec<_>) = input_args
+        .iter()
+        .map(|(name, ty)| (name.to_string(), ty.to_token_stream()))
+        .unzip();
+    let return_type_format = match (asyncness, bridging_kind) {
+        (true, BridgingKind::Io { .. }) => "CancellablePromise<{return_type}>",
+        (true, _) => "Promise<{return_type}>",
+        (false, _) => "{return_type}",
     };
-    let result_type_str = result_type_format(result_type(&sig.output));
+    let md = quote!(#krate::metadata);
+    let metadata_name = format_ident!("_BRIDGE_NODE_METADATA_{name_without_prefix}");
+    let type_info_trait = if asyncness {
+        quote!(AsyncArgTypeInfo)
+    } else {
+        quote!(ArgTypeInfo)
+    };
+    let nice_metadata = if nice {
+        quote! {
+            let mut arguments = Vec::new();
+            #(arguments.push((
+                #argument_names.into(),
+                <#argument_types as #krate::node::NiceArgConverter>::register_ts_arg_converter(ctx)
+            ));)*
+            let return_type: ResultMetadataTransformHelper<#result_type> = Default::default();
+            let return_type = return_type.register_ts_result_converter(ctx);
+            ctx.nice_functions.insert(
+                #name_without_prefix.into(),
+                #md::node::NiceFunction {
+                    is_tokio_async: #asyncness,
+                    arguments,
+                    return_type,
+                },
+            );
+        }
+    } else {
+        quote!()
+    };
+    let async_runtime_argument = match bridging_kind {
+        BridgingKind::Regular => quote!(),
+        BridgingKind::Io { runtime } => quote! {
+            arguments.push((
+                "asyncRuntime".into(),
+                <&#runtime as #krate::node::#type_info_trait>::register_ts_ffi_type(ctx)
+            ));
+        },
+    };
+    quote! {
+        #[#md::linkme::distributed_slice(#md::node::NODE_ITEMS)]
+        #[linkme(crate = #md::linkme)]
+        static #metadata_name: #md::FnWithModule<#md::node::TsMetadataContext> = #md::FnWithModule {
+            module_path: module_path!(),
+            apply: |ctx| {
+                use #md::node::result_type_helper::*;
+                let return_type: ResultMetadataTransformHelper<#result_type> = Default::default();
+                let return_type = return_type.register_ts_ffi_type(ctx);
+                let mut arguments = Vec::new();
+                #async_runtime_argument
+                #(arguments.push((
+                    #argument_names.into(),
+                    <#argument_types as #krate::node::#type_info_trait>::register_ts_ffi_type(ctx)
+                ));)*
+                ctx.native_functions.insert(
+                    #name_without_prefix.into(),
+                    #md::node::NativeFunction { arguments, return_type: format!(#return_type_format) },
+                );
+                #nice_metadata
+            },
+        };
+    }
+}
 
-    format!(
-        "ts: export function {}({}): {}",
-        name_without_prefix,
-        ts_args.join(", "),
-        result_type_str
-    )
+fn to_lower_camel_case_preserve_underscores(x: &str) -> String {
+    let x_sans_underscore = x.trim_start_matches('_');
+    let core = x_sans_underscore.to_lower_camel_case();
+    format!("{}{core}", &x[0..(x.len() - x_sans_underscore.len())])
+}
+
+pub(crate) fn derive_bridged_as_value(input: &DeriveInput) -> syn::Result<TokenStream2> {
+    if matches!(input.data, Data::Union(_)) {
+        return Err(syn::Error::new_spanned(input, "Unions aren't supported"));
+    }
+    let result = derive_bridged_as_value_return(input)?;
+    let arg = derive_bridged_as_value_arg(input)?;
+    Ok(quote! {
+        #result
+        #arg
+    })
+}
+fn derive_bridged_as_value_arg(input: &DeriveInput) -> syn::Result<TokenStream2> {
+    let krate = crates::libsignal_bridge_types();
+    let ident = &input.ident;
+    // We setup both arg impls (async and non-async) up here.
+    let mut impl_arg_type_info = Impl::new(
+        input,
+        Some(parse_quote!(#krate::node::ArgTypeInfo<'storage, 'context>)),
+    );
+    impl_arg_type_info
+        .extra_params
+        .extend([parse_quote!('storage), parse_quote!('context: 'storage)]);
+    let mut impl_async_arg_type_info = Impl::new(
+        input,
+        Some(parse_quote!(#krate::node::AsyncArgTypeInfo<'storage>)),
+    );
+    impl_async_arg_type_info
+        .extra_params
+        .push(parse_quote!('storage));
+    // Because the arg impl requires intermediate storage, we introduce the ArgStoredType.
+    //
+    // For structs, it looks like:
+    // enum Foo<T> { Foo(T) } (with a matching Finalize impl)
+    // For enums, it looks like:
+    // enum Foo<A, B, ...> { A(A), B(B), ... } (again, with a matching finalize impl)
+    //
+    // We need a custom type because:
+    // 1. For enums, the intermediate data is distinct for each variant
+    // 2. We could avoid declaring a fresh type, and just use nested Eithers, but that'd be more
+    //    annoying than just declaring this type.
+    //
+    // We use one generic type per variant (each containing a tuple), because it's easier to work
+    // with in our macros than it'd be to have one generic type for each field.
+    let stored_decl_name = format_ident!("{ident}NodeArgStoredType");
+    let DeriveInputInfo {
+        patterns: field_patterns,
+        field_names,
+        field_types,
+        variant_indices: variant_numbers,
+        variant_names,
+    } = input.into();
+    let get_variant = match &input.data {
+        Data::Struct(_) => quote!(0),
+        Data::Enum(_) => quote! {{
+            let value = foreign_arg.get(cx, "__type")?;
+            <i32 as #krate::node::SimpleArgTypeInfo>::convert_from(cx, value)?
+        }},
+        Data::Union(_) => unreachable!(),
+    };
+    impl_arg_type_info.extra_where.extend(
+        field_types
+            .iter()
+            .flatten()
+            .map(|ty| parse_quote!(#ty: #krate::node::ArgTypeInfo<'storage, 'context>)),
+    );
+    impl_async_arg_type_info.extra_where.extend(
+        field_types
+            .iter()
+            .flatten()
+            .map(|ty| parse_quote!(#ty: #krate::node::AsyncArgTypeInfo<'storage>)),
+    );
+    let mut impl_nice_arg_converter =
+        Impl::new(input, Some(parse_quote!(#krate::node::NiceArgConverter)));
+    let register_ts_nice_type = nice_type_metadata(
+        input,
+        &parse_quote!(ctx),
+        &parse_quote!(derived_types),
+        &parse_quote!(#krate::node::NiceArgConverter),
+        &parse_quote!(register_ts_nice_type),
+        &mut impl_nice_arg_converter.extra_where,
+    )?;
+    let register_ts_arg_converter = nice_type_metadata(
+        input,
+        &parse_quote!(ctx),
+        &parse_quote!(derived_arg_converters),
+        &parse_quote!(#krate::node::NiceArgConverter),
+        &parse_quote!(register_ts_arg_converter),
+        &mut impl_nice_arg_converter.extra_where,
+    )?;
+    Ok(quote! {
+        #[cfg(feature = "node")]
+        #[doc(hidden)]
+        pub enum #stored_decl_name<#(#variant_names),*> {
+            #(#variant_names(#variant_names)),*
+        }
+        #[cfg(feature = "node")]
+        impl<
+            #(#variant_names: ::neon::types::Finalize),*
+        > ::neon::types::Finalize for #stored_decl_name<#(#variant_names),*> {
+            fn finalize<'a, C: ::neon::context::Context<'a>>(self, cx: &mut C) {
+                match self {#(
+                    Self::#variant_names(x) => x.finalize(cx),
+                )*}
+            }
+        }
+        #[cfg(feature = "node")]
+        #impl_arg_type_info {
+            type ArgType = ::neon::types::JsObject;
+            type StoredType = #stored_decl_name<#(
+                (
+                    #(<#field_types as #krate::node::ArgTypeInfo<'storage, 'context>>::StoredType),*
+                ),
+            )*>;
+            fn borrow(
+                cx: &mut ::neon::context::FunctionContext<'context>,
+                foreign_arg: ::neon::handle::Handle<'context, Self::ArgType>,
+            ) -> ::neon::result::NeonResult<Self::StoredType> {
+                use ::neon::object::Object as _;
+                let foreign_variant = #get_variant;
+                match foreign_variant {
+                    #(#variant_numbers => {
+                        #(
+                            let #field_names: ::neon::handle::Handle<<#field_types as #krate::node::ArgTypeInfo<'storage, 'context>>::ArgType> =
+                                foreign_arg.get(cx, stringify!(#field_names))?;
+                            let #field_names = <#field_types as #krate::node::ArgTypeInfo<'storage, 'context>>::borrow(cx, #field_names)?;
+                        )*
+                        Ok(#stored_decl_name::#variant_names((#(#field_names),*)))
+                    },)*
+                    _ => ::neon::context::Context::throw_range_error(cx, concat!("Invalid variant __type for ", stringify!(#ident))),
+                }
+            }
+            fn load_from(stored_arg: &'storage mut Self::StoredType) -> Self {
+                match stored_arg {#(
+                    #stored_decl_name::#variant_names((#(#field_names),*)) => {
+                        #(let #field_names = #krate::node::ArgTypeInfo::load_from(#field_names);)*
+                        #field_patterns
+                    },
+                )*}
+            }
+            #[cfg(feature = "metadata")]
+            fn register_ts_ffi_type(_ctx: &mut #krate::metadata::node::TsMetadataContext) -> String {
+                #krate::metadata::node::names::arg_ffi_type(stringify!(#ident))
+            }
+        }
+        #[cfg(feature = "node")]
+        #impl_async_arg_type_info {
+            type ArgType = ::neon::types::JsObject;
+            type StoredType = #stored_decl_name<#(
+                (
+                    #(<#field_types as #krate::node::AsyncArgTypeInfo<'storage>>::StoredType),*
+                ),
+            )*>;
+            fn save_async_arg(
+                cx: &mut ::neon::context::FunctionContext,
+                foreign_arg: ::neon::prelude::Handle<Self::ArgType>,
+            ) -> ::neon::result::NeonResult<Self::StoredType> {
+                use ::neon::object::Object as _;
+                let foreign_variant = #get_variant;
+                match foreign_variant {
+                    #(#variant_numbers => {
+                        #(
+                            let #field_names: ::neon::handle::Handle<<#field_types as #krate::node::AsyncArgTypeInfo<'storage>>::ArgType> =
+                                foreign_arg.get(cx, stringify!(#field_names))?;
+                            let #field_names = <#field_types as #krate::node::AsyncArgTypeInfo<'storage>>::save_async_arg(cx, #field_names)?;
+                        )*
+                        Ok(#stored_decl_name::#variant_names((#(#field_names),*)))
+                    },)*
+                    _ => ::neon::context::Context::throw_range_error(cx, concat!("Invalid variant __type for ", stringify!(#ident))),
+                }
+            }
+            fn load_async_arg(stored_arg: &'storage mut Self::StoredType) -> Self {
+                match stored_arg {#(
+                    #stored_decl_name::#variant_names((#(#field_names),*)) => {
+                        #(let #field_names = #krate::node::AsyncArgTypeInfo::load_async_arg(#field_names);)*
+                        #field_patterns
+                    },
+                )*}
+            }
+            #[cfg(feature = "metadata")]
+            fn register_ts_ffi_type(_ctx: &mut #krate::metadata::node::TsMetadataContext) -> String {
+                #krate::metadata::node::names::arg_ffi_type(stringify!(#ident))
+            }
+        }
+        #[cfg(all(feature = "node", feature = "metadata"))]
+        #impl_nice_arg_converter {
+            fn register_ts_arg_converter(
+                ctx: &mut #krate::node::TsMetadataContext
+            ) -> #krate::metadata::node::TsArgConverter {
+                #register_ts_nice_type
+                #register_ts_arg_converter
+                #krate::node::TsArgConverter {
+                    nice_type: stringify!(#ident).to_string(),
+                    ffi_type: <Self as #krate::node::ArgTypeInfo>::register_ts_ffi_type(ctx),
+                    converter_function:
+                        #krate::metadata::node::names::arg_converter_function(stringify!(#ident)),
+                }
+            }
+        }
+    })
+}
+fn derive_bridged_as_value_return(input: &DeriveInput) -> syn::Result<TokenStream2> {
+    let krate = crates::libsignal_bridge_types();
+    let ident = &input.ident;
+    let mut impl_nice_result_converter =
+        Impl::new(input, Some(parse_quote!(#krate::node::NiceResultConverter)));
+    let mut impl_result_type_info = Impl::new(
+        input,
+        Some(parse_quote!(#krate::node::ResultTypeInfo<'node_context>)),
+    );
+    impl_result_type_info
+        .extra_params
+        .push(parse_quote!('node_context));
+    let register_ts_nice_type = nice_type_metadata(
+        input,
+        &parse_quote!(ctx),
+        &parse_quote!(derived_types),
+        &parse_quote!(#krate::node::NiceResultConverter),
+        &parse_quote!(register_ts_nice_type),
+        &mut impl_nice_result_converter.extra_where,
+    )?;
+    let register_ts_result_converter = nice_type_metadata(
+        input,
+        &parse_quote!(ctx),
+        &parse_quote!(derived_return_converters),
+        &parse_quote!(#krate::node::NiceResultConverter),
+        &parse_quote!(register_ts_result_converter),
+        &mut impl_nice_result_converter.extra_where,
+    )?;
+    let DeriveInputInfo {
+        patterns,
+        field_names: fields,
+        variant_indices,
+        field_types,
+        variant_names: _,
+    } = input.into();
+    impl_result_type_info.extra_where.extend(
+        field_types
+            .into_iter()
+            .flatten()
+            .map(|ty| parse_quote!(#ty: #krate::node::ResultTypeInfo<'node_context>)),
+    );
+    Ok(quote! {
+        #[cfg(feature = "node")]
+        #impl_result_type_info {
+            type ResultType = neon::types::JsValue;
+            fn convert_into(
+                self,
+                cx: &mut impl ::neon::context::Context<'node_context>,
+            ) -> ::neon::result::JsResult<'node_context, Self::ResultType> {
+                use ::neon::prelude::*;
+                match self {
+                    #(#patterns => {
+                        #(let #fields = #krate::node::ResultTypeInfo::convert_into(#fields, cx)?;)*
+                        let nice_object_out = cx.empty_object();
+                        let nice_type_name = cx.number(#variant_indices as f64);
+                        nice_object_out.set(cx, "__type", nice_type_name)?;
+                        #(nice_object_out.set(cx, stringify!(#fields), #fields)?;)*
+                        Ok(nice_object_out.upcast())
+                    })*
+                }
+            }
+            #[cfg(feature = "metadata")]
+            fn register_ts_ffi_type(ctx: &mut #krate::metadata::node::TsMetadataContext) -> String {
+                #krate::metadata::node::names::return_ffi_type(stringify!(#ident))
+            }
+        }
+        #[cfg(all(feature = "metadata", feature = "node"))]
+        #impl_nice_result_converter {
+            fn register_ts_result_converter(
+                ctx: &mut #krate::metadata::node::TsMetadataContext
+            ) -> #krate::node::TsReturnConverter {
+                #register_ts_nice_type
+                #register_ts_result_converter
+                #krate::node::TsReturnConverter {
+                    nice_type: stringify!(#ident).to_string(),
+                    ffi_type: <Self as #krate::node::ResultTypeInfo>::register_ts_ffi_type(ctx),
+                    converter_function:
+                        #krate::metadata::node::names::return_converter_function(stringify!(#ident)),
+                }
+            }
+        }
+    })
 }
 
 pub(crate) fn name_from_ident(ident: &Ident) -> String {
@@ -256,26 +602,23 @@ pub(crate) fn name_from_ident(ident: &Ident) -> String {
 ///
 /// The wrapper will be named "Node{MyTrait}" and will implement the original trait, as well as
 /// `neon::types::Finalize`.
-pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait) -> Result<TokenStream2> {
+pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait, js_name: &str) -> Result<TokenStream2> {
     let trait_name = &trait_to_bridge.ident;
     let wrapper_name = format_ident!("Node{}", trait_to_bridge.ident);
+    let krate = crates::libsignal_bridge_types();
 
     let callbacks = trait_to_bridge
         .items
         .iter()
-        .map(bridge_callback_item)
+        .map(|x| bridge_callback_item(x, &krate))
         .collect::<Result<Vec<_>>>()?;
     let callback_impls = callbacks.iter().map(|c| &c.implementation);
-    let callback_ts_decls = callbacks.iter().map(|c| &c.ts_decl);
-
-    let ts_declaration_comment = format!(
-        "ts: export /*trait*/ type {trait_name} = {{\n{}\n}};",
-        callback_ts_decls.format("\n")
-    );
+    let callback_bridge_trait_functions = callbacks.iter().map(|c| &c.bridge_trait_function);
+    let md = quote!(#krate::metadata);
+    let metadata_name = format_ident!("_BRIDGE_NODE_METADATA_{trait_name}");
 
     Ok(quote! {
         #[cfg(feature = "node")]
-        #[doc = #ts_declaration_comment]
         pub struct #wrapper_name(node::RootAndChannel);
 
         #[cfg(feature = "node")]
@@ -299,15 +642,29 @@ pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait) -> Result<TokenStream2> 
         impl #trait_name for #wrapper_name {
             #(#callback_impls)*
         }
+
+        #[cfg(all(feature = "node", feature = "metadata"))]
+        #[#md::linkme::distributed_slice(#md::node::NODE_ITEMS)]
+        #[linkme(crate = #md::linkme)]
+        static #metadata_name: #md::FnWithModule<#md::node::TsMetadataContext> = #md::FnWithModule {
+            module_path: module_path!(),
+            apply: |ctx| {
+                let mut functions = Vec::new();
+                #(#callback_bridge_trait_functions)*
+                ctx.bridge_traits.insert(#js_name.to_string(), functions);
+            },
+        };
     })
 }
 
 struct Callback {
     implementation: TokenStream2,
-    ts_decl: String,
+    /// Push a `node::BridgeTraitFunction` onto the local `functions` Vec
+    /// `ctx: &mut TsMetadataContext` is in scope
+    bridge_trait_function: TokenStream2,
 }
 
-fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
+fn bridge_callback_item(item: &TraitItem, krate: &TokenStream2) -> Result<Callback> {
     let TraitItem::Fn(item) = item else {
         return Err(Error::new(item.span(), "only fns are supported"));
     };
@@ -358,38 +715,98 @@ fn bridge_callback_item(item: &TraitItem) -> Result<Callback> {
             Some(format_ident!("js_{}", arg_name.ident).into_token_stream())
         }
     });
-    let implementation = quote! {
-        // #sig carries everything from `fn` to the return type and possible where-clause.
-        // All we provide is the body.
-        #sig {
-            self.0.send_and_log_on_error(#js_operation_name, move |cx, object| {
-                #(#arg_conversions;)*
-                let _result = node::call_method(
-                    cx,
-                    object,
+    let implementation = if sig.asyncness.is_some() {
+        quote! {
+            // #sig carries everything from `fn` to the return type and possible where-clause.
+            // All we provide is the body.
+            #sig {
+                self.0.get_promise(
                     #js_operation_name,
-                    [#(#converted_args),*],
-                )?;
-                Ok(())
-            })
+                    move |cx, object| {
+                        #(#arg_conversions;)*
+                        node::call_method(
+                            cx,
+                            object,
+                            #js_operation_name,
+                            [#(#converted_args),*],
+                        )?.downcast_or_throw(cx)
+                    },
+                )
+                .await
+            }
+        }
+    } else {
+        quote! {
+            #sig {
+                self.0.send_and_log_on_error(#js_operation_name, move |cx, object| {
+                    #(#arg_conversions;)*
+                    let _result = node::call_method(
+                        cx,
+                        object,
+                        #js_operation_name,
+                        [#(#converted_args),*],
+                    )?;
+                    Ok(())
+                })
+            }
         }
     };
 
-    // operation(foo: number): void;
-    let js_arg_decls = item.sig.inputs.iter().filter_map(|arg| match arg {
-        FnArg::Receiver(_) => None,
-        FnArg::Typed(arg) => {
-            let Pat::Ident(arg_name) = &*arg.pat else {
-                // Diagnosed elsewhere.
-                return None;
-            };
-            Some(format!("{}: {}", arg_name.ident, arg.ty.to_token_stream()))
+    let args = item
+        .sig
+        .inputs
+        .iter()
+        .filter_map(|arg| match arg {
+            FnArg::Receiver(_) => None,
+            FnArg::Typed(arg) => {
+                let Pat::Ident(arg_name) = &*arg.pat else {
+                    // Diagnosed elsewhere.
+                    return None;
+                };
+                Some((&arg_name.ident, &arg.ty))
+            }
+        })
+        .collect_vec();
+    let arg_names = args
+        .iter()
+        .map(|(x, _)| to_lower_camel_case_preserve_underscores(&x.to_string()))
+        .collect_vec();
+    let arg_types = args.iter().map(|(_, x)| x).collect_vec();
+    let result_ty = result_type(&sig.output);
+
+    let return_type = if sig.asyncness.is_some() {
+        quote! {{
+            use #krate::metadata::node::result_type_helper::*;
+            let return_type: CallbackResultMetadataTransformHelper<#result_ty> = Default::default();
+            let return_type = return_type.register_ts_ffi_type(ctx);
+            format!("Promise<{return_type}>")
+        }}
+    } else {
+        if !matches!(sig.output, ReturnType::Default) {
+            return Err(Error::new(
+                item.span(),
+                "non-async callbacks with results are not supported for Node",
+            ));
         }
-    });
-    let ts_decl = format!("{js_operation_name}({}): void;", js_arg_decls.format(", "));
+        quote!("void".to_string())
+    };
 
     Ok(Callback {
         implementation,
-        ts_decl,
+        bridge_trait_function: quote! {
+            let mut arguments = Vec::new();
+            #(arguments.push((
+                #arg_names.to_string(),
+                <#arg_types as #krate::node::ResultTypeInfo>::register_ts_ffi_type(ctx),
+            ));)*
+            let return_type = #return_type;
+            functions.push(#krate::metadata::node::BridgeTraitFunction {
+                name: #js_operation_name.to_string(),
+                body: #krate::metadata::node::NativeFunction {
+                    arguments,
+                    return_type,
+                },
+            });
+        },
     })
 }

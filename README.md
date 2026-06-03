@@ -1,5 +1,3 @@
-> **📣 If you were previously using libsignal from Maven or Gradle, our repository location has changed with the 0.86.6 release. See below for more information.**
-
 # Overview
 
 libsignal contains platform-agnostic APIs used by the official Signal clients and servers, exposed
@@ -53,7 +51,7 @@ as recent versions of Clang, libclang, [CMake](https://cmake.org), Make, protoc,
 On a Debian-like system, you can get these extra dependencies through `apt`:
 
 ```shell
-$ apt-get install clang libclang-dev cmake make protobuf-compiler python3 git
+$ apt-get install clang libclang-dev cmake make protobuf-compiler libprotobuf-dev python3 git
 ```
 
 #### macOS
@@ -169,12 +167,12 @@ Older builds were published to [Maven Central](https://central.sonatype.org) ins
 
 When building for Android you need *both* libsignal-android and libsignal-client, but the Windows
 and macOS libraries in libsignal-client won't automatically be excluded from your final app. You can
-explicitly exclude them using `packagingOptions`:
+explicitly exclude them using `packaging`:
 
 ```
 android {
   // ...
-  packagingOptions {
+  packaging {
     resources {
       excludes += setOf("libsignal_jni*.dylib", "signal_jni*.dll")
     }
@@ -185,6 +183,12 @@ android {
 
 You can additionally exclude `libsignal_jni_testing.so` if you do not plan to use any of the APIs
 intended for client testing.
+
+### Testing a local build with Signal-Android
+
+The Signal-Android gradle.properties file has a commented-out line to include libsignal as part of the build. Uncomment that and adjust the path; optionally, you can restrict the architectures you want to build for by adding `androidArchs=aarch64` to *libsignal's* gradle.properties. (The set of recognized architectures is in java/build_jni.sh.) If you're using an IDE, you'll need to re-import the Gradle structure at this point. When you're done, revert the changes to the Android app's gradle.properties and re-import once more.
+
+Note that this does not import the *Rust* parts of the project into the IDE. Doing that in a multi-language IDE like IDEA is possible, but finicky; as of 2025 the most reliable way to do it is to open the Android project first, add the libsignal repo root directory as a Rust project second (only including the top-level directory), and only then make the changes to gradle.properties.
 
 
 ## Swift
@@ -210,7 +214,7 @@ $ npm run test
 
 When testing changes locally, you can use `npm run build` to do an incremental rebuild of the Rust library. Alternately, `npm run build-with-debug-level-logs` will rebuild without filtering out debug- and verbose-level logs.
 
-When exposing new APIs to Node, you will need to run `rust/bridge/node/bin/gen_ts_decl.py` in
+When exposing new APIs to Node, you will need to run `just generate-node` in
 addition to rebuilding.
 
 [nvm]: https://github.com/nvm-sh/nvm
@@ -221,6 +225,10 @@ Signal publishes the NPM package `@signalapp/libsignal-client` for its own use, 
 libraries for Windows, macOS, and Debian-flavored Linux. Both x64 and arm64 builds are included for
 all three platforms, but the arm64 builds for Windows and Linux are considered experimental, since
 there are no official builds of Signal for those architectures.
+
+### Testing a local build with Signal-Desktop
+
+After running all the build commands above, adjust the `@signalapp/libsignal-client` dependency in the Desktop app's package.json to "link:path/to/libsignal/node" and run `pnpm install`. When you're done, revert the changes to package.json and run `pnpm install` again.
 
 
 # Contributions

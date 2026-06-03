@@ -185,6 +185,11 @@ async fn single_request(args: &Args, sem: &tokio::sync::Semaphore) {
         backup2.forward_secrecy_token.0
     );
 
+    println!("Removing backups");
+    svrb::remove_backup(&current_clients, &previous_clients)
+        .await
+        .expect("should remove successfully");
+
     println!("Success!");
 }
 

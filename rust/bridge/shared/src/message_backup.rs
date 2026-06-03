@@ -9,7 +9,6 @@ use libsignal_bridge_macros::*;
 use libsignal_bridge_types::message_backup::*;
 use libsignal_message_backup::backup::Purpose;
 use libsignal_message_backup::frame::LimitedReaderFactory;
-use libsignal_message_backup::json::exporter::FrameExportResult as JsonFrameExportResult;
 use libsignal_message_backup::{BackupReader, FoundUnknownField, ReadError, ReadResult};
 use libsignal_protocol::Aci;
 
@@ -118,7 +117,7 @@ async fn MessageBackupValidator_Validate(
 }
 
 bridge_handle_fns!(OnlineBackupValidator, clone = false);
-bridge_handle_fns!(BackupJsonExporter, clone = false, ffi = false, jni = false);
+bridge_handle_fns!(BackupJsonExporter, clone = false, ffi = false);
 
 #[bridge_fn]
 fn OnlineBackupValidator_New(
@@ -154,7 +153,7 @@ fn OnlineBackupValidator_Finalize(backup: &mut OnlineBackupValidator) -> Result<
     backup.finalize().map_err(ReadError::with_error_only)
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn BackupJsonExporter_New(
     backup_info: &[u8],
     should_validate: bool,
@@ -166,27 +165,22 @@ fn BackupJsonExporter_New(
     Ok(BackupJsonExporter::new(exporter, initial_chunk))
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn BackupJsonExporter_GetInitialChunk(exporter: &BackupJsonExporter) -> String {
-    exporter.initial_chunk().clone()
+    exporter.initial_chunk().to_owned()
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn BackupJsonExporter_ExportFrames(
     exporter: &mut BackupJsonExporter,
     frames: &[u8],
-) -> Result<Box<[JsonFrameExportResult]>, ReadError> {
+) -> Result<Vec<JsonFrameExportResult>, ReadError> {
     exporter
-        .inner_mut()
         .export_frames(frames)
-        .map(|results| results.into_boxed_slice())
         .map_err(ReadError::with_error_only)
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn BackupJsonExporter_Finish(exporter: &mut BackupJsonExporter) -> Result<(), ReadError> {
-    exporter
-        .inner_mut()
-        .finish()
-        .map_err(ReadError::with_error_only)
+    exporter.finish().map_err(ReadError::with_error_only)
 }

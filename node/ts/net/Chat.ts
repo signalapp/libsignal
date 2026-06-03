@@ -16,12 +16,19 @@ export type ChatRequest = Readonly<{
   verb: string;
   path: string;
   headers: ReadonlyArray<[string, string]>;
-  body?: Uint8Array;
+  body?: Uint8Array<ArrayBuffer>;
   timeoutMillis?: number;
 }>;
 
 export type RequestOptions = {
   abortSignal?: AbortSignal;
+};
+
+export type UploadForm = {
+  cdn: number;
+  key: string;
+  headers: Map<string, string>;
+  signedUploadUrl: URL;
 };
 
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
@@ -55,7 +62,7 @@ export interface ChatServiceListener extends ConnectionEventsListener {
    * queue and attempt to deliver it again in the future.
    */
   onIncomingMessage: (
-    envelope: Uint8Array,
+    envelope: Uint8Array<ArrayBuffer>,
     timestamp: number,
     ack: ChatServerMessageAck
   ) => void;
@@ -93,7 +100,10 @@ export interface ProvisioningConnectionListener
    *
    * Once the server receives the `ack` for this message, it will close this connection.
    */
-  onReceivedEnvelope: (envelope: Uint8Array, ack: ChatServerMessageAck) => void;
+  onReceivedEnvelope: (
+    envelope: Uint8Array<ArrayBuffer>,
+    ack: ChatServerMessageAck
+  ) => void;
 }
 
 /**
@@ -193,12 +203,15 @@ export class UnauthenticatedChatConnection implements ChatConnection {
    *
    * @param asyncContext the async runtime to use
    * @param listener the listener to send events to
+   * @param grpcOverrides gRPC method names to prefer for typed APIs that have both WS and gRPC
+   * implementations.
    * @returns an {@link UnauthenticatedChatConnection} and handle for the remote
    * end of the fake connection.
    */
   public static fakeConnect(
     asyncContext: TokioAsyncContext,
-    listener: ChatServiceListener
+    listener: ChatServiceListener,
+    grpcOverrides?: ReadonlyArray<string>
   ): [UnauthenticatedChatConnection, FakeChatRemote] {
     const nativeChatListener = makeNativeChatListener(asyncContext, listener);
 
@@ -206,6 +219,7 @@ export class UnauthenticatedChatConnection implements ChatConnection {
       Native.TESTING_FakeChatConnection_Create(
         asyncContext,
         new WeakListenerWrapper(nativeChatListener),
+        grpcOverrides?.join('\n') ?? '',
         ''
       )
     );
@@ -309,13 +323,16 @@ export class AuthenticatedChatConnection implements ChatConnection {
    *
    * @param asyncContext the async runtime to use
    * @param listener the listener to send events to
+   * @param grpcOverrides gRPC method names to prefer for typed APIs that have both WS and gRPC
+   * implementations.
    * @param alerts alerts to send immediately upon connect
-   * @returns an {@link AuthenticatedChatConnection} and handle for the remote
-   * end of the fake connection.
+   * @returns an {@link AuthenticatedChatConnection} and handle for the remote end of the fake
+   * connection.
    */
   public static fakeConnect(
     asyncContext: TokioAsyncContext,
     listener: ChatServiceListener,
+    grpcOverrides?: ReadonlyArray<string>,
     alerts?: ReadonlyArray<string>
   ): [AuthenticatedChatConnection, FakeChatRemote] {
     const nativeChatListener = makeNativeChatListener(asyncContext, listener);
@@ -324,6 +341,7 @@ export class AuthenticatedChatConnection implements ChatConnection {
       Native.TESTING_FakeChatConnection_Create(
         asyncContext,
         new WeakListenerWrapper(nativeChatListener),
+        grpcOverrides?.join('\n') ?? '',
         alerts?.join('\n') ?? ''
       )
     );
@@ -342,8 +360,8 @@ export class AuthenticatedChatConnection implements ChatConnection {
   }
 
   private constructor(
-    private readonly asyncContext: TokioAsyncContext,
-    private readonly chatService: Native.Wrapper<Native.AuthenticatedChatConnection>,
+    protected readonly asyncContext: TokioAsyncContext,
+    protected readonly chatService: Native.Wrapper<Native.AuthenticatedChatConnection>,
     // Unused except to keep the listener alive since the Rust code only holds a
     // weak reference to the same object.
     private readonly chatListener: Native.ChatListener
@@ -452,7 +470,7 @@ export class ProvisioningConnection {
         listener.onReceivedAddress(address, new ChatServerMessageAck(ack));
       },
       receivedEnvelope(
-        envelope: Uint8Array,
+        envelope: Uint8Array<ArrayBuffer>,
         ack: Native.ServerMessageAck
       ): void {
         listener.onReceivedEnvelope(envelope, new ChatServerMessageAck(ack));
@@ -511,7 +529,7 @@ class WeakListenerWrapper implements Native.ChatListener {
     this.listener.deref()?.connectionInterrupted(reason);
   }
   receivedIncomingMessage(
-    envelope: Uint8Array,
+    envelope: Uint8Array<ArrayBuffer>,
     timestamp: number,
     ack: Native.ServerMessageAck
   ): void {
@@ -534,7 +552,10 @@ class WeakProvisioningListenerWrapper implements Native.ProvisioningListener {
   receivedAddress(address: string, ack: Native.ServerMessageAck): void {
     this.listener.deref()?.receivedAddress(address, ack);
   }
-  receivedEnvelope(envelope: Uint8Array, ack: Native.ServerMessageAck): void {
+  receivedEnvelope(
+    envelope: Uint8Array<ArrayBuffer>,
+    ack: Native.ServerMessageAck
+  ): void {
     this.listener.deref()?.receivedEnvelope(envelope, ack);
   }
   connectionInterrupted(reason: Error | null): void {
@@ -549,7 +570,7 @@ function makeNativeChatListener(
   if ('onQueueEmpty' in listener) {
     return {
       receivedIncomingMessage(
-        envelope: Uint8Array,
+        envelope: Uint8Array<ArrayBuffer>,
         timestamp: number,
         ack: Native.ServerMessageAck
       ): void {
@@ -573,7 +594,7 @@ function makeNativeChatListener(
 
   return {
     receivedIncomingMessage(
-      _envelope: Uint8Array,
+      _envelope: Uint8Array<ArrayBuffer>,
       _timestamp: number,
       _ack: Native.ServerMessageAck
     ): void {

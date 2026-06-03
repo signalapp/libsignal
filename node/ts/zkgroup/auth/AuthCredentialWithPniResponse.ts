@@ -9,7 +9,7 @@ import * as Native from '../../Native.js';
 export default class AuthCredentialWithPniResponse extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, Native.AuthCredentialWithPniResponse_CheckValidContents);
   }
 }

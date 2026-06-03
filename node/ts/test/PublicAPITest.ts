@@ -116,14 +116,14 @@ describe('SignalClient', () => {
 
     assert.deepEqual(pub.serialize(), pub2.serialize());
 
-    assert.deepEqual(pub.compare(pub2), 0);
-    assert.deepEqual(pub2.compare(pub), 0);
+    assert.isTrue(pub.equals(pub2));
+    assert.isTrue(pub2.equals(pub));
 
     const anotherKey = SignalClient.PrivateKey.deserialize(
       Buffer.alloc(32, 0xcd)
     ).getPublicKey();
-    assert.deepEqual(pub.compare(anotherKey), 1);
-    assert.deepEqual(anotherKey.compare(pub), -1);
+    assert.isFalse(pub.equals(anotherKey));
+    assert.isFalse(anotherKey.equals(pub));
 
     assert.lengthOf(pub.getPublicKeyBytes(), 32);
 
@@ -131,7 +131,7 @@ describe('SignalClient', () => {
     const keyPairBytes = keyPair.serialize();
     const roundTripKeyPair =
       SignalClient.IdentityKeyPair.deserialize(keyPairBytes);
-    assert.equal(roundTripKeyPair.publicKey.compare(pub), 0);
+    assert.isTrue(roundTripKeyPair.publicKey.equals(pub));
     const roundTripKeyPairBytes = roundTripKeyPair.serialize();
     assert.deepEqual(keyPairBytes, roundTripKeyPairBytes);
   });

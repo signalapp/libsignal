@@ -4,9 +4,7 @@
 //
 
 mod curve25519;
-mod utils;
 
-use std::cmp::Ordering;
 use std::fmt;
 
 use curve25519_dalek::{MontgomeryPoint, scalar};
@@ -40,6 +38,8 @@ pub enum CurveError {
     BadKeyType(u8),
     /// bad key length <{1}> for key with type <{0}>
     BadKeyLength(KeyType, usize),
+    /// invalid key agreement output (all-zero shared secret)
+    InvalidKeyAgreement,
 }
 
 impl std::error::Error for CurveError {}
@@ -63,6 +63,17 @@ enum PublicKeyData {
 #[derive(Clone, Copy, Eq, derive_more::From)]
 pub struct PublicKey {
     key: PublicKeyData,
+}
+
+// This implementation allows functions with the following signature
+// ```
+// fn foo(impl AsRef<PublicKey>) { ... }
+// ```
+// to accept both referenced `&PublicKey` and owned `PublicKey`.
+impl AsRef<PublicKey> for PublicKey {
+    fn as_ref(&self) -> &PublicKey {
+        self
+    }
 }
 
 impl PublicKey {
@@ -206,22 +217,6 @@ impl PartialEq for PublicKey {
     }
 }
 
-impl Ord for PublicKey {
-    fn cmp(&self, other: &Self) -> Ordering {
-        if self.key_type() != other.key_type() {
-            return self.key_type().cmp(&other.key_type());
-        }
-
-        utils::constant_time_cmp(self.key_data(), other.key_data())
-    }
-}
-
-impl PartialOrd for PublicKey {
-    fn partial_cmp(&self, other: &PublicKey) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 impl fmt::Debug for PublicKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -277,7 +272,7 @@ impl PrivateKey {
         }
     }
 
-    pub fn calculate_signature<R: CryptoRng + Rng>(
+    pub fn calculate_signature<R: CryptoRng + Rng + ?Sized>(
         &self,
         message: &[u8],
         csprng: &mut R,
@@ -285,7 +280,7 @@ impl PrivateKey {
         self.calculate_signature_for_multipart_message(&[message], csprng)
     }
 
-    pub fn calculate_signature_for_multipart_message<R: CryptoRng + Rng>(
+    pub fn calculate_signature_for_multipart_message<R: CryptoRng + Rng + ?Sized>(
         &self,
         message: &[&[u8]],
         csprng: &mut R,
@@ -302,7 +297,13 @@ impl PrivateKey {
         match (self.key, their_key.key) {
             (PrivateKeyData::DjbPrivateKey(priv_key), PublicKeyData::DjbPublicKey(pub_key)) => {
                 let private_key = curve25519::PrivateKey::from(priv_key);
-                Ok(Box::new(private_key.calculate_agreement(&pub_key)))
+                let shared: [u8; curve25519::AGREEMENT_LENGTH] =
+                    private_key.calculate_agreement(&pub_key);
+                if bool::from(shared.ct_eq(&[0u8; curve25519::AGREEMENT_LENGTH])) {
+                    // Reject the invalid all-zero shared secret in constant time
+                    return Err(CurveError::InvalidKeyAgreement);
+                }
+                Ok(Box::new(shared))
             }
         }
     }
@@ -323,7 +324,7 @@ pub struct KeyPair {
 }
 
 impl KeyPair {
-    pub fn generate<R: Rng + CryptoRng>(csprng: &mut R) -> Self {
+    pub fn generate<R: Rng + CryptoRng + ?Sized>(csprng: &mut R) -> Self {
         let private_key = curve25519::PrivateKey::new(csprng);
 
         let public_key = PublicKey::from(PublicKeyData::DjbPublicKey(
@@ -358,7 +359,7 @@ impl KeyPair {
         })
     }
 
-    pub fn calculate_signature<R: CryptoRng + Rng>(
+    pub fn calculate_signature<R: CryptoRng + Rng + ?Sized>(
         &self,
         message: &[u8],
         csprng: &mut R,

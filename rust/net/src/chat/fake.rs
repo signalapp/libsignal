@@ -2,21 +2,29 @@
 // Copyright 2025 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::future::Future;
 use std::marker::PhantomData;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
 use futures_util::{Sink, Stream};
+use http_body_util::BodyExt;
 use libsignal_net_infra::TransportInfo;
-use libsignal_net_infra::route::GetCurrentInterface;
+use libsignal_net_infra::http_client::{Http2Client, Http2Connector};
+use libsignal_net_infra::route::{Connector, GetCurrentInterface, HttpRouteFragment, HttpVersion};
+use libsignal_net_infra::stream::StreamWithFixedTransportInfo;
 use libsignal_net_infra::utils::no_network_change_events;
 use pin_project::pin_project;
 use prost::Message;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::chat::{ChatConnection, ConnectionInfo, MessageProto, RequestProto, ResponseProto, ws};
+use crate::chat::{
+    ChatConnection, ConnectionInfo, GrpcBody, GrpcOverride, MessageProto, RequestProto,
+    ResponseProto, ws,
+};
 use crate::connect_state::RouteInfo;
 use crate::env::ALERT_HEADER_NAME;
 
@@ -25,6 +33,25 @@ use crate::env::ALERT_HEADER_NAME;
 pub struct FakeChatRemote {
     tx: tokio::sync::mpsc::UnboundedSender<Result<tungstenite::Message, tungstenite::Error>>,
     rx: tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<tungstenite::Message>>,
+    grpc: tokio::sync::Mutex<FakeGrpcRemote>,
+}
+
+#[derive(Debug)]
+struct GrpcResponseSender(
+    tokio::sync::oneshot::Sender<http::Response<http_body_util::Full<bytes::Bytes>>>,
+);
+/// We never use this without consuming it, so unwinding isn't an issue.
+impl std::panic::UnwindSafe for GrpcResponseSender {}
+
+/// The remote end of a fake gRPC connection to the chat server.
+#[derive(Debug)]
+pub struct FakeGrpcRemote {
+    incoming: tokio::sync::mpsc::UnboundedReceiver<(
+        http::Request<hyper::body::Incoming>,
+        GrpcResponseSender,
+    )>,
+    response_map: HashMap<u64, GrpcResponseSender>,
+    next_id: u64,
 }
 
 /// Error returned when a send fails because the client end has finished.
@@ -44,15 +71,11 @@ impl ChatConnection {
     pub fn new_fake<'a>(
         tokio_runtime: tokio::runtime::Handle,
         listener: ws::EventListener,
+        grpc_overrides: impl IntoIterator<Item = &'static str>,
         alerts: impl IntoIterator<Item = &'a str>,
     ) -> (Self, FakeChatRemote) {
         let (tx_to_local, rx_from_remote) = tokio::sync::mpsc::unbounded_channel();
         let (tx_to_remote, rx_from_local) = tokio::sync::mpsc::unbounded_channel();
-
-        let remote = FakeChatRemote {
-            tx: tx_to_local,
-            rx: rx_from_local.into(),
-        };
 
         let incoming = UnboundedReceiverStream::new(rx_from_remote);
         let outgoing = futures_util::sink::unfold(tx_to_remote, |tx, message| async move {
@@ -62,6 +85,14 @@ impl ChatConnection {
             Ok(tx)
         });
         let local = StreamSink(incoming, outgoing, PhantomData);
+
+        let (h2_connection, grpc_remote) = Self::h2_connection(&tokio_runtime);
+
+        let remote = FakeChatRemote {
+            tx: tx_to_local,
+            rx: rx_from_local.into(),
+            grpc: grpc_remote.into(),
+        };
 
         let connection_info = ConnectionInfo {
             route_info: RouteInfo::fake(),
@@ -97,13 +128,75 @@ impl ChatConnection {
                     transport_info: connection_info.transport_info.clone(),
                     get_current_interface: FakeCurrentInterface,
                 },
-                None,
+                Some(h2_connection),
                 no_network_change_events(),
                 listener,
             ),
             connection_info,
+            grpc_overrides: HashMap::from_iter(
+                grpc_overrides
+                    .into_iter()
+                    .map(|api| (api, GrpcOverride::UseGrpc)),
+            ),
+            // This isn't perfect, but without it we can't test APIs that rely on knowing the self
+            // ACI, so it's better that we set it to *something*.
+            self_aci: Some(libsignal_core::Aci::from_uuid_bytes([0xff; 16])),
         };
         (chat, remote)
+    }
+
+    fn h2_connection(
+        tokio_runtime: &tokio::runtime::Handle,
+    ) -> (Http2Client<GrpcBody>, FakeGrpcRemote) {
+        let (remote_incoming_req_tx, remote_incoming_req_rx) =
+            tokio::sync::mpsc::unbounded_channel();
+        let (client_io, server_io) = tokio::io::duplex(65536);
+
+        _ = tokio_runtime.spawn(
+            hyper::server::conn::http2::Builder::new(hyper_util::rt::TokioExecutor::new())
+                .serve_connection(
+                    hyper_util::rt::TokioIo::new(server_io),
+                    hyper::service::service_fn(move |req| {
+                        let remote_incoming_req_tx = remote_incoming_req_tx.clone();
+                        async move {
+                            let (response_tx, response_rx) = tokio::sync::oneshot::channel::<
+                                http::Response<http_body_util::Full<bytes::Bytes>>,
+                            >();
+                            remote_incoming_req_tx
+                                .send((req, GrpcResponseSender(response_tx)))
+                                .map_err(|_| "server shutdown")?;
+                            response_rx.await.map_err(|_| "server shutdown")
+                        }
+                    }),
+                ),
+        );
+
+        let _make_tokio_runtime_available_for_connect = tokio_runtime.enter();
+        let client = futures::executor::block_on(Http2Connector::new().connect_over(
+            StreamWithFixedTransportInfo::new(
+                client_io,
+                TransportInfo {
+                    local_addr: SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0),
+                    remote_addr: SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0),
+                },
+            ),
+            HttpRouteFragment {
+                host_header: "fake-chat.signal.org".into(),
+                path_prefix: Default::default(),
+                http_version: Some(HttpVersion::Http2),
+                front_name: None,
+            },
+            "fake h2",
+        ))
+        .expect("valid");
+
+        let remote = FakeGrpcRemote {
+            incoming: remote_incoming_req_rx,
+            response_map: Default::default(),
+            next_id: 1,
+        };
+
+        (client, remote)
     }
 }
 
@@ -152,9 +245,12 @@ impl FakeChatRemote {
 
     pub async fn receive_request(&self) -> Result<Option<RequestProto>, ReceiveRequestError> {
         log::debug!("waiting for next request");
-        let Some(message) = self.rx.lock().await.recv().await else {
-            return Ok(None);
-        };
+        let message =
+            match tokio::time::timeout(Duration::from_secs(3), self.rx.lock().await.recv()).await {
+                Ok(Some(message)) => message,
+                Ok(None) => return Ok(None),
+                Err(_) => panic!("receive_request timed out, did you actually send a WS request?"),
+            };
         let proto = match message {
             tungstenite::Message::Close(None)
             | tungstenite::Message::Close(Some(tungstenite::protocol::CloseFrame {
@@ -180,6 +276,53 @@ impl FakeChatRemote {
                 }
             }))))
             .map_err(|_failed_send| Disconnected)
+    }
+
+    pub async fn grpc(&self) -> tokio::sync::MutexGuard<'_, FakeGrpcRemote> {
+        self.grpc.lock().await
+    }
+}
+
+impl FakeGrpcRemote {
+    pub async fn receive_request(
+        &mut self,
+    ) -> Result<Option<(u64, http::Request<bytes::Bytes>)>, ReceiveRequestError> {
+        log::debug!("waiting for next request");
+        let (req, response_tx) =
+            match tokio::time::timeout(Duration::from_secs(3), self.incoming.recv()).await {
+                Ok(Some(next)) => next,
+                Ok(None) => return Ok(None),
+                Err(_) => {
+                    panic!("receive_request timed out, did you actually send a gRPC request?")
+                }
+            };
+
+        let id = self.next_id;
+        self.response_map.insert(id, response_tx);
+        self.next_id += 1;
+
+        let (head, body) = req.into_parts();
+        let body = body
+            .collect()
+            .await
+            .map_err(|_| ReceiveRequestError::InvalidWebsocketMessageType)?
+            .to_bytes();
+        Ok(Some((id, http::Request::from_parts(head, body))))
+    }
+
+    pub fn send_response(
+        &mut self,
+        which: u64,
+        response: http::Response<bytes::Bytes>,
+    ) -> Result<(), Disconnected> {
+        log::debug!("sending response");
+        let Some(GrpcResponseSender(response_tx)) = self.response_map.remove(&which) else {
+            // TODO: wrong error
+            return Err(Disconnected);
+        };
+        response_tx
+            .send(response.map(http_body_util::Full::new))
+            .map_err(|_| Disconnected)
     }
 }
 

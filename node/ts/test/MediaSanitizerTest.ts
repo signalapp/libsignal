@@ -193,7 +193,7 @@ function assertSanitizedMetadataEqual(
   sanitized: SanitizedMetadata,
   dataOffset: number | bigint,
   dataLen: number | bigint,
-  metadata: Uint8Array | null
+  metadata: Uint8Array<ArrayBuffer> | null
 ) {
   assert.deepEqual(sanitized.getMetadata(), metadata);
   assert.equal(sanitized.getDataOffset(), BigInt(dataOffset));

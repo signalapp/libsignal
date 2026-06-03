@@ -21,6 +21,10 @@ public class PreKeyRecord extends NativeHandleGuard.SimpleOwner {
     Native.PreKeyRecord_Destroy(nativeHandle);
   }
 
+  public PreKeyRecord(long nativeHandle) {
+    super(nativeHandle);
+  }
+
   public PreKeyRecord(int id, ECKeyPair keyPair) {
     super(
         keyPair

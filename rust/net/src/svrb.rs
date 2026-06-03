@@ -69,8 +69,8 @@ pub enum Error {
     AllConnectionAttemptsFailed,
     /// Invalid data from previous backup
     PreviousBackupDataInvalid,
-    /// Invalid metadata from backup
-    MetadataInvalid,
+    /// Invalid metadata from backup: {0}
+    MetadataInvalid(&'static str),
     /// Decryption error: {0}
     DecryptionError(#[from] signal_crypto::DecryptionError),
 }
@@ -124,7 +124,7 @@ impl Error {
             (e @ Self::PreviousBackupDataInvalid, _) | (_, e @ Self::PreviousBackupDataInvalid) => {
                 e
             }
-            (e @ Self::MetadataInvalid, _) | (_, e @ Self::MetadataInvalid) => e,
+            (e @ Self::MetadataInvalid(_), _) | (_, e @ Self::MetadataInvalid(_)) => e,
 
             // Then errors where we successfully fetched data from the enclave, but it didn't work.
             // This indicates a messed up backup (or a logic error), since the enclave is validating
@@ -290,6 +290,9 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
             // not a `store_backup` call.  In this case, we want to just keep
             // what's currently in SVRB still in SVRB.  There is no backup4
             // to store, and we use the existing key_salt+pw_salt.
+            log::info!(
+                "using previous_backup_data.from_previous.restore, keeping existing keys in svr without overwrite"
+            );
             (
                 restore
                     .enc_salt
@@ -306,6 +309,9 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
             // `previous_backup_data` came from a `store_backup` call,
             // so we know that we can write a new backup into SVRB and still
             // have the old backup file decrypt.  Do that.
+            log::info!(
+                "using previous_backup_data.from_previous.backup, storing new keys into svr overwriting old"
+            );
             let pw_salt = backup
                 .pw_salt
                 .try_into()
@@ -358,6 +364,10 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
     };
 
     if let Some(prev_backup4) = prev_backup4 {
+        log::info!(
+            "finalizing backup in {} current backends",
+            current_svrbs.len()
+        );
         let mut futures = current_svrbs
             .iter()
             .map(|svrb| svrb.finalize(&prev_backup4))
@@ -366,6 +376,10 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
             result?;
         }
 
+        log::info!(
+            "removing backup from {} previous backends",
+            previous_svrbs.len()
+        );
         for r in
             futures_util::future::join_all(previous_svrbs.iter().enumerate().map(async |(i, p)| {
                 tokio::time::sleep(
@@ -389,6 +403,7 @@ pub async fn store_backup<B: traits::Backup + traits::Prepare, R: traits::Remove
         log::info!("previous backup data came from a restore; skipping upload to SVR-B");
     }
 
+    log::info!("store_backup success");
     Ok(BackupStoreResponse {
         forward_secrecy_token,
         next_backup_data: BackupPreviousSecretData(
@@ -434,12 +449,22 @@ pub async fn restore_backup<R: traits::Restore>(
         !current_and_previous_svrbs.is_empty(),
         "can't restore from 0 enclaves"
     );
+    log::info!(
+        "restoring backup from {} backends",
+        current_and_previous_svrbs.len()
+    );
     let metadata = backup_metadata::MetadataPb::parse_from_bytes(metadata.0)
-        .map_err(|_| Error::MetadataInvalid)?;
+        .map_err(|_| Error::MetadataInvalid("unable to parse"))?;
     if metadata.pair.is_empty() {
-        return Err(Error::MetadataInvalid);
+        return Err(Error::MetadataInvalid("no pairs"));
+    } else if metadata.pair.len() > 2 {
+        // This stops us from exhausting SVRB attempts based on bogus data.
+        return Err(Error::MetadataInvalid("too many pairs"));
     }
-    let iv: [u8; IV_SIZE] = metadata.iv.try_into().map_err(|_| Error::MetadataInvalid)?;
+    let iv: [u8; IV_SIZE] = metadata
+        .iv
+        .try_into()
+        .map_err(|_| Error::MetadataInvalid("iv failure"))?;
 
     let describe_enclave = |i| -> Cow<'static, str> {
         format!("enclave {i} of {}", current_and_previous_svrbs.len()).into()
@@ -457,6 +482,10 @@ pub async fn restore_backup<R: traits::Restore>(
     )
     .map(async |((enclave_index, svrb), (pair_index, pair))| {
         tokio::time::sleep(delay(enclave_index, pair_index, metadata.pair.len())).await;
+        log::info!(
+            "attempting restore from {} of metadata.pair[{pair_index}]",
+            describe_enclave(enclave_index)
+        );
         let result = restore_backup_attempt(svrb, backup_key, &iv, pair).await;
         (enclave_index, pair_index, result)
     })
@@ -506,6 +535,11 @@ pub async fn remove_backup<R: traits::Remove>(
     previous_svrbs: &[R],
 ) -> Result<(), Error> {
     let mut most_important_error: Result<(), Error> = Ok(());
+    log::info!(
+        "removing from {} current and {} previous backends",
+        current_svrbs.len(),
+        previous_svrbs.len()
+    );
     for r in
         futures_util::future::join_all(current_svrbs.iter().chain(previous_svrbs).enumerate().map(
             async |(i, p)| {
@@ -514,6 +548,7 @@ pub async fn remove_backup<R: traits::Remove>(
                         * BACKUP_CONNECTION_DELAY,
                 )
                 .await;
+                log::info!("requesting removal {i}");
                 p.remove().await
             },
         ))
@@ -969,6 +1004,43 @@ mod test {
         .await
         .expect("should store");
         assert_eq!(BACKUP_DELETES_PREVIOUS_ALL_CALLED.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn restore_invalid_metadata_too_many_pairs() {
+        let svrb = TestSvrBClient {
+            prepare_fn: || Backup4 {
+                requests: vec![],
+                output: [1u8; 32],
+            },
+            finalize_fn: || Ok(()),
+            restore_fn: || Err(Error::RestoreFailed(11111)),
+            ..TestSvrBClient::default()
+        };
+        let aep = AccountEntropyPool::from_str(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        )
+        .expect("should create AEP");
+        let backup_key = BackupKey::derive_from_account_entropy_pool(&aep);
+        let bad_pb = backup_metadata::MetadataPb {
+            iv: vec![0u8; 12],
+            pair: vec![
+                backup_metadata::metadata_pb::Pair::default(),
+                backup_metadata::metadata_pb::Pair::default(),
+                backup_metadata::metadata_pb::Pair::default(),
+                backup_metadata::metadata_pb::Pair::default(),
+            ],
+            ..Default::default()
+        }
+        .write_to_bytes()
+        .expect("can serialize");
+        assert_matches!(
+            restore_backup(&[svrb], &backup_key, BackupFileMetadataRef(&bad_pb))
+                .await
+                .map(|_| ()) // Avoid having to implement Debug on actual value
+                .unwrap_err(),
+            Error::MetadataInvalid("too many pairs")
+        );
     }
 
     struct Scenario {

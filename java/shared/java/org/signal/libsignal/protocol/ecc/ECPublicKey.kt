@@ -14,7 +14,6 @@ import java.util.Arrays
 
 public final class ECPublicKey :
   NativeHandleGuard.SimpleOwner,
-  Comparable<ECPublicKey>,
   SerializablePublicKey {
   @Deprecated("use the constructor that takes an offset and length")
   @Throws(InvalidKeyException::class)
@@ -113,11 +112,4 @@ public final class ECPublicKey :
     }
 
   public override fun hashCode(): Int = Arrays.hashCode(this.serialize())
-
-  public override fun compareTo(other: ECPublicKey): Int =
-    this.guardedMap { thisHandle ->
-      other.guardedMap { otherHandle ->
-        Native.ECPublicKey_Compare(thisHandle, otherHandle)
-      }
-    }
 }

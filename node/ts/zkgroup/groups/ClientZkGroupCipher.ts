@@ -62,13 +62,16 @@ export default class ClientZkGroupCipher {
     );
   }
 
-  encryptBlob(plaintext: Uint8Array): Uint8Array {
+  encryptBlob(plaintext: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
     const random = randomBytes(RANDOM_LENGTH);
 
     return this.encryptBlobWithRandom(random, plaintext);
   }
 
-  encryptBlobWithRandom(random: Uint8Array, plaintext: Uint8Array): Uint8Array {
+  encryptBlobWithRandom(
+    random: Uint8Array<ArrayBuffer>,
+    plaintext: Uint8Array<ArrayBuffer>
+  ): Uint8Array<ArrayBuffer> {
     return Native.GroupSecretParams_EncryptBlobWithPaddingDeterministic(
       this.groupSecretParams.getContents(),
       random,
@@ -77,7 +80,9 @@ export default class ClientZkGroupCipher {
     );
   }
 
-  decryptBlob(blobCiphertext: Uint8Array): Uint8Array {
+  decryptBlob(
+    blobCiphertext: Uint8Array<ArrayBuffer>
+  ): Uint8Array<ArrayBuffer> {
     return Native.GroupSecretParams_DecryptBlobWithPadding(
       this.groupSecretParams.getContents(),
       blobCiphertext

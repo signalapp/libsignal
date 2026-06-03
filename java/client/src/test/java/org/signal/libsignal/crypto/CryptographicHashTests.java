@@ -5,10 +5,12 @@
 
 package org.signal.libsignal.crypto;
 
-import junit.framework.TestCase;
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
 import org.signal.libsignal.protocol.util.Hex;
 
-public class CryptographicHashTests extends TestCase {
+public class CryptographicHashTests {
 
   void hashKat(String algo, String hexInput, String hexExpectedOutput) throws Exception {
     CryptographicHash hash = new CryptographicHash(algo);
@@ -33,12 +35,14 @@ public class CryptographicHashTests extends TestCase {
     }
   }
 
+  @Test
   public void testSha1() throws Exception {
     hashKat("Sha1", "", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     hashKat("Sha1", "616263", "a9993e364706816aba3e25717850c26c9cd0d89d");
     hashKat("Sha1", "f1ea1c9b787bad", "b234020692659c3dee19f7e75390984dd7e7ebbb");
   }
 
+  @Test
   public void testSha256() throws Exception {
     hashKat("Sha256", "", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     hashKat("Sha256", "616263", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
@@ -48,6 +52,7 @@ public class CryptographicHashTests extends TestCase {
         "f7846f55cf23e14eebeab5b4e1550cad5b509e3348fbc4efa3a1413d393cb650");
   }
 
+  @Test
   public void testSha512() throws Exception {
     hashKat(
         "Sha512",

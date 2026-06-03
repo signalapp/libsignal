@@ -14,8 +14,9 @@ plugins {
     id 'org.jetbrains.kotlin.jvm'
 }
 
-sourceCompatibility = 17
-archivesBaseName = "libsignal-client"
+base {
+    archivesName = "libsignal-client"
+}
 
 repositories {
     mavenCentral()
@@ -54,6 +55,7 @@ dependencies {
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
     testImplementation 'org.jetbrains.kotlin:kotlin-test:2.1.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
 }
 
 test {
@@ -61,14 +63,15 @@ test {
     testLogging {
         events 'passed','skipped','failed'
         showStandardStreams = true
-        showExceptions true
-        exceptionFormat 'full'
-        showCauses true
-        showStackTraces true
+        showExceptions = true
+        exceptionFormat = 'full'
+        showCauses = true
+        showStackTraces = true
     }
 }
 
 java {
+    sourceCompatibility = JavaVersion.VERSION_17
     withSourcesJar()
 }
 
@@ -84,14 +87,14 @@ sourcesJar {
 }
 
 task dokkaHtmlJar(type: Jar) {
-    dependsOn(dokkaHtml)
-    from(dokkaHtml)
+    dependsOn(dokkaGeneratePublicationHtml)
+    from(dokkaGeneratePublicationHtml)
     archiveClassifier.set("dokka")
 }
 
 task dokkaJavadocJar(type: Jar) {
-    dependsOn(dokkaJavadoc)
-    from(dokkaJavadoc)
+    dependsOn(dokkaGeneratePublicationJavadoc)
+    from(dokkaGeneratePublicationJavadoc)
     archiveClassifier.set("javadoc")
 }
 
@@ -110,13 +113,13 @@ processResources {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifactId = archivesBaseName
+            artifactId = base.archivesName.get()
             from components.java
             artifact dokkaHtmlJar
             artifact dokkaJavadocJar
 
             pom {
-                name = archivesBaseName
+                name = base.archivesName.get()
                 description = 'Signal Protocol cryptography library for Java'
                 url = 'https://github.com/signalapp/libsignal'
 
@@ -145,6 +148,6 @@ publishing {
 
 setUpSigningKey(signing)
 signing {
-    required { isReleaseBuild() && gradle.taskGraph.hasTask(":client:publish") }
+    required = { isReleaseBuild() && gradle.taskGraph.hasTask(":client:publish") }
     sign publishing.publications.mavenJava
 }

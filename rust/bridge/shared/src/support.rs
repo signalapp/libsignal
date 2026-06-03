@@ -4,7 +4,7 @@
 //
 
 use libsignal_bridge_macros::bridge_fn;
-pub(crate) use libsignal_bridge_types::support::*;
+pub use libsignal_bridge_types::support::*;
 
 use crate::*;
 

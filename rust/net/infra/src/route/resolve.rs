@@ -17,8 +17,8 @@ use crate::dns::{DnsError, DnsResolver};
 use crate::host::Host;
 use crate::route::{
     ConnectionProxyRoute, DirectOrProxyRoute, HttpProxyRouteFragment, HttpsProxyRoute,
-    HttpsTlsRoute, ProxyTarget, SocksRoute, TcpRoute, TlsRoute, UdpRoute, UnresolvedHost,
-    UsePreconnect, WebSocketRoute,
+    HttpsTlsRoute, ProxyTarget, ReflectorProxyRoute, SocksRoute, TcpRoute, TlsRoute, UdpRoute,
+    UnresolvedHost, UsePreconnect, WebSocketRoute,
 };
 
 /// A route with hostnames that can be resolved.
@@ -246,7 +246,10 @@ impl<A: ResolveHostnames> ResolveHostnames for ConnectionProxyRoute<A> {
             #[cfg(feature = "dev-util")]
             Self::Tcp { proxy } => Either::Left(Either::Right(proxy.hostnames())),
             Self::Socks(socks) => Either::Right(Either::Right(socks.hostnames())),
-            Self::Https(http) => Either::Right(Either::Left(http.hostnames())),
+            Self::Https(http) => Either::Right(Either::Left(Either::Left(http.hostnames()))),
+            Self::Reflector(reflector) => {
+                Either::Right(Either::Left(Either::Right(reflector.outer.hostnames())))
+            }
         }
     }
 
@@ -263,6 +266,18 @@ impl<A: ResolveHostnames> ResolveHostnames for ConnectionProxyRoute<A> {
                 ConnectionProxyRoute::Socks(socks.resolve(lookup))
             }
             ConnectionProxyRoute::Https(http) => ConnectionProxyRoute::Https(http.resolve(lookup)),
+            ConnectionProxyRoute::Reflector(reflector) => {
+                let ReflectorProxyRoute {
+                    outer,
+                    target_host,
+                    target_port,
+                } = *reflector;
+                ConnectionProxyRoute::Reflector(Box::new(ReflectorProxyRoute {
+                    outer: outer.resolve(lookup),
+                    target_host,
+                    target_port,
+                }))
+            }
         }
     }
 }
@@ -407,6 +422,7 @@ impl<A: ResolvedRoute> ResolvedRoute for ConnectionProxyRoute<A> {
             ConnectionProxyRoute::Tcp { proxy } => proxy.immediate_target(),
             ConnectionProxyRoute::Socks(proxy) => proxy.immediate_target(),
             ConnectionProxyRoute::Https(proxy) => proxy.immediate_target(),
+            ConnectionProxyRoute::Reflector(proxy) => proxy.outer.immediate_target(),
         }
     }
 }

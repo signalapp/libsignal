@@ -3,10 +3,32 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_core::{Aci, Pni, ServiceId};
+use libsignal_core::{Aci, E164, Pni, ServiceId};
+use ref_cast::RefCast as _;
 
+/// Implement Debug for use in DebugStruct etc. using existing Display impl.
+macro_rules! impl_debug_from_display {
+    ($target:ident < $($args:tt),* >) => {
+        impl< $($args)* > std::fmt::Debug for $target< $($args)* >
+        where $target< $($args)* >: std::fmt::Display {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{self}")
+            }
+        }
+    };
+    ($target:ident) => {
+        impl std::fmt::Debug for $target where $target: std::fmt::Display {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{self}")
+            }
+        }
+    };
+}
+
+#[derive(ref_cast::RefCast)]
+#[repr(transparent)]
 pub struct Redact<T>(pub T);
-impl std::fmt::Display for Redact<&'_ uuid::Uuid> {
+impl std::fmt::Display for Redact<uuid::Uuid> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -22,19 +44,19 @@ impl std::fmt::Display for Redact<&'_ uuid::Uuid> {
     }
 }
 
-impl std::fmt::Display for Redact<&'_ Aci> {
+impl std::fmt::Display for Redact<Aci> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Redact(&uuid::Uuid::from(*self.0)).fmt(f)
+        Redact(uuid::Uuid::from(self.0)).fmt(f)
     }
 }
 
-impl std::fmt::Display for Redact<&'_ Pni> {
+impl std::fmt::Display for Redact<Pni> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "PNI:{}", Redact(&uuid::Uuid::from(*self.0)))
+        write!(f, "PNI:{}", Redact(uuid::Uuid::from(self.0)))
     }
 }
 
-impl std::fmt::Display for Redact<&'_ ServiceId> {
+impl std::fmt::Display for Redact<ServiceId> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.0 {
             ServiceId::Aci(specific_service_id) => Redact(specific_service_id).fmt(f),
@@ -42,6 +64,30 @@ impl std::fmt::Display for Redact<&'_ ServiceId> {
         }
     }
 }
+
+const MINIMAL_E164_LENGTH: usize = 7;
+
+impl std::fmt::Display for Redact<E164> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = self.0.to_string();
+        if s.len() < MINIMAL_E164_LENGTH {
+            write!(f, "[short E164]")
+        } else {
+            write!(f, "E164: [REDACTED]{}", &s[s.len() - 2..])
+        }
+    }
+}
+
+impl<T> std::fmt::Display for Redact<&'_ T>
+where
+    Redact<T>: std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Redact::<T>::ref_cast(self.0).fmt(f)
+    }
+}
+
+impl_debug_from_display!(Redact<T>);
 
 /// Redacts all but the last 3 characters of its contents, which are assumed to be hex.
 ///
@@ -62,12 +108,16 @@ impl std::fmt::Display for RedactHex<'_> {
         )
     }
 }
-/// Implemented for use in DebugStruct etc, but still uses the Display impl.
-impl std::fmt::Debug for RedactHex<'_> {
+impl_debug_from_display!(RedactHex<'__lifetime>);
+
+/// Hex-encodes a slice of bytes and redacts the result using [`RedactHex`]
+pub struct RedactBytesAsHex<'a>(pub &'a [u8]);
+impl std::fmt::Display for RedactBytesAsHex<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self}")
+        std::fmt::Display::fmt(&RedactHex(&hex::encode(self.0)), f)
     }
 }
+impl_debug_from_display!(RedactBytesAsHex<'__lifetime>);
 
 /// Redacts all but the last 2 non-padding characters of its contents, which are assumed to be
 /// base64 or base64url.
@@ -106,8 +156,30 @@ impl std::fmt::Debug for DebugAsStrOrBytes<'_> {
     }
 }
 
+/// A wrapper type allowing an arbitrary function to be used with e.g.
+/// [`std::fmt::DebugStruct::field`].
+///
+/// This can go away if/when [`std::fmt::DebugStruct::field_with`] is stabilized.
+///
+/// Note the constraint on the wrapped type lives on the struct itself, rather than just its impls.
+/// This helps keep usage simple at the call site; without it, using `DebugByCalling` with a closure
+/// would require an explicit type for the closure's argument.
+pub struct DebugByCalling<T>(pub T)
+where
+    T: Fn(&mut std::fmt::Formatter<'_>) -> std::fmt::Result;
+
+impl<T> std::fmt::Debug for DebugByCalling<T>
+where
+    T: Fn(&mut std::fmt::Formatter<'_>) -> std::fmt::Result,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0(f)
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use nonzero_ext::nonzero;
     use test_case::test_case;
 
     use super::*;
@@ -119,6 +191,13 @@ mod test {
             Redact(&uuid).to_string(),
             "********-****-****-****-*********13d"
         );
+    }
+
+    #[test_case(E164::new(nonzero!(1u64)) => "[short E164]")]
+    #[test_case(E164::new(nonzero!(12345u64)) => "[short E164]")]
+    #[test_case(E164::new(nonzero!(123456u64)) => "E164: [REDACTED]56")]
+    fn redact_e164(e164: E164) -> String {
+        Redact(e164).to_string()
     }
 
     #[test_case("" => "")]
@@ -142,5 +221,20 @@ mod test {
     #[test_case("AAAAAAAA" => "[REDACTED_BASE64: 6 skipped]AA")]
     fn redact_base64(input: &str) -> String {
         RedactBase64(input).to_string()
+    }
+
+    #[test_case(&[] => "\"\""; "empty")]
+    #[test_case(b"woot" => "\"woot\""; "valid utf8")]
+    #[test_case(&[0xff] => "\"ff\""; "single byte")]
+    #[test_case(&[0x8a, 0x8b, 0x8c, 0x8d] => "\"8a8b8c8d\""; "does not redact")]
+    fn debug_as_str_of_bytes(bytes: &[u8]) -> String {
+        format!("{:?}", DebugAsStrOrBytes(bytes))
+    }
+
+    #[test_case(&[] => "")]
+    #[test_case(&[0xaa] => "aa")]
+    #[test_case(&[0xaa, 0xbb] => "[REDACTED_HEX: 1 skipped]abb")]
+    fn redact_bytes_as_hex(bytes: &[u8]) -> String {
+        RedactBytesAsHex(bytes).to_string()
     }
 }

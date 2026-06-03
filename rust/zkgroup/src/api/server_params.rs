@@ -209,13 +209,19 @@ impl ServerSecretParams {
                     presentation,
                     current_time,
                 ),
+            api::profiles::AnyProfileKeyCredentialPresentation::V4(presentation) => self
+                .verify_expiring_profile_key_credential_presentation(
+                    group_public_params,
+                    presentation,
+                    current_time,
+                ),
         }
     }
 
-    pub fn verify_expiring_profile_key_credential_presentation(
+    pub fn verify_expiring_profile_key_credential_presentation<const V: u8>(
         &self,
         group_public_params: api::groups::GroupPublicParams,
-        presentation: &api::profiles::ExpiringProfileKeyCredentialPresentation,
+        presentation: &api::profiles::ExpiringProfileKeyCredentialPresentation<V>,
         current_time: Timestamp,
     ) -> Result<(), ZkGroupVerificationFailure> {
         let credentials_key_pair = self.expiring_profile_key_credentials_key_pair;
@@ -229,6 +235,7 @@ impl ServerSecretParams {
             presentation.profile_key_enc_ciphertext,
             profile_key_enc_public_key,
             presentation.credential_expiration_time,
+            V >= PRESENTATION_VERSION_4,
         )?;
 
         if presentation.credential_expiration_time <= current_time {
@@ -436,12 +443,12 @@ impl ServerPublicParams {
         })
     }
 
-    pub fn create_expiring_profile_key_credential_presentation(
+    pub fn create_expiring_profile_key_credential_presentation<const V: u8>(
         &self,
         randomness: RandomnessBytes,
         group_secret_params: api::groups::GroupSecretParams,
         expiring_profile_key_credential: api::profiles::ExpiringProfileKeyCredential,
-    ) -> api::profiles::ExpiringProfileKeyCredentialPresentation {
+    ) -> api::profiles::ExpiringProfileKeyCredentialPresentation<V> {
         let mut sho = Sho::new(
             b"Signal_ZKGroup_20220508_Random_ServerPublicParams_CreateExpiringProfileKeyCredentialPresentation",
             &randomness,
@@ -465,6 +472,7 @@ impl ServerPublicParams {
             profile_key_ciphertext.ciphertext,
             expiring_profile_key_credential.aci_bytes,
             expiring_profile_key_credential.profile_key_bytes,
+            V >= PRESENTATION_VERSION_4,
             &mut sho,
         );
 
@@ -503,6 +511,10 @@ impl ServerPublicParams {
         context: &api::receipts::ReceiptCredentialRequestContext,
         response: &api::receipts::ReceiptCredentialResponse,
     ) -> Result<api::receipts::ReceiptCredential, ZkGroupVerificationFailure> {
+        if !response.receipt_expiration_time.is_day_aligned() {
+            return Err(ZkGroupVerificationFailure);
+        }
+
         let receipt_struct = crypto::receipt_struct::ReceiptStruct::new(
             context.receipt_serial_bytes,
             response.receipt_expiration_time,

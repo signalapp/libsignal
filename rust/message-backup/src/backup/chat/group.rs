@@ -22,13 +22,13 @@ use crate::proto::backup::{
     GroupInviteLinkAdminApprovalUpdate, GroupInviteLinkDisabledUpdate,
     GroupInviteLinkEnabledUpdate, GroupInviteLinkResetUpdate, GroupJoinRequestApprovalUpdate,
     GroupJoinRequestCanceledUpdate, GroupJoinRequestUpdate, GroupMemberAddedUpdate,
-    GroupMemberJoinedByLinkUpdate, GroupMemberJoinedUpdate, GroupMemberLeftUpdate,
-    GroupMemberRemovedUpdate, GroupMembershipAccessLevelChangeUpdate, GroupNameUpdate,
-    GroupSelfInvitationRevokedUpdate, GroupSequenceOfRequestsAndCancelsUpdate,
-    GroupUnknownInviteeUpdate, GroupV2MigrationDroppedMembersUpdate,
-    GroupV2MigrationInvitedMembersUpdate, GroupV2MigrationSelfInvitedUpdate,
-    GroupV2MigrationUpdate, SelfInvitedOtherUserToGroupUpdate, SelfInvitedToGroupUpdate,
-    group_invitation_revoked_update,
+    GroupMemberJoinedByLinkUpdate, GroupMemberJoinedUpdate,
+    GroupMemberLabelAccessLevelChangeUpdate, GroupMemberLeftUpdate, GroupMemberRemovedUpdate,
+    GroupMembershipAccessLevelChangeUpdate, GroupNameUpdate, GroupSelfInvitationRevokedUpdate,
+    GroupSequenceOfRequestsAndCancelsUpdate, GroupTerminateChangeUpdate, GroupUnknownInviteeUpdate,
+    GroupV2MigrationDroppedMembersUpdate, GroupV2MigrationInvitedMembersUpdate,
+    GroupV2MigrationSelfInvitedUpdate, GroupV2MigrationUpdate, SelfInvitedOtherUserToGroupUpdate,
+    SelfInvitedToGroupUpdate, group_invitation_revoked_update,
 };
 
 /// Implements `TryFrom<$MESSAGE>` for [`GroupChatUpdate`].
@@ -84,7 +84,8 @@ macro_rules! TryFromProto {
 
 /// Validated version of [`proto::group_change_chat_update::update::Update`].
 #[serde_as]
-#[expect(clippy::enum_variant_names, non_snake_case)] // names taken from proto message.
+// TODO: expect fails to see through the macros as of nightly-2026-02-11
+#[allow(clippy::enum_variant_names, non_snake_case)] // names taken from proto message.
 #[derive(Debug, serde::Serialize)]
 #[macro_rules_derive(TryFromProto)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -113,6 +114,11 @@ pub enum GroupChatUpdate {
         newDescription: NoValidation<Option<String>>,
     },
     GroupMembershipAccessLevelChangeUpdate {
+        #[serde_as(as = "Option<serialize::ServiceIdAsString>")]
+        updaterAci: Option<Aci>,
+        accessLevel: AccessLevel,
+    },
+    GroupMemberLabelAccessLevelChangeUpdate {
         #[serde_as(as = "Option<serialize::ServiceIdAsString>")]
         updaterAci: Option<Aci>,
         accessLevel: AccessLevel,
@@ -248,6 +254,10 @@ pub enum GroupChatUpdate {
         #[serde_as(as = "Option<serialize::ServiceIdAsString>")]
         updaterAci: Option<Aci>,
         expiresInMs: Duration,
+    },
+    GroupTerminateChangeUpdate {
+        #[serde_as(as = "Option<serialize::ServiceIdAsString>")]
+        updaterAci: Option<Aci>,
     },
 }
 
@@ -441,6 +451,7 @@ impl TryFrom<proto::group_change_chat_update::update::Update> for GroupChatUpdat
             Update::GroupAvatarUpdate(m) => m.try_into(),
             Update::GroupDescriptionUpdate(m) => m.try_into(),
             Update::GroupMembershipAccessLevelChangeUpdate(m) => m.try_into(),
+            Update::GroupMemberLabelAccessLevelChangeUpdate(m) => m.try_into(),
             Update::GroupAttributesAccessLevelChangeUpdate(m) => m.try_into(),
             Update::GroupAnnouncementOnlyChangeUpdate(m) => m.try_into(),
             Update::GroupAdminStatusUpdate(m) => m.try_into(),
@@ -491,6 +502,7 @@ impl TryFrom<proto::group_change_chat_update::update::Update> for GroupChatUpdat
             Update::GroupV2MigrationDroppedMembersUpdate(m) => m.try_into(),
             Update::GroupSequenceOfRequestsAndCancelsUpdate(m) => m.try_into(),
             Update::GroupExpirationTimerUpdate(m) => m.try_into(),
+            Update::GroupTerminateChangeUpdate(m) => m.try_into(),
         }
     }
 }
@@ -626,6 +638,26 @@ mod test {
                 newMemberAci: ACI_BYTES.to_vec(),
                 hadOpenInvitation: had_invitation,
                 inviterAci: inviter.map(|aci| aci.service_id_binary()),
+                ..Default::default()
+            },
+        );
+
+        let result = GroupChatUpdate::try_from(update)
+            .map(|_| ())
+            .map_err(|e| e.field_error);
+        assert_eq!(result, expected);
+    }
+
+    #[test_case(None, Ok(()); "updater absent")]
+    #[test_case(Some(ACI.service_id_binary()), Ok(()); "updater valid aci")]
+    #[test_case(Some(vec![]), Err(GroupUpdateFieldError::InvalidAci); "updater invalid aci")]
+    fn group_terminate_change_update(
+        updater_aci: Option<Vec<u8>>,
+        expected: Result<(), GroupUpdateFieldError>,
+    ) {
+        let update = group_change_chat_update::update::Update::GroupTerminateChangeUpdate(
+            GroupTerminateChangeUpdate {
+                updaterAci: updater_aci,
                 ..Default::default()
             },
         );

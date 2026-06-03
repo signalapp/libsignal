@@ -1,0 +1,113 @@
+//
+// Copyright 2025 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+package org.signal.libsignal.protocol.state.internal
+
+import org.signal.libsignal.internal.CalledFromNative
+import org.signal.libsignal.internal.NativeHandleGuard
+import org.signal.libsignal.internal.ObjectHandle
+import java.util.UUID
+
+@CalledFromNative
+internal interface IdentityKeyStore {
+  @Throws(Exception::class)
+  public fun getLocalIdentityKeyPair(): Pair<NativeHandleGuard.Owner, NativeHandleGuard.Owner>
+
+  @Throws(Exception::class)
+  public fun getLocalRegistrationId(): Int
+
+  @Throws(Exception::class)
+  public fun getIdentityKey(rawAddress: ObjectHandle): NativeHandleGuard.Owner?
+
+  @Throws(Exception::class)
+  public fun saveIdentityKey(
+    rawAddress: ObjectHandle,
+    rawKey: ObjectHandle,
+  ): Int
+
+  @Throws(Exception::class)
+  public fun isTrustedIdentity(
+    rawAddress: ObjectHandle,
+    rawKey: ObjectHandle,
+    rawDirection: Int,
+  ): Boolean
+}
+
+@CalledFromNative
+internal interface PreKeyStore {
+  @Throws(Exception::class)
+  public fun loadPreKey(id: Int): NativeHandleGuard.Owner?
+
+  @Throws(Exception::class)
+  public fun storePreKey(
+    id: Int,
+    rawPreKey: ObjectHandle,
+  )
+
+  @Throws(Exception::class)
+  public fun removePreKey(id: Int)
+}
+
+@CalledFromNative
+internal interface SignedPreKeyStore {
+  @Throws(Exception::class)
+  public fun loadSignedPreKey(id: Int): NativeHandleGuard.Owner?
+
+  @Throws(Exception::class)
+  public fun storeSignedPreKey(
+    id: Int,
+    rawSignedPreKey: ObjectHandle,
+  )
+}
+
+@CalledFromNative
+internal interface KyberPreKeyStore {
+  @Throws(Exception::class)
+  public fun loadKyberPreKey(id: Int): NativeHandleGuard.Owner?
+
+  @Throws(Exception::class)
+  public fun storeKyberPreKey(
+    id: Int,
+    rawKyberPreKey: ObjectHandle,
+  )
+
+  @Throws(Exception::class)
+  public fun markKyberPreKeyUsed(
+    id: Int,
+    ecPrekeyId: Int,
+    rawBaseKey: ObjectHandle,
+  )
+}
+
+@CalledFromNative
+internal interface SessionStore {
+  @Throws(Exception::class)
+  public fun loadSession(rawAddress: ObjectHandle): NativeHandleGuard.Owner?
+
+  @Throws(Exception::class)
+  public fun storeSession(
+    rawAddress: ObjectHandle,
+    rawSession: ObjectHandle,
+  )
+}
+
+// The non-internal version of this lives in org.signal.libsignal.protocol.**groups**.state, so
+// arguably this one should live near there. But it follows the pattern of the other
+// org.signal.libsignal.protocol stores, so it's simpler if it just lives here with them.
+@CalledFromNative
+internal interface SenderKeyStore {
+  @Throws(Exception::class)
+  public fun loadSenderKey(
+    rawSender: ObjectHandle,
+    distributionId: UUID,
+  ): NativeHandleGuard.Owner?
+
+  @Throws(Exception::class)
+  public fun storeSenderKey(
+    rawSender: ObjectHandle,
+    distributionId: UUID,
+    rawSenderKeyRecord: ObjectHandle,
+  )
+}

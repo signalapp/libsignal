@@ -5,12 +5,35 @@ edition = "2021"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 
+[features]
+json = [
+    "dep:pbjson",
+    "dep:pbjson-build",
+    "dep:pbjson-types",
+    "dep:serde",
+    "dep:serde_json",
+]
+
 [dependencies]
 libsignal-core = { workspace = true }
 
+const-str = { workspace = true }
+derive-where = { workspace = true }
+pbjson = { workspace = true, optional = true }
+pbjson-types = { workspace = true, optional = true }
 prost = { workspace = true }
+prost-types = { workspace = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+strum = { workspace = true, features = ["derive"] }
 tonic = { workspace = true, default-features = false, features = ["codegen"] }
 tonic-prost = { workspace = true }
 
 [build-dependencies]
+pbjson-build = { workspace = true, optional = true }
 tonic-prost-build = { workspace = true }
+
+[lib]
+# Some of the Google protos have unmarked code blocks that confuse the doctest runner.
+# tonic-prost-build has a feature to rewrite (or omit) the doc comments, but that's overkill.
+doctest = false

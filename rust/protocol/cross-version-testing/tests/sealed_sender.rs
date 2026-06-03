@@ -11,6 +11,7 @@ use libsignal_protocol_current::{
 use rand::rng;
 
 const BOB_UUID: uuid::Uuid = uuid::uuid!("b000000b-6199-486a-ba89-2ba2bb4f2154");
+const ALICE_UUID: uuid::Uuid = uuid::uuid!("a11ce000-6199-486a-ba89-2ba2bb4f2154");
 
 fn make_alice_sender_cert(alice_store: &mut dyn LibSignalProtocolStore) -> SenderCertificate {
     let fake_trust_root = KeyPair::generate(&mut rng());
@@ -83,14 +84,17 @@ fn assert_eq_usmc(
 
 #[test]
 fn ssv1() {
-    try_all_combinations(run, &[|| Box::new(LibSignalProtocolV70::new())]);
+    try_all_combinations(run, &[|| Box::new(LibSignalProtocolV74::new())]);
 
     fn run(
         alice_store: &mut dyn LibSignalProtocolStore,
         bob_store: &mut dyn LibSignalProtocolStore,
     ) {
-        alice_store
-            .process_pre_key_bundle(&BOB_UUID.to_string(), bob_store.create_pre_key_bundle());
+        alice_store.process_pre_key_bundle(
+            &BOB_UUID.to_string(),
+            &ALICE_UUID.to_string(),
+            bob_store.create_pre_key_bundle(),
+        );
 
         let message = UnidentifiedSenderMessageContent::new(
             CiphertextMessageType::SenderKey,
@@ -110,14 +114,17 @@ fn ssv1() {
 
 #[test]
 fn ssv2() {
-    try_all_combinations(run, &[|| Box::new(LibSignalProtocolV70::new())]);
+    try_all_combinations(run, &[|| Box::new(LibSignalProtocolV74::new())]);
 
     fn run(
         alice_store: &mut dyn LibSignalProtocolStore,
         bob_store: &mut dyn LibSignalProtocolStore,
     ) {
-        alice_store
-            .process_pre_key_bundle(&BOB_UUID.to_string(), bob_store.create_pre_key_bundle());
+        alice_store.process_pre_key_bundle(
+            &BOB_UUID.to_string(),
+            &ALICE_UUID.to_string(),
+            bob_store.create_pre_key_bundle(),
+        );
 
         let message = UnidentifiedSenderMessageContent::new(
             CiphertextMessageType::SenderKey,

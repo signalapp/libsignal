@@ -20,7 +20,7 @@ describe('HsmEnclaveClient', () => {
   );
 
   it('create client', () => {
-    const hashes: Buffer[] = [];
+    const hashes: Buffer<ArrayBuffer>[] = [];
     hashes.push(
       Buffer.from(
         '0000000000000000000000000000000000000000000000000000000000000000',
@@ -41,7 +41,7 @@ describe('HsmEnclaveClient', () => {
     assert.lengthOf(initialMessage, 112, 'initial message length');
   });
   it('invalid hashes', () => {
-    const hashes: Buffer[] = [];
+    const hashes: Buffer<ArrayBuffer>[] = [];
     hashes.push(
       Buffer.from(
         '00000000000000000000000000000000000000000000000000000000',
@@ -62,7 +62,7 @@ describe('HsmEnclaveClient', () => {
     }
   });
   it('create client fails with no hashes', () => {
-    const hashes: Buffer[] = [];
+    const hashes: Buffer<ArrayBuffer>[] = [];
     try {
       SignalClient.HsmEnclaveClient.new(validKey, hashes);
       assert.fail();
@@ -74,7 +74,7 @@ describe('HsmEnclaveClient', () => {
     }
   });
   it('complete handshake without initial request', () => {
-    const hashes: Buffer[] = [];
+    const hashes: Buffer<ArrayBuffer>[] = [];
     hashes.push(
       Buffer.from(
         '0000000000000000000000000000000000000000000000000000000000000000',
@@ -97,7 +97,7 @@ describe('HsmEnclaveClient', () => {
     }
   });
   it('established send fails prior to establishment', () => {
-    const hashes: Buffer[] = [];
+    const hashes: Buffer<ArrayBuffer>[] = [];
     hashes.push(
       Buffer.from(
         '0000000000000000000000000000000000000000000000000000000000000000',
@@ -120,7 +120,7 @@ describe('HsmEnclaveClient', () => {
     }
   });
   it('established recv fails prior to establishment', () => {
-    const hashes: Buffer[] = [];
+    const hashes: Buffer<ArrayBuffer>[] = [];
     hashes.push(
       Buffer.from(
         '0000000000000000000000000000000000000000000000000000000000000000',

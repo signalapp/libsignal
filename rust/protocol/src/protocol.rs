@@ -12,7 +12,8 @@ use uuid::Uuid;
 
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
 use crate::{
-    IdentityKey, PrivateKey, PublicKey, Result, SignalProtocolError, Timestamp, kem, proto,
+    IdentityKey, PrivateKey, ProtocolAddress, PublicKey, Result, ServiceId, SignalProtocolError,
+    Timestamp, kem, proto,
 };
 pub(crate) const CIPHERTEXT_MESSAGE_CURRENT_VERSION: u8 = 4;
 // pub(crate) const CIPHERTEXT_MESSAGE_PRE_PVRF_VERSION: u8 = 4;
@@ -21,7 +22,7 @@ pub(crate) const CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION: u8 = 3;
 pub(crate) const SENDERKEY_MESSAGE_CURRENT_VERSION: u8 = 3;
 
 // Different types of messages that can be sent
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CiphertextMessage {
     SignalMessage(SignalMessage),
     PreKeySignalMessage(PreKeySignalMessage), // First message sent in new session using prekey bundle
@@ -69,6 +70,7 @@ pub struct SignalMessage {
     previous_counter: u32,
     ciphertext: Box<[u8]>,
     pq_ratchet: spqr::SerializedState,
+    addresses: Option<Box<[u8]>>,
     serialized: Box<[u8]>,
 }
 
@@ -79,6 +81,7 @@ impl SignalMessage {
     pub fn new(
         message_version: u8,
         mac_key: &[u8],
+        addresses: Option<(&ProtocolAddress, &ProtocolAddress)>,
         sender_ratchet_key: PublicKey,
         counter: u32,
         previous_counter: u32,
@@ -87,7 +90,8 @@ impl SignalMessage {
         receiver_identity_key: &IdentityKey,    // Bob's long-term identity key (ikB)
         pq_ratchet: &[u8],
     ) -> Result<Self> {
-        // Wraps fields into protobuf wire message used for sending over the network
+        let addresses =
+            addresses.and_then(|(sender, recipient)| Self::serialize_addresses(sender, recipient));
         let message = proto::wire::SignalMessage {
             ratchet_key: Some(sender_ratchet_key.serialize().into_vec()),
             counter: Some(counter),
@@ -98,6 +102,7 @@ impl SignalMessage {
             } else {
                 Some(pq_ratchet.to_vec())
             },
+            addresses,
         };
         let mut serialized = Vec::with_capacity(1 + message.encoded_len() + Self::MAC_LENGTH);
         serialized.push(((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION);
@@ -119,6 +124,7 @@ impl SignalMessage {
             previous_counter,
             ciphertext: ciphertext.into(),
             pq_ratchet: pq_ratchet.to_vec(),
+            addresses: message.addresses.map(Into::into),
             serialized,
         })
     }
@@ -153,8 +159,7 @@ impl SignalMessage {
         &self.ciphertext
     }
 
-    // Verify the Message Authentication Code
-    pub fn verify_mac(
+    pub(crate) fn verify_mac(
         &self,
         sender_identity_key: &IdentityKey,  // Alice's ik
         receiver_identity_key: &IdentityKey,    // Bob's ik
@@ -174,8 +179,49 @@ impl SignalMessage {
                 hex::encode(their_mac),
                 hex::encode(our_mac)
             );
+            return Ok(false);
         }
-        Ok(result)
+
+        Ok(true)
+    }
+
+    pub fn verify_mac_with_addresses(
+        &self,
+        sender_address: &ProtocolAddress,
+        recipient_address: &ProtocolAddress,
+        sender_identity_key: &IdentityKey,
+        receiver_identity_key: &IdentityKey,
+        mac_key: &[u8],
+    ) -> Result<bool> {
+        if !self.verify_mac(sender_identity_key, receiver_identity_key, mac_key)? {
+            return Ok(false);
+        }
+
+        // If the sender didn't include addresses, accept the message for
+        // backward compatibility with older clients.
+        let Some(encoded_addresses) = &self.addresses else {
+            return Ok(true);
+        };
+
+        let Some(expected) = Self::serialize_addresses(sender_address, recipient_address) else {
+            log::warn!(
+                "Locally supplied addresses not valid Service IDs: sender={}, recipient={}",
+                sender_address,
+                recipient_address,
+            );
+            return Ok(false);
+        };
+
+        if bool::from(expected.ct_eq(encoded_addresses.as_ref())) {
+            Ok(true)
+        } else {
+            log::warn!(
+                "Address mismatch: sender={}, recipient={}",
+                sender_address,
+                recipient_address,
+            );
+            Ok(false)
+        }
     }
 
     fn compute_mac(
@@ -199,6 +245,23 @@ impl SignalMessage {
             .first_chunk()
             .expect("enough bytes");
         Ok(result)
+    }
+
+    /// Serializes sender and recipient addresses into a single byte vector.
+    /// Returns `None` if either address name is not a valid ServiceId.
+    fn serialize_addresses(
+        sender: &ProtocolAddress,
+        recipient: &ProtocolAddress,
+    ) -> Option<Vec<u8>> {
+        let sender_service_id = ServiceId::parse_from_service_id_string(sender.name())?;
+        let recipient_service_id = ServiceId::parse_from_service_id_string(recipient.name())?;
+
+        let mut bytes = Vec::with_capacity(36);
+        bytes.extend_from_slice(&sender_service_id.service_id_fixed_width_binary());
+        bytes.push(sender.device_id().into());
+        bytes.extend_from_slice(&recipient_service_id.service_id_fixed_width_binary());
+        bytes.push(recipient.device_id().into());
+        Some(bytes)
     }
 }
 
@@ -250,6 +313,7 @@ impl TryFrom<&[u8]> for SignalMessage {   // Alice's SignalMessage that is recei
             previous_counter,
             ciphertext,
             pq_ratchet: proto_structure.pq_ratchet.unwrap_or(vec![]),
+            addresses: proto_structure.addresses.map(Into::into),
             serialized: Box::from(value),
         })
     }
@@ -472,13 +536,7 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
 
         let pvrf_payload = match proto_structure.pvrf_ciphertext {
             Some(ct) => Some(PvrfPayload::new(ct.into_boxed_slice())),
-            None if message_version <= CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION => None,
-            None => {
-                return Err(SignalProtocolError::InvalidMessage(
-                    CiphertextMessageType::PreKey,
-                    "PVRF ciphertext must be present for this session version",
-                ));
-            }
+            None => None,
         };
 
         Ok(PreKeySignalMessage {
@@ -959,13 +1017,46 @@ pub fn extract_decryption_error_message_from_serialized_content(
         .and_then(DecryptionErrorMessage::try_from)
 }
 
+/// A consistent way to determine, given a session that is not PQ
+/// and a ratio of sessions which if not PQ should be archived,
+/// which sessions to use (returning true) and which to archive
+/// (returning false).  The session key's first 4 bytes are used as
+/// a uniformly random big-endian integer as part of this calculation,
+/// which works well for a session's `alice_base_key()`.
+pub fn should_use_nonpq_session(require_pq_ratio: f64, session_key: &[u8]) -> bool {
+    assert!(session_key.len() >= 4);
+    if require_pq_ratio >= 1.0 {
+        return false;
+    } else if require_pq_ratio <= 0.0 {
+        return true;
+    }
+    // We have a chain, but it's not a PQ chain.
+    // We want to deterministically decide whether a session should be used
+    // based on a ratio between 0 and 1.  We also want the decision as to
+    // whether to use the session to be the same for Alice and Bob.
+    // The session key is a x25519 key, from which we pull out 4 bytes
+    // we expect to be relatively uniform.
+    let sess_u32 = u32::from_be_bytes(
+        (&session_key[..4])
+            .try_into()
+            .expect("should have 32 bytes"),
+    );
+    // We then convert the require_pq_ratio to a u32 that is 0xFF... for 1,
+    // 0x00... for 0, and uniform in between for other values.
+    #[allow(clippy::cast_possible_truncation)]
+    let ratio_u32 = ((u32::MAX as f64) * require_pq_ratio) as u32;
+    // Finally, we compare the two, and we only expire the existing session if
+    // its key is smaller than the ratio key.
+    ratio_u32 <= sess_u32
+}
+
 #[cfg(test)]
 mod tests {
     use rand::rngs::OsRng;
-    use rand::{CryptoRng, Rng, TryRngCore as _};
+    use rand::{CryptoRng, Rng, RngCore, TryRngCore as _};
 
     use super::*;
-    use crate::KeyPair;
+    use crate::{DeviceId, KeyPair};
 
     fn create_signal_message<T>(csprng: &mut T) -> Result<SignalMessage>
     where
@@ -982,10 +1073,19 @@ mod tests {
         let sender_ratchet_key_pair = KeyPair::generate(csprng);
         let sender_identity_key_pair = KeyPair::generate(csprng);
         let receiver_identity_key_pair = KeyPair::generate(csprng);
+        let sender_address = ProtocolAddress::new(
+            "31415926-5358-9793-2384-626433827950".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
+        let recipient_address = ProtocolAddress::new(
+            "27182818-2845-9045-2353-602874713526".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
 
         SignalMessage::new(
             4,
             &mac_key,
+            Some((&sender_address, &recipient_address)),
             sender_ratchet_key_pair.public_key,
             42,
             41,
@@ -1002,6 +1102,7 @@ mod tests {
         assert_eq!(m1.counter, m2.counter);
         assert_eq!(m1.previous_counter, m2.previous_counter);
         assert_eq!(m1.ciphertext, m2.ciphertext);
+        assert_eq!(m1.addresses, m2.addresses);
         assert_eq!(m1.serialized, m2.serialized);
     }
 
@@ -1067,6 +1168,137 @@ mod tests {
             pre_key_signal_message.serialized,
             deser_pre_key_signal_message.serialized
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_signal_message_verify_mac_accepts_legacy_message_without_addresses() -> Result<()> {
+        let mut csprng = OsRng.unwrap_err();
+        let mut mac_key = [0u8; 32];
+        csprng.fill_bytes(&mut mac_key);
+
+        let mut ciphertext = [0u8; 20];
+        csprng.fill_bytes(&mut ciphertext);
+
+        let sender_ratchet_key_pair = KeyPair::generate(&mut csprng);
+        let sender_identity_key_pair = KeyPair::generate(&mut csprng);
+        let receiver_identity_key_pair = KeyPair::generate(&mut csprng);
+        let sender_address = ProtocolAddress::new(
+            "16180339-8874-9894-8482-045868343656".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
+        let recipient_address = ProtocolAddress::new(
+            "14142135-6237-3095-0488-016887242096".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
+
+        let message = SignalMessage::new(
+            4,
+            &mac_key,
+            Some((&sender_address, &recipient_address)),
+            sender_ratchet_key_pair.public_key,
+            42,
+            41,
+            &ciphertext,
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            b"",
+        )?;
+
+        let mut proto_structure = proto::wire::SignalMessage::decode(
+            &message.serialized()[1..message.serialized().len() - SignalMessage::MAC_LENGTH],
+        )
+        .expect("valid protobuf");
+        proto_structure.addresses = None;
+
+        let mut serialized =
+            vec![((message.message_version() & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION];
+        proto_structure.encode(&mut serialized).expect("encodes");
+        let mac = SignalMessage::compute_mac(
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            &mac_key,
+            &serialized,
+        )?;
+        serialized.extend_from_slice(&mac);
+
+        let legacy_message = SignalMessage::try_from(serialized.as_slice())?;
+        assert!(legacy_message.verify_mac_with_addresses(
+            &sender_address,
+            &recipient_address,
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            &mac_key,
+        )?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_signal_message_verify_mac_rejects_wrong_address() -> Result<()> {
+        let mut csprng = OsRng.unwrap_err();
+        let mut mac_key = [0u8; 32];
+        csprng.fill_bytes(&mut mac_key);
+
+        let mut ciphertext = [0u8; 20];
+        csprng.fill_bytes(&mut ciphertext);
+
+        let sender_ratchet_key_pair = KeyPair::generate(&mut csprng);
+        let sender_identity_key_pair = KeyPair::generate(&mut csprng);
+        let receiver_identity_key_pair = KeyPair::generate(&mut csprng);
+        let sender_address = ProtocolAddress::new(
+            "deadbeef-cafe-babe-feed-faceb00c0ffe".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
+        let recipient_address = ProtocolAddress::new(
+            "01120358-1321-3455-0891-44233377610a".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
+        let wrong_address = ProtocolAddress::new(
+            "02030507-1113-1719-2329-313741434753".to_owned(),
+            DeviceId::new(1).unwrap(),
+        );
+
+        let message = SignalMessage::new(
+            4,
+            &mac_key,
+            Some((&sender_address, &recipient_address)),
+            sender_ratchet_key_pair.public_key,
+            42,
+            41,
+            &ciphertext,
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            b"",
+        )?;
+
+        // Wrong sender address should be rejected.
+        assert!(!message.verify_mac_with_addresses(
+            &wrong_address,
+            &recipient_address,
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            &mac_key,
+        )?);
+
+        // Wrong recipient address should be rejected.
+        assert!(!message.verify_mac_with_addresses(
+            &sender_address,
+            &wrong_address,
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            &mac_key,
+        )?);
+
+        // Correct addresses should be accepted.
+        assert!(message.verify_mac_with_addresses(
+            &sender_address,
+            &recipient_address,
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+            &mac_key,
+        )?);
+
         Ok(())
     }
 
@@ -1198,5 +1430,24 @@ mod tests {
             ),
             Err(SignalProtocolError::InvalidArgument(_))
         ));
+    }
+
+    #[test]
+    fn test_should_use_nonpq_session() {
+        let max = b"\xff\xff\xff\xff";
+        let min = b"\x00\x00\x00\x00";
+        let mid = b"\x7f\xff\xff\xff";
+        assert!(!should_use_nonpq_session(1.0, max));
+        assert!(!should_use_nonpq_session(1.0, min));
+        assert!(should_use_nonpq_session(0.0, max));
+        assert!(should_use_nonpq_session(0.0, min));
+
+        assert!(!should_use_nonpq_session(0.75, min));
+        assert!(!should_use_nonpq_session(0.75, mid));
+        assert!(should_use_nonpq_session(0.75, max));
+
+        assert!(!should_use_nonpq_session(0.25, min));
+        assert!(should_use_nonpq_session(0.25, mid));
+        assert!(should_use_nonpq_session(0.25, max));
     }
 }

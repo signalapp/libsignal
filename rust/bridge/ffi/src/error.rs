@@ -12,6 +12,7 @@ use libsignal_bridge::ffi::{
 use libsignal_bridge::{IllegalArgumentError, ffi_arg_type, ffi_result_type};
 use libsignal_bridge_macros::bridge_fn;
 use libsignal_core::ProtocolAddress;
+use libsignal_net::infra::errors::RetryLater;
 use libsignal_net_chat::api::ChallengeOption;
 use libsignal_net_chat::api::messages::MismatchedDeviceError;
 use uuid::Uuid;
@@ -146,17 +147,28 @@ fn Error_GetTriesRemaining(err: &SignalFfiError) -> Result<u32, IllegalArgumentE
     })
 }
 
+#[allow(clippy::type_complexity)]
 #[bridge_fn(jni = false, node = false)]
 fn Error_GetRateLimitChallenge(
     err: &SignalFfiError,
-) -> Result<(String, Box<[ChallengeOption]>), IllegalArgumentError> {
-    let libsignal_net_chat::api::RateLimitChallenge { token, options } =
-        err.provide_rate_limit_challenge().map_err(|_| {
-            IllegalArgumentError::new(format!(
-                "cannot get rate limit challenge error from error ({err})"
-            ))
-        })?;
-    Ok((token.clone(), options[..].into()))
+) -> Result<((String, Box<[ChallengeOption]>), i64), IllegalArgumentError> {
+    let libsignal_net_chat::api::RateLimitChallenge {
+        token,
+        options,
+        retry_later,
+    } = err.provide_rate_limit_challenge().map_err(|_| {
+        IllegalArgumentError::new(format!(
+            "cannot get rate limit challenge error from error ({err})"
+        ))
+    })?;
+    let retry_later = retry_later
+        .map(
+            |RetryLater {
+                 retry_after_seconds,
+             }| i64::from(retry_after_seconds),
+        )
+        .unwrap_or(-1);
+    Ok(((token.clone(), options[..].into()), retry_later))
 }
 
 #[bridge_fn(jni = false, node = false)]

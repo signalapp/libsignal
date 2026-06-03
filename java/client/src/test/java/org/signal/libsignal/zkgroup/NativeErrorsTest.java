@@ -5,12 +5,11 @@
 
 package org.signal.libsignal.zkgroup;
 
-import junit.framework.TestCase;
 import org.junit.Test;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.internal.*;
 
-public final class NativeErrorsTest extends TestCase {
+public final class NativeErrorsTest {
 
   @Test
   public void testBadNativeCalls() {

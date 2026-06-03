@@ -2,12 +2,13 @@ import groovy.json.JsonSlurper
 
 plugins {
     id 'com.android.library'
-    id 'kotlin-android'
     id 'maven-publish'
     id 'signing'
 }
 
-archivesBaseName = "libsignal-android"
+base {
+    archivesName = "libsignal-android"
+}
 
 repositories {
     google()
@@ -16,15 +17,15 @@ repositories {
 }
 
 android {
-    namespace 'org.signal.libsignal'
+    namespace = 'org.signal.libsignal'
 
     compileSdk 34
-    ndkVersion '28.0.13004108'
+    ndkVersion = '28.0.13004108'
 
     defaultConfig {
         minSdkVersion 23
         targetSdkVersion 33
-        multiDexEnabled true
+        multiDexEnabled = true
         testInstrumentationRunner "org.signal.libsignal.util.AndroidJUnitRunner"
         // Automatically propagate matching environment variables into Java properties.
         // See the custom AndroidJUnitRunner and TestEnvironment classes for more details.
@@ -32,7 +33,7 @@ android {
     }
 
     compileOptions {
-        coreLibraryDesugaringEnabled true
+        coreLibraryDesugaringEnabled = true
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
@@ -69,14 +70,14 @@ kotlin {
 }
 
 task dokkaHtmlJar(type: Jar) {
-    dependsOn(dokkaHtml)
-    from(dokkaHtml)
+    dependsOn(dokkaGeneratePublicationHtml)
+    from(dokkaGeneratePublicationHtml)
     archiveClassifier.set("dokka")
 }
 
 task dokkaJavadocJar(type: Jar) {
-    dependsOn(dokkaJavadoc)
-    from(dokkaJavadoc)
+    dependsOn(dokkaGeneratePublicationJavadoc)
+    from(dokkaGeneratePublicationJavadoc)
     archiveClassifier.set("javadoc")
 }
 
@@ -120,7 +121,8 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'com.googlecode.json-simple:json-simple:1.1'
     androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
-    androidTestImplementation 'org.jetbrains.kotlin:kotlin-test:2.1.0'
+    androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
+    androidTestImplementation 'org.jetbrains.kotlin:kotlin-test-junit:2.1.0'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.6'
     api project(':client')
 }
@@ -135,17 +137,18 @@ String[] archsFromProperty(String prop) {
 }
 
 task makeJniLibraries(type:Exec) {
-    group 'Rust'
-    description 'Build the JNI libraries for Android'
+    group = 'Rust'
+    description = 'Build the JNI libraries for Android'
 
     def archs = archsFromProperty('androidArchs') ?: ['android']
     def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
     def jniTypeTaggingFlag = project.hasProperty('jniTypeTagging') ? ['--jni-type-tagging'] : []
     def jniCheckAnnotationsFlag = project.hasProperty('jniCheckAnnotations') ? ['--jni-check-annotations'] : []
     def debugFlag = project.hasProperty('debugRust') ? ['--debug'] : []
+    def libsignalDebugFlag = project.hasProperty('libsignalDebug') ? ['--libsignal-debug'] : []
     // Explicitly specify 'bash' for Windows compatibility.
-    commandLine 'bash', '../build_jni.sh', *debugLevelLogsFlag, *jniTypeTaggingFlag, *jniCheckAnnotationsFlag, *debugFlag, *archs
-    environment 'ANDROID_NDK_HOME', android.ndkDirectory
+    commandLine 'bash', '../build_jni.sh', *libsignalDebugFlag, *debugLevelLogsFlag, *jniTypeTaggingFlag, *jniCheckAnnotationsFlag, *debugFlag, *archs
+    environment 'ANDROID_NDK_HOME', androidComponents.sdkComponents.ndkDirectory.get().asFile.absolutePath
 }
 
 task collectAssets(type:Copy) {
@@ -163,13 +166,13 @@ afterEvaluate {
     publishing {
         publications {
             mavenJava(MavenPublication) {
-                artifactId = archivesBaseName
+                artifactId = base.archivesName.get()
                 from components.release
                 artifact dokkaHtmlJar
                 artifact dokkaJavadocJar
 
                 pom {
-                    name = archivesBaseName
+                    name = base.archivesName.get()
                     packaging = 'aar'
                     description = 'Signal Protocol cryptography library for Android'
                     url = 'https://github.com/signalapp/libsignal'
@@ -199,7 +202,7 @@ afterEvaluate {
 
     setUpSigningKey(signing)
     signing {
-        required { isReleaseBuild() && gradle.taskGraph.hasTask(":android:publish") }
+        required = { isReleaseBuild() && gradle.taskGraph.hasTask(":android:publish") }
         sign publishing.publications.mavenJava
     }
 }

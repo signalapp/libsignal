@@ -7,12 +7,12 @@ plugins {
     id "signing"
     id "com.diffplug.spotless" version "7.2.1"
 
-    id "org.jetbrains.kotlin.jvm" version "2.1.0" apply false
-    id "org.jetbrains.dokka" version "2.0.0" apply false
+    id "org.jetbrains.kotlin.jvm" version "2.2.20" apply false
+    id "org.jetbrains.dokka" version "2.1.0" apply false
+    id "org.jetbrains.dokka-javadoc" version "2.1.0" apply false
 
-    // These plugins need to be loaded together, so we must declare them up front.
-    id 'com.android.library' version "8.10.1" apply false
-    id 'org.jetbrains.kotlin.android' version "2.1.0" apply false
+    // Declared here so the Android subprojects can apply it without a version.
+    id 'com.android.library' version "9.1.1" apply false
 }
 
 repositories {
@@ -22,7 +22,7 @@ repositories {
 }
 
 allprojects {
-    version = "0.86.14"
+    version = "0.94.4"
     group   = "org.signal"
 
     tasks.withType(JavaCompile) {
@@ -42,11 +42,12 @@ allprojects {
     }
 
     apply plugin: "org.jetbrains.dokka"
+    apply plugin: "org.jetbrains.dokka-javadoc"
 }
 
 task makeJniLibrariesDesktop(type:Exec) {
-  group 'Rust'
-  description 'Build the JNI libraries'
+  group = 'Rust'
+  description = 'Build the JNI libraries'
 
   def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
   def jniTypeTaggingFlag = project.hasProperty('jniTypeTagging') ? ['--jni-type-tagging'] : []
@@ -57,8 +58,8 @@ task makeJniLibrariesDesktop(type:Exec) {
 }
 
 task makeJniLibrariesServer(type:Exec) {
-  group 'Rust'
-  description 'Build the JNI libraries'
+  group = 'Rust'
+  description = 'Build the JNI libraries'
 
   def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
   def jniTypeTaggingFlag = project.hasProperty('jniTypeTagging') ? ['--jni-type-tagging'] : []
@@ -70,12 +71,12 @@ task makeJniLibrariesServer(type:Exec) {
 }
 
 task cargoClean(type:Exec) {
-  group 'Rust'
+  group = 'Rust'
   commandLine 'cargo', 'clean'
 }
 
 task cleanJni(type: Delete) {
-  description 'Clean JNI libs'
+  description = 'Clean JNI libs'
   delete fileTree('./android/src/main/jniLibs') {
     include '**/*.so'
   }

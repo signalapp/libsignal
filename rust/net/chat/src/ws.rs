@@ -6,6 +6,8 @@
 //! The `ws` module and its submodules implement a chat server based on REST-like requests over a
 //! websocket, as implemented in [`libsignal_net::chat`].
 
+mod backups;
+mod keys;
 mod keytrans;
 mod messages;
 mod profiles;
@@ -16,17 +18,20 @@ mod usernames;
 use std::future::Future;
 use std::time::Duration;
 
-use base64::Engine as _;
-use base64::prelude::BASE64_STANDARD;
+use base64::prelude::{BASE64_STANDARD, Engine as _};
 use http::StatusCode;
 use libsignal_net::chat;
+use libsignal_net::chat::{Request, Response, SendError};
 use libsignal_net::infra::errors::LogSafeDisplay;
+use libsignal_net::infra::http_client::Http2Client;
 use libsignal_net::infra::{AsHttpHeader, extract_retry_later};
 use serde_with::serde_as;
 
 use crate::api::{
-    ChallengeOption, DisconnectedError, RateLimitChallenge, RequestError, UserBasedAuthorization,
+    AllowRateLimitChallenges, ChallengeOption, DisconnectedError, RateLimitChallenge, RequestError,
+    UploadForm, UserBasedAuthorization,
 };
+use crate::grpc::GrpcServiceProvider;
 use crate::logging::DebugAsStrOrBytes;
 
 const ACCESS_KEY_HEADER_NAME: http::HeaderName =
@@ -41,6 +46,13 @@ impl AsHttpHeader for UserBasedAuthorization {
                 ACCESS_KEY_HEADER_NAME,
                 BASE64_STANDARD.encode(key).parse().expect("valid"),
             ),
+            UserBasedAuthorization::UnrestrictedUnauthenticatedAccess => (
+                ACCESS_KEY_HEADER_NAME,
+                BASE64_STANDARD
+                    .encode([0; zkgroup::ACCESS_KEY_LEN])
+                    .parse()
+                    .expect("valid"),
+            ),
             UserBasedAuthorization::Group(token) => (
                 GROUP_SEND_TOKEN_HEADER_NAME,
                 BASE64_STANDARD
@@ -51,6 +63,24 @@ impl AsHttpHeader for UserBasedAuthorization {
         }
     }
 }
+
+/// A "remote" serde implementation to avoid putting serde traits on the public [`UploadForm`].
+///
+/// Use [`GetUploadFormResponse`] to receive [`UploadForm`]s using this implementation.
+#[serde_as]
+#[derive(serde::Deserialize)]
+#[serde(remote = "UploadForm")]
+struct UploadFormSerde {
+    cdn: u32,
+    key: String,
+    #[serde_as(as = "serde_with::Map<_, _>")]
+    headers: Vec<(String, String)>,
+    #[serde(rename = "signedUploadLocation")]
+    signed_upload_url: String,
+}
+
+#[derive(serde::Deserialize)]
+struct GetUploadFormResponse(#[serde(with = "UploadFormSerde")] UploadForm);
 
 /// Marker type for use in [`crate::api`] traits.
 pub enum OverWs {}
@@ -63,6 +93,38 @@ pub trait WsConnection: Sync {
         log_safe_path: &str,
         request: chat::Request,
     ) -> impl Future<Output = Result<chat::Response, chat::SendError>> + Send;
+
+    fn grpc_service_to_use_instead(
+        &self,
+        message: &'static str,
+    ) -> Option<impl crate::grpc::GrpcServiceProvider> {
+        let _ = message;
+        None::<Http2Client<chat::GrpcBody>>
+    }
+
+    fn self_aci(&self) -> Option<libsignal_core::Aci>;
+}
+
+impl<T: WsConnection> WsConnection for &T {
+    fn send(
+        &self,
+        log_tag: &'static str,
+        log_safe_path: &str,
+        request: Request,
+    ) -> impl Future<Output = Result<Response, SendError>> + Send {
+        <T as WsConnection>::send(self, log_tag, log_safe_path, request)
+    }
+
+    fn grpc_service_to_use_instead(
+        &self,
+        message: &'static str,
+    ) -> Option<impl GrpcServiceProvider> {
+        <T as WsConnection>::grpc_service_to_use_instead(self, message)
+    }
+
+    fn self_aci(&self) -> Option<libsignal_core::Aci> {
+        <T as WsConnection>::self_aci(self)
+    }
 }
 
 impl WsConnection for chat::ChatConnection {
@@ -106,6 +168,24 @@ impl WsConnection for chat::ChatConnection {
         }
 
         result
+    }
+
+    fn grpc_service_to_use_instead(
+        &self,
+        message: &'static str,
+    ) -> Option<impl crate::grpc::GrpcServiceProvider> {
+        match self
+            .grpc_overrides()
+            .get(message)
+            .unwrap_or(&chat::GrpcOverride::UseWs)
+        {
+            chat::GrpcOverride::UseGrpc => self.shared_h2_connection(),
+            chat::GrpcOverride::UseWs => None,
+        }
+    }
+
+    fn self_aci(&self) -> Option<libsignal_core::Aci> {
+        self.self_aci()
     }
 }
 
@@ -174,6 +254,7 @@ impl ResponseError {
     /// response codes (like 429 Too Many Requests).
     pub(crate) fn into_request_error<E, D>(
         self,
+        allow_rate_limit_errors: AllowRateLimitChallenges,
         map_unrecognized: impl FnOnce(&chat::Response) -> CustomError<E>,
     ) -> RequestError<E, D> {
         match self {
@@ -205,7 +286,9 @@ impl ResponseError {
                             return RequestError::RetryLater(retry_later);
                         }
                     }
-                    if status.as_u16() == 428 {
+                    if status.as_u16() == 428
+                        && allow_rate_limit_errors == AllowRateLimitChallenges::Yes
+                    {
                         #[serde_as]
                         #[derive(serde::Deserialize)]
                         struct ChallengeBody {
@@ -217,7 +300,11 @@ impl ResponseError {
                         if let Ok(ChallengeBody { token, options }) =
                             parse_json_from_body(&response)
                         {
-                            return RequestError::Challenge(RateLimitChallenge { token, options });
+                            return RequestError::Challenge(RateLimitChallenge {
+                                token,
+                                options,
+                                retry_later: extract_retry_later(headers),
+                            });
                         }
                     }
                     if status.as_u16() == 422 {
@@ -328,9 +415,20 @@ where
     })
 }
 
+fn expect_empty_body(response: &chat::Response, label: &'static str) {
+    if !response.body.as_deref().unwrap_or_default().is_empty() {
+        log::warn!(
+            "ignoring body for {} result from {}",
+            response.status.as_u16(),
+            label
+        );
+    }
+}
+
 #[cfg(test)]
 mod testutil {
     use super::*;
+    use crate::api::testutil::TEST_SELF_ACI;
 
     pub(crate) fn json(status: u16, body: impl AsRef<[u8]>) -> chat::Response {
         chat::Response {
@@ -365,6 +463,18 @@ mod testutil {
         }
     }
 
+    pub(crate) fn with_headers(
+        headers: &[(http::HeaderName, &'static str)],
+        mut response: chat::Response,
+    ) -> chat::Response {
+        response.headers.extend(
+            headers
+                .iter()
+                .map(|(k, v)| (k.clone(), http::HeaderValue::from_static(v))),
+        );
+        response
+    }
+
     pub(crate) struct RequestValidator {
         pub expected: chat::Request,
         pub response: chat::Response,
@@ -380,6 +490,52 @@ mod testutil {
             pretty_assertions::assert_eq!(self.expected, request);
             std::future::ready(Ok(self.response.clone()))
         }
+
+        fn self_aci(&self) -> Option<libsignal_core::Aci> {
+            Some(TEST_SELF_ACI)
+        }
+    }
+
+    pub(crate) struct JsonRequestValidator {
+        pub expected: chat::Request,
+        pub body: serde_json::Value,
+        pub response: chat::Response,
+    }
+
+    impl WsConnection for JsonRequestValidator {
+        fn send(
+            &self,
+            _log_tag: &'static str,
+            _log_safe_path: &str,
+            request: chat::Request,
+        ) -> impl Future<Output = Result<chat::Response, chat::SendError>> + Send {
+            let chat::Request {
+                method,
+                path,
+                headers,
+                body: body_from_expected_request,
+            } = &self.expected;
+
+            assert!(
+                body_from_expected_request.is_none(),
+                "expected.body should be None; the body is instead compared against the provided serde_json::Value"
+            );
+
+            pretty_assertions::assert_eq!(method, request.method);
+            pretty_assertions::assert_eq!(*path, request.path);
+            pretty_assertions::assert_eq!(*headers, request.headers);
+
+            let request_body: serde_json::Value =
+                serde_json::from_slice(&request.body.unwrap_or_default())
+                    .expect("body should be JSON");
+            pretty_assertions::assert_eq!(self.body, request_body);
+
+            std::future::ready(Ok(self.response.clone()))
+        }
+
+        fn self_aci(&self) -> Option<libsignal_core::Aci> {
+            Some(TEST_SELF_ACI)
+        }
     }
 
     pub(crate) struct ProduceResponse(pub chat::Response);
@@ -392,6 +548,10 @@ mod testutil {
             _request: chat::Request,
         ) -> impl Future<Output = Result<chat::Response, chat::SendError>> + Send {
             std::future::ready(Ok(self.0.clone()))
+        }
+
+        fn self_aci(&self) -> Option<libsignal_core::Aci> {
+            Some(TEST_SELF_ACI)
         }
     }
 }
@@ -419,15 +579,39 @@ mod test {
     #[test_case(json(428, "{}") => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
     #[test_case(json(
         428, r#"{"token": "zzz", "options": ["captcha"]}"#
-    ) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
+    ) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options, retry_later: None })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
+    #[test_case(with_headers(&[(http::header::RETRY_AFTER, "42")], json(
+        428, r#"{"token": "zzz", "options": ["captcha"]}"#
+    )) => matches Err(RequestError::Challenge(RateLimitChallenge { token, options, retry_later: Some(
+        RetryLater { retry_after_seconds: 42 }
+    ) })) if token == "zzz" && options == vec![ChallengeOption::Captcha])]
     #[test_case(empty(422) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("server validation"))]
     #[test_case(empty(419) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("419"))]
     fn try_parse_empty(
         input: chat::Response,
     ) -> Result<Empty, RequestError<std::convert::Infallible>> {
-        input
-            .try_into_response()
-            .map_err(|e| e.into_request_error(CustomError::no_custom_handling))
+        input.try_into_response().map_err(|e| {
+            e.into_request_error(
+                AllowRateLimitChallenges::Yes,
+                CustomError::no_custom_handling,
+            )
+        })
+    }
+
+    #[test_case(empty(428) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
+    #[test_case(json(428, "{}") => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
+    #[test_case(json(
+        428, r#"{"token": "zzz", "options": ["captcha"]}"#
+    ) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
+    fn try_parse_empty_without_rate_limit_challenges(
+        input: chat::Response,
+    ) -> Result<Empty, RequestError<std::convert::Infallible>> {
+        input.try_into_response().map_err(|e| {
+            e.into_request_error(
+                AllowRateLimitChallenges::No,
+                CustomError::no_custom_handling,
+            )
+        })
     }
 
     #[derive(Debug, serde::Deserialize)]
@@ -450,8 +634,11 @@ mod test {
     fn try_parse_json(
         input: chat::Response,
     ) -> Result<Example, RequestError<std::convert::Infallible>> {
-        input
-            .try_into_response()
-            .map_err(|e| e.into_request_error(CustomError::no_custom_handling))
+        input.try_into_response().map_err(|e| {
+            e.into_request_error(
+                AllowRateLimitChallenges::Yes,
+                CustomError::no_custom_handling,
+            )
+        })
     }
 }

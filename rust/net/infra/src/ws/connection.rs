@@ -38,7 +38,8 @@ use crate::ws::{Config, TextOrBinary, WebSocketError, WebSocketStreamLike};
 pub struct Connection<S, R> {
     /// The client end of a websocket.
     ///
-    /// This should implement [`Stream`] and [`Sink`] for websocket [`Message`]s.
+    /// This should implement [`Stream`] and [`Sink`](futures_util::Sink) for websocket
+    /// [`Message`]s.
     #[pin]
     stream: S,
 

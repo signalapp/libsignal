@@ -1,0 +1,327 @@
+//
+// Copyright 2026 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+use async_trait::async_trait;
+use libsignal_bridge_macros::bridge_callbacks;
+use libsignal_core::ProtocolAddress;
+use libsignal_protocol::{
+    Direction, IdentityChange, IdentityKey, IdentityKeyPair, IdentityKeyStore, KyberPreKeyId,
+    KyberPreKeyRecord, KyberPreKeyStore, PreKeyId, PreKeyRecord, PreKeyStore, PrivateKey,
+    PublicKey, SenderKeyRecord, SenderKeyStore, SessionRecord, SessionStore, SignalProtocolError,
+    SignedPreKeyId, SignedPreKeyRecord, SignedPreKeyStore,
+};
+use uuid::Uuid;
+
+use crate::support::{BridgedCallbacks, ResultLike, WithContext};
+use crate::*;
+
+/// A bridge-friendly version of [`IdentityKeyStore`].
+#[bridge_callbacks(
+    ffi = "FfiIdentityKeyStore",
+    jni = "org.signal.libsignal.protocol.state.internal.IdentityKeyStore",
+    node = "IdentityKeyStore"
+)]
+trait BridgeIdentityKeyStore {
+    async fn get_local_identity_key_pair(
+        &self,
+    ) -> Result<(PrivateKey, PublicKey), SignalProtocolError>;
+    async fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError>;
+    async fn get_identity_key(
+        &self,
+        address: ProtocolAddress,
+    ) -> Result<Option<PublicKey>, SignalProtocolError>;
+    // TODO: Use AsType for stronger types on these raw integers.
+    async fn save_identity_key(
+        &self,
+        address: ProtocolAddress,
+        public_key: PublicKey,
+    ) -> Result</*IdentityChange*/ u8, SignalProtocolError>;
+    async fn is_trusted_identity(
+        &self,
+        address: ProtocolAddress,
+        public_key: PublicKey,
+        direction: /*Direction*/ u32,
+    ) -> Result<bool, SignalProtocolError>;
+}
+
+#[derive(Debug)]
+#[repr(C)]
+pub enum FfiDirection {
+    Sending = 0,
+    Receiving = 1,
+}
+
+#[async_trait(?Send)]
+impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedCallbacks<T> {
+    async fn get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalProtocolError> {
+        let (priv_key, pub_key) = self.0.get_local_identity_key_pair().await?;
+        Ok(IdentityKeyPair::new(IdentityKey::new(pub_key), priv_key))
+    }
+
+    async fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError> {
+        self.0.get_local_registration_id().await
+    }
+
+    async fn save_identity(
+        &mut self,
+        address: &ProtocolAddress,
+        identity: &IdentityKey,
+    ) -> Result<IdentityChange, SignalProtocolError> {
+        let raw_result = self
+            .0
+            .save_identity_key(address.clone(), *identity.public_key())
+            .await?;
+        IdentityChange::try_from(isize::from(raw_result)).map_err(|_| {
+            SignalProtocolError::FfiBindingError(format!(
+                "invalid result for save_identity: {raw_result}"
+            ))
+        })
+    }
+
+    async fn is_trusted_identity(
+        &self,
+        address: &ProtocolAddress,
+        identity: &IdentityKey,
+        direction: Direction,
+    ) -> Result<bool, SignalProtocolError> {
+        let direction = match direction {
+            Direction::Sending => FfiDirection::Sending,
+            Direction::Receiving => FfiDirection::Receiving,
+        };
+        self.0
+            .is_trusted_identity(address.clone(), *identity.public_key(), direction as u32)
+            .await
+    }
+
+    async fn get_identity(
+        &self,
+        address: &ProtocolAddress,
+    ) -> Result<Option<IdentityKey>, SignalProtocolError> {
+        Ok(self
+            .0
+            .get_identity_key(address.clone())
+            .await?
+            .map(IdentityKey::new))
+    }
+}
+
+/// A bridge-friendly version of [`PreKeyStore`].
+#[bridge_callbacks(
+    ffi = "FfiPreKeyStore",
+    jni = "org.signal.libsignal.protocol.state.internal.PreKeyStore",
+    node = "PreKeyStore"
+)]
+pub(crate) trait BridgePreKeyStore {
+    async fn load_pre_key(&self, id: u32) -> Result<Option<PreKeyRecord>, SignalProtocolError>;
+    async fn store_pre_key(&self, id: u32, record: PreKeyRecord)
+    -> Result<(), SignalProtocolError>;
+    async fn remove_pre_key(&self, id: u32) -> Result<(), SignalProtocolError>;
+}
+
+#[async_trait(?Send)]
+impl<T: BridgePreKeyStore> PreKeyStore for BridgedCallbacks<T> {
+    async fn get_pre_key(&self, pre_key_id: PreKeyId) -> Result<PreKeyRecord, SignalProtocolError> {
+        self.0
+            .load_pre_key(pre_key_id.into())
+            .await?
+            .ok_or(SignalProtocolError::InvalidPreKeyId)
+    }
+
+    async fn save_pre_key(
+        &mut self,
+        pre_key_id: PreKeyId,
+        record: &PreKeyRecord,
+    ) -> Result<(), SignalProtocolError> {
+        self.0
+            .store_pre_key(pre_key_id.into(), record.clone())
+            .await
+    }
+
+    async fn remove_pre_key(&mut self, pre_key_id: PreKeyId) -> Result<(), SignalProtocolError> {
+        self.0.remove_pre_key(pre_key_id.into()).await
+    }
+}
+
+/// A bridge-friendly version of [`SignedPreKeyStore`].
+#[bridge_callbacks(
+    ffi = "FfiSignedPreKeyStore",
+    jni = "org.signal.libsignal.protocol.state.internal.SignedPreKeyStore",
+    node = "SignedPreKeyStore"
+)]
+pub(crate) trait BridgeSignedPreKeyStore {
+    async fn load_signed_pre_key(
+        &self,
+        id: u32,
+    ) -> Result<Option<SignedPreKeyRecord>, SignalProtocolError>;
+    async fn store_signed_pre_key(
+        &self,
+        id: u32,
+        record: SignedPreKeyRecord,
+    ) -> Result<(), SignalProtocolError>;
+}
+
+#[async_trait(?Send)]
+impl<T: BridgeSignedPreKeyStore> SignedPreKeyStore for BridgedCallbacks<T> {
+    /// Look up the signed pre-key corresponding to `signed_prekey_id`.
+    async fn get_signed_pre_key(
+        &self,
+        signed_prekey_id: SignedPreKeyId,
+    ) -> Result<SignedPreKeyRecord, SignalProtocolError> {
+        self.0
+            .load_signed_pre_key(signed_prekey_id.into())
+            .await?
+            .ok_or(SignalProtocolError::InvalidSignedPreKeyId)
+    }
+
+    /// Set the entry for `signed_prekey_id` to the value of `record`.
+    async fn save_signed_pre_key(
+        &mut self,
+        signed_prekey_id: SignedPreKeyId,
+        record: &SignedPreKeyRecord,
+    ) -> Result<(), SignalProtocolError> {
+        self.0
+            .store_signed_pre_key(signed_prekey_id.into(), record.clone())
+            .await
+    }
+}
+
+/// A bridge-friendly version of [`KyberPreKeyStore`].
+#[bridge_callbacks(
+    ffi = "FfiKyberPreKeyStore",
+    jni = "org.signal.libsignal.protocol.state.internal.KyberPreKeyStore",
+    node = "KyberPreKeyStore"
+)]
+pub(crate) trait BridgeKyberPreKeyStore {
+    async fn load_kyber_pre_key(
+        &self,
+        id: u32,
+    ) -> Result<Option<KyberPreKeyRecord>, SignalProtocolError>;
+    async fn store_kyber_pre_key(
+        &self,
+        id: u32,
+        record: KyberPreKeyRecord,
+    ) -> Result<(), SignalProtocolError>;
+    async fn mark_kyber_pre_key_used(
+        &self,
+        id: u32,
+        ec_prekey_id: u32,
+        base_key: PublicKey,
+    ) -> Result<(), SignalProtocolError>;
+}
+
+#[async_trait(?Send)]
+impl<T: BridgeKyberPreKeyStore> KyberPreKeyStore for BridgedCallbacks<T> {
+    async fn get_kyber_pre_key(
+        &self,
+        id: KyberPreKeyId,
+    ) -> Result<KyberPreKeyRecord, SignalProtocolError> {
+        BridgeKyberPreKeyStore::load_kyber_pre_key(&self.0, id.into())
+            .await?
+            .ok_or(SignalProtocolError::InvalidKyberPreKeyId)
+    }
+
+    async fn save_kyber_pre_key(
+        &mut self,
+        id: KyberPreKeyId,
+        record: &KyberPreKeyRecord,
+    ) -> Result<(), SignalProtocolError> {
+        BridgeKyberPreKeyStore::store_kyber_pre_key(&self.0, id.into(), record.clone()).await
+    }
+
+    async fn mark_kyber_pre_key_used(
+        &mut self,
+        id: KyberPreKeyId,
+        ec_prekey_id: SignedPreKeyId,
+        base_key: &PublicKey,
+    ) -> Result<(), SignalProtocolError> {
+        BridgeKyberPreKeyStore::mark_kyber_pre_key_used(
+            &self.0,
+            id.into(),
+            ec_prekey_id.into(),
+            *base_key,
+        )
+        .await
+    }
+}
+
+/// A bridge-friendly version of [`SessionStore`].
+#[bridge_callbacks(
+    ffi = "FfiSessionStore",
+    jni = "org.signal.libsignal.protocol.state.internal.SessionStore",
+    node = "SessionStore"
+)]
+pub(crate) trait BridgeSessionStore {
+    async fn load_session(
+        &self,
+        address: ProtocolAddress,
+    ) -> Result<Option<SessionRecord>, SignalProtocolError>;
+    async fn store_session(
+        &self,
+        address: ProtocolAddress,
+        record: SessionRecord,
+    ) -> Result<(), SignalProtocolError>;
+}
+
+#[async_trait(?Send)]
+impl<T: BridgeSessionStore> SessionStore for BridgedCallbacks<T> {
+    async fn load_session(
+        &self,
+        address: &ProtocolAddress,
+    ) -> Result<Option<SessionRecord>, SignalProtocolError> {
+        self.0.load_session(address.clone()).await
+    }
+
+    async fn store_session(
+        &mut self,
+        address: &ProtocolAddress,
+        record: &SessionRecord,
+    ) -> Result<(), SignalProtocolError> {
+        self.0.store_session(address.clone(), record.clone()).await
+    }
+}
+
+/// A bridge-friendly version of [`SenderKeyStore`].
+#[bridge_callbacks(
+    ffi = "FfiSenderKeyStore",
+    jni = "org.signal.libsignal.protocol.state.internal.SenderKeyStore",
+    node = "SenderKeyStore"
+)]
+trait BridgeSenderKeyStore {
+    async fn load_sender_key(
+        &self,
+        sender: ProtocolAddress,
+        distribution_id: Uuid,
+    ) -> Result<Option<SenderKeyRecord>, SignalProtocolError>;
+    async fn store_sender_key(
+        &self,
+        sender: ProtocolAddress,
+        distribution_id: Uuid,
+        record: SenderKeyRecord,
+    ) -> Result<(), SignalProtocolError>;
+}
+
+#[async_trait(?Send)]
+impl<T: BridgeSenderKeyStore> SenderKeyStore for BridgedCallbacks<T> {
+    async fn store_sender_key(
+        &mut self,
+        sender: &ProtocolAddress,
+        distribution_id: Uuid,
+        record: &SenderKeyRecord,
+    ) -> Result<(), SignalProtocolError> {
+        self.0
+            .store_sender_key(sender.clone(), distribution_id, record.clone())
+            .await
+    }
+
+    async fn load_sender_key(
+        &mut self,
+        sender: &ProtocolAddress,
+        distribution_id: Uuid,
+    ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
+        self.0
+            .load_sender_key(sender.clone(), distribution_id)
+            .await
+    }
+}

@@ -28,7 +28,7 @@ env:
   # https://doc.rust-lang.org/cargo/reference/profiles.html#debug
   CARGO_PROFILE_DEV_DEBUG: limited
   DO_CLEAN_BUILD_AND_POPULATE_CACHE: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
-  SHOULD_USE_CARGO_CACHE: ${{ secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.R2_ENDPOINT != '' && inputs.skip_cargo_cache != true }}
+  SHOULD_USE_CARGO_CACHE: ${{ secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.R2_ENDPOINT != '' && secrets.R2_BUCKET_NAME != '' && inputs.skip_cargo_cache != true }}
 
 jobs:
   changes:
@@ -49,11 +49,12 @@ jobs:
       rust_ios: ${{ steps.filter.outputs.rust_ios }}
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
 
-    - uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0
+    - uses: dorny/paths-filter@9d7afb8d214ad99e78fbd4247752c4caed2b6e4c # v4.0
+
       id: filter
       with:
         filters: |
@@ -137,7 +138,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
 
@@ -156,7 +157,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         job-name: rust-${{ matrix.version }}
@@ -180,7 +181,7 @@ jobs:
       if: matrix.version == 'nightly'
 
     - name: Rust docs
-      run: cargo +${{ matrix.toolchain }} doc --workspace --all-features --keep-going
+      run: cargo +${{ matrix.toolchain }} doc --workspace --all-features --no-deps --document-private-items --keep-going
       if: matrix.version == 'stable'
       env:
         RUSTDOCFLAGS: -D warnings
@@ -192,7 +193,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         key: ${{ steps['rust-cache'].outputs['cache-key'] }}
@@ -220,11 +221,11 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
 
-    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib
+    - run: sudo apt-get install -U gcc-multilib g++-multilib
 
     - name: Install protoc
       run: ./bin/install_protoc_linux
@@ -241,7 +242,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         job-name: rust32-${{ matrix.version }}
@@ -250,6 +251,9 @@ jobs:
     - name: Run tests (32-bit)
       # Exclude signal-neon-futures because those tests run Node
       run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures --no-fail-fast -- --include-ignored
+      env:
+        CFLAGS: "-msse2" # for BoringSSL
+        CXXFLAGS: "-msse2" # for BoringSSL
 
     - name: Save cargo cache
       if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
@@ -258,7 +262,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         key: ${{ steps['rust-cache'].outputs['cache-key'] }}
@@ -273,7 +277,7 @@ jobs:
     if: ${{ needs.changes.outputs.rust == 'true' }}
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
 
@@ -297,7 +301,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         job-name: rust-fuzz-build
@@ -325,7 +329,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         key: ${{ steps['rust-cache'].outputs['cache-key'] }}
@@ -342,7 +346,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
 
@@ -359,7 +363,7 @@ jobs:
       run: rustup toolchain install "${{ steps.rust-fmt-toolchain.outputs.pinned-nightly-toolchain }}" --profile minimal --component rustfmt
 
     - name: Cache locally-built tools
-      uses: runs-on/cache@3a15256b3556fbc5ae15f7f04598e4c7680e9c25 # v4
+      uses: runs-on/cache@575425708ccb521bfce731e8d8a67f7f337b8954 # main as of 2026-04-10
       with:
         path: local-tools
         key: local-tools-${{ runner.os }}-infra-${{ hashFiles('acknowledgments/cargo-about-version', '.taplo-cli-version') }}
@@ -386,7 +390,7 @@ jobs:
       working-directory: rust/protocol/cross-version-testing
 
     - name: Check acknowledgments
-      run: PATH="$PATH:$PWD/local-tools/bin" ./bin/regenerate_acknowledgments.sh && git diff --exit-code acknowledgments
+      run: PATH="$PATH:$PWD/local-tools/bin" ./bin/regenerate_acknowledgments.sh --check
 
   java_android:
     name: Java Android
@@ -407,7 +411,7 @@ jobs:
     steps:
     - run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
 
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
         # Download all commits so we can search for the merge base with origin/main.
@@ -434,12 +438,12 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         job-name: java-android
 
-    - run: ./gradlew --dependency-verification strict :android:build :android:assembleAndroidTest :android:lintDebug :android:packaging-test:assembleDebugAndroidTest :android:benchmarks:assembleReleaseAndroidTest -PandroidArchs=arm,arm64 -x :makeJniLibrariesDesktop | tee ./gradle-output.txt
+    - run: ./gradlew --dependency-verification strict --warning-mode fail :android:build :android:assembleAndroidTest :android:lintDebug :android:packaging-test:assembleDebugAndroidTest :android:benchmarks:assembleReleaseAndroidTest -PandroidArchs=arm,arm64 -x :makeJniLibrariesDesktop | tee ./gradle-output.txt
       working-directory: java
       shell: bash # Explicitly setting the shell turns on pipefail in GitHub Actions
 
@@ -460,7 +464,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         key: ${{ steps['rust-cache'].outputs['cache-key'] }}
@@ -482,7 +486,7 @@ jobs:
     steps:
     - run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
 
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
         fetch-depth: 0
@@ -504,7 +508,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         job-name: java-jvm
@@ -512,7 +516,7 @@ jobs:
     - name: Verify that the JNI bindings are up to date
       run: rust/bridge/jni/bin/gen_java_decl.py --verify
 
-    - run: ./gradlew --dependency-verification strict build -PskipAndroid
+    - run: ./gradlew --dependency-verification strict --warning-mode fail build -PskipAndroid
       working-directory: java
 
     - name: Save cargo cache
@@ -522,7 +526,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         key: ${{ steps['rust-cache'].outputs['cache-key'] }}
@@ -543,7 +547,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
 
@@ -557,7 +561,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         job-name: node
@@ -580,16 +584,16 @@ jobs:
     - run: brew install protobuf
       if: startsWith(matrix.os, 'macos-')
 
-    - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+    - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version-file: '.nvmrc'
 
-    - name: Verify that the Node bindings are up to date
-      run: rust/bridge/node/bin/gen_ts_decl.py --verify
-      if: startsWith(matrix.os, 'ubuntu-')
-
     - run: npm ci
       working-directory: node
+
+    - name: Verify that the Node bindings are up to date
+      run: cargo run -p libsignal-node-native_ts -- --verify
+      if: startsWith(matrix.os, 'ubuntu-')
 
     - run: npm run build
       working-directory: node
@@ -615,7 +619,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         key: ${{ steps['rust-cache'].outputs['cache-key'] }}
@@ -632,7 +636,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
 
@@ -646,7 +650,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         job-name: swift-package
@@ -678,7 +682,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_REGION: us-east-1
-        RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+        RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
         RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       with:
         key: ${{ steps['rust-cache'].outputs['cache-key'] }}
@@ -702,9 +706,11 @@ jobs:
 
     env:
       LIBSIGNAL_TESTING_ONLY_ACTIVE_ARCH: 1
+      # For Swift 6.2. Can be removed when advancing to the macos-26 runner.
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: recursive
 
@@ -728,7 +734,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_REGION: us-east-1
-          RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+          RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
           RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
         with:
           job-name: swift-cocoapod
@@ -740,6 +746,8 @@ jobs:
 
       - name: Run pod lint
         run: pod lib lint --verbose --platforms=ios --skip-tests
+        env:
+          LIBSIGNAL_TESTING_DISABLE_EXPLICIT_MODULES: 1
 
       - name: Save cargo cache
         if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}
@@ -748,7 +756,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_REGION: us-east-1
-          RUNS_ON_S3_BUCKET_CACHE: libsignal-ci-cache
+          RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
           RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
         with:
           key: ${{ steps['rust-cache'].outputs['cache-key'] }}

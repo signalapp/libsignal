@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::future::Future;
 use std::panic::{RefUnwindSafe, UnwindSafe};
@@ -18,7 +19,6 @@ use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_bridge_macros::bridge_callbacks;
-use libsignal_net::auth::Auth;
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::ws::ListenerEvent;
@@ -34,9 +34,9 @@ use libsignal_net::infra::route::{
     RouteProviderExt, TcpRoute, TlsRoute, UnresolvedHttpsServiceRoute,
 };
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
-use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls};
-use libsignal_net_chat::api::Unauth;
-use libsignal_protocol::Timestamp;
+use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagleAlgorithm};
+use libsignal_net_chat::api::{Auth as AuthConn, Unauth};
+use libsignal_protocol::{IdentityKey, PreKeyBundle, Timestamp};
 use static_assertions::assert_impl_all;
 
 use crate::net::ConnectionManager;
@@ -55,7 +55,11 @@ pub struct UnauthenticatedChatConnection {
     /// reader/writer contention.
     inner: tokio::sync::RwLock<MaybeChatConnection>,
 }
-bridge_as_handle!(UnauthenticatedChatConnection);
+bridge_as_handle!(
+    UnauthenticatedChatConnection,
+    swift_type = "UnauthenticatedChatConnection",
+    jni_class = "org.signal.libsignal.net.UnauthenticatedChatConnection",
+);
 impl UnwindSafe for UnauthenticatedChatConnection {}
 impl RefUnwindSafe for UnauthenticatedChatConnection {}
 
@@ -89,10 +93,11 @@ impl RefUnwindSafe for ProvisioningChatConnection {}
 #[expect(clippy::large_enum_variant)]
 enum MaybeChatConnection {
     Running(ChatConnection),
-    WaitingForListener(
-        tokio::runtime::Handle,
-        tokio::sync::Mutex<chat::PendingChatConnection>,
-    ),
+    WaitingForListener {
+        runtime: tokio::runtime::Handle,
+        pending: tokio::sync::Mutex<chat::PendingChatConnection>,
+        grpc_overrides: HashMap<&'static str, chat::GrpcOverride>,
+    },
     TemporarilyEvicted,
 }
 
@@ -103,18 +108,20 @@ impl UnauthenticatedChatConnection {
         connection_manager: &ConnectionManager,
         languages: LanguageList,
     ) -> Result<Self, ConnectError> {
-        let inner = establish_chat_connection(
+        let pending = establish_chat_connection(
             "unauthenticated",
             connection_manager,
             CHAT_WEBSOCKET_PATH,
             Some(UnauthenticatedChatHeaders { languages }.into()),
         )
         .await?;
+        let grpc_overrides = connection_manager.chat_grpc_overrides();
         Ok(Self {
-            inner: MaybeChatConnection::WaitingForListener(
-                tokio::runtime::Handle::current(),
-                inner.into(),
-            )
+            inner: MaybeChatConnection::WaitingForListener {
+                runtime: tokio::runtime::Handle::current(),
+                pending: pending.into(),
+                grpc_overrides,
+            }
             .into(),
         })
     }
@@ -139,22 +146,61 @@ impl UnauthenticatedChatConnection {
         };
         callback(LimitedLifetimeRef::from(<&Unauth<_>>::from(inner))).await
     }
+
+    pub async fn require_grpc(&self) -> Unauth<impl libsignal_net_chat::grpc::GrpcServiceProvider> {
+        let guard = self.as_ref().read().await;
+        let MaybeChatConnection::Running(inner) = &*guard else {
+            panic!("listener was not set")
+        };
+        Unauth(
+            inner
+                .shared_h2_connection()
+                .expect("requires an H2 connection"),
+        )
+    }
 }
 
 impl AuthenticatedChatConnection {
+    /// Given an HTTP Auth username of the form "{aci}" or "{aci}.{device_id}", parses and returns
+    /// it.
+    ///
+    /// An absent device ID will be treated as device ID "1", consistent with the server's
+    /// historical treatment of such usernames.
+    ///
+    /// Produces `None` on any other input (this is not a case where we need to know precisely what
+    /// went wrong).
+    pub fn parse_username(
+        username: &str,
+    ) -> Option<(libsignal_core::Aci, libsignal_core::DeviceId)> {
+        const IMPLICIT_PRIMARY_DEVICE_ID_STR: &str = "1";
+        let (aci_part, device_id_part) = username
+            .rsplit_once('.')
+            .unwrap_or((username, IMPLICIT_PRIMARY_DEVICE_ID_STR));
+        let aci = libsignal_core::Aci::parse_from_service_id_string(aci_part)?;
+        let device_id = libsignal_core::DeviceId::new_nonzero(
+            std::num::NonZero::from_str(device_id_part).ok()?,
+        )
+        .ok()?;
+        Some((aci, device_id))
+    }
+
     pub async fn connect(
         connection_manager: &ConnectionManager,
-        auth: Auth,
+        aci: libsignal_core::Aci,
+        device_id: libsignal_core::DeviceId,
+        password: String,
         receive_stories: bool,
         languages: LanguageList,
     ) -> Result<Self, ConnectError> {
-        let inner = establish_chat_connection(
+        let pending = establish_chat_connection(
             "authenticated",
             connection_manager,
             CHAT_WEBSOCKET_PATH,
             Some(
                 chat::AuthenticatedChatHeaders {
-                    auth,
+                    aci,
+                    device_id,
+                    password,
                     receive_stories: receive_stories.into(),
                     languages,
                 }
@@ -162,11 +208,13 @@ impl AuthenticatedChatConnection {
             ),
         )
         .await?;
+        let grpc_overrides = connection_manager.chat_grpc_overrides();
         Ok(Self {
-            inner: MaybeChatConnection::WaitingForListener(
-                tokio::runtime::Handle::current(),
-                inner.into(),
-            )
+            inner: MaybeChatConnection::WaitingForListener {
+                runtime: tokio::runtime::Handle::current(),
+                pending: pending.into(),
+                grpc_overrides,
+            }
             .into(),
         })
     }
@@ -195,15 +243,40 @@ impl AuthenticatedChatConnection {
 
         log::info!("preconnecting chat");
         connection_resources
-            .preconnect_and_save(route_provider, "preconnect")
+            .preconnect_and_save(
+                connection_manager.env.chat_domain_config.connect.service,
+                route_provider,
+                "preconnect",
+            )
             .await?;
         Ok(())
+    }
+
+    /// Provides access to the inner ChatConnection using the [`Auth`](AuthConn) wrapper of
+    /// libsignal-net-chat.
+    ///
+    /// This callback signature unfortunately requires boxing; there is not yet Rust syntax to say
+    /// "I return an unknown Future that might capture from its arguments" in closure position
+    /// specifically. It's also extra complicated to promise that the result doesn't have to outlive
+    /// &self; unfortunately there doesn't seem to be a simpler way to express this at this time!
+    /// (e.g. `for<'inner where 'outer: 'inner>`)
+    pub async fn as_typed<'outer, F, R>(&'outer self, callback: F) -> R
+    where
+        F: for<'inner> FnOnce(
+            LimitedLifetimeRef<'outer, 'inner, AuthConn<ChatConnection>>,
+        ) -> BoxFuture<'inner, R>,
+    {
+        let guard = self.as_ref().read().await;
+        let MaybeChatConnection::Running(inner) = &*guard else {
+            panic!("listener was not set")
+        };
+        callback(LimitedLifetimeRef::from(<&AuthConn<_>>::from(inner))).await
     }
 }
 
 impl ProvisioningChatConnection {
     pub async fn connect(connection_manager: &ConnectionManager) -> Result<Self, ConnectError> {
-        let inner = establish_chat_connection(
+        let pending = establish_chat_connection(
             "provisioning",
             connection_manager,
             CHAT_PROVISIONING_PATH,
@@ -211,10 +284,11 @@ impl ProvisioningChatConnection {
         )
         .await?;
         Ok(Self {
-            inner: MaybeChatConnection::WaitingForListener(
-                tokio::runtime::Handle::current(),
-                inner.into(),
-            )
+            inner: MaybeChatConnection::WaitingForListener {
+                runtime: tokio::runtime::Handle::current(),
+                pending: pending.into(),
+                grpc_overrides: Default::default(),
+            }
             .into(),
         })
     }
@@ -282,9 +356,11 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
         let guard = self.as_ref().read().await;
         match &*guard {
             MaybeChatConnection::Running(chat_connection) => chat_connection.disconnect().await,
-            MaybeChatConnection::WaitingForListener(_handle, pending_chat_mutex) => {
-                pending_chat_mutex.lock().await.disconnect().await
-            }
+            MaybeChatConnection::WaitingForListener {
+                runtime: _,
+                pending,
+                grpc_overrides: _,
+            } => pending.lock().await.disconnect().await,
             MaybeChatConnection::TemporarilyEvicted => {
                 unreachable!("unobservable state");
             }
@@ -297,9 +373,11 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
             MaybeChatConnection::Running(chat_connection) => {
                 chat_connection.connection_info().clone()
             }
-            MaybeChatConnection::WaitingForListener(_, pending_chat_connection) => {
-                pending_chat_connection.blocking_lock().connection_info()
-            }
+            MaybeChatConnection::WaitingForListener {
+                runtime: _,
+                pending,
+                grpc_overrides: _,
+            } => pending.blocking_lock().connection_info(),
             MaybeChatConnection::TemporarilyEvicted => unreachable!("unobservable state"),
         }
     }
@@ -327,26 +405,30 @@ pub(crate) async fn connect_registration_chat(
     Ok(Unauth(ChatConnection::finish_connect(
         tokio_runtime.clone(),
         pending,
+        Default::default(),
         Box::new(listener),
     )))
 }
 
 fn init_listener(connection: &mut MaybeChatConnection, listener: chat::ws::EventListener) {
-    let (tokio_runtime, pending) =
+    let (tokio_runtime, pending, grpc_overrides) =
         match std::mem::replace(connection, MaybeChatConnection::TemporarilyEvicted) {
             MaybeChatConnection::Running(chat_connection) => {
                 *connection = MaybeChatConnection::Running(chat_connection);
                 panic!("listener already set")
             }
-            MaybeChatConnection::WaitingForListener(tokio_runtime, pending_chat_connection) => {
-                (tokio_runtime, pending_chat_connection)
-            }
+            MaybeChatConnection::WaitingForListener {
+                runtime,
+                pending,
+                grpc_overrides,
+            } => (runtime, pending, grpc_overrides),
             MaybeChatConnection::TemporarilyEvicted => panic!("should be a temporary state"),
         };
 
     *connection = MaybeChatConnection::Running(ChatConnection::finish_connect(
         tokio_runtime,
         pending.into_inner(),
+        grpc_overrides,
         listener,
     ))
 }
@@ -357,9 +439,11 @@ impl FakeChatConnection {
     pub fn new<'a>(
         tokio_runtime: tokio::runtime::Handle,
         listener: chat::ws::EventListener,
+        grpc_overrides: impl IntoIterator<Item = &'static str>,
         alerts: impl IntoIterator<Item = &'a str>,
     ) -> (Self, FakeChatRemote) {
-        let (inner, remote) = ChatConnection::new_fake(tokio_runtime, listener, alerts);
+        let (inner, remote) =
+            ChatConnection::new_fake(tokio_runtime, listener, grpc_overrides, alerts);
         (Self(inner), remote)
     }
 
@@ -452,6 +536,7 @@ async fn establish_chat_connection(
 
     ChatConnection::start_connect_with(
         connection_resources,
+        env.chat_domain_config.connect.service,
         route_provider,
         endpoint_path,
         user_agent,
@@ -466,8 +551,10 @@ async fn establish_chat_connection(
                 proxy_mode,
             ) {
                 (None, DirectOrProxyModeDiscriminants::DirectOnly)
+                | (None, DirectOrProxyModeDiscriminants::DirectThenProxy)
                 | (Some(_), DirectOrProxyModeDiscriminants::ProxyOnly)
-                | (Some(_), DirectOrProxyModeDiscriminants::ProxyThenDirect) => {
+                | (Some(_), DirectOrProxyModeDiscriminants::ProxyThenDirect)
+                | (Some(_), DirectOrProxyModeDiscriminants::DirectThenProxy) => {
                     log::info!("successfully connected {kind} chat")
                 }
                 (None, DirectOrProxyModeDiscriminants::ProxyThenDirect) => log::warn!(
@@ -511,19 +598,13 @@ fn make_route_provider(
         .try_into()
         .map_err(|InvalidProxyConfig| ConnectError::InvalidConnectionConfiguration)?;
 
-    let override_nagle_algorithm = connection_manager.tcp_nagle_override();
-
-    let chat_connect = choose_chat_connection_config(
-        env,
-        &proxy_mode,
-        chat_headers,
-        &connection_manager.remote_config,
-    );
+    let chat_connect =
+        choose_chat_connection_config(env, chat_headers, &connection_manager.remote_config);
 
     let inner = chat_connect.route_provider_with_options(
         enable_domain_fronting,
         enforce_minimum_tls,
-        override_nagle_algorithm,
+        OverrideNagleAlgorithm::OverrideToOff,
     );
     Ok(DirectOrProxyProvider {
         inner,
@@ -533,42 +614,32 @@ fn make_route_provider(
 
 fn choose_chat_connection_config<'a>(
     env: &'a Env<'_>,
-    proxy_mode: &DirectOrProxyMode,
     chat_headers: Option<&chat::ChatHeaders>,
     remote_config: &Mutex<RemoteConfig>,
 ) -> &'a ConnectionConfig {
     // At this time, in order to try the experimental H2 configuration:
     let default_config = &env.chat_domain_config.connect;
 
-    // - We must specifically be making an unauthenticated connection.
-    match chat_headers {
-        None | Some(chat::ChatHeaders::Auth(_)) => {
-            return default_config;
-        }
-        Some(chat::ChatHeaders::Unauth(_)) => {}
+    if !should_use_h2(chat_headers, remote_config) {
+        return default_config;
     }
 
-    // - We must be opted in to the experiment.
-    {
-        let guard = remote_config.lock().expect("not poisoned");
-        if !guard.is_enabled(RemoteConfigKey::UseH2ForUnauthChat) {
-            return default_config;
-        }
-    }
+    &env.experimental_chat_h2_domain_config.connect
+}
 
-    // - We must not be connecting via Signal-TLS-Proxy.
-    match proxy_mode {
-        DirectOrProxyMode::ProxyOnly(connection_proxy_config)
-        | DirectOrProxyMode::ProxyThenDirect(connection_proxy_config)
-            if connection_proxy_config.is_signal_transparent_proxy() =>
-        {
-            // Transparent proxies won't understand the H2 domain.
-            default_config
-        }
-        DirectOrProxyMode::DirectOnly
-        | DirectOrProxyMode::ProxyOnly(_)
-        | DirectOrProxyMode::ProxyThenDirect(_) => &env.experimental_chat_h2_domain_config.connect,
-    }
+fn should_use_h2(
+    chat_headers: Option<&chat::ChatHeaders>,
+    remote_config: &Mutex<RemoteConfig>,
+) -> bool {
+    // We must be opted in to H2 for this connection type.
+    let required_flag = match chat_headers {
+        Some(chat::ChatHeaders::Unauth(_)) => RemoteConfigKey::UseH2ForUnauthChat,
+        // Preconnect calls `make_route_provider(..., None)`, so `None` should follow auth behavior.
+        None | Some(chat::ChatHeaders::Auth(_)) => RemoteConfigKey::UseH2ForAuthChat,
+    };
+
+    let guard = remote_config.lock().expect("not poisoned");
+    guard.is_enabled(required_flag)
 }
 
 pub struct HttpRequest {
@@ -754,5 +825,49 @@ impl dyn ProvisioningListener {
             };
             self.received_server_request(event);
         })
+    }
+}
+
+pub struct PreKeysResponse {
+    pub identity_key: IdentityKey,
+    pub pre_key_bundles: Vec<PreKeyBundle>,
+}
+
+// Must be kept in sync with the app languages.
+#[repr(u8)]
+#[derive(derive_more::TryFrom)]
+#[try_from(repr)]
+pub enum UserBasedSendAuthorizationKind {
+    Story,
+    AccessKey,
+    Group,
+    UnrestrictedUnauthenticatedAccess,
+}
+
+#[cfg(test)]
+mod test {
+    use test_case::test_case;
+
+    use super::*;
+
+    const TEST_UUID: uuid::Uuid = uuid::uuid!("659aa5f4-a28d-fcc1-1ea1-b997537a3d95");
+
+    #[test_case("659aa5f4-a28d-fcc1-1ea1-b997537a3d95" => Some((TEST_UUID.into(), libsignal_core::DeviceId::new(1).expect("valid"))))]
+    #[test_case("659aa5f4-a28d-fcc1-1ea1-b997537a3d95.1" => Some((TEST_UUID.into(), libsignal_core::DeviceId::new(1).expect("valid"))))]
+    #[test_case("659aa5f4-a28d-fcc1-1ea1-b997537a3d95.123" => Some((TEST_UUID.into(), libsignal_core::DeviceId::new(123).expect("valid"))))]
+    #[test_case("659AA5F4-A28D-FCC1-1EA1-B997537A3D95.124" => Some((TEST_UUID.into(), libsignal_core::DeviceId::new(124).expect("valid"))))]
+    #[test_case("659aA5f4-A28d-FcC1-1eA1-b997537A3d95.125" => Some((TEST_UUID.into(), libsignal_core::DeviceId::new(125).expect("valid"))))]
+    #[test_case("659aa5f4-a28d-fcc1-1ea1-b997537a3d9" => None)]
+    #[test_case("659aa5f4-a28d-fcc1-1ea1-b997537a3d95." => None)]
+    #[test_case("659aa5f4-a28d-fcc1-1ea1-b997537a3d95.a" => None)]
+    #[test_case("659aa5f4-a28d-fcc1-1ea1-b997537a3d95.0" => None)]
+    #[test_case("659aa5f4-a28d-fcc1-1ea1-b997537a3d95.2.3" => None)]
+    #[test_case("659aa5f4-a28d-fcc1-1ea1-b997537a3d95.128" => None)]
+    #[test_case("659aa5f4-a28d-fcc1-1ea1-b997537a3d95.9999" => None)]
+    #[test_case(".123" => None)]
+    #[test_case("a.123" => None)]
+    #[test_case("a" => None)]
+    fn test_parse_username(input: &str) -> Option<(libsignal_core::Aci, libsignal_core::DeviceId)> {
+        AuthenticatedChatConnection::parse_username(input)
     }
 }

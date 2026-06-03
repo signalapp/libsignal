@@ -37,12 +37,6 @@ fn main() {
 
     let make_codegen = || {
         let mut codegen = protobuf_codegen::Codegen::new();
-
-        // Use the lite runtime to reduce code size, unless the full runtime is
-        // needed for JSON conversion code.
-        #[cfg(not(feature = "json"))]
-        codegen.customize(Customize::default().lite_runtime(true));
-
         codegen
             .protoc()
             .protoc_extra_arg(
@@ -51,6 +45,7 @@ fn main() {
                 // versions that might be installed in CI or on developer machines.
                 "--experimental_allow_proto3_optional",
             )
+            .customize(Customize::default().lite_runtime(true))
             .customize_callback(DeriveVisitUnknownFields)
             .include("src")
             .out_dir(&out_dir);
@@ -79,5 +74,33 @@ fn main() {
 
     for proto in PROTOS.iter().chain(TEST_PROTOS) {
         println!("cargo:rerun-if-changed={proto}");
+    }
+
+    // JSON support uses pbjson (prost-based)
+    #[cfg(feature = "json")]
+    {
+        // Based on pbjson-build's README.
+        let descriptor_path = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap())
+            .join("proto_descriptor.bin");
+
+        prost_build::Config::new()
+            .boxed(".signal.backup.DirectStoryReplyMessage.reply.textReply")
+            .boxed(".signal.backup.ChatStyle.wallpaper.wallpaperPhoto")
+            // Save descriptors to file
+            .file_descriptor_set_path(&descriptor_path)
+            // Override prost-types with pbjson-types
+            .compile_well_known_types()
+            .extern_path(".google.protobuf", "::pbjson_types")
+            // Generate prost structs
+            .compile_protos(PROTOS, &[PROTOS_DIR])
+            .expect("can compile with prost");
+
+        let descriptor_set =
+            std::fs::read(descriptor_path).expect("can read saved pb file descriptors");
+        pbjson_build::Builder::new()
+            .register_descriptors(&descriptor_set)
+            .expect("valid saved pb file descriptors")
+            .build(&[".signal.backup"])
+            .expect("can compile with pbjson");
     }
 }

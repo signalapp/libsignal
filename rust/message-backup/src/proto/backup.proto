@@ -134,6 +134,8 @@ message AccountData {
     AppTheme appTheme = 28;  // If unset, treat the same as "Unknown" case
     CallsUseLessDataSetting callsUseLessDataSetting = 29;  // If unset, treat the same as "Unknown" case
     bool allowSealedSenderFromAnyone = 30;
+    bool allowAutomaticKeyVerification = 31;
+    bool hasSeenAdminDeleteEducationDialog = 32;
   }
 
   message SubscriberData {
@@ -166,6 +168,10 @@ message AccountData {
     NavigationBarSize navigationBarSize = 3; // If unset, treat the same as "Unknown" case
   }
 
+  message IOSSpecificSettings {
+    bool isSystemCallLogEnabled = 1;
+  }
+
   bytes profileKey = 1;
   optional string username = 2;
   UsernameLink usernameLink = 3;
@@ -180,6 +186,8 @@ message AccountData {
   AndroidSpecificSettings androidSpecificSettings = 12;
   string bioText = 13;
   string bioEmoji = 14;
+  reserved /*keyTransparencyData*/ 15;
+  IOSSpecificSettings iosSpecificSettings = 16;
 }
 
 message Recipient {
@@ -268,6 +276,8 @@ message Contact {
   string systemFamilyName = 19;
   string systemNickname = 20;
   optional AvatarColor avatarColor = 21;
+  // Opaque blob containing key transparency data for the contact
+  optional bytes keyTransparencyData = 22;
 }
 
 message Group {
@@ -302,8 +312,9 @@ message Group {
     repeated MemberPendingProfileKey membersPendingProfileKey = 8;
     repeated MemberPendingAdminApproval membersPendingAdminApproval = 9;
     bytes inviteLinkPassword = 10;
-    bool announcements_only = 12;
-    repeated MemberBanned members_banned = 13;
+    bool announcementsOnly = 12;
+    repeated MemberBanned membersBanned = 13;
+    bool terminated = 14;
   }
 
   message GroupAttributeBlob {
@@ -323,13 +334,13 @@ message Group {
       ADMINISTRATOR = 2;
     }
 
-    bytes user_id = 1;
+    bytes userId = 1;
     Role role = 2;
     reserved /*profileKey*/ 3; // This field is ignored in Backups, in favor of Contact frames for members
     reserved /*presentation*/ 4; // This field is deprecated in the context of static group state
     uint32 joinedAtVersion = 5;
-    string label_emoji = 6;
-    string label_string = 7;
+    string labelEmoji = 6;
+    string labelString = 7;
   }
 
   message MemberPendingProfileKey {
@@ -339,14 +350,14 @@ message Group {
   }
 
   message MemberPendingAdminApproval {
-    bytes user_id = 1;
+    bytes userId = 1;
     reserved /*profileKey*/ 2; // This field is ignored in Backups, in favor of Contact frames for members
     reserved /*presentation*/ 3; // This field is deprecated in the context of static group state
     uint64 timestamp = 4;
   }
 
   message MemberBanned {
-    bytes user_id = 1;
+    bytes userId = 1;
     uint64 timestamp = 2;
   }
 
@@ -362,6 +373,7 @@ message Group {
     AccessRequired attributes = 1;
     AccessRequired members = 2;
     AccessRequired addFromInviteLink = 3;
+    AccessRequired memberLabel = 4;
   }
 }
 
@@ -404,7 +416,7 @@ message CallLink {
   string name = 3;
   Restrictions restrictions = 4;
   uint64 expirationMs = 5;
-  optional bytes epoch = 6; // May be absent/empty for older links
+  reserved /*epoch*/ 6;
 }
 
 message AdHocCall {
@@ -497,6 +509,7 @@ message ChatItem {
     ViewOnceMessage viewOnceMessage = 18;
     DirectStoryReplyMessage directStoryReplyMessage = 19; // group story reply messages are not backed up
     Poll poll = 20;
+    AdminDeletedMessage adminDeletedMessage = 22;
   }
 
   PinDetails pinDetails = 21; // only set if message is pinned
@@ -897,6 +910,10 @@ message Poll {
   repeated Reaction reactions = 5;
 }
 
+message AdminDeletedMessage {
+  uint64 adminId = 1; // id of the admin that deleted the message
+}
+
 message ChatUpdateMessage {
   // If unset, importers should ignore the update message without throwing an error.
   oneof update {
@@ -1067,6 +1084,8 @@ message GroupChangeChatUpdate {
       GroupV2MigrationDroppedMembersUpdate groupV2MigrationDroppedMembersUpdate = 32;
       GroupSequenceOfRequestsAndCancelsUpdate groupSequenceOfRequestsAndCancelsUpdate = 33;
       GroupExpirationTimerUpdate groupExpirationTimerUpdate = 34;
+      GroupMemberLabelAccessLevelChangeUpdate groupMemberLabelAccessLevelChangeUpdate = 35;
+      GroupTerminateChangeUpdate groupTerminateChangeUpdate = 36;
     }
   }
 
@@ -1109,6 +1128,11 @@ enum GroupV2AccessLevel {
 }
 
 message GroupMembershipAccessLevelChangeUpdate {
+  optional bytes updaterAci = 1;
+  GroupV2AccessLevel accessLevel = 2;
+}
+
+message GroupMemberLabelAccessLevelChangeUpdate {
   optional bytes updaterAci = 1;
   GroupV2AccessLevel accessLevel = 2;
 }
@@ -1276,6 +1300,10 @@ message GroupExpirationTimerUpdate {
   optional bytes updaterAci = 2;
 }
 
+message GroupTerminateChangeUpdate {
+  optional bytes updaterAci = 1;
+}
+
 message PollTerminateUpdate {
   uint64 targetSentTimestamp = 1;
   string question = 2; // Between 1-100 characters
@@ -1293,6 +1321,12 @@ message StickerPack {
 
 message ChatStyle {
   message Gradient {
+    // Color ordering:
+    //   0   degrees: bottom-to-top
+    //   90  degrees: left-to-right
+    //   180 degrees: top-to-bottom
+    //   270 degrees: right-to-left
+
     uint32 angle = 1; // degrees
     repeated fixed32 colors = 2; // 0xAARRGGBB
     repeated float positions = 3; // percent from 0 to 1

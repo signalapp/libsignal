@@ -58,7 +58,7 @@ export default class ClientZkAuthOperations {
   }
 
   createAuthCredentialWithPniPresentationWithRandom(
-    random: Uint8Array,
+    random: Uint8Array<ArrayBuffer>,
     groupSecretParams: GroupSecretParams,
     authCredential: AuthCredentialWithPni
   ): AuthCredentialPresentation {

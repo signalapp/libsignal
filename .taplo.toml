@@ -1,13 +1,14 @@
 include = ["Cargo.toml", "rust/**/*.toml"]
 
 [formatting]
-reorder_keys = false
+align_comments = false
 indent_string = '    '
+reorder_keys = false
 
 [[rule]]
 include = ["**/Cargo.toml"]
 keys = ["dependencies", "workspace.dependencies", "dev-dependencies", "build-dependencies"]
 
 [rule.formatting]
-reorder_keys = true
 inline_table_expand = false
+reorder_keys = true

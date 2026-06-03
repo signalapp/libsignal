@@ -40,6 +40,38 @@ public protocol UnauthMessagesService: Sendable {
         onlineOnly: Bool,
         urgent: Bool
     ) async throws -> MultiRecipientMessageResponse
+
+    /// Sends a 1:1 message encrypted with Sealed Sender.
+    ///
+    /// - Throws:
+    ///   - ``SignalError/requestUnauthorized(_:)`` if `auth` is not valid for the recipients
+    ///     specified in `payload`. (This cannot happen when `auth` is
+    ///     ``UserBasedSendAuth/story``.)
+    ///   - ``SignalError/mismatchedDevices(entries:message:)`` if the recipient devices specified
+    ///     in `payload` are out of date in some way. This is not a "partial success" result; the
+    ///     message has not been sent to anybody.
+    ///   - ``SignalError/serviceIdNotFound(_:)`` if the destination account has been unregistered.
+    ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server is rate limiting
+    ///     this client. This is **retryable** after waiting the designated delay.
+    ///   - ``SignalError/connectionFailed(_:)``, ``SignalError/ioError(_:)``, or
+    ///     ``SignalError/webSocketError(_:)`` for networking failures before and during
+    ///     communication with the server. These can be **automatically retried** (backoff
+    ///     recommended).
+    ///   - Other ``SignalError``s for networking issues. These can be manually retried, but some
+    ///     may indicate a possible bug in libsignal.
+    ///   - `CancellationError` if the request is cancelled before completing.
+    ///
+    /// - SeeAlso:
+    ///   - ``sealedSenderEncrypt(_:for:identityStore:context:)``
+    ///   - ``MismatchedDeviceEntry``
+    func sendMessage(
+        to recipient: ServiceId,
+        timestamp: UInt64,
+        contents: [SingleOutboundSealedSenderMessage],
+        auth: UserBasedSendAuth,
+        onlineOnly: Bool,
+        urgent: Bool,
+    ) async throws
 }
 
 public enum MultiRecipientSendAuth: Sendable {
@@ -64,6 +96,44 @@ public struct MultiRecipientMessageResponse: Sendable {
     public var unregisteredIds: [ServiceId]
     public init(unregisteredIds: [ServiceId]) {
         self.unregisteredIds = unregisteredIds
+    }
+}
+
+public enum UserBasedSendAuth: Sendable {
+    case story
+    case user(UserBasedAuthorization)
+
+    // Convenience members, compatible with leading dot syntax
+    @inlinable
+    public static func accessKey(_ key: Data) -> Self {
+        .user(.accessKey(key))
+    }
+    @inlinable
+    public static func groupSend(_ token: GroupSendFullToken) -> Self {
+        .user(.groupSend(token))
+    }
+    @inlinable
+    public static var unrestrictedUnauthenticatedAccess: Self {
+        .user(.unrestrictedUnauthenticatedAccess)
+    }
+
+    // Must be kept in sync with `UserBasedSendAuthorizationKind` in Rust.
+    fileprivate var rawKind: UInt8 {
+        switch self {
+        case .story: 0
+        case .user(.accessKey(_)): 1
+        case .user(.groupSend(_)): 2
+        case .user(.unrestrictedUnauthenticatedAccess): 3
+        }
+    }
+
+    fileprivate func payloadBytesOrNil() -> Data? {
+        switch self {
+        case .story: nil
+        case .user(.accessKey(let key)): key
+        case .user(.groupSend(let token)): token.serialize()
+        case .user(.unrestrictedUnauthenticatedAccess): nil
+        }
     }
 }
 
@@ -135,6 +205,50 @@ extension UnauthenticatedChatConnection: UnauthMessagesService {
             unregisteredIds: UnsafeBufferPointer(start: rawResponse.base, count: rawResponse.length)
                 .map { try! ServiceId.parseFrom(fixedWidthBinary: $0) }
         )
+    }
+
+    public func sendMessage(
+        to recipient: ServiceId,
+        timestamp: UInt64,
+        contents: [SingleOutboundSealedSenderMessage],
+        auth: UserBasedSendAuth,
+        onlineOnly: Bool,
+        urgent: Bool,
+    ) async throws {
+        var deviceIds: [UInt32] = []
+        var registrationIds: [UInt32] = []
+        var messages: [Data] = []
+        for next in contents {
+            deviceIds.append(next.deviceId.uint32Value)
+            registrationIds.append(next.registrationId)
+            messages.append(next.contents)
+        }
+
+        let _: Bool = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
+            try! withAllBorrowed(
+                self,
+                recipient,
+                .slice(deviceIds),
+                .slice(registrationIds),
+                .sliceOfBuffers(messages),
+                auth.payloadBytesOrNil(),
+            ) { chatService, destination, deviceIds, registrationIds, messages, authBuffer in
+                signal_unauthenticated_chat_connection_send_message(
+                    promise,
+                    tokioAsyncContext.const(),
+                    chatService.const(),
+                    destination,
+                    timestamp,
+                    deviceIds,
+                    registrationIds,
+                    messages,
+                    auth.rawKind,
+                    authBuffer,
+                    onlineOnly,
+                    urgent,
+                )
+            }
+        }
     }
 }
 

@@ -80,8 +80,8 @@ class definition. For Swift, the `cbindgen` output is saved directly to a
 C-style `.h` file that the Swift toolchain can consume.
 
 For TypeScript, the [`libsignal-node`] crate is expanded and processed by
-[`gen_ts_decl.py`](./node/bin/gen_ts_decl.py) and the output is interpolated into
-[`Native.ts.in`](./node/bin/Native.ts.in). The output, however, only
+[`libsignal-node-native_ts`](./node/native_ts/src/main.rs) and the output is interpolated into
+[`Native.ts.in`](./node/native_ts/src/Native.ts.in). The output, however, only
 declares the function signatures; to make them accessible to the JavaScript
 runtime, additional machinery is used. This takes the form of `#[linkme]`
 annotations on to the generated entry points; the [`linkme`] crate is used to

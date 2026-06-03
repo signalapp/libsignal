@@ -6,6 +6,8 @@
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::sync::Arc;
 
+use libsignal_bridge_macros::{BridgedAsValue, bridge_io};
+
 #[cfg(feature = "jni")]
 use crate::jni::HandleJniError;
 use crate::*;
@@ -37,7 +39,10 @@ impl Drop for NeedsCleanup {
             Self::None => {}
             #[cfg(feature = "jni")]
             Self::AttachedToJVM(jvm) => {
-                assert!(jvm.get_env().is_ok());
+                assert!(
+                    jvm.with_top_local_frame(|_env| Ok::<_, ::jni::errors::Error>(()))
+                        .is_ok()
+                );
             }
             #[cfg(feature = "node")]
             Self::FinalizedByNeon => {
@@ -73,7 +78,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> jni::ArgTypeInfo<'storage, 'p
     type StoredType = Self;
 
     fn borrow(
-        env: &mut jni::JNIEnv<'context>,
+        env: &mut ::jni::Env<'context>,
         _foreign: &'param Self::ArgType,
     ) -> Result<Self::StoredType, jni::BridgeLayerError> {
         Ok(Self::AttachedToJVM(
@@ -105,6 +110,10 @@ impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context> for Nee
     fn load_from(_stored: &'storage mut Self::StoredType) -> Self {
         Self::None
     }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
+    }
 }
 
 #[cfg(feature = "node")]
@@ -122,6 +131,10 @@ impl<'storage> node::AsyncArgTypeInfo<'storage> for NeedsCleanup {
     fn load_async_arg(_stored: &'storage mut Self::StoredType) -> Self {
         // We only want to test that the storage is cleaned up, not the value passed into the wrapped function.
         Self::None
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
     }
 }
 
@@ -143,7 +156,7 @@ impl<'a> jni::SimpleArgTypeInfo<'a> for ErrorOnBorrow {
     type ArgType = jni::JObject<'a>;
 
     fn convert_from(
-        _env: &mut jni::JNIEnv<'a>,
+        _env: &mut ::jni::Env<'a>,
         _foreign: &Self::ArgType,
     ) -> Result<Self, jni::BridgeLayerError> {
         Err(jni::BridgeLayerError::BadArgument(
@@ -161,6 +174,10 @@ impl node::SimpleArgTypeInfo for ErrorOnBorrow {
         _foreign: node::Handle<Self::ArgType>,
     ) -> node::NeonResult<Self> {
         node::Context::throw_type_error(cx, "deliberate error")
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
     }
 }
 
@@ -182,7 +199,7 @@ impl<'a> jni::SimpleArgTypeInfo<'a> for PanicOnBorrow {
     type ArgType = jni::JObject<'a>;
 
     fn convert_from(
-        _env: &mut jni::JNIEnv<'a>,
+        _env: &mut ::jni::Env<'a>,
         _foreign: &Self::ArgType,
     ) -> Result<Self, jni::BridgeLayerError> {
         panic!("deliberate panic");
@@ -198,6 +215,11 @@ impl node::SimpleArgTypeInfo for PanicOnBorrow {
         _foreign: node::Handle<Self::ArgType>,
     ) -> node::NeonResult<Self> {
         panic!("deliberate panic")
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
     }
 }
 
@@ -231,7 +253,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> jni::ArgTypeInfo<'storage, 'p
     type StoredType = NeedsCleanup;
 
     fn borrow(
-        env: &mut ::jni::JNIEnv<'context>,
+        env: &mut ::jni::Env<'context>,
         _foreign: &'param Self::ArgType,
     ) -> Result<Self::StoredType, jni::BridgeLayerError> {
         <NeedsCleanup as jni::ArgTypeInfo>::borrow(env, _foreign)
@@ -258,6 +280,11 @@ impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context> for Pan
     fn load_from(_stored: &'storage mut Self::StoredType) -> Self {
         panic!("deliberate panic")
     }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
+    }
 }
 
 #[cfg(feature = "node")]
@@ -275,6 +302,11 @@ impl<'storage> node::AsyncArgTypeInfo<'storage> for PanicOnLoad {
 
     fn load_async_arg(_stored: &'storage mut Self::StoredType) -> Self {
         panic!("deliberate panic")
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
     }
 }
 
@@ -296,7 +328,7 @@ impl<'a> jni::ResultTypeInfo<'a> for ErrorOnReturn {
 
     fn convert_into(
         self,
-        _env: &mut jni::JNIEnv<'a>,
+        _env: &mut ::jni::Env<'a>,
     ) -> Result<Self::ResultType, jni::BridgeLayerError> {
         Err(jni::BridgeLayerError::BadArgument(
             "deliberate error".to_string(),
@@ -310,6 +342,11 @@ impl<'a> node::ResultTypeInfo<'a> for ErrorOnReturn {
 
     fn convert_into(self, cx: &mut impl node::Context<'a>) -> node::JsResult<'a, Self::ResultType> {
         cx.throw_type_error("deliberate error")
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
     }
 }
 
@@ -331,7 +368,7 @@ impl<'a> jni::ResultTypeInfo<'a> for PanicOnReturn {
 
     fn convert_into(
         self,
-        _env: &mut jni::JNIEnv<'a>,
+        _env: &mut ::jni::Env<'a>,
     ) -> Result<Self::ResultType, jni::BridgeLayerError> {
         panic!("deliberate panic");
     }
@@ -346,6 +383,11 @@ impl<'a> node::ResultTypeInfo<'a> for PanicOnReturn {
         _cx: &mut impl node::Context<'a>,
     ) -> node::JsResult<'a, Self::ResultType> {
         panic!("deliberate panic");
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "null".into()
     }
 }
 
@@ -401,7 +443,7 @@ impl<'a> jni::SimpleArgTypeInfo<'a> for TestingFutureCancellationGuard {
     type ArgType = jni::ObjectHandle;
 
     fn convert_from(
-        env: &mut jni::JNIEnv<'a>,
+        env: &mut ::jni::Env<'a>,
         foreign: &Self::ArgType,
     ) -> Result<Self, jni::BridgeLayerError> {
         <&TestingFutureCancellationCounter as jni::ArgTypeInfo>::borrow(env, foreign).map(
@@ -429,6 +471,11 @@ impl<'storage> node::AsyncArgTypeInfo<'storage> for TestingFutureCancellationGua
     }
     fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
         stored.take().unwrap().0
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_: &mut metadata::node::TsMetadataContext) -> String {
+        "TestingFutureCancellationGuard".into()
     }
 }
 
@@ -459,4 +506,94 @@ fn TestingValueHolder_Get(holder: &TestingValueHolder) -> i32 {
 #[bridge_fn]
 fn TESTING_ReturnPair() -> (i32, String) {
     (1, "libsignal".into())
+}
+
+pub struct TestingIntBox(pub i32);
+bridge_as_handle!(
+    TestingIntBox,
+    swift_type = "TestingIntBox",
+    jni_class = "org.signal.libsignal.internal.TestingIntBox",
+);
+bridge_handle_fns!(TestingIntBox, clone = false);
+
+#[bridge_fn]
+fn TESTING_TestingIntBox_New(value: i32) -> TestingIntBox {
+    TestingIntBox(value)
+}
+#[bridge_fn(nice = true)]
+fn TESTING_TestingIntBox_Get(my_int_box: BridgeHandleRef<'_, TestingIntBox>) -> i32 {
+    my_int_box.0
+}
+
+#[derive(BridgedAsValue, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MyTestStruct {
+    my_numeric_field: i32,
+    my_string_field: String,
+}
+#[derive(BridgedAsValue, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MyTestPoint(i32, i32);
+
+#[derive(BridgedAsValue, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MyTestEnum {
+    Unit,
+    Single(i32),
+    SingleNamed {
+        x: i32,
+    },
+    Double(i32, i32),
+    #[serde(rename_all = "camelCase")]
+    Record {
+        person_name: String,
+        person_age: i32,
+        position: MyTestPoint,
+        fun_struct: MyTestStruct,
+    },
+}
+
+#[bridge_fn(nice = true, jni = false, ffi = false)]
+pub fn TESTING_MyTestPoint_identity(x: MyTestPoint) -> MyTestPoint {
+    x
+}
+
+#[bridge_fn(nice = true, jni = false, ffi = false)]
+pub fn TESTING_MyTestStruct_identity(x: MyTestStruct) -> MyTestStruct {
+    x
+}
+
+#[bridge_fn(nice = true, jni = false, ffi = false)]
+pub fn TESTING_MyTestEnum_identity(x: MyTestEnum) -> MyTestEnum {
+    x
+}
+
+#[bridge_io(TokioAsyncContext, nice = true, jni = false, ffi = false)]
+pub async fn TESTING_MyTestPoint_identity_async(x: MyTestPoint) -> MyTestPoint {
+    x
+}
+
+#[bridge_io(TokioAsyncContext, nice = true, jni = false, ffi = false)]
+pub async fn TESTING_MyTestStruct_identity_async(x: MyTestStruct) -> MyTestStruct {
+    x
+}
+
+#[bridge_io(TokioAsyncContext, nice = true, jni = false, ffi = false)]
+pub async fn TESTING_MyTestEnum_identity_async(x: MyTestEnum) -> MyTestEnum {
+    x
+}
+
+#[bridge_fn(nice = true, jni = false, ffi = false)]
+pub fn TESTING_MyTestPoint_to_string(x: MyTestPoint) -> String {
+    serde_json::to_string(&x).expect("JSON succeeds")
+}
+
+#[bridge_fn(nice = true, jni = false, ffi = false)]
+pub fn TESTING_MyTestStruct_to_string(x: MyTestStruct) -> String {
+    serde_json::to_string(&x).expect("JSON succeeds")
+}
+
+#[bridge_fn(nice = true, jni = false, ffi = false)]
+pub fn TESTING_MyTestEnum_to_string(x: MyTestEnum) -> String {
+    serde_json::to_string(&x).expect("JSON succeeds")
 }

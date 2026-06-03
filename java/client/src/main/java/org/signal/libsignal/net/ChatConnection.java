@@ -7,6 +7,7 @@ package org.signal.libsignal.net;
 
 import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -26,7 +27,7 @@ import org.signal.libsignal.net.internal.BridgeChatListener;
  * registered listener will not receive any events until {@link #start()} is called.
  */
 public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
-  private final TokioAsyncContext tokioAsyncContext;
+  final TokioAsyncContext tokioAsyncContext;
   private final ChatConnectionListener chatListener;
 
   protected ChatConnection(
@@ -250,6 +251,25 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
                 guardedMap(req -> NativeTesting.TESTING_ChatRequestGetHeaderValue(req, header)));
       }
       return map;
+    }
+
+    /** Must be called with an array-backed ByteBuffer. */
+    public static kotlinx.serialization.json.JsonElement getNextGrpcMessage(
+        String name, ByteBuffer body) {
+      var messageOffsets =
+          NativeTesting.TESTING_FakeChatRemoteEnd_NextGrpcMessage(
+              body.array(), body.arrayOffset() + body.position());
+      var messageBytes = new byte[messageOffsets.getSecond() - messageOffsets.getFirst()];
+      body.position(messageOffsets.getFirst() - body.arrayOffset()).get(messageBytes);
+      var messageJson = NativeTesting.TESTING_FakeChatRemoteEnd_BinprotoToJson(name, messageBytes);
+      return FakeChatRemoteKt.decodeJson(messageJson);
+    }
+
+    public kotlinx.serialization.json.JsonElement getSingleGrpcMessage(String name) {
+      var body = ByteBuffer.wrap(getBody());
+      var result = InternalRequest.getNextGrpcMessage(name, body);
+      assert !body.hasRemaining() : "message had trailing data, use getNextGrpcMessage instead";
+      return result;
     }
   }
 

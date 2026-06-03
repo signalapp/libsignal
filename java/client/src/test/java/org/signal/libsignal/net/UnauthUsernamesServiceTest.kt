@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.net
 
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
@@ -14,9 +16,9 @@ import org.signal.libsignal.protocol.util.Hex
 import org.signal.libsignal.usernames.Username
 import org.signal.libsignal.usernames.UsernameLinkInvalidEntropyDataLength
 import org.signal.libsignal.usernames.UsernameLinkInvalidLinkData
-import org.signal.libsignal.util.Base64
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import kotlin.io.encoding.Base64
 import kotlin.test.assertIs
 
 class UnauthUsernamesServiceTest {
@@ -48,7 +50,8 @@ class UnauthUsernamesServiceTest {
     val (request, requestId) = fakeRemote.getNextIncomingRequest().get()
 
     assertEquals("GET", request.method)
-    val expectedPath = "/v1/accounts/username_hash/" + Base64.encodeToStringUrl(testHash)
+    val expectedPath =
+      "/v1/accounts/username_hash/" + Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL).encode(testHash)
     assertEquals(expectedPath, request.pathAndQuery)
 
     // Send successful response with UUID
@@ -92,7 +95,8 @@ class UnauthUsernamesServiceTest {
     val (request, requestId) = fakeRemote.getNextIncomingRequest().get()
 
     assertEquals("GET", request.method)
-    val expectedPath = "/v1/accounts/username_hash/" + Base64.encodeToStringUrl(testHash)
+    val expectedPath =
+      "/v1/accounts/username_hash/" + Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL).encode(testHash)
     assertEquals(expectedPath, request.pathAndQuery)
 
     // Send fake 404 response (user not found)
@@ -351,5 +355,50 @@ class UnauthUsernamesServiceTest {
     val result = responseFuture.get()
     val failureResult = assertIs<RequestResult.NonSuccess<LookUpUsernameLinkFailure>>(result)
     assertIs<UsernameLinkInvalidEntropyDataLength>(failureResult.error)
+  }
+}
+
+class UnauthUsernamesServiceGrpcTest {
+  @Test
+  fun testUsernameLinkLookup() {
+    val tokioAsyncContext = TokioAsyncContext()
+    val (chat, fakeRemote) =
+      UnauthenticatedChatConnection.fakeConnect(
+        tokioAsyncContext,
+        NoOpListener(),
+        arrayOf("AccountsAnonymousLookupUsernameLink"),
+        Network.Environment.STAGING,
+      )
+
+    val accountsService = UnauthUsernamesService(chat)
+    val responseFuture =
+      accountsService.lookUpUsernameLink(
+        UUID(0, 0),
+        UnauthUsernamesServiceTest.ENCRYPTED_USERNAME_ENTROPY,
+      )
+
+    // Get the incoming request from the fake remote
+    val (request, requestId) = fakeRemote.getNextIncomingGrpcRequest().get()
+    assertEquals(
+      request.getSingleGrpcMessage("org.signal.chat.account.LookupUsernameLinkRequest"),
+      buildJsonObject {
+        put("usernameLinkHandle", "AAAAAAAAAAAAAAAAAAAAAA==")
+      },
+    )
+
+    // Send successful response
+    fakeRemote.sendGrpcResponse(
+      requestId,
+      "org.signal.chat.account.LookupUsernameLinkResponse",
+      buildJsonObject {
+        put("usernameCiphertext", UnauthUsernamesServiceTest.ENCRYPTED_USERNAME)
+      },
+    )
+
+    // Verify the result
+    val result = responseFuture.get()
+    val successResult = assertIs<RequestResult.Success<Username?>>(result)
+    assertNotNull(successResult.result)
+    assertEquals(UnauthUsernamesServiceTest.EXPECTED_USERNAME, successResult.result!!.username)
   }
 }

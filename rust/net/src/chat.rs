@@ -4,6 +4,7 @@
 //
 
 use std::borrow::Borrow;
+use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::sync::Arc;
 use std::time::Duration;
@@ -27,9 +28,10 @@ use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::WebSocketConfig;
 
 use crate::auth::Auth;
-use crate::connect_state::{ConnectionResources, RouteInfo, WebSocketTransportConnectorFactory};
+use crate::connect_state::{
+    ConnectionResources, RouteInfo, ServiceName, WebSocketTransportConnectorFactory,
+};
 use crate::env::UserAgent;
-use crate::infra::OverrideNagleAlgorithm;
 use crate::proto;
 
 mod error;
@@ -48,7 +50,7 @@ const RECEIVE_STORIES_HEADER_NAME: &str = "x-signal-receive-stories";
 
 pub const RECOMMENDED_CHAT_WS_CONFIG: ws::Config = ws::Config {
     local_idle_timeout: RECOMMENDED_WS_CONFIG.local_idle_timeout,
-    post_request_interface_check_timeout: Duration::MAX,
+    post_request_interface_check_timeout: Duration::from_secs(5),
     remote_idle_timeout: RECOMMENDED_WS_CONFIG.remote_idle_disconnect_timeout,
     initial_request_id: 0,
 };
@@ -168,9 +170,17 @@ pub struct ConnectionInfo {
 pub struct ChatConnection {
     inner: self::ws::Chat,
     connection_info: ConnectionInfo,
+    grpc_overrides: HashMap<&'static str, GrpcOverride>,
+    self_aci: Option<libsignal_core::Aci>,
 }
 
 pub type GrpcBody = tonic::body::Body;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum GrpcOverride {
+    UseGrpc,
+    UseWs,
+}
 
 /// A connection to the chat service that isn't yet active.
 #[derive(Debug)]
@@ -180,21 +190,39 @@ pub struct PendingChatConnection {
     connect_response_headers: http::HeaderMap,
     ws_config: ws::Config,
     route_info: RouteInfo,
+    self_aci: Option<libsignal_core::Aci>,
     network_change_event: NetworkChangeEvent,
     log_tag: Arc<str>,
 }
 
+/// Headers to include on connections and requests when communicating with chat-server
+/// authenticated.
+///
+/// Specifically: the headers will be included on the initial websocket connect request as well as
+/// separate H2 requests, with the exception of `receive_stories` (which is not relevant to every
+/// request). If you add a header here, consider whether it needs to be attached to every request or
+/// only the initial connection, and modify `start_connect_with_transport` appropriately.
 #[cfg_attr(test, derive(Clone))]
 pub struct AuthenticatedChatHeaders {
-    pub auth: Auth,
+    pub aci: libsignal_core::Aci,
+    pub device_id: libsignal_core::DeviceId,
+    pub password: String,
     pub receive_stories: ReceiveStories,
     pub languages: LanguageList,
 }
 
+/// Headers to include on connections and requests when communicating with chat-server
+/// unauthenticated.
+///
+/// Specifically: the headers will be included on the initial websocket connect request as well as
+/// separate H2 requests. If you add a header here, consider whether it needs to be attached to
+/// every request or only the initial connection, and modify `start_connect_with_transport`
+/// appropriately.
 pub struct UnauthenticatedChatHeaders {
     pub languages: LanguageList,
 }
 
+/// Headers to include on connections and requests when communicating with chat-server.
 #[derive(derive_more::From)]
 pub enum ChatHeaders {
     Auth(AuthenticatedChatHeaders),
@@ -202,16 +230,32 @@ pub enum ChatHeaders {
 }
 
 impl ChatHeaders {
+    fn self_aci(&self) -> Option<libsignal_core::Aci> {
+        match self {
+            ChatHeaders::Auth(AuthenticatedChatHeaders { aci, .. }) => Some(*aci),
+            ChatHeaders::Unauth(_) => None,
+        }
+    }
+
     fn iter_headers(self) -> impl Iterator<Item = (HeaderName, HeaderValue)> {
         match self {
             ChatHeaders::Auth(AuthenticatedChatHeaders {
-                auth,
+                aci,
+                device_id,
+                password,
                 receive_stories,
                 languages,
             }) => Either::Left(
-                [auth.as_header(), receive_stories.as_header()]
-                    .into_iter()
-                    .chain(languages.into_header()),
+                [
+                    Auth {
+                        username: format!("{}.{device_id}", aci.service_id_string()),
+                        password,
+                    }
+                    .as_header(),
+                    receive_stories.as_header(),
+                ]
+                .into_iter()
+                .chain(languages.into_header()),
             ),
             ChatHeaders::Unauth(UnauthenticatedChatHeaders { languages }) => {
                 Either::Right(languages.into_header().into_iter())
@@ -225,6 +269,7 @@ pub type ChatServiceRoute = UnresolvedWebsocketServiceRoute;
 impl ChatConnection {
     pub async fn start_connect_with<TC>(
         connection_resources: ConnectionResources<'_, TC>,
+        service: ServiceName,
         http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
         endpoint_path: &'static str,
         user_agent: &UserAgent,
@@ -237,6 +282,7 @@ impl ChatConnection {
     {
         Self::start_connect_with_transport(
             connection_resources,
+            service,
             http_route_provider,
             endpoint_path,
             user_agent,
@@ -250,6 +296,7 @@ impl ChatConnection {
     #[cfg_attr(feature = "test-util", visibility::make(pub))]
     async fn start_connect_with_transport<TC>(
         connection_resources: ConnectionResources<'_, TC>,
+        service: ServiceName,
         http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
         endpoint_path: &'static str,
         user_agent: &UserAgent,
@@ -263,14 +310,17 @@ impl ChatConnection {
         let network_change_event_for_established_connection =
             connection_resources.network_change_event.clone();
         let should_preconnect = matches!(headers, Some(ChatHeaders::Auth(_)));
-        let headers = headers
-            .into_iter()
-            .flat_map(ChatHeaders::iter_headers)
-            .chain([user_agent.as_header()]);
+        let self_aci = headers.as_ref().and_then(ChatHeaders::self_aci);
+        let headers = HeaderMap::from_iter(
+            headers
+                .into_iter()
+                .flat_map(ChatHeaders::iter_headers)
+                .chain([user_agent.as_header()]),
+        );
         let ws_fragment = WebSocketRouteFragment {
             ws_config: WebSocketConfig::default(),
             endpoint: PathAndQuery::from_static(endpoint_path),
-            headers: HeaderMap::from_iter(headers),
+            headers: headers.clone(),
         };
 
         let ws_routes = http_route_provider.map_routes(move |http| WebSocketRoute {
@@ -287,6 +337,7 @@ impl ChatConnection {
         let log_tag: Arc<str> = log_tag.into();
         let (connection, route_info) = connection_resources
             .connect_ws(
+                service,
                 ws_routes,
                 // If we create multiple authenticated chat websocket connections at
                 // the same time, the server will terminate earlier ones as later
@@ -304,14 +355,24 @@ impl ChatConnection {
         let StreamWithResponseHeaders {
             stream,
             response_headers,
-            connection: shared_h2_connection,
+            connection: mut shared_h2_connection,
         } = connection.into_inner();
+
+        if let Some(connection) = shared_h2_connection.as_mut() {
+            // The headers for H2 requests are *nearly* the same as the headers for the websocket
+            // connection, but we omit the ReceiveStories header because that can be
+            // request-specific.
+            let mut headers_for_h2_requests = headers;
+            headers_for_h2_requests.remove(ReceiveStories::HEADER_NAME);
+            connection.set_default_per_request_headers(headers_for_h2_requests);
+        }
 
         Ok(PendingChatConnection {
             connection: stream,
             shared_h2_connection,
             connect_response_headers: response_headers,
             route_info,
+            self_aci,
             ws_config,
             network_change_event: network_change_event_for_established_connection,
             log_tag,
@@ -321,6 +382,7 @@ impl ChatConnection {
     pub fn finish_connect(
         tokio_runtime: tokio::runtime::Handle,
         pending: PendingChatConnection,
+        grpc_overrides: HashMap<&'static str, GrpcOverride>,
         listener: ws::EventListener,
     ) -> Self {
         let PendingChatConnection {
@@ -329,6 +391,7 @@ impl ChatConnection {
             connect_response_headers,
             ws_config,
             route_info,
+            self_aci,
             network_change_event,
             log_tag,
         } = pending;
@@ -354,6 +417,8 @@ impl ChatConnection {
                 network_change_event,
                 listener,
             ),
+            grpc_overrides,
+            self_aci,
         }
     }
 
@@ -372,8 +437,16 @@ impl ChatConnection {
         &self.connection_info
     }
 
-    pub async fn shared_h2_connection(&self) -> Option<Http2Client<GrpcBody>> {
-        self.inner.shared_h2_connection().await
+    pub fn shared_h2_connection(&self) -> Option<Http2Client<GrpcBody>> {
+        self.inner.shared_h2_connection()
+    }
+
+    pub fn grpc_overrides(&self) -> &HashMap<&'static str, GrpcOverride> {
+        &self.grpc_overrides
+    }
+
+    pub fn self_aci(&self) -> Option<libsignal_core::Aci> {
+        self.self_aci
     }
 }
 
@@ -386,7 +459,11 @@ impl PendingChatConnection {
     }
 
     pub async fn disconnect(&mut self) {
-        _ = self.shared_h2_connection.take();
+        if let Some(h2) = self.shared_h2_connection.take() {
+            // There shouldn't have been any requests yet while the connection is still Pending, but
+            // just in case.
+            h2.disconnect_all();
+        }
         if let Err(error) = self.connection.close(None).await {
             log::warn!(
                 "[{}] pending chat connection disconnect failed with {error}",
@@ -427,6 +504,7 @@ pub mod test_support {
     };
     use crate::env::constants::CHAT_WEBSOCKET_PATH;
     use crate::env::{Env, StaticIpOrder, UserAgent};
+    use crate::infra::OverrideNagleAlgorithm;
     use crate::infra::route::DirectOrProxyProvider;
 
     pub async fn simple_chat_connection(
@@ -475,6 +553,7 @@ pub mod test_support {
 
         let pending = ChatConnection::start_connect_with(
             connection_resources,
+            env.chat_domain_config.connect.service,
             route_provider,
             CHAT_WEBSOCKET_PATH,
             &user_agent,
@@ -488,7 +567,8 @@ pub mod test_support {
         let listener: ws::EventListener = Box::new(|_event| {});
 
         let tokio_runtime = tokio::runtime::Handle::try_current().expect("can get tokio runtime");
-        let chat_connection = ChatConnection::finish_connect(tokio_runtime, pending, listener);
+        let chat_connection =
+            ChatConnection::finish_connect(tokio_runtime, pending, Default::default(), listener);
 
         Ok(chat_connection)
     }
@@ -521,6 +601,7 @@ pub(crate) mod test {
     use super::*;
     use crate::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
     use crate::env::constants::CHAT_WEBSOCKET_PATH;
+    use crate::infra::OverrideNagleAlgorithm;
 
     #[test]
     fn proto_into_response_works_with_valid_data() {
@@ -723,6 +804,7 @@ pub(crate) mod test {
 
         let err = ChatConnection::start_connect_with_transport(
             connection_resources,
+            ServiceName("chat"),
             vec![HttpsTlsRoute {
                 fragment: HttpRouteFragment {
                     host_header: CHAT_DOMAIN.into(),
@@ -821,6 +903,7 @@ pub(crate) mod test {
 
         make_connection_resources()
             .preconnect_and_save(
+                ServiceName("test"),
                 routes
                     .iter()
                     .cloned()
@@ -835,16 +918,16 @@ pub(crate) mod test {
 
         // ChatConnection only uses the preconnect for auth connections
         let auth_headers = AuthenticatedChatHeaders {
-            auth: Auth {
-                username: "user".into(),
-                password: "****".into(),
-            },
+            aci: libsignal_core::Aci::from_uuid_bytes([0; 16]),
+            device_id: libsignal_core::DeviceId::new(1).expect("valid"),
+            password: "****".into(),
             receive_stories: ReceiveStories(true),
             languages: LanguageList::default(),
         };
 
         let err = ChatConnection::start_connect_with_transport(
             make_connection_resources(),
+            ServiceName("chat"),
             routes.clone(),
             CHAT_WEBSOCKET_PATH,
             &UserAgent::with_libsignal_version("test"),
@@ -867,6 +950,7 @@ pub(crate) mod test {
 
         let err = ChatConnection::start_connect_with_transport(
             make_connection_resources(),
+            ServiceName("test"),
             routes.clone(),
             CHAT_WEBSOCKET_PATH,
             &UserAgent::with_libsignal_version("test"),

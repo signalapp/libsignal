@@ -18,7 +18,7 @@ use libsignal_net_infra::dns::lookup_result::LookupResult;
 use libsignal_net_infra::host::Host;
 use libsignal_net_infra::route::{
     DirectTcpRouteProvider, DomainFrontConfig, DomainFrontRouteProvider, HttpVersion,
-    HttpsProvider, TlsRouteProvider,
+    HttpsProvider, ReflectorProviderConfig, TlsRouteProvider,
 };
 use libsignal_net_infra::{
     AsStaticHttpHeader, ConnectionParams, EnableDomainFronting, EnforceMinimumTls,
@@ -30,6 +30,7 @@ use rand::{Rng, rng};
 
 use crate::certs::{PROXY_G_ROOT_CERTIFICATES, SIGNAL_ROOT_CERTIFICATES};
 use crate::chat::RECOMMENDED_CHAT_WS_CONFIG;
+use crate::connect_state::ServiceName;
 use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
@@ -48,6 +49,7 @@ const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
         ip_addr!(v6, "2600:9000:a61f:527c:d5eb:a431:5239:3232"),
     ],
     connect: ConnectionConfig {
+        service: ServiceName("chat"),
         hostname: "chat.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -65,6 +67,9 @@ const DOMAIN_CONFIG_EXPERIMENTAL_CHAT_H2: DomainConfig = DomainConfig {
     ip_v4: &[],
     ip_v6: &[],
     connect: ConnectionConfig {
+        // Keeping the service names in sync makes it so we don't have to carefully track which
+        // config we're using.
+        service: DOMAIN_CONFIG_CHAT.connect.service,
         hostname: "grpc.chat.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -86,6 +91,7 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
         ip_addr!(v6, "2600:9000:a61f:527c:2215:cd9:bac6:a2f8"),
     ],
     connect: ConnectionConfig {
+        service: ServiceName("chat"),
         hostname: "chat.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -103,6 +109,7 @@ const DOMAIN_CONFIG_EXPERIMENTAL_CHAT_H2_STAGING: DomainConfig = DomainConfig {
     ip_v4: &[],
     ip_v6: &[],
     connect: ConnectionConfig {
+        service: DOMAIN_CONFIG_CHAT_STAGING.connect.service,
         hostname: "grpc.chat.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -116,6 +123,7 @@ const DOMAIN_CONFIG_EXPERIMENTAL_CHAT_H2_STAGING: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
+        service: ServiceName("cdsi"),
         hostname: "cdsi.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -133,6 +141,7 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
+        service: ServiceName("cdsi"),
         hostname: "cdsi.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -150,6 +159,7 @@ const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
+        service: ServiceName("svr2"),
         hostname: "svr2.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -183,6 +193,7 @@ const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
+        service: ServiceName("svr2"),
         hostname: "svr2.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -212,6 +223,7 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_SVRB_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
+        service: ServiceName("svrb"),
         hostname: "svrb.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -241,6 +253,7 @@ const DOMAIN_CONFIG_SVRB_STAGING: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_SVRB_PROD: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
+        service: ServiceName("svrb"),
         hostname: "svrb.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -307,21 +320,37 @@ pub const PROXY_CONFIG_G: ProxyConfig = ProxyConfig {
     certs: PROXY_G_ROOT_CERTIFICATES,
 };
 
+pub static REFLECTOR_PROVIDERS_STAGING: std::sync::LazyLock<[ReflectorProviderConfig; 2]> =
+    std::sync::LazyLock::new(|| {
+        [
+            PROXY_CONFIG_F_STAGING.reflector_provider_config(http::uri::PathAndQuery::from_static(
+                "/tls-tunnel-staging",
+            )),
+            PROXY_CONFIG_G.reflector_provider_config(http::uri::PathAndQuery::from_static(
+                "/tls-tunnel-staging",
+            )),
+        ]
+    });
+
+pub static REFLECTOR_PROVIDERS_PROD: std::sync::LazyLock<[ReflectorProviderConfig; 2]> =
+    std::sync::LazyLock::new(|| {
+        [
+            PROXY_CONFIG_F_PROD
+                .reflector_provider_config(http::uri::PathAndQuery::from_static("/tls-tunnel")),
+            PROXY_CONFIG_G
+                .reflector_provider_config(http::uri::PathAndQuery::from_static("/tls-tunnel")),
+        ]
+    });
+
 pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = EndpointParams {
     mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_STAGING),
     raft_config: (),
 };
 
-pub(crate) const ENDPOINT_PARAMS_SVR2_2026Q1_STAGING: EndpointParams<'static, SvrSgx> =
+pub(crate) const ENDPOINT_PARAMS_SVRB_2025Q3_PROD: EndpointParams<'static, SvrSgx> =
     EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_2026Q1_STAGING),
-        raft_config: attest::constants::RAFT_CONFIG_SVR2_2026Q1_STAGING,
-    };
-
-pub(crate) const ENDPOINT_PARAMS_SVRB_2025Q3_STAGING: EndpointParams<'static, SvrSgx> =
-    EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2025Q3_STAGING),
-        raft_config: attest::constants::RAFT_CONFIG_SVRB_2025Q3_STAGING,
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2025Q3_PROD),
+        raft_config: attest::constants::RAFT_CONFIG_SVRB_2025Q3_PROD,
     };
 
 pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q1_STAGING: EndpointParams<'static, SvrSgx> =
@@ -330,16 +359,42 @@ pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q1_STAGING: EndpointParams<'static, Sv
         raft_config: attest::constants::RAFT_CONFIG_SVRB_2026Q1_STAGING,
     };
 
-pub(crate) const ENDPOINT_PARAMS_SVR2_2025Q3_PROD: EndpointParams<'static, SvrSgx> =
+pub(crate) const ENDPOINT_PARAMS_SVR2_2026Q1_PROD: EndpointParams<'static, SvrSgx> =
     EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_2025Q3_PROD),
-        raft_config: attest::constants::RAFT_CONFIG_SVR2_2025Q3_PROD,
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_2026Q1_PROD),
+        raft_config: attest::constants::RAFT_CONFIG_SVR2_2026Q1_PROD,
     };
 
-pub(crate) const ENDPOINT_PARAMS_SVRB_2025Q3_PROD: EndpointParams<'static, SvrSgx> =
+pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q1_PROD: EndpointParams<'static, SvrSgx> =
     EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2025Q3_PROD),
-        raft_config: attest::constants::RAFT_CONFIG_SVRB_2025Q3_PROD,
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2026Q1_PROD),
+        raft_config: attest::constants::RAFT_CONFIG_SVRB_2026Q1_PROD,
+    };
+
+pub(crate) const ENDPOINT_PARAMS_SVR2_2026Q2_STAGING: EndpointParams<'static, SvrSgx> =
+    EndpointParams {
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_2026Q2_STAGING),
+        raft_config: attest::constants::RAFT_CONFIG_SVR2_2026Q2_STAGING,
+    };
+
+pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q2_STAGING: EndpointParams<'static, SvrSgx> =
+    EndpointParams {
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2026Q2_STAGING),
+        raft_config: attest::constants::RAFT_CONFIG_SVRB_2026Q2_STAGING,
+    };
+
+#[expect(unused)] // Will roll out soon
+pub(crate) const ENDPOINT_PARAMS_SVR2_2026Q2_PROD: EndpointParams<'static, SvrSgx> =
+    EndpointParams {
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_2026Q2_PROD),
+        raft_config: attest::constants::RAFT_CONFIG_SVR2_2026Q2_PROD,
+    };
+
+#[expect(unused)] // Will roll out soon
+pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q2_PROD: EndpointParams<'static, SvrSgx> =
+    EndpointParams {
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2026Q2_PROD),
+        raft_config: attest::constants::RAFT_CONFIG_SVRB_2026Q2_PROD,
     };
 
 pub(crate) const ENDPOINT_PARAMS_CDSI_PROD: EndpointParams<'static, Cdsi> = EndpointParams {
@@ -392,6 +447,8 @@ pub struct DomainConfig {
 
 #[derive(Clone)]
 pub struct ConnectionConfig {
+    /// The name for the resource, to track state across connection attempts.
+    pub service: ServiceName,
     /// The domain name of the resource.
     pub hostname: &'static str,
     /// The port for the resource.
@@ -516,6 +573,7 @@ impl ConnectionConfig {
         override_nagle_algorithm: OverrideNagleAlgorithm,
     ) -> HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>> {
         let Self {
+            service: _,
             hostname,
             port,
             cert,
@@ -634,6 +692,19 @@ pub struct ProxyConfig {
 }
 
 impl ProxyConfig {
+    pub fn reflector_provider_config(
+        &self,
+        endpoint: http::uri::PathAndQuery,
+    ) -> ReflectorProviderConfig {
+        ReflectorProviderConfig {
+            route_type: self.route_type,
+            http_host: self.http_host,
+            sni_list: self.sni_list,
+            certs: self.certs.clone(),
+            endpoint,
+        }
+    }
+
     pub fn shuffled_connection_params<R>(
         &self,
         proxy_path: &'static str,
@@ -748,6 +819,7 @@ pub struct Env<'a> {
     pub experimental_chat_h2_domain_config: DomainConfig,
     pub chat_ws_config: crate::chat::ws::Config,
     pub keytrans_config: KeyTransConfig,
+    pub reflector_providers: fn() -> &'static [ReflectorProviderConfig],
 }
 
 impl<'a> Env<'a> {
@@ -766,6 +838,7 @@ impl<'a> Env<'a> {
             svr_b,
             chat_ws_config: _,
             keytrans_config: _,
+            reflector_providers: _,
         } = self;
 
         let mut result = HashMap::from_iter([
@@ -795,25 +868,26 @@ pub const STAGING: Env<'static> = Env {
     svr2: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_SVR2_STAGING,
         ws_config: RECOMMENDED_WS_CONFIG,
-        params: ENDPOINT_PARAMS_SVR2_2026Q1_STAGING,
+        params: ENDPOINT_PARAMS_SVR2_2026Q2_STAGING,
     },
     svr_b: SvrBEnv {
         current: [
             Some(EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_STAGING,
                 ws_config: RECOMMENDED_WS_CONFIG,
-                params: ENDPOINT_PARAMS_SVRB_2026Q1_STAGING,
+                params: ENDPOINT_PARAMS_SVRB_2026Q2_STAGING,
             }),
             Some(EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_STAGING,
                 ws_config: RECOMMENDED_WS_CONFIG,
-                params: ENDPOINT_PARAMS_SVRB_2025Q3_STAGING,
+                params: ENDPOINT_PARAMS_SVRB_2026Q1_STAGING,
             }),
             None,
         ],
         previous: [None, None, None],
     },
     keytrans_config: KEYTRANS_CONFIG_STAGING,
+    reflector_providers: || &*REFLECTOR_PROVIDERS_STAGING,
 };
 
 pub const PROD: Env<'static> = Env {
@@ -828,10 +902,19 @@ pub const PROD: Env<'static> = Env {
     svr2: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_SVR2,
         ws_config: RECOMMENDED_WS_CONFIG,
-        params: ENDPOINT_PARAMS_SVR2_2025Q3_PROD,
+        params: ENDPOINT_PARAMS_SVR2_2026Q1_PROD,
     },
     svr_b: SvrBEnv {
         current: [
+            Some(EnclaveEndpoint {
+                domain_config: DOMAIN_CONFIG_SVRB_PROD,
+                ws_config: RECOMMENDED_WS_CONFIG,
+                params: ENDPOINT_PARAMS_SVRB_2026Q1_PROD,
+            }),
+            None,
+            None,
+        ],
+        previous: [
             Some(EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_PROD,
                 ws_config: RECOMMENDED_WS_CONFIG,
@@ -840,9 +923,9 @@ pub const PROD: Env<'static> = Env {
             None,
             None,
         ],
-        previous: [None, None, None],
     },
     keytrans_config: KEYTRANS_CONFIG_PROD,
+    reflector_providers: || &*REFLECTOR_PROVIDERS_PROD,
 };
 
 pub mod constants {
@@ -930,6 +1013,7 @@ mod test {
     ) {
         const PORT: NonZeroU16 = nonzero!(123u16);
         const CONNECT_CONFIG: ConnectionConfig = ConnectionConfig {
+            service: ServiceName("service"),
             hostname: "host",
             port: PORT,
             cert: RootCertificates::Native,

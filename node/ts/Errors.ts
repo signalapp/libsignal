@@ -69,10 +69,14 @@ export enum ErrorCode {
 
   RequestUnauthorized,
   MismatchedDevices,
+
+  ServiceIdNotFound,
+
+  UploadTooLarge,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
-type ServiceIdFixedWidthBinary = Uint8Array;
+type ServiceIdFixedWidthBinary = Uint8Array<ArrayBuffer>;
 
 /**
  * A failure sending to a recipient on account of not being up to date on their devices.
@@ -305,6 +309,7 @@ export type RateLimitChallengeError = LibSignalErrorBase & {
   code: ErrorCode.RateLimitChallengeError;
   readonly token: string;
   readonly options: Set<'pushChallenge' | 'captcha'>;
+  readonly retryAfterSecs: number | null;
 };
 
 export type ChatServiceInactive = LibSignalErrorBase & {
@@ -382,6 +387,25 @@ export type MismatchedDevicesError = LibSignalErrorCommon & {
   readonly entries: MismatchedDevicesEntry[];
 };
 
+export type ServiceIdNotFound = LibSignalErrorCommon & {
+  code: ErrorCode.ServiceIdNotFound;
+};
+
+export type UploadTooLarge = LibSignalErrorCommon & {
+  code: ErrorCode.UploadTooLarge;
+};
+
+/**
+ * @throws {ChatServiceInactive} if the chat connection has been closed.
+ * @throws {IoError} if an error occurred while communicating with the server.
+ * @throws {RateLimitedError} if the server is rate limiting this client. This is **retryable**
+ * after waiting the designated delay.
+ */
+export type StandardNetworkError =
+  | ChatServiceInactive
+  | IoError
+  | RateLimitedError;
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -431,4 +455,6 @@ export type LibSignalError =
   | KeyTransparencyVerificationFailed
   | IncrementalMacVerificationFailed
   | RequestUnauthorizedError
-  | MismatchedDevicesError;
+  | MismatchedDevicesError
+  | ServiceIdNotFound
+  | UploadTooLarge;

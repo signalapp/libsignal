@@ -9,7 +9,9 @@ fn main() {
         "src/proto/chat.proto",
     ];
     let mut prost_build = prost_build::Config::new();
-    prost_build.protoc_arg("--experimental_allow_proto3_optional");
+    prost_build
+        .protoc_arg("--experimental_allow_proto3_optional")
+        .skip_debug(["TreeHead", "Signature"]);
     prost_build
         .compile_protos(&protos, &["src/proto"])
         .expect("Protobufs in src are valid");

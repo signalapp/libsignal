@@ -9,11 +9,13 @@ import * as Native from '../../Native.js';
 export default class UuidCiphertext extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, Native.UuidCiphertext_CheckValidContents);
   }
 
-  static serializeAndConcatenate(ciphertexts: UuidCiphertext[]): Uint8Array {
+  static serializeAndConcatenate(
+    ciphertexts: UuidCiphertext[]
+  ): Uint8Array<ArrayBuffer> {
     if (ciphertexts.length == 0) {
       return Uint8Array.of();
     }

@@ -14,8 +14,10 @@ use libsignal_account_keys::Error as PinError;
 use libsignal_net::infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net_chat::api::RateLimitChallenge;
+use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFormFailure};
+use libsignal_net_chat::api::keys::GetPreKeysFailure;
 use libsignal_net_chat::api::keytrans::Error as KeyTransError;
-use libsignal_net_chat::api::messages::MismatchedDeviceError;
+use libsignal_net_chat::api::messages::{MismatchedDeviceError, UploadTooLarge};
 use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -132,6 +134,9 @@ pub enum SignalErrorCode {
 
     RequestUnauthorized = 220,
     MismatchedDevices = 221,
+
+    ServiceIdNotFound = 222,
+    UploadTooLarge = 223,
 }
 
 pub trait UpcastAsAny {
@@ -413,6 +418,7 @@ impl IntoFfiError for SignalProtocolError {
             Self::NoKeyTypeIdentifier
             | Self::BadKeyType(_)
             | Self::BadKeyLength(_, _)
+            | Self::InvalidKeyAgreement
             | Self::InvalidMacKeyLength(_)
             | Self::BadKEMKeyType(_)
             | Self::WrongKEMKeyType(_, _)
@@ -718,8 +724,13 @@ where
                 SignalErrorCode::RequestTimedOut,
                 self.to_string(),
             )),
-            Self::ServerSideError | Self::Unexpected { log_safe: _ } => {
+            Self::Unexpected { log_safe: _ } => {
                 SimpleError::new(SignalErrorCode::NetworkProtocol, self.to_string()).into()
+            }
+            Self::ServerSideError => {
+                // TODO: "IO error" isn't really apt at all, but it is an existing error code that
+                // the iOS app considers retryable.
+                SimpleError::new(SignalErrorCode::IoError, self.to_string()).into()
             }
             Self::Other(err) => err.into_ffi_error().into(),
             Self::RetryLater(retry_later) => retry_later.into(),
@@ -746,6 +757,85 @@ impl FfiError for libsignal_net_chat::api::messages::MultiRecipientSendFailure {
             Self::Unauthorized => Err(WrongErrorKind),
             Self::MismatchedDevices(mismatched_device_errors) => Ok(mismatched_device_errors),
         }
+    }
+}
+
+impl FfiError for libsignal_net_chat::api::messages::SealedSendFailure {
+    fn describe(&self) -> Cow<'_, str> {
+        self.to_string().into()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::Unauthorized => SignalErrorCode::RequestUnauthorized,
+            Self::ServiceIdNotFound => SignalErrorCode::ServiceIdNotFound,
+            Self::MismatchedDevices(_) => SignalErrorCode::MismatchedDevices,
+        }
+    }
+
+    fn provide_mismatched_device_errors(&self) -> Result<&[MismatchedDeviceError], WrongErrorKind> {
+        match self {
+            Self::Unauthorized | Self::ServiceIdNotFound => Err(WrongErrorKind),
+            Self::MismatchedDevices(mismatched_device_error) => {
+                Ok(std::slice::from_ref(mismatched_device_error))
+            }
+        }
+    }
+}
+
+impl FfiError for libsignal_net_chat::api::messages::UnsealedSendFailure {
+    fn describe(&self) -> Cow<'_, str> {
+        self.to_string().into()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::ServiceIdNotFound => SignalErrorCode::ServiceIdNotFound,
+            Self::MismatchedDevices(_) => SignalErrorCode::MismatchedDevices,
+        }
+    }
+
+    fn provide_mismatched_device_errors(&self) -> Result<&[MismatchedDeviceError], WrongErrorKind> {
+        match self {
+            Self::ServiceIdNotFound => Err(WrongErrorKind),
+            Self::MismatchedDevices(mismatched_device_error) => {
+                Ok(std::slice::from_ref(mismatched_device_error))
+            }
+        }
+    }
+}
+
+impl IntoFfiError for UploadTooLarge {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(SignalErrorCode::UploadTooLarge, self.to_string())
+    }
+}
+
+impl IntoFfiError for GetUploadFormFailure {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(
+            match self {
+                GetUploadFormFailure::Unauthorized => SignalErrorCode::RequestUnauthorized,
+                GetUploadFormFailure::UploadTooLarge => SignalErrorCode::UploadTooLarge,
+            },
+            self.to_string(),
+        )
+    }
+}
+
+impl IntoFfiError for BackupAuthCredentialRejected {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(SignalErrorCode::RequestUnauthorized, self.to_string())
+    }
+}
+
+impl IntoFfiError for libsignal_net_chat::api::keys::GetPreKeysFailure {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        let code = match self {
+            GetPreKeysFailure::Unauthorized => SignalErrorCode::RequestUnauthorized,
+            GetPreKeysFailure::NotFound => SignalErrorCode::ServiceIdNotFound,
+        };
+        SimpleError::new(code, self.to_string())
     }
 }
 
@@ -1130,7 +1220,7 @@ where
                 SimpleError::new(SignalErrorCode::SvrDataMissing, e.to_string()).into()
             }
             e @ (Self::PreviousBackupDataInvalid
-            | Self::MetadataInvalid
+            | Self::MetadataInvalid(_)
             | Self::DecryptionError(_)) => {
                 SimpleError::new(SignalErrorCode::InvalidArgument, e.to_string()).into()
             }

@@ -8,6 +8,8 @@ use std::ffi::CString;
 use derive_where::derive_where;
 use libsignal_protocol::*;
 
+use crate::support::describe_panic;
+
 #[macro_use]
 mod convert;
 pub use convert::*;
@@ -21,13 +23,15 @@ pub use error::*;
 mod futures;
 pub use futures::*;
 
-mod io;
-pub use io::*;
+// TODO: These re-exports are because of the ffi_arg_type macro expecting all bridging structs to be
+// under the ffi module; eventually we should be able to remove it.
+pub use crate::io::FfiSyncInputStreamStruct;
+pub use crate::protocol::storage::{
+    FfiIdentityKeyStoreStruct, FfiKyberPreKeyStoreStruct, FfiPreKeyStoreStruct,
+    FfiSenderKeyStoreStruct, FfiSessionStoreStruct, FfiSignedPreKeyStoreStruct,
+};
 
-mod storage;
-pub use storage::*;
-
-use crate::support::describe_panic;
+pub type FfiInputStreamStruct = FfiSyncInputStreamStruct;
 
 #[derive(Debug)]
 pub struct NullPointerError;
@@ -51,6 +55,9 @@ impl<T> BorrowedSliceOf<T> {
         Ok(unsafe { std::slice::from_raw_parts(self.base, self.length) })
     }
 }
+
+unsafe impl<T> Send for BorrowedSliceOf<T> where for<'a> &'a [T]: Send {}
+unsafe impl<T> Sync for BorrowedSliceOf<T> where for<'a> &'a [T]: Sync {}
 
 #[repr(C)]
 pub struct BorrowedMutableSliceOf<T> {
@@ -329,6 +336,21 @@ impl FfiMismatchedDevicesError {
         _ = unsafe { std::mem::take(&mut self.extra_devices).into_box() };
         _ = unsafe { std::mem::take(&mut self.stale_devices).into_box() };
     }
+}
+
+#[repr(C)]
+pub struct FfiPreKeysResponse {
+    identity_key: MutPointer<PublicKey>,
+    pre_key_bundles: OwnedBufferOf<MutPointer<PreKeyBundle>>,
+}
+
+#[repr(C)]
+pub struct FfiUploadForm {
+    cdn: u32,
+    key: CStringPtr,
+    header_keys: OwnedBufferOf<CStringPtr>,
+    header_values: OwnedBufferOf<CStringPtr>,
+    signed_upload_url: CStringPtr,
 }
 
 #[cfg_attr(doc, visibility::make(pub))]

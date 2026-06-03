@@ -321,7 +321,7 @@ mod test {
         let (addr, server) = simple_localhost_https_server();
         let _server_handle = tokio::spawn(server);
 
-        let mut ssl = SslConnector::builder(SslMethod::tls_client()).expect("valid");
+        let mut ssl = SslConnector::builder(SslMethod::tls()).expect("valid");
         RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der()))
             .apply_to_connector(&mut ssl, crate::host::Host::Domain(SERVER_HOSTNAME))
             .expect("can configure TLS");

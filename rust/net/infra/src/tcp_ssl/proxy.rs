@@ -16,6 +16,7 @@ use crate::route::{
 };
 
 pub mod https;
+pub mod reflector;
 pub mod socks;
 
 mod stream;
@@ -40,6 +41,7 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
     ) -> Result<Self::Connection, Self::Error> {
         match route {
             ConnectionProxyRoute::Tls { proxy } => {
+                log::info!("[{log_tag}] attempting connection over TLS proxy");
                 let TlsRoute {
                     fragment: tls_fragment,
                     inner,
@@ -92,6 +94,12 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
                 .connect(route, log_tag)
                 .map_ok(Into::into)
                 .await
+            }
+            ConnectionProxyRoute::Reflector(route) => {
+                LoggingConnector::new(self, reflector::LONG_FULL_CONNECT_THRESHOLD, "Reflector")
+                    .connect(route, log_tag)
+                    .map_ok(|stream| ProxyStream::Reflector(Box::new(stream)))
+                    .await
             }
         }
     }
@@ -215,7 +223,7 @@ pub(crate) mod testutil {
     impl TlsServer {
         pub(super) fn new(server: TcpServer, certificate: &CertifiedKey<rcgen::KeyPair>) -> Self {
             let ssl_acceptor = try_scoped(|| {
-                let mut builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls_server())?;
+                let mut builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls())?;
                 builder.set_certificate(X509::from_der(certificate.cert.der())?.as_ref())?;
                 builder.set_private_key(
                     PKey::private_key_from_der(certificate.signing_key.serialized_der())?.as_ref(),
@@ -315,7 +323,13 @@ pub(crate) mod testutil {
             let buffer = stream.fill_buf().await.expect("can read");
             match tls_parser::parse_tls_plaintext(buffer) {
                 Ok((_, record)) => break record,
-                Err(tls_parser::Err::Incomplete(_)) => continue,
+                Err(tls_parser::Err::Incomplete(needed)) => {
+                    assert!(
+                        buffer.len() < TCP_MIN_MSS,
+                        "buffer too small (did the ClientHello change?) - still need {needed:?}"
+                    );
+                    continue;
+                }
                 Err(e) => panic!("failed to parse TLS: {e}"),
             }
         };

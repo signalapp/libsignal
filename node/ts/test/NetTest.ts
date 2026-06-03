@@ -261,6 +261,28 @@ describe('chat service api', () => {
       port: undefined,
     });
 
+    // Non-ASCII username and password
+    expect(
+      Net.proxyOptionsFromUrl('schm://ユーザ:パス@host.example')
+    ).deep.equals({
+      scheme: 'schm',
+      host: 'host.example',
+      username: 'ユーザ',
+      password: 'パス',
+      port: undefined,
+    });
+    expect(
+      Net.proxyOptionsFromUrl(
+        'schm://%E3%83%A6%E3%83%BC%E3%82%B6:%E3%83%91%E3%82%B9@host.example'
+      )
+    ).deep.equals({
+      scheme: 'schm',
+      host: 'host.example',
+      username: 'ユーザ',
+      password: 'パス',
+      port: undefined,
+    });
+
     // Empty "fields" get dropped by Node's URL parser.
     expect(Net.proxyOptionsFromUrl('schm://host.example:')).deep.equals({
       scheme: 'schm',
@@ -371,11 +393,17 @@ describe('chat service api', () => {
         // you can check the log lines for: "[authenticated] using preconnection".
         // We have to use an authenticated connection because that's the only one that's allowed to
         // use preconnects.
-        await net.connectAuthenticatedChat('', '', true, {
-          onIncomingMessage: sinon.stub(),
-          onConnectionInterrupted: sinon.stub(),
-          onQueueEmpty: sinon.stub(),
-        });
+        // Use a syntactically valid but non-existent ACI so the server rejects the credentials.
+        await net.connectAuthenticatedChat(
+          '90c979fd-eab4-4a08-b6da-69dedeab9b29.1',
+          'password',
+          true,
+          {
+            onIncomingMessage: sinon.stub(),
+            onConnectionInterrupted: sinon.stub(),
+            onQueueEmpty: sinon.stub(),
+          }
+        );
         assert.fail('should not have managed to authenticate');
       } catch (e) {
         assert.instanceOf(e, LibSignalErrorBase);
@@ -501,6 +529,7 @@ describe('chat service api', () => {
       const [_chat, fakeRemote] = AuthenticatedChatConnection.fakeConnect(
         tokio,
         listener,
+        [],
         ['UPPERcase', 'lowercase']
       );
 
@@ -511,7 +540,7 @@ describe('chat service api', () => {
 
       // a helper function to check that the message has been passed to the listener
       async function check(
-        serverRequest: Uint8Array,
+        serverRequest: Uint8Array<ArrayBuffer>,
         expectedMethod: sinon.SinonStub,
         expectedArguments: unknown[]
       ) {
@@ -543,7 +572,7 @@ describe('chat service api', () => {
     it('messages arrive in order', async () => {
       const listener: ChatServiceListener = {
         onIncomingMessage(
-          _envelope: Uint8Array,
+          _envelope: Uint8Array<ArrayBuffer>,
           _timestamp: number,
           _ack: ChatServerMessageAck
         ): void {
@@ -566,7 +595,7 @@ describe('chat service api', () => {
       );
 
       const completable = new CompletablePromise();
-      const callsToMake: Buffer[] = [
+      const callsToMake: Buffer<ArrayBuffer>[] = [
         INCOMING_MESSAGE_1,
         EMPTY_QUEUE,
         INVALID_MESSAGE,
@@ -617,7 +646,7 @@ describe('chat service api', () => {
       const connectionInterruptedReasons: (object | null)[] = [];
       const listener: ChatServiceListener = {
         onIncomingMessage(
-          _envelope: Uint8Array,
+          _envelope: Uint8Array<ArrayBuffer>,
           _timestamp: number,
           _ack: ChatServerMessageAck
         ): void {
@@ -761,7 +790,7 @@ describe('chat service api', () => {
           ack.send(200);
         },
         onReceivedEnvelope(
-          envelope: Uint8Array,
+          envelope: Uint8Array<ArrayBuffer>,
           ack: ChatServerMessageAck
         ): void {
           recordCall('onReceivedEnvelope', envelope);
@@ -778,7 +807,7 @@ describe('chat service api', () => {
       );
 
       const completable = new CompletablePromise();
-      const callsToMake: Buffer[] = [
+      const callsToMake: Buffer<ArrayBuffer>[] = [
         PUT_ADDRESS,
         INVALID_MESSAGE,
         PUT_ENVELOPE,

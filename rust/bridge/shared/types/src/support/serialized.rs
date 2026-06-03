@@ -15,6 +15,9 @@ impl<T, const LEN: usize> Array<T> for [T; LEN] {
 pub trait FixedLengthBincodeSerializable: 'static {
     /// Should be an actual byte array type, like `[u8; 7]`.
     type Array: Array<u8> + for<'a> TryFrom<&'a [u8], Error = std::array::TryFromSliceError>;
+
+    #[cfg(feature = "metadata")]
+    fn name() -> String;
 }
 
 /// A wrapper type that indicates that `T` should be serialized across the bridges.

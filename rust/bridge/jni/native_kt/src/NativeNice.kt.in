@@ -1,0 +1,66 @@
+//
+// Copyright (C) 2026 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+// WARNING: this file was automatically generated
+
+@file:Suppress(
+    "ktlint:standard:function-naming",
+    "ktlint:standard:property-naming",
+    "ktlint:standard:filename",
+)
+
+package org.signal.libsignal.internal
+
+{% set ctx = testing_ctx if testing else non_testing_ctx %}
+
+internal object {{ "NativeTestingNice" if testing else "NativeNice" }} {
+    @Suppress("NOTHING_TO_INLINE")
+    private inline fun <T> identity(x: T): T = x
+    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
+    private fun convertToObject(x: Any): Object = x as Object
+
+    private inline fun <InA, InB, OutA, OutB> mapPair(
+        crossinline transformA: (InA) -> OutA,
+        crossinline transformB: (InB) -> OutB,
+    ): (Pair<InA, InB>) -> Pair<OutA, OutB> = {
+        Pair(transformA(it.first), transformB(it.second))
+    }
+
+    {% for (name, f) in ctx.nice_functions|items %}
+        public fun {{ name }}(
+            {% if f.is_tokio_async -%}
+                asyncCtx: TokioAsyncContext,
+            {% endif -%}
+            {% for (arg, ty) in f.arguments -%}
+                {{ arg|to_lower_camel_case }}: {{ ty.nice_type }},
+            {% endfor -%}
+        ): {% if f.is_tokio_async -%}
+            CompletableFuture<{{ f.return_type.nice_type }}>
+        {%- else -%}
+            {{ f.return_type.nice_type }}
+        {%- endif %} {
+            {% for (arg, ty) in f.arguments -%}
+                val ffi_{{ arg }} = {{ ty.converter_function }}({{ arg|to_lower_camel_case }})
+            {% endfor -%}
+            val ffiOut = {% if f.is_tokio_async %} NativeHandleGuard(asyncCtx).use { asyncCtxHandle -> {% endif %}
+                Native{% if testing %}Testing{% endif %}.{{ name }}(
+                    {%- if f.is_tokio_async -%}
+                        asyncCtxHandle.nativeHandle(),
+                    {%- endif %}
+                    {% for (arg, ty) in f.arguments -%}
+                        ffi_{{ arg }},
+                    {% endfor -%}
+                )
+            {% if f.is_tokio_async %} } {% endif %}
+            {% if f.is_tokio_async -%}
+                return ffiOut
+                  .makeCancelable(asyncCtx)
+                  .thenApply { {{ f.return_type.converter_function }}(it) }
+            {%- else -%}
+                return {{ f.return_type.converter_function }}(ffiOut)
+            {%- endif %}
+        }
+    {% endfor %}
+}

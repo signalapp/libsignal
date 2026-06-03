@@ -11,7 +11,7 @@ import * as util from '../util.js';
 util.initLogger();
 
 export class InMemorySessionStore extends SignalClient.SessionStore {
-  private state = new Map<string, Uint8Array>();
+  private state = new Map<string, Uint8Array<ArrayBuffer>>();
   async saveSession(
     name: SignalClient.ProtocolAddress,
     record: SignalClient.SessionRecord
@@ -70,7 +70,7 @@ export class InMemoryIdentityKeyStore extends SignalClient.IdentityKeyStore {
     const idx = `${name.name()}::${name.deviceId()}`;
     const currentKey = this.idKeys.get(idx);
     if (currentKey) {
-      return currentKey.compare(key) == 0;
+      return currentKey.equals(key);
     } else {
       return true;
     }
@@ -84,7 +84,7 @@ export class InMemoryIdentityKeyStore extends SignalClient.IdentityKeyStore {
     const currentKey = this.idKeys.get(idx);
     this.idKeys.set(idx, key);
 
-    const changed = (currentKey?.compare(key) ?? 0) != 0;
+    const changed = !(currentKey?.equals(key) ?? true);
     return changed
       ? SignalClient.IdentityChange.ReplacedExisting
       : SignalClient.IdentityChange.NewOrUnchanged;
@@ -98,7 +98,7 @@ export class InMemoryIdentityKeyStore extends SignalClient.IdentityKeyStore {
 }
 
 export class InMemoryPreKeyStore extends SignalClient.PreKeyStore {
-  private state = new Map<number, Uint8Array>();
+  private state = new Map<number, Uint8Array<ArrayBuffer>>();
   async savePreKey(
     id: number,
     record: SignalClient.PreKeyRecord
@@ -118,7 +118,7 @@ export class InMemoryPreKeyStore extends SignalClient.PreKeyStore {
 }
 
 export class InMemorySignedPreKeyStore extends SignalClient.SignedPreKeyStore {
-  private state = new Map<number, Uint8Array>();
+  private state = new Map<number, Uint8Array<ArrayBuffer>>();
   async saveSignedPreKey(
     id: number,
     record: SignalClient.SignedPreKeyRecord
@@ -135,7 +135,7 @@ export class InMemorySignedPreKeyStore extends SignalClient.SignedPreKeyStore {
 }
 
 export class InMemoryKyberPreKeyStore extends SignalClient.KyberPreKeyStore {
-  private state = new Map<number, Uint8Array>();
+  private state = new Map<number, Uint8Array<ArrayBuffer>>();
   private used = new Set<number>();
   private baseKeysSeen = new Map<bigint, SignalClient.PublicKey[]>();
   async saveKyberPreKey(
@@ -161,7 +161,7 @@ export class InMemoryKyberPreKeyStore extends SignalClient.KyberPreKeyStore {
     const baseKeysSeen = this.baseKeysSeen.get(bothKeyIds);
     if (!baseKeysSeen) {
       this.baseKeysSeen.set(bothKeyIds, [baseKey]);
-    } else if (baseKeysSeen.every((key) => key.compare(baseKey) != 0)) {
+    } else if (baseKeysSeen.every((key) => !key.equals(baseKey))) {
       baseKeysSeen.push(baseKey);
     } else {
       throw new Error('reused base key');

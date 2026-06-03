@@ -15,22 +15,33 @@ workspace = true
 
 [lib]
 name = "signal_node"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
+
+[features]
+# Here for bridge_fn uniformity
+node = []
+default = ["node"]
+metadata = [
+    "libsignal-bridge/metadata",
+    "libsignal-bridge-testing/metadata",
+    "libsignal-bridge-types/metadata",
+]
 
 [dependencies]
 libsignal-bridge = { workspace = true, features = ["node", "signal-media"] }
+libsignal-bridge-macros = { workspace = true }
 libsignal-bridge-testing = { workspace = true, features = ["node", "signal-media"] }
+libsignal-bridge-types = { workspace = true, features = ["node"] }
 libsignal-protocol = { workspace = true }
 
 futures = { workspace = true }
+linkme = { workspace = true }
 log = { workspace = true }
 log-panics = { workspace = true, features = ["with-backtrace"] }
 minidump = { workspace = true }
 minidump-processor = { workspace = true }
 minidump-unwind = { workspace = true }
 neon = { workspace = true, features = ["napi-6"] }
-
-[build-dependencies]
-# cmake 0.1.49 breaks no-toolchain Windows cross-compilation using Visual Studio
-# https://github.com/rust-lang/cmake-rs/pull/158#issuecomment-1544695163
-cmake = ">=0.1.22, <0.1.49"
+paste = { workspace = true }
+rand = { workspace = true }
+uuid = { workspace = true }

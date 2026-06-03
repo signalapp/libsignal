@@ -30,8 +30,7 @@ let package = Package(
             dependencies: ["SignalFfi"],
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")],
             linkerSettings: [
-                // link libz, which is required for permessage-deflate websocket support.
-                .linkedLibrary("z")
+                .linkedLibrary("stdc++", .when(platforms: [.linux]))
             ]
         ),
         .testTarget(

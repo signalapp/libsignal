@@ -9,7 +9,7 @@ export default class ReceiptSerial extends ByteArray {
   private readonly __type?: never;
   static SIZE = 16;
 
-  constructor(contents: Uint8Array) {
+  constructor(contents: Uint8Array<ArrayBuffer>) {
     super(contents, ReceiptSerial.checkLength(ReceiptSerial.SIZE));
   }
 }

@@ -64,38 +64,6 @@ class UnauthUsernamesServiceTests: UnauthChatServiceTestBase<any UnauthUsernames
         XCTAssertNil(responseFromServer)
     }
 
-    func testUsernameHashChallengeError() async throws {
-        let api = self.api
-        async let responseFuture = api.lookUpUsernameHash(Data([1, 2, 3, 4]))
-
-        let (request, id) = try await fakeRemote.getNextIncomingRequest()
-        XCTAssertEqual(request.method, "GET")
-
-        try fakeRemote.sendResponse(
-            requestId: id,
-            ChatResponse(
-                status: 428,
-                headers: ["content-type": "application/json"],
-                body: Data(
-                    """
-                    {
-                        "token": "not-legal-tender",
-                        "options": ["pushChallenge"]
-                    }
-                    """.utf8
-                )
-            )
-        )
-
-        do {
-            _ = try await responseFuture
-            XCTFail("should have failed")
-        } catch SignalError.rateLimitChallengeError(let token, let options, _) {
-            XCTAssertEqual(token, "not-legal-tender")
-            XCTAssertEqual(options, [.pushChallenge])
-        }
-    }
-
     func testUsernameHashServerSideError() async throws {
         let api = self.api
         async let responseFuture = api.lookUpUsernameHash(Data([1, 2, 3, 4]))
@@ -111,7 +79,7 @@ class UnauthUsernamesServiceTests: UnauthChatServiceTestBase<any UnauthUsernames
         do {
             _ = try await responseFuture
             XCTFail("should have failed")
-        } catch SignalError.networkProtocolError(_) {
+        } catch SignalError.ioError(_) {
         }
     }
 
@@ -206,7 +174,7 @@ class UnauthUsernamesServiceTests: UnauthChatServiceTestBase<any UnauthUsernames
         do {
             _ = try await responseFuture
             XCTFail("should have failed")
-        } catch SignalError.networkProtocolError(_) {
+        } catch SignalError.ioError(_) {
         }
     }
 
@@ -222,6 +190,38 @@ class UnauthUsernamesServiceTests: UnauthChatServiceTestBase<any UnauthUsernames
             XCTFail("should have failed")
         } catch SignalError.usernameLinkInvalidEntropyDataLength(_) {
         }
+    }
+}
+
+class UnauthUsernamesServiceGrpcTests: UnauthChatServiceTestBase<any UnauthUsernamesService> {
+    override class var selector: SelectorCheck { .usernames }
+
+    override var grpcOverrides: [String] {
+        ["AccountsAnonymousLookupUsernameLink"]
+    }
+
+    func testUsernameLinkLookup() async throws {
+        let api = self.api
+        async let responseFuture = api.lookUpUsernameLink(
+            UUID(uuid: nilUuid),
+            entropy: UnauthUsernamesServiceTests.ENCRYPTED_USERNAME_ENTROPY
+        )
+
+        let (request, id) = try await fakeRemote.getNextIncomingGrpcRequest()
+        XCTAssertEqual(
+            request.getSingleGrpcMessage("org.signal.chat.account.LookupUsernameLinkRequest"),
+            ["usernameLinkHandle": "AAAAAAAAAAAAAAAAAAAAAA=="]
+        )
+
+        try await fakeRemote.sendGrpcResponse(
+            requestId: id,
+            name: "org.signal.chat.account.LookupUsernameLinkResponse",
+            json: ["usernameCiphertext": UnauthUsernamesServiceTests.ENCRYPTED_USERNAME]
+        )
+
+        let responseFromServer = try await responseFuture
+        XCTAssertNotNil(responseFromServer)
+        XCTAssertEqual(responseFromServer!.value, UnauthUsernamesServiceTests.EXPECTED_USERNAME)
     }
 }
 

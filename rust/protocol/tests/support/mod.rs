@@ -33,12 +33,14 @@ pub fn test_in_memory_protocol_store() -> Result<InMemSignalProtocolStore, Signa
 pub async fn encrypt(
     store: &mut InMemSignalProtocolStore,
     remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     msg: &str,
 ) -> Result<CiphertextMessage, SignalProtocolError> {
     let mut csprng = OsRng.unwrap_err();
     message_encrypt(
         msg.as_bytes(),
         remote_address,
+        local_address,
         &mut store.session_store,
         &mut store.identity_store,
         SystemTime::now(),
@@ -50,12 +52,14 @@ pub async fn encrypt(
 pub async fn decrypt(
     store: &mut InMemSignalProtocolStore,
     remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
     msg: &CiphertextMessage,
 ) -> Result<Vec<u8>, SignalProtocolError> {
     let mut csprng = OsRng.unwrap_err();
     message_decrypt(
         msg,
         remote_address,
+        local_address,
         &mut store.session_store,
         &mut store.identity_store,
         &mut store.pre_key_store,
@@ -160,6 +164,8 @@ pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), Signal
         bob_base_key.public_key,
         bob_ephemeral_key.public_key,
         bob_kyber_key.public_key.clone(),
+        // Alice and Bob identities won't be equal (with high probability)
+        false,
     );
 
     let alice_session = initialize_alice_session_record(&alice_params, &mut csprng)?;
@@ -175,15 +181,15 @@ pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), Signal
         bob_identity,
         bob_base_key,
         None,
-        bob_ephemeral_key,
         bob_kyber_key,
         *alice_identity.identity_key(),
         alice_base_key.public_key,
         &kyber_ciphertext,
+        false,
         None,
     );
 
-    let bob_session = initialize_bob_session_record(&bob_params)?;
+    let bob_session = initialize_bob_session_record(&bob_params, &bob_ephemeral_key)?;
 
     Ok((alice_session, bob_session))
 }

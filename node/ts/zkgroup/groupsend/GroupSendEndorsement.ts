@@ -45,7 +45,10 @@ import CallLinkSecretParams from '../calllinks/CallLinkSecretParams.js';
  * it's still cheaper than a usual zkgroup presentation.)
  */
 export default class GroupSendEndorsement extends ByteArray {
-  constructor(contents: Uint8Array, marker?: typeof UNCHECKED_AND_UNCLONED) {
+  constructor(
+    contents: Uint8Array<ArrayBuffer>,
+    marker?: typeof UNCHECKED_AND_UNCLONED
+  ) {
     super(contents, marker ?? Native.GroupSendEndorsement_CheckValidContents);
   }
 

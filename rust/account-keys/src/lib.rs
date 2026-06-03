@@ -15,8 +15,8 @@ pub use backup::*;
 pub use error::{Error, Result};
 pub use hash::{PinHash, local_pin_hash, verify_local_pin_hash};
 use hkdf::Hkdf;
-use rand::Rng;
 use rand::distr::slice;
+use rand::{CryptoRng, Rng};
 use sha2::Sha256;
 
 pub const SVR_KEY_LEN: usize = 32;
@@ -32,7 +32,7 @@ impl AccountEntropyPool {
     const LENGTH: usize = 64;
     const ALPHABET: &'static [u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
 
-    pub fn generate(rng: &mut impl Rng) -> AccountEntropyPool {
+    pub fn generate(rng: &mut (impl Rng + CryptoRng + ?Sized)) -> AccountEntropyPool {
         let alphabet_dist = slice::Choose::new(Self::ALPHABET).expect("non-empty");
         let entropy_pool: [u8; Self::LENGTH] = std::array::from_fn(|_| *rng.sample(alphabet_dist));
         Self { entropy_pool }
@@ -116,11 +116,11 @@ mod tests {
         use assert_matches::assert_matches;
         use proptest::prelude::*;
         use rand::rngs::StdRng;
-        use rand::{Rng, SeedableRng as _};
+        use rand::{CryptoRng, SeedableRng as _};
 
         use crate::{AccountEntropyPool, InvalidAccountEntropyPool};
 
-        fn test_rng(seed: u64) -> impl Rng {
+        fn test_rng(seed: u64) -> impl CryptoRng {
             StdRng::seed_from_u64(seed)
         }
 

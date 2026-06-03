@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
-FROM ubuntu:focal-20240530@sha256:fa17826afb526a9fc7250e0fbcbfd18d03fe7a54849472f86879d8bf562c629e
+FROM ubuntu:jammy-20260109@sha256:c7eb020043d8fc2ae0793fb35a37bff1cf33f156d4d4b12ccc7f3ef8706c38b1
 
 # Avoid getting prompted to configure things during installation.
 ENV DEBIAN_FRONTEND=noninteractive
@@ -22,7 +22,7 @@ RUN    apt-get update -oAcquire::https::Verify-Peer=false \
 
 # Install only what's needed to set up Rust and Node.
 # We'll install additional tools at the end to take advantage of Docker's caching of earlier steps.
-RUN apt-get update && apt-get install -y apt-transport-https xz-utils unzip
+RUN apt-get update && apt-get install -y xz-utils unzip
 
 # User-specific setup!
 
@@ -43,10 +43,10 @@ WORKDIR /home/libsignal
 # Rust setup
 COPY rust-toolchain rust-toolchain
 ENV PATH="/home/libsignal/.cargo/bin:${PATH}"
-ARG RUSTUP_SHA=ad1f8b5199b3b9e231472ed7aa08d2e5d1d539198a15c5b1e53c746aad81d27b
+ARG RUSTUP_SHA=20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c
 
 ADD --chown=libsignal --chmod=755 --checksum=sha256:${RUSTUP_SHA} \
-    https://static.rust-lang.org/rustup/archive/1.21.1/x86_64-unknown-linux-gnu/rustup-init /tmp/rustup-init
+    https://static.rust-lang.org/rustup/archive/1.28.2/x86_64-unknown-linux-gnu/rustup-init /tmp/rustup-init
 
 RUN    /tmp/rustup-init -y --profile minimal --default-toolchain "$(cat rust-toolchain)" \
     && rm -rf /tmp/rustup-init
@@ -78,6 +78,6 @@ USER root
 RUN apt-get install -y clang cmake crossbuild-essential-arm64 git python3
 USER libsignal
 
-RUN cargo install dump_syms --no-default-features --features cli
+RUN cargo install dump_syms --locked --no-default-features --features cli
 
 CMD [ "/bin/bash" ]

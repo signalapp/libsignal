@@ -31,7 +31,7 @@ export default class ClientZkReceiptOperations {
   }
 
   createReceiptCredentialRequestContextWithRandom(
-    random: Uint8Array,
+    random: Uint8Array<ArrayBuffer>,
     receiptSerial: ReceiptSerial
   ): ReceiptCredentialRequestContext {
     return new ReceiptCredentialRequestContext(
@@ -67,7 +67,7 @@ export default class ClientZkReceiptOperations {
   }
 
   createReceiptCredentialPresentationWithRandom(
-    random: Uint8Array,
+    random: Uint8Array<ArrayBuffer>,
     receiptCredential: ReceiptCredential
   ): ReceiptCredentialPresentation {
     return new ReceiptCredentialPresentation(

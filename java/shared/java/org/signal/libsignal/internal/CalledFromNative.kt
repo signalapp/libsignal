@@ -89,6 +89,11 @@ public annotation class CalledFromNative {
           return
         }
 
+        // We special-case the getters for kotlin.Pair
+        if (declaringClass == Pair::class.java) {
+          return
+        }
+
         // If the method itself is annotated directly, we're done.
         if (method.isAnnotationPresent(CalledFromNative::class.java)) {
           return

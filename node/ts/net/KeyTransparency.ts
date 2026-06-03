@@ -25,13 +25,16 @@ import {
  * used by the {@link Client}.
  */
 export interface Store {
-  getLastDistinguishedTreeHead: () => Promise<Uint8Array | null>;
+  getLastDistinguishedTreeHead: () => Promise<Uint8Array<ArrayBuffer> | null>;
   setLastDistinguishedTreeHead: (
-    bytes: Readonly<Uint8Array> | null
+    bytes: Readonly<Uint8Array<ArrayBuffer>> | null
   ) => Promise<void>;
 
-  getAccountData: (aci: Aci) => Promise<Uint8Array | null>;
-  setAccountData: (aci: Aci, bytes: Readonly<Uint8Array>) => Promise<void>;
+  getAccountData: (aci: Aci) => Promise<Uint8Array<ArrayBuffer> | null>;
+  setAccountData: (
+    aci: Aci,
+    bytes: Readonly<Uint8Array<ArrayBuffer>>
+  ) => Promise<void>;
 }
 
 /**
@@ -51,41 +54,39 @@ export type AciInfo = { aci: Aci; identityKey: PublicKey };
  */
 export type E164Info = {
   e164: string;
-  unidentifiedAccessKey: Readonly<Uint8Array>;
+  unidentifiedAccessKey: Readonly<Uint8Array<ArrayBuffer>>;
 };
 
 /**
  * Key transparency client request
  *
+ * Always use latest known values of all identifiers (ACI, E.164, username hash)
+ * associated with the account searched for/monitored, along with a correct
+ * value of {@link CheckMode}.
+ *
  */
-export type Request = {
+export type Request = CheckMode & {
   /** ACI information for the request. Required. */
   aciInfo: AciInfo;
   /** Unidentified access key associated with the account. Optional. */
   e164Info?: E164Info;
   /* Hash of the username associated with the account. Optional. */
-  usernameHash?: Readonly<Uint8Array>;
+  usernameHash?: Readonly<Uint8Array<ArrayBuffer>>;
 };
 
 /**
- *  Mode of the monitor operation.
+ * The behavior of both {@link Client#check} differs depending on whether it is
+ * performed for the owner of the account or contact and in the former case whether
+ * the phone number discoverability is enabled.
  *
- *  If the newer version of account data is found in the key transparency
- *  log, self-monitor will terminate with an error, but monitor for other
- *  account will fall back to a full search and update the locally stored
- *  data.
+ * For example, if the newer version of account data is found in the key
+ * transparency log while monitoring "self", it will terminate with an error.
+ * However, the same check for a "contact" will result in a follow-up search
+ * request.
  */
-export enum MonitorMode {
-  Self,
-  Other,
-}
-
-/**
- * An extension of the {@link Request} for the monitor operation.
- */
-export type MonitorRequest = Request & {
-  mode: MonitorMode;
-};
+export type CheckMode =
+  | { mode: 'contact' }
+  | { mode: 'self'; isE164Discoverable: boolean };
 
 /**
  * Typed API to access the key transparency subsystem using an existing
@@ -116,82 +117,95 @@ export type MonitorRequest = Request & {
  * const kt = chat.keyTransparencyClient();
  *
  * // Promise fulfillment means the operation succeeded with no further steps required.
- * await kt.search({ aciInfo: { aci: myACI, identityKey: myAciIdentityKey } }, store);
+ * await kt.check({ aciInfo: { aci: myACI, identityKey: myAciIdentityKey, mode: 'contact' } }, store);
  * ```
  *
  */
 export interface Client {
   /**
-   * Search for account information in the key transparency tree.
+   * A unified key transparency operation that performs a search, a monitor, or both.
    *
+   * Caller should pass latest known values of all identifiers (ACI, E.164, username hash) associated
+   * with the account, along with a correct value of {@link CheckMode}.
    *
-   * @param request - Key transparency client {@link Request}.
-   * @param store - Local key transparency storage. It will be queried for both
-   * the account data and the latest distinguished tree head before sending the
-   * server request and, if the request succeeds, will be updated with the
-   * search operation results.
-   * @param options - options for the asynchronous operation. Optional.
+   * If there is no data in the store for the account, the search operation will be performed. Following
+   * this initial search, the monitor operation will be used.
    *
-   * @returns A promise that resolves if the search succeeds and the local state has been updated
-   * to reflect the latest changes. If the promise is rejected, the UI should be updated to notify
-   * the user of the failure.
-   *
-   * @throws {KeyTransparencyError} for errors related to key transparency logic, which
-   * includes missing required fields in the serialized data. Retrying the search without
-   * changing any of the arguments (including the state of the store) is unlikely to yield a
-   * different result.
-   * @throws {KeyTransparencyVerificationFailed} when it fails to
-   * verify the data in key transparency server response, such as an incorrect proof or a
-   * wrong signature.
-   * @throws {ChatServiceInactive} if the chat connection has been closed.
-   * @throws {IoError} if an error occurred while communicating with the
-   * server.
-   * @throws {RateLimitedError} if the server is rate limiting this client. This is **retryable**
-   * after waiting the designated delay.
-   * */
-  search: (
-    request: Request,
-    store: Store,
-    options?: Readonly<Options>
-  ) => Promise<void>;
-
-  /**
-   * Perform a monitor operation for an account previously searched for.
-   *
-   * If the monitor request discovers that the client has changed their username
-   * or phone number, the search request will be performed instead.
+   * If any of the fields in the monitor response contain a version that is higher than the one
+   * currently in the store, the behavior depends on the mode parameter value.
+   * - { mode: 'self', ...} - A {@link KeyTransparencyError} will be returned, no search request will
+   *   be issued.
+   * - 'contact' - Another search request will be performed automatically and, if it succeeds,
+   *   the updated account data will be stored.
    *
    * @param request - Key transparency client {@link Request}.
    * @param store - Local key transparency storage. It will be queried for both
-   * the account data and the latest distinguished tree head before sending the
-   * server request and, if the request succeeds, will be updated with the
-   * search operation results.
+   * the account data before sending the server request and, if the request
+   * succeeds, will be updated with the operation results.
    * @param options - options for the asynchronous operation. Optional.
    *
-   * @returns A promise that resolves if the monitor succeeds and the local state has been updated
-   * to reflect the latest changes. If the promise is rejected, the UI should be updated to notify
-   * the user of the failure.
+   * @returns A promise that resolves if the check succeeds and the local state has been updated
+   * to reflect the latest changes.
    *
    * @throws {KeyTransparencyError} for errors related to key transparency logic, which
-   * includes missing required fields in the serialized data. Retrying the search without
+   * includes missing required fields in the serialized data. Retrying the check without
    * changing any of the arguments (including the state of the store) is unlikely to yield a
    * different result.
    * @throws {KeyTransparencyVerificationFailed} when it fails to
    * verify the data in key transparency server response, such as an incorrect proof or a
    * wrong signature. This is also the error thrown when new version
    * of account data is found in the key transparency log when
-   * self-monitoring. See {@link MonitorMode}.
+   * checking for self. See {@link CheckMode}.
    * @throws {ChatServiceInactive} if the chat connection has been closed.
-   * @throws {IoError} if an error occurred while communicating with the
-   * server.
+   * @throws {IoError} if an error occurred while communicating with the server.
    * @throws {RateLimitedError} if the server is rate limiting this client. This is **retryable**
    * after waiting the designated delay.
    */
-  monitor: (
-    request: MonitorRequest,
+  check: (
+    request: Request,
     store: Store,
     options?: Readonly<Options>
   ) => Promise<void>;
+}
+
+/**
+ * A tag identifying an optional field of the account data.
+ *
+ * (Must be in sync with the Rust counterpart)
+ */
+export enum AccountDataField {
+  E164 = 0,
+  UsernameHash = 1,
+}
+
+/**
+ * Resets a particular field in the data associated with given ACI.
+ *
+ * Must only be called for the "self" account when either E.164 or username
+ * change is performed.
+ *
+ * Upon successful completion the data associated with the account will be
+ * updated in the store, if it was present to begin with, noop if it was not.
+ *
+ * @param aci - An ACI of "self" account.
+ * @param field - Account data field to be reset (E.164 or username hash).
+ * @param store - local persistent storage for key transparency-related data.
+ * @throws {TypeError} if the stored data cannot be decoded correctly, which means data corruption.
+ */
+export async function resetField(
+  aci: Aci,
+  field: AccountDataField,
+  store: Store
+): Promise<void> {
+  const accountData = await store.getAccountData(aci);
+  if (accountData === null) {
+    return;
+  }
+  const updated = Native.KeyTransparency_ResetDataField(accountData, field);
+  if (updated.length === 0) {
+    throw new TypeError('failed to decode account data');
+  }
+  await store.setAccountData(aci, updated);
 }
 
 export class ClientImpl implements Client {
@@ -201,52 +215,11 @@ export class ClientImpl implements Client {
     private readonly env: Environment
   ) {}
 
-  async search(
+  async check(
     request: Request,
     store: Store,
     options?: Readonly<Options>
   ): Promise<void> {
-    const distinguished = await this._getLatestDistinguished(
-      store,
-      options ?? {}
-    );
-    const { abortSignal } = options ?? {};
-    const {
-      aciInfo: { aci, identityKey: aciIdentityKey },
-      e164Info,
-      usernameHash,
-    } = request;
-    const { e164, unidentifiedAccessKey } = e164Info ?? {
-      e164: null,
-      unidentifiedAccessKey: null,
-    };
-    const accountData = await this.asyncContext.makeCancellable(
-      abortSignal,
-      Native.KeyTransparency_Search(
-        this.asyncContext,
-        this.env,
-        this.chatService,
-        aci.getServiceIdFixedWidthBinary(),
-        aciIdentityKey,
-        e164,
-        unidentifiedAccessKey,
-        usernameHash ?? null,
-        await store.getAccountData(aci),
-        distinguished
-      )
-    );
-    await store.setAccountData(aci, accountData);
-  }
-
-  async monitor(
-    request: MonitorRequest,
-    store: Store,
-    options?: Readonly<Options>
-  ): Promise<void> {
-    const distinguished = await this._getLatestDistinguished(
-      store,
-      options ?? {}
-    );
     const { abortSignal } = options ?? {};
     const {
       aciInfo: { aci, identityKey: aciIdentityKey },
@@ -258,49 +231,27 @@ export class ClientImpl implements Client {
       e164: null,
       unidentifiedAccessKey: null,
     };
-    const accountData = await this.asyncContext.makeCancellable(
-      abortSignal,
-      Native.KeyTransparency_Monitor(
-        this.asyncContext,
-        this.env,
-        this.chatService,
-        aci.getServiceIdFixedWidthBinary(),
-        aciIdentityKey,
-        e164,
-        unidentifiedAccessKey,
-        usernameHash ?? null,
-        await store.getAccountData(aci),
-        distinguished,
-        mode === MonitorMode.Self
-      )
-    );
+    const [accountData, newDistinguished] =
+      await this.asyncContext.makeCancellable(
+        abortSignal,
+        Native.KeyTransparency_Check(
+          this.asyncContext,
+          this.env,
+          this.chatService,
+          aci.getServiceIdFixedWidthBinary(),
+          aciIdentityKey,
+          e164,
+          unidentifiedAccessKey,
+          usernameHash ?? null,
+          await store.getAccountData(aci),
+          await store.getLastDistinguishedTreeHead(),
+          mode === 'self',
+          mode === 'self' ? request.isE164Discoverable : true
+        )
+      );
     await store.setAccountData(aci, accountData);
-  }
-
-  private async updateDistinguished(
-    store: Store,
-    { abortSignal }: Readonly<Options>
-  ): Promise<Uint8Array> {
-    const bytes = await this.asyncContext.makeCancellable(
-      abortSignal,
-      Native.KeyTransparency_Distinguished(
-        this.asyncContext,
-        this.env,
-        this.chatService,
-        await store.getLastDistinguishedTreeHead()
-      )
-    );
-    await store.setLastDistinguishedTreeHead(bytes);
-    return bytes;
-  }
-
-  async _getLatestDistinguished(
-    store: Store,
-    options: Readonly<Options>
-  ): Promise<Uint8Array> {
-    return (
-      (await store.getLastDistinguishedTreeHead()) ??
-      (await this.updateDistinguished(store, options))
-    );
+    if (newDistinguished.length > 0) {
+      await store.setLastDistinguishedTreeHead(newDistinguished);
+    }
   }
 }

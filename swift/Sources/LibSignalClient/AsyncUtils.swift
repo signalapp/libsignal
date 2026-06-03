@@ -76,6 +76,10 @@ extension SignalCPromiseOptionalUuid: PromiseStruct {
     typealias Result = SignalOptionalUuid
 }
 
+extension SignalCPromiseFfiUploadForm: PromiseStruct {
+    typealias Result = SignalFfiUploadForm
+}
+
 extension SignalCPromiseMutPointerBackupStoreResponse: PromiseStruct {
     typealias Result = SignalMutPointerBackupStoreResponse
 }
@@ -92,8 +96,24 @@ extension SignalCPromiseOwnedBufferOfServiceIdFixedWidthBinaryBytes: PromiseStru
     typealias Result = SignalOwnedBufferOfServiceIdFixedWidthBinaryBytes
 }
 
-extension SignalCPromiseOptionalPairOfc_charu832: PromiseStruct {
-    typealias Result = SignalOptionalPairOfc_charu832
+extension SignalCPromiseOptionalPairOfCStringPtru832: PromiseStruct {
+    typealias Result = SignalOptionalPairOfCStringPtru832
+}
+
+extension SignalCPromisePairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar: PromiseStruct {
+    typealias Result = SignalPairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar
+}
+
+extension SignalCPromiseFfiPreKeysResponse: PromiseStruct {
+    typealias Result = SignalFfiPreKeysResponse
+}
+
+extension SignalCPromisePairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr: PromiseStruct {
+    typealias Result = SignalPairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr
+}
+
+extension SignalCPromisePairOfCStringPtrCStringPtr: PromiseStruct {
+    typealias Result = SignalPairOfCStringPtrCStringPtr
 }
 
 /// A type-erased version of ``Completer``.

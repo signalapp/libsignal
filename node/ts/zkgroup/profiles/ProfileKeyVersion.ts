@@ -9,7 +9,7 @@ export default class ProfileKeyVersion extends ByteArray {
   private readonly __type?: never;
   static SIZE = 64;
 
-  constructor(contents: Uint8Array | string) {
+  constructor(contents: Uint8Array<ArrayBuffer> | string) {
     super(
       typeof contents === 'string'
         ? new TextEncoder().encode(contents)

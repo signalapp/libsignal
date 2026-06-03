@@ -3,25 +3,37 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::borrow::Cow;
 use std::convert::Infallible;
 use std::time::Duration;
 
+use ::zkgroup::groups::GroupSendFullToken;
 use http::uri::InvalidUri;
 use http::{HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
+use libsignal_bridge_types::crypto::RandomNumberGenerator;
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_core::ServiceId;
-use libsignal_net::auth::Auth;
+use libsignal_core::curve::PrivateKey;
 use libsignal_net::chat::{self, ConnectError, LanguageList, Response as ChatResponse, SendError};
-use libsignal_net_chat::api::RequestError;
-use libsignal_net_chat::api::messages::{
-    MultiRecipientMessageResponse, MultiRecipientSendAuthorization, MultiRecipientSendFailure,
-    UnauthenticatedChatApi as _,
+use libsignal_net_chat::api;
+use libsignal_net_chat::api::backups::{
+    BackupAuth, BackupAuthCredentialRejected, CdnCredentials, GetUploadFormFailure,
 };
+use libsignal_net_chat::api::keys::{DeviceSpecifier, GetPreKeysFailure, UnauthenticatedChatApi};
+use libsignal_net_chat::api::messages::{
+    AuthenticatedChatApi, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
+    MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
+    SingleOutboundUnsealedMessage, UnauthenticatedChatApi as _, UnsealedSendFailure,
+    UploadTooLarge, UserBasedSendAuthorization,
+};
+use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
-use libsignal_protocol::Timestamp;
+use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
+use libsignal_net_chat::ws::OverWs;
+use libsignal_protocol::{CiphertextMessage, Timestamp};
 use uuid::Uuid;
 
 use crate::support::*;
@@ -116,6 +128,27 @@ async fn UnauthenticatedChatConnection_send(
 }
 
 #[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_send_raw_grpc(
+    chat: &UnauthenticatedChatConnection,
+    service: String,
+    method: String,
+    payload: Box<[u8]>,
+) -> Result<Vec<u8>, RequestError<Infallible>> {
+    chat.as_typed(|chat| {
+        Box::pin(libsignal_net_chat::grpc::raw_grpc(
+            "unauth",
+            chat.0
+                .shared_h2_connection()
+                .expect("requires an H2 connection"),
+            &service,
+            &method,
+            payload.into_vec(),
+        ))
+    })
+    .await
+}
+
+#[bridge_io(TokioAsyncContext)]
 async fn UnauthenticatedChatConnection_disconnect(chat: &UnauthenticatedChatConnection) {
     chat.disconnect().await
 }
@@ -178,6 +211,69 @@ async fn UnauthenticatedChatConnection_send_multi_recipient_message(
     Ok(unregistered_ids)
 }
 
+#[allow(clippy::too_many_arguments)]
+#[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_send_message(
+    chat: &UnauthenticatedChatConnection,
+    destination: ServiceId,
+    timestamp: Timestamp,
+    device_ids: Box<[u32]>,
+    registration_ids: Box<[u32]>,
+    contents: Vec<Vec<u8>>,
+    auth_kind: AsType<UserBasedSendAuthorizationKind, u8>,
+    auth_buffer: Option<Box<[u8]>>,
+    online_only: bool,
+    is_urgent: bool,
+) -> Result<(), RequestError<SealedSendFailure>> {
+    let auth = match auth_kind.into_inner() {
+        UserBasedSendAuthorizationKind::Story => UserBasedSendAuthorization::Story,
+        UserBasedSendAuthorizationKind::AccessKey => UserBasedAuthorization::AccessKey(
+            auth_buffer
+                .as_deref()
+                .unwrap_or_default()
+                .try_into()
+                .expect("valid UAK"),
+        )
+        .into(),
+        UserBasedSendAuthorizationKind::Group => UserBasedAuthorization::Group(
+            ::zkgroup::deserialize(auth_buffer.as_deref().unwrap_or_default())
+                .expect("valid GroupSendFullToken"),
+        )
+        .into(),
+        UserBasedSendAuthorizationKind::UnrestrictedUnauthenticatedAccess => {
+            UserBasedAuthorization::UnrestrictedUnauthenticatedAccess.into()
+        }
+    };
+
+    assert_eq!(contents.len(), device_ids.len());
+    assert_eq!(contents.len(), registration_ids.len());
+
+    let messages = contents
+        .into_iter()
+        .zip(device_ids)
+        .zip(registration_ids)
+        .map(
+            |((contents, device_id), registration_id)| SingleOutboundSealedSenderMessage {
+                device_id: device_id.try_into().expect("valid device ID"),
+                registration_id,
+                contents: Cow::Owned(contents),
+            },
+        )
+        .collect();
+
+    chat.as_typed(|chat| {
+        chat.send_message(
+            destination,
+            timestamp,
+            messages,
+            auth,
+            online_only,
+            is_urgent,
+        )
+    })
+    .await
+}
+
 #[bridge_io(TokioAsyncContext)]
 async fn AuthenticatedChatConnection_preconnect(
     connection_manager: &ConnectionManager,
@@ -193,9 +289,15 @@ async fn AuthenticatedChatConnection_connect(
     receive_stories: bool,
     languages: LanguageList,
 ) -> Result<AuthenticatedChatConnection, ConnectError> {
+    // TODO: Change the app-facing API to require an ACI and device ID, skip the parsing altogether.
+    // (And delete `parse_username` at that point.)
+    let (aci, device_id) = AuthenticatedChatConnection::parse_username(&username)
+        .expect("username must be of the form {ACI}.{deviceId}");
     AuthenticatedChatConnection::connect(
         connection_manager,
-        Auth { username, password },
+        aci,
+        device_id,
+        password,
         receive_stories,
         languages,
     )
@@ -225,6 +327,27 @@ async fn AuthenticatedChatConnection_send(
     };
     chat.send(request, Duration::from_millis(timeout_millis.into()))
         .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn AuthenticatedChatConnection_send_raw_grpc(
+    chat: &AuthenticatedChatConnection,
+    service: String,
+    method: String,
+    payload: Box<[u8]>,
+) -> Result<Vec<u8>, RequestError<Infallible>> {
+    chat.as_typed(|chat| {
+        Box::pin(libsignal_net_chat::grpc::raw_grpc(
+            "auth",
+            chat.0
+                .shared_h2_connection()
+                .expect("requires an H2 connection"),
+            &service,
+            &method,
+            payload.into_vec(),
+        ))
+    })
+    .await
 }
 
 #[bridge_io(TokioAsyncContext)]
@@ -277,4 +400,352 @@ fn ProvisioningChatConnection_info(chat: &ProvisioningChatConnection) -> ChatCon
 #[bridge_io(TokioAsyncContext)]
 async fn ProvisioningChatConnection_disconnect(chat: &ProvisioningChatConnection) {
     chat.disconnect().await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_get_pre_keys_access_key_auth(
+    chat: &UnauthenticatedChatConnection,
+    auth: [u8; 16],
+    target: ServiceId,
+    device: DeviceSpecifier,
+) -> Result<PreKeysResponse, RequestError<GetPreKeysFailure>> {
+    chat.as_typed(|chat| {
+        Box::pin(async move {
+            let (identity_key, pre_key_bundles) = chat
+                .get_pre_keys(UserBasedAuthorization::AccessKey(auth), target, device)
+                .await?;
+            Ok(PreKeysResponse {
+                identity_key,
+                pre_key_bundles,
+            })
+        })
+    })
+    .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_get_pre_keys_group_auth(
+    chat: &UnauthenticatedChatConnection,
+    auth: GroupSendFullToken,
+    target: ServiceId,
+    device: DeviceSpecifier,
+) -> Result<PreKeysResponse, RequestError<GetPreKeysFailure>> {
+    chat.as_typed(|chat| {
+        Box::pin(async move {
+            let (identity_key, pre_key_bundles) = chat
+                .get_pre_keys(UserBasedAuthorization::Group(auth), target, device)
+                .await?;
+            Ok(PreKeysResponse {
+                identity_key,
+                pre_key_bundles,
+            })
+        })
+    })
+    .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth(
+    chat: &UnauthenticatedChatConnection,
+    target: ServiceId,
+    device: DeviceSpecifier,
+) -> Result<PreKeysResponse, RequestError<GetPreKeysFailure>> {
+    chat.as_typed(|chat| {
+        Box::pin(async move {
+            let (identity_key, pre_key_bundles) = chat
+                .get_pre_keys(
+                    UserBasedAuthorization::UnrestrictedUnauthenticatedAccess,
+                    target,
+                    device,
+                )
+                .await?;
+            Ok(PreKeysResponse {
+                identity_key,
+                pre_key_bundles,
+            })
+        })
+    })
+    .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_account_exists(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    account: ServiceId,
+) -> Result<bool, RequestError<Infallible>> {
+    chat.as_typed(|chat| chat.account_exists(account)).await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn AuthenticatedChatConnection_get_upload_form(
+    chat: &AuthenticatedChatConnection,
+    upload_length: u64,
+) -> Result<UploadForm, RequestError<UploadTooLarge>> {
+    chat.as_typed(|chat| chat.get_upload_form(upload_length))
+        .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_backup_get_upload_form(
+    chat: &UnauthenticatedChatConnection,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: &PrivateKey,
+    upload_size: u64,
+    rng: RandomNumberGenerator,
+) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, signing_key);
+    chat.as_typed(|chat| {
+        <api::Unauth<_> as api::backups::UnauthenticatedChatApi<OverWs>>::get_upload_form(
+            *chat,
+            &backup_auth,
+            upload_size,
+            &mut rng,
+        )
+    })
+    .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn UnauthenticatedChatConnection_backup_get_media_upload_form(
+    chat: &UnauthenticatedChatConnection,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: &PrivateKey,
+    upload_size: u64,
+    rng: RandomNumberGenerator,
+) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, signing_key);
+    chat.as_typed(|chat| {
+        <api::Unauth<_> as api::backups::UnauthenticatedChatApi<OverWs>>::get_media_upload_form(
+            *chat,
+            &backup_auth,
+            upload_size,
+            &mut rng,
+        )
+    })
+    .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_set_public_key(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    rng: RandomNumberGenerator,
+) -> Result<(), RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    chat.require_grpc()
+        .await
+        .set_backup_public_key(&backup_auth, &mut rng)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_get_cdn_credentials(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    cdn: i32,
+    rng: RandomNumberGenerator,
+) -> Result<CdnCredentials, RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    let cdn = cdn
+        .try_into()
+        .expect("should not be using cdns above INT32_MAX");
+    chat.require_grpc()
+        .await
+        .get_backup_cdn_credentials(&backup_auth, cdn, &mut rng)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_get_svrb_credentials(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    rng: RandomNumberGenerator,
+) -> Result<(String, String), RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    chat.require_grpc()
+        .await
+        .get_backup_svrb_credentials(&backup_auth, &mut rng)
+        .await
+        .map(|libsignal_net::auth::Auth { username, password }| (username, password))
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_refresh(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    rng: RandomNumberGenerator,
+) -> Result<(), RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    chat.require_grpc()
+        .await
+        .refresh_backup(&backup_auth, &mut rng)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_delete_all(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    rng: RandomNumberGenerator,
+) -> Result<(), RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    chat.require_grpc()
+        .await
+        .backup_delete_all(&backup_auth, &mut rng)
+        .await
+}
+
+#[allow(clippy::too_many_arguments)]
+#[bridge_io(TokioAsyncContext, jni = false)]
+async fn AuthenticatedChatConnection_send_message(
+    chat: &AuthenticatedChatConnection,
+    destination: ServiceId,
+    timestamp: Timestamp,
+    device_ids: Box<[u32]>,
+    registration_ids: Box<[u32]>,
+    contents: &[&CiphertextMessage],
+    online_only: bool,
+    is_urgent: bool,
+) -> Result<(), RequestError<UnsealedSendFailure>> {
+    assert_eq!(contents.len(), device_ids.len());
+    assert_eq!(contents.len(), registration_ids.len());
+
+    let messages: Vec<_> = contents
+        .iter()
+        .zip(device_ids)
+        .zip(registration_ids)
+        .map(
+            |((&contents, device_id), registration_id)| SingleOutboundUnsealedMessage {
+                device_id: device_id.try_into().expect("valid device ID"),
+                registration_id,
+                contents,
+            },
+        )
+        .collect();
+
+    chat.as_typed(|chat| {
+        chat.send_message(destination, timestamp, &messages, online_only, is_urgent)
+    })
+    .await
+}
+
+// Alternate version for Java since CiphertextMessage isn't opaque in Java.
+#[allow(clippy::too_many_arguments)]
+#[bridge_io(TokioAsyncContext, ffi = false, node = false)]
+async fn AuthenticatedChatConnection_send_message_java(
+    chat: &AuthenticatedChatConnection,
+    destination: ServiceId,
+    timestamp: Timestamp,
+    device_ids: Box<[u32]>,
+    registration_ids: Box<[u32]>,
+    contents: &[jni::CiphertextMessageRef<'_>],
+    online_only: bool,
+    is_urgent: bool,
+) -> Result<(), RequestError<UnsealedSendFailure>> {
+    assert_eq!(contents.len(), device_ids.len());
+    assert_eq!(contents.len(), registration_ids.len());
+
+    let messages: Vec<_> = contents
+        .iter()
+        .zip(device_ids)
+        .zip(registration_ids)
+        .map(
+            |((&contents, device_id), registration_id)| SingleOutboundUnsealedMessage {
+                device_id: device_id.try_into().expect("valid device ID"),
+                registration_id,
+                contents,
+            },
+        )
+        .collect();
+
+    chat.as_typed(|chat| {
+        chat.send_message(destination, timestamp, &messages, online_only, is_urgent)
+    })
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+#[bridge_io(TokioAsyncContext, jni = false)]
+async fn AuthenticatedChatConnection_send_sync_message(
+    chat: &AuthenticatedChatConnection,
+    timestamp: Timestamp,
+    device_ids: Box<[u32]>,
+    registration_ids: Box<[u32]>,
+    contents: &[&CiphertextMessage],
+    is_urgent: bool,
+) -> Result<(), RequestError<UnsealedSendFailure>> {
+    assert_eq!(contents.len(), device_ids.len());
+    assert_eq!(contents.len(), registration_ids.len());
+
+    let messages: Vec<_> = contents
+        .iter()
+        .zip(device_ids)
+        .zip(registration_ids)
+        .map(
+            |((&contents, device_id), registration_id)| SingleOutboundUnsealedMessage {
+                device_id: device_id.try_into().expect("valid device ID"),
+                registration_id,
+                contents,
+            },
+        )
+        .collect();
+
+    chat.as_typed(|chat| chat.send_sync_message(timestamp, &messages, is_urgent))
+        .await
+        .map_err(|e| {
+            e.flat_map_other(|e| RequestError::Other(UnsealedSendFailure::MismatchedDevices(e)))
+        })
+}
+
+// Alternate version for Java since CiphertextMessage isn't opaque in Java.
+#[allow(clippy::too_many_arguments)]
+#[bridge_io(TokioAsyncContext, ffi = false, node = false)]
+async fn AuthenticatedChatConnection_send_sync_message_java(
+    chat: &AuthenticatedChatConnection,
+    timestamp: Timestamp,
+    device_ids: Box<[u32]>,
+    registration_ids: Box<[u32]>,
+    contents: &[jni::CiphertextMessageRef<'_>],
+    is_urgent: bool,
+) -> Result<(), RequestError<UnsealedSendFailure>> {
+    assert_eq!(contents.len(), device_ids.len());
+    assert_eq!(contents.len(), registration_ids.len());
+
+    let messages: Vec<_> = contents
+        .iter()
+        .zip(device_ids)
+        .zip(registration_ids)
+        .map(
+            |((&contents, device_id), registration_id)| SingleOutboundUnsealedMessage {
+                device_id: device_id.try_into().expect("valid device ID"),
+                registration_id,
+                contents,
+            },
+        )
+        .collect();
+
+    chat.as_typed(|chat| chat.send_sync_message(timestamp, &messages, is_urgent))
+        .await
+        .map_err(|e| {
+            e.flat_map_other(|e| RequestError::Other(UnsealedSendFailure::MismatchedDevices(e)))
+        })
 }
