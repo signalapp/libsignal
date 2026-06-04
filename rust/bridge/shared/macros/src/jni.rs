@@ -234,9 +234,9 @@ pub(crate) fn bridge_trait(
 
         #[cfg(feature = "jni")]
         impl #wrapper_name {
-            pub fn new(
-                env: &mut ::jni::Env<'_>,
-                object: &#object_alias_name<'_>,
+            pub fn new<'a>(
+                env: &mut ::jni::Env<'a>,
+                object: &#object_alias_name<'a>,
             ) -> Result<Self, jni::BridgeLayerError> {
                 Ok(Self(jni::GlobalAndVM::new(env, object, jni::ClassName(#java_class_path))?))
             }

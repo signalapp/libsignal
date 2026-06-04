@@ -15,7 +15,7 @@ pub type JavaSyncInputStream<'a> = JObject<'a>;
 /// Implementation of [`InputStream`](crate::io::InputStream) for an argument to a bridge function.
 pub struct JniBridgeInputStream<'a> {
     env: RefCell<EnvHandle<'a>>,
-    stream: &'a JObject<'a>,
+    stream: JObject<'a>,
 }
 
 /// Implementation of [`SyncInputStream`].
@@ -28,11 +28,11 @@ enum BridgeOrIoError {
 }
 
 impl<'a> JniBridgeInputStream<'a> {
-    pub fn new<'context: 'a>(
-        env: &mut jni::Env<'context>,
-        stream: &'a JObject<'a>,
-    ) -> Result<Self, BridgeLayerError> {
+    pub fn new(env: &mut jni::Env<'a>, stream: &JObject<'a>) -> Result<Self, BridgeLayerError> {
         check_jobject_type(env, stream, ClassName("java.io.InputStream"))?;
+        let stream = env
+            .new_local_ref(stream)
+            .check_exceptions(env, "JniBridgeInputStream::new")?;
         Ok(Self {
             env: EnvHandle::new(env).into(),
             stream,
@@ -46,7 +46,7 @@ impl<'a> JniBridgeInputStream<'a> {
                 .check_exceptions(env, "read")?;
             let amount_read: jint = call_method_checked(
                 env,
-                self.stream,
+                &self.stream,
                 "read",
                 jni_args!((java_buf => [byte]) -> int),
             )?;
@@ -77,7 +77,7 @@ impl<'a> JniBridgeInputStream<'a> {
 
             let amount_skipped: jlong = call_method_checked(
                 env,
-                self.stream,
+                &self.stream,
                 "skip",
                 jni_args!((java_amount => long) -> long),
             )?;

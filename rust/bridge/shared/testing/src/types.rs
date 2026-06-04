@@ -79,7 +79,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> jni::ArgTypeInfo<'storage, 'p
 
     fn borrow(
         env: &mut ::jni::Env<'context>,
-        _foreign: &'param Self::ArgType,
+        _foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, jni::BridgeLayerError> {
         Ok(Self::AttachedToJVM(
             env.get_java_vm().expect_no_exceptions()?,
@@ -254,7 +254,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> jni::ArgTypeInfo<'storage, 'p
 
     fn borrow(
         env: &mut ::jni::Env<'context>,
-        _foreign: &'param Self::ArgType,
+        _foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, jni::BridgeLayerError> {
         <NeedsCleanup as jni::ArgTypeInfo>::borrow(env, _foreign)
     }

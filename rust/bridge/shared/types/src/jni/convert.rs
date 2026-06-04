@@ -117,7 +117,7 @@ pub trait ArgTypeInfo<'storage, 'param: 'storage, 'context: 'param>: Sized {
     /// "Borrows" the data in `foreign`, usually to establish a local lifetime or owning type.
     fn borrow(
         env: &mut jni::Env<'context>,
-        foreign: &'param Self::ArgType,
+        foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError>;
     /// Loads the Rust value from the data that's been `stored` by [`borrow()`](Self::borrow()).
     fn load_from(stored: &'storage mut Self::StoredType) -> Self;
@@ -164,7 +164,7 @@ where
     type StoredType = Option<Self>;
     fn borrow(
         env: &mut jni::Env<'context>,
-        foreign: &'param Self::ArgType,
+        foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         Ok(Some(Self::convert_from(env, foreign)?))
     }
@@ -600,7 +600,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
 
     fn borrow(
         env: &mut jni::Env<'context>,
-        foreign: &'param Self::ArgType,
+        foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         use libsignal_account_keys::BACKUP_KEY_LEN;
         let elements = unsafe { foreign.get_elements(env, ReleaseMode::NoCopyBack) }
@@ -658,7 +658,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     type StoredType = AutoElements<'context, jbyte, JByteArray<'context>>;
     fn borrow(
         env: &mut jni::Env<'context>,
-        foreign: &'param Self::ArgType,
+        foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         let foreign = env
             .new_local_ref(foreign)
@@ -682,7 +682,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     type StoredType = Option<AutoElements<'context, jbyte, JByteArray<'context>>>;
     fn borrow(
         env: &mut jni::Env<'context>,
-        foreign: &'param Self::ArgType,
+        foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         if foreign.is_null() {
             Ok(None)
@@ -702,7 +702,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     type StoredType = AutoElements<'context, jbyte, JByteArray<'context>>;
     fn borrow(
         env: &mut jni::Env<'context>,
-        foreign: &'param Self::ArgType,
+        foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         let foreign = env
             .new_local_ref(foreign)
@@ -726,7 +726,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
 
     fn borrow(
         env: &mut jni::Env<'context>,
-        foreign: &'param Self::ArgType,
+        foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         <&'storage [u8]>::borrow(env, foreign)
     }
@@ -816,7 +816,7 @@ impl<
 
     fn borrow(
         env: &mut jni::Env<'context>,
-        foreign: &'param Self::ArgType,
+        foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         check_jobject_type(env, foreign, ClassName(T::WRAPPER_CLASS))?;
         let foreign: ObjectHandle = env
@@ -856,7 +856,7 @@ macro_rules! bridge_trait {
                 type StoredType = BridgedCallbacks<[<JniBridge $name>]$(<$life>)?>;
                 fn borrow(
                     env: &mut jni::Env<'context>,
-                    store: &'param Self::ArgType,
+                    store: &Self::ArgType,
                 ) -> Result<Self::StoredType, BridgeLayerError> {
                     Ok(BridgedCallbacks([<JniBridge $name>]::new(
                         env, store,
@@ -882,11 +882,11 @@ bridge_trait!(SessionStore);
 bridge_trait!(SignedPreKeyStore);
 bridge_trait!(KyberPreKeyStore);
 bridge_trait!(
-    InputStream<'storage>,
+    InputStream<'context>,
     |x: &'storage mut Self::StoredType| &mut x.0
 );
 bridge_trait!(
-    SyncInputStream<'storage>,
+    SyncInputStream<'context>,
     |x: &'storage mut Self::StoredType| &mut x.0
 );
 
@@ -1083,7 +1083,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     type StoredType = Option<JniChatListener>;
     fn borrow(
         env: &mut jni::Env<'context>,
-        store: &'param Self::ArgType,
+        store: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         if store.is_null() {
             Ok(None)
@@ -1103,7 +1103,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     type StoredType = Option<JniChatListener>;
     fn borrow(
         env: &mut jni::Env<'context>,
-        store: &'param Self::ArgType,
+        store: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         if store.is_null() {
             return Err(BridgeLayerError::NullPointer(Some("BridgeChatListener")));
@@ -1122,7 +1122,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     type StoredType = Option<JniProvisioningListener>;
     fn borrow(
         env: &mut jni::Env<'context>,
-        store: &'param Self::ArgType,
+        store: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         if store.is_null() {
             return Err(BridgeLayerError::NullPointer(Some(
@@ -1143,7 +1143,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     type StoredType = Option<JniConnectChatBridge>;
     fn borrow(
         env: &mut jni::Env<'context>,
-        store: &'param Self::ArgType,
+        store: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         JniConnectChatBridge::new(env, store).map(Some)
     }
@@ -1445,7 +1445,7 @@ impl<'storage, 'param: 'storage, 'context: 'param, const LEN: usize>
     type StoredType = AutoElements<'context, jbyte, JByteArray<'context>>;
     fn borrow(
         env: &mut jni::Env<'context>,
-        foreign: &'param Self::ArgType,
+        foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         let foreign = env
             .new_local_ref(foreign)
@@ -1478,7 +1478,7 @@ impl<'storage, 'param: 'storage, 'context: 'param, const LEN: usize>
     type StoredType = Option<AutoElements<'context, jbyte, JByteArray<'context>>>;
     fn borrow(
         env: &mut jni::Env<'context>,
-        foreign: &'param Self::ArgType,
+        foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         if foreign.is_null() {
             Ok(None)
@@ -1652,7 +1652,7 @@ where
 
     fn borrow(
         env: &mut jni::Env<'context>,
-        foreign: &'param Self::ArgType,
+        foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         if *foreign == 0 {
             Ok(None)
@@ -1681,7 +1681,7 @@ where
     type StoredType = (Vec<&'storage T>, Vec<Arc<T>>);
     fn borrow(
         env: &mut jni::Env<'context>,
-        foreign: &'param Self::ArgType,
+        foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         let array = unsafe { foreign.get_elements(env, ReleaseMode::NoCopyBack) }
             .check_exceptions(env, "<&[&T]>::borrow")?;
@@ -1716,7 +1716,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     );
     fn borrow(
         env: &mut jni::Env<'context>,
-        foreign: &'param Self::ArgType,
+        foreign: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         type StoredGuarantees =
             dyn Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe + 'static;
@@ -2769,7 +2769,7 @@ macro_rules! jni_bridge_as_handle {
 
             fn borrow(
                 _env: &mut ::jni::Env<'context>,
-                foreign: &'param Self::ArgType,
+                foreign: &Self::ArgType,
             ) -> ::std::result::Result<Self::StoredType, $crate::jni::BridgeLayerError> {
                 let addr =
                     unsafe { <$typ as $crate::jni::BridgeHandle>::native_handle_cast(*foreign)? };
@@ -2792,7 +2792,7 @@ macro_rules! jni_bridge_as_handle {
 
             fn borrow(
                 _env: &mut ::jni::Env<'context>,
-                foreign: &'param Self::ArgType,
+                foreign: &Self::ArgType,
             ) -> ::std::result::Result<Self::StoredType, $crate::jni::BridgeLayerError> {
                 let addr =
                     unsafe { <$typ as $crate::jni::BridgeHandle>::native_handle_cast(*foreign)? };
