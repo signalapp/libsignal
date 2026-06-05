@@ -68,14 +68,14 @@ impl ShoApi for ShoSha256 {
         output_hasher_prefix.update(&[0u8; BLOCK_LEN - 1][..]);
         output_hasher_prefix.update(&[1u8][..]); // domain separator byte
         output_hasher_prefix.update(self.cv);
-        let mut i = 0;
         let outlen = target.len();
 
-        while i * HASH_LEN < outlen {
+        let mut i = 0u64;
+        while !target.is_empty() {
             let mut output_hasher = output_hasher_prefix.clone();
-            output_hasher.update((i as u64).to_be_bytes());
+            output_hasher.update(i.to_be_bytes());
             let digest = output_hasher.finalize();
-            let num_bytes = cmp::min(HASH_LEN, outlen - i * HASH_LEN);
+            let num_bytes = cmp::min(HASH_LEN, target.len());
             let (output, tail) = target.split_at_mut(num_bytes);
             output.copy_from_slice(&digest[0..num_bytes]);
             target = tail;

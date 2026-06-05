@@ -65,13 +65,13 @@ impl ShoApi for ShoHmacSha256 {
         let outlen = target.len();
         let output_hasher_prefix =
             Hmac::<Sha256>::new_from_slice(&self.cv).expect("HMAC accepts 256-bit keys");
-        let mut i = 0;
-        while i * HASH_LEN < outlen {
+        let mut i = 0u64;
+        while !target.is_empty() {
             let mut output_hasher = output_hasher_prefix.clone();
-            output_hasher.update(&(i as u64).to_be_bytes());
+            output_hasher.update(&i.to_be_bytes());
             output_hasher.update(&[0x01]);
             let digest = output_hasher.finalize().into_bytes();
-            let num_bytes = cmp::min(HASH_LEN, outlen - i * HASH_LEN);
+            let num_bytes = cmp::min(HASH_LEN, target.len());
             let (output, tail) = target.split_at_mut(num_bytes);
             output.copy_from_slice(&digest[..num_bytes]);
             target = tail;
