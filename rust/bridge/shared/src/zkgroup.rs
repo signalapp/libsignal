@@ -11,9 +11,6 @@ use libsignal_protocol::{Aci, Pni, ServiceId};
 use uuid::Uuid;
 pub(crate) use zkgroup::Timestamp;
 use zkgroup::auth::*;
-// The AvatarUploadCredential bridge functions are all JNI-only (`ffi = false,
-// node = false`), so this import has no consumers under FFI/Node builds.
-#[cfg(feature = "jni")]
 use zkgroup::avatars::*;
 use zkgroup::backups::{
     BackupAuthCredential, BackupAuthCredentialPresentation, BackupAuthCredentialRequest,
@@ -24,8 +21,6 @@ use zkgroup::generic_server_params::*;
 use zkgroup::groups::*;
 use zkgroup::profiles::*;
 use zkgroup::receipts::*;
-// The ZkCredentialKeyPair bridge functions are all JNI-only.
-#[cfg(feature = "jni")]
 use zkgroup::zk_credential_key::*;
 use zkgroup::*;
 
@@ -1277,30 +1272,28 @@ fn GroupSendFullToken_Verify(
 }
 
 // ZK credential key
-//
-// JNI-only for now. Swift and Node are TODO.
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn ZkCredentialKeyPair_CheckValidContents(
     key_pair_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
     validate_serialization::<ZkCredentialKeyPair>(key_pair_bytes)
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn ZkCredentialKeyPair_GenerateDeterministic(randomness: &[u8; RANDOMNESS_LEN]) -> Vec<u8> {
     let key_pair = ZkCredentialKeyPair::generate(*randomness);
     zkgroup::serialize(&key_pair)
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn ZkCredentialKeyPair_GetPublicKey(key_pair_bytes: &[u8]) -> Vec<u8> {
     let key_pair = bincode::deserialize::<ZkCredentialKeyPair>(key_pair_bytes)
         .expect("should have been parsed previously");
     zkgroup::serialize(&key_pair.public_key())
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn ZkCredentialPublicKey_CheckValidContents(
     public_key_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -1308,10 +1301,8 @@ fn ZkCredentialPublicKey_CheckValidContents(
 }
 
 // AvatarUploadCredential
-//
-// JNI-only for now. Swift and Node are TODO.
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredentialRequestContext_New(
     aci: Aci,
     zk_credential_key_pair_bytes: &[u8],
@@ -1330,28 +1321,28 @@ fn AvatarUploadCredentialRequestContext_New(
     zkgroup::serialize(&context)
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredentialRequestContext_CheckValidContents(
     context_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
     validate_serialization::<AvatarUploadCredentialRequestContext>(context_bytes)
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredentialRequestContext_GetRequest(context_bytes: &[u8]) -> Vec<u8> {
     let context = bincode::deserialize::<AvatarUploadCredentialRequestContext>(context_bytes)
         .expect("should have been parsed previously");
     zkgroup::serialize(&context.get_request())
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredentialRequest_CheckValidContents(
     request_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
     validate_serialization::<AvatarUploadCredentialRequest>(request_bytes)
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredentialRequest_IssueDeterministic(
     request_bytes: &[u8],
     aci: Aci,
@@ -1383,14 +1374,14 @@ fn AvatarUploadCredentialRequest_IssueDeterministic(
     Ok(zkgroup::serialize(&response))
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredentialResponse_CheckValidContents(
     response_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
     validate_serialization::<AvatarUploadCredentialResponse>(response_bytes)
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredentialRequestContext_ReceiveResponse(
     context_bytes: &[u8],
     response_bytes: &[u8],
@@ -1408,14 +1399,14 @@ fn AvatarUploadCredentialRequestContext_ReceiveResponse(
     Ok(zkgroup::serialize(&credential))
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredential_CheckValidContents(
     credential_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
     validate_serialization::<AvatarUploadCredential>(credential_bytes)
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredential_PresentDeterministic(
     credential_bytes: &[u8],
     server_params_bytes: &[u8],
@@ -1428,28 +1419,28 @@ fn AvatarUploadCredential_PresentDeterministic(
     zkgroup::serialize(&credential.present(&server_params, *randomness))
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredential_GetRedemptionTime(credential_bytes: &[u8]) -> Timestamp {
     let credential = bincode::deserialize::<AvatarUploadCredential>(credential_bytes)
         .expect("should have been parsed previously");
     credential.redemption_time()
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredential_GetCm(credential_bytes: &[u8]) -> [u8; 32] {
     let credential = bincode::deserialize::<AvatarUploadCredential>(credential_bytes)
         .expect("should have been parsed previously");
     credential.cm_bytes()
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredentialPresentation_CheckValidContents(
     presentation_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
     validate_serialization::<AvatarUploadCredentialPresentation>(presentation_bytes)
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredentialPresentation_Verify(
     presentation_bytes: &[u8],
     current_time: Timestamp,
@@ -1463,7 +1454,7 @@ fn AvatarUploadCredentialPresentation_Verify(
     presentation.verify(current_time, &server_params)
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredentialPresentation_GetCm(presentation_bytes: &[u8]) -> [u8; 32] {
     let presentation =
         bincode::deserialize::<AvatarUploadCredentialPresentation>(presentation_bytes)
@@ -1471,7 +1462,7 @@ fn AvatarUploadCredentialPresentation_GetCm(presentation_bytes: &[u8]) -> [u8; 3
     presentation.cm_bytes()
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn AvatarUploadCredentialPresentation_GetRedemptionTime(presentation_bytes: &[u8]) -> Timestamp {
     let presentation =
         bincode::deserialize::<AvatarUploadCredentialPresentation>(presentation_bytes)
