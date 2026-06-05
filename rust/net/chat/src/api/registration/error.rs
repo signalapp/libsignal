@@ -5,7 +5,7 @@
 
 use bytes::Bytes;
 use http::{HeaderMap, StatusCode};
-use libsignal_net::infra::errors::LogSafeDisplay;
+use libsignal_core::LogSafeDisplay;
 
 use crate::api::RequestError;
 use crate::api::registration::{

@@ -9,7 +9,8 @@
 use std::convert::Infallible;
 use std::fmt::Formatter;
 
-use libsignal_net::infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_core::LogSafeDisplay;
+use libsignal_net::infra::errors::RetryLater;
 use ref_cast::RefCast as _;
 
 pub mod backups;

@@ -10,7 +10,8 @@ use attest::svr2::RaftConfig;
 use attest::{cds2, enclave};
 use derive_where::derive_where;
 use http::uri::PathAndQuery;
-use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_core::LogSafeDisplay;
+use libsignal_net_infra::errors::RetryLater;
 use libsignal_net_infra::extract_retry_later;
 use libsignal_net_infra::route::{
     DirectTcpRouteProvider, DomainFrontRouteProvider, HttpsProvider, TlsRouteProvider,

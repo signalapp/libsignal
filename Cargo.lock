@@ -309,6 +309,7 @@ dependencies = [
  "hex",
  "libc",
  "libcrux-ml-kem",
+ "libsignal-core",
  "log",
  "prost",
  "prost-build",

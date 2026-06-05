@@ -84,11 +84,11 @@ use std::time::Duration;
 
 use futures_util::stream::{FusedStream, FuturesUnordered};
 use futures_util::{FutureExt, StreamExt};
+use libsignal_core::LogSafeDisplay;
 use tokio::time::Instant;
 use tokio_util::either::Either;
 
 use crate::IpType;
-use crate::errors::LogSafeDisplay;
 use crate::host::Host;
 use crate::utils::future::SomeOrPending;
 

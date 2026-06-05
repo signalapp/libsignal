@@ -20,9 +20,9 @@ use std::time::Duration;
 
 use base64::prelude::{BASE64_STANDARD, Engine as _};
 use http::StatusCode;
+use libsignal_core::LogSafeDisplay;
 use libsignal_net::chat;
 use libsignal_net::chat::{Request, Response, SendError};
-use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net::infra::http_client::Http2Client;
 use libsignal_net::infra::{AsHttpHeader, extract_retry_later};
 use serde_with::serde_as;

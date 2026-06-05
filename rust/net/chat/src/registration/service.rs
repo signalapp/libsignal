@@ -11,10 +11,11 @@ use std::panic::UnwindSafe;
 use either::Either;
 use futures_util::future::BoxFuture;
 use futures_util::{FutureExt as _, Stream, StreamExt as _};
+use libsignal_core::LogSafeDisplay;
 use libsignal_net::chat::{
     ChatConnection, ConnectError as ChatConnectError, SendError as ChatSendError,
 };
-use libsignal_net::infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::route::UnsuccessfulOutcome;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::{Duration, Instant};

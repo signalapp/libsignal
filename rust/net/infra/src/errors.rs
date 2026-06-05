@@ -10,23 +10,10 @@ use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use boring_signal::ssl::SslRef;
 use http::{HeaderName, HeaderValue};
+use libsignal_core::LogSafeDisplay;
 use tokio_boring_signal::HandshakeError;
 
 use crate::{AsStaticHttpHeader, certs};
-
-pub trait LogSafeDisplay: Display {
-    /// Assert that this type implements `LogSafeDisplay`
-    fn log_safe_display(&self) -> &Self
-    where
-        Self: Sized,
-    {
-        self
-    }
-}
-
-/// Vacuous implementation since you can't actually [`Display::fmt`] a
-/// [`std::convert::Infallible`].
-impl LogSafeDisplay for std::convert::Infallible {}
 
 #[derive(Copy, Clone, Debug, thiserror::Error, displaydoc::Display)]
 /// retry after {retry_after_seconds}s

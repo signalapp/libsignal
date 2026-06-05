@@ -5,8 +5,8 @@
 
 use std::default::Default;
 
-use libsignal_core::{Aci, E164, Pni};
-use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
+use libsignal_core::{Aci, E164, LogSafeDisplay, Pni};
+use libsignal_net_infra::errors::{RetryLater, TransportConnectError};
 use libsignal_net_infra::route::{RouteProvider, UnresolvedWebsocketServiceRoute};
 use libsignal_net_infra::ws::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,

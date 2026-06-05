@@ -13,9 +13,10 @@ use assert_matches::debug_assert_matches;
 use futures_util::TryFutureExt as _;
 use http::HeaderName;
 use itertools::Itertools as _;
+use libsignal_core::LogSafeDisplay;
 use libsignal_net_infra::AsHttpHeader as _;
 use libsignal_net_infra::dns::DnsResolver;
-use libsignal_net_infra::errors::{FailedHandshakeReason, LogSafeDisplay, TransportConnectError};
+use libsignal_net_infra::errors::{FailedHandshakeReason, TransportConnectError};
 use libsignal_net_infra::http_client::HttpConnectError;
 use libsignal_net_infra::route::{
     AttemptOutcome, ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes,

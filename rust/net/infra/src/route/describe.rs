@@ -9,10 +9,10 @@ use std::num::NonZeroU16;
 use std::sync::Arc;
 
 use futures_util::TryFutureExt as _;
+use libsignal_core::LogSafeDisplay;
 use nonzero_ext::nonzero;
 
 use crate::dns::dns_utils::log_safe_domain;
-use crate::errors::LogSafeDisplay;
 use crate::host::Host;
 use crate::route::{
     ConnectionProxyKind, ConnectionProxyRoute, Connector, DEFAULT_HTTPS_PORT, DirectOrProxyRoute,

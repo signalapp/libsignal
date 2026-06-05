@@ -16,7 +16,8 @@ use std::error::Error;
 use std::future::Future;
 
 use itertools::Itertools;
-use libsignal_net::infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_core::LogSafeDisplay;
+use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::http_client::{Http2TransportError, Http2TransportErrorKind};
 use libsignal_net_grpc::proto::chat::messages::ChallengeRequired as ChallengeRequiredProto;
 use libsignal_net_grpc::proto::google;

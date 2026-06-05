@@ -10,6 +10,10 @@
 //! with [ClientConnection::send]. Likewise a single received message consisting internally
 //! of one or more noise transport messages can be decrypted with [ClientConnection::recv]
 
+use libsignal_core::{LogSafeDisplay, assert_log_safe_display};
+
+use crate::SnowError;
+
 pub const NOISE_PATTERN: &str = "Noise_NK_25519_ChaChaPoly_SHA256";
 pub const NOISE_PATTERN_HFS: &str = "Noise_NKhfs_25519+Kyber1024_ChaChaPoly_SHA256";
 
@@ -32,7 +36,27 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum Error {
     /// Noise error ({0})
-    NoiseError(#[from] snow::Error),
+    NoiseError(#[from] SnowError),
+}
+
+impl LogSafeDisplay for Error {
+    fn log_safe_display(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        match self {
+            Error::NoiseError(err) => {
+                assert_log_safe_display!(err: &SnowError);
+                self
+            }
+        }
+    }
+}
+
+impl From<snow::Error> for Error {
+    fn from(value: snow::Error) -> Self {
+        Error::from(SnowError::from(value))
+    }
 }
 
 impl ClientConnection {

@@ -8,11 +8,10 @@ use std::ops::ControlFlow;
 use std::time::{Duration, SystemTime};
 
 use libsignal_core::curve::PublicKey;
-use libsignal_core::{Aci, E164};
+use libsignal_core::{Aci, E164, LogSafeDisplay};
 use libsignal_keytrans::{
     AccountData, LastTreeHead, LocalStateUpdate, MonitoringData, StoredTreeHead,
 };
-use libsignal_net::infra::errors::LogSafeDisplay;
 
 use crate::api::RequestError;
 use crate::api::keytrans::maybe_partial::MaybePartial;

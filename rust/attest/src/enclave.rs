@@ -6,11 +6,12 @@
 use std::collections::HashMap;
 
 use displaydoc::Display;
+use libsignal_core::{LogSafeDisplay, assert_log_safe_display};
 use prost::Message;
 
 use crate::client_connection::ClientConnection;
 use crate::svr2::RaftConfig;
-use crate::{client_connection, dcap, proto, snow_resolver};
+use crate::{SnowError, client_connection, dcap, proto, snow_resolver};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -20,6 +21,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub struct AttestationError {
     message: String,
 }
+
+impl LogSafeDisplay for AttestationError {}
 
 impl From<dcap::Error> for AttestationError {
     fn from(e: dcap::Error) -> Self {
@@ -37,11 +40,41 @@ pub enum Error {
     /// failure to communicate on established Noise channel to the enclave: {0}
     NoiseError(#[from] client_connection::Error),
     /// failure to complete Noise handshake to the enclave: {0}
-    NoiseHandshakeError(#[from] snow::Error),
+    NoiseHandshakeError(#[from] SnowError),
     /// attestation data invalid: {reason}
     AttestationDataError { reason: String },
     /// invalid bridge state
     InvalidBridgeStateError,
+}
+
+impl LogSafeDisplay for Error {
+    fn log_safe_display(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        // If you are changing the payload of Error, make sure it stays LogSafeDisplay
+        match self {
+            Error::AttestationError(err) => {
+                assert_log_safe_display!(err: &AttestationError);
+                self
+            }
+            Error::NoiseError(err) => {
+                assert_log_safe_display!(err: &client_connection::Error);
+                self
+            }
+            Error::NoiseHandshakeError(err) => {
+                assert_log_safe_display!(err: &SnowError);
+                self
+            }
+            Error::AttestationDataError { .. } | Error::InvalidBridgeStateError => self,
+        }
+    }
+}
+
+impl From<snow::Error> for Error {
+    fn from(value: snow::Error) -> Self {
+        Error::from(SnowError::from(value))
+    }
 }
 
 impl From<prost::DecodeError> for Error {

@@ -12,11 +12,12 @@ use std::time::Duration;
 use bytes::Bytes;
 use futures_util::{Sink, Stream};
 use http::{HeaderName, HeaderValue};
+use libsignal_core::LogSafeDisplay as _;
 use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tungstenite::Message;
 
-use crate::errors::{LogSafeDisplay as _, TransportConnectError};
+use crate::errors::TransportConnectError;
 use crate::route::{
     ComposedConnector, Connector, ConnectorExt as _, DEFAULT_HTTPS_PORT, ReflectorProxyRoute,
 };

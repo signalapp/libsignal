@@ -9,6 +9,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use futures_util::{SinkExt as _, Stream, StreamExt as _};
+use libsignal_core::LogSafeDisplay;
 use pin_project::pin_project;
 use tokio::select;
 use tokio::time::{Duration, Instant};
@@ -16,7 +17,6 @@ use tungstenite::Message;
 use tungstenite::protocol::CloseFrame;
 use tungstenite::protocol::frame::coding::CloseCode;
 
-use crate::errors::LogSafeDisplay;
 use crate::ws::{Config, TextOrBinary, WebSocketError, WebSocketStreamLike};
 
 /// An established websocket connection.

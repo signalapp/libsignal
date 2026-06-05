@@ -8,8 +8,7 @@ use std::borrow::Cow;
 use async_trait::async_trait;
 use displaydoc::Display;
 use itertools::Itertools as _;
-use libsignal_core::{DeviceId, ServiceId};
-use libsignal_net::infra::errors::LogSafeDisplay;
+use libsignal_core::{DeviceId, LogSafeDisplay, ServiceId};
 
 use super::{AllowRateLimitChallenges, RequestError, UploadForm, UserBasedAuthorization};
 use crate::logging::Redact;

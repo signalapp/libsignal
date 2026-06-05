@@ -11,6 +11,8 @@ pub mod curve;
 mod e164;
 mod version;
 
+use std::fmt::Display;
+
 pub use address::{
     Aci, DeviceId, InvalidDeviceId, Pni, ProtocolAddress, ServiceId,
     ServiceIdFixedWidthBinaryBytes, ServiceIdKind, WrongKindOfServiceIdError,
@@ -62,4 +64,29 @@ pub fn try_derive_arrays<const N1: usize, const N2: usize, const N3: usize, E>(
     let mut derived_values: DerivedValues<N1, N2, N3> = zerocopy::FromZeros::new_zeroed();
     derive(zerocopy::IntoBytes::as_mut_bytes(&mut derived_values))?;
     Ok((derived_values.0, derived_values.1, derived_values.2))
+}
+
+pub trait LogSafeDisplay: Display {
+    /// Assert that this type implements `LogSafeDisplay`
+    fn log_safe_display(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        self
+    }
+}
+
+/// Vacuous implementation since you can't actually [`Display::fmt`] a
+/// [`std::convert::Infallible`].
+impl LogSafeDisplay for std::convert::Infallible {}
+
+impl<T: LogSafeDisplay> LogSafeDisplay for &T {}
+
+/// Asserts a variable is of certain type that is LogSafeDisplay
+#[macro_export]
+macro_rules! assert_log_safe_display {
+    ($err:ident: $ty:ty) => {
+        static_assertions::assert_impl_all!($ty: LogSafeDisplay);
+        let _: $ty = $err;
+    };
 }

@@ -9,10 +9,10 @@ use std::sync::Arc;
 use either::Either;
 use http::uri::PathAndQuery;
 use itertools::Itertools as _;
+use libsignal_core::LogSafeDisplay;
 use nonzero_ext::nonzero;
 
 use crate::certs::RootCertificates;
-use crate::errors::LogSafeDisplay;
 use crate::host::Host;
 use crate::route::{
     DEFAULT_HTTPS_PORT, HttpRouteFragment, HttpVersion, HttpsTlsRoute, ReplaceFragment,

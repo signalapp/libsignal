@@ -4,6 +4,7 @@
 //
 
 use itertools::Itertools as _;
+use libsignal_core::LogSafeDisplay;
 use rustls::pki_types::UnixTime;
 use rustls::{
     AlertDescription, CertRevocationListError, CertificateError, EncryptedClientHelloError, Error,
@@ -11,7 +12,6 @@ use rustls::{
 };
 
 use crate::dns::dns_utils::log_safe_domain;
-use crate::errors::LogSafeDisplay;
 
 pub(super) struct LogSafeTlsError<'a>(pub(super) &'a Error);
 
