@@ -21,6 +21,8 @@ pub struct RetryLater {
     pub retry_after_seconds: u32,
 }
 
+impl LogSafeDisplay for RetryLater {}
+
 /// Errors that can occur during transport-level connection establishment.
 #[derive(displaydoc::Display, Debug, thiserror::Error)]
 pub enum TransportConnectError {

@@ -83,9 +83,9 @@ async fn main() {
     let auth = Auth { username, password };
 
     let env = if prod {
-        libsignal_net::env::PROD.svr2
+        libsignal_net::env::PROD.svr2.current
     } else {
-        libsignal_net::env::STAGING.svr2
+        libsignal_net::env::STAGING.svr2.current
     };
 
     let resolver = DnsResolver::new(&no_network_change_events());

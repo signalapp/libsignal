@@ -72,6 +72,7 @@ libsignal-net-chat = { path = "rust/net/chat" }
 libsignal-net-grpc = { path = "rust/net/grpc" }
 libsignal-node = { path = "rust/bridge/node" }
 libsignal-protocol = { path = "rust/protocol" }
+libsignal-svr2 = { path = "rust/svr2" }
 libsignal-svrb = { path = "rust/svrb" }
 poksho = { path = "rust/poksho" }
 signal-crypto = { path = "rust/crypto" }

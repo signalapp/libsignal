@@ -22,6 +22,7 @@ pub(crate) mod cdsi;
 pub(crate) mod chat;
 mod keytrans;
 mod registration;
+mod svr2;
 mod svrb;
 mod tokio;
 

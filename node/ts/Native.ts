@@ -1849,6 +1849,35 @@ type NativeFunctions = {
     attestation_msg: Uint8Array<ArrayBuffer>,
     current_timestamp: Timestamp
   ) => SgxClientState;
+  Svr2_Delete: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string
+  ) => CancellablePromise<void>;
+  Svr2_FinishBackup: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    session: Wrapper<Svr2BackupSession>,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string
+  ) => CancellablePromise<void>;
+  Svr2_Restore: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    pin: Uint8Array<ArrayBuffer>,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string
+  ) => CancellablePromise<[Uint8Array<ArrayBuffer>, number]>;
+  Svr2_StartBackup: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    pin: Uint8Array<ArrayBuffer>,
+    data: Uint8Array<ArrayBuffer>,
+    max_tries: number,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string
+  ) => CancellablePromise<Svr2BackupSession>;
   TESTING_BridgedStringMap_dump_to_json: (
     map: Wrapper<BridgedStringMap>
   ) => string;
@@ -2843,6 +2872,10 @@ const {
   SignedPreKeyRecord_New,
   SignedPreKeyRecord_Serialize,
   Svr2Client_New,
+  Svr2_Delete,
+  Svr2_FinishBackup,
+  Svr2_Restore,
+  Svr2_StartBackup,
   TESTING_BridgedStringMap_dump_to_json,
   TESTING_CdsiLookupErrorConvert,
   TESTING_CdsiLookupResponseConvert,
@@ -3459,6 +3492,10 @@ export {
   SignedPreKeyRecord_New,
   SignedPreKeyRecord_Serialize,
   Svr2Client_New,
+  Svr2_Delete,
+  Svr2_FinishBackup,
+  Svr2_Restore,
+  Svr2_StartBackup,
   TESTING_BridgedStringMap_dump_to_json,
   TESTING_CdsiLookupErrorConvert,
   TESTING_CdsiLookupResponseConvert,
@@ -3936,6 +3973,9 @@ export interface SignalMessage {
   readonly __type: unique symbol;
 }
 export interface SignedPreKeyRecord {
+  readonly __type: unique symbol;
+}
+export interface Svr2BackupSession {
   readonly __type: unique symbol;
 }
 export interface TestingFutureCancellationCounter {

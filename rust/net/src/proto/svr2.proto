@@ -1,0 +1,146 @@
+//
+// Copyright 2026 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+syntax = "proto3";
+
+package org.signal.svr2;
+option go_package = "github.com/signalapp/svr2/proto";
+option optimize_for = LITE_RUNTIME;
+
+// Client protocol for SecureValueRecovery2 (SVR2).
+//
+// A client that wishes to store a secret should call Backup,
+// followed by Expose.  Backup adds the secret to the store,
+// and Expose makes that secret available for restoration.  Subsequent
+// calls to Restore allow the client to retrieve the stored secret.
+// Calls to Backup and Expose are idempotent.  A client should call
+// Backup until it succeeds, then call Expose until it succeeds.
+// A client should NOT call Backup+Expose until the pair succeeds,
+// as doing so potentially resets the `tries` counter and allows
+// for brute force attempts against the pin.  If Backup succeeds but
+// a subsequent Expose call returns status=ERROR, the client can be
+// pretty sure that something nefarious is going on, and they should
+// reconsider storing their secret.
+
+message Request {
+  oneof inner {
+    BackupRequest backup = 2;
+    ExposeRequest expose = 5;
+    RestoreRequest restore = 3;
+    DeleteRequest delete = 4;
+    TriesRequest tries = 6;
+  }
+}
+
+message Response {
+  oneof inner {
+    BackupResponse backup = 1;
+    ExposeResponse expose = 4;
+    RestoreResponse restore = 2;
+    DeleteResponse delete = 3;
+    TriesResponse tries = 5;
+  }
+}
+
+//
+// backup
+//
+
+message BackupRequest {
+  bytes data = 1;  // between 16 and 48 bytes
+  bytes pin = 2;  // 32 bytes
+  uint32 max_tries = 3;  // [1,255]
+}
+
+message BackupResponse {
+  enum Status {
+    UNSET = 0;  // never returned
+    OK = 1;  // successfully set db[backup_id]=data
+  }
+
+  Status status = 1;
+}
+
+//
+// restore
+//
+
+message RestoreRequest {
+  bytes pin = 1;  // 32 bytes
+}
+
+message RestoreResponse {
+  enum Status {
+    UNSET = 0;  // never returned
+    OK = 1;  // successfully restored, [data] will be set
+    MISSING = 2;  // db[backup_id] does not exist
+    PIN_MISMATCH = 3;  // pin did not match, tries were decremented
+    ERROR = 4;  // error occurred looking up the request
+  }
+
+  Status status = 1;
+  bytes data = 2;  // between 16 and 48 bytes, if set
+  uint32 tries = 3;  // in range [0, 255]
+}
+
+//
+// delete
+//
+
+message DeleteRequest {
+}
+
+message DeleteResponse {
+}
+
+//
+// expose
+//
+
+message ExposeRequest {
+  bytes data = 1;
+}
+
+message ExposeResponse {
+  enum Status {
+    UNSET = 0;  // never returned
+    OK = 1;  // successfully restored, [data] will be set
+
+    // If this status comes back after a successful Backup() call,
+    // this should be cause for concern.
+    // It means that someone has either reset, deleted, or tried to brute-force
+    // the backup since it was created.
+    ERROR = 2;
+  }
+
+  Status status = 1;
+}
+
+//
+// tries
+//
+
+message TriesRequest {
+}
+message TriesResponse {
+  enum Status {
+    UNSET = 0;
+    OK = 1;
+    MISSING = 2;
+  }
+  Status status = 1;
+  uint32 tries = 2;
+  bool exposed = 3;
+}
+
+// This is not part of SVR2 protocol!
+//
+// Session state used to serialize in-progress backup operations
+message BackupSession {
+  bytes pin = 1;  // 32 bytes
+  bytes data = 2;  // between 16 and 48 bytes
+  uint32 max_tries = 3;  // in range [1,255]
+  bool is_completed = 4;  // Both Backup and Expose are done
+}

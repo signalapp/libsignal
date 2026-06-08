@@ -14,6 +14,7 @@ pub mod enclave;
 pub mod env;
 pub mod proto;
 pub mod svr;
+pub mod svr2;
 pub mod svrb;
 pub mod ws;
 

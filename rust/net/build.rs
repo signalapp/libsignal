@@ -8,6 +8,7 @@ fn main() {
         "src/proto/cds2.proto",
         "src/proto/chat_provisioning.proto",
         "src/proto/chat_websocket.proto",
+        "src/proto/svr2.proto",
     ];
     prost_build::Config::new()
         .bytes([

@@ -20,6 +20,7 @@ import {
   ProvisioningConnectionListener,
 } from './net/Chat.js';
 import { RegistrationService } from './net/Registration.js';
+import { Svr2 } from './net/Svr2.js';
 import { SvrB } from './net/SvrB.js';
 import { BridgedStringMap, newNativeHandle } from './internal.js';
 export * from './net/CDSI.js';
@@ -31,6 +32,7 @@ export * from './net/chat/UnauthMessagesService.js';
 export * from './net/chat/UnauthProfilesService.js';
 export * from './net/chat/UnauthUsernamesService.js';
 export * from './net/Registration.js';
+export * from './net/Svr2.js';
 export * from './net/SvrB.js';
 
 // This must match the libsignal-bridge Rust enum of the same name.
@@ -587,5 +589,22 @@ export class Net {
       ? Environment.Staging
       : this.options.env;
     return new SvrB(this.asyncContext, this._connectionManager, auth, env);
+  }
+
+  /**
+   * Returns an SVR2 service instance for this network configuration.
+   *
+   * SVR2 stores a small piece of data protected by a pin in a secure enclave.
+   * See {@link Svr2} for the storage and restore protocols.
+   *
+   * @param auth The authentication credentials to use when connecting to the SVR2 server.
+   * @returns An Svr2 service instance configured for this network environment.
+   * @see {@link Svr2}
+   */
+  svr2(auth: Readonly<ServiceAuth>): Svr2 {
+    const env = this.options.localTestServer
+      ? Environment.Staging
+      : this.options.env;
+    return new Svr2(this.asyncContext, this._connectionManager, auth, env);
   }
 }

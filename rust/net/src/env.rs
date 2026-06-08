@@ -811,9 +811,22 @@ impl<'a> SvrBEnv<'a> {
     }
 }
 
+pub struct Svr2Env<'a> {
+    pub current: EnclaveEndpoint<'a, SvrSgx>,
+    pub previous: Option<EnclaveEndpoint<'a, SvrSgx>>,
+}
+
+impl<'a> Svr2Env<'a> {
+    pub fn current_and_previous(
+        &self,
+    ) -> impl std::iter::Iterator<Item = &EnclaveEndpoint<'a, SvrSgx>> {
+        std::iter::once(&self.current).chain(self.previous.as_ref())
+    }
+}
+
 pub struct Env<'a> {
     pub cdsi: EnclaveEndpoint<'a, Cdsi>,
-    pub svr2: EnclaveEndpoint<'a, SvrSgx>,
+    pub svr2: Svr2Env<'a>,
     pub svr_b: SvrBEnv<'a>,
     pub chat_domain_config: DomainConfig,
     pub experimental_chat_h2_domain_config: DomainConfig,
@@ -843,12 +856,14 @@ impl<'a> Env<'a> {
 
         let mut result = HashMap::from_iter([
             cdsi.domain_config.static_fallback(rng.as_mut()),
-            svr2.domain_config.static_fallback(rng.as_mut()),
             chat_domain_config.static_fallback(rng.as_mut()),
             experimental_chat_h2_domain_config.static_fallback(rng.as_mut()),
         ]);
+        let svr_endpoints = svr_b
+            .current_and_previous()
+            .chain(svr2.current_and_previous());
         result.extend(
-            svr_b.current_and_previous().map(|enclave_endpoint| {
+            svr_endpoints.map(|enclave_endpoint| {
                 enclave_endpoint.domain_config.static_fallback(rng.as_mut())
             }),
         );
@@ -865,10 +880,13 @@ pub const STAGING: Env<'static> = Env {
         ws_config: RECOMMENDED_WS_CONFIG,
         params: ENDPOINT_PARAMS_CDSI_STAGING,
     },
-    svr2: EnclaveEndpoint {
-        domain_config: DOMAIN_CONFIG_SVR2_STAGING,
-        ws_config: RECOMMENDED_WS_CONFIG,
-        params: ENDPOINT_PARAMS_SVR2_2026Q2_STAGING,
+    svr2: Svr2Env {
+        current: EnclaveEndpoint {
+            domain_config: DOMAIN_CONFIG_SVR2_STAGING,
+            ws_config: RECOMMENDED_WS_CONFIG,
+            params: ENDPOINT_PARAMS_SVR2_2026Q2_STAGING,
+        },
+        previous: None,
     },
     svr_b: SvrBEnv {
         current: [
@@ -899,10 +917,13 @@ pub const PROD: Env<'static> = Env {
         ws_config: RECOMMENDED_WS_CONFIG,
         params: ENDPOINT_PARAMS_CDSI_PROD,
     },
-    svr2: EnclaveEndpoint {
-        domain_config: DOMAIN_CONFIG_SVR2,
-        ws_config: RECOMMENDED_WS_CONFIG,
-        params: ENDPOINT_PARAMS_SVR2_2026Q1_PROD,
+    svr2: Svr2Env {
+        current: EnclaveEndpoint {
+            domain_config: DOMAIN_CONFIG_SVR2,
+            ws_config: RECOMMENDED_WS_CONFIG,
+            params: ENDPOINT_PARAMS_SVR2_2026Q1_PROD,
+        },
+        previous: None,
     },
     svr_b: SvrBEnv {
         current: [
