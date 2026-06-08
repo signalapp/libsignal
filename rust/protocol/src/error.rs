@@ -76,7 +76,7 @@ pub enum SignalProtocolError {
     /// message with old counter {0} / {1}
     DuplicatedMessage(u32, u32),
     /// invalid {0:?} message: {1}
-    InvalidMessage(crate::CiphertextMessageType, &'static str),
+    InvalidMessage(crate::CiphertextMessageType, String),
 
     /// error while invoking an ffi callback: {0}
     FfiBindingError(String),

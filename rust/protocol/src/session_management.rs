@@ -440,7 +440,7 @@ pub(crate) fn try_decrypt_from_record<R: Rng + CryptoRng>(
                             // as we would for a Whisper message that tried several sessions.
                             return Err(SignalProtocolError::InvalidMessage(
                                 original_message_type,
-                                "decryption failed",
+                                "decryption failed".to_owned(),
                             ));
                         }
                         CiphertextMessageType::Whisper => {}
@@ -540,7 +540,7 @@ pub(crate) fn try_decrypt_from_record<R: Rng + CryptoRng>(
         );
         Err(SignalProtocolError::InvalidMessage(
             original_message_type,
-            "decryption failed",
+            "decryption failed".to_owned(),
         ))
     }
 }
@@ -701,6 +701,7 @@ pub(crate) enum CurrentOrPrevious {
 // to the legacy snapshot for any message sequence.
 #[cfg(test)]
 mod legacy_interop_tests {
+    use assert_matches::assert_matches;
     // These tests live next to `session_management` rather than under
     // `rust/protocol/tests/` because they compare the refactored code against
     // the private `session_cipher_legacy` implementation and also assert
@@ -1468,15 +1469,13 @@ mod legacy_interop_tests {
         .expect("sync")
         .expect_err("decrypt should fail on corrupt matched receiver chain");
 
-        assert!(
-            matches!(
-                err,
-                SignalProtocolError::InvalidMessage(
-                    CiphertextMessageType::Whisper,
-                    "decryption failed"
-                )
-            ),
-            "unexpected error: {err:?}"
+        assert_matches!(
+            err,
+            SignalProtocolError::InvalidMessage(
+                CiphertextMessageType::Whisper,
+                msg
+            )
+            if msg == "decryption failed"
         );
     }
 

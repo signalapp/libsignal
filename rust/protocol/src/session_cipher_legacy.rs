@@ -520,7 +520,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
                         // as we would for a Whisper message that tried several sessions.
                         return Err(SignalProtocolError::InvalidMessage(
                             original_message_type,
-                            "decryption failed",
+                            "decryption failed".to_owned(),
                         ));
                     }
                     CiphertextMessageType::Whisper => {}
@@ -599,7 +599,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
         );
         Err(SignalProtocolError::InvalidMessage(
             original_message_type,
-            "decryption failed",
+            "decryption failed".to_owned(),
         ))
     }
 }
@@ -632,7 +632,7 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     let _ = state.root_key().map_err(|_| {
         SignalProtocolError::InvalidMessage(
             original_message_type,
-            "No session available to decrypt",
+            "No session available to decrypt".to_owned(),
         )
     })?;
 
@@ -665,7 +665,7 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
                 log::info!("post-quantum ratchet error in decrypt_message_with_state: {e}");
                 SignalProtocolError::InvalidMessage(
                     original_message_type,
-                    "post-quantum ratchet error",
+                    "post-quantum ratchet error".to_owned(),
                 )
             }
         })?;
@@ -696,7 +696,7 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     if !mac_valid {
         return Err(SignalProtocolError::InvalidMessage(
             original_message_type,
-            "MAC verification failed",
+            "MAC verification failed".to_owned(),
         ));
     }
 
@@ -716,7 +716,7 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
             log::warn!("failed to decrypt 1:1 message: {msg}");
             return Err(SignalProtocolError::InvalidMessage(
                 original_message_type,
-                "failed to decrypt",
+                "failed to decrypt".to_owned(),
             ));
         }
     };
@@ -797,7 +797,7 @@ fn get_or_create_message_key(
             );
             return Err(SignalProtocolError::InvalidMessage(
                 original_message_type,
-                "message from too far into the future",
+                "message from too far into the future".to_owned(),
             ));
         }
     }

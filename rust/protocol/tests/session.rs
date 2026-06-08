@@ -2306,8 +2306,9 @@ fn prekey_message_failed_decryption_does_not_update_stores() -> TestResult {
             .await,
             Err(SignalProtocolError::InvalidMessage(
                 CiphertextMessageType::PreKey,
-                "decryption failed"
+                msg,
             ))
+            if msg == "decryption failed"
         );
 
         // Because the decryption failed, the identity and session stores were
@@ -2453,8 +2454,9 @@ fn prekey_message_failed_decryption_does_not_update_stores_even_when_previously_
             .await,
             Err(SignalProtocolError::InvalidMessage(
                 CiphertextMessageType::PreKey,
-                "decryption failed"
+                msg
             ))
+            if msg == "decryption failed"
         );
 
         // Because the decryption failed, the session should still be archived.
@@ -3585,7 +3587,8 @@ fn prekey_message_sent_from_different_user_is_rejected() {
             .expect_err("should be rejected");
         assert_matches!(
             err,
-            SignalProtocolError::InvalidMessage(CiphertextMessageType::PreKey, "reused base key")
+            SignalProtocolError::InvalidMessage(CiphertextMessageType::PreKey, msg)
+            if msg == "reused base key"
         );
         assert!(
             bob_store
@@ -3654,7 +3657,8 @@ fn prekey_message_rejects_wrong_local_recipient_address() {
         .expect_err("recipient binding should reject wrong local address");
         assert_matches!(
             err,
-            SignalProtocolError::InvalidMessage(CiphertextMessageType::PreKey, "decryption failed")
+            SignalProtocolError::InvalidMessage(CiphertextMessageType::PreKey, msg)
+            if msg == "decryption failed"
         );
     }
     .now_or_never()

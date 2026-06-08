@@ -5,3 +5,5 @@ v0.94.5
 - Several new requests have been added to UnauthBackupsService; however, they are only usable when an H2 connection is guaranteed, and should not be adopted otherwise.
 
 - node: Implement a full-service SVR2 client API
+
+- Rust: `SignalProtocolError::InvalidMessage` now has a `String` description instead of just `&'static str`.

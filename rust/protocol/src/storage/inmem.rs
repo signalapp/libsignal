@@ -257,7 +257,7 @@ impl traits::KyberPreKeyStore for InMemKyberPreKeyStore {
         if base_keys_seen.contains(base_key) {
             return Err(SignalProtocolError::InvalidMessage(
                 CiphertextMessageType::PreKey,
-                "reused base key",
+                "reused base key".to_owned(),
             ));
         }
         base_keys_seen.push(*base_key);

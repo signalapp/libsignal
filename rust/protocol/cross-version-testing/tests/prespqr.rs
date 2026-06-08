@@ -33,8 +33,9 @@ fn test_alice_lacks_spqr() {
             .expect("unexpected error type"),
         libsignal_protocol_current::SignalProtocolError::InvalidMessage(
             libsignal_protocol_current::CiphertextMessageType::PreKey,
-            "decryption failed"
+            msg
         )
+        if msg == "decryption failed"
     );
 }
 

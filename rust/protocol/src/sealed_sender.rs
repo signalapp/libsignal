@@ -2072,7 +2072,7 @@ pub async fn sealed_sender_decrypt(
         msg_type => {
             return Err(SignalProtocolError::InvalidMessage(
                 msg_type,
-                "unexpected message type for sealed_sender_decrypt",
+                format!("unexpected message type for sealed_sender_decrypt: {msg_type:?}"),
             ));
         }
     };
