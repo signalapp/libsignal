@@ -189,21 +189,32 @@ import SignalFfi
             static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
                 switch niceArg {
                     {% for (variant, struct) in enum.variants %}
-                        {%- set cons = "Signal" ~ name ~ "FfiArgSignal" ~ variant ~ "_Body" -%}
-                        case .{{ variant | to_lower_camel_case }}{% if struct.fields|count > 0 %}(
-                            {% for (field, ty) in struct.fields -%}
-                                {% if not struct.is_tuple %}{{ field|to_lower_camel_case }}:{% endif -%}
-                                let {{ field }},
-                            {%- endfor %}
-                        ){% endif %}:
-                            {{ convertArg_struct(struct, constructor=cons) }}
-                            return (
-                                Signal{{ name }}FfiArg.init(
-                                    tag: Signal{{name}}FfiArg{{variant}},
-                                    .init({{ variant|to_snake_case }}: ffiStructArg),
-                                ),
-                                ffiStructKeepAlive.map {.{{ variant|to_lower_camel_case }}($0)},
-                            )
+                        {% if struct.fields|count > 0 %}
+                            {%- set cons = "Signal" ~ name ~ "FfiArgSignal" ~ variant ~ "_Body" -%}
+                            case .{{ variant | to_lower_camel_case }}(
+                                {% for (field, ty) in struct.fields -%}
+                                    {% if not struct.is_tuple %}{{ field|to_lower_camel_case }}:{% endif -%}
+                                    let {{ field }},
+                                {%- endfor %}
+                            ):
+                                {{ convertArg_struct(struct, constructor=cons) }}
+                                return (
+                                    Signal{{ name }}FfiArg.init(
+                                        tag: Signal{{name}}FfiArg{{variant}},
+                                        .init({{ variant|to_snake_case }}: ffiStructArg),
+                                    ),
+                                    ffiStructKeepAlive.map {.{{ variant|to_lower_camel_case }}($0)},
+                                )
+                        {% else %}
+                            case .{{ variant | to_lower_camel_case }}:
+                                return (
+                                    Signal{{ name }}FfiArg.init(
+                                        tag: Signal{{name}}FfiArg{{variant}},
+                                        .init(),
+                                    ),
+                                    nil,
+                                )
+                        {% endif %}
                     {% endfor %}
                 }
             }
@@ -213,19 +224,27 @@ import SignalFfi
             ) rethrows -> Result {
                 switch niceArg {
                     {% for (variant, struct) in enum.variants %}
-                        {%- set cons = "Signal" ~ name ~ "FfiArgSignal" ~ variant ~ "_Body" -%}
-                        case .{{ variant | to_lower_camel_case }}{% if struct.fields|count > 0 %}(
-                            {% for (field, ty) in struct.fields -%}
-                                {% if not struct.is_tuple %}{{ field|to_lower_camel_case }}:{% endif -%}
-                                let {{ field }},
-                            {%- endfor %}
-                        ){% endif %}:
-                            {% call(result) convertArgBorrowed_struct(struct, constructor=cons) %}
+                        {% if struct.fields|count > 0 %}
+                            {%- set cons = "Signal" ~ name ~ "FfiArgSignal" ~ variant ~ "_Body" -%}
+                            case .{{ variant | to_lower_camel_case }}(
+                                {% for (field, ty) in struct.fields -%}
+                                    {% if not struct.is_tuple %}{{ field|to_lower_camel_case }}:{% endif -%}
+                                    let {{ field }},
+                                {%- endfor %}
+                            ):
+                                {% call(result) convertArgBorrowed_struct(struct, constructor=cons) %}
+                                    return try niceThunk(Signal{{name}}FfiArg.init(
+                                        tag: Signal{{name}}FfiArg{{variant}},
+                                        .init({{ variant|to_snake_case }}: {{ result }}),
+                                    ))
+                                {% endcall %}
+                        {% else %}
+                            case .{{ variant | to_lower_camel_case }}:
                                 return try niceThunk(Signal{{name}}FfiArg.init(
                                     tag: Signal{{name}}FfiArg{{variant}},
-                                    .init({{ variant|to_snake_case }}: {{ result }}),
+                                    .init(),
                                 ))
-                            {% endcall %}
+                        {% endif %}
                     {% endfor %}
                 }
             }

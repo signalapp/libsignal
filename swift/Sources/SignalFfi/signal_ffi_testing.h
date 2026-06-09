@@ -259,10 +259,6 @@ typedef enum {
 } SignalMyTestEnumFfiResult_Tag;
 
 typedef struct {
-
-} SignalMyTestEnumFfiResultSignalUnit_Body;
-
-typedef struct {
   int32_t _0;
 } SignalMyTestEnumFfiResultSignalSingle_Body;
 
@@ -285,7 +281,6 @@ typedef struct {
 typedef struct {
   SignalMyTestEnumFfiResult_Tag tag;
   union {
-    SignalMyTestEnumFfiResultSignalUnit_Body unit;
     SignalMyTestEnumFfiResultSignalSingle_Body single;
     SignalMyTestEnumFfiResultSignalSingleNamed_Body single_named;
     SignalMyTestEnumFfiResultSignalDouble_Body double_;
@@ -312,10 +307,6 @@ typedef enum {
 } SignalMyTestEnumFfiArg_Tag;
 
 typedef struct {
-
-} SignalMyTestEnumFfiArgSignalUnit_Body;
-
-typedef struct {
   int32_t _0;
 } SignalMyTestEnumFfiArgSignalSingle_Body;
 
@@ -338,7 +329,6 @@ typedef struct {
 typedef struct {
   SignalMyTestEnumFfiArg_Tag tag;
   union {
-    SignalMyTestEnumFfiArgSignalUnit_Body unit;
     SignalMyTestEnumFfiArgSignalSingle_Body single;
     SignalMyTestEnumFfiArgSignalSingleNamed_Body single_named;
     SignalMyTestEnumFfiArgSignalDouble_Body double_;

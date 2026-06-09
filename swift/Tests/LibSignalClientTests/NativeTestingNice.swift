@@ -167,19 +167,16 @@ internal enum DerivedArgConverterMyTestEnum: NiceArgConverter {
     typealias KeepAlive = MyTestEnumArgConverterKeepAlive
     static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
         switch niceArg {
+
         case .unit:
-
-            let ffiStructArg = SignalMyTestEnumFfiArgSignalUnit_Body()
-            let ffiStructKeepAlive: ()? =
-                (false) ? () : nil
-
             return (
                 SignalMyTestEnumFfiArg.init(
                     tag: SignalMyTestEnumFfiArgUnit,
-                    .init(unit: ffiStructArg),
+                    .init(),
                 ),
-                ffiStructKeepAlive.map { .unit($0) },
+                nil,
             )
+
         case .single(
             let _0,
         ):
@@ -201,6 +198,7 @@ internal enum DerivedArgConverterMyTestEnum: NiceArgConverter {
                 ),
                 ffiStructKeepAlive.map { .single($0) },
             )
+
         case .singleNamed(
             let x,
         ):
@@ -222,6 +220,7 @@ internal enum DerivedArgConverterMyTestEnum: NiceArgConverter {
                 ),
                 ffiStructKeepAlive.map { .singleNamed($0) },
             )
+
         case .double(
             let _0,
             let _1,
@@ -249,6 +248,7 @@ internal enum DerivedArgConverterMyTestEnum: NiceArgConverter {
                 ),
                 ffiStructKeepAlive.map { .double($0) },
             )
+
         case .record(
             personName: let person_name,
             personAge: let person_age,
@@ -307,15 +307,12 @@ internal enum DerivedArgConverterMyTestEnum: NiceArgConverter {
         _ niceThunk: (FfiArg) throws -> Result,
     ) rethrows -> Result {
         switch niceArg {
-        case .unit:
 
+        case .unit:
             return try niceThunk(
                 SignalMyTestEnumFfiArg.init(
                     tag: SignalMyTestEnumFfiArgUnit,
-                    .init(
-                        unit:
-                            SignalMyTestEnumFfiArgSignalUnit_Body()
-                    ),
+                    .init(),
                 )
             )
 

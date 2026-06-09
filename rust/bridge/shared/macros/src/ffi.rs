@@ -625,22 +625,31 @@ fn ffi_struct(
             },
             vec![quote!(#name {#(#(#field_names),*)*})],
         ),
-        Data::Enum(_) => (
-            quote! {
-                #[cfg(feature = "ffi")]
-                #[repr(C)]
-                pub enum #name {
-                    #(#variant_names {
-                        #(#field_names: #krate::#macro_name!(#field_types),)*
-                    },)*
+        Data::Enum(_) => {
+            let variant_bodies = field_names.iter().zip(&field_types).map(|(names, types)| {
+                if names.is_empty() {
+                    Default::default()
+                } else {
+                    quote! {
+                        { #(#names: #krate::#macro_name!(#types),)* }
+                    }
                 }
-            },
-            variant_names
-                .iter()
-                .zip(field_names.iter())
-                .map(|(variant, fields)| quote!(#name::#variant {#(#fields),*}))
-                .collect(),
-        ),
+            });
+            (
+                quote! {
+                    #[cfg(feature = "ffi")]
+                    #[repr(C)]
+                    pub enum #name {
+                        #(#variant_names #variant_bodies,)*
+                    }
+                },
+                variant_names
+                    .iter()
+                    .zip(field_names.iter())
+                    .map(|(variant, fields)| quote!(#name::#variant {#(#fields),*}))
+                    .collect(),
+            )
+        }
         Data::Union(_) => unreachable!(),
     }
 }
