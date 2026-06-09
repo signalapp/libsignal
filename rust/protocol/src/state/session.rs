@@ -18,7 +18,9 @@ use crate::protocol::CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION;
 use crate::ratchet::MessageKeyGenerator;
 use crate::ratchet::{ChainKey, RootKey};
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
-use crate::{IdentityKey, KeyPair, PrivateKey, PublicKey, SignalProtocolError, consts, kem};
+use crate::{
+    IdentityKey, KeyPair, PrivateKey, PublicKey, SessionNotFound, SignalProtocolError, consts, kem,
+};
 
 /// A distinct error type to keep from accidentally propagating deserialization errors.
 #[derive(Debug)]
@@ -846,10 +848,9 @@ impl SessionRecord {
         Ok(self
             .session_state()
             .ok_or_else(|| {
-                SignalProtocolError::InvalidState(
+                SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "remote_registration_id",
-                    "No current session".into(),
-                )
+                ))
             })?
             .remote_registration_id())
     }
@@ -858,10 +859,9 @@ impl SessionRecord {
         Ok(self
             .session_state()
             .ok_or_else(|| {
-                SignalProtocolError::InvalidState(
+                SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "local_registration_id",
-                    "No current session".into(),
-                )
+                ))
             })?
             .local_registration_id())
     }
@@ -870,7 +870,9 @@ impl SessionRecord {
         Ok(self
             .session_state()
             .ok_or_else(|| {
-                SignalProtocolError::InvalidState("session_version", "No current session".into())
+                SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
+                    "session_version",
+                ))
             })?
             .session_version()?)
     }
@@ -879,10 +881,9 @@ impl SessionRecord {
         Ok(self
             .session_state()
             .ok_or_else(|| {
-                SignalProtocolError::InvalidState(
+                SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "local_identity_key_bytes",
-                    "No current session".into(),
-                )
+                ))
             })?
             .local_identity_key_bytes()?)
     }
@@ -891,10 +892,9 @@ impl SessionRecord {
         Ok(self
             .session_state()
             .ok_or_else(|| {
-                SignalProtocolError::InvalidState(
+                SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "remote_identity_key_bytes",
-                    "No current session".into(),
-                )
+                ))
             })?
             .remote_identity_key_bytes()?)
     }
@@ -914,7 +914,9 @@ impl SessionRecord {
         Ok(self
             .session_state()
             .ok_or_else(|| {
-                SignalProtocolError::InvalidState("alice_base_key", "No current session".into())
+                SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
+                    "alice_base_key",
+                ))
             })?
             .alice_base_key())
     }
@@ -926,10 +928,9 @@ impl SessionRecord {
         Ok(self
             .session_state()
             .ok_or_else(|| {
-                SignalProtocolError::InvalidState(
+                SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "get_receiver_chain_key",
-                    "No current session".into(),
-                )
+                ))
             })?
             .get_receiver_chain_key(sender)?
             .map(|chain| chain.key()[..].into()))
@@ -939,10 +940,9 @@ impl SessionRecord {
         Ok(self
             .session_state()
             .ok_or_else(|| {
-                SignalProtocolError::InvalidState(
+                SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "get_sender_chain_key_bytes",
-                    "No current session".into(),
-                )
+                ))
             })?
             .get_sender_chain_key_bytes()?)
     }
@@ -961,10 +961,9 @@ impl SessionRecord {
         Ok(self
             .session_state()
             .ok_or_else(|| {
-                SignalProtocolError::InvalidState(
+                SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "get_kyber_ciphertext",
-                    "No current session".into(),
-                )
+                ))
             })?
             .get_kyber_ciphertext())
     }

@@ -30,10 +30,9 @@ use crate::state::{InvalidSessionError, SessionState};
 use crate::triple_ratchet::{OutgoingTripleRatchet, TripleRatchet};
 use crate::{
     CiphertextMessage, CiphertextMessageType, Direction, IdentityKeyStore, KyberPayload,
-    KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, ProtocolAddress, Result, SessionRecord,
-    SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore, session,
+    KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, ProtocolAddress, Result, SessionNotFound,
+    SessionRecord, SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore, session,
 };
-
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /// Encrypt `ptext` for `remote_address`, loading and storing session state.
@@ -50,13 +49,19 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
     now: SystemTime,
     csprng: &mut R,
 ) -> Result<CiphertextMessage> {
+    let no_session_error = || {
+        SignalProtocolError::SessionNotFound(SessionNotFound::new(
+            remote_address.clone(),
+            "message_encrypt",
+        ))
+    };
     let mut session_record = session_store
         .load_session(remote_address)
         .await?
-        .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
+        .ok_or_else(no_session_error)?;
     let session_state = session_record
         .session_state_mut()
-        .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
+        .ok_or_else(no_session_error)?;
 
     let mut session = OutgoingTripleRatchet::from_session_state(session_state).map_err(|e| {
         log::error!("session state corrupt for {remote_address}: {e}");
@@ -78,7 +83,7 @@ pub async fn message_encrypt<R: Rng + CryptoRng>(
             log::warn!(
                 "stale unacknowledged session for {remote_address} (created at {timestamp_as_unix_time})"
             );
-            return Err(SignalProtocolError::SessionNotFound(remote_address.clone()));
+            return Err(no_session_error());
         }
 
         let local_registration_id = session_state.local_registration_id();
@@ -300,7 +305,12 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
     let mut session_record = session_store
         .load_session(remote_address)
         .await?
-        .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
+        .ok_or_else(|| {
+            SignalProtocolError::SessionNotFound(SessionNotFound::new(
+                remote_address.clone(),
+                "message_decrypt_signal",
+            ))
+        })?;
 
     let ptext = try_decrypt_from_record(
         &mut session_record,

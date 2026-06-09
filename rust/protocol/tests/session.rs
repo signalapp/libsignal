@@ -2217,7 +2217,7 @@ fn test_unacknowledged_sessions_eventually_expire() -> TestResult {
         .await
         .unwrap_err();
         assert!(
-            matches!(&error, SignalProtocolError::SessionNotFound(addr) if addr == &bob_address),
+            matches!(&error, SignalProtocolError::SessionNotFound(SessionNotFound{address: Some(address), op: _}) if address == &bob_address),
             "{error:?}"
         );
 

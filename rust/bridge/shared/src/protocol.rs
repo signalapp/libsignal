@@ -949,7 +949,8 @@ fn SessionRecord_NewFresh() -> SessionRecord {
 fn SessionRecord_GetSessionVersion(s: &SessionRecord) -> Result<u32> {
     match s.session_version() {
         Ok(v) => Ok(v),
-        Err(SignalProtocolError::InvalidState(_, _)) => Ok(0),
+        Err(SignalProtocolError::InvalidState(_, _))
+        | Err(SignalProtocolError::SessionNotFound(_)) => Ok(0),
         Err(e) => Err(e),
     }
 }

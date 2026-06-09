@@ -23,7 +23,8 @@ use crate::state::{InvalidSessionError, SessionState};
 use crate::{
     CiphertextMessage, CiphertextMessageType, Direction, IdentityKeyStore, KeyPair, KyberPayload,
     KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, ProtocolAddress, PublicKey, Result,
-    SessionRecord, SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore, session,
+    SessionNotFound, SessionRecord, SessionStore, SignalMessage, SignalProtocolError,
+    SignedPreKeyStore, session,
 };
 
 pub async fn legacy_message_encrypt<R: Rng + CryptoRng>(
@@ -35,13 +36,19 @@ pub async fn legacy_message_encrypt<R: Rng + CryptoRng>(
     now: SystemTime,
     csprng: &mut R,
 ) -> Result<CiphertextMessage> {
+    let no_session_error = || {
+        SignalProtocolError::SessionNotFound(SessionNotFound::new(
+            remote_address.clone(),
+            "legacy_message_encrypt",
+        ))
+    };
     let mut session_record = session_store
         .load_session(remote_address)
         .await?
-        .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
+        .ok_or_else(no_session_error)?;
     let session_state = session_record
         .session_state_mut()
-        .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
+        .ok_or_else(no_session_error)?;
 
     let chain_key = session_state.get_sender_chain_key()?;
 
@@ -86,7 +93,7 @@ pub async fn legacy_message_encrypt<R: Rng + CryptoRng>(
             log::warn!(
                 "stale unacknowledged session for {remote_address} (created at {timestamp_as_unix_time})"
             );
-            return Err(SignalProtocolError::SessionNotFound(remote_address.clone()));
+            return Err(no_session_error());
         }
 
         let local_registration_id = session_state.local_registration_id();
@@ -306,7 +313,12 @@ pub async fn legacy_message_decrypt_signal<R: Rng + CryptoRng>(
     let mut session_record = session_store
         .load_session(remote_address)
         .await?
-        .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
+        .ok_or_else(|| {
+            SignalProtocolError::SessionNotFound(SessionNotFound::new(
+                remote_address.clone(),
+                "legacy_message_decrypt_signal",
+            ))
+        })?;
 
     let ptext = decrypt_message_with_record(
         remote_address,

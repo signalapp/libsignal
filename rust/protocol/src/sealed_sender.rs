@@ -18,6 +18,7 @@ use rand::{CryptoRng, Rng, TryRngCore as _};
 use subtle::{Choice, ConstantTimeEq};
 use zerocopy::{FromBytes, Immutable, KnownLayout};
 
+use crate::error::SessionNotFound;
 use crate::{
     Aci, CiphertextMessageType, DeviceId, Direction, IdentityKey, IdentityKeyPair,
     IdentityKeyStore, KeyPair, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, PrivateKey,
@@ -978,7 +979,12 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
     let their_identity = identity_store
         .get_identity(destination)
         .await?
-        .ok_or_else(|| SignalProtocolError::SessionNotFound(destination.clone()))?;
+        .ok_or_else(|| {
+            SignalProtocolError::SessionNotFound(SessionNotFound::new(
+                destination.clone(),
+                "sealed_sender_encrypt_from_usmc",
+            ))
+        })?;
 
     let ephemeral = KeyPair::generate(rng);
 
@@ -1450,7 +1456,10 @@ where
                         // Returned as a SessionNotFound error because (a) we don't have an identity
                         // error that includes the address, and (b) re-establishing the session should
                         // re-fetch the identity.
-                        SignalProtocolError::SessionNotFound(destination.clone())
+                        SignalProtocolError::SessionNotFound(SessionNotFound::new(
+                            destination.clone(),
+                            "sealed_sender_multi_recipient_encrypt_impl",
+                        ))
                     })?;
             identity_keys_and_ranges.push((their_identity, i..i + count));
         }

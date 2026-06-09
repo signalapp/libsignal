@@ -14,6 +14,7 @@ import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.IdentityKey;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
+import org.signal.libsignal.protocol.NoSessionException;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
 /**
@@ -56,18 +57,23 @@ public class SessionRecord extends NativeHandleGuard.SimpleOwner {
     return filterExceptions(() -> guardedMapChecked(Native::SessionRecord_GetSessionVersion));
   }
 
-  public int getRemoteRegistrationId() {
-    return filterExceptions(() -> guardedMapChecked(Native::SessionRecord_GetRemoteRegistrationId));
+  public int getRemoteRegistrationId() throws NoSessionException {
+    return filterExceptions(
+        NoSessionException.class,
+        () -> guardedMapChecked(Native::SessionRecord_GetRemoteRegistrationId));
   }
 
-  public int getLocalRegistrationId() {
-    return filterExceptions(() -> guardedMapChecked(Native::SessionRecord_GetLocalRegistrationId));
+  public int getLocalRegistrationId() throws NoSessionException {
+    return filterExceptions(
+        NoSessionException.class,
+        () -> guardedMapChecked(Native::SessionRecord_GetLocalRegistrationId));
   }
 
-  public IdentityKey getRemoteIdentityKey() {
+  public IdentityKey getRemoteIdentityKey() throws NoSessionException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       byte[] keyBytes =
           filterExceptions(
+              NoSessionException.class,
               InvalidKeyException.class,
               () -> Native.SessionRecord_GetRemoteIdentityKeyPublic(guard.nativeHandle()));
 
@@ -81,10 +87,11 @@ public class SessionRecord extends NativeHandleGuard.SimpleOwner {
     }
   }
 
-  public IdentityKey getLocalIdentityKey() {
+  public IdentityKey getLocalIdentityKey() throws NoSessionException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       byte[] keyBytes =
           filterExceptions(
+              NoSessionException.class,
               InvalidKeyException.class,
               () -> Native.SessionRecord_GetLocalIdentityKeyPublic(guard.nativeHandle()));
       return new IdentityKey(keyBytes);
