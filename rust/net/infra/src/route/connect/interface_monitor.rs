@@ -42,8 +42,9 @@ impl<E> InterfaceChangedOr<E> {
 
 /// An implementation detail of InterfaceMonitor.
 ///
-/// Essentially an [`AsyncFn`] with a few extra constraints; once our MSRV is 1.85, we could
-/// consider removing this trait.
+/// Essentially an [`AsyncFn`] with a few extra constraints. We would need `async_fn_traits` to
+/// stabilize so we can constrain the `Future` returned by the call, but it might be more trouble
+/// than it's worth anyway until we get trait aliases.
 pub trait GetCurrentInterface {
     // This is overly general, but there's no reason not to allow it.
     type Representation: Eq + Send + Sync;

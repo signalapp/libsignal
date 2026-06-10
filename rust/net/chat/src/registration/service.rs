@@ -60,8 +60,8 @@ impl crate::ws::registration::WsClient for &RegistrationConnection<'_> {
 
 /// Describes how to make an unauthenticated [`ChatConnection`].
 ///
-/// This trait is a workaround for lack of AsyncFnMut. Once our MSRV >= 1.85 we
-/// can replace this with an `AsyncFnMut` bound.
+/// This trait is a workaround for lack of dyn-compatible `AsyncFnMut`, which may or may not ever be
+/// provided by the language.
 pub trait ConnectUnauthChat: Send {
     /// Starts an attempt to connect to the Chat server.
     ///
