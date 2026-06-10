@@ -732,7 +732,7 @@ async fn monitor_then_search<'a>(
     // will match between `stored_account_data` and `monitor_account_data`. Meaning, they will
     // either both be Some() or both None.
     let updated_versions = SearchVersions::from_account_data(&monitor_account_data);
-    log::info!("Updated versions: {}", stored_versions.short_description());
+    log::info!("Updated versions: {}", updated_versions.short_description());
     let version_delta = updated_versions
         .try_subtract(&stored_versions)
         .map_err(|_| {
