@@ -12,9 +12,11 @@ use derive_more::{Deref, DerefMut, From};
 use ref_cast::RefCast;
 
 mod as_type;
+mod async_mutex;
 mod sequences;
 mod serialized;
 pub use as_type::*;
+pub use async_mutex::*;
 pub use sequences::*;
 pub use serialized::*;
 

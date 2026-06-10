@@ -27,7 +27,7 @@ pub struct FakeChatConnection {
 
 pub struct FakeChatServer {
     pub(crate) tx: tokio::sync::mpsc::UnboundedSender<FakeChatRemote>,
-    remote_end: tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<FakeChatRemote>>,
+    remote_end: AsyncMutex<tokio::sync::mpsc::UnboundedReceiver<FakeChatRemote>>,
 }
 
 pub struct FakeChatRemoteEnd(FakeChatRemote);
@@ -43,6 +43,7 @@ bridge_handle_fns!(FakeChatServer, clone = false);
 bridge_as_handle!(FakeChatResponse);
 bridge_handle_fns!(FakeChatResponse, clone = false);
 
+// These aren't really guaranteed, but FakeChat* is only used for testing anyway.
 impl std::panic::RefUnwindSafe for FakeChatServer {}
 impl std::panic::RefUnwindSafe for FakeChatConnection {}
 impl std::panic::RefUnwindSafe for FakeChatRemoteEnd {}

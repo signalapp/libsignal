@@ -41,7 +41,7 @@ use static_assertions::assert_impl_all;
 
 use crate::net::ConnectionManager;
 use crate::net::remote_config::{RemoteConfig, RemoteConfigKey};
-use crate::support::LimitedLifetimeRef;
+use crate::support::{AsyncMutex, LimitedLifetimeRef};
 use crate::*;
 
 pub type ChatConnectionInfo = ConnectionInfo;
@@ -95,7 +95,7 @@ enum MaybeChatConnection {
     Running(ChatConnection),
     WaitingForListener {
         runtime: tokio::runtime::Handle,
-        pending: tokio::sync::Mutex<chat::PendingChatConnection>,
+        pending: AsyncMutex<chat::PendingChatConnection>,
         grpc_overrides: HashMap<&'static str, chat::GrpcOverride>,
     },
     TemporarilyEvicted,
