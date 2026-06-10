@@ -17,15 +17,23 @@ class TestStore: KeyTransparency.Store {
         return self.distinguishedTreeHeads.last
     }
 
+    func getAccountData(for aci: Aci) async -> Data? {
+        self.getAccountData(for: aci, context: NullContext())
+    }
+
+    func setAccountData(_ data: Data, for aci: Aci) async {
+        self.setAccountData(data, for: aci, context: NullContext())
+    }
+
     func setLastDistinguishedTreeHead(to data: Data) async {
         self.distinguishedTreeHeads.append(data)
     }
 
-    func getAccountData(for aci: Aci) async -> Data? {
+    func getAccountData(for aci: Aci, context: StoreContext) -> Data? {
         return self.accountData[aci]?.last
     }
 
-    func setAccountData(_ data: Data, for aci: Aci) async {
+    func setAccountData(_ data: Data, for aci: Aci, context: StoreContext) {
         self.accountData[aci, default: []].append(data)
     }
 }
@@ -115,12 +123,14 @@ final class KeyTransparencyTests: TestCaseBase {
 
     func testResetFieldThrowsOnCorruptData() async throws {
         let store = TestStore()
-        await store.setAccountData(Data([1, 2, 3]), for: self.testAccount.aci)
+        let context = NullContext()
+        store.setAccountData(Data([1, 2, 3]), for: self.testAccount.aci, context: context)
         do {
-            try await KeyTransparency.resetField(
+            try KeyTransparency.resetField(
                 .e164,
                 for: self.testAccount.aci,
-                store: store
+                store: store,
+                context: context
             )
             XCTFail("should have failed")
         } catch SignalError.invalidArgument(_) {
@@ -131,10 +141,12 @@ final class KeyTransparencyTests: TestCaseBase {
 
     func testResetFieldIsNoopWhenDataIsMissing() async throws {
         let store = TestStore()
-        try await KeyTransparency.resetField(
+        let context = NullContext()
+        try KeyTransparency.resetField(
             .e164,
             for: self.testAccount.aci,
-            store: store
+            store: store,
+            context: context
         )
         XCTAssertNil(store.accountData[self.testAccount.aci])
     }
@@ -173,17 +185,19 @@ final class KeyTransparencyTests: TestCaseBase {
 
     func testResetFieldUpdatesStoreOnSuccess() async throws {
         let store = TestStore()
+        let context = NullContext()
         let storedAccountData = failOnError {
             try invokeFnReturningData {
                 signal_testing_key_trans_stored_account_data($0)
             }
         }
-        await store.setAccountData(storedAccountData, for: self.testAccount.aci)
+        store.setAccountData(storedAccountData, for: self.testAccount.aci, context: context)
         XCTAssertEqual(1, store.accountData[self.testAccount.aci]!.count)
-        try await KeyTransparency.resetField(
+        try KeyTransparency.resetField(
             .e164,
             for: self.testAccount.aci,
-            store: store
+            store: store,
+            context: context
         )
         XCTAssertEqual(2, store.accountData[self.testAccount.aci]!.count)
     }
