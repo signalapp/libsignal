@@ -18,6 +18,23 @@ import {
 } from './NiceConverters.js';
 import { Rng } from './RngForTesting.js';
 
+export type MyRemoteDeriveEnum =
+  | 'unit'
+  | {
+      tuple: [number, number];
+    }
+  | {
+      record: {
+        x: string;
+        y: number;
+      };
+    };
+
+export type MyRemoteDeriveStruct = {
+  x: number;
+  y: number;
+};
+
 export type MyTestEnum =
   | 'unit'
   | {
@@ -44,6 +61,38 @@ export type MyTestStruct = {
   myNumericField: number;
   myStringField: string;
 };
+
+function returnConverterMyRemoteDeriveEnum(
+  ffiInput: Native.ReturnFfiMyRemoteDeriveEnum
+): MyRemoteDeriveEnum {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'unit';
+    case 1:
+      return {
+        tuple: [identity(ffiInput._0), identity(ffiInput._1)],
+      };
+    case 2:
+      return {
+        record: {
+          x: identity(ffiInput.x),
+          y: identity(ffiInput.y),
+        },
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for MyRemoteDeriveEnum');
+  }
+}
+
+function returnConverterMyRemoteDeriveStruct(
+  ffiInput: Native.ReturnFfiMyRemoteDeriveStruct
+): MyRemoteDeriveStruct {
+  return {
+    x: identity(ffiInput.x),
+    y: identity(ffiInput.y),
+  };
+}
 
 function returnConverterMyTestEnum(
   ffiInput: Native.ReturnFfiMyTestEnum
@@ -91,6 +140,42 @@ function returnConverterMyTestStruct(
     myNumericField: identity(ffiInput.my_numeric_field),
     myStringField: identity(ffiInput.my_string_field),
   };
+}
+
+function argConverterMyRemoteDeriveEnum(
+  niceInput: MyRemoteDeriveEnum
+): Native.ArgFfiMyRemoteDeriveEnum {
+  if (niceInput === 'unit') {
+    return { __type: 0 };
+  }
+
+  if ('tuple' in niceInput) {
+    const [_0, _1] = niceInput.tuple;
+    return {
+      __type: 1,
+      _0: identity(_0),
+      _1: identity(_1),
+    };
+  }
+
+  if ('record' in niceInput) {
+    const { x: x, y: y } = niceInput.record;
+    return {
+      __type: 2,
+      x: identity(x),
+      y: identity(y),
+    };
+  }
+
+  niceInput satisfies never;
+  throw new Error('Cannot match on MyRemoteDeriveEnum argument');
+}
+
+function argConverterMyRemoteDeriveStruct(
+  niceInput: MyRemoteDeriveStruct
+): Native.ArgFfiMyRemoteDeriveStruct {
+  const { x: x, y: y } = niceInput;
+  return { x: identity(x), y: identity(y) };
 }
 
 function argConverterMyTestEnum(
@@ -159,6 +244,30 @@ function argConverterMyTestStruct(
     my_numeric_field: identity(my_numeric_field),
     my_string_field: identity(my_string_field),
   };
+}
+
+export function TESTING_MyRemoteDeriveEnum_identity({
+  x: x,
+}: {
+  x: MyRemoteDeriveEnum;
+}): MyRemoteDeriveEnum {
+  return returnConverterMyRemoteDeriveEnum(
+    Native.TESTING_MyRemoteDeriveEnum_identity(
+      argConverterMyRemoteDeriveEnum(x)
+    )
+  );
+}
+
+export function TESTING_MyRemoteDeriveStruct_identity({
+  x: x,
+}: {
+  x: MyRemoteDeriveStruct;
+}): MyRemoteDeriveStruct {
+  return returnConverterMyRemoteDeriveStruct(
+    Native.TESTING_MyRemoteDeriveStruct_identity(
+      argConverterMyRemoteDeriveStruct(x)
+    )
+  );
 }
 
 export function TESTING_MyTestEnum_identity({

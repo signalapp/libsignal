@@ -240,6 +240,64 @@ typedef struct {
   SignalTestingIntBox *raw;
 } SignalMutPointerTestingIntBox;
 
+typedef enum {
+  SignalMyRemoteDeriveEnumFfiResultUnit,
+  SignalMyRemoteDeriveEnumFfiResultTuple,
+  SignalMyRemoteDeriveEnumFfiResultRecord,
+} SignalMyRemoteDeriveEnumFfiResult_Tag;
+
+typedef struct {
+  int32_t _0;
+  int32_t _1;
+} SignalMyRemoteDeriveEnumFfiResultSignalTuple_Body;
+
+typedef struct {
+  SignalCStringPtr x;
+  int32_t y;
+} SignalMyRemoteDeriveEnumFfiResultSignalRecord_Body;
+
+typedef struct {
+  SignalMyRemoteDeriveEnumFfiResult_Tag tag;
+  union {
+    SignalMyRemoteDeriveEnumFfiResultSignalTuple_Body tuple;
+    SignalMyRemoteDeriveEnumFfiResultSignalRecord_Body record;
+  };
+} SignalMyRemoteDeriveEnumFfiResult;
+
+typedef enum {
+  SignalMyRemoteDeriveEnumFfiArgUnit,
+  SignalMyRemoteDeriveEnumFfiArgTuple,
+  SignalMyRemoteDeriveEnumFfiArgRecord,
+} SignalMyRemoteDeriveEnumFfiArg_Tag;
+
+typedef struct {
+  int32_t _0;
+  int32_t _1;
+} SignalMyRemoteDeriveEnumFfiArgSignalTuple_Body;
+
+typedef struct {
+  const char *x;
+  int32_t y;
+} SignalMyRemoteDeriveEnumFfiArgSignalRecord_Body;
+
+typedef struct {
+  SignalMyRemoteDeriveEnumFfiArg_Tag tag;
+  union {
+    SignalMyRemoteDeriveEnumFfiArgSignalTuple_Body tuple;
+    SignalMyRemoteDeriveEnumFfiArgSignalRecord_Body record;
+  };
+} SignalMyRemoteDeriveEnumFfiArg;
+
+typedef struct {
+  int32_t x;
+  int32_t y;
+} SignalMyRemoteDeriveStructFfiResult;
+
+typedef struct {
+  int32_t x;
+  int32_t y;
+} SignalMyRemoteDeriveStructFfiArg;
+
 typedef struct {
   int32_t _0;
   int32_t _1;
@@ -530,6 +588,10 @@ SignalFfiError *signal_testing_key_trans_fatal_verification_failure(void);
 SignalFfiError *signal_testing_key_trans_non_fatal_verification_failure(void);
 
 SignalFfiError *signal_testing_key_trans_stored_account_data(SignalOwnedBuffer *out);
+
+SignalFfiError *signal_testing_my_remote_derive_enum_identity(SignalMyRemoteDeriveEnumFfiResult *out, SignalMyRemoteDeriveEnumFfiArg x);
+
+SignalFfiError *signal_testing_my_remote_derive_struct_identity(SignalMyRemoteDeriveStructFfiResult *out, SignalMyRemoteDeriveStructFfiArg x);
 
 SignalFfiError *signal_testing_my_test_enum_identity(SignalMyTestEnumFfiResult *out, SignalMyTestEnumFfiArg x);
 

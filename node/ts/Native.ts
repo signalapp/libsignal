@@ -143,6 +143,26 @@ export const enum LogLevel {
   Trace,
 }
 
+export type ReturnFfiMyRemoteDeriveEnum =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+      _0: number;
+      _1: number;
+    }
+  | {
+      __type: 2;
+      x: string;
+      y: number;
+    };
+
+export type ReturnFfiMyRemoteDeriveStruct = {
+  x: number;
+  y: number;
+};
+
 export type ReturnFfiMyTestEnum =
   | {
       __type: 0;
@@ -176,6 +196,26 @@ export type ReturnFfiMyTestPoint = {
 export type ReturnFfiMyTestStruct = {
   my_numeric_field: number;
   my_string_field: string;
+};
+
+export type ArgFfiMyRemoteDeriveEnum =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+      _0: number;
+      _1: number;
+    }
+  | {
+      __type: 2;
+      x: string;
+      y: number;
+    };
+
+export type ArgFfiMyRemoteDeriveStruct = {
+  x: number;
+  y: number;
 };
 
 export type ArgFfiMyTestEnum =
@@ -2049,6 +2089,12 @@ type NativeFunctions = {
   TESTING_KeyTransFatalVerificationFailure: () => void;
   TESTING_KeyTransNonFatalVerificationFailure: () => void;
   TESTING_KeyTransStoredAccountData: () => Uint8Array<ArrayBuffer>;
+  TESTING_MyRemoteDeriveEnum_identity: (
+    x: ArgFfiMyRemoteDeriveEnum
+  ) => ReturnFfiMyRemoteDeriveEnum;
+  TESTING_MyRemoteDeriveStruct_identity: (
+    x: ArgFfiMyRemoteDeriveStruct
+  ) => ReturnFfiMyRemoteDeriveStruct;
   TESTING_MyTestEnum_identity: (x: ArgFfiMyTestEnum) => ReturnFfiMyTestEnum;
   TESTING_MyTestEnum_identity_async: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -2933,6 +2979,8 @@ const {
   TESTING_KeyTransFatalVerificationFailure,
   TESTING_KeyTransNonFatalVerificationFailure,
   TESTING_KeyTransStoredAccountData,
+  TESTING_MyRemoteDeriveEnum_identity,
+  TESTING_MyRemoteDeriveStruct_identity,
   TESTING_MyTestEnum_identity,
   TESTING_MyTestEnum_identity_async,
   TESTING_MyTestEnum_to_string,
@@ -3553,6 +3601,8 @@ export {
   TESTING_KeyTransFatalVerificationFailure,
   TESTING_KeyTransNonFatalVerificationFailure,
   TESTING_KeyTransStoredAccountData,
+  TESTING_MyRemoteDeriveEnum_identity,
+  TESTING_MyRemoteDeriveStruct_identity,
   TESTING_MyTestEnum_identity,
   TESTING_MyTestEnum_identity_async,
   TESTING_MyTestEnum_to_string,

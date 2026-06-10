@@ -1717,6 +1717,8 @@ macro_rules! ffi_arg_type {
     (MyTestStruct) => (MyTestStructFfiArg);
     (MyTestPoint) => (MyTestPointFfiArg);
     (MyTestEnum) => (MyTestEnumFfiArg);
+    (MyRemoteDeriveStruct) => (MyRemoteDeriveStructFfiArg);
+    (MyRemoteDeriveEnum) => (MyRemoteDeriveEnumFfiArg);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
@@ -1810,6 +1812,8 @@ macro_rules! ffi_result_type {
     (MyTestStruct) => (MyTestStructFfiResult);
     (MyTestPoint) => (MyTestPointFfiResult);
     (MyTestEnum) => (MyTestEnumFfiResult);
+    (MyRemoteDeriveStruct) => (MyRemoteDeriveStructFfiResult);
+    (MyRemoteDeriveEnum) => (MyRemoteDeriveEnumFfiResult);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

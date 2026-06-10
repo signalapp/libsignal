@@ -9,6 +9,8 @@
 // swiftlint and swift-format disagree on some comma formatting
 // swiftlint:disable comma
 // swiftlint:disable large_tuple
+// Some of our type names grow long
+// swiftlint:disable type_name
 
 import Foundation
 import SignalFfi

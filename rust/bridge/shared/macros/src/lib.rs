@@ -169,7 +169,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::*;
-use syn::parse::{Parse, Parser};
+use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::*;
@@ -608,24 +608,39 @@ pub fn bridge_callbacks(attr: TokenStream, item: TokenStream) -> TokenStream {
 fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let mut node = true;
     let mut ffi = true;
+    let mut remote: Option<syn::Path> = None;
     for attr in &item.attrs {
         if attr
             .path()
             .is_ident(&Ident::new("bridge", Span::call_site()))
         {
-            let contents = Punctuated::<MetaNameValue, Token![,]>::parse_terminated
-                .parse2(attr.meta.require_list()?.tokens.clone())?;
-            node = bool_for_meta_key(&contents, "node")?.unwrap_or(true);
-            ffi = bool_for_meta_key(&contents, "ffi")?.unwrap_or(true);
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("node") {
+                    let flag: LitBool = meta.value()?.parse()?;
+                    node = flag.value();
+                    Ok(())
+                } else if meta.path.is_ident("ffi") {
+                    let flag: LitBool = meta.value()?.parse()?;
+                    ffi = flag.value();
+                    Ok(())
+                } else if meta.path.is_ident("remote") {
+                    remote = Some(meta.value()?.parse()?);
+                    Ok(())
+                } else {
+                    Err(meta.error("unrecognized key"))
+                }
+            })?;
         }
     }
+    // What type should this impl target?
+    let target = remote.unwrap_or_else(|| item.ident.clone().into());
     let node = if node {
-        Some(node::derive_bridged_as_value(&item)?)
+        Some(node::derive_bridged_as_value(&item, &target)?)
     } else {
         None
     };
     let ffi = if ffi {
-        Some(ffi::derive_bridged_as_value(&item)?)
+        Some(ffi::derive_bridged_as_value(&item, &target)?)
     } else {
         None
     };

@@ -424,23 +424,30 @@ fn bridge_callback_item(
     })
 }
 
-pub(crate) fn derive_bridged_as_value(input: &DeriveInput) -> syn::Result<TokenStream2> {
+pub(crate) fn derive_bridged_as_value(
+    input: &DeriveInput,
+    target: &syn::Path,
+) -> syn::Result<TokenStream2> {
     if matches!(input.data, Data::Union(_)) {
         return Err(syn::Error::new_spanned(input, "Unions aren't supported"));
     }
-    let result = derive_bridged_as_value_return(input)?;
-    let arg = derive_bridged_as_value_arg(input)?;
+    let result = derive_bridged_as_value_return(input, target)?;
+    let arg = derive_bridged_as_value_arg(input, target)?;
     Ok(quote! {
         #result
         #arg
     })
 }
 
-fn derive_bridged_as_value_arg(input: &DeriveInput) -> syn::Result<TokenStream2> {
+fn derive_bridged_as_value_arg(
+    input: &DeriveInput,
+    target: &syn::Path,
+) -> syn::Result<TokenStream2> {
     let krate = crates::libsignal_bridge_types();
     let ident = &input.ident;
     let mut impl_arg_type_info = Impl::new(
         input,
+        target,
         Some(parse_quote!(#krate::ffi::ArgTypeInfo<'storage>)),
     );
     impl_arg_type_info
@@ -452,15 +459,18 @@ fn derive_bridged_as_value_arg(input: &DeriveInput) -> syn::Result<TokenStream2>
         field_types,
         variant_indices: _,
         variant_names,
-    } = input.into();
+    } = DeriveInputInfo::new(input, target);
     impl_arg_type_info
         .extra_where
         .extend(field_types.iter().flatten().map(|ty| {
             parse_quote!(
                 #ty: #krate::ffi::ArgTypeInfo<'storage, ArgType=#krate::ffi_arg_type!(#ty)>)
         }));
-    let mut impl_nice_arg_converter =
-        Impl::new(input, Some(parse_quote!(#krate::ffi::NiceArgConverter)));
+    let mut impl_nice_arg_converter = Impl::new(
+        input,
+        target,
+        Some(parse_quote!(#krate::ffi::NiceArgConverter)),
+    );
     let register_swift_nice_type = nice_type_metadata(
         input,
         &parse_quote!(ctx),
@@ -478,9 +488,10 @@ fn derive_bridged_as_value_arg(input: &DeriveInput) -> syn::Result<TokenStream2>
         &mut impl_nice_arg_converter.extra_where,
     )?;
     let arg_ty = format_ident!("{ident}FfiArg");
-    let (arg_ty_decl, arg_constructors) = ffi_struct(&arg_ty, input, &parse_quote!(ffi_arg_type));
+    let (arg_ty_decl, arg_constructors) =
+        ffi_struct(&arg_ty, input, target, &parse_quote!(ffi_arg_type));
     let stored_decl_name = format_ident!("{ident}FfiArgStoredType");
-    let stored_decl = arg_type_info_storage_decl(&stored_decl_name, input);
+    let stored_decl = arg_type_info_storage_decl(&stored_decl_name, input, target);
     Ok(quote! {
         #arg_ty_decl
         #[cfg(feature = "ffi")]
@@ -530,13 +541,22 @@ fn derive_bridged_as_value_arg(input: &DeriveInput) -> syn::Result<TokenStream2>
     })
 }
 
-fn derive_bridged_as_value_return(input: &DeriveInput) -> syn::Result<TokenStream2> {
+fn derive_bridged_as_value_return(
+    input: &DeriveInput,
+    target: &syn::Path,
+) -> syn::Result<TokenStream2> {
     let krate = crates::libsignal_bridge_types();
     let ident = &input.ident;
-    let mut impl_nice_result_converter =
-        Impl::new(input, Some(parse_quote!(#krate::ffi::NiceResultConverter)));
-    let mut impl_result_type_info =
-        Impl::new(input, Some(parse_quote!(#krate::ffi::ResultTypeInfo)));
+    let mut impl_nice_result_converter = Impl::new(
+        input,
+        target,
+        Some(parse_quote!(#krate::ffi::NiceResultConverter)),
+    );
+    let mut impl_result_type_info = Impl::new(
+        input,
+        target,
+        Some(parse_quote!(#krate::ffi::ResultTypeInfo)),
+    );
     let register_swift_nice_type = nice_type_metadata(
         input,
         &parse_quote!(ctx),
@@ -559,7 +579,7 @@ fn derive_bridged_as_value_return(input: &DeriveInput) -> syn::Result<TokenStrea
         variant_indices: _,
         field_types,
         variant_names: _,
-    } = input.into();
+    } = DeriveInputInfo::new(input, target);
     impl_result_type_info.extra_where.extend(
         field_types
             .iter()
@@ -568,7 +588,7 @@ fn derive_bridged_as_value_return(input: &DeriveInput) -> syn::Result<TokenStrea
     );
     let result_ty = format_ident!("{ident}FfiResult");
     let (result_ty_decl, result_constructors) =
-        ffi_struct(&result_ty, input, &parse_quote!(ffi_result_type));
+        ffi_struct(&result_ty, input, target, &parse_quote!(ffi_result_type));
     Ok(quote! {
         #result_ty_decl
         #[cfg(feature = "ffi")]
@@ -604,6 +624,7 @@ fn derive_bridged_as_value_return(input: &DeriveInput) -> syn::Result<TokenStrea
 fn ffi_struct(
     name: &Ident,
     input: &DeriveInput,
+    target: &syn::Path,
     macro_name: &Ident,
 ) -> (TokenStream2, Vec<TokenStream2>) {
     let krate = crates::libsignal_bridge_types();
@@ -613,7 +634,7 @@ fn ffi_struct(
         variant_indices: _,
         field_types,
         variant_names,
-    } = input.into();
+    } = DeriveInputInfo::new(input, target);
     match &input.data {
         Data::Struct(_) => (
             quote! {

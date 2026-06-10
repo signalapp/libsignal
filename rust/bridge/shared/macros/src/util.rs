@@ -157,7 +157,7 @@ pub(crate) fn nice_metadata(
 /// {}
 /// ```
 pub(crate) struct Impl {
-    pub(crate) item_name: Ident,
+    pub(crate) target: Path,
     pub(crate) trait_name: Option<Path>,
     pub(crate) generics: Generics,
     pub(crate) extra_where: Vec<WherePredicate>,
@@ -173,12 +173,12 @@ impl ToTokens for Impl {
             .extend(self.extra_where.iter().cloned());
         g.params.extend(self.extra_params.iter().cloned());
         let (impl_, _, where_) = g.split_for_impl();
-        let item_name = &self.item_name;
+        let target = &self.target;
         let trait_name = self
             .trait_name
             .as_ref()
             .map(|trait_name| quote!(#trait_name for));
-        tokens.append_all(quote!(impl #impl_ #trait_name #item_name #item_generics #where_));
+        tokens.append_all(quote!(impl #impl_ #trait_name #target #item_generics #where_));
     }
 }
 
@@ -186,9 +186,9 @@ impl Impl {
     /// Generate an `Impl` for `impl #trait_name for #value`
     ///
     /// From this baseline, we can add extra generic parameters and add to the where clause
-    pub(crate) fn new(value: &DeriveInput, trait_name: Option<Path>) -> Self {
+    pub(crate) fn new(value: &DeriveInput, target: &Path, trait_name: Option<Path>) -> Self {
         Self {
-            item_name: value.ident.clone(),
+            target: target.clone(),
             trait_name,
             generics: value.generics.clone(),
             extra_where: Vec::new(),
@@ -271,9 +271,8 @@ pub(crate) struct DeriveInputInfo {
     /// For each variant, what's its name
     pub(crate) variant_names: Vec<Ident>,
 }
-impl From<&DeriveInput> for DeriveInputInfo {
-    fn from(input: &DeriveInput) -> Self {
-        let ident = &input.ident;
+impl DeriveInputInfo {
+    pub fn new(input: &DeriveInput, target: &syn::Path) -> Self {
         // The pattern needed to match against this variant
         let mut patterns = Vec::new();
         let mut variant_indices = Vec::new();
@@ -284,17 +283,17 @@ impl From<&DeriveInput> for DeriveInputInfo {
         match &input.data {
             Data::Struct(data) => {
                 let ef = extract_fields_pattern(&data.fields);
-                patterns.push(quote!(#ident #ef));
+                patterns.push(quote!(#target #ef));
                 field_names.push(get_field_names(&data.fields));
                 variant_indices.push(0);
                 field_types.push(data.fields.iter().map(|field| field.ty.clone()).collect());
-                variant_names.push(ident.clone());
+                variant_names.push(input.ident.clone());
             }
             Data::Enum(data) => {
                 for (i, variant) in data.variants.iter().enumerate() {
                     let ef = extract_fields_pattern(&variant.fields);
                     let variant_name = &variant.ident;
-                    patterns.push(quote!(#ident::#variant_name #ef));
+                    patterns.push(quote!(#target::#variant_name #ef));
                     variant_indices.push(i32::try_from(i).expect("not too many variants"));
                     field_names.push(get_field_names(&variant.fields));
                     field_types.push(
@@ -401,8 +400,12 @@ pub(crate) fn nice_type_metadata(
 ///
 /// We use one generic type per variant (each containing a tuple), because it's easier to work
 /// with in our macros than it'd be to have one generic type for each field.
-pub(crate) fn arg_type_info_storage_decl(name: &Ident, input: &DeriveInput) -> TokenStream2 {
-    let DeriveInputInfo { variant_names, .. } = input.into();
+pub(crate) fn arg_type_info_storage_decl(
+    name: &Ident,
+    input: &DeriveInput,
+    target: &syn::Path,
+) -> TokenStream2 {
+    let DeriveInputInfo { variant_names, .. } = DeriveInputInfo::new(input, target);
     quote! {
         #[doc(hidden)]
         pub enum #name<#(#variant_names),*> {

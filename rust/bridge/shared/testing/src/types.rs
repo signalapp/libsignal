@@ -597,3 +597,49 @@ pub fn TESTING_MyTestStruct_to_string(x: MyTestStruct) -> String {
 pub fn TESTING_MyTestEnum_to_string(x: MyTestEnum) -> String {
     serde_json::to_string(&x).expect("JSON succeeds")
 }
+
+pub struct MyRemoteDeriveStruct {
+    x: i32,
+    y: i32,
+}
+pub enum MyRemoteDeriveEnum {
+    Unit,
+    Tuple(i32, i32),
+    Record { x: String, y: i32 },
+}
+
+mod remote_derive_test {
+    use libsignal_bridge_macros::BridgedAsValue;
+
+    use crate::*;
+    #[derive(BridgedAsValue)]
+    #[bridge(remote = super::MyRemoteDeriveStruct)]
+    #[allow(unused)] // Since it's a remote derive
+    pub struct MyRemoteDeriveStruct {
+        x: i32,
+        y: i32,
+    }
+    #[derive(BridgedAsValue)]
+    #[bridge(remote = super::MyRemoteDeriveEnum)]
+    #[allow(unused)] // Since it's a remote derive
+    pub enum MyRemoteDeriveEnum {
+        Unit,
+        Tuple(i32, i32),
+        Record { x: String, y: i32 },
+    }
+}
+
+#[cfg(feature = "ffi")]
+use remote_derive_test::{
+    MyRemoteDeriveEnumFfiArg, MyRemoteDeriveEnumFfiResult, MyRemoteDeriveStructFfiArg,
+    MyRemoteDeriveStructFfiResult,
+};
+#[bridge_fn(nice = true, jni = false)]
+pub fn TESTING_MyRemoteDeriveEnum_identity(x: MyRemoteDeriveEnum) -> MyRemoteDeriveEnum {
+    x
+}
+
+#[bridge_fn(nice = true, jni = false)]
+pub fn TESTING_MyRemoteDeriveStruct_identity(x: MyRemoteDeriveStruct) -> MyRemoteDeriveStruct {
+    x
+}
