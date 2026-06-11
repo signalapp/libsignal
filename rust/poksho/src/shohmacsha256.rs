@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::cmp;
-
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
@@ -60,22 +58,20 @@ impl ShoApi for ShoHmacSha256 {
         self.mode = Mode::RATCHETED;
     }
 
-    fn squeeze_and_ratchet_into(&mut self, mut target: &mut [u8]) {
+    fn squeeze_and_ratchet_into(&mut self, target: &mut [u8]) {
         assert!(self.mode == Mode::RATCHETED);
         let outlen = target.len();
         let output_hasher_prefix =
             Hmac::<Sha256>::new_from_slice(&self.cv).expect("HMAC accepts 256-bit keys");
-        let mut i = 0;
-        while i * HASH_LEN < outlen {
+
+        // Iterating over chunks (rather than computing `i * HASH_LEN`) avoids a
+        // theoretical `usize` multiplication overflow for very large `outlen`.
+        for (i, chunk) in target.chunks_mut(HASH_LEN).enumerate() {
             let mut output_hasher = output_hasher_prefix.clone();
             output_hasher.update(&(i as u64).to_be_bytes());
             output_hasher.update(&[0x01]);
             let digest = output_hasher.finalize().into_bytes();
-            let num_bytes = cmp::min(HASH_LEN, outlen - i * HASH_LEN);
-            let (output, tail) = target.split_at_mut(num_bytes);
-            output.copy_from_slice(&digest[..num_bytes]);
-            target = tail;
-            i += 1
+            chunk.copy_from_slice(&digest[..chunk.len()]);
         }
 
         let mut next_hasher = output_hasher_prefix;
