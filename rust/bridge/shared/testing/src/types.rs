@@ -553,6 +553,17 @@ pub enum MyTestEnum {
     },
 }
 
+#[derive(BridgedAsValue)]
+pub enum MySimpleTestEnum {
+    A,
+    B,
+}
+
+#[bridge_fn(nice = true)]
+pub fn TESTING_MySimpleTestEnum_identity(x: MySimpleTestEnum) -> MySimpleTestEnum {
+    x
+}
+
 #[bridge_fn(nice = true)]
 pub fn TESTING_MyTestPoint_identity(x: MyTestPoint) -> MyTestPoint {
     x
@@ -569,6 +580,11 @@ pub fn TESTING_MyTestEnum_identity(x: MyTestEnum) -> MyTestEnum {
 }
 
 #[bridge_io(TokioAsyncContext, nice = true, jni = false, ffi = false)]
+pub async fn TESTING_MySimpleTestEnum_identity_async(x: MySimpleTestEnum) -> MySimpleTestEnum {
+    x
+}
+
+#[bridge_io(TokioAsyncContext, nice = true, jni = false, ffi = false)]
 pub async fn TESTING_MyTestPoint_identity_async(x: MyTestPoint) -> MyTestPoint {
     x
 }
@@ -581,6 +597,15 @@ pub async fn TESTING_MyTestStruct_identity_async(x: MyTestStruct) -> MyTestStruc
 #[bridge_io(TokioAsyncContext, nice = true, jni = false, ffi = false)]
 pub async fn TESTING_MyTestEnum_identity_async(x: MyTestEnum) -> MyTestEnum {
     x
+}
+
+#[bridge_fn(nice = true)]
+pub fn TESTING_MySimpleTestEnum_to_string(x: MySimpleTestEnum) -> String {
+    match x {
+        MySimpleTestEnum::A => "A",
+        MySimpleTestEnum::B => "B",
+    }
+    .to_string()
 }
 
 #[bridge_fn(nice = true)]

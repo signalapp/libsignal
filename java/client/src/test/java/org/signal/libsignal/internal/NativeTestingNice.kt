@@ -17,6 +17,36 @@ import org.signal.libsignal.internal.NativeNiceHelpers.convertToObject
 import org.signal.libsignal.internal.NativeNiceHelpers.downcastFromObject
 import org.signal.libsignal.internal.NativeNiceHelpers.identity
 
+internal sealed class MySimpleTestEnum {
+  internal data object A : MySimpleTestEnum() {
+    @JvmStatic
+    @CalledFromNative
+    fun fromNative(): A = A
+
+    @CalledFromNative
+    internal object FfiArgType : MySimpleTestEnum.FfiArgType()
+
+    override fun toFfiArgType(): FfiArgType = FfiArgType
+  }
+
+  internal data object B : MySimpleTestEnum() {
+    @JvmStatic
+    @CalledFromNative
+    fun fromNative(): B = B
+
+    @CalledFromNative
+    internal object FfiArgType : MySimpleTestEnum.FfiArgType()
+
+    override fun toFfiArgType(): FfiArgType = FfiArgType
+  }
+
+  internal sealed class FfiArgType
+
+  internal abstract fun toFfiArgType(): FfiArgType
+}
+
+internal fun MySimpleTestEnum.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
+
 internal sealed class MyTestEnum {
   internal data object Unit : MyTestEnum() {
     @JvmStatic
@@ -295,6 +325,28 @@ internal data class MyTestStruct(
 internal fun MyTestStruct.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
 
 internal object NativeTestingNice {
+  public fun TESTING_MySimpleTestEnum_identity(
+    x: org.signal.libsignal.internal.MySimpleTestEnum,
+  ): org.signal.libsignal.internal.MySimpleTestEnum {
+    val ffi_x = (org.signal.libsignal.internal.MySimpleTestEnum::toFfiArgTypeObject)(x)
+    val ffiOut =
+      NativeTesting.TESTING_MySimpleTestEnum_identity(
+        ffi_x,
+      )
+
+    return downcastFromObject<org.signal.libsignal.internal.MySimpleTestEnum>(ffiOut)
+  }
+
+  public fun TESTING_MySimpleTestEnum_to_string(x: org.signal.libsignal.internal.MySimpleTestEnum): String {
+    val ffi_x = (org.signal.libsignal.internal.MySimpleTestEnum::toFfiArgTypeObject)(x)
+    val ffiOut =
+      NativeTesting.TESTING_MySimpleTestEnum_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
   public fun TESTING_MyTestEnum_identity(
     x: org.signal.libsignal.internal.MyTestEnum,
   ): org.signal.libsignal.internal.MyTestEnum {

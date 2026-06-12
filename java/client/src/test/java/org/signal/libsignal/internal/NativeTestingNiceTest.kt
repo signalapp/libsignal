@@ -106,6 +106,20 @@ class NativeTestingNiceTest {
     )
 
   @Test
+  fun mySimpleTestEnum() =
+    testConversion(
+      listOf(MySimpleTestEnum.A, MySimpleTestEnum.B).asSequence(),
+      toString = {
+        when (it) {
+          is MySimpleTestEnum.A -> "A"
+          is MySimpleTestEnum.B -> "B"
+        }
+      },
+      nativeToString = NativeTestingNice::TESTING_MySimpleTestEnum_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_MySimpleTestEnum_identity,
+    )
+
+  @Test
   fun myTestPoint() =
     testConversion(
       listOf(MyTestPoint(1, 2)).asSequence(),

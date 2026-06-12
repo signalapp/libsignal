@@ -16,6 +16,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 #include <stdlib.h>
 #include "signal_ffi.h"
 
+typedef enum {
+  SignalMySimpleTestEnumFfiResultA,
+  SignalMySimpleTestEnumFfiResultB,
+} SignalMySimpleTestEnumFfiResult;
+
+typedef enum {
+  SignalMySimpleTestEnumFfiArgA,
+  SignalMySimpleTestEnumFfiArgB,
+} SignalMySimpleTestEnumFfiArg;
+
 typedef struct SignalComparableBackup SignalComparableBackup;
 
 typedef struct SignalFakeChatConnection SignalFakeChatConnection;
@@ -592,6 +602,10 @@ SignalFfiError *signal_testing_key_trans_stored_account_data(SignalOwnedBuffer *
 SignalFfiError *signal_testing_my_remote_derive_enum_identity(SignalMyRemoteDeriveEnumFfiResult *out, SignalMyRemoteDeriveEnumFfiArg x);
 
 SignalFfiError *signal_testing_my_remote_derive_struct_identity(SignalMyRemoteDeriveStructFfiResult *out, SignalMyRemoteDeriveStructFfiArg x);
+
+SignalFfiError *signal_testing_my_simple_test_enum_identity(SignalMySimpleTestEnumFfiResult *out, SignalMySimpleTestEnumFfiArg x);
+
+SignalFfiError *signal_testing_my_simple_test_enum_to_string(SignalCStringPtr *out, SignalMySimpleTestEnumFfiArg x);
 
 SignalFfiError *signal_testing_my_test_enum_identity(SignalMyTestEnumFfiResult *out, SignalMyTestEnumFfiArg x);
 

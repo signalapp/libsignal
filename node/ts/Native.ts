@@ -163,6 +163,14 @@ export type ReturnFfiMyRemoteDeriveStruct = {
   y: number;
 };
 
+export type ReturnFfiMySimpleTestEnum =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    };
+
 export type ReturnFfiMyTestEnum =
   | {
       __type: 0;
@@ -217,6 +225,14 @@ export type ArgFfiMyRemoteDeriveStruct = {
   x: number;
   y: number;
 };
+
+export type ArgFfiMySimpleTestEnum =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    };
 
 export type ArgFfiMyTestEnum =
   | {
@@ -2095,6 +2111,14 @@ type NativeFunctions = {
   TESTING_MyRemoteDeriveStruct_identity: (
     x: ArgFfiMyRemoteDeriveStruct
   ) => ReturnFfiMyRemoteDeriveStruct;
+  TESTING_MySimpleTestEnum_identity: (
+    x: ArgFfiMySimpleTestEnum
+  ) => ReturnFfiMySimpleTestEnum;
+  TESTING_MySimpleTestEnum_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: ArgFfiMySimpleTestEnum
+  ) => CancellablePromise<ReturnFfiMySimpleTestEnum>;
+  TESTING_MySimpleTestEnum_to_string: (x: ArgFfiMySimpleTestEnum) => string;
   TESTING_MyTestEnum_identity: (x: ArgFfiMyTestEnum) => ReturnFfiMyTestEnum;
   TESTING_MyTestEnum_identity_async: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -2981,6 +3005,9 @@ const {
   TESTING_KeyTransStoredAccountData,
   TESTING_MyRemoteDeriveEnum_identity,
   TESTING_MyRemoteDeriveStruct_identity,
+  TESTING_MySimpleTestEnum_identity,
+  TESTING_MySimpleTestEnum_identity_async,
+  TESTING_MySimpleTestEnum_to_string,
   TESTING_MyTestEnum_identity,
   TESTING_MyTestEnum_identity_async,
   TESTING_MyTestEnum_to_string,
@@ -3603,6 +3630,9 @@ export {
   TESTING_KeyTransStoredAccountData,
   TESTING_MyRemoteDeriveEnum_identity,
   TESTING_MyRemoteDeriveStruct_identity,
+  TESTING_MySimpleTestEnum_identity,
+  TESTING_MySimpleTestEnum_identity_async,
+  TESTING_MySimpleTestEnum_to_string,
   TESTING_MyTestEnum_identity,
   TESTING_MyTestEnum_identity_async,
   TESTING_MyTestEnum_to_string,

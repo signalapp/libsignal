@@ -1717,6 +1717,7 @@ macro_rules! ffi_arg_type {
     (MyTestStruct) => (MyTestStructFfiArg);
     (MyTestPoint) => (MyTestPointFfiArg);
     (MyTestEnum) => (MyTestEnumFfiArg);
+    (MySimpleTestEnum) => (MySimpleTestEnumFfiArg);
     (MyRemoteDeriveStruct) => (MyRemoteDeriveStructFfiArg);
     (MyRemoteDeriveEnum) => (MyRemoteDeriveEnumFfiArg);
 
@@ -1812,6 +1813,7 @@ macro_rules! ffi_result_type {
     (MyTestStruct) => (MyTestStructFfiResult);
     (MyTestPoint) => (MyTestPointFfiResult);
     (MyTestEnum) => (MyTestEnumFfiResult);
+    (MySimpleTestEnum) => (MySimpleTestEnumFfiResult);
     (MyRemoteDeriveStruct) => (MyRemoteDeriveStructFfiResult);
     (MyRemoteDeriveEnum) => (MyRemoteDeriveEnumFfiResult);
 

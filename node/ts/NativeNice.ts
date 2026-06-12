@@ -35,6 +35,8 @@ export type MyRemoteDeriveStruct = {
   y: number;
 };
 
+export type MySimpleTestEnum = 'a' | 'b';
+
 export type MyTestEnum =
   | 'unit'
   | {
@@ -92,6 +94,21 @@ function returnConverterMyRemoteDeriveStruct(
     x: identity(ffiInput.x),
     y: identity(ffiInput.y),
   };
+}
+
+function returnConverterMySimpleTestEnum(
+  ffiInput: Native.ReturnFfiMySimpleTestEnum
+): MySimpleTestEnum {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'a';
+    case 1:
+      return 'b';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for MySimpleTestEnum');
+  }
 }
 
 function returnConverterMyTestEnum(
@@ -176,6 +193,21 @@ function argConverterMyRemoteDeriveStruct(
 ): Native.ArgFfiMyRemoteDeriveStruct {
   const { x: x, y: y } = niceInput;
   return { x: identity(x), y: identity(y) };
+}
+
+function argConverterMySimpleTestEnum(
+  niceInput: MySimpleTestEnum
+): Native.ArgFfiMySimpleTestEnum {
+  if (niceInput === 'a') {
+    return { __type: 0 };
+  }
+
+  if (niceInput === 'b') {
+    return { __type: 1 };
+  }
+
+  niceInput satisfies never;
+  throw new Error('Cannot match on MySimpleTestEnum argument');
 }
 
 function argConverterMyTestEnum(
@@ -267,6 +299,45 @@ export function TESTING_MyRemoteDeriveStruct_identity({
     Native.TESTING_MyRemoteDeriveStruct_identity(
       argConverterMyRemoteDeriveStruct(x)
     )
+  );
+}
+
+export function TESTING_MySimpleTestEnum_identity({
+  x: x,
+}: {
+  x: MySimpleTestEnum;
+}): MySimpleTestEnum {
+  return returnConverterMySimpleTestEnum(
+    Native.TESTING_MySimpleTestEnum_identity(argConverterMySimpleTestEnum(x))
+  );
+}
+export async function TESTING_MySimpleTestEnum_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: MySimpleTestEnum;
+}): Promise<MySimpleTestEnum> {
+  return returnConverterMySimpleTestEnum(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_MySimpleTestEnum_identity_async(
+        asyncContext,
+        argConverterMySimpleTestEnum(x)
+      )
+    )
+  );
+}
+
+export function TESTING_MySimpleTestEnum_to_string({
+  x: x,
+}: {
+  x: MySimpleTestEnum;
+}): string {
+  return identity(
+    Native.TESTING_MySimpleTestEnum_to_string(argConverterMySimpleTestEnum(x))
   );
 }
 

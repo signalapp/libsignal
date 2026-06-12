@@ -189,6 +189,10 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_KeyTransStoredAccountData(): ByteArray
   @JvmStatic
+  public external fun TESTING_MySimpleTestEnum_identity(x: Object): Object
+  @JvmStatic
+  public external fun TESTING_MySimpleTestEnum_to_string(x: Object): String
+  @JvmStatic
   public external fun TESTING_MyTestEnum_identity(x: Object): Object
   @JvmStatic
   public external fun TESTING_MyTestEnum_to_string(x: Object): String

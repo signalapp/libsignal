@@ -15,6 +15,7 @@ use clap::Parser;
 use heck::{ToLowerCamelCase, ToSnakeCase};
 use libsignal_bridge_types::ffi::{FFI_ITEMS, SwiftMetadataContext};
 use minijinja::context;
+use minijinja::value::DynObject;
 
 #[derive(Parser)]
 /// Regenerate NativeNice.swift and NativeNiceTesting.swift
@@ -54,6 +55,24 @@ fn main() -> anyhow::Result<()> {
     });
     env.add_filter("return_converter", |ty: String| {
         libsignal_bridge_types::metadata::ffi::names::return_converter(&ty)
+    });
+    env.add_function("enum_has_payload", |e: DynObject| {
+        e.get_value_by_str("variants")
+            .expect("missing variants")
+            .try_iter()
+            .expect("enumerate variants")
+            .any(|name_struct_pair| {
+                name_struct_pair
+                    .get_item_by_index(1)
+                    .expect("get_item_by_index()")
+                    .as_object()
+                    .expect("struct is object")
+                    .get_value_by_str("fields")
+                    .expect("missing fields")
+                    .len()
+                    .expect("fields has len")
+                    > 0
+            })
     });
     env.add_template("NativeNice.swift.in", include_str!("NativeNice.swift.in"))?;
     let mut non_testing_ctx = SwiftMetadataContext::default();

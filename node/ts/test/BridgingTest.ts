@@ -387,6 +387,20 @@ describe('NativeTestingNice', () => {
 
   it('derived conversions', async () => {
     {
+      for (const item of ['a', 'b'] as const) {
+        await testConversion({
+          item,
+          toString: item.toUpperCase(),
+          nativeToString: (x) =>
+            NativeNice.TESTING_MySimpleTestEnum_to_string({ x }),
+          nativeIdentity: (x) =>
+            NativeNice.TESTING_MySimpleTestEnum_identity({ x }),
+          nativeIdentityAsync:
+            NativeNice.TESTING_MySimpleTestEnum_identity_async,
+        });
+      }
+    }
+    {
       const item: NativeNice.MyTestPoint = [1, 2];
       await testConversion({
         item,

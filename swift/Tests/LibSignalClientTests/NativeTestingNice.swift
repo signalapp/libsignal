@@ -30,6 +30,11 @@ internal struct MyRemoteDeriveStruct {
 
 }
 
+internal enum MySimpleTestEnum {
+    case a
+    case b
+}
+
 internal enum MyTestEnum {
     case unit
     case single(Int32)
@@ -68,7 +73,8 @@ internal enum DerivedReturnConverterMyRemoteDeriveEnum: NiceReturnConverter {
         SignalMyRemoteDeriveEnumFfiResult()
     }
     static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
-        switch ffiValue.tag {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
         case SignalMyRemoteDeriveEnumFfiResultUnit:
             return MyRemoteDeriveEnum.unit
         case SignalMyRemoteDeriveEnumFfiResultTuple:
@@ -96,7 +102,7 @@ internal enum DerivedReturnConverterMyRemoteDeriveEnum: NiceReturnConverter {
             }
             return MyRemoteDeriveEnum.record(x: try x.get(), y: try y.get())
         default:
-            throw SignalError.internalError("Unexpected enum tag for MyRemoteDeriveEnum: \(ffiValue.tag)")
+            throw SignalError.internalError("Unexpected enum tag for MyRemoteDeriveEnum: \(ffiTag)")
         }
     }
 }
@@ -116,6 +122,25 @@ internal enum DerivedReturnConverterMyRemoteDeriveStruct: NiceReturnConverter {
     }
 }
 
+internal enum DerivedReturnConverterMySimpleTestEnum: NiceReturnConverter {
+    typealias NiceReturn = MySimpleTestEnum
+    typealias FfiReturn = SignalMySimpleTestEnumFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalMySimpleTestEnumFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalMySimpleTestEnumFfiResultA:
+            return MySimpleTestEnum.a
+        case SignalMySimpleTestEnumFfiResultB:
+            return MySimpleTestEnum.b
+        default:
+            throw SignalError.internalError("Unexpected enum tag for MySimpleTestEnum: \(ffiTag)")
+        }
+    }
+}
+
 internal enum DerivedReturnConverterMyTestEnum: NiceReturnConverter {
     typealias NiceReturn = MyTestEnum
     typealias FfiReturn = SignalMyTestEnumFfiResult
@@ -123,7 +148,8 @@ internal enum DerivedReturnConverterMyTestEnum: NiceReturnConverter {
         SignalMyTestEnumFfiResult()
     }
     static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
-        switch ffiValue.tag {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
         case SignalMyTestEnumFfiResultUnit:
             return MyTestEnum.unit
         case SignalMyTestEnumFfiResultSingle:
@@ -180,7 +206,7 @@ internal enum DerivedReturnConverterMyTestEnum: NiceReturnConverter {
                 funStruct: try fun_struct.get()
             )
         default:
-            throw SignalError.internalError("Unexpected enum tag for MyTestEnum: \(ffiValue.tag)")
+            throw SignalError.internalError("Unexpected enum tag for MyTestEnum: \(ffiTag)")
         }
     }
 }
@@ -415,6 +441,37 @@ internal enum DerivedArgConverterMyRemoteDeriveStruct: NiceArgConverter {
             }
         }
 
+    }
+}
+
+internal enum DerivedArgConverterMySimpleTestEnum: NiceArgConverter {
+    typealias NiceArg = MySimpleTestEnum
+    typealias FfiArg = SignalMySimpleTestEnumFfiArg
+    typealias KeepAlive = ()
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        switch niceArg {
+
+        case .a:
+            return (SignalMySimpleTestEnumFfiArgA, nil)
+
+        case .b:
+            return (SignalMySimpleTestEnumFfiArgB, nil)
+
+        }
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        switch niceArg {
+
+        case .a:
+            return try niceThunk(SignalMySimpleTestEnumFfiArgA)
+
+        case .b:
+            return try niceThunk(SignalMySimpleTestEnumFfiArgB)
+
+        }
     }
 }
 
@@ -825,6 +882,36 @@ internal enum NativeTestingNice {
                 )
             )
             return try DerivedReturnConverterMyRemoteDeriveStruct.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_MySimpleTestEnum_identity(
+        x: MySimpleTestEnum,
+    ) throws -> MySimpleTestEnum {
+        try DerivedArgConverterMySimpleTestEnum.convertArgBorrowed(x) { xFfi in
+            var rawOutput = DerivedReturnConverterMySimpleTestEnum.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_simple_test_enum_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try DerivedReturnConverterMySimpleTestEnum.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_MySimpleTestEnum_to_string(
+        x: MySimpleTestEnum,
+    ) throws -> String {
+        try DerivedArgConverterMySimpleTestEnum.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_simple_test_enum_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
         }
 
     }

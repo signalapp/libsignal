@@ -3317,6 +3317,7 @@ macro_rules! jni_result_type {
     };
 
     // Derived types
+    (MySimpleTestEnum) => {::jni::objects::JObject<'local>};
     (MyTestEnum) => {::jni::objects::JObject<'local>};
     (MyTestPoint) => {::jni::objects::JObject<'local>};
     (MyTestStruct) => {::jni::objects::JObject<'local>};
