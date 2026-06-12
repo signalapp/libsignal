@@ -20,16 +20,14 @@ use rayon::iter::{IndexedParallelIterator as _, ParallelIterator as _};
 use serde::{Deserialize, Serialize};
 use zkcredential::attributes::Attribute as _;
 
+use crate::api::endorsement_expiration;
 use crate::common::array_utils;
 use crate::common::serialization::ReservedByte;
 use crate::crypto::uid_encryption;
 use crate::groups::{GroupSecretParams, UuidCiphertext};
 use crate::{
-    RandomnessBytes, SECONDS_PER_DAY, Timestamp, ZkGroupDeserializationFailure,
-    ZkGroupVerificationFailure, crypto,
+    RandomnessBytes, Timestamp, ZkGroupDeserializationFailure, ZkGroupVerificationFailure, crypto,
 };
-
-const SECONDS_PER_HOUR: u64 = 60 * 60;
 
 /// A key pair used to sign endorsements for a particular expiration.
 ///
@@ -78,15 +76,7 @@ pub struct GroupSendEndorsementsResponse {
 
 impl GroupSendEndorsementsResponse {
     pub fn default_expiration(current_time: Timestamp) -> Timestamp {
-        // Return the end of the next day, unless that's less than 25 hours away.
-        // In that case, return the end of the following day.
-        let current_time_in_seconds = current_time.epoch_seconds();
-        let start_of_day = current_time_in_seconds - (current_time_in_seconds % SECONDS_PER_DAY);
-        let mut expiration = start_of_day + 2 * SECONDS_PER_DAY;
-        if (expiration - current_time_in_seconds) < SECONDS_PER_DAY + SECONDS_PER_HOUR {
-            expiration += SECONDS_PER_DAY;
-        }
-        Timestamp::from_epoch_seconds(expiration)
+        endorsement_expiration::default_expiration(current_time)
     }
 
     /// Sorts `points` in *some* deterministic order based on the contents of each `RistrettoPoint`.
@@ -156,23 +146,7 @@ impl GroupSendEndorsementsResponse {
         root_public_key: impl AsRef<zkcredential::endorsements::ServerRootPublicKey>,
     ) -> Result<zkcredential::endorsements::ServerDerivedPublicKey, ZkGroupVerificationFailure>
     {
-        if !self.expiration.is_day_aligned() {
-            // Reject credentials that don't expire on a day boundary,
-            // because the server might be trying to fingerprint us.
-            return Err(ZkGroupVerificationFailure);
-        }
-        let time_remaining_in_seconds = self.expiration.saturating_seconds_since(now);
-        if time_remaining_in_seconds < 2 * SECONDS_PER_HOUR {
-            // Reject credentials that expire in less than two hours,
-            // including those that might expire in the past.
-            // Two hours allows for clock skew plus incorrect summer time settings (+/- 1 hour).
-            return Err(ZkGroupVerificationFailure);
-        }
-        if time_remaining_in_seconds > 7 * SECONDS_PER_DAY {
-            // Reject credentials with expirations more than 7 days from now,
-            // because the server might be trying to fingerprint us.
-            return Err(ZkGroupVerificationFailure);
-        }
+        endorsement_expiration::validate_expiration(self.expiration, now)?;
 
         Ok(root_public_key
             .as_ref()

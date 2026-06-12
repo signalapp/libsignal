@@ -7,6 +7,8 @@ pub mod auth;
 pub mod avatars;
 pub mod backups;
 pub mod call_links;
+pub mod donations;
+mod endorsement_expiration;
 pub mod groups;
 pub mod profiles;
 pub mod receipts;
