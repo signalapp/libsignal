@@ -9,6 +9,7 @@
   "ktlint:standard:function-naming",
   "ktlint:standard:property-naming",
   "ktlint:standard:filename",
+  "ktlint:standard:max-line-length",
 )
 
 package org.signal.libsignal.internal

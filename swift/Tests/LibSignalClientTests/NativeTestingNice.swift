@@ -1040,6 +1040,36 @@ internal enum NativeTestingNice {
         return try DataConverter.convertReturn(consuming: rawOutput)
 
     }
+    internal static func TESTING_conversion_Data_VecU8_identity(
+        x: Data,
+    ) throws -> Data {
+        try DataConverter.convertArgBorrowed(x) { xFfi in
+            var rawOutput = DataConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_data_vec_u8_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try DataConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_Data_VecU8_to_string(
+        x: Data,
+    ) throws -> String {
+        try DataConverter.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_data_vec_u8_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
     internal static func TESTING_conversion_Data_identity(
         x: Data,
     ) throws -> Data {

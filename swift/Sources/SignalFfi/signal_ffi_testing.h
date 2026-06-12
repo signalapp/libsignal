@@ -485,6 +485,10 @@ SignalFfiError *signal_testing_conversion_data_identity(SignalOwnedBuffer *out, 
 
 SignalFfiError *signal_testing_conversion_data_to_string(SignalCStringPtr *out, SignalBorrowedBuffer x);
 
+SignalFfiError *signal_testing_conversion_data_vec_u8_identity(SignalOwnedBuffer *out, SignalBorrowedBuffer x);
+
+SignalFfiError *signal_testing_conversion_data_vec_u8_to_string(SignalCStringPtr *out, SignalBorrowedBuffer x);
+
 SignalFfiError *signal_testing_conversion_i32_identity(int32_t *out, int32_t x);
 
 SignalFfiError *signal_testing_conversion_i32_to_string(SignalCStringPtr *out, int32_t x);

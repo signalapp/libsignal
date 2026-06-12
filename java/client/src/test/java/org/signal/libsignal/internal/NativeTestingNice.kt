@@ -9,6 +9,7 @@
   "ktlint:standard:function-naming",
   "ktlint:standard:property-naming",
   "ktlint:standard:filename",
+  "ktlint:standard:max-line-length",
 )
 
 package org.signal.libsignal.internal
@@ -437,6 +438,26 @@ internal object NativeTestingNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
+  }
+
+  public fun TESTING_conversion_Data_VecU8_identity(x: ByteArray): ByteArray {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_Data_VecU8_identity(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_Data_VecU8_to_string(x: ByteArray): String {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_Data_VecU8_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
   }
 
   public fun TESTING_conversion_Data_identity(x: ByteArray): ByteArray {

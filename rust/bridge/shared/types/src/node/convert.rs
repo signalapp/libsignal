@@ -1166,6 +1166,15 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Vec<&'sto
     register_ts_ffi_type!("Array<Uint8Array<ArrayBuffer>>");
 }
 
+impl SimpleArgTypeInfo for Vec<u8> {
+    type ArgType = JsUint8Array;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        Ok(foreign.as_slice(cx).to_vec())
+    }
+    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+}
+nice_identity_arg_converter!(Vec<u8>);
+
 impl SimpleArgTypeInfo for Vec<Vec<u8>> {
     type ArgType = JsArray;
 

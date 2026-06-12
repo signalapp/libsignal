@@ -639,6 +639,7 @@ fn ffi_struct(
         Data::Struct(_) => (
             quote! {
                 #[cfg(feature = "ffi")]
+                #[allow(unused)]
                 #[repr(C)]
                 pub struct #name {
                     #(#(#field_names: #krate::#macro_name!(#field_types),)*)*
@@ -659,6 +660,7 @@ fn ffi_struct(
             (
                 quote! {
                     #[cfg(feature = "ffi")]
+                    #[allow(unused)]
                     #[repr(C)]
                     pub enum #name {
                         #(#variant_names #variant_bodies,)*

@@ -73,7 +73,11 @@ pub struct AuthenticatedChatConnection {
     /// there won't be any contention.
     inner: tokio::sync::RwLock<MaybeChatConnection>,
 }
-bridge_as_handle!(AuthenticatedChatConnection);
+bridge_as_handle!(
+    AuthenticatedChatConnection,
+    swift_type = "AuthenticatedChatConnection",
+    jni_class = "org.signal.libsignal.net.AuthenticatedChatConnection",
+);
 impl UnwindSafe for AuthenticatedChatConnection {}
 impl RefUnwindSafe for AuthenticatedChatConnection {}
 
@@ -271,6 +275,20 @@ impl AuthenticatedChatConnection {
             panic!("listener was not set")
         };
         callback(LimitedLifetimeRef::from(<&AuthConn<_>>::from(inner))).await
+    }
+
+    pub async fn require_grpc(
+        &self,
+    ) -> AuthConn<impl libsignal_net_chat::grpc::GrpcServiceProvider> {
+        let guard = self.as_ref().read().await;
+        let MaybeChatConnection::Running(inner) = &*guard else {
+            panic!("listener was not set")
+        };
+        AuthConn(
+            inner
+                .shared_h2_connection()
+                .expect("requires an H2 connection"),
+        )
     }
 }
 

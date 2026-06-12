@@ -670,6 +670,66 @@ pub fn derive_bridged_as_value(item: TokenStream) -> TokenStream {
     }
 }
 
+fn derive_structural_from_inner(item: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+    let mut from: Option<syn::Path> = None;
+    for attr in &item.attrs {
+        if attr.path().is_ident("structural_from") {
+            attr.parse_nested_meta(|meta| {
+                from = Some(meta.path);
+                Ok(())
+            })?;
+        }
+    }
+    let from = from.ok_or_else(|| syn::Error::new_spanned(&item, "Missing structural_from()"))?;
+    let impl_ = util::Impl::new(
+        &item,
+        &item.ident.clone().into(),
+        Some(parse_quote!(From<#from>)),
+    );
+    let util::DeriveInputInfo {
+        patterns: to_patterns,
+        ..
+    } = util::DeriveInputInfo::new(&item, &item.ident.clone().into());
+    let util::DeriveInputInfo {
+        patterns: from_patterns,
+        ..
+    } = util::DeriveInputInfo::new(&item, &from);
+    Ok(quote! {
+        #impl_ {
+            fn from(from_value: #from) -> Self {
+                match from_value {
+                    #(#from_patterns => #to_patterns,)*
+                }
+            }
+        }
+    })
+}
+
+/// Derive a `From` for two types (structs or enums) which exactly match.
+///
+/// # Example
+/// ```
+/// # use libsignal_bridge_macros::StructuralFrom;
+/// struct Foo {
+///     a: i32,
+///     b: String,
+/// }
+/// #[derive(StructuralFrom)]
+/// #[structural_from(Foo)]
+/// struct Foo2 {
+///     a: i32,
+///     b: String,
+/// }
+/// ```
+#[proc_macro_derive(StructuralFrom, attributes(structural_from))]
+pub fn derive_structual_from(item: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(item as DeriveInput);
+    match derive_structural_from_inner(item) {
+        Ok(x) => x.into(),
+        Err(e) => e.into_compile_error().into(),
+    }
+}
+
 #[cfg(test)]
 mod bridge_io_params_tests {
     use super::*;

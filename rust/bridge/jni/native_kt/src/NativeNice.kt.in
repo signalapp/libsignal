@@ -9,6 +9,7 @@
     "ktlint:standard:function-naming",
     "ktlint:standard:property-naming",
     "ktlint:standard:filename",
+    "ktlint:standard:max-line-length",
 )
 
 package org.signal.libsignal.internal
@@ -40,7 +41,7 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
                 val {{ field|to_lower_camel_case }}: {{ ty }},
             {%- endfor %}
         ){% if superclass %}: {{ superclass }}(){% endif %} {
-            {% if return_converter %}
+            {% if return_converter is defined %}
                 companion object {
                     @JvmStatic
                     @CalledFromNative
@@ -54,7 +55,7 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
                     )
                 }
             {% endif %}
-            {% if arg_converter %}
+            {% if arg_converter is defined %}
                 @CalledFromNative
                 @Suppress("ktlint:standard:backing-property-naming")
                 internal class FfiArgType{% if superclass %}: {{ superclass }}.FfiArgType{% endif %} {
@@ -98,19 +99,19 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
                     variant,
                     struct,
                     arg_converter=(ctx.derived_arg_converters[name].variants[loop.index0][1]
-                        if ctx.derived_arg_converters[name]),
+                        if ctx.derived_arg_converters[name] is defined),
                     return_converter=(ctx.derived_return_converters[name].variants[loop.index0][1]
-                        if ctx.derived_return_converters[name]),
+                        if ctx.derived_return_converters[name] is defined),
                     superclass=name,
                 ) }}
             {%- endfor %}
-            {% if ctx.derived_arg_converters[name] %}
+            {% if ctx.derived_arg_converters[name] is defined %}
                 internal sealed class FfiArgType
                 internal abstract fun toFfiArgType(): FfiArgType
             {% endif %}
         }
     {% endif %}
-    {% if ctx.derived_arg_converters[name] %}
+    {% if ctx.derived_arg_converters[name] is defined %}
         internal fun {{ name }}.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
     {% endif %}
 {% endfor %}

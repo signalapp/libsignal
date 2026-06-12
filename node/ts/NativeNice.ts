@@ -485,6 +485,41 @@ export async function TESTING_TokioAsyncContext_FutureSuccessBytes({
   );
 }
 
+export function TESTING_conversion_Data_VecU8_identity({
+  x: x,
+}: {
+  x: Uint8Array<ArrayBuffer>;
+}): Uint8Array<ArrayBuffer> {
+  return identity(Native.TESTING_conversion_Data_VecU8_identity(identity(x)));
+}
+export async function TESTING_conversion_Data_VecU8_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: Uint8Array<ArrayBuffer>;
+}): Promise<Uint8Array<ArrayBuffer>> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_Data_VecU8_identity_async(
+        asyncContext,
+        identity(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_Data_VecU8_to_string({
+  x: x,
+}: {
+  x: Uint8Array<ArrayBuffer>;
+}): string {
+  return identity(Native.TESTING_conversion_Data_VecU8_to_string(identity(x)));
+}
+
 export function TESTING_conversion_Data_identity({
   x: x,
 }: {

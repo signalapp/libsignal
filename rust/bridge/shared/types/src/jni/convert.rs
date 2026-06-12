@@ -539,6 +539,24 @@ impl<'a> SimpleArgTypeInfo<'a> for AccountEntropyPool {
     }
 }
 
+impl<'a> SimpleArgTypeInfo<'a> for Vec<u8> {
+    type ArgType = JByteArray<'a>;
+
+    fn convert_from(
+        env: &mut jni::Env<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        try_scoped(|| {
+            let len = foreign.len(env)?;
+            let mut out = vec![0_u8; len];
+            foreign.get_region(env, 0, zerocopy::transmute_mut!(out.as_mut_slice()))?;
+            Ok(out)
+        })
+        .check_exceptions(env, "Vec<u8>::convert_from()")
+    }
+}
+nice_identity_arg_converter!(Vec<u8>, "ByteArray");
+
 impl<'a> SimpleArgTypeInfo<'a>
     for libsignal_net_chat::api::messages::MultiRecipientSendAuthorization
 {
@@ -3061,6 +3079,9 @@ macro_rules! jni_arg_type {
         ::jni::objects::JByteArray<'local>
     };
     (::zkgroup::generic_server_params::GenericServerPublicParams) => {
+        ::jni::objects::JByteArray<'local>
+    };
+    (Vec<u8>) => {
         ::jni::objects::JByteArray<'local>
     };
     (Vec<&[u8]>) => {

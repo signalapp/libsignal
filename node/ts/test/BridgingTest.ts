@@ -372,6 +372,16 @@ describe('NativeTestingNice', () => {
           NativeNice.TESTING_conversion_Data_identity({ x }),
         nativeIdentityAsync: NativeNice.TESTING_conversion_Data_identity_async,
       });
+      await testConversion({
+        item,
+        toString: toBase64(item),
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_Data_VecU8_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_Data_VecU8_identity({ x }),
+        nativeIdentityAsync:
+          NativeNice.TESTING_conversion_Data_VecU8_identity_async,
+      });
     }
   });
   it('should handle async', async () => {

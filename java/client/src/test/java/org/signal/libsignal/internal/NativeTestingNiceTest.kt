@@ -106,6 +106,16 @@ class NativeTestingNiceTest {
     )
 
   @Test
+  fun dataU8() =
+    testConversion(
+      (0 until 10).asSequence().map({ Random.nextBytes(1 shl it) }),
+      toString = Base64::encode,
+      nativeToString = NativeTestingNice::TESTING_conversion_Data_VecU8_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_Data_VecU8_identity,
+      equality = java.util.Arrays::equals,
+    )
+
+  @Test
   fun mySimpleTestEnum() =
     testConversion(
       listOf(MySimpleTestEnum.A, MySimpleTestEnum.B).asSequence(),

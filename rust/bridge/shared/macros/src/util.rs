@@ -408,6 +408,7 @@ pub(crate) fn arg_type_info_storage_decl(
     let DeriveInputInfo { variant_names, .. } = DeriveInputInfo::new(input, target);
     quote! {
         #[doc(hidden)]
+        #[allow(unused)]
         pub enum #name<#(#variant_names),*> {
             #(#variant_names(#variant_names)),*
         }

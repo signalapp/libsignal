@@ -474,4 +474,18 @@ pub mod test_conversions {
     async fn TESTING_conversion_Data_identity_async(x: &[u8]) -> Vec<u8> {
         x.to_vec()
     }
+
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_Data_VecU8_to_string(x: Vec<u8>) -> String {
+        use base64::prelude::*;
+        BASE64_STANDARD.encode(&x)
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_Data_VecU8_identity(x: Vec<u8>) -> Vec<u8> {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_Data_VecU8_identity_async(x: Vec<u8>) -> Vec<u8> {
+        x
+    }
 }

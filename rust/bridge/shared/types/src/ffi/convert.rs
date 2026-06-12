@@ -280,6 +280,20 @@ impl<'a> ArgTypeInfo<'a> for crate::support::ServiceIdSequence<'a> {
     }
 }
 
+impl SimpleArgTypeInfo for Vec<u8> {
+    type ArgType = BorrowedSliceOf<u8>;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        Ok(unsafe { foreign.as_slice() }?.to_vec())
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for Vec<u8> {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        <&[u8]>::register_swift_arg_converter(ctx)
+    }
+}
+
 impl<'a> ArgTypeInfo<'a> for Vec<&'a [u8]> {
     type ArgType = BorrowedSliceOf<BorrowedSliceOf<u8>>;
     type StoredType = Vec<&'a [u8]>;
@@ -1666,6 +1680,7 @@ macro_rules! ffi_arg_type {
     (&[u8]) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
     (&mut [u8]) => (ffi::BorrowedMutableSliceOf<std::ffi::c_uchar>);
     (ServiceIdSequence<'_>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
+    (Vec<u8>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
     (Vec<&[u8]>) => (ffi::BorrowedSliceOf<ffi_arg_type!(&[u8])>);
     (Vec<Vec<u8> >) => (ffi::BorrowedSliceOf<ffi_arg_type!(&[u8])>);
     (String) => (*const std::ffi::c_char);
