@@ -34,7 +34,6 @@ internal object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
-      .thenApply { identity(it) }
   }
 
   public fun UnauthenticatedChatConnection_backup_delete_all(
@@ -67,7 +66,6 @@ internal object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
-      .thenApply { identity(it) }
   }
 
   public fun UnauthenticatedChatConnection_backup_get_cdn_credentials(
@@ -172,7 +170,6 @@ internal object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
-      .thenApply { identity(it) }
   }
 
   public fun UnauthenticatedChatConnection_backup_set_public_key(
@@ -205,6 +202,5 @@ internal object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
-      .thenApply { identity(it) }
   }
 }

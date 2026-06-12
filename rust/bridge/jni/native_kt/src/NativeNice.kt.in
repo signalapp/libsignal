@@ -145,7 +145,9 @@ internal object {{ "NativeTestingNice" if testing else "NativeNice" }} {
             {% if f.is_tokio_async -%}
                 return ffiOut
                   .makeCancelable(asyncCtx)
+                  {% if f.return_type.converter_function != "identity" -%}
                   .thenApply { {{ f.return_type.converter_function }}(it) }
+                  {%- endif %}
             {%- else -%}
                 return {{ f.return_type.converter_function }}(ffiOut)
             {%- endif %}
