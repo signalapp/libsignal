@@ -40,13 +40,20 @@ use crate::support::{
 
 #[cfg(feature = "metadata")]
 mod metadata {
+    use crate::metadata::NiceType;
     pub use crate::metadata::jni::*;
 
     pub trait NiceArgConverter {
         fn register_kt_arg_converter(ctx: &mut KtMetadataContext) -> KtArgConverter;
+        fn register_kt_nice_type(ctx: &mut KtMetadataContext) -> NiceType {
+            Self::register_kt_arg_converter(ctx).nice_type
+        }
     }
     pub trait NiceResultConverter {
         fn register_kt_result_converter(ctx: &mut KtMetadataContext) -> KtReturnConverter;
+        fn register_kt_nice_type(ctx: &mut KtMetadataContext) -> NiceType {
+            Self::register_kt_result_converter(ctx).nice_type
+        }
     }
 }
 #[cfg(feature = "metadata")]
@@ -59,6 +66,7 @@ macro_rules! nice_identity_arg_converter {
                 KtArgConverter {
                     nice_type: $kt.into(),
                     ffi_type: $kt.into(),
+                    ffi_field_type_erased: ffi_field_type_erased::<Self, _>(),
                     converter_function: "identity".to_string(),
                 }
             }
@@ -80,6 +88,69 @@ macro_rules! nice_identity_result_converter {
     };
 }
 
+/// A helper function to get the kt_erased_field_type for an argument type.
+#[cfg(feature = "metadata")]
+fn ffi_field_type_erased<'a, 'b: 'a, 'c: 'b, 'd, T: ArgTypeInfo<'a, 'b, 'c>, Raw>() -> String
+where
+    T::ArgType: ConvertibleFromJValue<'d, Raw>,
+{
+    let sig = <<T as ArgTypeInfo>::ArgType as ConvertibleFromJValue<Raw>>::SIGNATURE;
+    match sig.ty() {
+        jni::signature::JavaType::Primitive(primitive) => match primitive {
+            jni::signature::Primitive::Boolean => "Boolean",
+            jni::signature::Primitive::Byte => "Byte",
+            jni::signature::Primitive::Char => "Char",
+            jni::signature::Primitive::Double => "Double",
+            jni::signature::Primitive::Float => "Float",
+            jni::signature::Primitive::Int => "Int",
+            jni::signature::Primitive::Long => "Long",
+            jni::signature::Primitive::Short => "Short",
+            jni::signature::Primitive::Void => "Unit",
+        },
+        jni::signature::JavaType::Object | jni::signature::JavaType::Array => {
+            assert_eq!(&sig, &jni_sig!(JObject));
+            "Any?"
+        }
+    }
+    .to_string()
+}
+
+/// Describes how to convert a [`JValueOwned`] into a more specific Java type.
+///
+/// For primitives (`jint`, `jchar`, etc), this is just the corresponding `TryInto` implementation.
+/// For objects, this is `try_into` (or `into_object`) followed by a downcast.
+///
+/// ## Implementation
+///
+/// The `Raw` argument *ought* to be unnecessary. However, without it the blanket impl on
+/// [`jni::refs::Reference`] conflicts with the implementations for primitives; having an extra
+/// generic argument makes the implementations technically not overlap. This would still be quite
+/// inconvenient...except that the Rust compiler does not *perfectly* enforce coherence: if a type
+/// only has one impl for a trait, the trait's generic arguments can be inferred. Thus, even though
+/// generic uses of `ConvertibleFromJValue` must allow for an extra `Raw` parameter, any concrete
+/// uses will work without explicit typing.
+pub trait ConvertibleFromJValue<'a, Raw>: Sized {
+    const SIGNATURE: ::jni::signature::FieldSignature<'static>;
+    fn try_convert(env: &mut jni::Env<'a>, value: JValueOwned<'a>) -> jni::errors::Result<Self>;
+}
+impl<'a, T: jni::refs::Reference<Kind<'a> = T>> ConvertibleFromJValue<'a, ()> for T {
+    const SIGNATURE: jni::signature::FieldSignature<'static> = jni::jni_sig!(JObject);
+    fn try_convert(env: &mut jni::Env<'a>, value: JValueOwned<'a>) -> jni::errors::Result<Self> {
+        env.cast_local::<Self>(value.into_object()?)
+    }
+}
+macro_rules! convertible_primitive {
+    ($($ty:ident),*$(,)?) => {$(
+        impl ConvertibleFromJValue<'_, ::jni::sys::$ty> for ::jni::sys::$ty {
+            const SIGNATURE: jni::signature::FieldSignature<'static> = jni::jni_sig!($ty);
+            fn try_convert(_env: &mut jni::Env<'_>, value: JValueOwned<'_>) -> jni::errors::Result<Self> {
+                value.try_into()
+            }
+        }
+    )*};
+}
+convertible_primitive!(jboolean, jint, jlong, jbyte, jshort, jfloat, jdouble);
+
 /// Converts arguments from their JNI form to their Rust form.
 ///
 /// `ArgTypeInfo` has two required methods: `borrow` and `load_from`. The use site looks like this:
@@ -88,10 +159,10 @@ macro_rules! nice_identity_result_converter {
 /// # use libsignal_bridge_types::jni::*;
 /// # struct Foo;
 /// # impl SimpleArgTypeInfo<'_> for Foo {
-/// #     type ArgType = isize;
-/// #     fn convert_from(env: &mut jni::Env, foreign: &isize) -> Result<Self, BridgeLayerError> { Ok(Foo) }
+/// #     type ArgType = i32;
+/// #     fn convert_from(env: &mut jni::Env, foreign: &i32) -> Result<Self, BridgeLayerError> { Ok(Foo) }
 /// # }
-/// # fn test(env: &mut jni::Env, jni_arg: isize) -> Result<(), BridgeLayerError> {
+/// # fn test(env: &mut jni::Env, jni_arg: i32) -> Result<(), BridgeLayerError> {
 /// let mut jni_arg_borrowed = Foo::borrow(env, &jni_arg)?;
 /// let rust_arg = Foo::load_from(&mut jni_arg_borrowed);
 /// #     Ok(())
@@ -319,6 +390,7 @@ impl NiceArgConverter for RandomNumberGenerator {
             nice_type: "org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?"
                 .to_string(),
             ffi_type: "Long".to_string(),
+            ffi_field_type_erased: ffi_field_type_erased::<Self, _>(),
             converter_function:
                 "org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting.toFfi"
                     .to_string(),
@@ -515,6 +587,7 @@ macro_rules! zkgroup_serialize_type {
                 KtArgConverter {
                     nice_type: $cls.to_string(),
                     ffi_type: "ByteArray".to_string(),
+                    ffi_field_type_erased: ffi_field_type_erased::<Self, _>(),
                     converter_function: format!("({}::getInternalContentsForJNI)", $cls),
                 }
             }
@@ -596,7 +669,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     // This needs to be a `Send`-able value so so that the async task that holds
     // it can be migrated between threads.
     type StoredType = libsignal_account_keys::BackupKey;
-    type ArgType = JByteArray<'param>;
+    type ArgType = JByteArray<'context>;
 
     fn borrow(
         env: &mut jni::Env<'context>,
@@ -841,6 +914,7 @@ impl<T: 'static + Send + Sync + BridgeHandleWrapperClass> NiceArgConverter
         KtArgConverter {
             nice_type: T::WRAPPER_CLASS.into(),
             ffi_type: T::WRAPPER_CLASS.into(),
+            ffi_field_type_erased: ffi_field_type_erased::<Self, _>(),
             converter_function: "identity".to_string(),
         }
     }
@@ -2056,6 +2130,7 @@ impl NiceArgConverter for ServiceId {
         KtArgConverter {
             nice_type: "org.signal.libsignal.protocol.ServiceId".to_string(),
             ffi_type: "ByteArray".to_string(),
+            ffi_field_type_erased: ffi_field_type_erased::<Self, _>(),
             converter_function:
                 "(org.signal.libsignal.protocol.ServiceId::toServiceIdFixedWidthBinary)".to_string(),
         }
@@ -3240,6 +3315,12 @@ macro_rules! jni_result_type {
     (CdnCredentials) => {
         ::jni::objects::JObjectArray<'local>
     };
+
+    // Derived types
+    (MyTestEnum) => {::jni::objects::JObject<'local>};
+    (MyTestPoint) => {::jni::objects::JObject<'local>};
+    (MyTestStruct) => {::jni::objects::JObject<'local>};
+
     ( $handle:ty ) => {
         $crate::jni::ObjectHandle
     };

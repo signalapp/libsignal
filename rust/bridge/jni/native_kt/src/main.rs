@@ -35,11 +35,24 @@ impl std::ops::Drop for RemoveOnDrop {
     }
 }
 
+fn preserve_underscores(
+    inner: impl Fn(&str) -> String + 'static,
+) -> impl Fn(String) -> String + 'static {
+    move |x| {
+        let x_sans_underscore = x.trim_start_matches('_');
+        let core = inner(x_sans_underscore);
+        format!("{}{core}", &x[0..(x.len() - x_sans_underscore.len())])
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
     let mut env = minijinja::Environment::new();
     env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
-    env.add_filter("to_lower_camel_case", |x: String| x.to_lower_camel_case());
+    env.add_filter(
+        "to_lower_camel_case",
+        preserve_underscores(ToLowerCamelCase::to_lower_camel_case),
+    );
     env.add_template("NativeNice.kt.in", include_str!("NativeNice.kt.in"))?;
     let mut non_testing_ctx = KtMetadataContext::default();
     let mut testing_ctx = KtMetadataContext::default();

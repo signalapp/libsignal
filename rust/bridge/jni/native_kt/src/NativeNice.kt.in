@@ -13,21 +13,109 @@
 
 package org.signal.libsignal.internal
 
+import org.signal.libsignal.internal.NativeNiceHelpers.convertToObject
+import org.signal.libsignal.internal.NativeNiceHelpers.downcastFromObject
+import org.signal.libsignal.internal.NativeNiceHelpers.identity
+import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
+
 {% set ctx = testing_ctx if testing else non_testing_ctx %}
 
+{% macro struct_class(name, struct, arg_converter, return_converter, superclass) %}
+    {%- if struct.fields|count == 0 -%}
+        internal data object {{ name }}{% if superclass %}: {{ superclass }}(){% endif %} {
+            {% if return_converter %}
+                @JvmStatic
+                @CalledFromNative
+                fun fromNative(): {{ name }} = {{ name }}
+            {% endif %}
+            {% if arg_converter %}
+                @CalledFromNative
+                internal object FfiArgType{% if superclass %}: {{ superclass }}.FfiArgType(){% endif %}
+                {% if superclass %}override {% endif %}fun toFfiArgType(): FfiArgType = FfiArgType
+            {% endif %}
+        }
+    {%- else -%}
+        internal data class {{ name }}(
+            {% for (field, ty) in struct.fields -%}
+                val {{ field|to_lower_camel_case }}: {{ ty }},
+            {%- endfor %}
+        ){% if superclass %}: {{ superclass }}(){% endif %} {
+            {% if return_converter %}
+                companion object {
+                    @JvmStatic
+                    @CalledFromNative
+                    fun fromNative(
+                        {%- for (field, ty) in return_converter.fields -%}{{ field }}: Any?,{%- endfor -%}
+                    ): {{ name }} = {{ name }}(
+                        {%- for (field, ty) in return_converter.fields -%}
+                            {{ field|to_lower_camel_case }} =
+                                {{ ty.converter_function }}({{ field }} as {{ ty.ffi_type }}),
+                        {%- endfor -%}
+                    )
+                }
+            {% endif %}
+            {% if arg_converter %}
+                @CalledFromNative
+                @Suppress("ktlint:standard:backing-property-naming")
+                internal class FfiArgType{% if superclass %}: {{ superclass }}.FfiArgType{% endif %} {
+                    {% for (field, ty) in arg_converter.fields %}
+                        @CalledFromNative
+                        internal val {{ field }}: {{ ty.ffi_field_type_erased }}
+                    {%- endfor %}
+                    constructor(
+                        {% for (field, ty) in arg_converter.fields -%}
+                            {{ field }}: {{ ty.ffi_field_type_erased }},
+                        {%- endfor %}
+                    ) {
+                        {%- for (field, ty) in arg_converter.fields %}
+                            this.{{ field }} = {{ field }}
+                        {%- endfor %}
+                    }
+                }
+                {% if superclass %}override {% endif %}fun toFfiArgType(): FfiArgType = FfiArgType(
+                    {% for (field, ty) in arg_converter.fields -%}
+                        {{ field }} = {{ ty.converter_function }}({{ field|to_lower_camel_case }}),
+                    {%- endfor %}
+                )
+            {% endif %}
+        }
+    {%- endif -%}
+{% endmacro %}
+
+{% for (name, struct_or_enum) in ctx.derived_types|items %}
+    {% if struct_or_enum.kind == "Struct" %}
+        {{ struct_class(
+            name,
+            struct_or_enum,
+            arg_converter=ctx.derived_arg_converters[name],
+            return_converter=ctx.derived_return_converters[name],
+            superclass=none,
+        ) }}
+    {% else %}
+        internal sealed class {{ name }} {
+            {% for (variant, struct) in struct_or_enum.variants -%}
+                {{ struct_class(
+                    variant,
+                    struct,
+                    arg_converter=(ctx.derived_arg_converters[name].variants[loop.index0][1]
+                        if ctx.derived_arg_converters[name]),
+                    return_converter=(ctx.derived_return_converters[name].variants[loop.index0][1]
+                        if ctx.derived_return_converters[name]),
+                    superclass=name,
+                ) }}
+            {%- endfor %}
+            {% if ctx.derived_arg_converters[name] %}
+                internal sealed class FfiArgType
+                internal abstract fun toFfiArgType(): FfiArgType
+            {% endif %}
+        }
+    {% endif %}
+    {% if ctx.derived_arg_converters[name] %}
+        internal fun {{ name }}.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
+    {% endif %}
+{% endfor %}
+
 internal object {{ "NativeTestingNice" if testing else "NativeNice" }} {
-    @Suppress("NOTHING_TO_INLINE")
-    private inline fun <T> identity(x: T): T = x
-    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
-    private fun convertToObject(x: Any): Object = x as Object
-
-    private inline fun <InA, InB, OutA, OutB> mapPair(
-        crossinline transformA: (InA) -> OutA,
-        crossinline transformB: (InB) -> OutB,
-    ): (Pair<InA, InB>) -> Pair<OutA, OutB> = {
-        Pair(transformA(it.first), transformB(it.second))
-    }
-
     {% for (name, f) in ctx.nice_functions|items %}
         public fun {{ name }}(
             {% if f.is_tokio_async -%}

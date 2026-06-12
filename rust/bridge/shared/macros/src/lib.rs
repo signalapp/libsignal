@@ -608,6 +608,7 @@ pub fn bridge_callbacks(attr: TokenStream, item: TokenStream) -> TokenStream {
 fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let mut node = true;
     let mut ffi = true;
+    let mut jni = true;
     let mut remote: Option<syn::Path> = None;
     for attr in &item.attrs {
         if attr
@@ -622,6 +623,10 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
                 } else if meta.path.is_ident("ffi") {
                     let flag: LitBool = meta.value()?.parse()?;
                     ffi = flag.value();
+                    Ok(())
+                } else if meta.path.is_ident("jni") {
+                    let flag: LitBool = meta.value()?.parse()?;
+                    jni = flag.value();
                     Ok(())
                 } else if meta.path.is_ident("remote") {
                     remote = Some(meta.value()?.parse()?);
@@ -644,9 +649,15 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
     } else {
         None
     };
+    let jni = if jni {
+        Some(jni::derive_bridged_as_value(&item, &target)?)
+    } else {
+        None
+    };
     Ok(quote! {
         #node
         #ffi
+        #jni
     })
 }
 

@@ -218,12 +218,14 @@ pub mod jni {
 
     use super::*;
 
-    #[derive(Debug, Clone, Serialize)]
+    #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
     pub struct KtArgConverter {
         /// What's the high-level kotlin type?
         pub nice_type: String,
         /// What's the low-level kotlin type that gets passed to native?
         pub ffi_type: String,
+        /// What's the kotlin spelling of the type that this type erases to (for a field lookup)
+        pub ffi_field_type_erased: String,
         /// What function should be used to convert between the types?
         ///
         /// This will be invoked like `<converter_function>(my_value)`. As a result, instance
@@ -231,7 +233,7 @@ pub mod jni {
         /// like `(Object::toString)(my_value)`.
         pub converter_function: String,
     }
-    #[derive(Debug, Clone, Serialize)]
+    #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
     pub struct KtReturnConverter {
         /// What's the high-level kotlin type?
         pub nice_type: String,
@@ -256,6 +258,10 @@ pub mod jni {
     #[derive(Debug, Clone, Serialize, Default)]
     pub struct KtMetadataContext {
         pub nice_functions: BTreeMap<String, NiceFunction>,
+
+        pub derived_types: BTreeMap<String, StructOrEnum<NiceType>>,
+        pub derived_return_converters: BTreeMap<String, StructOrEnum<KtReturnConverter>>,
+        pub derived_arg_converters: BTreeMap<String, StructOrEnum<KtArgConverter>>,
     }
 
     /// These functions should mutate the attached [KtMetadataContext] to register their item.

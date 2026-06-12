@@ -189,6 +189,18 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_KeyTransStoredAccountData(): ByteArray
   @JvmStatic
+  public external fun TESTING_MyTestEnum_identity(x: Object): Object
+  @JvmStatic
+  public external fun TESTING_MyTestEnum_to_string(x: Object): String
+  @JvmStatic
+  public external fun TESTING_MyTestPoint_identity(x: Object): Object
+  @JvmStatic
+  public external fun TESTING_MyTestPoint_to_string(x: Object): String
+  @JvmStatic
+  public external fun TESTING_MyTestStruct_identity(x: Object): Object
+  @JvmStatic
+  public external fun TESTING_MyTestStruct_to_string(x: Object): String
+  @JvmStatic
   public external fun TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(handle: ObjectHandle): Unit
   @JvmStatic
   public external fun TESTING_NonSuspendingBackgroundThreadRuntime_New(): ObjectHandle

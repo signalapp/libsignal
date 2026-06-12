@@ -1735,7 +1735,7 @@ impl GlobalAndVM {
 ///
 /// A value that's already an object will be unchanged. A `void` "value" will be converted to
 /// `null`.
-fn box_primitive_if_needed<'a>(
+pub fn box_primitive_if_needed<'a>(
     env: &mut jni::Env<'a>,
     value: JValueOwned<'a>,
 ) -> Result<JObject<'a>, BridgeLayerError> {

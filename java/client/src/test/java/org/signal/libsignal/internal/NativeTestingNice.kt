@@ -13,20 +13,353 @@
 
 package org.signal.libsignal.internal
 
-internal object NativeTestingNice {
-  @Suppress("NOTHING_TO_INLINE")
-  private inline fun <T> identity(x: T): T = x
+import org.signal.libsignal.internal.NativeNiceHelpers.convertToObject
+import org.signal.libsignal.internal.NativeNiceHelpers.downcastFromObject
+import org.signal.libsignal.internal.NativeNiceHelpers.identity
 
-  @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
-  private fun convertToObject(x: Any): Object = x as Object
+internal sealed class MyTestEnum {
+  internal data object Unit : MyTestEnum() {
+    @JvmStatic
+    @CalledFromNative
+    fun fromNative(): Unit = Unit
 
-  private inline fun <InA, InB, OutA, OutB> mapPair(
-    crossinline transformA: (InA) -> OutA,
-    crossinline transformB: (InB) -> OutB,
-  ): (Pair<InA, InB>) -> Pair<OutA, OutB> =
-    {
-      Pair(transformA(it.first), transformB(it.second))
+    @CalledFromNative
+    internal object FfiArgType : MyTestEnum.FfiArgType()
+
+    override fun toFfiArgType(): FfiArgType = FfiArgType
+  }
+
+  internal data class Single(
+    val _0: Int,
+  ) : MyTestEnum() {
+    companion object {
+      @JvmStatic
+      @CalledFromNative
+      fun fromNative(_0: Any?): Single =
+        Single(
+          _0 =
+            identity(_0 as Int),
+        )
     }
+
+    @CalledFromNative
+    @Suppress("ktlint:standard:backing-property-naming")
+    internal class FfiArgType : MyTestEnum.FfiArgType {
+      @CalledFromNative
+      internal val _0: Int
+      constructor(
+        _0: Int,
+      ) {
+        this._0 = _0
+      }
+    }
+
+    override fun toFfiArgType(): FfiArgType =
+      FfiArgType(
+        _0 = identity(_0),
+      )
+  }
+
+  internal data class SingleNamed(
+    val x: Int,
+  ) : MyTestEnum() {
+    companion object {
+      @JvmStatic
+      @CalledFromNative
+      fun fromNative(x: Any?): SingleNamed =
+        SingleNamed(
+          x =
+            identity(x as Int),
+        )
+    }
+
+    @CalledFromNative
+    @Suppress("ktlint:standard:backing-property-naming")
+    internal class FfiArgType : MyTestEnum.FfiArgType {
+      @CalledFromNative
+      internal val x: Int
+      constructor(
+        x: Int,
+      ) {
+        this.x = x
+      }
+    }
+
+    override fun toFfiArgType(): FfiArgType =
+      FfiArgType(
+        x = identity(x),
+      )
+  }
+
+  internal data class Double(
+    val _0: Int,
+    val _1: Int,
+  ) : MyTestEnum() {
+    companion object {
+      @JvmStatic
+      @CalledFromNative
+      fun fromNative(
+        _0: Any?,
+        _1: Any?,
+      ): Double =
+        Double(
+          _0 =
+            identity(_0 as Int),
+          _1 =
+            identity(_1 as Int),
+        )
+    }
+
+    @CalledFromNative
+    @Suppress("ktlint:standard:backing-property-naming")
+    internal class FfiArgType : MyTestEnum.FfiArgType {
+      @CalledFromNative
+      internal val _0: Int
+
+      @CalledFromNative
+      internal val _1: Int
+      constructor(
+        _0: Int,
+        _1: Int,
+      ) {
+        this._0 = _0
+        this._1 = _1
+      }
+    }
+
+    override fun toFfiArgType(): FfiArgType =
+      FfiArgType(
+        _0 = identity(_0),
+        _1 = identity(_1),
+      )
+  }
+
+  internal data class Record(
+    val personName: String,
+    val personAge: Int,
+    val position: org.signal.libsignal.internal.MyTestPoint,
+    val funStruct: org.signal.libsignal.internal.MyTestStruct,
+  ) : MyTestEnum() {
+    companion object {
+      @JvmStatic
+      @CalledFromNative
+      fun fromNative(
+        person_name: Any?,
+        person_age: Any?,
+        position: Any?,
+        fun_struct: Any?,
+      ): Record =
+        Record(
+          personName =
+            identity(person_name as String),
+          personAge =
+            identity(person_age as Int),
+          position =
+            downcastFromObject<org.signal.libsignal.internal.MyTestPoint>(position as Object),
+          funStruct =
+            downcastFromObject<org.signal.libsignal.internal.MyTestStruct>(fun_struct as Object),
+        )
+    }
+
+    @CalledFromNative
+    @Suppress("ktlint:standard:backing-property-naming")
+    internal class FfiArgType : MyTestEnum.FfiArgType {
+      @CalledFromNative
+      internal val person_name: Any?
+
+      @CalledFromNative
+      internal val person_age: Int
+
+      @CalledFromNative
+      internal val position: Any?
+
+      @CalledFromNative
+      internal val fun_struct: Any?
+      constructor(
+        person_name: Any?,
+        person_age: Int,
+        position: Any?,
+        fun_struct: Any?,
+      ) {
+        this.person_name = person_name
+        this.person_age = person_age
+        this.position = position
+        this.fun_struct = fun_struct
+      }
+    }
+
+    override fun toFfiArgType(): FfiArgType =
+      FfiArgType(
+        person_name = identity(personName),
+        person_age = identity(personAge),
+        position = (org.signal.libsignal.internal.MyTestPoint::toFfiArgTypeObject)(position),
+        fun_struct = (org.signal.libsignal.internal.MyTestStruct::toFfiArgTypeObject)(funStruct),
+      )
+  }
+
+  internal sealed class FfiArgType
+
+  internal abstract fun toFfiArgType(): FfiArgType
+}
+
+internal fun MyTestEnum.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
+
+internal data class MyTestPoint(
+  val _0: Int,
+  val _1: Int,
+) {
+  companion object {
+    @JvmStatic
+    @CalledFromNative
+    fun fromNative(
+      _0: Any?,
+      _1: Any?,
+    ): MyTestPoint =
+      MyTestPoint(
+        _0 =
+          identity(_0 as Int),
+        _1 =
+          identity(_1 as Int),
+      )
+  }
+
+  @CalledFromNative
+  @Suppress("ktlint:standard:backing-property-naming")
+  internal class FfiArgType {
+    @CalledFromNative
+    internal val _0: Int
+
+    @CalledFromNative
+    internal val _1: Int
+    constructor(
+      _0: Int,
+      _1: Int,
+    ) {
+      this._0 = _0
+      this._1 = _1
+    }
+  }
+
+  fun toFfiArgType(): FfiArgType =
+    FfiArgType(
+      _0 = identity(_0),
+      _1 = identity(_1),
+    )
+}
+
+internal fun MyTestPoint.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
+
+internal data class MyTestStruct(
+  val myNumericField: Int,
+  val myStringField: String,
+) {
+  companion object {
+    @JvmStatic
+    @CalledFromNative
+    fun fromNative(
+      my_numeric_field: Any?,
+      my_string_field: Any?,
+    ): MyTestStruct =
+      MyTestStruct(
+        myNumericField =
+          identity(my_numeric_field as Int),
+        myStringField =
+          identity(my_string_field as String),
+      )
+  }
+
+  @CalledFromNative
+  @Suppress("ktlint:standard:backing-property-naming")
+  internal class FfiArgType {
+    @CalledFromNative
+    internal val my_numeric_field: Int
+
+    @CalledFromNative
+    internal val my_string_field: Any?
+    constructor(
+      my_numeric_field: Int,
+      my_string_field: Any?,
+    ) {
+      this.my_numeric_field = my_numeric_field
+      this.my_string_field = my_string_field
+    }
+  }
+
+  fun toFfiArgType(): FfiArgType =
+    FfiArgType(
+      my_numeric_field = identity(myNumericField),
+      my_string_field = identity(myStringField),
+    )
+}
+
+internal fun MyTestStruct.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
+
+internal object NativeTestingNice {
+  public fun TESTING_MyTestEnum_identity(
+    x: org.signal.libsignal.internal.MyTestEnum,
+  ): org.signal.libsignal.internal.MyTestEnum {
+    val ffi_x = (org.signal.libsignal.internal.MyTestEnum::toFfiArgTypeObject)(x)
+    val ffiOut =
+      NativeTesting.TESTING_MyTestEnum_identity(
+        ffi_x,
+      )
+
+    return downcastFromObject<org.signal.libsignal.internal.MyTestEnum>(ffiOut)
+  }
+
+  public fun TESTING_MyTestEnum_to_string(x: org.signal.libsignal.internal.MyTestEnum): String {
+    val ffi_x = (org.signal.libsignal.internal.MyTestEnum::toFfiArgTypeObject)(x)
+    val ffiOut =
+      NativeTesting.TESTING_MyTestEnum_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_MyTestPoint_identity(
+    x: org.signal.libsignal.internal.MyTestPoint,
+  ): org.signal.libsignal.internal.MyTestPoint {
+    val ffi_x = (org.signal.libsignal.internal.MyTestPoint::toFfiArgTypeObject)(x)
+    val ffiOut =
+      NativeTesting.TESTING_MyTestPoint_identity(
+        ffi_x,
+      )
+
+    return downcastFromObject<org.signal.libsignal.internal.MyTestPoint>(ffiOut)
+  }
+
+  public fun TESTING_MyTestPoint_to_string(x: org.signal.libsignal.internal.MyTestPoint): String {
+    val ffi_x = (org.signal.libsignal.internal.MyTestPoint::toFfiArgTypeObject)(x)
+    val ffiOut =
+      NativeTesting.TESTING_MyTestPoint_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_MyTestStruct_identity(
+    x: org.signal.libsignal.internal.MyTestStruct,
+  ): org.signal.libsignal.internal.MyTestStruct {
+    val ffi_x = (org.signal.libsignal.internal.MyTestStruct::toFfiArgTypeObject)(x)
+    val ffiOut =
+      NativeTesting.TESTING_MyTestStruct_identity(
+        ffi_x,
+      )
+
+    return downcastFromObject<org.signal.libsignal.internal.MyTestStruct>(ffiOut)
+  }
+
+  public fun TESTING_MyTestStruct_to_string(x: org.signal.libsignal.internal.MyTestStruct): String {
+    val ffi_x = (org.signal.libsignal.internal.MyTestStruct::toFfiArgTypeObject)(x)
+    val ffiOut =
+      NativeTesting.TESTING_MyTestStruct_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
 
   public fun TESTING_TestingIntBox_Get(myIntBox: org.signal.libsignal.internal.TestingIntBox): Int {
     val ffi_my_int_box = identity(myIntBox)

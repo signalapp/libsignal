@@ -5,6 +5,12 @@
 
 package org.signal.libsignal.internal
 
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import org.junit.Test
 import org.signal.libsignal.protocol.ServiceId
 import java.util.UUID
@@ -97,6 +103,90 @@ class NativeTestingNiceTest {
       nativeToString = NativeTestingNice::TESTING_conversion_Data_to_string,
       nativeIdentity = NativeTestingNice::TESTING_conversion_Data_identity,
       equality = java.util.Arrays::equals,
+    )
+
+  @Test
+  fun myTestPoint() =
+    testConversion(
+      listOf(MyTestPoint(1, 2)).asSequence(),
+      toString = { p ->
+        buildJsonArray {
+          add(p._0)
+          add(p._1)
+        }.toString()
+      },
+      nativeToString = NativeTestingNice::TESTING_MyTestPoint_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_MyTestPoint_identity,
+    )
+
+  @Test
+  fun myTestStruct() =
+    testConversion(
+      listOf(MyTestStruct(myStringField = "string", myNumericField = 12)).asSequence(),
+      toString = { s ->
+        buildJsonObject {
+          put("myNumericField", s.myNumericField)
+          put("myStringField", s.myStringField)
+        }.toString()
+      },
+      nativeToString = NativeTestingNice::TESTING_MyTestStruct_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_MyTestStruct_identity,
+    )
+
+  @Test
+  fun myTestEnum() =
+    testConversion(
+      listOf(
+        MyTestEnum.Unit,
+        MyTestEnum.Single(1),
+        MyTestEnum.Double(2, 3),
+        MyTestEnum.SingleNamed(4),
+        MyTestEnum.Record(
+          personName = "Nobody",
+          personAge = 1001,
+          position = MyTestPoint(5, 6),
+          funStruct = MyTestStruct(7, "eight"),
+        ),
+      ).asSequence(),
+      toString = { e ->
+        when (e) {
+          is MyTestEnum.Unit -> "\"unit\""
+          is MyTestEnum.Single ->
+            buildJsonObject {
+              put("single", e._0)
+            }
+          is MyTestEnum.Double ->
+            buildJsonObject {
+              putJsonArray("double") {
+                add(e._0)
+                add(e._1)
+              }
+            }
+          is MyTestEnum.SingleNamed ->
+            buildJsonObject {
+              putJsonObject("singleNamed") {
+                put("x", e.x)
+              }
+            }
+          is MyTestEnum.Record ->
+            buildJsonObject {
+              putJsonObject("record") {
+                put("personName", e.personName)
+                put("personAge", e.personAge)
+                putJsonArray("position") {
+                  add(e.position._0)
+                  add(e.position._1)
+                }
+                putJsonObject("funStruct") {
+                  put("myNumericField", e.funStruct.myNumericField)
+                  put("myStringField", e.funStruct.myStringField)
+                }
+              }
+            }
+        }.toString()
+      },
+      nativeToString = NativeTestingNice::TESTING_MyTestEnum_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_MyTestEnum_identity,
     )
 
   @Test

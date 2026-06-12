@@ -13,21 +13,10 @@
 
 package org.signal.libsignal.internal
 
+import org.signal.libsignal.internal.NativeNiceHelpers.identity
+import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
+
 internal object NativeNice {
-  @Suppress("NOTHING_TO_INLINE")
-  private inline fun <T> identity(x: T): T = x
-
-  @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
-  private fun convertToObject(x: Any): Object = x as Object
-
-  private inline fun <InA, InB, OutA, OutB> mapPair(
-    crossinline transformA: (InA) -> OutA,
-    crossinline transformB: (InB) -> OutB,
-  ): (Pair<InA, InB>) -> Pair<OutA, OutB> =
-    {
-      Pair(transformA(it.first), transformB(it.second))
-    }
-
   public fun UnauthenticatedChatConnection_account_exists(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.UnauthenticatedChatConnection,
