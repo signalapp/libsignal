@@ -9,4 +9,5 @@ pub mod api;
 pub mod grpc;
 mod logging;
 pub mod registration;
+pub mod stream_util;
 pub mod ws;
