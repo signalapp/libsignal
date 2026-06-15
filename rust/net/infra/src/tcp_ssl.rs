@@ -14,7 +14,9 @@ use crate::certs::RootCertificates;
 use crate::dns::DnsResolver;
 use crate::errors::TransportConnectError;
 use crate::host::Host;
-use crate::route::{Connector, DirectOrProxyMode, TcpRoute, TlsRouteFragment};
+use crate::route::{
+    ConnectionProxyConfig, Connector, DirectOrProxyMode, TcpRoute, TlsRouteFragment,
+};
 #[cfg(feature = "dev-util")]
 #[allow(unused_imports)]
 use crate::utils::development_only_enable_nss_standard_debug_interop;
@@ -33,14 +35,19 @@ pub type TcpStream = tokio::net::TcpStream;
 #[derive(Clone, Debug)]
 pub struct TcpSslConnector {
     dns_resolver: DnsResolver,
-    proxy_mode: Result<DirectOrProxyMode, InvalidProxyConfig>,
+    /// The proxy the user explicitly configured, or its absence/invalidity.
+    /// This always takes precedence over the reflector.
+    explicit_proxy: Result<DirectOrProxyMode, InvalidProxyConfig>,
+    /// The reflector proxy. This only takes effect when no explicit proxy is configured.
+    reflector: Option<ConnectionProxyConfig>,
 }
 
 impl TcpSslConnector {
     pub fn new_direct(dns_resolver: DnsResolver) -> Self {
         Self {
             dns_resolver,
-            proxy_mode: Ok(DirectOrProxyMode::DirectOnly),
+            explicit_proxy: Ok(DirectOrProxyMode::DirectOnly),
+            reflector: None,
         }
     }
 
@@ -49,15 +56,35 @@ impl TcpSslConnector {
     }
 
     pub fn set_proxy_mode(&mut self, proxy_mode: DirectOrProxyMode) {
-        self.proxy_mode = Ok(proxy_mode);
+        self.explicit_proxy = Ok(proxy_mode);
     }
 
     pub fn set_invalid(&mut self) {
-        self.proxy_mode = Err(InvalidProxyConfig)
+        self.explicit_proxy = Err(InvalidProxyConfig)
     }
 
-    pub fn proxy(&self) -> Result<&DirectOrProxyMode, InvalidProxyConfig> {
-        self.proxy_mode.as_ref().map_err(InvalidProxyConfig::clone)
+    /// Sets (or clears, with `None`) the reflector proxy.
+    ///
+    /// This is independent of the explicit proxy: it only takes effect once the
+    /// user has no explicit proxy configured.
+    pub fn set_reflector(&mut self, reflector: Option<ConnectionProxyConfig>) {
+        self.reflector = reflector;
+    }
+
+    /// The effective proxy mode, combining the explicit proxy and the
+    /// reflector proxy.
+    ///
+    /// Precedence is: an explicit user proxy (or invalid state) wins; otherwise,
+    /// if a reflector proxy is configured, fall back to the reflector;
+    /// otherwise connect directly.
+    pub fn proxy(&self) -> Result<DirectOrProxyMode, InvalidProxyConfig> {
+        match (&self.explicit_proxy, &self.reflector) {
+            (Err(e), _) => Err(e.clone()),
+            (Ok(DirectOrProxyMode::DirectOnly), Some(fallback)) => {
+                Ok(DirectOrProxyMode::DirectThenProxy(fallback.clone()))
+            }
+            (Ok(mode), _) => Ok(mode.clone()),
+        }
     }
 }
 
@@ -68,11 +95,7 @@ impl TryFrom<&TcpSslConnector> for DirectOrProxyMode {
     type Error = InvalidProxyConfig;
 
     fn try_from(value: &TcpSslConnector) -> Result<Self, Self::Error> {
-        let TcpSslConnector {
-            dns_resolver: _,
-            proxy_mode,
-        } = value;
-        proxy_mode.clone()
+        value.proxy()
     }
 }
 
