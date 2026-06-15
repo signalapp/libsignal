@@ -190,61 +190,26 @@ impl ConnectionManager {
         guard.set_invalid();
     }
 
-    /// Resets the endpoint connections to include or exclude censorship circumvention routes.
+    /// Resets the route configuration to include or exclude censorship circumvention routes.
     ///
     /// This is not itself a network change event; existing working connections are expected to
     /// continue to work, and existing failing connections will continue to fail.
     pub fn set_censorship_circumvention_enabled(&self, enable: bool) {
-        let mut guard = self.transport_connector.lock().expect("not poisoned");
-        let current = guard.proxy();
-        let current_is_direct = matches!(current, Ok(DirectOrProxyMode::DirectOnly));
-        let current_is_reflector = current.is_ok_and(DirectOrProxyMode::is_reflector_proxy);
-
-        match (enable, current_is_direct, current_is_reflector) {
-            // We never prefer reflector proxies over user-directed proxies, either
-            //   from the operating system, or as an in-app selected Signal TLS proxy.
-            //
-            // Thus, we only enable the reflector proxy if we're going from DirectOnly to something else.
-            //
-            // Similarly, we only disable the reflector proxy if we're going from a reflector
-            //   back to DirectOnly.
-            (true, true, _) => {
-                let providers = (self.env.reflector_providers)();
-                if providers.is_empty() {
-                    log::error!("reflector providers unavailable; marking proxy invalid");
-                    guard.set_invalid();
-                    return;
-                }
-                log::info!(
-                    "set_censorship_circumvention_enabled({enable}): setting reflector proxy"
-                );
-                guard.set_proxy_mode(DirectOrProxyMode::DirectThenProxy(
-                    ConnectionProxyConfig::Reflector(providers),
-                ));
-            }
-            (false, _, true) => {
-                log::info!(
-                    "set_censorship_circumvention_enabled({enable}): clearing reflector proxy"
-                );
-                guard.set_proxy_mode(DirectOrProxyMode::DirectOnly);
-            }
-            // Now, it's just about providing the most informative error message.
-            (false, true, false) => {
-                log::info!(
-                    "set_censorship_circumvention_enabled({enable}): reflector proxy is already disabled"
-                );
-            }
-            (true, _, true) => {
-                log::info!(
-                    "set_censorship_circumvention_enabled({enable}): reflector proxy is already enabled; leaving it in place"
-                );
-            }
-            (_, false, _) => {
-                log::info!(
-                    "set_censorship_circumvention_enabled({enable}): another proxy mode is set; leaving it in place"
-                );
-            }
-        }
+        let reflector_proxies = enable.then(|| {
+            let providers = (self.env.reflector_providers)();
+            assert!(
+                !providers.is_empty(),
+                // This is not *technically* true, because the `localhost_test_env_with_ports` contains an emptly list
+                // of reflector providers, but that's only used in tests.
+                "reflector providers are configured at compile time, so they should never be empty"
+            );
+            ConnectionProxyConfig::Reflector(providers)
+        });
+        log::info!("set_censorship_circumvention_enabled({enable})");
+        self.transport_connector
+            .lock()
+            .expect("not poisoned")
+            .set_reflector(reflector_proxies);
     }
 
     pub fn is_using_proxy(&self) -> Result<bool, InvalidProxyConfig> {
@@ -484,6 +449,52 @@ mod test {
 
         let guard = cm.transport_connector.lock().expect("not poisoned");
         assert_matches!(guard.proxy(), Ok(DirectOrProxyMode::DirectOnly));
+    }
+
+    #[test]
+    fn censorship_circumvention_survives_explicit_proxy_set_then_clear() {
+        use libsignal_net::infra::host::Host;
+        use libsignal_net::infra::route::HttpProxy;
+        use nonzero_ext::nonzero;
+
+        let cm = ConnectionManager::new(
+            Environment::Prod,
+            "test-user-agent",
+            Default::default(),
+            BuildVariant::Production,
+        );
+
+        cm.set_censorship_circumvention_enabled(true);
+
+        // An explicit user proxy takes precedence over the reflector.
+        cm.set_proxy_mode(DirectOrProxyMode::DirectThenProxy(
+            ConnectionProxyConfig::Http(HttpProxy {
+                proxy_host: Host::Domain(Arc::from("proxy.example.com")),
+                proxy_port: nonzero!(8080_u16),
+                proxy_tls: None,
+                proxy_authorization: None,
+                resolve_hostname_locally: false,
+            }),
+        ));
+        assert_matches!(
+            cm.transport_connector
+                .lock()
+                .expect("not poisoned")
+                .proxy()
+                .expect("valid proxy config"),
+            DirectOrProxyMode::DirectThenProxy(ConnectionProxyConfig::Http(_))
+        );
+
+        // ... but clearing it falls back to the reflector.
+        cm.set_proxy_mode(DirectOrProxyMode::DirectOnly);
+        assert_matches!(
+            cm.transport_connector
+                .lock()
+                .expect("not poisoned")
+                .proxy()
+                .expect("valid proxy config"),
+            DirectOrProxyMode::DirectThenProxy(ConnectionProxyConfig::Reflector(_))
+        );
     }
 
     // Normally we would write this test in the app languages, but it depends on timeouts.

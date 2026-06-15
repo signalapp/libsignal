@@ -318,13 +318,6 @@ impl DirectOrProxyMode {
             Self::ProxyOnly(p) | Self::ProxyThenDirect(p) | Self::DirectThenProxy(p) => Some(p),
         }
     }
-
-    pub fn is_reflector_proxy(&self) -> bool {
-        matches!(
-            self.proxy_config(),
-            Some(ConnectionProxyConfig::Reflector(_))
-        )
-    }
 }
 
 type DirectOrProxyReplacement =
