@@ -8,6 +8,7 @@ use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use libsignal_core::LogSafeDisplay as _;
 use libsignal_net::connect_state::{
     ConnectState, ConnectionResources, DefaultConnectorFactory, PreconnectingFactory,
     SUGGESTED_CONNECT_CONFIG, SUGGESTED_TLS_PRECONNECT_LIFETIME,
@@ -181,6 +182,7 @@ impl ConnectionManager {
     }
 
     pub fn set_proxy_mode(&self, proxy_mode: DirectOrProxyMode) {
+        log::info!("set_proxy_mode({})", proxy_mode.log_safe_display());
         let mut guard = self.transport_connector.lock().expect("not poisoned");
         guard.set_proxy_mode(proxy_mode);
     }

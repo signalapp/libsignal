@@ -102,12 +102,29 @@ pub enum DirectOrProxyRoute<D, P> {
 }
 
 #[derive(Clone, Debug, strum::EnumDiscriminants)]
+#[strum_discriminants(derive(strum::Display))]
 pub enum DirectOrProxyMode {
     DirectOnly,
     ProxyOnly(ConnectionProxyConfig),
     ProxyThenDirect(ConnectionProxyConfig),
     DirectThenProxy(ConnectionProxyConfig),
 }
+
+impl std::fmt::Display for DirectOrProxyMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let kind = DirectOrProxyModeDiscriminants::from(self);
+        match self {
+            DirectOrProxyMode::DirectOnly => write!(f, "{kind}"),
+            DirectOrProxyMode::ProxyOnly(proxy)
+            | DirectOrProxyMode::ProxyThenDirect(proxy)
+            | DirectOrProxyMode::DirectThenProxy(proxy) => {
+                write!(f, "{kind}({})", proxy.log_safe_kind())
+            }
+        }
+    }
+}
+
+impl LogSafeDisplay for DirectOrProxyMode {}
 
 /// [`RouteProvider`] implementation that returns [`DirectOrProxyRoute`]s.
 ///
@@ -149,7 +166,7 @@ pub struct HttpProxy {
     pub resolve_hostname_locally: bool,
 }
 
-#[derive(Debug, Clone, derive_more::From)]
+#[derive(Debug, Clone, derive_more::From, strum::IntoStaticStr)]
 pub enum ConnectionProxyConfig {
     Tls(TlsProxy),
     #[cfg(feature = "dev-util")]
@@ -187,6 +204,10 @@ pub enum ProxyFromPartsError {
 impl LogSafeDisplay for ProxyFromPartsError {}
 
 impl ConnectionProxyConfig {
+    fn log_safe_kind(&self) -> &'static str {
+        self.into()
+    }
+
     /// Create a ConnectionProxyConfig from the information found in a URL or PAC file.
     ///
     /// Passing `None` for the `port` means the default port for the proxy type will be used.
