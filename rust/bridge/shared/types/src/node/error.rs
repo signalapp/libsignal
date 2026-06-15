@@ -853,6 +853,7 @@ impl SignalNodeError for libsignal_net_chat::api::messages::UnsealedSendFailure 
 }
 
 mod registration {
+    use libsignal_net::auth::Auth;
     use libsignal_net_chat::api::registration::{
         CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationLock,
         RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError,
@@ -914,33 +915,81 @@ mod registration {
             cx: &mut C,
             operation_name: &str,
         ) -> Handle<'a, JsError> {
-            let message = match self {
-                BridgedErrorVariant::SessionNotFound => {
-                    "no verification session found for the session ID"
+            let (name, message) = match self {
+                Self::VerificationNotDeliverable(VerificationCodeNotDeliverable {
+                    reason,
+                    permanent_failure,
+                }) => {
+                    return new_js_error(
+                        cx,
+                        Some("RegistrationVerificationCodeNotDeliverable"),
+                        "the verification code could not be delivered",
+                        operation_name,
+                        move |cx| {
+                            let props = cx.empty_object();
+                            let reason = cx.string(reason);
+                            props.set(cx, "reason", reason)?;
+                            let permanent_failure = cx.boolean(permanent_failure);
+                            props.set(cx, "permanentFailure", permanent_failure)?;
+                            Ok(props.upcast())
+                        },
+                    );
                 }
-                BridgedErrorVariant::InvalidSessionId => "the session ID was invalid",
-                BridgedErrorVariant::RequestInvalid => "the request did not pass server validation",
-                BridgedErrorVariant::RequestRejected => "the information provided was rejected",
-                BridgedErrorVariant::NotReadyForVerification => {
-                    "the session is not ready for verification"
+                Self::RegistrationLock(RegistrationLock {
+                    time_remaining,
+                    svr2_credentials: Auth { username, password },
+                }) => {
+                    let secs = time_remaining.as_secs();
+                    return new_js_error(
+                        cx,
+                        Some("RegistrationLock"),
+                        "registration is locked",
+                        operation_name,
+                        move |cx| {
+                            let props = cx.empty_object();
+                            let time_remaining_seconds = cx.number(secs as f64);
+                            props.set(cx, "timeRemainingSeconds", time_remaining_seconds)?;
+                            let svr2_username = cx.string(username);
+                            props.set(cx, "svr2Username", svr2_username)?;
+                            let svr2_password = cx.string(password);
+                            props.set(cx, "svr2Password", svr2_password)?;
+                            Ok(props.upcast())
+                        },
+                    );
                 }
-                BridgedErrorVariant::VerificationSendFailed => {
-                    "sending the verification code failed"
+                Self::SessionNotFound => (
+                    "RegistrationSessionNotFound",
+                    "no verification session found for the session ID",
+                ),
+                Self::InvalidSessionId => {
+                    ("RegistrationSessionIdInvalid", "the session ID was invalid")
                 }
-                BridgedErrorVariant::VerificationNotDeliverable(_not_deliverable) => {
-                    "the verification code could not be delivered"
-                }
-                BridgedErrorVariant::RecoveryVerificationFailed => {
-                    "the recovery password was not accepted"
-                }
-                BridgedErrorVariant::DeviceTransferPossibleNotSkipped => {
-                    "device transfer is possible but wasn't explicitly skipped"
-                }
-                BridgedErrorVariant::RegistrationLock(_registration_lock) => {
-                    "registration is locked"
-                }
+                Self::RequestInvalid => (
+                    "RegistrationRequestInvalid",
+                    "the request did not pass server validation",
+                ),
+                Self::RequestRejected => (
+                    "RegistrationRequestRejected",
+                    "the information provided was rejected",
+                ),
+                Self::NotReadyForVerification => (
+                    "RegistrationSessionNotReadyForVerification",
+                    "the session is not ready for verification",
+                ),
+                Self::VerificationSendFailed => (
+                    "RegistrationVerificationSendFailed",
+                    "sending the verification code failed",
+                ),
+                Self::RecoveryVerificationFailed => (
+                    "RegistrationRecoveryVerificationFailed",
+                    "the recovery password was not accepted",
+                ),
+                Self::DeviceTransferPossibleNotSkipped => (
+                    "RegistrationDeviceTransferPossibleNotSkipped",
+                    "device transfer is possible but wasn't explicitly skipped",
+                ),
             };
-            new_js_error(cx, None, message, operation_name, no_extra_properties)
+            new_js_error(cx, Some(name), message, operation_name, no_extra_properties)
         }
     }
 

@@ -154,7 +154,7 @@ describe('Registration types', () => {
         operationName: 'CreateSession',
         convertFn: Native.TESTING_RegistrationService_CreateSessionErrorConvert,
         cases: [
-          ['InvalidSessionId', ErrorCode.Generic],
+          ['InvalidSessionId', ErrorCode.RegistrationSessionIdInvalid],
           retryLaterCase,
           unknownCase,
           timeoutCase,
@@ -167,8 +167,8 @@ describe('Registration types', () => {
         operationName: 'ResumeSession',
         convertFn: Native.TESTING_RegistrationService_ResumeSessionErrorConvert,
         cases: [
-          ['InvalidSessionId', ErrorCode.Generic],
-          ['SessionNotFound', ErrorCode.Generic],
+          ['InvalidSessionId', ErrorCode.RegistrationSessionIdInvalid],
+          ['SessionNotFound', ErrorCode.RegistrationSessionNotFound],
           unknownCase,
           timeoutCase,
           serverSideErrorCase,
@@ -180,7 +180,7 @@ describe('Registration types', () => {
         operationName: 'UpdateSession',
         convertFn: Native.TESTING_RegistrationService_UpdateSessionErrorConvert,
         cases: [
-          ['Rejected', ErrorCode.Generic],
+          ['Rejected', ErrorCode.RegistrationRequestRejected],
           retryLaterCase,
           unknownCase,
           timeoutCase,
@@ -192,11 +192,21 @@ describe('Registration types', () => {
         convertFn:
           Native.TESTING_RegistrationService_RequestVerificationCodeErrorConvert,
         cases: [
-          ['InvalidSessionId', ErrorCode.Generic],
-          ['SessionNotFound', ErrorCode.Generic],
-          ['NotReadyForVerification', ErrorCode.Generic],
-          ['SendFailed', ErrorCode.Generic],
-          ['CodeNotDeliverable', ErrorCode.Generic],
+          ['InvalidSessionId', ErrorCode.RegistrationSessionIdInvalid],
+          ['SessionNotFound', ErrorCode.RegistrationSessionNotFound],
+          [
+            'NotReadyForVerification',
+            ErrorCode.RegistrationSessionNotReadyForVerification,
+          ],
+          ['SendFailed', ErrorCode.RegistrationVerificationSendFailed],
+          [
+            'CodeNotDeliverable',
+            {
+              code: ErrorCode.RegistrationVerificationCodeNotDeliverable,
+              reason: 'no reason',
+              permanentFailure: true,
+            },
+          ],
           retryLaterCase,
           unknownCase,
           timeoutCase,
@@ -208,9 +218,12 @@ describe('Registration types', () => {
         convertFn:
           Native.TESTING_RegistrationService_SubmitVerificationErrorConvert,
         cases: [
-          ['InvalidSessionId', ErrorCode.Generic],
-          ['SessionNotFound', ErrorCode.Generic],
-          ['NotReadyForVerification', ErrorCode.Generic],
+          ['InvalidSessionId', ErrorCode.RegistrationSessionIdInvalid],
+          ['SessionNotFound', ErrorCode.RegistrationSessionNotFound],
+          [
+            'NotReadyForVerification',
+            ErrorCode.RegistrationSessionNotReadyForVerification,
+          ],
           retryLaterCase,
           unknownCase,
           timeoutCase,
@@ -222,7 +235,7 @@ describe('Registration types', () => {
         convertFn:
           Native.TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert,
         cases: [
-          ['CredentialsCouldNotBeParsed', ErrorCode.Generic],
+          ['CredentialsCouldNotBeParsed', ErrorCode.RegistrationRequestInvalid],
           unknownCase,
           timeoutCase,
           serverSideErrorCase,
@@ -233,9 +246,24 @@ describe('Registration types', () => {
         convertFn:
           Native.TESTING_RegistrationService_RegisterAccountErrorConvert,
         cases: [
-          ['DeviceTransferIsPossibleButNotSkipped', ErrorCode.Generic],
-          ['RegistrationRecoveryVerificationFailed', ErrorCode.Generic],
-          ['RegistrationLockFor50Seconds', ErrorCode.Generic],
+          [
+            'DeviceTransferIsPossibleButNotSkipped',
+            ErrorCode.RegistrationDeviceTransferPossibleNotSkipped,
+          ],
+          [
+            'RegistrationRecoveryVerificationFailed',
+            ErrorCode.RegistrationRecoveryVerificationFailed,
+          ],
+          [
+            'RegistrationLockFor50Seconds',
+            {
+              code: ErrorCode.RegistrationLock,
+              timeRemainingSeconds: 50,
+              svr2Username: 'user',
+              svr2Password: 'pass',
+            },
+          ],
+
           retryLaterCase,
           unknownCase,
           timeoutCase,

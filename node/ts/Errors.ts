@@ -73,6 +73,18 @@ export enum ErrorCode {
   ServiceIdNotFound,
 
   UploadTooLarge,
+
+  RegistrationCredentialsCouldNotBeParsed,
+  RegistrationDeviceTransferPossibleNotSkipped,
+  RegistrationLock,
+  RegistrationRecoveryVerificationFailed,
+  RegistrationRequestInvalid,
+  RegistrationRequestRejected,
+  RegistrationSessionIdInvalid,
+  RegistrationSessionNotFound,
+  RegistrationSessionNotReadyForVerification,
+  RegistrationVerificationCodeNotDeliverable,
+  RegistrationVerificationSendFailed,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -395,6 +407,60 @@ export type UploadTooLarge = LibSignalErrorCommon & {
   code: ErrorCode.UploadTooLarge;
 };
 
+export type RegistrationSessionNotFoundError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationSessionNotFound;
+};
+
+export type RegistrationSessionIdInvalidError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationSessionIdInvalid;
+};
+
+export type RegistrationRequestInvalidError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationRequestInvalid;
+};
+
+export type RegistrationRequestRejectedError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationRequestRejected;
+};
+
+export type RegistrationSessionNotReadyForVerificationError =
+  LibSignalErrorCommon & {
+    code: ErrorCode.RegistrationSessionNotReadyForVerification;
+  };
+
+export type RegistrationVerificationSendFailedError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationVerificationSendFailed;
+};
+
+export type RegistrationVerificationCodeNotDeliverableError =
+  LibSignalErrorCommon & {
+    code: ErrorCode.RegistrationVerificationCodeNotDeliverable;
+    readonly reason: string;
+    readonly permanentFailure: boolean;
+  };
+
+export type RegistrationLockError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationLock;
+  readonly timeRemainingSeconds: number;
+  readonly svr2Username: string;
+  readonly svr2Password: string;
+};
+
+export type RegistrationDeviceTransferPossibleNotSkippedError =
+  LibSignalErrorCommon & {
+    code: ErrorCode.RegistrationDeviceTransferPossibleNotSkipped;
+  };
+
+export type RegistrationRecoveryVerificationFailedError =
+  LibSignalErrorCommon & {
+    code: ErrorCode.RegistrationRecoveryVerificationFailed;
+  };
+
+export type RegistrationCredentialsCouldNotBeParsedError =
+  LibSignalErrorCommon & {
+    code: ErrorCode.RegistrationCredentialsCouldNotBeParsed;
+  };
+
 /**
  * @throws {ChatServiceInactive} if the chat connection has been closed.
  * @throws {IoError} if an error occurred while communicating with the server.
@@ -457,4 +523,15 @@ export type LibSignalError =
   | RequestUnauthorizedError
   | MismatchedDevicesError
   | ServiceIdNotFound
-  | UploadTooLarge;
+  | UploadTooLarge
+  | RegistrationSessionNotFoundError
+  | RegistrationSessionIdInvalidError
+  | RegistrationRequestInvalidError
+  | RegistrationRequestRejectedError
+  | RegistrationSessionNotReadyForVerificationError
+  | RegistrationVerificationSendFailedError
+  | RegistrationVerificationCodeNotDeliverableError
+  | RegistrationLockError
+  | RegistrationDeviceTransferPossibleNotSkippedError
+  | RegistrationRecoveryVerificationFailedError
+  | RegistrationCredentialsCouldNotBeParsedError;
