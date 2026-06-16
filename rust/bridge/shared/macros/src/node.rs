@@ -559,7 +559,7 @@ fn derive_bridged_as_value_return(
             type ResultType = neon::types::JsValue;
             fn convert_into(
                 self,
-                cx: &mut impl ::neon::context::Context<'node_context>,
+                cx: &mut ::neon::context::Cx<'node_context>,
             ) -> ::neon::result::JsResult<'node_context, Self::ResultType> {
                 use ::neon::prelude::*;
                 match self {
@@ -567,8 +567,8 @@ fn derive_bridged_as_value_return(
                         #(let #fields = #krate::node::ResultTypeInfo::convert_into(#fields, cx)?;)*
                         let nice_object_out = cx.empty_object();
                         let nice_type_name = cx.number(#variant_indices as f64);
-                        nice_object_out.set(cx, "__type", nice_type_name)?;
-                        #(nice_object_out.set(cx, stringify!(#fields), #fields)?;)*
+                        nice_object_out.prop(cx, "__type").set(nice_type_name)?;
+                        #(nice_object_out.prop(cx, stringify!(#fields)).set(#fields)?;)*
                         Ok(nice_object_out.upcast())
                     })*
                 }

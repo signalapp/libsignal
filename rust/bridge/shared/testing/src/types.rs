@@ -340,8 +340,8 @@ impl<'a> jni::ResultTypeInfo<'a> for ErrorOnReturn {
 impl<'a> node::ResultTypeInfo<'a> for ErrorOnReturn {
     type ResultType = node::JsNull;
 
-    fn convert_into(self, cx: &mut impl node::Context<'a>) -> node::JsResult<'a, Self::ResultType> {
-        cx.throw_type_error("deliberate error")
+    fn convert_into(self, cx: &mut node::Cx<'a>) -> node::JsResult<'a, Self::ResultType> {
+        node::Context::throw_type_error(cx, "deliberate error")
     }
 
     #[cfg(feature = "metadata")]
@@ -378,10 +378,7 @@ impl<'a> jni::ResultTypeInfo<'a> for PanicOnReturn {
 impl<'a> node::ResultTypeInfo<'a> for PanicOnReturn {
     type ResultType = node::JsNull;
 
-    fn convert_into(
-        self,
-        _cx: &mut impl node::Context<'a>,
-    ) -> node::JsResult<'a, Self::ResultType> {
+    fn convert_into(self, _cx: &mut node::Cx<'a>) -> node::JsResult<'a, Self::ResultType> {
         panic!("deliberate panic");
     }
 

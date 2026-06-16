@@ -41,15 +41,15 @@ struct ArrayBuilder<'a> {
 }
 
 impl<'a> ArrayBuilder<'a> {
-    fn new(cx: &mut impl Context<'a>) -> Self {
+    fn new(cx: &mut Cx<'a>) -> Self {
         Self {
             array: cx.empty_array(),
             len: 0,
         }
     }
 
-    fn push(&mut self, value: Handle<'a, impl Value>, cx: &mut impl Context<'a>) -> NeonResult<()> {
-        self.array.set(cx, self.len, value)?;
+    fn push(&mut self, value: Handle<'a, impl Value>, cx: &mut Cx<'a>) -> NeonResult<()> {
+        self.array.prop(cx, self.len).set(value)?;
         self.len += 1;
         Ok(())
     }
@@ -65,7 +65,7 @@ struct SealedSenderMultiRecipientMessage<'a>(SealedSenderV2SentMessage<'a>);
 impl<'a, 'b> ResultTypeInfo<'a> for SealedSenderMultiRecipientMessage<'b> {
     type ResultType = JsObject;
 
-    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
         let messages = self.0;
         let recipient_map = cx.empty_object();
         let mut excluded_recipients_array = ArrayBuilder::new(cx);
@@ -96,21 +96,28 @@ impl<'a, 'b> ResultTypeInfo<'a> for SealedSenderMultiRecipientMessage<'b> {
             let range_len = cx.number(u32::try_from(range.len()).expect("message too large"));
 
             let recipient_object = cx.empty_object();
+            let device_ids: Handle<JsArray> = device_ids.into();
+            let registration_ids: Handle<JsArray> = registration_ids.into();
             recipient_object
-                .set(cx, "deviceIds", device_ids.into())
+                .prop(cx, "deviceIds")
+                .set(device_ids)
                 .expect("failed to construct recipient object");
             recipient_object
-                .set(cx, "registrationIds", registration_ids.into())
+                .prop(cx, "registrationIds")
+                .set(registration_ids)
                 .expect("failed to construct recipient object");
             recipient_object
-                .set(cx, "rangeOffset", range_start)
+                .prop(cx, "rangeOffset")
+                .set(range_start)
                 .expect("failed to construct recipient object");
             recipient_object
-                .set(cx, "rangeLen", range_len)
+                .prop(cx, "rangeLen")
+                .set(range_len)
                 .expect("failed to construct recipient object");
 
             recipient_map
-                .set(cx, service_id_string, recipient_object)
+                .prop(cx, service_id_string)
+                .set(recipient_object)
                 .expect("failed to record recipient object");
         }
 
@@ -119,13 +126,17 @@ impl<'a, 'b> ResultTypeInfo<'a> for SealedSenderMultiRecipientMessage<'b> {
 
         let result = cx.empty_object();
         result
-            .set(cx, "recipientMap", recipient_map)
+            .prop(cx, "recipientMap")
+            .set(recipient_map)
+            .expect("failed to construct result object");
+        let excluded_recipients_array: Handle<JsArray> = excluded_recipients_array.into();
+        result
+            .prop(cx, "excludedRecipients")
+            .set(excluded_recipients_array)
             .expect("failed to construct result object");
         result
-            .set(cx, "excludedRecipients", excluded_recipients_array.into())
-            .expect("failed to construct result object");
-        result
-            .set(cx, "offsetOfSharedData", offset_of_shared_bytes)
+            .prop(cx, "offsetOfSharedData")
+            .set(offset_of_shared_bytes)
             .expect("failed to construct result object");
 
         Ok(result)
