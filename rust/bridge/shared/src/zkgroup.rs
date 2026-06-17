@@ -3,6 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::num::NonZeroUsize;
+use std::ops::Deref;
+
 use ::zkgroup;
 use backups::BackupCredentialType;
 use libsignal_bridge_macros::*;
@@ -17,6 +20,7 @@ use zkgroup::backups::{
     BackupAuthCredentialRequestContext, BackupAuthCredentialResponse, BackupLevel,
 };
 use zkgroup::call_links::*;
+use zkgroup::donations::*;
 use zkgroup::generic_server_params::*;
 use zkgroup::groups::*;
 use zkgroup::profiles::*;
@@ -1468,4 +1472,120 @@ fn AvatarUploadCredentialPresentation_GetRedemptionTime(presentation_bytes: &[u8
         bincode::deserialize::<AvatarUploadCredentialPresentation>(presentation_bytes)
             .expect("should have been parsed previously");
     presentation.redemption_time()
+}
+
+#[bridge_fn]
+fn DonationPermit_CheckValidContents(buffer: &[u8]) -> Result<(), ZkGroupDeserializationFailure> {
+    libsignal_bridge_types::zkgroup::validate_serialization::<DonationPermit>(buffer)
+}
+#[bridge_fn]
+fn DonationPermitDerivedKeyPair_CheckValidContents(
+    buffer: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    libsignal_bridge_types::zkgroup::validate_serialization::<DonationPermitDerivedKeyPair>(buffer)
+}
+#[bridge_fn]
+fn DonationPermitRequest_CheckValidContents(
+    buffer: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    libsignal_bridge_types::zkgroup::validate_serialization::<DonationPermitRequest>(buffer)
+}
+#[bridge_fn]
+fn DonationPermitRequestContext_CheckValidContents(
+    buffer: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    libsignal_bridge_types::zkgroup::validate_serialization::<DonationPermitRequestContext>(buffer)
+}
+#[bridge_fn]
+fn DonationPermitResponse_CheckValidContents(
+    buffer: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    libsignal_bridge_types::zkgroup::validate_serialization::<DonationPermitResponse>(buffer)
+}
+
+#[bridge_fn(node = false, ffi = false)]
+fn DonationPermitRequestContext_NewDeterministic(
+    count: i32,
+    randomness: &[u8; RANDOMNESS_LEN],
+) -> Vec<u8> /*DonationPermitRequestContext*/
+{
+    let count = usize::try_from(count)
+        .ok()
+        .and_then(NonZeroUsize::new)
+        .expect("invalid permit count");
+    zkgroup::serialize(&DonationPermitRequestContext::new(count, *randomness))
+}
+
+#[bridge_fn(node = false, ffi = false)]
+fn DonationPermitRequestContext_Request(ctx: Vec<u8>, // DonationPermitRequestContext
+) -> Vec<u8> /* DonationPermitRequest*/ {
+    zkgroup::serialize(
+        &zkgroup::deserialize::<DonationPermitRequestContext>(&ctx)
+            .expect("valid serialization")
+            .request(),
+    )
+}
+
+#[bridge_fn(node = false, ffi = false)]
+fn DonationPermitDerivedKeyPair_ForExpiration(
+    timestamp: Timestamp,
+    root: BridgeHandleRef<'_, ServerSecretParams>,
+) -> Vec<u8> /*DonationPermitDerivedKeyPair*/ {
+    zkgroup::serialize(&DonationPermitDerivedKeyPair::for_expiration(
+        timestamp,
+        root.deref(),
+    ))
+}
+
+#[bridge_fn(node = false, ffi = false)]
+fn DonationPermitResponse_IssueDeterministic(
+    request: Vec<u8>,  // DonationPermitRequest
+    key_pair: Vec<u8>, // DonationPermitDerivedKeyPair
+    seed: &[u8; RANDOMNESS_LEN],
+) -> Vec<u8> /* DonationPermitResponse */ {
+    let request: DonationPermitRequest =
+        zkgroup::deserialize(&request).expect("valid serialization");
+    let key_pair: DonationPermitDerivedKeyPair =
+        zkgroup::deserialize(&key_pair).expect("valid serializaton");
+    zkgroup::serialize(&DonationPermitResponse::issue(request, &key_pair, *seed))
+}
+
+#[bridge_fn(node = false, ffi = false)]
+fn DonationPermitResponse_GetExpiration(response: Vec<u8>, // DonationPermitResponse
+) -> Timestamp {
+    let response: DonationPermitResponse =
+        zkgroup::deserialize(&response).expect("valid serialization");
+    response.expiration()
+}
+
+#[bridge_fn(node = false, ffi = false)]
+fn DonationPermitRequestContext_Receive(
+    context: Vec<u8>,  // DonationPermitRequestContext
+    response: Vec<u8>, // DonationPermitResponse
+    public: BridgeHandleRef<'_, ServerPublicParams>,
+    now: Timestamp,
+) -> Result<Vec<Vec<u8> /*DonationPermit*/>, ZkGroupVerificationFailure> {
+    let context: DonationPermitRequestContext =
+        zkgroup::deserialize(&context).expect("valid serialization");
+    let response: DonationPermitResponse =
+        zkgroup::deserialize(&response).expect("valid serialization");
+    let permits = context.receive(response, *public, now)?;
+    Ok(permits.iter().map(zkgroup::serialize).collect())
+}
+
+#[bridge_fn(node = false, ffi = false)]
+fn DonationPermit_Verify(
+    permit: Vec<u8>, // DonationPermit
+    now: Timestamp,
+    key_pair: Vec<u8>, // DonationPermitDerivedKeyPair
+) -> Result<(), ZkGroupVerificationFailure> {
+    let permit: DonationPermit = zkgroup::deserialize(&permit).expect("valid serialization");
+    let key_pair: DonationPermitDerivedKeyPair =
+        zkgroup::deserialize(&key_pair).expect("valid serialization");
+    permit.verify(now, &key_pair)
+}
+
+#[bridge_fn(node = false, ffi = false)]
+fn DonationPermitResponse_DefaultExpiration(current_time: Timestamp) -> Timestamp {
+    DonationPermitResponse::default_expiration(current_time)
 }

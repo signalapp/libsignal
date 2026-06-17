@@ -485,6 +485,37 @@ internal object Native {
   public external fun DeviceTransfer_GeneratePrivateKey(): ByteArray
 
   @JvmStatic @Throws(Exception::class)
+  public external fun DonationPermitDerivedKeyPair_CheckValidContents(buffer: ByteArray): Unit
+  @JvmStatic
+  public external fun DonationPermitDerivedKeyPair_ForExpiration(timestamp: Long, root: SimpleOwner): ByteArray
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun DonationPermitRequestContext_CheckValidContents(buffer: ByteArray): Unit
+  @JvmStatic
+  public external fun DonationPermitRequestContext_NewDeterministic(count: Int, randomness: ByteArray): ByteArray
+  @JvmStatic @Throws(Exception::class)
+  public external fun DonationPermitRequestContext_Receive(context: ByteArray, response: ByteArray, public_: SimpleOwner, now: Long): Array<Object>
+  @JvmStatic
+  public external fun DonationPermitRequestContext_Request(ctx: ByteArray): ByteArray
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun DonationPermitRequest_CheckValidContents(buffer: ByteArray): Unit
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun DonationPermitResponse_CheckValidContents(buffer: ByteArray): Unit
+  @JvmStatic
+  public external fun DonationPermitResponse_DefaultExpiration(currentTime: Long): Long
+  @JvmStatic
+  public external fun DonationPermitResponse_GetExpiration(response: ByteArray): Long
+  @JvmStatic
+  public external fun DonationPermitResponse_IssueDeterministic(request: ByteArray, keyPair: ByteArray, seed: ByteArray): ByteArray
+
+  @JvmStatic @Throws(Exception::class)
+  public external fun DonationPermit_CheckValidContents(buffer: ByteArray): Unit
+  @JvmStatic @Throws(Exception::class)
+  public external fun DonationPermit_Verify(permit: ByteArray, now: Long, keyPair: ByteArray): Unit
+
+  @JvmStatic @Throws(Exception::class)
   public external fun ECPrivateKey_Agree(privateKey: ObjectHandle, publicKey: ObjectHandle): ByteArray
   @JvmStatic @Throws(Exception::class)
   public external fun ECPrivateKey_Deserialize(data: ByteArray): ObjectHandle

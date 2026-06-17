@@ -65,7 +65,7 @@ public class FilterExceptions {
     void accept(long value) throws Exception;
   }
 
-  private static AssertionError reportUnexpectedException(Exception e) {
+  public static AssertionError reportUnexpectedException(Exception e) {
     String message = "Unexpected checked exception " + e.getClass();
     Log.e("libsignal", message, e);
     return new AssertionError(message, e);

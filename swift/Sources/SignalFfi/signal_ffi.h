@@ -2023,6 +2023,16 @@ SignalFfiError *signal_device_transfer_generate_private_key(SignalOwnedBuffer *o
 
 SignalFfiError *signal_device_transfer_generate_private_key_with_format(SignalOwnedBuffer *out, uint8_t key_format);
 
+SignalFfiError *signal_donation_permit_check_valid_contents(SignalBorrowedBuffer buffer);
+
+SignalFfiError *signal_donation_permit_derived_key_pair_check_valid_contents(SignalBorrowedBuffer buffer);
+
+SignalFfiError *signal_donation_permit_request_check_valid_contents(SignalBorrowedBuffer buffer);
+
+SignalFfiError *signal_donation_permit_request_context_check_valid_contents(SignalBorrowedBuffer buffer);
+
+SignalFfiError *signal_donation_permit_response_check_valid_contents(SignalBorrowedBuffer buffer);
+
 SignalFfiError *signal_encrypt_message(SignalMutPointerCiphertextMessage *out, SignalBorrowedBuffer ptext, SignalConstPointerProtocolAddress protocol_address, SignalConstPointerProtocolAddress local_address, SignalConstPointerFfiSessionStoreStruct session_store, SignalConstPointerFfiIdentityKeyStoreStruct identity_key_store, uint64_t now);
 
 void signal_error_free(SignalFfiError *err);

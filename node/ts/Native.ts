@@ -733,6 +733,19 @@ type NativeFunctions = {
   DecryptionErrorMessage_Serialize: (
     obj: Wrapper<DecryptionErrorMessage>
   ) => Uint8Array<ArrayBuffer>;
+  DonationPermitDerivedKeyPair_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  DonationPermitRequestContext_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  DonationPermitRequest_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  DonationPermitResponse_CheckValidContents: (
+    buffer: Uint8Array<ArrayBuffer>
+  ) => void;
+  DonationPermit_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>) => void;
   ExpiringProfileKeyCredentialResponse_CheckValidContents: (
     buffer: Uint8Array<ArrayBuffer>
   ) => void;
@@ -2629,6 +2642,11 @@ const {
   DecryptionErrorMessage_GetRatchetKey,
   DecryptionErrorMessage_GetTimestamp,
   DecryptionErrorMessage_Serialize,
+  DonationPermitDerivedKeyPair_CheckValidContents,
+  DonationPermitRequestContext_CheckValidContents,
+  DonationPermitRequest_CheckValidContents,
+  DonationPermitResponse_CheckValidContents,
+  DonationPermit_CheckValidContents,
   ExpiringProfileKeyCredentialResponse_CheckValidContents,
   ExpiringProfileKeyCredential_CheckValidContents,
   ExpiringProfileKeyCredential_GetExpirationTime,
@@ -3257,6 +3275,11 @@ export {
   DecryptionErrorMessage_GetRatchetKey,
   DecryptionErrorMessage_GetTimestamp,
   DecryptionErrorMessage_Serialize,
+  DonationPermitDerivedKeyPair_CheckValidContents,
+  DonationPermitRequestContext_CheckValidContents,
+  DonationPermitRequest_CheckValidContents,
+  DonationPermitResponse_CheckValidContents,
+  DonationPermit_CheckValidContents,
   ExpiringProfileKeyCredentialResponse_CheckValidContents,
   ExpiringProfileKeyCredential_CheckValidContents,
   ExpiringProfileKeyCredential_GetExpirationTime,

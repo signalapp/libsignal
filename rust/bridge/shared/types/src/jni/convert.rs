@@ -2536,6 +2536,17 @@ impl<'a> ResultTypeInfo<'a> for Vec<ServiceId> {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for Vec<Vec<u8>> {
+    type ResultType = JObjectArray<'a>;
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let element_type = JByteArray::lookup_class(env, &loader_context().unwrap_or_default())
+            .check_exceptions(env, "Vec<Vec<u8>>::convert_into()")?;
+        make_object_array_mapped(env, &element_type, self, |env, x| {
+            Ok(x.convert_into(env)?.into())
+        })
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for &'_ libsignal_net_chat::api::messages::MismatchedDeviceError {
     type ResultType = JObject<'a>;
 
@@ -2624,6 +2635,18 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::registration::RegisterR
                 ) -> void),
         )
         .check_exceptions(env, "RegisterResponseBadge::convert_into")
+    }
+}
+
+impl<'a, T: FixedLengthBincodeSerializable + serde::Serialize> ResultTypeInfo<'a>
+    for Vec<Serialized<T>>
+{
+    type ResultType = JObjectArray<'a>;
+
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let element_class = find_class(env, ClassName("java.lang.Object"))
+            .check_exceptions(env, "Vec<Serialized<T>>::convert_into")?;
+        make_object_array(env, element_class, self)
     }
 }
 
@@ -3181,6 +3204,9 @@ macro_rules! jni_result_type {
     (std::result::Result<$($rest:tt)+) => {
         jni_result_type!(Result<$($rest)+)
     };
+    (Result<Vec<Vec<u8> > $(, $_:ty)?>) => {
+        $crate::jni::Throwing<::jni::objects::JObjectArray<'local>>
+    };
     (Result<$typ:tt $(, $_:ty)?>) => {
         $crate::jni::Throwing<jni_result_type!($typ)>
     };
@@ -3263,6 +3289,9 @@ macro_rules! jni_result_type {
     };
     (Vec<u8>) => {
         ::jni::objects::JByteArray<'local>
+    };
+    (Vec<Vec<u8> >) => {
+        ::jni::objects::JObjectArray<'local>
     };
     (bytes::Bytes) => {
         ::jni::objects::JByteArray<'local>
