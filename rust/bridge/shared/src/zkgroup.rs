@@ -1589,3 +1589,10 @@ fn DonationPermit_Verify(
 fn DonationPermitResponse_DefaultExpiration(current_time: Timestamp) -> Timestamp {
     DonationPermitResponse::default_expiration(current_time)
 }
+
+#[bridge_fn(node = false, ffi = false)]
+fn DonationPermit_SpendId(donation_permit: Vec<u8> /*DonationPermit*/) -> Vec<u8> {
+    let donation_permit: DonationPermit =
+        zkgroup::deserialize(&donation_permit).expect("valid serialization");
+    donation_permit.spend_id().to_vec()
+}

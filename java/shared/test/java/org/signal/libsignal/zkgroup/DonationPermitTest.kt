@@ -24,7 +24,10 @@ class DonationPermitTest {
   private fun issuePermits(count: Int): List<DonationPermit> {
     val context = DonationPermitRequestContext.forCount(count)
     val response = context.request().issue(keyPair)
-    return context.receive(response, public, now)
+    assertEquals(response.expiration, expiration)
+    val permits = context.receive(response, public, now)
+    assertEquals(permits.map { it.spendId.toList() }.distinct().size, permits.size)
+    return permits
   }
 
   private fun issueOnePermit(): DonationPermit = issuePermits(1).single()

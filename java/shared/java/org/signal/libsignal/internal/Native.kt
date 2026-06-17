@@ -512,6 +512,8 @@ internal object Native {
 
   @JvmStatic @Throws(Exception::class)
   public external fun DonationPermit_CheckValidContents(buffer: ByteArray): Unit
+  @JvmStatic
+  public external fun DonationPermit_SpendId(donationPermit: ByteArray): ByteArray
   @JvmStatic @Throws(Exception::class)
   public external fun DonationPermit_Verify(permit: ByteArray, now: Long, keyPair: ByteArray): Unit
 

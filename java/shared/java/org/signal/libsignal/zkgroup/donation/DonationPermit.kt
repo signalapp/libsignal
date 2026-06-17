@@ -35,6 +35,12 @@ public class DonationPermit : org.signal.libsignal.zkgroup.internal.ByteArray {
       Native.DonationPermit_Verify(contents, now.epochSecond, keyPair.internalContentsForJNI)
     }
   }
+
+  public val spendId: ByteArray by lazy {
+    filterAllExceptions {
+      Native.DonationPermit_SpendId(contents)
+    }
+  }
 }
 
 public class DonationPermitDerivedKeyPair : org.signal.libsignal.zkgroup.internal.ByteArray {
