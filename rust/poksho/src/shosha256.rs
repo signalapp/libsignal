@@ -5,8 +5,6 @@
 
 // implements the "innerpad" SHO/SHA256 proposal
 
-use std::cmp;
-
 use sha2::{Digest, Sha256};
 
 use crate::shoapi::ShoApi;
@@ -61,25 +59,22 @@ impl ShoApi for ShoSha256 {
         self.mode = Mode::RATCHETED;
     }
 
-    fn squeeze_and_ratchet_into(&mut self, mut target: &mut [u8]) {
+    fn squeeze_and_ratchet_into(&mut self, target: &mut [u8]) {
         assert!(self.mode == Mode::RATCHETED);
         let mut output_hasher_prefix = Sha256::new();
         // Explicitly pass a slice to avoid generating multiple versions of update().
         output_hasher_prefix.update(&[0u8; BLOCK_LEN - 1][..]);
         output_hasher_prefix.update(&[1u8][..]); // domain separator byte
         output_hasher_prefix.update(self.cv);
-        let mut i = 0;
         let outlen = target.len();
 
-        while i * HASH_LEN < outlen {
+        // Iterating over chunks (rather than computing `i * HASH_LEN`) avoids a
+        // theoretical `usize` multiplication overflow for very large `outlen`.
+        for (i, chunk) in target.chunks_mut(HASH_LEN).enumerate() {
             let mut output_hasher = output_hasher_prefix.clone();
             output_hasher.update((i as u64).to_be_bytes());
             let digest = output_hasher.finalize();
-            let num_bytes = cmp::min(HASH_LEN, outlen - i * HASH_LEN);
-            let (output, tail) = target.split_at_mut(num_bytes);
-            output.copy_from_slice(&digest[0..num_bytes]);
-            target = tail;
-            i += 1
+            chunk.copy_from_slice(&digest[..chunk.len()]);
         }
 
         let mut next_hasher = Sha256::new();
