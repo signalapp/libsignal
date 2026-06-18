@@ -22,13 +22,20 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+
     strategy:
       matrix:
         os: [windows-latest-8-cores, macos-15-xlarge]
         include:
         - os: macos-15-xlarge
+          platform: darwin
           rust-cross-target: x86_64-apple-darwin
         - os: windows-latest-8-cores
+          platform: win32
           rust-cross-target: aarch64-pc-windows-msvc
         # Ubuntu binaries are built using Docker, below
 
@@ -84,6 +91,11 @@ jobs:
       run: npm run build -- --arch arm64 --copy-to-prebuilds
       working-directory: node
 
+    - name: Generate arm64 attestation
+      uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+      with:
+        subject-path: node/prebuilds/${{ matrix.platform }}-arm64/@signalapp+libsignal-client.node
+
     - name: Save arm64 debug info
       run: mv build/Release/*-debuginfo.* .
       working-directory: node
@@ -92,6 +104,11 @@ jobs:
     - name: Build for x64
       run: npm run build -- --arch x64 --copy-to-prebuilds
       working-directory: node
+
+    - name: Generate x64 attestation
+      uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+      with:
+        subject-path: node/prebuilds/${{ matrix.platform }}-x64/@signalapp+libsignal-client.node
 
     - name: Save x64 debug info
       run: mv build/Release/*-debuginfo.* .
@@ -117,6 +134,11 @@ jobs:
 
     runs-on: ubuntu-latest-8-cores
 
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+
     timeout-minutes: 45
 
     steps:
@@ -125,6 +147,16 @@ jobs:
         submodules: recursive
 
     - run: node/docker-prebuildify.sh
+
+    - name: Generate x64 attestation
+      uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+      with:
+        subject-path: node/prebuilds/linux-x64/@signalapp+libsignal-client.node
+
+    - name: Generate arm64 attestation
+      uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+      with:
+        subject-path: node/prebuilds/linux-arm64/@signalapp+libsignal-client.node
 
     - name: Upload library
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -227,7 +259,7 @@ jobs:
       env:
         PREBUILDS_ONLY: 1
 
-    - run: npm publish --tag '${{ github.event.inputs.npm_tag }}' --access public ${{ inputs.dry_run && '--dry-run' || ''}}
+    - run: npm publish --tag '${{ github.event.inputs.npm_tag }}' --access public ${{ inputs.dry_run && '--dry-run' || ''}} --provenance
       working-directory: node
 
     # This step is expected to fail if not run on a tag.
