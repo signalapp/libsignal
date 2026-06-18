@@ -17,6 +17,7 @@ import java.security.SecureRandom
 import java.time.Instant
 import kotlin.jvm.Throws
 
+/** A single use bearer token sent by the client to the donation endpoint. */
 public class DonationPermit : org.signal.libsignal.zkgroup.internal.ByteArray {
   @Throws(InvalidInputException::class)
   public constructor(contents: ByteArray) : super(contents) {
@@ -25,6 +26,12 @@ public class DonationPermit : org.signal.libsignal.zkgroup.internal.ByteArray {
     }
   }
 
+  /**
+   * Verifies this permit under the matching key pair.
+   *
+   * This also checks the permit's expiration window. It does not prevent reuse. The consuming server
+   * must separately record spent IDs.
+   */
   @Throws(VerificationFailedException::class)
   @JvmOverloads
   public fun verify(
@@ -36,6 +43,18 @@ public class DonationPermit : org.signal.libsignal.zkgroup.internal.ByteArray {
     }
   }
 
+  /** The expiration embedded in this permit. The consuming server uses it to select the key. */
+  public val expiration: Instant by lazy {
+    filterAllExceptions {
+      Instant.ofEpochSecond(Native.DonationPermit_Expiration(contents))
+    }
+  }
+
+  /**
+   * The spend ID for this permit.
+   *
+   * The consuming server should scope spent ID storage to this permit's expiration.
+   */
   public val spendId: ByteArray by lazy {
     filterAllExceptions {
       Native.DonationPermit_SpendId(contents)
@@ -43,6 +62,11 @@ public class DonationPermit : org.signal.libsignal.zkgroup.internal.ByteArray {
   }
 }
 
+/**
+ * A key pair derived from the server's root secret for a permit expiration.
+ *
+ * The same derived key pair issues permits and verifies them.
+ */
 public class DonationPermitDerivedKeyPair : org.signal.libsignal.zkgroup.internal.ByteArray {
   @Throws(InvalidInputException::class)
   public constructor(contents: ByteArray) : super(contents) {
@@ -52,6 +76,9 @@ public class DonationPermitDerivedKeyPair : org.signal.libsignal.zkgroup.interna
   }
 
   public companion object {
+    /**
+     * Derives the key pair for a permit expiration from the server root secret.
+     */
     @JvmStatic
     public fun forExpiration(
       expiration: Instant,
@@ -63,6 +90,7 @@ public class DonationPermitDerivedKeyPair : org.signal.libsignal.zkgroup.interna
   }
 }
 
+/** The blinded request sent from the client to the issuing server over the authenticated channel. */
 public class DonationPermitRequest : org.signal.libsignal.zkgroup.internal.ByteArray {
   @Throws(InvalidInputException::class)
   public constructor(contents: ByteArray) : super(contents) {
@@ -71,6 +99,23 @@ public class DonationPermitRequest : org.signal.libsignal.zkgroup.internal.ByteA
     }
   }
 
+  /**
+   * The number of blinded points in the request.
+   *
+   * The issuing server can use this to cap the batch size before issuing permits.
+   */
+  public val permitCount: Int by lazy {
+    filterAllExceptions {
+      Native.DonationPermitRequest_Len(contents)
+    }
+  }
+
+  /**
+   * Issues permits for this request.
+   *
+   * This blindly signs every point in the request. The issuing server is responsible for policy
+   * checks before calling this.
+   */
   @JvmOverloads
   public fun issue(
     keyPair: DonationPermitDerivedKeyPair,
@@ -88,6 +133,12 @@ public class DonationPermitRequest : org.signal.libsignal.zkgroup.internal.ByteA
   }
 }
 
+/**
+ * Client local state used while obtaining permits.
+ *
+ * The context contains nonces and blinding scalars. Keep it only until the issuing server responds.
+ * It is needed to unblind the response. Store the permits, not this context.
+ */
 public class DonationPermitRequestContext : org.signal.libsignal.zkgroup.internal.ByteArray {
   @Throws(InvalidInputException::class)
   public constructor(contents: ByteArray) : super(contents) {
@@ -96,9 +147,17 @@ public class DonationPermitRequestContext : org.signal.libsignal.zkgroup.interna
     }
   }
 
+  /**
+   * Produces the blinded request to send to the issuing server over the authenticated channel.
+   */
   public fun request(): DonationPermitRequest =
     filterAllExceptions { DonationPermitRequest(Native.DonationPermitRequestContext_Request(contents)) }
 
+  /**
+   * Verifies the issuing server's response against the pinned root public key.
+   *
+   * This checks the expiration window and unblinds one permit per requested nonce.
+   */
   @Throws(VerificationFailedException::class)
   @JvmOverloads
   public fun receive(
@@ -123,7 +182,7 @@ public class DonationPermitRequestContext : org.signal.libsignal.zkgroup.interna
 
   public companion object {
     /**
-     * Construct a [DonationPermitRequestContext] from a given permit count and secure random
+     * Creates a client request context for a given permit count.
      *
      * @param count must be > 0
      */
@@ -144,6 +203,7 @@ public class DonationPermitRequestContext : org.signal.libsignal.zkgroup.interna
   }
 }
 
+/** The issuing server's response to a donation permit request. */
 public class DonationPermitResponse : org.signal.libsignal.zkgroup.internal.ByteArray {
   @Throws(InvalidInputException::class)
   public constructor(contents: ByteArray) : super(contents) {
@@ -152,6 +212,7 @@ public class DonationPermitResponse : org.signal.libsignal.zkgroup.internal.Byte
     }
   }
 
+  /** The shared expiration for the permits in this response. */
   public val expiration: Instant by lazy {
     Instant.ofEpochSecond(
       Native.DonationPermitResponse_GetExpiration(contents),
@@ -159,6 +220,9 @@ public class DonationPermitResponse : org.signal.libsignal.zkgroup.internal.Byte
   }
 
   public companion object {
+    /**
+     * Returns the default day aligned expiration for a response created at [currentTime].
+     */
     @JvmOverloads
     @JvmStatic
     public fun defaultExpiration(currentTime: Instant = Instant.now()): Instant =

@@ -1,3 +1,3 @@
 v0.96.2
 
-- Expose DonationPermit to JNI
+- Expose DonationPermit to clients

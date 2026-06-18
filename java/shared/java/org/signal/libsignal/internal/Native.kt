@@ -494,12 +494,14 @@ internal object Native {
   @JvmStatic
   public external fun DonationPermitRequestContext_NewDeterministic(count: Int, randomness: ByteArray): ByteArray
   @JvmStatic @Throws(Exception::class)
-  public external fun DonationPermitRequestContext_Receive(context: ByteArray, response: ByteArray, public_: SimpleOwner, now: Long): Array<Object>
+  public external fun DonationPermitRequestContext_Receive(context: ByteArray, response: ByteArray, publicParams: SimpleOwner, now: Long): Array<ByteArray>
   @JvmStatic
   public external fun DonationPermitRequestContext_Request(ctx: ByteArray): ByteArray
 
   @JvmStatic @Throws(Exception::class)
   public external fun DonationPermitRequest_CheckValidContents(buffer: ByteArray): Unit
+  @JvmStatic
+  public external fun DonationPermitRequest_Len(donationPermitRequest: ByteArray): Int
 
   @JvmStatic @Throws(Exception::class)
   public external fun DonationPermitResponse_CheckValidContents(buffer: ByteArray): Unit
@@ -512,6 +514,8 @@ internal object Native {
 
   @JvmStatic @Throws(Exception::class)
   public external fun DonationPermit_CheckValidContents(buffer: ByteArray): Unit
+  @JvmStatic
+  public external fun DonationPermit_Expiration(donationPermit: ByteArray): Long
   @JvmStatic
   public external fun DonationPermit_SpendId(donationPermit: ByteArray): ByteArray
   @JvmStatic @Throws(Exception::class)

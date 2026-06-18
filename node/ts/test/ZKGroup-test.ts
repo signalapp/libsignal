@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { assert } from 'chai';
+import { assert, expect } from 'chai';
 import { Buffer } from 'node:buffer';
 
 import {
@@ -60,6 +60,10 @@ import {
   ReceiptCredentialResponse,
   BackupLevel,
   BackupCredentialType,
+  DonationPermit,
+  DonationPermitDerivedKeyPair,
+  DonationPermitResponse,
+  DonationPermitRequestContext,
 } from '../zkgroup/index.js';
 import { Aci, Pni } from '../Address.js';
 import { LibSignalErrorBase, Uuid } from '../index.js';
@@ -1048,5 +1052,64 @@ describe('ZKGroup', () => {
 
     // Check that the token generated from the CallLinkSecretParams includes bob, the remote user.
     fullToken.verify([bobAci], verifyKey);
+  });
+});
+
+describe('DonationPermit', () => {
+  class Config {
+    secret: ServerSecretParams;
+    publicParams: ServerPublicParams;
+    now: Date;
+    expiration: Date;
+    keyPair: DonationPermitDerivedKeyPair;
+    constructor() {
+      this.secret = ServerSecretParams.generate();
+      this.publicParams = this.secret.getPublicParams();
+      this.now = new Date(1_600_000_000 * 1000);
+      this.expiration = DonationPermitResponse.defaultExpiration(this.now);
+      this.keyPair = DonationPermitDerivedKeyPair.forExpiration(
+        this.expiration,
+        this.secret
+      );
+    }
+    issuePermits(count: number): DonationPermit[] {
+      const context = DonationPermitRequestContext.forCount(count);
+      const response = context.request().issue(this.keyPair);
+      expect(response.expiration.getTime()).to.equal(this.expiration.getTime());
+      const permits = context.receive(response, this.publicParams, this.now);
+      const uniqueSpendIds = new Set(
+        permits.map((permit) =>
+          Buffer.from(permit.getSpendId()).toString('hex')
+        )
+      );
+      expect(uniqueSpendIds.size).to.equal(permits.length);
+      return permits;
+    }
+    issueOnePermit() {
+      return this.issuePermits(1)[0];
+    }
+  }
+  it('default flow', () => {
+    const config = new Config();
+    for (const count of [3, 10, 100]) {
+      const permits = config.issuePermits(count);
+      expect(permits.length).to.equal(count);
+      for (const permit of permits) {
+        permit.verify(config.keyPair, config.now);
+      }
+    }
+  });
+  it('wrong key fails', () => {
+    const config = new Config();
+    const permit = config.issueOnePermit();
+    const otherSecret = ServerSecretParams.generate();
+    const wrongKey = DonationPermitDerivedKeyPair.forExpiration(
+      config.expiration,
+      otherSecret
+    );
+    // We only throw a generic error message
+    expect(() => permit.verify(wrongKey, config.now)).to.throw(
+      LibSignalErrorBase
+    );
   });
 });

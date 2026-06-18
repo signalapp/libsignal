@@ -736,16 +736,58 @@ type NativeFunctions = {
   DonationPermitDerivedKeyPair_CheckValidContents: (
     buffer: Uint8Array<ArrayBuffer>
   ) => void;
+  DonationPermitDerivedKeyPair_ForExpiration: (
+    timestamp: Timestamp,
+    root: Wrapper<ServerSecretParams>
+  ) => Uint8Array<ArrayBuffer>;
   DonationPermitRequestContext_CheckValidContents: (
     buffer: Uint8Array<ArrayBuffer>
   ) => void;
+  DonationPermitRequestContext_NewDeterministic: (
+    count: number,
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  DonationPermitRequestContext_Receive: (
+    context: Uint8Array<ArrayBuffer>,
+    response: Uint8Array<ArrayBuffer>,
+    public_params: Wrapper<ServerPublicParams>,
+    now: Timestamp
+  ) => Array<Uint8Array<ArrayBuffer>>;
+  DonationPermitRequestContext_Request: (
+    ctx: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
   DonationPermitRequest_CheckValidContents: (
     buffer: Uint8Array<ArrayBuffer>
   ) => void;
+  DonationPermitRequest_Len: (
+    donation_permit_request: Uint8Array<ArrayBuffer>
+  ) => number;
   DonationPermitResponse_CheckValidContents: (
     buffer: Uint8Array<ArrayBuffer>
   ) => void;
+  DonationPermitResponse_DefaultExpiration: (
+    current_time: Timestamp
+  ) => Timestamp;
+  DonationPermitResponse_GetExpiration: (
+    response: Uint8Array<ArrayBuffer>
+  ) => Timestamp;
+  DonationPermitResponse_IssueDeterministic: (
+    request: Uint8Array<ArrayBuffer>,
+    key_pair: Uint8Array<ArrayBuffer>,
+    seed: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
   DonationPermit_CheckValidContents: (buffer: Uint8Array<ArrayBuffer>) => void;
+  DonationPermit_Expiration: (
+    donation_permit: Uint8Array<ArrayBuffer>
+  ) => Timestamp;
+  DonationPermit_SpendId: (
+    donation_permit: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  DonationPermit_Verify: (
+    permit: Uint8Array<ArrayBuffer>,
+    now: Timestamp,
+    key_pair: Uint8Array<ArrayBuffer>
+  ) => void;
   ExpiringProfileKeyCredentialResponse_CheckValidContents: (
     buffer: Uint8Array<ArrayBuffer>
   ) => void;
@@ -2643,10 +2685,21 @@ const {
   DecryptionErrorMessage_GetTimestamp,
   DecryptionErrorMessage_Serialize,
   DonationPermitDerivedKeyPair_CheckValidContents,
+  DonationPermitDerivedKeyPair_ForExpiration,
   DonationPermitRequestContext_CheckValidContents,
+  DonationPermitRequestContext_NewDeterministic,
+  DonationPermitRequestContext_Receive,
+  DonationPermitRequestContext_Request,
   DonationPermitRequest_CheckValidContents,
+  DonationPermitRequest_Len,
   DonationPermitResponse_CheckValidContents,
+  DonationPermitResponse_DefaultExpiration,
+  DonationPermitResponse_GetExpiration,
+  DonationPermitResponse_IssueDeterministic,
   DonationPermit_CheckValidContents,
+  DonationPermit_Expiration,
+  DonationPermit_SpendId,
+  DonationPermit_Verify,
   ExpiringProfileKeyCredentialResponse_CheckValidContents,
   ExpiringProfileKeyCredential_CheckValidContents,
   ExpiringProfileKeyCredential_GetExpirationTime,
@@ -3276,10 +3329,21 @@ export {
   DecryptionErrorMessage_GetTimestamp,
   DecryptionErrorMessage_Serialize,
   DonationPermitDerivedKeyPair_CheckValidContents,
+  DonationPermitDerivedKeyPair_ForExpiration,
   DonationPermitRequestContext_CheckValidContents,
+  DonationPermitRequestContext_NewDeterministic,
+  DonationPermitRequestContext_Receive,
+  DonationPermitRequestContext_Request,
   DonationPermitRequest_CheckValidContents,
+  DonationPermitRequest_Len,
   DonationPermitResponse_CheckValidContents,
+  DonationPermitResponse_DefaultExpiration,
+  DonationPermitResponse_GetExpiration,
+  DonationPermitResponse_IssueDeterministic,
   DonationPermit_CheckValidContents,
+  DonationPermit_Expiration,
+  DonationPermit_SpendId,
+  DonationPermit_Verify,
   ExpiringProfileKeyCredentialResponse_CheckValidContents,
   ExpiringProfileKeyCredential_CheckValidContents,
   ExpiringProfileKeyCredential_GetExpirationTime,

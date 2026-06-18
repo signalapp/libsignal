@@ -948,6 +948,14 @@ typedef struct {
   const SignalDecryptionErrorMessage *raw;
 } SignalConstPointerDecryptionErrorMessage;
 
+typedef struct {
+  const SignalServerSecretParams *raw;
+} SignalConstPointerServerSecretParams;
+
+typedef struct {
+  const SignalServerPublicParams *raw;
+} SignalConstPointerServerPublicParams;
+
 /**
  * Like [`std::panic::AssertUnwindSafe`], but FFI-compatible.
  */
@@ -1088,17 +1096,9 @@ typedef struct {
 } SignalConstPointerFfiSenderKeyStoreStruct;
 
 typedef struct {
-  const SignalServerSecretParams *raw;
-} SignalConstPointerServerSecretParams;
-
-typedef struct {
   const SignalBorrowedBuffer *base;
   size_t length;
 } SignalBorrowedSliceOfBuffers;
-
-typedef struct {
-  const SignalServerPublicParams *raw;
-} SignalConstPointerServerPublicParams;
 
 typedef struct {
   SignalHsmEnclaveClient *raw;
@@ -2027,11 +2027,33 @@ SignalFfiError *signal_donation_permit_check_valid_contents(SignalBorrowedBuffer
 
 SignalFfiError *signal_donation_permit_derived_key_pair_check_valid_contents(SignalBorrowedBuffer buffer);
 
+SignalFfiError *signal_donation_permit_derived_key_pair_for_expiration(SignalOwnedBuffer *out, uint64_t timestamp, SignalConstPointerServerSecretParams root);
+
+SignalFfiError *signal_donation_permit_expiration(uint64_t *out, SignalBorrowedBuffer donation_permit);
+
 SignalFfiError *signal_donation_permit_request_check_valid_contents(SignalBorrowedBuffer buffer);
 
 SignalFfiError *signal_donation_permit_request_context_check_valid_contents(SignalBorrowedBuffer buffer);
 
+SignalFfiError *signal_donation_permit_request_context_new_deterministic(SignalOwnedBuffer *out, int32_t count, const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
+
+SignalFfiError *signal_donation_permit_request_context_receive(SignalBytestringArray *out, SignalBorrowedBuffer context, SignalBorrowedBuffer response, SignalConstPointerServerPublicParams public_params, uint64_t now);
+
+SignalFfiError *signal_donation_permit_request_context_request(SignalOwnedBuffer *out, SignalBorrowedBuffer ctx);
+
+SignalFfiError *signal_donation_permit_request_len(int32_t *out, SignalBorrowedBuffer donation_permit_request);
+
 SignalFfiError *signal_donation_permit_response_check_valid_contents(SignalBorrowedBuffer buffer);
+
+SignalFfiError *signal_donation_permit_response_default_expiration(uint64_t *out, uint64_t current_time);
+
+SignalFfiError *signal_donation_permit_response_get_expiration(uint64_t *out, SignalBorrowedBuffer response);
+
+SignalFfiError *signal_donation_permit_response_issue_deterministic(SignalOwnedBuffer *out, SignalBorrowedBuffer request, SignalBorrowedBuffer key_pair, const uint8_t (*seed)[SignalRANDOMNESS_LEN]);
+
+SignalFfiError *signal_donation_permit_spend_id(SignalOwnedBuffer *out, SignalBorrowedBuffer donation_permit);
+
+SignalFfiError *signal_donation_permit_verify(SignalBorrowedBuffer permit, uint64_t now, SignalBorrowedBuffer key_pair);
 
 SignalFfiError *signal_encrypt_message(SignalMutPointerCiphertextMessage *out, SignalBorrowedBuffer ptext, SignalConstPointerProtocolAddress protocol_address, SignalConstPointerProtocolAddress local_address, SignalConstPointerFfiSessionStoreStruct session_store, SignalConstPointerFfiIdentityKeyStoreStruct identity_key_store, uint64_t now);
 

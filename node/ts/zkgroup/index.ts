@@ -83,3 +83,13 @@ export { default as GroupSendEndorsement } from './groupsend/GroupSendEndorsemen
 export { default as GroupSendEndorsementsResponse } from './groupsend/GroupSendEndorsementsResponse.js';
 export { default as GroupSendFullToken } from './groupsend/GroupSendFullToken.js';
 export { default as GroupSendToken } from './groupsend/GroupSendToken.js';
+
+// Donation Permit
+
+export {
+  DonationPermit,
+  DonationPermitResponse,
+  DonationPermitRequestContext,
+  DonationPermitDerivedKeyPair,
+  DonationPermitRequest,
+} from './DonationPermit.js';

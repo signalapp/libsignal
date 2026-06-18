@@ -23,7 +23,9 @@ class DonationPermitTest {
 
   private fun issuePermits(count: Int): List<DonationPermit> {
     val context = DonationPermitRequestContext.forCount(count)
-    val response = context.request().issue(keyPair)
+    val request = context.request()
+    assertEquals(count, request.permitCount)
+    val response = request.issue(keyPair)
     assertEquals(response.expiration, expiration)
     val permits = context.receive(response, public, now)
     assertEquals(permits.map { it.spendId.toList() }.distinct().size, permits.size)
@@ -39,6 +41,7 @@ class DonationPermitTest {
       assertEquals(permits.size, count)
       for (permit in permits) {
         permit.verify(keyPair, now)
+        assertEquals(permit.expiration, expiration)
       }
     }
   }
