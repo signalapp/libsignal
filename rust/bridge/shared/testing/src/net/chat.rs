@@ -476,3 +476,39 @@ fn TESTING_ChatSendErrorConvert(
         TestingChatSendError::RequestHasInvalidHeader => SendError::RequestHasInvalidHeader,
     })
 }
+
+mod grpc_test_cases;
+use grpc_test_cases::*;
+
+mod remote_derives {
+    use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
+
+    use crate::*;
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::devices::test_cases::SetDeviceNameArgs)]
+    pub(super) struct SetDeviceNameArgs {
+        id: u8,
+        encrypted_name: Vec<u8>,
+    }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::devices::test_cases::SetDeviceNameOut)]
+    pub(super) enum SetDeviceNameOut {
+        Success,
+        DeviceNotFound,
+    }
+
+    #[cfg(feature = "ffi")]
+    #[unsafe(no_mangle)]
+    pub unsafe extern "C" fn signal_testing_force_bindgen_to_emit_structs(
+        _: SetDeviceNameArgsFfiResult,
+        _: SetDeviceNameOutFfiResult,
+    ) {
+    }
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_SetDeviceNameTests()
+-> GrpcTestCases<remote_derives::SetDeviceNameArgs, remote_derives::SetDeviceNameOut> {
+    libsignal_net_chat::grpc::devices::test_cases::set_device_name_test_cases().into()
+}

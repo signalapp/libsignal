@@ -71,6 +71,7 @@ export enum ErrorCode {
   MismatchedDevices,
 
   ServiceIdNotFound,
+  DeviceIdNotFound,
 
   UploadTooLarge,
 
@@ -461,6 +462,10 @@ export type RegistrationCredentialsCouldNotBeParsedError =
     code: ErrorCode.RegistrationCredentialsCouldNotBeParsed;
   };
 
+export type DeviceIdNotFound = LibSignalErrorCommon & {
+  code: ErrorCode.DeviceIdNotFound;
+};
+
 /**
  * @throws {ChatServiceInactive} if the chat connection has been closed.
  * @throws {IoError} if an error occurred while communicating with the server.
@@ -534,4 +539,5 @@ export type LibSignalError =
   | RegistrationLockError
   | RegistrationDeviceTransferPossibleNotSkippedError
   | RegistrationRecoveryVerificationFailedError
-  | RegistrationCredentialsCouldNotBeParsedError;
+  | RegistrationCredentialsCouldNotBeParsedError
+  | DeviceIdNotFound;

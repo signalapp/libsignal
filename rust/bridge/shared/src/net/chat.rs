@@ -15,8 +15,8 @@ use libsignal_bridge_types::crypto::RandomNumberGenerator;
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
-use libsignal_core::ServiceId;
 use libsignal_core::curve::PrivateKey;
+use libsignal_core::{DeviceId, ServiceId};
 use libsignal_net::chat::{self, ConnectError, LanguageList, Response as ChatResponse, SendError};
 use libsignal_net_chat::api;
 use libsignal_net_chat::api::backups::{
@@ -32,6 +32,7 @@ use libsignal_net_chat::api::messages::{
 use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
+use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
 use libsignal_net_chat::ws::OverWs;
 use libsignal_protocol::{CiphertextMessage, Timestamp};
 use uuid::Uuid;
@@ -611,6 +612,25 @@ async fn UnauthenticatedChatConnection_backup_delete_all(
     chat.require_grpc()
         .await
         .backup_delete_all(&backup_auth, &mut rng)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_device_name(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    device_id: i32,
+    encrypted_name: Vec<u8>,
+) -> Result<(), RequestError<DeviceIdNotFoundInAccount>> {
+    // TODO: bridge directly as DeviceId
+    let device_id = u8::try_from(device_id)
+        .ok()
+        .and_then(|id| DeviceId::new(id).ok())
+        .ok_or_else(|| RequestError::Unexpected {
+            log_safe: "Invalid device id".to_string(),
+        })?;
+    chat.require_grpc()
+        .await
+        .set_device_name(device_id, &encrypted_name)
         .await
 }
 

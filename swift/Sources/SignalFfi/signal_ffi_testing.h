@@ -17,6 +17,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 #include "signal_ffi.h"
 
 typedef enum {
+  SignalSetDeviceNameOutFfiResultSuccess,
+  SignalSetDeviceNameOutFfiResultDeviceNotFound,
+} SignalSetDeviceNameOutFfiResult;
+
+typedef enum {
   SignalMySimpleTestEnumFfiResultA,
   SignalMySimpleTestEnumFfiResultB,
 } SignalMySimpleTestEnumFfiResult;
@@ -94,6 +99,31 @@ typedef struct {
 typedef struct {
   SignalFakeChatServer *raw;
 } SignalMutPointerFakeChatServer;
+
+typedef struct {
+  void (*destroy)(void*);
+  void *contents;
+} SignalFfiErasedForTesting;
+
+typedef struct {
+  const char *name;
+  const char *method;
+  SignalFfiErasedForTesting request;
+  SignalOwnedBuffer request_grpc;
+  SignalOwnedBuffer response_grpc;
+  SignalFfiErasedForTesting response;
+} SignalGrpcTestCaseBridgedFfi;
+
+/**
+ * A representation of a array allocated on the Rust heap for use in C code.
+ */
+typedef struct {
+  SignalGrpcTestCaseBridgedFfi *base;
+  /**
+   * The number of elements in the buffer (not necessarily the number of bytes).
+   */
+  size_t length;
+} SignalOwnedBufferOfGrpcTestCaseBridgedFfi;
 
 typedef struct {
   SignalOtherTestingHandleType *raw;
@@ -184,6 +214,11 @@ typedef struct {
 typedef struct {
   const SignalFakeChatServer *raw;
 } SignalConstPointerFakeChatServer;
+
+typedef struct {
+  uint8_t id;
+  SignalOwnedBuffer encrypted_name;
+} SignalSetDeviceNameArgsFfiResult;
 
 typedef struct {
   SignalTestingFutureCancellationCounter *raw;
@@ -445,6 +480,11 @@ SignalFfiError *signal_fake_chat_response_destroy(SignalMutPointerFakeChatRespon
 
 SignalFfiError *signal_fake_chat_server_destroy(SignalMutPointerFakeChatServer p);
 
+/**
+ * Just free the outer buffer
+ */
+void signal_free_testing_signle_grpc_testing_bridged_vec(SignalOwnedBufferOfGrpcTestCaseBridgedFfi buffer);
+
 SignalFfiError *signal_other_testing_handle_type_clone(SignalMutPointerOtherTestingHandleType *new_obj, SignalConstPointerOtherTestingHandleType obj);
 
 SignalFfiError *signal_other_testing_handle_type_destroy(SignalMutPointerOtherTestingHandleType p);
@@ -571,6 +611,8 @@ SignalFfiError *signal_testing_fake_registration_session_create_session(SignalCP
 
 SignalFfiError *signal_testing_fingerprint_version_mismatch_error(uint32_t theirs, uint32_t ours);
 
+void signal_testing_force_bindgen_to_emit_structs(SignalSetDeviceNameArgsFfiResult, SignalSetDeviceNameOutFfiResult);
+
 SignalFfiError *signal_testing_future_cancellation_counter_create(SignalMutPointerTestingFutureCancellationCounter *out, uint8_t initial_value);
 
 SignalFfiError *signal_testing_future_cancellation_counter_destroy(SignalMutPointerTestingFutureCancellationCounter p);
@@ -680,6 +722,8 @@ SignalFfiError *signal_testing_semaphore_add_permits(SignalConstPointerTestingSe
 SignalFfiError *signal_testing_semaphore_destroy(SignalMutPointerTestingSemaphore p);
 
 SignalFfiError *signal_testing_semaphore_new(SignalMutPointerTestingSemaphore *out, uint32_t initial);
+
+SignalFfiError *signal_testing_set_device_name_tests(SignalOwnedBufferOfGrpcTestCaseBridgedFfi *out);
 
 SignalFfiError *signal_testing_signed_public_pre_key_check_bridges_correctly(SignalConstPointerPublicKey source_public_key, SignalFfiSignedPublicPreKey signed_pre_key);
 

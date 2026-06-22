@@ -1824,6 +1824,8 @@ macro_rules! ffi_result_type {
     (UploadForm) => (ffi::FfiUploadForm);
     (CdnCredentials) => (ffi::PairOf<ffi::OwnedBufferOf<ffi::CStringPtr>, ffi::OwnedBufferOf<ffi::CStringPtr> >);
 
+    (GrpcTestCases<$a:ty, $b:ty>) => (ffi::OwnedBufferOf<GrpcTestCaseBridgedFfi>);
+
     // Derived types
     (MyTestStruct) => (MyTestStructFfiResult);
     (MyTestPoint) => (MyTestPointFfiResult);

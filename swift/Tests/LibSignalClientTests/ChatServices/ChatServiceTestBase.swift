@@ -130,6 +130,75 @@ extension ChatServiceTestBase {
 
         return try await result
     }
+    func testGrpcCases<Args: Sendable, Out, T>(
+        _ tests: [GrpcTestCase<Args, Out>],
+        invoke: @Sendable (Selector.Api, Args) async throws -> T,
+        check: (Out, Result<T, any Error>) throws -> Void,
+    ) async throws
+    where Args: Sendable {
+        for test in tests {
+            let api = self.api
+            let requestInfo = test.request
+            async let resultFuture = invoke(api, requestInfo)
+            let (request, id) = try await fakeRemote.getNextIncomingGrpcRequest()
+            XCTAssertEqual(request.getSingleGrpcMessageData(), test.requestGrpc)
+            XCTAssertEqual(request.pathAndQuery, test.method)
+            try await fakeRemote.sendGrpcResponse(requestId: id, ChatResponse(status: 200, body: test.responseGrpc))
+            let result: Result<T, any Error>
+            do {
+                result = .success(try await resultFuture)
+            } catch {
+                result = .failure(error)
+            }
+            try check(test.response, result)
+        }
+    }
+}
+
+internal struct GrpcTestCase<Req, Resp> {
+    let name: String
+    let method: String
+    let request: Req
+    let requestGrpc: Data
+    let responseGrpc: Data
+    let response: Resp
+}
+
+internal enum UneraseType<Converter: NiceReturnConverter> {
+    static func convertReturn(consuming value: SignalFfiErasedForTesting) throws -> Converter.NiceReturn {
+        defer { value.destroy(value.contents) }
+        let loaded = value.contents.load(as: Converter.FfiReturn.self)
+        return try Converter.convertReturn(consuming: loaded)
+    }
+}
+
+internal enum GrpcTestCaseVecConverter<
+    ReqConverter: NiceReturnConverter,
+    RespConverter: NiceReturnConverter,
+>: NiceReturnConverter {
+    typealias NiceReturn = [GrpcTestCase<ReqConverter.NiceReturn, RespConverter.NiceReturn>]
+
+    typealias FfiReturn = SignalOwnedBufferOfGrpcTestCaseBridgedFfi
+
+    static func emptyFfiReturn() -> FfiReturn {
+        FfiReturn()
+    }
+
+    static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
+        // Since this is just used in testing, we won't worry about leaking memory on error.
+        defer { signal_free_testing_signle_grpc_testing_bridged_vec(value) }
+        return try UnsafeBufferPointer<SignalGrpcTestCaseBridgedFfi>(start: value.base, count: value.length).map {
+            it in
+            GrpcTestCase(
+                name: try StringConverter.convertReturn(consuming: it.name),
+                method: try StringConverter.convertReturn(consuming: it.method),
+                request: try UneraseType<ReqConverter>.convertReturn(consuming: it.request),
+                requestGrpc: try DataConverter.convertReturn(consuming: it.request_grpc),
+                responseGrpc: try DataConverter.convertReturn(consuming: it.response_grpc),
+                response: try UneraseType<RespConverter>.convertReturn(consuming: it.response),
+            )
+        }
+    }
 }
 
 #endif

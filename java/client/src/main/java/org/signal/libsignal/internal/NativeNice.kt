@@ -18,6 +18,28 @@ import org.signal.libsignal.internal.NativeNiceHelpers.identity
 import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
 
 internal object NativeNice {
+  public fun AuthenticatedChatConnection_set_device_name(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    deviceId: Int,
+    encryptedName: ByteArray,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_device_id = identity(deviceId)
+    val ffi_encrypted_name = identity(encryptedName)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_set_device_name(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_device_id,
+          ffi_encrypted_name,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun UnauthenticatedChatConnection_account_exists(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.UnauthenticatedChatConnection,

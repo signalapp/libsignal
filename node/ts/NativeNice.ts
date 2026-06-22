@@ -6,6 +6,7 @@
 // WARNING: this file was automatically generated
 
 import * as Native from './Native.js';
+import { type GrpcTestCase } from './Native.js';
 import { ServiceId } from './Address.js';
 import * as zkgroup from './zkgroup/index.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
@@ -15,6 +16,7 @@ import {
   cdnCredentialReturnConverter,
   identity,
   serviceIdArgConverter,
+  grpcTestCaseConverter,
 } from './NiceConverters.js';
 import { Rng } from './RngForTesting.js';
 
@@ -63,6 +65,13 @@ export type MyTestStruct = {
   myNumericField: number;
   myStringField: string;
 };
+
+export type SetDeviceNameArgs = {
+  id: number;
+  encryptedName: Uint8Array<ArrayBuffer>;
+};
+
+export type SetDeviceNameOut = 'success' | 'deviceNotFound';
 
 function returnConverterMyRemoteDeriveEnum(
   ffiInput: Native.ReturnFfiMyRemoteDeriveEnum
@@ -157,6 +166,30 @@ function returnConverterMyTestStruct(
     myNumericField: identity(ffiInput.my_numeric_field),
     myStringField: identity(ffiInput.my_string_field),
   };
+}
+
+function returnConverterSetDeviceNameArgs(
+  ffiInput: Native.ReturnFfiSetDeviceNameArgs
+): SetDeviceNameArgs {
+  return {
+    id: identity(ffiInput.id),
+    encryptedName: identity(ffiInput.encrypted_name),
+  };
+}
+
+function returnConverterSetDeviceNameOut(
+  ffiInput: Native.ReturnFfiSetDeviceNameOut
+): SetDeviceNameOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'success';
+    case 1:
+      return 'deviceNotFound';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for SetDeviceNameOut');
+  }
 }
 
 function argConverterMyRemoteDeriveEnum(
@@ -276,6 +309,32 @@ function argConverterMyTestStruct(
     my_numeric_field: identity(my_numeric_field),
     my_string_field: identity(my_string_field),
   };
+}
+
+export async function AuthenticatedChatConnection_set_device_name({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  deviceId: device_id,
+  encryptedName: encrypted_name,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  deviceId: number;
+  encryptedName: Uint8Array<ArrayBuffer>;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_device_name(
+        asyncContext,
+        identity(chat),
+        identity(device_id),
+        identity(encrypted_name)
+      )
+    )
+  );
 }
 
 export function TESTING_MyRemoteDeriveEnum_identity({
@@ -456,6 +515,15 @@ export function TESTING_MyTestStruct_to_string({
   return identity(
     Native.TESTING_MyTestStruct_to_string(argConverterMyTestStruct(x))
   );
+}
+
+export function TESTING_SetDeviceNameTests(): Array<
+  GrpcTestCase<SetDeviceNameArgs, SetDeviceNameOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterSetDeviceNameArgs,
+    returnConverterSetDeviceNameOut
+  )(Native.TESTING_SetDeviceNameTests());
 }
 
 export function TESTING_TestingIntBox_Get({

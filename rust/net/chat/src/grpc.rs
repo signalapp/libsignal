@@ -7,6 +7,7 @@
 //! [libsignal-net-grpc](libsignal_net_grpc).
 
 mod backups;
+pub mod devices;
 mod messages;
 mod profiles;
 mod usernames;
@@ -489,6 +490,15 @@ impl std::fmt::Display for Redact<libsignal_net_grpc::proto::chat::common::Servi
     }
 }
 
+pub struct GrpcTestCase<Request, RequestGrpc, ResponseGrpc, Response> {
+    pub name: String,
+    pub method: String,
+    pub request: Request,
+    pub request_grpc: RequestGrpc,
+    pub response_grpc: ResponseGrpc,
+    pub response: Response,
+}
+
 #[cfg(test)]
 pub(crate) mod testutil {
     use futures_util::FutureExt as _;
@@ -499,6 +509,36 @@ pub(crate) mod testutil {
     use super::*;
     use crate::api::testutil::TEST_SELF_ACI;
     use crate::ws::WsConnection;
+
+    pub(crate) fn run_tests<
+        Request,
+        RequestGrpc: prost::Message + 'static,
+        ResponseGrpc: prost::Message + 'static,
+        Response,
+        F: Future,
+        Wrapper: From<RequestValidator>,
+    >(
+        tests: Vec<GrpcTestCase<Request, RequestGrpc, ResponseGrpc, Response>>,
+        invoke: impl Fn(Wrapper, Request) -> F,
+        check: impl Fn(Response, F::Output),
+    ) {
+        for test in tests {
+            eprintln!("== {}", test.name);
+            check(
+                test.response,
+                invoke(
+                    RequestValidator {
+                        expected: req(&test.method, test.request_grpc),
+                        response: ok(test.response_grpc),
+                    }
+                    .into(),
+                    test.request,
+                )
+                .now_or_never()
+                .expect("sync"),
+            );
+        }
+    }
 
     pub(crate) fn encode_for_grpc<C: tonic::codec::Encoder<Error = Status>>(
         encoder: C,

@@ -6,12 +6,18 @@
 // WARNING: this file was automatically generated
 
 import * as Native from './Native.js';
+import { type GrpcTestCase } from './Native.js';
 import { ServiceId } from './Address.js';
 import * as zkgroup from './zkgroup/index.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
 import { TokioAsyncContext } from './net.js';
 import { CdnCredentials } from './net/chat/CdnCredentials.js';
-import { cdnCredentialReturnConverter, identity, serviceIdArgConverter } from './NiceConverters.js';
+import {
+  cdnCredentialReturnConverter,
+  identity,
+  serviceIdArgConverter,
+  grpcTestCaseConverter,
+} from './NiceConverters.js';
 import { Rng } from './RngForTesting.js';
 
 {% macro struct_type(struct) %}

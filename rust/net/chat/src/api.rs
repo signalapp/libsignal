@@ -24,7 +24,7 @@ pub mod usernames;
 /// Marker wrapper for unauthenticated connections.
 ///
 /// You can get `&Unauth<Connection>` from `&Connection` using `Into`.
-#[derive(derive_more::Deref, ref_cast::RefCast)]
+#[derive(derive_more::Deref, ref_cast::RefCast, derive_more::From)]
 #[repr(transparent)]
 pub struct Unauth<T>(pub T);
 
@@ -37,7 +37,7 @@ impl<'a, T> From<&'a T> for &'a Unauth<T> {
 /// Marker wrapper for authenticated connections.
 ///
 /// You can get `&Auth<Connection>` from `&Connection` using `Into`.
-#[derive(derive_more::Deref, ref_cast::RefCast)]
+#[derive(derive_more::Deref, ref_cast::RefCast, derive_more::From)]
 #[repr(transparent)]
 pub struct Auth<T>(pub T);
 

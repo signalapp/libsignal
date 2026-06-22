@@ -270,6 +270,7 @@ typedef enum {
   SignalErrorCodeMismatchedDevices = 221,
   SignalErrorCodeServiceIdNotFound = 222,
   SignalErrorCodeUploadTooLarge = 223,
+  SignalErrorCodeDeviceIdNotFound = 224,
 } SignalErrorCode;
 
 enum SignalSvr2CredentialsResult {
@@ -1804,6 +1805,8 @@ SignalFfiError *signal_authenticated_chat_connection_send_message(SignalCPromise
 SignalFfiError *signal_authenticated_chat_connection_send_raw_grpc(SignalCPromiseOwnedBufferOfc_uchar *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, const char *service, const char *method, SignalBorrowedBuffer payload);
 
 SignalFfiError *signal_authenticated_chat_connection_send_sync_message(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, uint64_t timestamp, SignalBorrowedSliceOfu32 device_ids, SignalBorrowedSliceOfu32 registration_ids, SignalBorrowedSliceOfConstPointerCiphertextMessage contents, bool is_urgent);
+
+SignalFfiError *signal_authenticated_chat_connection_set_device_name(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, int32_t device_id, SignalBorrowedBuffer encrypted_name);
 
 SignalFfiError *signal_avatar_upload_credential_check_valid_contents(SignalBorrowedBuffer credential_bytes);
 

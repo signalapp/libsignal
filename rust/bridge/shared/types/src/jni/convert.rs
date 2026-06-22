@@ -2763,7 +2763,7 @@ impl<'a> ResultTypeInfo<'a> for PreKeysResponse {
 
 /// Converts each element of `it` to a Java object by invoking `map(env, item)`, storing the result
 /// in an array.
-fn make_object_array_mapped<'a, It, Map>(
+pub fn make_object_array_mapped<'a, It, Map>(
     env: &mut jni::Env<'a>,
     element_type: &JClass<'a>,
     it: It,
@@ -3363,6 +3363,10 @@ macro_rules! jni_result_type {
         ::jni::objects::JObject<'local>
     };
     (CdnCredentials) => {
+        ::jni::objects::JObjectArray<'local>
+    };
+
+    (GrpcTestCases<$a:ty, $b:ty>) => {
         ::jni::objects::JObjectArray<'local>
     };
 

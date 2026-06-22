@@ -325,6 +325,40 @@ internal data class MyTestStruct(
 
 internal fun MyTestStruct.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
 
+internal data class SetDeviceNameArgs(
+  val id: Int,
+  val encryptedName: ByteArray,
+) {
+  companion object {
+    @JvmStatic
+    @CalledFromNative
+    fun fromNative(
+      id: Any?,
+      encrypted_name: Any?,
+    ): SetDeviceNameArgs =
+      SetDeviceNameArgs(
+        id =
+          identity(id as Int),
+        encryptedName =
+          identity(encrypted_name as ByteArray),
+      )
+  }
+}
+
+internal sealed class SetDeviceNameOut {
+  internal data object Success : SetDeviceNameOut() {
+    @JvmStatic
+    @CalledFromNative
+    fun fromNative(): Success = Success
+  }
+
+  internal data object DeviceNotFound : SetDeviceNameOut() {
+    @JvmStatic
+    @CalledFromNative
+    fun fromNative(): DeviceNotFound = DeviceNotFound
+  }
+}
+
 internal object NativeTestingNice {
   public fun TESTING_MySimpleTestEnum_identity(
     x: org.signal.libsignal.internal.MySimpleTestEnum,
@@ -412,6 +446,16 @@ internal object NativeTestingNice {
       )
 
     return identity(ffiOut)
+  }
+
+  public fun TESTING_SetDeviceNameTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetDeviceNameArgs, org.signal.libsignal.internal.SetDeviceNameOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_SetDeviceNameTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.SetDeviceNameArgs, org.signal.libsignal.internal.SetDeviceNameOut>({
+        downcastFromObject<org.signal.libsignal.internal.SetDeviceNameArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.SetDeviceNameOut>(it) })(ffiOut)
   }
 
   public fun TESTING_TestingIntBox_Get(myIntBox: org.signal.libsignal.internal.TestingIntBox): Int {

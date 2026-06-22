@@ -134,6 +134,16 @@ export type Serialized<T> = Uint8Array<ArrayBuffer>;
 type ConnectChatBridge = Wrapper<ConnectionManager>;
 type TestingFutureCancellationGuard = Wrapper<TestingFutureCancellationCounter>;
 
+export type GrpcTestCase<Req, Resp> = {
+  name: string;
+  method: string;
+  request: Req;
+  requestGrpc: Uint8Array<ArrayBuffer>;
+  responseGrpc: Uint8Array<ArrayBuffer>;
+  response: Resp;
+};
+export type GrpcTestCaseFfi<Req, Resp> = GrpcTestCase<Req, Resp>;
+
 // Keep in sync with rust/bridge/node/src/logging.rs
 export const enum LogLevel {
   Error = 1,
@@ -205,6 +215,19 @@ export type ReturnFfiMyTestStruct = {
   my_numeric_field: number;
   my_string_field: string;
 };
+
+export type ReturnFfiSetDeviceNameArgs = {
+  id: number;
+  encrypted_name: Uint8Array<ArrayBuffer>;
+};
+
+export type ReturnFfiSetDeviceNameOut =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    };
 
 export type ArgFfiMyRemoteDeriveEnum =
   | {
@@ -397,6 +420,12 @@ type NativeFunctions = {
     registration_ids: Uint32Array<ArrayBuffer>,
     contents: Array<Wrapper<CiphertextMessage>>,
     is_urgent: boolean
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_set_device_name: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    device_id: number,
+    encrypted_name: Uint8Array<ArrayBuffer>
   ) => CancellablePromise<void>;
   BackupAuthCredentialPresentation_CheckValidContents: (
     presentation_bytes: Uint8Array<ArrayBuffer>
@@ -2261,6 +2290,9 @@ type NativeFunctions = {
   TESTING_RoundTripU64: (input: bigint) => bigint;
   TESTING_RoundTripU8: (input: number) => number;
   TESTING_ServerMessageAck_Create: () => ServerMessageAck;
+  TESTING_SetDeviceNameTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiSetDeviceNameArgs, ReturnFfiSetDeviceNameOut>
+  >;
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly: (
     source_public_key: Wrapper<PublicKey>,
     signed_pre_key: SignedPublicPreKey
@@ -2596,6 +2628,7 @@ const {
   AuthenticatedChatConnection_send_message,
   AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_send_sync_message,
+  AuthenticatedChatConnection_set_device_name,
   BackupAuthCredentialPresentation_CheckValidContents,
   BackupAuthCredentialPresentation_GetBackupId,
   BackupAuthCredentialPresentation_GetBackupLevel,
@@ -3131,6 +3164,7 @@ const {
   TESTING_RoundTripU64,
   TESTING_RoundTripU8,
   TESTING_ServerMessageAck_Create,
+  TESTING_SetDeviceNameTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
   TESTING_TestingHandleType_getValue,
   TESTING_TestingIntBox_Get,
@@ -3240,6 +3274,7 @@ export {
   AuthenticatedChatConnection_send_message,
   AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_send_sync_message,
+  AuthenticatedChatConnection_set_device_name,
   BackupAuthCredentialPresentation_CheckValidContents,
   BackupAuthCredentialPresentation_GetBackupId,
   BackupAuthCredentialPresentation_GetBackupLevel,
@@ -3775,6 +3810,7 @@ export {
   TESTING_RoundTripU64,
   TESTING_RoundTripU8,
   TESTING_ServerMessageAck_Create,
+  TESTING_SetDeviceNameTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
   TESTING_TestingHandleType_getValue,
   TESTING_TestingIntBox_Get,

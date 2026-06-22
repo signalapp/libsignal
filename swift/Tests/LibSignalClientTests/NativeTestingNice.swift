@@ -66,6 +66,17 @@ internal struct MyTestStruct {
 
 }
 
+internal struct SetDeviceNameArgs {
+    var id: UInt8
+    var encryptedName: Data
+
+}
+
+internal enum SetDeviceNameOut {
+    case success
+    case deviceNotFound
+}
+
 internal enum DerivedReturnConverterMyRemoteDeriveEnum: NiceReturnConverter {
     typealias NiceReturn = MyRemoteDeriveEnum
     typealias FfiReturn = SignalMyRemoteDeriveEnumFfiResult
@@ -240,6 +251,40 @@ internal enum DerivedReturnConverterMyTestStruct: NiceReturnConverter {
         let my_string_field = Result { try StringConverter.convertReturn(consuming: ffiValue.my_string_field) }
 
         return MyTestStruct(myNumericField: try my_numeric_field.get(), myStringField: try my_string_field.get())
+    }
+}
+
+internal enum DerivedReturnConverterSetDeviceNameArgs: NiceReturnConverter {
+    typealias NiceReturn = SetDeviceNameArgs
+    typealias FfiReturn = SignalSetDeviceNameArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalSetDeviceNameArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let id = Result { try IdentityConverter<UInt8>.convertReturn(consuming: ffiValue.id) }
+        let encrypted_name = Result { try DataConverter.convertReturn(consuming: ffiValue.encrypted_name) }
+
+        return SetDeviceNameArgs(id: try id.get(), encryptedName: try encrypted_name.get())
+    }
+}
+
+internal enum DerivedReturnConverterSetDeviceNameOut: NiceReturnConverter {
+    typealias NiceReturn = SetDeviceNameOut
+    typealias FfiReturn = SignalSetDeviceNameOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalSetDeviceNameOutFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalSetDeviceNameOutFfiResultSuccess:
+            return SetDeviceNameOut.success
+        case SignalSetDeviceNameOutFfiResultDeviceNotFound:
+            return SetDeviceNameOut.deviceNotFound
+        default:
+            throw SignalError.internalError("Unexpected enum tag for SetDeviceNameOut: \(ffiTag)")
+        }
     }
 }
 
@@ -1003,6 +1048,20 @@ internal enum NativeTestingNice {
             )
             return try StringConverter.convertReturn(consuming: rawOutput)
         }
+
+    }
+    internal static func TESTING_SetDeviceNameTests() throws -> [GrpcTestCase<SetDeviceNameArgs, SetDeviceNameOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterSetDeviceNameArgs, DerivedReturnConverterSetDeviceNameOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_set_device_name_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterSetDeviceNameArgs, DerivedReturnConverterSetDeviceNameOut
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_TestingIntBox_Get(
