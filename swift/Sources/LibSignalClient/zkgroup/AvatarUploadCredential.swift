@@ -114,8 +114,7 @@ public class AvatarUploadCredentialRequest: ByteArray {
     ///     the server's authoritative store for this account. The request's well-formedness proof
     ///     binds the blinded commitment to this key, so passing the wrong value will fail issuance.
     /// - Parameter rotationId: The server-chosen avatar slot rotation ID, incorporated into the commitment.
-    ///     The server must return this value to the client (it is carried in the response) so the
-    ///     client can compute the full commitment.
+    ///     The client received this value when it set its ZK credential key.
     /// - Parameter redemptionTime: Must be a round number of days since the Unix epoch.
     /// - Parameter serverParams: The params that will be used by the verifying server to verify this credential.
     /// - Throws ``SignalError/verificationFailed(_:)`` if the request is not well-formed for `aci` and

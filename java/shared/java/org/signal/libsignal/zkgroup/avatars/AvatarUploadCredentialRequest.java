@@ -37,8 +37,7 @@ public final class AvatarUploadCredentialRequest extends ByteArray {
    *     the server's authoritative store for this account. The request's well-formedness proof
    *     binds the blinded commitment to this key, so passing the wrong value will fail issuance.
    * @param rotationId The server-chosen avatar slot rotation ID, incorporated into the commitment.
-   *     The server must return this value to the client (it is carried in the response) so the
-   *     client can compute the full commitment.
+   *     The client received this value when it set its ZK credential key.
    * @param redemptionTime Must be a round number of days. Use {@link Instant#truncatedTo} to ensure
    *     this.
    * @param params The params that will be used by the verifying server to verify this credential.

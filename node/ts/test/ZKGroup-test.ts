@@ -7,48 +7,49 @@ import { assert, expect } from 'chai';
 import { Buffer } from 'node:buffer';
 
 import {
-  ServerSecretParams,
-  ServerZkAuthOperations,
-  GroupMasterKey,
-  GroupSecretParams,
-  ClientZkAuthOperations,
-  ClientZkGroupCipher,
-  ServerZkProfileOperations,
-  ClientZkProfileOperations,
-  ProfileKey,
-  ClientZkReceiptOperations,
-  ServerZkReceiptOperations,
-  ReceiptSerial,
-  GenericServerSecretParams,
-  CreateCallLinkCredentialRequestContext,
-  CallLinkSecretParams,
-  CallLinkAuthCredentialResponse,
-  BackupAuthCredentialRequestContext,
-  GroupSendEndorsementsResponse,
-  GroupSendDerivedKeyPair,
-  GroupSendEndorsement,
-  ServerPublicParams,
-  GenericServerPublicParams,
   AuthCredentialPresentation,
   AuthCredentialWithPni,
   AuthCredentialWithPniResponse,
+  AvatarUploadCredentialRequest,
+  AvatarUploadCredentialRequestContext,
   BackupAuthCredential,
-  BackupAuthCredentialRequest,
   BackupAuthCredentialPresentation,
+  BackupAuthCredentialRequest,
+  BackupAuthCredentialRequestContext,
   BackupAuthCredentialResponse,
+  BackupCredentialType,
+  BackupLevel,
   CallLinkAuthCredential,
   CallLinkAuthCredentialPresentation,
+  CallLinkAuthCredentialResponse,
   CallLinkPublicParams,
+  CallLinkSecretParams,
+  ClientZkAuthOperations,
+  ClientZkGroupCipher,
+  ClientZkProfileOperations,
+  ClientZkReceiptOperations,
   CreateCallLinkCredential,
   CreateCallLinkCredentialRequest,
+  CreateCallLinkCredentialRequestContext,
   CreateCallLinkCredentialResponse,
-  GroupPublicParams,
-  ProfileKeyCiphertext,
-  UuidCiphertext,
-  GroupSendFullToken,
-  GroupSendToken,
+  DonationPermit,
+  DonationPermitDerivedKeyPair,
+  DonationPermitRequestContext,
+  DonationPermitResponse,
   ExpiringProfileKeyCredential,
   ExpiringProfileKeyCredentialResponse,
+  GenericServerPublicParams,
+  GenericServerSecretParams,
+  GroupMasterKey,
+  GroupPublicParams,
+  GroupSecretParams,
+  GroupSendDerivedKeyPair,
+  GroupSendEndorsement,
+  GroupSendEndorsementsResponse,
+  GroupSendFullToken,
+  GroupSendToken,
+  ProfileKey,
+  ProfileKeyCiphertext,
   ProfileKeyCommitment,
   ProfileKeyCredentialPresentation,
   ProfileKeyCredentialRequest,
@@ -58,15 +59,17 @@ import {
   ReceiptCredentialRequest,
   ReceiptCredentialRequestContext,
   ReceiptCredentialResponse,
-  BackupLevel,
-  BackupCredentialType,
-  DonationPermit,
-  DonationPermitDerivedKeyPair,
-  DonationPermitResponse,
-  DonationPermitRequestContext,
+  ReceiptSerial,
+  ServerPublicParams,
+  ServerSecretParams,
+  ServerZkAuthOperations,
+  ServerZkProfileOperations,
+  ServerZkReceiptOperations,
+  UuidCiphertext,
+  ZkCredentialKeyPair,
 } from '../zkgroup/index.js';
 import { Aci, Pni } from '../Address.js';
-import { LibSignalErrorBase, Uuid } from '../index.js';
+import { ErrorCode, LibSignalErrorBase, Uuid } from '../index.js';
 import {
   assertArrayEquals,
   assertArrayNotEquals,
@@ -1052,6 +1055,147 @@ describe('ZKGroup', () => {
 
     // Check that the token generated from the CallLinkSecretParams includes bob, the remote user.
     fullToken.verify([bobAci], verifyKey);
+  });
+
+  describe('AvatarUploadCredential', () => {
+    // Chosen randomly.
+    const TEST_ACI = Aci.fromUuid('c0fc16e4-bae5-4343-9f0d-e7ecf4251343');
+
+    const ZK_CRED_KEY_RANDOM = hexToBuffer(
+      '4242424242424242424242424242424242424242424242424242424242424242'
+    );
+
+    const SERVER_SECRET_RANDOM = hexToBuffer(
+      '6987b92bdea075d3f8b42b39d780a5be0bc264874a18e11cac694e4fe28f6cca'
+    );
+
+    const CREATE_RANDOM = hexToBuffer(
+      '657e7a2ac9dd981b789c9b2fbcdfbbe46cb6230c7a2c67c1be3472cb006463e2'
+    );
+
+    const ISSUE_RANDOM = hexToBuffer(
+      '8e3f24cb0a7e7614c7b4ab04ba8a145f108c53c4b10a096aa4503ae1e0c9f661'
+    );
+
+    const PRESENT_RANDOM = hexToBuffer(
+      '475149b2bdcb6f9bd3a8e3a5d4c6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8'
+    );
+
+    const ROTATION_ID = 7n;
+
+    it('works in standard usage', () => {
+      // SERVER: generate keys.
+      const serverSecretParams =
+        GenericServerSecretParams.generateWithRandom(SERVER_SECRET_RANDOM);
+      const serverPublicParams = serverSecretParams.getPublicParams();
+
+      // CLIENT: generate its long-term ZK credential key pair and (out of band) register the public
+      // half with the server.
+      const zkCredentialKeyPair =
+        ZkCredentialKeyPair.generateWithRandom(ZK_CRED_KEY_RANDOM);
+      const zkCredentialKeyPublic = zkCredentialKeyPair.getPublicKey();
+
+      // CLIENT: build a request.
+      const context = AvatarUploadCredentialRequestContext.createWithRandom(
+        TEST_ACI,
+        zkCredentialKeyPair,
+        ROTATION_ID,
+        CREATE_RANDOM
+      );
+      const request = context.getRequest();
+
+      // Round-tripping the request through serialize() must preserve it.
+      assertArrayEquals(
+        request.serialize(),
+        new AvatarUploadCredentialRequest(request.serialize()).serialize()
+      );
+
+      // SERVER: authenticate the ACI, look up its ZK credential key, and issue.
+      const now = Math.floor(Date.now() / 1000);
+      const startOfDay = now - (now % SECONDS_PER_DAY);
+      const redemptionTime = new Date(1000 * startOfDay);
+      const response = request.issueCredentialWithRandom(
+        TEST_ACI,
+        zkCredentialKeyPublic,
+        ROTATION_ID,
+        redemptionTime,
+        serverSecretParams,
+        ISSUE_RANDOM
+      );
+
+      // CLIENT: verify and unblind the credential. The client passes its current wall-clock time;
+      // libsignal checks that the credential's redemption_time (chosen by the server, carried in
+      // `response`) is day-aligned and inside the redemption window relative to `now`.
+      const credential = context.receiveResponse(
+        response,
+        serverPublicParams,
+        redemptionTime
+      );
+
+      // The client can read back the redemption time the issuing server chose.
+      assert.deepEqual(redemptionTime, credential.getRedemptionTime());
+
+      const credentialDefaultTime = context.receiveResponse(
+        response,
+        serverPublicParams
+      );
+      assertArrayEquals(
+        credential.serialize(),
+        credentialDefaultTime.serialize()
+      );
+
+      // CLIENT: present the credential.
+      const presentation = credential.presentWithRandom(
+        serverPublicParams,
+        PRESENT_RANDOM
+      );
+
+      // The revealed commitment Cm must match between the credential and its presentation.
+      assertArrayEquals(
+        credential.getCommitment(),
+        presentation.getCommitment()
+      );
+      assert.deepEqual(redemptionTime, presentation.getRedemptionTime());
+
+      // SERVER: verify the presentation across the redemption window.
+      presentation.verify(serverSecretParams, redemptionTime);
+      presentation.verify(
+        serverSecretParams,
+        new Date(1000 * (startOfDay + SECONDS_PER_DAY))
+      );
+
+      expect(
+        () =>
+          presentation.verify(
+            serverSecretParams,
+            new Date(1000 * (startOfDay + 2 * SECONDS_PER_DAY + 1))
+          ),
+        'Credential should be expired more than 2 days after redemption time'
+      )
+        .to.throw(LibSignalErrorBase)
+        .with.property('code', ErrorCode.Generic);
+
+      expect(
+        () =>
+          presentation.verify(
+            serverSecretParams,
+            new Date(1000 * (startOfDay - SECONDS_PER_DAY - 1))
+          ),
+        'Credential should be invalid before its redemption time'
+      )
+        .to.throw(LibSignalErrorBase)
+        .with.property('code', ErrorCode.Generic);
+    });
+
+    it('deterministically generates ZkCredentialKeyPairs', () => {
+      const a = ZkCredentialKeyPair.generateWithRandom(ZK_CRED_KEY_RANDOM);
+      const b = ZkCredentialKeyPair.generateWithRandom(ZK_CRED_KEY_RANDOM);
+      assertArrayEquals(a.serialize(), b.serialize());
+      assertArrayEquals(
+        a.getPublicKey().serialize(),
+        b.getPublicKey().serialize()
+      );
+    });
   });
 });
 

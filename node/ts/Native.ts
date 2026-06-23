@@ -427,6 +427,67 @@ type NativeFunctions = {
     device_id: number,
     encrypted_name: Uint8Array<ArrayBuffer>
   ) => CancellablePromise<void>;
+  AvatarUploadCredentialPresentation_CheckValidContents: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  AvatarUploadCredentialPresentation_GetCm: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  AvatarUploadCredentialPresentation_GetRedemptionTime: (
+    presentation_bytes: Uint8Array<ArrayBuffer>
+  ) => Timestamp;
+  AvatarUploadCredentialPresentation_Verify: (
+    presentation_bytes: Uint8Array<ArrayBuffer>,
+    current_time: Timestamp,
+    server_params_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  AvatarUploadCredentialRequestContext_CheckValidContents: (
+    context_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  AvatarUploadCredentialRequestContext_GetRequest: (
+    context_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  AvatarUploadCredentialRequestContext_New: (
+    aci: Uint8Array<ArrayBuffer>,
+    zk_credential_key_pair_bytes: Uint8Array<ArrayBuffer>,
+    rotation_id: bigint,
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  AvatarUploadCredentialRequestContext_ReceiveResponse: (
+    context_bytes: Uint8Array<ArrayBuffer>,
+    response_bytes: Uint8Array<ArrayBuffer>,
+    current_time: Timestamp,
+    params_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  AvatarUploadCredentialRequest_CheckValidContents: (
+    request_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  AvatarUploadCredentialRequest_IssueDeterministic: (
+    request_bytes: Uint8Array<ArrayBuffer>,
+    aci: Uint8Array<ArrayBuffer>,
+    zk_credential_key_pub_bytes: Uint8Array<ArrayBuffer>,
+    rotation_id: bigint,
+    redemption_time: Timestamp,
+    params_bytes: Uint8Array<ArrayBuffer>,
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  AvatarUploadCredentialResponse_CheckValidContents: (
+    response_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  AvatarUploadCredential_CheckValidContents: (
+    credential_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  AvatarUploadCredential_GetCm: (
+    credential_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  AvatarUploadCredential_GetRedemptionTime: (
+    credential_bytes: Uint8Array<ArrayBuffer>
+  ) => Timestamp;
+  AvatarUploadCredential_PresentDeterministic: (
+    credential_bytes: Uint8Array<ArrayBuffer>,
+    server_params_bytes: Uint8Array<ArrayBuffer>,
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
   BackupAuthCredentialPresentation_CheckValidContents: (
     presentation_bytes: Uint8Array<ArrayBuffer>
   ) => void;
@@ -2595,6 +2656,18 @@ type NativeFunctions = {
     length: number
   ) => number;
   WebpSanitizer_Sanitize: (input: SyncInputStream) => void;
+  ZkCredentialKeyPair_CheckValidContents: (
+    key_pair_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
+  ZkCredentialKeyPair_GenerateDeterministic: (
+    randomness: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  ZkCredentialKeyPair_GetPublicKey: (
+    key_pair_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  ZkCredentialPublicKey_CheckValidContents: (
+    public_key_bytes: Uint8Array<ArrayBuffer>
+  ) => void;
   test_only_fn_returns_123: () => number;
   uuid_from_string: (string: string) => Uuid | null;
   uuid_new_v4: () => Uuid;
@@ -2629,6 +2702,21 @@ const {
   AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_send_sync_message,
   AuthenticatedChatConnection_set_device_name,
+  AvatarUploadCredentialPresentation_CheckValidContents,
+  AvatarUploadCredentialPresentation_GetCm,
+  AvatarUploadCredentialPresentation_GetRedemptionTime,
+  AvatarUploadCredentialPresentation_Verify,
+  AvatarUploadCredentialRequestContext_CheckValidContents,
+  AvatarUploadCredentialRequestContext_GetRequest,
+  AvatarUploadCredentialRequestContext_New,
+  AvatarUploadCredentialRequestContext_ReceiveResponse,
+  AvatarUploadCredentialRequest_CheckValidContents,
+  AvatarUploadCredentialRequest_IssueDeterministic,
+  AvatarUploadCredentialResponse_CheckValidContents,
+  AvatarUploadCredential_CheckValidContents,
+  AvatarUploadCredential_GetCm,
+  AvatarUploadCredential_GetRedemptionTime,
+  AvatarUploadCredential_PresentDeterministic,
   BackupAuthCredentialPresentation_CheckValidContents,
   BackupAuthCredentialPresentation_GetBackupId,
   BackupAuthCredentialPresentation_GetBackupLevel,
@@ -3242,6 +3330,10 @@ const {
   ValidatingMac_Initialize,
   ValidatingMac_Update,
   WebpSanitizer_Sanitize,
+  ZkCredentialKeyPair_CheckValidContents,
+  ZkCredentialKeyPair_GenerateDeterministic,
+  ZkCredentialKeyPair_GetPublicKey,
+  ZkCredentialPublicKey_CheckValidContents,
   test_only_fn_returns_123,
   uuid_from_string,
   uuid_new_v4,
@@ -3275,6 +3367,21 @@ export {
   AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_send_sync_message,
   AuthenticatedChatConnection_set_device_name,
+  AvatarUploadCredentialPresentation_CheckValidContents,
+  AvatarUploadCredentialPresentation_GetCm,
+  AvatarUploadCredentialPresentation_GetRedemptionTime,
+  AvatarUploadCredentialPresentation_Verify,
+  AvatarUploadCredentialRequestContext_CheckValidContents,
+  AvatarUploadCredentialRequestContext_GetRequest,
+  AvatarUploadCredentialRequestContext_New,
+  AvatarUploadCredentialRequestContext_ReceiveResponse,
+  AvatarUploadCredentialRequest_CheckValidContents,
+  AvatarUploadCredentialRequest_IssueDeterministic,
+  AvatarUploadCredentialResponse_CheckValidContents,
+  AvatarUploadCredential_CheckValidContents,
+  AvatarUploadCredential_GetCm,
+  AvatarUploadCredential_GetRedemptionTime,
+  AvatarUploadCredential_PresentDeterministic,
   BackupAuthCredentialPresentation_CheckValidContents,
   BackupAuthCredentialPresentation_GetBackupId,
   BackupAuthCredentialPresentation_GetBackupLevel,
@@ -3888,6 +3995,10 @@ export {
   ValidatingMac_Initialize,
   ValidatingMac_Update,
   WebpSanitizer_Sanitize,
+  ZkCredentialKeyPair_CheckValidContents,
+  ZkCredentialKeyPair_GenerateDeterministic,
+  ZkCredentialKeyPair_GetPublicKey,
+  ZkCredentialPublicKey_CheckValidContents,
   test_only_fn_returns_123,
   uuid_from_string,
   uuid_new_v4,
