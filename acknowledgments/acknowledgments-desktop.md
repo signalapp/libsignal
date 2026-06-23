@@ -5780,7 +5780,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## memmap2 0.9.9
+## memmap2 0.9.11
 
 ```
 Copyright (c) 2020 Yevhenii Reizner
