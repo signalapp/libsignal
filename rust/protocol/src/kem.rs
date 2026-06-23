@@ -674,21 +674,32 @@ mod tests {
 
     #[test]
     fn test_dyn_parameters_consts() {
-        assert_eq!(
-            kyber1024::Parameters::SECRET_KEY_LENGTH,
-            kyber1024::Parameters.secret_key_length()
-        );
-        assert_eq!(
-            kyber1024::Parameters::PUBLIC_KEY_LENGTH,
-            kyber1024::Parameters.public_key_length()
-        );
-        assert_eq!(
-            kyber1024::Parameters::CIPHERTEXT_LENGTH,
-            kyber1024::Parameters.ciphertext_length()
-        );
-        assert_eq!(
-            kyber1024::Parameters::SHARED_SECRET_LENGTH,
-            kyber1024::Parameters.shared_secret_length()
-        );
+        fn assert_parameters<T: Parameters>(key_type: KeyType) {
+            assert_eq!(T::KEY_TYPE, key_type);
+            assert_eq!(
+                T::SECRET_KEY_LENGTH,
+                key_type.parameters().secret_key_length()
+            );
+            assert_eq!(
+                T::PUBLIC_KEY_LENGTH,
+                key_type.parameters().public_key_length()
+            );
+            assert_eq!(
+                T::CIPHERTEXT_LENGTH,
+                key_type.parameters().ciphertext_length()
+            );
+            assert_eq!(
+                T::SHARED_SECRET_LENGTH,
+                key_type.parameters().shared_secret_length()
+            );
+        }
+
+        assert_parameters::<kyber1024::Parameters>(KeyType::Kyber1024);
+
+        #[cfg(feature = "kyber768")]
+        assert_parameters::<kyber768::Parameters>(KeyType::Kyber768);
+
+        #[cfg(feature = "mlkem1024")]
+        assert_parameters::<mlkem1024::Parameters>(KeyType::MLKEM1024);
     }
 }

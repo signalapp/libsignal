@@ -16,7 +16,7 @@ use super::{
 pub(crate) struct Parameters;
 
 impl super::Parameters for Parameters {
-    const KEY_TYPE: KeyType = KeyType::Kyber1024;
+    const KEY_TYPE: KeyType = KeyType::MLKEM1024;
     const PUBLIC_KEY_LENGTH: usize = MlKem1024PublicKey::LENGTH;
     const SECRET_KEY_LENGTH: usize = MlKem1024PrivateKey::LENGTH;
     const CIPHERTEXT_LENGTH: usize = MlKem1024Ciphertext::LENGTH;
