@@ -14,12 +14,16 @@ fn main() {
         "proto/org/signal/chat/backups.proto",
         "proto/org/signal/chat/calling.proto",
         "proto/org/signal/chat/call_quality.proto",
+        "proto/org/signal/chat/challenge.proto",
         "proto/org/signal/chat/credentials.proto",
         "proto/org/signal/chat/device.proto",
+        "proto/org/signal/chat/donations.proto",
         "proto/org/signal/chat/keys.proto",
         "proto/org/signal/chat/messages.proto",
         "proto/org/signal/chat/payments.proto",
         "proto/org/signal/chat/profile.proto",
+        "proto/org/signal/chat/subscriptions.proto",
+        "proto/TextSecure.proto",
     ];
     println!("cargo:rerun-if-changed=proto/");
 
@@ -42,13 +46,18 @@ fn main() {
             json_build.register_file_descriptor(fd.clone());
         }
         json_build
-            .build(&[".org.signal.chat"])
+            .build(&[".org.signal.chat", ".textsecure.Envelope"])
             .expect("can compile with pbjson");
     }
 
     let mut tonic_build = tonic_prost_build::configure()
         .build_server(false)
-        .build_transport(false);
+        .build_transport(false)
+        // We could box the Envelope, but by far the most common GetMessagesResponse is an Envelope.
+        .type_attribute(
+            ".org.signal.chat.messages.GetMessagesResponse.response",
+            "#[expect(clippy::large_enum_variant)]",
+        );
     if cfg!(feature = "json") {
         tonic_build = tonic_build
             .compile_well_known_types(true)

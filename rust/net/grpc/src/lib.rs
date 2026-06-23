@@ -9,47 +9,61 @@
 pub mod json;
 
 pub mod proto {
-    pub mod chat {
-        pub mod common {
-            tonic::include_proto!("org.signal.chat.common");
-            #[cfg(feature = "json")]
-            tonic::include_proto!("org.signal.chat.common.serde");
-        }
-        pub mod errors {
-            tonic::include_proto!("org.signal.chat.errors");
-            #[cfg(feature = "json")]
-            tonic::include_proto!("org.signal.chat.errors.serde");
-        }
-        pub mod account {
-            tonic::include_proto!("org.signal.chat.account");
-            #[cfg(feature = "json")]
-            tonic::include_proto!("org.signal.chat.account.serde");
-        }
-        pub mod attachments {
-            tonic::include_proto!("org.signal.chat.attachments");
-            #[cfg(feature = "json")]
-            tonic::include_proto!("org.signal.chat.attachments.serde");
-        }
-        pub mod backup {
-            tonic::include_proto!("org.signal.chat.backup");
-            #[cfg(feature = "json")]
-            tonic::include_proto!("org.signal.chat.backup.serde");
-        }
-        pub mod device {
-            tonic::include_proto!("org.signal.chat.device");
-            #[cfg(feature = "json")]
-            tonic::include_proto!("org.signal.chat.device.serde");
-        }
-        pub mod messages {
-            tonic::include_proto!("org.signal.chat.messages");
-            #[cfg(feature = "json")]
-            tonic::include_proto!("org.signal.chat.messages.serde");
-        }
+    // Mirror the protobuf package structure so relative references work correctly.
+    // We'll export org::signal::chat for a more flat interface elsewhere.
+    mod org {
+        pub(super) mod signal {
+            pub mod chat {
+                pub mod common {
+                    tonic::include_proto!("org.signal.chat.common");
+                    #[cfg(feature = "json")]
+                    tonic::include_proto!("org.signal.chat.common.serde");
+                }
+                pub mod errors {
+                    tonic::include_proto!("org.signal.chat.errors");
+                    #[cfg(feature = "json")]
+                    tonic::include_proto!("org.signal.chat.errors.serde");
+                }
+                pub mod account {
+                    tonic::include_proto!("org.signal.chat.account");
+                    #[cfg(feature = "json")]
+                    tonic::include_proto!("org.signal.chat.account.serde");
+                }
+                pub mod attachments {
+                    tonic::include_proto!("org.signal.chat.attachments");
+                    #[cfg(feature = "json")]
+                    tonic::include_proto!("org.signal.chat.attachments.serde");
+                }
+                pub mod backup {
+                    tonic::include_proto!("org.signal.chat.backup");
+                    #[cfg(feature = "json")]
+                    tonic::include_proto!("org.signal.chat.backup.serde");
+                }
+                pub mod device {
+                    tonic::include_proto!("org.signal.chat.device");
+                    #[cfg(feature = "json")]
+                    tonic::include_proto!("org.signal.chat.device.serde");
+                }
+                pub mod messages {
+                    tonic::include_proto!("org.signal.chat.messages");
+                    #[cfg(feature = "json")]
+                    tonic::include_proto!("org.signal.chat.messages.serde");
+                }
 
-        // Not actually a proto, we just make sure to generate our helper file in the same place.
-        pub mod services {
-            tonic::include_proto!("service_methods");
+                // Not actually a proto, we just make sure to generate our helper file in the same place.
+                pub mod services {
+                    tonic::include_proto!("service_methods");
+                }
+            }
         }
+    }
+
+    pub use org::signal::chat;
+
+    pub mod textsecure {
+        tonic::include_proto!("textsecure");
+        #[cfg(feature = "json")]
+        tonic::include_proto!("textsecure.serde");
     }
 
     // These protos come directly from Google and their doc comments aren't necessarily valid Markdown.
