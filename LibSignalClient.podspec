@@ -115,7 +115,7 @@ Pod::Spec.new do |s|
   ]
 
   s.test_spec 'Tests' do |test_spec|
-    test_spec.source_files = 'swift/Tests/*/*.swift'
+    test_spec.source_files = 'swift/Tests/**/*.swift'
     test_spec.preserve_paths = [
       'swift/Tests/*/Resources',
     ]
