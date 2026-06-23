@@ -6,12 +6,11 @@
 use libsignal_net::chat::Response as ChatResponse;
 
 use crate::api::registration::{
-    CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationLock,
+    CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError,
     RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError, UpdateSessionError,
-    VerificationCodeNotDeliverable,
 };
 use crate::api::{AllowRateLimitChallenges, RequestError};
-use crate::ws::{CustomError, ResponseError};
+use crate::ws::{CustomError, ResponseError, parse_json_from_body};
 
 // Rate limit challenges are allowed for all registration requests.
 const ALLOW_RATE_LIMIT_CHALLENGES: AllowRateLimitChallenges = AllowRateLimitChallenges::Yes;
@@ -65,7 +64,8 @@ impl<D> From<ResponseError> for RequestError<RequestVerificationCodeError, D> {
                 418 => RequestVerificationCodeError::SendFailed,
                 440 => {
                     let Some(not_deliverable) = body.as_deref().and_then(|body| {
-                        VerificationCodeNotDeliverable::from_response(headers, body)
+                        // VerificationCodeNotDeliverable::try_from_json(headers, body)
+                        parse_json_from_body(headers, Some(body)).ok()
                     }) else {
                         return CustomError::NoCustomHandling;
                     };
@@ -120,7 +120,7 @@ impl<D> From<ResponseError> for RequestError<RegisterAccountError, D> {
                 423 => {
                     let Some(registration_lock) = body
                         .as_deref()
-                        .and_then(|body| RegistrationLock::from_response(headers, body))
+                        .and_then(|body| parse_json_from_body(headers, Some(body)).ok())
                     else {
                         return CustomError::NoCustomHandling;
                     };

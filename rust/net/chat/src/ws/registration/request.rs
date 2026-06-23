@@ -9,8 +9,8 @@ use serde_with::{FromInto, serde_as, skip_serializing_none};
 
 use crate::api::registration::{
     AccountKeys, CreateSession, ForServiceIds, InvalidSessionId, NewMessageNotification,
-    ProvidedAccountAttributes, PushToken, RegistrationLock, RegistrationSession, SessionId,
-    SignedPreKeyBody, SkipDeviceTransfer, VerificationCodeNotDeliverable, VerificationTransport,
+    ProvidedAccountAttributes, PushToken, RegistrationSession, SessionId, SignedPreKeyBody,
+    SkipDeviceTransfer, VerificationTransport,
 };
 use crate::ws::CONTENT_TYPE_JSON;
 
@@ -76,32 +76,6 @@ struct AccountAttributes<'a> {
 enum SessionValidation<'a> {
     SessionId(&'a SessionId),
     RecoveryPassword(#[serde_as(as = "Base64Padded")] &'a [u8]),
-}
-
-impl VerificationCodeNotDeliverable {
-    pub(super) fn from_response(
-        response_headers: &HeaderMap,
-        response_body: &[u8],
-    ) -> Option<Self> {
-        if response_headers.get(CONTENT_TYPE_JSON.0) != Some(&CONTENT_TYPE_JSON.1) {
-            return None;
-        }
-
-        serde_json::from_slice(response_body).ok()
-    }
-}
-
-impl RegistrationLock {
-    pub(super) fn from_response(
-        response_headers: &HeaderMap,
-        response_body: &[u8],
-    ) -> Option<Self> {
-        if response_headers.get(CONTENT_TYPE_JSON.0) != Some(&CONTENT_TYPE_JSON.1) {
-            return None;
-        }
-
-        serde_json::from_slice(response_body).ok()
-    }
 }
 
 #[derive(Debug, Default, PartialEq, serde::Deserialize)]

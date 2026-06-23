@@ -19,7 +19,7 @@ use std::future::Future;
 use std::time::Duration;
 
 use base64::prelude::{BASE64_STANDARD, Engine as _};
-use http::StatusCode;
+use http::{HeaderMap, StatusCode};
 use libsignal_core::LogSafeDisplay;
 use libsignal_net::chat;
 use libsignal_net::chat::{Request, Response, SendError};
@@ -275,7 +275,7 @@ impl ResponseError {
                         status,
                         message: _,
                         headers,
-                        body: _,
+                        body,
                     } = &response;
 
                     if status.is_server_error() {
@@ -298,7 +298,7 @@ impl ResponseError {
                         }
 
                         if let Ok(ChallengeBody { token, options }) =
-                            parse_json_from_body(&response)
+                            parse_json_from_body(headers, body.as_deref())
                         {
                             return RequestError::Challenge(RateLimitChallenge {
                                 token,
@@ -370,8 +370,13 @@ where
     R: for<'a> serde::Deserialize<'a>,
 {
     fn try_into_response(self) -> Result<R, ResponseError> {
-        let response = check_response_status(self)?;
-        parse_json_from_body(&response)
+        let chat::Response {
+            status: _,
+            message: _,
+            headers,
+            body,
+        } = check_response_status(self)?;
+        parse_json_from_body(&headers, body.as_deref())
     }
 }
 
@@ -390,17 +395,10 @@ fn check_response_status(response: chat::Response) -> Result<chat::Response, Res
 
 /// Like [`TryIntoResponse`], but without checking the status code first.
 #[expect(clippy::result_large_err)]
-fn parse_json_from_body<R>(response: &chat::Response) -> Result<R, ResponseError>
+fn parse_json_from_body<R>(headers: &HeaderMap, body: Option<&[u8]>) -> Result<R, ResponseError>
 where
     R: for<'a> serde::Deserialize<'a>,
 {
-    let chat::Response {
-        status: _,
-        message: _,
-        body,
-        headers,
-    } = response;
-
     let content_type = headers.get(http::header::CONTENT_TYPE);
     if content_type != Some(&CONTENT_TYPE_JSON.1) {
         return Err(ResponseError::UnexpectedContentType(content_type.cloned()));
