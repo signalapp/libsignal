@@ -57,7 +57,6 @@ macro_rules! def_enclaves {
 
 def_enclaves! {
     ENCLAVE_ID_SVR2_2025Q3_PROD => ("29cd63c87bea751e3bfd0fbd401279192e2e5c99948b4ee9437eafc4968355fb", common),
-    ENCLAVE_ID_SVRB_2025Q3_PROD => ("aa906dbc85965d37accb660b65a8c224f037b0e7cfd034532acada3592e5b446", common),
     ENCLAVE_ID_SVR2_2026Q1_STAGING => ("97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535", common),
     ENCLAVE_ID_SVR2_2026Q1_PROD => ("1240acbd4aa26974184844c8a46b1022d3957ac8a76c1fd8f5b1a15141ee0708", common),
     ENCLAVE_ID_SVRB_2026Q1_STAGING => ("97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535", common),
@@ -81,16 +80,6 @@ pub const RAFT_CONFIG_SVR2_2025Q3_PROD: &RaftConfig = &RaftConfig {
     super_majority: 2,
     group_id: 10263621230883829694,
     db_version: 2,
-    attestation_timeout: 604800,
-    simulated: false,
-};
-
-pub const RAFT_CONFIG_SVRB_2025Q3_PROD: &RaftConfig = &RaftConfig {
-    min_voting_replicas: 4,
-    max_voting_replicas: 13,
-    super_majority: 2,
-    group_id: 17845984565043772621,
-    db_version: 4,
     attestation_timeout: 604800,
     simulated: false,
 };

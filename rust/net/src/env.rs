@@ -313,12 +313,6 @@ pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = E
     raft_config: (),
 };
 
-pub(crate) const ENDPOINT_PARAMS_SVRB_2025Q3_PROD: EndpointParams<'static, SvrSgx> =
-    EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2025Q3_PROD),
-        raft_config: attest::constants::RAFT_CONFIG_SVRB_2025Q3_PROD,
-    };
-
 pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q1_STAGING: EndpointParams<'static, SvrSgx> =
     EndpointParams {
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2026Q1_STAGING),
@@ -902,15 +896,7 @@ pub const PROD: Env<'static> = Env {
             }),
             None,
         ],
-        previous: [
-            Some(EnclaveEndpoint {
-                domain_config: DOMAIN_CONFIG_SVRB_PROD,
-                ws_config: RECOMMENDED_WS_CONFIG,
-                params: ENDPOINT_PARAMS_SVRB_2025Q3_PROD,
-            }),
-            None,
-            None,
-        ],
+        previous: [None, None, None],
     },
     keytrans_config: KEYTRANS_CONFIG_PROD,
     reflector_providers: || &*REFLECTOR_PROVIDERS_PROD,
