@@ -61,7 +61,12 @@ impl<D> From<ResponseError> for RequestError<RequestVerificationCodeError, D> {
                 400 => RequestVerificationCodeError::InvalidSessionId,
                 404 => RequestVerificationCodeError::SessionNotFound,
                 409 => RequestVerificationCodeError::NotReadyForVerification,
-                418 => RequestVerificationCodeError::SendFailed,
+                418 => {
+                    let maybe_state = body
+                        .as_deref()
+                        .and_then(|body| parse_json_from_body(headers, Some(body)).ok());
+                    RequestVerificationCodeError::SendFailed(maybe_state)
+                }
                 440 => {
                     let Some(not_deliverable) = body.as_deref().and_then(|body| {
                         // VerificationCodeNotDeliverable::try_from_json(headers, body)

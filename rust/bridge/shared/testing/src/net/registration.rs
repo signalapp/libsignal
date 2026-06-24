@@ -292,7 +292,14 @@ fn TESTING_RegistrationService_RequestVerificationCodeErrorConvert(
                 RequestVerificationCodeError::NotReadyForVerification
             }
             TestingRequestVerificationCodeError::SendFailed => {
-                RequestVerificationCodeError::SendFailed
+                RequestVerificationCodeError::SendFailed(Some(RegistrationSession {
+                    allowed_to_request_code: false,
+                    verified: false,
+                    next_sms: Some(Duration::from_secs(3)),
+                    next_call: Some(Duration::from_secs(14)),
+                    next_verification_attempt: Some(Duration::from_secs(15)),
+                    requested_information: HashSet::from_iter([ChallengeOption::Captcha]),
+                }))
             }
             TestingRequestVerificationCodeError::CodeNotDeliverable => {
                 RequestVerificationCodeError::CodeNotDeliverable(VerificationCodeNotDeliverable {

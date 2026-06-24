@@ -953,7 +953,7 @@ mod registration {
                 RequestVerificationCodeError::NotReadyForVerification => {
                     Self::NotReadyForVerification
                 }
-                RequestVerificationCodeError::SendFailed => Self::VerificationSendFailed,
+                RequestVerificationCodeError::SendFailed(_) => Self::VerificationSendFailed,
                 RequestVerificationCodeError::CodeNotDeliverable(not_deliverable) => {
                     Self::VerificationNotDeliverable(not_deliverable)
                 }

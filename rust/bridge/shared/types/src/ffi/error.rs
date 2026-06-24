@@ -958,7 +958,7 @@ mod registration {
                 Self::NotReadyForVerification => {
                     SignalErrorCode::RegistrationNotReadyForVerification
                 }
-                Self::SendFailed => SignalErrorCode::RegistrationSendVerificationCodeFailed,
+                Self::SendFailed(_) => SignalErrorCode::RegistrationSendVerificationCodeFailed,
                 Self::CodeNotDeliverable(_) => {
                     // Re-match as owned.
                     return SignalFfiError::from(

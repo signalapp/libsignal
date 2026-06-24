@@ -9,7 +9,7 @@ use libsignal_core::LogSafeDisplay;
 
 use crate::api::RequestError;
 use crate::api::registration::{
-    InvalidSessionId, RegistrationLock, VerificationCodeNotDeliverable,
+    InvalidSessionId, RegistrationLock, RegistrationSession, VerificationCodeNotDeliverable,
 };
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
@@ -68,10 +68,13 @@ pub enum RequestVerificationCodeError {
     /// the session is already verified or not ready for a code request
     NotReadyForVerification,
     /// the request to send a verification code with the requested transport could not be fulfilled
-    SendFailed,
+    SendFailed(Option<RegistrationSession>),
     /// the code could not be delivered
     CodeNotDeliverable(VerificationCodeNotDeliverable),
 }
+
+static_assertions::assert_impl_all!(RegistrationSession: LogSafeDisplay);
+static_assertions::assert_impl_all!(VerificationCodeNotDeliverable: LogSafeDisplay);
 impl LogSafeDisplay for RequestVerificationCodeError {}
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]

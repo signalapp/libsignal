@@ -770,7 +770,7 @@ mod registration {
                 RequestVerificationCodeError::NotReadyForVerification => {
                     not_ready_for_verification(env, self.to_string())
                 }
-                RequestVerificationCodeError::SendFailed => make_single_message_throwable(
+                RequestVerificationCodeError::SendFailed(_) => make_single_message_throwable(
                     env,
                     self.to_string(),
                     ClassName("org.signal.libsignal.net.RegistrationSessionSendCodeException"),
