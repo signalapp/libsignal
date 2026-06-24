@@ -14,8 +14,14 @@ mod usernames;
 
 use std::convert::Infallible;
 use std::error::Error;
+#[cfg(any(test, doc))]
+use std::fmt::Display;
 use std::future::Future;
+#[cfg(any(test, doc))]
+use std::sync::Arc;
 
+#[cfg(any(test, doc))]
+use futures_util::{Stream, StreamExt as _, TryFutureExt as _, TryStream, TryStreamExt as _};
 use itertools::Itertools;
 use libsignal_core::LogSafeDisplay;
 use libsignal_net::infra::errors::RetryLater;
@@ -30,6 +36,9 @@ use crate::logging::{DebugAsStrOrBytes, Redact, RedactHex};
 
 /// Marker type for use in [`crate::api`] traits.
 pub enum OverGrpc {}
+
+/// The item type for a streaming gRPC response.
+pub type StreamResult<T, E = Infallible> = Result<T, RequestError<E>>;
 
 /// A single place to put all the constraints we rely on to use [`tonic::client::GrpcService`] with
 /// [`async_trait`] in this crate.
@@ -142,6 +151,7 @@ pub fn raw_grpc(
     })
 }
 
+/// Performs a single operation, assumed to be a gRPC request, with logging at the start and end.
 async fn log_and_send<F, R, E>(
     log_tag: &'static str,
     log_safe_description: &str,
@@ -159,33 +169,189 @@ where
             Ok(x)
         }
         Err(status) => {
-            // Use the Debug implementation to print the status code's name, which is easier to
-            // identify than the human-readable description.
-            // (But first, *guess* that there's no user data stored in tonic::Code by checking that
-            // it's still Copy. The full check for this is the exhaustive match in
-            // into_default_request_error.)
-            static_assertions::assert_impl_all!(tonic::Code: Copy);
-            let code = status.code();
-            log::debug!(
-                "[{log_tag} {request_id:04x}] {:?} {} ({:?}): {:?}",
-                status.code(),
-                status.message(),
-                status.metadata(),
-                DebugAsStrOrBytes(status.details())
-            );
-            let err = RequestError::<Infallible>::from(status);
-            log::warn!(
-                "[{log_tag} {request_id:04x}] {log_safe_description} {:?}: {}",
-                code,
-                err.log_safe_display()
-            );
+            // Assume that this endpoint does not produce any request-specific gRPC-level errors.
+            // (These are usually only used for streams.)
+            // Note that we still have to convert to RequestError<Infallible> at first, because E
+            // may not be LogSafeDisplay.
+            let err =
+                convert_error_and_log(status, log_tag, log_safe_description, request_id, |_, _| {
+                    None
+                });
             Err(err.with_other())
         }
     }
 }
 
-impl<E> From<tonic::Status> for RequestError<E> {
-    fn from(status: tonic::Status) -> Self {
+/// Debug-logs a `tonic::Status`, then converts it using [`RequestError::from_tonic_status`] and
+/// logs the result at warning level before returning.
+///
+/// Used by both [`log_and_send`] and [`send_request_with_streaming_response`].
+fn convert_error_and_log<E>(
+    status: tonic::Status,
+    log_tag: &str,
+    log_safe_request_description: &str,
+    request_id: u16,
+    handle_server_side_error: impl FnOnce(
+        &google::rpc::Status,
+        &google::rpc::ErrorInfo,
+    ) -> Option<RequestError<E>>,
+) -> RequestError<E>
+where
+    E: LogSafeDisplay,
+{
+    // Use the Debug implementation to print the status code's name, which is easier to identify
+    // than the human-readable description.
+    // (But first, *guess* that there's no user data stored in tonic::Code by checking that it's
+    // still Copy. The full check for this is the exhaustive match in from_tonic_status.)
+    static_assertions::assert_impl_all!(tonic::Code: Copy);
+    let code = status.code();
+    log::debug!(
+        "[{log_tag} {request_id:04x}] {:?} {} ({:?}): {:?}",
+        status.code(),
+        status.message(),
+        status.metadata(),
+        DebugAsStrOrBytes(status.details())
+    );
+    let err = RequestError::from_tonic_status(status, handle_server_side_error);
+    log::warn!(
+        "[{log_tag} {request_id:04x}] {log_safe_request_description} {:?}: {}",
+        code,
+        err.log_safe_display()
+    );
+    err
+}
+
+/// Helper to transform `tonic` streaming responses into `libsignal-net-chat` high-level streams.
+///
+/// While these API docs will attempt to walk you through the whole thing, it will really make more
+/// sense if you look at a use site. Here's an example call:
+///
+/// ```ignored
+/// send_request_with_streaming_response(
+///     "unauth",
+///     self.grpc_service(),
+///     || Ok(SomeRequest { id: validate_id(id_param)? }),
+///     |service, request| async move {
+///         SpecificClient::new(service).do_something(request).await
+///     },
+///     |response| response.service_id.try_into().map_err(|_| RequestError::Unexpected {
+///         log_safe: "malformed service ID".to_owned(),
+///     }),
+///     |status| process(matching_details::<CustomInfo>(&status.details)),
+/// )
+/// ```
+///
+/// The result type is a `Stream<Result<T, RequestError<E>>>`, to be treated as a [`TryStream`]; any
+/// top-level error signals the stream is no longer worth reading from.
+///
+/// The `make_request` parameter is called immediately, so it can use borrowed captures. If it
+/// produces an error, the resulting stream will contain only that error and be ready immediately.
+/// The request type it returns must be `Display`able with [`Redact`].
+///
+/// The `send_request` parameter is also called immediately after the request is successfully
+/// created. It should send the request (without calling [`log_and_send`]). Note that even though
+/// tonic request APIs return Futures themselves, wrapping with an extra `async move {}` is the
+/// easiest way to deal with the lifetime of the service. Similarly, even though the service could
+/// have been passed in already wrapped as the first argument, doing so seems to be beyond the
+/// compiler's ability to infer a type for the `service` parameter.
+///
+/// The `handle_response` parameter is called on each item of the response. Remember that any errors
+/// produced here will end the stream; if the stream has items that can individually represent
+/// failures, they should be nested within the `Ok(T)` case.
+///
+/// Finally, `handle_stream_abort` is called if the server terminates the stream with a
+/// `STREAM_CLOSED` error in the Signal error domain. In this case the appropriate information
+/// should be extracted using [`matching_details`] and turned into a high-level error.
+/// (`send_request_with_streaming_response` will take care of logging it for you.)
+#[cfg(any(test, doc))]
+fn send_request_with_streaming_response<
+    Serv,
+    Req: DisplayableRequest,
+    RespStream: TryStream<Error = tonic::Status>,
+    T,
+    E: LogSafeDisplay,
+>(
+    log_tag: &'static str,
+    service: Serv,
+    make_request: impl FnOnce() -> Result<Req, RequestError<E>>,
+    send_request: impl AsyncFnOnce(Serv, Req) -> tonic::Result<tonic::Response<RespStream>>,
+    mut handle_response: impl FnMut(RespStream::Ok) -> Result<T, RequestError<E>>,
+    mut handle_stream_abort: impl FnMut(&google::rpc::Status) -> RequestError<E>,
+) -> impl Stream<Item = StreamResult<T, E>> {
+    async move {
+        let request = make_request()?;
+        let log_safe_description = Arc::new(request.log_safe_description());
+
+        let request_id = rand::random::<u16>();
+        log::info!("[{log_tag} {request_id:04x}] {log_safe_description}");
+
+        let log_safe_description_for_errors = log_safe_description.clone();
+        let mut handle_tonic_error = move |status| {
+            convert_error_and_log(
+                status,
+                log_tag,
+                &log_safe_description_for_errors,
+                request_id,
+                |status, info| match info.reason.as_str() {
+                    "STREAM_CLOSED" => Some(handle_stream_abort(status)),
+                    _ => None,
+                },
+            )
+        };
+
+        let response = send_request(service, request)
+            .await
+            .map_err(&mut handle_tonic_error)?;
+
+        log::debug!("[{log_tag} {request_id:04x}] {log_safe_description} start of stream");
+
+        let stream = response
+            .into_inner()
+            .map_err(handle_tonic_error)
+            .and_then(move |next| std::future::ready(handle_response(next)))
+            .chain(futures_util::stream::poll_fn(move |_cx| {
+                log::info!("[{log_tag} {request_id:04x}] {log_safe_description} done");
+                std::task::Poll::Ready(None)
+            }));
+        Ok(stream)
+    }
+    .try_flatten_stream()
+}
+
+/// Helper trait for [`send_request_with_streaming_response`].
+///
+/// If the blanket impl requirement is written directly on `send_request_with_streaming_response`,
+/// type inference of the request fails.
+#[cfg(any(test, doc))]
+trait DisplayableRequest {
+    /// Equivalent to `Redact(self).to_string()`.
+    fn log_safe_description(&self) -> String;
+}
+#[cfg(any(test, doc))]
+impl<T> DisplayableRequest for T
+where
+    Redact<T>: Display,
+{
+    fn log_safe_description(&self) -> String {
+        Redact(self).to_string()
+    }
+}
+
+impl<E> RequestError<E> {
+    /// Converts a tonic `Status` to a `RequestError`, whether it's a proper server-side error, a
+    /// transport error, or a library-level error.
+    ///
+    /// The `handle_server_side_error` can provide request-specific handling for errors tagged with
+    /// the Signal error domain; returning `None` falls through to request-agnostic handling for
+    /// these errors. If there are no request-specific errors for a given request, return `None`
+    /// unconditionally.
+    fn from_tonic_status(
+        status: tonic::Status,
+        handle_server_side_error: impl FnOnce(
+            &google::rpc::Status,
+            &google::rpc::ErrorInfo,
+        ) -> Option<Self>,
+    ) -> Self {
         if let Some(transport_error) = status
             .source()
             .and_then(|source| source.downcast_ref::<Http2TransportError>())
@@ -213,8 +379,10 @@ impl<E> From<tonic::Status> for RequestError<E> {
                 },
             });
         }
+
         if let Some((details, info)) = extract_server_side_error(&status) {
-            return request_error_from_server_side_error_info(details, info);
+            return handle_server_side_error(&details, &info)
+                .unwrap_or_else(|| request_error_from_server_side_error_info(&details, &info));
         }
 
         // At this point, the error must be in the gRPC layer. Unfortunately we can't distinguish
@@ -322,8 +490,8 @@ fn extract_server_side_error(
 /// Given error info known to be from the chat server, produce a proper high-level error to return
 /// to the app.
 fn request_error_from_server_side_error_info<E>(
-    grpc_status: google::rpc::Status,
-    info: google::rpc::ErrorInfo,
+    grpc_status: &google::rpc::Status,
+    info: &google::rpc::ErrorInfo,
 ) -> RequestError<E> {
     debug_assert_eq!(info.domain, SIGNAL_ERRORINFO_DOMAIN);
     log::debug!("identified as Signal-originated error...");
@@ -926,9 +1094,10 @@ mod test {
     use assert_matches::assert_matches;
     use base64::Engine as _;
     use base64::prelude::BASE64_STANDARD;
-    use futures_util::FutureExt;
+    use futures_util::{FutureExt as _, StreamExt as _};
     use hyper::rt::ReadBufCursor;
     use libsignal_net::infra::http_client::Http2Client;
+    use libsignal_net::infra::testutil::TestError;
     use test_case::test_case;
 
     use super::*;
@@ -1053,7 +1222,7 @@ mod test {
             domain: SIGNAL_ERRORINFO_DOMAIN.into(),
             metadata: Default::default(),
         };
-        request_error_from_server_side_error_info(status, info)
+        request_error_from_server_side_error_info(&status, &info)
     }
 
     #[test_case("GARBAGE" => matches RequestError::Unexpected { .. })]
@@ -1197,9 +1366,10 @@ mod test {
             }
         };
         assert_matches!(
-            RequestError::<Infallible>::from(tonic::Status::from_error(Box::new(
-                Http2TransportError::Hyper(hyper_err)
-            ))),
+            RequestError::<Infallible>::from_tonic_status(
+                tonic::Status::from_error(Box::new(Http2TransportError::Hyper(hyper_err))),
+                |_, _| None
+            ),
             RequestError::Disconnected(DisconnectedError::Transport { log_safe: _ })
         );
     }
@@ -1238,5 +1408,229 @@ mod test {
         input: ChallengeRequiredProto,
     ) -> Result<RateLimitChallenge, RequestError<Infallible>> {
         RateLimitChallenge::try_from(input)
+    }
+
+    struct U32Request(u32);
+    impl Display for Redact<U32Request> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_tuple("U32Request").field(&self.0.0).finish()
+        }
+    }
+
+    #[test]
+    fn test_stream() {
+        let stream = send_request_with_streaming_response(
+            "test",
+            0u32,
+            || Ok(U32Request(5)),
+            |start: u32, U32Request(finish)| {
+                let contents =
+                    futures_util::stream::iter(start..finish).map(|i| Ok(i.to_le_bytes()));
+                std::future::ready(Ok(tonic::Response::from(contents)))
+            },
+            |next| -> StreamResult<_> { Ok(u32::from_le_bytes(next)) },
+            |_| unreachable!(),
+        );
+        let contents: Vec<_> = stream.collect().now_or_never().expect("ready");
+        assert_matches!(&contents[..], [Ok(0), Ok(1), Ok(2), Ok(3), Ok(4)]);
+    }
+
+    /// A type to use when we don't actually plan for the Future to succeed.
+    type FutureReturningATonicLikeStreamOf<T> = std::future::Ready<
+        tonic::Result<tonic::Response<futures_util::stream::Pending<tonic::Result<T>>>>,
+    >;
+
+    fn status_for_server_side_error(custom_reason: &str) -> tonic::Status {
+        let original_error_info = google::rpc::ErrorInfo {
+            reason: custom_reason.into(),
+            domain: SIGNAL_ERRORINFO_DOMAIN.into(),
+            metadata: Default::default(),
+        };
+        let original_status = google::rpc::Status {
+            code: tonic::Code::InvalidArgument.into(),
+            message: "possible user data".into(),
+            details: vec![prost_types::Any::from_msg(&original_error_info).expect("can encode")],
+        };
+
+        tonic::Status::from_header_map(&http::HeaderMap::from_iter([
+            (
+                GRPC_STATUS_HEADER,
+                http::HeaderValue::from_static(tonic::Code::InvalidArgument.description()),
+            ),
+            (
+                GRPC_STATUS_DETAILS_HEADER,
+                http::HeaderValue::from_str(
+                    &BASE64_STANDARD.encode(original_status.encode_to_vec()),
+                )
+                .expect("valid"),
+            ),
+        ]))
+        .expect("valid")
+    }
+
+    #[test]
+    fn test_stream_with_invalid_request() {
+        let stream = send_request_with_streaming_response(
+            "test",
+            (),
+            || Err(RequestError::Other(TestError::Expected)),
+            |_, _: ()| -> FutureReturningATonicLikeStreamOf<()> { unreachable!() },
+            |_: ()| -> StreamResult<(), TestError> { unreachable!() },
+            |_| unreachable!(),
+        );
+        let contents: Vec<_> = stream.collect().now_or_never().expect("ready");
+        assert_matches!(
+            &contents[..],
+            [Err(RequestError::Other(TestError::Expected))]
+        );
+    }
+
+    #[test]
+    fn test_stream_with_failed_send() {
+        let stream = send_request_with_streaming_response(
+            "test",
+            (),
+            || Ok(()),
+            |_, _| -> FutureReturningATonicLikeStreamOf<()> {
+                std::future::ready(Err(tonic::Status::permission_denied("potential user data")))
+            },
+            |_: ()| -> StreamResult<(), TestError> { unreachable!() },
+            |_| unreachable!(),
+        );
+        let contents: Vec<_> = stream.collect().now_or_never().expect("ready");
+        assert_matches!(
+            &contents[..],
+            [Err(RequestError::Unexpected { log_safe })]
+            if log_safe.contains("PermissionDenied") && !log_safe.contains("user data")
+        );
+    }
+
+    #[test]
+    fn test_stream_with_server_side_error_on_send() {
+        let stream = send_request_with_streaming_response(
+            "test",
+            (),
+            || Ok(()),
+            |_, _| -> FutureReturningATonicLikeStreamOf<()> {
+                std::future::ready(Err(status_for_server_side_error("STREAM_CLOSED")))
+            },
+            |_: ()| -> StreamResult<(), TestError> { unreachable!() },
+            |_status| RequestError::Other(TestError::Expected),
+        );
+        let contents: Vec<_> = stream.collect().now_or_never().expect("ready");
+        assert_matches!(
+            &contents[..],
+            [Err(RequestError::Other(TestError::Expected))]
+        );
+    }
+
+    #[test]
+    fn test_stream_with_bad_item() {
+        let stream = send_request_with_streaming_response(
+            "test",
+            0u32,
+            || Ok(U32Request(5)),
+            |start: u32, U32Request(finish)| {
+                let contents =
+                    futures_util::stream::iter(start..finish).map(|i| Ok(i.to_le_bytes()));
+                std::future::ready(Ok(tonic::Response::from(contents)))
+            },
+            |next| {
+                let result = u32::from_le_bytes(next);
+                if result < 3 {
+                    Ok(result)
+                } else {
+                    Err(RequestError::Other(TestError::Expected))
+                }
+            },
+            |_| unreachable!(),
+        );
+
+        // We want to emulate the behavior of "take up to the first error", but then also check the
+        // error. Neither a simple `take_while` nor `try_collect` quite captures this, so we need a
+        // little extra state.
+        let mut stream_is_ok = true;
+        let contents: Vec<_> = stream
+            .take_while(move |next| {
+                std::future::ready(std::mem::replace(&mut stream_is_ok, next.is_ok()))
+            })
+            .collect()
+            .now_or_never()
+            .expect("ready");
+
+        assert_matches!(
+            &contents[..],
+            [
+                Ok(0),
+                Ok(1),
+                Ok(2),
+                Err(RequestError::Other(TestError::Expected))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_stream_with_grpc_error() {
+        let stream = send_request_with_streaming_response(
+            "test",
+            0u32,
+            || Ok(U32Request(5)),
+            |start: u32, U32Request(finish)| {
+                let contents = futures_util::stream::iter(start..finish)
+                    .map(|i| Ok(i.to_le_bytes()))
+                    .chain(futures_util::stream::iter([Err(
+                        tonic::Status::permission_denied("potential user data"),
+                    )]));
+                std::future::ready(Ok(tonic::Response::from(contents)))
+            },
+            |next| Ok(u32::from_le_bytes(next)),
+            |_status| RequestError::Other(TestError::Expected),
+        );
+
+        let contents: Vec<_> = stream.collect().now_or_never().expect("ready");
+        assert_matches!(
+            &contents[..],
+            [
+                Ok(0),
+                Ok(1),
+                Ok(2),
+                Ok(3),
+                Ok(4),
+                Err(RequestError::Unexpected { log_safe }),
+            ]
+            if log_safe.contains("PermissionDenied") && !log_safe.contains("user data")
+        );
+    }
+
+    #[test]
+    fn test_stream_with_server_side_error() {
+        let stream = send_request_with_streaming_response(
+            "test",
+            0u32,
+            || Ok(U32Request(5)),
+            |start: u32, U32Request(finish)| {
+                let contents = futures_util::stream::iter(start..finish)
+                    .map(|i| Ok(i.to_le_bytes()))
+                    .chain(futures_util::stream::iter([Err(
+                        status_for_server_side_error("STREAM_CLOSED"),
+                    )]));
+                std::future::ready(Ok(tonic::Response::from(contents)))
+            },
+            |next| Ok(u32::from_le_bytes(next)),
+            |_status| RequestError::Other(TestError::Expected),
+        );
+
+        let contents: Vec<_> = stream.collect().now_or_never().expect("ready");
+        assert_matches!(
+            &contents[..],
+            [
+                Ok(0),
+                Ok(1),
+                Ok(2),
+                Ok(3),
+                Ok(4),
+                Err(RequestError::Other(TestError::Expected))
+            ]
+        );
     }
 }

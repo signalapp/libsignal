@@ -89,6 +89,14 @@ where
 
 impl_debug_from_display!(Redact<T>);
 
+/// Useful for tests that need a dummy request.
+#[cfg(test)]
+impl std::fmt::Display for Redact<()> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", ())
+    }
+}
+
 /// Redacts all but the last 3 characters of its contents, which are assumed to be hex.
 ///
 /// We keep the last characters rather than the first characters for consistency with the redaction
