@@ -119,7 +119,13 @@ public class UnauthBackupsService(
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }
 
-  @Deprecated(message = "requires every connection to support H2")
+  /**
+   * Sets the messages or media backup key based on `auth`.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. A [RequestUnauthorizedException] means that the authorization
+   * failed; since the key is being updated, this suggests the credential in particular is invalid.
+   */
   public fun setPublicKey(
     auth: BackupAuth,
     rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
@@ -141,7 +147,13 @@ public class UnauthBackupsService(
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }
 
-  @Deprecated(message = "requires every connection to support H2")
+  /**
+   * Fetches the credentials necessary to read from the given backup CDN.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. A [RequestUnauthorizedException] means that the authorization
+   * failed.
+   */
   public fun getCdnCredentials(
     auth: BackupAuth,
     cdn: Int,
@@ -165,7 +177,13 @@ public class UnauthBackupsService(
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }
 
-  @Deprecated(message = "requires every connection to support H2")
+  /**
+   * Fetches the credentials for connecting to SVR-B (a username/password pair).
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. A [RequestUnauthorizedException] means that the authorization
+   * failed.
+   */
   public fun getSvrBCredentials(
     auth: BackupAuth,
     rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
@@ -187,7 +205,16 @@ public class UnauthBackupsService(
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }
 
-  @Deprecated(message = "requires every connection to support H2")
+  /**
+   * Indicates that the backup is still active.
+   *
+   * Clients must periodically upload new backups or perform a refresh. If a backup has not been
+   * active for 30 days, it may be deleted.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. A [RequestUnauthorizedException] means that the authorization
+   * failed.
+   */
   public fun refresh(
     auth: BackupAuth,
     rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
@@ -209,7 +236,15 @@ public class UnauthBackupsService(
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }
 
-  @Deprecated(message = "requires every connection to support H2")
+  /**
+   * Deletes all backup metadata, objects, and stored public key.
+   *
+   * To use backups again, a public key must be resupplied.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. A [RequestUnauthorizedException] means that the authorization
+   * failed.
+   */
   public fun deleteAll(
     auth: BackupAuth,
     rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,

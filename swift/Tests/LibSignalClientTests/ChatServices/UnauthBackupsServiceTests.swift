@@ -220,7 +220,6 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
         return result
     }
 
-    @available(*, deprecated, message: "testing APIs marked deprecated")
     func testSetPublicKey() async throws {
         try await testSimpleGrpcRequest(
             requestName: "org.signal.chat.backup.SetPublicKeyRequest",
@@ -239,7 +238,6 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
         }
     }
 
-    @available(*, deprecated, message: "testing APIs marked deprecated")
     func testGetCdnCredentials() async throws {
         let credentials = try await testSimpleGrpcRequest(
             requestName: "org.signal.chat.backup.GetCdnCredentialsRequest",
@@ -260,7 +258,6 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
         }
     }
 
-    @available(*, deprecated, message: "testing APIs marked deprecated")
     func testGetSvrBCredentials() async throws {
         let credentials: Auth = try await testSimpleGrpcRequest(
             requestName: "org.signal.chat.backup.GetSvrBCredentialsRequest",
@@ -282,7 +279,6 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
         }
     }
 
-    @available(*, deprecated, message: "testing APIs marked deprecated")
     func testRefresh() async throws {
         try await testSimpleGrpcRequest(
             requestName: "org.signal.chat.backup.RefreshRequest",
@@ -302,7 +298,6 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
         }
     }
 
-    @available(*, deprecated, message: "testing APIs marked deprecated")
     func testDeleteAll() async throws {
         try await testSimpleGrpcRequest(
             requestName: "org.signal.chat.backup.DeleteAllRequest",

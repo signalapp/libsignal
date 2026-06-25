@@ -71,7 +71,12 @@ export interface UnauthBackupsService {
   ) => Promise<UploadForm>;
 
   /**
-   * @deprecated requires every connection to support H2
+   * Sets the messages or media backup key based on `auth`.
+   *
+   * @param rng should be omitted in production
+   * @throws {RequestUnauthorizedError} if authorization fails; since the key is being updated, this
+   * suggests the credential in particular is invalid
+   * @throws {StandardNetworkError}
    */
   setBackupPublicKey: (
     request: { auth: BackupAuth; rng?: Rng },
@@ -79,7 +84,11 @@ export interface UnauthBackupsService {
   ) => Promise<void>;
 
   /**
-   * @deprecated requires every connection to support H2
+   * Fetches the credentials necessary to read from the given backup CDN.
+   *
+   * @param rng should be omitted in production
+   * @throws {RequestUnauthorizedError} if authorization fails
+   * @throws {StandardNetworkError}
    */
   getBackupCdnCredentials: (
     request: { auth: BackupAuth; cdn: number; rng?: Rng },
@@ -87,7 +96,11 @@ export interface UnauthBackupsService {
   ) => Promise<CdnCredentials>;
 
   /**
-   * @deprecated requires every connection to support H2
+   * Fetches the credentials for connecting to SVR-B (a username/password pair).
+   *
+   * @param rng should be omitted in production
+   * @throws {RequestUnauthorizedError} if authorization fails
+   * @throws {StandardNetworkError}
    */
   getBackupSvrBCredentials: (
     request: { auth: BackupAuth; rng?: Rng },
@@ -95,7 +108,14 @@ export interface UnauthBackupsService {
   ) => Promise<{ username: string; password: string }>;
 
   /**
-   * @deprecated requires every connection to support H2
+   * Indicates that the backup is still active.
+   *
+   * Clients must periodically upload new backups or perform a refresh. If a backup has not been
+   * active for 30 days, it may be deleted.
+   *
+   * @param rng should be omitted in production
+   * @throws {RequestUnauthorizedError} if authorization fails
+   * @throws {StandardNetworkError}
    */
   refreshBackup: (
     request: { auth: BackupAuth; rng?: Rng },
@@ -103,7 +123,13 @@ export interface UnauthBackupsService {
   ) => Promise<void>;
 
   /**
-   * @deprecated requires every connection to support H2
+   * Deletes all backup metadata, objects, and stored public key.
+   *
+   * To use backups again, a public key must be resupplied.
+   *
+   * @param rng should be omitted in production
+   * @throws {RequestUnauthorizedError} if authorization fails
+   * @throws {StandardNetworkError}
    */
   backupDeleteAll: (
     request: { auth: BackupAuth; rng?: Rng },

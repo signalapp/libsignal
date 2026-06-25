@@ -47,6 +47,47 @@ public protocol UnauthBackupsService: Sendable {
         auth: BackupAuth,
         uploadSize: UInt64,
     ) async throws -> UploadForm
+
+    /// Sets the messages or media backup key based on `auth`.
+    ///
+    /// - Throws:
+    ///   - ``SignalError/requestUnauthorized(_:)`` if there are authorization issues; since the key
+    ///     is being updated, this suggests the credential in particular is invalid
+    ///   - the standard Signal network errors
+    func setBackupPublicKey(auth: BackupAuth) async throws
+
+    /// Fetches the credentials necessary to read from the given backup CDN.
+    ///
+    /// - Throws:
+    ///   - ``SignalError/requestUnauthorized(_:)`` if there are authorization issues
+    ///   - the standard Signal network errors
+    func getBackupCdnCredentials(auth: BackupAuth, cdn: Int32) async throws -> BackupCdnCredentials
+
+    /// Fetches the credentials for connecting to SVR-B (a username/password pair).
+    ///
+    /// - Throws:
+    ///   - ``SignalError/requestUnauthorized(_:)`` if there are authorization issues
+    ///   - the standard Signal network errors
+    func getBackupSvrBCredentials(auth: BackupAuth) async throws -> Auth
+
+    /// Indicates that the backup is still active.
+    ///
+    /// Clients must periodically upload new backups or perform a refresh. If a backup has not been
+    /// active for 30 days, it may be deleted.
+    ///
+    /// - Throws:
+    ///   - ``SignalError/requestUnauthorized(_:)`` if there are authorization issues
+    ///   - the standard Signal network errors
+    func refreshBackup(auth: BackupAuth) async throws
+
+    /// Deletes all backup metadata, objects, and stored public key.
+    ///
+    /// To use backups again, a public key must be resupplied.
+    ///
+    /// - Throws:
+    ///   - ``SignalError/requestUnauthorized(_:)`` if there are authorization issues
+    ///   - the standard Signal network errors
+    func backupDeleteAll(auth: BackupAuth) async throws
 }
 
 extension UnauthenticatedChatConnection: UnauthBackupsService {
@@ -70,6 +111,22 @@ extension UnauthenticatedChatConnection: UnauthBackupsService {
             rngForTesting: -1,
         )
     }
+
+    public func setBackupPublicKey(auth: BackupAuth) async throws {
+        try await self.setBackupPublicKey(auth: auth, rngForTesting: -1)
+    }
+    public func getBackupCdnCredentials(auth: BackupAuth, cdn: Int32) async throws -> BackupCdnCredentials {
+        return try await self.getBackupCdnCredentials(auth: auth, cdn: cdn, rngForTesting: -1)
+    }
+    public func getBackupSvrBCredentials(auth: BackupAuth) async throws -> Auth {
+        return try await self.getBackupSvrBCredentials(auth: auth, rngForTesting: -1)
+    }
+    public func refreshBackup(auth: BackupAuth) async throws {
+        try await self.refreshBackup(auth: auth, rngForTesting: -1)
+    }
+    public func backupDeleteAll(auth: BackupAuth) async throws {
+        try await self.backupDeleteAll(auth: auth, rngForTesting: -1)
+    }
 }
 
 internal protocol UnauthBackupsServiceImpl: Sendable {
@@ -84,19 +141,14 @@ internal protocol UnauthBackupsServiceImpl: Sendable {
         rngForTesting: Int64,
     ) async throws -> UploadForm
 
-    @available(*, deprecated, message: "requires every connection to support H2")
     func setBackupPublicKey(auth: BackupAuth, rngForTesting: Int64) async throws
-    @available(*, deprecated, message: "requires every connection to support H2")
     func getBackupCdnCredentials(
         auth: BackupAuth,
         cdn: Int32,
         rngForTesting: Int64
     ) async throws -> BackupCdnCredentials
-    @available(*, deprecated, message: "requires every connection to support H2")
     func getBackupSvrBCredentials(auth: BackupAuth, rngForTesting: Int64) async throws -> Auth
-    @available(*, deprecated, message: "requires every connection to support H2")
     func refreshBackup(auth: BackupAuth, rngForTesting: Int64) async throws
-    @available(*, deprecated, message: "requires every connection to support H2")
     func backupDeleteAll(auth: BackupAuth, rngForTesting: Int64) async throws
 }
 
@@ -166,7 +218,6 @@ extension UnauthenticatedChatConnection: UnauthBackupsServiceImpl {
         )
     }
 
-    @available(*, deprecated, message: "requires every connection to support H2")
     func setBackupPublicKey(auth: BackupAuth, rngForTesting: Int64) async throws {
         try await NativeNice
             .UnauthenticatedChatConnection_backup_set_public_key(
@@ -179,7 +230,6 @@ extension UnauthenticatedChatConnection: UnauthBackupsServiceImpl {
             )
     }
 
-    @available(*, deprecated, message: "requires every connection to support H2")
     func getBackupCdnCredentials(
         auth: BackupAuth,
         cdn: Int32,
@@ -197,7 +247,6 @@ extension UnauthenticatedChatConnection: UnauthBackupsServiceImpl {
             )
     }
 
-    @available(*, deprecated, message: "requires every connection to support H2")
     func getBackupSvrBCredentials(auth: BackupAuth, rngForTesting: Int64) async throws -> Auth {
         let (username, password) = try await NativeNice.UnauthenticatedChatConnection_backup_get_svrb_credentials(
             asyncContext: self.tokioAsyncContext,
@@ -210,7 +259,6 @@ extension UnauthenticatedChatConnection: UnauthBackupsServiceImpl {
         return Auth(username: username, password: password)
     }
 
-    @available(*, deprecated, message: "requires every connection to support H2")
     func refreshBackup(auth: BackupAuth, rngForTesting: Int64) async throws {
         try await NativeNice
             .UnauthenticatedChatConnection_backup_refresh(
@@ -223,7 +271,6 @@ extension UnauthenticatedChatConnection: UnauthBackupsServiceImpl {
             )
     }
 
-    @available(*, deprecated, message: "requires every connection to support H2")
     func backupDeleteAll(auth: BackupAuth, rngForTesting: Int64) async throws {
         try await NativeNice
             .UnauthenticatedChatConnection_backup_delete_all(
