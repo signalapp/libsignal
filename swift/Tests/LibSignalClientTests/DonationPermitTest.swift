@@ -43,6 +43,9 @@ class DonationPermitTest {
             let response = context.request().issue(keyPair: self.keyPair, randomness: randomness)
             #expect(response.expiration == self.expiration)
             let permits = try context.receive(response: response, publicParams: self.publicParams, now: self.now)
+            for permit in permits {
+                #expect(permit.expiration == self.expiration)
+            }
             let dedupedIds: Set<Data> = Set(permits.map { $0.spendId })
             #expect(dedupedIds.count == count)
             return permits

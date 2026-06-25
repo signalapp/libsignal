@@ -28,6 +28,19 @@ public class DonationPermit: ByteArray, @unchecked Sendable {
             }
         }
     }
+
+    /// The expiration after which this permit can no longer be redeemed.
+    public lazy var expiration: Date = failOnError {
+        Date(
+            timeIntervalSince1970: TimeInterval(
+                try withUnsafeBorrowedBuffer { permit in
+                    try invokeFnReturningInteger {
+                        signal_donation_permit_expiration($0, permit)
+                    }
+                }
+            )
+        )
+    }
 }
 public class DonationPermitDerivedKeyPair: ByteArray, @unchecked Sendable {
     public required init(contents: Data) throws {

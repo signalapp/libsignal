@@ -33,8 +33,16 @@ export class DonationPermit extends ByteArray {
       keyPair.contents
     );
   }
-  getSpendId(): Uint8Array<ArrayBuffer> {
+  /** The expiration after which this permit can no longer be redeemed. */
+  public get expiration(): Date {
+    return dateFromSeconds(Native.DonationPermit_Expiration(this.contents));
+  }
+  public get spendId(): Uint8Array<ArrayBuffer> {
     return Native.DonationPermit_SpendId(this.contents);
+  }
+  /** @deprecated Use the `spendId` getter instead. */
+  getSpendId(): Uint8Array<ArrayBuffer> {
+    return this.spendId;
   }
 }
 

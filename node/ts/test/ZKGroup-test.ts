@@ -1221,10 +1221,11 @@ describe('DonationPermit', () => {
       const response = context.request().issue(this.keyPair);
       expect(response.expiration.getTime()).to.equal(this.expiration.getTime());
       const permits = context.receive(response, this.publicParams, this.now);
+      for (const permit of permits) {
+        expect(permit.expiration.getTime()).to.equal(this.expiration.getTime());
+      }
       const uniqueSpendIds = new Set(
-        permits.map((permit) =>
-          Buffer.from(permit.getSpendId()).toString('hex')
-        )
+        permits.map((permit) => Buffer.from(permit.spendId).toString('hex'))
       );
       expect(uniqueSpendIds.size).to.equal(permits.length);
       return permits;
