@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use http::HeaderMap;
 use libsignal_net::chat::Response as ChatResponse;
 
 use crate::api::registration::{
-    CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError,
+    CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationSession,
     RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError, UpdateSessionError,
 };
 use crate::api::{AllowRateLimitChallenges, RequestError};
@@ -48,6 +49,13 @@ impl<D> From<ResponseError> for RequestError<ResumeSessionError, D> {
     }
 }
 
+fn session_state_from_json_body(
+    headers: &HeaderMap,
+    body: Option<&[u8]>,
+) -> Option<RegistrationSession> {
+    parse_json_from_body(headers, Some(body?)).ok()
+}
+
 impl<D> From<ResponseError> for RequestError<RequestVerificationCodeError, D> {
     fn from(value: ResponseError) -> Self {
         value.into_request_error(ALLOW_RATE_LIMIT_CHALLENGES, |value| {
@@ -60,18 +68,18 @@ impl<D> From<ResponseError> for RequestError<RequestVerificationCodeError, D> {
             CustomError::Err(match status.as_u16() {
                 400 => RequestVerificationCodeError::InvalidSessionId,
                 404 => RequestVerificationCodeError::SessionNotFound,
-                409 => RequestVerificationCodeError::NotReadyForVerification,
-                418 => {
-                    let maybe_state = body
-                        .as_deref()
-                        .and_then(|body| parse_json_from_body(headers, Some(body)).ok());
-                    RequestVerificationCodeError::SendFailed(maybe_state)
-                }
+                409 => RequestVerificationCodeError::NotReadyForVerification(
+                    session_state_from_json_body(headers, body.as_deref()),
+                ),
+                418 => RequestVerificationCodeError::SendFailed(session_state_from_json_body(
+                    headers,
+                    body.as_deref(),
+                )),
                 440 => {
-                    let Some(not_deliverable) = body.as_deref().and_then(|body| {
-                        // VerificationCodeNotDeliverable::try_from_json(headers, body)
-                        parse_json_from_body(headers, Some(body)).ok()
-                    }) else {
+                    let Some(not_deliverable) = body
+                        .as_deref()
+                        .and_then(|body| parse_json_from_body(headers, Some(body)).ok())
+                    else {
                         return CustomError::NoCustomHandling;
                     };
                     RequestVerificationCodeError::CodeNotDeliverable(not_deliverable)
@@ -87,11 +95,18 @@ impl<D> From<ResponseError> for RequestError<RequestVerificationCodeError, D> {
 impl<D> From<ResponseError> for RequestError<SubmitVerificationError, D> {
     fn from(value: ResponseError) -> Self {
         value.into_request_error(ALLOW_RATE_LIMIT_CHALLENGES, |value| {
-            let ChatResponse { status, .. } = value;
+            let ChatResponse {
+                status,
+                message: _,
+                headers,
+                body,
+            } = value;
             CustomError::Err(match status.as_u16() {
                 400 => SubmitVerificationError::InvalidSessionId,
                 404 => SubmitVerificationError::SessionNotFound,
-                409 => SubmitVerificationError::NotReadyForVerification,
+                409 => SubmitVerificationError::NotReadyForVerification(
+                    session_state_from_json_body(headers, body.as_deref()),
+                ),
                 _ => return CustomError::NoCustomHandling,
             })
         })

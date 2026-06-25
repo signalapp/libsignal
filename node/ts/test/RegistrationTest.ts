@@ -196,9 +196,46 @@ describe('Registration types', () => {
           ['SessionNotFound', ErrorCode.RegistrationSessionNotFound],
           [
             'NotReadyForVerification',
-            ErrorCode.RegistrationSessionNotReadyForVerification,
+            {
+              code: ErrorCode.RegistrationSessionNotReadyForVerification,
+              sessionState: {
+                allowedToRequestCode: false,
+                verified: false,
+                nextSmsSecs: 3,
+                nextCallSecs: 14,
+                nextVerificationAttemptSecs: 15,
+                requestedInformation: new Set(['captcha']),
+              },
+            },
           ],
-          ['SendFailed', ErrorCode.RegistrationVerificationSendFailed],
+          [
+            'NotReadyForVerificationNoSessionState',
+            {
+              code: ErrorCode.RegistrationSessionNotReadyForVerification,
+              sessionState: undefined,
+            },
+          ],
+          [
+            'SendFailed',
+            {
+              code: ErrorCode.RegistrationVerificationSendFailed,
+              sessionState: {
+                allowedToRequestCode: false,
+                verified: false,
+                nextSmsSecs: 3,
+                nextCallSecs: 14,
+                nextVerificationAttemptSecs: 15,
+                requestedInformation: new Set(['captcha']),
+              },
+            },
+          ],
+          [
+            'SendFailedNoSessionState',
+            {
+              code: ErrorCode.RegistrationVerificationSendFailed,
+              sessionState: undefined,
+            },
+          ],
           [
             'CodeNotDeliverable',
             {
@@ -222,7 +259,24 @@ describe('Registration types', () => {
           ['SessionNotFound', ErrorCode.RegistrationSessionNotFound],
           [
             'NotReadyForVerification',
-            ErrorCode.RegistrationSessionNotReadyForVerification,
+            {
+              code: ErrorCode.RegistrationSessionNotReadyForVerification,
+              sessionState: {
+                allowedToRequestCode: false,
+                verified: false,
+                nextSmsSecs: 3,
+                nextCallSecs: 14,
+                nextVerificationAttemptSecs: 15,
+                requestedInformation: new Set(['captcha']),
+              },
+            },
+          ],
+          [
+            'NotReadyForVerificationNoSessionState',
+            {
+              code: ErrorCode.RegistrationSessionNotReadyForVerification,
+              sessionState: undefined,
+            },
           ],
           retryLaterCase,
           unknownCase,

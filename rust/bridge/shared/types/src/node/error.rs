@@ -781,8 +781,8 @@ mod registration {
     use libsignal_net::auth::Auth;
     use libsignal_net_chat::api::registration::{
         CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationLock,
-        RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError,
-        UpdateSessionError, VerificationCodeNotDeliverable,
+        RegistrationSession, RequestVerificationCodeError, ResumeSessionError,
+        SubmitVerificationError, UpdateSessionError, VerificationCodeNotDeliverable,
     };
     use libsignal_net_chat::registration::RequestError;
 
@@ -826,8 +826,8 @@ mod registration {
         InvalidSessionId,
         RequestInvalid,
         RequestRejected,
-        NotReadyForVerification,
-        VerificationSendFailed,
+        NotReadyForVerification(Option<RegistrationSession>),
+        VerificationSendFailed(Option<RegistrationSession>),
         VerificationNotDeliverable(VerificationCodeNotDeliverable),
         RegistrationLock(RegistrationLock),
         RecoveryVerificationFailed,
@@ -840,6 +840,14 @@ mod registration {
             cx: &mut Cx<'cx>,
             operation_name: &str,
         ) -> Handle<'cx, JsError> {
+            let mut err_with_state = |session: RegistrationSession, typ: &str, msg: &str| {
+                new_js_error(cx, Some(typ), msg, operation_name, move |cx| {
+                    let props = cx.empty_object();
+                    let session = session.convert_into(cx)?;
+                    props.prop(cx, "_sessionState").set(session)?;
+                    Ok(props.upcast())
+                })
+            };
             let (name, message) = match self {
                 Self::VerificationNotDeliverable(VerificationCodeNotDeliverable {
                     reason,
@@ -884,6 +892,24 @@ mod registration {
                         },
                     );
                 }
+                Self::VerificationSendFailed(maybe_state) => {
+                    const TYPE: &str = "RegistrationVerificationSendFailed";
+                    const MESSAGE: &str = "sending the verification code failed";
+                    if let Some(session) = maybe_state {
+                        return err_with_state(session, TYPE, MESSAGE);
+                    } else {
+                        (TYPE, MESSAGE)
+                    }
+                }
+                Self::NotReadyForVerification(maybe_state) => {
+                    const TYPE: &str = "RegistrationSessionNotReadyForVerification";
+                    const MESSAGE: &str = "the session is not ready for verification";
+                    if let Some(session) = maybe_state {
+                        return err_with_state(session, TYPE, MESSAGE);
+                    } else {
+                        (TYPE, MESSAGE)
+                    }
+                }
                 Self::SessionNotFound => (
                     "RegistrationSessionNotFound",
                     "no verification session found for the session ID",
@@ -898,14 +924,6 @@ mod registration {
                 Self::RequestRejected => (
                     "RegistrationRequestRejected",
                     "the information provided was rejected",
-                ),
-                Self::NotReadyForVerification => (
-                    "RegistrationSessionNotReadyForVerification",
-                    "the session is not ready for verification",
-                ),
-                Self::VerificationSendFailed => (
-                    "RegistrationVerificationSendFailed",
-                    "sending the verification code failed",
                 ),
                 Self::RecoveryVerificationFailed => (
                     "RegistrationRecoveryVerificationFailed",
@@ -950,10 +968,12 @@ mod registration {
             match value {
                 RequestVerificationCodeError::InvalidSessionId => Self::InvalidSessionId,
                 RequestVerificationCodeError::SessionNotFound => Self::SessionNotFound,
-                RequestVerificationCodeError::NotReadyForVerification => {
-                    Self::NotReadyForVerification
+                RequestVerificationCodeError::NotReadyForVerification(state) => {
+                    Self::NotReadyForVerification(state)
                 }
-                RequestVerificationCodeError::SendFailed(_) => Self::VerificationSendFailed,
+                RequestVerificationCodeError::SendFailed(state) => {
+                    Self::VerificationSendFailed(state)
+                }
                 RequestVerificationCodeError::CodeNotDeliverable(not_deliverable) => {
                     Self::VerificationNotDeliverable(not_deliverable)
                 }
@@ -966,7 +986,9 @@ mod registration {
             match value {
                 SubmitVerificationError::InvalidSessionId => Self::InvalidSessionId,
                 SubmitVerificationError::SessionNotFound => Self::SessionNotFound,
-                SubmitVerificationError::NotReadyForVerification => Self::NotReadyForVerification,
+                SubmitVerificationError::NotReadyForVerification(state) => {
+                    Self::NotReadyForVerification(state)
+                }
             }
         }
     }

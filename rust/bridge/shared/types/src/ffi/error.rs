@@ -955,7 +955,7 @@ mod registration {
             let code = match &self {
                 Self::InvalidSessionId => SignalErrorCode::RegistrationInvalidSessionId,
                 Self::SessionNotFound => SignalErrorCode::RegistrationSessionNotFound,
-                Self::NotReadyForVerification => {
+                Self::NotReadyForVerification(_) => {
                     SignalErrorCode::RegistrationNotReadyForVerification
                 }
                 Self::SendFailed(_) => SignalErrorCode::RegistrationSendVerificationCodeFailed,
@@ -1006,7 +1006,7 @@ mod registration {
             let code = match &self {
                 Self::InvalidSessionId => SignalErrorCode::RegistrationInvalidSessionId,
                 Self::SessionNotFound => SignalErrorCode::RegistrationSessionNotFound,
-                Self::NotReadyForVerification => {
+                Self::NotReadyForVerification(_) => {
                     SignalErrorCode::RegistrationNotReadyForVerification
                 }
             };

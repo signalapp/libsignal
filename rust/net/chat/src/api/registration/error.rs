@@ -66,7 +66,8 @@ pub enum RequestVerificationCodeError {
     /// session not found
     SessionNotFound,
     /// the session is already verified or not ready for a code request
-    NotReadyForVerification,
+    // Here and later the session is optional to allow for missing or malformed response body.
+    NotReadyForVerification(Option<RegistrationSession>),
     /// the request to send a verification code with the requested transport could not be fulfilled
     SendFailed(Option<RegistrationSession>),
     /// the code could not be delivered
@@ -86,7 +87,7 @@ pub enum SubmitVerificationError {
     /// session not found
     SessionNotFound,
     /// the session is already verified or no code was requested
-    NotReadyForVerification,
+    NotReadyForVerification(Option<RegistrationSession>),
 }
 impl LogSafeDisplay for SubmitVerificationError {}
 

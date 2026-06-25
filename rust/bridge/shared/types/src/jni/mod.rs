@@ -767,7 +767,7 @@ mod registration {
                 RequestVerificationCodeError::SessionNotFound => {
                     session_not_found(env, self.to_string())
                 }
-                RequestVerificationCodeError::NotReadyForVerification => {
+                RequestVerificationCodeError::NotReadyForVerification(_) => {
                     not_ready_for_verification(env, self.to_string())
                 }
                 RequestVerificationCodeError::SendFailed(_) => make_single_message_throwable(
@@ -810,7 +810,7 @@ mod registration {
                 SubmitVerificationError::SessionNotFound => {
                     session_not_found(env, self.to_string())
                 }
-                SubmitVerificationError::NotReadyForVerification => {
+                SubmitVerificationError::NotReadyForVerification(_) => {
                     not_ready_for_verification(env, self.to_string())
                 }
             }
