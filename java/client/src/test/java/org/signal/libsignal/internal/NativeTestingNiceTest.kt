@@ -116,6 +116,37 @@ class NativeTestingNiceTest {
     )
 
   @Test
+  fun bridgeVecString() =
+    testConversion(
+      listOf(listOf(), listOf("one"), listOf("one", "two"), listOf("one", "two", "three")).asSequence(),
+      toString = { arr -> buildJsonArray { arr.forEach { add(it) } }.toString() },
+      nativeToString = NativeTestingNice::TESTING_conversion_BridgeVecString_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_BridgeVecString_identity,
+    )
+
+  @Test
+  fun bridgeVecMySimpleTestEnum() =
+    testConversion(
+      listOf(
+        listOf(),
+        listOf(MySimpleTestEnum.A),
+        listOf(MySimpleTestEnum.B),
+        listOf(
+          MySimpleTestEnum.A,
+          MySimpleTestEnum.B,
+        ),
+        listOf(MySimpleTestEnum.A, MySimpleTestEnum.A, MySimpleTestEnum.B),
+        listOf(
+          MySimpleTestEnum.B,
+          MySimpleTestEnum.B,
+        ),
+      ).asSequence(),
+      toString = { arr -> buildJsonArray { arr.forEach { add(it.toString()) } }.toString() },
+      nativeToString = NativeTestingNice::TESTING_MySimpleTestEnum_BridgeVec_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_MySimpleTestEnum_BridgeVec_identity,
+    )
+
+  @Test
   fun mySimpleTestEnum() =
     testConversion(
       listOf(MySimpleTestEnum.A, MySimpleTestEnum.B).asSequence(),

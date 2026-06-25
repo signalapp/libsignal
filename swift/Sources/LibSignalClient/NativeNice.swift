@@ -12,6 +12,8 @@
 // Some of our type names grow long
 // swiftlint:disable type_name
 
+// swiftlint:disable explicit_init_for_public_struct
+
 import Foundation
 import SignalFfi
 

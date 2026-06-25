@@ -149,6 +149,32 @@ struct NativeTestingNiceTests {
         )
     }
     @Test
+    func testMySimpleTestEnumBridgeVec() throws {
+        try ArrayArgConverter<
+            DerivedArgConverterMySimpleTestEnum,
+            FfiBorrowedSliceConstructor_SignalBorrowedSliceOfMySimpleTestEnumFfiArg_DerivedArgConverterMySimpleTestEnum
+        >
+        .testConversion(
+            items: [[], [.a], [.b], [.a, .b], [.a, .a, .b], [.b, .b]],
+            toString: {
+                String(
+                    bytes: try JSONEncoder().encode(
+                        $0.map {
+                            switch $0 {
+                            case .a: "A"
+                            case .b: "B"
+                            }
+                        }
+                    ),
+                    encoding: .utf8
+                )!
+            },
+            nativeToString: { try NativeTestingNice.TESTING_MySimpleTestEnum_BridgeVec_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_my_simple_test_enum_bridge_vec_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_MySimpleTestEnum_BridgeVec_identity(x: $0) }
+        )
+    }
+    @Test
     func testDataVecU8() throws {
         try DataConverter.testConversion(
             items: (0..<10).lazy.map { count in Data((0..<(1 << count)).map { _ in UInt8.random(in: 0...255) }) },
@@ -156,6 +182,19 @@ struct NativeTestingNiceTests {
             nativeToString: { try NativeTestingNice.TESTING_conversion_Data_VecU8_to_string(x: $0) },
             rawNativeToString: SignalFfi.signal_testing_conversion_data_vec_u8_to_string,
             nativeIdentity: { try NativeTestingNice.TESTING_conversion_Data_VecU8_identity(x: $0) }
+        )
+    }
+    @Test
+    func testBridgeVecString() throws {
+        try ArrayArgConverter<
+            StringConverter, FfiBorrowedSliceConstructor_SignalBorrowedSliceOfCStringPtr_StringConverter
+        >
+        .testConversion(
+            items: [[], ["one"], ["one", "two"], ["one", "two", "three"]],
+            toString: { String(bytes: try JSONEncoder().encode($0), encoding: .utf8)! },
+            nativeToString: { try NativeTestingNice.TESTING_conversion_BridgeVecString_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_conversion_bridge_vec_string_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_conversion_BridgeVecString_identity(x: $0) },
         )
     }
     @Test

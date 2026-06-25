@@ -384,6 +384,41 @@ describe('NativeTestingNice', () => {
       });
     }
   });
+  it('BridgeVec of MySimpleTestEnum', async () => {
+    for (const item of [
+      [],
+      ['a'],
+      ['b'],
+      ['a', 'b'],
+      ['a', 'a', 'b'],
+      ['b', 'b'],
+    ] as NativeNice.MySimpleTestEnum[][]) {
+      await testConversion({
+        item,
+        toString: JSON.stringify(item).toUpperCase(),
+        nativeToString: (x) =>
+          NativeNice.TESTING_MySimpleTestEnum_BridgeVec_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_MySimpleTestEnum_BridgeVec_identity({ x }),
+        nativeIdentityAsync:
+          NativeNice.TESTING_MySimpleTestEnum_BridgeVec_identity_async,
+      });
+    }
+  });
+  it('BridgeVec of String', async () => {
+    for (const item of [[], ['one'], ['one', 'two'], ['one', 'two', 'three']]) {
+      await testConversion({
+        item,
+        toString: JSON.stringify(item),
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_BridgeVecString_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_BridgeVecString_identity({ x }),
+        nativeIdentityAsync:
+          NativeNice.TESTING_conversion_BridgeVecString_identity_async,
+      });
+    }
+  });
   it('should handle async', async () => {
     for (const count of [0, 1, 2, 4, 8, 16, 32, 64, 128, 256]) {
       const data =

@@ -10,6 +10,7 @@
     "ktlint:standard:property-naming",
     "ktlint:standard:filename",
     "ktlint:standard:max-line-length",
+    "PLATFORM_CLASS_MAPPED_TO_KOTLIN",
 )
 
 package org.signal.libsignal.internal
@@ -18,6 +19,8 @@ import org.signal.libsignal.internal.NativeNiceHelpers.convertToObject
 import org.signal.libsignal.internal.NativeNiceHelpers.downcastFromObject
 import org.signal.libsignal.internal.NativeNiceHelpers.identity
 import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
+import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecArg
+import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 
 {% set ctx = testing_ctx if testing else non_testing_ctx %}
 

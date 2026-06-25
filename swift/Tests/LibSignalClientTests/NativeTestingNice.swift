@@ -12,11 +12,84 @@
 // Some of our type names grow long
 // swiftlint:disable type_name
 
+// swiftlint:disable explicit_init_for_public_struct
+
 #if !os(iOS) || targetEnvironment(simulator)
 
 import Foundation
 import SignalFfi
 @testable import LibSignalClient
+
+enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfCStringPtr_StringConverter: FfiBorrowedSliceConstructor {
+    public typealias BorrowedSlice = SignalFfi.SignalBorrowedSliceOfCStringPtr
+    public typealias Element = StringConverter.FfiArg
+    public static func construct(
+        _ buffer: UnsafeBufferPointer<Element>,
+    ) -> BorrowedSlice {
+        BorrowedSlice(base: buffer.baseAddress, length: buffer.count)
+    }
+}
+
+enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfMySimpleTestEnumFfiArg_DerivedArgConverterMySimpleTestEnum:
+    FfiBorrowedSliceConstructor
+{
+    public typealias BorrowedSlice = SignalFfi.SignalBorrowedSliceOfMySimpleTestEnumFfiArg
+    public typealias Element = DerivedArgConverterMySimpleTestEnum.FfiArg
+    public static func construct(
+        _ buffer: UnsafeBufferPointer<Element>,
+    ) -> BorrowedSlice {
+        BorrowedSlice(base: buffer.baseAddress, length: buffer.count)
+    }
+}
+
+enum FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedCStringPtr_StringConverter:
+    FfiOwnedBufferOfMaxAlignedProject
+{
+    public typealias Buffer = SignalFfi.SignalOwnedBufferOfMaxAlignedCStringPtr
+    public typealias Element = StringConverter.FfiReturn
+    public static func empty() -> Buffer {
+        Buffer()
+    }
+    public static func project(
+        _ buffer: Buffer
+    ) -> UnsafeBufferPointer<Element> {
+        UnsafeBufferPointer(start: buffer.base, count: buffer.length)
+    }
+    public static func typeErased(
+        _ buffer: Buffer
+    ) -> SignalOwnedBufferOfMaxAlignedc_void {
+        SignalOwnedBufferOfMaxAlignedc_void(
+            base: UnsafeMutableRawPointer(buffer.base),
+            length: buffer.length,
+            size_bytes: buffer.size_bytes,
+        )
+    }
+}
+
+enum
+    FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult_DerivedReturnConverterMySimpleTestEnum:
+        FfiOwnedBufferOfMaxAlignedProject
+{
+    public typealias Buffer = SignalFfi.SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult
+    public typealias Element = DerivedReturnConverterMySimpleTestEnum.FfiReturn
+    public static func empty() -> Buffer {
+        Buffer()
+    }
+    public static func project(
+        _ buffer: Buffer
+    ) -> UnsafeBufferPointer<Element> {
+        UnsafeBufferPointer(start: buffer.base, count: buffer.length)
+    }
+    public static func typeErased(
+        _ buffer: Buffer
+    ) -> SignalOwnedBufferOfMaxAlignedc_void {
+        SignalOwnedBufferOfMaxAlignedc_void(
+            base: UnsafeMutableRawPointer(buffer.base),
+            length: buffer.length,
+            size_bytes: buffer.size_bytes,
+        )
+    }
+}
 
 internal enum MyRemoteDeriveEnum {
     case unit
@@ -930,6 +1003,48 @@ internal enum NativeTestingNice {
         }
 
     }
+    internal static func TESTING_MySimpleTestEnum_BridgeVec_identity(
+        x: [MySimpleTestEnum],
+    ) throws -> [MySimpleTestEnum] {
+        try ArrayArgConverter<
+            DerivedArgConverterMySimpleTestEnum,
+            FfiBorrowedSliceConstructor_SignalBorrowedSliceOfMySimpleTestEnumFfiArg_DerivedArgConverterMySimpleTestEnum
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = ArrayReturnConverter<
+                DerivedReturnConverterMySimpleTestEnum,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult_DerivedReturnConverterMySimpleTestEnum
+            >.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_simple_test_enum_bridge_vec_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try ArrayReturnConverter<
+                DerivedReturnConverterMySimpleTestEnum,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult_DerivedReturnConverterMySimpleTestEnum
+            >.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_MySimpleTestEnum_BridgeVec_to_string(
+        x: [MySimpleTestEnum],
+    ) throws -> String {
+        try ArrayArgConverter<
+            DerivedArgConverterMySimpleTestEnum,
+            FfiBorrowedSliceConstructor_SignalBorrowedSliceOfMySimpleTestEnumFfiArg_DerivedArgConverterMySimpleTestEnum
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_simple_test_enum_bridge_vec_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
     internal static func TESTING_MySimpleTestEnum_identity(
         x: MySimpleTestEnum,
     ) throws -> MySimpleTestEnum {
@@ -1097,6 +1212,46 @@ internal enum NativeTestingNice {
                 }
             }
         return try DataConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_conversion_BridgeVecString_identity(
+        x: [String],
+    ) throws -> [String] {
+        try ArrayArgConverter<
+            StringConverter, FfiBorrowedSliceConstructor_SignalBorrowedSliceOfCStringPtr_StringConverter
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = ArrayReturnConverter<
+                StringConverter,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedCStringPtr_StringConverter
+            >.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_bridge_vec_string_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try ArrayReturnConverter<
+                StringConverter,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedCStringPtr_StringConverter
+            >.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_BridgeVecString_to_string(
+        x: [String],
+    ) throws -> String {
+        try ArrayArgConverter<
+            StringConverter, FfiBorrowedSliceConstructor_SignalBorrowedSliceOfCStringPtr_StringConverter
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_bridge_vec_string_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
 
     }
     internal static func TESTING_conversion_Data_VecU8_identity(

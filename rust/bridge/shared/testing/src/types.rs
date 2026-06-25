@@ -606,6 +606,28 @@ pub fn TESTING_MySimpleTestEnum_to_string(x: MySimpleTestEnum) -> String {
 }
 
 #[bridge_fn(nice = true)]
+fn TESTING_MySimpleTestEnum_BridgeVec_to_string(x: BridgeVec<MySimpleTestEnum>) -> String {
+    serde_json::to_string(
+        &x.0.into_iter()
+            .map(TESTING_MySimpleTestEnum_to_string)
+            .collect::<Vec<_>>(),
+    )
+    .expect("JSON succeeds")
+}
+#[bridge_fn(nice = true)]
+fn TESTING_MySimpleTestEnum_BridgeVec_identity(
+    x: BridgeVec<MySimpleTestEnum>,
+) -> BridgeVec<MySimpleTestEnum> {
+    x
+}
+#[bridge_io(TokioAsyncContext, nice = true, jni = false, ffi = false)]
+pub async fn TESTING_MySimpleTestEnum_BridgeVec_identity_async(
+    x: BridgeVec<MySimpleTestEnum>,
+) -> BridgeVec<MySimpleTestEnum> {
+    x
+}
+
+#[bridge_fn(nice = true)]
 pub fn TESTING_MyTestPoint_to_string(x: MyTestPoint) -> String {
     serde_json::to_string(&x).expect("JSON succeeds")
 }

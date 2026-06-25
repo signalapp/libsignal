@@ -10,6 +10,7 @@
   "ktlint:standard:property-naming",
   "ktlint:standard:filename",
   "ktlint:standard:max-line-length",
+  "PLATFORM_CLASS_MAPPED_TO_KOTLIN",
 )
 
 package org.signal.libsignal.internal
@@ -17,6 +18,8 @@ package org.signal.libsignal.internal
 import org.signal.libsignal.internal.NativeNiceHelpers.convertToObject
 import org.signal.libsignal.internal.NativeNiceHelpers.downcastFromObject
 import org.signal.libsignal.internal.NativeNiceHelpers.identity
+import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecArg
+import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 
 internal sealed class MySimpleTestEnum {
   internal data object A : MySimpleTestEnum() {
@@ -360,6 +363,38 @@ internal sealed class SetDeviceNameOut {
 }
 
 internal object NativeTestingNice {
+  public fun TESTING_MySimpleTestEnum_BridgeVec_identity(
+    x: List<org.signal.libsignal.internal.MySimpleTestEnum>,
+  ): List<org.signal.libsignal.internal.MySimpleTestEnum> {
+    val ffi_x =
+      mapBridgeVecArg<Object, org.signal.libsignal.internal.MySimpleTestEnum>({
+        (org.signal.libsignal.internal.MySimpleTestEnum::toFfiArgTypeObject)(it)
+      })(x)
+    val ffiOut =
+      NativeTesting.TESTING_MySimpleTestEnum_BridgeVec_identity(
+        ffi_x,
+      )
+
+    return mapBridgeVecReturn<Object, org.signal.libsignal.internal.MySimpleTestEnum>({
+      downcastFromObject<org.signal.libsignal.internal.MySimpleTestEnum>(it)
+    })(ffiOut)
+  }
+
+  public fun TESTING_MySimpleTestEnum_BridgeVec_to_string(
+    x: List<org.signal.libsignal.internal.MySimpleTestEnum>,
+  ): String {
+    val ffi_x =
+      mapBridgeVecArg<Object, org.signal.libsignal.internal.MySimpleTestEnum>({
+        (org.signal.libsignal.internal.MySimpleTestEnum::toFfiArgTypeObject)(it)
+      })(x)
+    val ffiOut =
+      NativeTesting.TESTING_MySimpleTestEnum_BridgeVec_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
   public fun TESTING_MySimpleTestEnum_identity(
     x: org.signal.libsignal.internal.MySimpleTestEnum,
   ): org.signal.libsignal.internal.MySimpleTestEnum {
@@ -482,6 +517,26 @@ internal object NativeTestingNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
+  }
+
+  public fun TESTING_conversion_BridgeVecString_identity(x: List<String>): List<String> {
+    val ffi_x = mapBridgeVecArg<String, String>({ identity(it) })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_BridgeVecString_identity(
+        ffi_x,
+      )
+
+    return mapBridgeVecReturn<String, String>({ identity(it) })(ffiOut)
+  }
+
+  public fun TESTING_conversion_BridgeVecString_to_string(x: List<String>): String {
+    val ffi_x = mapBridgeVecArg<String, String>({ identity(it) })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_BridgeVecString_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
   }
 
   public fun TESTING_conversion_Data_VecU8_identity(x: ByteArray): ByteArray {

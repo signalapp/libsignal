@@ -86,6 +86,15 @@ fn main() -> anyhow::Result<()> {
             },
         );
     }
+
+    // FFI borrowed slice impls don't need to be written in the testing code if they already exist
+    // in the non-testing code.
+    for (k, v) in non_testing_ctx.ffi_borrowed_slice_cons.iter() {
+        if let Some(existing) = testing_ctx.ffi_borrowed_slice_cons.remove(k) {
+            assert_eq!(&existing, v);
+        }
+    }
+
     for testing in [false, true] {
         let code = env.get_template("NativeNice.swift.in")?.render(context! {
             non_testing_ctx => non_testing_ctx,

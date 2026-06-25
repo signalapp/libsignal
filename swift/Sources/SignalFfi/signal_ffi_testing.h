@@ -137,6 +137,32 @@ typedef struct {
   SignalNonSuspendingBackgroundThreadRuntime *raw;
 } SignalMutPointerNonSuspendingBackgroundThreadRuntime;
 
+/**
+ * A buffer of `length` elements of type `T`, allocated with the alignment of
+ * [`libc::max_align_t`].
+ *
+ * The number of bytes allocated is stored in `size_bytes`.
+ *
+ * `base` should be allocated via Rust's global alloc (i.e. via [`std::alloc::alloc`])
+ *
+ * # Motivation
+ * Rust's global allocator takes a size and alignment for _both_ allocation and deallocation. As a
+ * result, if we want to have a general "free this buffer" function, that function needs to be
+ * able to know the total size of the allocation and its alignment. Having a fixed (constant)
+ * alignment means we don't need to store the alignment in this struct (or have a separate free
+ * function for each type).
+ */
+typedef struct {
+  SignalCStringPtr *base;
+  size_t length;
+  size_t size_bytes;
+} SignalOwnedBufferOfMaxAlignedCStringPtr;
+
+typedef struct {
+  const SignalCStringPtr *base;
+  size_t length;
+} SignalBorrowedSliceOfCStringPtr;
+
 typedef struct {
   const SignalNonSuspendingBackgroundThreadRuntime *raw;
 } SignalConstPointerNonSuspendingBackgroundThreadRuntime;
@@ -321,7 +347,7 @@ typedef struct {
 } SignalMyRemoteDeriveEnumFfiArgSignalTuple_Body;
 
 typedef struct {
-  const char *x;
+  SignalCStringPtr x;
   int32_t y;
 } SignalMyRemoteDeriveEnumFfiArgSignalRecord_Body;
 
@@ -342,6 +368,32 @@ typedef struct {
   int32_t x;
   int32_t y;
 } SignalMyRemoteDeriveStructFfiArg;
+
+/**
+ * A buffer of `length` elements of type `T`, allocated with the alignment of
+ * [`libc::max_align_t`].
+ *
+ * The number of bytes allocated is stored in `size_bytes`.
+ *
+ * `base` should be allocated via Rust's global alloc (i.e. via [`std::alloc::alloc`])
+ *
+ * # Motivation
+ * Rust's global allocator takes a size and alignment for _both_ allocation and deallocation. As a
+ * result, if we want to have a general "free this buffer" function, that function needs to be
+ * able to know the total size of the allocation and its alignment. Having a fixed (constant)
+ * alignment means we don't need to store the alignment in this struct (or have a separate free
+ * function for each type).
+ */
+typedef struct {
+  SignalMySimpleTestEnumFfiResult *base;
+  size_t length;
+  size_t size_bytes;
+} SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult;
+
+typedef struct {
+  const SignalMySimpleTestEnumFfiArg *base;
+  size_t length;
+} SignalBorrowedSliceOfMySimpleTestEnumFfiArg;
 
 typedef struct {
   int32_t _0;
@@ -398,7 +450,7 @@ typedef struct {
 
 typedef struct {
   int32_t my_numeric_field;
-  const char *my_string_field;
+  SignalCStringPtr my_string_field;
 } SignalMyTestStructFfiArg;
 
 typedef enum {
@@ -423,7 +475,7 @@ typedef struct {
 } SignalMyTestEnumFfiArgSignalDouble_Body;
 
 typedef struct {
-  const char *person_name;
+  SignalCStringPtr person_name;
   int32_t person_age;
   SignalMyTestPointFfiArg position;
   SignalMyTestStructFfiArg fun_struct;
@@ -495,17 +547,17 @@ SignalFfiError *signal_testing_NonSuspendingBackgroundThreadRuntime_destroy(Sign
 
 SignalFfiError *signal_testing_bridged_string_map_dump_to_json(SignalCStringPtr *out, SignalConstPointerBridgedStringMap map);
 
-SignalFfiError *signal_testing_cdsi_lookup_error_convert(const char *error_description);
+SignalFfiError *signal_testing_cdsi_lookup_error_convert(SignalCStringPtr error_description);
 
 SignalFfiError *signal_testing_cdsi_lookup_response_convert(SignalCPromiseFfiCdsiLookupResponse *promise, SignalConstPointerTokioAsyncContext async_runtime);
 
-SignalFfiError *signal_testing_chat_connect_error_convert(const char *error_description);
+SignalFfiError *signal_testing_chat_connect_error_convert(SignalCStringPtr error_description);
 
 SignalFfiError *signal_testing_chat_request_get_body(SignalOwnedBuffer *out, SignalConstPointerHttpRequest request);
 
 SignalFfiError *signal_testing_chat_request_get_header_names(SignalStringArray *out, SignalConstPointerHttpRequest request);
 
-SignalFfiError *signal_testing_chat_request_get_header_value(SignalCStringPtr *out, SignalConstPointerHttpRequest request, const char *header_name);
+SignalFfiError *signal_testing_chat_request_get_header_value(SignalCStringPtr *out, SignalConstPointerHttpRequest request, SignalCStringPtr header_name);
 
 SignalFfiError *signal_testing_chat_request_get_method(SignalCStringPtr *out, SignalConstPointerHttpRequest request);
 
@@ -513,13 +565,17 @@ SignalFfiError *signal_testing_chat_request_get_path(SignalCStringPtr *out, Sign
 
 SignalFfiError *signal_testing_chat_response_convert(SignalFfiChatResponse *out, bool body_present);
 
-SignalFfiError *signal_testing_chat_send_error_convert(const char *error_description);
+SignalFfiError *signal_testing_chat_send_error_convert(SignalCStringPtr error_description);
 
 SignalFfiError *signal_testing_connection_manager_is_using_proxy(int32_t *out, SignalConstPointerConnectionManager manager);
 
 SignalFfiError *signal_testing_conversion_bool_identity(bool *out, bool x);
 
 SignalFfiError *signal_testing_conversion_bool_to_string(SignalCStringPtr *out, bool x);
+
+SignalFfiError *signal_testing_conversion_bridge_vec_string_identity(SignalOwnedBufferOfMaxAlignedCStringPtr *out, SignalBorrowedSliceOfCStringPtr x);
+
+SignalFfiError *signal_testing_conversion_bridge_vec_string_to_string(SignalCStringPtr *out, SignalBorrowedSliceOfCStringPtr x);
 
 SignalFfiError *signal_testing_conversion_data_identity(SignalOwnedBuffer *out, SignalBorrowedBuffer x);
 
@@ -537,7 +593,7 @@ SignalFfiError *signal_testing_conversion_service_id_identity(SignalServiceIdFix
 
 SignalFfiError *signal_testing_conversion_service_id_to_string(SignalCStringPtr *out, const SignalServiceIdFixedWidthBinaryBytes *x);
 
-SignalFfiError *signal_testing_conversion_string_identity(SignalCStringPtr *out, const char *x);
+SignalFfiError *signal_testing_conversion_string_identity(SignalCStringPtr *out, SignalCStringPtr x);
 
 SignalFfiError *signal_testing_conversion_u16_identity(uint16_t *out, uint16_t x);
 
@@ -549,9 +605,9 @@ SignalFfiError *signal_testing_conversion_u8_to_string(SignalCStringPtr *out, ui
 
 SignalFfiError *signal_testing_convert_optional_uuid(SignalOptionalUuid *out, bool present);
 
-SignalFfiError *signal_testing_create_otp(SignalCStringPtr *out, const char *username, SignalBorrowedBuffer secret);
+SignalFfiError *signal_testing_create_otp(SignalCStringPtr *out, SignalCStringPtr username, SignalBorrowedBuffer secret);
 
-SignalFfiError *signal_testing_create_otp_from_base64(SignalCStringPtr *out, const char *username, const char *secret);
+SignalFfiError *signal_testing_create_otp_from_base64(SignalCStringPtr *out, SignalCStringPtr username, SignalCStringPtr secret);
 
 SignalFfiError *signal_testing_enable_deterministic_rng_for_testing(void);
 
@@ -567,7 +623,7 @@ SignalFfiError *signal_testing_error_on_return_io(SignalCPromiseRawPointer *prom
 
 SignalFfiError *signal_testing_error_on_return_sync(const void **out, const void *_needs_cleanup);
 
-SignalFfiError *signal_testing_fake_chat_connection_create(SignalMutPointerFakeChatConnection *out, SignalConstPointerTokioAsyncContext tokio, SignalConstPointerFfiChatListenerStruct listener, const char *grpc_overrides_joined_by_newlines, const char *alerts_joined_by_newlines);
+SignalFfiError *signal_testing_fake_chat_connection_create(SignalMutPointerFakeChatConnection *out, SignalConstPointerTokioAsyncContext tokio, SignalConstPointerFfiChatListenerStruct listener, SignalCStringPtr grpc_overrides_joined_by_newlines, SignalCStringPtr alerts_joined_by_newlines);
 
 SignalFfiError *signal_testing_fake_chat_connection_create_provisioning(SignalMutPointerFakeChatConnection *out, SignalConstPointerTokioAsyncContext tokio, SignalConstPointerFfiProvisioningListenerStruct listener);
 
@@ -579,13 +635,13 @@ SignalFfiError *signal_testing_fake_chat_connection_take_remote(SignalMutPointer
 
 SignalFfiError *signal_testing_fake_chat_connection_take_unauthenticated_chat(SignalMutPointerUnauthenticatedChatConnection *out, SignalConstPointerFakeChatConnection chat);
 
-SignalFfiError *signal_testing_fake_chat_remote_end_binproto_to_json(SignalCStringPtr *out, const char *name, SignalBorrowedBuffer input);
+SignalFfiError *signal_testing_fake_chat_remote_end_binproto_to_json(SignalCStringPtr *out, SignalCStringPtr name, SignalBorrowedBuffer input);
 
 SignalFfiError *signal_testing_fake_chat_remote_end_grpc_frame_for_message_length(SignalOwnedBuffer *out, uint32_t len);
 
 SignalFfiError *signal_testing_fake_chat_remote_end_inject_connection_interrupted(SignalConstPointerFakeChatRemoteEnd chat);
 
-SignalFfiError *signal_testing_fake_chat_remote_end_json_to_binproto(SignalOwnedBuffer *out, const char *name, const char *input);
+SignalFfiError *signal_testing_fake_chat_remote_end_json_to_binproto(SignalOwnedBuffer *out, SignalCStringPtr name, SignalCStringPtr input);
 
 SignalFfiError *signal_testing_fake_chat_remote_end_next_grpc_message(SignalPairOfu32u32 *out, SignalBorrowedBuffer input, uint32_t offset);
 
@@ -601,7 +657,7 @@ SignalFfiError *signal_testing_fake_chat_remote_end_send_server_grpc_response(Si
 
 SignalFfiError *signal_testing_fake_chat_remote_end_send_server_response(SignalConstPointerFakeChatRemoteEnd chat, SignalConstPointerFakeChatResponse response);
 
-SignalFfiError *signal_testing_fake_chat_response_create(SignalMutPointerFakeChatResponse *out, uint64_t id, uint16_t status, const char *message, SignalBorrowedBytestringArray headers, SignalOptionalBorrowedSliceOfc_uchar body);
+SignalFfiError *signal_testing_fake_chat_response_create(SignalMutPointerFakeChatResponse *out, uint64_t id, uint16_t status, SignalCStringPtr message, SignalBorrowedBytestringArray headers, SignalOptionalBorrowedSliceOfc_uchar body);
 
 SignalFfiError *signal_testing_fake_chat_server_create(SignalMutPointerFakeChatServer *out);
 
@@ -623,7 +679,7 @@ SignalFfiError *signal_testing_future_failure(SignalCPromisei32 *promise, Signal
 
 SignalFfiError *signal_testing_future_increment_on_cancel(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerTestingFutureCancellationCounter _guard);
 
-SignalFfiError *signal_testing_future_produces_other_pointer_type(SignalCPromiseMutPointerOtherTestingHandleType *promise, SignalConstPointerNonSuspendingBackgroundThreadRuntime async_runtime, const char *input);
+SignalFfiError *signal_testing_future_produces_other_pointer_type(SignalCPromiseMutPointerOtherTestingHandleType *promise, SignalConstPointerNonSuspendingBackgroundThreadRuntime async_runtime, SignalCStringPtr input);
 
 SignalFfiError *signal_testing_future_produces_pointer_type(SignalCPromiseMutPointerTestingHandleType *promise, SignalConstPointerNonSuspendingBackgroundThreadRuntime async_runtime, uint8_t input);
 
@@ -648,6 +704,10 @@ SignalFfiError *signal_testing_key_trans_stored_account_data(SignalOwnedBuffer *
 SignalFfiError *signal_testing_my_remote_derive_enum_identity(SignalMyRemoteDeriveEnumFfiResult *out, SignalMyRemoteDeriveEnumFfiArg x);
 
 SignalFfiError *signal_testing_my_remote_derive_struct_identity(SignalMyRemoteDeriveStructFfiResult *out, SignalMyRemoteDeriveStructFfiArg x);
+
+SignalFfiError *signal_testing_my_simple_test_enum_bridge_vec_identity(SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult *out, SignalBorrowedSliceOfMySimpleTestEnumFfiArg x);
+
+SignalFfiError *signal_testing_my_simple_test_enum_bridge_vec_to_string(SignalCStringPtr *out, SignalBorrowedSliceOfMySimpleTestEnumFfiArg x);
 
 SignalFfiError *signal_testing_my_simple_test_enum_identity(SignalMySimpleTestEnumFfiResult *out, SignalMySimpleTestEnumFfiArg x);
 
@@ -695,21 +755,21 @@ SignalFfiError *signal_testing_process_bytestring_array(SignalBytestringArray *o
 
 SignalFfiError *signal_testing_register_account_response_create_test_value(SignalMutPointerRegisterAccountResponse *out);
 
-SignalFfiError *signal_testing_registration_service_check_svr2_credentials_error_convert(const char *error_description);
+SignalFfiError *signal_testing_registration_service_check_svr2_credentials_error_convert(SignalCStringPtr error_description);
 
 SignalFfiError *signal_testing_registration_service_check_svr2_credentials_response_convert(SignalFfiCheckSvr2CredentialsResponse *out);
 
-SignalFfiError *signal_testing_registration_service_create_session_error_convert(const char *error_description);
+SignalFfiError *signal_testing_registration_service_create_session_error_convert(SignalCStringPtr error_description);
 
-SignalFfiError *signal_testing_registration_service_register_account_error_convert(const char *error_description);
+SignalFfiError *signal_testing_registration_service_register_account_error_convert(SignalCStringPtr error_description);
 
-SignalFfiError *signal_testing_registration_service_request_verification_code_error_convert(const char *error_description);
+SignalFfiError *signal_testing_registration_service_request_verification_code_error_convert(SignalCStringPtr error_description);
 
-SignalFfiError *signal_testing_registration_service_resume_session_error_convert(const char *error_description);
+SignalFfiError *signal_testing_registration_service_resume_session_error_convert(SignalCStringPtr error_description);
 
-SignalFfiError *signal_testing_registration_service_submit_verification_error_convert(const char *error_description);
+SignalFfiError *signal_testing_registration_service_submit_verification_error_convert(SignalCStringPtr error_description);
 
-SignalFfiError *signal_testing_registration_service_update_session_error_convert(const char *error_description);
+SignalFfiError *signal_testing_registration_service_update_session_error_convert(SignalCStringPtr error_description);
 
 SignalFfiError *signal_testing_registration_session_info_convert(SignalMutPointerRegistrationSession *out);
 

@@ -2256,6 +2256,16 @@ type NativeFunctions = {
   TESTING_MyRemoteDeriveStruct_identity: (
     x: ArgFfiMyRemoteDeriveStruct
   ) => ReturnFfiMyRemoteDeriveStruct;
+  TESTING_MySimpleTestEnum_BridgeVec_identity: (
+    x: Array<ArgFfiMySimpleTestEnum>
+  ) => Array<ReturnFfiMySimpleTestEnum>;
+  TESTING_MySimpleTestEnum_BridgeVec_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: Array<ArgFfiMySimpleTestEnum>
+  ) => CancellablePromise<Array<ReturnFfiMySimpleTestEnum>>;
+  TESTING_MySimpleTestEnum_BridgeVec_to_string: (
+    x: Array<ArgFfiMySimpleTestEnum>
+  ) => string;
   TESTING_MySimpleTestEnum_identity: (
     x: ArgFfiMySimpleTestEnum
   ) => ReturnFfiMySimpleTestEnum;
@@ -2372,6 +2382,14 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     input: number
   ) => CancellablePromise<number>;
+  TESTING_conversion_BridgeVecString_identity: (
+    x: Array<string>
+  ) => Array<string>;
+  TESTING_conversion_BridgeVecString_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: Array<string>
+  ) => CancellablePromise<Array<string>>;
+  TESTING_conversion_BridgeVecString_to_string: (x: Array<string>) => string;
   TESTING_conversion_Data_VecU8_identity: (
     x: Uint8Array<ArrayBuffer>
   ) => Uint8Array<ArrayBuffer>;
@@ -3207,6 +3225,9 @@ const {
   TESTING_KeyTransStoredAccountData,
   TESTING_MyRemoteDeriveEnum_identity,
   TESTING_MyRemoteDeriveStruct_identity,
+  TESTING_MySimpleTestEnum_BridgeVec_identity,
+  TESTING_MySimpleTestEnum_BridgeVec_identity_async,
+  TESTING_MySimpleTestEnum_BridgeVec_to_string,
   TESTING_MySimpleTestEnum_identity,
   TESTING_MySimpleTestEnum_identity_async,
   TESTING_MySimpleTestEnum_to_string,
@@ -3260,6 +3281,9 @@ const {
   TESTING_TokioAsyncContext_FutureSuccessBytes,
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
+  TESTING_conversion_BridgeVecString_identity,
+  TESTING_conversion_BridgeVecString_identity_async,
+  TESTING_conversion_BridgeVecString_to_string,
   TESTING_conversion_Data_VecU8_identity,
   TESTING_conversion_Data_VecU8_identity_async,
   TESTING_conversion_Data_VecU8_to_string,
@@ -3872,6 +3896,9 @@ export {
   TESTING_KeyTransStoredAccountData,
   TESTING_MyRemoteDeriveEnum_identity,
   TESTING_MyRemoteDeriveStruct_identity,
+  TESTING_MySimpleTestEnum_BridgeVec_identity,
+  TESTING_MySimpleTestEnum_BridgeVec_identity_async,
+  TESTING_MySimpleTestEnum_BridgeVec_to_string,
   TESTING_MySimpleTestEnum_identity,
   TESTING_MySimpleTestEnum_identity_async,
   TESTING_MySimpleTestEnum_to_string,
@@ -3925,6 +3952,9 @@ export {
   TESTING_TokioAsyncContext_FutureSuccessBytes,
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
+  TESTING_conversion_BridgeVecString_identity,
+  TESTING_conversion_BridgeVecString_identity_async,
+  TESTING_conversion_BridgeVecString_to_string,
   TESTING_conversion_Data_VecU8_identity,
   TESTING_conversion_Data_VecU8_identity_async,
   TESTING_conversion_Data_VecU8_to_string,

@@ -12,8 +12,8 @@ public object NativeNiceHelpers {
   public inline fun <T> identity(x: T): T = x
 
   @JvmStatic
-  @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
-  public fun convertToObject(x: Any): Object = x as Object
+  @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN", "NOTHING_TO_INLINE")
+  public inline fun convertToObject(x: Any): Object = x as Object
 
   @JvmStatic
   public inline fun <InA, InB, OutA, OutB> mapPair(
@@ -23,4 +23,17 @@ public object NativeNiceHelpers {
 
   @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
   public inline fun <reified T> downcastFromObject(obj: Object): T = obj as T
+
+  public inline fun <Ffi, Nice> mapBridgeVecArg(crossinline thunk: (Nice) -> Ffi): (List<Nice>) -> Array<*> =
+    { input ->
+      val inputIter = input.iterator()
+      Array<Any?>(input.size) {
+        thunk(inputIter.next())
+      }
+    }
+
+  public inline fun <reified Ffi, Nice> mapBridgeVecReturn(crossinline thunk: (Ffi) -> Nice): (Array<*>) -> List<Nice> =
+    { arr ->
+      arr.asSequence().map({ thunk(it as Ffi) }).toList()
+    }
 }

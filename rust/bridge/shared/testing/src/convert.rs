@@ -488,4 +488,19 @@ pub mod test_conversions {
     async fn TESTING_conversion_Data_VecU8_identity_async(x: Vec<u8>) -> Vec<u8> {
         x
     }
+
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_BridgeVecString_to_string(x: BridgeVec<String>) -> String {
+        serde_json::to_string(&x.0).expect("json")
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_BridgeVecString_identity(x: BridgeVec<String>) -> BridgeVec<String> {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_BridgeVecString_identity_async(
+        x: BridgeVec<String>,
+    ) -> BridgeVec<String> {
+        x
+    }
 }

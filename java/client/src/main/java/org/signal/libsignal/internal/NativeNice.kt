@@ -10,6 +10,7 @@
   "ktlint:standard:property-naming",
   "ktlint:standard:filename",
   "ktlint:standard:max-line-length",
+  "PLATFORM_CLASS_MAPPED_TO_KOTLIN",
 )
 
 package org.signal.libsignal.internal

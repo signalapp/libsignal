@@ -81,6 +81,7 @@ pub type JavaCiphertextMessage<'a> = JObject<'a>;
 pub type JavaSignedPublicPreKey<'a> = JObject<'a>;
 pub type JavaSimpleOwner<'a> = JObject<'a>;
 pub type JavaMap<'a> = JMap<'a>;
+pub type JavaArrayStar<'a> = JObjectArray<'a>;
 
 /// Return type marker for `bridge_fn`s that return Result, which gen_java_decl.py will pick out
 /// when generating Native.java.

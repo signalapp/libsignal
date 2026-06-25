@@ -2532,6 +2532,7 @@ dependencies = [
  "http",
  "itertools 0.14.0",
  "jni 0.22.4",
+ "libc",
  "libsignal-account-keys",
  "libsignal-bridge-macros",
  "libsignal-core",

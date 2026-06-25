@@ -6,7 +6,26 @@
 // WARNING: this file was automatically generated
 
 import * as Native from './Native.js';
-import { type GrpcTestCase } from './Native.js';
+import {
+  /* eslint-disable @typescript-eslint/no-unused-vars */
+  type GrpcTestCase,
+  type ArgFfiMyRemoteDeriveEnum,
+  type ArgFfiMyRemoteDeriveStruct,
+  type ArgFfiMySimpleTestEnum,
+  type ArgFfiMyTestEnum,
+  type ArgFfiMyTestPoint,
+  type ArgFfiMyTestStruct,
+  type ReturnFfiMyRemoteDeriveEnum,
+  type ReturnFfiMyRemoteDeriveStruct,
+  type ReturnFfiMySimpleTestEnum,
+  type ReturnFfiMyTestEnum,
+  type ReturnFfiMyTestPoint,
+  type ReturnFfiMyTestStruct,
+  type ReturnFfiSetDeviceNameArgs,
+  type ReturnFfiSetDeviceNameOut,
+  /* eslint-enable @typescript-eslint/no-unused-vars */
+} from './Native.js';
+
 import { ServiceId } from './Address.js';
 import * as zkgroup from './zkgroup/index.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
@@ -361,6 +380,56 @@ export function TESTING_MyRemoteDeriveStruct_identity({
   );
 }
 
+export function TESTING_MySimpleTestEnum_BridgeVec_identity({
+  x: x,
+}: {
+  x: Array<MySimpleTestEnum>;
+}): Array<MySimpleTestEnum> {
+  return ((arr: Array<ReturnFfiMySimpleTestEnum>) =>
+    arr.map(returnConverterMySimpleTestEnum))(
+    Native.TESTING_MySimpleTestEnum_BridgeVec_identity(
+      ((arr: Array<MySimpleTestEnum>) => arr.map(argConverterMySimpleTestEnum))(
+        x
+      )
+    )
+  );
+}
+export async function TESTING_MySimpleTestEnum_BridgeVec_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: Array<MySimpleTestEnum>;
+}): Promise<Array<MySimpleTestEnum>> {
+  return ((arr: Array<ReturnFfiMySimpleTestEnum>) =>
+    arr.map(returnConverterMySimpleTestEnum))(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_MySimpleTestEnum_BridgeVec_identity_async(
+        asyncContext,
+        ((arr: Array<MySimpleTestEnum>) =>
+          arr.map(argConverterMySimpleTestEnum))(x)
+      )
+    )
+  );
+}
+
+export function TESTING_MySimpleTestEnum_BridgeVec_to_string({
+  x: x,
+}: {
+  x: Array<MySimpleTestEnum>;
+}): string {
+  return identity(
+    Native.TESTING_MySimpleTestEnum_BridgeVec_to_string(
+      ((arr: Array<MySimpleTestEnum>) => arr.map(argConverterMySimpleTestEnum))(
+        x
+      )
+    )
+  );
+}
+
 export function TESTING_MySimpleTestEnum_identity({
   x: x,
 }: {
@@ -549,6 +618,49 @@ export async function TESTING_TokioAsyncContext_FutureSuccessBytes({
         asyncContext,
         identity(count)
       )
+    )
+  );
+}
+
+export function TESTING_conversion_BridgeVecString_identity({
+  x: x,
+}: {
+  x: Array<string>;
+}): Array<string> {
+  return ((arr: Array<string>) => arr.map(identity))(
+    Native.TESTING_conversion_BridgeVecString_identity(
+      ((arr: Array<string>) => arr.map(identity))(x)
+    )
+  );
+}
+export async function TESTING_conversion_BridgeVecString_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: Array<string>;
+}): Promise<Array<string>> {
+  return ((arr: Array<string>) => arr.map(identity))(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_BridgeVecString_identity_async(
+        asyncContext,
+        ((arr: Array<string>) => arr.map(identity))(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_BridgeVecString_to_string({
+  x: x,
+}: {
+  x: Array<string>;
+}): string {
+  return identity(
+    Native.TESTING_conversion_BridgeVecString_to_string(
+      ((arr: Array<string>) => arr.map(identity))(x)
     )
   );
 }

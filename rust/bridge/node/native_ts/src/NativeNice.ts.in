@@ -6,7 +6,18 @@
 // WARNING: this file was automatically generated
 
 import * as Native from './Native.js';
-import { type GrpcTestCase } from './Native.js';
+import {
+  /* eslint-disable @typescript-eslint/no-unused-vars */
+  type GrpcTestCase,
+  {% for (ty, v) in ctx.derived_arg_converters|items -%}
+    type {{ ty|arg_ffi_type }},
+  {%- endfor %}
+  {% for (ty, v) in ctx.derived_return_converters|items -%}
+    type {{ ty|return_ffi_type }},
+  {%- endfor %}
+  /* eslint-enable @typescript-eslint/no-unused-vars */
+} from './Native.js';
+
 import { ServiceId } from './Address.js';
 import * as zkgroup from './zkgroup/index.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';

@@ -88,19 +88,19 @@ internal struct DataConverter: NiceArgConverter, NiceReturnConverter {
 
 internal struct StringConverter: NiceArgConverter, NiceReturnConverter {
     typealias NiceArg = String
-    typealias FfiArg = UnsafePointer<CChar>
+    typealias FfiArg = UnsafePointer<CChar>?
     typealias KeepAlive = NSString
     typealias FfiReturn = UnsafePointer<CChar>?
     typealias NiceReturn = String
 
-    static func convertArg(_ arg: String) -> (UnsafePointer<CChar>, NSString?) {
+    static func convertArg(_ arg: String) -> (UnsafePointer<CChar>?, NSString?) {
         let nsstring = arg as NSString
-        return (nsstring.utf8String!, nsstring)
+        return (nsstring.utf8String, nsstring)
     }
 
     static func convertArgBorrowed<Result>(
         _ arg: String,
-        _ thunk: (UnsafePointer<CChar>) throws -> Result
+        _ thunk: (UnsafePointer<CChar>?) throws -> Result
     ) rethrows -> Result {
         return try arg.withCString(thunk)
     }
@@ -211,6 +211,107 @@ internal struct ByteArrayConverter<T: ByteArray>: NiceArgConverter {
         _ thunk: (SignalBorrowedBuffer) throws -> Result
     ) rethrows -> Result {
         try arg.serialize().withBorrowed(thunk)
+    }
+}
+
+protocol FfiBorrowedSliceConstructor {
+    associatedtype BorrowedSlice
+    associatedtype Element
+    static func construct(_ buffer: UnsafeBufferPointer<Element>) -> BorrowedSlice
+}
+
+internal class StablePointerArray<Element> {
+    internal let buffer: UnsafeMutableBufferPointer<Element>
+    internal init(fromContentsOf elements: [Element]) {
+        self.buffer = UnsafeMutableBufferPointer.allocate(capacity: elements.count)
+        // initialize returns the index at the end of the buffer. We don't need it.
+        _ = self.buffer.initialize(fromContentsOf: elements)
+    }
+    deinit {
+        self.buffer.deinitialize()
+        self.buffer.deallocate()
+    }
+}
+
+internal enum ArrayArgConverter<Converter: NiceArgConverter, SliceCons: FfiBorrowedSliceConstructor>: NiceArgConverter
+where SliceCons.Element == Converter.FfiArg {
+    typealias NiceArg = [Converter.NiceArg]
+    typealias FfiArg = SliceCons.BorrowedSlice
+    typealias KeepAlive = (StablePointerArray<Converter.FfiArg>, [Converter.KeepAlive])
+
+    private static func convertArgCore(_ arg: [Converter.NiceArg]) -> ([Converter.FfiArg], [Converter.KeepAlive]) {
+        var keepAlives: [Converter.KeepAlive] = []
+        var contents: [Converter.FfiArg] = []
+        contents.reserveCapacity(arg.count)
+        // We don't reserve capacity for keepAlives, since we might not add to it for many types
+        for item in arg {
+            let (ffi, ka) = Converter.convertArg(item)
+            contents.append(ffi)
+            if let ka = ka {
+                keepAlives.append(ka)
+            }
+        }
+        return (contents, keepAlives)
+    }
+
+    static func convertArgBorrowed<Result>(
+        _ arg: [Converter.NiceArg],
+        _ thunk: (FfiArg) throws -> Result
+    ) rethrows -> Result {
+        let (contents, keepAlives) = convertArgCore(arg)
+        return try withExtendedLifetime(keepAlives) {
+            try contents.withUnsafeBufferPointer { buf in
+                try thunk(SliceCons.construct(buf))
+            }
+        }
+    }
+
+    static func convertArg(_ arg: NiceArg) -> (FfiArg, KeepAlive?) {
+        let (contents, keepAlives) = convertArgCore(arg)
+        let contentsStable = StablePointerArray(fromContentsOf: contents)
+        return (SliceCons.construct(UnsafeBufferPointer(contentsStable.buffer)), (contentsStable, keepAlives))
+    }
+}
+
+internal protocol FfiOwnedBufferOfMaxAlignedProject {
+    associatedtype Buffer
+    associatedtype Element
+    static func empty() -> Buffer
+    static func project(_ buffer: Buffer) -> UnsafeBufferPointer<Element>
+    static func typeErased(_ buffer: Buffer) -> SignalOwnedBufferOfMaxAlignedc_void
+}
+
+internal enum ArrayReturnConverter<Converter: NiceReturnConverter, BufferProj: FfiOwnedBufferOfMaxAlignedProject>:
+    NiceReturnConverter
+where BufferProj.Element == Converter.FfiReturn {
+    typealias NiceReturn = [Converter.NiceReturn]
+    typealias FfiReturn = BufferProj.Buffer
+
+    static func emptyFfiReturn() -> FfiReturn {
+        BufferProj.empty()
+    }
+
+    static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
+        defer {
+            SignalFfi.signal_free_owned_buffer_of_max_aligned(BufferProj.typeErased(value))
+        }
+        let buffer = BufferProj.project(value)
+        var out: NiceReturn = []
+        out.reserveCapacity(buffer.count)
+        var err: (any Error)? = nil
+        for x in buffer {
+            // We want to consume all return values, even if there's an intermediate failure, to
+            // avoid leaking memory.
+            do {
+                out.append(try Converter.convertReturn(consuming: x))
+            } catch {
+                err = error
+            }
+        }
+        if let err = err {
+            throw err
+        }
+        return out
     }
 }
 

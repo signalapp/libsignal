@@ -32,8 +32,8 @@ use crate::protocol::storage::{
     NodeBridgeSenderKeyStore, NodeBridgeSessionStore, NodeBridgeSignedPreKeyStore,
 };
 use crate::support::{
-    Array, AsType, BridgeHandleRef, BridgedCallbacks, FixedLengthBincodeSerializable, Serialized,
-    extend_lifetime,
+    Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, FixedLengthBincodeSerializable,
+    Serialized, extend_lifetime,
 };
 
 #[cfg(feature = "metadata")]
@@ -1314,6 +1314,77 @@ impl<'storage> AsyncArgTypeInfo<'storage> for &'storage libsignal_account_keys::
     register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
 }
 
+impl<'storage, 'context: 'storage, T: ArgTypeInfo<'storage, 'context>>
+    ArgTypeInfo<'storage, 'context> for BridgeVec<T>
+{
+    type ArgType = JsArray;
+
+    type StoredType = Vec<T::StoredType>;
+
+    fn borrow(
+        cx: &mut FunctionContext<'context>,
+        foreign: Handle<'context, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        let len = foreign.len(cx);
+        let mut out = Vec::with_capacity(usize::try_from(len).expect("u32->usize"));
+        for i in 0..len {
+            let raw = foreign.get(cx, i)?;
+            out.push(T::borrow(cx, raw)?);
+        }
+        Ok(out)
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        BridgeVec(stored.iter_mut().map(T::load_from).collect())
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        format!("Array<{}>", T::register_ts_ffi_type(ctx))
+    }
+}
+impl<'storage, T: AsyncArgTypeInfo<'storage>> AsyncArgTypeInfo<'storage> for BridgeVec<T> {
+    type ArgType = JsArray;
+
+    type StoredType = Vec<T::StoredType>;
+
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        let len = foreign.len(cx);
+        let mut out = Vec::with_capacity(usize::try_from(len).expect("u32->usize"));
+        for i in 0..len {
+            let raw = foreign.get(cx, i)?;
+            out.push(T::save_async_arg(cx, raw)?);
+        }
+        Ok(out)
+    }
+
+    fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
+        BridgeVec(stored.iter_mut().map(T::load_async_arg).collect())
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        format!("Array<{}>", T::register_ts_ffi_type(ctx))
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T: NiceArgConverter> NiceArgConverter for BridgeVec<T> {
+    fn register_ts_arg_converter(ctx: &mut TsMetadataContext) -> TsArgConverter {
+        let t = T::register_ts_arg_converter(ctx);
+        TsArgConverter {
+            nice_type: format!("Array<{}>", t.nice_type),
+            ffi_type: format!("Array<{}>", t.ffi_type),
+            converter_function: format!(
+                "((arr: Array<{}>) => arr.map({}))",
+                t.nice_type, t.converter_function
+            ),
+        }
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for bool {
     type ResultType = JsBoolean;
     fn convert_into(self, cx: &mut Cx<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
@@ -1779,6 +1850,33 @@ impl<'a, V: Value> OrUndefined<'a> for Option<Handle<'a, V>> {
     fn or_undefined(self, cx: &mut impl Context<'a>) -> Handle<'a, JsValue> {
         self.map(|v| v.as_value(cx))
             .unwrap_or_else(|| cx.undefined().as_value(cx))
+    }
+}
+
+impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for BridgeVec<T> {
+    type ResultType = JsArray;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        make_array(cx, self.0)
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        make_array_type::<T>(ctx)
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T: NiceResultConverter> NiceResultConverter for BridgeVec<T> {
+    fn register_ts_result_converter(ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        let converter = T::register_ts_result_converter(ctx);
+        TsReturnConverter {
+            nice_type: format!("Array<{}>", converter.nice_type),
+            ffi_type: format!("Array<{}>", converter.ffi_type),
+            converter_function: format!(
+                "((arr: Array<{}>) => arr.map({}))",
+                converter.ffi_type, converter.converter_function
+            ),
+        }
     }
 }
 

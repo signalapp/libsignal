@@ -429,14 +429,11 @@ fn derive_bridged_as_value_arg(
         variant_indices: _,
         variant_names,
     } = DeriveInputInfo::new(input, target);
-    // TODO: when we move to a more permanant solution than ConvertibleFromJValue, add the where
-    // clause back in so we can support generics. The where clause, currently, interferes with the
-    // type inference required to make ConvertibleFromJValue work.
-    // impl_arg_type_info
-    //     .extra_where
-    //     .extend(field_types.iter().flatten().map(|ty|parse_quote!(
-    //         #ty: #krate::jni::ArgTypeInfo<'storage, 'param, 'context/*, ArgType=#krate::jni_arg_type!(#ty)*/>
-    //     )));
+    impl_arg_type_info
+        .extra_where
+        .extend(field_types.iter().flatten().map(|ty|parse_quote!(
+            #ty: #krate::jni::ArgTypeInfo<'storage, 'param, 'context/*, ArgType=#krate::jni_arg_type!(#ty)*/>
+        )));
     let mut impl_nice_arg_converter = Impl::new(
         input,
         target,
@@ -515,11 +512,11 @@ fn derive_bridged_as_value_arg(
                                 ::jni::jni_str!(#field_names_str),
                                 <<
                                     #field_types as #krate::jni::ArgTypeInfo<'storage, 'param, 'context>
-                                >::ArgType as #krate::jni::ConvertibleFromJValue<_>>::SIGNATURE,
+                                >::ArgType as #krate::jni::ConvertibleFromJValue>::SIGNATURE,
                             ).and_then(|raw|
                                 <<
                                     #field_types as #krate::jni::ArgTypeInfo<'storage, 'param, 'context>
-                                >::ArgType as #krate::jni::ConvertibleFromJValue<_>>::try_convert(env, raw),
+                                >::ArgType as #krate::jni::ConvertibleFromJValue>::try_convert(env, raw),
                             ).check_exceptions(env, CONTEXT_STR)?;
                         )*
                         #(

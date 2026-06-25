@@ -399,3 +399,9 @@ impl<T, E> ResultLike for Result<T, E> {
     type Success = T;
     type Error = E;
 }
+
+/// A newtype wrapper used to specify that a generic Vec<> mapping should be used.
+#[derive(
+    Clone, derive_more::From, derive_more::Into, derive_more::Deref, derive_more::DerefMut,
+)]
+pub struct BridgeVec<T>(pub Vec<T>);

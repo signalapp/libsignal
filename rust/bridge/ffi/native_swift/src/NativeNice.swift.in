@@ -11,6 +11,8 @@
 // swiftlint:disable large_tuple
 // Some of our type names grow long
 // swiftlint:disable type_name
+{# @testable flummoxes swiftlint's detection of what's public #}
+// swiftlint:disable explicit_init_for_public_struct
 
 {% if testing %}
 #if !os(iOS) || targetEnvironment(simulator)
@@ -21,6 +23,43 @@ import SignalFfi
 {% if testing %}@testable import LibSignalClient{% endif %}
 
 {% set ctx = testing_ctx if testing else non_testing_ctx %}
+
+{% for (name, cons) in ctx.ffi_borrowed_slice_cons|items %}
+    enum {{ name }}: FfiBorrowedSliceConstructor {
+        {% if testing %}public {% endif %}typealias BorrowedSlice = SignalFfi.{{ cons.borrowed_slice }}
+        {% if testing %}public {% endif %}typealias Element = {{ cons.converter_type }}.FfiArg
+        {% if testing %}public {% endif %}static func construct(
+            _ buffer: UnsafeBufferPointer<Element>,
+        ) -> BorrowedSlice {
+            BorrowedSlice(base: buffer.baseAddress, length: buffer.count)
+        }
+    }
+{% endfor %}
+
+
+{% for (name, proj) in ctx.ffi_owned_buffer_of_max_aligned_project|items %}
+    enum {{ name }}: FfiOwnedBufferOfMaxAlignedProject {
+        {% if testing %}public {% endif %}typealias Buffer = SignalFfi.{{ proj.buffer_type }}
+        {% if testing %}public {% endif %}typealias Element = {{ proj.converter_type }}.FfiReturn
+        {% if testing %}public {% endif %}static func empty() -> Buffer {
+            Buffer()
+        }
+        {% if testing %}public {% endif %}static func project(
+            _ buffer: Buffer
+        ) -> UnsafeBufferPointer<Element> {
+            UnsafeBufferPointer(start: buffer.base, count: buffer.length)
+        }
+        {% if testing %}public {% endif %}static func typeErased(
+            _ buffer: Buffer
+        ) -> SignalOwnedBufferOfMaxAlignedc_void {
+            SignalOwnedBufferOfMaxAlignedc_void(
+                base: UnsafeMutableRawPointer(buffer.base),
+                length: buffer.length,
+                size_bytes: buffer.size_bytes,
+            )
+        }
+    }
+{% endfor %}
 
 {% for (name, struct_or_enum) in ctx.derived_types|items %}
     {% if struct_or_enum.kind == "Struct" %}

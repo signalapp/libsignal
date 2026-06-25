@@ -336,6 +336,18 @@ pub mod ffi {
         pub return_type: SwiftReturnConverter,
     }
 
+    #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+    pub struct FfiBorrowedSliceConstructor {
+        pub converter_type: String,
+        pub borrowed_slice: String,
+    }
+
+    #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+    pub struct FfiOwnedBufferOfMaxAlignedProject {
+        pub converter_type: String,
+        pub buffer_type: String,
+    }
+
     #[derive(Debug, Clone, Serialize, Default)]
     pub struct SwiftMetadataContext {
         pub nice_functions: BTreeMap<String, NiceFunction>,
@@ -343,6 +355,91 @@ pub mod ffi {
         pub derived_types: BTreeMap<String, StructOrEnum<NiceType>>,
         pub derived_return_converters: BTreeMap<String, StructOrEnum<SwiftReturnConverter>>,
         pub derived_arg_converters: BTreeMap<String, StructOrEnum<SwiftArgConverter>>,
+
+        /// Map from the name of a `FfiBorrowedSliceConstructor` to information about the constructor
+        pub ffi_borrowed_slice_cons: BTreeMap<String, FfiBorrowedSliceConstructor>,
+        /// Map from the name of a `FfiOwnedBufferOfMaxAlignedProject` to information about the constructor
+        pub ffi_owned_buffer_of_max_aligned_project:
+            BTreeMap<String, FfiOwnedBufferOfMaxAlignedProject>,
+    }
+
+    /// How would cbindgen mangle this rust type?
+    pub fn cbindgen_mangle<T>() -> String {
+        let partial = cbindgen_mangle_partial(std::any::type_name::<T>());
+        match partial.as_str() {
+            "BorrowedSliceOfi8" => "SignalBorrowedSliceOfc_char".to_string(),
+            "BorrowedSliceOfu8" => "SignalBorrowedBuffer".to_string(),
+            "BorrowedSliceOfBorrowedSliceOfu8" => "SignalBorrowedSliceOfBuffers".to_string(),
+            "BorrowedMutableSliceOfu8" => "SignalBorrowedMutableBuffer".to_string(),
+            "OwnedBufferOfu8" => "SignalOwnedBuffer".to_string(),
+            _ => format!("Signal{}", partial),
+        }
+    }
+    fn cbindgen_mangle_partial(input: &str) -> String {
+        // This is a rough approximation of the actual algorithm
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        enum Token {
+            Path(String),
+            LAngle,
+            RAngle,
+            Comma,
+        }
+        let mut current_path = String::new();
+        let mut tokens = Vec::new();
+        // We set remove_underscores in the cbindgen config, so the encoding is ambiguous, but
+        // also we can eliminate a bunch of tokens which don't make it into the final C type.
+        for ch in input
+            .replace("*const i8", "CStringPtr")
+            .replace("*const ", "")
+            .replace("*mut ", "")
+            .replace(['[', ']', ';'], "")
+            .chars()
+        {
+            if ch == ':' || ch == '_' || ch.is_alphanumeric() {
+                current_path.push(ch);
+            } else if ch.is_whitespace() {
+                continue;
+            } else {
+                if !current_path.is_empty() {
+                    tokens.push(Token::Path(std::mem::take(&mut current_path)));
+                }
+                tokens.push(match ch {
+                    '<' => Token::LAngle,
+                    '>' => Token::RAngle,
+                    ',' => Token::Comma,
+                    _ => panic!("Unexpected character {ch:?} in {input:?}"),
+                });
+            }
+        }
+        if !current_path.is_empty() {
+            tokens.push(Token::Path(std::mem::take(&mut current_path)));
+        }
+        let mut tokens = tokens.into_iter().peekable();
+        type Tokens = std::iter::Peekable<std::vec::IntoIter<Token>>;
+        fn parse_type(tokens: &mut Tokens) -> String {
+            let token = tokens.next();
+            let Some(Token::Path(path)) = token else {
+                panic!("Unexpected token {token:?}")
+            };
+            let path = path
+                .rsplit_once("::")
+                .map(|(_, last)| last)
+                .unwrap_or(&path);
+            let mut parts = vec![path.to_string()];
+            if let Some(Token::LAngle) = tokens.peek() {
+                let _langle = tokens.next();
+                while tokens.peek() != Some(&Token::RAngle) {
+                    if tokens.peek() == Some(&Token::Comma) {
+                        let _comma = tokens.next();
+                        continue;
+                    }
+                    parts.push(parse_type(tokens));
+                }
+                assert_eq!(tokens.next(), Some(Token::RAngle));
+            }
+            parts.join("")
+        }
+        parse_type(&mut tokens)
     }
 
     /// These functions should mutate the attached [SwiftMetadataContext] to register their item.

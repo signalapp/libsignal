@@ -35,7 +35,7 @@ use crate::protocol::storage::{
     FfiSenderKeyStoreStruct, FfiSessionStoreStruct, FfiSignedPreKeyStoreStruct,
 };
 use crate::support::{
-    AsType, BridgeHandleRef, BridgedCallbacks, FixedLengthBincodeSerializable,
+    AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, FixedLengthBincodeSerializable,
     IllegalArgumentError, Serialized, extend_lifetime,
 };
 
@@ -332,6 +332,137 @@ impl SimpleArgTypeInfo for Vec<Vec<u8>> {
             .iter()
             .map(|next| Ok(unsafe { next.as_slice()? }.to_vec()))
             .collect()
+    }
+}
+
+impl<'a, T: ArgTypeInfo<'a>> ArgTypeInfo<'a> for BridgeVec<T> {
+    type ArgType = BorrowedSliceOf<T::ArgType>;
+    type StoredType = Vec<T::StoredType>;
+
+    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
+        let mut out = Vec::with_capacity(foreign.length);
+        for borrowed in unsafe { foreign.as_slice()? } {
+            let owned = unsafe {
+                // SAFETY: ArgTypes are C types, which means they _morally_ implement Copy.
+                (borrowed as *const T::ArgType).read()
+            };
+            out.push(T::borrow(owned)?);
+        }
+        Ok(out)
+    }
+
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        BridgeVec(stored.iter_mut().map(T::load_from).collect())
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T: NiceArgConverter + ArgTypeInfo<'static>> NiceArgConverter for BridgeVec<T> {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        let t = T::register_swift_arg_converter(ctx);
+        let borrowed_slice = cbindgen_mangle::<BorrowedSliceOf<T::ArgType>>();
+        let borrowed_slice_cons = format!(
+            "FfiBorrowedSliceConstructor_{borrowed_slice}_{}",
+            t.converter_type
+                .chars()
+                .filter(|x| x.is_alphanumeric() || *x == '_')
+                .join("")
+        );
+        crate::metadata::insert_checked(
+            &mut ctx.ffi_borrowed_slice_cons,
+            borrowed_slice_cons.clone(),
+            FfiBorrowedSliceConstructor {
+                converter_type: t.converter_type.clone(),
+                borrowed_slice: borrowed_slice.clone(),
+            },
+        );
+        SwiftArgConverter {
+            nice_type: format!("[{}]", t.nice_type),
+            converter_type: format!(
+                "ArrayArgConverter<{}, {borrowed_slice_cons}>",
+                t.converter_type
+            ),
+        }
+    }
+}
+
+impl<T: ResultTypeInfo> ResultTypeInfo for BridgeVec<T> {
+    type ResultType = OwnedBufferOfMaxAligned<T::ResultType>;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        const {
+            assert!(
+                std::mem::align_of::<T>() <= OwnedBufferOfMaxAligned::<T::ResultType>::ALIGNMENT
+            );
+        }
+        let length = self.0.len();
+        let layout = OwnedBufferOfMaxAligned::<T::ResultType>::layout_for_count(length);
+        if layout.size() == 0 {
+            for x in self.0 {
+                x.convert_into()?;
+            }
+            return Ok(OwnedBufferOfMaxAligned {
+                base: std::ptr::null_mut(),
+                length,
+                size_bytes: 0,
+            });
+        }
+        debug_assert_eq!(
+            layout.align(),
+            OwnedBufferOfMaxAligned::<T::ResultType>::ALIGNMENT
+        );
+        debug_assert_eq!(
+            layout,
+            OwnedBufferOfMaxAligned::<std::ffi::c_void>::layout_for_size_bytes(layout.size())
+        );
+        // TODO: leaks memory on error, just like pair
+        let base = unsafe {
+            // SAFETY: we've checked that layout.size != 0
+            std::alloc::alloc(layout)
+        };
+        if base.is_null() {
+            std::alloc::handle_alloc_error(layout);
+        }
+        let base = base as *mut T::ResultType;
+        for (i, value) in self.0.into_iter().enumerate() {
+            let value = value.convert_into()?;
+            assert!(i < length);
+            unsafe {
+                // SAFETY: this resulting pointer will be in bounds
+                let ptr = base.add(i);
+                ptr.write(value);
+            }
+        }
+        Ok(OwnedBufferOfMaxAligned {
+            base,
+            length,
+            size_bytes: layout.size(),
+        })
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T: NiceResultConverter + ResultTypeInfo> NiceResultConverter for BridgeVec<T> {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let t = T::register_swift_result_converter(ctx);
+        let mangled = cbindgen_mangle::<OwnedBufferOfMaxAligned<T::ResultType>>();
+        let proj = format!(
+            "FfiOwnedBufferOfMaxAlignedProject_{mangled}_{}",
+            t.converter_type
+                .chars()
+                .filter(|x| x.is_alphanumeric() || *x == '_')
+                .join("")
+        );
+        crate::metadata::insert_checked(
+            &mut ctx.ffi_owned_buffer_of_max_aligned_project,
+            proj.clone(),
+            FfiOwnedBufferOfMaxAlignedProject {
+                converter_type: t.converter_type.clone(),
+                buffer_type: mangled.clone(),
+            },
+        );
+        SwiftReturnConverter {
+            nice_type: format!("[{}]", t.nice_type),
+            converter_type: format!("ArrayReturnConverter<{}, {proj}>", t.converter_type),
+        }
     }
 }
 
@@ -1683,9 +1814,9 @@ macro_rules! ffi_arg_type {
     (Vec<u8>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
     (Vec<&[u8]>) => (ffi::BorrowedSliceOf<ffi_arg_type!(&[u8])>);
     (Vec<Vec<u8> >) => (ffi::BorrowedSliceOf<ffi_arg_type!(&[u8])>);
-    (String) => (*const std::ffi::c_char);
-    (Option<String>) => (*const std::ffi::c_char);
-    (Option<&str>) => (*const std::ffi::c_char);
+    (String) => (ffi::CStringPtr);
+    (Option<String>) => (ffi::CStringPtr);
+    (Option<&str>) => (ffi::CStringPtr);
     (Timestamp) => (u64);
     (RandomNumberGenerator) => (i64);
     (Uuid) => (ffi::Uuid);
@@ -1722,6 +1853,7 @@ macro_rules! ffi_arg_type {
     (BridgeHandleRef<$lt:lifetime, $typ:ty>) => (ffi_arg_type!(&$typ));
     (::zkgroup::backups::BackupAuthCredential) => (ffi_arg_type!(&[u8]));
     (::zkgroup::generic_server_params::GenericServerPublicParams) => (ffi_arg_type!(&[u8]));
+    (BridgeVec<$ty:tt>) => (ffi::BorrowedSliceOf<ffi_arg_type!($ty)>);
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
     (AsType<$typ:ident, $bridged:ident>) => (ffi_arg_type!($bridged));
@@ -1814,6 +1946,7 @@ macro_rules! ffi_result_type {
     (Vec<ServiceId>) => (ffi::OwnedBufferOf<libsignal_protocol::ServiceIdFixedWidthBinaryBytes>);
     (&[MismatchedDeviceError]) => (ffi::OwnedBufferOf<ffi::FfiMismatchedDevicesError>);
     (Option<$typ:ty>) => ($crate::ffi::MutPointer<$typ>);
+    (BridgeVec<$ty:tt>) => (ffi::OwnedBufferOfMaxAligned<ffi_result_type!($ty)>);
 
     (LookupResponse) => (ffi::FfiCdsiLookupResponse);
     (ChatResponse) => (ffi::FfiChatResponse);
