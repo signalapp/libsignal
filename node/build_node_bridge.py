@@ -73,7 +73,9 @@ def main(args: Optional[List[str]] = None) -> int:
     # Luckily, Python's sys.platform matches Node's OS names for our supported targets.
     parser.add_option('--os-name', default=sys.platform, metavar='OS',
                       help='specify Node OS name')
-    parser.add_option('--cargo-build-dir', default=os.path.join('..', 'target'), metavar='PATH',
+    parser.add_option('--cargo-build-dir',
+                      default=os.environ.get('CARGO_TARGET_DIR') or os.path.join('..', 'target'),
+                      metavar='PATH',
                       help='specify cargo build dir (default %default)')
     parser.add_option('--cargo-target', default=None,
                       help='specify cargo target')
