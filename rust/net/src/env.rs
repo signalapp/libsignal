@@ -383,14 +383,12 @@ pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q2_STAGING: EndpointParams<'static, Sv
         raft_config: attest::constants::RAFT_CONFIG_SVRB_2026Q2_STAGING,
     };
 
-#[expect(unused)] // Will roll out soon
 pub(crate) const ENDPOINT_PARAMS_SVR2_2026Q2_PROD: EndpointParams<'static, SvrSgx> =
     EndpointParams {
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_2026Q2_PROD),
         raft_config: attest::constants::RAFT_CONFIG_SVR2_2026Q2_PROD,
     };
 
-#[expect(unused)] // Will roll out soon
 pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q2_PROD: EndpointParams<'static, SvrSgx> =
     EndpointParams {
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2026Q2_PROD),
@@ -921,18 +919,26 @@ pub const PROD: Env<'static> = Env {
         current: EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR2,
             ws_config: RECOMMENDED_WS_CONFIG,
-            params: ENDPOINT_PARAMS_SVR2_2026Q1_PROD,
+            params: ENDPOINT_PARAMS_SVR2_2026Q2_PROD,
         },
-        previous: None,
+        previous: Some(EnclaveEndpoint {
+            domain_config: DOMAIN_CONFIG_SVR2,
+            ws_config: RECOMMENDED_WS_CONFIG,
+            params: ENDPOINT_PARAMS_SVR2_2026Q1_PROD,
+        }),
     },
     svr_b: SvrBEnv {
         current: [
             Some(EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_PROD,
                 ws_config: RECOMMENDED_WS_CONFIG,
+                params: ENDPOINT_PARAMS_SVRB_2026Q2_PROD,
+            }),
+            Some(EnclaveEndpoint {
+                domain_config: DOMAIN_CONFIG_SVRB_PROD,
+                ws_config: RECOMMENDED_WS_CONFIG,
                 params: ENDPOINT_PARAMS_SVRB_2026Q1_PROD,
             }),
-            None,
             None,
         ],
         previous: [
