@@ -42,18 +42,6 @@ enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfMySimpleTestEnumFfiArg_Der
     }
 }
 
-enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfu832_FixedByteArrayConverterFixedByteArrayHelper32:
-    FfiBorrowedSliceConstructor
-{
-    public typealias BorrowedSlice = SignalFfi.SignalBorrowedSliceOfu832
-    public typealias Element = FixedByteArrayConverter<FixedByteArrayHelper32>.FfiArg
-    public static func construct(
-        _ buffer: UnsafeBufferPointer<Element>,
-    ) -> BorrowedSlice {
-        BorrowedSlice(base: buffer.baseAddress, length: buffer.count)
-    }
-}
-
 enum FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedCStringPtr_StringConverter:
     FfiOwnedBufferOfMaxAlignedProject
 {
@@ -186,6 +174,16 @@ internal struct MyTestStruct {
     var myNumericField: Int32
     var myStringField: String
 
+}
+
+internal struct ReserveUsernameHashArgs {
+    var usernames: [Data]
+
+}
+
+internal enum ReserveUsernameHashOut {
+    case success(Data)
+    case usernameNotAvailable
 }
 
 internal struct SetDeviceNameArgs {
@@ -373,6 +371,49 @@ internal enum DerivedReturnConverterMyTestStruct: NiceReturnConverter {
         let my_string_field = Result { try StringConverter.convertReturn(consuming: ffiValue.my_string_field) }
 
         return MyTestStruct(myNumericField: try my_numeric_field.get(), myStringField: try my_string_field.get())
+    }
+}
+
+internal enum DerivedReturnConverterReserveUsernameHashArgs: NiceReturnConverter {
+    typealias NiceReturn = ReserveUsernameHashArgs
+    typealias FfiReturn = SignalReserveUsernameHashArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalReserveUsernameHashArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let usernames = Result {
+            try ArrayReturnConverter<
+                FixedByteArrayConverter<FixedByteArrayHelper32>,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedu832_FixedByteArrayConverterFixedByteArrayHelper32
+            >.convertReturn(consuming: ffiValue.usernames)
+        }
+
+        return ReserveUsernameHashArgs(usernames: try usernames.get())
+    }
+}
+
+internal enum DerivedReturnConverterReserveUsernameHashOut: NiceReturnConverter {
+    typealias NiceReturn = ReserveUsernameHashOut
+    typealias FfiReturn = SignalReserveUsernameHashOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalReserveUsernameHashOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalReserveUsernameHashOutFfiResultSuccess:
+            let _0 = Result {
+                try FixedByteArrayConverter<FixedByteArrayHelper32>.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return ReserveUsernameHashOut.success(try _0.get())
+        case SignalReserveUsernameHashOutFfiResultUsernameNotAvailable:
+            return ReserveUsernameHashOut.usernameNotAvailable
+        default:
+            throw SignalError.internalError("Unexpected enum tag for ReserveUsernameHashOut: \(ffiTag)")
+        }
     }
 }
 
@@ -1212,6 +1253,22 @@ internal enum NativeTestingNice {
             )
             return try StringConverter.convertReturn(consuming: rawOutput)
         }
+
+    }
+    internal static func TESTING_ReserveUsernameHashTests() throws -> [GrpcTestCase<
+        ReserveUsernameHashArgs, ReserveUsernameHashOut
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterReserveUsernameHashArgs, DerivedReturnConverterReserveUsernameHashOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_reserve_username_hash_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterReserveUsernameHashArgs, DerivedReturnConverterReserveUsernameHashOut
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_SetDeviceNameTests() throws -> [GrpcTestCase<SetDeviceNameArgs, SetDeviceNameOut>] {

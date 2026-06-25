@@ -271,6 +271,7 @@ typedef enum {
   SignalErrorCodeServiceIdNotFound = 222,
   SignalErrorCodeUploadTooLarge = 223,
   SignalErrorCodeDeviceIdNotFound = 224,
+  SignalErrorCodeUsernameNotAvailable = 225,
 } SignalErrorCode;
 
 enum SignalSvr2CredentialsResult {
@@ -611,6 +612,26 @@ typedef struct {
 typedef struct {
   const SignalFfiChatListenerStruct *raw;
 } SignalConstPointerFfiChatListenerStruct;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const uint8_t (*result)[32], const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseu832;
+
+typedef struct {
+  const uint8_t (*const *base)[32];
+  size_t length;
+} SignalBorrowedSliceOfu832;
 
 typedef struct {
   uint16_t status;
@@ -1818,6 +1839,8 @@ SignalFfiError *signal_authenticated_chat_connection_info(SignalMutPointerChatCo
 SignalFfiError *signal_authenticated_chat_connection_init_listener(SignalConstPointerAuthenticatedChatConnection chat, SignalConstPointerFfiChatListenerStruct listener);
 
 SignalFfiError *signal_authenticated_chat_connection_preconnect(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerConnectionManager connection_manager);
+
+SignalFfiError *signal_authenticated_chat_connection_reserve_username_hash(SignalCPromiseu832 *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, SignalBorrowedSliceOfu832 username_hashes);
 
 SignalFfiError *signal_authenticated_chat_connection_send(SignalCPromiseFfiChatResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, SignalConstPointerHttpRequest http_request, uint32_t timeout_millis);
 

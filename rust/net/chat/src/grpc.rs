@@ -10,7 +10,7 @@ mod backups;
 pub mod devices;
 mod messages;
 mod profiles;
-mod usernames;
+pub mod usernames;
 
 use std::convert::Infallible;
 use std::error::Error;

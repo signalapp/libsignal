@@ -21,6 +21,8 @@ import {
   type ReturnFfiMyTestEnum,
   type ReturnFfiMyTestPoint,
   type ReturnFfiMyTestStruct,
+  type ReturnFfiReserveUsernameHashArgs,
+  type ReturnFfiReserveUsernameHashOut,
   type ReturnFfiSetDeviceNameArgs,
   type ReturnFfiSetDeviceNameOut,
   /* eslint-enable @typescript-eslint/no-unused-vars */
@@ -84,6 +86,16 @@ export type MyTestStruct = {
   myNumericField: number;
   myStringField: string;
 };
+
+export type ReserveUsernameHashArgs = {
+  usernames: Array<Uint8Array<ArrayBuffer>>;
+};
+
+export type ReserveUsernameHashOut =
+  | {
+      success: Uint8Array<ArrayBuffer>;
+    }
+  | 'usernameNotAvailable';
 
 export type SetDeviceNameArgs = {
   id: number;
@@ -185,6 +197,35 @@ function returnConverterMyTestStruct(
     myNumericField: identity(ffiInput.my_numeric_field),
     myStringField: identity(ffiInput.my_string_field),
   };
+}
+
+function returnConverterReserveUsernameHashArgs(
+  ffiInput: Native.ReturnFfiReserveUsernameHashArgs
+): ReserveUsernameHashArgs {
+  return {
+    usernames: ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(
+      ffiInput.usernames
+    ),
+  };
+}
+
+function returnConverterReserveUsernameHashOut(
+  ffiInput: Native.ReturnFfiReserveUsernameHashOut
+): ReserveUsernameHashOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: identity(ffiInput._0),
+      };
+    case 1:
+      return 'usernameNotAvailable';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for ReserveUsernameHashOut'
+      );
+  }
 }
 
 function returnConverterSetDeviceNameArgs(
@@ -330,6 +371,30 @@ function argConverterMyTestStruct(
   };
 }
 
+export async function AuthenticatedChatConnection_reserve_username_hash({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  usernameHashes: username_hashes,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  usernameHashes: Array<Uint8Array<ArrayBuffer>>;
+}): Promise<Uint8Array<ArrayBuffer>> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_reserve_username_hash(
+        asyncContext,
+        identity(chat),
+        ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(
+          username_hashes
+        )
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_set_device_name({
   asyncContext,
   abortSignal,
@@ -584,6 +649,15 @@ export function TESTING_MyTestStruct_to_string({
   return identity(
     Native.TESTING_MyTestStruct_to_string(argConverterMyTestStruct(x))
   );
+}
+
+export function TESTING_ReserveUsernameHashTests(): Array<
+  GrpcTestCase<ReserveUsernameHashArgs, ReserveUsernameHashOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterReserveUsernameHashArgs,
+    returnConverterReserveUsernameHashOut
+  )(Native.TESTING_ReserveUsernameHashTests());
 }
 
 export function TESTING_SetDeviceNameTests(): Array<

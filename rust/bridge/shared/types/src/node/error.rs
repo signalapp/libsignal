@@ -12,6 +12,7 @@ use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFo
 use libsignal_net_chat::api::keys::GetPreKeysFailure;
 use libsignal_net_chat::api::messages::UploadTooLarge;
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
+use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use neon::thread::LocalKey;
 #[cfg(feature = "signal-media")]
 use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError};
@@ -748,6 +749,18 @@ impl SignalNodeError for DeviceIdNotFoundInAccount {
         new_js_error(
             cx,
             Some("DeviceIdNotFound"),
+            &self.to_string(),
+            operation_name,
+            no_extra_properties,
+        )
+    }
+}
+
+impl SignalNodeError for UsernameNotAvailable {
+    fn into_throwable<'cx>(self, cx: &mut Cx<'cx>, operation_name: &str) -> Handle<'cx, JsError> {
+        new_js_error(
+            cx,
+            Some("UsernameNotAvailable"),
             &self.to_string(),
             operation_name,
             no_extra_properties,

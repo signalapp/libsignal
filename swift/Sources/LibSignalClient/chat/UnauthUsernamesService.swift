@@ -14,7 +14,7 @@ public protocol UnauthUsernamesService: Sendable {
     ///
     /// Throws only if the request can't be completed, potentially including if the hash is
     /// structurally invalid.
-    func lookUpUsernameHash(_ hash: Data) async throws -> Aci?
+    func lookUpUsernameHash(_ hash: UsernameHash) async throws -> Aci?
 
     /// Looks up a username link on the service by UUID.
     ///

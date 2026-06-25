@@ -81,6 +81,7 @@ public enum SignalError: Error {
     case serviceIdNotFound(String)
     case deviceIdNotFound(String)
     case uploadTooLarge(String)
+    case usernameNotAvailable(String)
 
     case unknown(UInt32, String)
 }
@@ -349,6 +350,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.deviceIdNotFound(errStr)
     case SignalErrorCodeUploadTooLarge:
         throw SignalError.uploadTooLarge(errStr)
+    case SignalErrorCodeUsernameNotAvailable:
+        throw SignalError.usernameNotAvailable(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

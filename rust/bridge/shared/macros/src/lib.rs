@@ -688,6 +688,8 @@ fn derive_structural_from_inner(item: DeriveInput) -> syn::Result<proc_macro2::T
     );
     let util::DeriveInputInfo {
         patterns: to_patterns,
+        field_names,
+        field_types,
         ..
     } = util::DeriveInputInfo::new(&item, &item.ident.clone().into());
     let util::DeriveInputInfo {
@@ -698,7 +700,10 @@ fn derive_structural_from_inner(item: DeriveInput) -> syn::Result<proc_macro2::T
         #impl_ {
             fn from(from_value: #from) -> Self {
                 match from_value {
-                    #(#from_patterns => #to_patterns,)*
+                    #(#from_patterns => {
+                        #(let #field_names: #field_types = #field_names.into();)*
+                        #to_patterns
+                    })*
                 }
             }
         }

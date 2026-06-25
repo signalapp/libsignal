@@ -498,11 +498,25 @@ mod remote_derives {
         DeviceNotFound,
     }
 
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::usernames::test_cases::ReserveUsernameHashArgs)]
+    pub(super) struct ReserveUsernameHashArgs {
+        usernames: BridgeVec<[u8; 32]>,
+    }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::usernames::test_cases::ReserveUsernameHashOut)]
+    pub(super) enum ReserveUsernameHashOut {
+        Success([u8; 32]),
+        UsernameNotAvailable,
+    }
+
     #[cfg(feature = "ffi")]
     #[unsafe(no_mangle)]
     pub unsafe extern "C" fn signal_testing_force_bindgen_to_emit_structs(
         _: SetDeviceNameArgsFfiResult,
         _: SetDeviceNameOutFfiResult,
+        _: ReserveUsernameHashArgsFfiResult,
+        _: ReserveUsernameHashOutFfiResult,
     ) {
     }
 }
@@ -511,4 +525,10 @@ mod remote_derives {
 fn TESTING_SetDeviceNameTests()
 -> GrpcTestCases<remote_derives::SetDeviceNameArgs, remote_derives::SetDeviceNameOut> {
     libsignal_net_chat::grpc::devices::test_cases::set_device_name_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_ReserveUsernameHashTests()
+-> GrpcTestCases<remote_derives::ReserveUsernameHashArgs, remote_derives::ReserveUsernameHashOut> {
+    libsignal_net_chat::grpc::usernames::test_cases::reserve_username_hash_test_cases().into()
 }

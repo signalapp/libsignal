@@ -33,6 +33,7 @@ use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
+use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::ws::OverWs;
 use libsignal_protocol::{CiphertextMessage, Timestamp};
 use uuid::Uuid;
@@ -631,6 +632,17 @@ async fn AuthenticatedChatConnection_set_device_name(
     chat.require_grpc()
         .await
         .set_device_name(device_id, &encrypted_name)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_reserve_username_hash(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    username_hashes: BridgeVec<[u8; 32]>,
+) -> Result<[u8; 32], RequestError<UsernameNotAvailable>> {
+    chat.require_grpc()
+        .await
+        .reserve_username_hash(&username_hashes)
         .await
 }
 

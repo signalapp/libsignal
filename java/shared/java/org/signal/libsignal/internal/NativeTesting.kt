@@ -261,6 +261,8 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_RegistrationSessionInfoConvert(): ObjectHandle
   @JvmStatic
+  public external fun TESTING_ReserveUsernameHashTests(): Array<Object>
+  @JvmStatic
   public external fun TESTING_ReturnPair(): Pair<Int, String>
   @JvmStatic
   public external fun TESTING_ReturnStringArray(): Array<Object>

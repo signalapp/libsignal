@@ -27,6 +27,7 @@ export * from './net/CDSI.js';
 export * from './net/Chat.js';
 export * from './net/chat/AuthDevicesService.js';
 export * from './net/chat/AuthMessagesService.js';
+export * from './net/chat/AuthUsernamesService.js';
 export * from './net/chat/UnauthBackupsService.js';
 export * from './net/chat/UnauthKeysService.js';
 export * from './net/chat/UnauthMessagesService.js';

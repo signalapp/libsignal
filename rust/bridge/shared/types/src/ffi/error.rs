@@ -21,6 +21,7 @@ use libsignal_net_chat::api::keytrans::Error as KeyTransError;
 use libsignal_net_chat::api::messages::{MismatchedDeviceError, UploadTooLarge};
 use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
+use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -141,6 +142,7 @@ pub enum SignalErrorCode {
     UploadTooLarge = 223,
 
     DeviceIdNotFound = 224,
+    UsernameNotAvailable = 225,
 }
 
 pub trait UpcastAsAny {
@@ -846,6 +848,12 @@ impl IntoFfiError for libsignal_net_chat::api::keys::GetPreKeysFailure {
 impl IntoFfiError for DeviceIdNotFoundInAccount {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         SimpleError::new(SignalErrorCode::DeviceIdNotFound, self.to_string())
+    }
+}
+
+impl IntoFfiError for UsernameNotAvailable {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(SignalErrorCode::UsernameNotAvailable, self.to_string())
     }
 }
 

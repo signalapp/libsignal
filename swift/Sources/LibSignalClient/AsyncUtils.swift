@@ -116,6 +116,10 @@ extension SignalCPromisePairOfCStringPtrCStringPtr: PromiseStruct {
     typealias Result = SignalPairOfCStringPtrCStringPtr
 }
 
+extension SignalCPromiseu832: PromiseStruct {
+    typealias Result = FixedByteArrayHelper32.Ffi
+}
+
 /// A type-erased version of ``Completer``.
 ///
 /// Not for direct use, see Completer instead.

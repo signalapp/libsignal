@@ -91,6 +91,8 @@ export enum ErrorCode {
   RegistrationSessionNotReadyForVerification,
   RegistrationVerificationCodeNotDeliverable,
   RegistrationVerificationSendFailed,
+
+  UsernameNotAvailable,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -483,6 +485,10 @@ export type DeviceIdNotFound = LibSignalErrorCommon & {
   code: ErrorCode.DeviceIdNotFound;
 };
 
+export type UsernameNotAvailable = LibSignalErrorCommon & {
+  code: ErrorCode.UsernameNotAvailable;
+};
+
 /**
  * @throws {ChatServiceInactive} if the chat connection has been closed.
  * @throws {IoError} if an error occurred while communicating with the server.
@@ -557,4 +563,5 @@ export type LibSignalError =
   | RegistrationDeviceTransferPossibleNotSkippedError
   | RegistrationRecoveryVerificationFailedError
   | RegistrationCredentialsCouldNotBeParsedError
-  | DeviceIdNotFound;
+  | DeviceIdNotFound
+  | UsernameNotAvailable;

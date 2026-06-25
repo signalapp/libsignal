@@ -8,3 +8,4 @@ v0.96.4
 
 - SVR2: update production to 2026Q2
 - SVRB: update production to 2026Q2
+- Add reserveUsernameHash() typed API

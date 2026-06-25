@@ -29,6 +29,7 @@ exclude = [
     "BorrowedBytestringArray",
     "BorrowedSliceOfBorrowedSliceOfc_uchar",
     "BorrowedSliceOfc_uchar",
+    "BorrowedSliceOfu832",
     "BorrowedSliceOfusize",
     "BytestringArray",
     "ConstPointerAuthChat",

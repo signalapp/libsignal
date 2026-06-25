@@ -6,15 +6,64 @@
 use std::convert::Infallible;
 
 use async_trait::async_trait;
+use displaydoc::Display;
 use libsignal_core::Aci;
 use libsignal_net_grpc::proto::chat::account::accounts_anonymous_client::AccountsAnonymousClient;
+use libsignal_net_grpc::proto::chat::account::accounts_client::AccountsClient;
 use libsignal_net_grpc::proto::chat::account::*;
 use libsignal_net_grpc::proto::chat::errors;
 
 use super::{GrpcServiceProvider, OverGrpc, log_and_send};
 use crate::api::usernames::validate_username_from_link;
-use crate::api::{RequestError, Unauth};
+use crate::api::{Auth, RequestError, Unauth};
 use crate::logging::{Redact, RedactHex};
+
+pub type UsernameHash = [u8; 32];
+#[derive(Debug, Display)]
+/// None of the candidate usernames were available.
+pub struct UsernameNotAvailable;
+
+impl std::fmt::Display for Redact<ReserveUsernameHashRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(ReserveUsernameHashRequest { username_hashes }) = self;
+        f.debug_struct("ReserveUsernameHash")
+            .field("username_hashes.len", &username_hashes.len())
+            .finish()
+    }
+}
+
+impl<T: GrpcServiceProvider> Auth<T> {
+    /// Given a prioritized list of between 1 and 20 username hashes, try reserving them (in order)
+    ///
+    /// The first successfully reserved hash will be returned.
+    pub async fn reserve_username_hash(
+        &self,
+        username_hashes: &[UsernameHash],
+    ) -> Result<UsernameHash, RequestError<UsernameNotAvailable>> {
+        let mut client = AccountsClient::new(self.0.service());
+        let request = ReserveUsernameHashRequest {
+            username_hashes: username_hashes.iter().map(|hash| hash.to_vec()).collect(),
+        };
+        let desc = Redact(&request).to_string();
+        match log_and_send("auth", &desc, || client.reserve_username_hash(request))
+            .await?
+            .into_inner()
+            .response
+            .ok_or_else(|| RequestError::Unexpected {
+                log_safe: "missing response".to_string(),
+            })? {
+            reserve_username_hash_response::Response::UsernameHash(hash) => {
+                let hash_len = hash.len();
+                UsernameHash::try_from(hash).map_err(|_| RequestError::Unexpected {
+                    log_safe: format!("Expected 32 byte username hash; got {}", hash_len),
+                })
+            }
+            reserve_username_hash_response::Response::UsernameNotAvailable(
+                libsignal_net_grpc::proto::chat::account::UsernameNotAvailable {},
+            ) => Err(RequestError::Other(UsernameNotAvailable)),
+        }
+    }
+}
 
 #[async_trait]
 impl<T: GrpcServiceProvider> crate::api::usernames::UnauthenticatedChatApi<OverGrpc> for Unauth<T> {
@@ -118,8 +167,69 @@ impl std::fmt::Display for Redact<LookupUsernameLinkRequest> {
     }
 }
 
+pub mod test_cases {
+    use super::*;
+    use crate::grpc::GrpcTestCase;
+    pub struct ReserveUsernameHashArgs {
+        pub usernames: Vec<UsernameHash>,
+    }
+    pub enum ReserveUsernameHashOut {
+        Success(UsernameHash),
+        UsernameNotAvailable,
+    }
+    pub fn reserve_username_hash_test_cases() -> Vec<
+        GrpcTestCase<
+            ReserveUsernameHashArgs,
+            ReserveUsernameHashRequest,
+            ReserveUsernameHashResponse,
+            ReserveUsernameHashOut,
+        >,
+    > {
+        let hash0 = *b"................................";
+        let hash1 = *b"++++++++++++++++++++++++++++++++";
+        let method = "/org.signal.chat.account.Accounts/ReserveUsernameHash";
+        vec![
+            GrpcTestCase {
+                name: "success".to_string(),
+                method: method.to_string(),
+                request: ReserveUsernameHashArgs {
+                    usernames: vec![hash0, hash1],
+                },
+                request_grpc: ReserveUsernameHashRequest {
+                    username_hashes: vec![hash0.to_vec(), hash1.to_vec()],
+                },
+                response_grpc: ReserveUsernameHashResponse {
+                    response: Some(reserve_username_hash_response::Response::UsernameHash(
+                        hash0.to_vec(),
+                    )),
+                },
+                response: ReserveUsernameHashOut::Success(hash0),
+            },
+            GrpcTestCase {
+                name: "failed to reserve username".to_string(),
+                method: method.to_string(),
+                request: ReserveUsernameHashArgs {
+                    usernames: vec![hash0, hash1],
+                },
+                request_grpc: ReserveUsernameHashRequest {
+                    username_hashes: vec![hash0.to_vec(), hash1.to_vec()],
+                },
+                response_grpc: ReserveUsernameHashResponse {
+                    response: Some(
+                        reserve_username_hash_response::Response::UsernameNotAvailable(
+                            Default::default(),
+                        ),
+                    ),
+                },
+                response: ReserveUsernameHashOut::UsernameNotAvailable,
+            },
+        ]
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use assert_matches::assert_matches;
     use data_encoding_macro::base64url_nopad;
     use futures_util::FutureExt as _;
     use libsignal_net_grpc::proto::chat::common::{IdentityType, ServiceIdentifier};
@@ -129,7 +239,9 @@ mod test {
 
     use super::*;
     use crate::api::usernames::UnauthenticatedChatApi;
-    use crate::grpc::testutil::{GrpcOverrideRequestValidator, RequestValidator, err, ok, req};
+    use crate::grpc::testutil::{
+        GrpcOverrideRequestValidator, RequestValidator, err, ok, req, run_tests,
+    };
 
     const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
 
@@ -227,5 +339,24 @@ mod test {
             .now_or_never()
             .expect("sync")
             .map(|u| u.map(|u| u.to_string()))
+    }
+
+    #[test]
+    fn test_reserve_username_hash() {
+        use test_cases::*;
+        run_tests(
+            reserve_username_hash_test_cases(),
+            |chat: Auth<_>, ReserveUsernameHashArgs { usernames }| async move {
+                chat.reserve_username_hash(&usernames).await
+            },
+            |resp, result| match resp {
+                ReserveUsernameHashOut::Success(winner) => {
+                    assert_matches!(result, Ok(x) if x == winner)
+                }
+                ReserveUsernameHashOut::UsernameNotAvailable => {
+                    assert_matches!(result, Err(RequestError::Other(UsernameNotAvailable)))
+                }
+            },
+        );
     }
 }

@@ -328,6 +328,42 @@ internal data class MyTestStruct(
 
 internal fun MyTestStruct.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
 
+internal data class ReserveUsernameHashArgs(
+  val usernames: List<ByteArray>,
+) {
+  companion object {
+    @JvmStatic
+    @CalledFromNative
+    fun fromNative(usernames: Any?): ReserveUsernameHashArgs =
+      ReserveUsernameHashArgs(
+        usernames =
+          mapBridgeVecReturn<ByteArray, ByteArray>({ identity(it) })(usernames as Array<*>),
+      )
+  }
+}
+
+internal sealed class ReserveUsernameHashOut {
+  internal data class Success(
+    val _0: ByteArray,
+  ) : ReserveUsernameHashOut() {
+    companion object {
+      @JvmStatic
+      @CalledFromNative
+      fun fromNative(_0: Any?): Success =
+        Success(
+          _0 =
+            identity(_0 as ByteArray),
+        )
+    }
+  }
+
+  internal data object UsernameNotAvailable : ReserveUsernameHashOut() {
+    @JvmStatic
+    @CalledFromNative
+    fun fromNative(): UsernameNotAvailable = UsernameNotAvailable
+  }
+}
+
 internal data class SetDeviceNameArgs(
   val id: Int,
   val encryptedName: ByteArray,
@@ -481,6 +517,16 @@ internal object NativeTestingNice {
       )
 
     return identity(ffiOut)
+  }
+
+  public fun TESTING_ReserveUsernameHashTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.ReserveUsernameHashArgs, org.signal.libsignal.internal.ReserveUsernameHashOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_ReserveUsernameHashTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.ReserveUsernameHashArgs, org.signal.libsignal.internal.ReserveUsernameHashOut>({
+        downcastFromObject<org.signal.libsignal.internal.ReserveUsernameHashArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.ReserveUsernameHashOut>(it) })(ffiOut)
   }
 
   public fun TESTING_SetDeviceNameTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetDeviceNameArgs, org.signal.libsignal.internal.SetDeviceNameOut>> {

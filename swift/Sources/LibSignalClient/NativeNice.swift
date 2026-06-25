@@ -17,7 +17,59 @@
 import Foundation
 import SignalFfi
 
+enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfu832_FixedByteArrayConverterFixedByteArrayHelper32:
+    FfiBorrowedSliceConstructor
+{
+    typealias BorrowedSlice = SignalFfi.SignalBorrowedSliceOfu832
+    typealias Element = FixedByteArrayConverter<FixedByteArrayHelper32>.FfiArg
+    static func construct(
+        _ buffer: UnsafeBufferPointer<Element>,
+    ) -> BorrowedSlice {
+        BorrowedSlice(base: buffer.baseAddress, length: buffer.count)
+    }
+}
+
+internal enum FixedByteArrayHelper32: FixedByteArrayHelper {
+    typealias Ffi = (
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8
+    )
+    static func count() -> Int {
+        32
+    }
+    static func emptyFfi() -> Ffi {
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    }
+}
+
 internal enum NativeNice {
+    internal static func AuthenticatedChatConnection_reserve_username_hash(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        usernameHashes username_hashes: [Data],
+    ) async throws -> Data {
+        let rawOutput: FixedByteArrayConverter<FixedByteArrayHelper32>.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ArrayArgConverter<
+                            FixedByteArrayConverter<FixedByteArrayHelper32>,
+                            FfiBorrowedSliceConstructor_SignalBorrowedSliceOfu832_FixedByteArrayConverterFixedByteArrayHelper32
+                        >.convertArgBorrowed(username_hashes) { username_hashesFfi in
+                            SignalFfi.signal_authenticated_chat_connection_reserve_username_hash(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                                username_hashesFfi,
+                            )
+                        }
+                    }
+            }
+        return try FixedByteArrayConverter<FixedByteArrayHelper32>.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_set_device_name(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,

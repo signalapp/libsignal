@@ -216,6 +216,19 @@ export type ReturnFfiMyTestStruct = {
   my_string_field: string;
 };
 
+export type ReturnFfiReserveUsernameHashArgs = {
+  usernames: Array<Uint8Array<ArrayBuffer>>;
+};
+
+export type ReturnFfiReserveUsernameHashOut =
+  | {
+      __type: 0;
+      _0: Uint8Array<ArrayBuffer>;
+    }
+  | {
+      __type: 1;
+    };
+
 export type ReturnFfiSetDeviceNameArgs = {
   id: number;
   encrypted_name: Uint8Array<ArrayBuffer>;
@@ -388,6 +401,11 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     connection_manager: Wrapper<ConnectionManager>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_reserve_username_hash: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    username_hashes: Array<Uint8Array<ArrayBuffer>>
+  ) => CancellablePromise<Uint8Array<ArrayBuffer>>;
   AuthenticatedChatConnection_send: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -2353,6 +2371,12 @@ type NativeFunctions = {
     error_description: string
   ) => void;
   TESTING_RegistrationSessionInfoConvert: () => RegistrationSession;
+  TESTING_ReserveUsernameHashTests: () => Array<
+    GrpcTestCaseFfi<
+      ReturnFfiReserveUsernameHashArgs,
+      ReturnFfiReserveUsernameHashOut
+    >
+  >;
   TESTING_ReturnPair: () => [number, string];
   TESTING_ReturnStringArray: () => Array<string>;
   TESTING_RoundTripI32: (input: number) => number;
@@ -2733,6 +2757,7 @@ const {
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
   AuthenticatedChatConnection_preconnect,
+  AuthenticatedChatConnection_reserve_username_hash,
   AuthenticatedChatConnection_send,
   AuthenticatedChatConnection_send_message,
   AuthenticatedChatConnection_send_raw_grpc,
@@ -3283,6 +3308,7 @@ const {
   TESTING_RegistrationService_SubmitVerificationErrorConvert,
   TESTING_RegistrationService_UpdateSessionErrorConvert,
   TESTING_RegistrationSessionInfoConvert,
+  TESTING_ReserveUsernameHashTests,
   TESTING_ReturnPair,
   TESTING_ReturnStringArray,
   TESTING_RoundTripI32,
@@ -3410,6 +3436,7 @@ export {
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
   AuthenticatedChatConnection_preconnect,
+  AuthenticatedChatConnection_reserve_username_hash,
   AuthenticatedChatConnection_send,
   AuthenticatedChatConnection_send_message,
   AuthenticatedChatConnection_send_raw_grpc,
@@ -3960,6 +3987,7 @@ export {
   TESTING_RegistrationService_SubmitVerificationErrorConvert,
   TESTING_RegistrationService_UpdateSessionErrorConvert,
   TESTING_RegistrationSessionInfoConvert,
+  TESTING_ReserveUsernameHashTests,
   TESTING_ReturnPair,
   TESTING_ReturnStringArray,
   TESTING_RoundTripI32,

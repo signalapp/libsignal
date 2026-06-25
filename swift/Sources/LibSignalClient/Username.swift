@@ -6,11 +6,14 @@
 import Foundation
 import SignalFfi
 
+/// A 32-byte hash of a username
+public typealias UsernameHash = Data
+
 public struct Username: Sendable {
     public let value: String
-    public let hash: Data
+    public let hash: UsernameHash
 
-    internal init(_ value: String, uncheckedHash: Data) {
+    internal init(_ value: String, uncheckedHash: UsernameHash) {
         self.value = value
         self.hash = uncheckedHash
     }

@@ -32,6 +32,7 @@ use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFo
 use libsignal_net_chat::api::messages::UploadTooLarge;
 use libsignal_net_chat::api::{RateLimitChallenge, RequestError as ChatRequestError};
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
+use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -1176,6 +1177,20 @@ impl JniError for DeviceIdNotFoundInAccount {
             env,
             message,
             ClassName("org.signal.libsignal.net.DeviceIdNotFoundException"),
+        )
+    }
+}
+
+impl JniError for UsernameNotAvailable {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
+        let message = self.to_string();
+        make_single_message_throwable(
+            env,
+            message,
+            ClassName("org.signal.libsignal.net.UsernameNotAvailableException"),
         )
     }
 }

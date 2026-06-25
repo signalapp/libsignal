@@ -158,11 +158,6 @@ typedef struct {
   size_t size_bytes;
 } SignalOwnedBufferOfMaxAlignedu832;
 
-typedef struct {
-  const uint8_t (*const *base)[32];
-  size_t length;
-} SignalBorrowedSliceOfu832;
-
 /**
  * A buffer of `length` elements of type `T`, allocated with the alignment of
  * [`libc::max_align_t`].
@@ -271,6 +266,26 @@ typedef struct {
   uint8_t id;
   SignalOwnedBuffer encrypted_name;
 } SignalSetDeviceNameArgsFfiResult;
+
+typedef struct {
+  SignalOwnedBufferOfMaxAlignedu832 usernames;
+} SignalReserveUsernameHashArgsFfiResult;
+
+typedef enum {
+  SignalReserveUsernameHashOutFfiResultSuccess,
+  SignalReserveUsernameHashOutFfiResultUsernameNotAvailable,
+} SignalReserveUsernameHashOutFfiResult_Tag;
+
+typedef struct {
+  uint8_t _0[32];
+} SignalReserveUsernameHashOutFfiResultSignalSuccess_Body;
+
+typedef struct {
+  SignalReserveUsernameHashOutFfiResult_Tag tag;
+  union {
+    SignalReserveUsernameHashOutFfiResultSignalSuccess_Body success;
+  };
+} SignalReserveUsernameHashOutFfiResult;
 
 typedef struct {
   SignalTestingFutureCancellationCounter *raw;
@@ -701,7 +716,7 @@ SignalFfiError *signal_testing_fake_registration_session_create_session(SignalCP
 
 SignalFfiError *signal_testing_fingerprint_version_mismatch_error(uint32_t theirs, uint32_t ours);
 
-void signal_testing_force_bindgen_to_emit_structs(SignalSetDeviceNameArgsFfiResult, SignalSetDeviceNameOutFfiResult);
+void signal_testing_force_bindgen_to_emit_structs(SignalSetDeviceNameArgsFfiResult, SignalSetDeviceNameOutFfiResult, SignalReserveUsernameHashArgsFfiResult, SignalReserveUsernameHashOutFfiResult);
 
 SignalFfiError *signal_testing_future_cancellation_counter_create(SignalMutPointerTestingFutureCancellationCounter *out, uint8_t initial_value);
 
@@ -806,6 +821,8 @@ SignalFfiError *signal_testing_registration_service_submit_verification_error_co
 SignalFfiError *signal_testing_registration_service_update_session_error_convert(SignalCStringPtr error_description);
 
 SignalFfiError *signal_testing_registration_session_info_convert(SignalMutPointerRegistrationSession *out);
+
+SignalFfiError *signal_testing_reserve_username_hash_tests(SignalOwnedBufferOfGrpcTestCaseBridgedFfi *out);
 
 SignalFfiError *signal_testing_return_pair(SignalPairOfi32CStringPtr *out);
 
