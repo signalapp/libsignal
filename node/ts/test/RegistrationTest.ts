@@ -417,5 +417,91 @@ describe('Registration client', () => {
 
       await requestVerification;
     });
+
+    it('refreshes cached session state from failed requests', async () => {
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+
+      const [createSession, getRemote] = RegistrationService.fakeCreateSession(
+        tokio,
+        { e164: '+18005550123' }
+      );
+      const fakeRemote = await getRemote;
+
+      const createRequest = await fakeRemote.assertReceiveIncomingRequest();
+      fakeRemote.sendReplyTo(createRequest, {
+        status: 200,
+        message: 'OK',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            allowedToRequestCode: true,
+            verified: false,
+            requestedInformation: ['pushChallenge'],
+            id: 'fake-session-A',
+          })
+        ),
+      });
+      const session = await createSession;
+
+      // A failed requestVerification whose body carries updated session state
+      // should refresh the service's cached sessionState across the bridge,
+      // even though the call rejects.
+      const requestVerification = session.requestVerification({
+        transport: 'voice',
+        client: 'libsignal test',
+        languages: ['fr-CA'],
+      });
+      const sendCodeRequest = await fakeRemote.assertReceiveIncomingRequest();
+      fakeRemote.sendReplyTo(sendCodeRequest, {
+        status: 418,
+        message: 'Send failed',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            allowedToRequestCode: false,
+            verified: false,
+            nextSms: 42,
+            requestedInformation: ['captcha'],
+            id: 'fake-session-A',
+          })
+        ),
+      });
+      await expect(requestVerification).to.be.rejected;
+      expect(session.sessionState).to.deep.eq({
+        allowedToRequestCode: false,
+        verified: false,
+        nextSmsSecs: 42,
+        nextCallSecs: undefined,
+        nextVerificationAttemptSecs: undefined,
+        requestedInformation: new Set(['captcha']),
+      });
+
+      // Same for a failed verifySession (submit code).
+      const verifySession = session.verifySession('123456');
+      const submitCodeRequest = await fakeRemote.assertReceiveIncomingRequest();
+      fakeRemote.sendReplyTo(submitCodeRequest, {
+        status: 409,
+        message: 'Not ready',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            allowedToRequestCode: true,
+            verified: false,
+            nextVerificationAttempt: 37,
+            requestedInformation: [],
+            id: 'fake-session-A',
+          })
+        ),
+      });
+      await expect(verifySession).to.be.rejected;
+      expect(session.sessionState).to.deep.eq({
+        allowedToRequestCode: true,
+        verified: false,
+        nextSmsSecs: undefined,
+        nextCallSecs: undefined,
+        nextVerificationAttemptSecs: 37,
+        requestedInformation: new Set(),
+      });
+    });
   });
 });

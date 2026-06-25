@@ -359,6 +359,104 @@ public class RegistrationServiceTest {
     requestVerification.get();
   }
 
+  @Test
+  public void testFakeRemoteSessionStateRefreshedFromErrors()
+      throws ExecutionException, InterruptedException {
+    var tokio = new TokioAsyncContext();
+    var fakeServer = new FakeChatServer(tokio);
+    var createSession =
+        RegistrationService.fakeCreateSession(
+            fakeServer,
+            new RegistrationService.CreateSession("+18005550123", "myPushToken", null, null));
+
+    var fakeRemote = fakeServer.getNextRemote().get();
+    var createRequestAndId = fakeRemote.getNextIncomingRequest().get();
+    assertNotNull(createRequestAndId);
+    fakeRemote.sendResponse(
+        createRequestAndId.getSecond(),
+        200,
+        "OK",
+        new String[] {"content-type: application/json"},
+        """
+        {
+            "allowedToRequestCode": true,
+            "verified": false,
+            "requestedInformation": ["pushChallenge"],
+            "id": "fake-session-A"
+        }
+        """
+            .getBytes());
+    var session = createSession.get();
+
+    // A failed requestVerificationCode whose body carries updated session state
+    // refreshes the service's cached session state across the bridge, even
+    // though the request fails.
+    var requestVerification =
+        session.requestVerificationCode(
+            RegistrationService.VerificationTransport.VOICE,
+            "libsignal test",
+            Locale.CANADA_FRENCH);
+    var sendCodeRequestAndId = fakeRemote.getNextIncomingRequest().get();
+    assertNotNull(sendCodeRequestAndId);
+    fakeRemote.sendResponse(
+        sendCodeRequestAndId.getSecond(),
+        418,
+        "Send failed",
+        new String[] {"content-type: application/json"},
+        """
+        {
+            "allowedToRequestCode": false,
+            "verified": false,
+            "nextSms": 42,
+            "requestedInformation": ["captcha"]
+        }
+        """
+            .getBytes());
+    var sendFailure = assertThrows(ExecutionException.class, () -> requestVerification.get());
+    assertTrue(sendFailure.getCause() instanceof RegistrationSessionSendCodeException);
+
+    var afterSendFailed = session.getSessionState();
+    assertEquals(false, afterSendFailed.getAllowedToRequestCode());
+    assertEquals(false, afterSendFailed.getVerified());
+    assertEquals(Duration.ofSeconds(42), afterSendFailed.getNextSms());
+    // Fields absent from the error body must be unset, not carried over from the
+    // previous session state.
+    assertNull(afterSendFailed.getNextCall());
+    assertNull(afterSendFailed.getNextVerificationAttempt());
+    assertEquals(Set.of(ChallengeOption.CAPTCHA), afterSendFailed.getRequestedInformation());
+
+    // Same for a failed submitVerificationCode (NotReadyForVerification).
+    var submitVerification = session.submitVerificationCode("123456");
+    var submitCodeRequestAndId = fakeRemote.getNextIncomingRequest().get();
+    assertNotNull(submitCodeRequestAndId);
+    fakeRemote.sendResponse(
+        submitCodeRequestAndId.getSecond(),
+        409,
+        "Not ready",
+        new String[] {"content-type: application/json"},
+        """
+        {
+            "allowedToRequestCode": true,
+            "verified": false,
+            "nextVerificationAttempt": 37,
+            "requestedInformation": []
+        }
+        """
+            .getBytes());
+    var submitFailure = assertThrows(ExecutionException.class, () -> submitVerification.get());
+    assertTrue(submitFailure.getCause() instanceof RegistrationSessionNotReadyException);
+
+    var afterNotReady = session.getSessionState();
+    assertEquals(true, afterNotReady.getAllowedToRequestCode());
+    assertEquals(false, afterNotReady.getVerified());
+    assertEquals(Duration.ofSeconds(37), afterNotReady.getNextVerificationAttempt());
+    // Fields absent from the error body must be unset, not carried over from the
+    // previous (send-failed) session state, which had nextSms set.
+    assertNull(afterNotReady.getNextSms());
+    assertNull(afterNotReady.getNextCall());
+    assertEquals(Set.of(), afterNotReady.getRequestedInformation());
+  }
+
   private static String encodeBase64(byte[] input) {
     return Base64.Default.encode(input, 0, input.length);
   }

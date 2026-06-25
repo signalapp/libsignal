@@ -304,6 +304,125 @@ class RegistrationServiceFakeChatTests {
     }
 
     @Test
+    func fakeRemoteSessionStateRefreshedFromErrors() async throws {
+        let tokio = TokioAsyncContext()
+        let server = FakeChatServer(asyncContext: tokio)
+        async let startCreateSessionRequest =
+            RegistrationService.fakeCreateSession(
+                fakeChatServer: server,
+                e164: "+18005550123",
+                pushToken: "myPushToken"
+            )
+
+        let fakeRemote = try await server.getNextRemote()
+        let (_, createRequestId) = try await fakeRemote.getNextIncomingRequest()
+        try fakeRemote.sendResponse(
+            requestId: createRequestId,
+            ChatResponse(
+                status: 200,
+                message: "OK",
+                headers: ["content-type": "application/json"],
+                body: Data(
+                    """
+                    {
+                        "allowedToRequestCode": true,
+                        "verified": false,
+                        "requestedInformation": ["pushChallenge"],
+                        "id": "fake-session-A"
+                    }
+                    """.utf8
+                )
+            )
+        )
+        let session = try await startCreateSessionRequest
+
+        // A failed requestVerificationCode whose body carries updated session
+        // state refreshes the cached session state across the bridge, even
+        // though the request fails.
+        async let requestVerification: () = session.requestVerificationCode(
+            transport: .voice,
+            client: "libsignal test",
+            languages: ["fr-CA"]
+        )
+        let (_, sendCodeRequestId) = try await fakeRemote.getNextIncomingRequest()
+        try fakeRemote.sendResponse(
+            requestId: sendCodeRequestId,
+            ChatResponse(
+                status: 418,
+                message: "Send failed",
+                headers: ["content-type": "application/json"],
+                body: Data(
+                    """
+                    {
+                        "allowedToRequestCode": false,
+                        "verified": false,
+                        "nextSms": 42,
+                        "requestedInformation": ["captcha"]
+                    }
+                    """.utf8
+                )
+            )
+        )
+        do {
+            try await requestVerification
+            Issue.record("requestVerificationCode should have failed")
+        } catch RegistrationError.sendVerificationFailed {
+            // This is good.
+        } catch {
+            Issue.record("unexpected error from requestVerificationCode: \(error)")
+        }
+
+        let afterSendFailed = session.sessionState
+        #expect(!afterSendFailed.allowedToRequestCode)
+        #expect(!afterSendFailed.verified)
+        #expect(afterSendFailed.nextSms == TimeInterval(42))
+        // Fields absent from the error body must be unset, not carried over.
+        #expect(afterSendFailed.nextCall == nil)
+        #expect(afterSendFailed.nextVerificationAttempt == nil)
+        #expect(afterSendFailed.requestedInformation == [.captcha])
+
+        // Same for a failed submitVerificationCode (NotReadyForVerification).
+        async let submitVerification: () = session.submitVerificationCode(code: "123456")
+        let (_, submitCodeRequestId) = try await fakeRemote.getNextIncomingRequest()
+        try fakeRemote.sendResponse(
+            requestId: submitCodeRequestId,
+            ChatResponse(
+                status: 409,
+                message: "Not ready",
+                headers: ["content-type": "application/json"],
+                body: Data(
+                    """
+                    {
+                        "allowedToRequestCode": true,
+                        "verified": false,
+                        "nextVerificationAttempt": 37,
+                        "requestedInformation": []
+                    }
+                    """.utf8
+                )
+            )
+        )
+        do {
+            try await submitVerification
+            Issue.record("submitVerificationCode should have failed")
+        } catch RegistrationError.notReadyForVerification {
+            // This is good.
+        } catch {
+            Issue.record("unexpected error from submitVerificationCode: \(error)")
+        }
+
+        let afterNotReady = session.sessionState
+        #expect(afterNotReady.allowedToRequestCode)
+        #expect(!afterNotReady.verified)
+        #expect(afterNotReady.nextVerificationAttempt == TimeInterval(37))
+        // Fields absent from the error body must be unset, not carried over from
+        // the previous (send-failed) state, which had nextSms set.
+        #expect(afterNotReady.nextSms == nil)
+        #expect(afterNotReady.nextCall == nil)
+        #expect(afterNotReady.requestedInformation == [])
+    }
+
+    @Test
     func fakeRemoteRegisterAccount() async throws {
         let tokio = TokioAsyncContext()
         let server = FakeChatServer(asyncContext: tokio)
