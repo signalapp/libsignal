@@ -153,6 +153,32 @@ typedef struct {
  * function for each type).
  */
 typedef struct {
+  uint8_t (*base)[32];
+  size_t length;
+  size_t size_bytes;
+} SignalOwnedBufferOfMaxAlignedu832;
+
+typedef struct {
+  const uint8_t (*const *base)[32];
+  size_t length;
+} SignalBorrowedSliceOfu832;
+
+/**
+ * A buffer of `length` elements of type `T`, allocated with the alignment of
+ * [`libc::max_align_t`].
+ *
+ * The number of bytes allocated is stored in `size_bytes`.
+ *
+ * `base` should be allocated via Rust's global alloc (i.e. via [`std::alloc::alloc`])
+ *
+ * # Motivation
+ * Rust's global allocator takes a size and alignment for _both_ allocation and deallocation. As a
+ * result, if we want to have a general "free this buffer" function, that function needs to be
+ * able to know the total size of the allocation and its alignment. Having a fixed (constant)
+ * alignment means we don't need to store the alignment in this struct (or have a separate free
+ * function for each type).
+ */
+typedef struct {
   SignalCStringPtr *base;
   size_t length;
   size_t size_bytes;
@@ -573,9 +599,17 @@ SignalFfiError *signal_testing_conversion_bool_identity(bool *out, bool x);
 
 SignalFfiError *signal_testing_conversion_bool_to_string(SignalCStringPtr *out, bool x);
 
+SignalFfiError *signal_testing_conversion_bridge_vec_data32_identity(SignalOwnedBufferOfMaxAlignedu832 *out, SignalBorrowedSliceOfu832 x);
+
+SignalFfiError *signal_testing_conversion_bridge_vec_data32_to_string(SignalCStringPtr *out, SignalBorrowedSliceOfu832 x);
+
 SignalFfiError *signal_testing_conversion_bridge_vec_string_identity(SignalOwnedBufferOfMaxAlignedCStringPtr *out, SignalBorrowedSliceOfCStringPtr x);
 
 SignalFfiError *signal_testing_conversion_bridge_vec_string_to_string(SignalCStringPtr *out, SignalBorrowedSliceOfCStringPtr x);
+
+SignalFfiError *signal_testing_conversion_data32_identity(uint8_t (*out)[32], const uint8_t (*x)[32]);
+
+SignalFfiError *signal_testing_conversion_data32_to_string(SignalCStringPtr *out, const uint8_t (*x)[32]);
 
 SignalFfiError *signal_testing_conversion_data_identity(SignalOwnedBuffer *out, SignalBorrowedBuffer x);
 

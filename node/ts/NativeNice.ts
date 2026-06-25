@@ -622,6 +622,49 @@ export async function TESTING_TokioAsyncContext_FutureSuccessBytes({
   );
 }
 
+export function TESTING_conversion_BridgeVecData32_identity({
+  x: x,
+}: {
+  x: Array<Uint8Array<ArrayBuffer>>;
+}): Array<Uint8Array<ArrayBuffer>> {
+  return ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(
+    Native.TESTING_conversion_BridgeVecData32_identity(
+      ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(x)
+    )
+  );
+}
+export async function TESTING_conversion_BridgeVecData32_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: Array<Uint8Array<ArrayBuffer>>;
+}): Promise<Array<Uint8Array<ArrayBuffer>>> {
+  return ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_BridgeVecData32_identity_async(
+        asyncContext,
+        ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_BridgeVecData32_to_string({
+  x: x,
+}: {
+  x: Array<Uint8Array<ArrayBuffer>>;
+}): string {
+  return identity(
+    Native.TESTING_conversion_BridgeVecData32_to_string(
+      ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(x)
+    )
+  );
+}
+
 export function TESTING_conversion_BridgeVecString_identity({
   x: x,
 }: {
@@ -663,6 +706,38 @@ export function TESTING_conversion_BridgeVecString_to_string({
       ((arr: Array<string>) => arr.map(identity))(x)
     )
   );
+}
+
+export function TESTING_conversion_Data32_identity({
+  x: x,
+}: {
+  x: Uint8Array<ArrayBuffer>;
+}): Uint8Array<ArrayBuffer> {
+  return identity(Native.TESTING_conversion_Data32_identity(identity(x)));
+}
+export async function TESTING_conversion_Data32_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: Uint8Array<ArrayBuffer>;
+}): Promise<Uint8Array<ArrayBuffer>> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_Data32_identity_async(asyncContext, identity(x))
+    )
+  );
+}
+
+export function TESTING_conversion_Data32_to_string({
+  x: x,
+}: {
+  x: Uint8Array<ArrayBuffer>;
+}): string {
+  return identity(Native.TESTING_conversion_Data32_to_string(identity(x)));
 }
 
 export function TESTING_conversion_Data_VecU8_identity({

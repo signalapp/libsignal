@@ -365,3 +365,47 @@ internal struct PairOfStringConverterAndStringConverter: NiceReturnConverter {
         return (try first.get(), try second.get())
     }
 }
+
+internal protocol FixedByteArrayHelper {
+    associatedtype Ffi: Sendable
+    static func count() -> Int
+    static func emptyFfi() -> Ffi
+    static func toData(_ ffi: Ffi) -> Data
+}
+extension FixedByteArrayHelper {
+    static func toData(_ ffi: Ffi) -> Data {
+        withUnsafeBytes(of: ffi) { Data($0) }
+    }
+}
+
+internal enum FixedByteArrayConverter<Helper: FixedByteArrayHelper>: NiceArgConverter, NiceReturnConverter {
+    static func convertArg(_ arg: Data) -> (FfiArg, KeepAlive?) {
+        precondition(arg.count == Helper.count())
+        let data = arg as NSData
+        return (data.bytes.assumingMemoryBound(to: Helper.Ffi.self), data)
+    }
+
+    static func convertArgBorrowed<Result>(
+        _ arg: Data,
+        _ thunk: (FfiArg) throws -> Result
+    ) rethrows -> Result {
+        precondition(arg.count == Helper.count())
+        return try arg.withUnsafeBytes {
+            try thunk($0.assumingMemoryBound(to: Helper.Ffi.self).baseAddress!)
+        }
+    }
+
+    static func emptyFfiReturn() -> Helper.Ffi {
+        Helper.emptyFfi()
+    }
+
+    static func convertReturn(consuming value: Helper.Ffi) throws -> Data {
+        Helper.toData(value)
+    }
+
+    typealias NiceArg = Data
+    typealias FfiArg = UnsafePointer<Helper.Ffi>?
+    typealias KeepAlive = NSData
+    typealias NiceReturn = Data
+    typealias FfiReturn = Helper.Ffi
+}

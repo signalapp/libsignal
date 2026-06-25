@@ -519,6 +519,26 @@ internal object NativeTestingNice {
       .makeCancelable(asyncCtx)
   }
 
+  public fun TESTING_conversion_BridgeVecData32_identity(x: List<ByteArray>): List<ByteArray> {
+    val ffi_x = mapBridgeVecArg<ByteArray, ByteArray>({ identity(it) })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_BridgeVecData32_identity(
+        ffi_x,
+      )
+
+    return mapBridgeVecReturn<ByteArray, ByteArray>({ identity(it) })(ffiOut)
+  }
+
+  public fun TESTING_conversion_BridgeVecData32_to_string(x: List<ByteArray>): String {
+    val ffi_x = mapBridgeVecArg<ByteArray, ByteArray>({ identity(it) })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_BridgeVecData32_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
   public fun TESTING_conversion_BridgeVecString_identity(x: List<String>): List<String> {
     val ffi_x = mapBridgeVecArg<String, String>({ identity(it) })(x)
     val ffiOut =
@@ -533,6 +553,26 @@ internal object NativeTestingNice {
     val ffi_x = mapBridgeVecArg<String, String>({ identity(it) })(x)
     val ffiOut =
       NativeTesting.TESTING_conversion_BridgeVecString_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_Data32_identity(x: ByteArray): ByteArray {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_Data32_identity(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_Data32_to_string(x: ByteArray): String {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_Data32_to_string(
         ffi_x,
       )
 

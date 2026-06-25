@@ -36,6 +36,7 @@ derive_more = { workspace = true }
 futures-util = { workspace = true }
 hex = { workspace = true }
 http = { workspace = true }
+itertools = { workspace = true }
 nonzero_ext = { workspace = true }
 paste = { workspace = true }
 prost = { workspace = true }

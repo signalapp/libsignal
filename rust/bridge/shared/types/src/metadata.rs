@@ -307,7 +307,7 @@ pub mod jni {
 
 #[cfg(feature = "ffi")]
 pub mod ffi {
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
 
     use serde::Serialize;
 
@@ -351,6 +351,8 @@ pub mod ffi {
     #[derive(Debug, Clone, Serialize, Default)]
     pub struct SwiftMetadataContext {
         pub nice_functions: BTreeMap<String, NiceFunction>,
+
+        pub fixed_byte_array_lengths: BTreeSet<usize>,
 
         pub derived_types: BTreeMap<String, StructOrEnum<NiceType>>,
         pub derived_return_converters: BTreeMap<String, StructOrEnum<SwiftReturnConverter>>,
@@ -487,6 +489,9 @@ pub mod ffi {
         }
         pub fn arg_converter(ty: &str) -> String {
             format!("DerivedArgConverter{ty}")
+        }
+        pub fn fixed_byte_array_helper(len: usize) -> String {
+            format!("FixedByteArrayHelper{len}")
         }
     }
 }

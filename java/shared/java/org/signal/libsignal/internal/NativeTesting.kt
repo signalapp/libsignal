@@ -295,9 +295,17 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_TokioAsyncFuture(asyncRuntime: ObjectHandle, input: Int): CompletableFuture<Int>
   @JvmStatic
+  public external fun TESTING_conversion_BridgeVecData32_identity(x: Array<*>): Array<*>
+  @JvmStatic
+  public external fun TESTING_conversion_BridgeVecData32_to_string(x: Array<*>): String
+  @JvmStatic
   public external fun TESTING_conversion_BridgeVecString_identity(x: Array<*>): Array<*>
   @JvmStatic
   public external fun TESTING_conversion_BridgeVecString_to_string(x: Array<*>): String
+  @JvmStatic
+  public external fun TESTING_conversion_Data32_identity(x: ByteArray): ByteArray
+  @JvmStatic
+  public external fun TESTING_conversion_Data32_to_string(x: ByteArray): String
   @JvmStatic
   public external fun TESTING_conversion_Data_VecU8_identity(x: ByteArray): ByteArray
   @JvmStatic

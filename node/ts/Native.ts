@@ -2382,6 +2382,16 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     input: number
   ) => CancellablePromise<number>;
+  TESTING_conversion_BridgeVecData32_identity: (
+    x: Array<Uint8Array<ArrayBuffer>>
+  ) => Array<Uint8Array<ArrayBuffer>>;
+  TESTING_conversion_BridgeVecData32_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: Array<Uint8Array<ArrayBuffer>>
+  ) => CancellablePromise<Array<Uint8Array<ArrayBuffer>>>;
+  TESTING_conversion_BridgeVecData32_to_string: (
+    x: Array<Uint8Array<ArrayBuffer>>
+  ) => string;
   TESTING_conversion_BridgeVecString_identity: (
     x: Array<string>
   ) => Array<string>;
@@ -2390,6 +2400,14 @@ type NativeFunctions = {
     x: Array<string>
   ) => CancellablePromise<Array<string>>;
   TESTING_conversion_BridgeVecString_to_string: (x: Array<string>) => string;
+  TESTING_conversion_Data32_identity: (
+    x: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  TESTING_conversion_Data32_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: Uint8Array<ArrayBuffer>
+  ) => CancellablePromise<Uint8Array<ArrayBuffer>>;
+  TESTING_conversion_Data32_to_string: (x: Uint8Array<ArrayBuffer>) => string;
   TESTING_conversion_Data_VecU8_identity: (
     x: Uint8Array<ArrayBuffer>
   ) => Uint8Array<ArrayBuffer>;
@@ -3281,9 +3299,15 @@ const {
   TESTING_TokioAsyncContext_FutureSuccessBytes,
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
+  TESTING_conversion_BridgeVecData32_identity,
+  TESTING_conversion_BridgeVecData32_identity_async,
+  TESTING_conversion_BridgeVecData32_to_string,
   TESTING_conversion_BridgeVecString_identity,
   TESTING_conversion_BridgeVecString_identity_async,
   TESTING_conversion_BridgeVecString_to_string,
+  TESTING_conversion_Data32_identity,
+  TESTING_conversion_Data32_identity_async,
+  TESTING_conversion_Data32_to_string,
   TESTING_conversion_Data_VecU8_identity,
   TESTING_conversion_Data_VecU8_identity_async,
   TESTING_conversion_Data_VecU8_to_string,
@@ -3952,9 +3976,15 @@ export {
   TESTING_TokioAsyncContext_FutureSuccessBytes,
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
+  TESTING_conversion_BridgeVecData32_identity,
+  TESTING_conversion_BridgeVecData32_identity_async,
+  TESTING_conversion_BridgeVecData32_to_string,
   TESTING_conversion_BridgeVecString_identity,
   TESTING_conversion_BridgeVecString_identity_async,
   TESTING_conversion_BridgeVecString_to_string,
+  TESTING_conversion_Data32_identity,
+  TESTING_conversion_Data32_identity_async,
+  TESTING_conversion_Data32_to_string,
   TESTING_conversion_Data_VecU8_identity,
   TESTING_conversion_Data_VecU8_identity_async,
   TESTING_conversion_Data_VecU8_to_string,

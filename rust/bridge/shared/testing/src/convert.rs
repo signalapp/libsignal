@@ -488,7 +488,6 @@ pub mod test_conversions {
     async fn TESTING_conversion_Data_VecU8_identity_async(x: Vec<u8>) -> Vec<u8> {
         x
     }
-
     #[bridge_fn(nice = true)]
     fn TESTING_conversion_BridgeVecString_to_string(x: BridgeVec<String>) -> String {
         serde_json::to_string(&x.0).expect("json")
@@ -501,6 +500,37 @@ pub mod test_conversions {
     async fn TESTING_conversion_BridgeVecString_identity_async(
         x: BridgeVec<String>,
     ) -> BridgeVec<String> {
+        x
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_Data32_to_string(x: [u8; 32]) -> String {
+        use base64::prelude::*;
+        BASE64_STANDARD.encode(x)
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_Data32_identity(x: [u8; 32]) -> [u8; 32] {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_Data32_identity_async(x: [u8; 32]) -> [u8; 32] {
+        x
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_BridgeVecData32_to_string(x: BridgeVec<[u8; 32]>) -> String {
+        use base64::prelude::*;
+        use itertools::Itertools as _;
+        x.0.into_iter()
+            .map(|x| BASE64_STANDARD.encode(x))
+            .join("\n")
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_BridgeVecData32_identity(x: BridgeVec<[u8; 32]>) -> BridgeVec<[u8; 32]> {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_BridgeVecData32_identity_async(
+        x: BridgeVec<[u8; 32]>,
+    ) -> BridgeVec<[u8; 32]> {
         x
     }
 }

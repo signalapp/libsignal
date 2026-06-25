@@ -419,6 +419,36 @@ describe('NativeTestingNice', () => {
       });
     }
   });
+  it('Data32', async () => {
+    const item = crypto.getRandomValues(new Uint8Array(32));
+    await testConversion({
+      item,
+      toString: toBase64(item),
+      nativeToString: (x) =>
+        NativeNice.TESTING_conversion_Data32_to_string({ x }),
+      nativeIdentity: (x) =>
+        NativeNice.TESTING_conversion_Data32_identity({ x }),
+      nativeIdentityAsync: NativeNice.TESTING_conversion_Data32_identity_async,
+    });
+  });
+  it('BridgeVec<Data32>', async () => {
+    for (let count = 0; count < 8; count++) {
+      const item = [];
+      for (let i = 0; i < count; i++) {
+        item.push(crypto.getRandomValues(new Uint8Array(32)));
+      }
+      await testConversion({
+        item,
+        toString: item.map(toBase64).join('\n'),
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_BridgeVecData32_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_BridgeVecData32_identity({ x }),
+        nativeIdentityAsync:
+          NativeNice.TESTING_conversion_BridgeVecData32_identity_async,
+      });
+    }
+  });
   it('should handle async', async () => {
     for (const count of [0, 1, 2, 4, 8, 16, 32, 64, 128, 256]) {
       const data =

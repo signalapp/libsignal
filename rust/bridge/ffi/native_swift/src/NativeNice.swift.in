@@ -36,7 +36,6 @@ import SignalFfi
     }
 {% endfor %}
 
-
 {% for (name, proj) in ctx.ffi_owned_buffer_of_max_aligned_project|items %}
     enum {{ name }}: FfiOwnedBufferOfMaxAlignedProject {
         {% if testing %}public {% endif %}typealias Buffer = SignalFfi.{{ proj.buffer_type }}
@@ -56,6 +55,28 @@ import SignalFfi
                 base: UnsafeMutableRawPointer(buffer.base),
                 length: buffer.length,
                 size_bytes: buffer.size_bytes,
+            )
+        }
+    }
+{% endfor %}
+
+{% for size in ctx.fixed_byte_array_lengths %}
+    internal enum {{ size|fixed_byte_array_helper }}: FixedByteArrayHelper {
+        {% if testing %}public {% endif %}typealias Ffi = (
+            {%- for i in range(size) -%}
+                UInt8
+                {%- if not loop.last -%},{%- endif -%}
+            {%- endfor -%}
+        )
+        {% if testing %}public {% endif %}static func count() -> Int {
+            {{ size }}
+        }
+        {% if testing %}public {% endif %}static func emptyFfi() -> Ffi {
+            (
+                {%- for i in range(size) -%}
+                    0
+                    {%- if not loop.last -%},{%- endif -%}
+                {%- endfor -%}
             )
         }
     }

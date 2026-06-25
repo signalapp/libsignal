@@ -56,6 +56,9 @@ fn main() -> anyhow::Result<()> {
     env.add_filter("return_converter", |ty: String| {
         libsignal_bridge_types::metadata::ffi::names::return_converter(&ty)
     });
+    env.add_filter("fixed_byte_array_helper", |len: usize| {
+        libsignal_bridge_types::metadata::ffi::names::fixed_byte_array_helper(len)
+    });
     env.add_function("enum_has_payload", |e: DynObject| {
         e.get_value_by_str("variants")
             .expect("missing variants")

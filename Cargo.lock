@@ -2486,6 +2486,7 @@ dependencies = [
  "futures-util",
  "hex",
  "http",
+ "itertools 0.14.0",
  "jni 0.22.4",
  "libsignal-bridge-macros",
  "libsignal-bridge-types",

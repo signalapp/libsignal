@@ -13,6 +13,7 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import org.junit.Test
 import org.signal.libsignal.protocol.ServiceId
+import java.util.Arrays
 import java.util.UUID
 import kotlin.io.encoding.Base64
 import kotlin.random.Random
@@ -103,6 +104,26 @@ class NativeTestingNiceTest {
       nativeToString = NativeTestingNice::TESTING_conversion_Data_to_string,
       nativeIdentity = NativeTestingNice::TESTING_conversion_Data_identity,
       equality = java.util.Arrays::equals,
+    )
+
+  @Test
+  fun data32() =
+    testConversion(
+      sequenceOf(Random.nextBytes(32)),
+      toString = Base64::encode,
+      nativeToString = NativeTestingNice::TESTING_conversion_Data32_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_Data32_identity,
+      equality = java.util.Arrays::equals,
+    )
+
+  @Test
+  fun data32BridgeVec() =
+    testConversion(
+      (0 until 8).asSequence().map { count -> (0 until count).map { Random.nextBytes(32) } },
+      toString = { it.joinToString("\n", transform = Base64::encode) },
+      nativeToString = NativeTestingNice::TESTING_conversion_BridgeVecData32_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_BridgeVecData32_identity,
+      equality = { a, b -> a.zip(b).all { (a, b) -> a.contentEquals(b) } },
     )
 
   @Test

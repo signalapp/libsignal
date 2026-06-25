@@ -606,15 +606,25 @@ impl CallbackResultTypeInfo for PrivateKey {
         <Self as ResultTypeInfo>::register_ts_ffi_type(ctx)
     }
 }
-impl SimpleArgTypeInfo for [u8; 16] {
+impl<const LEN: usize> SimpleArgTypeInfo for [u8; LEN] {
     type ArgType = JsUint8Array;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         foreign.as_slice(cx).try_into().ok().ok_or_else(|| {
-            cx.throw_type_error::<_, ()>("Expected 16 bytes")
+            cx.throw_type_error::<_, ()>(&format!("Expected {LEN} bytes"))
                 .expect_err("throw_type_error always produces Err")
         })
     }
     register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+}
+#[cfg(feature = "metadata")]
+impl<const LEN: usize> NiceArgConverter for [u8; LEN] {
+    fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
+        TsArgConverter {
+            nice_type: "Uint8Array<ArrayBuffer>".to_string(),
+            ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+            converter_function: "identity".to_string(),
+        }
+    }
 }
 
 impl SimpleArgTypeInfo for DeviceSpecifier {
@@ -1717,6 +1727,16 @@ impl<'a, const LEN: usize> ResultTypeInfo<'a> for [u8; LEN] {
         self.as_ref().convert_into(cx)
     }
     register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+}
+#[cfg(feature = "metadata")]
+impl<const LEN: usize> NiceResultConverter for [u8; LEN] {
+    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        TsReturnConverter {
+            nice_type: "Uint8Array<ArrayBuffer>".to_string(),
+            ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+            converter_function: "identity".to_string(),
+        }
+    }
 }
 
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for NeonResult<T> {
