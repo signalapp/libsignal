@@ -16,15 +16,23 @@ class SgxTests: TestCaseBase {
     let testCases = [
         (
             ServiceType.cds2,
-            [UInt8](fromHexString: "39d78f17f8aa9a8e9cdaf16595947a057bac21f014d1abfd6a99b2dfd4e18d1d")!,
-            readResource(forName: "cds2handshakestart.data"),
-            Date(timeIntervalSince1970: 1_655_857_680)
+            [UInt8](readResource(forName: "cdsi.mrenclave")),
+            readResource(forName: "cdsi.handshakestart"),
+            Date(
+                timeIntervalSince1970: readResource(forName: "cdsi.timestamp").withUnsafeBytes {
+                    Double($0.load(as: UInt64.self).bigEndian)
+                }
+            )
         ),
         (
             ServiceType.svr2,
-            [UInt8](fromHexString: "97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535")!,
-            readResource(forName: "svr2handshakestart.data"),
-            Date(timeIntervalSince1970: 1_768_516_141)
+            [UInt8](readResource(forName: "svr2.mrenclave")),
+            readResource(forName: "svr2.handshakestart"),
+            Date(
+                timeIntervalSince1970: readResource(forName: "svr2.timestamp").withUnsafeBytes {
+                    Double($0.load(as: UInt64.self).bigEndian)
+                }
+            )
         ),
     ]
 

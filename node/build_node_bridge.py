@@ -29,6 +29,13 @@ def check_for_debug_level_logs(src_path: str) -> None:
                 raise AssertionError('debug-level logs found in build that should not have them!')
 
 
+def check_for_attest_testutil(src_path: str) -> None:
+    with open(src_path, 'rb') as f:
+        with mmap.mmap(f.fileno(), length=0, access=mmap.ACCESS_READ) as m:
+            if m.find(b'ATTEST TEST-UTIL IS ENABLED') != -1:
+                raise AssertionError('attest library included with test-util enabled!')
+
+
 def maybe_dump_debug_symbols(*, src_path: str, src_checksum_path: str, dst_path: str, dst_checksum_path: str) -> None:
     dump_syms = shutil.which('dump_syms')
     if not dump_syms:
@@ -238,6 +245,7 @@ def main(args: Optional[List[str]] = None) -> int:
     if os.access(src_path, os.R_OK):
         if not allow_debug_level_logs:
             check_for_debug_level_logs(src_path)
+        check_for_attest_testutil(src_path)
 
         dst_base = 'libsignal_client_%s_%s' % (node_os_name, node_arch)
 

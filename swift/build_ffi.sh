@@ -150,6 +150,12 @@ if [[ -n "${RELEASE_BUILD:-}" && -z "${DEBUG_LEVEL_LOGS:-}" ]]; then
     exit 2
   fi
 fi
+if [[ -n "${RELEASE_BUILD:-}" ]]; then
+  if grep -q -- 'ATTEST TEST-UTIL IS ENABLED' "${CARGO_TARGET_DIR:-target}/${CARGO_BUILD_TARGET:-}/release/libsignal_ffi.a"; then
+    echo 'error: attest library included with test-util enabled!' >&2
+    exit 2
+  fi
+fi
 
 FFI_HEADER_PATH=swift/Sources/SignalFfi/signal_ffi.h
 FFI_TESTING_HEADER_PATH=swift/Sources/SignalFfi/signal_ffi_testing.h

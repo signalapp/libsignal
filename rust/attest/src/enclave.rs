@@ -122,6 +122,10 @@ impl Handshake {
         &self.initial_request
     }
 
+    pub fn claims(&self) -> &Claims {
+        &self.claims
+    }
+
     /// Completes client connection initiation, returns a valid client connection.
     pub fn complete(mut self, initial_received: &[u8]) -> Result<ClientConnection> {
         self.handshake.read_message(initial_received, &mut [])?;
@@ -202,7 +206,7 @@ impl UnvalidatedHandshake {
 }
 
 pub struct Claims {
-    pub(crate) public_key: Vec<u8>,
+    pub public_key: Vec<u8>,
     pub(crate) raft_group_config: Option<proto::svr::RaftGroupConfig>,
     #[expect(dead_code, reason = "this field is never read")]
     pub(crate) custom: HashMap<String, Vec<u8>>,

@@ -8,6 +8,8 @@ use const_str::hex;
 use crate::svr2::RaftConfig;
 use crate::util::SmallMap;
 
+pub(crate) const SGX_TCB_EVALUATION_DATA_NUMBER_MIN: u16 = 21;
+
 /// A helper macro to allow specifying advisories lists conveniently.
 macro_rules! advisories {
     (common) => {

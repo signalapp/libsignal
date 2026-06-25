@@ -493,7 +493,7 @@ pub mod testutil {
     use crate::AsyncDuplexStream;
 
     pub const FAKE_ATTESTATION: &[u8] =
-        include_bytes!("../../../../attest/tests/data/svr2handshakestart.data");
+        include_bytes!("../../../../attest/tests/data/svr2.handshakestart");
 
     /// Response to an incoming frame.
     ///

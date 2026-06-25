@@ -17,13 +17,27 @@ pub fn new_handshake(
     attestation_msg: &[u8],
     current_time: std::time::SystemTime,
 ) -> Result<Handshake> {
+    new_handshake_with_advisories(
+        mrenclave,
+        attestation_msg,
+        current_time,
+        get_sw_advisories(mrenclave),
+    )
+}
+
+pub fn new_handshake_with_advisories(
+    mrenclave: &[u8],
+    attestation_msg: &[u8],
+    current_time: std::time::SystemTime,
+    advisories: &[&str],
+) -> Result<Handshake> {
     // Deserialize attestation handshake start.
     let handshake_start = cds2::ClientHandshakeStart::decode(attestation_msg)?;
     Ok(Handshake::for_sgx(
         mrenclave,
         &handshake_start.evidence,
         &handshake_start.endorsement,
-        get_sw_advisories(mrenclave),
+        advisories,
         current_time,
         HandshakeType::PostQuantum,
     )?
@@ -43,23 +57,31 @@ pub fn extract_metrics(attestation_msg: &[u8]) -> Result<HashMap<String, i64>> {
 mod test {
     use std::time::{Duration, SystemTime};
 
-    use const_str::hex;
-
     use super::*;
 
     #[test]
     fn attest_cds2() {
         // Read test data files, de-hex-stringing as necessary.
-        let mrenclave = hex!("39d78f17f8aa9a8e9cdaf16595947a057bac21f014d1abfd6a99b2dfd4e18d1d");
+        let mrenclave = include_bytes!("../tests/data/cdsi.mrenclave");
+        let attestation_msg = include_bytes!("../tests/data/cdsi.handshakestart");
+        let current_time = SystemTime::UNIX_EPOCH
+            + Duration::from_secs(u64::from_be_bytes(*include_bytes!(
+                "../tests/data/cdsi.timestamp"
+            )));
+        let advisories = include_bytes!("../tests/data/cdsi.advisories")
+            .split(|&b| b == b'\n')
+            .map(|a| String::from_utf8(a.to_vec()).unwrap())
+            .collect::<Vec<_>>();
+        let advisories_arr = advisories.iter().map(|s| s.as_str()).collect::<Vec<_>>();
 
-        let attestation_msg = cds2::ClientHandshakeStart {
-            evidence: include_bytes!("../tests/data/cds2_test.evidence").to_vec(),
-            endorsement: include_bytes!("../tests/data/cds2_test.endorsements").to_vec(),
-            ..Default::default()
-        };
-
-        let current_time = SystemTime::UNIX_EPOCH + Duration::from_millis(1655857680000);
-
-        assert!(new_handshake(&mrenclave, &attestation_msg.encode_to_vec(), current_time).is_ok());
+        assert!(
+            new_handshake_with_advisories(
+                &mrenclave[..],
+                &attestation_msg[..],
+                current_time,
+                &advisories_arr
+            )
+            .is_ok()
+        );
     }
 }

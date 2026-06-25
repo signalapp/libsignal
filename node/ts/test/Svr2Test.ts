@@ -15,18 +15,31 @@ util.initLogger();
 
 describe('Svr2Client', () => {
   // 2026Q1 staging mrenclave from rust/attest/src/constants.rs
-  const stagingMrenclave = Buffer.from(
-    '97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535',
-    'hex'
+  const stagingMrenclave = fs.readFileSync(
+    path.join(
+      import.meta.dirname,
+      '../../../rust/attest/tests/data/svr2.mrenclave'
+    )
   );
 
   // Timestamp matching the handshake data file
-  const attestationTimestamp = new Date(1768516141000);
+  const attestationTimestampBuf = fs.readFileSync(
+    path.join(
+      import.meta.dirname,
+      '../../../rust/attest/tests/data/svr2.timestamp'
+    )
+  );
+  // 'svr2.timestamp' stores a 64-bit BE seconds-since-epoch timestamp.
+  // We can only read 6 bytes of that, since we're reading into a 64-bit
+  // float, but that's okay - we just skip the first two bytes.
+  const attestationTimestamp = new Date(
+    attestationTimestampBuf.readUIntBE(2, 6) * 1000
+  );
 
   const attestationMessage = fs.readFileSync(
     path.join(
       import.meta.dirname,
-      '../../../rust/attest/tests/data/svr2handshakestart.data'
+      '../../../rust/attest/tests/data/svr2.handshakestart'
     )
   );
 

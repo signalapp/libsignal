@@ -93,7 +93,7 @@ pub(crate) fn system_time_to_asn1_time(
     Asn1Time::from_unix(t).map_err(|_| FailedToConvertToAsn1Time)
 }
 
-pub(crate) fn get_sw_advisories(enclave_id: &[u8]) -> &[&str] {
+pub fn get_sw_advisories(enclave_id: &[u8]) -> &[&str] {
     ACCEPTABLE_SW_ADVISORIES
         .get(&enclave_id)
         .unwrap_or(&DEFAULT_SW_ADVISORIES)
