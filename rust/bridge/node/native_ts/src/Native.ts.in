@@ -139,7 +139,7 @@ export type GrpcTestCase<Req, Resp> = {
   method: string;
   request: Req;
   requestGrpc: Uint8Array<ArrayBuffer>;
-  responseGrpc: Uint8Array<ArrayBuffer>;
+  responseGrpc: GrpcTestCaseBridgedResponse;
   response: Resp;
 };
 export type GrpcTestCaseFfi<Req, Resp> = GrpcTestCase<Req, Resp>;

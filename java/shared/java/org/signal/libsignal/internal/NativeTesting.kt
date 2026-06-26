@@ -65,6 +65,9 @@ public object NativeTesting {
   public external fun FakeChatServer_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic
+  public external fun GrpcTestCaseBridgedResponse_Destroy(handle: ObjectHandle): Unit
+
+  @JvmStatic
   public external fun OtherTestingHandleType_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic @Throws(Exception::class)
@@ -148,6 +151,8 @@ public object NativeTesting {
   public external fun TESTING_FakeChatRemoteEnd_SendRawServerResponse(chat: ObjectHandle, bytes: ByteArray): Unit
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_SendServerGrpcResponse(asyncRuntime: ObjectHandle, chat: ObjectHandle, response: ObjectHandle): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun TESTING_FakeChatRemoteEnd_SendServerGrpcTestCaseResponse(asyncRuntime: ObjectHandle, chat: ObjectHandle, id: Long, response: ObjectHandle): CompletableFuture<Void?>
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_SendServerResponse(chat: ObjectHandle, response: ObjectHandle): Unit
   @JvmStatic

@@ -159,22 +159,31 @@ export class FakeChatRemote {
 
   public sendRawGrpcReplyTo(
     request: InternalRequest,
-    response: Uint8Array<ArrayBuffer>
+    response: Uint8Array<ArrayBuffer> | Native.GrpcTestCaseBridgedResponse
   ): Promise<void> {
-    const nativeResponse = newNativeHandle(
-      Native.TESTING_FakeChatResponse_Create(
+    if (response instanceof Uint8Array) {
+      const nativeResponse = newNativeHandle(
+        Native.TESTING_FakeChatResponse_Create(
+          request.requestId,
+          200,
+          '',
+          [],
+          response
+        )
+      );
+      return Native.TESTING_FakeChatRemoteEnd_SendServerGrpcResponse(
+        this.asyncContext,
+        this,
+        nativeResponse
+      );
+    } else {
+      return Native.TESTING_FakeChatRemoteEnd_SendServerGrpcTestCaseResponse(
+        this.asyncContext,
+        this,
         request.requestId,
-        200,
-        '',
-        [],
-        response
-      )
-    );
-    return Native.TESTING_FakeChatRemoteEnd_SendServerGrpcResponse(
-      this.asyncContext,
-      this,
-      nativeResponse
-    );
+        newNativeHandle(response)
+      );
+    }
   }
 
   static encodeSingleGrpcMessage(

@@ -41,6 +41,8 @@ typedef struct SignalFakeChatResponse SignalFakeChatResponse;
 
 typedef struct SignalFakeChatServer SignalFakeChatServer;
 
+typedef struct SignalGrpcTestCaseBridgedResponse SignalGrpcTestCaseBridgedResponse;
+
 typedef struct SignalNonSuspendingBackgroundThreadRuntime SignalNonSuspendingBackgroundThreadRuntime;
 
 typedef struct SignalOtherTestingHandleType SignalOtherTestingHandleType;
@@ -106,11 +108,15 @@ typedef struct {
 } SignalFfiErasedForTesting;
 
 typedef struct {
+  SignalGrpcTestCaseBridgedResponse *raw;
+} SignalMutPointerGrpcTestCaseBridgedResponse;
+
+typedef struct {
   const char *name;
   const char *method;
   SignalFfiErasedForTesting request;
   SignalOwnedBuffer request_grpc;
-  SignalOwnedBuffer response_grpc;
+  SignalMutPointerGrpcTestCaseBridgedResponse response_grpc;
   SignalFfiErasedForTesting response;
 } SignalGrpcTestCaseBridgedFfi;
 
@@ -242,6 +248,10 @@ typedef struct {
 typedef struct {
   const SignalFakeChatResponse *raw;
 } SignalConstPointerFakeChatResponse;
+
+typedef struct {
+  const SignalGrpcTestCaseBridgedResponse *raw;
+} SignalConstPointerGrpcTestCaseBridgedResponse;
 
 /**
  * A C callback used to report the results of Rust futures.
@@ -599,6 +609,8 @@ SignalFfiError *signal_fake_chat_server_destroy(SignalMutPointerFakeChatServer p
  */
 void signal_free_testing_grpc_test_case_bridged_vec(SignalOwnedBufferOfGrpcTestCaseBridgedFfi buffer);
 
+SignalFfiError *signal_grpc_test_case_bridged_response_destroy(SignalMutPointerGrpcTestCaseBridgedResponse p);
+
 SignalFfiError *signal_other_testing_handle_type_clone(SignalMutPointerOtherTestingHandleType *new_obj, SignalConstPointerOtherTestingHandleType obj);
 
 SignalFfiError *signal_other_testing_handle_type_destroy(SignalMutPointerOtherTestingHandleType p);
@@ -728,6 +740,8 @@ SignalFfiError *signal_testing_fake_chat_remote_end_send_raw_server_request(Sign
 SignalFfiError *signal_testing_fake_chat_remote_end_send_raw_server_response(SignalConstPointerFakeChatRemoteEnd chat, SignalBorrowedBuffer bytes);
 
 SignalFfiError *signal_testing_fake_chat_remote_end_send_server_grpc_response(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerFakeChatRemoteEnd chat, SignalConstPointerFakeChatResponse response);
+
+SignalFfiError *signal_testing_fake_chat_remote_end_send_server_grpc_test_case_response(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerFakeChatRemoteEnd chat, uint64_t id, SignalConstPointerGrpcTestCaseBridgedResponse response);
 
 SignalFfiError *signal_testing_fake_chat_remote_end_send_server_response(SignalConstPointerFakeChatRemoteEnd chat, SignalConstPointerFakeChatResponse response);
 

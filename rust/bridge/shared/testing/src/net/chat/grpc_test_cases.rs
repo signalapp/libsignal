@@ -6,6 +6,7 @@
 //! This module doesn't use nice derive for bridging because nice derive (does not currently)
 //! support generics in client languages.
 
+use libsignal_net::chat::fake::BodyWithTrailers;
 use libsignal_net_chat::grpc::GrpcTestCase;
 
 use crate::*;
@@ -48,7 +49,7 @@ mod grpc_ffi_testing {
         method: *const std::ffi::c_char,
         request: FfiErasedForTesting,
         request_grpc: OwnedBufferOf<std::ffi::c_uchar>,
-        response_grpc: OwnedBufferOf<std::ffi::c_uchar>,
+        response_grpc: ffi::MutPointer<GrpcTestCaseBridgedResponse>,
         response: FfiErasedForTesting,
     }
 
@@ -118,9 +119,12 @@ pub struct GrpcTestCaseBridged<Req, Resp> {
     method: String,
     request: Req,
     request_grpc: Vec<u8>,
-    response_grpc: Vec<u8>,
+    response_grpc: GrpcTestCaseBridgedResponse,
     response: Resp,
 }
+pub struct GrpcTestCaseBridgedResponse(pub BodyWithTrailers);
+bridge_as_handle!(GrpcTestCaseBridgedResponse);
+bridge_handle_fns!(GrpcTestCaseBridgedResponse, clone = false);
 pub struct GrpcTestCases<Req, Resp>(Vec<GrpcTestCaseBridged<Req, Resp>>);
 
 impl<
@@ -153,13 +157,17 @@ impl<
                         let header =
                             super::TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength(len);
                         response_grpc.splice(0..0, header);
+                        let full_body = BodyWithTrailers {
+                            data: response_grpc,
+                            trailers: Default::default(),
+                        };
                         GrpcTestCaseBridged {
                             name,
                             method,
                             request: request.into(),
                             response: response.into(),
                             request_grpc: request_grpc.encode_to_vec(),
-                            response_grpc,
+                            response_grpc: GrpcTestCaseBridgedResponse(full_body),
                         }
                     },
                 )
@@ -278,8 +286,8 @@ impl<'a, Req: jni::ResultTypeInfo<'a>, Resp: jni::ResultTypeInfo<'a>> jni::Resul
                         name => java.lang.String,
                         method => java.lang.String,
                         request => java.lang.Object,
-                        request_grpc => [jbyte],
-                        response_grpc => [jbyte],
+                        request_grpc => [byte],
+                        response_grpc => long,
                         response => java.lang.Object,
                     ) -> void),
                 )

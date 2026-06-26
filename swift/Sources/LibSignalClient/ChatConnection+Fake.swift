@@ -210,7 +210,7 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
         uuid: (0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff)
     )
 
-    private let tokioAsyncContext: TokioAsyncContext
+    internal let tokioAsyncContext: TokioAsyncContext
 
     required init(owned: NonNull<SignalMutPointerFakeChatRemoteEnd>) {
         fatalError("must not be invoked directly")

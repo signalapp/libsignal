@@ -139,7 +139,7 @@ export type GrpcTestCase<Req, Resp> = {
   method: string;
   request: Req;
   requestGrpc: Uint8Array<ArrayBuffer>;
-  responseGrpc: Uint8Array<ArrayBuffer>;
+  responseGrpc: GrpcTestCaseBridgedResponse;
   response: Resp;
 };
 export type GrpcTestCaseFfi<Req, Resp> = GrpcTestCase<Req, Resp>;
@@ -2231,6 +2231,12 @@ type NativeFunctions = {
     chat: Wrapper<FakeChatRemoteEnd>,
     response: Wrapper<FakeChatResponse>
   ) => CancellablePromise<void>;
+  TESTING_FakeChatRemoteEnd_SendServerGrpcTestCaseResponse: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<FakeChatRemoteEnd>,
+    id: bigint,
+    response: Wrapper<GrpcTestCaseBridgedResponse>
+  ) => CancellablePromise<void>;
   TESTING_FakeChatRemoteEnd_SendServerResponse: (
     chat: Wrapper<FakeChatRemoteEnd>,
     response: Wrapper<FakeChatResponse>
@@ -3280,6 +3286,7 @@ const {
   TESTING_FakeChatRemoteEnd_SendRawServerRequest,
   TESTING_FakeChatRemoteEnd_SendRawServerResponse,
   TESTING_FakeChatRemoteEnd_SendServerGrpcResponse,
+  TESTING_FakeChatRemoteEnd_SendServerGrpcTestCaseResponse,
   TESTING_FakeChatRemoteEnd_SendServerResponse,
   TESTING_FakeChatResponse_Create,
   TESTING_FakeChatServer_Create,
@@ -3966,6 +3973,7 @@ export {
   TESTING_FakeChatRemoteEnd_SendRawServerRequest,
   TESTING_FakeChatRemoteEnd_SendRawServerResponse,
   TESTING_FakeChatRemoteEnd_SendServerGrpcResponse,
+  TESTING_FakeChatRemoteEnd_SendServerGrpcTestCaseResponse,
   TESTING_FakeChatRemoteEnd_SendServerResponse,
   TESTING_FakeChatResponse_Create,
   TESTING_FakeChatServer_Create,
@@ -4286,6 +4294,9 @@ export interface GroupPublicParams {
   readonly __type: unique symbol;
 }
 export interface GroupSecretParams {
+  readonly __type: unique symbol;
+}
+export interface GrpcTestCaseBridgedResponse {
   readonly __type: unique symbol;
 }
 export interface HsmEnclaveClient {

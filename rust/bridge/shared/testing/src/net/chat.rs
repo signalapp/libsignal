@@ -197,6 +197,19 @@ async fn TESTING_FakeChatRemoteEnd_SendServerGrpcResponse(
         .expect("chat task finished");
 }
 
+#[bridge_io(TokioAsyncContext)]
+async fn TESTING_FakeChatRemoteEnd_SendServerGrpcTestCaseResponse(
+    chat: &FakeChatRemoteEnd,
+    id: u64,
+    response: &GrpcTestCaseBridgedResponse,
+) {
+    chat.0
+        .grpc()
+        .await
+        .send_response(id, http::Response::new(response.0.clone()))
+        .expect("chat task finished");
+}
+
 #[bridge_fn]
 fn TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: &FakeChatRemoteEnd) {
     chat.0
