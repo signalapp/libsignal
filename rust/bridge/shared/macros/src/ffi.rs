@@ -11,8 +11,8 @@ use syn::*;
 use syn_mid::Signature;
 
 use crate::util::{
-    DeriveInputInfo, Impl, NiceMetadataNames, arg_type_info_storage_decl, crates,
-    extract_arg_names_and_types, nice_metadata, nice_type_metadata, result_type,
+    BridgeAsValueOptions, DeriveInputInfo, Impl, NiceMetadataNames, arg_type_info_storage_decl,
+    crates, extract_arg_names_and_types, nice_metadata, nice_type_metadata, result_type,
 };
 use crate::{BridgingKind, ResultInfo, ResultKind};
 
@@ -427,12 +427,19 @@ fn bridge_callback_item(
 pub(crate) fn derive_bridged_as_value(
     input: &DeriveInput,
     target: &syn::Path,
+    options: &BridgeAsValueOptions,
 ) -> syn::Result<TokenStream2> {
     if matches!(input.data, Data::Union(_)) {
         return Err(syn::Error::new_spanned(input, "Unions aren't supported"));
     }
-    let result = derive_bridged_as_value_return(input, target)?;
-    let arg = derive_bridged_as_value_arg(input, target)?;
+    let result = options
+        .result
+        .then(|| derive_bridged_as_value_return(input, target))
+        .transpose()?;
+    let arg = options
+        .arg
+        .then(|| derive_bridged_as_value_arg(input, target))
+        .transpose()?;
     Ok(quote! {
         #result
         #arg

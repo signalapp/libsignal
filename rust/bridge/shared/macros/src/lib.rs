@@ -610,6 +610,7 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
     let mut ffi = true;
     let mut jni = true;
     let mut remote: Option<syn::Path> = None;
+    let mut options = util::BridgeAsValueOptions::default();
     for attr in &item.attrs {
         if attr
             .path()
@@ -631,6 +632,14 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
                 } else if meta.path.is_ident("remote") {
                     remote = Some(meta.value()?.parse()?);
                     Ok(())
+                } else if meta.path.is_ident("arg") {
+                    let flag: LitBool = meta.value()?.parse()?;
+                    options.arg = flag.value();
+                    Ok(())
+                } else if meta.path.is_ident("result") {
+                    let flag: LitBool = meta.value()?.parse()?;
+                    options.result = flag.value();
+                    Ok(())
                 } else {
                     Err(meta.error("unrecognized key"))
                 }
@@ -640,17 +649,17 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
     // What type should this impl target?
     let target = remote.unwrap_or_else(|| item.ident.clone().into());
     let node = if node {
-        Some(node::derive_bridged_as_value(&item, &target)?)
+        Some(node::derive_bridged_as_value(&item, &target, &options)?)
     } else {
         None
     };
     let ffi = if ffi {
-        Some(ffi::derive_bridged_as_value(&item, &target)?)
+        Some(ffi::derive_bridged_as_value(&item, &target, &options)?)
     } else {
         None
     };
     let jni = if jni {
-        Some(jni::derive_bridged_as_value(&item, &target)?)
+        Some(jni::derive_bridged_as_value(&item, &target, &options)?)
     } else {
         None
     };

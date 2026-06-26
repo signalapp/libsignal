@@ -414,3 +414,17 @@ pub(crate) fn arg_type_info_storage_decl(
         }
     }
 }
+
+pub(crate) struct BridgeAsValueOptions {
+    pub arg: bool,
+    pub result: bool,
+}
+
+impl Default for BridgeAsValueOptions {
+    fn default() -> Self {
+        Self {
+            arg: true,
+            result: true,
+        }
+    }
+}
