@@ -2652,6 +2652,7 @@ dependencies = [
  "libsignal-bridge-testing",
  "libsignal-bridge-types",
  "minijinja",
+ "serde_json",
 ]
 
 [[package]]
@@ -2693,6 +2694,7 @@ dependencies = [
  "libsignal-bridge-types",
  "libsignal-jni-impl",
  "minijinja",
+ "serde_json",
 ]
 
 [[package]]
@@ -3055,6 +3057,7 @@ dependencies = [
  "libsignal-bridge-types",
  "libsignal-node",
  "minijinja",
+ "serde_json",
 ]
 
 [[package]]

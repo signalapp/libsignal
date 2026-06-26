@@ -24,6 +24,9 @@ struct Cli {
     /// Don't actually overwrite output files, just make sure they're up-to-date.
     #[clap(long)]
     verify: bool,
+    /// Just dump all metadata to JSON on stdout; do nothing else.
+    #[clap(long)]
+    dump_json: bool,
 }
 
 struct RemoveOnDrop {
@@ -64,6 +67,16 @@ fn main() -> anyhow::Result<()> {
                 &mut non_testing_ctx
             },
         );
+    }
+    if args.dump_json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&std::collections::BTreeMap::from_iter([
+                ("testing", &testing_ctx),
+                ("non_testing", &non_testing_ctx),
+            ]))?
+        );
+        return Ok(());
     }
     for testing in [false, true] {
         let code = env.get_template("NativeNice.kt.in")?.render(context! {
