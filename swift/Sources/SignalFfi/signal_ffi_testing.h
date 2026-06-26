@@ -263,6 +263,27 @@ typedef struct {
 } SignalConstPointerFakeChatServer;
 
 typedef struct {
+  SignalOwnedBuffer username_ciphertext;
+  bool keep_link_handle;
+} SignalSetUsernameLinkArgsFfiResult;
+
+typedef enum {
+  SignalSetUsernameLinkOutFfiResultSuccess,
+  SignalSetUsernameLinkOutFfiResultUsernameNotSet,
+} SignalSetUsernameLinkOutFfiResult_Tag;
+
+typedef struct {
+  SignalUuid _0;
+} SignalSetUsernameLinkOutFfiResultSignalSuccess_Body;
+
+typedef struct {
+  SignalSetUsernameLinkOutFfiResult_Tag tag;
+  union {
+    SignalSetUsernameLinkOutFfiResultSignalSuccess_Body success;
+  };
+} SignalSetUsernameLinkOutFfiResult;
+
+typedef struct {
   uint8_t id;
   SignalOwnedBuffer encrypted_name;
 } SignalSetDeviceNameArgsFfiResult;
@@ -652,6 +673,10 @@ SignalFfiError *signal_testing_conversion_u8_identity(uint8_t *out, uint8_t x);
 
 SignalFfiError *signal_testing_conversion_u8_to_string(SignalCStringPtr *out, uint8_t x);
 
+SignalFfiError *signal_testing_conversion_uuid_identity(SignalUuid *out, SignalUuid x);
+
+SignalFfiError *signal_testing_conversion_uuid_to_string(SignalCStringPtr *out, SignalUuid x);
+
 SignalFfiError *signal_testing_convert_optional_uuid(SignalOptionalUuid *out, bool present);
 
 SignalFfiError *signal_testing_create_otp(SignalCStringPtr *out, SignalCStringPtr username, SignalBorrowedBuffer secret);
@@ -716,7 +741,7 @@ SignalFfiError *signal_testing_fake_registration_session_create_session(SignalCP
 
 SignalFfiError *signal_testing_fingerprint_version_mismatch_error(uint32_t theirs, uint32_t ours);
 
-void signal_testing_force_bindgen_to_emit_structs(SignalSetDeviceNameArgsFfiResult, SignalSetDeviceNameOutFfiResult, SignalReserveUsernameHashArgsFfiResult, SignalReserveUsernameHashOutFfiResult);
+void signal_testing_force_bindgen_to_emit_structs(SignalSetUsernameLinkArgsFfiResult, SignalSetUsernameLinkOutFfiResult, SignalSetDeviceNameArgsFfiResult, SignalSetDeviceNameOutFfiResult, SignalReserveUsernameHashArgsFfiResult, SignalReserveUsernameHashOutFfiResult);
 
 SignalFfiError *signal_testing_future_cancellation_counter_create(SignalMutPointerTestingFutureCancellationCounter *out, uint8_t initial_value);
 
@@ -835,6 +860,8 @@ SignalFfiError *signal_testing_semaphore_destroy(SignalMutPointerTestingSemaphor
 SignalFfiError *signal_testing_semaphore_new(SignalMutPointerTestingSemaphore *out, uint32_t initial);
 
 SignalFfiError *signal_testing_set_device_name_tests(SignalOwnedBufferOfGrpcTestCaseBridgedFfi *out);
+
+SignalFfiError *signal_testing_set_username_link_tests(SignalOwnedBufferOfGrpcTestCaseBridgedFfi *out);
 
 SignalFfiError *signal_testing_signed_public_pre_key_check_bridges_correctly(SignalConstPointerPublicKey source_public_key, SignalFfiSignedPublicPreKey signed_pre_key);
 

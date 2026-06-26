@@ -520,6 +520,16 @@ impl SimpleArgTypeInfo for uuid::Uuid {
     }
     register_ts_ffi_type!("Uuid");
 }
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for uuid::Uuid {
+    fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
+        TsArgConverter {
+            nice_type: "uuid.Uuid".to_string(),
+            ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+            converter_function: "uuid.parse".to_string(),
+        }
+    }
+}
 
 impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
     type ArgType = JsUint8Array;
@@ -1480,6 +1490,16 @@ impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
         JsUint8Array::from_slice(cx, self.as_bytes())
     }
     register_ts_ffi_type!("Uuid");
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for uuid::Uuid {
+    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        TsReturnConverter {
+            nice_type: "uuid.Uuid".to_string(),
+            ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+            converter_function: "uuid.stringify".to_string(),
+        }
+    }
 }
 
 impl<'a> ResultTypeInfo<'a> for libsignal_protocol::ServiceId {

@@ -449,6 +449,17 @@ describe('NativeTestingNice', () => {
       });
     }
   });
+  it('Uuid', async () => {
+    const item: uuid.Uuid = uuid.stringify(uuid.v4());
+    await testConversion({
+      item,
+      toString: item,
+      nativeToString: (x) =>
+        NativeNice.TESTING_conversion_Uuid_to_string({ x }),
+      nativeIdentity: (x) => NativeNice.TESTING_conversion_Uuid_identity({ x }),
+      nativeIdentityAsync: NativeNice.TESTING_conversion_Uuid_identity_async,
+    });
+  });
   it('should handle async', async () => {
     for (const count of [0, 1, 2, 4, 8, 16, 32, 64, 128, 256]) {
       const data =

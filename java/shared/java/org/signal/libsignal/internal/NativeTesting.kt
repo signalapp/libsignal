@@ -281,6 +281,8 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_SetDeviceNameTests(): Array<Object>
   @JvmStatic
+  public external fun TESTING_SetUsernameLinkTests(): Array<Object>
+  @JvmStatic
   public external fun TESTING_SignedPublicPreKey_CheckBridgesCorrectly(sourcePublicKey: ObjectHandle, signedPreKey: SignedPublicPreKey<*>): Unit
   @JvmStatic
   public external fun TESTING_TestingHandleType_getValue(handle: ObjectHandle): Int
@@ -320,6 +322,10 @@ public object NativeTesting {
   public external fun TESTING_conversion_ServiceId_identity(x: ByteArray): ByteArray
   @JvmStatic
   public external fun TESTING_conversion_ServiceId_to_string(x: ByteArray): String
+  @JvmStatic
+  public external fun TESTING_conversion_Uuid_identity(x: UUID): UUID
+  @JvmStatic
+  public external fun TESTING_conversion_Uuid_to_string(x: UUID): String
   @JvmStatic
   public external fun TESTING_conversion_bool_identity(x: Boolean): Boolean
   @JvmStatic

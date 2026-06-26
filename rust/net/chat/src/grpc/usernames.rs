@@ -12,6 +12,7 @@ use libsignal_net_grpc::proto::chat::account::accounts_anonymous_client::Account
 use libsignal_net_grpc::proto::chat::account::accounts_client::AccountsClient;
 use libsignal_net_grpc::proto::chat::account::*;
 use libsignal_net_grpc::proto::chat::errors;
+use uuid::Uuid;
 
 use super::{GrpcServiceProvider, OverGrpc, log_and_send};
 use crate::api::usernames::validate_username_from_link;
@@ -23,6 +24,10 @@ pub type UsernameHash = [u8; 32];
 /// None of the candidate usernames were available.
 pub struct UsernameNotAvailable;
 
+#[derive(Debug, Display)]
+/// The authenticated account did not have a username set.
+pub struct UsernameNotSet;
+
 impl std::fmt::Display for Redact<ReserveUsernameHashRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(ReserveUsernameHashRequest { username_hashes }) = self;
@@ -31,6 +36,21 @@ impl std::fmt::Display for Redact<ReserveUsernameHashRequest> {
             .finish()
     }
 }
+
+impl std::fmt::Display for Redact<SetUsernameLinkRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(SetUsernameLinkRequest {
+            username_ciphertext,
+            keep_link_handle,
+        }) = self;
+        f.debug_struct("SetUsernameLinkRequest")
+            .field("username_ciphertext.len", &username_ciphertext.len())
+            .field("keep_link_handle", &keep_link_handle)
+            .finish()
+    }
+}
+
+pub type UsernameLinkHandle = Uuid;
 
 impl<T: GrpcServiceProvider> Auth<T> {
     /// Given a prioritized list of between 1 and 20 username hashes, try reserving them (in order)
@@ -61,6 +81,42 @@ impl<T: GrpcServiceProvider> Auth<T> {
             reserve_username_hash_response::Response::UsernameNotAvailable(
                 libsignal_net_grpc::proto::chat::account::UsernameNotAvailable {},
             ) => Err(RequestError::Other(UsernameNotAvailable)),
+        }
+    }
+
+    /// For the given encrypted username, generate a username link handle. The username link handle
+    /// can be used to lookup the encrypted username.
+    ///
+    /// An account can only have one username link at a time; this endpoint overwrites the previous
+    /// encrypted username if there was one.
+    ///
+    /// `username_ciphertext` must be between 1 and 128 bytes.
+    pub async fn set_username_link(
+        &self,
+        username_ciphertext: &[u8],
+        keep_link_handle: bool,
+    ) -> Result<UsernameLinkHandle, RequestError<UsernameNotSet>> {
+        let mut client = AccountsClient::new(self.0.service());
+        let request = SetUsernameLinkRequest {
+            username_ciphertext: username_ciphertext.to_vec(),
+            keep_link_handle,
+        };
+        let desc = Redact(&request).to_string();
+        match log_and_send("auth", &desc, || client.set_username_link(request))
+            .await?
+            .into_inner()
+            .response
+            .ok_or_else(|| RequestError::Unexpected {
+                log_safe: "missing response".to_string(),
+            })? {
+            set_username_link_response::Response::UsernameLinkHandle(username_link_handle) => {
+                Uuid::from_slice(&username_link_handle).map_err(|_| RequestError::Unexpected {
+                    log_safe: "invalid uuid".to_string(),
+                })
+            }
+            set_username_link_response::Response::NoUsernameSet(_) => {
+                Err(RequestError::Other(UsernameNotSet))
+            }
         }
     }
 }
@@ -225,6 +281,82 @@ pub mod test_cases {
             },
         ]
     }
+    pub struct SetUsernameLinkArgs {
+        pub username_ciphertext: Vec<u8>,
+        pub keep_link_handle: bool,
+    }
+    pub enum SetUsernameLinkOut {
+        Success(UsernameLinkHandle),
+        UsernameNotSet,
+    }
+    pub fn set_username_link_test_cases() -> Vec<
+        GrpcTestCase<
+            SetUsernameLinkArgs,
+            SetUsernameLinkRequest,
+            SetUsernameLinkResponse,
+            SetUsernameLinkOut,
+        >,
+    > {
+        let method = "/org.signal.chat.account.Accounts/SetUsernameLink";
+        let username_ciphertext = b"fun encrypted username".to_vec();
+        let username_link_handle = uuid::uuid!("C525F4F7-AF58-47CC-936E-D1B717F3C50A");
+        vec![
+            GrpcTestCase {
+                name: "success, keep_link_handle".to_string(),
+                method: method.to_string(),
+                request: SetUsernameLinkArgs {
+                    username_ciphertext: username_ciphertext.clone(),
+                    keep_link_handle: true,
+                },
+                request_grpc: SetUsernameLinkRequest {
+                    username_ciphertext: username_ciphertext.clone(),
+                    keep_link_handle: true,
+                },
+                response_grpc: SetUsernameLinkResponse {
+                    response: Some(set_username_link_response::Response::UsernameLinkHandle(
+                        username_link_handle.into(),
+                    )),
+                },
+                response: SetUsernameLinkOut::Success(username_link_handle),
+            },
+            GrpcTestCase {
+                name: "success, no keep_link_handle".to_string(),
+                method: method.to_string(),
+                request: SetUsernameLinkArgs {
+                    username_ciphertext: username_ciphertext.clone(),
+                    keep_link_handle: false,
+                },
+                request_grpc: SetUsernameLinkRequest {
+                    username_ciphertext: username_ciphertext.clone(),
+                    keep_link_handle: false,
+                },
+                response_grpc: SetUsernameLinkResponse {
+                    response: Some(set_username_link_response::Response::UsernameLinkHandle(
+                        username_link_handle.into(),
+                    )),
+                },
+                response: SetUsernameLinkOut::Success(username_link_handle),
+            },
+            GrpcTestCase {
+                name: "failure, no keep_link_handle".to_string(),
+                method: method.to_string(),
+                request: SetUsernameLinkArgs {
+                    username_ciphertext: username_ciphertext.clone(),
+                    keep_link_handle: false,
+                },
+                request_grpc: SetUsernameLinkRequest {
+                    username_ciphertext: username_ciphertext.clone(),
+                    keep_link_handle: false,
+                },
+                response_grpc: SetUsernameLinkResponse {
+                    response: Some(set_username_link_response::Response::NoUsernameSet(
+                        Default::default(),
+                    )),
+                },
+                response: SetUsernameLinkOut::UsernameNotSet,
+            },
+        ]
+    }
 }
 
 #[cfg(test)]
@@ -355,6 +487,30 @@ mod test {
                 }
                 ReserveUsernameHashOut::UsernameNotAvailable => {
                     assert_matches!(result, Err(RequestError::Other(UsernameNotAvailable)))
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_set_username_link() {
+        use test_cases::*;
+        run_tests(
+            set_username_link_test_cases(),
+            |chat: Auth<_>,
+             SetUsernameLinkArgs {
+                 username_ciphertext,
+                 keep_link_handle,
+             }| async move {
+                chat.set_username_link(&username_ciphertext, keep_link_handle)
+                    .await
+            },
+            |resp, result| match resp {
+                SetUsernameLinkOut::Success(out) => {
+                    assert_matches!(result, Ok(x) if x == out)
+                }
+                SetUsernameLinkOut::UsernameNotSet => {
+                    assert_matches!(result, Err(RequestError::Other(UsernameNotSet)))
                 }
             },
         );

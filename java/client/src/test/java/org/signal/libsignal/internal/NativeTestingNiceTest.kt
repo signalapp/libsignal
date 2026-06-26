@@ -273,4 +273,14 @@ class NativeTestingNiceTest {
       assertEquals(count, data.size)
     }
   }
+
+  @Test
+  fun testUuid() {
+    testConversion(
+      sequenceOf(UUID.randomUUID()),
+      toString = Any::toString,
+      nativeToString = NativeTestingNice::TESTING_conversion_Uuid_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_Uuid_identity,
+    )
+  }
 }

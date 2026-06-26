@@ -7,8 +7,12 @@ package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.internal.ReserveUsernameHashOut
+import org.signal.libsignal.internal.SetUsernameLinkOut
+import org.signal.libsignal.net.assertNonSuccess
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class AuthUsernamesServiceTest {
@@ -30,6 +34,30 @@ class AuthUsernamesServiceTest {
               assertIs<RequestResult.Success<UsernameHash>>(actual).result,
             )
           ReserveUsernameHashOut.UsernameNotAvailable -> actual.assertNonSuccess<_, _, UsernameNotAvailableException>()
+        }
+      },
+    )
+  }
+
+  @Test
+  fun testSetUsernameLink() {
+    GrpcTestCase.runTests(
+      NativeTestingNice.TESTING_SetUsernameLinkTests(),
+      ::AuthUsernamesService,
+      invoke = { chat, req ->
+        chat.setUsernameLink(
+          usernameCiphertext = req.usernameCiphertext,
+          keepLinkHandle = req.keepLinkHandle,
+        )
+      },
+      check = { expected, actual ->
+        when (expected) {
+          is SetUsernameLinkOut.Success ->
+            assertEquals(
+              expected._0,
+              assertIs<RequestResult.Success<UUID>>(actual).result,
+            )
+          SetUsernameLinkOut.UsernameNotSet -> actual.assertNonSuccess<_, _, UsernameNotSetException>()
         }
       },
     )

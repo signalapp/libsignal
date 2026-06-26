@@ -98,6 +98,34 @@ internal enum NativeNice {
         return try VoidConverter.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_set_username_link(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        usernameCiphertext username_ciphertext: Data,
+        keepLinkHandle keep_link_handle: Bool,
+    ) async throws -> UUID {
+        let rawOutput: UuidNiceConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        DataConverter.convertArgBorrowed(username_ciphertext) { username_ciphertextFfi in
+                            IdentityConverter<Bool>.convertArgBorrowed(keep_link_handle) { keep_link_handleFfi in
+                                SignalFfi.signal_authenticated_chat_connection_set_username_link(
+                                    promiseFfi,
+                                    asyncContextFfi.const(),
+                                    chatFfi,
+                                    username_ciphertextFfi,
+                                    keep_link_handleFfi,
+                                )
+                            }
+                        }
+                    }
+            }
+        return try UuidNiceConverter.convertReturn(consuming: rawOutput)
+
+    }
     internal static func UnauthenticatedChatConnection_account_exists(
         asyncContext: TokioAsyncContext,
         chat: UnauthenticatedChatConnection,

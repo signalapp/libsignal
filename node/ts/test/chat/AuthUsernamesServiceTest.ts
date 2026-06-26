@@ -41,4 +41,29 @@ describe('AuthUsernamesService', () => {
       }
     );
   });
+
+  describe('setUsernameLink', () => {
+    defineTestGrpcCasesAuth(
+      NativeNice.TESTING_SetUsernameLinkTests(),
+      async (
+        chat: AuthUsernamesService,
+        { usernameCiphertext, keepLinkHandle }: NativeNice.SetUsernameLinkArgs,
+        resp: NativeNice.SetUsernameLinkOut
+      ) => {
+        const out = chat.setUsernameLink({
+          usernameCiphertext,
+          keepLinkHandle,
+        });
+        if (resp === 'usernameNotSet') {
+          expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.UsernameNotSet,
+            });
+        } else {
+          expect(await out).to.deep.equal(resp.success);
+        }
+      }
+    );
+  });
 });

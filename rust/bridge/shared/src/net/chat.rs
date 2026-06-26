@@ -781,3 +781,15 @@ async fn AuthenticatedChatConnection_send_sync_message_java(
             e.flat_map_other(|e| RequestError::Other(UnsealedSendFailure::MismatchedDevices(e)))
         })
 }
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_username_link(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    username_ciphertext: Vec<u8>,
+    keep_link_handle: bool,
+) -> Result<Uuid, RequestError<libsignal_net_chat::grpc::usernames::UsernameNotSet>> {
+    chat.require_grpc()
+        .await
+        .set_username_link(&username_ciphertext, keep_link_handle)
+        .await
+}

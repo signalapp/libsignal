@@ -272,6 +272,7 @@ typedef enum {
   SignalErrorCodeUploadTooLarge = 223,
   SignalErrorCodeDeviceIdNotFound = 224,
   SignalErrorCodeUsernameNotAvailable = 225,
+  SignalErrorCodeUsernameNotSet = 226,
 } SignalErrorCode;
 
 enum SignalSvr2CredentialsResult {
@@ -701,6 +702,21 @@ typedef struct {
 typedef struct {
   uint8_t bytes[16];
 } SignalUuid;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalUuid *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseUuid;
 
 typedef struct {
   SignalPrivateKey *raw;
@@ -1851,6 +1867,8 @@ SignalFfiError *signal_authenticated_chat_connection_send_raw_grpc(SignalCPromis
 SignalFfiError *signal_authenticated_chat_connection_send_sync_message(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, uint64_t timestamp, SignalBorrowedSliceOfu32 device_ids, SignalBorrowedSliceOfu32 registration_ids, SignalBorrowedSliceOfConstPointerCiphertextMessage contents, bool is_urgent);
 
 SignalFfiError *signal_authenticated_chat_connection_set_device_name(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, int32_t device_id, SignalBorrowedBuffer encrypted_name);
+
+SignalFfiError *signal_authenticated_chat_connection_set_username_link(SignalCPromiseUuid *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, SignalBorrowedBuffer username_ciphertext, bool keep_link_handle);
 
 SignalFfiError *signal_avatar_upload_credential_check_valid_contents(SignalBorrowedBuffer credential_bytes);
 

@@ -61,6 +61,28 @@ internal object NativeNice {
       .makeCancelable(asyncCtx)
   }
 
+  public fun AuthenticatedChatConnection_set_username_link(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    usernameCiphertext: ByteArray,
+    keepLinkHandle: Boolean,
+  ): CompletableFuture<java.util.UUID> {
+    val ffi_chat = identity(chat)
+    val ffi_username_ciphertext = identity(usernameCiphertext)
+    val ffi_keep_link_handle = identity(keepLinkHandle)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_set_username_link(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_username_ciphertext,
+          ffi_keep_link_handle,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun UnauthenticatedChatConnection_account_exists(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.UnauthenticatedChatConnection,

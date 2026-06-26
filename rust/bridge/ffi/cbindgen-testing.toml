@@ -69,6 +69,7 @@ exclude = [
     "OwnedBufferOfCStringPtr",
     "OwnedBufferOfFfiCdsiLookupResponseEntry",
     "OwnedBufferOfusize",
+    "Uuid",
 ]
 item_types = [
     "enums",

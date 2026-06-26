@@ -72,6 +72,10 @@ extension SignalCPromiseMutPointerRegisterAccountResponse: PromiseStruct {
     typealias Result = SignalMutPointerRegisterAccountResponse
 }
 
+extension SignalCPromiseUuid: PromiseStruct {
+    typealias Result = SignalUuid
+}
+
 extension SignalCPromiseOptionalUuid: PromiseStruct {
     typealias Result = SignalOptionalUuid
 }

@@ -25,11 +25,14 @@ import {
   type ReturnFfiReserveUsernameHashOut,
   type ReturnFfiSetDeviceNameArgs,
   type ReturnFfiSetDeviceNameOut,
+  type ReturnFfiSetUsernameLinkArgs,
+  type ReturnFfiSetUsernameLinkOut,
   /* eslint-enable @typescript-eslint/no-unused-vars */
 } from './Native.js';
 
 import { ServiceId } from './Address.js';
 import * as zkgroup from './zkgroup/index.js';
+import * as uuid from './uuid.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
 import { TokioAsyncContext } from './net.js';
 import { CdnCredentials } from './net/chat/CdnCredentials.js';
@@ -103,6 +106,17 @@ export type SetDeviceNameArgs = {
 };
 
 export type SetDeviceNameOut = 'success' | 'deviceNotFound';
+
+export type SetUsernameLinkArgs = {
+  usernameCiphertext: Uint8Array<ArrayBuffer>;
+  keepLinkHandle: boolean;
+};
+
+export type SetUsernameLinkOut =
+  | {
+      success: uuid.Uuid;
+    }
+  | 'usernameNotSet';
 
 function returnConverterMyRemoteDeriveEnum(
   ffiInput: Native.ReturnFfiMyRemoteDeriveEnum
@@ -249,6 +263,32 @@ function returnConverterSetDeviceNameOut(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for SetDeviceNameOut');
+  }
+}
+
+function returnConverterSetUsernameLinkArgs(
+  ffiInput: Native.ReturnFfiSetUsernameLinkArgs
+): SetUsernameLinkArgs {
+  return {
+    usernameCiphertext: identity(ffiInput.username_ciphertext),
+    keepLinkHandle: identity(ffiInput.keep_link_handle),
+  };
+}
+
+function returnConverterSetUsernameLinkOut(
+  ffiInput: Native.ReturnFfiSetUsernameLinkOut
+): SetUsernameLinkOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: uuid.stringify(ffiInput._0),
+      };
+    case 1:
+      return 'usernameNotSet';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for SetUsernameLinkOut');
   }
 }
 
@@ -416,6 +456,31 @@ export async function AuthenticatedChatConnection_set_device_name({
         identity(chat),
         identity(device_id),
         identity(encrypted_name)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_set_username_link({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  usernameCiphertext: username_ciphertext,
+  keepLinkHandle: keep_link_handle,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  usernameCiphertext: Uint8Array<ArrayBuffer>;
+  keepLinkHandle: boolean;
+}): Promise<uuid.Uuid> {
+  return uuid.stringify(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_username_link(
+        asyncContext,
+        identity(chat),
+        identity(username_ciphertext),
+        identity(keep_link_handle)
       )
     )
   );
@@ -669,6 +734,15 @@ export function TESTING_SetDeviceNameTests(): Array<
   )(Native.TESTING_SetDeviceNameTests());
 }
 
+export function TESTING_SetUsernameLinkTests(): Array<
+  GrpcTestCase<SetUsernameLinkArgs, SetUsernameLinkOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterSetUsernameLinkArgs,
+    returnConverterSetUsernameLinkOut
+  )(Native.TESTING_SetUsernameLinkTests());
+}
+
 export function TESTING_TestingIntBox_Get({
   myIntBox: my_int_box,
 }: {
@@ -918,6 +992,38 @@ export function TESTING_conversion_ServiceId_to_string({
   return identity(
     Native.TESTING_conversion_ServiceId_to_string(serviceIdArgConverter(x))
   );
+}
+
+export function TESTING_conversion_Uuid_identity({
+  x: x,
+}: {
+  x: uuid.Uuid;
+}): uuid.Uuid {
+  return uuid.stringify(Native.TESTING_conversion_Uuid_identity(uuid.parse(x)));
+}
+export async function TESTING_conversion_Uuid_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: uuid.Uuid;
+}): Promise<uuid.Uuid> {
+  return uuid.stringify(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_Uuid_identity_async(asyncContext, uuid.parse(x))
+    )
+  );
+}
+
+export function TESTING_conversion_Uuid_to_string({
+  x: x,
+}: {
+  x: uuid.Uuid;
+}): string {
+  return identity(Native.TESTING_conversion_Uuid_to_string(uuid.parse(x)));
 }
 
 export function TESTING_conversion_bool_identity({

@@ -242,6 +242,20 @@ export type ReturnFfiSetDeviceNameOut =
       __type: 1;
     };
 
+export type ReturnFfiSetUsernameLinkArgs = {
+  username_ciphertext: Uint8Array<ArrayBuffer>;
+  keep_link_handle: boolean;
+};
+
+export type ReturnFfiSetUsernameLinkOut =
+  | {
+      __type: 0;
+      _0: Uint8Array<ArrayBuffer>;
+    }
+  | {
+      __type: 1;
+    };
+
 export type ArgFfiMyRemoteDeriveEnum =
   | {
       __type: 0;
@@ -445,6 +459,12 @@ type NativeFunctions = {
     device_id: number,
     encrypted_name: Uint8Array<ArrayBuffer>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_set_username_link: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    username_ciphertext: Uint8Array<ArrayBuffer>,
+    keep_link_handle: boolean
+  ) => CancellablePromise<Uuid>;
   AvatarUploadCredentialPresentation_CheckValidContents: (
     presentation_bytes: Uint8Array<ArrayBuffer>
   ) => void;
@@ -2388,6 +2408,9 @@ type NativeFunctions = {
   TESTING_SetDeviceNameTests: () => Array<
     GrpcTestCaseFfi<ReturnFfiSetDeviceNameArgs, ReturnFfiSetDeviceNameOut>
   >;
+  TESTING_SetUsernameLinkTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiSetUsernameLinkArgs, ReturnFfiSetUsernameLinkOut>
+  >;
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly: (
     source_public_key: Wrapper<PublicKey>,
     signed_pre_key: SignedPublicPreKey
@@ -2460,6 +2483,12 @@ type NativeFunctions = {
   TESTING_conversion_ServiceId_to_string: (
     x: Uint8Array<ArrayBuffer>
   ) => string;
+  TESTING_conversion_Uuid_identity: (x: Uuid) => Uuid;
+  TESTING_conversion_Uuid_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: Uuid
+  ) => CancellablePromise<Uuid>;
+  TESTING_conversion_Uuid_to_string: (x: Uuid) => string;
   TESTING_conversion_bool_identity: (x: boolean) => boolean;
   TESTING_conversion_bool_identity_async: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -2763,6 +2792,7 @@ const {
   AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_send_sync_message,
   AuthenticatedChatConnection_set_device_name,
+  AuthenticatedChatConnection_set_username_link,
   AvatarUploadCredentialPresentation_CheckValidContents,
   AvatarUploadCredentialPresentation_GetCm,
   AvatarUploadCredentialPresentation_GetRedemptionTime,
@@ -3318,6 +3348,7 @@ const {
   TESTING_RoundTripU8,
   TESTING_ServerMessageAck_Create,
   TESTING_SetDeviceNameTests,
+  TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
   TESTING_TestingHandleType_getValue,
   TESTING_TestingIntBox_Get,
@@ -3343,6 +3374,9 @@ const {
   TESTING_conversion_ServiceId_identity,
   TESTING_conversion_ServiceId_identity_async,
   TESTING_conversion_ServiceId_to_string,
+  TESTING_conversion_Uuid_identity,
+  TESTING_conversion_Uuid_identity_async,
+  TESTING_conversion_Uuid_to_string,
   TESTING_conversion_bool_identity,
   TESTING_conversion_bool_identity_async,
   TESTING_conversion_bool_to_string,
@@ -3442,6 +3476,7 @@ export {
   AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_send_sync_message,
   AuthenticatedChatConnection_set_device_name,
+  AuthenticatedChatConnection_set_username_link,
   AvatarUploadCredentialPresentation_CheckValidContents,
   AvatarUploadCredentialPresentation_GetCm,
   AvatarUploadCredentialPresentation_GetRedemptionTime,
@@ -3997,6 +4032,7 @@ export {
   TESTING_RoundTripU8,
   TESTING_ServerMessageAck_Create,
   TESTING_SetDeviceNameTests,
+  TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
   TESTING_TestingHandleType_getValue,
   TESTING_TestingIntBox_Get,
@@ -4022,6 +4058,9 @@ export {
   TESTING_conversion_ServiceId_identity,
   TESTING_conversion_ServiceId_identity_async,
   TESTING_conversion_ServiceId_to_string,
+  TESTING_conversion_Uuid_identity,
+  TESTING_conversion_Uuid_identity_async,
+  TESTING_conversion_Uuid_to_string,
   TESTING_conversion_bool_identity,
   TESTING_conversion_bool_identity_async,
   TESTING_conversion_bool_to_string,

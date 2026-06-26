@@ -496,6 +496,7 @@ impl<'a> SimpleArgTypeInfo<'a> for uuid::Uuid {
         Ok(uuid::Uuid::from_bytes(bytes))
     }
 }
+nice_identity_arg_converter!(uuid::Uuid, "java.util.UUID");
 
 impl<'a> SimpleArgTypeInfo<'a> for libsignal_core::E164 {
     type ArgType = <String as SimpleArgTypeInfo<'a>>::ArgType;
@@ -1679,6 +1680,7 @@ impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
         )
     }
 }
+nice_identity_result_converter!(uuid::Uuid, "java.util.UUID");
 
 impl<'a> ResultTypeInfo<'a> for Option<uuid::Uuid> {
     type ResultType = JObject<'a>;

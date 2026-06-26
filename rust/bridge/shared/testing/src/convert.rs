@@ -533,4 +533,16 @@ pub mod test_conversions {
     ) -> BridgeVec<[u8; 32]> {
         x
     }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_Uuid_to_string(x: Uuid) -> String {
+        x.to_string()
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_Uuid_identity(x: Uuid) -> Uuid {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_Uuid_identity_async(x: Uuid) -> Uuid {
+        x
+    }
 }

@@ -197,6 +197,17 @@ internal enum SetDeviceNameOut {
     case deviceNotFound
 }
 
+internal struct SetUsernameLinkArgs {
+    var usernameCiphertext: Data
+    var keepLinkHandle: Bool
+
+}
+
+internal enum SetUsernameLinkOut {
+    case success(UUID)
+    case usernameNotSet
+}
+
 internal enum DerivedReturnConverterMyRemoteDeriveEnum: NiceReturnConverter {
     typealias NiceReturn = MyRemoteDeriveEnum
     typealias FfiReturn = SignalMyRemoteDeriveEnumFfiResult
@@ -447,6 +458,50 @@ internal enum DerivedReturnConverterSetDeviceNameOut: NiceReturnConverter {
             return SetDeviceNameOut.deviceNotFound
         default:
             throw SignalError.internalError("Unexpected enum tag for SetDeviceNameOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterSetUsernameLinkArgs: NiceReturnConverter {
+    typealias NiceReturn = SetUsernameLinkArgs
+    typealias FfiReturn = SignalSetUsernameLinkArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalSetUsernameLinkArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let username_ciphertext = Result { try DataConverter.convertReturn(consuming: ffiValue.username_ciphertext) }
+        let keep_link_handle = Result {
+            try IdentityConverter<Bool>.convertReturn(consuming: ffiValue.keep_link_handle)
+        }
+
+        return SetUsernameLinkArgs(
+            usernameCiphertext: try username_ciphertext.get(),
+            keepLinkHandle: try keep_link_handle.get()
+        )
+    }
+}
+
+internal enum DerivedReturnConverterSetUsernameLinkOut: NiceReturnConverter {
+    typealias NiceReturn = SetUsernameLinkOut
+    typealias FfiReturn = SignalSetUsernameLinkOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalSetUsernameLinkOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalSetUsernameLinkOutFfiResultSuccess:
+            let _0 = Result {
+                try UuidNiceConverter.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return SetUsernameLinkOut.success(try _0.get())
+        case SignalSetUsernameLinkOutFfiResultUsernameNotSet:
+            return SetUsernameLinkOut.usernameNotSet
+        default:
+            throw SignalError.internalError("Unexpected enum tag for SetUsernameLinkOut: \(ffiTag)")
         }
     }
 }
@@ -1285,6 +1340,22 @@ internal enum NativeTestingNice {
         >.convertReturn(consuming: rawOutput)
 
     }
+    internal static func TESTING_SetUsernameLinkTests() throws -> [GrpcTestCase<
+        SetUsernameLinkArgs, SetUsernameLinkOut
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterSetUsernameLinkArgs, DerivedReturnConverterSetUsernameLinkOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_set_username_link_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterSetUsernameLinkArgs, DerivedReturnConverterSetUsernameLinkOut
+        >.convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_TestingIntBox_Get(
         myIntBox my_int_box: TestingIntBox,
     ) throws -> Int32 {
@@ -1514,6 +1585,36 @@ internal enum NativeTestingNice {
             var rawOutput = StringConverter.emptyFfiReturn()
             try checkError(
                 SignalFfi.signal_testing_conversion_service_id_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_Uuid_identity(
+        x: UUID,
+    ) throws -> UUID {
+        try UuidNiceConverter.convertArgBorrowed(x) { xFfi in
+            var rawOutput = UuidNiceConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_uuid_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try UuidNiceConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_Uuid_to_string(
+        x: UUID,
+    ) throws -> String {
+        try UuidNiceConverter.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_uuid_to_string(
                     &rawOutput,
                     xFfi,
                 )

@@ -32,6 +32,29 @@ class AuthUsernamesServiceTests: AuthChatServiceTestBase<any AuthUsernamesServic
             }
         )
     }
+
+    func testSetUsernameLink() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_SetUsernameLinkTests(),
+            invoke: { api, args in
+                try await api.setUsernameLink(
+                    usernameCiphertext: args.usernameCiphertext,
+                    keepLinkHandle: args.keepLinkHandle,
+                )
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success(let username):
+                    XCTAssertEqual(try actual.get(), username)
+                case .usernameNotSet:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.usernameNotSet(_) {}
+                }
+            }
+        )
+    }
 }
 
 #endif

@@ -530,6 +530,15 @@ impl SimpleArgTypeInfo for uuid::Uuid {
         Ok(uuid::Uuid::from_bytes(foreign.bytes))
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for uuid::Uuid {
+    fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        SwiftArgConverter {
+            nice_type: "UUID".to_string(),
+            converter_type: "UuidNiceConverter".to_string(),
+        }
+    }
+}
 
 impl ResultTypeInfo for uuid::Uuid {
     type ResultType = super::Uuid;
@@ -537,6 +546,15 @@ impl ResultTypeInfo for uuid::Uuid {
         Ok(super::Uuid {
             bytes: *self.as_bytes(),
         })
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for uuid::Uuid {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "UUID".to_string(),
+            converter_type: "UuidNiceConverter".to_string(),
+        }
     }
 }
 

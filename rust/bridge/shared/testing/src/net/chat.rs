@@ -482,6 +482,7 @@ use grpc_test_cases::*;
 
 mod remote_derives {
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
+    use uuid::Uuid;
 
     use crate::*;
 
@@ -510,9 +511,23 @@ mod remote_derives {
         UsernameNotAvailable,
     }
 
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::usernames::test_cases::SetUsernameLinkArgs)]
+    pub struct SetUsernameLinkArgs {
+        pub username_ciphertext: Vec<u8>,
+        pub keep_link_handle: bool,
+    }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::usernames::test_cases::SetUsernameLinkOut)]
+    pub enum SetUsernameLinkOut {
+        Success(Uuid),
+        UsernameNotSet,
+    }
     #[cfg(feature = "ffi")]
     #[unsafe(no_mangle)]
     pub unsafe extern "C" fn signal_testing_force_bindgen_to_emit_structs(
+        _: SetUsernameLinkArgsFfiResult,
+        _: SetUsernameLinkOutFfiResult,
         _: SetDeviceNameArgsFfiResult,
         _: SetDeviceNameOutFfiResult,
         _: ReserveUsernameHashArgsFfiResult,
@@ -531,4 +546,9 @@ fn TESTING_SetDeviceNameTests()
 fn TESTING_ReserveUsernameHashTests()
 -> GrpcTestCases<remote_derives::ReserveUsernameHashArgs, remote_derives::ReserveUsernameHashOut> {
     libsignal_net_chat::grpc::usernames::test_cases::reserve_username_hash_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_SetUsernameLinkTests()
+-> GrpcTestCases<remote_derives::SetUsernameLinkArgs, remote_derives::SetUsernameLinkOut> {
+    libsignal_net_chat::grpc::usernames::test_cases::set_username_link_test_cases().into()
 }

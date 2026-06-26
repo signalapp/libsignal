@@ -225,6 +225,8 @@ internal object Native {
   public external fun AuthenticatedChatConnection_send_sync_message_java(asyncRuntime: ObjectHandle, chat: ObjectHandle, timestamp: Long, deviceIds: IntArray, registrationIds: IntArray, contents: Array<Object>, isUrgent: Boolean): CompletableFuture<Void?>
   @JvmStatic
   public external fun AuthenticatedChatConnection_set_device_name(asyncRuntime: ObjectHandle, chat: SimpleOwner, deviceId: Int, encryptedName: ByteArray): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_set_username_link(asyncRuntime: ObjectHandle, chat: SimpleOwner, usernameCiphertext: ByteArray, keepLinkHandle: Boolean): CompletableFuture<UUID>
 
   @JvmStatic @Throws(Exception::class)
   public external fun AvatarUploadCredentialPresentation_CheckValidContents(presentationBytes: ByteArray): Unit

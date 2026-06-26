@@ -143,6 +143,7 @@ pub enum SignalErrorCode {
 
     DeviceIdNotFound = 224,
     UsernameNotAvailable = 225,
+    UsernameNotSet = 226,
 }
 
 pub trait UpcastAsAny {
@@ -1313,5 +1314,11 @@ impl From<WithContext<SignalFfiError>> for std::io::Error {
             inner,
         } = value;
         std::io::Error::other(inner.to_string())
+    }
+}
+
+impl IntoFfiError for libsignal_net_chat::grpc::usernames::UsernameNotSet {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(SignalErrorCode::UsernameNotSet, self.to_string())
     }
 }

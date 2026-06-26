@@ -409,3 +409,28 @@ internal enum FixedByteArrayConverter<Helper: FixedByteArrayHelper>: NiceArgConv
     typealias NiceReturn = Data
     typealias FfiReturn = Helper.Ffi
 }
+
+internal enum UuidNiceConverter: NiceArgConverter, NiceReturnConverter {
+    static func convertArg(_ arg: UUID) -> (SignalUuid, Unit?) {
+        (SignalUuid(bytes: arg.uuid), nil)
+    }
+
+    static func convertArgBorrowed<Result>(_ arg: UUID, _ thunk: (SignalUuid) throws -> Result) rethrows -> Result {
+        try thunk(SignalUuid(bytes: arg.uuid))
+    }
+
+    static func emptyFfiReturn() -> SignalUuid {
+        SignalUuid()
+    }
+
+    static func convertReturn(consuming value: SignalUuid) throws -> UUID {
+        UUID(uuid: value.bytes)
+    }
+
+    typealias NiceArg = UUID
+    typealias FfiArg = SignalUuid
+    typealias KeepAlive = Unit
+    typealias NiceReturn = UUID
+    typealias FfiReturn = SignalUuid
+
+}

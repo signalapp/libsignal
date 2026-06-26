@@ -93,6 +93,7 @@ export enum ErrorCode {
   RegistrationVerificationSendFailed,
 
   UsernameNotAvailable,
+  UsernameNotSet,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -499,7 +500,9 @@ export type StandardNetworkError =
   | ChatServiceInactive
   | IoError
   | RateLimitedError;
-
+export type UsernameNotSet = LibSignalErrorCommon & {
+  code: ErrorCode.UsernameNotSet;
+};
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -564,4 +567,5 @@ export type LibSignalError =
   | RegistrationRecoveryVerificationFailedError
   | RegistrationCredentialsCouldNotBeParsedError
   | DeviceIdNotFound
-  | UsernameNotAvailable;
+  | UsernameNotAvailable
+  | UsernameNotSet;

@@ -398,6 +398,48 @@ internal sealed class SetDeviceNameOut {
   }
 }
 
+internal data class SetUsernameLinkArgs(
+  val usernameCiphertext: ByteArray,
+  val keepLinkHandle: Boolean,
+) {
+  companion object {
+    @JvmStatic
+    @CalledFromNative
+    fun fromNative(
+      username_ciphertext: Any?,
+      keep_link_handle: Any?,
+    ): SetUsernameLinkArgs =
+      SetUsernameLinkArgs(
+        usernameCiphertext =
+          identity(username_ciphertext as ByteArray),
+        keepLinkHandle =
+          identity(keep_link_handle as Boolean),
+      )
+  }
+}
+
+internal sealed class SetUsernameLinkOut {
+  internal data class Success(
+    val _0: java.util.UUID,
+  ) : SetUsernameLinkOut() {
+    companion object {
+      @JvmStatic
+      @CalledFromNative
+      fun fromNative(_0: Any?): Success =
+        Success(
+          _0 =
+            identity(_0 as java.util.UUID),
+        )
+    }
+  }
+
+  internal data object UsernameNotSet : SetUsernameLinkOut() {
+    @JvmStatic
+    @CalledFromNative
+    fun fromNative(): UsernameNotSet = UsernameNotSet
+  }
+}
+
 internal object NativeTestingNice {
   public fun TESTING_MySimpleTestEnum_BridgeVec_identity(
     x: List<org.signal.libsignal.internal.MySimpleTestEnum>,
@@ -537,6 +579,16 @@ internal object NativeTestingNice {
       .resultConverter<Object, Object, org.signal.libsignal.internal.SetDeviceNameArgs, org.signal.libsignal.internal.SetDeviceNameOut>({
         downcastFromObject<org.signal.libsignal.internal.SetDeviceNameArgs>(it)
       }, { downcastFromObject<org.signal.libsignal.internal.SetDeviceNameOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_SetUsernameLinkTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetUsernameLinkArgs, org.signal.libsignal.internal.SetUsernameLinkOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_SetUsernameLinkTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.SetUsernameLinkArgs, org.signal.libsignal.internal.SetUsernameLinkOut>({
+        downcastFromObject<org.signal.libsignal.internal.SetUsernameLinkArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.SetUsernameLinkOut>(it) })(ffiOut)
   }
 
   public fun TESTING_TestingIntBox_Get(myIntBox: org.signal.libsignal.internal.TestingIntBox): Int {
@@ -682,6 +734,26 @@ internal object NativeTestingNice {
     val ffi_x = (org.signal.libsignal.protocol.ServiceId::toServiceIdFixedWidthBinary)(x)
     val ffiOut =
       NativeTesting.TESTING_conversion_ServiceId_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_Uuid_identity(x: java.util.UUID): java.util.UUID {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_Uuid_identity(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_Uuid_to_string(x: java.util.UUID): String {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_Uuid_to_string(
         ffi_x,
       )
 
