@@ -9,7 +9,7 @@ import chaiAsPromised from 'chai-as-promised';
 import * as NativeNice from '../../NativeNice.js';
 import * as util from '../util.js';
 import { AuthUsernamesService } from '../../net.js';
-import { defineTestGrpcCasesAuth } from './ServiceTestUtils.js';
+import { connectAuth, defineTestGrpcCases } from './ServiceTestUtils.js';
 import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
 
 use(chaiAsPromised);
@@ -19,8 +19,9 @@ config.truncateThreshold = 0;
 
 describe('AuthUsernamesService', () => {
   describe('reserveUsernameHash', () => {
-    defineTestGrpcCasesAuth(
+    defineTestGrpcCases(
       NativeNice.TESTING_ReserveUsernameHashTests(),
+      connectAuth<AuthUsernamesService>,
       async (
         chat: AuthUsernamesService,
         { usernames }: NativeNice.ReserveUsernameHashArgs,
@@ -43,8 +44,9 @@ describe('AuthUsernamesService', () => {
   });
 
   describe('setUsernameLink', () => {
-    defineTestGrpcCasesAuth(
+    defineTestGrpcCases(
       NativeNice.TESTING_SetUsernameLinkTests(),
+      connectAuth<AuthUsernamesService>,
       async (
         chat: AuthUsernamesService,
         { usernameCiphertext, keepLinkHandle }: NativeNice.SetUsernameLinkArgs,

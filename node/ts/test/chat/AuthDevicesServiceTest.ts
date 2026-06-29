@@ -9,7 +9,7 @@ import chaiAsPromised from 'chai-as-promised';
 import * as NativeNice from '../../NativeNice.js';
 import * as util from '../util.js';
 import { AuthDevicesService } from '../../net.js';
-import { defineTestGrpcCasesAuth } from './ServiceTestUtils.js';
+import { connectAuth, defineTestGrpcCases } from './ServiceTestUtils.js';
 import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
 
 use(chaiAsPromised);
@@ -19,8 +19,9 @@ config.truncateThreshold = 0;
 
 describe('AuthDevicesService', () => {
   describe('setDeviceName', () => {
-    defineTestGrpcCasesAuth(
+    defineTestGrpcCases(
       NativeNice.TESTING_SetDeviceNameTests(),
+      connectAuth<AuthDevicesService>,
       async (
         chat: AuthDevicesService,
         { id, encryptedName }: NativeNice.SetDeviceNameArgs,
@@ -49,8 +50,9 @@ describe('AuthDevicesService', () => {
   });
 
   describe('getDevices', () => {
-    defineTestGrpcCasesAuth(
+    defineTestGrpcCases(
       NativeNice.TESTING_GetDevicesTests(),
+      connectAuth<AuthDevicesService>,
       async (
         chat: AuthDevicesService,
         _args: void,
@@ -63,8 +65,9 @@ describe('AuthDevicesService', () => {
   });
 
   describe('clearPushToken', () => {
-    defineTestGrpcCasesAuth(
+    defineTestGrpcCases(
       NativeNice.TESTING_ClearPushTokenTests(),
+      connectAuth<AuthDevicesService>,
       async (chat: AuthDevicesService, _args: void, _resp: void) => {
         await chat.clearPushToken();
       }
