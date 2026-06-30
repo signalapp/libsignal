@@ -597,7 +597,7 @@ SignalFfiError *signal_fake_chat_server_destroy(SignalMutPointerFakeChatServer p
 /**
  * Just free the outer buffer
  */
-void signal_free_testing_signle_grpc_testing_bridged_vec(SignalOwnedBufferOfGrpcTestCaseBridgedFfi buffer);
+void signal_free_testing_grpc_test_case_bridged_vec(SignalOwnedBufferOfGrpcTestCaseBridgedFfi buffer);
 
 SignalFfiError *signal_other_testing_handle_type_clone(SignalMutPointerOtherTestingHandleType *new_obj, SignalConstPointerOtherTestingHandleType obj);
 

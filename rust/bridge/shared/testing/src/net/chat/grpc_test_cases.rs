@@ -54,7 +54,7 @@ mod grpc_ffi_testing {
 
     /// Just free the outer buffer
     #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn signal_free_testing_signle_grpc_testing_bridged_vec(
+    pub unsafe extern "C" fn signal_free_testing_grpc_test_case_bridged_vec(
         buffer: OwnedBufferOf<GrpcTestCaseBridgedFfi>,
     ) {
         std::mem::drop(unsafe { buffer.into_box() });
