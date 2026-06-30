@@ -7,6 +7,7 @@ use std::borrow::Cow;
 
 use async_trait::async_trait;
 use displaydoc::Display;
+use libsignal_core::LogSafeDisplay;
 use rand::Rng;
 
 use super::{AllowRateLimitChallenges, RequestError, UploadForm};
@@ -72,6 +73,8 @@ pub enum GetUploadFormFailure {
 /// The backup credential was rejected
 #[derive(Debug, Display)]
 pub struct BackupAuthCredentialRejected;
+
+impl LogSafeDisplay for BackupAuthCredentialRejected {}
 
 #[derive(Debug)]
 pub struct CdnCredentials {

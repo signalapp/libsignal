@@ -14,13 +14,10 @@ pub mod usernames;
 
 use std::convert::Infallible;
 use std::error::Error;
-#[cfg(any(test, doc))]
 use std::fmt::Display;
 use std::future::Future;
-#[cfg(any(test, doc))]
 use std::sync::Arc;
 
-#[cfg(any(test, doc))]
 use futures_util::{Stream, StreamExt as _, TryFutureExt as _, TryStream, TryStreamExt as _};
 use itertools::Itertools;
 use libsignal_core::LogSafeDisplay;
@@ -262,8 +259,8 @@ where
 /// Finally, `handle_stream_abort` is called if the server terminates the stream with a
 /// `STREAM_CLOSED` error in the Signal error domain. In this case the appropriate information
 /// should be extracted using [`matching_details`] and turned into a high-level error.
-/// (`send_request_with_streaming_response` will take care of logging it for you.)
-#[cfg(any(test, doc))]
+/// (`send_request_with_streaming_response` will take care of logging it for you.) The use of
+/// `Result` in the return type allows for early exits.
 fn send_request_with_streaming_response<
     Serv,
     Req: DisplayableRequest,
@@ -276,7 +273,7 @@ fn send_request_with_streaming_response<
     make_request: impl FnOnce() -> Result<Req, RequestError<E>>,
     send_request: impl AsyncFnOnce(Serv, Req) -> tonic::Result<tonic::Response<RespStream>>,
     mut handle_response: impl FnMut(RespStream::Ok) -> Result<T, RequestError<E>>,
-    mut handle_stream_abort: impl FnMut(&google::rpc::Status) -> RequestError<E>,
+    mut handle_stream_abort: impl FnMut(&google::rpc::Status) -> Result<Infallible, RequestError<E>>,
 ) -> impl Stream<Item = StreamResult<T, E>> {
     async move {
         let request = make_request()?;
@@ -293,7 +290,10 @@ fn send_request_with_streaming_response<
                 &log_safe_description_for_errors,
                 request_id,
                 |status, info| match info.reason.as_str() {
-                    "STREAM_CLOSED" => Some(handle_stream_abort(status)),
+                    "STREAM_CLOSED" => {
+                        let Err(e) = handle_stream_abort(status);
+                        Some(e)
+                    }
                     _ => None,
                 },
             )
@@ -322,12 +322,10 @@ fn send_request_with_streaming_response<
 ///
 /// If the blanket impl requirement is written directly on `send_request_with_streaming_response`,
 /// type inference of the request fails.
-#[cfg(any(test, doc))]
 trait DisplayableRequest {
     /// Equivalent to `Redact(self).to_string()`.
     fn log_safe_description(&self) -> String;
 }
-#[cfg(any(test, doc))]
 impl<T> DisplayableRequest for T
 where
     Redact<T>: Display,
@@ -508,16 +506,10 @@ fn request_error_from_server_side_error_info<E>(
             log_safe: "BAD_AUTHENTICATION".to_owned(),
         },
         "CONSTRAINT_VIOLATED" => {
-            let bad_fields = matching_details::<google::rpc::BadRequest>(&grpc_status.details)
-                .at_most_one()
-                .unwrap_or_else(|mut e| {
-                    log::warn!(
-                        "multiple google::rpc::BadRequest entries in error details; using first"
-                    );
-                    e.next()
-                })
-                .map(|req| req.field_violations)
-                .unwrap_or_default();
+            let bad_fields =
+                single_matching_details::<google::rpc::BadRequest>(&grpc_status.details)
+                    .map(|req| req.field_violations)
+                    .unwrap_or_default();
             for violation in &bad_fields {
                 // This is a debug-level log because it might contain user data.
                 log::debug!(
@@ -547,14 +539,7 @@ fn request_error_from_server_side_error_info<E>(
         "RESOURCE_EXHAUSTED" | "UNAVAILABLE" => {
             // UNAVAILABLE is unlikely to have RetryInfo, but it doesn't really hurt to check.
             if let Some(retry_delay) =
-                matching_details::<google::rpc::RetryInfo>(&grpc_status.details)
-                    .at_most_one()
-                    .unwrap_or_else(|mut e| {
-                        log::warn!(
-                            "multiple google::rpc::RetryInfo entries in error details; using first"
-                        );
-                        e.next()
-                    })
+                single_matching_details::<google::rpc::RetryInfo>(&grpc_status.details)
                     .and_then(|info| info.retry_delay)
             {
                 // TODO: Use i32::div_ceil when that's stabilized.
@@ -601,6 +586,18 @@ fn matching_details<M: Default + prost::Name>(
             M::decode(&p.value[..])
                 .inspect_err(|_e| log::warn!("invalid encoding of {} message", M::full_name()))
                 .ok()
+        })
+}
+
+fn single_matching_details<M: Default + prost::Name>(details: &[prost_types::Any]) -> Option<M> {
+    matching_details(details)
+        .at_most_one()
+        .unwrap_or_else(|mut e| {
+            log::warn!(
+                "multiple {} entries in error details; using first",
+                M::full_name()
+            );
+            e.next()
         })
 }
 
@@ -669,8 +666,11 @@ pub struct GrpcTestCase<Request, RequestGrpc, ResponseGrpc, Response> {
 
 #[cfg(test)]
 pub(crate) mod testutil {
+    use base64::Engine as _;
+    use base64::prelude::BASE64_STANDARD;
     use futures_util::FutureExt as _;
     use http_body_util::BodyExt as _;
+    use http_body_util::combinators::BoxBody;
     use libsignal_net::chat::{Request, Response, SendError};
     use tonic::Status;
 
@@ -684,7 +684,7 @@ pub(crate) mod testutil {
         ResponseGrpc: prost::Message + 'static,
         Response,
         F: Future,
-        Wrapper: From<RequestValidator>,
+        Wrapper: From<RequestValidator<Vec<u8>>>,
     >(
         tests: Vec<GrpcTestCase<Request, RequestGrpc, ResponseGrpc, Response>>,
         invoke: impl Fn(Wrapper, Request) -> F,
@@ -707,6 +707,11 @@ pub(crate) mod testutil {
             );
         }
     }
+
+    pub(crate) const GRPC_STATUS_HEADER: http::HeaderName =
+        http::HeaderName::from_static("grpc-status");
+    pub(crate) const GRPC_STATUS_DETAILS_HEADER: http::HeaderName =
+        http::HeaderName::from_static("grpc-status-details-bin");
 
     pub(crate) fn encode_for_grpc<C: tonic::codec::Encoder<Error = Status>>(
         encoder: C,
@@ -746,9 +751,30 @@ pub(crate) mod testutil {
     }
 
     pub(crate) fn ok(response: impl prost::Message + 'static) -> http::Response<Vec<u8>> {
-        let body = tonic::codec::EncodeBody::new_server(
+        let result = stream(vec![response], None);
+        result.map(|BodyWithTrailers { data, trailers }| {
+            assert_eq!(
+                trailers,
+                http::HeaderMap::from_iter([(
+                    GRPC_STATUS_HEADER,
+                    http::HeaderValue::from_static(const_str::to_str!(tonic::Code::Ok as i32))
+                )])
+            );
+            data
+        })
+    }
+
+    pub(crate) fn err(code: tonic::Code) -> http::Response<Vec<u8>> {
+        Status::new(code, "").into_http()
+    }
+
+    pub(crate) fn stream(
+        response: Vec<impl prost::Message + 'static>,
+        error: Option<tonic::Status>,
+    ) -> http::Response<BodyWithTrailers> {
+        let encoded = tonic::codec::EncodeBody::new_server(
             tonic_prost::ProstEncoder::new(Default::default()),
-            futures_util::stream::iter([Ok(response)]),
+            futures_util::stream::iter(response.into_iter().map(Ok).chain(error.map(Err))),
             None,
             Default::default(),
             None,
@@ -756,14 +782,75 @@ pub(crate) mod testutil {
         .collect()
         .now_or_never()
         .expect("non-blocking encoding")
-        .expect("can read entire message")
-        .to_bytes()
-        .into();
-        http::Response::new(body)
+        .expect("can read entire message");
+
+        let trailers = encoded.trailers().cloned().unwrap_or_default();
+        let body = encoded.to_bytes().into();
+
+        http::Response::new(BodyWithTrailers {
+            data: body,
+            trailers,
+        })
     }
 
-    pub(crate) fn err(code: tonic::Code) -> http::Response<Vec<u8>> {
-        Status::new(code, "").into_http()
+    #[derive(Clone)]
+    pub(crate) struct BodyWithTrailers {
+        data: Vec<u8>,
+        trailers: http::HeaderMap,
+    }
+
+    trait IntoHttpBody {
+        fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible>;
+    }
+
+    impl IntoHttpBody for Vec<u8> {
+        fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible> {
+            http_body_util::Full::new(bytes::Bytes::from(self)).boxed()
+        }
+    }
+
+    impl IntoHttpBody for BodyWithTrailers {
+        fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible> {
+            http_body_util::Full::new(bytes::Bytes::from(self.data))
+                .with_trailers(std::future::ready(Some(Ok(self.trailers))))
+                .boxed()
+        }
+    }
+
+    pub(crate) fn status_for_server_side_error(
+        code: tonic::Code,
+        reason: &str,
+        extra_info: Vec<impl prost::Name>,
+    ) -> tonic::Status {
+        let original_error_info = google::rpc::ErrorInfo {
+            reason: reason.into(),
+            domain: SIGNAL_ERRORINFO_DOMAIN.into(),
+            metadata: Default::default(),
+        };
+        let original_status = google::rpc::Status {
+            code: code.into(),
+            message: "message".to_owned(),
+            details: extra_info
+                .into_iter()
+                .map(|info| prost_types::Any::from_msg(&info).expect("can encode"))
+                .chain([prost_types::Any::from_msg(&original_error_info).expect("can encode")])
+                .collect(),
+        };
+
+        tonic::Status::from_header_map(&http::HeaderMap::from_iter([
+            (
+                GRPC_STATUS_HEADER,
+                http::HeaderValue::from_str(&original_status.code.to_string()).expect("valid"),
+            ),
+            (
+                GRPC_STATUS_DETAILS_HEADER,
+                http::HeaderValue::from_str(
+                    &BASE64_STANDARD.encode(original_status.encode_to_vec()),
+                )
+                .expect("valid"),
+            ),
+        ]))
+        .expect("valid")
     }
 
     /// Validates that the [`WsConnection`] implementation of an API defers to the gRPC
@@ -809,12 +896,14 @@ pub(crate) mod testutil {
     /// `RequestValidator` with `TypedRequestValidator` if comparing the bodies using protobuf
     /// semantics (rather than bytewise) is important---it usually isn't.
     #[derive(Clone)]
-    pub(crate) struct RequestValidator {
+    pub(crate) struct RequestValidator<T> {
         pub expected: http::Request<Vec<u8>>,
-        pub response: http::Response<Vec<u8>>,
+        pub response: http::Response<T>,
     }
 
-    impl tower_service::Service<http::Request<tonic::body::Body>> for RequestValidator {
+    impl<T: IntoHttpBody + Clone> tower_service::Service<http::Request<tonic::body::Body>>
+        for RequestValidator<T>
+    {
         type Response =
             <&'static Self as tower_service::Service<http::Request<tonic::body::Body>>>::Response;
         type Error =
@@ -838,8 +927,10 @@ pub(crate) mod testutil {
         }
     }
 
-    impl tower_service::Service<http::Request<tonic::body::Body>> for &'_ RequestValidator {
-        type Response = http::Response<http_body_util::Full<bytes::Bytes>>;
+    impl<T: IntoHttpBody + Clone> tower_service::Service<http::Request<tonic::body::Body>>
+        for &'_ RequestValidator<T>
+    {
+        type Response = http::Response<BoxBody<bytes::Bytes, Infallible>>;
 
         type Error = hyper::Error;
 
@@ -872,11 +963,12 @@ pub(crate) mod testutil {
                 panic!("expected body: {expected_body:#?}\n\nactual body: {actual_body:#?}");
             }
 
-            std::future::ready(Ok(self.response.clone().map(|body| body.into())))
+            std::future::ready(Ok(self.response.clone().map(|body| body.into_http_body())))
         }
     }
 
-    static_assertions::assert_impl_all!(&'_ RequestValidator: GrpcService);
+    static_assertions::assert_impl_all!(&'_ RequestValidator<Vec<u8>>: GrpcService);
+    static_assertions::assert_impl_all!(&'_ RequestValidator<BodyWithTrailers>: GrpcService);
 
     /// Like `RequestValidator`, but compares the decoded protobuf of the incoming request instead
     /// of the serialized bytes.
@@ -1083,6 +1175,23 @@ pub(crate) mod testutil {
             }
         }
     }
+
+    pub(crate) fn collect_up_to_and_including_first_error<S, T, E>(
+        stream: S,
+    ) -> impl Future<Output = Vec<S::Item>>
+    where
+        S: Stream<Item = Result<T, E>>,
+    {
+        // We want to emulate the behavior of "take up to the first error", but then also check the
+        // error. Neither a simple `take_while` nor `try_collect` quite captures this, so we need a
+        // little extra state.
+        let mut stream_is_ok = true;
+        stream
+            .take_while(move |next| {
+                std::future::ready(std::mem::replace(&mut stream_is_ok, next.is_ok()))
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -1101,10 +1210,10 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-
-    const GRPC_STATUS_HEADER: http::HeaderName = http::HeaderName::from_static("grpc-status");
-    const GRPC_STATUS_DETAILS_HEADER: http::HeaderName =
-        http::HeaderName::from_static("grpc-status-details-bin");
+    use crate::grpc::testutil::{
+        GRPC_STATUS_DETAILS_HEADER, GRPC_STATUS_HEADER, collect_up_to_and_including_first_error,
+        status_for_server_side_error,
+    };
 
     #[test]
     fn test_extract_server_side_error() {
@@ -1134,7 +1243,9 @@ mod test {
         let response = tonic::Status::from_header_map(&http::HeaderMap::from_iter([
             (
                 GRPC_STATUS_HEADER,
-                http::HeaderValue::from_static(tonic::Code::InvalidArgument.description()),
+                http::HeaderValue::from_static(const_str::to_str!(
+                    tonic::Code::InvalidArgument as i32
+                )),
             ),
             (
                 GRPC_STATUS_DETAILS_HEADER,
@@ -1167,7 +1278,9 @@ mod test {
                     .into_iter()
                     .chain([(
                         GRPC_STATUS_HEADER,
-                        http::HeaderValue::from_static(tonic::Code::InvalidArgument.description()),
+                        http::HeaderValue::from_static(const_str::to_str!(
+                            tonic::Code::InvalidArgument as i32
+                        )),
                     )])
                     .collect(),
             )
@@ -1440,34 +1553,6 @@ mod test {
         tonic::Result<tonic::Response<futures_util::stream::Pending<tonic::Result<T>>>>,
     >;
 
-    fn status_for_server_side_error(custom_reason: &str) -> tonic::Status {
-        let original_error_info = google::rpc::ErrorInfo {
-            reason: custom_reason.into(),
-            domain: SIGNAL_ERRORINFO_DOMAIN.into(),
-            metadata: Default::default(),
-        };
-        let original_status = google::rpc::Status {
-            code: tonic::Code::InvalidArgument.into(),
-            message: "possible user data".into(),
-            details: vec![prost_types::Any::from_msg(&original_error_info).expect("can encode")],
-        };
-
-        tonic::Status::from_header_map(&http::HeaderMap::from_iter([
-            (
-                GRPC_STATUS_HEADER,
-                http::HeaderValue::from_static(tonic::Code::InvalidArgument.description()),
-            ),
-            (
-                GRPC_STATUS_DETAILS_HEADER,
-                http::HeaderValue::from_str(
-                    &BASE64_STANDARD.encode(original_status.encode_to_vec()),
-                )
-                .expect("valid"),
-            ),
-        ]))
-        .expect("valid")
-    }
-
     #[test]
     fn test_stream_with_invalid_request() {
         let stream = send_request_with_streaming_response(
@@ -1512,10 +1597,14 @@ mod test {
             (),
             || Ok(()),
             |_, _| -> FutureReturningATonicLikeStreamOf<()> {
-                std::future::ready(Err(status_for_server_side_error("STREAM_CLOSED")))
+                std::future::ready(Err(status_for_server_side_error(
+                    tonic::Code::Aborted,
+                    "STREAM_CLOSED",
+                    Vec::<()>::new(),
+                )))
             },
             |_: ()| -> StreamResult<(), TestError> { unreachable!() },
-            |_status| RequestError::Other(TestError::Expected),
+            |_status| Err(RequestError::Other(TestError::Expected)),
         );
         let contents: Vec<_> = stream.collect().now_or_never().expect("ready");
         assert_matches!(
@@ -1546,15 +1635,7 @@ mod test {
             |_| unreachable!(),
         );
 
-        // We want to emulate the behavior of "take up to the first error", but then also check the
-        // error. Neither a simple `take_while` nor `try_collect` quite captures this, so we need a
-        // little extra state.
-        let mut stream_is_ok = true;
-        let contents: Vec<_> = stream
-            .take_while(move |next| {
-                std::future::ready(std::mem::replace(&mut stream_is_ok, next.is_ok()))
-            })
-            .collect()
+        let contents = collect_up_to_and_including_first_error(stream)
             .now_or_never()
             .expect("ready");
 
@@ -1584,7 +1665,7 @@ mod test {
                 std::future::ready(Ok(tonic::Response::from(contents)))
             },
             |next| Ok(u32::from_le_bytes(next)),
-            |_status| RequestError::Other(TestError::Expected),
+            |_status| Err(RequestError::Other(TestError::Expected)),
         );
 
         let contents: Vec<_> = stream.collect().now_or_never().expect("ready");
@@ -1612,12 +1693,16 @@ mod test {
                 let contents = futures_util::stream::iter(start..finish)
                     .map(|i| Ok(i.to_le_bytes()))
                     .chain(futures_util::stream::iter([Err(
-                        status_for_server_side_error("STREAM_CLOSED"),
+                        status_for_server_side_error(
+                            tonic::Code::Aborted,
+                            "STREAM_CLOSED",
+                            Vec::<()>::new(),
+                        ),
                     )]));
                 std::future::ready(Ok(tonic::Response::from(contents)))
             },
             |next| Ok(u32::from_le_bytes(next)),
-            |_status| RequestError::Other(TestError::Expected),
+            |_status| Err(RequestError::Other(TestError::Expected)),
         );
 
         let contents: Vec<_> = stream.collect().now_or_never().expect("ready");

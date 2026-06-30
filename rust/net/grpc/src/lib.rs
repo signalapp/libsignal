@@ -176,6 +176,24 @@ impl prost::Name for proto::google::rpc::RetryInfo {
     }
 }
 
+impl prost::Name for proto::chat::backup::BackupStreamClosed {
+    const NAME: &'static str = "BackupStreamClosed";
+    const PACKAGE: &'static str = "org.signal.chat.backup";
+
+    // Even though this is not a Google protobuf, the server-side library we use still uses
+    // "type.googleapis.com" as a prefix.
+    // See <https://github.com/protocolbuffers/protobuf/blob/bd34c349cd28d262a7b2f7c4ec9a6c6d59730d31/src/google/protobuf/any.proto#L85>.
+    fn type_url() -> String {
+        const_str::concat!(
+            "type.googleapis.com/",
+            proto::chat::backup::BackupStreamClosed::PACKAGE,
+            ".",
+            proto::chat::backup::BackupStreamClosed::NAME
+        )
+        .to_owned()
+    }
+}
+
 /// Manual implementation of the gRPC framing format (Length-Prefixed-Message).
 ///
 /// tonic normally takes care of this for us on the Rust side, but app-level tests (using e.g.
