@@ -849,7 +849,11 @@ SignalFfiError *signal_testing_registration_session_info_convert(SignalMutPointe
 
 SignalFfiError *signal_testing_reserve_username_hash_tests(SignalOwnedBufferOfGrpcTestCaseBridgedFfi *out);
 
+SignalFfiError *signal_testing_return_io_error(SignalFfiError **out);
+
 SignalFfiError *signal_testing_return_pair(SignalPairOfi32CStringPtr *out);
+
+SignalFfiError *signal_testing_return_some_io_error(SignalFfiError **out, bool present);
 
 SignalFfiError *signal_testing_return_string_array(SignalStringArray *out);
 

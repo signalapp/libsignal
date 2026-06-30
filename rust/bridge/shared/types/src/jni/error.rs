@@ -59,7 +59,7 @@ impl SignalJniError {
     }
 }
 
-pub(super) trait JniError: Debug + Display {
+pub(crate) trait JniError: Debug + Display {
     // It might seem better for this to return `JThrowable`, but in practice most implementations
     // construct a new method, and `new_instance` doesn't have strong enough static types to produce
     // anything but `JObject`. This way we can write just one downcast in the caller.

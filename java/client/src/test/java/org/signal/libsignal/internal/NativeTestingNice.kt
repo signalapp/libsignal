@@ -571,6 +571,23 @@ internal object NativeTestingNice {
       }, { downcastFromObject<org.signal.libsignal.internal.ReserveUsernameHashOut>(it) })(ffiOut)
   }
 
+  public fun TESTING_ReturnIoError(): Throwable {
+    val ffiOut =
+      NativeTesting.TESTING_ReturnIoError()
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_ReturnSomeIoError(present: Boolean): Throwable? {
+    val ffi_present = identity(present)
+    val ffiOut =
+      NativeTesting.TESTING_ReturnSomeIoError(
+        ffi_present,
+      )
+
+    return identity(ffiOut)
+  }
+
   public fun TESTING_SetDeviceNameTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetDeviceNameArgs, org.signal.libsignal.internal.SetDeviceNameOut>> {
     val ffiOut =
       NativeTesting.TESTING_SetDeviceNameTests()

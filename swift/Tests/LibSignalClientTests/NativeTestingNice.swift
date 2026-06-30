@@ -1326,6 +1326,31 @@ internal enum NativeTestingNice {
         >.convertReturn(consuming: rawOutput)
 
     }
+    internal static func TESTING_ReturnIoError() throws -> Error {
+        var rawOutput = ErrorConverter.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_return_io_error(
+                &rawOutput,
+            )
+        )
+        return try ErrorConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_ReturnSomeIoError(
+        present: Bool,
+    ) throws -> Error? {
+        try IdentityConverter<Bool>.convertArgBorrowed(present) { presentFfi in
+            var rawOutput = OptionalErrorConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_return_some_io_error(
+                    &rawOutput,
+                    presentFfi,
+                )
+            )
+            return try OptionalErrorConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
     internal static func TESTING_SetDeviceNameTests() throws -> [GrpcTestCase<SetDeviceNameArgs, SetDeviceNameOut>] {
         var rawOutput = GrpcTestCaseVecConverter<
             DerivedReturnConverterSetDeviceNameArgs, DerivedReturnConverterSetDeviceNameOut

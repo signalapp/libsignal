@@ -286,6 +286,25 @@ struct NativeTestingNiceTests {
             #expect(out.count == c)
         }
     }
+
+    @Test
+    func testReturnedError() {
+        switch try! NativeTestingNice.TESTING_ReturnIoError() {
+        case SignalError.ioError("IO error: testing"): break
+        case let other: Issue.record("wrong error: \(other)")
+        }
+
+        switch try! NativeTestingNice.TESTING_ReturnSomeIoError(present: true) {
+        case SignalError.ioError("IO error: testing")?: break
+        case let other?: Issue.record("wrong error: \(other)")
+        case nil: Issue.record("missing error")
+        }
+
+        switch try! NativeTestingNice.TESTING_ReturnSomeIoError(present: false) {
+        case let error?: Issue.record("unexpected error: \(error)")
+        case nil: break
+        }
+    }
 }
 
 #endif

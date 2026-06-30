@@ -687,3 +687,13 @@ pub fn TESTING_MyRemoteDeriveEnum_identity(x: MyRemoteDeriveEnum) -> MyRemoteDer
 pub fn TESTING_MyRemoteDeriveStruct_identity(x: MyRemoteDeriveStruct) -> MyRemoteDeriveStruct {
     x
 }
+
+#[bridge_fn(nice = true)]
+pub fn TESTING_ReturnIoError() -> BridgedError<std::io::Error> {
+    BridgedError(std::io::Error::other("testing"))
+}
+
+#[bridge_fn(nice = true)]
+pub fn TESTING_ReturnSomeIoError(present: bool) -> Option<BridgedError<std::io::Error>> {
+    present.then(|| BridgedError(std::io::Error::other("testing")))
+}

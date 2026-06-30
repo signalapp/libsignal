@@ -18,6 +18,7 @@ import java.util.UUID
 import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class NativeTestingNiceTest {
@@ -282,5 +283,19 @@ class NativeTestingNiceTest {
       nativeToString = NativeTestingNice::TESTING_conversion_Uuid_to_string,
       nativeIdentity = NativeTestingNice::TESTING_conversion_Uuid_identity,
     )
+  }
+
+  @Test
+  fun testReturnedError() {
+    val error = NativeTestingNice.TESTING_ReturnIoError()
+    assertIs<java.io.IOException>(error)
+    assertEquals(error.message, "testing")
+
+    val error2 = NativeTestingNice.TESTING_ReturnSomeIoError(present = true)
+    assertIs<java.io.IOException>(error2)
+    assertEquals(error.message, "testing")
+
+    val error3 = NativeTestingNice.TESTING_ReturnSomeIoError(present = false)
+    assertEquals(error3, null)
   }
 }

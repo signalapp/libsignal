@@ -2397,7 +2397,9 @@ type NativeFunctions = {
       ReturnFfiReserveUsernameHashOut
     >
   >;
+  TESTING_ReturnIoError: () => Error;
   TESTING_ReturnPair: () => [number, string];
+  TESTING_ReturnSomeIoError: (present: boolean) => Error | null;
   TESTING_ReturnStringArray: () => Array<string>;
   TESTING_RoundTripI32: (input: number) => number;
   TESTING_RoundTripU16: (input: number) => number;
@@ -3339,7 +3341,9 @@ const {
   TESTING_RegistrationService_UpdateSessionErrorConvert,
   TESTING_RegistrationSessionInfoConvert,
   TESTING_ReserveUsernameHashTests,
+  TESTING_ReturnIoError,
   TESTING_ReturnPair,
+  TESTING_ReturnSomeIoError,
   TESTING_ReturnStringArray,
   TESTING_RoundTripI32,
   TESTING_RoundTripU16,
@@ -4023,7 +4027,9 @@ export {
   TESTING_RegistrationService_UpdateSessionErrorConvert,
   TESTING_RegistrationSessionInfoConvert,
   TESTING_ReserveUsernameHashTests,
+  TESTING_ReturnIoError,
   TESTING_ReturnPair,
+  TESTING_ReturnSomeIoError,
   TESTING_ReturnStringArray,
   TESTING_RoundTripI32,
   TESTING_RoundTripU16,

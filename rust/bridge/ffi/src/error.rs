@@ -4,7 +4,6 @@
 //
 
 use std::ffi::c_char;
-use std::panic::AssertUnwindSafe;
 
 use libsignal_bridge::ffi::{
     self, NullPointerError, SignalFfiError, run_ffi_safe, write_result_to,
@@ -86,7 +85,6 @@ pub unsafe extern "C" fn signal_error_get_registration_lock(
     out_svr2_password: *mut *const c_char,
     err: *const SignalFfiError,
 ) -> *mut SignalFfiError {
-    let err = AssertUnwindSafe(err);
     run_ffi_safe(|| {
         let err = unsafe { err.as_ref().ok_or(NullPointerError)? };
 

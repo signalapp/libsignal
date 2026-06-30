@@ -725,6 +725,18 @@ export function TESTING_ReserveUsernameHashTests(): Array<
   )(Native.TESTING_ReserveUsernameHashTests());
 }
 
+export function TESTING_ReturnIoError(): Error {
+  return identity(Native.TESTING_ReturnIoError());
+}
+
+export function TESTING_ReturnSomeIoError({
+  present: present,
+}: {
+  present: boolean;
+}): Error | null {
+  return identity(Native.TESTING_ReturnSomeIoError(identity(present)));
+}
+
 export function TESTING_SetDeviceNameTests(): Array<
   GrpcTestCase<SetDeviceNameArgs, SetDeviceNameOut>
 > {

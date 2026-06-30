@@ -214,6 +214,28 @@ internal struct ByteArrayConverter<T: ByteArray>: NiceArgConverter {
     }
 }
 
+internal struct ErrorConverter: NiceReturnConverter {
+    typealias NiceReturn = Error
+    typealias FfiReturn = SignalFfiErrorRef?
+    static func emptyFfiReturn() -> SignalFfiErrorRef? {
+        nil
+    }
+    static func convertReturn(consuming value: SignalFfiErrorRef?) throws -> Error {
+        convertError(value)!
+    }
+}
+
+internal struct OptionalErrorConverter: NiceReturnConverter {
+    typealias NiceReturn = Error?
+    typealias FfiReturn = SignalFfiErrorRef?
+    static func emptyFfiReturn() -> SignalFfiErrorRef? {
+        nil
+    }
+    static func convertReturn(consuming value: SignalFfiErrorRef?) throws -> Error? {
+        convertError(value)
+    }
+}
+
 protocol FfiBorrowedSliceConstructor {
     associatedtype BorrowedSlice
     associatedtype Element

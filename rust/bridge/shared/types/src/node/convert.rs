@@ -88,9 +88,9 @@ macro_rules! nice_identity_arg_converter {
     };
 }
 macro_rules! nice_identity_result_converter {
-    ($typ:ty) => {
+    ($(<$($generic:ident $(: $bound:tt)?),+>)? $typ:path) => {
         #[cfg(feature = "metadata")]
-        impl NiceResultConverter for $typ {
+        impl $(<$($generic $(: $bound)?),+>)? NiceResultConverter for $typ {
             fn register_ts_result_converter(ctx: &mut TsMetadataContext) -> TsReturnConverter {
                 let ty = <$typ as ResultTypeInfo>::register_ts_ffi_type(ctx);
                 TsReturnConverter {
@@ -2133,17 +2133,16 @@ impl<'a> ResultTypeInfo<'a>
     register_ts_ffi_type!("CheckSvr2CredentialsResponse");
 }
 
-impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::server_requests::DisconnectCause {
+impl<'a, T: SignalNodeError> ResultTypeInfo<'a> for crate::support::BridgedError<T> {
     type ResultType = JsValue;
 
     fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
-        match self {
-            Self::LocalDisconnect => Ok(cx.null().upcast()),
-            Self::Error(err) => Ok(err.into_throwable(cx, "DisconnectCause").upcast()),
-        }
+        Ok(self.0.into_throwable(cx, "BridgedError").upcast())
     }
-    register_ts_ffi_type!("(Error | null)");
+    register_ts_ffi_type!("Error");
 }
+nice_identity_result_converter!(<T: SignalNodeError> crate::support::BridgedError<T>);
+nice_identity_result_converter!(<T: SignalNodeError> Option<crate::support::BridgedError<T>>);
 
 macro_rules! full_range_integer {
     ($typ:ty) => {

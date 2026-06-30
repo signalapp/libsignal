@@ -2784,14 +2784,45 @@ impl<'a> ResultTypeInfo<'a>
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::server_requests::DisconnectCause {
+impl<'a, T: JniError + Send + 'static> ResultTypeInfo<'a> for crate::support::BridgedError<T> {
     type ResultType = JThrowable<'a>;
     const JNI_SIGNATURE: &'static str = jni_sig_str!(java.lang.Throwable);
 
     fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        Some(self).convert_into(env)
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T> NiceResultConverter for crate::support::BridgedError<T> {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        KtReturnConverter {
+            nice_type: "Throwable".to_string(),
+            ffi_type: "Throwable".to_string(),
+            converter_function: "identity".to_string(),
+        }
+    }
+}
+
+impl<'a, T: JniError + Send + 'static> ResultTypeInfo<'a>
+    for Option<crate::support::BridgedError<T>>
+{
+    type ResultType = Nullable<JThrowable<'a>>;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!(java.lang.Throwable);
+
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         match self {
-            Self::LocalDisconnect => Ok(JThrowable::null()),
-            Self::Error(err) => SignalJniError::from(err).to_throwable(env),
+            None => Ok(JThrowable::null()),
+            Some(crate::support::BridgedError(e)) => SignalJniError::from(e).to_throwable(env),
+        }
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T> NiceResultConverter for Option<crate::support::BridgedError<T>> {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        KtReturnConverter {
+            nice_type: "Throwable?".to_string(),
+            ffi_type: "Throwable?".to_string(),
+            converter_function: "identity".to_string(),
         }
     }
 }
@@ -3473,6 +3504,12 @@ macro_rules! jni_result_type {
     };
     (BridgeVec<$ty:ty>) => {
         $crate::jni::JavaArrayStar<'local>
+    };
+    (BridgedError<$typ:ty>) => {
+        ::jni::objects::JThrowable<'local>
+    };
+    (Option<BridgedError<$typ:ty> >) => {
+        $crate::jni::Nullable<::jni::objects::JThrowable<'local>>
     };
 
     (GrpcTestCases<$a:ty, $b:ty>) => {

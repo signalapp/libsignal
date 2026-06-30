@@ -244,7 +244,7 @@ impl SimpleError {
 ///
 /// [ThinBox]: https://doc.rust-lang.org/std/boxed/struct.ThinBox.html
 #[derive(Debug)]
-pub struct SignalFfiError(Box<dyn FfiError + Send>);
+pub struct SignalFfiError(std::panic::AssertUnwindSafe<Box<dyn FfiError + Send>>);
 
 impl SignalFfiError {
     pub fn downcast_ref<T: FfiError>(&self) -> Option<&T> {
@@ -264,7 +264,7 @@ impl std::ops::Deref for SignalFfiError {
     type Target = dyn FfiError;
 
     fn deref(&self) -> &Self::Target {
-        &*self.0
+        &**self.0
     }
 }
 
@@ -284,7 +284,11 @@ pub trait IntoFfiError {
 
 impl<T: FfiError> IntoFfiError for T {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
-        SignalFfiError(Box::new(self))
+        // The AssertUnwindSafe isn't fully justified -- if an error has interior mutability *and*
+        // makes use of it via FfiError's callbacks *and* there's a panic during one of those
+        // callbacks, we'd be in trouble. But panics while handling errors would be a problem
+        // regardless, and the error will almost certainly be destroyed after that.
+        SignalFfiError(std::panic::AssertUnwindSafe(Box::new(self)))
     }
 }
 

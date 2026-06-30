@@ -263,7 +263,11 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_ReserveUsernameHashTests(): Array<Object>
   @JvmStatic
+  public external fun TESTING_ReturnIoError(): Throwable
+  @JvmStatic
   public external fun TESTING_ReturnPair(): Pair<Int, String>
+  @JvmStatic
+  public external fun TESTING_ReturnSomeIoError(present: Boolean): Throwable?
   @JvmStatic
   public external fun TESTING_ReturnStringArray(): Array<Object>
   @JvmStatic

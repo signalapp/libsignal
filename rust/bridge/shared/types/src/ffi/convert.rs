@@ -1038,6 +1038,43 @@ where
     }
 }
 
+impl<T: IntoFfiError> ResultTypeInfo for crate::support::BridgedError<T> {
+    type ResultType = *mut SignalFfiError;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Some(self).convert_into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T> NiceResultConverter for crate::support::BridgedError<T> {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "Error".to_string(),
+            converter_type: "ErrorConverter".to_string(),
+        }
+    }
+}
+
+impl<T: IntoFfiError> ResultTypeInfo for Option<crate::support::BridgedError<T>> {
+    type ResultType = *mut SignalFfiError;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(match self {
+            None => std::ptr::null_mut(),
+            Some(crate::support::BridgedError(e)) => SignalFfiError::from(e).into_raw_box_for_ffi(),
+        })
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T> NiceResultConverter for Option<crate::support::BridgedError<T>> {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "Error?".to_string(),
+            converter_type: "OptionalErrorConverter".to_string(),
+        }
+    }
+}
+
 /// Allocates and returns a new Rust-owned C string.
 impl ResultTypeInfo for String {
     type ResultType = *const std::ffi::c_char;
@@ -1382,17 +1419,14 @@ impl<'a, T: BridgeHandle> ArgTypeInfo<'a> for &'a [&'a T] {
 }
 
 impl<'a> ArgTypeInfo<'a> for &'a SignalFfiError {
-    // This is a lie, we can't *really* guarantee that the contents of an error are unwind-safe. But
-    // it's very unlikely we'll encounter one that isn't, especially when we only use them immutably
-    // in practice.
-    type ArgType = UnwindSafeArg<*const SignalFfiError>;
+    type ArgType = *const SignalFfiError;
     type StoredType = *const SignalFfiError;
 
     fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
         if foreign.is_null() {
             return Err(NullPointerError.into());
         }
-        Ok(foreign.0)
+        Ok(foreign)
     }
 
     fn load_from(stored: &'a mut Self::StoredType) -> Self {
@@ -1677,17 +1711,6 @@ impl ResultTypeInfo for libsignal_net_chat::api::registration::CheckSvr2Credenti
     }
 }
 
-impl ResultTypeInfo for libsignal_net::chat::server_requests::DisconnectCause {
-    type ResultType = *mut SignalFfiError;
-
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        match self {
-            Self::LocalDisconnect => Ok(std::ptr::null_mut()),
-            Self::Error(c) => Ok(SignalFfiError::from(c).into_raw_box_for_ffi()),
-        }
-    }
-}
-
 /// Defines an `extern "C"` function for cloning the given type.
 #[macro_export]
 macro_rules! ffi_bridge_handle_clone {
@@ -1876,7 +1899,7 @@ macro_rules! ffi_arg_type {
     (RegistrationPushToken) => (*const std::ffi::c_char);
     (SignedPublicPreKey) => (ffi::FfiSignedPublicPreKey);
     (MultiRecipientSendAuthorization) => (ffi_arg_type!(&[u8]));
-    (&SignalFfiError) => (ffi::UnwindSafeArg<*const SignalFfiError>);
+    (&SignalFfiError) => (*const SignalFfiError);
     (&[u8; $len:expr]) => (*const [u8; $len]);
     ([u8; $len:expr]) => (*const [u8; $len]);
     (Option<&[u8; $len:expr]>) => (*const [u8; $len]);
@@ -1991,6 +2014,8 @@ macro_rules! ffi_result_type {
     (Box<[ChallengeOption]>) => (ffi_result_type!(Vec<u8>));
     (Vec<ServiceId>) => (ffi::OwnedBufferOf<libsignal_protocol::ServiceIdFixedWidthBinaryBytes>);
     (&[MismatchedDeviceError]) => (ffi::OwnedBufferOf<ffi::FfiMismatchedDevicesError>);
+    (BridgedError<$typ:ty>) => (*mut ffi::SignalFfiError);
+    (Option<BridgedError<$typ:ty> >) => (*mut ffi::SignalFfiError);
     (Option<$typ:ty>) => ($crate::ffi::MutPointer<$typ>);
     (BridgeVec<$ty:tt>) => (ffi::OwnedBufferOfMaxAligned<ffi_result_type!($ty)>);
 
@@ -1998,7 +2023,6 @@ macro_rules! ffi_result_type {
     (ChatResponse) => (ffi::FfiChatResponse);
     (CheckSvr2CredentialsResponse) => (ffi::FfiCheckSvr2CredentialsResponse);
     (Box<[RegisterResponseBadge]>) => (ffi::OwnedBufferOf<ffi::FfiRegisterResponseBadge>);
-    (DisconnectCause) => (*mut ffi::SignalFfiError);
     (PreKeysResponse) => (ffi::FfiPreKeysResponse);
     (UploadForm) => (ffi::FfiUploadForm);
     (CdnCredentials) => (ffi::PairOf<ffi::OwnedBufferOf<ffi::CStringPtr>, ffi::OwnedBufferOf<ffi::CStringPtr> >);

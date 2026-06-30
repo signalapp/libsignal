@@ -405,3 +405,7 @@ impl<T, E> ResultLike for Result<T, E> {
     Clone, derive_more::From, derive_more::Into, derive_more::Deref, derive_more::DerefMut,
 )]
 pub struct BridgeVec<T>(pub Vec<T>);
+
+/// Marker for returning an error as a value.
+#[derive(Debug, derive_more::From)]
+pub struct BridgedError<T>(pub T);

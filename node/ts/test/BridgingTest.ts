@@ -545,3 +545,16 @@ describe('NativeTestingNice', () => {
     });
   });
 });
+
+describe('Error', () => {
+  it('can be returned as a value', () => {
+    const error = NativeNice.TESTING_ReturnIoError();
+    assert.equal(error.message, 'testing');
+
+    const error2 = NativeNice.TESTING_ReturnSomeIoError({ present: true });
+    assert.equal(error2?.message, 'testing');
+
+    const error3 = NativeNice.TESTING_ReturnSomeIoError({ present: false });
+    assert.isNull(error3);
+  });
+});

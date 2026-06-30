@@ -41,7 +41,7 @@ use static_assertions::assert_impl_all;
 
 use crate::net::ConnectionManager;
 use crate::net::remote_config::{RemoteConfig, RemoteConfigKey};
-use crate::support::{AsyncMutex, LimitedLifetimeRef};
+use crate::support::{AsyncMutex, BridgedError, LimitedLifetimeRef};
 use crate::*;
 
 pub type ChatConnectionInfo = ConnectionInfo;
@@ -730,7 +730,7 @@ pub trait ChatListener: Send {
     );
     fn received_queue_empty(&mut self);
     fn received_alerts(&mut self, alerts: Box<[String]>);
-    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause);
+    fn connection_interrupted(&mut self, disconnect_cause: Option<BridgedError<SendError>>);
 }
 
 impl dyn ChatListener {
@@ -753,7 +753,10 @@ impl dyn ChatListener {
                 self.received_alerts(alerts.into_boxed_slice())
             }
             chat::server_requests::ServerEvent::Stopped(error) => {
-                self.connection_interrupted(error)
+                self.connection_interrupted(match error {
+                    DisconnectCause::LocalDisconnect => None,
+                    DisconnectCause::Error(send_error) => Some(send_error.into()),
+                })
             }
         }
     }
@@ -803,7 +806,7 @@ impl std::panic::RefUnwindSafe for ServerMessageAck {}
 pub trait ProvisioningListener: Send {
     fn received_address(&mut self, address: String, send_ack: ServerMessageAck);
     fn received_envelope(&mut self, envelope: bytes::Bytes, send_ack: ServerMessageAck);
-    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause);
+    fn connection_interrupted(&mut self, disconnect_cause: Option<BridgedError<SendError>>);
 }
 
 impl dyn ProvisioningListener {
@@ -817,9 +820,11 @@ impl dyn ProvisioningListener {
             chat::server_requests::ProvisioningEvent::ReceivedEnvelope { envelope, send_ack } => {
                 self.received_envelope(envelope, ServerMessageAck::new(send_ack))
             }
-            chat::server_requests::ProvisioningEvent::Stopped(error) => {
-                self.connection_interrupted(error)
-            }
+            chat::server_requests::ProvisioningEvent::Stopped(error) => self
+                .connection_interrupted(match error {
+                    DisconnectCause::LocalDisconnect => None,
+                    DisconnectCause::Error(send_error) => Some(send_error.into()),
+                }),
         }
     }
 
