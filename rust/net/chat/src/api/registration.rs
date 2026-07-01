@@ -23,7 +23,7 @@ pub use error::*;
 mod session_id;
 pub use session_id::{InvalidSessionId, SessionId};
 
-use crate::api::ChallengeOption;
+use crate::api::{ChallengeOption, RequestError};
 
 pub type UnidentifiedAccessKey = [u8; zkgroup::ACCESS_KEY_LEN];
 
@@ -58,7 +58,10 @@ pub(crate) trait RegistrationChatApi {
         client: &str,
         languages: LanguageList,
     ) -> impl Future<
-        Output = Result<RegistrationResponse, Self::Error<RequestVerificationCodeError>>,
+        Output = Result<
+            RegistrationResponse,
+            WithRecoveredSession<Self::Error<RequestVerificationCodeError>>,
+        >,
     > + Send;
 
     fn submit_push_challenge(
@@ -71,7 +74,12 @@ pub(crate) trait RegistrationChatApi {
         &self,
         session_id: &SessionId,
         code: &str,
-    ) -> impl Future<Output = Result<RegistrationResponse, Self::Error<SubmitVerificationError>>> + Send;
+    ) -> impl Future<
+        Output = Result<
+            RegistrationResponse,
+            WithRecoveredSession<Self::Error<SubmitVerificationError>>,
+        >,
+    > + Send;
 
     fn check_svr2_credentials(
         &self,
@@ -97,6 +105,31 @@ pub(crate) trait RegistrationChatApi {
 pub(crate) struct RegistrationResponse {
     pub(crate) session_id: SessionId,
     pub(crate) session: RegistrationSession,
+}
+
+/// Request outcome with an extra payload of a session state
+///
+/// Some error results can contain the session state.
+pub(crate) struct WithRecoveredSession<T> {
+    pub(crate) result: T,
+    pub(crate) session: Option<RegistrationSession>,
+}
+
+impl<T> WithRecoveredSession<T> {
+    /// Discards any recovered session, yielding the wrapped value.
+    pub(crate) fn into_inner(self) -> T {
+        self.result
+    }
+}
+
+/// A plain error carries no recovered session.
+impl<E, D> From<RequestError<E, D>> for WithRecoveredSession<RequestError<E, D>> {
+    fn from(result: RequestError<E, D>) -> Self {
+        Self {
+            result,
+            session: None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, serde::Serialize)]

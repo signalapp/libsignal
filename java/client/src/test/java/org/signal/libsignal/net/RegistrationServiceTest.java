@@ -455,6 +455,43 @@ public class RegistrationServiceTest {
     assertNull(afterNotReady.getNextSms());
     assertNull(afterNotReady.getNextCall());
     assertEquals(Set.of(), afterNotReady.getRequestedInformation());
+
+    // A 429 (rate limited) response also carries session state in its body, but
+    // comes back as a RetryLaterException rather than a typed error. The cached
+    // session state is still refreshed.
+    var rateLimited =
+        session.requestVerificationCode(
+            RegistrationService.VerificationTransport.VOICE,
+            "libsignal test",
+            Locale.CANADA_FRENCH);
+    var rateLimitedRequestAndId = fakeRemote.getNextIncomingRequest().get();
+    assertNotNull(rateLimitedRequestAndId);
+    fakeRemote.sendResponse(
+        rateLimitedRequestAndId.getSecond(),
+        429,
+        "Too many requests",
+        new String[] {"content-type: application/json", "retry-after: 60"},
+        """
+        {
+            "allowedToRequestCode": true,
+            "verified": false,
+            "nextCall": 99,
+            "requestedInformation": []
+        }
+        """
+            .getBytes());
+    var rateLimitedFailure = assertThrows(ExecutionException.class, () -> rateLimited.get());
+    assertTrue(rateLimitedFailure.getCause() instanceof RetryLaterException);
+
+    var afterRateLimited = session.getSessionState();
+    assertEquals(true, afterRateLimited.getAllowedToRequestCode());
+    assertEquals(false, afterRateLimited.getVerified());
+    assertEquals(Duration.ofSeconds(99), afterRateLimited.getNextCall());
+    // Fields absent from the error body must be unset, not carried over from the
+    // previous (not-ready) session state, which had nextVerificationAttempt set.
+    assertNull(afterRateLimited.getNextSms());
+    assertNull(afterRateLimited.getNextVerificationAttempt());
+    assertEquals(Set.of(), afterRateLimited.getRequestedInformation());
   }
 
   private static String encodeBase64(byte[] input) {

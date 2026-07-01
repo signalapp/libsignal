@@ -32,53 +32,29 @@ pub struct RegistrationService<'c> {
 
 assert_impl_all!(RegistrationService<'static>: UnwindSafe);
 
-/// Errors that may carry the server-reported [`RegistrationSession`] state in
-/// their body, so the [`RegistrationService`] can refresh its cached session
-/// even when a request fails.
-trait HasUpdatedSession {
-    /// The session state carried by this error, if any.
-    fn updated_session(&self) -> Option<&RegistrationSession>;
-}
-
-impl HasUpdatedSession for RequestVerificationCodeError {
-    fn updated_session(&self) -> Option<&RegistrationSession> {
-        match self {
-            Self::SendFailed(session) | Self::NotReadyForVerification(session) => session.as_ref(),
-            Self::InvalidSessionId | Self::SessionNotFound | Self::CodeNotDeliverable(_) => None,
-        }
-    }
-}
-
-impl HasUpdatedSession for SubmitVerificationError {
-    fn updated_session(&self) -> Option<&RegistrationSession> {
-        match self {
-            Self::NotReadyForVerification(session) => session.as_ref(),
-            Self::InvalidSessionId | Self::SessionNotFound => None,
-        }
-    }
-}
-
 /// Refreshes `cached` from a request result before propagating it.
 ///
 /// On success the cache is set to the response's session; on a failure that
-/// carries server session state (see [`HasUpdatedSession`]) the cache is
-/// updated from the error before it is returned, so [`RegistrationService::session_state`]
-/// always reflects the latest server-reported state.
-fn update_session<E: HasUpdatedSession>(
+/// carries server session state (see [`WithRecoveredSession`]) the cache is
+/// updated from the recovered session before the error is returned, so
+/// [`RegistrationService::session_state`] always reflects the latest
+/// server-reported state.
+fn update_session<E>(
     cached: &mut RegistrationSession,
-    result: Result<RegistrationResponse, RequestError<E>>,
+    outcome: Result<RegistrationResponse, WithRecoveredSession<RequestError<E>>>,
 ) -> Result<(), RequestError<E>> {
-    match result {
+    match outcome {
         Ok(RegistrationResponse { session, .. }) => {
             *cached = session;
             Ok(())
         }
-        Err(err) => {
-            if let RequestError::Other(inner) = &err {
-                if let Some(session) = inner.updated_session() {
-                    log::debug!("refreshing cached session state from error response");
-                    *cached = session.clone();
-                }
+        Err(WithRecoveredSession {
+            result: err,
+            session: recovered_session,
+        }) => {
+            if let Some(session) = recovered_session {
+                log::debug!("refreshing cached session state from error response");
+                *cached = session;
             }
             Err(err)
         }
@@ -216,14 +192,14 @@ impl<'c> RegistrationService<'c> {
         } = self;
         log::info!("sending request verification code on registration session {session_id}");
 
-        let result = Registration(&*connection)
+        let outcome = Registration(&*connection)
             .request_verification_code(session_id, transport, client, languages)
             .await;
 
-        if result.is_ok() {
+        if outcome.is_ok() {
             log::info!("request verification code succeeded");
         }
-        update_session(session, result)
+        update_session(session, outcome)
     }
 
     pub async fn submit_push_challenge(
@@ -262,14 +238,14 @@ impl<'c> RegistrationService<'c> {
         } = self;
         log::info!("sending submit verification code on registration session {session_id}");
 
-        let result = Registration(&*connection)
+        let outcome = Registration(&*connection)
             .submit_verification_code(session_id, code)
             .await;
 
-        if result.is_ok() {
+        if outcome.is_ok() {
             log::info!("submit verification code succeeded");
         }
-        update_session(session, result)
+        update_session(session, outcome)
     }
 
     pub async fn check_svr2_credentials(
@@ -745,12 +721,17 @@ mod test {
                     .await
                     .expect("still receiving")
                     .expect("received request");
+                let mut headers = vec!["content-type: application/json".to_owned()];
+                if status == 429 {
+                    // 429 maps to `RetryLater` only when a retry-after header is present.
+                    headers.push("retry-after: 60".to_owned());
+                }
                 remote
                     .send_response(WebSocketResponseMessage {
                         id: Some(incoming_request.id()),
                         status: Some(status.into()),
                         message: Some("error".to_string()),
-                        headers: vec!["content-type: application/json".to_owned()],
+                        headers,
                         body: Some(serde_json::to_vec(session).unwrap().into()),
                     })
                     .expect("not disconnected");
@@ -798,6 +779,38 @@ mod test {
             ))
         );
         assert_eq!(service.session_state(), &failed_session);
+
+        // A 429 carries the session in its body too, but (unlike 409/418) surfaces
+        // as the generic `RetryLater` error. The cache is still refreshed from the
+        // session recovered out-of-band.
+        let rate_limited_session = RegistrationSession {
+            next_sms: Some(Duration::from_secs(99)),
+            ..Default::default()
+        };
+        let request_code = service.request_verification_code(
+            VerificationTransport::Sms,
+            "libsignal test",
+            LanguageList::default(),
+        );
+        let (result, fake_chat_remote) = tokio::join!(
+            request_code,
+            answer_with_session(fake_chat_remote, 429, &rate_limited_session)
+        );
+        assert_matches!(result, Err(RequestError::RetryLater(_)));
+        assert_eq!(service.session_state(), &rate_limited_session);
+
+        // Same for `submit_verification_code`.
+        let rate_limited_session = RegistrationSession {
+            next_verification_attempt: Some(Duration::from_secs(11)),
+            ..Default::default()
+        };
+        let submit_code = service.submit_verification_code("123456");
+        let (result, fake_chat_remote) = tokio::join!(
+            submit_code,
+            answer_with_session(fake_chat_remote, 429, &rate_limited_session)
+        );
+        assert_matches!(result, Err(RequestError::RetryLater(_)));
+        assert_eq!(service.session_state(), &rate_limited_session);
 
         drop(fake_chat_remote);
     }

@@ -502,6 +502,42 @@ describe('Registration client', () => {
         nextVerificationAttemptSecs: 37,
         requestedInformation: new Set(),
       });
+
+      // A 429 (rate limited) response also carries session state in its body,
+      // but comes back as a RateLimitedError rather than a typed error. The
+      // cached session state is still refreshed.
+      const rateLimited = session.requestVerification({
+        transport: 'voice',
+        client: 'libsignal test',
+        languages: ['fr-CA'],
+      });
+      const rateLimitedRequest =
+        await fakeRemote.assertReceiveIncomingRequest();
+      fakeRemote.sendReplyTo(rateLimitedRequest, {
+        status: 429,
+        message: 'Too many requests',
+        headers: ['content-type: application/json', 'retry-after: 60'],
+        body: Buffer.from(
+          JSON.stringify({
+            allowedToRequestCode: true,
+            verified: false,
+            nextCall: 99,
+            requestedInformation: [],
+            id: 'fake-session-A',
+          })
+        ),
+      });
+      await expect(rateLimited)
+        .to.eventually.be.rejectedWith(LibSignalErrorBase)
+        .and.have.property('code', ErrorCode.RateLimitedError);
+      expect(session.sessionState).to.deep.eq({
+        allowedToRequestCode: true,
+        verified: false,
+        nextSmsSecs: undefined,
+        nextCallSecs: 99,
+        nextVerificationAttemptSecs: undefined,
+        requestedInformation: new Set(),
+      });
     });
   });
 });

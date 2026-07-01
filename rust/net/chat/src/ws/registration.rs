@@ -12,7 +12,7 @@ use crate::api::registration::{
     ProvidedAccountAttributes, PushToken, RegisterAccountError, RegisterAccountResponse,
     RegistrationChatApi, RegistrationResponse as RegistrationOutput, RequestVerificationCodeError,
     ResumeSessionError, SessionId, SkipDeviceTransfer, SubmitVerificationError, UpdateSessionError,
-    VerificationTransport,
+    VerificationTransport, WithRecoveredSession,
 };
 use crate::api::{Registration, RequestError};
 use crate::ws::{ResponseError, TryIntoResponse, WsConnection};
@@ -110,6 +110,7 @@ where
             },
         )
         .await
+        .map_err(WithRecoveredSession::into_inner)
     }
 
     async fn submit_captcha(
@@ -128,6 +129,7 @@ where
             },
         )
         .await
+        .map_err(WithRecoveredSession::into_inner)
     }
 
     async fn request_push_challenge(
@@ -146,6 +148,7 @@ where
             },
         )
         .await
+        .map_err(WithRecoveredSession::into_inner)
     }
 
     async fn request_verification_code(
@@ -154,7 +157,8 @@ where
         transport: VerificationTransport,
         client: &str,
         language_list: LanguageList,
-    ) -> Result<RegistrationOutput, Self::Error<RequestVerificationCodeError>> {
+    ) -> Result<RegistrationOutput, WithRecoveredSession<Self::Error<RequestVerificationCodeError>>>
+    {
         submit_request(
             &self.0,
             RegistrationRequest {
@@ -185,13 +189,15 @@ where
             },
         )
         .await
+        .map_err(WithRecoveredSession::into_inner)
     }
 
     async fn submit_verification_code(
         &self,
         session_id: &SessionId,
         code: &str,
-    ) -> Result<RegistrationOutput, Self::Error<SubmitVerificationError>> {
+    ) -> Result<RegistrationOutput, WithRecoveredSession<Self::Error<SubmitVerificationError>>>
+    {
         submit_request(
             &self.0,
             RegistrationRequest {
@@ -253,25 +259,30 @@ where
 
 /// Sends a request for an established session.
 ///
-/// On success, the state of the session as reported by the server is saved (and accessible via
-/// [`session_state`](crate::registration::RegistrationService::session_state)). This method will
+/// On success the state of the session as reported by the server is returned and
+/// saved (accessible via
+/// [`session_state`](crate::registration::RegistrationService::session_state)).
+/// Some errors (such as a 429) also carry session state in their body, which is
+/// recovered alongside the error; see [`WithRecoveredSession`]. This method will
 /// retry internally if transient errors are encountered.
 async fn submit_request<R, E, C>(
     connection: &C,
     request: RegistrationRequest<'_, R>,
-) -> Result<RegistrationOutput, RequestError<E, <C::SendError as SendError>::DisconnectError>>
+) -> Result<
+    RegistrationOutput,
+    WithRecoveredSession<RequestError<E, <C::SendError as SendError>::DisconnectError>>,
+>
 where
     R: Request + Send,
-    RequestError<E, <C::SendError as SendError>::DisconnectError>:
-        From<InvalidSessionId> + From<ResponseError>,
+    RequestError<E, <C::SendError as SendError>::DisconnectError>: From<InvalidSessionId>,
+    WithRecoveredSession<RequestError<E, <C::SendError as SendError>::DisconnectError>>:
+        From<ResponseError>,
     C: WsClient<SendError: SendError> + Sync,
 {
     let response = connection
         .send("reg", &request.log_safe_path(), request.into())
         .await
         .map_err(SendError::into_request_error)?;
-    let response: crate::ws::registration::request::RegistrationResponse =
-        response.try_into_response()?;
-
-    response.try_into().map_err(Into::into)
+    let response: RegistrationResponse = response.try_into_response()?;
+    Ok(response.try_into().map_err(RequestError::from)?)
 }
