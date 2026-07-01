@@ -24,6 +24,7 @@ async-trait = { workspace = true }
 base64 = { workspace = true }
 bytes = { workspace = true }
 const-str = { workspace = true }
+data-encoding-macro = { workspace = true }
 derive_more = { workspace = true }
 displaydoc = { workspace = true }
 either = { workspace = true }
@@ -31,6 +32,7 @@ futures-util = { workspace = true }
 hex = { workspace = true }
 http = { workspace = true }
 http-body = { workspace = true }
+http-body-util = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 pin-project = { workspace = true }
@@ -59,10 +61,8 @@ libsignal-net = { workspace = true, features = ["test-util"] }
 anyhow = { workspace = true }
 bytes = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
-data-encoding-macro = { workspace = true }
 env_logger = { workspace = true }
 futures-util = { workspace = true }
-http-body-util = { workspace = true }
 hyper = { workspace = true, features = ["http2", "client"] }
 hyper-util = { workspace = true }
 nonzero_ext = { workspace = true }

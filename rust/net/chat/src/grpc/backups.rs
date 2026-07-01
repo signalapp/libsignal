@@ -46,7 +46,7 @@ impl From<BackupAuthPresentation> for SignedPresentation {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CopyBackupMediaItem {
     pub source_attachment_cdn: u32,
     pub source_key: String,
@@ -57,12 +57,14 @@ pub struct CopyBackupMediaItem {
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct CopyBackupMediaOutcome {
     pub media_id: [u8; MEDIA_ID_LEN],
     pub cdn_or_failure: Result<u32, CopyBackupMediaFailure>,
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum CopyBackupMediaFailure {
     SourceNotFound,
     WrongSourceLength,
@@ -92,6 +94,7 @@ impl From<CopyBackupMediaItem> for libsignal_net_grpc::proto::chat::backup::Copy
 }
 
 #[derive(Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct DeleteBackupMediaItem {
     pub media_id: [u8; MEDIA_ID_LEN],
     pub cdn: u32,
@@ -601,6 +604,360 @@ redact_no_arg_backup_request!(GetSvrBCredentialsRequest);
 redact_no_arg_backup_request!(RefreshRequest);
 redact_no_arg_backup_request!(DeleteAllRequest);
 
+// Not cfg(test) so it can be accessed via bridging tests.
+pub mod test_cases {
+    use libsignal_net_grpc::proto::chat::backup::CopyMediaItem;
+
+    use super::*;
+    use crate::grpc::GrpcTestCase;
+    use crate::grpc::test_case_util::{BodyWithTrailers, status_for_server_side_error, stream};
+
+    #[derive(Debug)]
+    pub enum CopyBackupMediaOut {
+        Item(CopyBackupMediaOutcome),
+        InvalidDataInStream,
+        CredentialRejected,
+        CredentialRejectedWithoutAppropriateServerInfo,
+    }
+
+    #[allow(clippy::type_complexity)]
+    pub fn copy_media_test_cases() -> Vec<
+        GrpcTestCase<
+            Vec<CopyBackupMediaItem>,
+            CopyMediaRequest,
+            http::Response<BodyWithTrailers>,
+            Vec<CopyBackupMediaOut>,
+        >,
+    > {
+        let method = "/org.signal.chat.backup.BackupsAnonymous/CopyMedia";
+        let request = vec![
+            CopyBackupMediaItem {
+                source_attachment_cdn: 1,
+                source_key: "key1".to_owned(),
+                object_length: 111,
+                media_id: [1; MEDIA_ID_LEN],
+                encryption_key: *const_str::concat_bytes!([b'A'; 32], [b'B'; 32]),
+            },
+            CopyBackupMediaItem {
+                source_attachment_cdn: 2,
+                source_key: "key2".to_owned(),
+                object_length: 222,
+                media_id: [2; MEDIA_ID_LEN],
+                encryption_key: *const_str::concat_bytes!([b'C'; 32], [b'D'; 32]),
+            },
+        ];
+        let request_grpc = CopyMediaRequest {
+            signed_presentation: Some(SignedPresentation {
+                presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
+                presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
+            }),
+            items: vec![
+                CopyMediaItem {
+                    source_attachment_cdn: 1,
+                    source_key: "key1".to_owned(),
+                    object_length: 111,
+                    media_id: vec![1; MEDIA_ID_LEN],
+                    hmac_key: vec![b'A'; MEDIA_ENCRYPTION_HMAC_KEY_LEN],
+                    encryption_key: vec![b'B'; MEDIA_ENCRYPTION_AES_KEY_LEN],
+                },
+                CopyMediaItem {
+                    source_attachment_cdn: 2,
+                    source_key: "key2".to_owned(),
+                    object_length: 222,
+                    media_id: vec![2; MEDIA_ID_LEN],
+                    hmac_key: vec![b'C'; MEDIA_ENCRYPTION_HMAC_KEY_LEN],
+                    encryption_key: vec![b'D'; MEDIA_ENCRYPTION_AES_KEY_LEN],
+                },
+            ],
+        };
+        vec![
+            GrpcTestCase {
+                name: "empty".to_owned(),
+                method: method.to_owned(),
+                request: request.clone(),
+                request_grpc: request_grpc.clone(),
+                response_grpc: stream(Vec::<CopyMediaResponse>::new(), None),
+                response: vec![],
+            },
+            GrpcTestCase {
+                name: "possible outcomes".to_owned(),
+                method: method.to_owned(),
+                request: request.clone(),
+                request_grpc: request_grpc.clone(),
+                response_grpc: stream(
+                    vec![
+                        CopyMediaResponse {
+                            media_id: vec![1; MEDIA_ID_LEN],
+                            response: Some(copy_media_response::Response::Success(
+                                copy_media_response::CopySuccess { cdn: 5 },
+                            )),
+                        },
+                        CopyMediaResponse {
+                            media_id: vec![2; MEDIA_ID_LEN],
+                            response: Some(copy_media_response::Response::SourceNotFound(
+                                Default::default(),
+                            )),
+                        },
+                        CopyMediaResponse {
+                            media_id: vec![3; MEDIA_ID_LEN],
+                            response: Some(copy_media_response::Response::WrongSourceLength(
+                                Default::default(),
+                            )),
+                        },
+                        CopyMediaResponse {
+                            media_id: vec![4; MEDIA_ID_LEN],
+                            response: Some(copy_media_response::Response::OutOfSpace(
+                                Default::default(),
+                            )),
+                        },
+                    ],
+                    None,
+                ),
+                response: vec![
+                    CopyBackupMediaOut::Item(CopyBackupMediaOutcome {
+                        media_id: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                        cdn_or_failure: Ok(5),
+                    }),
+                    CopyBackupMediaOut::Item(CopyBackupMediaOutcome {
+                        media_id: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+                        cdn_or_failure: Err(CopyBackupMediaFailure::SourceNotFound),
+                    }),
+                    CopyBackupMediaOut::Item(CopyBackupMediaOutcome {
+                        media_id: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+                        cdn_or_failure: Err(CopyBackupMediaFailure::WrongSourceLength),
+                    }),
+                    CopyBackupMediaOut::Item(CopyBackupMediaOutcome {
+                        media_id: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+                        cdn_or_failure: Err(CopyBackupMediaFailure::OutOfSpace),
+                    }),
+                ],
+            },
+            GrpcTestCase {
+                name: "malformed item".to_owned(),
+                method: method.to_owned(),
+                request: request.clone(),
+                request_grpc: request_grpc.clone(),
+                response_grpc: stream(
+                    vec![
+                        CopyMediaResponse {
+                            media_id: vec![1; MEDIA_ID_LEN],
+                            response: Some(copy_media_response::Response::Success(
+                                copy_media_response::CopySuccess { cdn: 5 },
+                            )),
+                        },
+                        CopyMediaResponse {
+                            media_id: vec![2; 1],
+                            response: Some(copy_media_response::Response::Success(
+                                copy_media_response::CopySuccess { cdn: 5 },
+                            )),
+                        },
+                        CopyMediaResponse {
+                            media_id: vec![3; MEDIA_ID_LEN],
+                            response: Some(copy_media_response::Response::Success(
+                                copy_media_response::CopySuccess { cdn: 5 },
+                            )),
+                        },
+                    ],
+                    None,
+                ),
+                response: vec![
+                    CopyBackupMediaOut::Item(CopyBackupMediaOutcome {
+                        media_id: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                        cdn_or_failure: Ok(5),
+                    }),
+                    CopyBackupMediaOut::InvalidDataInStream,
+                ],
+            },
+            GrpcTestCase {
+                name: "credential rejected".to_owned(),
+                method: method.to_owned(),
+                request: request.clone(),
+                request_grpc: request_grpc.clone(),
+                response_grpc: stream(
+                    Vec::<CopyMediaResponse>::new(),
+                    Some(backup_stream_unauthorized(true)),
+                ),
+                response: vec![CopyBackupMediaOut::CredentialRejected],
+            },
+            GrpcTestCase {
+                name: "credential rejected without appropriate server info".to_owned(),
+                method: method.to_owned(),
+                request: request.clone(),
+                request_grpc: request_grpc.clone(),
+                response_grpc: stream(
+                    Vec::<CopyMediaResponse>::new(),
+                    Some(backup_stream_unauthorized(false)),
+                ),
+                response: vec![CopyBackupMediaOut::CredentialRejectedWithoutAppropriateServerInfo],
+            },
+        ]
+    }
+
+    #[derive(Debug)]
+    pub enum DeleteBackupMediaOut {
+        Item(DeleteBackupMediaItem),
+        InvalidDataInStream,
+        CredentialRejected,
+        CredentialRejectedWithoutAppropriateServerInfo,
+    }
+
+    #[allow(clippy::type_complexity)]
+    pub fn delete_media_test_cases() -> Vec<
+        GrpcTestCase<
+            Vec<DeleteBackupMediaItem>,
+            DeleteMediaRequest,
+            http::Response<BodyWithTrailers>,
+            Vec<DeleteBackupMediaOut>,
+        >,
+    > {
+        let method = "/org.signal.chat.backup.BackupsAnonymous/DeleteMedia";
+        let request = vec![
+            DeleteBackupMediaItem {
+                media_id: [1; MEDIA_ID_LEN],
+                cdn: 1,
+            },
+            DeleteBackupMediaItem {
+                media_id: [2; MEDIA_ID_LEN],
+                cdn: 2,
+            },
+        ];
+        let request_grpc = DeleteMediaRequest {
+            signed_presentation: Some(SignedPresentation {
+                presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
+                presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
+            }),
+            items: vec![
+                DeleteMediaItem {
+                    cdn: 1,
+                    media_id: vec![1; MEDIA_ID_LEN],
+                },
+                DeleteMediaItem {
+                    cdn: 2,
+                    media_id: vec![2; MEDIA_ID_LEN],
+                },
+            ],
+        };
+        vec![
+            GrpcTestCase {
+                name: "empty".to_owned(),
+                method: method.to_owned(),
+                request: request.clone(),
+                request_grpc: request_grpc.clone(),
+                response_grpc: stream(Vec::<DeleteMediaResponse>::new(), None),
+                response: vec![],
+            },
+            GrpcTestCase {
+                name: "possible outcomes".to_owned(),
+                method: method.to_owned(),
+                request: request.clone(),
+                request_grpc: request_grpc.clone(),
+                response_grpc: stream(
+                    vec![
+                        DeleteMediaResponse {
+                            deleted_item: Some(DeleteMediaItem {
+                                cdn: 1,
+                                media_id: vec![1; MEDIA_ID_LEN],
+                            }),
+                        },
+                        DeleteMediaResponse {
+                            deleted_item: Some(DeleteMediaItem {
+                                cdn: 2,
+                                media_id: vec![2; MEDIA_ID_LEN],
+                            }),
+                        },
+                    ],
+                    None,
+                ),
+                response: vec![
+                    DeleteBackupMediaOut::Item(DeleteBackupMediaItem {
+                        cdn: 1,
+                        media_id: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                    }),
+                    DeleteBackupMediaOut::Item(DeleteBackupMediaItem {
+                        cdn: 2,
+                        media_id: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+                    }),
+                ],
+            },
+            GrpcTestCase {
+                name: "malformed item".to_owned(),
+                method: method.to_owned(),
+                request: request.clone(),
+                request_grpc: request_grpc.clone(),
+                response_grpc: stream(
+                    vec![
+                        DeleteMediaResponse {
+                            deleted_item: Some(DeleteMediaItem {
+                                cdn: 1,
+                                media_id: vec![1; MEDIA_ID_LEN],
+                            }),
+                        },
+                        DeleteMediaResponse {
+                            deleted_item: Some(DeleteMediaItem {
+                                cdn: 2,
+                                media_id: vec![2; 1],
+                            }),
+                        },
+                        DeleteMediaResponse {
+                            deleted_item: Some(DeleteMediaItem {
+                                cdn: 3,
+                                media_id: vec![3; MEDIA_ID_LEN],
+                            }),
+                        },
+                    ],
+                    None,
+                ),
+                response: vec![
+                    DeleteBackupMediaOut::Item(DeleteBackupMediaItem {
+                        cdn: 1,
+                        media_id: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                    }),
+                    DeleteBackupMediaOut::InvalidDataInStream,
+                ],
+            },
+            GrpcTestCase {
+                name: "credential rejected".to_owned(),
+                method: method.to_owned(),
+                request: request.clone(),
+                request_grpc: request_grpc.clone(),
+                response_grpc: stream(
+                    Vec::<DeleteMediaResponse>::new(),
+                    Some(backup_stream_unauthorized(true)),
+                ),
+                response: vec![DeleteBackupMediaOut::CredentialRejected],
+            },
+            GrpcTestCase {
+                name: "credential rejected without appropriate server info".to_owned(),
+                method: method.to_owned(),
+                request: request.clone(),
+                request_grpc: request_grpc.clone(),
+                response_grpc: stream(
+                    Vec::<DeleteMediaResponse>::new(),
+                    Some(backup_stream_unauthorized(false)),
+                ),
+                response: vec![
+                    DeleteBackupMediaOut::CredentialRejectedWithoutAppropriateServerInfo,
+                ],
+            },
+        ]
+    }
+
+    fn backup_stream_unauthorized(include_stream_closed_info: bool) -> tonic::Status {
+        let backup_info = if include_stream_closed_info {
+            vec![BackupStreamClosed {
+                reason: Some(backup_stream_closed::Reason::FailedAuthentication(
+                    FailedZkAuthentication {
+                        description: "bad!".to_owned(),
+                    },
+                )),
+            }]
+        } else {
+            vec![]
+        };
+        status_for_server_side_error(tonic::Code::Aborted, "STREAM_CLOSED", backup_info)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::collections::HashMap;
@@ -608,7 +965,6 @@ mod test {
 
     use assert_matches::assert_matches;
     use futures_util::FutureExt as _;
-    use libsignal_net_grpc::proto::chat::backup::CopyMediaItem;
     use libsignal_net_grpc::proto::chat::services;
     use test_case::test_case;
 
@@ -617,7 +973,7 @@ mod test {
     use crate::api::testutil::fixed_seed_test_rng;
     use crate::grpc::testutil::{
         GrpcOverrideRequestValidator, RequestValidator, collect_up_to_and_including_first_error,
-        err, ok, req, status_for_server_side_error, stream,
+        err, ok, req, run_tests_with_generic_responses,
     };
 
     /// A variation of `==` that ignores header order, since the gRPC encoding of this type uses a
@@ -681,8 +1037,8 @@ mod test {
                     "/org.signal.chat.backup.BackupsAnonymous/GetUploadForm",
                     GetUploadFormRequest {
                         signed_presentation: Some(SignedPresentation {
-                            presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
-                            presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
+                            presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
+                            presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
                         }),
                         upload_type: Some(UploadType::Messages(MessagesUploadType {})),
                         upload_length: 12345,
@@ -745,8 +1101,8 @@ mod test {
                     "/org.signal.chat.backup.BackupsAnonymous/GetUploadForm",
                     GetUploadFormRequest {
                         signed_presentation: Some(SignedPresentation {
-                            presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
-                            presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
+                            presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
+                            presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
                         }),
                         upload_length: 12345,
                         upload_type: Some(UploadType::Media(MediaUploadType {})),
@@ -788,8 +1144,8 @@ mod test {
                 "/org.signal.chat.backup.BackupsAnonymous/SetPublicKey",
                 SetPublicKeyRequest {
                     signed_presentation: Some(SignedPresentation {
-                        presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
-                        presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
+                        presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
+                        presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
                     }),
                     public_key: BackupAuth::TEST_SIGNING_KEY_PUB.to_vec(),
                 },
@@ -836,8 +1192,8 @@ mod test {
                 "/org.signal.chat.backup.BackupsAnonymous/GetCdnCredentials",
                 GetCdnCredentialsRequest {
                     signed_presentation: Some(SignedPresentation {
-                        presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
-                        presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
+                        presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
+                        presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
                     }),
                     cdn: 15,
                 },
@@ -880,8 +1236,8 @@ mod test {
                 "/org.signal.chat.backup.BackupsAnonymous/GetSvrBCredentials",
                 GetSvrBCredentialsRequest {
                     signed_presentation: Some(SignedPresentation {
-                        presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
-                        presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
+                        presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
+                        presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
                     }),
                 },
             ),
@@ -921,8 +1277,8 @@ mod test {
                 "/org.signal.chat.backup.BackupsAnonymous/Refresh",
                 RefreshRequest {
                     signed_presentation: Some(SignedPresentation {
-                        presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
-                        presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
+                        presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
+                        presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
                     }),
                 },
             ),
@@ -960,8 +1316,8 @@ mod test {
                 "/org.signal.chat.backup.BackupsAnonymous/DeleteAll",
                 RefreshRequest {
                     signed_presentation: Some(SignedPresentation {
-                        presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
-                        presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
+                        presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
+                        presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
                     }),
                 },
             ),
@@ -980,254 +1336,121 @@ mod test {
             .expect("sync")
     }
 
-    fn backup_stream_unauthorized(include_stream_closed_info: bool) -> tonic::Status {
-        let backup_info = if include_stream_closed_info {
-            vec![BackupStreamClosed {
-                reason: Some(backup_stream_closed::Reason::FailedAuthentication(
-                    FailedZkAuthentication {
-                        description: "bad!".to_owned(),
-                    },
-                )),
-            }]
-        } else {
-            vec![]
-        };
-        status_for_server_side_error(tonic::Code::Aborted, "STREAM_CLOSED", backup_info)
+    #[test]
+    fn test_copy_media() {
+        use super::test_cases::*;
+        run_tests_with_generic_responses(
+            copy_media_test_cases(),
+            |chat: Unauth<_>, items| async move {
+                collect_up_to_and_including_first_error(chat.copy_backup_media(
+                    &BackupAuth::generate_for_testing(
+                        zkgroup::backups::BackupCredentialType::Media,
+                        &mut fixed_seed_test_rng(),
+                    ),
+                    items,
+                    &mut fixed_seed_test_rng(),
+                ))
+                .await
+            },
+            |resp, result| {
+                assert_eq!(
+                    resp.len(),
+                    result.len(),
+                    "result had different number of items than expected. expected: {resp:#?}, actual: {result:#?}"
+                );
+                for (i, (next, expected)) in result.iter().zip(resp).enumerate() {
+                    match expected {
+                        CopyBackupMediaOut::Item(expected_item) => {
+                            let Ok(item) = next else {
+                                panic!("{i}: should not have been stream-level error");
+                            };
+                            assert_eq!(&expected_item, item, "{i}");
+                        }
+                        CopyBackupMediaOut::InvalidDataInStream => {
+                            assert_matches!(
+                                next,
+                                Err(RequestError::Unexpected { log_safe })
+                                if log_safe == "malformed media id (1 bytes)",
+                                "{i}"
+                            );
+                        }
+                        CopyBackupMediaOut::CredentialRejected => {
+                            assert_matches!(
+                                next,
+                                Err(RequestError::Other(BackupAuthCredentialRejected)),
+                                "{i}"
+                            );
+                        }
+                        CopyBackupMediaOut::CredentialRejectedWithoutAppropriateServerInfo => {
+                            assert_matches!(
+                                next,
+                                Err(RequestError::Unexpected { log_safe })
+                                if log_safe == "stream closed with no reason",
+                                "{i}"
+                            );
+                        }
+                    }
+                }
+            },
+        );
     }
 
-    #[test_case(vec![], None => with |result: Vec<_>| assert_matches!(&result[..], []))]
-    #[test_case(vec![
-        CopyMediaResponse {
-            media_id: vec![1; MEDIA_ID_LEN],
-            response: Some(copy_media_response::Response::Success(copy_media_response::CopySuccess {
-                cdn: 5,
-            })),
-        },
-        CopyMediaResponse {
-            media_id: vec![2; MEDIA_ID_LEN],
-            response: Some(copy_media_response::Response::SourceNotFound(Default::default())),
-        },
-        CopyMediaResponse {
-            media_id: vec![3; MEDIA_ID_LEN],
-            response: Some(copy_media_response::Response::WrongSourceLength(Default::default())),
-        },
-        CopyMediaResponse {
-            media_id: vec![4; MEDIA_ID_LEN],
-            response: Some(copy_media_response::Response::OutOfSpace(Default::default())),
-        },
-    ], None => with |result: Vec<_>| assert_matches!(&result[..], [
-        Ok(CopyBackupMediaOutcome {
-            media_id: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            cdn_or_failure: Ok(5),
-        }),
-        Ok(CopyBackupMediaOutcome {
-            media_id: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
-            cdn_or_failure: Err(CopyBackupMediaFailure::SourceNotFound),
-        }),
-        Ok(CopyBackupMediaOutcome {
-            media_id: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
-            cdn_or_failure: Err(CopyBackupMediaFailure::WrongSourceLength),
-        }),
-        Ok(CopyBackupMediaOutcome {
-            media_id: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-            cdn_or_failure: Err(CopyBackupMediaFailure::OutOfSpace),
-        }),
-    ]))]
-    #[test_case(vec![
-        CopyMediaResponse {
-            media_id: vec![1; MEDIA_ID_LEN],
-            response: Some(copy_media_response::Response::Success(copy_media_response::CopySuccess {
-                cdn: 5,
-            })),
-        },
-        CopyMediaResponse {
-            media_id: vec![2; 1],
-            response: Some(copy_media_response::Response::Success(copy_media_response::CopySuccess {
-                cdn: 5,
-            })),
-        },
-        CopyMediaResponse {
-            media_id: vec![3; MEDIA_ID_LEN],
-            response: Some(copy_media_response::Response::Success(copy_media_response::CopySuccess {
-                cdn: 5,
-            })),
-        },
-    ], None => with |result: Vec<_>| assert_matches!(&result[..], [
-        Ok(CopyBackupMediaOutcome {
-            media_id: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            cdn_or_failure: Ok(5),
-        }),
-        Err(RequestError::Unexpected { log_safe }),
-    ] if log_safe == "malformed media id (1 bytes)"))]
-    #[test_case(vec![], Some(backup_stream_unauthorized(true)) => with |result: Vec<_>| assert_matches!(&result[..], [
-        Err(RequestError::Other(BackupAuthCredentialRejected)),
-    ]))]
-    #[test_case(vec![], Some(backup_stream_unauthorized(false)) => with |result: Vec<_>| assert_matches!(&result[..], [
-        Err(RequestError::Unexpected { log_safe }),
-    ] if log_safe.contains("stream closed with no reason")))]
-    fn test_copy_media(
-        result_items: Vec<CopyMediaResponse>,
-        result_status: Option<tonic::Status>,
-    ) -> Vec<StreamResult<CopyBackupMediaOutcome, BackupAuthCredentialRejected>> {
-        let validator = RequestValidator {
-            expected: req(
-                "/org.signal.chat.backup.BackupsAnonymous/CopyMedia",
-                CopyMediaRequest {
-                    signed_presentation: Some(SignedPresentation {
-                        presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
-                        presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
-                    }),
-                    items: vec![
-                        CopyMediaItem {
-                            source_attachment_cdn: 1,
-                            source_key: "key1".to_owned(),
-                            object_length: 111,
-                            media_id: vec![1; MEDIA_ID_LEN],
-                            hmac_key: vec![b'A'; MEDIA_ENCRYPTION_HMAC_KEY_LEN],
-                            encryption_key: vec![b'B'; MEDIA_ENCRYPTION_AES_KEY_LEN],
-                        },
-                        CopyMediaItem {
-                            source_attachment_cdn: 2,
-                            source_key: "key2".to_owned(),
-                            object_length: 222,
-                            media_id: vec![2; MEDIA_ID_LEN],
-                            hmac_key: vec![b'C'; MEDIA_ENCRYPTION_HMAC_KEY_LEN],
-                            encryption_key: vec![b'D'; MEDIA_ENCRYPTION_AES_KEY_LEN],
-                        },
-                    ],
-                },
-            ),
-            response: stream(result_items, result_status),
-        };
-
-        collect_up_to_and_including_first_error(Unauth(&validator).copy_backup_media(
-            &BackupAuth::generate_for_testing(
-                zkgroup::backups::BackupCredentialType::Media,
-                &mut fixed_seed_test_rng(),
-            ),
-            vec![
-                CopyBackupMediaItem {
-                    source_attachment_cdn: 1,
-                    source_key: "key1".to_owned(),
-                    object_length: 111,
-                    media_id: [1; MEDIA_ID_LEN],
-                    encryption_key: *const_str::concat_bytes!([b'A'; 32], [b'B'; 32]),
-                },
-                CopyBackupMediaItem {
-                    source_attachment_cdn: 2,
-                    source_key: "key2".to_owned(),
-                    object_length: 222,
-                    media_id: [2; MEDIA_ID_LEN],
-                    encryption_key: *const_str::concat_bytes!([b'C'; 32], [b'D'; 32]),
-                },
-            ],
-            &mut fixed_seed_test_rng(),
-        ))
-        .now_or_never()
-        .expect("sync")
-    }
-
-    #[test_case(vec![], None => with |result: Vec<_>| assert_matches!(&result[..], []))]
-    #[test_case(vec![
-        DeleteMediaResponse {
-            deleted_item: Some(DeleteMediaItem {
-                cdn: 1,
-                media_id: vec![1; MEDIA_ID_LEN],
-            })
-        },
-        DeleteMediaResponse {
-            deleted_item: Some(DeleteMediaItem {
-                cdn: 2,
-                media_id: vec![2; MEDIA_ID_LEN],
-            })
-        },
-    ], None => with |result: Vec<_>| assert_matches!(&result[..], [
-        Ok(DeleteBackupMediaItem {
-            cdn: 1,
-            media_id: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-        }),
-        Ok(DeleteBackupMediaItem {
-            cdn: 2,
-            media_id: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
-        }),
-    ]))]
-    #[test_case(vec![
-        DeleteMediaResponse {
-            deleted_item: Some(DeleteMediaItem {
-                cdn: 1,
-                media_id: vec![1; MEDIA_ID_LEN],
-            })
-        },
-        DeleteMediaResponse {
-            deleted_item: Some(DeleteMediaItem {
-                cdn: 2,
-                media_id: vec![2; 1],
-            })
-        },
-        DeleteMediaResponse {
-            deleted_item: Some(DeleteMediaItem {
-                cdn: 3,
-                media_id: vec![3; MEDIA_ID_LEN],
-            })
-        },
-    ], None => with |result: Vec<_>| assert_matches!(&result[..], [
-        Ok(DeleteBackupMediaItem {
-            cdn: 1,
-            media_id: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-        }),
-        Err(RequestError::Unexpected { log_safe }),
-    ] if log_safe == "malformed media id (1 bytes)"))]
-    #[test_case(vec![], Some(backup_stream_unauthorized(true)) => with |result: Vec<_>| assert_matches!(&result[..], [
-        Err(RequestError::Other(BackupAuthCredentialRejected)),
-    ]))]
-    #[test_case(vec![], Some(backup_stream_unauthorized(false)) => with |result: Vec<_>| assert_matches!(&result[..], [
-        Err(RequestError::Unexpected { log_safe }),
-    ] if log_safe.contains("stream closed with no reason")))]
-    fn test_delete_media(
-        result_items: Vec<DeleteMediaResponse>,
-        result_status: Option<tonic::Status>,
-    ) -> Vec<StreamResult<DeleteBackupMediaItem, BackupAuthCredentialRejected>> {
-        let validator = RequestValidator {
-            expected: req(
-                "/org.signal.chat.backup.BackupsAnonymous/DeleteMedia",
-                DeleteMediaRequest {
-                    signed_presentation: Some(SignedPresentation {
-                        presentation: BackupAuth::EXPECTED_PRESENTATION.to_vec(),
-                        presentation_signature: BackupAuth::EXPECTED_SIGNATURE.to_vec(),
-                    }),
-                    items: vec![
-                        DeleteMediaItem {
-                            cdn: 1,
-                            media_id: vec![1; MEDIA_ID_LEN],
-                        },
-                        DeleteMediaItem {
-                            cdn: 2,
-                            media_id: vec![2; MEDIA_ID_LEN],
-                        },
-                    ],
-                },
-            ),
-            response: stream(result_items, result_status),
-        };
-
-        collect_up_to_and_including_first_error(Unauth(&validator).delete_backup_media(
-            &BackupAuth::generate_for_testing(
-                zkgroup::backups::BackupCredentialType::Media,
-                &mut fixed_seed_test_rng(),
-            ),
-            &[
-                DeleteBackupMediaItem {
-                    media_id: [1; MEDIA_ID_LEN],
-                    cdn: 1,
-                },
-                DeleteBackupMediaItem {
-                    media_id: [2; MEDIA_ID_LEN],
-                    cdn: 2,
-                },
-            ],
-            &mut fixed_seed_test_rng(),
-        ))
-        .now_or_never()
-        .expect("sync")
+    #[test]
+    fn test_delete_media() {
+        use super::test_cases::*;
+        run_tests_with_generic_responses(
+            delete_media_test_cases(),
+            |chat: Unauth<_>, items| async move {
+                collect_up_to_and_including_first_error(chat.delete_backup_media(
+                    &BackupAuth::generate_for_testing(
+                        zkgroup::backups::BackupCredentialType::Media,
+                        &mut fixed_seed_test_rng(),
+                    ),
+                    &items,
+                    &mut fixed_seed_test_rng(),
+                ))
+                .await
+            },
+            |resp, result| {
+                assert_eq!(
+                    resp.len(),
+                    result.len(),
+                    "result had different number of items than expected. expected: {resp:#?}, actual: {result:#?}"
+                );
+                for (i, (next, expected)) in result.iter().zip(resp).enumerate() {
+                    match expected {
+                        DeleteBackupMediaOut::Item(expected_item) => {
+                            let Ok(item) = next else {
+                                panic!("{i}: should not have been stream-level error");
+                            };
+                            assert_eq!(&expected_item, item, "{i}");
+                        }
+                        DeleteBackupMediaOut::InvalidDataInStream => {
+                            assert_matches!(
+                                next,
+                                Err(RequestError::Unexpected { log_safe })
+                                if log_safe == "malformed media id (1 bytes)",
+                                "{i}"
+                            );
+                        }
+                        DeleteBackupMediaOut::CredentialRejected => {
+                            assert_matches!(
+                                next,
+                                Err(RequestError::Other(BackupAuthCredentialRejected)),
+                                "{i}"
+                            );
+                        }
+                        DeleteBackupMediaOut::CredentialRejectedWithoutAppropriateServerInfo => {
+                            assert_matches!(
+                                next,
+                                Err(RequestError::Unexpected { log_safe })
+                                if log_safe == "stream closed with no reason",
+                                "{i}"
+                            );
+                        }
+                    }
+                }
+            },
+        );
     }
 }

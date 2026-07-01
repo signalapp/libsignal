@@ -6,7 +6,7 @@
 //! The `grpc` module and its submodules implement a chat server based on the gRPC messages from
 //! [libsignal-net-grpc](libsignal_net_grpc).
 
-mod backups;
+pub mod backups;
 pub mod devices;
 mod messages;
 mod profiles;
@@ -664,19 +664,116 @@ pub struct GrpcTestCase<Request, RequestGrpc, ResponseGrpc, Response> {
     pub response: Response,
 }
 
-#[cfg(test)]
-pub(crate) mod testutil {
+// Utilities used by exported test cases (and thus not `cfg(test)`).
+pub mod test_case_util {
     use base64::Engine as _;
     use base64::prelude::BASE64_STANDARD;
     use futures_util::FutureExt as _;
     use http_body_util::BodyExt as _;
     use http_body_util::combinators::BoxBody;
-    use libsignal_net::chat::{Request, Response, SendError};
-    use tonic::Status;
 
     use super::*;
-    use crate::api::testutil::TEST_SELF_ACI;
-    use crate::ws::WsConnection;
+
+    pub(crate) const GRPC_STATUS_HEADER: http::HeaderName =
+        http::HeaderName::from_static("grpc-status");
+    pub(crate) const GRPC_STATUS_DETAILS_HEADER: http::HeaderName =
+        http::HeaderName::from_static("grpc-status-details-bin");
+
+    pub(crate) fn stream(
+        response: Vec<impl prost::Message + 'static>,
+        error: Option<tonic::Status>,
+    ) -> http::Response<BodyWithTrailers> {
+        let encoded = tonic::codec::EncodeBody::new_server(
+            tonic_prost::ProstEncoder::new(Default::default()),
+            futures_util::stream::iter(response.into_iter().map(Ok).chain(error.map(Err))),
+            None,
+            Default::default(),
+            None,
+        )
+        .collect()
+        .now_or_never()
+        .expect("non-blocking encoding")
+        .expect("can read entire message");
+
+        let trailers = encoded.trailers().cloned().unwrap_or_default();
+        let body = encoded.to_bytes().into();
+
+        http::Response::new(BodyWithTrailers {
+            data: body,
+            trailers,
+        })
+    }
+
+    #[derive(Clone)]
+    pub struct BodyWithTrailers {
+        pub(crate) data: Vec<u8>,
+        pub(crate) trailers: http::HeaderMap,
+    }
+
+    pub trait IntoHttpBody {
+        fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible>;
+    }
+
+    impl IntoHttpBody for Vec<u8> {
+        fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible> {
+            http_body_util::Full::new(bytes::Bytes::from(self)).boxed()
+        }
+    }
+
+    impl IntoHttpBody for BodyWithTrailers {
+        fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible> {
+            http_body_util::Full::new(bytes::Bytes::from(self.data))
+                .with_trailers(std::future::ready(Some(Ok(self.trailers))))
+                .boxed()
+        }
+    }
+
+    pub(crate) fn status_for_server_side_error(
+        code: tonic::Code,
+        reason: &str,
+        extra_info: Vec<impl prost::Name>,
+    ) -> tonic::Status {
+        let original_error_info = google::rpc::ErrorInfo {
+            reason: reason.into(),
+            domain: SIGNAL_ERRORINFO_DOMAIN.into(),
+            metadata: Default::default(),
+        };
+        let original_status = google::rpc::Status {
+            code: code.into(),
+            message: "message".to_owned(),
+            details: extra_info
+                .into_iter()
+                .map(|info| prost_types::Any::from_msg(&info).expect("can encode"))
+                .chain([prost_types::Any::from_msg(&original_error_info).expect("can encode")])
+                .collect(),
+        };
+
+        tonic::Status::from_header_map(&http::HeaderMap::from_iter([
+            (
+                GRPC_STATUS_HEADER,
+                http::HeaderValue::from_str(&original_status.code.to_string()).expect("valid"),
+            ),
+            (
+                GRPC_STATUS_DETAILS_HEADER,
+                http::HeaderValue::from_str(
+                    &BASE64_STANDARD.encode(original_status.encode_to_vec()),
+                )
+                .expect("valid"),
+            ),
+        ]))
+        .expect("valid")
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod testutil {
+    use futures_util::FutureExt as _;
+    use http_body_util::BodyExt as _;
+    use http_body_util::combinators::BoxBody;
+    use tonic::Status;
+
+    use super::test_case_util::*;
+    use super::*;
 
     pub(crate) fn run_tests<
         Request,
@@ -686,7 +783,35 @@ pub(crate) mod testutil {
         F: Future,
         Wrapper: From<RequestValidator<Vec<u8>>>,
     >(
-        tests: Vec<GrpcTestCase<Request, RequestGrpc, ResponseGrpc, Response>>,
+        tests: impl IntoIterator<Item = GrpcTestCase<Request, RequestGrpc, ResponseGrpc, Response>>,
+        invoke: impl Fn(Wrapper, Request) -> F,
+        check: impl Fn(Response, F::Output),
+    ) {
+        run_tests_with_generic_responses(
+            tests.into_iter().map(|item| GrpcTestCase {
+                name: item.name,
+                method: item.method,
+                request: item.request,
+                request_grpc: item.request_grpc,
+                response_grpc: ok(item.response_grpc),
+                response: item.response,
+            }),
+            invoke,
+            check,
+        )
+    }
+
+    pub(crate) fn run_tests_with_generic_responses<
+        Request,
+        RequestGrpc: prost::Message + 'static,
+        ResponseHttp: IntoHttpBody,
+        Response,
+        F: Future,
+        Wrapper: From<RequestValidator<ResponseHttp>>,
+    >(
+        tests: impl IntoIterator<
+            Item = GrpcTestCase<Request, RequestGrpc, http::Response<ResponseHttp>, Response>,
+        >,
         invoke: impl Fn(Wrapper, Request) -> F,
         check: impl Fn(Response, F::Output),
     ) {
@@ -697,7 +822,7 @@ pub(crate) mod testutil {
                 invoke(
                     RequestValidator {
                         expected: req(&test.method, test.request_grpc),
-                        response: ok(test.response_grpc),
+                        response: test.response_grpc,
                     }
                     .into(),
                     test.request,
@@ -707,11 +832,6 @@ pub(crate) mod testutil {
             );
         }
     }
-
-    pub(crate) const GRPC_STATUS_HEADER: http::HeaderName =
-        http::HeaderName::from_static("grpc-status");
-    pub(crate) const GRPC_STATUS_DETAILS_HEADER: http::HeaderName =
-        http::HeaderName::from_static("grpc-status-details-bin");
 
     pub(crate) fn encode_for_grpc<C: tonic::codec::Encoder<Error = Status>>(
         encoder: C,
@@ -768,91 +888,6 @@ pub(crate) mod testutil {
         Status::new(code, "").into_http()
     }
 
-    pub(crate) fn stream(
-        response: Vec<impl prost::Message + 'static>,
-        error: Option<tonic::Status>,
-    ) -> http::Response<BodyWithTrailers> {
-        let encoded = tonic::codec::EncodeBody::new_server(
-            tonic_prost::ProstEncoder::new(Default::default()),
-            futures_util::stream::iter(response.into_iter().map(Ok).chain(error.map(Err))),
-            None,
-            Default::default(),
-            None,
-        )
-        .collect()
-        .now_or_never()
-        .expect("non-blocking encoding")
-        .expect("can read entire message");
-
-        let trailers = encoded.trailers().cloned().unwrap_or_default();
-        let body = encoded.to_bytes().into();
-
-        http::Response::new(BodyWithTrailers {
-            data: body,
-            trailers,
-        })
-    }
-
-    #[derive(Clone)]
-    pub(crate) struct BodyWithTrailers {
-        data: Vec<u8>,
-        trailers: http::HeaderMap,
-    }
-
-    trait IntoHttpBody {
-        fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible>;
-    }
-
-    impl IntoHttpBody for Vec<u8> {
-        fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible> {
-            http_body_util::Full::new(bytes::Bytes::from(self)).boxed()
-        }
-    }
-
-    impl IntoHttpBody for BodyWithTrailers {
-        fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible> {
-            http_body_util::Full::new(bytes::Bytes::from(self.data))
-                .with_trailers(std::future::ready(Some(Ok(self.trailers))))
-                .boxed()
-        }
-    }
-
-    pub(crate) fn status_for_server_side_error(
-        code: tonic::Code,
-        reason: &str,
-        extra_info: Vec<impl prost::Name>,
-    ) -> tonic::Status {
-        let original_error_info = google::rpc::ErrorInfo {
-            reason: reason.into(),
-            domain: SIGNAL_ERRORINFO_DOMAIN.into(),
-            metadata: Default::default(),
-        };
-        let original_status = google::rpc::Status {
-            code: code.into(),
-            message: "message".to_owned(),
-            details: extra_info
-                .into_iter()
-                .map(|info| prost_types::Any::from_msg(&info).expect("can encode"))
-                .chain([prost_types::Any::from_msg(&original_error_info).expect("can encode")])
-                .collect(),
-        };
-
-        tonic::Status::from_header_map(&http::HeaderMap::from_iter([
-            (
-                GRPC_STATUS_HEADER,
-                http::HeaderValue::from_str(&original_status.code.to_string()).expect("valid"),
-            ),
-            (
-                GRPC_STATUS_DETAILS_HEADER,
-                http::HeaderValue::from_str(
-                    &BASE64_STANDARD.encode(original_status.encode_to_vec()),
-                )
-                .expect("valid"),
-            ),
-        ]))
-        .expect("valid")
-    }
-
     /// Validates that the [`WsConnection`] implementation of an API defers to the gRPC
     /// implementation when the `message` override is provided.
     ///
@@ -861,7 +896,8 @@ pub(crate) mod testutil {
         pub(crate) validator: V,
         pub(crate) message: &'static str,
     }
-    impl<V> WsConnection for GrpcOverrideRequestValidator<V>
+
+    impl<V> crate::ws::WsConnection for GrpcOverrideRequestValidator<V>
     where
         V: Send + Sync,
         for<'a> &'a V: GrpcServiceProvider,
@@ -870,8 +906,8 @@ pub(crate) mod testutil {
             &self,
             _log_tag: &'static str,
             _log_safe_path: &str,
-            _request: Request,
-        ) -> Result<Response, SendError> {
+            _request: libsignal_net::chat::Request,
+        ) -> Result<libsignal_net::chat::Response, libsignal_net::chat::SendError> {
             panic!("We should be only sending grpc here");
         }
 
@@ -884,7 +920,7 @@ pub(crate) mod testutil {
         }
 
         fn self_aci(&self) -> Option<libsignal_core::Aci> {
-            Some(TEST_SELF_ACI)
+            Some(crate::api::testutil::TEST_SELF_ACI)
         }
     }
 
@@ -968,6 +1004,7 @@ pub(crate) mod testutil {
     }
 
     static_assertions::assert_impl_all!(&'_ RequestValidator<Vec<u8>>: GrpcService);
+
     static_assertions::assert_impl_all!(&'_ RequestValidator<BodyWithTrailers>: GrpcService);
 
     /// Like `RequestValidator`, but compares the decoded protobuf of the incoming request instead
@@ -1210,10 +1247,10 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-    use crate::grpc::testutil::{
-        GRPC_STATUS_DETAILS_HEADER, GRPC_STATUS_HEADER, collect_up_to_and_including_first_error,
-        status_for_server_side_error,
+    use crate::grpc::test_case_util::{
+        GRPC_STATUS_DETAILS_HEADER, GRPC_STATUS_HEADER, status_for_server_side_error,
     };
+    use crate::grpc::testutil::collect_up_to_and_including_first_error;
 
     #[test]
     fn test_extract_server_side_error() {
