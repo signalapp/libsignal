@@ -31,6 +31,7 @@ zkgroup = { workspace = true }
 base64 = { workspace = true }
 boring-signal = { workspace = true }
 bytes = { workspace = true }
+chrono = { workspace = true }
 const-str = { workspace = true }
 derive_more = { workspace = true }
 futures-util = { workspace = true }

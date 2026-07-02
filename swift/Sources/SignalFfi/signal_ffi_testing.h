@@ -273,6 +273,10 @@ typedef struct {
 } SignalConstPointerFakeChatServer;
 
 typedef struct {
+  SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult devices;
+} SignalGetDevicesOutFfiResult;
+
+typedef struct {
   SignalOwnedBuffer username_ciphertext;
   bool keep_link_handle;
 } SignalSetUsernameLinkArgsFfiResult;
@@ -667,6 +671,10 @@ SignalFfiError *signal_testing_conversion_data_vec_u8_identity(SignalOwnedBuffer
 
 SignalFfiError *signal_testing_conversion_data_vec_u8_to_string(SignalCStringPtr *out, SignalBorrowedBuffer x);
 
+SignalFfiError *signal_testing_conversion_device_id_identity(uint8_t *out, uint8_t x);
+
+SignalFfiError *signal_testing_conversion_device_id_to_string(SignalCStringPtr *out, uint8_t x);
+
 SignalFfiError *signal_testing_conversion_i32_identity(int32_t *out, int32_t x);
 
 SignalFfiError *signal_testing_conversion_i32_to_string(SignalCStringPtr *out, int32_t x);
@@ -676,6 +684,10 @@ SignalFfiError *signal_testing_conversion_service_id_identity(SignalServiceIdFix
 SignalFfiError *signal_testing_conversion_service_id_to_string(SignalCStringPtr *out, const SignalServiceIdFixedWidthBinaryBytes *x);
 
 SignalFfiError *signal_testing_conversion_string_identity(SignalCStringPtr *out, SignalCStringPtr x);
+
+SignalFfiError *signal_testing_conversion_timestamp_identity(uint64_t *out, uint64_t x);
+
+SignalFfiError *signal_testing_conversion_timestamp_to_string(SignalCStringPtr *out, uint64_t x);
 
 SignalFfiError *signal_testing_conversion_u16_identity(uint16_t *out, uint16_t x);
 
@@ -755,7 +767,7 @@ SignalFfiError *signal_testing_fake_registration_session_create_session(SignalCP
 
 SignalFfiError *signal_testing_fingerprint_version_mismatch_error(uint32_t theirs, uint32_t ours);
 
-void signal_testing_force_bindgen_to_emit_structs(SignalSetUsernameLinkArgsFfiResult, SignalSetUsernameLinkOutFfiResult, SignalSetDeviceNameArgsFfiResult, SignalSetDeviceNameOutFfiResult, SignalReserveUsernameHashArgsFfiResult, SignalReserveUsernameHashOutFfiResult);
+void signal_testing_force_bindgen_to_emit_structs(SignalGetDevicesOutFfiResult, SignalSetUsernameLinkArgsFfiResult, SignalSetUsernameLinkOutFfiResult, SignalSetDeviceNameArgsFfiResult, SignalSetDeviceNameOutFfiResult, SignalReserveUsernameHashArgsFfiResult, SignalReserveUsernameHashOutFfiResult);
 
 SignalFfiError *signal_testing_future_cancellation_counter_create(SignalMutPointerTestingFutureCancellationCounter *out, uint8_t initial_value);
 
@@ -772,6 +784,8 @@ SignalFfiError *signal_testing_future_produces_other_pointer_type(SignalCPromise
 SignalFfiError *signal_testing_future_produces_pointer_type(SignalCPromiseMutPointerTestingHandleType *promise, SignalConstPointerNonSuspendingBackgroundThreadRuntime async_runtime, uint8_t input);
 
 SignalFfiError *signal_testing_future_success(SignalCPromisei32 *promise, SignalConstPointerNonSuspendingBackgroundThreadRuntime async_runtime, uint8_t input);
+
+SignalFfiError *signal_testing_get_devices_tests(SignalOwnedBufferOfGrpcTestCaseBridgedFfi *out);
 
 SignalFfiError *signal_testing_handle_type_clone(SignalMutPointerTestingHandleType *new_obj, SignalConstPointerTestingHandleType obj);
 

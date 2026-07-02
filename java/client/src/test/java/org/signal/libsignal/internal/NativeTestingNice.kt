@@ -21,11 +21,29 @@ import org.signal.libsignal.internal.NativeNiceHelpers.identity
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecArg
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 
-internal sealed class MySimpleTestEnum {
-  internal data object A : MySimpleTestEnum() {
+public data class GetDevicesOut(
+  val devices: List<org.signal.libsignal.internal.LinkedDeviceInternal>,
+) {
+  public companion object {
     @JvmStatic
+    @JvmName("fromNative")
     @CalledFromNative
-    fun fromNative(): A = A
+    internal fun fromNative(devices: Any?): GetDevicesOut =
+      GetDevicesOut(
+        devices =
+          mapBridgeVecReturn<Object, org.signal.libsignal.internal.LinkedDeviceInternal>({
+            downcastFromObject<org.signal.libsignal.internal.LinkedDeviceInternal>(it)
+          })(devices as Array<*>),
+      )
+  }
+}
+
+public sealed class MySimpleTestEnum {
+  public data object A : MySimpleTestEnum() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): A = A
 
     @CalledFromNative
     internal object FfiArgType : MySimpleTestEnum.FfiArgType()
@@ -33,10 +51,11 @@ internal sealed class MySimpleTestEnum {
     override fun toFfiArgType(): FfiArgType = FfiArgType
   }
 
-  internal data object B : MySimpleTestEnum() {
+  public data object B : MySimpleTestEnum() {
     @JvmStatic
+    @JvmName("fromNative")
     @CalledFromNative
-    fun fromNative(): B = B
+    internal fun fromNative(): B = B
 
     @CalledFromNative
     internal object FfiArgType : MySimpleTestEnum.FfiArgType()
@@ -44,18 +63,19 @@ internal sealed class MySimpleTestEnum {
     override fun toFfiArgType(): FfiArgType = FfiArgType
   }
 
-  internal sealed class FfiArgType
+  public sealed class FfiArgType
 
   internal abstract fun toFfiArgType(): FfiArgType
 }
 
 internal fun MySimpleTestEnum.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
 
-internal sealed class MyTestEnum {
-  internal data object Unit : MyTestEnum() {
+public sealed class MyTestEnum {
+  public data object Unit : MyTestEnum() {
     @JvmStatic
+    @JvmName("fromNative")
     @CalledFromNative
-    fun fromNative(): Unit = Unit
+    internal fun fromNative(): Unit = Unit
 
     @CalledFromNative
     internal object FfiArgType : MyTestEnum.FfiArgType()
@@ -63,13 +83,14 @@ internal sealed class MyTestEnum {
     override fun toFfiArgType(): FfiArgType = FfiArgType
   }
 
-  internal data class Single(
+  public data class Single(
     val _0: Int,
   ) : MyTestEnum() {
-    companion object {
+    public companion object {
       @JvmStatic
+      @JvmName("fromNative")
       @CalledFromNative
-      fun fromNative(_0: Any?): Single =
+      internal fun fromNative(_0: Any?): Single =
         Single(
           _0 =
             identity(_0 as Int),
@@ -78,7 +99,7 @@ internal sealed class MyTestEnum {
 
     @CalledFromNative
     @Suppress("ktlint:standard:backing-property-naming")
-    internal class FfiArgType : MyTestEnum.FfiArgType {
+    public class FfiArgType : MyTestEnum.FfiArgType {
       @CalledFromNative
       internal val _0: Int
       constructor(
@@ -94,13 +115,14 @@ internal sealed class MyTestEnum {
       )
   }
 
-  internal data class SingleNamed(
+  public data class SingleNamed(
     val x: Int,
   ) : MyTestEnum() {
-    companion object {
+    public companion object {
       @JvmStatic
+      @JvmName("fromNative")
       @CalledFromNative
-      fun fromNative(x: Any?): SingleNamed =
+      internal fun fromNative(x: Any?): SingleNamed =
         SingleNamed(
           x =
             identity(x as Int),
@@ -109,7 +131,7 @@ internal sealed class MyTestEnum {
 
     @CalledFromNative
     @Suppress("ktlint:standard:backing-property-naming")
-    internal class FfiArgType : MyTestEnum.FfiArgType {
+    public class FfiArgType : MyTestEnum.FfiArgType {
       @CalledFromNative
       internal val x: Int
       constructor(
@@ -125,14 +147,15 @@ internal sealed class MyTestEnum {
       )
   }
 
-  internal data class Double(
+  public data class Double(
     val _0: Int,
     val _1: Int,
   ) : MyTestEnum() {
-    companion object {
+    public companion object {
       @JvmStatic
+      @JvmName("fromNative")
       @CalledFromNative
-      fun fromNative(
+      internal fun fromNative(
         _0: Any?,
         _1: Any?,
       ): Double =
@@ -146,7 +169,7 @@ internal sealed class MyTestEnum {
 
     @CalledFromNative
     @Suppress("ktlint:standard:backing-property-naming")
-    internal class FfiArgType : MyTestEnum.FfiArgType {
+    public class FfiArgType : MyTestEnum.FfiArgType {
       @CalledFromNative
       internal val _0: Int
 
@@ -168,16 +191,17 @@ internal sealed class MyTestEnum {
       )
   }
 
-  internal data class Record(
+  public data class Record(
     val personName: String,
     val personAge: Int,
     val position: org.signal.libsignal.internal.MyTestPoint,
     val funStruct: org.signal.libsignal.internal.MyTestStruct,
   ) : MyTestEnum() {
-    companion object {
+    public companion object {
       @JvmStatic
+      @JvmName("fromNative")
       @CalledFromNative
-      fun fromNative(
+      internal fun fromNative(
         person_name: Any?,
         person_age: Any?,
         position: Any?,
@@ -197,7 +221,7 @@ internal sealed class MyTestEnum {
 
     @CalledFromNative
     @Suppress("ktlint:standard:backing-property-naming")
-    internal class FfiArgType : MyTestEnum.FfiArgType {
+    public class FfiArgType : MyTestEnum.FfiArgType {
       @CalledFromNative
       internal val person_name: Any?
 
@@ -231,21 +255,22 @@ internal sealed class MyTestEnum {
       )
   }
 
-  internal sealed class FfiArgType
+  public sealed class FfiArgType
 
   internal abstract fun toFfiArgType(): FfiArgType
 }
 
 internal fun MyTestEnum.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
 
-internal data class MyTestPoint(
+public data class MyTestPoint(
   val _0: Int,
   val _1: Int,
 ) {
-  companion object {
+  public companion object {
     @JvmStatic
+    @JvmName("fromNative")
     @CalledFromNative
-    fun fromNative(
+    internal fun fromNative(
       _0: Any?,
       _1: Any?,
     ): MyTestPoint =
@@ -259,7 +284,7 @@ internal data class MyTestPoint(
 
   @CalledFromNative
   @Suppress("ktlint:standard:backing-property-naming")
-  internal class FfiArgType {
+  public class FfiArgType {
     @CalledFromNative
     internal val _0: Int
 
@@ -283,14 +308,15 @@ internal data class MyTestPoint(
 
 internal fun MyTestPoint.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
 
-internal data class MyTestStruct(
+public data class MyTestStruct(
   val myNumericField: Int,
   val myStringField: String,
 ) {
-  companion object {
+  public companion object {
     @JvmStatic
+    @JvmName("fromNative")
     @CalledFromNative
-    fun fromNative(
+    internal fun fromNative(
       my_numeric_field: Any?,
       my_string_field: Any?,
     ): MyTestStruct =
@@ -304,7 +330,7 @@ internal data class MyTestStruct(
 
   @CalledFromNative
   @Suppress("ktlint:standard:backing-property-naming")
-  internal class FfiArgType {
+  public class FfiArgType {
     @CalledFromNative
     internal val my_numeric_field: Int
 
@@ -328,13 +354,14 @@ internal data class MyTestStruct(
 
 internal fun MyTestStruct.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
 
-internal data class ReserveUsernameHashArgs(
+public data class ReserveUsernameHashArgs(
   val usernames: List<ByteArray>,
 ) {
-  companion object {
+  public companion object {
     @JvmStatic
+    @JvmName("fromNative")
     @CalledFromNative
-    fun fromNative(usernames: Any?): ReserveUsernameHashArgs =
+    internal fun fromNative(usernames: Any?): ReserveUsernameHashArgs =
       ReserveUsernameHashArgs(
         usernames =
           mapBridgeVecReturn<ByteArray, ByteArray>({ identity(it) })(usernames as Array<*>),
@@ -342,14 +369,15 @@ internal data class ReserveUsernameHashArgs(
   }
 }
 
-internal sealed class ReserveUsernameHashOut {
-  internal data class Success(
+public sealed class ReserveUsernameHashOut {
+  public data class Success(
     val _0: ByteArray,
   ) : ReserveUsernameHashOut() {
-    companion object {
+    public companion object {
       @JvmStatic
+      @JvmName("fromNative")
       @CalledFromNative
-      fun fromNative(_0: Any?): Success =
+      internal fun fromNative(_0: Any?): Success =
         Success(
           _0 =
             identity(_0 as ByteArray),
@@ -357,21 +385,23 @@ internal sealed class ReserveUsernameHashOut {
     }
   }
 
-  internal data object UsernameNotAvailable : ReserveUsernameHashOut() {
+  public data object UsernameNotAvailable : ReserveUsernameHashOut() {
     @JvmStatic
+    @JvmName("fromNative")
     @CalledFromNative
-    fun fromNative(): UsernameNotAvailable = UsernameNotAvailable
+    internal fun fromNative(): UsernameNotAvailable = UsernameNotAvailable
   }
 }
 
-internal data class SetDeviceNameArgs(
+public data class SetDeviceNameArgs(
   val id: Int,
   val encryptedName: ByteArray,
 ) {
-  companion object {
+  public companion object {
     @JvmStatic
+    @JvmName("fromNative")
     @CalledFromNative
-    fun fromNative(
+    internal fun fromNative(
       id: Any?,
       encrypted_name: Any?,
     ): SetDeviceNameArgs =
@@ -384,28 +414,31 @@ internal data class SetDeviceNameArgs(
   }
 }
 
-internal sealed class SetDeviceNameOut {
-  internal data object Success : SetDeviceNameOut() {
+public sealed class SetDeviceNameOut {
+  public data object Success : SetDeviceNameOut() {
     @JvmStatic
+    @JvmName("fromNative")
     @CalledFromNative
-    fun fromNative(): Success = Success
+    internal fun fromNative(): Success = Success
   }
 
-  internal data object DeviceNotFound : SetDeviceNameOut() {
+  public data object DeviceNotFound : SetDeviceNameOut() {
     @JvmStatic
+    @JvmName("fromNative")
     @CalledFromNative
-    fun fromNative(): DeviceNotFound = DeviceNotFound
+    internal fun fromNative(): DeviceNotFound = DeviceNotFound
   }
 }
 
-internal data class SetUsernameLinkArgs(
+public data class SetUsernameLinkArgs(
   val usernameCiphertext: ByteArray,
   val keepLinkHandle: Boolean,
 ) {
-  companion object {
+  public companion object {
     @JvmStatic
+    @JvmName("fromNative")
     @CalledFromNative
-    fun fromNative(
+    internal fun fromNative(
       username_ciphertext: Any?,
       keep_link_handle: Any?,
     ): SetUsernameLinkArgs =
@@ -418,14 +451,15 @@ internal data class SetUsernameLinkArgs(
   }
 }
 
-internal sealed class SetUsernameLinkOut {
-  internal data class Success(
+public sealed class SetUsernameLinkOut {
+  public data class Success(
     val _0: java.util.UUID,
   ) : SetUsernameLinkOut() {
-    companion object {
+    public companion object {
       @JvmStatic
+      @JvmName("fromNative")
       @CalledFromNative
-      fun fromNative(_0: Any?): Success =
+      internal fun fromNative(_0: Any?): Success =
         Success(
           _0 =
             identity(_0 as java.util.UUID),
@@ -433,14 +467,25 @@ internal sealed class SetUsernameLinkOut {
     }
   }
 
-  internal data object UsernameNotSet : SetUsernameLinkOut() {
+  public data object UsernameNotSet : SetUsernameLinkOut() {
     @JvmStatic
+    @JvmName("fromNative")
     @CalledFromNative
-    fun fromNative(): UsernameNotSet = UsernameNotSet
+    internal fun fromNative(): UsernameNotSet = UsernameNotSet
   }
 }
 
-internal object NativeTestingNice {
+public object NativeTestingNice {
+  public fun TESTING_GetDevicesTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.GetDevicesOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetDevicesTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GetDevicesOut>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.GetDevicesOut>(it) })(ffiOut)
+  }
+
   public fun TESTING_MySimpleTestEnum_BridgeVec_identity(
     x: List<org.signal.libsignal.internal.MySimpleTestEnum>,
   ): List<org.signal.libsignal.internal.MySimpleTestEnum> {
@@ -734,6 +779,28 @@ internal object NativeTestingNice {
     return identity(ffiOut)
   }
 
+  public fun TESTING_conversion_DeviceId_identity(
+    x: org.signal.libsignal.protocol.DeviceId,
+  ): org.signal.libsignal.protocol.DeviceId {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_DeviceId_identity(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_DeviceId_to_string(x: org.signal.libsignal.protocol.DeviceId): String {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_DeviceId_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
   public fun TESTING_conversion_ServiceId_identity(
     x: org.signal.libsignal.protocol.ServiceId,
   ): org.signal.libsignal.protocol.ServiceId {
@@ -751,6 +818,26 @@ internal object NativeTestingNice {
     val ffi_x = (org.signal.libsignal.protocol.ServiceId::toServiceIdFixedWidthBinary)(x)
     val ffiOut =
       NativeTesting.TESTING_conversion_ServiceId_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_Timestamp_identity(x: java.time.Instant): java.time.Instant {
+    val ffi_x = (java.time.Instant::toEpochMilli)(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_Timestamp_identity(
+        ffi_x,
+      )
+
+    return (java.time.Instant::ofEpochMilli)(ffiOut)
+  }
+
+  public fun TESTING_conversion_Timestamp_to_string(x: java.time.Instant): String {
+    val ffi_x = (java.time.Instant::toEpochMilli)(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_Timestamp_to_string(
         ffi_x,
       )
 

@@ -3,9 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::convert::Infallible;
+
 use libsignal_core::{DeviceId, LogSafeDisplay};
 use libsignal_net_grpc::proto::chat::device::devices_client::DevicesClient;
-use libsignal_net_grpc::proto::chat::device::{SetDeviceNameRequest, set_device_name_response};
+use libsignal_net_grpc::proto::chat::device::get_devices_response::LinkedDevice as GrpcLinkedDevice;
+use libsignal_net_grpc::proto::chat::device::{
+    GetDevicesRequest, SetDeviceNameRequest, set_device_name_response,
+};
+use libsignal_protocol::Timestamp;
 
 use crate::api::{Auth, RequestError};
 use crate::grpc::{GrpcServiceProvider, GrpcTestCase, log_and_send};
@@ -24,6 +30,32 @@ impl std::fmt::Display for Redact<SetDeviceNameRequest> {
             .field("id", id)
             .finish()
     }
+}
+
+impl std::fmt::Display for Redact<GetDevicesRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(GetDevicesRequest {}) = self;
+        f.debug_struct("GetDevicesRequest").finish()
+    }
+}
+
+#[derive(Clone)]
+#[cfg_attr(test, derive(PartialEq, Eq, Debug))]
+pub struct LinkedDevice {
+    /// The identifier for the device within an account.
+    pub id: DeviceId,
+    /// A sequence of bytes that encodes an encrypted human-readable name for
+    /// this device.
+    pub encrypted_name: Vec<u8>,
+    /// The approximate time, in milliseconds since the epoch, at which this
+    /// device last connected to the server.
+    pub last_seen: Timestamp,
+    /// The registration ID of the given device.
+    pub registration_id: u16,
+    /// A sequence of bytes that encodes the time,
+    /// in milliseconds since the epoch, at which this device was
+    /// attached to its parent account.
+    pub created_at_ciphertext: Vec<u8>,
 }
 
 impl<T: GrpcServiceProvider> Auth<T> {
@@ -52,14 +84,138 @@ impl<T: GrpcServiceProvider> Auth<T> {
             ) => Err(RequestError::Other(DeviceIdNotFoundInAccount)),
         }
     }
+
+    /// List the devices associated with the current account.
+    pub async fn get_devices(&self) -> Result<Vec<LinkedDevice>, RequestError<Infallible>> {
+        let mut client = DevicesClient::new(self.0.service());
+        let request = GetDevicesRequest {};
+        let desc = Redact(&request).to_string();
+        log_and_send("auth", &desc, || client.get_devices(request))
+            .await?
+            .into_inner()
+            .devices
+            .into_iter()
+            .map(
+                |GrpcLinkedDevice {
+                     id,
+                     name,
+                     last_seen,
+                     registration_id,
+                     created_at_ciphertext,
+                 }| {
+                    Ok(LinkedDevice {
+                        id: DeviceId::try_from(id).map_err(|_| RequestError::Unexpected {
+                            log_safe: "Invalid device ID".to_string(),
+                        })?,
+                        encrypted_name: name,
+                        last_seen: Timestamp::from_epoch_millis(last_seen),
+                        // According to the protobuf, registration IDs should be <=0x3fff, which
+                        // fits in a u16.
+                        registration_id: u16::try_from(registration_id).map_err(|_| {
+                            RequestError::Unexpected {
+                                log_safe: "Invalid registration ID".to_string(),
+                            }
+                        })?,
+                        created_at_ciphertext,
+                    })
+                },
+            )
+            .collect()
+    }
 }
 
 // Not cfg(test) so it can be accessed via bridging tests.
 // These tests will get pruned via LTO tree shaking.
 pub mod test_cases {
-    use libsignal_net_grpc::proto::chat::device::SetDeviceNameResponse;
+    use libsignal_net_grpc::proto::chat::device::{GetDevicesResponse, SetDeviceNameResponse};
 
     use super::*;
+
+    pub type GetDevicesArgs = ();
+    pub struct GetDevicesOut {
+        pub devices: Vec<LinkedDevice>,
+    }
+    pub fn get_devices_test_cases()
+    -> Vec<GrpcTestCase<GetDevicesArgs, GetDevicesRequest, GetDevicesResponse, GetDevicesOut>> {
+        let method = "/org.signal.chat.device.Devices/GetDevices";
+        vec![
+            GrpcTestCase {
+                name: "zero devices".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetDevicesRequest {},
+                response_grpc: GetDevicesResponse { devices: vec![] },
+                response: GetDevicesOut { devices: vec![] },
+            },
+            GrpcTestCase {
+                name: "one device".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetDevicesRequest {},
+                response_grpc: GetDevicesResponse {
+                    devices: vec![GrpcLinkedDevice {
+                        id: 17,
+                        name: b"device 1".to_vec(),
+                        last_seen: 1782484792019,
+                        registration_id: 8,
+                        created_at_ciphertext: b"shhhhhh".to_vec(),
+                    }],
+                },
+                response: GetDevicesOut {
+                    devices: vec![LinkedDevice {
+                        id: DeviceId::new(17).expect("valid device id"),
+                        encrypted_name: b"device 1".to_vec(),
+                        last_seen: Timestamp::from_epoch_millis(1782484792019),
+                        registration_id: 8,
+                        created_at_ciphertext: b"shhhhhh".to_vec(),
+                    }],
+                },
+            },
+            GrpcTestCase {
+                name: "two devices".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetDevicesRequest {},
+                response_grpc: GetDevicesResponse {
+                    devices: vec![
+                        GrpcLinkedDevice {
+                            id: 17,
+                            name: b"device 1".to_vec(),
+                            last_seen: 1782484792019,
+                            registration_id: 8,
+                            created_at_ciphertext: b"shhhhhh".to_vec(),
+                        },
+                        GrpcLinkedDevice {
+                            id: 18,
+                            name: b"device 2".to_vec(),
+                            last_seen: 21782484792019,
+                            registration_id: 9,
+                            created_at_ciphertext: b"shhhhhhhhh".to_vec(),
+                        },
+                    ],
+                },
+                response: GetDevicesOut {
+                    devices: vec![
+                        LinkedDevice {
+                            id: DeviceId::new(17).expect("valid device id"),
+                            encrypted_name: b"device 1".to_vec(),
+                            last_seen: Timestamp::from_epoch_millis(1782484792019),
+                            registration_id: 8,
+                            created_at_ciphertext: b"shhhhhh".to_vec(),
+                        },
+                        LinkedDevice {
+                            id: DeviceId::new(18).expect("valid device id"),
+                            encrypted_name: b"device 2".to_vec(),
+                            last_seen: Timestamp::from_epoch_millis(21782484792019),
+                            registration_id: 9,
+                            created_at_ciphertext: b"shhhhhhhhh".to_vec(),
+                        },
+                    ],
+                },
+            },
+        ]
+    }
+
     pub struct SetDeviceNameArgs {
         pub id: u8,
         pub encrypted_name: Vec<u8>,
@@ -143,6 +299,16 @@ mod test {
                     assert_matches!(result, Err(RequestError::Other(DeviceIdNotFoundInAccount)))
                 }
             },
+        );
+    }
+
+    #[test]
+    fn test_get_devices() {
+        use test_cases::*;
+        run_tests(
+            get_devices_test_cases(),
+            |chat: Auth<_>, ()| async move { chat.get_devices().await },
+            |resp, result| assert_eq!(resp.devices, result.expect("success")),
         );
     }
 }

@@ -128,6 +128,11 @@ internal enum FixedByteArrayHelper32: FixedByteArrayHelper {
     }
 }
 
+internal struct GetDevicesOut {
+    var devices: [LinkedDeviceInternal]
+
+}
+
 internal enum MyRemoteDeriveEnum {
     case unit
     case tuple(Int32, Int32)
@@ -206,6 +211,25 @@ internal struct SetUsernameLinkArgs {
 internal enum SetUsernameLinkOut {
     case success(UUID)
     case usernameNotSet
+}
+
+internal enum DerivedReturnConverterGetDevicesOut: NiceReturnConverter {
+    typealias NiceReturn = GetDevicesOut
+    typealias FfiReturn = SignalGetDevicesOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetDevicesOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let devices = Result {
+            try ArrayReturnConverter<
+                DerivedReturnConverterLinkedDeviceInternal,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult_DerivedReturnConverterLinkedDeviceInternal
+            >.convertReturn(consuming: ffiValue.devices)
+        }
+
+        return GetDevicesOut(devices: try devices.get())
+    }
 }
 
 internal enum DerivedReturnConverterMyRemoteDeriveEnum: NiceReturnConverter {
@@ -1118,6 +1142,18 @@ internal enum DerivedArgConverterMyTestStruct: NiceArgConverter {
 }
 
 internal enum NativeTestingNice {
+    internal static func TESTING_GetDevicesTests() throws -> [GrpcTestCase<Void, GetDevicesOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetDevicesOut>.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_devices_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetDevicesOut>.convertReturn(
+            consuming: rawOutput
+        )
+
+    }
     internal static func TESTING_MyRemoteDeriveEnum_identity(
         x: MyRemoteDeriveEnum,
     ) throws -> MyRemoteDeriveEnum {
@@ -1588,6 +1624,36 @@ internal enum NativeTestingNice {
         }
 
     }
+    internal static func TESTING_conversion_DeviceId_identity(
+        x: DeviceId,
+    ) throws -> DeviceId {
+        try DeviceIdConverter.convertArgBorrowed(x) { xFfi in
+            var rawOutput = DeviceIdConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_device_id_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try DeviceIdConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_DeviceId_to_string(
+        x: DeviceId,
+    ) throws -> String {
+        try DeviceIdConverter.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_device_id_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
     internal static func TESTING_conversion_ServiceId_identity(
         x: ServiceId,
     ) throws -> ServiceId {
@@ -1610,6 +1676,36 @@ internal enum NativeTestingNice {
             var rawOutput = StringConverter.emptyFfiReturn()
             try checkError(
                 SignalFfi.signal_testing_conversion_service_id_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_Timestamp_identity(
+        x: Date,
+    ) throws -> Date {
+        try TimestampConverter.convertArgBorrowed(x) { xFfi in
+            var rawOutput = TimestampConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_timestamp_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try TimestampConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_Timestamp_to_string(
+        x: Date,
+    ) throws -> String {
+        try TimestampConverter.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_timestamp_to_string(
                     &rawOutput,
                     xFfi,
                 )

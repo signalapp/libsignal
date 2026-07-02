@@ -15,11 +15,67 @@
 
 package org.signal.libsignal.internal
 
+import org.signal.libsignal.internal.NativeNiceHelpers.downcastFromObject
 import org.signal.libsignal.internal.NativeNiceHelpers.identity
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecArg
+import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
 
-internal object NativeNice {
+public data class LinkedDeviceInternal(
+  val id: org.signal.libsignal.protocol.DeviceId,
+  val encryptedName: ByteArray,
+  val lastSeen: java.time.Instant,
+  val registrationId: Int,
+  val createdAtCiphertext: ByteArray,
+) {
+  public companion object {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(
+      id: Any?,
+      encrypted_name: Any?,
+      last_seen: Any?,
+      registration_id: Any?,
+      created_at_ciphertext: Any?,
+    ): LinkedDeviceInternal =
+      LinkedDeviceInternal(
+        id =
+          identity(id as org.signal.libsignal.protocol.DeviceId),
+        encryptedName =
+          identity(encrypted_name as ByteArray),
+        lastSeen =
+          (java.time.Instant::ofEpochMilli)(last_seen as Long),
+        registrationId =
+          identity(registration_id as Int),
+        createdAtCiphertext =
+          identity(created_at_ciphertext as ByteArray),
+      )
+  }
+}
+
+public object NativeNice {
+  public fun AuthenticatedChatConnection_get_devices(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+  ): CompletableFuture<List<org.signal.libsignal.internal.LinkedDeviceInternal>> {
+    val ffi_chat = identity(chat)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_get_devices(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply {
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.LinkedDeviceInternal>({
+          downcastFromObject<org.signal.libsignal.internal.LinkedDeviceInternal>(it)
+        })(it)
+      }
+  }
+
   public fun AuthenticatedChatConnection_reserve_username_hash(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

@@ -466,6 +466,23 @@ impl<T: NiceResultConverter + ResultTypeInfo> NiceResultConverter for BridgeVec<
     }
 }
 
+impl SimpleArgTypeInfo for DeviceId {
+    type ArgType = u8;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        DeviceId::new(foreign).map_err(|_| IllegalArgumentError::new("Invalid DeviceId").into())
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for DeviceId {
+    fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        SwiftArgConverter {
+            nice_type: "DeviceId".to_string(),
+            converter_type: "DeviceIdConverter".to_string(),
+        }
+    }
+}
+
 impl<const LEN: usize> SimpleArgTypeInfo for &mut [u8; LEN] {
     type ArgType = *mut [u8; LEN];
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -1213,6 +1230,15 @@ impl SimpleArgTypeInfo for crate::protocol::Timestamp {
         Ok(Self::from_epoch_millis(foreign))
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for crate::protocol::Timestamp {
+    fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        SwiftArgConverter {
+            nice_type: "Date".to_string(),
+            converter_type: "TimestampConverter".to_string(),
+        }
+    }
+}
 
 impl SimpleArgTypeInfo for RandomNumberGenerator {
     type ArgType = i64;
@@ -1234,6 +1260,15 @@ impl ResultTypeInfo for crate::protocol::Timestamp {
     type ResultType = u64;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(self.epoch_millis())
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for crate::protocol::Timestamp {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "Date".to_string(),
+            converter_type: "TimestampConverter".to_string(),
+        }
     }
 }
 
@@ -1498,6 +1533,22 @@ where
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         let result = zkgroup::serialize(self.deref());
         Ok(result.as_slice().try_into().expect("wrong serialized size"))
+    }
+}
+
+impl ResultTypeInfo for DeviceId {
+    type ResultType = u8;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(self.into())
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for DeviceId {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "DeviceId".to_string(),
+            converter_type: "DeviceIdConverter".to_string(),
+        }
     }
 }
 
@@ -1887,6 +1938,7 @@ macro_rules! ffi_arg_type {
     (Option<String>) => (ffi::CStringPtr);
     (Option<&str>) => (ffi::CStringPtr);
     (Timestamp) => (u64);
+    (DeviceId) => (u8);
     (RandomNumberGenerator) => (i64);
     (Uuid) => (ffi::Uuid);
     (ServiceId) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
@@ -1936,6 +1988,7 @@ macro_rules! ffi_arg_type {
     (MySimpleTestEnum) => (MySimpleTestEnumFfiArg);
     (MyRemoteDeriveStruct) => (MyRemoteDeriveStructFfiArg);
     (MyRemoteDeriveEnum) => (MyRemoteDeriveEnumFfiArg);
+    (LinkedDevice) => ($crate::net::chat::remote_derives::LinkedDeviceInternalFfiArg);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
@@ -2000,6 +2053,7 @@ macro_rules! ffi_result_type {
     (Timestamp) => (u64);
     (LogLevel) => (LogLevel);
     (Uuid) => (ffi::Uuid);
+    (DeviceId) => (u8);
     (Option<Uuid>) => (ffi::OptionalUuid);
     (ServiceId) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Aci) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
@@ -2036,6 +2090,7 @@ macro_rules! ffi_result_type {
     (MySimpleTestEnum) => (MySimpleTestEnumFfiResult);
     (MyRemoteDeriveStruct) => (MyRemoteDeriveStructFfiResult);
     (MyRemoteDeriveEnum) => (MyRemoteDeriveEnumFfiResult);
+    (LinkedDevice) => ($crate::net::chat::remote_derives::LinkedDeviceInternalFfiResult);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

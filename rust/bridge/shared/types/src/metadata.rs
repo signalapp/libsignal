@@ -30,6 +30,17 @@ pub fn insert_checked<T: Debug + Eq>(dst: &mut BTreeMap<String, T>, k: String, v
     }
 }
 
+pub fn remove_all_checked<T: Debug + Eq>(
+    remove_from: &mut BTreeMap<String, T>,
+    if_in: &BTreeMap<String, T>,
+) {
+    for (k, v) in if_in.iter() {
+        if let Some(v2) = remove_from.remove(k) {
+            assert_eq!(v, &v2, "key={k:?}");
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct Struct<FieldType> {
     pub is_tuple: bool,

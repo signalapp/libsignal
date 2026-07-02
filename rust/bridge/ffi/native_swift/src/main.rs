@@ -14,6 +14,7 @@ use std::process::{Command, Stdio};
 use clap::Parser;
 use heck::{ToLowerCamelCase, ToSnakeCase};
 use libsignal_bridge_types::ffi::{FFI_ITEMS, SwiftMetadataContext};
+use libsignal_bridge_types::metadata::remove_all_checked;
 use minijinja::context;
 use minijinja::value::DynObject;
 
@@ -93,13 +94,26 @@ fn main() -> anyhow::Result<()> {
         );
     }
 
-    // FFI borrowed slice impls don't need to be written in the testing code if they already exist
-    // in the non-testing code.
-    for (k, v) in non_testing_ctx.ffi_borrowed_slice_cons.iter() {
-        if let Some(existing) = testing_ctx.ffi_borrowed_slice_cons.remove(k) {
-            assert_eq!(&existing, v);
-        }
-    }
+    remove_all_checked(
+        &mut testing_ctx.derived_types,
+        &non_testing_ctx.derived_types,
+    );
+    remove_all_checked(
+        &mut testing_ctx.derived_arg_converters,
+        &non_testing_ctx.derived_arg_converters,
+    );
+    remove_all_checked(
+        &mut testing_ctx.derived_return_converters,
+        &non_testing_ctx.derived_return_converters,
+    );
+    remove_all_checked(
+        &mut testing_ctx.ffi_borrowed_slice_cons,
+        &non_testing_ctx.ffi_borrowed_slice_cons,
+    );
+    remove_all_checked(
+        &mut testing_ctx.ffi_owned_buffer_of_max_aligned_project,
+        &non_testing_ctx.ffi_owned_buffer_of_max_aligned_project,
+    );
 
     if args.dump_json {
         println!(

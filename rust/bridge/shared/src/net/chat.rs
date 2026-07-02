@@ -32,7 +32,7 @@ use libsignal_net_chat::api::messages::{
 use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
-use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
+use libsignal_net_chat::grpc::devices::{DeviceIdNotFoundInAccount, LinkedDevice};
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::ws::OverWs;
 use libsignal_protocol::{CiphertextMessage, Timestamp};
@@ -792,4 +792,11 @@ async fn AuthenticatedChatConnection_set_username_link(
         .await
         .set_username_link(&username_ciphertext, keep_link_handle)
         .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_devices(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<BridgeVec<LinkedDevice>, RequestError<Infallible>> {
+    Ok(chat.require_grpc().await.get_devices().await?.into())
 }

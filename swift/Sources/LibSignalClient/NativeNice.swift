@@ -29,6 +29,31 @@ enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfu832_FixedByteArrayConvert
     }
 }
 
+enum
+    FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult_DerivedReturnConverterLinkedDeviceInternal:
+        FfiOwnedBufferOfMaxAlignedProject
+{
+    typealias Buffer = SignalFfi.SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult
+    typealias Element = DerivedReturnConverterLinkedDeviceInternal.FfiReturn
+    static func empty() -> Buffer {
+        Buffer()
+    }
+    static func project(
+        _ buffer: Buffer
+    ) -> UnsafeBufferPointer<Element> {
+        UnsafeBufferPointer(start: buffer.base, count: buffer.length)
+    }
+    static func typeErased(
+        _ buffer: Buffer
+    ) -> SignalOwnedBufferOfMaxAlignedc_void {
+        SignalOwnedBufferOfMaxAlignedc_void(
+            base: UnsafeMutableRawPointer(buffer.base),
+            length: buffer.length,
+            size_bytes: buffer.size_bytes,
+        )
+    }
+}
+
 internal enum FixedByteArrayHelper32: FixedByteArrayHelper {
     typealias Ffi = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
@@ -42,7 +67,71 @@ internal enum FixedByteArrayHelper32: FixedByteArrayHelper {
     }
 }
 
+internal struct LinkedDeviceInternal {
+    var id: DeviceId
+    var encryptedName: Data
+    var lastSeen: Date
+    var registrationId: UInt16
+    var createdAtCiphertext: Data
+
+}
+
+internal enum DerivedReturnConverterLinkedDeviceInternal: NiceReturnConverter {
+    typealias NiceReturn = LinkedDeviceInternal
+    typealias FfiReturn = SignalLinkedDeviceInternalFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalLinkedDeviceInternalFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let id = Result { try DeviceIdConverter.convertReturn(consuming: ffiValue.id) }
+        let encrypted_name = Result { try DataConverter.convertReturn(consuming: ffiValue.encrypted_name) }
+        let last_seen = Result { try TimestampConverter.convertReturn(consuming: ffiValue.last_seen) }
+        let registration_id = Result {
+            try IdentityConverter<UInt16>.convertReturn(consuming: ffiValue.registration_id)
+        }
+        let created_at_ciphertext = Result {
+            try DataConverter.convertReturn(consuming: ffiValue.created_at_ciphertext)
+        }
+
+        return LinkedDeviceInternal(
+            id: try id.get(),
+            encryptedName: try encrypted_name.get(),
+            lastSeen: try last_seen.get(),
+            registrationId: try registration_id.get(),
+            createdAtCiphertext: try created_at_ciphertext.get()
+        )
+    }
+}
+
 internal enum NativeNice {
+    internal static func AuthenticatedChatConnection_get_devices(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+    ) async throws -> [LinkedDeviceInternal] {
+        let rawOutput:
+            ArrayReturnConverter<
+                DerivedReturnConverterLinkedDeviceInternal,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult_DerivedReturnConverterLinkedDeviceInternal
+            >.FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                        .convertArgBorrowed(chat) { chatFfi in
+                            SignalFfi.signal_authenticated_chat_connection_get_devices(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                            )
+                        }
+                }
+        return try ArrayReturnConverter<
+            DerivedReturnConverterLinkedDeviceInternal,
+            FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult_DerivedReturnConverterLinkedDeviceInternal
+        >.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_reserve_username_hash(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,

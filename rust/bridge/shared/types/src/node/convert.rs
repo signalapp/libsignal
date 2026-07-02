@@ -444,6 +444,7 @@ impl SimpleArgTypeInfo for crate::protocol::Timestamp {
     }
     register_ts_ffi_type!("Timestamp");
 }
+nice_identity_arg_converter!(crate::protocol::Timestamp);
 
 impl SimpleArgTypeInfo for RandomNumberGenerator {
     type ArgType = JsNumber;
@@ -747,6 +748,28 @@ impl SimpleArgTypeInfo for AccountEntropyPool {
         })
     }
     register_ts_ffi_type!("AccountEntropyPool");
+}
+
+impl SimpleArgTypeInfo for DeviceId {
+    type ArgType = <u8 as SimpleArgTypeInfo>::ArgType;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let raw = <u8 as SimpleArgTypeInfo>::convert_from(cx, foreign)?;
+        match DeviceId::new(raw) {
+            Ok(id) => Ok(id),
+            Err(_) => cx.throw_range_error("Invalid DeviceId"),
+        }
+    }
+    register_ts_ffi_type!("number");
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for DeviceId {
+    fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
+        TsArgConverter {
+            nice_type: "DeviceId".to_string(),
+            ffi_type: "number".to_string(),
+            converter_function: "identity".to_string(),
+        }
+    }
 }
 
 impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSendAuthorization {
@@ -1431,6 +1454,7 @@ impl<'a> ResultTypeInfo<'a> for crate::protocol::Timestamp {
     }
     register_ts_ffi_type!("Timestamp");
 }
+nice_identity_result_converter!(crate::protocol::Timestamp);
 
 /// Converts non-negative values up to [`Number.MAX_SAFE_INTEGER`][].
 ///
@@ -1598,6 +1622,26 @@ impl<'a> ResultTypeInfo<'a> for Box<[Vec<u8>]> {
     #[cfg(feature = "metadata")]
     fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
         make_array_type::<Vec<u8>>(ctx)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for DeviceId {
+    type ResultType = <u8 as ResultTypeInfo<'a>>::ResultType;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        u8::from(self).convert_into(cx)
+    }
+
+    register_ts_ffi_type!("number");
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for DeviceId {
+    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        TsReturnConverter {
+            nice_type: "DeviceId".to_string(),
+            ffi_type: "number".to_string(),
+            converter_function: "identity".to_string(),
+        }
     }
 }
 

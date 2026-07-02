@@ -7,6 +7,12 @@ import { ServiceId } from './Address.js';
 import { type CdnCredentials } from './net/chat/CdnCredentials.js';
 import * as Native from './Native.js';
 
+export type DeviceId = number;
+/**
+ * The number of milliseconds since the epoch.
+ */
+export type Timestamp = number;
+
 export function identity<T>(t: T): T {
   return t;
 }

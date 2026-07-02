@@ -372,6 +372,17 @@ impl SimpleArgTypeInfo<'_> for crate::protocol::Timestamp {
         Ok(Self::from_epoch_millis(*foreign as u64))
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for crate::protocol::Timestamp {
+    fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
+        KtArgConverter {
+            nice_type: "java.time.Instant".to_string(),
+            ffi_type: "Long".to_string(),
+            ffi_field_type_erased: ffi_field_type_erased::<Self>(),
+            converter_function: "(java.time.Instant::toEpochMilli)".to_string(),
+        }
+    }
+}
 
 impl SimpleArgTypeInfo<'_> for RandomNumberGenerator {
     type ArgType = jlong;
@@ -434,6 +445,19 @@ impl SimpleArgTypeInfo<'_> for DeviceSpecifier {
         }
     }
 }
+
+impl<'a> SimpleArgTypeInfo<'a> for DeviceId {
+    type ArgType = <u8 as SimpleArgTypeInfo<'a>>::ArgType;
+    fn convert_from(
+        env: &mut jni::Env<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        let foreign = <u8 as SimpleArgTypeInfo<'a>>::convert_from(env, foreign)?;
+        DeviceId::new(foreign)
+            .map_err(|_| BridgeLayerError::BadArgument("Invalid DeviceId".to_string()))
+    }
+}
+nice_identity_arg_converter!(DeviceId, "org.signal.libsignal.protocol.DeviceId");
 
 /// Supports all valid byte values `0..=255`.
 impl SimpleArgTypeInfo<'_> for u8 {
@@ -1461,6 +1485,16 @@ impl ResultTypeInfo<'_> for crate::protocol::Timestamp {
         Ok(self.epoch_millis() as jlong)
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for crate::protocol::Timestamp {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        KtReturnConverter {
+            nice_type: "java.time.Instant".to_string(),
+            ffi_type: "Long".to_string(),
+            converter_function: "(java.time.Instant::ofEpochMilli)".to_string(),
+        }
+    }
+}
 
 /// Reinterprets the bits of the `u64` as a Java `long`. Returns `-1` for `None`.
 ///
@@ -1520,6 +1554,14 @@ impl<'a> ResultTypeInfo<'a> for Option<&str> {
         }
     }
 }
+
+impl<'a> ResultTypeInfo<'a> for DeviceId {
+    type ResultType = <u8 as ResultTypeInfo<'a>>::ResultType;
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        u8::from(self).convert_into(env)
+    }
+}
+nice_identity_result_converter!(DeviceId, "org.signal.libsignal.protocol.DeviceId");
 
 impl<'a> ResultTypeInfo<'a> for &[u8] {
     type ResultType = JByteArray<'a>;
@@ -3184,6 +3226,9 @@ macro_rules! jni_arg_type {
     (SignedPublicPreKey) => {
         jni::JavaSignedPublicPreKey<'local>
     };
+    (DeviceId) => {
+        ::jni::sys::jint
+    };
     (&mut [u8]) => {
         ::jni::objects::JByteArray<'local>
     };
@@ -3408,6 +3453,9 @@ macro_rules! jni_result_type {
     };
     (u64) => {
         ::jni::sys::jlong
+    };
+    (DeviceId) => {
+        ::jni::sys::jint
     };
     (&str) => {
         ::jni::objects::JString<'local>

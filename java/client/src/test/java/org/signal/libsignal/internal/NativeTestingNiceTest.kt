@@ -13,6 +13,8 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import org.junit.Test
 import org.signal.libsignal.protocol.ServiceId
+import java.time.Instant
+import java.time.format.DateTimeFormatterBuilder
 import java.util.Arrays
 import java.util.UUID
 import kotlin.io.encoding.Base64
@@ -297,5 +299,42 @@ class NativeTestingNiceTest {
 
     val error3 = NativeTestingNice.TESTING_ReturnSomeIoError(present = false)
     assertEquals(error3, null)
+  }
+
+  @Test
+  fun testDeviceId() {
+    testConversion(
+      IntRange(1, 127).asSequence(),
+      toString = Any::toString,
+      nativeToString = NativeTestingNice::TESTING_conversion_DeviceId_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_DeviceId_identity,
+    )
+  }
+
+  @Test
+  fun testTimestamp() {
+    val fmt = DateTimeFormatterBuilder().appendInstant(3).toFormatter()
+
+    fun instant2string(x: Instant): String = "${x.toEpochMilli()}ms ${fmt.format(x)}"
+    testConversion(
+      sequenceOf(
+        Instant.ofEpochMilli(0),
+        Instant.ofEpochMilli(1782938926226),
+      ),
+      toString = { instant2string(it) },
+      nativeToString = NativeTestingNice::TESTING_conversion_Timestamp_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_Timestamp_identity,
+    )
+    // Our timestamps only store milliseconds, and don't preserve nanoseconds, so we _can't_
+    // roundtrip via identity. Instead, we just validate the string format
+    for (instant in listOf(
+      Instant.ofEpochSecond(
+        1782938926,
+        226 * 100_000,
+      ),
+      Instant.ofEpochSecond(1782938, 738),
+    )) {
+      assertEquals(instant2string(instant), NativeTestingNice.TESTING_conversion_Timestamp_to_string(instant))
+    }
   }
 }

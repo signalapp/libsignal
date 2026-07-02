@@ -9,6 +9,7 @@ import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.internal.SetDeviceNameOut
 import org.signal.libsignal.net.assertNonSuccess
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class AuthDevicesServiceTest {
@@ -28,6 +29,23 @@ class AuthDevicesServiceTest {
           SetDeviceNameOut.Success -> assertIs<RequestResult.Success<Unit>>(actual)
           SetDeviceNameOut.DeviceNotFound -> actual.assertNonSuccess<_, _, DeviceIdNotFoundException>()
         }
+      },
+    )
+  }
+
+  @Test
+  fun testGetDevices() {
+    GrpcTestCase.runTests(
+      NativeTestingNice.TESTING_GetDevicesTests(),
+      ::AuthDevicesService,
+      invoke = { chat, req ->
+        chat.getDevices()
+      },
+      check = { expected, actual ->
+        assertEquals(
+          expected.devices.map(LinkedDevice::fromInternal),
+          assertIs<RequestResult.Success<List<LinkedDevice>>>(actual).result,
+        )
       },
     )
   }

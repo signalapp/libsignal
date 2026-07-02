@@ -124,6 +124,10 @@ extension SignalCPromiseu832: PromiseStruct {
     typealias Result = FixedByteArrayHelper32.Ffi
 }
 
+extension SignalCPromiseOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult: PromiseStruct {
+    typealias Result = SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult
+}
+
 /// A type-erased version of ``Completer``.
 ///
 /// Not for direct use, see Completer instead.

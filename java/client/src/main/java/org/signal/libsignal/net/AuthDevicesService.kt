@@ -6,8 +6,71 @@
 package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
+import org.signal.libsignal.internal.LinkedDeviceInternal
 import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.mapWithCancellation
+import java.time.Instant
+
+public data class LinkedDevice(
+  /**
+   * The identifier for the device within an account
+   */
+  val id: org.signal.libsignal.protocol.DeviceId,
+  /**
+   * A sequence of bytes that encodes an encrypted human-readable name for
+   * this device.
+   */
+  val encryptedName: ByteArray,
+  /**
+   * The approximate time at which this device last connected to the server.
+   */
+  val lastSeen: Instant,
+  /**
+   * The registration ID of the given device.
+   */
+  val registrationId: Int,
+  /**
+   * A sequence of bytes that encodes the time, in milliseconds, since the epoch, at which this
+   * device was attached to its parent account.
+   */
+  val createdAtCiphertext: ByteArray,
+) {
+  // These need to be public for testing
+  public companion object {
+    public fun fromInternal(it: LinkedDeviceInternal): LinkedDevice =
+      LinkedDevice(
+        id = it.id,
+        encryptedName = it.encryptedName,
+        lastSeen = it.lastSeen,
+        registrationId = it.registrationId,
+        createdAtCiphertext = it.createdAtCiphertext,
+      )
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as LinkedDevice
+
+    if (id != other.id) return false
+    if (lastSeen != other.lastSeen) return false
+    if (registrationId != other.registrationId) return false
+    if (!encryptedName.contentEquals(other.encryptedName)) return false
+    if (!createdAtCiphertext.contentEquals(other.createdAtCiphertext)) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = id
+    result = 31 * result + lastSeen.hashCode()
+    result = 31 * result + registrationId
+    result = 31 * result + encryptedName.contentHashCode()
+    result = 31 * result + createdAtCiphertext.contentHashCode()
+    return result
+  }
+}
 
 public class AuthDevicesService(
   private val connection: AuthenticatedChatConnection,
@@ -35,6 +98,23 @@ public class AuthDevicesService(
         ).mapWithCancellation(
           onSuccess = { RequestResult.Success(Unit) },
           onError = { err -> err.toRequestResult<DeviceIdNotFoundException>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
+   * List the devices associated with the current account.
+   */
+  public fun getDevices(): CompletableFuture<RequestResult<List<LinkedDevice>, Nothing>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_get_devices(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(it.map(LinkedDevice::fromInternal)) },
+          onError = { err -> err.toRequestResult() },
         )
     } catch (e: Throwable) {
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))

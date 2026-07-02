@@ -15,6 +15,8 @@ import {
   type ArgFfiMyTestEnum,
   type ArgFfiMyTestPoint,
   type ArgFfiMyTestStruct,
+  type ReturnFfiGetDevicesOut,
+  type ReturnFfiLinkedDeviceInternal,
   type ReturnFfiMyRemoteDeriveEnum,
   type ReturnFfiMyRemoteDeriveStruct,
   type ReturnFfiMySimpleTestEnum,
@@ -37,12 +39,26 @@ import ByteArray from './zkgroup/internal/ByteArray.js';
 import { TokioAsyncContext } from './net.js';
 import { CdnCredentials } from './net/chat/CdnCredentials.js';
 import {
+  type DeviceId,
+  type Timestamp,
   cdnCredentialReturnConverter,
   identity,
   serviceIdArgConverter,
   grpcTestCaseConverter,
 } from './NiceConverters.js';
 import { Rng } from './RngForTesting.js';
+
+export type GetDevicesOut = {
+  devices: Array<LinkedDeviceInternal>;
+};
+
+export type LinkedDeviceInternal = {
+  id: DeviceId;
+  encryptedName: Uint8Array<ArrayBuffer>;
+  lastSeen: Timestamp;
+  registrationId: number;
+  createdAtCiphertext: Uint8Array<ArrayBuffer>;
+};
 
 export type MyRemoteDeriveEnum =
   | 'unit'
@@ -117,6 +133,27 @@ export type SetUsernameLinkOut =
       success: uuid.Uuid;
     }
   | 'usernameNotSet';
+
+function returnConverterGetDevicesOut(
+  ffiInput: Native.ReturnFfiGetDevicesOut
+): GetDevicesOut {
+  return {
+    devices: ((arr: Array<ReturnFfiLinkedDeviceInternal>) =>
+      arr.map(returnConverterLinkedDeviceInternal))(ffiInput.devices),
+  };
+}
+
+function returnConverterLinkedDeviceInternal(
+  ffiInput: Native.ReturnFfiLinkedDeviceInternal
+): LinkedDeviceInternal {
+  return {
+    id: identity(ffiInput.id),
+    encryptedName: identity(ffiInput.encrypted_name),
+    lastSeen: identity(ffiInput.last_seen),
+    registrationId: identity(ffiInput.registration_id),
+    createdAtCiphertext: identity(ffiInput.created_at_ciphertext),
+  };
+}
 
 function returnConverterMyRemoteDeriveEnum(
   ffiInput: Native.ReturnFfiMyRemoteDeriveEnum
@@ -411,6 +448,26 @@ function argConverterMyTestStruct(
   };
 }
 
+export async function AuthenticatedChatConnection_get_devices({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+}): Promise<Array<LinkedDeviceInternal>> {
+  return ((arr: Array<ReturnFfiLinkedDeviceInternal>) =>
+    arr.map(returnConverterLinkedDeviceInternal))(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_devices(
+        asyncContext,
+        identity(chat)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_reserve_username_hash({
   asyncContext,
   abortSignal,
@@ -484,6 +541,15 @@ export async function AuthenticatedChatConnection_set_username_link({
       )
     )
   );
+}
+
+export function TESTING_GetDevicesTests(): Array<
+  GrpcTestCase<void, GetDevicesOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterGetDevicesOut
+  )(Native.TESTING_GetDevicesTests());
 }
 
 export function TESTING_MyRemoteDeriveEnum_identity({
@@ -965,6 +1031,41 @@ export function TESTING_conversion_Data_to_string({
   x: Uint8Array<ArrayBuffer>;
 }): string {
   return identity(Native.TESTING_conversion_Data_to_string(identity(x)));
+}
+
+export function TESTING_conversion_DeviceId_identity({
+  x: x,
+}: {
+  x: DeviceId;
+}): DeviceId {
+  return identity(Native.TESTING_conversion_DeviceId_identity(identity(x)));
+}
+export async function TESTING_conversion_DeviceId_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: DeviceId;
+}): Promise<DeviceId> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_DeviceId_identity_async(
+        asyncContext,
+        identity(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_DeviceId_to_string({
+  x: x,
+}: {
+  x: DeviceId;
+}): string {
+  return identity(Native.TESTING_conversion_DeviceId_to_string(identity(x)));
 }
 
 export function TESTING_conversion_ServiceId_identity({

@@ -495,6 +495,7 @@ use grpc_test_cases::*;
 
 mod remote_derives {
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
+    use libsignal_net_chat::grpc::devices::LinkedDevice;
     use uuid::Uuid;
 
     use crate::*;
@@ -536,9 +537,15 @@ mod remote_derives {
         Success(Uuid),
         UsernameNotSet,
     }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::devices::test_cases::GetDevicesOut)]
+    pub struct GetDevicesOut {
+        pub devices: BridgeVec<LinkedDevice>,
+    }
     #[cfg(feature = "ffi")]
     #[unsafe(no_mangle)]
     pub unsafe extern "C" fn signal_testing_force_bindgen_to_emit_structs(
+        _: GetDevicesOutFfiResult,
         _: SetUsernameLinkArgsFfiResult,
         _: SetUsernameLinkOutFfiResult,
         _: SetDeviceNameArgsFfiResult,
@@ -564,4 +571,8 @@ fn TESTING_ReserveUsernameHashTests()
 fn TESTING_SetUsernameLinkTests()
 -> GrpcTestCases<remote_derives::SetUsernameLinkArgs, remote_derives::SetUsernameLinkOut> {
     libsignal_net_chat::grpc::usernames::test_cases::set_username_link_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_GetDevicesTests() -> GrpcTestCases<(), remote_derives::GetDevicesOut> {
+    libsignal_net_chat::grpc::devices::test_cases::get_devices_test_cases().into()
 }

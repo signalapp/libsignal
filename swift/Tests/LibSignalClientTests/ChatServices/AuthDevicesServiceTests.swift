@@ -35,6 +35,18 @@ class AuthDevicesServiceTests: AuthChatServiceTestBase<any AuthDevicesService> {
             }
         )
     }
+
+    func testGetDevices() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_GetDevicesTests(),
+            invoke: { api, _ in
+                try await api.getDevices()
+            },
+            check: { expected, actual in
+                XCTAssertEqual(expected.devices.map { LinkedDevice.fromInternal($0) }, try actual.get())
+            }
+        )
+    }
 }
 
 #endif

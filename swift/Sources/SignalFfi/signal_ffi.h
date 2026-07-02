@@ -533,6 +533,50 @@ typedef struct {
   const SignalAuthenticatedChatConnection *raw;
 } SignalConstPointerAuthenticatedChatConnection;
 
+typedef struct {
+  uint8_t id;
+  SignalOwnedBuffer encrypted_name;
+  uint64_t last_seen;
+  uint16_t registration_id;
+  SignalOwnedBuffer created_at_ciphertext;
+} SignalLinkedDeviceInternalFfiResult;
+
+/**
+ * A buffer of `length` elements of type `T`, allocated with the alignment of
+ * [`libc::max_align_t`].
+ *
+ * The number of bytes allocated is stored in `size_bytes`.
+ *
+ * `base` should be allocated via Rust's global alloc (i.e. via [`std::alloc::alloc`])
+ *
+ * # Motivation
+ * Rust's global allocator takes a size and alignment for _both_ allocation and deallocation. As a
+ * result, if we want to have a general "free this buffer" function, that function needs to be
+ * able to know the total size of the allocation and its alignment. Having a fixed (constant)
+ * alignment means we don't need to store the alignment in this struct (or have a separate free
+ * function for each type).
+ */
+typedef struct {
+  SignalLinkedDeviceInternalFfiResult *base;
+  size_t length;
+  size_t size_bytes;
+} SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult;
+
 /**
  * A representation of a array allocated on the Rust heap for use in C code.
  */
@@ -1846,6 +1890,8 @@ SignalFfiError *signal_authenticated_chat_connection_connect(SignalCPromiseMutPo
 SignalFfiError *signal_authenticated_chat_connection_destroy(SignalMutPointerAuthenticatedChatConnection p);
 
 SignalFfiError *signal_authenticated_chat_connection_disconnect(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat);
+
+SignalFfiError *signal_authenticated_chat_connection_get_devices(SignalCPromiseOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat);
 
 SignalFfiError *signal_authenticated_chat_connection_get_upload_form(SignalCPromiseFfiUploadForm *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat, uint64_t upload_length);
 

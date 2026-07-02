@@ -14,6 +14,7 @@ use anyhow::Context;
 use clap::Parser;
 use heck::ToLowerCamelCase;
 use libsignal_bridge_types::jni::{JNI_ITEMS, KtMetadataContext};
+use libsignal_bridge_types::metadata::remove_all_checked;
 use minijinja::context;
 
 #[derive(Parser)]
@@ -68,6 +69,18 @@ fn main() -> anyhow::Result<()> {
             },
         );
     }
+    remove_all_checked(
+        &mut testing_ctx.derived_types,
+        &non_testing_ctx.derived_types,
+    );
+    remove_all_checked(
+        &mut testing_ctx.derived_arg_converters,
+        &non_testing_ctx.derived_arg_converters,
+    );
+    remove_all_checked(
+        &mut testing_ctx.derived_return_converters,
+        &non_testing_ctx.derived_return_converters,
+    );
     if args.dump_json {
         println!(
             "{}",

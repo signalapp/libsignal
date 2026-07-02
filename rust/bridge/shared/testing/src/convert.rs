@@ -11,6 +11,7 @@ use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::support::*;
 use libsignal_bridge_types::*;
+use libsignal_core::DeviceId;
 use uuid::Uuid;
 
 use crate::types::*;
@@ -389,6 +390,7 @@ pub mod test_conversions {
     //! test async specially.
 
     use libsignal_core::ServiceId;
+    use libsignal_protocol::Timestamp;
 
     use super::*;
 
@@ -543,6 +545,37 @@ pub mod test_conversions {
     }
     #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
     async fn TESTING_conversion_Uuid_identity_async(x: Uuid) -> Uuid {
+        x
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_DeviceId_to_string(x: DeviceId) -> String {
+        x.to_string()
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_DeviceId_identity(x: DeviceId) -> DeviceId {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_DeviceId_identity_async(x: DeviceId) -> DeviceId {
+        x
+    }
+
+    // Timestamps are just bridged as numbers for Node.
+    #[bridge_fn(nice = true, node = false)]
+    fn TESTING_conversion_Timestamp_to_string(x: Timestamp) -> String {
+        use chrono::prelude::*;
+        format!(
+            "{}ms {}",
+            x.epoch_millis(),
+            DateTime::<Utc>::from_timestamp_millis(
+                x.epoch_millis().try_into().expect("not too large")
+            )
+            .expect("valid timestamp")
+            .to_rfc3339_opts(SecondsFormat::Millis, true)
+        )
+    }
+    #[bridge_fn(nice = true, node = false)]
+    fn TESTING_conversion_Timestamp_identity(x: Timestamp) -> Timestamp {
         x
     }
 }

@@ -182,6 +182,8 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_FutureThrowsPoisonErrorType(asyncRuntime: ObjectHandle): CompletableFuture<Void?>
   @JvmStatic
+  public external fun TESTING_GetDevicesTests(): Array<Object>
+  @JvmStatic
   public external fun TESTING_InputStreamReadIntoZeroLengthSlice(capsAlphabetInput: InputStream): ByteArray
   @JvmStatic
   public external fun TESTING_JoinStringArray(array: Array<Object>, joinWith: String): String
@@ -328,9 +330,17 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_conversion_Data_to_string(x: ByteArray): String
   @JvmStatic
+  public external fun TESTING_conversion_DeviceId_identity(x: Int): Int
+  @JvmStatic
+  public external fun TESTING_conversion_DeviceId_to_string(x: Int): String
+  @JvmStatic
   public external fun TESTING_conversion_ServiceId_identity(x: ByteArray): ByteArray
   @JvmStatic
   public external fun TESTING_conversion_ServiceId_to_string(x: ByteArray): String
+  @JvmStatic
+  public external fun TESTING_conversion_Timestamp_identity(x: Long): Long
+  @JvmStatic
+  public external fun TESTING_conversion_Timestamp_to_string(x: Long): String
   @JvmStatic
   public external fun TESTING_conversion_Uuid_identity(x: UUID): UUID
   @JvmStatic

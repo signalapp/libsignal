@@ -12,6 +12,7 @@ import * as uuid from '../uuid.js';
 import { Aci, Pni } from '../Address.js';
 import { toBase64 } from './util.js';
 import { TokioAsyncContext } from '../net.js';
+import { DeviceId } from '../NiceConverters.js';
 
 use(chaiAsPromised);
 
@@ -459,6 +460,20 @@ describe('NativeTestingNice', () => {
       nativeIdentity: (x) => NativeNice.TESTING_conversion_Uuid_identity({ x }),
       nativeIdentityAsync: NativeNice.TESTING_conversion_Uuid_identity_async,
     });
+  });
+  it('DeviceId', async () => {
+    for (let item: DeviceId = 1; item <= 127; item++) {
+      await testConversion({
+        item,
+        toString: `${item}`,
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_DeviceId_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_DeviceId_identity({ x }),
+        nativeIdentityAsync:
+          NativeNice.TESTING_conversion_DeviceId_identity_async,
+      });
+    }
   });
   it('should handle async', async () => {
     for (const count of [0, 1, 2, 4, 8, 16, 32, 64, 128, 256]) {

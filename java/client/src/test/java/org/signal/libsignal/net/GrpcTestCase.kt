@@ -16,7 +16,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-internal class GrpcTestCaseResponse(
+public class GrpcTestCaseResponse(
   nativeHandle: ObjectHandle,
 ) : NativeHandleGuard.SimpleOwner(nativeHandle) {
   override fun release(nativeHandle: ObjectHandle) {
@@ -24,7 +24,7 @@ internal class GrpcTestCaseResponse(
   }
 }
 
-internal class GrpcTestCase<Req, Resp> {
+public class GrpcTestCase<Req, Resp> {
   val name: String
   val method: String
   val request: Req

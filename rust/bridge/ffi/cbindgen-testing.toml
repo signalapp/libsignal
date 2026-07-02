@@ -68,6 +68,7 @@ exclude = [
     "OwnedBufferOfc_uchar",
     "OwnedBufferOfCStringPtr",
     "OwnedBufferOfFfiCdsiLookupResponseEntry",
+    "OwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult",
     "OwnedBufferOfusize",
     "Uuid",
 ]

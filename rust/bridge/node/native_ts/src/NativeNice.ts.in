@@ -25,6 +25,8 @@ import ByteArray from './zkgroup/internal/ByteArray.js';
 import { TokioAsyncContext } from './net.js';
 import { CdnCredentials } from './net/chat/CdnCredentials.js';
 import {
+  type DeviceId,
+  type Timestamp,
   cdnCredentialReturnConverter,
   identity,
   serviceIdArgConverter,

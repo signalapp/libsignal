@@ -153,6 +153,18 @@ export const enum LogLevel {
   Trace,
 }
 
+export type ReturnFfiGetDevicesOut = {
+  devices: Array<ReturnFfiLinkedDeviceInternal>;
+};
+
+export type ReturnFfiLinkedDeviceInternal = {
+  id: number;
+  encrypted_name: Uint8Array<ArrayBuffer>;
+  last_seen: Timestamp;
+  registration_id: number;
+  created_at_ciphertext: Uint8Array<ArrayBuffer>;
+};
+
 export type ReturnFfiMyRemoteDeriveEnum =
   | {
       __type: 0;
@@ -399,6 +411,10 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_get_devices: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<Array<ReturnFfiLinkedDeviceInternal>>;
   AuthenticatedChatConnection_get_upload_form: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -2286,6 +2302,9 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,
     input: number
   ) => CancellablePromise<number>;
+  TESTING_GetDevicesTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiGetDevicesOut>
+  >;
   TESTING_InputStreamReadIntoZeroLengthSlice: (
     caps_alphabet_input: InputStream
   ) => Promise<Uint8Array<ArrayBuffer>>;
@@ -2481,6 +2500,12 @@ type NativeFunctions = {
     x: Uint8Array<ArrayBuffer>
   ) => CancellablePromise<Uint8Array<ArrayBuffer>>;
   TESTING_conversion_Data_to_string: (x: Uint8Array<ArrayBuffer>) => string;
+  TESTING_conversion_DeviceId_identity: (x: number) => number;
+  TESTING_conversion_DeviceId_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: number
+  ) => CancellablePromise<number>;
+  TESTING_conversion_DeviceId_to_string: (x: number) => string;
   TESTING_conversion_ServiceId_identity: (
     x: Uint8Array<ArrayBuffer>
   ) => Uint8Array<ArrayBuffer>;
@@ -2790,6 +2815,7 @@ const {
   AuthCredentialWithPni_CheckValidContents,
   AuthenticatedChatConnection_connect,
   AuthenticatedChatConnection_disconnect,
+  AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
@@ -3299,6 +3325,7 @@ const {
   TESTING_FutureProducesOtherPointerType,
   TESTING_FutureProducesPointerType,
   TESTING_FutureSuccess,
+  TESTING_GetDevicesTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,
   TESTING_JoinStringArray,
   TESTING_KeyTransChatSendError,
@@ -3382,6 +3409,9 @@ const {
   TESTING_conversion_Data_identity,
   TESTING_conversion_Data_identity_async,
   TESTING_conversion_Data_to_string,
+  TESTING_conversion_DeviceId_identity,
+  TESTING_conversion_DeviceId_identity_async,
+  TESTING_conversion_DeviceId_to_string,
   TESTING_conversion_ServiceId_identity,
   TESTING_conversion_ServiceId_identity_async,
   TESTING_conversion_ServiceId_to_string,
@@ -3477,6 +3507,7 @@ export {
   AuthCredentialWithPni_CheckValidContents,
   AuthenticatedChatConnection_connect,
   AuthenticatedChatConnection_disconnect,
+  AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
@@ -3986,6 +4017,7 @@ export {
   TESTING_FutureProducesOtherPointerType,
   TESTING_FutureProducesPointerType,
   TESTING_FutureSuccess,
+  TESTING_GetDevicesTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,
   TESTING_JoinStringArray,
   TESTING_KeyTransChatSendError,
@@ -4069,6 +4101,9 @@ export {
   TESTING_conversion_Data_identity,
   TESTING_conversion_Data_identity_async,
   TESTING_conversion_Data_to_string,
+  TESTING_conversion_DeviceId_identity,
+  TESTING_conversion_DeviceId_identity_async,
+  TESTING_conversion_DeviceId_to_string,
   TESTING_conversion_ServiceId_identity,
   TESTING_conversion_ServiceId_identity_async,
   TESTING_conversion_ServiceId_to_string,

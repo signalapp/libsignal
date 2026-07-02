@@ -18,7 +18,7 @@ use futures_util::future::BoxFuture;
 use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
-use libsignal_bridge_macros::bridge_callbacks;
+use libsignal_bridge_macros::{BridgedAsValue, bridge_callbacks};
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::ws::ListenerEvent;
@@ -865,6 +865,23 @@ pub enum UserBasedSendAuthorizationKind {
     AccessKey,
     Group,
     UnrestrictedUnauthenticatedAccess,
+}
+
+pub mod remote_derives {
+    use libsignal_core::DeviceId;
+
+    use super::*;
+
+    #[derive(BridgedAsValue)]
+    #[bridge(remote = libsignal_net_chat::grpc::devices::LinkedDevice)]
+    #[allow(unused)]
+    pub struct LinkedDeviceInternal {
+        pub id: DeviceId,
+        pub encrypted_name: Vec<u8>,
+        pub last_seen: Timestamp,
+        pub registration_id: u16,
+        pub created_at_ciphertext: Vec<u8>,
+    }
 }
 
 #[cfg(test)]

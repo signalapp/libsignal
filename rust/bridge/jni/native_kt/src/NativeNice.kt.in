@@ -24,31 +24,36 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 
 {% set ctx = testing_ctx if testing else non_testing_ctx %}
 
+{# Due to how our gradle build is currently configured, many internal items must be public. #}
+{% set pub_for_tests = "public" %}
+
 {% macro struct_class(name, struct, arg_converter, return_converter, superclass) %}
     {%- if struct.fields|count == 0 -%}
-        internal data object {{ name }}{% if superclass %}: {{ superclass }}(){% endif %} {
-            {% if return_converter %}
+        {{pub_for_tests}} data object {{ name }}{% if superclass %}: {{ superclass }}(){% endif %} {
+            {% if return_converter is defined %}
                 @JvmStatic
+                @JvmName("fromNative")
                 @CalledFromNative
-                fun fromNative(): {{ name }} = {{ name }}
+                internal fun fromNative(): {{ name }} = {{ name }}
             {% endif %}
-            {% if arg_converter %}
+            {% if arg_converter is defined %}
                 @CalledFromNative
                 internal object FfiArgType{% if superclass %}: {{ superclass }}.FfiArgType(){% endif %}
                 {% if superclass %}override {% endif %}fun toFfiArgType(): FfiArgType = FfiArgType
             {% endif %}
         }
     {%- else -%}
-        internal data class {{ name }}(
+        {{pub_for_tests}} data class {{ name }}(
             {% for (field, ty) in struct.fields -%}
                 val {{ field|to_lower_camel_case }}: {{ ty }},
             {%- endfor %}
         ){% if superclass %}: {{ superclass }}(){% endif %} {
             {% if return_converter is defined %}
-                companion object {
+                {{pub_for_tests}} companion object {
                     @JvmStatic
+                    @JvmName("fromNative")
                     @CalledFromNative
-                    fun fromNative(
+                    internal fun fromNative(
                         {%- for (field, ty) in return_converter.fields -%}{{ field }}: Any?,{%- endfor -%}
                     ): {{ name }} = {{ name }}(
                         {%- for (field, ty) in return_converter.fields -%}
@@ -61,7 +66,7 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
             {% if arg_converter is defined %}
                 @CalledFromNative
                 @Suppress("ktlint:standard:backing-property-naming")
-                internal class FfiArgType{% if superclass %}: {{ superclass }}.FfiArgType{% endif %} {
+                {{pub_for_tests}} class FfiArgType{% if superclass %}: {{ superclass }}.FfiArgType{% endif %} {
                     {% for (field, ty) in arg_converter.fields %}
                         @CalledFromNative
                         internal val {{ field }}: {{ ty.ffi_field_type_erased }}
@@ -96,7 +101,7 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
             superclass=none,
         ) }}
     {% else %}
-        internal sealed class {{ name }} {
+        {{pub_for_tests}} sealed class {{ name }} {
             {% for (variant, struct) in struct_or_enum.variants -%}
                 {{ struct_class(
                     variant,
@@ -109,7 +114,7 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
                 ) }}
             {%- endfor %}
             {% if ctx.derived_arg_converters[name] is defined %}
-                internal sealed class FfiArgType
+                {{pub_for_tests}} sealed class FfiArgType
                 internal abstract fun toFfiArgType(): FfiArgType
             {% endif %}
         }
@@ -119,7 +124,7 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
     {% endif %}
 {% endfor %}
 
-internal object {{ "NativeTestingNice" if testing else "NativeNice" }} {
+{{pub_for_tests}} object {{ "NativeTestingNice" if testing else "NativeNice" }} {
     {% for (name, f) in ctx.nice_functions|items %}
         public fun {{ name }}(
             {% if f.is_tokio_async -%}

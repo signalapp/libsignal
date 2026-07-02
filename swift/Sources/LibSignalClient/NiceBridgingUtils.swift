@@ -454,5 +454,55 @@ internal enum UuidNiceConverter: NiceArgConverter, NiceReturnConverter {
     typealias KeepAlive = Unit
     typealias NiceReturn = UUID
     typealias FfiReturn = SignalUuid
+}
 
+internal enum DeviceIdConverter: NiceArgConverter, NiceReturnConverter {
+    typealias NiceArg = DeviceId
+    typealias FfiArg = UInt8
+    typealias KeepAlive = Unit
+    typealias NiceReturn = DeviceId
+    typealias FfiReturn = UInt8
+    static func convertArg(_ arg: NiceArg) -> (FfiArg, KeepAlive?) {
+        (arg.uint8Value, nil)
+    }
+    static func convertArgBorrowed<Result>(_ arg: NiceArg, _ thunk: (FfiArg) throws -> Result) rethrows -> Result {
+        try thunk(arg.uint8Value)
+    }
+    static func emptyFfiReturn() -> FfiReturn {
+        0
+    }
+    static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
+        guard let out = DeviceId(validating: value) else {
+            throw SignalError.internalError("Invalid DeviceId")
+        }
+        return out
+    }
+}
+
+internal enum TimestampConverter: NiceArgConverter, NiceReturnConverter {
+    static func convertDate(_ arg: Date) -> UInt64 {
+        UInt64(arg.timeIntervalSince1970 * 1000.0)
+    }
+
+    static func convertArg(_ arg: Date) -> (UInt64, Unit?) {
+        (Self.convertDate(arg), nil)
+    }
+
+    static func convertArgBorrowed<Result>(_ arg: Date, _ thunk: (UInt64) throws -> Result) rethrows -> Result {
+        try thunk(Self.convertDate(arg))
+    }
+
+    static func emptyFfiReturn() -> UInt64 {
+        0
+    }
+
+    static func convertReturn(consuming value: UInt64) throws -> Date {
+        Date(timeIntervalSince1970: TimeInterval(value) / 1000.0)
+    }
+
+    typealias NiceArg = Date
+    typealias FfiArg = UInt64
+    typealias KeepAlive = Unit
+    typealias NiceReturn = Date
+    typealias FfiReturn = UInt64
 }

@@ -47,4 +47,18 @@ describe('AuthDevicesService', () => {
       }
     );
   });
+
+  describe('getDevices', () => {
+    defineTestGrpcCasesAuth(
+      NativeNice.TESTING_GetDevicesTests(),
+      async (
+        chat: AuthDevicesService,
+        _args: void,
+        resp: NativeNice.GetDevicesOut
+      ) => {
+        const out = await chat.getDevices();
+        expect(out).to.deep.equal(resp.devices);
+      }
+    );
+  });
 });
