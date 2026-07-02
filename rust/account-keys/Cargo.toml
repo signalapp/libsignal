@@ -22,13 +22,16 @@ argon2 = { workspace = true, features = ["zeroize"] }
 derive_more = { workspace = true, features = ["from"] }
 displaydoc = { workspace = true }
 hkdf = { workspace = true }
+hmac = { workspace = true }
 partial-default = { workspace = true, features = ["derive"] }
+password-hash = { workspace = true, features = ["getrandom"] }
 protobuf = { workspace = true }
 rand = { workspace = true }
 rand_core = { workspace = true, features = ["os_rng"] }
 serde = { workspace = true, optional = true, features = ["derive"] }
 sha2 = { workspace = true }
 static_assertions = { workspace = true }
+subtle = { workspace = true }
 thiserror = { workspace = true }
 zerocopy = { workspace = true, features = ["derive"] }
 
@@ -36,8 +39,8 @@ zerocopy = { workspace = true, features = ["derive"] }
 assert_matches = { workspace = true }
 const-str = { workspace = true }
 criterion = { workspace = true }
-hmac = { workspace = true, features = ["reset"] }
 proptest = { workspace = true }
+test-case = { workspace = true }
 
 [build-dependencies]
 protobuf-codegen = { workspace = true }

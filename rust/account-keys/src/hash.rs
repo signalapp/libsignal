@@ -83,6 +83,75 @@ impl PinHash {
             .expect("should expand");
         out
     }
+
+    /// Turn a master key into an encrypted blob to be stored in SVR2 using
+    /// HMAC-SHA256-SIV.
+    ///
+    /// The returned value is a concatenation of (16 byte IV || 32 byte ciphertext).
+    pub fn encode_master_key(&self, m: &[u8; 32]) -> [u8; 48] {
+        hmac_sha256_siv::encrypt(&self.encryption_key, m)
+    }
+
+    /// Decipher the master key from an SVR2 stored binary blob.
+    ///
+    /// Returns None if the tag verification failed.
+    pub fn decode_master_key(&self, iv_c: &[u8; 48]) -> Option<[u8; 32]> {
+        hmac_sha256_siv::decrypt(&self.encryption_key, iv_c)
+    }
+}
+
+/// HMAC-SHA256-SIV is a minimal fixed-length encryption scheme
+///
+/// It is built on HMAC-SHA256, making use of _a_ synthetic IV (not to be
+/// confused with [SIV](https://datatracker.ietf.org/doc/html/rfc5297)).
+mod hmac_sha256_siv {
+    use hmac::{Hmac, Mac as _};
+    use sha2::Sha256;
+    use subtle::ConstantTimeEq;
+
+    // The returned value is a concatenation of (16 byte IV || 32 byte ciphertext).
+    pub(super) fn encrypt(key: &[u8; 32], m: &[u8; 32]) -> [u8; 48] {
+        fn concat(iv: &[u8; 16], ciphertext: &[u8; 32]) -> [u8; 48] {
+            let mut ret = [0u8; 48];
+            ret[..16].copy_from_slice(iv);
+            ret[16..].copy_from_slice(ciphertext);
+            ret
+        }
+
+        let k_a = hmac_sha256(key, b"auth");
+        let k_e = hmac_sha256(key, b"enc");
+        let iv = *hmac_sha256(&k_a, m)
+            .first_chunk()
+            .expect("IV is shorter than SHA-256 output");
+        let k_x = hmac_sha256(&k_e, &iv);
+        let mut c = k_x;
+        c.iter_mut().zip(m).for_each(|(c_i, m_i)| *c_i ^= m_i);
+
+        concat(&iv, &c)
+    }
+
+    pub(super) fn decrypt(key: &[u8; 32], iv_c: &[u8; 48]) -> Option<[u8; 32]> {
+        const IV_SIZE: usize = 16;
+        let k_a = hmac_sha256(key, b"auth");
+        let k_e = hmac_sha256(key, b"enc");
+        let (iv, c): (&[u8; IV_SIZE], &[u8]) = iv_c.split_first_chunk().expect("valid iv_c size");
+        let k_x = hmac_sha256(&k_e, iv);
+        let mut m = k_x;
+        m.iter_mut().zip(c).for_each(|(c_i, m_i)| *c_i ^= m_i);
+        let expected_iv: [u8; IV_SIZE] = *hmac_sha256(&k_a, &m)
+            .first_chunk()
+            .expect("IV is shorter than SHA-256 output");
+        bool::from(iv.ct_eq(&expected_iv)).then_some(m)
+    }
+
+    fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+        Hmac::<Sha256>::new_from_slice(key)
+            .expect("should construct")
+            .chain_update(data)
+            .finalize()
+            .into_bytes()
+            .into()
+    }
 }
 
 /// Create a PHC encoded password hash string. This string may be verified later with
@@ -125,47 +194,10 @@ pub fn verify_local_pin_hash(encoded_hash: &str, pin: &[u8]) -> Result<bool> {
 #[cfg(test)]
 mod test {
     use const_str::hex;
-    use hmac::{Hmac, Mac};
-    use sha2::Sha256;
+    use test_case::test_case;
 
-    use super::*;
+    use super::{hmac_sha256_siv, *};
     use crate::hash::{PinHash, local_pin_hash, verify_local_pin_hash};
-
-    fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
-        type HmacSha256 = Hmac<Sha256>;
-        let mut hmac = HmacSha256::new_from_slice(key).expect("should construct");
-        hmac.update(data);
-        hmac.finalize_reset().into_bytes().into()
-    }
-
-    struct Encrypted {
-        iv: [u8; 16],
-        ciphertext: [u8; 32],
-    }
-
-    impl Encrypted {
-        fn concat(&self) -> [u8; 48] {
-            let mut ret = [0u8; 48];
-            ret[..16].copy_from_slice(&self.iv);
-            ret[16..].copy_from_slice(&self.ciphertext);
-            ret
-        }
-    }
-
-    const AUTH_BYTES: &[u8] = "auth".as_bytes();
-    const ENC_BYTES: &[u8] = "enc".as_bytes();
-
-    fn encrypt_hmac_sha256_siv(k: &[u8; 32], m: &[u8; 32]) -> Encrypted {
-        let k_a = hmac_sha256(k, AUTH_BYTES);
-        let k_e = hmac_sha256(k, ENC_BYTES);
-        let iv = *hmac_sha256(&k_a, m)
-            .first_chunk()
-            .expect("IV is shorter than SHA-256 output");
-        let k_x = hmac_sha256(&k_e, &iv);
-        let mut c = k_x;
-        c.iter_mut().zip(m).for_each(|(c_i, m_i)| *c_i ^= m_i);
-        Encrypted { iv, ciphertext: c }
-    }
 
     fn compare_known_hash(
         pin: &[u8],
@@ -177,8 +209,8 @@ mod test {
         let hashed = PinHash::create(pin, &salt).expect("should hash");
         assert_eq!(hashed.access_key, expected_access_key);
 
-        let encrypted = encrypt_hmac_sha256_siv(&hashed.encryption_key, &master_key);
-        assert_eq!(expected_encrypted, encrypted.concat());
+        let encrypted = hashed.encode_master_key(&master_key);
+        assert_eq!(expected_encrypted, encrypted);
     }
 
     #[test]
@@ -226,6 +258,67 @@ mod test {
         let phc_string = local_pin_hash(pin).expect("should hash");
         assert!(verify_local_pin_hash(&phc_string, pin).unwrap());
         assert!(!verify_local_pin_hash(&phc_string, b"wrongpin").unwrap());
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn encrypt_decrypt_roundtrip(encryption_key: [u8; 32], master_key: [u8; 32]) {
+            let encrypted = hmac_sha256_siv::encrypt(&encryption_key, &master_key);
+            let decrypted = hmac_sha256_siv::decrypt(&encryption_key, &encrypted)
+                .expect("should decrypt");
+            assert_eq!(master_key, decrypted);
+        }
+    }
+
+    #[test]
+    fn encrypt_is_deterministic() {
+        let encryption_key =
+            hex!("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+        let master_key = hex!("202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f");
+
+        assert_eq!(
+            hmac_sha256_siv::encrypt(&encryption_key, &master_key),
+            hmac_sha256_siv::encrypt(&encryption_key, &master_key),
+        );
+    }
+
+    #[test]
+    fn decrypt_known_ciphertext() {
+        let encryption_key =
+            hex!("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+        let expected_master_key =
+            hex!("202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f");
+        let ciphertext = hex!(
+            "f27036915a60d704b04d452ef0d55a5d1668e7d91339daba9c950d985b7556471d13cc609e59eec62fb1ce27f5c5a342"
+        );
+
+        assert_eq!(
+            Some(expected_master_key),
+            hmac_sha256_siv::decrypt(&encryption_key, &ciphertext),
+        );
+    }
+
+    #[test_case(|bytes| bytes[0] ^= 1; "bad IV")]
+    #[test_case(|bytes| bytes[47] ^= 1; "bad ciphertext")]
+    fn decrypt_rejects(corrupt: impl FnOnce(&mut [u8; 48])) {
+        let encryption_key =
+            hex!("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+        let master_key = hex!("202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f");
+
+        let mut encrypted = hmac_sha256_siv::encrypt(&encryption_key, &master_key);
+        corrupt(&mut encrypted);
+        assert_eq!(None, hmac_sha256_siv::decrypt(&encryption_key, &encrypted));
+    }
+
+    #[test]
+    fn decrypt_rejects_wrong_key() {
+        let mut encryption_key =
+            hex!("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+        let master_key = hex!("202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f");
+
+        let encrypted = hmac_sha256_siv::encrypt(&encryption_key, &master_key);
+        encryption_key[0] ^= 1;
+        assert_eq!(None, hmac_sha256_siv::decrypt(&encryption_key, &encrypted));
     }
 
     #[test]
