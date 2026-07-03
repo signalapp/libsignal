@@ -10,7 +10,10 @@ import { LibSignalError, RateLimitedError } from '../Errors.js';
 import { type Net, type TokioAsyncContext } from '../net.js';
 import { PublicKey } from '../EcKeys.js';
 import { Aci, Pni, ServiceIdKind } from '../Address.js';
-import { SignedKyberPublicPreKey, SignedPublicPreKey } from '../index.js';
+import {
+  SignedKyberPublicPreKey,
+  SignedPublicPreKey,
+} from '../ProtocolTypes.js';
 import { newNativeHandle } from '../internal.js';
 import {
   convertNativeRegistrationSessionState,

@@ -36,8 +36,8 @@ import { ServiceId } from './Address.js';
 import * as zkgroup from './zkgroup/index.js';
 import * as uuid from './uuid.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
-import { TokioAsyncContext } from './net.js';
-import { CdnCredentials } from './net/chat/CdnCredentials.js';
+import type { TokioAsyncContext } from './net.js';
+import type { CdnCredentials } from './net/chat/CdnCredentials.js';
 import {
   type DeviceId,
   type Timestamp,

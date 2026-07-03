@@ -4,7 +4,7 @@
 //
 
 import * as Native from '../Native.js';
-import { TokioAsyncContext, Environment } from '../net.js';
+import type { TokioAsyncContext, Environment } from '../net.js';
 import type {
   IoError,
   RateLimitedError,

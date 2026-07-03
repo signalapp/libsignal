@@ -4,10 +4,11 @@
 //
 
 import type { ReadonlyDeep } from 'type-fest';
+import { Buffer } from 'node:buffer';
+
 import * as Native from '../Native.js';
 import { Aci } from '../Address.js';
-import { Buffer } from 'node:buffer';
-import { TokioAsyncContext, ServiceAuth } from '../net.js';
+import type { TokioAsyncContext, ServiceAuth } from '../net.js';
 import { newNativeHandle } from '../internal.js';
 
 export type CDSRequestOptionsType = {

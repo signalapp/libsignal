@@ -5,26 +5,7 @@
 
 import * as Native from './Native.js';
 import { PrivateKey, PublicKey } from './EcKeys.js';
-
-export class KEMPublicKey {
-  readonly _nativeHandle: Native.KyberPublicKey;
-
-  private constructor(handle: Native.KyberPublicKey) {
-    this._nativeHandle = handle;
-  }
-
-  static _fromNativeHandle(handle: Native.KyberPublicKey): KEMPublicKey {
-    return new KEMPublicKey(handle);
-  }
-
-  static deserialize(buf: Uint8Array<ArrayBuffer>): KEMPublicKey {
-    return new KEMPublicKey(Native.KyberPublicKey_Deserialize(buf));
-  }
-
-  serialize(): Uint8Array<ArrayBuffer> {
-    return Native.KyberPublicKey_Serialize(this);
-  }
-}
+import { KEMKeyPair, KEMPublicKey, KEMSecretKey } from './KemKeys.js';
 
 export class SignedPreKeyRecord implements SignedPublicPreKey {
   readonly _nativeHandle: Native.SignedPreKeyRecord;
@@ -92,6 +73,114 @@ export type SignedPublicPreKey = {
   publicKey: () => PublicKey;
   signature: () => Uint8Array<ArrayBuffer>;
 };
+
+export class PreKeyRecord {
+  readonly _nativeHandle: Native.PreKeyRecord;
+
+  private constructor(handle: Native.PreKeyRecord) {
+    this._nativeHandle = handle;
+  }
+
+  static _fromNativeHandle(nativeHandle: Native.PreKeyRecord): PreKeyRecord {
+    return new PreKeyRecord(nativeHandle);
+  }
+
+  static new(id: number, pubKey: PublicKey, privKey: PrivateKey): PreKeyRecord {
+    return new PreKeyRecord(Native.PreKeyRecord_New(id, pubKey, privKey));
+  }
+
+  static deserialize(buffer: Uint8Array<ArrayBuffer>): PreKeyRecord {
+    return new PreKeyRecord(Native.PreKeyRecord_Deserialize(buffer));
+  }
+
+  id(): number {
+    return Native.PreKeyRecord_GetId(this);
+  }
+
+  privateKey(): PrivateKey {
+    return PrivateKey._fromNativeHandle(
+      Native.PreKeyRecord_GetPrivateKey(this)
+    );
+  }
+
+  publicKey(): PublicKey {
+    return PublicKey._fromNativeHandle(Native.PreKeyRecord_GetPublicKey(this));
+  }
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Native.PreKeyRecord_Serialize(this);
+  }
+}
+
+/** The public information contained in a {@link KyberPreKeyRecord} */
+export type SignedKyberPublicPreKey = {
+  id: () => number;
+  publicKey: () => KEMPublicKey;
+  signature: () => Uint8Array<ArrayBuffer>;
+};
+
+export class KyberPreKeyRecord implements SignedKyberPublicPreKey {
+  readonly _nativeHandle: Native.KyberPreKeyRecord;
+
+  private constructor(handle: Native.KyberPreKeyRecord) {
+    this._nativeHandle = handle;
+  }
+
+  static _fromNativeHandle(
+    nativeHandle: Native.KyberPreKeyRecord
+  ): KyberPreKeyRecord {
+    return new KyberPreKeyRecord(nativeHandle);
+  }
+
+  static new(
+    id: number,
+    timestamp: number,
+    keyPair: KEMKeyPair,
+    signature: Uint8Array<ArrayBuffer>
+  ): KyberPreKeyRecord {
+    return new KyberPreKeyRecord(
+      Native.KyberPreKeyRecord_New(id, timestamp, keyPair, signature)
+    );
+  }
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Native.KyberPreKeyRecord_Serialize(this);
+  }
+
+  static deserialize(buffer: Uint8Array<ArrayBuffer>): KyberPreKeyRecord {
+    return new KyberPreKeyRecord(Native.KyberPreKeyRecord_Deserialize(buffer));
+  }
+
+  id(): number {
+    return Native.KyberPreKeyRecord_GetId(this);
+  }
+
+  keyPair(): KEMKeyPair {
+    return KEMKeyPair._fromNativeHandle(
+      Native.KyberPreKeyRecord_GetKeyPair(this)
+    );
+  }
+
+  publicKey(): KEMPublicKey {
+    return KEMPublicKey._fromNativeHandle(
+      Native.KyberPreKeyRecord_GetPublicKey(this)
+    );
+  }
+
+  secretKey(): KEMSecretKey {
+    return KEMSecretKey._fromNativeHandle(
+      Native.KyberPreKeyRecord_GetSecretKey(this)
+    );
+  }
+
+  signature(): Uint8Array<ArrayBuffer> {
+    return Native.KyberPreKeyRecord_GetSignature(this);
+  }
+
+  timestamp(): number {
+    return Native.KyberPreKeyRecord_GetTimestamp(this);
+  }
+}
 
 export class PreKeyBundle {
   readonly _nativeHandle: Native.PreKeyBundle;

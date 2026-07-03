@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { TokioAsyncContext } from '../net.js';
+import type { TokioAsyncContext } from '../net.js';
 import * as Native from '../Native.js';
 import { newNativeHandle } from '../internal.js';
 import { FakeChatRemoteEnd } from '../Native.js';

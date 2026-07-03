@@ -5,7 +5,7 @@
 
 import * as Native from '../Native.js';
 import { LibSignalError } from '../Errors.js';
-import { Environment, TokioAsyncContext } from '../net.js';
+import type { Environment, TokioAsyncContext } from '../net.js';
 import * as KT from './KeyTransparency.js';
 import { newNativeHandle } from '../internal.js';
 import { FakeChatRemote } from './FakeChat.js';
