@@ -194,4 +194,69 @@ mod test {
             HpkeError::OpenError
         );
     }
+
+    #[test]
+    fn malformed_ciphertexts_fail_before_opening() {
+        let key_pair = KeyPair::generate(&mut rand::rng());
+        let ciphertext = key_pair
+            .public_key
+            .seal(b"info", b"extra", b"message")
+            .expect("can seal");
+
+        assert_matches!(
+            key_pair.private_key.open(b"info", b"extra", &[]),
+            Err(HpkeError::InvalidInput)
+        );
+
+        let mut unknown_type = ciphertext.clone();
+        unknown_type[0] = u8::MAX;
+        assert_matches!(
+            key_pair.private_key.open(b"info", b"extra", &unknown_type),
+            Err(HpkeError::UnknownMode)
+        );
+
+        let full_prefix_len = 1 + SignalHpkeCiphertextType::Base_X25519_HkdfSha256_Aes256Gcm
+            .kem_algorithm()
+            .shared_secret_len();
+        let ciphertext_with_truncated_secret = &ciphertext[..full_prefix_len - 1];
+        assert_matches!(
+            key_pair
+                .private_key
+                .open(b"info", b"extra", ciphertext_with_truncated_secret),
+            Err(HpkeError::InvalidInput)
+        );
+    }
+
+    #[test]
+    fn authenticated_context_and_payload_are_checked() {
+        let key_pair = KeyPair::generate(&mut rand::rng());
+        let info = b"info";
+        let aad = b"extra";
+        let contents = b"message";
+
+        let ciphertext = key_pair
+            .public_key
+            .seal(info, aad, contents)
+            .expect("can seal");
+
+        assert_matches!(
+            key_pair
+                .private_key
+                .open(b"different info", aad, &ciphertext),
+            Err(HpkeError::OpenError)
+        );
+        assert_matches!(
+            key_pair
+                .private_key
+                .open(info, b"different aad", &ciphertext),
+            Err(HpkeError::OpenError)
+        );
+
+        let mut tampered_ciphertext = ciphertext.clone();
+        *tampered_ciphertext.last_mut().expect("has AEAD tag") ^= 1;
+        assert_matches!(
+            key_pair.private_key.open(info, aad, &tampered_ciphertext),
+            Err(HpkeError::OpenError)
+        );
+    }
 }
