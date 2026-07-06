@@ -17,7 +17,7 @@
 use std::fmt::Debug;
 use std::num::NonZeroUsize;
 
-use curve25519_dalek_signal::{RistrettoPoint, Scalar};
+use curve25519_dalek::{RistrettoPoint, Scalar};
 use partial_default::PartialDefault;
 use poksho::ShoApi;
 use poksho::shoapi::ShoApiExt as _;
