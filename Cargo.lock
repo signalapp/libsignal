@@ -994,9 +994,9 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek"
-version = "5.0.0-rc.0"
+version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f359e08ca85e7bd759e1fd933ff2bccd81864c60a8fba0e259c7f822b0924bf"
+checksum = "b5eed333089e2e1c1ac8c6c0398e5e2497b4c9926ca6d0365ed1e099afa5bc23"
 dependencies = [
  "cfg-if",
  "cpufeatures 0.3.0",
@@ -2693,7 +2693,7 @@ dependencies = [
  "clap",
  "const-str",
  "criterion",
- "curve25519-dalek 5.0.0-rc.0",
+ "curve25519-dalek 5.0.0",
  "derive_more 2.1.1",
  "displaydoc",
  "hex",
@@ -2780,7 +2780,7 @@ dependencies = [
  "assert_matches",
  "const-str",
  "criterion",
- "curve25519-dalek 5.0.0-rc.0",
+ "curve25519-dalek 5.0.0",
  "displaydoc",
  "ed25519-dalek",
  "hex",
@@ -3134,7 +3134,7 @@ dependencies = [
  "const-str",
  "criterion",
  "ctr",
- "curve25519-dalek 5.0.0-rc.0",
+ "curve25519-dalek 5.0.0",
  "data-encoding-macro",
  "derive-where",
  "derive_more 2.1.1",
@@ -3187,7 +3187,7 @@ dependencies = [
  "assert_matches",
  "const-str",
  "criterion",
- "curve25519-dalek 5.0.0-rc.0",
+ "curve25519-dalek 5.0.0",
  "displaydoc",
  "hex",
  "hkdf 0.13.0",
@@ -3961,7 +3961,7 @@ name = "poksho"
 version = "0.7.0"
 dependencies = [
  "criterion",
- "curve25519-dalek 5.0.0-rc.0",
+ "curve25519-dalek 5.0.0",
  "hex",
  "hmac 0.13.0",
  "rand 0.9.4",
@@ -5800,7 +5800,7 @@ dependencies = [
  "base64",
  "clap",
  "criterion",
- "curve25519-dalek 5.0.0-rc.0",
+ "curve25519-dalek 5.0.0",
  "displaydoc",
  "hkdf 0.13.0",
  "hmac 0.13.0",
@@ -6459,7 +6459,7 @@ version = "3.0.0-rc.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f17b575e04fcdb37e5509a85a14ff08116678a1c9724befb8b571db742dbdbb0"
 dependencies = [
- "curve25519-dalek 5.0.0-rc.0",
+ "curve25519-dalek 5.0.0",
  "rand_core 0.10.1",
  "zeroize",
 ]
@@ -6622,7 +6622,7 @@ dependencies = [
  "cfg-if",
  "const-str",
  "criterion",
- "curve25519-dalek 5.0.0-rc.0",
+ "curve25519-dalek 5.0.0",
  "derive-where",
  "displaydoc",
  "hex",
@@ -6646,7 +6646,7 @@ dependencies = [
  "bincode",
  "const-str",
  "criterion",
- "curve25519-dalek 5.0.0-rc.0",
+ "curve25519-dalek 5.0.0",
  "derive-where",
  "derive_more 2.1.1",
  "displaydoc",
