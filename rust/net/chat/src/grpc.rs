@@ -670,7 +670,7 @@ pub mod test_case_util {
     use base64::prelude::BASE64_STANDARD;
     use futures_util::FutureExt as _;
     use http_body_util::BodyExt as _;
-    use http_body_util::combinators::BoxBody;
+    use libsignal_net::chat::fake::BodyWithTrailers;
 
     use super::*;
 
@@ -702,30 +702,6 @@ pub mod test_case_util {
             data: body,
             trailers,
         })
-    }
-
-    #[derive(Clone)]
-    pub struct BodyWithTrailers {
-        pub(crate) data: Vec<u8>,
-        pub(crate) trailers: http::HeaderMap,
-    }
-
-    pub trait IntoHttpBody {
-        fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible>;
-    }
-
-    impl IntoHttpBody for Vec<u8> {
-        fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible> {
-            http_body_util::Full::new(bytes::Bytes::from(self)).boxed()
-        }
-    }
-
-    impl IntoHttpBody for BodyWithTrailers {
-        fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible> {
-            http_body_util::Full::new(bytes::Bytes::from(self.data))
-                .with_trailers(std::future::ready(Some(Ok(self.trailers))))
-                .boxed()
-        }
     }
 
     pub(crate) fn status_for_server_side_error(
@@ -770,6 +746,7 @@ pub(crate) mod testutil {
     use futures_util::FutureExt as _;
     use http_body_util::BodyExt as _;
     use http_body_util::combinators::BoxBody;
+    use libsignal_net::chat::fake::{BodyWithTrailers, IntoHttpBody};
     use tonic::Status;
 
     use super::test_case_util::*;

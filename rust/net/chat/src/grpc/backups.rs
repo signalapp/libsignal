@@ -606,11 +606,12 @@ redact_no_arg_backup_request!(DeleteAllRequest);
 
 // Not cfg(test) so it can be accessed via bridging tests.
 pub mod test_cases {
+    use libsignal_net::chat::fake::BodyWithTrailers;
     use libsignal_net_grpc::proto::chat::backup::CopyMediaItem;
 
     use super::*;
     use crate::grpc::GrpcTestCase;
-    use crate::grpc::test_case_util::{BodyWithTrailers, status_for_server_side_error, stream};
+    use crate::grpc::test_case_util::{status_for_server_side_error, stream};
 
     #[derive(Debug)]
     pub enum CopyBackupMediaOut {
