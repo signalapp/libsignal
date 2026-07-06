@@ -24,7 +24,13 @@ bridge_as_handle!(PlaintextContent);
 bridge_as_handle!(PreKeyBundle);
 bridge_as_handle!(PreKeyRecord);
 bridge_as_handle!(PreKeySignalMessage);
-bridge_as_handle!(PrivateKey, ffi = privatekey, jni = ECPrivateKey);
+bridge_as_handle!(
+    PrivateKey,
+    ffi = privatekey,
+    swift_type = "PrivateKey",
+    jni = ECPrivateKey,
+    jni_class = "org.signal.libsignal.protocol.ecc.ECPrivateKey"
+);
 bridge_as_handle!(ProtocolAddress, ffi = address);
 bridge_as_handle!(PublicKey, ffi = publickey, jni = ECPublicKey);
 bridge_as_handle!(SenderCertificate);

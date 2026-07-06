@@ -25,9 +25,15 @@ const POINTER_MASK: u8 = 0xC0;
 pub(crate) const MAX_DNS_LABEL_LEN: usize = 63;
 pub(crate) const MAX_DNS_NAME_LEN: usize = 255;
 pub(crate) const MAX_DNS_UDP_MESSAGE_LEN: usize = 512;
+
 const MAX_DNS_ANSWERS_TO_PARSE: u16 = 1024;
+// Maximum number of pointer indirections to follow while parsing names.
+// Value is chosen arbitrarily to be sufficiently large in practice yet
+// not cause stack exhaustion due to recursion.
+const MAX_POINTER_FOLLOWS: usize = 127;
 
 #[derive(displaydoc::Display, Debug, thiserror::Error, Clone)]
+#[cfg_attr(test, derive(Eq, PartialEq))]
 pub enum Error {
     /// Invalid domain name (a label is longer than {MAX_DNS_LABEL_LEN:?} octets)
     ProtocolErrorLabelTooLong,
@@ -236,36 +242,48 @@ fn read_name_to_vec<R: io::Read>(
     preceding_bytes: &[u8],
     dst: &mut Vec<u8>,
 ) -> Result<()> {
-    let mut buf: [u8; u8::MAX as usize] = [0; u8::MAX as usize];
-    loop {
-        let label_len = reader.read::<u8>()?;
-        if label_len == 0 {
-            return Ok(());
+    fn read_recursive<R: io::Read>(
+        reader: &mut ByteReader<R, BigEndian>,
+        preceding_bytes: &[u8],
+        dst: &mut Vec<u8>,
+        hops_left: usize,
+    ) -> Result<()> {
+        if hops_left == 0 {
+            return Err(Error::ProtocolErrorInvalidMessage);
         }
-        if label_len & POINTER_MASK == POINTER_MASK {
-            let byte2 = reader.read::<u8>()? as u16;
-            let byte1 = (label_len & !POINTER_MASK) as u16;
-            let offset = ((byte1 << 8) | byte2) as usize;
-            // offset can only be referring to a preceding location
-            if offset >= preceding_bytes.len() {
-                return Err(Error::ProtocolErrorInvalidMessage);
+        let mut buf: [u8; u8::MAX as usize] = [0; u8::MAX as usize];
+        loop {
+            let label_len = reader.read::<u8>()?;
+            if label_len == 0 {
+                return Ok(());
             }
-            // every time we make a recursive call,
-            // we're shrinking the slice of `preceding_bytes`
-            // so that recursion will eventually stop
-            return read_name_to_vec(
-                &mut ByteReader::endian(Cursor::new(&preceding_bytes[offset..]), BigEndian),
-                &preceding_bytes[..offset],
-                dst,
-            );
+            if label_len & POINTER_MASK == POINTER_MASK {
+                let byte2 = reader.read::<u8>()? as u16;
+                let byte1 = (label_len & !POINTER_MASK) as u16;
+                let offset = ((byte1 << 8) | byte2) as usize;
+                // offset can only be referring to a preceding location
+                if offset >= preceding_bytes.len() {
+                    return Err(Error::ProtocolErrorInvalidMessage);
+                }
+                // every time we make a recursive call,
+                // we're shrinking the slice of `preceding_bytes`
+                // so that recursion will eventually stop
+                return read_recursive(
+                    &mut ByteReader::endian(Cursor::new(&preceding_bytes[offset..]), BigEndian),
+                    &preceding_bytes[..offset],
+                    dst,
+                    hops_left - 1,
+                );
+            }
+            if !dst.is_empty() {
+                dst.push(b'.');
+            }
+            let label_len = label_len as usize;
+            reader.read_bytes(&mut buf[..label_len])?;
+            dst.extend_from_slice(&buf[..label_len]);
         }
-        if !dst.is_empty() {
-            dst.push(b'.');
-        }
-        let label_len = label_len as usize;
-        reader.read_bytes(&mut buf[..label_len])?;
-        dst.extend_from_slice(&buf[..label_len]);
     }
+    read_recursive(reader, preceding_bytes, dst, MAX_POINTER_FOLLOWS + 1)
 }
 
 #[cfg(test)]
@@ -281,6 +299,7 @@ mod test {
     use hickory_proto::rr::{Name, RecordType};
     use hickory_proto::serialize::binary::BinEncodable;
     use itertools::Itertools;
+    use test_case::test_case;
     use tokio::time::Instant;
 
     use super::*;
@@ -544,6 +563,34 @@ mod test {
 
         assert_matches!(get_id(response_message.as_slice()), Ok(REQUEST_ID));
         assert_eq!(&[EXPECTED_IP], response.data.as_slice());
+    }
+
+    fn make_dns_pointer(offset: u16) -> [u8; 2] {
+        // DNS pointer: top 2 bits set, remaining 14 bits are the offset.
+        [POINTER_MASK | ((offset >> 8) as u8), (offset & 0xFF) as u8]
+    }
+
+    fn pointer_chain(hops: usize) -> (Vec<u8>, u16) {
+        let mut message = vec![0x01, b'a', 0x00];
+        // Each pointer is at offset (3 + 2*k) points back to: 0, 3, 5, 7, ...
+        let targets = iter::once(0u16).chain((0u16..).map(|k| 3 + 2 * k));
+        message.extend(targets.take(hops).flat_map(make_dns_pointer));
+        let last_offset = u16::try_from(message.len() - 2).expect("chain fits in u16");
+        (message, last_offset)
+    }
+
+    #[test_case(MAX_POINTER_FOLLOWS-1 => Ok(()); "at the limit")]
+    #[test_case(MAX_POINTER_FOLLOWS => Err(Error::ProtocolErrorInvalidMessage); "over the limit")]
+    fn compressed_name_pointer_depth_limit(hops: usize) -> Result<()> {
+        let (preceding, last_offset) = pointer_chain(hops);
+        let ptr = make_dns_pointer(last_offset);
+        let mut reader = ByteReader::endian(Cursor::new(ptr.as_slice()), BigEndian);
+        let mut dst = vec![];
+        let res = read_name_to_vec(&mut reader, &preceding, &mut dst);
+        if let Ok(()) = res {
+            assert_eq!(dst, b"a");
+        }
+        res
     }
 
     fn response_bytes<F>(record_type: RecordType, builder: F) -> Vec<u8>

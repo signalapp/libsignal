@@ -10,7 +10,7 @@ use const_str::ip_addr;
 use libsignal_net::chat::RECOMMENDED_CHAT_WS_CONFIG;
 use libsignal_net::connect_state::ServiceName;
 use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
-use libsignal_net::env::{ConnectionConfig, DomainConfig, Env, KeyTransConfig, SvrBEnv};
+use libsignal_net::env::{ConnectionConfig, DomainConfig, Env, KeyTransConfig, Svr2Env, SvrBEnv};
 use libsignal_net::infra::RECOMMENDED_WS_CONFIG;
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::route::HttpVersion;
@@ -107,15 +107,18 @@ pub(crate) fn localhost_test_env_with_ports(
             ws_config: RECOMMENDED_WS_CONFIG,
             params: DUMMY_CDSI_ENDPOINT_PARAMS,
         },
-        svr2: EnclaveEndpoint {
-            domain_config: localhost_test_domain_config_with_port_and_cert(
-                ServiceName("svr2"),
-                ports.svr2_port,
-                root_certificate_der,
-                http_version,
-            ),
-            ws_config: RECOMMENDED_WS_CONFIG,
-            params: DUMMY_SVR2_ENDPOINT_PARAMS,
+        svr2: Svr2Env {
+            current: EnclaveEndpoint {
+                domain_config: localhost_test_domain_config_with_port_and_cert(
+                    ServiceName("svr2"),
+                    ports.svr2_port,
+                    root_certificate_der,
+                    http_version,
+                ),
+                ws_config: RECOMMENDED_WS_CONFIG,
+                params: DUMMY_SVR2_ENDPOINT_PARAMS,
+            },
+            previous: None,
         },
         svr_b: SvrBEnv::new(
             [
@@ -135,5 +138,6 @@ pub(crate) fn localhost_test_env_with_ports(
             [None, None, None],
         ),
         keytrans_config: DUMMY_KEYTRANS_CONFIG,
+        reflector_providers: || &[],
     }
 }

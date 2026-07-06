@@ -45,6 +45,21 @@ pub unsafe extern "C" fn signal_free_buffer(buf: *const c_uchar, buf_len: usize)
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn signal_free_owned_buffer_of_max_aligned(
+    buffer: OwnedBufferOfMaxAligned<std::ffi::c_void>,
+) {
+    if buffer.base.is_null() || buffer.size_bytes == 0 {
+        return;
+    }
+    unsafe {
+        std::alloc::dealloc(
+            buffer.base as *mut u8,
+            OwnedBufferOfMaxAligned::<std::ffi::c_void>::layout_for_size_bytes(buffer.size_bytes),
+        );
+    }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn signal_free_list_of_strings(buffer: OwnedBufferOf<CStringPtr>) {
     let strings = unsafe { buffer.into_box() };
     for &s in &*strings {

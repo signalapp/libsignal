@@ -12,22 +12,19 @@ import { PublicKey } from '../EcKeys.js';
 import { Aci, Pni, ServiceIdKind } from '../Address.js';
 import { SignedKyberPublicPreKey, SignedPublicPreKey } from '../index.js';
 import { newNativeHandle } from '../internal.js';
+import {
+  convertNativeRegistrationSessionState,
+  type RegistrationSessionState,
+} from './RegistrationSession.js';
 import { FakeChatRemote } from './FakeChat.js';
+
+export type { RegistrationSessionState };
 
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
 
 type RegistrationOptions = {
   tokioAsyncContext: TokioAsyncContext;
   connectionManager: ConnectionManager;
-};
-
-export type RegistrationSessionState = {
-  allowedToRequestCode: boolean;
-  verified: boolean;
-  nextSmsSecs?: number;
-  nextCallSecs?: number;
-  nextVerificationAttemptSecs?: number;
-  requestedInformation: Set<'pushChallenge' | 'captcha'>;
 };
 
 type CreateSessionArgs = Readonly<{
@@ -241,25 +238,7 @@ export class RegistrationService {
   public static _convertNativeSessionState(
     session: Native.Wrapper<Native.RegistrationSession>
   ): RegistrationSessionState {
-    const nextCallSecs = Native.RegistrationSession_GetNextCallSeconds(session);
-    const nextSmsSecs = Native.RegistrationSession_GetNextSmsSeconds(session);
-    const nextVerificationAttemptSecs =
-      Native.RegistrationSession_GetNextVerificationAttemptSeconds(session);
-
-    return {
-      allowedToRequestCode:
-        Native.RegistrationSession_GetAllowedToRequestCode(session),
-      verified: Native.RegistrationSession_GetVerified(session),
-      nextCallSecs: nextCallSecs != null ? nextCallSecs : undefined,
-      nextSmsSecs: nextSmsSecs != null ? nextSmsSecs : undefined,
-      nextVerificationAttemptSecs:
-        nextVerificationAttemptSecs != null
-          ? nextVerificationAttemptSecs
-          : undefined,
-      requestedInformation: new Set(
-        Native.RegistrationSession_GetRequestedInformation(session)
-      ),
-    };
+    return convertNativeRegistrationSessionState(session);
   }
 
   /**

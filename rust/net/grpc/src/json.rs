@@ -22,19 +22,30 @@ pub fn expect_json_to_binproto<T: prost::Message + serde::de::DeserializeOwned>(
 
 pub fn expect_binproto_to_json_by_name(message_name: &str, input: &[u8]) -> String {
     type BinprotoToJsonFn = fn(&[u8]) -> String;
+    macro_rules! entry {
+        (crate::proto::chat::$suite:ident::$request:ident) => {
+            (
+                concat!(
+                    "org.signal.chat.",
+                    stringify!($suite),
+                    ".",
+                    stringify!($request)
+                ),
+                expect_binproto_to_json::<crate::proto::chat::$suite::$request> as BinprotoToJsonFn,
+            )
+        };
+    }
+
     // TODO: generate this
     static OPS: LazyLock<HashMap<&'static str, BinprotoToJsonFn>> = LazyLock::new(|| {
         HashMap::from_iter([
-            (
-                "org.signal.chat.account.LookupUsernameHashRequest",
-                expect_binproto_to_json::<crate::proto::chat::account::LookupUsernameHashRequest>
-                    as _,
-            ),
-            (
-                "org.signal.chat.account.LookupUsernameLinkRequest",
-                expect_binproto_to_json::<crate::proto::chat::account::LookupUsernameLinkRequest>
-                    as _,
-            ),
+            entry!(crate::proto::chat::account::LookupUsernameHashRequest),
+            entry!(crate::proto::chat::account::LookupUsernameLinkRequest),
+            entry!(crate::proto::chat::backup::DeleteAllRequest),
+            entry!(crate::proto::chat::backup::GetCdnCredentialsRequest),
+            entry!(crate::proto::chat::backup::GetSvrBCredentialsRequest),
+            entry!(crate::proto::chat::backup::RefreshRequest),
+            entry!(crate::proto::chat::backup::SetPublicKeyRequest),
         ])
     });
 
@@ -46,19 +57,31 @@ pub fn expect_binproto_to_json_by_name(message_name: &str, input: &[u8]) -> Stri
 
 pub fn expect_json_to_binproto_by_name(message_name: &str, input: &str) -> Vec<u8> {
     type JsonToBinprotoFn = fn(&str) -> Vec<u8>;
+    macro_rules! entry {
+        (crate::proto::chat::$suite:ident::$response:ident) => {
+            (
+                concat!(
+                    "org.signal.chat.",
+                    stringify!($suite),
+                    ".",
+                    stringify!($response)
+                ),
+                expect_json_to_binproto::<crate::proto::chat::$suite::$response>
+                    as JsonToBinprotoFn,
+            )
+        };
+    }
+
     // TODO: generate this
     static OPS: LazyLock<HashMap<&'static str, JsonToBinprotoFn>> = LazyLock::new(|| {
         HashMap::from_iter([
-            (
-                "org.signal.chat.account.LookupUsernameHashResponse",
-                expect_json_to_binproto::<crate::proto::chat::account::LookupUsernameHashResponse>
-                    as _,
-            ),
-            (
-                "org.signal.chat.account.LookupUsernameLinkResponse",
-                expect_json_to_binproto::<crate::proto::chat::account::LookupUsernameLinkResponse>
-                    as _,
-            ),
+            entry!(crate::proto::chat::account::LookupUsernameHashResponse),
+            entry!(crate::proto::chat::account::LookupUsernameLinkResponse),
+            entry!(crate::proto::chat::backup::DeleteAllResponse),
+            entry!(crate::proto::chat::backup::GetCdnCredentialsResponse),
+            entry!(crate::proto::chat::backup::GetSvrBCredentialsResponse),
+            entry!(crate::proto::chat::backup::RefreshResponse),
+            entry!(crate::proto::chat::backup::SetPublicKeyResponse),
         ])
     });
 

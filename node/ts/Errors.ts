@@ -5,6 +5,11 @@
 
 import { ProtocolAddress, ServiceId } from './Address.js';
 import * as Native from './Native.js';
+import { newNativeHandle } from './internal.js';
+import {
+  convertNativeRegistrationSessionState,
+  type RegistrationSessionState,
+} from './net/RegistrationSession.js';
 
 export enum ErrorCode {
   Generic,
@@ -71,8 +76,23 @@ export enum ErrorCode {
   MismatchedDevices,
 
   ServiceIdNotFound,
+  DeviceIdNotFound,
 
   UploadTooLarge,
+
+  RegistrationCredentialsCouldNotBeParsed,
+  RegistrationDeviceTransferPossibleNotSkipped,
+  RegistrationLock,
+  RegistrationRecoveryVerificationFailed,
+  RegistrationRequestInvalid,
+  RegistrationRequestRejected,
+  RegistrationSessionIdInvalid,
+  RegistrationSessionNotFound,
+  RegistrationSessionNotReadyForVerification,
+  RegistrationVerificationCodeNotDeliverable,
+  RegistrationVerificationSendFailed,
+
+  UsernameNotAvailable,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -119,6 +139,7 @@ export class LibSignalErrorBase extends Error {
   public readonly code: ErrorCode;
   public readonly operation: string;
   readonly _addr?: string | Native.ProtocolAddress;
+  readonly _sessionState?: Native.RegistrationSession;
 
   constructor(
     message: string,
@@ -158,6 +179,15 @@ export class LibSignalErrorBase extends Error {
       default:
         throw new TypeError(`cannot get address from this error (${this})`);
     }
+  }
+
+  public get sessionState(): RegistrationSessionState | undefined {
+    if (this._sessionState === undefined) {
+      return undefined;
+    }
+    return convertNativeRegistrationSessionState(
+      newNativeHandle(this._sessionState)
+    );
   }
 
   public toString(): string {
@@ -395,6 +425,70 @@ export type UploadTooLarge = LibSignalErrorCommon & {
   code: ErrorCode.UploadTooLarge;
 };
 
+export type RegistrationSessionNotFoundError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationSessionNotFound;
+};
+
+export type RegistrationSessionIdInvalidError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationSessionIdInvalid;
+};
+
+export type RegistrationRequestInvalidError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationRequestInvalid;
+};
+
+export type RegistrationRequestRejectedError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationRequestRejected;
+};
+
+export type RegistrationSessionNotReadyForVerificationError =
+  LibSignalErrorCommon & {
+    code: ErrorCode.RegistrationSessionNotReadyForVerification;
+    readonly sessionState?: RegistrationSessionState;
+  };
+
+export type RegistrationVerificationSendFailedError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationVerificationSendFailed;
+  readonly sessionState?: RegistrationSessionState;
+};
+
+export type RegistrationVerificationCodeNotDeliverableError =
+  LibSignalErrorCommon & {
+    code: ErrorCode.RegistrationVerificationCodeNotDeliverable;
+    readonly reason: string;
+    readonly permanentFailure: boolean;
+  };
+
+export type RegistrationLockError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationLock;
+  readonly timeRemainingSeconds: number;
+  readonly svr2Username: string;
+  readonly svr2Password: string;
+};
+
+export type RegistrationDeviceTransferPossibleNotSkippedError =
+  LibSignalErrorCommon & {
+    code: ErrorCode.RegistrationDeviceTransferPossibleNotSkipped;
+  };
+
+export type RegistrationRecoveryVerificationFailedError =
+  LibSignalErrorCommon & {
+    code: ErrorCode.RegistrationRecoveryVerificationFailed;
+  };
+
+export type RegistrationCredentialsCouldNotBeParsedError =
+  LibSignalErrorCommon & {
+    code: ErrorCode.RegistrationCredentialsCouldNotBeParsed;
+  };
+
+export type DeviceIdNotFound = LibSignalErrorCommon & {
+  code: ErrorCode.DeviceIdNotFound;
+};
+
+export type UsernameNotAvailable = LibSignalErrorCommon & {
+  code: ErrorCode.UsernameNotAvailable;
+};
+
 /**
  * @throws {ChatServiceInactive} if the chat connection has been closed.
  * @throws {IoError} if an error occurred while communicating with the server.
@@ -457,4 +551,17 @@ export type LibSignalError =
   | RequestUnauthorizedError
   | MismatchedDevicesError
   | ServiceIdNotFound
-  | UploadTooLarge;
+  | UploadTooLarge
+  | RegistrationSessionNotFoundError
+  | RegistrationSessionIdInvalidError
+  | RegistrationRequestInvalidError
+  | RegistrationRequestRejectedError
+  | RegistrationSessionNotReadyForVerificationError
+  | RegistrationVerificationSendFailedError
+  | RegistrationVerificationCodeNotDeliverableError
+  | RegistrationLockError
+  | RegistrationDeviceTransferPossibleNotSkippedError
+  | RegistrationRecoveryVerificationFailedError
+  | RegistrationCredentialsCouldNotBeParsedError
+  | DeviceIdNotFound
+  | UsernameNotAvailable;

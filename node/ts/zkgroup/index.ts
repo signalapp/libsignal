@@ -12,6 +12,11 @@ export { default as GenericServerSecretParams } from './GenericServerSecretParam
 
 export { default as NotarySignature } from './NotarySignature.js';
 
+export {
+  ZkCredentialKeyPair,
+  ZkCredentialPublicKey,
+} from './ZkCredentialKey.js';
+
 // Auth
 export { default as ClientZkAuthOperations } from './auth/ClientZkAuthOperations.js';
 export { default as ServerZkAuthOperations } from './auth/ServerZkAuthOperations.js';
@@ -77,9 +82,26 @@ export { default as BackupCredentialType } from './backups/BackupCredentialType.
 export { default as BackupLevel } from './backups/BackupLevel.js';
 
 // Group Send
-
 export { default as GroupSendDerivedKeyPair } from './groupsend/GroupSendDerivedKeyPair.js';
 export { default as GroupSendEndorsement } from './groupsend/GroupSendEndorsement.js';
 export { default as GroupSendEndorsementsResponse } from './groupsend/GroupSendEndorsementsResponse.js';
 export { default as GroupSendFullToken } from './groupsend/GroupSendFullToken.js';
 export { default as GroupSendToken } from './groupsend/GroupSendToken.js';
+
+// AvatarUploadCredential
+export {
+  AvatarUploadCredential,
+  AvatarUploadCredentialPresentation,
+  AvatarUploadCredentialRequest,
+  AvatarUploadCredentialRequestContext,
+  AvatarUploadCredentialResponse,
+} from './AvatarUploadCredential.js';
+
+// Donation Permit
+export {
+  DonationPermit,
+  DonationPermitResponse,
+  DonationPermitRequestContext,
+  DonationPermitDerivedKeyPair,
+  DonationPermitRequest,
+} from './DonationPermit.js';

@@ -96,8 +96,8 @@ extension SignalCPromiseOwnedBufferOfServiceIdFixedWidthBinaryBytes: PromiseStru
     typealias Result = SignalOwnedBufferOfServiceIdFixedWidthBinaryBytes
 }
 
-extension SignalCPromiseOptionalPairOfc_charu832: PromiseStruct {
-    typealias Result = SignalOptionalPairOfc_charu832
+extension SignalCPromiseOptionalPairOfCStringPtru832: PromiseStruct {
+    typealias Result = SignalOptionalPairOfCStringPtru832
 }
 
 extension SignalCPromisePairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar: PromiseStruct {
@@ -106,6 +106,18 @@ extension SignalCPromisePairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar: PromiseS
 
 extension SignalCPromiseFfiPreKeysResponse: PromiseStruct {
     typealias Result = SignalFfiPreKeysResponse
+}
+
+extension SignalCPromisePairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr: PromiseStruct {
+    typealias Result = SignalPairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr
+}
+
+extension SignalCPromisePairOfCStringPtrCStringPtr: PromiseStruct {
+    typealias Result = SignalPairOfCStringPtrCStringPtr
+}
+
+extension SignalCPromiseu832: PromiseStruct {
+    typealias Result = FixedByteArrayHelper32.Ffi
 }
 
 /// A type-erased version of ``Completer``.

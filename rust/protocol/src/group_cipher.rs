@@ -106,7 +106,7 @@ fn get_sender_key(
         );
         return Err(SignalProtocolError::InvalidMessage(
             CiphertextMessageType::SenderKey,
-            "message from too far into the future",
+            "message from too far into the future".to_owned(),
         ));
     }
 
@@ -181,7 +181,7 @@ pub async fn group_decrypt(
             log::error!("sender key decryption failed: {msg}");
             return Err(SignalProtocolError::InvalidMessage(
                 CiphertextMessageType::SenderKey,
-                "decryption failed",
+                format!("decryption failed: {msg}"),
             ));
         }
     };

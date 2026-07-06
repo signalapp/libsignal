@@ -5,18 +5,21 @@
 
 package org.signal.libsignal.metadata.certificate;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.Optional;
 import java.util.UUID;
-import junit.framework.TestCase;
+import org.junit.Test;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
-public class SenderCertificateTest extends TestCase {
+public class SenderCertificateTest {
 
   private final ECKeyPair trustRoot = ECKeyPair.generate();
 
+  @Test
   public void testSignature() throws InvalidCertificateException, InvalidKeyException {
     ECKeyPair key = ECKeyPair.generate();
     SenderCertificate senderCertificate =
@@ -31,6 +34,7 @@ public class SenderCertificateTest extends TestCase {
     new CertificateValidator(trustRoot.getPublicKey()).validate(senderCertificate, 31336);
   }
 
+  @Test
   public void testExpiredSignature() throws InvalidCertificateException, InvalidKeyException {
     ECKeyPair key = ECKeyPair.generate();
 
@@ -50,6 +54,7 @@ public class SenderCertificateTest extends TestCase {
     }
   }
 
+  @Test
   public void testBadSignature() throws InvalidCertificateException, InvalidKeyException {
     ECKeyPair key = ECKeyPair.generate();
 
@@ -76,6 +81,7 @@ public class SenderCertificateTest extends TestCase {
     }
   }
 
+  @Test
   public void testGetSenderAci()
       throws InvalidCertificateException, InvalidKeyException, ServiceId.InvalidServiceIdException {
     ECKeyPair key = ECKeyPair.generate();

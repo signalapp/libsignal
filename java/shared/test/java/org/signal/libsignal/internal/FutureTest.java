@@ -65,8 +65,21 @@ public class FutureTest {
         e.getCause()
             .getMessage()
             .startsWith(
-                "failed to convert error \"TestingError(org.signal.libsignal.internal.GuaranteedNonexistentException)\": "
-                    + "exception in method call 'org.signal.libsignal.internal.GuaranteedNonexistentException': exception "));
+                "failed to convert error \"TestingError(org.signal.libsignal.internal.GuaranteedNonexistentException)\": "));
+    assertTrue(
+        e.getCause().getMessage(),
+        e.getCause()
+                .getMessage()
+                .contains(
+                    "JNI error failed to resolve Java class 'org/signal/libsignal/internal/GuaranteedNonexistentException'")
+            || e.getCause()
+                .getMessage()
+                .contains(
+                    "Didn't find class \"org.signal.libsignal.internal.GuaranteedNonexistentException\"")
+            || e.getCause()
+                .getMessage()
+                .contains(
+                    "JNI error failed to resolve Java class 'org.signal.libsignal.internal.GuaranteedNonexistentException'"));
   }
 
   @Test

@@ -11,11 +11,11 @@ use boring_signal::ssl::{SslAlert, SslConnectorBuilder, SslVerifyMode};
 use boring_signal::x509::X509;
 use boring_signal::x509::store::X509StoreBuilder;
 use futures_util::future::BoxFuture;
+use libsignal_core::LogSafeDisplay;
 use rustls::client::danger::{ServerCertVerified, ServerCertVerifier};
 use rustls::pki_types::{CertificateDer, ServerName};
 
 use crate::dns::dns_utils::log_safe_domain;
-use crate::errors::LogSafeDisplay;
 use crate::host::Host;
 
 mod error;

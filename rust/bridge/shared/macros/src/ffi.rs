@@ -10,7 +10,10 @@ use syn::spanned::Spanned;
 use syn::*;
 use syn_mid::Signature;
 
-use crate::util::{extract_arg_names_and_types, result_type};
+use crate::util::{
+    DeriveInputInfo, Impl, NiceMetadataNames, arg_type_info_storage_decl, crates,
+    extract_arg_names_and_types, nice_metadata, nice_type_metadata, result_type,
+};
 use crate::{BridgingKind, ResultInfo, ResultKind};
 
 pub(crate) fn bridge_fn(
@@ -18,6 +21,7 @@ pub(crate) fn bridge_fn(
     sig: &Signature,
     result_info: ResultInfo,
     bridging_kind: &BridgingKind,
+    nice: bool,
 ) -> Result<TokenStream2> {
     // Scroll down to the end of the function to see the quote template.
     // This is the best way to understand what we're trying to produce.
@@ -56,6 +60,19 @@ pub(crate) fn bridge_fn(
         BridgingKind::Regular => bridge_fn_body(sig, &input_names_and_types, result_info.kind),
         BridgingKind::Io { runtime } => bridge_io_body(&sig.ident, &input_names_and_types, runtime),
     };
+    let metadata = nice_metadata(
+        &sig.ident.to_string(),
+        sig.asyncness.is_some(),
+        &input_names_and_types,
+        &result_type(&sig.output),
+        nice,
+        &NiceMetadataNames {
+            backend_name: format_ident!("ffi"),
+            metadata_context: format_ident!("SwiftMetadataContext"),
+            register_arg_converter: format_ident!("register_swift_arg_converter"),
+            register_result_converter: format_ident!("register_swift_result_converter"),
+        },
+    );
 
     Ok(quote! {
         #[cfg(feature = "ffi")]
@@ -66,6 +83,7 @@ pub(crate) fn bridge_fn(
         ) -> *mut ffi::SignalFfiError {
             #body
         }
+        #metadata
     })
 }
 
@@ -404,4 +422,257 @@ fn bridge_callback_item(
         implementation,
         forwarding_impl,
     })
+}
+
+pub(crate) fn derive_bridged_as_value(
+    input: &DeriveInput,
+    target: &syn::Path,
+) -> syn::Result<TokenStream2> {
+    if matches!(input.data, Data::Union(_)) {
+        return Err(syn::Error::new_spanned(input, "Unions aren't supported"));
+    }
+    let result = derive_bridged_as_value_return(input, target)?;
+    let arg = derive_bridged_as_value_arg(input, target)?;
+    Ok(quote! {
+        #result
+        #arg
+    })
+}
+
+fn derive_bridged_as_value_arg(
+    input: &DeriveInput,
+    target: &syn::Path,
+) -> syn::Result<TokenStream2> {
+    let krate = crates::libsignal_bridge_types();
+    let ident = &input.ident;
+    let mut impl_arg_type_info = Impl::new(
+        input,
+        target,
+        Some(parse_quote!(#krate::ffi::ArgTypeInfo<'storage>)),
+    );
+    impl_arg_type_info
+        .extra_params
+        .extend([parse_quote!('storage)]);
+    let DeriveInputInfo {
+        patterns: field_patterns,
+        field_names,
+        field_types,
+        variant_indices: _,
+        variant_names,
+    } = DeriveInputInfo::new(input, target);
+    impl_arg_type_info
+        .extra_where
+        .extend(field_types.iter().flatten().map(|ty| {
+            parse_quote!(
+                #ty: #krate::ffi::ArgTypeInfo<'storage, ArgType=#krate::ffi_arg_type!(#ty)>)
+        }));
+    let mut impl_nice_arg_converter = Impl::new(
+        input,
+        target,
+        Some(parse_quote!(#krate::ffi::NiceArgConverter)),
+    );
+    let register_swift_nice_type = nice_type_metadata(
+        input,
+        &parse_quote!(ctx),
+        &parse_quote!(derived_types),
+        &parse_quote!(#krate::ffi::NiceArgConverter),
+        &parse_quote!(register_swift_nice_type),
+        &mut impl_nice_arg_converter.extra_where,
+    )?;
+    let register_swift_arg_converter = nice_type_metadata(
+        input,
+        &parse_quote!(ctx),
+        &parse_quote!(derived_arg_converters),
+        &parse_quote!(#krate::ffi::NiceArgConverter),
+        &parse_quote!(register_swift_arg_converter),
+        &mut impl_nice_arg_converter.extra_where,
+    )?;
+    let arg_ty = format_ident!("{ident}FfiArg");
+    let (arg_ty_decl, arg_constructors) =
+        ffi_struct(&arg_ty, input, target, &parse_quote!(ffi_arg_type));
+    let stored_decl_name = format_ident!("{ident}FfiArgStoredType");
+    let stored_decl = arg_type_info_storage_decl(&stored_decl_name, input, target);
+    Ok(quote! {
+        #arg_ty_decl
+        #[cfg(feature = "ffi")]
+        #stored_decl
+        #[cfg(feature = "ffi")]
+        #impl_arg_type_info {
+            type ArgType = #arg_ty;
+            type StoredType = #stored_decl_name<#(
+                (
+                    #(<#field_types as #krate::ffi::ArgTypeInfo<'storage>>::StoredType,)*
+                ),
+            )*>;
+            fn borrow(
+                foreign_arg: Self::ArgType,
+            ) -> #krate::ffi::SignalFfiResult<Self::StoredType> {
+                match foreign_arg {
+                    #(#arg_constructors => {
+                        Ok(#stored_decl_name::#variant_names((#(
+                            <#field_types as #krate::ffi::ArgTypeInfo<'storage>>::borrow(#field_names)?,
+                        )*)))
+                    })*
+                }
+            }
+            fn load_from(stored_arg: &'storage mut Self::StoredType) -> Self {
+                match stored_arg {#(
+                    #stored_decl_name::#variant_names((#(#field_names,)*)) => {
+                        #(let #field_names = #krate::ffi::ArgTypeInfo::load_from(#field_names);)*
+                        #field_patterns
+                    },
+                )*}
+            }
+        }
+        #[cfg(all(feature = "ffi", feature = "metadata"))]
+        #impl_nice_arg_converter {
+            fn register_swift_arg_converter(
+                ctx: &mut #krate::ffi::SwiftMetadataContext
+            ) -> #krate::metadata::ffi::SwiftArgConverter {
+                #register_swift_nice_type
+                #register_swift_arg_converter
+                #krate::metadata::ffi::SwiftArgConverter {
+                    nice_type: stringify!(#ident).to_string(),
+                    converter_type:
+                        #krate::metadata::ffi::names::arg_converter(stringify!(#ident)),
+                }
+            }
+        }
+    })
+}
+
+fn derive_bridged_as_value_return(
+    input: &DeriveInput,
+    target: &syn::Path,
+) -> syn::Result<TokenStream2> {
+    let krate = crates::libsignal_bridge_types();
+    let ident = &input.ident;
+    let mut impl_nice_result_converter = Impl::new(
+        input,
+        target,
+        Some(parse_quote!(#krate::ffi::NiceResultConverter)),
+    );
+    let mut impl_result_type_info = Impl::new(
+        input,
+        target,
+        Some(parse_quote!(#krate::ffi::ResultTypeInfo)),
+    );
+    let register_swift_nice_type = nice_type_metadata(
+        input,
+        &parse_quote!(ctx),
+        &parse_quote!(derived_types),
+        &parse_quote!(#krate::ffi::NiceResultConverter),
+        &parse_quote!(register_swift_nice_type),
+        &mut impl_nice_result_converter.extra_where,
+    )?;
+    let register_swift_result_converter = nice_type_metadata(
+        input,
+        &parse_quote!(ctx),
+        &parse_quote!(derived_return_converters),
+        &parse_quote!(#krate::ffi::NiceResultConverter),
+        &parse_quote!(register_swift_result_converter),
+        &mut impl_nice_result_converter.extra_where,
+    )?;
+    let DeriveInputInfo {
+        patterns,
+        field_names,
+        variant_indices: _,
+        field_types,
+        variant_names: _,
+    } = DeriveInputInfo::new(input, target);
+    impl_result_type_info.extra_where.extend(
+        field_types
+            .iter()
+            .flatten()
+            .map(|ty| parse_quote!(#ty: #krate::ffi::ResultTypeInfo)),
+    );
+    let result_ty = format_ident!("{ident}FfiResult");
+    let (result_ty_decl, result_constructors) =
+        ffi_struct(&result_ty, input, target, &parse_quote!(ffi_result_type));
+    Ok(quote! {
+        #result_ty_decl
+        #[cfg(feature = "ffi")]
+        #impl_result_type_info {
+            type ResultType = #result_ty;
+            fn convert_into(self) -> #krate::ffi::SignalFfiResult<#result_ty> {
+                match self {
+                    #(#patterns => {
+                        // TODO: if any of these return an error, we leak memory.
+                        #(let #field_names = #krate::ffi::ResultTypeInfo::convert_into(#field_names)?;)*
+                        Ok(#result_constructors)
+                    })*
+                }
+            }
+        }
+        #[cfg(all(feature = "metadata", feature = "ffi"))]
+        #impl_nice_result_converter {
+            fn register_swift_result_converter(
+                ctx: &mut #krate::metadata::ffi::SwiftMetadataContext
+            ) -> #krate::metadata::ffi::SwiftReturnConverter {
+                #register_swift_nice_type
+                #register_swift_result_converter
+                #krate::metadata::ffi::SwiftReturnConverter {
+                    nice_type: stringify!(#ident).to_string(),
+                    converter_type:
+                        #krate::metadata::ffi::names::return_converter(stringify!(#ident)),
+                }
+            }
+        }
+    })
+}
+
+fn ffi_struct(
+    name: &Ident,
+    input: &DeriveInput,
+    target: &syn::Path,
+    macro_name: &Ident,
+) -> (TokenStream2, Vec<TokenStream2>) {
+    let krate = crates::libsignal_bridge_types();
+    let DeriveInputInfo {
+        patterns: _,
+        field_names,
+        variant_indices: _,
+        field_types,
+        variant_names,
+    } = DeriveInputInfo::new(input, target);
+    match &input.data {
+        Data::Struct(_) => (
+            quote! {
+                #[cfg(feature = "ffi")]
+                #[allow(unused)]
+                #[repr(C)]
+                pub struct #name {
+                    #(#(#field_names: #krate::#macro_name!(#field_types),)*)*
+                }
+            },
+            vec![quote!(#name {#(#(#field_names),*)*})],
+        ),
+        Data::Enum(_) => {
+            let variant_bodies = field_names.iter().zip(&field_types).map(|(names, types)| {
+                if names.is_empty() {
+                    Default::default()
+                } else {
+                    quote! {
+                        { #(#names: #krate::#macro_name!(#types),)* }
+                    }
+                }
+            });
+            (
+                quote! {
+                    #[cfg(feature = "ffi")]
+                    #[allow(unused)]
+                    #[repr(C)]
+                    pub enum #name {
+                        #(#variant_names #variant_bodies,)*
+                    }
+                },
+                variant_names
+                    .iter()
+                    .zip(field_names.iter())
+                    .map(|(variant, fields)| quote!(#name::#variant {#(#fields),*}))
+                    .collect(),
+            )
+        }
+        Data::Union(_) => unreachable!(),
+    }
 }

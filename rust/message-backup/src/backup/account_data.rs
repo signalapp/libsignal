@@ -52,8 +52,6 @@ pub struct AccountData<M: Method + ReferencedTypes> {
     pub ios_specific_settings: M::Value<Option<IosSpecificSettings>>,
     pub bio_text: M::Value<String>,
     pub bio_emoji: M::Value<String>,
-    #[serde_as(as = "Option<Hex>")]
-    pub key_transparency_data: M::Value<Option<Vec<u8>>>,
 }
 
 #[serde_as]
@@ -289,7 +287,6 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             iosSpecificSettings,
             bioText,
             bioEmoji,
-            keyTransparencyData,
             special_fields: _,
         } = self;
 
@@ -346,7 +343,6 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             ios_specific_settings: M::value(ios_specific_settings),
             bio_text: M::value(bioText),
             bio_emoji: M::value(bioEmoji),
-            key_transparency_data: M::value(keyTransparencyData),
         })
     }
 }
@@ -894,7 +890,6 @@ mod test {
                 ios_specific_settings: Some(IosSpecificSettings::from_proto_test_data()),
                 bio_text: "".to_string(),
                 bio_emoji: "".to_string(),
-                key_transparency_data: None,
             }
         }
     }

@@ -33,7 +33,7 @@ public struct UploadForm: Equatable, Sendable {
         if header_keys.count != header_values.count {
             fatalError("Rust didn't give us matching keys and values")
         }
-        self.headers = [:]
+        self.headers = .init(minimumCapacity: header_keys.count)
         for (k, v) in zip(
             header_keys.lazy.map { String(cString: $0!) },
             header_values.lazy.map { String(cString: $0!) },

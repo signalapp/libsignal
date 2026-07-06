@@ -60,6 +60,7 @@ public class SessionRecord: ClonableHandleOwner<SignalMutPointerSessionRecord> {
         }
     }
 
+    /// - Throws: ``SignalError/sessionNotFound(_:)`` if there is no current session state.
     public func remoteRegistrationId() throws -> UInt32 {
         return try self.withNativeHandle { nativeHandle in
             try invokeFnReturningInteger {

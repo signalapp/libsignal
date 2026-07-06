@@ -59,8 +59,7 @@ public class NativeHandleGuard implements AutoCloseable {
   }
 
   public abstract static class SimpleOwner implements Owner {
-
-    private final long nativeHandle;
+    @CalledFromNative private final long nativeHandle;
 
     protected SimpleOwner(final long nativeHandle) {
       this.nativeHandle = nativeHandle;

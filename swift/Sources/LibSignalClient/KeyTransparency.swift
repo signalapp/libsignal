@@ -17,6 +17,8 @@ public enum KeyTransparency {
         func setLastDistinguishedTreeHead(to: Data) async
         func getAccountData(for aci: Aci) async -> Data?
         func setAccountData(_ data: Data, for aci: Aci) async
+        func getAccountData(for aci: Aci, context: StoreContext) -> Data?
+        func setAccountData(_ data: Data, for aci: Aci, context: StoreContext)
     }
 
     /// ACI descriptor for key transparency requests.
@@ -88,9 +90,10 @@ public enum KeyTransparency {
     public static func resetField(
         _ field: AccountDataField,
         for aci: Aci,
-        store: some Store
-    ) async throws {
-        guard let accountData = await store.getAccountData(for: aci) else { return }
+        store: some Store,
+        context: StoreContext
+    ) throws {
+        guard let accountData = store.getAccountData(for: aci, context: context) else { return }
         let updated = try accountData.withUnsafeBorrowedBuffer { accountDataBuffer in
             try invokeFnReturningData {
                 signal_key_transparency_reset_data_field($0, accountDataBuffer, field.rawValue)
@@ -99,7 +102,7 @@ public enum KeyTransparency {
         if updated.isEmpty {
             throw SignalError.invalidArgument("failed to decode account data")
         }
-        await store.setAccountData(updated, for: aci)
+        store.setAccountData(updated, for: aci, context: context)
     }
 
     /// Typed API to access the key transparency subsystem using an existing

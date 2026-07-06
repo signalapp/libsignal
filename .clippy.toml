@@ -1,11 +1,11 @@
 too-many-arguments-threshold = 8
 disallowed-methods = [
-    { path = "jni::JNIEnv::find_class", reason = "use lookup helper instead" },
-    { path = "jni::JNIEnv::call_method", reason = "use helper method instead" },
-    { path = "jni::JNIEnv::call_method_unchecked", reason = "use helper method instead" },
-    { path = "jni::JNIEnv::call_static_method", reason = "use helper method instead" },
-    { path = "jni::JNIEnv::call_static_method_unchecked", reason = "use helper method instead" },
-    { path = "jni::JNIEnv::new_object", reason = "use helper method instead" },
-    { path = "jni::JNIEnv::new_object_unchecked", reason = "use helper method instead" },
+    { path = "jni::Env::find_class", reason = "use lookup helper instead" },
+    { path = "jni::Env::call_method", reason = "use helper method instead" },
+    { path = "jni::Env::call_method_unchecked", reason = "use helper method instead" },
+    { path = "jni::Env::call_static_method", reason = "use helper method instead" },
+    { path = "jni::Env::call_static_method_unchecked", reason = "use helper method instead" },
+    { path = "jni::Env::new_object", reason = "use helper method instead" },
+    { path = "jni::Env::new_object_unchecked", reason = "use helper method instead" },
 ]
 allow-unwrap-in-tests = true

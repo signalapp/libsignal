@@ -11,6 +11,7 @@ use futures_util::Stream;
 use futures_util::stream::FuturesUnordered;
 use http::uri::PathAndQuery;
 use http::{HeaderValue, Method};
+use libsignal_core::LogSafeDisplay;
 
 use crate::dns::custom_resolver::{DnsQueryResult, DnsTransport};
 use crate::dns::dns_errors::Error;
@@ -18,7 +19,7 @@ use crate::dns::dns_lookup::DnsLookupRequest;
 use crate::dns::dns_message;
 use crate::dns::dns_message::{parse_a_record, parse_aaaa_record};
 use crate::dns::dns_types::ResourceType;
-use crate::errors::{LogSafeDisplay, TransportConnectError};
+use crate::errors::TransportConnectError;
 use crate::http_client::{AggregatingHttp2Client, Http2Connector, HttpConnectError};
 use crate::route::{
     Connector, ConnectorExt, ConnectorFactory, HttpsTlsRoute, TcpRoute, ThrottlingConnector,

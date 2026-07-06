@@ -4,14 +4,18 @@
 //
 
 pub mod auth;
+pub mod avatars;
 pub mod backups;
 pub mod call_links;
+pub mod donations;
+mod endorsement_expiration;
 pub mod groups;
 pub mod profiles;
 pub mod receipts;
 
 pub mod generic_server_params;
 pub mod server_params;
+pub mod zk_credential_key;
 
 pub use server_params::{
     EndorsementPublicKey, EndorsementServerRootKeyPair, ServerPublicParams, ServerSecretParams,

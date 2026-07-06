@@ -41,7 +41,7 @@ use static_assertions::assert_impl_all;
 
 use crate::net::ConnectionManager;
 use crate::net::remote_config::{RemoteConfig, RemoteConfigKey};
-use crate::support::LimitedLifetimeRef;
+use crate::support::{AsyncMutex, LimitedLifetimeRef};
 use crate::*;
 
 pub type ChatConnectionInfo = ConnectionInfo;
@@ -55,7 +55,11 @@ pub struct UnauthenticatedChatConnection {
     /// reader/writer contention.
     inner: tokio::sync::RwLock<MaybeChatConnection>,
 }
-bridge_as_handle!(UnauthenticatedChatConnection);
+bridge_as_handle!(
+    UnauthenticatedChatConnection,
+    swift_type = "UnauthenticatedChatConnection",
+    jni_class = "org.signal.libsignal.net.UnauthenticatedChatConnection",
+);
 impl UnwindSafe for UnauthenticatedChatConnection {}
 impl RefUnwindSafe for UnauthenticatedChatConnection {}
 
@@ -69,7 +73,11 @@ pub struct AuthenticatedChatConnection {
     /// there won't be any contention.
     inner: tokio::sync::RwLock<MaybeChatConnection>,
 }
-bridge_as_handle!(AuthenticatedChatConnection);
+bridge_as_handle!(
+    AuthenticatedChatConnection,
+    swift_type = "AuthenticatedChatConnection",
+    jni_class = "org.signal.libsignal.net.AuthenticatedChatConnection",
+);
 impl UnwindSafe for AuthenticatedChatConnection {}
 impl RefUnwindSafe for AuthenticatedChatConnection {}
 
@@ -91,7 +99,7 @@ enum MaybeChatConnection {
     Running(ChatConnection),
     WaitingForListener {
         runtime: tokio::runtime::Handle,
-        pending: tokio::sync::Mutex<chat::PendingChatConnection>,
+        pending: AsyncMutex<chat::PendingChatConnection>,
         grpc_overrides: HashMap<&'static str, chat::GrpcOverride>,
     },
     TemporarilyEvicted,
@@ -141,6 +149,18 @@ impl UnauthenticatedChatConnection {
             panic!("listener was not set")
         };
         callback(LimitedLifetimeRef::from(<&Unauth<_>>::from(inner))).await
+    }
+
+    pub async fn require_grpc(&self) -> Unauth<impl libsignal_net_chat::grpc::GrpcServiceProvider> {
+        let guard = self.as_ref().read().await;
+        let MaybeChatConnection::Running(inner) = &*guard else {
+            panic!("listener was not set")
+        };
+        Unauth(
+            inner
+                .shared_h2_connection()
+                .expect("requires an H2 connection"),
+        )
     }
 }
 
@@ -255,6 +275,20 @@ impl AuthenticatedChatConnection {
             panic!("listener was not set")
         };
         callback(LimitedLifetimeRef::from(<&AuthConn<_>>::from(inner))).await
+    }
+
+    pub async fn require_grpc(
+        &self,
+    ) -> AuthConn<impl libsignal_net_chat::grpc::GrpcServiceProvider> {
+        let guard = self.as_ref().read().await;
+        let MaybeChatConnection::Running(inner) = &*guard else {
+            panic!("listener was not set")
+        };
+        AuthConn(
+            inner
+                .shared_h2_connection()
+                .expect("requires an H2 connection"),
+        )
     }
 }
 

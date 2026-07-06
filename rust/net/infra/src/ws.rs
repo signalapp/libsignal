@@ -12,11 +12,11 @@ use futures_util::future::Either;
 use futures_util::{Sink, Stream, TryFutureExt};
 use http::uri::PathAndQuery;
 use http_body_util::BodyExt;
+use libsignal_core::LogSafeDisplay;
 use tungstenite::protocol::CloseFrame;
 use tungstenite::{Message, Utf8Bytes, http};
 
 use crate::AsyncDuplexStream;
-use crate::errors::LogSafeDisplay;
 use crate::http_client::{
     H2Body, Http2Client, Http2Connector, Http2TransportError, Http2TransportErrorKind,
 };

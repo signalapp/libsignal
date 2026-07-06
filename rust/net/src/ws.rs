@@ -6,7 +6,8 @@
 use std::fmt::Display;
 
 use http::HeaderName;
-use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
+use libsignal_core::LogSafeDisplay;
+use libsignal_net_infra::errors::TransportConnectError;
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketError};
 use tokio::time::Instant;
 

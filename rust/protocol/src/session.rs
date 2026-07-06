@@ -110,7 +110,7 @@ async fn process_prekey_impl(
         // one, and won't cause the sender and receiver to move over to a PQXDH session.
         return Err(SignalProtocolError::InvalidMessage(
             CiphertextMessageType::PreKey,
-            "X3DH no longer supported",
+            "X3DH no longer supported".to_owned(),
         ));
     }
 
@@ -127,7 +127,7 @@ async fn process_prekey_impl(
     } else {
         return Err(SignalProtocolError::InvalidMessage(
             CiphertextMessageType::PreKey,
-            "missing pq pre-key ID",
+            "missing pq pre-key ID".to_owned(),
         ));
     };
     let kyber_ciphertext =
@@ -135,7 +135,7 @@ async fn process_prekey_impl(
             .kyber_ciphertext()
             .ok_or(SignalProtocolError::InvalidMessage(
                 CiphertextMessageType::PreKey,
-                "missing pq ciphertext",
+                "missing pq ciphertext".to_owned(),
             ))?;
 
     let our_one_time_pre_key_pair = if let Some(pre_key_id) = message.pre_key_id() {

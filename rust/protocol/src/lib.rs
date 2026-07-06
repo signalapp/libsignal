@@ -48,7 +48,7 @@ mod timestamp;
 mod triple_ratchet;
 
 use error::Result;
-pub use error::SignalProtocolError;
+pub use error::{SessionNotFound, SignalProtocolError};
 pub use fingerprint::{
     DisplayableFingerprint, Error as FingerprintError, Fingerprint, ScannableFingerprint,
 };

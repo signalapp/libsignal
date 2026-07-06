@@ -18,9 +18,10 @@ use http::uri::PathAndQuery;
 use http_body_util::{BodyExt, Full, Limited};
 use hyper::client::conn::http2;
 use hyper_util::rt::{TokioExecutor, TokioIo};
+use libsignal_core::LogSafeDisplay;
 use static_assertions::assert_impl_all;
 
-use crate::errors::{LogSafeDisplay, TransportConnectError};
+use crate::errors::TransportConnectError;
 use crate::route::{Connector, HttpRouteFragment, HttpVersion};
 use crate::{AsyncDuplexStream, Connection};
 

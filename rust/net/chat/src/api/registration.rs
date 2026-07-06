@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 use std::collections::{HashMap, HashSet};
+use std::fmt::{Display, Formatter};
 use std::future::Future;
 use std::str::FromStr;
 use std::time::Duration;
 
-use libsignal_core::{Aci, Pni, ServiceIdKind};
+use libsignal_core::{Aci, LogSafeDisplay, Pni, ServiceIdKind};
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::LanguageList;
 use libsignal_protocol::{GenericSignedPreKey, PublicKey};
@@ -140,6 +141,23 @@ pub struct RegistrationSession {
     pub requested_information: HashSet<ChallengeOption>,
 }
 
+impl Display for RegistrationSession {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // IMPORTANT: If you are adding a new field, consider the implications for the LogSafeDisplay.
+        let Self {
+            allowed_to_request_code: _,
+            verified: _,
+            next_sms: _,
+            next_call: _,
+            next_verification_attempt: _,
+            requested_information: _,
+        } = self;
+        write!(f, "{self:?}")
+    }
+}
+
+impl LogSafeDisplay for RegistrationSession {}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Serialize, strum::EnumString)]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
@@ -157,6 +175,22 @@ pub struct VerificationCodeNotDeliverable {
     pub reason: String,
     pub permanent_failure: bool,
 }
+
+impl Display for VerificationCodeNotDeliverable {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // IMPORTANT: When adding new fields, consider the implications for the
+        // LogSafeDisplay impl below.
+        let Self {
+            // Despite it being a string, it comes from a fixed list of
+            // values on the server.
+            reason: _,
+            permanent_failure: _,
+        } = self;
+        write!(f, "{self:?}")
+    }
+}
+
+impl LogSafeDisplay for VerificationCodeNotDeliverable {}
 
 #[serde_as]
 #[derive(Clone, PartialEq, Eq, serde::Deserialize, derive_more::Debug)]

@@ -12,12 +12,15 @@ use std::time::Duration;
 use bytes::Bytes;
 use futures_util::{Sink, Stream};
 use http::{HeaderName, HeaderValue};
+use libsignal_core::LogSafeDisplay as _;
 use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tungstenite::Message;
 
-use crate::errors::{LogSafeDisplay as _, TransportConnectError};
-use crate::route::{ComposedConnector, Connector, ConnectorExt as _, ReflectorProxyRoute};
+use crate::errors::TransportConnectError;
+use crate::route::{
+    ComposedConnector, Connector, ConnectorExt as _, DEFAULT_HTTPS_PORT, ReflectorProxyRoute,
+};
 use crate::ws::error::WebSocketConnectError;
 use crate::{Connection, ws};
 
@@ -211,12 +214,18 @@ impl Connector<Box<ReflectorProxyRoute<IpAddr>>, ()> for super::StatelessProxied
         let ReflectorProxyRoute {
             mut outer,
             target_host,
+            target_port,
         } = *route;
 
         outer.fragment.ws_config = ws_config();
+        let host_header = if target_port == DEFAULT_HTTPS_PORT {
+            target_host.to_string()
+        } else {
+            format!("{target_host}:{target_port}")
+        };
         outer.fragment.headers.insert(
             X_SIGNAL_HOST_HEADER,
-            HeaderValue::from_str(&target_host)
+            HeaderValue::from_str(&host_header)
                 .map_err(|_| TransportConnectError::InvalidConfiguration)?,
         );
 
@@ -224,7 +233,10 @@ impl Connector<Box<ReflectorProxyRoute<IpAddr>>, ()> for super::StatelessProxied
             ws::WithoutResponseHeaders::new(),
             StatelessTlsConnector::default(),
         );
-        log::info!("[{log_tag}] attempting connection over reflector proxy");
+        let https_route = &outer.inner;
+        let http_fragment = &https_route.fragment;
+        let proxy_name = http_fragment.front_name.unwrap_or("unknown");
+        log::info!("[{log_tag}] attempting connection over reflector proxy ({proxy_name})");
         match connector.connect(outer, log_tag).await {
             Ok(websocket) => Ok(ReflectorStream::new(websocket)),
             Err(WebSocketConnectError::Transport(error)) => Err(error),
@@ -300,6 +312,7 @@ mod test {
                 },
             },
             target_host: TARGET_HOST.into(),
+            target_port: DEFAULT_HTTPS_PORT,
         })
     }
 

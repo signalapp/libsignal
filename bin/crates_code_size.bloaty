@@ -9,10 +9,24 @@
 #
 # We use VM size because otherwise the debug sections are included.
 
+# A separate data source! Add `-d sourcefiles` to see this breakdown,
+# or run as `bloaty -c crates_code_size -d sourcefiles -s vm` to skip crate-grouping entirely.
+custom_data_source: {
+  name: "sourcefiles"
+  base_data_source: "inlines"
+
+  # Chop off any line numbers
+  rewrite: {
+    pattern: "(.+):[0-9]+"
+    replacement: "\\1"
+  }
+}
+
 custom_data_source: {
   name: "crates"
   base_data_source: "inlines"
 
+  # Start with obvious groupings that might otherwise match another pattern.
   rewrite: {
     pattern: "^(/rustc/|library/)"
     replacement: "stdlib"
@@ -21,6 +35,8 @@ custom_data_source: {
     pattern: "/boring-sys-[^/]+/out/boringssl/"
     replacement: "BoringSSL"
   }
+
+  # For builds without path remapping (see build_helpers.py), extract just the crate name, without the version.
   rewrite: {
     pattern: "/\\.?cargo/registry/src/(github.com|index.crates.io)-[^/]+/([^/]+)-\\d[^/]*/"
     replacement: "\\2"
@@ -29,18 +45,25 @@ custom_data_source: {
     pattern: "/\\.?cargo/git/checkouts/([^/]+)-[0-9a-f]+/"
     replacement: "\\1"
   }
+
+  # Try to infer other crates based on the presence of a src/ directory.
   rewrite: {
     pattern: "^(/?([^/]+/)+)src/"
     replacement: "\\1"
   }
+  # Match into a crate's build directory.
   rewrite: {
     pattern: "(^|.+/)target/[^/]+/([^/]+/)?build/([^/]+)-[0-9a-f]+/.+"
     replacement: "\\3 (generated)"
   }
+
+  # Chop off any line numbers to at least group files together
   rewrite: {
     pattern: "(.+):[0-9]+"
     replacement: "\\1"
   }
+
+  # Coalesce sections that aren't groupable by crate
   rewrite: {
     pattern: "\\[section .debug.+\\]"
     replacement: "[debug sections]"

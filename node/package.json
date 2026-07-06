@@ -1,6 +1,6 @@
 {
   "name": "@signalapp/libsignal-client",
-  "version": "0.94.1",
+  "version": "0.96.4",
   "repository": "github:signalapp/libsignal",
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -26,6 +26,7 @@
     "clean": "rimraf dist build prebuilds",
     "format": "p() { prettier ${@:- --write} '**/*.{css,js,json,md,scss,ts,tsx}'; }; p",
     "format-check": "p() { prettier ${@:- --check} '**/*.{css,js,json,md,scss,ts,tsx}'; }; p",
+    "format-stdin": "prettier",
     "install": "echo Use \\`npm run build\\` to build the native library if needed",
     "lint": "eslint .",
     "prepack": "cp ../acknowledgments/acknowledgments-desktop.md dist/acknowledgments.md",

@@ -523,14 +523,21 @@ fn parse_single_recipient_mismatched_devices_response<E: From<MismatchedDeviceEr
 ) -> CustomError<E> {
     debug_assert_matches!(response.status.as_u16(), 409 | 410);
 
-    let parsed_devices: ParsedMismatchedDevices = match parse_json_from_body(response) {
-        Ok(parsed) => parsed,
-        Err(e) => {
-            return CustomError::Unexpected {
-                log_safe: e.to_string(),
-            };
-        }
-    };
+    let Response {
+        status: _,
+        message: _,
+        headers,
+        body,
+    } = response;
+    let parsed_devices: ParsedMismatchedDevices =
+        match parse_json_from_body(headers, body.as_deref()) {
+            Ok(parsed) => parsed,
+            Err(e) => {
+                return CustomError::Unexpected {
+                    log_safe: e.to_string(),
+                };
+            }
+        };
 
     match parsed_devices.try_into_error(recipient) {
         Ok(converted) => CustomError::Err(converted.into()),
@@ -550,14 +557,22 @@ fn parse_multi_recipient_mismatched_devices_response(
         devices: ParsedMismatchedDevices,
     }
 
-    let parsed_entries: Vec<ParsedMismatchedDevicesEntry> = match parse_json_from_body(response) {
-        Ok(parsed) => parsed,
-        Err(e) => {
-            return CustomError::Unexpected {
-                log_safe: e.to_string(),
-            };
-        }
-    };
+    let Response {
+        status: _,
+        message: _,
+        headers,
+        body,
+    } = response;
+
+    let parsed_entries: Vec<ParsedMismatchedDevicesEntry> =
+        match parse_json_from_body(headers, body.as_deref()) {
+            Ok(parsed) => parsed,
+            Err(e) => {
+                return CustomError::Unexpected {
+                    log_safe: e.to_string(),
+                };
+            }
+        };
 
     let per_recipient_errors = parsed_entries
         .into_iter()

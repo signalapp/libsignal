@@ -10,9 +10,9 @@ pub use libsignal_bridge_types::net::remote_config::RemoteConfigKey;
 pub use libsignal_bridge_types::net::{
     BuildVariant, ConnectionManager, Environment, TokioAsyncContext,
 };
+use libsignal_core::LogSafeDisplay;
 use libsignal_net::chat::ConnectionInfo;
 use libsignal_net::connect_state::infer_proxy_mode_for_config;
-use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net::infra::route::ConnectionProxyConfig;
 
 use crate::support::*;
@@ -22,6 +22,7 @@ pub(crate) mod cdsi;
 pub(crate) mod chat;
 mod keytrans;
 mod registration;
+mod svr2;
 mod svrb;
 mod tokio;
 

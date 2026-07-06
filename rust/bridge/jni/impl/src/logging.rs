@@ -6,11 +6,14 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::process::abort;
 
-use jni::objects::{AutoLocal, GlobalRef, JClass, JObject, JStaticMethodID, JValue};
+use jni::objects::{Auto, JClass, JStaticMethodID, JValue};
+use jni::refs::Global;
 use jni::sys::jint;
-use jni::{JNIEnv, JavaVM};
-use libsignal_bridge::jni::call_static_method_unchecked;
-use libsignal_bridge::{describe_panic, jni_signature};
+use jni::{JavaVM, jni_sig, jni_str};
+use libsignal_bridge::describe_panic;
+use libsignal_bridge::jni::{
+    BridgeLayerError, call_static_method_unchecked, new_jstring_from_owned_utf8,
+};
 
 // Keep this in sync with SignalProtocolLogger.java, as well as the list below.
 #[derive(Clone, Copy)]
@@ -42,7 +45,7 @@ impl From<JavaLogLevel> for jint {
     }
 }
 
-impl From<JavaLogLevel> for JValue<'_, '_> {
+impl From<JavaLogLevel> for JValue<'_> {
     fn from(level: JavaLogLevel) -> Self {
         Self::Int(level.into())
     }
@@ -63,56 +66,62 @@ impl From<JavaLogLevel> for log::Level {
 
 struct JniLogger {
     vm: JavaVM,
-    logger_class: GlobalRef,
+    logger_class: Global<JClass<'static>>,
     logger_method: JStaticMethodID,
 }
 
 impl JniLogger {
-    fn new(mut env: JNIEnv, logger_class: JClass) -> jni::errors::Result<Self> {
+    fn new(env: &mut ::jni::Env, logger_class: JClass) -> jni::errors::Result<Self> {
         Ok(Self {
             vm: env.get_java_vm()?,
             logger_class: env.new_global_ref(&logger_class)?,
             logger_method: env.get_static_method_id(
                 &logger_class,
-                "logFromRust",
-                jni_signature!((int, java.lang.String) -> void),
+                jni_str!("logFromRust"),
+                jni_sig!((int, java.lang.String) -> void),
             )?,
         })
     }
 
     fn log_impl(&self, record: &log::Record) -> jni::errors::Result<()> {
-        let mut env = self.vm.attach_current_thread()?;
-        let level: JavaLogLevel = record.level().into();
-        let message = format!(
-            "{}:{}: {}",
-            record.file().unwrap_or("<unknown>"),
-            record.line().unwrap_or(0),
-            record.args(),
-        );
-        let message = AutoLocal::new(env.new_string(message)?, &env);
-        let result = unsafe {
-            // This gets called often enough during backup validation that the
-            // performance wins of using the unchecked call with a cached method
-            // ID are worth not having the guardrails.
-            call_static_method_unchecked(
-                &mut env,
-                &self.logger_class,
-                self.logger_method,
-                jni::signature::ReturnType::Primitive(jni::signature::Primitive::Void),
-                &[
-                    JValue::Int(level.into()).as_jni(),
-                    JValue::Object(&*message).as_jni(),
-                ],
-            )
-        };
+        self.vm.attach_current_thread_for_scope(|env| {
+            let level: JavaLogLevel = record.level().into();
+            let message = format!(
+                "{}:{}: {}",
+                record.file().unwrap_or("<unknown>"),
+                record.line().unwrap_or(0),
+                record.args(),
+            );
+            let message = Auto::new(new_jstring_from_owned_utf8(env, message).map_err(
+                |e| match e {
+                    BridgeLayerError::Jni(err) => err,
+                    _ => panic!("unexpected error converting string: {e}"),
+                },
+            )?);
+            let result = unsafe {
+                // This gets called often enough during backup validation that the
+                // performance wins of using the unchecked call with a cached method
+                // ID are worth not having the guardrails.
+                call_static_method_unchecked(
+                    env,
+                    &self.logger_class,
+                    self.logger_method,
+                    jni::signature::ReturnType::Primitive(jni::signature::Primitive::Void),
+                    &[
+                        JValue::Int(level.into()).as_jni(),
+                        JValue::Object(&message).as_jni(),
+                    ],
+                )
+            };
 
-        let throwable = env.exception_occurred()?;
-        if **throwable == *JObject::null() {
-            result?;
-        } else {
-            env.exception_clear()?;
-        }
-        Ok(())
+            if env.exception_occurred().is_some() {
+                // Discard the exception (nothing we can do with it).
+                env.exception_clear();
+            } else {
+                result?;
+            }
+            Ok(())
+        })
     }
 }
 
@@ -162,12 +171,12 @@ fn set_max_level_from_java_level(max_level: jint) {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Logger_1Initialize(
-    env: JNIEnv,
+    mut env: jni::EnvUnowned<'_>,
     _class: JClass,
     max_level: jint,
     logger_class: JClass,
 ) {
-    abort_on_panic(|| {
+    env.with_env(|env| {
         let logger = JniLogger::new(env, logger_class).expect("could not initialize logging");
 
         match log::set_logger(Box::leak(Box::new(logger))) {
@@ -197,12 +206,14 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Logger_1Initi
                 log::warn!("logging already initialized for libsignal; ignoring later call");
             }
         }
-    });
+        Ok::<_, jni::errors::Error>(())
+    })
+    .resolve::<jni::errors::ThrowRuntimeExAndDefault>();
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Logger_1SetMaxLevel(
-    _env: JNIEnv,
+    _env: jni::EnvUnowned<'_>,
     _class: JClass,
     max_level: jint,
 ) {

@@ -8,15 +8,29 @@ use std::future::Future;
 use std::marker::PhantomData;
 use std::num::NonZeroU64;
 
+use derive_more::{Deref, DerefMut, From};
+use ref_cast::RefCast;
+
 mod as_type;
+mod async_mutex;
 mod sequences;
 mod serialized;
 pub use as_type::*;
+pub use async_mutex::*;
 pub use sequences::*;
 pub use serialized::*;
 
 mod transform_helper;
 pub use transform_helper::*;
+
+/// A wrapper type which allows for alternative bridgings of BridgeHandles
+///
+/// This is bridged as `&T` on Node and FFI, but via native handle objects on JNI.
+#[derive(Deref, DerefMut, From, RefCast)]
+#[repr(transparent)]
+pub struct BridgeHandleRef<'a, T: 'static + Send + Sync> {
+    value: &'a T,
+}
 
 // See https://github.com/rust-lang/rfcs/issues/1389
 pub fn describe_panic(any: &Box<dyn std::any::Any + Send>) -> String {
@@ -141,11 +155,11 @@ impl std::fmt::Display for IllegalArgumentError {
 /// [`node::AsyncArgTypeInfo`]: crate::node::AsyncArgTypeInfo
 #[macro_export]
 macro_rules! bridge_as_handle {
-    ($typ:ty $(, mut = $_mut:tt)? $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)?) => {
+    ($typ:ty $(, mut = $_mut:tt)? $(, ffi = $ffi_name:ident)? $(, swift_type = $swift_type:expr)? $(, jni = $jni_name:ident)? $(, jni_class = $jni_class:expr)? $(, node = $node_name:ident)? $(,)?) => {
         #[cfg(feature = "ffi")]
-        $crate::ffi_bridge_as_handle!($typ $(as $ffi_name)?);
+        $crate::ffi_bridge_as_handle!($typ $(as $ffi_name)? $(, swift_type = $swift_type)?);
         #[cfg(feature = "jni")]
-        $crate::jni_bridge_as_handle!($typ $(as $jni_name)?);
+        $crate::jni_bridge_as_handle!($typ $(as $jni_name)? $(, jni_class = $jni_class)?);
         #[cfg(feature = "node")]
         $crate::node_bridge_as_handle!($typ $(as $node_name)? $(, mut = $_mut)?);
     };
@@ -385,3 +399,9 @@ impl<T, E> ResultLike for Result<T, E> {
     type Success = T;
     type Error = E;
 }
+
+/// A newtype wrapper used to specify that a generic Vec<> mapping should be used.
+#[derive(
+    Clone, derive_more::From, derive_more::Into, derive_more::Deref, derive_more::DerefMut,
+)]
+pub struct BridgeVec<T>(pub Vec<T>);

@@ -206,8 +206,8 @@ pub enum ChatItemError {
     ExpirationTimerChangeNotFromContact,
     /// profile change not from contact
     ProfileChangeNotFromContact,
-    /// thread merge not from ACI
-    ThreadMergeNotFromAci,
+    /// thread merge not from ACI contact or Self
+    ThreadMergeNotFromAciOrSelf,
     /// session switchover from release notes
     SessionSwitchoverFromReleaseNotes,
     /// call not from contact or self

@@ -588,12 +588,12 @@ jobs:
       with:
         node-version-file: '.nvmrc'
 
+    - run: npm ci
+      working-directory: node
+
     - name: Verify that the Node bindings are up to date
       run: cargo run -p libsignal-node-native_ts -- --verify
       if: startsWith(matrix.os, 'ubuntu-')
-
-    - run: npm ci
-      working-directory: node
 
     - run: npm run build
       working-directory: node

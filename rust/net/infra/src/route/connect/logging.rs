@@ -5,7 +5,8 @@
 
 use std::time::Duration;
 
-use crate::errors::LogSafeDisplay;
+use libsignal_core::LogSafeDisplay;
+
 use crate::route::Connector;
 
 /// A [`Connector`] that logs when a connection attempt exceeds a predefined timeout threshold.

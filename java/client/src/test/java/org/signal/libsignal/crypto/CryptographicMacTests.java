@@ -5,10 +5,12 @@
 
 package org.signal.libsignal.crypto;
 
-import junit.framework.TestCase;
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
 import org.signal.libsignal.protocol.util.Hex;
 
-public class CryptographicMacTests extends TestCase {
+public class CryptographicMacTests {
 
   void hmacKat(String algo, String hexKey, String hexInput, String hexExpectedOutput)
       throws Exception {
@@ -33,6 +35,7 @@ public class CryptographicMacTests extends TestCase {
     }
   }
 
+  @Test
   public void testHmacSha1() throws Exception {
     // RFC 2202
     hmacKat(
@@ -48,6 +51,7 @@ public class CryptographicMacTests extends TestCase {
         "125d7342b9ac11cd91a39af48aa17b4f63f175d3");
   }
 
+  @Test
   public void testHmacSha256() throws Exception {
     // RFC 4231
     hmacKat(

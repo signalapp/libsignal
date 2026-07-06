@@ -22,6 +22,34 @@ private func invokeFnIgnoringResult<T>(fn: (UnsafeMutablePointer<T>?) -> SignalF
     try checkError(fn(output))
 }
 
+public class TestingIntBox: NativeHandleOwner<SignalMutPointerTestingIntBox> {
+    override public class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerTestingIntBox>
+    ) -> SignalFfiErrorRef? {
+        return signal_testing_int_box_destroy(handle.pointer)
+    }
+}
+extension SignalMutPointerTestingIntBox: SignalMutPointer {
+    public func const() -> SignalConstPointerTestingIntBox {
+        Self.ConstPointer(raw: self.raw)
+    }
+
+    public typealias ConstPointer = SignalConstPointerTestingIntBox
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+extension SignalConstPointerTestingIntBox: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+
 final class BridgingTests: XCTestCase {
     func testErrorOnBorrow() async throws {
         do {
@@ -273,6 +301,29 @@ final class BridgingTests: XCTestCase {
         defer { signal_free_string(pair.second) }
         XCTAssertEqual(pair.first, 1 as Int32)
         XCTAssertEqual(String(cString: pair.second), "libsignal")
+    }
+
+    func testBridgeHandleRef() throws {
+        let ptr = try invokeFnReturningValueByPointer(.init()) {
+            signal_testing_testing_int_box_new($0, 17)
+        }
+        defer { signal_testing_int_box_destroy(ptr) }
+        XCTAssertEqual(
+            17,
+            try invokeFnReturningInteger {
+                signal_testing_testing_int_box_get($0, SignalConstPointerTestingIntBox(raw: ptr.raw))
+            }
+        )
+    }
+    func testBridgeHandleRefNice() throws {
+        let ptr = try invokeFnReturningValueByPointer(.init()) {
+            signal_testing_testing_int_box_new($0, 17)
+        }
+        let intBox = TestingIntBox(owned: NonNull(ptr)!)
+        XCTAssertEqual(
+            17,
+            try NativeTestingNice.TESTING_TestingIntBox_Get(myIntBox: intBox)
+        )
     }
 }
 

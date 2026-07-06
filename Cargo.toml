@@ -18,8 +18,10 @@ members = [
     "rust/zkcredential",
     "rust/zkgroup",
     "rust/bridge/ffi",
+    "rust/bridge/ffi/native_swift",
     "rust/bridge/jni",
     "rust/bridge/jni/impl",
+    "rust/bridge/jni/native_kt",
     "rust/bridge/jni/testing",
     "rust/bridge/node",
     "rust/bridge/node/native_ts",
@@ -39,7 +41,7 @@ default-members = [
 resolver = "2" # so that our dev-dependency features don't leak into products
 
 [workspace.package]
-version = "0.94.1"
+version = "0.96.4"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 rust-version = "1.88"
@@ -70,6 +72,7 @@ libsignal-net-chat = { path = "rust/net/chat" }
 libsignal-net-grpc = { path = "rust/net/grpc" }
 libsignal-node = { path = "rust/bridge/node" }
 libsignal-protocol = { path = "rust/protocol" }
+libsignal-svr2 = { path = "rust/svr2" }
 libsignal-svrb = { path = "rust/svrb" }
 poksho = { path = "rust/poksho" }
 signal-crypto = { path = "rust/crypto" }
@@ -150,7 +153,7 @@ hyper-util = "0.1.17"
 indexmap = "2.7.0"
 intmap = "3.1.2"
 itertools = "0.14.0"
-jni = "0.21"
+jni = "0.22.4"
 libc = "0.2.186"
 libcrux-ml-kem = { version = "0.0.8", default-features = false }
 linkme = "0.3.33"
@@ -199,6 +202,7 @@ serde_json5 = "0.2.1"
 serde_with = "3.1.0"
 sha1 = "0.11"
 sha2 = "0.11"
+simd_cesu8 = "1.1.1"
 snow = { version = "0.10", default-features = false }
 socks5-server = "0.10.1"
 static_assertions = "1.1"

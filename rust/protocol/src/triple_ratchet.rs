@@ -244,13 +244,10 @@ impl TripleRatchet {
                 "decrypt",
                 format!("post-quantum ratchet error: {e}"),
             ),
-            _ => {
-                log::info!("post-quantum ratchet error in decrypt: {e}");
-                SignalProtocolError::InvalidMessage(
-                    original_message_type,
-                    "post-quantum ratchet error",
-                )
-            }
+            _ => SignalProtocolError::InvalidMessage(
+                original_message_type,
+                format!("post-quantum ratchet error: {e}"),
+            ),
         })?;
 
         // Derive final message keys by mixing DR chain key with SPQR key
@@ -267,7 +264,7 @@ impl TripleRatchet {
         if !mac_valid {
             return Err(SignalProtocolError::InvalidMessage(
                 original_message_type,
-                "MAC verification failed",
+                "MAC verification failed".to_owned(),
             ));
         }
 
@@ -287,10 +284,9 @@ impl TripleRatchet {
                 ));
             }
             Err(signal_crypto::DecryptionError::BadCiphertext(msg)) => {
-                log::warn!("failed to decrypt 1:1 message: {msg}");
                 return Err(SignalProtocolError::InvalidMessage(
                     original_message_type,
-                    "failed to decrypt",
+                    format!("failed to decrypt: {msg}"),
                 ));
             }
         };

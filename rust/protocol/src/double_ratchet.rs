@@ -231,7 +231,7 @@ impl RatchetState {
             );
             return Err(SignalProtocolError::InvalidMessage(
                 original_message_type,
-                "message from too far into the future",
+                "message from too far into the future".to_owned(),
             ));
         } else if jump > consts::MAX_FORWARD_JUMPS {
             // This only happens if it is a session with self

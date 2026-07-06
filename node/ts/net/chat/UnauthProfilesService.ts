@@ -5,7 +5,7 @@
 
 import { ServiceId } from '../../Address.js';
 import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
-import * as Native from '../../Native.js';
+import * as NativeNice from '../../NativeNice.js';
 
 declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -34,12 +34,10 @@ UnauthenticatedChatConnection.prototype.accountExists = async function (
   },
   options?: RequestOptions
 ): Promise<boolean> {
-  return await this._asyncContext.makeCancellable(
-    options?.abortSignal,
-    Native.UnauthenticatedChatConnection_account_exists(
-      this._asyncContext,
-      this._chatService,
-      account.getServiceIdFixedWidthBinary()
-    )
-  );
+  return await NativeNice.UnauthenticatedChatConnection_account_exists({
+    asyncContext: this._asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this._chatService,
+    account,
+  });
 };

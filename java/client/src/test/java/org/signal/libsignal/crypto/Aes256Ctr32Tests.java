@@ -5,13 +5,16 @@
 
 package org.signal.libsignal.crypto;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
-import junit.framework.TestCase;
+import org.junit.Test;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.util.Hex;
 
-public class Aes256Ctr32Tests extends TestCase {
+public class Aes256Ctr32Tests {
 
+  @Test
   public void testAesCtr32Kats() throws Exception {
     testAesCtr32Kat(
         "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4",

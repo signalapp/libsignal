@@ -7,9 +7,10 @@ package org.signal.libsignal.devicetransfer;
 
 import java.io.ByteArrayInputStream;
 import java.security.cert.CertificateFactory;
-import junit.framework.TestCase;
+import org.junit.Test;
 
-public class DeviceTransferKeyTest extends TestCase {
+public class DeviceTransferKeyTest {
+  @Test
   public void testDeviceTransferKey() throws Exception {
     DeviceTransferKey key = new DeviceTransferKey();
     byte[] certBytes = key.generateCertificate("name", 365);

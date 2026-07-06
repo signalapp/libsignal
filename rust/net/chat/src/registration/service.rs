@@ -11,10 +11,11 @@ use std::panic::UnwindSafe;
 use either::Either;
 use futures_util::future::BoxFuture;
 use futures_util::{FutureExt as _, Stream, StreamExt as _};
+use libsignal_core::LogSafeDisplay;
 use libsignal_net::chat::{
     ChatConnection, ConnectError as ChatConnectError, SendError as ChatSendError,
 };
-use libsignal_net::infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::route::UnsuccessfulOutcome;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::{Duration, Instant};
@@ -59,8 +60,8 @@ impl crate::ws::registration::WsClient for &RegistrationConnection<'_> {
 
 /// Describes how to make an unauthenticated [`ChatConnection`].
 ///
-/// This trait is a workaround for lack of AsyncFnMut. Once our MSRV >= 1.85 we
-/// can replace this with an `AsyncFnMut` bound.
+/// This trait is a workaround for lack of dyn-compatible `AsyncFnMut`, which may or may not ever be
+/// provided by the language.
 pub trait ConnectUnauthChat: Send {
     /// Starts an attempt to connect to the Chat server.
     ///

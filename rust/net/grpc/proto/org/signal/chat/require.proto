@@ -147,6 +147,38 @@ extend google.protobuf.FieldOptions {
    *````
    */
   optional bool present = 70007;
+
+  /*
+   * Requires a value of a string field to be a valid base64 URL string. The
+   * string may be padded or unpadded. If the field is `optional`, this check
+   * allows a value to be not set.
+   *
+   *  ```
+   *  import "org/signal/chat/require.proto";
+   *
+   *  message Data {
+   *    string myString = 1 [(require.base64url) = true];
+   *  }
+   *  ```
+   */
+  optional bool base64url  = 70008;
+
+  /*
+   * Requires a common.ServiceIdentifier field to have its IdentityType
+   * be the given type (`aci` or `pni`).
+   *
+   *  ```
+   *  import "org/signal/chat/require.proto";
+   *  import "org/signal/chat/common.proto";
+   *
+   *  message Data {
+   *    common.ServiceIdentifier accountIdentifier = 1 [(require.identityType) = IDENTITY_TYPE_ACI];
+   *  }
+   *  ```
+   */
+  optional IdentityType identityType = 70009;
+
+  // next 70010
 }
 
 message SizeConstraint {
@@ -182,3 +214,12 @@ enum Auth {
   AUTH_ONLY_ANONYMOUS = 2;
 }
 
+// This is duplicated from common.proto because:
+//
+// 1. importing would be a circular dependency
+// 2. the canonical declaration belongs there
+enum IdentityType {
+  IDENTITY_TYPE_UNSPECIFIED = 0;
+  IDENTITY_TYPE_ACI = 1;
+  IDENTITY_TYPE_PNI = 2;
+}

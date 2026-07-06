@@ -47,12 +47,12 @@ http = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 mediasan-common = { workspace = true }
-once_cell = { workspace = true }
 partial-default = { workspace = true }
 paste = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
 rayon = { workspace = true }
+ref-cast = { workspace = true }
 serde = { workspace = true }
 sha2 = { workspace = true }
 static_assertions = { workspace = true }
@@ -67,19 +67,22 @@ zerocopy = { workspace = true }
 subtle = { workspace = true, features = ["core_hint_black_box"] }
 
 jni = { workspace = true, optional = true }
+libc = { workspace = true, optional = true }
 linkme = { workspace = true, optional = true }
 neon = { workspace = true, optional = true, default-features = false, features = ["napi-6"] }
 signal-neon-futures = { workspace = true, optional = true }
+simd_cesu8 = { workspace = true, optional = true }
 
 [dev-dependencies]
 libsignal-net-grpc = { workspace = true }
 
+nonzero_ext = { workspace = true }
 test-case = { workspace = true }
 tokio = { workspace = true, features = ["test-util", "time", "macros"] }
 
 [features]
-ffi = []
-jni = ["dep:jni"]
+ffi = ["dep:libc"]
+jni = ["dep:jni", "dep:simd_cesu8"]
 jni-type-tagging = []
 jni-invoke-annotated = []
 extra-jni-checks = ["jni-type-tagging", "jni-invoke-annotated"]

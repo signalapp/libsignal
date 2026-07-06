@@ -21,6 +21,7 @@ alias generate-swift := generate-ffi
 alias generate-ts := generate-node
 
 # Regenerate bridge code for all three app languages.
+[parallel]
 generate-bridge: generate-jni generate-node generate-ffi
 
 alias generate-all := generate-bridge
@@ -47,6 +48,7 @@ alias format-swift := format-ffi
 alias format-ts := format-node
 
 # Auto-format code in Java, Rust, Swift, and TypeScript
+[parallel]
 format-all: format-jni format-ffi format-node
     cargo fmt
     taplo fmt

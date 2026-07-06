@@ -108,5 +108,11 @@ bridge_as_fixed_length_serializable!(ReceiptCredentialRequestContext);
 bridge_as_fixed_length_serializable!(ReceiptCredentialResponse);
 bridge_as_fixed_length_serializable!(UuidCiphertext);
 
-bridge_as_handle!(ServerPublicParams);
-bridge_as_handle!(ServerSecretParams);
+bridge_as_handle!(
+    ServerPublicParams,
+    jni_class = "org.signal.libsignal.zkgroup.ServerPublicParams",
+);
+bridge_as_handle!(
+    ServerSecretParams,
+    jni_class = "org.signal.libsignal.zkgroup.ServerSecretParams",
+);

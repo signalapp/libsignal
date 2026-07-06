@@ -14,7 +14,7 @@ public protocol UnauthUsernamesService: Sendable {
     ///
     /// Throws only if the request can't be completed, potentially including if the hash is
     /// structurally invalid.
-    func lookUpUsernameHash(_ hash: Data) async throws -> Aci?
+    func lookUpUsernameHash(_ hash: UsernameHash) async throws -> Aci?
 
     /// Looks up a username link on the service by UUID.
     ///
@@ -51,7 +51,7 @@ extension UnauthenticatedChatConnection: UnauthUsernamesService {
     }
 
     public func lookUpUsernameLink(_ uuid: UUID, entropy: Data) async throws -> Username? {
-        var rawResponse: SignalOptionalPairOfc_charu832 = try await self.tokioAsyncContext
+        var rawResponse: SignalOptionalPairOfCStringPtru832 = try await self.tokioAsyncContext
             .invokeAsyncFunction { promise, tokioAsyncContext in
                 withNativeHandle { chatService in
                     try! withAllBorrowed(uuid, entropy) { uuid, entropy in

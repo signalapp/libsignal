@@ -125,6 +125,16 @@
 //! validate all packages by enabling all three bridges at once. Instead, you can write e.g.
 //! `bridge_fn(jni = false)` to keep from exposing a particular function to Java.
 //!
+//!
+//! # "Nice" Bridging
+//! By specifying `#[bridge_fn(nice = true)]` or (e.g. `#[bridge_fn(nice_node = true)]` to override
+//! for a specific client language), a higher-level, "nice" bridge function will be generated. This
+//! higher-level bridge function is the client-language mirror to `bridge_fn`. Just like, on the
+//! Rust side, writers of `bridge_fn`s don't need to concern themselves with pointers or other
+//! such details, so too do nice functions allow code written in client languages to also avoid this
+//! concern. See `metadata.rs` for more details on "converters," which are the client-langauge
+//! analog of the `ResultTypeInfo` and `ArgTypeInfo` traits that enable this conversion.
+//!
 //! # Adding new argument and result types
 //!
 //! If your argument or result type is a Rust value being wrapped in an opaque box, declare it using
@@ -157,6 +167,7 @@
 //! [`macro@bridge_callbacks`] macro; see there for more information.
 
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::*;
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
@@ -177,6 +188,20 @@ fn value_for_meta_key<'a>(
         .iter()
         .find(|meta| meta.path.get_ident().is_some_and(|ident| ident == key))
         .map(|meta| &meta.value)
+}
+
+fn bool_for_meta_key(
+    meta_values: &Punctuated<MetaNameValue, Token![,]>,
+    key: &str,
+) -> Result<Option<bool>> {
+    match value_for_meta_key(meta_values, key) {
+        Some(Expr::Lit(ExprLit {
+            lit: Lit::Bool(value),
+            ..
+        })) => Ok(Some(value.value)),
+        None => Ok(None),
+        Some(value) => Err(syn::Error::new(value.span(), "Expected bool value")),
+    }
 }
 
 fn name_for_meta_key(
@@ -312,6 +337,25 @@ impl Parse for BridgeIoParams {
     }
 }
 
+struct NiceFunctions {
+    node: bool,
+    jni: bool,
+    swift: bool,
+}
+impl NiceFunctions {
+    fn parse(meta_values: &Punctuated<MetaNameValue, Token![,]>) -> syn::Result<Self> {
+        let default = bool_for_meta_key(meta_values, "nice")?.unwrap_or_default();
+        Ok(NiceFunctions {
+            node: bool_for_meta_key(meta_values, "nice_node")?.unwrap_or(default),
+            jni: bool_for_meta_key(meta_values, "nice_jni")?.unwrap_or(default),
+            swift: bool_for_meta_key(meta_values, "nice_swift")?.unwrap_or(default),
+        })
+    }
+    fn any(&self) -> bool {
+        self.node || self.jni || self.swift
+    }
+}
+
 fn bridge_fn_impl(
     attr: TokenStream,
     item: TokenStream,
@@ -354,6 +398,20 @@ fn bridge_fn_impl(
         Ok(name) => name,
         Err(error) => return error.to_compile_error().into(),
     };
+    let nice = match NiceFunctions::parse(&item_names) {
+        Ok(nice) => nice,
+        Err(error) => return error.to_compile_error().into(),
+    };
+    if nice.any()
+        && matches!(&bridging_kind, BridgingKind::Io {runtime} if runtime.to_token_stream().to_string().trim() != "TokioAsyncContext")
+    {
+        return syn::Error::new(
+            Span::call_site(),
+            "nice async functions require TokioAsyncContext",
+        )
+        .to_compile_error()
+        .into();
+    }
 
     let ffi_feature = ffi_name.as_ref().map(|_| quote!(feature = "ffi"));
     let jni_feature = jni_name.as_ref().map(|_| quote!(feature = "jni"));
@@ -364,15 +422,21 @@ fn bridge_fn_impl(
     // We could early-exit on the Errors returned from generating each wrapper,
     // but since they could be for unrelated issues, it's better to show all of them to the user.
     let ffi_fn = ffi_name.map(|name| {
-        ffi::bridge_fn(&name, &function.sig, result_info, &bridging_kind)
-            .unwrap_or_else(Error::into_compile_error)
+        ffi::bridge_fn(
+            &name,
+            &function.sig,
+            result_info,
+            &bridging_kind,
+            nice.swift,
+        )
+        .unwrap_or_else(Error::into_compile_error)
     });
     let jni_fn = jni_name.map(|name| {
-        jni::bridge_fn(&name, &function.sig, &bridging_kind)
+        jni::bridge_fn(&name, &function.sig, &bridging_kind, nice.jni)
             .unwrap_or_else(Error::into_compile_error)
     });
     let node_fn = node_name.map(|name| {
-        node::bridge_fn(&name, &function.sig, &bridging_kind)
+        node::bridge_fn(&name, &function.sig, &bridging_kind, nice.node)
             .unwrap_or_else(Error::into_compile_error)
     });
 
@@ -539,6 +603,136 @@ pub fn bridge_callbacks(attr: TokenStream, item: TokenStream) -> TokenStream {
         #node_items
     }
     .into()
+}
+
+fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+    let mut node = true;
+    let mut ffi = true;
+    let mut jni = true;
+    let mut remote: Option<syn::Path> = None;
+    for attr in &item.attrs {
+        if attr
+            .path()
+            .is_ident(&Ident::new("bridge", Span::call_site()))
+        {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("node") {
+                    let flag: LitBool = meta.value()?.parse()?;
+                    node = flag.value();
+                    Ok(())
+                } else if meta.path.is_ident("ffi") {
+                    let flag: LitBool = meta.value()?.parse()?;
+                    ffi = flag.value();
+                    Ok(())
+                } else if meta.path.is_ident("jni") {
+                    let flag: LitBool = meta.value()?.parse()?;
+                    jni = flag.value();
+                    Ok(())
+                } else if meta.path.is_ident("remote") {
+                    remote = Some(meta.value()?.parse()?);
+                    Ok(())
+                } else {
+                    Err(meta.error("unrecognized key"))
+                }
+            })?;
+        }
+    }
+    // What type should this impl target?
+    let target = remote.unwrap_or_else(|| item.ident.clone().into());
+    let node = if node {
+        Some(node::derive_bridged_as_value(&item, &target)?)
+    } else {
+        None
+    };
+    let ffi = if ffi {
+        Some(ffi::derive_bridged_as_value(&item, &target)?)
+    } else {
+        None
+    };
+    let jni = if jni {
+        Some(jni::derive_bridged_as_value(&item, &target)?)
+    } else {
+        None
+    };
+    Ok(quote! {
+        #node
+        #ffi
+        #jni
+    })
+}
+
+#[proc_macro_derive(BridgedAsValue, attributes(bridge))]
+pub fn derive_bridged_as_value(item: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(item as DeriveInput);
+    match derive_bridged_as_value_inner(item) {
+        Ok(x) => x.into(),
+        Err(e) => e.into_compile_error().into(),
+    }
+}
+
+fn derive_structural_from_inner(item: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+    let mut from: Option<syn::Path> = None;
+    for attr in &item.attrs {
+        if attr.path().is_ident("structural_from") {
+            attr.parse_nested_meta(|meta| {
+                from = Some(meta.path);
+                Ok(())
+            })?;
+        }
+    }
+    let from = from.ok_or_else(|| syn::Error::new_spanned(&item, "Missing structural_from()"))?;
+    let impl_ = util::Impl::new(
+        &item,
+        &item.ident.clone().into(),
+        Some(parse_quote!(From<#from>)),
+    );
+    let util::DeriveInputInfo {
+        patterns: to_patterns,
+        field_names,
+        field_types,
+        ..
+    } = util::DeriveInputInfo::new(&item, &item.ident.clone().into());
+    let util::DeriveInputInfo {
+        patterns: from_patterns,
+        ..
+    } = util::DeriveInputInfo::new(&item, &from);
+    Ok(quote! {
+        #impl_ {
+            fn from(from_value: #from) -> Self {
+                match from_value {
+                    #(#from_patterns => {
+                        #(let #field_names: #field_types = #field_names.into();)*
+                        #to_patterns
+                    })*
+                }
+            }
+        }
+    })
+}
+
+/// Derive a `From` for two types (structs or enums) which exactly match.
+///
+/// # Example
+/// ```
+/// # use libsignal_bridge_macros::StructuralFrom;
+/// struct Foo {
+///     a: i32,
+///     b: String,
+/// }
+/// #[derive(StructuralFrom)]
+/// #[structural_from(Foo)]
+/// struct Foo2 {
+///     a: i32,
+///     b: String,
+/// }
+/// ```
+#[proc_macro_derive(StructuralFrom, attributes(structural_from))]
+pub fn derive_structual_from(item: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(item as DeriveInput);
+    match derive_structural_from_inner(item) {
+        Ok(x) => x.into(),
+        Err(e) => e.into_compile_error().into(),
+    }
 }
 
 #[cfg(test)]

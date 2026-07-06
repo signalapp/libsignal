@@ -53,6 +53,12 @@ impl<'a> BackupAuth<'a> {
             signature: signature.into(),
         })
     }
+
+    pub(crate) fn signing_public_key(&self) -> libsignal_core::curve::PublicKey {
+        self.signing_key.public_key().expect(
+            "all key types used for signing backup credentials should support deriving the public key",
+        )
+    }
 }
 
 #[derive(Debug, Display)]
@@ -61,6 +67,15 @@ pub enum GetUploadFormFailure {
     Unauthorized,
     /// The provided uploadLength is larger than the maximum supported upload size.
     UploadTooLarge,
+}
+
+/// The backup credential was rejected
+#[derive(Debug, Display)]
+pub struct BackupAuthCredentialRejected;
+
+#[derive(Debug)]
+pub struct CdnCredentials {
+    pub headers: Vec<(String, String)>,
 }
 
 /// High-level chat-server APIs for backups
@@ -159,6 +174,8 @@ pub(crate) mod testutil {
         // )
         pub(crate) const TEST_SIGNING_KEY: &[u8] =
             &base64!("KMhdmPEusAwoT3C2LzIbmGX6z+3HMbhgbrXmUwRfGF0=");
+        pub(crate) const TEST_SIGNING_KEY_PUB: &[u8] =
+            &base64!("BWp7eOx6q6IlijMPozln1bY34JoLFZhGu3PLDnn7hO9t");
         pub(crate) const TEST_SERVER_KEYS: &[u8] = &base64!(
             "AIRCHmMrkZXZ9ZuwKJkA0GeMOaDSdVsU26AghADhY3l5XBYwf0UCtm2tvvYsbnPgh9uIUyERm0Wg3v7pFtg+OEfsM6fwjdBFqAgfeqs1pT9nwp2Wp6oGdAfCTrGcqraXJoyAiwAh3vogu7ltucNKh25zKiOkIeIEJNrjbx2eEwkFnqLYuk/noxaOi2Zl7R5d7+vn0Me0d2AZhu0Uuk1vpTIuYf+X4UJXV/N5TYYxwOe/OQHu4zZmdaPjtPN1EHFJC5ALV+8BY9dN5ddS7iTL1uq1ksURAA9hAZzC9/aTr7J7"
         );
@@ -184,6 +201,15 @@ mod test {
         assert_eq!(
             BASE64_STANDARD.encode(BackupAuth::TEST_SIGNING_KEY),
             BASE64_STANDARD.encode(auth.signing_key.serialize()),
+        );
+        assert_eq!(
+            BASE64_STANDARD.encode(BackupAuth::TEST_SIGNING_KEY_PUB),
+            BASE64_STANDARD.encode(
+                auth.signing_key
+                    .public_key()
+                    .expect("can derive public key")
+                    .serialize()
+            ),
         );
         assert_eq!(
             BASE64_STANDARD.encode(BackupAuth::TEST_SERVER_KEYS),

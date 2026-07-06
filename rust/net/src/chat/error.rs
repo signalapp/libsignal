@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
+use libsignal_core::LogSafeDisplay;
+use libsignal_net_infra::errors::{RetryLater, TransportConnectError};
 use libsignal_net_infra::extract_retry_later;
 use libsignal_net_infra::route::ConnectError as RouteConnectError;
 use libsignal_net_infra::timeouts::TimeoutOr;

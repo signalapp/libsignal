@@ -10,7 +10,8 @@ use hmac::{Hmac, KeyInit, Mac};
 use libsignal_account_keys::{
     BackupForwardSecrecyEncryptionKey, BackupForwardSecrecyToken, BackupKey,
 };
-use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_core::LogSafeDisplay;
+use libsignal_net_infra::errors::RetryLater;
 use libsignal_net_infra::ws::attested::AttestedConnectionError;
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketError};
 use libsignal_svrb::proto::backup_metadata;

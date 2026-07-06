@@ -328,7 +328,7 @@ pub(crate) fn pqxdh_accept(parameters: &RecipientParameters) -> Result<Handshake
     if !parameters.their_ephemeral_key.is_canonical() {
         return Err(SignalProtocolError::InvalidMessage(
             CiphertextMessageType::PreKey,
-            "incoming base key is invalid",
+            "incoming base key is invalid".to_owned(),
         ));
     }
 

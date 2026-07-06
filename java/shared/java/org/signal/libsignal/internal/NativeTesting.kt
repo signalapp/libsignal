@@ -7,6 +7,7 @@
 
 package org.signal.libsignal.internal
 
+import org.signal.libsignal.internal.NativeHandleGuard.SimpleOwner
 import org.signal.libsignal.net.internal.BridgeChatListener
 import org.signal.libsignal.net.internal.BridgeProvisioningListener
 import org.signal.libsignal.net.internal.ConnectChatBridge
@@ -188,6 +189,26 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_KeyTransStoredAccountData(): ByteArray
   @JvmStatic
+  public external fun TESTING_MySimpleTestEnum_BridgeVec_identity(x: Array<*>): Array<*>
+  @JvmStatic
+  public external fun TESTING_MySimpleTestEnum_BridgeVec_to_string(x: Array<*>): String
+  @JvmStatic
+  public external fun TESTING_MySimpleTestEnum_identity(x: Object): Object
+  @JvmStatic
+  public external fun TESTING_MySimpleTestEnum_to_string(x: Object): String
+  @JvmStatic
+  public external fun TESTING_MyTestEnum_identity(x: Object): Object
+  @JvmStatic
+  public external fun TESTING_MyTestEnum_to_string(x: Object): String
+  @JvmStatic
+  public external fun TESTING_MyTestPoint_identity(x: Object): Object
+  @JvmStatic
+  public external fun TESTING_MyTestPoint_to_string(x: Object): String
+  @JvmStatic
+  public external fun TESTING_MyTestStruct_identity(x: Object): Object
+  @JvmStatic
+  public external fun TESTING_MyTestStruct_to_string(x: Object): String
+  @JvmStatic
   public external fun TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(handle: ObjectHandle): Unit
   @JvmStatic
   public external fun TESTING_NonSuspendingBackgroundThreadRuntime_New(): ObjectHandle
@@ -224,7 +245,7 @@ public object NativeTesting {
   @JvmStatic @Throws(Exception::class)
   public external fun TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert(errorDescription: String): Unit
   @JvmStatic
-  public external fun TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert(): Object
+  public external fun TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert(): Map<*, *>
   @JvmStatic @Throws(Exception::class)
   public external fun TESTING_RegistrationService_CreateSessionErrorConvert(errorDescription: String): Unit
   @JvmStatic @Throws(Exception::class)
@@ -239,6 +260,8 @@ public object NativeTesting {
   public external fun TESTING_RegistrationService_UpdateSessionErrorConvert(errorDescription: String): Unit
   @JvmStatic
   public external fun TESTING_RegistrationSessionInfoConvert(): ObjectHandle
+  @JvmStatic
+  public external fun TESTING_ReserveUsernameHashTests(): Array<Object>
   @JvmStatic
   public external fun TESTING_ReturnPair(): Pair<Int, String>
   @JvmStatic
@@ -256,9 +279,15 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationVersionedDeterministic(serverPublicParams: ObjectHandle, randomness: ByteArray, groupSecretParams: ByteArray, profileKeyCredential: ByteArray, newVersion: Boolean): ByteArray
   @JvmStatic
+  public external fun TESTING_SetDeviceNameTests(): Array<Object>
+  @JvmStatic
   public external fun TESTING_SignedPublicPreKey_CheckBridgesCorrectly(sourcePublicKey: ObjectHandle, signedPreKey: SignedPublicPreKey<*>): Unit
   @JvmStatic
   public external fun TESTING_TestingHandleType_getValue(handle: ObjectHandle): Int
+  @JvmStatic
+  public external fun TESTING_TestingIntBox_Get(myIntBox: SimpleOwner): Int
+  @JvmStatic
+  public external fun TESTING_TestingIntBox_New(value: Int): ObjectHandle
   @JvmStatic
   public external fun TESTING_TokioAsyncContext_AttachBlockingThreadToJVMPermanently(context: ObjectHandle, jvm: Object): Unit
   @JvmStatic
@@ -267,12 +296,57 @@ public object NativeTesting {
   public external fun TESTING_TokioAsyncContext_NewSingleThreaded(): ObjectHandle
   @JvmStatic
   public external fun TESTING_TokioAsyncFuture(asyncRuntime: ObjectHandle, input: Int): CompletableFuture<Int>
+  @JvmStatic
+  public external fun TESTING_conversion_BridgeVecData32_identity(x: Array<*>): Array<*>
+  @JvmStatic
+  public external fun TESTING_conversion_BridgeVecData32_to_string(x: Array<*>): String
+  @JvmStatic
+  public external fun TESTING_conversion_BridgeVecString_identity(x: Array<*>): Array<*>
+  @JvmStatic
+  public external fun TESTING_conversion_BridgeVecString_to_string(x: Array<*>): String
+  @JvmStatic
+  public external fun TESTING_conversion_Data32_identity(x: ByteArray): ByteArray
+  @JvmStatic
+  public external fun TESTING_conversion_Data32_to_string(x: ByteArray): String
+  @JvmStatic
+  public external fun TESTING_conversion_Data_VecU8_identity(x: ByteArray): ByteArray
+  @JvmStatic
+  public external fun TESTING_conversion_Data_VecU8_to_string(x: ByteArray): String
+  @JvmStatic
+  public external fun TESTING_conversion_Data_identity(x: ByteArray): ByteArray
+  @JvmStatic
+  public external fun TESTING_conversion_Data_to_string(x: ByteArray): String
+  @JvmStatic
+  public external fun TESTING_conversion_ServiceId_identity(x: ByteArray): ByteArray
+  @JvmStatic
+  public external fun TESTING_conversion_ServiceId_to_string(x: ByteArray): String
+  @JvmStatic
+  public external fun TESTING_conversion_bool_identity(x: Boolean): Boolean
+  @JvmStatic
+  public external fun TESTING_conversion_bool_to_string(x: Boolean): String
+  @JvmStatic
+  public external fun TESTING_conversion_i32_identity(x: Int): Int
+  @JvmStatic
+  public external fun TESTING_conversion_i32_to_string(x: Int): String
+  @JvmStatic
+  public external fun TESTING_conversion_string_identity(x: String): String
+  @JvmStatic
+  public external fun TESTING_conversion_u16_identity(x: Int): Int
+  @JvmStatic
+  public external fun TESTING_conversion_u16_to_string(x: Int): String
+  @JvmStatic
+  public external fun TESTING_conversion_u8_identity(x: Int): Int
+  @JvmStatic
+  public external fun TESTING_conversion_u8_to_string(x: Int): String
 
   @JvmStatic
   public external fun TestingFutureCancellationCounter_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic
   public external fun TestingHandleType_Destroy(handle: ObjectHandle): Unit
+
+  @JvmStatic
+  public external fun TestingIntBox_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic
   public external fun TestingSemaphore_AddPermits(semaphore: ObjectHandle, permits: Int): Unit

@@ -16,8 +16,8 @@ use uuid::Uuid;
 use crate::storage::traits::{self, IdentityChange};
 use crate::{
     CiphertextMessageType, IdentityKey, IdentityKeyPair, KyberPreKeyId, KyberPreKeyRecord,
-    PreKeyId, PreKeyRecord, ProtocolAddress, PublicKey, Result, SenderKeyRecord, SessionRecord,
-    SignalProtocolError, SignedPreKeyId, SignedPreKeyRecord,
+    PreKeyId, PreKeyRecord, ProtocolAddress, PublicKey, Result, SenderKeyRecord, SessionNotFound,
+    SessionRecord, SignalProtocolError, SignedPreKeyId, SignedPreKeyRecord,
 };
 
 /// Reference implementation of [traits::IdentityKeyStore].
@@ -257,7 +257,7 @@ impl traits::KyberPreKeyStore for InMemKyberPreKeyStore {
         if base_keys_seen.contains(base_key) {
             return Err(SignalProtocolError::InvalidMessage(
                 CiphertextMessageType::PreKey,
-                "reused base key",
+                "reused base key".to_owned(),
             ));
         }
         base_keys_seen.push(*base_key);
@@ -291,9 +291,12 @@ impl InMemSessionStore {
         addresses
             .iter()
             .map(|&address| {
-                self.sessions
-                    .get(address)
-                    .ok_or_else(|| SignalProtocolError::SessionNotFound(address.clone()))
+                self.sessions.get(address).ok_or_else(|| {
+                    SignalProtocolError::SessionNotFound(SessionNotFound::new(
+                        address.clone(),
+                        "load_existing_sessions",
+                    ))
+                })
             })
             .collect()
     }

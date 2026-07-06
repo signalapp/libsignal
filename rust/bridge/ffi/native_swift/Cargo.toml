@@ -1,0 +1,19 @@
+[package]
+name = "libsignal-ffi-native_swift"
+version = "0.1.0"
+authors.workspace = true
+license.workspace = true
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+libsignal-bridge = { workspace = true, features = ["ffi", "metadata"] }
+libsignal-bridge-testing = { workspace = true, features = ["ffi", "metadata"] }
+libsignal-bridge-types = { workspace = true, features = ["ffi", "metadata"] }
+
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+heck = { workspace = true }
+minijinja = { workspace = true, features = ["preserve_order"] }

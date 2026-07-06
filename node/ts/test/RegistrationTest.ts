@@ -154,7 +154,7 @@ describe('Registration types', () => {
         operationName: 'CreateSession',
         convertFn: Native.TESTING_RegistrationService_CreateSessionErrorConvert,
         cases: [
-          ['InvalidSessionId', ErrorCode.Generic],
+          ['InvalidSessionId', ErrorCode.RegistrationSessionIdInvalid],
           retryLaterCase,
           unknownCase,
           timeoutCase,
@@ -167,8 +167,8 @@ describe('Registration types', () => {
         operationName: 'ResumeSession',
         convertFn: Native.TESTING_RegistrationService_ResumeSessionErrorConvert,
         cases: [
-          ['InvalidSessionId', ErrorCode.Generic],
-          ['SessionNotFound', ErrorCode.Generic],
+          ['InvalidSessionId', ErrorCode.RegistrationSessionIdInvalid],
+          ['SessionNotFound', ErrorCode.RegistrationSessionNotFound],
           unknownCase,
           timeoutCase,
           serverSideErrorCase,
@@ -180,7 +180,7 @@ describe('Registration types', () => {
         operationName: 'UpdateSession',
         convertFn: Native.TESTING_RegistrationService_UpdateSessionErrorConvert,
         cases: [
-          ['Rejected', ErrorCode.Generic],
+          ['Rejected', ErrorCode.RegistrationRequestRejected],
           retryLaterCase,
           unknownCase,
           timeoutCase,
@@ -192,11 +192,58 @@ describe('Registration types', () => {
         convertFn:
           Native.TESTING_RegistrationService_RequestVerificationCodeErrorConvert,
         cases: [
-          ['InvalidSessionId', ErrorCode.Generic],
-          ['SessionNotFound', ErrorCode.Generic],
-          ['NotReadyForVerification', ErrorCode.Generic],
-          ['SendFailed', ErrorCode.Generic],
-          ['CodeNotDeliverable', ErrorCode.Generic],
+          ['InvalidSessionId', ErrorCode.RegistrationSessionIdInvalid],
+          ['SessionNotFound', ErrorCode.RegistrationSessionNotFound],
+          [
+            'NotReadyForVerification',
+            {
+              code: ErrorCode.RegistrationSessionNotReadyForVerification,
+              sessionState: {
+                allowedToRequestCode: false,
+                verified: false,
+                nextSmsSecs: 3,
+                nextCallSecs: 14,
+                nextVerificationAttemptSecs: 15,
+                requestedInformation: new Set(['captcha']),
+              },
+            },
+          ],
+          [
+            'NotReadyForVerificationNoSessionState',
+            {
+              code: ErrorCode.RegistrationSessionNotReadyForVerification,
+              sessionState: undefined,
+            },
+          ],
+          [
+            'SendFailed',
+            {
+              code: ErrorCode.RegistrationVerificationSendFailed,
+              sessionState: {
+                allowedToRequestCode: false,
+                verified: false,
+                nextSmsSecs: 3,
+                nextCallSecs: 14,
+                nextVerificationAttemptSecs: 15,
+                requestedInformation: new Set(['captcha']),
+              },
+            },
+          ],
+          [
+            'SendFailedNoSessionState',
+            {
+              code: ErrorCode.RegistrationVerificationSendFailed,
+              sessionState: undefined,
+            },
+          ],
+          [
+            'CodeNotDeliverable',
+            {
+              code: ErrorCode.RegistrationVerificationCodeNotDeliverable,
+              reason: 'no reason',
+              permanentFailure: true,
+            },
+          ],
           retryLaterCase,
           unknownCase,
           timeoutCase,
@@ -208,9 +255,29 @@ describe('Registration types', () => {
         convertFn:
           Native.TESTING_RegistrationService_SubmitVerificationErrorConvert,
         cases: [
-          ['InvalidSessionId', ErrorCode.Generic],
-          ['SessionNotFound', ErrorCode.Generic],
-          ['NotReadyForVerification', ErrorCode.Generic],
+          ['InvalidSessionId', ErrorCode.RegistrationSessionIdInvalid],
+          ['SessionNotFound', ErrorCode.RegistrationSessionNotFound],
+          [
+            'NotReadyForVerification',
+            {
+              code: ErrorCode.RegistrationSessionNotReadyForVerification,
+              sessionState: {
+                allowedToRequestCode: false,
+                verified: false,
+                nextSmsSecs: 3,
+                nextCallSecs: 14,
+                nextVerificationAttemptSecs: 15,
+                requestedInformation: new Set(['captcha']),
+              },
+            },
+          ],
+          [
+            'NotReadyForVerificationNoSessionState',
+            {
+              code: ErrorCode.RegistrationSessionNotReadyForVerification,
+              sessionState: undefined,
+            },
+          ],
           retryLaterCase,
           unknownCase,
           timeoutCase,
@@ -222,7 +289,7 @@ describe('Registration types', () => {
         convertFn:
           Native.TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert,
         cases: [
-          ['CredentialsCouldNotBeParsed', ErrorCode.Generic],
+          ['CredentialsCouldNotBeParsed', ErrorCode.RegistrationRequestInvalid],
           unknownCase,
           timeoutCase,
           serverSideErrorCase,
@@ -233,9 +300,24 @@ describe('Registration types', () => {
         convertFn:
           Native.TESTING_RegistrationService_RegisterAccountErrorConvert,
         cases: [
-          ['DeviceTransferIsPossibleButNotSkipped', ErrorCode.Generic],
-          ['RegistrationRecoveryVerificationFailed', ErrorCode.Generic],
-          ['RegistrationLockFor50Seconds', ErrorCode.Generic],
+          [
+            'DeviceTransferIsPossibleButNotSkipped',
+            ErrorCode.RegistrationDeviceTransferPossibleNotSkipped,
+          ],
+          [
+            'RegistrationRecoveryVerificationFailed',
+            ErrorCode.RegistrationRecoveryVerificationFailed,
+          ],
+          [
+            'RegistrationLockFor50Seconds',
+            {
+              code: ErrorCode.RegistrationLock,
+              timeRemainingSeconds: 50,
+              svr2Username: 'user',
+              svr2Password: 'pass',
+            },
+          ],
+
           retryLaterCase,
           unknownCase,
           timeoutCase,
@@ -334,6 +416,92 @@ describe('Registration client', () => {
       });
 
       await requestVerification;
+    });
+
+    it('refreshes cached session state from failed requests', async () => {
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+
+      const [createSession, getRemote] = RegistrationService.fakeCreateSession(
+        tokio,
+        { e164: '+18005550123' }
+      );
+      const fakeRemote = await getRemote;
+
+      const createRequest = await fakeRemote.assertReceiveIncomingRequest();
+      fakeRemote.sendReplyTo(createRequest, {
+        status: 200,
+        message: 'OK',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            allowedToRequestCode: true,
+            verified: false,
+            requestedInformation: ['pushChallenge'],
+            id: 'fake-session-A',
+          })
+        ),
+      });
+      const session = await createSession;
+
+      // A failed requestVerification whose body carries updated session state
+      // should refresh the service's cached sessionState across the bridge,
+      // even though the call rejects.
+      const requestVerification = session.requestVerification({
+        transport: 'voice',
+        client: 'libsignal test',
+        languages: ['fr-CA'],
+      });
+      const sendCodeRequest = await fakeRemote.assertReceiveIncomingRequest();
+      fakeRemote.sendReplyTo(sendCodeRequest, {
+        status: 418,
+        message: 'Send failed',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            allowedToRequestCode: false,
+            verified: false,
+            nextSms: 42,
+            requestedInformation: ['captcha'],
+            id: 'fake-session-A',
+          })
+        ),
+      });
+      await expect(requestVerification).to.be.rejected;
+      expect(session.sessionState).to.deep.eq({
+        allowedToRequestCode: false,
+        verified: false,
+        nextSmsSecs: 42,
+        nextCallSecs: undefined,
+        nextVerificationAttemptSecs: undefined,
+        requestedInformation: new Set(['captcha']),
+      });
+
+      // Same for a failed verifySession (submit code).
+      const verifySession = session.verifySession('123456');
+      const submitCodeRequest = await fakeRemote.assertReceiveIncomingRequest();
+      fakeRemote.sendReplyTo(submitCodeRequest, {
+        status: 409,
+        message: 'Not ready',
+        headers: ['content-type: application/json'],
+        body: Buffer.from(
+          JSON.stringify({
+            allowedToRequestCode: true,
+            verified: false,
+            nextVerificationAttempt: 37,
+            requestedInformation: [],
+            id: 'fake-session-A',
+          })
+        ),
+      });
+      await expect(verifySession).to.be.rejected;
+      expect(session.sessionState).to.deep.eq({
+        allowedToRequestCode: true,
+        verified: false,
+        nextSmsSecs: undefined,
+        nextCallSecs: undefined,
+        nextVerificationAttemptSecs: 37,
+        requestedInformation: new Set(),
+      });
     });
   });
 });

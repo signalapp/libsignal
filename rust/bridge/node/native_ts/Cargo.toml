@@ -16,4 +16,5 @@ libsignal-node = { workspace = true, features = ["node", "metadata"] }
 
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
+heck = { workspace = true }
 minijinja = { workspace = true, features = ["preserve_order"] }

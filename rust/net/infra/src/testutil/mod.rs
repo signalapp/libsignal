@@ -12,9 +12,8 @@ use std::time::Duration;
 use displaydoc::Display;
 use futures_util::stream::FusedStream;
 use futures_util::{Sink, SinkExt as _, Stream};
+use libsignal_core::LogSafeDisplay;
 use tokio_util::sync::PollSender;
-
-use crate::errors::LogSafeDisplay;
 
 pub mod fake_transport;
 

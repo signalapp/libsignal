@@ -3,9 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import SignalFfi
 import XCTest
 
 @testable import LibSignalClient
+
+let SECONDS_PER_DAY: UInt64 = 24 * 60 * 60
 
 class BadStore: InMemorySignalProtocolStore {
     enum Error: Swift.Error {
@@ -58,6 +61,24 @@ extension RangeReplaceableCollection where Element == UInt8 {
             self.append(byte)
             from = to
         }
+    }
+}
+
+extension Randomness {
+    internal init?(fromHexString hex: String) {
+        guard let array = [UInt8](fromHexString: hex) else {
+            return nil
+        }
+        var bytes: SignalRandomnessBytes = (
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        )
+        if array.count != MemoryLayout.size(ofValue: bytes) {
+            return nil
+        }
+        withUnsafeMutableBytes(of: &bytes) {
+            $0.copyBytes(from: array)
+        }
+        self.init(bytes)
     }
 }
 

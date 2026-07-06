@@ -287,18 +287,20 @@ public class SessionCipher {
     }
   }
 
-  public int getRemoteRegistrationId() {
+  public int getRemoteRegistrationId() throws NoSessionException {
     if (!sessionStore.containsSession(remoteAddress)) {
-      throw new IllegalStateException(String.format("No session for (%s)!", remoteAddress));
+      throw new NoSessionException(
+          remoteAddress, String.format("No session for (%s)!", remoteAddress));
     }
 
     SessionRecord record = sessionStore.loadSession(remoteAddress);
     return record.getRemoteRegistrationId();
   }
 
-  public int getSessionVersion() {
+  public int getSessionVersion() throws NoSessionException {
     if (!sessionStore.containsSession(remoteAddress)) {
-      throw new IllegalStateException(String.format("No session for (%s)!", remoteAddress));
+      throw new NoSessionException(
+          remoteAddress, String.format("No session for (%s)!", remoteAddress));
     }
 
     SessionRecord record = sessionStore.loadSession(remoteAddress);

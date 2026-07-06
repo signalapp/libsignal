@@ -493,13 +493,14 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
             (None, None) => {
                 return Err(SignalProtocolError::InvalidMessage(
                     CiphertextMessageType::PreKey,
-                    "Kyber pre key must be present for this session version",
+                    "Kyber pre key must be present for this session version".to_owned(),
                 ));
             }
             _ => {
                 return Err(SignalProtocolError::InvalidMessage(
                     CiphertextMessageType::PreKey,
-                    "Both or neither kyber pre_key_id and kyber_ciphertext can be present",
+                    "Both or neither kyber pre_key_id and kyber_ciphertext can be present"
+                        .to_owned(),
                 ));
             }
         };

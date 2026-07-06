@@ -239,12 +239,13 @@ public class SealedSessionCipher {
     }
   }
 
-  public int getSessionVersion(SignalProtocolAddress remoteAddress) {
+  public int getSessionVersion(SignalProtocolAddress remoteAddress) throws NoSessionException {
     return new SessionCipher(signalProtocolStore, localAddress(), remoteAddress)
         .getSessionVersion();
   }
 
-  public int getRemoteRegistrationId(SignalProtocolAddress remoteAddress) {
+  public int getRemoteRegistrationId(SignalProtocolAddress remoteAddress)
+      throws NoSessionException {
     return new SessionCipher(signalProtocolStore, localAddress(), remoteAddress)
         .getRemoteRegistrationId();
   }

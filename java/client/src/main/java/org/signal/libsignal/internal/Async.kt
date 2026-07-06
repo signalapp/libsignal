@@ -66,6 +66,7 @@ public fun <T, R> CompletableFuture<T>.mapWithCancellation(
         } catch (e: Exception) {
           outer.completeExceptionally(e)
         }
+
       is CancellationException -> outer.cancel(true)
       else ->
         try {

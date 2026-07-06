@@ -57,6 +57,9 @@ service Accounts {
 
   // Sets the registration recovery password for the authenticated account.
   rpc SetRegistrationRecoveryPassword(SetRegistrationRecoveryPasswordRequest) returns (SetRegistrationRecoveryPasswordResponse) {}
+
+  // Store a public key used to issue and verify zero-knowledge (anonymous) credentials for the account.
+  rpc SetZkCredentialKey(SetZkCredentialKeyRequest) returns (SetZkCredentialKeyResponse) {}
 }
 
 // Provides methods for looking up Signal accounts. Callers must not provide
@@ -194,7 +197,7 @@ message ConfigureUnidentifiedAccessRequest {
   // anonymously (i.e. to retrieve keys or profiles or to send messages) unless
   // unrestricted unidentified access is permitted. Must be present if
   // unrestricted unidentified access is not allowed.
-  bytes unidentified_access_key = 1;
+  bytes unidentified_access_key = 1 [(require.exactlySize) = 0, (require.exactlySize) = 16];
 
   // If `true`, any user may interact with this account anonymously without
   // providing an unidentified access key. Otherwise, users must provide the
@@ -264,4 +267,17 @@ message LookupUsernameLinkResponse {
     // No username was found for the provided link handle.
     errors.NotFound not_found = 2 [(tag.reason) = "not_found"];
   }
+}
+
+message SetZkCredentialKeyRequest {
+  // A serialized Ristretto key with a one-byte type prefix
+  bytes public_key = 1 [(require.exactlySize) = 33];
+}
+
+message SetZkCredentialKeyResponse {
+  // A random, non-zero, value that must be included in credential requests using the key.
+  //
+  // This value allows the server to ratchet the resulting binding identity,
+  // as reverting to the previous key will result in a new rotation ID.
+  uint64 rotation_id = 1;
 }

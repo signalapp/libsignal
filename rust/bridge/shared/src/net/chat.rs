@@ -15,11 +15,13 @@ use libsignal_bridge_types::crypto::RandomNumberGenerator;
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
-use libsignal_core::ServiceId;
 use libsignal_core::curve::PrivateKey;
+use libsignal_core::{DeviceId, ServiceId};
 use libsignal_net::chat::{self, ConnectError, LanguageList, Response as ChatResponse, SendError};
 use libsignal_net_chat::api;
-use libsignal_net_chat::api::backups::{BackupAuth, GetUploadFormFailure};
+use libsignal_net_chat::api::backups::{
+    BackupAuth, BackupAuthCredentialRejected, CdnCredentials, GetUploadFormFailure,
+};
 use libsignal_net_chat::api::keys::{DeviceSpecifier, GetPreKeysFailure, UnauthenticatedChatApi};
 use libsignal_net_chat::api::messages::{
     AuthenticatedChatApi, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
@@ -30,6 +32,8 @@ use libsignal_net_chat::api::messages::{
 use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
+use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
+use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::ws::OverWs;
 use libsignal_protocol::{CiphertextMessage, Timestamp};
 use uuid::Uuid;
@@ -466,9 +470,9 @@ async fn UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth(
     .await
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn UnauthenticatedChatConnection_account_exists(
-    chat: &UnauthenticatedChatConnection,
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
     account: ServiceId,
 ) -> Result<bool, RequestError<Infallible>> {
     chat.as_typed(|chat| chat.account_exists(account)).await
@@ -525,6 +529,121 @@ async fn UnauthenticatedChatConnection_backup_get_media_upload_form(
         )
     })
     .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_set_public_key(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    rng: RandomNumberGenerator,
+) -> Result<(), RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    chat.require_grpc()
+        .await
+        .set_backup_public_key(&backup_auth, &mut rng)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_get_cdn_credentials(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    cdn: i32,
+    rng: RandomNumberGenerator,
+) -> Result<CdnCredentials, RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    let cdn = cdn
+        .try_into()
+        .expect("should not be using cdns above INT32_MAX");
+    chat.require_grpc()
+        .await
+        .get_backup_cdn_credentials(&backup_auth, cdn, &mut rng)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_get_svrb_credentials(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    rng: RandomNumberGenerator,
+) -> Result<(String, String), RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    chat.require_grpc()
+        .await
+        .get_backup_svrb_credentials(&backup_auth, &mut rng)
+        .await
+        .map(|libsignal_net::auth::Auth { username, password }| (username, password))
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_refresh(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    rng: RandomNumberGenerator,
+) -> Result<(), RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    chat.require_grpc()
+        .await
+        .refresh_backup(&backup_auth, &mut rng)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_delete_all(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    rng: RandomNumberGenerator,
+) -> Result<(), RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    chat.require_grpc()
+        .await
+        .backup_delete_all(&backup_auth, &mut rng)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_device_name(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    device_id: i32,
+    encrypted_name: Vec<u8>,
+) -> Result<(), RequestError<DeviceIdNotFoundInAccount>> {
+    // TODO: bridge directly as DeviceId
+    let device_id = u8::try_from(device_id)
+        .ok()
+        .and_then(|id| DeviceId::new(id).ok())
+        .ok_or_else(|| RequestError::Unexpected {
+            log_safe: "Invalid device id".to_string(),
+        })?;
+    chat.require_grpc()
+        .await
+        .set_device_name(device_id, &encrypted_name)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_reserve_username_hash(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    username_hashes: BridgeVec<[u8; 32]>,
+) -> Result<[u8; 32], RequestError<UsernameNotAvailable>> {
+    chat.require_grpc()
+        .await
+        .reserve_username_hash(&username_hashes)
+        .await
 }
 
 #[allow(clippy::too_many_arguments)]

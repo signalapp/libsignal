@@ -35,9 +35,58 @@ use crate::protocol::storage::{
     FfiSenderKeyStoreStruct, FfiSessionStoreStruct, FfiSignedPreKeyStoreStruct,
 };
 use crate::support::{
-    AsType, BridgedCallbacks, FixedLengthBincodeSerializable, IllegalArgumentError, Serialized,
-    extend_lifetime,
+    AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, FixedLengthBincodeSerializable,
+    IllegalArgumentError, Serialized, extend_lifetime,
 };
+
+#[cfg(feature = "metadata")]
+mod metadata {
+    use crate::metadata::NiceType;
+    pub use crate::metadata::ffi::*;
+
+    pub trait NiceArgConverter {
+        fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter;
+        fn register_swift_nice_type(ctx: &mut SwiftMetadataContext) -> NiceType {
+            Self::register_swift_arg_converter(ctx).nice_type
+        }
+    }
+    pub trait NiceResultConverter {
+        fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter;
+        fn register_swift_nice_type(ctx: &mut SwiftMetadataContext) -> NiceType {
+            Self::register_swift_result_converter(ctx).nice_type
+        }
+    }
+}
+#[cfg(feature = "metadata")]
+pub use metadata::*;
+macro_rules! nice_identity_arg_converter {
+    ($typ:ty, $swift:expr) => {
+        #[cfg(feature = "metadata")]
+        impl NiceArgConverter for $typ {
+            fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+                SwiftArgConverter {
+                    nice_type: $swift.into(),
+                    converter_type: format!("IdentityConverter<{}>", $swift),
+                }
+            }
+        }
+    };
+}
+macro_rules! nice_identity_result_converter {
+    ($typ:ty, $swift:expr) => {
+        #[cfg(feature = "metadata")]
+        impl NiceResultConverter for $typ {
+            fn register_swift_result_converter(
+                _ctx: &mut SwiftMetadataContext,
+            ) -> SwiftReturnConverter {
+                SwiftReturnConverter {
+                    nice_type: $swift.into(),
+                    converter_type: format!("IdentityConverter<{}>", $swift),
+                }
+            }
+        }
+    };
+}
 
 /// Converts arguments from their FFI form to their Rust form.
 ///
@@ -183,6 +232,15 @@ impl<'a> ArgTypeInfo<'a> for &'a [u8] {
         unsafe { stored.as_slice().expect("checked earlier") }
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for &[u8] {
+    fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        SwiftArgConverter {
+            nice_type: "Data".to_string(),
+            converter_type: "DataConverter".to_string(),
+        }
+    }
+}
 
 impl<'a> ArgTypeInfo<'a> for &'a mut [u8] {
     type ArgType = BorrowedMutableSliceOf<c_uchar>;
@@ -219,6 +277,20 @@ impl<'a> ArgTypeInfo<'a> for crate::support::ServiceIdSequence<'a> {
     fn load_from(stored: &'a mut Self::StoredType) -> Self {
         let buffer = <&'a [u8]>::load_from(stored);
         Self::parse(buffer)
+    }
+}
+
+impl SimpleArgTypeInfo for Vec<u8> {
+    type ArgType = BorrowedSliceOf<u8>;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        Ok(unsafe { foreign.as_slice() }?.to_vec())
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for Vec<u8> {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        <&[u8]>::register_swift_arg_converter(ctx)
     }
 }
 
@@ -263,6 +335,137 @@ impl SimpleArgTypeInfo for Vec<Vec<u8>> {
     }
 }
 
+impl<'a, T: ArgTypeInfo<'a>> ArgTypeInfo<'a> for BridgeVec<T> {
+    type ArgType = BorrowedSliceOf<T::ArgType>;
+    type StoredType = Vec<T::StoredType>;
+
+    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
+        let mut out = Vec::with_capacity(foreign.length);
+        for borrowed in unsafe { foreign.as_slice()? } {
+            let owned = unsafe {
+                // SAFETY: ArgTypes are C types, which means they _morally_ implement Copy.
+                (borrowed as *const T::ArgType).read()
+            };
+            out.push(T::borrow(owned)?);
+        }
+        Ok(out)
+    }
+
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        BridgeVec(stored.iter_mut().map(T::load_from).collect())
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T: NiceArgConverter + ArgTypeInfo<'static>> NiceArgConverter for BridgeVec<T> {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        let t = T::register_swift_arg_converter(ctx);
+        let borrowed_slice = cbindgen_mangle::<BorrowedSliceOf<T::ArgType>>();
+        let borrowed_slice_cons = format!(
+            "FfiBorrowedSliceConstructor_{borrowed_slice}_{}",
+            t.converter_type
+                .chars()
+                .filter(|x| x.is_alphanumeric() || *x == '_')
+                .join("")
+        );
+        crate::metadata::insert_checked(
+            &mut ctx.ffi_borrowed_slice_cons,
+            borrowed_slice_cons.clone(),
+            FfiBorrowedSliceConstructor {
+                converter_type: t.converter_type.clone(),
+                borrowed_slice: borrowed_slice.clone(),
+            },
+        );
+        SwiftArgConverter {
+            nice_type: format!("[{}]", t.nice_type),
+            converter_type: format!(
+                "ArrayArgConverter<{}, {borrowed_slice_cons}>",
+                t.converter_type
+            ),
+        }
+    }
+}
+
+impl<T: ResultTypeInfo> ResultTypeInfo for BridgeVec<T> {
+    type ResultType = OwnedBufferOfMaxAligned<T::ResultType>;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        const {
+            assert!(
+                std::mem::align_of::<T>() <= OwnedBufferOfMaxAligned::<T::ResultType>::ALIGNMENT
+            );
+        }
+        let length = self.0.len();
+        let layout = OwnedBufferOfMaxAligned::<T::ResultType>::layout_for_count(length);
+        if layout.size() == 0 {
+            for x in self.0 {
+                x.convert_into()?;
+            }
+            return Ok(OwnedBufferOfMaxAligned {
+                base: std::ptr::null_mut(),
+                length,
+                size_bytes: 0,
+            });
+        }
+        debug_assert_eq!(
+            layout.align(),
+            OwnedBufferOfMaxAligned::<T::ResultType>::ALIGNMENT
+        );
+        debug_assert_eq!(
+            layout,
+            OwnedBufferOfMaxAligned::<std::ffi::c_void>::layout_for_size_bytes(layout.size())
+        );
+        // TODO: leaks memory on error, just like pair
+        let base = unsafe {
+            // SAFETY: we've checked that layout.size != 0
+            std::alloc::alloc(layout)
+        };
+        if base.is_null() {
+            std::alloc::handle_alloc_error(layout);
+        }
+        let base = base as *mut T::ResultType;
+        for (i, value) in self.0.into_iter().enumerate() {
+            let value = value.convert_into()?;
+            assert!(i < length);
+            unsafe {
+                // SAFETY: this resulting pointer will be in bounds
+                let ptr = base.add(i);
+                ptr.write(value);
+            }
+        }
+        Ok(OwnedBufferOfMaxAligned {
+            base,
+            length,
+            size_bytes: layout.size(),
+        })
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T: NiceResultConverter + ResultTypeInfo> NiceResultConverter for BridgeVec<T> {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let t = T::register_swift_result_converter(ctx);
+        let mangled = cbindgen_mangle::<OwnedBufferOfMaxAligned<T::ResultType>>();
+        let proj = format!(
+            "FfiOwnedBufferOfMaxAlignedProject_{mangled}_{}",
+            t.converter_type
+                .chars()
+                .filter(|x| x.is_alphanumeric() || *x == '_')
+                .join("")
+        );
+        crate::metadata::insert_checked(
+            &mut ctx.ffi_owned_buffer_of_max_aligned_project,
+            proj.clone(),
+            FfiOwnedBufferOfMaxAlignedProject {
+                converter_type: t.converter_type.clone(),
+                buffer_type: mangled.clone(),
+            },
+        );
+        SwiftReturnConverter {
+            nice_type: format!("[{}]", t.nice_type),
+            converter_type: format!("ArrayReturnConverter<{}, {proj}>", t.converter_type),
+        }
+    }
+}
+
 impl<const LEN: usize> SimpleArgTypeInfo for &mut [u8; LEN] {
     type ArgType = *mut [u8; LEN];
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -295,6 +498,15 @@ impl SimpleArgTypeInfo for String {
         match unsafe { CStr::from_ptr(foreign).to_str() } {
             Ok(s) => Ok(s.to_owned()),
             Err(e) => Err(e.into()),
+        }
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for String {
+    fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        SwiftArgConverter {
+            nice_type: "String".to_string(),
+            converter_type: "StringConverter".to_string(),
         }
     }
 }
@@ -357,11 +569,29 @@ impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
         }
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for ServiceId {
+    fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        SwiftArgConverter {
+            nice_type: "ServiceId".to_string(),
+            converter_type: "ServiceIdConverter".to_string(),
+        }
+    }
+}
 
 impl ResultTypeInfo for libsignal_protocol::ServiceId {
     type ResultType = libsignal_protocol::ServiceIdFixedWidthBinaryBytes;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(self.service_id_fixed_width_binary())
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for ServiceId {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "ServiceId".to_string(),
+            converter_type: "ServiceIdConverter".to_string(),
+        }
     }
 }
 
@@ -445,23 +675,39 @@ impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSend
 }
 
 macro_rules! zkgroup_serialize_type {
-    ($($ty:ty),*$(,)?) => {$(
+    ($ty:ty, $swift_ty:expr) => {
         impl SimpleArgTypeInfo for $ty {
             type ArgType = BorrowedSliceOf<c_uchar>;
 
             fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
                 let slice = unsafe { foreign.as_slice()? };
-                let token = zkgroup::deserialize(slice).map_err(|_: ZkGroupDeserializationFailure| {
-                    IllegalArgumentError::new(concat!("bad ", stringify!($ty)))
-                })?;
+                let token =
+                    zkgroup::deserialize(slice).map_err(|_: ZkGroupDeserializationFailure| {
+                        IllegalArgumentError::new(concat!("bad ", stringify!($ty)))
+                    })?;
                 Ok(token)
             }
         }
-    )*};
+        #[cfg(feature = "metadata")]
+        impl NiceArgConverter for $ty {
+            fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+                SwiftArgConverter {
+                    nice_type: $swift_ty.to_string(),
+                    converter_type: format!("ByteArrayConverter<{}>", $swift_ty),
+                }
+            }
+        }
+    };
 }
-zkgroup_serialize_type!(GroupSendFullToken);
-zkgroup_serialize_type!(zkgroup::backups::BackupAuthCredential);
-zkgroup_serialize_type!(zkgroup::generic_server_params::GenericServerPublicParams);
+zkgroup_serialize_type!(GroupSendFullToken, "GroupSendFullToken");
+zkgroup_serialize_type!(
+    zkgroup::backups::BackupAuthCredential,
+    "BackupAuthCredential"
+);
+zkgroup_serialize_type!(
+    zkgroup::generic_server_params::GenericServerPublicParams,
+    "GenericServerPublicParams"
+);
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;
@@ -499,6 +745,20 @@ impl<const LEN: usize> SimpleArgTypeInfo for [u8; LEN] {
     }
 }
 
+#[cfg(feature = "metadata")]
+impl<const LEN: usize> NiceArgConverter for [u8; LEN] {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        ctx.fixed_byte_array_lengths.insert(LEN);
+        SwiftArgConverter {
+            nice_type: "Data".to_string(),
+            converter_type: format!(
+                "FixedByteArrayConverter<{}>",
+                names::fixed_byte_array_helper(LEN)
+            ),
+        }
+    }
+}
+
 impl<const LEN: usize> SimpleArgTypeInfo for Option<&'_ [u8; LEN]> {
     type ArgType = *const [u8; LEN];
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -511,6 +771,20 @@ impl<const LEN: usize> ResultTypeInfo for [u8; LEN] {
     type ResultType = [u8; LEN];
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(self)
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl<const LEN: usize> NiceResultConverter for [u8; LEN] {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        ctx.fixed_byte_array_lengths.insert(LEN);
+        SwiftReturnConverter {
+            nice_type: "Data".to_string(),
+            converter_type: format!(
+                "FixedByteArrayConverter<{}>",
+                names::fixed_byte_array_helper(LEN)
+            ),
+        }
     }
 }
 
@@ -757,6 +1031,15 @@ impl ResultTypeInfo for String {
             .into_raw())
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for String {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "String".to_string(),
+            converter_type: "StringConverter".to_string(),
+        }
+    }
+}
 
 /// Allocates and returns a new Rust-owned C string (or `NULL`).
 impl ResultTypeInfo for Option<String> {
@@ -809,6 +1092,15 @@ impl ResultTypeInfo for Vec<u8> {
     type ResultType = OwnedBufferOf<std::ffi::c_uchar>;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(OwnedBufferOf::from(self.into_boxed_slice()))
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for Vec<u8> {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "Data".to_string(),
+            converter_type: "DataConverter".to_string(),
+        }
     }
 }
 
@@ -871,6 +1163,15 @@ impl SimpleArgTypeInfo for RandomNumberGenerator {
     type ArgType = i64;
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         Ok(foreign.into())
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for RandomNumberGenerator {
+    fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        SwiftArgConverter {
+            nice_type: "Int64".to_owned(),
+            converter_type: "IdentityConverter".to_owned(),
+        }
     }
 }
 
@@ -998,6 +1299,22 @@ impl<T: BridgeHandle> SimpleArgTypeInfo for &T {
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn convert_from(foreign: ConstPointer<T>) -> SignalFfiResult<Self> {
         unsafe { native_handle_cast(foreign.into_inner()) }
+    }
+}
+
+impl<'a, T: BridgeHandle + 'static + Send + Sync> SimpleArgTypeInfo for BridgeHandleRef<'a, T> {
+    type ArgType = <&'a T as SimpleArgTypeInfo>::ArgType;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        <&T as SimpleArgTypeInfo>::convert_from(foreign).map(From::from)
+    }
+}
+#[cfg(feature = "metadata")]
+impl<'a, T: BridgeHandle + 'static + Send + Sync> NiceArgConverter for BridgeHandleRef<'a, T>
+where
+    &'a T: NiceArgConverter,
+{
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        <&'a T>::register_swift_arg_converter(ctx)
     }
 }
 
@@ -1140,6 +1457,15 @@ impl ResultTypeInfo for () {
         Ok(false)
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for () {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "Void".to_owned(),
+            converter_type: "VoidConverter".to_owned(),
+        }
+    }
+}
 
 impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for (A, B) {
     type ResultType = PairOf<A::ResultType, B::ResultType>;
@@ -1147,8 +1473,23 @@ impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for (A, B) {
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(PairOf {
             first: self.0.convert_into()?,
+            // TODO: if self.1.convert_into() fails, we may leak memory
             second: self.1.convert_into()?,
         })
+    }
+}
+#[cfg(feature = "metadata")]
+impl<A: NiceResultConverter, B: NiceResultConverter> NiceResultConverter for (A, B) {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let a = A::register_swift_result_converter(ctx);
+        let b = B::register_swift_result_converter(ctx);
+        SwiftReturnConverter {
+            nice_type: format!("({}, {})", a.nice_type, b.nice_type),
+            // TODO: Keep track of cbindgen-monomorphized pair types, generate conformances to a
+            // Pair protocol, and then replace all these bespoke converters with a single generic
+            // PairConverter.
+            converter_type: format!("PairOf{}And{}", a.converter_type, b.converter_type),
+        }
     }
 }
 
@@ -1166,6 +1507,7 @@ where
         Ok(OptionalPairOf {
             present: true,
             first: value.0.convert_into()?,
+            // TODO: if self.1.convert_into() fails, we may leak memory
             second: value.1.convert_into()?,
         })
     }
@@ -1238,6 +1580,34 @@ impl ResultTypeInfo for UploadForm {
         })
     }
 }
+
+impl ResultTypeInfo for libsignal_net_chat::api::backups::CdnCredentials {
+    type ResultType = PairOf<OwnedBufferOf<CStringPtr>, OwnedBufferOf<CStringPtr>>;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let Self { headers } = self;
+        let mut header_keys = Vec::with_capacity(headers.len());
+        let mut header_values = Vec::with_capacity(headers.len());
+        for (k, v) in headers.into_iter() {
+            header_keys.push(k.convert_into()?);
+            header_values.push(v.convert_into()?);
+        }
+        Ok(PairOf {
+            first: header_keys.into_boxed_slice().into(),
+            second: header_values.into_boxed_slice().into(),
+        })
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for libsignal_net_chat::api::backups::CdnCredentials {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "BackupCdnCredentials".to_owned(),
+            converter_type: "BackupCdnCredentialsConverter".to_owned(),
+        }
+    }
+}
+
 impl ResultTypeInfo for libsignal_net::chat::Response {
     type ResultType = FfiChatResponse;
 
@@ -1327,7 +1697,7 @@ macro_rules! ffi_bridge_handle_clone {
 #[macro_export]
 macro_rules! ffi_bridge_as_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
-    ( $typ:ty as $ffi_name:ident ) => {
+    ( $typ:ty as $ffi_name:ident $(, swift_type = $swift_type:expr)? ) => {
         impl $crate::ffi::BridgeHandle for $typ {}
         // Unfortunately this conflicts with the blanket impl for the trait if done generically.
         impl $crate::ffi::CallbackResultTypeInfo for $typ {
@@ -1342,10 +1712,25 @@ macro_rules! ffi_bridge_as_handle {
                 Ok(unsafe { *Box::from_raw(foreign) })
             }
         }
+        $(#[cfg(feature = "metadata")]
+        impl $crate::ffi::NiceArgConverter for &$typ {
+            fn register_swift_arg_converter(
+                _ctx: &mut $crate::metadata::ffi::SwiftMetadataContext
+            ) -> $crate::metadata::ffi::SwiftArgConverter {
+                $crate::metadata::ffi::SwiftArgConverter {
+                    nice_type: $swift_type.into(),
+                    converter_type: format!(
+                        "BridgeHandleRefConverter<SignalMutPointer{}, {}>",
+                        stringify!($typ),
+                        $swift_type,
+                    ),
+                }
+            }
+        })?
     };
-    ( $typ:ty ) => {
+    ( $typ:ty $(, swift_type = $swift_type:expr)? ) => {
         ::paste::paste! {
-            $crate::ffi_bridge_as_handle!($typ as [<$typ:snake>] );
+            $crate::ffi_bridge_as_handle!($typ as [<$typ:snake>]$(, swift_type = $swift_type)? );
         }
     };
 }
@@ -1405,7 +1790,7 @@ impl<A: CallbackResultTypeInfo, B: CallbackResultTypeInfo> CallbackResultTypeInf
 }
 
 macro_rules! trivial {
-    ($typ:ty) => {
+    ($typ:ty, $swift:expr) => {
         impl SimpleArgTypeInfo for $typ {
             type ArgType = Self;
             fn convert_from(foreign: Self) -> SignalFfiResult<Self> {
@@ -1418,18 +1803,20 @@ macro_rules! trivial {
                 Ok(self)
             }
         }
+        nice_identity_arg_converter!($typ, $swift);
+        nice_identity_result_converter!($typ, $swift);
     };
 }
 
-trivial!(i32);
-trivial!(u8);
-trivial!(u16);
-trivial!(u32);
-trivial!(u64);
-trivial!(i64);
-trivial!(usize);
-trivial!(bool);
-trivial!(f64);
+trivial!(i32, "Int32");
+trivial!(u8, "UInt8");
+trivial!(u16, "UInt16");
+trivial!(u32, "UInt32");
+trivial!(u64, "UInt64");
+trivial!(i64, "Int64");
+trivial!(usize, "UInt");
+trivial!(bool, "Bool");
+trivial!(f64, "Double");
 
 /// Syntactically translates `bridge_fn` argument types (and callback result types) to FFI types for
 /// `cbindgen`.
@@ -1452,11 +1839,12 @@ macro_rules! ffi_arg_type {
     (&[u8]) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
     (&mut [u8]) => (ffi::BorrowedMutableSliceOf<std::ffi::c_uchar>);
     (ServiceIdSequence<'_>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
+    (Vec<u8>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
     (Vec<&[u8]>) => (ffi::BorrowedSliceOf<ffi_arg_type!(&[u8])>);
     (Vec<Vec<u8> >) => (ffi::BorrowedSliceOf<ffi_arg_type!(&[u8])>);
-    (String) => (*const std::ffi::c_char);
-    (Option<String>) => (*const std::ffi::c_char);
-    (Option<&str>) => (*const std::ffi::c_char);
+    (String) => (ffi::CStringPtr);
+    (Option<String>) => (ffi::CStringPtr);
+    (Option<&str>) => (ffi::CStringPtr);
     (Timestamp) => (u64);
     (RandomNumberGenerator) => (i64);
     (Uuid) => (ffi::Uuid);
@@ -1490,13 +1878,23 @@ macro_rules! ffi_arg_type {
     (Option<Box<[u8]> >) => (ffi::OptionalBorrowedSliceOf<std::ffi::c_uchar>);
     (DeviceSpecifier) => (i32);
     (GroupSendFullToken) => (ffi_arg_type!(&[u8]));
+    (BridgeHandleRef<$lt:lifetime, $typ:ty>) => (ffi_arg_type!(&$typ));
     (::zkgroup::backups::BackupAuthCredential) => (ffi_arg_type!(&[u8]));
     (::zkgroup::generic_server_params::GenericServerPublicParams) => (ffi_arg_type!(&[u8]));
+    (BridgeVec<$ty:tt>) => (ffi::BorrowedSliceOf<ffi_arg_type!($ty)>);
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
     (AsType<$typ:ident, $bridged:ident>) => (ffi_arg_type!($bridged));
 
     (TestingFutureCancellationGuard) => (ffi_arg_type!(&TestingFutureCancellationCounter));
+
+    // Derived types
+    (MyTestStruct) => (MyTestStructFfiArg);
+    (MyTestPoint) => (MyTestPointFfiArg);
+    (MyTestEnum) => (MyTestEnumFfiArg);
+    (MySimpleTestEnum) => (MySimpleTestEnumFfiArg);
+    (MyRemoteDeriveStruct) => (MyRemoteDeriveStructFfiArg);
+    (MyRemoteDeriveEnum) => (MyRemoteDeriveEnumFfiArg);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
@@ -1554,10 +1952,10 @@ macro_rules! ffi_result_type {
     (f64) => (f64);
     (Option<u64>) => (u64);
     (bool) => (bool);
-    (&str) => (*const std::ffi::c_char);
-    (String) => (*const std::ffi::c_char);
-    (Option<String>) => (*const std::ffi::c_char);
-    (Option<&str>) => (*const std::ffi::c_char);
+    (&str) => (ffi::CStringPtr);
+    (String) => (ffi::CStringPtr);
+    (Option<String>) => (ffi::CStringPtr);
+    (Option<&str>) => (ffi::CStringPtr);
     (Timestamp) => (u64);
     (LogLevel) => (LogLevel);
     (Uuid) => (ffi::Uuid);
@@ -1576,6 +1974,7 @@ macro_rules! ffi_result_type {
     (Vec<ServiceId>) => (ffi::OwnedBufferOf<libsignal_protocol::ServiceIdFixedWidthBinaryBytes>);
     (&[MismatchedDeviceError]) => (ffi::OwnedBufferOf<ffi::FfiMismatchedDevicesError>);
     (Option<$typ:ty>) => ($crate::ffi::MutPointer<$typ>);
+    (BridgeVec<$ty:tt>) => (ffi::OwnedBufferOfMaxAligned<ffi_result_type!($ty)>);
 
     (LookupResponse) => (ffi::FfiCdsiLookupResponse);
     (ChatResponse) => (ffi::FfiChatResponse);
@@ -1584,6 +1983,17 @@ macro_rules! ffi_result_type {
     (DisconnectCause) => (*mut ffi::SignalFfiError);
     (PreKeysResponse) => (ffi::FfiPreKeysResponse);
     (UploadForm) => (ffi::FfiUploadForm);
+    (CdnCredentials) => (ffi::PairOf<ffi::OwnedBufferOf<ffi::CStringPtr>, ffi::OwnedBufferOf<ffi::CStringPtr> >);
+
+    (GrpcTestCases<$a:ty, $b:ty>) => (ffi::OwnedBufferOf<GrpcTestCaseBridgedFfi>);
+
+    // Derived types
+    (MyTestStruct) => (MyTestStructFfiResult);
+    (MyTestPoint) => (MyTestPointFfiResult);
+    (MyTestEnum) => (MyTestEnumFfiResult);
+    (MySimpleTestEnum) => (MySimpleTestEnumFfiResult);
+    (MyRemoteDeriveStruct) => (MyRemoteDeriveStructFfiResult);
+    (MyRemoteDeriveEnum) => (MyRemoteDeriveEnumFfiResult);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

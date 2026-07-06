@@ -20,6 +20,14 @@ use(chaiAsPromised);
 util.initLogger();
 config.truncateThreshold = 0;
 
+const EXPECTED_USERNAME = 'moxie.01';
+const ENCRYPTED_USERNAME =
+  'kj5ah-VbEgjpfJsNt-Wto2H626DRmJSVpYPy0yPOXA8kiSFkBCD8ysFlJ-Z3MhiAnt_R3Nm7ZY0W5fiRDLVbhaE2z-KO2xdf5NcVbkewCzhvveecS3hHskDp1aSfbvwTZNNGPmAuKWvJ1MPdHzsF0w';
+const ENCRYPTED_USERNAME_ENTROPY = Buffer.from(
+  '4302c613c092a51c5394becffeb6f697300a605348e93f03c3db95e0b03d28f1',
+  'hex'
+);
+
 describe('UnauthUsernamesService', () => {
   describe('lookUpUsernameHash', () => {
     it('can look up hashes', async () => {
@@ -105,14 +113,6 @@ describe('UnauthUsernamesService', () => {
   });
 
   describe('lookUpUsernameLink', () => {
-    const EXPECTED_USERNAME = 'moxie.01';
-    const ENCRYPTED_USERNAME =
-      'kj5ah-VbEgjpfJsNt-Wto2H626DRmJSVpYPy0yPOXA8kiSFkBCD8ysFlJ-Z3MhiAnt_R3Nm7ZY0W5fiRDLVbhaE2z-KO2xdf5NcVbkewCzhvveecS3hHskDp1aSfbvwTZNNGPmAuKWvJ1MPdHzsF0w';
-    const ENCRYPTED_USERNAME_ENTROPY = Buffer.from(
-      '4302c613c092a51c5394becffeb6f697300a605348e93f03c3db95e0b03d28f1',
-      'hex'
-    );
-
     it('can look up links', async () => {
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
       const [chat, fakeRemote] = connectUnauth<UnauthUsernamesService>(tokio);
@@ -260,6 +260,43 @@ describe('UnauthUsernamesService', () => {
         .and.deep.include({
           code: ErrorCode.InvalidEntropyDataLength,
         });
+    });
+  });
+});
+
+describe('UnauthUsernamesServiceGrpc', () => {
+  describe('lookUpUsernameLink', () => {
+    it('can look up links', async () => {
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+      const [chat, fakeRemote] = connectUnauth<UnauthUsernamesService>(tokio, [
+        'AccountsAnonymousLookupUsernameLink',
+      ]);
+
+      const responseFuture = chat.lookUpUsernameLink({
+        uuid: uuid.NIL,
+        entropy: ENCRYPTED_USERNAME_ENTROPY,
+      });
+
+      const request = await fakeRemote.assertReceiveIncomingGrpcRequest();
+
+      expect(
+        request.getSingleGrpcMessage(
+          'org.signal.chat.account.LookupUsernameLinkRequest'
+        )
+      ).to.deep.eq({ usernameLinkHandle: 'AAAAAAAAAAAAAAAAAAAAAA==' });
+
+      await fakeRemote.sendGrpcReplyTo(
+        request,
+        'org.signal.chat.account.LookupUsernameLinkResponse',
+        {
+          usernameCiphertext: ENCRYPTED_USERNAME,
+        }
+      );
+
+      const responseFromServer = await responseFuture;
+      assert.isNotNull(responseFromServer);
+      assert.equal(responseFromServer.username, EXPECTED_USERNAME);
+      assert.isNotEmpty(responseFromServer.hash);
     });
   });
 });

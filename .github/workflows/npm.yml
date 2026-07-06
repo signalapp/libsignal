@@ -22,13 +22,20 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+
     strategy:
       matrix:
         os: [windows-latest-8-cores, macos-15-xlarge]
         include:
         - os: macos-15-xlarge
+          platform: darwin
           rust-cross-target: x86_64-apple-darwin
         - os: windows-latest-8-cores
+          platform: win32
           rust-cross-target: aarch64-pc-windows-msvc
         # Ubuntu binaries are built using Docker, below
 
@@ -41,11 +48,13 @@ jobs:
 
     - name: Checking run eligibility
       uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      env:
+        REF_NAME: ${{ github.ref_name }}
       with:
         script: |
           const dryRun = ${{ inputs.dry_run }};
           const refType = '${{ github.ref_type }}';
-          const refName = '${{ github.ref_name }}';
+          const refName = process.env.REF_NAME;
           console.log(dryRun
             ? `Running in 'dry run' mode on '${refName}' ${refType}`
             : `Running on '${refName}' ${refType}`);
@@ -82,6 +91,11 @@ jobs:
       run: npm run build -- --arch arm64 --copy-to-prebuilds
       working-directory: node
 
+    - name: Generate arm64 attestation
+      uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+      with:
+        subject-path: node/prebuilds/${{ matrix.platform }}-arm64/@signalapp+libsignal-client.node
+
     - name: Save arm64 debug info
       run: mv build/Release/*-debuginfo.* .
       working-directory: node
@@ -90,6 +104,11 @@ jobs:
     - name: Build for x64
       run: npm run build -- --arch x64 --copy-to-prebuilds
       working-directory: node
+
+    - name: Generate x64 attestation
+      uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+      with:
+        subject-path: node/prebuilds/${{ matrix.platform }}-x64/@signalapp+libsignal-client.node
 
     - name: Save x64 debug info
       run: mv build/Release/*-debuginfo.* .
@@ -115,6 +134,11 @@ jobs:
 
     runs-on: ubuntu-latest-8-cores
 
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+
     timeout-minutes: 45
 
     steps:
@@ -123,6 +147,16 @@ jobs:
         submodules: recursive
 
     - run: node/docker-prebuildify.sh
+
+    - name: Generate x64 attestation
+      uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+      with:
+        subject-path: node/prebuilds/linux-x64/@signalapp+libsignal-client.node
+
+    - name: Generate arm64 attestation
+      uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+      with:
+        subject-path: node/prebuilds/linux-arm64/@signalapp+libsignal-client.node
 
     - name: Upload library
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -152,6 +186,16 @@ jobs:
     - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
     - run: sudo apt-get install -U protobuf-compiler
+
+    - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      with:
+        node-version-file: '.nvmrc'
+
+    - name: Update npm
+      run: npm install -g npm@latest
+
+    - run: npm ci
+      working-directory: node
 
     - name: Verify that the Node bindings are up to date
       run: cargo run -p libsignal-node-native_ts -- --verify
@@ -215,12 +259,12 @@ jobs:
       env:
         PREBUILDS_ONLY: 1
 
-    - run: npm publish --tag '${{ github.event.inputs.npm_tag }}' --access public ${{ inputs.dry_run && '--dry-run' || ''}}
+    - run: npm publish --tag '${{ github.event.inputs.npm_tag }}' --access public ${{ inputs.dry_run && '--dry-run' || ''}} --provenance
       working-directory: node
 
     # This step is expected to fail if not run on a tag.
     - name: Upload debug info to release
-      uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b # v1.20
+      uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21
       if: ${{ !inputs.dry_run }}
       with:
         allowUpdates: true

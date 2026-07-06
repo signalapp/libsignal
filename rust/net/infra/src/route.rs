@@ -84,11 +84,11 @@ use std::time::Duration;
 
 use futures_util::stream::{FusedStream, FuturesUnordered};
 use futures_util::{FutureExt, StreamExt};
+use libsignal_core::LogSafeDisplay;
 use tokio::time::Instant;
 use tokio_util::either::Either;
 
 use crate::IpType;
-use crate::errors::LogSafeDisplay;
 use crate::host::Host;
 use crate::utils::future::SomeOrPending;
 
@@ -739,7 +739,7 @@ mod test {
     use crate::route::testutils::{FakeConnectError, FakeContext, FakeRoute};
     use crate::route::{SocksProxy, TlsProxy};
     use crate::tcp_ssl::proxy::socks;
-    use crate::{Alpn, OverrideNagleAlgorithm};
+    use crate::{Alpn, OverrideNagleAlgorithm, RouteType};
 
     static WS_ENDPOINT: LazyLock<PathAndQuery> =
         LazyLock::new(|| PathAndQuery::from_static("/ws-path"));
@@ -1005,6 +1005,247 @@ mod test {
             },
         ];
         pretty_assertions::assert_eq!(expected_routes, routes);
+    }
+
+    #[test]
+    fn direct_then_proxy_preserves_global_ordering() {
+        const PROXY_PORT: NonZeroU16 = nonzero!(13u16);
+        const PROXY_CERTS: RootCertificates = RootCertificates::FromDer(Cow::Borrowed(b"proxy"));
+
+        let direct_routes = vec![
+            TlsRoute {
+                fragment: TlsRouteFragment {
+                    root_certs: ROOT_CERTS.clone(),
+                    sni: Host::Domain("direct-sni-1".into()),
+                    alpn: None,
+                    min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_1),
+                },
+                inner: TcpRoute {
+                    address: UnresolvedHost("direct-target-1".into()),
+                    port: nonzero!(7898u16),
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
+                },
+            },
+            TlsRoute {
+                fragment: TlsRouteFragment {
+                    root_certs: ROOT_CERTS.clone(),
+                    sni: Host::Domain("direct-sni-2".into()),
+                    alpn: None,
+                    min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_1),
+                },
+                inner: TcpRoute {
+                    address: UnresolvedHost("direct-target-2".into()),
+                    port: nonzero!(7899u16),
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
+                },
+            },
+        ];
+
+        let provider = DirectOrProxyProvider {
+            mode: DirectOrProxyMode::DirectThenProxy(
+                TlsProxy {
+                    proxy_host: Host::Domain("tls-proxy".into()),
+                    proxy_port: PROXY_PORT,
+                    proxy_certs: PROXY_CERTS,
+                }
+                .into(),
+            ),
+            inner: direct_routes.clone(),
+        };
+
+        let routes = provider.routes(&mut FakeContext::new()).collect_vec();
+
+        let expected_routes = vec![
+            TlsRoute {
+                fragment: direct_routes[0].fragment.clone(),
+                inner: DirectOrProxyRoute::Direct(direct_routes[0].inner.clone()),
+            },
+            TlsRoute {
+                fragment: direct_routes[1].fragment.clone(),
+                inner: DirectOrProxyRoute::Direct(direct_routes[1].inner.clone()),
+            },
+            TlsRoute {
+                fragment: direct_routes[0].fragment.clone(),
+                inner: DirectOrProxyRoute::Proxy(ConnectionProxyRoute::Tls {
+                    proxy: TlsRoute {
+                        inner: TcpRoute {
+                            address: Host::Domain(UnresolvedHost("tls-proxy".into())),
+                            port: PROXY_PORT,
+                            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
+                        },
+                        fragment: TlsRouteFragment {
+                            root_certs: PROXY_CERTS.clone(),
+                            sni: Host::Domain("tls-proxy".into()),
+                            alpn: None,
+                            min_protocol_version: None,
+                        },
+                    },
+                }),
+            },
+            TlsRoute {
+                fragment: direct_routes[1].fragment.clone(),
+                inner: DirectOrProxyRoute::Proxy(ConnectionProxyRoute::Tls {
+                    proxy: TlsRoute {
+                        inner: TcpRoute {
+                            address: Host::Domain(UnresolvedHost("tls-proxy".into())),
+                            port: PROXY_PORT,
+                            override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
+                        },
+                        fragment: TlsRouteFragment {
+                            root_certs: PROXY_CERTS,
+                            sni: Host::Domain("tls-proxy".into()),
+                            alpn: None,
+                            min_protocol_version: None,
+                        },
+                    },
+                }),
+            },
+        ];
+
+        pretty_assertions::assert_eq!(expected_routes, routes);
+    }
+
+    #[test]
+    fn reflector_proxy_expands_in_provider_order() {
+        static TEST_REFLECTOR_PROVIDERS: LazyLock<[ReflectorProviderConfig; 2]> =
+            LazyLock::new(|| {
+                [
+                    ReflectorProviderConfig {
+                        route_type: RouteType::ProxyF,
+                        http_host: "reflector-signal.global.ssl.fastly.net",
+                        sni_list: &[
+                            "github.githubassets.com",
+                            "pinterest.com",
+                            "www.redditstatic.com",
+                        ],
+                        certs: RootCertificates::Native,
+                        endpoint: PathAndQuery::from_static("/tls-tunnel"),
+                    },
+                    ReflectorProviderConfig {
+                        route_type: RouteType::ProxyG,
+                        http_host: "reflector-nrgwuv7kwq-uc.a.run.app",
+                        sni_list: &[
+                            "www.google.com",
+                            "android.clients.google.com",
+                            "clients3.google.com",
+                            "clients4.google.com",
+                            "googlemail.com",
+                        ],
+                        certs: RootCertificates::Native,
+                        endpoint: PathAndQuery::from_static("/tls-tunnel"),
+                    },
+                ]
+            });
+
+        const TARGET_PORT: NonZeroU16 = nonzero!(8443u16);
+
+        let expected_endpoint = PathAndQuery::from_static("/tls-tunnel");
+        let mut expected_context = FakeContext::new();
+        let shared_sni_index = expected_context.random_usize();
+        let expected_fastly_sni = [
+            "github.githubassets.com",
+            "pinterest.com",
+            "www.redditstatic.com",
+        ][shared_sni_index % 3];
+        let expected_gcp_sni = [
+            "www.google.com",
+            "android.clients.google.com",
+            "clients3.google.com",
+            "clients4.google.com",
+            "googlemail.com",
+        ][shared_sni_index % 5];
+
+        let direct_routes = vec![
+            TlsRoute {
+                fragment: TlsRouteFragment {
+                    root_certs: ROOT_CERTS.clone(),
+                    sni: Host::Domain("direct-sni-1".into()),
+                    alpn: None,
+                    min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_1),
+                },
+                inner: TcpRoute {
+                    address: UnresolvedHost("chat.signal.org".into()),
+                    port: TARGET_PORT,
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
+                },
+            },
+            TlsRoute {
+                fragment: TlsRouteFragment {
+                    root_certs: ROOT_CERTS.clone(),
+                    sni: Host::Domain("direct-sni-2".into()),
+                    alpn: None,
+                    min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_1),
+                },
+                inner: TcpRoute {
+                    address: UnresolvedHost("grpc.chat.signal.org".into()),
+                    port: TARGET_PORT,
+                    override_nagle_algorithm: OverrideNagleAlgorithm::UseSystemDefault,
+                },
+            },
+        ];
+
+        let provider = DirectOrProxyProvider {
+            mode: DirectOrProxyMode::DirectThenProxy(ConnectionProxyConfig::Reflector(
+                &*TEST_REFLECTOR_PROVIDERS,
+            )),
+            inner: direct_routes.clone(),
+        };
+
+        let routes = provider.routes(&mut FakeContext::new()).collect_vec();
+        assert_eq!(routes.len(), 6);
+
+        for (route, target_host) in routes[0..2]
+            .iter()
+            .zip(["chat.signal.org", "grpc.chat.signal.org"])
+        {
+            assert_matches!(
+                &route.inner,
+                DirectOrProxyRoute::Direct(TcpRoute { address, port, .. })
+                    if *address == UnresolvedHost(target_host.into()) && *port == TARGET_PORT
+            );
+        }
+
+        for (route, target_host) in routes[2..4]
+            .iter()
+            .zip(["chat.signal.org", "grpc.chat.signal.org"])
+        {
+            assert_matches!(
+                &route.inner,
+                DirectOrProxyRoute::Proxy(ConnectionProxyRoute::Reflector(reflector))
+                    if &*reflector.target_host == target_host
+                        && reflector.target_port == TARGET_PORT
+                        && reflector.outer.fragment.endpoint == expected_endpoint
+                        && reflector.outer.inner.fragment.host_header.as_ref()
+                            == "reflector-signal.global.ssl.fastly.net"
+                        && reflector.outer.inner.fragment.front_name == Some(RouteType::ProxyF.into())
+                        && reflector.outer.inner.inner.fragment.sni == Host::Domain(expected_fastly_sni.into())
+                        && reflector.outer.inner.inner.fragment.alpn == Some(Alpn::Http1_1)
+                        && reflector.outer.inner.inner.inner.address
+                            == Host::Domain(UnresolvedHost(expected_fastly_sni.into()))
+                        && reflector.outer.inner.inner.inner.port == DEFAULT_HTTPS_PORT
+            );
+        }
+
+        for (route, target_host) in routes[4..]
+            .iter()
+            .zip(["chat.signal.org", "grpc.chat.signal.org"])
+        {
+            assert_matches!(
+                &route.inner,
+                DirectOrProxyRoute::Proxy(ConnectionProxyRoute::Reflector(reflector))
+                    if &*reflector.target_host == target_host
+                        && reflector.target_port == TARGET_PORT
+                        && reflector.outer.fragment.endpoint == expected_endpoint
+                        && reflector.outer.inner.fragment.host_header.as_ref()
+                            == "reflector-nrgwuv7kwq-uc.a.run.app"
+                        && reflector.outer.inner.fragment.front_name == Some(RouteType::ProxyG.into())
+                        && reflector.outer.inner.inner.fragment.sni == Host::Domain(expected_gcp_sni.into())
+                        && reflector.outer.inner.inner.fragment.alpn == Some(Alpn::Http1_1)
+                        && reflector.outer.inner.inner.inner.address
+                            == Host::Domain(UnresolvedHost(expected_gcp_sni.into()))
+                        && reflector.outer.inner.inner.inner.port == DEFAULT_HTTPS_PORT
+            );
+        }
     }
 
     #[test]

@@ -9,6 +9,7 @@ import { newNativeHandle } from '../internal.js';
 import { FakeChatRemoteEnd } from '../Native.js';
 
 import assert from 'node:assert';
+import { Buffer } from 'node:buffer';
 
 export class InternalRequest implements Native.Wrapper<Native.HttpRequest> {
   readonly _nativeHandle: Native.HttpRequest;
@@ -38,6 +39,31 @@ export class InternalRequest implements Native.Wrapper<Native.HttpRequest> {
 
   public get body(): Uint8Array<ArrayBuffer> {
     return Native.TESTING_ChatRequestGetBody(this);
+  }
+
+  public static getNextGrpcMessage(
+    name: string,
+    body: Uint8Array<ArrayBuffer>
+  ): [Uint8Array<ArrayBuffer>, unknown] {
+    const [start, end] = Native.TESTING_FakeChatRemoteEnd_NextGrpcMessage(
+      body,
+      0
+    );
+    const messageJson = Native.TESTING_FakeChatRemoteEnd_BinprotoToJson(
+      name,
+      body.subarray(start, end)
+    );
+    return [body.subarray(end), JSON.parse(messageJson)];
+  }
+
+  public getSingleGrpcMessage(name: string): unknown {
+    const body = this.body;
+    const [remaining, result] = InternalRequest.getNextGrpcMessage(name, body);
+    assert(
+      remaining.length == 0,
+      'message had trailing data, use getNextGrpcMessage instead'
+    );
+    return result;
   }
 }
 
@@ -111,5 +137,69 @@ export class FakeChatRemote {
 
   public injectConnectionInterrupted(): void {
     Native.TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(this);
+  }
+
+  public async receiveIncomingGrpcRequest(): Promise<InternalRequest | null> {
+    const nativeRequest =
+      await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest(
+        this.asyncContext,
+        this
+      );
+    if (nativeRequest === null) {
+      return null;
+    }
+    return new InternalRequest(nativeRequest);
+  }
+
+  public async assertReceiveIncomingGrpcRequest(): Promise<InternalRequest> {
+    const request = await this.receiveIncomingGrpcRequest();
+    assert(request !== null, 'Cannot reply to the request that is null');
+    return request;
+  }
+
+  public sendRawGrpcReplyTo(
+    request: InternalRequest,
+    response: Uint8Array<ArrayBuffer>
+  ): Promise<void> {
+    const nativeResponse = newNativeHandle(
+      Native.TESTING_FakeChatResponse_Create(
+        request.requestId,
+        200,
+        '',
+        [],
+        response
+      )
+    );
+    return Native.TESTING_FakeChatRemoteEnd_SendServerGrpcResponse(
+      this.asyncContext,
+      this,
+      nativeResponse
+    );
+  }
+
+  static encodeSingleGrpcMessage(
+    name: string,
+    json: Record<string, unknown>
+  ): Uint8Array<ArrayBuffer> {
+    const message = JSON.stringify(json);
+    const binproto = Native.TESTING_FakeChatRemoteEnd_JsonToBinproto(
+      name,
+      message
+    );
+    const header = Native.TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength(
+      binproto.length
+    );
+    return new Uint8Array(Buffer.concat([header, binproto]));
+  }
+
+  public sendGrpcReplyTo(
+    request: InternalRequest,
+    name: string,
+    response: Record<string, unknown>
+  ): Promise<void> {
+    return this.sendRawGrpcReplyTo(
+      request,
+      FakeChatRemote.encodeSingleGrpcMessage(name, response)
+    );
   }
 }

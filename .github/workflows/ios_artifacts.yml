@@ -33,11 +33,13 @@ jobs:
 
     - name: Checking run eligibility
       uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      env:
+        REF_NAME: ${{ github.ref_name }}
       with:
         script: |
           const dryRun = ${{ inputs.dry_run }};
           const refType = '${{ github.ref_type }}';
-          const refName = '${{ github.ref_name }}';
+          const refName = process.env.REF_NAME;
           console.log(dryRun
             ? `Running in 'dry run' mode on '${refName}' ${refType}`
             : `Running on '${refName}' ${refType}`);
@@ -94,7 +96,7 @@ jobs:
 
     # This step is expected to fail if not run on a tag.
     - name: Upload checksum to release
-      uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b # v1.20
+      uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21
       if: ${{ !inputs.dry_run }}
       with:
         allowUpdates: true

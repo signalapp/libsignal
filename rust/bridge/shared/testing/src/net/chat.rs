@@ -27,7 +27,7 @@ pub struct FakeChatConnection {
 
 pub struct FakeChatServer {
     pub(crate) tx: tokio::sync::mpsc::UnboundedSender<FakeChatRemote>,
-    remote_end: tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<FakeChatRemote>>,
+    remote_end: AsyncMutex<tokio::sync::mpsc::UnboundedReceiver<FakeChatRemote>>,
 }
 
 pub struct FakeChatRemoteEnd(FakeChatRemote);
@@ -43,6 +43,7 @@ bridge_handle_fns!(FakeChatServer, clone = false);
 bridge_as_handle!(FakeChatResponse);
 bridge_handle_fns!(FakeChatResponse, clone = false);
 
+// These aren't really guaranteed, but FakeChat* is only used for testing anyway.
 impl std::panic::RefUnwindSafe for FakeChatServer {}
 impl std::panic::RefUnwindSafe for FakeChatConnection {}
 impl std::panic::RefUnwindSafe for FakeChatRemoteEnd {}
@@ -474,4 +475,60 @@ fn TESTING_ChatSendErrorConvert(
         TestingChatSendError::IncomingDataInvalid => SendError::IncomingDataInvalid,
         TestingChatSendError::RequestHasInvalidHeader => SendError::RequestHasInvalidHeader,
     })
+}
+
+mod grpc_test_cases;
+use grpc_test_cases::*;
+
+mod remote_derives {
+    use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
+
+    use crate::*;
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::devices::test_cases::SetDeviceNameArgs)]
+    pub(super) struct SetDeviceNameArgs {
+        id: u8,
+        encrypted_name: Vec<u8>,
+    }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::devices::test_cases::SetDeviceNameOut)]
+    pub(super) enum SetDeviceNameOut {
+        Success,
+        DeviceNotFound,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::usernames::test_cases::ReserveUsernameHashArgs)]
+    pub(super) struct ReserveUsernameHashArgs {
+        usernames: BridgeVec<[u8; 32]>,
+    }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::usernames::test_cases::ReserveUsernameHashOut)]
+    pub(super) enum ReserveUsernameHashOut {
+        Success([u8; 32]),
+        UsernameNotAvailable,
+    }
+
+    #[cfg(feature = "ffi")]
+    #[unsafe(no_mangle)]
+    pub unsafe extern "C" fn signal_testing_force_bindgen_to_emit_structs(
+        _: SetDeviceNameArgsFfiResult,
+        _: SetDeviceNameOutFfiResult,
+        _: ReserveUsernameHashArgsFfiResult,
+        _: ReserveUsernameHashOutFfiResult,
+    ) {
+    }
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_SetDeviceNameTests()
+-> GrpcTestCases<remote_derives::SetDeviceNameArgs, remote_derives::SetDeviceNameOut> {
+    libsignal_net_chat::grpc::devices::test_cases::set_device_name_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_ReserveUsernameHashTests()
+-> GrpcTestCases<remote_derives::ReserveUsernameHashArgs, remote_derives::ReserveUsernameHashOut> {
+    libsignal_net_chat::grpc::usernames::test_cases::reserve_username_hash_test_cases().into()
 }

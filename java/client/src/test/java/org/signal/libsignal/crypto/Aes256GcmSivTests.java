@@ -5,14 +5,16 @@
 
 package org.signal.libsignal.crypto;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
-import junit.framework.TestCase;
+import org.junit.Test;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.util.Hex;
 
-public class Aes256GcmSivTests extends TestCase {
-
+public class Aes256GcmSivTests {
+  @Test
   public void testAesGcmSivInvalidInputs() throws Exception {
     try {
       byte[] invalid_key = new byte[16];
@@ -36,6 +38,7 @@ public class Aes256GcmSivTests extends TestCase {
     }
   }
 
+  @Test
   public void testAesGcmSivKats() throws Exception {
     testAesGcmSivKat(
         "bae8e37fc83441b16034566b7a806c46bb91c3c5aedb64a6c590bc84d1a5e269",

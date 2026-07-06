@@ -1,0 +1,78 @@
+/**
+ * Copyright 2013 Signal Messenger, LLC
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+syntax = "proto2";
+
+package textsecure;
+
+option java_package = "org.whispersystems.textsecuregcm.entities";
+option java_outer_classname = "MessageProtos";
+
+message Envelope {
+  enum Type {
+    reserved 2, 7;
+
+    UNKNOWN = 0;
+    CIPHERTEXT = 1;
+    PREKEY_BUNDLE = 3;
+    SERVER_DELIVERY_RECEIPT = 5;
+    UNIDENTIFIED_SENDER = 6;
+    PLAINTEXT_CONTENT = 8;  // for decryption error receipts
+  }
+
+  reserved 9; // Formerly string server_guid;
+  reserved 11; // Formerly string source_service_id
+  reserved 13; // Formerly string destination_service_id
+  reserved 15; // Formerly string updated_pni;
+
+  optional Type type = 1;
+  optional uint32 source_device = 7;
+  optional uint64 client_timestamp = 5;
+  optional bytes content = 8; // Contains an encrypted Content
+  optional uint64 server_timestamp = 10;
+  optional bool ephemeral = 12; // indicates that the message should not be persisted if the recipient is offline
+  optional bool urgent = 14 [default=true];
+  optional bool story = 16; // indicates that the content is a story.
+  optional bytes report_spam_token = 17; // token sent when reporting spam
+  optional bytes shared_mrm_key = 18; // indicates content should be fetched from multi-recipient message datastore
+  optional bytes source_service_id = 19; // service ID binary (i.e. 16 byte UUID for ACI, 1 byte prefix + 16 byte UUID for PNI)
+  optional bytes destination_service_id = 20; // service ID binary (i.e. 16 byte UUID for ACI, 1 byte prefix + 16 byte UUID for PNI)
+  optional bytes server_guid = 21; // 16-byte UUID
+  optional bytes updated_pni = 22; // 16-byte UUID
+  // next: 23
+}
+
+message ProvisioningAddress {
+  optional string address = 1;
+}
+
+message ServerCertificate {
+  message Certificate {
+    optional uint32 id = 1;
+    optional bytes key = 2;
+  }
+
+  optional bytes certificate = 1;
+  optional bytes signature = 2;
+}
+
+message SenderCertificate {
+  message Certificate {
+    reserved 6;
+
+    optional string sender_e164 = 1;
+    optional bytes sender_uuid_= 7;
+    optional uint32 sender_device = 2;
+    optional fixed64 expires = 3;
+    optional bytes identity_key = 4;
+    oneof signer {
+      ServerCertificate signer_certificate = 5;
+      uint32 signer_id = 8;
+    }
+    // next: 9
+  }
+
+  optional bytes certificate = 1;
+  optional bytes signature = 2;
+}

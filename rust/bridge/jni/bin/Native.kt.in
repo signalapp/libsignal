@@ -7,6 +7,7 @@
 
 package org.signal.libsignal.internal
 
+import org.signal.libsignal.internal.NativeHandleGuard.SimpleOwner
 import org.signal.libsignal.net.internal.BridgeChatListener
 import org.signal.libsignal.net.internal.BridgeProvisioningListener
 import org.signal.libsignal.net.internal.ConnectChatBridge

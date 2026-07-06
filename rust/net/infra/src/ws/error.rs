@@ -8,9 +8,10 @@
 
 use std::borrow::Borrow;
 
+use libsignal_core::LogSafeDisplay;
 use tungstenite::protocol::CloseFrame;
 
-use crate::errors::{LogSafeDisplay, TransportConnectError};
+use crate::errors::TransportConnectError;
 
 /// Errors that can occur when connecting a websocket.
 #[derive(Debug, thiserror::Error)]

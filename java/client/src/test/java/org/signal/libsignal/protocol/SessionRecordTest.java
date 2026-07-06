@@ -37,6 +37,16 @@ public class SessionRecordTest {
   }
 
   @Test
+  public void testUninitAccessThrows() throws Exception {
+    SessionRecord empty_record = new SessionRecord();
+
+    assertThrows(NoSessionException.class, () -> empty_record.getRemoteRegistrationId());
+    assertThrows(NoSessionException.class, () -> empty_record.getLocalRegistrationId());
+    assertThrows(NoSessionException.class, () -> empty_record.getRemoteIdentityKey());
+    assertThrows(NoSessionException.class, () -> empty_record.getLocalIdentityKey());
+  }
+
+  @Test
   public void testBadPreKeyRecords() throws Exception {
     assertThrows(InvalidMessageException.class, () -> new PreKeyRecord(new byte[] {0}));
     assertThrows(InvalidMessageException.class, () -> new SignedPreKeyRecord(new byte[] {0}));

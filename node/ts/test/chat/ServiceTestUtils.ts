@@ -3,12 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import { expect } from 'chai';
+
 import {
   AuthenticatedChatConnection,
   TokioAsyncContext,
   UnauthenticatedChatConnection,
 } from '../../net.js';
 import { FakeChatRemote } from '../../net/FakeChat';
+import * as Native from '../../Native.js';
 
 /**
  * A requirement that `Sub` not contain any properties that aren't in `Super`, or properties with
@@ -36,13 +39,18 @@ export function connectUnauth<
   // the result.
   Api extends Subset<UnauthenticatedChatConnection, Api> = object
 >(
-  tokio: TokioAsyncContext
+  tokio: TokioAsyncContext,
+  grpcOverrides?: [string]
 ): [PickSubset<UnauthenticatedChatConnection, Api>, FakeChatRemote] {
-  return UnauthenticatedChatConnection.fakeConnect(tokio, {
-    onConnectionInterrupted: () => {},
-    onIncomingMessage: () => {},
-    onQueueEmpty: () => {},
-  });
+  return UnauthenticatedChatConnection.fakeConnect(
+    tokio,
+    {
+      onConnectionInterrupted: () => {},
+      onIncomingMessage: () => {},
+      onQueueEmpty: () => {},
+    },
+    grpcOverrides
+  );
 }
 
 /**
@@ -60,5 +68,63 @@ export function connectAuth<
     onConnectionInterrupted: () => {},
     onIncomingMessage: () => {},
     onQueueEmpty: () => {},
+  });
+}
+
+export async function testSimpleGrpcRequest<
+  T,
+  S extends Subset<UnauthenticatedChatConnection, S>
+>(
+  requestName: string,
+  expectedRequest: Record<string, unknown>,
+  responseName: string,
+  response: Record<string, unknown>,
+  sendRequest: (
+    service: PickSubset<UnauthenticatedChatConnection, S>
+  ) => Promise<T>
+): Promise<T> {
+  Native.TESTING_EnableDeterministicRngForTesting();
+  const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+  const [chat, fakeRemote] = connectUnauth<S>(tokio);
+  const responseFuture = sendRequest(chat);
+
+  const request = await fakeRemote.assertReceiveIncomingGrpcRequest();
+  expect(request.getSingleGrpcMessage(requestName)).to.deep.eq(expectedRequest);
+  await fakeRemote.sendGrpcReplyTo(request, responseName, response);
+
+  return await responseFuture;
+}
+
+export function defineTestGrpcCasesAuth<
+  Api extends Subset<AuthenticatedChatConnection, Api>,
+  Req,
+  Resp
+>(
+  tests: Array<Native.GrpcTestCase<Req, Resp>>,
+  check: (
+    chat: PickSubset<AuthenticatedChatConnection, Api>,
+    req: Req,
+    resp: Resp
+  ) => Promise<void>
+): void {
+  tests.forEach((test) => {
+    // "void" is needed since eslint doesn't realize that it() doesn't return a promise
+    void it(test.name, async () => {
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+      const [chat, fakeRemote] = connectAuth<Api>(tokio);
+      const responseFuture = check(chat, test.request, test.response);
+      const grpcRequest = await fakeRemote.assertReceiveIncomingGrpcRequest();
+      expect(grpcRequest.path).to.equal(test.method);
+      const [start, end] = Native.TESTING_FakeChatRemoteEnd_NextGrpcMessage(
+        grpcRequest.body,
+        0
+      );
+      expect(end).to.equal(grpcRequest.body.length);
+      expect(grpcRequest.body.slice(start, end)).to.deep.equal(
+        test.requestGrpc
+      );
+      await fakeRemote.sendRawGrpcReplyTo(grpcRequest, test.responseGrpc);
+      await responseFuture;
+    });
   });
 }

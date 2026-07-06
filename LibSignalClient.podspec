@@ -5,7 +5,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'LibSignalClient'
-  s.version          = '0.94.1'
+  s.version          = '0.96.4'
   s.summary          = 'A Swift wrapper library for communicating with the Signal messaging service.'
 
   s.homepage         = 'https://github.com/signalapp/libsignal'
@@ -27,6 +27,9 @@ Pod::Spec.new do |s|
       'HEADER_SEARCH_PATHS' => '$(PODS_TARGET_SRCROOT)/swift/Sources/SignalFfi',
       # Duplicate this here to make sure the search path is passed on to Swift dependencies.
       'SWIFT_INCLUDE_PATHS' => '$(HEADER_SEARCH_PATHS)',
+
+      # Setting this allows the tests to be considered part of the same package.
+      'SWIFT_PACKAGE_NAME' => 'LibSignalClient',
 
       'LIBSIGNAL_FFI_BUILD_PATH' => 'target/$(CARGO_BUILD_TARGET)/release',
       # Store libsignal_ffi.a builds in a project-wide directory
@@ -112,7 +115,7 @@ Pod::Spec.new do |s|
   ]
 
   s.test_spec 'Tests' do |test_spec|
-    test_spec.source_files = 'swift/Tests/*/*.swift'
+    test_spec.source_files = 'swift/Tests/**/*.swift'
     test_spec.preserve_paths = [
       'swift/Tests/*/Resources',
     ]

@@ -5,7 +5,7 @@
 
 use std::collections::HashSet;
 use std::future::Future;
-use std::panic::{RefUnwindSafe, UnwindSafe};
+use std::panic::UnwindSafe;
 
 use futures_util::TryFutureExt as _;
 use libsignal_net_chat::api::registration::{
@@ -16,19 +16,10 @@ use libsignal_net_chat::api::registration::{
 use libsignal_net_chat::registration::{self as net_registration, ConnectUnauthChat, RequestError};
 use libsignal_protocol::PublicKey;
 
+use crate::support::AsyncMutex;
 use crate::*;
 
-pub struct RegistrationService(
-    pub tokio::sync::Mutex<net_registration::RegistrationService<'static>>,
-);
-
-// The implementation of this type does contain interior mutability, but the
-// interior type is itself UnwindSafe so there's no danger of observing a
-// logically inconsistent state.
-impl RefUnwindSafe for RegistrationService where
-    net_registration::RegistrationService<'static>: UnwindSafe
-{
-}
+pub struct RegistrationService(pub AsyncMutex<net_registration::RegistrationService<'static>>);
 
 /// Subset of arguments needed to call
 /// [`net_registration::RegistrationService::register_account`].

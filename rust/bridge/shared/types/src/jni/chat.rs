@@ -18,18 +18,16 @@ pub use crate::net::chat::{JavaBridgeChatListener, JavaBridgeProvisioningListene
 fn attach_and_log_on_error(
     vm: &JavaVM,
     name: &'static str,
-    operation: impl FnOnce(&mut JNIEnv<'_>) -> Result<(), BridgeLayerError>,
+    operation: impl FnOnce(&mut jni::Env<'_>) -> Result<(), BridgeLayerError>,
 ) {
     let attach_and_run = move || {
-        let mut env = vm.attach_current_thread().expect("can attach thread");
-        env.with_local_frame(REASONABLE_JNI_BACKGROUND_THREAD_FRAME_SIZE, |env| {
-            Ok(operation(env))
-        })
-        .check_exceptions(&mut env, name)
-        .unwrap_or_else(Err)
+        vm.attach_current_thread_for_scope(|env| Ok::<_, jni::errors::Error>(operation(env)))
     };
     match attach_and_run() {
-        Ok(()) => {}
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => {
+            log::error!("failed to report {name}: {e}")
+        }
         Err(e) => {
             log::error!("failed to report {name}: {e}")
         }
@@ -45,7 +43,7 @@ const CONNECTION_MANAGER_CLASS: ClassName =
 pub struct JniConnectChatBridge {
     vm: JavaVM,
     /// Guaranteed to be a [`CONNECTION_MANAGER_CLASS`].
-    connection_manager: GlobalRef,
+    connection_manager: Global<JObject<'static>>,
 }
 
 #[derive(Debug)]
@@ -56,7 +54,7 @@ pub struct JniConnectChat {
 
 impl JniConnectChatBridge {
     pub fn new(
-        env: &mut JNIEnv<'_>,
+        env: &mut jni::Env<'_>,
         connection_manager: &JObject,
     ) -> Result<Self, BridgeLayerError> {
         check_jobject_type(env, connection_manager, CONNECTION_MANAGER_CLASS)?;

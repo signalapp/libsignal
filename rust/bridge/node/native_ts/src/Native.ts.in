@@ -134,8 +134,56 @@ export type Serialized<T> = Uint8Array<ArrayBuffer>;
 type ConnectChatBridge = Wrapper<ConnectionManager>;
 type TestingFutureCancellationGuard = Wrapper<TestingFutureCancellationCounter>;
 
+export type GrpcTestCase<Req, Resp> = {
+  name: string;
+  method: string;
+  request: Req;
+  requestGrpc: Uint8Array<ArrayBuffer>;
+  responseGrpc: Uint8Array<ArrayBuffer>;
+  response: Resp;
+};
+export type GrpcTestCaseFfi<Req, Resp> = GrpcTestCase<Req, Resp>;
+
 // Keep in sync with rust/bridge/node/src/logging.rs
 export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
+
+{% macro simple_struct_fields(struct) %}
+    {%- for (field, converter) in struct.fields -%}
+        {{ field }}: {{ converter.ffi_type }};
+    {%- endfor -%}
+{% endmacro %}
+{% for (name, struct_or_enum) in ctx.derived_return_converters|items -%}
+    {% if struct_or_enum.kind == "Struct" %}
+        {% set struct = struct_or_enum %}
+        export type {{ name | return_ffi_type }} = {
+            {{ simple_struct_fields(struct) }}
+        };
+    {% else %}
+        {% set enum = struct_or_enum %}
+        export type {{ name | return_ffi_type }} = {%- for (variant, struct) in enum.variants -%}
+            | {
+                __type: {{ loop.index0 }};
+                {{ simple_struct_fields(struct) }}
+            }
+        {%- endfor -%};
+    {% endif %}
+{%- endfor %}
+{% for (name, struct_or_enum) in ctx.derived_arg_converters|items -%}
+    {% if struct_or_enum.kind == "Struct" %}
+        {% set struct = struct_or_enum %}
+        export type {{ name | arg_ffi_type }} = {
+            {{ simple_struct_fields(struct) }}
+        };
+    {% else %}
+        {% set enum = struct_or_enum %}
+        export type {{ name | arg_ffi_type }} = {%- for (variant, struct) in enum.variants -%}
+            | {
+                __type: {{ loop.index0 }};
+                {{ simple_struct_fields(struct) }}
+            }
+        {%- endfor -%};
+    {% endif %}
+{%- endfor %}
 
 /* eslint-disable comma-dangle */
 export const NetRemoteConfigKeys = [
