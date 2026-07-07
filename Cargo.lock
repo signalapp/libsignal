@@ -2514,6 +2514,7 @@ dependencies = [
  "serde_json",
  "strum",
  "tokio",
+ "tonic",
  "uuid",
  "zkgroup",
 ]

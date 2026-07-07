@@ -8,6 +8,7 @@
 
 use libsignal_net::chat::fake::BodyWithTrailers;
 use libsignal_net_chat::grpc::GrpcTestCase;
+use libsignal_net_chat::grpc::test_case_util::GRPC_STATUS_HEADER;
 
 use crate::*;
 
@@ -127,6 +128,13 @@ bridge_as_handle!(GrpcTestCaseBridgedResponse);
 bridge_handle_fns!(GrpcTestCaseBridgedResponse, clone = false);
 pub struct GrpcTestCases<Req, Resp>(Vec<GrpcTestCaseBridged<Req, Resp>>);
 
+pub(super) fn grpc_ok_trailers() -> http::HeaderMap {
+    http::HeaderMap::from_iter([(
+        GRPC_STATUS_HEADER,
+        http::HeaderValue::from_static(const_str::to_str!(tonic::Code::Ok as i32)),
+    )])
+}
+
 impl<
     RequestInto: Into<Request>,
     Request,
@@ -159,7 +167,7 @@ impl<
                         response_grpc.splice(0..0, header);
                         let full_body = BodyWithTrailers {
                             data: response_grpc,
-                            trailers: Default::default(),
+                            trailers: grpc_ok_trailers(),
                         };
                         GrpcTestCaseBridged {
                             name,

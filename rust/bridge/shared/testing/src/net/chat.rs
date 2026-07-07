@@ -11,7 +11,7 @@ use libsignal_bridge_types::net::chat::{
     AuthenticatedChatConnection, ChatListener, HttpRequest, ProvisioningChatConnection,
     ProvisioningListener, UnauthenticatedChatConnection,
 };
-use libsignal_net::chat::fake::FakeChatRemote;
+use libsignal_net::chat::fake::{BodyWithTrailers, FakeChatRemote};
 use libsignal_net::chat::{
     ConnectError, RequestProto, Response as ChatResponse, ResponseProto, SendError,
 };
@@ -185,9 +185,17 @@ async fn TESTING_FakeChatRemoteEnd_SendServerGrpcResponse(
     );
     assert!(headers.is_empty(), "headers not yet implemented for gRPC");
 
+    let body = BodyWithTrailers {
+        data: body
+            .as_ref()
+            .map(|bytes| bytes.to_vec())
+            .unwrap_or_default(),
+        trailers: grpc_ok_trailers(),
+    };
+
     let http_response = http::Response::builder()
         .status(u16::try_from(status.unwrap_or_default()).unwrap_or(u16::MAX))
-        .body(body.as_ref().cloned().unwrap_or_default())
+        .body(body)
         .expect("valid");
 
     chat.0

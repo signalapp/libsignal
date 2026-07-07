@@ -674,8 +674,7 @@ pub mod test_case_util {
 
     use super::*;
 
-    pub(crate) const GRPC_STATUS_HEADER: http::HeaderName =
-        http::HeaderName::from_static("grpc-status");
+    pub const GRPC_STATUS_HEADER: http::HeaderName = http::HeaderName::from_static("grpc-status");
     pub(crate) const GRPC_STATUS_DETAILS_HEADER: http::HeaderName =
         http::HeaderName::from_static("grpc-status-details-bin");
 
