@@ -364,6 +364,7 @@ mod test {
     use assert_matches::assert_matches;
     use data_encoding_macro::base64url_nopad;
     use futures_util::FutureExt as _;
+    use libsignal_net::chat::fake::BodyWithTrailers;
     use libsignal_net_grpc::proto::chat::common::{IdentityType, ServiceIdentifier};
     use libsignal_net_grpc::proto::chat::services;
     use test_case::test_case;
@@ -409,7 +410,7 @@ mod test {
     }) => matches Ok(None))]
     #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
     fn test_hash_lookup(
-        response: http::Response<Vec<u8>>,
+        response: http::Response<BodyWithTrailers>,
     ) -> Result<Option<Aci>, RequestError<Infallible>> {
         // Not realistic, but not likely to show up by accident.
         let hash = &[0x00, 0xff, 0xff, 0xff];
@@ -451,7 +452,7 @@ mod test {
     }) => matches Ok(None))]
     #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
     fn test_link_lookup(
-        response: http::Response<Vec<u8>>,
+        response: http::Response<BodyWithTrailers>,
     ) -> Result<Option<String>, RequestError<usernames::UsernameLinkError>> {
         let validator = GrpcOverrideRequestValidator {
             message: services::AccountsAnonymous::LookupUsernameLink.into(),

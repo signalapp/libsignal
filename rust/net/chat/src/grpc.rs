@@ -758,7 +758,7 @@ pub(crate) mod testutil {
         ResponseGrpc: prost::Message + 'static,
         Response,
         F: Future,
-        Wrapper: From<RequestValidator<Vec<u8>>>,
+        Wrapper: From<RequestValidator<BodyWithTrailers>>,
     >(
         tests: impl IntoIterator<Item = GrpcTestCase<Request, RequestGrpc, ResponseGrpc, Response>>,
         invoke: impl Fn(Wrapper, Request) -> F,
@@ -847,21 +847,11 @@ pub(crate) mod testutil {
             .expect("can build request")
     }
 
-    pub(crate) fn ok(response: impl prost::Message + 'static) -> http::Response<Vec<u8>> {
-        let result = stream(vec![response], None);
-        result.map(|BodyWithTrailers { data, trailers }| {
-            assert_eq!(
-                trailers,
-                http::HeaderMap::from_iter([(
-                    GRPC_STATUS_HEADER,
-                    http::HeaderValue::from_static(const_str::to_str!(tonic::Code::Ok as i32))
-                )])
-            );
-            data
-        })
+    pub(crate) fn ok(response: impl prost::Message + 'static) -> http::Response<BodyWithTrailers> {
+        stream(vec![response], None)
     }
 
-    pub(crate) fn err(code: tonic::Code) -> http::Response<Vec<u8>> {
+    pub(crate) fn err(code: tonic::Code) -> http::Response<BodyWithTrailers> {
         Status::new(code, "").into_http()
     }
 
@@ -993,14 +983,14 @@ pub(crate) mod testutil {
     /// necessarily across versions. `map` is only a problem because it uses Rust's HashMap.)
     pub(crate) struct TypedRequestValidator<T> {
         pub expected: http::Request<T>,
-        pub response: http::Response<Vec<u8>>,
+        pub response: http::Response<BodyWithTrailers>,
     }
 
     impl<T> tower_service::Service<http::Request<tonic::body::Body>> for &'_ TypedRequestValidator<T>
     where
         T: MessageExt + PartialEq + std::fmt::Debug,
     {
-        type Response = http::Response<http_body_util::Full<bytes::Bytes>>;
+        type Response = http::Response<BoxBody<bytes::Bytes, Infallible>>;
 
         type Error = hyper::Error;
 
@@ -1030,7 +1020,7 @@ pub(crate) mod testutil {
             });
             pretty_assertions::assert_eq!(self.expected.body(), &actual_body, "body");
 
-            std::future::ready(Ok(self.response.clone().map(|body| body.into())))
+            std::future::ready(Ok(self.response.clone().map(|body| body.into_http_body())))
         }
     }
 

@@ -378,7 +378,7 @@ impl<Tx: Stream, Rx: Sink<RxItem>, RxItem> Sink<RxItem> for StreamSink<Tx, Rx, R
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct BodyWithTrailers {
     pub data: Vec<u8>,
     pub trailers: http::HeaderMap,

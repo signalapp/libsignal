@@ -966,6 +966,7 @@ mod test {
 
     use assert_matches::assert_matches;
     use futures_util::FutureExt as _;
+    use libsignal_net::chat::fake::BodyWithTrailers;
     use libsignal_net_grpc::proto::chat::services;
     use test_case::test_case;
 
@@ -1029,7 +1030,7 @@ mod test {
     }) => matches Err(RequestError::Unexpected { .. }))]
     #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
     fn test_get_upload_form(
-        response: http::Response<Vec<u8>>,
+        response: http::Response<BodyWithTrailers>,
     ) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
         let validator = GrpcOverrideRequestValidator {
             message: services::BackupsAnonymous::GetUploadForm.into(),
@@ -1093,7 +1094,7 @@ mod test {
     }) => matches Err(RequestError::Unexpected { .. }))]
     #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
     fn test_get_media_upload_form(
-        response: http::Response<Vec<u8>>,
+        response: http::Response<BodyWithTrailers>,
     ) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
         let validator = GrpcOverrideRequestValidator {
             message: services::BackupsAnonymous::GetUploadForm.into(),
@@ -1138,7 +1139,7 @@ mod test {
         response: None,
     }) => matches Err(RequestError::Unexpected { .. }))]
     fn test_set_public_key(
-        response: http::Response<Vec<u8>>,
+        response: http::Response<BodyWithTrailers>,
     ) -> Result<(), RequestError<BackupAuthCredentialRejected>> {
         let validator = RequestValidator {
             expected: req(
@@ -1186,7 +1187,7 @@ mod test {
         response: None,
     }) => matches Err(RequestError::Unexpected { .. }))]
     fn test_get_cdn_credentials(
-        response: http::Response<Vec<u8>>,
+        response: http::Response<BodyWithTrailers>,
     ) -> Result<CdnCredentials, RequestError<BackupAuthCredentialRejected>> {
         let validator = RequestValidator {
             expected: req(
@@ -1230,7 +1231,7 @@ mod test {
         response: None,
     }) => matches Err(RequestError::Unexpected { .. }))]
     fn test_get_svrb_credentials(
-        response: http::Response<Vec<u8>>,
+        response: http::Response<BodyWithTrailers>,
     ) -> Result<(String, String), RequestError<BackupAuthCredentialRejected>> {
         let validator = RequestValidator {
             expected: req(
@@ -1271,7 +1272,7 @@ mod test {
         response: None,
     }) => matches Err(RequestError::Unexpected { .. }))]
     fn test_refresh(
-        response: http::Response<Vec<u8>>,
+        response: http::Response<BodyWithTrailers>,
     ) -> Result<(), RequestError<BackupAuthCredentialRejected>> {
         let validator = RequestValidator {
             expected: req(
@@ -1310,7 +1311,7 @@ mod test {
         response: None,
     }) => matches Err(RequestError::Unexpected { .. }))]
     fn test_delete_all(
-        response: http::Response<Vec<u8>>,
+        response: http::Response<BodyWithTrailers>,
     ) -> Result<(), RequestError<BackupAuthCredentialRejected>> {
         let validator = RequestValidator {
             expected: req(
