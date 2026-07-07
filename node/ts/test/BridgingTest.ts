@@ -3,16 +3,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { assert, use } from 'chai';
+import { assert, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import * as Native from '../Native.js';
 import * as NativeNice from '../NativeNice.js';
-import { BridgedStringMap } from '../internal.js';
+import { BridgedStringMap, wrapStream } from '../internal.js';
 import * as uuid from '../uuid.js';
 import { Aci, Pni } from '../Address.js';
 import { toBase64 } from './util.js';
 import { TokioAsyncContext } from '../net.js';
 import { DeviceId } from '../NiceConverters.js';
+import { ErrorCode, LibSignalErrorBase } from '../Errors.js';
 
 use(chaiAsPromised);
 
@@ -571,5 +572,101 @@ describe('Error', () => {
 
     const error3 = NativeNice.TESTING_ReturnSomeIoError({ present: false });
     assert.isNull(error3);
+  });
+});
+
+describe('TestStream', () => {
+  class TestingStream {
+    readonly _nativeHandle: Native.TestStream;
+    readonly asyncContext: TokioAsyncContext = new TokioAsyncContext(
+      Native.TokioAsyncContext_new()
+    );
+
+    constructor(handle: Native.TestStream) {
+      this._nativeHandle = handle;
+    }
+
+    stream(cancelled?: { flag: boolean }): ReadableStream<string> {
+      return wrapStream(this.asyncContext, this, {
+        pull: Native.TESTING_BulkPullFromStream_NextChunk,
+        cancel: (stream) => {
+          Native.TESTING_BulkPullFromStream_Cancel(stream);
+          if (cancelled) {
+            cancelled.flag = true;
+          }
+        },
+      });
+    }
+  }
+
+  it('can be collected', async () => {
+    const contents = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+    const stream = new TestingStream(
+      Native.TESTING_BulkPullFromStream_New(contents, false)
+    );
+    const received = [];
+    for await (const next of stream.stream()) {
+      received.push(next);
+    }
+    assert.deepEqual(received, contents);
+  });
+
+  it('handles errors', async () => {
+    const contents = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+    const stream = new TestingStream(
+      Native.TESTING_BulkPullFromStream_New(contents, true)
+    );
+    const received = [];
+    try {
+      for await (const next of stream.stream()) {
+        received.push(next);
+      }
+      assert.fail('should have thrown');
+    } catch (error) {
+      expect(error)
+        .instanceOf(LibSignalErrorBase)
+        .includes({ code: ErrorCode.Generic, message: 'error' });
+    }
+    assert.deepEqual(received, contents);
+  });
+
+  it('handles errors even with a short segment', async () => {
+    const contents = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
+    const stream = new TestingStream(
+      Native.TESTING_BulkPullFromStream_New(contents, true)
+    );
+    const received = [];
+    try {
+      for await (const next of stream.stream()) {
+        received.push(next);
+      }
+      assert.fail('should have thrown');
+    } catch (error) {
+      expect(error)
+        .instanceOf(LibSignalErrorBase)
+        .includes({ code: ErrorCode.Generic, message: 'error' });
+    }
+    assert.deepEqual(received, contents);
+  });
+
+  it('handles cancellation', async () => {
+    const contents = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+    const stream = new TestingStream(
+      Native.TESTING_BulkPullFromStream_New(contents, true)
+    );
+    const received = [];
+    const cancelled = { flag: false };
+    const asyncIterable = stream.stream(cancelled);
+    for await (const next of asyncIterable) {
+      received.push(next);
+      if (received.length >= 3) {
+        // Early-exiting the loop causes the iterator to be cancelled via the `return` method, which
+        // for a ReadableStream ends up calling the `cancel` callback, which eventually reaches our
+        // cancellation handler.
+        break;
+      }
+    }
+    assert.deepEqual(received, ['a', 'b', 'c']);
+    assert.isTrue(cancelled.flag);
   });
 });
