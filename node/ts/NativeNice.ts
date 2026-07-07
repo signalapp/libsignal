@@ -29,6 +29,7 @@ import {
   type ReturnFfiSetDeviceNameOut,
   type ReturnFfiSetUsernameLinkArgs,
   type ReturnFfiSetUsernameLinkOut,
+  type ReturnFfiTestStreamChunk,
   /* eslint-enable @typescript-eslint/no-unused-vars */
 } from './Native.js';
 
@@ -133,6 +134,11 @@ export type SetUsernameLinkOut =
       success: uuid.Uuid;
     }
   | 'usernameNotSet';
+
+export type TestStreamChunk = {
+  chunk: Array<string>;
+  termination: ('finished' | Error) | null;
+};
 
 function returnConverterGetDevicesOut(
   ffiInput: Native.ReturnFfiGetDevicesOut
@@ -327,6 +333,15 @@ function returnConverterSetUsernameLinkOut(
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for SetUsernameLinkOut');
   }
+}
+
+function returnConverterTestStreamChunk(
+  ffiInput: Native.ReturnFfiTestStreamChunk
+): TestStreamChunk {
+  return {
+    chunk: ((arr: Array<string>) => arr.map(identity))(ffiInput.chunk),
+    termination: identity(ffiInput.termination),
+  };
 }
 
 function argConverterMyRemoteDeriveEnum(
@@ -819,6 +834,12 @@ export function TESTING_SetUsernameLinkTests(): Array<
     returnConverterSetUsernameLinkArgs,
     returnConverterSetUsernameLinkOut
   )(Native.TESTING_SetUsernameLinkTests());
+}
+
+export function TESTING_TestStreamChunk_return(): TestStreamChunk {
+  return returnConverterTestStreamChunk(
+    Native.TESTING_TestStreamChunk_return()
+  );
 }
 
 export function TESTING_TestingIntBox_Get({

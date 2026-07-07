@@ -13,6 +13,7 @@ use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net_chat::api::keys::DeviceSpecifier;
 use libsignal_net_chat::api::registration::PushToken;
 use libsignal_net_chat::api::{ChallengeOption, UploadForm};
+use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use libsignal_protocol::*;
 use paste::paste;
 use uuid::Uuid;
@@ -1092,6 +1093,41 @@ impl<T> NiceResultConverter for Option<crate::support::BridgedError<T>> {
     }
 }
 
+/// A low-level three-state enum: 0 (still going), `MAP_FAILED` (finished), or a valid pointer
+/// (error).
+///
+/// `MAP_FAILED` was chosen because it's an existing C pointer sentinel value, even though it won't
+/// be aligned to match `SignalFfiError`. This is fine as long as we don't try to load from it
+/// (which wouldn't work anyway) or convert it to a reference.
+#[repr(C)]
+pub struct FfiBulkPolledStreamTerminationReason {
+    raw: *mut SignalFfiError,
+}
+
+impl<T: IntoFfiError> ResultTypeInfo for Option<BulkPolledStreamTerminationReason<T>> {
+    type ResultType = FfiBulkPolledStreamTerminationReason;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let raw = match self {
+            Some(BulkPolledStreamTerminationReason::Error(e)) => {
+                crate::support::BridgedError(e).convert_into()?
+            }
+            Some(BulkPolledStreamTerminationReason::Finished) => libc::MAP_FAILED.cast(),
+            None => std::ptr::null_mut(),
+        };
+        Ok(FfiBulkPolledStreamTerminationReason { raw })
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T> NiceResultConverter for Option<BulkPolledStreamTerminationReason<T>> {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "BulkPolledStreamTermination?".to_string(),
+            converter_type: "BulkPolledStreamTerminationConverter".to_string(),
+        }
+    }
+}
+
 /// Allocates and returns a new Rust-owned C string.
 impl ResultTypeInfo for String {
     type ResultType = *const std::ffi::c_char;
@@ -2070,6 +2106,7 @@ macro_rules! ffi_result_type {
     (&[MismatchedDeviceError]) => (ffi::OwnedBufferOf<ffi::FfiMismatchedDevicesError>);
     (BridgedError<$typ:ty>) => (*mut ffi::SignalFfiError);
     (Option<BridgedError<$typ:ty> >) => (*mut ffi::SignalFfiError);
+    (Option<BulkPolledStreamTerminationReason<$typ:ty> >) => (ffi::FfiBulkPolledStreamTerminationReason);
     (Option<$typ:ty>) => ($crate::ffi::MutPointer<$typ>);
     (BridgeVec<$ty:tt>) => (ffi::OwnedBufferOfMaxAligned<ffi_result_type!($ty)>);
 
@@ -2090,6 +2127,7 @@ macro_rules! ffi_result_type {
     (MySimpleTestEnum) => (MySimpleTestEnumFfiResult);
     (MyRemoteDeriveStruct) => (MyRemoteDeriveStructFfiResult);
     (MyRemoteDeriveEnum) => (MyRemoteDeriveEnumFfiResult);
+    (TestStreamChunk) => (TestStreamChunkFfiResult);
     (LinkedDevice) => ($crate::net::chat::remote_derives::LinkedDeviceInternalFfiResult);
 
     // In order to provide a fixed-sized array of the correct length,

@@ -475,6 +475,27 @@ public sealed class SetUsernameLinkOut {
   }
 }
 
+public data class TestStreamChunk(
+  val chunk: List<String>,
+  val termination: Object?,
+) {
+  public companion object {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(
+      chunk: Any?,
+      termination: Any?,
+    ): TestStreamChunk =
+      TestStreamChunk(
+        chunk =
+          mapBridgeVecReturn<String, String>({ identity(it) })(chunk as Array<*>),
+        termination =
+          identity(termination as Object?),
+      )
+  }
+}
+
 public object NativeTestingNice {
   public fun TESTING_GetDevicesTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.GetDevicesOut>> {
     val ffiOut =
@@ -651,6 +672,13 @@ public object NativeTestingNice {
       .resultConverter<Object, Object, org.signal.libsignal.internal.SetUsernameLinkArgs, org.signal.libsignal.internal.SetUsernameLinkOut>({
         downcastFromObject<org.signal.libsignal.internal.SetUsernameLinkArgs>(it)
       }, { downcastFromObject<org.signal.libsignal.internal.SetUsernameLinkOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_TestStreamChunk_return(): org.signal.libsignal.internal.TestStreamChunk {
+    val ffiOut =
+      NativeTesting.TESTING_TestStreamChunk_return()
+
+    return downcastFromObject<org.signal.libsignal.internal.TestStreamChunk>(ffiOut)
   }
 
   public fun TESTING_TestingIntBox_Get(myIntBox: org.signal.libsignal.internal.TestingIntBox): Int {

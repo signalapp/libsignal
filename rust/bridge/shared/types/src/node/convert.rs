@@ -14,6 +14,7 @@ use std::slice;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net_chat::api::UploadForm;
 use libsignal_net_chat::api::keys::DeviceSpecifier;
+use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use neon::prelude::*;
 use neon::types::JsBigInt;
 use paste::paste;
@@ -2187,6 +2188,26 @@ impl<'a, T: SignalNodeError> ResultTypeInfo<'a> for crate::support::BridgedError
 }
 nice_identity_result_converter!(<T: SignalNodeError> crate::support::BridgedError<T>);
 nice_identity_result_converter!(<T: SignalNodeError> Option<crate::support::BridgedError<T>>);
+
+impl<'a, T: SignalNodeError> ResultTypeInfo<'a> for BulkPolledStreamTerminationReason<T> {
+    type ResultType = JsValue;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        match self {
+            BulkPolledStreamTerminationReason::Finished => {
+                // We could use any non-null placeholder here, but let's use one that fits
+                // TypeScript idioms.
+                Ok(cx.string("finished").upcast())
+            }
+            BulkPolledStreamTerminationReason::Error(e) => {
+                Ok(crate::support::BridgedError(e).convert_into(cx)?.upcast())
+            }
+        }
+    }
+    register_ts_ffi_type!("(\"finished\"|Error)");
+}
+nice_identity_result_converter!(<T: SignalNodeError> BulkPolledStreamTerminationReason<T>);
+nice_identity_result_converter!(<T: SignalNodeError> Option<BulkPolledStreamTerminationReason<T>>);
 
 macro_rules! full_range_integer {
     ($typ:ty) => {

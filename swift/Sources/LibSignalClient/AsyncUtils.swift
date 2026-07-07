@@ -246,3 +246,121 @@ internal func invokeAsyncFunction<Promise: PromiseStruct>(
         saveCancellationId(promiseStruct.cancellation_id)
     }
 }
+
+/// Like ``AsyncStream``, but based on a pull model rather than a push model.
+///
+/// (Not designed for general use, however, hence the non-public `init`.)
+///
+/// Like `AsyncStream`, `ColdAsyncStream` has reference semantics despite being a struct: copying
+/// the struct shares the underlying stream, and using `for await` or calling `makeAsyncIterator`
+/// more than once (on any copy) has unspecified behavior.
+public struct ColdAsyncStream<Item> {
+    private let erasedPull: () async throws -> ([Item], BulkPolledStreamTermination?)
+    private let erasedCancel: () throws -> Void
+
+    internal init<Raw: SignalMutPointer, Stream: NativeHandleOwner<Raw>, RawResult>(
+        asyncContext: TokioAsyncContext,
+        stream: Stream,
+        pull: @escaping (TokioAsyncContext, Stream) async throws -> RawResult,
+        convert: @escaping (RawResult) throws -> ([Item], BulkPolledStreamTermination?),
+        cancel: @escaping (Raw.ConstPointer) -> SignalFfiErrorRef?,
+    ) {
+        self.erasedPull = {
+            // These operations could be combined, but in practice `pull` often works out to being
+            // a single Nice function, leaving `convert` for post-processing.
+            let result = try await pull(asyncContext, stream)
+            return try convert(result)
+        }
+        self.erasedCancel = {
+            try stream.withNativeHandle { stream in
+                try checkError(cancel(stream.const()))
+            }
+        }
+    }
+
+    /// Cancels the stream (as opposed to a specific `next()` call),
+    /// which will more eagerly free any resources associated with an underlying request.
+    ///
+    /// Note that if the stream is actively being iterated, there may still be some pending items
+    /// before iteration is terminated with an error. The precise error depends on the API in question.
+    public func cancel() {
+        do {
+            try self.erasedCancel()
+        } catch {
+            LoggerBridge.shared?.logger.log(
+                level: .error,
+                file: #fileID,
+                line: #line,
+                message: "error while cancelling stream of \(Item.self): \(error)"
+            )
+        }
+    }
+}
+
+extension ColdAsyncStream: AsyncSequence {
+    public func makeAsyncIterator() -> AsyncIterator {
+        return AsyncIterator(self)
+    }
+
+    // swiftlint:disable explicit_init_for_public_struct
+    public struct AsyncIterator: AsyncIteratorProtocol {
+        private enum State {
+            case active(ColdAsyncStream)
+            case finished(Error?)
+        }
+
+        private var state: State
+        private var currentChunk: ArraySlice<Item> = []
+
+        fileprivate init(_ stream: ColdAsyncStream) {
+            self.state = .active(stream)
+        }
+
+        private mutating func advance(
+            onBufferEmpty: (ColdAsyncStream) async throws -> ([Item], BulkPolledStreamTermination?)
+        ) async throws -> Item? {
+            if let next = currentChunk.popFirst() {
+                return next
+            }
+
+            switch state {
+            case .finished(let error):
+                if let error { throw error }
+                return nil
+            case .active(let stream):
+                do {
+                    let (chunk, termination) = try await onBufferEmpty(stream)
+                    currentChunk = chunk[...]
+                    if let termination {
+                        state = .finished(termination.asError)
+                    }
+                } catch {
+                    state = .finished(error)
+                }
+
+                // Recursing handles both empty and non-empty chunks.
+                return try await advance { _ in
+                    preconditionFailure("stream has neither terminated nor provided more items")
+                }
+            }
+        }
+
+        public mutating func next() async throws -> Item? {
+            return try await advance {
+                try await $0.erasedPull()
+            }
+        }
+    }
+}
+
+internal enum BulkPolledStreamTermination {
+    case finished
+    case error(Error)
+
+    var asError: Error? {
+        switch self {
+        case .finished: nil
+        case .error(let error): error
+        }
+    }
+}

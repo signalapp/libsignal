@@ -7,13 +7,19 @@
 compile_error!("Feature \"ffi\", \"jni\", or \"node\" must be enabled for this crate.");
 
 use std::collections::BTreeMap;
+use std::time::Duration;
 
-use libsignal_bridge_macros::bridge_fn;
+use futures_util::StreamExt as _;
+use futures_util::stream::BoxStream;
+use libsignal_bridge_macros::{BridgedAsValue, bridge_fn, bridge_io};
 use libsignal_bridge_types::net::TokioAsyncContext;
 #[cfg(feature = "node")]
 pub use libsignal_bridge_types::node;
 use libsignal_bridge_types::support::*;
 use libsignal_bridge_types::*;
+use libsignal_net_chat::stream_util::{
+    BulkPolledStream, BulkPolledStreamChunk, BulkPolledStreamTerminationReason,
+};
 
 use crate::types::Ignored;
 
@@ -57,4 +63,67 @@ pub fn TESTING_TokioAsyncContext_AttachBlockingThreadToJVMPermanently(
                 .expect("no error");
         }))
         .expect("no panic");
+}
+
+#[allow(clippy::type_complexity)]
+pub struct TestStream {
+    inner: AsyncMutex<
+        Option<BulkPolledStream<BoxStream<'static, Result<String, IllegalArgumentError>>>>,
+    >,
+}
+
+bridge_as_handle!(TestStream);
+bridge_handle_fns!(TestStream, clone = false);
+
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct TestStreamChunk {
+    chunk: BridgeVec<String>,
+    termination: Option<BulkPolledStreamTerminationReason<IllegalArgumentError>>,
+}
+
+#[bridge_fn]
+pub fn TESTING_BulkPullFromStream_New(contents: Box<[String]>, end_with_error: bool) -> TestStream {
+    TestStream {
+        inner: Some(BulkPolledStream::new(
+            futures_util::stream::iter(contents)
+                .map(Ok)
+                .chain(futures_util::stream::iter(
+                    end_with_error.then_some(Err(IllegalArgumentError::new("error"))),
+                ))
+                .boxed(),
+            5,
+            Duration::MAX,
+        ))
+        .into(),
+    }
+}
+
+#[bridge_io(TokioAsyncContext)]
+pub async fn TESTING_BulkPullFromStream_NextChunk(stream: &TestStream) -> TestStreamChunk {
+    let mut guard = stream.inner.lock().await;
+    let Some(stream) = &mut *guard else {
+        return TestStreamChunk {
+            chunk: Vec::new().into(),
+            termination: Some(BulkPolledStreamTerminationReason::Error(
+                IllegalArgumentError::new("cancelled"),
+            )),
+        };
+    };
+    let BulkPolledStreamChunk { chunk, termination } = stream.next_chunk_unpin().await;
+    TestStreamChunk {
+        chunk: chunk.into(),
+        termination,
+    }
+}
+
+#[bridge_fn]
+pub fn TESTING_BulkPullFromStream_Cancel(stream: &TestStream) {
+    _ = stream.inner.blocking_lock().take();
+}
+
+// To generate the return converter
+#[bridge_fn(nice = true)]
+pub fn TESTING_TestStreamChunk_return() -> TestStreamChunk {
+    unreachable!()
 }

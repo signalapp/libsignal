@@ -77,6 +77,12 @@ public object NativeTesting {
   public external fun TESTING_AcquireSemaphoreAndGet(asyncRuntime: ObjectHandle, semaphore: ObjectHandle, valueHolder: ObjectHandle): CompletableFuture<Int>
   @JvmStatic
   public external fun TESTING_BridgedStringMap_dump_to_json(map: ObjectHandle): String
+  @JvmStatic
+  public external fun TESTING_BulkPullFromStream_Cancel(stream: ObjectHandle): Unit
+  @JvmStatic
+  public external fun TESTING_BulkPullFromStream_New(contents: Array<Object>, endWithError: Boolean): ObjectHandle
+  @JvmStatic
+  public external fun TESTING_BulkPullFromStream_NextChunk(asyncRuntime: ObjectHandle, stream: ObjectHandle): CompletableFuture<Object>
   @JvmStatic @Throws(Exception::class)
   public external fun TESTING_CdsiLookupErrorConvert(errorDescription: String): Unit
   @JvmStatic
@@ -296,6 +302,8 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_SignedPublicPreKey_CheckBridgesCorrectly(sourcePublicKey: ObjectHandle, signedPreKey: SignedPublicPreKey<*>): Unit
   @JvmStatic
+  public external fun TESTING_TestStreamChunk_return(): Object
+  @JvmStatic
   public external fun TESTING_TestingHandleType_getValue(handle: ObjectHandle): Int
   @JvmStatic
   public external fun TESTING_TestingIntBox_Get(myIntBox: SimpleOwner): Int
@@ -363,6 +371,9 @@ public object NativeTesting {
   public external fun TESTING_conversion_u8_identity(x: Int): Int
   @JvmStatic
   public external fun TESTING_conversion_u8_to_string(x: Int): String
+
+  @JvmStatic
+  public external fun TestStream_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic
   public external fun TestingFutureCancellationCounter_Destroy(handle: ObjectHandle): Unit

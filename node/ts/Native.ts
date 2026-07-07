@@ -268,6 +268,11 @@ export type ReturnFfiSetUsernameLinkOut =
       __type: 1;
     };
 
+export type ReturnFfiTestStreamChunk = {
+  chunk: Array<string>;
+  termination: ('finished' | Error) | null;
+};
+
 export type ArgFfiMyRemoteDeriveEnum =
   | {
       __type: 0;
@@ -2136,6 +2141,15 @@ type NativeFunctions = {
   TESTING_BridgedStringMap_dump_to_json: (
     map: Wrapper<BridgedStringMap>
   ) => string;
+  TESTING_BulkPullFromStream_Cancel: (stream: Wrapper<TestStream>) => void;
+  TESTING_BulkPullFromStream_New: (
+    contents: Array<string>,
+    end_with_error: boolean
+  ) => TestStream;
+  TESTING_BulkPullFromStream_NextChunk: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    stream: Wrapper<TestStream>
+  ) => CancellablePromise<ReturnFfiTestStreamChunk>;
   TESTING_CdsiLookupErrorConvert: (error_description: string) => void;
   TESTING_CdsiLookupResponseConvert: (
     asyncRuntime: Wrapper<TokioAsyncContext>
@@ -2442,6 +2456,7 @@ type NativeFunctions = {
     source_public_key: Wrapper<PublicKey>,
     signed_pre_key: SignedPublicPreKey
   ) => void;
+  TESTING_TestStreamChunk_return: () => ReturnFfiTestStreamChunk;
   TESTING_TestingHandleType_getValue: (
     handle: Wrapper<TestingHandleType>
   ) => number;
@@ -3274,6 +3289,9 @@ const {
   Svr2_Restore,
   Svr2_StartBackup,
   TESTING_BridgedStringMap_dump_to_json,
+  TESTING_BulkPullFromStream_Cancel,
+  TESTING_BulkPullFromStream_New,
+  TESTING_BulkPullFromStream_NextChunk,
   TESTING_CdsiLookupErrorConvert,
   TESTING_CdsiLookupResponseConvert,
   TESTING_ChatConnectErrorConvert,
@@ -3388,6 +3406,7 @@ const {
   TESTING_SetDeviceNameTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
+  TESTING_TestStreamChunk_return,
   TESTING_TestingHandleType_getValue,
   TESTING_TestingIntBox_Get,
   TESTING_TestingIntBox_New,
@@ -3966,6 +3985,9 @@ export {
   Svr2_Restore,
   Svr2_StartBackup,
   TESTING_BridgedStringMap_dump_to_json,
+  TESTING_BulkPullFromStream_Cancel,
+  TESTING_BulkPullFromStream_New,
+  TESTING_BulkPullFromStream_NextChunk,
   TESTING_CdsiLookupErrorConvert,
   TESTING_CdsiLookupResponseConvert,
   TESTING_ChatConnectErrorConvert,
@@ -4080,6 +4102,7 @@ export {
   TESTING_SetDeviceNameTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
+  TESTING_TestStreamChunk_return,
   TESTING_TestingHandleType_getValue,
   TESTING_TestingIntBox_Get,
   TESTING_TestingIntBox_New,
@@ -4485,6 +4508,9 @@ export interface SignedPreKeyRecord {
   readonly __type: unique symbol;
 }
 export interface Svr2BackupSession {
+  readonly __type: unique symbol;
+}
+export interface TestStream {
   readonly __type: unique symbol;
 }
 export interface TestingFutureCancellationCounter {

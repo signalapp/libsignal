@@ -17,6 +17,7 @@ use libsignal_core::try_scoped;
 use libsignal_net::cdsi::LookupResponseEntry;
 use libsignal_net_chat::api::UploadForm;
 use libsignal_net_chat::api::keys::DeviceSpecifier;
+use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use libsignal_protocol::*;
 use paste::paste;
 use zkgroup::groups::GroupSendFullToken;
@@ -2869,6 +2870,46 @@ impl<T> NiceResultConverter for Option<crate::support::BridgedError<T>> {
     }
 }
 
+impl<'a, T: JniError + Send + 'static> ResultTypeInfo<'a>
+    for Option<BulkPolledStreamTerminationReason<T>>
+{
+    type ResultType = Nullable<JObject<'a>>;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!(java.lang.Object);
+
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        match self {
+            Some(BulkPolledStreamTerminationReason::Error(e)) => crate::support::BridgedError(e)
+                .convert_into(env)
+                .map(JObject::from),
+            Some(BulkPolledStreamTerminationReason::Finished) => {
+                find_class(env, ClassName("kotlin.Unit"))
+                    .and_then(|unit_class| {
+                        env.get_static_field(
+                            unit_class,
+                            jni_str!("INSTANCE"),
+                            jni_sig!(kotlin.Unit),
+                        )
+                    })
+                    .and_then(JValueOwned::into_object)
+                    .check_exceptions(env, "kotlin.Unit")
+            }
+            None => Ok(JObject::null()),
+        }
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T> NiceResultConverter for Option<BulkPolledStreamTerminationReason<T>> {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        // Kotlin doesn't have a union type `(Unit | Throwable)`; we'll leave it to consumers to
+        // deal with.
+        KtReturnConverter {
+            nice_type: "Object?".to_string(),
+            ffi_type: "Object?".to_string(),
+            converter_function: "identity".to_string(),
+        }
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for PreKeysResponse {
     type ResultType = JObject<'a>;
 
@@ -3559,6 +3600,9 @@ macro_rules! jni_result_type {
     (Option<BridgedError<$typ:ty> >) => {
         $crate::jni::Nullable<::jni::objects::JThrowable<'local>>
     };
+    (Option<BulkPolledStreamTerminationReason<$typ:ty> >) => {
+        $crate::jni::Nullable<::jni::objects::JObject<'local>>
+    };
 
     (GrpcTestCases<$a:ty, $b:ty>) => {
         ::jni::objects::JObjectArray<'local>
@@ -3569,6 +3613,7 @@ macro_rules! jni_result_type {
     (MyTestEnum) => {::jni::objects::JObject<'local>};
     (MyTestPoint) => {::jni::objects::JObject<'local>};
     (MyTestStruct) => {::jni::objects::JObject<'local>};
+    (TestStreamChunk) => {::jni::objects::JObject<'local>};
 
     ( $handle:ty ) => {
         $crate::jni::ObjectHandle

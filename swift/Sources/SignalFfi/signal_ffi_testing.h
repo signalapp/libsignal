@@ -57,6 +57,8 @@ typedef struct SignalOtherTestingHandleType SignalOtherTestingHandleType;
  */
 typedef struct SignalFfiError SignalFfiError;
 
+typedef struct SignalTestStream SignalTestStream;
+
 /**
  * Counter for future cancellations
  */
@@ -140,29 +142,16 @@ typedef struct {
 } SignalConstPointerOtherTestingHandleType;
 
 typedef struct {
+  SignalTestStream *raw;
+} SignalMutPointerTestStream;
+
+typedef struct {
   SignalNonSuspendingBackgroundThreadRuntime *raw;
 } SignalMutPointerNonSuspendingBackgroundThreadRuntime;
 
-/**
- * A buffer of `length` elements of type `T`, allocated with the alignment of
- * [`libc::max_align_t`].
- *
- * The number of bytes allocated is stored in `size_bytes`.
- *
- * `base` should be allocated via Rust's global alloc (i.e. via [`std::alloc::alloc`])
- *
- * # Motivation
- * Rust's global allocator takes a size and alignment for _both_ allocation and deallocation. As a
- * result, if we want to have a general "free this buffer" function, that function needs to be
- * able to know the total size of the allocation and its alignment. Having a fixed (constant)
- * alignment means we don't need to store the alignment in this struct (or have a separate free
- * function for each type).
- */
 typedef struct {
-  uint8_t (*base)[32];
-  size_t length;
-  size_t size_bytes;
-} SignalOwnedBufferOfMaxAlignedu832;
+  const SignalTestStream *raw;
+} SignalConstPointerTestStream;
 
 /**
  * A buffer of `length` elements of type `T`, allocated with the alignment of
@@ -185,6 +174,61 @@ typedef struct {
   size_t size_bytes;
 } SignalOwnedBufferOfMaxAlignedCStringPtr;
 
+/**
+ * A low-level three-state enum: 0 (still going), `MAP_FAILED` (finished), or a valid pointer
+ * (error).
+ *
+ * `MAP_FAILED` was chosen because it's an existing C pointer sentinel value, even though it won't
+ * be aligned to match `SignalFfiError`. This is fine as long as we don't try to load from it
+ * (which wouldn't work anyway) or convert it to a reference.
+ */
+typedef struct {
+  SignalFfiError *raw;
+} SignalFfiBulkPolledStreamTerminationReason;
+
+typedef struct {
+  SignalOwnedBufferOfMaxAlignedCStringPtr chunk;
+  SignalFfiBulkPolledStreamTerminationReason termination;
+} SignalTestStreamChunkFfiResult;
+
+typedef uint64_t SignalRawCancellationId;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalTestStreamChunkFfiResult *result, const void *context);
+  const void *context;
+  SignalRawCancellationId cancellation_id;
+} SignalCPromiseTestStreamChunkFfiResult;
+
+/**
+ * A buffer of `length` elements of type `T`, allocated with the alignment of
+ * [`libc::max_align_t`].
+ *
+ * The number of bytes allocated is stored in `size_bytes`.
+ *
+ * `base` should be allocated via Rust's global alloc (i.e. via [`std::alloc::alloc`])
+ *
+ * # Motivation
+ * Rust's global allocator takes a size and alignment for _both_ allocation and deallocation. As a
+ * result, if we want to have a general "free this buffer" function, that function needs to be
+ * able to know the total size of the allocation and its alignment. Having a fixed (constant)
+ * alignment means we don't need to store the alignment in this struct (or have a separate free
+ * function for each type).
+ */
+typedef struct {
+  uint8_t (*base)[32];
+  size_t length;
+  size_t size_bytes;
+} SignalOwnedBufferOfMaxAlignedu832;
+
 typedef struct {
   const SignalCStringPtr *base;
   size_t length;
@@ -193,8 +237,6 @@ typedef struct {
 typedef struct {
   const SignalNonSuspendingBackgroundThreadRuntime *raw;
 } SignalConstPointerNonSuspendingBackgroundThreadRuntime;
-
-typedef uint64_t SignalRawCancellationId;
 
 /**
  * A C callback used to report the results of Rust futures.
@@ -621,9 +663,17 @@ SignalFfiError *signal_other_testing_handle_type_destroy(SignalMutPointerOtherTe
 
 SignalFfiError *signal_test_only_fn_returns_123(uint32_t *out);
 
+SignalFfiError *signal_test_stream_destroy(SignalMutPointerTestStream p);
+
 SignalFfiError *signal_testing_NonSuspendingBackgroundThreadRuntime_destroy(SignalMutPointerNonSuspendingBackgroundThreadRuntime p);
 
 SignalFfiError *signal_testing_bridged_string_map_dump_to_json(SignalCStringPtr *out, SignalConstPointerBridgedStringMap map);
+
+SignalFfiError *signal_testing_bulk_pull_from_stream_cancel(SignalConstPointerTestStream stream);
+
+SignalFfiError *signal_testing_bulk_pull_from_stream_new(SignalMutPointerTestStream *out, SignalBorrowedBytestringArray contents, bool end_with_error);
+
+SignalFfiError *signal_testing_bulk_pull_from_stream_next_chunk(SignalCPromiseTestStreamChunkFfiResult *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerTestStream stream);
 
 SignalFfiError *signal_testing_cdsi_lookup_error_convert(SignalCStringPtr error_description);
 
@@ -896,6 +946,8 @@ SignalFfiError *signal_testing_set_device_name_tests(SignalOwnedBufferOfGrpcTest
 SignalFfiError *signal_testing_set_username_link_tests(SignalOwnedBufferOfGrpcTestCaseBridgedFfi *out);
 
 SignalFfiError *signal_testing_signed_public_pre_key_check_bridges_correctly(SignalConstPointerPublicKey source_public_key, SignalFfiSignedPublicPreKey signed_pre_key);
+
+SignalFfiError *signal_testing_test_stream_chunk_return(SignalTestStreamChunkFfiResult *out);
 
 SignalFfiError *signal_testing_testing_handle_type_get_value(uint8_t *out, SignalConstPointerTestingHandleType handle);
 

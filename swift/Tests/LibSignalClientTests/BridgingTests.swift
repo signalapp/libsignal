@@ -50,6 +50,29 @@ extension SignalConstPointerTestingIntBox: SignalConstPointer {
     }
 }
 
+extension SignalMutPointerTestStream: SignalMutPointer {
+    public func const() -> SignalConstPointerTestStream {
+        .init(raw: self.raw)
+    }
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+extension SignalConstPointerTestStream: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+
+extension SignalCPromiseTestStreamChunkFfiResult: PromiseStruct {
+    public typealias Result = SignalTestStreamChunkFfiResult
+}
+
 final class BridgingTests: XCTestCase {
     func testErrorOnBorrow() async throws {
         do {
@@ -324,6 +347,100 @@ final class BridgingTests: XCTestCase {
             17,
             try NativeTestingNice.TESTING_TestingIntBox_Get(myIntBox: intBox)
         )
+    }
+
+    private class TestStream: NativeHandleOwner<SignalMutPointerTestStream> {
+        override class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerTestStream>) -> SignalFfiErrorRef? {
+            signal_test_stream_destroy(handle.pointer)
+        }
+    }
+
+    private func wrapTestStream(_ stream: TestStream) -> ColdAsyncStream<String> {
+        // It's not very efficient to give each stream its own tokio runtime,
+        // but that's fine for testing.
+        let asyncContext = TokioAsyncContext()
+        return ColdAsyncStream(
+            asyncContext: asyncContext,
+            stream: stream,
+            pull: { asyncContext, stream in
+                try await asyncContext.invokeAsyncFunction { promise, asyncContext in
+                    stream.withBorrowed { stream in
+                        signal_testing_bulk_pull_from_stream_next_chunk(promise, asyncContext.const(), stream.const())
+                    }
+                }
+            },
+            convert: { result in
+                let value = try DerivedReturnConverterTestStreamChunk.convertReturn(consuming: result)
+                return (value.chunk, value.termination)
+            },
+            cancel: signal_testing_bulk_pull_from_stream_cancel,
+        )
+    }
+
+    func testStreaming() async {
+        let contents = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
+        let rawStream: TestStream = contents.withUnsafeBorrowedBytestringArray { contents in
+            try! invokeFnReturningNativeHandle {
+                signal_testing_bulk_pull_from_stream_new($0, contents, false)
+            }
+        }
+        let stream = wrapTestStream(rawStream)
+        let received = try! await stream.reduce(into: []) { $0.append($1) }
+        XCTAssertEqual(received, contents)
+    }
+
+    func testStreamingWithError() async {
+        let contents = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
+        let rawStream: TestStream = contents.withUnsafeBorrowedBytestringArray { contents in
+            try! invokeFnReturningNativeHandle {
+                signal_testing_bulk_pull_from_stream_new($0, contents, true)
+            }
+        }
+        let stream = wrapTestStream(rawStream)
+        let (received, maybeError) = await stream.collectUntilError()
+        XCTAssertEqual(received, contents)
+        switch maybeError {
+        case nil:
+            XCTFail("should have thrown")
+        case SignalError.invalidArgument(let expected)?:
+            XCTAssertEqual(expected, "error")
+        case let error?:
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
+    func testStreamingWithCancellation() async {
+        let contents = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
+        let rawStream: TestStream = contents.withUnsafeBorrowedBytestringArray { contents in
+            try! invokeFnReturningNativeHandle {
+                signal_testing_bulk_pull_from_stream_new($0, contents, true)
+            }
+        }
+        let stream = wrapTestStream(rawStream)
+
+        var received = [String]()
+        do {
+            for try await next in stream {
+                received.append(next)
+                if received.count >= 3 {
+                    stream.cancel()
+                }
+            }
+            XCTFail("should have thrown")
+        } catch SignalError.invalidArgument(let expected) {
+            // This is thrown as an .invalidArgument because of the Rust-side type.
+            XCTAssertEqual(expected, "cancelled")
+            // Even though we cancelled at 3 items (and then again at 4 and 5 items!)
+            // the entire first chunk is received. This is expected due to buffering.
+            XCTAssertEqual(received, ["a", "b", "c", "d", "e"])
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
+    func testMapFailedBitPattern() {
+        // Make sure our copy of MAP_FAILED is correct.
+        XCTAssertEqual(BulkPolledStreamTerminationConverter.MAP_FAILED_BIT_PATTERN, Int(bitPattern: MAP_FAILED))
     }
 }
 

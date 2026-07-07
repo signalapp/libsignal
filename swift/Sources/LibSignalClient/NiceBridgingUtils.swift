@@ -236,6 +236,30 @@ internal struct OptionalErrorConverter: NiceReturnConverter {
     }
 }
 
+internal struct BulkPolledStreamTerminationConverter: NiceReturnConverter {
+    // The real MAP_FAILED constant lives in the C stdlib (Darwin, or Glibc for Linux testing)
+    // as a macro, so it's already part of the C library's ABI.
+    // But the Swift distribution shadows the macro to make sure it has a consistent type,
+    // and a side effect of that means it ends up being an opaque value.
+    // By redefining it here, we can inline it into the convert function.
+    static let MAP_FAILED_BIT_PATTERN: Int = -1
+
+    typealias NiceReturn = BulkPolledStreamTermination?
+    typealias FfiReturn = SignalFfiBulkPolledStreamTerminationReason
+    static func emptyFfiReturn() -> SignalFfiBulkPolledStreamTerminationReason {
+        .init()
+    }
+    static func convertReturn(
+        consuming value: SignalFfiBulkPolledStreamTerminationReason
+    ) throws -> BulkPolledStreamTermination? {
+        switch Int(bitPattern: value.raw) {
+        case 0: nil
+        case MAP_FAILED_BIT_PATTERN: .finished
+        default: .error(try ErrorConverter.convertReturn(consuming: value.raw))
+        }
+    }
+}
+
 protocol FfiBorrowedSliceConstructor {
     associatedtype BorrowedSlice
     associatedtype Element

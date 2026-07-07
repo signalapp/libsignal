@@ -213,6 +213,12 @@ internal enum SetUsernameLinkOut {
     case usernameNotSet
 }
 
+internal struct TestStreamChunk {
+    var chunk: [String]
+    var termination: BulkPolledStreamTermination?
+
+}
+
 internal enum DerivedReturnConverterGetDevicesOut: NiceReturnConverter {
     typealias NiceReturn = GetDevicesOut
     typealias FfiReturn = SignalGetDevicesOutFfiResult
@@ -527,6 +533,28 @@ internal enum DerivedReturnConverterSetUsernameLinkOut: NiceReturnConverter {
         default:
             throw SignalError.internalError("Unexpected enum tag for SetUsernameLinkOut: \(ffiTag)")
         }
+    }
+}
+
+internal enum DerivedReturnConverterTestStreamChunk: NiceReturnConverter {
+    typealias NiceReturn = TestStreamChunk
+    typealias FfiReturn = SignalTestStreamChunkFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalTestStreamChunkFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let chunk = Result {
+            try ArrayReturnConverter<
+                StringConverter,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedCStringPtr_StringConverter
+            >.convertReturn(consuming: ffiValue.chunk)
+        }
+        let termination = Result {
+            try BulkPolledStreamTerminationConverter.convertReturn(consuming: ffiValue.termination)
+        }
+
+        return TestStreamChunk(chunk: try chunk.get(), termination: try termination.get())
     }
 }
 
@@ -1415,6 +1443,16 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<
             DerivedReturnConverterSetUsernameLinkArgs, DerivedReturnConverterSetUsernameLinkOut
         >.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_TestStreamChunk_return() throws -> TestStreamChunk {
+        var rawOutput = DerivedReturnConverterTestStreamChunk.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_test_stream_chunk_return(
+                &rawOutput,
+            )
+        )
+        return try DerivedReturnConverterTestStreamChunk.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_TestingIntBox_Get(
