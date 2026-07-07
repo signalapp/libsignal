@@ -13,8 +13,9 @@ use std::time::Duration;
 
 use atomic_take::AtomicTake;
 use bytes::Bytes;
-use futures_util::FutureExt as _;
 use futures_util::future::BoxFuture;
+use futures_util::stream::BoxStream;
+use futures_util::{FutureExt as _, Stream, StreamExt as _};
 use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
@@ -36,6 +37,7 @@ use libsignal_net::infra::route::{
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagleAlgorithm};
 use libsignal_net_chat::api::{Auth as AuthConn, Unauth};
+use libsignal_net_chat::stream_util::{BulkPolledStream, BulkPolledStreamChunk};
 use libsignal_protocol::{IdentityKey, PreKeyBundle, Timestamp};
 use static_assertions::assert_impl_all;
 
@@ -867,6 +869,59 @@ pub enum UserBasedSendAuthorizationKind {
     UnrestrictedUnauthenticatedAccess,
 }
 
+#[derive(Debug)]
+pub struct StreamCancelled;
+
+pub struct BridgeBulkPolledStream<T, E> {
+    #[expect(clippy::type_complexity)]
+    state: AsyncMutex<Option<BulkPolledStream<BoxStream<'static, Result<T, E>>>>>,
+    cancelled: tokio::sync::watch::Sender<bool>,
+}
+
+impl<T, E> BridgeBulkPolledStream<T, E> {
+    pub fn new(
+        stream: impl Stream<Item = Result<T, E>> + Send + 'static,
+        max_chunk_size: usize,
+        debounce_time: Duration,
+    ) -> Self {
+        Self {
+            state: AsyncMutex::from(Some(BulkPolledStream::new(
+                stream.boxed(),
+                max_chunk_size,
+                debounce_time,
+            ))),
+            cancelled: Default::default(),
+        }
+    }
+
+    pub async fn next_chunk(&self) -> Result<BulkPolledStreamChunk<T, E>, StreamCancelled> {
+        let mut cancelled = self.cancelled.subscribe();
+        let lock_and_poll_stream = async {
+            Ok(self
+                .state
+                .lock()
+                .await
+                .as_mut()
+                .ok_or(StreamCancelled)?
+                .next_chunk_unpin()
+                .await)
+        };
+
+        // The "biased" isn't necessary for correctness, but it's simpler to reason about.
+        tokio::select! { biased;
+            _ = cancelled.wait_for(|flag| *flag) => Err(StreamCancelled),
+            result = lock_and_poll_stream => result,
+        }
+    }
+
+    pub fn cancel(&self) {
+        // First signal any tasks to exit.
+        _ = self.cancelled.send_replace(true);
+        // Wait for exits, then destroy the state.
+        _ = self.state.blocking_lock().take();
+    }
+}
+
 pub mod remote_derives {
     use libsignal_core::DeviceId;
 
@@ -886,6 +941,9 @@ pub mod remote_derives {
 
 #[cfg(test)]
 mod test {
+    use std::sync::Arc;
+
+    use assert_matches::assert_matches;
     use test_case::test_case;
 
     use super::*;
@@ -909,5 +967,72 @@ mod test {
     #[test_case("a" => None)]
     fn test_parse_username(input: &str) -> Option<(libsignal_core::Aci, libsignal_core::DeviceId)> {
         AuthenticatedChatConnection::parse_username(input)
+    }
+
+    #[tokio::test]
+    async fn bulk_polled_stream_cancel_with_next_chunk_in_flight() {
+        let stream = Arc::new(
+            BridgeBulkPolledStream::<String, std::convert::Infallible>::new(
+                futures_util::stream::pending(),
+                5,
+                Duration::ZERO,
+            ),
+        );
+
+        let next_chunk_task = tokio::task::spawn({
+            let stream = stream.clone();
+            async move { stream.next_chunk().await }
+        });
+        // Make sure the task acquires the lock.
+        tokio::task::yield_now().await;
+
+        // Cancel from an "app" thread, the way a bridge_fn would be called.
+        let (cancel_done_tx, cancel_done_rx) = tokio::sync::oneshot::channel();
+        std::thread::spawn(move || {
+            stream.cancel();
+            _ = cancel_done_tx.send(());
+        });
+
+        () = tokio::time::timeout(Duration::from_secs(1), cancel_done_rx)
+            .await
+            .expect("cancel() should return promptly even with a next_chunk in flight")
+            .expect("should have been explicitly signalled");
+
+        let result = tokio::time::timeout(Duration::from_secs(1), next_chunk_task)
+            .await
+            .expect("in-flight next_chunk should resolve once cancelled")
+            .expect("should not have panicked");
+        assert_matches!(result, Err(StreamCancelled));
+    }
+
+    #[tokio::test]
+    async fn bulk_polled_stream_cancel_in_advance() {
+        let stream = Arc::new(
+            BridgeBulkPolledStream::<String, std::convert::Infallible>::new(
+                futures_util::stream::pending(),
+                5,
+                Duration::ZERO,
+            ),
+        );
+
+        // Cancel from an "app" thread, the way a bridge_fn would be called.
+        let (cancel_done_tx, cancel_done_rx) = tokio::sync::oneshot::channel();
+        std::thread::spawn({
+            let stream = stream.clone();
+            move || {
+                stream.cancel();
+                _ = cancel_done_tx.send(());
+            }
+        });
+
+        () = tokio::time::timeout(Duration::from_secs(1), cancel_done_rx)
+            .await
+            .expect("cancel() should return promptly")
+            .expect("should have been explicitly signalled");
+
+        let result = tokio::time::timeout(Duration::from_secs(1), stream.next_chunk())
+            .await
+            .expect("in-flight next_chunk should resolve once cancelled");
+        assert_matches!(result, Err(StreamCancelled));
     }
 }
