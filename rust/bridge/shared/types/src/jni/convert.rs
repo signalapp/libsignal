@@ -2903,7 +2903,7 @@ impl<T> NiceResultConverter for Option<BulkPolledStreamTerminationReason<T>> {
         // Kotlin doesn't have a union type `(Unit | Throwable)`; we'll leave it to consumers to
         // deal with.
         KtReturnConverter {
-            nice_type: "Object?".to_string(),
+            nice_type: "Any?".to_string(),
             ffi_type: "Object?".to_string(),
             converter_function: "identity".to_string(),
         }

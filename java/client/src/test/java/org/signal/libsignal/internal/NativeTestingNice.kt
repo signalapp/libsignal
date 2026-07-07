@@ -477,7 +477,7 @@ public sealed class SetUsernameLinkOut {
 
 public data class TestStreamChunk(
   val chunk: List<String>,
-  val termination: Object?,
+  val termination: Any?,
 ) {
   public companion object {
     @JvmStatic

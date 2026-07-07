@@ -5,8 +5,14 @@
 
 package org.signal.libsignal.internal
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.util.concurrent.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -103,5 +109,37 @@ public fun <T> CompletableFuture<T>.toResultFuture(): CompletableFuture<Result<T
       Result.success(value)
     } else {
       Result.failure(throwable)
+    }
+  }
+
+/**
+ * Produces a `Flow` from a bulk-pull stream implementation.
+ *
+ * Not intended to be called outside of libsignal.
+ *
+ * Runs `cancel` if the flow is cancelled during collection.
+ */
+public fun <T, S, RawItem> wrapStream(
+  asyncContext: TokioAsyncContext,
+  stream: S,
+  pull: (TokioAsyncContext, S) -> CompletableFuture<Pair<List<RawItem>, Any?>>,
+  convertItem: (RawItem) -> T,
+  cancel: (S) -> Unit,
+): Flow<T> =
+  flow {
+    while (true) {
+      val (nextChunk, termination) = pull(asyncContext, stream).await()
+      emitAll(nextChunk.asFlow().map(convertItem))
+      if (termination != null) {
+        when (termination) {
+          is Unit -> break
+          is Throwable -> throw termination
+          else -> throw AssertionError("bad stream termination: $termination")
+        }
+      }
+    }
+  }.onCompletion {
+    if (cancel != null && it is CancellationException) {
+      cancel(stream)
     }
   }
