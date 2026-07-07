@@ -539,7 +539,7 @@ impl std::fmt::Display for Redact<SetPublicKeyRequest> {
             public_key,
         }) = self;
 
-        f.debug_struct("GetUploadFormRequest")
+        f.debug_struct("SetPublicKeyRequest")
             .field("public_key_type", public_key.first().unwrap_or(&0))
             .finish()
     }
