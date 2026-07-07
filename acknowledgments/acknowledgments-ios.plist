@@ -7703,7 +7703,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>crossbeam-deque 0.8.6, crossbeam-epoch 0.9.18, crossbeam-utils 0.8.21</string>
+			<string>crossbeam-deque 0.8.6, crossbeam-epoch 0.9.20, crossbeam-utils 0.8.21</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

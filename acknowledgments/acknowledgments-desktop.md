@@ -7484,7 +7484,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## crossbeam-deque 0.8.6, crossbeam-epoch 0.9.18, crossbeam-utils 0.8.21
+## crossbeam-deque 0.8.6, crossbeam-epoch 0.9.20, crossbeam-utils 0.8.21
 
 ```
 The MIT License (MIT)
