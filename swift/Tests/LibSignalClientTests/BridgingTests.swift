@@ -355,7 +355,7 @@ final class BridgingTests: XCTestCase {
         }
     }
 
-    private func wrapTestStream(_ stream: TestStream) -> ColdAsyncStream<String> {
+    private func wrapTestStream(_ stream: TestStream, cancelled: XCTestExpectation? = nil) -> ColdAsyncStream<String> {
         // It's not very efficient to give each stream its own tokio runtime,
         // but that's fine for testing.
         let asyncContext = TokioAsyncContext()
@@ -373,7 +373,10 @@ final class BridgingTests: XCTestCase {
                 let value = try DerivedReturnConverterTestStreamChunk.convertReturn(consuming: result)
                 return (value.chunk, value.termination)
             },
-            cancel: signal_testing_bulk_pull_from_stream_cancel,
+            cancel: {
+                cancelled?.fulfill()
+                return signal_testing_bulk_pull_from_stream_cancel($0)
+            }
         )
     }
 
@@ -416,7 +419,9 @@ final class BridgingTests: XCTestCase {
                 signal_testing_bulk_pull_from_stream_new($0, contents, true)
             }
         }
-        let stream = wrapTestStream(rawStream)
+        let expectCancel = XCTestExpectation(description: "stream cancelled")
+        expectCancel.expectedFulfillmentCount = 3  // see below for why 3 and not the default 1
+        let stream = wrapTestStream(rawStream, cancelled: expectCancel)
 
         var received = [String]()
         do {
@@ -436,6 +441,8 @@ final class BridgingTests: XCTestCase {
         } catch {
             XCTFail("unexpected error: \(error)")
         }
+
+        await fulfillment(of: [expectCancel], timeout: 0)
     }
 
     func testMapFailedBitPattern() {
