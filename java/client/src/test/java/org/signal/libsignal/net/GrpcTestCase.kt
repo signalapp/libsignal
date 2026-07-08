@@ -5,16 +5,22 @@
 
 package org.signal.libsignal.net
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.signal.libsignal.internal.CalledFromNative
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeHandleGuard
 import org.signal.libsignal.internal.NativeTesting
 import org.signal.libsignal.internal.ObjectHandle
 import org.signal.libsignal.internal.TokioAsyncContext
-import java.util.concurrent.TimeUnit
+import org.signal.libsignal.internal.await
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.time.Duration.Companion.seconds
 
 public class GrpcTestCaseResponse(
   nativeHandle: ObjectHandle,
@@ -79,31 +85,51 @@ public class GrpcTestCase<Req, Resp> {
         }
       }
 
-    internal fun <Req, Resp, Service, T> runTests(
+    internal suspend fun <Req, Resp, Conn, Service, T> runTests(
       tests: List<GrpcTestCase<Req, Resp>>,
-      newService: (AuthenticatedChatConnection) -> Service,
+      newConnection: (TokioAsyncContext, NoOpListener) -> Pair<Conn, FakeChatRemote>,
+      newService: (Conn) -> Service,
       invoke: (Service, Req) -> CompletableFuture<T>,
+      check: (Resp, T) -> Unit,
+    ) =
+      this.runSuspendingTests(tests, newConnection, newService, { service, req -> invoke(service, req).await() }, check)
+
+    internal suspend fun <Req, Resp, Conn, Service, T> runSuspendingTests(
+      tests: List<GrpcTestCase<Req, Resp>>,
+      newConnection: (TokioAsyncContext, NoOpListener) -> Pair<Conn, FakeChatRemote>,
+      newService: (Conn) -> Service,
+      invoke: suspend (Service, Req) -> T,
       check: (Resp, T) -> Unit,
     ) {
       for (test in tests) {
-        val tokioAsyncContext = TokioAsyncContext()
-        val (chat, fakeRemote) =
-          AuthenticatedChatConnection.fakeConnect(
-            tokioAsyncContext,
-            NoOpListener(),
-          )
-        val responseFuture = invoke(newService(chat), test.request)
-        val (request, requestId) = fakeRemote.getNextIncomingGrpcRequest().get(5, TimeUnit.SECONDS)
-        assertEquals(request.pathAndQuery, test.method)
-        val (start, end) =
-          NativeTesting.TESTING_FakeChatRemoteEnd_NextGrpcMessage(
-            request.body,
-            0,
-          )
-        assertEquals(end, request.body.size)
-        assertContentEquals(test.requestGrpc, request.body.sliceArray(start..<request.body.size))
-        fakeRemote.sendGrpcResponse(requestId, test.responseGrpc)
-        check(test.response, responseFuture.get(5, TimeUnit.SECONDS))
+        coroutineScope {
+          val tokioAsyncContext = TokioAsyncContext()
+          val (chat, fakeRemote) = newConnection(tokioAsyncContext, NoOpListener())
+          val deferredResponse =
+            async {
+              invoke(newService(chat), test.request)
+            }
+          val (request, requestId) =
+            withContext(Dispatchers.Default.limitedParallelism(1)) {
+              withTimeout(5.seconds) {
+                fakeRemote.getNextIncomingGrpcRequest().await()
+              }
+            }
+          assertEquals(request.pathAndQuery, test.method)
+          val (start, end) =
+            NativeTesting.TESTING_FakeChatRemoteEnd_NextGrpcMessage(
+              request.body,
+              0,
+            )
+          assertEquals(end, request.body.size)
+          assertContentEquals(test.requestGrpc, request.body.sliceArray(start..<request.body.size))
+          fakeRemote.sendGrpcResponse(requestId, test.responseGrpc)
+          val response =
+            withContext(
+              Dispatchers.Default.limitedParallelism(1),
+            ) { withTimeout(5.seconds) { deferredResponse.await() } }
+          check(test.response, response)
+        }
       }
     }
   }
