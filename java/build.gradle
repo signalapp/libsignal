@@ -34,7 +34,7 @@ allprojects {
         options.addStringOption('Xdoclint:none', '-quiet')
     }
     tasks.withType(KotlinCompile).configureEach {
-        compilerOptions.jvmTarget = JvmTarget.JVM_17
+        compilerOptions.jvmTarget = JvmTarget.JVM_21
     }
     tasks.withType(AbstractArchiveTask) {
         preserveFileTimestamps = false

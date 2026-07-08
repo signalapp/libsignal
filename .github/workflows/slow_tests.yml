@@ -132,6 +132,8 @@ jobs:
     timeout-minutes: 60
 
     steps:
+    - run: 'echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"'
+
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
@@ -169,7 +171,7 @@ jobs:
             arch: x86_64
 
     steps:
-      - run: 'echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"'
+      - run: 'echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"'
 
       - name: Enable KT skip flag
         if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
@@ -251,6 +253,8 @@ jobs:
     timeout-minutes: 60
 
     steps:
+    - run: 'echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"'
+
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive

@@ -35,7 +35,7 @@ jobs:
         ref: ${{ inputs.signal_android_branch }}
         path: Signal-Android
 
-    - run: 'echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"'
+    - run: 'echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"'
 
     - name: Validate Gradle Wrapper
       uses: gradle/actions/wrapper-validation@d156388eb19639ec20ade50009f3d199ce1e2808 # v4.1.0
