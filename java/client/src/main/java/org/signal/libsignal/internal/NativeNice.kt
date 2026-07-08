@@ -133,6 +133,25 @@ public object NativeNice {
       .makeCancelable(asyncCtx)
   }
 
+  public fun AuthenticatedChatConnection_set_push_token_fcm(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    fcmToken: String,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_fcm_token = identity(fcmToken)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_set_push_token_fcm(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_fcm_token,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_set_username_link(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

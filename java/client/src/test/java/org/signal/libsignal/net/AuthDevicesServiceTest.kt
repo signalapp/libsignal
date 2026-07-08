@@ -34,6 +34,20 @@ class AuthDevicesServiceTest {
   }
 
   @Test
+  fun testSetPushTokenFcm() {
+    GrpcTestCase.runTests(
+      NativeTestingNice.TESTING_SetPushTokenFcmTests(),
+      ::AuthDevicesService,
+      invoke = { chat, req ->
+        chat.setPushToken(fcmToken = req)
+      },
+      check = { _, actual ->
+        assertIs<RequestResult.Success<Unit>>(actual)
+      },
+    )
+  }
+
+  @Test
   fun testGetDevices() {
     GrpcTestCase.runTests(
       NativeTestingNice.TESTING_GetDevicesTests(),

@@ -945,6 +945,8 @@ SignalFfiError *signal_testing_semaphore_new(SignalMutPointerTestingSemaphore *o
 
 SignalFfiError *signal_testing_set_device_name_tests(SignalOwnedBufferOfGrpcTestCaseBridgedFfi *out);
 
+SignalFfiError *signal_testing_set_push_token_apns_tests(SignalOwnedBufferOfGrpcTestCaseBridgedFfi *out);
+
 SignalFfiError *signal_testing_set_username_link_tests(SignalOwnedBufferOfGrpcTestCaseBridgedFfi *out);
 
 SignalFfiError *signal_testing_signed_public_pre_key_check_bridges_correctly(SignalConstPointerPublicKey source_public_key, SignalFfiSignedPublicPreKey signed_pre_key);

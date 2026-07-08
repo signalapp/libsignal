@@ -801,6 +801,32 @@ async fn AuthenticatedChatConnection_get_devices(
     Ok(chat.require_grpc().await.get_devices().await?.into())
 }
 
+// APNs is only used on Apple platforms, and Desktop never sets a push token,
+// so this is only bridged for Swift.
+#[bridge_io(TokioAsyncContext, nice = true, jni = false, node = false)]
+async fn AuthenticatedChatConnection_set_push_token_apns(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    apns_token: String,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .set_push_token_apns(apns_token)
+        .await
+}
+
+// FCM is only used on Android, and Desktop never sets a push token, so this
+// is only bridged for Java.
+#[bridge_io(TokioAsyncContext, nice = true, ffi = false, node = false)]
+async fn AuthenticatedChatConnection_set_push_token_fcm(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    fcm_token: String,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .set_push_token_fcm(fcm_token)
+        .await
+}
+
 #[bridge_io(TokioAsyncContext, nice = true)]
 async fn AuthenticatedChatConnection_clear_push_token(
     chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,

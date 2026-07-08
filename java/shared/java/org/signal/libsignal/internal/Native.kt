@@ -230,6 +230,8 @@ internal object Native {
   @JvmStatic
   public external fun AuthenticatedChatConnection_set_device_name(asyncRuntime: ObjectHandle, chat: SimpleOwner, deviceId: Int, encryptedName: ByteArray): CompletableFuture<Void?>
   @JvmStatic
+  public external fun AuthenticatedChatConnection_set_push_token_fcm(asyncRuntime: ObjectHandle, chat: SimpleOwner, fcmToken: String): CompletableFuture<Void?>
+  @JvmStatic
   public external fun AuthenticatedChatConnection_set_username_link(asyncRuntime: ObjectHandle, chat: SimpleOwner, usernameCiphertext: ByteArray, keepLinkHandle: Boolean): CompletableFuture<UUID>
 
   @JvmStatic @Throws(Exception::class)

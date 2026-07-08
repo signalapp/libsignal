@@ -10,7 +10,7 @@ use libsignal_net_grpc::proto::chat::device::devices_client::DevicesClient;
 use libsignal_net_grpc::proto::chat::device::get_devices_response::LinkedDevice as GrpcLinkedDevice;
 use libsignal_net_grpc::proto::chat::device::{
     ClearPushTokenRequest, ClearPushTokenResponse, GetDevicesRequest, SetDeviceNameRequest,
-    set_device_name_response,
+    SetPushTokenRequest, SetPushTokenResponse, set_device_name_response, set_push_token_request,
 };
 use libsignal_protocol::Timestamp;
 
@@ -37,6 +37,23 @@ impl std::fmt::Display for Redact<GetDevicesRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(GetDevicesRequest {}) = self;
         f.debug_struct("GetDevicesRequest").finish()
+    }
+}
+
+impl std::fmt::Display for Redact<SetPushTokenRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(SetPushTokenRequest { token_request }) = self;
+        let mut s = f.debug_struct("SetPushTokenRequest");
+        match token_request {
+            Some(set_push_token_request::TokenRequest::ApnsTokenRequest(
+                set_push_token_request::ApnsTokenRequest { apns_token },
+            )) => s.field("apns_token_len", &apns_token.len()),
+            Some(set_push_token_request::TokenRequest::FcmTokenRequest(
+                set_push_token_request::FcmTokenRequest { fcm_token },
+            )) => s.field("fcm_token_len", &fcm_token.len()),
+            None => s.field("token_request", &None::<()>),
+        }
+        .finish()
     }
 }
 
@@ -129,6 +146,58 @@ impl<T: GrpcServiceProvider> Auth<T> {
                 },
             )
             .collect()
+    }
+
+    // These are deliberately two separate methods rather than one method taking a `PushToken` enum
+    // that parallels the proto's `oneof` (cf. `crate::api::registration::PushToken`): each platform
+    // only ever uses one kind of token, so a per-kind method is simpler at every call site and
+    // avoids bridging a one-of-two-strings enum through all three app languages. If a third token
+    // kind ever shows up, reconsider.
+
+    /// Sets the APNs device token the server should use to send new message
+    /// notifications to the authenticated device.
+    ///
+    /// `apns_token` must not be empty.
+    pub async fn set_push_token_apns(
+        &self,
+        apns_token: String,
+    ) -> Result<(), RequestError<Infallible>> {
+        assert!(!apns_token.is_empty(), "APNs token must not be empty");
+        self.set_push_token(set_push_token_request::TokenRequest::ApnsTokenRequest(
+            set_push_token_request::ApnsTokenRequest { apns_token },
+        ))
+        .await
+    }
+
+    /// Sets the FCM push token the server should use to send new message
+    /// notifications to the authenticated device.
+    ///
+    /// `fcm_token` must not be empty.
+    pub async fn set_push_token_fcm(
+        &self,
+        fcm_token: String,
+    ) -> Result<(), RequestError<Infallible>> {
+        assert!(!fcm_token.is_empty(), "FCM token must not be empty");
+        self.set_push_token(set_push_token_request::TokenRequest::FcmTokenRequest(
+            set_push_token_request::FcmTokenRequest { fcm_token },
+        ))
+        .await
+    }
+
+    async fn set_push_token(
+        &self,
+        token_request: set_push_token_request::TokenRequest,
+    ) -> Result<(), RequestError<Infallible>> {
+        let mut client = DevicesClient::new(self.0.service());
+        let request = SetPushTokenRequest {
+            token_request: Some(token_request),
+        };
+        let desc = Redact(&request).to_string();
+        let SetPushTokenResponse {} =
+            log_and_send("auth", &desc, || client.set_push_token(request))
+                .await?
+                .into_inner();
+        Ok(())
     }
 
     /// Remove any push tokens associated with the current device.
@@ -260,6 +329,44 @@ pub mod test_cases {
         ]
     }
 
+    pub fn set_push_token_apns_test_cases()
+    -> Vec<GrpcTestCase<String, SetPushTokenRequest, SetPushTokenResponse, ()>> {
+        let method = "/org.signal.chat.device.Devices/SetPushToken";
+        vec![GrpcTestCase {
+            name: "success".to_string(),
+            method: method.to_string(),
+            request: "test-apns-token".to_string(),
+            request_grpc: SetPushTokenRequest {
+                token_request: Some(set_push_token_request::TokenRequest::ApnsTokenRequest(
+                    set_push_token_request::ApnsTokenRequest {
+                        apns_token: "test-apns-token".to_string(),
+                    },
+                )),
+            },
+            response_grpc: SetPushTokenResponse {},
+            response: (),
+        }]
+    }
+
+    pub fn set_push_token_fcm_test_cases()
+    -> Vec<GrpcTestCase<String, SetPushTokenRequest, SetPushTokenResponse, ()>> {
+        let method = "/org.signal.chat.device.Devices/SetPushToken";
+        vec![GrpcTestCase {
+            name: "success".to_string(),
+            method: method.to_string(),
+            request: "test-fcm-token".to_string(),
+            request_grpc: SetPushTokenRequest {
+                token_request: Some(set_push_token_request::TokenRequest::FcmTokenRequest(
+                    set_push_token_request::FcmTokenRequest {
+                        fcm_token: "test-fcm-token".to_string(),
+                    },
+                )),
+            },
+            response_grpc: SetPushTokenResponse {},
+            response: (),
+        }]
+    }
+
     pub struct SetDeviceNameArgs {
         pub id: u8,
         pub encrypted_name: Vec<u8>,
@@ -343,6 +450,28 @@ mod test {
                     assert_matches!(result, Err(RequestError::Other(DeviceIdNotFoundInAccount)))
                 }
             },
+        );
+    }
+
+    #[test]
+    fn test_set_push_token_apns() {
+        use test_cases::*;
+        run_tests(
+            set_push_token_apns_test_cases(),
+            |chat: Auth<_>, apns_token: String| async move {
+                chat.set_push_token_apns(apns_token).await
+            },
+            |(), result| assert_matches!(result, Ok(())),
+        );
+    }
+
+    #[test]
+    fn test_set_push_token_fcm() {
+        use test_cases::*;
+        run_tests(
+            set_push_token_fcm_test_cases(),
+            |chat: Auth<_>, fcm_token: String| async move { chat.set_push_token_fcm(fcm_token).await },
+            |(), result| assert_matches!(result, Ok(())),
         );
     }
 

@@ -300,6 +300,8 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_SetDeviceNameTests(): Array<Object>
   @JvmStatic
+  public external fun TESTING_SetPushTokenFcmTests(): Array<Object>
+  @JvmStatic
   public external fun TESTING_SetUsernameLinkTests(): Array<Object>
   @JvmStatic
   public external fun TESTING_SignedPublicPreKey_CheckBridgesCorrectly(sourcePublicKey: ObjectHandle, signedPreKey: SignedPublicPreKey<*>): Unit

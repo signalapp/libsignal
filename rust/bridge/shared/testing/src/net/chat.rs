@@ -583,6 +583,16 @@ fn TESTING_SetUsernameLinkTests()
 fn TESTING_GetDevicesTests() -> GrpcTestCases<(), remote_derives::GetDevicesOut> {
     libsignal_net_chat::grpc::devices::test_cases::get_devices_test_cases().into()
 }
+// setPushToken is only bridged where each token kind is used: APNs for Swift
+// and FCM for Java. (Desktop never sets a push token.)
+#[bridge_fn(nice = true, jni = false, node = false)]
+fn TESTING_SetPushTokenApnsTests() -> GrpcTestCases<String, ()> {
+    libsignal_net_chat::grpc::devices::test_cases::set_push_token_apns_test_cases().into()
+}
+#[bridge_fn(nice = true, ffi = false, node = false)]
+fn TESTING_SetPushTokenFcmTests() -> GrpcTestCases<String, ()> {
+    libsignal_net_chat::grpc::devices::test_cases::set_push_token_fcm_test_cases().into()
+}
 #[bridge_fn(nice = true)]
 fn TESTING_ClearPushTokenTests() -> GrpcTestCases<(), ()> {
     libsignal_net_chat::grpc::devices::test_cases::clear_push_token_test_cases().into()

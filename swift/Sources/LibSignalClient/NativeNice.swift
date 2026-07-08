@@ -207,6 +207,30 @@ internal enum NativeNice {
         return try VoidConverter.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_set_push_token_apns(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        apnsToken apns_token: String,
+    ) async throws {
+        let rawOutput: VoidConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        StringConverter.convertArgBorrowed(apns_token) { apns_tokenFfi in
+                            SignalFfi.signal_authenticated_chat_connection_set_push_token_apns(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                                apns_tokenFfi,
+                            )
+                        }
+                    }
+            }
+        return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_set_username_link(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,

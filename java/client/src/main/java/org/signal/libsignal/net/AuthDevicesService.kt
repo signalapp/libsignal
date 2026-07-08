@@ -121,6 +121,30 @@ public class AuthDevicesService(
     }
 
   /**
+   * Sets the FCM push token the server should use to send new message notifications to the
+   * authenticated device.
+   *
+   * @param fcmToken Must not be empty
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun setPushToken(fcmToken: String): CompletableFuture<RequestResult<Unit, Nothing>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_set_push_token_fcm(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          fcmToken = fcmToken,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { err -> err.toRequestResult() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
    * Remove any push tokens associated with the current device.
    *
    * After this call, the server will assume the current device will periodically poll for new

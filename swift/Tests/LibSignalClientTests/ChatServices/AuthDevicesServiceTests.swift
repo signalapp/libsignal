@@ -36,6 +36,18 @@ class AuthDevicesServiceTests: AuthChatServiceTestBase<any AuthDevicesService> {
         )
     }
 
+    func testSetPushTokenApns() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_SetPushTokenApnsTests(),
+            invoke: { api, apnsToken in
+                try await api.setPushToken(apns: apnsToken)
+            },
+            check: { _, actual in
+                try actual.get()
+            }
+        )
+    }
+
     func testGetDevices() async throws {
         try await testGrpcCases(
             try NativeTestingNice.TESTING_GetDevicesTests(),
