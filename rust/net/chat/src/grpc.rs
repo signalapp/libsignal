@@ -1106,18 +1106,21 @@ pub(crate) mod testutil {
             use prost::encoding::wire_type::WireType;
             let value = match wire_type {
                 WireType::Varint => DynField::Varint(prost::decode_length_delimiter(buf)?),
-                WireType::ThirtyTwoBit => DynField::U32(
-                    buf.try_get_u32_le()
-                        .map_err(|_| prost::DecodeError::new("eof"))?,
-                ),
-                WireType::SixtyFourBit => DynField::U64(
-                    buf.try_get_u64_le()
-                        .map_err(|_| prost::DecodeError::new("eof"))?,
-                ),
+                WireType::ThirtyTwoBit => DynField::U32(buf.try_get_u32_le().map_err(|_| {
+                    #[expect(deprecated)]
+                    prost::DecodeError::new("eof")
+                })?),
+                WireType::SixtyFourBit => DynField::U64(buf.try_get_u64_le().map_err(|_| {
+                    #[expect(deprecated)]
+                    prost::DecodeError::new("eof")
+                })?),
                 WireType::LengthDelimited => {
                     let len = prost::decode_length_delimiter(&mut buf)?;
                     if len > buf.remaining() {
-                        return Err(prost::DecodeError::new("eof"));
+                        return Err(
+                            #[expect(deprecated)]
+                            prost::DecodeError::new("eof"),
+                        );
                     }
                     let bytes = buf.copy_to_bytes(len);
                     if let Ok(inner) = DynMessage::decode(bytes.clone()) {
@@ -1127,7 +1130,10 @@ pub(crate) mod testutil {
                     }
                 }
                 WireType::StartGroup | WireType::EndGroup => {
-                    return Err(prost::DecodeError::new("groups unsupported"));
+                    return Err(
+                        #[expect(deprecated)]
+                        prost::DecodeError::new("groups unsupported"),
+                    );
                 }
             };
             self.fields.push((tag, value));

@@ -287,7 +287,7 @@ async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest(
         path: uri
             .into_parts()
             .path_and_query
-            .unwrap_or(http::uri::PathAndQuery::from_static("")),
+            .expect("gRPC requests always have paths"),
         body: Some(body),
         headers: headers.into(),
     };

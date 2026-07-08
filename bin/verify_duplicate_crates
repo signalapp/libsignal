@@ -15,16 +15,16 @@
 # rand_core, getrandom: waiting to update all the RustCrypto crates together
 # jni: used directly by us but also by rustls-platform-verifier on Android (update available)
 EXPECTED="
-getrandom v0.2.16
+getrandom v0.2.17
 getrandom v0.3.4
 jni v0.21.1
 jni v0.22.4
-jni-sys v0.3.0
+jni-sys v0.3.1
 jni-sys v0.4.1
 rand_core v0.6.4
-rand_core v0.9.3
+rand_core v0.9.5
 thiserror v1.0.69
-thiserror v2.0.17"
+thiserror v2.0.18"
 
 check_cargo_tree() {
     # Only check the mobile targets, where we care most about code size.
