@@ -59,6 +59,15 @@ export interface AuthDevicesService {
    * @throws {StandardNetworkError}
    */
   getDevices: (options?: RequestOptions) => Promise<Array<LinkedDevice>>;
+  /**
+   * Remove any push tokens associated with the current device.
+   *
+   * After this call, the server will assume the current device will
+   * periodically poll for new messages.
+   *
+   * @throws {StandardNetworkError}
+   */
+  clearPushToken: (options?: RequestOptions) => Promise<void>;
 }
 
 AuthenticatedChatConnection.prototype.setDeviceName = async function (
@@ -84,6 +93,16 @@ AuthenticatedChatConnection.prototype.getDevices = async function (
   options?: RequestOptions
 ): Promise<Array<LinkedDevice>> {
   return await NativeNice.AuthenticatedChatConnection_get_devices({
+    asyncContext: this.asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this.chatService,
+  });
+};
+
+AuthenticatedChatConnection.prototype.clearPushToken = async function (
+  options?: RequestOptions
+): Promise<void> {
+  return await NativeNice.AuthenticatedChatConnection_clear_push_token({
     asyncContext: this.asyncContext,
     abortSignal: options?.abortSignal,
     chat: this.chatService,

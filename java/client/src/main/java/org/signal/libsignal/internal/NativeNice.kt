@@ -55,6 +55,22 @@ public data class LinkedDeviceInternal(
 }
 
 public object NativeNice {
+  public fun AuthenticatedChatConnection_clear_push_token(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_clear_push_token(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_get_devices(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

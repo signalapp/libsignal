@@ -9,7 +9,8 @@ use libsignal_core::{DeviceId, LogSafeDisplay};
 use libsignal_net_grpc::proto::chat::device::devices_client::DevicesClient;
 use libsignal_net_grpc::proto::chat::device::get_devices_response::LinkedDevice as GrpcLinkedDevice;
 use libsignal_net_grpc::proto::chat::device::{
-    GetDevicesRequest, SetDeviceNameRequest, set_device_name_response,
+    ClearPushTokenRequest, ClearPushTokenResponse, GetDevicesRequest, SetDeviceNameRequest,
+    set_device_name_response,
 };
 use libsignal_protocol::Timestamp;
 
@@ -36,6 +37,13 @@ impl std::fmt::Display for Redact<GetDevicesRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(GetDevicesRequest {}) = self;
         f.debug_struct("GetDevicesRequest").finish()
+    }
+}
+
+impl std::fmt::Display for Redact<ClearPushTokenRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(ClearPushTokenRequest {}) = self;
+        f.debug_struct("ClearPushTokenRequest").finish()
     }
 }
 
@@ -122,6 +130,21 @@ impl<T: GrpcServiceProvider> Auth<T> {
             )
             .collect()
     }
+
+    /// Remove any push tokens associated with the current device.
+    ///
+    /// After this call, the server will assume the current device will
+    /// periodically poll for new messages.
+    pub async fn clear_push_token(&self) -> Result<(), RequestError<Infallible>> {
+        let mut client = DevicesClient::new(self.0.service());
+        let request = ClearPushTokenRequest {};
+        let desc = Redact(&request).to_string();
+        let ClearPushTokenResponse {} =
+            log_and_send("auth", &desc, || client.clear_push_token(request))
+                .await?
+                .into_inner();
+        Ok(())
+    }
 }
 
 // Not cfg(test) so it can be accessed via bridging tests.
@@ -130,6 +153,27 @@ pub mod test_cases {
     use libsignal_net_grpc::proto::chat::device::{GetDevicesResponse, SetDeviceNameResponse};
 
     use super::*;
+
+    pub type ClearPushTokenArgs = ();
+    pub type ClearPushTokenOut = ();
+    pub fn clear_push_token_test_cases() -> Vec<
+        GrpcTestCase<
+            ClearPushTokenArgs,
+            ClearPushTokenRequest,
+            ClearPushTokenResponse,
+            ClearPushTokenOut,
+        >,
+    > {
+        let method = "/org.signal.chat.device.Devices/ClearPushToken";
+        vec![GrpcTestCase {
+            name: "success".to_string(),
+            method: method.to_string(),
+            request: (),
+            request_grpc: ClearPushTokenRequest {},
+            response_grpc: ClearPushTokenResponse {},
+            response: (),
+        }]
+    }
 
     pub type GetDevicesArgs = ();
     pub struct GetDevicesOut {
@@ -309,6 +353,16 @@ mod test {
             get_devices_test_cases(),
             |chat: Auth<_>, ()| async move { chat.get_devices().await },
             |resp, result| assert_eq!(resp.devices, result.expect("success")),
+        );
+    }
+
+    #[test]
+    fn test_clear_push_token() {
+        use test_cases::*;
+        run_tests(
+            clear_push_token_test_cases(),
+            |chat: Auth<_>, ()| async move { chat.clear_push_token().await },
+            |(), result| assert_matches!(result, Ok(())),
         );
     }
 }

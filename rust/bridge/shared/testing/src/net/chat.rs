@@ -583,3 +583,7 @@ fn TESTING_SetUsernameLinkTests()
 fn TESTING_GetDevicesTests() -> GrpcTestCases<(), remote_derives::GetDevicesOut> {
     libsignal_net_chat::grpc::devices::test_cases::get_devices_test_cases().into()
 }
+#[bridge_fn(nice = true)]
+fn TESTING_ClearPushTokenTests() -> GrpcTestCases<(), ()> {
+    libsignal_net_chat::grpc::devices::test_cases::clear_push_token_test_cases().into()
+}

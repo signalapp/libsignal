@@ -47,6 +47,18 @@ class AuthDevicesServiceTests: AuthChatServiceTestBase<any AuthDevicesService> {
             }
         )
     }
+
+    func testClearPushToken() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_ClearPushTokenTests(),
+            invoke: { api, _ in
+                try await api.clearPushToken()
+            },
+            check: { _, actual in
+                try actual.get()
+            }
+        )
+    }
 }
 
 #endif

@@ -800,3 +800,10 @@ async fn AuthenticatedChatConnection_get_devices(
 ) -> Result<BridgeVec<LinkedDevice>, RequestError<Infallible>> {
     Ok(chat.require_grpc().await.get_devices().await?.into())
 }
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_clear_push_token(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc().await.clear_push_token().await
+}

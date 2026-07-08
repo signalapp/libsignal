@@ -61,4 +61,13 @@ describe('AuthDevicesService', () => {
       }
     );
   });
+
+  describe('clearPushToken', () => {
+    defineTestGrpcCasesAuth(
+      NativeNice.TESTING_ClearPushTokenTests(),
+      async (chat: AuthDevicesService, _args: void, _resp: void) => {
+        await chat.clearPushToken();
+      }
+    );
+  });
 });

@@ -104,6 +104,8 @@ public object NativeTesting {
   @JvmStatic @Throws(Exception::class)
   public external fun TESTING_ChatSendErrorConvert(errorDescription: String): Unit
   @JvmStatic
+  public external fun TESTING_ClearPushTokenTests(): Array<Object>
+  @JvmStatic
   public external fun TESTING_ConnectionManager_isUsingProxy(manager: ObjectHandle): Int
   @JvmStatic
   public external fun TESTING_ConvertOptionalUuid(present: Boolean): UUID?

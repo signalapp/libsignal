@@ -59,6 +59,14 @@ public protocol AuthDevicesService: Sendable {
     ///   - ``SignalError/deviceIdNotFound(_:)`` if ``deviceId`` could not be found
     ///   - the standard Signal network errors
     func setDeviceName(deviceId: DeviceId, encryptedDeviceName: Data) async throws
+    /// Remove any push tokens associated with the current device.
+    ///
+    /// After this call, the server will assume the current device will
+    /// periodically poll for new messages.
+    ///
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func clearPushToken() async throws
 }
 
 extension AuthenticatedChatConnection: AuthDevicesService {
@@ -76,6 +84,13 @@ extension AuthenticatedChatConnection: AuthDevicesService {
             chat: self,
             deviceId: deviceId.int32Value,
             encryptedName: encryptedDeviceName
+        )
+    }
+
+    public func clearPushToken() async throws {
+        return try await NativeNice.AuthenticatedChatConnection_clear_push_token(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
         )
     }
 

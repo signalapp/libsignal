@@ -404,6 +404,10 @@ type NativeFunctions = {
   AuthCredentialWithPni_CheckValidContents: (
     bytes: Uint8Array<ArrayBuffer>
   ) => void;
+  AuthenticatedChatConnection_clear_push_token: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<void>;
   AuthenticatedChatConnection_connect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     connection_manager: Wrapper<ConnectionManager>,
@@ -2169,6 +2173,7 @@ type NativeFunctions = {
   TESTING_ChatRequestGetPath: (request: Wrapper<HttpRequest>) => string;
   TESTING_ChatResponseConvert: (body_present: boolean) => ChatResponse;
   TESTING_ChatSendErrorConvert: (error_description: string) => void;
+  TESTING_ClearPushTokenTests: () => Array<GrpcTestCaseFfi<void, void>>;
   TESTING_ConnectionManager_isUsingProxy: (
     manager: Wrapper<ConnectionManager>
   ) => number;
@@ -2828,6 +2833,7 @@ const {
   AuthCredentialPresentation_GetUuidCiphertext,
   AuthCredentialWithPniResponse_CheckValidContents,
   AuthCredentialWithPni_CheckValidContents,
+  AuthenticatedChatConnection_clear_push_token,
   AuthenticatedChatConnection_connect,
   AuthenticatedChatConnection_disconnect,
   AuthenticatedChatConnection_get_devices,
@@ -3302,6 +3308,7 @@ const {
   TESTING_ChatRequestGetPath,
   TESTING_ChatResponseConvert,
   TESTING_ChatSendErrorConvert,
+  TESTING_ClearPushTokenTests,
   TESTING_ConnectionManager_isUsingProxy,
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,
@@ -3524,6 +3531,7 @@ export {
   AuthCredentialPresentation_GetUuidCiphertext,
   AuthCredentialWithPniResponse_CheckValidContents,
   AuthCredentialWithPni_CheckValidContents,
+  AuthenticatedChatConnection_clear_push_token,
   AuthenticatedChatConnection_connect,
   AuthenticatedChatConnection_disconnect,
   AuthenticatedChatConnection_get_devices,
@@ -3998,6 +4006,7 @@ export {
   TESTING_ChatRequestGetPath,
   TESTING_ChatResponseConvert,
   TESTING_ChatSendErrorConvert,
+  TESTING_ClearPushTokenTests,
   TESTING_ConnectionManager_isUsingProxy,
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,

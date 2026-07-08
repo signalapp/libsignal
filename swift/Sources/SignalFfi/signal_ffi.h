@@ -475,44 +475,7 @@ typedef struct {
   SignalAes256GcmSiv *raw;
 } SignalMutPointerAes256GcmSiv;
 
-typedef struct {
-  SignalAuthenticatedChatConnection *raw;
-} SignalMutPointerAuthenticatedChatConnection;
-
 typedef uint64_t SignalCancellationId;
-
-/**
- * A C callback used to report the results of Rust futures.
- *
- * cbindgen will produce independent C types like `SignalCPromisei32` and
- * `SignalCPromiseProtocolAddress`.
- *
- * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
- * completed once.
- */
-typedef struct {
-  void (*complete)(SignalFfiError *error, const SignalMutPointerAuthenticatedChatConnection *result, const void *context);
-  const void *context;
-  SignalCancellationId cancellation_id;
-} SignalCPromiseMutPointerAuthenticatedChatConnection;
-
-typedef struct {
-  const SignalTokioAsyncContext *raw;
-} SignalConstPointerTokioAsyncContext;
-
-typedef struct {
-  const SignalConnectionManager *raw;
-} SignalConstPointerConnectionManager;
-
-typedef struct {
-  const size_t *base;
-  size_t length;
-} SignalBorrowedSliceOfusize;
-
-typedef struct {
-  SignalBorrowedBuffer bytes;
-  SignalBorrowedSliceOfusize lengths;
-} SignalBorrowedBytestringArray;
 
 /**
  * A C callback used to report the results of Rust futures.
@@ -530,8 +493,45 @@ typedef struct {
 } SignalCPromisebool;
 
 typedef struct {
+  const SignalTokioAsyncContext *raw;
+} SignalConstPointerTokioAsyncContext;
+
+typedef struct {
   const SignalAuthenticatedChatConnection *raw;
 } SignalConstPointerAuthenticatedChatConnection;
+
+typedef struct {
+  SignalAuthenticatedChatConnection *raw;
+} SignalMutPointerAuthenticatedChatConnection;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalMutPointerAuthenticatedChatConnection *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseMutPointerAuthenticatedChatConnection;
+
+typedef struct {
+  const SignalConnectionManager *raw;
+} SignalConstPointerConnectionManager;
+
+typedef struct {
+  const size_t *base;
+  size_t length;
+} SignalBorrowedSliceOfusize;
+
+typedef struct {
+  SignalBorrowedBuffer bytes;
+  SignalBorrowedSliceOfusize lengths;
+} SignalBorrowedBytestringArray;
 
 typedef struct {
   uint8_t id;
@@ -1884,6 +1884,8 @@ SignalFfiError *signal_auth_credential_presentation_get_uuid_ciphertext(unsigned
 SignalFfiError *signal_auth_credential_with_pni_check_valid_contents(SignalBorrowedBuffer bytes);
 
 SignalFfiError *signal_auth_credential_with_pni_response_check_valid_contents(SignalBorrowedBuffer bytes);
+
+SignalFfiError *signal_authenticated_chat_connection_clear_push_token(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthenticatedChatConnection chat);
 
 SignalFfiError *signal_authenticated_chat_connection_connect(SignalCPromiseMutPointerAuthenticatedChatConnection *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerConnectionManager connection_manager, SignalCStringPtr username, SignalCStringPtr password, bool receive_stories, SignalBorrowedBytestringArray languages);
 

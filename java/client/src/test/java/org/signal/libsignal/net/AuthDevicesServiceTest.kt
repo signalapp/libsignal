@@ -49,4 +49,18 @@ class AuthDevicesServiceTest {
       },
     )
   }
+
+  @Test
+  fun testClearPushToken() {
+    GrpcTestCase.runTests(
+      NativeTestingNice.TESTING_ClearPushTokenTests(),
+      ::AuthDevicesService,
+      invoke = { chat, req ->
+        chat.clearPushToken()
+      },
+      check = { expected, actual ->
+        assertIs<RequestResult.Success<Unit>>(actual)
+      },
+    )
+  }
 }

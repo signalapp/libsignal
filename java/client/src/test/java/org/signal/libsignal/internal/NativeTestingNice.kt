@@ -497,6 +497,15 @@ public data class TestStreamChunk(
 }
 
 public object NativeTestingNice {
+  public fun TESTING_ClearPushTokenTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, Void?>> {
+    val ffiOut =
+      NativeTesting.TESTING_ClearPushTokenTests()
+
+    return org.signal.libsignal.net.GrpcTestCase.resultConverter<Void?, Void?, Void?, Void?>({
+      identity(it)
+    }, { identity(it) })(ffiOut)
+  }
+
   public fun TESTING_GetDevicesTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.GetDevicesOut>> {
     val ffiOut =
       NativeTesting.TESTING_GetDevicesTests()

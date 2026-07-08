@@ -119,4 +119,24 @@ public class AuthDevicesService(
     } catch (e: Throwable) {
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }
+
+  /**
+   * Remove any push tokens associated with the current device.
+   *
+   * After this call, the server will assume the current device will periodically poll for new
+   * messages.
+   */
+  public fun clearPushToken(): CompletableFuture<RequestResult<Unit, Nothing>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_clear_push_token(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { err -> err.toRequestResult() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
 }

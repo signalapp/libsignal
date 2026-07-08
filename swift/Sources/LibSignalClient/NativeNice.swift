@@ -105,6 +105,26 @@ internal enum DerivedReturnConverterLinkedDeviceInternal: NiceReturnConverter {
 }
 
 internal enum NativeNice {
+    internal static func AuthenticatedChatConnection_clear_push_token(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+    ) async throws {
+        let rawOutput: VoidConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        SignalFfi.signal_authenticated_chat_connection_clear_push_token(
+                            promiseFfi,
+                            asyncContextFfi.const(),
+                            chatFfi,
+                        )
+                    }
+            }
+        return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_get_devices(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,
