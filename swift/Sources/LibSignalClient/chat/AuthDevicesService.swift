@@ -90,7 +90,7 @@ extension AuthenticatedChatConnection: AuthDevicesService {
         return try await NativeNice.AuthenticatedChatConnection_set_device_name(
             asyncContext: self.tokioAsyncContext,
             chat: self,
-            deviceId: deviceId.int32Value,
+            deviceId: deviceId,
             encryptedName: encryptedDeviceName
         )
     }

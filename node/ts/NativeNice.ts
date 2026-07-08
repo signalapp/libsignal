@@ -536,7 +536,7 @@ export async function AuthenticatedChatConnection_set_device_name({
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
   chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
-  deviceId: number;
+  deviceId: DeviceId;
   encryptedName: Uint8Array<ArrayBuffer>;
 }): Promise<void> {
   return identity(

@@ -9,13 +9,14 @@ import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.LinkedDeviceInternal
 import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.mapWithCancellation
+import org.signal.libsignal.protocol.DeviceId
 import java.time.Instant
 
 public data class LinkedDevice(
   /**
    * The identifier for the device within an account
    */
-  val id: org.signal.libsignal.protocol.DeviceId,
+  val id: DeviceId,
   /**
    * A sequence of bytes that encodes an encrypted human-readable name for
    * this device.
@@ -85,7 +86,7 @@ public class AuthDevicesService(
    * device specified by `deviceId` could not be found.
    */
   public fun setDeviceName(
-    deviceId: Int,
+    deviceId: DeviceId,
     encryptedName: ByteArray,
   ): CompletableFuture<RequestResult<Unit, DeviceIdNotFoundException>> =
     try {

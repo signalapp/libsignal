@@ -1,9 +1,10 @@
-v0.96.5
+v0.97.0
 
 - Add AuthUsernameService.setUsernameLink() typed API
 - Add AuthDeviceService.getDevices() typed API
 - Add AuthDeviceService.setPushToken() typed API (Java and Swift only)
 - Add AuthDeviceService.clearPushToken() typed API
+- Java: setDeviceName() now takes DeviceId instead of an Int
 - Enforce a minimum TCB level for all SGX attestations.
 - RegistrationService now also refreshes its cached session state from rate-limited (429) server responses.
 - Update to JDK21, following Android. It is now the _required_ version to build libsignal for Java! However, since it

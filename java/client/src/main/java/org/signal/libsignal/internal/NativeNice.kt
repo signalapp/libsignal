@@ -114,7 +114,7 @@ public object NativeNice {
   public fun AuthenticatedChatConnection_set_device_name(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,
-    deviceId: Int,
+    deviceId: org.signal.libsignal.protocol.DeviceId,
     encryptedName: ByteArray,
   ): CompletableFuture<Void?> {
     val ffi_chat = identity(chat)

@@ -619,16 +619,9 @@ async fn UnauthenticatedChatConnection_backup_delete_all(
 #[bridge_io(TokioAsyncContext, nice = true)]
 async fn AuthenticatedChatConnection_set_device_name(
     chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
-    device_id: i32,
+    device_id: DeviceId,
     encrypted_name: Vec<u8>,
 ) -> Result<(), RequestError<DeviceIdNotFoundInAccount>> {
-    // TODO: bridge directly as DeviceId
-    let device_id = u8::try_from(device_id)
-        .ok()
-        .and_then(|id| DeviceId::new(id).ok())
-        .ok_or_else(|| RequestError::Unexpected {
-            log_safe: "Invalid device id".to_string(),
-        })?;
     chat.require_grpc()
         .await
         .set_device_name(device_id, &encrypted_name)
