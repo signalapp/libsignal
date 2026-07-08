@@ -15,7 +15,6 @@ use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net_chat::api::UploadForm;
 use libsignal_net_chat::api::keys::DeviceSpecifier;
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
-use neon::prelude::*;
 use neon::types::JsBigInt;
 use paste::paste;
 use zkgroup::ZkGroupDeserializationFailure;

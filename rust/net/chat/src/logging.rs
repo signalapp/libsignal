@@ -106,7 +106,7 @@ impl std::fmt::Display for RedactHex<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let index_of_last_three_digits = self.0.len().saturating_sub(3);
         if index_of_last_three_digits == 0 {
-            return write!(f, "{}", &self.0);
+            return write!(f, "{}", self.0);
         }
         write!(
             f,
@@ -143,7 +143,7 @@ impl std::fmt::Display for RedactBase64<'_> {
             .unwrap_or_default()
             .saturating_sub(1);
         if index_of_last_two_non_padding_characters == 0 {
-            return write!(f, "{}", &self.0);
+            return write!(f, "{}", self.0);
         }
         write!(
             f,

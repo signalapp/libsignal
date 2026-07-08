@@ -5,7 +5,6 @@
 
 use bytes::Bytes;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
-use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::net::chat::{
     AuthenticatedChatConnection, ChatListener, HttpRequest, ProvisioningChatConnection,

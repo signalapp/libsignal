@@ -199,7 +199,7 @@ mod test {
     use std::pin::pin;
 
     use assert_matches::assert_matches;
-    use futures_util::{FutureExt as _, StreamExt as _};
+    use futures_util::StreamExt as _;
     use itertools::Itertools;
     use proptest::proptest;
     use test_case::test_matrix;

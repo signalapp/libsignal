@@ -1079,17 +1079,13 @@ fn GroupSendEndorsementsResponse_IssueDeterministic(
     key_pair: &[u8],
     randomness: &[u8; RANDOMNESS_LEN],
 ) -> Vec<u8> {
-    assert!(
-        concatenated_group_member_ciphertexts
-            .len()
-            .is_multiple_of(UUID_CIPHERTEXT_LEN)
-    );
-    let user_id_ciphertexts = concatenated_group_member_ciphertexts
-        .chunks_exact(UUID_CIPHERTEXT_LEN)
-        .map(|serialized| {
-            zkgroup::deserialize::<UuidCiphertext>(serialized)
-                .expect("should have been parsed previously")
-        });
+    let (ciphertext_chunks, remainder) =
+        concatenated_group_member_ciphertexts.as_chunks::<UUID_CIPHERTEXT_LEN>();
+    assert!(remainder.is_empty());
+    let user_id_ciphertexts = ciphertext_chunks.iter().map(|serialized| {
+        zkgroup::deserialize::<UuidCiphertext>(serialized)
+            .expect("should have been parsed previously")
+    });
 
     let key_pair = zkgroup::deserialize::<GroupSendDerivedKeyPair>(key_pair)
         .expect("should have been parsed previously");
@@ -1152,22 +1148,18 @@ fn GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(
     let response = zkgroup::deserialize::<GroupSendEndorsementsResponse>(response_bytes)
         .expect("should have been parsed previously");
 
-    assert!(
-        concatenated_group_member_ciphertexts
-            .len()
-            .is_multiple_of(UUID_CIPHERTEXT_LEN)
-    );
-    let local_user_index = concatenated_group_member_ciphertexts
-        .chunks_exact(UUID_CIPHERTEXT_LEN)
-        .position(|serialized| serialized == local_user_ciphertext)
+    let (ciphertext_chunks, remainder) =
+        concatenated_group_member_ciphertexts.as_chunks::<UUID_CIPHERTEXT_LEN>();
+    assert!(remainder.is_empty());
+    let local_user_index = ciphertext_chunks
+        .iter()
+        .position(|serialized| serialized.as_slice() == local_user_ciphertext)
         .expect("local user not included in member list");
 
-    let user_id_ciphertexts = concatenated_group_member_ciphertexts
-        .chunks_exact(UUID_CIPHERTEXT_LEN)
-        .map(|serialized| {
-            zkgroup::deserialize::<UuidCiphertext>(serialized)
-                .expect("should have been parsed previously")
-        });
+    let user_id_ciphertexts = ciphertext_chunks.iter().map(|serialized| {
+        zkgroup::deserialize::<UuidCiphertext>(serialized)
+            .expect("should have been parsed previously")
+    });
 
     let endorsements =
         response.receive_with_ciphertexts(user_id_ciphertexts, now, server_params)?;

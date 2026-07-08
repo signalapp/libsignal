@@ -186,10 +186,6 @@ impl TokioAsyncContext {
         const STALLED_FUTURE_LOG_TIMEOUT: tokio::time::Duration =
             tokio::time::Duration::from_secs(90);
 
-        #[expect(
-            clippy::let_underscore_future,
-            reason = "the tasks are never .join()ed"
-        )]
         let _: tokio::task::JoinHandle<()> = self.rt.spawn(async move {
             let start_time = tokio::time::Instant::now();
             let deadline = start_time + STALLED_FUTURE_LOG_TIMEOUT;

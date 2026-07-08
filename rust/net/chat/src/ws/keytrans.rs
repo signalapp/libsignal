@@ -264,7 +264,7 @@ impl<T: WsConnection> Unauth<T> {
         &self,
         request: chat::Request,
     ) -> Result<Vec<u8>, RequestError<Error>> {
-        log::debug!("{}", &request.path.as_str());
+        log::debug!("{}", request.path.as_str());
         log::debug!(
             "{:?}",
             DebugAsStrOrBytes(request.body.as_deref().unwrap_or_default())
@@ -278,9 +278,9 @@ impl<T: WsConnection> Unauth<T> {
             .await?;
         log::debug!(
             "{} {:?}, headers: {:?}, body: {}",
-            &response.status,
-            &response.message,
-            &response.headers,
+            response.status,
+            response.message,
+            response.headers,
             hex::encode({
                 let body_slice = response.body.as_deref().unwrap_or_default();
                 &body_slice[..body_slice.len().min(1024)]
@@ -413,16 +413,16 @@ mod test_support {
 
         let distinguished_tree_size = result.tree_head.tree_size;
         println!("Distinguished tree");
-        println!("Size: {}", &result.tree_head.tree_size);
+        println!("Size: {}", result.tree_head.tree_size);
         println!(
             "const DISTINGUISHED_TREE_{}_HEAD: &[u8] = &hex!(\"{}\");",
             distinguished_tree_size,
-            &hex::encode(result.tree_head.encode_to_vec())
+            hex::encode(result.tree_head.encode_to_vec())
         );
         println!(
             "const DISTINGUISHED_TREE_{}_ROOT: &[u8] = &hex!(\"{}\");",
             distinguished_tree_size,
-            &hex::encode(result.tree_root)
+            hex::encode(result.tree_root)
         );
 
         let distinguished_tree = LastTreeHead(result.tree_head, result.tree_root);
@@ -474,7 +474,7 @@ mod test_support {
             println!(
                 "const STORED_ACCOUNT_DATA_{}: &[u8] = &hex!(\"{}\");",
                 last_tree_size,
-                &hex::encode(stored_account_data)
+                hex::encode(stored_account_data)
             );
         }
 

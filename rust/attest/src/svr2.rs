@@ -79,7 +79,7 @@ pub fn new_handshake_with_raft_config_lookup(
             .get(&mrenclave)
             .copied()
             .ok_or(Error::AttestationDataError {
-                reason: format!("unknown mrenclave {:?}", &mrenclave),
+                reason: format!("unknown mrenclave {:?}", mrenclave),
             })?;
     new_handshake(
         mrenclave,

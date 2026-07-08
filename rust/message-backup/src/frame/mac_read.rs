@@ -48,7 +48,7 @@ impl<R: AsyncRead + Unpin, M: Mac + Unpin> AsyncRead for MacReader<R, M> {
 mod test {
     use futures::FutureExt as _;
     use futures::io::Cursor;
-    use hmac::{Hmac, Mac as _};
+    use hmac::Hmac;
     use sha2::Sha256;
 
     use super::*;

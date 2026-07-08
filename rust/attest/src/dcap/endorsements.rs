@@ -240,7 +240,7 @@ fn pem_chain_for_field(
 ) -> Result<CertChain> {
     let data = data_for_field(field, offsets, data);
 
-    CertChain::from_pem_data(data).with_context(|| format!("{:?}", &field))
+    CertChain::from_pem_data(data).with_context(|| format!("{:?}", field))
 }
 
 fn der_crl_for_field(

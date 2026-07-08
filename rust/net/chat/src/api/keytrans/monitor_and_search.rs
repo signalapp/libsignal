@@ -42,7 +42,7 @@ pub async fn check(
         username_hash.as_ref(),
         stored_account_data,
     );
-    log::info!("Action: {}", &action);
+    log::info!("Action: {}", action);
 
     let result = action
         .execute(kt, aci_identity_key, &distinguished_tree_head, mode)
@@ -664,7 +664,7 @@ fn remove_missing(partial_account_data: &mut MaybePartial<AccountData>) {
         missing_fields,
     } = partial_account_data;
     for field in missing_fields.iter() {
-        log::info!("Version change: untracking {:?}", &field);
+        log::info!("Version change: untracking {:?}", field);
         match field {
             AccountDataField::E164 => inner.e164 = None,
             AccountDataField::UsernameHash => inner.username_hash = None,

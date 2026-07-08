@@ -17,5 +17,5 @@ fn main() {
     let Args { username } = Args::parse();
     let username = usernames::Username::new(&username).expect("valid username");
     let hash = username.hash();
-    println!("base64:\t{}", &BASE64_STANDARD.encode(hash));
+    println!("base64:\t{}", BASE64_STANDARD.encode(hash));
 }

@@ -531,13 +531,13 @@ fn verify_tcb_status(evidence: &Evidence, endorsements: &SgxEndorsements) -> Res
     if pck_ext.fmspc != tcb_info.fmspc {
         return Err(Error::new(format!(
             "tcb fmspc mismatch (pck extension fmspc was {:?}, tcb_info fmspc was {:?})",
-            &pck_ext.fmspc, &tcb_info.fmspc
+            pck_ext.fmspc, tcb_info.fmspc
         )));
     }
     if pck_ext.pceid != tcb_info.pce_id {
         return Err(Error::new(format!(
             "tcb pceid mismatch (pck extension pceid was {:?}, tcb_info pceid was {:?})",
-            &pck_ext.pceid, &tcb_info.pce_id
+            pck_ext.pceid, tcb_info.pce_id
         )));
     }
 

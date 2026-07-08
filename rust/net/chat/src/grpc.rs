@@ -1206,7 +1206,7 @@ mod test {
     use assert_matches::assert_matches;
     use base64::Engine as _;
     use base64::prelude::BASE64_STANDARD;
-    use futures_util::{FutureExt as _, StreamExt as _};
+    use futures_util::FutureExt as _;
     use hyper::rt::ReadBufCursor;
     use libsignal_net::infra::http_client::Http2Client;
     use libsignal_net::infra::testutil::TestError;

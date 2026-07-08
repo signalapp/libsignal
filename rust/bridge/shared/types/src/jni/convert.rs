@@ -18,7 +18,6 @@ use libsignal_net::cdsi::LookupResponseEntry;
 use libsignal_net_chat::api::UploadForm;
 use libsignal_net_chat::api::keys::DeviceSpecifier;
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
-use libsignal_protocol::*;
 use paste::paste;
 use zkgroup::groups::GroupSendFullToken;
 

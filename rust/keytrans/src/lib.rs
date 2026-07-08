@@ -671,11 +671,8 @@ fn find_matching<'a, 'b, A: 'a, B: 'b, C>(
     let mut result = Vec::with_capacity(xs.len());
     for x in xs {
         // Yes, this is O(n*m), but our n and m are both 3 at the time of this writing.
-        if let Some(y) = ys.clone().find(|y| eq(x, *y)) {
-            result.push(project(x, y));
-        } else {
-            return None;
-        }
+        let y = ys.clone().find(|y| eq(x, *y))?;
+        result.push(project(x, y));
     }
     Some(result)
 }

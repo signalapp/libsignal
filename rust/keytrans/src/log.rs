@@ -421,11 +421,10 @@ pub fn verify_consistency_proof(
         [first, second].into_iter().flatten().chain(path)
     };
 
-    let i;
-    if path_is_single_element {
+    let i = if path_is_single_element {
         // m is a power of two so we don't need to verify anything.
         calc.insert(math::level(math::root(m)), *m_root);
-        i = 0;
+        0
     } else {
         let mut path_len = 0;
         for (i, elem) in path.enumerate() {
@@ -440,8 +439,8 @@ pub fn verify_consistency_proof(
         if m_root != &calc.root()? {
             return Err(Error::ProofMismatch("first root does not match proof"));
         }
-        i = path_len;
-    }
+        path_len
+    };
 
     // Step 2: Verify that the consistency proof aligns with n_root.
     for j in i..ids.len() {

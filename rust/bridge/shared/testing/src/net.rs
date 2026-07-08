@@ -6,7 +6,6 @@
 use std::num::NonZeroU16;
 
 use base64::prelude::{BASE64_STANDARD, Engine as _};
-use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::chat::ServerMessageAck;
 use libsignal_bridge_types::net::{BuildVariant, ConnectionManager, TokioAsyncContext};
 use libsignal_core::E164;

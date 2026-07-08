@@ -8,6 +8,10 @@
 #[cfg(feature = "json")]
 pub mod json;
 
+// The generated pbjson `Serialize`/`Deserialize` impls emit `write!(f, "{}", &x)`,
+// which trips the useless_borrows_in_formatting lint. Only gated on `json` because that's
+// the feature that pulls in the offending generated code.
+#[cfg_attr(feature = "json", expect(clippy::useless_borrows_in_formatting))]
 pub mod proto {
     // Mirror the protobuf package structure so relative references work correctly.
     // We'll export org::signal::chat for a more flat interface elsewhere.

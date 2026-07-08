@@ -119,7 +119,7 @@ pub async fn do_remove(connect_results: impl IntoConnectionResults) -> Result<()
         // For the remove operation we ignore connection failures
         // and proceed to work with the successful connections,
         // as long as there are any.
-        log::debug!("Connection failure '{:?}' will be ignored.", &err);
+        log::debug!("Connection failure '{:?}' will be ignored.", err);
     }
 
     let futures = connections

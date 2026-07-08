@@ -265,6 +265,10 @@ where
 /// Some errors (such as a 429) also carry session state in their body, which is
 /// recovered alongside the error; see [`WithRecoveredSession`]. This method will
 /// retry internally if transient errors are encountered.
+#[expect(
+    clippy::result_large_err,
+    reason = "errors carry recovered session state (see WithRecoveredSession)"
+)]
 async fn submit_request<R, E, C>(
     connection: &C,
     request: RegistrationRequest<'_, R>,

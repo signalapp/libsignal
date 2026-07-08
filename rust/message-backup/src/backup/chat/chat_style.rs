@@ -164,7 +164,7 @@ impl<M: ReferencedTypes> TryFrom<Vec<proto::chat_style::CustomChatColor>> for Cu
             .try_fold(Self::default(), |mut colors, custom_color| {
                 let (id, custom_color) = TryFrom::try_from(custom_color)?;
                 if id == CustomColorId(0) {
-                    return Err(ChatStyleError::InvalidCustomColorId)?;
+                    return Err(ChatStyleError::InvalidCustomColorId);
                 }
                 colors
                     .insert(id, custom_color.into())

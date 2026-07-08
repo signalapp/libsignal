@@ -134,7 +134,7 @@ impl ConnectionManager {
         remote_config: HashMap<String, Arc<str>>,
         build_variant: BuildVariant,
     ) -> Self {
-        log::info!("Initializing connection manager for {}...", &environment);
+        log::info!("Initializing connection manager for {}...", environment);
         Self::new_from_static_environment(
             environment.env(),
             user_agent,

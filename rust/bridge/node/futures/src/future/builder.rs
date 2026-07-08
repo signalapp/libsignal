@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use neon::prelude::*;
-
 use crate::PersistentException;
 use crate::future::*;
 
