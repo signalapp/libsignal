@@ -128,6 +128,10 @@ extension SignalCPromiseOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult: Pr
     typealias Result = SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult
 }
 
+extension SignalCPromiseCopyBackupMediaNextChunkFfiResult: PromiseStruct {
+    typealias Result = SignalCopyBackupMediaNextChunkFfiResult
+}
+
 /// A type-erased version of ``Completer``.
 ///
 /// Not for direct use, see Completer instead.

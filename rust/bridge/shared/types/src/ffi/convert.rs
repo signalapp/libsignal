@@ -1839,21 +1839,38 @@ macro_rules! ffi_bridge_as_handle {
                 Ok(unsafe { *Box::from_raw(foreign) })
             }
         }
-        $(#[cfg(feature = "metadata")]
-        impl $crate::ffi::NiceArgConverter for &$typ {
-            fn register_swift_arg_converter(
-                _ctx: &mut $crate::metadata::ffi::SwiftMetadataContext
-            ) -> $crate::metadata::ffi::SwiftArgConverter {
-                $crate::metadata::ffi::SwiftArgConverter {
-                    nice_type: $swift_type.into(),
-                    converter_type: format!(
-                        "BridgeHandleRefConverter<SignalMutPointer{}, {}>",
-                        stringify!($typ),
-                        $swift_type,
-                    ),
+        $(
+            #[cfg(feature = "metadata")]
+            impl $crate::ffi::NiceArgConverter for &$typ {
+                fn register_swift_arg_converter(
+                    _ctx: &mut $crate::metadata::ffi::SwiftMetadataContext
+                ) -> $crate::metadata::ffi::SwiftArgConverter {
+                    $crate::metadata::ffi::SwiftArgConverter {
+                        nice_type: $swift_type.into(),
+                        converter_type: format!(
+                            "BridgeHandleRefConverter<SignalMutPointer{}, {}>",
+                            stringify!($typ),
+                            $swift_type,
+                        ),
+                    }
                 }
             }
-        })?
+            #[cfg(feature = "metadata")]
+            impl $crate::ffi::NiceResultConverter for $typ {
+                fn register_swift_result_converter(
+                    _ctx: &mut $crate::metadata::ffi::SwiftMetadataContext
+                ) -> $crate::metadata::ffi::SwiftReturnConverter {
+                    $crate::metadata::ffi::SwiftReturnConverter {
+                        nice_type: $swift_type.into(),
+                        converter_type: format!(
+                            "BridgeHandleConverter<SignalMutPointer{}, {}>",
+                            stringify!($typ),
+                            $swift_type,
+                        ),
+                    }
+                 }
+             }
+        )?
     };
     ( $typ:ty $(, swift_type = $swift_type:expr)? ) => {
         ::paste::paste! {
@@ -1958,6 +1975,7 @@ macro_rules! ffi_arg_type {
     (u16) => (u16);
     (i32) => (i32);
     (u32) => (u32);
+    (i64) => (i64);
     (u64) => (u64);
     (f64) => (f64);
     (Option<u32>) => (u32);
@@ -2017,13 +2035,18 @@ macro_rules! ffi_arg_type {
     (TestingFutureCancellationGuard) => (ffi_arg_type!(&TestingFutureCancellationCounter));
 
     // Derived types
+    (BridgeCopyBackupMediaItem) => (BridgeCopyBackupMediaItemFfiArg);
+    (BridgeCopyBackupMediaOutcome) => (BridgeCopyBackupMediaOutcomeFfiArg);
+    (BridgeCopyBackupMediaResult) => (BridgeCopyBackupMediaResultFfiArg);
+    (LinkedDevice) => ($crate::net::chat::remote_derives::LinkedDeviceInternalFfiArg);
+
+    // Testing derived types
     (MyTestStruct) => (MyTestStructFfiArg);
     (MyTestPoint) => (MyTestPointFfiArg);
     (MyTestEnum) => (MyTestEnumFfiArg);
     (MySimpleTestEnum) => (MySimpleTestEnumFfiArg);
     (MyRemoteDeriveStruct) => (MyRemoteDeriveStructFfiArg);
     (MyRemoteDeriveEnum) => (MyRemoteDeriveEnumFfiArg);
-    (LinkedDevice) => ($crate::net::chat::remote_derives::LinkedDeviceInternalFfiArg);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
@@ -2108,6 +2131,7 @@ macro_rules! ffi_result_type {
     (Option<BulkPolledStreamTerminationReason<$typ:ty> >) => (ffi::FfiBulkPolledStreamTerminationReason);
     (Option<$typ:ty>) => ($crate::ffi::MutPointer<$typ>);
     (BridgeVec<$ty:tt>) => (ffi::OwnedBufferOfMaxAligned<ffi_result_type!($ty)>);
+    (BridgeVec<$module:tt :: $ty:tt>) => (ffi::OwnedBufferOfMaxAligned<ffi_result_type!($module :: $ty)>);
 
     (LookupResponse) => (ffi::FfiCdsiLookupResponse);
     (ChatResponse) => (ffi::FfiChatResponse);
@@ -2117,9 +2141,16 @@ macro_rules! ffi_result_type {
     (UploadForm) => (ffi::FfiUploadForm);
     (CdnCredentials) => (ffi::PairOf<ffi::OwnedBufferOf<ffi::CStringPtr>, ffi::OwnedBufferOf<ffi::CStringPtr> >);
 
-    (GrpcTestCases<$a:ty, $b:ty>) => (ffi::OwnedBufferOf<GrpcTestCaseBridgedFfi>);
+    (GrpcTestCases<$a:ty, $b:ty $(,)?>) => (ffi::OwnedBufferOf<GrpcTestCaseBridgedFfi>);
 
     // Derived types
+    (BridgeCopyBackupMediaItem) => (BridgeCopyBackupMediaItemFfiResult);
+    (BridgeCopyBackupMediaOutcome) => (BridgeCopyBackupMediaOutcomeFfiResult);
+    (BridgeCopyBackupMediaResult) => (BridgeCopyBackupMediaResultFfiResult);
+    (CopyBackupMediaNextChunk) => (CopyBackupMediaNextChunkFfiResult);
+    (LinkedDevice) => ($crate::net::chat::remote_derives::LinkedDeviceInternalFfiResult);
+
+    // Testing derived types
     (MyTestStruct) => (MyTestStructFfiResult);
     (MyTestPoint) => (MyTestPointFfiResult);
     (MyTestEnum) => (MyTestEnumFfiResult);
@@ -2127,7 +2158,7 @@ macro_rules! ffi_result_type {
     (MyRemoteDeriveStruct) => (MyRemoteDeriveStructFfiResult);
     (MyRemoteDeriveEnum) => (MyRemoteDeriveEnumFfiResult);
     (TestStreamChunk) => (TestStreamChunkFfiResult);
-    (LinkedDevice) => ($crate::net::chat::remote_derives::LinkedDeviceInternalFfiResult);
+    (remote_derives::CopyBackupMediaOut) => (remote_derives::CopyBackupMediaOutFfiResult);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

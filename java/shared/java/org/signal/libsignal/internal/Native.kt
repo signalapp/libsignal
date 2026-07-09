@@ -425,6 +425,9 @@ internal object Native {
   @JvmStatic @Throws(Exception::class)
   public external fun ConnectionProxyConfig_new(scheme: String, host: String, port: Int, username: String?, password: String?): ObjectHandle
 
+  @JvmStatic
+  public external fun CopyBackupMediaStream_Destroy(handle: ObjectHandle): Unit
+
   @JvmStatic @Throws(Exception::class)
   public external fun CreateCallLinkCredentialPresentation_CheckValidContents(presentationBytes: ByteArray): Unit
   @JvmStatic @Throws(Exception::class)

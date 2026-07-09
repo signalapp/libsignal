@@ -346,7 +346,9 @@ impl<T: GrpcServiceProvider> Unauth<T> {
         auth: &BackupAuth<'_>,
         items: Vec<CopyBackupMediaItem>,
         rng: &mut (dyn rand::CryptoRng + Send),
-    ) -> impl Stream<Item = StreamResult<CopyBackupMediaOutcome, BackupAuthCredentialRejected>>
+    ) -> impl Stream<Item = StreamResult<CopyBackupMediaOutcome, BackupAuthCredentialRejected>> + 'static
+    where
+        T::Service: 'static,
     {
         send_request_with_streaming_response(
             "unauth",
@@ -418,7 +420,10 @@ impl<T: GrpcServiceProvider> Unauth<T> {
         auth: &BackupAuth<'_>,
         items: &[DeleteBackupMediaItem],
         rng: &mut (dyn rand::CryptoRng + Send),
-    ) -> impl Stream<Item = StreamResult<DeleteBackupMediaItem, BackupAuthCredentialRejected>> {
+    ) -> impl Stream<Item = StreamResult<DeleteBackupMediaItem, BackupAuthCredentialRejected>> + 'static
+    where
+        T::Service: 'static,
+    {
         send_request_with_streaming_response(
             "unauth",
             self.0.service(),

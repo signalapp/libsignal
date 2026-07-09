@@ -88,6 +88,29 @@ public protocol UnauthBackupsService: Sendable {
     ///   - ``SignalError/requestUnauthorized(_:)`` if there are authorization issues
     ///   - the standard Signal network errors
     func backupDeleteAll(auth: BackupAuth) async throws
+
+    /// Copy and re-encrypt media from the attachments CDN into the backup CDN.
+    ///
+    /// The original, already encrypted, attachments will be encrypted with the
+    /// provided key material before being copied. On retries, a particular destination media ID
+    /// must not be reused with a different source media key or different encryption parameters.
+    ///
+    /// The copy operation is not atomic and responses will be returned as copy operations complete
+    /// with detailed information about the outcome. If an error is encountered, not all requests
+    /// may be reflected in the responses. However, there is no need to retry the items that did
+    /// receive a response.
+    ///
+    /// The stream may be terminated at any time with the standard Signal network errors.
+    /// In addition, the stream may immediately terminate with ``SignalError/requestUnauthorized(_:)``
+    /// if there are authorization issues.
+    ///
+    /// The stream can be manually cancelled to free resources immediately (rather than waiting for
+    /// deinitialization). If the stream is cancelled and then read from again, it may produce a
+    /// timeout error. It is not required to cancel the stream even if it is not read to completion.
+    func copyBackupMedia(
+        auth: BackupAuth,
+        items: some Sequence<CopyBackupMediaItem>
+    ) throws -> ColdAsyncStream<CopyBackupMediaOutcome>
 }
 
 extension UnauthenticatedChatConnection: UnauthBackupsService {
@@ -127,6 +150,13 @@ extension UnauthenticatedChatConnection: UnauthBackupsService {
     public func backupDeleteAll(auth: BackupAuth) async throws {
         try await self.backupDeleteAll(auth: auth, rngForTesting: -1)
     }
+
+    public func copyBackupMedia(
+        auth: BackupAuth,
+        items: some Sequence<CopyBackupMediaItem>
+    ) throws -> ColdAsyncStream<CopyBackupMediaOutcome> {
+        try self.copyBackupMedia(auth: auth, items: items, rngForTesting: -1)
+    }
 }
 
 internal protocol UnauthBackupsServiceImpl: Sendable {
@@ -150,6 +180,12 @@ internal protocol UnauthBackupsServiceImpl: Sendable {
     func getBackupSvrBCredentials(auth: BackupAuth, rngForTesting: Int64) async throws -> Auth
     func refreshBackup(auth: BackupAuth, rngForTesting: Int64) async throws
     func backupDeleteAll(auth: BackupAuth, rngForTesting: Int64) async throws
+
+    func copyBackupMedia(
+        auth: BackupAuth,
+        items: some Sequence<CopyBackupMediaItem>,
+        rngForTesting: Int64
+    ) throws -> ColdAsyncStream<CopyBackupMediaOutcome>
 }
 
 extension UnauthenticatedChatConnection: UnauthBackupsServiceImpl {
@@ -282,6 +318,103 @@ extension UnauthenticatedChatConnection: UnauthBackupsServiceImpl {
                 rng: rngForTesting
             )
     }
+
+    func copyBackupMedia(
+        auth: BackupAuth,
+        items: some Sequence<CopyBackupMediaItem>,
+        rngForTesting: Int64
+    ) throws -> ColdAsyncStream<CopyBackupMediaOutcome> {
+        let stream = try NativeNice.UnauthenticatedChatConnection_backup_copy_media(
+            chat: self,
+            credential: auth.credential,
+            serverKeys: auth.serverKeys,
+            signingKey: auth.signingKey,
+            items: items.map { $0.toBridge() },
+            rng: rngForTesting
+        )
+
+        return ColdAsyncStream(
+            asyncContext: self.tokioAsyncContext,
+            stream: stream,
+            pull: NativeNice.CopyBackupMediaStream_next,
+            convert: { value in
+                return (
+                    value.chunk.map { CopyBackupMediaOutcome($0) },
+                    value.termination
+                )
+            },
+            cancel: signal_copy_backup_media_stream_cancel,
+        )
+    }
+}
+
+/// A single item to copy from the attachment CDN to the backup CDN.
+///
+/// `encryptionKey` is the combined HMAC + AES key from ``BackupKey/deriveMediaEncryptionKey(_:)``
+/// or ``BackupKey/deriveThumbnailTransitEncryptionKey(_:)``.
+public struct CopyBackupMediaItem {
+    public var sourceAttachmentCdn: Int32
+    public var sourceKey: String
+    public var objectLength: UInt64
+    public var mediaId: Data
+    public var encryptionKey: Data
+
+    public init(
+        sourceAttachmentCdn: Int32,
+        sourceKey: String,
+        objectLength: UInt64,
+        mediaId: Data,
+        encryptionKey: Data
+    ) {
+        self.sourceAttachmentCdn = sourceAttachmentCdn
+        self.sourceKey = sourceKey
+        self.objectLength = objectLength
+        self.mediaId = mediaId
+        self.encryptionKey = encryptionKey
+    }
+
+    fileprivate func toBridge() -> BridgeCopyBackupMediaItem {
+        BridgeCopyBackupMediaItem(
+            sourceAttachmentCdn: sourceAttachmentCdn,
+            sourceKey: sourceKey,
+            objectLength: Int64(objectLength),
+            mediaId: mediaId,
+            encryptionKey: encryptionKey
+        )
+    }
+}
+
+// swiftlint:disable explicit_init_for_public_struct - it's below the nested type
+public struct CopyBackupMediaOutcome {
+    public enum Result {
+        case success(cdn: Int32)
+        case sourceNotFound
+        case wrongSourceLength
+        case outOfSpace
+
+        fileprivate init(_ result: BridgeCopyBackupMediaResult) {
+            self =
+                switch result {
+                case .success(let cdn): .success(cdn: cdn)
+                case .sourceNotFound: .sourceNotFound
+                case .wrongSourceLength: .wrongSourceLength
+                case .outOfSpace: .outOfSpace
+                }
+        }
+    }
+
+    public var mediaId: Data
+    public var result: Result
+
+    public init(mediaId: Data, result: Result) {
+        self.mediaId = mediaId
+        self.result = result
+    }
+
+    internal init(_ outcome: BridgeCopyBackupMediaOutcome) {
+        self.mediaId = outcome.mediaId
+        self.result = .init(outcome.result)
+    }
 }
 
 extension UnauthServiceSelector where Self == UnauthServiceSelectorHelper<any UnauthBackupsService> {
@@ -289,4 +422,34 @@ extension UnauthServiceSelector where Self == UnauthServiceSelectorHelper<any Un
 }
 extension UnauthServiceSelector where Self == UnauthServiceSelectorHelper<any UnauthBackupsServiceImpl> {
     internal static var backupsImpl: Self { .init() }
+}
+
+internal class CopyBackupMediaStream: NativeHandleOwner<SignalMutPointerCopyBackupMediaStream> {
+    override class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerCopyBackupMediaStream>
+    ) -> SignalFfiErrorRef? {
+        signal_copy_backup_media_stream_destroy(handle.pointer)
+    }
+}
+
+extension SignalMutPointerCopyBackupMediaStream: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerCopyBackupMediaStream
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> SignalConstPointerCopyBackupMediaStream {
+        .init(raw: self.raw)
+    }
+
+}
+extension SignalConstPointerCopyBackupMediaStream: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
 }

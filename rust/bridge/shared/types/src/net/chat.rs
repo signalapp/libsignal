@@ -19,6 +19,7 @@ use futures_util::{FutureExt as _, Stream, StreamExt as _};
 use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
+use libsignal_account_keys::{MEDIA_ENCRYPTION_KEY_LEN, MEDIA_ID_LEN};
 use libsignal_bridge_macros::{BridgedAsValue, bridge_callbacks};
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
@@ -36,14 +37,20 @@ use libsignal_net::infra::route::{
 };
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagleAlgorithm};
-use libsignal_net_chat::api::{Auth as AuthConn, Unauth};
-use libsignal_net_chat::stream_util::{BulkPolledStream, BulkPolledStreamChunk};
+use libsignal_net_chat::api::backups::BackupAuthCredentialRejected;
+use libsignal_net_chat::api::{Auth as AuthConn, RequestError, Unauth};
+use libsignal_net_chat::grpc::backups::{
+    CopyBackupMediaFailure, CopyBackupMediaItem, CopyBackupMediaOutcome,
+};
+use libsignal_net_chat::stream_util::{
+    BulkPolledStream, BulkPolledStreamChunk, BulkPolledStreamTerminationReason,
+};
 use libsignal_protocol::{IdentityKey, PreKeyBundle, Timestamp};
 use static_assertions::assert_impl_all;
 
 use crate::net::ConnectionManager;
 use crate::net::remote_config::{RemoteConfig, RemoteConfigKey};
-use crate::support::{AsyncMutex, BridgedError, LimitedLifetimeRef};
+use crate::support::{AsyncMutex, BridgeVec, BridgedError, LimitedLifetimeRef};
 use crate::*;
 
 pub type ChatConnectionInfo = ConnectionInfo;
@@ -155,6 +162,20 @@ impl UnauthenticatedChatConnection {
 
     pub async fn require_grpc(&self) -> Unauth<impl libsignal_net_chat::grpc::GrpcServiceProvider> {
         let guard = self.as_ref().read().await;
+        let MaybeChatConnection::Running(inner) = &*guard else {
+            panic!("listener was not set")
+        };
+        Unauth(
+            inner
+                .shared_h2_connection()
+                .expect("requires an H2 connection"),
+        )
+    }
+
+    pub fn blocking_require_grpc(
+        &self,
+    ) -> Unauth<impl libsignal_net_chat::grpc::GrpcServiceProvider + 'static> {
+        let guard = self.as_ref().blocking_read();
         let MaybeChatConnection::Running(inner) = &*guard else {
             panic!("listener was not set")
         };
@@ -869,6 +890,67 @@ pub enum UserBasedSendAuthorizationKind {
     UnrestrictedUnauthenticatedAccess,
 }
 
+#[derive(BridgedAsValue)]
+pub struct BridgeCopyBackupMediaItem {
+    pub source_attachment_cdn: i32,
+    pub source_key: String,
+    pub object_length: i64,
+    pub media_id: [u8; MEDIA_ID_LEN],
+    pub encryption_key: [u8; MEDIA_ENCRYPTION_KEY_LEN],
+}
+
+impl From<CopyBackupMediaItem> for BridgeCopyBackupMediaItem {
+    fn from(value: CopyBackupMediaItem) -> Self {
+        Self {
+            source_attachment_cdn: value
+                .source_attachment_cdn
+                .try_into()
+                .expect("CDN numbers are small"),
+            source_key: value.source_key,
+            object_length: value
+                .object_length
+                .try_into()
+                .expect("object lengths fit in i64"),
+            media_id: value.media_id,
+            encryption_key: value.encryption_key,
+        }
+    }
+}
+
+#[derive(BridgedAsValue)]
+pub struct BridgeCopyBackupMediaOutcome {
+    pub media_id: [u8; MEDIA_ID_LEN],
+    pub result: BridgeCopyBackupMediaResult,
+}
+
+impl From<CopyBackupMediaOutcome> for BridgeCopyBackupMediaOutcome {
+    fn from(value: CopyBackupMediaOutcome) -> Self {
+        Self {
+            media_id: value.media_id,
+            result: match value.cdn_or_failure {
+                Ok(cdn) => BridgeCopyBackupMediaResult::Success {
+                    cdn: cdn.try_into().expect("CDN numbers are small"),
+                },
+                Err(CopyBackupMediaFailure::OutOfSpace) => BridgeCopyBackupMediaResult::OutOfSpace,
+                Err(CopyBackupMediaFailure::SourceNotFound) => {
+                    BridgeCopyBackupMediaResult::SourceNotFound
+                }
+                Err(CopyBackupMediaFailure::WrongSourceLength) => {
+                    BridgeCopyBackupMediaResult::WrongSourceLength
+                }
+            },
+        }
+    }
+}
+
+#[derive(BridgedAsValue)]
+pub enum BridgeCopyBackupMediaResult {
+    Success { cdn: i32 },
+    SourceNotFound,
+    WrongSourceLength,
+    OutOfSpace,
+}
+
 #[derive(Debug)]
 pub struct StreamCancelled;
 
@@ -879,6 +961,27 @@ pub struct BridgeBulkPolledStream<T, E> {
 }
 
 impl<T, E> BridgeBulkPolledStream<T, E> {
+    /// Wraps `stream` for bulk-polling (and cancellation).
+    ///
+    /// The chunk size should be chosen based on the following criteria:
+    /// - How much does bridging cost, relative to consumer-side throughput? (lower limit)
+    /// - How much client memory will this allocate for a full chunk? (upper limit)
+    ///
+    /// It is not especially affected by
+    /// - High producer-side throughput (nearly any chunk size will induce backpressure)
+    /// - Low producer-side throughput (nearly any chunk size will not be reached anyway)
+    /// - Producer-side latency (the first element may be delayed but hopefully the rest will arrive
+    ///   soon after)
+    ///
+    /// The debounce time should be chosen based on the following criteria:
+    /// - How much does bridging cost, relative to consumer-side throughput? (lower limit)
+    /// - How long can the consumer tolerate a lack of updates, relative to producer-side
+    ///   throughput? (upper limit)
+    /// - How much *uneven* latency is there on the connection? (lower and upper limit)
+    ///
+    /// If you don't have any extra information, [`BULK_POLLED_STREAM_DEFAULT_CHUNK_SIZE`] and
+    /// [`BULK_POLLED_STREAM_DEFAULT_DEBOUNCE_TIME`] were chosen to be non-terrible values for an
+    /// average stream.
     pub fn new(
         stream: impl Stream<Item = Result<T, E>> + Send + 'static,
         max_chunk_size: usize,
@@ -921,6 +1024,37 @@ impl<T, E> BridgeBulkPolledStream<T, E> {
         _ = self.state.blocking_lock().take();
     }
 }
+
+/// A "reasonable" default value to use for bulk-polled streaming network APIs.
+///
+/// Chosen only for being neither too small (thus wasting time in the bridge layer processing many
+/// small chunks) nor too large (thus allocating a bunch of memory at once).
+pub const BULK_POLLED_STREAM_DEFAULT_CHUNK_SIZE: usize = 64;
+
+/// A "reasonable" default value to use for bulk-polled streaming network APIs.
+///
+/// Chosen only for being neither too short (thus wasting time in the bridge layer processing many
+/// small chunks) nor too long (thus delaying reporting progress in a user-visible way).
+pub const BULK_POLLED_STREAM_DEFAULT_DEBOUNCE_TIME: Duration = Duration::from_millis(100);
+
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct CopyBackupMediaNextChunk {
+    pub chunk: BridgeVec<BridgeCopyBackupMediaOutcome>,
+    pub termination:
+        Option<BulkPolledStreamTerminationReason<RequestError<BackupAuthCredentialRejected>>>,
+}
+
+#[derive(derive_more::From, derive_more::Deref)]
+pub struct CopyBackupMediaStream(
+    BridgeBulkPolledStream<CopyBackupMediaOutcome, RequestError<BackupAuthCredentialRejected>>,
+);
+
+bridge_as_handle!(
+    CopyBackupMediaStream,
+    swift_type = "CopyBackupMediaStream",
+    jni_class = "org.signal.libsignal.net.internal.CopyBackupMediaStream",
+);
 
 pub mod remote_derives {
     use libsignal_core::DeviceId;

@@ -3197,6 +3197,21 @@ impl ResultTypeInfo<'_> for i32 {
 nice_identity_result_converter!(i32, "Int");
 nice_identity_arg_converter!(i32, "Int");
 
+impl SimpleArgTypeInfo<'_> for i64 {
+    type ArgType = Self;
+    fn convert_from(_env: &mut jni::Env, foreign: &Self) -> Result<Self, BridgeLayerError> {
+        Ok(*foreign)
+    }
+}
+impl ResultTypeInfo<'_> for i64 {
+    type ResultType = Self;
+    fn convert_into(self, _env: &mut jni::Env) -> Result<Self, BridgeLayerError> {
+        Ok(self)
+    }
+}
+nice_identity_result_converter!(i64, "Long");
+nice_identity_arg_converter!(i64, "Long");
+
 /// Syntactically translates `bridge_fn` argument types to JNI types for `cbindgen` and
 /// `gen_java_decl.py`.
 ///
@@ -3608,6 +3623,12 @@ macro_rules! jni_result_type {
     };
 
     // Derived types
+    (BridgeCopyBackupMediaItem) => {::jni::objects::JObject<'local>};
+    (BridgeCopyBackupMediaOutcome) => {::jni::objects::JObject<'local>};
+    (BridgeCopyBackupMediaResult) => {::jni::objects::JObject<'local>};
+    (CopyBackupMediaNextChunk) => {::jni::objects::JObject<'local>};
+
+    // Testing derived types
     (MySimpleTestEnum) => {::jni::objects::JObject<'local>};
     (MyTestEnum) => {::jni::objects::JObject<'local>};
     (MyTestPoint) => {::jni::objects::JObject<'local>};

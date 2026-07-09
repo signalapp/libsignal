@@ -7,8 +7,8 @@ use bytes::Bytes;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::net::chat::{
-    AuthenticatedChatConnection, ChatListener, HttpRequest, ProvisioningChatConnection,
-    ProvisioningListener, UnauthenticatedChatConnection,
+    AuthenticatedChatConnection, BridgeCopyBackupMediaItem, ChatListener, HttpRequest,
+    ProvisioningChatConnection, ProvisioningListener, UnauthenticatedChatConnection,
 };
 use libsignal_net::chat::fake::{BodyWithTrailers, FakeChatRemote};
 use libsignal_net::chat::{
@@ -502,6 +502,9 @@ use grpc_test_cases::*;
 
 mod remote_derives {
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
+    use libsignal_bridge_types::net::chat::BridgeCopyBackupMediaOutcome;
+    #[cfg(feature = "ffi")]
+    use libsignal_bridge_types::net::chat::BridgeCopyBackupMediaOutcomeFfiResult;
     use libsignal_net_chat::grpc::devices::LinkedDevice;
     use uuid::Uuid;
 
@@ -549,6 +552,17 @@ mod remote_derives {
     pub struct GetDevicesOut {
         pub devices: BridgeVec<LinkedDevice>,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::backups::test_cases::CopyBackupMediaOut)]
+    #[bridge(arg = false)]
+    pub(super) enum CopyBackupMediaOut {
+        Item(BridgeCopyBackupMediaOutcome),
+        InvalidDataInStream,
+        CredentialRejected,
+        CredentialRejectedWithoutAppropriateServerInfo,
+    }
+
     #[cfg(feature = "ffi")]
     #[unsafe(no_mangle)]
     pub unsafe extern "C" fn signal_testing_force_bindgen_to_emit_structs(
@@ -596,4 +610,20 @@ fn TESTING_SetPushTokenFcmTests() -> GrpcTestCases<String, ()> {
 #[bridge_fn(nice = true)]
 fn TESTING_ClearPushTokenTests() -> GrpcTestCases<(), ()> {
     libsignal_net_chat::grpc::devices::test_cases::clear_push_token_test_cases().into()
+}
+
+#[bridge_fn(jni = false, node = false, nice = true)]
+fn TESTING_CopyBackupMediaTests() -> GrpcTestCases<
+    BridgeVec<BridgeCopyBackupMediaItem>,
+    BridgeVec<remote_derives::CopyBackupMediaOut>,
+> {
+    GrpcTestCases::from_generalized_test_cases(
+        libsignal_net_chat::grpc::backups::test_cases::copy_media_test_cases(),
+    )
+}
+
+#[bridge_fn(jni = false, node = false, nice = true)]
+fn TESTING_forceEmitVecOfBridgeCopyBackupMediaOut() -> BridgeVec<remote_derives::CopyBackupMediaOut>
+{
+    unreachable!()
 }

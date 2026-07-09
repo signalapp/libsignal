@@ -198,6 +198,17 @@ internal struct BridgeHandleRefConverter<Ptr: SignalMutPointer, T: NativeHandleO
     }
 }
 
+internal struct BridgeHandleConverter<Ptr: SignalMutPointer, T: NativeHandleOwner<Ptr>>: NiceReturnConverter {
+    typealias NiceReturn = T
+    typealias FfiReturn = Ptr
+    static func emptyFfiReturn() -> Ptr {
+        Ptr(untyped: nil)
+    }
+    static func convertReturn(consuming value: Ptr) throws -> T {
+        return T(owned: NonNull(value)!)
+    }
+}
+
 internal struct ByteArrayConverter<T: ByteArray>: NiceArgConverter {
     typealias NiceArg = T
     typealias FfiArg = SignalBorrowedBuffer

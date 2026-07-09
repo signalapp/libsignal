@@ -34,6 +34,7 @@ use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
 use libsignal_net_chat::grpc::devices::{DeviceIdNotFoundInAccount, LinkedDevice};
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
+use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
 use libsignal_net_chat::ws::OverWs;
 use libsignal_protocol::{CiphertextMessage, Timestamp};
 use uuid::Uuid;
@@ -45,6 +46,7 @@ bridge_handle_fns!(HttpRequest, clone = false);
 bridge_handle_fns!(UnauthenticatedChatConnection, clone = false);
 bridge_handle_fns!(AuthenticatedChatConnection, clone = false);
 bridge_handle_fns!(ProvisioningChatConnection, clone = false);
+bridge_handle_fns!(CopyBackupMediaStream, clone = false);
 
 #[bridge_fn(ffi = false)]
 fn HttpRequest_new(
@@ -614,6 +616,81 @@ async fn UnauthenticatedChatConnection_backup_delete_all(
         .await
         .backup_delete_all(&backup_auth, &mut rng)
         .await
+}
+
+#[bridge_fn(jni = false, node = false, nice = true)]
+fn UnauthenticatedChatConnection_backup_copy_media(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    items: BridgeVec<BridgeCopyBackupMediaItem>,
+    rng: RandomNumberGenerator,
+) -> CopyBackupMediaStream {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    let stream = chat.blocking_require_grpc().copy_backup_media(
+        &backup_auth,
+        items
+            .0
+            .into_iter()
+            .map(
+                |next| libsignal_net_chat::grpc::backups::CopyBackupMediaItem {
+                    source_attachment_cdn: next
+                        .source_attachment_cdn
+                        .try_into()
+                        .expect("CDN numbers are non-negative"),
+                    source_key: next.source_key,
+                    object_length: next
+                        .object_length
+                        .try_into()
+                        .expect("object lengths are non-negative"),
+                    media_id: next.media_id,
+                    encryption_key: next.encryption_key,
+                },
+            )
+            .collect(),
+        &mut rng,
+    );
+    CopyBackupMediaStream::from(BridgeBulkPolledStream::new(
+        stream,
+        BULK_POLLED_STREAM_DEFAULT_CHUNK_SIZE,
+        BULK_POLLED_STREAM_DEFAULT_DEBOUNCE_TIME,
+    ))
+}
+
+#[bridge_io(TokioAsyncContext, jni = false, node = false, nice = true)]
+async fn CopyBackupMediaStream_next(
+    stream: BridgeHandleRef<'_, CopyBackupMediaStream>,
+) -> CopyBackupMediaNextChunk {
+    match stream.next_chunk().await {
+        Ok(BulkPolledStreamChunk { chunk, termination }) => CopyBackupMediaNextChunk {
+            chunk: chunk.into(),
+            termination,
+        },
+        Err(StreamCancelled) => {
+            log::info!("CopyBackupMediaStream polled after cancellation; reporting Timeout");
+            CopyBackupMediaNextChunk {
+                chunk: Default::default(),
+                termination: Some(BulkPolledStreamTerminationReason::Error(
+                    RequestError::Timeout,
+                )),
+            }
+        }
+    }
+}
+
+#[bridge_fn(jni = false, node = false)]
+fn CopyBackupMediaStream_cancel(stream: BridgeHandleRef<'_, CopyBackupMediaStream>) {
+    stream.cancel();
+}
+
+// Used by the test APIs, but must be emitted here to avoid the check for duplicate types in the
+// metadata collector.
+#[bridge_fn(jni = false, node = false, nice = true)]
+fn CopyBackupMediaStream_forceEmitVecOfBridgeCopyBackupMediaItem()
+-> BridgeVec<BridgeCopyBackupMediaItem> {
+    unreachable!()
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]

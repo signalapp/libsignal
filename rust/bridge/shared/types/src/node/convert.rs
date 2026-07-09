@@ -495,6 +495,18 @@ impl SimpleArgTypeInfo for u64 {
     }
     register_ts_ffi_type!("bigint");
 }
+nice_identity_arg_converter!(u64);
+
+impl SimpleArgTypeInfo for i64 {
+    type ArgType = JsBigInt;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        foreign
+            .to_i64(cx)
+            .or_else(|_| cx.throw_range_error("value out of range for Rust i64"))
+    }
+    register_ts_ffi_type!("bigint");
+}
+nice_identity_arg_converter!(i64);
 
 impl SimpleArgTypeInfo for f64 {
     type ArgType = JsNumber;
@@ -1482,6 +1494,17 @@ impl<'a> ResultTypeInfo<'a> for u64 {
     }
     register_ts_ffi_type!("bigint");
 }
+nice_identity_result_converter!(u64);
+
+impl<'a> ResultTypeInfo<'a> for i64 {
+    type ResultType = JsBigInt;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        Ok(JsBigInt::from_i64(cx, self))
+    }
+    register_ts_ffi_type!("bigint");
+}
+nice_identity_result_converter!(i64);
 
 impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JsString;

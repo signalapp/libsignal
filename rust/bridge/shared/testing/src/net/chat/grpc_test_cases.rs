@@ -135,18 +135,16 @@ pub(super) fn grpc_ok_trailers() -> http::HeaderMap {
     )])
 }
 
-impl<
-    RequestInto: Into<Request>,
-    Request,
-    RequestGrpc: prost::Message,
-    ResponseGrpc: prost::Message,
-    ResponseInto: Into<Response>,
-    Response,
-> From<Vec<GrpcTestCase<RequestInto, RequestGrpc, ResponseGrpc, ResponseInto>>>
-    for GrpcTestCases<Request, Response>
-{
-    fn from(
-        value: Vec<GrpcTestCase<RequestInto, RequestGrpc, ResponseGrpc, ResponseInto>>,
+impl<Req, Resp> GrpcTestCases<Req, Resp> {
+    pub fn from_generalized_test_cases(
+        value: impl IntoIterator<
+            Item = GrpcTestCase<
+                impl Into<Req>,
+                impl prost::Message,
+                http::Response<BodyWithTrailers>,
+                impl Into<Resp>,
+            >,
+        >,
     ) -> Self {
         Self(
             value
@@ -160,27 +158,69 @@ impl<
                          response_grpc,
                          response,
                      }| {
-                        let mut response_grpc = response_grpc.encode_to_vec();
-                        let len = u32::try_from(response_grpc.len()).expect("u32 conversion");
-                        let header =
-                            super::TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength(len);
-                        response_grpc.splice(0..0, header);
-                        let full_body = BodyWithTrailers {
-                            data: response_grpc,
-                            trailers: grpc_ok_trailers(),
-                        };
+                        let (head, body) = response_grpc.into_parts();
+                        assert_eq!(
+                            head.status,
+                            http::StatusCode::OK,
+                            "custom statuses not supported"
+                        );
+                        assert!(head.headers.is_empty(), "headers not supported");
+                        assert!(head.extensions.is_empty(), "extensions not supported");
                         GrpcTestCaseBridged {
                             name,
                             method,
                             request: request.into(),
                             response: response.into(),
                             request_grpc: request_grpc.encode_to_vec(),
-                            response_grpc: GrpcTestCaseBridgedResponse(full_body),
+                            response_grpc: GrpcTestCaseBridgedResponse(body),
                         }
                     },
                 )
                 .collect(),
         )
+    }
+}
+
+impl<
+    RequestInto: Into<Request>,
+    Request,
+    RequestGrpc: prost::Message,
+    ResponseGrpc: prost::Message,
+    ResponseInto: Into<Response>,
+    Response,
+> From<Vec<GrpcTestCase<RequestInto, RequestGrpc, ResponseGrpc, ResponseInto>>>
+    for GrpcTestCases<Request, Response>
+{
+    fn from(
+        value: Vec<GrpcTestCase<RequestInto, RequestGrpc, ResponseGrpc, ResponseInto>>,
+    ) -> Self {
+        Self::from_generalized_test_cases(value.into_iter().map(
+            |GrpcTestCase {
+                 name,
+                 method,
+                 request,
+                 request_grpc,
+                 response_grpc,
+                 response,
+             }| {
+                let mut response_grpc = response_grpc.encode_to_vec();
+                let len = u32::try_from(response_grpc.len()).expect("u32 conversion");
+                let header = super::TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength(len);
+                response_grpc.splice(0..0, header);
+                let full_body = BodyWithTrailers {
+                    data: response_grpc,
+                    trailers: grpc_ok_trailers(),
+                };
+                GrpcTestCase {
+                    name,
+                    method,
+                    request,
+                    request_grpc,
+                    response_grpc: http::Response::new(full_body),
+                    response,
+                }
+            },
+        ))
     }
 }
 

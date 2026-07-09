@@ -174,18 +174,6 @@ typedef struct {
   size_t size_bytes;
 } SignalOwnedBufferOfMaxAlignedCStringPtr;
 
-/**
- * A low-level three-state enum: 0 (still going), `MAP_FAILED` (finished), or a valid pointer
- * (error).
- *
- * `MAP_FAILED` was chosen because it's an existing C pointer sentinel value, even though it won't
- * be aligned to match `SignalFfiError`. This is fine as long as we don't try to load from it
- * (which wouldn't work anyway) or convert it to a reference.
- */
-typedef struct {
-  SignalFfiError *raw;
-} SignalFfiBulkPolledStreamTerminationReason;
-
 typedef struct {
   SignalOwnedBufferOfMaxAlignedCStringPtr chunk;
   SignalFfiBulkPolledStreamTerminationReason termination;
@@ -363,6 +351,45 @@ typedef struct {
     SignalReserveUsernameHashOutFfiResultSignalSuccess_Body success;
   };
 } SignalReserveUsernameHashOutFfiResult;
+
+typedef enum {
+  SignalCopyBackupMediaOutFfiResultItem,
+  SignalCopyBackupMediaOutFfiResultInvalidDataInStream,
+  SignalCopyBackupMediaOutFfiResultCredentialRejected,
+  SignalCopyBackupMediaOutFfiResultCredentialRejectedWithoutAppropriateServerInfo,
+} SignalCopyBackupMediaOutFfiResult_Tag;
+
+typedef struct {
+  SignalBridgeCopyBackupMediaOutcomeFfiResult _0;
+} SignalCopyBackupMediaOutFfiResultSignalItem_Body;
+
+typedef struct {
+  SignalCopyBackupMediaOutFfiResult_Tag tag;
+  union {
+    SignalCopyBackupMediaOutFfiResultSignalItem_Body item;
+  };
+} SignalCopyBackupMediaOutFfiResult;
+
+/**
+ * A buffer of `length` elements of type `T`, allocated with the alignment of
+ * [`libc::max_align_t`].
+ *
+ * The number of bytes allocated is stored in `size_bytes`.
+ *
+ * `base` should be allocated via Rust's global alloc (i.e. via [`std::alloc::alloc`])
+ *
+ * # Motivation
+ * Rust's global allocator takes a size and alignment for _both_ allocation and deallocation. As a
+ * result, if we want to have a general "free this buffer" function, that function needs to be
+ * able to know the total size of the allocation and its alignment. Having a fixed (constant)
+ * alignment means we don't need to store the alignment in this struct (or have a separate free
+ * function for each type).
+ */
+typedef struct {
+  SignalCopyBackupMediaOutFfiResult *base;
+  size_t length;
+  size_t size_bytes;
+} SignalOwnedBufferOfMaxAlignedCopyBackupMediaOutFfiResult;
 
 typedef struct {
   SignalTestingFutureCancellationCounter *raw;
@@ -755,6 +782,8 @@ SignalFfiError *signal_testing_conversion_uuid_to_string(SignalCStringPtr *out, 
 
 SignalFfiError *signal_testing_convert_optional_uuid(SignalOptionalUuid *out, bool present);
 
+SignalFfiError *signal_testing_copy_backup_media_tests(SignalOwnedBufferOfGrpcTestCaseBridgedFfi *out);
+
 SignalFfiError *signal_testing_create_otp(SignalCStringPtr *out, SignalCStringPtr username, SignalBorrowedBuffer secret);
 
 SignalFfiError *signal_testing_create_otp_from_base64(SignalCStringPtr *out, SignalCStringPtr username, SignalCStringPtr secret);
@@ -820,6 +849,8 @@ SignalFfiError *signal_testing_fake_registration_session_create_session(SignalCP
 SignalFfiError *signal_testing_fingerprint_version_mismatch_error(uint32_t theirs, uint32_t ours);
 
 void signal_testing_force_bindgen_to_emit_structs(SignalGetDevicesOutFfiResult, SignalSetUsernameLinkArgsFfiResult, SignalSetUsernameLinkOutFfiResult, SignalSetDeviceNameArgsFfiResult, SignalSetDeviceNameOutFfiResult, SignalReserveUsernameHashArgsFfiResult, SignalReserveUsernameHashOutFfiResult);
+
+SignalFfiError *signal_testing_force_emit_vec_of_bridge_copy_backup_media_out(SignalOwnedBufferOfMaxAlignedCopyBackupMediaOutFfiResult *out);
 
 SignalFfiError *signal_testing_future_cancellation_counter_create(SignalMutPointerTestingFutureCancellationCounter *out, uint8_t initial_value);
 

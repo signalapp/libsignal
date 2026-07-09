@@ -265,25 +265,26 @@ fn send_request_with_streaming_response<
     Serv,
     Req: DisplayableRequest,
     RespStream: TryStream<Error = tonic::Status>,
+    F: Future<Output = tonic::Result<tonic::Response<RespStream>>> + 'static,
     T,
-    E: LogSafeDisplay,
+    E: LogSafeDisplay + 'static,
 >(
     log_tag: &'static str,
     service: Serv,
-    make_request: impl FnOnce() -> Result<Req, RequestError<E>>,
-    send_request: impl AsyncFnOnce(Serv, Req) -> tonic::Result<tonic::Response<RespStream>>,
-    mut handle_response: impl FnMut(RespStream::Ok) -> Result<T, RequestError<E>>,
-    mut handle_stream_abort: impl FnMut(&google::rpc::Status) -> Result<Infallible, RequestError<E>>,
-) -> impl Stream<Item = StreamResult<T, E>> {
-    async move {
-        let request = make_request()?;
+    make_request: impl FnOnce() -> StreamResult<Req, E>,
+    send_request: impl FnOnce(Serv, Req) -> F,
+    mut handle_response: impl FnMut(RespStream::Ok) -> StreamResult<T, E> + 'static,
+    mut handle_stream_abort: impl FnMut(&google::rpc::Status) -> StreamResult<Infallible, E> + 'static,
+) -> impl Stream<Item = StreamResult<T, E>> + 'static {
+    // Run `make_request` and `send_request` synchronously so we don't need to capture them.
+    let initial_state = make_request().map(|request| {
         let log_safe_description = Arc::new(request.log_safe_description());
 
         let request_id = rand::random::<u16>();
         log::info!("[{log_tag} {request_id:04x}] {log_safe_description}");
 
         let log_safe_description_for_errors = log_safe_description.clone();
-        let mut handle_tonic_error = move |status| {
+        let handle_tonic_error = move |status| {
             convert_error_and_log(
                 status,
                 log_tag,
@@ -299,9 +300,14 @@ fn send_request_with_streaming_response<
             )
         };
 
-        let response = send_request(service, request)
-            .await
-            .map_err(&mut handle_tonic_error)?;
+        let fut = send_request(service, request);
+        (log_safe_description, request_id, handle_tonic_error, fut)
+    });
+
+    async move {
+        let (log_safe_description, request_id, mut handle_tonic_error, fut) = initial_state?;
+
+        let response = fut.await.map_err(&mut handle_tonic_error)?;
 
         log::debug!("[{log_tag} {request_id:04x}] {log_safe_description} start of stream");
 
