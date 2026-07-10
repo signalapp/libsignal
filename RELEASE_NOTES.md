@@ -1,3 +1,2 @@
-v0.97.1
+v0.97.2
 
-- Add AuthDeviceService.removeDevice() typed API
