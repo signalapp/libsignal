@@ -8,7 +8,6 @@ use std::convert::Infallible;
 use std::future::Future;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::str::FromStr;
-use std::sync::Mutex;
 use std::time::Duration;
 
 use atomic_take::AtomicTake;
@@ -30,7 +29,6 @@ use libsignal_net::chat::{
 };
 use libsignal_net::connect_state::ConnectionResources;
 use libsignal_net::env::constants::{CHAT_PROVISIONING_PATH, CHAT_WEBSOCKET_PATH};
-use libsignal_net::env::{ConnectionConfig, Env};
 use libsignal_net::infra::route::{
     DirectOrProxyMode, DirectOrProxyModeDiscriminants, DirectOrProxyProvider, RouteProvider,
     RouteProviderExt, TcpRoute, TlsRoute, UnresolvedHttpsServiceRoute,
@@ -49,7 +47,7 @@ use libsignal_protocol::{IdentityKey, PreKeyBundle, Timestamp};
 use static_assertions::assert_impl_all;
 
 use crate::net::ConnectionManager;
-use crate::net::remote_config::{RemoteConfig, RemoteConfigKey};
+use crate::net::remote_config::RemoteConfigKey;
 use crate::support::{AsyncMutex, BridgeVec, BridgedError, LimitedLifetimeRef};
 use crate::*;
 
@@ -258,7 +256,6 @@ impl AuthenticatedChatConnection {
             connection_manager,
             enable_domain_fronting,
             enforce_minimum_tls,
-            None,
         )?
         .map_routes(|r| r.inner);
         let connection_resources = ConnectionResources {
@@ -548,7 +545,6 @@ async fn establish_chat_connection(
         connection_manager,
         enable_domain_fronting,
         enforce_minimum_tls,
-        headers.as_ref(),
     )?;
     let proxy_mode = DirectOrProxyModeDiscriminants::from(&route_provider.mode);
 
@@ -618,7 +614,6 @@ fn make_route_provider(
     connection_manager: &ConnectionManager,
     enable_domain_fronting: EnableDomainFronting,
     enforce_minimum_tls: EnforceMinimumTls,
-    chat_headers: Option<&chat::ChatHeaders>,
 ) -> Result<
     DirectOrProxyProvider<
         impl RouteProvider<
@@ -639,8 +634,7 @@ fn make_route_provider(
         .try_into()
         .map_err(|InvalidProxyConfig| ConnectError::InvalidConnectionConfiguration)?;
 
-    let chat_connect =
-        choose_chat_connection_config(env, chat_headers, &connection_manager.remote_config);
+    let chat_connect = &env.chat_domain_config.connect;
 
     let inner = chat_connect.route_provider_with_options(
         enable_domain_fronting,
@@ -651,36 +645,6 @@ fn make_route_provider(
         inner,
         mode: proxy_mode,
     })
-}
-
-fn choose_chat_connection_config<'a>(
-    env: &'a Env<'_>,
-    chat_headers: Option<&chat::ChatHeaders>,
-    remote_config: &Mutex<RemoteConfig>,
-) -> &'a ConnectionConfig {
-    // At this time, in order to try the experimental H2 configuration:
-    let default_config = &env.chat_domain_config.connect;
-
-    if !should_use_h2(chat_headers, remote_config) {
-        return default_config;
-    }
-
-    &env.experimental_chat_h2_domain_config.connect
-}
-
-fn should_use_h2(
-    chat_headers: Option<&chat::ChatHeaders>,
-    remote_config: &Mutex<RemoteConfig>,
-) -> bool {
-    // We must be opted in to H2 for this connection type.
-    let required_flag = match chat_headers {
-        Some(chat::ChatHeaders::Unauth(_)) => RemoteConfigKey::UseH2ForUnauthChat,
-        // Preconnect calls `make_route_provider(..., None)`, so `None` should follow auth behavior.
-        None | Some(chat::ChatHeaders::Auth(_)) => RemoteConfigKey::UseH2ForAuthChat,
-    };
-
-    let guard = remote_config.lock().expect("not poisoned");
-    guard.is_enabled(required_flag)
 }
 
 pub struct HttpRequest {

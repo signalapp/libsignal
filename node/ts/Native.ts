@@ -347,8 +347,6 @@ export type ArgFfiMyTestStruct = {
 /* eslint-disable comma-dangle */
 export const NetRemoteConfigKeys = [
   'chatRequestConnectionCheckTimeoutMillis',
-  'useH2ForUnauthChat',
-  'useH2ForAuthChat',
   'grpc.AccountsAnonymousLookupUsernameHash',
   'grpc.AccountsAnonymousLookupUsernameLink.2',
   'grpc.AccountsAnonymousCheckAccountExistence.2',

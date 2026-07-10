@@ -40,36 +40,15 @@ pub(crate) const CONNECTION_INVALIDATED_CLOSE_CODE: u16 = 4401;
 pub(crate) const CONNECTED_ELSEWHERE_CLOSE_CODE: u16 = 4409;
 
 const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
-    ip_v4: &[
-        ip_addr!(v4, "76.223.92.165"),
-        ip_addr!(v4, "13.248.212.111"),
-    ],
+    ip_v4: &[ip_addr!(v4, "76.223.66.180"), ip_addr!(v4, "15.197.251.99")],
     ip_v6: &[
-        ip_addr!(v6, "2600:9000:a507:ab6d:4ce3:2f58:25d7:9cbf"),
-        ip_addr!(v6, "2600:9000:a61f:527c:d5eb:a431:5239:3232"),
+        ip_addr!(v6, "2600:9000:a507:ab6d:575d:9d9f:64af:7a5a"),
+        ip_addr!(v6, "2600:9000:a61f:527c:8e4a:4b48:bbfd:c9bb"),
     ],
-    connect: ConnectionConfig {
-        service: ServiceName("chat"),
-        hostname: "chat.signal.org",
-        port: DEFAULT_HTTPS_PORT,
-        cert: SIGNAL_ROOT_CERTIFICATES,
-        min_tls_version: Some(SslVersion::TLS1_3),
-        http_version: Some(HttpVersion::Http1_1),
-        confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
-        proxy: Some(ConnectionProxyConfig {
-            path_prefix: "/service",
-            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
-        }),
-    },
-};
-
-const DOMAIN_CONFIG_EXPERIMENTAL_CHAT_H2: DomainConfig = DomainConfig {
-    ip_v4: &[],
-    ip_v6: &[],
     connect: ConnectionConfig {
         // Keeping the service names in sync makes it so we don't have to carefully track which
         // config we're using.
-        service: DOMAIN_CONFIG_CHAT.connect.service,
+        service: ServiceName("chat"),
         hostname: "grpc.chat.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
@@ -77,47 +56,34 @@ const DOMAIN_CONFIG_EXPERIMENTAL_CHAT_H2: DomainConfig = DomainConfig {
         http_version: Some(HttpVersion::Http2),
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
         // This won't use H2, but we still want it as a fallback.
-        proxy: DOMAIN_CONFIG_CHAT.connect.proxy,
+        proxy: Some(ConnectionProxyConfig {
+            path_prefix: "/service",
+            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
+        }),
     },
 };
 
 const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
     ip_v4: &[
-        ip_addr!(v4, "76.223.72.142"),
-        ip_addr!(v4, "13.248.206.115"),
+        ip_addr!(v4, "99.83.186.178"),
+        ip_addr!(v4, "166.117.39.117"),
     ],
     ip_v6: &[
-        ip_addr!(v6, "2600:9000:a507:ab6d:7b25:2580:8bd6:3b93"),
-        ip_addr!(v6, "2600:9000:a61f:527c:2215:cd9:bac6:a2f8"),
+        ip_addr!(v6, "2600:9000:a61f:527c:a456:24e3:e151:80d"),
+        ip_addr!(v6, "2600:9000:a507:ab6d:8674:deea:e137:6b31"),
     ],
     connect: ConnectionConfig {
         service: ServiceName("chat"),
-        hostname: "chat.staging.signal.org",
-        port: DEFAULT_HTTPS_PORT,
-        cert: SIGNAL_ROOT_CERTIFICATES,
-        min_tls_version: Some(SslVersion::TLS1_3),
-        http_version: Some(HttpVersion::Http1_1),
-        confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
-        proxy: Some(ConnectionProxyConfig {
-            path_prefix: "/service-staging",
-            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
-        }),
-    },
-};
-
-const DOMAIN_CONFIG_EXPERIMENTAL_CHAT_H2_STAGING: DomainConfig = DomainConfig {
-    ip_v4: &[],
-    ip_v6: &[],
-    connect: ConnectionConfig {
-        service: DOMAIN_CONFIG_CHAT_STAGING.connect.service,
         hostname: "grpc.chat.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
         http_version: Some(HttpVersion::Http2),
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
-        // This won't use H2, but we still want it as a fallback.
-        proxy: DOMAIN_CONFIG_CHAT_STAGING.connect.proxy,
+        proxy: Some(ConnectionProxyConfig {
+            path_prefix: "/service-staging",
+            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
+        }),
     },
 };
 
@@ -827,7 +793,6 @@ pub struct Env<'a> {
     pub svr2: Svr2Env<'a>,
     pub svr_b: SvrBEnv<'a>,
     pub chat_domain_config: DomainConfig,
-    pub experimental_chat_h2_domain_config: DomainConfig,
     pub chat_ws_config: crate::chat::ws::Config,
     pub keytrans_config: KeyTransConfig,
     pub reflector_providers: fn() -> &'static [ReflectorProviderConfig],
@@ -845,7 +810,6 @@ impl<'a> Env<'a> {
             cdsi,
             svr2,
             chat_domain_config,
-            experimental_chat_h2_domain_config,
             svr_b,
             chat_ws_config: _,
             keytrans_config: _,
@@ -855,7 +819,6 @@ impl<'a> Env<'a> {
         let mut result = HashMap::from_iter([
             cdsi.domain_config.static_fallback(rng.as_mut()),
             chat_domain_config.static_fallback(rng.as_mut()),
-            experimental_chat_h2_domain_config.static_fallback(rng.as_mut()),
         ]);
         let svr_endpoints = svr_b
             .current_and_previous()
@@ -871,7 +834,6 @@ impl<'a> Env<'a> {
 
 pub const STAGING: Env<'static> = Env {
     chat_domain_config: DOMAIN_CONFIG_CHAT_STAGING,
-    experimental_chat_h2_domain_config: DOMAIN_CONFIG_EXPERIMENTAL_CHAT_H2_STAGING,
     chat_ws_config: RECOMMENDED_CHAT_WS_CONFIG,
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI_STAGING,
@@ -908,7 +870,6 @@ pub const STAGING: Env<'static> = Env {
 
 pub const PROD: Env<'static> = Env {
     chat_domain_config: DOMAIN_CONFIG_CHAT,
-    experimental_chat_h2_domain_config: DOMAIN_CONFIG_EXPERIMENTAL_CHAT_H2,
     chat_ws_config: RECOMMENDED_CHAT_WS_CONFIG,
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI,
