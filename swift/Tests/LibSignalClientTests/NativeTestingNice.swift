@@ -243,6 +243,15 @@ internal struct MyTestStruct {
 
 }
 
+internal struct RemoveDeviceArgs {
+    var id: UInt8
+
+}
+
+internal enum RemoveDeviceOut {
+    case success
+}
+
 internal struct ReserveUsernameHashArgs {
     var usernames: [Data]
 
@@ -502,6 +511,37 @@ internal enum DerivedReturnConverterMyTestStruct: NiceReturnConverter {
         let my_string_field = Result { try StringConverter.convertReturn(consuming: ffiValue.my_string_field) }
 
         return MyTestStruct(myNumericField: try my_numeric_field.get(), myStringField: try my_string_field.get())
+    }
+}
+
+internal enum DerivedReturnConverterRemoveDeviceArgs: NiceReturnConverter {
+    typealias NiceReturn = RemoveDeviceArgs
+    typealias FfiReturn = SignalRemoveDeviceArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalRemoveDeviceArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let id = Result { try IdentityConverter<UInt8>.convertReturn(consuming: ffiValue.id) }
+
+        return RemoveDeviceArgs(id: try id.get())
+    }
+}
+
+internal enum DerivedReturnConverterRemoveDeviceOut: NiceReturnConverter {
+    typealias NiceReturn = RemoveDeviceOut
+    typealias FfiReturn = SignalRemoveDeviceOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalRemoveDeviceOutFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalRemoveDeviceOutFfiResultSuccess:
+            return RemoveDeviceOut.success
+        default:
+            throw SignalError.internalError("Unexpected enum tag for RemoveDeviceOut: \(ffiTag)")
+        }
     }
 }
 
@@ -1502,6 +1542,20 @@ internal enum NativeTestingNice {
             )
             return try StringConverter.convertReturn(consuming: rawOutput)
         }
+
+    }
+    internal static func TESTING_RemoveDeviceTests() throws -> [GrpcTestCase<RemoveDeviceArgs, RemoveDeviceOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterRemoveDeviceArgs, DerivedReturnConverterRemoveDeviceOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_remove_device_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterRemoveDeviceArgs, DerivedReturnConverterRemoveDeviceOut
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_ReserveUsernameHashTests() throws -> [GrpcTestCase<

@@ -112,7 +112,13 @@ import { Rng } from './RngForTesting.js';
                     {%- endif %}
             {%- endfor %}
             default:
-                ffiInput satisfies never;
+                {% if enum.variants|count == 1 -%}
+                    {#- A single-variant enum's FFI type is not a union, so ffiInput itself is
+                        never narrowed; the discriminant still is. -#}
+                    ffiInput.__type satisfies never;
+                {%- else -%}
+                    ffiInput satisfies never;
+                {%- endif %}
                 throw new Error('Unknown FFI return enum type for {{ name }}');
             }
         }

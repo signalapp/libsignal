@@ -92,6 +92,25 @@ public object NativeNice {
       }
   }
 
+  public fun AuthenticatedChatConnection_remove_device(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    deviceId: org.signal.libsignal.protocol.DeviceId,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_device_id = identity(deviceId)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_remove_device(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_device_id,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_reserve_username_hash(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

@@ -105,6 +105,37 @@ public class AuthDevicesService(
     }
 
   /**
+   * Remove a linked device from the current account.
+   *
+   * Linked devices may only remove themselves, and primary devices may remove any device other
+   * than themselves; the server rejects anything else as a programmer error.
+   *
+   * Removing a device ID that is not on the account also succeeds, so a caller retrying a removal
+   * sees the same result as the original call. This is not true idempotency, though: device IDs are
+   * small and get reused, so if a new device is linked and assigned [deviceId] between two calls,
+   * the second call removes that new device.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun removeDevice(
+    deviceId: org.signal.libsignal.protocol.DeviceId,
+  ): CompletableFuture<RequestResult<Unit, Nothing>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_remove_device(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          deviceId = deviceId,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { err -> err.toRequestResult() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
    * List the devices associated with the current account.
    */
   public fun getDevices(): CompletableFuture<RequestResult<List<LinkedDevice>, Nothing>> =

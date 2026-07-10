@@ -22,6 +22,10 @@ typedef enum {
 } SignalSetDeviceNameOutFfiResult;
 
 typedef enum {
+  SignalRemoveDeviceOutFfiResultSuccess,
+} SignalRemoveDeviceOutFfiResult;
+
+typedef enum {
   SignalMySimpleTestEnumFfiResultA,
   SignalMySimpleTestEnumFfiResultB,
 } SignalMySimpleTestEnumFfiResult;
@@ -331,6 +335,10 @@ typedef struct {
   uint8_t id;
   SignalOwnedBuffer encrypted_name;
 } SignalSetDeviceNameArgsFfiResult;
+
+typedef struct {
+  uint8_t id;
+} SignalRemoveDeviceArgsFfiResult;
 
 typedef struct {
   SignalOwnedBufferOfMaxAlignedu832 usernames;
@@ -848,7 +856,7 @@ SignalFfiError *signal_testing_fake_registration_session_create_session(SignalCP
 
 SignalFfiError *signal_testing_fingerprint_version_mismatch_error(uint32_t theirs, uint32_t ours);
 
-void signal_testing_force_bindgen_to_emit_structs(SignalGetDevicesOutFfiResult, SignalSetUsernameLinkArgsFfiResult, SignalSetUsernameLinkOutFfiResult, SignalSetDeviceNameArgsFfiResult, SignalSetDeviceNameOutFfiResult, SignalReserveUsernameHashArgsFfiResult, SignalReserveUsernameHashOutFfiResult);
+void signal_testing_force_bindgen_to_emit_structs(SignalGetDevicesOutFfiResult, SignalSetUsernameLinkArgsFfiResult, SignalSetUsernameLinkOutFfiResult, SignalSetDeviceNameArgsFfiResult, SignalSetDeviceNameOutFfiResult, SignalRemoveDeviceArgsFfiResult, SignalRemoveDeviceOutFfiResult, SignalReserveUsernameHashArgsFfiResult, SignalReserveUsernameHashOutFfiResult);
 
 SignalFfiError *signal_testing_force_emit_vec_of_bridge_copy_backup_media_out(SignalOwnedBufferOfMaxAlignedCopyBackupMediaOutFfiResult *out);
 
@@ -957,6 +965,8 @@ SignalFfiError *signal_testing_registration_service_submit_verification_error_co
 SignalFfiError *signal_testing_registration_service_update_session_error_convert(SignalCStringPtr error_description);
 
 SignalFfiError *signal_testing_registration_session_info_convert(SignalMutPointerRegistrationSession *out);
+
+SignalFfiError *signal_testing_remove_device_tests(SignalOwnedBufferOfGrpcTestCaseBridgedFfi *out);
 
 SignalFfiError *signal_testing_reserve_username_hash_tests(SignalOwnedBufferOfGrpcTestCaseBridgedFfi *out);
 

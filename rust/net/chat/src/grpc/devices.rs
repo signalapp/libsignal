@@ -9,8 +9,9 @@ use libsignal_core::{DeviceId, LogSafeDisplay};
 use libsignal_net_grpc::proto::chat::device::devices_client::DevicesClient;
 use libsignal_net_grpc::proto::chat::device::get_devices_response::LinkedDevice as GrpcLinkedDevice;
 use libsignal_net_grpc::proto::chat::device::{
-    ClearPushTokenRequest, ClearPushTokenResponse, GetDevicesRequest, SetDeviceNameRequest,
-    SetPushTokenRequest, SetPushTokenResponse, set_device_name_response, set_push_token_request,
+    ClearPushTokenRequest, ClearPushTokenResponse, GetDevicesRequest, RemoveDeviceRequest,
+    RemoveDeviceResponse, SetDeviceNameRequest, SetPushTokenRequest, SetPushTokenResponse,
+    set_device_name_response, set_push_token_request,
 };
 use libsignal_protocol::Timestamp;
 
@@ -64,6 +65,15 @@ impl std::fmt::Display for Redact<ClearPushTokenRequest> {
     }
 }
 
+impl std::fmt::Display for Redact<RemoveDeviceRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(RemoveDeviceRequest { id }) = self;
+        f.debug_struct("RemoveDeviceRequest")
+            .field("id", id)
+            .finish()
+    }
+}
+
 #[derive(Clone)]
 #[cfg_attr(test, derive(PartialEq, Eq, Debug))]
 pub struct LinkedDevice {
@@ -108,6 +118,27 @@ impl<T: GrpcServiceProvider> Auth<T> {
                 libsignal_net_grpc::proto::chat::errors::NotFound {},
             ) => Err(RequestError::Other(DeviceIdNotFoundInAccount)),
         }
+    }
+
+    /// Remove a linked device from the current account.
+    ///
+    /// Linked devices may only remove themselves, and primary devices may
+    /// remove any device other than themselves; the server rejects anything
+    /// else as a programmer error, surfaced as [`RequestError::Unexpected`].
+    ///
+    /// Removing a device ID that is not on the account also succeeds, so a
+    /// caller retrying a removal sees the same result as the original call.
+    /// This is not true idempotency, though: device IDs are small and get
+    /// reused, so if a new device is linked and assigned `id` between two
+    /// calls, the second call removes that new device.
+    pub async fn remove_device(&self, id: DeviceId) -> Result<(), RequestError<Infallible>> {
+        let mut client = DevicesClient::new(self.0.service());
+        let request = RemoveDeviceRequest { id: id.into() };
+        let desc = Redact(&request).to_string();
+        let RemoveDeviceResponse {} = log_and_send("auth", &desc, || client.remove_device(request))
+            .await?
+            .into_inner();
+        Ok(())
     }
 
     /// List the devices associated with the current account.
@@ -367,6 +398,40 @@ pub mod test_cases {
         }]
     }
 
+    pub struct RemoveDeviceArgs {
+        pub id: u8,
+    }
+    pub enum RemoveDeviceOut {
+        Success,
+    }
+    pub fn remove_device_test_cases() -> Vec<
+        GrpcTestCase<RemoveDeviceArgs, RemoveDeviceRequest, RemoveDeviceResponse, RemoveDeviceOut>,
+    > {
+        let method = "/org.signal.chat.device.Devices/RemoveDevice";
+        vec![
+            GrpcTestCase {
+                name: "success".to_string(),
+                method: method.to_string(),
+                request: RemoveDeviceArgs { id: 3 },
+                request_grpc: RemoveDeviceRequest { id: 3 },
+                response_grpc: RemoveDeviceResponse {},
+                response: RemoveDeviceOut::Success,
+            },
+            // The fake server has no account state, so this case can't check
+            // that the real server accepts an absent device ID; it only
+            // documents that it does, while re-verifying request encoding for a
+            // different device ID.
+            GrpcTestCase {
+                name: "removing an absent device also succeeds".to_string(),
+                method: method.to_string(),
+                request: RemoveDeviceArgs { id: 100 },
+                request_grpc: RemoveDeviceRequest { id: 100 },
+                response_grpc: RemoveDeviceResponse {},
+                response: RemoveDeviceOut::Success,
+            },
+        ]
+    }
+
     pub struct SetDeviceNameArgs {
         pub id: u8,
         pub encrypted_name: Vec<u8>,
@@ -472,6 +537,21 @@ mod test {
             set_push_token_fcm_test_cases(),
             |chat: Auth<_>, fcm_token: String| async move { chat.set_push_token_fcm(fcm_token).await },
             |(), result| assert_matches!(result, Ok(())),
+        );
+    }
+
+    #[test]
+    fn test_remove_device() {
+        use test_cases::*;
+        run_tests(
+            remove_device_test_cases(),
+            |chat: Auth<_>, RemoveDeviceArgs { id }| async move {
+                chat.remove_device(DeviceId::new(id).expect("valid device id"))
+                    .await
+            },
+            |resp, result| match resp {
+                RemoveDeviceOut::Success => assert_matches!(result, Ok(())),
+            },
         );
     }
 

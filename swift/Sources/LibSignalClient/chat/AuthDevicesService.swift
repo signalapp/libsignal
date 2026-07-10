@@ -51,6 +51,21 @@ public protocol AuthDevicesService: Sendable {
     /// - Throws:
     ///   - the standard Signal network errors
     func getDevices() async throws -> [LinkedDevice]
+    /// Remove a linked device from the current account.
+    ///
+    /// Linked devices may only remove themselves, and primary devices may
+    /// remove any device other than themselves; the server rejects anything
+    /// else as a programmer error.
+    ///
+    /// Removing a device ID that is not on the account also succeeds, so a
+    /// caller retrying a removal sees the same result as the original call.
+    /// This is not true idempotency, though: device IDs are small and get
+    /// reused, so if a new device is linked and assigned ``deviceId`` between
+    /// two calls, the second call removes that new device.
+    ///
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func removeDevice(deviceId: DeviceId) async throws
     /// Set the name of the given device ID to the provided encrypted name.
     ///
     /// - Parameters:
@@ -84,6 +99,14 @@ extension AuthenticatedChatConnection: AuthDevicesService {
             asyncContext: self.tokioAsyncContext,
             chat: self,
         ).map { LinkedDevice.fromInternal($0) }
+    }
+
+    public func removeDevice(deviceId: DeviceId) async throws {
+        return try await NativeNice.AuthenticatedChatConnection_remove_device(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            deviceId: deviceId
+        )
     }
 
     public func setDeviceName(deviceId: DeviceId, encryptedDeviceName: Data) async throws {

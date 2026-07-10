@@ -524,6 +524,17 @@ mod remote_derives {
     }
 
     #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::devices::test_cases::RemoveDeviceArgs)]
+    pub(super) struct RemoveDeviceArgs {
+        id: u8,
+    }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::devices::test_cases::RemoveDeviceOut)]
+    pub(super) enum RemoveDeviceOut {
+        Success,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
     #[structural_from(libsignal_net_chat::grpc::usernames::test_cases::ReserveUsernameHashArgs)]
     pub(super) struct ReserveUsernameHashArgs {
         usernames: BridgeVec<[u8; 32]>,
@@ -571,6 +582,8 @@ mod remote_derives {
         _: SetUsernameLinkOutFfiResult,
         _: SetDeviceNameArgsFfiResult,
         _: SetDeviceNameOutFfiResult,
+        _: RemoveDeviceArgsFfiResult,
+        _: RemoveDeviceOutFfiResult,
         _: ReserveUsernameHashArgsFfiResult,
         _: ReserveUsernameHashOutFfiResult,
     ) {
@@ -581,6 +594,12 @@ mod remote_derives {
 fn TESTING_SetDeviceNameTests()
 -> GrpcTestCases<remote_derives::SetDeviceNameArgs, remote_derives::SetDeviceNameOut> {
     libsignal_net_chat::grpc::devices::test_cases::set_device_name_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_RemoveDeviceTests()
+-> GrpcTestCases<remote_derives::RemoveDeviceArgs, remote_derives::RemoveDeviceOut> {
+    libsignal_net_chat::grpc::devices::test_cases::remove_device_test_cases().into()
 }
 
 #[bridge_fn(nice = true)]

@@ -228,6 +228,14 @@ export type ReturnFfiMyTestStruct = {
   my_string_field: string;
 };
 
+export type ReturnFfiRemoveDeviceArgs = {
+  id: number;
+};
+
+export type ReturnFfiRemoveDeviceOut = {
+  __type: 0;
+};
+
 export type ReturnFfiReserveUsernameHashArgs = {
   usernames: Array<Uint8Array<ArrayBuffer>>;
 };
@@ -439,6 +447,11 @@ type NativeFunctions = {
   AuthenticatedChatConnection_preconnect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     connection_manager: Wrapper<ConnectionManager>
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_remove_device: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    device_id: number
   ) => CancellablePromise<void>;
   AuthenticatedChatConnection_reserve_username_hash: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -2435,6 +2448,9 @@ type NativeFunctions = {
     error_description: string
   ) => void;
   TESTING_RegistrationSessionInfoConvert: () => RegistrationSession;
+  TESTING_RemoveDeviceTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiRemoveDeviceArgs, ReturnFfiRemoveDeviceOut>
+  >;
   TESTING_ReserveUsernameHashTests: () => Array<
     GrpcTestCaseFfi<
       ReturnFfiReserveUsernameHashArgs,
@@ -2841,6 +2857,7 @@ const {
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
   AuthenticatedChatConnection_preconnect,
+  AuthenticatedChatConnection_remove_device,
   AuthenticatedChatConnection_reserve_username_hash,
   AuthenticatedChatConnection_send,
   AuthenticatedChatConnection_send_message,
@@ -3399,6 +3416,7 @@ const {
   TESTING_RegistrationService_SubmitVerificationErrorConvert,
   TESTING_RegistrationService_UpdateSessionErrorConvert,
   TESTING_RegistrationSessionInfoConvert,
+  TESTING_RemoveDeviceTests,
   TESTING_ReserveUsernameHashTests,
   TESTING_ReturnIoError,
   TESTING_ReturnPair,
@@ -3539,6 +3557,7 @@ export {
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
   AuthenticatedChatConnection_preconnect,
+  AuthenticatedChatConnection_remove_device,
   AuthenticatedChatConnection_reserve_username_hash,
   AuthenticatedChatConnection_send,
   AuthenticatedChatConnection_send_message,
@@ -4097,6 +4116,7 @@ export {
   TESTING_RegistrationService_SubmitVerificationErrorConvert,
   TESTING_RegistrationService_UpdateSessionErrorConvert,
   TESTING_RegistrationSessionInfoConvert,
+  TESTING_RemoveDeviceTests,
   TESTING_ReserveUsernameHashTests,
   TESTING_ReturnIoError,
   TESTING_ReturnPair,

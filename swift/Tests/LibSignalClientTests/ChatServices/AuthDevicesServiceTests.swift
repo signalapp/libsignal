@@ -48,6 +48,21 @@ class AuthDevicesServiceTests: AuthChatServiceTestBase<any AuthDevicesService> {
         )
     }
 
+    func testRemoveDevice() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_RemoveDeviceTests(),
+            invoke: { api, args in
+                try await api.removeDevice(deviceId: DeviceId(validating: args.id)!)
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success:
+                    try actual.get()
+                }
+            }
+        )
+    }
+
     func testGetDevices() async throws {
         try await testGrpcCases(
             try NativeTestingNice.TESTING_GetDevicesTests(),

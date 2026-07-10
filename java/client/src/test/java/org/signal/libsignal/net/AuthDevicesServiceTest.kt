@@ -6,6 +6,7 @@
 package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.NativeTestingNice
+import org.signal.libsignal.internal.RemoveDeviceOut
 import org.signal.libsignal.internal.SetDeviceNameOut
 import org.signal.libsignal.net.assertNonSuccess
 import kotlin.test.Test
@@ -43,6 +44,22 @@ class AuthDevicesServiceTest {
       },
       check = { _, actual ->
         assertIs<RequestResult.Success<Unit>>(actual)
+      },
+    )
+  }
+
+  @Test
+  fun testRemoveDevice() {
+    GrpcTestCase.runTests(
+      NativeTestingNice.TESTING_RemoveDeviceTests(),
+      ::AuthDevicesService,
+      invoke = { chat, req ->
+        chat.removeDevice(deviceId = req.id)
+      },
+      check = { expected, actual ->
+        when (expected) {
+          RemoveDeviceOut.Success -> assertIs<RequestResult.Success<Unit>>(actual)
+        }
       },
     )
   }

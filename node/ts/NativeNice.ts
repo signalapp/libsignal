@@ -23,6 +23,8 @@ import {
   type ReturnFfiMyTestEnum,
   type ReturnFfiMyTestPoint,
   type ReturnFfiMyTestStruct,
+  type ReturnFfiRemoveDeviceArgs,
+  type ReturnFfiRemoveDeviceOut,
   type ReturnFfiReserveUsernameHashArgs,
   type ReturnFfiReserveUsernameHashOut,
   type ReturnFfiSetDeviceNameArgs,
@@ -106,6 +108,12 @@ export type MyTestStruct = {
   myNumericField: number;
   myStringField: string;
 };
+
+export type RemoveDeviceArgs = {
+  id: number;
+};
+
+export type RemoveDeviceOut = 'success';
 
 export type ReserveUsernameHashArgs = {
   usernames: Array<Uint8Array<ArrayBuffer>>;
@@ -254,6 +262,27 @@ function returnConverterMyTestStruct(
     myNumericField: identity(ffiInput.my_numeric_field),
     myStringField: identity(ffiInput.my_string_field),
   };
+}
+
+function returnConverterRemoveDeviceArgs(
+  ffiInput: Native.ReturnFfiRemoveDeviceArgs
+): RemoveDeviceArgs {
+  return {
+    id: identity(ffiInput.id),
+  };
+}
+
+function returnConverterRemoveDeviceOut(
+  ffiInput: Native.ReturnFfiRemoveDeviceOut
+): RemoveDeviceOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'success';
+
+    default:
+      ffiInput.__type satisfies never;
+      throw new Error('Unknown FFI return enum type for RemoveDeviceOut');
+  }
 }
 
 function returnConverterReserveUsernameHashArgs(
@@ -498,6 +527,28 @@ export async function AuthenticatedChatConnection_get_devices({
       Native.AuthenticatedChatConnection_get_devices(
         asyncContext,
         identity(chat)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_remove_device({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  deviceId: device_id,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  deviceId: DeviceId;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_remove_device(
+        asyncContext,
+        identity(chat),
+        identity(device_id)
       )
     )
   );
@@ -821,6 +872,15 @@ export function TESTING_MyTestStruct_to_string({
   return identity(
     Native.TESTING_MyTestStruct_to_string(argConverterMyTestStruct(x))
   );
+}
+
+export function TESTING_RemoveDeviceTests(): Array<
+  GrpcTestCase<RemoveDeviceArgs, RemoveDeviceOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterRemoveDeviceArgs,
+    returnConverterRemoveDeviceOut
+  )(Native.TESTING_RemoveDeviceTests());
 }
 
 export function TESTING_ReserveUsernameHashTests(): Array<

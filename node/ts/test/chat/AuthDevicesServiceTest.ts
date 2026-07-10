@@ -49,6 +49,27 @@ describe('AuthDevicesService', () => {
     );
   });
 
+  describe('removeDevice', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_RemoveDeviceTests(),
+      connectAuth<AuthDevicesService>,
+      async (
+        chat: AuthDevicesService,
+        { id }: NativeNice.RemoveDeviceArgs,
+        resp: NativeNice.RemoveDeviceOut
+      ) => {
+        const out = chat.removeDevice({ deviceId: id });
+        switch (resp) {
+          case 'success':
+            await out;
+            break;
+          default:
+            resp satisfies never;
+        }
+      }
+    );
+  });
+
   describe('getDevices', () => {
     defineTestGrpcCases(
       NativeNice.TESTING_GetDevicesTests(),

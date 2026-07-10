@@ -476,6 +476,30 @@ internal enum NativeNice {
         >.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_remove_device(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        deviceId device_id: DeviceId,
+    ) async throws {
+        let rawOutput: VoidConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        DeviceIdConverter.convertArgBorrowed(device_id) { device_idFfi in
+                            SignalFfi.signal_authenticated_chat_connection_remove_device(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                                device_idFfi,
+                            )
+                        }
+                    }
+            }
+        return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_reserve_username_hash(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,

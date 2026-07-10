@@ -218,6 +218,8 @@ internal object Native {
   @JvmStatic
   public external fun AuthenticatedChatConnection_preconnect(asyncRuntime: ObjectHandle, connectionManager: ObjectHandle): CompletableFuture<Void?>
   @JvmStatic
+  public external fun AuthenticatedChatConnection_remove_device(asyncRuntime: ObjectHandle, chat: SimpleOwner, deviceId: Int): CompletableFuture<Void?>
+  @JvmStatic
   public external fun AuthenticatedChatConnection_reserve_username_hash(asyncRuntime: ObjectHandle, chat: SimpleOwner, usernameHashes: Array<*>): CompletableFuture<ByteArray>
   @JvmStatic
   public external fun AuthenticatedChatConnection_send(asyncRuntime: ObjectHandle, chat: ObjectHandle, httpRequest: ObjectHandle, timeoutMillis: Int): CompletableFuture<Object>

@@ -706,6 +706,14 @@ async fn AuthenticatedChatConnection_set_device_name(
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_remove_device(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    device_id: DeviceId,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc().await.remove_device(device_id).await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn AuthenticatedChatConnection_reserve_username_hash(
     chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
     username_hashes: BridgeVec<[u8; 32]>,

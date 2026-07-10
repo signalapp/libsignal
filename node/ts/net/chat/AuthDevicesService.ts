@@ -54,6 +54,27 @@ export interface AuthDevicesService {
     options?: RequestOptions
   ) => Promise<void>;
   /**
+   * Remove a linked device from the current account.
+   *
+   * Linked devices may only remove themselves, and primary devices may remove
+   * any device other than themselves; the server rejects anything else as a
+   * programmer error.
+   *
+   * Removing a device ID that is not on the account also succeeds, so a caller
+   * retrying a removal sees the same result as the original call. This is not
+   * true idempotency, though: device IDs are small and get reused, so if a new
+   * device is linked and assigned `deviceId` between two calls, the second call
+   * removes that new device.
+   *
+   * @throws {StandardNetworkError}
+   */
+  removeDevice: (
+    request: {
+      deviceId: number;
+    },
+    options?: RequestOptions
+  ) => Promise<void>;
+  /**
    * List the devices associated with the current account.
    *
    * @throws {StandardNetworkError}
@@ -86,6 +107,22 @@ AuthenticatedChatConnection.prototype.setDeviceName = async function (
     chat: this.chatService,
     deviceId,
     encryptedName,
+  });
+};
+
+AuthenticatedChatConnection.prototype.removeDevice = async function (
+  {
+    deviceId,
+  }: {
+    deviceId: number;
+  },
+  options?: RequestOptions
+): Promise<void> {
+  return await NativeNice.AuthenticatedChatConnection_remove_device({
+    asyncContext: this.asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this.chatService,
+    deviceId,
   });
 };
 

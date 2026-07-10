@@ -354,6 +354,30 @@ public data class MyTestStruct(
 
 internal fun MyTestStruct.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
 
+public data class RemoveDeviceArgs(
+  val id: Int,
+) {
+  public companion object {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(id: Any?): RemoveDeviceArgs =
+      RemoveDeviceArgs(
+        id =
+          identity(id as Int),
+      )
+  }
+}
+
+public sealed class RemoveDeviceOut {
+  public data object Success : RemoveDeviceOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): Success = Success
+  }
+}
+
 public data class ReserveUsernameHashArgs(
   val usernames: List<ByteArray>,
 ) {
@@ -634,6 +658,16 @@ public object NativeTestingNice {
       )
 
     return identity(ffiOut)
+  }
+
+  public fun TESTING_RemoveDeviceTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.RemoveDeviceArgs, org.signal.libsignal.internal.RemoveDeviceOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_RemoveDeviceTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.RemoveDeviceArgs, org.signal.libsignal.internal.RemoveDeviceOut>({
+        downcastFromObject<org.signal.libsignal.internal.RemoveDeviceArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.RemoveDeviceOut>(it) })(ffiOut)
   }
 
   public fun TESTING_ReserveUsernameHashTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.ReserveUsernameHashArgs, org.signal.libsignal.internal.ReserveUsernameHashOut>> {
