@@ -43,6 +43,12 @@ allprojects {
 
     apply plugin: "org.jetbrains.dokka"
     apply plugin: "org.jetbrains.dokka-javadoc"
+
+    dokka {
+        dokkaPublications.html {
+            failOnWarning.set(System.getProperty("org.gradle.warning.mode") == "fail")
+        }
+    }
 }
 
 task makeJniLibrariesDesktop(type:Exec) {
