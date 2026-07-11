@@ -73,7 +73,7 @@ import org.signal.libsignal.messagebackup.BackupKey
  * ```
  *
  * @see [BackupKey]
- * @see [MessageBackupKey][org.signal.libsignal.messagebackup.MessageBackupKey]
+ * @see [org.signal.libsignal.messagebackup.MessageBackupKey]
  * @see [BackupForwardSecrecyToken]
  */
 public class SvrB internal constructor(
