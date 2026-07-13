@@ -530,6 +530,24 @@ public object NativeTestingNice {
     }, { identity(it) })(ffiOut)
   }
 
+  public fun TESTING_DeleteUsernameHashTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, Void?>> {
+    val ffiOut =
+      NativeTesting.TESTING_DeleteUsernameHashTests()
+
+    return org.signal.libsignal.net.GrpcTestCase.resultConverter<Void?, Void?, Void?, Void?>({
+      identity(it)
+    }, { identity(it) })(ffiOut)
+  }
+
+  public fun TESTING_DeleteUsernameLinkTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, Void?>> {
+    val ffiOut =
+      NativeTesting.TESTING_DeleteUsernameLinkTests()
+
+    return org.signal.libsignal.net.GrpcTestCase.resultConverter<Void?, Void?, Void?, Void?>({
+      identity(it)
+    }, { identity(it) })(ffiOut)
+  }
+
   public fun TESTING_GetDevicesTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.GetDevicesOut>> {
     val ffiOut =
       NativeTesting.TESTING_GetDevicesTests()

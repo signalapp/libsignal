@@ -422,6 +422,14 @@ type NativeFunctions = {
     receive_stories: boolean,
     languages: Array<string>
   ) => CancellablePromise<AuthenticatedChatConnection>;
+  AuthenticatedChatConnection_delete_username_hash: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_delete_username_link: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<void>;
   AuthenticatedChatConnection_disconnect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -2203,6 +2211,8 @@ type NativeFunctions = {
     secret: Uint8Array<ArrayBuffer>
   ) => string;
   TESTING_CreateOTPFromBase64: (username: string, secret: string) => string;
+  TESTING_DeleteUsernameHashTests: () => Array<GrpcTestCaseFfi<void, void>>;
+  TESTING_DeleteUsernameLinkTests: () => Array<GrpcTestCaseFfi<void, void>>;
   TESTING_EnableDeterministicRngForTesting: () => void;
   TESTING_ErrorOnBorrowAsync: (_input: null) => Promise<void>;
   TESTING_ErrorOnBorrowIo: (
@@ -2849,6 +2859,8 @@ const {
   AuthCredentialWithPni_CheckValidContents,
   AuthenticatedChatConnection_clear_push_token,
   AuthenticatedChatConnection_connect,
+  AuthenticatedChatConnection_delete_username_hash,
+  AuthenticatedChatConnection_delete_username_link,
   AuthenticatedChatConnection_disconnect,
   AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_upload_form,
@@ -3329,6 +3341,8 @@ const {
   TESTING_ConvertOptionalUuid,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
+  TESTING_DeleteUsernameHashTests,
+  TESTING_DeleteUsernameLinkTests,
   TESTING_EnableDeterministicRngForTesting,
   TESTING_ErrorOnBorrowAsync,
   TESTING_ErrorOnBorrowIo,
@@ -3549,6 +3563,8 @@ export {
   AuthCredentialWithPni_CheckValidContents,
   AuthenticatedChatConnection_clear_push_token,
   AuthenticatedChatConnection_connect,
+  AuthenticatedChatConnection_delete_username_hash,
+  AuthenticatedChatConnection_delete_username_link,
   AuthenticatedChatConnection_disconnect,
   AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_upload_form,
@@ -4029,6 +4045,8 @@ export {
   TESTING_ConvertOptionalUuid,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
+  TESTING_DeleteUsernameHashTests,
+  TESTING_DeleteUsernameLinkTests,
   TESTING_EnableDeterministicRngForTesting,
   TESTING_ErrorOnBorrowAsync,
   TESTING_ErrorOnBorrowIo,

@@ -1143,6 +1143,12 @@ SignalFfiError* signal_testing_create_otp_from_base64(
   const int8_t* username,
   const int8_t* secret
 );
+SignalFfiError* signal_testing_delete_username_hash_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_delete_username_link_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
 SignalFfiError* signal_testing_enable_deterministic_rng_for_testing(void);
 SignalFfiError* signal_testing_error_on_borrow_async(
   const void* _input

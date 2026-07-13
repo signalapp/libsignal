@@ -598,6 +598,14 @@ fn TESTING_SetUsernameLinkTests()
     libsignal_net_chat::grpc::usernames::test_cases::set_username_link_test_cases().into()
 }
 #[bridge_fn(nice = true)]
+fn TESTING_DeleteUsernameHashTests() -> GrpcTestCases<(), ()> {
+    libsignal_net_chat::grpc::usernames::test_cases::delete_username_hash_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_DeleteUsernameLinkTests() -> GrpcTestCases<(), ()> {
+    libsignal_net_chat::grpc::usernames::test_cases::delete_username_link_test_cases().into()
+}
+#[bridge_fn(nice = true)]
 fn TESTING_GetDevicesTests() -> GrpcTestCases<(), remote_derives::GetDevicesOut> {
     libsignal_net_chat::grpc::devices::test_cases::get_devices_test_cases().into()
 }

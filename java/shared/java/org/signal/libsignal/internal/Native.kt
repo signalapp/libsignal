@@ -208,6 +208,10 @@ internal object Native {
   @JvmStatic
   public external fun AuthenticatedChatConnection_connect(asyncRuntime: ObjectHandle, connectionManager: ObjectHandle, username: String, password: String, receiveStories: Boolean, languages: Array<Object>): CompletableFuture<ObjectHandle>
   @JvmStatic
+  public external fun AuthenticatedChatConnection_delete_username_hash(asyncRuntime: ObjectHandle, chat: SimpleOwner): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_delete_username_link(asyncRuntime: ObjectHandle, chat: SimpleOwner): CompletableFuture<Void?>
+  @JvmStatic
   public external fun AuthenticatedChatConnection_disconnect(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Void?>
   @JvmStatic
   public external fun AuthenticatedChatConnection_get_devices(asyncRuntime: ObjectHandle, chat: SimpleOwner): CompletableFuture<Array<*>>

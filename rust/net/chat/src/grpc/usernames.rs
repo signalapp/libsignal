@@ -50,6 +50,20 @@ impl std::fmt::Display for Redact<SetUsernameLinkRequest> {
     }
 }
 
+impl std::fmt::Display for Redact<DeleteUsernameHashRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(DeleteUsernameHashRequest {}) = self;
+        f.debug_struct("DeleteUsernameHashRequest").finish()
+    }
+}
+
+impl std::fmt::Display for Redact<DeleteUsernameLinkRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(DeleteUsernameLinkRequest {}) = self;
+        f.debug_struct("DeleteUsernameLinkRequest").finish()
+    }
+}
+
 pub type UsernameLinkHandle = Uuid;
 
 impl<T: GrpcServiceProvider> Auth<T> {
@@ -118,6 +132,38 @@ impl<T: GrpcServiceProvider> Auth<T> {
                 Err(RequestError::Other(UsernameNotSet))
             }
         }
+    }
+
+    /// Clears the current username hash, ciphertext, and link for the authenticated account.
+    ///
+    /// This also succeeds if the account has no username set, so a caller retrying a deletion
+    /// sees the same result as the original call.
+    pub async fn delete_username_hash(&self) -> Result<(), RequestError<Infallible>> {
+        let mut client = AccountsClient::new(self.0.service());
+        let request = DeleteUsernameHashRequest {};
+        let desc = Redact(&request).to_string();
+        let DeleteUsernameHashResponse {} =
+            log_and_send("auth", &desc, || client.delete_username_hash(request))
+                .await?
+                .into_inner();
+        Ok(())
+    }
+
+    /// Clears any username link associated with the authenticated account.
+    ///
+    /// The previously stored encrypted username is deleted and the link handle is deactivated;
+    /// the account's username hash (if any) is left in place. This also succeeds if the account
+    /// has no username link, so a caller retrying a deletion sees the same result as the
+    /// original call.
+    pub async fn delete_username_link(&self) -> Result<(), RequestError<Infallible>> {
+        let mut client = AccountsClient::new(self.0.service());
+        let request = DeleteUsernameLinkRequest {};
+        let desc = Redact(&request).to_string();
+        let DeleteUsernameLinkResponse {} =
+            log_and_send("auth", &desc, || client.delete_username_link(request))
+                .await?
+                .into_inner();
+        Ok(())
     }
 }
 
@@ -357,6 +403,46 @@ pub mod test_cases {
             },
         ]
     }
+    pub type DeleteUsernameHashArgs = ();
+    pub type DeleteUsernameHashOut = ();
+    pub fn delete_username_hash_test_cases() -> Vec<
+        GrpcTestCase<
+            DeleteUsernameHashArgs,
+            DeleteUsernameHashRequest,
+            DeleteUsernameHashResponse,
+            DeleteUsernameHashOut,
+        >,
+    > {
+        let method = "/org.signal.chat.account.Accounts/DeleteUsernameHash";
+        vec![GrpcTestCase {
+            name: "success".to_string(),
+            method: method.to_string(),
+            request: (),
+            request_grpc: DeleteUsernameHashRequest {},
+            response_grpc: DeleteUsernameHashResponse {},
+            response: (),
+        }]
+    }
+    pub type DeleteUsernameLinkArgs = ();
+    pub type DeleteUsernameLinkOut = ();
+    pub fn delete_username_link_test_cases() -> Vec<
+        GrpcTestCase<
+            DeleteUsernameLinkArgs,
+            DeleteUsernameLinkRequest,
+            DeleteUsernameLinkResponse,
+            DeleteUsernameLinkOut,
+        >,
+    > {
+        let method = "/org.signal.chat.account.Accounts/DeleteUsernameLink";
+        vec![GrpcTestCase {
+            name: "success".to_string(),
+            method: method.to_string(),
+            request: (),
+            request_grpc: DeleteUsernameLinkRequest {},
+            response_grpc: DeleteUsernameLinkResponse {},
+            response: (),
+        }]
+    }
 }
 
 #[cfg(test)]
@@ -514,6 +600,26 @@ mod test {
                     assert_matches!(result, Err(RequestError::Other(UsernameNotSet)))
                 }
             },
+        );
+    }
+
+    #[test]
+    fn test_delete_username_hash() {
+        use test_cases::*;
+        run_tests(
+            delete_username_hash_test_cases(),
+            |chat: Auth<_>, ()| async move { chat.delete_username_hash().await },
+            |(), result| assert_matches!(result, Ok(())),
+        );
+    }
+
+    #[test]
+    fn test_delete_username_link() {
+        use test_cases::*;
+        run_tests(
+            delete_username_link_test_cases(),
+            |chat: Auth<_>, ()| async move { chat.delete_username_link().await },
+            |(), result| assert_matches!(result, Ok(())),
         );
     }
 }

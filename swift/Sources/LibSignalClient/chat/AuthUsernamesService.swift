@@ -32,6 +32,26 @@ public protocol AuthUsernamesService: Sendable {
     ///   - ``SignalError/usernameNotAvailable(_:)`` if none of the usernames were available
     ///   - the standard Signal network errors
     func reserveUsernameHashes(_ hashes: [UsernameHash]) async throws -> UsernameHash
+
+    /// Clears the current username hash, ciphertext, and link for the authenticated account.
+    ///
+    /// This also succeeds if the account has no username set, so a caller retrying a deletion
+    /// sees the same result as the original call.
+    ///
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func deleteUsernameHash() async throws
+
+    /// Clears any username link associated with the authenticated account.
+    ///
+    /// The previously stored encrypted username is deleted and the link handle is deactivated;
+    /// the account's username hash (if any) is left in place. This also succeeds if the account
+    /// has no username link, so a caller retrying a deletion sees the same result as the
+    /// original call.
+    ///
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func deleteUsernameLink() async throws
 }
 
 extension AuthenticatedChatConnection: AuthUsernamesService {
@@ -50,6 +70,20 @@ extension AuthenticatedChatConnection: AuthUsernamesService {
             asyncContext: self.tokioAsyncContext,
             chat: self,
             usernameHashes: hashes
+        )
+    }
+
+    public func deleteUsernameHash() async throws {
+        return try await NativeNice.AuthenticatedChatConnection_delete_username_hash(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+        )
+    }
+
+    public func deleteUsernameLink() async throws {
+        return try await NativeNice.AuthenticatedChatConnection_delete_username_link(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
         )
     }
 }

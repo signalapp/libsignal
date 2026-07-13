@@ -511,6 +511,44 @@ export async function AuthenticatedChatConnection_clear_push_token({
     )
   );
 }
+export async function AuthenticatedChatConnection_delete_username_hash({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_delete_username_hash(
+        asyncContext,
+        identity(chat)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_delete_username_link({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_delete_username_link(
+        asyncContext,
+        identity(chat)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_get_devices({
   asyncContext,
   abortSignal,
@@ -633,6 +671,24 @@ export function TESTING_ClearPushTokenTests(): Array<GrpcTestCase<void, void>> {
     identity,
     identity
   )(Native.TESTING_ClearPushTokenTests());
+}
+
+export function TESTING_DeleteUsernameHashTests(): Array<
+  GrpcTestCase<void, void>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    identity
+  )(Native.TESTING_DeleteUsernameHashTests());
+}
+
+export function TESTING_DeleteUsernameLinkTests(): Array<
+  GrpcTestCase<void, void>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    identity
+  )(Native.TESTING_DeleteUsernameLinkTests());
 }
 
 export function TESTING_GetDevicesTests(): Array<

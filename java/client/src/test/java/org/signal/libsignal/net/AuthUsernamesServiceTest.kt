@@ -68,4 +68,36 @@ class AuthUsernamesServiceTest {
         },
       )
     }
+
+  @Test
+  fun testDeleteUsernameHash() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_DeleteUsernameHashTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthUsernamesService,
+        invoke = { chat, _ ->
+          chat.deleteUsernameHash()
+        },
+        check = { _, actual ->
+          assertIs<RequestResult.Success<Unit>>(actual)
+        },
+      )
+    }
+
+  @Test
+  fun testDeleteUsernameLink() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_DeleteUsernameLinkTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthUsernamesService,
+        invoke = { chat, _ ->
+          chat.deleteUsernameLink()
+        },
+        check = { _, actual ->
+          assertIs<RequestResult.Success<Unit>>(actual)
+        },
+      )
+    }
 }

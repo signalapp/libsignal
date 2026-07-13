@@ -114,6 +114,10 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_CreateOTPFromBase64(username: String, secret: String): String
   @JvmStatic
+  public external fun TESTING_DeleteUsernameHashTests(): Array<Object>
+  @JvmStatic
+  public external fun TESTING_DeleteUsernameLinkTests(): Array<Object>
+  @JvmStatic
   public external fun TESTING_EnableDeterministicRngForTesting(): Unit
   @JvmStatic
   public external fun TESTING_ErrorOnBorrowAsync(input: Object): Unit

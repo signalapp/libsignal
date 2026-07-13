@@ -55,6 +55,30 @@ class AuthUsernamesServiceTests: AuthChatServiceTestBase<any AuthUsernamesServic
             }
         )
     }
+
+    func testDeleteUsernameHash() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_DeleteUsernameHashTests(),
+            invoke: { api, _ in
+                try await api.deleteUsernameHash()
+            },
+            check: { _, actual in
+                try actual.get()
+            }
+        )
+    }
+
+    func testDeleteUsernameLink() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_DeleteUsernameLinkTests(),
+            invoke: { api, _ in
+                try await api.deleteUsernameLink()
+            },
+            check: { _, actual in
+                try actual.get()
+            }
+        )
+    }
 }
 
 #endif

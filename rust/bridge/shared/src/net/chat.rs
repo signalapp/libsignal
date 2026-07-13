@@ -873,6 +873,20 @@ async fn AuthenticatedChatConnection_set_username_link(
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_delete_username_hash(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc().await.delete_username_hash().await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_delete_username_link(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc().await.delete_username_link().await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn AuthenticatedChatConnection_get_devices(
     chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
 ) -> Result<BridgeVec<LinkedDevice>, RequestError<Infallible>> {

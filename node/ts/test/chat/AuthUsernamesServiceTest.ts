@@ -68,4 +68,24 @@ describe('AuthUsernamesService', () => {
       }
     );
   });
+
+  describe('deleteUsernameHash', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_DeleteUsernameHashTests(),
+      connectAuth<AuthUsernamesService>,
+      async (chat: AuthUsernamesService) => {
+        await chat.deleteUsernameHash();
+      }
+    );
+  });
+
+  describe('deleteUsernameLink', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_DeleteUsernameLinkTests(),
+      connectAuth<AuthUsernamesService>,
+      async (chat: AuthUsernamesService) => {
+        await chat.deleteUsernameLink();
+      }
+    );
+  });
 });
