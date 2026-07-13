@@ -11,10 +11,8 @@
 import argparse
 import hashlib
 import os
-import ssl
+import subprocess
 import sys
-import urllib.request
-from typing import BinaryIO
 
 UNVERIFIED_DOWNLOAD_NAME = 'unverified.tmp'
 
@@ -34,7 +32,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def download_if_needed(archive_file: str, url: str, checksum: str) -> BinaryIO:
+def download_if_needed(archive_file: str, url: str, checksum: str) -> None:
     try:
         fr = open(archive_file, 'rb')
         digest = hashlib.sha256()
@@ -43,34 +41,39 @@ def download_if_needed(archive_file: str, url: str, checksum: str) -> BinaryIO:
             digest.update(chunk)
             chunk = fr.read1()
         if digest.hexdigest() == checksum.lower():
-            return fr
+            return
         print("existing file '{}' has non-matching checksum {}; re-downloading...".format(archive_file, digest.hexdigest()), file=sys.stderr)
     except FileNotFoundError:
         pass
 
     print('downloading {}...'.format(archive_file), file=sys.stderr)
     try:
-        with urllib.request.urlopen(url) as response:
-            digest = hashlib.sha256()
-            fw = open(UNVERIFIED_DOWNLOAD_NAME, 'w+b')
-            chunk = response.read1()
-            while chunk:
-                digest.update(chunk)
-                fw.write(chunk)
-                chunk = response.read1()
-            assert digest.hexdigest() == checksum.lower(), 'expected {}, actual {}'.format(checksum.lower(), digest.hexdigest())
-            os.replace(UNVERIFIED_DOWNLOAD_NAME, archive_file)
-            return fw
-    except (urllib.error.HTTPError, urllib.error.URLError) as e:
-        if isinstance(e.reason, ssl.SSLCertVerificationError):
-            # See:
-            #
-            # - https://stackoverflow.com/questions/27835619/urllib-and-ssl-certificate-verify-failed-error
-            # - https://stackoverflow.com/a/77491061
-            print('Failed to verify SSL certificate. Do you need to `pip install pip-system-certs`?', file=sys.stderr)
-        else:
-            print(e, e.filename, file=sys.stderr)
+        subprocess.run(
+            [
+                'curl',
+                '--fail',
+                '--location',
+                '--show-error',
+                '--silent',
+                '--retry', '3',
+                '--output', UNVERIFIED_DOWNLOAD_NAME,
+                url,
+            ],
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        print('curl failed to download {} (exit {})'.format(url, e.returncode), file=sys.stderr)
         sys.exit(1)
+
+    digest = hashlib.sha256()
+    with open(UNVERIFIED_DOWNLOAD_NAME, 'rb') as fw:
+        chunk = fw.read1()
+        while chunk:
+            digest.update(chunk)
+            chunk = fw.read1()
+    assert digest.hexdigest() == checksum.lower(), 'expected {}, actual {}'.format(checksum.lower(), digest.hexdigest())
+
+    os.replace(UNVERIFIED_DOWNLOAD_NAME, archive_file)
 
 
 def main() -> None:
