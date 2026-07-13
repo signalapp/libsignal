@@ -30,6 +30,7 @@ type DestroyConnectChatBridge = extern "C" fn(ctx: *mut c_void);
 /// A ref-counting pointer to a [`ConnectionManager`] and a callback to
 /// decrement the count.
 #[repr(C)]
+#[derive(IsCType)]
 pub struct FfiConnectChatBridgeStruct {
     ctx: *mut c_void,
     get_connection_manager: GetConnectChatConnectionManager,

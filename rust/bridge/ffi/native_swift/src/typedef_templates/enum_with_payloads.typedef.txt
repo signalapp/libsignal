@@ -1,0 +1,24 @@
+typedef enum {
+  {% for (variant, struct) in variants %}
+    {{ type_name }}{{ variant }},
+  {% endfor %}
+} {{ type_name }}_Tag;
+{% for (variant, struct) in variants -%}
+  {% if struct.fields|count > 0 %}
+    typedef struct {
+      {% for (field, ty) in struct.fields %}
+        {{ ty }} {{ field }};
+      {% endfor %}
+    } {{ type_name }}Signal{{ variant }}_Body;
+  {% endif %}
+{%- endfor %}
+typedef struct {
+  {{ type_name }}_Tag tag;
+  union {
+    {% for (variant, struct) in variants -%}
+      {% if struct.fields|count > 0 %}
+        {{ type_name }}Signal{{ variant }}_Body {{ variant|to_snake_case }};
+      {% endif %}
+    {%- endfor %}
+  };
+} {{ type_name }};

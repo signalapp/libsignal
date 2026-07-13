@@ -11,6 +11,7 @@ use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
+use libsignal_bridge_macros::IsCType;
 use libsignal_core::LogSafeDisplay;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::ws::WebSocketConnectError;
@@ -30,8 +31,9 @@ use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 use super::{FutureCancelled, NullPointerError, UnexpectedPanic};
 use crate::support::{IllegalArgumentError, WithContext, describe_panic};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, IsCType)]
 #[repr(C)]
+#[capi(must_export, export_name = "ErrorCode")]
 pub enum SignalErrorCode {
     #[allow(dead_code)]
     UnknownError = 1,
@@ -243,7 +245,8 @@ impl SimpleError {
 /// returning it to C, but unfortunately that isn't stable yet.
 ///
 /// [ThinBox]: https://doc.rust-lang.org/std/boxed/struct.ThinBox.html
-#[derive(Debug)]
+#[derive(Debug, IsCType)]
+#[capi(opaque, export_name = "FfiError")]
 pub struct SignalFfiError(std::panic::AssertUnwindSafe<Box<dyn FfiError + Send>>);
 
 impl SignalFfiError {

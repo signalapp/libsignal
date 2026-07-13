@@ -120,8 +120,8 @@ extension SignalCPromisePairOfCStringPtrCStringPtr: PromiseStruct {
     typealias Result = SignalPairOfCStringPtrCStringPtr
 }
 
-extension SignalCPromiseu832: PromiseStruct {
-    typealias Result = FixedByteArrayHelper32.Ffi
+extension SignalCPromisec_uchar32: PromiseStruct {
+    typealias Result = SignalType_FixedArray32_uint8_t
 }
 
 extension SignalCPromiseOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult: PromiseStruct {

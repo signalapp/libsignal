@@ -6,6 +6,7 @@
 use std::future::Future;
 
 use futures_util::{FutureExt, TryFutureExt};
+use libsignal_bridge_macros::c_export;
 
 use super::*;
 use crate::support::{AsyncRuntime, ResultReporter};
@@ -13,6 +14,7 @@ use crate::support::{AsyncRuntime, ResultReporter};
 #[derive(Debug)]
 pub struct FutureCancelled;
 
+#[c_export(export_name = "CancellationId")]
 pub type RawCancellationId = u64;
 
 /// A C callback used to report the results of Rust futures.
@@ -24,6 +26,8 @@ pub type RawCancellationId = u64;
 /// completed once.
 #[derive_where(Clone, Copy)]
 #[repr(C)]
+#[derive(IsCType)]
+#[capi(export_name_override = c_promise_export_name_override)]
 pub struct CPromise<T> {
     complete: extern "C" fn(
         error: *mut SignalFfiError,
@@ -32,6 +36,17 @@ pub struct CPromise<T> {
     ),
     context: *const std::ffi::c_void,
     cancellation_id: RawCancellationId,
+}
+#[cfg(feature = "metadata")]
+fn c_promise_export_name_override(
+    [t]: [std::sync::Arc<crate::metadata::ffi::capi::CType>; 1],
+) -> Option<String> {
+    use crate::metadata::ffi::capi::RustType;
+    if t.rust_type == RustType::of::<*const std::ffi::c_void>() {
+        Some("CPromiseRawPointer".to_string())
+    } else {
+        None
+    }
 }
 
 /// Keeps track of the information necessary to report a promise result back to C.

@@ -30,10 +30,10 @@ enum
     }
 }
 
-enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfu832_FixedByteArrayConverterFixedByteArrayHelper32:
+enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfc_uchar32_FixedByteArrayConverterFixedByteArrayHelper32:
     FfiBorrowedSliceConstructor
 {
-    typealias BorrowedSlice = SignalFfi.SignalBorrowedSliceOfu832
+    typealias BorrowedSlice = SignalFfi.SignalBorrowedSliceOfc_uchar32
     typealias Element = FixedByteArrayConverter<FixedByteArrayHelper32>.FfiArg
     static func construct(
         _ buffer: UnsafeBufferPointer<Element>,
@@ -513,7 +513,7 @@ internal enum NativeNice {
                     .convertArgBorrowed(chat) { chatFfi in
                         ArrayArgConverter<
                             FixedByteArrayConverter<FixedByteArrayHelper32>,
-                            FfiBorrowedSliceConstructor_SignalBorrowedSliceOfu832_FixedByteArrayConverterFixedByteArrayHelper32
+                            FfiBorrowedSliceConstructor_SignalBorrowedSliceOfc_uchar32_FixedByteArrayConverterFixedByteArrayHelper32
                         >.convertArgBorrowed(username_hashes) { username_hashesFfi in
                             SignalFfi.signal_authenticated_chat_connection_reserve_username_hash(
                                 promiseFfi,

@@ -8,6 +8,7 @@ pub mod storage;
 // Will be unused when building for Node only.
 #[allow(unused_imports)]
 use futures_util::FutureExt;
+use libsignal_bridge_macros::IsCType;
 use libsignal_protocol::*;
 use static_assertions::const_assert_eq;
 
@@ -50,8 +51,9 @@ bridge_as_handle!(KyberSecretKey);
 
 pub use libsignal_protocol::Timestamp;
 
-#[derive(Debug)]
+#[derive(Debug, IsCType)]
 #[repr(C)]
+#[capi(must_export, export_name = "ContentHint")]
 pub enum FfiContentHint {
     Default = 0,
     Resendable = 1,
@@ -71,8 +73,9 @@ const_assert_eq!(
     ContentHint::Implicit.to_u32()
 );
 
-#[derive(Debug)]
+#[derive(Debug, IsCType)]
 #[repr(C)]
+#[capi(must_export, export_name = "CiphertextMessageType")]
 pub enum FfiCiphertextMessageType {
     Whisper = 2,
     PreKey = 3,

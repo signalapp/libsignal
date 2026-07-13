@@ -14,7 +14,7 @@ use anyhow::Context;
 use clap::Parser;
 use heck::ToLowerCamelCase;
 use libsignal_bridge_types::jni::{JNI_ITEMS, KtMetadataContext};
-use libsignal_bridge_types::metadata::remove_all_checked;
+use libsignal_bridge_types::metadata::{preserve_underscores, remove_all_checked};
 use minijinja::context;
 
 #[derive(Parser)]
@@ -36,16 +36,6 @@ struct RemoveOnDrop {
 impl std::ops::Drop for RemoveOnDrop {
     fn drop(&mut self) {
         let _ = std::fs::remove_file(&self.path);
-    }
-}
-
-fn preserve_underscores(
-    inner: impl Fn(&str) -> String + 'static,
-) -> impl Fn(String) -> String + 'static {
-    move |x| {
-        let x_sans_underscore = x.trim_start_matches('_');
-        let core = inner(x_sans_underscore);
-        format!("{}{core}", &x[0..(x.len() - x_sans_underscore.len())])
     }
 }
 

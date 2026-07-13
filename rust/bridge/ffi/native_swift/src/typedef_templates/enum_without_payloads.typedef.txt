@@ -1,0 +1,16 @@
+{% set body %}
+  {%- for (name, value) in variants -%}
+    {{ type_name }}{{ name }}{% if print_values %} = {{ value }}{% endif %},
+  {% endfor -%}
+{% endset %}
+
+{%- if repr_ty %}
+  enum {{ type_name }} {
+    {{ body }}
+  };
+  typedef {{ repr_ty }} {{ type_name }};
+{% else %}
+  typedef enum {
+    {{ body }}
+  } {{ type_name }};
+{% endif %}

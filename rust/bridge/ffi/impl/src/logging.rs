@@ -4,9 +4,10 @@
 //
 
 use libsignal_bridge::{ffi, ffi_result_type};
-use libsignal_bridge_macros::bridge_callbacks;
+use libsignal_bridge_macros::{IsCType, bridge_callbacks, c_export};
 
 #[repr(C)]
+#[derive(IsCType)]
 pub enum LogLevel {
     Error = 1,
     Warn,
@@ -91,6 +92,7 @@ impl log::Log for FfiLoggerStruct {
 }
 
 #[unsafe(no_mangle)]
+#[c_export]
 pub unsafe extern "C" fn signal_init_logger(max_level: LogLevel, logger: FfiLoggerStruct) -> bool {
     match log::set_logger(Box::leak(Box::new(logger))) {
         Ok(_) => {

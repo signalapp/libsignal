@@ -115,7 +115,7 @@ macro_rules! nice_identity_result_converter {
 /// Implementers should also see the `ffi_arg_type` macro in `convert.rs`.
 pub trait ArgTypeInfo<'storage>: Sized {
     /// The FFI form of the argument (e.g. `std::ffi::c_uchar`).
-    type ArgType;
+    type ArgType: IsCType;
     /// Local storage for the argument (ideally borrowed rather than copied).
     type StoredType: 'storage;
     /// "Borrows" the data in `foreign`, usually to establish a local lifetime or owning type.
@@ -149,7 +149,7 @@ pub trait ArgTypeInfo<'storage>: Sized {
 /// However, some types do need the full flexibility of `ArgTypeInfo`.
 pub trait SimpleArgTypeInfo: Sized {
     /// The FFI form of the argument (e.g. `std::ffi::c_uchar`).
-    type ArgType;
+    type ArgType: IsCType;
     /// Converts the data in `foreign` to the Rust type.
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self>;
 }
@@ -174,7 +174,7 @@ where
 /// allows borrowing from the foreign value and a callback result can't do that.
 pub trait CallbackResultTypeInfo: Sized {
     /// The FFI form of the argument (e.g. `std::ffi::c_uchar`).
-    type ResultType;
+    type ResultType: IsCType;
     /// Converts the data in `foreign` to the Rust type.
     fn convert_from_callback(foreign: Self::ResultType) -> SignalFfiResult<Self>;
 }
@@ -215,7 +215,7 @@ impl CallbackResultTypeInfo for () {
 /// Implementers should also see the `ffi_result_type` macro in `convert.rs`.
 pub trait ResultTypeInfo: Sized {
     /// The FFI form of the result (e.g. `std::ffi::c_uchar`).
-    type ResultType;
+    type ResultType: IsCType;
     /// Converts the data in `self` to the FFI type, similar to `try_into()`.
     fn convert_into(self) -> SignalFfiResult<Self::ResultType>;
 }
@@ -359,7 +359,8 @@ impl<'a, T: ArgTypeInfo<'a>> ArgTypeInfo<'a> for BridgeVec<T> {
 impl<T: NiceArgConverter + ArgTypeInfo<'static>> NiceArgConverter for BridgeVec<T> {
     fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
         let t = T::register_swift_arg_converter(ctx);
-        let borrowed_slice = cbindgen_mangle::<BorrowedSliceOf<T::ArgType>>();
+        let borrowed_slice = <BorrowedSliceOf<T::ArgType> as IsCType>::register_c_type(ctx);
+        let borrowed_slice = &borrowed_slice.type_name;
         let borrowed_slice_cons = format!(
             "FfiBorrowedSliceConstructor_{borrowed_slice}_{}",
             t.converter_type
@@ -443,7 +444,8 @@ impl<T: ResultTypeInfo> ResultTypeInfo for BridgeVec<T> {
 impl<T: NiceResultConverter + ResultTypeInfo> NiceResultConverter for BridgeVec<T> {
     fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
         let t = T::register_swift_result_converter(ctx);
-        let mangled = cbindgen_mangle::<OwnedBufferOfMaxAligned<T::ResultType>>();
+        let mangled = <OwnedBufferOfMaxAligned<T::ResultType> as IsCType>::register_c_type(ctx);
+        let mangled = &mangled.type_name;
         let proj = format!(
             "FfiOwnedBufferOfMaxAlignedProject_{mangled}_{}",
             t.converter_type
@@ -1099,6 +1101,7 @@ impl<T> NiceResultConverter for Option<crate::support::BridgedError<T>> {
 /// be aligned to match `SignalFfiError`. This is fine as long as we don't try to load from it
 /// (which wouldn't work anyway) or convert it to a reference.
 #[repr(C)]
+#[derive(IsCType)]
 pub struct FfiBulkPolledStreamTerminationReason {
     raw: *mut SignalFfiError,
 }
@@ -1417,7 +1420,7 @@ impl ResultTypeInfo for libsignal_net_chat::api::registration::RegisterResponseB
 ///
 /// When we do this, we hand the lifetime over to the app. Since we don't know how long the object
 /// will be kept alive, it can't (safely) have references to anything with a non-static lifetime.
-pub trait BridgeHandle: 'static {}
+pub trait BridgeHandle: IsCType + 'static {}
 
 impl<T: BridgeHandle> SimpleArgTypeInfo for &T {
     type ArgType = ConstPointer<T>;
@@ -1524,7 +1527,7 @@ impl<T: BridgeHandle> ResultTypeInfo for Option<T> {
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 impl<T> SimpleArgTypeInfo for Serialized<T>
 where
-    T: FixedLengthBincodeSerializable
+    T: FixedLengthBincodeSerializable<Array: IsCType>
         + for<'a> serde::Deserialize<'a>
         + partial_default::PartialDefault,
 {
@@ -1561,7 +1564,7 @@ where
 
 impl<T> ResultTypeInfo for Serialized<T>
 where
-    T: FixedLengthBincodeSerializable + serde::Serialize,
+    T: FixedLengthBincodeSerializable<Array: IsCType> + serde::Serialize,
 {
     type ResultType = T::Array;
 
@@ -1807,6 +1810,7 @@ macro_rules! ffi_bridge_handle_clone {
                 stringify!($ffi_name),
                 "_clone",
             ))]
+            #[$crate::ffi::capi::c_export]
             pub unsafe extern "C" fn [<__bridge_handle_ffi_ $ffi_name _clone>](
                 new_obj: *mut ffi::MutPointer<$typ>,
                 obj: ffi::ConstPointer<$typ>,
@@ -1826,6 +1830,27 @@ macro_rules! ffi_bridge_as_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
     ( $typ:ty as $ffi_name:ident $(, swift_type = $swift_type:expr)? ) => {
         impl $crate::ffi::BridgeHandle for $typ {}
+        /// # Safety
+        /// `LAYOUT` is `None`, so `Self` is treated as opaque.
+        unsafe impl $crate::ffi::capi::IsCType for $typ {
+            const LAYOUT: Option<$crate::ffi::capi::CTypeMemoryLayoutTyped<Self>> = None;
+            #[cfg(feature = "metadata")]
+            fn register_c_type_inner(
+                _ctx: &mut $crate::metadata::ffi::SwiftMetadataContext
+            ) -> $crate::metadata::ffi::capi::CType {
+                use $crate::metadata::ffi::capi::*;
+                let type_name = format!("Signal{}", stringify!($typ));
+                CType {
+                    rust_type: RustType::of::<Self>(),
+                    dependencies: Default::default(),
+                    type_name: type_name.clone(),
+                    ptr_type_name: None,
+                    mangling_component: stringify!($typ).to_string(),
+                    utility_typedefs: format!("typedef struct {type_name} {type_name};").into(),
+                    layout: None,
+                }
+            }
+        }
         // Unfortunately this conflicts with the blanket impl for the trait if done generically.
         impl $crate::ffi::CallbackResultTypeInfo for $typ {
             type ResultType = $crate::ffi::MutPointer<$typ>;

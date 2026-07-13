@@ -163,6 +163,7 @@ pub(crate) struct Impl {
     pub(crate) generics: Generics,
     pub(crate) extra_where: IndexSet<WherePredicate>,
     pub(crate) extra_params: Vec<GenericParam>,
+    pub(crate) unsafe_: Option<Token![unsafe]>,
 }
 
 impl ToTokens for Impl {
@@ -179,7 +180,8 @@ impl ToTokens for Impl {
             .trait_name
             .as_ref()
             .map(|trait_name| quote!(#trait_name for));
-        tokens.append_all(quote!(impl #impl_ #trait_name #target #item_generics #where_));
+        let unsafe_ = &self.unsafe_;
+        tokens.append_all(quote!(#unsafe_ impl #impl_ #trait_name #target #item_generics #where_));
     }
 }
 
@@ -194,7 +196,11 @@ impl Impl {
             generics: value.generics.clone(),
             extra_where: IndexSet::new(),
             extra_params: Vec::new(),
+            unsafe_: None,
         }
+    }
+    pub(crate) fn mark_unsafe(&mut self) {
+        self.unsafe_ = Some(parse_quote!(unsafe));
     }
 }
 
@@ -234,7 +240,7 @@ pub(crate) fn nice_struct_metadata(
 /// What are fields named?
 ///
 /// For tuple structs, fields are named like: `_0`, `_1`, ...
-fn get_field_names(fields: &Fields) -> Vec<Ident> {
+pub fn get_field_names(fields: &Fields) -> Vec<Ident> {
     fields
         .iter()
         .enumerate()

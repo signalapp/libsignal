@@ -8,6 +8,7 @@ use std::future::Future;
 use std::panic::UnwindSafe;
 
 use futures_util::TryFutureExt as _;
+use libsignal_bridge_macros::c_export;
 use libsignal_net_chat::api::registration::{
     CreateSession, CreateSessionError, ForServiceIds, NewMessageNotification,
     ProvidedAccountAttributes, PushToken, RegisterAccountResponse, RegistrationSession,
@@ -51,6 +52,7 @@ pub struct AccountAttributes {
 // jni::jni_arg and friends) aren't ambiguous.
 pub type RegistrationCreateSessionRequest = CreateSession;
 pub type RegistrationPushToken = PushToken;
+#[c_export]
 pub type RegistrationAccountAttributes = AccountAttributes;
 
 // Alias the type exposed across the bridge since the macros don't support

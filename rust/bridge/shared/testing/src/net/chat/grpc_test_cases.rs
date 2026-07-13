@@ -14,6 +14,7 @@ use crate::*;
 
 #[cfg(feature = "ffi")]
 mod grpc_ffi_testing {
+    use libsignal_bridge_macros::{IsCType, c_export};
     #[cfg(feature = "metadata")]
     use libsignal_bridge_types::ffi::NiceResultConverter;
     use libsignal_bridge_types::ffi::{OwnedBufferOf, ResultTypeInfo, SignalFfiResult};
@@ -21,6 +22,7 @@ mod grpc_ffi_testing {
     use super::*;
 
     #[repr(C)]
+    #[derive(IsCType)]
     pub struct FfiErasedForTesting {
         // The argument should be the pointer to the contents directly.
         // This will be a _shallow_ destroy, because the Box<T> should already be over an FFI-ed
@@ -45,6 +47,7 @@ mod grpc_ffi_testing {
         }
     }
     #[repr(C)]
+    #[derive(IsCType)]
     pub struct GrpcTestCaseBridgedFfi {
         name: *const std::ffi::c_char,
         method: *const std::ffi::c_char,
@@ -56,7 +59,8 @@ mod grpc_ffi_testing {
 
     /// Just free the outer buffer
     #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn signal_free_testing_grpc_test_case_bridged_vec(
+    #[c_export]
+    pub unsafe extern "C" fn signal_free_testing_grpc_test_cases_bridged_vec(
         buffer: OwnedBufferOf<GrpcTestCaseBridgedFfi>,
     ) {
         std::mem::drop(unsafe { buffer.into_box() });

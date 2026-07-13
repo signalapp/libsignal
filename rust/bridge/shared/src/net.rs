@@ -6,12 +6,12 @@
 use std::num::NonZeroU16;
 
 use libsignal_bridge_macros::bridge_fn;
+pub use libsignal_bridge_types::net::chat::ChatConnectionInfo;
 pub use libsignal_bridge_types::net::remote_config::RemoteConfigKey;
 pub use libsignal_bridge_types::net::{
     BuildVariant, ConnectionManager, Environment, TokioAsyncContext,
 };
 use libsignal_core::LogSafeDisplay;
-use libsignal_net::chat::ConnectionInfo;
 use libsignal_net::connect_state::infer_proxy_mode_for_config;
 use libsignal_net::infra::route::ConnectionProxyConfig;
 
@@ -26,7 +26,7 @@ mod svr2;
 mod svrb;
 mod tokio;
 
-bridge_handle_fns!(ConnectionInfo, clone = false, jni = false);
+bridge_handle_fns!(ChatConnectionInfo, clone = false, jni = false);
 
 bridge_handle_fns!(ConnectionProxyConfig);
 

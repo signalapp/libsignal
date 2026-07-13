@@ -1,0 +1,47 @@
+#
+# Copyright (C) 2020-2021 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "libsignal-ffi-impl"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition = "2024"
+
+[lints]
+workspace = true
+
+[features]
+signal-media = ["libsignal-bridge/signal-media"]
+
+# Here for bridge_fn uniformity
+ffi = []
+default = ["ffi"]
+metadata = [
+    "libsignal-bridge/metadata",
+    "libsignal-bridge-testing/metadata",
+    "libsignal-bridge-types/metadata",
+]
+
+[dependencies]
+libsignal-bridge = { workspace = true, features = ["ffi"] }
+libsignal-bridge-macros = { workspace = true }
+libsignal-bridge-testing = { workspace = true, features = ["ffi"], optional = true }
+libsignal-bridge-types = { workspace = true, features = ["ffi"] }
+libsignal-core = { workspace = true }
+libsignal-net = { workspace = true }
+libsignal-net-chat = { workspace = true }
+libsignal-protocol = { workspace = true }
+signal-media = { workspace = true }
+
+hex = { workspace = true }
+log = { workspace = true }
+log-panics = { workspace = true, features = ["with-backtrace"] }
+paste = { workspace = true }
+uuid = { workspace = true }
+zerocopy = { workspace = true }
+
+[target.aarch64-apple-ios.dependencies]
+cpufeatures = "0.2.6" # Make sure iOS gets optimized crypto.

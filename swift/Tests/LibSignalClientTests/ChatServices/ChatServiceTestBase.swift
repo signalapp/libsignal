@@ -231,7 +231,7 @@ internal enum GrpcTestCaseVecConverter<
 
     static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
         // Since this is just used in testing, we won't worry about leaking memory on error.
-        defer { signal_free_testing_grpc_test_case_bridged_vec(value) }
+        defer { signal_free_testing_grpc_test_cases_bridged_vec(value) }
         return try UnsafeBufferPointer<SignalGrpcTestCaseBridgedFfi>(start: value.base, count: value.length).map {
             it in
             GrpcTestCase(

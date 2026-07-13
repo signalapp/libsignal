@@ -670,6 +670,88 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
     })
 }
 
+/// Derive the `IsCType` trait for structs and enums
+///
+/// # Options
+/// ## `opaque`
+/// Export the type as opaque in the C header. It can only be used via pointer.
+/// ### Example
+/// ```ignore
+/// #[derive(IsCType)]
+/// #[capi(opaque)]
+/// #[repr(C)]
+/// pub struct Foo {
+///     x: i32,
+/// }
+/// ```
+///
+/// ## `must_export`
+/// Normally structs are only included in the header files if they're used in a function.
+/// `must_export` requires that the type is always emitted.
+///
+/// ## `export_name`
+/// Specify the name the type should be exported as
+/// ### Example
+/// ```ignore
+/// #[derive(IsCType)]
+/// #[capi(export_name = "Baz")]
+/// #[repr(C)]
+/// // Exported as SignalBaz
+/// pub struct Foo {
+///     x: i32,
+/// }
+/// ```
+///
+/// ## `export_name_override`
+/// Specify a function to provide the export name of the type. The function should take an array
+/// which specifies the `Arc<CType>` of the generic arguments. If it returns `None`, use the
+/// standard export name.
+/// ### Example
+/// ```ignore
+/// #[derive(IsCType)]
+/// #[capi(export_name_override = foo_name)]
+/// #[repr(C)]
+/// pub struct Foo<X, Y> {
+///     x: X,
+///     y: Y,
+/// }
+/// #[cfg(feature = "metadata")]
+/// fn foo_name([x, y]: [Arc<CType>, Arc<CType>]) -> Option<String> {
+///     if x.rust_type == RustType::of::<String>() {
+///         Some("Baz".to_string())
+///     } else {
+///         None
+///     }
+/// }
+/// ```
+#[proc_macro_derive(IsCType, attributes(capi))]
+pub fn derive_is_c_type(item: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(item as DeriveInput);
+    match ffi::capi::derive_is_c_type(&item) {
+        Ok(x) => x.into(),
+        Err(e) => e.into_compile_error().into(),
+    }
+}
+
+/// Export a type alias or a function to the C header.
+///
+/// # Attributes
+/// ## `export_name`
+/// Specify the export name of the type alias.
+/// ### Example
+/// ```ignore
+/// #[c_export]
+/// #[capi(export_name = "MyTypeAlias")]
+/// type Foo = i32;
+/// ```
+#[proc_macro_attribute]
+pub fn c_export(attr: TokenStream, item: TokenStream) -> TokenStream {
+    match ffi::capi::c_export(&attr.into(), &item.into()) {
+        Ok(x) => x.into(),
+        Err(e) => e.into_compile_error().into(),
+    }
+}
+
 #[proc_macro_derive(BridgedAsValue, attributes(bridge))]
 pub fn derive_bridged_as_value(item: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(item as DeriveInput);

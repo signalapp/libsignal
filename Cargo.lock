@@ -2690,10 +2690,20 @@ name = "libsignal-ffi"
 version = "0.97.3"
 dependencies = [
  "cpufeatures 0.2.17",
+ "libsignal-ffi-impl",
+ "log",
+]
+
+[[package]]
+name = "libsignal-ffi-impl"
+version = "0.97.3"
+dependencies = [
+ "cpufeatures 0.2.17",
  "hex",
  "libsignal-bridge",
  "libsignal-bridge-macros",
  "libsignal-bridge-testing",
+ "libsignal-bridge-types",
  "libsignal-core",
  "libsignal-net",
  "libsignal-net-chat",
@@ -2713,9 +2723,11 @@ dependencies = [
  "anyhow",
  "clap",
  "heck",
+ "itertools 0.15.0",
  "libsignal-bridge",
  "libsignal-bridge-testing",
  "libsignal-bridge-types",
+ "libsignal-ffi-impl",
  "minijinja",
  "serde_json",
 ]

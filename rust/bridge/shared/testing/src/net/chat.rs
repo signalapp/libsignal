@@ -573,21 +573,6 @@ mod remote_derives {
         CredentialRejected,
         CredentialRejectedWithoutAppropriateServerInfo,
     }
-
-    #[cfg(feature = "ffi")]
-    #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn signal_testing_force_bindgen_to_emit_structs(
-        _: GetDevicesOutFfiResult,
-        _: SetUsernameLinkArgsFfiResult,
-        _: SetUsernameLinkOutFfiResult,
-        _: SetDeviceNameArgsFfiResult,
-        _: SetDeviceNameOutFfiResult,
-        _: RemoveDeviceArgsFfiResult,
-        _: RemoveDeviceOutFfiResult,
-        _: ReserveUsernameHashArgsFfiResult,
-        _: ReserveUsernameHashOutFfiResult,
-    ) {
-    }
 }
 
 #[bridge_fn(nice = true)]

@@ -16,6 +16,8 @@ use crate::util::{
 };
 use crate::{BridgingKind, ResultInfo, ResultKind};
 
+pub(crate) mod capi;
+
 pub(crate) fn bridge_fn(
     name: &str,
     sig: &Signature,
@@ -74,9 +76,12 @@ pub(crate) fn bridge_fn(
         },
     );
 
+    let krate = crates::libsignal_bridge_types();
+
     Ok(quote! {
         #[cfg(feature = "ffi")]
         #[unsafe(export_name = concat!(env!("LIBSIGNAL_BRIDGE_FN_PREFIX_FFI"), #name))]
+        #[#krate::ffi::capi::c_export]
         pub unsafe extern "C" fn #wrapper_name(
             #implicit_args
             #(#input_args),*
@@ -233,13 +238,16 @@ pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait, name: &str) -> Result<To
     let callback_fields = callbacks.iter().map(|c| &c.field);
     let callback_impls = callbacks.iter().map(|c| &c.implementation);
     let callback_forwarding_impls = callbacks.iter().map(|c| &c.forwarding_impl);
+    let krate = crates::libsignal_bridge_types();
 
     Ok(quote! {
         // Aliases for the callback functions.
         #[cfg(feature = "ffi")]
+        #[#krate::ffi::capi::c_export]
         pub type #destroy_name = extern "C" fn(ctx: *mut std::ffi::c_void);
         #(
             #[cfg(feature = "ffi")]
+            #[#krate::ffi::capi::c_export]
             pub #callback_aliases;
         )*
 
@@ -248,7 +256,7 @@ pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait, name: &str) -> Result<To
         // This could be Copy as well, all C structs are Copy,
         // but leaving it out makes it clearer how manual ownership is being transferred.
         #[cfg(feature = "ffi")]
-        #[derive(Clone)]
+        #[derive(Clone, #krate::ffi::capi::IsCType)]
         #[repr(C)]
         pub struct #struct_name {
             ctx: *mut std::ffi::c_void,
@@ -538,6 +546,7 @@ fn derive_bridged_as_value_arg(
             ) -> #krate::metadata::ffi::SwiftArgConverter {
                 #register_swift_nice_type
                 #register_swift_arg_converter
+                <#arg_ty as #krate::ffi::capi::IsCType>::register_c_type(ctx);
                 #krate::metadata::ffi::SwiftArgConverter {
                     nice_type: stringify!(#ident).to_string(),
                     converter_type:
@@ -618,6 +627,7 @@ fn derive_bridged_as_value_return(
             ) -> #krate::metadata::ffi::SwiftReturnConverter {
                 #register_swift_nice_type
                 #register_swift_result_converter
+                <#result_ty as #krate::ffi::capi::IsCType>::register_c_type(ctx);
                 #krate::metadata::ffi::SwiftReturnConverter {
                     nice_type: stringify!(#ident).to_string(),
                     converter_type:
@@ -647,6 +657,7 @@ fn ffi_struct(
             quote! {
                 #[cfg(feature = "ffi")]
                 #[allow(unused)]
+                #[derive(#krate::ffi::capi::IsCType)]
                 #[repr(C)]
                 pub struct #name {
                     #(#(#field_names: #krate::#macro_name!(#field_types),)*)*
@@ -668,6 +679,7 @@ fn ffi_struct(
                 quote! {
                     #[cfg(feature = "ffi")]
                     #[allow(unused)]
+                    #[derive(#krate::ffi::capi::IsCType)]
                     #[repr(C)]
                     pub enum #name {
                         #(#variant_names #variant_bodies,)*
