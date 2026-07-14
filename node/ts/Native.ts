@@ -344,7 +344,6 @@ export type ArgFfiMyTestStruct = {
   my_string_field: string;
 };
 
-/* eslint-disable comma-dangle */
 export const NetRemoteConfigKeys = [
   'chatRequestConnectionCheckTimeoutMillis',
   'grpc.AccountsAnonymousLookupUsernameHash',
