@@ -870,7 +870,7 @@ impl IntoFfiError for libsignal_net_chat::api::DisconnectedError {
         let code = match self {
             Self::ConnectedElsewhere => SignalErrorCode::ConnectedElsewhere,
             Self::ConnectionInvalidated => SignalErrorCode::ConnectionInvalidated,
-            Self::Transport { .. } => SignalErrorCode::NetworkProtocol,
+            Self::Transport { .. } => SignalErrorCode::IoError,
             Self::Closed => SignalErrorCode::ChatServiceInactive,
         };
         SimpleError::new(code, self.to_string())
