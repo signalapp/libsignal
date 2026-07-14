@@ -167,7 +167,7 @@ impl<T: GrpcServiceProvider> crate::api::messages::UnauthenticatedChatApi<OverGr
                 };
 
                 let log_safe_description = Redact(&request).to_string();
-                log_and_send("auth", &log_safe_description, || {
+                log_and_send("unauth", &log_safe_description, || {
                     service.send_story(request)
                 })
                 .await?
@@ -182,7 +182,7 @@ impl<T: GrpcServiceProvider> crate::api::messages::UnauthenticatedChatApi<OverGr
                     authorization: Some(auth.into()),
                 };
                 let log_safe_description = Redact(&request).to_string();
-                log_and_send("auth", &log_safe_description, || {
+                log_and_send("unauth", &log_safe_description, || {
                     service.send_single_recipient_message(request)
                 })
                 .await?
