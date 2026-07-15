@@ -3040,6 +3040,11 @@ SignalFfiError* signal_authenticated_chat_connection_clear_push_token(
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerAuthenticatedChatConnection chat
 );
+SignalFfiError* signal_authenticated_chat_connection_clear_registration_lock(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat
+);
 SignalFfiError* signal_authenticated_chat_connection_connect(
   SignalCPromiseMutPointerAuthenticatedChatConnection* promise,
   SignalConstPointerTokioAsyncContext async_runtime,

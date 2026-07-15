@@ -888,6 +888,14 @@ async fn AuthenticatedChatConnection_set_registration_lock(
         .await
 }
 
+// Only an account's primary device may clear a registration lock.
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_clear_registration_lock(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc().await.clear_registration_lock().await
+}
+
 #[bridge_io(TokioAsyncContext, nice = true)]
 async fn AuthenticatedChatConnection_set_discoverable_by_phone_number(
     chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,

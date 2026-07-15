@@ -106,6 +106,8 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_ClearPushTokenTests(): Array<Object>
   @JvmStatic
+  public external fun TESTING_ClearRegistrationLockTests(): Array<Object>
+  @JvmStatic
   public external fun TESTING_ConnectionManager_isUsingProxy(manager: ObjectHandle): Int
   @JvmStatic
   public external fun TESTING_ConvertOptionalUuid(present: Boolean): UUID?

@@ -39,6 +39,18 @@ export interface AuthAccountsService {
   ) => Promise<void>;
 
   /**
+   * Removes any registration lock from the authenticated account.
+   *
+   * This also succeeds if the account has no registration lock set, so a caller retrying a
+   * removal sees the same result as the original call.
+   *
+   * Only the account's primary device may clear a registration lock.
+   *
+   * @throws {StandardNetworkError}
+   */
+  clearRegistrationLock: (options?: RequestOptions) => Promise<void>;
+
+  /**
    * Sets whether the authenticated account may be discovered by phone number via the Contact
    * Discovery Service (CDS).
    *
@@ -67,6 +79,16 @@ AuthenticatedChatConnection.prototype.setRegistrationLock = async function (
     abortSignal: options?.abortSignal,
     chat: this.chatService,
     svrKey: svrKey.getContents(),
+  });
+};
+
+AuthenticatedChatConnection.prototype.clearRegistrationLock = async function (
+  options?: RequestOptions
+): Promise<void> {
+  return await NativeNice.AuthenticatedChatConnection_clear_registration_lock({
+    asyncContext: this.asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this.chatService,
   });
 };
 

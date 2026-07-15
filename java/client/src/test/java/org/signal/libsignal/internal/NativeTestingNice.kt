@@ -571,6 +571,15 @@ public object NativeTestingNice {
     }, { identity(it) })(ffiOut)
   }
 
+  public fun TESTING_ClearRegistrationLockTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, Void?>> {
+    val ffiOut =
+      NativeTesting.TESTING_ClearRegistrationLockTests()
+
+    return org.signal.libsignal.net.GrpcTestCase.resultConverter<Void?, Void?, Void?, Void?>({
+      identity(it)
+    }, { identity(it) })(ffiOut)
+  }
+
   public fun TESTING_CopyBackupMediaTests(): List<org.signal.libsignal.net.GrpcTestCase<List<org.signal.libsignal.internal.BridgeCopyBackupMediaItem>, List<org.signal.libsignal.internal.CopyBackupMediaOut>>> {
     val ffiOut =
       NativeTesting.TESTING_CopyBackupMediaTests()

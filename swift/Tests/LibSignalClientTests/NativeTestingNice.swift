@@ -1628,6 +1628,16 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<VoidConverter, VoidConverter>.convertReturn(consuming: rawOutput)
 
     }
+    internal static func TESTING_ClearRegistrationLockTests() throws -> [GrpcTestCase<Void, Void>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, VoidConverter>.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_clear_registration_lock_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, VoidConverter>.convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_CopyBackupMediaTests() throws -> [GrpcTestCase<
         [BridgeCopyBackupMediaItem], [CopyBackupMediaOut]
     >] {

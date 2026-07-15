@@ -32,6 +32,16 @@ describe('AuthAccountsService', () => {
     );
   });
 
+  describe('clearRegistrationLock', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_ClearRegistrationLockTests(),
+      connectAuth<AuthAccountsService>,
+      async (chat: AuthAccountsService, _req: void, _resp: void) => {
+        await chat.clearRegistrationLock();
+      }
+    );
+  });
+
   describe('setDiscoverableByPhoneNumber', () => {
     defineTestGrpcCases(
       NativeNice.TESTING_SetDiscoverableByPhoneNumberTests(),

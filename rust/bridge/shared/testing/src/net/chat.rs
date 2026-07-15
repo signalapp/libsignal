@@ -628,6 +628,10 @@ fn TESTING_SetRegistrationLockTests() -> GrpcTestCases<[u8; 32], ()> {
     libsignal_net_chat::grpc::accounts::test_cases::set_registration_lock_test_cases().into()
 }
 #[bridge_fn(nice = true)]
+fn TESTING_ClearRegistrationLockTests() -> GrpcTestCases<(), ()> {
+    libsignal_net_chat::grpc::accounts::test_cases::clear_registration_lock_test_cases().into()
+}
+#[bridge_fn(nice = true)]
 fn TESTING_SetDiscoverableByPhoneNumberTests() -> GrpcTestCases<bool, ()> {
     libsignal_net_chat::grpc::accounts::test_cases::set_discoverable_by_phone_number_test_cases()
         .into()

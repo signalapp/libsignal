@@ -469,6 +469,10 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_clear_registration_lock: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<void>;
   AuthenticatedChatConnection_connect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     connection_manager: Wrapper<ConnectionManager>,
@@ -2281,6 +2285,7 @@ type NativeFunctions = {
   TESTING_ChatResponseConvert: (body_present: boolean) => ChatResponse;
   TESTING_ChatSendErrorConvert: (error_description: string) => void;
   TESTING_ClearPushTokenTests: () => Array<GrpcTestCaseFfi<void, void>>;
+  TESTING_ClearRegistrationLockTests: () => Array<GrpcTestCaseFfi<void, void>>;
   TESTING_ConnectionManager_isUsingProxy: (
     manager: Wrapper<ConnectionManager>
   ) => number;
@@ -2967,6 +2972,7 @@ const {
   AuthCredentialWithPniResponse_CheckValidContents,
   AuthCredentialWithPni_CheckValidContents,
   AuthenticatedChatConnection_clear_push_token,
+  AuthenticatedChatConnection_clear_registration_lock,
   AuthenticatedChatConnection_connect,
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
@@ -3451,6 +3457,7 @@ const {
   TESTING_ChatResponseConvert,
   TESTING_ChatSendErrorConvert,
   TESTING_ClearPushTokenTests,
+  TESTING_ClearRegistrationLockTests,
   TESTING_ConnectionManager_isUsingProxy,
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,
@@ -3682,6 +3689,7 @@ export {
   AuthCredentialWithPniResponse_CheckValidContents,
   AuthCredentialWithPni_CheckValidContents,
   AuthenticatedChatConnection_clear_push_token,
+  AuthenticatedChatConnection_clear_registration_lock,
   AuthenticatedChatConnection_connect,
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
@@ -4166,6 +4174,7 @@ export {
   TESTING_ChatResponseConvert,
   TESTING_ChatSendErrorConvert,
   TESTING_ClearPushTokenTests,
+  TESTING_ClearRegistrationLockTests,
   TESTING_ConnectionManager_isUsingProxy,
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,

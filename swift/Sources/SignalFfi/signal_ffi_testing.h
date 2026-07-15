@@ -1014,6 +1014,9 @@ SignalFfiError* signal_testing_chat_send_error_convert(
 SignalFfiError* signal_testing_clear_push_token_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
+SignalFfiError* signal_testing_clear_registration_lock_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
 SignalFfiError* signal_testing_connection_manager_is_using_proxy(
   int32_t* out,
   SignalConstPointerConnectionManager manager

@@ -28,6 +28,22 @@ class AuthAccountsServiceTest {
     }
 
   @Test
+  fun testClearRegistrationLock() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_ClearRegistrationLockTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthAccountsService,
+        invoke = { chat, _ ->
+          chat.clearRegistrationLock()
+        },
+        check = { _, actual ->
+          assertIs<RequestResult.Success<Unit>>(actual)
+        },
+      )
+    }
+
+  @Test
   fun testSetDiscoverableByPhoneNumber() =
     runTest {
       GrpcTestCase.runTests(

@@ -8,6 +8,7 @@ use std::convert::Infallible;
 use libsignal_account_keys::SvrKey;
 use libsignal_net_grpc::proto::chat::account::accounts_client::AccountsClient;
 use libsignal_net_grpc::proto::chat::account::{
+    ClearRegistrationLockRequest, ClearRegistrationLockResponse,
     SetDiscoverableByPhoneNumberRequest, SetDiscoverableByPhoneNumberResponse,
     SetRegistrationLockRequest, SetRegistrationLockResponse,
 };
@@ -22,6 +23,13 @@ impl std::fmt::Display for Redact<SetRegistrationLockRequest> {
         f.debug_struct("SetRegistrationLockRequest")
             .field("registration_lock_len", &registration_lock.len())
             .finish()
+    }
+}
+
+impl std::fmt::Display for Redact<ClearRegistrationLockRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(ClearRegistrationLockRequest {}) = self;
+        f.debug_struct("ClearRegistrationLockRequest").finish()
     }
 }
 
@@ -47,8 +55,8 @@ impl<T: GrpcServiceProvider> Auth<T> {
     /// number requires proving knowledge of the token.
     ///
     /// Only the account's primary device may set a registration lock. Removing
-    /// a registration lock is a separate operation (`ClearRegistrationLock`,
-    /// not yet exposed as a typed API).
+    /// a registration lock is a separate operation; see
+    /// [`Self::clear_registration_lock`].
     pub async fn set_registration_lock(
         &self,
         svr_key: SvrKey,
@@ -60,6 +68,25 @@ impl<T: GrpcServiceProvider> Auth<T> {
         let desc = Redact(&request).to_string();
         let SetRegistrationLockResponse {} =
             log_and_send("auth", &desc, || client.set_registration_lock(request))
+                .await?
+                .into_inner();
+        Ok(())
+    }
+
+    /// Removes any registration lock from the authenticated account.
+    ///
+    /// This also succeeds if the account has no registration lock set, so a
+    /// caller retrying a removal sees the same result as the original call.
+    ///
+    /// Only the account's primary device may clear a registration lock; the
+    /// server rejects calls from linked devices as a programmer error,
+    /// surfaced as [`RequestError::Unexpected`].
+    pub async fn clear_registration_lock(&self) -> Result<(), RequestError<Infallible>> {
+        let mut client = AccountsClient::new(self.0.service());
+        let request = ClearRegistrationLockRequest {};
+        let desc = Redact(&request).to_string();
+        let ClearRegistrationLockResponse {} =
+            log_and_send("auth", &desc, || client.clear_registration_lock(request))
                 .await?
                 .into_inner();
         Ok(())
@@ -114,6 +141,19 @@ pub mod test_cases {
         }]
     }
 
+    pub fn clear_registration_lock_test_cases()
+    -> Vec<GrpcTestCase<(), ClearRegistrationLockRequest, ClearRegistrationLockResponse, ()>> {
+        let method = "/org.signal.chat.account.Accounts/ClearRegistrationLock";
+        vec![GrpcTestCase {
+            name: "success".to_string(),
+            method: method.to_string(),
+            request: (),
+            request_grpc: ClearRegistrationLockRequest {},
+            response_grpc: ClearRegistrationLockResponse {},
+            response: (),
+        }]
+    }
+
     pub fn set_discoverable_by_phone_number_test_cases() -> Vec<
         GrpcTestCase<
             bool,
@@ -158,6 +198,16 @@ mod test {
             |chat: Auth<_>, svr_key: [u8; 32]| async move {
                 chat.set_registration_lock(SvrKey::new(svr_key)).await
             },
+            |(), result| assert_matches!(result, Ok(())),
+        );
+    }
+
+    #[test]
+    fn test_clear_registration_lock() {
+        use test_cases::*;
+        run_tests(
+            clear_registration_lock_test_cases(),
+            |chat: Auth<_>, ()| async move { chat.clear_registration_lock().await },
             |(), result| assert_matches!(result, Ok(())),
         );
     }

@@ -25,6 +25,18 @@ class AuthAccountsServiceTests: AuthChatServiceTestBase<any AuthAccountsService>
         )
     }
 
+    func testClearRegistrationLock() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_ClearRegistrationLockTests(),
+            invoke: { api, _ in
+                try await api.clearRegistrationLock()
+            },
+            check: { _, actual in
+                try actual.get()
+            }
+        )
+    }
+
     func testSetDiscoverableByPhoneNumber() async throws {
         try await testGrpcCases(
             try NativeTestingNice.TESTING_SetDiscoverableByPhoneNumberTests(),

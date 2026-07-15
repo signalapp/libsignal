@@ -43,6 +43,31 @@ public class AuthAccountsService(
     }
 
   /**
+   * Removes any registration lock from the authenticated account.
+   *
+   * This also succeeds if the account has no registration lock set, so a caller retrying a removal
+   * sees the same result as the original call.
+   *
+   * Only the account's primary device may clear a registration lock.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun clearRegistrationLock(): CompletableFuture<RequestResult<Unit, Nothing>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_clear_registration_lock(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { err -> err.toRequestResult() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
    * Sets whether the authenticated account may be discovered by phone number via the Contact
    * Discovery Service (CDS).
    *
