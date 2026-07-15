@@ -1620,16 +1620,20 @@ impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for (A, B) {
     }
 }
 #[cfg(feature = "metadata")]
-impl<A: NiceResultConverter, B: NiceResultConverter> NiceResultConverter for (A, B) {
+impl<A: NiceResultConverter + ResultTypeInfo, B: NiceResultConverter + ResultTypeInfo>
+    NiceResultConverter for (A, B)
+{
     fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
         let a = A::register_swift_result_converter(ctx);
         let b = B::register_swift_result_converter(ctx);
         SwiftReturnConverter {
             nice_type: format!("({}, {})", a.nice_type, b.nice_type),
-            // TODO: Keep track of cbindgen-monomorphized pair types, generate conformances to a
-            // Pair protocol, and then replace all these bespoke converters with a single generic
-            // PairConverter.
-            converter_type: format!("PairOf{}And{}", a.converter_type, b.converter_type),
+            converter_type: format!(
+                "PairOfResultConverter<{}, {}, {}>",
+                a.converter_type,
+                b.converter_type,
+                <(A, B) as ResultTypeInfo>::ResultType::register_c_type(ctx).swift_name()
+            ),
         }
     }
 }

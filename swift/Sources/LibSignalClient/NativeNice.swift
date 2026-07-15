@@ -2055,12 +2055,14 @@ internal enum NativeNice {
         signingKey signing_key: PrivateKey,
         rng: Int64,
     ) async throws -> (String, String) {
-        let rawOutput: PairOfStringConverterAndStringConverter.FfiReturn =
-            try await asyncContext.invokeAsyncFunction {
-                promiseFfi,
-                asyncContextFfi in
-                BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
-                    .convertArgBorrowed(chat) { chatFfi in
+        let rawOutput:
+            PairOfResultConverter<StringConverter, StringConverter, SignalPairOfCStringPtrCStringPtr>.FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<
+                        SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection
+                    >.convertArgBorrowed(chat) { chatFfi in
                         ByteArrayConverter<BackupAuthCredential>.convertArgBorrowed(credential) { credentialFfi in
                             ByteArrayConverter<GenericServerPublicParams>.convertArgBorrowed(server_keys) {
                                 server_keysFfi in
@@ -2082,8 +2084,9 @@ internal enum NativeNice {
                             }
                         }
                     }
-            }
-        return try PairOfStringConverterAndStringConverter.convertReturn(consuming: rawOutput)
+                }
+        return try PairOfResultConverter<StringConverter, StringConverter, SignalPairOfCStringPtrCStringPtr>
+            .convertReturn(consuming: rawOutput)
 
     }
     internal static func UnauthenticatedChatConnection_backup_refresh(

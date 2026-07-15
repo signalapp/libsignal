@@ -416,20 +416,29 @@ internal protocol SignalPairOf {
     var generic_second: Second { get set }
 }
 
-// swiftlint:disable:next todo
-// TODO: Get to the point where we can make this generic.
-internal struct PairOfStringConverterAndStringConverter: NiceReturnConverter {
-    typealias NiceReturn = (String, String)
-    typealias FfiReturn = SignalPairOfCStringPtrCStringPtr
+internal enum PairOfResultConverter<
+    FirstConverter: NiceReturnConverter,
+    SecondConverter: NiceReturnConverter,
+    PairType: SignalPairOf
+>: NiceReturnConverter
+where PairType.First == FirstConverter.FfiReturn, PairType.Second == SecondConverter.FfiReturn {
+    typealias NiceReturn = (FirstConverter.NiceReturn, SecondConverter.NiceReturn)
+    typealias FfiReturn = PairType
 
-    static func emptyFfiReturn() -> SignalPairOfCStringPtrCStringPtr {
-        .init()
+    static func emptyFfiReturn() -> FfiReturn {
+        FfiReturn()
     }
-    static func convertReturn(consuming value: SignalPairOfCStringPtrCStringPtr) throws -> (String, String) {
-        let first = Result { try StringConverter.convertReturn(consuming: value.first) }
-        let second = Result { try StringConverter.convertReturn(consuming: value.second) }
+
+    static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
+        let first = Result {
+            try FirstConverter.convertReturn(consuming: value.generic_first)
+        }
+        let second = Result {
+            try SecondConverter.convertReturn(consuming: value.generic_second)
+        }
         return (try first.get(), try second.get())
     }
+
 }
 
 internal protocol FixedByteArrayHelper {
