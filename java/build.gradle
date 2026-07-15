@@ -12,7 +12,7 @@ plugins {
     id "org.jetbrains.dokka-javadoc" version "2.1.0" apply false
 
     // Declared here so the Android subprojects can apply it without a version.
-    id 'com.android.library' version "9.1.1" apply false
+    id 'com.android.library' version "9.2.1" apply false
 }
 
 repositories {
