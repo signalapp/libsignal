@@ -6,23 +6,23 @@
 import {
   RequestOptions,
   UnauthenticatedChatConnection,
-  type UploadForm,
+  UploadForm,
 } from '../Chat.js';
 import * as Native from '../../Native.js';
 import * as NativeNice from '../../NativeNice.js';
-import {
-  type BackupAuthCredential,
-  type GenericServerPublicParams,
+import type {
+  BackupAuthCredential,
+  GenericServerPublicParams,
 } from '../../zkgroup/index.js';
-import { type CdnCredentials } from './CdnCredentials.js';
-import { type PrivateKey } from '../../EcKeys.js';
-import { type Rng } from '../../RngForTesting.js';
-import {
-  type UploadTooLarge,
-  type RequestUnauthorizedError,
-  type StandardNetworkError,
+import type { CdnCredentials } from './CdnCredentials.js';
+import type { PrivateKey } from '../../EcKeys.js';
+import type { Rng } from '../../RngForTesting.js';
+import type {
+  UploadTooLarge,
+  RequestUnauthorizedError,
+  StandardNetworkError,
 } from '../../Errors.js';
-import { type BackupKey } from '../../AccountKeys.js';
+import type { BackupKey } from '../../AccountKeys.js';
 
 export { type CdnCredentials } from './CdnCredentials.js';
 

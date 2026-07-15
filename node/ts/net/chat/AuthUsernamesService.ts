@@ -5,12 +5,12 @@
 
 import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
-import {
-  type UsernameNotAvailable,
-  type UsernameNotSet,
-  type StandardNetworkError,
+import type {
+  UsernameNotAvailable,
+  UsernameNotSet,
+  StandardNetworkError,
 } from '../../Errors.js';
-import { type Uuid } from '../../uuid.js';
+import type { Uuid } from '../../uuid.js';
 
 declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type

@@ -101,6 +101,7 @@ const config = defineConfig(
       ],
 
       'import/prefer-default-export': 'off',
+      'import/consistent-type-specifier-style': ['error', 'prefer-top-level'],
       'import/enforce-node-protocol-usage': ['error', 'always'],
       'import/no-cycle': 'error',
       'import/no-extraneous-dependencies': [

@@ -7,7 +7,7 @@ import type { ReadonlyDeep } from 'type-fest';
 
 import * as Native from '../Native.js';
 import { LibSignalError, RateLimitedError } from '../Errors.js';
-import { type Net, type TokioAsyncContext } from '../net.js';
+import type { Net, TokioAsyncContext } from '../net.js';
 import { PublicKey } from '../EcKeys.js';
 import { Aci, Pni, ServiceIdKind } from '../Address.js';
 import {
@@ -17,7 +17,7 @@ import {
 import { newNativeHandle } from '../internal.js';
 import {
   convertNativeRegistrationSessionState,
-  type RegistrationSessionState,
+  RegistrationSessionState,
 } from './RegistrationSession.js';
 import { FakeChatRemote } from './FakeChat.js';
 

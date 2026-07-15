@@ -5,7 +5,7 @@
 
 import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
-import { type StandardNetworkError } from '../../Errors.js';
+import type { StandardNetworkError } from '../../Errors.js';
 import { SvrKey } from '../../AccountKeys.js';
 
 declare module '../Chat' {

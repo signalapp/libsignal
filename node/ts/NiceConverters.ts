@@ -4,10 +4,10 @@
 //
 
 import { ServiceId } from './Address.js';
-import { type CdnCredentials } from './net/chat/CdnCredentials.js';
+import type { CdnCredentials } from './net/chat/CdnCredentials.js';
 import * as Native from './Native.js';
 import { newNativeHandle, wrapStream } from './internal.js';
-import { type TokioAsyncContext } from './net.js';
+import type { TokioAsyncContext } from './net.js';
 
 export type DeviceId = number;
 /**

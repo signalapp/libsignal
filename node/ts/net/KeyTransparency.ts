@@ -9,13 +9,13 @@ import { PublicKey } from '../EcKeys.js';
 import type { Environment, TokioAsyncContext } from '../net.js';
 
 // For JSDoc references
-import { type UnauthenticatedChatConnection } from './Chat.js';
-import {
-  type KeyTransparencyError,
-  type KeyTransparencyVerificationFailed,
-  type ChatServiceInactive,
-  type IoError,
-  type RateLimitedError,
+import type { UnauthenticatedChatConnection } from './Chat.js';
+import type {
+  KeyTransparencyError,
+  KeyTransparencyVerificationFailed,
+  ChatServiceInactive,
+  IoError,
+  RateLimitedError,
 } from '../Errors.js';
 
 /**

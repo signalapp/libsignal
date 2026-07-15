@@ -5,7 +5,7 @@
 
 import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
-import { DeviceIdNotFound, type StandardNetworkError } from '../../Errors.js';
+import type { DeviceIdNotFound, StandardNetworkError } from '../../Errors.js';
 
 declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type

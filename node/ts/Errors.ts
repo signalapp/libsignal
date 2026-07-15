@@ -8,7 +8,7 @@ import * as Native from './Native.js';
 import { newNativeHandle } from './internal.js';
 import {
   convertNativeRegistrationSessionState,
-  type RegistrationSessionState,
+  RegistrationSessionState,
 } from './net/RegistrationSession.js';
 
 export enum ErrorCode {

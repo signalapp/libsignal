@@ -9,7 +9,7 @@ import { RANDOM_LENGTH } from './internal/Constants.js';
 import * as Native from '../Native.js';
 import ServerSecretParams from './ServerSecretParams.js';
 import ServerPublicParams from './ServerPublicParams.js';
-import { type LibSignalErrorBase } from '../Errors.js';
+import type { LibSignalErrorBase } from '../Errors.js';
 
 function dateToSeconds(date: Date): number {
   return Math.floor(date.getTime() / 1000);
