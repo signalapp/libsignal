@@ -1379,6 +1379,15 @@ internal object Native {
   public external fun Svr2Client_New(mrenclave: ByteArray, attestationMsg: ByteArray, currentTimestamp: Long): ObjectHandle
 
   @JvmStatic
+  public external fun SvrKey_DeriveLoggingKey(svrKey: ByteArray): ByteArray
+  @JvmStatic
+  public external fun SvrKey_DeriveRegistrationLock(svrKey: ByteArray): ByteArray
+  @JvmStatic
+  public external fun SvrKey_DeriveRegistrationRecoveryPassword(svrKey: ByteArray): ByteArray
+  @JvmStatic
+  public external fun SvrKey_DeriveStorageServiceKey(svrKey: ByteArray): ByteArray
+
+  @JvmStatic
   public external fun TokioAsyncContext_Destroy(handle: ObjectHandle): Unit
   @JvmStatic
   public external fun TokioAsyncContext_cancel(context: ObjectHandle, rawCancellationId: Long): Unit

@@ -2253,6 +2253,18 @@ type NativeFunctions = {
     username: string,
     password: string
   ) => CancellablePromise<Svr2BackupSession>;
+  SvrKey_DeriveLoggingKey: (
+    svr_key: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  SvrKey_DeriveRegistrationLock: (
+    svr_key: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  SvrKey_DeriveRegistrationRecoveryPassword: (
+    svr_key: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  SvrKey_DeriveStorageServiceKey: (
+    svr_key: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
   TESTING_BridgedStringMap_dump_to_json: (
     map: Wrapper<BridgedStringMap>
   ) => string;
@@ -3442,6 +3454,10 @@ const {
   Svr2_RestoreMasterKey,
   Svr2_StartBackup,
   Svr2_StartMasterKeyBackup,
+  SvrKey_DeriveLoggingKey,
+  SvrKey_DeriveRegistrationLock,
+  SvrKey_DeriveRegistrationRecoveryPassword,
+  SvrKey_DeriveStorageServiceKey,
   TESTING_BridgedStringMap_dump_to_json,
   TESTING_BulkPullFromStream_Cancel,
   TESTING_BulkPullFromStream_New,
@@ -4159,6 +4175,10 @@ export {
   Svr2_RestoreMasterKey,
   Svr2_StartBackup,
   Svr2_StartMasterKeyBackup,
+  SvrKey_DeriveLoggingKey,
+  SvrKey_DeriveRegistrationLock,
+  SvrKey_DeriveRegistrationRecoveryPassword,
+  SvrKey_DeriveStorageServiceKey,
   TESTING_BridgedStringMap_dump_to_json,
   TESTING_BulkPullFromStream_Cancel,
   TESTING_BulkPullFromStream_New,

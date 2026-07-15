@@ -5558,6 +5558,22 @@ SignalFfiError* signal_svr2_client_new(
   SignalBorrowedBuffer attestation_msg,
   uint64_t current_timestamp
 );
+SignalFfiError* signal_svr_key_derive_logging_key(
+  SignalType_FixedArray32_uint8_t* out,
+  const SignalType_FixedArray32_uint8_t* svr_key
+);
+SignalFfiError* signal_svr_key_derive_registration_lock(
+  SignalType_FixedArray32_uint8_t* out,
+  const SignalType_FixedArray32_uint8_t* svr_key
+);
+SignalFfiError* signal_svr_key_derive_registration_recovery_password(
+  SignalType_FixedArray32_uint8_t* out,
+  const SignalType_FixedArray32_uint8_t* svr_key
+);
+SignalFfiError* signal_svr_key_derive_storage_service_key(
+  SignalType_FixedArray32_uint8_t* out,
+  const SignalType_FixedArray32_uint8_t* svr_key
+);
 SignalFfiError* signal_tokio_async_context_cancel(
   SignalConstPointerTokioAsyncContext context,
   uint64_t raw_cancellation_id

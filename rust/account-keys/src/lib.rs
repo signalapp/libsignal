@@ -84,9 +84,28 @@ impl SvrKey {
     /// This is the raw 32-byte token; the server-facing (legacy REST) representation is this value
     /// hex-encoded, whereas the typed gRPC API sends these raw bytes directly.
     pub fn derive_registration_lock(&self) -> [u8; 32] {
+        self.derive(b"Registration Lock")
+    }
+
+    /// Derives the password used to recover an account without SMS verification.
+    pub fn derive_registration_recovery_password(&self) -> [u8; 32] {
+        self.derive(b"Registration Recovery")
+    }
+
+    /// Derives the root key used to encrypt data in Storage Service.
+    pub fn derive_storage_service_key(&self) -> [u8; 32] {
+        self.derive(b"Storage Service Encryption")
+    }
+
+    /// Derives the key used to obscure sensitive identifiers in logs.
+    pub fn derive_logging_key(&self) -> [u8; 32] {
+        self.derive(b"Logging Key")
+    }
+
+    fn derive(&self, label: &[u8]) -> [u8; 32] {
         let mut mac =
             Hmac::<Sha256>::new_from_slice(&self.0).expect("HMAC accepts keys of any length");
-        mac.update(b"Registration Lock");
+        mac.update(label);
         mac.finalize().into_bytes().into()
     }
 }
@@ -224,6 +243,9 @@ mod tests {
 
         use crate::SvrKey;
 
+        // These known answers were taken from iOS' MasterKeyTest.testDerivedKeys.
+        // See: https://github.com/signalapp/Signal-iOS/blob/265ee500/SignalServiceKit/tests/Account/MasterKeyTest.swift#L54
+
         #[test]
         fn derive_registration_lock_known_answer() {
             // Cross-checked against the Android/iOS clients' MasterKey.deriveRegistrationLock():
@@ -232,6 +254,33 @@ mod tests {
             assert_eq!(
                 svr_key.derive_registration_lock(),
                 hex!("3a40e25812e6c20cca76a602451dd2bc7484553514438cade320c2aef54e10d1")
+            );
+        }
+
+        #[test]
+        fn derive_registration_recovery_password_known_answer() {
+            let svr_key = SvrKey::new([0x2a; 32]);
+            assert_eq!(
+                svr_key.derive_registration_recovery_password(),
+                hex!("91f959cfee39676dedd028bc8bbbd1e91ffa6a42c57754d095fe8abe7f0d4f56")
+            );
+        }
+
+        #[test]
+        fn derive_storage_service_key_known_answer() {
+            let svr_key = SvrKey::new([0x2a; 32]);
+            assert_eq!(
+                svr_key.derive_storage_service_key(),
+                hex!("3f31b618172a9f8ad45e290788e6176736e6161d4ea0e8050f8553521f59c200")
+            );
+        }
+
+        #[test]
+        fn derive_logging_key_known_answer() {
+            let svr_key = SvrKey::new([0x2a; 32]);
+            assert_eq!(
+                svr_key.derive_logging_key(),
+                hex!("cd2a39f4857de4df3fe793d1de061bfa3dd63533c0a4ef79b3fa3eba2bf96e62")
             );
         }
 

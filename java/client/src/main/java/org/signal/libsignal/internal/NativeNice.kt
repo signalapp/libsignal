@@ -466,6 +466,46 @@ public object NativeNice {
       .thenApply { downcastFromObject<org.signal.libsignal.internal.CopyBackupMediaNextChunk>(it) }
   }
 
+  public fun SvrKey_DeriveLoggingKey(svrKey: ByteArray): ByteArray {
+    val ffi_svr_key = identity(svrKey)
+    val ffiOut =
+      Native.SvrKey_DeriveLoggingKey(
+        ffi_svr_key,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun SvrKey_DeriveRegistrationLock(svrKey: ByteArray): ByteArray {
+    val ffi_svr_key = identity(svrKey)
+    val ffiOut =
+      Native.SvrKey_DeriveRegistrationLock(
+        ffi_svr_key,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun SvrKey_DeriveRegistrationRecoveryPassword(svrKey: ByteArray): ByteArray {
+    val ffi_svr_key = identity(svrKey)
+    val ffiOut =
+      Native.SvrKey_DeriveRegistrationRecoveryPassword(
+        ffi_svr_key,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun SvrKey_DeriveStorageServiceKey(svrKey: ByteArray): ByteArray {
+    val ffi_svr_key = identity(svrKey)
+    val ffiOut =
+      Native.SvrKey_DeriveStorageServiceKey(
+        ffi_svr_key,
+      )
+
+    return identity(ffiOut)
+  }
+
   public fun UnauthenticatedChatConnection_account_exists(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.UnauthenticatedChatConnection,

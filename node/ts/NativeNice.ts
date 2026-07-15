@@ -880,6 +880,40 @@ export async function CopyBackupMediaStream_next({
   );
 }
 
+export function SvrKey_DeriveLoggingKey({
+  svrKey: svr_key,
+}: {
+  svrKey: Uint8Array<ArrayBuffer>;
+}): Uint8Array<ArrayBuffer> {
+  return identity(Native.SvrKey_DeriveLoggingKey(identity(svr_key)));
+}
+
+export function SvrKey_DeriveRegistrationLock({
+  svrKey: svr_key,
+}: {
+  svrKey: Uint8Array<ArrayBuffer>;
+}): Uint8Array<ArrayBuffer> {
+  return identity(Native.SvrKey_DeriveRegistrationLock(identity(svr_key)));
+}
+
+export function SvrKey_DeriveRegistrationRecoveryPassword({
+  svrKey: svr_key,
+}: {
+  svrKey: Uint8Array<ArrayBuffer>;
+}): Uint8Array<ArrayBuffer> {
+  return identity(
+    Native.SvrKey_DeriveRegistrationRecoveryPassword(identity(svr_key))
+  );
+}
+
+export function SvrKey_DeriveStorageServiceKey({
+  svrKey: svr_key,
+}: {
+  svrKey: Uint8Array<ArrayBuffer>;
+}): Uint8Array<ArrayBuffer> {
+  return identity(Native.SvrKey_DeriveStorageServiceKey(identity(svr_key)));
+}
+
 export function TESTING_ClearPushTokenTests(): Array<GrpcTestCase<void, void>> {
   return grpcTestCaseConverter(
     identity,

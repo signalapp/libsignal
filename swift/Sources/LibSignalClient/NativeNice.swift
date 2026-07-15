@@ -1939,6 +1939,66 @@ internal enum NativeNice {
         return try DerivedReturnConverterCopyBackupMediaNextChunk.convertReturn(consuming: rawOutput)
 
     }
+    internal static func SvrKey_DeriveLoggingKey(
+        svrKey svr_key: Data,
+    ) throws -> Data {
+        try FixedByteArrayConverter<FixedByteArrayHelper32>.convertArgBorrowed(svr_key) { svr_keyFfi in
+            var rawOutput = FixedByteArrayConverter<FixedByteArrayHelper32>.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_svr_key_derive_logging_key(
+                    &rawOutput,
+                    svr_keyFfi,
+                )
+            )
+            return try FixedByteArrayConverter<FixedByteArrayHelper32>.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func SvrKey_DeriveRegistrationLock(
+        svrKey svr_key: Data,
+    ) throws -> Data {
+        try FixedByteArrayConverter<FixedByteArrayHelper32>.convertArgBorrowed(svr_key) { svr_keyFfi in
+            var rawOutput = FixedByteArrayConverter<FixedByteArrayHelper32>.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_svr_key_derive_registration_lock(
+                    &rawOutput,
+                    svr_keyFfi,
+                )
+            )
+            return try FixedByteArrayConverter<FixedByteArrayHelper32>.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func SvrKey_DeriveRegistrationRecoveryPassword(
+        svrKey svr_key: Data,
+    ) throws -> Data {
+        try FixedByteArrayConverter<FixedByteArrayHelper32>.convertArgBorrowed(svr_key) { svr_keyFfi in
+            var rawOutput = FixedByteArrayConverter<FixedByteArrayHelper32>.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_svr_key_derive_registration_recovery_password(
+                    &rawOutput,
+                    svr_keyFfi,
+                )
+            )
+            return try FixedByteArrayConverter<FixedByteArrayHelper32>.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func SvrKey_DeriveStorageServiceKey(
+        svrKey svr_key: Data,
+    ) throws -> Data {
+        try FixedByteArrayConverter<FixedByteArrayHelper32>.convertArgBorrowed(svr_key) { svr_keyFfi in
+            var rawOutput = FixedByteArrayConverter<FixedByteArrayHelper32>.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_svr_key_derive_storage_service_key(
+                    &rawOutput,
+                    svr_keyFfi,
+                )
+            )
+            return try FixedByteArrayConverter<FixedByteArrayHelper32>.convertReturn(consuming: rawOutput)
+        }
+
+    }
     internal static func UnauthenticatedChatConnection_account_exists(
         asyncContext: TokioAsyncContext,
         chat: UnauthenticatedChatConnection,

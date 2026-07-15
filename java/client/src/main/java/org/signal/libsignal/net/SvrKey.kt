@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.net
 
+import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.zkgroup.InvalidInputException
 import org.signal.libsignal.zkgroup.internal.ByteArray as SignalByteArray
 
@@ -22,6 +23,19 @@ public class SvrKey
   constructor(
     contents: ByteArray,
   ) : SignalByteArray(contents, SIZE) {
+    /** Derives the raw 32-byte token used to enable registration lock. */
+    public fun deriveRegistrationLock(): ByteArray = NativeNice.SvrKey_DeriveRegistrationLock(serialize())
+
+    /** Derives the raw 32-byte password used to recover an account without SMS verification. */
+    public fun deriveRegistrationRecoveryPassword(): ByteArray =
+      NativeNice.SvrKey_DeriveRegistrationRecoveryPassword(serialize())
+
+    /** Derives the raw 32-byte root key used to encrypt data in Storage Service. */
+    public fun deriveStorageServiceKey(): ByteArray = NativeNice.SvrKey_DeriveStorageServiceKey(serialize())
+
+    /** Derives the raw 32-byte key used to obscure sensitive identifiers in logs. */
+    public fun deriveLoggingKey(): ByteArray = NativeNice.SvrKey_DeriveLoggingKey(serialize())
+
     public companion object {
       public const val SIZE: Int = 32
     }

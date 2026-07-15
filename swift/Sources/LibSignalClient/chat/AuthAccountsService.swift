@@ -5,22 +5,6 @@
 
 import Foundation
 
-/// An account's SVR key: the 32-byte root from which account-related secrets are derived.
-///
-/// This is the same key that ``AccountEntropyPool/deriveSvrKey(_:)`` produces. Signal clients
-/// historically call these bytes the "master key"; libsignal calls it the SVR key. The two names
-/// refer to the same value.
-///
-/// - SeeAlso: ``AuthAccountsService/setRegistrationLock(_:)``
-public class SvrKey: ByteArray, @unchecked Sendable {
-    public static let SIZE = 32
-
-    /// Throws if `contents` is not ``SIZE`` (32) bytes.
-    public required init(contents: Data) throws {
-        try super.init(newContents: contents, expectedLength: Self.SIZE)
-    }
-}
-
 public protocol AuthAccountsService: Sendable {
     /// Sets the registration lock for the authenticated account, given the account's SVR key.
     ///
