@@ -628,7 +628,7 @@ fn TESTING_SetRegistrationLockTests() -> GrpcTestCases<[u8; 32], ()> {
     libsignal_net_chat::grpc::accounts::test_cases::set_registration_lock_test_cases().into()
 }
 
-#[bridge_fn(node = false, nice = true)]
+#[bridge_fn(nice = true)]
 fn TESTING_CopyBackupMediaTests() -> GrpcTestCases<
     BridgeVec<BridgeCopyBackupMediaItem>,
     BridgeVec<remote_derives::CopyBackupMediaOut>,

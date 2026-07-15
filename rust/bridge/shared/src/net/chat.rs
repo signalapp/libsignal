@@ -619,7 +619,7 @@ async fn UnauthenticatedChatConnection_backup_delete_all(
         .await
 }
 
-#[bridge_fn(node = false, nice = true)]
+#[bridge_fn(nice = true)]
 fn UnauthenticatedChatConnection_backup_copy_media(
     chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
     credential: ::zkgroup::backups::BackupAuthCredential,
@@ -660,7 +660,7 @@ fn UnauthenticatedChatConnection_backup_copy_media(
     ))
 }
 
-#[bridge_io(TokioAsyncContext, node = false, nice = true)]
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn CopyBackupMediaStream_next(
     stream: BridgeHandleRef<'_, CopyBackupMediaStream>,
 ) -> CopyBackupMediaNextChunk {
@@ -681,7 +681,7 @@ async fn CopyBackupMediaStream_next(
     }
 }
 
-#[bridge_fn(node = false)]
+#[bridge_fn]
 fn CopyBackupMediaStream_cancel(stream: BridgeHandleRef<'_, CopyBackupMediaStream>) {
     stream.cancel();
 }

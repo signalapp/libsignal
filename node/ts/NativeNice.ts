@@ -9,12 +9,18 @@ import * as Native from './Native.js';
 import {
   /* eslint-disable @typescript-eslint/no-unused-vars */
   type GrpcTestCase,
+  type ArgFfiBridgeCopyBackupMediaItem,
   type ArgFfiMyRemoteDeriveEnum,
   type ArgFfiMyRemoteDeriveStruct,
   type ArgFfiMySimpleTestEnum,
   type ArgFfiMyTestEnum,
   type ArgFfiMyTestPoint,
   type ArgFfiMyTestStruct,
+  type ReturnFfiBridgeCopyBackupMediaItem,
+  type ReturnFfiBridgeCopyBackupMediaOutcome,
+  type ReturnFfiBridgeCopyBackupMediaResult,
+  type ReturnFfiCopyBackupMediaNextChunk,
+  type ReturnFfiCopyBackupMediaOut,
   type ReturnFfiGetDevicesOut,
   type ReturnFfiLinkedDeviceInternal,
   type ReturnFfiMyRemoteDeriveEnum,
@@ -45,11 +51,46 @@ import {
   type DeviceId,
   type Timestamp,
   cdnCredentialReturnConverter,
+  copyBackupMediaStreamConverter,
   identity,
   serviceIdArgConverter,
   grpcTestCaseConverter,
 } from './NiceConverters.js';
 import { Rng } from './RngForTesting.js';
+
+export type BridgeCopyBackupMediaItem = {
+  sourceAttachmentCdn: number;
+  sourceKey: string;
+  objectLength: bigint;
+  mediaId: Uint8Array<ArrayBuffer>;
+  encryptionKey: Uint8Array<ArrayBuffer>;
+};
+
+export type BridgeCopyBackupMediaOutcome = {
+  mediaId: Uint8Array<ArrayBuffer>;
+  result: BridgeCopyBackupMediaResult;
+};
+
+export type BridgeCopyBackupMediaResult =
+  | {
+      success: number;
+    }
+  | 'sourceNotFound'
+  | 'wrongSourceLength'
+  | 'outOfSpace';
+
+export type CopyBackupMediaNextChunk = {
+  chunk: Array<BridgeCopyBackupMediaOutcome>;
+  termination: ('finished' | Error) | null;
+};
+
+export type CopyBackupMediaOut =
+  | {
+      item: BridgeCopyBackupMediaOutcome;
+    }
+  | 'invalidDataInStream'
+  | 'credentialRejected'
+  | 'credentialRejectedWithoutAppropriateServerInfo';
 
 export type GetDevicesOut = {
   devices: Array<LinkedDeviceInternal>;
@@ -148,7 +189,82 @@ export type TestStreamChunk = {
   termination: ('finished' | Error) | null;
 };
 
-function returnConverterGetDevicesOut(
+export function returnConverterBridgeCopyBackupMediaItem(
+  ffiInput: Native.ReturnFfiBridgeCopyBackupMediaItem
+): BridgeCopyBackupMediaItem {
+  return {
+    sourceAttachmentCdn: identity(ffiInput.source_attachment_cdn),
+    sourceKey: identity(ffiInput.source_key),
+    objectLength: identity(ffiInput.object_length),
+    mediaId: identity(ffiInput.media_id),
+    encryptionKey: identity(ffiInput.encryption_key),
+  };
+}
+
+export function returnConverterBridgeCopyBackupMediaOutcome(
+  ffiInput: Native.ReturnFfiBridgeCopyBackupMediaOutcome
+): BridgeCopyBackupMediaOutcome {
+  return {
+    mediaId: identity(ffiInput.media_id),
+    result: returnConverterBridgeCopyBackupMediaResult(ffiInput.result),
+  };
+}
+
+export function returnConverterBridgeCopyBackupMediaResult(
+  ffiInput: Native.ReturnFfiBridgeCopyBackupMediaResult
+): BridgeCopyBackupMediaResult {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: identity(ffiInput.cdn),
+      };
+    case 1:
+      return 'sourceNotFound';
+    case 2:
+      return 'wrongSourceLength';
+    case 3:
+      return 'outOfSpace';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for BridgeCopyBackupMediaResult'
+      );
+  }
+}
+
+export function returnConverterCopyBackupMediaNextChunk(
+  ffiInput: Native.ReturnFfiCopyBackupMediaNextChunk
+): CopyBackupMediaNextChunk {
+  return {
+    chunk: ((arr: Array<ReturnFfiBridgeCopyBackupMediaOutcome>) =>
+      arr.map(returnConverterBridgeCopyBackupMediaOutcome))(ffiInput.chunk),
+    termination: identity(ffiInput.termination),
+  };
+}
+
+export function returnConverterCopyBackupMediaOut(
+  ffiInput: Native.ReturnFfiCopyBackupMediaOut
+): CopyBackupMediaOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        item: returnConverterBridgeCopyBackupMediaOutcome(ffiInput._0),
+      };
+    case 1:
+      return 'invalidDataInStream';
+    case 2:
+      return 'credentialRejected';
+    case 3:
+      return 'credentialRejectedWithoutAppropriateServerInfo';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for CopyBackupMediaOut');
+  }
+}
+
+export function returnConverterGetDevicesOut(
   ffiInput: Native.ReturnFfiGetDevicesOut
 ): GetDevicesOut {
   return {
@@ -157,7 +273,7 @@ function returnConverterGetDevicesOut(
   };
 }
 
-function returnConverterLinkedDeviceInternal(
+export function returnConverterLinkedDeviceInternal(
   ffiInput: Native.ReturnFfiLinkedDeviceInternal
 ): LinkedDeviceInternal {
   return {
@@ -169,7 +285,7 @@ function returnConverterLinkedDeviceInternal(
   };
 }
 
-function returnConverterMyRemoteDeriveEnum(
+export function returnConverterMyRemoteDeriveEnum(
   ffiInput: Native.ReturnFfiMyRemoteDeriveEnum
 ): MyRemoteDeriveEnum {
   switch (ffiInput.__type) {
@@ -192,7 +308,7 @@ function returnConverterMyRemoteDeriveEnum(
   }
 }
 
-function returnConverterMyRemoteDeriveStruct(
+export function returnConverterMyRemoteDeriveStruct(
   ffiInput: Native.ReturnFfiMyRemoteDeriveStruct
 ): MyRemoteDeriveStruct {
   return {
@@ -201,7 +317,7 @@ function returnConverterMyRemoteDeriveStruct(
   };
 }
 
-function returnConverterMySimpleTestEnum(
+export function returnConverterMySimpleTestEnum(
   ffiInput: Native.ReturnFfiMySimpleTestEnum
 ): MySimpleTestEnum {
   switch (ffiInput.__type) {
@@ -216,7 +332,7 @@ function returnConverterMySimpleTestEnum(
   }
 }
 
-function returnConverterMyTestEnum(
+export function returnConverterMyTestEnum(
   ffiInput: Native.ReturnFfiMyTestEnum
 ): MyTestEnum {
   switch (ffiInput.__type) {
@@ -249,13 +365,13 @@ function returnConverterMyTestEnum(
   }
 }
 
-function returnConverterMyTestPoint(
+export function returnConverterMyTestPoint(
   ffiInput: Native.ReturnFfiMyTestPoint
 ): MyTestPoint {
   return [identity(ffiInput._0), identity(ffiInput._1)];
 }
 
-function returnConverterMyTestStruct(
+export function returnConverterMyTestStruct(
   ffiInput: Native.ReturnFfiMyTestStruct
 ): MyTestStruct {
   return {
@@ -264,7 +380,7 @@ function returnConverterMyTestStruct(
   };
 }
 
-function returnConverterRemoveDeviceArgs(
+export function returnConverterRemoveDeviceArgs(
   ffiInput: Native.ReturnFfiRemoveDeviceArgs
 ): RemoveDeviceArgs {
   return {
@@ -272,7 +388,7 @@ function returnConverterRemoveDeviceArgs(
   };
 }
 
-function returnConverterRemoveDeviceOut(
+export function returnConverterRemoveDeviceOut(
   ffiInput: Native.ReturnFfiRemoveDeviceOut
 ): RemoveDeviceOut {
   switch (ffiInput.__type) {
@@ -285,7 +401,7 @@ function returnConverterRemoveDeviceOut(
   }
 }
 
-function returnConverterReserveUsernameHashArgs(
+export function returnConverterReserveUsernameHashArgs(
   ffiInput: Native.ReturnFfiReserveUsernameHashArgs
 ): ReserveUsernameHashArgs {
   return {
@@ -295,7 +411,7 @@ function returnConverterReserveUsernameHashArgs(
   };
 }
 
-function returnConverterReserveUsernameHashOut(
+export function returnConverterReserveUsernameHashOut(
   ffiInput: Native.ReturnFfiReserveUsernameHashOut
 ): ReserveUsernameHashOut {
   switch (ffiInput.__type) {
@@ -314,7 +430,7 @@ function returnConverterReserveUsernameHashOut(
   }
 }
 
-function returnConverterSetDeviceNameArgs(
+export function returnConverterSetDeviceNameArgs(
   ffiInput: Native.ReturnFfiSetDeviceNameArgs
 ): SetDeviceNameArgs {
   return {
@@ -323,7 +439,7 @@ function returnConverterSetDeviceNameArgs(
   };
 }
 
-function returnConverterSetDeviceNameOut(
+export function returnConverterSetDeviceNameOut(
   ffiInput: Native.ReturnFfiSetDeviceNameOut
 ): SetDeviceNameOut {
   switch (ffiInput.__type) {
@@ -338,7 +454,7 @@ function returnConverterSetDeviceNameOut(
   }
 }
 
-function returnConverterSetUsernameLinkArgs(
+export function returnConverterSetUsernameLinkArgs(
   ffiInput: Native.ReturnFfiSetUsernameLinkArgs
 ): SetUsernameLinkArgs {
   return {
@@ -347,7 +463,7 @@ function returnConverterSetUsernameLinkArgs(
   };
 }
 
-function returnConverterSetUsernameLinkOut(
+export function returnConverterSetUsernameLinkOut(
   ffiInput: Native.ReturnFfiSetUsernameLinkOut
 ): SetUsernameLinkOut {
   switch (ffiInput.__type) {
@@ -364,7 +480,7 @@ function returnConverterSetUsernameLinkOut(
   }
 }
 
-function returnConverterTestStreamChunk(
+export function returnConverterTestStreamChunk(
   ffiInput: Native.ReturnFfiTestStreamChunk
 ): TestStreamChunk {
   return {
@@ -373,7 +489,26 @@ function returnConverterTestStreamChunk(
   };
 }
 
-function argConverterMyRemoteDeriveEnum(
+export function argConverterBridgeCopyBackupMediaItem(
+  niceInput: BridgeCopyBackupMediaItem
+): Native.ArgFfiBridgeCopyBackupMediaItem {
+  const {
+    sourceAttachmentCdn: source_attachment_cdn,
+    sourceKey: source_key,
+    objectLength: object_length,
+    mediaId: media_id,
+    encryptionKey: encryption_key,
+  } = niceInput;
+  return {
+    source_attachment_cdn: identity(source_attachment_cdn),
+    source_key: identity(source_key),
+    object_length: identity(object_length),
+    media_id: identity(media_id),
+    encryption_key: identity(encryption_key),
+  };
+}
+
+export function argConverterMyRemoteDeriveEnum(
   niceInput: MyRemoteDeriveEnum
 ): Native.ArgFfiMyRemoteDeriveEnum {
   if (niceInput === 'unit') {
@@ -402,14 +537,14 @@ function argConverterMyRemoteDeriveEnum(
   throw new Error('Cannot match on MyRemoteDeriveEnum argument');
 }
 
-function argConverterMyRemoteDeriveStruct(
+export function argConverterMyRemoteDeriveStruct(
   niceInput: MyRemoteDeriveStruct
 ): Native.ArgFfiMyRemoteDeriveStruct {
   const { x: x, y: y } = niceInput;
   return { x: identity(x), y: identity(y) };
 }
 
-function argConverterMySimpleTestEnum(
+export function argConverterMySimpleTestEnum(
   niceInput: MySimpleTestEnum
 ): Native.ArgFfiMySimpleTestEnum {
   if (niceInput === 'a') {
@@ -424,7 +559,7 @@ function argConverterMySimpleTestEnum(
   throw new Error('Cannot match on MySimpleTestEnum argument');
 }
 
-function argConverterMyTestEnum(
+export function argConverterMyTestEnum(
   niceInput: MyTestEnum
 ): Native.ArgFfiMyTestEnum {
   if (niceInput === 'unit') {
@@ -474,14 +609,14 @@ function argConverterMyTestEnum(
   throw new Error('Cannot match on MyTestEnum argument');
 }
 
-function argConverterMyTestPoint(
+export function argConverterMyTestPoint(
   niceInput: MyTestPoint
 ): Native.ArgFfiMyTestPoint {
   const [_0, _1] = niceInput;
   return { _0: identity(_0), _1: identity(_1) };
 }
 
-function argConverterMyTestStruct(
+export function argConverterMyTestStruct(
   niceInput: MyTestStruct
 ): Native.ArgFfiMyTestStruct {
   const { myNumericField: my_numeric_field, myStringField: my_string_field } =
@@ -687,12 +822,39 @@ export async function AuthenticatedChatConnection_set_username_link({
     )
   );
 }
+export async function CopyBackupMediaStream_next({
+  asyncContext,
+  abortSignal,
+  stream: stream,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  stream: Native.Wrapper<Native.CopyBackupMediaStream>;
+}): Promise<CopyBackupMediaNextChunk> {
+  return returnConverterCopyBackupMediaNextChunk(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.CopyBackupMediaStream_next(asyncContext, identity(stream))
+    )
+  );
+}
 
 export function TESTING_ClearPushTokenTests(): Array<GrpcTestCase<void, void>> {
   return grpcTestCaseConverter(
     identity,
     identity
   )(Native.TESTING_ClearPushTokenTests());
+}
+
+export function TESTING_CopyBackupMediaTests(): Array<
+  GrpcTestCase<Array<BridgeCopyBackupMediaItem>, Array<CopyBackupMediaOut>>
+> {
+  return grpcTestCaseConverter(
+    (arr: Array<ReturnFfiBridgeCopyBackupMediaItem>) =>
+      arr.map(returnConverterBridgeCopyBackupMediaItem),
+    (arr: Array<ReturnFfiCopyBackupMediaOut>) =>
+      arr.map(returnConverterCopyBackupMediaOut)
+  )(Native.TESTING_CopyBackupMediaTests());
 }
 
 export function TESTING_DeleteUsernameHashTests(): Array<
@@ -1503,6 +1665,36 @@ export async function UnauthenticatedChatConnection_account_exists({
         identity(chat),
         serviceIdArgConverter(account)
       )
+    )
+  );
+}
+
+export function UnauthenticatedChatConnection_backup_copy_media({
+  chat: chat,
+  credential: credential,
+  serverKeys: server_keys,
+  signingKey: signing_key,
+  items: items,
+  rng: rng,
+}: {
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.BackupAuthCredential;
+  serverKeys: zkgroup.GenericServerPublicParams;
+  signingKey: Native.Wrapper<Native.PrivateKey>;
+  items: Array<BridgeCopyBackupMediaItem>;
+  rng: Rng | undefined;
+}): (
+  asyncContext: TokioAsyncContext
+) => ReadableStream<Native.ReturnFfiBridgeCopyBackupMediaOutcome> {
+  return copyBackupMediaStreamConverter(
+    Native.UnauthenticatedChatConnection_backup_copy_media(
+      identity(chat),
+      ByteArray.prototype.getContents.call(credential),
+      ByteArray.prototype.getContents.call(server_keys),
+      identity(signing_key),
+      ((arr: Array<BridgeCopyBackupMediaItem>) =>
+        arr.map(argConverterBridgeCopyBackupMediaItem))(items),
+      ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
     )
   );
 }

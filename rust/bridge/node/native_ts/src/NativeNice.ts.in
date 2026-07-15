@@ -28,6 +28,7 @@ import {
   type DeviceId,
   type Timestamp,
   cdnCredentialReturnConverter,
+  copyBackupMediaStreamConverter,
   identity,
   serviceIdArgConverter,
   grpcTestCaseConverter,
@@ -90,12 +91,12 @@ import { Rng } from './RngForTesting.js';
 {% for (name, struct_or_enum) in ctx.derived_return_converters|items -%}
     {% if struct_or_enum.kind == "Struct" %}
         {% set struct = struct_or_enum %}
-        function {{ name|return_converter_function }}(ffiInput: Native.{{ name|return_ffi_type }}): {{ name }} {
+        export function {{ name|return_converter_function }}(ffiInput: Native.{{ name|return_ffi_type }}): {{ name }} {
             return {{ struct_return_converter(struct) }};
         }
     {% else %}
         {% set enum = struct_or_enum %}
-        function {{ name|return_converter_function }}(ffiInput: Native.{{ name|return_ffi_type }}): {{ name }} {
+        export function {{ name|return_converter_function }}(ffiInput: Native.{{ name|return_ffi_type }}): {{ name }} {
             switch (ffiInput.__type) {
             {% for (variant, struct) in enum.variants -%}
                 case {{ loop.index0 }}:
@@ -142,7 +143,7 @@ import { Rng } from './RngForTesting.js';
 {% for (name, struct_or_enum) in ctx.derived_arg_converters|items -%}
     {% if struct_or_enum.kind == "Struct" %}
         {% set struct = struct_or_enum %}
-        function {{ name|arg_converter_function }}(niceInput: {{ name }}): Native.{{ name|arg_ffi_type }} {
+        export function {{ name|arg_converter_function }}(niceInput: {{ name }}): Native.{{ name|arg_ffi_type }} {
             {{ destructure_struct(struct, "niceInput") }}
             return {
                 {%- for (arg, converter) in struct.fields -%}
@@ -152,7 +153,7 @@ import { Rng } from './RngForTesting.js';
         }
     {% else %}
         {% set enum = struct_or_enum %}
-        function {{ name|arg_converter_function }}(niceInput: {{ name }}): Native.{{ name|arg_ffi_type }} {
+        export function {{ name|arg_converter_function }}(niceInput: {{ name }}): Native.{{ name|arg_ffi_type }} {
             {#- TypeScript demands that we check the strings/units first. -#}
             {% for (variant, struct) in enum.variants %}
                 {% if struct.fields|count == 0 %}

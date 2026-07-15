@@ -153,6 +153,54 @@ export const enum LogLevel {
   Trace,
 }
 
+export type ReturnFfiBridgeCopyBackupMediaItem = {
+  source_attachment_cdn: number;
+  source_key: string;
+  object_length: bigint;
+  media_id: Uint8Array<ArrayBuffer>;
+  encryption_key: Uint8Array<ArrayBuffer>;
+};
+
+export type ReturnFfiBridgeCopyBackupMediaOutcome = {
+  media_id: Uint8Array<ArrayBuffer>;
+  result: ReturnFfiBridgeCopyBackupMediaResult;
+};
+
+export type ReturnFfiBridgeCopyBackupMediaResult =
+  | {
+      __type: 0;
+      cdn: number;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
+
+export type ReturnFfiCopyBackupMediaNextChunk = {
+  chunk: Array<ReturnFfiBridgeCopyBackupMediaOutcome>;
+  termination: ('finished' | Error) | null;
+};
+
+export type ReturnFfiCopyBackupMediaOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiBridgeCopyBackupMediaOutcome;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
+
 export type ReturnFfiGetDevicesOut = {
   devices: Array<ReturnFfiLinkedDeviceInternal>;
 };
@@ -279,6 +327,14 @@ export type ReturnFfiSetUsernameLinkOut =
 export type ReturnFfiTestStreamChunk = {
   chunk: Array<string>;
   termination: ('finished' | Error) | null;
+};
+
+export type ArgFfiBridgeCopyBackupMediaItem = {
+  source_attachment_cdn: number;
+  source_key: string;
+  object_length: bigint;
+  media_id: Uint8Array<ArrayBuffer>;
+  encryption_key: Uint8Array<ArrayBuffer>;
 };
 
 export type ArgFfiMyRemoteDeriveEnum =
@@ -835,6 +891,13 @@ type NativeFunctions = {
     username: string | null,
     password: string | null
   ) => ConnectionProxyConfig;
+  CopyBackupMediaStream_cancel: (
+    stream: Wrapper<CopyBackupMediaStream>
+  ) => void;
+  CopyBackupMediaStream_next: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    stream: Wrapper<CopyBackupMediaStream>
+  ) => CancellablePromise<ReturnFfiCopyBackupMediaNextChunk>;
   CreateCallLinkCredentialPresentation_CheckValidContents: (
     presentation_bytes: Uint8Array<ArrayBuffer>
   ) => void;
@@ -2226,6 +2289,12 @@ type NativeFunctions = {
     http_version: number
   ) => ConnectionManager;
   TESTING_ConvertOptionalUuid: (present: boolean) => Uuid | null;
+  TESTING_CopyBackupMediaTests: () => Array<
+    GrpcTestCaseFfi<
+      Array<ReturnFfiBridgeCopyBackupMediaItem>,
+      Array<ReturnFfiCopyBackupMediaOut>
+    >
+  >;
   TESTING_CreateOTP: (
     username: string,
     secret: Uint8Array<ArrayBuffer>
@@ -2636,6 +2705,14 @@ type NativeFunctions = {
     chat: Wrapper<UnauthenticatedChatConnection>,
     account: Uint8Array<ArrayBuffer>
   ) => CancellablePromise<boolean>;
+  UnauthenticatedChatConnection_backup_copy_media: (
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Uint8Array<ArrayBuffer>,
+    server_keys: Uint8Array<ArrayBuffer>,
+    signing_key: Wrapper<PrivateKey>,
+    items: Array<ArgFfiBridgeCopyBackupMediaItem>,
+    rng: RandomNumberGenerator
+  ) => CopyBackupMediaStream;
   UnauthenticatedChatConnection_backup_delete_all: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -2985,6 +3062,8 @@ const {
   ConnectionManager_set_proxy,
   ConnectionManager_set_remote_config,
   ConnectionProxyConfig_new,
+  CopyBackupMediaStream_cancel,
+  CopyBackupMediaStream_next,
   CreateCallLinkCredentialPresentation_CheckValidContents,
   CreateCallLinkCredentialPresentation_Verify,
   CreateCallLinkCredentialRequestContext_CheckValidContents,
@@ -3366,6 +3445,7 @@ const {
   TESTING_ConnectionManager_isUsingProxy,
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,
+  TESTING_CopyBackupMediaTests,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
   TESTING_DeleteUsernameHashTests,
@@ -3524,6 +3604,7 @@ const {
   TokioAsyncContext_cancel,
   TokioAsyncContext_new,
   UnauthenticatedChatConnection_account_exists,
+  UnauthenticatedChatConnection_backup_copy_media,
   UnauthenticatedChatConnection_backup_delete_all,
   UnauthenticatedChatConnection_backup_get_cdn_credentials,
   UnauthenticatedChatConnection_backup_get_media_upload_form,
@@ -3694,6 +3775,8 @@ export {
   ConnectionManager_set_proxy,
   ConnectionManager_set_remote_config,
   ConnectionProxyConfig_new,
+  CopyBackupMediaStream_cancel,
+  CopyBackupMediaStream_next,
   CreateCallLinkCredentialPresentation_CheckValidContents,
   CreateCallLinkCredentialPresentation_Verify,
   CreateCallLinkCredentialRequestContext_CheckValidContents,
@@ -4075,6 +4158,7 @@ export {
   TESTING_ConnectionManager_isUsingProxy,
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,
+  TESTING_CopyBackupMediaTests,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
   TESTING_DeleteUsernameHashTests,
@@ -4233,6 +4317,7 @@ export {
   TokioAsyncContext_cancel,
   TokioAsyncContext_new,
   UnauthenticatedChatConnection_account_exists,
+  UnauthenticatedChatConnection_backup_copy_media,
   UnauthenticatedChatConnection_backup_delete_all,
   UnauthenticatedChatConnection_backup_get_cdn_credentials,
   UnauthenticatedChatConnection_backup_get_media_upload_form,
@@ -4398,6 +4483,9 @@ export interface ConnectionManager {
   readonly __type: unique symbol;
 }
 export interface ConnectionProxyConfig {
+  readonly __type: unique symbol;
+}
+export interface CopyBackupMediaStream {
   readonly __type: unique symbol;
 }
 export interface DecryptionErrorMessage {
