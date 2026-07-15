@@ -1520,6 +1520,9 @@ SignalFfiError* signal_testing_set_device_name_tests(
 SignalFfiError* signal_testing_set_push_token_apns_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
+SignalFfiError* signal_testing_set_registration_lock_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
 SignalFfiError* signal_testing_set_username_link_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );

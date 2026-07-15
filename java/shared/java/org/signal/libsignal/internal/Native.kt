@@ -238,6 +238,8 @@ internal object Native {
   @JvmStatic
   public external fun AuthenticatedChatConnection_set_push_token_fcm(asyncRuntime: ObjectHandle, chat: SimpleOwner, fcmToken: String): CompletableFuture<Void?>
   @JvmStatic
+  public external fun AuthenticatedChatConnection_set_registration_lock(asyncRuntime: ObjectHandle, chat: SimpleOwner, svrKey: ByteArray): CompletableFuture<Void?>
+  @JvmStatic
   public external fun AuthenticatedChatConnection_set_username_link(asyncRuntime: ObjectHandle, chat: SimpleOwner, usernameCiphertext: ByteArray, keepLinkHandle: Boolean): CompletableFuture<UUID>
 
   @JvmStatic @Throws(Exception::class)

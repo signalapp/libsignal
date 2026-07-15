@@ -6,6 +6,7 @@
 //! The `grpc` module and its submodules implement a chat server based on the gRPC messages from
 //! [libsignal-net-grpc](libsignal_net_grpc).
 
+pub mod accounts;
 pub mod backups;
 pub mod devices;
 mod messages;

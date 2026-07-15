@@ -623,6 +623,10 @@ fn TESTING_SetPushTokenFcmTests() -> GrpcTestCases<String, ()> {
 fn TESTING_ClearPushTokenTests() -> GrpcTestCases<(), ()> {
     libsignal_net_chat::grpc::devices::test_cases::clear_push_token_test_cases().into()
 }
+#[bridge_fn(nice = true)]
+fn TESTING_SetRegistrationLockTests() -> GrpcTestCases<[u8; 32], ()> {
+    libsignal_net_chat::grpc::accounts::test_cases::set_registration_lock_test_cases().into()
+}
 
 #[bridge_fn(jni = false, node = false, nice = true)]
 fn TESTING_CopyBackupMediaTests() -> GrpcTestCases<

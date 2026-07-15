@@ -69,6 +69,22 @@ export class AccountEntropyPool {
 }
 
 /**
+ * An account's SVR key: the 32-byte root from which account-related secrets are derived.
+ *
+ * This is the same key that {@link AccountEntropyPool.deriveSvrKey} produces. Signal clients
+ * historically call these bytes the "master key"; libsignal calls it the SVR key. The two names
+ * refer to the same value.
+ */
+export class SvrKey extends ByteArray {
+  private readonly __type?: never;
+  static SIZE = 32;
+
+  constructor(contents: Uint8Array<ArrayBuffer>) {
+    super(contents, SvrKey.checkLength(SvrKey.SIZE));
+  }
+}
+
+/**
  * A key used for many aspects of backups.
  *
  * Clients are typically concerned with two long-lived keys: a "messages" key (sometimes called "the

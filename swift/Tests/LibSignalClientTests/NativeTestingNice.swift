@@ -1644,6 +1644,18 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<StringConverter, VoidConverter>.convertReturn(consuming: rawOutput)
 
     }
+    internal static func TESTING_SetRegistrationLockTests() throws -> [GrpcTestCase<Data, Void>] {
+        var rawOutput = GrpcTestCaseVecConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, VoidConverter>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_set_registration_lock_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, VoidConverter>
+            .convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_SetUsernameLinkTests() throws -> [GrpcTestCase<
         SetUsernameLinkArgs, SetUsernameLinkOut
     >] {

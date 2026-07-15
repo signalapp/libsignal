@@ -3153,6 +3153,12 @@ SignalFfiError* signal_authenticated_chat_connection_set_push_token_apns(
   SignalConstPointerAuthenticatedChatConnection chat,
   const int8_t* apns_token
 );
+SignalFfiError* signal_authenticated_chat_connection_set_registration_lock(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  const SignalType_FixedArray32_uint8_t* svr_key
+);
 SignalFfiError* signal_authenticated_chat_connection_set_username_link(
   SignalCPromiseUuid* promise,
   SignalConstPointerTokioAsyncContext async_runtime,

@@ -15,6 +15,7 @@ pub use backup::*;
 pub use error::{Error, Result};
 pub use hash::{PinHash, local_pin_hash, verify_local_pin_hash};
 use hkdf::Hkdf;
+use hmac::{Hmac, Mac as _};
 use rand::distr::slice;
 use rand::{CryptoRng, Rng};
 use sha2::Sha256;
@@ -44,6 +45,56 @@ impl AccountEntropyPool {
             .expand(b"20240801_SIGNAL_SVR_MASTER_KEY", &mut key)
             .expect("valid length");
         key
+    }
+}
+
+/// An account's SVR key: the 32-byte root from which account-related secrets are derived.
+///
+/// Signal clients historically call these bytes the "master key"; libsignal calls it the SVR key.
+/// The two names refer to the same value. It is *derived* from the [`AccountEntropyPool`] and is
+/// stored on the client and in SVR, but is not directly exposed to the user.
+///
+/// The name "master key" predates the AccountEntropyPool: the key used to be randomly generated and
+/// served as the root for a variety of concerns (registration lock, storage service, ...). Now that
+/// those keys are derived from the AccountEntropyPool instead, it is no longer a "master" key, so
+/// libsignal names it after its remaining role: the key stored in SVR.
+///
+/// ```text
+/// AccountEntropyPool  (64 chars [a-z0-9]; the user-recoverable root)
+///        │  HKDF-SHA256(info = "20240801_SIGNAL_SVR_MASTER_KEY")
+///        ▼
+///     SvrKey  (32 bytes; stored in SVR, protected by the PIN)
+///        │  HMAC-SHA256(svrKey, <label>)
+///        ├─ "Registration Lock"  → registration lock token
+///        └─ (other labels: registration recovery password, storage service key, …)
+/// ```
+#[derive(Clone)]
+pub struct SvrKey([u8; SVR_KEY_LEN]);
+
+impl SvrKey {
+    /// Wraps the raw 32-byte SVR key.
+    ///
+    /// The bytes typically come from [`AccountEntropyPool::derive_svr_key`].
+    pub fn new(svr_key: [u8; SVR_KEY_LEN]) -> Self {
+        Self(svr_key)
+    }
+
+    /// Derives the registration lock token as `HMAC-SHA256(svrKey, "Registration Lock")`.
+    ///
+    /// This is the raw 32-byte token; the server-facing (legacy REST) representation is this value
+    /// hex-encoded, whereas the typed gRPC API sends these raw bytes directly.
+    pub fn derive_registration_lock(&self) -> [u8; 32] {
+        let mut mac =
+            Hmac::<Sha256>::new_from_slice(&self.0).expect("HMAC accepts keys of any length");
+        mac.update(b"Registration Lock");
+        mac.finalize().into_bytes().into()
+    }
+}
+
+impl fmt::Debug for SvrKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Never print the raw key material.
+        f.debug_tuple("SvrKey").field(&"_").finish()
     }
 }
 
@@ -165,6 +216,29 @@ mod tests {
                 AccountEntropyPool::from_str(std::str::from_utf8(&[b' '; 64]).expect("ascii")),
                 Err(InvalidAccountEntropyPool::InvalidCharacter(' '))
             );
+        }
+    }
+
+    mod svr_key_tests {
+        use const_str::hex;
+
+        use crate::SvrKey;
+
+        #[test]
+        fn derive_registration_lock_known_answer() {
+            // Cross-checked against the Android/iOS clients' MasterKey.deriveRegistrationLock():
+            // an SVR key of 32 `0x2a` bytes derives this registration lock token.
+            let svr_key = SvrKey::new([0x2a; 32]);
+            assert_eq!(
+                svr_key.derive_registration_lock(),
+                hex!("3a40e25812e6c20cca76a602451dd2bc7484553514438cade320c2aef54e10d1")
+            );
+        }
+
+        #[test]
+        fn debug_does_not_leak_key_material() {
+            let svr_key = SvrKey::new([0x2a; 32]);
+            assert_eq!(format!("{svr_key:?}"), r#"SvrKey("_")"#);
         }
     }
 }

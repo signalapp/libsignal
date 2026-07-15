@@ -10,6 +10,7 @@ use std::time::Duration;
 use ::zkgroup::groups::GroupSendFullToken;
 use http::uri::InvalidUri;
 use http::{HeaderName, HeaderValue, StatusCode};
+use libsignal_account_keys::SvrKey;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::crypto::RandomNumberGenerator;
 use libsignal_bridge_types::net::chat::*;
@@ -869,6 +870,21 @@ async fn AuthenticatedChatConnection_set_username_link(
     chat.require_grpc()
         .await
         .set_username_link(&username_ciphertext, keep_link_handle)
+        .await
+}
+
+// Only an account's primary device may set a registration lock.
+//
+// Takes the account's raw 32-byte SVR key; libsignal derives the registration lock token from it
+// before sending (the SVR key itself is never transmitted).
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_registration_lock(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    svr_key: [u8; 32],
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .set_registration_lock(SvrKey::new(svr_key))
         .await
 }
 

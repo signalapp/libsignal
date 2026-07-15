@@ -619,6 +619,30 @@ internal enum NativeNice {
         return try VoidConverter.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_set_registration_lock(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        svrKey svr_key: Data,
+    ) async throws {
+        let rawOutput: VoidConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        FixedByteArrayConverter<FixedByteArrayHelper32>.convertArgBorrowed(svr_key) { svr_keyFfi in
+                            SignalFfi.signal_authenticated_chat_connection_set_registration_lock(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                                svr_keyFfi,
+                            )
+                        }
+                    }
+            }
+        return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_set_username_link(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,
