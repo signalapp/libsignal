@@ -31,4 +31,14 @@ describe('AuthAccountsService', () => {
       }
     );
   });
+
+  describe('setDiscoverableByPhoneNumber', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_SetDiscoverableByPhoneNumberTests(),
+      connectAuth<AuthAccountsService>,
+      async (chat: AuthAccountsService, discoverable: boolean, _resp: void) => {
+        await chat.setDiscoverableByPhoneNumber({ discoverable });
+      }
+    );
+  });
 });

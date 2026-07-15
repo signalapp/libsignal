@@ -26,4 +26,20 @@ class AuthAccountsServiceTest {
         },
       )
     }
+
+  @Test
+  fun testSetDiscoverableByPhoneNumber() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_SetDiscoverableByPhoneNumberTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthAccountsService,
+        invoke = { chat, req ->
+          chat.setDiscoverableByPhoneNumber(discoverable = req)
+        },
+        check = { _, actual ->
+          assertIs<RequestResult.Success<Unit>>(actual)
+        },
+      )
+    }
 }

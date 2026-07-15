@@ -236,6 +236,8 @@ internal object Native {
   @JvmStatic
   public external fun AuthenticatedChatConnection_set_device_name(asyncRuntime: ObjectHandle, chat: SimpleOwner, deviceId: Int, encryptedName: ByteArray): CompletableFuture<Void?>
   @JvmStatic
+  public external fun AuthenticatedChatConnection_set_discoverable_by_phone_number(asyncRuntime: ObjectHandle, chat: SimpleOwner, discoverable: Boolean): CompletableFuture<Void?>
+  @JvmStatic
   public external fun AuthenticatedChatConnection_set_push_token_fcm(asyncRuntime: ObjectHandle, chat: SimpleOwner, fcmToken: String): CompletableFuture<Void?>
   @JvmStatic
   public external fun AuthenticatedChatConnection_set_registration_lock(asyncRuntime: ObjectHandle, chat: SimpleOwner, svrKey: ByteArray): CompletableFuture<Void?>

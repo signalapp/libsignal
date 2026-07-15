@@ -775,6 +775,28 @@ export async function AuthenticatedChatConnection_set_device_name({
     )
   );
 }
+export async function AuthenticatedChatConnection_set_discoverable_by_phone_number({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  discoverable: discoverable,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  discoverable: boolean;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_discoverable_by_phone_number(
+        asyncContext,
+        identity(chat),
+        identity(discoverable)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_set_registration_lock({
   asyncContext,
   abortSignal,
@@ -1151,6 +1173,15 @@ export function TESTING_SetDeviceNameTests(): Array<
     returnConverterSetDeviceNameArgs,
     returnConverterSetDeviceNameOut
   )(Native.TESTING_SetDeviceNameTests());
+}
+
+export function TESTING_SetDiscoverableByPhoneNumberTests(): Array<
+  GrpcTestCase<boolean, void>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    identity
+  )(Native.TESTING_SetDiscoverableByPhoneNumberTests());
 }
 
 export function TESTING_SetRegistrationLockTests(): Array<

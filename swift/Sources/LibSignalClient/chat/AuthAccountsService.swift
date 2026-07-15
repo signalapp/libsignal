@@ -36,6 +36,15 @@ public protocol AuthAccountsService: Sendable {
     /// - Throws:
     ///   - the standard Signal network errors
     func setRegistrationLock(_ svrKey: SvrKey) async throws
+
+    /// Sets whether the authenticated account may be discovered by phone number via the Contact
+    /// Discovery Service (CDS).
+    ///
+    /// If `false`, other users must discover this account by other means (e.g. by username).
+    ///
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func setDiscoverableByPhoneNumber(_ discoverable: Bool) async throws
 }
 
 extension AuthenticatedChatConnection: AuthAccountsService {
@@ -44,6 +53,14 @@ extension AuthenticatedChatConnection: AuthAccountsService {
             asyncContext: self.tokioAsyncContext,
             chat: self,
             svrKey: svrKey.serialize(),
+        )
+    }
+
+    public func setDiscoverableByPhoneNumber(_ discoverable: Bool) async throws {
+        return try await NativeNice.AuthenticatedChatConnection_set_discoverable_by_phone_number(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            discoverable: discoverable,
         )
     }
 }

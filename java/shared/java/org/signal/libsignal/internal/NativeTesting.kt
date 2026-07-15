@@ -308,6 +308,8 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_SetDeviceNameTests(): Array<Object>
   @JvmStatic
+  public external fun TESTING_SetDiscoverableByPhoneNumberTests(): Array<Object>
+  @JvmStatic
   public external fun TESTING_SetPushTokenFcmTests(): Array<Object>
   @JvmStatic
   public external fun TESTING_SetRegistrationLockTests(): Array<Object>

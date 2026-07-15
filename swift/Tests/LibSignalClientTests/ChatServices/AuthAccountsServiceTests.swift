@@ -24,6 +24,18 @@ class AuthAccountsServiceTests: AuthChatServiceTestBase<any AuthAccountsService>
             }
         )
     }
+
+    func testSetDiscoverableByPhoneNumber() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_SetDiscoverableByPhoneNumberTests(),
+            invoke: { api, discoverable in
+                try await api.setDiscoverableByPhoneNumber(discoverable)
+            },
+            check: { _, actual in
+                try actual.get()
+            }
+        )
+    }
 }
 
 #endif

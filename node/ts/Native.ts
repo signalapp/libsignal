@@ -558,6 +558,11 @@ type NativeFunctions = {
     device_id: number,
     encrypted_name: Uint8Array<ArrayBuffer>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_set_discoverable_by_phone_number: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    discoverable: boolean
+  ) => CancellablePromise<void>;
   AuthenticatedChatConnection_set_registration_lock: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -2567,6 +2572,9 @@ type NativeFunctions = {
   TESTING_SetDeviceNameTests: () => Array<
     GrpcTestCaseFfi<ReturnFfiSetDeviceNameArgs, ReturnFfiSetDeviceNameOut>
   >;
+  TESTING_SetDiscoverableByPhoneNumberTests: () => Array<
+    GrpcTestCaseFfi<boolean, void>
+  >;
   TESTING_SetRegistrationLockTests: () => Array<
     GrpcTestCaseFfi<Uint8Array<ArrayBuffer>, void>
   >;
@@ -2975,6 +2983,7 @@ const {
   AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_send_sync_message,
   AuthenticatedChatConnection_set_device_name,
+  AuthenticatedChatConnection_set_discoverable_by_phone_number,
   AuthenticatedChatConnection_set_registration_lock,
   AuthenticatedChatConnection_set_username_link,
   AvatarUploadCredentialPresentation_CheckValidContents,
@@ -3548,6 +3557,7 @@ const {
   TESTING_RoundTripU8,
   TESTING_ServerMessageAck_Create,
   TESTING_SetDeviceNameTests,
+  TESTING_SetDiscoverableByPhoneNumberTests,
   TESTING_SetRegistrationLockTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
@@ -3688,6 +3698,7 @@ export {
   AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_send_sync_message,
   AuthenticatedChatConnection_set_device_name,
+  AuthenticatedChatConnection_set_discoverable_by_phone_number,
   AuthenticatedChatConnection_set_registration_lock,
   AuthenticatedChatConnection_set_username_link,
   AvatarUploadCredentialPresentation_CheckValidContents,
@@ -4261,6 +4272,7 @@ export {
   TESTING_RoundTripU8,
   TESTING_ServerMessageAck_Create,
   TESTING_SetDeviceNameTests,
+  TESTING_SetDiscoverableByPhoneNumberTests,
   TESTING_SetRegistrationLockTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,

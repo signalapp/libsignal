@@ -1517,6 +1517,9 @@ SignalFfiError* signal_testing_semaphore_new(
 SignalFfiError* signal_testing_set_device_name_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
+SignalFfiError* signal_testing_set_discoverable_by_phone_number_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
 SignalFfiError* signal_testing_set_push_token_apns_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );

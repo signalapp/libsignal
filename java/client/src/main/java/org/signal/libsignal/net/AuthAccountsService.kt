@@ -41,4 +41,28 @@ public class AuthAccountsService(
     } catch (e: Throwable) {
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }
+
+  /**
+   * Sets whether the authenticated account may be discovered by phone number via the Contact
+   * Discovery Service (CDS).
+   *
+   * If `false`, other users must discover this account by other means (e.g. by username).
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun setDiscoverableByPhoneNumber(discoverable: Boolean): CompletableFuture<RequestResult<Unit, Nothing>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_set_discoverable_by_phone_number(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          discoverable = discoverable,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { err -> err.toRequestResult() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
 }

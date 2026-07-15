@@ -782,6 +782,15 @@ public object NativeTestingNice {
       }, { downcastFromObject<org.signal.libsignal.internal.SetDeviceNameOut>(it) })(ffiOut)
   }
 
+  public fun TESTING_SetDiscoverableByPhoneNumberTests(): List<org.signal.libsignal.net.GrpcTestCase<Boolean, Void?>> {
+    val ffiOut =
+      NativeTesting.TESTING_SetDiscoverableByPhoneNumberTests()
+
+    return org.signal.libsignal.net.GrpcTestCase.resultConverter<Boolean, Void?, Boolean, Void?>({
+      identity(it)
+    }, { identity(it) })(ffiOut)
+  }
+
   public fun TESTING_SetPushTokenFcmTests(): List<org.signal.libsignal.net.GrpcTestCase<String, Void?>> {
     val ffiOut =
       NativeTesting.TESTING_SetPushTokenFcmTests()

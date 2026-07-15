@@ -1951,6 +1951,16 @@ internal enum NativeTestingNice {
         >.convertReturn(consuming: rawOutput)
 
     }
+    internal static func TESTING_SetDiscoverableByPhoneNumberTests() throws -> [GrpcTestCase<Bool, Void>] {
+        var rawOutput = GrpcTestCaseVecConverter<IdentityConverter<Bool>, VoidConverter>.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_set_discoverable_by_phone_number_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<IdentityConverter<Bool>, VoidConverter>.convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_SetPushTokenApnsTests() throws -> [GrpcTestCase<String, Void>] {
         var rawOutput = GrpcTestCaseVecConverter<StringConverter, VoidConverter>.emptyFfiReturn()
         try checkError(

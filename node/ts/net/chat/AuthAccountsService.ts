@@ -37,6 +37,21 @@ export interface AuthAccountsService {
     },
     options?: RequestOptions
   ) => Promise<void>;
+
+  /**
+   * Sets whether the authenticated account may be discovered by phone number via the Contact
+   * Discovery Service (CDS).
+   *
+   * If `false`, other users must discover this account by other means (e.g. by username).
+   *
+   * @throws {StandardNetworkError}
+   */
+  setDiscoverableByPhoneNumber: (
+    request: {
+      discoverable: boolean;
+    },
+    options?: RequestOptions
+  ) => Promise<void>;
 }
 
 AuthenticatedChatConnection.prototype.setRegistrationLock = async function (
@@ -54,3 +69,22 @@ AuthenticatedChatConnection.prototype.setRegistrationLock = async function (
     svrKey: svrKey.getContents(),
   });
 };
+
+AuthenticatedChatConnection.prototype.setDiscoverableByPhoneNumber =
+  async function (
+    {
+      discoverable,
+    }: {
+      discoverable: boolean;
+    },
+    options?: RequestOptions
+  ): Promise<void> {
+    return await NativeNice.AuthenticatedChatConnection_set_discoverable_by_phone_number(
+      {
+        asyncContext: this.asyncContext,
+        abortSignal: options?.abortSignal,
+        chat: this.chatService,
+        discoverable,
+      }
+    );
+  };

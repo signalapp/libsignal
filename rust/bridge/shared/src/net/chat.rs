@@ -889,6 +889,17 @@ async fn AuthenticatedChatConnection_set_registration_lock(
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_discoverable_by_phone_number(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    discoverable: bool,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .set_discoverable_by_phone_number(discoverable)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn AuthenticatedChatConnection_delete_username_hash(
     chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
 ) -> Result<(), RequestError<Infallible>> {

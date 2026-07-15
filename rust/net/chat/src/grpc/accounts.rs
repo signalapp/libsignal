@@ -8,6 +8,7 @@ use std::convert::Infallible;
 use libsignal_account_keys::SvrKey;
 use libsignal_net_grpc::proto::chat::account::accounts_client::AccountsClient;
 use libsignal_net_grpc::proto::chat::account::{
+    SetDiscoverableByPhoneNumberRequest, SetDiscoverableByPhoneNumberResponse,
     SetRegistrationLockRequest, SetRegistrationLockResponse,
 };
 
@@ -20,6 +21,17 @@ impl std::fmt::Display for Redact<SetRegistrationLockRequest> {
         let Self(SetRegistrationLockRequest { registration_lock }) = self;
         f.debug_struct("SetRegistrationLockRequest")
             .field("registration_lock_len", &registration_lock.len())
+            .finish()
+    }
+}
+
+impl std::fmt::Display for Redact<SetDiscoverableByPhoneNumberRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(SetDiscoverableByPhoneNumberRequest {
+            discoverable_by_phone_number,
+        }) = self;
+        f.debug_struct("SetDiscoverableByPhoneNumberRequest")
+            .field("discoverable", discoverable_by_phone_number)
             .finish()
     }
 }
@@ -52,6 +64,27 @@ impl<T: GrpcServiceProvider> Auth<T> {
                 .into_inner();
         Ok(())
     }
+
+    /// Sets whether the authenticated account may be discovered by phone number via the Contact
+    /// Discovery Service (CDS).
+    ///
+    /// If `false`, other users must discover this account by other means (e.g. by username).
+    pub async fn set_discoverable_by_phone_number(
+        &self,
+        discoverable: bool,
+    ) -> Result<(), RequestError<Infallible>> {
+        let mut client = AccountsClient::new(self.0.service());
+        let request = SetDiscoverableByPhoneNumberRequest {
+            discoverable_by_phone_number: discoverable,
+        };
+        let desc = Redact(&request).to_string();
+        let SetDiscoverableByPhoneNumberResponse {} = log_and_send("auth", &desc, || {
+            client.set_discoverable_by_phone_number(request)
+        })
+        .await?
+        .into_inner();
+        Ok(())
+    }
 }
 
 // Not cfg(test) so it can be accessed via bridging tests.
@@ -80,6 +113,34 @@ pub mod test_cases {
             response: (),
         }]
     }
+
+    pub fn set_discoverable_by_phone_number_test_cases() -> Vec<
+        GrpcTestCase<
+            bool,
+            SetDiscoverableByPhoneNumberRequest,
+            SetDiscoverableByPhoneNumberResponse,
+            (),
+        >,
+    > {
+        let method = "/org.signal.chat.account.Accounts/SetDiscoverableByPhoneNumber";
+        [true, false]
+            .into_iter()
+            .map(|discoverable| GrpcTestCase {
+                name: if discoverable {
+                    "discoverable".to_string()
+                } else {
+                    "not discoverable".to_string()
+                },
+                method: method.to_string(),
+                request: discoverable,
+                request_grpc: SetDiscoverableByPhoneNumberRequest {
+                    discoverable_by_phone_number: discoverable,
+                },
+                response_grpc: SetDiscoverableByPhoneNumberResponse {},
+                response: (),
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -96,6 +157,18 @@ mod test {
             set_registration_lock_test_cases(),
             |chat: Auth<_>, svr_key: [u8; 32]| async move {
                 chat.set_registration_lock(SvrKey::new(svr_key)).await
+            },
+            |(), result| assert_matches!(result, Ok(())),
+        );
+    }
+
+    #[test]
+    fn test_set_discoverable_by_phone_number() {
+        use test_cases::*;
+        run_tests(
+            set_discoverable_by_phone_number_test_cases(),
+            |chat: Auth<_>, discoverable: bool| async move {
+                chat.set_discoverable_by_phone_number(discoverable).await
             },
             |(), result| assert_matches!(result, Ok(())),
         );

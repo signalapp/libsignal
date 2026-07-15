@@ -345,6 +345,25 @@ public object NativeNice {
       .makeCancelable(asyncCtx)
   }
 
+  public fun AuthenticatedChatConnection_set_discoverable_by_phone_number(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    discoverable: Boolean,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_discoverable = identity(discoverable)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_set_discoverable_by_phone_number(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_discoverable,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_set_push_token_fcm(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,
