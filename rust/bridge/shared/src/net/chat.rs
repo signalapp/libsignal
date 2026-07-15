@@ -619,7 +619,7 @@ async fn UnauthenticatedChatConnection_backup_delete_all(
         .await
 }
 
-#[bridge_fn(jni = false, node = false, nice = true)]
+#[bridge_fn(node = false, nice = true)]
 fn UnauthenticatedChatConnection_backup_copy_media(
     chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
     credential: ::zkgroup::backups::BackupAuthCredential,
@@ -660,7 +660,7 @@ fn UnauthenticatedChatConnection_backup_copy_media(
     ))
 }
 
-#[bridge_io(TokioAsyncContext, jni = false, node = false, nice = true)]
+#[bridge_io(TokioAsyncContext, node = false, nice = true)]
 async fn CopyBackupMediaStream_next(
     stream: BridgeHandleRef<'_, CopyBackupMediaStream>,
 ) -> CopyBackupMediaNextChunk {
@@ -681,14 +681,14 @@ async fn CopyBackupMediaStream_next(
     }
 }
 
-#[bridge_fn(jni = false, node = false)]
+#[bridge_fn(node = false)]
 fn CopyBackupMediaStream_cancel(stream: BridgeHandleRef<'_, CopyBackupMediaStream>) {
     stream.cancel();
 }
 
 // Used by the test APIs, but must be emitted here to avoid the check for duplicate types in the
 // metadata collector.
-#[bridge_fn(jni = false, node = false, nice = true)]
+#[bridge_fn(node = false, nice = true)]
 fn CopyBackupMediaStream_forceEmitVecOfBridgeCopyBackupMediaItem()
 -> BridgeVec<BridgeCopyBackupMediaItem> {
     unreachable!()

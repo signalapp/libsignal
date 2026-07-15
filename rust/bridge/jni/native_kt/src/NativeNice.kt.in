@@ -71,7 +71,7 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
                         @CalledFromNative
                         internal val {{ field }}: {{ ty.ffi_field_type_erased }}
                     {%- endfor %}
-                    constructor(
+                    internal constructor(
                         {% for (field, ty) in arg_converter.fields -%}
                             {{ field }}: {{ ty.ffi_field_type_erased }},
                         {%- endfor %}
@@ -81,7 +81,7 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
                         {%- endfor %}
                     }
                 }
-                {% if superclass %}override {% endif %}fun toFfiArgType(): FfiArgType = FfiArgType(
+                internal {% if superclass %}override {% endif %}fun toFfiArgType(): FfiArgType = FfiArgType(
                     {% for (field, ty) in arg_converter.fields -%}
                         {{ field }} = {{ ty.converter_function }}({{ field|to_lower_camel_case }}),
                     {%- endfor %}

@@ -435,6 +435,12 @@ internal object Native {
 
   @JvmStatic
   public external fun CopyBackupMediaStream_Destroy(handle: ObjectHandle): Unit
+  @JvmStatic
+  public external fun CopyBackupMediaStream_cancel(stream: SimpleOwner): Unit
+  @JvmStatic
+  public external fun CopyBackupMediaStream_forceEmitVecOfBridgeCopyBackupMediaItem(): Array<*>
+  @JvmStatic
+  public external fun CopyBackupMediaStream_next(asyncRuntime: ObjectHandle, stream: SimpleOwner): CompletableFuture<Object>
 
   @JvmStatic @Throws(Exception::class)
   public external fun CreateCallLinkCredentialPresentation_CheckValidContents(presentationBytes: ByteArray): Unit
@@ -1379,6 +1385,8 @@ internal object Native {
   public external fun UnauthenticatedChatConnection_Destroy(handle: ObjectHandle): Unit
   @JvmStatic
   public external fun UnauthenticatedChatConnection_account_exists(asyncRuntime: ObjectHandle, chat: SimpleOwner, account: ByteArray): CompletableFuture<Boolean>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_copy_media(chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, items: Array<*>, rng: Long): ObjectHandle
   @JvmStatic
   public external fun UnauthenticatedChatConnection_backup_delete_all(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, rng: Long): CompletableFuture<Void?>
   @JvmStatic

@@ -107,4 +107,16 @@ class StreamTest {
       assertEquals(received, listOf("a", "b", "c"))
       assert(cancelled.get(), { "cancel callback was not invoked" })
     }
+
+  @Test
+  fun testMultipleCollect() =
+    runTest {
+      val contents = arrayOf("a", "b", "c", "d", "e", "f", "g", "h", "i", "j")
+
+      @Suppress("UNCHECKED_CAST")
+      val stream =
+        wrapTestStream(NativeTesting.TESTING_BulkPullFromStream_New(contents as Array<Object>, false))
+      stream.toList()
+      assertFailsWith<IllegalStateException> { stream.toList() }
+    }
 }

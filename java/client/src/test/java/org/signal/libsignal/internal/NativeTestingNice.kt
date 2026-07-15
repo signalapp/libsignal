@@ -21,6 +21,47 @@ import org.signal.libsignal.internal.NativeNiceHelpers.identity
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecArg
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 
+public sealed class CopyBackupMediaOut {
+  public data class Item(
+    val _0: org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome,
+  ) : CopyBackupMediaOut() {
+    public companion object {
+      @JvmStatic
+      @JvmName("fromNative")
+      @CalledFromNative
+      internal fun fromNative(_0: Any?): Item =
+        Item(
+          _0 =
+            downcastFromObject<org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome>(
+              _0 as Object,
+            ),
+        )
+    }
+  }
+
+  public data object InvalidDataInStream : CopyBackupMediaOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): InvalidDataInStream = InvalidDataInStream
+  }
+
+  public data object CredentialRejected : CopyBackupMediaOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): CredentialRejected = CredentialRejected
+  }
+
+  public data object CredentialRejectedWithoutAppropriateServerInfo : CopyBackupMediaOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): CredentialRejectedWithoutAppropriateServerInfo =
+      CredentialRejectedWithoutAppropriateServerInfo
+  }
+}
+
 public data class GetDevicesOut(
   val devices: List<org.signal.libsignal.internal.LinkedDeviceInternal>,
 ) {
@@ -102,14 +143,14 @@ public sealed class MyTestEnum {
     public class FfiArgType : MyTestEnum.FfiArgType {
       @CalledFromNative
       internal val _0: Int
-      constructor(
+      internal constructor(
         _0: Int,
       ) {
         this._0 = _0
       }
     }
 
-    override fun toFfiArgType(): FfiArgType =
+    internal override fun toFfiArgType(): FfiArgType =
       FfiArgType(
         _0 = identity(_0),
       )
@@ -134,14 +175,14 @@ public sealed class MyTestEnum {
     public class FfiArgType : MyTestEnum.FfiArgType {
       @CalledFromNative
       internal val x: Int
-      constructor(
+      internal constructor(
         x: Int,
       ) {
         this.x = x
       }
     }
 
-    override fun toFfiArgType(): FfiArgType =
+    internal override fun toFfiArgType(): FfiArgType =
       FfiArgType(
         x = identity(x),
       )
@@ -175,7 +216,7 @@ public sealed class MyTestEnum {
 
       @CalledFromNative
       internal val _1: Int
-      constructor(
+      internal constructor(
         _0: Int,
         _1: Int,
       ) {
@@ -184,7 +225,7 @@ public sealed class MyTestEnum {
       }
     }
 
-    override fun toFfiArgType(): FfiArgType =
+    internal override fun toFfiArgType(): FfiArgType =
       FfiArgType(
         _0 = identity(_0),
         _1 = identity(_1),
@@ -233,7 +274,7 @@ public sealed class MyTestEnum {
 
       @CalledFromNative
       internal val fun_struct: Any?
-      constructor(
+      internal constructor(
         person_name: Any?,
         person_age: Int,
         position: Any?,
@@ -246,7 +287,7 @@ public sealed class MyTestEnum {
       }
     }
 
-    override fun toFfiArgType(): FfiArgType =
+    internal override fun toFfiArgType(): FfiArgType =
       FfiArgType(
         person_name = identity(personName),
         person_age = identity(personAge),
@@ -290,7 +331,7 @@ public data class MyTestPoint(
 
     @CalledFromNative
     internal val _1: Int
-    constructor(
+    internal constructor(
       _0: Int,
       _1: Int,
     ) {
@@ -299,7 +340,7 @@ public data class MyTestPoint(
     }
   }
 
-  fun toFfiArgType(): FfiArgType =
+  internal fun toFfiArgType(): FfiArgType =
     FfiArgType(
       _0 = identity(_0),
       _1 = identity(_1),
@@ -336,7 +377,7 @@ public data class MyTestStruct(
 
     @CalledFromNative
     internal val my_string_field: Any?
-    constructor(
+    internal constructor(
       my_numeric_field: Int,
       my_string_field: Any?,
     ) {
@@ -345,7 +386,7 @@ public data class MyTestStruct(
     }
   }
 
-  fun toFfiArgType(): FfiArgType =
+  internal fun toFfiArgType(): FfiArgType =
     FfiArgType(
       my_numeric_field = identity(myNumericField),
       my_string_field = identity(myStringField),
@@ -528,6 +569,22 @@ public object NativeTestingNice {
     return org.signal.libsignal.net.GrpcTestCase.resultConverter<Void?, Void?, Void?, Void?>({
       identity(it)
     }, { identity(it) })(ffiOut)
+  }
+
+  public fun TESTING_CopyBackupMediaTests(): List<org.signal.libsignal.net.GrpcTestCase<List<org.signal.libsignal.internal.BridgeCopyBackupMediaItem>, List<org.signal.libsignal.internal.CopyBackupMediaOut>>> {
+    val ffiOut =
+      NativeTesting.TESTING_CopyBackupMediaTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Array<*>, Array<*>, List<org.signal.libsignal.internal.BridgeCopyBackupMediaItem>, List<org.signal.libsignal.internal.CopyBackupMediaOut>>({
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.BridgeCopyBackupMediaItem>({
+          downcastFromObject<org.signal.libsignal.internal.BridgeCopyBackupMediaItem>(it)
+        })(it)
+      }, {
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.CopyBackupMediaOut>({
+          downcastFromObject<org.signal.libsignal.internal.CopyBackupMediaOut>(it)
+        })(it)
+      })(ffiOut)
   }
 
   public fun TESTING_DeleteUsernameHashTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, Void?>> {

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -117,7 +118,9 @@ public fun <T> CompletableFuture<T>.toResultFuture(): CompletableFuture<Result<T
  *
  * Not intended to be called outside of libsignal.
  *
- * Runs `cancel` if the flow is cancelled during collection.
+ * The resulting `Flow` can only be collected once; trying to collect it multiple times will throw
+ * [IllegalStateException]. Runs `cancel` if the flow is cancelled or produces an exception during
+ * collection.
  */
 public fun <T, S, RawItem> wrapStream(
   asyncContext: TokioAsyncContext,
@@ -125,8 +128,14 @@ public fun <T, S, RawItem> wrapStream(
   pull: (TokioAsyncContext, S) -> CompletableFuture<Pair<List<RawItem>, Any?>>,
   convertItem: (RawItem) -> T,
   cancel: (S) -> Unit,
-): Flow<T> =
-  flow {
+): Flow<T> {
+  var consumed = AtomicBoolean(false)
+  return flow {
+    // Based on Kotlin's ReceiveChannel<T>.consumeAsFlow
+    // https://github.com/Kotlin/kotlinx.coroutines/blob/165c6cb5859b5365dec193abc75dee9f49ce1389/kotlinx-coroutines-core/common/src/flow/Channels.kt#L104
+    if (consumed.getAndSet(true)) {
+      throw IllegalStateException("cannot consume libsignal flow multiple times")
+    }
     while (true) {
       val (nextChunk, termination) = pull(asyncContext, stream).await()
       emitAll(nextChunk.asFlow().map(convertItem))
@@ -139,7 +148,8 @@ public fun <T, S, RawItem> wrapStream(
       }
     }
   }.onCompletion {
-    if (cancel != null && it is CancellationException) {
+    if (it != null) {
       cancel(stream)
     }
   }
+}

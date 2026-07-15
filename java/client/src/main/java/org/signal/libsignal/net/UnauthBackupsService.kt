@@ -5,13 +5,21 @@
 
 package org.signal.libsignal.net
 
+import kotlinx.coroutines.flow.Flow
+import org.signal.libsignal.internal.BridgeCopyBackupMediaItem
+import org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome
+import org.signal.libsignal.internal.BridgeCopyBackupMediaResult
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.Native
 import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.mapWithCancellation
+import org.signal.libsignal.internal.wrapStream
+import org.signal.libsignal.messagebackup.BackupKey
 import org.signal.libsignal.protocol.ecc.ECPrivateKey
 import org.signal.libsignal.zkgroup.GenericServerPublicParams
 import org.signal.libsignal.zkgroup.backups.BackupAuthCredential
+import java.util.Arrays
+import java.util.Objects
 
 /**
  * Either a [RequestUnauthorizedException] or [UploadTooLargeException]
@@ -31,6 +39,87 @@ public data class BackupCdnCredentials(
     @Suppress("UNCHECKED_CAST")
     internal fun fromFfiHeaders(headers: Array<Object>): BackupCdnCredentials =
       BackupCdnCredentials((headers as Array<Pair<String, String>>).toMap())
+  }
+}
+
+/**
+ * A single item to copy from the attachment CDN to the backup CDN.
+ *
+ * `encryptionKey` is the combined HMAC + AES key from [BackupKey.deriveMediaEncryptionKey]
+ * or [BackupKey.deriveThumbnailTransitEncryptionKey].
+ */
+public data class CopyBackupMediaItem(
+  val sourceAttachmentCdn: Int,
+  val sourceKey: String,
+  val objectLength: Long,
+  val mediaId: ByteArray,
+  val encryptionKey: ByteArray,
+) {
+  override fun equals(other: Any?): Boolean {
+    if (other !is CopyBackupMediaItem) {
+      return false
+    }
+    return sourceAttachmentCdn == other.sourceAttachmentCdn &&
+      sourceKey == other.sourceKey &&
+      objectLength == other.objectLength &&
+      mediaId.contentEquals(other.mediaId) &&
+      encryptionKey.contentEquals(other.encryptionKey)
+  }
+
+  override fun hashCode(): Int =
+    Objects.hash(sourceAttachmentCdn, sourceKey, objectLength, Arrays.hashCode(mediaId), Arrays.hashCode(encryptionKey))
+}
+
+public sealed class CopyBackupMediaOutcome(
+  public val mediaId: ByteArray,
+) {
+  public class Success(
+    mediaId: ByteArray,
+    public val cdn: Int,
+  ) : CopyBackupMediaOutcome(mediaId)
+
+  public class SourceNotFound(
+    mediaId: ByteArray,
+  ) : CopyBackupMediaOutcome(mediaId)
+
+  public class WrongSourceLength(
+    mediaId: ByteArray,
+  ) : CopyBackupMediaOutcome(mediaId)
+
+  public class OutOfSpace(
+    mediaId: ByteArray,
+  ) : CopyBackupMediaOutcome(mediaId)
+
+  public companion object {
+    // Public for testing, not intended for general use.
+    @JvmStatic
+    public fun fromFfi(value: BridgeCopyBackupMediaOutcome): CopyBackupMediaOutcome =
+      when (value.result) {
+        is BridgeCopyBackupMediaResult.Success -> Success(value.mediaId, value.result.cdn)
+        is BridgeCopyBackupMediaResult.SourceNotFound -> SourceNotFound(value.mediaId)
+        is BridgeCopyBackupMediaResult.WrongSourceLength -> WrongSourceLength(value.mediaId)
+        is BridgeCopyBackupMediaResult.OutOfSpace -> OutOfSpace(value.mediaId)
+      }
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (javaClass != other?.javaClass) {
+      return false
+    }
+    other as CopyBackupMediaOutcome
+    if (!mediaId.contentEquals(other.mediaId)) {
+      return false
+    }
+    return when (other) {
+      is Success -> (this as Success).cdn == other.cdn
+      is SourceNotFound, is WrongSourceLength, is OutOfSpace -> true
+    }
+  }
+
+  override fun hashCode(): Int {
+    // Omitting subclass fields is valid for hash codes,
+    // and hashing this class is unlikely. Let's keep it simple.
+    return mediaId.contentHashCode()
   }
 }
 
@@ -265,4 +354,58 @@ public class UnauthBackupsService(
     } catch (e: Throwable) {
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }
+
+  /**
+   * Copy and re-encrypt media from the attachments CDN into the backup CDN.
+   *
+   * The original, already encrypted, attachments will be encrypted with the
+   * provided key material before being copied. On retries, a particular destination media ID
+   * must not be reused with a different source media key or different encryption parameters.
+   *
+   * The copy operation is not atomic and responses will be returned as copy operations complete
+   * with detailed information about the outcome. If an error is encountered, not all requests
+   * may be reflected in the responses. However, there is no need to retry the items that did
+   * receive a response.
+   *
+   * The flow may be terminated at any time with the standard Signal network exceptions.
+   * In addition, the flow may immediately terminate with [RequestUnauthorizedException]
+   * if there are authorization issues. You can use [Throwable.toRequestResult] to classify
+   * exceptions produced by the flow similarly to the non-streaming endpoints.
+   *
+   * The flow can only be collected once; trying to collect it multiple times will throw
+   * [IllegalStateException].
+   */
+  public fun copyMedia(
+    auth: BackupAuth,
+    items: List<CopyBackupMediaItem>,
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): Flow<CopyBackupMediaOutcome> {
+    val stream =
+      NativeNice.UnauthenticatedChatConnection_backup_copy_media(
+        chat = connection,
+        credential = auth.credential,
+        serverKeys = auth.serverKeys,
+        signingKey = auth.signingKey,
+        items =
+          items.map {
+            BridgeCopyBackupMediaItem(
+              sourceAttachmentCdn = it.sourceAttachmentCdn,
+              sourceKey = it.sourceKey,
+              objectLength = it.objectLength,
+              mediaId = it.mediaId,
+              encryptionKey = it.encryptionKey,
+            )
+          },
+        rng = rngSeedForTesting,
+      )
+    return wrapStream(
+      connection.tokioAsyncContext,
+      stream,
+      pull = { asyncRuntime, stream ->
+        NativeNice.CopyBackupMediaStream_next(asyncRuntime, stream).thenApply { Pair(it.chunk, it.termination) }
+      },
+      convertItem = CopyBackupMediaOutcome::fromFfi,
+      cancel = Native::CopyBackupMediaStream_cancel,
+    )
+  }
 }

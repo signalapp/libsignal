@@ -3082,9 +3082,6 @@ impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
 macro_rules! jni_bridge_as_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
     ( $typ:ty as $jni_name:ident $(, jni_class=$jni_class:expr)? ) => {
-        $(impl $crate::jni::BridgeHandleWrapperClass for $typ {
-            const WRAPPER_CLASS: &str = $jni_class;
-        })?
         impl $crate::jni::BridgeHandle for $typ {
             const TYPE_TAG: u8 = $crate::jni::hash_location_for_type_tag(file!(), line!());
         }
@@ -3155,6 +3152,24 @@ macro_rules! jni_bridge_as_handle {
                 }
             }
         }
+        $(
+            impl $crate::jni::BridgeHandleWrapperClass for $typ {
+                const WRAPPER_CLASS: &str = $jni_class;
+            }
+
+            #[cfg(feature = "metadata")]
+            impl $crate::jni::NiceResultConverter for $typ {
+                fn register_kt_result_converter(
+                    _ctx: &mut $crate::jni::KtMetadataContext
+                ) -> $crate::jni::KtReturnConverter {
+                    $crate::jni::KtReturnConverter {
+                        nice_type: $jni_class.to_owned(),
+                        ffi_type: "ObjectHandle".to_owned(),
+                        converter_function: $jni_class.to_owned(),
+                    }
+                }
+            }
+        )?
     };
     ( $typ:ty $(, jni_class = $jni_class:expr)? ) => {
         // `paste!` turns the type back into an identifier.
@@ -3618,7 +3633,7 @@ macro_rules! jni_result_type {
         $crate::jni::Nullable<::jni::objects::JObject<'local>>
     };
 
-    (GrpcTestCases<$a:ty, $b:ty>) => {
+    (GrpcTestCases<$a:ty, $b:ty $(,)?>) => {
         ::jni::objects::JObjectArray<'local>
     };
 
