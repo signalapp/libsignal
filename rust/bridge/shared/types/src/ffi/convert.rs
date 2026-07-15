@@ -1844,6 +1844,7 @@ macro_rules! ffi_bridge_as_handle {
                     rust_type: RustType::of::<Self>(),
                     dependencies: Default::default(),
                     type_name: type_name.clone(),
+                    swift_name: None,
                     ptr_type_name: None,
                     mangling_component: stringify!($typ).to_string(),
                     utility_typedefs: format!("typedef struct {type_name} {type_name};").into(),

@@ -407,6 +407,15 @@ internal struct BackupCdnCredentialsConverter: NiceReturnConverter {
     }
 }
 
+internal protocol SignalPairOf {
+    associatedtype First
+    associatedtype Second
+    init()
+    init(generic_first: First, generic_second: Second)
+    var generic_first: First { get set }
+    var generic_second: Second { get set }
+}
+
 // swiftlint:disable:next todo
 // TODO: Get to the point where we can make this generic.
 internal struct PairOfStringConverterAndStringConverter: NiceReturnConverter {

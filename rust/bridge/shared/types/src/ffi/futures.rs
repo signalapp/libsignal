@@ -27,11 +27,11 @@ pub type RawCancellationId = u64;
 #[derive_where(Clone, Copy)]
 #[repr(C)]
 #[derive(IsCType)]
-#[capi(export_name_override = c_promise_export_name_override)]
-pub struct CPromise<T> {
+#[capi(export_name_override = c_promise_export_name_override, swift_protocol)]
+pub struct CPromise<Result> {
     complete: extern "C" fn(
         error: *mut SignalFfiError,
-        result: *const T,
+        result: *const Result,
         context: *const std::ffi::c_void,
     ),
     context: *const std::ffi::c_void,

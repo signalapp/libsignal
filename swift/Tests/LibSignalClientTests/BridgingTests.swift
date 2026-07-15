@@ -69,10 +69,6 @@ extension SignalConstPointerTestStream: SignalConstPointer {
     }
 }
 
-extension SignalCPromiseTestStreamChunkFfiResult: PromiseStruct {
-    public typealias Result = SignalTestStreamChunkFfiResult
-}
-
 final class BridgingTests: XCTestCase {
     func testErrorOnBorrow() async throws {
         do {

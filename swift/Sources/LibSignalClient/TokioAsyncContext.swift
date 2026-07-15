@@ -112,7 +112,7 @@ internal class TokioAsyncContext: NativeHandleOwner<SignalMutPointerTokioAsyncCo
     ///   signal_do_async_work(promise, runtime, someInput, someOtherInput)
     /// }
     /// ```
-    internal func invokeAsyncFunction<Promise: PromiseStruct>(
+    internal func invokeAsyncFunction<Promise: SignalCPromise>(
         _ body: (UnsafeMutablePointer<Promise>, SignalMutPointerTokioAsyncContext) -> SignalFfiErrorRef?
     ) async throws -> Promise.Result {
         let cancellationHelper = CancellationHandoffHelper(context: self)

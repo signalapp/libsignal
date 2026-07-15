@@ -10,14 +10,6 @@
 import SignalFfi
 import XCTest
 
-extension SignalCPromiseMutPointerTestingHandleType: LibSignalClient.PromiseStruct {
-    public typealias Result = SignalMutPointerTestingHandleType
-}
-
-extension SignalCPromiseMutPointerOtherTestingHandleType: LibSignalClient.PromiseStruct {
-    public typealias Result = SignalMutPointerOtherTestingHandleType
-}
-
 extension SignalFfi.SignalMutPointerTestingHandleType: LibSignalClient.SignalMutPointer {
     public typealias ConstPointer = SignalConstPointerTestingHandleType
 

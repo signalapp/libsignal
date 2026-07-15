@@ -14,122 +14,14 @@ import SignalFfi
 /// calls to `invokeAsyncFunction` can tell you if you got the result type wrong.
 ///
 /// Note that implementing this is **unchecked;** make sure you match up the types correctly!
-internal protocol PromiseStruct {
+internal protocol SignalCPromise {
     associatedtype Result
 
     // We can't declare the 'complete' callback without an associated type,
     // and that associated type won't get inferred for an imported struct (not sure why).
     // So we'd have to write out the callback type for every conformer.
-    var context: UnsafeRawPointer! { get }
-    var cancellation_id: SignalCancellationId { get }
-}
-
-extension SignalCPromisebool: PromiseStruct {
-    typealias Result = Bool
-}
-
-extension SignalCPromisei32: PromiseStruct {
-    typealias Result = Int32
-}
-
-extension SignalCPromiseRawPointer: PromiseStruct {
-    typealias Result = UnsafeRawPointer
-}
-
-extension SignalCPromiseMutPointerCdsiLookup: PromiseStruct {
-    typealias Result = SignalMutPointerCdsiLookup
-}
-
-extension SignalCPromiseFfiCdsiLookupResponse: PromiseStruct {
-    typealias Result = SignalFfiCdsiLookupResponse
-}
-
-extension SignalCPromiseFfiChatResponse: PromiseStruct {
-    typealias Result = SignalFfiChatResponse
-}
-
-extension SignalCPromiseMutPointerAuthenticatedChatConnection: PromiseStruct {
-    typealias Result = SignalMutPointerAuthenticatedChatConnection
-}
-
-extension SignalCPromiseMutPointerUnauthenticatedChatConnection: PromiseStruct {
-    typealias Result = SignalMutPointerUnauthenticatedChatConnection
-}
-
-extension SignalCPromiseMutPointerProvisioningChatConnection: PromiseStruct {
-    typealias Result = SignalMutPointerProvisioningChatConnection
-}
-
-extension SignalCPromiseMutPointerRegistrationService: PromiseStruct {
-    typealias Result = SignalMutPointerRegistrationService
-}
-
-extension SignalCPromiseFfiCheckSvr2CredentialsResponse: PromiseStruct {
-    typealias Result = SignalFfiCheckSvr2CredentialsResponse
-}
-
-extension SignalCPromiseMutPointerRegisterAccountResponse: PromiseStruct {
-    typealias Result = SignalMutPointerRegisterAccountResponse
-}
-
-extension SignalCPromiseUuid: PromiseStruct {
-    typealias Result = SignalUuid
-}
-
-extension SignalCPromiseOptionalUuid: PromiseStruct {
-    typealias Result = SignalOptionalUuid
-}
-
-extension SignalCPromiseFfiUploadForm: PromiseStruct {
-    typealias Result = SignalFfiUploadForm
-}
-
-extension SignalCPromiseMutPointerBackupStoreResponse: PromiseStruct {
-    typealias Result = SignalMutPointerBackupStoreResponse
-}
-
-extension SignalCPromiseMutPointerBackupRestoreResponse: PromiseStruct {
-    typealias Result = SignalMutPointerBackupRestoreResponse
-}
-
-extension SignalCPromiseOwnedBufferOfc_uchar: PromiseStruct {
-    typealias Result = SignalOwnedBuffer
-}
-
-extension SignalCPromiseOwnedBufferOfServiceIdFixedWidthBinaryBytes: PromiseStruct {
-    typealias Result = SignalOwnedBufferOfServiceIdFixedWidthBinaryBytes
-}
-
-extension SignalCPromiseOptionalPairOfCStringPtru832: PromiseStruct {
-    typealias Result = SignalOptionalPairOfCStringPtru832
-}
-
-extension SignalCPromisePairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar: PromiseStruct {
-    typealias Result = SignalPairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar
-}
-
-extension SignalCPromiseFfiPreKeysResponse: PromiseStruct {
-    typealias Result = SignalFfiPreKeysResponse
-}
-
-extension SignalCPromisePairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr: PromiseStruct {
-    typealias Result = SignalPairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr
-}
-
-extension SignalCPromisePairOfCStringPtrCStringPtr: PromiseStruct {
-    typealias Result = SignalPairOfCStringPtrCStringPtr
-}
-
-extension SignalCPromisec_uchar32: PromiseStruct {
-    typealias Result = SignalType_FixedArray32_uint8_t
-}
-
-extension SignalCPromiseOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult: PromiseStruct {
-    typealias Result = SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult
-}
-
-extension SignalCPromiseCopyBackupMediaNextChunkFfiResult: PromiseStruct {
-    typealias Result = SignalCopyBackupMediaNextChunkFfiResult
+    var generic_context: UnsafeRawPointer? { get }
+    var generic_cancellation_id: SignalCancellationId { get }
 }
 
 /// A type-erased version of ``Completer``.
@@ -156,7 +48,7 @@ private class CompleterBase {
 /// It is a class so that it can be passed in a C-style context pointer.
 ///
 /// [CheckedContinuation]: https://developer.apple.com/documentation/swift/checkedcontinuation
-private class Completer<Promise: PromiseStruct>: CompleterBase {
+private class Completer<Promise: SignalCPromise>: CompleterBase {
     init(continuation: CheckedContinuation<Promise.Result, Error>) {
         super.init { error, valuePtr in
             do {
@@ -217,7 +109,7 @@ private class Completer<Promise: PromiseStruct>: CompleterBase {
     }
 
     func cleanUpUncompletedPromiseStruct(_ promiseStruct: Promise) {
-        Unmanaged<CompleterBase>.fromOpaque(promiseStruct.context!).release()
+        Unmanaged<CompleterBase>.fromOpaque(promiseStruct.generic_context!).release()
     }
 }
 
@@ -233,7 +125,7 @@ private class Completer<Promise: PromiseStruct>: CompleterBase {
 ///
 /// Prefer ``TokioAsyncContext/invokeAsyncFunction(_:)`` if using a TokioAsyncContext;
 /// that method supports cancellation.
-internal func invokeAsyncFunction<Promise: PromiseStruct>(
+internal func invokeAsyncFunction<Promise: SignalCPromise>(
     _ body: (UnsafeMutablePointer<Promise>) -> SignalFfiErrorRef?,
     saveCancellationId: (SignalCancellationId) -> Void = { _ in }
 ) async throws -> Promise.Result {
@@ -247,7 +139,7 @@ internal func invokeAsyncFunction<Promise: PromiseStruct>(
             completer.completeUnsafe(error, nil)
             return
         }
-        saveCancellationId(promiseStruct.cancellation_id)
+        saveCancellationId(promiseStruct.generic_cancellation_id)
     }
 }
 

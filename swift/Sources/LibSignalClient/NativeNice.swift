@@ -17,6 +17,1192 @@
 import Foundation
 import SignalFfi
 
+extension SignalCPromisec_uchar32: SignalCPromise {
+
+    typealias Result = SignalType_FixedArray32_uint8_t
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalType_FixedArray32_uint8_t_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalType_FixedArray32_uint8_t_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromisebool: SignalCPromise {
+
+    typealias Result = CBool
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_bool_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_bool_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseFfiCdsiLookupResponse: SignalCPromise {
+
+    typealias Result = SignalFfiCdsiLookupResponse
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalFfiCdsiLookupResponse_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalFfiCdsiLookupResponse_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseFfiChatResponse: SignalCPromise {
+
+    typealias Result = SignalFfiChatResponse
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalFfiChatResponse_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalFfiChatResponse_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseFfiCheckSvr2CredentialsResponse: SignalCPromise {
+
+    typealias Result = SignalFfiCheckSvr2CredentialsResponse
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalFfiCheckSvr2CredentialsResponse_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalFfiCheckSvr2CredentialsResponse_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseFfiPreKeysResponse: SignalCPromise {
+
+    typealias Result = SignalFfiPreKeysResponse
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalFfiPreKeysResponse_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalFfiPreKeysResponse_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseFfiUploadForm: SignalCPromise {
+
+    typealias Result = SignalFfiUploadForm
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalFfiUploadForm_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalFfiUploadForm_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseMutPointerCdsiLookup: SignalCPromise {
+
+    typealias Result = SignalMutPointerCdsiLookup
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerCdsiLookup_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerCdsiLookup_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseMutPointerAuthenticatedChatConnection: SignalCPromise {
+
+    typealias Result = SignalMutPointerAuthenticatedChatConnection
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerAuthenticatedChatConnection_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerAuthenticatedChatConnection_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseMutPointerProvisioningChatConnection: SignalCPromise {
+
+    typealias Result = SignalMutPointerProvisioningChatConnection
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerProvisioningChatConnection_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerProvisioningChatConnection_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseMutPointerUnauthenticatedChatConnection: SignalCPromise {
+
+    typealias Result = SignalMutPointerUnauthenticatedChatConnection
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerUnauthenticatedChatConnection_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerUnauthenticatedChatConnection_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseMutPointerRegistrationService: SignalCPromise {
+
+    typealias Result = SignalMutPointerRegistrationService
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerRegistrationService_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerRegistrationService_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseMutPointerBackupRestoreResponse: SignalCPromise {
+
+    typealias Result = SignalMutPointerBackupRestoreResponse
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerBackupRestoreResponse_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerBackupRestoreResponse_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseMutPointerBackupStoreResponse: SignalCPromise {
+
+    typealias Result = SignalMutPointerBackupStoreResponse
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerBackupStoreResponse_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerBackupStoreResponse_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseMutPointerRegisterAccountResponse: SignalCPromise {
+
+    typealias Result = SignalMutPointerRegisterAccountResponse
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerRegisterAccountResponse_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalMutPointerRegisterAccountResponse_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseOptionalPairOfCStringPtrc_uchar32: SignalCPromise {
+
+    typealias Result = SignalOptionalPairOfCStringPtrc_uchar32
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalOptionalPairOfCStringPtrc_uchar32_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalOptionalPairOfCStringPtrc_uchar32_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseOptionalUuid: SignalCPromise {
+
+    typealias Result = SignalOptionalUuid
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalOptionalUuid_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalOptionalUuid_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseOwnedBufferOfc_uchar17: SignalCPromise {
+
+    typealias Result = SignalOwnedBufferOfc_uchar17
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalOwnedBufferOfc_uchar17_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalOwnedBufferOfc_uchar17_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseOwnedBuffer: SignalCPromise {
+
+    typealias Result = SignalOwnedBuffer
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalOwnedBuffer_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalOwnedBuffer_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult: SignalCPromise {
+
+    typealias Result = SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromisePairOfCStringPtrCStringPtr: SignalCPromise {
+
+    typealias Result = SignalPairOfCStringPtrCStringPtr
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalPairOfCStringPtrCStringPtr_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalPairOfCStringPtrCStringPtr_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromisePairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr: SignalCPromise {
+
+    typealias Result = SignalPairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalPairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalPairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromisePairOfOwnedBufferOwnedBuffer: SignalCPromise {
+
+    typealias Result = SignalPairOfOwnedBufferOwnedBuffer
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalPairOfOwnedBufferOwnedBuffer_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalPairOfOwnedBufferOwnedBuffer_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseUuid: SignalCPromise {
+
+    typealias Result = SignalUuid
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalUuid_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalUuid_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseCopyBackupMediaNextChunkFfiResult: SignalCPromise {
+
+    typealias Result = SignalCopyBackupMediaNextChunkFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalCopyBackupMediaNextChunkFfiResult_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalCopyBackupMediaNextChunkFfiResult_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalPairOfCStringPtrCStringPtr: SignalPairOf {
+
+    typealias First = SignalCStringPtr?
+
+    typealias Second = SignalCStringPtr?
+
+    init(
+        generic_first: SignalCStringPtr?,
+        generic_second: SignalCStringPtr?,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: SignalCStringPtr? {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfCStringPtrbool: SignalPairOf {
+
+    typealias First = SignalCStringPtr?
+
+    typealias Second = CBool
+
+    init(
+        generic_first: SignalCStringPtr?,
+        generic_second: CBool,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: CBool {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfCStringPtrOwnedBuffer: SignalPairOf {
+
+    typealias First = SignalCStringPtr?
+
+    typealias Second = SignalOwnedBuffer
+
+    init(
+        generic_first: SignalCStringPtr?,
+        generic_second: SignalOwnedBuffer,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: SignalOwnedBuffer {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfCStringPtru32: SignalPairOf {
+
+    typealias First = SignalCStringPtr?
+
+    typealias Second = UInt32
+
+    init(
+        generic_first: SignalCStringPtr?,
+        generic_second: UInt32,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: UInt32 {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfMutPointerPrivateKeyMutPointerPublicKey: SignalPairOf {
+
+    typealias First = SignalMutPointerPrivateKey
+
+    typealias Second = SignalMutPointerPublicKey
+
+    init(
+        generic_first: SignalMutPointerPrivateKey,
+        generic_second: SignalMutPointerPublicKey,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalMutPointerPrivateKey {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: SignalMutPointerPublicKey {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfMutPointerPublicKeyMutPointerPrivateKey: SignalPairOf {
+
+    typealias First = SignalMutPointerPublicKey
+
+    typealias Second = SignalMutPointerPrivateKey
+
+    init(
+        generic_first: SignalMutPointerPublicKey,
+        generic_second: SignalMutPointerPrivateKey,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalMutPointerPublicKey {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: SignalMutPointerPrivateKey {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr: SignalPairOf {
+
+    typealias First = SignalOwnedBufferOfCStringPtr
+
+    typealias Second = SignalOwnedBufferOfCStringPtr
+
+    init(
+        generic_first: SignalOwnedBufferOfCStringPtr,
+        generic_second: SignalOwnedBufferOfCStringPtr,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalOwnedBufferOfCStringPtr {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: SignalOwnedBufferOfCStringPtr {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfOwnedBufferOwnedBuffer: SignalPairOf {
+
+    typealias First = SignalOwnedBuffer
+
+    typealias Second = SignalOwnedBuffer
+
+    init(
+        generic_first: SignalOwnedBuffer,
+        generic_second: SignalOwnedBuffer,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalOwnedBuffer {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: SignalOwnedBuffer {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfPairOfCStringPtrOwnedBufferi64: SignalPairOf {
+
+    typealias First = SignalPairOfCStringPtrOwnedBuffer
+
+    typealias Second = Int64
+
+    init(
+        generic_first: SignalPairOfCStringPtrOwnedBuffer,
+        generic_second: Int64,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalPairOfCStringPtrOwnedBuffer {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: Int64 {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
 enum
     FfiBorrowedSliceConstructor_SignalBorrowedSliceOfBridgeCopyBackupMediaItemFfiArg_DerivedArgConverterBridgeCopyBackupMediaItem:
         FfiBorrowedSliceConstructor

@@ -41,6 +41,40 @@ pub struct FfiOwnedBufferOfMaxAlignedProject {
     pub buffer_type: String,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CStructGenericInstance<Type = capi::RustType> {
+    pub monomorph: Type,
+    pub ty_args: Vec<Type>,
+    pub field_types: Vec<Type>,
+}
+impl<Type> CStructGenericInstance<Type> {
+    pub fn map<U>(&self, mut mapper: impl FnMut(&Type) -> U) -> CStructGenericInstance<U> {
+        let monomorph = mapper(&self.monomorph);
+        let ty_args = self.ty_args.iter().map(&mut mapper).collect();
+        let field_types = self.field_types.iter().map(&mut mapper).collect();
+        CStructGenericInstance {
+            monomorph,
+            ty_args,
+            field_types,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CStructGeneric {
+    /// An ID of the Rust generic, used for assertion checks.
+    ///
+    /// `RustType::of::<Option<i32>> != RustType::of::<Option<bool>>`. But the generic ID should
+    /// be the same across both.
+    #[serde(skip)]
+    pub generic_id: u64,
+    /// Generic argument names
+    pub ty_arg_names: Vec<String>,
+    pub field_names: Vec<String>,
+    /// Instances of the generic
+    pub instances: BTreeSet<CStructGenericInstance>,
+}
+
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct SwiftMetadataContext {
     pub nice_functions: BTreeMap<String, NiceFunction>,
@@ -61,6 +95,9 @@ pub struct SwiftMetadataContext {
     pub c_struct_offsets: BTreeMap<capi::RustType, BTreeMap<String, usize>>,
     pub c_functions: BTreeMap<String, capi::CFunctionPrototype>,
     pub c_extra_typedefs: BTreeSet<String>,
+
+    /// Map from name of the generic type name to generic type info.
+    pub c_structs_generic: BTreeMap<String, CStructGeneric>,
 }
 
 /// These functions should mutate the attached [SwiftMetadataContext] to register their item.

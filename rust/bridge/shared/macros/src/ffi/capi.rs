@@ -22,6 +22,7 @@ pub fn derive_is_c_type(input: &DeriveInput) -> syn::Result<TokenStream> {
     let mut export_name_override: Option<syn::Path> = None;
     let mut is_opaque = false;
     let mut must_export = false;
+    let mut swift_protocol = false;
     for attr in input.attrs.iter() {
         if !attr.path().is_ident("capi") {
             continue;
@@ -38,6 +39,9 @@ pub fn derive_is_c_type(input: &DeriveInput) -> syn::Result<TokenStream> {
                 Ok(())
             } else if meta.path.is_ident("export_name_override") {
                 export_name_override = Some(meta.value()?.parse()?);
+                Ok(())
+            } else if meta.path.is_ident("swift_protocol") {
+                swift_protocol = true;
                 Ok(())
             } else {
                 Err(syn::Error::new_spanned(&meta.path, "Invalid option"))
@@ -334,6 +338,35 @@ pub fn derive_is_c_type(input: &DeriveInput) -> syn::Result<TokenStream> {
             }
         }
     });
+    let swift_protocol = if swift_protocol {
+        let syn::Data::Struct(data) = &input.data else {
+            return Err(syn::Error::new(
+                Span::call_site(),
+                "swift_protocol can only be used on structs",
+            ));
+        };
+        let ident = &input.ident;
+        let field_names = data.fields.iter().map(|field| &field.ident).collect_vec();
+        let field_types = data.fields.iter().map(|field| &field.ty).collect_vec();
+        quote! {
+            static GENERIC_ID: i32 = 0;
+            let g = ctx.c_structs_generic.entry(stringify!(#ident).to_string())
+                .or_insert_with(|| CStructGeneric {
+                    generic_id: std::ptr::addr_of!(GENERIC_ID) as u64,
+                    ty_arg_names: vec![#(stringify!(#generics_names).to_string()),*],
+                    field_names: vec![#(stringify!(#field_names).to_string()),*],
+                    instances: Default::default(),
+                });
+            assert_eq!(g.generic_id, std::ptr::addr_of!(GENERIC_ID) as u64);
+            g.instances.insert(CStructGenericInstance {
+                monomorph: RustType::of::<Self>(),
+                ty_args: vec![#(RustType::of::<#generics_names>()),*],
+                field_types: vec![#(RustType::of::<#field_types>()),*],
+            });
+        }
+    } else {
+        quote!()
+    };
     Ok(quote! {
         #must_export
         #[cfg(feature = "ffi")]
@@ -362,11 +395,13 @@ pub fn derive_is_c_type(input: &DeriveInput) -> syn::Result<TokenStream> {
                     #export_name_override
                     let type_name = format!("Signal{mangling_component}");
                     let utility_typedefs = #utility_typedefs;
+                    #swift_protocol
                     CType {
                         rust_type: RustType::of::<Self>(),
                         dependencies: #dependencies,
                         type_name,
                         ptr_type_name: None,
+                        swift_name: None,
                         mangling_component,
                         utility_typedefs,
                         layout: Self::LAYOUT.map(|layout| layout.layout),

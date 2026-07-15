@@ -24,6 +24,35 @@ import SignalFfi
 
 {% set ctx = testing_ctx if testing else non_testing_ctx %}
 
+{% for (name, instances) in type_generic_instances|items %}
+    {% set g = ctx.c_structs_generic[name] %}
+    {% for instance in instances %}
+        extension {{instance.monomorph}}: Signal{{name}} {
+            {% for targ in instance.ty_args %}
+                {% if testing %}public {% endif %}typealias {{ g.ty_arg_names[loop.index0] }}=
+                    {{- targ }}
+            {% endfor %}
+            {% if testing %}public {% endif %}init(
+                {% for ty in instance.field_types -%}
+                    generic_{{ g.field_names[loop.index0] }}: {{ ty }},
+                {%- endfor %}
+            ) {
+                self.init(
+                    {% for field_name in g.field_names -%}
+                        {{field_name}}: generic_{{field_name}},
+                    {% endfor %}
+                )
+            }
+            {% for field_name in g.field_names %}
+                {% if testing %}public {% endif %}var generic_{{field_name}}: {{instance.field_types[loop.index0]}} {
+                    get { self.{{field_name}} }
+                    set { {{field_name}} = newValue }
+                }
+            {% endfor %}
+        }
+    {% endfor %}
+{% endfor %}
+
 {% for (name, cons) in ctx.ffi_borrowed_slice_cons|items %}
     enum {{ name }}: FfiBorrowedSliceConstructor {
         {% if testing %}public {% endif %}typealias BorrowedSlice = SignalFfi.{{ cons.borrowed_slice }}

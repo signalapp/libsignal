@@ -13,6 +13,7 @@ pub type CPtrTypeName = String;
 pub type CFunctionName = String;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[serde(transparent)]
 pub struct RustType {
     // We want name first so that the sort order is stable.
     pub name: &'static str,
@@ -78,6 +79,7 @@ pub struct CType {
     pub dependencies: BTreeSet<RustType>,
     // Starts with "Signal" in most cases
     pub type_name: CTypeName,
+    pub swift_name: Option<String>,
     pub ptr_type_name: Option<CPtrTypeName>,
     pub mangling_component: String,
     pub utility_typedefs: UtilityTypedef,
@@ -87,6 +89,9 @@ pub struct CType {
 impl CType {
     pub fn ptr_type_name(&self) -> &CPtrTypeName {
         self.ptr_type_name.as_ref().unwrap_or(&self.type_name)
+    }
+    pub fn swift_name(&self) -> &String {
+        self.swift_name.as_ref().unwrap_or(&self.type_name)
     }
 }
 

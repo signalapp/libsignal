@@ -6,6 +6,8 @@
 import Foundation
 import SignalFfi
 
+@testable import LibSignalClient
+
 // These testing endpoints aren't generated in device builds, to save on code size.
 #if !os(iOS) || targetEnvironment(simulator)
 
@@ -604,14 +606,6 @@ extension SignalConstPointerFakeChatResponse: SignalConstPointer {
     public func toOpaque() -> OpaquePointer? {
         self.raw
     }
-}
-
-extension SignalCPromiseOptionalPairOfMutPointerHttpRequestu64: PromiseStruct {
-    typealias Result = SignalOptionalPairOfMutPointerHttpRequestu64
-}
-
-extension SignalCPromiseMutPointerFakeChatRemoteEnd: PromiseStruct {
-    typealias Result = SignalMutPointerFakeChatRemoteEnd
 }
 
 #endif

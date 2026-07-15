@@ -724,6 +724,9 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
 ///     }
 /// }
 /// ```
+///
+/// ## `swift_protocol`
+/// For generic types, emit a swift protocol allowing easy access to the generic.
 #[proc_macro_derive(IsCType, attributes(capi))]
 pub fn derive_is_c_type(item: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(item as DeriveInput);

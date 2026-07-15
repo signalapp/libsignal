@@ -316,9 +316,10 @@ pub struct OptionalUuid {
 
 #[repr(C)]
 #[derive(IsCType)]
-pub struct PairOf<A, B> {
-    pub first: A,
-    pub second: B,
+#[capi(swift_protocol)]
+pub struct PairOf<First, Second> {
+    pub first: First,
+    pub second: Second,
 }
 
 #[repr(C)]

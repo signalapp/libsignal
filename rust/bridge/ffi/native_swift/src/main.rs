@@ -281,6 +281,14 @@ fn main() -> anyhow::Result<()> {
         &mut testing_ctx.ffi_owned_buffer_of_max_aligned_project,
         &non_testing_ctx.ffi_owned_buffer_of_max_aligned_project,
     );
+    for (name, g_test) in testing_ctx.c_structs_generic.iter_mut() {
+        if let Some(g_normal) = non_testing_ctx.c_structs_generic.get(name) {
+            assert_eq!(g_test.generic_id, g_normal.generic_id);
+            for instance in g_normal.instances.iter() {
+                g_test.instances.remove(instance);
+            }
+        }
+    }
 
     if args.dump_json {
         println!(
@@ -356,10 +364,26 @@ fn main() -> anyhow::Result<()> {
     }
 
     for testing in [false, true] {
+        let ctx = if testing {
+            &testing_ctx
+        } else {
+            &non_testing_ctx
+        };
+        let type_generic_instances =
+            BTreeMap::from_iter(ctx.c_structs_generic.iter().map(|(k, v)| {
+                (
+                    k,
+                    v.instances
+                        .iter()
+                        .map(|instance| instance.map(|ty| ctx.c_types[ty].swift_name()))
+                        .collect::<Vec<_>>(),
+                )
+            }));
         let code = env.get_template("NativeNice.swift.in")?.render(context! {
-            non_testing_ctx => non_testing_ctx,
-            testing_ctx => testing_ctx,
-            testing => testing,
+            non_testing_ctx,
+            testing_ctx,
+            testing,
+            type_generic_instances,
         })?;
         let dst = PathBuf::from(if testing {
             "./swift/Tests/LibSignalClientTests/NativeTestingNice.swift"
