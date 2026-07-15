@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use attest::svr2::lookup_groupid;
+use libsignal_account_keys::PinHash;
 use libsignal_bridge_macros::bridge_io;
 use libsignal_bridge_types::net::svr2::Svr2ConnectImpl;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
@@ -31,6 +33,41 @@ fn svr2_client<'a>(
     }
 }
 
+fn derive_svr2_pin_hash(mrenclave: &[u8], username: &str, normalized_pin: &[u8]) -> PinHash {
+    let group_id = lookup_groupid(mrenclave).expect("SVR2 enclave has a known group id");
+    let salt = PinHash::make_salt(username, group_id);
+    PinHash::create(normalized_pin, &salt).expect("valid Argon2 parameters")
+}
+
+async fn connect_and_backup(
+    connection_manager: &ConnectionManager,
+    auth: Auth,
+    pin: [u8; 32],
+    data: Box<[u8]>,
+    max_tries: u32,
+) -> Result<Svr2BackupSession, Svr2Error> {
+    let client = svr2_client(connection_manager, |e| &e.current, &auth);
+    let mut conn = client.connect().await?;
+
+    let max_tries = max_tries.try_into()?;
+    let data = data.try_into()?;
+    Svr2BackupSession::start(&mut conn, pin, data, max_tries).await
+}
+
+async fn connect_and_restore(
+    connection_manager: &ConnectionManager,
+    auth: Auth,
+    pin: &[u8; 32],
+) -> Result<(Vec<u8>, u32), Svr2Error> {
+    let client = svr2_client(connection_manager, |e| &e.current, &auth);
+    let mut conn = client.connect().await?;
+    let Svr2RestoreResult {
+        data,
+        tries_remaining,
+    } = do_restore(&mut conn, pin).await?;
+    Ok((data, tries_remaining))
+}
+
 #[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
 async fn Svr2_StartBackup(
     pin: &[u8; 32],
@@ -40,14 +77,43 @@ async fn Svr2_StartBackup(
     username: String,
     password: String,
 ) -> Result<Svr2BackupSession, Svr2Error> {
-    let auth = Auth { username, password };
-    let client = svr2_client(connection_manager, |e| &e.current, &auth);
-    let mut conn = client.connect().await?;
+    connect_and_backup(
+        connection_manager,
+        Auth { username, password },
+        *pin,
+        data,
+        max_tries,
+    )
+    .await
+}
 
-    let max_tries = max_tries.try_into()?;
-    let data = data.try_into()?;
-    let session = Svr2BackupSession::start(&mut conn, *pin, data, max_tries).await?;
-    Ok(session)
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn Svr2_StartMasterKeyBackup(
+    normalized_pin: &[u8],
+    master_key: &[u8; 32],
+    max_tries: u32,
+    connection_manager: &ConnectionManager,
+    username: String,
+    password: String,
+) -> Result<Svr2BackupSession, Svr2Error> {
+    let mrenclave = connection_manager
+        .env()
+        .svr2
+        .current
+        .params
+        .mr_enclave
+        .as_ref();
+    let pin_hash = derive_svr2_pin_hash(mrenclave, &username, normalized_pin);
+    let data = Box::from(pin_hash.encode_master_key(master_key));
+
+    connect_and_backup(
+        connection_manager,
+        Auth { username, password },
+        pin_hash.access_key,
+        data,
+        max_tries,
+    )
+    .await
 }
 
 #[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
@@ -77,14 +143,42 @@ async fn Svr2_Restore(
     username: String,
     password: String,
 ) -> Result<(Vec<u8>, u32), Svr2Error> {
-    let auth = Auth { username, password };
-    let client = svr2_client(connection_manager, |e| &e.current, &auth);
-    let mut conn = client.connect().await?;
-    let Svr2RestoreResult {
-        data,
-        tries_remaining,
-    } = do_restore(&mut conn, pin).await?;
-    Ok((data, tries_remaining))
+    connect_and_restore(connection_manager, Auth { username, password }, pin).await
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn Svr2_RestoreMasterKey(
+    normalized_pin: &[u8],
+    connection_manager: &ConnectionManager,
+    username: String,
+    password: String,
+) -> Result<(Vec<u8>, u32), Svr2Error> {
+    let mrenclave = connection_manager
+        .env()
+        .svr2
+        .current
+        .params
+        .mr_enclave
+        .as_ref();
+    let pin_hash = derive_svr2_pin_hash(mrenclave, &username, normalized_pin);
+
+    let (data, tries_remaining) = connect_and_restore(
+        connection_manager,
+        Auth { username, password },
+        &pin_hash.access_key,
+    )
+    .await?;
+
+    // The stored blob is a 48-byte (16-byte IV || 32-byte ciphertext) encrypted
+    // master key. Anything else means the data decoding is impossible.
+    let blob: &[u8; 48] = data
+        .as_slice()
+        .try_into()
+        .map_err(|_| Svr2Error::DecryptionError)?;
+    let master_key = pin_hash
+        .decode_master_key(blob)
+        .ok_or(Svr2Error::DecryptionError)?;
+    Ok((master_key.to_vec(), tries_remaining))
 }
 
 #[bridge_io(TokioAsyncContext, ffi = false, jni = false)]

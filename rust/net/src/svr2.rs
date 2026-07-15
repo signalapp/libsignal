@@ -45,6 +45,8 @@ pub enum Error {
     EnclaveNotFound,
     /// No connection attempts succeeded before timeout
     AllConnectionAttemptsFailed,
+    /// Failed to decrypt the restored data
+    DecryptionError,
 }
 
 impl LogSafeDisplay for Error {
@@ -73,7 +75,8 @@ impl LogSafeDisplay for Error {
             | Error::RestoreFailed { .. }
             | Error::DataMissing
             | Error::EnclaveNotFound
-            | Error::AllConnectionAttemptsFailed => self,
+            | Error::AllConnectionAttemptsFailed
+            | Error::DecryptionError => self,
         }
     }
 }

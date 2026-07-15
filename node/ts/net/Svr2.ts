@@ -10,6 +10,7 @@ import type {
   RateLimitedError,
   SvrAttestationError,
   SvrDataMissingError,
+  SvrInvalidDataError,
   SvrRestoreFailedError,
 } from '../Errors.js';
 
@@ -41,12 +42,22 @@ export type Svr2RestoreResponse = {
 };
 
 /**
+ * The result of restoring a master key with {@link Svr2#restore}.
+ */
+export type Svr2MasterKeyRestoreResponse = {
+  /** The 32-byte master key that was protected with the given pin. */
+  masterKey: Uint8Array<ArrayBuffer>;
+  /** Number of remaining restore attempts before the data is wiped. */
+  triesRemaining: number;
+};
+
+/**
  * Service for Secure Value Recovery v2 (SVR2) operations against the current
  * production enclave.
  *
- * SVR2 stores a small piece of `data` (16-48 bytes) protected by a 32-byte
- * `pin`. The data can later be retrieved by presenting the same `pin`. After
- * `maxTries` failed restore attempts the enclave wipes the data.
+ * SVR2 protects a 32-byte master key with a user's pin. The master key can later
+ * be recovered by presenting the same pin. After `maxTries` failed restore
+ * attempts the enclave wipes the stored data.
  *
  * ## Storage flow
  *
@@ -55,23 +66,24 @@ export type Svr2RestoreResponse = {
  * restorable. The SVR2 spec forbids retrying a `BackupRequest` with the same
  * data, so the two phases are exposed as separate calls:
  *
- * 1. `const session = await svr2.startBackup(pin, data, maxTries)` - phase 1.
- *    If it throws, it is safe to retry as `BackupRequest` failed.
+ * 1. `const session = await svr2.startBackup({ normalizedPin }, masterKey, maxTries)`
+ *    - phase 1. If it throws, it is safe to retry as `BackupRequest` failed.
  * 2. `await svr2.finishBackup(session)` - phase 2. If this throws, retry it
  *    with the same `session`; do **not** call `startBackup` again.
  *
  * ## Restore flow
  *
- * `await svr2.restore(pin)` returns the stored data and remaining tries.
+ * `await svr2.restore({ normalizedPin })` returns the master key and remaining
+ * tries.
  *
  * ## Usage
  *
  * ```typescript
  * const net = new Net({ env: Environment.Production, userAgent: 'MyApp' });
  * const svr2 = net.svr2({ username: 'u', password: 'p' });
- * const session = await svr2.startBackup(pin, data, 5);
+ * const session = await svr2.startBackup({ normalizedPin }, masterKey, 5);
  * await svr2.finishBackup(session);
- * const { data: restored } = await svr2.restore(pin);
+ * const { masterKey: restored } = await svr2.restore({ normalizedPin });
  * ```
  */
 export class Svr2 {
@@ -83,13 +95,15 @@ export class Svr2 {
   ) {}
 
   /**
-   * Phase 1 of an SVR2 backup. Attempts sending `BackupRequest` to the current
-   * enclave, followed by the `ExposeRequest` reusing the same connection,
-   * and returns a session that must be passed to {@link #finishBackup} to
-   * complete the operation.
+   * Hashes the pin and encrypts `masterKey` inside libsignal, then sends the
+   * `BackupRequest` to the current enclave, followed by the `ExposeRequest`
+   * reusing the same connection, and returns a session that must be passed to
+   * {@link #finishBackup} to complete the operation.
    *
-   * @param pin 32-byte hashed pin protecting the stored data.
-   * @param data Value to protect; between 16 and 48 bytes.
+   * @param pin The user's pin, wrapped as `{ normalizedPin }` to make explicit
+   * that the bytes must already be normalized and UTF-8 encoded. See the `Pin`
+   * helper in `AccountKeys` for the normalization steps.
+   * @param masterKey The 32-byte secret to protect with the pin.
    * @param maxTries Number of failed restore attempts the enclave will tolerate
    * before wiping the data. In `[1, 255]`.
    * @param options Optional configuration.
@@ -98,21 +112,65 @@ export class Svr2 {
    * @throws {IoError} on network errors.
    * @throws {SvrAttestationError} if enclave attestation fails.
    */
-  async startBackup(
-    pin: Uint8Array<ArrayBuffer>,
+  startBackup(
+    pin: { normalizedPin: Uint8Array<ArrayBuffer> },
+    masterKey: Uint8Array<ArrayBuffer>,
+    maxTries: number,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<Svr2BackupSession>;
+  /**
+   * Phase 1 of an SVR2 backup. Attempts sending `BackupRequest` to the current
+   * enclave, followed by the `ExposeRequest` reusing the same connection,
+   * and returns a session that must be passed to {@link #finishBackup} to
+   * complete the operation.
+   *
+   * @param hashedPin 32-byte hashed pin protecting the stored data.
+   * @param data Value to protect; between 16 and 48 bytes.
+   * @param maxTries Number of failed restore attempts the enclave will tolerate
+   * before wiping the data. In `[1, 255]`.
+   * @param options Optional configuration.
+   * @param options.abortSignal An AbortSignal that will cancel the request.
+   * @throws {RateLimitedError} if the server is rate limiting this client.
+   * @throws {IoError} on network errors.
+   * @throws {SvrAttestationError} if enclave attestation fails.
+   * @deprecated Prefer the `{ normalizedPin }` overload, which hashes the pin and
+   * encrypts the master key inside libsignal. This lower-level form requires the
+   * caller to have already computed the 32-byte hashed pin and the encrypted
+   * `data` blob.
+   */
+  startBackup(
+    hashedPin: Uint8Array<ArrayBuffer>,
     data: Uint8Array<ArrayBuffer>,
     maxTries: number,
     options?: { abortSignal?: AbortSignal }
+  ): Promise<Svr2BackupSession>;
+  async startBackup(
+    pin: Uint8Array<ArrayBuffer> | { normalizedPin: Uint8Array<ArrayBuffer> },
+    dataOrMasterKey: Uint8Array<ArrayBuffer>,
+    maxTries: number,
+    options?: { abortSignal?: AbortSignal }
   ): Promise<Svr2BackupSession> {
-    const promise = Native.Svr2_StartBackup(
-      this.asyncContext,
-      pin,
-      data,
-      maxTries,
-      this.connectionManager,
-      this.auth.username,
-      this.auth.password
-    );
+    // A `Uint8Array` pin selects the deprecated raw-pin variant.
+    const promise =
+      pin instanceof Uint8Array
+        ? Native.Svr2_StartBackup(
+            this.asyncContext,
+            pin,
+            dataOrMasterKey,
+            maxTries,
+            this.connectionManager,
+            this.auth.username,
+            this.auth.password
+          )
+        : Native.Svr2_StartMasterKeyBackup(
+            this.asyncContext,
+            pin.normalizedPin,
+            dataOrMasterKey,
+            maxTries,
+            this.connectionManager,
+            this.auth.username,
+            this.auth.password
+          );
     const handle = await this.asyncContext.makeCancellable(
       options?.abortSignal,
       promise
@@ -147,6 +205,27 @@ export class Svr2 {
   }
 
   /**
+   * Retrieves and decrypts a master key stored with {@link #startBackup} +
+   * {@link #finishBackup}. Hashes the pin inside libsignal, restores the stored
+   * blob, and decrypts it back to the original 32-byte master key.
+   *
+   * @param pin The user's pin, wrapped as `{ normalizedPin }` to make explicit
+   * that the bytes must already be normalized and UTF-8 encoded. See the `Pin`
+   * helper in `AccountKeys` for the normalization steps.
+   * @param options Optional configuration.
+   * @param options.abortSignal An AbortSignal that will cancel the request.
+   * @throws {SvrDataMissingError} if no data is stored for this username/pin.
+   * @throws {SvrRestoreFailedError} on pin mismatch (carries tries remaining).
+   * @throws {SvrInvalidDataError} if the stored blob cannot be decrypted.
+   * @throws {RateLimitedError} if the server is rate limiting this client.
+   * @throws {IoError} on network errors.
+   * @throws {SvrAttestationError} if enclave attestation fails.
+   */
+  restore(
+    pin: { normalizedPin: Uint8Array<ArrayBuffer> },
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<Svr2MasterKeyRestoreResponse>;
+  /**
    * Retrieves data previously stored with {@link #startBackup} +
    * {@link #finishBackup}.
    *
@@ -158,23 +237,45 @@ export class Svr2 {
    * @throws {RateLimitedError} if the server is rate limiting this client.
    * @throws {IoError} on network errors.
    * @throws {SvrAttestationError} if enclave attestation fails.
+   * @deprecated Prefer the `{ normalizedPin }` overload, which hashes the pin and
+   * decrypts the master key inside libsignal. This lower-level form returns the
+   * raw encrypted blob that the caller must decrypt itself.
    */
-  async restore(
+  restore(
     pin: Uint8Array<ArrayBuffer>,
     options?: { abortSignal?: AbortSignal }
-  ): Promise<Svr2RestoreResponse> {
-    const promise = Native.Svr2_Restore(
+  ): Promise<Svr2RestoreResponse>;
+  async restore(
+    pin: Uint8Array<ArrayBuffer> | { normalizedPin: Uint8Array<ArrayBuffer> },
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<Svr2RestoreResponse | Svr2MasterKeyRestoreResponse> {
+    // The deprecated variant
+    if (pin instanceof Uint8Array) {
+      const promise = Native.Svr2_Restore(
+        this.asyncContext,
+        pin,
+        this.connectionManager,
+        this.auth.username,
+        this.auth.password
+      );
+      const [data, triesRemaining] = await this.asyncContext.makeCancellable(
+        options?.abortSignal,
+        promise
+      );
+      return { data, triesRemaining };
+    }
+    const promise = Native.Svr2_RestoreMasterKey(
       this.asyncContext,
-      pin,
+      pin.normalizedPin,
       this.connectionManager,
       this.auth.username,
       this.auth.password
     );
-    const [data, triesRemaining] = await this.asyncContext.makeCancellable(
+    const [masterKey, triesRemaining] = await this.asyncContext.makeCancellable(
       options?.abortSignal,
       promise
     );
-    return { data, triesRemaining };
+    return { masterKey, triesRemaining };
   }
 
   /**

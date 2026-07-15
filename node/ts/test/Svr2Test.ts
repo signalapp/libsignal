@@ -8,6 +8,7 @@ import { Buffer } from 'node:buffer';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
+import * as Native from '../Native.js';
 import * as SignalClient from '../index.js';
 import * as util from './util.js';
 
@@ -119,6 +120,19 @@ describe('Svr2Client', () => {
       assert.instanceOf(e, SignalClient.LibSignalErrorBase);
       const err = e as SignalClient.LibSignalError;
       assert.equal(err.operation, 'SgxClientState_EstablishedRecv');
+    }
+  });
+});
+
+describe('Svr2 bridging', () => {
+  it('decryption failure becomes SvrInvalidData', () => {
+    try {
+      Native.TESTING_Svr2MasterKeyRestoreError();
+      assert.fail('unexpected success');
+    } catch (e) {
+      assert.instanceOf(e, SignalClient.LibSignalErrorBase);
+      const err = e as SignalClient.LibSignalError;
+      assert.equal(err.code, SignalClient.ErrorCode.SvrInvalidData);
     }
   });
 });

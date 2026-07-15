@@ -2156,10 +2156,26 @@ type NativeFunctions = {
     username: string,
     password: string
   ) => CancellablePromise<[Uint8Array<ArrayBuffer>, number]>;
+  Svr2_RestoreMasterKey: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    normalized_pin: Uint8Array<ArrayBuffer>,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string
+  ) => CancellablePromise<[Uint8Array<ArrayBuffer>, number]>;
   Svr2_StartBackup: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     pin: Uint8Array<ArrayBuffer>,
     data: Uint8Array<ArrayBuffer>,
+    max_tries: number,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string
+  ) => CancellablePromise<Svr2BackupSession>;
+  Svr2_StartMasterKeyBackup: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    normalized_pin: Uint8Array<ArrayBuffer>,
+    master_key: Uint8Array<ArrayBuffer>,
     max_tries: number,
     connection_manager: Wrapper<ConnectionManager>,
     username: string,
@@ -2492,6 +2508,7 @@ type NativeFunctions = {
     source_public_key: Wrapper<PublicKey>,
     signed_pre_key: SignedPublicPreKey
   ) => void;
+  TESTING_Svr2MasterKeyRestoreError: () => void;
   TESTING_TestStreamChunk_return: () => ReturnFfiTestStreamChunk;
   TESTING_TestingHandleType_getValue: (
     handle: Wrapper<TestingHandleType>
@@ -3328,7 +3345,9 @@ const {
   Svr2_Delete,
   Svr2_FinishBackup,
   Svr2_Restore,
+  Svr2_RestoreMasterKey,
   Svr2_StartBackup,
+  Svr2_StartMasterKeyBackup,
   TESTING_BridgedStringMap_dump_to_json,
   TESTING_BulkPullFromStream_Cancel,
   TESTING_BulkPullFromStream_New,
@@ -3452,6 +3471,7 @@ const {
   TESTING_SetRegistrationLockTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
+  TESTING_Svr2MasterKeyRestoreError,
   TESTING_TestStreamChunk_return,
   TESTING_TestingHandleType_getValue,
   TESTING_TestingIntBox_Get,
@@ -4034,7 +4054,9 @@ export {
   Svr2_Delete,
   Svr2_FinishBackup,
   Svr2_Restore,
+  Svr2_RestoreMasterKey,
   Svr2_StartBackup,
+  Svr2_StartMasterKeyBackup,
   TESTING_BridgedStringMap_dump_to_json,
   TESTING_BulkPullFromStream_Cancel,
   TESTING_BulkPullFromStream_New,
@@ -4158,6 +4180,7 @@ export {
   TESTING_SetRegistrationLockTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
+  TESTING_Svr2MasterKeyRestoreError,
   TESTING_TestStreamChunk_return,
   TESTING_TestingHandleType_getValue,
   TESTING_TestingIntBox_Get,
