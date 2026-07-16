@@ -818,6 +818,15 @@ public object NativeTestingNice {
     }, { identity(it) })(ffiOut)
   }
 
+  public fun TESTING_SetRegistrationRecoveryPasswordTests(): List<org.signal.libsignal.net.GrpcTestCase<ByteArray, Void?>> {
+    val ffiOut =
+      NativeTesting.TESTING_SetRegistrationRecoveryPasswordTests()
+
+    return org.signal.libsignal.net.GrpcTestCase.resultConverter<ByteArray, Void?, ByteArray, Void?>({
+      identity(it)
+    }, { identity(it) })(ffiOut)
+  }
+
   public fun TESTING_SetUsernameLinkTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetUsernameLinkArgs, org.signal.libsignal.internal.SetUsernameLinkOut>> {
     val ffiOut =
       NativeTesting.TESTING_SetUsernameLinkTests()

@@ -244,6 +244,8 @@ internal object Native {
   @JvmStatic
   public external fun AuthenticatedChatConnection_set_registration_lock(asyncRuntime: ObjectHandle, chat: SimpleOwner, svrKey: ByteArray): CompletableFuture<Void?>
   @JvmStatic
+  public external fun AuthenticatedChatConnection_set_registration_recovery_password(asyncRuntime: ObjectHandle, chat: SimpleOwner, svrKey: ByteArray): CompletableFuture<Void?>
+  @JvmStatic
   public external fun AuthenticatedChatConnection_set_username_link(asyncRuntime: ObjectHandle, chat: SimpleOwner, usernameCiphertext: ByteArray, keepLinkHandle: Boolean): CompletableFuture<UUID>
 
   @JvmStatic @Throws(Exception::class)

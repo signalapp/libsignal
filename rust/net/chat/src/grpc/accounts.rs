@@ -11,6 +11,7 @@ use libsignal_net_grpc::proto::chat::account::{
     ClearRegistrationLockRequest, ClearRegistrationLockResponse,
     SetDiscoverableByPhoneNumberRequest, SetDiscoverableByPhoneNumberResponse,
     SetRegistrationLockRequest, SetRegistrationLockResponse,
+    SetRegistrationRecoveryPasswordRequest, SetRegistrationRecoveryPasswordResponse,
 };
 
 use crate::api::{Auth, RequestError};
@@ -30,6 +31,20 @@ impl std::fmt::Display for Redact<ClearRegistrationLockRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(ClearRegistrationLockRequest {}) = self;
         f.debug_struct("ClearRegistrationLockRequest").finish()
+    }
+}
+
+impl std::fmt::Display for Redact<SetRegistrationRecoveryPasswordRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(SetRegistrationRecoveryPasswordRequest {
+            registration_recovery_password,
+        }) = self;
+        f.debug_struct("SetRegistrationRecoveryPasswordRequest")
+            .field(
+                "registration_recovery_password_len",
+                &registration_recovery_password.len(),
+            )
+            .finish()
     }
 }
 
@@ -89,6 +104,44 @@ impl<T: GrpcServiceProvider> Auth<T> {
             log_and_send("auth", &desc, || client.clear_registration_lock(request))
                 .await?
                 .into_inner();
+        Ok(())
+    }
+
+    /// Derives and sets the registration recovery password for the authenticated account from its
+    /// SVR key.
+    ///
+    /// Only the derived registration recovery password is sent; the SVR key itself never leaves
+    /// the device.
+    pub async fn set_registration_recovery_password_from_svr_key(
+        &self,
+        svr_key: SvrKey,
+    ) -> Result<(), RequestError<Infallible>> {
+        self.set_registration_recovery_password(svr_key.derive_registration_recovery_password())
+            .await
+    }
+
+    /// Sets an already-derived registration recovery password for the authenticated account.
+    ///
+    /// `registration_recovery_password` can be derived from the account's SVR key using
+    /// [`SvrKey::derive_registration_recovery_password`].
+    ///
+    /// The registration recovery password lets the account re-register its phone number without
+    /// SMS verification. The server stores it against the account's phone-number identity (PNI),
+    /// and any of the account's devices may set it.
+    pub async fn set_registration_recovery_password(
+        &self,
+        registration_recovery_password: [u8; 32],
+    ) -> Result<(), RequestError<Infallible>> {
+        let mut client = AccountsClient::new(self.0.service());
+        let request = SetRegistrationRecoveryPasswordRequest {
+            registration_recovery_password: registration_recovery_password.to_vec(),
+        };
+        let desc = Redact(&request).to_string();
+        let SetRegistrationRecoveryPasswordResponse {} = log_and_send("auth", &desc, || {
+            client.set_registration_recovery_password(request)
+        })
+        .await?
+        .into_inner();
         Ok(())
     }
 
@@ -154,6 +207,34 @@ pub mod test_cases {
         }]
     }
 
+    // The request crosses the bridge as the raw 32-byte SVR key; libsignal derives the
+    // registration recovery password from it, so the expected gRPC request carries the derived
+    // password.
+    pub fn set_registration_recovery_password_test_cases() -> Vec<
+        GrpcTestCase<
+            [u8; 32],
+            SetRegistrationRecoveryPasswordRequest,
+            SetRegistrationRecoveryPasswordResponse,
+            (),
+        >,
+    > {
+        let method = "/org.signal.chat.account.Accounts/SetRegistrationRecoveryPassword";
+        let svr_key = [0x42; 32];
+        vec![GrpcTestCase {
+            name: "success".to_string(),
+            method: method.to_string(),
+            request: svr_key,
+            request_grpc: SetRegistrationRecoveryPasswordRequest {
+                registration_recovery_password: const_str::hex!(
+                    "a9fe57f1248e778519606d39502dd27eef87ee03a1fb91963df28dc7107cddca"
+                )
+                .to_vec(),
+            },
+            response_grpc: SetRegistrationRecoveryPasswordResponse {},
+            response: (),
+        }]
+    }
+
     pub fn set_discoverable_by_phone_number_test_cases() -> Vec<
         GrpcTestCase<
             bool,
@@ -208,6 +289,34 @@ mod test {
         run_tests(
             clear_registration_lock_test_cases(),
             |chat: Auth<_>, ()| async move { chat.clear_registration_lock().await },
+            |(), result| assert_matches!(result, Ok(())),
+        );
+    }
+
+    #[test]
+    fn test_set_registration_recovery_password() {
+        use test_cases::*;
+        run_tests(
+            set_registration_recovery_password_test_cases(),
+            |chat: Auth<_>, svr_key: [u8; 32]| async move {
+                let registration_recovery_password =
+                    SvrKey::new(svr_key).derive_registration_recovery_password();
+                chat.set_registration_recovery_password(registration_recovery_password)
+                    .await
+            },
+            |(), result| assert_matches!(result, Ok(())),
+        );
+    }
+
+    #[test]
+    fn test_set_registration_recovery_password_from_svr_key() {
+        use test_cases::*;
+        run_tests(
+            set_registration_recovery_password_test_cases(),
+            |chat: Auth<_>, svr_key: [u8; 32]| async move {
+                chat.set_registration_recovery_password_from_svr_key(SvrKey::new(svr_key))
+                    .await
+            },
             |(), result| assert_matches!(result, Ok(())),
         );
     }

@@ -68,6 +68,34 @@ public class AuthAccountsService(
     }
 
   /**
+   * Sets the registration recovery password for the authenticated account, given the account's SVR
+   * key (which Signal clients historically call the "master key").
+   *
+   * Internally, we derive the registration recovery password from the SVR key and send only that
+   * derived password. The SVR key itself never leaves the device.
+   *
+   * The registration recovery password lets the account re-register its phone number without SMS
+   * verification. Any of the account's devices may set it.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun setRegistrationRecoveryPassword(svrKey: SvrKey): CompletableFuture<RequestResult<Unit, Nothing>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_set_registration_recovery_password(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          svrKey = svrKey.internalContentsForJNI,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { err -> err.toRequestResult() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
    * Sets whether the authenticated account may be discovered by phone number via the Contact
    * Discovery Service (CDS).
    *

@@ -418,6 +418,25 @@ public object NativeNice {
       .makeCancelable(asyncCtx)
   }
 
+  public fun AuthenticatedChatConnection_set_registration_recovery_password(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    svrKey: ByteArray,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_svr_key = identity(svrKey)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_set_registration_recovery_password(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_svr_key,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_set_username_link(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

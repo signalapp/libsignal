@@ -42,6 +42,22 @@ describe('AuthAccountsService', () => {
     );
   });
 
+  describe('setRegistrationRecoveryPassword', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_SetRegistrationRecoveryPasswordTests(),
+      connectAuth<AuthAccountsService>,
+      async (
+        chat: AuthAccountsService,
+        svrKey: Uint8Array<ArrayBuffer>,
+        _resp: void
+      ) => {
+        await chat.setRegistrationRecoveryPassword({
+          svrKey: new SvrKey(svrKey),
+        });
+      }
+    );
+  });
+
   describe('setDiscoverableByPhoneNumber', () => {
     defineTestGrpcCases(
       NativeNice.TESTING_SetDiscoverableByPhoneNumberTests(),

@@ -3170,6 +3170,12 @@ SignalFfiError* signal_authenticated_chat_connection_set_registration_lock(
   SignalConstPointerAuthenticatedChatConnection chat,
   const SignalType_FixedArray32_uint8_t* svr_key
 );
+SignalFfiError* signal_authenticated_chat_connection_set_registration_recovery_password(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  const SignalType_FixedArray32_uint8_t* svr_key
+);
 SignalFfiError* signal_authenticated_chat_connection_set_username_link(
   SignalCPromiseUuid* promise,
   SignalConstPointerTokioAsyncContext async_runtime,

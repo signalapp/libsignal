@@ -51,6 +51,28 @@ export interface AuthAccountsService {
   clearRegistrationLock: (options?: RequestOptions) => Promise<void>;
 
   /**
+   * Sets the registration recovery password for the authenticated account, given the account's SVR
+   * key (which Signal clients historically call the "master key").
+   *
+   * libsignal derives the registration recovery password from the SVR key and sends only that
+   * derived password; the SVR key itself never leaves the device.
+   *
+   * The registration recovery password lets the account re-register its phone number without SMS
+   * verification. Any of the account's devices may set it.
+   *
+   * @param svrKey The account's SVR key, e.g. constructed from the bytes produced by
+   * `AccountEntropyPool.deriveSvrKey`.
+   *
+   * @throws {StandardNetworkError}
+   */
+  setRegistrationRecoveryPassword: (
+    request: {
+      svrKey: SvrKey;
+    },
+    options?: RequestOptions
+  ) => Promise<void>;
+
+  /**
    * Sets whether the authenticated account may be discovered by phone number via the Contact
    * Discovery Service (CDS).
    *
@@ -91,6 +113,25 @@ AuthenticatedChatConnection.prototype.clearRegistrationLock = async function (
     chat: this.chatService,
   });
 };
+
+AuthenticatedChatConnection.prototype.setRegistrationRecoveryPassword =
+  async function (
+    {
+      svrKey,
+    }: {
+      svrKey: SvrKey;
+    },
+    options?: RequestOptions
+  ): Promise<void> {
+    return await NativeNice.AuthenticatedChatConnection_set_registration_recovery_password(
+      {
+        asyncContext: this.asyncContext,
+        abortSignal: options?.abortSignal,
+        chat: this.chatService,
+        svrKey: svrKey.getContents(),
+      }
+    );
+  };
 
 AuthenticatedChatConnection.prototype.setDiscoverableByPhoneNumber =
   async function (

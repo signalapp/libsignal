@@ -1993,6 +1993,18 @@ internal enum NativeTestingNice {
             .convertReturn(consuming: rawOutput)
 
     }
+    internal static func TESTING_SetRegistrationRecoveryPasswordTests() throws -> [GrpcTestCase<Data, Void>] {
+        var rawOutput = GrpcTestCaseVecConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, VoidConverter>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_set_registration_recovery_password_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, VoidConverter>
+            .convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_SetUsernameLinkTests() throws -> [GrpcTestCase<
         SetUsernameLinkArgs, SetUsernameLinkOut
     >] {

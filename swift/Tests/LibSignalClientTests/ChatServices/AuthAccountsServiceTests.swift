@@ -37,6 +37,18 @@ class AuthAccountsServiceTests: AuthChatServiceTestBase<any AuthAccountsService>
         )
     }
 
+    func testSetRegistrationRecoveryPassword() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_SetRegistrationRecoveryPasswordTests(),
+            invoke: { api, svrKey in
+                try await api.setRegistrationRecoveryPassword(SvrKey(contents: svrKey))
+            },
+            check: { _, actual in
+                try actual.get()
+            }
+        )
+    }
+
     func testSetDiscoverableByPhoneNumber() async throws {
         try await testGrpcCases(
             try NativeTestingNice.TESTING_SetDiscoverableByPhoneNumberTests(),

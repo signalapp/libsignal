@@ -44,6 +44,22 @@ class AuthAccountsServiceTest {
     }
 
   @Test
+  fun testSetRegistrationRecoveryPassword() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_SetRegistrationRecoveryPasswordTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthAccountsService,
+        invoke = { chat, req ->
+          chat.setRegistrationRecoveryPassword(svrKey = SvrKey(req))
+        },
+        check = { _, actual ->
+          assertIs<RequestResult.Success<Unit>>(actual)
+        },
+      )
+    }
+
+  @Test
   fun testSetDiscoverableByPhoneNumber() =
     runTest {
       GrpcTestCase.runTests(

@@ -838,6 +838,28 @@ export async function AuthenticatedChatConnection_set_registration_lock({
     )
   );
 }
+export async function AuthenticatedChatConnection_set_registration_recovery_password({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  svrKey: svr_key,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  svrKey: Uint8Array<ArrayBuffer>;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_registration_recovery_password(
+        asyncContext,
+        identity(chat),
+        identity(svr_key)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_set_username_link({
   asyncContext,
   abortSignal,
@@ -1253,6 +1275,15 @@ export function TESTING_SetRegistrationLockTests(): Array<
     identity,
     identity
   )(Native.TESTING_SetRegistrationLockTests());
+}
+
+export function TESTING_SetRegistrationRecoveryPasswordTests(): Array<
+  GrpcTestCase<Uint8Array<ArrayBuffer>, void>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    identity
+  )(Native.TESTING_SetRegistrationRecoveryPasswordTests());
 }
 
 export function TESTING_SetUsernameLinkTests(): Array<

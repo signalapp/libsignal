@@ -4,6 +4,7 @@ v0.97.4
   - AuthAccountsService.setRegistrationLock()
   - AuthAccountsService.clearRegistrationLock()
   - AuthAccountsService.setDiscoverableByPhoneNumber()
+  - AuthAccountsService.setRegistrationRecoveryPassword()
   - UnauthBackupsService.copyBackupMedia()
 
 - node: Add full-er service SVR2 APIs that performs necessary crypto operations inside libsignal.

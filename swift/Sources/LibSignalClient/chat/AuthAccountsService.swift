@@ -32,6 +32,20 @@ public protocol AuthAccountsService: Sendable {
     ///   - the standard Signal network errors
     func clearRegistrationLock() async throws
 
+    /// Sets the registration recovery password for the authenticated account, given the account's
+    /// SVR key.
+    ///
+    /// libsignal derives the registration recovery password from the SVR key
+    /// (`HMAC-SHA256(svrKey, "Registration Recovery")`) and sends only that derived password; the
+    /// SVR key itself never leaves the device.
+    ///
+    /// The registration recovery password lets the account re-register its phone
+    /// number without SMS verification. Any of the account's devices may set it.
+    ///
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func setRegistrationRecoveryPassword(_ svrKey: SvrKey) async throws
+
     /// Sets whether the authenticated account may be discovered by phone number via the Contact
     /// Discovery Service (CDS).
     ///
@@ -55,6 +69,14 @@ extension AuthenticatedChatConnection: AuthAccountsService {
         return try await NativeNice.AuthenticatedChatConnection_clear_registration_lock(
             asyncContext: self.tokioAsyncContext,
             chat: self,
+        )
+    }
+
+    public func setRegistrationRecoveryPassword(_ svrKey: SvrKey) async throws {
+        return try await NativeNice.AuthenticatedChatConnection_set_registration_recovery_password(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            svrKey: svrKey.serialize(),
         )
     }
 

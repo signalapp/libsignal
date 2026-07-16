@@ -896,6 +896,19 @@ async fn AuthenticatedChatConnection_clear_registration_lock(
     chat.require_grpc().await.clear_registration_lock().await
 }
 
+// Takes the account's raw 32-byte SVR key; libsignal derives the registration recovery password
+// from it before sending (the SVR key itself is never transmitted).
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_registration_recovery_password(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    svr_key: [u8; 32],
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .set_registration_recovery_password_from_svr_key(SvrKey::new(svr_key))
+        .await
+}
+
 #[bridge_io(TokioAsyncContext, nice = true)]
 async fn AuthenticatedChatConnection_set_discoverable_by_phone_number(
     chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,

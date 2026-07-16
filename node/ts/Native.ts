@@ -572,6 +572,11 @@ type NativeFunctions = {
     chat: Wrapper<AuthenticatedChatConnection>,
     svr_key: Uint8Array<ArrayBuffer>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_set_registration_recovery_password: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    svr_key: Uint8Array<ArrayBuffer>
+  ) => CancellablePromise<void>;
   AuthenticatedChatConnection_set_username_link: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -2595,6 +2600,9 @@ type NativeFunctions = {
   TESTING_SetRegistrationLockTests: () => Array<
     GrpcTestCaseFfi<Uint8Array<ArrayBuffer>, void>
   >;
+  TESTING_SetRegistrationRecoveryPasswordTests: () => Array<
+    GrpcTestCaseFfi<Uint8Array<ArrayBuffer>, void>
+  >;
   TESTING_SetUsernameLinkTests: () => Array<
     GrpcTestCaseFfi<ReturnFfiSetUsernameLinkArgs, ReturnFfiSetUsernameLinkOut>
   >;
@@ -3003,6 +3011,7 @@ const {
   AuthenticatedChatConnection_set_device_name,
   AuthenticatedChatConnection_set_discoverable_by_phone_number,
   AuthenticatedChatConnection_set_registration_lock,
+  AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_username_link,
   AvatarUploadCredentialPresentation_CheckValidContents,
   AvatarUploadCredentialPresentation_GetCm,
@@ -3582,6 +3591,7 @@ const {
   TESTING_SetDeviceNameTests,
   TESTING_SetDiscoverableByPhoneNumberTests,
   TESTING_SetRegistrationLockTests,
+  TESTING_SetRegistrationRecoveryPasswordTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
   TESTING_Svr2MasterKeyRestoreError,
@@ -3724,6 +3734,7 @@ export {
   AuthenticatedChatConnection_set_device_name,
   AuthenticatedChatConnection_set_discoverable_by_phone_number,
   AuthenticatedChatConnection_set_registration_lock,
+  AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_username_link,
   AvatarUploadCredentialPresentation_CheckValidContents,
   AvatarUploadCredentialPresentation_GetCm,
@@ -4303,6 +4314,7 @@ export {
   TESTING_SetDeviceNameTests,
   TESTING_SetDiscoverableByPhoneNumberTests,
   TESTING_SetRegistrationLockTests,
+  TESTING_SetRegistrationRecoveryPasswordTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
   TESTING_Svr2MasterKeyRestoreError,
