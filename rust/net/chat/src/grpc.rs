@@ -31,6 +31,7 @@ use tonic::codegen::StdError;
 
 use crate::api::{ChallengeOption, DisconnectedError, RateLimitChallenge, RequestError};
 use crate::logging::{DebugAsStrOrBytes, Redact, RedactHex};
+use crate::stream_util::take_until_first_error;
 
 /// Marker type for use in [`crate::api`] traits.
 pub enum OverGrpc {}
@@ -340,6 +341,43 @@ where
     fn log_safe_description(&self) -> String {
         Redact(self).to_string()
     }
+}
+
+/// Splits `items` into chunks and makes a separate request for each of them.
+///
+/// Designed for requests that have a `repeated Item items` field: up to `chunk_size` items will be
+/// peeled off the iterator, transformed using `transform_item`, and collected in a `Vec`, which
+/// `make_request` can then embed directly into its request proto.
+///
+/// `make_request` will need to capture any parameters that don't change between requests, including
+/// the service or service provider itself. See existing callers for details.
+#[allow(dead_code)]
+fn chunk_request<T, TProto, R: 'static, E: 'static, S>(
+    chunk_size: usize,
+    items: impl IntoIterator<Item = T, IntoIter: 'static>,
+    mut transform_item: impl FnMut(T) -> TProto + 'static,
+    mut make_request: impl FnMut(Vec<TProto>) -> S + 'static,
+) -> impl Stream<Item = Result<R, E>> + 'static
+where
+    S: Stream<Item = Result<R, E>> + 'static,
+{
+    let mut items = items.into_iter();
+    let streams = std::iter::from_fn(move || {
+        // We have to do this conversion outside of the call to `make_request` to avoid Rust
+        // thinking we're capturing the outer iterator.
+        let next_chunk: Vec<_> = items
+            .by_ref()
+            .take(chunk_size)
+            .map(&mut transform_item)
+            .collect();
+        if next_chunk.is_empty() {
+            return None;
+        }
+        Some(make_request(next_chunk))
+    });
+    // Explicitly end the stream after the first error so that we don't go on to make another
+    // request.
+    take_until_first_error(futures_util::stream::iter(streams).flatten())
 }
 
 impl<E> RequestError<E> {
@@ -1716,5 +1754,63 @@ mod test {
                 Err(RequestError::Other(TestError::Expected))
             ]
         );
+    }
+
+    #[test]
+    fn test_chunking() {
+        let contents: Vec<u8> = chunk_request(
+            5,
+            0..24, // deliberately short on the last chunk
+            |i| i * 10,
+            |items| futures_util::stream::iter(items.into_iter().rev().map(Ok::<u8, Infallible>)),
+        )
+        .try_collect()
+        .now_or_never()
+        .expect("not actually async")
+        .expect("no failures");
+        assert_eq!(
+            &contents[..],
+            const_str::concat_bytes!(
+                [40, 30, 20, 10, 0],
+                [90, 80, 70, 60, 50],
+                [140, 130, 120, 110, 100],
+                [190, 180, 170, 160, 150],
+                [230, 220, 210, 200]
+            )
+        );
+    }
+
+    #[test]
+    fn test_chunking_early_exit() {
+        let contents: Vec<_> = chunk_request(
+            5,
+            0..24, // deliberately short on the last chunk
+            |i| i * 10,
+            |items| {
+                assert!(
+                    items.first().copied().unwrap_or_default() < 150,
+                    "previous chunk should have failed in the middle"
+                );
+                futures_util::stream::iter(
+                    items
+                        .into_iter()
+                        .rev()
+                        .map(|i| if i != 120 { Ok(i) } else { Err(i) }),
+                )
+            },
+        )
+        .collect()
+        .now_or_never()
+        .expect("not actually async");
+
+        let (failure, successes) = contents.split_last().expect("non-empty");
+        assert_eq!(
+            successes
+                .iter()
+                .map(|x| *x.as_ref().expect("success"))
+                .collect_vec(),
+            const_str::concat_bytes!([40, 30, 20, 10, 0], [90, 80, 70, 60, 50], [140, 130])
+        );
+        assert_eq!(*failure, Err(120));
     }
 }
