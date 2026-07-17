@@ -1267,9 +1267,10 @@ mod test {
     use crate::api::backups::UnauthenticatedChatApi;
     use crate::api::testutil::fixed_seed_test_rng;
     use crate::grpc::testutil::{
-        GrpcOverrideRequestValidator, RequestValidator, collect_up_to_and_including_first_error,
-        err, ok, req, run_tests, run_tests_with_generic_responses,
+        GrpcOverrideRequestValidator, RequestValidator, err, ok, req, run_tests,
+        run_tests_with_generic_responses,
     };
+    use crate::stream_util::collect_up_to_and_including_first_error;
 
     /// A variation of `==` that ignores header order, since the gRPC encoding of this type uses a
     /// protobuf map for the headers, which is not guaranteed to preserve order.

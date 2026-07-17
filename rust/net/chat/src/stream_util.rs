@@ -7,11 +7,10 @@ use std::ops::ControlFlow;
 use std::pin::Pin;
 use std::time::Duration;
 
-use futures_util::FutureExt as _;
+use futures_util::{FutureExt as _, Stream, TryStream};
 use pin_project::pin_project;
 
-/// A wrapper around a [`TryStream`](futures_util::TryStream) that handles fetching several entries
-/// at once.
+/// A wrapper around a [`TryStream`] that handles fetching several entries at once.
 ///
 /// See [`Self::next_chunk`] for details.
 #[derive(Debug)]
@@ -31,7 +30,7 @@ enum BulkPolledStreamState<T> {
     Terminated,
 }
 
-/// Reasons why a [`TryStream`](futures_util::TryStream) will no longer be polled.
+/// Reasons why a [`TryStream`] will no longer be polled.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BulkPolledStreamTerminationReason<E> {
     Finished,
@@ -104,7 +103,7 @@ impl<T: futures_util::TryStream> BulkPolledStream<T> {
     /// - `max_chunk_size` has been reached (as set at construction time)
     /// - `debounce_time` has been used up (as set at construction time)
     /// - the end of the stream has been reached
-    /// - the stream produces an error (remember it's a [`TryStream`](futures_util::TryStream))
+    /// - the stream produces an error (remember it's a [`TryStream`])
     ///
     /// The result will always have a non-empty `Vec` of items *or* a termination reason, and may
     /// have both.
@@ -194,6 +193,78 @@ impl<T: futures_util::TryStream> BulkPolledStream<T> {
     }
 }
 
+#[pin_project(project = TakeUntilFirstErrorProj)]
+pub enum TakeUntilFirstError<S> {
+    Active(#[pin] S),
+    Terminated,
+}
+
+/// The resulting stream has all items of `stream` up to and including the first `Err`.
+///
+/// Like [`futures_util::StreamExt::take_while`], but including the first failing item as well.
+/// Carefully does not poll the stream past that item.
+pub fn take_until_first_error<S>(stream: S) -> TakeUntilFirstError<S> {
+    TakeUntilFirstError::Active(stream)
+}
+
+impl<S: TryStream> Stream for TakeUntilFirstError<S> {
+    type Item = Result<S::Ok, S::Error>;
+
+    fn poll_next(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        match self.as_mut().project() {
+            TakeUntilFirstErrorProj::Active(s) => match std::task::ready!(s.try_poll_next(cx)) {
+                Some(Ok(next)) => std::task::Poll::Ready(Some(Ok(next))),
+                Some(Err(e)) => {
+                    self.set(Self::Terminated);
+                    std::task::Poll::Ready(Some(Err(e)))
+                }
+                None => {
+                    self.set(Self::Terminated);
+                    std::task::Poll::Ready(None)
+                }
+            },
+            TakeUntilFirstErrorProj::Terminated => std::task::Poll::Ready(None),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            TakeUntilFirstError::Active(s) => {
+                let (min, max) = s.size_hint();
+                // If the underlying stream can guarantee at least one more element, so do we.
+                // Nothing beyond that, though, because the next element may be an error.
+                (if min > 0 { 1 } else { 0 }, max)
+            }
+            TakeUntilFirstError::Terminated => (0, Some(0)),
+        }
+    }
+}
+
+impl<S> futures_util::stream::FusedStream for TakeUntilFirstError<S>
+where
+    Self: Stream,
+{
+    fn is_terminated(&self) -> bool {
+        matches!(self, TakeUntilFirstError::Terminated)
+    }
+}
+
+/// A convenience composition of [`take_until_first_error`] and
+/// [`futures_util::StreamExt::collect`].
+#[cfg(test)]
+pub(crate) fn collect_up_to_and_including_first_error<S, T, E>(
+    stream: S,
+) -> impl Future<Output = Vec<S::Item>>
+where
+    S: Stream<Item = Result<T, E>>,
+{
+    use futures_util::StreamExt as _;
+    take_until_first_error(stream).collect()
+}
+
 #[cfg(test)]
 mod test {
     use std::pin::pin;
@@ -202,7 +273,7 @@ mod test {
     use futures_util::StreamExt as _;
     use itertools::Itertools;
     use proptest::proptest;
-    use test_case::test_matrix;
+    use test_case::{test_case, test_matrix};
     use tokio::time::Instant;
 
     use super::*;
@@ -566,5 +637,32 @@ mod test {
                 Some(BulkPolledStreamTerminationReason::Finished)
             );
         });
+    }
+
+    #[test_case(&[] => Vec::<Result<u8, &'static str>>::new())]
+    #[test_case(&[Ok(0), Ok(1), Ok(2)] => vec![Ok(0), Ok(1), Ok(2)])]
+    #[test_case(&[Ok(0), Ok(1), Ok(2), Err("boom")] => vec![Ok(0), Ok(1), Ok(2), Err("boom")])]
+    #[test_case(&[Ok(0), Ok(1), Ok(2), Err("boom"), Ok(3)] => vec![Ok(0), Ok(1), Ok(2), Err("boom")])]
+    fn test_take_until_first_error(
+        original_items: &[Result<u8, &'static str>],
+    ) -> Vec<Result<u8, &'static str>> {
+        collect_up_to_and_including_first_error(futures_util::stream::iter(
+            original_items.iter().copied(),
+        ))
+        .now_or_never()
+        .expect("sync")
+    }
+
+    #[test]
+    fn test_take_until_first_error_does_not_keep_polling() {
+        let original_items = [Ok(0), Ok(1), Ok(2), Err("boom")];
+        let stream =
+            futures_util::stream::iter(original_items).chain(futures_util::stream::poll_fn(|_| {
+                panic!("should not be polled")
+            }));
+        let items = collect_up_to_and_including_first_error(stream)
+            .now_or_never()
+            .expect("sync");
+        assert_eq!(original_items, items[..]);
     }
 }

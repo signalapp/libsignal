@@ -1191,23 +1191,6 @@ pub(crate) mod testutil {
             }
         }
     }
-
-    pub(crate) fn collect_up_to_and_including_first_error<S, T, E>(
-        stream: S,
-    ) -> impl Future<Output = Vec<S::Item>>
-    where
-        S: Stream<Item = Result<T, E>>,
-    {
-        // We want to emulate the behavior of "take up to the first error", but then also check the
-        // error. Neither a simple `take_while` nor `try_collect` quite captures this, so we need a
-        // little extra state.
-        let mut stream_is_ok = true;
-        stream
-            .take_while(move |next| {
-                std::future::ready(std::mem::replace(&mut stream_is_ok, next.is_ok()))
-            })
-            .collect()
-    }
 }
 
 #[cfg(test)]
@@ -1229,7 +1212,7 @@ mod test {
     use crate::grpc::test_case_util::{
         GRPC_STATUS_DETAILS_HEADER, GRPC_STATUS_HEADER, status_for_server_side_error,
     };
-    use crate::grpc::testutil::collect_up_to_and_including_first_error;
+    use crate::stream_util::collect_up_to_and_including_first_error;
 
     #[test]
     fn test_extract_server_side_error() {
